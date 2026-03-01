@@ -56,7 +56,7 @@ ul li, ol li {
 }
 
 .logo {
-  height: 85px;
+  height: 60px;
   vertical-align: middle;
 }
 
@@ -97,6 +97,7 @@ ul li, ol li {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1001;
   min-width: 160px;
+  text-align: left;
 }
 
 .menu-items a {
@@ -373,9 +374,6 @@ main {
   transition: border-color 0.2s;
 }
 
-.highlight-item:hover {
-  border-color: #4b5563;
-}
 
 .highlight-icon {
   display: inline-block;
@@ -542,7 +540,7 @@ pre.cmd {
   padding: 12px 16px;
   border-radius: 8px;
   border: 1px solid #2d3a4d;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   line-height: 1.5;
   overflow-x: auto;
   white-space: pre-wrap;
@@ -553,6 +551,7 @@ pre code {
   background: #151d28;
   color: #f8f8f2;
   font-family: 'JetBrains Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.8rem;
   padding: 12px;
   overflow-x: auto;
 }
@@ -600,7 +599,7 @@ table tr:hover {
   }
 
   .logo {
-    height: 70px;
+    height: 50px;
   }
 
   .menu {

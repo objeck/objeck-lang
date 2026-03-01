@@ -3,14 +3,12 @@
  <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>
-   Objeck Language
-  </title>
+  <title>Quick Start — Objeck Language</title>
+  <meta name="description" content="Get started with Objeck: installation, language basics, collections, AI/ML, web programming, and more."/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"/>
-  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
   <script>
    hljs.highlightAll();
   </script>
@@ -51,7 +49,7 @@
           <a href="getting_started.html">Quick Start</a>
           <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
           <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/doc/api/index.html" target="_blank">API Docs</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
           <a href="https://github.com/objeck/objeck-lang">GitHub</a>
         </div>
       </div>
@@ -62,10 +60,10 @@
    <div class="container">
     <p>
      Before you get started, checkout Objeck's
-      <a href="https://www.objeck.org/doc/api/index.html">
+      <a href="https://www.objeck.org/api/latest/index.html">
        class libraries
       </a>
-      . Over the years, the language has become a collection of libraries to get stuff done. See what's available and read on.
+      . Over the years, the language has become a collection of libraries to get stuff done. See what's available and read on. You can also try code interactively in the <a href="https://playground.objeck.org">Web Playground</a>.
     </p>
     <div id="toc_container">
      <p>
@@ -143,6 +141,11 @@
           </a>
          </li>
          <li>
+          <a href="#str_interpolation">
+           String Interpolation
+          </a>
+         </li>
+         <li>
           <a href="#enum_const">
            Enums and Constants
           </a>
@@ -155,9 +158,21 @@
         </ul>
        </li>
        <li>
+        <a href="#bundles_use">
+         Bundles and Use Statements
+        </a>
+       </li>
+       <li>
         <a href="#classes_interfaces">
          Classes and Interfaces
         </a>
+        <ul>
+         <li>
+          <a href="#type_casting">
+           Type Casting and Checking
+          </a>
+         </li>
+        </ul>
        </li>
        <li>
         <a href="#funcs">
@@ -195,7 +210,27 @@
           Queues
          </a>
         </li>
+        <li>
+         <a href="#collect_utilities">
+          Collection Utilities
+         </a>
+        </li>
        </ul>
+       <li>
+        <a href="#generics">
+         Generics
+        </a>
+       </li>
+       <li>
+        <a href="#error_handling">
+         Error Handling
+        </a>
+       </li>
+       <li>
+        <a href="#reflection">
+         Reflection
+        </a>
+       </li>
        <li>
         <a href="#threads">
          Threads
@@ -247,6 +282,16 @@
           Web Server
          </a>
         </li>
+        <li>
+         <a href="#serialization">
+          Serialization
+         </a>
+        </li>
+        <li>
+         <a href="#ai_ml">
+          AI/ML: Gemini Chat
+         </a>
+        </li>
        </ul>
        <li>
         <a href="#environment">
@@ -254,7 +299,7 @@
         </a>
         <ul>
          <li>
-          <a href="howto.html">
+          <a href="https://github.com/objeck/objeck-lang#ide-support">
            IDE Support
           </a>
          </li>
@@ -328,6 +373,7 @@
      <h3 id="hello_world">
       Hello World!
      </h3>
+     <p><a href="https://playground.objeck.org" target="_blank">Try it in the Playground &rarr;</a></p>
      <pre><code class="language-cpp">class Hello {
   function : Main(args : String[]) ~ Nil {
     "Hello World"-&gt;PrintLine();
@@ -348,7 +394,7 @@
         Video Tutorials
        </h3>
        <p>
-        To assist with getting started with Objeck video tutorials are available. The videos cover a range of topics and are updated periodically.
+        To assist with getting starting with Objeck video tutorials are available. The videos cover a range of topics and are updated periodically.
        </p>
        <ul>
         <li>
@@ -429,7 +475,7 @@
           -tar
          </td>
          <td>
-          ttarget type 'lib' for linkable library or 'exe' for executable default is 'exe'
+          target type 'lib' for linkable library or 'exe' for executable default is 'exe'
          </td>
         </tr>
         <tr>
@@ -759,6 +805,14 @@ do {
          <pre class="line-numbers"><code class="language-cpp">location := "East Bay";
 for(i := 0; i &lt; location-&gt;Size(); i += 1;) {
  location-&gt;Get(i)-&gt;PrintLine();
+};
+</code></pre>
+         <p>
+          For loops also support multiple initialization and update statements separated by commas.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp"># multi-statement for loop
+for(i := 0, j := 10; i &lt; j; i += 1, j -= 1;) {
+  "i={$i}, j={$j}"-&gt;PrintLine();
 };
 </code></pre>
          <h4>
@@ -1177,6 +1231,26 @@ for(h := -6; h &lt;= 6; h+=1;) {
 </code></pre>
          <p>
          </p>
+         <h3 id="str_interpolation">
+          String Interpolation
+         </h3>
+         <p>
+          Variable values can be embedded directly into string literals using the <code>{$variable}</code> syntax. This is useful for building formatted output without manual string concatenation.
+         </p>
+         <pre><code class="language-cpp">name := "Objeck";
+version := 2026;
+"Welcome to {$name} v{$version}!"-&gt;PrintLine();
+
+x := 3.14;
+y := 2.71;
+"x={$x}, y={$y}, sum={$(x + y)}"-&gt;PrintLine();
+</code></pre>
+         <p>
+          The <code>$</code> prefix before a string literal treats it as a verbatim string, ignoring escape characters like <code>\n</code> and <code>\t</code>.
+         </p>
+         <pre><code class="language-cpp">path := $"C:\Users\objeck\files";
+path-&gt;PrintLine(); # prints: C:\Users\objeck\files
+</code></pre>
          <h2 id="enum_const">
           Enums and Constants
          </h2>
@@ -1229,6 +1303,49 @@ Runtime-&gt;GetProperty("cola")-&gt;PrintLine();
 
 Runtime-&gt;SetProperty("hello", "world");
 Runtime-&gt;GetProperty("hello")-&gt;PrintLine();
+</code></pre>
+         <h2 id="bundles_use">
+          Bundles and Use Statements
+         </h2>
+         <p>
+          Bundles are Objeck's module system for organizing related classes, interfaces, and enums into namespaces. The <code>use</code> keyword imports a bundle so its members can be referenced without fully qualified names.
+         </p>
+         <pre><code class="language-cpp"># without 'use' — fully qualified names required
+list := Collection.List-&gt;New()&lt;String&gt;;
+parser := Data.JSON.JsonParser-&gt;TextToElement(text);
+
+# with 'use' — shorter references
+use Collection;
+use Data.JSON;
+
+list := List-&gt;New()&lt;String&gt;;
+parser := JsonParser-&gt;TextToElement(text);
+</code></pre>
+         <p>
+          You can define your own bundles to organize code into logical namespaces.
+         </p>
+         <pre><code class="language-cpp">bundle App.Models {
+  class User {
+    @name : String;
+
+    New(name : String) {
+      @name := name;
+    }
+
+    method : public : GetName() ~ String {
+      return @name;
+    }
+  }
+}
+</code></pre>
+         <p>
+          The <code>use function</code> form allows importing static functions directly so they can be called without the class prefix.
+         </p>
+         <pre><code class="language-cpp">use function Int;
+
+# call Int functions directly
+value := Abs(-42);
+max := Max(10, 20);
 </code></pre>
          <h2 id="classes_interfaces">
           Classes and Interfaces
@@ -1352,7 +1469,31 @@ class Hello {
   }
 }
 </code></pre>
+         <h3 id="type_casting">
+          Type Casting and Checking
+         </h3>
          <p>
+          The <code>As()</code> method casts an object to a different type, such as an interface or parent/child class. The <code>TypeOf()</code> method checks whether an object is an instance of a given type and returns a boolean.
+         </p>
+         <pre><code class="language-cpp"># cast to an interface
+star_ship := StarShip-&gt;New();
+registration := star_ship-&gt;As(Registration);
+registration-&gt;GetMake()-&gt;PrintLine();
+
+# cast back to the concrete type
+enterprise := registration-&gt;As(StarShip);
+enterprise-&gt;EchoDescription();
+
+# type checking
+is_vehicle := star_ship-&gt;TypeOf(Vehicle);
+is_vehicle-&gt;PrintLine(); # true
+
+# cast between primitive and reference types
+value := 55.141-&gt;As(Char);
+value-&gt;PrintLine();
+</code></pre>
+         <p>
+          Casts are checked at runtime. A failed cast returns <code>Nil</code>, so it is good practice to check results before use.
          </p>
          <h2 id="collect">
           Collections
@@ -1449,6 +1590,43 @@ queue-&gt;AddBack(99.9);
 queue-&gt;AddFront(66.6);
 queue-&gt;Front()-&gt;PrintLine();
 </floatref></code></pre>
+         <h3 id="collect_utilities">
+          Collection Utilities
+         </h3>
+         <p>
+          Collections provide helper methods for combining and converting data structures.
+         </p>
+         <p>
+          <code>Vector-&gt;Zip(..)</code> combines two vectors into a vector of pairs, pairing corresponding elements.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">keys := Vector-&gt;New()&lt;String&gt;;
+keys-&gt;AddBack("name");
+keys-&gt;AddBack("city");
+keys-&gt;AddBack("state");
+
+values := Vector-&gt;New()&lt;String&gt;;
+values-&gt;AddBack("Alice");
+values-&gt;AddBack("Oakland");
+values-&gt;AddBack("CA");
+
+zipped := keys-&gt;Zip(values)&lt;String&gt;;
+</code></pre>
+         <p>
+          <code>Map-&gt;Dict(..)</code> and <code>Hash-&gt;Dict(..)</code> convert a Map or Hash into a vector of key/value pairs for easy iteration.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">area_codes := Map-&gt;New()&lt;IntRef, String&gt;;
+area_codes-&gt;Insert(510, "Oakland");
+area_codes-&gt;Insert(415, "San Francisco");
+
+# convert to list of pairs
+pairs := area_codes-&gt;Dict()&lt;IntRef, String&gt;;
+each(i : pairs) {
+  pair := pairs-&gt;Get(i)&lt;Pair&lt;IntRef, String&gt; &gt;;
+  key := pair-&gt;GetFirst()&lt;IntRef&gt;;
+  value := pair-&gt;GetSecond()&lt;String&gt;;
+  "{$key}: {$value}"-&gt;PrintLine();
+};
+</code></pre>
          <h2 id="funcs">
           Closures and Lambda Expressions
          </h2>
@@ -1534,6 +1712,113 @@ map-&gt;Insert(5, "Five");
 map-&gt;Insert(7, "Seven");
 map-&gt;Insert(9, "Nine");
 map-&gt;Each(\^(k, v) =&gt; "{$k}: {$v}"-&gt;PrintLine());
+</code></pre>
+         <h2 id="generics">
+          Generics
+         </h2>
+         <p>
+          Generics allow classes and methods to operate on parameterized types, providing type safety while maintaining code reuse. Generic types are specified using angle brackets after a constructor call or method invocation.
+         </p>
+         <pre><code class="language-cpp">use Collection;
+
+# creating a typed Vector of Strings
+names := Vector-&gt;New()&lt;String&gt;;
+names-&gt;AddBack("Alice");
+names-&gt;AddBack("Bob");
+
+# creating a typed Map with IntRef keys and String values
+codes := Map-&gt;New()&lt;IntRef, String&gt;;
+codes-&gt;Insert(510, "Oakland");
+codes-&gt;Insert(415, "San Francisco");
+
+# retrieve values with type safety
+name := names-&gt;Get(0)&lt;String&gt;;
+name-&gt;PrintLine();
+</code></pre>
+         <p>
+          Primitive types (Int, Float, Bool, etc.) must be wrapped using their reference counterparts (IntRef, FloatRef, BoolRef) when used as generic type parameters.
+         </p>
+         <pre><code class="language-cpp"># IntRef wraps Int for use in generic collections
+numbers := Vector-&gt;New()&lt;IntRef&gt;;
+numbers-&gt;AddBack(42);
+numbers-&gt;AddBack(99);
+each(i : numbers) {
+  numbers-&gt;Get(i)-&gt;PrintLine();
+};
+</code></pre>
+         <h2 id="error_handling">
+          Error Handling
+         </h2>
+         <p>
+          Objeck provides two mechanisms for handling runtime errors: the <code>leaving</code> keyword for guaranteed cleanup, and the <code>try/otherwise</code> framework for recovering from errors such as Nil dereferences and array bounds violations.
+         </p>
+         <h4>Leaving</h4>
+         <p>
+          The <code>leaving</code> block ensures cleanup code runs when a method or function exits, regardless of how it exits. This is similar to <code>finally</code> in other languages.
+         </p>
+         <pre><code class="language-cpp"># leaving block ensures cleanup runs when method exits
+function : ProcessFile(name : String) ~ Nil {
+  reader := System.IO.Filesystem.FileReader-&gt;New(name);
+  leaving {
+    reader-&gt;Close();
+  };
+
+  content := reader-&gt;ReadFile();
+  if(content &lt;&gt; Nil) {
+    content-&gt;PrintLine();
+  };
+}
+</code></pre>
+         <h4>Try/Otherwise</h4>
+         <p>
+          The <code>try/otherwise</code> construct catches runtime errors and allows the program to recover gracefully. If an error occurs inside a <code>try</code> block, execution transfers to the <code>otherwise</code> block instead of terminating the program.
+         </p>
+         <pre><code class="language-cpp">class ErrorExample {
+  function : Main(args : String[]) ~ Nil {
+    # attempt an operation that may fail
+    try {
+      value : String;
+      value-&gt;Size()-&gt;PrintLine(); # Nil dereference
+    }
+    otherwise {
+      "Error: recovered from Nil dereference"-&gt;PrintLine();
+    };
+
+    "Program continues..."-&gt;PrintLine();
+  }
+}
+</code></pre>
+         <p>
+          Combining <code>try/otherwise</code> with <code>leaving</code> provides both error recovery and guaranteed resource cleanup.
+         </p>
+         <h2 id="reflection">
+          Reflection
+         </h2>
+         <p>
+          Objeck supports runtime introspection through the <code>System.Introspection</code> classes. You can query an object's class, check type relationships, and dynamically instantiate classes.
+         </p>
+         <pre><code class="language-cpp"># get class information at runtime
+ship := StarShip-&gt;New();
+class_obj := ship-&gt;GetClass();
+class_obj-&gt;GetName()-&gt;PrintLine(); # "StarShip"
+
+# get unique IDs
+ship-&gt;GetClassID()-&gt;PrintLine();
+ship-&gt;GetInstanceID()-&gt;PrintLine();
+
+# check type hierarchy
+ship-&gt;TypeOf(Vehicle)-&gt;PrintLine(); # true
+ship-&gt;TypeOf(Pinto)-&gt;PrintLine();   # false
+</code></pre>
+         <p>
+          Dynamic instantiation allows classes to be created by name at runtime, enabling patterns like dependency injection.
+         </p>
+         <pre><code class="language-cpp"># dynamic class instantiation
+class_obj := Class-&gt;Instance("StarShip");
+if(class_obj &lt;&gt; Nil) {
+  instance := class_obj-&gt;As(StarShip);
+  instance-&gt;EchoDescription();
+};
 </code></pre>
          <h2 id="threads">
           Threads
@@ -1642,7 +1927,7 @@ critical(@content_mutex) {
           Activities
          </h2>
          <p>
-          Here's a list of common programming tasks implemented in Objeck.
+          Here's a list of common programming tasks implemented in Objeck. Many of these can be explored interactively in the <a href="https://playground.objeck.org" target="_blank">Web Playground</a>.
          </p>
          <h4 id="file-read">
           File Read &amp; Write
@@ -1680,8 +1965,7 @@ if(get_buf &lt;&gt; Nil) {
          <p>
           Parse and XML document and access elements
          </p>
-         <pre class="line-numbers"><code class="language-cpp">class Pair {
-in := "";
+         <pre class="line-numbers"><code class="language-cpp">in := "";
 in += "<inventory #45x10^3\"="" store="" title='\"OmniCorp'>";
 in += "<section name='\"health\"'>";
 in += "<item stock='\"12\"' upc='\"123456789\"'>";
@@ -1779,8 +2063,7 @@ System.Concurrency.Thread-&gt;Sleep(30000);
          <p>
           Sample RegEx queries
          </p>
-         <pre class="line-numbers"><code class="language-cpp">class Pair {
-string := "I am a string";
+         <pre class="line-numbers"><code class="language-cpp">string := "I am a string";
 # exact match
 regex := RegEx-&gt;New(".*string");
 if(regex-&gt;MatchExact(".*string")) {
@@ -1814,8 +2097,7 @@ if(match &lt;&gt; Nil) {
          <p>
           Fetched a webpage and parses the URLs
          </p>
-         <pre class="line-numbers"><code class="language-cpp">class Pair {
-input := args[0];
+         <pre class="line-numbers"><code class="language-cpp">input := args[0];
 
 output := HttpsClient-&gt;New()-&gt;QuickGet(Web.HTTP.Url-&gt;New(input))-&gt;ToString();
 output_len := output-&gt;Size();
@@ -1836,8 +2118,7 @@ each(i : found) {
          <p>
           HTTPS web sever for user authentication
          </p>
-         <pre class="line-numbers"><code class="language-cpp">class Pair {
-use Web.HTTP.Server;
+         <pre class="line-numbers"><code class="language-cpp">use Web.HTTP.Server;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -1878,6 +2159,60 @@ class RequestHandler from HttpsRequestHandler {
 	}
 }
 </code></pre>
+         <h4 id="serialization">
+          Serialization
+         </h4>
+         <p>
+          Objects can be serialized to bytes and deserialized back using the <code>Serializer</code> and <code>Deserializer</code> classes. This allows saving object state to files or transmitting over a network.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">use Collection;
+
+# serialize objects to bytes
+serializer := System.IO.Serializer-&gt;New();
+pair := Pair-&gt;New("hello"&lt;Base&gt;, "world"&lt;Base&gt;)&lt;String, String&gt;;
+serializer-&gt;Write(pair);
+bytes := serializer-&gt;Serialize();
+
+# deserialize objects from bytes
+deserializer := System.IO.Deserializer-&gt;New(bytes);
+restored := deserializer-&gt;ReadObject()-&gt;As(Pair&lt;String, String&gt;);
+if(restored &lt;&gt; Nil) {
+  restored-&gt;GetFirst()&lt;String&gt;-&gt;PrintLine();
+  restored-&gt;GetSecond()&lt;String&gt;-&gt;PrintLine();
+};
+</code></pre>
+         <h4 id="ai_ml">
+          AI/ML: Gemini Chat
+         </h4>
+         <p>
+          Objeck includes built-in client libraries for <a href="https://www.objeck.org/api/latest/index.html" target="_blank">OpenAI, Google Gemini, and Ollama</a>. Here is an example using the Gemini API to generate text.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
+use Data.JSON;
+
+class GeminiChat {
+  function : Main(args : String[]) ~ Nil {
+    # create a text prompt
+    content := Content-&gt;New("user");
+    content-&gt;AddPart(TextPart-&gt;New("What is JIT compilation?"));
+
+    # generate a response using Gemini
+    response := Model-&gt;GenerateContent(
+      "gemini-1.5-flash", content, EndPoint-&gt;GetApiKey());
+    if(response &lt;&gt; Nil) {
+      each(i : response) {
+        candidate := response-&gt;Get(i)-&gt;As(Candidate);
+        candidate-&gt;GetContent()-&gt;GetText()-&gt;PrintLine();
+      };
+    };
+  }
+}
+</code></pre>
+         <pre class="cmd">&gt; obc -src gemini_chat.obs -lib net,json,misc,gemini,cipher
+&gt; obr gemini_chat</pre>
+         <p>
+          The <code>-lib</code> flag links the required networking, JSON, and Gemini libraries. See the <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API documentation</a> for OpenAI and Ollama examples.
+         </p>
          <h2 id="environment">
           Programming Environment
          </h2>
@@ -2204,7 +2539,11 @@ goodbye.</pre>
             </a>
            </li>
            <li>
-            AI:
+            AI/ML:
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/gemini_22.obs">
+             Gemini Vision
+            </a>
+            ,
             <a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/neural_21.obs">
              Neural Network
             </a>
@@ -2281,7 +2620,7 @@ Benchmarks Game
    </div>
   </main>
   <footer class="footer">
-   © 2026 Randy Hollines. All Rights Reserved.
+   &copy; 2025-2026 Randy Hollines. All Rights Reserved.
   </footer>
  </body>
 </html>

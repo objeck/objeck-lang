@@ -3,9 +3,8 @@
  <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>
-   Objeck Language
-  </title>
+  <title>Changelog — Objeck Language</title>
+  <meta name="description" content="Objeck release notes, changelog, installation instructions, and platform support."/>
   <link href="style/styles.css" rel="stylesheet"/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   
@@ -33,7 +32,6 @@
       <a href="https://objeck.org/">
         <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
       </a>
-      <h1 class="tagline">High-level Code @ Native Speed</h1>
 
       <div class="menu">
         <div class="menu-bar"></div>
@@ -46,7 +44,7 @@
           <a href="getting_started.html">Quick Start</a>
           <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
           <a href="readme.html">Changelog</a>
-          <a href="https://www.objeck.org/doc/api/index.html" target="_blank">API Docs</a>
+          <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
           <a href="https://github.com/objeck/objeck-lang">GitHub</a>
         </div>
       </div>
@@ -54,9 +52,15 @@
   </header>
 
   <main style="text-align: left;">
-   <p>Syntax additions, updates to collections, and HTTPS PEM file support.</p>
-   
-   <h3><u>2025.7.0</u></h3>
+   <p>Try/otherwise error handling, syntax additions, updates to collections, and HTTPS PEM file support.</p>
+
+   <h3><u>v2026.2.1</u></h3>
+    <ul>
+        <li>Added <code>try/otherwise</code> error handling framework</li>
+        <li>Bug fixes and JIT compiler improvements</li>
+    </ul>
+
+   <h3>v2025.7.0</h3>
     <ul>
         <li>Added <code>Hash->Dict(..)</code>, <code>Map->Dict(..)</code> and <code>Vector->Zip(..)</code> to collections</li>
         <li>Updated style (docs, logos, etc.)</li>
@@ -85,7 +89,7 @@
     for additional information.
    </p>
    <p>
-    The Programmer's Guide is in the "doc" directory. Additional examples are available in the
+    The Programmer's Guide is available in the <a href="getting_started.html">Quick Start</a>. Additional examples are available in the
     <a href="https://rosettacode.org/wiki/Category:Objeck" target="_blank">
      Rosetta Code
     </a>
@@ -244,12 +248,7 @@
     For Linux
    </h3>
    <p>
-    <pre class="cmd">
-sudo apt install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc libsdl-image1.2 
-libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg libsdl-mixer1.2-dev 
-libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev 
-libsdl-ttf2.0-0 libsdl-ttf2.0-dev
-            </pre>
+    <pre class="cmd">sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libsdl2-net-dev libsdl2-gfx-dev</pre>
    </p>
    <h3>
     For macOS
@@ -316,7 +315,7 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout local.key -
    </h3>
    <p>
     The Objeck source repository is located
-    <a href="http://github.com/objeck/objeck-lang">
+    <a href="https://github.com/objeck/objeck-lang">
      here
     </a>
     , and the source can be fetched using the following 
@@ -382,7 +381,7 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout local.key -
    </ul>
   </main>
   <footer class="footer">
-   © 2026 Randy Hollines. All Rights Reserved.
+   &copy; 2025-2026 Randy Hollines. All Rights Reserved.
   </footer>
  </body>
 </html>

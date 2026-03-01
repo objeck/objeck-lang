@@ -20,6 +20,67 @@
 std::unique_ptr<Ort::Env> env = nullptr;;
 
 //
+// FP16 conversion utilities
+//
+
+// Minimal IEEE-754 float32 -> float16 converter (round-to-nearest-even)
+static inline uint16_t f32_to_f16(float f) {
+   uint32_t x; std::memcpy(&x, &f, sizeof(x));
+   uint32_t sign = (x >> 16) & 0x8000u;
+   uint32_t mant = x & 0x007FFFFFu;
+   int32_t  exp = (int32_t)((x >> 23) & 0xFF) - 127 + 15;
+   if(exp <= 0) {
+      if(exp < -10) return (uint16_t)sign;
+      mant = (mant | 0x00800000u) >> (1 - exp);
+      return (uint16_t)(sign | ((mant + 0x00001000u) >> 13));
+   }
+   else if(exp >= 31) {
+      return (uint16_t)(sign | 0x7C00u | (mant ? 0x01u : 0u));
+   }
+   else {
+      return (uint16_t)(sign | (exp << 10) | ((mant + 0x00001000u) >> 13));
+   }
+}
+
+// IEEE 754 half-precision float16 -> float32 converter
+static inline float half_to_float_u16(uint16_t h) {
+   uint32_t sign = (uint32_t)(h & 0x8000u) << 16;
+   uint32_t exp  = (uint32_t)(h & 0x7C00u) >> 10;
+   uint32_t mant = (uint32_t)(h & 0x03FFu);
+
+   uint32_t f;
+   if(exp == 0) {
+      if(mant == 0) {
+         f = sign; // zero
+      }
+      else {
+         // subnormal
+         exp = 1;
+         while((mant & 0x0400u) == 0) { mant <<= 1; exp--; }
+         mant &= 0x03FFu;
+         uint32_t exp_f = (exp + (127 - 15)) << 23;
+         uint32_t mant_f = mant << 13;
+         f = sign | exp_f | mant_f;
+      }
+   }
+   else if(exp == 0x1F) {
+      // Inf/NaN
+      uint32_t exp_f = 0xFFu << 23;
+      uint32_t mant_f = mant ? (mant << 13) : 0;
+      f = sign | exp_f | mant_f;
+   }
+   else {
+      uint32_t exp_f = (exp + (127 - 15)) << 23;
+      uint32_t mant_f = mant << 13;
+      f = sign | exp_f | mant_f;
+   }
+
+   float out;
+   std::memcpy(&out, &f, sizeof(out));
+   return out;
+}
+
+//
 // DeepLab utilities
 //
 
@@ -53,7 +114,7 @@ static std::vector<std::vector<cv::Point>> extract_polygons(const cv::Mat& class
    return polys;
 }
 
-struct DeepLapSummary {
+struct DeepLabSummary {
    cv::Mat class_map_src; // CV_8U at source size, ids in [0..C-1]
    std::vector<size_t> class_ids; // unique ids present (sorted ascending)
    std::vector<double> coverage; // same length as class_ids, fraction 0..1
@@ -68,28 +129,76 @@ static cv::Vec3b class_to_color(int id) {
    return table[id % (int)(sizeof(table) / sizeof(table[0]))];
 }
 
-static cv::Mat build_logits_tensor(const float* logits, int C, int H, int W) {
-   // logits: [C, H, W], return CV_8U map with values in [0..C-1]
+static cv::Mat build_logits_tensor(const float* logits, const std::vector<int64_t>& shape) {
+   // Supports common DeepLab outputs:
+   //   - NCHW: [1, C, H, W]
+   //   - NHWC: [1, H, W, C]
+   // Returns CV_8U class-id map (H x W), where each pixel is argmax over classes.
+
+   int C = 0, H = 0, W = 0;
+   bool nchw = true;
+
+   if(shape.size() == 4) {
+      // pick the smallest dim among {1,2,3} as channels (classes)
+      int c_dim = 1;
+      int64_t c_min = shape[1];
+      for(int i = 2; i <= 3; ++i) {
+         if(shape[i] < c_min) { c_min = shape[i]; c_dim = i; }
+      }
+      nchw = (c_dim == 1);
+
+      if(nchw) {
+         C = (int)shape[1]; H = (int)shape[2]; W = (int)shape[3];
+      }
+      else {
+         // treat as NHWC
+         H = (int)shape[1]; W = (int)shape[2]; C = (int)shape[3];
+      }
+   }
+
+   if(C <= 0 || H <= 0 || W <= 0) {
+      return cv::Mat();
+   }
+
    cv::Mat cm(H, W, CV_8U);
-   const int HW = H * W;
-   for(int y = 0; y < H; ++y) {
-      uint8_t* row = cm.ptr<uint8_t>(y);
-      for(int x = 0; x < W; ++x) {
-         int idx = y * W + x;
-         int best_c = 0;
-         float best_v = logits[0 * HW + idx];
-         for(int c = 1; c < C; ++c) {
-            float v = logits[c * HW + idx];
-            if(v > best_v) { best_v = v; best_c = c; }
+
+   if(nchw) {
+      const int HW = H * W;
+      for(int y = 0; y < H; ++y) {
+         uint8_t* row = cm.ptr<uint8_t>(y);
+         for(int x = 0; x < W; ++x) {
+            int idx = y * W + x;
+            int best_c = 0;
+            float best_v = logits[0 * HW + idx];
+            for(int c = 1; c < C; ++c) {
+               float v = logits[c * HW + idx];
+               if(v > best_v) { best_v = v; best_c = c; }
+            }
+            row[x] = static_cast<uint8_t>(best_c);
          }
-         row[x] = static_cast<uint8_t>(best_c);
+      }
+   }
+   else {
+      // NHWC contiguous: logits[((y * W + x) * C) + c]
+      for(int y = 0; y < H; ++y) {
+         uint8_t* row = cm.ptr<uint8_t>(y);
+         for(int x = 0; x < W; ++x) {
+            const int base = (y * W + x) * C;
+            int best_c = 0;
+            float best_v = logits[base + 0];
+            for(int c = 1; c < C; ++c) {
+               float v = logits[base + c];
+               if(v > best_v) { best_v = v; best_c = c; }
+            }
+            row[x] = static_cast<uint8_t>(best_c);
+         }
       }
    }
 
    return cm;
 }
 
-static DeepLapSummary summarize_segmentation(const cv::Mat& class_map_src, int C, const std::vector<std::wstring>& labels) {
+static DeepLabSummary summarize_segmentation(const cv::Mat& class_map_src, int C) {
    std::vector<uint64_t> hist(C, 0);
    for(int y = 0; y < class_map_src.rows; ++y) {
       const uint8_t* r = class_map_src.ptr<uint8_t>(y);
@@ -99,7 +208,7 @@ static DeepLapSummary summarize_segmentation(const cv::Mat& class_map_src, int C
       }
    }
 
-   DeepLapSummary out;
+   DeepLabSummary out;
    out.class_map_src = class_map_src;
    const double total = static_cast<double>(class_map_src.total());
    for(int cid = 0; cid < C; ++cid) {
@@ -112,38 +221,66 @@ static DeepLapSummary summarize_segmentation(const cv::Mat& class_map_src, int C
    return out;
 }
 
-static DeepLapSummary process_deeplab_output(const Ort::Value& out, const cv::Size& src_size, const std::vector<std::wstring> labels) {
+static DeepLabSummary process_deeplab_output(const Ort::Value& out, const cv::Size& src_size) {
    if(!out.IsTensor()) {
       throw std::runtime_error("DeepLab output is not a tensor.");
    }
 
    const auto info = out.GetTensorTypeAndShapeInfo();
    const auto shape = info.GetShape();
+   const auto et = info.GetElementType();
 
-   // [1, c, h, w]  (logits)
-   cv::Mat class_map_model;
-   if(shape.size() == 4 && shape[1] > 1) {
-      // logits
-      int C = static_cast<int>(shape[1]);
-      int H = static_cast<int>(shape[2]);
-      int W = static_cast<int>(shape[3]);
-      const float* logits = out.GetTensorData<float>();
-      class_map_model = build_logits_tensor(logits, C, H, W);
-
-      // upsample with NEAREST to preserve ids
-      cv::Mat class_map_src;
-      cv::resize(class_map_model, class_map_src, src_size, 0, 0, cv::INTER_NEAREST);
-
-      // Clean any unexpected ids (shouldn't happen if NEAREST, but safe):
-      for(int y = 0; y < class_map_src.rows; ++y) {
-         uint8_t* r = class_map_src.ptr<uint8_t>(y);
-         for(int x = 0; x < class_map_src.cols; ++x) if(r[x] >= C) r[x] = 0;
-      }
-
-      return summarize_segmentation(class_map_src, C, labels);
+   // Expected logits tensor, typically:
+   //   - NCHW: [1, C, H, W]
+   //   - NHWC: [1, H, W, C]
+   if(shape.size() != 4) {
+      throw std::runtime_error("Unexpected DeepLab output rank (expected 4D).");
    }
-   
-   throw std::runtime_error("Unexpected DeepLab output shape.");
+
+   // Read logits as float, regardless of FP16/FP32 export.
+   std::vector<float> logits_f;
+   const float* logits_ptr = nullptr;
+
+   if(et == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+      logits_ptr = out.GetTensorData<float>();
+   }
+   else if(et == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+      // Convert to FP32 for argmax (cheap vs overall inference)
+      const uint16_t* h = out.GetTensorData<uint16_t>();
+      const size_t n = (size_t)info.GetElementCount();
+      logits_f.resize(n);
+      for(size_t i = 0; i < n; ++i) {
+         logits_f[i] = half_to_float_u16(h[i]);
+      }
+      logits_ptr = logits_f.data();
+   }
+   else {
+      throw std::runtime_error("DeepLab output dtype must be float or float16.");
+   }
+
+   // Build class-id map at model resolution, then upsample to source resolution.
+   cv::Mat class_map_model = build_logits_tensor(logits_ptr, shape);
+   if(class_map_model.empty()) {
+      throw std::runtime_error("Failed to build DeepLab class map (empty).");
+   }
+
+   // C is needed for sanitization + summary histogram.
+   // For NCHW it's shape[1], for NHWC it's shape[3]. build_logits_tensor picks layout,
+   // but we still need a safe upper bound here.
+   int C = (int)std::max<int64_t>(shape[1], shape[3]);
+
+   cv::Mat class_map_src;
+   cv::resize(class_map_model, class_map_src, src_size, 0, 0, cv::INTER_NEAREST);
+
+   // Safety clamp (should be unnecessary with nearest, but protects against bad data).
+   for(int y = 0; y < class_map_src.rows; ++y) {
+      uint8_t* r = class_map_src.ptr<uint8_t>(y);
+      for(int x = 0; x < class_map_src.cols; ++x) {
+         if(r[x] >= C) r[x] = 0;
+      }
+   }
+
+   return summarize_segmentation(class_map_src, C);
 }
 
 static std::vector<float> deeplab_preprocess(const cv::Mat& img, int height, int width, std::vector<int64_t>& shape) {
@@ -195,9 +332,26 @@ static std::vector<float> deeplab_preprocess(const cv::Mat& img, int height, int
 
 struct KP { float x, y, conf; };
 
-// BGR image -> preprocessed NCHW float tensor (0..1)
-static void openpose_preprocess(const cv::Mat& img, int W, int H, std::vector<float>& out) {
-   cv::Mat r; cv::resize(img, r, cv::Size(W, H), 0, 0, cv::INTER_LINEAR);
+// BGR image -> preprocessed NCHW float tensor.
+// Uses letterbox (preserve aspect ratio) and returns the transform so keypoints
+// decoded in model-input space can be mapped back into the original image space.
+static void openpose_preprocess(const cv::Mat& img, int W, int H, std::vector<float>& out, float& lb_scale, int& lb_pad_x, int& lb_pad_y) {
+   // Letterbox: resize with preserved aspect, then pad to (W,H)
+   const float sx = (float)W / (float)img.cols;
+   const float sy = (float)H / (float)img.rows;
+   lb_scale = std::min(sx, sy);
+
+   const int new_w = (int)std::round(img.cols * lb_scale);
+   const int new_h = (int)std::round(img.rows * lb_scale);
+
+   cv::Mat resized;
+   cv::resize(img, resized, cv::Size(new_w, new_h), 0, 0, cv::INTER_LINEAR);
+
+   cv::Mat r(H, W, img.type(), cv::Scalar(0, 0, 0));
+   lb_pad_x = (W - new_w) / 2;
+   lb_pad_y = (H - new_h) / 2;
+   resized.copyTo(r(cv::Rect(lb_pad_x, lb_pad_y, new_w, new_h)));
+
    cv::Mat rgb; cv::cvtColor(r, rgb, cv::COLOR_BGR2RGB);
    rgb.convertTo(rgb, CV_32F, 1.0f / 255.0f);
 
@@ -363,7 +517,11 @@ static inline std::vector<float> yolo_preprocess_letterbox(const cv::Mat& img, i
 static std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_height, int resize_width) {
    cv::Mat resized;
    cv::resize(img, resized, cv::Size(resize_width, resize_height));
-   resized.convertTo(resized, CV_32F, 1.0 / 255.0);
+
+   // Convert BGR -> RGB to match ImageNet mean/std ordering
+   cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
+
+   resized.convertTo(resized, CV_32F, 1.0f / 255.0f);
 
    // Split channels
    std::vector<cv::Mat> channels(3);
@@ -371,13 +529,14 @@ static std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_heigh
 
    // Normalize using ImageNet mean/std for each channel
    const float mean[3] = { 0.485f, 0.456f, 0.406f };
-   const float std[3] = { 0.229f, 0.224f, 0.225f };
+   const float stdd[3] = { 0.229f, 0.224f, 0.225f };
    for(int i = 0; i < 3; ++i) {
-      channels[i] = (channels[i] - mean[i]) / std[i];
+      channels[i] = (channels[i] - mean[i]) / stdd[i];
    }
 
    // Convert to CHW format and flatten
    std::vector<float> input_tensor_values;
+   input_tensor_values.reserve((size_t)3 * resize_height * resize_width);
    for(const auto& channel : channels) {
       input_tensor_values.insert(input_tensor_values.end(), (float*)channel.datastart, (float*)channel.dataend);
    }
@@ -388,25 +547,6 @@ static std::vector<float> resnet_preprocess(const cv::Mat& img, int resize_heigh
 //
 // General utilities and functions
 //
-
-// Minimal IEEE-754 float32 -> float16 converter (round-to-nearest-even)
-static inline uint16_t f32_to_f16(float f) {
-   uint32_t x; std::memcpy(&x, &f, sizeof(x));
-   uint32_t sign = (x >> 16) & 0x8000u;
-   uint32_t mant = x & 0x007FFFFFu;
-   int32_t  exp = (int32_t)((x >> 23) & 0xFF) - 127 + 15;
-   if(exp <= 0) {
-      if(exp < -10) return (uint16_t)sign;
-      mant = (mant | 0x00800000u) >> (1 - exp);
-      return (uint16_t)(sign | ((mant + 0x00001000u) >> 13));
-   }
-   else if(exp >= 31) {
-      return (uint16_t)(sign | 0x7C00u | (mant ? 0x01u : 0u));
-   }
-   else {
-      return (uint16_t)(sign | (exp << 10) | ((mant + 0x00001000u) >> 13));
-   }
-}
 
 // close a yolo session
 static void close_session(VMContext & context) {
@@ -955,12 +1095,29 @@ static void deeplab_image_inf(VMContext& context) {
          return;
       }
 
+      // Detect model input dimensions
+      Ort::TypeInfo input_type_info = session->GetInputTypeInfo(0);
+      auto tensor_info = input_type_info.GetTensorTypeAndShapeInfo();
+      auto model_input_shape = tensor_info.GetShape();
+      auto elem = tensor_info.GetElementType();
+
+      int net_h = 0, net_w = 0;
+      // Expected: [1,3,H,W] or similar
+      if(model_input_shape.size() == 4) {
+         if(model_input_shape[2] > 0 && model_input_shape[3] > 0) {
+            net_h = static_cast<int>(model_input_shape[2]);
+            net_w = static_cast<int>(model_input_shape[3]);
+         }
+      }
+      if(net_h <= 0 || net_w <= 0) {
+         // Fallback: just use source image size
+         net_h = img.rows;
+         net_w = img.cols;
+      }
+
       // Preprocess image for Deeplab
       std::vector<int64_t> input_shape;
-      std::vector<float> preprocessed_input = deeplab_preprocess(img, 520, 520, input_shape);
-
-      auto ti = session->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
-      auto elem = ti.GetElementType();
+      std::vector<float> preprocessed_input = deeplab_preprocess(img, net_h, net_w, input_shape);
 
       Ort::Value input_tensor = make_tensor_match_input_type(
          preprocessed_input,          // FP32 buffer from preprocessing
@@ -1041,7 +1198,7 @@ static void deeplab_image_inf(VMContext& context) {
 
       // set DeepLab metadata
       const cv::Size source_size(img.cols, img.rows);  // from your input image
-      const DeepLapSummary summary = process_deeplab_output(output_tensor, source_size, deeplab_labels);
+      const DeepLabSummary summary = process_deeplab_output(output_tensor, source_size);
 
       std::vector<size_t> class_results;
       class_results.reserve(summary.class_ids.size());
@@ -1160,8 +1317,8 @@ static void openpose_image_inf(VMContext& context) {
       size_t output_count = session->GetOutputCount();
       std::vector<const char*> out_names(output_count);
       out_names_s.resize(output_count);
-      for(size_t i = 0; i < output_count; ++i) { 
-         out_names_s[i] = session->GetOutputNameAllocated(i, alloc).get(); out_names[i] = out_names_s[i].c_str(); 
+      for(size_t i = 0; i < output_count; ++i) {
+         out_names_s[i] = session->GetOutputNameAllocated(i, alloc).get(); out_names[i] = out_names_s[i].c_str();
       }
 
       // Input shape/type
@@ -1171,27 +1328,29 @@ static void openpose_image_inf(VMContext& context) {
       int input_width = input_shape_vec.size() >= 4 && input_shape_vec[3] > 0 ? (int)input_shape_vec[3] : 368;
       auto input_elem = input_type_shape.GetElementType();
 
-      std::vector<float> input_tensor_data; 
-      openpose_preprocess(img, input_width, input_height, input_tensor_data);
-      std::array<int64_t, 4> input_shape{ 1,3,input_height,input_width };
-    
-      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
-      Ort::Value input = Ort::Value::CreateTensor<float>(
-         mem_info,
-         input_tensor_data.data(),
-         input_tensor_data.size(),
-         input_shape.data(),
-         input_shape.size()
-      );
-      
+      // Preprocess with letterbox (aspect-preserving resize + padding)
+      std::vector<float> input_tensor_data;
+      float lb_scale = 1.f;
+      int lb_pad_x = 0, lb_pad_y = 0;
+      openpose_preprocess(img, input_width, input_height, input_tensor_data, lb_scale, lb_pad_x, lb_pad_y);
+
+      // Match FP32 / FP16, same helper as YOLO / DeepLab / ResNet
+      std::vector<int64_t> input_shape{ 1, 3, input_height, input_width };
+      Ort::Value input = make_tensor_match_input_type(
+         input_tensor_data, {
+            input_shape.begin(),
+            input_shape.end()
+         },
+         input_elem);
+
       // Run
       const char* in_names[] = { in_name.c_str() };
       auto outs = session->Run(
-         Ort::RunOptions{ nullptr }, 
-         in_names, 
-         &input, 
-         1, 
-         out_names.data(), 
+         Ort::RunOptions{ nullptr },
+         in_names,
+         &input,
+         1,
+         out_names.data(),
          out_names.size());
 
       size_t heat_i = SIZE_MAX;
@@ -1267,36 +1426,47 @@ static void openpose_image_inf(VMContext& context) {
 
       // find peaks (skip background = last channel)
       const size_t NUM_KP = std::max(0, std::min(num_channel - 1, 25)); // works for 18/19 and 25/26
+      const float PEAK_THRESH = 0.02f;
+      const float KP_BOX_THRESH = 0.02f;
+      const int MIN_VALID_KP = 4;
+
       std::vector<KP> kps(NUM_KP, { -1.f, -1.f, 0.f });
 
+      float minx = 1e9f, miny = 1e9f, maxx = -1e9f, maxy = -1e9f;
+      int valid = 0;
+
       for(size_t k = 0; k < NUM_KP; ++k) {
-         float bestv = -1e9f; size_t bx = 0, by = 0;
-         for(size_t y = 0; y < heatmap_height; ++y) {
-            for(size_t x = 0; x < heatmap_width; ++x) {
-               float v = atHM(k, y, x);
+         float bestv = -1e9f; int bx = -1, by = -1;
+         for(int y = 0; y < heatmap_height; ++y) {
+            for(int x = 0; x < heatmap_width; ++x) {
+               float v = atHM(k, (size_t)y, (size_t)x);
                if(v > bestv) { bestv = v; by = y; bx = x; }
             }
          }
-         if(bestv > 0.05f) {
-            kps[k] = {
-              bx * (float)img.cols / (float)heatmap_width,
-              by * (float)img.rows / (float)heatmap_height,
-              bestv
-            };
+         if(bestv >= PEAK_THRESH && bx >= 0 && by >= 0) {
+            // Keypoints are decoded in model-input (letterboxed) pixel space.
+            // Map them back into the original image (crop) space by undoing
+            // the letterbox padding and scale.
+            float px = bx * (float)input_width / (float)heatmap_width;
+            float py = by * (float)input_height / (float)heatmap_height;
+
+            px = (px - (float)lb_pad_x) / lb_scale;
+            py = (py - (float)lb_pad_y) / lb_scale;
+            px = std::max(0.0f, std::min(px, (float)(img.cols - 1)));
+            py = std::max(0.0f, std::min(py, (float)(img.rows - 1)));
+
+            kps[k] = { px, py, bestv };
+
+            if(bestv >= KP_BOX_THRESH) {
+               minx = std::min(minx, px); miny = std::min(miny, py);
+               maxx = std::max(maxx, px); maxy = std::max(maxy, py);
+               ++valid;
+            }
          }
       }
 
-      // --- JSON-ish print for OpenPose keypoints ---
-      float minx = 1e9f, miny = 1e9f, maxx = -1e9f, maxy = -1e9f; int valid = 0;
-      for(auto& p : kps) {
-         if(p.conf > 0.f) {
-            minx = std::min(minx, p.x); miny = std::min(miny, p.y);
-            maxx = std::max(maxx, p.x); maxy = std::max(maxy, p.y);
-            valid++;
-         }
-      }
       cv::Rect person_bb;
-      if(valid > 0) {
+      if(valid >= MIN_VALID_KP) {
          person_bb = cv::Rect(
             (int)std::max(0.f, minx), (int)std::max(0.f, miny),
             (int)std::max(1.f, maxx - minx), (int)std::max(1.f, maxy - miny)
@@ -1347,26 +1517,34 @@ static void openpose_image_inf(VMContext& context) {
       }
       openpose_result_obj[6] = (size_t)class_array;
 
-      // Draw
+      // Draw keypoints and skeleton
       cv::Mat vis = img.clone();
       for(auto& p : kps) {
-         if(p.x >= 0) {
+         if(p.conf > PEAK_THRESH && p.x >= 0) {
             cv::Point2f pp(p.x, p.y);
-            cv::circle(vis, pp, 3, { 0,255,0 }, -1, cv::LINE_AA);
+            cv::circle(vis, pp, 3, { 0, 255, 255 }, -1, cv::LINE_AA);
          }
       }
 
-      // skeleton pairs (25 keypoints)
+      // COCO-18 skeleton pairs
       const std::pair<int, int> pairs[] = {
-         {1,2},{1,5},{2,3},{3,4},{5,6},{6,7},{1,8},{8,9},{9,10},{1,11},{11,12},{12,13},{2,8},{5,11} 
+         {1,2},{2,3},{3,4},     // neck -> right arm
+         {1,5},{5,6},{6,7},     // neck -> left arm
+         {1,8},{8,9},{9,10},    // neck -> right leg
+         {1,11},{11,12},{12,13},// neck -> left leg
+         {1,0},                 // neck -> nose
+         {0,14},{14,16},        // nose -> right eye -> right ear
+         {0,15},{15,17}         // nose -> left eye -> left ear
       };
 
       // draw skeleton
       for(auto& pr : pairs) {
          const int a = pr.first, b = pr.second;
-         if(a >= 0 && a < NUM_KP && b >= 0 && b < NUM_KP && kps[a].x >= 0 && kps[b].x >= 0) {
+         if(a >= 0 && (size_t)a < NUM_KP && b >= 0 && (size_t)b < NUM_KP &&
+            kps[a].conf > PEAK_THRESH && kps[b].conf > PEAK_THRESH &&
+            kps[a].x >= 0 && kps[b].x >= 0) {
             cv::Point2f aa(kps[a].x, kps[a].y); cv::Point2f bb(kps[b].x, kps[b].y);
-            cv::line(vis, aa, bb, { 0,200,255 }, 2, cv::LINE_AA);
+            cv::line(vis, aa, bb, { 0, 255, 0 }, 2, cv::LINE_AA);
          }
       }
 
