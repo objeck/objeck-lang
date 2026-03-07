@@ -1,0 +1,73 @@
+use API.Onnx, API.OpenCV, System.IO.Filesystem, Collection;
+
+class Demo {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 2) {
+			"Usage: obr demo_yolo <image_path> <data_dir>"->PrintLine();
+			return;
+		};
+
+		image_path := args[0];
+		data_dir := args[1];
+		if(data_dir->EndsWith('/') | data_dir->EndsWith('\\')) {
+			data_dir->Pop();
+		};
+
+		model := data_dir + "/models/yolov11-ft.onnx";
+		labels_path := data_dir + "/models/yolo_labels.txt";
+
+		# load image
+		image := Image->Load(image_path);
+		if(image = Nil | image->IsEmpty()) {
+			">>> Unable to load image: {$image_path} <<<"->PrintLine();
+			return;
+		};
+
+		# load labels
+		label_names := LoadLabels(labels_path)->ToArray()->As(String[]);
+
+		# run inference
+		session := YoloSession->New(model);
+		result := session->Inference(image->Convert(Image->Format->JPEG), 768, 768, 0.66, label_names);
+		session->Close();
+
+		if(result = Nil) {
+			">>> Inference failed <<<"->PrintLine();
+			return;
+		};
+
+		# print and draw detections
+		classifications := result->GetClassifications();
+		"--- Detections: {$classifications->Size()} ---"->PrintLine();
+		each(cls in classifications) {
+			cls->ToString()->PrintLine();
+
+			bounds := cls->GetBounds();
+			image := image->DrawRectangle(
+				Rect->New(bounds->GetX(), bounds->GetY(), bounds->GetWidth(), bounds->GetHeight()),
+				Scalar->New(0, 255, 0), 2);
+
+			image := image->DrawText(
+				cls->GetName(),
+				Point->New(bounds->GetX(), bounds->GetY()),
+				Font->FONT_HERSHEY_SIMPLEX,
+				0.5,
+				Scalar->New(255, 0, 0));
+		};
+
+		image->Show("YOLO Detections", 0.75, 0);
+	}
+
+	function : LoadLabels(label_path : String) ~ Vector<String> {
+		label_names := Vector->New()<String>;
+
+		file_in := FileReader->New(label_path);
+		while(<>file_in->IsEoF()) {
+			line := file_in->ReadLine();
+			label_names->AddBack(line);
+		};
+		file_in->Close();
+
+		return label_names;
+	}
+}
