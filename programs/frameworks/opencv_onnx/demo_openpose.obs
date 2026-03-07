@@ -1,0 +1,70 @@
+use API.Onnx, API.OpenCV, System.IO.Filesystem, Collection;
+
+class Demo {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 2) {
+			"Usage: obr demo_openpose <image_path> <data_dir>"->PrintLine();
+			return;
+		};
+
+		image_path := args[0];
+		data_dir := args[1];
+		if(data_dir->EndsWith('/') | data_dir->EndsWith('\\')) {
+			data_dir->Pop();
+		};
+
+		model := data_dir + "/models/openpose.onnx";
+		labels_path := data_dir + "/models/openpose_labels.txt";
+
+		# load image
+		image := Image->Load(image_path);
+		if(image = Nil | image->IsEmpty()) {
+			">>> Unable to load image: {$image_path} <<<"->PrintLine();
+			return;
+		};
+
+		# load labels
+		label_names := LoadLabels(labels_path)->ToArray()->As(String[]);
+
+		# run inference
+		session := OpenPoseSession->New(model);
+		result := session->Inference(image->Convert(Image->Format->JPEG), label_names);
+		session->Close();
+
+		if(result = Nil) {
+			">>> Inference failed <<<"->PrintLine();
+			return;
+		};
+
+		# print keypoints
+		"--- Keypoints ---"->PrintLine();
+		classifications := result->GetClassifications();
+		each(kp in classifications) {
+			if(kp->GetConfidence() > 0) {
+				kp->ToString()->PrintLine();
+			};
+		};
+
+		# show pose overlay
+		overlay := result->GetMaskedImage();
+		if(overlay <> Nil & <>overlay->IsEmpty()) {
+			overlay->Show("OpenPose", 0.5, 0);
+		}
+		else {
+			">>> No overlay image available <<<"->PrintLine();
+		};
+	}
+
+	function : LoadLabels(label_path : String) ~ Vector<String> {
+		label_names := Vector->New()<String>;
+
+		file_in := FileReader->New(label_path);
+		while(<>file_in->IsEoF()) {
+			line := file_in->ReadLine();
+			label_names->AddBack(line);
+		};
+		file_in->Close();
+
+		return label_names;
+	}
+}
