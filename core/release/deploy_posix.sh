@@ -84,6 +84,15 @@ if [ -z "$1" ] || [ "$1" != "arm64" ]; then
 	cd ../onnx/eq/cuda
 	./build_linux.sh onnx_cuda
 	cp onnx_cuda.so ../../../../release/deploy/lib/native/libobjk_onnx.so
+
+	# copy ONNX Runtime shared libraries
+	cp lib/x64/lib/libonnxruntime.so.1.19.0 ../../../../release/deploy/lib/native/libonnxruntime.so.1.19.0
+	cd ../../../../release/deploy/lib/native
+	ln -sf libonnxruntime.so.1.19.0 libonnxruntime.so.1
+	ln -sf libonnxruntime.so.1 libonnxruntime.so
+	cd ../../../../lib/onnx/eq/cuda
+
+	cp lib/x64/lib/libonnxruntime_providers_shared.so ../../../../release/deploy/lib/native/libonnxruntime_providers_shared.so
 	cd ../../../sdl
 else
 	cd ../sdl
