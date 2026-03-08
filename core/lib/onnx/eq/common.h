@@ -13,6 +13,7 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
+#include <iomanip>
 
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
@@ -78,6 +79,30 @@ static inline float half_to_float_u16(uint16_t h) {
    float out;
    std::memcpy(&out, &f, sizeof(out));
    return out;
+}
+
+// IEEE 754 float32 -> half-precision float16 converter
+static inline uint16_t float_to_half_u16(float value) {
+   uint32_t f;
+   std::memcpy(&f, &value, sizeof(f));
+
+   uint32_t sign = (f >> 16) & 0x8000u;
+   int32_t exp = ((f >> 23) & 0xFF) - 127 + 15;
+   uint32_t mant = (f >> 13) & 0x03FFu;
+
+   if(exp <= 0) {
+      if(exp < -10) return (uint16_t)sign;
+      mant = (mant | 0x0400u) >> (1 - exp);
+      return (uint16_t)(sign | mant);
+   }
+   else if(exp == 0xFF - 127 + 15) {
+      return (uint16_t)(sign | 0x7C00u | mant);
+   }
+   else if(exp > 30) {
+      return (uint16_t)(sign | 0x7C00u);
+   }
+
+   return (uint16_t)(sign | ((uint32_t)exp << 10) | mant);
 }
 
 //
@@ -1568,5 +1593,897 @@ static void openpose_image_inf(VMContext& context) {
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
+   }
+}
+
+//
+// Phi-3 / SLM text generation
+//
+
+struct SLMModelInfo {
+   std::string input_ids_name;
+   std::string position_ids_name;
+   std::string attention_mask_name;
+   std::vector<std::string> past_key_names;
+   std::vector<std::string> past_value_names;
+
+   std::string logits_name;
+   std::vector<std::string> present_key_names;
+   std::vector<std::string> present_value_names;
+
+   int num_layers = 0;
+   int num_kv_heads = 0;
+   int head_dim = 0;
+   ONNXTensorElementDataType kv_type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+};
+
+static SLMModelInfo discover_slm_model(Ort::Session* session) {
+   SLMModelInfo info;
+   Ort::AllocatorWithDefaultOptions alloc;
+
+   size_t num_inputs = session->GetInputCount();
+   for(size_t i = 0; i < num_inputs; ++i) {
+      std::string name = session->GetInputNameAllocated(i, alloc).get();
+
+      if(name == "input_ids") {
+         info.input_ids_name = name;
+      }
+      else if(name == "position_ids") {
+         info.position_ids_name = name;
+      }
+      else if(name == "attention_mask") {
+         info.attention_mask_name = name;
+      }
+      else if(name.length() > 4 && name.substr(name.length() - 4) == ".key") {
+         info.past_key_names.push_back(name);
+
+         // Get KV shape info from first key tensor
+         if(info.past_key_names.size() == 1) {
+            auto ti = session->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo();
+            auto shape = ti.GetShape();
+            info.kv_type = ti.GetElementType();
+            // Shape: [batch, num_kv_heads, past_seq, head_dim]
+            if(shape.size() >= 4) {
+               info.num_kv_heads = (shape[1] > 0) ? (int)shape[1] : 32;
+               info.head_dim = (shape[3] > 0) ? (int)shape[3] : 96;
+            }
+         }
+      }
+      else if(name.length() > 6 && name.substr(name.length() - 6) == ".value") {
+         info.past_value_names.push_back(name);
+      }
+   }
+
+   size_t num_outputs = session->GetOutputCount();
+   for(size_t i = 0; i < num_outputs; ++i) {
+      std::string name = session->GetOutputNameAllocated(i, alloc).get();
+
+      if(name == "logits") {
+         info.logits_name = name;
+      }
+      else if(name.length() > 4 && name.substr(name.length() - 4) == ".key") {
+         info.present_key_names.push_back(name);
+      }
+      else if(name.length() > 6 && name.substr(name.length() - 6) == ".value") {
+         info.present_value_names.push_back(name);
+      }
+   }
+
+   info.num_layers = (int)info.past_key_names.size();
+
+   // Sort for consistent ordering
+   std::sort(info.past_key_names.begin(), info.past_key_names.end());
+   std::sort(info.past_value_names.begin(), info.past_value_names.end());
+   std::sort(info.present_key_names.begin(), info.present_key_names.end());
+   std::sort(info.present_value_names.begin(), info.present_value_names.end());
+
+   return info;
+}
+
+// Sample next token from logits
+static int64_t sample_token(const float* logits, int vocab_size, double temperature) {
+   if(temperature < 1e-6) {
+      // Greedy
+      return (int64_t)std::distance(logits,
+         std::max_element(logits, logits + vocab_size));
+   }
+
+   // Temperature sampling
+   std::vector<float> probs(vocab_size);
+   float max_logit = *std::max_element(logits, logits + vocab_size);
+   float sum = 0.f;
+   for(int j = 0; j < vocab_size; ++j) {
+      probs[j] = std::exp((logits[j] - max_logit) / (float)temperature);
+      sum += probs[j];
+   }
+   for(int j = 0; j < vocab_size; ++j) {
+      probs[j] /= sum;
+   }
+
+   std::random_device rd;
+   std::mt19937 gen(rd());
+   std::discrete_distribution<int> dist(probs.begin(), probs.end());
+   return (int64_t)dist(gen);
+}
+
+// Extract float logits from tensor (handles FP32 and FP16)
+static std::vector<float> extract_last_logits(Ort::Value& logits_tensor, int& vocab_size) {
+   auto shape_info = logits_tensor.GetTensorTypeAndShapeInfo();
+   auto shape = shape_info.GetShape();
+   auto elem_type = shape_info.GetElementType();
+
+   // logits shape: [1, seq_len, vocab_size]
+   int seq_len = (int)shape[1];
+   vocab_size = (int)shape[2];
+
+   std::vector<float> last_logits(vocab_size);
+
+   if(elem_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+      const float* data = logits_tensor.GetTensorData<float>();
+      const float* last = data + (seq_len - 1) * vocab_size;
+      std::copy(last, last + vocab_size, last_logits.begin());
+   }
+   else if(elem_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+      const uint16_t* data = logits_tensor.GetTensorData<uint16_t>();
+      const uint16_t* last = data + (seq_len - 1) * vocab_size;
+      for(int j = 0; j < vocab_size; ++j) {
+         last_logits[j] = half_to_float_u16(last[j]);
+      }
+   }
+
+   return last_logits;
+}
+
+// Phi-3 / SLM text generation inference
+static void phi3_text_inf(VMContext& context) {
+   auto start = std::chrono::high_resolution_clock::now();
+
+   Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+
+   // Get input token IDs
+   size_t* token_array = (size_t*)APITools_GetArray(context, 2)[0];
+   const long token_count = (long)APITools_GetArraySize(token_array);
+   const size_t* token_data = APITools_GetArray(token_array);
+
+   const int max_new_tokens = (int)APITools_GetIntValue(context, 3);
+   const double temperature = APITools_GetFloatValue(context, 4);
+
+   // Get EOS token IDs
+   size_t* eos_array = (size_t*)APITools_GetArray(context, 5)[0];
+   const long eos_count = (long)APITools_GetArraySize(eos_array);
+   const size_t* eos_data = APITools_GetArray(eos_array);
+
+   if(!session || !token_data || token_count < 1 || max_new_tokens < 1) {
+      return;
+   }
+
+   // Collect EOS tokens
+   std::vector<int64_t> eos_tokens;
+   for(long i = 0; i < eos_count; ++i) {
+      eos_tokens.push_back((int64_t)eos_data[i]);
+   }
+
+   try {
+      // Convert prompt token IDs
+      std::vector<int64_t> prompt_tokens(token_count);
+      for(long i = 0; i < token_count; ++i) {
+         prompt_tokens[i] = (int64_t)token_data[i];
+      }
+
+      // Discover model I/O
+      SLMModelInfo model_info = discover_slm_model(session);
+
+      if(model_info.input_ids_name.empty() || model_info.logits_name.empty()) {
+         std::wcerr << L"Could not identify SLM model input/output tensor names." << std::endl;
+         return;
+      }
+
+      std::wcout << L"=> SLM model: " << model_info.num_layers << L" layers, "
+                 << model_info.num_kv_heads << L" kv_heads, head_dim=" << model_info.head_dim << std::endl;
+
+      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+
+      std::vector<int64_t> generated_tokens;
+      generated_tokens.reserve(max_new_tokens);
+
+      // Full sequence (prompt + generated so far) - rebuilt each step
+      std::vector<int64_t> full_sequence = prompt_tokens;
+      bool has_kv = (model_info.num_layers > 0);
+
+      // Build input/output name vectors
+      std::vector<std::string> in_name_strs;
+      in_name_strs.push_back(model_info.input_ids_name);
+      if(!model_info.position_ids_name.empty()) {
+         in_name_strs.push_back(model_info.position_ids_name);
+      }
+      if(!model_info.attention_mask_name.empty()) {
+         in_name_strs.push_back(model_info.attention_mask_name);
+      }
+      if(has_kv) {
+         for(int i = 0; i < model_info.num_layers; ++i) {
+            in_name_strs.push_back(model_info.past_key_names[i]);
+            in_name_strs.push_back(model_info.past_value_names[i]);
+         }
+      }
+
+      // Only request logits output (no KV cache reuse for DML compatibility)
+      std::vector<std::string> out_name_strs;
+      out_name_strs.push_back(model_info.logits_name);
+
+      std::vector<const char*> in_names(in_name_strs.size());
+      for(size_t i = 0; i < in_name_strs.size(); ++i) {
+         in_names[i] = in_name_strs[i].c_str();
+      }
+      std::vector<const char*> out_names(out_name_strs.size());
+      for(size_t i = 0; i < out_name_strs.size(); ++i) {
+         out_names[i] = out_name_strs[i].c_str();
+      }
+
+      // Generation loop (full re-encode each step for DML compatibility)
+      for(int step = 0; step < max_new_tokens; ++step) {
+         std::vector<Ort::Value> inputs;
+         int64_t seq_len = (int64_t)full_sequence.size();
+
+         // input_ids: [1, seq_len] - full sequence each step
+         std::vector<int64_t> ids_shape = {1, seq_len};
+         inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+            mem_info, full_sequence.data(), full_sequence.size(),
+            ids_shape.data(), ids_shape.size()));
+
+         // position_ids: [1, seq_len]
+         std::vector<int64_t> pos_ids(seq_len);
+         std::vector<int64_t> pos_shape = {1, seq_len};
+         if(!model_info.position_ids_name.empty()) {
+            for(int64_t p = 0; p < seq_len; ++p) {
+               pos_ids[p] = p;
+            }
+            inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+               mem_info, pos_ids.data(), pos_ids.size(),
+               pos_shape.data(), pos_shape.size()));
+         }
+
+         // attention_mask: [1, seq_len]
+         std::vector<int64_t> mask(seq_len, 1);
+         std::vector<int64_t> mask_shape = {1, seq_len};
+         if(!model_info.attention_mask_name.empty()) {
+            inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+               mem_info, mask.data(), mask.size(),
+               mask_shape.data(), mask_shape.size()));
+         }
+
+         // Empty KV cache each step (no reuse)
+         if(has_kv) {
+            for(int i = 0; i < model_info.num_layers; ++i) {
+               std::vector<int64_t> kv_shape = {1, (int64_t)model_info.num_kv_heads, 0, (int64_t)model_info.head_dim};
+               inputs.push_back(Ort::Value::CreateTensor(
+                  mem_info, (float*)nullptr, 0,
+                  kv_shape.data(), kv_shape.size(),
+                  model_info.kv_type));
+               inputs.push_back(Ort::Value::CreateTensor(
+                  mem_info, (float*)nullptr, 0,
+                  kv_shape.data(), kv_shape.size(),
+                  model_info.kv_type));
+            }
+         }
+
+         // Run inference
+         auto outputs = session->Run(
+            Ort::RunOptions{nullptr},
+            in_names.data(),
+            inputs.data(),
+            inputs.size(),
+            out_names.data(),
+            out_names.size());
+
+         // Extract logits and sample
+         int vocab_size = 0;
+         std::vector<float> last_logits = extract_last_logits(outputs[0], vocab_size);
+         int64_t next_token = sample_token(last_logits.data(), vocab_size, temperature);
+
+         // Check EOS
+         bool is_eos = false;
+         for(auto eos : eos_tokens) {
+            if(next_token == eos) { is_eos = true; break; }
+         }
+         if(is_eos) break;
+
+         generated_tokens.push_back(next_token);
+         full_sequence.push_back(next_token);
+      }
+
+      // Build Objeck result
+      size_t* phi3_result_obj = APITools_CreateObject(context, L"API.Onnx.Phi3Result");
+
+      // Copy generated tokens
+      size_t* gen_token_array = APITools_MakeIntArray(context, generated_tokens.size());
+      size_t* gen_token_buffer = gen_token_array + 3;
+      for(size_t i = 0; i < generated_tokens.size(); ++i) {
+         gen_token_buffer[i] = (size_t)generated_tokens[i];
+      }
+      phi3_result_obj[0] = (size_t)gen_token_array;
+
+      APITools_SetObjectValue(context, 0, phi3_result_obj);
+
+      auto end = std::chrono::high_resolution_clock::now();
+      auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      double tps = (duration_ms > 0) ? (generated_tokens.size() * 1000.0 / duration_ms) : 0;
+      std::wcout << L"=> SLM generation: " << generated_tokens.size() << L" tokens in "
+                 << duration_ms << L" ms (" << std::fixed << std::setprecision(1) << tps << L" tok/s)" << std::endl;
+   }
+   catch(const Ort::Exception& e) {
+      std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
+   }
+}
+
+//
+// Phi-3 Vision (multimodal) inference
+//
+
+// CLIP normalization constants
+static const float CLIP_MEAN[] = {0.48145466f, 0.4578275f, 0.40821073f};
+static const float CLIP_STD[]  = {0.26862954f, 0.26130258f, 0.27577711f};
+
+// HD transform: calculate output size for an image
+static std::pair<int,int> calc_hd_transform_size(int width, int height, int hd_num = 16) {
+   bool transposed = false;
+   if(width < height) {
+      std::swap(width, height);
+      transposed = true;
+   }
+   double ratio = (double)width / height;
+   int scale = 1;
+   while(scale * (int)std::ceil((double)scale / ratio) <= hd_num) {
+      scale++;
+   }
+   scale--;
+
+   int new_w = scale * 336;
+   int new_h = (int)(new_w / ratio);
+
+   // Pad height to multiple of 336
+   int padded_h = (int)(std::ceil((double)new_h / 336.0) * 336);
+   int padded_w = new_w;
+
+   if(transposed) {
+      std::swap(padded_w, padded_h);
+   }
+   return {padded_w, padded_h};
+}
+
+// Calculate number of image tokens for given image dimensions
+static int calc_num_image_tokens(int width, int height, int hd_num = 16) {
+   auto [pw, ph] = calc_hd_transform_size(width, height, hd_num);
+   int h_crops = ph / 336;
+   int w_crops = pw / 336;
+   return (h_crops * w_crops + 1) * 144 + 1 + (h_crops + 1) * 12;
+}
+
+// Preprocess image for Phi-3 Vision: HD transform + CLIP normalization + crop splitting
+// Returns pixel_values [1, num_crops+1, 3, 336, 336] and image_sizes [1, 2]
+static bool phi3v_preprocess_image(
+   const std::vector<uint8_t>& jpeg_bytes,
+   int num_crops,
+   std::vector<float>& pixel_values,
+   int& actual_num_crops,
+   int& padded_h, int& padded_w,
+   int& num_img_tokens)
+{
+   // Decode image
+   cv::Mat img = cv::imdecode(cv::Mat(jpeg_bytes), cv::IMREAD_COLOR);
+   if(img.empty()) return false;
+   cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+
+   int orig_w = img.cols, orig_h = img.rows;
+
+   // HD transform: determine resize dimensions
+   bool transposed = false;
+   int work_w = orig_w, work_h = orig_h;
+   if(work_w < work_h) {
+      std::swap(work_w, work_h);
+      transposed = true;
+   }
+
+   double ratio = (double)work_w / work_h;
+   int scale = 1;
+   while(scale * (int)std::ceil((double)scale / ratio) <= num_crops) {
+      scale++;
+   }
+   scale--;
+
+   int new_w = scale * 336;
+   int new_h = (int)(new_w / ratio);
+
+   // Resize (in landscape orientation)
+   cv::Mat resized;
+   if(transposed) {
+      cv::resize(img, resized, cv::Size(new_h, new_w), 0, 0, cv::INTER_CUBIC);
+   } else {
+      cv::resize(img, resized, cv::Size(new_w, new_h), 0, 0, cv::INTER_CUBIC);
+   }
+
+   // Pad to multiple of 336 with white (255)
+   int rh = resized.rows, rw = resized.cols;
+   int tar_h = (int)(std::ceil((double)rh / 336.0) * 336);
+   int tar_w = (int)(std::ceil((double)rw / 336.0) * 336);
+   int top_pad = (tar_h - rh) / 2;
+   int bot_pad = tar_h - rh - top_pad;
+   int left_pad = (tar_w - rw) / 2;
+   int right_pad = tar_w - rw - left_pad;
+
+   cv::Mat padded;
+   cv::copyMakeBorder(resized, padded, top_pad, bot_pad, left_pad, right_pad,
+                      cv::BORDER_CONSTANT, cv::Scalar(255, 255, 255));
+
+   padded_h = padded.rows;
+   padded_w = padded.cols;
+   int h_crops = padded_h / 336;
+   int w_crops = padded_w / 336;
+   int local_crops = h_crops * w_crops;
+   actual_num_crops = local_crops + 1; // +1 for global
+   num_img_tokens = (local_crops + 1) * 144 + 1 + (h_crops + 1) * 12;
+
+   // Convert to float [0,1] and normalize with CLIP stats
+   cv::Mat float_img;
+   padded.convertTo(float_img, CV_32FC3, 1.0 / 255.0);
+
+   // Create global image: bicubic resize to 336x336
+   cv::Mat global_img;
+   cv::resize(float_img, global_img, cv::Size(336, 336), 0, 0, cv::INTER_CUBIC);
+
+   // Allocate output: (num_crops+1) x 3 x 336 x 336
+   int total_crops = num_crops + 1; // padded to max
+   pixel_values.resize(total_crops * 3 * 336 * 336, 0.0f);
+
+   // Helper: write a 336x336 crop to pixel_values at given crop index (CHW format, normalized)
+   auto write_crop = [&](const cv::Mat& crop, int crop_idx) {
+      for(int c = 0; c < 3; ++c) {
+         for(int y = 0; y < 336; ++y) {
+            for(int x = 0; x < 336; ++x) {
+               float val = crop.at<cv::Vec3f>(y, x)[c];
+               val = (val - CLIP_MEAN[c]) / CLIP_STD[c];
+               int offset = crop_idx * (3 * 336 * 336) + c * (336 * 336) + y * 336 + x;
+               pixel_values[offset] = val;
+            }
+         }
+      }
+   };
+
+   // Crop 0: global image
+   write_crop(global_img, 0);
+
+   // Crops 1..local_crops: local 336x336 patches from HD image
+   int crop_idx = 1;
+   for(int r = 0; r < h_crops; ++r) {
+      for(int col = 0; col < w_crops; ++col) {
+         cv::Rect roi(col * 336, r * 336, 336, 336);
+         cv::Mat patch = float_img(roi);
+         write_crop(patch, crop_idx++);
+      }
+   }
+
+   return true;
+}
+
+// Phi-3 Vision multimodal text generation
+// Context layout: [0]=result, [1]=vision_session, [2]=embed_session, [3]=decoder_session,
+//                 [4]=image_bytes, [5]=prefix_tokens, [6]=suffix_tokens,
+//                 [7]=max_tokens, [8]=temperature, [9]=eos_tokens
+static void phi3_vision_inf(VMContext& context) {
+   auto start = std::chrono::high_resolution_clock::now();
+
+   Ort::Session* vision_session = (Ort::Session*)APITools_GetIntValue(context, 1);
+   Ort::Session* embed_session = (Ort::Session*)APITools_GetIntValue(context, 2);
+   Ort::Session* decoder_session = (Ort::Session*)APITools_GetIntValue(context, 3);
+
+   // Image bytes
+   size_t* img_array = (size_t*)APITools_GetArray(context, 4)[0];
+   const long img_size = (long)APITools_GetArraySize(img_array);
+   const unsigned char* img_data = (unsigned char*)APITools_GetArray(img_array);
+
+   // Prefix tokens (before image placeholder)
+   size_t* prefix_array = (size_t*)APITools_GetArray(context, 5)[0];
+   const long prefix_count = (long)APITools_GetArraySize(prefix_array);
+   const size_t* prefix_data = APITools_GetArray(prefix_array);
+
+   // Suffix tokens (after image placeholder)
+   size_t* suffix_array = (size_t*)APITools_GetArray(context, 6)[0];
+   const long suffix_count = (long)APITools_GetArraySize(suffix_array);
+   const size_t* suffix_data = APITools_GetArray(suffix_array);
+
+   const int max_new_tokens = (int)APITools_GetIntValue(context, 7);
+   const double temperature = APITools_GetFloatValue(context, 8);
+
+   // EOS tokens
+   size_t* eos_array = (size_t*)APITools_GetArray(context, 9)[0];
+   const long eos_count = (long)APITools_GetArraySize(eos_array);
+   const size_t* eos_data = APITools_GetArray(eos_array);
+
+   if(!vision_session || !embed_session || !decoder_session || img_size < 1) {
+      return;
+   }
+
+   std::vector<int64_t> eos_tokens;
+   for(long i = 0; i < eos_count; ++i) {
+      eos_tokens.push_back((int64_t)eos_data[i]);
+   }
+
+   try {
+      // Step 1: Image preprocessing
+      std::vector<uint8_t> jpeg_bytes(img_data, img_data + img_size);
+
+      const int NUM_CROPS = 16;
+      std::vector<float> pixel_values;
+      int actual_crops, pad_h, pad_w, num_img_tokens;
+      if(!phi3v_preprocess_image(jpeg_bytes, NUM_CROPS, pixel_values, actual_crops, pad_h, pad_w, num_img_tokens)) {
+         std::wcerr << L"Failed to preprocess image" << std::endl;
+         return;
+      }
+
+      std::wcout << L"=> Vision: " << pad_w << L"x" << pad_h
+                 << L", crops=" << actual_crops << L", img_tokens=" << num_img_tokens << std::endl;
+
+      Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+
+      // Step 2: Run vision model
+      // Detect expected input type for pixel_values
+      ONNXTensorElementDataType pv_expected_type;
+      {
+         Ort::AllocatorWithDefaultOptions alloc;
+         auto type_info = vision_session->GetInputTypeInfo(0);
+         pv_expected_type = type_info.GetTensorTypeAndShapeInfo().GetElementType();
+      }
+
+      // pixel_values: [1, num_crops+1, 3, 336, 336] - padded to max
+      std::vector<int64_t> pv_shape = {1, (int64_t)(NUM_CROPS + 1), 3, 336, 336};
+      std::vector<uint16_t> pixel_values_fp16;
+      Ort::Value pv_tensor{nullptr};
+
+      if(pv_expected_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+         pixel_values_fp16.resize(pixel_values.size());
+         for(size_t i = 0; i < pixel_values.size(); ++i) {
+            pixel_values_fp16[i] = float_to_half_u16(pixel_values[i]);
+         }
+         pv_tensor = Ort::Value::CreateTensor(
+            mem_info, pixel_values_fp16.data(), pixel_values_fp16.size() * sizeof(uint16_t),
+            pv_shape.data(), pv_shape.size(),
+            ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16);
+      }
+      else {
+         pv_tensor = Ort::Value::CreateTensor<float>(
+            mem_info, pixel_values.data(), pixel_values.size(),
+            pv_shape.data(), pv_shape.size());
+      }
+
+      // image_sizes: [1, 2] = {padded_h, padded_w}
+      std::vector<int64_t> img_sizes_data = {(int64_t)pad_h, (int64_t)pad_w};
+      std::vector<int64_t> img_sizes_shape = {1, 2};
+      Ort::Value img_sizes_tensor = Ort::Value::CreateTensor<int64_t>(
+         mem_info, img_sizes_data.data(), img_sizes_data.size(),
+         img_sizes_shape.data(), img_sizes_shape.size());
+
+      const char* vision_in_names[] = {"pixel_values", "image_sizes"};
+      const char* vision_out_names[] = {"visual_features"};
+      std::vector<Ort::Value> vision_inputs;
+      vision_inputs.push_back(std::move(pv_tensor));
+      vision_inputs.push_back(std::move(img_sizes_tensor));
+
+      auto vision_outputs = vision_session->Run(
+         Ort::RunOptions{nullptr},
+         vision_in_names, vision_inputs.data(), vision_inputs.size(),
+         vision_out_names, 1);
+
+      // visual_features shape
+      auto vf_info = vision_outputs[0].GetTensorTypeAndShapeInfo();
+      auto vf_shape = vf_info.GetShape();
+      auto vf_type = vf_info.GetElementType();
+      int64_t vf_tokens = vf_shape[1];
+      int64_t hidden_size = vf_shape[2];
+      std::wcout << L"=> Visual features: [" << vf_shape[0] << L"," << vf_tokens
+                 << L"," << hidden_size << L"] type=" << vf_type << std::endl;
+
+      // Step 3: Build input_ids with image placeholder tokens
+      const int64_t IMG_PLACEHOLDER = -1;
+      std::vector<int64_t> input_ids;
+      for(long i = 0; i < prefix_count; ++i) {
+         input_ids.push_back((int64_t)prefix_data[i]);
+      }
+      int64_t img_start_pos = (int64_t)input_ids.size();
+      for(int64_t i = 0; i < vf_tokens; ++i) {
+         input_ids.push_back(IMG_PLACEHOLDER);
+      }
+      for(long i = 0; i < suffix_count; ++i) {
+         input_ids.push_back((int64_t)suffix_data[i]);
+      }
+
+      // Step 4: Run embedding model on input_ids
+      std::vector<int64_t> embed_ids = input_ids;
+      for(auto& id : embed_ids) {
+         if(id == IMG_PLACEHOLDER) id = 0;
+      }
+
+      int64_t seq_len = (int64_t)embed_ids.size();
+      std::vector<int64_t> embed_ids_shape = {1, seq_len};
+
+      const char* embed_in_names[] = {"input_ids"};
+      const char* embed_out_names[] = {"inputs_embeds"};
+      std::vector<Ort::Value> embed_inputs;
+      embed_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+         mem_info, embed_ids.data(), embed_ids.size(),
+         embed_ids_shape.data(), embed_ids_shape.size()));
+
+      auto embed_outputs = embed_session->Run(
+         Ort::RunOptions{nullptr},
+         embed_in_names, embed_inputs.data(), embed_inputs.size(),
+         embed_out_names, 1);
+
+      // inputs_embeds: [1, seq_len, hidden_size]
+      auto embed_type = embed_outputs[0].GetTensorTypeAndShapeInfo().GetElementType();
+
+      // Step 5: Fuse visual features into embeddings at placeholder positions
+      if(embed_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16 && vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+         uint16_t* embed_data = embed_outputs[0].GetTensorMutableData<uint16_t>();
+         const uint16_t* vf_data = vision_outputs[0].GetTensorData<uint16_t>();
+         for(int64_t i = 0; i < vf_tokens; ++i) {
+            std::memcpy(
+               embed_data + (img_start_pos + i) * hidden_size,
+               vf_data + i * hidden_size,
+               hidden_size * sizeof(uint16_t));
+         }
+      }
+      else if(embed_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+         float* embed_data = embed_outputs[0].GetTensorMutableData<float>();
+         if(vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+            const float* vf_data = vision_outputs[0].GetTensorData<float>();
+            for(int64_t i = 0; i < vf_tokens; ++i) {
+               std::memcpy(
+                  embed_data + (img_start_pos + i) * hidden_size,
+                  vf_data + i * hidden_size,
+                  hidden_size * sizeof(float));
+            }
+         }
+         else if(vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+            const uint16_t* vf_data = vision_outputs[0].GetTensorData<uint16_t>();
+            for(int64_t i = 0; i < vf_tokens; ++i) {
+               for(int64_t j = 0; j < hidden_size; ++j) {
+                  embed_data[(img_start_pos + i) * hidden_size + j] =
+                     half_to_float_u16(vf_data[i * hidden_size + j]);
+               }
+            }
+         }
+      }
+
+      // Step 6: Discover decoder model I/O
+      SLMModelInfo decoder_info = discover_slm_model(decoder_session);
+
+      std::string embeds_input_name;
+      {
+         Ort::AllocatorWithDefaultOptions alloc;
+         size_t ni = decoder_session->GetInputCount();
+         for(size_t i = 0; i < ni; ++i) {
+            std::string name = decoder_session->GetInputNameAllocated(i, alloc).get();
+            if(name == "inputs_embeds") {
+               embeds_input_name = name;
+               break;
+            }
+         }
+      }
+
+      if(embeds_input_name.empty()) {
+         std::wcerr << L"Decoder model does not have inputs_embeds input" << std::endl;
+         return;
+      }
+
+      // Step 7: Build decoder input/output names
+      std::vector<std::string> dec_out_strs;
+      dec_out_strs.push_back(decoder_info.logits_name);
+      std::vector<const char*> dec_out_names(dec_out_strs.size());
+      for(size_t i = 0; i < dec_out_strs.size(); ++i) {
+         dec_out_names[i] = dec_out_strs[i].c_str();
+      }
+
+      std::vector<std::string> dec_in_strs;
+      dec_in_strs.push_back(embeds_input_name);
+      if(!decoder_info.position_ids_name.empty()) {
+         dec_in_strs.push_back(decoder_info.position_ids_name);
+      }
+      if(!decoder_info.attention_mask_name.empty()) {
+         dec_in_strs.push_back(decoder_info.attention_mask_name);
+      }
+      bool has_kv = (decoder_info.num_layers > 0);
+      if(has_kv) {
+         for(int i = 0; i < decoder_info.num_layers; ++i) {
+            dec_in_strs.push_back(decoder_info.past_key_names[i]);
+            dec_in_strs.push_back(decoder_info.past_value_names[i]);
+         }
+      }
+      std::vector<const char*> dec_in_names(dec_in_strs.size());
+      for(size_t i = 0; i < dec_in_strs.size(); ++i) {
+         dec_in_names[i] = dec_in_strs[i].c_str();
+      }
+
+      // Step 8: First decoder pass with fused embeddings
+      std::vector<int64_t> generated_tokens;
+      generated_tokens.reserve(max_new_tokens);
+
+      std::vector<int64_t> full_token_ids = input_ids;
+      int64_t total_seq = seq_len;
+
+      {
+         std::vector<Ort::Value> dec_inputs;
+         dec_inputs.push_back(std::move(embed_outputs[0]));
+
+         std::vector<int64_t> pos_ids(total_seq);
+         std::vector<int64_t> pos_shape = {1, total_seq};
+         if(!decoder_info.position_ids_name.empty()) {
+            for(int64_t p = 0; p < total_seq; ++p) pos_ids[p] = p;
+            dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+               mem_info, pos_ids.data(), pos_ids.size(),
+               pos_shape.data(), pos_shape.size()));
+         }
+
+         std::vector<int64_t> mask(total_seq, 1);
+         std::vector<int64_t> mask_shape = {1, total_seq};
+         if(!decoder_info.attention_mask_name.empty()) {
+            dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+               mem_info, mask.data(), mask.size(),
+               mask_shape.data(), mask_shape.size()));
+         }
+
+         if(has_kv) {
+            for(int i = 0; i < decoder_info.num_layers; ++i) {
+               std::vector<int64_t> kv_shape = {1, (int64_t)decoder_info.num_kv_heads, 0, (int64_t)decoder_info.head_dim};
+               dec_inputs.push_back(Ort::Value::CreateTensor(
+                  mem_info, (float*)nullptr, 0,
+                  kv_shape.data(), kv_shape.size(),
+                  decoder_info.kv_type));
+               dec_inputs.push_back(Ort::Value::CreateTensor(
+                  mem_info, (float*)nullptr, 0,
+                  kv_shape.data(), kv_shape.size(),
+                  decoder_info.kv_type));
+            }
+         }
+
+         auto dec_outputs = decoder_session->Run(
+            Ort::RunOptions{nullptr},
+            dec_in_names.data(), dec_inputs.data(), dec_inputs.size(),
+            dec_out_names.data(), dec_out_names.size());
+
+         int vocab_size = 0;
+         std::vector<float> last_logits = extract_last_logits(dec_outputs[0], vocab_size);
+         int64_t next_token = sample_token(last_logits.data(), vocab_size, temperature);
+
+         bool is_eos = false;
+         for(auto eos : eos_tokens) {
+            if(next_token == eos) { is_eos = true; break; }
+         }
+         if(!is_eos) {
+            generated_tokens.push_back(next_token);
+            full_token_ids.push_back(next_token);
+            total_seq++;
+         }
+         else {
+            goto vision_done;
+         }
+      }
+
+      // Step 9: Subsequent steps - re-encode full sequence
+      for(int step = 1; step < max_new_tokens; ++step) {
+         std::vector<int64_t> step_ids = full_token_ids;
+         for(auto& id : step_ids) {
+            if(id == IMG_PLACEHOLDER) id = 0;
+         }
+         int64_t step_seq = (int64_t)step_ids.size();
+         std::vector<int64_t> step_shape = {1, step_seq};
+
+         std::vector<Ort::Value> step_embed_inputs;
+         step_embed_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+            mem_info, step_ids.data(), step_ids.size(),
+            step_shape.data(), step_shape.size()));
+
+         auto step_embed_out = embed_session->Run(
+            Ort::RunOptions{nullptr},
+            embed_in_names, step_embed_inputs.data(), step_embed_inputs.size(),
+            embed_out_names, 1);
+
+         // Re-fuse visual features
+         auto se_type = step_embed_out[0].GetTensorTypeAndShapeInfo().GetElementType();
+         if(se_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16 && vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+            uint16_t* ed = step_embed_out[0].GetTensorMutableData<uint16_t>();
+            const uint16_t* vd = vision_outputs[0].GetTensorData<uint16_t>();
+            for(int64_t i = 0; i < vf_tokens; ++i) {
+               std::memcpy(ed + (img_start_pos + i) * hidden_size, vd + i * hidden_size, hidden_size * sizeof(uint16_t));
+            }
+         }
+         else if(se_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+            float* ed = step_embed_out[0].GetTensorMutableData<float>();
+            if(vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+               const float* vd = vision_outputs[0].GetTensorData<float>();
+               for(int64_t i = 0; i < vf_tokens; ++i) {
+                  std::memcpy(ed + (img_start_pos + i) * hidden_size, vd + i * hidden_size, hidden_size * sizeof(float));
+               }
+            } else {
+               const uint16_t* vd = vision_outputs[0].GetTensorData<uint16_t>();
+               for(int64_t i = 0; i < vf_tokens; ++i) {
+                  for(int64_t j = 0; j < hidden_size; ++j) {
+                     ed[(img_start_pos + i) * hidden_size + j] = half_to_float_u16(vd[i * hidden_size + j]);
+                  }
+               }
+            }
+         }
+
+         // Run decoder
+         std::vector<Ort::Value> dec_inputs;
+         dec_inputs.push_back(std::move(step_embed_out[0]));
+
+         std::vector<int64_t> pos_ids(step_seq);
+         std::vector<int64_t> pos_shape = {1, step_seq};
+         if(!decoder_info.position_ids_name.empty()) {
+            for(int64_t p = 0; p < step_seq; ++p) pos_ids[p] = p;
+            dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+               mem_info, pos_ids.data(), pos_ids.size(),
+               pos_shape.data(), pos_shape.size()));
+         }
+
+         std::vector<int64_t> mask(step_seq, 1);
+         std::vector<int64_t> mask_shape = {1, step_seq};
+         if(!decoder_info.attention_mask_name.empty()) {
+            dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+               mem_info, mask.data(), mask.size(),
+               mask_shape.data(), mask_shape.size()));
+         }
+
+         if(has_kv) {
+            for(int i = 0; i < decoder_info.num_layers; ++i) {
+               std::vector<int64_t> kv_shape = {1, (int64_t)decoder_info.num_kv_heads, 0, (int64_t)decoder_info.head_dim};
+               dec_inputs.push_back(Ort::Value::CreateTensor(
+                  mem_info, (float*)nullptr, 0,
+                  kv_shape.data(), kv_shape.size(),
+                  decoder_info.kv_type));
+               dec_inputs.push_back(Ort::Value::CreateTensor(
+                  mem_info, (float*)nullptr, 0,
+                  kv_shape.data(), kv_shape.size(),
+                  decoder_info.kv_type));
+            }
+         }
+
+         auto dec_outputs = decoder_session->Run(
+            Ort::RunOptions{nullptr},
+            dec_in_names.data(), dec_inputs.data(), dec_inputs.size(),
+            dec_out_names.data(), dec_out_names.size());
+
+         int vocab_size = 0;
+         std::vector<float> last_logits = extract_last_logits(dec_outputs[0], vocab_size);
+         int64_t next_token = sample_token(last_logits.data(), vocab_size, temperature);
+
+         bool is_eos = false;
+         for(auto eos : eos_tokens) {
+            if(next_token == eos) { is_eos = true; break; }
+         }
+         if(is_eos) break;
+
+         generated_tokens.push_back(next_token);
+         full_token_ids.push_back(next_token);
+         total_seq++;
+      }
+
+      vision_done:
+      // Build Objeck result
+      size_t* result_obj = APITools_CreateObject(context, L"API.Onnx.Phi3Result");
+      size_t* gen_array = APITools_MakeIntArray(context, generated_tokens.size());
+      size_t* gen_buf = gen_array + 3;
+      for(size_t i = 0; i < generated_tokens.size(); ++i) {
+         gen_buf[i] = (size_t)generated_tokens[i];
+      }
+      result_obj[0] = (size_t)gen_array;
+      APITools_SetObjectValue(context, 0, result_obj);
+
+      auto end = std::chrono::high_resolution_clock::now();
+      auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      double tps = (duration_ms > 0) ? (generated_tokens.size() * 1000.0 / duration_ms) : 0;
+      std::wcout << L"=> Vision generation: " << generated_tokens.size() << L" tokens in "
+                 << duration_ms << L" ms (" << std::fixed << std::setprecision(1) << tps << L" tok/s)" << std::endl;
+   }
+   catch(const Ort::Exception& e) {
+      std::wcerr << L"ONNX Runtime Error (vision): " << e.what() << std::endl;
    }
 }
