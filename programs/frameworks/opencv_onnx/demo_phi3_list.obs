@@ -1,0 +1,48 @@
+use API.Onnx;
+
+class Demo {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 1) {
+			"Usage: obr demo_phi3_list <model_dir>"->PrintLine();
+			return;
+		};
+
+		model_dir := args[0];
+		if(model_dir->EndsWith('/') | model_dir->EndsWith('\\')) {
+			model_dir->Pop();
+		};
+
+		model := model_dir + "/model.onnx";
+
+		# <|user|> List 3 colors of the rainbow. <|end|> <|assistant|>
+		token_ids := [32010, 1293, 29871, 29941, 11955, 310, 278, 17251, 17729, 29889, 32007, 32001];
+		eos_tokens := [32000, 32001, 32007];
+
+		session := Phi3Session->New(model);
+		if(session = Nil) {
+			">>> Failed to create session <<<"->PrintLine();
+			return;
+		};
+
+		"--- Phi-3 List Generation ---"->PrintLine();
+		"Prompt: List 3 colors of the rainbow."->PrintLine();
+		"Generating..."->PrintLine();
+
+		result := session->Generate(token_ids, 256, 0.0, eos_tokens);
+		session->Close();
+
+		if(result = Nil) {
+			">>> Generation failed <<<"->PrintLine();
+			return;
+		};
+
+		tokens := result->GetTokens();
+		count := result->GetTokenCount();
+		"Generated {$count} tokens:"->PrintLine();
+		each(i : tokens) {
+			tok := tokens[i];
+			" {$tok}"->Print();
+		};
+		""->PrintLine();
+	}
+}

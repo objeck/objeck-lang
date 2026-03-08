@@ -11,7 +11,43 @@ Open Neural Network Exchange (ONNX) runtime support for computer vision inferenc
 Provides sessions for YOLO (object detection), ResNet (image classification),
 DeepLab (semantic segmentation), and OpenPose (human pose estimation).
 
+Also supports Phi-3/SLM text generation and Phi-3 Vision multimodal image understanding
+with autoregressive decoding.
+
 Supports CUDA, DirectML and QNN execution providers with automatic FP16/FP32 handling.
+
+<b>Phi-3 Text Generation</b>
+<code>
+# token IDs from tokenizer (e.g. "<|user|> What is 2+2? <|end|> <|assistant|>")
+token_ids := [32010, 5618, 338, 29871, 29906, 29974, 29906, 29973, 32007, 32001];
+eos_tokens := [32000, 32001, 32007];
+
+session := Phi3Session->New("phi3-mini/model.onnx");
+result := session->Generate(token_ids, 128, 0.0, eos_tokens);
+
+tokens := result->GetTokens();
+"Generated {$tokens->Size()} tokens"->PrintLine();
+
+session->Close();
+</code>
+
+<b>Phi-3 Vision (Image Understanding)</b>
+<code>
+# pre-tokenized: <|user|>\n ... What is in this image? <|end|>\n<|assistant|>\n
+prefix := [32010, 13];
+suffix := [1724, 338, 297, 445, 1967, 29973, 32007, 13, 32001];
+eos_tokens := [32000, 32007];
+
+session := Phi3VisionSession->New(
+  "phi3v/vision.onnx", "phi3v/embedding.onnx", "phi3v/decoder.onnx");
+image_bytes := FileReader->ReadBinaryFile("photo.jpg");
+result := session->Generate(image_bytes, prefix, suffix, 256, 0.0, eos_tokens);
+
+tokens := result->GetTokens();
+"Generated {$tokens->Size()} tokens"->PrintLine();
+
+session->Close();
+</code>
 
 <b>YOLO Object Detection</b>
 <code>
@@ -1155,6 +1191,292 @@ bundle API.Onnx {
 			};
 
 			return buffer;
+		}
+	}
+
+	#~
+	Phi-3 / SLM inference session for text generation.
+	Supports autoregressive generation with KV-cache management,
+	temperature-based sampling, and configurable EOS tokens.
+
+	<b>Example</b>
+	<code>
+	session := Phi3Session->New("phi3-mini/model.onnx");
+	token_ids := [1, 3148, 1001, 29901, 825, 338, 29871, 29906, 718, 29871, 29906, 29973];
+	eos_tokens := [2, 32007];
+	result := session->Generate(token_ids, 128, 0.7, eos_tokens);
+	each(token in result->GetTokens()) {
+	  token->PrintLine();
+	};
+	session->Close();
+	</code>
+	~#
+	class Phi3Session {
+		@session : Int;
+
+		#~
+		Constructor.
+		@param model Phi-3/SLM ONNX model path
+		~#
+		New(model : String) {
+			Init(model, Nil);
+		}
+
+		#~
+		Constructor.
+		@param model Phi-3/SLM ONNX model path
+		@param config session configuration parameters
+		~#
+		New(model : String, config : Map<String, String>) {
+			Init(model, config);
+		}
+
+		method : Init(model : String, config : Map<String, String>) ~ Nil {
+			keys := Vector->New()<String>;
+			values := Vector->New()<String>;
+
+			if(config <> Nil) {
+				key_values := config->GetKeyValues()<Pair<String, String>>;
+				each(key_value in key_values) {
+					keys->AddBack(key_value->GetFirst());
+					values->AddBack(key_value->GetSecond());
+				};
+			};
+
+			keys_array := keys->ToArray();
+			values_array := values->ToArray();
+
+			array_args := Base->New[4];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := StringArrayRef->New(keys_array);
+			array_args[2] := StringArrayRef->New(values_array);
+			array_args[3] := model;
+
+			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			value := array_args[0]->As(IntRef);
+			@session := value->Get();
+		}
+
+		#~
+		Closes the session
+		~#
+		method : public : Close() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(@session);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+		}
+
+		#~
+		Generate text tokens from input token IDs
+		@param token_ids input token IDs (prompt)
+		@param max_tokens maximum number of tokens to generate
+		@param temperature sampling temperature (0.0 for greedy)
+		@param eos_tokens array of end-of-sequence token IDs
+		@return generation result with output token IDs
+		~#
+		method : public : Generate(token_ids : Int[], max_tokens : Int, temperature : Float, eos_tokens : Int[]) ~ API.Onnx.Phi3Result {
+			if(token_ids = Nil | eos_tokens = Nil) {
+				return Nil;
+			};
+
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@session);
+			array_args[2] := IntArrayRef->New(token_ids);
+			array_args[3] := IntRef->New(max_tokens);
+			array_args[4] := FloatRef->New(temperature);
+			array_args[5] := IntArrayRef->New(eos_tokens);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_phi3_text_inf", array_args);
+
+			return array_args[0]->As(API.Onnx.Phi3Result);
+		}
+	}
+
+	#~
+	Phi-3 / SLM generation result containing output token IDs
+	~#
+	class Phi3Result {
+		@generated_tokens : Int[];
+
+		New : private () {}
+
+		#~
+		Gets the generated token IDs (excluding prompt tokens)
+		@return array of generated token IDs
+		~#
+		method : public : GetTokens() ~ Int[] {
+			return @generated_tokens;
+		}
+
+		#~
+		Gets the number of generated tokens
+		@return token count
+		~#
+		method : public : GetTokenCount() ~ Int {
+			if(@generated_tokens = Nil) {
+				return 0;
+			};
+			return @generated_tokens->Size();
+		}
+
+		#~
+		Get string representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			count := GetTokenCount();
+			return "generated_tokens={$count}";
+		}
+	}
+
+	#~
+	Phi-3 Vision multimodal session for image understanding and generation.
+	Uses three separate ONNX models: vision encoder, text embedding, and text decoder.
+	Accepts raw image bytes (JPEG/PNG) and pre-tokenized prompt tokens split into
+	prefix (before image placeholder) and suffix (after image placeholder) segments.
+
+	<b>Example</b>
+	<code>
+	model_dir := "phi3v-directml/";
+	session := Phi3VisionSession->New(
+	  model_dir + "phi-3-v-128k-instruct-vision.onnx",
+	  model_dir + "phi-3-v-128k-instruct-text-embedding.onnx",
+	  model_dir + "model.onnx");
+	image_bytes := System.IO.File.FileReader->ReadBinaryFile("photo.jpg");
+	prefix := [32010, 29871];
+	suffix := [32007, 32001];
+	eos := [32000, 32007];
+	result := session->Generate(image_bytes, prefix, suffix, 256, 0.0, eos);
+	each(token in result->GetTokens()) {
+	  token->PrintLine();
+	};
+	session->Close();
+	</code>
+	~#
+	class Phi3VisionSession {
+		@vision_session : Int;
+		@embed_session : Int;
+		@decoder_session : Int;
+
+		#~
+		Constructor.
+		@param vision_model path to vision encoder ONNX model
+		@param embed_model path to text embedding ONNX model
+		@param decoder_model path to text decoder ONNX model
+		~#
+		New(vision_model : String, embed_model : String, decoder_model : String) {
+			Init(vision_model, embed_model, decoder_model, Nil);
+		}
+
+		#~
+		Constructor with configuration.
+		@param vision_model path to vision encoder ONNX model
+		@param embed_model path to text embedding ONNX model
+		@param decoder_model path to text decoder ONNX model
+		@param config session configuration parameters
+		~#
+		New(vision_model : String, embed_model : String, decoder_model : String, config : Map<String, String>) {
+			Init(vision_model, embed_model, decoder_model, config);
+		}
+
+		method : Init(vision_model : String, embed_model : String, decoder_model : String, config : Map<String, String>) ~ Nil {
+			keys := Vector->New()<String>;
+			values := Vector->New()<String>;
+
+			if(config <> Nil) {
+				key_values := config->GetKeyValues()<Pair<String, String>>;
+				each(key_value in key_values) {
+					keys->AddBack(key_value->GetFirst());
+					values->AddBack(key_value->GetSecond());
+				};
+			};
+
+			keys_array := keys->ToArray();
+			values_array := values->ToArray();
+
+			# Create vision session
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := StringArrayRef->New(keys_array);
+			array_args[2] := StringArrayRef->New(values_array);
+			array_args[3] := vision_model;
+			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			value := array_args[0]->As(IntRef);
+			@vision_session := value->Get();
+
+			# Create embedding session
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := StringArrayRef->New(keys_array);
+			array_args[2] := StringArrayRef->New(values_array);
+			array_args[3] := embed_model;
+			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			value := array_args[0]->As(IntRef);
+			@embed_session := value->Get();
+
+			# Create decoder session
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := StringArrayRef->New(keys_array);
+			array_args[2] := StringArrayRef->New(values_array);
+			array_args[3] := decoder_model;
+			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			value := array_args[0]->As(IntRef);
+			@decoder_session := value->Get();
+		}
+
+		#~
+		Closes all three sessions (vision, embedding, decoder)
+		~#
+		method : public : Close() ~ Nil {
+			array_args := Base->New[1];
+
+			array_args[0] := IntRef->New(@vision_session);
+			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+
+			array_args[0] := IntRef->New(@embed_session);
+			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+
+			array_args[0] := IntRef->New(@decoder_session);
+			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+		}
+
+		#~
+		Generate text tokens from an image and prompt tokens.
+		The prompt is split into prefix tokens (before the image) and suffix tokens (after the image).
+		@param image_bytes raw image file bytes (JPEG/PNG)
+		@param prefix_tokens token IDs before the image placeholder
+		@param suffix_tokens token IDs after the image placeholder
+		@param max_tokens maximum number of tokens to generate
+		@param temperature sampling temperature (0.0 for greedy)
+		@param eos_tokens array of end-of-sequence token IDs
+		@return generation result with output token IDs
+		~#
+		method : public : Generate(image_bytes : Byte[], prefix_tokens : Int[], suffix_tokens : Int[], max_tokens : Int, temperature : Float, eos_tokens : Int[]) ~ API.Onnx.Phi3Result {
+			if(image_bytes = Nil | prefix_tokens = Nil | suffix_tokens = Nil | eos_tokens = Nil) {
+				return Nil;
+			};
+
+			array_args := Base->New[10];
+
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@vision_session);
+			array_args[2] := IntRef->New(@embed_session);
+			array_args[3] := IntRef->New(@decoder_session);
+			array_args[4] := ByteArrayRef->New(image_bytes);
+			array_args[5] := IntArrayRef->New(prefix_tokens);
+			array_args[6] := IntArrayRef->New(suffix_tokens);
+			array_args[7] := IntRef->New(max_tokens);
+			array_args[8] := FloatRef->New(temperature);
+			array_args[9] := IntArrayRef->New(eos_tokens);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_phi3_vision_inf", array_args);
+
+			return array_args[0]->As(API.Onnx.Phi3Result);
 		}
 	}
 

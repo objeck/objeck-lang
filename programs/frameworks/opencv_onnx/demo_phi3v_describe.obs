@@ -1,0 +1,61 @@
+use API.Onnx, System.IO.Filesystem;
+
+class Demo {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 2) {
+			"Usage: obr demo_phi3v_describe <model_dir> <image_path>"->PrintLine();
+			return;
+		};
+
+		model_dir := args[0];
+		if(model_dir->EndsWith('/') | model_dir->EndsWith('\\')) {
+			model_dir->Pop();
+		};
+
+		image_path := args[1];
+
+		vision_model := model_dir + "/phi-3-v-128k-instruct-vision.onnx";
+		embed_model := model_dir + "/phi-3-v-128k-instruct-text-embedding.onnx";
+		decoder_model := model_dir + "/model.onnx";
+
+		session := Phi3VisionSession->New(vision_model, embed_model, decoder_model);
+		if(session = Nil) {
+			">>> Failed to create session <<<"->PrintLine();
+			return;
+		};
+
+		image_bytes := FileReader->ReadBinaryFile(image_path);
+		if(image_bytes = Nil) {
+			">>> Failed to read image <<<"->PrintLine();
+			session->Close();
+			return;
+		};
+
+		# <|user|>\n ... What is in this image? <|end|>\n<|assistant|>\n
+		prefix := [32010, 13];
+		suffix := [1724, 338, 297, 445, 1967, 29973, 32007, 13, 32001];
+		eos_tokens := [32000, 32007];
+
+		"--- Phi-3 Vision: Describe Image ---"->PrintLine();
+		"Image: {$image_path}"->PrintLine();
+		"Prompt: What is in this image?"->PrintLine();
+		"Generating..."->PrintLine();
+
+		result := session->Generate(image_bytes, prefix, suffix, 256, 0.0, eos_tokens);
+		session->Close();
+
+		if(result = Nil) {
+			">>> Generation failed <<<"->PrintLine();
+			return;
+		};
+
+		tokens := result->GetTokens();
+		count := result->GetTokenCount();
+		"Generated {$count} tokens:"->PrintLine();
+		each(i : tokens) {
+			tok := tokens[i];
+			" {$tok}"->Print();
+		};
+		""->PrintLine();
+	}
+}

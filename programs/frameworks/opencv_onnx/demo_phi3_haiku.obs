@@ -1,0 +1,48 @@
+use API.Onnx;
+
+class Demo {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 1) {
+			"Usage: obr demo_phi3_haiku <model_dir>"->PrintLine();
+			return;
+		};
+
+		model_dir := args[0];
+		if(model_dir->EndsWith('/') | model_dir->EndsWith('\\')) {
+			model_dir->Pop();
+		};
+
+		model := model_dir + "/model.onnx";
+
+		# <|user|> Write a haiku about programming. <|end|> <|assistant|>
+		token_ids := [32010, 6113, 263, 447, 18282, 1048, 8720, 29889, 32007, 32001];
+		eos_tokens := [32000, 32001, 32007];
+
+		session := Phi3Session->New(model);
+		if(session = Nil) {
+			">>> Failed to create session <<<"->PrintLine();
+			return;
+		};
+
+		"--- Phi-3 Haiku Generation ---"->PrintLine();
+		"Prompt: Write a haiku about programming."->PrintLine();
+		"Generating..."->PrintLine();
+
+		result := session->Generate(token_ids, 128, 0.7, eos_tokens);
+		session->Close();
+
+		if(result = Nil) {
+			">>> Generation failed <<<"->PrintLine();
+			return;
+		};
+
+		tokens := result->GetTokens();
+		count := result->GetTokenCount();
+		"Generated {$count} tokens:"->PrintLine();
+		each(i : tokens) {
+			tok := tokens[i];
+			" {$tok}"->Print();
+		};
+		""->PrintLine();
+	}
+}

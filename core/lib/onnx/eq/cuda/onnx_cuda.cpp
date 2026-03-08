@@ -120,4 +120,20 @@ extern "C" {
    void onnx_openpose_image_inf(VMContext& context) {
       openpose_image_inf(context);
    }
+
+   // Process Phi-3/SLM text generation using ONNX model
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_phi3_text_inf(VMContext& context) {
+      phi3_text_inf(context);
+   }
+
+   // Process Phi-3 Vision multimodal generation using ONNX model
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_phi3_vision_inf(VMContext& context) {
+      phi3_vision_inf(context);
+   }
 }
