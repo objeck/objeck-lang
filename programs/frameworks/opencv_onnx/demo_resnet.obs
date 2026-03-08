@@ -1,0 +1,69 @@
+use API.Onnx, API.OpenCV, System.IO.Filesystem, Collection;
+
+class Demo {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 2) {
+			"Usage: obr demo_resnet <image_path> <data_dir>"->PrintLine();
+			return;
+		};
+
+		image_path := args[0];
+		data_dir := args[1];
+		if(data_dir->EndsWith('/') | data_dir->EndsWith('\\')) {
+			data_dir->Pop();
+		};
+
+		model := data_dir + "/models/resnet34.onnx";
+		labels_path := data_dir + "/models/resnet_labels.txt";
+
+		# load image
+		image := Image->Load(image_path);
+		if(image = Nil | image->IsEmpty()) {
+			">>> Unable to load image: {$image_path} <<<"->PrintLine();
+			return;
+		};
+
+		# load labels
+		label_names := LoadLabels(labels_path)->ToArray()->As(String[]);
+
+		# run inference
+		session := ResNetSession->New(model);
+		result := session->Inference(image->Convert(Image->Format->JPEG), 224, 224, label_names);
+		session->Close();
+
+		if(result = Nil) {
+			">>> Inference failed <<<"->PrintLine();
+			return;
+		};
+
+		# print top classification
+		name := result->GetName();
+		conf := result->GetConfidence();
+		id := result->GetId();
+		"--- Classification ---"->PrintLine();
+		"id={$id}, class={$name}, confidence={$conf}"->PrintLine();
+
+		# show image with label
+		image := image->DrawText(
+			name,
+			Point->New(10, 30),
+			Font->FONT_HERSHEY_SIMPLEX,
+			1.0,
+			Scalar->New(0, 255, 0));
+
+		image->Show("ResNet Classification", 0.75, 0);
+	}
+
+	function : LoadLabels(label_path : String) ~ Vector<String> {
+		label_names := Vector->New()<String>;
+
+		file_in := FileReader->New(label_path);
+		while(<>file_in->IsEoF()) {
+			line := file_in->ReadLine();
+			label_names->AddBack(line);
+		};
+		file_in->Close();
+
+		return label_names;
+	}
+}
