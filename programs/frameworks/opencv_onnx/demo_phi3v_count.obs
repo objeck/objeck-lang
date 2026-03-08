@@ -14,6 +14,12 @@ class Demo {
 
 		image_path := args[1];
 
+		tokenizer := Phi3Tokenizer->New(model_dir + "/tokenizer.json");
+		if(tokenizer->IsLoaded() = false) {
+			">>> Failed to load tokenizer <<<"->PrintLine();
+			return;
+		};
+
 		vision_model := model_dir + "/phi-3-v-128k-instruct-vision.onnx";
 		embed_model := model_dir + "/phi-3-v-128k-instruct-text-embedding.onnx";
 		decoder_model := model_dir + "/model.onnx";
@@ -31,9 +37,8 @@ class Demo {
 			return;
 		};
 
-		# <|user|>\n ... How many objects are in this image? <|end|>\n<|assistant|>\n
-		prefix := [32010, 13];
-		suffix := [1128, 1784, 3618, 526, 297, 445, 1967, 29973, 32007, 13, 32001];
+		prefix := tokenizer->Encode("<|user|>\n");
+		suffix := tokenizer->Encode("How many objects are in this image?<|end|>\n<|assistant|>\n");
 		eos_tokens := [32000, 32007];
 
 		"--- Phi-3 Vision: Count Objects ---"->PrintLine();
@@ -49,13 +54,7 @@ class Demo {
 			return;
 		};
 
-		tokens := result->GetTokens();
-		count := result->GetTokenCount();
-		"Generated {$count} tokens:"->PrintLine();
-		each(i : tokens) {
-			tok := tokens[i];
-			" {$tok}"->Print();
-		};
-		""->PrintLine();
+		text := tokenizer->Decode(result->GetTokens());
+		"\nResponse: {$text}"->PrintLine();
 	}
 }

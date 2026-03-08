@@ -3,7 +3,7 @@
 # ONNX wrapper
 ~~#	
 
-use Collection, System.API, API.OpenCV, Data.JSON;
+use Collection, System.API, API.OpenCV, Data.JSON, System.IO.Filesystem;
 
 #~
 Open Neural Network Exchange (ONNX) runtime support for computer vision inference (-lib onnx).
@@ -1191,6 +1191,270 @@ bundle API.Onnx {
 			};
 
 			return buffer;
+		}
+	}
+
+	#~
+	Phi-3 tokenizer for encoding text to token IDs and decoding token IDs back to text.
+	Loads a HuggingFace tokenizer.json file and supports BPE encoding/decoding.
+
+	<b>Example</b>
+	<code>
+	tokenizer := Phi3Tokenizer->New("phi3-mini/tokenizer.json");
+	ids := tokenizer->Encode("What is 2+2?");
+	text := tokenizer->Decode(ids);
+	text->PrintLine();
+	</code>
+	~#
+	class Phi3Tokenizer {
+		@id_to_token : String[];
+		@token_to_id : Hash<String, IntRef>;
+		@merge_rank : Hash<String, IntRef>;
+		@vocab_size : Int;
+		@byte_token_prefix : String;
+
+		#~
+		Constructor.
+		@param tokenizer_path path to tokenizer.json file
+		~#
+		New(tokenizer_path : String) {
+			@byte_token_prefix := "<0x";
+			@token_to_id := Hash->New()<String, IntRef>;
+			@merge_rank := Hash->New()<String, IntRef>;
+
+			json_text := FileReader->ReadFile(tokenizer_path);
+			if(json_text = Nil) {
+				return;
+			};
+
+			parser := JsonParser->New(json_text);
+			if(parser->Parse() = false) {
+				return;
+			};
+
+			root := parser->GetRoot();
+			if(root = Nil) {
+				return;
+			};
+
+			model := root->Get("model");
+			if(model = Nil) {
+				return;
+			};
+
+			# Parse vocab
+			vocab := model->Get("vocab");
+			if(vocab <> Nil) {
+				@vocab_size := vocab->Size();
+				@id_to_token := String->New[@vocab_size + 100];
+
+				names := vocab->GetNames();
+				each(i : names) {
+					name := names->Get(i);
+					id_elem := vocab->Get(name);
+					if(id_elem <> Nil) {
+						id := id_elem->GetInt();
+						@token_to_id->Insert(name, IntRef->New(id));
+						if(id >= 0 & id < @id_to_token->Size()) {
+							@id_to_token[id] := name;
+						};
+					};
+				};
+			};
+
+			# Parse added tokens
+			added := root->Get("added_tokens");
+			if(added <> Nil) {
+				each(i : added) {
+					token_elem := added->Get(i);
+					if(token_elem <> Nil) {
+						id := token_elem->Get("id")->GetInt();
+						content := token_elem->Get("content")->GetString();
+						if(content <> Nil) {
+							@token_to_id->Insert(content, IntRef->New(id));
+							if(id >= 0 & id < @id_to_token->Size()) {
+								@id_to_token[id] := content;
+							};
+						};
+					};
+				};
+			};
+
+			# Parse merges
+			merges := model->Get("merges");
+			if(merges <> Nil) {
+				each(i : merges) {
+					merge_str := merges->Get(i)->GetString();
+					if(merge_str <> Nil) {
+						@merge_rank->Insert(merge_str, IntRef->New(i));
+					};
+				};
+			};
+		}
+
+		#~
+		Checks if the tokenizer was loaded successfully
+		@return true if loaded
+		~#
+		method : public : IsLoaded() ~ Bool {
+			return @id_to_token <> Nil & @vocab_size > 0;
+		}
+
+		#~
+		Decode token IDs to human-readable text
+		@param token_ids array of token IDs
+		@return decoded text string
+		~#
+		method : public : Decode(token_ids : Int[]) ~ String {
+			if(token_ids = Nil | @id_to_token = Nil) {
+				return "";
+			};
+
+			result := "";
+			each(i : token_ids) {
+				id := token_ids[i];
+				if(id >= 0 & id < @id_to_token->Size()) {
+					token := @id_to_token[id];
+					if(token <> Nil) {
+						# Skip special tokens
+						if(token->StartsWith("<|") & token->EndsWith("|>")) {
+							# skip
+						}
+						# Handle byte tokens <0xHH>
+						else if(token->StartsWith(@byte_token_prefix) & token->EndsWith(">") & token->Size() = 6) {
+							hex := token->SubString(3, 2);
+							byte_val := hex->ToInt(16);
+							result += byte_val->As(Char)->ToString();
+						}
+						else {
+							result += token;
+						};
+					};
+				};
+			};
+
+			# Replace SentencePiece space marker with actual space
+			result := result->ReplaceAll("\u2581", " ");
+
+			# Trim leading space
+			if(result->Size() > 0 & result->Get(0) = ' ') {
+				result := result->SubString(1, result->Size() - 1);
+			};
+
+			return result;
+		}
+
+		#~
+		Encode text to token IDs using BPE
+		@param text input text to tokenize
+		@return array of token IDs
+		~#
+		method : public : Encode(text : String) ~ Int[] {
+			if(text = Nil | text->Size() = 0 | @token_to_id->Size() = 0) {
+				return Int->New[0];
+			};
+
+			# Replace spaces with SentencePiece marker
+			processed := "\u2581";
+			each(i : text) {
+				ch := text->Get(i);
+				if(ch = ' ') {
+					processed += "\u2581";
+				}
+				else {
+					processed += ch->ToString();
+				};
+			};
+
+			# Split into individual characters
+			tokens := Vector->New()<String>;
+			each(i : processed) {
+				tokens->AddBack(processed->Get(i)->ToString());
+			};
+
+			# Apply BPE merges iteratively
+			changed := true;
+			while(changed & tokens->Size() > 1) {
+				changed := false;
+
+				# Find the best (lowest rank) merge pair
+				best_rank := -1;
+				best_idx := -1;
+				limit := tokens->Size() - 1;
+				for(i := 0; i < limit; i += 1;) {
+					pair := tokens->Get(i) + " " + tokens->Get(i + 1);
+					rank_ref := @merge_rank->Find(pair);
+					if(rank_ref <> Nil) {
+						rank := rank_ref->Get();
+						if(best_rank < 0 | rank < best_rank) {
+							best_rank := rank;
+							best_idx := i;
+						};
+					};
+				};
+
+				if(best_idx >= 0) {
+					# Merge all occurrences of this pair
+					merged := tokens->Get(best_idx) + tokens->Get(best_idx + 1);
+					pair_first := tokens->Get(best_idx);
+					pair_second := tokens->Get(best_idx + 1);
+
+					new_tokens := Vector->New()<String>;
+					j := 0;
+					while(j < tokens->Size()) {
+						if(j < tokens->Size() - 1 & tokens->Get(j)->Equals(pair_first) & tokens->Get(j + 1)->Equals(pair_second)) {
+							new_tokens->AddBack(merged);
+							j += 2;
+						}
+						else {
+							new_tokens->AddBack(tokens->Get(j));
+							j += 1;
+						};
+					};
+					tokens := new_tokens;
+					changed := true;
+				};
+			};
+
+			# Look up token IDs
+			ids := Vector->New()<IntRef>;
+			each(i : tokens) {
+				token := tokens->Get(i);
+				id_ref := @token_to_id->Find(token);
+				if(id_ref <> Nil) {
+					ids->AddBack(id_ref);
+				}
+				else {
+					# Byte-level fallback for unknown characters
+					bytes := token->ToByteArray();
+					each(b : bytes) {
+						hex := Byte->ToHexString(bytes[b])->ToUpper();
+						if(hex->Size() = 1) {
+							hex := "0" + hex;
+						};
+						byte_token := "<0x" + hex + ">";
+						byte_id_ref := @token_to_id->Find(byte_token);
+						if(byte_id_ref <> Nil) {
+							ids->AddBack(byte_id_ref);
+						};
+					};
+				};
+			};
+
+			result := Int->New[ids->Size()];
+			each(i : ids) {
+				result[i] := ids->Get(i)->Get();
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the vocabulary size
+		@return vocabulary size
+		~#
+		method : public : GetVocabSize() ~ Int {
+			return @vocab_size;
 		}
 	}
 
