@@ -405,12 +405,7 @@ if(parser->Parse()) {
 				};
 				
 				# copy buffer
-				name := String->New();
-				for(i := start_pos; i < @buffer_pos; i += 1;) {
-					name->Append(@buffer[i]);
-				};
-				
-				return name;
+				return String->New(@buffer, start_pos, @buffer_pos - start_pos);
 			};
 						
 			return Nil;
@@ -751,10 +746,7 @@ if(parser->Parse()) {
 						};
 					};				
 					# copy data
-					data := String->New();
-					for(i := start_pos; i < @buffer_pos - 3; i += 1;) {
-						data->Append(@buffer[i]);
-					};
+					data := String->New(@buffer, start_pos, @buffer_pos - 3 - start_pos);
 
 # IO.Console->Print("cdata: ")->PrintLine(data);
 
@@ -860,10 +852,7 @@ if(parser->Parse()) {
 			
 			tag_contents : String := Nil;
 			if(@buffer_pos > start_pos) {
-				tag_contents := String->New();
-				for(i := start_pos; i < @buffer_pos; i += 1;) {
-					tag_contents->Append(@buffer[i]);
-				};
+				tag_contents := String->New(@buffer, start_pos, @buffer_pos - start_pos);
 			};				
 	
 			type : XmlElement->Type;

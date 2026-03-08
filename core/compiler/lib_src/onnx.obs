@@ -1310,7 +1310,7 @@ bundle API.Onnx {
 				return "";
 			};
 
-			result := "";
+			buffer := String->New();
 			each(i : token_ids) {
 				id := token_ids[i];
 				if(id >= 0 & id < @id_to_token->Size()) {
@@ -1324,17 +1324,17 @@ bundle API.Onnx {
 						else if(token->StartsWith(@byte_token_prefix) & token->EndsWith(">") & token->Size() = 6) {
 							hex := token->SubString(3, 2);
 							byte_val := hex->ToInt(16);
-							result += byte_val->As(Char)->ToString();
+							buffer->Append(byte_val->As(Char));
 						}
 						else {
-							result += token;
+							buffer->Append(token);
 						};
 					};
 				};
 			};
 
 			# Replace SentencePiece space marker with actual space
-			result := result->ReplaceAll("\u2581", " ");
+			result := buffer->ToString()->ReplaceAll("\u2581", " ");
 
 			# Trim leading space
 			if(result->Size() > 0 & result->Get(0) = ' ') {
@@ -1355,22 +1355,27 @@ bundle API.Onnx {
 			};
 
 			# Replace spaces with SentencePiece marker
-			processed := "\u2581";
+			buffer := String->New();
+			buffer->Append("\u2581");
 			each(i : text) {
 				ch := text->Get(i);
 				if(ch = ' ') {
-					processed += "\u2581";
+					buffer->Append("\u2581");
 				}
 				else {
-					processed += ch->ToString();
+					buffer->Append(ch);
 				};
 			};
+			processed := buffer->ToString();
 
 			# Split into individual characters
 			tokens := Vector->New()<String>;
 			each(i : processed) {
 				tokens->AddBack(processed->Get(i)->ToString());
 			};
+
+			# Build reusable pair buffer for merge lookups
+			pair_buffer := String->New();
 
 			# Apply BPE merges iteratively
 			changed := true;
@@ -1382,8 +1387,11 @@ bundle API.Onnx {
 				best_idx := -1;
 				limit := tokens->Size() - 1;
 				for(i := 0; i < limit; i += 1;) {
-					pair := tokens->Get(i) + " " + tokens->Get(i + 1);
-					rank_ref := @merge_rank->Find(pair);
+					pair_buffer->Clear();
+					pair_buffer->Append(tokens->Get(i));
+					pair_buffer->Append(' ');
+					pair_buffer->Append(tokens->Get(i + 1));
+					rank_ref := @merge_rank->Find(pair_buffer->ToString());
 					if(rank_ref <> Nil) {
 						rank := rank_ref->Get();
 						if(best_rank < 0 | rank < best_rank) {

@@ -1383,23 +1383,18 @@ hash->Has(408)->PrintLine();
 				return;
 			};
 
-			if(@auto_resize) {
-				select(@size + 1) {
-					label 32: {
-						Resize(Hash->Capacity->MEDIUM);
-					}
-
-					label 256: {
-						Resize(Hash->Capacity->LARGE);
-					}
-
-					label 2048: {
-						Resize(Hash->Capacity->EX_LARGE);
-					}
-
-					label 16384: {
-						Resize(Hash->Capacity->HUGE);
-					}
+			if(@auto_resize & (@size + 1) * 100 / @capacity > 75) {
+				if(@capacity = Capacity->SMALL) {
+					Resize(Hash->Capacity->MEDIUM);
+				}
+				else if(@capacity = Capacity->MEDIUM) {
+					Resize(Hash->Capacity->LARGE);
+				}
+				else if(@capacity = Capacity->LARGE) {
+					Resize(Hash->Capacity->EX_LARGE);
+				}
+				else if(@capacity = Capacity->EX_LARGE) {
+					Resize(Hash->Capacity->HUGE);
 				};
 			};
 
@@ -1545,27 +1540,6 @@ hash->Has(408)->PrintLine();
 					if(pair->Compare(key) = 0) {
 						list->Remove();
 						@size -= 1;
-
-						if(@auto_resize) {
-							select(@size) {
-								label 32: {
-									Resize(Hash->Capacity->SMALL);
-								}
-
-								label 256: {
-									Resize(Hash->Capacity->MEDIUM);
-								}
-
-								label 2048: {
-									Resize(Hash->Capacity->LARGE);
-								}
-
-								label 16384: {
-									Resize(Hash->Capacity->EX_LARGE);
-								}
-							};
-						};
-
 						return true;
 					};
 

@@ -63,6 +63,7 @@ each(i : found) {
 		
 		# matching
 		@input : Char[];
+		@input_string : String;
 		@input_pos : Int;
 		@input_char : Char;
 		@is_exact : Bool;
@@ -236,14 +237,16 @@ each(i : found) {
 			
 			# reset everything
 			@is_exact := false;
-			@is_exact := false;
 			@is_backtracking := false;
 			@backtrack_cache->Empty();
 			@backtrack_positions->Empty();
 
 			# process string
-			@input_pos := offset;			
-			@input := stream_in->ToCharArray();			
+			@input_pos := offset;
+			if(@input_string <> stream_in) {
+				@input_string := stream_in;
+				@input := stream_in->ToCharArray();
+			};			
 			NextInput();
 
 			# match with regex and check final position

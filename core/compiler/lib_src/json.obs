@@ -577,24 +577,22 @@ if(doc <> Nil) {
 						else {
 							# parse string
 							if(@input_index < @input->Size() & (@input[@input_index] = '"' | @input[@input_index]->IsChar())) {
-								len : Int; offset : Int;
+								len : Int; offset : Int; quoted := false;
 								if(@input[@input_index] = '"') {
+									quoted := true;
 									@input_index += 1;
 									offset := @input_index;
 									end := false;
-									escape := false;
 									while(@input_index < @input->Size() & end = false) {
-										if(@input[@input_index] = '"' & escape = false) {
+										if(@input[@input_index] = '"') {
 											# done
 											end := true;
 										}
 										else if(@input[@input_index] = '\\') {
-											escape := true;
-											# update
-											@input_index += 1;
+											# skip escape and the following char
+											@input_index += 2;
 										}
 										else {
-											escape := false;
 											# update
 											@input_index += 1;
 										};
@@ -603,7 +601,7 @@ if(doc <> Nil) {
 									# update
 									@input_index += 1;
 								}
-								else {				
+								else {
 									offset := @input_index;
 									while(@input_index < @input->Size() & (@input[@input_index]->IsChar() | @input[@input_index] = '_')) {
 										# update
@@ -611,14 +609,14 @@ if(doc <> Nil) {
 									};
 									len := @input_index - offset;
 								};
-								
-								if(len = 4 & @input[offset] = 't' & @input[offset + 1] = 'r' & @input[offset + 2] = 'u' & @input[offset + 3] = 'e') {
+
+								if(<>quoted & len = 4 & @input[offset] = 't' & @input[offset + 1] = 'r' & @input[offset + 2] = 'u' & @input[offset + 3] = 'e') {
 									AddToken(Token->New(Token->Type->TRUE));
 								}
-								else if(len = 5 & @input[offset] = 'f' & @input[offset + 1] = 'a' & @input[offset + 2] = 'l' & @input[offset + 3] = 's' & @input[offset + 4] = 'e') {
+								else if(<>quoted & len = 5 & @input[offset] = 'f' & @input[offset + 1] = 'a' & @input[offset + 2] = 'l' & @input[offset + 3] = 's' & @input[offset + 4] = 'e') {
 									AddToken(Token->New(Token->Type->FALSE));
 								}
-								else if(len = 4 & @input[offset] = 'n' & @input[offset + 1] = 'u' & @input[offset + 2] = 'l' & @input[offset + 3] = 'l') {
+								else if(<>quoted & len = 4 & @input[offset] = 'n' & @input[offset + 1] = 'u' & @input[offset + 2] = 'l' & @input[offset + 3] = 'l') {
 									AddToken(Token->New(Token->Type->NULL));
 								}
 								else if(len > 0) {

@@ -1,0 +1,124 @@
+use Data.JSON;
+
+class JsonEscapeTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := 0;
+		fail := 0;
+
+		# Test 1: escaped backslash in string value
+		p1 := JsonParser->New("{\"key\": \"a\\\\b\"}");
+		if(p1->Parse() & p1->GetRoot()->Get("key")->GetString()->Size() > 0) {
+			pass += 1;
+		}
+		else {
+			"FAIL: escaped backslash in value"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 2: escaped backslash in key
+		p2 := JsonParser->New("{\"a\\\\b\": 1}");
+		if(p2->Parse() & p2->GetRoot() <> Nil) {
+			pass += 1;
+		}
+		else {
+			"FAIL: escaped backslash in key"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 3: "true" as a quoted string key (not boolean)
+		p3 := JsonParser->New("{\"true\": 42}");
+		if(p3->Parse()) {
+			val := p3->GetRoot()->Get("true");
+			if(val <> Nil & val->GetInt() = 42) {
+				pass += 1;
+			}
+			else {
+				"FAIL: 'true' as key - wrong value"->PrintLine();
+				fail += 1;
+			};
+		}
+		else {
+			"FAIL: 'true' as key - parse failed"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 4: "false" as a quoted string key
+		p4 := JsonParser->New("{\"false\": 7}");
+		if(p4->Parse()) {
+			val := p4->GetRoot()->Get("false");
+			if(val <> Nil & val->GetInt() = 7) {
+				pass += 1;
+			}
+			else {
+				"FAIL: 'false' as key - wrong value"->PrintLine();
+				fail += 1;
+			};
+		}
+		else {
+			"FAIL: 'false' as key - parse failed"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 5: "null" as a quoted string key
+		p5 := JsonParser->New("{\"null\": 99}");
+		if(p5->Parse()) {
+			val := p5->GetRoot()->Get("null");
+			if(val <> Nil & val->GetInt() = 99) {
+				pass += 1;
+			}
+			else {
+				"FAIL: 'null' as key - wrong value"->PrintLine();
+				fail += 1;
+			};
+		}
+		else {
+			"FAIL: 'null' as key - parse failed"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 6: unquoted true/false/null still work as values
+		p6 := JsonParser->New("{\"a\": true, \"b\": false, \"c\": null}");
+		if(p6->Parse()) {
+			root := p6->GetRoot();
+			if(root->Get("a")->GetBool() & root->Get("b")->GetBool() = false & root->Get("c")->IsNull()) {
+				pass += 1;
+			}
+			else {
+				"FAIL: unquoted keywords as values"->PrintLine();
+				fail += 1;
+			};
+		}
+		else {
+			"FAIL: unquoted keywords - parse failed"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 7: escaped quote in string
+		p7 := JsonParser->New("{\"key\": \"he said \\\"hello\\\"\"}");
+		if(p7->Parse() & p7->GetRoot()->Get("key") <> Nil) {
+			pass += 1;
+		}
+		else {
+			"FAIL: escaped quote in string"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 8: multiple escapes
+		p8 := JsonParser->New("{\"path\": \"C:\\\\Users\\\\test\"}");
+		if(p8->Parse() & p8->GetRoot()->Get("path") <> Nil) {
+			pass += 1;
+		}
+		else {
+			"FAIL: multiple backslash escapes"->PrintLine();
+			fail += 1;
+		};
+
+		if(fail = 0) {
+			"-- Passed: {$pass}/{$pass} --"->PrintLine();
+		}
+		else {
+			total := pass + fail;
+			"-- Failed: {$fail}/{$total} --"->PrintLine();
+		};
+	}
+}

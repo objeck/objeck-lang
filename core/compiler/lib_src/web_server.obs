@@ -258,7 +258,6 @@ bundle Web.Server {
 	            content_bytes := Byte->New[content_size];
 	            if(Runtime->Copy(content_bytes, 0, encoded, boundry_index, content_size)) {
 	                content_str := String->New(content_bytes);
-	                ", content: |{$content_str}|"->PrintLine();
 	            };
 	            boundry_index += content_bytes->Size();
 
