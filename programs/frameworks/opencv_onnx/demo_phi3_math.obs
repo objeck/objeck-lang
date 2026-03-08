@@ -12,17 +12,23 @@ class Demo {
 			model_dir->Pop();
 		};
 
-		model := model_dir + "/model.onnx";
+		tokenizer := Phi3Tokenizer->New(model_dir + "/tokenizer.json");
+		if(tokenizer->IsLoaded() = false) {
+			">>> Failed to load tokenizer <<<"->PrintLine();
+			return;
+		};
 
-		# <|user|> What is 2+2? <|end|> <|assistant|>
-		token_ids := [32010, 5618, 338, 29871, 29906, 29974, 29906, 29973, 32007, 32001];
-		eos_tokens := [32000, 32001, 32007];
+		model := model_dir + "/model.onnx";
 
 		session := Phi3Session->New(model);
 		if(session = Nil) {
 			">>> Failed to create session <<<"->PrintLine();
 			return;
 		};
+
+		prompt := "<|user|>\nWhat is 2+2?<|end|>\n<|assistant|>\n";
+		token_ids := tokenizer->Encode(prompt);
+		eos_tokens := [32000, 32001, 32007];
 
 		"--- Phi-3 Math Question ---"->PrintLine();
 		"Prompt: What is 2+2?"->PrintLine();
@@ -36,13 +42,7 @@ class Demo {
 			return;
 		};
 
-		tokens := result->GetTokens();
-		count := result->GetTokenCount();
-		"Generated {$count} tokens:"->PrintLine();
-		each(i : tokens) {
-			tok := tokens[i];
-			" {$tok}"->Print();
-		};
-		""->PrintLine();
+		text := tokenizer->Decode(result->GetTokens());
+		"\nResponse: {$text}"->PrintLine();
 	}
 }

@@ -1199,6 +1199,11 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
         EmitStatement(leavings[i]);
       }
     }
+    // early return in constructor must push instance for caller
+    if(!expression && (current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+          current_method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, RTRN));
     new_char_str_count = 0;
   }

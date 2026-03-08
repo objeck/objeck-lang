@@ -12,17 +12,23 @@ class Demo {
 			model_dir->Pop();
 		};
 
-		model := model_dir + "/model.onnx";
+		tokenizer := Phi3Tokenizer->New(model_dir + "/tokenizer.json");
+		if(tokenizer->IsLoaded() = false) {
+			">>> Failed to load tokenizer <<<"->PrintLine();
+			return;
+		};
 
-		# <|user|> List 3 colors of the rainbow. <|end|> <|assistant|>
-		token_ids := [32010, 1293, 29871, 29941, 11955, 310, 278, 17251, 17729, 29889, 32007, 32001];
-		eos_tokens := [32000, 32001, 32007];
+		model := model_dir + "/model.onnx";
 
 		session := Phi3Session->New(model);
 		if(session = Nil) {
 			">>> Failed to create session <<<"->PrintLine();
 			return;
 		};
+
+		prompt := "<|user|>\nList 3 colors of the rainbow.<|end|>\n<|assistant|>\n";
+		token_ids := tokenizer->Encode(prompt);
+		eos_tokens := [32000, 32001, 32007];
 
 		"--- Phi-3 List Generation ---"->PrintLine();
 		"Prompt: List 3 colors of the rainbow."->PrintLine();
@@ -36,13 +42,7 @@ class Demo {
 			return;
 		};
 
-		tokens := result->GetTokens();
-		count := result->GetTokenCount();
-		"Generated {$count} tokens:"->PrintLine();
-		each(i : tokens) {
-			tok := tokens[i];
-			" {$tok}"->Print();
-		};
-		""->PrintLine();
+		text := tokenizer->Decode(result->GetTokens());
+		"\nResponse: {$text}"->PrintLine();
 	}
 }
