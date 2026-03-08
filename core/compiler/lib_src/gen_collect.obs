@@ -665,12 +665,7 @@ while(<>heap->IsEmpty()) {
 
 		method : Resize() ~ H[] {
 			temp := H->New[@heap->Size() + @heap->Size() / 2];
-
-			each(i : @heap) {
-				elem := @heap[i];
-				temp[i] := elem;
-			};
-
+			Runtime->Copy(temp, 0, @heap, 0, @heap->Size());
 			return temp;
 		}
 
@@ -3332,7 +3327,7 @@ function : Example() ~ Nil {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				grow := @size >> 2;
+				grow := @size >> 1;
 				if(grow < 4) {
 					grow := 4;
 				};
@@ -3586,14 +3581,11 @@ function : Example() ~ Nil {
 		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
 				value := @values[i];
-				temp := H->New[@size - 1];
-				Runtime->Copy(temp, 0, @values, 0, i);
-				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
-				@values := temp;
 				@size -= 1;
+				Runtime->Copy(@values, i, @values, i + 1, @size - i);
 				return value;
 			};
-			
+
 			return Nil;
 		}
 
@@ -3876,7 +3868,7 @@ function : Show(value : IntRef) ~ Nil {
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				grow := @size >> 2;
+				grow := @size >> 1;
 				if(grow < 4) {
 					grow := 4;
 				};
@@ -3969,14 +3961,11 @@ function : Show(value : IntRef) ~ Nil {
 		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
 				value := @values[i];
-				temp := H->New[@size - 1];
-				Runtime->Copy(temp, 0, @values, 0, i);
-				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
-				@values := temp;
 				@size -= 1;
+				Runtime->Copy(@values, i, @values, i + 1, @size - i);
 				return value;
 			};
-			
+
 			return Nil;
 		}
 
@@ -4764,16 +4753,16 @@ function : Show(value : IntRef) ~ Nil {
 		~#
 		method : public : Filter(f : (K) ~ Bool) ~ Map<K, V> {
 			filtered := Map->New()<K, V>;
-			
-			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
+
+			pairs := GetKeyValues();
+			each(i : pairs) {
+				pair := pairs->Get(i);
+				key := pair->GetFirst();
 				if(f(key)) {
-					value := Find(key);
-					filtered->Insert(key, value);
+					filtered->Insert(key, pair->GetSecond());
 				};
 			};
-			
+
 			return filtered;
 		}
 

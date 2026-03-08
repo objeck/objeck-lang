@@ -612,20 +612,17 @@ if(doc <> Nil) {
 									len := @input_index - offset;
 								};
 								
-								if(len > 0) {
-									string := String->New(@input, offset, len);								
-									if(string->Equals("true")) {
-										AddToken(Token->New(Token->Type->TRUE));
-									}
-									else if(string->Equals("false")) {
-										AddToken(Token->New(Token->Type->FALSE));
-									}
-									else if(string->Equals("null")) {
-										AddToken(Token->New(Token->Type->NULL));
-									}
-									else {							
-										AddToken(Token->New(Token->Type->IDENT, string));
-									};
+								if(len = 4 & @input[offset] = 't' & @input[offset + 1] = 'r' & @input[offset + 2] = 'u' & @input[offset + 3] = 'e') {
+									AddToken(Token->New(Token->Type->TRUE));
+								}
+								else if(len = 5 & @input[offset] = 'f' & @input[offset + 1] = 'a' & @input[offset + 2] = 'l' & @input[offset + 3] = 's' & @input[offset + 4] = 'e') {
+									AddToken(Token->New(Token->Type->FALSE));
+								}
+								else if(len = 4 & @input[offset] = 'n' & @input[offset + 1] = 'u' & @input[offset + 2] = 'l' & @input[offset + 3] = 'l') {
+									AddToken(Token->New(Token->Type->NULL));
+								}
+								else if(len > 0) {
+									AddToken(Token->New(Token->Type->IDENT, String->New(@input, offset, len)));
 								}
 								else {
 									AddToken(Token->New(Token->Type->IDENT, ""));
