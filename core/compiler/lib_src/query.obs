@@ -1073,9 +1073,26 @@ each(i : results) {
 		@tokens : Vector<Token>;
 		@tokens_index : Int;
 		@cur_token : Token;
-		
+		@reserved : Map<String, Token>;
+
 		New(line : String) {
 			@line := line;
+
+			@reserved := Map->New()<String, Token>;
+			@reserved->Insert("select", Token->New(Token->Type->SELECT));
+			@reserved->Insert("distinct", Token->New(Token->Type->DISTINCT));
+			@reserved->Insert("from", Token->New(Token->Type->FROM));
+			@reserved->Insert("where", Token->New(Token->Type->WHERE));
+			@reserved->Insert("not", Token->New(Token->Type->NOT));
+			@reserved->Insert("like", Token->New(Token->Type->LIKE));
+			@reserved->Insert("between", Token->New(Token->Type->BETWEEN));
+			@reserved->Insert("in", Token->New(Token->Type->IN));
+			@reserved->Insert("and", Token->New(Token->Type->AND));
+			@reserved->Insert("or", Token->New(Token->Type->OR));
+			@reserved->Insert("true", Token->New(1));
+			@reserved->Insert("false", Token->New(0));
+			@reserved->Insert("order", Token->New(Token->Type->ORDER));
+			@reserved->Insert("by", Token->New(Token->Type->BY));
 		}
 		
 		method : public : Parse() ~ Term {
@@ -1374,23 +1391,7 @@ each(i : results) {
 			return "";
 		}
 		
-		method : native : Scan() ~ Vector<Token> {		
-			reserved := Map->New()<String, Token>;
-			reserved->Insert("select", Token->New(Token->Type->SELECT));
-			reserved->Insert("distinct", Token->New(Token->Type->DISTINCT));
-			reserved->Insert("from", Token->New(Token->Type->FROM));
-			reserved->Insert("where", Token->New(Token->Type->WHERE));
-			reserved->Insert("not", Token->New(Token->Type->NOT));
-			reserved->Insert("like", Token->New(Token->Type->LIKE));
-			reserved->Insert("between", Token->New(Token->Type->BETWEEN));
-			reserved->Insert("in", Token->New(Token->Type->IN));
-			reserved->Insert("and", Token->New(Token->Type->AND));
-			reserved->Insert("or", Token->New(Token->Type->OR));
-			reserved->Insert("true", Token->New(1));
-			reserved->Insert("false", Token->New(0));
-			reserved->Insert("order", Token->New(Token->Type->ORDER));
-			reserved->Insert("by", Token->New(Token->Type->BY));
-			
+		method : native : Scan() ~ Vector<Token> {
 			i := 0;
 			tokens := Vector->New()<Token>;
 			while(i < @line->Size()) { 			 			  
@@ -1465,7 +1466,7 @@ each(i : results) {
 							i += 1;
 						};
 
-						result := reserved->Find(string->ToLower());
+						result := @reserved->Find(string->ToLower());
 						if(result <> Nil) {
 							tokens->AddBack(result);
 						}

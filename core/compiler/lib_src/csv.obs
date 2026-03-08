@@ -187,30 +187,30 @@ row->Size()->PrintLine();       # column count
 				return 0.0;
 			};
 
-			return Sum(start, end) / (end - start + 1);
+			return Sum(start, end) / (end - start);
 		}
-		
+
 		#~
-		Calculates the row median 
+		Calculates the row median
 		@return row median
 		~#
 		method : public : Median() ~ Float {
 			if(@columns->Size() = 1) {
-				@columns->Get(0)->ToFloat();
+				return @columns->Get(0)->ToFloat();
 			};
-			
-			# store values and sort 
+
+			# store values and sort
 			sorted := CompareVector->New()<FloatRef>;
 			each(i : @columns) {
 				sorted->AddBack(@columns->Get(i)->ToFloat());
 			};
 			sorted->Sort();
-			
+
 			# find median
 			size := sorted->Size();
 			if(size % 2 = 0) {
 				right := sorted->Get(size / 2);
-				left := sorted->Get(right - 1);
+				left := sorted->Get(size / 2 - 1);
 				return (left + right) / 2;
 			}
 			else {
@@ -373,30 +373,30 @@ row->Size()->PrintLine();       # column count
 				return 0.0;
 			};
 
-			return Sum(start, end) / (end - start + 1);
+			return Sum(start, end) / (end - start);
 		}
-		
+
 		#~
-		Calculates the column median 
+		Calculates the column median
 		@return column median
 		~#
 		method : public : Median() ~ Float {
 			if(@rows->Size() = 1) {
-				@rows->Get(0)->ToFloat();
+				return @rows->Get(0)->ToFloat();
 			};
-			
-			# store values and sort 
+
+			# store values and sort
 			sorted := CompareVector->New()<FloatRef>;
 			each(i : @rows) {
 				sorted->AddBack(@rows->Get(i)->ToFloat());
 			};
 			sorted->Sort();
-			
+
 			# find median
 			size := sorted->Size();
 			if(size % 2 = 0) {
 				right := sorted->Get(size / 2);
-				left := sorted->Get(right - 1);
+				left := sorted->Get(size / 2 - 1);
 				return (left + right) / 2;
 			}
 			else {

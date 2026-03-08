@@ -301,7 +301,7 @@ bundle Web.HTTP {
 					}
 
 					label '$': {
-						buffer->Append("%26");
+						buffer->Append("%24");
 					}
 
 					label ',': {
@@ -369,7 +369,7 @@ bundle Web.HTTP {
 					}
 
 					label '&': {
-						buffer->Append("%24");
+						buffer->Append("%26");
 					}
 
 					label '@': {
@@ -1008,7 +1008,7 @@ bundle Web.HTTP {
 			};
 
 			type := "<Nil>";
-			if(@type = Nil) {
+			if(@type <> Nil) {
 				type := @type;
 			};
 

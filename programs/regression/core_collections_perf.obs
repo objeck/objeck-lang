@@ -1,0 +1,143 @@
+use Collection;
+
+class CollectionsTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := 0;
+		fail := 0;
+
+		# Test 1: Vector Remove shifts in-place correctly
+		v := Vector->New()<IntRef>;
+		v->AddBack(IntRef->New(10));
+		v->AddBack(IntRef->New(20));
+		v->AddBack(IntRef->New(30));
+		v->AddBack(IntRef->New(40));
+		removed := v->Remove(1);
+		if(removed->Get() = 20 & v->Size() = 3 & v->Get(0)->Get() = 10 & v->Get(1)->Get() = 30 & v->Get(2)->Get() = 40) {
+			pass += 1;
+		}
+		else {
+			"FAIL: Vector Remove"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 2: Vector Remove first element
+		v2 := Vector->New()<IntRef>;
+		v2->AddBack(IntRef->New(1));
+		v2->AddBack(IntRef->New(2));
+		v2->AddBack(IntRef->New(3));
+		r2 := v2->Remove(0);
+		if(r2->Get() = 1 & v2->Size() = 2 & v2->Get(0)->Get() = 2 & v2->Get(1)->Get() = 3) {
+			pass += 1;
+		}
+		else {
+			"FAIL: Vector Remove first"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 3: Vector Remove last element
+		v3 := Vector->New()<IntRef>;
+		v3->AddBack(IntRef->New(1));
+		v3->AddBack(IntRef->New(2));
+		v3->AddBack(IntRef->New(3));
+		r3 := v3->Remove(2);
+		if(r3->Get() = 3 & v3->Size() = 2 & v3->Get(0)->Get() = 1 & v3->Get(1)->Get() = 2) {
+			pass += 1;
+		}
+		else {
+			"FAIL: Vector Remove last"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 4: Hash load-factor resize
+		h := Hash->New()<String, IntRef>;
+		each(i : 1000) {
+			key := "key_{$i}";
+			h->Insert(key, IntRef->New(i));
+		};
+		if(h->Size() = 1000) {
+			# Verify all values survived resize
+			all_ok := true;
+			each(i : 1000) {
+				key := "key_{$i}";
+				val := h->Find(key);
+				if(val = Nil | val->Get() <> i) {
+					all_ok := false;
+				};
+			};
+			if(all_ok) {
+				pass += 1;
+			}
+			else {
+				"FAIL: Hash values lost after resize"->PrintLine();
+				fail += 1;
+			};
+		}
+		else {
+			sz := h->Size();
+			"FAIL: Hash size {$sz} expected 1000"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 5: Hash remove doesn't trigger downsize oscillation
+		each(i : 500) {
+			key := "key_{$i}";
+			h->Remove(key);
+		};
+		if(h->Size() = 500) {
+			val := h->Find("key_999");
+			if(val <> Nil & val->Get() = 999) {
+				pass += 1;
+			}
+			else {
+				"FAIL: Hash value missing after removes"->PrintLine();
+				fail += 1;
+			};
+		}
+		else {
+			sz := h->Size();
+			"FAIL: Hash size after remove {$sz} expected 500"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 6: CompareVector Remove
+		cv := CompareVector->New()<IntRef>;
+		cv->AddBack(IntRef->New(10));
+		cv->AddBack(IntRef->New(20));
+		cv->AddBack(IntRef->New(30));
+		cr := cv->Remove(1);
+		if(cr->Get() = 20 & cv->Size() = 2 & cv->Get(0)->Get() = 10 & cv->Get(1)->Get() = 30) {
+			pass += 1;
+		}
+		else {
+			"FAIL: CompareVector Remove"->PrintLine();
+			fail += 1;
+		};
+
+		# Test 7: Map Filter uses GetKeyValues (no redundant lookups)
+		m := Map->New()<IntRef, String>;
+		m->Insert(IntRef->New(1), "one");
+		m->Insert(IntRef->New(2), "two");
+		m->Insert(IntRef->New(3), "three");
+		f := GreaterThanOne(IntRef) ~ Bool;
+		filtered := m->Filter(f);
+		if(filtered->Size() = 2 & filtered->Find(IntRef->New(2))->Equals("two") & filtered->Find(IntRef->New(3))->Equals("three")) {
+			pass += 1;
+		}
+		else {
+			"FAIL: Map Filter"->PrintLine();
+			fail += 1;
+		};
+
+		if(fail = 0) {
+			"-- Passed: {$pass}/{$pass} --"->PrintLine();
+		}
+		else {
+			total := pass + fail;
+			"-- Failed: {$fail}/{$total} --"->PrintLine();
+		};
+	}
+
+	function : GreaterThanOne(k : IntRef) ~ Bool {
+		return k->Get() > 1;
+	}
+}
