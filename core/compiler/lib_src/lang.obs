@@ -4439,21 +4439,6 @@ each(i : cities) {
 		}
 
 		#~
-		Constructor with initial capacity
-		@param capacity initial buffer capacity
-		~#
-		New(capacity : Int) {
-			Parent();
-
-			@max := capacity;
-			if(@max < 8) {
-				@max := 8;
-			};
-			@string := Char->New[@max];
-			@pos := 0;
-		}
-
-		#~
 		Copy constructor
 		@param string string to be copied
 		~#
@@ -4468,11 +4453,11 @@ each(i : cities) {
 				Append(string->ToCharArray());
 			};
 		}
-		
+
 		#~
 		Copy constructor
 		@param array array to be copied
-		~#		
+		~#
 		New(array : Char[]) {
 			Parent();
 
@@ -4481,6 +4466,21 @@ each(i : cities) {
 			@pos := 0;
 
 			Append(array);
+		}
+
+		#~
+		Constructor with initial capacity
+		@param capacity initial buffer capacity
+		~#
+		New(capacity : Int) {
+			Parent();
+
+			@max := capacity;
+			if(@max < 8) {
+				@max := 8;
+			};
+			@string := Char->New[@max];
+			@pos := 0;
 		}
 
 		#~
