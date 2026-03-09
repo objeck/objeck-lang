@@ -2355,8 +2355,17 @@ static void phi3_vision_inf(VMContext& context) {
       }
 
       // Step 7: Build decoder input/output names
+      bool has_kv = (decoder_info.num_layers > 0);
+      bool use_kv_cache = has_kv && !decoder_info.present_key_names.empty();
+
       std::vector<std::string> dec_out_strs;
       dec_out_strs.push_back(decoder_info.logits_name);
+      if(use_kv_cache) {
+         for(int i = 0; i < decoder_info.num_layers; ++i) {
+            dec_out_strs.push_back(decoder_info.present_key_names[i]);
+            dec_out_strs.push_back(decoder_info.present_value_names[i]);
+         }
+      }
       std::vector<const char*> dec_out_names(dec_out_strs.size());
       for(size_t i = 0; i < dec_out_strs.size(); ++i) {
          dec_out_names[i] = dec_out_strs[i].c_str();
@@ -2370,7 +2379,6 @@ static void phi3_vision_inf(VMContext& context) {
       if(!decoder_info.attention_mask_name.empty()) {
          dec_in_strs.push_back(decoder_info.attention_mask_name);
       }
-      bool has_kv = (decoder_info.num_layers > 0);
       if(has_kv) {
          for(int i = 0; i < decoder_info.num_layers; ++i) {
             dec_in_strs.push_back(decoder_info.past_key_names[i]);
@@ -2382,11 +2390,22 @@ static void phi3_vision_inf(VMContext& context) {
          dec_in_names[i] = dec_in_strs[i].c_str();
       }
 
-      // Step 8: First decoder pass with fused embeddings
+      std::wcout << L"=> Vision decoder: " << decoder_info.num_layers << L" layers, "
+                 << decoder_info.num_kv_heads << L" kv_heads, head_dim=" << decoder_info.head_dim
+                 << (use_kv_cache ? L", kv_cache=on" : L", kv_cache=off") << std::endl;
+
+      // KV cache storage
+      const size_t kv_elem_size = (decoder_info.kv_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) ? 2 : 4;
+      int64_t kv_seq_len = 0;
+      std::vector<std::vector<std::vector<uint8_t>>> kv_cache;
+      if(use_kv_cache) {
+         kv_cache.resize(decoder_info.num_layers, std::vector<std::vector<uint8_t>>(2));
+      }
+
+      // Step 8: First decoder pass (prefill) with fused embeddings
       std::vector<int64_t> generated_tokens;
       generated_tokens.reserve(max_new_tokens);
 
-      std::vector<int64_t> full_token_ids = input_ids;
       int64_t total_seq = seq_len;
 
       {
@@ -2433,13 +2452,29 @@ static void phi3_vision_inf(VMContext& context) {
          std::vector<float> last_logits = extract_last_logits(dec_outputs[0], vocab_size);
          int64_t next_token = sample_token(last_logits.data(), vocab_size, temperature);
 
+         // Save KV cache from prefill
+         if(use_kv_cache) {
+            for(int i = 0; i < decoder_info.num_layers; ++i) {
+               size_t key_idx = 1 + (size_t)i * 2;
+               size_t val_idx = 2 + (size_t)i * 2;
+
+               auto key_shape = dec_outputs[key_idx].GetTensorTypeAndShapeInfo().GetShape();
+               kv_seq_len = key_shape[2];
+
+               size_t n_bytes = (size_t)decoder_info.num_kv_heads * kv_seq_len * decoder_info.head_dim * kv_elem_size;
+               kv_cache[i][0].resize(n_bytes);
+               kv_cache[i][1].resize(n_bytes);
+               std::memcpy(kv_cache[i][0].data(), dec_outputs[key_idx].GetTensorRawData(), n_bytes);
+               std::memcpy(kv_cache[i][1].data(), dec_outputs[val_idx].GetTensorRawData(), n_bytes);
+            }
+         }
+
          bool is_eos = false;
          for(auto eos : eos_tokens) {
             if(next_token == eos) { is_eos = true; break; }
          }
          if(!is_eos) {
             generated_tokens.push_back(next_token);
-            full_token_ids.push_back(next_token);
             total_seq++;
          }
          else {
@@ -2447,83 +2482,138 @@ static void phi3_vision_inf(VMContext& context) {
          }
       }
 
-      // Step 9: Subsequent steps - re-encode full sequence
+      // Step 9: Subsequent decode steps with KV cache
       for(int step = 1; step < max_new_tokens; ++step) {
-         std::vector<int64_t> step_ids = full_token_ids;
-         for(auto& id : step_ids) {
-            if(id == IMG_PLACEHOLDER) id = 0;
-         }
-         int64_t step_seq = (int64_t)step_ids.size();
-         std::vector<int64_t> step_shape = {1, step_seq};
+         std::vector<Ort::Value> dec_inputs;
 
-         std::vector<Ort::Value> step_embed_inputs;
-         step_embed_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
-            mem_info, step_ids.data(), step_ids.size(),
-            step_shape.data(), step_shape.size()));
+         if(use_kv_cache) {
+            // Embed only the last generated token
+            std::vector<int64_t> step_id = {generated_tokens.back()};
+            std::vector<int64_t> step_shape = {1, 1};
 
-         auto step_embed_out = embed_session->Run(
-            Ort::RunOptions{nullptr},
-            embed_in_names, step_embed_inputs.data(), step_embed_inputs.size(),
-            embed_out_names, 1);
+            std::vector<Ort::Value> step_embed_inputs;
+            step_embed_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+               mem_info, step_id.data(), step_id.size(),
+               step_shape.data(), step_shape.size()));
 
-         // Re-fuse visual features
-         auto se_type = step_embed_out[0].GetTensorTypeAndShapeInfo().GetElementType();
-         if(se_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16 && vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
-            uint16_t* ed = step_embed_out[0].GetTensorMutableData<uint16_t>();
-            const uint16_t* vd = vision_outputs[0].GetTensorData<uint16_t>();
-            for(int64_t i = 0; i < vf_tokens; ++i) {
-               std::memcpy(ed + (img_start_pos + i) * hidden_size, vd + i * hidden_size, hidden_size * sizeof(uint16_t));
+            auto step_embed_out = embed_session->Run(
+               Ort::RunOptions{nullptr},
+               embed_in_names, step_embed_inputs.data(), step_embed_inputs.size(),
+               embed_out_names, 1);
+
+            dec_inputs.push_back(std::move(step_embed_out[0]));
+
+            // Position = total_seq - 1 (current position)
+            std::vector<int64_t> pos_ids = {total_seq - 1};
+            std::vector<int64_t> pos_shape = {1, 1};
+            if(!decoder_info.position_ids_name.empty()) {
+               dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+                  mem_info, pos_ids.data(), pos_ids.size(),
+                  pos_shape.data(), pos_shape.size()));
+            }
+
+            // Attention mask covers full sequence
+            std::vector<int64_t> mask(total_seq, 1);
+            std::vector<int64_t> mask_shape = {1, total_seq};
+            if(!decoder_info.attention_mask_name.empty()) {
+               dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+                  mem_info, mask.data(), mask.size(),
+                  mask_shape.data(), mask_shape.size()));
+            }
+
+            // Feed cached KV
+            for(int i = 0; i < decoder_info.num_layers; ++i) {
+               std::vector<int64_t> kv_shape = {1, (int64_t)decoder_info.num_kv_heads, kv_seq_len, (int64_t)decoder_info.head_dim};
+               size_t n_bytes = (size_t)decoder_info.num_kv_heads * kv_seq_len * decoder_info.head_dim * kv_elem_size;
+               dec_inputs.push_back(Ort::Value::CreateTensor(
+                  mem_info, (void*)kv_cache[i][0].data(), n_bytes,
+                  kv_shape.data(), kv_shape.size(),
+                  decoder_info.kv_type));
+               dec_inputs.push_back(Ort::Value::CreateTensor(
+                  mem_info, (void*)kv_cache[i][1].data(), n_bytes,
+                  kv_shape.data(), kv_shape.size(),
+                  decoder_info.kv_type));
             }
          }
-         else if(se_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-            float* ed = step_embed_out[0].GetTensorMutableData<float>();
-            if(vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-               const float* vd = vision_outputs[0].GetTensorData<float>();
-               for(int64_t i = 0; i < vf_tokens; ++i) {
-                  std::memcpy(ed + (img_start_pos + i) * hidden_size, vd + i * hidden_size, hidden_size * sizeof(float));
-               }
-            } else {
+         else {
+            // No KV cache: re-encode full sequence
+            std::vector<int64_t> step_ids = input_ids;
+            for(auto& id : step_ids) {
+               if(id == IMG_PLACEHOLDER) id = 0;
+            }
+            for(auto t : generated_tokens) {
+               step_ids.push_back(t);
+            }
+            int64_t step_seq = (int64_t)step_ids.size();
+            std::vector<int64_t> step_shape = {1, step_seq};
+
+            std::vector<Ort::Value> step_embed_inputs;
+            step_embed_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+               mem_info, step_ids.data(), step_ids.size(),
+               step_shape.data(), step_shape.size()));
+
+            auto step_embed_out = embed_session->Run(
+               Ort::RunOptions{nullptr},
+               embed_in_names, step_embed_inputs.data(), step_embed_inputs.size(),
+               embed_out_names, 1);
+
+            // Re-fuse visual features
+            auto se_type = step_embed_out[0].GetTensorTypeAndShapeInfo().GetElementType();
+            if(se_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16 && vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+               uint16_t* ed = step_embed_out[0].GetTensorMutableData<uint16_t>();
                const uint16_t* vd = vision_outputs[0].GetTensorData<uint16_t>();
                for(int64_t i = 0; i < vf_tokens; ++i) {
-                  for(int64_t j = 0; j < hidden_size; ++j) {
-                     ed[(img_start_pos + i) * hidden_size + j] = half_to_float_u16(vd[i * hidden_size + j]);
+                  std::memcpy(ed + (img_start_pos + i) * hidden_size, vd + i * hidden_size, hidden_size * sizeof(uint16_t));
+               }
+            }
+            else if(se_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+               float* ed = step_embed_out[0].GetTensorMutableData<float>();
+               if(vf_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+                  const float* vd = vision_outputs[0].GetTensorData<float>();
+                  for(int64_t i = 0; i < vf_tokens; ++i) {
+                     std::memcpy(ed + (img_start_pos + i) * hidden_size, vd + i * hidden_size, hidden_size * sizeof(float));
+                  }
+               } else {
+                  const uint16_t* vd = vision_outputs[0].GetTensorData<uint16_t>();
+                  for(int64_t i = 0; i < vf_tokens; ++i) {
+                     for(int64_t j = 0; j < hidden_size; ++j) {
+                        ed[(img_start_pos + i) * hidden_size + j] = half_to_float_u16(vd[i * hidden_size + j]);
+                     }
                   }
                }
             }
-         }
 
-         // Run decoder
-         std::vector<Ort::Value> dec_inputs;
-         dec_inputs.push_back(std::move(step_embed_out[0]));
+            dec_inputs.push_back(std::move(step_embed_out[0]));
 
-         std::vector<int64_t> pos_ids(step_seq);
-         std::vector<int64_t> pos_shape = {1, step_seq};
-         if(!decoder_info.position_ids_name.empty()) {
-            for(int64_t p = 0; p < step_seq; ++p) pos_ids[p] = p;
-            dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
-               mem_info, pos_ids.data(), pos_ids.size(),
-               pos_shape.data(), pos_shape.size()));
-         }
+            std::vector<int64_t> pos_ids(step_seq);
+            std::vector<int64_t> pos_shape = {1, step_seq};
+            if(!decoder_info.position_ids_name.empty()) {
+               for(int64_t p = 0; p < step_seq; ++p) pos_ids[p] = p;
+               dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+                  mem_info, pos_ids.data(), pos_ids.size(),
+                  pos_shape.data(), pos_shape.size()));
+            }
 
-         std::vector<int64_t> mask(step_seq, 1);
-         std::vector<int64_t> mask_shape = {1, step_seq};
-         if(!decoder_info.attention_mask_name.empty()) {
-            dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
-               mem_info, mask.data(), mask.size(),
-               mask_shape.data(), mask_shape.size()));
-         }
+            std::vector<int64_t> mask(step_seq, 1);
+            std::vector<int64_t> mask_shape = {1, step_seq};
+            if(!decoder_info.attention_mask_name.empty()) {
+               dec_inputs.push_back(Ort::Value::CreateTensor<int64_t>(
+                  mem_info, mask.data(), mask.size(),
+                  mask_shape.data(), mask_shape.size()));
+            }
 
-         if(has_kv) {
-            for(int i = 0; i < decoder_info.num_layers; ++i) {
-               std::vector<int64_t> kv_shape = {1, (int64_t)decoder_info.num_kv_heads, 0, (int64_t)decoder_info.head_dim};
-               dec_inputs.push_back(Ort::Value::CreateTensor(
-                  mem_info, (float*)nullptr, 0,
-                  kv_shape.data(), kv_shape.size(),
-                  decoder_info.kv_type));
-               dec_inputs.push_back(Ort::Value::CreateTensor(
-                  mem_info, (float*)nullptr, 0,
-                  kv_shape.data(), kv_shape.size(),
-                  decoder_info.kv_type));
+            if(has_kv) {
+               for(int i = 0; i < decoder_info.num_layers; ++i) {
+                  std::vector<int64_t> kv_shape = {1, (int64_t)decoder_info.num_kv_heads, 0, (int64_t)decoder_info.head_dim};
+                  dec_inputs.push_back(Ort::Value::CreateTensor(
+                     mem_info, (float*)nullptr, 0,
+                     kv_shape.data(), kv_shape.size(),
+                     decoder_info.kv_type));
+                  dec_inputs.push_back(Ort::Value::CreateTensor(
+                     mem_info, (float*)nullptr, 0,
+                     kv_shape.data(), kv_shape.size(),
+                     decoder_info.kv_type));
+               }
             }
          }
 
@@ -2536,6 +2626,23 @@ static void phi3_vision_inf(VMContext& context) {
          std::vector<float> last_logits = extract_last_logits(dec_outputs[0], vocab_size);
          int64_t next_token = sample_token(last_logits.data(), vocab_size, temperature);
 
+         // Save KV cache
+         if(use_kv_cache) {
+            for(int i = 0; i < decoder_info.num_layers; ++i) {
+               size_t key_idx = 1 + (size_t)i * 2;
+               size_t val_idx = 2 + (size_t)i * 2;
+
+               auto key_shape = dec_outputs[key_idx].GetTensorTypeAndShapeInfo().GetShape();
+               kv_seq_len = key_shape[2];
+
+               size_t n_bytes = (size_t)decoder_info.num_kv_heads * kv_seq_len * decoder_info.head_dim * kv_elem_size;
+               kv_cache[i][0].resize(n_bytes);
+               kv_cache[i][1].resize(n_bytes);
+               std::memcpy(kv_cache[i][0].data(), dec_outputs[key_idx].GetTensorRawData(), n_bytes);
+               std::memcpy(kv_cache[i][1].data(), dec_outputs[val_idx].GetTensorRawData(), n_bytes);
+            }
+         }
+
          bool is_eos = false;
          for(auto eos : eos_tokens) {
             if(next_token == eos) { is_eos = true; break; }
@@ -2543,7 +2650,6 @@ static void phi3_vision_inf(VMContext& context) {
          if(is_eos) break;
 
          generated_tokens.push_back(next_token);
-         full_token_ids.push_back(next_token);
          total_seq++;
       }
 
