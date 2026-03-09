@@ -41,10 +41,11 @@
 #include "../../common.h"
 #include "../../interpreter.h"
 
-// Auto-JIT: methods called more than threshold times are JIT compiled.
-// Pre-scan validation (CanJitInstruction) runs before resource allocation,
-// so unsupported instructions cause immediate return false with no corruption.
-#define JIT_AUTO_THRESHOLD 10
+// Auto-JIT disabled: inline method call results corrupt JIT register state
+// (e.g. Float->Random()*10.0 crashes, but r:=Float->Random(); r*10.0 works).
+// Also missing shadow space for C calls was fixed in call_xfunc/call_xfunc2.
+// Re-enable once ProcessReturnParameters register handoff is fixed.
+#define JIT_AUTO_THRESHOLD 2000000000
 
 class JitCompiler {
 protected:

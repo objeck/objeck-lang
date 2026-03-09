@@ -2857,35 +2857,10 @@ bool TrapProcessor::StdOutChar(StackProgram* program, size_t* inst, size_t* &op_
   std::wcout << L"  STD_OUT_CHAR" << std::endl;
 #endif
 
-  const size_t value = PopInt(op_stack, stack_pos);
-
-#ifdef _WIN32
-  // On Windows, wchar_t is 16-bit; codepoints above U+FFFF need a surrogate pair
-  if(value > 0xFFFF) {
-    const size_t cp = value - 0x10000;
-    wchar_t surrogates[3];
-    surrogates[0] = (wchar_t)(0xD800 + (cp >> 10));
-    surrogates[1] = (wchar_t)(0xDC00 + (cp & 0x3FF));
-    surrogates[2] = L'\0';
 #ifdef _MODULE_STDIO
-    program->output_buffer << surrogates;
+  program->output_buffer << (wchar_t)PopInt(op_stack, stack_pos);
 #else
-    std::wcout << surrogates;
-#endif
-  }
-  else {
-#ifdef _MODULE_STDIO
-    program->output_buffer << (wchar_t)value;
-#else
-    std::wcout << (wchar_t)value;
-#endif
-  }
-#else
-#ifdef _MODULE_STDIO
-  program->output_buffer << (wchar_t)value;
-#else
-  std::wcout << (wchar_t)value;
-#endif
+  std::wcout << (wchar_t)PopInt(op_stack, stack_pos);
 #endif
 
   return true;
@@ -3210,7 +3185,7 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
     program->output_buffer.write(wide_buffer.c_str(), wide_buffer.size());
 #else
     std::string buffer = UnicodeToBytes((wchar_t*)(array + 3) + offset);
-    PushInt(fwrite(buffer.c_str(), 1, buffer.size(), stdout), op_stack, stack_pos);
+    PushInt(fwrite(buffer.c_str(), 1, num, stdout), op_stack, stack_pos);
 #endif
   }
   else {
@@ -3255,25 +3230,7 @@ bool TrapProcessor::StdErrChar(StackProgram* program, size_t* inst, size_t* &op_
 #ifdef _DEBUG
   std::wcout << L"  STD_ERR_CHAR" << std::endl;
 #endif
-
-  const size_t value = PopInt(op_stack, stack_pos);
-
-#ifdef _WIN32
-  // On Windows, wchar_t is 16-bit; codepoints above U+FFFF need a surrogate pair
-  if(value > 0xFFFF) {
-    const size_t cp = value - 0x10000;
-    wchar_t surrogates[3];
-    surrogates[0] = (wchar_t)(0xD800 + (cp >> 10));
-    surrogates[1] = (wchar_t)(0xDC00 + (cp & 0x3FF));
-    surrogates[2] = L'\0';
-    std::wcerr << surrogates;
-  }
-  else {
-    std::wcerr << (wchar_t)value;
-  }
-#else
-  std::wcerr << (wchar_t)value;
-#endif
+  std::wcerr << (char)PopInt(op_stack, stack_pos);
 
   return true;
 }

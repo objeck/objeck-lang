@@ -85,6 +85,11 @@ cd ../diags
 xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build $SIGN_FLAGS
 cp macos/xcode/build/Release/libobjk_diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
 
+cd ../onnx/eq
+./build.sh coreml
+cp libobjk_onnx.dylib ../../../release/deploy/lib/native/libobjk_onnx.dylib
+cd ..
+
 # build macOS app launcher (.app bundle)
 cd ../../utils/MacApp
 swiftc -O -o AppLauncher AppLauncher.swift -framework AppKit

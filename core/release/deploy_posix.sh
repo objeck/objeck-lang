@@ -80,23 +80,19 @@ cd ../opencv
 ./build_linux.sh opencv
 cp opencv.so ../../release/deploy/lib/native/libobjk_opencv.so
 
-if [ -z "$1" ] || [ "$1" != "arm64" ]; then
-	cd ../onnx/eq/cuda
-	./build_linux.sh onnx_cuda
-	cp onnx_cuda.so ../../../../release/deploy/lib/native/libobjk_onnx.so
+cd ../onnx/eq
+./build.sh cuda
+cp libobjk_onnx.so ../../../release/deploy/lib/native/libobjk_onnx.so
 
-	# copy ONNX Runtime shared libraries
-	cp lib/x64/lib/libonnxruntime.so.1.19.0 ../../../../release/deploy/lib/native/libonnxruntime.so.1.19.0
-	cd ../../../../release/deploy/lib/native
-	ln -sf libonnxruntime.so.1.19.0 libonnxruntime.so.1
-	ln -sf libonnxruntime.so.1 libonnxruntime.so
-	cd ../../../../lib/onnx/eq/cuda
+# copy ONNX Runtime shared libraries
+cp cuda/lib/x64/lib/libonnxruntime.so.1.19.0 ../../../release/deploy/lib/native/libonnxruntime.so.1.19.0
+cd ../../../release/deploy/lib/native
+ln -sf libonnxruntime.so.1.19.0 libonnxruntime.so.1
+ln -sf libonnxruntime.so.1 libonnxruntime.so
+cd ../../../../lib/onnx/eq
 
-	cp lib/x64/lib/libonnxruntime_providers_shared.so ../../../../release/deploy/lib/native/libonnxruntime_providers_shared.so
-	cd ../../../sdl
-else
-	cd ../sdl
-fi
+cp cuda/lib/x64/lib/libonnxruntime_providers_shared.so ../../../release/deploy/lib/native/libonnxruntime_providers_shared.so
+cd ../../sdl
 ./build_linux.sh sdl
 cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
