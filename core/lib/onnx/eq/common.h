@@ -1734,7 +1734,7 @@ static std::vector<float> extract_last_logits(Ort::Value& logits_tensor, int& vo
    return last_logits;
 }
 
-// Phi-3 / SLM text generation inference
+// Phi-3 / SLM text generation inference with KV cache reuse
 static void phi3_text_inf(VMContext& context) {
    auto start = std::chrono::high_resolution_clock::now();
 
@@ -1778,19 +1778,19 @@ static void phi3_text_inf(VMContext& context) {
          return;
       }
 
+      const bool has_kv = (model_info.num_layers > 0);
+      const bool use_kv_cache = has_kv && !model_info.present_key_names.empty();
+
       std::wcout << L"=> SLM model: " << model_info.num_layers << L" layers, "
-                 << model_info.num_kv_heads << L" kv_heads, head_dim=" << model_info.head_dim << std::endl;
+                 << model_info.num_kv_heads << L" kv_heads, head_dim=" << model_info.head_dim
+                 << (use_kv_cache ? L", kv_cache=on" : L", kv_cache=off") << std::endl;
 
       Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
 
       std::vector<int64_t> generated_tokens;
       generated_tokens.reserve(max_new_tokens);
 
-      // Full sequence (prompt + generated so far) - rebuilt each step
-      std::vector<int64_t> full_sequence = prompt_tokens;
-      bool has_kv = (model_info.num_layers > 0);
-
-      // Build input/output name vectors
+      // Build input name list (stable across all steps)
       std::vector<std::string> in_name_strs;
       in_name_strs.push_back(model_info.input_ids_name);
       if(!model_info.position_ids_name.empty()) {
@@ -1806,9 +1806,15 @@ static void phi3_text_inf(VMContext& context) {
          }
       }
 
-      // Only request logits output (no KV cache reuse for DML compatibility)
+      // Build output name list: logits + present KV (if caching)
       std::vector<std::string> out_name_strs;
       out_name_strs.push_back(model_info.logits_name);
+      if(use_kv_cache) {
+         for(int i = 0; i < model_info.num_layers; ++i) {
+            out_name_strs.push_back(model_info.present_key_names[i]);
+            out_name_strs.push_back(model_info.present_value_names[i]);
+         }
+      }
 
       std::vector<const char*> in_names(in_name_strs.size());
       for(size_t i = 0; i < in_name_strs.size(); ++i) {
@@ -1819,50 +1825,108 @@ static void phi3_text_inf(VMContext& context) {
          out_names[i] = out_name_strs[i].c_str();
       }
 
-      // Generation loop (full re-encode each step for DML compatibility)
-      for(int step = 0; step < max_new_tokens; ++step) {
-         std::vector<Ort::Value> inputs;
-         int64_t seq_len = (int64_t)full_sequence.size();
+      // KV cache storage: kv_cache[layer][0=key,1=value] = raw bytes
+      const size_t kv_elem_size = (model_info.kv_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) ? 2 : 4;
+      int64_t kv_seq_len = 0;
+      std::vector<std::vector<std::vector<uint8_t>>> kv_cache;
+      if(use_kv_cache) {
+         kv_cache.resize(model_info.num_layers, std::vector<std::vector<uint8_t>>(2));
+      }
 
-         // input_ids: [1, seq_len] - full sequence each step
-         std::vector<int64_t> ids_shape = {1, seq_len};
+      int64_t total_seq_len = (int64_t)prompt_tokens.size();
+
+      // Generation loop with KV cache reuse
+      for(int step = 0; step < max_new_tokens; ++step) {
+         // Prepare per-step data (must outlive inputs vector until after Run)
+         std::vector<int64_t> step_ids;
+         std::vector<int64_t> step_pos;
+         std::vector<int64_t> step_mask;
+         std::vector<int64_t> ids_shape, pos_shape, mask_shape;
+
+         if(!use_kv_cache || step == 0) {
+            // Prefill (or no-cache mode): pass full sequence
+            if(use_kv_cache) {
+               step_ids = prompt_tokens;
+            }
+            else {
+               // No cache: rebuild full sequence each step
+               step_ids = prompt_tokens;
+               for(auto t : generated_tokens) {
+                  step_ids.push_back(t);
+               }
+            }
+            int64_t seq_len = (int64_t)step_ids.size();
+            ids_shape = {1, seq_len};
+
+            step_pos.resize(seq_len);
+            for(int64_t p = 0; p < seq_len; ++p) {
+               step_pos[p] = p;
+            }
+            pos_shape = {1, seq_len};
+
+            step_mask.assign(seq_len, 1);
+            mask_shape = {1, seq_len};
+         }
+         else {
+            // Decode: pass only the new token + cached KV
+            step_ids = {generated_tokens.back()};
+            ids_shape = {1, 1};
+
+            step_pos = {total_seq_len - 1};
+            pos_shape = {1, 1};
+
+            step_mask.assign(total_seq_len, 1);
+            mask_shape = {1, total_seq_len};
+         }
+
+         // Build input tensors
+         std::vector<Ort::Value> inputs;
+
          inputs.push_back(Ort::Value::CreateTensor<int64_t>(
-            mem_info, full_sequence.data(), full_sequence.size(),
+            mem_info, step_ids.data(), step_ids.size(),
             ids_shape.data(), ids_shape.size()));
 
-         // position_ids: [1, seq_len]
-         std::vector<int64_t> pos_ids(seq_len);
-         std::vector<int64_t> pos_shape = {1, seq_len};
          if(!model_info.position_ids_name.empty()) {
-            for(int64_t p = 0; p < seq_len; ++p) {
-               pos_ids[p] = p;
-            }
             inputs.push_back(Ort::Value::CreateTensor<int64_t>(
-               mem_info, pos_ids.data(), pos_ids.size(),
+               mem_info, step_pos.data(), step_pos.size(),
                pos_shape.data(), pos_shape.size()));
          }
 
-         // attention_mask: [1, seq_len]
-         std::vector<int64_t> mask(seq_len, 1);
-         std::vector<int64_t> mask_shape = {1, seq_len};
          if(!model_info.attention_mask_name.empty()) {
             inputs.push_back(Ort::Value::CreateTensor<int64_t>(
-               mem_info, mask.data(), mask.size(),
+               mem_info, step_mask.data(), step_mask.size(),
                mask_shape.data(), mask_shape.size()));
          }
 
-         // Empty KV cache each step (no reuse)
          if(has_kv) {
-            for(int i = 0; i < model_info.num_layers; ++i) {
-               std::vector<int64_t> kv_shape = {1, (int64_t)model_info.num_kv_heads, 0, (int64_t)model_info.head_dim};
-               inputs.push_back(Ort::Value::CreateTensor(
-                  mem_info, (float*)nullptr, 0,
-                  kv_shape.data(), kv_shape.size(),
-                  model_info.kv_type));
-               inputs.push_back(Ort::Value::CreateTensor(
-                  mem_info, (float*)nullptr, 0,
-                  kv_shape.data(), kv_shape.size(),
-                  model_info.kv_type));
+            if(!use_kv_cache || step == 0) {
+               // Empty past KV for prefill / no-cache
+               for(int i = 0; i < model_info.num_layers; ++i) {
+                  std::vector<int64_t> kv_shape = {1, (int64_t)model_info.num_kv_heads, 0, (int64_t)model_info.head_dim};
+                  inputs.push_back(Ort::Value::CreateTensor(
+                     mem_info, (float*)nullptr, 0,
+                     kv_shape.data(), kv_shape.size(),
+                     model_info.kv_type));
+                  inputs.push_back(Ort::Value::CreateTensor(
+                     mem_info, (float*)nullptr, 0,
+                     kv_shape.data(), kv_shape.size(),
+                     model_info.kv_type));
+               }
+            }
+            else {
+               // Feed cached KV from previous step
+               for(int i = 0; i < model_info.num_layers; ++i) {
+                  std::vector<int64_t> kv_shape = {1, (int64_t)model_info.num_kv_heads, kv_seq_len, (int64_t)model_info.head_dim};
+                  size_t n_bytes = (size_t)model_info.num_kv_heads * kv_seq_len * model_info.head_dim * kv_elem_size;
+                  inputs.push_back(Ort::Value::CreateTensor(
+                     mem_info, (void*)kv_cache[i][0].data(), n_bytes,
+                     kv_shape.data(), kv_shape.size(),
+                     model_info.kv_type));
+                  inputs.push_back(Ort::Value::CreateTensor(
+                     mem_info, (void*)kv_cache[i][1].data(), n_bytes,
+                     kv_shape.data(), kv_shape.size(),
+                     model_info.kv_type));
+               }
             }
          }
 
@@ -1888,7 +1952,24 @@ static void phi3_text_inf(VMContext& context) {
          if(is_eos) break;
 
          generated_tokens.push_back(next_token);
-         full_sequence.push_back(next_token);
+         total_seq_len++;
+
+         // Save present KV cache for next step
+         if(use_kv_cache) {
+            for(int i = 0; i < model_info.num_layers; ++i) {
+               size_t key_idx = 1 + (size_t)i * 2;
+               size_t val_idx = 2 + (size_t)i * 2;
+
+               auto key_shape = outputs[key_idx].GetTensorTypeAndShapeInfo().GetShape();
+               kv_seq_len = key_shape[2];
+
+               size_t n_bytes = (size_t)model_info.num_kv_heads * kv_seq_len * model_info.head_dim * kv_elem_size;
+               kv_cache[i][0].resize(n_bytes);
+               kv_cache[i][1].resize(n_bytes);
+               std::memcpy(kv_cache[i][0].data(), outputs[key_idx].GetTensorRawData(), n_bytes);
+               std::memcpy(kv_cache[i][1].data(), outputs[val_idx].GetTensorRawData(), n_bytes);
+            }
+         }
       }
 
       // Build Objeck result
