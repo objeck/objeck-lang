@@ -1199,11 +1199,6 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
         EmitStatement(leavings[i]);
       }
     }
-    // for constructors, load the instance before returning so the caller gets the object
-    if(!current_method->IsAlt() && (current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-          current_method->GetMethodType() == NEW_PRIVATE_METHOD)) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-    }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, RTRN));
     new_char_str_count = 0;
   }
