@@ -72,6 +72,10 @@ cd ../diags
 ./build_msys2-clang.sh diags
 cp diags.dll ../../release/deploy-msys2-clang/lib/native/libobjk_diags.dll
 
+cd ../onnx/eq
+CXX=clang++ ./build.sh cuda
+cp libobjk_onnx.dll ../../../release/deploy-msys2-clang/lib/native/libobjk_onnx.dll
+
 cd ../../utils/launcher
 make -f make/Makefile.obb.msys2-clang.amd64 clean; make -f make/Makefile.obb.msys2-clang.amd64 -j3
 cp obb.exe ../../release/deploy-msys2-clang/bin

@@ -239,34 +239,24 @@ if [%1] == [x64] (
 cd ..\..\release
 
 REM onnx support
-cd ..\lib\onnx	
+cd ..\lib\onnx
+
+REM Restore NuGet packages before building
+nuget restore onnx.sln
+
 if [%1] == [arm64] (
-	cd eq\qnn
+	devenv onnx.sln /rebuild "Release-QNN|ARM64"
+	copy vs\ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
-	REM Restore NuGet packages before building
-	nuget restore onnx_qnn.sln
-
-	devenv onnx_qnn.sln /rebuild "Release|ARM64"
-	copy arm64\Release\libobjk_onnx.dll ..\..\..\..\release\%TARGET%\lib\native
-
-	copy /y win\onnx\arm64\bin\*.dll ..\..\..\..\release\%TARGET%\bin
-
-	cd ..\..
+	copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
 )
 
 if [%1] == [x64] (
-	cd eq\dml
+	devenv onnx.sln /rebuild "Release-DML|x64"
+	copy vs\x64\Release-DML\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
-	REM Restore NuGet packages before building
-	nuget restore onnx_dml.sln
-
-	devenv onnx_dml.sln /rebuild "Release|x64"
-	copy x64\Release\libobjk_onnx.dll ..\..\..\..\release\%TARGET%\lib\native
-
-	copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\..\..\release\%TARGET%\bin
-	copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll  ..\..\..\..\release\%TARGET%\bin
-
-	cd ..\..
+	copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
+	copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
 )
 cd ..\..\release
 
