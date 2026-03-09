@@ -42,36 +42,45 @@ extern "C" {
       std::vector<std::wstring> keys = APITools_GetStringsValues(context, 1);
       std::vector<std::wstring> values = APITools_GetStringsValues(context, 2);
       const std::wstring model_path = APITools_GetStringValue(context, 3);
-      
+
       try {
-         // Set DML provider options
          std::unordered_map<std::string, std::string> provider_options;
          provider_options["device_id"] = "0";
 
+         bool use_cpu = false;
          if(!keys.empty() && keys.size() == values.size()) {
             for(size_t i = 0; i < keys.size(); ++i) {
                std::string key = UnicodeToBytes(keys[i]);
                std::string value = UnicodeToBytes(values[i]);
-               provider_options[key] = value;
+               if(key == "ep" && value == "cpu") {
+                  use_cpu = true;
+               }
+               else {
+                  provider_options[key] = value;
+               }
             }
          }
 
-         // Create session options with DML execution provider
-         Ort::SessionOptions session_options;// comment
-         session_options.AppendExecutionProvider("DML", provider_options);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-         session_options.SetInterOpNumThreads(1);
-         session_options.SetIntraOpNumThreads(1);  // often helps with DML init stability
+         Ort::SessionOptions session_options;
 
-         session_options.DisableMemPattern();
-         session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+         if(use_cpu) {
+            // CPU execution provider
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         }
+         else {
+            // DML execution provider
+            session_options.AppendExecutionProvider("DML", provider_options);
+            session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+            session_options.DisableMemPattern();
+            session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+         }
 
-         // Create ONNX session
          if(!env) {
             env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "onnx");
          }
          const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
-         
+
          APITools_SetIntValue(context, 0, (size_t)session);
       }
       catch(const std::exception& ex) {

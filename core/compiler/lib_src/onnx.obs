@@ -1212,6 +1212,7 @@ bundle API.Onnx {
 		@merge_rank : Hash<String, IntRef>;
 		@vocab_size : Int;
 		@byte_token_prefix : String;
+		@added_tokens : String[];
 
 		#~
 		Constructor.
@@ -1265,6 +1266,7 @@ bundle API.Onnx {
 			# Parse added tokens
 			added := root->Get("added_tokens");
 			if(added <> Nil) {
+				added_vec := Vector->New()<String>;
 				each(i : added) {
 					token_elem := added->Get(i);
 					if(token_elem <> Nil) {
@@ -1275,8 +1277,13 @@ bundle API.Onnx {
 							if(id >= 0 & id < @id_to_token->Size()) {
 								@id_to_token[id] := content;
 							};
+							added_vec->AddBack(content);
 						};
 					};
+				};
+				@added_tokens := String->New[added_vec->Size()];
+				each(i : added_vec) {
+					@added_tokens[i] := added_vec->Get(i);
 				};
 			};
 
@@ -1345,12 +1352,93 @@ bundle API.Onnx {
 		}
 
 		#~
-		Encode text to token IDs using BPE
+		Encode text to token IDs using BPE with special token handling.
+		Added/special tokens are matched as whole strings before BPE is applied.
 		@param text input text to tokenize
 		@return array of token IDs
 		~#
 		method : public : Encode(text : String) ~ Int[] {
 			if(text = Nil | text->Size() = 0 | @token_to_id->Size() = 0) {
+				return Int->New[0];
+			};
+
+			# If no added tokens, fall back to pure BPE
+			if(@added_tokens = Nil | @added_tokens->Size() = 0) {
+				return EncodeBPE(text);
+			};
+
+			# Split text on added/special tokens, then BPE-encode regular segments
+			ids := Vector->New()<IntRef>;
+			pos := 0;
+
+			while(pos < text->Size()) {
+				# Try to match an added token at current position (longest match)
+				best_match : String;
+				best_len := 0;
+				each(i : @added_tokens) {
+					st := @added_tokens[i];
+					st_len := st->Size();
+					if(st_len > best_len & pos + st_len <= text->Size()) {
+						if(text->SubString(pos, st_len)->Equals(st)) {
+							best_match := st;
+							best_len := st_len;
+						};
+					};
+				};
+
+				if(best_len > 0) {
+					# Found an added token - emit its ID directly
+					st_id := @token_to_id->Find(best_match);
+					if(st_id <> Nil) {
+						ids->AddBack(st_id);
+					};
+					pos += best_len;
+				}
+				else {
+					# Accumulate regular text until next added token or end
+					seg_start := pos;
+					found := false;
+					while(pos < text->Size() & found = false) {
+						each(j : @added_tokens) {
+							st := @added_tokens[j];
+							st_len := st->Size();
+							if(found = false & pos + st_len <= text->Size()) {
+								if(text->SubString(pos, st_len)->Equals(st)) {
+									found := true;
+								};
+							};
+						};
+						if(found = false) {
+							pos += 1;
+						};
+					};
+
+					# BPE-encode the regular text segment
+					if(pos > seg_start) {
+						segment := text->SubString(seg_start, pos - seg_start);
+						seg_ids := EncodeBPE(segment);
+						each(k : seg_ids) {
+							ids->AddBack(IntRef->New(seg_ids[k]));
+						};
+					};
+				};
+			};
+
+			result := Int->New[ids->Size()];
+			each(i : ids) {
+				result[i] := ids->Get(i)->Get();
+			};
+
+			return result;
+		}
+
+		#~
+		Encode text to token IDs using BPE (no special token handling)
+		@param text input text to tokenize
+		@return array of token IDs
+		~#
+		method : EncodeBPE(text : String) ~ Int[] {
+			if(text = Nil | text->Size() = 0) {
 				return Int->New[0];
 			};
 

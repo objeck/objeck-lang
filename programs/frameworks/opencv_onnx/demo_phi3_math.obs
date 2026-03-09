@@ -1,4 +1,4 @@
-use API.Onnx;
+use API.Onnx, Collection;
 
 class Demo {
 	function : Main(args : String[]) ~ Nil {
@@ -20,7 +20,9 @@ class Demo {
 
 		model := model_dir + "/model.onnx";
 
-		session := Phi3Session->New(model);
+		config := Map->New()<String, String>;
+		config->Insert("ep", "cpu");
+		session := Phi3Session->New(model, config);
 		if(session = Nil) {
 			">>> Failed to create session <<<"->PrintLine();
 			return;
