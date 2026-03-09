@@ -2356,7 +2356,7 @@ static void phi3_vision_inf(VMContext& context) {
 
       // Step 7: Build decoder input/output names
       bool has_kv = (decoder_info.num_layers > 0);
-      bool use_kv_cache = has_kv && !decoder_info.present_key_names.empty();
+      bool use_kv_cache = false; // DML GQA decode bug produces garbage with KV cache; use full recompute
 
       std::vector<std::string> dec_out_strs;
       dec_out_strs.push_back(decoder_info.logits_name);

@@ -25,7 +25,7 @@ class Demo {
 		decoder_model := model_dir + "/model.onnx";
 
 		config := Map->New()<String, String>;
-		config->Insert("ep", "cpu");
+		config->Insert("ep", "dml");
 		session := Phi3VisionSession->New(vision_model, embed_model, decoder_model, config);
 		if(session = Nil) {
 			">>> Failed to create session <<<"->PrintLine();
