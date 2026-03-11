@@ -62,56 +62,53 @@ obc hello && obr hello
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
 
 **v2026.3.0** (upcoming)
-  * **ONNX**: Phi-3 Vision multimodal inference — 3-model pipeline (vision encoder, text embedding, decoder) with FP16 and DirectML/CUDA support
-  * **ONNX**: Unified build system — merged 4 provider-specific files into single source with preprocessor-selected providers (DML, CUDA, QNN, CoreML)
-  * **ONNX**: Improved runtime — FP16 I/O, letterbox preprocessing, auto NCHW/NHWC detection, BGR-to-RGB fix
-  * **ONNX**: New demos: ResNet, OpenPose, YOLO, Phi-3 text and vision; added macOS CoreML and MSYS2 support
-  * **Performance**: GC cleanup — removed ~500 lines of dead generational GC code, 4.6x binarytrees speedup
-  * **Performance**: Auto-JIT fix — failed JIT attempts no longer retry on every call, 3.5x method dispatch speedup
-  * **Performance**: Adaptive heap tuning — faster growth triggers (UNCOLLECTED_COUNT 7→3)
-  * **Standard Library**: Hash auto-resize at 75% load, Vector in-place Remove, JSON escape/keyword fixes
-  * **Standard Library**: Tokenizer O(n) string building, XML bulk parsing, Regex input caching
-  * **Bug Fix**: Fixed constructor early return crash and simplified Try/Otherwise error recovery
-  * **Bug Fix**: Fixed CSV.Median value-as-index and CSV.Average off-by-one errors
-  * **Bug Fix**: Fixed URL encoding swap and Response.ToString nil check
-  * **Testing**: 2 new regression tests (core_collections_perf, core_json_escape), 19/19 pass
-  * [Performance optimization details and benchmark data →](docs/performance.md)
+  * Phi-3 Vision multimodal inference — 3-model pipeline with FP16 and DirectML/CUDA support
+  * Unified ONNX build system — single source with preprocessor-selected providers (DML, CUDA, QNN, CoreML)
+  * ONNX runtime improvements — FP16 I/O, letterbox preprocessing, auto NCHW/NHWC detection
+  * New ONNX demos: ResNet, OpenPose, YOLO, Phi-3 text and vision; added macOS CoreML and MSYS2 support
+  * GC cleanup — removed ~500 lines of dead generational code, 4.6x binarytrees speedup
+  * Auto-JIT fix — failed attempts no longer retry on every call, 3.5x dispatch speedup
+  * Adaptive heap tuning — faster growth triggers (UNCOLLECTED_COUNT 7→3)
+  * Hash auto-resize at 75% load, Vector in-place Remove, JSON escape/keyword fixes
+  * Tokenizer O(n) string building, XML bulk parsing, Regex input caching
+  * Fixed constructor early return crash and simplified Try/Otherwise error recovery
+  * Fixed CSV.Median value-as-index, CSV.Average off-by-one, URL encoding swap, Response.ToString nil check
+  * 2 new regression tests (core_collections_perf, core_json_escape), 19/19 pass
+  * [Performance details and benchmarks →](docs/performance.md)
 
 **v2026.2.1** ✅
   * New 'try/otherwise' error handling framework
-  * **Unicode**: Fixed emoji and supplementary character output on all platforms (stdout and stderr)
-  * **Windows Installer**: Migrated from VDPROJ to WiX v4 — MSIs now built in CI without Visual Studio
-  * **Debugger**: Added `help`/`h` command with full command reference, fixed README documentation
-  * **JIT Fixes**: Fixed segfaults in AMD64 JIT (MTHD_CALL, DYN_MTHD_CALL, STOR_CLS_INST_INT_VAR), fixed ARM64 JIT pre-scan rejection
-  * **JIT Fixes**: Fixed broken `Log`/`Log10` float math (x87 emitted wrong constants), fixed `Rand` float params
-  * **SDL2**: Fixed 15 bugs in SDL2 native interface and Objeck bindings
-  * **Compression**: Fixed segfaults in CompressGzip/UncompressGzip/CompressBr/UncompressBr (zero-init z_stream)
-  * **Performance**: 4.38x speedup on nbody — inline limit increase (128→256) enables JIT to optimize getter/setter-heavy code
-  * **Compiler**: Common subexpression elimination (CSE), dead code elimination, div-by-zero constant folding bugfix
-  * **JIT**: Division-by-zero guards in constant folding for both x64 and ARM64 backends
-  * **Testing**: 14 new debugger regression tests with expect-based automation in CI
-  * **Testing**: 16 runtime regression tests (ARM64 JIT, core language, JIT native methods)
-  * **CI**: Linux ARM64 and macOS ARM64 test execution enabled in GitHub Actions
-  * **Bug Fix**: Fixed VM crash in Try/Otherwise when Nil dereference occurs inside non-virtual method calls
-  * **Bug Fix**: Fixed Windows debugger build — `HELP_COMMAND` enum collision with `WinUser.h` macro
-  * **Web Playground**: Updated to v2026.2.1
+  * Fixed emoji and supplementary character output on all platforms (stdout and stderr)
+  * Migrated Windows installer from VDPROJ to WiX v4 — MSIs now built in CI without Visual Studio
+  * Debugger `help`/`h` command with full command reference
+  * Fixed JIT segfaults in AMD64 (MTHD_CALL, DYN_MTHD_CALL, STOR_CLS_INST_INT_VAR) and ARM64 pre-scan rejection
+  * Fixed broken `Log`/`Log10` float math (x87 wrong constants) and `Rand` float params
+  * Fixed 15 bugs in SDL2 native interface and Objeck bindings
+  * Fixed segfaults in CompressGzip/UncompressGzip/CompressBr/UncompressBr (zero-init z_stream)
+  * 4.38x speedup on nbody — inline limit increase (128→256) enables JIT to optimize getter/setter-heavy code
+  * Compiler CSE, dead code elimination, div-by-zero constant folding bugfix
+  * JIT division-by-zero guards in constant folding for x64 and ARM64
+  * 14 debugger regression tests with expect-based automation in CI
+  * 16 runtime regression tests (ARM64 JIT, core language, JIT native methods)
+  * Linux ARM64 and macOS ARM64 test execution enabled in GitHub Actions
+  * Fixed VM crash in Try/Otherwise on Nil dereference inside non-virtual method calls
+  * Fixed Windows debugger build — `HELP_COMMAND` enum collision with `WinUser.h` macro
+  * Web Playground updated to v2026.2.1
   * 10 new performance benchmarks with measurement tooling
-  * [Performance optimization details and benchmark data →](docs/performance.md)
+  * [Performance details and benchmarks →](docs/performance.md)
 
 **v2026.2.0** ✅
-  * **Performance**: Memory manager optimized with O(1) lookups and in-place sweeping
-  * **ARM64 JIT**: 11 critical optimizations, including char arrays, register targeting, multiply-by-constant
-  * **x64 JIT**: Instruction encoding optimizations with dynamic backpatching
-  * **Windows ARM64**: Full platform support with mbedTLS 3.6.3
-  * **Testing**: Comprehensive regression suite with 350+ tests and automated CI/CD
-  * **Compiler**: Enhanced error messages with operator symbols and inline hints
-  * **NLP Library**: New natural language processing library with tokenization, TF-IDF, text similarity, and sentiment analysis
-  * **ML Enhancements**: Extended ML library with activation functions, feature scaling, metrics, and cross-validation
-  * **Crypto**: Migrated to mbedTLS for lighter footprint (OpenSSL replacement)
-  * **Bug Fix**: Fixed critical String.Trim()/TrimFront() index out of bounds crash that affected string processing
-  * Modern GNU-style CLI (`--source`/`-s`, `--debug`/`-D`) with full backward compatibility
-  * Enhanced library path handling
-  * Development workflow improvements with Claude Code
+  * Memory manager optimized with O(1) lookups and in-place sweeping
+  * ARM64 JIT: 11 optimizations including char arrays, register targeting, multiply-by-constant
+  * x64 JIT instruction encoding optimizations with dynamic backpatching
+  * Windows ARM64 full platform support with mbedTLS 3.6.3
+  * Comprehensive regression suite with 350+ tests and automated CI/CD
+  * Enhanced compiler error messages with operator symbols and inline hints
+  * New NLP library — tokenization, TF-IDF, text similarity, sentiment analysis
+  * Extended ML library — activation functions, feature scaling, metrics, cross-validation
+  * Migrated to mbedTLS for lighter crypto footprint (OpenSSL replacement)
+  * Fixed String.Trim()/TrimFront() index out of bounds crash
+  * Modern GNU-style CLI (`--source`/`-s`, `--debug`/`-D`) with backward compatibility
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md)
 
