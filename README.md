@@ -61,7 +61,23 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
 
-**v2026.2.1**
+**v2026.3.0** (upcoming)
+  * **ONNX**: Phi-3 Vision multimodal inference — 3-model pipeline (vision encoder, text embedding, decoder) with FP16 and DirectML/CUDA support
+  * **ONNX**: Unified build system — merged 4 provider-specific files into single source with preprocessor-selected providers (DML, CUDA, QNN, CoreML)
+  * **ONNX**: Improved runtime — FP16 I/O, letterbox preprocessing, auto NCHW/NHWC detection, BGR-to-RGB fix
+  * **ONNX**: New demos: ResNet, OpenPose, YOLO, Phi-3 text and vision; added macOS CoreML and MSYS2 support
+  * **Performance**: GC cleanup — removed ~500 lines of dead generational GC code, 4.6x binarytrees speedup
+  * **Performance**: Auto-JIT fix — failed JIT attempts no longer retry on every call, 3.5x method dispatch speedup
+  * **Performance**: Adaptive heap tuning — faster growth triggers (UNCOLLECTED_COUNT 7→3)
+  * **Standard Library**: Hash auto-resize at 75% load, Vector in-place Remove, JSON escape/keyword fixes
+  * **Standard Library**: Tokenizer O(n) string building, XML bulk parsing, Regex input caching
+  * **Bug Fix**: Fixed constructor early return crash and simplified Try/Otherwise error recovery
+  * **Bug Fix**: Fixed CSV.Median value-as-index and CSV.Average off-by-one errors
+  * **Bug Fix**: Fixed URL encoding swap and Response.ToString nil check
+  * **Testing**: 2 new regression tests (core_collections_perf, core_json_escape), 19/19 pass
+  * [Performance optimization details and benchmark data →](docs/performance.md)
+
+**v2026.2.1** ✅
   * New 'try/otherwise' error handling framework
   * **Unicode**: Fixed emoji and supplementary character output on all platforms (stdout and stderr)
   * **Windows Installer**: Migrated from VDPROJ to WiX v4 — MSIs now built in CI without Visual Studio
