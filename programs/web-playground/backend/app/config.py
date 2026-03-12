@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     tmpfs_size: str = "10m"
     host_tmp_dir: str = "/tmp/playground"
 
+    # Version (displayed in frontend header)
+    objeck_version: str = "v2026.3.0"
+
     # Rate limiting
     rate_limit: str = "10/minute"
 
