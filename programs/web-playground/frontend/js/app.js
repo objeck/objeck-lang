@@ -89,6 +89,7 @@ class Hello {
         initShareHandling();
         loadDemos();
         loadFromUrl();
+        loadVersion();
     });
 
     // --- Objeck Language Definition ---
@@ -527,6 +528,19 @@ class Hello {
         modal.addEventListener('click', function (e) {
             if (e.target === modal) modal.classList.add('hidden');
         });
+    }
+
+    async function loadVersion() {
+        try {
+            const response = await fetch(`${API_BASE}/api/health`);
+            if (!response.ok) return;
+            const data = await response.json();
+            if (data.version) {
+                document.getElementById('version-tag').textContent = data.version;
+            }
+        } catch (err) {
+            // Version not available - leave blank
+        }
     }
 
     async function loadFromUrl() {
