@@ -289,6 +289,24 @@ xcopy /e ..\..\programs\deploy\media\*.png %TARGET%\examples\media\
 xcopy /e ..\..\programs\deploy\media\*.wav %TARGET%\examples\media\
 xcopy /e ..\..\programs\deploy\data\* %TARGET%\examples\data\
 
+REM copy ONNX demo programs
+copy ..\..\programs\frameworks\opencv_onnx\demo_phi3*.obs %TARGET%\examples\
+
+REM copy ONNX models (phi3 text and phi3v vision) if downloaded
+set MODELS_SRC=..\..\programs\frameworks\opencv_onnx\data\models
+if exist "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\model.onnx" (
+	mkdir %TARGET%\examples\data\models\phi3
+	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.onnx" %TARGET%\examples\data\models\phi3\
+	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.onnx.data" %TARGET%\examples\data\models\phi3\
+	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.json" %TARGET%\examples\data\models\phi3\
+)
+if exist "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\model.onnx" (
+	mkdir %TARGET%\examples\data\models\phi3v
+	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.onnx" %TARGET%\examples\data\models\phi3v\
+	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.onnx.data" %TARGET%\examples\data\models\phi3v\
+	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.json" %TARGET%\examples\data\models\phi3v\
+)
+
 REM build and update docs
 mkdir %TARGET%\doc 
 mkdir %TARGET%\doc\syntax
