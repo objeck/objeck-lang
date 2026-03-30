@@ -4,8 +4,6 @@
 
 This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools.
 
-**Legacy Diagram:** [design4.png](../docs/images/design4.png) (historical reference)
-
 ---
 
 ## Table of Contents
