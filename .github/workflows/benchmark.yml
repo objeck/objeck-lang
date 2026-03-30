@@ -9,6 +9,11 @@ on:
         default: '3'
         type: choice
         options: ['1', '3', '5']
+      baseline:
+        description: 'Baseline release tag to compare against (e.g. v2026.2.2)'
+        required: false
+        default: 'latest'
+        type: string
 
 jobs:
   benchmark:
@@ -32,6 +37,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Install dependencies
       run: |
@@ -49,7 +56,8 @@ jobs:
           libeigen3-dev \
           libmp3lame-dev \
           ccache \
-          bc
+          bc \
+          python3
 
     - name: Cache ccache
       uses: actions/cache@v4
@@ -66,14 +74,36 @@ jobs:
         ccache --set-config=compression=true
         ccache --zero-stats
 
-    - name: Build toolchain
+    # ============================================
+    # Resolve baseline tag
+    # ============================================
+
+    - name: Resolve baseline tag
+      id: baseline
+      run: |
+        INPUT_TAG="${{ github.event.inputs.baseline || 'latest' }}"
+        if [ "$INPUT_TAG" = "latest" ]; then
+          TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+        else
+          TAG="$INPUT_TAG"
+        fi
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "Baseline tag: $TAG"
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    # ============================================
+    # Build & benchmark current commit
+    # ============================================
+
+    - name: Build current toolchain
       working-directory: ./core/release
       env:
         CC: ccache gcc
         CXX: ccache g++
       run: ${{ matrix.deploy_script }}
 
-    - name: Determine deploy directory
+    - name: Determine deploy directory (current)
       id: deploy-dir
       working-directory: ./core/release
       run: |
@@ -86,34 +116,28 @@ jobs:
           exit 1
         fi
 
-    - name: Compile benchmarks
+    - name: Compile & run benchmarks (current)
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       run: |
         chmod +x obc obr
         BENCH_DIR="../../../../programs/tests/clbg"
-        OUT_DIR="/tmp/bench"
+        OUT_DIR="/tmp/bench_current"
         mkdir -p "$OUT_DIR"
 
+        RUNS=${{ github.event.inputs.runs || '3' }}
+        RESULTS="/tmp/results_current.csv"
+        echo "benchmark,run,time_seconds" > "$RESULTS"
+
+        # compile
         ./obc -src "$BENCH_DIR/nbody.obs" -dest "$OUT_DIR/nbody.obe"
         ./obc -src "$BENCH_DIR/spectralnorm.obs" -dest "$OUT_DIR/spectralnorm.obe"
         ./obc -src "$BENCH_DIR/binarytrees.obs" -lib gen_collect -dest "$OUT_DIR/binarytrees.obe"
         ./obc -src "$BENCH_DIR/mandelbrot.obs" -dest "$OUT_DIR/mandelbrot.obe"
         ./obc -src "$BENCH_DIR/fannkuchredux.obs" -dest "$OUT_DIR/fannkuchredux.obe"
 
-        echo "All benchmarks compiled"
-
-    - name: Run benchmarks
-      id: bench
-      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
-      run: |
-        RUNS=${{ github.event.inputs.runs || '3' }}
-        OUT_DIR="/tmp/bench"
-        RESULTS="/tmp/bench_results.csv"
-
-        echo "benchmark,run,time_seconds" > "$RESULTS"
-
+        # run
         for bench in nbody spectralnorm binarytrees mandelbrot fannkuchredux; do
-          echo "=== $bench ==="
+          echo "=== $bench (current) ==="
           for run in $(seq 1 $RUNS); do
             start=$(date +%s%N)
             ./obr "$OUT_DIR/${bench}.obe" > /dev/null 2>&1
@@ -124,37 +148,171 @@ jobs:
           done
         done
 
-        echo "results_path=$RESULTS" >> $GITHUB_OUTPUT
+    # ============================================
+    # Build & benchmark baseline release
+    # ============================================
 
-    - name: Generate summary
+    - name: Checkout baseline
       run: |
-        RESULTS="/tmp/bench_results.csv"
+        git checkout "${{ steps.baseline.outputs.tag }}" -- . 2>/dev/null || \
+        git checkout "${{ steps.baseline.outputs.tag }}"
+      continue-on-error: false
 
-        echo "## Benchmark Results — ${{ matrix.platform }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Commit:** \`${GITHUB_SHA:0:10}\`  " >> $GITHUB_STEP_SUMMARY
-        echo "**Runner:** \`$(uname -m)\` on \`$(lsb_release -ds 2>/dev/null || echo 'Linux')\`  " >> $GITHUB_STEP_SUMMARY
-        echo "**Runs per benchmark:** ${{ github.event.inputs.runs || '3' }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Benchmark | Avg (s) | Min (s) | Max (s) |" >> $GITHUB_STEP_SUMMARY
-        echo "|-----------|---------|---------|---------|" >> $GITHUB_STEP_SUMMARY
+    - name: Build baseline toolchain
+      working-directory: ./core/release
+      env:
+        CC: ccache gcc
+        CXX: ccache g++
+      run: |
+        # clean previous build
+        make clean 2>/dev/null || true
+        find ../vm -name '*.o' -delete 2>/dev/null || true
+        find ../compiler -name '*.o' -delete 2>/dev/null || true
+        ${{ matrix.deploy_script }}
 
+    - name: Determine deploy directory (baseline)
+      id: deploy-dir-baseline
+      working-directory: ./core/release
+      run: |
+        if [ -d "deploy-${{ matrix.arch }}" ]; then
+          echo "dir=deploy-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+        elif [ -d "deploy" ]; then
+          echo "dir=deploy" >> $GITHUB_OUTPUT
+        else
+          echo "ERROR: Deploy directory not found"
+          exit 1
+        fi
+
+    - name: Compile & run benchmarks (baseline)
+      working-directory: ./core/release/${{ steps.deploy-dir-baseline.outputs.dir }}/bin
+      run: |
+        chmod +x obc obr
+        BENCH_DIR="../../../../programs/tests/clbg"
+        OUT_DIR="/tmp/bench_baseline"
+        mkdir -p "$OUT_DIR"
+
+        RUNS=${{ github.event.inputs.runs || '3' }}
+        RESULTS="/tmp/results_baseline.csv"
+        echo "benchmark,run,time_seconds" > "$RESULTS"
+
+        # compile
+        ./obc -src "$BENCH_DIR/nbody.obs" -dest "$OUT_DIR/nbody.obe"
+        ./obc -src "$BENCH_DIR/spectralnorm.obs" -dest "$OUT_DIR/spectralnorm.obe"
+        ./obc -src "$BENCH_DIR/binarytrees.obs" -lib gen_collect -dest "$OUT_DIR/binarytrees.obe"
+        ./obc -src "$BENCH_DIR/mandelbrot.obs" -dest "$OUT_DIR/mandelbrot.obe"
+        ./obc -src "$BENCH_DIR/fannkuchredux.obs" -dest "$OUT_DIR/fannkuchredux.obe"
+
+        # run
         for bench in nbody spectralnorm binarytrees mandelbrot fannkuchredux; do
-          times=$(grep "^${bench}," "$RESULTS" | cut -d, -f3)
-          if [ -n "$times" ]; then
-            avg=$(echo "$times" | awk '{s+=$1} END {printf "%.3f", s/NR}')
-            min=$(echo "$times" | sort -n | head -1)
-            max=$(echo "$times" | sort -n | tail -1)
-            echo "| $bench | $avg | $min | $max |" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "=== $bench (baseline) ==="
+          for run in $(seq 1 $RUNS); do
+            start=$(date +%s%N)
+            ./obr "$OUT_DIR/${bench}.obe" > /dev/null 2>&1
+            end=$(date +%s%N)
+            elapsed=$(echo "scale=3; ($end - $start) / 1000000000" | bc)
+            echo "  run $run: ${elapsed}s"
+            echo "$bench,$run,$elapsed" >> "$RESULTS"
+          done
         done
 
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "*Lower is better. CI runner performance varies — use for relative comparisons only.*" >> $GITHUB_STEP_SUMMARY
+    # ============================================
+    # Return to current commit
+    # ============================================
+
+    - name: Restore current commit
+      run: git checkout ${{ github.sha }}
+
+    # ============================================
+    # Generate comparison summary with chart
+    # ============================================
+
+    - name: Generate summary and chart
+      run: |
+        CURRENT="/tmp/results_current.csv"
+        BASELINE="/tmp/results_baseline.csv"
+        TAG="${{ steps.baseline.outputs.tag }}"
+
+        cat > /tmp/gen_summary.py << 'PYEOF'
+        import sys, csv
+        from collections import defaultdict
+
+        current_file = sys.argv[1]
+        baseline_file = sys.argv[2]
+        tag = sys.argv[3]
+        sha = sys.argv[4]
+        platform = sys.argv[5]
+
+        def load_results(path):
+            times = defaultdict(list)
+            with open(path) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    times[row['benchmark']].append(float(row['time_seconds']))
+            return {k: sum(v)/len(v) for k, v in times.items()}
+
+        current = load_results(current_file)
+        baseline = load_results(baseline_file)
+
+        benchmarks = ['nbody', 'spectralnorm', 'binarytrees', 'mandelbrot', 'fannkuchredux']
+
+        # Summary header
+        lines = []
+        lines.append(f"## Benchmark Comparison — {platform}")
+        lines.append("")
+        lines.append(f"**Current:** `{sha[:10]}` (master)  ")
+        lines.append(f"**Baseline:** `{tag}`  ")
+        lines.append("")
+
+        # Table
+        lines.append(f"| Benchmark | {tag} (s) | Current (s) | Change |")
+        lines.append("|-----------|-----------|-------------|--------|")
+
+        for b in benchmarks:
+            b_val = baseline.get(b, 0)
+            c_val = current.get(b, 0)
+            if b_val > 0:
+                pct = ((c_val - b_val) / b_val) * 100
+                if pct < -1:
+                    icon = "faster"
+                elif pct > 1:
+                    icon = "slower"
+                else:
+                    icon = "same"
+                lines.append(f"| {b} | {b_val:.3f} | {c_val:.3f} | {pct:+.1f}% ({icon}) |")
+            else:
+                lines.append(f"| {b} | — | {c_val:.3f} | — |")
+
+        lines.append("")
+
+        # Mermaid bar chart
+        lines.append("### Performance Chart")
+        lines.append("")
+        lines.append("```mermaid")
+        lines.append("xychart-beta")
+        lines.append(f'  title "Benchmark Comparison: {tag} vs Current"')
+        lines.append("  x-axis [" + ", ".join(f'"{b}"' for b in benchmarks) + "]")
+
+        max_val = max(
+            max((baseline.get(b, 0) for b in benchmarks), default=1),
+            max((current.get(b, 0) for b in benchmarks), default=1)
+        )
+        lines.append(f"  y-axis \"Time (seconds)\" 0 --> {max_val * 1.15:.1f}")
+        lines.append(f'  bar "Baseline ({tag})" [{", ".join(f"{baseline.get(b, 0):.3f}" for b in benchmarks)}]')
+        lines.append(f'  bar "Current" [{", ".join(f"{current.get(b, 0):.3f}" for b in benchmarks)}]')
+        lines.append("```")
+        lines.append("")
+        lines.append("*Lower is better. CI runner performance varies — use for relative comparisons only.*")
+
+        print("\n".join(lines))
+        PYEOF
+
+        python3 /tmp/gen_summary.py "$CURRENT" "$BASELINE" "$TAG" "$GITHUB_SHA" "${{ matrix.platform }}" >> $GITHUB_STEP_SUMMARY
 
     - name: Upload results
       uses: actions/upload-artifact@v4
       with:
         name: benchmark-results-${{ matrix.platform }}
-        path: /tmp/bench_results.csv
+        path: |
+          /tmp/results_current.csv
+          /tmp/results_baseline.csv
         retention-days: 90
