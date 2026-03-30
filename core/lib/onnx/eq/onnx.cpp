@@ -114,19 +114,20 @@ extern "C" {
          }
 
 #if defined(ONNX_EP_COREML)
-         // Try with CoreML first, fall back to CPU if it fails
+         // Try CoreML first, fall back to CPU if it fails
          // (CoreML EP has issues with models using external data files)
          const Ort::Session* session = nullptr;
          try {
-            Ort::SessionOptions coreml_options;
-            coreml_options.AppendExecutionProvider("CoreML", provider_options);
-            coreml_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-            coreml_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-            session = new Ort::Session(*env, model_path.c_str(), coreml_options);
-         }
-         catch(...) {
-            std::wcout << L"=> CoreML session failed, falling back to CPU" << std::endl;
+            session_options.AppendExecutionProvider("CoreML", provider_options);
             session = new Ort::Session(*env, model_path.c_str(), session_options);
+         }
+         catch(const std::exception& e) {
+            std::wcout << L"=> CoreML session failed (" << BytesToUnicode(e.what())
+                       << L"), falling back to CPU" << std::endl;
+            Ort::SessionOptions cpu_options;
+            cpu_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            cpu_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+            session = new Ort::Session(*env, model_path.c_str(), cpu_options);
          }
 #else
          const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
