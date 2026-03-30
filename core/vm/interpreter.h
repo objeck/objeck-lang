@@ -113,10 +113,7 @@ namespace Runtime {
     Debugger* debugger;
 #endif
     
-    //
-    // get stack frame
-    //
-    static StackFrame* GetStackFrame(StackMethod* method, size_t* instance);
+    // (GetStackFrame declared in public section)
 
     //
     // push call frame
@@ -176,6 +173,10 @@ namespace Runtime {
     }
 
   public:
+    // JIT callback support: frame allocation/deallocation
+    static StackFrame* GetStackFrame(StackMethod* method, size_t* instance);
+    static void ReleaseStackFrame(StackFrame* frame);
+
     //
     // pop the current try handler
     //
@@ -437,7 +438,7 @@ namespace Runtime {
 
     // Additional static accessors for dispatch handlers
     static StackProgram* GetProgram() { return program; }
-    static void ReleaseStackFrame(StackFrame* frame);
+    // (ReleaseStackFrame declared in public section)
     void StackErrorUnwind();
     bool ProcessTrap(size_t* &op_stack, size_t* &stack_pos);
 

@@ -344,6 +344,22 @@ namespace Runtime {
     bool compile_success;
     bool skip_jump;
 
+    // loop detection
+    struct LoopInfo {
+      long header_index;     // LBL instruction index (loop target)
+      long backedge_index;   // backward JMP instruction index
+    };
+    std::vector<LoopInfo> detected_loops;
+
+    // inlining support
+    bool is_inlining;
+    long inline_local_offset;
+    StackMethod* inline_callee;
+    static const int MAX_INLINE_SIZE = 20;
+    bool CanInlineMethod(StackMethod* callee);
+    void ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, long& caller_instr_index);
+    long ComputeInlineLocalSpace(StackMethod* callee);
+
     // setup and tear down
     void Prolog();
     void Epilog();
@@ -928,6 +944,7 @@ namespace Runtime {
     void shr_reg_reg(Register src, Register dest);
     void shr_mem_reg(long offset, Register src, Register dest);
     void shr_imm_reg(int64_t value, Register dest);
+    void sar_imm_reg(int64_t value, Register dest);
 
     // push/pop instructions
     void push_imm(long value);
