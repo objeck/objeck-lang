@@ -190,7 +190,7 @@ main {
 
 /* ── Code Preview ── */
 .code-preview {
-  max-width: 560px;
+  max-width: 620px;
   margin: 10px auto 40px;
 }
 
@@ -220,6 +220,44 @@ main {
 
 .code-preview .num {
   color: #fbbf24;
+}
+
+/* ── Code Tabs ── */
+.code-tabs {
+  display: flex;
+  gap: 0;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.code-tab {
+  background: transparent;
+  border: 1px solid #2d3a4d;
+  border-bottom: none;
+  color: #9ca3af;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 18px;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.code-tab:hover {
+  background-color: #1a2332;
+  color: #f3f4f6;
+}
+
+.code-tab.active {
+  background-color: #151d28;
+  color: #7dd3fc;
+  border-color: #2d3a4d;
+}
+
+.code-tab-content pre {
+  border-radius: 0 10px 10px 10px;
+  margin: 0;
 }
 
 /* ── Feature Boxes ── */
@@ -401,6 +439,15 @@ main {
   font-size: 0.85rem;
   color: #9ca3af;
   line-height: 1.5;
+}
+
+.highlight-item code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  background-color: #2d3a4d;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #7dd3fc;
 }
 
 /* ── Platforms Section ── */
@@ -670,6 +717,11 @@ table tr:hover {
 
   .code-preview code {
     font-size: 0.8rem;
+  }
+
+  .code-tab {
+    font-size: 0.78rem;
+    padding: 6px 12px;
   }
 
   table, thead, tbody, th, td, tr {
