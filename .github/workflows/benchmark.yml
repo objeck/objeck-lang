@@ -1,0 +1,160 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: 'Number of benchmark runs (for averaging)'
+        required: false
+        default: '3'
+        type: choice
+        options: ['1', '3', '5']
+
+jobs:
+  benchmark:
+    name: Benchmark ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            os: ubuntu-latest
+            arch: x64
+            deploy_script: ./deploy_posix.sh x64
+
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            arch: arm64
+            deploy_script: ./deploy_posix.sh arm64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          libopencv-dev \
+          libmbedtls-dev \
+          unixodbc-dev \
+          libsdl2-dev \
+          libsdl2-image-dev \
+          libsdl2-ttf-dev \
+          libsdl2-mixer-dev \
+          libreadline-dev \
+          libeigen3-dev \
+          libmp3lame-dev \
+          ccache \
+          bc
+
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-${{ matrix.arch }}-ccache-bench-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.arch }}-ccache-bench-
+          ${{ runner.os }}-${{ matrix.arch }}-ccache-
+
+    - name: Setup ccache
+      run: |
+        ccache --max-size=500M
+        ccache --set-config=compression=true
+        ccache --zero-stats
+
+    - name: Build toolchain
+      working-directory: ./core/release
+      env:
+        CC: ccache gcc
+        CXX: ccache g++
+      run: ${{ matrix.deploy_script }}
+
+    - name: Determine deploy directory
+      id: deploy-dir
+      working-directory: ./core/release
+      run: |
+        if [ -d "deploy-${{ matrix.arch }}" ]; then
+          echo "dir=deploy-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+        elif [ -d "deploy" ]; then
+          echo "dir=deploy" >> $GITHUB_OUTPUT
+        else
+          echo "ERROR: Deploy directory not found"
+          exit 1
+        fi
+
+    - name: Compile benchmarks
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      run: |
+        chmod +x obc obr
+        BENCH_DIR="../../../../programs/tests/clbg"
+        OUT_DIR="/tmp/bench"
+        mkdir -p "$OUT_DIR"
+
+        ./obc -src "$BENCH_DIR/nbody.obs" -dest "$OUT_DIR/nbody.obe"
+        ./obc -src "$BENCH_DIR/spectralnorm.obs" -dest "$OUT_DIR/spectralnorm.obe"
+        ./obc -src "$BENCH_DIR/binarytrees.obs" -lib gen_collect -dest "$OUT_DIR/binarytrees.obe"
+        ./obc -src "$BENCH_DIR/mandelbrot.obs" -dest "$OUT_DIR/mandelbrot.obe"
+        ./obc -src "$BENCH_DIR/fannkuchredux.obs" -dest "$OUT_DIR/fannkuchredux.obe"
+
+        echo "All benchmarks compiled"
+
+    - name: Run benchmarks
+      id: bench
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      run: |
+        RUNS=${{ github.event.inputs.runs || '3' }}
+        OUT_DIR="/tmp/bench"
+        RESULTS="/tmp/bench_results.csv"
+
+        echo "benchmark,run,time_seconds" > "$RESULTS"
+
+        for bench in nbody spectralnorm binarytrees mandelbrot fannkuchredux; do
+          echo "=== $bench ==="
+          for run in $(seq 1 $RUNS); do
+            start=$(date +%s%N)
+            ./obr "$OUT_DIR/${bench}.obe" > /dev/null 2>&1
+            end=$(date +%s%N)
+            elapsed=$(echo "scale=3; ($end - $start) / 1000000000" | bc)
+            echo "  run $run: ${elapsed}s"
+            echo "$bench,$run,$elapsed" >> "$RESULTS"
+          done
+        done
+
+        echo "results_path=$RESULTS" >> $GITHUB_OUTPUT
+
+    - name: Generate summary
+      run: |
+        RESULTS="/tmp/bench_results.csv"
+
+        echo "## Benchmark Results — ${{ matrix.platform }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${GITHUB_SHA:0:10}\`  " >> $GITHUB_STEP_SUMMARY
+        echo "**Runner:** \`$(uname -m)\` on \`$(lsb_release -ds 2>/dev/null || echo 'Linux')\`  " >> $GITHUB_STEP_SUMMARY
+        echo "**Runs per benchmark:** ${{ github.event.inputs.runs || '3' }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Benchmark | Avg (s) | Min (s) | Max (s) |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|---------|---------|---------|" >> $GITHUB_STEP_SUMMARY
+
+        for bench in nbody spectralnorm binarytrees mandelbrot fannkuchredux; do
+          times=$(grep "^${bench}," "$RESULTS" | cut -d, -f3)
+          if [ -n "$times" ]; then
+            avg=$(echo "$times" | awk '{s+=$1} END {printf "%.3f", s/NR}')
+            min=$(echo "$times" | sort -n | head -1)
+            max=$(echo "$times" | sort -n | tail -1)
+            echo "| $bench | $avg | $min | $max |" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "*Lower is better. CI runner performance varies — use for relative comparisons only.*" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-${{ matrix.platform }}
+        path: /tmp/bench_results.csv
+        retention-days: 90
