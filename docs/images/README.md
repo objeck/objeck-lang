@@ -17,7 +17,6 @@ Historical architecture diagrams (still useful for visual reference):
 
 | File | Description | Format | Status |
 |------|-------------|--------|--------|
-| **design4.svg/.png** | Main system architecture | Visio SVG | Legacy (use architecture.md instead) |
 | **design3.svg/.png** | Runtime components focus | Visio SVG | Legacy |
 | **design2.svg/.png** | Compiler pipeline focus | Visio SVG | Legacy |
 | **design.png** | Original architecture (v1) | PNG | Historical |

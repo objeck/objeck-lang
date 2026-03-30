@@ -150,6 +150,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     if(!callee->GetNativeCode() && callee->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
       TryAutoJitCompile(callee);
     }
+
 #endif
 
 #ifdef _DEBUG_JIT

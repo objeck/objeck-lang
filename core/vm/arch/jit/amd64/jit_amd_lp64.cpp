@@ -578,9 +578,15 @@ void JitAmd64::ProcessInstructions() {
 #ifdef _DEBUG_JIT
       std::wcout << L"RTRN: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-      ProcessReturn();
-      // teardown
-      Epilog();
+      if(is_inlining) {
+        // inlined method: leave return value on working_stack, stop processing
+        instr_index = method->GetInstructionCount(); // exit ProcessInstructions loop
+      }
+      else {
+        ProcessReturn();
+        // teardown
+        Epilog();
+      }
       break;
       
     case MTHD_CALL: {
@@ -592,9 +598,14 @@ void JitAmd64::ProcessInstructions() {
               << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1)
               << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-        // passing instance variable
-        ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
-        ProcessReturnParameters(called_method->GetReturn());
+        if(!is_inlining && CanInlineMethod(called_method)) {
+          ProcessInlineMethod(called_method, instr, instr_index);
+        }
+        else {
+          // passing instance variable
+          ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
+          ProcessReturnParameters(called_method->GetReturn());
+        }
       }
     }
       break;
@@ -1703,7 +1714,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   assert(xmm_offset >= TMP_XMM_2);
 #endif
 
-  if(dirty_regs.size() > 6 || dirty_xmms.size() > 3 ) {
+  if(dirty_regs.size() > 6 || dirty_xmms.size() > 3) {
     compile_success = false;
   }
 
@@ -3949,6 +3960,51 @@ void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
     }
     return;
   }
+
+  // strength reduction: power-of-2 division/modulo
+  if(imm > 1 && (imm & (imm - 1)) == 0) {
+    int shift = 0;
+    int64_t tmp = imm;
+    while(tmp > 1) { tmp >>= 1; shift++; }
+
+    if(is_mod) {
+      // x % (2^n) for signed: result = x - (x / (2^n)) * (2^n)
+      // equivalent to: sign-correct then AND
+      // 1) copy reg to temp for sign correction
+      // 2) sar temp, 63 (all sign bits)
+      // 3) shr temp, (64 - shift) (isolate correction bits)
+      // 4) add reg, temp
+      // 5) and reg, (imm - 1)
+      // 6) sub reg, temp
+      RegisterHolder* tmp_holder = GetRegister();
+      Register tmp_reg = tmp_holder->GetRegister();
+      move_reg_reg(reg, tmp_reg);
+      sar_imm_reg(63, tmp_reg);
+      shr_imm_reg(64 - shift, tmp_reg);
+      add_reg_reg(tmp_reg, reg);
+      and_imm_reg(imm - 1, reg);
+      sub_reg_reg(tmp_reg, reg);
+      ReleaseRegister(tmp_holder);
+    }
+    else {
+      // x / (2^n) for signed: bias negative values to round toward zero
+      // 1) copy reg to temp
+      // 2) sar temp, 63 (broadcast sign bit)
+      // 3) shr temp, (64 - shift) (correction = (2^n - 1) if negative, 0 if positive)
+      // 4) add reg, temp
+      // 5) sar reg, shift
+      RegisterHolder* tmp_holder = GetRegister();
+      Register tmp_reg = tmp_holder->GetRegister();
+      move_reg_reg(reg, tmp_reg);
+      sar_imm_reg(63, tmp_reg);
+      shr_imm_reg(64 - shift, tmp_reg);
+      add_reg_reg(tmp_reg, reg);
+      sar_imm_reg(shift, reg);
+      ReleaseRegister(tmp_holder);
+    }
+    return;
+  }
+
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
   div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
@@ -4238,6 +4294,19 @@ void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
   AddMachineCode((unsigned char)value);
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [shrq $" << value << L", %" 
+        << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+}
+
+void JitAmd64::sar_imm_reg(int64_t value, Register dest) {
+  AddMachineCode(B(dest));
+  AddMachineCode(0xc1);
+  unsigned char code = 0xf8;
+  RegisterEncode3(code, 7, dest);
+  AddMachineCode(code);
+  AddMachineCode((unsigned char)value);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [sarq $" << value << L", %"
         << GetRegisterName(dest) << L"]" << std::endl;
 #endif
 }
@@ -5263,6 +5332,153 @@ void JitAmd64::ProcessIndices()
 #endif
 }
 
+// forward declaration (defined below)
+static bool CanJitInstruction(InstructionType type);
+
+// ── Method Inlining ────────────────────────────────────────────────────
+
+bool JitAmd64::CanInlineMethod(StackMethod* callee) {
+  if(!callee || callee == method) return false;           // no recursion
+  if(callee->IsVirtual()) return false;                   // static dispatch only
+  if(callee->GetInstructionCount() > MAX_INLINE_SIZE) return false;
+
+  for(long i = 0; i < callee->GetInstructionCount(); ++i) {
+    InstructionType type = callee->GetInstruction(i)->GetType();
+    // no calls, no control flow, no async
+    if(type == MTHD_CALL || type == DYN_MTHD_CALL || type == ASYNC_MTHD_CALL) return false;
+    if(type == JMP || type == LBL) return false;
+    // all instructions must be JIT-compilable
+    if(!CanJitInstruction(type) && type != RTRN) return false;
+  }
+  return true;
+}
+
+long JitAmd64::ComputeInlineLocalSpace(StackMethod* callee) {
+  std::set<long> seen_ids;
+  long space = 0;
+  for(long i = 0; i < callee->GetInstructionCount(); ++i) {
+    StackInstr* ci = callee->GetInstruction(i);
+    if(ci->GetOperand2() == INST || ci->GetOperand2() == CLS) continue;
+    long var_id = ci->GetOperand();
+    switch(ci->GetType()) {
+    case LOAD_LOCL_INT_VAR: case STOR_LOCL_INT_VAR: case COPY_LOCL_INT_VAR:
+    case LOAD_CLS_INST_INT_VAR: case STOR_CLS_INST_INT_VAR: case COPY_CLS_INST_INT_VAR:
+      if(seen_ids.insert(var_id).second) space += sizeof(size_t);
+      break;
+    case LOAD_FUNC_VAR: case STOR_FUNC_VAR:
+      if(seen_ids.insert(var_id).second) space += sizeof(size_t) * 2;
+      break;
+    case LOAD_FLOAT_VAR: case STOR_FLOAT_VAR: case COPY_FLOAT_VAR:
+      if(seen_ids.insert(var_id).second) space += sizeof(double);
+      break;
+    default:
+      break;
+    }
+  }
+  return space;
+}
+
+void JitAmd64::ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, long& caller_instr_index) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"=== INLINE: method='" << callee->GetName() << L"' ===" << std::endl;
+#endif
+
+  // Save caller context
+  StackMethod* saved_method = method;
+  long saved_instr_index = instr_index;
+  bool saved_skip_jump = skip_jump;
+
+  // Save callee's original operand3 values (will be restored after inlining)
+  const long callee_instr_count = callee->GetInstructionCount();
+  std::vector<long> saved_operand3(callee_instr_count);
+  for(long i = 0; i < callee_instr_count; ++i) {
+    saved_operand3[i] = callee->GetInstruction(i)->GetOperand3();
+  }
+
+  // Run mini-ProcessIndices for callee at the inline offset region
+  {
+    std::multimap<long, StackInstr*> vars;
+    for(long i = 0; i < callee_instr_count; ++i) {
+      StackInstr* ci = callee->GetInstruction(i);
+      switch(ci->GetType()) {
+      case LOAD_LOCL_INT_VAR: case LOAD_CLS_INST_INT_VAR:
+      case STOR_LOCL_INT_VAR: case STOR_CLS_INST_INT_VAR:
+      case LOAD_FUNC_VAR: case STOR_FUNC_VAR:
+      case COPY_LOCL_INT_VAR: case COPY_CLS_INST_INT_VAR:
+      case LOAD_FLOAT_VAR: case STOR_FLOAT_VAR: case COPY_FLOAT_VAR:
+        vars.insert(std::pair<long, StackInstr*>(ci->GetOperand(), ci));
+        break;
+      default: break;
+      }
+    }
+
+    long index = inline_local_offset;
+    long last_id = -1;
+    for(auto iter = vars.begin(); iter != vars.end(); ++iter) {
+      long id = iter->first;
+      StackInstr* ci = iter->second;
+      if(ci->GetOperand2() == INST || ci->GetOperand2() == CLS) {
+        ci->SetOperand3(ci->GetOperand() * sizeof(size_t));
+      }
+      else {
+        if(last_id != id) {
+          switch(ci->GetType()) {
+          case LOAD_LOCL_INT_VAR: case LOAD_CLS_INST_INT_VAR:
+          case STOR_LOCL_INT_VAR: case STOR_CLS_INST_INT_VAR:
+          case COPY_LOCL_INT_VAR: case COPY_CLS_INST_INT_VAR:
+            index -= sizeof(size_t); break;
+          case LOAD_FUNC_VAR: case STOR_FUNC_VAR:
+            index -= sizeof(size_t) * 2; break;
+          default:
+            index -= sizeof(double); break;
+          }
+        }
+        ci->SetOperand3(index);
+        last_id = id;
+      }
+    }
+    inline_local_offset = index;
+  }
+
+  // Store parameters from working_stack into callee's local slots.
+  // The callee's first param_count instructions are STOR_* instructions
+  // that ProcessParameters would normally handle. For inlining, the values
+  // are already on working_stack, so we just call ProcessStore directly.
+  const long param_count = callee->GetParamCount();
+  for(long i = 0; i < param_count && i < callee_instr_count; ++i) {
+    StackInstr* param_instr = callee->GetInstruction(i);
+    param_instr->SetOffset(code_index);
+    ProcessStore(param_instr);
+  }
+
+  // Switch to callee context and process remaining instructions
+  method = callee;
+  instr_index = param_count;
+  skip_jump = false;
+  is_inlining = true;
+  inline_callee = callee;
+
+  ProcessInstructions();
+
+  // Restore callee's original operand3 values
+  for(long i = 0; i < callee_instr_count; ++i) {
+    callee->GetInstruction(i)->SetOperand3(saved_operand3[i]);
+  }
+
+  // Restore caller context
+  method = saved_method;
+  instr_index = saved_instr_index;
+  skip_jump = saved_skip_jump;
+  is_inlining = false;
+  inline_callee = nullptr;
+
+  // Handle return value: it's already on working_stack from the inlined code.
+  // The caller will use it naturally (ProcessReturnParameters is NOT called).
+#ifdef _DEBUG_JIT
+  std::wcout << L"=== END INLINE: method='" << callee->GetName() << L"' ===" << std::endl;
+#endif
+}
+
 // Returns true if the instruction type is supported by the JIT compiler.
 // This whitelist must match the cases handled in ProcessInstructions().
 static bool CanJitInstruction(InstructionType type) {
@@ -5344,8 +5560,9 @@ static bool CanJitInstruction(InstructionType type) {
   case GTR_EQL_FLOAT:
   case EQL_FLOAT:
   case NEQL_FLOAT:
-    // control flow (MTHD_CALL/DYN_MTHD_CALL excluded: ProcessStackCallback
-    // register state corruption on inline return values, matching ARM64 pre-scan)
+    // control flow
+  case MTHD_CALL:
+  case DYN_MTHD_CALL:
   case JMP:
   case LBL:
   case RTRN:
@@ -5413,10 +5630,20 @@ bool JitAmd64::Compile(StackMethod* cm)
     skip_jump = false;
     method = cm;
 
-    // Pre-scan: reject methods containing any instruction the JIT cannot compile
+    // Pre-scan: reject methods with unsupported instructions, detect loops
+    detected_loops.clear();
+    is_inlining = false;
+    inline_callee = nullptr;
+    inline_local_offset = 0;
+
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
-      if(!CanJitInstruction(method->GetInstruction(i)->GetType())) {
+      StackInstr* scan_instr = method->GetInstruction(i);
+      if(!CanJitInstruction(scan_instr->GetType())) {
         return false;
+      }
+      // detect loops via backward jumps
+      if(scan_instr->GetType() == JMP && scan_instr->GetOperand() < i) {
+        detected_loops.push_back({scan_instr->GetOperand(), i});
       }
     }
 
@@ -5498,6 +5725,21 @@ bool JitAmd64::Compile(StackMethod* cm)
 
     // process offsets
     ProcessIndices();
+
+    // compute extra frame space for inline callees
+    long extra_inline_space = 0;
+    for(long i = 0; i < method->GetInstructionCount(); ++i) {
+      StackInstr* si = method->GetInstruction(i);
+      if(si->GetType() == MTHD_CALL) {
+        StackMethod* callee = program->GetClass(si->GetOperand())->GetMethod(si->GetOperand2());
+        if(CanInlineMethod(callee)) {
+          extra_inline_space += ComputeInlineLocalSpace(callee);
+        }
+      }
+    }
+    // inline locals start after caller's locals (mirrors ProcessIndices index computation)
+    inline_local_offset = -(local_space + TMP_REG_5);
+    local_space += extra_inline_space;
 
     // setup
     Prolog();
