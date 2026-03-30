@@ -2,7 +2,7 @@
 
 > **Compiler, Virtual Machine, JIT, and Runtime System**
 
-[![CI Status](https://github.com/objeck/objeck-lang/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions)
+[![CI Status](https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg)](https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml)
 
 ## Table of Contents
 - [Architecture Overview](#architecture-overview)
@@ -120,8 +120,6 @@ graph TB
 ```
 
 **📖 [Detailed Architecture Documentation](../docs/architecture.md)** - Deep technical views with 10+ interactive diagrams covering compiler internals, JIT compilation, memory management, library ecosystem, and more.
-
-**Legacy Diagram:** [design4.png](https://github.com/objeck/objeck-lang/blob/master/docs/images/design4.png) (historical reference)
 
 ### Key Subsystems
 
