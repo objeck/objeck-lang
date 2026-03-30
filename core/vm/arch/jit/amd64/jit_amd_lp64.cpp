@@ -5561,8 +5561,9 @@ static bool CanJitInstruction(InstructionType type) {
   case EQL_FLOAT:
   case NEQL_FLOAT:
     // control flow
-  case MTHD_CALL:
-  case DYN_MTHD_CALL:
+    // TODO: MTHD_CALL/DYN_MTHD_CALL via ProcessStackCallback is implemented but
+    // causes object cast failures on Linux (Collection.Hash:GetKeys). Needs
+    // investigation before enabling. Inlining infrastructure is in place.
   case JMP:
   case LBL:
   case RTRN:
