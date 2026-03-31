@@ -5347,6 +5347,8 @@ bool JitAmd64::CanInlineMethod(StackMethod* callee) {
     // no calls, no control flow, no async
     if(type == MTHD_CALL || type == DYN_MTHD_CALL || type == ASYNC_MTHD_CALL) return false;
     if(type == JMP || type == LBL) return false;
+    // no instance methods — inlining doesn't handle self/LOAD_INST_MEM correctly yet
+    if(type == LOAD_INST_MEM) return false;
     // all instructions must be JIT-compilable
     if(!CanJitInstruction(type) && type != RTRN) return false;
   }
@@ -5563,9 +5565,11 @@ static bool CanJitInstruction(InstructionType type) {
   case EQL_FLOAT:
   case NEQL_FLOAT:
     // control flow
-    // TODO: MTHD_CALL/DYN_MTHD_CALL via ProcessStackCallback is implemented but
-    // causes object cast failures on Linux (Collection.Hash:GetKeys). Needs
-    // investigation before enabling. Inlining infrastructure is in place.
+    // Note: MTHD_CALL/DYN_MTHD_CALL are NOT whitelisted here because enabling them
+    // globally causes auto-JIT to compile library methods (e.g. String:ToCharArray)
+    // that fail due to inlining bugs with instance methods (LOAD_INST_MEM self handling).
+    // ProcessStackCallback infrastructure works for static calls but needs more work
+    // for instance method calls before global enablement.
   case JMP:
   case LBL:
   case RTRN:
