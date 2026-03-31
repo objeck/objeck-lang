@@ -138,19 +138,28 @@ jobs:
         RESULTS="/tmp/results_current.csv"
         echo "benchmark,run,time_seconds" > "$RESULTS"
 
-        # compile
-        ./obc -src "$BENCH_DIR/nbody.obs" -dest "$OUT_DIR/nbody.obe"
-        ./obc -src "$BENCH_DIR/spectralnorm.obs" -dest "$OUT_DIR/spectralnorm.obe"
-        ./obc -src "$BENCH_DIR/binarytrees.obs" -lib gen_collect -dest "$OUT_DIR/binarytrees.obe"
-        ./obc -src "$BENCH_DIR/mandelbrot.obs" -dest "$OUT_DIR/mandelbrot.obe"
-        ./obc -src "$BENCH_DIR/fannkuchredux.obs" -dest "$OUT_DIR/fannkuchredux.obe"
+        # compile with optimization
+        ./obc -src "$BENCH_DIR/nbody.obs" -opt s3 -dest "$OUT_DIR/nbody.obe"
+        ./obc -src "$BENCH_DIR/spectralnorm.obs" -opt s3 -dest "$OUT_DIR/spectralnorm.obe"
+        ./obc -src "$BENCH_DIR/binarytrees.obs" -lib gen_collect -opt s3 -dest "$OUT_DIR/binarytrees.obe"
+        ./obc -src "$BENCH_DIR/mandelbrot.obs" -opt s3 -dest "$OUT_DIR/mandelbrot.obe"
+        ./obc -src "$BENCH_DIR/fannkuchredux.obs" -opt s3 -dest "$OUT_DIR/fannkuchredux.obe"
+        echo "All benchmarks compiled with -opt s3"
+
+        # benchmark arguments (scaled for ~10-30s each on CI runners)
+        declare -A BENCH_ARGS
+        BENCH_ARGS[nbody]="50000000"
+        BENCH_ARGS[spectralnorm]="5500"
+        BENCH_ARGS[binarytrees]="15"
+        BENCH_ARGS[mandelbrot]="4000"
+        BENCH_ARGS[fannkuchredux]="11"
 
         # run
         for bench in nbody spectralnorm binarytrees mandelbrot fannkuchredux; do
-          echo "=== $bench (current) ==="
+          echo "=== $bench (current) [args: ${BENCH_ARGS[$bench]}] ==="
           for run in $(seq 1 $RUNS); do
             start=$(date +%s%N)
-            ./obr "$OUT_DIR/${bench}.obe" > /dev/null 2>&1
+            ./obr "$OUT_DIR/${bench}.obe" ${BENCH_ARGS[$bench]} > /dev/null 2>&1
             end=$(date +%s%N)
             elapsed=$(echo "scale=3; ($end - $start) / 1000000000" | bc)
             echo "  run $run: ${elapsed}s"
@@ -205,19 +214,28 @@ jobs:
         RESULTS="/tmp/results_baseline.csv"
         echo "benchmark,run,time_seconds" > "$RESULTS"
 
-        # compile
-        ./obc -src "$BENCH_DIR/nbody.obs" -dest "$OUT_DIR/nbody.obe"
-        ./obc -src "$BENCH_DIR/spectralnorm.obs" -dest "$OUT_DIR/spectralnorm.obe"
-        ./obc -src "$BENCH_DIR/binarytrees.obs" -lib gen_collect -dest "$OUT_DIR/binarytrees.obe"
-        ./obc -src "$BENCH_DIR/mandelbrot.obs" -dest "$OUT_DIR/mandelbrot.obe"
-        ./obc -src "$BENCH_DIR/fannkuchredux.obs" -dest "$OUT_DIR/fannkuchredux.obe"
+        # compile with optimization
+        ./obc -src "$BENCH_DIR/nbody.obs" -opt s3 -dest "$OUT_DIR/nbody.obe"
+        ./obc -src "$BENCH_DIR/spectralnorm.obs" -opt s3 -dest "$OUT_DIR/spectralnorm.obe"
+        ./obc -src "$BENCH_DIR/binarytrees.obs" -lib gen_collect -opt s3 -dest "$OUT_DIR/binarytrees.obe"
+        ./obc -src "$BENCH_DIR/mandelbrot.obs" -opt s3 -dest "$OUT_DIR/mandelbrot.obe"
+        ./obc -src "$BENCH_DIR/fannkuchredux.obs" -opt s3 -dest "$OUT_DIR/fannkuchredux.obe"
+        echo "All benchmarks compiled with -opt s3"
+
+        # benchmark arguments (must match current section)
+        declare -A BENCH_ARGS
+        BENCH_ARGS[nbody]="50000000"
+        BENCH_ARGS[spectralnorm]="5500"
+        BENCH_ARGS[binarytrees]="15"
+        BENCH_ARGS[mandelbrot]="4000"
+        BENCH_ARGS[fannkuchredux]="11"
 
         # run
         for bench in nbody spectralnorm binarytrees mandelbrot fannkuchredux; do
-          echo "=== $bench (baseline) ==="
+          echo "=== $bench (baseline) [args: ${BENCH_ARGS[$bench]}] ==="
           for run in $(seq 1 $RUNS); do
             start=$(date +%s%N)
-            ./obr "$OUT_DIR/${bench}.obe" > /dev/null 2>&1
+            ./obr "$OUT_DIR/${bench}.obe" ${BENCH_ARGS[$bench]} > /dev/null 2>&1
             end=$(date +%s%N)
             elapsed=$(echo "scale=3; ($end - $start) / 1000000000" | bc)
             echo "  run $run: ${elapsed}s"
