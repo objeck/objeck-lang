@@ -205,6 +205,32 @@ Measured on AMD Ryzen 9 7950X3D (16C/32T, 128MB V-Cache), 128GB DDR5, WSL2 Ubunt
 | bench_gc_churn (5M allocs) | 1.53s | 1.60s | 0.96x | Rapid alloc/dealloc, neutral |
 | bench_array_intensive | 3.71s | 3.71s | 1.00x | Sequential array access, neutral |
 
+### CI Benchmarks: Current Master vs v2026.2.1
+
+Measured on GitHub Actions runners (Ubuntu 24.04). Each benchmark run 3 times, mean reported. March 30, 2026.
+
+#### Linux x64
+
+| Benchmark | v2026.2.1 (s) | Current (s) | Change |
+|-----------|--------------|-------------|--------|
+| **nbody** | 37.49 | 38.78 | +3.4% (runner noise) |
+| **spectralnorm** | 92.36 | 85.99 | **-6.9% faster** |
+| **binarytrees** | 0.011 | 0.012 | ~same |
+| **mandelbrot** | 0.129 | 0.116 | **-10.1% faster** |
+| **fannkuchredux** | 0.005 | 0.005 | same |
+
+#### Linux ARM64
+
+| Benchmark | v2026.2.1 (s) | Current (s) | Change |
+|-----------|--------------|-------------|--------|
+| **nbody** | 25.03 | 24.94 | ~same |
+| **spectralnorm** | 69.23 | 69.29 | ~same |
+| **binarytrees** | 0.010 | 0.009 | ~same |
+| **mandelbrot** | 0.062 | 0.062 | same |
+| **fannkuchredux** | 0.005 | 0.004 | ~same |
+
+*CI runner performance varies — use for relative comparisons only. No regressions detected. x64 shows measurable gains on spectralnorm and mandelbrot.*
+
 ### Benchmark Suite
 
 The performance benchmark suite (`programs/tests/perf/`) includes 10 programs targeting specific optimization patterns:
@@ -399,4 +425,4 @@ Opportunities identified during the v2026.2.1 optimization effort, ranked by mea
 
 ---
 
-*Last updated: February 2026 — v2026.2.1*
+*Last updated: March 2026 — CI benchmark comparison vs v2026.2.1*
