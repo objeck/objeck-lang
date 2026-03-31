@@ -216,21 +216,21 @@ Measured on GitHub Actions runners (Ubuntu 24.04). Each benchmark run 3 times wi
 
 | Benchmark | v2026.2.1 (s) | Current (s) | Change |
 |-----------|--------------|-------------|--------|
-| **nbody** (50M) | 38.33 | 38.94 | ~same |
-| **spectralnorm** (5500) | 92.57 | 86.60 | **-6.4% faster** |
-| **binarytrees** (15) | 10.09 | 9.07 | **-10.1% faster** |
-| **mandelbrot** (4000) | 46.42 | 1.60 | **29x faster** |
-| **fannkuchredux** (11) | 102.89 | 5.04 | **20.4x faster** |
+| **nbody** (50M) | 37.83 | 38.46 | ~same |
+| **spectralnorm** (5500) | 97.12 | 86.98 | **-10.4% faster** |
+| **binarytrees** (15) | 10.32 | 8.96 | **-13.2% faster** |
+| **mandelbrot** (4000) | 45.51 | 1.60 | **28.4x faster** |
+| **fannkuchredux** (11) | 103.15 | 4.95 | **20.8x faster** |
 
 #### Linux ARM64
 
 | Benchmark | v2026.2.1 (s) | Current (s) | Change |
 |-----------|--------------|-------------|--------|
-| **nbody** (50M) | 25.04 | 25.14 | ~same |
-| **spectralnorm** (5500) | 69.14 | 69.04 | ~same |
-| **binarytrees** (15) | 8.53 | 8.60 | ~same |
-| **mandelbrot** (4000) | 22.59 | 22.59 | same |
-| **fannkuchredux** (11) | 92.08 | 4.27 | **21.6x faster** |
+| **nbody** (50M) | 25.00 | 25.19 | ~same |
+| **spectralnorm** (5500) | 69.07 | 69.15 | ~same |
+| **binarytrees** (15) | 8.54 | 8.59 | ~same |
+| **mandelbrot** (4000) | 22.65 | 22.64 | same |
+| **fannkuchredux** (11) | 92.40 | 4.27 | **21.6x faster** |
 
 #### Analysis
 
