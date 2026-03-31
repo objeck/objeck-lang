@@ -5495,10 +5495,12 @@ static bool CanJitInstruction(InstructionType type) {
   case LOAD_FUNC_VAR:
     // stores
   case STOR_LOCL_INT_VAR:
+  case STOR_CLS_INST_INT_VAR:
   case STOR_FLOAT_VAR:
   case STOR_FUNC_VAR:
     // copies
   case COPY_LOCL_INT_VAR:
+  case COPY_CLS_INST_INT_VAR:
   case COPY_FLOAT_VAR:
     // int math
   case AND_INT:
@@ -5589,6 +5591,7 @@ static bool CanJitInstruction(InstructionType type) {
   case LOAD_FLOAT_ARY_ELM:
   case STOR_BYTE_ARY_ELM:
   case STOR_CHAR_ARY_ELM:
+  case STOR_INT_ARY_ELM:
   case STOR_FLOAT_ARY_ELM:
   case LOAD_ARY_SIZE:
     // traps
