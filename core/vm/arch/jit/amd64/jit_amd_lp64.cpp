@@ -5630,11 +5630,10 @@ static bool CanJitInstruction(InstructionType type) {
   case EQL_FLOAT:
   case NEQL_FLOAT:
     // control flow
-    // Note: MTHD_CALL/DYN_MTHD_CALL are NOT whitelisted here because enabling them
-    // globally causes auto-JIT to compile library methods (e.g. String:ToCharArray)
-    // that fail due to inlining bugs with instance methods (LOAD_INST_MEM self handling).
-    // ProcessStackCallback infrastructure works for static calls but needs more work
-    // for instance method calls before global enablement.
+    // MTHD_CALL/DYN_MTHD_CALL: inlining infrastructure now works for instance
+    // methods (save/restore INSTANCE_MEM). However, enabling globally still causes
+    // failures in auto-JIT'd library methods (String:Append, String:ToCharArray)
+    // that need further ProcessStackCallback investigation.
   case JMP:
   case LBL:
   case RTRN:
