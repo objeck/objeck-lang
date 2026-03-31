@@ -977,6 +977,14 @@ void JitAmd64::ProcessInstructions() {
       ProcessNot(instr);
       break;
       
+    case TRY_START:
+    case TRY_END:
+      // No-op in JIT: exception handling is not supported in native code.
+      // Safe because MTHD_CALL is not whitelisted, so no interpreter callbacks
+      // that could throw Objeck exceptions occur within try blocks.
+      // JIT error handling (nil checks, bounds checks) exits directly.
+      break;
+
     case JMP:
       ProcessJump(instr);
       break;
@@ -5685,6 +5693,9 @@ static bool CanJitInstruction(InstructionType type) {
   case SWAP_INT:
   case POP_INT:
   case POP_FLOAT:
+    // try/catch (no-op in JIT — safe while MTHD_CALL is not whitelisted)
+  case TRY_START:
+  case TRY_END:
     return true;
 
   default:
