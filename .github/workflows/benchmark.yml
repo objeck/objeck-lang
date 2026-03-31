@@ -86,12 +86,19 @@ jobs:
       run: |
         INPUT_TAG="${{ github.event.inputs.baseline || 'latest' }}"
         if [ "$INPUT_TAG" = "latest" ]; then
-          TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          TAG=$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName')
         else
           TAG="$INPUT_TAG"
         fi
         echo "tag=$TAG" >> $GITHUB_OUTPUT
         echo "Baseline tag: $TAG"
+
+        # Verify the tag exists in git
+        if ! git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+          echo "::error::Tag '$TAG' not found in git. Available tags:"
+          git tag -l 'v20*' | tail -5
+          exit 1
+        fi
       env:
         GH_TOKEN: ${{ github.token }}
 
