@@ -123,6 +123,7 @@ graph TB
 | v2024.x | 2024 | JIT compilers (ARM64 + x64), basic bytecode optimizer (constant folding, strength reduction) |
 | v2026.2.0 | Feb 2026 | O(1) GC lookups, ARM64 JIT multiply optimization, x64 instruction encoding, instruction rewrite framework |
 | v2026.2.1 | Feb 2026 | CSE, dead code elimination, inline limit increase (128→256), JIT div-by-zero guards, ARM64 CI testing |
+| v2026.2.1+ | Mar 2026 | JIT whitelist fix: STOR_INT_ARY_ELM, STOR_CLS_INST_INT_VAR, COPY_CLS_INST_INT_VAR enabled. 20-29x speedup on mandelbrot/fannkuchredux. |
 
 ---
 
@@ -205,31 +206,40 @@ Measured on AMD Ryzen 9 7950X3D (16C/32T, 128MB V-Cache), 128GB DDR5, WSL2 Ubunt
 | bench_gc_churn (5M allocs) | 1.53s | 1.60s | 0.96x | Rapid alloc/dealloc, neutral |
 | bench_array_intensive | 3.71s | 3.71s | 1.00x | Sequential array access, neutral |
 
-### CI Benchmarks: Current Master vs v2026.2.1
+### CI Benchmarks: JIT Whitelist Fix vs v2026.2.1
 
-Measured on GitHub Actions runners (Ubuntu 24.04). Each benchmark run 3 times, mean reported. March 30, 2026.
+Measured on GitHub Actions runners (Ubuntu 24.04). Each benchmark run 3 times with proper inputs, compiled with `-opt s3`. March 31, 2026.
+
+**What changed:** Added `STOR_INT_ARY_ELM`, `STOR_CLS_INST_INT_VAR`, `COPY_CLS_INST_INT_VAR` to x64 JIT whitelist; removed `STOR_INT_ARY_ELM` from ARM64 blacklist. These instructions had working code generators but were not enabled, causing `native` methods containing integer array stores or class field stores to silently fall back to the interpreter.
 
 #### Linux x64
 
 | Benchmark | v2026.2.1 (s) | Current (s) | Change |
 |-----------|--------------|-------------|--------|
-| **nbody** | 37.49 | 38.78 | +3.4% (runner noise) |
-| **spectralnorm** | 92.36 | 85.99 | **-6.9% faster** |
-| **binarytrees** | 0.011 | 0.012 | ~same |
-| **mandelbrot** | 0.129 | 0.116 | **-10.1% faster** |
-| **fannkuchredux** | 0.005 | 0.005 | same |
+| **nbody** (50M) | 38.33 | 38.94 | ~same |
+| **spectralnorm** (5500) | 92.57 | 86.60 | **-6.4% faster** |
+| **binarytrees** (15) | 10.09 | 9.07 | **-10.1% faster** |
+| **mandelbrot** (4000) | 46.42 | 1.60 | **29x faster** |
+| **fannkuchredux** (11) | 102.89 | 5.04 | **20.4x faster** |
 
 #### Linux ARM64
 
 | Benchmark | v2026.2.1 (s) | Current (s) | Change |
 |-----------|--------------|-------------|--------|
-| **nbody** | 25.03 | 24.94 | ~same |
-| **spectralnorm** | 69.23 | 69.29 | ~same |
-| **binarytrees** | 0.010 | 0.009 | ~same |
-| **mandelbrot** | 0.062 | 0.062 | same |
-| **fannkuchredux** | 0.005 | 0.004 | ~same |
+| **nbody** (50M) | 25.04 | 25.14 | ~same |
+| **spectralnorm** (5500) | 69.14 | 69.04 | ~same |
+| **binarytrees** (15) | 8.53 | 8.60 | ~same |
+| **mandelbrot** (4000) | 22.59 | 22.59 | same |
+| **fannkuchredux** (11) | 92.08 | 4.27 | **21.6x faster** |
 
-*CI runner performance varies — use for relative comparisons only. No regressions detected. x64 shows measurable gains on spectralnorm and mandelbrot.*
+#### Analysis
+
+- **fannkuchredux 20x (both platforms):** `Fannkuch()` is marked `native` but uses `STOR_INT_ARY_ELM` for array permutations (`q[q0] := q0`, `p[j] := p[j+1]`). With the instruction missing from the whitelist, the entire function ran in the interpreter despite the `native` keyword.
+- **mandelbrot 29x (x64 only):** `Compute()` is marked `native` but uses both `STOR_INT_ARY_ELM` (`@bytes_per_line[y]`) and `STOR_CLS_INST_INT_VAR` (`@current_line += 1`). Both were missing from the x64 whitelist.
+- **mandelbrot unchanged (ARM64):** `STOR_CLS_INST_INT_VAR` remains in the ARM64 blacklist (needs write barrier investigation), so `Compute()` still can't JIT on ARM64.
+- **spectralnorm -6.4% (x64):** No `native` keyword, so improvement comes from other optimizations in master since v2026.2.1.
+
+*CI runner performance varies — use for relative comparisons only. No regressions detected.*
 
 ### Benchmark Suite
 
@@ -425,4 +435,4 @@ Opportunities identified during the v2026.2.1 optimization effort, ranked by mea
 
 ---
 
-*Last updated: March 2026 — CI benchmark comparison vs v2026.2.1*
+*Last updated: March 2026 — JIT whitelist fix, 20-29x speedup on mandelbrot/fannkuchredux*
