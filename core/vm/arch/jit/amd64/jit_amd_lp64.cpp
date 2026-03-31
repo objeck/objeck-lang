@@ -658,12 +658,22 @@ void JitAmd64::ProcessInstructions() {
       
     case NEW_OBJ_INST: {
 #ifdef _DEBUG_JIT
-      StackClass* called_klass = program->GetClass(instr->GetOperand());      
-      std::wcout << L"NEW_OBJ_INST: name='" << called_klass->GetName() << L"': id=" << instr->GetOperand() 
+      StackClass* called_klass = program->GetClass(instr->GetOperand());
+      std::wcout << L"NEW_OBJ_INST: name='" << called_klass->GetName() << L"': id=" << instr->GetOperand()
             << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       // note: object id passed in instruction param
       ProcessStackCallback(NEW_OBJ_INST, instr, instr_index, 0);
+      ProcessReturnParameters(INT_TYPE);
+    }
+      break;
+
+    case NEW_FUNC_INST: {
+#ifdef _DEBUG_JIT
+      std::wcout << L"NEW_FUNC_INST: size=" << instr->GetOperand()
+            << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+#endif
+      ProcessStackCallback(NEW_FUNC_INST, instr, instr_index, 0);
       ProcessReturnParameters(INT_TYPE);
     }
       break;
@@ -5579,6 +5589,7 @@ static bool CanJitInstruction(InstructionType type) {
   case NEW_INT_ARY:
   case NEW_FLOAT_ARY:
   case NEW_OBJ_INST:
+  case NEW_FUNC_INST:
     // array copy/zero
   case CPY_BYTE_ARY:
   case CPY_CHAR_ARY:
