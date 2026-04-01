@@ -1121,7 +1121,7 @@ void JitArm64::ProcessReturnParameters(MemoryType type) {
   case FUNC_TYPE:
     ProcessFunctionCallParameter();
     break;
-    
+
   default:
     break;
   }
@@ -4638,7 +4638,8 @@ bool JitArm64::Compile(StackMethod* cm)
     last_cmp_reg = X0;  // Initialize to a valid register
 
     // Pre-scan: reject methods with field-store or method-call instructions
-    // (no JIT write barrier for class field stores; register state corruption for method calls)
+    // (no JIT write barrier for class field stores; MTHD_CALL callback needs
+    // parameter-type validation and inlining fixes before enabling)
     // Note: STOR_INT_ARY_ELM is safe — integer array stores don't hold references,
     // same as STOR_FLOAT_ARY_ELM which is already allowed.
     for(long i = 0; i < method->GetInstructionCount(); ++i) {

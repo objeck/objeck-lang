@@ -65,6 +65,18 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return true;
   }
 
+  // Auto-JIT: skip methods containing MTHD_CALL/DYN_MTHD_CALL.
+  // These are supported for explicit 'native' methods (via ProcessStackCallback),
+  // but auto-JIT'd methods with callbacks have interaction issues with
+  // PatchCallSites and interpreter frame management.
+  for(long i = 0; i < callee->GetInstructionCount(); ++i) {
+    const InstructionType type = callee->GetInstruction(i)->GetType();
+    if(type == MTHD_CALL || type == DYN_MTHD_CALL) {
+      callee->SetJitAttempted();
+      return false;
+    }
+  }
+
 #if defined(_M_ARM64)
   Runtime::JitArm64 jit_compiler;
 #elif defined(_WIN64) || defined(_X64)
