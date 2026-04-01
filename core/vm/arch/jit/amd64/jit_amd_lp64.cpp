@@ -658,12 +658,22 @@ void JitAmd64::ProcessInstructions() {
       
     case NEW_OBJ_INST: {
 #ifdef _DEBUG_JIT
-      StackClass* called_klass = program->GetClass(instr->GetOperand());      
-      std::wcout << L"NEW_OBJ_INST: name='" << called_klass->GetName() << L"': id=" << instr->GetOperand() 
+      StackClass* called_klass = program->GetClass(instr->GetOperand());
+      std::wcout << L"NEW_OBJ_INST: name='" << called_klass->GetName() << L"': id=" << instr->GetOperand()
             << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       // note: object id passed in instruction param
       ProcessStackCallback(NEW_OBJ_INST, instr, instr_index, 0);
+      ProcessReturnParameters(INT_TYPE);
+    }
+      break;
+
+    case NEW_FUNC_INST: {
+#ifdef _DEBUG_JIT
+      std::wcout << L"NEW_FUNC_INST: size=" << instr->GetOperand()
+            << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+#endif
+      ProcessStackCallback(NEW_FUNC_INST, instr, instr_index, 0);
       ProcessReturnParameters(INT_TYPE);
     }
       break;
@@ -967,6 +977,14 @@ void JitAmd64::ProcessInstructions() {
       ProcessNot(instr);
       break;
       
+    case TRY_START:
+    case TRY_END:
+      // No-op in JIT: exception handling is not supported in native code.
+      // Safe because MTHD_CALL is not whitelisted, so no interpreter callbacks
+      // that could throw Objeck exceptions occur within try blocks.
+      // JIT error handling (nil checks, bounds checks) exits directly.
+      break;
+
     case JMP:
       ProcessJump(instr);
       break;
@@ -5347,17 +5365,24 @@ bool JitAmd64::CanInlineMethod(StackMethod* callee) {
     // no calls, no control flow, no async
     if(type == MTHD_CALL || type == DYN_MTHD_CALL || type == ASYNC_MTHD_CALL) return false;
     if(type == JMP || type == LBL) return false;
-    // no instance methods — inlining doesn't handle self/LOAD_INST_MEM correctly yet
-    if(type == LOAD_INST_MEM) return false;
     // all instructions must be JIT-compilable
     if(!CanJitInstruction(type) && type != RTRN) return false;
   }
   return true;
 }
 
+static bool UsesInstanceMem(StackMethod* method) {
+  for(long i = 0; i < method->GetInstructionCount(); ++i) {
+    if(method->GetInstruction(i)->GetType() == LOAD_INST_MEM) return true;
+  }
+  return false;
+}
+
 long JitAmd64::ComputeInlineLocalSpace(StackMethod* callee) {
   std::set<long> seen_ids;
   long space = 0;
+  // reserve save slot for INSTANCE_MEM when inlining instance methods
+  if(UsesInstanceMem(callee)) space += sizeof(size_t);
   for(long i = 0; i < callee->GetInstructionCount(); ++i) {
     StackInstr* ci = callee->GetInstruction(i);
     if(ci->GetOperand2() == INST || ci->GetOperand2() == CLS) continue;
@@ -5395,6 +5420,46 @@ void JitAmd64::ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, 
   std::vector<long> saved_operand3(callee_instr_count);
   for(long i = 0; i < callee_instr_count; ++i) {
     saved_operand3[i] = callee->GetInstruction(i)->GetOperand3();
+  }
+
+  // Instance method handling: self is on top of working_stack and must be
+  // routed to INSTANCE_MEM so LOAD_INST_MEM works inside the inlined code.
+  const bool is_instance_method = UsesInstanceMem(callee);
+  long save_inst_offset = 0;
+
+  if(is_instance_method) {
+    // Reserve a save slot for the caller's INSTANCE_MEM
+    save_inst_offset = inline_local_offset;
+    inline_local_offset -= sizeof(size_t);
+
+    // Save caller's INSTANCE_MEM to the save slot
+    RegisterHolder* tmp = GetRegister();
+    move_mem_reg(INSTANCE_MEM, RBP, tmp->GetRegister());
+    move_reg_mem(tmp->GetRegister(), save_inst_offset, RBP);
+    ReleaseRegister(tmp);
+
+    // Pop self from working_stack and write to INSTANCE_MEM
+    RegInstr* self_val = working_stack.front();
+    working_stack.pop_front();
+    switch(self_val->GetType()) {
+    case REG_INT:
+      move_reg_mem(self_val->GetRegister()->GetRegister(), INSTANCE_MEM, RBP);
+      ReleaseRegister(self_val->GetRegister());
+      break;
+    case MEM_INT: {
+      RegisterHolder* holder = GetRegister();
+      move_mem_reg((long)self_val->GetOperand(), RBP, holder->GetRegister());
+      move_reg_mem(holder->GetRegister(), INSTANCE_MEM, RBP);
+      ReleaseRegister(holder);
+    }
+      break;
+    case IMM_INT:
+      move_imm_mem(self_val->GetOperand(), INSTANCE_MEM, RBP);
+      break;
+    default:
+      break;
+    }
+    delete self_val;
   }
 
   // Run mini-ProcessIndices for callee at the inline offset region
@@ -5465,6 +5530,14 @@ void JitAmd64::ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, 
   // Restore callee's original operand3 values
   for(long i = 0; i < callee_instr_count; ++i) {
     callee->GetInstruction(i)->SetOperand3(saved_operand3[i]);
+  }
+
+  // Restore caller's INSTANCE_MEM if we saved it
+  if(is_instance_method) {
+    RegisterHolder* tmp = GetRegister();
+    move_mem_reg(save_inst_offset, RBP, tmp->GetRegister());
+    move_reg_mem(tmp->GetRegister(), INSTANCE_MEM, RBP);
+    ReleaseRegister(tmp);
   }
 
   // Restore caller context
@@ -5565,11 +5638,10 @@ static bool CanJitInstruction(InstructionType type) {
   case EQL_FLOAT:
   case NEQL_FLOAT:
     // control flow
-    // Note: MTHD_CALL/DYN_MTHD_CALL are NOT whitelisted here because enabling them
-    // globally causes auto-JIT to compile library methods (e.g. String:ToCharArray)
-    // that fail due to inlining bugs with instance methods (LOAD_INST_MEM self handling).
-    // ProcessStackCallback infrastructure works for static calls but needs more work
-    // for instance method calls before global enablement.
+    // MTHD_CALL/DYN_MTHD_CALL: inlining infrastructure now works for instance
+    // methods (save/restore INSTANCE_MEM). However, enabling globally still causes
+    // failures in auto-JIT'd library methods (String:Append, String:ToCharArray)
+    // that need further ProcessStackCallback investigation.
   case JMP:
   case LBL:
   case RTRN:
@@ -5579,6 +5651,7 @@ static bool CanJitInstruction(InstructionType type) {
   case NEW_INT_ARY:
   case NEW_FLOAT_ARY:
   case NEW_OBJ_INST:
+  case NEW_FUNC_INST:
     // array copy/zero
   case CPY_BYTE_ARY:
   case CPY_CHAR_ARY:
@@ -5620,6 +5693,9 @@ static bool CanJitInstruction(InstructionType type) {
   case SWAP_INT:
   case POP_INT:
   case POP_FLOAT:
+    // try/catch (no-op in JIT — safe while MTHD_CALL is not whitelisted)
+  case TRY_START:
+  case TRY_END:
     return true;
 
   default:

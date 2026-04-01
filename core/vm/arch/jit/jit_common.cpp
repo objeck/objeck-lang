@@ -491,6 +491,16 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   }
     break;
 
+  case NEW_FUNC_INST: {
+    const long size = (long)instr->GetOperand();
+    size_t func_mem = (size_t)MemoryManager::AllocateArray(size, BYTE_ARY_TYPE, op_stack, *stack_pos);
+    PushInt(op_stack, stack_pos, func_mem);
+#ifdef _DEBUG_JIT
+    std::wcout << L"jit oper: NEW_FUNC_INST: size=" << size << L"; mem=" << func_mem << std::endl;
+#endif
+  }
+    break;
+
     //----------- threads -----------
 
   case THREAD_JOIN: {
