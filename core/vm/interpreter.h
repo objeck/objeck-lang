@@ -123,8 +123,13 @@ namespace Runtime {
         std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
         exit(1);
       }
-      
-      call_stack[(*call_stack_pos)++] = f;
+
+      // Write frame pointer before advancing position so GC never
+      // sees an incremented call_stack_pos with a stale/null slot.
+      long pos = *call_stack_pos;
+      call_stack[pos] = f;
+      std::atomic_thread_fence(std::memory_order_release);
+      *call_stack_pos = pos + 1;
     }
 
     //
@@ -135,8 +140,13 @@ namespace Runtime {
         std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
         exit(1);
       }
-      
-      return call_stack[--(*call_stack_pos)];
+
+      // Decrement position before reading the frame so GC does not
+      // access a slot that the worker thread is about to reuse.
+      long pos = *call_stack_pos - 1;
+      std::atomic_thread_fence(std::memory_order_release);
+      *call_stack_pos = pos;
+      return call_stack[pos];
     }
     
     //
