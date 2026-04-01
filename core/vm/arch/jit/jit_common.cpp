@@ -65,13 +65,13 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return true;
   }
 
-  // Auto-JIT: skip methods containing MTHD_CALL/DYN_MTHD_CALL.
-  // These are supported for explicit 'native' methods (via ProcessStackCallback),
-  // but auto-JIT'd methods with callbacks have interaction issues with
-  // PatchCallSites and interpreter frame management.
+  // Auto-JIT: skip methods containing DYN_MTHD_CALL (closure/function-ref
+  // calls have parameter handling issues). MTHD_CALL is supported —
+  // direct JIT-to-JIT calling in JitStackCallback avoids the interpreter
+  // trampoline overhead for callee methods that have native code.
   for(long i = 0; i < callee->GetInstructionCount(); ++i) {
     const InstructionType type = callee->GetInstruction(i)->GetType();
-    if(type == MTHD_CALL || type == DYN_MTHD_CALL) {
+    if(type == DYN_MTHD_CALL) {
       callee->SetJitAttempted();
       return false;
     }
@@ -163,6 +163,30 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       TryAutoJitCompile(callee);
     }
 
+    // Direct JIT-to-JIT calling: if callee has native code, call it directly
+    // without going through the interpreter as a trampoline. This eliminates
+    // frame creation + instruction dispatch + MTHD_CALL handler overhead.
+    if(callee->GetNativeCode()) {
+      // Pop instance from op_stack (same as ProcessMethodCall)
+      size_t* callee_inst = (size_t*)op_stack[--(*stack_pos)];
+
+      // Get a stack frame for the callee
+      StackFrame* frame = Runtime::StackInterpreter::GetStackFrame(callee, callee_inst);
+
+      // Execute native code directly
+      Runtime::JitRuntime jit_executor;
+      const long status = jit_executor.Execute(callee, callee_inst, op_stack, stack_pos,
+                                                call_stack, call_stack_pos, frame);
+
+      // Release frame
+      Runtime::StackInterpreter::ReleaseStackFrame(frame);
+
+      if(status < 0) {
+        std::wcerr << L">>> Error in JIT-to-JIT call: method='" << callee->GetName() << L"' <<<" << std::endl;
+        exit(1);
+      }
+      break;
+    }
 #endif
 
 #ifdef _DEBUG_JIT

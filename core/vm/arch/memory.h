@@ -45,7 +45,7 @@
 #define MEM_MAX 4096 * 2
 */
 
-#define MEM_START_MAX 4096 * 256
+#define MEM_START_MAX 4096 * 2048
 
 #define UNCOLLECTED_COUNT 7
 #define COLLECTED_COUNT 23
@@ -68,7 +68,7 @@
 #define GC_RSET_BIT    0x4ULL
 
 // Young generation bump allocator sizing
-#define YOUNG_REGION_SIZE  (32 * 1024 * 1024)  // 32MB young region
+#define YOUNG_REGION_SIZE  (128 * 1024 * 1024)  // 128MB young region
 #define DIRTY_LIST_MAX     65536               // max dirty old-gen objects tracked
 
 struct StackOperMemory {
@@ -81,6 +81,9 @@ struct StackFrameMonitor {
   StackFrame** call_stack;
   long* call_stack_pos;
   StackFrame** cur_frame;
+  // operand stack tracking for young-gen fixup across threads
+  size_t* op_stack;
+  size_t* stack_pos;
 };
 
 // holders

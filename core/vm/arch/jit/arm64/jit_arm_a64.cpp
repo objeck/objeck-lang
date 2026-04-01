@@ -4637,16 +4637,15 @@ bool JitArm64::Compile(StackMethod* cm)
     last_cmp_was_zero = false;
     last_cmp_reg = X0;  // Initialize to a valid register
 
-    // Pre-scan: reject methods with field-store or method-call instructions
-    // (no JIT write barrier for class field stores; MTHD_CALL callback needs
-    // parameter-type validation and inlining fixes before enabling)
-    // Note: STOR_INT_ARY_ELM is safe — integer array stores don't hold references,
-    // same as STOR_FLOAT_ARY_ELM which is already allowed.
+    // Pre-scan: reject methods with unsupported instructions.
+    // STOR_CLS_INST_INT_VAR/COPY: no JIT write barrier for class field stores.
+    // DYN_MTHD_CALL: closure/function-ref parameter handling issues.
+    // MTHD_CALL is supported via ProcessStackCallback + direct JIT-to-JIT calling.
+    // Note: STOR_INT_ARY_ELM is safe — integer array stores don't hold references.
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       const InstructionType type = method->GetInstruction(i)->GetType();
       if(type == STOR_CLS_INST_INT_VAR || type == COPY_CLS_INST_INT_VAR ||
-         type == MTHD_CALL || type == DYN_MTHD_CALL ||
-         type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT) {
+         type == DYN_MTHD_CALL || type == DYN_MTHD_CALL_JIT) {
         return false;
       }
     }

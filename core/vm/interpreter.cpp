@@ -124,6 +124,9 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   // initial setup
   if(stack_frame_monitor) {
     (*call_stack_pos) = 0;
+    // register op_stack for young-gen fixup across threads
+    stack_frame_monitor->op_stack = op_stack;
+    stack_frame_monitor->stack_pos = stack_pos;
   }
   (*stack_frame) = GetStackFrame(method, instance);
   
@@ -2038,12 +2041,13 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
   }
 
 #ifndef _NO_JIT
-  // MTHD_CALL: compile-time native (operand3>0) or interpreter path
-  // Auto-JIT success rewrites opcode to MTHD_CALL_JIT (separate handler)
-  if(instr->GetOperand3()) {
+  // MTHD_CALL dispatch: operand3 > 0 means JIT compiled, < 0 means failed,
+  // 0 means not yet attempted. Failed methods go straight to interpreter
+  // to avoid re-attempting Compile() on every call.
+  if(instr->GetOperand3() > 0) {
     ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
   }
-  else {
+  else if(instr->GetOperand3() == 0) {
     // auto-JIT counting (first 10 calls only, noinline)
     CheckAutoJit(concrete_call, instr);
     // if opcode was rewritten to MTHD_CALL_JIT, take JIT path
@@ -2053,6 +2057,10 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
     else {
       ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
     }
+  }
+  else {
+    // operand3 < 0: auto-JIT failed, always interpret
+    ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
   }
 #else
   ProcessInterpretedMethodCall(concrete_call, instance, instrs, ip);
