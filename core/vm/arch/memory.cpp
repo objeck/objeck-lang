@@ -1252,8 +1252,10 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   std::unordered_set<StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     StackFrameMonitor* monitor = *pda_iter;
-    // gather stack frames
+    // gather stack frames — acquire fence pairs with release fence in PushFrame/PopFrame
+    // to ensure we see the frame pointers corresponding to the position we read
     long call_stack_pos = *(monitor->call_stack_pos);
+    std::atomic_thread_fence(std::memory_order_acquire);
 
     if(call_stack_pos > 0) {
       StackFrame** call_stack = monitor->call_stack;
@@ -1703,7 +1705,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 #endif
   for(auto pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     StackFrameMonitor* monitor = *pda_iter;
+    // acquire fence pairs with release fence in PushFrame/PopFrame
     long call_stack_pos = *(monitor->call_stack_pos);
+    std::atomic_thread_fence(std::memory_order_acquire);
 
     if(call_stack_pos > 0) {
       StackFrame** call_stack = monitor->call_stack;

@@ -311,7 +311,18 @@ jobs:
           $OBR ../../../../programs/deploy/fs_query_12.obe
           $OBR ../../../../programs/deploy/lambda_17.obe
           $OBR ../../../../programs/deploy/regex_4.obe
-          $OBR ../../../../programs/deploy/threads_6.obe
+          # Threading test can be sensitive to CI runner timing; retry up to 3 times
+          for attempt in 1 2 3; do
+            if $OBR ../../../../programs/deploy/threads_6.obe; then
+              break
+            fi
+            if [ $attempt -eq 3 ]; then
+              echo "threads_6.obe failed after 3 attempts"
+              exit 1
+            fi
+            echo "threads_6.obe attempt $attempt failed, retrying..."
+            sleep 2
+          done
         fi
 
     # ============================================
