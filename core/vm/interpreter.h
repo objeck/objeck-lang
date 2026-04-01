@@ -567,6 +567,8 @@ namespace Runtime {
       stack_frame_monitor = new StackFrameMonitor;
       stack_frame_monitor->call_stack = call_stack;
       stack_frame_monitor->call_stack_pos = call_stack_pos;
+      stack_frame_monitor->op_stack = nullptr;
+      stack_frame_monitor->stack_pos = nullptr;
 
       stack_frame = new StackFrame*;
       stack_frame_monitor->cur_frame = stack_frame;
@@ -590,6 +592,8 @@ namespace Runtime {
       stack_frame_monitor->call_stack = call_stack;
       stack_frame_monitor->call_stack_pos = call_stack_pos;
       stack_frame_monitor->cur_frame = stack_frame;
+      stack_frame_monitor->op_stack = nullptr;
+      stack_frame_monitor->stack_pos = nullptr;
       MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
 
@@ -619,6 +623,8 @@ namespace Runtime {
       stack_frame_monitor->call_stack = call_stack;
       stack_frame_monitor->call_stack_pos = call_stack_pos;
       stack_frame_monitor->cur_frame = stack_frame;
+      stack_frame_monitor->op_stack = nullptr;
+      stack_frame_monitor->stack_pos = nullptr;
       MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
 #endif

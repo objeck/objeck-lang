@@ -115,9 +115,10 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   }
   young_offset.store(0, std::memory_order_relaxed);
 
-  // Old generation
+  // Old generation — reserve larger initial capacity to reduce rehashing
+  // for workloads that allocate many objects (e.g. binarytrees creates millions)
   old_allocation_size = 0;
-  old_generation.reserve(4096);
+  old_generation.reserve(65536);
 
   // Dirty list
   memset(dirty_list, 0, sizeof(dirty_list));
@@ -161,13 +162,20 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
       return false;
     }
 
-    // mark & add to list
+    // mark using lock-free CAS (avoids mutex contention across 3 mark threads)
 #ifndef _GC_SERIAL
-    MUTEX_LOCK(&marked_lock);
+    size_t old_val, new_val;
+    do {
+      old_val = mem[MARKED_FLAG];
+      if(old_val & GC_MARK_BIT) return false;
+      new_val = old_val | GC_MARK_BIT;
+#ifdef _WIN32
+    } while(InterlockedCompareExchange64((volatile LONG64*)&mem[MARKED_FLAG], (LONG64)new_val, (LONG64)old_val) != (LONG64)old_val);
+#else
+    } while(!__sync_bool_compare_and_swap(&mem[MARKED_FLAG], old_val, new_val));
 #endif
+#else
     mem[MARKED_FLAG] |= GC_MARK_BIT;
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&marked_lock);
 #endif
 
     return true;
@@ -258,8 +266,55 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     const long size = cls->GetInstanceMemorySize();
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
 
-    // Allocate in old gen (bump allocator disabled — promotion/fixup cannot safely
-    // update all root locations including PDA thread operand stacks)
+    // Total size including the size header for free cache
+    const size_t total_size = alloc_size + sizeof(size_t);
+    // Align to sizeof(size_t) boundary for bump allocator
+    const size_t aligned_total = (total_size + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
+
+    // Try young generation bump allocation first
+    if(young_region) {
+      size_t offset = young_offset.load(std::memory_order_relaxed);
+      if(offset + aligned_total <= young_region_size) {
+        size_t new_offset = young_offset.fetch_add(aligned_total, std::memory_order_relaxed);
+        if(new_offset + aligned_total <= young_region_size) {
+          // Bump allocation succeeded
+          size_t* raw_mem = (size_t*)(young_region + new_offset);
+          raw_mem[0] = alloc_size;  // store size for promotion
+          mem = raw_mem + 1;
+          mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+          mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+          mem += EXTRA_BUF_SIZE;
+          // Young object: no GC_OLD_BIT, no hash set insert, no mutex
+          allocation_size += size;
+
+#ifdef _MEM_LOGGING
+          mem_logger << mem_cycle << L",alloc,obj-young," << mem << L"," << size << std::endl;
+#endif
+#ifdef _DEBUG_GC
+          std::wcout << L"# bump alloc object: addr=" << mem << L", size=" << size << L" byte(s) #" << std::endl;
+#endif
+          return mem;
+        }
+      }
+      // Young gen full — trigger GC to promote survivors and reset
+      if(collect) {
+        CollectMajor(op_stack, stack_pos);
+        // Retry bump allocation after GC
+        size_t retry_offset = young_offset.fetch_add(aligned_total, std::memory_order_relaxed);
+        if(retry_offset + aligned_total <= young_region_size) {
+          size_t* raw_mem = (size_t*)(young_region + retry_offset);
+          raw_mem[0] = alloc_size;
+          mem = raw_mem + 1;
+          mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+          mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+          mem += EXTRA_BUF_SIZE;
+          allocation_size += size;
+          return mem;
+        }
+      }
+    }
+
+    // Fallback to old gen allocation (young gen full or disabled)
     if(collect && allocation_size + size > mem_max_size) {
       CollectMajor(op_stack, stack_pos);
     }
@@ -421,30 +476,21 @@ size_t* MemoryManager::GetFreeMemory(size_t size) {
 #endif
   std::unordered_map<size_t, std::list<size_t*>*>::iterator result = free_memory_cache.find(cache_size);
   if(result != free_memory_cache.end() && !result->second->empty()) {
-    bool found = false;
     std::list<size_t*>* free_cache = result->second;
 
-    std::list<size_t*>::iterator iter = free_cache->begin();
-    for(; !found && iter != free_cache->end(); ++iter) {
+    // Find first entry with actual size >= requested (entries in the same
+    // aligned bucket may have different actual sizes)
+    for(auto iter = free_cache->begin(); iter != free_cache->end(); ++iter) {
       size_t* check_mem = *iter;
-      const size_t check_size = check_mem[0];
-      if(check_size >= size) {
-        found = true;
-      }
-    }
-
-    if(found) {
-      --iter;
-      size_t* raw_mem = *iter;
-      free_cache->erase(iter);
-
-      const size_t mem_size = raw_mem[0];
-      free_memory_cache_size -= mem_size;
-      memset(raw_mem + 1, 0, mem_size);
+      if(check_mem[0] >= size) {
+        free_cache->erase(iter);
+        free_memory_cache_size -= check_mem[0];
+        memset(check_mem + 1, 0, check_mem[0]);
 #ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&free_memory_cache_lock);
+        MUTEX_UNLOCK(&free_memory_cache_lock);
 #endif
-      return raw_mem + 1;
+        return check_mem + 1;
+      }
     }
   }
 #ifndef _GC_SERIAL
@@ -695,10 +741,11 @@ void* MemoryManager::CollectMemory(void* arg)
   std::wcout << L"## Sweeping memory ##" << std::endl;
 #endif
 
-  // sort and search
+  // Sweep phase: mark threads have already joined, so only allocated_lock
+  // is needed (protects old_generation set from concurrent allocations).
+  // marked_lock is no longer needed here since MarkMemory uses lock-free CAS.
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&allocated_lock);
-  MUTEX_LOCK(&marked_lock);
 #endif
 
 #ifdef _DEBUG_GC
@@ -759,10 +806,6 @@ void* MemoryManager::CollectMemory(void* arg)
     scan_ptr += total;
   }
 
-
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&marked_lock);
-#endif
 
   // --- Sweep old generation (major GC only) ---
   size_t dead_old_count = 0;
@@ -1646,12 +1689,30 @@ void MemoryManager::FixupObject(size_t* mem)
 
 void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 {
-  // Fix up operand stack
+  // Fix up GC-triggering thread's operand stack
   for(size_t i = 0; i <= stack_pos; ++i) {
     size_t* ref = (size_t*)op_stack[i];
     if(ref && IsYoung(ref)) {
       size_t fwd = ref[MARKED_FLAG];
       if(fwd) op_stack[i] = fwd;
+    }
+  }
+
+  // Fix up other threads' operand stacks via monitors
+  // (pda_monitor_lock is already held by the caller's CheckPdaRoots path)
+  for(auto pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
+    StackFrameMonitor* monitor = *pda_iter;
+    size_t* other_op_stack = monitor->op_stack;
+    size_t* other_stack_pos = monitor->stack_pos;
+    if(other_op_stack && other_stack_pos && other_op_stack != op_stack) {
+      size_t pos = *other_stack_pos;
+      for(size_t i = 0; i <= pos; ++i) {
+        size_t* ref = (size_t*)other_op_stack[i];
+        if(ref && IsYoung(ref)) {
+          size_t fwd = ref[MARKED_FLAG];
+          if(fwd) other_op_stack[i] = fwd;
+        }
+      }
     }
   }
 
