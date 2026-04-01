@@ -598,8 +598,8 @@ void JitAmd64::ProcessInstructions() {
               << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1)
               << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-        // MTHD_CALL always uses callback (inlining via ProcessInlineMethod is
-        // only safe for calls already present before MTHD_CALL was whitelisted)
+        // MTHD_CALL uses callback (ProcessInlineMethod has INSTANCE_MEM
+        // offset issues with constructors that need further investigation)
         ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
         ProcessReturnParameters(called_method->GetReturn());
       }
