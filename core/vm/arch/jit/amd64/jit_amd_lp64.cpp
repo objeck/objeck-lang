@@ -598,14 +598,10 @@ void JitAmd64::ProcessInstructions() {
               << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1)
               << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-        if(!is_inlining && CanInlineMethod(called_method)) {
-          ProcessInlineMethod(called_method, instr, instr_index);
-        }
-        else {
-          // passing instance variable
-          ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
-          ProcessReturnParameters(called_method->GetReturn());
-        }
+        // MTHD_CALL always uses callback (inlining via ProcessInlineMethod is
+        // only safe for calls already present before MTHD_CALL was whitelisted)
+        ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
+        ProcessReturnParameters(called_method->GetReturn());
       }
     }
       break;
@@ -1173,16 +1169,17 @@ void JitAmd64::ProcessReturnParameters(MemoryType type) {
   case INT_TYPE:
     ProcessIntCallParameter();
     break;
-    
+
   case FLOAT_TYPE:
     ProcessFloatCallParameter();
     break;
-    
+
   case FUNC_TYPE:
     ProcessFunctionCallParameter();
     break;
 
   default:
+    // NIL_TYPE = void return or unhandled type — nothing to pop
     break;
   }
 }
@@ -5638,10 +5635,9 @@ static bool CanJitInstruction(InstructionType type) {
   case EQL_FLOAT:
   case NEQL_FLOAT:
     // control flow
-    // MTHD_CALL/DYN_MTHD_CALL: inlining infrastructure now works for instance
-    // methods (save/restore INSTANCE_MEM). However, enabling globally still causes
-    // failures in auto-JIT'd library methods (String:Append, String:ToCharArray)
-    // that need further ProcessStackCallback investigation.
+  case MTHD_CALL:
+    // DYN_MTHD_CALL: function-reference calls need further investigation
+    // before whitelisting (prgm70/71 segfaults with closure patterns)
   case JMP:
   case LBL:
   case RTRN:
