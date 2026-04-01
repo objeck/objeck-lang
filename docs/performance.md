@@ -1,39 +1,167 @@
-# Objeck Performance Optimization History
+# Objeck Performance
 
-> **Compiler, JIT, and GC optimization journey from v2024 to v2026**
-
-This document traces the performance optimization work across the Objeck language implementation, covering the compiler bytecode optimizer, the ARM64/x64 JIT compilers, and the mark-and-sweep garbage collector.
+> **Benchmark results, cross-language comparisons, and optimization history**
 
 ---
 
 ## Table of Contents
 
-1. [Design Philosophy](#1-design-philosophy)
-2. [Optimization Pipeline](#2-optimization-pipeline)
-3. [Timeline](#3-timeline)
-4. [v2026.2.0 — Foundation Optimizations](#4-v202620--foundation-optimizations)
-5. [v2026.2.1 — Compiler & JIT Enhancements](#5-v202621--compiler--jit-enhancements)
-6. [Benchmark Results](#6-benchmark-results)
+1. [Benchmark Results](#1-benchmark-results)
+2. [Cross-Language Comparison](#2-cross-language-comparison)
+3. [Micro-Benchmarks](#3-micro-benchmarks)
+4. [The `native` Keyword and Auto-JIT](#4-the-native-keyword-and-auto-jit)
+5. [Optimization Pipeline](#5-optimization-pipeline)
+6. [Optimization History](#6-optimization-history)
 7. [What We Tried and Reverted](#7-what-we-tried-and-reverted)
-8. [Architecture Diagrams](#8-architecture-diagrams)
-9. [Future Work](#9-future-work)
+8. [Future Work](#8-future-work)
 
 ---
 
-## 1. Design Philosophy
+## 1. Benchmark Results
 
-The Objeck optimization strategy has been guided by a **utility vs. effort** principle:
+### Test Environment
 
-- **Correctness first.** The compiler was never optimized for compile speed — it was optimized for producing correct output. Every new pass was validated against the full regression suite before being kept.
-- **JIT as the primary lever.** Because Objeck uses a stack-based bytecode VM with method-level JIT compilation, the JIT compiler was targeted first for performance work. Hot methods (100+ calls) get compiled to native ARM64 or x64 machine code, so improvements there have outsized impact on real workloads.
-- **Bytecode optimization came later.** The initial stack-based code generation was highly redundant (e.g., store-then-immediate-load of the same variable). An instruction rewrite framework was built to clean up these patterns, reducing the bytecode the JIT has to process.
-- **GC: balance correctness and speed.** The garbage collector has been the trickiest subsystem — balancing finding all garbage (correctness) against collection pause time (speed). The move to O(1) memory lookups via `std::unordered_set` was a major stability-then-performance win.
+All benchmarks ran in a single Docker container (Ubuntu 24.04) to ensure reproducible, comparable results across languages.
+
+| | |
+|---|---|
+| **CPU** | AMD Ryzen AI 9 HX 370 (12C/24T) |
+| **RAM** | 32 GB DDR5 (15 GB allocated to Docker) |
+| **OS** | Ubuntu 24.04.4 LTS (Docker on Windows 11) |
+| **Compiler** | Objeck built from source, `-opt s3` |
+| **Methodology** | 3 runs per benchmark, median reported |
+
+### CLBG Benchmarks
+
+Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/) programs compiled with `-opt s3`.
+
+| Benchmark | Input | Time (s) | Peak RSS |
+|-----------|-------|----------|----------|
+| **mandelbrot** | 4000 | 2.66 | 9 MB |
+| **nbody** | 50M | 42.45 | 7 MB |
+| **fannkuchredux** | 12 | 91.90 | 7 MB |
+| **spectralnorm** | 5500 | 110.81 | 8 MB |
+| **binarytrees** | 21 | 1192.38 | 6.2 GB |
+
+**mandelbrot** and **nbody** benefit heavily from `native`-annotated methods that JIT-compile to x64. **binarytrees** is GC-bound — mark-and-sweep with mutex locking dominates the runtime at depth 21 (6.2 GB live set). **spectralnorm** runs in the interpreter (no `native` keyword); with `native` it drops to **1.16s** (see [Section 4](#4-the-native-keyword-and-auto-jit)).
 
 ---
 
-## 2. Optimization Pipeline
+## 2. Cross-Language Comparison
 
-The compiler's bytecode optimizer runs multiple passes at increasing optimization levels (s0–s3). The JIT then further optimizes hot methods at runtime.
+Same inputs, same machine, same Docker container. All languages ran with default settings (no special flags).
+
+| Language | Version |
+|----------|---------|
+| Python | 3.12.3 |
+| Ruby | 3.2.3 |
+| LuaJIT | 2.1 |
+
+### Results (median of 3 runs)
+
+| Benchmark | Objeck | Python 3.12 | Ruby 3.2 | LuaJIT 2.1 | Best |
+|-----------|--------|-------------|----------|------------|------|
+| **nbody** (50M) | **42.45s** | 294.39s | 553.82s | **11.88s** | LuaJIT |
+| **spectralnorm** (5500) | 110.81s | 315.44s | 225.29s | **3.14s** | LuaJIT |
+| **binarytrees** (21) | 1192.38s | 215.80s | 191.19s | **119.18s** | LuaJIT |
+| **fannkuchredux** (12) | **91.90s** | 988.84s | 3393.49s | 316.48s | **Objeck** |
+
+### Analysis
+
+**Where Objeck wins:**
+
+- **fannkuchredux** — Objeck is the fastest overall. 3.4x faster than LuaJIT, 10.8x faster than Python, 36.9x faster than Ruby. The JIT excels at tight integer loops with array permutations.
+- **nbody** — 6.9x faster than Python, 13x faster than Ruby. Getter/setter inlining + JIT compilation eliminates method call overhead in the gravitational simulation inner loop.
+
+**Where Objeck needs improvement:**
+
+- **binarytrees (GC-bound)** — 10x slower than LuaJIT, 5.5x slower than Python, 6.2x slower than Ruby. The mark-and-sweep GC with mutex-based locking is the bottleneck. A generational GC or escape analysis would close this gap.
+- **spectralnorm (float arrays)** — 35x slower than LuaJIT. However, this benchmark runs in the interpreter. Adding the `native` keyword drops Objeck to **1.16s** — only 2.7x behind LuaJIT's tracing JIT. The gap here is primarily about auto-JIT, not code quality.
+
+### Key Takeaways
+
+1. **GC is the #1 bottleneck.** binarytrees shows a 10x gap vs LuaJIT. Generational GC or arena allocation for short-lived objects would have the biggest overall impact.
+2. **Auto-JIT is the #2 bottleneck.** spectralnorm goes from 110.81s to 1.16s with `native` — a 95x speedup sitting on the table. Methods that aren't manually annotated run in the interpreter regardless of how hot they are.
+3. **Integer JIT is already excellent.** fannkuchredux proves the integer path is highly competitive — faster than LuaJIT's tracing JIT for this workload.
+
+---
+
+## 3. Micro-Benchmarks
+
+Targeted benchmarks for specific optimization patterns (`programs/tests/perf/`). Compiled with `-opt s3`, median of 3 runs.
+
+| Benchmark | Target | Time (s) | Peak RSS |
+|-----------|--------|----------|----------|
+| `bench_loop_invariant` | Loop-invariant expressions | 0.64 | 7 MB |
+| `bench_cse` | Common subexpression elimination | 0.65 | 7 MB |
+| `bench_spectralnorm_native` | Float arrays with `native` JIT | 1.16 | 8 MB |
+| `bench_copy_prop` | Variable copy chains | 3.05 | 7 MB |
+| `bench_dead_code` | Unreachable assignments | 4.39 | 7 MB |
+| `bench_strength_ext` | Non-power-of-2 multiply patterns | 5.24 | 7 MB |
+| `bench_gc_churn` | Rapid short-lived object allocation | 4.74 | 15 MB |
+| `bench_gc_large_heap` | Large live set, GC sweep time | 0.82 | 95 MB |
+| `bench_array_intensive` | Sequential array access patterns | 6.44 | 7 MB |
+| `bench_method_dispatch` | Repeated method calls on objects | 7.52 | 7 MB |
+| `bench_matrix_multiply` | Nested loop float computation (n=500) | 13.41 | 13 MB |
+
+### Running Benchmarks
+
+```bash
+# Docker (recommended for reproducible results)
+docker build -t objeck-bench -f perf-results/docker/Dockerfile .
+docker run --rm -v "$(pwd)/perf-results/docker-results:/results" objeck-bench
+
+# Linux/WSL (using deploy directory)
+bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
+
+# Generate charts
+python3 perf-results/gen_charts.py --baseline <dir> --branch1 <dir>
+```
+
+---
+
+## 4. The `native` Keyword and Auto-JIT
+
+Objeck JIT-compiles methods marked with the `native` keyword. All other methods run in the interpreter, regardless of how hot they are. This has a dramatic impact:
+
+| spectralnorm (5500) | Time | vs LuaJIT |
+|---------------------|------|-----------|
+| Without `native` (interpreter) | 110.81s | 35x slower |
+| With `native` (JIT) | **1.16s** | 2.7x slower |
+
+Adding `native` produces a **95x speedup** — the single largest improvement opportunity in the codebase.
+
+LuaJIT achieves 3.14s because it automatically JIT-compiles any hot trace. Objeck's method-level JIT is competitive when engaged (1.16s vs 3.14s), but the requirement to manually mark methods with `native` means many real-world programs run entirely in the interpreter.
+
+### Auto-JIT Prototype (v2026.2.1+)
+
+Auto-JIT was prototyped with call counting at both the interpreter and JIT callback levels. Methods are automatically JIT-compiled after 10 calls (`JIT_AUTO_THRESHOLD`).
+
+**Workstation results (AMD 7950X3D):**
+
+| Benchmark | Baseline | With Auto-JIT | Manual `native` | Change |
+|-----------|----------|---------------|-----------------|--------|
+| spectralnorm | 17.18s | **7.90s** | 0.47s | **2.2x faster** |
+| binarytrees | 21.80s | 59.56s | -- | **2.7x slower** |
+| nbody | 2.12s | 2.04s | -- | neutral |
+| fannkuchredux | 2.23s | 2.22s | -- | neutral |
+
+**Why it helps spectralnorm:** The `A(i,j)` function gets auto-JIT'd after 10 calls, then subsequent 4M+ calls per iteration run as native code.
+
+**Why it hurts binarytrees:** The per-call `IncrementJitCallCount()` adds overhead on every method call. binarytrees makes ~500K+ recursive calls, and each counter increment touches a non-local cache line.
+
+**Next steps for auto-JIT:**
+- Amortize counter cost (check every Nth call via bitwise mask)
+- Move counting to JIT callback level only (skip interpreter counting for methods proven not-JIT-compilable)
+- On-stack replacement (OSR) to JIT methods while they're already executing
+
+---
+
+## 5. Optimization Pipeline
+
+### Compiler Bytecode Optimizer
+
+The compiler's bytecode optimizer runs multiple passes at increasing optimization levels (s0-s3). The JIT then further optimizes hot methods at runtime.
 
 ```mermaid
 graph LR
@@ -64,6 +192,47 @@ graph LR
     style A3 fill:#ffd9b3
     style J1 fill:#e1f5ff
     style J4 fill:#cceeff
+```
+
+### Design Philosophy
+
+- **Correctness first.** Every new pass was validated against the full regression suite before being kept.
+- **JIT as the primary lever.** Hot methods (100+ calls) get compiled to native ARM64 or x64 machine code, so improvements there have outsized impact.
+- **Bytecode optimization came later.** An instruction rewrite framework cleans up redundant patterns (e.g., store-then-immediate-load), reducing the bytecode the JIT has to process.
+- **GC: balance correctness and speed.** The move to O(1) memory lookups via `std::unordered_set` was a major stability-then-performance win.
+
+### Bytecode Optimizer Pass Order
+
+```mermaid
+flowchart TD
+    START["Input Bytecode Blocks"] --> CJ["Clean Jumps<br/><i>always</i>"]
+    CJ --> RUI["Remove Useless Instructions<br/><i>always</i>"]
+    RUI --> CHECK{{"optimization_level >= s1?"}}
+    CHECK -->|no| DONE["Output Bytecode"]
+    CHECK -->|yes| GSI["Getter/Setter Inlining"]
+    GSI --> CP["Constant Propagation"]
+    CP --> DS["Dead Store Removal"]
+    DS --> CHECK2{{"optimization_level >= s2?"}}
+    CHECK2 -->|no| FI
+    CHECK2 -->|yes| CSE["CSE<br/><i>(Common Subexpression Elimination)</i>"]
+    CSE --> FI["Fold Int Constants"]
+    FI --> FF["Fold Float Constants"]
+    FF --> CHECK3{{"optimization_level >= s2?"}}
+    CHECK3 -->|no| DONE
+    CHECK3 -->|yes| SR["Strength Reduction<br/><i>(powers of 2 only)</i>"]
+    SR --> CHECK4{{"optimization_level >= s3?"}}
+    CHECK4 -->|no| DCE
+    CHECK4 -->|yes| IR["Instruction Replacement<br/><i>(store+load → copy)</i>"]
+    IR --> DCE["Dead Code Elimination"]
+    DCE --> DONE
+
+    style CSE fill:#e1ffe1,stroke:#27ae60
+    style DCE fill:#e1ffe1,stroke:#27ae60
+    style GSI fill:#fff4e1,stroke:#f39c12
+    style SR fill:#fff4e1,stroke:#f39c12
+    style IR fill:#ffecd2,stroke:#e67e22
+
+    classDef new fill:#e1ffe1,stroke:#27ae60
 ```
 
 ### GC Pipeline
@@ -113,238 +282,6 @@ graph TB
     style SHRINK fill:#fff4e1
 ```
 
----
-
-## 3. Timeline
-
-| Version | Date | Key Optimization |
-|---------|------|-----------------|
-| Pre-2024 | — | Stack-based VM, interpreter-only execution |
-| v2024.x | 2024 | JIT compilers (ARM64 + x64), basic bytecode optimizer (constant folding, strength reduction) |
-| v2026.2.0 | Feb 2026 | O(1) GC lookups, ARM64 JIT multiply optimization, x64 instruction encoding, instruction rewrite framework |
-| v2026.2.1 | Feb 2026 | CSE, dead code elimination, inline limit increase (128→256), JIT div-by-zero guards, ARM64 CI testing |
-| v2026.2.1+ | Mar 2026 | JIT whitelist fix: STOR_INT_ARY_ELM, STOR_CLS_INST_INT_VAR, COPY_CLS_INST_INT_VAR enabled. 20-29x speedup on mandelbrot/fannkuchredux. |
-
----
-
-## 4. v2026.2.0 — Foundation Optimizations
-
-### Memory Manager: O(1) Lookups
-
-**Before:** The GC's `allocated_memory` used a data structure requiring O(log n) or O(n) lookups to verify pointer validity during marking. Every `CheckObject` call during GC needed to verify that a pointer was a valid allocated object.
-
-**After:** Switched to `std::unordered_set<size_t*>` for O(1) average-case lookups. This was a significant improvement that became viable after the GC's correctness was well-established through testing.
-
-### ARM64 JIT: 11 Critical Optimizations
-
-The ARM64 JIT (targeting Apple Silicon M1/M2/M3/M4 and Linux ARM64) received 11 fixes and optimizations:
-- **Multiply-by-constant optimization** — using shift+add sequences for power-of-2 multipliers
-- **Register targeting** — better allocation of ARM64 general-purpose and FP registers
-- **FP register pool management** — callee-saved D8-D15 properly saved/restored
-- **Char array support** — correct memory access for wide character arrays
-- **Large immediate handling** — proper encoding for constants that don't fit in 12-bit ARM64 immediates
-
-### x64 JIT: Instruction Encoding
-
-- **Dynamic backpatching** — forward jump targets resolved after code generation, eliminating multi-pass compilation
-- **Instruction encoding optimizations** — shorter encodings where possible
-
----
-
-## 5. v2026.2.1 — Compiler & JIT Enhancements
-
-### Headline Result: 4.38x Speedup on nbody
-
-The `nbody` benchmark (N-body gravitational simulation, 5M iterations) went from **9.28s to 2.12s** — a 4.38x improvement. The primary driver was the **inline limit increase** from 128 to 256 bytes, which allowed getter/setter methods on the `Body` class to be inlined at compile time. The JIT then optimized the inlined code into register operations, eliminating method call overhead in the inner loop.
-
-### Changes Kept (Data-Validated)
-
-| Optimization | Category | Impact | Evidence |
-|-------------|----------|--------|----------|
-| **Inline limit 128→256** | Compiler | 4.38x nbody | More getters/setters inlined, JIT optimizes further |
-| **Common Subexpression Elimination** | Compiler | Neutral-positive | Eliminates redundant `LOAD+LOAD+OP` within basic blocks |
-| **Dead Code Elimination** | Compiler | 1.02x dead_code bench | Removes redundant jumps to immediately-following labels |
-| **Div-by-zero in constant folding** | Compiler | Bugfix | `DIV_INT`/`MOD_INT` folding crashed on divisor==0 |
-| **Dead condition fix** | Compiler | Bugfix | `&&` → `\|\|` in `InstructionReplacement` (condition could never be true) |
-| **JIT div-by-zero guards** | JIT (x64+ARM64) | Safety | `ProcessIntFold` returns nullptr on div-by-zero, graceful fallback |
-| **ARM64 CI testing** | Infrastructure | — | Linux ARM64 + macOS ARM64 tests enabled in GitHub Actions |
-
-### How CSE Works
-
-Common Subexpression Elimination tracks `(opcode, left_slot, right_slot)` tuples within a basic block. When the same expression appears again and the result was stored to a local variable, the second computation is replaced with a load of the stored result:
-
-```
-# Before CSE                    # After CSE
-LOAD_INT_VAR 0                  LOAD_INT_VAR 0
-LOAD_INT_VAR 1                  LOAD_INT_VAR 1
-ADD_INT                         ADD_INT
-STOR_INT_VAR 2    ← tracked     STOR_INT_VAR 2
-...                             ...
-LOAD_INT_VAR 0    ← redundant   LOAD_INT_VAR 2    ← reused!
-LOAD_INT_VAR 1    ← redundant
-ADD_INT            ← redundant
-```
-
-Invalidation occurs on stores to involved variables, labels, jumps, and method calls.
-
----
-
-## 6. Benchmark Results
-
-Measured on AMD Ryzen 9 7950X3D (16C/32T, 128MB V-Cache), 128GB DDR5, WSL2 Ubuntu. Each benchmark run 3 times, mean reported.
-
-### v2026.2.1 vs Baseline
-
-| Benchmark | Baseline | Optimized | Speedup | Notes |
-|-----------|----------|-----------|---------|-------|
-| **nbody** (5M iter) | 9.28s | 2.12s | **4.38x** | Getter/setter inlining via increased limit |
-| binarytrees (depth 17) | 21.25s | 21.80s | 0.97x | GC-bound, neutral |
-| spectralnorm (n=2000) | 17.14s | 16.95s | 1.01x | Float-heavy, neutral |
-| fannkuchredux (n=11) | 2.22s | 2.23s | 1.00x | Int array permutations, neutral |
-| bench_strength_ext | 3.51s | 3.52s | 1.00x | Multiply-heavy, neutral |
-| bench_dead_code | 2.80s | 2.76s | 1.02x | Dead assignment elimination |
-| bench_gc_churn (5M allocs) | 1.53s | 1.60s | 0.96x | Rapid alloc/dealloc, neutral |
-| bench_array_intensive | 3.71s | 3.71s | 1.00x | Sequential array access, neutral |
-
-### CI Benchmarks: JIT Whitelist Fix vs v2026.2.1
-
-Measured on GitHub Actions runners (Ubuntu 24.04). Each benchmark run 3 times with proper inputs, compiled with `-opt s3`. March 31, 2026.
-
-**What changed:** Added `STOR_INT_ARY_ELM`, `STOR_CLS_INST_INT_VAR`, `COPY_CLS_INST_INT_VAR` to x64 JIT whitelist; removed `STOR_INT_ARY_ELM` from ARM64 blacklist. These instructions had working code generators but were not enabled, causing `native` methods containing integer array stores or class field stores to silently fall back to the interpreter.
-
-#### Linux x64
-
-| Benchmark | v2026.2.1 (s) | Current (s) | Change |
-|-----------|--------------|-------------|--------|
-| **nbody** (50M) | 37.83 | 38.46 | ~same |
-| **spectralnorm** (5500) | 97.12 | 86.98 | **-10.4% faster** |
-| **binarytrees** (15) | 10.32 | 8.96 | **-13.2% faster** |
-| **mandelbrot** (4000) | 45.51 | 1.60 | **28.4x faster** |
-| **fannkuchredux** (11) | 103.15 | 4.95 | **20.8x faster** |
-
-#### Linux ARM64
-
-| Benchmark | v2026.2.1 (s) | Current (s) | Change |
-|-----------|--------------|-------------|--------|
-| **nbody** (50M) | 25.00 | 25.19 | ~same |
-| **spectralnorm** (5500) | 69.07 | 69.15 | ~same |
-| **binarytrees** (15) | 8.54 | 8.59 | ~same |
-| **mandelbrot** (4000) | 22.65 | 22.64 | same |
-| **fannkuchredux** (11) | 92.40 | 4.27 | **21.6x faster** |
-
-#### Analysis
-
-- **fannkuchredux 20x (both platforms):** `Fannkuch()` is marked `native` but uses `STOR_INT_ARY_ELM` for array permutations (`q[q0] := q0`, `p[j] := p[j+1]`). With the instruction missing from the whitelist, the entire function ran in the interpreter despite the `native` keyword.
-- **mandelbrot 29x (x64 only):** `Compute()` is marked `native` but uses both `STOR_INT_ARY_ELM` (`@bytes_per_line[y]`) and `STOR_CLS_INST_INT_VAR` (`@current_line += 1`). Both were missing from the x64 whitelist.
-- **mandelbrot unchanged (ARM64):** `STOR_CLS_INST_INT_VAR` remains in the ARM64 blacklist (needs write barrier investigation), so `Compute()` still can't JIT on ARM64.
-- **spectralnorm -6.4% (x64):** No `native` keyword, so improvement comes from other optimizations in master since v2026.2.1.
-
-*CI runner performance varies — use for relative comparisons only. No regressions detected.*
-
-### Benchmark Suite
-
-The performance benchmark suite (`programs/tests/perf/`) includes 10 programs targeting specific optimization patterns:
-
-| Benchmark | Target |
-|-----------|--------|
-| `bench_cse.obs` | Common subexpression elimination |
-| `bench_copy_prop.obs` | Variable copy chains |
-| `bench_strength_ext.obs` | Non-power-of-2 multiply patterns |
-| `bench_dead_code.obs` | Unreachable assignments |
-| `bench_gc_churn.obs` | Rapid short-lived object allocation |
-| `bench_gc_large_heap.obs` | Large live set, GC sweep time |
-| `bench_array_intensive.obs` | Sequential array access patterns |
-| `bench_matrix_multiply.obs` | Nested loop float computation |
-| `bench_method_dispatch.obs` | Repeated method calls on objects |
-| `bench_loop_invariant.obs` | Loop-invariant expressions |
-
-Run benchmarks with: `bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]`
-
-Generate charts with: `python3 perf-results/gen_charts.py --baseline <dir> --branch1 <dir>`
-
-### Cross-Language Comparison
-
-Measured on the same AMD 7950X3D machine. Python/Ruby/LuaJIT ran in Docker (Ubuntu 24.04), Objeck ran in WSL2 (Ubuntu). Same benchmark inputs across all languages.
-
-| Benchmark | Objeck | Python 3.12 | Ruby 3.2 | LuaJIT 2.1 | Objeck vs Best |
-|-----------|--------|-------------|----------|------------|---------------|
-| **nbody** (5M) | **2.12s** | 14.05s | 20.81s | **0.43s** | 4.9x slower than LuaJIT |
-| **binarytrees** (17) | 21.80s | **3.47s** | 3.54s | 3.56s | 6.3x slower than Python |
-| **spectralnorm** (2000) | 16.95s | 16.84s | 11.40s | **0.15s** | 113x slower than LuaJIT |
-| **fannkuchredux** (11) | **2.23s** | 31.51s | 86.32s | 9.17s | **FASTEST** (4.1x over LuaJIT) |
-
-#### Analysis
-
-**Where Objeck wins:**
-- **fannkuchredux** — Objeck's JIT excels at tight integer loops with array permutations. 4.1x faster than LuaJIT, 14x faster than Python, 39x faster than Ruby.
-- **nbody** — Objeck is 7x faster than Python and 10x faster than Ruby thanks to getter/setter inlining + JIT compilation.
-
-**Where Objeck needs improvement:**
-- **binarytrees (GC-bound)** — Objeck is 6.3x slower than Python/Ruby/LuaJIT. The mark-and-sweep GC with mutex-based locking is the bottleneck. Python's reference counting handles rapid allocation/deallocation efficiently. A generational GC or escape analysis would close this gap.
-- **spectralnorm (float arrays)** — Objeck is on par with Python (~17s) but 113x slower than LuaJIT (0.15s). LuaJIT's tracing JIT aggressively optimizes the inner loop's float array access. Objeck's method-level JIT doesn't vectorize or unroll these loops. This is the largest opportunity for improvement.
-
-#### Key Takeaways for Future Optimization
-
-1. **GC is the #1 bottleneck.** binarytrees shows a 6.3x gap vs Python. Generational GC or arena allocation for short-lived objects would have the biggest overall impact.
-2. **Float array loops need JIT attention.** spectralnorm's 113x gap vs LuaJIT suggests the JIT isn't generating efficient code for `LOAD_FLOAT_ARY_ELM` in tight loops. Loop-level JIT optimizations (unrolling, bounds check hoisting) would help.
-3. **Integer JIT is already excellent.** fannkuchredux proves the integer path is highly competitive — faster than LuaJIT's tracing JIT for this workload.
-
----
-
-## 7. What We Tried and Reverted
-
-Not every optimization improved performance. Data-driven validation against the benchmark suite caught several regressions:
-
-| Optimization | Category | Result | Why It Regressed |
-|-------------|----------|--------|-----------------|
-| **Extended strength reduction** (x\*3,5,7,9,15 → shift+add) | Compiler | 0.66x **slower** | Modern x64/ARM64 CPUs execute MUL in 3 cycles; the multi-instruction shift+add sequence has more dispatch overhead |
-| **Copy propagation** | Compiler | 0.85x slower | Changed instruction patterns the JIT register allocator expected, causing suboptimal register usage |
-| **Pass iteration** (2x at s3) | Compiler | Slight regression | Additional compile-time overhead not recovered by marginal optimization gains |
-| **GC: Lock-free mark via snapshot** | GC | 0.64x **much slower** | Copying entire `allocated_memory` set before each mark phase was O(n) overhead that dominated GC-heavy workloads |
-| **GC: Adaptive tuning** (live-set ratio) | GC | Regression on binarytrees | Slower growth (2x vs 16x) caused more frequent GC cycles for allocation-heavy programs |
-| **GC: Fine-grained size classes** | GC | Reverted with above | Part of the GC change set that caused regression |
-| **Inline limit 512** | Compiler | 0.91x on binarytrees | Too much inlining bloated method bodies, exceeding JIT's register allocator capacity |
-
-**Key lesson:** On a modern out-of-order CPU, reducing instruction count at the bytecode level doesn't always translate to faster execution. The JIT's register allocation and the CPU's own optimizations (branch prediction, speculative execution) mean that simpler bytecode patterns can sometimes be faster than "optimized" ones.
-
----
-
-## 8. Architecture Diagrams
-
-### Bytecode Optimizer Pass Order (v2026.2.1)
-
-```mermaid
-flowchart TD
-    START["Input Bytecode Blocks"] --> CJ["Clean Jumps<br/><i>always</i>"]
-    CJ --> RUI["Remove Useless Instructions<br/><i>always</i>"]
-    RUI --> CHECK{{"optimization_level ≥ s1?"}}
-    CHECK -->|no| DONE["Output Bytecode"]
-    CHECK -->|yes| GSI["Getter/Setter Inlining"]
-    GSI --> CP["Constant Propagation"]
-    CP --> DS["Dead Store Removal"]
-    DS --> CHECK2{{"optimization_level ≥ s2?"}}
-    CHECK2 -->|no| FI
-    CHECK2 -->|yes| CSE["CSE<br/><i>(Common Subexpression Elimination)</i>"]
-    CSE --> FI["Fold Int Constants"]
-    FI --> FF["Fold Float Constants"]
-    FF --> CHECK3{{"optimization_level ≥ s2?"}}
-    CHECK3 -->|no| DONE
-    CHECK3 -->|yes| SR["Strength Reduction<br/><i>(powers of 2 only)</i>"]
-    SR --> CHECK4{{"optimization_level ≥ s3?"}}
-    CHECK4 -->|no| DCE
-    CHECK4 -->|yes| IR["Instruction Replacement<br/><i>(store+load → copy)</i>"]
-    IR --> DCE["Dead Code Elimination"]
-    DCE --> DONE
-
-    style CSE fill:#e1ffe1,stroke:#27ae60
-    style DCE fill:#e1ffe1,stroke:#27ae60
-    style GSI fill:#fff4e1,stroke:#f39c12
-    style SR fill:#fff4e1,stroke:#f39c12
-    style IR fill:#ffecd2,stroke:#e67e22
-
-    classDef new fill:#e1ffe1,stroke:#27ae60
-```
-
 ### JIT Compilation Flow
 
 ```mermaid
@@ -362,7 +299,7 @@ sequenceDiagram
         HC->>JIT: Compile method
         JIT->>JIT: Allocate registers
         JIT->>JIT: Process instructions
-        Note over JIT: Load/Store → Register ops<br/>IMM+IMM → Fold at JIT time<br/>Bounds checks emitted<br/>Div-by-zero guards
+        Note over JIT: Load/Store -> Register ops<br/>IMM+IMM -> Fold at JIT time<br/>Bounds checks emitted<br/>Div-by-zero guards
         JIT->>CC: Store native code
         CC->>CPU: Execute native
     else Cold Method
@@ -372,67 +309,104 @@ sequenceDiagram
 
 ---
 
-## 9. Deep Dive: The `native` Keyword and Auto-JIT
+## 6. Optimization History
 
-A critical finding from the cross-language comparison: Objeck only JIT-compiles methods marked with the `native` keyword. All other methods run in the interpreter, regardless of how hot they are.
+### Timeline
 
-**spectralnorm experiment:**
+| Version | Date | Key Optimization |
+|---------|------|-----------------|
+| Pre-2024 | -- | Stack-based VM, interpreter-only execution |
+| v2024.x | 2024 | JIT compilers (ARM64 + x64), basic bytecode optimizer (constant folding, strength reduction) |
+| v2026.2.0 | Feb 2026 | O(1) GC lookups, ARM64 JIT multiply optimization, x64 instruction encoding, instruction rewrite framework |
+| v2026.2.1 | Feb 2026 | CSE, dead code elimination, inline limit increase (128->256), JIT div-by-zero guards, ARM64 CI testing |
+| v2026.2.1+ | Mar 2026 | JIT whitelist fix: STOR_INT_ARY_ELM, STOR_CLS_INST_INT_VAR, COPY_CLS_INST_INT_VAR enabled |
 
-| Version | Time | vs LuaJIT |
-|---------|------|-----------|
-| Without `native` (interpreter) | 17.18s | 113x slower |
-| With `native` (JIT) | **0.47s** | 3.1x slower |
+### v2026.2.0 -- Foundation Optimizations
 
-Adding `native` to the spectralnorm functions produced a **36.5x speedup** — the single largest improvement opportunity in the entire codebase.
+**Memory Manager: O(1) Lookups.** Switched GC's `allocated_memory` from O(log n)/O(n) lookups to `std::unordered_set<size_t*>` for O(1) average-case pointer validity checks during marking.
 
-LuaJIT achieves 0.15s because it automatically JIT-compiles any hot trace. Objeck's method-level JIT is competitive when engaged (0.47s vs 0.15s = 3.1x, reasonable for a method JIT vs tracing JIT), but the requirement to manually mark methods with `native` means many real-world programs run entirely in the interpreter.
+**ARM64 JIT: 11 Critical Optimizations.** Multiply-by-constant via shift+add, better register allocation, FP register pool management (callee-saved D8-D15), correct wide char array access, large immediate handling.
 
-### Auto-JIT Implementation (v2026.2.1+)
+**x64 JIT: Instruction Encoding.** Dynamic backpatching for forward jumps, shorter encodings where possible.
 
-Auto-JIT was implemented with call counting at both the interpreter and JIT callback levels. Methods are automatically JIT-compiled after 10 calls (`JIT_AUTO_THRESHOLD`), regardless of whether they have the `native` keyword.
+### v2026.2.1 -- Compiler & JIT Enhancements
 
-**Workstation results (AMD 7950X3D):**
+**Headline: 4.38x speedup on nbody.** The inline limit increase from 128 to 256 bytes allowed getter/setter methods on the `Body` class to be inlined at compile time. The JIT then optimized the inlined code into register operations.
 
-| Benchmark | Baseline (no auto-JIT) | With Auto-JIT | Manual `native` | Change |
-|-----------|----------------------|---------------|-----------------|--------|
-| spectralnorm (no `native`) | 17.18s | **7.90s** | 0.47s | **2.2x faster** |
-| binarytrees | 21.80s | 59.56s | — | **2.7x slower** |
-| nbody | 2.12s | 2.04s | — | neutral |
-| fannkuchredux | 2.23s | 2.22s | — | neutral |
+| Optimization | Category | Impact |
+|-------------|----------|--------|
+| Inline limit 128->256 | Compiler | 4.38x nbody |
+| Common Subexpression Elimination | Compiler | Neutral-positive |
+| Dead Code Elimination | Compiler | 1.02x dead_code |
+| Div-by-zero in constant folding | Compiler | Bugfix |
+| JIT div-by-zero guards | JIT | Safety |
+| ARM64 CI testing | Infrastructure | -- |
 
-**Laptop results (macOS M-series):**
+**How CSE works:** Tracks `(opcode, left_slot, right_slot)` tuples within a basic block. When the same expression appears again and the result was stored to a local variable, the second computation is replaced with a load of the stored result. Invalidation occurs on stores to involved variables, labels, jumps, and method calls.
 
-| Benchmark | With Auto-JIT | Pure Interpreted | Change |
-|-----------|---------------|-----------------|--------|
-| spectralnorm | ~158s | ~286s | **1.8x faster** |
+### JIT Whitelist Fix (Mar 2026)
 
-**Why it helps spectralnorm:** The `A(i,j)` function gets auto-JIT'd after 10 calls, then subsequent 4M+ calls per iteration run as native code instead of interpreted.
+Added `STOR_INT_ARY_ELM`, `STOR_CLS_INST_INT_VAR`, `COPY_CLS_INST_INT_VAR` to x64 JIT whitelist; removed `STOR_INT_ARY_ELM` from ARM64 blacklist. These instructions had working code generators but were not enabled, causing `native` methods to silently fall back to the interpreter.
 
-**Why it hurts binarytrees:** The per-call `IncrementJitCallCount()` adds overhead on every method call. binarytrees makes ~500K+ recursive calls for depth 17, and each counter increment touches a non-local cache line.
+Measured on GitHub Actions runners (Ubuntu 24.04), 3 runs each, `-opt s3`:
 
-**Next steps:** The auto-JIT gap between 7.90s and 0.47s (manual `native`) exists because the outer methods (`MultiplyAv`, `MultiplyAtv`) have their inner loops still dispatching through the interpreter even after `A()` is auto-JIT'd. Resolving the binarytrees regression requires either:
-- Amortizing the counter cost (check every Nth call via bitwise mask)
-- Moving counting to the JIT callback level only (skip interpreter counting for methods already proven not-JIT-compilable)
-- Using on-stack replacement (OSR) to JIT methods while they're already executing
+#### Linux x64
+
+| Benchmark | v2026.2.1 (s) | Current (s) | Change |
+|-----------|--------------|-------------|--------|
+| **mandelbrot** (4000) | 45.51 | 1.60 | **28.4x faster** |
+| **fannkuchredux** (11) | 103.15 | 4.95 | **20.8x faster** |
+| **binarytrees** (15) | 10.32 | 8.96 | -13.2% faster |
+| **spectralnorm** (5500) | 97.12 | 86.98 | -10.4% faster |
+| **nbody** (50M) | 37.83 | 38.46 | ~same |
+
+#### Linux ARM64
+
+| Benchmark | v2026.2.1 (s) | Current (s) | Change |
+|-----------|--------------|-------------|--------|
+| **fannkuchredux** (11) | 92.40 | 4.27 | **21.6x faster** |
+| **nbody** (50M) | 25.00 | 25.19 | ~same |
+| **spectralnorm** (5500) | 69.07 | 69.15 | ~same |
+| **binarytrees** (15) | 8.54 | 8.59 | ~same |
+| **mandelbrot** (4000) | 22.65 | 22.64 | same |
+
+*CI runner performance varies -- use for relative comparisons only.*
 
 ---
 
-## 10. Future Work
+## 7. What We Tried and Reverted
 
-Opportunities identified during the v2026.2.1 optimization effort, ranked by measured impact:
+Not every optimization improved performance. Data-driven validation caught several regressions:
+
+| Optimization | Category | Result | Why It Regressed |
+|-------------|----------|--------|-----------------|
+| **Extended strength reduction** (x\*3,5,7,9,15 -> shift+add) | Compiler | 0.66x **slower** | Modern CPUs execute MUL in 3 cycles; multi-instruction shift+add has more dispatch overhead |
+| **Copy propagation** | Compiler | 0.85x slower | Changed instruction patterns the JIT register allocator expected |
+| **Pass iteration** (2x at s3) | Compiler | Slight regression | Compile-time overhead not recovered by marginal gains |
+| **GC: Lock-free mark via snapshot** | GC | 0.64x **much slower** | Copying entire `allocated_memory` set before each mark phase was O(n) overhead |
+| **GC: Adaptive tuning** (live-set ratio) | GC | Regression on binarytrees | Slower growth (2x vs 16x) caused more frequent GC cycles |
+| **Inline limit 512** | Compiler | 0.91x on binarytrees | Too much inlining exceeded JIT's register allocator capacity |
+
+**Key lesson:** On a modern out-of-order CPU, reducing instruction count at the bytecode level doesn't always translate to faster execution. The JIT's register allocation and the CPU's own optimizations (branch prediction, speculative execution) mean that simpler bytecode patterns can sometimes be faster than "optimized" ones.
+
+---
+
+## 8. Future Work
+
+Ranked by measured impact:
 
 | Opportunity | Category | Expected Impact | Complexity | Evidence |
 |-------------|----------|----------------|------------|----------|
-| **Auto-JIT at JIT callback level** | VM/JIT | **VERY HIGH** | HIGH | spectralnorm: 36.5x with `native`, 2.1x with prototype. Must avoid interpreter overhead. |
-| **Generational GC** | GC | HIGH | VERY HIGH | binarytrees: 6.3x slower than Python. Write barriers + nursery + promotion needed. |
-| **Escape analysis** | Compiler/VM | HIGH | HIGH | stack-allocate non-escaping objects |
-| **JIT register allocation improvements** | JIT | HIGH | HIGH | better spill/fill for complex methods |
-| **Atomic mark bits** | GC | MED-HIGH | MED | lock-free CAS instead of mutex for mark flags |
-| **Loop-invariant code motion** | Compiler | MED-HIGH | MED | hoist invariant computations out of loops |
-| **Loop unrolling** | Compiler | MED | LOW — reduce branch overhead in tight loops |
-| **SIMD vectorization** | JIT | MED | HIGH — NEON (ARM64) and SSE/AVX (x64) for array ops |
-| **Profile-guided optimization** | JIT | MED | MED — runtime profiling to guide compilation decisions |
+| **Auto-JIT at JIT callback level** | VM/JIT | **VERY HIGH** | HIGH | spectralnorm: 95x with `native`. Must avoid interpreter overhead. |
+| **Generational GC** | GC | HIGH | VERY HIGH | binarytrees: 10x slower than LuaJIT. Write barriers + nursery + promotion needed. |
+| **Escape analysis** | Compiler/VM | HIGH | HIGH | Stack-allocate non-escaping objects |
+| **JIT register allocation improvements** | JIT | HIGH | HIGH | Better spill/fill for complex methods |
+| **Atomic mark bits** | GC | MED-HIGH | MED | Lock-free CAS instead of mutex for mark flags |
+| **Loop-invariant code motion** | Compiler | MED-HIGH | MED | Hoist invariant computations out of loops |
+| **Loop unrolling** | Compiler | MED | LOW | Reduce branch overhead in tight loops |
+| **SIMD vectorization** | JIT | MED | HIGH | NEON (ARM64) and SSE/AVX (x64) for array ops |
+| **Profile-guided optimization** | JIT | MED | MED | Runtime profiling to guide compilation decisions |
 
 ---
 
-*Last updated: March 2026 — JIT whitelist fix, 20-29x speedup on mandelbrot/fannkuchredux*
+*Last updated: March 2026 -- Docker benchmark results on AMD Ryzen AI 9 HX 370*
