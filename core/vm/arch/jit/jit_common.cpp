@@ -171,15 +171,18 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       // Pop instance from op_stack (same as ProcessMethodCall)
       size_t* callee_inst = (size_t*)op_stack[--(*stack_pos)];
 
-      // Get a stack frame for the callee
+      // Get a stack frame for the callee and register it on the call stack
+      // so the GC can find and fixup pointers during young-gen promotion.
       StackFrame* frame = Runtime::StackInterpreter::GetStackFrame(callee, callee_inst);
+      call_stack[++(*call_stack_pos)] = frame;
 
       // Execute native code directly
       Runtime::JitRuntime jit_executor;
       const long status = jit_executor.Execute(callee, callee_inst, op_stack, stack_pos,
                                                 call_stack, call_stack_pos, frame);
 
-      // Release frame
+      // Unregister and release frame
+      (*call_stack_pos)--;
       Runtime::StackInterpreter::ReleaseStackFrame(frame);
 
       if(status < 0) {
