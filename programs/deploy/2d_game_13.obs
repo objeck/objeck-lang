@@ -8,6 +8,188 @@ use Collection;
 use Game.SDL2;
 use Game.Framework;
 
+class Particle {
+	@x : Float;
+	@y : Float;
+	@vx : Float;
+	@vy : Float;
+	@life : Int;
+	@max_life : Int;
+	@r : Int;
+	@g : Int;
+	@b : Int;
+	@size : Int;
+
+	New(x : Float, y : Float, vx : Float, vy : Float, life : Int, r : Int, g : Int, b : Int, size : Int) {
+		@x := x;
+		@y := y;
+		@vx := vx;
+		@vy := vy;
+		@life := life;
+		@max_life := life;
+		@r := r;
+		@g := g;
+		@b := b;
+		@size := size;
+	}
+
+	method : public : IsAlive() ~ Bool {
+		return @life > 0;
+	}
+
+	method : public : Update() ~ Nil {
+		@x += @vx;
+		@y += @vy;
+		@life -= 1;
+	}
+
+	method : public : Draw(renderer : Renderer, shake_x : Int, shake_y : Int) ~ Nil {
+		if(@life > 0) {
+			alpha := 255 * @life / @max_life;
+			renderer->SetDrawColor(@r, @g, @b, alpha);
+			rect := Rect->New(@x->As(Int) + shake_x, @y->As(Int) + shake_y, @size, @size);
+			renderer->FillRect(rect);
+		};
+	}
+}
+
+class ParticleEmitter {
+	@particles : Vector<Particle>;
+
+	New() {
+		@particles := Vector->New()<Particle>;
+	}
+
+	method : public : EmitGemSparkle(x : Int, y : Int) ~ Nil {
+		count := Int->Random(8, 12);
+		for(i := 0; i < count; i += 1;) {
+			vx := (Int->Random(0, 40) - 20)->As(Float) / 10.0;
+			vy := (Int->Random(0, 40) - 30)->As(Float) / 10.0;
+			life := Int->Random(12, 25);
+			size := Int->Random(2, 4);
+			if(Int->Random(1) = 0) {
+				# yellow
+				@particles->AddBack(Particle->New(x->As(Float), y->As(Float), vx, vy, life, 255, 255, 50, size));
+			}
+			else {
+				# cyan
+				@particles->AddBack(Particle->New(x->As(Float), y->As(Float), vx, vy, life, 50, 255, 255, size));
+			};
+		};
+	}
+
+	method : public : EmitLandingDust(x : Int, y : Int) ~ Nil {
+		count := Int->Random(4, 6);
+		for(i := 0; i < count; i += 1;) {
+			vx := (Int->Random(0, 30) - 15)->As(Float) / 10.0;
+			vy := (Int->Random(0, 15) - 15)->As(Float) / 10.0;
+			life := Int->Random(10, 18);
+			size := Int->Random(2, 5);
+			# brown puffs
+			@particles->AddBack(Particle->New(x->As(Float), y->As(Float), vx, vy, life, 139, 119, 101, size));
+		};
+	}
+
+	method : public : EmitLavaEmbers(x : Int, y : Int) ~ Nil {
+		vx := (Int->Random(0, 20) - 10)->As(Float) / 10.0;
+		vy := (Int->Random(0, 10) - 20)->As(Float) / 10.0;
+		life := Int->Random(20, 40);
+		size := Int->Random(1, 3);
+		if(Int->Random(1) = 0) {
+			# orange
+			@particles->AddBack(Particle->New(x->As(Float), y->As(Float), vx, vy, life, 255, 140, 0, size));
+		}
+		else {
+			# red
+			@particles->AddBack(Particle->New(x->As(Float), y->As(Float), vx, vy, life, 255, 60, 20, size));
+		};
+	}
+
+	method : public : Update() ~ Nil {
+		i := 0;
+		while(i < @particles->Size()) {
+			p := @particles->Get(i);
+			p->Update();
+			if(<>p->IsAlive()) {
+				@particles->Remove(i);
+			}
+			else {
+				i += 1;
+			};
+		};
+	}
+
+	method : public : Draw(renderer : Renderer, shake_x : Int, shake_y : Int) ~ Nil {
+		each(i : @particles) {
+			@particles->Get(i)->Draw(renderer, shake_x, shake_y);
+		};
+	}
+}
+
+class PowerUp {
+	@rect : AnimatedImageSprite;
+	@hide : Bool;
+	@type : Int; # 0 = speed, 1 = double jump
+
+	New(x : Int, y : Int, rect : AnimatedImageSprite, type : Int) {
+		@rect := rect;
+		@type := type;
+		@rect->Set(x, y);
+		if(@type = 0) {
+			# cyan tint for speed
+			@rect->SetColor(0, 255, 255);
+		}
+		else {
+			# purple tint for double jump
+			@rect->SetColor(180, 0, 255);
+		};
+	}
+
+	method : public : GetType() ~ Int {
+		return @type;
+	}
+
+	method : public : Hide() ~ Nil {
+		@hide := true;
+	}
+
+	method : public : AddX(x : Int) ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft() ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight() ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop() ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom() ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw(frame_count : Int) ~ Nil {
+		if(<>@hide) {
+			index := frame_count / 8 % @rect->GetClipCount();
+			@rect->Render(index);
+		};
+	}
+
+	method : public : Collides(rect : ImageSprite) ~ Bool {
+		if(@hide) {
+			return false;
+		}
+		else {
+			return @rect->GetPosition()->Overlaps(rect->GetPosition());
+		};
+	}
+}
+
 class Game {
 	# game framework
 	@framework : GameFramework;
@@ -21,7 +203,7 @@ class Game {
 	@music : MixMusic;
 	@gem_chunk : MixChunk;
 	@start_chunk : MixChunk;
-	
+
 	@won_chunk : MixChunk;
 	@won_channel : Int;
 
@@ -54,6 +236,30 @@ class Game {
 	@hard_quit : Bool;
 	@paused : Bool;
 
+	# particles
+	@emitter : ParticleEmitter;
+
+	# screen shake
+	@shake_timer : Int;
+	@shake_x : Int;
+	@shake_y : Int;
+
+	# combo tracking
+	@combo_count : Int;
+	@combo_timer : Int;
+	@combo_text : TextSprite;
+
+	# level splash
+	@splash_timer : Int;
+	@splash_text : TextSprite;
+
+	# lives system
+	@lives : Int;
+	@lives_text : TextSprite;
+
+	# HUD bar rect
+	@hud_rect : Rect;
+
 	@level_mutex : static : ThreadMutex;
 
 	function : Main(args : String[]) ~ Nil {
@@ -63,7 +269,7 @@ class Game {
 		while(game->TidleScreen()) {
 			game->Play();
 		};
-		
+
 		game->Quit();
 	}
 
@@ -79,7 +285,7 @@ class Game {
 		else {
 			@base_path := "media";
 		};
-		
+
 		music_path := String->New(@base_path) + "/music.wav";
 		@music := MixMusic->New(music_path);
 		if(@music->IsNull()) {
@@ -120,6 +326,10 @@ class Game {
 
 		@won_channel := @die_channel := -1;
 		@current_level := 1;
+		@lives := 3;
+
+		@emitter := ParticleEmitter->New();
+		@hud_rect := Rect->New(0, 0, GameConsts->SCREEN_WIDTH, 40);
 	}
 
 	method : TidleScreen() ~ Bool {
@@ -155,7 +365,7 @@ class Game {
 		quit := false;
 		while(<>quit & <>@hard_quit) {
 			@framework->FrameStart();
-			
+
 			# process input
 			while(e->Poll() <> 0) {
 				# joystick
@@ -173,7 +383,7 @@ class Game {
 								else {
 									index := 0;
 								};
-							}			
+							}
 						};
 					};
 				}
@@ -211,7 +421,7 @@ class Game {
 					# 'a' button
 					if(e->GetJButton()->GetButton() = 0) {
 						@won_game := false;
-						return index = 0 ? true : false; 
+						return index = 0 ? true : false;
 					};
 				};
 			};
@@ -249,9 +459,9 @@ class Game {
 
 		leaving {
 			@framework->FreeShapes();
-		};	
+		};
 
-		@won_game := false;	
+		@won_game := false;
 		return false;
 	}
 
@@ -259,10 +469,16 @@ class Game {
 		if(@initialized) {
 			@quit := false;
 			@score := 0;
+			@lives := 3;
+			@combo_count := 0;
+			@combo_timer := 0;
+			@shake_timer := 0;
+			@shake_x := 0;
+			@shake_y := 0;
 
 			@player := Player->New(@self);
 			@level := Level->New(@self, @current_level);
-			
+
 			e := @framework->GetEvent();
 			frame_count := 0;
 
@@ -289,7 +505,7 @@ class Game {
 			buffer := "Time: ";
 			buffer += @timer->ToString();
 			@timer_text := @framework->AddTextSprite();
-			@timer_text->RenderedText(buffer);	
+			@timer_text->RenderedText(buffer);
 
 			@score_text := @framework->AddTextSprite();
 			buffer := "Level: ";
@@ -298,12 +514,25 @@ class Game {
 			buffer += @score->ToString();
 			@score_text->RenderedText(buffer);
 
+			@lives_text := @framework->AddTextSprite();
+			buffer := "HP: ";
+			buffer += @player->GetHP()->ToString();
+			buffer += " | Lives: ";
+			buffer += @lives->ToString();
+			@lives_text->RenderedText(buffer);
+
+			@combo_text := @framework->AddTextSprite();
+			@splash_text := @framework->AddTextSprite();
+
+			# level splash
+			@splash_timer := 90;
+
 			# start game loop
 			while(<>@quit & <>@hard_quit) {
 				@framework->FrameStart();
 				@framework->Clear();
-				
-				
+
+
 				# process user input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
@@ -313,24 +542,69 @@ class Game {
 					ProcessInput(e);
 				};
 
-				if(<>@paused) {	
+				if(<>@paused) {
 					# update model
 					@player->Update();
 					@level->Update();
+					@emitter->Update();
 					UpdateView();
+
+					# update screen shake
+					if(@shake_timer > 0) {
+						@shake_timer -= 1;
+						@shake_x := Int->Random(0, 6) - 3;
+						@shake_y := Int->Random(0, 6) - 3;
+					}
+					else {
+						@shake_x := 0;
+						@shake_y := 0;
+					};
+
+					# update combo timer
+					if(@combo_timer > 0) {
+						@combo_timer -= 1;
+						if(@combo_timer = 0) {
+							@combo_count := 0;
+						};
+					};
+
+					# emit lava embers
+					if(frame_count % 3 = 0) {
+						lava_x := Int->Random(0, GameConsts->SCREEN_WIDTH);
+						lava_y := GameConsts->SCREEN_HEIGHT - 64;
+						@emitter->EmitLavaEmbers(lava_x, lava_y);
+					};
 
 					# draw
 					DrawBackground();
 					@level->Draw(frame_count);
 					@player->Draw();
 					DrawLava(frame_count);
-					@timer_text->Render(685, 10);
-					@score_text->Render(10, 10);
-					
+					@emitter->Draw(@framework->GetRenderer(), @shake_x, @shake_y);
+
+					# draw HUD bar
+					DrawHUD(frame_count);
+
+					# draw level splash
+					if(@splash_timer > 0) {
+						@splash_timer -= 1;
+						splash_alpha := 255;
+						if(@splash_timer < 30) {
+							splash_alpha := 255 * @splash_timer / 30;
+						};
+						splash_buf := "LEVEL ";
+						splash_buf += @current_level->ToString();
+						splash_color := Color->New(255, 255, 0);
+						@splash_text->RenderedText(splash_buf, splash_color);
+						sx := GameConsts->SCREEN_WIDTH / 2 - @splash_text->GetWidth() / 2;
+						sy := GameConsts->SCREEN_HEIGHT / 2 - @splash_text->GetHeight() / 2;
+						@splash_text->Render(sx + @shake_x, sy + @shake_y);
+					};
+
 					# show
 					@framework->Show();
 					@framework->FrameEnd();
-					
+
 					frame_count += 1;
 					if(frame_count >= @framework->GetFps()) {
 						if(@game_over) {
@@ -339,7 +613,7 @@ class Game {
 						else {
 							@timer -= 1;
 							if(@timer < 0) {
-								GameOver();
+								PlayerDeath();
 							}
 							else {
 								buffer := "Time: ";
@@ -376,17 +650,27 @@ class Game {
 		shift := @level->GetShift();
 		if(@player->GetRight() >= GameConsts->PLAYER_BOX_MAX) {
 			diff := @player->GetRight() - GameConsts->PLAYER_BOX_MAX;
+			# camera smoothing: lerp instead of snap
+			smooth_diff := (diff->As(Float) * 0.8)->As(Int);
+			if(smooth_diff < 1) {
+				smooth_diff := 1;
+			};
 			@player->SetRight(GameConsts->PLAYER_BOX_MAX);
 			if(shift > GameConsts->LEVEL_WIDTH_MAX) {
-				@level->ShiftView(-1 * diff);
+				@level->ShiftView(-1 * smooth_diff);
 			};
         };
 
         if(@player->GetLeft() <= GameConsts->PLAYER_BOX_MIN) {
 			diff := GameConsts->PLAYER_BOX_MIN - @player->GetLeft();
+			# camera smoothing: lerp instead of snap
+			smooth_diff := (diff->As(Float) * 0.8)->As(Int);
+			if(smooth_diff < 1) {
+				smooth_diff := 1;
+			};
 			@player->SetLeft(GameConsts->PLAYER_BOX_MIN);
 			if(shift < 0) {
-				@level->ShiftView(diff);
+				@level->ShiftView(smooth_diff);
 			};
 		};
 	}
@@ -407,8 +691,33 @@ class Game {
 		return @base_path;
 	}
 
+	method : public : GetEmitter() ~ ParticleEmitter {
+		return @emitter;
+	}
+
+	method : public : TriggerShake(frames : Int) ~ Nil {
+		@shake_timer := frames;
+	}
+
+	method : public : GetShakeX() ~ Int {
+		return @shake_x;
+	}
+
+	method : public : GetShakeY() ~ Int {
+		return @shake_y;
+	}
+
 	method : public : AddScore(points : Int) ~ Nil {
-		@score += points;
+		# combo system
+		@combo_count += 1;
+		@combo_timer := 120;
+
+		actual_points := points;
+		if(@combo_count > 1) {
+			actual_points := points * @combo_count;
+		};
+
+		@score += actual_points;
 		buffer := "Level: ";
 		buffer += @current_level;
 		buffer += ", Score: ";
@@ -419,8 +728,8 @@ class Game {
 
 	method : public : Won() ~ Nil {
 		@won_channel := @won_chunk->PlayChannel(-1, 0);
-		
-		
+
+
 		if(@score > @high_score) {
 			@high_score := @score;
 		};
@@ -430,7 +739,7 @@ class Game {
 			@won_game := true;
 			@quit := true;
 		};
-		
+
 		critical(@level_mutex) {
 			@current_level += 1;
 			@level := Level->New(@self, @current_level);
@@ -444,6 +753,31 @@ class Game {
 
 			@player->Won();
 			@timer := GameConsts->LEVEL_TIME - @current_level * GameConsts->LEVEL_DEC_TIME;
+			@splash_timer := 90;
+		};
+	}
+
+	method : public : PlayerDeath() ~ Nil {
+		@lives -= 1;
+		TriggerShake(8);
+
+		if(@lives <= 0) {
+			GameOver();
+		}
+		else {
+			# respawn at level start
+			@player->Respawn();
+			@level := Level->New(@self, @current_level);
+			@timer := GameConsts->LEVEL_TIME - @current_level * GameConsts->LEVEL_DEC_TIME;
+			if(@timer < 20) {
+				@timer := 20;
+			};
+
+			buffer := "HP: ";
+			buffer += @player->GetHP()->ToString();
+			buffer += " | Lives: ";
+			buffer += @lives->ToString();
+			@lives_text->RenderedText(buffer);
 		};
 	}
 
@@ -462,10 +796,18 @@ class Game {
 		@quit := true;
 	}
 
+	method : public : UpdateLivesHUD() ~ Nil {
+		buffer := "HP: ";
+		buffer += @player->GetHP()->ToString();
+		buffer += " | Lives: ";
+		buffer += @lives->ToString();
+		@lives_text->RenderedText(buffer);
+	}
+
 	method : DrawBackground() ~ Nil {
 		shift := @level->GetShift() / 2;
-		@background->Render(shift, 0);
-		@background->Render(shift + @background->GetWidth(), 0);	
+		@background->Render(shift + @shake_x, 0 + @shake_y);
+		@background->Render(shift + @background->GetWidth() + @shake_x, 0 + @shake_y);
 	}
 
 	method : DrawLava(frame_count : Int) ~ Nil {
@@ -473,13 +815,55 @@ class Game {
 		y_pos := GameConsts->SCREEN_HEIGHT - 64;
 
 		if(frame_count % 10 = 0) {
-			@lava->Render(shift, y_pos, @lava_clip1);
-			@lava->Render(shift + @lava->GetWidth(), y_pos, @lava_clip1);
+			@lava->Render(shift + @shake_x, y_pos + @shake_y, @lava_clip1);
+			@lava->Render(shift + @lava->GetWidth() + @shake_x, y_pos + @shake_y, @lava_clip1);
 		}
 		else {
-			@lava->Render(shift, y_pos, @lava_clip2);
-			@lava->Render(shift + @lava->GetWidth(), y_pos, @lava_clip2);
-		};	
+			@lava->Render(shift + @shake_x, y_pos + @shake_y, @lava_clip2);
+			@lava->Render(shift + @lava->GetWidth() + @shake_x, y_pos + @shake_y, @lava_clip2);
+		};
+	}
+
+	method : DrawHUD(frame_count : Int) ~ Nil {
+		renderer := @framework->GetRenderer();
+
+		# semi-transparent dark bar
+		renderer->SetDrawColor(0, 0, 0, 128);
+		renderer->FillRect(@hud_rect);
+
+		# score text
+		@score_text->Render(10 + @shake_x, 10 + @shake_y);
+
+		# lives/HP text
+		@lives_text->Render(300 + @shake_x, 10 + @shake_y);
+
+		# timer with urgency coloring
+		if(@timer < 10) {
+			# pulse red intensity between 128-255 for urgency
+			pulse := 128 + (Float->Abs(Float->Sin(frame_count->As(Float) * 0.15)) * 127.0)->As(Int);
+			timer_color := Color->New(255, pulse / 4, 0);
+			buffer := "Time: ";
+			buffer += @timer->ToString();
+			@timer_text->RenderedText(buffer, timer_color);
+		}
+		else if(@timer < 15) {
+			timer_color := Color->New(255, 0, 0);
+			buffer := "Time: ";
+			buffer += @timer->ToString();
+			@timer_text->RenderedText(buffer, timer_color);
+		};
+
+		@timer_text->Render(685 + @shake_x, 10 + @shake_y);
+
+		# combo counter
+		if(@combo_count > 1 & @combo_timer > 0) {
+			combo_buf := "x";
+			combo_buf += @combo_count->ToString();
+			combo_buf += "!";
+			combo_color := Color->New(255, 200, 0);
+			@combo_text->RenderedText(combo_buf, combo_color);
+			@combo_text->Render(400 + @shake_x, 50 + @shake_y);
+		};
 	}
 
 	method : ProcessInput(e : Event) ~ Nil {
@@ -500,7 +884,7 @@ class Game {
 					# left pad
 					label 8: {
 						@player->GoLeft();
-					}					
+					}
 				};
 			};
 		}
@@ -526,7 +910,7 @@ class Game {
 			# else if(e->GetJButton()->GetButton() = 1) { ... };
 		}
 		else if(e->GetType() = EventType->SDL_KEYDOWN) {
-	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@player->GoLeft();
 	            }
@@ -582,7 +966,40 @@ class Player {
 	@game_over : Bool;
 
 	@hanging_platform : HangingPlatform;
-	
+
+	# coyote time
+	@coyote_timer : Int;
+	@on_ground : Bool;
+	@was_on_ground : Bool;
+
+	# jump buffering
+	@jump_buffer : Int;
+
+	# variable jump height
+	@jump_released : Bool;
+	@jumping_up : Bool;
+
+	# player trail
+	@trail_x1 : Int;
+	@trail_y1 : Int;
+	@trail_x2 : Int;
+	@trail_y2 : Int;
+	@trail_x3 : Int;
+	@trail_y3 : Int;
+	@trail_frame : Int;
+
+	# health system
+	@hp : Int;
+	@invincible_timer : Int;
+
+	# power-ups
+	@speed_timer : Int;
+	@double_jump_timer : Int;
+	@used_double_jump : Bool;
+
+	# landing detection
+	@prev_vel_y : Float;
+
 	New(game : Game) {
 		@game := game;
 
@@ -602,13 +1019,37 @@ class Player {
 		player_path := String->New(base_path);
 		player_path += "/player.png";
 		@rect := framework->AddAnimatedImageSprite(player_path, clips);
-		
+
 		a := GameConsts->PLAYER_BOX_MIN->As(Int);
 		b := GameConsts->SCREEN_HEIGHT->As(Int) / 2;
 
 		@loc := Vector2->New(a, b);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
+
+		@hp := 3;
+		@coyote_timer := 0;
+		@jump_buffer := 0;
+		@on_ground := false;
+		@was_on_ground := false;
+		@jumping_up := false;
+		@jump_released := true;
+		@trail_frame := 0;
+		@trail_x1 := a;
+		@trail_y1 := b;
+		@trail_x2 := a;
+		@trail_y2 := b;
+		@trail_x3 := a;
+		@trail_y3 := b;
+		@speed_timer := 0;
+		@double_jump_timer := 0;
+		@used_double_jump := false;
+		@invincible_timer := 0;
+		@prev_vel_y := 0.0;
+	}
+
+	method : public : GetHP() ~ Int {
+		return @hp;
 	}
 
 	method : public : GameOver() ~ Nil {
@@ -617,6 +1058,27 @@ class Player {
 
 	method : public : Won() ~ Nil {
 		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float) + 75, GameConsts->SCREEN_HEIGHT / 2);
+		@hp := 3;
+		@invincible_timer := 0;
+		@speed_timer := 0;
+		@double_jump_timer := 0;
+		@used_double_jump := false;
+	}
+
+	method : public : Respawn() ~ Nil {
+		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float) + 75, GameConsts->SCREEN_HEIGHT / 2);
+		@vel->Zero();
+		@acc->Zero();
+		@hp := 3;
+		@jump_max := 0.0;
+		@on_ground := false;
+		@coyote_timer := 0;
+		@jump_buffer := 0;
+		@invincible_timer := 0;
+		@speed_timer := 0;
+		@double_jump_timer := 0;
+		@used_double_jump := false;
+		@game_over := false;
 	}
 
 	method : public : SetLevel(level : Level) ~ Nil {
@@ -646,7 +1108,7 @@ class Player {
 	method : public : GoLeft()  ~ Nil {
 		if(@hanging_platform = Nil) {
 			@player_dir := -1;
-			
+
 			if(<>@game_over & @rect->GetFlip() = RendererFlip->SDL_FLIP_NONE) {
 				@rect->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
 			};
@@ -666,9 +1128,55 @@ class Player {
 	method : public : Stop()  ~ Nil {
 		@player_dir := 0;
 	}
-	
+
 	method : public : Jump(jumped : Bool)  ~ Nil {
-		@jumped := jumped;
+		if(jumped) {
+			# jump pressed
+			@jump_released := false;
+			can_jump := @on_ground | @coyote_timer > 0;
+			can_double := @double_jump_timer > 0 & <>@used_double_jump & <>can_jump & @hanging_platform = Nil;
+
+			if(can_jump) {
+				@jumped := true;
+				@jumping_up := true;
+				@coyote_timer := 0;
+				@jump_buffer := 0;
+			}
+			else if(can_double) {
+				# double jump
+				@jumped := true;
+				@jumping_up := true;
+				@jump_max := 0.0;
+				@vel->SetY(0.0);
+				@used_double_jump := true;
+				@jump_buffer := 0;
+			}
+			else {
+				# buffer the jump attempt
+				@jump_buffer := 6;
+			};
+		}
+		else {
+			# jump released - variable height
+			if(@jumping_up & @vel->GetY() < 0.0) {
+				@vel->SetY(@vel->GetY() * 0.4);
+				@jumping_up := false;
+			};
+			@jumped := false;
+			@jump_released := true;
+		};
+	}
+
+	method : public : ApplyPowerUp(type : Int) ~ Nil {
+		if(type = 0) {
+			# speed boost
+			@speed_timer := 300;
+		}
+		else {
+			# double jump
+			@double_jump_timer := 300;
+			@used_double_jump := false;
+		};
 	}
 
 	method : public : Update()  ~ Nil {
@@ -678,12 +1186,61 @@ class Player {
 			};
 		}
 		else {
-			Movement();		
+			# update trail positions
+			@trail_frame += 1;
+			if(@trail_frame % 2 = 0) {
+				@trail_x3 := @trail_x2;
+				@trail_y3 := @trail_y2;
+				@trail_x2 := @trail_x1;
+				@trail_y2 := @trail_y1;
+				@trail_x1 := @rect->GetLeft();
+				@trail_y1 := @rect->GetTop();
+			};
+
+			# decrement power-up timers
+			if(@speed_timer > 0) {
+				@speed_timer -= 1;
+			};
+			if(@double_jump_timer > 0) {
+				@double_jump_timer -= 1;
+				if(@double_jump_timer = 0) {
+					@used_double_jump := false;
+				};
+			};
+
+			# decrement invincibility
+			if(@invincible_timer > 0) {
+				@invincible_timer -= 1;
+			};
+
+			@prev_vel_y := @vel->GetY();
+			Movement();
 			CheckPlatforms();
 			CheckGems();
 			CheckSpiders();
 			CheckHangingPlatforms();
 			CheckSign();
+			CheckPowerUps();
+
+			# coyote time: if was on ground but not anymore, start timer
+			if(@was_on_ground & <>@on_ground & <>@jumping_up) {
+				@coyote_timer := 6;
+			};
+			if(@coyote_timer > 0 & <>@on_ground) {
+				@coyote_timer -= 1;
+			};
+
+			# jump buffer: if just landed and buffer active, auto jump
+			if(@on_ground & @jump_buffer > 0) {
+				@jumped := true;
+				@jumping_up := true;
+				@jump_buffer := 0;
+			};
+			if(@jump_buffer > 0) {
+				@jump_buffer -= 1;
+			};
+
+			@was_on_ground := @on_ground;
 		};
 
 		CheckFloorCeil();
@@ -702,7 +1259,12 @@ class Player {
 			};
 		}
 		else {
-			@acc->SetX(@player_dir * 0.5);
+			# tighter controls: increased acceleration
+			speed_mult := 1.0;
+			if(@speed_timer > 0) {
+				speed_mult := 1.5;
+			};
+			@acc->SetX(@player_dir * 0.7 * speed_mult);
 
 			# movement logic
 			if(@hit_top) {
@@ -711,7 +1273,8 @@ class Player {
 			}
 			else {
 				if(@jumped & @jump_max < 2.75) {
-					@acc->SetY(-5.3);
+					# stronger jump impulse
+					@acc->SetY(-5.8);
 					@jump_max += 0.83;
 				}
 				else {
@@ -719,7 +1282,8 @@ class Player {
 				};
 			};
 
-			@acc->Add(Vector2->Mul(@vel, -0.0925));
+			# increased friction
+			@acc->Add(Vector2->Mul(@vel, -0.12));
 			@vel->Add(Vector2->Mul(@acc, 0.75));
 			@loc->Add(@vel);
 			@acc->Zero();
@@ -727,10 +1291,12 @@ class Player {
 	}
 
 	method : public : CheckPlatforms() ~ Nil {
+		@on_ground := false;
+
 		# reposition x-axis
 		@rect->SetCenterX(@loc->GetX());
 		collides := @level->PlatformCollisions(@self);
-		
+
         each(i : collides) {
         	platform := collides->Get(i)->As(StaticPlatform);
 			if(@player_dir = 1) {
@@ -759,8 +1325,20 @@ class Player {
             else if(@vel->GetY() > 0.01) {
     			@rect->SetBottom(platform->GetTop());
     			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
+
+    			# detect landing
+    			if(<>@on_ground & @prev_vel_y > 2.0) {
+    				@game->GetEmitter()->EmitLandingDust(@rect->GetCenterX(), platform->GetTop());
+    				if(@prev_vel_y > 4.0) {
+    					@game->TriggerShake(4);
+    				};
+    			};
+
 				@vel->SetY(0);
 				@jump_max := 0.0;
+				@on_ground := true;
+				@jumping_up := false;
+				@used_double_jump := false;
             };
         };
 	}
@@ -771,6 +1349,8 @@ class Player {
     		gem := collides->Get(i)->As(Gem);
     		gem->Hide();
     		@game->AddScore(GameConsts->GEM_POINTS + @game->GetCurrentLevel() * 5);
+    		# emit sparkle particles
+    		@game->GetEmitter()->EmitGemSparkle(gem->GetLeft() + 16, gem->GetTop() + 16);
     	};
     }
 
@@ -781,11 +1361,37 @@ class Player {
 	}
 
     method : public : CheckSpiders() ~ Nil {
+    	if(@invincible_timer > 0) {
+    		return;
+    	};
+
 		collides := @level->SpiderCollisions(@self);
         each(i : collides) {
     		spider := collides->Get(i)->As(Spider);
     		spider->Hide();
-    		GameOver();
+    		@hp -= 1;
+    		@game->UpdateLivesHUD();
+
+    		if(@hp <= 0) {
+    			# death from spiders
+    			@game->PlayerDeath();
+    			return;
+    		}
+    		else {
+    			# take damage, become invincible
+    			@invincible_timer := 120;
+    			@game->TriggerShake(4);
+    		};
+    	};
+    }
+
+    method : public : CheckPowerUps() ~ Nil {
+    	collides := @level->PowerUpCollisions(@self);
+    	each(i : collides) {
+    		powerup := collides->Get(i)->As(PowerUp);
+    		powerup->Hide();
+    		ApplyPowerUp(powerup->GetType());
+    		@game->GetEmitter()->EmitGemSparkle(powerup->GetLeft() + 16, powerup->GetTop() + 16);
     	};
     }
 
@@ -796,7 +1402,8 @@ class Player {
 	    		@hanging_platform := collides->Get(i)->As(HangingPlatform);
 	    		return;
 	       	};
-
+	    }
+	    else if(<>@hanging_platform->Collides(@rect)) {
 	       	@hanging_platform := Nil;
 	    };
     }
@@ -805,7 +1412,8 @@ class Player {
     	if(@rect->GetTop() >= GameConsts->SCREEN_HEIGHT) {
 			@rect->SetTop(GameConsts->SCREEN_HEIGHT);
 			@vel->SetY(0);
-			@game->GameOver();
+			# lava death - instant regardless of HP
+			@game->PlayerDeath();
 		}
 		else if(@loc->GetY() < 0) {
 			@loc->SetY(0);
@@ -814,6 +1422,43 @@ class Player {
     }
 
 	method : public : Draw()  ~ Nil {
+		shake_x := @game->GetShakeX();
+		shake_y := @game->GetShakeY();
+
+		# draw player trail when moving fast
+		speed := @vel->MagnitudeSquared();
+		if(speed > 4.0 & <>@game_over) {
+			@rect->SetAlpha(30);
+			@rect->Render(@trail_x3 + shake_x, @trail_y3 + shake_y, 4);
+			@rect->SetAlpha(60);
+			@rect->Render(@trail_x2 + shake_x, @trail_y2 + shake_y, 4);
+			@rect->SetAlpha(255);
+		};
+
+		# invincibility flash
+		if(@invincible_timer > 0) {
+			if(@invincible_timer % 6 < 3) {
+				@rect->SetAlpha(80);
+			}
+			else {
+				@rect->SetAlpha(255);
+			};
+		}
+		else {
+			@rect->SetAlpha(255);
+		};
+
+		# speed boost tint
+		if(@speed_timer > 0) {
+			@rect->SetColor(0, 255, 255);
+		}
+		else if(@double_jump_timer > 0) {
+			@rect->SetColor(180, 0, 255);
+		}
+		else {
+			@rect->SetColor(255, 255, 255);
+		};
+
 		if(@game_over) {
 			@rect->Render(6);
 		}
@@ -831,6 +1476,9 @@ class Player {
 			index := Int->Abs((offset / 15)->As(Int) % 4);
 			@rect->Render(index);
 		};
+
+		# reset color mod
+		@rect->SetColor(255, 255, 255);
 	}
 }
 
@@ -927,7 +1575,7 @@ class MovingPlatform from StaticPlatform {
 		};
 
 		@rect->AddY(@change_y);
-		if(Collides(@player->GetRect())) { 
+		if(Collides(@player->GetRect())) {
 			if(@change_y < 0) {
                 @player->GetRect()->SetBottom(@rect->GetTop());
 			}
@@ -954,6 +1602,7 @@ class Level {
 	@gems : Vector<Gem>;
 	@spiders : Vector<Spider>;
 	@hanging_platforms : Vector<HangingPlatform>;
+	@powerups : Vector<PowerUp>;
 	@shift_x : Int;
 	@game_over : Bool;
 	@end_post : SignPost;
@@ -972,6 +1621,7 @@ class Level {
 		@gems := GenerateGems(base_path, framework);
 		@hanging_platforms := GenerateHangingPlatform(base_path, framework);
 		@spiders := GeneratSpiders(base_path, framework);
+		@powerups := GeneratePowerUps(base_path, framework);
 	}
 
 	method : public : GameOver() ~ Nil {
@@ -996,11 +1646,11 @@ class Level {
 			y_pos := NextYPos(prev_plat, 20, 40);
 
 			if(Int->Random(1) = 0) {
-				platforms->AddBack(StaticPlatform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height)));					
+				platforms->AddBack(StaticPlatform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height)));
 			}
 			else {
 				platforms->AddBack(MovingPlatform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height), @player, @self));
-			};			
+			};
 
 			x_base_pos += 110 + Int->Random(45, 60);
 		};
@@ -1038,8 +1688,8 @@ class Level {
 		x_offset := 100;
 		y_offset := Int->Random(225, 275);
 		for(i := 0; i < 3; i += 1;) {
-			logs->AddBack(HangingPlatform->New(x_offset, y_offset, 
-				framework->AddImageSprite(log_path), 
+			logs->AddBack(HangingPlatform->New(x_offset, y_offset,
+				framework->AddImageSprite(log_path),
 				framework->AddImageSprite(ring_path)));
 			x_offset += 600;
 		};
@@ -1065,7 +1715,7 @@ class Level {
 			flip := Int->Random(3);
 			if(flip % 3 = 0) {
 				platform := @platforms->Get(i);
-				
+
 				x_offset : Int;
 				value := Int->Random(10, 30);
 				if(i % 2 = 0) {
@@ -1085,6 +1735,43 @@ class Level {
 		return gems;
 	}
 
+	method : GeneratePowerUps(base_path : String, framework : GameFramework) ~ Vector<PowerUp> {
+		powerups := Vector->New()<PowerUp>;
+
+		gems_path := String->New(base_path);
+		gems_path += "/gems.png";
+
+		clips := Vector->New()<Rect>;
+		clips->AddBack(Rect->New(0, 0, 32, 32));
+		clips->AddBack(Rect->New(32, 0, 32, 32));
+		clips->AddBack(Rect->New(64, 0, 32, 32));
+		clips->AddBack(Rect->New(96, 0, 32, 32));
+		clips->AddBack(Rect->New(128, 0, 32, 32));
+		clips->AddBack(Rect->New(160, 0, 32, 32));
+
+		# place 1-2 power-ups per level
+		placed := 0;
+		each(i : @platforms) {
+			if(placed >= 2) {
+				return powerups;
+			};
+
+			if(i > 2 & i < @platforms->Size() - 1) {
+				flip := Int->Random(5);
+				if(flip = 0) {
+					platform := @platforms->Get(i);
+					x_offset := platform->GetLeft() + platform->GetWidth() / 2;
+					y_offset := platform->GetTop() - 32 - Int->Random(40, 80);
+					type := Int->Random(1); # 0=speed, 1=double_jump
+					powerups->AddBack(PowerUp->New(x_offset, y_offset, framework->AddAnimatedImageSprite(gems_path, clips), type));
+					placed += 1;
+				};
+			};
+		};
+
+		return powerups;
+	}
+
 	method : GeneratSpiders(base_path : String, framework : GameFramework) ~ Vector<Spider> {
 		spiders := Vector->New()<Spider>;
 
@@ -1098,7 +1785,7 @@ class Level {
 			if(flip % value = 0) {
 				total += 1;
 				platform := @platforms->Get(i)->As(StaticPlatform);
-				
+
 				if(<>platform->TypeOf(MovingPlatform)) {
 					x_offset : Int;
 					value := Int->Random(10, 30);
@@ -1115,7 +1802,7 @@ class Level {
 				};
 			};
 		};
-		
+
 		return spiders;
 	}
 
@@ -1144,6 +1831,11 @@ class Level {
 		each(i : @spiders) {
 			platform := @spiders->Get(i);
 			platform->AddX(shift_x);
+		};
+
+		each(i : @powerups) {
+			powerup := @powerups->Get(i);
+			powerup->AddX(shift_x);
 		};
 
 		@end_post->AddX(shift_x);
@@ -1205,6 +1897,19 @@ class Level {
         return collides;
     }
 
+    method : public : PowerUpCollisions(player : Player) ~ Vector<PowerUp> {
+    	collides := Vector->New()<PowerUp>;
+
+    	each(i : @powerups) {
+    		obstacle := @powerups->Get(i);
+    		if(obstacle->Collides(player->GetRect())) {
+    			collides->AddBack(obstacle);
+    		};
+    	};
+
+    	return collides;
+    }
+
 	method : public : Update()  ~ Nil {
 		each(i : @platforms) {
 			platform := @platforms->Get(i);
@@ -1252,6 +1957,13 @@ class Level {
 				};
 			};
 
+			each(i : @powerups) {
+				powerup := @powerups->Get(i);
+				if(<>(powerup->GetRight() < 0 | powerup->GetLeft() > GameConsts->SCREEN_WIDTH)) {
+					powerup->Draw(frame_count);
+				};
+			};
+
 			if(<>(@end_post->GetRight() < 0 | @end_post->GetLeft() > GameConsts->SCREEN_WIDTH)) {
 				@end_post->Draw(frame_count);
 			};
@@ -1268,7 +1980,7 @@ class HangingPlatform implements Actor {
 	@beam : ImageSprite;
 	@beam_x_start : Int;
 	@beam_x_end : Int;
-	
+
 	@grip : ImageSprite;
 	@grip_y : Float;
 	@grip_x : Float;
@@ -1292,8 +2004,6 @@ class HangingPlatform implements Actor {
 		tran_x := center_x + (x - center_x) * cos_angle - (y - center_y) * sin_angle;
 		tran_y := center_y + (x - center_x) * sin_angle + (y - center_y) * cos_angle;
 
-# "old=[{$x},{$y}], new=[{$tran_x},{$tran_y}]"->PrintLine();
-
 		@beam->Set(x, y);
 		@beam->SetAngle(angle);
 
@@ -1304,7 +2014,7 @@ class HangingPlatform implements Actor {
 		@grip->Set(@grip_x, @grip_y);
 
 		@beam_x_start := tran_x;
-		@beam_x_end := @beam_x_start + @beam->GetWidth() * 
+		@beam_x_end := @beam_x_start + @beam->GetWidth() *
 			Float->Cos(Float->ToRadians(angle)) - @grip->GetWidth();
 	}
 
@@ -1350,7 +2060,7 @@ class HangingPlatform implements Actor {
     		@grip_dir := 1;
     	};
     	@grip_y += @grip_dir * @grip_y_diff;
-    	
+
     	@grip->Set(@grip_x_diff + @grip_x, @grip_y);
 	}
 
@@ -1463,7 +2173,7 @@ class Spider implements Actor {
 		return @rect->GetBottom();
 	}
 
-	method : public : native : Update()  ~ Nil {	
+	method : public : native : Update()  ~ Nil {
 		if(@x_dir <> 0) {
 			@x_offset += 1;
 			if(@x_offset > @current_level) {
@@ -1487,7 +2197,7 @@ class Spider implements Actor {
 				@x_flip := true;
 			};
 		};
-		
+
 		@rect->AddX(@x_dir * 2);
 		@rect->AddY(@y_dir * 2);
 	}
