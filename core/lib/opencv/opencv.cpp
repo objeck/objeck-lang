@@ -892,4 +892,443 @@ extern "C" {
       memcpy(output_byte_array_buffer, ouput_bytes.data(), ouput_bytes.size());
       output_holder[0] = (size_t)output_byte_array;
    }
+
+   //
+   // --- Contour Detection ---
+   //
+
+   // Find contours in image
+   // Returns Int[] with format: [count, size0, size1, ..., sizeN-1, x0, y0, x1, y1, ...]
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_find_contours(VMContext& context) {
+      size_t* output_holder = APITools_GetArray(context, 0);
+
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int mode = (int)APITools_GetIntValue(context, 2);
+      const int method = (int)APITools_GetIntValue(context, 3);
+
+      if(!image_obj) {
+         output_holder[0] = 0;
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         output_holder[0] = 0;
+         return;
+      }
+
+      std::vector<std::vector<cv::Point>> contours;
+      cv::findContours(image, contours, mode, method);
+
+      // Count total points
+      size_t total_points = 0;
+      for(const auto& contour : contours) {
+         total_points += contour.size();
+      }
+
+      // Format: [count, size0, size1, ..., sizeN-1, x0, y0, x1, y1, ...]
+      const size_t array_size = 1 + contours.size() + total_points * 2;
+      size_t* int_array = APITools_MakeIntArray(context, array_size);
+
+      // Set count
+      APITools_SetIntArrayElement(int_array, 0, (long)contours.size());
+
+      // Set sizes
+      for(size_t i = 0; i < contours.size(); ++i) {
+         APITools_SetIntArrayElement(int_array, 1 + i, (long)contours[i].size());
+      }
+
+      // Set flattened points
+      size_t idx = 1 + contours.size();
+      for(const auto& contour : contours) {
+         for(const auto& pt : contour) {
+            APITools_SetIntArrayElement(int_array, idx++, (long)pt.x);
+            APITools_SetIntArrayElement(int_array, idx++, (long)pt.y);
+         }
+      }
+
+      output_holder[0] = (size_t)int_array;
+   }
+
+   // Draw contours on image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_draw_contours(VMContext& context) {
+      size_t* image_in_obj = APITools_GetObjectValue(context, 1);
+      size_t* contours_array = (size_t*)APITools_GetArray(context, 2)[0];
+      const int contour_idx = (int)APITools_GetIntValue(context, 3);
+      size_t* color_obj = APITools_GetObjectValue(context, 4);
+      const int thickness = (int)APITools_GetIntValue(context, 5);
+
+      if(!image_in_obj || !contours_array || !color_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_in_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      // Deserialize contours from Int[]
+      const long count = APITools_GetIntArrayElement(contours_array, 0);
+
+      std::vector<std::vector<cv::Point>> contours(count);
+      size_t idx = 1 + count;
+      for(long i = 0; i < count; ++i) {
+         const long sz = APITools_GetIntArrayElement(contours_array, 1 + i);
+         contours[i].resize(sz);
+         for(long j = 0; j < sz; ++j) {
+            const long x = APITools_GetIntArrayElement(contours_array, idx++);
+            const long y = APITools_GetIntArrayElement(contours_array, idx++);
+            contours[i][j] = cv::Point(x, y);
+         }
+      }
+
+      const double r = *((double*)&color_obj[0]);
+      const double g = *((double*)&color_obj[1]);
+      const double b = *((double*)&color_obj[2]);
+      const double a = *((double*)&color_obj[3]);
+
+      cv::drawContours(image, contours, contour_idx, cv::Scalar(r, g, b, a), thickness);
+
+      size_t* image_out_obj = opencv_raw_write(image, context);
+      APITools_SetObjectValue(context, 0, image_out_obj);
+   }
+
+   // Compute contour area
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_contour_area(VMContext& context) {
+      size_t* contours_array = (size_t*)APITools_GetArray(context, 1)[0];
+      const int index = (int)APITools_GetIntValue(context, 2);
+
+      if(!contours_array) {
+         APITools_SetFloatValue(context, 0, 0.0);
+         return;
+      }
+
+      const long count = APITools_GetIntArrayElement(contours_array, 0);
+      if(index < 0 || index >= count) {
+         APITools_SetFloatValue(context, 0, 0.0);
+         return;
+      }
+
+      // Skip to the target contour
+      size_t idx = 1 + count;
+      for(int i = 0; i < index; ++i) {
+         const long sz = APITools_GetIntArrayElement(contours_array, 1 + i);
+         idx += sz * 2;
+      }
+
+      const long sz = APITools_GetIntArrayElement(contours_array, 1 + index);
+      std::vector<cv::Point> contour(sz);
+      for(long j = 0; j < sz; ++j) {
+         const long x = APITools_GetIntArrayElement(contours_array, idx++);
+         const long y = APITools_GetIntArrayElement(contours_array, idx++);
+         contour[j] = cv::Point(x, y);
+      }
+
+      const double area = cv::contourArea(contour);
+      APITools_SetFloatValue(context, 0, area);
+   }
+
+   // Compute bounding rectangle for a contour
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_bounding_rect(VMContext& context) {
+      size_t* contours_array = (size_t*)APITools_GetArray(context, 1)[0];
+      const int index = (int)APITools_GetIntValue(context, 2);
+
+      if(!contours_array) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      const long count = APITools_GetIntArrayElement(contours_array, 0);
+      if(index < 0 || index >= count) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      // Skip to the target contour
+      size_t idx = 1 + count;
+      for(int i = 0; i < index; ++i) {
+         const long sz = APITools_GetIntArrayElement(contours_array, 1 + i);
+         idx += sz * 2;
+      }
+
+      const long sz = APITools_GetIntArrayElement(contours_array, 1 + index);
+      std::vector<cv::Point> contour(sz);
+      for(long j = 0; j < sz; ++j) {
+         const long x = APITools_GetIntArrayElement(contours_array, idx++);
+         const long y = APITools_GetIntArrayElement(contours_array, idx++);
+         contour[j] = cv::Point(x, y);
+      }
+
+      cv::Rect rect = cv::boundingRect(contour);
+
+      size_t* rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
+      rect_obj[0] = rect.x;
+      rect_obj[1] = rect.y;
+      rect_obj[2] = rect.width;
+      rect_obj[3] = rect.height;
+
+      APITools_SetObjectValue(context, 0, rect_obj);
+   }
+
+   //
+   // --- VideoWriter ---
+   //
+
+   // Create a new VideoWriter
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_new_video_writer(VMContext& context) {
+      const std::wstring w_filename = APITools_GetStringValue(context, 1);
+      const std::string filename = UnicodeToBytes(w_filename);
+      const int fourcc = (int)APITools_GetIntValue(context, 2);
+      const double fps = APITools_GetFloatValue(context, 3);
+      const int width = (int)APITools_GetIntValue(context, 4);
+      const int height = (int)APITools_GetIntValue(context, 5);
+
+      cv::VideoWriter* writer = new cv::VideoWriter(filename, fourcc, fps, cv::Size(width, height));
+      if(writer->isOpened()) {
+         APITools_SetIntValue(context, 0, (size_t)writer);
+      }
+      else {
+         delete writer;
+         APITools_SetIntValue(context, 0, 0);
+      }
+   }
+
+   // Write a frame to VideoWriter
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_video_writer_write(VMContext& context) {
+      cv::VideoWriter* writer = (cv::VideoWriter*)APITools_GetIntValue(context, 0);
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+
+      if(writer && image_obj) {
+         cv::Mat image = opencv_raw_read(image_obj, context);
+         if(!image.empty()) {
+            writer->write(image);
+         }
+      }
+   }
+
+   // Check if VideoWriter is opened
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_video_writer_is_open(VMContext& context) {
+      cv::VideoWriter* writer = (cv::VideoWriter*)APITools_GetIntValue(context, 1);
+      if(writer) {
+         APITools_SetIntValue(context, 0, writer->isOpened() ? 1 : 0);
+      }
+      else {
+         APITools_SetIntValue(context, 0, 0);
+      }
+   }
+
+   // Release VideoWriter
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_video_writer_release(VMContext& context) {
+      cv::VideoWriter* writer = (cv::VideoWriter*)APITools_GetIntValue(context, 0);
+      if(writer) {
+         writer->release();
+         delete writer;
+         writer = nullptr;
+      }
+   }
+
+   // Compute FourCC code
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_video_writer_fourcc(VMContext& context) {
+      const int c1 = (int)APITools_GetIntValue(context, 1);
+      const int c2 = (int)APITools_GetIntValue(context, 2);
+      const int c3 = (int)APITools_GetIntValue(context, 3);
+      const int c4 = (int)APITools_GetIntValue(context, 4);
+
+      const int fourcc = cv::VideoWriter::fourcc((char)c1, (char)c2, (char)c3, (char)c4);
+      APITools_SetIntValue(context, 0, fourcc);
+   }
+
+   //
+   // --- Geometric Transforms ---
+   //
+
+   // Get 2D rotation matrix
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_get_rotation_matrix_2d(VMContext& context) {
+      size_t* output_holder = APITools_GetArray(context, 0);
+
+      const double center_x = APITools_GetFloatValue(context, 1);
+      const double center_y = APITools_GetFloatValue(context, 2);
+      const double angle = APITools_GetFloatValue(context, 3);
+      const double scale = APITools_GetFloatValue(context, 4);
+
+      cv::Mat mat = cv::getRotationMatrix2D(cv::Point2f((float)center_x, (float)center_y), angle, scale);
+
+      // Return 6 doubles (2x3 matrix flattened)
+      size_t* float_array = APITools_MakeFloatArray(context, 6);
+      double* float_array_buffer = reinterpret_cast<double*>(float_array + 3);
+      for(int r = 0; r < 2; ++r) {
+         for(int c = 0; c < 3; ++c) {
+            float_array_buffer[r * 3 + c] = mat.at<double>(r, c);
+         }
+      }
+
+      output_holder[0] = (size_t)float_array;
+   }
+
+   // Apply affine transformation
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_warp_affine(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      size_t* matrix_array = (size_t*)APITools_GetArray(context, 2)[0];
+      const int width = (int)APITools_GetIntValue(context, 3);
+      const int height = (int)APITools_GetIntValue(context, 4);
+
+      if(!image_obj || !matrix_array) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      // Reconstruct 2x3 matrix from Float[6]
+      cv::Mat mat(2, 3, CV_64F);
+      for(int r = 0; r < 2; ++r) {
+         for(int c = 0; c < 3; ++c) {
+            mat.at<double>(r, c) = APITools_GetFloatArrayElement(matrix_array, r * 3 + c);
+         }
+      }
+
+      cv::Mat result;
+      cv::warpAffine(image, result, mat, cv::Size(width, height));
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Apply perspective transformation
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_warp_perspective(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      size_t* matrix_array = (size_t*)APITools_GetArray(context, 2)[0];
+      const int width = (int)APITools_GetIntValue(context, 3);
+      const int height = (int)APITools_GetIntValue(context, 4);
+
+      if(!image_obj || !matrix_array) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      // Reconstruct 3x3 matrix from Float[9]
+      cv::Mat mat(3, 3, CV_64F);
+      for(int r = 0; r < 3; ++r) {
+         for(int c = 0; c < 3; ++c) {
+            mat.at<double>(r, c) = APITools_GetFloatArrayElement(matrix_array, r * 3 + c);
+         }
+      }
+
+      cv::Mat result;
+      cv::warpPerspective(image, result, mat, cv::Size(width, height));
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   //
+   // --- Image Normalization ---
+   //
+
+   // Normalize image for neural network preprocessing
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_normalize(VMContext& context) {
+      size_t* output_holder = APITools_GetArray(context, 0);
+
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const double mean_r = APITools_GetFloatValue(context, 2);
+      const double mean_g = APITools_GetFloatValue(context, 3);
+      const double mean_b = APITools_GetFloatValue(context, 4);
+      const double std_r = APITools_GetFloatValue(context, 5);
+      const double std_g = APITools_GetFloatValue(context, 6);
+      const double std_b = APITools_GetFloatValue(context, 7);
+
+      if(!image_obj) {
+         output_holder[0] = 0;
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         output_holder[0] = 0;
+         return;
+      }
+
+      // Convert to float and normalize to [0, 1]
+      cv::Mat float_img;
+      image.convertTo(float_img, CV_32F, 1.0 / 255.0);
+
+      // Convert BGR to RGB
+      cv::cvtColor(float_img, float_img, cv::COLOR_BGR2RGB);
+
+      // Split channels
+      std::vector<cv::Mat> channels(3);
+      cv::split(float_img, channels);
+
+      // Normalize: (channel - mean) / std
+      channels[0] = (channels[0] - (float)mean_r) / (float)std_r;
+      channels[1] = (channels[1] - (float)mean_g) / (float)std_g;
+      channels[2] = (channels[2] - (float)mean_b) / (float)std_b;
+
+      // Flatten to CHW format
+      const size_t total = float_img.rows * float_img.cols * 3;
+      size_t* float_array = APITools_MakeFloatArray(context, total);
+      double* float_array_buffer = reinterpret_cast<double*>(float_array + 3);
+
+      size_t offset = 0;
+      for(const auto& channel : channels) {
+         for(int r = 0; r < channel.rows; ++r) {
+            for(int c = 0; c < channel.cols; ++c) {
+               float_array_buffer[offset++] = (double)channel.at<float>(r, c);
+            }
+         }
+      }
+
+      output_holder[0] = (size_t)float_array;
+   }
 }
