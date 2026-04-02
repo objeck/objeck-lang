@@ -62,18 +62,12 @@ obc hello && obr hello
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
 
 **v2026.3.0** (upcoming)
+  * **3.3x binarytrees speedup** — young-gen bump allocator, direct JIT-to-JIT calling, atomic CAS mark bits, auto-JIT dispatch fix
+  * **MTHD_CALL JIT whitelist** (x64 + ARM64) — methods containing method calls can now be JIT-compiled and auto-JIT'd
   * Phi-3 Vision multimodal inference — 3-model pipeline with FP16 and DirectML/CUDA support
   * Unified ONNX build system — single source with preprocessor-selected providers (DML, CUDA, QNN, CoreML)
-  * ONNX runtime improvements — FP16 I/O, letterbox preprocessing, auto NCHW/NHWC detection
-  * New ONNX demos: ResNet, OpenPose, YOLO, Phi-3 text and vision; added macOS CoreML and MSYS2 support
-  * GC cleanup — removed ~500 lines of dead generational code, 4.6x binarytrees speedup
-  * Auto-JIT fix — failed attempts no longer retry on every call, 3.5x dispatch speedup
-  * Adaptive heap tuning — faster growth triggers (UNCOLLECTED_COUNT 7→3)
   * Hash auto-resize at 75% load, Vector in-place Remove, JSON escape/keyword fixes
-  * Tokenizer O(n) string building, XML bulk parsing, Regex input caching
-  * Fixed constructor early return crash and simplified Try/Otherwise error recovery
-  * Fixed CSV.Median value-as-index, CSV.Average off-by-one, URL encoding swap, Response.ToString nil check
-  * 2 new regression tests (core_collections_perf, core_json_escape), 19/19 pass
+  * Fixed constructor early return crash, CSV.Median, CSV.Average, URL encoding, Response.ToString nil check
   * [Performance details and benchmarks →](docs/performance.md)
 
 **v2026.2.1** ✅
