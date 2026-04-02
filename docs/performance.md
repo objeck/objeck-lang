@@ -75,7 +75,7 @@ Same inputs, same machine, same Docker container. All languages ran with default
 
 **Where Objeck is competitive:**
 
-- **binarytrees** — 2.9x slower than LuaJIT, 1.8x slower than Python/Ruby. Previously 10x slower than LuaJIT before the bump allocator, MTHD_CALL whitelist, and direct JIT-to-JIT calling optimizations. The remaining gap is interpreter dispatch overhead for recursive methods (BottomUpTree/ItemCheck).
+- **binarytrees** — 2.9x slower than LuaJIT, 1.8x slower than Python/Ruby. Previously 10x slower than LuaJIT before the bump allocator, MTHD_CALL whitelist, and direct JIT-to-JIT calling optimizations. BottomUpTree and ItemCheck are now auto-JIT compiled with direct native-to-native calling. The remaining gap is per-callback overhead (ProcessStackCallback frame setup) and constructor calls not yet inlined within JIT'd methods.
 
 **Where Objeck needs improvement:**
 
@@ -389,6 +389,7 @@ Measured on GitHub Actions runners (Ubuntu 24.04), 3 runs each, `-opt s3`:
 | Auto-JIT operand3 dispatch fix | VM | **1.5x** on binarytrees | `operand3 < 0` (failed JIT) was routing to `ProcessJitMethodCall` which re-attempted `Compile()` on every call. Fixed: `operand3 > 0` → JIT, `< 0` → interpreter, `== 0` → auto-JIT counting. |
 | Atomic mark bits | GC | ~5% on GC-heavy | Lock-free CAS (`InterlockedCompareExchange64`/`__sync_bool_compare_and_swap`) replaces `marked_lock` mutex in `MarkMemory`. Eliminates contention across 3 parallel mark threads. |
 | MEM_START_MAX 1 MB → 8 MB | GC | Fewer early GC cycles | Reduces GC thrashing during heap warmup. `old_generation.reserve()` increased from 4096 to 65536 to reduce hash-set rehashing. |
+| Auto-JIT for MTHD_CALL methods | JIT | Combined with direct calling | BottomUpTree and ItemCheck are now auto-JIT compiled. Recursive calls go through direct JIT-to-JIT path instead of interpreter dispatch. DYN_MTHD_CALL (closures) still blocked. |
 
 **How it was found:** GC profiling (`_TIMING`) revealed that only 18% of binarytrees runtime was in GC (mark + sweep). The remaining 82% was per-object allocation overhead (mutex + hash insert) and interpreter dispatch. This contradicted the previous assumption that "GC is the #1 bottleneck." The bump allocator had already been implemented (young region, write barriers, promotion, fixup) but was disabled due to a cross-thread operand stack fixup gap.
 
@@ -417,6 +418,8 @@ Not every optimization improved performance. Data-driven validation caught sever
 | **GC: Lock-free mark via snapshot** | GC | 0.64x **much slower** | Copying entire `allocated_memory` set before each mark phase was O(n) overhead |
 | **GC: Adaptive tuning** (live-set ratio) | GC | Regression on binarytrees | Slower growth (2x vs 16x) caused more frequent GC cycles |
 | **Inline limit 512** | Compiler | 0.91x on binarytrees | Too much inlining exceeded JIT's register allocator capacity |
+| **Auto-JIT MTHD_CALL via interpreter trampoline** | JIT | 0.5x **much slower** | Auto-JIT'd recursive methods calling through ProcessStackCallback → interpreter → ProcessJitMethodCall trampoline. Per-call overhead exceeded interpreter dispatch cost. Fixed by adding direct JIT-to-JIT calling in JitStackCallback. |
+| **ProcessInlineMethod for MTHD_CALL** | JIT | Crashes | Inlining constructors/getters within JIT'd methods corrupts INSTANCE_MEM save/restore offsets. Currently disabled — needs investigation of frame layout interaction with inline local offset calculation. |
 
 **Key lesson:** On a modern out-of-order CPU, reducing instruction count at the bytecode level doesn't always translate to faster execution. The JIT's register allocation and the CPU's own optimizations (branch prediction, speculative execution) mean that simpler bytecode patterns can sometimes be faster than "optimized" ones.
 
