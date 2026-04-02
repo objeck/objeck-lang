@@ -553,7 +553,8 @@ void JitArm64::ProcessInstructions() {
       Epilog();
       break;
       
-    case MTHD_CALL: {
+    case MTHD_CALL:
+    case MTHD_CALL_JIT: {
       StackMethod* called_method = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       if(called_method) {
 #ifdef _DEBUG_JIT_JIT
