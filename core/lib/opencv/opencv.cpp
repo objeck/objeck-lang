@@ -430,6 +430,444 @@ extern "C" {
       APITools_SetObjectValue(context, 0, image_out_obj);
    }
 
+   //
+   // --- Color Conversion ---
+   //
+
+   // Convert image color space
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_cvt_color(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int code = (int)APITools_GetIntValue(context, 2);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::cvtColor(image, result, code);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   //
+   // --- Filtering ---
+   //
+
+   // Apply Gaussian blur to image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_gaussian_blur(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int ksize_w = (int)APITools_GetIntValue(context, 2);
+      const int ksize_h = (int)APITools_GetIntValue(context, 3);
+      const double sigmaX = APITools_GetFloatValue(context, 4);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::GaussianBlur(image, result, cv::Size(ksize_w, ksize_h), sigmaX);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Apply median blur to image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_median_blur(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int ksize = (int)APITools_GetIntValue(context, 2);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::medianBlur(image, result, ksize);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Apply bilateral filter to image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_bilateral_filter(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int d = (int)APITools_GetIntValue(context, 2);
+      const double sigmaColor = APITools_GetFloatValue(context, 3);
+      const double sigmaSpace = APITools_GetFloatValue(context, 4);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::bilateralFilter(image, result, d, sigmaColor, sigmaSpace);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   //
+   // --- Edge Detection ---
+   //
+
+   // Apply Canny edge detection
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_canny(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const double threshold1 = APITools_GetFloatValue(context, 2);
+      const double threshold2 = APITools_GetFloatValue(context, 3);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::Canny(image, result, threshold1, threshold2);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Apply Sobel edge detection
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_sobel(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int ddepth = (int)APITools_GetIntValue(context, 2);
+      const int dx = (int)APITools_GetIntValue(context, 3);
+      const int dy = (int)APITools_GetIntValue(context, 4);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::Sobel(image, result, ddepth, dx, dy);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   //
+   // --- Threshold ---
+   //
+
+   // Apply threshold to image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_threshold(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const double thresh = APITools_GetFloatValue(context, 2);
+      const double maxval = APITools_GetFloatValue(context, 3);
+      const int type = (int)APITools_GetIntValue(context, 4);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::threshold(image, result, thresh, maxval, type);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Apply adaptive threshold to image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_adaptive_threshold(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const double maxval = APITools_GetFloatValue(context, 2);
+      const int adaptive_method = (int)APITools_GetIntValue(context, 3);
+      const int threshold_type = (int)APITools_GetIntValue(context, 4);
+      const int block_size = (int)APITools_GetIntValue(context, 5);
+      const double C = APITools_GetFloatValue(context, 6);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::adaptiveThreshold(image, result, maxval, adaptive_method, threshold_type, block_size, C);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   //
+   // --- Morphology ---
+   //
+
+   // Apply erosion to image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_erode(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int shape = (int)APITools_GetIntValue(context, 2);
+      const int ksize_w = (int)APITools_GetIntValue(context, 3);
+      const int ksize_h = (int)APITools_GetIntValue(context, 4);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat kernel = cv::getStructuringElement(shape, cv::Size(ksize_w, ksize_h));
+      cv::Mat result;
+      cv::erode(image, result, kernel);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Apply dilation to image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_dilate(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int shape = (int)APITools_GetIntValue(context, 2);
+      const int ksize_w = (int)APITools_GetIntValue(context, 3);
+      const int ksize_h = (int)APITools_GetIntValue(context, 4);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat kernel = cv::getStructuringElement(shape, cv::Size(ksize_w, ksize_h));
+      cv::Mat result;
+      cv::dilate(image, result, kernel);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Apply morphological operation to image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_morphology_ex(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int op = (int)APITools_GetIntValue(context, 2);
+      const int shape = (int)APITools_GetIntValue(context, 3);
+      const int ksize_w = (int)APITools_GetIntValue(context, 4);
+      const int ksize_h = (int)APITools_GetIntValue(context, 5);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat kernel = cv::getStructuringElement(shape, cv::Size(ksize_w, ksize_h));
+      cv::Mat result;
+      cv::morphologyEx(image, result, op, kernel);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   //
+   // --- Utility ---
+   //
+
+   // Save image to file
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_save_image(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const std::wstring w_path = APITools_GetStringValue(context, 2);
+      const std::string path = UnicodeToBytes(w_path);
+
+      if(!image_obj) {
+         APITools_SetIntValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetIntValue(context, 0, 0);
+         return;
+      }
+
+      const bool success = cv::imwrite(path, image);
+      APITools_SetIntValue(context, 0, success ? 1 : 0);
+   }
+
+   // Flip image
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_flip(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      const int flip_code = (int)APITools_GetIntValue(context, 2);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result;
+      cv::flip(image, result, flip_code);
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Crop image using ROI
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_crop(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+      size_t* rect_obj = APITools_GetObjectValue(context, 2);
+
+      if(!image_obj || !rect_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      const long x = (long)rect_obj[0];
+      const long y = (long)rect_obj[1];
+      const long width = (long)rect_obj[2];
+      const long height = (long)rect_obj[3];
+
+      cv::Rect roi(x, y, width, height);
+      cv::Mat result = image(roi).clone();
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
+   // Clone image (deep copy)
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void opencv_clone(VMContext& context) {
+      size_t* image_obj = APITools_GetObjectValue(context, 1);
+
+      if(!image_obj) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat image = opencv_raw_read(image_obj, context);
+      if(image.empty()) {
+         APITools_SetObjectValue(context, 0, 0);
+         return;
+      }
+
+      cv::Mat result = image.clone();
+
+      size_t* out_obj = opencv_raw_write(result, context);
+      APITools_SetObjectValue(context, 0, out_obj);
+   }
+
    // Convert image to a given format
 #ifdef _WIN32
    __declspec(dllexport)

@@ -583,6 +583,301 @@ bundle API.OpenCV {
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
+
+		#~
+		Converts image color space
+		@param code color conversion code from ColorConversionCodes
+		@return converted image
+		~#
+		method : public : CvtColor(code : Int) ~ Image {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(code);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_cvt_color", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies Gaussian blur to the image
+		@param ksize_w kernel width (must be odd)
+		@param ksize_h kernel height (must be odd)
+		@param sigmaX Gaussian kernel standard deviation in X direction
+		@return blurred image
+		~#
+		method : public : GaussianBlur(ksize_w : Int, ksize_h : Int, sigmaX : Float) ~ Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(ksize_w);
+			array_args[3] := IntRef->New(ksize_h);
+			array_args[4] := FloatRef->New(sigmaX);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_gaussian_blur", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies median blur to the image
+		@param ksize aperture size (must be odd and greater than 1)
+		@return blurred image
+		~#
+		method : public : MedianBlur(ksize : Int) ~ Image {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(ksize);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_median_blur", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies bilateral filter to the image
+		@param d diameter of each pixel neighborhood
+		@param sigmaColor filter sigma in the color space
+		@param sigmaSpace filter sigma in the coordinate space
+		@return filtered image
+		~#
+		method : public : BilateralFilter(d : Int, sigmaColor : Float, sigmaSpace : Float) ~ Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(d);
+			array_args[3] := FloatRef->New(sigmaColor);
+			array_args[4] := FloatRef->New(sigmaSpace);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_bilateral_filter", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies Canny edge detection
+		@param threshold1 first threshold for hysteresis procedure
+		@param threshold2 second threshold for hysteresis procedure
+		@return edge-detected image
+		~#
+		method : public : Canny(threshold1 : Float, threshold2 : Float) ~ Image {
+			array_args := Base->New[4];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := FloatRef->New(threshold1);
+			array_args[3] := FloatRef->New(threshold2);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_canny", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies Sobel edge detection
+		@param ddepth desired depth of the destination image (use -1 for same as source)
+		@param dx order of the derivative x
+		@param dy order of the derivative y
+		@return edge-detected image
+		~#
+		method : public : Sobel(ddepth : Int, dx : Int, dy : Int) ~ Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(ddepth);
+			array_args[3] := IntRef->New(dx);
+			array_args[4] := IntRef->New(dy);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_sobel", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies a fixed-level threshold to each array element
+		@param thresh threshold value
+		@param maxval maximum value to use with BINARY and BINARY_INV threshold types
+		@param type threshold type from ThresholdTypes
+		@return thresholded image
+		~#
+		method : public : Threshold(thresh : Float, maxval : Float, type : Int) ~ Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := FloatRef->New(thresh);
+			array_args[3] := FloatRef->New(maxval);
+			array_args[4] := IntRef->New(type);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_threshold", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies an adaptive threshold to an array
+		@param maxval non-zero value assigned to pixels that satisfy the condition
+		@param adaptive_method adaptive thresholding algorithm (0=MEAN_C, 1=GAUSSIAN_C)
+		@param threshold_type threshold type (must be BINARY or BINARY_INV)
+		@param block_size size of the pixel neighborhood (must be odd and greater than 1)
+		@param C constant subtracted from the mean or weighted mean
+		@return thresholded image
+		~#
+		method : public : AdaptiveThreshold(maxval : Float, adaptive_method : Int, threshold_type : Int,
+				block_size : Int, C : Float) ~ Image {
+			array_args := Base->New[7];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := FloatRef->New(maxval);
+			array_args[3] := IntRef->New(adaptive_method);
+			array_args[4] := IntRef->New(threshold_type);
+			array_args[5] := IntRef->New(block_size);
+			array_args[6] := FloatRef->New(C);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_adaptive_threshold", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Erodes an image using a structuring element
+		@param shape structuring element shape from MorphShapes
+		@param ksize_w kernel width
+		@param ksize_h kernel height
+		@return eroded image
+		~#
+		method : public : Erode(shape : Int, ksize_w : Int, ksize_h : Int) ~ Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(shape);
+			array_args[3] := IntRef->New(ksize_w);
+			array_args[4] := IntRef->New(ksize_h);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_erode", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Dilates an image using a structuring element
+		@param shape structuring element shape from MorphShapes
+		@param ksize_w kernel width
+		@param ksize_h kernel height
+		@return dilated image
+		~#
+		method : public : Dilate(shape : Int, ksize_w : Int, ksize_h : Int) ~ Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(shape);
+			array_args[3] := IntRef->New(ksize_w);
+			array_args[4] := IntRef->New(ksize_h);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_dilate", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies a morphological operation to an image
+		@param op morphological operation type from MorphTypes
+		@param shape structuring element shape from MorphShapes
+		@param ksize_w kernel width
+		@param ksize_h kernel height
+		@return processed image
+		~#
+		method : public : MorphologyEx(op : Int, shape : Int, ksize_w : Int, ksize_h : Int) ~ Image {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(op);
+			array_args[3] := IntRef->New(shape);
+			array_args[4] := IntRef->New(ksize_w);
+			array_args[5] := IntRef->New(ksize_h);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_morphology_ex", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Saves an image to file
+		@param path output file path
+		@return true if saved successfully, false otherwise
+		~#
+		method : public : Save(path : String) ~ Bool {
+			array_args := Base->New[3];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := @self;
+			array_args[2] := path;
+
+			Proxy->GetDllProxy()->CallFunction("opencv_save_image", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Flips an image
+		@param flipCode 0 for vertical, 1 for horizontal, -1 for both
+		@return flipped image
+		~#
+		method : public : Flip(flipCode : Int) ~ Image {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(flipCode);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_flip", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Crops an image using a rectangle region of interest
+		@param rect bounding rectangle for the crop region
+		@return cropped image
+		~#
+		method : public : Crop(rect : Rect) ~ Image {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := rect;
+
+			Proxy->GetDllProxy()->CallFunction("opencv_crop", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Creates a deep copy of the image
+		@return cloned image
+		~#
+		method : public : Clone() ~ Image {
+			array_args := Base->New[2];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+
+			Proxy->GetDllProxy()->CallFunction("opencv_clone", array_args);
+
+			return array_args[0]->As(Image);
+		}
 	}
 
 	#~
@@ -800,5 +1095,49 @@ bundle API.OpenCV {
 	    WARP_FILL_OUTLIERS := 8,
 	    WARP_INVERSE_MAP := 16,
 	    WARP_RELATIVE_MAP := 32
+	}
+
+	#~
+	OpenCV color conversion codes
+	~#
+	consts ColorConversionCodes {
+		BGR2RGB := 4,
+		BGR2GRAY := 6,
+		RGB2GRAY := 7,
+		BGR2HSV := 40,
+		BGR2Lab := 44,
+		HSV2BGR := 54
+	}
+
+	#~
+	OpenCV threshold types
+	~#
+	consts ThresholdTypes {
+		BINARY := 0,
+		BINARY_INV := 1,
+		TRUNC := 2,
+		TOZERO := 3,
+		TOZERO_INV := 4,
+		OTSU := 8
+	}
+
+	#~
+	OpenCV morphological shape constants for structuring elements
+	~#
+	consts MorphShapes {
+		MORPH_RECT := 0,
+		MORPH_CROSS := 1,
+		MORPH_ELLIPSE := 2
+	}
+
+	#~
+	OpenCV morphological operation types
+	~#
+	consts MorphTypes {
+		MORPH_ERODE := 0,
+		MORPH_DILATE := 1,
+		MORPH_OPEN := 2,
+		MORPH_CLOSE := 3,
+		MORPH_GRADIENT := 4
 	}
 }
