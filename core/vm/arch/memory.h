@@ -71,11 +71,6 @@
 #define YOUNG_REGION_SIZE  (128 * 1024 * 1024)  // 128MB young region
 #define DIRTY_LIST_MAX     65536               // max dirty old-gen objects tracked
 
-struct StackOperMemory {
-  size_t* op_stack;
-  size_t* stack_pos;
-};
-
 // used to monitor the state of active stack frames
 struct StackFrameMonitor {
   StackFrame** call_stack;
@@ -128,7 +123,6 @@ class MemoryManager {
   static CRITICAL_SECTION pda_frame_lock;
   static CRITICAL_SECTION pda_monitor_lock;
   static CRITICAL_SECTION allocated_lock;
-  static CRITICAL_SECTION marked_lock;
   static CRITICAL_SECTION marked_sweep_lock;
   static CRITICAL_SECTION free_memory_cache_lock;
 #else
@@ -136,7 +130,6 @@ class MemoryManager {
   static pthread_mutex_t pda_frame_lock;
   static pthread_mutex_t jit_frame_lock;
   static pthread_mutex_t allocated_lock;
-  static pthread_mutex_t marked_lock;
   static pthread_mutex_t marked_sweep_lock;
   static pthread_mutex_t free_memory_cache_lock;
 #endif
@@ -265,7 +258,6 @@ class MemoryManager {
     DeleteCriticalSection(&jit_frame_lock);
     DeleteCriticalSection(&pda_monitor_lock);
     DeleteCriticalSection(&allocated_lock);
-    DeleteCriticalSection(&marked_lock);
     DeleteCriticalSection(&marked_sweep_lock);
     DeleteCriticalSection(&free_memory_cache_lock);
 #endif

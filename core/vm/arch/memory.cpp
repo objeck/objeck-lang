@@ -67,13 +67,12 @@ ofstream MemoryManager::mem_logger;
 long MemoryManager::mem_cycle = 0L;
 #endif
 
-// operation locks
+// operation locks (marked_lock removed — MarkMemory now uses lock-free CAS)
 #ifdef _WIN32
 CRITICAL_SECTION MemoryManager::jit_frame_lock;
 CRITICAL_SECTION MemoryManager::pda_frame_lock;
 CRITICAL_SECTION MemoryManager::pda_monitor_lock;
 CRITICAL_SECTION MemoryManager::allocated_lock;
-CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
 CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
 #else
@@ -81,7 +80,6 @@ pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::jit_frame_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t MemoryManager::marked_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
@@ -136,7 +134,6 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   InitializeCriticalSection(&pda_frame_lock);
   InitializeCriticalSection(&pda_monitor_lock);
   InitializeCriticalSection(&allocated_lock);
-  InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
   InitializeCriticalSection(&free_memory_cache_lock);
 #endif
