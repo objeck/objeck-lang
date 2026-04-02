@@ -589,7 +589,8 @@ void JitAmd64::ProcessInstructions() {
       }
       break;
       
-    case MTHD_CALL: {
+    case MTHD_CALL:
+    case MTHD_CALL_JIT: {
       StackMethod* called_method = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       if(called_method) {
 #ifdef _DEBUG_JIT
@@ -5636,6 +5637,7 @@ static bool CanJitInstruction(InstructionType type) {
   case NEQL_FLOAT:
     // control flow
   case MTHD_CALL:
+  case MTHD_CALL_JIT:
     // DYN_MTHD_CALL: function-reference calls need further investigation
     // before whitelisting (prgm70/71 segfaults with closure patterns)
   case JMP:
