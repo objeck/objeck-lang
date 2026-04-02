@@ -878,6 +878,280 @@ bundle API.OpenCV {
 
 			return array_args[0]->As(Image);
 		}
+
+		#~
+		Finds contours in a binary image.
+		The image should be single-channel (e.g., after CvtColor to grayscale and Threshold).
+		Returns a packed Int[] with format: [count, size0..sizeN-1, x0,y0,x1,y1,...].
+		Use ContourArea() and BoundingRect() to analyze individual contours.
+		@param mode contour retrieval mode from RetrievalModes
+		@param method contour approximation method from ContourApproximationModes
+		@return packed Int[] representing the detected contours
+		~#
+		method : public : FindContours(mode : Int, method : Int) ~ Int[] {
+			array_args := Base->New[4];
+
+			array_args[0] := IntArrayRef->New();
+			array_args[1] := @self;
+			array_args[2] := IntRef->New(mode);
+			array_args[3] := IntRef->New(method);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_find_contours", array_args);
+
+			holder := array_args[0]->As(IntArrayRef);
+			return holder->Get();
+		}
+
+		#~
+		Draws contours on the image.
+		@param contours packed contour data from FindContours()
+		@param contourIdx index of contour to draw, or -1 to draw all contours
+		@param color drawing color
+		@param thickness line thickness (default 1)
+		@return image with contours drawn
+		~#
+		method : public : DrawContours(contours : Int[], contourIdx : Int, color : Scalar,
+				thickness : Int := 1) ~ Image {
+			array_args := Base->New[6];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := IntArrayRef->New(contours);
+			array_args[3] := IntRef->New(contourIdx);
+			array_args[4] := color;
+			array_args[5] := IntRef->New(thickness);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_draw_contours", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Computes the area of a single contour.
+		@param contours packed contour data from FindContours()
+		@param index index of the contour
+		@return area of the contour
+		~#
+		function : ContourArea(contours : Int[], index : Int) ~ Float {
+			array_args := Base->New[3];
+
+			array_args[0] := FloatRef->New();
+			array_args[1] := IntArrayRef->New(contours);
+			array_args[2] := IntRef->New(index);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_contour_area", array_args);
+
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		#~
+		Computes the bounding rectangle for a single contour.
+		@param contours packed contour data from FindContours()
+		@param index index of the contour
+		@return bounding rectangle
+		~#
+		function : BoundingRect(contours : Int[], index : Int) ~ Rect {
+			array_args := Base->New[3];
+
+			array_args[0] := Nil;
+			array_args[1] := IntArrayRef->New(contours);
+			array_args[2] := IntRef->New(index);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_bounding_rect", array_args);
+
+			return array_args[0]->As(Rect);
+		}
+
+		#~
+		Applies an affine transformation to the image using a 2x3 matrix.
+		@param matrix 6-element Float[] representing the 2x3 affine matrix (row-major)
+		@param width output image width
+		@param height output image height
+		@return transformed image
+		~#
+		method : public : WarpAffine(matrix : Float[], width : Int, height : Int) ~ Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := FloatArrayRef->New(matrix);
+			array_args[3] := IntRef->New(width);
+			array_args[4] := IntRef->New(height);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_warp_affine", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Applies a perspective transformation to the image using a 3x3 matrix.
+		@param matrix 9-element Float[] representing the 3x3 perspective matrix (row-major)
+		@param width output image width
+		@param height output image height
+		@return transformed image
+		~#
+		method : public : WarpPerspective(matrix : Float[], width : Int, height : Int) ~ Image {
+			array_args := Base->New[5];
+
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := FloatArrayRef->New(matrix);
+			array_args[3] := IntRef->New(width);
+			array_args[4] := IntRef->New(height);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_warp_perspective", array_args);
+
+			return array_args[0]->As(Image);
+		}
+
+		#~
+		Computes a 2D rotation matrix for an affine transformation.
+		@param center_x x-coordinate of the rotation center
+		@param center_y y-coordinate of the rotation center
+		@param angle rotation angle in degrees (positive counter-clockwise)
+		@param scale isotropic scale factor
+		@return 6-element Float[] representing the 2x3 rotation matrix
+		~#
+		function : GetRotationMatrix2D(center_x : Float, center_y : Float, angle : Float, scale : Float) ~ Float[] {
+			array_args := Base->New[5];
+
+			array_args[0] := FloatArrayRef->New();
+			array_args[1] := FloatRef->New(center_x);
+			array_args[2] := FloatRef->New(center_y);
+			array_args[3] := FloatRef->New(angle);
+			array_args[4] := FloatRef->New(scale);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_get_rotation_matrix_2d", array_args);
+
+			holder := array_args[0]->As(FloatArrayRef);
+			return holder->Get();
+		}
+
+		#~
+		Normalizes the image for neural network preprocessing.
+		Converts the image to float, normalizes to [0,1], converts BGR to RGB,
+		subtracts the given mean values, and divides by the given std values per channel.
+		Returns the result as a flattened CHW tensor (Float[]).
+		@param mean_r mean value for the red channel
+		@param mean_g mean value for the green channel
+		@param mean_b mean value for the blue channel
+		@param std_r standard deviation for the red channel
+		@param std_g standard deviation for the green channel
+		@param std_b standard deviation for the blue channel
+		@return flattened CHW Float[] tensor suitable for ONNX inference
+		~#
+		method : public : Normalize(mean_r : Float, mean_g : Float, mean_b : Float,
+				std_r : Float, std_g : Float, std_b : Float) ~ Float[] {
+			array_args := Base->New[8];
+
+			array_args[0] := FloatArrayRef->New();
+			array_args[1] := @self;
+			array_args[2] := FloatRef->New(mean_r);
+			array_args[3] := FloatRef->New(mean_g);
+			array_args[4] := FloatRef->New(mean_b);
+			array_args[5] := FloatRef->New(std_r);
+			array_args[6] := FloatRef->New(std_g);
+			array_args[7] := FloatRef->New(std_b);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_normalize", array_args);
+
+			holder := array_args[0]->As(FloatArrayRef);
+			return holder->Get();
+		}
+	}
+
+	#~
+	OpenCV VideoWriter for writing video files
+	~#
+	class VideoWriter {
+		@writer : Int;
+
+		#~
+		Creates a new VideoWriter.
+		@param filename output video file path
+		@param fourcc 4-character codec code (use FourCC to compute)
+		@param fps frames per second
+		@param width frame width
+		@param height frame height
+		~#
+		New(filename : String, fourcc : Int, fps : Float, width : Int, height : Int) {
+			array_args := Base->New[6];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := filename;
+			array_args[2] := IntRef->New(fourcc);
+			array_args[3] := FloatRef->New(fps);
+			array_args[4] := IntRef->New(width);
+			array_args[5] := IntRef->New(height);
+
+			Proxy->GetDllProxy()->CallFunction("opencv_new_video_writer", array_args);
+
+			value := array_args[0]->As(IntRef);
+			@writer := value->Get();
+		}
+
+		#~
+		Computes a FourCC code from four characters.
+		Example: FourCC('m', 'p', '4', 'v') for MP4V codec.
+		@param c1 first character
+		@param c2 second character
+		@param c3 third character
+		@param c4 fourth character
+		@return integer FourCC code
+		~#
+		function : FourCC(c1 : Char, c2 : Char, c3 : Char, c4 : Char) ~ Int {
+			array_args := Base->New[5];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(c1->As(Int));
+			array_args[2] := IntRef->New(c2->As(Int));
+			array_args[3] := IntRef->New(c3->As(Int));
+			array_args[4] := IntRef->New(c4->As(Int));
+
+			Proxy->GetDllProxy()->CallFunction("opencv_video_writer_fourcc", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Writes a frame to the video file.
+		@param image the frame to write
+		~#
+		method : public : Write(image : Image) ~ Nil {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New(@writer);
+			array_args[1] := image;
+
+			Proxy->GetDllProxy()->CallFunction("opencv_video_writer_write", array_args);
+		}
+
+		#~
+		Checks if the VideoWriter has been successfully opened.
+		@return true if the writer is open, false otherwise
+		~#
+		method : public : IsOpen() ~ Bool {
+			array_args := Base->New[2];
+
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@writer);
+			Proxy->GetDllProxy()->CallFunction("opencv_video_writer_is_open", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
+		}
+
+		#~
+		Releases the VideoWriter and closes the file.
+		~#
+		method : public : Release() ~ Nil {
+			array_args := Base->New[1];
+
+			array_args[0] := IntRef->New(@writer);
+			Proxy->GetDllProxy()->CallFunction("opencv_video_writer_release", array_args);
+		}
 	}
 
 	#~
@@ -1139,5 +1413,23 @@ bundle API.OpenCV {
 		MORPH_OPEN := 2,
 		MORPH_CLOSE := 3,
 		MORPH_GRADIENT := 4
+	}
+
+	#~
+	OpenCV contour retrieval modes for FindContours
+	~#
+	consts RetrievalModes {
+		RETR_EXTERNAL := 0,
+		RETR_LIST := 1,
+		RETR_CCOMP := 2,
+		RETR_TREE := 3
+	}
+
+	#~
+	OpenCV contour approximation methods for FindContours
+	~#
+	consts ContourApproximationModes {
+		CHAIN_APPROX_NONE := 1,
+		CHAIN_APPROX_SIMPLE := 2
 	}
 }
