@@ -46,6 +46,7 @@ namespace Runtime {
 #define CALL_STACK_POS 72
 #define JIT_MEM 80
 #define JIT_OFFSET 88
+#define FRAME_MEM 96
   // float temps
 #define TMP_XMM_0 -8
 #define TMP_XMM_1 -16
@@ -70,6 +71,7 @@ namespace Runtime {
 #define CALL_STACK_POS 24
 #define JIT_MEM 32
 #define JIT_OFFSET 40
+#define FRAME_MEM 48
   // float temps
 #define TMP_XMM_0 -64
 #define TMP_XMM_1 -72
@@ -1051,8 +1053,8 @@ namespace Runtime {
   /**
    * Prototype for JIT function
    */
-  typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, size_t* stack_pos, 
-                             StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
+  typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, size_t* stack_pos,
+                             StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset, size_t* frame_mem);
 
   /**
    * JIT runtime wrapper class

@@ -1794,13 +1794,23 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     regs.pop();
     dirty_regs.pop();
   }
-  
+
   while(!dirty_xmms.empty()) {
     RegInstr* left = xmms.top();
     move_mem_xreg(dirty_xmms.top(), RBP, left->GetRegister()->GetRegister());
     // update
     xmms.pop();
     dirty_xmms.pop();
+  }
+
+  // Reload INSTANCE_MEM from frame->mem[0] in case GC moved the young object
+  // during the callback. GC updates frame->mem[0] but not [RBP+INSTANCE_MEM].
+  {
+    RegisterHolder* tmp = GetRegister();
+    move_mem_reg(FRAME_MEM, RBP, tmp->GetRegister());           // tmp = frame->mem
+    move_mem_reg(0, tmp->GetRegister(), tmp->GetRegister());     // tmp = frame->mem[0]
+    move_reg_mem(tmp->GetRegister(), INSTANCE_MEM, RBP);         // INSTANCE_MEM = tmp
+    ReleaseRegister(tmp);
   }
 }
 
@@ -5965,7 +5975,7 @@ long JitRuntime::Execute(StackMethod* method, size_t* inst, size_t* op_stack, si
 
   // execute
   const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack,
-                              stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+                              stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset), frame->mem);
 
 #ifdef _DEBUG_JIT
   std::wcout << L"JIT return=: " << status << std::endl;
