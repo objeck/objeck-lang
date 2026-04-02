@@ -263,11 +263,48 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     const long size = cls->GetInstanceMemorySize();
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
 
-    // Young-gen bump allocator disabled — FixupRoots doesn't yet handle all
-    // pointer locations (XML/string-heavy tests crash on CI due to missed fixups
-    // during young→old promotion). The infrastructure is in place (young_region,
-    // write barriers, FixupRoots with op_stack tracking) but needs additional
-    // fixup coverage for array interior pointers and interpreter temp values.
+    // Total size including the size header for free cache
+    const size_t total_size = alloc_size + sizeof(size_t);
+    // Align to sizeof(size_t) boundary for bump allocator
+    const size_t aligned_total = (total_size + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
+
+    // Try young generation bump allocation first
+    if(young_region) {
+      size_t offset = young_offset.load(std::memory_order_relaxed);
+      if(offset + aligned_total <= young_region_size) {
+        size_t new_offset = young_offset.fetch_add(aligned_total, std::memory_order_relaxed);
+        if(new_offset + aligned_total <= young_region_size) {
+          // Bump allocation succeeded
+          size_t* raw_mem = (size_t*)(young_region + new_offset);
+          raw_mem[0] = alloc_size;  // store size for promotion
+          mem = raw_mem + 1;
+          mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+          mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+          mem += EXTRA_BUF_SIZE;
+          // Young object: no GC_OLD_BIT, no hash set insert, no mutex
+          allocation_size += size;
+          return mem;
+        }
+      }
+      // Young gen full — trigger GC to promote survivors and reset
+      if(collect) {
+        CollectMajor(op_stack, stack_pos);
+        // Retry bump allocation after GC
+        size_t retry_offset = young_offset.fetch_add(aligned_total, std::memory_order_relaxed);
+        if(retry_offset + aligned_total <= young_region_size) {
+          size_t* raw_mem = (size_t*)(young_region + retry_offset);
+          raw_mem[0] = alloc_size;
+          mem = raw_mem + 1;
+          mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+          mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+          mem += EXTRA_BUF_SIZE;
+          allocation_size += size;
+          return mem;
+        }
+      }
+    }
+
+    // Fallback: old gen allocation
     if(collect && allocation_size + size > mem_max_size) {
       CollectMajor(op_stack, stack_pos);
     }
@@ -1747,9 +1784,11 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
         }
       }
 
-      // Fix up call stack frames
-      while(--call_stack_pos > -1) {
-        StackFrame* frame = call_stack[call_stack_pos];
+      // Fix up call stack frames (walk from top down — direct JIT-to-JIT
+      // calls push frames to call_stack without updating cur_frame,
+      // so the top frame at call_stack_pos must be included)
+      for(long f = call_stack_pos; f >= 0; --f) {
+        StackFrame* frame = call_stack[f];
         if(frame) {
           if(frame->jit_mem) {
             jit_fixup_frames.push_back(frame);
