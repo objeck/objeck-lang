@@ -26,11 +26,11 @@ Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.de
 |-----------|-------|----------|----------|
 | **mandelbrot** | 4000 | 2.80 | 9 MB |
 | **nbody** | 50M | 42.88 | 7 MB |
-| **binarytrees** | 17 | 42.0 | 763 MB |
+| **binarytrees** | 17 | 28.7 | 210 MB |
 | **fannkuchredux** | 12 | 91.21 | 7 MB |
 | **spectralnorm** | 5500 | 113.58 | 8 MB |
 
-**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, atomic CAS mark bits, and operand3 dispatch fix (1.5x faster than v2026.2.1). **spectralnorm** runs in the interpreter; with `native` it drops to **1.16s**.
+**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator, MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, and atomic CAS mark bits (2.3x faster than v2026.2.1). **spectralnorm** runs in the interpreter; with `native` it drops to **1.16s**.
 
 ---
 
@@ -42,7 +42,7 @@ Same inputs, same machine, same Docker container. All languages ran with default
 |-----------|--------|-------------|----------|------------|------|
 | **nbody** (50M) | **42.88s** | 294.39s | 553.82s | **11.88s** | LuaJIT |
 | **fannkuchredux** (12) | **91.21s** | 988.84s | 3393.49s | 316.48s | **Objeck** |
-| **binarytrees** (17) | **42.0s** | 10.36s | 10.02s | **6.89s** | LuaJIT |
+| **binarytrees** (17) | **28.7s** | 10.36s | 10.02s | **6.89s** | LuaJIT |
 | **spectralnorm** (5500) | 113.58s | 315.44s | 225.29s | **3.14s** | LuaJIT |
 
 ### Where Objeck Wins
@@ -52,12 +52,12 @@ Same inputs, same machine, same Docker container. All languages ran with default
 
 ### Where Objeck Needs Improvement
 
-- **binarytrees** -- 6.1x slower than LuaJIT, 4.1x slower than Python/Ruby. Previously 10x slower than LuaJIT. The MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, and GC improvements gave a 1.5x speedup. The young-gen bump allocator (tested at 3.3x faster) is disabled pending GC fixup coverage for array interior pointers.
+- **binarytrees** -- 4.2x slower than LuaJIT, 2.8x slower than Python/Ruby. Previously 10x slower than LuaJIT. The young-gen bump allocator (128MB nursery), MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, and atomic CAS mark bits combined for a 2.3x speedup. RSS dropped from 763MB to 210MB.
 - **spectralnorm** -- 36x slower than LuaJIT. Adding the `native` keyword drops Objeck to **1.16s** (2.7x behind LuaJIT). The gap is auto-JIT coverage, not code quality.
 
 ### Key Takeaways
 
-1. **Allocation overhead is the #1 bottleneck.** The young-gen bump allocator prototype showed 3.3x improvement on binarytrees but needs GC fixup fixes before shipping. Currently all objects go through the old-gen path (mutex + hash-set insert).
+1. **Young-gen bump allocator is live.** Objects allocate via `atomic_fetch_add` in the 128MB nursery. Short-lived objects die without promotion. RSS dropped from 763MB to 210MB on binarytrees.
 2. **Direct JIT-to-JIT calling works.** When explicit `native` methods call other JIT'd methods, the call goes directly to native code without interpreter trampoline.
 3. **Integer JIT is already excellent.** fannkuchredux is faster than LuaJIT's tracing JIT for this workload.
 4. **Auto-JIT coverage is the #2 bottleneck.** spectralnorm goes from 113s to 1.16s with `native` -- a 100x speedup sitting on the table.
@@ -117,11 +117,11 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | v2026.2.0 | Feb 2026 | O(1) GC lookups, ARM64 JIT optimizations, instruction rewrite framework | Foundation |
 | v2026.2.1 | Feb 2026 | Inline limit 128->256, CSE, dead code elimination | **4.38x nbody** |
 | v2026.2.1+ | Mar 2026 | JIT whitelist fix: 3 instructions had code generators but weren't enabled | **28.4x mandelbrot** |
-| v2026.3.0 | Apr 2026 | MTHD_CALL whitelist, direct JIT-to-JIT calling, atomic mark bits, GC tuning | **1.5x binarytrees** |
+| v2026.3.0 | Apr 2026 | Young-gen bump allocator, MTHD_CALL whitelist, direct JIT-to-JIT calling, atomic mark bits | **2.3x binarytrees** |
 
 ### v2026.3.0 Detail
 
-**Headline: binarytrees (depth=17) from 65.8s to 42.0s.** Five shipped optimizations plus a prototype bump allocator (3.3x, pending GC fixup).
+**Headline: binarytrees (depth=17) from 65.8s to 28.7s.** Young-gen bump allocator enabled with complete call stack fixup.
 
 | Optimization | Category | Impact |
 |-------------|----------|--------|
@@ -131,7 +131,7 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | Atomic mark bits | GC | ~5% -- lock-free CAS replaces mutex across 3 parallel mark threads. |
 | MEM_START_MAX 1 MB -> 8 MB | GC | Fewer early GC cycles; `old_generation.reserve` 4096 -> 65536. |
 
-**Prototype (not shipped):** Young-gen bump allocator showed **3.3x** improvement (65.8s -> 20.0s) but FixupRoots doesn't handle all pointer locations during young->old promotion. Array interior pointers and interpreter temp values are missed, causing crashes in XML/string-heavy tests. Infrastructure is in place (young_region, write barriers, StackFrameMonitor op_stack tracking) for future enablement.
+| Young-gen bump allocator | GC | **1.5x** (on top of above) -- `atomic_fetch_add` replaces mutex + hash-set insert. 128MB nursery; short-lived objects die without promotion. Fixed call stack fixup to include top frame pushed by direct JIT-to-JIT calls. |
 
 **How it was found:** GC profiling revealed only 18% of binarytrees runtime was in GC. The remaining 82% was per-object allocation overhead and interpreter dispatch -- contradicting the assumption that "GC is the #1 bottleneck."
 
@@ -154,8 +154,7 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 
 | Opportunity | Category | Expected Impact |
 |-------------|----------|----------------|
-| **Young-gen bump allocator fixup** | GC | **VERY HIGH** -- 3.3x binarytrees improvement prototyped (42s -> 20s). Needs FixupRoots coverage for array interior pointers and interpreter temps. |
-| **Auto-JIT for MTHD_CALL** | JIT | **HIGH** -- prototyped at 20s but String:Append crashes. Need to fix library method callback interactions. |
+| **Auto-JIT for MTHD_CALL** | JIT | **HIGH** -- prototyped at 20s but String:Append crashes when auto-JIT'd. Need to fix library method callback interactions. |
 | **ProcessInlineMethod for MTHD_CALL** | JIT | HIGH -- constructor/getter inlining within JIT'd methods would approach LuaJIT parity |
 | **Threaded interpreter dispatch** | VM | MED -- computed gotos for ~25% interpreter speedup |
 | **DYN_MTHD_CALL JIT support** | JIT | MED -- closure/function-ref calls currently blocked |
