@@ -1,0 +1,358 @@
+#~
+# Core OpenCV Bindings Test
+# Tests helper classes, constants, and VideoWriter FourCC without requiring
+# actual image files or a display server. Compile with: -lib opencv
+~#
+
+use API.OpenCV, Data.JSON;
+
+class OpenCVTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing OpenCV bindings..."->PrintLine();
+
+        passed := true;
+
+        # --- Helper classes ---
+
+        # Test Point
+        pt := Point->New(10, 20);
+        if(pt->GetX() <> 10 | pt->GetY() <> 20) {
+            "  FAIL: Point get/set"->PrintLine();
+            passed := false;
+        };
+
+        # Test Point with negative values
+        pt_neg := Point->New(-5, -15);
+        if(pt_neg->GetX() <> -5 | pt_neg->GetY() <> -15) {
+            "  FAIL: Point negative values"->PrintLine();
+            passed := false;
+        };
+
+        # Test Point zero
+        pt_zero := Point->New(0, 0);
+        if(pt_zero->GetX() <> 0 | pt_zero->GetY() <> 0) {
+            "  FAIL: Point zero values"->PrintLine();
+            passed := false;
+        };
+
+        # Test Rect
+        rect := Rect->New(5, 10, 100, 200);
+        if(rect->GetX() <> 5 | rect->GetY() <> 10) {
+            "  FAIL: Rect position"->PrintLine();
+            passed := false;
+        };
+        if(rect->GetWidth() <> 100 | rect->GetHeight() <> 200) {
+            "  FAIL: Rect dimensions"->PrintLine();
+            passed := false;
+        };
+
+        # Test Rect with zero origin
+        rect_zero := Rect->New(0, 0, 640, 480);
+        if(rect_zero->GetX() <> 0 | rect_zero->GetY() <> 0) {
+            "  FAIL: Rect zero origin"->PrintLine();
+            passed := false;
+        };
+        if(rect_zero->GetWidth() <> 640 | rect_zero->GetHeight() <> 480) {
+            "  FAIL: Rect zero origin dimensions"->PrintLine();
+            passed := false;
+        };
+
+        # Test Size
+        sz := Size->New(640, 480);
+        if(sz->GetWidth() <> 640 | sz->GetHeight() <> 480) {
+            "  FAIL: Size get/set"->PrintLine();
+            passed := false;
+        };
+
+        # Test Size small
+        sz_small := Size->New(1, 1);
+        if(sz_small->GetWidth() <> 1 | sz_small->GetHeight() <> 1) {
+            "  FAIL: Size(1,1)"->PrintLine();
+            passed := false;
+        };
+
+        # Test Scalar with 2 values
+        sc2 := Scalar->New(128.0, 64.0);
+        if(sc2->GetV0() <> 128.0 | sc2->GetV1() <> 64.0) {
+            "  FAIL: Scalar 2-value constructor"->PrintLine();
+            passed := false;
+        };
+        if(sc2->GetV2() <> 0.0 | sc2->GetV3() <> 0.0) {
+            "  FAIL: Scalar 2-value defaults"->PrintLine();
+            passed := false;
+        };
+
+        # Test Scalar with 3 values
+        sc3 := Scalar->New(255.0, 128.0, 64.0);
+        if(sc3->GetV0() <> 255.0 | sc3->GetV1() <> 128.0 | sc3->GetV2() <> 64.0) {
+            "  FAIL: Scalar 3-value constructor"->PrintLine();
+            passed := false;
+        };
+        if(sc3->GetV3() <> 0.0) {
+            "  FAIL: Scalar 3-value default v3"->PrintLine();
+            passed := false;
+        };
+
+        # Test Scalar with 4 values
+        sc4 := Scalar->New(10.5, 20.5, 30.5, 40.5);
+        if(sc4->GetV0() <> 10.5 | sc4->GetV1() <> 20.5 | sc4->GetV2() <> 30.5 | sc4->GetV3() <> 40.5) {
+            "  FAIL: Scalar 4-value constructor"->PrintLine();
+            passed := false;
+        };
+
+        # --- ColorConversionCodes constants ---
+        if(ColorConversionCodes->BGR2GRAY <> 6) {
+            "  FAIL: BGR2GRAY expected 6, got {$ColorConversionCodes->BGR2GRAY}"->PrintLine();
+            passed := false;
+        };
+        if(ColorConversionCodes->BGR2RGB <> 4) {
+            "  FAIL: BGR2RGB expected 4, got {$ColorConversionCodes->BGR2RGB}"->PrintLine();
+            passed := false;
+        };
+        if(ColorConversionCodes->BGR2HSV <> 40) {
+            "  FAIL: BGR2HSV expected 40, got {$ColorConversionCodes->BGR2HSV}"->PrintLine();
+            passed := false;
+        };
+        if(ColorConversionCodes->RGB2GRAY <> 7) {
+            "  FAIL: RGB2GRAY expected 7, got {$ColorConversionCodes->RGB2GRAY}"->PrintLine();
+            passed := false;
+        };
+        if(ColorConversionCodes->BGR2Lab <> 44) {
+            "  FAIL: BGR2Lab expected 44, got {$ColorConversionCodes->BGR2Lab}"->PrintLine();
+            passed := false;
+        };
+        if(ColorConversionCodes->HSV2BGR <> 54) {
+            "  FAIL: HSV2BGR expected 54, got {$ColorConversionCodes->HSV2BGR}"->PrintLine();
+            passed := false;
+        };
+
+        # --- ThresholdTypes constants ---
+        if(ThresholdTypes->BINARY <> 0) {
+            "  FAIL: BINARY expected 0"->PrintLine();
+            passed := false;
+        };
+        if(ThresholdTypes->BINARY_INV <> 1) {
+            "  FAIL: BINARY_INV expected 1"->PrintLine();
+            passed := false;
+        };
+        if(ThresholdTypes->TRUNC <> 2) {
+            "  FAIL: TRUNC expected 2"->PrintLine();
+            passed := false;
+        };
+        if(ThresholdTypes->TOZERO <> 3) {
+            "  FAIL: TOZERO expected 3"->PrintLine();
+            passed := false;
+        };
+        if(ThresholdTypes->OTSU <> 8) {
+            "  FAIL: OTSU expected 8"->PrintLine();
+            passed := false;
+        };
+
+        # --- MorphShapes constants ---
+        if(MorphShapes->MORPH_RECT <> 0) {
+            "  FAIL: MORPH_RECT expected 0"->PrintLine();
+            passed := false;
+        };
+        if(MorphShapes->MORPH_CROSS <> 1) {
+            "  FAIL: MORPH_CROSS expected 1"->PrintLine();
+            passed := false;
+        };
+        if(MorphShapes->MORPH_ELLIPSE <> 2) {
+            "  FAIL: MORPH_ELLIPSE expected 2"->PrintLine();
+            passed := false;
+        };
+
+        # --- MorphTypes constants ---
+        if(MorphTypes->MORPH_ERODE <> 0) {
+            "  FAIL: MORPH_ERODE expected 0"->PrintLine();
+            passed := false;
+        };
+        if(MorphTypes->MORPH_DILATE <> 1) {
+            "  FAIL: MORPH_DILATE expected 1"->PrintLine();
+            passed := false;
+        };
+        if(MorphTypes->MORPH_OPEN <> 2) {
+            "  FAIL: MORPH_OPEN expected 2"->PrintLine();
+            passed := false;
+        };
+        if(MorphTypes->MORPH_CLOSE <> 3) {
+            "  FAIL: MORPH_CLOSE expected 3"->PrintLine();
+            passed := false;
+        };
+        if(MorphTypes->MORPH_GRADIENT <> 4) {
+            "  FAIL: MORPH_GRADIENT expected 4"->PrintLine();
+            passed := false;
+        };
+
+        # --- RetrievalModes constants ---
+        if(RetrievalModes->RETR_EXTERNAL <> 0) {
+            "  FAIL: RETR_EXTERNAL expected 0"->PrintLine();
+            passed := false;
+        };
+        if(RetrievalModes->RETR_LIST <> 1) {
+            "  FAIL: RETR_LIST expected 1"->PrintLine();
+            passed := false;
+        };
+        if(RetrievalModes->RETR_CCOMP <> 2) {
+            "  FAIL: RETR_CCOMP expected 2"->PrintLine();
+            passed := false;
+        };
+        if(RetrievalModes->RETR_TREE <> 3) {
+            "  FAIL: RETR_TREE expected 3"->PrintLine();
+            passed := false;
+        };
+
+        # --- ContourApproximationModes constants ---
+        if(ContourApproximationModes->CHAIN_APPROX_NONE <> 1) {
+            "  FAIL: CHAIN_APPROX_NONE expected 1"->PrintLine();
+            passed := false;
+        };
+        if(ContourApproximationModes->CHAIN_APPROX_SIMPLE <> 2) {
+            "  FAIL: CHAIN_APPROX_SIMPLE expected 2"->PrintLine();
+            passed := false;
+        };
+
+        # --- Image.Format constants ---
+        jpeg_val := Image->Format->JPEG->As(Int);
+        png_val := Image->Format->PNG->As(Int);
+        webp_val := Image->Format->WEBP->As(Int);
+        gif_val := Image->Format->GIF->As(Int);
+        # Format enum starts at 64 and increments
+        if(jpeg_val <> 64) {
+            "  FAIL: Image.Format.JPEG expected 64, got {$jpeg_val}"->PrintLine();
+            passed := false;
+        };
+        if(png_val <> 65) {
+            "  FAIL: Image.Format.PNG expected 65, got {$png_val}"->PrintLine();
+            passed := false;
+        };
+        if(webp_val <> 66) {
+            "  FAIL: Image.Format.WEBP expected 66, got {$webp_val}"->PrintLine();
+            passed := false;
+        };
+        if(gif_val <> 67) {
+            "  FAIL: Image.Format.GIF expected 67, got {$gif_val}"->PrintLine();
+            passed := false;
+        };
+
+        # --- InterpolationFlags constants ---
+        if(InterpolationFlags->INTER_NEAREST <> 0) {
+            "  FAIL: INTER_NEAREST expected 0"->PrintLine();
+            passed := false;
+        };
+        if(InterpolationFlags->INTER_LINEAR <> 1) {
+            "  FAIL: INTER_LINEAR expected 1"->PrintLine();
+            passed := false;
+        };
+        if(InterpolationFlags->INTER_CUBIC <> 2) {
+            "  FAIL: INTER_CUBIC expected 2"->PrintLine();
+            passed := false;
+        };
+        if(InterpolationFlags->INTER_AREA <> 3) {
+            "  FAIL: INTER_AREA expected 3"->PrintLine();
+            passed := false;
+        };
+        if(InterpolationFlags->INTER_LANCZOS4 <> 4) {
+            "  FAIL: INTER_LANCZOS4 expected 4"->PrintLine();
+            passed := false;
+        };
+
+        # --- LineType constants ---
+        if(LineType->FILLED <> -1) {
+            "  FAIL: LineType FILLED expected -1"->PrintLine();
+            passed := false;
+        };
+        if(LineType->LINE_4 <> 4) {
+            "  FAIL: LineType LINE_4 expected 4"->PrintLine();
+            passed := false;
+        };
+        if(LineType->LINE_8 <> 8) {
+            "  FAIL: LineType LINE_8 expected 8"->PrintLine();
+            passed := false;
+        };
+        if(LineType->LINE_AA <> 16) {
+            "  FAIL: LineType LINE_AA expected 16"->PrintLine();
+            passed := false;
+        };
+
+        # --- Font constants ---
+        if(Font->FONT_HERSHEY_SIMPLEX <> 0) {
+            "  FAIL: FONT_HERSHEY_SIMPLEX expected 0"->PrintLine();
+            passed := false;
+        };
+        if(Font->FONT_HERSHEY_PLAIN <> 1) {
+            "  FAIL: FONT_HERSHEY_PLAIN expected 1"->PrintLine();
+            passed := false;
+        };
+        if(Font->FONT_HERSHEY_DUPLEX <> 2) {
+            "  FAIL: FONT_HERSHEY_DUPLEX expected 2"->PrintLine();
+            passed := false;
+        };
+        if(Font->FONT_HERSHEY_COMPLEX <> 3) {
+            "  FAIL: FONT_HERSHEY_COMPLEX expected 3"->PrintLine();
+            passed := false;
+        };
+        if(Font->FONT_ITALIC <> 16) {
+            "  FAIL: FONT_ITALIC expected 16"->PrintLine();
+            passed := false;
+        };
+
+        # --- VideoCapture.Property constants (spot check) ---
+        if(VideoCapture->Property->CAP_PROP_POS_MSEC <> 0) {
+            "  FAIL: CAP_PROP_POS_MSEC expected 0"->PrintLine();
+            passed := false;
+        };
+        if(VideoCapture->Property->CAP_PROP_FRAME_WIDTH <> 3) {
+            "  FAIL: CAP_PROP_FRAME_WIDTH expected 3"->PrintLine();
+            passed := false;
+        };
+        if(VideoCapture->Property->CAP_PROP_FRAME_HEIGHT <> 4) {
+            "  FAIL: CAP_PROP_FRAME_HEIGHT expected 4"->PrintLine();
+            passed := false;
+        };
+        if(VideoCapture->Property->CAP_PROP_FPS <> 5) {
+            "  FAIL: CAP_PROP_FPS expected 5"->PrintLine();
+            passed := false;
+        };
+        if(VideoCapture->Property->CAP_PROP_FRAME_COUNT <> 7) {
+            "  FAIL: CAP_PROP_FRAME_COUNT expected 7"->PrintLine();
+            passed := false;
+        };
+
+        # --- VideoWriter FourCC ---
+        mjpg := VideoWriter->FourCC('M', 'J', 'P', 'G');
+        if(mjpg = 0) {
+            "  FAIL: FourCC('M','J','P','G') returned 0"->PrintLine();
+            passed := false;
+        };
+
+        xvid := VideoWriter->FourCC('X', 'V', 'I', 'D');
+        if(xvid = 0) {
+            "  FAIL: FourCC('X','V','I','D') returned 0"->PrintLine();
+            passed := false;
+        };
+
+        # Different FourCC values should produce different codes
+        if(mjpg = xvid) {
+            "  FAIL: MJPG and XVID FourCC should differ"->PrintLine();
+            passed := false;
+        };
+
+        # --- Rect inherits from Point (ToJson) ---
+        rect_json := Rect->New(10, 20, 300, 400);
+        json := rect_json->ToJson();
+        if(json = Nil) {
+            "  FAIL: Rect ToJson returned Nil"->PrintLine();
+            passed := false;
+        };
+
+        if(passed) {
+            "...
+PASS"->PrintLine();
+        }
+        else {
+            "...
+FAIL"->PrintLine();
+        };
+    }
+}
