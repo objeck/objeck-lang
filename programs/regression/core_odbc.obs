@@ -114,6 +114,211 @@ class OdbcTest {
             passed := false;
         };
 
+        # --- Additional Date edge case tests ---
+
+        # Test Date: year 0
+        d_y0 := Database.ODBC.Date->New();
+        d_y0->SetYear(0);
+        d_y0->SetMonth(1);
+        d_y0->SetDay(1);
+        if(d_y0->GetYear() <> 0 | d_y0->GetMonth() <> 1 | d_y0->GetDay() <> 1) {
+            "  FAIL: Date year 0"->PrintLine();
+            passed := false;
+        };
+        d_y0_str := d_y0->ToString();
+        if(<>d_y0_str->Equals("1/1/0")) {
+            "  FAIL: Date year 0 ToString expected '1/1/0' got '{$d_y0_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Date: month 12, day 31
+        d_end := Database.ODBC.Date->New();
+        d_end->SetYear(2024);
+        d_end->SetMonth(12);
+        d_end->SetDay(31);
+        if(d_end->GetYear() <> 2024 | d_end->GetMonth() <> 12 | d_end->GetDay() <> 31) {
+            "  FAIL: Date Dec 31"->PrintLine();
+            passed := false;
+        };
+        d_end_str := d_end->ToString();
+        if(<>d_end_str->Equals("12/31/2024")) {
+            "  FAIL: Date Dec 31 ToString expected '12/31/2024' got '{$d_end_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Date: leap year Feb 29
+        d_leap := Database.ODBC.Date->New();
+        d_leap->SetYear(2024);
+        d_leap->SetMonth(2);
+        d_leap->SetDay(29);
+        if(d_leap->GetYear() <> 2024 | d_leap->GetMonth() <> 2 | d_leap->GetDay() <> 29) {
+            "  FAIL: Date leap year Feb 29"->PrintLine();
+            passed := false;
+        };
+        d_leap_str := d_leap->ToString();
+        if(<>d_leap_str->Equals("2/29/2024")) {
+            "  FAIL: Date leap ToString expected '2/29/2024' got '{$d_leap_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Date roundtrip: create Date -> ToDate() -> new Date from it -> compare
+        d_rt := Database.ODBC.Date->New();
+        d_rt->SetYear(2023);
+        d_rt->SetMonth(7);
+        d_rt->SetDay(4);
+        sys_rt := d_rt->ToDate();
+        d_rt2 := Database.ODBC.Date->New(sys_rt);
+        if(d_rt2->GetYear() <> 2023 | d_rt2->GetMonth() <> 7 | d_rt2->GetDay() <> 4) {
+            "  FAIL: Date roundtrip via ToDate"->PrintLine();
+            passed := false;
+        };
+
+        # --- Additional Timestamp edge case tests ---
+
+        # Test Timestamp max time (23:59:59)
+        ts_max := Database.ODBC.Timestamp->New();
+        ts_max->SetYear(2026);
+        ts_max->SetMonth(12);
+        ts_max->SetDay(31);
+        ts_max->SetHours(23);
+        ts_max->SetMinutes(59);
+        ts_max->SetSeconds(59);
+        if(ts_max->GetHours() <> 23 | ts_max->GetMinutes() <> 59 | ts_max->GetSeconds() <> 59) {
+            "  FAIL: Timestamp max time get/set"->PrintLine();
+            passed := false;
+        };
+        ts_max_str := ts_max->ToString();
+        if(<>ts_max_str->Has("11:59:59 PM")) {
+            "  FAIL: Timestamp 23:59:59 expected PM format, got '{$ts_max_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp hour=1 (1 AM)
+        ts_1am := Database.ODBC.Timestamp->New();
+        ts_1am->SetYear(2026);
+        ts_1am->SetMonth(3);
+        ts_1am->SetDay(15);
+        ts_1am->SetHours(1);
+        ts_1am->SetMinutes(0);
+        ts_1am->SetSeconds(0);
+        ts_1am_str := ts_1am->ToString();
+        if(<>ts_1am_str->Has("1:00:00 AM")) {
+            "  FAIL: Timestamp 1 AM format, got '{$ts_1am_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp hour=11 (11 AM)
+        ts_11am := Database.ODBC.Timestamp->New();
+        ts_11am->SetHours(11);
+        ts_11am->SetMinutes(30);
+        ts_11am->SetSeconds(15);
+        ts_11am_str := ts_11am->ToString();
+        if(<>ts_11am_str->Has("11:30:15 AM")) {
+            "  FAIL: Timestamp 11 AM format, got '{$ts_11am_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp hour=13 (1 PM)
+        ts_1pm := Database.ODBC.Timestamp->New();
+        ts_1pm->SetHours(13);
+        ts_1pm->SetMinutes(45);
+        ts_1pm->SetSeconds(30);
+        ts_1pm_str := ts_1pm->ToString();
+        if(<>ts_1pm_str->Has("1:45:30 PM")) {
+            "  FAIL: Timestamp 1 PM format, got '{$ts_1pm_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp with minute/second padding (single digits)
+        ts_pad := Database.ODBC.Timestamp->New();
+        ts_pad->SetHours(5);
+        ts_pad->SetMinutes(3);
+        ts_pad->SetSeconds(7);
+        ts_pad_str := ts_pad->ToString();
+        if(<>ts_pad_str->Has("5:03:07 AM")) {
+            "  FAIL: Timestamp padding format, got '{$ts_pad_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp fraction default is 0
+        ts_frac := Database.ODBC.Timestamp->New();
+        if(ts_frac->GetFraction() <> 0) {
+            "  FAIL: Timestamp default fraction not 0"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp ToDate roundtrip
+        ts_rt := Database.ODBC.Timestamp->New();
+        ts_rt->SetYear(2025);
+        ts_rt->SetMonth(11);
+        ts_rt->SetDay(22);
+        ts_rt->SetHours(8);
+        ts_rt->SetMinutes(15);
+        ts_rt->SetSeconds(30);
+        sys_ts_rt := ts_rt->ToDate();
+        if(sys_ts_rt->GetYear() <> 2025 | sys_ts_rt->GetMonth() <> 11 | sys_ts_rt->GetDay() <> 22) {
+            "  FAIL: Timestamp ToDate date fields"->PrintLine();
+            passed := false;
+        };
+
+        # --- ColumnInfo type constants ---
+        if(Database.ODBC.ColumnInfo->Type->SQL_UNKNOWN_TYPE <> 0) {
+            "  FAIL: SQL_UNKNOWN_TYPE expected 0"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_CHAR <> 1) {
+            "  FAIL: SQL_CHAR expected 1"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_INTEGER <> 4) {
+            "  FAIL: SQL_INTEGER expected 4"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_FLOAT <> 6) {
+            "  FAIL: SQL_FLOAT expected 6"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_DOUBLE <> 8) {
+            "  FAIL: SQL_DOUBLE expected 8"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_VARCHAR <> 12) {
+            "  FAIL: SQL_VARCHAR expected 12"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_TYPE_DATE <> 91) {
+            "  FAIL: SQL_TYPE_DATE expected 91"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_TYPE_TIME <> 92) {
+            "  FAIL: SQL_TYPE_TIME expected 92"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_TYPE_TIMESTAMP <> 93) {
+            "  FAIL: SQL_TYPE_TIMESTAMP expected 93"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_NUMERIC <> 2) {
+            "  FAIL: SQL_NUMERIC expected 2"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_DECIMAL <> 3) {
+            "  FAIL: SQL_DECIMAL expected 3"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_SMALLINT <> 5) {
+            "  FAIL: SQL_SMALLINT expected 5"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_REAL <> 7) {
+            "  FAIL: SQL_REAL expected 7"->PrintLine();
+            passed := false;
+        };
+        if(Database.ODBC.ColumnInfo->Type->SQL_DATETIME <> 9) {
+            "  FAIL: SQL_DATETIME expected 9"->PrintLine();
+            passed := false;
+        };
+
         if(passed) {
             "...
 PASS"->PrintLine();
