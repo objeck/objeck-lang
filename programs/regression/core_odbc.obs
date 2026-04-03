@@ -1,0 +1,126 @@
+#~
+# Core ODBC Bindings Test
+# Tests Date, Timestamp, and ColumnInfo classes without requiring a database
+~#
+
+use Database.ODBC;
+
+class OdbcTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing ODBC bindings..."->PrintLine();
+
+        passed := true;
+
+        # Test Date default constructor
+        d := Database.ODBC.Date->New();
+        d->SetYear(2026);
+        d->SetMonth(4);
+        d->SetDay(2);
+        if(d->GetYear() <> 2026 | d->GetMonth() <> 4 | d->GetDay() <> 2) {
+            "  FAIL: Date get/set"->PrintLine();
+            passed := false;
+        };
+
+        # Test Date ToString
+        date_str := d->ToString();
+        if(<>date_str->Equals("4/2/2026")) {
+            "  FAIL: Date ToString expected '4/2/2026' got '{$date_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Date ToDate conversion
+        sys_date := d->ToDate();
+        if(sys_date->GetYear() <> 2026 | sys_date->GetMonth() <> 4 | sys_date->GetDay() <> 2) {
+            "  FAIL: Date ToDate conversion"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp default constructor
+        ts := Database.ODBC.Timestamp->New();
+        ts->SetYear(2026);
+        ts->SetMonth(4);
+        ts->SetDay(2);
+        ts->SetHours(14);
+        ts->SetMinutes(30);
+        ts->SetSeconds(45);
+        if(ts->GetYear() <> 2026 | ts->GetMonth() <> 4 | ts->GetDay() <> 2) {
+            "  FAIL: Timestamp date get/set"->PrintLine();
+            passed := false;
+        };
+        if(ts->GetHours() <> 14 | ts->GetMinutes() <> 30 | ts->GetSeconds() <> 45) {
+            "  FAIL: Timestamp time get/set"->PrintLine();
+            passed := false;
+        };
+        if(ts->GetFraction() <> 0) {
+            "  FAIL: Timestamp fraction default"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp ToString (2:30:45 PM)
+        ts_str := ts->ToString();
+        if(<>ts_str->Has("2:30:45 PM")) {
+            "  FAIL: Timestamp ToString expected PM format, got '{$ts_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp ToDate conversion
+        ts_sys := ts->ToDate();
+        if(ts_sys->GetYear() <> 2026) {
+            "  FAIL: Timestamp ToDate year"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp AM time
+        ts_am := Database.ODBC.Timestamp->New();
+        ts_am->SetYear(2026);
+        ts_am->SetMonth(1);
+        ts_am->SetDay(15);
+        ts_am->SetHours(9);
+        ts_am->SetMinutes(5);
+        ts_am->SetSeconds(3);
+        ts_am_str := ts_am->ToString();
+        if(<>ts_am_str->Has("9:05:03 AM")) {
+            "  FAIL: Timestamp AM format, got '{$ts_am_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp midnight (hour = 0)
+        ts_mid := Database.ODBC.Timestamp->New();
+        ts_mid->SetHours(0);
+        ts_mid->SetMinutes(0);
+        ts_mid->SetSeconds(0);
+        ts_mid_str := ts_mid->ToString();
+        if(<>ts_mid_str->Has("12:00:00 AM")) {
+            "  FAIL: Timestamp midnight format, got '{$ts_mid_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Timestamp noon (hour = 12)
+        ts_noon := Database.ODBC.Timestamp->New();
+        ts_noon->SetHours(12);
+        ts_noon->SetMinutes(0);
+        ts_noon->SetSeconds(0);
+        ts_noon_str := ts_noon->ToString();
+        if(<>ts_noon_str->Has("12:00:00 PM")) {
+            "  FAIL: Timestamp noon format, got '{$ts_noon_str}'"->PrintLine();
+            passed := false;
+        };
+
+        # Test Date with system date constructor
+        sys_time := System.Time.Date->New(15, 6, 2025, false);
+        d2 := Database.ODBC.Date->New(sys_time);
+        if(d2->GetYear() <> 2025 | d2->GetMonth() <> 6 | d2->GetDay() <> 15) {
+            "  FAIL: Date from System.Time.Date"->PrintLine();
+            passed := false;
+        };
+
+        if(passed) {
+            "...
+PASS"->PrintLine();
+        }
+        else {
+            "...
+FAIL"->PrintLine();
+        };
+    }
+}

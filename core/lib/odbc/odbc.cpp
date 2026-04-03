@@ -2001,12 +2001,289 @@ extern "C" {
 
 
   //
+  // sets autocommit mode on a connection
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_set_autocommit(VMContext& context)
+  {
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 0);
+    size_t enable = APITools_GetIntValue(context, 1);
+
+#ifdef _DEBUG
+    std::wcout << L"### set_autocommit: conn=" << conn << L", enable=" << enable << L" ###" << std::endl;
+#endif
+
+    if(!conn) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SQLRETURN status = SQLSetConnectAttr(conn, SQL_ATTR_AUTOCOMMIT,
+                                          enable ? (SQLPOINTER)SQL_AUTOCOMMIT_ON : (SQLPOINTER)SQL_AUTOCOMMIT_OFF, 0);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // commits the current transaction
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_commit(VMContext& context)
+  {
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 0);
+
+#ifdef _DEBUG
+    std::wcout << L"### commit: conn=" << conn << L" ###" << std::endl;
+#endif
+
+    if(!conn) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SQLRETURN status = SQLEndTran(SQL_HANDLE_DBC, conn, SQL_COMMIT);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // rolls back the current transaction
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_rollback(VMContext& context)
+  {
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 0);
+
+#ifdef _DEBUG
+    std::wcout << L"### rollback: conn=" << conn << L" ###" << std::endl;
+#endif
+
+    if(!conn) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SQLRETURN status = SQLEndTran(SQL_HANDLE_DBC, conn, SQL_ROLLBACK);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // gets the last ODBC error for a given handle
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_get_error(VMContext& context)
+  {
+    SQLSMALLINT handle_type_id = (SQLSMALLINT)APITools_GetIntValue(context, 1);
+    SQLHANDLE handle = (SQLHANDLE)APITools_GetIntValue(context, 2);
+
+#ifdef _DEBUG
+    std::wcout << L"### get_error: type=" << handle_type_id << L", handle=" << handle << L" ###" << std::endl;
+#endif
+
+    SQLSMALLINT sql_handle_type;
+    switch(handle_type_id) {
+      case 1:
+        sql_handle_type = SQL_HANDLE_ENV;
+        break;
+      case 2:
+        sql_handle_type = SQL_HANDLE_DBC;
+        break;
+      case 3:
+        sql_handle_type = SQL_HANDLE_STMT;
+        break;
+      default:
+        sql_handle_type = SQL_HANDLE_DBC;
+        break;
+    }
+
+    if(!handle) {
+      APITools_SetStringValue(context, 0, L"");
+      return;
+    }
+
+    SQLCHAR sql_state[6];
+    SQLINTEGER native_error;
+    SQLCHAR message[SQL_MAX_MESSAGE_LENGTH];
+    SQLSMALLINT text_len;
+
+    SQLRETURN result = SQLGetDiagRec(sql_handle_type, handle, 1, sql_state, &native_error,
+                                      message, sizeof(message), &text_len);
+    if(result == SQL_SUCCESS || result == SQL_SUCCESS_WITH_INFO) {
+      char error_msg[SQL_MAX_MESSAGE_LENGTH + 64];
+      snprintf(error_msg, sizeof(error_msg), "[%s] %s (%d)", (char*)sql_state, (char*)message, (int)native_error);
+      const std::wstring werror = BytesToUnicode(error_msg);
+      APITools_SetStringValue(context, 0, werror);
+    }
+    else {
+      APITools_SetStringValue(context, 0, L"");
+    }
+  }
+
+  //
+  // gets table names from a connection
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_get_tables(VMContext& context)
+  {
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 1);
+
+#ifdef _DEBUG
+    std::wcout << L"### get_tables: conn=" << conn << L" ###" << std::endl;
+#endif
+
+    if(!conn) {
+      APITools_SetStringValue(context, 0, L"");
+      return;
+    }
+
+    SQLHSTMT stmt = NULL;
+    SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
+    if(SQL_FAIL) {
+      if(stmt) {
+        SQLFreeStmt(stmt, SQL_UNBIND);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      }
+      APITools_SetStringValue(context, 0, L"");
+      return;
+    }
+
+    status = SQLTables(stmt, NULL, 0, NULL, 0, NULL, 0, (SQLCHAR*)"TABLE", SQL_NTS);
+    if(SQL_FAIL) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      APITools_SetStringValue(context, 0, L"");
+      return;
+    }
+
+    std::wstring result_str;
+    char table_name[VARCHAR_MAX];
+    SQLLEN indicator;
+    bool first = true;
+
+    while(SQLFetch(stmt) == SQL_SUCCESS) {
+      status = SQLGetData(stmt, 3, SQL_C_CHAR, table_name, sizeof(table_name), &indicator);
+      if(status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO) {
+        if(indicator != SQL_NULL_DATA) {
+          if(!first) {
+            result_str += L",";
+          }
+          result_str += BytesToUnicode(table_name);
+          first = false;
+        }
+      }
+    }
+
+    SQLFreeStmt(stmt, SQL_UNBIND);
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    APITools_SetStringValue(context, 0, result_str);
+  }
+
+  //
+  // gets column info for a table
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_get_columns(VMContext& context)
+  {
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 1);
+    const std::wstring wtable(APITools_GetStringValue(context, 2));
+
+#ifdef _DEBUG
+    std::wcout << L"### get_columns: conn=" << conn << L", table=" << wtable << L" ###" << std::endl;
+#endif
+
+    if(!conn || wtable.size() < 1) {
+      APITools_SetStringValue(context, 0, L"");
+      return;
+    }
+
+    const std::string table_name = UnicodeToBytes(wtable);
+
+    SQLHSTMT stmt = NULL;
+    SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
+    if(SQL_FAIL) {
+      if(stmt) {
+        SQLFreeStmt(stmt, SQL_UNBIND);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      }
+      APITools_SetStringValue(context, 0, L"");
+      return;
+    }
+
+    status = SQLColumns(stmt, NULL, 0, NULL, 0, (SQLCHAR*)table_name.c_str(), SQL_NTS, NULL, 0);
+    if(SQL_FAIL) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      APITools_SetStringValue(context, 0, L"");
+      return;
+    }
+
+    std::wstring result_str;
+    char col_name[VARCHAR_MAX];
+    char col_type[VARCHAR_MAX];
+    SQLLEN name_indicator;
+    SQLLEN type_indicator;
+    bool first = true;
+
+    while(SQLFetch(stmt) == SQL_SUCCESS) {
+      SQLRETURN name_status = SQLGetData(stmt, 4, SQL_C_CHAR, col_name, sizeof(col_name), &name_indicator);
+      SQLRETURN type_status = SQLGetData(stmt, 6, SQL_C_CHAR, col_type, sizeof(col_type), &type_indicator);
+
+      if((name_status == SQL_SUCCESS || name_status == SQL_SUCCESS_WITH_INFO) &&
+         (type_status == SQL_SUCCESS || type_status == SQL_SUCCESS_WITH_INFO)) {
+        if(name_indicator != SQL_NULL_DATA) {
+          if(!first) {
+            result_str += L",";
+          }
+          result_str += BytesToUnicode(col_name);
+          result_str += L":";
+          if(type_indicator != SQL_NULL_DATA) {
+            result_str += BytesToUnicode(col_type);
+          }
+          else {
+            result_str += L"UNKNOWN";
+          }
+          first = false;
+        }
+      }
+    }
+
+    SQLFreeStmt(stmt, SQL_UNBIND);
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    APITools_SetStringValue(context, 0, result_str);
+  }
+
+  //
   // closes a result set
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_result_close(VMContext& context) 
+  void odbc_result_close(VMContext& context)
   {
     std::map<const std::wstring, int>* column_names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 0);
     if(column_names) {

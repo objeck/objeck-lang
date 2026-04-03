@@ -131,11 +131,123 @@ bundle Database.ODBC {
 				exec_data := array_args[2]->As(IntRef);
 				return ParameterStatement->New(native_stmt->Get(), native_names->Get(), exec_data->Get());
 			};
-			
+
+			return Nil;
+		}
+
+		#~
+		Sets autocommit mode. When false, changes must be explicitly committed.
+		@param enable true for autocommit, false for manual transaction control
+		@return true if successful
+		~#
+		method : public : SetAutoCommit(enable : Bool) ~ Bool {
+			if(@native_connection <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntRef->New(@native_connection);
+				array_args[1] := IntRef->New(enable ? 1 : 0);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_set_autocommit", array_args);
+				return array_args[0]->As(IntRef)->Get() = 1;
+			};
+
+			return false;
+		}
+
+		#~
+		Commits the current transaction.
+		@return true if successful
+		~#
+		method : public : Commit() ~ Bool {
+			if(@native_connection <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@native_connection);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_commit", array_args);
+				return array_args[0]->As(IntRef)->Get() = 1;
+			};
+
+			return false;
+		}
+
+		#~
+		Rolls back the current transaction.
+		@return true if successful
+		~#
+		method : public : Rollback() ~ Bool {
+			if(@native_connection <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@native_connection);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_rollback", array_args);
+				return array_args[0]->As(IntRef)->Get() = 1;
+			};
+
+			return false;
+		}
+
+		#~
+		Gets the last error message from the connection.
+		@return error message string, or empty if no error
+		~#
+		method : public : GetLastError() ~ String {
+			if(@native_connection <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := Nil;
+				array_args[1] := IntRef->New(2);
+				array_args[2] := IntRef->New(@native_connection);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_get_error", array_args);
+				return array_args[0]->As(String);
+			};
+
+			return "";
+		}
+
+		#~
+		Gets the list of table names in the data source.
+		@return array of table names, or Nil on failure
+		~#
+		method : public : GetTables() ~ String[] {
+			if(@native_connection <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := Nil;
+				array_args[1] := IntRef->New(@native_connection);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_get_tables", array_args);
+
+				result := array_args[0]->As(String);
+				if(result <> Nil & result->Size() > 0) {
+					return result->Split(",");
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets column information for a table as name:type pairs.
+		@param table table name
+		@return array of column descriptors (name:type), or Nil on failure
+		~#
+		method : public : GetColumns(table : String) ~ String[] {
+			if(@native_connection <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := Nil;
+				array_args[1] := IntRef->New(@native_connection);
+				array_args[2] := table;
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_get_columns", array_args);
+
+				result := array_args[0]->As(String);
+				if(result <> Nil & result->Size() > 0) {
+					return result->Split(",");
+				};
+			};
+
 			return Nil;
 		}
 	}
-	
+
 	#~
 	ODBC parametrized statement that supports SQL variables
 	~#
@@ -661,6 +773,24 @@ bundle Database.ODBC {
 		}
 		
 		#~
+		Gets the last error message from the statement.
+		@return error message string, or empty if no error
+		~#
+		method : public : GetLastError() ~ String {
+			if(@native_stmt <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := Nil;
+				array_args[1] := IntRef->New(3);
+				array_args[2] := IntRef->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_get_error", array_args);
+				return array_args[0]->As(String);
+			};
+
+			return "";
+		}
+
+		#~
 		Closes the statement
 		~#
 		method : public : Close() ~ Nil {
@@ -674,7 +804,7 @@ bundle Database.ODBC {
       		};
       	}
 	}
-	
+
 	#~
 	ODBC result set
 	~#
@@ -1212,7 +1342,25 @@ bundle Database.ODBC {
 		}
 		
 		#~
-		Closes a result set 
+		Gets the last error message from the result set statement.
+		@return error message string, or empty if no error
+		~#
+		method : public : GetLastError() ~ String {
+			if(@native_stmt <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := Nil;
+				array_args[1] := IntRef->New(3);
+				array_args[2] := IntRef->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_get_error", array_args);
+				return array_args[0]->As(String);
+			};
+
+			return "";
+		}
+
+		#~
+		Closes a result set
 		~#
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
