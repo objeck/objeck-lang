@@ -30,8 +30,10 @@
  ***************************************************************************/
 
 #include "debugger.h"
+#include "dap.h"
 #include "../shared/sys.h"
 #include "../shared/version.h"
+#include <sstream>
 
  /********************************
   * Debugger main
@@ -74,6 +76,30 @@ int main(int argc, const char* argv[])
 #endif 
 
   usage += L"\nWeb: https://www.objeck.org";
+
+  // Check for DAP mode
+  bool dap_mode = false;
+  for(int i = 1; i < argc; i++) {
+    if(std::string(argv[i]) == "--dap") {
+      dap_mode = true;
+      break;
+    }
+  }
+
+  if(dap_mode) {
+#ifdef _WIN32
+    WSADATA data;
+    if(WSAStartup(MAKEWORD(2, 2), &data)) {
+      return 1;
+    }
+#endif
+    Runtime::DapAdapter adapter;
+    adapter.Run();
+#ifdef _WIN32
+    WSACleanup();
+#endif
+    return 0;
+  }
 
   if(argc >= 3) {
 #ifdef _WIN32
@@ -249,30 +275,57 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
         is_step_into = is_step_out = is_next_line = false;
 
-        // prompt for input
-        const std::wstring& long_name = cur_frame->method->GetName();
-        const size_t end_index = long_name.find_last_of(':');
-        const std::wstring& cls_mthd_name = long_name.substr(0, end_index);
+        if(mode == DebugMode::DAP && dap_adapter) {
+          // DAP mode: notify adapter and block until resume
+          std::string reason = found_break ? "breakpoint" : "step";
+          dap_adapter->OnStopped(reason, line_num, file_name, frame, call_stack, call_stack_pos);
 
-        // show break info
-        const size_t mid_index = cls_mthd_name.find_last_of(':');
-        const std::wstring& cls_name = cls_mthd_name.substr(0, mid_index);
-        const std::wstring& mthd_name = cls_mthd_name.substr(mid_index + 1);
-        std::wcout << L"break: file='" << C(CLR_CYAN) << file_name << L":" << line_num << C(CLR_RESET) << L"', method='" << C(CLR_GREEN) << cls_name << L"->" << mthd_name << L"(..)" << C(CLR_RESET) << L"'" << std::endl;
-
-        // prompt for break command
-        Command* command;
-        do {
-          std::wstring line;
-          ReadLine(line);
-          if(line.size() > 0) {
-            command = ProcessCommand(line);
+          // After resume, check what stepping mode was requested
+          if(dap_adapter->IsDisconnected()) {
+            return;
+          }
+          if(dap_adapter->IsStepInto()) {
+            is_step_into = true;
+          }
+          else if(dap_adapter->IsStepOver()) {
+            is_next_line = true;
+          }
+          else if(dap_adapter->IsStepOut()) {
+            is_step_out = true;
+            jump_stack_pos = call_stack_pos;
           }
           else {
-            command = nullptr;
+            // continue — set state for next breakpoint
+            continue_state = 1;
           }
-        } while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != STEP_IN_COMMAND &&
-                             command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != STEP_OUT_COMMAND));
+        }
+        else {
+          // CLI mode: interactive prompt
+          // prompt for input
+          const std::wstring& long_name = cur_frame->method->GetName();
+          const size_t end_index = long_name.find_last_of(':');
+          const std::wstring& cls_mthd_name = long_name.substr(0, end_index);
+
+          // show break info
+          const size_t mid_index = cls_mthd_name.find_last_of(':');
+          const std::wstring& cls_name = cls_mthd_name.substr(0, mid_index);
+          const std::wstring& mthd_name = cls_mthd_name.substr(mid_index + 1);
+          std::wcout << L"break: file='" << C(CLR_CYAN) << file_name << L":" << line_num << C(CLR_RESET) << L"', method='" << C(CLR_GREEN) << cls_name << L"->" << mthd_name << L"(..)" << C(CLR_RESET) << L"'" << std::endl;
+
+          // prompt for break command
+          Command* command;
+          do {
+            std::wstring line;
+            ReadLine(line);
+            if(line.size() > 0) {
+              command = ProcessCommand(line);
+            }
+            else {
+              command = nullptr;
+            }
+          } while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != STEP_IN_COMMAND &&
+                               command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != STEP_OUT_COMMAND));
+        }
       }
     }
   }
@@ -2043,6 +2096,117 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
   ref_klass = nullptr;
   is_step_out = false;
 }
+
+// ============================================
+// DAP support methods
+// ============================================
+
+void Runtime::Debugger::DapRun() {
+  if(!EndsWith(program_file_param, L".obe")) {
+    program_file_param += L".obe";
+  }
+
+  if(FileExists(program_file_param, true) && DirectoryExists(base_path_param)) {
+    arguments.clear();
+    arguments.push_back(L"obr");
+    arguments.push_back(program_file_param);
+
+    if(!args_param.empty()) {
+      ProcessArgs(args_param);
+    }
+
+    ClearReload();
+    StackMethod* start = loader->GetStartMethod();
+    if(start) {
+      cur_file_name = start->GetClass()->GetFileName();
+    }
+
+    // Run the program
+    DoLoad();
+    cur_program = loader->GetProgram();
+
+    op_stack = new size_t[CALC_STACK_SIZE];
+    stack_pos = new size_t;
+    (*stack_pos) = 0;
+
+    interpreter = new Runtime::StackInterpreter(cur_program, this);
+    interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), nullptr, false);
+
+    ClearReload();
+  }
+}
+
+void Runtime::Debugger::ClearFileBreaks(const std::wstring& file_name)
+{
+  auto iter = breaks.begin();
+  while(iter != breaks.end()) {
+    if((*iter)->file_name == file_name) {
+      delete *iter;
+      iter = breaks.erase(iter);
+    }
+    else {
+      ++iter;
+    }
+  }
+}
+
+Expression* Runtime::Debugger::ParseCondition(const std::wstring& expr_str)
+{
+  // Use the parser to parse the expression
+  std::wstring cmd = L"?p " + expr_str;
+  Parser parser;
+  Command* command = parser.Parse(cmd);
+  if(command && command->GetCommandType() == PRINT_COMMAND) {
+    Print* print = static_cast<Print*>(command);
+    return print->GetExpression();
+  }
+  return nullptr;
+}
+
+std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
+{
+  if(!cur_frame) {
+    return L"<no frame>";
+  }
+
+  std::wstring cmd = L"?p " + expr_str;
+  Parser parser;
+  Command* command = parser.Parse(cmd);
+  if(command && command->GetCommandType() == PRINT_COMMAND) {
+    Print* print = static_cast<Print*>(command);
+    Expression* expression = print->GetExpression();
+    is_error = false;
+    EvaluateExpression(expression);
+
+    if(!is_error) {
+      const StackDclr& dclr = static_cast<Reference*>(expression)->GetDeclaration();
+      switch(dclr.type) {
+        case CHAR_PARM: {
+          std::wstringstream wss;
+          wss << (wchar_t)expression->GetIntValue();
+          return wss.str();
+        }
+        case INT_PARM: {
+          std::wstringstream wss;
+          wss << (long)expression->GetIntValue();
+          return wss.str();
+        }
+        case FLOAT_PARM: {
+          std::wstringstream wss;
+          wss << expression->GetFloatValue();
+          return wss.str();
+        }
+        default:
+          return L"<object>";
+      }
+    }
+  }
+  return L"<error>";
+}
+
+// ============================================
+// CLI mode
+// ============================================
 
 void Runtime::Debugger::Debug() {
   ColorInit();
