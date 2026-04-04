@@ -274,7 +274,7 @@ jobs:
         ./update_version_arm.sh
 
     - name: Rebuild libraries (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./core/compiler
       shell: bash
       run: |
@@ -313,7 +313,7 @@ jobs:
         echo "Libraries rebuilt successfully"
 
     - name: Update deploy with rebuilt libraries
-      if: matrix.platform != 'linux-x64'
+      if: matrix.platform != 'linux-x64' && matrix.platform != 'windows-arm64'
       shell: bash
       working-directory: ./core/release
       run: |
