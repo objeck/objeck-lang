@@ -398,6 +398,12 @@ jobs:
         echo "Running debugger tests for architecture: $ARCH"
         ./run_debugger_tests.sh $ARCH
 
+    - name: Run debugger tests (Windows)
+      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: run_debugger_tests.cmd ${{ matrix.arch }}
+
     # ============================================
     # API Documentation (Linux x64 only)
     # ============================================
