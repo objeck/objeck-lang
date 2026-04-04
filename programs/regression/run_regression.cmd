@@ -29,8 +29,10 @@ set ABS_COMPILER=%CD%\obc.exe
 set ABS_VM=%CD%\obr.exe
 popd
 
-REM Set library paths for native module loading
-set OBJECK_LIB_PATH=%DEPLOY_DIR%\lib
+REM Set library paths for native module loading (use absolute paths)
+pushd "%DEPLOY_DIR%\lib"
+set OBJECK_LIB_PATH=%CD%
+popd
 set NATIVE_LIB_DIR=%DEPLOY_DIR%\lib\native
 if exist "%NATIVE_LIB_DIR%" set PATH=%NATIVE_LIB_DIR%;%PATH%
 
