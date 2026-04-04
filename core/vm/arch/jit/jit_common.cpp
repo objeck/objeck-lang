@@ -173,8 +173,11 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
       // Get a stack frame for the callee and register it on the call stack
       // so the GC can find and fixup pointers during young-gen promotion.
+      // Uses same convention as PushFrame: store at pos, fence, then increment.
       StackFrame* frame = Runtime::StackInterpreter::GetStackFrame(callee, callee_inst);
-      call_stack[++(*call_stack_pos)] = frame;
+      call_stack[(*call_stack_pos)] = frame;
+      std::atomic_thread_fence(std::memory_order_release);
+      (*call_stack_pos)++;
 
       // Execute native code directly
       Runtime::JitRuntime jit_executor;

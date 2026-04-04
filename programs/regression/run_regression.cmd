@@ -43,9 +43,13 @@ echo.
 for %%f in (*.obs) do (
     echo Running: %%~nf...
 
+    REM Build library list: base libs + any EXTRA_LIBS from test file
+    set LIBS=cipher,collect,xml,json
+    for /f "tokens=3*" %%a in ('findstr /c:"# EXTRA_LIBS:" "%REGRESSION_DIR%\%%f" 2^>nul') do set LIBS=!LIBS!,%%a
+
     REM Change to compiler directory so it can find ../lib
     pushd "%ABS_BIN_DIR%"
-    "%ABS_COMPILER%" -src "%REGRESSION_DIR%\%%f" -lib cipher,collect,xml,json -opt s3 -dest "%REGRESSION_DIR%\%%~nf.obe" > "%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log" 2>&1
+    "%ABS_COMPILER%" -src "%REGRESSION_DIR%\%%f" -lib !LIBS! -opt s3 -dest "%REGRESSION_DIR%\%%~nf.obe" > "%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log" 2>&1
     set COMPILE_RESULT=!errorlevel!
     popd
 

@@ -44,9 +44,16 @@ for test in *.obs; do
     # Get absolute test path
     ABS_TEST="${REGRESSION_DIR}/${test}"
 
+    # Build library list: base libs + any EXTRA_LIBS from test file
+    LIBS="cipher,collect,xml,json"
+    EXTRA=$(grep -m1 '# EXTRA_LIBS:' "$test" 2>/dev/null | sed 's/.*# EXTRA_LIBS:[[:space:]]*//')
+    if [ -n "$EXTRA" ]; then
+        LIBS="${LIBS},${EXTRA}"
+    fi
+
     # Change to compiler directory and compile
     cd "${DEPLOY_DIR}/bin"
-    "$ABS_COMPILER" -src "$ABS_TEST" -lib cipher,collect,xml,json -opt s3 -dest "${REGRESSION_DIR}/${NAME}.obe" 2>&1 | tee "${REGRESSION_DIR}/${RESULTS_DIR}/${NAME}_compile.log" > /dev/null
+    "$ABS_COMPILER" -src "$ABS_TEST" -lib "$LIBS" -opt s3 -dest "${REGRESSION_DIR}/${NAME}.obe" 2>&1 | tee "${REGRESSION_DIR}/${RESULTS_DIR}/${NAME}_compile.log" > /dev/null
 
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         cd "$REGRESSION_DIR"

@@ -1310,16 +1310,16 @@ void* MemoryManager::CheckPdaRoots(void* arg)
       // copy frames locally
       while(--call_stack_pos > -1) {
         StackFrame* frame = call_stack[call_stack_pos];
-        if(frame->jit_mem) {
+        if(frame && frame->jit_mem) {
 #ifndef _GC_SERIAL
           MUTEX_LOCK(&jit_frame_lock);
-#endif    
+#endif
           jit_frames.push_back(frame);
 #ifndef _GC_SERIAL
           MUTEX_UNLOCK(&jit_frame_lock);
 #endif
         }
-        else {
+        else if(frame) {
           frames.push_back(frame);
         }
       }
@@ -1784,10 +1784,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
         }
       }
 
-      // Fix up call stack frames (walk from top down — direct JIT-to-JIT
-      // calls push frames to call_stack without updating cur_frame,
-      // so the top frame at call_stack_pos must be included)
-      for(long f = call_stack_pos; f >= 0; --f) {
+      // Fix up call stack frames (walk from top down, using PushFrame
+      // convention where call_stack_pos points past the last valid entry)
+      for(long f = call_stack_pos - 1; f >= 0; --f) {
         StackFrame* frame = call_stack[f];
         if(frame) {
           if(frame->jit_mem) {
