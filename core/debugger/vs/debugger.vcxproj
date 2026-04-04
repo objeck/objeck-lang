@@ -192,7 +192,10 @@
     <ClInclude Include="..\..\vm\lib_api.h" />
     <ClInclude Include="..\..\vm\loader.h" />
     <ClInclude Include="..\..\vm\vm.h" />
+    <ClInclude Include="..\color.h" />
+    <ClInclude Include="..\dap.h" />
     <ClInclude Include="..\debugger.h" />
+    <ClInclude Include="..\json.hpp" />
     <ClInclude Include="..\parser.h" />
     <ClInclude Include="..\scanner.h" />
     <ClInclude Include="..\tree.h" />
@@ -210,6 +213,7 @@
     <ClCompile Include="..\..\vm\loader.cpp" />
     <ClCompile Include="..\..\vm\vm.cpp" />
     <ClCompile Include="..\debugger.cpp" />
+    <ClCompile Include="..\dap.cpp" />
     <ClCompile Include="..\parser.cpp" />
     <ClCompile Include="..\scanner.cpp" />
     <ClCompile Include="..\tree.cpp" />

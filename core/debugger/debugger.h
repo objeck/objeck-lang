@@ -53,6 +53,9 @@
 namespace Runtime {
   class StackInterpreter;
   class Debugger;
+  class DapAdapter;
+
+  enum class DebugMode { CLI, DAP };
   
   typedef struct _UserBreak {
     int line_num;
@@ -104,6 +107,8 @@ namespace Runtime {
   * debugger
   ********************************/
   class Debugger {
+    friend class DapAdapter;
+
     std::wstring program_file_param;
     std::wstring base_path_param;
     std::wstring args_param;
@@ -233,6 +238,10 @@ namespace Runtime {
 #endif
     }
 
+    // DAP mode
+    DebugMode mode;
+    DapAdapter* dap_adapter;
+
   public:
     Debugger(const std::wstring &fn, const std::wstring &bp, const std::wstring &ap) {
       program_file_param = fn;
@@ -253,6 +262,8 @@ namespace Runtime {
       ref_mem = nullptr;
       is_step_out = false;
       loader = nullptr;
+      mode = DebugMode::CLI;
+      dap_adapter = nullptr;
     }
 
     ~Debugger() {
@@ -260,8 +271,30 @@ namespace Runtime {
       ClearBreaks();
     }
 
-    // start debugger
+    // start debugger (CLI mode)
     void Debug();
+
+    // start debugger (DAP mode) — runs the program to completion
+    void DapRun();
+
+    // set the DAP adapter for callbacks
+    void SetDapAdapter(DapAdapter* adapter) {
+      dap_adapter = adapter;
+      mode = DebugMode::DAP;
+    }
+
+    // public accessors for DAP
+    const std::wstring& GetBasePath() { return base_path_param; }
+    std::wstring PrintMethodPublic(StackMethod* method) { return PrintMethod(method); }
+
+    // clear breakpoints for a specific file
+    void ClearFileBreaks(const std::wstring& file_name);
+
+    // parse a condition expression string (for DAP conditional breakpoints)
+    Expression* ParseCondition(const std::wstring& expr_str);
+
+    // evaluate an expression and return result as string (for DAP evaluate)
+    std::wstring EvaluateForDap(const std::wstring& expr_str);
 
     // searches for a valid breakpoint based upon the line number provided
     UserBreak* FindBreak(int line_num);
