@@ -245,6 +245,7 @@ class World {
 	@last_platform_y : Float;
 	@distance : Int;
 	@frame_count : Int;
+	@speed_up : Bool;
 
 	New() {
 		@platforms := Vector->New()<GamePlatform>;
@@ -254,6 +255,7 @@ class World {
 		@last_platform_y := 400.0;
 		@distance := 0;
 		@frame_count := 0;
+		@speed_up := false;
 
 		# generate initial platforms including one under the player
 		GenerateStartPlatforms();
@@ -278,12 +280,12 @@ class World {
 		if(difficulty > 1.0) { difficulty := 1.0; };
 
 		# gap between platforms: 100-180, wider with difficulty
-		min_gap := 80 + (difficulty * 40.0)->As(Int);
-		max_gap := 140 + (difficulty * 60.0)->As(Int);
+		min_gap := 70 + (difficulty * 30.0)->As(Int);
+		max_gap := 110 + (difficulty * 50.0)->As(Int);
 		gap := Int->Random(min_gap, max_gap);
 
 		# height variation: +/- 50 from previous
-		height_change := Int->Random(0, 100) - 50;
+		height_change := Int->Random(0, 80) - 40;
 		new_y := @last_platform_y + height_change->As(Float);
 		if(new_y < 220.0) { new_y := 220.0; };
 		if(new_y > 480.0) { new_y := 480.0; };
@@ -328,8 +330,10 @@ class World {
 		@distance += @scroll_speed->As(Int);
 
 		# gradually increase speed
+		@speed_up := false;
 		if(@frame_count % 600 = 0 & @scroll_speed < 5.0) {
 			@scroll_speed += 0.15;
+			@speed_up := true;
 		};
 
 		# update platform animations
@@ -371,6 +375,10 @@ class World {
 		return @scroll_speed;
 	}
 
+	method : public : DidSpeedUp() ~ Bool {
+		return @speed_up;
+	}
+
 	method : public : Draw(renderer : Renderer) ~ Nil {
 		each(i : @platforms) {
 			@platforms->Get(i)->Draw(renderer, @camera_x);
@@ -391,6 +399,10 @@ class Player {
 	@anim_timer : Int;
 	@facing_right : Bool;
 	@land_particles : Bool;
+	@frame : Int;
+	@coyote_timer : Int;
+	@used_double_jump : Bool;
+	@edge_land_dist : Float;
 
 	New() {
 		@x := 200.0;
@@ -402,6 +414,10 @@ class Player {
 		@anim_timer := 0;
 		@facing_right := true;
 		@land_particles := false;
+		@frame := 0;
+		@coyote_timer := 0;
+		@used_double_jump := false;
+		@edge_land_dist := -1.0;
 	}
 
 	method : public : GetX() ~ Float { return @x; }
@@ -416,19 +432,32 @@ class Player {
 		return false;
 	}
 
+	method : public : GetEdgeLandDist() ~ Float { return @edge_land_dist; }
+	method : public : ClearEdgeLand() ~ Nil { @edge_land_dist := -1.0; }
+
 	method : public : Jump() ~ Nil {
-		if(@on_ground) {
-			@vy := -11.0;
+		# coyote time: allow jumping briefly after leaving ground
+		if(@on_ground | @coyote_timer > 0) {
+			@vy := -12.5;
 			@on_ground := false;
+			@coyote_timer := 0;
 			@state := 2;
+			@used_double_jump := false;
+		}
+		else if(<>@used_double_jump) {
+			# double jump: weaker second jump
+			@vy := -10.0;
+			@state := 2;
+			@used_double_jump := true;
 		};
 	}
 
 	method : public : Update(world : World) ~ Nil {
 		if(@state = 4) { return; };
+		@frame += 1;
 
 		# gravity
-		@vy += 0.55;
+		@vy += 0.48;
 		@y += @vy;
 
 		# keep player at fixed X relative to camera
@@ -437,6 +466,7 @@ class Player {
 		# collision with platforms
 		was_on_ground := @on_ground;
 		@on_ground := false;
+		@edge_land_dist := -1.0;
 
 		platforms := world->GetPlatforms();
 		each(i : platforms) {
@@ -461,6 +491,12 @@ class Player {
 
 					if(<>was_on_ground) {
 						@land_particles := true;
+						# detect close-call landing (near edge of platform)
+						dist_to_left := player_right - px;
+						dist_to_right := (px + pw->As(Float)) - player_left;
+						near_edge := dist_to_left;
+						if(dist_to_right < near_edge) { near_edge := dist_to_right; };
+						@edge_land_dist := near_edge;
 					};
 
 					# check coin collection
@@ -475,6 +511,19 @@ class Player {
 					};
 				};
 			};
+		};
+
+		# coyote time: start timer when walking off a platform
+		if(was_on_ground & <>@on_ground & @vy >= 0.0) {
+			@coyote_timer := 8;
+		}
+		else if(@coyote_timer > 0 & <>@on_ground) {
+			@coyote_timer -= 1;
+		};
+
+		# reset double jump when landing
+		if(@on_ground) {
+			@used_double_jump := false;
 		};
 
 		# update state
@@ -576,6 +625,12 @@ class Player {
 			arm_offset := -4;
 		};
 
+		# breathing bob while running
+		breath_y := 0;
+		if(@state = 1) {
+			breath_y := (Float->Sin(@frame->As(Float) * 0.1) * 1.5)->As(Int);
+		};
+
 		# --- Draw the character ---
 
 		# Shoes (dark brown)
@@ -588,32 +643,32 @@ class Player {
 		renderer->FillRect(Rect->New(sx + 4, sy + 24 + leg_offset, 6, 8));
 		renderer->FillRect(Rect->New(sx + 14, sy + 24 - leg_offset, 6, 8));
 
-		# Body (bright red shirt)
+		# Body (bright red shirt) - bobs with breathing
 		renderer->SetDrawColor(220, 40, 40, 255);
-		renderer->FillRect(Rect->New(sx + 3, sy + 12, 18, 13));
+		renderer->FillRect(Rect->New(sx + 3, sy + 12 + breath_y, 18, 13));
 
-		# Arms (skin tone)
+		# Arms (skin tone) - bobs with breathing
 		renderer->SetDrawColor(230, 180, 140, 255);
-		renderer->FillRect(Rect->New(sx - 2, sy + 14 + arm_offset, 5, 8));
-		renderer->FillRect(Rect->New(sx + 21, sy + 14 - arm_offset, 5, 8));
+		renderer->FillRect(Rect->New(sx - 2, sy + 14 + arm_offset + breath_y, 5, 8));
+		renderer->FillRect(Rect->New(sx + 21, sy + 14 - arm_offset + breath_y, 5, 8));
 
-		# Head (skin)
+		# Head (skin) - bobs with breathing
 		renderer->SetDrawColor(230, 180, 140, 255);
-		renderer->FillRect(Rect->New(sx + 5, sy + 1, 14, 12));
+		renderer->FillRect(Rect->New(sx + 5, sy + 1 + breath_y, 14, 12));
 
-		# Hair (dark brown)
+		# Hair (dark brown) - bobs with breathing
 		renderer->SetDrawColor(60, 30, 10, 255);
-		renderer->FillRect(Rect->New(sx + 4, sy, 16, 5));
+		renderer->FillRect(Rect->New(sx + 4, sy + breath_y, 16, 5));
 
-		# Eyes (white + black pupil)
+		# Eyes (white + black pupil) - bobs with breathing
 		renderer->SetDrawColor(255, 255, 255, 255);
-		renderer->FillRect(Rect->New(sx + 14, sy + 5, 4, 3));
+		renderer->FillRect(Rect->New(sx + 14, sy + 5 + breath_y, 4, 3));
 		renderer->SetDrawColor(30, 30, 30, 255);
-		renderer->FillRect(Rect->New(sx + 16, sy + 5, 2, 3));
+		renderer->FillRect(Rect->New(sx + 16, sy + 5 + breath_y, 2, 3));
 
-		# Mouth (small smile)
+		# Mouth (small smile) - bobs with breathing
 		renderer->SetDrawColor(180, 80, 60, 255);
-		renderer->FillRect(Rect->New(sx + 14, sy + 10, 3, 1));
+		renderer->FillRect(Rect->New(sx + 14, sy + 10 + breath_y, 3, 1));
 	}
 }
 
@@ -637,6 +692,8 @@ class Game {
 	@score : Int;
 	@high_score : Int;
 	@coins_collected : Int;
+	@combo : Int;
+	@combo_timer : Int;
 
 	# HUD
 	@score_text : TextSprite;
@@ -645,11 +702,22 @@ class Game {
 	@prompt_text : TextSprite;
 	@gameover_text : TextSprite;
 	@hiscore_text : TextSprite;
+	@alert_text : TextSprite;
+	@combo_text : TextSprite;
+
+	# alerts
+	@alert_msg : String;
+	@alert_timer : Int;
+	@alert_r : Int;
+	@alert_g : Int;
+	@alert_b : Int;
 
 	# input tracking
 	@jump_was_down : Bool;
 	@jump_held : Bool;
 	@escape_held : Bool;
+
+	# joystick (handled via SDL_JOY* events)
 
 	# audio
 	@music : MixMusic;
@@ -693,6 +761,12 @@ class Game {
 		@prompt_text := @framework->AddTextSprite();
 		@gameover_text := @framework->AddTextSprite();
 		@hiscore_text := @framework->AddTextSprite();
+		@alert_text := @framework->AddTextSprite();
+		@combo_text := @framework->AddTextSprite();
+
+		@alert_timer := 0;
+		@combo := 0;
+		@combo_timer := 0;
 
 		@star_x := Int->New[60];
 		@star_y := Int->New[60];
@@ -769,6 +843,37 @@ class Game {
 					if(code = Scancode->SDL_SCANCODE_ESCAPE) {
 						@escape_held := false;
 					};
+				}
+				# joystick button press (A button = jump, B/Start = start/retry)
+				else if(type = EventType->SDL_JOYBUTTONDOWN) {
+					btn := e->GetJButton()->GetButton();
+					if(btn = 0 | btn = 1) {
+						# A or B button
+						@jump_held := true;
+					};
+					if(btn = 6 | btn = 7) {
+						# Start/Back button - escape
+						@escape_held := true;
+					};
+				}
+				else if(type = EventType->SDL_JOYBUTTONUP) {
+					btn := e->GetJButton()->GetButton();
+					if(btn = 0 | btn = 1) {
+						@jump_held := false;
+					};
+					if(btn = 6 | btn = 7) {
+						@escape_held := false;
+					};
+				}
+				# joystick D-pad (hat) - up to jump
+				else if(type = EventType->SDL_JOYHATMOTION) {
+					hat_val := e->GetJHat()->GetValue();
+					if(hat_val = JoystickHatValue->SDL_HAT_UP | hat_val = JoystickHatValue->SDL_HAT_LEFTUP | hat_val = JoystickHatValue->SDL_HAT_RIGHTUP) {
+						@jump_held := true;
+					}
+					else {
+						@jump_held := false;
+					};
 				};
 			};
 
@@ -838,6 +943,9 @@ class Game {
 		@particles := ParticleSystem->New();
 		@score := 0;
 		@coins_collected := 0;
+		@combo := 0;
+		@combo_timer := 0;
+		@alert_timer := 0;
 
 		if(@start_chunk <> Nil & <>@start_chunk->IsNull()) {
 			@start_chunk->PlayChannel(-1, 0);
@@ -865,12 +973,33 @@ class Game {
 		MixMusic->Pause();
 	}
 
+	method : ShowAlert(msg : String, r : Int, g : Int, b : Int) ~ Nil {
+		@alert_msg := msg;
+		@alert_timer := 90;
+		@alert_r := r;
+		@alert_g := g;
+		@alert_b := b;
+	}
+
 	method : Update() ~ Nil {
 		if(@state <> 1) { return; };
 
 		@world->Update();
 		@player->Update(@world);
 		@particles->Update();
+
+		# tick down alert timer
+		if(@alert_timer > 0) {
+			@alert_timer -= 1;
+		};
+
+		# tick down combo timer
+		if(@combo_timer > 0) {
+			@combo_timer -= 1;
+			if(@combo_timer = 0) {
+				@combo := 0;
+			};
+		};
 
 		# score: 1 point per frame for distance
 		@score += 1;
@@ -879,7 +1008,20 @@ class Game {
 		coins := @player->CheckCoinCollect(@world);
 		if(coins > 0) {
 			@coins_collected += coins;
-			@score += coins * 100;
+			@combo += coins;
+			@combo_timer := 180;  # combo resets after 3 seconds of no coins
+
+			# combo multiplier: 2x at 3 coins, 3x at 6, etc.
+			multiplier := 1 + @combo / 3;
+			if(multiplier > 5) { multiplier := 5; };
+			@score += coins * 100 * multiplier;
+
+			if(@combo >= 3) {
+				combo_buf := "";
+				combo_buf += multiplier->ToString();
+				combo_buf += "x COMBO!";
+				ShowAlert(combo_buf, 255, 200, 50);
+			};
 
 			# emit particles at player position
 			px := (@player->GetX() - @world->GetCameraX())->As(Int) + 12;
@@ -891,6 +1033,23 @@ class Game {
 			};
 		};
 
+		# close call detection: landed near platform edge
+		edge_dist := @player->GetEdgeLandDist();
+		if(edge_dist >= 0.0 & edge_dist < 12.0) {
+			@score += 50;
+			ShowAlert("CLOSE CALL! +50", 255, 120, 40);
+			# extra particles for drama
+			px := (@player->GetX() - @world->GetCameraX())->As(Int) + 12;
+			py := @player->GetY()->As(Int) + 36;
+			@particles->Emit(px, py, 8, 255, 200, 50);
+			@player->ClearEdgeLand();
+		};
+
+		# speed-up alert
+		if(@world->DidSpeedUp()) {
+			ShowAlert("SPEED UP!", 255, 80, 80);
+		};
+
 		# landing dust particles
 		if(@player->WantsLandParticles()) {
 			px := (@player->GetX() - @world->GetCameraX())->As(Int) + 12;
@@ -900,6 +1059,7 @@ class Game {
 
 		# check death
 		if(@player->IsDead()) {
+			@combo := 0;
 			@state := 2;
 			OnGameOver();
 		};
@@ -920,6 +1080,7 @@ class Game {
 			@player->Draw(renderer, @world->GetCameraX());
 			@particles->Draw(renderer);
 			DrawHUD(renderer);
+			DrawAlerts(renderer);
 		}
 		else if(@state = 2) {
 			DrawBackground(renderer);
@@ -1021,6 +1182,45 @@ class Game {
 			renderer->SetDrawColor(220, 60, 40, 255);
 		};
 		renderer->FillRect(Rect->New(321, 29, bar_w, 4));
+
+		# combo indicator
+		if(@combo >= 3) {
+			multiplier := 1 + @combo / 3;
+			if(multiplier > 5) { multiplier := 5; };
+			combo_buf := "";
+			combo_buf += multiplier->ToString();
+			combo_buf += "x";
+			# pulse brightness based on combo
+			pulse := 200 + (Float->Sin(@frame_count->As(Float) * 0.12) * 55.0)->As(Int);
+			combo_color := Color->New(255, pulse, 0);
+			@combo_text->RenderedText(combo_buf, combo_color);
+			@combo_text->Render(Consts->SCREEN_W / 2 + 30, 8);
+		};
+	}
+
+	method : DrawAlerts(renderer : Renderer) ~ Nil {
+		if(@alert_timer > 0 & @alert_msg <> Nil) {
+			# fade out in last 30 frames
+			alpha_f := 1.0;
+			if(@alert_timer < 30) {
+				alpha_f := @alert_timer->As(Float) / 30.0;
+			};
+
+			# bounce-in effect in first 15 frames
+			scale_y := 0;
+			if(@alert_timer > 75) {
+				bounce := (90 - @alert_timer)->As(Float) / 15.0;
+				scale_y := (Float->Sin(bounce * 1.57) * 8.0)->As(Int);
+			};
+
+			r := (@alert_r->As(Float) * alpha_f)->As(Int);
+			g := (@alert_g->As(Float) * alpha_f)->As(Int);
+			b := (@alert_b->As(Float) * alpha_f)->As(Int);
+			alert_color := Color->New(r, g, b);
+			@alert_text->RenderedText(@alert_msg, alert_color);
+			ax := Consts->SCREEN_W / 2 - @alert_text->GetWidth() / 2;
+			@alert_text->Render(ax, 80 - scale_y);
+		};
 	}
 
 	method : DrawMenu(renderer : Renderer) ~ Nil {
@@ -1044,7 +1244,7 @@ class Game {
 		# prompt - blinking
 		if((@frame_count / 40) % 2 = 0) {
 			prompt_color := Color->New(220, 220, 220);
-			@prompt_text->RenderedText("Press SPACE or UP to start", prompt_color);
+			@prompt_text->RenderedText("Press SPACE, UP, or Gamepad A to start", prompt_color);
 			px := Consts->SCREEN_W / 2 - @prompt_text->GetWidth() / 2;
 			@prompt_text->Render(px, 220);
 		};
@@ -1061,39 +1261,64 @@ class Game {
 
 		# controls help
 		help_color := Color->New(140, 140, 160);
-		@gameover_text->RenderedText("SPACE / UP / W to jump  |  ESC to quit", help_color);
+		@gameover_text->RenderedText("SPACE / UP / W / Gamepad A to jump  |  ESC to quit", help_color);
 		hpx := Consts->SCREEN_W / 2 - @gameover_text->GetWidth() / 2;
 		@gameover_text->Render(hpx, Consts->SCREEN_H - 50);
 	}
 
 	method : DrawMenuPlayer(renderer : Renderer, sx : Int, sy : Int) ~ Nil {
-		# static player figure for menu screen
+		# animated idle player for menu screen
+
+		# breathing: gentle body bob
+		breath := (Float->Sin(@frame_count->As(Float) * 0.05) * 2.0)->As(Int);
+
+		# foot tap: every ~180 frames, tap right foot for 30 frames
+		tap_cycle := @frame_count % 180;
+		foot_tap := 0;
+		if(tap_cycle > 140 & tap_cycle < 170) {
+			tap_phase := (tap_cycle - 140)->As(Float) / 30.0;
+			foot_tap := (Float->Sin(tap_phase * 3.14159) * 3.0)->As(Int);
+		};
+
+		# eye blink: every ~200 frames, close eyes for 6 frames
+		blink := (@frame_count % 200) < 6;
+
 		# shoes
 		renderer->SetDrawColor(80, 40, 20, 255);
 		renderer->FillRect(Rect->New(sx + 3, sy + 32, 7, 4));
-		renderer->FillRect(Rect->New(sx + 14, sy + 32, 7, 4));
+		renderer->FillRect(Rect->New(sx + 14, sy + 32 - foot_tap, 7, 4));
 		# legs
 		renderer->SetDrawColor(50, 80, 160, 255);
 		renderer->FillRect(Rect->New(sx + 4, sy + 24, 6, 8));
-		renderer->FillRect(Rect->New(sx + 14, sy + 24, 6, 8));
-		# body
+		renderer->FillRect(Rect->New(sx + 14, sy + 24 - foot_tap, 6, 8));
+		# body - bobs with breathing
 		renderer->SetDrawColor(220, 40, 40, 255);
-		renderer->FillRect(Rect->New(sx + 3, sy + 12, 18, 13));
-		# arms
+		renderer->FillRect(Rect->New(sx + 3, sy + 12 + breath, 18, 13));
+		# arms - bob with breathing, slight sway
+		arm_sway := (Float->Sin(@frame_count->As(Float) * 0.04) * 1.0)->As(Int);
 		renderer->SetDrawColor(230, 180, 140, 255);
-		renderer->FillRect(Rect->New(sx - 2, sy + 14, 5, 8));
-		renderer->FillRect(Rect->New(sx + 21, sy + 14, 5, 8));
-		# head
+		renderer->FillRect(Rect->New(sx - 2, sy + 14 + breath + arm_sway, 5, 8));
+		renderer->FillRect(Rect->New(sx + 21, sy + 14 + breath - arm_sway, 5, 8));
+		# head - bobs with breathing
 		renderer->SetDrawColor(230, 180, 140, 255);
-		renderer->FillRect(Rect->New(sx + 5, sy + 1, 14, 12));
-		# hair
+		renderer->FillRect(Rect->New(sx + 5, sy + 1 + breath, 14, 12));
+		# hair - bobs with breathing
 		renderer->SetDrawColor(60, 30, 10, 255);
-		renderer->FillRect(Rect->New(sx + 4, sy, 16, 5));
-		# eye
-		renderer->SetDrawColor(255, 255, 255, 255);
-		renderer->FillRect(Rect->New(sx + 14, sy + 5, 4, 3));
-		renderer->SetDrawColor(30, 30, 30, 255);
-		renderer->FillRect(Rect->New(sx + 16, sy + 5, 2, 3));
+		renderer->FillRect(Rect->New(sx + 4, sy + breath, 16, 5));
+		# eye - blinks periodically
+		if(blink) {
+			# closed eyes: skin-colored line
+			renderer->SetDrawColor(230, 180, 140, 255);
+			renderer->FillRect(Rect->New(sx + 14, sy + 5 + breath, 4, 3));
+			renderer->SetDrawColor(60, 30, 10, 255);
+			renderer->FillRect(Rect->New(sx + 14, sy + 6 + breath, 4, 1));
+		}
+		else {
+			renderer->SetDrawColor(255, 255, 255, 255);
+			renderer->FillRect(Rect->New(sx + 14, sy + 5 + breath, 4, 3));
+			renderer->SetDrawColor(30, 30, 30, 255);
+			renderer->FillRect(Rect->New(sx + 16, sy + 5 + breath, 2, 3));
+		};
 	}
 
 	method : DrawGameOver(renderer : Renderer) ~ Nil {
