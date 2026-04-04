@@ -36,7 +36,11 @@ ABS_COMPILER=$(cd "$(dirname "$COMPILER")" && pwd)/$(basename "$COMPILER")
 ABS_VM=$(cd "$(dirname "$VM")" && pwd)/$(basename "$VM")
 NATIVE_LIB_DIR=$(cd "$(dirname "$COMPILER")/../lib/native" 2>/dev/null && pwd)
 
-# Add native libraries to search path
+# Set library paths for native module loading
+ABS_LIB_DIR=$(cd "$(dirname "$COMPILER")/../lib" 2>/dev/null && pwd)
+if [ -d "$ABS_LIB_DIR" ]; then
+    export OBJECK_LIB_PATH="$ABS_LIB_DIR"
+fi
 if [ -d "$NATIVE_LIB_DIR" ]; then
     export LD_LIBRARY_PATH="${NATIVE_LIB_DIR}:${LD_LIBRARY_PATH}"
     export DYLD_LIBRARY_PATH="${NATIVE_LIB_DIR}:${DYLD_LIBRARY_PATH}"
