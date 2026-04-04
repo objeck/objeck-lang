@@ -297,6 +297,11 @@
           AI/ML: Gemini Chat
          </a>
         </li>
+        <li>
+         <a href="#database">
+          Database: ODBC
+         </a>
+        </li>
        </ul>
        <li>
         <a href="#environment">
@@ -2236,6 +2241,58 @@ class GeminiChat {
 &gt; obr gemini_chat</pre>
          <p>
           The <code>-lib</code> flag links the required networking, JSON, and Gemini libraries. See the <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API documentation</a> for OpenAI and Ollama examples.
+         </p>
+         <h4 id="database">
+          Database: ODBC
+         </h4>
+         <p>
+          Objeck provides database access through ODBC, supporting SQL Server, PostgreSQL, MySQL, SQLite, and any ODBC-compliant database. Connect using a data source name (DSN) or a connection string.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">use Database.ODBC;
+
+class DbExample {
+  function : Main(args : String[]) ~ Nil {
+    # connect using DSN
+    conn := Connection-&gt;New("my_dsn", "user", "password");
+
+    # or connect using a connection string
+    # conn := Connection-&gt;New("Driver={PostgreSQL};Server=localhost;Database=mydb;Uid=user;Pwd=pass;");
+
+    if(conn-&gt;IsOpen()) {
+      # query with a prepared statement
+      ps := conn-&gt;CreateParameterStatement("SELECT id, name FROM users WHERE age &gt; ?");
+      ps-&gt;SetInt(1, 21);
+      rs := ps-&gt;Select();
+
+      if(rs &lt;&gt; Nil) {
+        while(rs-&gt;Next()) {
+          id := rs-&gt;GetBigInt("id");
+          name := rs-&gt;GetVarchar("name");
+          "{$id}: {$name}"-&gt;PrintLine();
+        };
+        rs-&gt;Close();
+      };
+      ps-&gt;Close();
+
+      # insert with transaction control
+      conn-&gt;SetAutoCommit(false);
+      count := conn-&gt;Update("INSERT INTO logs(message) VALUES('hello')");
+      if(count &gt; 0) {
+        conn-&gt;Commit();
+      }
+      else {
+        conn-&gt;Rollback();
+      };
+
+      conn-&gt;Close();
+    };
+  }
+}
+</code></pre>
+         <pre class="cmd">&gt; obc -src db_example.obs -lib odbc
+&gt; obr db_example</pre>
+         <p>
+          Supported types include Int, BigInt, SmallInt, Double, Real, Varchar, Blob, Date, and Timestamp. See the <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API documentation</a> for full details.
          </p>
          <h2 id="environment">
           Programming Environment

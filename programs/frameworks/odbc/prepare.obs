@@ -1,4 +1,4 @@
-use ODBC;
+use Database.ODBC;
 
 bundle Default {
 	class SqlTest {
@@ -12,6 +12,7 @@ bundle Default {
 				ps := conn->CreateParameterStatement("INSERT INTO Foo(Bar) VALUES(?)");
 				ps->SetInt(1);
 				ps->Update()->PrintLine();
+				ps->Close();
 				conn->Close();
 			};
 		}

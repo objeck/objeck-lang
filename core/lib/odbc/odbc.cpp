@@ -105,6 +105,46 @@ extern "C" {
   }
 
   //
+  // connects to an ODBC data source using a connection string
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void odbc_connect_string(VMContext& context)
+  {
+    SQLHDBC conn;
+
+    const std::wstring wconn_str(APITools_GetStringValue(context, 1));
+
+#ifdef _DEBUG
+    std::wcout << L"### connect_string: " << wconn_str << L" ###" << std::endl;
+#endif
+
+    const std::string conn_str = UnicodeToBytes(wconn_str);
+
+    SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
+    if(SQL_FAIL) {
+      SQLFreeHandle(SQL_HANDLE_DBC, conn);
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SQLCHAR out_conn_str[1024];
+    SQLSMALLINT out_conn_str_len;
+    status = SQLDriverConnect(conn, NULL, (SQLCHAR*)conn_str.c_str(), SQL_NTS,
+                              out_conn_str, sizeof(out_conn_str), &out_conn_str_len,
+                              SQL_DRIVER_NOPROMPT);
+    if(SQL_FAIL) {
+      SQLFreeHandle(SQL_HANDLE_DBC, conn);
+      conn = NULL;
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, (size_t)conn);
+  }
+
+  //
   // disconnects from an ODBC data source
   //
 #ifdef _WIN32
@@ -326,7 +366,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void odbc_pepare_statement(VMContext& context)
+    void odbc_prepare_statement(VMContext& context)
   {
     SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 3);
     const std::wstring wsql(APITools_GetStringValue(context, 4));
@@ -800,12 +840,64 @@ extern "C" {
   }
 
   //
+  // set a bigint from a prepared statement to null
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_stmt_set_bigint_null(VMContext& context)
+  {
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 1);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
+
+#ifdef _DEBUG
+    std::wcout << L"### set_bigint: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << std::endl;
+#endif
+
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                        SQL_BIGINT, 0, 0, NULL, 0, &sql_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // set a bigint from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_stmt_set_bigint(VMContext& context)
+  {
+    size_t* value = APITools_GetArray(context, 1);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+
+#ifdef _DEBUG
+    std::wcout << L"### set_bigint: stmt=" << stmt << L", column=" << i
+          << L", value=" << *value << L" ###" << std::endl;
+#endif
+
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SBIGINT,
+                                        SQL_BIGINT, 0, 0, value, 0, NULL);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
   // set an double from a prepared statement to null
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_stmt_set_double_null(VMContext& context) 
+  void odbc_stmt_set_double_null(VMContext& context)
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 1);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
@@ -992,12 +1084,98 @@ extern "C" {
   }
   
   //
-  // gets an int from a result set
+  // gets a bigint from a result set
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void odbc_result_get_smallint_by_id(VMContext& context) 
+  void odbc_result_get_bigint_by_id(VMContext& context)
+  {
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
+
+#ifdef _DEBUG
+    std::wcout << L"### get_bigint_by_id: stmt=" << stmt << L", column=" << i
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
+#endif
+
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    SQLBIGINT value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_SBIGINT, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetIntValue(context, 1, (size_t)value);
+#ifdef _DEBUG
+      std::wcout << L"  " << value << std::endl;
+#endif
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+    }
+  }
+
+  //
+  // gets a bigint from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_result_get_bigint_by_name(VMContext& context)
+  {
+    const wchar_t* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
+
+    std::map<const std::wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+
+#ifdef _DEBUG
+    std::wcout << L"### get_bigint_by_name: stmt=" << stmt << L", column=" << i
+          << L", max=" << (long)(names->size() + 1) << L" ###" << std::endl;
+#endif
+
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    SQLBIGINT value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_SBIGINT, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetIntValue(context, 1, (size_t)value);
+#ifdef _DEBUG
+      std::wcout << L"  " << value << std::endl;
+#endif
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+    }
+  }
+
+  //
+  // gets a smallint from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_result_get_smallint_by_id(VMContext& context)
   {
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -2290,13 +2468,19 @@ extern "C" {
       delete column_names;
       column_names = NULL;
     }
-    
+
     std::map<int, std::pair<void*, SQLLEN> >* exec_data = (std::map<int, std::pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 1);
     if(exec_data) {
       delete exec_data;
       exec_data = NULL;
     }
-		
+
+    SQLHSTMT stmt = (SQLHSTMT)APITools_GetIntValue(context, 2);
+    if(stmt) {
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
 #ifdef _DEBUG
     std::wcout << L"### closed result set ###" << std::endl;
 #endif

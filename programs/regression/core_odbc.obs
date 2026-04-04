@@ -319,6 +319,10 @@ class OdbcTest {
             "  FAIL: SQL_DATETIME expected 9"->PrintLine();
             passed := false;
         };
+        if(Database.ODBC.ColumnInfo->Type->SQL_BIGINT <> -5) {
+            "  FAIL: SQL_BIGINT expected -5"->PrintLine();
+            passed := false;
+        };
 
         if(passed) {
             "...
