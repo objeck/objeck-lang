@@ -332,6 +332,91 @@ jobs:
           Remove-Item $certPath -Force
 
       # ============================================
+      # macOS .pkg Installer + Signing + Notarization
+      # ============================================
+
+      - name: Install Apple signing certificate (macOS)
+        if: matrix.platform == 'macos-arm64'
+        env:
+          APPLE_INSTALLER_CERT_BASE64: ${{ secrets.APPLE_INSTALLER_CERT_BASE64 }}
+          APPLE_INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERT_PASSWORD }}
+          APPLE_APP_CERT_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_APP_CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -z "$APPLE_INSTALLER_CERT_BASE64" ]; then
+            echo "Apple installer certificate not configured - .pkg will be unsigned"
+            exit 0
+          fi
+
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import Developer ID Installer certificate
+          CERT_PATH=$RUNNER_TEMP/installer_cert.p12
+          echo -n "$APPLE_INSTALLER_CERT_BASE64" | base64 --decode -o "$CERT_PATH"
+          security import "$CERT_PATH" -P "$APPLE_INSTALLER_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          rm "$CERT_PATH"
+
+          # Import Developer ID Application certificate (for binary signing)
+          if [ -n "$APPLE_APP_CERT_BASE64" ]; then
+            APP_CERT_PATH=$RUNNER_TEMP/app_cert.p12
+            echo -n "$APPLE_APP_CERT_BASE64" | base64 --decode -o "$APP_CERT_PATH"
+            security import "$APP_CERT_PATH" -P "$APPLE_APP_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            rm "$APP_CERT_PATH"
+          fi
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "Certificates installed."
+
+      - name: Create macOS .pkg installer
+        if: matrix.platform == 'macos-arm64'
+        working-directory: ./core/release
+        env:
+          APPLE_INSTALLER_CERT_BASE64: ${{ secrets.APPLE_INSTALLER_CERT_BASE64 }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          chmod +x create_macos_pkg.sh
+
+          # Determine signing identity
+          SIGN_ID=""
+          if [ -n "$APPLE_INSTALLER_CERT_BASE64" ]; then
+            SIGN_ID=$(security find-identity -v -p basic "$SIGNING_KEYCHAIN" 2>/dev/null | grep "Developer ID Installer" | head -1 | sed 's/.*"\(.*\)".*/\1/' || true)
+            if [ -n "$SIGN_ID" ]; then
+              echo "Found installer identity: $SIGN_ID"
+            else
+              echo "Warning: Installer certificate imported but identity not found"
+            fi
+          fi
+
+          # Determine notarization
+          NOTARIZE_FLAG=""
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_APP_PASSWORD" ]; then
+            NOTARIZE_FLAG="notarize"
+          fi
+
+          OUTPUT_DIR=~/Desktop ./create_macos_pkg.sh "$VERSION" "$SIGN_ID" "$NOTARIZE_FLAG"
+
+          echo "macOS .pkg created:"
+          ls -lh ~/Desktop/objeck-macos-arm64_*.pkg || true
+
+      - name: Clean up macOS keychain
+        if: matrix.platform == 'macos-arm64' && always()
+        run: |
+          if [ -f "$RUNNER_TEMP/app-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+          fi
+
+      # ============================================
       # Find and Upload Artifacts
       # ============================================
 
@@ -374,7 +459,20 @@ jobs:
           fi
 
           echo "✅ Found: $ARTIFACT"
-          echo "artifact_paths=$ARTIFACT" >> $GITHUB_OUTPUT
+
+          # For macOS, also include .pkg installer if it exists
+          ALL_PATHS="$ARTIFACT"
+          if [ "${{ matrix.platform }}" = "macos-arm64" ]; then
+            PKG=$(find ~/Desktop -name "objeck-macos-arm64_*.pkg" -type f | head -n 1)
+            if [ -n "$PKG" ]; then
+              echo "✅ Found .pkg: $PKG"
+              ALL_PATHS="$ARTIFACT"$'\n'"$PKG"
+            fi
+          fi
+
+          echo "artifact_paths<<EOF" >> $GITHUB_OUTPUT
+          echo "$ALL_PATHS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
