@@ -1,0 +1,177 @@
+#~
+# HTTP Client/Server Loopback Test
+# Tests HTTP GET and POST using raw TCP server + HttpClient.
+# Verifies chunked reading, header parsing, and content-length handling.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Net, Web.HTTP;
+
+class MockServer from Thread {
+	@port : Int;
+
+	New(port : Int) {
+		Parent("mock-server");
+		@port := port;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		server := TCPSocketServer->New(@port);
+		if(server->Listen(5)) {
+			done := false;
+			while(<>done) {
+				client := server->Accept();
+				if(client <> Nil & client->IsOpen()) {
+					# Read request line
+					request_line := client->ReadLine();
+
+					# Read headers
+					content_length := 0;
+					do {
+						header := client->ReadLine();
+						if(header->Size() > 0) {
+							colon := header->Find(':');
+							if(colon > 0) {
+								name := header->SubString(colon)->ToLower();
+								value := header->SubString(colon + 1, header->Size() - colon - 1)->Trim();
+								if(name->Equals("content-length")) {
+									content_length := value->ToInt();
+								};
+							};
+						};
+					}
+					while(header->Size() > 0);
+
+					# Read body if present
+					body := "";
+					if(content_length > 0) {
+						buf := Byte->New[content_length];
+						client->ReadBuffer(0, content_length, buf);
+						body := String->New(buf);
+					};
+
+					# Route responses
+					if(request_line->Has("/hello")) {
+						response := "Hello World";
+						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$response->Size()}\r\nConnection: close\r\n\r\n{$response}");
+					}
+					else if(request_line->Has("/echo")) {
+						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$body->Size()}\r\nConnection: close\r\n\r\n{$body}");
+					}
+					else if(request_line->Has("/colon-header")) {
+						# Echo back the Authorization header value
+						# (re-read not possible, just send a known response)
+						response := "colon-ok";
+						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$response->Size()}\r\nX-Custom: value:with:colons\r\nConnection: close\r\n\r\n{$response}");
+					}
+					else if(request_line->Has("/large")) {
+						# Send a 16KB response to test ReadLength with larger buffers
+						large := Byte->New[16384];
+						each(i : large) {
+							large[i] := 'A';
+						};
+						size := large->Size();
+						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$size}\r\nConnection: close\r\n\r\n");
+						client->WriteBuffer(large);
+					}
+					else if(request_line->Has("/stop")) {
+						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
+						done := true;
+					}
+					else {
+						client->WriteString("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+					};
+
+					client->Close();
+				};
+			};
+			server->Close();
+		};
+	}
+}
+
+class HttpClientTest {
+	function : Main(args : String[]) ~ Nil {
+		"Testing HTTP client..."->PrintLine();
+
+		passed := true;
+		port := 19878;
+
+		# Start mock server
+		server := MockServer->New(port);
+		server->Execute(Nil);
+		Thread->Sleep(500);
+
+		# Test 1: GET /hello
+		r1 := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/hello"));
+		if(r1 = Nil | r1->GetCode() <> 200) {
+			"  FAIL: GET /hello"->PrintLine();
+			passed := false;
+		}
+		else {
+			body := r1->GetContent()->ToString();
+			if(<>body->Has("Hello World")) {
+				"  FAIL: GET /hello body"->PrintLine();
+				passed := false;
+			};
+		};
+
+		# Test 2: POST /echo with body
+		post_data := "test payload 12345"->ToByteArray();
+		r2 := HttpClient->QuickPost(Url->New("http://127.0.0.1:{$port}/echo"), post_data);
+		if(r2 = Nil | r2->GetCode() <> 200) {
+			"  FAIL: POST /echo"->PrintLine();
+			passed := false;
+		}
+		else {
+			body2 := r2->GetContent()->ToString();
+			if(<>body2->Has("test payload 12345")) {
+				"  FAIL: POST echo body"->PrintLine();
+				passed := false;
+			};
+		};
+
+		# Test 3: Response headers with colons in values
+		r3 := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/colon-header"));
+		if(r3 = Nil | r3->GetCode() <> 200) {
+			"  FAIL: GET /colon-header"->PrintLine();
+			passed := false;
+		};
+
+		# Test 4: Large response (16KB)
+		r4 := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/large"));
+		if(r4 = Nil | r4->GetCode() <> 200) {
+			"  FAIL: GET /large"->PrintLine();
+			passed := false;
+		}
+		else {
+			content := r4->GetContent();
+			if(content = Nil | content->Size() < 16384) {
+				size := 0;
+				if(content <> Nil) { size := content->Size(); };
+				"  FAIL: Large response size={$size}, expected 16384"->PrintLine();
+				passed := false;
+			};
+		};
+
+		# Test 5: 404 response
+		r5 := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/nonexistent"));
+		if(r5 = Nil | r5->GetCode() <> 404) {
+			"  FAIL: 404 response"->PrintLine();
+			passed := false;
+		};
+
+		# Stop server
+		HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/stop"));
+		server->Join();
+
+		if(passed) {
+			"...
+PASS"->PrintLine();
+		}
+		else {
+			"...
+FAIL"->PrintLine();
+		};
+	}
+}
