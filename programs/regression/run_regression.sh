@@ -65,6 +65,7 @@ for test in *.obs; do
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         cd "$REGRESSION_DIR"
         echo "  [FAIL] Compilation error"
+        cat "${REGRESSION_DIR}/${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null | head -10
         ((FAIL_COUNT++))
         continue
     fi
@@ -78,6 +79,7 @@ for test in *.obs; do
         ((PASS_COUNT++))
     else
         echo "  [FAIL] Runtime error"
+        cat "$RESULTS_DIR/${NAME}_output.txt" 2>/dev/null | head -20
         ((FAIL_COUNT++))
     fi
 done
