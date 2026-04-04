@@ -103,27 +103,27 @@ class OpenCVTest {
 
         # --- ColorConversionCodes constants ---
         if(ColorConversionCodes->BGR2GRAY <> 6) {
-            "  FAIL: BGR2GRAY expected 6, got {$ColorConversionCodes->BGR2GRAY}"->PrintLine();
+            "  FAIL: BGR2GRAY expected 6"->PrintLine();
             passed := false;
         };
         if(ColorConversionCodes->BGR2RGB <> 4) {
-            "  FAIL: BGR2RGB expected 4, got {$ColorConversionCodes->BGR2RGB}"->PrintLine();
+            "  FAIL: BGR2RGB expected 4"->PrintLine();
             passed := false;
         };
         if(ColorConversionCodes->BGR2HSV <> 40) {
-            "  FAIL: BGR2HSV expected 40, got {$ColorConversionCodes->BGR2HSV}"->PrintLine();
+            "  FAIL: BGR2HSV expected 40"->PrintLine();
             passed := false;
         };
         if(ColorConversionCodes->RGB2GRAY <> 7) {
-            "  FAIL: RGB2GRAY expected 7, got {$ColorConversionCodes->RGB2GRAY}"->PrintLine();
+            "  FAIL: RGB2GRAY expected 7"->PrintLine();
             passed := false;
         };
         if(ColorConversionCodes->BGR2Lab <> 44) {
-            "  FAIL: BGR2Lab expected 44, got {$ColorConversionCodes->BGR2Lab}"->PrintLine();
+            "  FAIL: BGR2Lab expected 44"->PrintLine();
             passed := false;
         };
         if(ColorConversionCodes->HSV2BGR <> 54) {
-            "  FAIL: HSV2BGR expected 54, got {$ColorConversionCodes->HSV2BGR}"->PrintLine();
+            "  FAIL: HSV2BGR expected 54"->PrintLine();
             passed := false;
         };
 
