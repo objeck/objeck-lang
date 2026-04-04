@@ -1644,12 +1644,11 @@ static SLMModelInfo discover_slm_model(Ort::Session* session) {
                auto ti = type_info.GetTensorTypeAndShapeInfo();
                info.kv_type = ti.GetElementType();
                // Shape: [batch, num_kv_heads, past_seq, head_dim]
-               size_t ndims = ti.GetDimensionsCount();
+               auto shape = ti.GetShape();
+               size_t ndims = shape.size();
                if(ndims >= 4 && ndims <= 8) {
-                  int64_t dims[8];
-                  ti.GetDimensions(dims, ndims);
-                  info.num_kv_heads = (dims[1] > 0 && dims[1] < 256) ? (int)dims[1] : 32;
-                  info.head_dim = (dims[3] > 0 && dims[3] < 1024) ? (int)dims[3] : 96;
+                  info.num_kv_heads = (shape[1] > 0 && shape[1] < 256) ? (int)shape[1] : 32;
+                  info.head_dim = (shape[3] > 0 && shape[3] < 1024) ? (int)shape[3] : 96;
                }
             }
             catch(...) {
@@ -2651,11 +2650,9 @@ static void phi3_vision_inf(VMContext& context) {
                size_t val_idx = 2 + (size_t)i * 2;
 
                auto key_info = dec_outputs[key_idx].GetTensorTypeAndShapeInfo();
-               size_t ndims = key_info.GetDimensionsCount();
-               if(ndims >= 4) {
-                  int64_t dims[8];
-                  key_info.GetDimensions(dims, ndims);
-                  kv_seq_len = dims[2];
+               auto key_shape = key_info.GetShape();
+               if(key_shape.size() >= 4) {
+                  kv_seq_len = key_shape[2];
                }
 
                size_t n_bytes = (size_t)decoder_info.num_kv_heads * kv_seq_len * decoder_info.head_dim * kv_elem_size;
