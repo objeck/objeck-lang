@@ -639,7 +639,8 @@ jobs:
             ../../../compiler/lib_src/json_rpc.obs \
             ../../../compiler/lib_src/opencv.obs \
             ../../../compiler/lib_src/onnx.obs \
-            ../../../compiler/lib_src/nlp.obs
+            ../../../compiler/lib_src/nlp.obs \
+            ../../../compiler/lib_src/lame.obs
 
       - name: Package API documentation
         working-directory: ./docs

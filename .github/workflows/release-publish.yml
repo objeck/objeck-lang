@@ -279,7 +279,8 @@ jobs:
           - **ARM64**: `tar -xzf objeck-linux-arm64_$VERSION.tgz`
 
           ### macOS
-          - **ARM64 (M1/M2/M3)**: `tar -xzf objeck-macos-arm64_$VERSION.tgz`
+          - **ARM64 (M1/M2/M3) Installer**: Download `objeck-macos-arm64_$VERSION.pkg` and run
+          - **ARM64 (M1/M2/M3) Archive**: `tar -xzf objeck-macos-arm64_$VERSION.tgz`
 
           ### LSP (Language Server Protocol)
           - Download `objeck-lsp-$VERSION.zip` for IDE integration
