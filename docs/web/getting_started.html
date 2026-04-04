@@ -89,6 +89,11 @@
           </a>
          </li>
          <li>
+          <a href="#building_from_source">
+           Building from Source
+          </a>
+         </li>
+         <li>
           <a href="#hello_world">
            Writing "Hello World!"
           </a>
@@ -359,6 +364,25 @@
      </p>
      <pre class="cmd">&gt; export PATH=$PATH:/home/[account]/objeck-lang/bin
 &gt; export OBJECK_LIB_PATH=/home/[account]/objeck-lang/lib</pre>
+     <h3 id="building_from_source">
+      Building from Source
+     </h3>
+     <p>
+      To build Objeck from source, the following external dependencies are required. Pre-built releases include all necessary libraries.
+     </p>
+     <h4>Windows</h4>
+     <ul>
+      <li>Visual Studio 2022 (C++ workload)</li>
+      <li><a href="https://github.com/Mbed-TLS/mbedtls">mbedTLS</a> (installed via vcpkg: <pre class="cmd">vcpkg install mbedtls:x64-windows</pre>)</li>
+      <li><a href="https://github.com/opencv/opencv/releases/tag/4.12.0">OpenCV 4.12.0</a> &mdash; download the Windows release and copy <pre class="cmd">opencv_world4120.dll</pre> and <pre class="cmd">opencv_videoio_ffmpeg4120_64.dll</pre> from <pre class="cmd">opencv\build\x64\vc16\bin\</pre> to <pre class="cmd">core\lib\opencv\win\x64\bin\</pre></li>
+     </ul>
+     <h4>Linux (Debian/Ubuntu)</h4>
+     <pre class="cmd">&gt; sudo apt-get install build-essential libopencv-dev libmbedtls-dev unixodbc-dev \
+    libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
+    libreadline-dev libeigen3-dev libmp3lame-dev</pre>
+     <h4>macOS (Homebrew)</h4>
+     <pre class="cmd">&gt; brew install opencv mbedtls unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame</pre>
+
      <h4>
       Simple Compile &amp; Execute
      </h4>

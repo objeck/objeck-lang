@@ -128,7 +128,7 @@ jobs:
 
           # macOS ARM64
           - platform: macos-arm64
-            os: macos-14
+            os: macos-15
             arch: arm64
             deploy_script: ./deploy_macos_arm64.sh deploy
             shell: bash
@@ -195,6 +195,19 @@ jobs:
           brew install opencv mbedtls unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
           brew cleanup
 
+      - name: Select Xcode 16.3+ (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          XCODE_PATH=$(ls -d /Applications/Xcode_16.[3-9]*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE_PATH" ]; then
+            XCODE_PATH=$(ls -d /Applications/Xcode_16.*.app 2>/dev/null | sort -V | tail -1)
+          fi
+          if [ -n "$XCODE_PATH" ]; then
+            sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+            echo "Selected: $XCODE_PATH"
+          fi
+          xcodebuild -version
+
       - name: Setup Visual Studio (Windows)
         if: runner.os == 'Windows'
         uses: microsoft/setup-msbuild@v2
@@ -220,6 +233,37 @@ jobs:
           Write-Output "✅ Installed mbedtls for ${{ matrix.arch }}"
           Write-Output "Set INCLUDE=$vcpkgRoot\include"
           Write-Output "Set LIB=$vcpkgRoot\lib"
+
+      - name: Cache OpenCV DLLs (Windows x64)
+        if: matrix.platform == 'windows-x64'
+        id: opencv-cache
+        uses: actions/cache@v4
+        with:
+          path: core/lib/opencv/win/x64/bin
+          key: opencv-4.12.0-win-x64-dlls
+
+      - name: Download OpenCV runtime DLLs (Windows x64)
+        if: matrix.platform == 'windows-x64' && steps.opencv-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $opencvVersion = "4.12.0"
+          $binDir = "core\lib\opencv\win\x64\bin"
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+          $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
+          Write-Output "Downloading OpenCV $opencvVersion from $url ..."
+          Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
+
+          7z x opencv-dl.exe -oopencv-extract -y | Out-Null
+
+          Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_world4120.dll" $binDir
+          Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_videoio_ffmpeg4120_64.dll" $binDir
+
+          Remove-Item opencv-dl.exe -Force
+          Remove-Item -Recurse opencv-extract -Force
+
+          Write-Output "OpenCV DLLs installed:"
+          Get-ChildItem $binDir
 
       - name: Install WiX Toolset (Windows)
         if: runner.os == 'Windows'

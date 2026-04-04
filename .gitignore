@@ -90,6 +90,35 @@ programs/regression/results/
 # macOS
 .DS_Store
 
+# POSIX build artifacts
+core/compiler/obc
+core/compiler/sys_obc
+core/vm/obr
+core/release/obr
+
+# Build output directories (ONNX)
+core/lib/onnx/vs/x64/
+core/lib/onnx/x64/
+core/release/ONNX
+
+# Local helper scripts and temp files
+core/release/run_*.bat
+core/release/code_doc_output.txt
+
+# Downloaded models and data (large)
+data/
+programs/frameworks/opencv_onnx/data/models/
+programs/frameworks/opencv_onnx/data/media/visdrone/
+
+# Benchmark results
+perf-results/
+
+# Local test scripts
+programs/regression/run_tests.sh
+programs/tests/clbg/run_binarytrees.sh
+programs/tests/run_prgm_tests.sh
+programs/deploy/test_sdl.obs
+
 # Misc
 nul
 build.txt
