@@ -1,0 +1,128 @@
+#~
+# Network Buffer Read Test
+# Tests that TCP socket ReadBuffer correctly handles partial reads
+# by verifying large payloads over a local loopback connection.
+~#
+
+use System.Concurrency, System.IO.Net;
+
+class ServerThread from Thread {
+	@port : Int;
+
+	New(port : Int) {
+		Parent("server");
+		@port := port;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		server := TCPSocketServer->New(@port);
+		if(server->Listen(5)) {
+			done := false;
+			while(<>done) {
+				client := server->Accept();
+				if(client <> Nil & client->IsOpen()) {
+					# Read 4-byte header to get desired size
+					header := Byte->New[4];
+					client->ReadBuffer(0, 4, header);
+					size := (header[0]->As(Int) << 24) or
+							(header[1]->As(Int) << 16) or
+							(header[2]->As(Int) << 8) or
+							header[3]->As(Int);
+
+					if(size = 0) {
+						client->Close();
+						done := true;
+					}
+					else {
+						# Generate pattern data and send
+						buffer := Byte->New[size];
+						each(i : size) {
+							buffer[i] := (i % 251)->As(Byte);
+						};
+						client->WriteBuffer(0, size, buffer);
+						client->Close();
+					};
+				};
+			};
+			server->Close();
+		};
+	}
+}
+
+class NetBufferTest {
+	function : Main(args : String[]) ~ Nil {
+		"Testing network buffer reads..."->PrintLine();
+
+		passed := true;
+		port := 19876;
+
+		# Start server thread
+		server_thread := ServerThread->New(port);
+		server_thread->Execute(Nil);
+
+		# Give server time to start
+		Thread->Sleep(500);
+
+		# Test: send and receive payloads of various sizes over TCP
+		test_sizes := [1024, 4096, 8192, 16384, 32768];
+		each(t : test_sizes) {
+			size := test_sizes[t];
+
+			client := TCPSocket->New("127.0.0.1", port);
+			if(client->IsOpen()) {
+				# Send the desired size as a 4-byte header
+				header := Byte->New[4];
+				header[0] := (size >> 24)->As(Byte);
+				header[1] := (size >> 16)->As(Byte);
+				header[2] := (size >> 8)->As(Byte);
+				header[3] := size->As(Byte);
+				client->WriteBuffer(0, 4, header);
+
+				# Read the response
+				buffer := Byte->New[size];
+				read := client->ReadBuffer(0, size, buffer);
+
+				if(read <> size) {
+					"  FAIL: size={$size}, read={$read}"->PrintLine();
+					passed := false;
+				}
+				else {
+					# Verify pattern: each byte should be (index % 251)
+					each(i : size) {
+						expected := (i % 251)->As(Byte);
+						if(buffer[i] <> expected) {
+							"  FAIL: size={$size}, corrupt at byte {$i}"->PrintLine();
+							passed := false;
+							break;
+						};
+					};
+				};
+
+				client->Close();
+			}
+			else {
+				"  FAIL: Could not connect for size={$size}"->PrintLine();
+				passed := false;
+			};
+		};
+
+		# Signal server to stop
+		stop := TCPSocket->New("127.0.0.1", port);
+		if(stop->IsOpen()) {
+			header := Byte->New[4];
+			stop->WriteBuffer(0, 4, header);
+			stop->Close();
+		};
+
+		server_thread->Join();
+
+		if(passed) {
+			"...
+PASS"->PrintLine();
+		}
+		else {
+			"...
+FAIL"->PrintLine();
+		};
+	}
+}
