@@ -39,6 +39,9 @@ REGRESSION_DIR=$(pwd)
 ABS_COMPILER=$(cd "$(dirname "$COMPILER")" && pwd)/$(basename "$COMPILER")
 ABS_DEBUGGER=$(cd "$(dirname "$DEBUGGER")" && pwd)/$(basename "$DEBUGGER")
 
+# Disable ANSI colors for test pattern matching
+export NO_COLOR=1
+
 # Set library paths
 export OBJECK_LIB_PATH="$(cd "$(dirname "$COMPILER")/../lib" && pwd)/"
 if [ "$(uname)" = "Darwin" ]; then
