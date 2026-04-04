@@ -57,6 +57,7 @@ namespace Runtime {
   typedef struct _UserBreak {
     int line_num;
     std::wstring file_name;
+    Expression* condition;
   } UserBreak;
 
   /********************************
@@ -145,8 +146,8 @@ namespace Runtime {
     // searches for a valid breakpoint based upon the line number provided
     UserBreak* FindBreak(int line_num, const std::wstring& file_name);
 
-    // adds a break
-    bool AddBreak(int line_num, const std::wstring &file_name);
+    // adds a break (with optional condition expression)
+    bool AddBreak(int line_num, const std::wstring &file_name, Expression* condition = nullptr);
 
     // lists all breaks
     void ListBreaks();

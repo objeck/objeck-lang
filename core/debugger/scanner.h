@@ -107,6 +107,7 @@ enum TokenType {
   TOKEN_SRC_ID,
   TOKEN_ARGS_ID,
   TOKEN_HELP_ID,
+  TOKEN_IF_ID,
 };
 
 /****************************
