@@ -496,8 +496,8 @@ bundle Web.HTTP {
 			buf_max := 256*1024;
 
 			output := ByteBuffer->New();
-			buffer := Byte->New[buf_max]; # 64k buffer
-			
+			buffer := Byte->New[buf_max];
+
 			done := false;
 			do {
 				size_line := "0x";
@@ -507,9 +507,17 @@ bundle Web.HTTP {
 				if(chunk_size > buf_max) {
 					return Nil;
 				};
-				
+
 				if(chunk_size > 0) {
-					socket->ReadBuffer(0, chunk_size, buffer);
+					total_read := 0;
+					while(total_read < chunk_size) {
+						remaining := chunk_size - total_read;
+						read := socket->ReadBuffer(total_read, remaining, buffer);
+						if(read <= 0) {
+							return Nil;
+						};
+						total_read += read;
+					};
 					output->Append(chunk_size, buffer);
 					buffer->Clear();
 
@@ -522,19 +530,26 @@ bundle Web.HTTP {
 				};
 			}
 			while(<>done);
-			
+
 			return output;
 		}
 
-		function : ReadLength(length : Int, socket : System.IO.InputStream) ~ ByteBuffer {			
+		function : ReadLength(length : Int, socket : System.IO.InputStream) ~ ByteBuffer {
 			if(length > 256*1048576) { # 256M buffer max
 				return Nil;
 			};
 
 			buffer := Byte->New[length];
-			socket->ReadBuffer(0, length, buffer);
+			total_read := 0;
+			while(total_read < length) {
+				read := socket->ReadBuffer(total_read, length - total_read, buffer);
+				if(read <= 0) {
+					return Nil;
+				};
+				total_read += read;
+			};
 
-			return ByteBuffer->New(buffer);		
+			return ByteBuffer->New(buffer);
 		}
 
 		function : ReadPost(content_length : Int, socket : System.IO.InputStream) ~ Byte[] {

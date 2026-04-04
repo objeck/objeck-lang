@@ -1906,35 +1906,47 @@ class RequestHandler from HttpsRequestHandler {
 						# write response
 						http_request := Request->New(request_path, request_headers);
 						http_response := Response->New(@server_config, http_request->GetPath());
-						
+
 						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
 							@server_config->ProcessGet(http_request, http_response);
 						};
 						ProcessResponse(http_response, request_verb->Equals("HEAD"));
 					}
-					# POST request
-					else if(request_verb->Equals("POST")) {
+					# POST, PUT, PATCH, DELETE with body
+					else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
 						content_length_str := request_headers->Find("content-length");
+						buffer : Byte[];
 						if(content_length_str <> Nil) {
-							content_length  := content_length_str->ToInt();
-							if(content_length > 0) {
+							content_length := content_length_str->ToInt();
+							if(content_length > 0 & content_length <= 16*1048576) { # 16M body limit
 								buffer := WebCommon->ReadPost(content_length, @client);
-								
-								# retrieve content
-								if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-									request_path := "/index.html";
-								};
-
-								# write response
-								http_request := Request->New(request_path, request_headers, buffer);
-								http_response := Response->New(@server_config, http_request->GetPath());
-								
-								if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-									@server_config->ProcessPost(http_request, http_response);
-								};
-								ProcessResponse(http_response);
 							};
 						};
+
+						# retrieve content
+						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+							request_path := "/index.html";
+						};
+
+						# write response
+						http_request := Request->New(request_path, request_headers, buffer);
+						http_response := Response->New(@server_config, http_request->GetPath());
+
+						if(request_verb->Equals("POST")) {
+							if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+								@server_config->ProcessPost(http_request, http_response);
+							};
+						}
+						else if(request_verb->Equals("PUT")) {
+							ProcessPut(http_request, http_response);
+						}
+						else if(request_verb->Equals("PATCH")) {
+							ProcessPatch(http_request, http_response);
+						}
+						else {
+							ProcessDelete(http_request, http_response);
+						};
+						ProcessResponse(http_response);
 					};
 				};
 
@@ -2002,8 +2014,28 @@ class RequestHandler from HttpsRequestHandler {
 							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
 						}
 
+						label 405 {
+							@client->WriteString("HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+						}
+
 						label 410 {
 							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
+						}
+
+						label 413 {
+							@client->WriteString("HTTP/1.1 413 Content Too Large\r\n\r\n");
+						}
+
+						label 429 {
+							@client->WriteString("HTTP/1.1 429 Too Many Requests\r\n\r\n");
+						}
+
+						label 500 {
+							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+						}
+
+						label 503 {
+							@client->WriteString("HTTP/1.1 503 Service Unavailable\r\n\r\n");
 						}
 
 						other {
@@ -2027,9 +2059,11 @@ class RequestHandler from HttpsRequestHandler {
 					"header: {$header}"->PrintLine();
 				};
                 
-				header_parts := header->Split(": ");
-				if(header_parts->Size() = 2) {
-					headers->Insert(header_parts[0]->ToLower(), header_parts[1]);
+				colon := header->Find(':');
+				if(colon > 0) {
+					name := header->SubString(colon)->ToLower();
+					value := header->SubString(colon + 1, header->Size() - colon - 1)->Trim();
+					headers->Insert(name, value);
 				};
 
 				header := @client->ReadLine();
@@ -2053,6 +2087,33 @@ class RequestHandler from HttpsRequestHandler {
 		@return true to continue processing, false otherwise
 		~#
 		method : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
+
+		#~
+		Callback for PUT requests. Override to handle PUT.
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessPut(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Nil {
+			response->SetCode(405);
+		}
+
+		#~
+		Callback for PATCH requests. Override to handle PATCH.
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessPatch(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Nil {
+			response->SetCode(405);
+		}
+
+		#~
+		Callback for DELETE requests. Override to handle DELETE.
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessDelete(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Nil {
+			response->SetCode(405);
+		}
 	}
 
 	#~
@@ -2126,29 +2187,41 @@ class RequestHandler from HttpsRequestHandler {
 						};
 						ProcessResponse(http_response, request_verb->Equals("HEAD"));
 					}
-					# POST request
-					else if(request_verb->Equals("POST")) {
+					# POST, PUT, PATCH, DELETE with body
+					else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
 						content_length_str := request_headers->Find("content-length");
+						buffer : Byte[];
 						if(content_length_str <> Nil) {
 							content_length := content_length_str->ToInt();
-							if(content_length > 0) {
+							if(content_length > 0 & content_length <= 16*1048576) { # 16M body limit
 								buffer := WebCommon->ReadPost(content_length, @client);
-								
-								# retrieve content
-								if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-									request_path := "/index.html";
-								};
-
-								# write response
-								http_request := Request->New(request_path, request_headers, buffer);
-								http_response := Response->New(@server_config, http_request->GetPath());
-								
-								if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-									@server_config->ProcessPost(http_request, http_response);
-								};
-								ProcessResponse(http_response);
 							};
 						};
+
+						# retrieve content
+						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+							request_path := "/index.html";
+						};
+
+						# write response
+						http_request := Request->New(request_path, request_headers, buffer);
+						http_response := Response->New(@server_config, http_request->GetPath());
+
+						if(request_verb->Equals("POST")) {
+							if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+								@server_config->ProcessPost(http_request, http_response);
+							};
+						}
+						else if(request_verb->Equals("PUT")) {
+							ProcessPut(http_request, http_response);
+						}
+						else if(request_verb->Equals("PATCH")) {
+							ProcessPatch(http_request, http_response);
+						}
+						else {
+							ProcessDelete(http_request, http_response);
+						};
+						ProcessResponse(http_response);
 					};
 				};
 
@@ -2216,8 +2289,28 @@ class RequestHandler from HttpsRequestHandler {
 							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
 						}
 
+						label 405 {
+							@client->WriteString("HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+						}
+
 						label 410 {
 							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
+						}
+
+						label 413 {
+							@client->WriteString("HTTP/1.1 413 Content Too Large\r\n\r\n");
+						}
+
+						label 429 {
+							@client->WriteString("HTTP/1.1 429 Too Many Requests\r\n\r\n");
+						}
+
+						label 500 {
+							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+						}
+
+						label 503 {
+							@client->WriteString("HTTP/1.1 503 Service Unavailable\r\n\r\n");
 						}
 
 						other {
@@ -2241,9 +2334,11 @@ class RequestHandler from HttpsRequestHandler {
 					"header: {$header}"->PrintLine();
 				};
 
-				header_parts := header->Split(": ");
-				if(header_parts->Size() = 2) {
-					headers->Insert(header_parts[0]->ToLower(), header_parts[1]);
+				colon := header->Find(':');
+				if(colon > 0) {
+					name := header->SubString(colon)->ToLower();
+					value := header->SubString(colon + 1, header->Size() - colon - 1)->Trim();
+					headers->Insert(name, value);
 				};
 
 				header := @client->ReadLine();
@@ -2267,6 +2362,33 @@ class RequestHandler from HttpsRequestHandler {
 		@return true to continue processing, false otherwise
 		~#
 		method : virtual : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool;
+
+		#~
+		Callback for PUT requests. Override to handle PUT.
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessPut(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Nil {
+			response->SetCode(405);
+		}
+
+		#~
+		Callback for PATCH requests. Override to handle PATCH.
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessPatch(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Nil {
+			response->SetCode(405);
+		}
+
+		#~
+		Callback for DELETE requests. Override to handle DELETE.
+		@param request HTTP request
+		@param response HTTP response
+		~#
+		method : public : ProcessDelete(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Nil {
+			response->SetCode(405);
+		}
 	}
 }
 

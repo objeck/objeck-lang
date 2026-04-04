@@ -33,20 +33,44 @@ if(html <> Nil) {
 		@cookies : Vector<Cookie>;
 		@cert_issuer : String;
 		@cert_subject : String;
-		
+		@max_redirects : Int;
+		@max_retries : Int;
+		@retry_delay_ms : Int;
+
 		#~
 		Default constructor
-		@param cookies_enabled true if cookies are enabled, false otherwise		
+		@param cookies_enabled true if cookies are enabled, false otherwise
 		~#
 		New(cookies_enabled : Bool := false) {
 			@request_headers := Hash->New()<String, String>;
 			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
 			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
-			
+
 			@response_headers := Hash->New()<String, String>;
 
 			@cookies_enabled := cookies_enabled;
 			@cookies := Vector->New()<Cookie>;
+			@max_redirects := 10;
+			@max_retries := 3;
+			@retry_delay_ms := 1000;
+		}
+
+		#~
+		Sets the maximum number of redirects to follow (default 10)
+		@param max maximum redirects
+		~#
+		method : public : SetMaxRedirects(max : Int) ~ Nil {
+			@max_redirects := max;
+		}
+
+		#~
+		Sets retry behavior for transient errors (429, 503)
+		@param max_retries maximum retry attempts (default 3, 0 to disable)
+		@param delay_ms initial delay between retries in milliseconds (default 1000, doubles each retry)
+		~#
+		method : public : SetRetry(max_retries : Int, delay_ms : Int) ~ Nil {
+			@max_retries := max_retries;
+			@retry_delay_ms := delay_ms;
 		}
 		
 		#~
@@ -425,6 +449,32 @@ if(html <> Nil) {
 		}
 
 		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task, pem : String) ~ Web.HTTP.Response {
+			response := PushPullOperationInner(url, data, content_type, task, pem, 0);
+
+			# retry on transient errors
+			if(response <> Nil & @max_retries > 0) {
+				code := response->GetCode();
+				if(code = 429 | code = 503) {
+					delay := @retry_delay_ms;
+					for(attempt := 0; attempt < @max_retries; attempt += 1;) {
+						System.Concurrency.Thread->Sleep(delay);
+						response := PushPullOperationInner(url, data, content_type, task, pem, 0);
+						if(response = Nil | (response->GetCode() <> 429 & response->GetCode() <> 503)) {
+							break;
+						};
+						delay *= 2;
+					};
+				};
+			};
+
+			return response;
+		}
+
+		method : PushPullOperationInner(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task, pem : String, redirect_count : Int) ~ Web.HTTP.Response {
+			if(redirect_count > @max_redirects) {
+				return Web.HTTP.Response->New(310);
+			};
+
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -571,8 +621,7 @@ if(html <> Nil) {
 									moved_url_str += moved_location;
 								};
 
-								# IO.Console->Print("permanently moved: ")->PrintLine(moved_url_str);
-								return Post(Url->New(moved_url_str), data, content_type);
+								return PushPullOperationInner(Url->New(moved_url_str), data, content_type, task, pem, redirect_count + 1);
 							};
 						};
 
@@ -815,6 +864,36 @@ if(html <> Nil) {
 		}
 
 		method : PullOperation(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task, pem : String) ~ Web.HTTP.Response {
+			return PullOperationWithRetry(url, content_type, task, pem, 0);
+		}
+
+		method : PullOperationWithRetry(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task, pem : String, redirect_count : Int) ~ Web.HTTP.Response {
+			if(redirect_count > @max_redirects) {
+				return Web.HTTP.Response->New(310); # too many redirects
+			};
+
+			response := PullOperationInner(url, content_type, task, pem, redirect_count);
+
+			# retry on transient errors
+			if(response <> Nil & @max_retries > 0) {
+				code := response->GetCode();
+				if(code = 429 | code = 503) {
+					delay := @retry_delay_ms;
+					for(attempt := 0; attempt < @max_retries; attempt += 1;) {
+						System.Concurrency.Thread->Sleep(delay);
+						response := PullOperationInner(url, content_type, task, pem, redirect_count);
+						if(response = Nil | (response->GetCode() <> 429 & response->GetCode() <> 503)) {
+							break;
+						};
+						delay *= 2; # exponential backoff
+					};
+				};
+			};
+
+			return response;
+		}
+
+		method : PullOperationInner(url : Web.HTTP.Url, content_type : String, task : HttpsClient->Task, pem : String, redirect_count : Int) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;
 
@@ -958,8 +1037,7 @@ if(html <> Nil) {
 								};
 								@response_headers->Empty();
 
-								# IO.Console->Print("permanently moved: ")->PrintLine(moved_url_str);
-								return Get(Url->New(moved_url_str), content_type);
+								return PullOperationWithRetry(Url->New(moved_url_str), content_type, task, pem, redirect_count + 1);
 							};
 						};
 
