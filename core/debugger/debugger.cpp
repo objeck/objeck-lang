@@ -231,7 +231,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         const size_t mid_index = cls_mthd_name.find_last_of(':');
         const std::wstring& cls_name = cls_mthd_name.substr(0, mid_index);
         const std::wstring& mthd_name = cls_mthd_name.substr(mid_index + 1);
-        std::wcout << L"break: file='" << file_name << L":" << line_num << L"', method='" << cls_name << L"->" << mthd_name << L"(..)'" << std::endl;
+        std::wcout << L"break: file='" << C(CLR_CYAN) << file_name << L":" << line_num << C(CLR_RESET) << L"', method='" << C(CLR_GREEN) << cls_name << L"->" << mthd_name << L"(..)" << C(CLR_RESET) << L"'" << std::endl;
 
         // prompt for break command
         Command* command;
@@ -521,7 +521,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             std::wcout << L"cannot reference scalar variable" << std::endl;
           }
           else {
-            std::wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << std::endl;
+            std::wcout << L"print: " << C(CLR_BLUE) << L"type=Char" << C(CLR_RESET) << L", " << C(CLR_BOLD) << L"value=" << (wchar_t)reference->GetIntValue() << C(CLR_RESET) << std::endl;
           }
           break;
 
@@ -532,7 +532,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else {
             const long value = (long)reference->GetIntValue();
             std::ios_base::fmtflags flags(std::wcout.flags());
-            std::wcout << L"print: type=Int/Byte/Bool, value=" << value << L"(0x" << std::hex << value << L')' << std::endl;
+            std::wcout << L"print: " << C(CLR_BLUE) << L"type=Int/Byte/Bool" << C(CLR_RESET) << L", " << C(CLR_BOLD) << L"value=" << value << L"(0x" << std::hex << value << L')' << C(CLR_RESET) << std::endl;
             std::wcout.flags(flags);
           }
           break;
@@ -543,7 +543,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             std::wcout << L"cannot reference scalar variable" << std::endl;
           }
           else {
-            std::wcout << L"print: type=Float, value=" << reference->GetFloatValue() << std::endl;
+            std::wcout << L"print: " << C(CLR_BLUE) << L"type=Float" << C(CLR_RESET) << L", " << C(CLR_BOLD) << L"value=" << reference->GetFloatValue() << C(CLR_RESET) << std::endl;
           }
           break;
 
@@ -591,7 +591,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case FLOAT_ARY_PARM:
           if(reference->GetIndices()) {
-            std::wcout << L"print: type=Float, value=" << reference->GetFloatValue() << std::endl;
+            std::wcout << L"print: " << C(CLR_BLUE) << L"type=Float" << C(CLR_RESET) << L", " << C(CLR_BOLD) << L"value=" << reference->GetFloatValue() << C(CLR_RESET) << std::endl;
           }
           else {
             std::wcout << L"print: type=Float[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
@@ -1844,26 +1844,26 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
       break;
 
     case HELP_COMMAND:
-      std::wcout << L"\nCommands:" << std::endl;
-      std::wcout << L"  r, run                  Start/restart program" << std::endl;
-      std::wcout << L"  b, break <file>:<line>   Set breakpoint" << std::endl;
-      std::wcout << L"  breaks                  List all breakpoints" << std::endl;
-      std::wcout << L"  d, delete <file>:<line>  Remove breakpoint" << std::endl;
-      std::wcout << L"  clear                   Clear all breakpoints" << std::endl;
-      std::wcout << L"  c, cont                 Continue execution" << std::endl;
-      std::wcout << L"  s, step                 Step into" << std::endl;
-      std::wcout << L"  n, next                 Step over" << std::endl;
-      std::wcout << L"  j, jump                 Step out" << std::endl;
-      std::wcout << L"  p, print <expr>         Print expression value" << std::endl;
-      std::wcout << L"  l, list [<file>:<line>]  List source code" << std::endl;
-      std::wcout << L"  stack                   Show call stack" << std::endl;
-      std::wcout << L"  m, memory               Show memory stats" << std::endl;
-      std::wcout << L"  i, info [class=<C>]     Show program/class info" << std::endl;
-      std::wcout << L"  exe <file>              Load binary file" << std::endl;
-      std::wcout << L"  src <dir>               Set source directory" << std::endl;
-      std::wcout << L"  args '<args>'           Set program arguments" << std::endl;
-      std::wcout << L"  h, help                 Show this help" << std::endl;
-      std::wcout << L"  q, quit                 Exit debugger" << std::endl;
+      std::wcout << L"\n" << C(CLR_BOLD) << L"Commands:" << C(CLR_RESET) << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"r, run" << C(CLR_RESET) << L"                  Start/restart program" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"b, break" << C(CLR_RESET) << L" <file>:<line>   Set breakpoint" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"breaks" << C(CLR_RESET) << L"                  List all breakpoints" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"d, delete" << C(CLR_RESET) << L" <file>:<line>  Remove breakpoint" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"clear" << C(CLR_RESET) << L"                   Clear all breakpoints" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"c, cont" << C(CLR_RESET) << L"                 Continue execution" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"s, step" << C(CLR_RESET) << L"                 Step into" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"n, next" << C(CLR_RESET) << L"                 Step over" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"j, jump" << C(CLR_RESET) << L"                 Step out" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"p, print" << C(CLR_RESET) << L" <expr>         Print expression value" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"l, list" << C(CLR_RESET) << L" [<file>:<line>]  List source code" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"stack" << C(CLR_RESET) << L"                   Show call stack" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"m, memory" << C(CLR_RESET) << L"               Show memory stats" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"i, info" << C(CLR_RESET) << L" [class=<C>]     Show program/class info" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"exe" << C(CLR_RESET) << L" <file>              Load binary file" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"src" << C(CLR_RESET) << L" <dir>               Set source directory" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"args" << C(CLR_RESET) << L" '<args>'           Set program arguments" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"h, help" << C(CLR_RESET) << L"                 Show this help" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"q, quit" << C(CLR_RESET) << L"                 Exit debugger" << std::endl;
       std::wcout << std::endl;
       break;
 
@@ -1876,7 +1876,7 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
     return command;
   }
   else {
-    std::wcout << L"-- Unable to process command --" << std::endl;
+    std::wcout << C(CLR_RED) << L"-- Unable to process command --" << C(CLR_RESET) << std::endl;
   }
 
   is_error = false;
@@ -2008,9 +2008,11 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
 }
 
 void Runtime::Debugger::Debug() {
-  std::wcout << L"-------------------------------------" << std::endl;
-  std::wcout << L"Objeck " << VERSION_STRING << L" - Interactive Debugger" << std::endl;
-  std::wcout << L"-------------------------------------" << std::endl << std::endl;
+  ColorInit();
+
+  std::wcout << C(CLR_CYAN) << L"-------------------------------------" << C(CLR_RESET) << std::endl;
+  std::wcout << C(CLR_BOLD) << L"Objeck " << VERSION_STRING << L" - Interactive Debugger" << C(CLR_RESET) << std::endl;
+  std::wcout << C(CLR_CYAN) << L"-------------------------------------" << C(CLR_RESET) << std::endl << std::endl;
 
   if(!EndsWith(program_file_param, L".obe")) {
     program_file_param += L".obe";
@@ -2095,16 +2097,16 @@ bool Runtime::SourceFile::Print(int start)
     const bool is_cur_line_num = i + 1 == cur_line_num;
     const bool is_break_point = debugger->FindBreak(i + 1);
     if(is_cur_line_num && is_break_point) {
-      std::wcout << std::right << L"=>" << std::setw(window) << (i + 1) << L": " << line << std::endl;
+      std::wcout << C(CLR_RED) << C(CLR_BOLD) << std::right << L"=>" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET) << C(CLR_YELLOW) << line << C(CLR_RESET) << std::endl;
     }
     else if(is_cur_line_num) {
-      std::wcout << std::right << L"->" << std::setw(window) << (i + 1) << L": " << line << std::endl;
+      std::wcout << C(CLR_YELLOW) << C(CLR_BOLD) << std::right << L"->" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET) << C(CLR_YELLOW) << line << C(CLR_RESET) << std::endl;
     }
     else if(is_break_point) {
-      std::wcout << std::right << L" #" << std::setw(window) << (i + 1) << L": " << line << std::endl;
+      std::wcout << C(CLR_RED) << std::right << L" #" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET) << line << std::endl;
     }
     else {
-      std::wcout << std::right << std::setw(window + 2) << (i + 1) << L": " << line << std::endl;
+      std::wcout << C(CLR_GRAY) << std::right << std::setw(window + 2) << (i + 1) << L": " << C(CLR_RESET) << line << std::endl;
     }
   }
 
