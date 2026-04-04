@@ -452,7 +452,18 @@ public:
   }
   
   static int ReadBytes(char* values, int len, SOCKET sock) {
-    return recv(sock, values, len, 0);
+    int total = 0;
+    while(total < len) {
+      int status = recv(sock, values + total, len - total, 0);
+      if(status < 0) {
+        return total > 0 ? total : -1;
+      }
+      if(status == 0) {
+        break; // connection closed
+      }
+      total += status;
+    }
+    return total;
   }
   
   static void Close(SOCKET sock) {
@@ -642,12 +653,19 @@ class IPSecureSocket {
   }
 
   static int ReadBytes(char* values, int len, SecureSocketCtx* sctx) {
-    int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values, len);
-    if(status < 0) {
-      sctx->last_error = status;
-      return -1;
+    int total = 0;
+    while(total < len) {
+      int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + total, len - total);
+      if(status < 0) {
+        sctx->last_error = status;
+        return total > 0 ? total : -1;
+      }
+      if(status == 0) {
+        break; // connection closed
+      }
+      total += status;
     }
-    return status;
+    return total;
   }
 
   static void Close(SecureSocketCtx* sctx) {
