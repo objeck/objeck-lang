@@ -885,16 +885,16 @@ bundle API.OpenCV {
 		Returns a packed Int[] with format: [count, size0..sizeN-1, x0,y0,x1,y1,...].
 		Use ContourArea() and BoundingRect() to analyze individual contours.
 		@param mode contour retrieval mode from RetrievalModes
-		@param method contour approximation method from ContourApproximationModes
+		@param approx contour approximation method from ContourApproximationModes
 		@return packed Int[] representing the detected contours
 		~#
-		method : public : FindContours(mode : Int, method : Int) ~ Int[] {
+		method : public : FindContours(mode : Int, approx : Int) ~ Int[] {
 			array_args := Base->New[4];
 
 			array_args[0] := IntArrayRef->New();
 			array_args[1] := @self;
 			array_args[2] := IntRef->New(mode);
-			array_args[3] := IntRef->New(method);
+			array_args[3] := IntRef->New(approx);
 
 			Proxy->GetDllProxy()->CallFunction("opencv_find_contours", array_args);
 
