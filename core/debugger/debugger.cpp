@@ -205,9 +205,36 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       }
       */
 
-      const bool found_break = (continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) && FindBreak(line_num, file_name);
+      UserBreak* hit_break = ((continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) ? FindBreak(line_num, file_name) : nullptr);
+      bool found_break = (hit_break != nullptr);
+
+      // evaluate conditional breakpoint
+      if(found_break && hit_break->condition) {
+        // set frame context for expression evaluation
+        cur_frame = frame;
+        cur_call_stack = call_stack;
+        cur_call_stack_pos = call_stack_pos;
+        ref_mem = nullptr;
+        ref_klass = nullptr;
+        is_error = false;
+
+        EvaluateExpression(hit_break->condition);
+
+        if(!is_error) {
+          if(hit_break->condition->GetFloatEval()) {
+            found_break = (hit_break->condition->GetFloatValue() != 0.0);
+          }
+          else {
+            found_break = (hit_break->condition->GetIntValue() != 0);
+          }
+        }
+        else {
+          found_break = false;
+        }
+        is_error = false;
+      }
+
       if(found_break) {
-        // std::wcout << L"--- BREAK_POINT --" << std::endl;
         continue_state = 0;
       }
       
@@ -446,8 +473,13 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   }
 
   if(file_name.size() != 0 && FileExists(path)) {
-    if(AddBreak(line_num, file_name)) {
-      std::wcout << L"added breakpoint: file='" << file_name << L":" << line_num << L"'" << std::endl;
+    Expression* condition = break_command->GetCondition();
+    if(AddBreak(line_num, file_name, condition)) {
+      std::wcout << L"added breakpoint: file='" << C(CLR_CYAN) << file_name << L":" << line_num << C(CLR_RESET) << L"'";
+      if(condition) {
+        std::wcout << L" " << C(CLR_YELLOW) << L"[conditional]" << C(CLR_RESET);
+      }
+      std::wcout << std::endl;
     }
     else {
       std::wcout << L"breakpoint already exist or is invalid" << std::endl;
@@ -1571,12 +1603,13 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstrin
   return nullptr;
 }
 
-bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name)
+bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name, Expression* condition)
 {
   if(line_num > 0 && !FindBreak(line_num, file_name)) {
     UserBreak* user_break = new UserBreak;
     user_break->line_num = line_num;
     user_break->file_name = file_name;
+    user_break->condition = condition;
     breaks.push_back(user_break);
     return true;
   }
@@ -1589,7 +1622,11 @@ void Runtime::Debugger::ListBreaks()
   std::wcout << L"breaks:" << std::endl;
   std::list<UserBreak*>::iterator iter;
   for(iter = breaks.begin(); iter != breaks.end(); iter++) {
-    std::wcout << L"  break: file='" << (*iter)->file_name << L":" << (*iter)->line_num << L"'" << std::endl;
+    std::wcout << L"  break: file='" << C(CLR_CYAN) << (*iter)->file_name << L":" << (*iter)->line_num << C(CLR_RESET) << L"'";
+    if((*iter)->condition) {
+      std::wcout << L" " << C(CLR_YELLOW) << L"[conditional]" << C(CLR_RESET);
+    }
+    std::wcout << std::endl;
   }
 }
 
@@ -1846,7 +1883,7 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
     case HELP_COMMAND:
       std::wcout << L"\n" << C(CLR_BOLD) << L"Commands:" << C(CLR_RESET) << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"r, run" << C(CLR_RESET) << L"                  Start/restart program" << std::endl;
-      std::wcout << L"  " << C(CLR_GREEN) << L"b, break" << C(CLR_RESET) << L" <file>:<line>   Set breakpoint" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"b, break" << C(CLR_RESET) << L" <file>:<line> [if <expr>]  Set breakpoint" << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"breaks" << C(CLR_RESET) << L"                  List all breakpoints" << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"d, delete" << C(CLR_RESET) << L" <file>:<line>  Remove breakpoint" << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"clear" << C(CLR_RESET) << L"                   Clear all breakpoints" << std::endl;

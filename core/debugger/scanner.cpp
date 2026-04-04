@@ -107,6 +107,7 @@ void Scanner::LoadKeywords()
   ident_map[L"@self"] = TOKEN_SELF_ID;
   ident_map[L"class"] = TOKEN_CLASS_ID;
   ident_map[L"method"] = TOKEN_METHOD_ID;
+  ident_map[L"if"] = TOKEN_IF_ID;
 }
 
 /****************************

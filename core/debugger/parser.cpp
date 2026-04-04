@@ -334,8 +334,15 @@ Command* Parser::ParseBreakDelete(bool is_break, int depth) {
     NextToken();
   }
 
+  // parse optional condition: b file:line if <expr>
+  Expression* condition = nullptr;
+  if(is_break && Match(TOKEN_IF_ID)) {
+    NextToken();
+    condition = ParseExpression(depth + 1);
+  }
+
   if(is_break) {
-    return TreeFactory::Instance()->MakeFilePostion(BREAK_COMMAND, file_name, line_num);
+    return TreeFactory::Instance()->MakeFilePostion(BREAK_COMMAND, file_name, line_num, condition);
   }
 
   return TreeFactory::Instance()->MakeFilePostion(DELETE_COMMAND, file_name, line_num);

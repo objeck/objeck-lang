@@ -253,11 +253,13 @@ namespace frontend {
   class FilePostion : public BasicCommand {
     std::wstring file_name;
     int line_num;
+    Expression* condition;
 
   public:
-    FilePostion(CommandType t, const std::wstring &fn, int ln) : BasicCommand(t) {
+    FilePostion(CommandType t, const std::wstring &fn, int ln, Expression* cond = nullptr) : BasicCommand(t) {
       file_name = fn;
       line_num = ln;
+      condition = cond;
     }
 
     ~FilePostion() {
@@ -269,6 +271,10 @@ namespace frontend {
 
     int GetLineNumber() {
       return line_num;
+    }
+
+    Expression* GetCondition() {
+      return condition;
     }
   };
 
@@ -734,8 +740,8 @@ namespace frontend {
       return tmp;
     }
 
-    FilePostion* MakeFilePostion(CommandType t, const std::wstring &file_name, int line_num) {
-      FilePostion* tmp = new FilePostion(t, file_name, line_num);
+    FilePostion* MakeFilePostion(CommandType t, const std::wstring &file_name, int line_num, Expression* cond = nullptr) {
+      FilePostion* tmp = new FilePostion(t, file_name, line_num, cond);
       nodes.push_back(tmp);
       return tmp;
     }
