@@ -1,9 +1,13 @@
 #!/bin/sh
 
-# disable code signing in CI environments
+# In CI, use the installed certificate; locally, use default keychain
 SIGN_FLAGS=""
 if [ "${CI}" = "true" ]; then
-	SIGN_FLAGS="CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
+	if [ -f "$RUNNER_TEMP/app-signing.keychain-db" ]; then
+		SIGN_FLAGS="OTHER_CODE_SIGN_FLAGS=--keychain=$RUNNER_TEMP/app-signing.keychain-db"
+	else
+		SIGN_FLAGS="CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
+	fi
 fi
 
 # setup directories
