@@ -38,6 +38,7 @@
 #include "../vm/../shared/version.h"
 #include "tree.h"
 #include "parser.h"
+#include "color.h"
 #include <iomanip>
 #ifdef _WIN32
 #include "windows.h"
@@ -214,12 +215,12 @@ namespace Runtime {
     }
 
     void ReadLine(std::wstring &output) {
-// #ifdef _WIN32
-      std::wcout << L"> ";
+#ifdef _WIN32
+      std::wcout << C(CLR_CYAN) << L"> " << C(CLR_RESET);
       std::getline(std::wcin, output);
-/*
 #else
-      char* input = readline(nullptr);
+      const char* prompt = color_enabled ? "\001\033[36m\002> \001\033[0m\002" : "> ";
+      char* input = readline(prompt);
       if(input) {
         if(strlen(input) > 0) {
           add_history(input);
@@ -229,7 +230,6 @@ namespace Runtime {
         input = nullptr;
       }
 #endif
-*/
     }
 
   public:
