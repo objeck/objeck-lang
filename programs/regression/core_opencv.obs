@@ -1,7 +1,8 @@
 #~
 # Core OpenCV Bindings Test
 # Tests helper classes, constants, and VideoWriter FourCC without requiring
-# actual image files or a display server. Compile with: -lib opencv
+# actual image files or a display server.
+# EXTRA_LIBS: opencv
 ~#
 
 use API.OpenCV, Data.JSON;

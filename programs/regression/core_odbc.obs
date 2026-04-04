@@ -1,6 +1,7 @@
 #~
 # Core ODBC Bindings Test
 # Tests Date, Timestamp, and ColumnInfo classes without requiring a database
+# EXTRA_LIBS: odbc
 ~#
 
 use Database.ODBC;
