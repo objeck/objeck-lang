@@ -142,6 +142,11 @@ jobs:
         P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
       run: |
+        if [ -z "$CERTIFICATE_BASE64" ] || [ -z "$P12_PASSWORD" ] || [ -z "$KEYCHAIN_PASSWORD" ]; then
+          echo "Apple signing secrets not configured - skipping"
+          exit 0
+        fi
+
         CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
         echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
 
@@ -152,9 +157,12 @@ jobs:
 
         security import $CERTIFICATE_PATH -P "$P12_PASSWORD" \
           -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-        security set-key-partition-list -S apple-tool:,apple: \
+        security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: \
           -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
         security list-keychains -d user -s $KEYCHAIN_PATH
+
+        rm "$CERTIFICATE_PATH"
+        echo "Apple signing certificate installed."
 
     # Windows setup
     - name: Setup Visual Studio (Windows)
@@ -547,7 +555,7 @@ jobs:
       if: always() && runner.os == 'macOS'
       run: |
         if [ -f "$RUNNER_TEMP/app-signing.keychain-db" ]; then
-          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
         fi
 
     # ============================================
