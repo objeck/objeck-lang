@@ -324,6 +324,11 @@
           </a>
          </li>
          <li>
+          <a href="#vscode_debug">
+           VS Code Debugging
+          </a>
+         </li>
+         <li>
           <a href="#create_portable">
            Generating a Portable Runtime
           </a>
@@ -2394,10 +2399,10 @@ goodbye.</pre>
             [b]reak
            </td>
            <td>
-            sets a breakpoint
+            sets a breakpoint (optionally conditional)
            </td>
            <td>
-            b luhn.obs:17
+            b luhn.obs:17<br/>b luhn.obs:9 if i &gt; 3
            </td>
           </tr>
           <tr>
@@ -2571,6 +2576,51 @@ goodbye.</pre>
            </td>
           </tr>
          </table>
+         <h3 id="vscode_debug">
+          VS Code Debugging
+         </h3>
+         <p>
+          Objeck supports visual debugging in VS Code through the <a href="https://microsoft.github.io/debug-adapter-protocol/" target="_blank">Debug Adapter Protocol (DAP)</a>. This provides breakpoints, stepping, variable inspection, and call stack views directly in the editor.
+         </p>
+         <h4>Setup</h4>
+         <ol>
+          <li>Install the <strong>Objeck</strong> VS Code extension (<code>.vsix</code> from the <a href="https://github.com/objeck/objeck-lsp" target="_blank">objeck-lsp</a> repository)</li>
+          <li>In VS Code settings, set the Objeck install path:
+           <ul>
+            <li><strong>Windows:</strong> <code>objk.win.install.dir</code> &rarr; your Objeck install directory (e.g. <code>C:\Program Files\Objeck</code>)</li>
+            <li><strong>macOS/Linux:</strong> <code>objk.posix.install.dir</code> &rarr; your Objeck install directory (e.g. <code>/usr/local/objeck-lang</code>)</li>
+           </ul>
+          </li>
+          <li>Compile your program with debug symbols:
+           <pre class="cmd">&gt; obc -src myprogram.obs -debug</pre>
+          </li>
+         </ol>
+         <h4>Launch Configuration</h4>
+         <p>
+          Create a <code>.vscode/launch.json</code> in your workspace (or use the "Run and Debug" panel to auto-generate one):
+         </p>
+<pre class="line-numbers"><code class="language-json">{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "objeck",
+      "request": "launch",
+      "name": "Debug Objeck Program",
+      "program": "${workspaceFolder}/myprogram.obe",
+      "sourceDir": "${workspaceFolder}"
+    }
+  ]
+}
+</code></pre>
+         <h4>Debugging</h4>
+         <ul>
+          <li>Click the <strong>gutter</strong> next to line numbers to set breakpoints (red dots)</li>
+          <li>Press <strong>F5</strong> to start debugging</li>
+          <li>Use the debug toolbar: <strong>Continue</strong> (F5), <strong>Step Over</strong> (F10), <strong>Step Into</strong> (F11), <strong>Step Out</strong> (Shift+F11)</li>
+          <li>Inspect local variables in the <strong>Variables</strong> panel</li>
+          <li>View the <strong>Call Stack</strong> panel to see the current execution context</li>
+          <li>Conditional breakpoints are supported: right-click a breakpoint and add an expression (e.g. <code>i &gt; 3</code>)</li>
+         </ul>
          <h3 id="create_portable">
           Generating a Portable Runtime
          </h3>
