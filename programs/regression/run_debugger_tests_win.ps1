@@ -17,6 +17,10 @@ function Run-DebuggerTest {
 
     Write-Host -NoNewline "Running: ${TestName}..."
 
+    # Build command script: all commands + quit, one per line
+    $allCommands = ($Commands + @("q")) -join "`n"
+
+    # Run debugger with piped input
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $Debugger
     $psi.Arguments = "-b `"$TestBin`" -src `"$SrcDir`""
@@ -28,31 +32,24 @@ function Run-DebuggerTest {
 
     $proc = [System.Diagnostics.Process]::Start($psi)
 
-    # Wait for debugger to start up
-    Start-Sleep -Milliseconds 2000
+    # Start async output reading immediately
+    $outTask = $proc.StandardOutput.ReadToEndAsync()
+    $errTask = $proc.StandardError.ReadToEndAsync()
 
-    # Send commands with delays for interactive processing
-    foreach ($cmd in $Commands) {
-        Start-Sleep -Milliseconds 500
-        $proc.StandardInput.WriteLine($cmd)
-    }
-
-    # Always quit at the end
-    Start-Sleep -Milliseconds 1000
-    $proc.StandardInput.WriteLine("q")
+    # Write all commands at once then close stdin
+    $proc.StandardInput.Write($allCommands)
     $proc.StandardInput.Close()
 
-    # Read output with timeout
-    $output = ""
-    $task = $proc.StandardOutput.ReadToEndAsync()
-    if ($task.Wait(30000)) {
-        $output = $task.Result
-    }
+    # Wait for process to finish
+    $proc.WaitForExit(30000)
+    [void]$outTask.Wait(5000)
+
+    $output = $outTask.Result
 
     if (-not $proc.HasExited) {
         $proc.Kill()
+        $proc.WaitForExit()
     }
-    $proc.WaitForExit()
 
     # Save output
     $output | Out-File -FilePath "$ResultsDir\debugger_${TestName}.log" -Encoding utf8

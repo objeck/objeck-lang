@@ -274,14 +274,6 @@ jobs:
           Write-Output "✅ WiX Toolset installed"
 
       # ============================================
-      # Code Signing Note (Windows)
-      # ============================================
-      # MSI signing is done locally after CI build using a hardware
-      # SafeNet eToken (Sectigo OV Code Signing certificate).
-      # Run: tools\cicd\sign_release.cmd <version>
-      # ============================================
-
-      # ============================================
       # Build Full Release
       # Note: Bootstrap is skipped because version.h is already updated by prepare job
       # ============================================
@@ -289,6 +281,55 @@ jobs:
       - name: Build release
         working-directory: ./core/release
         run: ${{ matrix.deploy_script }}
+
+      # ============================================
+      # Code Signing (Windows)
+      # ============================================
+
+      - name: Sign release artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CODESIGN_CERT_BASE64: ${{ secrets.CODESIGN_CERT_BASE64 }}
+          CODESIGN_PASSWORD: ${{ secrets.CODESIGN_PASSWORD }}
+        run: |
+          if (-not $env:CODESIGN_CERT_BASE64 -or -not $env:CODESIGN_PASSWORD) {
+            Write-Output "Code signing secrets not configured - skipping"
+            exit 0
+          }
+
+          # Decode certificate
+          $certPath = "$env:RUNNER_TEMP\codesign.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, [System.Convert]::FromBase64String($env:CODESIGN_CERT_BASE64))
+
+          # Find MSI files to sign
+          $buildDir = "$env:GITHUB_WORKSPACE\Objeck-Build"
+          $msiFiles = Get-ChildItem -Path $buildDir -Recurse -Filter "*.msi" -ErrorAction SilentlyContinue
+
+          foreach ($msi in $msiFiles) {
+            Write-Output "Signing: $($msi.FullName)"
+            & signtool sign /f $certPath /p $env:CODESIGN_PASSWORD /tr http://timestamp.sectigo.com /td sha256 /fd sha256 $msi.FullName
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Signing failed for $($msi.Name) - continuing without signature"
+            } else {
+              Write-Output "Signed: $($msi.Name)"
+            }
+          }
+
+          # Sign EXE files in deploy directories
+          $exeFiles = Get-ChildItem -Path $buildDir -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.DirectoryName -like "*\bin" }
+
+          foreach ($exe in $exeFiles) {
+            Write-Output "Signing: $($exe.FullName)"
+            & signtool sign /f $certPath /p $env:CODESIGN_PASSWORD /tr http://timestamp.sectigo.com /td sha256 /fd sha256 $exe.FullName
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Signing failed for $($exe.Name) - continuing"
+            }
+          }
+
+          # Clean up certificate
+          Remove-Item $certPath -Force
 
       # ============================================
       # Find and Upload Artifacts
