@@ -17,39 +17,29 @@ function Run-DebuggerTest {
 
     Write-Host -NoNewline "Running: ${TestName}..."
 
-    # Build command script: all commands + quit, one per line
-    $allCommands = ($Commands + @("q")) -join "`n"
+    # Write commands to a temp file for input redirection
+    $inputFile = "$env:TEMP\obd_input_$TestName.txt"
+    $outputFile = "$env:TEMP\obd_output_$TestName.txt"
+    ($Commands + @("q")) | Out-File -FilePath $inputFile -Encoding ascii
 
-    # Run debugger with piped input
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = $Debugger
-    $psi.Arguments = "-b `"$TestBin`" -src `"$SrcDir`""
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardInput = $true
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.CreateNoWindow = $true
+    # Run debugger with file-based I/O redirection
+    $proc = Start-Process -FilePath $Debugger `
+        -ArgumentList "-b `"$TestBin`" -src `"$SrcDir`"" `
+        -RedirectStandardInput $inputFile `
+        -RedirectStandardOutput $outputFile `
+        -RedirectStandardError "$env:TEMP\obd_err_$TestName.txt" `
+        -NoNewWindow -PassThru -Wait
 
-    $proc = [System.Diagnostics.Process]::Start($psi)
-
-    # Start async output reading immediately
-    $outTask = $proc.StandardOutput.ReadToEndAsync()
-    $errTask = $proc.StandardError.ReadToEndAsync()
-
-    # Write all commands at once then close stdin
-    $proc.StandardInput.Write($allCommands)
-    $proc.StandardInput.Close()
-
-    # Wait for process to finish
-    $proc.WaitForExit(30000)
-    [void]$outTask.Wait(5000)
-
-    $output = $outTask.Result
-
-    if (-not $proc.HasExited) {
-        $proc.Kill()
-        $proc.WaitForExit()
+    $output = ""
+    if (Test-Path $outputFile) {
+        $output = Get-Content $outputFile -Raw -ErrorAction SilentlyContinue
+        if ($null -eq $output) { $output = "" }
     }
+
+    # Clean up temp files
+    Remove-Item $inputFile -Force -ErrorAction SilentlyContinue
+    Remove-Item $outputFile -Force -ErrorAction SilentlyContinue
+    Remove-Item "$env:TEMP\obd_err_$TestName.txt" -Force -ErrorAction SilentlyContinue
 
     # Save output
     $output | Out-File -FilePath "$ResultsDir\debugger_${TestName}.log" -Encoding utf8
