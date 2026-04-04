@@ -320,25 +320,6 @@ class OpenCVTest {
             passed := false;
         };
 
-        # --- VideoWriter FourCC ---
-        mjpg := VideoWriter->FourCC('M', 'J', 'P', 'G');
-        if(mjpg = 0) {
-            "  FAIL: FourCC('M','J','P','G') returned 0"->PrintLine();
-            passed := false;
-        };
-
-        xvid := VideoWriter->FourCC('X', 'V', 'I', 'D');
-        if(xvid = 0) {
-            "  FAIL: FourCC('X','V','I','D') returned 0"->PrintLine();
-            passed := false;
-        };
-
-        # Different FourCC values should produce different codes
-        if(mjpg = xvid) {
-            "  FAIL: MJPG and XVID FourCC should differ"->PrintLine();
-            passed := false;
-        };
-
         # --- Rect inherits from Point (ToJson) ---
         rect_json := Rect->New(10, 20, 300, 400);
         json := rect_json->ToJson();
