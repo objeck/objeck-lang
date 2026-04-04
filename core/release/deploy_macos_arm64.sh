@@ -3,8 +3,17 @@
 # In CI, use the installed certificate; locally, use default keychain
 SIGN_FLAGS=""
 if [ "${CI}" = "true" ]; then
-	if [ -f "$RUNNER_TEMP/app-signing.keychain-db" ]; then
-		SIGN_FLAGS="OTHER_CODE_SIGN_FLAGS=--keychain=$RUNNER_TEMP/app-signing.keychain-db"
+	KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+	if [ -f "$KEYCHAIN_PATH" ]; then
+		# Verify a valid signing identity exists in the keychain
+		IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep -c "valid identities found" || true)
+		HAS_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | head -1 | grep -c ")" || true)
+		if [ "$HAS_IDENTITY" -gt 0 ]; then
+			SIGN_FLAGS="OTHER_CODE_SIGN_FLAGS=--keychain=$KEYCHAIN_PATH"
+		else
+			echo "Warning: Keychain exists but no valid codesigning identity found - using ad-hoc signing"
+			SIGN_FLAGS="CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
+		fi
 	else
 		SIGN_FLAGS="CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
 	fi
