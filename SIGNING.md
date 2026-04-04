@@ -31,7 +31,7 @@
 
 ```
 macOS:   Developer ID Application: Randy Hollines (37JDXYTCG2)
-macOS:   Developer ID Installer: Randy Hollines (37JDXYTCG2)  [pending enrollment]
+macOS:   Developer ID Installer: Randy Hollines (37JDXYTCG2)
 Windows: Sectigo code signing certificate (pfx)
 ```
 
@@ -80,3 +80,20 @@ Falls back to an unsigned .pkg if installer secrets are not configured.
 4. Cleans up the certificate file
 
 Falls back to unsigned artifacts if secrets are not configured.
+
+## Secret Status
+
+All secrets are configured and ready (as of 2026-04-04):
+
+| Secret | Status |
+|---|---|
+| `APPLE_CERTIFICATE_BASE64` | Set — Developer ID Application (G2 Sub-CA) |
+| `APPLE_CERTIFICATE_PASSWORD` | Set |
+| `KEYCHAIN_PASSWORD` | Set |
+| `APPLE_INSTALLER_CERT_BASE64` | Set — Developer ID Installer (G2 Sub-CA) |
+| `APPLE_INSTALLER_CERT_PASSWORD` | Set |
+| `APPLE_ID` | Set — objeck@gmail.com |
+| `APPLE_TEAM_ID` | Set — 37JDXYTCG2 |
+| `APPLE_APP_PASSWORD` | Set — app-specific password for notarization |
+| `CODESIGN_CERT_BASE64` | Set — Windows Sectigo cert |
+| `CODESIGN_PASSWORD` | Set |
