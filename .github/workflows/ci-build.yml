@@ -44,7 +44,7 @@ jobs:
 
           # macOS build (ARM64 native on Apple Silicon)
           - platform: macos-arm64
-            os: macos-14
+            os: macos-15
             arch: arm64
             deploy_script: ./deploy_macos_arm64.sh
             shell: bash
@@ -121,6 +121,20 @@ jobs:
         export PATH="/opt/homebrew/bin:$PATH"
         echo "/opt/homebrew/bin" >> $GITHUB_PATH
 
+    - name: Select Xcode 16.3+ (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        # objectVersion 90 (matrix.xcodeproj) requires Xcode 16.3+
+        XCODE_PATH=$(ls -d /Applications/Xcode_16.[3-9]*.app 2>/dev/null | sort -V | tail -1)
+        if [ -z "$XCODE_PATH" ]; then
+          XCODE_PATH=$(ls -d /Applications/Xcode_16.*.app 2>/dev/null | sort -V | tail -1)
+        fi
+        if [ -n "$XCODE_PATH" ]; then
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          echo "Selected: $XCODE_PATH"
+        fi
+        xcodebuild -version
+
     # Windows setup
     - name: Setup Visual Studio (Windows)
       if: runner.os == 'Windows'
@@ -147,6 +161,37 @@ jobs:
         Write-Output "✅ Installed mbedtls for ${{ matrix.arch }}"
         Write-Output "Set INCLUDE=$vcpkgRoot\include"
         Write-Output "Set LIB=$vcpkgRoot\lib"
+
+    - name: Cache OpenCV DLLs (Windows x64)
+      if: matrix.platform == 'windows-x64'
+      id: opencv-cache
+      uses: actions/cache@v4
+      with:
+        path: core/lib/opencv/win/x64/bin
+        key: opencv-4.12.0-win-x64-dlls
+
+    - name: Download OpenCV runtime DLLs (Windows x64)
+      if: matrix.platform == 'windows-x64' && steps.opencv-cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        $opencvVersion = "4.12.0"
+        $binDir = "core\lib\opencv\win\x64\bin"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+        $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
+        Write-Output "Downloading OpenCV $opencvVersion from $url ..."
+        Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
+
+        7z x opencv-dl.exe -oopencv-extract -y | Out-Null
+
+        Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_world4120.dll" $binDir
+        Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_videoio_ffmpeg4120_64.dll" $binDir
+
+        Remove-Item opencv-dl.exe -Force
+        Remove-Item -Recurse opencv-extract -Force
+
+        Write-Output "OpenCV DLLs installed:"
+        Get-ChildItem $binDir
 
     # ============================================
     # ccache Setup
@@ -330,26 +375,13 @@ jobs:
     # ============================================
 
     - name: Run regression tests (POSIX)
-      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64' && matrix.platform != 'macos-arm64'
+      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
       run: |
         chmod +x run_regression.sh
-
-        # Set architecture parameter
         ARCH="${{ matrix.arch }}"
-
         echo "Running regression tests for architecture: $ARCH"
-        echo "Current directory: $(pwd)"
-        echo "Deploy directory should be: ../../core/release/deploy-$ARCH or ../../core/release/deploy"
-
-        # Run regression tests with error handling
-        if ./run_regression.sh $ARCH; then
-          echo "Regression tests passed"
-        else
-          echo "WARNING: Regression tests failed or not fully supported on this platform"
-          echo "This is not fatal for CI - continuing..."
-          exit 0
-        fi
+        ./run_regression.sh $ARCH
 
     - name: Run regression tests (Windows)
       if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
@@ -362,18 +394,9 @@ jobs:
       working-directory: ./programs/regression
       run: |
         chmod +x run_debugger_tests.sh
-
         ARCH="${{ matrix.arch }}"
-
         echo "Running debugger tests for architecture: $ARCH"
-
-        if ./run_debugger_tests.sh $ARCH; then
-          echo "Debugger tests passed"
-        else
-          echo "WARNING: Debugger tests failed or not fully supported on this platform"
-          echo "This is not fatal for CI - continuing..."
-          exit 0
-        fi
+        ./run_debugger_tests.sh $ARCH
 
     # ============================================
     # API Documentation (Linux x64 only)
