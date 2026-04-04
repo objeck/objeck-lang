@@ -310,6 +310,120 @@ if(html <> Nil) {
 			return PushPullOperation(url, data, "text/plain", HttpsClient->Task->PUT, Nil);
 		}
 
+		#~
+		Performs an HTTPS POST and returns an SSE stream for reading events.
+		Used for streaming responses from LLM APIs.
+		@param url URL
+		@param data request body
+		@param content_type content type
+		@return SSE stream, or Nil on error
+		~#
+		method : public : StreamPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ SSEStream {
+			return StreamPost(url, data, content_type, Nil);
+		}
+
+		#~
+		Performs an HTTPS POST and returns an SSE stream for reading events.
+		@param url URL
+		@param data request body
+		@param content_type content type
+		@param pem PEM certificate
+		@return SSE stream, or Nil on error
+		~#
+		method : public : StreamPost(url : Web.HTTP.Url, data : Byte[], content_type : String, pem : String) ~ SSEStream {
+			if(<>url->GetScheme()->Equals("https")) {
+				return Nil;
+			};
+
+			address := url->GetHost();
+			location := url->GetPath();
+			if(location = Nil) {
+				location := "/";
+			};
+
+			query := url->GetQuery();
+			if(query <> Nil) {
+				location += '?';
+				location += query;
+			};
+
+			port := url->GetPort();
+			if(port < 0) {
+				port := 443;
+			};
+
+			socket := TCPSecureSocket->New(address, port, pem);
+			if(<>socket->IsOpen()) {
+				return Nil;
+			};
+
+			@response_headers->Empty();
+
+			oper := "POST ";
+			oper->Append(location);
+			oper->Append(" HTTP/1.1\r\nHost: ");
+			oper->Append(address);
+			oper->Append(':');
+			oper->Append(port);
+			oper->Append("\r\nContent-Type: ");
+			oper->Append(content_type);
+			oper->Append("\r\nContent-Length: ");
+			oper->Append(data->Size()->ToString());
+			oper->Append("\r\nAccept: text/event-stream\r\n");
+
+			request_keys := @request_headers->GetKeys()<String>;
+			each(i : request_keys) {
+				request_key := request_keys->Get(i);
+				request_value := @request_headers->Find(request_key);
+				oper->Append(request_key);
+				oper->Append(": ");
+				oper->Append(request_value);
+				oper->Append("\r\n");
+			};
+
+			if(@cookies_enabled & @cookies->Size() > 0) {
+				oper->Append("Cookie: ");
+				each(i : @cookies) {
+					oper->Append(@cookies->Get(i)->ToShortString());
+					if(i + 1 < @cookies->Size()) {
+						oper->Append("; ");
+					};
+				};
+				oper->Append("\r\n");
+			};
+			oper->Append("\r\n");
+			socket->WriteString(oper);
+			socket->WriteBuffer(data);
+
+			# Read status line
+			status_code := 500;
+			status_line := socket->ReadLine();
+			if(status_line->StartsWith("HTTP/1.")) {
+				status_line := status_line->SubString("HTTP/1."->Size() + 2,
+					status_line->Size() - "HTTP/1."->Size() - 2);
+				index := status_line->Find(' ');
+				status_code := status_line->SubString(index)->ToInt();
+			};
+
+			# Read response headers
+			do {
+				line := socket->ReadLine();
+				if(line->Size() > 0) {
+					index := line->Find(':');
+					name := line->SubString(index);
+					value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
+					@response_headers->Insert(name->ToLower(), value);
+				};
+			}
+			while(line->Size() > 0);
+
+			@cert_issuer := socket->GetIssuer();
+			@cert_subject := socket->GetSubject();
+
+			# Return stream — caller reads events and closes when done
+			return SSEStream->New(socket, socket, status_code);
+		}
+
 		method : PushPullOperation(url : Web.HTTP.Url, data : Byte[], content_type : String, task : HttpsClient->Task, pem : String) ~ Web.HTTP.Response {
 			content : ByteBuffer;
 			status_code := 500;

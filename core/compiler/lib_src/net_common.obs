@@ -1015,5 +1015,215 @@ bundle Web.HTTP {
 			return "code={$@code}, type={$type}, content_length={$content_length}";
 		}
 	}
+
+	#~
+	Server-Sent Event (SSE) data.
+	Represents a single event from an SSE stream (text/event-stream).
+	Used with LLM APIs (OpenAI, Claude, Gemini) for streaming responses.
+	~#
+	class SSEEvent {
+		@event : String;
+		@data : String;
+		@id : String;
+
+		#~
+		Constructor
+		@param event event type
+		@param data event data
+		@param id event id
+		~#
+		New(event : String, data : String, id : String) {
+			@event := event;
+			@data := data;
+			@id := id;
+		}
+
+		#~
+		Gets the event type (from "event:" field, or "message" by default)
+		@return event type
+		~#
+		method : public : GetEvent() ~ String {
+			return @event;
+		}
+
+		#~
+		Gets the event data (from "data:" field)
+		@return event data
+		~#
+		method : public : GetData() ~ String {
+			return @data;
+		}
+
+		#~
+		Gets the event ID (from "id:" field, may be Nil)
+		@return event id
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		Checks if this is the stream termination signal (data is "[DONE]")
+		@return true if done
+		~#
+		method : public : IsDone() ~ Bool {
+			return @data <> Nil & @data->Equals("[DONE]");
+		}
+
+		#~
+		String representation
+		@return string
+		~#
+		method : public : ToString() ~ String {
+			return "SSEEvent: event={$@event}, data={$@data}";
+		}
+	}
+
+	#~
+	Server-Sent Events (SSE) stream reader.
+	Reads events from an HTTP text/event-stream response line by line.
+
+	```
+	client := HttpsClient->New();
+	client->AddHeader("Authorization", "Bearer ...");
+	stream := client->StreamPost(url, body, "application/json");
+	if(stream <> Nil) {
+	  while(stream->HasNext()) {
+	    event := stream->Next();
+	    event->GetData()->PrintLine();
+	  };
+	  stream->Close();
+	};
+	```
+	~#
+	class SSEStream {
+		@socket : System.IO.InputStream;
+		@closeable : System.IO.OutputStream;
+		@next_event : SSEEvent;
+		@is_done : Bool;
+		@status_code : Int;
+
+		#~
+		@hidden
+		~#
+		New(socket : System.IO.InputStream, closeable : System.IO.OutputStream, status_code : Int) {
+			@socket := socket;
+			@closeable := closeable;
+			@status_code := status_code;
+			@is_done := false;
+		}
+
+		#~
+		Gets the HTTP status code
+		@return status code
+		~#
+		method : public : GetStatusCode() ~ Int {
+			return @status_code;
+		}
+
+		#~
+		Checks if more events are available
+		@return true if another event can be read
+		~#
+		method : public : HasNext() ~ Bool {
+			if(@is_done) {
+				return false;
+			};
+
+			@next_event := ReadEvent();
+			if(@next_event = Nil) {
+				@is_done := true;
+				return false;
+			};
+
+			if(@next_event->IsDone()) {
+				@is_done := true;
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Returns the next SSE event. Call HasNext() first.
+		@return next event
+		~#
+		method : public : Next() ~ SSEEvent {
+			return @next_event;
+		}
+
+		#~
+		Closes the underlying connection
+		~#
+		method : public : Close() ~ Nil {
+			if(@closeable <> Nil) {
+				@closeable->Close();
+			};
+		}
+
+		method : ReadEvent() ~ SSEEvent {
+			event_type := "message";
+			data_buf := "";
+			id : String;
+			has_data := false;
+
+			# Read lines until we hit a blank line (event boundary)
+			line := @socket->ReadLine();
+			while(line <> Nil & line->Size() >= 0) {
+				if(line->Size() = 0) {
+					# Blank line = end of event
+					if(has_data) {
+						return SSEEvent->New(event_type, data_buf, id);
+					};
+					# Keep reading if no data accumulated yet
+					line := @socket->ReadLine();
+					continue;
+				};
+
+				# Skip comments
+				if(line->Get(0) = ':') {
+					line := @socket->ReadLine();
+					continue;
+				};
+
+				# Parse field
+				colon := line->Find(':');
+				if(colon >= 0) {
+					field := line->SubString(colon);
+					value := "";
+					if(colon + 1 < line->Size()) {
+						value := line->SubString(colon + 1, line->Size() - colon - 1);
+						# SSE spec: strip single leading space after colon
+						if(value->Size() > 0 & value->Get(0) = ' ') {
+							value := value->SubString(1, value->Size() - 1);
+						};
+					};
+
+					if(field->Equals("data")) {
+						if(has_data) {
+							data_buf += "\n";
+						};
+						data_buf += value;
+						has_data := true;
+					}
+					else if(field->Equals("event")) {
+						event_type := value;
+					}
+					else if(field->Equals("id")) {
+						id := value;
+					};
+				};
+
+				line := @socket->ReadLine();
+			};
+
+			# End of stream
+			if(has_data) {
+				return SSEEvent->New(event_type, data_buf, id);
+			};
+
+			return Nil;
+		}
+	}
 }
 

@@ -66,6 +66,12 @@ SOCKET IPSocket::Open(const char* address, const int port) {
   }
   freeaddrinfo(result);
 
+  // Set default receive timeout (30 seconds)
+  if(sock != INVALID_SOCKET) {
+    DWORD timeout_ms = 30000;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms));
+  }
+
 	return sock == INVALID_SOCKET ? -1 : sock;
 }
 
