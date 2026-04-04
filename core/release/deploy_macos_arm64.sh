@@ -5,13 +5,14 @@ SIGN_FLAGS=""
 if [ "${CI}" = "true" ]; then
 	KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
 	if [ -f "$KEYCHAIN_PATH" ]; then
-		# Extract the actual signing identity name from the keychain
-		IDENTITY_NAME=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/' || true)
-		if [ -n "$IDENTITY_NAME" ]; then
-			echo "Using signing identity: $IDENTITY_NAME"
-			SIGN_FLAGS="CODE_SIGN_IDENTITY=$IDENTITY_NAME OTHER_CODE_SIGN_FLAGS=--keychain=$KEYCHAIN_PATH"
+		# Xcode projects are configured for "Mac Development" signing.
+		# Check if that specific identity exists in the CI keychain.
+		HAS_MAC_DEV=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null | grep -c "Mac Development" || true)
+		if [ "$HAS_MAC_DEV" -gt 0 ]; then
+			echo "Found Mac Development identity - using keychain signing"
+			SIGN_FLAGS="OTHER_CODE_SIGN_FLAGS=--keychain=$KEYCHAIN_PATH"
 		else
-			echo "No Developer ID Application identity found - using ad-hoc signing"
+			echo "No Mac Development identity in keychain - using ad-hoc signing"
 			SIGN_FLAGS="CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
 		fi
 	else
