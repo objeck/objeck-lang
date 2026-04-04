@@ -29,6 +29,10 @@ set ABS_COMPILER=%CD%\obc.exe
 set ABS_VM=%CD%\obr.exe
 popd
 
+REM Add native libraries to PATH
+set NATIVE_LIB_DIR=%DEPLOY_DIR%\lib\native
+if exist "%NATIVE_LIB_DIR%" set PATH=%NATIVE_LIB_DIR%;%PATH%
+
 if not exist "%RESULTS_DIR%" mkdir "%RESULTS_DIR%"
 
 set PASS_COUNT=0

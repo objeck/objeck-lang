@@ -34,6 +34,13 @@ echo ""
 REGRESSION_DIR=$(pwd)
 ABS_COMPILER=$(cd "$(dirname "$COMPILER")" && pwd)/$(basename "$COMPILER")
 ABS_VM=$(cd "$(dirname "$VM")" && pwd)/$(basename "$VM")
+NATIVE_LIB_DIR=$(cd "$(dirname "$COMPILER")/../lib/native" 2>/dev/null && pwd)
+
+# Add native libraries to search path
+if [ -d "$NATIVE_LIB_DIR" ]; then
+    export LD_LIBRARY_PATH="${NATIVE_LIB_DIR}:${LD_LIBRARY_PATH}"
+    export DYLD_LIBRARY_PATH="${NATIVE_LIB_DIR}:${DYLD_LIBRARY_PATH}"
+fi
 
 # Run each test
 for test in *.obs; do
