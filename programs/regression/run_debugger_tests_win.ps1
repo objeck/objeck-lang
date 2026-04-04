@@ -28,6 +28,9 @@ function Run-DebuggerTest {
 
     $proc = [System.Diagnostics.Process]::Start($psi)
 
+    # Wait for debugger to start up
+    Start-Sleep -Milliseconds 2000
+
     # Send commands with delays for interactive processing
     foreach ($cmd in $Commands) {
         Start-Sleep -Milliseconds 500
@@ -35,7 +38,7 @@ function Run-DebuggerTest {
     }
 
     # Always quit at the end
-    Start-Sleep -Milliseconds 500
+    Start-Sleep -Milliseconds 1000
     $proc.StandardInput.WriteLine("q")
     $proc.StandardInput.Close()
 
