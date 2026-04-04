@@ -2297,19 +2297,28 @@ bool Runtime::SourceFile::Print(int start)
 
     const bool is_cur_line_num = i + 1 == cur_line_num;
     const bool is_break_point = debugger->FindBreak(i + 1);
+
+    // Print line prefix (marker + line number) — ASCII only
     if(is_cur_line_num && is_break_point) {
-      std::wcout << C(CLR_RED) << C(CLR_BOLD) << std::right << L"=>" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET) << C(CLR_YELLOW) << line << C(CLR_RESET) << std::endl;
+      std::wcout << C(CLR_RED) << C(CLR_BOLD) << std::right << L"=>" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET);
     }
     else if(is_cur_line_num) {
-      std::wcout << C(CLR_YELLOW) << C(CLR_BOLD) << std::right << L"->" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET) << C(CLR_YELLOW) << line << C(CLR_RESET) << std::endl;
+      std::wcout << C(CLR_YELLOW) << C(CLR_BOLD) << std::right << L"->" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET);
     }
     else if(is_break_point) {
-      std::wcout << C(CLR_RED) << std::right << L" #" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET) << line << std::endl;
+      std::wcout << C(CLR_RED) << std::right << L" #" << std::setw(window) << (i + 1) << L": " << C(CLR_RESET);
     }
     else {
-      std::wcout << C(CLR_GRAY) << std::right << std::setw(window + 2) << (i + 1) << L": " << C(CLR_RESET) << line << std::endl;
+      std::wcout << C(CLR_GRAY) << std::right << std::setw(window + 2) << (i + 1) << L": " << C(CLR_RESET);
     }
+    std::wcout.flush();
+
+    // Print source line content via narrow stream for reliable Unicode on Windows
+    const std::string narrow_line = UnicodeToBytes(line);
+    std::cout << narrow_line << std::endl;
+    std::cout.flush();
   }
 
+  std::wcout.flush();
   return true;
 }

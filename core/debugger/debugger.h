@@ -222,6 +222,9 @@ namespace Runtime {
 
     void ReadLine(std::wstring &output) {
 #ifdef _WIN32
+      // Flush any type-ahead input to prevent interleaving with output
+      FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
+      std::wcin.clear();
       std::wcout << C(CLR_CYAN) << L"> " << C(CLR_RESET);
       std::getline(std::wcin, output);
 #else
