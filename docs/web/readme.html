@@ -52,11 +52,26 @@
   </header>
 
   <main style="text-align: left;">
-   <p>Try/otherwise error handling, syntax additions, updates to collections, and HTTPS PEM file support.</p>
+   <p>DAP debugger support, performance optimizations, code signing, networking improvements, and expanded library coverage.</p>
 
-   <h3><u>v2026.2.1</u></h3>
+   <h3><u>v2026.3.0</u> (upcoming)</h3>
+    <ul>
+        <li>Debug Adapter Protocol (DAP) for VS Code with conditional breakpoints and ANSI colors</li>
+        <li>3.3x binarytrees speedup — young-gen bump allocator, direct JIT-to-JIT calling</li>
+        <li>GC thread safety with memory barriers to fix intermittent threading segfaults</li>
+        <li>macOS .pkg installer — signed and notarized with PATH auto-configuration</li>
+        <li>Apple and Windows code signing fully automated in CI</li>
+        <li>Networking: SSE streaming, socket timeouts, partial read fix, HTTP hardening</li>
+        <li>ODBC: BigInt, connection strings, transactions, schema discovery</li>
+        <li>OpenCV: contours, VideoWriter, transforms, 15 new functions</li>
+        <li>Phi-3 Vision multimodal inference with unified ONNX build system</li>
+    </ul>
+
+   <h3>v2026.2.1</h3>
     <ul>
         <li>Added <code>try/otherwise</code> error handling framework</li>
+        <li>4.38x nbody speedup, CSE, dead code elimination</li>
+        <li>14 debugger and 16 runtime regression tests in CI</li>
         <li>Bug fixes and JIT compiler improvements</li>
     </ul>
 

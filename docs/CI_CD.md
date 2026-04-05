@@ -1,7 +1,7 @@
 # Objeck Language CI/CD Architecture
 
-**Version:** 1.0
-**Last Updated:** 2026-02-10
+**Version:** 1.1
+**Last Updated:** 2026-04-05
 
 This document describes the technical architecture of the Objeck Language continuous integration and continuous deployment (CI/CD) system.
 
@@ -240,8 +240,16 @@ Set in: **Repository Settings → Secrets and variables → Actions**
 
 | Secret | Purpose | Format | Expiration |
 |--------|---------|--------|------------|
-| `WINDOWS_CERT_BASE64` | Code signing certificate | Base64-encoded PFX | 1-3 years |
-| `WINDOWS_CERT_PASSWORD` | Certificate password | Plain text | Same as cert |
+| `APPLE_CERTIFICATE_BASE64` | macOS Developer ID Application cert | Base64-encoded P12 | 5 years |
+| `APPLE_CERTIFICATE_PASSWORD` | Application cert password | Plain text | Same as cert |
+| `APPLE_INSTALLER_CERT_BASE64` | macOS Developer ID Installer cert | Base64-encoded P12 | 5 years |
+| `APPLE_INSTALLER_CERT_PASSWORD` | Installer cert password | Plain text | Same as cert |
+| `KEYCHAIN_PASSWORD` | CI temporary keychain | Plain text | N/A |
+| `APPLE_ID` | Apple ID for notarization | Email | N/A |
+| `APPLE_TEAM_ID` | Apple Developer Team ID | 10-char string | N/A |
+| `APPLE_APP_PASSWORD` | App-specific password for notarization | Plain text | Revocable |
+| `CODESIGN_CERT_BASE64` | Windows Sectigo code signing cert | Base64-encoded PFX | 1-3 years |
+| `CODESIGN_PASSWORD` | Windows cert password | Plain text | Same as cert |
 | `SOURCEFORGE_SSH_KEY` | Sourceforge SFTP | SSH private key | Rotate every 2 years |
 | `SOURCEFORGE_USERNAME` | Sourceforge account | Username | N/A |
 | `OBJECK_ORG_SSH_KEY` | Web server access | SSH private key | Rotate every 2 years |
@@ -249,14 +257,22 @@ Set in: **Repository Settings → Secrets and variables → Actions**
 
 ### Creating Secrets
 
+**macOS Code Signing (see [SIGNING.md](../SIGNING.md) for full details):**
+```bash
+# Export Developer ID cert from Keychain Access as .p12
+# Base64 encode and set as GitHub secret
+base64 -i certificate.p12 | gh secret set APPLE_CERTIFICATE_BASE64
+# CI workflow creates temporary keychain and imports cert automatically
+```
+
 **Windows Code Signing Certificate:**
 ```powershell
 # Convert PFX to Base64
 certutil -encode certificate.pfx certificate.base64.txt
 
-# Copy content to WINDOWS_CERT_BASE64 secret (remove header/footer)
+# Copy content to CODESIGN_CERT_BASE64 secret (remove header/footer)
 
-# Set WINDOWS_CERT_PASSWORD to your certificate password
+# Set CODESIGN_PASSWORD to your certificate password
 ```
 
 **SSH Keys:**
