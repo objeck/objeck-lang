@@ -2313,10 +2313,16 @@ bool Runtime::SourceFile::Print(int start)
     }
     std::wcout.flush();
 
-    // Print source line content via narrow stream for reliable Unicode on Windows
+    // Print source line content: use narrow stream on Windows for reliable
+    // Unicode console output; use wcout on POSIX to avoid cout/wcout mixing
+    // which causes buffering issues with expect-based test capture.
+#ifdef _WIN32
     const std::string narrow_line = UnicodeToBytes(line);
     std::cout << narrow_line << std::endl;
     std::cout.flush();
+#else
+    std::wcout << line << std::endl;
+#endif
   }
 
   std::wcout.flush();
