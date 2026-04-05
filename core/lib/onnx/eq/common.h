@@ -1523,7 +1523,7 @@ static void openpose_image_inf(VMContext& context) {
             double y_norm = (p.conf > 0.f) ? (p.y / (double)img.rows) : -1.0;
 
             openpose_class_obj[0] = i; // id
-            if(i < labels_size) {
+            if(i < (size_t)labels_size) {
                openpose_class_obj[1] = labels_objs[i]; // name
             }
             *((double*)(&openpose_class_obj[2])) = x_norm; // normalized x
