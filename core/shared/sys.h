@@ -234,7 +234,7 @@ inline bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   buffer = nullptr;
 #else
   // convert string
-  size_t size = wcstombs(nullptr, in.c_str(), in.size());
+  size_t size = wcstombs(nullptr, in.c_str(), 0);
   if(size == (size_t)-1) {
     return false;
   }

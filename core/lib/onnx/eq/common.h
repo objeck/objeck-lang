@@ -1071,7 +1071,7 @@ static void resnet_image_inf(VMContext& context) {
       *((double*)(&resnet_result_obj[2])) = top_confidence; // top confidence
 
       // copy label name
-      if(image_index < labels_size) {
+      if(image_index < (size_t)labels_size) {
          resnet_result_obj[3] = labels_objs[image_index];
       }
 
@@ -1266,7 +1266,7 @@ static void deeplab_image_inf(VMContext& context) {
             // set classification
             deeplab_cls_obj[0] = cls_id;
 
-            const std::wstring& cls_name = (cls_id >= 0 && cls_id < (int)deeplab_labels.size()) ? deeplab_labels[cls_id] : (L"unknown_" + std::to_wstring(cls_id));
+            const std::wstring& cls_name = (cls_id < deeplab_labels.size()) ? deeplab_labels[cls_id] : (L"unknown_" + std::to_wstring(cls_id));
             deeplab_cls_obj[1] = (size_t)APITools_CreateStringObject(context, cls_name);
 
             const double confidence = summary.coverage[i];
@@ -1515,7 +1515,7 @@ static void openpose_image_inf(VMContext& context) {
       std::vector<size_t> class_results;
       class_results.reserve(NUM_KP);
 
-      for(int i = 0; i < NUM_KP; ++i) {
+      for(size_t i = 0; i < NUM_KP; ++i) {
          size_t* openpose_class_obj = APITools_CreateObject(context, L"API.Onnx.OpenPoseClassification");
          if(openpose_class_obj) {
             const KP& p = kps[i];

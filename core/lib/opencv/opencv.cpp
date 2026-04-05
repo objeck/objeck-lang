@@ -80,7 +80,7 @@ extern "C" {
       cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
       if(capture) {
          cv::Mat image;
-         const bool result = capture->read(image);
+         capture->read(image);
          
          size_t* image_obj = opencv_raw_write(image, context);                  
          APITools_SetObjectValue(context, 0, image_obj);
