@@ -598,7 +598,7 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
 #endif
 }
 
-void ContextAnalyzer::CheckParent(Class* klass, const int depth)
+void ContextAnalyzer::CheckParent(Class* klass, [[maybe_unused]] const int depth)
 {
   Class* parent_klass = klass->GetParent();
   if(parent_klass && (parent_klass->IsInterface() || parent_klass->HasGenerics())) {
@@ -648,7 +648,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
 /*****************************************************************
  * Check for generic classes and backing interfaces
  *****************************************************************/
-void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
+void ContextAnalyzer::AnalyzeGenerics(Class* klass, [[maybe_unused]] const int depth)
 {
   const std::vector<Class*> generic_classes = klass->GetGenericClasses();
   for(size_t i = 0; i < generic_classes.size(); ++i) {
@@ -682,7 +682,7 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
  * Checks for virtual method
  * implementations
  ****************************/
-bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, [[maybe_unused]] const int depth)
 {
   std::wstring error_msg;
 
@@ -799,7 +799,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
  * libraries.
  ****************************/
 void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return,
-                                           bool impl_is_static, bool impl_is_virtual, Method* virtual_method)
+                                           bool impl_is_static, [[maybe_unused]] bool impl_is_virtual, Method* virtual_method)
 {
   // check method types
   if(impl_mthd_type != virtual_method->GetMethodType()) {
@@ -839,7 +839,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
  * are made when compiling shared
  * libraries.
  ****************************/
-bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, const int depth)
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, [[maybe_unused]] const int depth)
 {
   std::wstring error_msg;
 
@@ -7194,7 +7194,7 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int d
 /********************************
  * Encodes a function definition
  ********************************/
-std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, const int depth)
+std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, [[maybe_unused]] const int depth)
 {
   std::wstring encoded_name;
   std::vector<Expression*> expressions = calling_params->GetExpressions();
@@ -8310,7 +8310,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
   return nullptr;
 }
 
-void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth)
+void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, [[maybe_unused]] int depth)
 {
 #ifdef _DEBUG
   Debug(L"variable=|" + entry->GetName() + L"|", char_str->GetLineNumber(), depth + 1);

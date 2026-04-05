@@ -1,6 +1,6 @@
-ARGS=-O3 -Wall -D_X64 -Wno-unused-function -std=c++20 -mavx2 -fno-sanitize-recover
+ARGS=-O3 -flto=auto -Wall -D_X64 -Wno-unused-function -std=c++20 -mavx2 -fno-sanitize-recover
 
-AR=ar
+AR=gcc-ar
 SRC=memory.o
 LIB=../memory.a
 

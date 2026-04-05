@@ -49,6 +49,6 @@ extern "C"
 #endif
 }
 
-static wchar_t** ProcessCommandLine(int &argc, const char* argv[]);
-static void CleanUpCommandLine(const int argc, wchar_t** wide_args);
+wchar_t** ProcessCommandLine(int &argc, const char* argv[]);
+void CleanUpCommandLine(const int argc, wchar_t** wide_args);
 void SetEnv();

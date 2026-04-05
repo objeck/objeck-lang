@@ -404,7 +404,7 @@ namespace frontend {
       return end_line_pos;
     }
 
-    virtual const StatementType GetStatementType() = 0;
+    virtual StatementType GetStatementType() = 0;
   };
 
   /****************************
@@ -588,7 +588,7 @@ namespace frontend {
       return type_of;
     }
 
-    virtual const ExpressionType GetExpressionType() = 0;
+    virtual ExpressionType GetExpressionType() = 0;
   };
 
   /****************************
@@ -609,7 +609,7 @@ namespace frontend {
       return expressions;
     }
 
-    const void SetExpressions(const std::vector<Expression*> &e) {
+    void SetExpressions(const std::vector<Expression*> &e) {
       expressions = e;
     }
 
@@ -665,7 +665,7 @@ namespace frontend {
     ~StaticArray() {
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return STAT_ARY_EXPR;
     }
 
@@ -867,7 +867,7 @@ namespace frontend {
       is_processed = true;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return CHAR_STR_EXPR;
     }
 
@@ -931,7 +931,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return type;
     }
 
@@ -975,7 +975,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return STR_CONCAT_EXPR;
     }
 
@@ -1048,7 +1048,7 @@ namespace frontend {
       id = i;
     }
 
-    const int GetId() {
+    int GetId() {
       return id;
     }
 
@@ -1060,7 +1060,7 @@ namespace frontend {
       return entry;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return VAR_EXPR;
     }
 
@@ -1144,7 +1144,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return BOOLEAN_LIT_EXPR;
     }
 
@@ -1166,7 +1166,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return NIL_LIT_EXPR;
     }
   };
@@ -1190,7 +1190,7 @@ namespace frontend {
       return value;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return CHAR_LIT_EXPR;
     }
   };
@@ -1214,7 +1214,7 @@ namespace frontend {
       return value;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return INT_LIT_EXPR;
     }
   };
@@ -1238,7 +1238,7 @@ namespace frontend {
       return value;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return FLOAT_LIT_EXPR;
     }
   };
@@ -1262,7 +1262,7 @@ namespace frontend {
     }
 
   public:
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return COND_EXPR;
     }
 
@@ -1298,7 +1298,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return RETURN_STMT;
     }
 
@@ -1327,7 +1327,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return LEAVING_STMT;
     }
 
@@ -1352,7 +1352,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return type;
     }
   };
@@ -1379,7 +1379,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return IF_STMT;
     }
 
@@ -1623,7 +1623,7 @@ namespace frontend {
       return label_statements;
     }
 
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return SELECT_STMT;
     }
 
@@ -1668,7 +1668,7 @@ namespace frontend {
       return statements;
     }
 
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return CRITICAL_STMT;
     }
   };
@@ -1720,7 +1720,7 @@ namespace frontend {
       return range_entry;
     }
 
-    const bool IsRange() {
+    bool IsRange() {
       return is_range;
     }
 
@@ -1728,7 +1728,7 @@ namespace frontend {
       is_range = r;
     }
 
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return FOR_STMT;
     }
 
@@ -1775,7 +1775,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return DO_WHILE_STMT;
     }
 
@@ -1805,7 +1805,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return WHILE_STMT;
     }
 
@@ -1834,7 +1834,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return SYSTEM_STMT;
     }
 
@@ -1858,7 +1858,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return SIMPLE_STMT;
     }
 
@@ -1880,7 +1880,7 @@ namespace frontend {
     ~EmptyStatement() {
     }
       
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return EMPTY_STMT;
     }
   };
@@ -1929,7 +1929,7 @@ namespace frontend {
       expression = e;
     }
 
-    virtual const StatementType GetStatementType() {
+    virtual StatementType GetStatementType() {
       return ASSIGN_STMT;
     }
   };
@@ -1952,7 +1952,7 @@ namespace frontend {
     }
 
   public:
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return stmt_type;
     }
 
@@ -2021,7 +2021,7 @@ namespace frontend {
 
     Declaration* Copy();
 
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return DECLARATION_STMT;
     }
   };
@@ -2923,7 +2923,7 @@ namespace frontend {
       is_rouge_return = t;
     }
 
-    const instructions::MemoryType GetRougeReturn() {
+    instructions::MemoryType GetRougeReturn() {
       return is_rouge_return;
     } 
 
@@ -2984,11 +2984,11 @@ namespace frontend {
       concrete_types  = c;
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return METHOD_CALL_EXPR;
     }
 
-    const StatementType GetStatementType() {
+    StatementType GetStatementType() {
       return METHOD_CALL_STMT;
     }
 
@@ -3099,7 +3099,7 @@ namespace frontend {
     ~Lambda() {
     }
 
-    const ExpressionType GetExpressionType() {
+    ExpressionType GetExpressionType() {
       return LAMBDA_EXPR;
     }
 
@@ -3801,7 +3801,7 @@ namespace frontend {
       return error_strings;
     }
 
-    const void SetErrorStrings(std::vector<std::wstring> msgs) {
+    void SetErrorStrings(std::vector<std::wstring> msgs) {
       error_strings = msgs;
     }
     
@@ -3809,7 +3809,7 @@ namespace frontend {
       return warning_strings;
     }
     
-    const void SetWarningStrings(std::vector<std::wstring> msgs) {
+    void SetWarningStrings(std::vector<std::wstring> msgs) {
       warning_strings = msgs;
     }
 

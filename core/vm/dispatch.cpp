@@ -65,7 +65,7 @@ static DispatchResult Handle_LOAD_FLOAT_LIT(DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_LOAD_INT_VAR(DispatchContext& ctx) {
+static DispatchResult Handle_LOAD_INT_VAR([[maybe_unused]] DispatchContext& ctx) {
   // Not used directly in interpreter, placeholder
   return DispatchResult::CONTINUE;
 }
@@ -109,7 +109,7 @@ static DispatchResult Handle_LOAD_INST_MEM(DispatchContext& ctx) {
 //
 // Store operations (10-14)
 //
-static DispatchResult Handle_STOR_INT_VAR(DispatchContext& ctx) {
+static DispatchResult Handle_STOR_INT_VAR([[maybe_unused]] DispatchContext& ctx) {
   // Not used directly in interpreter, placeholder
   return DispatchResult::CONTINUE;
 }
@@ -137,7 +137,7 @@ static DispatchResult Handle_STOR_FUNC_VAR(DispatchContext& ctx) {
 //
 // Copy operations (15-19)
 //
-static DispatchResult Handle_COPY_INT_VAR(DispatchContext& ctx) {
+static DispatchResult Handle_COPY_INT_VAR([[maybe_unused]] DispatchContext& ctx) {
   // Not used directly in interpreter, placeholder
   return DispatchResult::CONTINUE;
 }
@@ -157,7 +157,7 @@ static DispatchResult Handle_COPY_FLOAT_VAR(DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_COPY_FUNC_VAR(DispatchContext& ctx) {
+static DispatchResult Handle_COPY_FUNC_VAR([[maybe_unused]] DispatchContext& ctx) {
   // Not used directly in interpreter, placeholder
   return DispatchResult::CONTINUE;
 }
@@ -654,7 +654,7 @@ static DispatchResult Handle_JMP(DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_LBL(DispatchContext& ctx) {
+static DispatchResult Handle_LBL([[maybe_unused]] DispatchContext& ctx) {
   // Label - no operation needed
   return DispatchResult::CONTINUE;
 }
@@ -791,12 +791,12 @@ static DispatchResult Handle_TRAP_RTRN(DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_SET_SIGNAL(DispatchContext& ctx) {
+static DispatchResult Handle_SET_SIGNAL([[maybe_unused]] DispatchContext& ctx) {
   // Not used in interpreter switch
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_RAISE_SIGNAL(DispatchContext& ctx) {
+static DispatchResult Handle_RAISE_SIGNAL([[maybe_unused]] DispatchContext& ctx) {
   // Not used in interpreter switch
   return DispatchResult::CONTINUE;
 }
@@ -886,27 +886,27 @@ static DispatchResult Handle_CRITICAL_END(DispatchContext& ctx) {
 //
 // Library directives (136-140)
 //
-static DispatchResult Handle_LIB_OBJ_TYPE_OF(DispatchContext& ctx) {
+static DispatchResult Handle_LIB_OBJ_TYPE_OF([[maybe_unused]] DispatchContext& ctx) {
   // Used for library calls, not in interpreter
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_LIB_NEW_OBJ_INST(DispatchContext& ctx) {
+static DispatchResult Handle_LIB_NEW_OBJ_INST([[maybe_unused]] DispatchContext& ctx) {
   // Used for library calls, not in interpreter
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_LIB_MTHD_CALL(DispatchContext& ctx) {
+static DispatchResult Handle_LIB_MTHD_CALL([[maybe_unused]] DispatchContext& ctx) {
   // Used for library calls, not in interpreter
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_LIB_OBJ_INST_CAST(DispatchContext& ctx) {
+static DispatchResult Handle_LIB_OBJ_INST_CAST([[maybe_unused]] DispatchContext& ctx) {
   // Used for library calls, not in interpreter
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_LIB_FUNC_DEF(DispatchContext& ctx) {
+static DispatchResult Handle_LIB_FUNC_DEF([[maybe_unused]] DispatchContext& ctx) {
   // Used for library calls, not in interpreter
   return DispatchResult::CONTINUE;
 }
@@ -932,7 +932,7 @@ static DispatchResult Handle_TRY_END(DispatchContext& ctx) {
 }
 
 //
-static DispatchResult Handle_END_STMTS(DispatchContext& ctx) {
+static DispatchResult Handle_END_STMTS([[maybe_unused]] DispatchContext& ctx) {
   // End of statements marker, no operation
   return DispatchResult::CONTINUE;
 }

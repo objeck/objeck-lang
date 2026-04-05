@@ -31,7 +31,7 @@
 
 #include "parser.h"
 
-bool Parser::IsBasicType(ScannerTokenType type)
+bool Parser::IsBasicType([[maybe_unused]] ScannerTokenType type)
 {
   switch(GetToken()) {
   case TOKEN_BOOLEAN_ID:
@@ -7365,7 +7365,7 @@ Type* Parser::ParseType(int depth)
  * Parses an expression from a text string.
  * Used for string interpolation expressions.
  ****************************/
-Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, int line_num, int line_pos, Class* context_class)
+Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wstring& filename, [[maybe_unused]] int line_num, [[maybe_unused]] int line_pos, Class* context_class)
 {
   // Create scanner on the expression text
   Scanner* expr_scanner = new Scanner(filename, false, text);

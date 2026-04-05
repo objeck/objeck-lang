@@ -6577,7 +6577,7 @@ bool TrapProcessor::DirSetCur(StackProgram* program, size_t* inst, size_t*& op_s
   return true;
 }
 
-bool TrapProcessor::DirCreate(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DirCreate([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t* &op_stack, size_t* &stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -6592,7 +6592,7 @@ bool TrapProcessor::DirCreate(StackProgram* program, size_t* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::DirExists(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DirExists([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t* &op_stack, size_t* &stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -6607,7 +6607,7 @@ bool TrapProcessor::DirExists(StackProgram* program, size_t* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DirList(StackProgram* program, [[maybe_unused]] size_t* inst, size_t* &op_stack, size_t* &stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   array = (size_t*)array[0];
@@ -6640,7 +6640,7 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::DirDelete([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   array = (size_t*)array[0];
@@ -6656,7 +6656,7 @@ bool TrapProcessor::DirDelete(StackProgram* program, size_t* inst, size_t*& op_s
   return true;
 }
 
-bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::SymLinkCreate([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
   size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);
@@ -6690,9 +6690,9 @@ bool TrapProcessor::SymLinkCreate(StackProgram* program, size_t* inst, size_t*& 
   return true;
 }
 
-bool TrapProcessor::SymLinkCopy(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::SymLinkCopy([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
-  const bool recursive = PopInt(op_stack, stack_pos);
+  [[maybe_unused]] const bool recursive = PopInt(op_stack, stack_pos);
   size_t* to = (size_t*)PopInt(op_stack, stack_pos);
   size_t* from = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -6719,7 +6719,7 @@ bool TrapProcessor::SymLinkCopy(StackProgram* program, size_t* inst, size_t*& op
   return true;
 }
 
-bool TrapProcessor::SymLinkLoc(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::SymLinkLoc(StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   array = (size_t*)array[0];
@@ -6742,7 +6742,7 @@ bool TrapProcessor::SymLinkLoc(StackProgram* program, size_t* inst, size_t*& op_
   return true;
 }
 
-bool TrapProcessor::SymLinkExists(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::SymLinkExists([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -6760,7 +6760,7 @@ bool TrapProcessor::SymLinkExists(StackProgram* program, size_t* inst, size_t*& 
 //
 // TODO: implement
 //
-bool TrapProcessor::HardLinkCreate(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::HardLinkCreate([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* link_obj = (size_t*)PopInt(op_stack, stack_pos);
   size_t* target_obj = (size_t*)PopInt(op_stack, stack_pos);

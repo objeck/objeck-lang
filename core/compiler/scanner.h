@@ -465,7 +465,7 @@ class Token {
     filename = token->filename;
   }
 
-  inline const std::wstring GetFileName() {
+  inline std::wstring GetFileName() {
     return filename;
   }
 
@@ -473,11 +473,11 @@ class Token {
     filename = f;
   }
 
-  inline const int GetLineNumber() {
+  inline int GetLineNumber() {
     return line_nbr;
   }
 
-  inline const int GetLinePosition() {
+  inline int GetLinePosition() {
     return line_pos;
   }
 
@@ -509,27 +509,27 @@ class Token {
     ident = i;
   }
 
-  inline const INT64_VALUE GetInt64Lit() {
+  inline INT64_VALUE GetInt64Lit() {
     return kind.int64_lit;
   }
 
-  inline const FLOAT_VALUE GetFloatLit() {
+  inline FLOAT_VALUE GetFloatLit() {
     return kind.double_lit;
   }
 
-  inline const char GetByteLit() {
+  inline char GetByteLit() {
     return kind.byte_lit;
   }
 
-  inline const wchar_t GetCharLit() {
+  inline wchar_t GetCharLit() {
     return kind.char_lit;
   }
 
-  inline const std::wstring GetIdentifier() {
+  inline std::wstring GetIdentifier() {
     return ident;
   }
 
-  inline const ScannerTokenType GetType() {
+  inline ScannerTokenType GetType() {
     return token_type;
   }
 

@@ -1,6 +1,6 @@
-ARGS=-O3 -Wall -Wno-unused-function -std=c++20 -Wno-unused-variable
+ARGS=-O3 -flto=auto -mcpu=native -Wall -Wno-unused-function -std=c++20 -Wno-unused-variable
 
-AR=ar
+AR=gcc-ar
 SRC=jit_common.o
 LIB=arm64/jit_common.a
 

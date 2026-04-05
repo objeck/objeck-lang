@@ -91,7 +91,7 @@ namespace instructions {
 /**
  * Hashes a UTF-8 Unicode string
  */
-static size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
+inline size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
   if(!char_ary || !char_ary_pos) {
     return 0;
   }
@@ -106,7 +106,7 @@ static size_t HashString(const wchar_t* char_ary, const size_t char_ary_pos) {
   return hash;
 }
 
-static size_t HashString(const wchar_t* char_ary) {
+inline size_t HashString(const wchar_t* char_ary) {
   return HashString(char_ary, wcslen(char_ary));
 }
 
@@ -115,7 +115,7 @@ static size_t HashString(const wchar_t* char_ary) {
  * Converts UTF-8 bytes a 
  * Unicode string 
  */
-static bool BytesToUnicode(const std::string &in, std::wstring &out) {    
+inline bool BytesToUnicode(const std::string &in, std::wstring &out) {
 #ifdef _WIN32
   // allocate space
   const int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, nullptr, 0);
@@ -169,7 +169,7 @@ static bool BytesToUnicode(const std::string &in, std::wstring &out) {
   return true;
 }
 
-static std::wstring BytesToUnicode(const std::string &in) {
+inline std::wstring BytesToUnicode(const std::string &in) {
   std::wstring out;
   if(BytesToUnicode(in, out)) {
     return out;
@@ -181,7 +181,7 @@ static std::wstring BytesToUnicode(const std::string &in) {
 /**
  * Converts UTF-8 bytes to a Unicode character
  */
-static bool BytesToCharacter(const std::string &in, wchar_t &out) {
+inline bool BytesToCharacter(const std::string &in, wchar_t &out) {
   std::wstring buffer;
   if(!BytesToUnicode(in, buffer)) {
     return false;
@@ -209,7 +209,7 @@ static bool BytesToCharacter(const std::string &in, wchar_t &out) {
 /**
  * Converts a Unicode character to UTF-8 bytes
  */
-static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
+inline bool UnicodeToBytes(const std::wstring &in, std::string &out) {
 #ifdef _WIN32
   // allocate space
   const int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, nullptr, 0, nullptr, nullptr);
@@ -259,7 +259,7 @@ static bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   return true;
 }
 
-static std::string UnicodeToBytes(const std::wstring &in) {
+inline std::string UnicodeToBytes(const std::wstring &in) {
   std::string out;
   if(UnicodeToBytes(in, out)) {
     return out;
@@ -271,7 +271,7 @@ static std::string UnicodeToBytes(const std::wstring &in) {
 /**
  * Converts a Unicode character to UTF-8 bytes
  */
-static bool CharacterToBytes(wchar_t in, std::string &out) {
+inline bool CharacterToBytes(wchar_t in, std::string &out) {
   if(in == L'\0') {
     return true;
   }
@@ -689,7 +689,7 @@ struct CommandLineParseResult {
  *   - Boolean flags: --flag (stored as empty string)
  *   - Quoted values: --option 'value with spaces'
  */
-static CommandLineParseResult ParseCommandLine(int argc, const char* argv[]) {
+inline CommandLineParseResult ParseCommandLine(int argc, const char* argv[]) {
   CommandLineParseResult result;
 
   // Reconstruct command line
@@ -830,7 +830,7 @@ static CommandLineParseResult ParseCommandLine(int argc, const char* argv[]) {
  * @deprecated Use ParseCommandLine() instead for enhanced GNU-style syntax support
  * Note: Function name contains typo (Commnad instead of Command) but kept for compatibility
  */
-static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, const char* argv[], std::wstring &path_string) {
+inline std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, const char* argv[], std::wstring &path_string) {
   CommandLineParseResult result = ParseCommandLine(argc, argv);
   path_string = result.reconstructed_path;
 
@@ -845,7 +845,7 @@ static std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, con
 /**
  * Check if a command line argument exists
  */
-static bool HasCommandLineArgument(
+inline bool HasCommandLineArgument(
     const std::map<const std::wstring, std::wstring>& args,
     const std::wstring& key) {
   return args.find(key) != args.end();
@@ -854,7 +854,7 @@ static bool HasCommandLineArgument(
 /**
  * Get command line argument with default value
  */
-static std::wstring GetCommandLineArgument(
+inline std::wstring GetCommandLineArgument(
     const std::map<const std::wstring, std::wstring>& args,
     const std::wstring& key,
     const std::wstring& default_value = L"") {
@@ -865,7 +865,7 @@ static std::wstring GetCommandLineArgument(
 /**
  * Check if argument is a boolean flag (present with empty value)
  */
-static bool IsCommandLineFlag(
+inline bool IsCommandLineFlag(
     const std::map<const std::wstring, std::wstring>& args,
     const std::wstring& key) {
   auto found = args.find(key);
@@ -876,7 +876,7 @@ static bool IsCommandLineFlag(
  * Get command line argument checking multiple aliases (for short/long form support)
  * Returns the value of the first matching alias, or default_value if none found
  */
-static std::wstring GetCommandLineArgumentWithAliases(
+inline std::wstring GetCommandLineArgumentWithAliases(
     const std::map<const std::wstring, std::wstring>& args,
     const std::vector<std::wstring>& aliases,
     const std::wstring& default_value = L"") {
@@ -892,7 +892,7 @@ static std::wstring GetCommandLineArgumentWithAliases(
 /**
  * Check if any of the provided aliases exists in arguments
  */
-static bool HasCommandLineArgumentWithAliases(
+inline bool HasCommandLineArgumentWithAliases(
     const std::map<const std::wstring, std::wstring>& args,
     const std::vector<std::wstring>& aliases) {
   for(const auto& alias : aliases) {
@@ -903,7 +903,7 @@ static bool HasCommandLineArgumentWithAliases(
   return false;
 }
 
-static std::wstring GetLibraryPath() {
+inline std::wstring GetLibraryPath() {
   std::wstring path;
 
 #ifdef _WIN32
@@ -940,7 +940,7 @@ static std::wstring GetLibraryPath() {
 /**
  * Load a UTF-8 text into memory.
  */
-static wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size)
+inline wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size)
 {
   char* buffer;
   const std::string open_filename = UnicodeToBytes(filename);

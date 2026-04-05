@@ -36,15 +36,15 @@
 
 extern std::wofstream* logger;
 
-static void OpenLogger(const std::string name) {
+inline void OpenLogger(const std::string name) {
   logger = new std::wofstream(name);
 }
 
-static std::wostream& GetLogger() {
+inline std::wostream& GetLogger() {
   return *logger;
 }
 
-static void CloseLogger() {
+inline void CloseLogger() {
   if(logger) {
     logger->close();
     delete logger;

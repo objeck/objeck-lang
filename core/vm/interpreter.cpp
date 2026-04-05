@@ -1280,7 +1280,7 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, size_t*
   PushInt(result, op_stack, stack_pos);
 }
 
-void StackInterpreter::AsyncMthdCall(size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::AsyncMthdCall([[maybe_unused]] size_t* &op_stack, size_t* &stack_pos)
 {
   size_t* instance = (size_t*)(*stack_frame)->mem[0];
   size_t* param = (size_t*)(*stack_frame)->mem[1];
@@ -1320,7 +1320,7 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, size_t* &stack_pos)
   ProcessAsyncMethodCall(called, param);
 }
 
-void StackInterpreter::ThreadJoin(size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &stack_pos)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: THREAD_JOIN; call_pos=" << (*call_stack_pos) << std::endl;
@@ -1364,7 +1364,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, size_t* &stack_pos)
 #endif
 }
 
-void StackInterpreter::ThreadMutex(size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::ThreadMutex([[maybe_unused]] size_t* &op_stack, size_t* &stack_pos)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: THREAD_MUTEX; call_pos=" << (*call_stack_pos) << std::endl;
@@ -1985,7 +1985,7 @@ __declspec(noinline) StackMethod* StackInterpreter::ResolveVirtualMethod(
 StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMethod(
 #endif
     StackMethod* concrete_call, size_t* instance, StackInstr* instr,
-    StackInstr* &instrs, long &ip, size_t* &stack_pos)
+    [[maybe_unused]] StackInstr* &instrs, [[maybe_unused]] long &ip, size_t* &stack_pos)
 {
   StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
   if(!concrete_class) {
@@ -2089,7 +2089,7 @@ void StackInterpreter::ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &
 /********************************
  * JIT-only dynamic method call (dispatched via DYN_MTHD_CALL_JIT opcode).
  ********************************/
-void StackInterpreter::ProcessJitOnlyDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::ProcessJitOnlyDynamicMethodCall([[maybe_unused]] StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   (*stack_frame)->ip = ip;
   PushFrame((*stack_frame));
@@ -2486,7 +2486,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
  ********************************/
 
 typedef void (*ext_load_def)(VMContext& callbacks);
-void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
+void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: shared LIBRARY_LOAD; call_pos=" << (*call_stack_pos) << std::endl;
@@ -2631,7 +2631,7 @@ void StackInterpreter::SharedLibraryLoad(StackInstr* instr)
 }
 
 typedef void (*ext_unload_def)();
-void StackInterpreter::SharedLibraryUnload(StackInstr* instr)
+void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: shared library_UNLOAD; call_pos=" << (*call_stack_pos) << std::endl;
@@ -2679,7 +2679,7 @@ void StackInterpreter::SharedLibraryUnload(StackInstr* instr)
 }
 
 typedef void (*lib_func_def) (VMContext& callbacks);
-void StackInterpreter::SharedLibraryCall(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos)
+void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, size_t* &op_stack, size_t* &stack_pos)
 {
   size_t* instance = (size_t*)(*stack_frame)->mem[0];
   size_t* str_obj = (size_t*)(*stack_frame)->mem[1];
