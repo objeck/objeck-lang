@@ -61,7 +61,7 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
-**v2026.4.1** 🏃🏾‍♀️‍➡️
+**v2026.4.1** 🏃🏾‍♀️‍➡️🏃🏻‍♀️‍➡️
   * **Debug Adapter Protocol (DAP)** — VS Code debugging with conditional breakpoints, ANSI color output, and readline support
   * **3.3x binarytrees speedup** — young-gen bump allocator, direct JIT-to-JIT calling, atomic CAS mark bits, auto-JIT dispatch fix
   * **MTHD_CALL JIT whitelist** (x64 + ARM64) — methods containing method calls can now be JIT-compiled and auto-JIT'd
@@ -74,7 +74,7 @@ obc hello && obr hello
   * Phi-3 Vision multimodal inference — 3-model pipeline with FP16 and DirectML/CUDA support
   * Unified ONNX build system — single source with preprocessor-selected providers (DML, CUDA, QNN, CoreML)
   * Hash auto-resize at 75% load, Vector in-place Remove, JSON escape/keyword fixes
-  * Fixed constructor early return crash, CSV.Median, CSV.Average, URL encoding, Response.ToString nil check
+  * Fixed the constructor early return crash, CSV.Median, CSV.Average, URL encoding, Response.ToString nil check
   * [Performance details and benchmarks →](docs/performance.md)
 
 **v2026.2.1** 
