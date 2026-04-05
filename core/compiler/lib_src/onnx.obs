@@ -6,9 +6,7 @@
 use Collection, System.API, API.OpenCV, Data.JSON, System.IO.Filesystem;
 
 #~
-Open Neural Network Exchange (ONNX) runtime support (-lib onnx).
-Provides inference sessions for YOLO, ResNet, DeepLab, OpenPose, Phi-3 text, and Phi-3 Vision.
-Supports CUDA, DirectML, CoreML, and QNN execution providers.
+ONNX runtime inference (-lib onnx)
 ~#
 bundle API.Onnx {
 	class : private : Proxy {
