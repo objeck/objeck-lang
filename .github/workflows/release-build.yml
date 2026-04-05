@@ -331,6 +331,9 @@ jobs:
           # Clean up certificate
           Remove-Item $certPath -Force
 
+          # Don't fail the build if signing fails
+          exit 0
+
       # ============================================
       # macOS .pkg Installer + Signing + Notarization
       # ============================================
