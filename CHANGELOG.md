@@ -2,7 +2,14 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.3.0] - Upcoming
+## [v2026.4.1] - 2026-04-05
+
+### Changes
+- Fixed ONNX API documentation: trimmed bundle-level doc comment that was dumping code examples into the API page description
+- Fixed release pipeline: macOS .pkg staple non-fatal, Windows ARM64 signing skip (cross-compiled), temp directory creation
+- Rebuilt libraries with v2026.4.1 version
+
+## [v2026.4.0] - 2026-04-05
 
 ### New Features
 - **Debug Adapter Protocol (DAP)**: Full VS Code debugging support with breakpoints, stepping, variable inspection, and stack traces
