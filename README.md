@@ -61,7 +61,7 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
-**v2026.4.1** (released 2026-04-05)
+**v2026.4.1** ✅
   * **Debug Adapter Protocol (DAP)** — VS Code debugging with conditional breakpoints, ANSI color output, and readline support
   * **3.3x binarytrees speedup** — young-gen bump allocator, direct JIT-to-JIT calling, atomic CAS mark bits, auto-JIT dispatch fix
   * **MTHD_CALL JIT whitelist** (x64 + ARM64) — methods containing method calls can now be JIT-compiled and auto-JIT'd
@@ -77,7 +77,7 @@ obc hello && obr hello
   * Fixed constructor early return crash, CSV.Median, CSV.Average, URL encoding, Response.ToString nil check
   * [Performance details and benchmarks →](docs/performance.md)
 
-**v2026.2.1** ✅
+**v2026.2.1** 
   * New 'try/otherwise' error handling framework
   * Fixed emoji and supplementary character output on all platforms (stdout and stderr)
   * Migrated Windows installer from VDPROJ to WiX v4 — MSIs now built in CI without Visual Studio
@@ -98,7 +98,7 @@ obc hello && obr hello
   * 10 new performance benchmarks with measurement tooling
   * [Performance details and benchmarks →](docs/performance.md)
 
-**v2026.2.0** ✅
+**v2026.2.0** 
   * Memory manager optimized with O(1) lookups and in-place sweeping
   * ARM64 JIT: 11 optimizations including char arrays, register targeting, multiply-by-constant
   * x64 JIT instruction encoding optimizations with dynamic backpatching
