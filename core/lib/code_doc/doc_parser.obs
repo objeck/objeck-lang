@@ -271,7 +271,7 @@ class SnippetParser {
 			};
 		}
 		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
-			if(<>@class_inf_block->AddFunction(block) & <>block->StartsWith("#~~")) {
+			if(<>@class_inf_block->AddFunction(block) & <>block->StartsWith("#~~") & <>block->Has("@hidden")) {
 				"ERROR: '{$block}'"->ErrorLine();
 			};
 		};
