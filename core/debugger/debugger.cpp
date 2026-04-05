@@ -1763,7 +1763,7 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
     case QUIT_COMMAND:
       ClearBreaks();
       ClearProgram();
-      std::wcout << L"\nGoodbye..." << std::endl;
+      std::wcout << C(CLR_RESET) << L"\nGoodbye..." << std::endl;
       exit(0);
       break;
 
