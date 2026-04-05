@@ -25,6 +25,8 @@ STAGING_DIR="$(mktemp -d)/objeck-pkg-root"
 SCRIPTS_DIR="$(mktemp -d)/objeck-pkg-scripts"
 DIST_DIR="$(mktemp -d)/objeck-pkg-dist"
 
+mkdir -p "$STAGING_DIR" "$SCRIPTS_DIR" "$DIST_DIR"
+
 if [ ! -d "$DEPLOY_DIR/bin" ]; then
   echo "Error: deploy/bin not found. Run deploy_macos_arm64.sh first."
   exit 1
