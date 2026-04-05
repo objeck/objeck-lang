@@ -2,6 +2,49 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.3.0] - Upcoming
+
+### New Features
+- **Debug Adapter Protocol (DAP)**: Full VS Code debugging support with breakpoints, stepping, variable inspection, and stack traces
+- **Conditional Breakpoints**: Break on expressions (e.g., `b file.obs:30 when count > 5`)
+- **Debugger ANSI Colors**: Syntax-highlighted source listing with color-coded breakpoints, current line, and line numbers
+- **Readline Support**: Command history and line editing in the interactive debugger
+- **macOS .pkg Installer**: Signed and notarized native package installer with PATH auto-configuration
+- **SSE Streaming**: Server-Sent Events support for HTTP client/server
+- **ODBC BigInt & Connection Strings**: Extended database connectivity with BigInt type and connection string authentication
+
+### Performance Optimizations
+- **3.3x binarytrees speedup**: Young-gen bump allocator, direct JIT-to-JIT calling, atomic CAS mark bits
+- **MTHD_CALL JIT whitelist** (x64 + ARM64): Methods containing method calls can now be JIT-compiled
+- **GC thread safety**: Memory barriers in PushFrame/PopFrame paired with acquire fences in GC marking — fixes intermittent threading segfaults on Linux
+- **JIT instance method inlining fix**: Save/restore INSTANCE_MEM around inlined code
+
+### Networking & I/O
+- Socket default receive timeouts to prevent hung connections
+- Fixed ReadBytes partial read bug (short reads no longer silently truncated)
+- HTTP client/server stack hardening with loopback regression tests
+
+### Libraries
+- **OpenCV**: Contours, VideoWriter, transforms, normalization, 15 new image processing functions
+- **ODBC**: Transactions, error handling, schema discovery, BigInt support
+- **ONNX**: Phi-3 Vision multimodal inference, unified build system (DML/CUDA/QNN/CoreML)
+- **Collections**: Hash auto-resize at 75% load, Vector in-place Remove
+- **JSON**: Escape and keyword parsing fixes
+
+### CI/CD & Infrastructure
+- **Apple code signing**: Developer ID Application + Installer certificates with notarization
+- **Windows code signing**: Sectigo certificate with SHA-256 timestamping
+- CI library rebuild on all platforms (not just bootstrap)
+- Threading test retry logic for CI runner timing sensitivity
+- 14 debugger regression tests with expect-based automation
+- HTTP loopback and network buffer regression tests
+
+### Bug Fixes
+- Fixed constructor early return crash
+- Fixed CSV.Median, CSV.Average, URL encoding, Response.ToString nil check
+- Fixed debugger list command corrupting Windows console on Unicode source files
+- Fixed OpenCV Xcode header paths (ABI namespace mismatch with Homebrew)
+
 ## [v2026.2.1] - 2026-02-26
 
 ### New Features
