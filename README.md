@@ -59,7 +59,7 @@ obc hello && obr hello
 
 ## What's New
 
-**Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more. ([Source](programs/web-playground/))
+**Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
 **v2026.4.0** (upcoming)
   * **Debug Adapter Protocol (DAP)** — VS Code debugging with conditional breakpoints, ANSI color output, and readline support
