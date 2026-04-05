@@ -70,15 +70,15 @@ namespace frontend {
     virtual ~ParseNode() {
     }
     
-    inline const std::wstring GetFileName() {
+    inline std::wstring GetFileName() {
       return file_name;
     }
 
-    inline const int GetLineNumber() {
+    inline int GetLineNumber() {
       return line_num;
     }
 
-    inline const int GetLinePosition() {
+    inline int GetLinePosition() {
       return line_pos;
     }
 
@@ -220,7 +220,7 @@ namespace frontend {
       lib_klass_cache_ptr = nullptr;
     }
 
-    const EntryType GetType() {
+    EntryType GetType() {
       return type;
     }
 
@@ -318,7 +318,7 @@ namespace frontend {
       lib_klass_cache_ptr = nullptr;
     }
     
-    const int GetDimension() {
+    int GetDimension() {
       return dimension;
     }
 
@@ -354,11 +354,11 @@ namespace frontend {
       return file_name;
     }
 
-    const int GetLineNumber() {
+    int GetLineNumber() {
       return line_num;
     }
 
-    const int GetLinePosition() {
+    int GetLinePosition() {
       return line_pos;
     }
   };

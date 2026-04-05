@@ -1,6 +1,6 @@
-ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-deprecated-declarations -Wunused-variable -fno-sanitize-recover
+ARGS=-O3 -flto=auto -D_X64 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-deprecated-declarations -Wunused-variable -fno-sanitize-recover
 
-AR=ar
+AR=gcc-ar
 COMMON_LIBS=jit_common.a
 COMMON_PATH=..
 SRC=../jit_common.o jit_amd_lp64.o

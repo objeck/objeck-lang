@@ -799,7 +799,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
   // --- Sweep old generation (major GC only) ---
   size_t dead_old_count = 0;
-  const size_t prev_old_size = old_generation.size();
+  [[maybe_unused]] const size_t prev_old_size = old_generation.size();
 
   if(!minor_gc_mode.load(std::memory_order_acquire)) {
     // Major GC: free dead old-gen objects
@@ -942,9 +942,9 @@ void* MemoryManager::CollectMemory(void* arg)
 }
 
 #ifdef _WIN32
-unsigned int MemoryManager::CheckStatic(void* arg)
+unsigned int MemoryManager::CheckStatic([[maybe_unused]] void* arg)
 #else
-void* MemoryManager::CheckStatic(void* arg)
+void* MemoryManager::CheckStatic([[maybe_unused]] void* arg)
 #endif
 {
   StackClass** clss = prgm->GetClasses();
@@ -998,9 +998,9 @@ void* MemoryManager::CheckStack(void* arg)
 }
 
 #ifdef _WIN32
-unsigned int MemoryManager::CheckJitRoots(void* arg)
+unsigned int MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 #else
-void* MemoryManager::CheckJitRoots(void* arg)
+void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 #endif
 {
 #ifndef _GC_SERIAL
@@ -1224,9 +1224,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 }
 
 #ifdef _WIN32
-unsigned int MemoryManager::CheckPdaRoots(void* arg)
+unsigned int MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
 #else
-void* MemoryManager::CheckPdaRoots(void* arg)
+void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
 #endif
 {
   std::vector<StackFrame*> frames;

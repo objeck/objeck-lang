@@ -999,7 +999,7 @@ void JitAmd64::ProcessInstructions() {
   }
 }
 
-void Runtime::JitAmd64::ProcessNot(StackInstr* instr)
+void Runtime::JitAmd64::ProcessNot([[maybe_unused]] StackInstr* instr)
 {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1412,7 +1412,7 @@ void JitAmd64::ProcessStoreFloatElement(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitAmd64::ProcessFloatToInt(StackInstr* instr) {
+void JitAmd64::ProcessFloatToInt([[maybe_unused]] StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1441,7 +1441,7 @@ void JitAmd64::ProcessFloatToInt(StackInstr* instr) {
   left = nullptr;
 }
 
-void JitAmd64::ProcessIntToFloat(StackInstr* instr) {
+void JitAmd64::ProcessIntToFloat([[maybe_unused]] StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -2455,7 +2455,7 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
   left = nullptr;
 }
 
-void JitAmd64::ProcessFloatSquareRoot(StackInstr* instruction) {
+void JitAmd64::ProcessFloatSquareRoot([[maybe_unused]] StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
@@ -2473,7 +2473,7 @@ void JitAmd64::ProcessFloatSquareRoot(StackInstr* instruction) {
   left = nullptr;
 }
 
-void JitAmd64::ProcessFloatRound(StackInstr* instruction, wchar_t mode) {
+void JitAmd64::ProcessFloatRound([[maybe_unused]] StackInstr* instruction, wchar_t mode) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
@@ -5413,7 +5413,7 @@ long JitAmd64::ComputeInlineLocalSpace(StackMethod* callee) {
   return space;
 }
 
-void JitAmd64::ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, long& caller_instr_index) {
+void JitAmd64::ProcessInlineMethod(StackMethod* callee, [[maybe_unused]] StackInstr* call_instr, [[maybe_unused]] long& caller_instr_index) {
 #ifdef _DEBUG_JIT
   std::wcout << L"=== INLINE: method='" << callee->GetName() << L"' ===" << std::endl;
 #endif

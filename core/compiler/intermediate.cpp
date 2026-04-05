@@ -3735,7 +3735,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
  * expression and supports
  * dynamic functions.
  ****************************/
-void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool is_variable, bool is_closure) {
+void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool is_variable, [[maybe_unused]] bool is_closure) {
   // find end of nested call
   if(method_call->IsFunctionDefinition()) {
     if(method_call->GetMethod()) {

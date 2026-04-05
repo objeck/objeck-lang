@@ -32,10 +32,21 @@ namespace Runtime {
 
   static void ColorInit() {
     // Respect NO_COLOR convention (https://no-color.org)
+#ifdef _WIN32
+    char* no_color = nullptr;
+    size_t len = 0;
+    _dupenv_s(&no_color, &len, "NO_COLOR");
+    if(no_color) {
+      free(no_color);
+      color_enabled = false;
+      return;
+    }
+#else
     if(getenv("NO_COLOR")) {
       color_enabled = false;
       return;
     }
+#endif
 
 #ifdef _WIN32
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);

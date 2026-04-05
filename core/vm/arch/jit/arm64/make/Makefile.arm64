@@ -1,6 +1,6 @@
-ARGS=-O3 -D_ARM64 -Wall -Wno-unused-function -std=c++20 -Wno-deprecated-declarations
+ARGS=-O3 -flto=auto -mcpu=native -D_ARM64 -Wall -Wno-unused-function -std=c++20 -Wno-deprecated-declarations
 
-AR=ar
+AR=gcc-ar
 COMMON_LIBS=jit_common.a
 COMMON_PATH=..
 SRC=../jit_common.o jit_arm_a64.o

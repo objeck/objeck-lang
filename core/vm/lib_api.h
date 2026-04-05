@@ -62,7 +62,7 @@ struct VMContext {
 //
 // Gets the number of parameters being passes
 //
-const size_t APITools_GetArgumentCount(VMContext& context) {
+size_t APITools_GetArgumentCount(VMContext& context) {
   if(context.data_array) {
     return context.data_array[0];
   }
