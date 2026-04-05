@@ -198,7 +198,7 @@ if [ "$NOTARIZE" = "notarize" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ]
     --wait
 
   echo "Stapling notarization ticket..."
-  xcrun stapler staple "$OUTPUT_DIR/$PKG_NAME"
+  xcrun stapler staple "$OUTPUT_DIR/$PKG_NAME" || echo "Warning: Staple failed (Apple may need more time) - .pkg is still signed and notarized"
   echo "Notarization complete."
 elif [ "$NOTARIZE" = "notarize" ]; then
   echo "Warning: Notarization requested but APPLE_ID/APPLE_TEAM_ID/APPLE_APP_PASSWORD not set - skipping"

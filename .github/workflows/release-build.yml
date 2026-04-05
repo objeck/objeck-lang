@@ -287,7 +287,7 @@ jobs:
       # ============================================
 
       - name: Sign release artifacts (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
         shell: pwsh
         env:
           CODESIGN_CERT_BASE64: ${{ secrets.CODESIGN_CERT_BASE64 }}
