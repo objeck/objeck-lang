@@ -1,0 +1,67 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Objeck: Compile",
+      "type": "shell",
+      "command": "${workspaceFolder}/core/release/deploy-x64/bin/obc.exe",
+      "args": [
+        "-src", "${file}",
+        "-dest", "${fileDirname}/${fileBasenameNoExtension}.obe"
+      ],
+      "options": {
+        "env": {
+          "OBJECK_LIB_PATH": "${workspaceFolder}/core/release/deploy-x64/lib"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^(.+):\\((\\d+),(\\d+)\\):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        }
+      }
+    },
+    {
+      "label": "Objeck: Compile (Debug)",
+      "type": "shell",
+      "command": "${workspaceFolder}/core/release/deploy-x64/bin/obc.exe",
+      "args": [
+        "-src", "${file}",
+        "-dest", "${fileDirname}/${fileBasenameNoExtension}.obe",
+        "-debug"
+      ],
+      "options": {
+        "env": {
+          "OBJECK_LIB_PATH": "${workspaceFolder}/core/release/deploy-x64/lib"
+        }
+      },
+      "group": "build",
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^(.+):\\((\\d+),(\\d+)\\):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        }
+      }
+    },
+    {
+      "label": "Objeck: Run",
+      "type": "shell",
+      "command": "${workspaceFolder}/core/release/deploy-x64/bin/obr.exe",
+      "args": [
+        "${fileDirname}/${fileBasenameNoExtension}.obe"
+      ],
+      "group": "test",
+      "dependsOn": "Objeck: Compile"
+    }
+  ]
+}
