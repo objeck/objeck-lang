@@ -195,9 +195,9 @@ class ParserTests {
 
 		xml := "<root xmlns:ns=\"http://example.com\"><ns:child attr=\"val\"/></root>";
 		parser := XmlParser->New(xml);
-		parser->Parse();
+		Assert("xml parse", parser->Parse());
 		doc := parser->GetRoot();
-		Assert("xml parse", doc <> Nil);
+		Assert("xml root not nil", doc <> Nil);
 		if(doc <> Nil) {
 			children := doc->GetChildren();
 			if(children <> Nil & children->Size() > 0) {
@@ -223,9 +223,9 @@ class ParserTests {
 
 		xml := "<root><item id=\"1\">Hello</item><item id=\"2\">World</item></root>";
 		parser := XmlParser->New(xml);
-		parser->Parse();
+		Assert("xml basic parse", parser->Parse());
 		doc := parser->GetRoot();
-		Assert("xml basic parse", doc <> Nil);
+		Assert("xml basic root not nil", doc <> Nil);
 		if(doc <> Nil) {
 			children := doc->GetChildren();
 			Assert("xml has children", children <> Nil & children->Size() = 2);
