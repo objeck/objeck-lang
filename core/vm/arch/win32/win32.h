@@ -293,12 +293,12 @@ class File {
 class Pipe {
 public:
   static bool Create(const char* name, HANDLE& pipe) {
-    pipe = CreateNamedPipe(name, 
-                           PIPE_ACCESS_DUPLEX, 
-                           PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, 
+    pipe = CreateNamedPipe(name,
+                           PIPE_ACCESS_DUPLEX,
+                           PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
                            PIPE_UNLIMITED_INSTANCES,
-                           4096, // output buffer size
-                           4096, // input buffer size
+                           65536, // output buffer size
+                           65536, // input buffer size
                            0, 
                            nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
@@ -387,30 +387,18 @@ public:
 
   static std::string ReadString(HANDLE pipe) {
     char buffer[MID_BUFFER_MAX];
-    size_t buffer_index = 0;
+    DWORD read = 0;
 
-    char value;
-    bool done = false;
-    DWORD read;
-
-    do {
-      if(ReadFile(pipe, &value, 1, &read, nullptr)) {
-        done = true;
+    if(ReadFile(pipe, buffer, MID_BUFFER_MAX - 1, &read, nullptr) && read > 0) {
+      // trim trailing \r\n
+      while(read > 0 && (buffer[read - 1] == '\r' || buffer[read - 1] == '\n')) {
+        read--;
       }
-      else if(read == 1 && value != '\0' && value != '\r' && value != '\n') {
-        buffer[buffer_index++] = value;
-      }
-      else {
-        done = true;
-      }
-    }
-    while(!done && buffer_index < MID_BUFFER_MAX - 1);    
-    buffer[buffer_index] = '\0';
-
-    if(value == '\r') {
-      ReadFile(pipe, &value, 1, &read, nullptr);
+      buffer[read] = '\0';
+      return buffer;
     }
 
+    buffer[0] = '\0';
     return buffer;
   }
 

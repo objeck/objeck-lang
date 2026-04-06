@@ -44,7 +44,33 @@
 // Auto-JIT: methods called more than threshold times are JIT compiled.
 // Pre-scan validation (CanJitInstruction) runs before resource allocation,
 // so unsupported instructions cause immediate return false with no corruption.
-#define JIT_AUTO_THRESHOLD 10
+// Override with OBJECK_JIT_THRESHOLD env var (e.g. 999999999 to disable).
+#define JIT_AUTO_THRESHOLD_DEFAULT 10
+
+inline long GetJitAutoThreshold() {
+  static long threshold = -1;
+  if(threshold < 0) {
+    threshold = JIT_AUTO_THRESHOLD_DEFAULT;
+#ifdef _WIN32
+    char* env_val = nullptr;
+    size_t len = 0;
+    if(_dupenv_s(&env_val, &len, "OBJECK_JIT_THRESHOLD") == 0 && env_val) {
+      threshold = std::atol(env_val);
+      if(threshold <= 0) threshold = JIT_AUTO_THRESHOLD_DEFAULT;
+      free(env_val);
+    }
+#else
+    const char* env_val = std::getenv("OBJECK_JIT_THRESHOLD");
+    if(env_val) {
+      threshold = std::atol(env_val);
+      if(threshold <= 0) threshold = JIT_AUTO_THRESHOLD_DEFAULT;
+    }
+#endif
+  }
+  return threshold;
+}
+
+#define JIT_AUTO_THRESHOLD GetJitAutoThreshold()
 
 class JitCompiler {
 protected:
