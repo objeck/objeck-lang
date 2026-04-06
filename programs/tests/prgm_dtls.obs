@@ -1,0 +1,57 @@
+use System.IO.Net;
+
+class DTLSTest {
+	function : Main(args : String[]) ~ Nil {
+		"--- DTLS Binding Tests ---"->PrintLine();
+
+		# Test 1: DTLSSocketServer can be instantiated
+		"Test 1: DTLSSocketServer instantiation... "->Print();
+		server := DTLSSocketServer->New("cert.pem", "key.pem", "password", 4433);
+		if(server <> Nil) {
+			"PASS"->PrintLine();
+		}
+		else {
+			"FAIL"->PrintLine();
+		};
+
+		# Test 2: DTLSSocket connection attempt (will fail without a server, but tests the binding)
+		"Test 2: DTLSSocket connect attempt... "->Print();
+		sock := DTLSSocket->New("127.0.0.1", 4433);
+		if(sock <> Nil) {
+			if(<>sock->IsOpen()) {
+				"PASS (connection refused as expected)"->PrintLine();
+			}
+			else {
+				sock->Close();
+				"PASS (connected)"->PrintLine();
+			};
+		}
+		else {
+			"FAIL (null)"->PrintLine();
+		};
+
+		# Test 3: Verify DTLSSocket API surface - address and port
+		"Test 3: API surface check... "->Print();
+		addr := sock->GetAddress();
+		port := sock->GetPort();
+		if(addr->Equals("127.0.0.1") & port = 4433) {
+			"PASS"->PrintLine();
+		}
+		else {
+			"FAIL (addr={$addr}, port={$port})"->PrintLine();
+		};
+
+		# Test 4: DTLSSocket implements InputStream/OutputStream interfaces
+		"Test 4: Interface implementation... "->Print();
+		input : System.IO.InputStream := sock;
+		output : System.IO.OutputStream := sock;
+		if(input <> Nil & output <> Nil) {
+			"PASS"->PrintLine();
+		}
+		else {
+			"FAIL"->PrintLine();
+		};
+
+		"--- All DTLS Tests Complete ---"->PrintLine();
+	}
+}

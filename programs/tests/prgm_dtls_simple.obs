@@ -1,0 +1,23 @@
+use System.IO.Net;
+
+class DTLSSimpleTest {
+	function : Main(args : String[]) ~ Nil {
+		"Test 1: Class reference"->PrintLine();
+		server := DTLSSocketServer->New("cert.pem", "key.pem", "pass", 4433);
+		"Test 2: Server created"->PrintLine();
+
+		sock := DTLSSocket->New("127.0.0.1", 4433);
+		"Test 3: Socket created"->PrintLine();
+
+		open := sock->IsOpen();
+		"Test 4: IsOpen={$open}"->PrintLine();
+
+		addr := sock->GetAddress();
+		"Test 5: Address={$addr}"->PrintLine();
+
+		port := sock->GetPort();
+		"Test 6: Port={$port}"->PrintLine();
+
+		"Done"->PrintLine();
+	}
+}
