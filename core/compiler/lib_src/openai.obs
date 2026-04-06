@@ -5629,6 +5629,121 @@ session->Close();
 	}
 
 	#~
+	OpenAI model name constants
+	~#
+	class Models {
+		function : native : GPT_4O() ~ String {
+			return "gpt-4o";
+		}
+
+		function : native : GPT_4O_MINI() ~ String {
+			return "gpt-4o-mini";
+		}
+
+		function : native : GPT_4_1() ~ String {
+			return "gpt-4.1";
+		}
+
+		function : native : GPT_4_1_MINI() ~ String {
+			return "gpt-4.1-mini";
+		}
+
+		function : native : GPT_4_1_NANO() ~ String {
+			return "gpt-4.1-nano";
+		}
+
+		function : native : O3() ~ String {
+			return "o3";
+		}
+
+		function : native : O3_MINI() ~ String {
+			return "o3-mini";
+		}
+
+		function : native : O4_MINI() ~ String {
+			return "o4-mini";
+		}
+
+		function : native : TEXT_EMBEDDING_3_SMALL() ~ String {
+			return "text-embedding-3-small";
+		}
+
+		function : native : TEXT_EMBEDDING_3_LARGE() ~ String {
+			return "text-embedding-3-large";
+		}
+	}
+
+	#~
+	OpenAI text embeddings API.
+
+```
+token := EndPoint->GetApiKey();
+embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), token);
+```
+	~#
+	class Embedding from EndPoint {
+		#~
+		Creates an embedding for a single input string.
+		@param input text to embed
+		@param model embedding model name
+		@param token API key
+		@return float array of embedding values, or Nil on error
+		~#
+		function : Create(input : String, model : String, token : String) ~ Float[] {
+			return Create(input, model, -1, token);
+		}
+
+		#~
+		Creates an embedding with custom dimensions.
+		@param input text to embed
+		@param model embedding model name
+		@param dimensions output dimensions (-1 for default)
+		@param token API key
+		@return float array of embedding values, or Nil on error
+		~#
+		function : Create(input : String, model : String, dimensions : Int, token : String) ~ Float[] {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("input", input);
+			query_json->Insert("model", model);
+			if(dimensions > 0) {
+				query_json->Insert("dimensions", dimensions);
+			};
+
+			data := query_json->ToFormattedString()->ToByteArray();
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/embeddings"), data, "application/json", headers);
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json <> Nil) {
+					data_json := response_json->Get("data");
+					if(data_json <> Nil) {
+						first := data_json->Get(0);
+						if(first <> Nil) {
+							embedding_json := first->Get("embedding");
+							if(embedding_json <> Nil) {
+								size := embedding_json->Size();
+								result := Float->New[size];
+								each(i : size) {
+									result[i] := embedding_json->Get(i)->GetFloat();
+								};
+								return result;
+							};
+						};
+					}
+					else if(response_json->Has("error")) {
+						SetLastError(response_json->Get("error")->Get("message")->GetString());
+					};
+				};
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
 	OpenAI endpoint
 	~#
 	class EndPoint {

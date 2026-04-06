@@ -49,7 +49,7 @@ bundle System.ML {
 			accumulator := 0.0;
 			each(i : rows) {
 				value := m1[i,0] - m1[i,1];
-				if(value > -0.1e-4 & value < -0.1e-4) {
+				if(value > -0.1e-4 & value < 0.1e-4) {
 					value := 0.0;
 				};
 				accumulator += value * value;
@@ -204,21 +204,21 @@ bundle System.ML {
 
 		function : StdDevRow(row : Int, m : Float[,]) ~ Float {
 			m_dim := m->Size();
-			m_rows := m_dim[1];
+			m_cols := m_dim[1];
 
 			total_sum := 0.0;
-			each(i : m_rows) {
-				total_sum += m[0,i];
+			each(i : m_cols) {
+				total_sum += m[row,i];
 			};
-			m_avg := SafeDiv(total_sum, m_rows->Size()->As(Float));
-			
+			m_avg := SafeDiv(total_sum, m_cols->As(Float));
+
 			total_sum := 0.0;
-			each(i : m_rows) {
-				term := m[0,i] - m_avg;
+			each(i : m_cols) {
+				term := m[row,i] - m_avg;
 				total_sum += term * term;
 			};
 
-			return Float->Sqrt(SafeDiv(total_sum, (m_rows->As(Float) - 1.)));
+			return Float->Sqrt(SafeDiv(total_sum, (m_cols->As(Float) - 1.)));
 		}
 
 		#~
@@ -299,13 +299,13 @@ bundle System.ML {
 
 			total_sum := 0.0;
 			each(i : m_rows) {
-				total_sum += m[i,0];
+				total_sum += m[i,col];
 			};
-			m_avg := SafeDiv(total_sum, m_rows->Size()->As(Float));
+			m_avg := SafeDiv(total_sum, m_rows->As(Float));
 
 			total_sum := 0.0;
 			each(i : m_rows) {
-				term := m[i,0] - m_avg;
+				term := m[i,col] - m_avg;
 				total_sum += term * term;
 			};
 
@@ -1113,6 +1113,265 @@ solver->GetRSquared()->PrintLine();
 			};
 
 			return buffer;
+		}
+	}
+
+	#~
+	Simple linear regression using least squares.
+	Fits y = X * coefficients via the normal equation.
+	~#
+	class LinearRegression {
+		@coefficients : Float[];
+		@r_squared : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		~#
+		New() {
+			@is_fitted := false;
+		}
+
+		#~
+		Fits the model to training data using least squares.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			if(x_dims[0] <> y_dims[0]) {
+				return false;
+			};
+
+			@coefficients := Matrix2D->Solve(X, y);
+			if(@coefficients = Nil) {
+				return false;
+			};
+
+			# compute r-squared
+			avg := Matrix2D->AverageColumn(0, y);
+			rows := y_dims[0];
+			cols := x_dims[1];
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := 0.0;
+				each(j : cols) {
+					predicted += @coefficients[j] * X[i,j];
+				};
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				@r_squared := 1.0 - (ss_res / ss_tot);
+			}
+			else {
+				@r_squared := 0.0;
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Predicts target values for new input data.
+		@param X feature matrix
+		@return prediction matrix, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows, 1];
+			each(i : rows) {
+				sum := 0.0;
+				each(j : cols) {
+					sum += @coefficients[j] * X[i,j];
+				};
+				result[i, 0] := sum;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the computed coefficients.
+		@return coefficient array, or Nil if not fitted
+		~#
+		method : public : GetCoefficients() ~ Float[] {
+			return @coefficients;
+		}
+
+		#~
+		Gets the R-squared goodness of fit.
+		@return R-squared value
+		~#
+		method : public : GetRSquared() ~ Float {
+			return @r_squared;
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+	}
+
+	#~
+	Logistic regression using gradient descent with sigmoid activation.
+	Binary classification only.
+	~#
+	class LogisticRegression {
+		@weights : Float[];
+		@learning_rate : Float;
+		@iterations : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param learning_rate step size for gradient descent
+		@param iterations number of training iterations
+		~#
+		New(learning_rate : Float, iterations : Int) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@is_fitted := false;
+		}
+
+		#~
+		Sigmoid activation function
+		~#
+		function : LogSigmoid(x : Float) ~ Float {
+			return 1.0 / (1.0 + Float->Exp(x * -1.0));
+		}
+
+		#~
+		Fits the model to training data using gradient descent.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target array (0.0 or 1.0 values, rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			if(rows <> y_dims[0]) {
+				return false;
+			};
+
+			# initialize weights to zero
+			@weights := Float->New[cols];
+
+			# gradient descent
+			each(iter : @iterations) {
+				# compute predictions
+				predictions := Float->New[rows];
+				each(i : rows) {
+					z := 0.0;
+					each(j : cols) {
+						z += X[i,j] * @weights[j];
+					};
+					predictions[i] := LogSigmoid(z);
+				};
+
+				# compute gradients and update weights
+				each(j : cols) {
+					gradient := 0.0;
+					each(i : rows) {
+						error := predictions[i] - y[i,0];
+						gradient += error * X[i,j];
+					};
+					gradient := gradient / rows->As(Float);
+					@weights[j] -= @learning_rate * gradient;
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Predicts probabilities for input data.
+		@param X feature matrix
+		@return probability array (values between 0 and 1)
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows];
+			each(i : rows) {
+				z := 0.0;
+				each(j : cols) {
+					z += X[i,j] * @weights[j];
+				};
+				result[i] := LogSigmoid(z);
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts class labels for input data (threshold 0.5).
+		@param X feature matrix
+		@return boolean class predictions
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			probs := Predict(X);
+			if(probs = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[probs->Size()];
+			each(i : probs) {
+				result[i] := probs[i] >= 0.5;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the learned weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
 		}
 	}
 

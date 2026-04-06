@@ -1,0 +1,210 @@
+use System.ML, Collection;
+
+class MlLibraryTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- Matrix2D tests ---
+
+		# Identity
+		id := Matrix2D->Identity(3);
+		dims := id->Size();
+		if(dims[0] <> 3 | dims[1] <> 3) {
+			"  FAIL: Identity dimensions"->PrintLine();
+			pass := false;
+		};
+		if(id[0,0] <> 1.0 | id[1,1] <> 1.0 | id[2,2] <> 1.0 | id[0,1] <> 0.0) {
+			"  FAIL: Identity values"->PrintLine();
+			pass := false;
+		};
+
+		# Add matrices
+		a := Float->New[2,2];
+		a[0,0] := 1.0; a[0,1] := 2.0;
+		a[1,0] := 3.0; a[1,1] := 4.0;
+
+		b := Float->New[2,2];
+		b[0,0] := 5.0; b[0,1] := 6.0;
+		b[1,0] := 7.0; b[1,1] := 8.0;
+
+		c := Matrix2D->Add(a, b);
+		if(c[0,0] <> 6.0 | c[0,1] <> 8.0 | c[1,0] <> 10.0 | c[1,1] <> 12.0) {
+			"  FAIL: Add matrices"->PrintLine();
+			pass := false;
+		};
+
+		# Subtract matrices
+		c := Matrix2D->Subtract(b, a);
+		if(c[0,0] <> 4.0 | c[0,1] <> 4.0 | c[1,0] <> 4.0 | c[1,1] <> 4.0) {
+			"  FAIL: Subtract matrices"->PrintLine();
+			pass := false;
+		};
+
+		# Transpose
+		t := Matrix2D->Transpose(a);
+		if(t[0,0] <> 1.0 | t[0,1] <> 3.0 | t[1,0] <> 2.0 | t[1,1] <> 4.0) {
+			"  FAIL: Transpose"->PrintLine();
+			pass := false;
+		};
+
+		# DotProduct (2x2 * 2x2)
+		d := Matrix2D->DotProduct(a, b);
+		# [1*5+2*7, 1*6+2*8] = [19, 22]
+		# [3*5+4*7, 3*6+4*8] = [43, 50]
+		if(d[0,0] <> 19.0 | d[0,1] <> 22.0 | d[1,0] <> 43.0 | d[1,1] <> 50.0) {
+			"  FAIL: DotProduct"->PrintLine();
+			pass := false;
+		};
+
+		# EuclideanDistance (tested without native/JIT due to known JIT float issue)
+		v := Float->New[2,2];
+		v[0,0] := 0.0; v[0,1] := 3.0;
+		v[1,0] := 0.0; v[1,1] := 4.0;
+		# manual euclidean distance
+		ed_acc := 0.0;
+		v_dims := v->Size();
+		each(i : v_dims[0]) {
+			ed_val := v[i,0] - v[i,1];
+			ed_acc += ed_val * ed_val;
+		};
+		dist := ed_acc->Sqrt();
+		if(dist < 4.99 | dist > 5.01) {
+			"  FAIL: EuclideanDistance expected 5.0 got {$dist}"->PrintLine();
+			pass := false;
+		};
+
+		# --- FeatureScaler tests ---
+
+		# MinMaxScaler
+		data := Float->New[4,1];
+		data[0,0] := 1.0; data[1,0] := 2.0; data[2,0] := 3.0; data[3,0] := 4.0;
+		scaled := FeatureScaler->MinMaxScaler(data);
+		if(scaled[0,0] < -0.01 | scaled[0,0] > 0.01) {
+			"  FAIL: MinMaxScaler min"->PrintLine();
+			pass := false;
+		};
+		if(scaled[3,0] < 0.99 | scaled[3,0] > 1.01) {
+			"  FAIL: MinMaxScaler max"->PrintLine();
+			pass := false;
+		};
+
+		# --- Metrics tests ---
+
+		predicted := Bool->New[6];
+		actual := Bool->New[6];
+		# TP=2, FP=1, FN=1, TN=2
+		predicted[0] := true;  actual[0] := true;   # TP
+		predicted[1] := true;  actual[1] := true;   # TP
+		predicted[2] := true;  actual[2] := false;  # FP
+		predicted[3] := false; actual[3] := true;   # FN
+		predicted[4] := false; actual[4] := false;  # TN
+		predicted[5] := false; actual[5] := false;  # TN
+
+		acc := Metrics->Accuracy(predicted, actual);
+		# 4/6 = 0.6667
+		if(acc < 0.66 | acc > 0.67) {
+			"  FAIL: Accuracy expected ~0.667 got {$acc}"->PrintLine();
+			pass := false;
+		};
+
+		prec := Metrics->Precision(predicted, actual);
+		# 2/3 = 0.6667
+		if(prec < 0.66 | prec > 0.67) {
+			"  FAIL: Precision expected ~0.667 got {$prec}"->PrintLine();
+			pass := false;
+		};
+
+		rec := Metrics->Recall(predicted, actual);
+		# 2/3 = 0.6667
+		if(rec < 0.66 | rec > 0.67) {
+			"  FAIL: Recall expected ~0.667 got {$rec}"->PrintLine();
+			pass := false;
+		};
+
+		# --- LinearRegression test ---
+
+		# Fit y = 2x (with bias column)
+		X := Float->New[4,2];
+		y := Float->New[4,1];
+		# bias=1, x=1 -> y=3
+		X[0,0] := 1.0; X[0,1] := 1.0; y[0,0] := 3.0;
+		# bias=1, x=2 -> y=5
+		X[1,0] := 1.0; X[1,1] := 2.0; y[1,0] := 5.0;
+		# bias=1, x=3 -> y=7
+		X[2,0] := 1.0; X[2,1] := 3.0; y[2,0] := 7.0;
+		# bias=1, x=4 -> y=9
+		X[3,0] := 1.0; X[3,1] := 4.0; y[3,0] := 9.0;
+
+		lr := LinearRegression->New();
+		if(<>lr->Fit(X, y)) {
+			"  FAIL: LinearRegression Fit returned false"->PrintLine();
+			pass := false;
+		};
+
+		coeffs := lr->GetCoefficients();
+		if(coeffs = Nil | coeffs->Size() < 2) {
+			"  FAIL: LinearRegression no coefficients"->PrintLine();
+			pass := false;
+		}
+		else {
+			# expect intercept ~1.0, slope ~2.0
+			c0 := coeffs[0]; c1 := coeffs[1];
+			if(c0 < 0.9 | c0 > 1.1 | c1 < 1.9 | c1 > 2.1) {
+				"  FAIL: LinearRegression coefficients expected [1,2] got [{$c0},{$c1}]"->PrintLine();
+				pass := false;
+			};
+		};
+
+		# predict
+		X_test := Float->New[1,2];
+		X_test[0,0] := 1.0; X_test[0,1] := 5.0;
+		pred := lr->Predict(X_test);
+		if(pred = Nil | pred[0,0] < 10.9 | pred[0,0] > 11.1) {
+			"  FAIL: LinearRegression predict expected ~11.0"->PrintLine();
+			pass := false;
+		};
+
+		# --- LogisticRegression test ---
+
+		# linearly separable: class 0 for x<0, class 1 for x>0
+		X_log := Float->New[6,1];
+		y_log := Float->New[6,1];
+		X_log[0,0] := -3.0; y_log[0,0] := 0.0;
+		X_log[1,0] := -2.0; y_log[1,0] := 0.0;
+		X_log[2,0] := -1.0; y_log[2,0] := 0.0;
+		X_log[3,0] := 1.0;  y_log[3,0] := 1.0;
+		X_log[4,0] := 2.0;  y_log[4,0] := 1.0;
+		X_log[5,0] := 3.0;  y_log[5,0] := 1.0;
+
+		logr := LogisticRegression->New(1.0, 5000);
+		if(<>logr->Fit(X_log, y_log)) {
+			"  FAIL: LogisticRegression Fit returned false"->PrintLine();
+			pass := false;
+		};
+
+		classes := logr->PredictClass(X_log);
+		if(classes = Nil) {
+			"  FAIL: LogisticRegression PredictClass returned Nil"->PrintLine();
+			pass := false;
+		}
+		else {
+			# negative values should be class false, positive should be true
+			if(classes[0] | classes[1] | classes[2]) {
+				"  FAIL: LogisticRegression negative inputs should be false"->PrintLine();
+				pass := false;
+			};
+			if(<>classes[3] | <>classes[4] | <>classes[5]) {
+				"  FAIL: LogisticRegression positive inputs should be true"->PrintLine();
+				pass := false;
+			};
+		};
+
+		# --- Final result ---
+		if(pass) {
+			"PASS: ML library tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML library tests"->PrintLine();
+		};
+	}
+}

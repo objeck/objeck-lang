@@ -1,0 +1,2 @@
+SKIP: Ollama not running
+PASS: Ollama API tests

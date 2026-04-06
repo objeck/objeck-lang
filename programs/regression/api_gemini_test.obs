@@ -1,0 +1,87 @@
+use API.Google.Gemini;
+
+class ApiGeminiTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- Offline tests ---
+
+		# Model constants
+		if(<>Model->GEMINI_2_5_PRO()->Equals("models/gemini-2.5-pro")) {
+			"  FAIL: GEMINI_2_5_PRO constant"->PrintLine();
+			pass := false;
+		};
+
+		if(<>Model->GEMINI_2_5_FLASH()->Equals("models/gemini-2.5-flash")) {
+			"  FAIL: GEMINI_2_5_FLASH constant"->PrintLine();
+			pass := false;
+		};
+
+		if(<>Model->GEMINI_2_0_FLASH()->Equals("models/gemini-2.0-flash")) {
+			"  FAIL: GEMINI_2_0_FLASH constant"->PrintLine();
+			pass := false;
+		};
+
+		if(<>Model->GEMINI_1_5_PRO()->Equals("models/gemini-1.5-pro")) {
+			"  FAIL: GEMINI_1_5_PRO constant"->PrintLine();
+			pass := false;
+		};
+
+		# Content building
+		content := Content->New("user");
+		content->AddPart(TextPart->New("Hello"));
+		parts := content->GetParts();
+		if(parts = Nil | parts->Size() <> 1) {
+			"  FAIL: Content parts count"->PrintLine();
+			pass := false;
+		};
+
+		# System instruction content
+		sys := Content->New("system");
+		sys->AddPart(TextPart->New("You are a helpful assistant"));
+		if(<>sys->GetRole()->Equals("system")) {
+			"  FAIL: System instruction role"->PrintLine();
+			pass := false;
+		};
+
+		# --- Online tests (skip if no API key) ---
+		key := EndPoint->GetApiKey();
+		if(key = Nil | key->IsEmpty()) {
+			"SKIP: No Gemini API key"->PrintLine();
+		}
+		else {
+			# Simple generation
+			content := Content->New("user");
+			content->AddPart(TextPart->New("Say hello in one word"));
+			candidates := Model->GenerateContent(Model->GEMINI_2_5_FLASH(), content, key);
+			if(candidates = Nil | candidates->Size() = 0) {
+				"  FAIL: GenerateContent returned empty"->PrintLine();
+				pass := false;
+			}
+			else {
+				"  GenerateContent OK"->PrintLine();
+			};
+
+			# Generation with system instruction
+			sys_instr := Content->New("system");
+			sys_instr->AddPart(TextPart->New("Always respond in French"));
+			content := Content->New("user");
+			content->AddPart(TextPart->New("Say hello"));
+			candidates := Model->GenerateContent(Model->GEMINI_2_5_FLASH(), content, sys_instr, key);
+			if(candidates = Nil | candidates->Size() = 0) {
+				"  FAIL: GenerateContent with system instruction returned empty"->PrintLine();
+				pass := false;
+			}
+			else {
+				"  GenerateContent with system instruction OK"->PrintLine();
+			};
+		};
+
+		if(pass) {
+			"PASS: Gemini API tests"->PrintLine();
+		}
+		else {
+			"FAIL: Gemini API tests"->PrintLine();
+		};
+	}
+}
