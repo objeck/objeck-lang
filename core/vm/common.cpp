@@ -6047,6 +6047,7 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
 
 bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
+  const bool verify = (bool)PopInt(op_stack, stack_pos);
   size_t* pem_file_array = (size_t*)PopInt(op_stack, stack_pos);
   const long port = (long)PopInt(op_stack, stack_pos);
   size_t* addr_array = (size_t*)PopInt(op_stack, stack_pos);
@@ -6066,7 +6067,7 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
     IPDtlsSocket::Close((DtlsSocketCtx*)instance[0]);
 
     DtlsSocketCtx* sctx = nullptr;
-    const bool is_open = IPDtlsSocket::Open(addr.c_str(), port, pem_file, sctx);
+    const bool is_open = IPDtlsSocket::Open(addr.c_str(), port, pem_file, sctx, verify);
     if(is_open) {
       instance[0] = (size_t)sctx;
       instance[1] = 0;
@@ -6336,8 +6337,15 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
 
       // Perform DTLS handshake with cookie verification
+      int retries = 0;
+      const int max_retries = 10;
       while((ret = mbedtls_ssl_handshake(&client_sctx->ssl)) != 0) {
         if(ret == MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED) {
+          if(++retries > max_retries) {
+            IPDtlsSocket::Close(client_sctx);
+            PushInt(0, op_stack, stack_pos);
+            return true;
+          }
           mbedtls_ssl_session_reset(&client_sctx->ssl);
           mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
           mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
@@ -6345,6 +6353,7 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
         }
         if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
           IPDtlsSocket::Close(client_sctx);
+          PushInt(0, op_stack, stack_pos);
           return true;
         }
       }
@@ -6422,12 +6431,19 @@ bool TrapProcessor::SockDtlsCertSrv(StackProgram* program, size_t* inst, size_t*
 
 bool TrapProcessor::SockDtlsError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  // mbedTLS uses return codes rather than an error queue.
-  // Check the last error from the most recent DtlsSocketCtx operation.
-  // The caller should pass the socket instance to retrieve the error from.
-  // For backward compatibility, we check the stack for an instance pointer.
-  PushInt(0, op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    if(sctx && sctx->last_error != 0) {
+      char error_buf[256] = {0};
+      mbedtls_strerror(sctx->last_error, error_buf, sizeof(error_buf) - 1);
+      const std::wstring error_msg = BytesToUnicode(error_buf);
+      PushInt((size_t)CreateStringObject(error_msg, program, op_stack, stack_pos), op_stack, stack_pos);
+      return true;
+    }
+  }
 
+  PushInt(0, op_stack, stack_pos);
   return true;
 }
 
@@ -6470,22 +6486,7 @@ bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_
   if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     char* buffer = (char*)(array + 3);
-
-    int status; int read = 0;
-    char* temp = buffer + offset;
-    bool done = false;
-    for(long i = 0; !done && i < num; ++i) {
-      temp[i] = IPDtlsSocket::ReadByte(sctx, status);
-      if(!status) {
-        done = true;
-      }
-      else if(status < 0) {
-        PushInt(-1, op_stack, stack_pos);
-        return true;
-      }
-      ++read;
-    }
-
+    int read = IPDtlsSocket::ReadBytes(buffer + offset, num, sctx);
     PushInt(read, op_stack, stack_pos);
   }
   else {

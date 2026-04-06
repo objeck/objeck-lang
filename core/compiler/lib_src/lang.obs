@@ -10765,18 +10765,21 @@ bundle System.IO.Net {
 		@address : System.String;
 		@port : Int;
 		@pem : String;
+		@verify : Bool;
 
 		#~
 		Default constructor
 		@param address network address
 		@param port network port
 		@param pem the Privacy Enhanced Mail file (optional)
+		@param verify if true, require valid certificate (default: false allows self-signed)
 		~#
-		New(address : System.String, port : Int, pem : String := Nil) {
+		New(address : System.String, port : Int, pem : String := Nil, verify : Bool := false) {
 			Parent();
 			@address := address;
 			@port := port;
 			@pem := pem;
+			@verify := verify;
 
 			SOCK_DTLS_CONNECT;
 		}
