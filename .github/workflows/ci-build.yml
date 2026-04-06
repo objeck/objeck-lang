@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Build ${{ matrix.platform }}
@@ -89,6 +92,7 @@ jobs:
           libmp3lame-dev \
           ccache \
           expect
+        sudo chmod -R a+r /var/cache/apt/archives
 
     # macOS dependencies with caching
     - name: Cache Homebrew downloads (macOS)
