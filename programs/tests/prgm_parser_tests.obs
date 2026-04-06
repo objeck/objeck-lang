@@ -1,0 +1,234 @@
+use Data.JSON;
+use Data.XML;
+
+class ParserTests {
+	@pass : static : Int;
+	@fail : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		"=== Parser Bug Fix Tests ==="->PrintLine();
+
+		TestJsonEscapes();
+		TestJsonKeywords();
+		TestJsonNumbers();
+		TestJsonNegativeIndex();
+		TestJsonUnicode();
+		TestJsonDepthLimit();
+		TestJsonEmptyString();
+		TestJsonNestedObjects();
+		TestXmlNamespace();
+		TestXmlBasicParse();
+
+		"=== Results: {$@pass} passed, {$@fail} failed ==="->PrintLine();
+	}
+
+	function : Assert(name : String, condition : Bool) ~ Nil {
+		if(condition) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$name}"->PrintLine();
+		};
+	}
+
+	function : TestJsonEscapes() ~ Nil {
+		"JSON Escapes..."->PrintLine();
+
+		# Test escaped quotes
+		p1 := JsonParser->New("{\"key\":\"hello\\\"world\"}");
+		Assert("escaped quote", p1->Parse() & p1->GetRoot()->Get("key")->GetString()->Has("hello"));
+
+		# Test escaped newline
+		p2 := JsonParser->New("{\"key\":\"line1\\nline2\"}");
+		Assert("escaped newline", p2->Parse() & p2->GetRoot() <> Nil);
+
+		# Test escaped tab
+		p3 := JsonParser->New("{\"key\":\"col1\\tcol2\"}");
+		Assert("escaped tab", p3->Parse() & p3->GetRoot() <> Nil);
+
+		# Test escaped backslash
+		p4 := JsonParser->New("{\"key\":\"path\\\\dir\"}");
+		Assert("escaped backslash", p4->Parse() & p4->GetRoot()->Get("key")->GetString()->Size() > 0);
+
+		# Test empty string
+		p5 := JsonParser->New("{\"key\":\"\"}");
+		Assert("empty string value", p5->Parse() & p5->GetRoot()->Get("key")->GetString()->Size() = 0);
+	}
+
+	function : TestJsonKeywords() ~ Nil {
+		"JSON Keywords..."->PrintLine();
+
+		p := JsonParser->New("{\"a\":true,\"b\":false,\"c\":null}");
+		Assert("keywords parse", p->Parse());
+		if(p->GetRoot() <> Nil) {
+			root := p->GetRoot();
+			Assert("true type", root->Get("a")->GetType() = JsonElement->JsonType->TRUE);
+			Assert("false type", root->Get("b")->GetType() = JsonElement->JsonType->FALSE);
+			Assert("null type", root->Get("c")->GetType() = JsonElement->JsonType->NULL);
+		};
+
+		# Keywords in array
+		p2 := JsonParser->New("[true, false, null]");
+		Assert("keywords in array", p2->Parse());
+		if(p2->GetRoot() <> Nil) {
+			root2 := p2->GetRoot();
+			Assert("array true", root2->Get(0)->GetType() = JsonElement->JsonType->TRUE);
+			Assert("array false", root2->Get(1)->GetType() = JsonElement->JsonType->FALSE);
+			Assert("array null", root2->Get(2)->GetType() = JsonElement->JsonType->NULL);
+		};
+	}
+
+	function : TestJsonNumbers() ~ Nil {
+		"JSON Numbers..."->PrintLine();
+
+		p := JsonParser->New("{\"a\":42,\"b\":-5,\"c\":3.14,\"d\":0}");
+		Assert("valid numbers parse", p->Parse());
+		if(p->GetRoot() <> Nil) {
+			root := p->GetRoot();
+			Assert("integer 42", root->Get("a")->GetInt() = 42);
+			Assert("negative -5", root->Get("b")->GetInt() = -5);
+			Assert("float 3.14", root->Get("c")->GetFloat() > 3.13);
+			Assert("zero", root->Get("d")->GetInt() = 0);
+		};
+	}
+
+	function : TestJsonNegativeIndex() ~ Nil {
+		"JSON Negative Index..."->PrintLine();
+
+		p := JsonParser->New("[1,2,3]");
+		Assert("array parse", p->Parse());
+		if(p->GetRoot() <> Nil) {
+			root := p->GetRoot();
+			# Negative index should return Nil, not crash
+			Assert("negative index returns nil", root->Get(-1) = Nil);
+			Assert("index 0 works", root->Get(0) <> Nil & root->Get(0)->GetInt() = 1);
+			Assert("index 2 works", root->Get(2) <> Nil & root->Get(2)->GetInt() = 3);
+			Assert("out of bounds returns nil", root->Get(100) = Nil);
+		};
+	}
+
+	function : TestJsonUnicode() ~ Nil {
+		"JSON Unicode..."->PrintLine();
+
+		# Test unicode escape parsing (stored as raw escape, Decode() available for conversion)
+		p := JsonParser->New("{\"key\":\"\\u0041\"}");
+		Assert("unicode escape parses", p->Parse() & p->GetRoot() <> Nil);
+		if(p->GetRoot() <> Nil) {
+			val := p->GetRoot()->Get("key")->GetString();
+			Assert("unicode escape stored", val <> Nil & val->Size() > 0);
+			# Test the Decode function works correctly
+			decoded := JsonElement->Decode(val);
+			Assert("unicode decode A", decoded <> Nil & decoded->Size() > 0 & decoded->Get(0) = 'A');
+		};
+
+		# Test multi-escape decode
+		p2 := JsonParser->New("{\"key\":\"\\u0048\\u0049\"}");
+		Assert("unicode multi-escape parses", p2->Parse() & p2->GetRoot() <> Nil);
+		if(p2->GetRoot() <> Nil) {
+			val2 := p2->GetRoot()->Get("key")->GetString();
+			decoded2 := JsonElement->Decode(val2);
+			Assert("unicode decode HI", decoded2 <> Nil & decoded2->Equals("HI"));
+		};
+	}
+
+	function : TestJsonDepthLimit() ~ Nil {
+		"JSON Depth Limit..."->PrintLine();
+
+		# Build deeply nested JSON: [[[[...]]]]
+		deep := String->New();
+		for(i := 0; i < 200; i += 1;) {
+			deep->Append('[');
+		};
+		deep->Append("1");
+		for(i := 0; i < 200; i += 1;) {
+			deep->Append(']');
+		};
+
+		p := JsonParser->New(deep->ToString());
+		# Should fail gracefully (return false) instead of stack overflow
+		Assert("depth limit fails parse", <>p->Parse());
+
+		# Moderate nesting should work fine
+		p2 := JsonParser->New("[[[[1]]]]");
+		Assert("moderate nesting works", p2->Parse() & p2->GetRoot() <> Nil);
+	}
+
+	function : TestJsonEmptyString() ~ Nil {
+		"JSON Empty String..."->PrintLine();
+
+		p := JsonParser->New("{\"key\":\"\"}");
+		Assert("empty string parse", p->Parse());
+		if(p->GetRoot() <> Nil) {
+			Assert("empty string value", p->GetRoot()->Get("key")->GetString()->Size() = 0);
+		};
+
+		# Empty object
+		p2 := JsonParser->New("{}");
+		Assert("empty object", p2->Parse() & p2->GetRoot() <> Nil);
+
+		# Empty array
+		p3 := JsonParser->New("[]");
+		Assert("empty array", p3->Parse() & p3->GetRoot() <> Nil);
+	}
+
+	function : TestJsonNestedObjects() ~ Nil {
+		"JSON Nested Objects..."->PrintLine();
+
+		p := JsonParser->New("{\"outer\":{\"inner\":{\"deep\":42}}}");
+		Assert("nested parse", p->Parse());
+		if(p->GetRoot() <> Nil) {
+			outer := p->GetRoot()->Get("outer");
+			Assert("outer exists", outer <> Nil);
+			if(outer <> Nil) {
+				inner := outer->Get("inner");
+				Assert("inner exists", inner <> Nil);
+				if(inner <> Nil) {
+					Assert("deep value", inner->Get("deep")->GetInt() = 42);
+				};
+			};
+		};
+	}
+
+	function : TestXmlNamespace() ~ Nil {
+		"XML Namespace..."->PrintLine();
+
+		xml := "<root xmlns:ns=\"http://example.com\"><ns:child attr=\"val\"/></root>";
+		parser := XmlParser->New(xml);
+		parser->Parse();
+		doc := parser->GetRoot();
+		Assert("xml parse", doc <> Nil);
+		if(doc <> Nil) {
+			children := doc->GetChildren();
+			if(children <> Nil & children->Size() > 0) {
+				child := children->Get(0)->As(XmlElement);
+				if(child <> Nil) {
+					ns := child->GetNamespace();
+					name := child->GetName();
+					Assert("xml namespace is 'ns'", ns <> Nil & ns->Equals("ns"));
+					Assert("xml name is 'child'", name <> Nil & name->Equals("child"));
+				}
+				else {
+					Assert("xml child element", false);
+				};
+			}
+			else {
+				Assert("xml children found", false);
+			};
+		};
+	}
+
+	function : TestXmlBasicParse() ~ Nil {
+		"XML Basic Parse..."->PrintLine();
+
+		xml := "<root><item id=\"1\">Hello</item><item id=\"2\">World</item></root>";
+		parser := XmlParser->New(xml);
+		parser->Parse();
+		doc := parser->GetRoot();
+		Assert("xml basic parse", doc <> Nil);
+		if(doc <> Nil) {
+			children := doc->GetChildren();
+			Assert("xml has children", children <> Nil & children->Size() = 2);
+		};
+	}
+}
