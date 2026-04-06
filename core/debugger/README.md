@@ -73,10 +73,31 @@ obd -b myapp.obe -src ../src
 
 Full command documentation: [Debugger Guide](https://www.objeck.org/getting_started.html#debugger)
 
+## DAP Mode (VS Code Debugging)
+
+The debugger includes a built-in [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/) server for VS Code integration:
+
+```bash
+obd --dap
+```
+
+In DAP mode, the debugger communicates over stdin/stdout using JSON-RPC with Content-Length framing. VS Code launches `obd --dap` automatically when you press F5 with the Objeck extension installed.
+
+**Supported DAP requests:** initialize, launch, setBreakpoints, configurationDone, threads, stackTrace, scopes, variables, continue, next, stepIn, stepOut, pause, disconnect, evaluate
+
+**Features:**
+- Conditional breakpoints (expression evaluation)
+- Variable inspection (locals, parameters, instance/class fields)
+- Call stack navigation
+- ANSI color output
+
+See [docs/editors.md](../../docs/editors.md) for VS Code setup instructions.
+
 ## Architecture
 
 The debugger consists of:
 - **Command Interpreter**: Parses and executes debugging commands
+- **DAP Adapter**: JSON-RPC protocol handler for VS Code integration (`dap.h`/`dap.cpp`)
 - **Breakpoint Manager**: Manages breakpoints and watchpoints
 - **VM Integration**: Interfaces with the Objeck VM for execution control
 - **Symbol Table**: Accesses debug symbols from compiled programs
