@@ -688,6 +688,7 @@ extern "C" {
 
     const int line_num = (int)APITools_GetIntValue(context, 3);
     const int line_pos = (int)APITools_GetIntValue(context, 4);
+    (void)line_pos;
 
     const std::wstring var_str = APITools_GetStringValue(context, 5);
     const std::wstring mthd_str = APITools_GetStringValue(context, 6);

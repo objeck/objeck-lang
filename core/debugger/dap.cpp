@@ -659,8 +659,6 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, StackFrame* frame, 
       if(value == 0) {
         return "Nil";
       }
-      // Check if it's a String
-      size_t* obj_mem = (size_t*)value;
       // Try to get a meaningful representation
       std::ostringstream oss;
       oss << "object@0x" << std::hex << value;
