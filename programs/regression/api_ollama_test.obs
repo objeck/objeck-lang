@@ -1,3 +1,4 @@
+# EXTRA_LIBS: ollama,net,misc
 use API.Ollama, Collection;
 
 class ApiOllamaTest {

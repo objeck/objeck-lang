@@ -1,3 +1,4 @@
+# EXTRA_LIBS: ml,gen_collect,csv
 use System.ML, Collection;
 
 class MlLibraryTest {

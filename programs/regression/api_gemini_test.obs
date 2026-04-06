@@ -1,3 +1,4 @@
+# EXTRA_LIBS: gemini,net,net_server,misc
 use API.Google.Gemini;
 
 class ApiGeminiTest {
