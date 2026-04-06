@@ -107,7 +107,7 @@ obc hello && obr hello
   * 10 new performance benchmarks with measurement tooling
   * [Performance details and benchmarks →](docs/performance.md)
 
-[📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md)
+[📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
 ## Downloads
 
