@@ -61,6 +61,15 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
+**v2026.4.2**
+  * **DTLS (Datagram TLS) support** — new `DTLSSocket` and `DTLSSocketServer` classes for secure UDP communication (IoT, VoIP, gaming)
+  * **Link-time optimization** — added `-flto=auto` and `gcc-ar` across all GCC Makefiles (AMD64 and ARM64)
+  * **ARM64 native CPU tuning** — `-mcpu=native` auto-detects RPi5 (Cortex-A76) and Jetson Orin (Cortex-A78AE)
+  * Fixed all MSVC and GCC compiler warnings (const qualifiers, unused parameters, sign comparisons, linker conflicts)
+  * Upgraded all MSVC ARM64 projects from C++17 to C++20
+  * Fixed MSVC secure code warning (`getenv` to `_dupenv_s`)
+  * Fixed doc generator error on `@hidden` tag
+
 **v2026.4.1** 🏃🏿‍♂️‍➡️🏃🏻‍♀️‍➡️🏃🏾‍♀️‍➡️
   * **Debug Adapter Protocol (DAP)** — VS Code debugging with conditional breakpoints, ANSI color output, and readline support
   * **3.3x binarytrees speedup** — young-gen bump allocator, direct JIT-to-JIT calling, atomic CAS mark bits, auto-JIT dispatch fix
@@ -97,19 +106,6 @@ obc hello && obr hello
   * Web Playground updated to v2026.2.1
   * 10 new performance benchmarks with measurement tooling
   * [Performance details and benchmarks →](docs/performance.md)
-
-**v2026.2.0** 
-  * Memory manager optimized with O(1) lookups and in-place sweeping
-  * ARM64 JIT: 11 optimizations including char arrays, register targeting, multiply-by-constant
-  * x64 JIT instruction encoding optimizations with dynamic backpatching
-  * Windows ARM64 full platform support with mbedTLS 3.6.3
-  * Comprehensive regression suite with 350+ tests and automated CI/CD
-  * Enhanced compiler error messages with operator symbols and inline hints
-  * New NLP library — tokenization, TF-IDF, text similarity, sentiment analysis
-  * Extended ML library — activation functions, feature scaling, metrics, cross-validation
-  * Migrated to mbedTLS for lighter crypto footprint (OpenSSL replacement)
-  * Fixed String.Trim()/TrimFront() index out of bounds crash
-  * Modern GNU-style CLI (`--source`/`-s`, `--debug`/`-D`) with backward compatibility
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md)
 

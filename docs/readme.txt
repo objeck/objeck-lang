@@ -1,3 +1,25 @@
+v2026.4.2 (April 5, 2026)
+===
+DTLS secure UDP support, LTO optimization, zero compiler warnings, ARM64 native CPU tuning, and more.
+
+v2026.4.2
+- DTLS (Datagram TLS) support: DTLSSocket and DTLSSocketServer for secure UDP
+- Link-time optimization (-flto=auto) across all GCC Makefiles (AMD64 and ARM64)
+- ARM64 native CPU tuning (-mcpu=native) for RPi5 and Jetson Orin
+- Fixed all MSVC and GCC compiler warnings
+- Upgraded MSVC ARM64 projects from C++17 to C++20
+- Fixed MSVC secure code warning (getenv to _dupenv_s)
+- Fixed doc generator error on @hidden tag
+
+v2026.4.1
+- Debug Adapter Protocol (DAP) for VS Code debugging
+- 3.3x binarytrees speedup with young-gen bump allocator and JIT-to-JIT calling
+- MTHD_CALL JIT whitelist for x64 and ARM64
+- Networking: SSE streaming, socket receive timeouts, HTTP hardening
+- ODBC: BigInt support, connection strings, transactions, schema discovery
+- OpenCV: contours, VideoWriter, transforms, 15 new image processing functions
+- Phi-3 Vision multimodal inference with FP16 and DirectML/CUDA support
+
 v2026.2.1 (February 26, 2026)
 ===
 New try/otherwise error handling, JIT stability fixes, debugger improvements, SDL2 bug fixes, and expanded test coverage.

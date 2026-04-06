@@ -58,9 +58,31 @@
   </header>
 
   <main style="text-align: left;">
-   <p>Try/otherwise error handling, Unicode emoji fix, WiX v4 installer, JIT stability fixes, debugger improvements, Try/Otherwise crash fix, and more.</p>
+   <p>DTLS secure UDP support, LTO optimization, zero compiler warnings, ARM64 native CPU tuning, and more.</p>
 
-   <h3><u>v2026.2.1</u></h3>
+   <h3><u>v2026.4.2</u></h3>
+    <ul>
+        <li><strong>DTLS (Datagram TLS) support</strong> &mdash; new <code>DTLSSocket</code> and <code>DTLSSocketServer</code> classes for secure UDP communication</li>
+        <li><strong>Link-time optimization</strong> &mdash; added <code>-flto=auto</code> and <code>gcc-ar</code> across all GCC Makefiles (AMD64 and ARM64)</li>
+        <li><strong>ARM64 native CPU tuning</strong> &mdash; <code>-mcpu=native</code> auto-detects RPi5 and Jetson Orin</li>
+        <li>Fixed all MSVC and GCC compiler warnings (const qualifiers, unused parameters, sign comparisons, linker conflicts)</li>
+        <li>Upgraded all MSVC ARM64 projects from C++17 to C++20</li>
+        <li>Fixed MSVC secure code warning (<code>getenv</code> to <code>_dupenv_s</code>)</li>
+        <li>Fixed doc generator error on <code>@hidden</code> tag</li>
+    </ul>
+
+   <h3>v2026.4.1</h3>
+    <ul>
+        <li><strong>Debug Adapter Protocol (DAP)</strong> &mdash; VS Code debugging with conditional breakpoints, ANSI color output, and readline support</li>
+        <li><strong>3.3x binarytrees speedup</strong> &mdash; young-gen bump allocator, direct JIT-to-JIT calling, atomic CAS mark bits</li>
+        <li><strong>MTHD_CALL JIT whitelist</strong> (x64 + ARM64) &mdash; methods with method calls can now be JIT-compiled</li>
+        <li>Networking: SSE streaming, socket receive timeouts, HTTP client/server hardening</li>
+        <li>ODBC: BigInt support, connection strings, transactions, schema discovery</li>
+        <li>OpenCV: contours, VideoWriter, transforms, 15 new image processing functions</li>
+        <li>Phi-3 Vision multimodal inference with FP16 and DirectML/CUDA support</li>
+    </ul>
+
+   <h3>v2026.2.1</h3>
     <ul>
         <li>New <code>try/otherwise</code> error handling framework</li>
         <li>Fixed VM crash in Try/Otherwise when Nil dereference occurs inside non-virtual method calls</li>
