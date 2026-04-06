@@ -62,12 +62,12 @@ obc hello && obr hello
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
 **v2026.4.2**
+  * **JIT local variable register cache** (AMD64 + ARM64) — keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted
+  * **Hardened JSON, JSON stream, and XML parsers** against malformed input
   * **DTLS (Datagram TLS) support** — new `DTLSSocket` and `DTLSSocketServer` classes for secure UDP communication (IoT, VoIP, gaming)
-  * **Link-time optimization** — added `-flto=auto` and `gcc-ar` across all GCC Makefiles (AMD64 and ARM64)
+  * **Link-time optimization** — added `-flto=auto` across all GCC Makefiles (AMD64 and ARM64)
   * **ARM64 native CPU tuning** — `-mcpu=native` auto-detects RPi5 (Cortex-A76) and Jetson Orin (Cortex-A78AE)
-  * Fixed all MSVC and GCC compiler warnings (const qualifiers, unused parameters, sign comparisons, linker conflicts)
-  * Upgraded all MSVC ARM64 projects from C++17 to C++20
-  * Fixed MSVC secure code warning (`getenv` to `_dupenv_s`)
+  * Fixed all MSVC and GCC compiler warnings
   * Fixed doc generator error on `@hidden` tag
 
 **v2026.4.1** 🏃🏿‍♂️‍➡️🏃🏻‍♀️‍➡️🏃🏾‍♀️‍➡️
