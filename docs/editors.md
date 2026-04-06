@@ -73,9 +73,25 @@ The extension provides:
 
 ## Sublime Text
 
-### Syntax Highlighting
+### Automated Setup (Recommended)
 
-Copy the files from `docs/syntax/sublime/` to your Sublime packages directory:
+Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run the install script:
+
+```bash
+# Windows
+scripts\install.cmd "C:\Program Files\Objeck" sublime
+
+# Linux / macOS
+./scripts/install.sh /usr/local/objeck sublime
+```
+
+This installs the LSP server, syntax highlighting, and configures Sublime's LSP client automatically. Requires the [LSP](https://packagecontrol.io/packages/LSP) package (installed automatically on Linux/macOS if git is available).
+
+After install: **Tools > LSP > Enable Language Server Globally > select "objeck"**.
+
+### Manual Setup
+
+Copy syntax files from `docs/syntax/sublime/` to your Sublime packages directory:
 
 | Platform | Path |
 |----------|------|
@@ -83,27 +99,23 @@ Copy the files from `docs/syntax/sublime/` to your Sublime packages directory:
 | **macOS** | `~/Library/Application Support/Sublime Text/Packages/Objeck/` |
 | **Linux** | `~/.config/sublime-text/Packages/Objeck/` |
 
-Files to copy:
+Files:
 - `objeck.sublime-syntax` — syntax definitions
 - `objeck.tmPreferences` — indentation rules
 - `objeck.sublime-build` — build system (edit paths to match your install)
 
-### Build System
-
-After copying, edit `objeck.sublime-build` to set your Objeck install path, then use **Ctrl+B** to compile.
-
-### LSP Support
-
-1. Install the [LSP](https://packagecontrol.io/packages/LSP) package via Package Control
-2. Download the Objeck language server from [objeck-lsp releases](https://github.com/objeck/objeck-lsp/releases)
-3. Add to LSP settings (**Preferences > Package Settings > LSP > Settings**):
+For LSP, add to **Preferences > Package Settings > LSP > Settings**:
 
 ```json
 {
   "clients": {
     "objeck": {
       "enabled": true,
-      "command": ["/path/to/objeck-lsp-server"],
+      "command": ["~/.objeck-lsp/bin/obr", "~/.objeck-lsp/objeck_lsp.obe", "~/.objeck-lsp/objk_apis.json", "stdio"],
+      "env": {
+        "OBJECK_LIB_PATH": "~/.objeck-lsp/lib",
+        "OBJECK_STDIO": "binary"
+      },
       "selector": "source.objeck-obs"
     }
   }
@@ -112,31 +124,23 @@ After copying, edit `objeck.sublime-build` to set your Objeck install path, then
 
 ---
 
-## Vim / GVim / Neovim
+## Vim / GVim
 
 ### Syntax Highlighting
 
 Copy from `docs/syntax/vim/`:
 
-**Vim/GVim:**
 ```bash
 mkdir -p ~/.vim/syntax ~/.vim/ftdetect
 cp docs/syntax/vim/objeck.vim ~/.vim/syntax/
 cp docs/syntax/vim/ftdetect/objeck.vim ~/.vim/ftdetect/
 ```
 
-**Neovim:**
-```bash
-mkdir -p ~/.config/nvim/syntax ~/.config/nvim/ftdetect
-cp docs/syntax/vim/objeck.vim ~/.config/nvim/syntax/
-cp docs/syntax/vim/ftdetect/objeck.vim ~/.config/nvim/ftdetect/
-```
-
-This provides highlighting for keywords, types, strings, comments, numbers, and operators. `.obs` files are auto-detected.
+Provides highlighting for keywords, types, strings, comments, numbers, and operators. `.obs` files are auto-detected.
 
 ### Build from Vim
 
-Add to your `.vimrc` or `init.vim`:
+Add to your `.vimrc`:
 
 ```vim
 autocmd FileType objeck setlocal makeprg=obc\ -src\ %\ -dest\ %:r.obe
@@ -147,9 +151,51 @@ Then use `:make` to compile and `:copen` to see errors.
 
 ---
 
-## Emacs
+## Neovim (0.11+)
 
-### Major Mode
+### Automated Setup (Recommended)
+
+Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run:
+
+```bash
+# Linux / macOS
+./scripts/install.sh /usr/local/objeck neovim
+```
+
+This installs syntax highlighting, ftdetect, and the LSP client config to your Neovim config directory automatically.
+
+### Manual Setup
+
+Copy from the [objeck-lsp](https://github.com/objeck/objeck-lsp) repo's `clients/neovim/`:
+
+```bash
+cp clients/neovim/objeck.lua ~/.config/nvim/lsp/
+cp clients/neovim/objeck.vim ~/.config/nvim/ftdetect/
+```
+
+Or for syntax-only (no LSP), use the standalone files from `docs/syntax/vim/`:
+
+```bash
+mkdir -p ~/.config/nvim/syntax ~/.config/nvim/ftdetect
+cp docs/syntax/vim/objeck.vim ~/.config/nvim/syntax/
+cp docs/syntax/vim/ftdetect/objeck.vim ~/.config/nvim/ftdetect/
+```
+
+---
+
+## Emacs (29+)
+
+### Automated Setup with LSP (Recommended)
+
+Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run:
+
+```bash
+./scripts/install.sh /usr/local/objeck emacs
+```
+
+This installs `objeck-mode.el` (with LSP integration via eglot) to your Emacs load-path.
+
+### Manual Setup (syntax only)
 
 Copy from `docs/syntax/emacs/`:
 
@@ -157,17 +203,13 @@ Copy from `docs/syntax/emacs/`:
 cp docs/syntax/emacs/objeck-mode.el ~/.emacs.d/
 ```
 
-Add to your `~/.emacs` or `~/.emacs.d/init.el`:
+Add to `~/.emacs` or `~/.emacs.d/init.el`:
 
 ```elisp
 (load "~/.emacs.d/objeck-mode.el")
 ```
 
-This provides:
-- Syntax highlighting (keywords, types, strings, comments, numbers)
-- Auto-indentation (2-space)
-- Comment support (`#` line comments, `#~ ~#` block comments)
-- Auto-detection of `.obs` files
+Provides: syntax highlighting, auto-indentation (2-space), comment support, `.obs` file auto-detection.
 
 ### Compile from Emacs
 
