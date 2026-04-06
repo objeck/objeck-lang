@@ -1,2 +1,2 @@
-SKIP: Online API tests disabled pending socket buffer fix
+SKIP: No OpenAI API key
 PASS: OpenAI API tests
