@@ -1,0 +1,48 @@
+use API.OpenAI;
+
+class ApiOpenaiTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- Offline tests ---
+
+		# Model constants
+		if(<>Models->GPT_4O()->Equals("gpt-4o")) {
+			"  FAIL: GPT_4O constant"->PrintLine();
+			pass := false;
+		};
+
+		if(<>Models->O3()->Equals("o3")) {
+			"  FAIL: O3 constant"->PrintLine();
+			pass := false;
+		};
+
+		if(<>Models->TEXT_EMBEDDING_3_SMALL()->Equals("text-embedding-3-small")) {
+			"  FAIL: TEXT_EMBEDDING_3_SMALL constant"->PrintLine();
+			pass := false;
+		};
+
+		if(<>Models->GPT_4_1()->Equals("gpt-4.1")) {
+			"  FAIL: GPT_4_1 constant"->PrintLine();
+			pass := false;
+		};
+
+		# Base URL
+		EndPoint->SetBaseUrl("https://custom.api.com/v1");
+		if(<>EndPoint->GetBaseUrl()->Equals("https://custom.api.com/v1")) {
+			"  FAIL: SetBaseUrl/GetBaseUrl"->PrintLine();
+			pass := false;
+		};
+		EndPoint->SetBaseUrl("https://api.openai.com/v1");
+
+		# --- Online tests (skip — socket buffer issue under investigation) ---
+		"SKIP: Online API tests disabled pending socket buffer fix"->PrintLine();
+
+		if(pass) {
+			"PASS: OpenAI API tests"->PrintLine();
+		}
+		else {
+			"FAIL: OpenAI API tests"->PrintLine();
+		};
+	}
+}

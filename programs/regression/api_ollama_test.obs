@@ -1,0 +1,79 @@
+use API.Ollama, Collection;
+
+class ApiOllamaTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- Offline tests ---
+
+		# Host configuration
+		EndPoint->SetHost("http://myhost:1234");
+		if(<>EndPoint->GetHost()->Equals("http://myhost:1234")) {
+			"  FAIL: SetHost/GetHost"->PrintLine();
+			pass := false;
+		};
+		# reset to default
+		EndPoint->SetHost("http://localhost:11434");
+
+		# Options class
+		opts := Options->New();
+		opts->SetTemperature(0.7)->SetTopP(0.9)->SetTopK(40);
+		opts_json := opts->ToJson();
+		if(opts_json = Nil) {
+			"  FAIL: Options ToJson returned Nil"->PrintLine();
+			pass := false;
+		};
+
+		# Tool class
+		params := Data.JSON.JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\"}}}");
+		tool := Tool->New("get_weather", "Get the weather", params);
+		tool_json := tool->ToJson();
+		if(tool_json = Nil) {
+			"  FAIL: Tool ToJson returned Nil"->PrintLine();
+			pass := false;
+		};
+
+		# --- Online tests (skip if Ollama not running) ---
+		models := Model->List();
+		if(models = Nil) {
+			"SKIP: Ollama not running"->PrintLine();
+		}
+		else {
+			# Model list
+			"  Ollama models found: {$models->Size()}"->PrintLine();
+
+			# Simple generation (use first available model)
+			if(models->Size() > 0) {
+				model_name := models->Get(0)->As(ModelPulled)->GetName();
+				response := Completion->Generate(model_name, "Say hello in one word");
+				if(response = Nil | response->IsEmpty()) {
+					"  FAIL: Generate returned empty"->PrintLine();
+					pass := false;
+				}
+				else {
+					"  Generate OK"->PrintLine();
+				};
+
+				# Chat with options
+				chat := Chat->New(model_name);
+				opts := Options->New();
+				opts->SetTemperature(0.1);
+				chat_response := chat->Send("What is 2+2? Answer with just the number.", opts);
+				if(chat_response = Nil | chat_response->IsEmpty()) {
+					"  FAIL: Chat Send returned empty"->PrintLine();
+					pass := false;
+				}
+				else {
+					"  Chat OK"->PrintLine();
+				};
+			};
+		};
+
+		if(pass) {
+			"PASS: Ollama API tests"->PrintLine();
+		}
+		else {
+			"FAIL: Ollama API tests"->PrintLine();
+		};
+	}
+}

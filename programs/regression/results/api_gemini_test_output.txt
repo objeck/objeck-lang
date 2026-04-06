@@ -1,0 +1,2 @@
+SKIP: No Gemini API key
+PASS: Gemini API tests

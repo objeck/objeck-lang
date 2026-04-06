@@ -13,6 +13,7 @@ bundle API.Ollama {
 	~#
 	class EndPoint {
 		@last_error : static : String;
+		@host : static : String;
 
 		function : SetLastError(last_error : String) ~ Nil {
 			@last_error := last_error;
@@ -24,6 +25,150 @@ bundle API.Ollama {
 		~#
 		function : GetLastError() ~ String {
 			return @last_error;
+		}
+
+		#~
+		Sets the Ollama server host URL (e.g. "http://myserver:11434")
+		@param host server URL without trailing slash
+		~#
+		function : SetHost(host : String) ~ Nil {
+			@host := host;
+		}
+
+		#~
+		Gets the Ollama server host URL. Defaults to http://localhost:11434.
+		@return host URL
+		~#
+		function : GetHost() ~ String {
+			if(@host = Nil) {
+				@host := "http://localhost:11434";
+			};
+			return @host;
+		}
+	}
+
+	#~
+	Generation options for controlling model behavior.
+
+```
+options := Options->New();
+options->SetTemperature(0.7);
+options->SetTopP(0.9);
+```
+	~#
+	class Options {
+		@temperature : Float;
+		@top_p : Float;
+		@top_k : Int;
+		@has_temperature : Bool;
+		@has_top_p : Bool;
+		@has_top_k : Bool;
+
+		New() {
+			@has_temperature := false;
+			@has_top_p := false;
+			@has_top_k := false;
+		}
+
+		#~
+		Sets the temperature (0.0 to 2.0). Lower is more deterministic.
+		@param t temperature value
+		@return self for chaining
+		~#
+		method : public : SetTemperature(t : Float) ~ Options {
+			@temperature := t;
+			@has_temperature := true;
+			return @self;
+		}
+
+		#~
+		Sets the top-p (nucleus sampling) value.
+		@param p top-p value (0.0 to 1.0)
+		@return self for chaining
+		~#
+		method : public : SetTopP(p : Float) ~ Options {
+			@top_p := p;
+			@has_top_p := true;
+			return @self;
+		}
+
+		#~
+		Sets the top-k sampling value.
+		@param k top-k value
+		@return self for chaining
+		~#
+		method : public : SetTopK(k : Int) ~ Options {
+			@top_k := k;
+			@has_top_k := true;
+			return @self;
+		}
+
+		#~
+		Converts options to JSON for the request.
+		@return JSON element, or Nil if no options set
+		~#
+		method : public : ToJson() ~ JsonElement {
+			if(<>@has_temperature & <>@has_top_p & <>@has_top_k) {
+				return Nil;
+			};
+
+			options_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(@has_temperature) {
+				options_json->Insert("temperature", @temperature);
+			};
+			if(@has_top_p) {
+				options_json->Insert("top_p", @top_p);
+			};
+			if(@has_top_k) {
+				options_json->Insert("top_k", @top_k);
+			};
+
+			return options_json;
+		}
+	}
+
+	#~
+	Tool definition for function calling in chat.
+
+```
+params := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\"}}}");
+tool := Tool->New("get_weather", "Get the weather for a location", params);
+```
+	~#
+	class Tool {
+		@name : String;
+		@description : String;
+		@parameters : JsonElement;
+
+		#~
+		Constructor
+		@param name function name
+		@param description function description
+		@param parameters JSON schema for parameters
+		~#
+		New(name : String, description : String, parameters : JsonElement) {
+			@name := name;
+			@description := description;
+			@parameters := parameters;
+		}
+
+		#~
+		Converts tool to JSON for the request.
+		@return JSON element
+		~#
+		method : public : ToJson() ~ JsonElement {
+			tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tool_json->Insert("type", "function");
+
+			func_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			func_json->Insert("name", @name);
+			func_json->Insert("description", @description);
+			if(@parameters <> Nil) {
+				func_json->Insert("parameters", @parameters);
+			};
+
+			tool_json->Insert("function", func_json);
+			return tool_json;
 		}
 	}
 
@@ -48,6 +193,17 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		}
 
 		#~
+		Generates a response from the model given an input with options
+		@param model model name (i.e. llama3, llava)
+		@param prompt prompt
+		@param options generation options (temperature, top_p, etc.)
+		@return query response
+		~#
+		function : Generate(model : String, prompt : String, options : Options) ~ String {
+			return Generate(model, prompt, Nil, options);
+		}
+
+		#~
 		Generates a response from the model given an input
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
@@ -55,15 +211,34 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		@return query response
 		~#
 		function : Generate(model : String, prompt : String, format : String) ~ String {
+			return Generate(model, prompt, format, Nil);
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model model name (i.e. llama3, llava)
+		@param prompt prompt
+		@param format output format
+		@param options generation options (temperature, top_p, etc.)
+		@return query response
+		~#
+		function : Generate(model : String, prompt : String, format : String, options : Options) ~ String {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("model", model);
 			query_json->Insert("prompt", JsonElement->Encode(prompt));
 			if(format <> Nil) {
 				query_json->Insert("format", format);
 			};
+			if(options <> Nil) {
+				options_json := options->ToJson();
+				if(options_json <> Nil) {
+					query_json->Insert("options", options_json);
+				};
+			};
 			query_json->Insert("stream", false);
 
-			url := Url->New("http://localhost:11434/api/generate");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/generate");
 			post_request := query_json->ToString();
 			
 			# post_request->PrintLine();
@@ -135,7 +310,8 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 			query_json->Insert("images", images_json);
 			query_json->Insert("stream", false);
 
-			url := Url->New("http://localhost:11434/api/generate");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/generate");
 			post_request := query_json->ToString();
 			
 			# post_request->PrintLine();
@@ -192,7 +368,8 @@ chat->Send("Goodbye?")->PrintLine();
 			query_json->Insert("model", model);
 			query_json->Insert("stream", false);
 
-			@url := Url->New("http://localhost:11434/api/chat");
+			host := EndPoint->GetHost();
+			@url := Url->New("{$host}/api/chat");
 			# @url->ToString()->PrintLine();
 			
 			post_request := query_json->ToString();
@@ -217,6 +394,28 @@ chat->Send("Goodbye?")->PrintLine();
 		@return chat response
 		~#
 		method : public : Send(message : String) ~ String {
+			return Send(message, Nil, Nil, Nil);
+		}
+
+		#~
+		Chat response with options
+		@param message chat message
+		@param options generation options
+		@return chat response
+		~#
+		method : public : Send(message : String, options : Options) ~ String {
+			return Send(message, Nil, options, Nil);
+		}
+
+		#~
+		Chat response with format and options
+		@param message chat message
+		@param format output format ("json" or Nil)
+		@param options generation options
+		@param tools tool definitions for function calling
+		@return chat response
+		~#
+		method : public : Send(message : String, format : String, options : Options, tools : Vector<Tool>) ~ String {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -227,6 +426,25 @@ chat->Send("Goodbye?")->PrintLine();
 			query_json->Insert("model", @model);
 			query_json->Insert("messages", @messages_json);
 			query_json->Insert("stream", false);
+
+			if(format <> Nil) {
+				query_json->Insert("format", format);
+			};
+
+			if(options <> Nil) {
+				options_json := options->ToJson();
+				if(options_json <> Nil) {
+					query_json->Insert("options", options_json);
+				};
+			};
+
+			if(tools <> Nil) {
+				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(tool in tools) {
+					tools_json->Add(tool->ToJson());
+				};
+				query_json->Insert("tools", tools_json);
+			};
 
 			post_request := query_json->ToString();
 
@@ -629,7 +847,8 @@ chat->Send("Goodbye?")->PrintLine();
 		@return list of models available
 		~#
 		function : List() ~ Vector<Model> {
-			url := Url->New("http://localhost:11434/api/tags");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/tags");
 
 			get_response := Web.HTTP.HttpClient->QuickGet(url, "application/json");
 			if(get_response <> Nil) {
@@ -672,7 +891,8 @@ chat->Send("Goodbye?")->PrintLine();
 			query_json->Insert("name", name);
 			query_json->Insert("stream", false);
 
-			url := Url->New("http://localhost:11434/api/pull");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/pull");
 			post_request := query_json->ToString();
 	
 			# post_request->PrintLine();
@@ -709,7 +929,8 @@ chat->Send("Goodbye?")->PrintLine();
 			query_json->Insert("name", name);
 			query_json->Insert("stream", false);
 
-			url := Url->New("http://localhost:11434/api/show");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/show");
 			post_request := query_json->ToString();
 	
 			# post_request->PrintLine();
@@ -748,7 +969,8 @@ chat->Send("Goodbye?")->PrintLine();
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("name", name);
 
-			url := Url->New("http://localhost:11434/api/delete");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/delete");
 			post_request := query_json->ToString();
 			# post_request->PrintLine();
 				
@@ -771,7 +993,8 @@ chat->Send("Goodbye?")->PrintLine();
 			query_json->Insert("source", src);
 			query_json->Insert("destination", dest);
 
-			url := Url->New("http://localhost:11434/api/copy");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/copy");
 			post_request := query_json->ToString();
 			# post_request->PrintLine();
 				
@@ -795,7 +1018,8 @@ chat->Send("Goodbye?")->PrintLine();
 			query_json->Insert("model", model);
 			query_json->Insert("prompt", JsonElement->Encode(prompt));
 
-			url := Url->New("http://localhost:11434/api/embeddings");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/embeddings");
 			post_request := query_json->ToString();
 	
 			# post_request->Size()->PrintLine();
@@ -841,7 +1065,8 @@ chat->Send("Goodbye?")->PrintLine();
 			query_json->Insert("modelfile", JsonElement->Encode(modelfile));
 			query_json->Insert("stream", false);
 
-			url := Url->New("http://localhost:11434/api/create");
+			host := EndPoint->GetHost();
+			url := Url->New("{$host}/api/create");
 			post_request := query_json->ToString();
 	
 			# post_request->PrintLine();
