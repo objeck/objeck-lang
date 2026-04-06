@@ -88,6 +88,9 @@ namespace Runtime {
     void HandleDisconnect(int seq, const json& args);
     void HandleEvaluate(int seq, const json& args);
 
+    // Source path resolution
+    std::string ResolveSourcePath(const std::wstring& file_name);
+
     // Variable formatting helpers
     std::string FormatVariableValue(StackDclr& dclr, StackFrame* frame, int var_index);
     std::string FormatVariableType(StackDclr& dclr);

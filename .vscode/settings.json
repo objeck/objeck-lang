@@ -1,0 +1,6 @@
+{
+  "objk.win.install.dir": "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\core\\release\\deploy-x64",
+  "files.associations": {
+    "*.obs": "objeck"
+  }
+}

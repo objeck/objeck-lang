@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "objeck",
+      "request": "launch",
+      "name": "Debug Current Program",
+      "program": "${fileDirname}/${fileBasenameNoExtension}.obe",
+      "sourceDir": "${fileDirname}",
+      "preLaunchTask": "Objeck: Compile (Debug)"
+    },
+    {
+      "type": "objeck",
+      "request": "launch",
+      "name": "Debug Debugger Test",
+      "program": "${workspaceFolder}/programs/regression/debugger_test.obe",
+      "sourceDir": "${workspaceFolder}/programs/regression"
+    }
+  ]
+}

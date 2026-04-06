@@ -343,6 +343,26 @@ void DapAdapter::HandleThreads(int request_seq)
   SendResponse(request_seq, "threads", body);
 }
 
+std::string DapAdapter::ResolveSourcePath(const std::wstring& file_name)
+{
+  std::wstring combined = source_dir + file_name;
+  std::string raw = UnicodeToBytes(combined);
+
+#ifdef _WIN32
+  char resolved[_MAX_PATH];
+  if(_fullpath(resolved, raw.c_str(), _MAX_PATH)) {
+    return std::string(resolved);
+  }
+#else
+  char resolved[PATH_MAX];
+  if(realpath(raw.c_str(), resolved)) {
+    return std::string(resolved);
+  }
+#endif
+
+  return raw;
+}
+
 void DapAdapter::HandleStackTrace(int request_seq, const json& args)
 {
   std::lock_guard<std::mutex> lock(mtx);
@@ -360,9 +380,7 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
       json source;
       std::string file = UnicodeToBytes(method->GetClass()->GetFileName());
       source["name"] = file;
-      // Try to resolve full path
-      std::string full_path = UnicodeToBytes(debugger->GetBasePath() + method->GetClass()->GetFileName());
-      source["path"] = full_path;
+      source["path"] = ResolveSourcePath(method->GetClass()->GetFileName());
       frame["source"] = source;
       frame["line"] = stopped_line;
       frame["column"] = 1;
@@ -380,7 +398,7 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
 
         json source;
         source["name"] = UnicodeToBytes(method->GetClass()->GetFileName());
-        source["path"] = UnicodeToBytes(debugger->GetBasePath() + method->GetClass()->GetFileName());
+        source["path"] = ResolveSourcePath(method->GetClass()->GetFileName());
         frame["source"] = source;
 
         long ip = stopped_call_stack[pos]->ip;
