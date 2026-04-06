@@ -841,7 +841,7 @@ void JitArm64::ProcessInstructions() {
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"S2F: regs=" << aval_regs.size() << endl;
 #endif
-      ProcessStackCallback(S2F, instr, instr_index, 2);
+      ProcessStackCallback(S2F, instr, instr_index, 1);
       ProcessReturnParameters(FLOAT_TYPE);
       break;
 

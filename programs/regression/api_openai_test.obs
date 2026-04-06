@@ -41,7 +41,16 @@ class ApiOpenaiTest {
 			"SKIP: No OpenAI API key"->PrintLine();
 		}
 		else {
-			"SKIP: Embedding API test pending VM segfault investigation"->PrintLine();
+			# Embedding test
+			embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), token);
+			if(embedding = Nil | embedding->Size() = 0) {
+				"  FAIL: Embedding Create returned empty"->PrintLine();
+				pass := false;
+			}
+			else {
+				size := embedding->Size();
+				"  Embedding OK: {$size} dimensions"->PrintLine();
+			};
 		};
 
 		if(pass) {

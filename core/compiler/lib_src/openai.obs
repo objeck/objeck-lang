@@ -5681,7 +5681,8 @@ token := EndPoint->GetApiKey();
 embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), token);
 ```
 	~#
-	class Embedding from EndPoint {
+	class Embedding {
+
 		#~
 		Creates an embedding for a single input string.
 		@param input text to embed
@@ -5714,7 +5715,7 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/embeddings"), data, "application/json", headers);
+			response := HttpsClient->QuickPost(Url->New(EndPoint->GetBaseUrl() + "/embeddings"), data, "application/json", headers);
 			if(response <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json <> Nil) {
@@ -5734,7 +5735,13 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 						};
 					}
 					else if(response_json->Has("error")) {
-						SetLastError(response_json->Get("error")->Get("message")->GetString());
+						error_json := response_json->Get("error");
+						if(error_json <> Nil) {
+							msg_json := error_json->Get("message");
+							if(msg_json <> Nil) {
+								EndPoint->SetLastError(msg_json->GetString());
+							};
+						};
 					};
 				};
 			};

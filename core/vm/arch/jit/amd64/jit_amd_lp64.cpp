@@ -898,7 +898,7 @@ void JitAmd64::ProcessInstructions() {
 #ifdef _DEBUG_JIT
       std::wcout << L"S2F: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-      ProcessStackCallback(S2F, instr, instr_index, 2);
+      ProcessStackCallback(S2F, instr, instr_index, 1);
       ProcessReturnParameters(FLOAT_TYPE);
       break;
 
