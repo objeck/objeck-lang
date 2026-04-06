@@ -62,6 +62,8 @@
 #include <mbedtls/pk.h>
 #include <mbedtls/error.h>
 #include <mbedtls/version.h>
+#include <mbedtls/timing.h>
+#include <mbedtls/ssl_cookie.h>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -128,6 +130,35 @@ struct SecureSocketCtx {
   }
 };
 
+struct DtlsSocketCtx {
+  mbedtls_ssl_context ssl;
+  mbedtls_ssl_config conf;
+  mbedtls_net_context net;
+  mbedtls_x509_crt cacert;
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context ctr_drbg;
+  mbedtls_timing_delay_context timer;
+  int last_error;
+
+  DtlsSocketCtx() : last_error(0) {
+    mbedtls_ssl_init(&ssl);
+    mbedtls_ssl_config_init(&conf);
+    mbedtls_net_init(&net);
+    mbedtls_x509_crt_init(&cacert);
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+  }
+
+  ~DtlsSocketCtx() {
+    mbedtls_ssl_free(&ssl);
+    mbedtls_ssl_config_free(&conf);
+    mbedtls_net_free(&net);
+    mbedtls_x509_crt_free(&cacert);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
+    mbedtls_entropy_free(&entropy);
+  }
+};
+
 struct SecureServerCtx {
   mbedtls_ssl_config conf;
   mbedtls_x509_crt srvcert;
@@ -147,6 +178,37 @@ struct SecureServerCtx {
   }
 
   ~SecureServerCtx() {
+    mbedtls_ssl_config_free(&conf);
+    mbedtls_x509_crt_free(&srvcert);
+    mbedtls_pk_free(&pkey);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
+    mbedtls_entropy_free(&entropy);
+    mbedtls_net_free(&listen_fd);
+  }
+};
+
+struct DtlsServerCtx {
+  mbedtls_ssl_config conf;
+  mbedtls_x509_crt srvcert;
+  mbedtls_pk_context pkey;
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context ctr_drbg;
+  mbedtls_net_context listen_fd;
+  mbedtls_ssl_cookie_ctx cookie_ctx;
+  int last_error;
+
+  DtlsServerCtx() : last_error(0) {
+    mbedtls_ssl_config_init(&conf);
+    mbedtls_x509_crt_init(&srvcert);
+    mbedtls_pk_init(&pkey);
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    mbedtls_net_init(&listen_fd);
+    mbedtls_ssl_cookie_init(&cookie_ctx);
+  }
+
+  ~DtlsServerCtx() {
+    mbedtls_ssl_cookie_free(&cookie_ctx);
     mbedtls_ssl_config_free(&conf);
     mbedtls_x509_crt_free(&srvcert);
     mbedtls_pk_free(&pkey);
@@ -895,6 +957,7 @@ class StackProgram {
   long cls_cls_id;
   long mthd_cls_id;
   long sock_cls_id;
+  long dtls_sock_cls_id;
   long data_type_cls_id;
   long command_output_cls_id;
   StackMethod* init_method;
@@ -934,7 +997,7 @@ class StackProgram {
     cls_interfaces = nullptr;
     classes = nullptr;
     char_strings = nullptr;
-    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = data_type_cls_id = command_output_cls_id = -1;
+    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = dtls_sock_cls_id = data_type_cls_id = command_output_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
     InitializeCriticalSection(&prop_cs);
@@ -1148,6 +1211,19 @@ class StackProgram {
 
 		 return sock_cls_id;
 	 }
+
+  long GetDtlsSocketObjectId() {
+    if(dtls_sock_cls_id < 0) {
+      StackClass* cls = GetClass(L"System.IO.Net.DTLSSocket");
+      if(!cls) {
+        std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.DTLSSocket <<<" << std::endl;
+        exit(1);
+      }
+      dtls_sock_cls_id = cls->GetId();
+    }
+
+    return dtls_sock_cls_id;
+  }
 
    long GetDataTypeObjectId() {
      if(data_type_cls_id < 0) {
@@ -1630,6 +1706,81 @@ class TrapProcessor {
 #endif
    }
 
+   static int dtls_ready_for_io(DtlsSocketCtx* ctx, bool is_write) {
+      if(!ctx) {
+         return -1;
+      }
+
+      // For reads, check if mbedTLS has buffered decrypted data.
+      if(!is_write) {
+         size_t pending = mbedtls_ssl_get_bytes_avail(&ctx->ssl);
+         if(pending > 0) {
+            return 1;
+         }
+      }
+
+      // Get the underlying socket file descriptor.
+      int fd = ctx->net.fd;
+      if(fd < 0) {
+         return -1;
+      }
+
+      struct timeval tv;
+      tv.tv_sec = 0;
+      tv.tv_usec = 0;
+
+#ifdef _WIN32
+      SOCKET s = (SOCKET)fd;
+
+      fd_set rfds;
+      FD_ZERO(&rfds);
+
+      fd_set wfds;
+      FD_ZERO(&wfds);
+
+      if(is_write) {
+         FD_SET(s, &wfds);
+      }
+      else {
+         FD_SET(s, &rfds);
+      }
+
+      const int ret = select(0, is_write ? nullptr : &rfds, is_write ? &wfds : nullptr, nullptr, &tv);
+      if(ret == SOCKET_ERROR) {
+         return -1;
+      }
+
+      if(ret > 0) {
+         if(!is_write && FD_ISSET(s, &rfds)) {
+            return 1;
+         }
+
+         if(is_write && FD_ISSET(s, &wfds)) {
+            return 1;
+         }
+      }
+
+      return 0;
+
+#else
+      fd_set fds;
+      FD_ZERO(&fds);
+      FD_SET(fd, &fds);
+
+      int ret = select(fd + 1, is_write ? nullptr : &fds, is_write ? &fds : nullptr, nullptr, &tv);
+
+      if(ret < 0) {
+         return -1;
+      }
+
+      if(ret > 0 && FD_ISSET(fd, &fds)) {
+         return 1;
+      }
+
+      return 0;
+#endif
+   }
+
   static inline bool GetTime(struct tm*& curr_time, time_t raw_time, bool is_gmt) {
 #ifdef _WIN32
     struct tm temp_time;
@@ -1910,6 +2061,25 @@ class TrapProcessor {
   static bool SockTcpSslOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool SockTcpSslOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool SockTcpSslOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  // DTLS socket operations
+  static bool SockDtlsConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsIssuer(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsSubject(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsCertSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsClose(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsOutString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsInString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsListen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsAccept(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsInByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool SockDtlsOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool FileInByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool FileInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool FileInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);

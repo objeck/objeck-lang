@@ -2194,6 +2194,42 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SOCK_TCP_SSL_ERROR:
     return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
 
+  case SOCK_DTLS_CONNECT:
+    return SockDtlsConnect(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_ISSUER:
+    return SockDtlsIssuer(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_SUBJECT:
+    return SockDtlsSubject(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_CLOSE:
+    return SockDtlsClose(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_OUT_STRING:
+    return SockDtlsOutString(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_IN_STRING:
+    return SockDtlsInString(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_LISTEN:
+    return SockDtlsListen(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_ACCEPT:
+    return SockDtlsAccept(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_SELECT:
+    return SockDtlsSelect(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_SRV_CERT:
+    return SockDtlsCertSrv(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_SRV_CLOSE:
+    return SockDtlsCloseSrv(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_ERROR:
+    return SockDtlsError(program, inst, op_stack, stack_pos, frame);
+
     case SOCK_UDP_CREATE:
       return SockUdpCreate(program, inst, op_stack, stack_pos, frame);
 
@@ -2400,6 +2436,24 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case SOCK_TCP_SSL_OUT_CHAR_ARY:
     return SockTcpSslOutCharAry(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_IN_BYTE:
+    return SockDtlsInByte(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_IN_BYTE_ARY:
+    return SockDtlsInByteAry(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_IN_CHAR_ARY:
+    return SockDtlsInCharAry(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_OUT_BYTE:
+    return SockDtlsOutByte(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_OUT_BYTE_ARY:
+    return SockDtlsOutByteAry(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_DTLS_OUT_CHAR_ARY:
+    return SockDtlsOutCharAry(program, inst, op_stack, stack_pos, frame);
 
   case FILE_IN_BYTE:
     return FileInByte(program, inst, op_stack, stack_pos, frame);
@@ -5981,6 +6035,552 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
     PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sctx), op_stack, stack_pos);
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+// --- DTLS trap implementations ---
+
+bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* pem_file_array = (size_t*)PopInt(op_stack, stack_pos);
+  const long port = (long)PopInt(op_stack, stack_pos);
+  size_t* addr_array = (size_t*)PopInt(op_stack, stack_pos);
+
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(addr_array && instance) {
+    addr_array = (size_t*)addr_array[0];
+    const std::string addr = UnicodeToBytes((wchar_t*)(addr_array + 3));
+
+    std::string pem_file;
+    if(pem_file_array) {
+      pem_file_array = (size_t*)pem_file_array[0];
+      pem_file = UnicodeToBytes((wchar_t*)(pem_file_array + 3));
+    }
+
+    // Close existing connection if any
+    IPDtlsSocket::Close((DtlsSocketCtx*)instance[0]);
+
+    DtlsSocketCtx* sctx = nullptr;
+    const bool is_open = IPDtlsSocket::Open(addr.c_str(), port, pem_file, sctx);
+    if(is_open) {
+      instance[0] = (size_t)sctx;
+      instance[1] = 0;
+      instance[2] = 0;
+      instance[3] = 1;
+
+#ifdef _DEBUG
+      std::wcout << L"# dtls socket connect: addr='" << BytesToUnicode(addr) << L"'; instance="
+      << instance << L"(" << (size_t)instance << L")" << L"; sctx=" << sctx << L"("
+      << (size_t)sctx << L") #" << std::endl;
+#endif
+    }
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsIssuer(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  if(sctx) {
+    const mbedtls_x509_crt* peer_cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
+    if(peer_cert) {
+      char buffer[LARGE_BUFFER_MAX] = {0};
+      mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &peer_cert->issuer);
+      const std::wstring in = BytesToUnicode(buffer);
+      PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsSubject(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+  if(sctx) {
+    const mbedtls_x509_crt* peer_cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
+    if(peer_cert) {
+      char buffer[LARGE_BUFFER_MAX] = {0};
+      mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &peer_cert->subject);
+      const std::wstring in = BytesToUnicode(buffer);
+      PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsClose(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+
+#ifdef _DEBUG
+  std::wcout << L"# dtls socket close: sctx=" << sctx << L"("
+    << (size_t)sctx << L") #" << std::endl;
+#endif
+  IPDtlsSocket::Close(sctx);
+  instance[0] = instance[1] = instance[2] = instance[3] = 0;
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsOutString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance) {
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    if(instance[3] && sctx) {
+      const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
+      IPDtlsSocket::WriteBytes(out.c_str(), (int)out.size(), sctx);
+    }
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(array && instance) {
+    char buffer[MID_BUFFER_MAX] = {0};
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    int status;
+    if(instance[3] && sctx) {
+      size_t index = 0;
+      char value;
+      bool end_line = false;
+      do {
+        value = IPDtlsSocket::ReadByte(sctx, status);
+        if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
+          buffer[index++] = value;
+        }
+        else {
+          end_line = true;
+        }
+      }
+      while(!end_line && index < array[0] - 1);
+      buffer[index] = '\0';
+
+      // assume LF
+      if(value == '\r') {
+        IPDtlsSocket::ReadByte(sctx, status);
+      }
+
+      // copy content
+      const std::wstring in = BytesToUnicode(buffer);
+      wchar_t* out = (wchar_t*)(array + 3);
+#ifdef _WIN32
+      wcsncpy_s(out, array[0], in.c_str(), in.size());
+#else
+      wcsncpy(out, in.c_str(), in.size());
+#endif
+    }
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    size_t* cert_obj = (size_t*)instance[3];
+    size_t* key_obj = (size_t*)instance[4];
+    size_t* passwd_obj = (size_t*)instance[5];
+    const long port = (long)instance[6];
+
+    if(cert_obj && key_obj) {
+      DtlsServerCtx* srv = new DtlsServerCtx();
+
+      // Seed the random number generator
+      const char* pers = "objeck_dtls_server";
+      int ret = mbedtls_ctr_drbg_seed(&srv->ctr_drbg, mbedtls_entropy_func, &srv->entropy,
+                                       (const unsigned char*)pers, strlen(pers));
+      if(ret != 0) {
+        delete srv;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+        return true;
+      }
+
+      // Load server certificate
+      const std::string cert_path = UnicodeToBytes((wchar_t*)((size_t*)cert_obj[0] + 3));
+      ret = mbedtls_x509_crt_parse_file(&srv->srvcert, cert_path.c_str());
+      if(ret != 0) {
+        delete srv;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+        return true;
+      }
+
+      // Load private key (with optional password)
+      const std::string key_path = UnicodeToBytes((wchar_t*)((size_t*)key_obj[0] + 3));
+      const char* passwd_cstr = nullptr;
+      std::string passwd;
+      if(passwd_obj) {
+        const std::wstring passwd_str((wchar_t*)((size_t*)passwd_obj[0] + 3));
+        if(!passwd_str.empty()) {
+          passwd = UnicodeToBytes(passwd_str);
+          passwd_cstr = passwd.c_str();
+        }
+      }
+
+#if MBEDTLS_VERSION_MAJOR >= 3
+      ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr,
+                                      mbedtls_ctr_drbg_random, &srv->ctr_drbg);
+#else
+      ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr);
+#endif
+      if(ret != 0) {
+        delete srv;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+        return true;
+      }
+
+      // Bind to port
+      const std::string port_str = std::to_string(port);
+      ret = mbedtls_net_bind(&srv->listen_fd, nullptr, port_str.c_str(), MBEDTLS_NET_PROTO_UDP);
+      if(ret != 0) {
+        delete srv;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+        return true;
+      }
+
+      // Configure SSL for DTLS server
+      ret = mbedtls_ssl_config_defaults(&srv->conf, MBEDTLS_SSL_IS_SERVER,
+                                         MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
+      if(ret != 0) {
+        delete srv;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
+        return true;
+      }
+
+      mbedtls_ssl_conf_rng(&srv->conf, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
+      mbedtls_ssl_conf_own_cert(&srv->conf, &srv->srvcert, &srv->pkey);
+
+      // Setup DTLS cookies
+      ret = mbedtls_ssl_cookie_setup(&srv->cookie_ctx, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
+      if(ret != 0) {
+        srv->last_error = ret;
+        delete srv;
+        srv = nullptr;
+        return true;
+      }
+      mbedtls_ssl_conf_dtls_cookies(&srv->conf, mbedtls_ssl_cookie_write, mbedtls_ssl_cookie_check, &srv->cookie_ctx);
+
+      instance[0] = (size_t)srv;
+      instance[1] = 0;
+      instance[2] = 0;
+
+      PushInt(1, op_stack, stack_pos);
+      return true;
+    }
+  }
+
+  PushInt(0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    DtlsServerCtx* srv = (DtlsServerCtx*)instance[0];
+
+    if(srv) {
+      DtlsSocketCtx* client_sctx = new DtlsSocketCtx();
+
+      // Accept raw connection
+      int ret = mbedtls_net_accept(&srv->listen_fd, &client_sctx->net, nullptr, 0, nullptr);
+      if(ret != 0) {
+        delete client_sctx;
+        PushInt(0, op_stack, stack_pos);
+        return true;
+      }
+
+      // Setup SSL session for this client (uses server's config)
+      ret = mbedtls_ssl_setup(&client_sctx->ssl, &srv->conf);
+      if(ret != 0) {
+        delete client_sctx;
+        PushInt(0, op_stack, stack_pos);
+        return true;
+      }
+
+      mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+      mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+
+      // Perform DTLS handshake with cookie verification
+      while((ret = mbedtls_ssl_handshake(&client_sctx->ssl)) != 0) {
+        if(ret == MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED) {
+          mbedtls_ssl_session_reset(&client_sctx->ssl);
+          mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+          mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+          continue;
+        }
+        if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+          IPDtlsSocket::Close(client_sctx);
+          return true;
+        }
+      }
+
+      // Get peer address info
+      int sock_fd = client_sctx->net.fd;
+
+      struct sockaddr_storage pin;
+      memset(&pin, 0, sizeof(pin));
+      socklen_t pen_len = sizeof(pin);
+      int status = getpeername(sock_fd, (sockaddr*)&pin, &pen_len);
+      if(status < 0) {
+        delete client_sctx;
+        PushInt(0, op_stack, stack_pos);
+        return true;
+      }
+
+      char host_name[NI_MAXHOST] = {0};
+      char port[NI_MAXSERV] = {0};
+      status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port,
+                           sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
+      if(status < 0) {
+        delete client_sctx;
+        PushInt(0, op_stack, stack_pos);
+        return true;
+      }
+
+      size_t* sock_obj = MemoryManager::AllocateObject(program->GetDtlsSocketObjectId(), op_stack, *stack_pos, false);
+      sock_obj[0] = (size_t)client_sctx;
+      sock_obj[1] = 0;
+      sock_obj[3] = 1;
+      sock_obj[4] = (size_t)CreateStringObject(BytesToUnicode(host_name), program, op_stack, stack_pos);
+      sock_obj[5] = instance[6];
+
+      PushInt((size_t)sock_obj, op_stack, stack_pos);
+      return true;
+    }
+  }
+
+  PushInt(0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockDtlsSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+   const bool is_write = (bool)PopInt(op_stack, stack_pos);
+   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+   if(instance && instance[0]) {
+      DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+      PushInt(dtls_ready_for_io(sctx, is_write), op_stack, stack_pos);
+      return true;
+   }
+
+   PushInt(-1, op_stack, stack_pos);
+   return true;
+}
+
+bool TrapProcessor::SockDtlsCertSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  DtlsServerCtx* srv = (DtlsServerCtx*)instance[0];
+  if(srv) {
+    char buffer[LARGE_BUFFER_MAX] = {0};
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &srv->srvcert.issuer);
+    const std::wstring in = BytesToUnicode(buffer);
+    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  // mbedTLS uses return codes rather than an error queue.
+  // Check the last error from the most recent DtlsSocketCtx operation.
+  // The caller should pass the socket instance to retrieve the error from.
+  // For backward compatibility, we check the stack for an instance pointer.
+  PushInt(0, op_stack, stack_pos);
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    DtlsServerCtx* srv = (DtlsServerCtx*)instance[0];
+    if(srv) {
+      instance[0] = 0;
+      delete srv;
+    }
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsInByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    int status;
+    PushInt(IPDtlsSocket::ReadByte(sctx, status), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    char* buffer = (char*)(array + 3);
+
+    int status; int read = 0;
+    char* temp = buffer + offset;
+    bool done = false;
+    for(long i = 0; !done && i < num; ++i) {
+      temp[i] = IPDtlsSocket::ReadByte(sctx, status);
+      if(!status) {
+        done = true;
+      }
+      else if(status < 0) {
+        PushInt(-1, op_stack, stack_pos);
+        return true;
+      }
+      ++read;
+    }
+
+    PushInt(read, op_stack, stack_pos);
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (long)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    wchar_t* buffer = (wchar_t*)(array + 3);
+    char* byte_buffer = new char[num * 2 + 1];
+    int read = IPDtlsSocket::ReadBytes(byte_buffer + offset, num, sctx);
+    if(read > -1) {
+      byte_buffer[read] = '\0';
+      std::wstring in = BytesToUnicode(byte_buffer);
+#ifdef _WIN32
+      wcsncpy_s(buffer, array[0] + 1, in.c_str(), in.size());
+#else
+      wcsncpy(buffer, in.c_str(), in.size());
+#endif
+      PushInt(in.size(), op_stack, stack_pos);
+    }
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
+    // clean up
+    delete[] byte_buffer;
+    byte_buffer = nullptr;
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    IPDtlsSocket::WriteByte((char)value, sctx);
+    PushInt(1, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    char* buffer = (char*)(array + 3);
+    PushInt(IPDtlsSocket::WriteBytes(buffer + offset, num, sctx), op_stack, stack_pos);
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SockDtlsOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
+    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    const wchar_t* buffer = (wchar_t*)(array + 3);
+    // copy sub buffer
+    const std::wstring sub_buffer(buffer + offset, num);
+    // convert to bytes and write out
+    std::string buffer_out = UnicodeToBytes(sub_buffer);
+    PushInt(IPDtlsSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sctx), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);

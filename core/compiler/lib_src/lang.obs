@@ -10753,6 +10753,288 @@ bundle System.IO.Net {
 			SOCK_IP_ERROR;
 		}
 	}
+
+	#~
+	DTLS/UDP secure socket
+	~#
+	class DTLSSocket implements System.IO.InputStream, System.IO.OutputStream {
+		@ctx : Int;
+		@bio : Int;
+		@cert : Int;
+		@is_open : Bool;
+		@address : System.String;
+		@port : Int;
+		@pem : String;
+
+		#~
+		Default constructor
+		@param address network address
+		@param port network port
+		@param pem the Privacy Enhanced Mail file (optional)
+		~#
+		New(address : System.String, port : Int, pem : String := Nil) {
+			Parent();
+			@address := address;
+			@port := port;
+			@pem := pem;
+
+			SOCK_DTLS_CONNECT;
+		}
+
+		#~
+		Returns the connected network address
+		@return return network address
+		~#
+		method : public : GetAddress() ~ String {
+			return @address;
+		}
+
+		#~
+		Gets the X.509 certificate issuer name
+		@return certificate issuer name
+		~#
+		method : public : GetIssuer() ~ String {
+			SOCK_DTLS_ISSUER;
+		}
+
+		#~
+		Gets the X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			SOCK_DTLS_SUBJECT;
+		}
+
+		#~
+		Checks if read/write data is available
+		@param is_write if true check for write, otherwise read
+		@return 1 if ready, 0 if not ready, -1 is error
+		~#
+		method : public : Select(is_write : Bool) ~ Int {
+			SOCK_DTLS_SELECT;
+		}
+
+		#~
+		Returns the connected network port
+		@return return network port
+		~#
+		method : public : GetPort() ~ Int {
+			return @port;
+		}
+
+		#~
+		Returns rather the socket is open
+		@return true if socket is open, false otherwise
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @is_open;
+		}
+
+		#~
+		Writes a byte
+		@param b byte to write
+		@return true if byte was written, false otherwise
+		~#
+		method : public : WriteByte(b : Int) ~ Bool {
+			SOCK_DTLS_OUT_BYTE;
+		}
+
+		#~
+		Writes bytes from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
+
+		#~
+		Writes bytes from a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			SOCK_DTLS_OUT_BYTE_ARY;
+		}
+
+		#~
+		Writes characters from a byte buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Char[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
+
+		#~
+		Writes characters from a character buffer
+		@param offset destination buffer offset
+		@param num number of values to write
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			SOCK_DTLS_OUT_CHAR_ARY;
+		}
+
+		#~
+		Reads a byte
+		@return byte read
+		~#
+		method : public : ReadByte() ~ Byte {
+			SOCK_DTLS_IN_BYTE;
+		}
+
+		#~
+		Reads bytes into a byte buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+			SOCK_DTLS_IN_BYTE_ARY;
+		}
+
+		#~
+		Reads bytes into a character buffer
+		@param offset destination buffer offset
+		@param num number of values to read
+		@param buffer input buffer
+		@return number of values read
+		~#
+		method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+			SOCK_DTLS_IN_CHAR_ARY;
+		}
+
+		#~
+		Writes a character string
+		@param str string to be written
+		~#
+		method : public : WriteString(str : System.String) ~ Nil {
+			WriteString(str->ToCharArray());
+		}
+
+		method : WriteString(buffer : Char[]) ~ Nil {
+			SOCK_DTLS_OUT_STRING;
+		}
+
+		#~
+		Reads a string until a newline or character return is detected
+		@return character string
+		~#
+		method : public : native : ReadLine() ~ System.String {
+			if(<>IsOpen()) {
+				return Nil;
+			};
+
+			buffer : Char[] := Char->New[8192];
+			ReadString(buffer);
+			return System.String->New(buffer);
+		}
+
+		method : ReadString(buffer : Char[]) ~ Nil {
+			SOCK_DTLS_IN_STRING;
+		}
+
+		#~
+		Flushes the output buffer. This is a no-opt given
+		this socket is not backed by an output buffer.
+		~#
+		method : public : Flush() ~ Nil {}
+
+		#~
+		Get the last error
+		@return last error message, or Nil of no error
+		~#
+		function : GetLastError() ~ String {
+			SOCK_DTLS_ERROR;
+		}
+
+		#~
+		Closes the socket
+		~#
+		method : public : Close() ~ Nil {
+			SOCK_DTLS_CLOSE;
+		}
+	}
+
+	#~
+	DTLS/UDP secure server socket
+	~#
+	class DTLSSocketServer {
+		@server : Int;
+		@bio : Int;
+		@ctx : Int;
+		@cert : String;
+		@key : String;
+		@passwd : String;
+		@port : Int;
+
+		#~
+		Default constructor
+		@param cert path to ssl cert
+		@param key path to ssl key
+		@param passwd private key password
+		@param port server port
+		~#
+		New(cert : String, key : String, passwd : String, port : Int) {
+		  Parent();
+		  @cert := cert;
+		  @key := key;
+		  @passwd := passwd;
+		  @port := port;
+		}
+
+		#~
+		Listens for incoming client connections
+		@return true if client successfully connects, false otherwise
+		~#
+		method : public : Listen() ~ Bool {
+			SOCK_DTLS_LISTEN;
+		}
+
+		#~
+		Accepts a client connection
+		@return client socket interface
+		~#
+		method : public : Accept() ~ DTLSSocket {
+			SOCK_DTLS_ACCEPT;
+		}
+
+		#~
+		Gets the X.509 certificate's issuer name
+		@return certificate issuer name
+		~#
+		method : public : GetIssuer() ~ String {
+			SOCK_DTLS_ISSUER;
+		}
+
+		#~
+		Gets the X.509 certificate subject name
+		@return certificate subject name
+		~#
+		method : public : GetSubject() ~ String {
+			SOCK_DTLS_SUBJECT;
+		}
+
+		#~
+		Get the last error
+		@return last error message, or Nil of no error
+		~#
+		function : GetLastError() ~ String {
+			SOCK_DTLS_ERROR;
+		}
+
+		#~
+		Closes the server socket
+		~#
+		method : public : Close() ~ Nil {
+			SOCK_DTLS_SRV_CLOSE;
+		}
+	}
 }
 
 #~

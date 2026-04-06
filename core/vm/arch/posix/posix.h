@@ -684,6 +684,165 @@ class IPSecureSocket {
   }
 };
 
+class IPDtlsSocket {
+ public:
+  static bool Open(const char* address, int port, const std::string &pem_file, DtlsSocketCtx* &sctx) {
+    sctx = new DtlsSocketCtx();
+
+    const char* pers = "objeck_dtls_client";
+    int ret = mbedtls_ctr_drbg_seed(&sctx->ctr_drbg, mbedtls_entropy_func, &sctx->entropy,
+                                     (const unsigned char*)pers, strlen(pers));
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    std::string cert_path;
+    if(!pem_file.empty()) {
+      cert_path = pem_file;
+    }
+    else {
+      cert_path = UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE;
+    }
+
+    ret = mbedtls_x509_crt_parse_file(&sctx->cacert, cert_path.c_str());
+    if(ret < 0) {
+      sctx->last_error = ret;
+      std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    std::string addr_str = address;
+    if(addr_str.size() < 1 || port < 0) {
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    std::string port_str = std::to_string(port);
+    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_UDP);
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
+                                       MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    mbedtls_ssl_conf_authmode(&sctx->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+    mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
+    mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
+
+    ret = mbedtls_ssl_setup(&sctx->ssl, &sctx->conf);
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    ret = mbedtls_ssl_set_hostname(&sctx->ssl, address);
+    if(ret != 0) {
+      sctx->last_error = ret;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+    mbedtls_ssl_set_timer_cb(&sctx->ssl, &sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+
+    while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {
+      if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+        sctx->last_error = ret;
+        delete sctx;
+        sctx = nullptr;
+        return false;
+      }
+    }
+
+    uint32_t flags = mbedtls_ssl_get_verify_result(&sctx->ssl);
+    if(flags != 0 && flags != MBEDTLS_X509_BADCERT_NOT_TRUSTED) {
+      sctx->last_error = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
+      delete sctx;
+      sctx = nullptr;
+      return false;
+    }
+
+    return true;
+  }
+
+  static void WriteByte(char value, DtlsSocketCtx* sctx) {
+    int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
+    if(ret < 0) {
+      sctx->last_error = ret;
+    }
+  }
+
+  static int WriteBytes(const char* values, int len, DtlsSocketCtx* sctx) {
+    int written = 0;
+    while(written < len) {
+      int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)values + written, len - written);
+      if(ret < 0) {
+        if(ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
+          continue;
+        }
+        sctx->last_error = ret;
+        return -1;
+      }
+      written += ret;
+    }
+    return written;
+  }
+
+  static char ReadByte(DtlsSocketCtx* sctx, int &status) {
+    unsigned char value;
+    status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
+    if(status <= 0) {
+      if(status < 0) {
+        sctx->last_error = status;
+      }
+      return '\0';
+    }
+    return (char)value;
+  }
+
+  static int ReadBytes(char* values, int len, DtlsSocketCtx* sctx) {
+    int total = 0;
+    while(total < len) {
+      int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + total, len - total);
+      if(status < 0) {
+        sctx->last_error = status;
+        return total > 0 ? total : -1;
+      }
+      if(status == 0) {
+        break;
+      }
+      total += status;
+    }
+    return total;
+  }
+
+  static void Close(DtlsSocketCtx* sctx) {
+    if(sctx) {
+      mbedtls_ssl_close_notify(&sctx->ssl);
+      delete sctx;
+    }
+  }
+};
+
 /****************************
  * System operations
  ****************************/

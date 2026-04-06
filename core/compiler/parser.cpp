@@ -2915,6 +2915,114 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case SOCK_DTLS_CONNECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_CONNECT);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_CLOSE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_CLOSE);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_ISSUER:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_ISSUER);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_SUBJECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_SUBJECT);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_SELECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_SELECT);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_ERROR:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_ERROR);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_IN_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_IN_BYTE);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_IN_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_IN_BYTE_ARY);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_IN_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_IN_CHAR_ARY);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_IN_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_IN_STRING);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_OUT_BYTE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_OUT_BYTE);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_OUT_BYTE_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_OUT_BYTE_ARY);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_OUT_CHAR_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_OUT_CHAR_ARY);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_OUT_STRING:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_OUT_STRING);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_LISTEN:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_LISTEN);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_ACCEPT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_ACCEPT);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_SRV_CERT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_SRV_CERT);
+      NextToken();
+      break;
+
+    case SOCK_DTLS_SRV_CLOSE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_DTLS_SRV_CLOSE);
+      NextToken();
+      break;
+
     case SERL_CHAR:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_CHAR);
@@ -4780,6 +4888,114 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case SOCK_TCP_SSL_OUT_CHAR_ARY:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::SOCK_TCP_SSL_OUT_CHAR_ARY);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_CONNECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_CONNECT);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_CLOSE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_CLOSE);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_ISSUER:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_ISSUER);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_SUBJECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_SUBJECT);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_SELECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_SELECT);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_ERROR:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_ERROR);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_IN_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_IN_BYTE);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_IN_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_IN_BYTE_ARY);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_IN_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_IN_CHAR_ARY);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_IN_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_IN_STRING);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_OUT_BYTE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_OUT_BYTE);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_OUT_BYTE_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_OUT_BYTE_ARY);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_OUT_CHAR_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_OUT_CHAR_ARY);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_OUT_STRING:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_OUT_STRING);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_LISTEN:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_LISTEN);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_ACCEPT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_ACCEPT);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_SRV_CERT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_SRV_CERT);
+     NextToken();
+     break;
+
+  case SOCK_DTLS_SRV_CLOSE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_DTLS_SRV_CLOSE);
      NextToken();
      break;
 
