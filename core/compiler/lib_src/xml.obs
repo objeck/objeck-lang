@@ -746,7 +746,13 @@ if(parser->Parse()) {
 						};
 					};				
 					# copy data
-					data := String->New(@buffer, start_pos, @buffer_pos - 3 - start_pos);
+					data : String;
+					if(@buffer_pos > start_pos + 3) {
+						data := String->New(@buffer, start_pos, @buffer_pos - 3 - start_pos);
+					}
+					else {
+						data := "";
+					};
 
 # IO.Console->Print("cdata: ")->PrintLine(data);
 
@@ -902,7 +908,7 @@ if(parser->Parse()) {
 		method : SetNames(name : String) ~ Nil {
 		 offset := name->FindLast(':');
 		 if(offset > 0) {
-		   @namespace := name->SubString(offset);
+		   @namespace := name->SubString(0, offset);
 		   offset += 1;
 		   @name := name->SubString(offset, name->Size() - offset);
 		  }
@@ -1054,7 +1060,7 @@ if(parser->Parse()) {
 		method : SetNames(name : String) ~ Nil {
 			offset := name->FindLast(':');
 			if(offset > 0) {
-				@namespace := name->SubString(offset);
+				@namespace := name->SubString(0, offset);
 				offset += 1;
 				@name := name->SubString(offset, name->Size() - offset);
 			}

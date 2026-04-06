@@ -314,6 +314,8 @@ if(doc <> Nil) {
 
 		@root : JsonElement;
 		@error_msg : String;
+		@depth : Int;
+		@max_depth : Int;
 		
 		#~
 		Constructor
@@ -325,6 +327,7 @@ if(doc <> Nil) {
 
 			@tokens_max := 32;
 			@tokens := Token->New[@tokens_max];
+			@max_depth := 64;
 		}
 
 		#~
@@ -337,6 +340,7 @@ if(doc <> Nil) {
 
 			@tokens_max := 32;
 			@tokens := Token->New[@tokens_max];
+			@max_depth := 64;
 		}
 
 		#~
@@ -349,6 +353,7 @@ if(doc <> Nil) {
 
 			@tokens_max := 32;
 			@tokens := Token->New[@tokens_max];
+			@max_depth := 64;
 		}
 
 		#~
@@ -454,80 +459,100 @@ if(doc <> Nil) {
 		}
 
 		method : ParseObject() ~ JsonElement {
+			@depth += 1;
+			if(@depth > @max_depth) {
+				@error_msg := "*** Maximum nesting depth exceeded ***";
+				@depth -= 1;
+				return Nil;
+			};
 			elements := Map->New()<String, JsonElement>;
-			
+
 			NextToken();
-			while(@cur_token->GetType() <> Token->Type->EOS & 
+			while(@cur_token->GetType() <> Token->Type->EOS &
 				@cur_token->GetType() <> Token->Type->CCBR) {
-				
+
 				# parse name
 				elem_name : Token;
 				if(Match(Token->Type->IDENT) = false) {
 					@error_msg := "*** Expected identifier *** ";
-# @cur_token->GetType()->As(Int)->PrintLine();				
+# @cur_token->GetType()->As(Int)->PrintLine();
+					@depth -= 1;
 					return Nil;
-				};			
+				};
 				elem_name := @cur_token;
 				NextToken();
-				
+
 				if(Match(Token->Type->COLON) = false) {
 					@error_msg := "*** Expected ':' *** ";
-# @cur_token->GetType()->As(Int)->PrintLine();				
+# @cur_token->GetType()->As(Int)->PrintLine();
+					@depth -= 1;
 					return Nil;
 				};
 				NextToken();
-				
+
 				# parse value
 				value := ParseValue();
-				if(value = Nil) {				
+				if(value = Nil) {
+					@depth -= 1;
 					return Nil;
 				};
-# IO.Console->Print("insert=")->PrintLine(elem_name->GetValue());		
-				elements->Insert(elem_name->GetValue(), value);				
-				
+# IO.Console->Print("insert=")->PrintLine(elem_name->GetValue());
+				elements->Insert(elem_name->GetValue(), value);
+
 				# update
 				if(Match(Token->Type->COMMA)) {
 					NextToken();
 # "comma"->PrintLine();
 				};
 			};
-			
+
 			if(Match(Token->Type->CCBR) = false) {
 				@error_msg := "*** Expected '}' *** ";
-# @cur_token->GetType()->As(Int)->PrintLine();				
+# @cur_token->GetType()->As(Int)->PrintLine();
+				@depth -= 1;
 				return Nil;
 			};
 			NextToken();
-			
+
+			@depth -= 1;
 			return JsonElement->New(elements);
 		}
 
 		method : ParseArray() ~ JsonElement {
+			@depth += 1;
+			if(@depth > @max_depth) {
+				@error_msg := "*** Maximum nesting depth exceeded ***";
+				@depth -= 1;
+				return Nil;
+			};
 			elements := Vector->New()<JsonElement>;
-			
+
 			NextToken();
-			while(@cur_token->GetType() <> Token->Type->EOS & 
+			while(@cur_token->GetType() <> Token->Type->EOS &
 				@cur_token->GetType() <> Token->Type->CBR) {
 				value := ParseValue();
 				if(value = Nil) {
+					@depth -= 1;
 					return Nil;
 				};
 				elements->AddBack(value);
-				
+
 				# update
 				if(Match(Token->Type->COMMA)) {
 					NextToken();
 # "comma"->PrintLine();
 				};
 			};
-			
+
 			if(Match(Token->Type->CBR) = false) {
 				@error_msg := "*** Expected ']' *** ";
-# @cur_token->GetType()->As(Int)->PrintLine();				
+# @cur_token->GetType()->As(Int)->PrintLine();
+				@depth -= 1;
 				return Nil;
 			};
 			NextToken();
-			
+
+			@depth -= 1;
 			return JsonElement->New(elements);
 		}
 
@@ -536,7 +561,9 @@ if(doc <> Nil) {
 		}
 
 		method : AddToken(token : Token) ~ Nil {
-	 		@tokens[@token_write_pos++] := token;
+	 		if(@token_write_pos < @tokens_max) {
+	 			@tokens[@token_write_pos++] := token;
+	 		};
 	 	}
 
 	 	method : NextToken() ~ Nil {
@@ -590,7 +617,12 @@ if(doc <> Nil) {
 										}
 										else if(@input[@input_index] = '\\') {
 											# skip escape and the following char
-											@input_index += 2;
+											if(@input_index + 1 < @input->Size()) {
+												@input_index += 2;
+											}
+											else {
+												@input_index += 1;
+											};
 										}
 										else {
 											# update
@@ -610,13 +642,13 @@ if(doc <> Nil) {
 									len := @input_index - offset;
 								};
 
-								if(<>quoted & len = 4 & @input[offset] = 't' & @input[offset + 1] = 'r' & @input[offset + 2] = 'u' & @input[offset + 3] = 'e') {
+								if(<>quoted & len = 4 & offset + 3 < @input->Size() & @input[offset] = 't' & @input[offset + 1] = 'r' & @input[offset + 2] = 'u' & @input[offset + 3] = 'e') {
 									AddToken(Token->New(Token->Type->TRUE));
 								}
-								else if(<>quoted & len = 5 & @input[offset] = 'f' & @input[offset + 1] = 'a' & @input[offset + 2] = 'l' & @input[offset + 3] = 's' & @input[offset + 4] = 'e') {
+								else if(<>quoted & len = 5 & offset + 4 < @input->Size() & @input[offset] = 'f' & @input[offset + 1] = 'a' & @input[offset + 2] = 'l' & @input[offset + 3] = 's' & @input[offset + 4] = 'e') {
 									AddToken(Token->New(Token->Type->FALSE));
 								}
-								else if(<>quoted & len = 4 & @input[offset] = 'n' & @input[offset + 1] = 'u' & @input[offset + 2] = 'l' & @input[offset + 3] = 'l') {
+								else if(<>quoted & len = 4 & offset + 3 < @input->Size() & @input[offset] = 'n' & @input[offset + 1] = 'u' & @input[offset + 2] = 'l' & @input[offset + 3] = 'l') {
 									AddToken(Token->New(Token->Type->NULL));
 								}
 								else if(len > 0) {
@@ -648,10 +680,10 @@ if(doc <> Nil) {
 
 								if(len > 0) {
 									string := String->New(@input, offset, len);
-									if(dot_token_count = 1 & minus_token_count < 3) {
+									if(dot_token_count = 1 & minus_token_count <= 1) {
 										AddToken(Token->New(Token->Type->FLOAT_NUM, string));
 									}
-									else if(dot_token_count = 0 & minus_token_count < 3) {
+									else if(dot_token_count = 0 & minus_token_count <= 1) {
 										AddToken(Token->New(Token->Type->INT_NUM, string));
 									}
 									else {
@@ -985,7 +1017,7 @@ obj->ToString()->PrintLine();
 		@return indexed value
 		~#
 		method : public : Get(index : Int) ~ JsonElement {
-			if(@array_elems <> Nil & index < @array_elems->Size()) {
+			if(@array_elems <> Nil & index >= 0 & index < @array_elems->Size()) {
 				return @array_elems->Get(index);
 			};
 			
@@ -1255,14 +1287,14 @@ obj->ToString()->PrintLine();
 
 						label 'u': {
 							i += 1;
-							if(i + 4 < str->Size()) {
+							if(i + 3 < str->Size()) {
 								str_code := str->SubString(i, 4);
 								if(<>str_code->IsEmpty()) {
 									buffer->Append("0x{$str_code}"->ToInt()->As(Char));
 								};
 								i += 3;
 							}
-							else {
+							else if(i < str->Size()) {
 								buffer->Append(str->Get(i));
 							};
 						}

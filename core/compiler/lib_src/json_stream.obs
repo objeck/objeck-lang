@@ -49,6 +49,7 @@ stream->Close();
 		@value : String;
 
 		@is_debug : Bool;
+		@has_error : Bool;
 
 		#~
 		Stream JSON type
@@ -182,7 +183,9 @@ stream->Close();
 						@skip_next := true;
 					}
 					else {
-						@level -= 1;
+						if(@level > 0) {
+							@level -= 1;
+						};
 						@type := StreamParser->Type->OBJECT_END;
 						@is_delim := true;
 					};
@@ -197,7 +200,9 @@ stream->Close();
 						@skip_next := true;
 					}
 					else {
-						@level -= 1;
+						if(@level > 0) {
+							@level -= 1;
+						};
 						@type := StreamParser->Type->ARRAY_END;
 						@is_delim := true;
 					};
@@ -213,8 +218,43 @@ stream->Close();
 
 							if(@cur_char = '\\') {
 								NextChar();
-								string_buffer->Append(@cur_char);
-								NextChar();
+								if(@cur_char = 'n') {
+									string_buffer->Append('\n');
+								}
+								else if(@cur_char = 't') {
+									string_buffer->Append('\t');
+								}
+								else if(@cur_char = 'r') {
+									string_buffer->Append('\r');
+								}
+								else if(@cur_char = '\\') {
+									string_buffer->Append('\\');
+								}
+								else if(@cur_char = '"') {
+									string_buffer->Append('"');
+								}
+								else if(@cur_char = '/') {
+									string_buffer->Append('/');
+								}
+								else if(@cur_char = 'b') {
+									string_buffer->Append('\b');
+								}
+								else if(@cur_char = 'f') {
+									string_buffer->Append('\f');
+								}
+								else if(@cur_char = 'u') {
+									hex := String->New();
+									for(h := 0; h < 4 & @cur_char <> '\0'; h += 1;) {
+										NextChar();
+										hex->Append(@cur_char);
+									};
+									if(hex->Size() = 4) {
+										string_buffer->Append("0x{$hex}"->ToInt()->As(Char));
+									};
+								}
+								else {
+									string_buffer->Append(@cur_char);
+								};
 							};
 						};
 						NextChar();
@@ -235,7 +275,7 @@ stream->Close();
 						string_buffer := Nil;
 					};
 				}
-				else if(@cur_char->IsDigit() | @cur_char = '-' | @cur_char = '.') {
+				else if(@cur_char->IsDigit() | @cur_char = '-' | @cur_char = '.' | (num_buffer <> Nil & (@cur_char = 'e' | @cur_char = 'E' | @cur_char = '+'))) {
 					if(string_buffer = Nil) {
 						if(num_buffer = Nil) {
 							num_buffer := String->New();
@@ -418,6 +458,14 @@ stream->Close();
 		}
 
 		#~
+		Checks if a parsing error occurred
+		@return true if error, false otherwise
+		~#
+		method : public : HasError() ~ Bool {
+			return @has_error;
+		}
+
+		#~
 		Checks for the next JSON token
 		@return true if next token exists, false otherwise
 		~#
@@ -443,6 +491,7 @@ stream->Close();
 			">>> ({$@stream_line},{$@stream_offset}) {$message} <<<"->PrintLine();
 			@cur_char := '\0';
 			@skip_next := true;
+			@has_error := true;
 		}
 
 		method : Whitespace() ~ Nil {
@@ -475,7 +524,7 @@ stream->Close();
 
 		method : native : Match(string : String) ~ Bool {
 			each(c in string) {
-				if(c <> @cur_char) {
+				if(@cur_char = '\0' | c <> @cur_char) {
 					return false;
 				};
 				NextChar();
