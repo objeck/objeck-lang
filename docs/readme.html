@@ -58,12 +58,14 @@
   </header>
 
   <main style="text-align: left;">
-   <p>DTLS secure UDP support, LTO optimization, zero compiler warnings, ARM64 native CPU tuning, and more.</p>
+   <p>JIT register cache, DTLS secure UDP, parser hardening, LTO optimization, and more.</p>
 
    <h3><u>v2026.4.2</u></h3>
     <ul>
+        <li><strong>JIT local variable register cache</strong> (AMD64 and ARM64) &mdash; keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted</li>
+        <li><strong>Hardened JSON, JSON stream, and XML parsers</strong> against malformed input</li>
         <li><strong>DTLS (Datagram TLS) support</strong> &mdash; new <code>DTLSSocket</code> and <code>DTLSSocketServer</code> classes for secure UDP communication</li>
-        <li><strong>Link-time optimization</strong> &mdash; added <code>-flto=auto</code> and <code>gcc-ar</code> across all GCC Makefiles (AMD64 and ARM64)</li>
+        <li><strong>Link-time optimization</strong> &mdash; added <code>-flto=auto</code> across all GCC Makefiles (AMD64 and ARM64)</li>
         <li><strong>ARM64 native CPU tuning</strong> &mdash; <code>-mcpu=native</code> auto-detects RPi5 and Jetson Orin</li>
         <li>Fixed all MSVC and GCC compiler warnings (const qualifiers, unused parameters, sign comparisons, linker conflicts)</li>
         <li>Upgraded all MSVC ARM64 projects from C++17 to C++20</li>

@@ -1,8 +1,10 @@
-v2026.4.2 (April 5, 2026)
+v2026.4.2 (April 6, 2026)
 ===
-DTLS secure UDP support, LTO optimization, zero compiler warnings, ARM64 native CPU tuning, and more.
+JIT register cache, DTLS secure UDP, parser hardening, LTO optimization, and more.
 
 v2026.4.2
+- JIT local variable register cache (AMD64 and ARM64): keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted
+- Hardened JSON, JSON stream, and XML parsers against malformed input
 - DTLS (Datagram TLS) support: DTLSSocket and DTLSSocketServer for secure UDP
 - Link-time optimization (-flto=auto) across all GCC Makefiles (AMD64 and ARM64)
 - ARM64 native CPU tuning (-mcpu=native) for RPi5 and Jetson Orin

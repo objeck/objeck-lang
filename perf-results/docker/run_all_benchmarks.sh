@@ -90,7 +90,7 @@ echo ""
 echo ">>> Running CLBG benchmarks (Objeck)"
 run_objeck_bench "nbody"         "50000000"  "$OBJECK_CSV"
 run_objeck_bench "spectralnorm"  "5500"      "$OBJECK_CSV"
-run_objeck_bench "binarytrees"   "21"        "$OBJECK_CSV"
+run_objeck_bench "binarytrees"   "17"        "$OBJECK_CSV"
 run_objeck_bench "mandelbrot"    "4000"      "$OBJECK_CSV"
 run_objeck_bench "fannkuchredux" "12"        "$OBJECK_CSV"
 run_objeck_bench "fasta"         "25000000"  "$OBJECK_CSV"
@@ -132,7 +132,7 @@ echo "language,benchmark,run,time_seconds" > "$CROSS_CSV"
 # Cross-language inputs — same as Objeck CLBG for fair comparison
 # These are large enough to show real differences but tractable for all languages
 NBODY_N=50000000
-BINARYTREES_N=21
+BINARYTREES_N=17
 SPECTRALNORM_N=5500
 FANNKUCH_N=12
 
