@@ -353,6 +353,11 @@ namespace Runtime {
     };
     std::vector<LoopInfo> detected_loops;
 
+    // local variable register cache: keeps registers live after store
+    // to avoid redundant reloads. Evicted on demand when pool is empty.
+    std::unordered_map<long, RegisterHolder*> local_reg_cache;
+    std::unordered_map<long, RegisterHolder*> local_xreg_cache;
+
     // inlining support
     bool is_inlining;
     long inline_local_offset;
@@ -731,6 +736,18 @@ namespace Runtime {
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
+        // evict a cached local register before falling back to aux/failure
+        if(!local_reg_cache.empty()) {
+          auto it = local_reg_cache.begin();
+          holder = it->second;
+          local_reg_cache.erase(it);
+          used_regs.push_back(holder);
+#ifdef _VERBOSE
+          std::wcout << L"\t * evicting cached " << GetRegisterName(holder->GetRegister())
+            << L" *" << std::endl;
+#endif
+          return holder;
+        }
         if(use_aux && !aux_regs.empty()) {
           holder = aux_regs.top();
           aux_regs.pop();
@@ -785,6 +802,18 @@ namespace Runtime {
     RegisterHolder* GetXmmRegister() {
       RegisterHolder* holder;
       if(aval_xregs.empty()) {
+        // evict a cached local float register before failing
+        if(!local_xreg_cache.empty()) {
+          auto it = local_xreg_cache.begin();
+          holder = it->second;
+          local_xreg_cache.erase(it);
+          used_xregs.push_back(holder);
+#ifdef _VERBOSE
+          std::wcout << L"\t * evicting cached " << GetRegisterName(holder->GetRegister())
+            << L" *" << std::endl;
+#endif
+          return holder;
+        }
         compile_success = false;
 #ifdef _DEBUG_JIT
         std::wcout << L">>> No XMM registers avaiable! <<<" << std::endl;
@@ -821,6 +850,41 @@ namespace Runtime {
 #endif
       aval_xregs.push_back(h);
       used_xregs.remove(h);
+    }
+
+    // Caches a register holding a local variable value (by frame offset).
+    // The register is removed from used_regs and held in the cache.
+    void CacheLocalRegister(long offset, RegisterHolder* h) {
+      auto it = local_reg_cache.find(offset);
+      if(it != local_reg_cache.end()) {
+        ReleaseRegister(it->second);
+        local_reg_cache.erase(it);
+      }
+      used_regs.remove(h);
+      local_reg_cache[offset] = h;
+    }
+
+    void CacheLocalXmmRegister(long offset, RegisterHolder* h) {
+      auto it = local_xreg_cache.find(offset);
+      if(it != local_xreg_cache.end()) {
+        ReleaseXmmRegister(it->second);
+        local_xreg_cache.erase(it);
+      }
+      used_xregs.remove(h);
+      local_xreg_cache[offset] = h;
+    }
+
+    // Releases all cached registers back to their pools.
+    void FlushLocalCache() {
+      for(auto& pair : local_reg_cache) {
+        ReleaseRegister(pair.second);
+      }
+      local_reg_cache.clear();
+
+      for(auto& pair : local_xreg_cache) {
+        ReleaseXmmRegister(pair.second);
+      }
+      local_xreg_cache.clear();
     }
 
     RegisterHolder* GetStackPosRegister() {
