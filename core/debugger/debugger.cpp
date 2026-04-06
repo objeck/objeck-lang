@@ -1645,10 +1645,18 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num)
 
 Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstring& file_name)
 {
+  // Extract basename from instruction's file_name for fallback comparison
+  std::wstring instr_basename = file_name;
+  size_t sep = file_name.find_last_of(L"/\\");
+  if(sep != std::wstring::npos) {
+    instr_basename = file_name.substr(sep + 1);
+  }
+
   for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
     UserBreak* user_break = (*iter);
     const std::wstring base_file_name = base_path_param + user_break->file_name;
-    if(user_break->line_num == line_num && (user_break->file_name == file_name || base_file_name == file_name)) {
+    if(user_break->line_num == line_num &&
+       (user_break->file_name == file_name || base_file_name == file_name || user_break->file_name == instr_basename)) {
       return *iter;
     }
   }
