@@ -58,18 +58,23 @@
   </header>
 
   <main style="text-align: left;">
-   <p>JIT register cache, DTLS secure UDP, parser hardening, LTO optimization, and more.</p>
+   <p>JIT register cache (~3x perf), AI library refresh, S2F JIT fix, editor support, and more.</p>
 
    <h3><u>v2026.4.2</u></h3>
     <ul>
-        <li><strong>JIT local variable register cache</strong> (AMD64 and ARM64) &mdash; keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted</li>
+        <li><strong>JIT local variable register cache</strong> (AMD64 + ARM64) &mdash; ~3x speedup across all benchmarks</li>
+        <li><strong>Fixed JIT S2F segfault</strong> &mdash; <code>String:ToFloat</code> crash on both AMD64 and ARM64</li>
+        <li><strong>Gemini API</strong> &mdash; Gemini 2.5 Pro/Flash model constants, system instruction support</li>
+        <li><strong>Ollama API</strong> &mdash; configurable host, Options class (temperature/top_p/top_k), Tool class for function calling</li>
+        <li><strong>OpenAI API</strong> &mdash; new <code>Embedding</code> class, <code>Models</code> constants (GPT-4.1, O3, O4-mini)</li>
+        <li><strong>ML library</strong> &mdash; fixed EuclideanDistance/StdDev bugs, added <code>LinearRegression</code> and <code>LogisticRegression</code></li>
+        <li><strong>Editor guide</strong> &mdash; new <code>docs/editors.md</code> with Vim, Emacs, Sublime, and DAP debugging setup</li>
         <li><strong>Hardened JSON, JSON stream, and XML parsers</strong> against malformed input</li>
-        <li><strong>DTLS (Datagram TLS) support</strong> &mdash; new <code>DTLSSocket</code> and <code>DTLSSocketServer</code> classes for secure UDP communication</li>
-        <li><strong>Link-time optimization</strong> &mdash; added <code>-flto=auto</code> across all GCC Makefiles (AMD64 and ARM64)</li>
-        <li><strong>ARM64 native CPU tuning</strong> &mdash; <code>-mcpu=native</code> auto-detects RPi5 and Jetson Orin</li>
-        <li>Fixed all MSVC and GCC compiler warnings (const qualifiers, unused parameters, sign comparisons, linker conflicts)</li>
-        <li>Upgraded all MSVC ARM64 projects from C++17 to C++20</li>
-        <li>Fixed MSVC secure code warning (<code>getenv</code> to <code>_dupenv_s</code>)</li>
+        <li><strong>Hardened HTTPS client</strong> against null ReadLine on connection failures</li>
+        <li><strong>DTLS (Datagram TLS) support</strong> &mdash; new <code>DTLSSocket</code> and <code>DTLSSocketServer</code> for secure UDP</li>
+        <li><strong>Link-time optimization</strong> &mdash; <code>-flto=auto</code> across all GCC Makefiles (AMD64 and ARM64)</li>
+        <li><strong>ARM64 native CPU tuning</strong> &mdash; <code>-mcpu=native</code> for RPi5 and Jetson Orin</li>
+        <li>Fixed all MSVC and GCC compiler warnings</li>
         <li>Fixed doc generator error on <code>@hidden</code> tag</li>
     </ul>
 

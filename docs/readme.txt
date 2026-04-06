@@ -1,16 +1,21 @@
 v2026.4.2 (April 6, 2026)
 ===
-JIT register cache, DTLS secure UDP, parser hardening, LTO optimization, and more.
+JIT register cache (~3x perf), AI library refresh, S2F JIT fix, editor support, and more.
 
 v2026.4.2
-- JIT local variable register cache (AMD64 and ARM64): keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted
+- JIT local variable register cache (AMD64 and ARM64): ~3x speedup across all benchmarks
+- Fixed JIT S2F callback param count causing segfault on String:ToFloat (AMD64 and ARM64)
+- Gemini API: added 2.5 Pro/Flash model constants, system instruction support
+- Ollama API: configurable host, Options class (temperature/top_p/top_k), Tool class for function calling
+- OpenAI API: new Embedding class, Models constants (GPT-4.1, O3, O4-mini, etc.)
+- ML library: fixed EuclideanDistance/StdDev bugs, added LinearRegression and LogisticRegression
+- New editor setup guide (docs/editors.md) with Vim, Emacs, Sublime, and DAP debugging docs
 - Hardened JSON, JSON stream, and XML parsers against malformed input
+- Hardened HTTPS client against null ReadLine on connection failures
 - DTLS (Datagram TLS) support: DTLSSocket and DTLSSocketServer for secure UDP
 - Link-time optimization (-flto=auto) across all GCC Makefiles (AMD64 and ARM64)
 - ARM64 native CPU tuning (-mcpu=native) for RPi5 and Jetson Orin
 - Fixed all MSVC and GCC compiler warnings
-- Upgraded MSVC ARM64 projects from C++17 to C++20
-- Fixed MSVC secure code warning (getenv to _dupenv_s)
 - Fixed doc generator error on @hidden tag
 
 v2026.4.1
