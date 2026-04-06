@@ -61,7 +61,7 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
-**v2026.4.2**
+**v2026.4.2** 🏃🏿‍♂️‍➡️🏃🏻‍♀️‍➡️
   * **JIT local variable register cache** (AMD64 + ARM64) — keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted
   * **Hardened JSON, JSON stream, and XML parsers** against malformed input
   * **DTLS (Datagram TLS) support** — new `DTLSSocket` and `DTLSSocketServer` classes for secure UDP communication (IoT, VoIP, gaming)
@@ -70,7 +70,7 @@ obc hello && obr hello
   * Fixed all MSVC and GCC compiler warnings
   * Fixed doc generator error on `@hidden` tag
 
-**v2026.4.1** 🏃🏿‍♂️‍➡️🏃🏻‍♀️‍➡️🏃🏾‍♀️‍➡️
+**v2026.4.1** 
   * **Debug Adapter Protocol (DAP)** — VS Code debugging with conditional breakpoints, ANSI color output, and readline support
   * **3.3x binarytrees speedup** — young-gen bump allocator, direct JIT-to-JIT calling, atomic CAS mark bits, auto-JIT dispatch fix
   * **MTHD_CALL JIT whitelist** (x64 + ARM64) — methods containing method calls can now be JIT-compiled and auto-JIT'd
