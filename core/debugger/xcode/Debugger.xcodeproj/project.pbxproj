@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		ED53944326136AEB0085A5F8 /* scanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53943D26136AEB0085A5F8 /* scanner.cpp */; };
 		ED53944426136AEB0085A5F8 /* debugger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53944026136AEB0085A5F8 /* debugger.cpp */; };
+		AA00000126136AEB0085A5F8 /* dap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA00000226136AEB0085A5F8 /* dap.cpp */; };
 		ED53944526136AEB0085A5F8 /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53944126136AEB0085A5F8 /* parser.cpp */; };
 		ED53944626136AEB0085A5F8 /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53944226136AEB0085A5F8 /* tree.cpp */; };
 		ED53944E26136AFD0085A5F8 /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53944926136AFD0085A5F8 /* logger.cpp */; };
@@ -67,6 +68,8 @@
 		EDE14A6728FB4E41004D4C25 /* jit_common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_common.cpp; path = ../../vm/arch/jit/jit_common.cpp; sourceTree = "<group>"; };
 		ED53946426136B700085A5F8 /* dispatch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = dispatch.cpp; path = ../../vm/dispatch.cpp; sourceTree = "<group>"; };
 		ED53946626136B700085A5F8 /* dispatch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dispatch.h; path = ../../vm/dispatch.h; sourceTree = "<group>"; };
+		AA00000226136AEB0085A5F8 /* dap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = dap.cpp; path = ../dap.cpp; sourceTree = "<group>"; };
+		AA00000326136AEB0085A5F8 /* dap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dap.h; path = ../dap.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,6 +129,8 @@
 				ED53944C26136AFD0085A5F8 /* version.h */,
 				ED53944026136AEB0085A5F8 /* debugger.cpp */,
 				ED53943F26136AEB0085A5F8 /* debugger.h */,
+				AA00000226136AEB0085A5F8 /* dap.cpp */,
+				AA00000326136AEB0085A5F8 /* dap.h */,
 				ED53944126136AEB0085A5F8 /* parser.cpp */,
 				ED53943C26136AEB0085A5F8 /* parser.h */,
 				ED53943D26136AEB0085A5F8 /* scanner.cpp */,
@@ -206,6 +211,7 @@
 				ED53944526136AEB0085A5F8 /* parser.cpp in Sources */,
 				ED53944326136AEB0085A5F8 /* scanner.cpp in Sources */,
 				ED53946526136B700085A5F8 /* dispatch.cpp in Sources */,
+				AA00000126136AEB0085A5F8 /* dap.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -36,5 +36,5 @@
 
 constexpr wchar_t SYNTAX_ERROR[] = L"Huh, cannot do that. Try help '/h'?";
 
-static void Usage();
+void Usage();
 void SetEnv();

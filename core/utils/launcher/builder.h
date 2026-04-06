@@ -85,11 +85,6 @@ static wstring GetCommandParameter(const wstring& key, map<const wstring, wstrin
 static wstring GetUsage();
 
 /**
- * Get runtime install directory 
- */
-static wstring GetInstallDirectory();
-
-/**
  * Validate the runtime directory structure
  */
 static bool CheckInstallDir(const wstring& install_dir);
