@@ -1798,10 +1798,19 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
       if(FileExists(file_name)) {
         path = file_name;
       }
-      else {
+      else if(FileExists(base_path_param + file_name)) {
         path = base_path_param + file_name;
       }
-      
+      else {
+        // try basename only (handles relative paths from compiler)
+        std::wstring basename = file_name;
+        size_t sep = file_name.find_last_of(L"/\\");
+        if(sep != std::wstring::npos) {
+          basename = file_name.substr(sep + 1);
+        }
+        path = base_path_param + basename;
+      }
+
       if(line_num > 0 && FileExists(path)) {
         SourceFile src_file(path, cur_line_num, this);
         if(!src_file.Print(line_num)) {
