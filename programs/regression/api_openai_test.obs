@@ -35,8 +35,14 @@ class ApiOpenaiTest {
 		};
 		EndPoint->SetBaseUrl("https://api.openai.com/v1");
 
-		# --- Online tests (skip — socket buffer issue under investigation) ---
-		"SKIP: Online API tests disabled pending socket buffer fix"->PrintLine();
+		# --- Online tests (skip if no API key) ---
+		token := EndPoint->GetApiKey();
+		if(token = Nil | token->IsEmpty()) {
+			"SKIP: No OpenAI API key"->PrintLine();
+		}
+		else {
+			"SKIP: Embedding API test pending VM segfault investigation"->PrintLine();
+		};
 
 		if(pass) {
 			"PASS: OpenAI API tests"->PrintLine();

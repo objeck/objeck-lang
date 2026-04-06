@@ -422,7 +422,7 @@ if(html <> Nil) {
 			# Read status line
 			status_code := 500;
 			status_line := socket->ReadLine();
-			if(status_line->StartsWith("HTTP/1.")) {
+			if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 				status_line := status_line->SubString("HTTP/1."->Size() + 2,
 					status_line->Size() - "HTTP/1."->Size() - 2);
 				index := status_line->Find(' ');
@@ -432,14 +432,14 @@ if(html <> Nil) {
 			# Read response headers
 			do {
 				line := socket->ReadLine();
-				if(line->Size() > 0) {
+				if(line <> Nil & line->Size() > 0) {
 					index := line->Find(':');
 					name := line->SubString(index);
 					value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 					@response_headers->Insert(name->ToLower(), value);
 				};
 			}
-			while(line->Size() > 0);
+			while(line <> Nil & line->Size() > 0);
 
 			@cert_issuer := socket->GetIssuer();
 			@cert_subject := socket->GetSubject();
@@ -555,20 +555,20 @@ if(html <> Nil) {
 					# IO.Console->Print("Post: |")->Print(oper)->PrintLine("|");
 
 					status_line := socket->ReadLine();
-					if(status_line->StartsWith("HTTP/1.")) {
-						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2,
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
-					
+
 					# status_line->PrintLine();
-					
+
 					if(status_code <> 500) {
 						# get request headers
 						do {
 							line := socket->ReadLine();
-							if(line->Size() > 0) {
+							if(line <> Nil & line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
@@ -583,10 +583,10 @@ if(html <> Nil) {
 								};
 							};
 						}
-						while(line->Size() > 0);
-						
+						while(line <> Nil & line->Size() > 0);
+
 						# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());
-						
+
 						# permanently moved
 						if(status_code = 301 | status_code = 302) {
 							moved_location := @response_headers->Find("location");
@@ -972,23 +972,23 @@ if(html <> Nil) {
 					status_line := socket->ReadLine();
 					# status_line->PrintLine();
 
-					if(status_line->StartsWith("HTTP/1.")) {
-						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2,
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
-					# status_code->PrintLine();					
+					# status_code->PrintLine();
 
 					if(status_code <> 500) {
 						# get request headers
 						do {
 							line := socket->ReadLine();
-							if(line->Size() > 0) {
+							if(line <> Nil & line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-								
+
 								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
@@ -999,7 +999,7 @@ if(html <> Nil) {
 								};
 							};
 						}
-						while(line->Size() > 0);						
+						while(line <> Nil & line->Size() > 0);
 						# IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());
 						
 						# permanently moved
@@ -1213,19 +1213,19 @@ if(client->Connect()) {
 					socket->WriteString(oper);
 					
 					status_line := socket->ReadLine();
-					if(status_line->StartsWith("HTTP/1.")) {
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, status_line->Size() - "HTTP/1."->Size() - 2);
 					};
 
-					if(status_line->StartsWith("101 Switching")) {
+					if(status_line <> Nil & status_line->StartsWith("101 Switching")) {
 						# get request headers
 						do {
 							line := socket->ReadLine();
-							if(line->Size() > 0) {
+							if(line <> Nil & line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-								
+
 								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
@@ -1236,7 +1236,7 @@ if(client->Connect()) {
 								};
 							};
 						}
-						while(line->Size() > 0);
+						while(line <> Nil & line->Size() > 0);
 						
 						nonce_hash := @response_headers->Find("sec-websocket-accept");
 						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded

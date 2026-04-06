@@ -5709,7 +5709,7 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 				query_json->Insert("dimensions", dimensions);
 			};
 
-			data := query_json->ToFormattedString()->ToByteArray();
+			data := query_json->ToString()->ToByteArray();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -5752,7 +5752,7 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 		@api_key : static : String;
 
 		function : IsDebug() ~ Bool {
-			return true;
+			return false;
 		}
 
 		#~

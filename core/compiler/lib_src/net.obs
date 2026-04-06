@@ -583,7 +583,7 @@ if(html <> Nil) {
 					# oper->PrintLine();		
 					
 					status_line := socket->ReadLine();
-					if(status_line->StartsWith("HTTP/1.")) {
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
@@ -761,7 +761,7 @@ if(html <> Nil) {
 					status_line := socket->ReadLine();
 					# status_line->PrintLine();
 
-					if(status_line->StartsWith("HTTP/1.")) {
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
 							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
@@ -1004,11 +1004,11 @@ if(client->Connect()) {
 					socket->WriteString(oper);
 					
 					status_line := socket->ReadLine();
-					if(status_line->StartsWith("HTTP/1.")) {
+					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2, status_line->Size() - "HTTP/1."->Size() - 2);
 					};
 
-					if(status_line->StartsWith("101 Switching")) {
+					if(status_line <> Nil & status_line->StartsWith("101 Switching")) {
 						# get request headers
 						do {
 							line := socket->ReadLine();
