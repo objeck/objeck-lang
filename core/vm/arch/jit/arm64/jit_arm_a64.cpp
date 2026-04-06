@@ -548,6 +548,7 @@ void JitArm64::ProcessInstructions() {
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"RTRN: regs=" << aval_regs.size() << endl;
 #endif
+      FlushLocalCache();
       ProcessReturn();
       // teardown
       Epilog();
@@ -930,6 +931,7 @@ void JitArm64::ProcessInstructions() {
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"LBL: id=" << instr->GetOperand() << endl;
 #endif
+      FlushLocalCache();
       break;
       
     default: {
@@ -983,13 +985,34 @@ void JitArm64::ProcessLoad(StackInstr* instr) {
       RegisterHolder* holder = GetRegister();
       move_mem_reg(instr->GetOperand3() + sizeof(size_t), SP, holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
-      
+
       RegisterHolder* holder2 = GetRegister();
       move_mem_reg(instr->GetOperand3(), SP, holder2->GetRegister());
       working_stack.push_front(new RegInstr(holder2));
     }
     else {
-      working_stack.push_front(new RegInstr(instr));
+      long offset = instr->GetOperand3();
+      // check local register cache for int locals
+      auto reg_it = local_reg_cache.find(offset);
+      if(reg_it != local_reg_cache.end()) {
+        RegisterHolder* cached = reg_it->second;
+        local_reg_cache.erase(reg_it);
+        used_regs.push_back(cached);
+        working_stack.push_front(new RegInstr(cached));
+      }
+      // check local register cache for float locals
+      else {
+        auto freg_it = local_freg_cache.find(offset);
+        if(freg_it != local_freg_cache.end()) {
+          RegisterHolder* cached = freg_it->second;
+          local_freg_cache.erase(freg_it);
+          used_fregs.push_back(cached);
+          working_stack.push_front(new RegInstr(cached));
+        }
+        else {
+          working_stack.push_front(new RegInstr(instr));
+        }
+      }
     }
   }
   // class or instance memory
@@ -1036,6 +1059,7 @@ void JitArm64::ProcessLoad(StackInstr* instr) {
 }
 
 void JitArm64::ProcessJump(StackInstr* instr) {
+  FlushLocalCache();
   if(!skip_jump) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size()
@@ -1374,16 +1398,31 @@ void JitArm64::ProcessIntToFloat(StackInstr* instr) {
 void JitArm64::ProcessStore(StackInstr* instr) {
   Register dest;
   RegisterHolder* addr_holder = nullptr;
+  bool is_local = (instr->GetOperand2() == LOCL);
+  bool is_func_var = (instr->GetType() == STOR_FUNC_VAR);
 
   // instance/method memory
-  if(instr->GetOperand2() == LOCL) {
+  if(is_local) {
     dest = SP;
+    // invalidate cache for this offset (value is being overwritten)
+    if(!is_func_var) {
+      auto reg_it = local_reg_cache.find(instr->GetOperand3());
+      if(reg_it != local_reg_cache.end()) {
+        ReleaseRegister(reg_it->second);
+        local_reg_cache.erase(reg_it);
+      }
+      auto freg_it = local_freg_cache.find(instr->GetOperand3());
+      if(freg_it != local_freg_cache.end()) {
+        ReleaseFpRegister(freg_it->second);
+        local_freg_cache.erase(freg_it);
+      }
+    }
   }
   // class or instance memory
   else {
     RegInstr* left = working_stack.front();
     working_stack.pop_front();
-    
+
     if(left->GetRegister()) {
       addr_holder = left->GetRegister();
     }
@@ -1393,19 +1432,19 @@ void JitArm64::ProcessStore(StackInstr* instr) {
     }
     dest = addr_holder->GetRegister();
     CheckNilDereference(dest);
-    
+
     delete left;
     left = nullptr;
   }
-  
+
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
-  
+
   switch(left->GetType()) {
   case IMM_INT:
-    if(instr->GetType() == STOR_FUNC_VAR) {
+    if(is_func_var) {
       move_imm_mem((long)left->GetOperand(), instr->GetOperand3(), dest);
-      
+
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       move_imm_mem((long)left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
@@ -1420,7 +1459,7 @@ void JitArm64::ProcessStore(StackInstr* instr) {
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    if(instr->GetType() == STOR_FUNC_VAR) {
+    if(is_func_var) {
       move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
 
@@ -1436,15 +1475,20 @@ void JitArm64::ProcessStore(StackInstr* instr) {
       move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
-    ReleaseRegister(holder);
+    if(is_local && !is_func_var) {
+      CacheLocalRegister(instr->GetOperand3(), holder);
+    }
+    else {
+      ReleaseRegister(holder);
+    }
   }
     break;
-    
+
   case REG_INT: {
     RegisterHolder* holder = left->GetRegister();
-    if(instr->GetType() == STOR_FUNC_VAR) {
+    if(is_func_var) {
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-      
+
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       RegisterHolder* holder2  = left2->GetRegister();
@@ -1457,26 +1501,41 @@ void JitArm64::ProcessStore(StackInstr* instr) {
     else {
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     }
-    ReleaseRegister(holder);
+    if(is_local && !is_func_var) {
+      CacheLocalRegister(instr->GetOperand3(), holder);
+    }
+    else {
+      ReleaseRegister(holder);
+    }
   }
     break;
-    
+
   case IMM_FLOAT:
     move_imm_memf(left, instr->GetOperand3(), dest);
     break;
-    
+
   case MEM_FLOAT: {
     RegisterHolder* holder = GetFpRegister();
     move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
     move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    ReleaseFpRegister(holder);
+    if(is_local) {
+      CacheLocalFpRegister(instr->GetOperand3(), holder);
+    }
+    else {
+      ReleaseFpRegister(holder);
+    }
   }
     break;
-    
+
   case REG_FLOAT: {
     RegisterHolder* holder = left->GetRegister();
     move_freg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    ReleaseFpRegister(holder);
+    if(is_local) {
+      CacheLocalFpRegister(instr->GetOperand3(), holder);
+    }
+    else {
+      ReleaseFpRegister(holder);
+    }
   }
     break;
   }
@@ -1494,6 +1553,17 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
     dest = SP;
+    // invalidate cache for this offset (value is being modified)
+    auto reg_it = local_reg_cache.find(instr->GetOperand3());
+    if(reg_it != local_reg_cache.end()) {
+      ReleaseRegister(reg_it->second);
+      local_reg_cache.erase(reg_it);
+    }
+    auto freg_it = local_freg_cache.find(instr->GetOperand3());
+    if(freg_it != local_freg_cache.end()) {
+      ReleaseFpRegister(freg_it->second);
+      local_freg_cache.erase(freg_it);
+    }
   }
   // class or instance memory
   else {
@@ -1579,6 +1649,9 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
 }
 
 void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params) {
+  // flush cached locals before callback (callback may modify memory)
+  FlushLocalCache();
+
   int32_t non_params;
   if(params < 0) {
     non_params = 0;
@@ -4731,13 +4804,16 @@ bool JitArm64::Compile(StackMethod* cm)
     if(!compile_success) {
       free(code);
       code = nullptr;
-      
+
       delete[] ints;
       ints = nullptr;
-      
+
       delete[] float_consts;
       float_consts = nullptr;
-      
+
+      local_reg_cache.clear();
+      local_freg_cache.clear();
+
       return false;
     }
     

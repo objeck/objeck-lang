@@ -378,6 +378,11 @@ namespace Runtime {
     bool last_cmp_was_zero;
     Register last_cmp_reg;
 
+    // local variable register cache: keeps registers live after store
+    // to avoid redundant reloads. Evicted on demand when pool is empty.
+    unordered_map<long, RegisterHolder*> local_reg_cache;
+    unordered_map<long, RegisterHolder*> local_freg_cache;
+
     // setup and teardown
     void Prolog();
     void Epilog();
@@ -519,6 +524,17 @@ namespace Runtime {
     inline RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
+        // evict a cached local register before failing
+        if(!local_reg_cache.empty()) {
+          auto it = local_reg_cache.begin();
+          holder = it->second;
+          local_reg_cache.erase(it);
+          used_regs.push_back(holder);
+#ifdef _VERBOSE
+          wcout << L"\t * evicting cached " << GetRegisterName(holder->GetRegister()) << L" *" << endl;
+#endif
+          return holder;
+        }
 #ifdef _DEBUG_JIT_JIT
         wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
@@ -560,6 +576,17 @@ namespace Runtime {
     inline RegisterHolder* GetFpRegister() {
       RegisterHolder* holder;
       if(aval_fregs.empty()) {
+        // evict a cached local float register before failing
+        if(!local_freg_cache.empty()) {
+          auto it = local_freg_cache.begin();
+          holder = it->second;
+          local_freg_cache.erase(it);
+          used_fregs.push_back(holder);
+#ifdef _VERBOSE
+          wcout << L"\t * evicting cached " << GetRegisterName(holder->GetRegister()) << L" *" << endl;
+#endif
+          return holder;
+        }
         compile_success = false;
 #ifdef _DEBUG_JIT_JIT
         wcout << L">>> No D registers avaiable! <<<" << endl;
@@ -597,6 +624,40 @@ namespace Runtime {
 #endif
       aval_fregs.push_back(h);
       used_fregs.remove(h);
+    }
+
+    // Caches a register holding a local variable value (by frame offset).
+    void CacheLocalRegister(long offset, RegisterHolder* h) {
+      auto it = local_reg_cache.find(offset);
+      if(it != local_reg_cache.end()) {
+        ReleaseRegister(it->second);
+        local_reg_cache.erase(it);
+      }
+      used_regs.remove(h);
+      local_reg_cache[offset] = h;
+    }
+
+    void CacheLocalFpRegister(long offset, RegisterHolder* h) {
+      auto it = local_freg_cache.find(offset);
+      if(it != local_freg_cache.end()) {
+        ReleaseFpRegister(it->second);
+        local_freg_cache.erase(it);
+      }
+      used_fregs.remove(h);
+      local_freg_cache[offset] = h;
+    }
+
+    // Releases all cached registers back to their pools.
+    void FlushLocalCache() {
+      for(auto& pair : local_reg_cache) {
+        ReleaseRegister(pair.second);
+      }
+      local_reg_cache.clear();
+
+      for(auto& pair : local_freg_cache) {
+        ReleaseFpRegister(pair.second);
+      }
+      local_freg_cache.clear();
     }
 
     // move instructions
