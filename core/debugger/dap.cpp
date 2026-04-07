@@ -482,6 +482,16 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
       StackDclr** dclrs = frame->method->GetDeclarations();
       int dclrs_num = frame->method->GetNumberDeclarations();
 
+      // Offset for locals: +1 for instance methods (@self at mem[0])
+      // Methods with and/or have an additional hidden variable
+      int offset = 1;
+      if(frame->method->HasAndOr()) {
+        offset++;
+      }
+
+      // Build memory index the same way as CLI debugger's GetDeclaration:
+      // FLOAT_PARM and FUNC_PARM take 2 slots
+      int mem_index = 0;
       for(int i = 0; i < dclrs_num; i++) {
         StackDclr* dclr = dclrs[i];
 
@@ -498,8 +508,14 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
 
         json var;
         var["name"] = name;
-        var["value"] = FormatVariableValue(*dclr, frame, (int)dclr->id);
+        var["value"] = FormatVariableValue(*dclr, frame, mem_index + offset);
         var["type"] = FormatVariableType(*dclr);
+
+        // Advance index: floats and funcs take 2 slots
+        mem_index++;
+        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          mem_index++;
+        }
         var["variablesReference"] = 0;
         variables.push_back(var);
       }
