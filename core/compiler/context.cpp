@@ -9714,7 +9714,7 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
           end_pos += (int)found_name.size();
 
           alt_found_name = method_call->GetMethodName();
-          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
+          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition() - 1;
           alt_end_pos += (int)alt_found_name.size();
         }
         else if(method_call->GetMethod()) {
@@ -9722,7 +9722,7 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
           end_pos += (int)found_name.size();
 
           alt_found_name = method_call->GetVariableName();
-          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
+          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition() - 1;
           alt_end_pos += (int)alt_found_name.size();
         }
         else if(method_call->GetCallType() == ENUM_CALL) {
@@ -9730,14 +9730,14 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
           end_pos += (int)found_name.size();
 
           alt_found_name = method_call->GetMethodName();
-          end_pos = method_call->GetEndLinePosition();
+          end_pos = method_call->GetEndLinePosition() - 1;
         }
         else {
           found_name = L"@self";
           end_pos += (int)found_name.size();
 
           alt_found_name = method_call->GetMethodName();
-          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
+          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition() - 1;
           alt_end_pos += (int)alt_found_name.size();
         }
       }
@@ -9755,7 +9755,7 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
         else {
           is_alt = false;
         }
-        
+
         found_expression = expression;
         return true;
       }
@@ -9804,7 +9804,7 @@ bool ContextAnalyzer::LocateExpression(Class* klass, const int line_num, const i
           end_pos += (int)found_name.size();
 
           alt_found_name = method_call->GetMethodName();
-          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
+          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition() - 1;
           alt_end_pos += (int)alt_found_name.size();
         }
         else {
@@ -9812,7 +9812,7 @@ bool ContextAnalyzer::LocateExpression(Class* klass, const int line_num, const i
           end_pos += (int)found_name.size();
 
           alt_found_name = method_call->GetMethodName();
-          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition();
+          alt_start_pos = alt_end_pos = method_call->GetMidLinePosition() - 1;
           alt_end_pos += (int)alt_found_name.size();
         }
       }
