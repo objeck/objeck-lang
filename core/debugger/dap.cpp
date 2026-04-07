@@ -345,22 +345,33 @@ void DapAdapter::HandleThreads(int request_seq)
 
 std::string DapAdapter::ResolveSourcePath(const std::wstring& file_name)
 {
-  std::wstring combined = source_dir + file_name;
-  std::string raw = UnicodeToBytes(combined);
+  // Extract basename from file_name
+  std::wstring basename = file_name;
+  size_t sep = file_name.find_last_of(L"/\\");
+  if(sep != std::wstring::npos) {
+    basename = file_name.substr(sep + 1);
+  }
+
+  // Try source_dir + basename first
+  std::wstring combined = source_dir + basename;
+  std::string candidate = UnicodeToBytes(combined);
 
 #ifdef _WIN32
   char resolved[_MAX_PATH];
-  if(_fullpath(resolved, raw.c_str(), _MAX_PATH)) {
-    return std::string(resolved);
+  if(_fullpath(resolved, candidate.c_str(), _MAX_PATH)) {
+    // Verify file exists
+    if(GetFileAttributesA(resolved) != INVALID_FILE_ATTRIBUTES) {
+      return std::string(resolved);
+    }
   }
 #else
   char resolved[PATH_MAX];
-  if(realpath(raw.c_str(), resolved)) {
+  if(realpath(candidate.c_str(), resolved)) {
     return std::string(resolved);
   }
 #endif
 
-  return raw;
+  return candidate;
 }
 
 void DapAdapter::HandleStackTrace(int request_seq, const json& args)
@@ -378,9 +389,14 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
       frame["name"] = UnicodeToBytes(debugger->PrintMethodPublic(method));
 
       json source;
-      std::string file = UnicodeToBytes(method->GetClass()->GetFileName());
-      source["name"] = file;
-      source["path"] = ResolveSourcePath(method->GetClass()->GetFileName());
+      std::string resolved = ResolveSourcePath(method->GetClass()->GetFileName());
+      // Extract basename for display name
+      std::string basename = resolved;
+      size_t lastSep = resolved.find_last_of("/\\");
+      if(lastSep != std::string::npos) basename = resolved.substr(lastSep + 1);
+      source["name"] = basename;
+      source["path"] = resolved;
+      source["sourceReference"] = 0;
       frame["source"] = source;
       frame["line"] = stopped_line;
       frame["column"] = 1;
@@ -397,8 +413,13 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
         frame["name"] = UnicodeToBytes(debugger->PrintMethodPublic(method));
 
         json source;
-        source["name"] = UnicodeToBytes(method->GetClass()->GetFileName());
-        source["path"] = ResolveSourcePath(method->GetClass()->GetFileName());
+        std::string resolved2 = ResolveSourcePath(method->GetClass()->GetFileName());
+        std::string basename2 = resolved2;
+        size_t lastSep2 = resolved2.find_last_of("/\\");
+        if(lastSep2 != std::string::npos) basename2 = resolved2.substr(lastSep2 + 1);
+        source["name"] = basename2;
+        source["path"] = resolved2;
+        source["sourceReference"] = 0;
         frame["source"] = source;
 
         long ip = stopped_call_stack[pos]->ip;
@@ -477,7 +498,7 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
 
         json var;
         var["name"] = name;
-        var["value"] = FormatVariableValue(*dclr, frame, i);
+        var["value"] = FormatVariableValue(*dclr, frame, (int)dclr->id);
         var["type"] = FormatVariableType(*dclr);
         var["variablesReference"] = 0;
         variables.push_back(var);
@@ -635,8 +656,14 @@ void DapAdapter::OnTerminated()
 
 std::string DapAdapter::FormatVariableValue(StackDclr& dclr, StackFrame* frame, int var_index)
 {
-  if(!frame || !frame->mem) {
+  if(!frame || !frame->mem || var_index < 0) {
     return "<unavailable>";
+  }
+
+  // Check bounds: mem_size is in bytes, each slot is sizeof(size_t)
+  long mem_slots = frame->method->GetMemorySize() / sizeof(size_t);
+  if(var_index >= mem_slots) {
+    return "<out of scope>";
   }
 
   size_t value = frame->mem[var_index];
@@ -667,7 +694,11 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, StackFrame* frame, 
       if(value == 0) {
         return "Nil";
       }
+      // Validate pointer before dereferencing
       size_t* array = (size_t*)value;
+      if(IsBadReadPtr(array, sizeof(size_t))) {
+        return "Nil";
+      }
       std::ostringstream oss;
       oss << "[size=" << array[0] << "]";
       return oss.str();
@@ -675,6 +706,9 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, StackFrame* frame, 
 
     case OBJ_PARM: {
       if(value == 0) {
+        return "Nil";
+      }
+      if(IsBadReadPtr((void*)value, sizeof(size_t))) {
         return "Nil";
       }
       // Try to get a meaningful representation
