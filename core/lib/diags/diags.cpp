@@ -372,24 +372,27 @@ extern "C" {
             if(klass) {
               node = klass;
             }
-            // enum item
-            else if(eenum) {
+            // enum item — only use eenum_item if it was actually found
+            else if(eenum && eenum_item) {
               node = eenum_item;
             }
-            
             // method
-            else {
+            else if(method) {
               node = method;
             }
 
-            size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-            def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_name);
-            def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, node->GetFileName());
-            def_obj[ResultPosition::POS_START_LINE] = (size_t)node->GetLineNumber() - 1;
-            def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
-            def_obj[ResultPosition::POS_START_POS] = (size_t)node->GetLinePosition() - 1;
-            def_obj[ResultPosition::POS_END_POS] = (size_t)node->GetLinePosition() + 80;
-            APITools_SetObjectValue(context, 0, def_obj);
+            // Guard against null node (e.g., enum without item, method
+            // returned but somehow still null) and invalid line numbers.
+            if(node && node->GetLineNumber() > 0) {
+              size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+              def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_name);
+              def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, node->GetFileName());
+              def_obj[ResultPosition::POS_START_LINE] = (size_t)node->GetLineNumber() - 1;
+              def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
+              def_obj[ResultPosition::POS_START_POS] = (size_t)node->GetLinePosition() - 1;
+              def_obj[ResultPosition::POS_END_POS] = (size_t)node->GetLinePosition() + 80;
+              APITools_SetObjectValue(context, 0, def_obj);
+            }
           }
         }
       }
@@ -543,10 +546,15 @@ extern "C" {
         std::vector<SymbolEntry*> entries = table_mgr->GetEntries(namescope);
         for(size_t j = 0; code_action_obj == nullptr && j < entries.size(); ++j) {
           SymbolEntry* entry = entries[j];
+          // Guard against null type (can happen for entries created before
+          // type resolution, e.g., inferred-type locals from `:=`).
+          if(entry == nullptr || entry->GetType() == nullptr) {
+            continue;
+          }
           if(entry->GetType()->GetType() == CLASS_TYPE) {
             const std::wstring entry_dec_var_name = entry->GetName();
             const size_t entry_var_index = entry_dec_var_name.find_last_of(L':');
-            
+
             if(entry_var_index != std::wstring::npos) {
               const std::wstring entry_type_name = entry->GetType()->GetName();
               const std::wstring entry_var_name = entry_dec_var_name.substr(entry_var_index + 1);
@@ -954,6 +962,21 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
           }
         }
 
+        // Drop any expressions that don't have a valid source position;
+        // these come from synthetic symbol-table entries (e.g. inferred-
+        // type locals) and would otherwise produce -1/-2 line numbers in
+        // the result, which the editor renders as a bogus jump target.
+        {
+          std::vector<Expression*> filtered;
+          filtered.reserve(expressions.size());
+          for(Expression* e : expressions) {
+            if(e != nullptr && e->GetLineNumber() > 0 && e->GetLinePosition() > 0) {
+              filtered.push_back(e);
+            }
+          }
+          expressions.swap(filtered);
+        }
+
         // format
         if(!expressions.empty()) {
           Method* mthd_dclr = nullptr;
@@ -1025,8 +1048,9 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
             refs_array_ptr[i] = (size_t)reference_obj;
           }
 
-          // update declaration name
-          if(skip_expr || (!is_var && mthd_dclr)) {
+          // update declaration name (guard: mthd_dclr can be null when
+          // skip_expr came from a synthetic call whose GetMethod() == nullptr)
+          if(mthd_dclr && (skip_expr || !is_var)) {
             size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
 
             int start_pos = mthd_dclr->GetMidLinePosition();
