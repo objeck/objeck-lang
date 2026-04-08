@@ -85,9 +85,37 @@ scripts\install.cmd "C:\Program Files\Objeck" sublime
 ./scripts/install.sh /usr/local/objeck sublime
 ```
 
-This installs the LSP server, syntax highlighting, and configures Sublime's LSP client automatically. Requires the [LSP](https://packagecontrol.io/packages/LSP) package (installed automatically on Linux/macOS if git is available).
+This installs the LSP server, syntax highlighting, the DAP adapter plugin, and configures Sublime automatically. Requires the [LSP](https://packagecontrol.io/packages/LSP) package (installed automatically on Linux/macOS if git is available).
 
 After install: **Tools > LSP > Enable Language Server Globally > select "objeck"**.
+
+### Debugging with DAP
+
+The install script drops `objeck_dap_adapter.py` and a `.python-version` file (containing `3.8`) into `Packages/Objeck/`, and writes `Packages/User/Objeck.sublime-settings` with the path to `obd`. The `.python-version` is required: the Sublime [Debugger](https://packagecontrol.io/packages/Debugger) package targets Python 3.8 and Sublime Text 4 defaults to Python 3.3 for plugins, so without it the adapter fails to load. See [API Environments](https://www.sublimetext.com/docs/api_environments.html).
+
+To enable debugging:
+
+1. Install the [Debugger](https://packagecontrol.io/packages/Debugger) package via Package Control.
+2. Restart Sublime so the adapter is registered with Debugger's adapter registry.
+3. Compile your source with debug symbols: `obc -src myprog.obs -debug`.
+4. Add a `debugger_configurations` block to your `.sublime-project`:
+
+```json
+{
+    "folders": [{ "path": "." }],
+    "debugger_configurations": [{
+        "name": "Debug current Objeck file",
+        "type": "objeck",
+        "request": "launch",
+        "program": "${folder}/${file_base_name}.obe",
+        "sourceDir": "${folder}"
+    }]
+}
+```
+
+5. Open the project, then **Debugger > Start** (or via the command palette: "Debugger: Start"). Set breakpoints by clicking the gutter; step with the Debugger panel buttons; inspect locals in the **Variables** view.
+
+The adapter spawns `obd --dap` over stdio with `OBJECK_LIB_PATH` set per `Objeck.sublime-settings`. The full example lives at `clients/sublime/dap/objeck.sublime-project.example` in the objeck-lsp release.
 
 ### Manual Setup
 
@@ -126,9 +154,11 @@ For LSP, add to **Preferences > Package Settings > LSP > Settings**:
 
 ## Vim / GVim
 
+Works on Linux, macOS, and Windows. Only the runtime directory differs between platforms — the `.vimrc` snippet is identical everywhere.
+
 ### Syntax Highlighting
 
-Copy from `docs/syntax/vim/`:
+**Linux / macOS** — copy into `~/.vim/`:
 
 ```bash
 mkdir -p ~/.vim/syntax ~/.vim/ftdetect
@@ -136,18 +166,26 @@ cp docs/syntax/vim/objeck.vim ~/.vim/syntax/
 cp docs/syntax/vim/ftdetect/objeck.vim ~/.vim/ftdetect/
 ```
 
-Provides highlighting for keywords, types, strings, comments, numbers, and operators. `.obs` files are auto-detected.
+**Windows (gvim)** — copy into `%USERPROFILE%\vimfiles\` (gvim's user runtime dir on Windows):
+
+```cmd
+mkdir "%USERPROFILE%\vimfiles\syntax" "%USERPROFILE%\vimfiles\ftdetect"
+copy docs\syntax\vim\objeck.vim "%USERPROFILE%\vimfiles\syntax\"
+copy docs\syntax\vim\ftdetect\objeck.vim "%USERPROFILE%\vimfiles\ftdetect\"
+```
+
+Provides highlighting for keywords, types, strings, comments, numbers, and operators. `.obs` files are auto-detected on both platforms.
 
 ### Build from Vim
 
-Add to your `.vimrc`:
+Add to your `.vimrc` (or `_vimrc` on Windows — the same snippet works on both):
 
 ```vim
 autocmd FileType objeck setlocal makeprg=obc\ -src\ %\ -dest\ %:r.obe
 autocmd FileType objeck setlocal errorformat=%f:(%l\\,%c):\ %m
 ```
 
-Then use `:make` to compile and `:copen` to see errors.
+Then use `:make` to compile and `:copen` to see errors. Make sure `obc` is on your `PATH` (the Objeck installer adds it on both platforms).
 
 ---
 
