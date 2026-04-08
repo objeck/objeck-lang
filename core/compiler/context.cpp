@@ -9356,8 +9356,8 @@ bool ContextAnalyzer::GetDefinition(Class* klass, const int line_num, const int 
   return false;
 }
 
-bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const int line_pos, std::wstring& found_name, 
-                                    int& found_line, int& found_start_pos, int& found_end_pos, Class* &klass, 
+bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const int line_pos, std::wstring& found_name,
+                                    int& found_line, int& found_start_pos, int& found_end_pos, Class* &klass,
                                     Enum*& eenum, EnumItem*& eenum_item)
 {
   // find matching expressions
@@ -9369,24 +9369,30 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
     const std::wstring entry_name = method->GetName() + L':' + found_name;
     SymbolEntry* found_entry = method->GetSymbolTable()->GetEntry(entry_name);
 
-    // found variable
-    if(found_entry && found_entry->GetType()) {
+    // found variable.  Require the *entry itself* to have a valid source
+    // position — inferred-type locals (`x := ...`) often have entries with
+    // line=0/-1, and falling through to a class/enum lookup would return
+    // the bare class declaration (often line 1).  Sublime then issues a
+    // codeAction at L0:C0 which has previously crashed the server.
+    // Returning false here keeps the LSP honest: "no good definition
+    // target" → editor shows nothing rather than navigating to garbage.
+    if(found_entry && found_entry->GetType() && found_entry->GetLineNumber() > 0) {
       const std::wstring search_name = found_entry->GetType()->GetName();
       // found class
       klass = SearchProgramClasses(search_name);
-      if(klass) {
+      if(klass && klass->GetLineNumber() > 0) {
         return true;
       }
       else {
         // found enum
         eenum = SearchProgramEnums(search_name);
-        if(eenum) {
+        if(eenum && eenum->GetLineNumber() > 0) {
           return true;
         }
       }
     }
     // found enum
-    else if(found_expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(found_expression)->GetEnumItem()) {
+    else if(found_expression && found_expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(found_expression)->GetEnumItem()) {
       MethodCall* mthd_call = static_cast<MethodCall*>(found_expression);
       eenum = SearchProgramEnums(found_name);
       if(eenum) {
@@ -9482,14 +9488,16 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
     else {
       const std::wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
       SymbolEntry* found_entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
-      if(found_entry) {
+      if(found_entry && found_entry->GetLineNumber() > 0 && found_entry->GetLinePosition() > 0) {
         found_name = found_entry->GetName();
         size_t var_name_pos = found_name.find_last_of(L':');
         if(var_name_pos != std::wstring::npos) {
           found_name = found_name.substr(var_name_pos + 1, found_name.size() - var_name_pos - 1);
         }
+        // Return 1-based positions; the caller (diag_find_declaration)
+        // converts to 0-based with `- 1`.
         found_line = found_entry->GetLineNumber();
-        found_start_pos = found_end_pos = found_entry->GetLinePosition() - 1;
+        found_start_pos = found_end_pos = found_entry->GetLinePosition();
         found_end_pos += (int)found_name.size();
 
         return true;
@@ -9497,14 +9505,14 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
       else {
         const std::wstring method_entry_name = method->GetName() + L':' + found_name;
         found_entry = method->GetSymbolTable()->GetEntry(method_entry_name);
-        if(found_entry) {
+        if(found_entry && found_entry->GetLineNumber() > 0 && found_entry->GetLinePosition() > 0) {
           found_name = found_entry->GetName();
           size_t var_name_pos = found_name.find_last_of(L':');
           if(var_name_pos != std::wstring::npos) {
             found_name = found_name.substr(var_name_pos + 1, found_name.size() - var_name_pos - 1);
           }
           found_line = found_entry->GetLineNumber();
-          found_start_pos = found_end_pos = found_entry->GetLinePosition() - 1;
+          found_start_pos = found_end_pos = found_entry->GetLinePosition();
           found_end_pos += (int)found_name.size();
 
           return true;
@@ -9640,11 +9648,14 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
   std::vector<SymbolEntry*> local_entries = symbol_table->GetEntries(method->GetParsedName());
   for(size_t i = 0; i < local_entries.size(); ++i) {
     SymbolEntry* local_entry = local_entries[i];
-    
-    // add declaration
+
+    // add declaration only if the entry has a valid source position.
+    // Inferred-type locals (e.g. `x := ...`) sometimes have an entry
+    // with line=-1/pos=-1; including those produces bogus references.
     const std::wstring full_entry_name = local_entry->GetName();
     const size_t full_entry_index = full_entry_name.find_last_of(L':');
-    if(full_entry_index != std::wstring::npos) {
+    if(full_entry_index != std::wstring::npos &&
+       local_entry->GetLineNumber() > 0 && local_entry->GetLinePosition() > 0) {
       const std::wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
       Variable* variable = TreeFactory::Instance()->MakeVariable(local_entry->GetFileName(), local_entry->GetLineNumber(),
                                                                  local_entry->GetLinePosition(), entry_name);
@@ -9663,18 +9674,19 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
   std::vector<SymbolEntry*> class_entries = symbol_table->GetEntries(method->GetClass()->GetName());
   for(size_t i = 0; i < class_entries.size(); ++i) {
     SymbolEntry* class_entry = class_entries[i];
-    
-    // add declaration
+
+    // add declaration only if the entry has a valid source position
     const std::wstring full_entry_name = class_entry->GetName();
     const size_t full_entry_index = full_entry_name.find_last_of(L':');
-    if(full_entry_index != std::wstring::npos) {
+    if(full_entry_index != std::wstring::npos &&
+       class_entry->GetLineNumber() > 0 && class_entry->GetLinePosition() > 0) {
       const std::wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
-      Variable* variable = TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(), class_entry->GetLineNumber(), 
+      Variable* variable = TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(), class_entry->GetLineNumber(),
                                                                  class_entry->GetLinePosition(), entry_name);
       variable->SetEntry(class_entry);
       all_expressions.push_back(variable);
     }
-    
+
     // add variable references
     const std::vector<Variable*> variables = class_entry->GetVariables();
     for(size_t j = 0; j < variables.size(); ++j) {
