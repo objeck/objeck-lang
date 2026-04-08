@@ -153,40 +153,103 @@ For LSP, add to **Preferences > Package Settings > LSP > Settings**:
 
 ---
 
-## Vim / GVim
+## Vim / GVim (9.0+)
 
-Works on Linux, macOS, and Windows. Only the runtime directory differs between platforms — the `.vimrc` snippet is identical everywhere.
+Full IDE setup with syntax highlighting, LSP (autocomplete / go-to-def / hover / diagnostics) via [yegappan/lsp](https://github.com/yegappan/lsp), and DAP debugging via [vimspector](https://github.com/puremourning/vimspector). Requires Vim 9.0+ with `+python3` (the gvim "Huge" build has it).
 
-### Syntax Highlighting
+### Automated Setup (Recommended)
 
-**Linux / macOS** — copy into `~/.vim/`:
+Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run:
+
+```cmd
+:: Windows
+scripts\install.cmd "C:\Program Files\Objeck" vim
+
+:: Linux / macOS
+./scripts/install.sh /usr/local/objeck vim
+```
+
+The script:
+
+- Installs syntax + ftdetect into `~/vimfiles/syntax` (Windows) or `~/.vim/syntax` (POSIX)
+- Clones `yegappan/lsp` and `puremourning/vimspector` into `~/vimfiles/pack/objeck/start/` (POSIX: `~/.vim/pack/...`)
+- Drops `objeck.vim` into the auto-loaded `plugin/` dir with the LSP server registration and keybindings
+- Writes `~/.vimspector.json` with the Objeck DAP adapter pointing at `obd --dap`
+
+After install, open any `.obs` file in gvim — the LSP server starts automatically and these keybindings are active in Objeck buffers:
+
+| Key       | Action                |
+|-----------|-----------------------|
+| `gd`      | Go to definition      |
+| `gr`      | Show references       |
+| `K`       | Hover documentation   |
+| `<leader>rn` | Rename symbol      |
+
+### Debugging
+
+Compile with debug symbols, drop a per-project `.vimspector.json` next to your sources, then `<F5>`:
 
 ```bash
+obc -src myprog.obs -debug
+```
+
+Sample `.vimspector.json`:
+
+```json
+{
+    "configurations": {
+        "Debug current Objeck file": {
+            "adapter": "objeck",
+            "configuration": {
+                "request": "launch",
+                "type": "objeck",
+                "program": "${workspaceRoot}/${fileBasenameNoExtension}.obe",
+                "sourceDir": "${workspaceRoot}"
+            }
+        }
+    }
+}
+```
+
+Vimspector "HUMAN" key bindings:
+
+| Key       | Action                |
+|-----------|-----------------------|
+| `<F5>`    | Continue / start      |
+| `<F9>`    | Toggle breakpoint     |
+| `<F10>`   | Step over             |
+| `<F11>`   | Step into             |
+| `<F12>`   | Step out              |
+| `<S-F5>`  | Stop debugging        |
+
+Program output (`PrintLine` etc.) appears in the vimspector output window — `obd --dap` redirects the running program's stdout/stderr through capture pipes.
+
+### Manual Setup (syntax only, no LSP/DAP)
+
+Copy from `docs/syntax/vim/`:
+
+```bash
+# Linux / macOS
 mkdir -p ~/.vim/syntax ~/.vim/ftdetect
 cp docs/syntax/vim/objeck.vim ~/.vim/syntax/
 cp docs/syntax/vim/ftdetect/objeck.vim ~/.vim/ftdetect/
 ```
 
-**Windows (gvim)** — copy into `%USERPROFILE%\vimfiles\` (gvim's user runtime dir on Windows):
-
 ```cmd
+:: Windows (gvim)
 mkdir "%USERPROFILE%\vimfiles\syntax" "%USERPROFILE%\vimfiles\ftdetect"
 copy docs\syntax\vim\objeck.vim "%USERPROFILE%\vimfiles\syntax\"
 copy docs\syntax\vim\ftdetect\objeck.vim "%USERPROFILE%\vimfiles\ftdetect\"
 ```
 
-Provides highlighting for keywords, types, strings, comments, numbers, and operators. `.obs` files are auto-detected on both platforms.
-
-### Build from Vim
-
-Add to your `.vimrc` (or `_vimrc` on Windows — the same snippet works on both):
+For build-from-vim without LSP, add to `.vimrc` / `_vimrc`:
 
 ```vim
 autocmd FileType objeck setlocal makeprg=obc\ -src\ %\ -dest\ %:r.obe
 autocmd FileType objeck setlocal errorformat=%f:(%l\\,%c):\ %m
 ```
 
-Then use `:make` to compile and `:copen` to see errors. Make sure `obc` is on your `PATH` (the Objeck installer adds it on both platforms).
+Use `:make` to compile and `:copen` to see errors. `obc` must be on your `PATH`.
 
 ---
 
