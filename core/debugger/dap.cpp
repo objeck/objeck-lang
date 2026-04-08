@@ -12,6 +12,31 @@
 
 #include "dap.h"
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <windows.h>
+#define DUP _dup
+#define DUP2 _dup2
+#define READ _read
+#define WRITE _write
+#define CLOSE _close
+#define PIPE(fds) _pipe(fds, 4096, _O_BINARY)
+#define FILENO _fileno
+#else
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#define DUP dup
+#define DUP2 dup2
+#define READ read
+#define WRITE write
+#define CLOSE close
+#define PIPE(fds) pipe(fds)
+#define FILENO fileno
+#endif
+
 using namespace Runtime;
 
 // ============================================
@@ -35,6 +60,10 @@ DapAdapter::DapAdapter()
   stopped_call_stack = nullptr;
   stopped_call_stack_pos = 0;
   stopped_line = 0;
+  dap_in_fd = -1;
+  dap_out_fd = -1;
+  prog_stdout_pipe[0] = prog_stdout_pipe[1] = -1;
+  prog_stderr_pipe[0] = prog_stderr_pipe[1] = -1;
 }
 
 DapAdapter::~DapAdapter()
@@ -51,14 +80,18 @@ DapAdapter::~DapAdapter()
 
 std::string DapAdapter::ReadMessage()
 {
-  // Read Content-Length header
+  // Read Content-Length header from the saved DAP input fd. We must
+  // not use std::cin here because the underlying fd may be the same as
+  // the program's redirected stdin in some configurations; the dup'd
+  // dap_in_fd is the canonical channel.
   std::string header;
   while(true) {
-    int ch = std::cin.get();
-    if(ch == EOF) {
+    char ch;
+    int n = READ(dap_in_fd, &ch, 1);
+    if(n <= 0) {
       return "";
     }
-    header += (char)ch;
+    header += ch;
     if(header.size() >= 4 && header.substr(header.size() - 4) == "\r\n\r\n") {
       break;
     }
@@ -73,17 +106,157 @@ std::string DapAdapter::ReadMessage()
 
   // Read body
   std::string body(length, '\0');
-  std::cin.read(&body[0], length);
+  int total = 0;
+  while(total < length) {
+    int n = READ(dap_in_fd, &body[total], length - total);
+    if(n <= 0) {
+      return "";
+    }
+    total += n;
+  }
 
   return body;
 }
 
 void DapAdapter::SendMessage(const json& msg)
 {
+  // Serialize against output reader threads which also write framed
+  // messages to dap_out_fd. Without this lock, the headers and bodies
+  // of concurrent sends would interleave on the wire.
+  std::lock_guard<std::mutex> lock(send_mtx);
+
   std::string body = msg.dump();
   std::string header = "Content-Length: " + std::to_string(body.size()) + "\r\n\r\n";
-  std::cout << header << body;
-  std::cout.flush();
+  WRITE(dap_out_fd, header.data(), (unsigned int)header.size());
+  WRITE(dap_out_fd, body.data(), (unsigned int)body.size());
+}
+
+// ============================================
+// Stdio redirection (program stdout/stderr -> DAP output events)
+// ============================================
+
+void DapAdapter::RedirectProgramStdio()
+{
+  // Save the real DAP fds before we touch process stdio. After this
+  // function, std::cout / std::cerr / printf / wprintf will all flow
+  // into the capture pipes; only writes to dap_out_fd / dap_in_fd reach
+  // the editor's DAP transport.
+#ifdef _WIN32
+  _setmode(_fileno(stdin), _O_BINARY);
+  _setmode(_fileno(stdout), _O_BINARY);
+#endif
+  dap_out_fd = DUP(FILENO(stdout));
+  dap_in_fd = DUP(FILENO(stdin));
+
+  // Capture program stdout
+  if(PIPE(prog_stdout_pipe) == 0) {
+    std::wcout.flush();
+    std::cout.flush();
+    fflush(stdout);
+    DUP2(prog_stdout_pipe[1], FILENO(stdout));
+    CLOSE(prog_stdout_pipe[1]);
+    prog_stdout_pipe[1] = -1;
+    // unitbuf forces std::wcout / std::cout to flush after every
+    // insertion. The C++ wide stream has its own buffer separate from
+    // the C FILE*, so without unitbuf the user program's PrintLine
+    // output sits in std::wcout's buffer and never reaches the pipe
+    // until process exit.
+    std::cout.setf(std::ios::unitbuf);
+    std::wcout.setf(std::ios::unitbuf);
+  }
+
+  // Capture program stderr
+  if(PIPE(prog_stderr_pipe) == 0) {
+    std::wcerr.flush();
+    std::cerr.flush();
+    fflush(stderr);
+    DUP2(prog_stderr_pipe[1], FILENO(stderr));
+    CLOSE(prog_stderr_pipe[1]);
+    prog_stderr_pipe[1] = -1;
+    std::cerr.setf(std::ios::unitbuf);
+    std::wcerr.setf(std::ios::unitbuf);
+  }
+}
+
+void DapAdapter::OutputReaderLoop(int fd, const std::string& category)
+{
+  // Read raw bytes from the program's redirected stdio pipe and forward
+  // each chunk as a DAP `output` event. On Windows the VM writes to
+  // std::wcout, so the bytes in the pipe are UTF-16 LE wide chars; we
+  // decode them to UTF-8 before sending the event so the editor displays
+  // text correctly. On POSIX std::wcout converts to the locale encoding
+  // (UTF-8 in modern setups), so we forward bytes as-is.
+  char buf[2048];
+#ifdef _WIN32
+  // `pending` holds the trailing odd byte from the previous read so we
+  // never split a UTF-16 code unit across DAP events.
+  char pending = 0;
+  bool has_pending = false;
+#endif
+
+  while(true) {
+    int n = READ(fd, buf, sizeof(buf));
+    if(n <= 0) {
+      // Pipe closed (program ended) or error — exit cleanly.
+      return;
+    }
+
+#ifdef _WIN32
+    // Combine the saved odd byte from the previous read with the new
+    // chunk so the wide-char count is always whole.
+    char chunk[sizeof(buf) + 1];
+    int chunk_len = 0;
+    if(has_pending) {
+      chunk[chunk_len++] = pending;
+      has_pending = false;
+    }
+    memcpy(chunk + chunk_len, buf, n);
+    chunk_len += n;
+
+    int wlen = chunk_len / 2;
+    int leftover = chunk_len & 1;
+    if(leftover) {
+      pending = chunk[chunk_len - 1];
+      has_pending = true;
+    }
+
+    if(wlen > 0) {
+      const wchar_t* wide = (const wchar_t*)chunk;
+      int ulen = WideCharToMultiByte(CP_UTF8, 0, wide, wlen, nullptr, 0, nullptr, nullptr);
+      if(ulen > 0) {
+        std::string utf8(ulen, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, wide, wlen, &utf8[0], ulen, nullptr, nullptr);
+        json body;
+        body["category"] = category;
+        body["output"] = utf8;
+        SendEvent("output", body);
+      }
+    }
+#else
+    json body;
+    body["category"] = category;
+    body["output"] = std::string(buf, n);
+    SendEvent("output", body);
+#endif
+  }
+}
+
+void DapAdapter::StartOutputReaders()
+{
+  if(prog_stdout_pipe[0] >= 0) {
+    int fd = prog_stdout_pipe[0];
+    stdout_reader_thread = std::thread([this, fd]() {
+      this->OutputReaderLoop(fd, "stdout");
+    });
+    stdout_reader_thread.detach();
+  }
+  if(prog_stderr_pipe[0] >= 0) {
+    int fd = prog_stderr_pipe[0];
+    stderr_reader_thread = std::thread([this, fd]() {
+      this->OutputReaderLoop(fd, "stderr");
+    });
+    stderr_reader_thread.detach();
+  }
 }
 
 void DapAdapter::SendResponse(int request_seq, const std::string& command, const json& body, bool success, const std::string& message)
@@ -126,10 +299,12 @@ void DapAdapter::SendEvent(const std::string& event, const json& body)
 
 void DapAdapter::Run()
 {
-#ifdef _WIN32
-  _setmode(_fileno(stdin), _O_BINARY);
-  _setmode(_fileno(stdout), _O_BINARY);
-#endif
+  // Save real stdin/stdout and redirect process stdout/stderr to pipes
+  // BEFORE we touch any DAP I/O. From this point on, std::cout and the
+  // VM's print opcodes write to the capture pipes; only DAP framed
+  // messages (via SendMessage / ReadMessage) reach the editor.
+  RedirectProgramStdio();
+  StartOutputReaders();
 
   while(!disconnect_requested) {
     std::string msg_str = ReadMessage();
@@ -198,6 +373,28 @@ void DapAdapter::Run()
       // Unknown command — respond with success to avoid VS Code errors
       SendResponse(request_seq, command);
     }
+  }
+
+  // Wait for the VM thread to finish before tearing anything down.
+  // The VM checks IsDisconnected() at every breakpoint check, so once
+  // disconnect_requested is true the VM will exit DapRun() within at
+  // most one bytecode dispatch (typically microseconds). Joining
+  // (rather than detaching) eliminates the race where the VM is still
+  // executing while the C runtime tears down its state, which used to
+  // cause an access violation (0xC0000005) on disconnect.
+  if(vm_thread.joinable()) {
+    vm_thread.join();
+  }
+
+  // Restore the original stdout/stderr fds before returning so the C
+  // runtime's static cleanup at process exit doesn't try to flush a
+  // closed pipe (which triggers Windows __fastfail / 0xC0000409). The
+  // output reader threads will see EOF on the pipe and exit cleanly.
+  if(dap_out_fd >= 0) {
+    fflush(stdout);
+    DUP2(dap_out_fd, FILENO(stdout));
+    fflush(stderr);
+    DUP2(dap_out_fd, FILENO(stderr));
   }
 }
 
@@ -317,16 +514,19 @@ void DapAdapter::HandleConfigurationDone(int request_seq, const json& args)
 {
   SendResponse(request_seq, "configurationDone");
 
-  // Start the program on a background thread
+  // Start the program on a background thread. Store the thread as a
+  // member so Run() can join it on shutdown — detaching would let the
+  // VM race the C runtime teardown and access-violate.
   if(debugger && is_launched) {
-    std::thread vm_thread([this]() {
+    vm_thread = std::thread([this]() {
       debugger->DapRun();
-      // Program finished
+      // Program finished naturally — only fire `terminated` if the user
+      // didn't already request disconnect (otherwise the editor sees a
+      // late terminated event after it expects us to be gone).
       if(!disconnect_requested) {
         OnTerminated();
       }
     });
-    vm_thread.detach();
   }
 }
 

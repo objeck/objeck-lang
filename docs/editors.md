@@ -58,6 +58,7 @@ Press **F5** to start debugging. Features:
 - Variable inspection in the **Variables** panel
 - Call stack in the **Call Stack** panel
 - Expression evaluation in the **Debug Console**
+- Program output (`PrintLine`, `Print`, stderr) appears in the **Debug Console** as DAP `output` events — `obd --dap` redirects the running program's stdout/stderr through capture pipes so the protocol stream stays clean.
 
 ### 4. LSP Features
 
