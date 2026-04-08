@@ -65,6 +65,37 @@ namespace Runtime {
     std::wstring source_dir;
     std::wstring program_args;
 
+    // OS-level fds for the JSON-RPC transport. We dup() the real
+    // stdin/stdout before redirecting process stdout/stderr to capture
+    // pipes (so the user program's PrintLine doesn't corrupt the DAP
+    // protocol). All DAP reads/writes go through these fds, not via
+    // std::cin / std::cout.
+    int dap_in_fd;
+    int dap_out_fd;
+
+    // Pipes that capture the running program's stdout/stderr; reader
+    // threads forward the bytes as DAP `output` events.
+    int prog_stdout_pipe[2];
+    int prog_stderr_pipe[2];
+    std::thread stdout_reader_thread;
+    std::thread stderr_reader_thread;
+
+    // The VM execution thread spawned in HandleConfigurationDone. Stored
+    // as a member (not detached) so Run() can join it on disconnect and
+    // avoid the VM racing the process teardown (which would otherwise
+    // cause access violations as the C runtime tears down state the VM
+    // is still using).
+    std::thread vm_thread;
+
+    // Serializes SendMessage across the main DAP thread and the two
+    // output reader threads (otherwise their headers/bodies interleave
+    // on dap_out_fd and the client sees corrupt frames).
+    std::mutex send_mtx;
+
+    void RedirectProgramStdio();
+    void StartOutputReaders();
+    void OutputReaderLoop(int fd, const std::string& category);
+
     // JSON-RPC transport
     std::string ReadMessage();
     void SendMessage(const json& msg);

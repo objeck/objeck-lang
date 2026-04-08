@@ -227,6 +227,33 @@ run_dap_test "conditional_breakpoint" \
     3
 
 # ============================================
+# Python tests (program output + stepIn + clean disconnect)
+# These exercise scenarios the bash tests can't: they need stateful
+# event handling and assertions on UTF-8 output. Skipped if python3
+# is not available.
+# ============================================
+PYTHON_BIN=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "")
+if [ -n "$PYTHON_BIN" ]; then
+    export DAP_TEST_PLATFORM="$PLATFORM"
+
+    for py_test in dap_print_test.py dap_stepin_test.py; do
+        if [ -f "$REGRESSION_DIR/$py_test" ]; then
+            echo -n "Running: ${py_test%.py}..."
+            if "$PYTHON_BIN" "$REGRESSION_DIR/$py_test" > "${RESULTS_DIR}/${py_test%.py}.log" 2>&1; then
+                echo " [PASS]"
+                ((PASS_COUNT++))
+            else
+                echo "  [FAIL]"
+                cat "${RESULTS_DIR}/${py_test%.py}.log" | sed 's/^/    /'
+                ((FAIL_COUNT++))
+            fi
+        fi
+    done
+else
+    echo "Skipping Python DAP tests (python3 not found on PATH)"
+fi
+
+# ============================================
 # Summary
 # ============================================
 echo ""
