@@ -1,0 +1,22 @@
+{
+    "configurations": {
+        "Debug current Objeck file": {
+            "adapter": "objeck",
+            "configuration": {
+                "request": "launch",
+                "type": "objeck",
+                "program": "${workspaceRoot}/${fileBasenameNoExtension}.obe",
+                "sourceDir": "${workspaceRoot}"
+            }
+        },
+        "Debug debugger_test.obe": {
+            "adapter": "objeck",
+            "configuration": {
+                "request": "launch",
+                "type": "objeck",
+                "program": "${workspaceRoot}/debugger_test.obe",
+                "sourceDir": "${workspaceRoot}"
+            }
+        }
+    }
+}
