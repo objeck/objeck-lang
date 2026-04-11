@@ -1,8 +1,10 @@
 class Counter {
   @count : Int;
+  @total_created : static : Int;
 
   New() {
     @count := 0;
+    @total_created += 1;
   }
 
   method : public : Increment() ~ Nil {
@@ -15,6 +17,10 @@ class Counter {
 
   method : public : ToString() ~ String {
     return "Counter={$@count}";
+  }
+
+  function : GetTotalCreated() ~ Int {
+    return @total_created;
   }
 }
 
@@ -30,14 +36,17 @@ class Main {
       sum += values[i];
     };
 
-    counter := Counter->New();
-    counter->Increment();
-    counter->Increment();
-    counter->Increment();
+    foo := Counter->New();
+    foo->Increment();
+    foo->Increment();
+    foo->Increment();
 
-    msg := counter->ToString();
-    count := counter->GetCount();
-    "Sum={$sum}, {$msg}"->PrintLine();
+    foo := Counter->New();
+
+    msg := foo->ToString();
+    count := foo->GetCount();
+    total := Counter->GetTotalCreated();
+    "Sum={$sum}, {$msg}, total_created={$total}"->PrintLine();
 
     if(count > 2) {
       "Count is greater than 2"->PrintLine();

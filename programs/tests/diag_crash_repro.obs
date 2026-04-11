@@ -1,0 +1,147 @@
+use System.Diagnostics;
+use Collection;
+
+# Crash repro: FindReferences / FindDeclaration on class with instance/static vars
+
+class DiagCrashRepro {
+	function : Main(args : String[]) ~ Nil {
+		# Exact source from debugger_test.obs
+		src := "class Counter {\r\n";                                          # L0
+		src += "  @count : Int;\r\n";                                          # L1
+		src += "  @total_created : static : Int;\r\n";                         # L2
+		src += "\r\n";                                                         # L3
+		src += "  New() {\r\n";                                                # L4
+		src += "    @count := 0;\r\n";                                         # L5
+		src += "    @total_created += 1;\r\n";                                 # L6
+		src += "  }\r\n";                                                      # L7
+		src += "\r\n";                                                         # L8
+		src += "  method : public : Increment() ~ Nil {\r\n";                 # L9
+		src += "    @count += 1;\r\n";                                         # L10
+		src += "  }\r\n";                                                      # L11
+		src += "\r\n";                                                         # L12
+		src += "  method : public : GetCount() ~ Int {\r\n";                  # L13
+		src += "    return @count;\r\n";                                       # L14
+		src += "  }\r\n";                                                      # L15
+		src += "\r\n";                                                         # L16
+		src += "  method : public : ToString() ~ String {\r\n";               # L17
+		src += "    return \"Counter\";\r\n";                                   # L18
+		src += "  }\r\n";                                                      # L19
+		src += "\r\n";                                                         # L20
+		src += "  function : GetTotalCreated() ~ Int {\r\n";                   # L21
+		src += "    return @total_created;\r\n";                               # L22
+		src += "  }\r\n";                                                      # L23
+		src += "}\r\n";                                                        # L24
+		src += "\r\n";                                                         # L25
+		src += "class Main {\r\n";                                             # L26
+		src += "  function : Main(args : String[]) ~ Nil {\r\n";              # L27
+		src += "    foo := Counter->New();\r\n";                               # L28
+		src += "    foo->Increment();\r\n";                                    # L29
+		src += "    foo->Increment();\r\n";                                    # L30
+		src += "    foo->Increment();\r\n";                                    # L31
+		src += "    foo := Counter->New();\r\n";                               # L32
+		src += "    msg := foo->ToString();\r\n";                              # L33
+		src += "    count := foo->GetCount();\r\n";                            # L34
+		src += "    total := Counter->GetTotalCreated();\r\n";                 # L35
+		src += "    count->PrintLine();\r\n";                                  # L36
+		src += "  }\r\n";                                                      # L37
+		src += "}\r\n";                                                        # L38
+
+		texts := String->New[1, 2];
+		texts[0, 0] := "file:///debugger_test.obs";
+		texts[0, 1] := src;
+
+		analysis := Analyzer->ParseText(texts);
+		if(analysis = Nil | <>analysis->IsParsed()) {
+			"FAIL: parse failed"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		"parsed OK"->PrintLine();
+
+		analysis->GetSymbols("file:///debugger_test.obs", "");
+		"symbols OK"->PrintLine();
+
+		# Test each operation that might crash
+		# --- FindReferences ---
+		">> FindReferences on 'Counter' class decl (L0, pos 6)..."->PrintLine();
+		analysis->FindReferences("file:///debugger_test.obs", 0, 6, "");
+		"   OK"->PrintLine();
+
+		">> FindReferences on '@count' decl (L1, pos 3)..."->PrintLine();
+		analysis->FindReferences("file:///debugger_test.obs", 1, 3, "");
+		"   OK"->PrintLine();
+
+		">> FindReferences on '@total_created' decl (L2, pos 3)..."->PrintLine();
+		analysis->FindReferences("file:///debugger_test.obs", 2, 3, "");
+		"   OK"->PrintLine();
+
+		">> FindReferences on 'Counter' usage (L28, pos 11)..."->PrintLine();
+		analysis->FindReferences("file:///debugger_test.obs", 28, 11, "");
+		"   OK"->PrintLine();
+
+		">> FindReferences on 'foo' (L29, pos 5)..."->PrintLine();
+		analysis->FindReferences("file:///debugger_test.obs", 29, 5, "");
+		"   OK"->PrintLine();
+
+		">> FindReferences on 'Increment' call (L29, pos 10)..."->PrintLine();
+		analysis->FindReferences("file:///debugger_test.obs", 29, 10, "");
+		"   OK"->PrintLine();
+
+		# --- FindDeclaration ---
+		">> FindDeclaration on 'Counter' class decl (L0, pos 6)..."->PrintLine();
+		analysis->FindDeclaration("file:///debugger_test.obs", 0, 6, "");
+		"   OK"->PrintLine();
+
+		">> FindDeclaration on '@count' (L1, pos 3)..."->PrintLine();
+		analysis->FindDeclaration("file:///debugger_test.obs", 1, 3, "");
+		"   OK"->PrintLine();
+
+		">> FindDeclaration on 'foo' (L29, pos 5)..."->PrintLine();
+		analysis->FindDeclaration("file:///debugger_test.obs", 29, 5, "");
+		"   OK"->PrintLine();
+
+		">> FindDeclaration on 'Counter' usage (L28, pos 11)..."->PrintLine();
+		analysis->FindDeclaration("file:///debugger_test.obs", 28, 11, "");
+		"   OK"->PrintLine();
+
+		# --- FindDefinition ---
+		">> FindDefinition on 'Counter' class decl (L0, pos 6)..."->PrintLine();
+		analysis->FindDefinition("file:///debugger_test.obs", 0, 6, "");
+		"   OK"->PrintLine();
+
+		">> FindDefinition on 'Counter' usage (L28, pos 11)..."->PrintLine();
+		analysis->FindDefinition("file:///debugger_test.obs", 28, 11, "");
+		"   OK"->PrintLine();
+
+		">> FindDefinition on '@count' (L1, pos 3)..."->PrintLine();
+		analysis->FindDefinition("file:///debugger_test.obs", 1, 3, "");
+		"   OK"->PrintLine();
+
+		# --- Hover (crash was here for inferred locals) ---
+		">> Hover on 'foo' declaration (L28, pos 6)..."->PrintLine();
+		analysis->Hover("file:///debugger_test.obs", 28, 6, "", "", "");
+		"   OK"->PrintLine();
+
+		">> Hover on 'foo' usage (L29, pos 5)..."->PrintLine();
+		analysis->Hover("file:///debugger_test.obs", 29, 5, "", "", "");
+		"   OK"->PrintLine();
+
+		">> Hover on 'Increment' (L29, pos 10)..."->PrintLine();
+		analysis->Hover("file:///debugger_test.obs", 29, 10, "", "", "");
+		"   OK"->PrintLine();
+
+		">> Hover on 'Counter' usage (L28, pos 11)..."->PrintLine();
+		analysis->Hover("file:///debugger_test.obs", 28, 11, "", "", "");
+		"   OK"->PrintLine();
+
+		">> Hover on '@count' in Increment (L10, pos 5)..."->PrintLine();
+		analysis->Hover("file:///debugger_test.obs", 10, 5, "", "", "");
+		"   OK"->PrintLine();
+
+		">> Hover on '@total_created' in New (L6, pos 5)..."->PrintLine();
+		analysis->Hover("file:///debugger_test.obs", 6, 5, "", "", "");
+		"   OK"->PrintLine();
+
+		analysis->Release();
+		"PASS: all operations completed without crash"->PrintLine();
+	}
+}

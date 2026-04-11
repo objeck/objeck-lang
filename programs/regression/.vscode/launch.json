@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "objeck",
+      "request": "launch",
+      "name": "Debug Debugger Test",
+      "program": "${workspaceFolder}/debugger_test.obe",
+      "sourceDir": "${workspaceFolder}"
+    }
+  ]
+}
