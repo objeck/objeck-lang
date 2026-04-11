@@ -2191,6 +2191,7 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
     return L"<no frame>";
   }
 
+  // Try the CLI expression evaluator first
   std::wstring cmd = L"?p " + expr_str;
   Parser parser;
   Command* command = parser.Parse(cmd);
@@ -2248,6 +2249,80 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
       }
     }
   }
+
+  // Fallback: search frame declarations directly (handles inferred locals)
+  if(cur_frame && cur_frame->method) {
+    StackDclr** dclrs = cur_frame->method->GetDeclarations();
+    int dclrs_num = cur_frame->method->GetNumberDeclarations();
+    int offset = 1;
+    if(cur_frame->method->HasAndOr()) {
+      offset++;
+    }
+
+    int mem_index = 0;
+    for(int i = 0; i < dclrs_num; i++) {
+      StackDclr* dclr = dclrs[i];
+
+      // Match variable name (strip class prefix)
+      std::wstring full_name = dclr->name;
+      size_t name_pos = full_name.find_last_of(':');
+      std::wstring name = (name_pos != std::wstring::npos) ? full_name.substr(name_pos + 1) : full_name;
+
+      if(name == expr_str) {
+        size_t value = cur_frame->mem[mem_index + offset];
+
+        switch(dclr->type) {
+          case CHAR_PARM: {
+            std::wstringstream wss;
+            wss << (wchar_t)value;
+            return wss.str();
+          }
+          case INT_PARM: {
+            std::wstringstream wss;
+            wss << (long)value;
+            return wss.str();
+          }
+          case FLOAT_PARM: {
+            double dval;
+            memcpy(&dval, &cur_frame->mem[mem_index + offset], sizeof(double));
+            std::wstringstream wss;
+            wss << dval;
+            return wss.str();
+          }
+          case OBJ_PARM: {
+            if(value == 0) return L"Nil";
+            size_t* instance = (size_t*)value;
+            StackClass* klass = MemoryManager::GetClass(instance);
+            if(klass) {
+              return klass->GetName();
+            }
+            std::wstringstream wss;
+            wss << L"object@0x" << std::hex << value;
+            return wss.str();
+          }
+          case BYTE_ARY_PARM:
+          case CHAR_ARY_PARM:
+          case INT_ARY_PARM:
+          case FLOAT_ARY_PARM:
+          case OBJ_ARY_PARM: {
+            if(value == 0) return L"Nil";
+            size_t* array = (size_t*)value;
+            std::wstringstream wss;
+            wss << L"[size=" << array[0] << L"]";
+            return wss.str();
+          }
+          default:
+            break;
+        }
+      }
+
+      mem_index++;
+      if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+        mem_index++;
+      }
+    }
+  }
+
   return L"<error>";
 }
 
