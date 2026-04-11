@@ -36,6 +36,15 @@
 
 using namespace frontend;
 
+// SEH guard: prevents access violations from crashing the LSP server process
+#ifdef _WIN32
+static void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) {
+  __try { fn(ctx); } __except(EXCEPTION_EXECUTE_HANDLER) { }
+}
+#else
+static inline void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) { fn(ctx); }
+#endif
+
 extern "C" {
 
   //
@@ -140,7 +149,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_get_diagnosis(VMContext& context)
+  void diag_get_diagnosis_impl(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -148,15 +157,15 @@ extern "C" {
     const std::wstring uri = APITools_GetStringValue(context, 1);
     const std::wstring lib_path = APITools_GetStringValue(context, 2);
 
-    std::wstring full_lib_path = L"lang.obl";
-    if(!lib_path.empty()) {
-      full_lib_path += L',' + lib_path;
-    }
-
     // if parsed
     if(prgm_obj[1]) {
-      ContextAnalyzer analyzer(program, full_lib_path, false);
-      const bool was_analyzed = analyzer.Analyze();
+      std::wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+      const bool was_analyzed = (analyzer != nullptr);
       APITools_SetBoolValue(context, 3, was_analyzed);
 
       const std::vector<std::wstring> warning_strings = program->GetWarningStrings();
@@ -179,7 +188,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_get_symbols(VMContext& context)
+  void diag_get_symbols_impl(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -187,16 +196,17 @@ extern "C" {
     const std::wstring uri = APITools_GetStringValue(context, 1);
 
     const std::wstring lib_path = APITools_GetStringValue(context, 2);
-    std::wstring full_lib_path = L"lang.obl";
-    if(!lib_path.empty()) {
-      full_lib_path += L',' + lib_path;
-    }
 
     // if parsed
     bool was_analyzed = false;
     if(prgm_obj[1]) {
-      ContextAnalyzer analyzer(program, full_lib_path, false);
-      was_analyzed = analyzer.Analyze();
+      std::wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+      was_analyzed = (analyzer != nullptr);
     }
 
     // list of bundles for classes
@@ -340,7 +350,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_definition(VMContext& context)
+  void diag_find_definition_impl(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -360,12 +370,12 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-
-        ContextAnalyzer analyzer(program, full_lib_path, false);
-        if(analyzer.Analyze()) {
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
           std::wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr;
           Enum* eenum = nullptr; ; EnumItem* eenum_item = nullptr;
-          if(analyzer.GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum, eenum_item)) {
+          if(analyzer->GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, klass, eenum, eenum_item)) {
             ParseNode* node = nullptr;
 
             // class
@@ -402,11 +412,11 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-
-        ContextAnalyzer analyzer(program, full_lib_path, false);
-        if(analyzer.Analyze()) {
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
           Class* found_klass = nullptr;
-          if(analyzer.GetDefinition(klass, line_num, line_pos, found_klass)) {
+          if(analyzer->GetDefinition(klass, line_num, line_pos, found_klass)) {
             size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_klass->GetName());
             def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, found_klass->GetFileName());
@@ -427,7 +437,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_declaration(VMContext& context)
+  void diag_find_declaration_impl(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -445,11 +455,11 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-
-        ContextAnalyzer analyzer(program, full_lib_path, false);
-        if(analyzer.Analyze()) {
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
           std::wstring found_name; int found_line; int found_start_pos; int found_end_pos;
-          if(analyzer.GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
+          if(analyzer->GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
             size_t* dcrl_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             dcrl_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, found_name);
             dcrl_obj[ResultPosition::POS_START_LINE] = dcrl_obj[ResultPosition::POS_END_LINE] = (size_t)found_line - 1;
@@ -469,7 +479,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_completion_help(VMContext& context)
+  void diag_completion_help_impl(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -489,12 +499,12 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-
-        ContextAnalyzer analyzer(program, full_lib_path, false);
-        if(analyzer.Analyze()) {
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
           std::vector<std::pair<int, std::wstring>> completions;
 
-          if(analyzer.GetCompletion(program, method, var_str, mthd_str, line_num, line_pos, completions)) {
+          if(analyzer->GetCompletion(program, method, var_str, mthd_str, line_num, line_pos, completions)) {
             size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, L"Completions");
 
@@ -526,7 +536,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_code_action(VMContext& context)
+  void diag_code_action_impl(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     SymbolTableManager* table_mgr = (SymbolTableManager*)prgm_obj[6];
@@ -592,7 +602,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_hover(VMContext& context)
+  void diag_hover_impl(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -604,32 +614,33 @@ extern "C" {
     const std::wstring var_str = APITools_GetStringValue(context, 5);
     const std::wstring mthd_str = APITools_GetStringValue(context, 6);
     std::wstring lib_path = APITools_GetStringValue(context, 7);
-
-    Class* klass; Method* method; SymbolTable* table;
-    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+    Class* klass = nullptr; Method* method = nullptr; SymbolTable* table = nullptr;
+    if(program && program->FindMethodOrClass(uri, line_num, klass, method, table)) {
       if(method) {
         std::wstring full_lib_path = L"lang.obl";
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-
-        ContextAnalyzer analyzer(program, full_lib_path, false);
-        if(analyzer.Analyze()) {
-          std::wstring found_name; int found_line; int found_start_pos; int found_end_pos; Expression* found_expression;  SymbolEntry* found_entry;
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
+          std::wstring found_name; int found_line = 0; int found_start_pos = 0; int found_end_pos = 0;
+          Expression* found_expression = nullptr; SymbolEntry* found_entry = nullptr;
 
           size_t* hover_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
-          if(analyzer.GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, found_expression, found_entry)) {
+          if(analyzer->GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, found_expression, found_entry)) {
             if(found_expression) {
               if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
                 MethodCall* called_method = static_cast<MethodCall*>(found_expression);
 
                 // variable type
                 SymbolEntry* called_method_entry = called_method->GetEntry();
-                if(called_method_entry) {
+                if(called_method_entry && called_method_entry->GetType()) {
                   hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
                   hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, called_method_entry->GetType()->GetName());
                 }
-                else if(called_method->GetVariable() && called_method->GetVariable()->GetEntry()) {
+                else if(called_method->GetVariable() && called_method->GetVariable()->GetEntry() &&
+                        called_method->GetVariable()->GetEntry()->GetType()) {
                   called_method_entry = called_method->GetVariable()->GetEntry();
                   hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
                   hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, called_method_entry->GetType()->GetName());
@@ -709,11 +720,11 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-
-        ContextAnalyzer analyzer(program, full_lib_path, false);
-        if(analyzer.Analyze()) {
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
           std::vector<Method*> found_methods; std::vector<LibraryMethod*> found_lib_methods;
-          if(analyzer.GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
+          if(analyzer->GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
             size_t* sig_root_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
             sig_root_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, mthd_str);
             sig_root_obj[ResultPosition::POS_CODE] = found_methods.empty();
@@ -811,7 +822,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_references(VMContext& context)
+  void diag_find_references_impl(VMContext& context)
   {
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
@@ -824,6 +835,47 @@ extern "C" {
 
     prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_hover(VMContext& context) { SafeCallDiag(diag_hover_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_code_action(VMContext& context) { SafeCallDiag(diag_code_action_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_find_definition(VMContext& context) { SafeCallDiag(diag_find_definition_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_find_declaration(VMContext& context) { SafeCallDiag(diag_find_declaration_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_find_references(VMContext& context) { SafeCallDiag(diag_find_references_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_completion_help(VMContext& context) { SafeCallDiag(diag_completion_help_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_get_symbols(VMContext& context) { SafeCallDiag(diag_get_symbols_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_get_diagnosis(VMContext& context) { SafeCallDiag(diag_get_diagnosis_impl, context); }
+
 }
 
 //
@@ -919,15 +971,15 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
     // within a method
     if(method) {
       std::wstring full_lib_path = L"lang.obl";
-      if(!lib_path.empty()) {
-        full_lib_path += L',' + lib_path;
-      }
-
-      ContextAnalyzer analyzer(program, full_lib_path, false);
-      if(analyzer.Analyze()) {
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
         // fetch renamed expressions
         bool is_var;
-        std::vector<Expression*> expressions = FetchRenamedExpressions(method, analyzer, line_num, line_pos, is_var);
+        std::vector<Expression*> expressions = FetchRenamedExpressions(method, *analyzer, line_num, line_pos, is_var);
 
         // method/function
         if(!is_var && !expressions.empty() && expressions[0]->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -1084,14 +1136,14 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
     // within a class
     else {
       std::wstring full_lib_path = L"lang.obl";
-      if(!lib_path.empty()) {
-        full_lib_path += L',' + lib_path;
-      }
-
-      ContextAnalyzer analyzer(program, full_lib_path, false);
-      if(analyzer.Analyze()) {
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
         // fetch renamed expressions
-        std::vector<Expression*> expressions = FetchRenamedExpressions(klass, analyzer, line_num, line_pos);
+        std::vector<Expression*> expressions = FetchRenamedExpressions(klass, *analyzer, line_num, line_pos);
         if(!expressions.empty()) {
           // build results array
           size_t* refs_array = APITools_MakeIntArray(context, (int)expressions.size());

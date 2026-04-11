@@ -1,0 +1,18 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+		}
+	],
+	"debugger_configurations":
+	[
+		{
+			"name": "Debug Debugger Test",
+			"type": "objeck",
+			"request": "launch",
+			"program": "${folder}/debugger_test.obe",
+			"sourceDir": "${folder}"
+		}
+	]
+}

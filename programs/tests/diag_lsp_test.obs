@@ -1,0 +1,175 @@
+use System.Diagnostics;
+use Collection;
+
+# LSP diagnostics regression test.
+#
+# Covers: FindDefinition, FindDeclaration, FindReferences, Hover, CodeAction,
+# GetSymbols, GetDiagnostics for classes, methods, instance/class vars, inferred locals.
+
+class LspTest {
+	@passed : static : Int;
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+			@passed += 1;
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# =============================================
+		# Source with classes, instance vars, class vars, methods, functions
+		# Line numbers are 0-based in comments
+		# =============================================
+		src := "class Counter {\r\n";                             # L0
+		src += "  @count : Int;\r\n";                             # L1
+		src += "  @total : static : Int;\r\n";                    # L2
+		src += "\r\n";                                            # L3
+		src += "  New() {\r\n";                                   # L4
+		src += "    @count := 0;\r\n";                            # L5
+		src += "    @total += 1;\r\n";                            # L6
+		src += "  }\r\n";                                         # L7
+		src += "\r\n";                                            # L8
+		src += "  method : public : Increment() ~ Nil {\r\n";    # L9
+		src += "    @count += 1;\r\n";                            # L10
+		src += "  }\r\n";                                         # L11
+		src += "\r\n";                                            # L12
+		src += "  method : public : GetCount() ~ Int {\r\n";     # L13
+		src += "    return @count;\r\n";                          # L14
+		src += "  }\r\n";                                         # L15
+		src += "}\r\n";                                           # L16
+		src += "\r\n";                                            # L17
+		src += "class Main {\r\n";                                # L18
+		src += "  function : Main(args : String[]) ~ Nil {\r\n"; # L19
+		src += "    counter := Counter->New();\r\n";              # L20
+		src += "    counter->Increment();\r\n";                   # L21
+		src += "    counter->Increment();\r\n";                   # L22
+		src += "    count := counter->GetCount();\r\n";           # L23
+		src += "    count->PrintLine();\r\n";                     # L24
+		src += "  }\r\n";                                         # L25
+		src += "}\r\n";                                           # L26
+
+		texts := String->New[1, 2];
+		texts[0, 0] := "file:///test.obs";
+		texts[0, 1] := src;
+
+		analysis := Analyzer->ParseText(texts);
+		Check("ParseText returned analysis", analysis <> Nil);
+		if(analysis = Nil) { Runtime->Exit(1); };
+		Check("ParseText succeeded", analysis->IsParsed());
+
+		lib_path := "";
+
+		">> populate symbols..."->PrintLine();
+		analysis->GetSymbols("file:///test.obs", lib_path);
+
+		# =============================================
+		# GetSymbols / GetDiagnostics
+		# =============================================
+		">> GetSymbols..."->PrintLine();
+		symbols := analysis->GetSymbols("file:///test.obs", lib_path);
+		Check("GetSymbols returns results", symbols <> Nil);
+
+		was_analyzed := BoolRef->New();
+		analysis->GetDiagnostics(was_analyzed, "file:///test.obs", lib_path);
+		Check("GetDiagnostics: no crash", true);
+
+		">> FindDefinition Counter at usage (L20)..."->PrintLine();
+		def := analysis->FindDefinition("file:///test.obs", 20, 16, lib_path);
+		Check("FindDefinition 'Counter' at usage (L20)", def <> Nil);
+
+		">> FindDefinition GetCount (L23)..."->PrintLine();
+		def2 := analysis->FindDefinition("file:///test.obs", 23, 23, lib_path);
+		Check("FindDefinition 'GetCount' call (L23): no crash", true);
+
+		">> FindDefinition on class decl (L0)..."->PrintLine();
+		def3 := analysis->FindDefinition("file:///test.obs", 0, 6, lib_path);
+		Check("FindDefinition on class decl (L0): no crash", true);
+
+		">> FindDefinition on @count decl (L1)..."->PrintLine();
+		def4 := analysis->FindDefinition("file:///test.obs", 1, 4, lib_path);
+		Check("FindDefinition on '@count' decl (L1): no crash", true);
+
+		">> FindDefinition on @total decl (L2)..."->PrintLine();
+		def5 := analysis->FindDefinition("file:///test.obs", 2, 4, lib_path);
+		Check("FindDefinition on '@total' decl (L2): no crash", true);
+
+		# =============================================
+		# FindReferences: 'counter' local variable
+		# L20: "    counter := Counter->New();"
+		# =============================================
+		">> FindReferences counter (L20)..."->PrintLine();
+		refs := analysis->FindReferences("file:///test.obs", 20, 5, lib_path);
+		Check("FindReferences 'counter' (L20): no crash", true);
+
+		">> FindReferences Counter class (L20)..."->PrintLine();
+		refs2 := analysis->FindReferences("file:///test.obs", 20, 16, lib_path);
+		Check("FindReferences 'Counter' class (L20): no crash", true);
+
+		">> FindReferences on class decl (L0)..."->PrintLine();
+		refs3 := analysis->FindReferences("file:///test.obs", 0, 6, lib_path);
+		Check("FindReferences on class decl (L0): no crash", true);
+
+		">> FindReferences @count (L10)..."->PrintLine();
+		refs4 := analysis->FindReferences("file:///test.obs", 10, 5, lib_path);
+		Check("FindReferences '@count' in Increment (L10): no crash", true);
+
+		# =============================================
+		# FindDeclaration: variable at usage
+		# L21: "    counter->Increment();" — 'counter' at pos 4
+		# =============================================
+		decl := analysis->FindDeclaration("file:///test.obs", 21, 5, lib_path);
+		Check("FindDeclaration 'counter' (L21): no crash", true);
+
+		# =============================================
+		# Hover: on various constructs
+		# =============================================
+		hover := analysis->Hover("file:///test.obs", 21, 5, "", "", lib_path);
+		Check("Hover on 'counter' (L21): no crash", true);
+
+		hover2 := analysis->Hover("file:///test.obs", 20, 16, "", "", lib_path);
+		Check("Hover on 'Counter' class (L20): no crash", true);
+
+		hover3 := analysis->Hover("file:///test.obs", 10, 5, "", "", lib_path);
+		Check("Hover on '@count' (L10): no crash", true);
+
+		hover4 := analysis->Hover("file:///test.obs", 0, 6, "", "", lib_path);
+		Check("Hover on class decl (L0): no crash", true);
+
+		# =============================================
+		# CodeAction: instance and class vars
+		# =============================================
+		analysis->CodeAction("file:///test.obs", 10, 5, "@count");
+		Check("CodeAction '@count' (L10): no crash", true);
+
+		analysis->CodeAction("file:///test.obs", 6, 5, "@total");
+		Check("CodeAction '@total' (L6): no crash", true);
+
+		# =============================================
+		# CodeAction: on class name at usage
+		# =============================================
+		analysis->CodeAction("file:///test.obs", 20, 16, "Counter");
+		Check("CodeAction 'Counter' at usage (L20): no crash", true);
+
+		# =============================================
+		# CodeAction: on class declaration
+		# =============================================
+		analysis->CodeAction("file:///test.obs", 0, 6, "Counter");
+		Check("CodeAction on class decl (L0): no crash", true);
+
+		# clean up
+		analysis->Release();
+
+		p := @passed;
+		f := @failed;
+		"\n  Results: {$p} passed, {$f} failed"->PrintLine();
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+	}
+}

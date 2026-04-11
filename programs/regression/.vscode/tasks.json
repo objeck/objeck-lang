@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Objeck: Compile (Debug)",
+      "type": "process",
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "set OBJECK_LIB_PATH=C:\\Users\\objec\\Documents\\Code\\objeck-lang\\core\\release\\deploy-x64\\lib && C:\\Users\\objec\\Documents\\Code\\objeck-lang\\core\\release\\deploy-x64\\bin\\obc.exe -src ${file} -dest ${fileDirname}\\${fileBasenameNoExtension}.obe -debug"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -644,6 +644,7 @@ void DapAdapter::HandleStackTrace(int request_seq, const json& args)
 
 void DapAdapter::HandleScopes(int request_seq, const json& args)
 {
+  std::lock_guard<std::mutex> lock(mtx);
   int frame_id = args.value("frameId", 0);
 
   json scopes_arr = json::array();
@@ -653,6 +654,32 @@ void DapAdapter::HandleScopes(int request_seq, const json& args)
   local_scope["variablesReference"] = SCOPE_HANDLE_BASE + frame_id;
   local_scope["expensive"] = false;
   scopes_arr.push_back(local_scope);
+
+  if(is_stopped) {
+    StackFrame* frame = GetFrameByIndex(frame_id);
+    if(frame && frame->method) {
+      StackClass* klass = frame->method->GetClass();
+      if(klass) {
+        // Instance variables scope (only for instance methods with valid @self)
+        if(klass->GetNumberInstanceDeclarations() > 0 && frame->mem && frame->mem[0] &&
+           MemoryManager::GetClass((size_t*)frame->mem[0])) {
+          json inst_scope;
+          inst_scope["name"] = "Instance";
+          inst_scope["variablesReference"] = INST_SCOPE_HANDLE_BASE + frame_id;
+          inst_scope["expensive"] = false;
+          scopes_arr.push_back(inst_scope);
+        }
+        // Class variables scope
+        if(klass->GetNumberClassDeclarations() > 0 && klass->GetClassMemory()) {
+          json cls_scope;
+          cls_scope["name"] = "Class";
+          cls_scope["variablesReference"] = CLS_SCOPE_HANDLE_BASE + frame_id;
+          cls_scope["expensive"] = false;
+          scopes_arr.push_back(cls_scope);
+        }
+      }
+    }
+  }
 
   json body;
   body["scopes"] = scopes_arr;
@@ -669,14 +696,7 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
   if(is_stopped && ref >= SCOPE_HANDLE_BASE && ref < VAR_HANDLE_BASE) {
     // Scope reference — enumerate locals
     int frame_index = ref - SCOPE_HANDLE_BASE;
-    StackFrame* frame = nullptr;
-
-    if(frame_index == (int)stopped_call_stack_pos) {
-      frame = stopped_frame;
-    }
-    else if(frame_index >= 0 && frame_index < (int)stopped_call_stack_pos) {
-      frame = stopped_call_stack[frame_index];
-    }
+    StackFrame* frame = GetFrameByIndex(frame_index);
 
     if(frame && frame->method) {
       StackDclr** dclrs = frame->method->GetDeclarations();
@@ -718,6 +738,88 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
         }
         var["variablesReference"] = 0;
         variables.push_back(var);
+      }
+    }
+  }
+  // Instance scope — enumerate instance variables
+  else if(is_stopped && ref >= INST_SCOPE_HANDLE_BASE && ref < INST_SCOPE_HANDLE_BASE + 1000) {
+    int frame_index = ref - INST_SCOPE_HANDLE_BASE;
+    StackFrame* frame = GetFrameByIndex(frame_index);
+
+    if(frame && frame->method && frame->mem && frame->mem[0]) {
+      StackClass* klass = frame->method->GetClass();
+      if(klass) {
+        size_t* inst_mem = (size_t*)frame->mem[0];
+        StackDclr** dclrs = klass->GetInstanceDeclarations();
+        int dclrs_num = klass->GetNumberInstanceDeclarations();
+
+        int mem_index = 0;
+        for(int i = 0; i < dclrs_num; i++) {
+          StackDclr* dclr = dclrs[i];
+
+          std::wstring full_name = dclr->name;
+          size_t name_index = full_name.find_last_of(':');
+          std::string name;
+          if(name_index != std::wstring::npos) {
+            name = UnicodeToBytes(full_name.substr(name_index + 1));
+          }
+          else {
+            name = UnicodeToBytes(full_name);
+          }
+
+          json var;
+          var["name"] = name;
+          var["value"] = FormatVariableValue(*dclr, inst_mem, mem_index);
+          var["type"] = FormatVariableType(*dclr);
+          var["variablesReference"] = 0;
+          variables.push_back(var);
+
+          mem_index++;
+          if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+            mem_index++;
+          }
+        }
+      }
+    }
+  }
+  // Class scope — enumerate class variables
+  else if(is_stopped && ref >= CLS_SCOPE_HANDLE_BASE && ref < CLS_SCOPE_HANDLE_BASE + 1000) {
+    int frame_index = ref - CLS_SCOPE_HANDLE_BASE;
+    StackFrame* frame = GetFrameByIndex(frame_index);
+
+    if(frame && frame->method) {
+      StackClass* klass = frame->method->GetClass();
+      if(klass && klass->GetClassMemory()) {
+        size_t* cls_mem = klass->GetClassMemory();
+        StackDclr** dclrs = klass->GetClassDeclarations();
+        int dclrs_num = klass->GetNumberClassDeclarations();
+
+        int mem_index = 0;
+        for(int i = 0; i < dclrs_num; i++) {
+          StackDclr* dclr = dclrs[i];
+
+          std::wstring full_name = dclr->name;
+          size_t name_index = full_name.find_last_of(':');
+          std::string name;
+          if(name_index != std::wstring::npos) {
+            name = UnicodeToBytes(full_name.substr(name_index + 1));
+          }
+          else {
+            name = UnicodeToBytes(full_name);
+          }
+
+          json var;
+          var["name"] = name;
+          var["value"] = FormatVariableValue(*dclr, cls_mem, mem_index);
+          var["type"] = FormatVariableType(*dclr);
+          var["variablesReference"] = 0;
+          variables.push_back(var);
+
+          mem_index++;
+          if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+            mem_index++;
+          }
+        }
       }
     }
   }
@@ -803,6 +905,7 @@ void DapAdapter::HandleDisconnect(int request_seq, const json& args)
 void DapAdapter::HandleEvaluate(int request_seq, const json& args)
 {
   std::string expression = args.value("expression", "");
+  std::string context = args.value("context", "");
 
   if(expression.empty() || !is_stopped) {
     SendResponse(request_seq, "evaluate", json::object(), false, "Cannot evaluate");
@@ -812,6 +915,16 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
   // Use the debugger's expression evaluator
   std::wstring wexpr = BytesToUnicode(expression);
   std::wstring result = debugger->EvaluateForDap(wexpr);
+
+  // For hover: if lookup failed and name doesn't start with '@',
+  // retry as an instance variable (editors strip the '@' prefix)
+  if(result == L"<error>" && !expression.empty() && expression[0] != '@') {
+    std::wstring retry = L"@" + wexpr;
+    std::wstring retry_result = debugger->EvaluateForDap(retry);
+    if(retry_result != L"<error>") {
+      result = retry_result;
+    }
+  }
 
   json body;
   body["result"] = UnicodeToBytes(result);
@@ -867,6 +980,21 @@ void DapAdapter::OnTerminated()
 }
 
 // ============================================
+// Frame Lookup
+// ============================================
+
+StackFrame* DapAdapter::GetFrameByIndex(int frame_index)
+{
+  if(frame_index == (int)stopped_call_stack_pos) {
+    return stopped_frame;
+  }
+  else if(frame_index >= 0 && frame_index < (int)stopped_call_stack_pos) {
+    return stopped_call_stack[frame_index];
+  }
+  return nullptr;
+}
+
+// ============================================
 // Variable Formatting
 // ============================================
 
@@ -882,7 +1010,16 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, StackFrame* frame, 
     return "<out of scope>";
   }
 
-  size_t value = frame->mem[var_index];
+  return FormatVariableValue(dclr, frame->mem, var_index);
+}
+
+std::string DapAdapter::FormatVariableValue(StackDclr& dclr, size_t* mem, int var_index)
+{
+  if(!mem || var_index < 0) {
+    return "<unavailable>";
+  }
+
+  size_t value = mem[var_index];
 
   switch(dclr.type) {
     case CHAR_PARM:
@@ -896,7 +1033,7 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, StackFrame* frame, 
 
     case FLOAT_PARM: {
       double dval;
-      memcpy(&dval, &value, sizeof(double));
+      memcpy(&dval, &mem[var_index], sizeof(double));
       std::ostringstream oss;
       oss << dval;
       return oss.str();

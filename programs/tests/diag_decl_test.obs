@@ -1,0 +1,73 @@
+use System.Diagnostics;
+
+class DiagDeclTest {
+	function : Main(args : String[]) ~ Nil {
+		src := "class Counter {\r\n";
+		src += "  @count : Int;\r\n";
+		src += "\r\n";
+		src += "  New() {\r\n";
+		src += "    @count := 0;\r\n";
+		src += "  }\r\n";
+		src += "\r\n";
+		src += "  method : public : Increment() ~ Nil {\r\n";
+		src += "    @count += 1;\r\n";
+		src += "  }\r\n";
+		src += "}\r\n";
+		src += "\r\n";
+		src += "class Main {\r\n";
+		src += "  function : Main(args : String[]) ~ Nil {\r\n";
+		src += "    foo := Counter->New();\r\n";
+		src += "    foo->Increment();\r\n";
+		src += "    foo->Increment();\r\n";
+		src += "  }\r\n";
+		src += "}\r\n";
+
+		# L14: foo := Counter->New();  (foo at pos 4)
+		# L15: foo->Increment();      (foo at pos 4)
+		# L16: foo->Increment();
+
+		texts := String->New[1, 2];
+		texts[0, 0] := "file:///test.obs";
+		texts[0, 1] := src;
+
+		analysis := Analyzer->ParseText(texts);
+		if(analysis = Nil | <>analysis->IsParsed()) {
+			"FAIL: parse failed"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		analysis->GetSymbols("file:///test.obs", "");
+
+		# FindDeclaration on 'foo' at usage site (L15)
+		">> FindDeclaration on 'foo' (L15, pos 5)..."->PrintLine();
+		decl := analysis->FindDeclaration("file:///test.obs", 15, 5, "");
+		if(decl <> Nil) {
+			"   Found: line={$decl->GetStartLine()}, pos={$decl->GetStartPosition()}"->PrintLine();
+		}
+		else {
+			"   Nil - not found"->PrintLine();
+		};
+
+		# FindDeclaration on 'foo' at decl site (L14)
+		">> FindDeclaration on 'foo' (L14, pos 5)..."->PrintLine();
+		decl2 := analysis->FindDeclaration("file:///test.obs", 14, 5, "");
+		if(decl2 <> Nil) {
+			"   Found: line={$decl2->GetStartLine()}, pos={$decl2->GetStartPosition()}"->PrintLine();
+		}
+		else {
+			"   Nil - not found"->PrintLine();
+		};
+
+		# FindDefinition on 'foo' at usage site (L15)
+		">> FindDefinition on 'foo' (L15, pos 5)..."->PrintLine();
+		def := analysis->FindDefinition("file:///test.obs", 15, 5, "");
+		if(def <> Nil) {
+			"   Found: line={$def->GetStartLine()}, pos={$def->GetStartPosition()}"->PrintLine();
+		}
+		else {
+			"   Nil - not found"->PrintLine();
+		};
+
+		analysis->Release();
+		"DONE"->PrintLine();
+	}
+}

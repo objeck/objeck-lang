@@ -132,6 +132,7 @@ namespace Runtime {
     StackInterpreter* interpreter;
     StackProgram* cur_program;
     StackFrame* cur_frame;
+    StackMethod* cur_method;
     size_t* op_stack;
     size_t* stack_pos;
     Loader* loader;
@@ -257,6 +258,7 @@ namespace Runtime {
       stack_pos = nullptr;
       cur_line_num = -1;
       cur_frame = nullptr;
+      cur_method = nullptr;
       cur_program = nullptr;
       cur_call_stack = nullptr;
       cur_call_stack_pos = jump_stack_pos = 0;

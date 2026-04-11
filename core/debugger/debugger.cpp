@@ -205,26 +205,29 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
     if(line_num > -1) {
       // continue to next line
-      if(continue_state == 1 && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method) {
+      if(continue_state == 1 && line_num != cur_line_num && cur_method && frame->method == cur_method) {
         // std::wcout << L"--- CONTINE_STATE " << is_continue_state << L" --" << std::endl;
         continue_state++;
       }
 
-      const bool step_out = is_step_out && call_stack_pos > jump_stack_pos;
+      const bool step_out = is_step_out && call_stack_pos < jump_stack_pos;
       /*
       if(step_out) {
         std::wcout << L"--- STEP_OUT --" << std::endl;
       }
       */
 
-      const bool step_into = is_step_into && cur_frame && (frame->method != cur_frame->method || line_num != cur_line_num);
+      const bool step_into = is_step_into && cur_method && (frame->method != cur_method || line_num != cur_line_num);
       /*
       if(step_into) {
         std::wcout << L"--- STEP_INTO --" << std::endl;
       }
       */
 
-      const bool found_next_line = is_next_line && line_num != cur_line_num && cur_frame && frame->method == cur_frame->method;
+      // Step-over: stop at next line in same method, or at caller if method returned
+      const bool found_next_line = is_next_line && cur_method &&
+        ((line_num != cur_line_num && frame->method == cur_method) ||
+         (frame->method != cur_method && call_stack_pos < cur_call_stack_pos));
       /*
       if(found_next_line) {
         std::wcout << L"--- NEXT_LINE --" << std::endl;
@@ -270,6 +273,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         cur_line_num = line_num;
         cur_file_name = file_name;
         cur_frame = frame;
+        cur_method = frame->method;
         cur_call_stack = call_stack;
         cur_call_stack_pos = call_stack_pos;
 
@@ -2107,6 +2111,7 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
   continue_state = 0;
   cur_line_num = -1;
   cur_frame = nullptr;
+  cur_method = nullptr;
   cur_program = nullptr;
   is_error = false;
   ref_mem = nullptr;
@@ -2213,6 +2218,31 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
           wss << expression->GetFloatValue();
           return wss.str();
         }
+        case OBJ_PARM: {
+          size_t* instance = (size_t*)expression->GetIntValue();
+          if(instance) {
+            StackClass* klass = MemoryManager::GetClass(instance);
+            if(klass) {
+              return klass->GetName();
+            }
+          }
+          return L"Nil";
+        }
+        case BYTE_ARY_PARM:
+        case CHAR_ARY_PARM:
+        case INT_ARY_PARM:
+        case FLOAT_ARY_PARM:
+        case OBJ_ARY_PARM: {
+          size_t* array = (size_t*)expression->GetIntValue();
+          if(array) {
+            std::wstringstream wss;
+            wss << L"[size=" << array[0] << L"]";
+            return wss.str();
+          }
+          return L"Nil";
+        }
+        case FUNC_PARM:
+          return L"<function>";
         default:
           return L"<object>";
       }

@@ -1,0 +1,92 @@
+use System.Diagnostics;
+use Collection;
+
+# Regression test for the LSP code_action / find_definition crash on
+# inferred-type locals (`x := ...`).  Before the diags.cpp / context.cpp
+# guards, calling CodeAction or FindDefinition on a method body that
+# contains `:=` declarations would deref a null Type* and segfault.
+
+class DiagCodeActionTest {
+	function : Main(args : String[]) ~ Nil {
+		# Mirror objeck-lsp/tests/test_0.obs - the historical crash repro
+		src := "class Hello {\r\n";
+		src += "\tNew(a : Int) { @a := a; }\r\n";
+		src += "\r\n";
+		src += "\tfunction : Main(args : String []) ~ Nil {\r\n";
+		src += "\t\ta := 13;\r\n";
+		src += "\t\ta->PrintLine();\r\n";
+		src += "\t\tb := 1 +2 / 3;\r\n";
+		src += "\t\tif(a >= 1) { a *= 3; };\r\n";
+		src += "\t\tz := a + b;\r\n";
+		src += "\t\tselect(a) {\r\n";
+		src += "\t\t\tlabel 5: { a := 45; }\r\n";
+		src += "\t\t\tother { a := 12; }\r\n";
+		src += "\t\t};\r\n";
+		src += "\t\tFoo(2, 3);\r\n";
+		src += "\t\t\"Hello\"->PrintLine();\r\n";
+		src += "\t\tc := '\\u0444';\r\n";
+		src += "\t}\r\n";
+		src += "\r\n";
+		src += "\tfunction : Foo(a : Int, b : Int) ~ Int { return 13 + 7; }\r\n";
+		src += "}\r\n";
+
+		texts := String->New[1, 2];
+		texts[0, 0] := "file:///hello.obs";
+		texts[0, 1] := src;
+
+		analysis := Analyzer->ParseText(texts);
+		if(analysis = Nil) {
+			"FAIL: parse returned Nil"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		if(<>analysis->IsParsed()) {
+			"FAIL: parse failed"->ErrorLine();
+			Runtime->Exit(1);
+		};
+
+		# touch GetSymbols to populate the analyzer
+		analysis->GetSymbols("file:///hello.obs", "");
+
+		# CodeAction on the line containing `a := 13;` (line index 2, char 4).
+		# Pre-fix this would crash inside diag_code_action when iterating
+		# symbol entries whose Type* is still Nil.
+		ca := analysis->CodeAction("file:///hello.obs", 2, 4, "a");
+		"CodeAction on inferred local 'a': returned without crash"->PrintLine();
+
+		# Try a few more lines to be sure
+		analysis->CodeAction("file:///hello.obs", 3, 4, "b");
+		analysis->CodeAction("file:///hello.obs", 4, 4, "z");
+		"CodeAction on b, z: ok"->PrintLine();
+
+		# FindReferences on `z` — also previously synthesized bogus -1 entries
+		refs := analysis->FindReferences("file:///hello.obs", 4, 4, "");
+		if(refs <> Nil) {
+			"FindReferences returned {$refs->Size()} entries"->PrintLine();
+		}
+		else {
+			"FindReferences returned Nil"->PrintLine();
+		};
+
+		# FindDefinition / FindDeclaration use 1-based line numbers.
+		# Line 5 = `z := a + b;` (1-based).  Position of `a` is around col 10.
+		# These previously could crash or return bogus -1 line for inferred locals.
+		def := analysis->FindDefinition("file:///hello.obs", 5, 10, "");
+		if(def <> Nil) {
+			"FindDefinition for 'a' on line 5: line {$def->GetStartLine()}, pos {$def->GetStartPosition()}"->PrintLine();
+		}
+		else {
+			"FindDefinition for 'a' on line 5: Nil"->PrintLine();
+		};
+
+		decl := analysis->FindDeclaration("file:///hello.obs", 5, 10, "");
+		if(decl <> Nil) {
+			"FindDeclaration for 'a' on line 5: line {$decl->GetStartLine()}, pos {$decl->GetStartPosition()}"->PrintLine();
+		}
+		else {
+			"FindDeclaration for 'a' on line 5: Nil"->PrintLine();
+		};
+
+		"PASS"->PrintLine();
+	}
+}

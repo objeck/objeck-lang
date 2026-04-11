@@ -27,10 +27,14 @@ using json = nlohmann::json;
 namespace Runtime {
 
   // Variable reference handle encoding:
-  // Scope handles: 1000 + frame_index
+  // Local scope handles: 1000 + frame_index
   // Variable handles: 2000 + (frame_index * 1000) + var_index
+  // Instance scope handles: 3000 + frame_index
+  // Class scope handles: 4000 + frame_index
   static const int SCOPE_HANDLE_BASE = 1000;
   static const int VAR_HANDLE_BASE = 2000;
+  static const int INST_SCOPE_HANDLE_BASE = 3000;
+  static const int CLS_SCOPE_HANDLE_BASE = 4000;
 
   class DapAdapter {
     // Debugger integration
@@ -122,8 +126,12 @@ namespace Runtime {
     // Source path resolution
     std::string ResolveSourcePath(const std::wstring& file_name);
 
+    // Frame lookup helper
+    StackFrame* GetFrameByIndex(int frame_index);
+
     // Variable formatting helpers
     std::string FormatVariableValue(StackDclr& dclr, StackFrame* frame, int var_index);
+    std::string FormatVariableValue(StackDclr& dclr, size_t* mem, int var_index);
     std::string FormatVariableType(StackDclr& dclr);
 
   public:

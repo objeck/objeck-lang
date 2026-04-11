@@ -8944,8 +8944,14 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
 
   // search code
   Class* context_klass = method->GetClass();
-  SymbolTable* symbol_table = method->GetSymbolTable();
-  std::vector<SymbolEntry*> entries = symbol_table->GetEntries();
+  SymbolTable* sym_tbl = method->GetSymbolTable();
+  if(!sym_tbl) {
+    sym_tbl = symbol_table ? symbol_table->GetSymbolTable(method->GetParsedName()) : nullptr;
+  }
+  if(!sym_tbl) {
+    return false;
+  }
+  std::vector<SymbolEntry*> entries = sym_tbl->GetEntries();
 
   std::set<std::wstring> unique_names;
 
@@ -8966,8 +8972,8 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
     }
     
     // instance and class variables
-    symbol_table = context_klass->GetSymbolTable();
-    entries = symbol_table->GetEntries();
+    SymbolTable* cls_sym_table = context_klass ? context_klass->GetSymbolTable() : nullptr;
+    entries = cls_sym_table ? cls_sym_table->GetEntries() : std::vector<SymbolEntry*>();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
       const std::wstring full_var_name = entry->GetName();
@@ -9016,9 +9022,12 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
     std::vector<Method*> found_methods; std::vector<LibraryMethod*> found_lib_methods;
 
     // local variables
-    SymbolTable* symbol_table = method->GetSymbolTable();
-    std::vector<SymbolEntry*> entries = symbol_table->GetEntries();
-    for(size_t i = 0; i < entries.size(); ++i) {  
+    SymbolTable* sym_tbl_local = method->GetSymbolTable();
+    if(!sym_tbl_local && symbol_table) {
+      sym_tbl_local = symbol_table->GetSymbolTable(method->GetParsedName());
+    }
+    std::vector<SymbolEntry*> entries = sym_tbl_local ? sym_tbl_local->GetEntries() : std::vector<SymbolEntry*>();
+    for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
       const std::wstring full_var_name = entry->GetName();
       const size_t short_var_pos = full_var_name.find_last_of(L':');
@@ -9051,8 +9060,8 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
     }
 
     // instance and class variables
-    symbol_table = context_klass->GetSymbolTable();
-    entries = symbol_table->GetEntries();
+    SymbolTable* cls_sym_table = context_klass ? context_klass->GetSymbolTable() : nullptr;
+    entries = cls_sym_table ? cls_sym_table->GetEntries() : std::vector<SymbolEntry*>();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
       const std::wstring full_var_name = entry->GetName();
@@ -9195,8 +9204,11 @@ bool ContextAnalyzer::GetSignature(Method* method, const std::wstring var_str, c
   }
   else if(method && context_klass) {
     // local variables
-    SymbolTable* symbol_table = method->GetSymbolTable();
-    std::vector<SymbolEntry*> entries = symbol_table->GetEntries();
+    SymbolTable* sym_tbl_local = method->GetSymbolTable();
+    if(!sym_tbl_local && symbol_table) {
+      sym_tbl_local = symbol_table->GetSymbolTable(method->GetParsedName());
+    }
+    std::vector<SymbolEntry*> entries = sym_tbl_local ? sym_tbl_local->GetEntries() : std::vector<SymbolEntry*>();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
       const std::wstring full_var_name = entry->GetName();
@@ -9211,8 +9223,8 @@ bool ContextAnalyzer::GetSignature(Method* method, const std::wstring var_str, c
     }
 
     // instance and class variables
-    symbol_table = context_klass->GetSymbolTable();
-    entries = symbol_table->GetEntries();
+    SymbolTable* cls_sym_table = context_klass ? context_klass->GetSymbolTable() : nullptr;
+    entries = cls_sym_table ? cls_sym_table->GetEntries() : std::vector<SymbolEntry*>();
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
       const std::wstring full_var_name = entry->GetName();
@@ -9366,17 +9378,29 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
   bool is_alt = false;
 
   if(LocateExpression(method, line_num, line_pos, found_expression, found_name, is_alt, all_expressions)) {
-    const std::wstring entry_name = method->GetName() + L':' + found_name;
-    SymbolEntry* found_entry = method->GetSymbolTable()->GetEntry(entry_name);
+    // Look up the symbol entry — try method's own table, then the
+    // analyzer's SymbolTableManager, then fall back to the expression's entry
+    SymbolEntry* found_entry = nullptr;
+    SymbolTable* sym_table = method->GetSymbolTable();
+    if(!sym_table && symbol_table) {
+      sym_table = symbol_table->GetSymbolTable(method->GetParsedName());
+    }
+    if(sym_table) {
+      const std::wstring entry_name = method->GetName() + L':' + found_name;
+      found_entry = sym_table->GetEntry(entry_name);
+    }
+    // Fall back to the expression's own entry
+    if(!found_entry && found_expression) {
+      if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
+        found_entry = static_cast<MethodCall*>(found_expression)->GetEntry();
+      }
+      else if(found_expression->GetExpressionType() == VAR_EXPR) {
+        found_entry = static_cast<Variable*>(found_expression)->GetEntry();
+      }
+    }
 
-    // found variable.  Require the *entry itself* to have a valid source
-    // position — inferred-type locals (`x := ...`) often have entries with
-    // line=0/-1, and falling through to a class/enum lookup would return
-    // the bare class declaration (often line 1).  Sublime then issues a
-    // codeAction at L0:C0 which has previously crashed the server.
-    // Returning false here keeps the LSP honest: "no good definition
-    // target" → editor shows nothing rather than navigating to garbage.
-    if(found_entry && found_entry->GetType() && found_entry->GetLineNumber() > 0) {
+    // found variable — look up its type's class/enum definition.
+    if(found_entry && found_entry->GetType()) {
       const std::wstring search_name = found_entry->GetType()->GetName();
       // found class
       klass = SearchProgramClasses(search_name);
@@ -9443,14 +9467,34 @@ bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int lin
     }
     // variable lookup
     else {
-      const std::wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
-      found_entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
-      if(found_entry) {
-        return true;
+      SymbolTable* cls_table = method->GetClass() ? method->GetClass()->GetSymbolTable() : nullptr;
+      if(cls_table) {
+        const std::wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
+        found_entry = cls_table->GetEntry(class_entry_name);
+        if(found_entry) {
+          return true;
+        }
       }
-      else {
+
+      SymbolTable* mthd_table = method->GetSymbolTable();
+      if(!mthd_table && symbol_table) {
+        mthd_table = symbol_table->GetSymbolTable(method->GetParsedName());
+      }
+      if(mthd_table) {
         const std::wstring method_entry_name = method->GetName() + L':' + found_name;
-        found_entry = method->GetSymbolTable()->GetEntry(method_entry_name);
+        found_entry = mthd_table->GetEntry(method_entry_name);
+        if(found_entry) {
+          return true;
+        }
+      }
+      // Fall back to expression's entry
+      if(!found_entry && found_expression) {
+        if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
+          found_entry = static_cast<MethodCall*>(found_expression)->GetEntry();
+        }
+        else if(found_expression->GetExpressionType() == VAR_EXPR) {
+          found_entry = static_cast<Variable*>(found_expression)->GetEntry();
+        }
         if(found_entry) {
           return true;
         }
@@ -9486,8 +9530,12 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
     }
     // variable lookup
     else {
-      const std::wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
-      SymbolEntry* found_entry = method->GetClass()->GetSymbolTable()->GetEntry(class_entry_name);
+      SymbolTable* cls_table = method->GetClass() ? method->GetClass()->GetSymbolTable() : nullptr;
+      SymbolEntry* found_entry = nullptr;
+      if(cls_table) {
+        const std::wstring class_entry_name = method->GetClass()->GetName() + L':' + found_name;
+        found_entry = cls_table->GetEntry(class_entry_name);
+      }
       if(found_entry && found_entry->GetLineNumber() > 0 && found_entry->GetLinePosition() > 0) {
         found_name = found_entry->GetName();
         size_t var_name_pos = found_name.find_last_of(L':');
@@ -9503,8 +9551,12 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
         return true;
       }
       else {
+        SymbolTable* mthd_table = method->GetSymbolTable();
+        if(!mthd_table && symbol_table) {
+          mthd_table = symbol_table->GetSymbolTable(method->GetParsedName());
+        }
         const std::wstring method_entry_name = method->GetName() + L':' + found_name;
-        found_entry = method->GetSymbolTable()->GetEntry(method_entry_name);
+        found_entry = mthd_table ? mthd_table->GetEntry(method_entry_name) : nullptr;
         if(found_entry && found_entry->GetLineNumber() > 0 && found_entry->GetLinePosition() > 0) {
           found_name = found_entry->GetName();
           size_t var_name_pos = found_name.find_last_of(L':');
@@ -9515,6 +9567,45 @@ bool ContextAnalyzer::GetDeclaration(Method* method, const int line_num, const i
           found_start_pos = found_end_pos = found_entry->GetLinePosition();
           found_end_pos += (int)found_name.size();
 
+          return true;
+        }
+      }
+
+      // Fallback for inferred-type locals: find the earliest matching
+      // expression as the declaration site
+      {
+        int best_line = INT_MAX;
+        int best_start = 0, best_end = 0;
+        bool found = false;
+
+        for(size_t i = 0; i < all_expressions.size(); ++i) {
+          Expression* expr = all_expressions[i];
+          if(!expr || expr->GetLineNumber() <= 0 || expr->GetLinePosition() <= 0) {
+            continue;
+          }
+
+          bool matches = false;
+          if(expr->GetExpressionType() == METHOD_CALL_EXPR) {
+            MethodCall* mc = static_cast<MethodCall*>(expr);
+            matches = (mc->GetVariableName() == found_name);
+          }
+          else if(expr->GetExpressionType() == VAR_EXPR) {
+            Variable* var = static_cast<Variable*>(expr);
+            matches = (var->GetName() == found_name);
+          }
+
+          if(matches && expr->GetLineNumber() < best_line) {
+            best_line = expr->GetLineNumber();
+            best_start = expr->GetLinePosition();
+            best_end = best_start + (int)found_name.size();
+            found = true;
+          }
+        }
+
+        if(found) {
+          found_line = best_line;
+          found_start_pos = best_start;
+          found_end_pos = best_end;
           return true;
         }
       }
@@ -9644,24 +9735,11 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
   // get all expressions
   all_expressions = method->GetExpressions();
 
-  // local entries
+  // local entries — add variable references (not declarations, to avoid
+  // temporary Variable allocations that accumulate across requests)
   std::vector<SymbolEntry*> local_entries = symbol_table->GetEntries(method->GetParsedName());
   for(size_t i = 0; i < local_entries.size(); ++i) {
     SymbolEntry* local_entry = local_entries[i];
-
-    // add declaration only if the entry has a valid source position.
-    // Inferred-type locals (e.g. `x := ...`) sometimes have an entry
-    // with line=-1/pos=-1; including those produces bogus references.
-    const std::wstring full_entry_name = local_entry->GetName();
-    const size_t full_entry_index = full_entry_name.find_last_of(L':');
-    if(full_entry_index != std::wstring::npos &&
-       local_entry->GetLineNumber() > 0 && local_entry->GetLinePosition() > 0) {
-      const std::wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
-      Variable* variable = TreeFactory::Instance()->MakeVariable(local_entry->GetFileName(), local_entry->GetLineNumber(),
-                                                                 local_entry->GetLinePosition(), entry_name);
-      variable->SetEntry(local_entry);
-      all_expressions.push_back(variable);
-    }
 
     // add variable references
     const std::vector<Variable*> variables = local_entry->GetVariables();
@@ -9678,14 +9756,7 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
     // add declaration only if the entry has a valid source position
     const std::wstring full_entry_name = class_entry->GetName();
     const size_t full_entry_index = full_entry_name.find_last_of(L':');
-    if(full_entry_index != std::wstring::npos &&
-       class_entry->GetLineNumber() > 0 && class_entry->GetLinePosition() > 0) {
-      const std::wstring entry_name = full_entry_name.substr(full_entry_index + 1, full_entry_name.size() - full_entry_index + 1);
-      Variable* variable = TreeFactory::Instance()->MakeVariable(class_entry->GetFileName(), class_entry->GetLineNumber(),
-                                                                 class_entry->GetLinePosition(), entry_name);
-      variable->SetEntry(class_entry);
-      all_expressions.push_back(variable);
-    }
+    // Skip declaration Variable creation — only add references below
 
     // add variable references
     const std::vector<Variable*> variables = class_entry->GetVariables();

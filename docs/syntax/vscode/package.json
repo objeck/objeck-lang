@@ -1,14 +1,19 @@
 {
     "name": "objeck-programming-language",
     "displayName": "Objeck Programming Language",
-    "description": "soure",
-    "version": "0.0.1",
+    "description": "Objeck language support with syntax highlighting and debugging",
+    "version": "0.0.2",
     "engines": {
-        "vscode": "^1.46.0"
+        "vscode": "^1.74.0"
     },
     "categories": [
-        "Programming Languages"
+        "Programming Languages",
+        "Debuggers"
     ],
+    "activationEvents": [
+        "onDebugResolve:objeck"
+    ],
+    "main": "./extension.js",
     "contributes": {
         "languages": [{
             "id": "objeck",
@@ -20,6 +25,47 @@
             "language": "objeck",
             "scopeName": "source.objeck",
             "path": "./syntaxes/objeck.tmLanguage.json"
+        }],
+        "debuggers": [{
+            "type": "objeck",
+            "label": "Objeck Debug",
+            "configurationAttributes": {
+                "launch": {
+                    "required": ["program"],
+                    "properties": {
+                        "program": {
+                            "type": "string",
+                            "description": "Path to the compiled .obe file to debug"
+                        },
+                        "sourceDir": {
+                            "type": "string",
+                            "description": "Path to the source files directory"
+                        }
+                    }
+                }
+            },
+            "initialConfigurations": [
+                {
+                    "type": "objeck",
+                    "request": "launch",
+                    "name": "Debug Objeck Program",
+                    "program": "${fileDirname}/${fileBasenameNoExtension}.obe",
+                    "sourceDir": "${fileDirname}"
+                }
+            ],
+            "configurationSnippets": [
+                {
+                    "label": "Objeck: Launch",
+                    "description": "Launch and debug an Objeck program",
+                    "body": {
+                        "type": "objeck",
+                        "request": "launch",
+                        "name": "Debug ${2:Program}",
+                        "program": "^\"${1:\\${fileDirname}/\\${fileBasenameNoExtension}.obe}\"",
+                        "sourceDir": "^\"${3:\\${fileDirname}}\""
+                    }
+                }
+            ]
         }]
     }
 }
