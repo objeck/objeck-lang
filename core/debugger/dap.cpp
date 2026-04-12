@@ -926,49 +926,6 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
     }
   }
 
-  // Final fallback: search stopped frame declarations directly
-  // (handles inferred locals that the CLI evaluator can't resolve)
-  if(result == L"<error>" && stopped_frame && stopped_frame->method) {
-    StackDclr** dclrs = stopped_frame->method->GetDeclarations();
-    int dclrs_num = stopped_frame->method->GetNumberDeclarations();
-    int offset = 1;
-    if(stopped_frame->method->HasAndOr()) {
-      offset++;
-    }
-
-    int mem_index = 0;
-    for(int i = 0; i < dclrs_num; i++) {
-      StackDclr* dclr = dclrs[i];
-      std::wstring full_name = dclr->name;
-      size_t name_pos = full_name.find_last_of(':');
-      std::wstring name = (name_pos != std::wstring::npos) ? full_name.substr(name_pos + 1) : full_name;
-
-      if(name == wexpr) {
-        result = BytesToUnicode(FormatVariableValue(*dclr, stopped_frame, mem_index + offset));
-
-        // For objects, show class name instead of raw address
-        if(dclr->type == OBJ_PARM) {
-          size_t value = stopped_frame->mem[mem_index + offset];
-          if(value) {
-            StackClass* klass = MemoryManager::GetClass((size_t*)value);
-            if(klass) {
-              result = BytesToUnicode(UnicodeToBytes(klass->GetName()));
-            }
-          }
-          else {
-            result = L"Nil";
-          }
-        }
-        break;
-      }
-
-      mem_index++;
-      if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
-        mem_index++;
-      }
-    }
-  }
-
   json body;
   body["result"] = UnicodeToBytes(result);
   body["variablesReference"] = 0;
