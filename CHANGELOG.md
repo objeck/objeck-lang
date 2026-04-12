@@ -2,6 +2,51 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.4.3] - 2026-04-12
+
+### New Features
+- **DAP debugger hover**: Hovering an object shows `ClassName { field=val, ... }` with one-level instance field expansion via `FormatObjectForDap`
+- **DAP instance/class variable scopes**: Variables pane now shows separate Locals, Instance, and Class scopes with correct memory mapping
+- **Configurable JIT threshold**: Auto-JIT invocation count can now be tuned at startup
+- **Editor setup refresh**: Updated VS Code, Sublime Text, and gvim/Vim DAP+LSP setup for Windows, Linux, and macOS with per-platform instructions
+
+### Bug Fixes
+- Fixed DAP step-into crash, step-over/step-out scoping, and disconnect access violation
+- Fixed DAP stdout/stderr corruption — redirected program output through capture pipes so DAP protocol stream stays clean
+- Fixed DAP variable display, source path resolution, and pipe crashes
+- Fixed DAP variable memory mapping to match CLI debugger
+- Fixed LSP server crash on `textDocument/codeAction` with inferred locals
+- Fixed LSP hover position conversion from 1-based to 0-based
+- Fixed JIT S2F callback param count causing segfault on `String:ToFloat`
+- Hardened HTTPS client against null `ReadLine` on connection failures
+
+### Infrastructure
+- DAP integration test suite (`programs/regression/run_dap_tests.sh`)
+- Removed redundant `HandleEvaluate` fallback in DAP adapter (consolidated into `EvaluateForDap`)
+
+## [v2026.4.2] - 2026-04-06
+
+### New Features
+- **JIT local variable register cache** (AMD64 + ARM64): Keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted — ~3x speedup across all benchmarks
+- **DTLS (Datagram TLS) support**: New `DTLSSocket` and `DTLSSocketServer` classes for secure UDP communication (IoT, VoIP, gaming)
+- **Editor guide**: New `docs/editors.md` with Vim, Emacs, Sublime, Neovim, and DAP debugging setup
+
+### Libraries
+- **Gemini API**: Added 2.5 Pro/Flash model constants, system instruction support
+- **Ollama API**: Configurable host, Options class (temperature/top_p/top_k), Tool class for function calling
+- **OpenAI API**: New `Embedding` class, `Models` constants (GPT-4.1, O3, O4-mini)
+- **ML library**: Fixed EuclideanDistance/StdDev bugs, added `LinearRegression` and `LogisticRegression`
+- Hardened JSON, JSON stream, and XML parsers against malformed input
+- Hardened HTTPS client against null ReadLine on connection failures
+
+### Performance
+- **Link-time optimization**: Added `-flto=auto` across all GCC Makefiles (AMD64 and ARM64)
+- **ARM64 native CPU tuning**: `-mcpu=native` auto-detects RPi5 (Cortex-A76) and Jetson Orin (Cortex-A78AE)
+
+### Bug Fixes
+- Fixed all MSVC and GCC compiler warnings
+- Fixed doc generator error on `@hidden` tag
+
 ## [v2026.4.1] - 2026-04-05
 
 ### Changes
