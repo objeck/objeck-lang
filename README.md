@@ -38,8 +38,8 @@ No installation needed - write, compile, and run Objeck code directly in your br
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.4.2/objeck-linux-x64_2026.4.2.tgz
-tar xzf objeck-linux-x64_2026.4.2.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.4.3/objeck-linux-x64_2026.4.3.tgz
+tar xzf objeck-linux-x64_2026.4.3.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -100,7 +100,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.4.2](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.4.3](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
