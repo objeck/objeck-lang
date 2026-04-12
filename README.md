@@ -61,6 +61,16 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
+**v2026.4.3**
+  * **DAP debugger hover** — hovering an object shows `ClassName { field=val, ... }` with one-level instance field expansion via `FormatObjectForDap`
+  * **DAP instance/class variable scopes** — Variables pane now shows separate Locals, Instance, and Class scopes with correct memory mapping
+  * **DAP stepping + crash fixes** — fixed step-into crash, step-over/step-out scoping, stdout corruption, disconnect access violation, and variable display
+  * **Editor setup refresh** — updated VS Code, Sublime Text, and gvim/Vim DAP+LSP setup for Windows, Linux, and macOS
+  * **LSP crash fixes** — null guards for `textDocument/codeAction` with inferred locals, hover position fix (1-based to 0-based)
+  * **Configurable JIT threshold** — auto-JIT invocation count can now be tuned
+  * Fixed JIT S2F callback param count causing segfault on `String:ToFloat`
+  * Hardened HTTPS client against null `ReadLine` on connection failures
+
 **v2026.4.2** 🏃🏿‍♂️‍➡️🏃🏻‍♀️‍➡️
   * **JIT local variable register cache** (AMD64 + ARM64) — keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted
   * **Hardened JSON, JSON stream, and XML parsers** against malformed input
@@ -84,27 +94,6 @@ obc hello && obr hello
   * Unified ONNX build system — single source with preprocessor-selected providers (DML, CUDA, QNN, CoreML)
   * Hash auto-resize at 75% load, Vector in-place Remove, JSON escape/keyword fixes
   * Fixed the constructor early return crash, CSV.Median, CSV.Average, URL encoding, Response.ToString nil check
-  * [Performance details and benchmarks →](docs/performance.md)
-
-**v2026.2.1** 
-  * New 'try/otherwise' error handling framework
-  * Fixed emoji and supplementary character output on all platforms (stdout and stderr)
-  * Migrated Windows installer from VDPROJ to WiX v4 — MSIs now built in CI without Visual Studio
-  * Debugger `help`/`h` command with full command reference
-  * Fixed JIT segfaults in AMD64 (MTHD_CALL, DYN_MTHD_CALL, STOR_CLS_INST_INT_VAR) and ARM64 pre-scan rejection
-  * Fixed broken `Log`/`Log10` float math (x87 wrong constants) and `Rand` float params
-  * Fixed 15 bugs in SDL2 native interface and Objeck bindings
-  * Fixed segfaults in CompressGzip/UncompressGzip/CompressBr/UncompressBr (zero-init z_stream)
-  * 4.38x speedup on nbody — inline limit increase (128→256) enables JIT to optimize getter/setter-heavy code
-  * Compiler CSE, dead code elimination, div-by-zero constant folding bugfix
-  * JIT division-by-zero guards in constant folding for x64 and ARM64
-  * 14 debugger regression tests with expect-based automation in CI
-  * 16 runtime regression tests (ARM64 JIT, core language, JIT native methods)
-  * Linux ARM64 and macOS ARM64 test execution enabled in GitHub Actions
-  * Fixed VM crash in Try/Otherwise on Nil dereference inside non-virtual method calls
-  * Fixed Windows debugger build — `HELP_COMMAND` enum collision with `WinUser.h` macro
-  * Web Playground updated to v2026.2.1
-  * 10 new performance benchmarks with measurement tooling
   * [Performance details and benchmarks →](docs/performance.md)
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)

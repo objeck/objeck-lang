@@ -1,3 +1,17 @@
+v2026.4.3 (April 12, 2026)
+===
+DAP debugger hover + scoping, editor setup (VSCode/Sublime/gvim), LSP crash fixes.
+
+v2026.4.3
+- DAP debugger hover: hovering an object shows ClassName { field=val, ... } with instance field expansion
+- DAP instance/class variable scopes: Variables pane shows Locals, Instance, and Class scopes
+- DAP stepping + crash fixes: step-into crash, step-over/out scoping, stdout corruption, disconnect AV
+- Editor setup refresh: VS Code, Sublime Text, and gvim DAP+LSP for Windows, Linux, and macOS
+- LSP crash fixes: null guards for textDocument/codeAction with inferred locals, hover position fix
+- Configurable JIT threshold for auto-JIT invocation count
+- Fixed JIT S2F callback param count causing segfault on String:ToFloat
+- Hardened HTTPS client against null ReadLine on connection failures
+
 v2026.4.2 (April 6, 2026)
 ===
 JIT register cache (~3x perf), AI library refresh, S2F JIT fix, editor support, and more.
