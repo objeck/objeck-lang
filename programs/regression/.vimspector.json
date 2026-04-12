@@ -1,4 +1,16 @@
 {
+    "adapters": {
+        "objeck": {
+            "name": "objeck",
+            "command": [
+                "C:\\Users\\objec\\.objeck-lsp\\bin\\obd.exe",
+                "--dap"
+            ],
+            "env": {
+                "OBJECK_LIB_PATH": "C:\\Users\\objec\\.objeck-lsp\\lib"
+            }
+        }
+    },
     "configurations": {
         "Debug current Objeck file": {
             "adapter": "objeck",
