@@ -6,24 +6,27 @@ Objeck has syntax highlighting, build integration, LSP support, and DAP debuggin
 
 ## VS Code (Recommended)
 
-Full IDE experience with syntax highlighting, LSP autocomplete, and DAP debugging.
+Full IDE experience with syntax highlighting, LSP autocomplete, and DAP debugging. Tested on Windows, Linux, and macOS.
 
 ### 1. Install the Extension
 
-Download the latest `.vsix` from the [objeck-lsp releases](https://github.com/objeck/objeck-lsp/releases), then:
+Download the latest `.vsix` from the [objeck-lsp releases](https://github.com/objeck/objeck-lsp/releases), then (same command on all three platforms):
 
 ```
 code --install-extension objeck-lsp-*.vsix
 ```
 
-Or in VS Code: **Extensions** (Ctrl+Shift+X) > **...** menu > **Install from VSIX...**
+Or in VS Code: **Extensions** (Ctrl+Shift+X on Windows/Linux, Cmd+Shift+X on macOS) > **...** menu > **Install from VSIX...**
 
 ### 2. Configure Install Path
 
-Open VS Code Settings (Ctrl+,) and set:
+Open VS Code Settings (Ctrl+, / Cmd+,) and set the install directory that matches your platform:
 
-- **Windows:** `objk.win.install.dir` → e.g. `C:\Program Files\Objeck`
-- **macOS/Linux:** `objk.posix.install.dir` → e.g. `/usr/local/objeck-lang`
+| Platform | Setting | Example |
+|----------|---------|---------|
+| **Windows** | `objk.win.install.dir` | `C:\Program Files\Objeck` |
+| **Linux** | `objk.posix.install.dir` | `/usr/local/objeck-lang` |
+| **macOS** | `objk.posix.install.dir` | `/usr/local/objeck-lang` or `/opt/homebrew/Cellar/objeck/<version>` |
 
 ### 3. Debugging with DAP
 
@@ -74,15 +77,22 @@ The extension provides:
 
 ## Sublime Text
 
+Tested on Windows, Linux, and macOS with Sublime Text 4.
+
 ### Automated Setup (Recommended)
 
-Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run the install script:
+Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run the install script for your platform:
+
+```cmd
+:: Windows (Command Prompt)
+scripts\install.cmd "C:\Program Files\Objeck" sublime
+```
 
 ```bash
-# Windows
-scripts\install.cmd "C:\Program Files\Objeck" sublime
+# Linux
+./scripts/install.sh /usr/local/objeck sublime
 
-# Linux / macOS
+# macOS (Intel or Apple Silicon)
 ./scripts/install.sh /usr/local/objeck sublime
 ```
 
@@ -155,74 +165,133 @@ For LSP, add to **Preferences > Package Settings > LSP > Settings**:
 
 ## Vim / GVim (9.0+)
 
-Full IDE setup with syntax highlighting, LSP (autocomplete / go-to-def / hover / diagnostics) via [yegappan/lsp](https://github.com/yegappan/lsp), and DAP debugging via [vimspector](https://github.com/puremourning/vimspector). Requires Vim 9.0+ with `+python3` (the gvim "Huge" build has it).
+Full IDE setup with syntax highlighting, LSP (autocomplete / go-to-def / hover / diagnostics) via [yegappan/lsp](https://github.com/yegappan/lsp), and DAP debugging via [vimspector](https://github.com/puremourning/vimspector). Requires Vim 9.0+ with `+python3` (the gvim "Huge" build on Windows, `vim-gtk3` / `vim-gnome` on Linux, `brew install macvim` on macOS).
+
+Tested on Windows (gvim "Huge" build), Linux, and macOS (MacVim).
 
 ### Automated Setup (Recommended)
 
-Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run:
+Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run the installer for your platform:
 
 ```cmd
-:: Windows
+:: Windows (Command Prompt)
 scripts\install.cmd "C:\Program Files\Objeck" vim
+```
 
-:: Linux / macOS
+```bash
+# Linux
+./scripts/install.sh /usr/local/objeck vim
+
+# macOS
 ./scripts/install.sh /usr/local/objeck vim
 ```
 
 The script:
 
-- Installs syntax + ftdetect into `~/vimfiles/syntax` (Windows) or `~/.vim/syntax` (POSIX)
-- Clones `yegappan/lsp` and `puremourning/vimspector` into `~/vimfiles/pack/objeck/start/` (POSIX: `~/.vim/pack/...`)
+- Installs syntax + ftdetect into the Vim runtime dir — `%USERPROFILE%\vimfiles\` on Windows, `~/.vim/` on Linux/macOS
+- Clones `yegappan/lsp` and `puremourning/vimspector` into `<vim-runtime>/pack/objeck/start/`
 - Drops `objeck.vim` into the auto-loaded `plugin/` dir with the LSP server registration and keybindings
-- Writes `~/.vimspector.json` with the Objeck DAP adapter pointing at `obd --dap`
 
-After install, open any `.obs` file in gvim — the LSP server starts automatically and these keybindings are active in Objeck buffers:
+After install, open any `.obs` file in gvim / vim / MacVim — the LSP server starts automatically and these keybindings are active in Objeck buffers:
 
-| Key       | Action                |
-|-----------|-----------------------|
-| `gd`      | Go to definition      |
-| `gr`      | Show references       |
-| `K`       | Hover documentation   |
-| `<leader>rn` | Rename symbol      |
+| Key          | Action                |
+|--------------|-----------------------|
+| `gd`         | Go to definition      |
+| `gr`         | Show references       |
+| `K`          | Hover documentation   |
+| `<leader>rn` | Rename symbol         |
 
-### Debugging
+### Debugging with DAP
 
-Compile with debug symbols, drop a per-project `.vimspector.json` next to your sources, then `<F5>`:
+1. **Compile with debug symbols**:
 
-```bash
-obc -src myprog.obs -debug
-```
+   ```bash
+   obc -src myprog.obs -debug
+   ```
 
-Sample `.vimspector.json`:
+2. **Drop a `.vimspector.json` next to your sources**. Vimspector walks up from the file being debugged looking for `.vimspector.json` — place it at your project root (not `~/`). It must contain **both** an `adapters` block (pointing at `obd`) and a `configurations` block:
 
-```json
-{
-    "configurations": {
-        "Debug current Objeck file": {
-            "adapter": "objeck",
-            "configuration": {
-                "request": "launch",
-                "type": "objeck",
-                "program": "${workspaceRoot}/${fileBasenameNoExtension}.obe",
-                "sourceDir": "${workspaceRoot}"
-            }
-        }
-    }
-}
-```
+   **Windows** — note the doubled backslashes in JSON:
+
+   ```json
+   {
+       "adapters": {
+           "objeck": {
+               "name": "objeck",
+               "command": [
+                   "C:\\Program Files\\Objeck\\bin\\obd.exe",
+                   "--dap"
+               ],
+               "env": {
+                   "OBJECK_LIB_PATH": "C:\\Program Files\\Objeck\\lib"
+               }
+           }
+       },
+       "configurations": {
+           "Debug current Objeck file": {
+               "adapter": "objeck",
+               "configuration": {
+                   "request": "launch",
+                   "type": "objeck",
+                   "program": "${workspaceRoot}/${fileBasenameNoExtension}.obe",
+                   "sourceDir": "${workspaceRoot}"
+               }
+           }
+       }
+   }
+   ```
+
+   **Linux / macOS**:
+
+   ```json
+   {
+       "adapters": {
+           "objeck": {
+               "name": "objeck",
+               "command": [
+                   "/usr/local/objeck/bin/obd",
+                   "--dap"
+               ],
+               "env": {
+                   "OBJECK_LIB_PATH": "/usr/local/objeck/lib"
+               }
+           }
+       },
+       "configurations": {
+           "Debug current Objeck file": {
+               "adapter": "objeck",
+               "configuration": {
+                   "request": "launch",
+                   "type": "objeck",
+                   "program": "${workspaceRoot}/${fileBasenameNoExtension}.obe",
+                   "sourceDir": "${workspaceRoot}"
+               }
+           }
+       }
+   }
+   ```
+
+   Adjust `command` and `OBJECK_LIB_PATH` to match your install prefix. On Homebrew macOS, that's typically `/opt/homebrew/Cellar/objeck/<version>/bin/obd` and `/opt/homebrew/Cellar/objeck/<version>/lib`.
+
+3. **Open the `.obs` file in gvim**, press `<F9>` on a line to set a breakpoint, then `<F5>`. Vimspector opens its tab layout (code / variables / watches / stack / output / console) and starts execution.
 
 Vimspector "HUMAN" key bindings:
 
-| Key       | Action                |
-|-----------|-----------------------|
-| `<F5>`    | Continue / start      |
-| `<F9>`    | Toggle breakpoint     |
-| `<F10>`   | Step over             |
-| `<F11>`   | Step into             |
-| `<F12>`   | Step out              |
-| `<S-F5>`  | Stop debugging        |
+| Key        | Action                |
+|------------|-----------------------|
+| `<F5>`     | Continue / start      |
+| `<F9>`     | Toggle breakpoint     |
+| `<F10>`    | Step over             |
+| `<F11>`    | Step into             |
+| `<F12>`    | Step out              |
+| `<S-F5>`   | Stop debugging        |
+| `<leader>di` | Inspect variable under cursor (hover) |
 
-Program output (`PrintLine` etc.) appears in the vimspector output window — `obd --dap` redirects the running program's stdout/stderr through capture pipes.
+In the Variables window, press `<CR>` on `Scope: Locals`, `Scope: Instance`, or `Scope: Class` to expand. Hovering a local object with `<leader>di` shows `ClassName { field=val, ... }` (one-level field expansion).
+
+Program output (`PrintLine`, `Print`, stderr) appears in the vimspector output window — `obd --dap` redirects the running program's stdout/stderr through capture pipes so the protocol stream stays clean.
+
+> **Troubleshooting** — if `<F5>` reports *"The specified adapter 'objeck' is not available. Did you forget to run 'Vimspector Install'?"*, your `.vimspector.json` is missing the `adapters` block shown above. Vimspector only reads adapter definitions from project-local `.vimspector.json` files (or `g:vimspector_adapters`); a `~/.vimspector.json` in your home directory will be ignored unless the file being debugged lives directly under `~/` with no closer project file.
 
 ### Manual Setup (syntax only, no LSP/DAP)
 

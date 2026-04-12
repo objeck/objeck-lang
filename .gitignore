@@ -35,6 +35,9 @@ UpgradeLog.htm
 # Visual Studio user/cache files
 .vs/
 
+# Sublime Text user workspace files
+*.sublime-workspace
+
 # Claude
 .claude/
 
