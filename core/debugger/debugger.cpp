@@ -2185,6 +2185,92 @@ Expression* Runtime::Debugger::ParseCondition(const std::wstring& expr_str)
   return nullptr;
 }
 
+// Format an object instance as "ClassName { field=val, ... }" for DAP hover/evaluate.
+// Nested object fields show just the class name (one-level deep) to avoid recursion on cycles.
+static std::wstring FormatObjectForDap(StackClass* klass, size_t* instance)
+{
+  if(!klass || !instance) {
+    return L"Nil";
+  }
+
+  std::wstringstream wss;
+  wss << klass->GetName() << L" {";
+  StackDclr** inst_dclrs = klass->GetInstanceDeclarations();
+  const int inst_num = klass->GetNumberInstanceDeclarations();
+  int inst_idx = 0;
+  for(int j = 0; j < inst_num; j++) {
+    StackDclr* idclr = inst_dclrs[j];
+    std::wstring iname = idclr->name;
+    const size_t ipos = iname.find_last_of(':');
+    if(ipos != std::wstring::npos) {
+      iname = iname.substr(ipos + 1);
+    }
+
+    if(j > 0) {
+      wss << L", ";
+    }
+    wss << iname << L"=";
+
+    const size_t fval = instance[inst_idx];
+    switch(idclr->type) {
+      case CHAR_PARM:
+        wss << (wchar_t)fval;
+        break;
+      case INT_PARM:
+        wss << (long)fval;
+        break;
+      case FLOAT_PARM: {
+        double dval;
+        memcpy(&dval, &instance[inst_idx], sizeof(double));
+        wss << dval;
+        break;
+      }
+      case OBJ_PARM: {
+        if(fval == 0) {
+          wss << L"Nil";
+        }
+        else {
+          StackClass* sub_klass = MemoryManager::GetClass((size_t*)fval);
+          if(sub_klass) {
+            wss << sub_klass->GetName();
+          }
+          else {
+            wss << L"object@0x" << std::hex << fval << std::dec;
+          }
+        }
+        break;
+      }
+      case BYTE_ARY_PARM:
+      case CHAR_ARY_PARM:
+      case INT_ARY_PARM:
+      case FLOAT_ARY_PARM:
+      case OBJ_ARY_PARM: {
+        if(fval == 0) {
+          wss << L"Nil";
+        }
+        else {
+          size_t* arr = (size_t*)fval;
+          wss << L"[size=" << arr[0] << L"]";
+        }
+        break;
+      }
+      case FUNC_PARM:
+        wss << L"<function>";
+        break;
+      default:
+        wss << L"<?>";
+        break;
+    }
+
+    inst_idx++;
+    if(idclr->type == FLOAT_PARM || idclr->type == FUNC_PARM) {
+      inst_idx++;
+    }
+  }
+  wss << L"}";
+  return wss.str();
+}
+
 std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
 {
   if(!cur_frame) {
@@ -2224,7 +2310,7 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
           if(instance) {
             StackClass* klass = MemoryManager::GetClass(instance);
             if(klass) {
-              return klass->GetName();
+              return FormatObjectForDap(klass, instance);
             }
           }
           return L"Nil";
@@ -2294,7 +2380,7 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
             size_t* instance = (size_t*)value;
             StackClass* klass = MemoryManager::GetClass(instance);
             if(klass) {
-              return klass->GetName();
+              return FormatObjectForDap(klass, instance);
             }
             std::wstringstream wss;
             wss << L"object@0x" << std::hex << value;
