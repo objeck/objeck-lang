@@ -58,9 +58,21 @@
   </header>
 
   <main style="text-align: left;">
-   <p>JIT register cache (~3x perf), AI library refresh, S2F JIT fix, editor support, and more.</p>
+   <p>DAP debugger hover + scoping, editor setup (VSCode/Sublime/gvim), LSP crash fixes, and more.</p>
 
-   <h3><u>v2026.4.2</u></h3>
+   <h3><u>v2026.4.3</u></h3>
+    <ul>
+        <li><strong>DAP debugger hover</strong> &mdash; hovering an object shows <code>ClassName { field=val, ... }</code> with one-level instance field expansion</li>
+        <li><strong>DAP instance/class variable scopes</strong> &mdash; Variables pane shows separate Locals, Instance, and Class scopes</li>
+        <li><strong>DAP stepping + crash fixes</strong> &mdash; fixed step-into crash, step-over/out scoping, stdout corruption, disconnect access violation</li>
+        <li><strong>Editor setup refresh</strong> &mdash; updated VS Code, Sublime Text, and gvim DAP+LSP setup for Windows, Linux, and macOS</li>
+        <li><strong>LSP crash fixes</strong> &mdash; null guards for <code>textDocument/codeAction</code> with inferred locals, hover position fix</li>
+        <li><strong>Configurable JIT threshold</strong> &mdash; auto-JIT invocation count can now be tuned</li>
+        <li>Fixed JIT S2F callback param count causing segfault on <code>String:ToFloat</code></li>
+        <li>Hardened HTTPS client against null ReadLine on connection failures</li>
+    </ul>
+
+   <h3>v2026.4.2</h3>
     <ul>
         <li><strong>JIT local variable register cache</strong> (AMD64 + ARM64) &mdash; ~3x speedup across all benchmarks</li>
         <li><strong>Fixed JIT S2F segfault</strong> &mdash; <code>String:ToFloat</code> crash on both AMD64 and ARM64</li>
