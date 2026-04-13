@@ -459,6 +459,172 @@ class Particle {
 }
 
 # =========================================
+# Enemy - obstacles the player must avoid
+# =========================================
+class Enemy {
+	@x : Float;
+	@y : Float;
+	@vx : Float;
+	@vy : Float;
+	@type : Int;    # 0=bat, 1=wasp, 2=gull, 3=vulture, 4=drone
+	@frame : Int;
+	@alive : Bool;
+
+	New(x : Float, y : Float, vx : Float, vy : Float, type : Int) {
+		@x := x;
+		@y := y;
+		@vx := vx;
+		@vy := vy;
+		@type := type;
+		@frame := 0;
+		@alive := true;
+	}
+
+	method : public : GetX() ~ Float { return @x; }
+	method : public : GetY() ~ Float { return @y; }
+	method : public : IsAlive() ~ Bool { return @alive; }
+	method : public : Kill() ~ Nil { @alive := false; }
+
+	method : public : Update() ~ Nil {
+		@frame += 1;
+		@x += @vx;
+		# bobbing flight path
+		@y := @y + @vy + Float->Sin(@frame->As(Float) * 0.08) * 0.5;
+	}
+
+	method : public : Collides(px : Float, py : Float) ~ Bool {
+		dx := @x - px;
+		dy := @y - py;
+		if(dx < 0.0) { dx := dx * -1.0; };
+		if(dy < 0.0) { dy := dy * -1.0; };
+		return dx < 18.0 & dy < 18.0;
+	}
+
+	method : public : Draw(renderer : Renderer, camera_x : Float) ~ Nil {
+		if(<>@alive) { return; };
+		sx := (@x - camera_x)->As(Int);
+		sy := @y->As(Int);
+		if(sx < -30 | sx > 830) { return; };
+
+		wing := (Float->Sin(@frame->As(Float) * 0.25) * 4.0)->As(Int);
+
+		if(@type = 0) {
+			# bat: dark purple, flappy wings
+			renderer->SetDrawColor(80, 30, 100, 255);
+			renderer->FillRect(Rect->New(sx, sy, 10, 6));
+			renderer->FillRect(Rect->New(sx - 6, sy + wing, 8, 4));
+			renderer->FillRect(Rect->New(sx + 8, sy - wing, 8, 4));
+			# eyes
+			renderer->SetDrawColor(255, 50, 50, 255);
+			renderer->FillRect(Rect->New(sx + 2, sy + 1, 2, 2));
+			renderer->FillRect(Rect->New(sx + 6, sy + 1, 2, 2));
+		}
+		else if(@type = 1) {
+			# wasp: yellow/black striped
+			renderer->SetDrawColor(220, 200, 30, 255);
+			renderer->FillRect(Rect->New(sx, sy, 12, 6));
+			renderer->SetDrawColor(40, 30, 10, 255);
+			renderer->FillRect(Rect->New(sx + 3, sy, 3, 6));
+			renderer->FillRect(Rect->New(sx + 8, sy, 3, 6));
+			# wings
+			renderer->SetDrawColor(200, 220, 255, 120);
+			renderer->FillRect(Rect->New(sx + 2, sy - 4 + wing, 8, 4));
+			# stinger
+			renderer->SetDrawColor(40, 30, 10, 255);
+			renderer->FillRect(Rect->New(sx + 12, sy + 2, 3, 2));
+		}
+		else if(@type = 2) {
+			# seagull: white body, gray wings
+			renderer->SetDrawColor(230, 230, 235, 255);
+			renderer->FillRect(Rect->New(sx, sy, 12, 6));
+			renderer->SetDrawColor(160, 165, 175, 255);
+			renderer->FillRect(Rect->New(sx - 8, sy + 1 + wing, 10, 4));
+			renderer->FillRect(Rect->New(sx + 10, sy + 1 - wing, 10, 4));
+			# beak
+			renderer->SetDrawColor(220, 160, 40, 255);
+			renderer->FillRect(Rect->New(sx + 12, sy + 2, 4, 2));
+		}
+		else if(@type = 3) {
+			# vulture: dark brown, big wings
+			renderer->SetDrawColor(70, 40, 25, 255);
+			renderer->FillRect(Rect->New(sx, sy, 14, 8));
+			renderer->FillRect(Rect->New(sx - 10, sy + 2 + wing, 12, 5));
+			renderer->FillRect(Rect->New(sx + 12, sy + 2 - wing, 12, 5));
+			# head
+			renderer->SetDrawColor(100, 50, 30, 255);
+			renderer->FillRect(Rect->New(sx + 14, sy, 5, 5));
+			renderer->SetDrawColor(200, 40, 30, 255);
+			renderer->FillRect(Rect->New(sx + 19, sy + 1, 3, 2));
+		}
+		else {
+			# drone: metallic with spinning rotors
+			renderer->SetDrawColor(80, 85, 100, 255);
+			renderer->FillRect(Rect->New(sx, sy, 14, 6));
+			# rotors (spin effect)
+			rotor := (@frame * 3) % 6;
+			renderer->SetDrawColor(150, 160, 180, 200);
+			renderer->FillRect(Rect->New(sx - 4, sy - 2, 6 - rotor, 2));
+			renderer->FillRect(Rect->New(sx + 12 + rotor, sy - 2, 6 - rotor, 2));
+			# light
+			if((@frame / 8) % 2 = 0) {
+				renderer->SetDrawColor(255, 40, 40, 255);
+			}
+			else {
+				renderer->SetDrawColor(40, 255, 40, 255);
+			};
+			renderer->FillRect(Rect->New(sx + 6, sy + 6, 2, 2));
+		};
+	}
+}
+
+# =========================================
+# FloatingCoin - free-floating coin for trails
+# =========================================
+class FloatingCoin {
+	@x : Float;
+	@y : Float;
+	@collected : Bool;
+
+	New(x : Float, y : Float) {
+		@x := x;
+		@y := y;
+		@collected := false;
+	}
+
+	method : public : GetX() ~ Float { return @x; }
+	method : public : GetY() ~ Float { return @y; }
+	method : public : IsCollected() ~ Bool { return @collected; }
+	method : public : Collect() ~ Nil { @collected := true; }
+
+	method : public : Draw(renderer : Renderer, camera_x : Float, frame : Int) ~ Nil {
+		if(@collected) { return; };
+		sx := (@x - camera_x)->As(Int);
+		sy := @y->As(Int);
+		if(sx < -10 | sx > Consts->SCREEN_W + 10) { return; };
+
+		# small spinning coin
+		spin := Float->Sin(frame->As(Float) * 0.15);
+		abs_spin := spin;
+		if(abs_spin < 0.0) { abs_spin := abs_spin * -1.0; };
+		hw := (5.0 * abs_spin)->As(Int);
+		if(hw < 1) { hw := 1; };
+		bob := (Float->Sin(frame->As(Float) * 0.06 + @x * 0.1) * 2.0)->As(Int);
+		dy := sy + bob;
+
+		if(hw <= 1) {
+			renderer->SetDrawColor(180, 140, 0, 255);
+			renderer->FillRect(Rect->New(sx, dy - 5, 1, 10));
+		}
+		else {
+			renderer->SetDrawColor(180, 140, 0, 255);
+			renderer->FillRect(Rect->New(sx - hw, dy - 5, hw * 2, 10));
+			renderer->SetDrawColor(255, 215, 0, 255);
+			renderer->FillRect(Rect->New(sx - hw + 1, dy - 4, hw * 2 - 2, 8));
+		};
+	}
+}
+
+# =========================================
 # ParticleSystem - manages active particles
 # =========================================
 class ParticleSystem {
@@ -586,11 +752,20 @@ class World {
 	@frame_count : Int;
 	@speed_up : Bool;
 	@biome : Int;
+	@enemies : Vector<Enemy>;
+	@next_enemy_dist : Int;
+	@boss_mode : Bool;
+	@coins : Vector<FloatingCoin>;
+	@prev_plat_x : Float;
+	@prev_plat_y : Float;
 
 	New() {
 		@platforms := Vector->New()<GamePlatform>;
+		@enemies := Vector->New()<Enemy>;
+		@coins := Vector->New()<FloatingCoin>;
 		@camera_x := 0.0;
 		@scroll_speed := 2.5;
+		@next_enemy_dist := 400;
 		@next_platform_x := 0.0;
 		@last_platform_y := 400.0;
 		@distance := 0;
@@ -677,6 +852,23 @@ class World {
 		};
 
 		@platforms->AddBack(plat);
+
+		# coin trail: 25% chance to arc coins between this and previous platform
+		if(Int->Random(0, 100) < 25 & @prev_plat_x > 0.0) {
+			trail_count := Int->Random(3, 6);
+			for(ti := 0; ti < trail_count; ti += 1;) {
+				t := (ti + 1)->As(Float) / (trail_count + 1)->As(Float);
+				# lerp x between platforms
+				trail_x := @prev_plat_x + (@next_platform_x - @prev_plat_x) * t;
+				# arc y (parabola peaking in the middle)
+				arc := 4.0 * t * (1.0 - t);
+				trail_y := @prev_plat_y + (new_y - @prev_plat_y) * t - arc * 50.0;
+				@coins->AddBack(FloatingCoin->New(trail_x, trail_y));
+			};
+		};
+
+		@prev_plat_x := @next_platform_x + (w / 2)->As(Float);
+		@prev_plat_y := new_y;
 		@next_platform_x := @next_platform_x + w->As(Float) + gap->As(Float);
 		@last_platform_y := new_y;
 	}
@@ -718,6 +910,58 @@ class World {
 		while(@next_platform_x < @camera_x + Consts->SCREEN_W->As(Float) + 400.0) {
 			GenerateNextPlatform();
 		};
+
+		# spawn enemies periodically (more often in boss mode)
+		if(@distance > @next_enemy_dist) {
+			SpawnEnemy();
+			if(@boss_mode) {
+				@next_enemy_dist := @distance + Int->Random(120, 280);
+			}
+			else {
+				@next_enemy_dist := @distance + Int->Random(300, 600);
+			};
+		};
+
+		# update enemies
+		ei := 0;
+		while(ei < @enemies->Size()) {
+			e := @enemies->Get(ei);
+			e->Update();
+			ex := e->GetX();
+			# remove if way off screen left
+			if(ex < @camera_x - 100.0) {
+				@enemies->Remove(ei);
+			}
+			else if(<>e->IsAlive()) {
+				@enemies->Remove(ei);
+			}
+			else {
+				ei += 1;
+			};
+		};
+
+		# remove off-screen collected coins
+		ci := 0;
+		while(ci < @coins->Size()) {
+			fc := @coins->Get(ci);
+			if(fc->GetX() < @camera_x - 50.0 | fc->IsCollected()) {
+				@coins->Remove(ci);
+			}
+			else {
+				ci += 1;
+			};
+		};
+	}
+
+	method : SpawnEnemy() ~ Nil {
+		# enemy type matches biome
+		etype := @biome;
+		# spawn ahead and slightly above platform level
+		spawn_x := @camera_x + Consts->SCREEN_W->As(Float) + 50.0;
+		spawn_y := Int->Random(180, 400)->As(Float);
+		# fly toward player (leftward relative to world, but world scrolls right)
+		speed := -1.5 - Int->Random(0, 20)->As(Float) / 10.0;
+		@enemies->AddBack(Enemy->New(spawn_x, spawn_y, speed, 0.0, etype));
 	}
 
 	method : public : GetPlatforms() ~ Vector<GamePlatform> {
@@ -737,6 +981,11 @@ class World {
 	}
 
 	method : public : SetBiome(b : Int) ~ Nil { @biome := b; }
+
+	method : public : GetEnemies() ~ Vector<Enemy> { return @enemies; }
+	method : public : GetCoins() ~ Vector<FloatingCoin> { return @coins; }
+	method : public : SetScrollSpeed(s : Float) ~ Nil { @scroll_speed := s; }
+	method : public : SetBossMode(b : Bool) ~ Nil { @boss_mode := b; }
 
 	method : public : DidSpeedUp() ~ Bool {
 		return @speed_up;
@@ -1001,6 +1250,17 @@ class Player {
 			@vy -= 0.25;
 			if(@vy < -8.0) { @vy := -8.0; };
 		};
+	}
+
+	method : public : KnockDown() ~ Nil {
+		# enemy hit: kill upward momentum, push down
+		if(@vy < 0.0) {
+			@vy := 3.0; # slam downward
+		}
+		else {
+			@vy += 2.0; # extra fall speed
+		};
+		@air_jumps_used := @max_air_jumps; # can't air-jump after hit
 	}
 
 	method : public : ReleaseJump() ~ Nil {
@@ -1593,6 +1853,18 @@ class Game {
 	# mountains (persistent backdrop)
 	@mountain_heights : Float[];
 
+	# screen shake
+	@shake_x : Int;
+	@shake_y : Int;
+	@shake_timer : Int;
+
+	# enemy hit slowdown
+	@slow_timer : Int;
+	@saved_speed : Float;
+
+	# boss level
+	@is_boss : Bool;
+
 	# scene/biome: 0=night, 1=forest, 2=ocean, 3=desert, 4=city
 	@scene : Int;
 	@scene_timer : Int;
@@ -1941,15 +2213,24 @@ class Game {
 		@state := 1;
 		@level += 1;
 		@level_dist := 0;
+		@slow_timer := 0;
 
-		# level target: 300m + 100m per level (in distance units: *10)
-		@level_target := (200 + @level * 100) * 10;
+		# boss every 5th level: shorter but intense
+		@is_boss := @level % 5 = 0;
+
+		# level target
+		if(@is_boss) {
+			@level_target := 200 * 10; # shorter boss levels
+		}
+		else {
+			@level_target := (200 + @level * 100) * 10;
+		};
 
 		# set scene based on level (cycle through biomes)
 		@prev_scene := @scene;
 		@scene := (@level - 1) % 5;
 		@scene_transition := 60;
-		@scene_timer := 9999; # don't auto-switch during levels
+		@scene_timer := 9999;
 
 		# create player with selected character class
 		@player := Player->New();
@@ -1958,20 +2239,28 @@ class Game {
 		# create/reset world with difficulty based on level
 		@world := World->New();
 		@world->SetBiome(@scene);
+
+		# boss levels: faster speed, more enemies
+		@world->SetBossMode(@is_boss);
+		if(@is_boss) {
+			base_speed := 3.5 + (@level / 5)->As(Float) * 0.4;
+			if(base_speed > 5.5) { base_speed := 5.5; };
+			@world->SetScrollSpeed(base_speed);
+		};
+
 		@particles := ParticleSystem->New();
 
 		@combo := 0;
 		@combo_timer := 0;
 
-		# goal landmark: place it at the target distance
+		# goal landmark
 		@goal_world_x := @level_target->As(Float) + 200.0;
 		@goal_reached := false;
-		# landmark type matches biome
-		if(@scene = 0) { @goal_type := 0; }       # castle
-		else if(@scene = 1) { @goal_type := 1; }   # treehouse
-		else if(@scene = 2) { @goal_type := 2; }   # lighthouse
-		else if(@scene = 3) { @goal_type := 3; }   # pyramid
-		else { @goal_type := 4; };                  # neon tower
+		if(@scene = 0) { @goal_type := 0; }
+		else if(@scene = 1) { @goal_type := 1; }
+		else if(@scene = 2) { @goal_type := 2; }
+		else if(@scene = 3) { @goal_type := 3; }
+		else { @goal_type := 4; };
 
 		# level banner
 		level_name := "";
@@ -1983,10 +2272,17 @@ class Game {
 
 		banner := "LEVEL ";
 		banner += @level->ToString();
-		banner += " - ";
-		banner += level_name;
-		ShowAlert(banner, 255, 255, 100);
-		@alert_timer := 150; # show longer
+		if(@is_boss) {
+			banner += " BOSS - ";
+			banner += level_name;
+			ShowAlert(banner, 255, 50, 50);
+		}
+		else {
+			banner += " - ";
+			banner += level_name;
+			ShowAlert(banner, 255, 255, 100);
+		};
+		@alert_timer := 150;
 
 		if(@start_chunk <> Nil & <>@start_chunk->IsNull()) {
 			@start_chunk->PlayChannel(-1, 0);
@@ -2042,6 +2338,12 @@ class Game {
 		MixMusic->Pause();
 	}
 
+	method : TriggerShake(intensity : Int, duration : Int) ~ Nil {
+		@shake_timer := duration;
+		@shake_x := intensity;
+		@shake_y := intensity;
+	}
+
 	method : ShowAlert(msg : String, r : Int, g : Int, b : Int) ~ Nil {
 		@alert_msg := msg;
 		@alert_timer := 90;
@@ -2062,6 +2364,15 @@ class Game {
 		};
 
 		if(@state <> 1) { return; };
+
+		# apply slowdown from enemy hit
+		if(@slow_timer > 0) {
+			@slow_timer -= 1;
+			@world->SetScrollSpeed(@saved_speed * 0.4);
+			if(@slow_timer = 0) {
+				@world->SetScrollSpeed(@saved_speed);
+			};
+		};
 
 		@world->Update();
 		@player->Update(@world);
@@ -2124,6 +2435,17 @@ class Game {
 			@combo_timer -= 1;
 			if(@combo_timer = 0) {
 				@combo := 0;
+			};
+		};
+
+		# screen shake decay
+		if(@shake_timer > 0) {
+			@shake_timer -= 1;
+			@shake_x := Int->Random(0, @shake_timer / 2 + 2) - @shake_timer / 4;
+			@shake_y := Int->Random(0, @shake_timer / 2 + 2) - @shake_timer / 4;
+			if(@shake_timer = 0) {
+				@shake_x := 0;
+				@shake_y := 0;
 			};
 		};
 
@@ -2201,6 +2523,7 @@ class Game {
 		if(edge_dist >= 0.0 & edge_dist < 12.0) {
 			@score += 50;
 			ShowAlert("CLOSE CALL! +50", 255, 120, 40);
+			TriggerShake(4, 10);
 			# extra particles for drama
 			px := (@player->GetX() - @world->GetCameraX())->As(Int) + 12;
 			py := @player->GetY()->As(Int) + 36;
@@ -2220,9 +2543,59 @@ class Game {
 			@particles->EmitDust(px, py);
 		};
 
+		# check enemy collisions
+		player_cx := @player->GetX() + 12.0;
+		player_cy := @player->GetY() + 18.0;
+		enemies := @world->GetEnemies();
+		each(ei : enemies) {
+			en := enemies->Get(ei);
+			if(en->IsAlive() & en->Collides(player_cx, player_cy)) {
+				en->Kill();
+				# enemy hit = lose points, shake, and slow down
+				@score -= 200;
+				if(@score < 0) { @score := 0; };
+				TriggerShake(8, 20);
+				ShowAlert("OUCH! -200  SLOWED!", 255, 60, 60);
+				# slow the world down temporarily
+				if(@slow_timer <= 0) {
+					@saved_speed := @world->GetScrollSpeed();
+				};
+				@slow_timer := 120; # 2 seconds of slow
+				@player->KnockDown();
+				px := (@player->GetX() - @world->GetCameraX())->As(Int) + 12;
+				py := @player->GetY()->As(Int);
+				@particles->Emit(px, py, 10, 255, 80, 60);
+			};
+		};
+
+		# collect floating coin trails
+		float_coins := @world->GetCoins();
+		each(fci : float_coins) {
+			fc := float_coins->Get(fci);
+			if(<>fc->IsCollected()) {
+				dx := (player_cx - fc->GetX());
+				dy := (player_cy - fc->GetY());
+				if(dx < 0.0) { dx := dx * -1.0; };
+				if(dy < 0.0) { dy := dy * -1.0; };
+				if(dx < @player->GetPickupRange() & dy < @player->GetPickupRange()) {
+					fc->Collect();
+					@coins_collected += 1;
+					@combo += 1;
+					@combo_timer := (@player->GetComboMult() * 180.0)->As(Int);
+					multiplier := 1 + @combo / 3;
+					if(multiplier > 5) { multiplier := 5; };
+					@score += (50.0 * multiplier->As(Float) * @player->GetItemScoreMult())->As(Int);
+					px := (@player->GetX() - @world->GetCameraX())->As(Int) + 12;
+					py := @player->GetY()->As(Int);
+					@particles->EmitCoin(px, py);
+				};
+			};
+		};
+
 		# check death
 		if(@player->IsDead()) {
 			@combo := 0;
+			TriggerShake(12, 30);
 			@state := 2;
 			OnGameOver();
 		};
@@ -2244,6 +2617,8 @@ class Game {
 			DrawHills(renderer);
 			@world->Draw(renderer);
 			DrawGoalLandmark(renderer);
+			DrawFloatingCoins(renderer);
+			DrawEnemies(renderer);
 			@player->Draw(renderer, @world->GetCameraX());
 			@particles->Draw(renderer);
 			DrawWeather(renderer);
@@ -2356,75 +2731,261 @@ class Game {
 		};
 
 		# scene-specific decorations
-		if(@scene = 2) {
-			# ocean: animated waves at bottom
-			cam := 0.0;
-			if(@world <> Nil) { cam := @world->GetCameraX(); };
+		cam := 0.0;
+		if(@world <> Nil) { cam := @world->GetCameraX(); };
+
+		if(@scene = 0) {
+			# PLAINS: moon, clouds, fireflies
+			# moon
+			renderer->SetDrawColor(230, 230, 200, 200);
+			renderer->FillRect(Rect->New(620, 50, 28, 28));
+			renderer->FillRect(Rect->New(617, 54, 34, 20));
+			renderer->FillRect(Rect->New(624, 47, 20, 34));
+			# moon crater
+			renderer->SetDrawColor(210, 210, 185, 200);
+			renderer->FillRect(Rect->New(628, 56, 6, 6));
+			renderer->FillRect(Rect->New(636, 64, 4, 4));
+
+			# drifting clouds (parallax)
+			for(ci := 0; ci < 4; ci += 1;) {
+				cloud_x := ((ci * 230 + 50)->As(Float) - cam * 0.03 + @frame_count->As(Float) * 0.15)->As(Int) % (Consts->SCREEN_W + 120) - 60;
+				cloud_y := 70 + ci * 35 + (ci * 17) % 20;
+				cw := 50 + (ci * 13) % 30;
+				renderer->SetDrawColor(40, 45, 70, 80);
+				renderer->FillRect(Rect->New(cloud_x, cloud_y, cw, 10));
+				renderer->FillRect(Rect->New(cloud_x + 8, cloud_y - 6, cw - 16, 8));
+				renderer->FillRect(Rect->New(cloud_x + 20, cloud_y - 10, cw - 35, 6));
+			};
+
+			# fireflies
+			for(fi := 0; fi < 8; fi += 1;) {
+				fx := (Float->Sin((@frame_count + fi * 80)->As(Float) * 0.012 + fi->As(Float)) * 350.0 + 400.0)->As(Int);
+				fy := (Float->Sin((@frame_count + fi * 60)->As(Float) * 0.018 + fi->As(Float) * 2.0) * 80.0 + 300.0)->As(Int);
+				fa := (Float->Sin((@frame_count + fi * 40)->As(Float) * 0.08) * 100.0 + 120.0)->As(Int);
+				renderer->SetDrawColor(200, 255, 100, fa);
+				renderer->FillRect(Rect->New(fx, fy, 3, 3));
+			};
+		}
+		else if(@scene = 1) {
+			# FOREST: layered trees, vines, birds
+			# far tree layer (very dark, slow parallax)
+			for(tx := 0; tx < Consts->SCREEN_W + 60; tx += 22;) {
+				world_tx := (tx->As(Float) + cam * 0.03)->As(Int);
+				th := 100 + (world_tx * 17 + 3) % 60;
+				renderer->SetDrawColor(10, 30, 12, 255);
+				renderer->FillRect(Rect->New(tx + 8, Consts->SCREEN_H - th - 10, 8, th + 10));
+				cw := 28 + (world_tx * 7) % 16;
+				renderer->FillRect(Rect->New(tx + 12 - cw / 2, Consts->SCREEN_H - th - 35, cw, 30));
+				renderer->FillRect(Rect->New(tx + 12 - cw / 2 + 4, Consts->SCREEN_H - th - 50, cw - 8, 20));
+			};
+
+			# mid tree layer (medium green, medium parallax)
+			for(tx := 0; tx < Consts->SCREEN_W + 60; tx += 40;) {
+				world_tx := (tx->As(Float) + cam * 0.07)->As(Int);
+				th := 80 + (world_tx * 11 + 7) % 50;
+				# trunk
+				renderer->SetDrawColor(40, 55, 25, 255);
+				renderer->FillRect(Rect->New(tx + 14, Consts->SCREEN_H - th - 20, 10, th + 20));
+				# roots
+				renderer->SetDrawColor(35, 45, 20, 255);
+				renderer->FillRect(Rect->New(tx + 8, Consts->SCREEN_H - 8, 22, 8));
+				# canopy layers
+				cw := 30 + (world_tx * 3) % 18;
+				renderer->SetDrawColor(18, 55, 18, 255);
+				renderer->FillRect(Rect->New(tx + 19 - cw / 2, Consts->SCREEN_H - th - 45, cw, 28));
+				renderer->SetDrawColor(14, 48, 14, 255);
+				renderer->FillRect(Rect->New(tx + 19 - cw / 2 + 5, Consts->SCREEN_H - th - 62, cw - 10, 22));
+				renderer->FillRect(Rect->New(tx + 19 - cw / 2 + 10, Consts->SCREEN_H - th - 72, cw - 20, 14));
+			};
+
+			# hanging vines
+			for(vi := 0; vi < 6; vi += 1;) {
+				vx := (vi * 140 + 30 - (cam * 0.07)->As(Int)) % (Consts->SCREEN_W + 80);
+				vine_sway := (Float->Sin((@frame_count + vi * 50)->As(Float) * 0.02) * 3.0)->As(Int);
+				renderer->SetDrawColor(20, 70, 20, 180);
+				vine_len := 25 + (vi * 11) % 20;
+				renderer->FillRect(Rect->New(vx + vine_sway, 160 + vi * 15, 2, vine_len));
+				renderer->FillRect(Rect->New(vx + vine_sway + 1, 160 + vi * 15 + vine_len, 2, 8));
+			};
+
+			# birds (distant, slow)
+			for(bi := 0; bi < 3; bi += 1;) {
+				bx := (bi * 280 + @frame_count / 3 + 100) % (Consts->SCREEN_W + 100) - 50;
+				by := 80 + bi * 40;
+				wing := (Float->Sin((@frame_count + bi * 30)->As(Float) * 0.1) * 3.0)->As(Int);
+				renderer->SetDrawColor(25, 40, 20, 200);
+				renderer->DrawLine(bx - 4, by + wing, bx, by);
+				renderer->DrawLine(bx, by, bx + 4, by + wing);
+			};
+		}
+		else if(@scene = 2) {
+			# OCEAN: layered waves, distant ship, seagulls, sun reflection
+			# distant ship
+			ship_x := (400.0 - cam * 0.02 + Float->Sin(@frame_count->As(Float) * 0.004) * 30.0)->As(Int);
+			ship_bob := (Float->Sin(@frame_count->As(Float) * 0.04) * 2.0)->As(Int);
+			renderer->SetDrawColor(60, 45, 30, 255);
+			renderer->FillRect(Rect->New(ship_x, 280 + ship_bob, 30, 10));
+			renderer->FillRect(Rect->New(ship_x + 3, 274 + ship_bob, 24, 8));
+			# mast and sail
+			renderer->SetDrawColor(80, 60, 40, 255);
+			renderer->FillRect(Rect->New(ship_x + 14, 252 + ship_bob, 2, 28));
+			renderer->SetDrawColor(220, 210, 200, 200);
+			renderer->FillRect(Rect->New(ship_x + 16, 256 + ship_bob, 12, 16));
+
+			# seagulls
+			for(gi := 0; gi < 4; gi += 1;) {
+				gx := (gi * 210 + @frame_count / 4 + 80) % (Consts->SCREEN_W + 80) - 40;
+				gy := 100 + gi * 30 + (gi * 19) % 25;
+				wing := (Float->Sin((@frame_count + gi * 25)->As(Float) * 0.12) * 3.0)->As(Int);
+				renderer->SetDrawColor(200, 200, 210, 220);
+				renderer->DrawLine(gx - 5, gy + wing, gx, gy);
+				renderer->DrawLine(gx, gy, gx + 5, gy + wing);
+			};
+
+			# deep water layer
+			renderer->SetDrawColor(15, 40, 80, 200);
+			for(x := 0; x < Consts->SCREEN_W + 8; x += 4;) {
+				wave := (Float->Sin((x->As(Float) + cam * 0.15 + @frame_count->As(Float) * 1.0) * 0.02) * 10.0)->As(Int);
+				renderer->FillRect(Rect->New(x, Consts->SCREEN_H - 50 + wave, 4, 50 - wave));
+			};
+			# mid water
 			renderer->SetDrawColor(20, 60, 110, 200);
 			for(x := 0; x < Consts->SCREEN_W + 8; x += 4;) {
 				wave := (Float->Sin((x->As(Float) + cam * 0.2 + @frame_count->As(Float) * 1.5) * 0.025) * 8.0)->As(Int);
 				renderer->FillRect(Rect->New(x, Consts->SCREEN_H - 35 + wave, 4, 35 - wave));
 			};
-			renderer->SetDrawColor(30, 80, 130, 180);
+			# surface foam
+			renderer->SetDrawColor(50, 110, 160, 180);
 			for(x := 0; x < Consts->SCREEN_W + 8; x += 4;) {
 				wave := (Float->Sin((x->As(Float) + cam * 0.3 + @frame_count->As(Float) * 2.0) * 0.03) * 6.0)->As(Int);
 				renderer->FillRect(Rect->New(x, Consts->SCREEN_H - 20 + wave, 4, 20 - wave));
 			};
+			# foam highlights
+			for(fi := 0; fi < 10; fi += 1;) {
+				fx := (fi * 85 + (@frame_count / 2 + fi * 30)->As(Int)) % Consts->SCREEN_W;
+				fy := Consts->SCREEN_H - 22 + (Float->Sin((fx + @frame_count)->As(Float) * 0.03) * 5.0)->As(Int);
+				renderer->SetDrawColor(120, 170, 200, 140);
+				renderer->FillRect(Rect->New(fx, fy, 6, 2));
+			};
 		}
 		else if(@scene = 3) {
-			# desert: sand dunes at bottom
-			cam := 0.0;
-			if(@world <> Nil) { cam := @world->GetCameraX(); };
+			# DESERT: large sun with haze, cacti, sand dunes, heat shimmer
+			# big sun with glow rings
+			sun_y := 55 + (Float->Sin(@frame_count->As(Float) * 0.005) * 8.0)->As(Int);
+			renderer->SetDrawColor(255, 180, 40, 40);
+			renderer->FillRect(Rect->New(620, sun_y - 15, 60, 60));
+			renderer->SetDrawColor(255, 200, 50, 80);
+			renderer->FillRect(Rect->New(625, sun_y - 10, 50, 50));
+			renderer->SetDrawColor(255, 210, 80, 160);
+			renderer->FillRect(Rect->New(632, sun_y - 3, 36, 36));
+			renderer->SetDrawColor(255, 225, 120, 230);
+			renderer->FillRect(Rect->New(638, sun_y + 3, 24, 24));
+
+			# distant cacti (slow parallax)
+			for(ci := 0; ci < 5; ci += 1;) {
+				cx := (ci * 180 + 60 - (cam * 0.05)->As(Int)) % (Consts->SCREEN_W + 100) - 50;
+				cbase := Consts->SCREEN_H - 80 - (ci * 7) % 15;
+				ch := 30 + (ci * 13) % 20;
+				renderer->SetDrawColor(50, 80, 30, 200);
+				# trunk
+				renderer->FillRect(Rect->New(cx + 4, cbase - ch, 6, ch));
+				# arms
+				renderer->FillRect(Rect->New(cx, cbase - ch + 10, 5, 6));
+				renderer->FillRect(Rect->New(cx, cbase - ch + 6, 3, 6));
+				renderer->FillRect(Rect->New(cx + 9, cbase - ch + 15, 5, 6));
+				renderer->FillRect(Rect->New(cx + 12, cbase - ch + 11, 3, 6));
+			};
+
+			# layered sand dunes
+			renderer->SetDrawColor(160, 130, 65, 255);
+			for(x := 0; x < Consts->SCREEN_W + 8; x += 4;) {
+				world_x := x->As(Float) + cam * 0.08;
+				dune := (Float->Sin(world_x * 0.005) * 25.0 + Float->Sin(world_x * 0.012) * 12.0)->As(Int);
+				renderer->FillRect(Rect->New(x, Consts->SCREEN_H - 55 + dune, 4, 55 - dune));
+			};
 			renderer->SetDrawColor(180, 150, 80, 255);
 			for(x := 0; x < Consts->SCREEN_W + 8; x += 4;) {
-				world_x := x->As(Float) + cam * 0.1;
-				dune := (Float->Sin(world_x * 0.006) * 20.0 + Float->Sin(world_x * 0.015) * 10.0)->As(Int);
+				world_x := x->As(Float) + cam * 0.12;
+				dune := (Float->Sin(world_x * 0.006) * 18.0 + Float->Sin(world_x * 0.015) * 10.0)->As(Int);
 				renderer->FillRect(Rect->New(x, Consts->SCREEN_H - 40 + dune, 4, 40 - dune));
 			};
-			# sun
-			sun_y := 60 + (Float->Sin(@frame_count->As(Float) * 0.005) * 10.0)->As(Int);
-			renderer->SetDrawColor(255, 200, 50, 200);
-			renderer->FillRect(Rect->New(650, sun_y, 30, 30));
-			renderer->SetDrawColor(255, 220, 100, 150);
-			renderer->FillRect(Rect->New(646, sun_y + 4, 38, 22));
-			renderer->FillRect(Rect->New(654, sun_y - 4, 22, 38));
+
+			# heat shimmer effect (subtle wave distortion at horizon)
+			for(hx := 0; hx < Consts->SCREEN_W; hx += 8;) {
+				shimmer := (Float->Sin((hx + @frame_count * 3)->As(Float) * 0.04) * 1.5)->As(Int);
+				renderer->SetDrawColor(255, 220, 150, 25);
+				renderer->FillRect(Rect->New(hx, Consts->SCREEN_H - 70 + shimmer, 8, 2));
+			};
 		}
 		else if(@scene = 4) {
-			# city: distant skyline silhouettes
-			cam := 0.0;
-			if(@world <> Nil) { cam := @world->GetCameraX(); };
-			renderer->SetDrawColor(20, 10, 35, 255);
-			for(bx := 0; bx < Consts->SCREEN_W + 40; bx += 30;) {
+			# CITY: multi-layer skyline, neon signs, streetlights, traffic
+			# far skyline (very slow parallax, big dark buildings)
+			for(bx := 0; bx < Consts->SCREEN_W + 60; bx += 50;) {
+				world_bx := (bx->As(Float) + cam * 0.04)->As(Int);
+				bh := 120 + ((world_bx * 11 + 5) % 80);
+				renderer->SetDrawColor(15, 8, 25, 255);
+				renderer->FillRect(Rect->New(bx, Consts->SCREEN_H - bh - 60, 40, bh));
+				# dim windows
+				for(wy := 0; wy < bh / 12; wy += 1;) {
+					if((world_bx + wy * 7) % 3 <> 0) {
+						renderer->SetDrawColor(60, 50, 80, 150);
+						renderer->FillRect(Rect->New(bx + 6, Consts->SCREEN_H - bh - 55 + wy * 12, 4, 3));
+						renderer->FillRect(Rect->New(bx + 16, Consts->SCREEN_H - bh - 55 + wy * 12, 4, 3));
+						renderer->FillRect(Rect->New(bx + 26, Consts->SCREEN_H - bh - 55 + wy * 12, 4, 3));
+					};
+				};
+			};
+
+			# mid skyline (medium parallax, neon-lit)
+			for(bx := 0; bx < Consts->SCREEN_W + 40; bx += 35;) {
 				world_bx := (bx->As(Float) + cam * 0.08)->As(Int);
 				bh := 80 + ((world_bx * 7 + 13) % 60);
-				renderer->FillRect(Rect->New(bx, Consts->SCREEN_H - bh - 50, 22, bh));
-				# lit windows
-				win_count := bh / 15;
+				renderer->SetDrawColor(22, 14, 38, 255);
+				renderer->FillRect(Rect->New(bx, Consts->SCREEN_H - bh - 50, 26, bh));
+				# lit windows with color
+				win_count := bh / 14;
 				for(wy := 0; wy < win_count; wy += 1;) {
 					if((world_bx + wy * 3) % 3 <> 0) {
 						flicker := 180 + (Float->Sin((@frame_count + world_bx + wy * 17)->As(Float) * 0.03) * 40.0)->As(Int);
 						renderer->SetDrawColor(255, 230, flicker, flicker);
-						renderer->FillRect(Rect->New(bx + 4, Consts->SCREEN_H - bh - 45 + wy * 15, 4, 3));
-						renderer->FillRect(Rect->New(bx + 14, Consts->SCREEN_H - bh - 45 + wy * 15, 4, 3));
+						renderer->FillRect(Rect->New(bx + 4, Consts->SCREEN_H - bh - 45 + wy * 14, 5, 4));
+						renderer->FillRect(Rect->New(bx + 15, Consts->SCREEN_H - bh - 45 + wy * 14, 5, 4));
 					};
 				};
+				# neon sign on some buildings
+				if((world_bx * 3) % 5 = 0) {
+					np := (Float->Sin((@frame_count + world_bx)->As(Float) * 0.06) * 80.0 + 175.0)->As(Int);
+					sign_color := (world_bx * 7) % 3;
+					if(sign_color = 0) {
+						renderer->SetDrawColor(255, 50, np, 255);
+					}
+					else if(sign_color = 1) {
+						renderer->SetDrawColor(50, np, 255, 255);
+					}
+					else {
+						renderer->SetDrawColor(np, 255, 50, 255);
+					};
+					renderer->FillRect(Rect->New(bx + 2, Consts->SCREEN_H - bh - 50 + bh / 3, 22, 3));
+				};
 			};
-		}
-		else if(@scene = 1) {
-			# forest: tree silhouettes in background
-			cam := 0.0;
-			if(@world <> Nil) { cam := @world->GetCameraX(); };
-			for(tx := 0; tx < Consts->SCREEN_W + 50; tx += 35;) {
-				world_tx := (tx->As(Float) + cam * 0.06)->As(Int);
-				th := 60 + (world_tx * 13 + 7) % 50;
-				# trunk
-				renderer->SetDrawColor(30, 50, 25, 255);
-				renderer->FillRect(Rect->New(tx + 12, Consts->SCREEN_H - th - 30, 6, th));
-				# canopy
-				renderer->SetDrawColor(15, 45, 15, 255);
-				cw := 20 + (world_tx * 3) % 15;
-				renderer->FillRect(Rect->New(tx + 15 - cw / 2, Consts->SCREEN_H - th - 50, cw, 25));
-				renderer->FillRect(Rect->New(tx + 15 - cw / 2 + 3, Consts->SCREEN_H - th - 65, cw - 6, 18));
+
+			# street level glow (neon reflected on ground)
+			for(gx := 0; gx < Consts->SCREEN_W; gx += 6;) {
+				glow_r := (Float->Sin((gx + @frame_count)->As(Float) * 0.02) * 40.0 + 40.0)->As(Int);
+				glow_b := (Float->Sin((gx + @frame_count)->As(Float) * 0.02 + 2.0) * 40.0 + 40.0)->As(Int);
+				renderer->SetDrawColor(glow_r, 10, glow_b, 40);
+				renderer->FillRect(Rect->New(gx, Consts->SCREEN_H - 30, 6, 30));
+			};
+
+			# moving traffic lights in distance
+			for(ti := 0; ti < 3; ti += 1;) {
+				tx := (ti * 290 + @frame_count * 2 + 100) % (Consts->SCREEN_W + 40) - 20;
+				renderer->SetDrawColor(255, 60, 40, 160);
+				renderer->FillRect(Rect->New(tx, Consts->SCREEN_H - 42, 8, 3));
+				# white headlights going other way
+				tx2 := Consts->SCREEN_W - (ti * 250 + @frame_count * 3 + 50) % (Consts->SCREEN_W + 40) + 20;
+				renderer->SetDrawColor(255, 255, 230, 140);
+				renderer->FillRect(Rect->New(tx2, Consts->SCREEN_H - 38, 6, 2));
 			};
 		};
 	}
@@ -2528,6 +3089,24 @@ class Game {
 				sz := 1 + (i % 3);
 				renderer->FillRect(Rect->New(wx, wy, sz, sz));
 			};
+		};
+	}
+
+	method : DrawEnemies(renderer : Renderer) ~ Nil {
+		if(@world = Nil) { return; };
+		cam := @world->GetCameraX();
+		enemies := @world->GetEnemies();
+		each(i : enemies) {
+			enemies->Get(i)->Draw(renderer, cam);
+		};
+	}
+
+	method : DrawFloatingCoins(renderer : Renderer) ~ Nil {
+		if(@world = Nil) { return; };
+		cam := @world->GetCameraX();
+		coins := @world->GetCoins();
+		each(i : coins) {
+			coins->Get(i)->Draw(renderer, cam, @frame_count);
 		};
 	}
 
@@ -2724,8 +3303,23 @@ class Game {
 		if(prog > 80) { prog := 80; };
 		renderer->SetDrawColor(40, 40, 60, 200);
 		renderer->FillRect(Rect->New(Consts->SCREEN_W - 170, 28, 82, 6));
-		renderer->SetDrawColor(100, 200, 255, 255);
+		if(@is_boss) {
+			# red pulsing progress bar for boss
+			boss_pulse := (Float->Sin(@frame_count->As(Float) * 0.15) * 50.0 + 205.0)->As(Int);
+			renderer->SetDrawColor(boss_pulse, 40, 40, 255);
+		}
+		else {
+			renderer->SetDrawColor(100, 200, 255, 255);
+		};
 		renderer->FillRect(Rect->New(Consts->SCREEN_W - 169, 29, prog, 4));
+
+		# boss indicator
+		if(@is_boss) {
+			boss_p := (Float->Sin(@frame_count->As(Float) * 0.12) * 55.0 + 200.0)->As(Int);
+			boss_c := Color->New(255, boss_p / 3, boss_p / 4);
+			@combo_text->RenderedText("BOSS", boss_c);
+			@combo_text->Render(Consts->SCREEN_W / 2 + 60, 8);
+		};
 
 		# items indicator
 		total_items := @coins_collected + @gems_collected + @stars_collected + @shrooms_collected;
@@ -3004,16 +3598,45 @@ class Game {
 	}
 
 	method : DrawLevelComplete(renderer : Renderer) ~ Nil {
-		# dark overlay
-		renderer->SetDrawColor(0, 0, 0, 120);
+		# heavy dark overlay for clear separation
+		renderer->SetDrawColor(0, 0, 0, 180);
 		renderer->FillRect(Rect->New(0, 0, Consts->SCREEN_W, Consts->SCREEN_H));
 
-		# LEVEL COMPLETE
+		# animated firework bursts
+		for(fi := 0; fi < 8; fi += 1;) {
+			burst_x := 80 + fi * 95;
+			burst_y := 60 + (fi * 17) % 80;
+			burst_phase := (@frame_count + fi * 20)->As(Float) * 0.06;
+			burst_size := (Float->Sin(burst_phase) * 15.0 + 15.0)->As(Int);
+			br := (Float->Sin(burst_phase) * 127.0 + 128.0)->As(Int);
+			bg := (Float->Sin(burst_phase + 2.0) * 127.0 + 128.0)->As(Int);
+			bb := (Float->Sin(burst_phase + 4.0) * 127.0 + 128.0)->As(Int);
+			# rays
+			for(ri := 0; ri < 6; ri += 1;) {
+				ra := (ri->As(Float) * 1.047) + burst_phase;
+				rx := burst_x + (Float->Sin(ra) * burst_size->As(Float))->As(Int);
+				ry := burst_y + (Float->Cos(ra) * burst_size->As(Float))->As(Int);
+				renderer->SetDrawColor(br, bg, bb, 200);
+				renderer->FillRect(Rect->New(rx, ry, 4, 4));
+			};
+			# center spark
+			renderer->SetDrawColor(255, 255, 220, 220);
+			renderer->FillRect(Rect->New(burst_x - 2, burst_y - 2, 4, 4));
+		};
+
+		# gold banner box
+		renderer->SetDrawColor(40, 35, 15, 220);
+		renderer->FillRect(Rect->New(Consts->SCREEN_W / 2 - 200, 138, 400, 50));
+		renderer->SetDrawColor(255, 215, 0, 200);
+		renderer->DrawRect(Rect->New(Consts->SCREEN_W / 2 - 200, 138, 400, 50));
+		renderer->DrawRect(Rect->New(Consts->SCREEN_W / 2 - 199, 139, 398, 48));
+
+		# LEVEL COMPLETE text
 		pulse := 220 + (Float->Sin(@frame_count->As(Float) * 0.08) * 35.0)->As(Int);
-		lc_color := Color->New(100, pulse, 100);
+		lc_color := Color->New(255, pulse, 50);
 		@title_text->RenderedText("LEVEL COMPLETE!", lc_color);
 		lcx := Consts->SCREEN_W / 2 - @title_text->GetWidth() / 2;
-		@title_text->Render(lcx, 150);
+		@title_text->Render(lcx, 148);
 
 		# level number
 		ln_buf := "Level ";
