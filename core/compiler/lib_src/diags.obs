@@ -244,6 +244,82 @@ bundle System.Diagnostics {
 			return out;
 		}
 
+		#~
+		Return every workspace symbol whose name contains the query substring
+		(case-insensitive). Backs workspace/symbol (Ctrl+T in VS Code). Matches
+		across every parsed class, method, and enum.
+		@param query substring to match; empty query returns every named symbol
+		@param sys_path system library path
+		@return flat list of symbol Result entries, Nil if nothing matched
+		~#
+		method : public : WorkspaceSymbols(query : String, sys_path : String) ~ Result[] {
+			# GetSymbols walks every bundle in the program, so the returned tree
+			# already covers the entire workspace — we just flatten and filter.
+			root := GetSymbols("", sys_path);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			needle : String;
+			if(query = Nil) {
+				needle := "";
+			}
+			else {
+				needle := query->ToLower();
+			};
+
+			matches := Vector->New()<Result>;
+			CollectWorkspaceSymbols(root, needle, matches);
+
+			count := matches->Size();
+			if(count = 0) {
+				return Nil;
+			};
+
+			out := Result->New[count];
+			for(i := 0; i < count; i += 1;) {
+				out[i] := matches->Get(i);
+			};
+			return out;
+		}
+
+		#~
+		Depth-first walk over a Result tree emitted by GetSymbols, appending
+		every named, source-located entry whose lower-cased name contains the
+		needle. Helper for WorkspaceSymbols.
+		@param node current tree node (nil-safe)
+		@param needle lower-cased substring; empty matches everything
+		@param out accumulator
+		~#
+		method : private : CollectWorkspaceSymbols(node : Result, needle : String, out : Vector<Result>) ~ Nil {
+			if(node = Nil) {
+				return;
+			};
+
+			name := node->GetName();
+			# Skip the file-root node (no source position) and anonymous nodes.
+			if(name <> Nil & <>name->IsEmpty() & node->GetStartLine() >= 0) {
+				if(needle->IsEmpty() | name->ToLower()->Has(needle)) {
+					out->AddBack(node);
+				};
+			};
+
+			children := node->GetResults();
+			if(children <> Nil) {
+				for(i := 0; i < children->Size(); i += 1;) {
+					CollectWorkspaceSymbols(children[i], needle, out);
+				};
+			};
+		}
+
+		#~
+		Depth-first walk over a Result tree emitted by GetSymbols, appending
+		every multi-line node whose description matches the target URI into
+		the ranges vector. Helper for FoldingRanges.
+		@param node current tree node (nil-safe)
+		@param uri file uri to filter by
+		@param ranges accumulator
+		~#
 		method : private : CollectFoldRanges(node : Result, uri : String, ranges : Vector<Result>) ~ Nil {
 			if(node = Nil) {
 				return;
