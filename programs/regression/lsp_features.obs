@@ -5,8 +5,8 @@ use Collection;
 LSP features regression test.
 
 Covers: FindReferences, DocumentHighlight, FoldingRanges, WorkspaceSymbols,
-FindDefinition, FindDeclaration, Hover, SignatureHelp, CodeAction,
-GetSymbols, GetDiagnostics, FindTypeDefinition, call hierarchy,
+SelectionRanges, FindDefinition, FindDeclaration, Hover, SignatureHelp,
+CodeAction, GetSymbols, GetDiagnostics, FindTypeDefinition, call hierarchy,
 InlayHints, SemanticTokens.
 ~#
 class LspFeaturesTest {
@@ -270,6 +270,47 @@ class LspFeaturesTest {
 		# no-match query returns Nil
 		ws4 := analysis->WorkspaceSymbols("zzz_nothing_here_zzz", lib_path);
 		Check("WorkspaceSymbols no-match query: returns Nil", ws4 = Nil);
+
+		# =============================================
+		# SelectionRanges
+		# =============================================
+		"\n>> SelectionRanges..."->PrintLine();
+
+		# Cursor inside Shape::Describe body (L20 is 'n := @name;')
+		# Expected enclosing ranges: Describe method (inner) -> Shape class (outer).
+		sel := analysis->SelectionRanges("file:///test.obs", 20, 4, lib_path);
+		Check("SelectionRanges inside Describe body: no crash", true);
+		if(sel <> Nil) {
+			scount := sel->Size();
+			Check("SelectionRanges inside Describe: at least one enclosing range", scount >= 1);
+
+			# innermost range must enclose the cursor line 20
+			inner := sel[0];
+			in_start := inner->GetStartLine();
+			in_end := inner->GetEndLine();
+			Check("SelectionRanges: innermost encloses cursor line", in_start <= 20 & 20 <= in_end);
+
+			# ranges must be monotonically non-shrinking as we walk outward
+			prev_span := in_end - in_start;
+			monotonic := true;
+			for(i := 1; i < scount; i += 1;) {
+				r := sel[i];
+				span := r->GetEndLine() - r->GetStartLine();
+				if(span < prev_span) {
+					monotonic := false;
+				};
+				prev_span := span;
+			};
+			Check("SelectionRanges: spans grow outward (innermost first)", monotonic);
+		};
+
+		# Cursor at a class-level line (L2 is 'class Shape {') — should enclose in Shape itself
+		sel2 := analysis->SelectionRanges("file:///test.obs", 2, 6, lib_path);
+		Check("SelectionRanges at class line: no crash", true);
+
+		# Cursor outside any class/method (L0 — use statement) — likely returns Nil
+		sel3 := analysis->SelectionRanges("file:///test.obs", 0, 0, lib_path);
+		Check("SelectionRanges at file-top-level: no crash", true);
 
 		# =============================================
 		# Hover
