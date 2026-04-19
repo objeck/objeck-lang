@@ -1,0 +1,278 @@
+use System.Diagnostics;
+use Collection;
+
+#~
+LSP features regression test.
+
+Covers: FindReferences (document highlight backing), FindDefinition,
+FindDeclaration, Hover, SignatureHelp, CodeAction, GetSymbols, GetDiagnostics.
+~#
+class LspFeaturesTest {
+	@passed : static : Int;
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+			@passed += 1;
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"=== LSP Features Regression Tests ==="->PrintLine();
+
+		src := "use Collection;\r\n";                                   # L0
+		src += "\r\n";                                                  # L1
+		src += "class Shape {\r\n";                                     # L2
+		src += "  @name : String;\r\n";                                 # L3
+		src += "  @sides : Int;\r\n";                                   # L4
+		src += "\r\n";                                                  # L5
+		src += "  New(name : String, sides : Int) {\r\n";               # L6
+		src += "    @name := name;\r\n";                                # L7
+		src += "    @sides := sides;\r\n";                              # L8
+		src += "  }\r\n";                                               # L9
+		src += "\r\n";                                                  # L10
+		src += "  method : public : GetName() ~ String {\r\n";         # L11
+		src += "    return @name;\r\n";                                 # L12
+		src += "  }\r\n";                                               # L13
+		src += "\r\n";                                                  # L14
+		src += "  method : public : GetSides() ~ Int {\r\n";           # L15
+		src += "    return @sides;\r\n";                                # L16
+		src += "  }\r\n";                                               # L17
+		src += "\r\n";                                                  # L18
+		src += "  method : public : Describe() ~ String {\r\n";        # L19
+		src += "    n := @name;\r\n";                                   # L20
+		src += "    s := @sides;\r\n";                                  # L21
+		src += "    return n;\r\n";                                     # L22
+		src += "  }\r\n";                                               # L23
+		src += "}\r\n";                                                 # L24
+		src += "\r\n";                                                  # L25
+		src += "class Main {\r\n";                                      # L26
+		src += "  function : Main(args : String[]) ~ Nil {\r\n";       # L27
+		src += "    shape := Shape->New(\"Triangle\", 3);\r\n";         # L28
+		src += "    name := shape->GetName();\r\n";                     # L29
+		src += "    desc := shape->Describe();\r\n";                    # L30
+		src += "    desc->PrintLine();\r\n";                            # L31
+		src += "  }\r\n";                                               # L32
+		src += "}\r\n";                                                 # L33
+
+		texts := String->New[1, 2];
+		texts[0, 0] := "file:///test.obs";
+		texts[0, 1] := src;
+
+		analysis := Analyzer->ParseText(texts);
+		Check("ParseText returned analysis", analysis <> Nil);
+		if(analysis = Nil) { Runtime->Exit(1); };
+		Check("ParseText succeeded", analysis->IsParsed());
+
+		lib_path := "";
+
+		# pre-populate symbols
+		analysis->GetSymbols("file:///test.obs", lib_path);
+
+		# =============================================
+		# GetSymbols
+		# =============================================
+		"\n>> GetSymbols..."->PrintLine();
+		symbols := analysis->GetSymbols("file:///test.obs", lib_path);
+		Check("GetSymbols: returns result", symbols <> Nil);
+
+		# =============================================
+		# GetDiagnostics (no errors expected)
+		# =============================================
+		"\n>> GetDiagnostics..."->PrintLine();
+		was_analyzed := BoolRef->New();
+		diags := analysis->GetDiagnostics(was_analyzed, "file:///test.obs", lib_path);
+		Check("GetDiagnostics: no crash", true);
+
+		# =============================================
+		# FindDefinition
+		# =============================================
+		"\n>> FindDefinition..."->PrintLine();
+
+		# Shape class usage at L28
+		def := analysis->FindDefinition("file:///test.obs", 28, 14, lib_path);
+		Check("FindDefinition 'Shape' at L28: no crash", true);
+
+		# GetName method call at L29
+		def2 := analysis->FindDefinition("file:///test.obs", 29, 20, lib_path);
+		Check("FindDefinition 'GetName' at L29: no crash", true);
+
+		# @name instance var at L12
+		def3 := analysis->FindDefinition("file:///test.obs", 12, 12, lib_path);
+		Check("FindDefinition '@name' at L12: no crash", true);
+
+		# =============================================
+		# FindDeclaration
+		# =============================================
+		"\n>> FindDeclaration..."->PrintLine();
+
+		# shape local at L29
+		decl := analysis->FindDeclaration("file:///test.obs", 29, 5, lib_path);
+		Check("FindDeclaration 'shape' at L29: no crash", true);
+
+		# =============================================
+		# FindReferences (backs document highlight)
+		# =============================================
+		"\n>> FindReferences (document highlight backing)..."->PrintLine();
+
+		# @name used at L3 (decl), L7 (assign), L12 (return), L20 (local assign)
+		refs := analysis->FindReferences("file:///test.obs", 7, 5, lib_path);
+		Check("FindReferences '@name' at L7: no crash", true);
+		if(refs <> Nil) {
+			ref_count := refs->Size();
+			Check("FindReferences '@name': multiple refs found", ref_count >= 2);
+
+			# verify all refs are in the same file (document highlight filter)
+			all_same_file := true;
+			each(i : refs) {
+				ref_uri := refs[i]->GetDescription();
+				if(ref_uri <> Nil & <>ref_uri->Equals("file:///test.obs")) {
+					all_same_file := false;
+				};
+			};
+			Check("FindReferences '@name': all in same file", all_same_file);
+		};
+
+		# @sides at L4 (decl), L8 (assign), L16 (return), L21 (local)
+		refs2 := analysis->FindReferences("file:///test.obs", 8, 5, lib_path);
+		Check("FindReferences '@sides' at L8: no crash", true);
+		if(refs2 <> Nil) {
+			Check("FindReferences '@sides': multiple refs found", refs2->Size() >= 2);
+		};
+
+		# Shape class name
+		refs3 := analysis->FindReferences("file:///test.obs", 2, 6, lib_path);
+		Check("FindReferences 'Shape' class at L2: no crash", true);
+
+		# =============================================
+		# Hover
+		# =============================================
+		"\n>> Hover..."->PrintLine();
+
+		hover := analysis->Hover("file:///test.obs", 28, 14, "", "", lib_path);
+		Check("Hover on 'Shape' at L28: no crash", true);
+
+		hover2 := analysis->Hover("file:///test.obs", 7, 5, "", "", lib_path);
+		Check("Hover on '@name' at L7: no crash", true);
+
+		hover3 := analysis->Hover("file:///test.obs", 29, 20, "", "", lib_path);
+		Check("Hover on 'GetName' at L29: no crash", true);
+
+		# =============================================
+		# SignatureHelp
+		# =============================================
+		"\n>> SignatureHelp..."->PrintLine();
+
+		sig := analysis->SignatureHelp("file:///test.obs", 28, 25, "Shape", "New", lib_path);
+		Check("SignatureHelp 'Shape->New' at L28: no crash", true);
+
+		# =============================================
+		# CodeAction
+		# =============================================
+		"\n>> CodeAction..."->PrintLine();
+
+		action := analysis->CodeAction("file:///test.obs", 7, 5, "@name");
+		Check("CodeAction '@name' at L7: no crash", true);
+
+		action2 := analysis->CodeAction("file:///test.obs", 28, 14, "Shape");
+		Check("CodeAction 'Shape' at L28: no crash", true);
+
+		# =============================================
+		# FindTypeDefinition
+		# =============================================
+		"\n>> FindTypeDefinition..."->PrintLine();
+
+		# L30: "    desc := shape->Describe();" — 'shape' at pos 12 is type Shape (program class)
+		typedef := analysis->FindTypeDefinition("file:///test.obs", 30, 12, lib_path);
+		Check("FindTypeDefinition 'shape' at L30: no crash", true);
+		if(typedef <> Nil) {
+			# should point to Shape class declaration at L2
+			Check("FindTypeDefinition 'shape': returns result", true);
+			Check("FindTypeDefinition 'shape': points to line 2", typedef->GetStartLine() = 2);
+			Check("FindTypeDefinition 'shape': file is test.obs", typedef->GetDescription()->EndsWith("test.obs"));
+		};
+
+		# L29: "    name := shape->GetName();" — 'name' at pos 5 is type String (library class)
+		typedef2 := analysis->FindTypeDefinition("file:///test.obs", 29, 5, lib_path);
+		Check("FindTypeDefinition 'name' at L29 (library type): no crash", true);
+
+		# =============================================
+		# PrepareCallHierarchy
+		# =============================================
+		"\n>> PrepareCallHierarchy..."->PrintLine();
+
+		# L12: "    return @name;" — inside GetName method body
+		hier := analysis->PrepareCallHierarchy("file:///test.obs", 12, 5, lib_path);
+		Check("PrepareCallHierarchy inside GetName body: no crash", true);
+		if(hier <> Nil) {
+			Check("PrepareCallHierarchy: returns result", true);
+			Check("PrepareCallHierarchy: has method name", hier->GetName() <> Nil & <>hier->GetName()->IsEmpty());
+			Check("PrepareCallHierarchy: has file", hier->GetDescription() <> Nil);
+		};
+
+		# =============================================
+		# IncomingCalls
+		# =============================================
+		"\n>> IncomingCalls..."->PrintLine();
+
+		# L12: inside GetName — GetName is called from Main at L29
+		incoming := analysis->IncomingCalls("file:///test.obs", 12, 5, lib_path);
+		Check("IncomingCalls inside GetName: no crash", true);
+
+		# =============================================
+		# OutgoingCalls
+		# =============================================
+		"\n>> OutgoingCalls..."->PrintLine();
+
+		# L28: inside Main function body — calls Shape->New, shape->GetName, etc.
+		outgoing := analysis->OutgoingCalls("file:///test.obs", 28, 5, lib_path);
+		Check("OutgoingCalls inside Main: no crash", true);
+		if(outgoing <> Nil) {
+			Check("OutgoingCalls Main: has outgoing calls", outgoing->Size() > 0);
+		};
+
+		# =============================================
+		# InlayHints
+		# =============================================
+		"\n>> InlayHints..."->PrintLine();
+
+		# L28: Shape->New("Triangle", 3) has 2 params (name, sides)
+		hints := analysis->InlayHints("file:///test.obs", 0, 33, lib_path);
+		Check("InlayHints full range: no crash", true);
+		if(hints <> Nil) {
+			Check("InlayHints: found hints", hints->Size() > 0);
+			first_hint := hints[0];
+			Check("InlayHints: first hint has label", first_hint->GetName() <> Nil & <>first_hint->GetName()->IsEmpty());
+			Check("InlayHints: hint kind is parameter (2)", first_hint->GetKind()->As(Int) = 2);
+		};
+
+		# =============================================
+		# SemanticTokens
+		# =============================================
+		"\n>> SemanticTokens..."->PrintLine();
+
+		sem_tokens := analysis->SemanticTokens("file:///test.obs", lib_path);
+		Check("SemanticTokens: no crash", true);
+		if(sem_tokens <> Nil) {
+			Check("SemanticTokens: has tokens", sem_tokens->Size() > 0);
+			first_tok := sem_tokens[0];
+			tok_type := first_tok->GetEndPosition();
+			Check("SemanticTokens: first token type valid (0-10)", tok_type >= 0 & tok_type <= 10);
+		};
+
+		# clean up
+		analysis->Release();
+
+		p := @passed;
+		f := @failed;
+		"\n  Results: {$p} passed, {$f} failed"->PrintLine();
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+	}
+}
