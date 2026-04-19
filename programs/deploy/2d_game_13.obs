@@ -1832,6 +1832,7 @@ class Game {
 	@gem_chunk : MixChunk;
 	@start_chunk : MixChunk;
 	@die_chunk : MixChunk;
+	@jump_chunk : MixChunk;
 	@audio_ok : Bool;
 
 	# frame counter
@@ -1954,6 +1955,8 @@ class Game {
 	}
 
 	method : LoadAudio() ~ Nil {
+		@audio_ok := true;
+
 		music_path := String->New(@base_path) + "/music.wav";
 		@music := MixMusic->New(music_path);
 		if(@music->IsNull()) {
@@ -1979,6 +1982,12 @@ class Game {
 			"--- Audio: Cannot load '{$die_path}' ---"->ErrorLine();
 		};
 
+		jump_path := String->New(@base_path) + "/luck.wav";
+		@jump_chunk := MixChunk->New(jump_path);
+		if(@jump_chunk->IsNull()) {
+			"--- Audio: Cannot load '{$jump_path}' ---"->ErrorLine();
+		};
+
 		Mixer->Volume(-1, 16);
 		MixMusic->VolumeMusic(10);
 	}
@@ -1988,6 +1997,8 @@ class Game {
 			"--- Error initializing game framework ---"->ErrorLine();
 			return;
 		};
+
+		LoadAudio();
 
 		e := @framework->GetEvent();
 		while(@running & @framework->IsOk()) {
@@ -2109,6 +2120,7 @@ class Game {
 			if(@gem_chunk <> Nil & <>@gem_chunk->IsNull()) { @gem_chunk->Free(); };
 			if(@start_chunk <> Nil & <>@start_chunk->IsNull()) { @start_chunk->Free(); };
 			if(@die_chunk <> Nil & <>@die_chunk->IsNull()) { @die_chunk->Free(); };
+			if(@jump_chunk <> Nil & <>@jump_chunk->IsNull()) { @jump_chunk->Free(); };
 			@framework->Quit();
 		};
 	}
@@ -2133,6 +2145,9 @@ class Game {
 			# PLAYING
 			if(jump_down & <>@jump_was_down) {
 				@player->Jump();
+				if(@jump_chunk <> Nil & <>@jump_chunk->IsNull()) {
+					@jump_chunk->PlayChannel(-1, 0);
+				};
 			}
 			else if(jump_down & @jump_was_down) {
 				@player->HoldJump();
@@ -2923,12 +2938,18 @@ class Game {
 			for(bx := 0; bx < Consts->SCREEN_W + 60; bx += 50;) {
 				world_bx := (bx->As(Float) + cam * 0.04)->As(Int);
 				bh := 120 + ((world_bx * 11 + 5) % 80);
-				renderer->SetDrawColor(15, 8, 25, 255);
+				# darker base with subtle blue tint
+				renderer->SetDrawColor(25, 20, 45, 255);
 				renderer->FillRect(Rect->New(bx, Consts->SCREEN_H - bh - 60, 40, bh));
-				# dim windows
+				# rooftop accent line
+				accent_r := (Float->Sin((world_bx * 3)->As(Float) * 0.01) * 30.0 + 60.0)->As(Int);
+				renderer->SetDrawColor(accent_r, 30, 80, 200);
+				renderer->FillRect(Rect->New(bx, Consts->SCREEN_H - bh - 60, 40, 2));
+				# brighter windows with warm tones
 				for(wy := 0; wy < bh / 12; wy += 1;) {
 					if((world_bx + wy * 7) % 3 <> 0) {
-						renderer->SetDrawColor(60, 50, 80, 150);
+						win_bright := 120 + (Float->Sin((@frame_count + world_bx + wy * 11)->As(Float) * 0.02) * 50.0)->As(Int);
+						renderer->SetDrawColor(win_bright, win_bright - 20, 60, 200);
 						renderer->FillRect(Rect->New(bx + 6, Consts->SCREEN_H - bh - 55 + wy * 12, 4, 3));
 						renderer->FillRect(Rect->New(bx + 16, Consts->SCREEN_H - bh - 55 + wy * 12, 4, 3));
 						renderer->FillRect(Rect->New(bx + 26, Consts->SCREEN_H - bh - 55 + wy * 12, 4, 3));
@@ -2940,7 +2961,7 @@ class Game {
 			for(bx := 0; bx < Consts->SCREEN_W + 40; bx += 35;) {
 				world_bx := (bx->As(Float) + cam * 0.08)->As(Int);
 				bh := 80 + ((world_bx * 7 + 13) % 60);
-				renderer->SetDrawColor(22, 14, 38, 255);
+				renderer->SetDrawColor(35, 25, 55, 255);
 				renderer->FillRect(Rect->New(bx, Consts->SCREEN_H - bh - 50, 26, bh));
 				# lit windows with color
 				win_count := bh / 14;
@@ -2952,8 +2973,8 @@ class Game {
 						renderer->FillRect(Rect->New(bx + 15, Consts->SCREEN_H - bh - 45 + wy * 14, 5, 4));
 					};
 				};
-				# neon sign on some buildings
-				if((world_bx * 3) % 5 = 0) {
+				# neon sign on some buildings (brighter and more frequent)
+				if((world_bx * 3) % 4 = 0) {
 					np := (Float->Sin((@frame_count + world_bx)->As(Float) * 0.06) * 80.0 + 175.0)->As(Int);
 					sign_color := (world_bx * 7) % 3;
 					if(sign_color = 0) {
@@ -2965,15 +2986,37 @@ class Game {
 					else {
 						renderer->SetDrawColor(np, 255, 50, 255);
 					};
-					renderer->FillRect(Rect->New(bx + 2, Consts->SCREEN_H - bh - 50 + bh / 3, 22, 3));
+					renderer->FillRect(Rect->New(bx + 2, Consts->SCREEN_H - bh - 50 + bh / 3, 22, 4));
+					# neon glow halo
+					renderer->SetDrawColor(np / 3, np / 3, np / 3, 60);
+					renderer->FillRect(Rect->New(bx, Consts->SCREEN_H - bh - 52 + bh / 3, 26, 8));
 				};
 			};
 
-			# street level glow (neon reflected on ground)
+			# near buildings (closest layer, fastest parallax)
+			for(bx := 0; bx < Consts->SCREEN_W + 30; bx += 28;) {
+				world_bx := (bx->As(Float) + cam * 0.14)->As(Int);
+				bh := 50 + ((world_bx * 5 + 9) % 40);
+				renderer->SetDrawColor(40, 30, 60, 255);
+				renderer->FillRect(Rect->New(bx, Consts->SCREEN_H - bh - 40, 20, bh));
+				# door/entrance at base
+				renderer->SetDrawColor(20, 15, 35, 255);
+				renderer->FillRect(Rect->New(bx + 7, Consts->SCREEN_H - 45, 6, 8));
+				# window pair
+				win_on := (world_bx + @frame_count / 60) % 3;
+				if(win_on <> 0) {
+					renderer->SetDrawColor(200, 180, 100, 180);
+					renderer->FillRect(Rect->New(bx + 4, Consts->SCREEN_H - bh - 30, 4, 3));
+					renderer->FillRect(Rect->New(bx + 12, Consts->SCREEN_H - bh - 30, 4, 3));
+				};
+			};
+
+			# street level glow (neon reflected on ground - brighter)
 			for(gx := 0; gx < Consts->SCREEN_W; gx += 6;) {
-				glow_r := (Float->Sin((gx + @frame_count)->As(Float) * 0.02) * 40.0 + 40.0)->As(Int);
-				glow_b := (Float->Sin((gx + @frame_count)->As(Float) * 0.02 + 2.0) * 40.0 + 40.0)->As(Int);
-				renderer->SetDrawColor(glow_r, 10, glow_b, 40);
+				glow_r := (Float->Sin((gx + @frame_count)->As(Float) * 0.02) * 60.0 + 60.0)->As(Int);
+				glow_g := (Float->Sin((gx + @frame_count)->As(Float) * 0.02 + 1.0) * 20.0 + 20.0)->As(Int);
+				glow_b := (Float->Sin((gx + @frame_count)->As(Float) * 0.02 + 2.0) * 60.0 + 60.0)->As(Int);
+				renderer->SetDrawColor(glow_r, glow_g, glow_b, 50);
 				renderer->FillRect(Rect->New(gx, Consts->SCREEN_H - 30, 6, 30));
 			};
 
@@ -2992,6 +3035,8 @@ class Game {
 
 	method : DrawHills(renderer : Renderer) ~ Nil {
 		if(@world = Nil) { return; };
+		# city scene has buildings instead of natural hills
+		if(@scene = 4) { return; };
 
 		cam := @world->GetCameraX();
 
@@ -3039,6 +3084,9 @@ class Game {
 	}
 
 	method : DrawMountains(renderer : Renderer) ~ Nil {
+		# city scene has its own skyline, no natural mountains
+		if(@scene = 4) { return; };
+
 		cam := 0.0;
 		if(@world <> Nil) {
 			cam := @world->GetCameraX();
