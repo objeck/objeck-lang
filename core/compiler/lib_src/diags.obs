@@ -216,6 +216,60 @@ bundle System.Diagnostics {
 		}
 
 		#~
+		Return foldable ranges (classes, methods, enums, bundles) for the given file.
+		Backs textDocument/foldingRange. Each returned Result carries the span as
+		GetStartLine() .. GetEndLine() and the kind via GetKind().
+		@param uri file uri
+		@param sys_path system library path
+		@return fold ranges in file order, Nil if nothing to fold
+		~#
+		method : public : FoldingRanges(uri : String, sys_path : String) ~ Result[] {
+			root := GetSymbols(uri, sys_path);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			ranges := Vector->New()<Result>;
+			CollectFoldRanges(root, uri, ranges);
+
+			count := ranges->Size();
+			if(count = 0) {
+				return Nil;
+			};
+
+			out := Result->New[count];
+			for(i := 0; i < count; i += 1;) {
+				out[i] := ranges->Get(i);
+			};
+			return out;
+		}
+
+		method : private : CollectFoldRanges(node : Result, uri : String, ranges : Vector<Result>) ~ Nil {
+			if(node = Nil) {
+				return;
+			};
+
+			# Only emit multi-line spans for entries whose file matches the target URI.
+			# GetSymbols stores the filename in the description for classes/methods/enums;
+			# the file-root node has no description so it's skipped naturally.
+			desc := node->GetDescription();
+			if(desc <> Nil & desc->Equals(uri)) {
+				start_line := node->GetStartLine();
+				end_line := node->GetEndLine();
+				if(start_line >= 0 & end_line > start_line) {
+					ranges->AddBack(node);
+				};
+			};
+
+			children := node->GetResults();
+			if(children <> Nil) {
+				for(i := 0; i < children->Size(); i += 1;) {
+					CollectFoldRanges(children[i], uri, ranges);
+				};
+			};
+		}
+
+		#~
 		Renames a variable or method/function
 		@param uri file uri
 		@param line line of symbol
