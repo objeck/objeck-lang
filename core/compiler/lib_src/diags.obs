@@ -176,8 +176,43 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(pos);
 			array_args[4] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_find_references", array_args);
-			
+
 			return @references_results;
+		}
+
+		#~
+		Get document highlights for the symbol at the cursor — references scoped to the
+		current file. Backs textDocument/documentHighlight.
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return per-file highlights, Nil if nothing to highlight
+		~#
+		method : public : DocumentHighlight(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			refs := FindReferences(uri, line, pos, sys_path);
+			if(refs = Nil) {
+				return Nil;
+			};
+
+			matches := Vector->New()<Result>;
+			for(i := 0; i < refs->Size(); i += 1;) {
+				r := refs[i];
+				if(r <> Nil & r->GetDescription()->Equals(uri)) {
+					matches->AddBack(r);
+				};
+			};
+
+			count := matches->Size();
+			if(count = 0) {
+				return Nil;
+			};
+
+			out := Result->New[count];
+			for(j := 0; j < count; j += 1;) {
+				out[j] := matches->Get(j);
+			};
+			return out;
 		}
 
 		#~

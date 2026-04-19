@@ -4,8 +4,9 @@ use Collection;
 #~
 LSP features regression test.
 
-Covers: FindReferences (document highlight backing), FindDefinition,
-FindDeclaration, Hover, SignatureHelp, CodeAction, GetSymbols, GetDiagnostics.
+Covers: FindReferences, DocumentHighlight, FindDefinition, FindDeclaration,
+Hover, SignatureHelp, CodeAction, GetSymbols, GetDiagnostics,
+FindTypeDefinition, call hierarchy, InlayHints, SemanticTokens.
 ~#
 class LspFeaturesTest {
 	@passed : static : Int;
@@ -148,6 +149,40 @@ class LspFeaturesTest {
 		# Shape class name
 		refs3 := analysis->FindReferences("file:///test.obs", 2, 6, lib_path);
 		Check("FindReferences 'Shape' class at L2: no crash", true);
+
+		# =============================================
+		# DocumentHighlight (current-file subset of references)
+		# =============================================
+		"\n>> DocumentHighlight..."->PrintLine();
+
+		# @name used at L3, L7, L12, L20 — all in test.obs
+		hl := analysis->DocumentHighlight("file:///test.obs", 7, 5, lib_path);
+		Check("DocumentHighlight '@name' at L7: no crash", true);
+		if(hl <> Nil) {
+			Check("DocumentHighlight '@name': has hits", hl->Size() > 0);
+
+			# every hit must be in the requested URI
+			all_same_file := true;
+			for(i := 0; i < hl->Size(); i += 1;) {
+				hit_uri := hl[i]->GetDescription();
+				if(hit_uri = Nil | <>hit_uri->Equals("file:///test.obs")) {
+					all_same_file := false;
+				};
+			};
+			Check("DocumentHighlight '@name': all hits in requested uri", all_same_file);
+		};
+
+		# GetName method body (L12, cursor on @name)
+		hl2 := analysis->DocumentHighlight("file:///test.obs", 12, 12, lib_path);
+		Check("DocumentHighlight '@name' at L12: no crash", true);
+
+		# Shape class name at L2
+		hl3 := analysis->DocumentHighlight("file:///test.obs", 2, 6, lib_path);
+		Check("DocumentHighlight 'Shape' at L2: no crash", true);
+
+		# cursor on whitespace-only line returns Nil, not a crash
+		hl4 := analysis->DocumentHighlight("file:///test.obs", 1, 0, lib_path);
+		Check("DocumentHighlight on empty line L1: no crash", true);
 
 		# =============================================
 		# Hover
