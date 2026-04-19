@@ -2,12 +2,13 @@ use System.Diagnostics;
 use Collection;
 
 #~
-LSP features regression test.
-
-Covers: FindReferences, DocumentHighlight, FoldingRanges, WorkspaceSymbols,
-SelectionRanges, TypeHierarchy (Prepare/Supertypes/Subtypes), FindDefinition,
-FindDeclaration, Hover, SignatureHelp, CodeAction, GetSymbols, GetDiagnostics,
-FindTypeDefinition, call hierarchy, InlayHints, SemanticTokens.
+# LSP features regression test.
+# EXTRA_LIBS: diags,gen_collect
+#
+# Covers: FindReferences, DocumentHighlight, FoldingRanges, WorkspaceSymbols,
+# SelectionRanges, TypeHierarchy (Prepare/Supertypes/Subtypes), FindDefinition,
+# FindDeclaration, Hover, SignatureHelp, CodeAction, GetSymbols, GetDiagnostics,
+# FindTypeDefinition, call hierarchy, InlayHints, SemanticTokens.
 ~#
 class LspFeaturesTest {
 	@passed : static : Int;
