@@ -217,35 +217,6 @@ bundle System.Diagnostics {
 		}
 
 		#~
-		Return foldable ranges (classes, methods, enums, bundles) for the given file.
-		Backs textDocument/foldingRange. Each returned Result carries the span as
-		GetStartLine() .. GetEndLine() and the kind via GetKind().
-		@param uri file uri
-		@param sys_path system library path
-		@return fold ranges in file order, Nil if nothing to fold
-		~#
-		method : public : FoldingRanges(uri : String, sys_path : String) ~ Result[] {
-			root := GetSymbols(uri, sys_path);
-			if(root = Nil) {
-				return Nil;
-			};
-
-			ranges := Vector->New()<Result>;
-			CollectFoldRanges(root, uri, ranges);
-
-			count := ranges->Size();
-			if(count = 0) {
-				return Nil;
-			};
-
-			out := Result->New[count];
-			for(i := 0; i < count; i += 1;) {
-				out[i] := ranges->Get(i);
-			};
-			return out;
-		}
-
-		#~
 		Return every workspace symbol whose name contains the query substring
 		(case-insensitive). Backs workspace/symbol (Ctrl+T in VS Code). Matches
 		across every parsed class, method, and enum.
@@ -343,76 +314,6 @@ bundle System.Diagnostics {
 		}
 
 		#~
-		Return enclosing ranges at the given cursor position, ordered innermost
-		first. Backs textDocument/selectionRange. Uses the GetSymbols tree so the
-		granularity is class -> method (statements/expressions are not modeled
-		yet). The LSP bridge is responsible for chaining these into SelectionRange
-		parent pointers.
-		@param uri file uri
-		@param line 0-based line of the cursor
-		@param pos 0-based character position of the cursor
-		@param sys_path system library path
-		@return enclosing ranges (innermost first), Nil if nothing encloses the cursor
-		~#
-		method : public : SelectionRanges(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
-			root := GetSymbols(uri, sys_path);
-			if(root = Nil) {
-				return Nil;
-			};
-
-			# DFS emits outer-first; collected_outer is in ancestor order.
-			collected_outer := Vector->New()<Result>;
-			CollectEnclosingRanges(root, uri, line, pos, collected_outer);
-
-			count := collected_outer->Size();
-			if(count = 0) {
-				return Nil;
-			};
-
-			# Reverse so caller sees innermost first, matching the LSP convention
-			# where SelectionRange.range is the smallest span and parent walks outward.
-			out := Result->New[count];
-			for(i := 0; i < count; i += 1;) {
-				out[i] := collected_outer->Get(count - 1 - i);
-			};
-			return out;
-		}
-
-		#~
-		Depth-first walk over a Result tree emitted by GetSymbols, appending
-		every node in the target URI whose line span encloses the cursor.
-		Helper for SelectionRanges.
-		@param node current tree node (nil-safe)
-		@param uri file uri to filter by
-		@param line cursor line
-		@param pos cursor character position (reserved for future use)
-		@param out accumulator (outer-first by DFS order)
-		~#
-		method : private : CollectEnclosingRanges(node : Result, uri : String, line : Int, pos : Int, out : Vector<Result>) ~ Nil {
-			if(node = Nil) {
-				return;
-			};
-
-			desc := node->GetDescription();
-			if(desc <> Nil & desc->Equals(uri)) {
-				start_line := node->GetStartLine();
-				end_line := node->GetEndLine();
-				# A node encloses the cursor when [start_line..end_line] covers `line`.
-				# Skip degenerate ranges (start < 0) so the file-root is ignored.
-				if(start_line >= 0 & start_line <= line & line <= end_line) {
-					out->AddBack(node);
-				};
-			};
-
-			children := node->GetResults();
-			if(children <> Nil) {
-				for(i := 0; i < children->Size(); i += 1;) {
-					CollectEnclosingRanges(children[i], uri, line, pos, out);
-				};
-			};
-		}
-
-		#~
 		Depth-first walk over a Result tree emitted by GetSymbols, appending
 		every named, source-located entry whose lower-cased name contains the
 		needle. Helper for WorkspaceSymbols.
@@ -437,39 +338,6 @@ bundle System.Diagnostics {
 			if(children <> Nil) {
 				for(i := 0; i < children->Size(); i += 1;) {
 					CollectWorkspaceSymbols(children[i], needle, out);
-				};
-			};
-		}
-
-		#~
-		Depth-first walk over a Result tree emitted by GetSymbols, appending
-		every multi-line node whose description matches the target URI into
-		the ranges vector. Helper for FoldingRanges.
-		@param node current tree node (nil-safe)
-		@param uri file uri to filter by
-		@param ranges accumulator
-		~#
-		method : private : CollectFoldRanges(node : Result, uri : String, ranges : Vector<Result>) ~ Nil {
-			if(node = Nil) {
-				return;
-			};
-
-			# Only emit multi-line spans for entries whose file matches the target URI.
-			# GetSymbols stores the filename in the description for classes/methods/enums;
-			# the file-root node has no description so it's skipped naturally.
-			desc := node->GetDescription();
-			if(desc <> Nil & desc->Equals(uri)) {
-				start_line := node->GetStartLine();
-				end_line := node->GetEndLine();
-				if(start_line >= 0 & end_line > start_line) {
-					ranges->AddBack(node);
-				};
-			};
-
-			children := node->GetResults();
-			if(children <> Nil) {
-				for(i := 0; i < children->Size(); i += 1;) {
-					CollectFoldRanges(children[i], uri, ranges);
 				};
 			};
 		}
