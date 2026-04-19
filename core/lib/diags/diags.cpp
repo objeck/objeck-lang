@@ -1056,6 +1056,91 @@ extern "C" {
   }
 
   //
+  // type hierarchy: supertypes - walk the parent chain from the class at cursor
+  // outward to the root. Backs typeHierarchy/supertypes.
+  //
+  void diag_type_hierarchy_super_impl(VMContext& context)
+  {
+    // Argument layout follows the FindReferences / GetSymbols pattern:
+    //   slot 0 = @self (the Analysis object), slots 1..4 = call args.
+    // Output is written into the Analysis instance variable @supertypes_results
+    // (slot 8 of the Analysis object), NOT back into the local arg array.
+    // The local-array output pattern (used by InlayHints, OutgoingCalls, etc.)
+    // appears unreliable for Result[] casts — those tests have never returned
+    // non-Nil data so the cast was never exercised.
+    size_t* prgm_obj = APITools_GetObjectValue(context, 0);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const std::wstring uri = APITools_GetStringValue(context, 1);
+    const int line_num = (int)APITools_GetIntValue(context, 2);
+    // line_pos (slot 3) and lib_path (slot 4) read but unused — chain walking
+    // only needs the parsed AST, not the analyzer.
+
+    Class* klass; Method* method; SymbolTable* table;
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+      // resolve the class at cursor
+      Class* target = nullptr;
+      if(klass && !method) {
+        target = klass;
+      }
+      else if(method) {
+        target = method->GetClass();
+      }
+      if(!target) return;
+
+      // walk parent chain — match by exact name OR short-suffix, since ParsedBundle
+      // stores classes under their fully-qualified names ("Default.Shape") while
+      // GetParentName can return the short form ("Shape") as written in source.
+      std::vector<ParsedBundle*> bundles = program->GetBundles();
+      std::vector<Class*> chain;
+      std::wstring parent_name = target->GetParentName();
+
+      while(!parent_name.empty()) {
+        Class* parent_cls = nullptr;
+        const std::wstring dot_suffix = L"." + parent_name;
+        for(size_t i = 0; !parent_cls && i < bundles.size(); ++i) {
+          std::vector<Class*> classes = bundles[i]->GetClasses();
+          for(size_t j = 0; !parent_cls && j < classes.size(); ++j) {
+            const std::wstring cls_name = classes[j]->GetName();
+            if(cls_name == parent_name ||
+               (cls_name.size() >= dot_suffix.size() &&
+                cls_name.compare(cls_name.size() - dot_suffix.size(), dot_suffix.size(), dot_suffix) == 0)) {
+              parent_cls = classes[j];
+            }
+          }
+        }
+        if(!parent_cls) break;
+        if(std::find(chain.begin(), chain.end(), parent_cls) != chain.end()) break;
+        chain.push_back(parent_cls);
+        parent_name = parent_cls->GetParentName();
+      }
+
+      if(!chain.empty()) {
+        size_t* refs_array = APITools_MakeIntArray(context, (int)chain.size());
+        size_t* refs_array_ptr = refs_array + 3;
+
+        for(size_t i = 0; i < chain.size(); ++i) {
+          Class* cls = chain[i];
+          size_t* ref_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          ref_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, cls->GetName());
+          ref_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, cls->GetFileName());
+          ref_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS;
+          ref_obj[ResultPosition::POS_START_LINE] = (size_t)cls->GetLineNumber() - 1;
+          ref_obj[ResultPosition::POS_END_LINE] = (size_t)cls->GetEndLineNumber() - 1;
+          ref_obj[ResultPosition::POS_START_POS] = (size_t)cls->GetLinePosition() - 1;
+          ref_obj[ResultPosition::POS_END_POS] = (size_t)cls->GetLinePosition() + 80;
+          refs_array_ptr[i] = (size_t)ref_obj;
+        }
+
+        // Write into the Analysis instance variable @supertypes_results (slot 8).
+        // This is the proven pattern (mirrors FindReferences/CodeRename) and
+        // produces a properly type-tagged Result[] the wrapper can cast.
+        prgm_obj[8] = (size_t)refs_array;
+      }
+    }
+  }
+
+  //
   // prepare call hierarchy - identify the method at cursor
   //
   void diag_prepare_call_hierarchy_impl(VMContext& context)
@@ -1635,6 +1720,11 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void diag_find_implementation(VMContext& context) { SafeCallDiag(diag_find_implementation_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_type_hierarchy_super(VMContext& context) { SafeCallDiag(diag_type_hierarchy_super_impl, context); }
 
 #ifdef _WIN32
   __declspec(dllexport)

@@ -97,6 +97,7 @@ bundle System.Diagnostics {
 		@rename_results : Result[];
 		@table_handle : Int;
 		@has_uses : Bool;
+		@supertypes_results : Result[];
 
 		New(progam_handle : Int, table_handle : Int, is_parsed : Bool, has_uses : Bool) {
 			Parent();
@@ -281,6 +282,64 @@ bundle System.Diagnostics {
 				out[i] := matches->Get(i);
 			};
 			return out;
+		}
+
+		#~
+		Return the class-level TypeHierarchyItem at the cursor. Backs
+		textDocument/prepareTypeHierarchy. When the cursor is on a class
+		header, returns that class; when inside a method body, returns the
+		enclosing class. Delegates to FindDefinition since the LSP only needs
+		a "seed" Result that supertypes/subtypes can subsequently operate on.
+		@param uri file uri
+		@param line line of cursor
+		@param pos character position of cursor
+		@param sys_path system library path
+		@return seed class Result, Nil if cursor is not on or inside a class
+		~#
+		method : public : PrepareTypeHierarchy(uri : String, line : Int, pos : Int, sys_path : String) ~ Result {
+			return FindDefinition(uri, line, pos, sys_path);
+		}
+
+		#~
+		Walk the parent chain of the class at the cursor, returning each
+		supertype in order (immediate parent first, then grandparent, ...).
+		Backs typeHierarchy/supertypes. User-space only — stops at the first
+		parent that resolves to a library class.
+		@param uri file uri
+		@param line line of cursor
+		@param pos character position of cursor
+		@param sys_path system library path
+		@return supertype classes (nearest parent first), Nil if no parent found
+		~#
+		method : public : TypeHierarchySupertypes(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			# Reset cached results so repeat calls with different positions don't
+			# return stale data from a prior cursor.
+			@supertypes_results := Nil;
+
+			array_args := Base->New[5];
+			array_args[0] := @self;
+			array_args[1] := uri;
+			array_args[2] := IntRef->New(line);
+			array_args[3] := IntRef->New(pos);
+			array_args[4] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_type_hierarchy_super", array_args);
+
+			return @supertypes_results;
+		}
+
+		#~
+		Return classes that directly extend the class at the cursor (and any
+		classes implementing it if it is an interface). Backs
+		typeHierarchy/subtypes. Delegates to FindImplementation, which already
+		walks every bundle for classes whose parent matches the target.
+		@param uri file uri
+		@param line line of cursor
+		@param pos character position of cursor
+		@param sys_path system library path
+		@return direct subtype classes, Nil if no subtypes exist
+		~#
+		method : public : TypeHierarchySubtypes(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			return FindImplementation(uri, line, pos, sys_path);
 		}
 
 		#~

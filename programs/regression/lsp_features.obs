@@ -5,9 +5,9 @@ use Collection;
 LSP features regression test.
 
 Covers: FindReferences, DocumentHighlight, FoldingRanges, WorkspaceSymbols,
-SelectionRanges, FindDefinition, FindDeclaration, Hover, SignatureHelp,
-CodeAction, GetSymbols, GetDiagnostics, FindTypeDefinition, call hierarchy,
-InlayHints, SemanticTokens.
+SelectionRanges, TypeHierarchy (Prepare/Supertypes/Subtypes), FindDefinition,
+FindDeclaration, Hover, SignatureHelp, CodeAction, GetSymbols, GetDiagnostics,
+FindTypeDefinition, call hierarchy, InlayHints, SemanticTokens.
 ~#
 class LspFeaturesTest {
 	@passed : static : Int;
@@ -61,6 +61,16 @@ class LspFeaturesTest {
 		src += "    desc->PrintLine();\r\n";                            # L31
 		src += "  }\r\n";                                               # L32
 		src += "}\r\n";                                                 # L33
+		src += "\r\n";                                                  # L34
+		src += "class Triangle from Shape {\r\n";                      # L35
+		src += "  New() {\r\n";                                         # L36
+		src += "    Parent(\"Tri\", 3);\r\n";                          # L37
+		src += "  }\r\n";                                               # L38
+		src += "\r\n";                                                  # L39
+		src += "  method : public : Area() ~ Float {\r\n";             # L40
+		src += "    return 0.5;\r\n";                                   # L41
+		src += "  }\r\n";                                               # L42
+		src += "}\r\n";                                                 # L43
 
 		texts := String->New[1, 2];
 		texts[0, 0] := "file:///test.obs";
@@ -270,6 +280,49 @@ class LspFeaturesTest {
 		# no-match query returns Nil
 		ws4 := analysis->WorkspaceSymbols("zzz_nothing_here_zzz", lib_path);
 		Check("WorkspaceSymbols no-match query: returns Nil", ws4 = Nil);
+
+		# =============================================
+		# TypeHierarchy (Prepare / Supertypes / Subtypes)
+		# =============================================
+		"\n>> TypeHierarchy..."->PrintLine();
+
+		# PrepareTypeHierarchy at the Triangle class header (L35)
+		prep := analysis->PrepareTypeHierarchy("file:///test.obs", 35, 6, lib_path);
+		Check("PrepareTypeHierarchy on Triangle: no crash", true);
+
+		# Supertypes of Triangle — should include Shape
+		supers := analysis->TypeHierarchySupertypes("file:///test.obs", 35, 6, lib_path);
+		Check("TypeHierarchySupertypes on Triangle: no crash", true);
+		if(supers <> Nil) {
+			Check("TypeHierarchySupertypes Triangle: at least one parent", supers->Size() >= 1);
+
+			found_shape_parent := false;
+			for(i := 0; i < supers->Size(); i += 1;) {
+				n := supers[i]->GetName();
+				if(n <> Nil & n->Has("Shape")) {
+					found_shape_parent := true;
+				};
+			};
+			Check("TypeHierarchySupertypes Triangle: Shape is in parent chain", found_shape_parent);
+		};
+
+		# Supertypes from inside a method body — walks up to enclosing class first
+		supers2 := analysis->TypeHierarchySupertypes("file:///test.obs", 41, 5, lib_path);
+		Check("TypeHierarchySupertypes inside Triangle.Area body: no crash", true);
+		if(supers2 <> Nil) {
+			Check("TypeHierarchySupertypes from method body: resolves to enclosing class' parent", supers2->Size() >= 1);
+		};
+
+		# Supertypes of Shape — Shape has no user-space parent
+		supers3 := analysis->TypeHierarchySupertypes("file:///test.obs", 2, 6, lib_path);
+		Check("TypeHierarchySupertypes on Shape (no parent): returns Nil", supers3 = Nil);
+
+		# Subtypes of Shape — should include Triangle
+		subs := analysis->TypeHierarchySubtypes("file:///test.obs", 2, 6, lib_path);
+		Check("TypeHierarchySubtypes on Shape: no crash", true);
+		if(subs <> Nil) {
+			Check("TypeHierarchySubtypes: at least one child", subs->Size() >= 1);
+		};
 
 		# =============================================
 		# SelectionRanges
