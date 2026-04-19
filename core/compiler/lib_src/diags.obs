@@ -339,6 +339,150 @@ bundle System.Diagnostics {
 		}
 		
 		#~
+		Finds type definition (go to the type of a symbol)
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return type definition location, Nil if not found
+		~#
+		method : public : FindTypeDefinition(uri : String, line : Int, pos : Int, sys_path : String) ~ Result {
+			array_args := Base->New[6];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := uri;
+			array_args[3] := IntRef->New(line);
+			array_args[4] := IntRef->New(pos);
+			array_args[5] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_find_type_definition", array_args);
+
+			return array_args[0]->As(Result);
+		}
+
+		#~
+		Finds implementations of an interface or overrides of a virtual method
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return implementation locations, Nil if not found
+		~#
+		method : public : FindImplementation(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			@impl_results : Result[];
+			array_args := Base->New[6];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := uri;
+			array_args[3] := IntRef->New(line);
+			array_args[4] := IntRef->New(pos);
+			array_args[5] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_find_implementation", array_args);
+
+			return array_args[0]->As(Result[]);
+		}
+
+		#~
+		Prepares call hierarchy item at cursor
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return call hierarchy item, Nil if not found
+		~#
+		method : public : PrepareCallHierarchy(uri : String, line : Int, pos : Int, sys_path : String) ~ Result {
+			array_args := Base->New[6];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := uri;
+			array_args[3] := IntRef->New(line);
+			array_args[4] := IntRef->New(pos);
+			array_args[5] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_prepare_call_hierarchy", array_args);
+
+			return array_args[0]->As(Result);
+		}
+
+		#~
+		Finds all methods that call the target method
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return incoming call locations, Nil if not found
+		~#
+		method : public : IncomingCalls(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			array_args := Base->New[6];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := uri;
+			array_args[3] := IntRef->New(line);
+			array_args[4] := IntRef->New(pos);
+			array_args[5] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_incoming_calls", array_args);
+
+			return array_args[0]->As(Result[]);
+		}
+
+		#~
+		Finds all methods called by the target method
+		@param uri file uri
+		@param line line of symbol
+		@param pos character position of symbol
+		@param sys_path system library path
+		@return outgoing call locations, Nil if not found
+		~#
+		method : public : OutgoingCalls(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			array_args := Base->New[6];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := uri;
+			array_args[3] := IntRef->New(line);
+			array_args[4] := IntRef->New(pos);
+			array_args[5] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_outgoing_calls", array_args);
+
+			return array_args[0]->As(Result[]);
+		}
+
+		#~
+		Gets inlay hints for a range of lines
+		@param uri file uri
+		@param start_line start line of range
+		@param end_line end line of range
+		@param sys_path system library path
+		@return inlay hints, Nil if none found
+		~#
+		method : public : InlayHints(uri : String, start_line : Int, end_line : Int, sys_path : String) ~ Result[] {
+			array_args := Base->New[6];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := uri;
+			array_args[3] := IntRef->New(start_line);
+			array_args[4] := IntRef->New(end_line);
+			array_args[5] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_inlay_hints", array_args);
+
+			return array_args[0]->As(Result[]);
+		}
+
+		#~
+		Gets semantic tokens for the file
+		@param uri file uri
+		@param sys_path system library path
+		@return semantic tokens, Nil if none found
+		~#
+		method : public : SemanticTokens(uri : String, sys_path : String) ~ Result[] {
+			array_args := Base->New[4];
+			array_args[0] := Nil;
+			array_args[1] := @self;
+			array_args[2] := uri;
+			array_args[3] := sys_path;
+			Proxy->GetDllProxy()->CallFunction("diag_semantic_tokens", array_args);
+
+			return array_args[0]->As(Result[]);
+		}
+
+		#~
 		Release native resources, required for clean up.
 		~#
 		method : public : Release() ~ Nil {

@@ -836,6 +836,756 @@ extern "C" {
     prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
   }
 
+  //
+  // find type definition (go to the type of a symbol)
+  //
+  void diag_find_type_definition_impl(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const std::wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+    const std::wstring lib_path = APITools_GetStringValue(context, 5);
+
+    Class* klass; Method* method; SymbolTable* table;
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+      if(method) {
+        std::wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
+          std::wstring found_name; int found_line = 0; int found_start_pos = 0; int found_end_pos = 0;
+          Expression* found_expression = nullptr; SymbolEntry* found_entry = nullptr;
+
+          if(analyzer->GetHover(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, found_expression, found_entry)) {
+            // resolve type from expression or entry
+            Type* resolved_type = nullptr;
+
+            if(found_expression) {
+              if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
+                MethodCall* mc = static_cast<MethodCall*>(found_expression);
+                SymbolEntry* mc_entry = mc->GetEntry();
+                if(mc_entry && mc_entry->GetType()) {
+                  resolved_type = mc_entry->GetType();
+                }
+                else if(mc->GetVariable() && mc->GetVariable()->GetEntry() && mc->GetVariable()->GetEntry()->GetType()) {
+                  resolved_type = mc->GetVariable()->GetEntry()->GetType();
+                }
+              }
+              else if(found_expression->GetExpressionType() == VAR_EXPR) {
+                Variable* var = static_cast<Variable*>(found_expression);
+                if(var->GetEntry() && var->GetEntry()->GetType()) {
+                  resolved_type = var->GetEntry()->GetType();
+                }
+              }
+            }
+
+            if(!resolved_type && found_entry && found_entry->GetType()) {
+              resolved_type = found_entry->GetType();
+            }
+
+            // if CLASS_TYPE, search for the class definition in program bundles
+            if(resolved_type && resolved_type->GetType() == frontend::CLASS_TYPE) {
+              Class* type_class = nullptr;
+              const std::wstring type_name = resolved_type->GetName();
+              std::vector<ParsedBundle*> bundles = program->GetBundles();
+              for(size_t bi = 0; !type_class && bi < bundles.size(); ++bi) {
+                std::vector<Class*> classes = bundles[bi]->GetClasses();
+                for(size_t ci = 0; ci < classes.size(); ++ci) {
+                  if(classes[ci]->GetName() == type_name) {
+                    type_class = classes[ci];
+                    break;
+                  }
+                }
+              }
+              if(type_class && type_class->GetLineNumber() > 0) {
+                size_t* def_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+                def_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, type_class->GetName());
+                def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, type_class->GetFileName());
+                def_obj[ResultPosition::POS_START_LINE] = (size_t)type_class->GetLineNumber() - 1;
+                def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
+                def_obj[ResultPosition::POS_START_POS] = (size_t)type_class->GetLinePosition() - 1;
+                def_obj[ResultPosition::POS_END_POS] = (size_t)type_class->GetLinePosition() + 80;
+                APITools_SetObjectValue(context, 0, def_obj);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  //
+  // find implementations (classes implementing interface, methods overriding virtual)
+  //
+  void diag_find_implementation_impl(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const std::wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+    const std::wstring lib_path = APITools_GetStringValue(context, 5);
+
+    Class* klass; Method* method; SymbolTable* table;
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+      std::wstring full_lib_path = L"lang.obl";
+      if(!lib_path.empty()) {
+        full_lib_path += L',' + lib_path;
+      }
+      ContextAnalyzer analyzer_local(program, full_lib_path, false);
+      ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+      if(!analyzer) return;
+
+      // resolve the symbol at cursor
+      std::wstring target_name;
+      bool target_is_class = false;
+      bool target_is_method = false;
+      std::wstring target_method_name;
+
+      if(method) {
+        std::wstring found_name; int found_line; int found_start_pos; int found_end_pos;
+        Class* found_klass = nullptr; Enum* eenum = nullptr; EnumItem* eenum_item = nullptr;
+        if(analyzer->GetDefinition(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos, found_klass, eenum, eenum_item)) {
+          if(found_klass) {
+            target_name = found_klass->GetName();
+            target_is_class = true;
+          }
+          else {
+            // check if cursor is on a method call
+            bool is_var;
+            std::vector<Expression*> exprs = FetchRenamedExpressions(method, *analyzer, line_num, line_pos, is_var);
+            if(!is_var && !exprs.empty() && exprs[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+              MethodCall* mc = static_cast<MethodCall*>(exprs[0]);
+              Method* resolved = mc->GetMethod();
+              if(resolved && resolved->IsVirtual()) {
+                target_method_name = resolved->GetName();
+                target_is_method = true;
+              }
+            }
+          }
+        }
+      }
+      else {
+        // class level - cursor on class name
+        Class* found_klass = nullptr;
+        if(analyzer->GetDefinition(klass, line_num, line_pos, found_klass)) {
+          if(found_klass) {
+            target_name = found_klass->GetName();
+            target_is_class = true;
+          }
+        }
+        else {
+          target_name = klass->GetName();
+          target_is_class = true;
+        }
+      }
+
+      // collect implementations
+      std::vector<ParseNode*> results;
+
+      if(target_is_class) {
+        // find all classes that implement this interface or extend this class
+        std::vector<ParsedBundle*> bundles = program->GetBundles();
+        for(size_t i = 0; i < bundles.size(); ++i) {
+          std::vector<Class*> classes = bundles[i]->GetClasses();
+          for(size_t j = 0; j < classes.size(); ++j) {
+            Class* cls = classes[j];
+            if(cls->GetName() == target_name) continue;
+
+            // check interfaces
+            const std::vector<std::wstring> iface_names = cls->GetInterfaceNames();
+            for(size_t k = 0; k < iface_names.size(); ++k) {
+              if(iface_names[k] == target_name) {
+                results.push_back(cls);
+                break;
+              }
+            }
+
+            // check parent chain
+            if(cls->GetParentName() == target_name) {
+              if(std::find(results.begin(), results.end(), cls) == results.end()) {
+                results.push_back(cls);
+              }
+            }
+          }
+        }
+      }
+      else if(target_is_method) {
+        // find all methods that override this virtual method
+        std::vector<ParsedBundle*> bundles = program->GetBundles();
+        for(size_t i = 0; i < bundles.size(); ++i) {
+          std::vector<Class*> classes = bundles[i]->GetClasses();
+          for(size_t j = 0; j < classes.size(); ++j) {
+            std::vector<Method*> methods = classes[j]->GetMethods();
+            for(size_t k = 0; k < methods.size(); ++k) {
+              Method* m = methods[k];
+              if(m->GetName() == target_method_name && !m->IsVirtual()) {
+                results.push_back(m);
+              }
+            }
+          }
+        }
+      }
+
+      // format results
+      if(!results.empty()) {
+        size_t* refs_array = APITools_MakeIntArray(context, (int)results.size());
+        size_t* refs_array_ptr = refs_array + 3;
+
+        for(size_t i = 0; i < results.size(); ++i) {
+          ParseNode* node = results[i];
+          size_t* ref_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+          ref_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, node->GetFileName());
+          ref_obj[ResultPosition::POS_START_LINE] = (size_t)node->GetLineNumber() - 1;
+          ref_obj[ResultPosition::POS_END_LINE] = ref_obj[ResultPosition::POS_START_LINE];
+          ref_obj[ResultPosition::POS_START_POS] = (size_t)node->GetLinePosition() - 1;
+          ref_obj[ResultPosition::POS_END_POS] = (size_t)node->GetLinePosition() + 80;
+          refs_array_ptr[i] = (size_t)ref_obj;
+        }
+
+        APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+      }
+    }
+  }
+
+  //
+  // prepare call hierarchy - identify the method at cursor
+  //
+  void diag_prepare_call_hierarchy_impl(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const std::wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+    const std::wstring lib_path = APITools_GetStringValue(context, 5);
+
+    Class* klass; Method* method; SymbolTable* table;
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+      if(method) {
+        // check if cursor is on a method call
+        std::wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(analyzer) {
+          Method* target_method = method;
+
+          // check if cursor is on a specific method call within the method
+          bool is_var;
+          std::vector<Expression*> exprs = FetchRenamedExpressions(method, *analyzer, line_num, line_pos, is_var);
+          if(!is_var && !exprs.empty() && exprs[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+            MethodCall* mc = static_cast<MethodCall*>(exprs[0]);
+            if(mc->GetMethod()) {
+              target_method = mc->GetMethod();
+            }
+          }
+
+          // return method info
+          size_t* result_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+
+          const std::wstring method_name = target_method->GetName();
+          const size_t colon_idx = method_name.find(L':');
+          std::wstring short_name = colon_idx != std::wstring::npos ? method_name.substr(colon_idx + 1) : method_name;
+
+          result_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, short_name);
+          result_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, target_method->GetFileName());
+          result_obj[ResultPosition::POS_START_LINE] = (size_t)target_method->GetLineNumber() - 1;
+          result_obj[ResultPosition::POS_END_LINE] = (size_t)target_method->GetEndLineNumber() - 1;
+          result_obj[ResultPosition::POS_START_POS] = (size_t)target_method->GetLinePosition() - 1;
+          result_obj[ResultPosition::POS_END_POS] = (size_t)target_method->GetLinePosition() + 80;
+
+          // store class name in POS_CODE as a secondary identifier
+          if(target_method->GetClass()) {
+            result_obj[ResultPosition::POS_TYPE] = (size_t)APITools_CreateStringObject(context, target_method->GetClass()->GetName());
+          }
+
+          APITools_SetObjectValue(context, 0, result_obj);
+        }
+      }
+    }
+  }
+
+  //
+  // incoming calls - find all methods that call the target method
+  //
+  void diag_incoming_calls_impl(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const std::wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+    const std::wstring lib_path = APITools_GetStringValue(context, 5);
+
+    Class* klass; Method* method; SymbolTable* table;
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+      if(method) {
+        std::wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(!analyzer) return;
+
+        // resolve target method (may be a call under cursor)
+        Method* target_method = method;
+        bool is_var;
+        std::vector<Expression*> exprs = FetchRenamedExpressions(method, *analyzer, line_num, line_pos, is_var);
+        if(!is_var && !exprs.empty() && exprs[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+          MethodCall* mc = static_cast<MethodCall*>(exprs[0]);
+          if(mc->GetMethod()) {
+            target_method = mc->GetMethod();
+          }
+        }
+
+        // find all callers
+        std::vector<Method*> callers;
+        std::vector<int> caller_lines;
+        std::vector<int> caller_positions;
+
+        std::vector<ParsedBundle*> bundles = program->GetBundles();
+        for(size_t i = 0; i < bundles.size(); ++i) {
+          std::vector<Class*> classes = bundles[i]->GetClasses();
+          for(size_t j = 0; j < classes.size(); ++j) {
+            std::vector<Method*> methods = classes[j]->GetMethods();
+            for(size_t k = 0; k < methods.size(); ++k) {
+              Method* m = methods[k];
+              std::vector<Expression*> method_expressions = m->GetExpressions();
+              for(size_t l = 0; l < method_expressions.size(); ++l) {
+                if(method_expressions[l]->GetExpressionType() == METHOD_CALL_EXPR) {
+                  MethodCall* mc = static_cast<MethodCall*>(method_expressions[l]);
+                  if(mc->GetMethod() == target_method) {
+                    callers.push_back(m);
+                    int call_line = static_cast<Expression*>(mc)->GetLineNumber();
+                    int call_pos = mc->GetMidLinePosition() > 0 ? mc->GetMidLinePosition() : static_cast<Expression*>(mc)->GetLinePosition();
+                    caller_lines.push_back(call_line);
+                    caller_positions.push_back(call_pos);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if(!callers.empty()) {
+          size_t* refs_array = APITools_MakeIntArray(context, (int)callers.size());
+          size_t* refs_array_ptr = refs_array + 3;
+
+          for(size_t i = 0; i < callers.size(); ++i) {
+            Method* caller = callers[i];
+            size_t* ref_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+
+            const std::wstring caller_name = caller->GetName();
+            const size_t colon_idx = caller_name.find(L':');
+            std::wstring short_name = colon_idx != std::wstring::npos ? caller_name.substr(colon_idx + 1) : caller_name;
+
+            ref_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, short_name);
+            ref_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, caller->GetFileName());
+            ref_obj[ResultPosition::POS_START_LINE] = (size_t)caller->GetLineNumber() - 1;
+            ref_obj[ResultPosition::POS_END_LINE] = (size_t)caller->GetEndLineNumber() - 1;
+            ref_obj[ResultPosition::POS_START_POS] = (size_t)caller->GetLinePosition() - 1;
+            ref_obj[ResultPosition::POS_END_POS] = (size_t)caller->GetLinePosition() + 80;
+            refs_array_ptr[i] = (size_t)ref_obj;
+          }
+
+          APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+        }
+      }
+    }
+  }
+
+  //
+  // outgoing calls - find all methods called by the target method
+  //
+  void diag_outgoing_calls_impl(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const std::wstring uri = APITools_GetStringValue(context, 2);
+    const int line_num = (int)APITools_GetIntValue(context, 3);
+    const int line_pos = (int)APITools_GetIntValue(context, 4);
+    const std::wstring lib_path = APITools_GetStringValue(context, 5);
+
+    Class* klass; Method* method; SymbolTable* table;
+    if(program->FindMethodOrClass(uri, line_num, klass, method, table)) {
+      if(method) {
+        std::wstring full_lib_path = L"lang.obl";
+        if(!lib_path.empty()) {
+          full_lib_path += L',' + lib_path;
+        }
+        ContextAnalyzer analyzer_local(program, full_lib_path, false);
+        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        if(!analyzer) return;
+
+        // resolve target method
+        Method* target_method = method;
+        bool is_var;
+        std::vector<Expression*> exprs = FetchRenamedExpressions(method, *analyzer, line_num, line_pos, is_var);
+        if(!is_var && !exprs.empty() && exprs[0]->GetExpressionType() == METHOD_CALL_EXPR) {
+          MethodCall* mc = static_cast<MethodCall*>(exprs[0]);
+          if(mc->GetMethod()) {
+            target_method = mc->GetMethod();
+          }
+        }
+
+        // collect outgoing calls (unique methods only)
+        std::vector<Method*> called_methods;
+        std::vector<int> call_lines;
+        std::vector<int> call_positions;
+
+        std::vector<Expression*> method_expressions = target_method->GetExpressions();
+        for(size_t i = 0; i < method_expressions.size(); ++i) {
+          if(method_expressions[i]->GetExpressionType() == METHOD_CALL_EXPR) {
+            MethodCall* mc = static_cast<MethodCall*>(method_expressions[i]);
+            Method* called = mc->GetMethod();
+            if(called && called->GetLineNumber() > 0) {
+              if(std::find(called_methods.begin(), called_methods.end(), called) == called_methods.end()) {
+                called_methods.push_back(called);
+                int cl = static_cast<Expression*>(mc)->GetLineNumber();
+                int cp = mc->GetMidLinePosition() > 0 ? mc->GetMidLinePosition() : static_cast<Expression*>(mc)->GetLinePosition();
+                call_lines.push_back(cl);
+                call_positions.push_back(cp);
+              }
+            }
+          }
+        }
+
+        if(!called_methods.empty()) {
+          size_t* refs_array = APITools_MakeIntArray(context, (int)called_methods.size());
+          size_t* refs_array_ptr = refs_array + 3;
+
+          for(size_t i = 0; i < called_methods.size(); ++i) {
+            Method* called = called_methods[i];
+            size_t* ref_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+
+            const std::wstring called_name = called->GetName();
+            const size_t colon_idx = called_name.find(L':');
+            std::wstring short_name = colon_idx != std::wstring::npos ? called_name.substr(colon_idx + 1) : called_name;
+
+            ref_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, short_name);
+            ref_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, called->GetFileName());
+            ref_obj[ResultPosition::POS_START_LINE] = (size_t)called->GetLineNumber() - 1;
+            ref_obj[ResultPosition::POS_END_LINE] = (size_t)called->GetEndLineNumber() - 1;
+            ref_obj[ResultPosition::POS_START_POS] = (size_t)called->GetLinePosition() - 1;
+            ref_obj[ResultPosition::POS_END_POS] = (size_t)called->GetLinePosition() + 80;
+            refs_array_ptr[i] = (size_t)ref_obj;
+          }
+
+          APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+        }
+      }
+    }
+  }
+
+  //
+  // inlay hints - parameter names at call sites + type hints for inferred locals
+  //
+  void diag_inlay_hints_impl(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const std::wstring uri = APITools_GetStringValue(context, 2);
+    const int start_line = (int)APITools_GetIntValue(context, 3);
+    const int end_line = (int)APITools_GetIntValue(context, 4);
+    const std::wstring lib_path = APITools_GetStringValue(context, 5);
+
+    std::wstring full_lib_path = L"lang.obl";
+    if(!lib_path.empty()) {
+      full_lib_path += L',' + lib_path;
+    }
+    ContextAnalyzer analyzer_local(program, full_lib_path, false);
+    ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+    if(!analyzer) return;
+
+    struct HintInfo {
+      std::wstring text;
+      int line;
+      int pos;
+      int kind; // 1=type, 2=parameter
+    };
+    std::vector<HintInfo> hints;
+
+    // iterate all methods in all classes looking for those in the visible range
+    std::vector<ParsedBundle*> bundles = program->GetBundles();
+    for(size_t i = 0; i < bundles.size(); ++i) {
+      std::vector<Class*> classes = bundles[i]->GetClasses();
+      for(size_t j = 0; j < classes.size(); ++j) {
+        Class* cls = classes[j];
+        if(cls->GetFileName() != uri) continue;
+
+        std::vector<Method*> methods = cls->GetMethods();
+        for(size_t k = 0; k < methods.size(); ++k) {
+          Method* m = methods[k];
+          int mthd_start = m->GetLineNumber() - 1;
+          int mthd_end = m->GetEndLineNumber() - 1;
+
+          // skip methods outside the visible range
+          if(mthd_end < start_line || mthd_start > end_line) continue;
+
+          std::vector<Expression*> expressions = m->GetExpressions();
+          for(size_t l = 0; l < expressions.size(); ++l) {
+            Expression* expr = expressions[l];
+            int expr_line = expr->GetLineNumber() - 1;
+            if(expr_line < start_line || expr_line > end_line) continue;
+
+            // parameter name hints at method call sites
+            if(expr->GetExpressionType() == METHOD_CALL_EXPR) {
+              MethodCall* mc = static_cast<MethodCall*>(expr);
+              Method* called = mc->GetMethod();
+              ExpressionList* call_params = mc->GetCallingParameters();
+
+              if(called && call_params) {
+                DeclarationList* decls = called->GetDeclarations();
+                if(decls) {
+                  std::vector<Declaration*> decl_list = decls->GetDeclarations();
+                  std::vector<Expression*> param_exprs = call_params->GetExpressions();
+
+                  for(size_t p = 0; p < param_exprs.size() && p < decl_list.size(); ++p) {
+                    if(param_exprs[p] && decl_list[p] && decl_list[p]->GetEntry()) {
+                      std::wstring param_name = decl_list[p]->GetEntry()->GetName();
+                      // extract short name (after method qualifier)
+                      size_t last_colon = param_name.rfind(L':');
+                      if(last_colon != std::wstring::npos) {
+                        param_name = param_name.substr(last_colon + 1);
+                      }
+
+                      if(!param_name.empty() && param_exprs[p]->GetLineNumber() > 0) {
+                        HintInfo hint;
+                        hint.text = param_name + L":";
+                        hint.line = param_exprs[p]->GetLineNumber() - 1;
+                        hint.pos = param_exprs[p]->GetLinePosition() - 1;
+                        hint.kind = 2; // parameter
+                        hints.push_back(hint);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if(!hints.empty()) {
+      size_t* refs_array = APITools_MakeIntArray(context, (int)hints.size());
+      size_t* refs_array_ptr = refs_array + 3;
+
+      for(size_t i = 0; i < hints.size(); ++i) {
+        size_t* hint_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+        hint_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, hints[i].text);
+        hint_obj[ResultPosition::POS_TYPE] = (size_t)hints[i].kind;
+        hint_obj[ResultPosition::POS_START_LINE] = (size_t)hints[i].line;
+        hint_obj[ResultPosition::POS_START_POS] = (size_t)hints[i].pos;
+        hint_obj[ResultPosition::POS_END_LINE] = (size_t)hints[i].line;
+        hint_obj[ResultPosition::POS_END_POS] = (size_t)hints[i].pos;
+        refs_array_ptr[i] = (size_t)hint_obj;
+      }
+
+      APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+    }
+  }
+
+  //
+  // semantic tokens - classify all expressions by type
+  //
+  void diag_semantic_tokens_impl(VMContext& context)
+  {
+    size_t* prgm_obj = APITools_GetObjectValue(context, 1);
+    ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
+
+    const std::wstring uri = APITools_GetStringValue(context, 2);
+    const std::wstring lib_path = APITools_GetStringValue(context, 3);
+
+    std::wstring full_lib_path = L"lang.obl";
+    if(!lib_path.empty()) {
+      full_lib_path += L',' + lib_path;
+    }
+    ContextAnalyzer analyzer_local(program, full_lib_path, false);
+    ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+    if(!analyzer) return;
+
+    // LSP semantic token types:
+    // 0=namespace, 1=type, 2=class, 3=enum, 4=interface,
+    // 5=function, 6=method, 7=property, 8=variable, 9=parameter, 10=enumMember
+    // Modifiers: 1=declaration, 2=static, 4=readonly
+
+    struct TokenInfo {
+      int line;
+      int start_char;
+      int length;
+      int token_type;
+      int token_modifiers;
+    };
+    std::vector<TokenInfo> tokens;
+
+    std::vector<ParsedBundle*> bundles = program->GetBundles();
+    for(size_t i = 0; i < bundles.size(); ++i) {
+      std::vector<Class*> classes = bundles[i]->GetClasses();
+      for(size_t j = 0; j < classes.size(); ++j) {
+        Class* cls = classes[j];
+        if(cls->GetFileName() != uri) continue;
+
+        // class/interface declaration token
+        if(cls->GetLineNumber() > 0) {
+          TokenInfo t;
+          t.line = cls->GetLineNumber() - 1;
+          t.start_char = cls->GetLinePosition() - 1;
+
+          // extract short class name (after last '.')
+          std::wstring cls_name = cls->GetName();
+          size_t dot_pos = cls_name.rfind(L'.');
+          std::wstring short_name = dot_pos != std::wstring::npos ? cls_name.substr(dot_pos + 1) : cls_name;
+          t.length = (int)short_name.size();
+          t.token_type = cls->IsInterface() ? 4 : 2; // interface or class
+          t.token_modifiers = 1; // declaration
+          tokens.push_back(t);
+        }
+
+        // method expressions
+        std::vector<Method*> methods = cls->GetMethods();
+        for(size_t k = 0; k < methods.size(); ++k) {
+          Method* m = methods[k];
+
+          // method declaration itself
+          if(m->GetMidLineNumber() > 0) {
+            TokenInfo t;
+            t.line = m->GetMidLineNumber() - 1;
+            t.start_char = m->GetMidLinePosition() - 1;
+
+            const std::wstring mname = m->GetName();
+            const size_t colon_idx = mname.find(L':');
+            std::wstring short_name = colon_idx != std::wstring::npos ? mname.substr(colon_idx + 1) : mname;
+            t.length = (int)short_name.size();
+
+            t.token_type = m->IsStatic() ? 5 : 6; // function or method
+            t.token_modifiers = 1; // declaration
+            if(m->IsStatic()) t.token_modifiers |= 2; // static
+            tokens.push_back(t);
+          }
+
+          // expressions within method
+          std::vector<Expression*> expressions = m->GetExpressions();
+          for(size_t l = 0; l < expressions.size(); ++l) {
+            Expression* expr = expressions[l];
+            if(expr->GetLineNumber() <= 0 || expr->GetLinePosition() <= 0) continue;
+
+            if(expr->GetExpressionType() == VAR_EXPR) {
+              Variable* var = static_cast<Variable*>(expr);
+              TokenInfo t;
+              t.line = expr->GetLineNumber() - 1;
+              t.start_char = expr->GetLinePosition() - 1;
+              t.length = (int)var->GetName().size();
+              t.token_modifiers = 0;
+
+              const std::wstring& vname = var->GetName();
+              if(!vname.empty() && vname[0] == L'@') {
+                t.token_type = 7; // property (instance/class var)
+                SymbolEntry* entry = var->GetEntry();
+                if(entry && entry->IsStatic()) {
+                  t.token_modifiers |= 2; // static
+                }
+              }
+              else {
+                SymbolEntry* entry = var->GetEntry();
+                if(entry && entry->IsParameter()) {
+                  t.token_type = 9; // parameter
+                }
+                else {
+                  t.token_type = 8; // variable
+                }
+              }
+
+              tokens.push_back(t);
+            }
+            else if(expr->GetExpressionType() == METHOD_CALL_EXPR) {
+              MethodCall* mc = static_cast<MethodCall*>(expr);
+              if(mc->GetCallType() == ENUM_CALL) continue;
+
+              int mid_pos = mc->GetMidLinePosition();
+              if(mid_pos <= 0) mid_pos = expr->GetLinePosition();
+
+              TokenInfo t;
+              t.line = expr->GetLineNumber() - 1;
+              t.start_char = mid_pos - 1;
+              t.length = (int)mc->GetMethodName().size();
+              t.token_modifiers = 0;
+
+              Method* called = mc->GetMethod();
+              if(called && called->IsStatic()) {
+                t.token_type = 5; // function (static)
+                t.token_modifiers |= 2;
+              }
+              else {
+                t.token_type = 6; // method
+              }
+
+              tokens.push_back(t);
+            }
+          }
+        }
+      }
+
+      // enums
+      std::vector<Enum*> enums = bundles[i]->GetEnums();
+      for(size_t j = 0; j < enums.size(); ++j) {
+        Enum* en = enums[j];
+        if(en->GetFileName() != uri || en->GetLineNumber() <= 0) continue;
+
+        TokenInfo t;
+        t.line = en->GetLineNumber() - 1;
+        t.start_char = en->GetLinePosition() - 1;
+
+        std::wstring ename = en->GetName();
+        size_t dot_pos = ename.rfind(L'.');
+        std::wstring short_name = dot_pos != std::wstring::npos ? ename.substr(dot_pos + 1) : ename;
+        t.length = (int)short_name.size();
+        t.token_type = 3; // enum
+        t.token_modifiers = 1; // declaration
+        tokens.push_back(t);
+      }
+    }
+
+    // sort tokens by line then position
+    std::sort(tokens.begin(), tokens.end(), [](const TokenInfo& a, const TokenInfo& b) {
+      return a.line < b.line || (a.line == b.line && a.start_char < b.start_char);
+    });
+
+    // encode as LSP delta format
+    if(!tokens.empty()) {
+      size_t* refs_array = APITools_MakeIntArray(context, (int)tokens.size());
+      size_t* refs_array_ptr = refs_array + 3;
+
+      for(size_t i = 0; i < tokens.size(); ++i) {
+        size_t* tok_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+        tok_obj[ResultPosition::POS_START_LINE] = (size_t)tokens[i].line;
+        tok_obj[ResultPosition::POS_START_POS] = (size_t)tokens[i].start_char;
+        tok_obj[ResultPosition::POS_END_LINE] = (size_t)tokens[i].length;
+        tok_obj[ResultPosition::POS_END_POS] = (size_t)tokens[i].token_type;
+        tok_obj[ResultPosition::POS_TYPE] = (size_t)tokens[i].token_modifiers;
+        refs_array_ptr[i] = (size_t)tok_obj;
+      }
+
+      APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+    }
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -875,6 +1625,41 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void diag_get_diagnosis(VMContext& context) { SafeCallDiag(diag_get_diagnosis_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_find_type_definition(VMContext& context) { SafeCallDiag(diag_find_type_definition_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_find_implementation(VMContext& context) { SafeCallDiag(diag_find_implementation_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_prepare_call_hierarchy(VMContext& context) { SafeCallDiag(diag_prepare_call_hierarchy_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_incoming_calls(VMContext& context) { SafeCallDiag(diag_incoming_calls_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_outgoing_calls(VMContext& context) { SafeCallDiag(diag_outgoing_calls_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_inlay_hints(VMContext& context) { SafeCallDiag(diag_inlay_hints_impl, context); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_semantic_tokens(VMContext& context) { SafeCallDiag(diag_semantic_tokens_impl, context); }
 
 }
 
