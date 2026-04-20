@@ -9502,6 +9502,44 @@ bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int lin
     }
   }
 
+  // Declaration-position fallback: LocateExpression omits declaration LHS
+  // (e.g. `counter` in `counter := ...`) to avoid synthetic Variable nodes.
+  // Match directly against the SymbolEntry's own declaration position.
+  auto match_entry_decl = [&](SymbolEntry* entry) -> bool {
+    if(!entry || entry->GetLineNumber() != line_num + 1) {
+      return false;
+    }
+    const std::wstring entry_full_name = entry->GetName();
+    const size_t sep = entry_full_name.find_last_of(L':');
+    const std::wstring bare_name = (sep != std::wstring::npos) ? entry_full_name.substr(sep + 1) : entry_full_name;
+    const int start_pos = entry->GetLinePosition() - 1;
+    const int end_pos = start_pos + (int)bare_name.size();
+    if(start_pos <= line_pos && line_pos <= end_pos) {
+      found_entry = entry;
+      found_name = bare_name;
+      found_line = entry->GetLineNumber();
+      found_start_pos = start_pos;
+      found_end_pos = end_pos;
+      return true;
+    }
+    return false;
+  };
+
+  std::vector<SymbolEntry*> local_entries = symbol_table->GetEntries(method->GetParsedName());
+  for(size_t i = 0; i < local_entries.size(); ++i) {
+    if(match_entry_decl(local_entries[i])) {
+      return true;
+    }
+  }
+  if(method->GetClass()) {
+    std::vector<SymbolEntry*> class_entries = symbol_table->GetEntries(method->GetClass()->GetName());
+    for(size_t i = 0; i < class_entries.size(); ++i) {
+      if(match_entry_decl(class_entries[i])) {
+        return true;
+      }
+    }
+  }
+
   return false;
 }
 
