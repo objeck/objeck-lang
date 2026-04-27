@@ -1,0 +1,85 @@
+use System.Diagnostics;
+use Collection;
+
+# Crash repro for hover / codeAction AT the `->` operator chars
+# Memory flagged: "positions on/near -> operator (e.g., char 7-8 on foo->Increment())"
+# The existing diag_crash_repro.obs hits pos 5 (foo) and pos 10 (Increment),
+# but NOT pos 7 (-) and pos 8 (>).
+
+class DiagArrowOpTest {
+	function : Main(args : String[]) ~ Nil {
+		src := "class Counter {\r\n";                                          # L0
+		src += "  @count : Int;\r\n";                                          # L1
+		src += "\r\n";                                                         # L2
+		src += "  New() {\r\n";                                                # L3
+		src += "    @count := 0;\r\n";                                         # L4
+		src += "  }\r\n";                                                      # L5
+		src += "\r\n";                                                         # L6
+		src += "  method : public : Increment() ~ Nil {\r\n";                 # L7
+		src += "    @count += 1;\r\n";                                         # L8
+		src += "  }\r\n";                                                      # L9
+		src += "}\r\n";                                                        # L10
+		src += "\r\n";                                                         # L11
+		src += "class Main {\r\n";                                             # L12
+		src += "  function : Main(args : String[]) ~ Nil {\r\n";              # L13
+		src += "    foo := Counter->New();\r\n";                               # L14
+		src += "    foo->Increment();\r\n";                                    # L15   # <- target line
+		src += "  }\r\n";                                                      # L16
+		src += "}\r\n";                                                        # L17
+
+		texts := String->New[1, 2];
+		texts[0, 0] := "file:///arrow.obs";
+		texts[0, 1] := src;
+
+		analysis := Analyzer->ParseText(texts);
+		if(analysis = Nil | <>analysis->IsParsed()) {
+			"FAIL: parse failed"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		"parsed OK"->PrintLine();
+
+		analysis->GetSymbols("file:///arrow.obs", "");
+		"symbols OK"->PrintLine();
+
+		# Line 15 is `    foo->Increment();`
+		# positions:   0123456789012345678901
+		#                  f  o  o  -  >  I
+
+		# Call it multiple times — memory says pattern is "works 1-2 times then crashes on 3rd"
+		each(i : 5) {
+			">> iter {$i} Hover L15 pos 7 (on '-')..."->PrintLine();
+			analysis->Hover("file:///arrow.obs", 15, 7, "", "", "");
+			"   OK"->PrintLine();
+
+			">> iter {$i} Hover L15 pos 8 (on '>')..."->PrintLine();
+			analysis->Hover("file:///arrow.obs", 15, 8, "", "", "");
+			"   OK"->PrintLine();
+
+			">> iter {$i} Hover L15 pos 6 (space before '-')..."->PrintLine();
+			analysis->Hover("file:///arrow.obs", 15, 6, "", "", "");
+			"   OK"->PrintLine();
+
+			">> iter {$i} CodeAction L15 pos 7 (on '-')..."->PrintLine();
+			analysis->CodeAction("file:///arrow.obs", 15, 7, "");
+			"   OK"->PrintLine();
+
+			">> iter {$i} CodeAction L15 pos 8 (on '>')..."->PrintLine();
+			analysis->CodeAction("file:///arrow.obs", 15, 8, "");
+			"   OK"->PrintLine();
+		};
+
+		# Also hit L14 `    foo := Counter->New();` arrow at pos 15-16
+		each(i : 5) {
+			">> iter {$i} Hover L14 pos 15 (on '-' of Counter->New)..."->PrintLine();
+			analysis->Hover("file:///arrow.obs", 14, 15, "", "", "");
+			"   OK"->PrintLine();
+
+			">> iter {$i} Hover L14 pos 16 (on '>' of Counter->New)..."->PrintLine();
+			analysis->Hover("file:///arrow.obs", 14, 16, "", "", "");
+			"   OK"->PrintLine();
+		};
+
+		analysis->Release();
+		"PASS: all arrow-op operations completed without crash"->PrintLine();
+	}
+}
