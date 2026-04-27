@@ -2,6 +2,7 @@
 *.o
 *.a
 *.obe
+*.obm
 
 # MSVC compiled objects
 *.obj
