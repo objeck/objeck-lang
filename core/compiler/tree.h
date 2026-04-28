@@ -245,6 +245,17 @@ namespace frontend {
     void AddChild(ScopeTable* c) {
       children.push_back(c);
     }
+
+    // Reset child_pos cursor recursively. The LSP diags layer re-runs
+    // ContextAnalyzer::Analyze on every request; without this reset, the
+    // second walk's NewScope()/GetNextChild() returns nullptr and lookups
+    // silently fail.
+    void ResetIteration() {
+      child_pos = 0;
+      for(size_t i = 0; i < children.size(); ++i) {
+        children[i]->ResetIteration();
+      }
+    }
   };
 
   /****************************
@@ -262,6 +273,16 @@ namespace frontend {
     ~SymbolTable() {
       delete head;
       head = nullptr;
+    }
+
+    // Reset the iter_ptr cursor (and recursively the child_pos cursors of
+    // every ScopeTable in the tree) back to the head. Required between
+    // repeated ContextAnalyzer::Analyze invocations on the same program.
+    void ResetIterPtr() {
+      iter_ptr = head;
+      if(head) {
+        head->ResetIteration();
+      }
     }
 
     std::vector<SymbolEntry*> GetEntries() {
@@ -329,6 +350,18 @@ namespace frontend {
         tmp = nullptr;
       }
       tables.clear();
+    }
+
+    // Reset iter_ptr cursors on every cached SymbolTable. Called at the
+    // start of each ContextAnalyzer::Analyze to keep repeated diags
+    // requests deterministic.
+    void ResetAllIterations() {
+      std::map<const std::wstring, SymbolTable*>::iterator iter;
+      for(iter = tables.begin(); iter != tables.end(); ++iter) {
+        if(iter->second) {
+          iter->second->ResetIterPtr();
+        }
+      }
     }
 
     void NewParseScope() {
@@ -2905,6 +2938,11 @@ namespace frontend {
 
     inline int GetMidLinePosition() {
       return mid_line_pos;
+    }
+
+    inline void SetMidLinePosition(int ml, int mp) {
+      mid_line_num = ml;
+      mid_line_pos = mp;
     }
 
     SymbolEntry* GetFunctionalEntry() {
