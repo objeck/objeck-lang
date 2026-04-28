@@ -1047,11 +1047,7 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, size_t* mem, int va
       if(value == 0) {
         return "Nil";
       }
-      // Validate pointer before dereferencing
       size_t* array = (size_t*)value;
-      if(IsBadReadPtr(array, sizeof(size_t))) {
-        return "Nil";
-      }
       std::ostringstream oss;
       oss << "[size=" << array[0] << "]";
       return oss.str();
@@ -1059,9 +1055,6 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, size_t* mem, int va
 
     case OBJ_PARM: {
       if(value == 0) {
-        return "Nil";
-      }
-      if(IsBadReadPtr((void*)value, sizeof(size_t))) {
         return "Nil";
       }
       // Try to get a meaningful representation
