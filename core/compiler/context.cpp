@@ -246,6 +246,22 @@ bool ContextAnalyzer::Analyze(bool is_lib)
 #endif
   int class_id = 0;
 
+  // The LSP diags layer re-runs Analyze on every request over the same
+  // ParsedProgram. ScopeTable::child_pos advances during scope traversal
+  // and never resets — without this, the second walk's NewScope() returns
+  // nullptr and lookups silently fail. Reset every cached SymbolTable's
+  // iter_ptr now. (This is necessary but not sufficient on its own — the
+  // diags layer also needs to keep the previous ContextAnalyzer alive
+  // across requests so that Linker-owned LibraryClass/LibraryMethod
+  // pointers in the AST don't dangle.)
+  std::vector<ParsedBundle*> reset_bundles = program->GetBundles();
+  for(size_t i = 0; i < reset_bundles.size(); ++i) {
+    SymbolTableManager* mgr = reset_bundles[i]->GetSymbolTableManager();
+    if(mgr) {
+      mgr->ResetAllIterations();
+    }
+  }
+
 #ifndef _SYSTEM
   // process libraries classes
   linker->Load(is_lib);
@@ -9438,11 +9454,21 @@ bool ContextAnalyzer::GetDefinition(Method* &method, const int line_num, const i
             method = mthd_call->GetMethod();
             return true;
           }
+          // Constructor / static call with cursor on the class token (e.g. `Counter`
+          // in `Counter->New()`): match the variable token to the class via the
+          // resolved Method, so go-to-definition jumps to the class declaration.
+          if(mthd_call->GetVariableName() == found_name && mthd_call->GetMethod() &&
+             mthd_call->GetMethod()->GetClass()) {
+            klass = mthd_call->GetMethod()->GetClass();
+            if(klass->GetLineNumber() > 0) {
+              return true;
+            }
+          }
         }
       }
     }
   }
-  
+
   return false;
 }
 
@@ -9496,6 +9522,14 @@ bool ContextAnalyzer::GetHover(Method* method, const int line_num, const int lin
           found_entry = static_cast<Variable*>(found_expression)->GetEntry();
         }
         if(found_entry) {
+          return true;
+        }
+      }
+      // Constructor / static-style call (e.g. `Counter->New()`): no entry/variable,
+      // but the resolved Method points back to the class. Caller renders via the class.
+      if(!found_entry && found_expression && found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
+        MethodCall* mc = static_cast<MethodCall*>(found_expression);
+        if(!mc->GetEntry() && !mc->GetVariable() && mc->GetMethod() && mc->GetMethod()->GetClass()) {
           return true;
         }
       }
@@ -9839,10 +9873,13 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
           alt_end_pos += (int)alt_found_name.size();
         }
         else if(method_call->GetMethod()) {
-          found_name = method_call->GetMethodName();
+          // Variable/class token is primary, method name is alt — matches branch 1.
+          // For constructor / static-style calls (e.g. `Counter->New()`) the variable
+          // token holds the class name; the method name lives at mid_line_pos.
+          found_name = method_call->GetVariableName();
           end_pos += (int)found_name.size();
 
-          alt_found_name = method_call->GetVariableName();
+          alt_found_name = method_call->GetMethodName();
           alt_start_pos = alt_end_pos = method_call->GetMidLinePosition() - 1;
           alt_end_pos += (int)alt_found_name.size();
         }

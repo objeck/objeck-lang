@@ -6409,14 +6409,18 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     }
     // new call
     else if(Match(TOKEN_NEW_ID)) {
+      // capture position of `New` token for hover (alt-range matching needs mid line/pos)
+      const int new_mid_line_num = GetLineNumber();
+      const int new_mid_line_pos = GetLinePosition();
       NextToken();
       // new array
       if(Match(TOKEN_OPEN_BRACKET)) {
         int end_pos = 0;
         ExpressionList* expressions = ParseExpressionList(end_pos, depth + 1, TOKEN_OPEN_BRACKET, TOKEN_CLOSED_BRACKET);
 
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, 
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
                                                               GetLineNumber(), end_pos, NEW_ARRAY_CALL, ident, expressions);
+        method_call->SetMidLinePosition(new_mid_line_num, new_mid_line_pos);
         // array of generics
         if(Match(TOKEN_LES)) {
           std::vector<Type*> generic_dclrs = ParseGenericTypes(depth);
@@ -6428,8 +6432,9 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
         int end_pos = 0;
         ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
 
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, 
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
                                                               GetLineNumber(), end_pos, NEW_INST_CALL, ident, exprs);
+        method_call->SetMidLinePosition(new_mid_line_num, new_mid_line_pos);
         // anonymous class
         if(Match(TOKEN_LES)) {
           std::vector<Type*> generic_dclrs = ParseGenericTypes(depth);

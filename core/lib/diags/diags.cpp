@@ -45,6 +45,54 @@ static void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) {
 static inline void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) { fn(ctx); }
 #endif
 
+// Cached ContextAnalyzer per parsed program.
+//
+// Each diag_*_impl used to create a fresh `ContextAnalyzer analyzer_local(...)`
+// and call `Analyze()` on it per request. Two problems:
+//   1. Analyze is not idempotent on a shared ParsedProgram (e.g.
+//      ScopeTable::child_pos cursors advance and never reset).
+//   2. ~ContextAnalyzer() deletes the Linker, but the AST holds raw
+//      LibraryClass*/LibraryMethod* pointers from that linker. Those
+//      pointers dangle the moment the analyzer goes out of scope, making
+//      the next request's results non-deterministic.
+//
+// Cache one analyzer per (program, lib_path). The cache is invalidated
+// when the program is released or the lib_path changes.
+static ContextAnalyzer* s_cached_analyzer = nullptr;
+static ParsedProgram* s_cached_program = nullptr;
+static std::wstring s_cached_lib_path;
+
+static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstring& lib_path)
+{
+  if(s_cached_analyzer && s_cached_program == program && s_cached_lib_path == lib_path) {
+    return s_cached_analyzer;
+  }
+  delete s_cached_analyzer;
+  s_cached_analyzer = nullptr;
+  s_cached_program = nullptr;
+  s_cached_lib_path.clear();
+
+  ContextAnalyzer* fresh = new ContextAnalyzer(program, lib_path, false);
+  if(!fresh->Analyze()) {
+    delete fresh;
+    return nullptr;
+  }
+  s_cached_analyzer = fresh;
+  s_cached_program = program;
+  s_cached_lib_path = lib_path;
+  return s_cached_analyzer;
+}
+
+static void InvalidateAnalyzerCache(ParsedProgram* program)
+{
+  if(s_cached_program == program) {
+    delete s_cached_analyzer;
+    s_cached_analyzer = nullptr;
+    s_cached_program = nullptr;
+    s_cached_lib_path.clear();
+  }
+}
+
 extern "C" {
 
   //
@@ -80,6 +128,7 @@ extern "C" {
   {
     ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
     if(program) {
+      InvalidateAnalyzerCache(program);
       delete program;
       program = nullptr;
     }
@@ -163,8 +212,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
       const bool was_analyzed = (analyzer != nullptr);
       APITools_SetBoolValue(context, 3, was_analyzed);
 
@@ -204,8 +252,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
       was_analyzed = (analyzer != nullptr);
     }
 
@@ -370,8 +417,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
           std::wstring found_name; int found_line; int found_start_pos; int found_end_pos; Class* klass = nullptr;
           Enum* eenum = nullptr; ; EnumItem* eenum_item = nullptr;
@@ -412,8 +458,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
           Class* found_klass = nullptr;
           if(analyzer->GetDefinition(klass, line_num, line_pos, found_klass)) {
@@ -455,8 +500,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
           std::wstring found_name; int found_line; int found_start_pos; int found_end_pos;
           if(analyzer->GetDeclaration(method, line_num, line_pos, found_name, found_line, found_start_pos, found_end_pos)) {
@@ -499,8 +543,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
           std::vector<std::pair<int, std::wstring>> completions;
 
@@ -621,8 +664,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
           std::wstring found_name; int found_line = 0; int found_start_pos = 0; int found_end_pos = 0;
           Expression* found_expression = nullptr; SymbolEntry* found_entry = nullptr;
@@ -632,6 +674,12 @@ extern "C" {
             if(found_expression) {
               if(found_expression->GetExpressionType() == METHOD_CALL_EXPR) {
                 MethodCall* called_method = static_cast<MethodCall*>(found_expression);
+
+                // POS_DESC (method name) only when cursor is on the method token, not the
+                // variable/class token. Without this guard, hovering `counter` in
+                // `counter->Increment()` showed `Counter::Increment` instead of `Counter`.
+                const bool on_method_token = (found_name == called_method->GetMethodName() &&
+                                              found_name != called_method->GetVariableName());
 
                 // variable type
                 SymbolEntry* called_method_entry = called_method->GetEntry();
@@ -645,8 +693,17 @@ extern "C" {
                   hover_obj[ResultPosition::POS_TYPE] = called_method_entry->GetType()->GetType();
                   hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, called_method_entry->GetType()->GetName());
                 }
+                else if(called_method->GetMethod() && called_method->GetMethod()->GetClass()) {
+                  // Constructor / static-style call (e.g. `Counter->New()`): no entry or
+                  // variable, but the Method binds back to the class. Render the class type.
+                  Class* call_klass = called_method->GetMethod()->GetClass();
+                  hover_obj[ResultPosition::POS_TYPE] = frontend::CLASS_TYPE;
+                  hover_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, call_klass->GetName());
+                }
 
-                hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, called_method->GetMethodName());
+                if(on_method_token) {
+                  hover_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, called_method->GetMethodName());
+                }
               }
               else if(found_expression->GetExpressionType() == VAR_EXPR) {
                 Variable* called_variable = static_cast<Variable*>(found_expression);
@@ -720,8 +777,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
           std::vector<Method*> found_methods; std::vector<LibraryMethod*> found_lib_methods;
           if(analyzer->GetSignature(method, var_str, mthd_str, found_methods, found_lib_methods)) {
@@ -856,8 +912,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
           std::wstring found_name; int found_line = 0; int found_start_pos = 0; int found_end_pos = 0;
           Expression* found_expression = nullptr; SymbolEntry* found_entry = nullptr;
@@ -939,8 +994,7 @@ extern "C" {
       if(!lib_path.empty()) {
         full_lib_path += L',' + lib_path;
       }
-      ContextAnalyzer analyzer_local(program, full_lib_path, false);
-      ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+      ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
       if(!analyzer) return;
 
       // resolve the symbol at cursor
@@ -1161,8 +1215,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
           Method* target_method = method;
 
@@ -1221,8 +1274,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(!analyzer) return;
 
         // resolve target method (may be a call under cursor)
@@ -1313,8 +1365,7 @@ extern "C" {
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(!analyzer) return;
 
         // resolve target method
@@ -1394,8 +1445,7 @@ extern "C" {
     if(!lib_path.empty()) {
       full_lib_path += L',' + lib_path;
     }
-    ContextAnalyzer analyzer_local(program, full_lib_path, false);
-    ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+    ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
     if(!analyzer) return;
 
     struct HintInfo {
@@ -1502,8 +1552,7 @@ extern "C" {
     if(!lib_path.empty()) {
       full_lib_path += L',' + lib_path;
     }
-    ContextAnalyzer analyzer_local(program, full_lib_path, false);
-    ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+    ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
     if(!analyzer) return;
 
     // LSP semantic token types:
@@ -1849,8 +1898,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
         // fetch renamed expressions
         bool is_var;
@@ -2014,8 +2062,7 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
         if(!lib_path.empty()) {
           full_lib_path += L',' + lib_path;
         }
-        ContextAnalyzer analyzer_local(program, full_lib_path, false);
-        ContextAnalyzer* analyzer = analyzer_local.Analyze() ? &analyzer_local : nullptr;
+        ContextAnalyzer* analyzer = EnsureAnalyzed(program, full_lib_path);
         if(analyzer) {
         // fetch renamed expressions
         std::vector<Expression*> expressions = FetchRenamedExpressions(klass, *analyzer, line_num, line_pos);
