@@ -40,30 +40,56 @@
 #endif
 #include "../../common.h"
 #include "../../interpreter.h"
+#include <climits>
 
 // Auto-JIT: methods called more than threshold times are JIT compiled.
 // Pre-scan validation (CanJitInstruction) runs before resource allocation,
 // so unsupported instructions cause immediate return false with no corruption.
-// Override with OBJECK_JIT_THRESHOLD env var (e.g. 999999999 to disable).
+// Tunables:
+//   OBJECK_JIT_DISABLE=1   — turn auto-JIT off entirely
+//   OBJECK_JIT_THRESHOLD=N — call-count threshold (must be positive)
 #define JIT_AUTO_THRESHOLD_DEFAULT 10
+#define JIT_AUTO_THRESHOLD_DISABLED LONG_MAX
 
 inline long GetJitAutoThreshold() {
   static long threshold = -1;
   if(threshold < 0) {
     threshold = JIT_AUTO_THRESHOLD_DEFAULT;
+
 #ifdef _WIN32
+    char* disable_val = nullptr;
+    size_t disable_len = 0;
+    if(_dupenv_s(&disable_val, &disable_len, "OBJECK_JIT_DISABLE") == 0 && disable_val) {
+      const bool disabled = (disable_val[0] == '1' && disable_val[1] == '\0');
+      free(disable_val);
+      if(disabled) {
+        threshold = JIT_AUTO_THRESHOLD_DISABLED;
+        return threshold;
+      }
+    }
+
     char* env_val = nullptr;
     size_t len = 0;
     if(_dupenv_s(&env_val, &len, "OBJECK_JIT_THRESHOLD") == 0 && env_val) {
-      threshold = std::atol(env_val);
-      if(threshold <= 0) threshold = JIT_AUTO_THRESHOLD_DEFAULT;
+      const long parsed = std::atol(env_val);
+      if(parsed > 0) {
+        threshold = parsed;
+      }
       free(env_val);
     }
 #else
+    const char* disable_val = std::getenv("OBJECK_JIT_DISABLE");
+    if(disable_val && disable_val[0] == '1' && disable_val[1] == '\0') {
+      threshold = JIT_AUTO_THRESHOLD_DISABLED;
+      return threshold;
+    }
+
     const char* env_val = std::getenv("OBJECK_JIT_THRESHOLD");
     if(env_val) {
-      threshold = std::atol(env_val);
-      if(threshold <= 0) threshold = JIT_AUTO_THRESHOLD_DEFAULT;
+      const long parsed = std::atol(env_val);
+      if(parsed > 0) {
+        threshold = parsed;
+      }
     }
 #endif
   }
