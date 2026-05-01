@@ -64,6 +64,11 @@ for %%f in (*.obs) do (
         echo   FAIL ^(compilation error^)
         set /a FAIL_COUNT+=1
     ) else (
+        REM Per-test opt-out for auto-JIT (mirrors the bash runner)
+        set OBJECK_JIT_DISABLE=
+        findstr /c:"# JIT_DISABLE" "%REGRESSION_DIR%\%%f" >nul 2>&1
+        if !errorlevel! equ 0 set OBJECK_JIT_DISABLE=1
+
         REM Run from regression directory
         "%ABS_VM%" "%%~nf.obe" > "%RESULTS_DIR%\%%~nf_output.txt" 2>&1
 
