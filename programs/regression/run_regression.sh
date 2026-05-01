@@ -88,7 +88,7 @@ for test in *.obs; do
         ((PASS_COUNT++))
     else
         echo "  [FAIL] Runtime error"
-        cat "$RESULTS_DIR/${NAME}_output.txt" 2>/dev/null | head -20
+        cat "$RESULTS_DIR/${NAME}_output.txt" 2>/dev/null | head -200
         ((FAIL_COUNT++))
     fi
 done

@@ -4,7 +4,6 @@ use Collection;
 #~
 # LSP features regression test.
 # EXTRA_LIBS: diags,gen_collect
-# JIT_DISABLE
 #
 # Covers: FindReferences, DocumentHighlight, WorkspaceSymbols,
 # TypeHierarchy (Prepare/Supertypes/Subtypes), FindDefinition,
