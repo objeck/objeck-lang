@@ -4713,12 +4713,18 @@ bool JitArm64::Compile(StackMethod* cm)
 
     // Pre-scan: reject methods with unsupported instructions.
     // STOR_CLS_INST_INT_VAR/COPY: no JIT write barrier for class field stores.
-    // DYN_MTHD_CALL: closure/function-ref parameter handling issues.
-    // MTHD_CALL is supported via ProcessStackCallback + direct JIT-to-JIT calling.
+    // DYN_MTHD_CALL/DYN_MTHD_CALL_JIT: closure/function-ref parameter handling issues.
+    // MTHD_CALL_JIT: arm64 direct JIT-to-JIT call codegen miscompiles a path
+    //   exercised by analyzer's FindReferences-on-class (lsp_features regression
+    //   crashes on linux-arm64 + macos-arm64; windows-arm64 + x64 unaffected).
+    //   Until the arm64 MTHD_CALL_JIT codegen is fixed, reject methods that
+    //   contain calls to already-JIT'd callees so they fall back to interpreted.
+    //   MTHD_CALL is already rejected by the common pre-scan in jit_common.cpp.
     // Note: STOR_INT_ARY_ELM is safe — integer array stores don't hold references.
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       const InstructionType type = method->GetInstruction(i)->GetType();
       if(type == STOR_CLS_INST_INT_VAR || type == COPY_CLS_INST_INT_VAR ||
+         type == MTHD_CALL_JIT ||
          type == DYN_MTHD_CALL || type == DYN_MTHD_CALL_JIT) {
         return false;
       }
