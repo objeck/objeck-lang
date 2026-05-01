@@ -626,25 +626,17 @@ namespace Runtime {
       used_fregs.remove(h);
     }
 
-    // Caches a register holding a local variable value (by frame offset).
-    void CacheLocalRegister(long offset, RegisterHolder* h) {
-      auto it = local_reg_cache.find(offset);
-      if(it != local_reg_cache.end()) {
-        ReleaseRegister(it->second);
-        local_reg_cache.erase(it);
-      }
-      used_regs.remove(h);
-      local_reg_cache[offset] = h;
+    // Local register cache (added by fd2248b4b) is currently disabled on arm64
+    // pending a fix for a stale-cache bug that crashes FindReferences-on-class
+    // in lsp_features regression on linux-arm64 + macos-arm64. Cache miss path
+    // is the safe pre-cache behavior. Re-enable by restoring the original
+    // bodies once the missing invalidation point is identified.
+    void CacheLocalRegister(long /*offset*/, RegisterHolder* h) {
+      ReleaseRegister(h);
     }
 
-    void CacheLocalFpRegister(long offset, RegisterHolder* h) {
-      auto it = local_freg_cache.find(offset);
-      if(it != local_freg_cache.end()) {
-        ReleaseFpRegister(it->second);
-        local_freg_cache.erase(it);
-      }
-      used_fregs.remove(h);
-      local_freg_cache[offset] = h;
+    void CacheLocalFpRegister(long /*offset*/, RegisterHolder* h) {
+      ReleaseFpRegister(h);
     }
 
     // Releases all cached registers back to their pools.
