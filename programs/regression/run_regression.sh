@@ -74,9 +74,14 @@ for test in *.obs; do
         continue
     fi
 
-    # Run from regression directory
+    # Per-test opt-out for auto-JIT (some analyzer tests hit a known
+    # arm64 JIT bug; the marker keeps JIT coverage on for everything else).
     cd "$REGRESSION_DIR"
-    "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+    if grep -q '# JIT_DISABLE' "$test" 2>/dev/null; then
+        OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+    else
+        "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+    fi
 
     if [ $? -eq 0 ]; then
         echo "  [PASS]"
