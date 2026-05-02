@@ -4697,6 +4697,137 @@ void JitArm64::ProcessIndices()
 #endif
 }
 
+// Whitelist of instructions the ARM64 JIT can safely emit. Must match the
+// cases handled by ProcessInstruction (the switch's default fatally exits).
+static bool CanJitInstruction(InstructionType type) {
+  switch(type) {
+    // loads
+  case LOAD_CHAR_LIT:
+  case LOAD_INT_LIT:
+  case LOAD_FLOAT_LIT:
+  case LOAD_INST_MEM:
+  case LOAD_CLS_MEM:
+  case LOAD_LOCL_INT_VAR:
+  case LOAD_CLS_INST_INT_VAR:
+  case LOAD_FLOAT_VAR:
+  case LOAD_FUNC_VAR:
+    // stores (STOR_CLS_INST_INT_VAR rejected — no write barrier)
+  case STOR_LOCL_INT_VAR:
+  case STOR_FLOAT_VAR:
+  case STOR_FUNC_VAR:
+    // copies (COPY_CLS_INST_INT_VAR rejected — no write barrier)
+  case COPY_LOCL_INT_VAR:
+  case COPY_FLOAT_VAR:
+    // int math
+  case AND_INT:
+  case OR_INT:
+  case ADD_INT:
+  case SUB_INT:
+  case MUL_INT:
+  case DIV_INT:
+  case MOD_INT:
+  case BIT_AND_INT:
+  case BIT_OR_INT:
+  case BIT_XOR_INT:
+  case BIT_NOT_INT:
+  case SHL_INT:
+  case SHR_INT:
+    // int compare
+  case LES_INT:
+  case GTR_INT:
+  case LES_EQL_INT:
+  case GTR_EQL_INT:
+  case EQL_INT:
+  case NEQL_INT:
+    // float math
+  case ADD_FLOAT:
+  case SUB_FLOAT:
+  case MUL_FLOAT:
+  case DIV_FLOAT:
+  case SIN_FLOAT:
+  case COS_FLOAT:
+  case TAN_FLOAT:
+  case ASIN_FLOAT:
+  case ACOS_FLOAT:
+  case ATAN_FLOAT:
+  case ACOSH_FLOAT:
+  case ASINH_FLOAT:
+  case ATANH_FLOAT:
+  case COSH_FLOAT:
+  case SINH_FLOAT:
+  case TANH_FLOAT:
+  case CBRT_FLOAT:
+  case LOG_FLOAT:
+  case EXP_FLOAT:
+  case TRUNC_FLOAT:
+  case GAMMA_FLOAT:
+  case ROUND_FLOAT:
+  case FLOR_FLOAT:
+  case CEIL_FLOAT:
+  case SQRT_FLOAT:
+  case POW_FLOAT:
+  case MOD_FLOAT:
+  case RAND_FLOAT:
+    // float compare
+  case LES_FLOAT:
+  case GTR_FLOAT:
+  case LES_EQL_FLOAT:
+  case GTR_EQL_FLOAT:
+  case EQL_FLOAT:
+  case NEQL_FLOAT:
+    // control flow (DYN_MTHD_CALL/DYN_MTHD_CALL_JIT rejected — closure issues)
+  case MTHD_CALL:
+  case MTHD_CALL_JIT:
+  case JMP:
+  case LBL:
+  case RTRN:
+    // memory allocation
+  case NEW_BYTE_ARY:
+  case NEW_CHAR_ARY:
+  case NEW_INT_ARY:
+  case NEW_FLOAT_ARY:
+  case NEW_OBJ_INST:
+    // array copy/zero
+  case CPY_BYTE_ARY:
+  case CPY_CHAR_ARY:
+  case CPY_INT_ARY:
+  case CPY_FLOAT_ARY:
+  case ZERO_BYTE_ARY:
+  case ZERO_CHAR_ARY:
+  case ZERO_INT_ARY:
+  case ZERO_FLOAT_ARY:
+    // array access
+  case LOAD_BYTE_ARY_ELM:
+  case LOAD_CHAR_ARY_ELM:
+  case LOAD_INT_ARY_ELM:
+  case LOAD_FLOAT_ARY_ELM:
+  case STOR_BYTE_ARY_ELM:
+  case STOR_CHAR_ARY_ELM:
+  case STOR_INT_ARY_ELM:
+  case STOR_FLOAT_ARY_ELM:
+  case LOAD_ARY_SIZE:
+    // traps
+  case TRAP:
+  case TRAP_RTRN:
+    // casting
+  case OBJ_TYPE_OF:
+  case OBJ_INST_CAST:
+    // threading
+  case THREAD_JOIN:
+  case THREAD_SLEEP:
+  case CRITICAL_START:
+  case CRITICAL_END:
+    // stack
+  case SWAP_INT:
+  case POP_INT:
+  case POP_FLOAT:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
 //
 // translate bytecode to machine code
 //
@@ -4711,15 +4842,19 @@ bool JitArm64::Compile(StackMethod* cm)
     last_cmp_was_zero = false;
     last_cmp_reg = X0;  // Initialize to a valid register
 
-    // Pre-scan: reject methods with unsupported instructions.
-    // STOR_CLS_INST_INT_VAR/COPY: no JIT write barrier for class field stores.
-    // DYN_MTHD_CALL: closure/function-ref parameter handling issues.
-    // MTHD_CALL is supported via ProcessStackCallback + direct JIT-to-JIT calling.
-    // Note: STOR_INT_ARY_ELM is safe — integer array stores don't hold references.
+    // Pre-scan: reject methods the JIT cannot safely compile. The default
+    // branch in ProcessInstruction calls exit(1) on any unhandled opcode, so
+    // anything not in the supported set below MUST be rejected here. Three
+    // implemented instructions are also rejected for correctness:
+    //   STOR_CLS_INST_INT_VAR / COPY_CLS_INST_INT_VAR — no JIT write barrier
+    //     for class field stores.
+    //   DYN_MTHD_CALL / DYN_MTHD_CALL_JIT — closure/function-ref parameter
+    //     handling issues.
+    // MTHD_CALL is supported via ProcessStackCallback + direct JIT-to-JIT
+    // calling. STOR_INT_ARY_ELM is safe — integer array stores don't hold
+    // references.
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
-      const InstructionType type = method->GetInstruction(i)->GetType();
-      if(type == STOR_CLS_INST_INT_VAR || type == COPY_CLS_INST_INT_VAR ||
-         type == DYN_MTHD_CALL || type == DYN_MTHD_CALL_JIT) {
+      if(!CanJitInstruction(method->GetInstruction(i)->GetType())) {
         return false;
       }
     }
