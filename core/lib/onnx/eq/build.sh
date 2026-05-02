@@ -43,17 +43,23 @@ esac
 
 CXX=${CXX:-g++}
 
-# On macOS with Homebrew, add include/lib paths for dependencies
+# On macOS, vm/common.h pulls in v3-API mbedtls headers. Use the in-tree v3
+# headers (same set the diags/matrix/opencv xcodeproj builds link against)
+# instead of homebrew's mbedtls — brew now ships v4, which removed entropy.h.
 EXTRA_INCLUDE=""
 EXTRA_LIB=""
-if [ "$(uname -s)" = "Darwin" ] && [ -d "/opt/homebrew" ]; then
-	# Prefer mbedtls@3 (v4 has breaking API changes), fall back to generic path
-	if [ -d "/opt/homebrew/opt/mbedtls@3/include" ]; then
-		EXTRA_INCLUDE="-I/opt/homebrew/opt/mbedtls@3/include -I/opt/homebrew/include"
-	else
-		EXTRA_INCLUDE="-I/opt/homebrew/include"
+if [ "$(uname -s)" = "Darwin" ]; then
+	IN_TREE_MBEDTLS_INC="$(cd "$(dirname "$0")/../../openssl/macos/include" 2>/dev/null && pwd)"
+	if [ -n "$IN_TREE_MBEDTLS_INC" ] && [ -f "$IN_TREE_MBEDTLS_INC/mbedtls/entropy.h" ]; then
+		EXTRA_INCLUDE="-I$IN_TREE_MBEDTLS_INC"
+	elif [ -d "/opt/homebrew/opt/mbedtls@3/include" ]; then
+		EXTRA_INCLUDE="-I/opt/homebrew/opt/mbedtls@3/include"
 	fi
-	EXTRA_LIB="-L/opt/homebrew/lib"
+	# Append homebrew include for other deps (opencv etc.) and link path.
+	if [ -d "/opt/homebrew" ]; then
+		EXTRA_INCLUDE="$EXTRA_INCLUDE -I/opt/homebrew/include"
+		EXTRA_LIB="-L/opt/homebrew/lib"
+	fi
 fi
 
 $CXX -O3 -std=c++17 -Wall -fPIC $EP_DEFINE $ORT_INCLUDE $EXTRA_INCLUDE \

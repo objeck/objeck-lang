@@ -4,7 +4,6 @@ use Collection;
 #~
 # LSP features regression test.
 # EXTRA_LIBS: diags,gen_collect
-# JIT_DISABLE
 #
 # Covers: FindReferences, DocumentHighlight, WorkspaceSymbols,
 # TypeHierarchy (Prepare/Supertypes/Subtypes), FindDefinition,
@@ -138,6 +137,8 @@ class LspFeaturesTest {
 		# @name used at L3 (decl), L7 (assign), L12 (return), L20 (local assign)
 		refs := analysis->FindReferences("file:///test.obs", 7, 5, lib_path);
 		Check("FindReferences '@name' at L7: no crash", true);
+		if(refs = Nil) { "  [DBG] refs (FindRef @name L7) = Nil"->PrintLine(); }
+		else { "  [DBG] refs (FindRef @name L7) non-Nil, calling Size..."->PrintLine(); };
 		if(refs <> Nil) {
 			ref_count := refs->Size();
 			Check("FindReferences '@name': multiple refs found", ref_count >= 2);
@@ -152,15 +153,20 @@ class LspFeaturesTest {
 			};
 			Check("FindReferences '@name': all in same file", all_same_file);
 		};
+		Check("post @name FindReferences block: survived", true);
 
 		# @sides at L4 (decl), L8 (assign), L16 (return), L21 (local)
 		refs2 := analysis->FindReferences("file:///test.obs", 8, 5, lib_path);
 		Check("FindReferences '@sides' at L8: no crash", true);
+		if(refs2 = Nil) { "  [DBG] refs2 (FindRef @sides L8) = Nil"->PrintLine(); }
+		else { "  [DBG] refs2 (FindRef @sides L8) non-Nil, calling Size..."->PrintLine(); };
 		if(refs2 <> Nil) {
 			Check("FindReferences '@sides': multiple refs found", refs2->Size() >= 2);
 		};
+		Check("post @sides FindReferences block: survived", true);
 
 		# Shape class name
+		"  [DBG] about to FindRef Shape class L2"->PrintLine();
 		refs3 := analysis->FindReferences("file:///test.obs", 2, 6, lib_path);
 		Check("FindReferences 'Shape' class at L2: no crash", true);
 
