@@ -1,1 +1,1 @@
-PASS: ML library tests
+>>> Runtime error loading shared library: /mnt/c/Users/objec/Documents/Code/objeck-lang/core/release/deploy-x64/lib//native/libobjk_ml.so: cannot open shared object file: No such file or directory <<<

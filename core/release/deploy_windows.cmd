@@ -246,14 +246,14 @@ nuget restore onnx.sln
 
 if [%1] == [arm64] (
 	devenv onnx.sln /rebuild "Release-QNN|ARM64"
-	copy vs\ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
+	copy ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
 	copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
 )
 
 if [%1] == [x64] (
 	devenv onnx.sln /rebuild "Release-DML|x64"
-	copy vs\x64\Release-DML\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
+	copy x64\Release-DML\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
 	copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
 	copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
