@@ -195,4 +195,20 @@ extern "C" {
    void onnx_phi3_vision_inf(VMContext& context) {
       phi3_vision_inf(context);
    }
+
+   // Detect faces using SCRFD model
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_face_detect_inf(VMContext& context) {
+      face_detect_inf(context);
+   }
+
+   // Detect faces and extract ArcFace embeddings
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_face_recognize_inf(VMContext& context) {
+      face_recognize_inf(context);
+   }
 }

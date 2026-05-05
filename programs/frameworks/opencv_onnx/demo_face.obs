@@ -1,0 +1,130 @@
+#~~
+# Face recognition demo — SCRFD detector + ArcFace recognizer (InsightFace buffalo_l)
+# Tests: detection, embedding dimension, same-person similarity, different-person dissimilarity
+~~#
+
+use System.IO.Filesystem, API.OpenCV, API.Onnx;
+
+class DemoFace {
+	@DET_MODEL : static : String;
+	@REC_MODEL : static : String;
+	@IMG_DIR   : static : String;
+	@THRESHOLD : static : Float;
+
+	function : Init() ~ Nil {
+		@DET_MODEL := "./data/models/det_10g.onnx";
+		@REC_MODEL := "./data/models/w600k_r50.onnx";
+		@IMG_DIR   := "./data/faces/";
+		@THRESHOLD := 0.35;
+	}
+
+	function : LoadImage(path : String) ~ Byte[] {
+		img := Image->Load(path);
+		if(img = Nil | img->IsEmpty()) {
+			"  [warn] cannot load: {$path}"->PrintLine();
+			return Nil;
+		};
+		return img->Convert(Image->Format->JPEG);
+	}
+
+	function : RunDetectionTest(session : FaceSession) ~ Nil {
+		"\n--- Detection test ---"->PrintLine();
+		img := LoadImage(@IMG_DIR + "group.jpg");
+		if(img = Nil) { "  SKIP"->PrintLine(); return; };
+
+		result := session->Detect(img, 0.5);
+		if(result = Nil) { "  No result returned"->PrintLine(); return; };
+
+		n := result->GetSize();
+		"  Detected {$n} face(s):"->PrintLine();
+		dets := result->GetDetections();
+		for(i := 0; i < n; i += 1;) {
+			info := dets[i]->ToString();
+			"  [{$i}] {$info}"->PrintLine();
+		};
+	}
+
+	function : RunEmbeddingDimTest(session : FaceSession) ~ Nil {
+		"\n--- Embedding dimension / norm test ---"->PrintLine();
+		img := LoadImage(@IMG_DIR + "person_a_1.jpg");
+		if(img = Nil) { "  SKIP"->PrintLine(); return; };
+
+		result := session->Recognize(img, 0.5);
+		if(result = Nil | result->GetSize() = 0) {
+			"  No face detected"->PrintLine(); return;
+		};
+
+		faces := result->GetResults();
+		emb := faces[0]->GetEmbedding();
+		n   := emb->Size();
+		"  Embedding size: {$n}"->PrintLine();
+		if(n = 512) { "  Result: PASS"->PrintLine(); }
+		else { "  Result: FAIL (expected 512)"->PrintLine(); };
+	}
+
+	function : RunSamePersonTest(session : FaceSession) ~ Nil {
+		"\n--- Same-person test (expect sim > {$@THRESHOLD}) ---"->PrintLine();
+
+		img1 := LoadImage(@IMG_DIR + "person_a_1.jpg");
+		img2 := LoadImage(@IMG_DIR + "person_a_2.jpg");
+		if(img1 = Nil | img2 = Nil) { "  SKIP"->PrintLine(); return; };
+
+		r1 := session->Recognize(img1, 0.5);
+		r2 := session->Recognize(img2, 0.5);
+
+		if(r1 = Nil | r1->GetSize() = 0) { "  No face in person_a_1.jpg"->PrintLine(); return; };
+		if(r2 = Nil | r2->GetSize() = 0) { "  No face in person_a_2.jpg"->PrintLine(); return; };
+
+		r1_faces := r1->GetResults();
+		r2_faces := r2->GetResults();
+		sim := FaceSession->Compare(r1_faces[0]->GetEmbedding(), r2_faces[0]->GetEmbedding());
+		"  Similarity: {$sim}"->PrintLine();
+		if(sim > @THRESHOLD) {
+			"  Result: SAME [pass]"->PrintLine();
+		}
+		else {
+			"  Result: DIFFERENT [fail]"->PrintLine();
+		};
+	}
+
+	function : RunDifferentPersonTest(session : FaceSession) ~ Nil {
+		"\n--- Different-person test (expect sim < {$@THRESHOLD}) ---"->PrintLine();
+
+		img1 := LoadImage(@IMG_DIR + "person_a_1.jpg");
+		img2 := LoadImage(@IMG_DIR + "person_b_1.jpg");
+		if(img1 = Nil | img2 = Nil) { "  SKIP"->PrintLine(); return; };
+
+		r1 := session->Recognize(img1, 0.5);
+		r2 := session->Recognize(img2, 0.5);
+
+		if(r1 = Nil | r1->GetSize() = 0) { "  No face in person_a_1.jpg"->PrintLine(); return; };
+		if(r2 = Nil | r2->GetSize() = 0) { "  No face in person_b_1.jpg"->PrintLine(); return; };
+
+		r1_faces := r1->GetResults();
+		r2_faces := r2->GetResults();
+		sim := FaceSession->Compare(r1_faces[0]->GetEmbedding(), r2_faces[0]->GetEmbedding());
+		"  Similarity: {$sim}"->PrintLine();
+		if(sim > @THRESHOLD) {
+			"  Result: SAME [fail]"->PrintLine();
+		}
+		else {
+			"  Result: DIFFERENT [pass]"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Init();
+		"=== Face recognition demo (SCRFD + ArcFace) ==="->PrintLine();
+		"Loading models..."->PrintLine();
+
+		session := FaceSession->New(@DET_MODEL, @REC_MODEL);
+
+		RunDetectionTest(session);
+		RunEmbeddingDimTest(session);
+		RunSamePersonTest(session);
+		RunDifferentPersonTest(session);
+
+		"\nDone."->PrintLine();
+		session->Close();
+	}
+}

@@ -61,10 +61,39 @@ This document lists the ONNX models used by the Objeck ONNX library (`-lib onnx`
   ```
 - **Precision**: INT4 RTN block-32 (vision + decoder weights), FP16 (embedding + KV cache)
 
+## Face Recognition Models (InsightFace buffalo_l)
+
+Two models from the [InsightFace buffalo_l](https://github.com/deepinsight/insightface/releases/tag/v0.7) pack.
+
+### SCRFD 10G-KPS (Face Detection)
+- **File**: `det_10g.onnx`
+- **Size**: ~17 MB
+- **Input**: 640×640 RGB, normalized `(px - 127.5) / 128`
+- **Output**: bounding boxes + 5-point facial landmarks for each detected face
+
+### ArcFace R50 (Face Recognition)
+- **File**: `w600k_r50.onnx`
+- **Size**: ~174 MB
+- **Input**: 112×112 aligned face crop, normalized `px / 127.5 - 1.0`
+- **Output**: 512-dimensional L2-normalized embedding; cosine similarity >0.35 indicates the same person
+
+**Download** (both files are inside `buffalo_l.zip`):
+```bash
+curl -L -o buffalo_l.zip \
+  https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip
+unzip buffalo_l.zip det_10g.onnx w600k_r50.onnx -d data/models/
+```
+
 ## Expected Directory Layout
 
 ```
 data/models/
+  det_10g.onnx             # SCRFD face detector
+  w600k_r50.onnx           # ArcFace R50 recognizer
+  yolov11.onnx
+  resnet34.onnx
+  deeplabv3.onnx
+  openpose.onnx
   phi3/
     directml/directml-int4-awq-block-128/
       model.onnx
@@ -92,11 +121,18 @@ Runtime DLLs are provided in `core/lib/onnx/eq/lib/`:
 
 Large DLLs are compressed as `.7z` archives. Extract to the application directory or system PATH.
 
-### Linux (CUDA)
-- `libonnxruntime.so.1.19.0` (ONNX Runtime with CUDA)
-- `libonnxruntime_providers_shared.so`
+### Linux (CPU)
+- `libonnxruntime.so` (ONNX Runtime, system package or manual install)
+- Install: `pip install onnxruntime` or via distro package manager
 
-Requires CUDA toolkit and cuDNN installed on the system.
+### Linux (CUDA)
+- `libonnxruntime.so.1.x` (ONNX Runtime with CUDA EP)
+- Install: `pip install onnxruntime-gpu`
+- Requires CUDA toolkit and cuDNN installed on the system.
+
+### macOS (CoreML)
+- `libonnxruntime.dylib` — install via Homebrew: `brew install onnxruntime`
+- CoreML EP accelerates on Apple Neural Engine / GPU; falls back to CPU automatically.
 
 ## Special Tokens (Phi-3 Family)
 

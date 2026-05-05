@@ -2694,3 +2694,370 @@ static void phi3_vision_inf(VMContext& context) {
       std::wcerr << L"ONNX Runtime Error (vision): " << e.what() << std::endl;
    }
 }
+
+//
+// Face recognition — SCRFD detector + ArcFace recognizer (InsightFace buffalo_l)
+//
+
+struct FaceDet {
+   float x1, y1, x2, y2;
+   float score;
+   float kps[10];   // 5 landmarks: x0,y0,x1,y1,...x4,y4
+};
+
+// ArcFace standard 112x112 alignment template (left-eye, right-eye, nose, left-mouth, right-mouth)
+static const float ARCFACE_DST[5][2] = {
+   {38.2946f, 51.6963f}, {73.5318f, 51.5014f}, {56.0252f, 71.7366f},
+   {41.5493f, 92.3655f}, {70.7299f, 92.2041f}
+};
+
+// Preprocess BGR image for SCRFD: letterbox to input_w x input_h, normalize (px - 127.5) / 128
+static std::vector<float> scrfd_preprocess(const cv::Mat& img, int input_w, int input_h, PreprocInfo& pp) {
+   cv::Mat lb = letterbox(img, input_h, input_w, pp);
+   cv::Mat rgb;
+   cv::cvtColor(lb, rgb, cv::COLOR_BGR2RGB);
+   rgb.convertTo(rgb, CV_32F, 1.0f / 128.0f, -127.5f / 128.0f);
+
+   std::vector<cv::Mat> ch(3);
+   cv::split(rgb, ch);
+
+   const size_t cs = (size_t)input_h * input_w;
+   std::vector<float> input(3 * cs);
+   std::memcpy(input.data() + 0 * cs, ch[0].ptr<float>(), cs * sizeof(float));
+   std::memcpy(input.data() + 1 * cs, ch[1].ptr<float>(), cs * sizeof(float));
+   std::memcpy(input.data() + 2 * cs, ch[2].ptr<float>(), cs * sizeof(float));
+   return input;
+}
+
+// Align detected face to 112x112 ArcFace template using 5 landmarks
+static cv::Mat face_align(const cv::Mat& img, const float kps[10]) {
+   std::vector<cv::Point2f> src_pts = {
+      {kps[0], kps[1]}, {kps[2], kps[3]}, {kps[4], kps[5]},
+      {kps[6], kps[7]}, {kps[8], kps[9]}
+   };
+   std::vector<cv::Point2f> dst_pts;
+   for(int i = 0; i < 5; ++i)
+      dst_pts.push_back({ARCFACE_DST[i][0], ARCFACE_DST[i][1]});
+
+   cv::Mat M = cv::estimateAffinePartial2D(src_pts, dst_pts, cv::noArray(), cv::LMEDS);
+   if(M.empty()) {
+      // fallback: crop around eye midpoint
+      float cx = (kps[0] + kps[2]) * 0.5f;
+      float cy = (kps[1] + kps[3]) * 0.5f;
+      float sz = std::abs(kps[2] - kps[0]) * 3.2f;
+      int x = std::max(0, (int)(cx - sz * 0.5f));
+      int y = std::max(0, (int)(cy - sz * 0.5f));
+      int w = std::min(img.cols - x, (int)sz);
+      int h = std::min(img.rows - y, (int)sz);
+      if(w < 1 || h < 1) return cv::Mat();
+      cv::Mat crop = img(cv::Rect(x, y, w, h));
+      cv::Mat aligned;
+      cv::resize(crop, aligned, cv::Size(112, 112));
+      return aligned;
+   }
+
+   cv::Mat aligned;
+   cv::warpAffine(img, aligned, M, cv::Size(112, 112), cv::INTER_LINEAR, cv::BORDER_REFLECT);
+   return aligned;
+}
+
+// Preprocess aligned 112x112 BGR face for ArcFace: RGB, normalize to [-1, 1]
+static std::vector<float> arcface_preprocess(const cv::Mat& aligned) {
+   cv::Mat rgb;
+   cv::cvtColor(aligned, rgb, cv::COLOR_BGR2RGB);
+   rgb.convertTo(rgb, CV_32F, 1.0f / 127.5f, -1.0f);
+
+   std::vector<cv::Mat> ch(3);
+   cv::split(rgb, ch);
+
+   const size_t cs = 112 * 112;
+   std::vector<float> input(3 * cs);
+   std::memcpy(input.data() + 0 * cs, ch[0].ptr<float>(), cs * sizeof(float));
+   std::memcpy(input.data() + 1 * cs, ch[1].ptr<float>(), cs * sizeof(float));
+   std::memcpy(input.data() + 2 * cs, ch[2].ptr<float>(), cs * sizeof(float));
+   return input;
+}
+
+// Decode SCRFD outputs into face detections with NMS
+// det_10g.onnx outputs 9 tensors: 3x score([N,1]), 3x bbox([N,4]), 3x kps([N,10])
+// grouped by stride (8, 16, 32) with 2 anchors per grid cell
+static std::vector<FaceDet> scrfd_decode(
+   const std::vector<Ort::Value>& outs,
+   int input_w, int input_h,
+   float conf_threshold,
+   const PreprocInfo& pp)
+{
+   struct TensorGroup { const float* score; const float* bbox; const float* kps; int n; int stride; };
+   std::vector<TensorGroup> groups;
+
+   // Categorise by last dim: 1=score, 4=bbox, 10=kps; sort each by size desc (stride asc)
+   struct T { const float* ptr; int64_t n; int64_t cols; };
+   std::vector<T> sc_list, bb_list, kp_list;
+
+   for(size_t i = 0; i < outs.size(); ++i) {
+      auto shape = outs[i].GetTensorTypeAndShapeInfo().GetShape();
+      if(shape.size() < 2) continue;
+      int64_t n    = shape[shape.size() - 2];
+      int64_t cols = shape[shape.size() - 1];
+      const float* ptr = outs[i].GetTensorData<float>();
+      if(cols == 1)       sc_list.push_back({ptr, n, cols});
+      else if(cols == 4)  bb_list.push_back({ptr, n, cols});
+      else if(cols == 10) kp_list.push_back({ptr, n, cols});
+   }
+
+   auto by_n_desc = [](const T& a, const T& b) { return a.n > b.n; };
+   std::sort(sc_list.begin(), sc_list.end(), by_n_desc);
+   std::sort(bb_list.begin(), bb_list.end(), by_n_desc);
+   std::sort(kp_list.begin(), kp_list.end(), by_n_desc);
+
+   const int strides[3] = {8, 16, 32};
+   const int nsc = (int)std::min({sc_list.size(), bb_list.size(), kp_list.size(), (size_t)3});
+
+   std::vector<FaceDet> candidates;
+
+   for(int si = 0; si < nsc; ++si) {
+      const int stride  = strides[si];
+      const int grid_h  = input_h / stride;
+      const int grid_w  = input_w / stride;
+      const int anchors = 2;
+
+      const float* sc = sc_list[si].ptr;
+      const float* bb = bb_list[si].ptr;
+      const float* kp = kp_list[si].ptr;
+
+      int idx = 0;
+      for(int y = 0; y < grid_h; ++y) {
+         for(int x = 0; x < grid_w; ++x) {
+            for(int a = 0; a < anchors; ++a, ++idx) {
+               float score = sc[idx];
+               if(score < conf_threshold) continue;
+
+               float cx = (float)(x * stride);
+               float cy = (float)(y * stride);
+
+               // distance2bbox: (cx ± distance*stride) mapped back through letterbox
+               float bx1 = (cx - bb[idx*4+0] * stride - pp.pad_x) / pp.scale;
+               float by1 = (cy - bb[idx*4+1] * stride - pp.pad_y) / pp.scale;
+               float bx2 = (cx + bb[idx*4+2] * stride - pp.pad_x) / pp.scale;
+               float by2 = (cy + bb[idx*4+3] * stride - pp.pad_y) / pp.scale;
+
+               FaceDet det;
+               det.x1 = bx1; det.y1 = by1; det.x2 = bx2; det.y2 = by2;
+               det.score = score;
+               for(int k = 0; k < 5; ++k) {
+                  det.kps[k*2+0] = (cx + kp[idx*10 + k*2+0] * stride - pp.pad_x) / pp.scale;
+                  det.kps[k*2+1] = (cy + kp[idx*10 + k*2+1] * stride - pp.pad_y) / pp.scale;
+               }
+               candidates.push_back(det);
+            }
+         }
+      }
+   }
+
+   // NMS
+   std::vector<cv::Rect> boxes;
+   std::vector<double> scores;
+   boxes.reserve(candidates.size());
+   scores.reserve(candidates.size());
+   for(auto& d : candidates) {
+      boxes.emplace_back((int)d.x1, (int)d.y1, (int)(d.x2 - d.x1), (int)(d.y2 - d.y1));
+      scores.push_back((double)d.score);
+   }
+   std::vector<size_t> keep;
+   nms(keep, boxes, scores, 0.4f);
+
+   std::vector<FaceDet> results;
+   results.reserve(keep.size());
+   for(size_t k : keep) results.push_back(candidates[k]);
+   return results;
+}
+
+// Run SCRFD: returns all detected faces
+static std::vector<FaceDet> scrfd_run(Ort::Session* det, const cv::Mat& img,
+                                      float conf_threshold, PreprocInfo& pp) {
+   const int INPUT_W = 640, INPUT_H = 640;
+   std::vector<float> in_data = scrfd_preprocess(img, INPUT_W, INPUT_H, pp);
+   const std::vector<int64_t> in_shape = {1, 3, INPUT_H, INPUT_W};
+
+   Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+   Ort::Value in_tensor = Ort::Value::CreateTensor<float>(
+      mem, in_data.data(), in_data.size(), in_shape.data(), in_shape.size());
+
+   Ort::AllocatorWithDefaultOptions alloc;
+   auto in_name_ptr = det->GetInputNameAllocated(0, alloc);
+   const char* in_name = in_name_ptr.get();
+
+   // Collect all output names
+   const size_t n_out = det->GetOutputCount();
+   std::vector<std::string> out_name_strs;
+   std::vector<const char*> out_names;
+   out_name_strs.reserve(n_out);
+   out_names.reserve(n_out);
+   for(size_t i = 0; i < n_out; ++i) {
+      out_name_strs.push_back(det->GetOutputNameAllocated(i, alloc).get());
+      out_names.push_back(out_name_strs.back().c_str());
+   }
+
+   auto out_tensors = det->Run(Ort::RunOptions{nullptr}, &in_name, &in_tensor, 1,
+                               out_names.data(), out_names.size());
+
+   return scrfd_decode(out_tensors, INPUT_W, INPUT_H, conf_threshold, pp);
+}
+
+// Run ArcFace on an aligned 112x112 face; returns L2-normalized 512-dim embedding
+static std::vector<float> arcface_run(Ort::Session* rec, const cv::Mat& aligned) {
+   std::vector<float> in_data = arcface_preprocess(aligned);
+   const std::vector<int64_t> in_shape = {1, 3, 112, 112};
+
+   Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+   Ort::Value in_tensor = Ort::Value::CreateTensor<float>(
+      mem, in_data.data(), in_data.size(), in_shape.data(), in_shape.size());
+
+   Ort::AllocatorWithDefaultOptions alloc;
+   auto in_name_ptr  = rec->GetInputNameAllocated(0, alloc);
+   auto out_name_ptr = rec->GetOutputNameAllocated(0, alloc);
+   const char* in_name  = in_name_ptr.get();
+   const char* out_name = out_name_ptr.get();
+
+   auto out_tensors = rec->Run(Ort::RunOptions{nullptr}, &in_name, &in_tensor, 1, &out_name, 1);
+
+   const float* data = out_tensors[0].GetTensorData<float>();
+   const size_t n    = out_tensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
+
+   std::vector<float> emb(data, data + n);
+   float norm = 0.f;
+   for(float v : emb) norm += v * v;
+   norm = std::sqrt(norm);
+   if(norm > 1e-6f) for(float& v : emb) v /= norm;
+   return emb;
+}
+
+// Build a Objeck FaceDetection object from a FaceDet struct
+static size_t* make_face_detection_obj(VMContext& context, const FaceDet& d) {
+   size_t* obj = APITools_CreateObject(context, L"API.Onnx.FaceDetection");
+   if(!obj) return nullptr;
+
+   // @score : Float  → [0]
+   *reinterpret_cast<double*>(&obj[0]) = (double)d.score;
+
+   // @bounds : Rect  → [1]
+   size_t* rect_obj = APITools_CreateObject(context, L"API.OpenCV.Rect");
+   if(rect_obj) {
+      rect_obj[0] = (size_t)std::max(0, (int)d.x1);
+      rect_obj[1] = (size_t)std::max(0, (int)d.y1);
+      rect_obj[2] = (size_t)std::max(0, (int)(d.x2 - d.x1));
+      rect_obj[3] = (size_t)std::max(0, (int)(d.y2 - d.y1));
+   }
+   obj[1] = (size_t)rect_obj;
+
+   // @landmarks : Float[]  → [2] (10 doubles: x0,y0,...,x4,y4)
+   size_t* lm_arr = APITools_MakeFloatArray(context, 10);
+   double* lm_buf = reinterpret_cast<double*>(lm_arr + 3);
+   for(int i = 0; i < 10; ++i) lm_buf[i] = (double)d.kps[i];
+   obj[2] = (size_t)lm_arr;
+
+   return obj;
+}
+
+// context: [0]=result FaceDetection[], [1]=det_session, [2]=image bytes, [3]=conf_threshold
+static void face_detect_inf(VMContext& context) {
+   auto start = std::chrono::high_resolution_clock::now();
+
+   Ort::Session* det = (Ort::Session*)APITools_GetIntValue(context, 1);
+
+   size_t* img_arr  = (size_t*)APITools_GetArray(context, 2)[0];
+   const long img_sz = (long)APITools_GetArraySize(img_arr);
+   const unsigned char* img_bytes = (unsigned char*)APITools_GetArray(img_arr);
+
+   const float conf_threshold = (float)APITools_GetFloatValue(context, 3);
+
+   if(!det || !img_bytes || img_sz < 1) return;
+
+   try {
+      cv::Mat buf(1, (int)img_sz, CV_8U, (void*)img_bytes);
+      cv::Mat img = cv::imdecode(buf, cv::IMREAD_COLOR);
+      if(img.empty()) { std::wcerr << L"face_detect: failed to decode image" << std::endl; return; }
+
+      PreprocInfo pp;
+      std::vector<FaceDet> dets = scrfd_run(det, img, conf_threshold, pp);
+
+      // Build result array
+      size_t* out_arr = APITools_MakeIntArray(context, dets.size());
+      size_t* out_buf = out_arr + 3;
+      for(size_t i = 0; i < dets.size(); ++i) {
+         out_buf[i] = (size_t)make_face_detection_obj(context, dets[i]);
+      }
+      size_t* batch = APITools_CreateObject(context, L"API.Onnx.FaceDetectionResult");
+      batch[0] = (size_t)out_arr;
+      APITools_SetObjectValue(context, 0, batch);
+
+      auto end = std::chrono::high_resolution_clock::now();
+      auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      std::wcout << L"=> SCRFD: " << dets.size() << L" face(s) in " << ms << L" ms" << std::endl;
+   }
+   catch(const Ort::Exception& e) {
+      std::wcerr << L"ONNX face_detect error: " << BytesToUnicode(e.what()) << std::endl;
+   }
+}
+
+// context: [0]=result FaceResult[], [1]=det_session, [2]=rec_session, [3]=image bytes, [4]=conf_threshold
+static void face_recognize_inf(VMContext& context) {
+   auto start = std::chrono::high_resolution_clock::now();
+
+   Ort::Session* det = (Ort::Session*)APITools_GetIntValue(context, 1);
+   Ort::Session* rec = (Ort::Session*)APITools_GetIntValue(context, 2);
+
+   size_t* img_arr   = (size_t*)APITools_GetArray(context, 3)[0];
+   const long img_sz = (long)APITools_GetArraySize(img_arr);
+   const unsigned char* img_bytes = (unsigned char*)APITools_GetArray(img_arr);
+
+   const float conf_threshold = (float)APITools_GetFloatValue(context, 4);
+
+   if(!det || !rec || !img_bytes || img_sz < 1) return;
+
+   try {
+      cv::Mat buf(1, (int)img_sz, CV_8U, (void*)img_bytes);
+      cv::Mat img = cv::imdecode(buf, cv::IMREAD_COLOR);
+      if(img.empty()) { std::wcerr << L"face_recognize: failed to decode image" << std::endl; return; }
+
+      PreprocInfo pp;
+      std::vector<FaceDet> dets = scrfd_run(det, img, conf_threshold, pp);
+
+      std::vector<size_t> result_ptrs;
+      result_ptrs.reserve(dets.size());
+
+      for(auto& d : dets) {
+         cv::Mat aligned = face_align(img, d.kps);
+         if(aligned.empty()) continue;
+
+         std::vector<float> emb = arcface_run(rec, aligned);
+
+         // Build FaceResult: [0]=FaceDetection*, [1]=Float[] embedding
+         size_t* res_obj = APITools_CreateObject(context, L"API.Onnx.FaceResult");
+         if(!res_obj) continue;
+
+         res_obj[0] = (size_t)make_face_detection_obj(context, d);
+
+         size_t* emb_arr = APITools_MakeFloatArray(context, emb.size());
+         double* emb_buf = reinterpret_cast<double*>(emb_arr + 3);
+         for(size_t i = 0; i < emb.size(); ++i) emb_buf[i] = (double)emb[i];
+         res_obj[1] = (size_t)emb_arr;
+
+         result_ptrs.push_back((size_t)res_obj);
+      }
+
+      size_t* out_arr = APITools_MakeIntArray(context, result_ptrs.size());
+      size_t* out_buf = out_arr + 3;
+      for(size_t i = 0; i < result_ptrs.size(); ++i) out_buf[i] = result_ptrs[i];
+      size_t* batch = APITools_CreateObject(context, L"API.Onnx.FaceRecognitionResult");
+      batch[0] = (size_t)out_arr;
+      APITools_SetObjectValue(context, 0, batch);
+
+      auto end = std::chrono::high_resolution_clock::now();
+      auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+      std::wcout << L"=> Face recognize: " << result_ptrs.size() << L" face(s) in " << ms << L" ms" << std::endl;
+   }
+   catch(const Ort::Exception& e) {
+      std::wcerr << L"ONNX face_recognize error: " << BytesToUnicode(e.what()) << std::endl;
+   }
+}

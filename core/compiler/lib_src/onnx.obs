@@ -1843,4 +1843,309 @@ bundle API.Onnx {
 			return "[id={$id}, name={$name}, normalized=[{$@norm_x},{$@norm_y}], confidence={$@confidence}]";
 		}
 	}
+
+	#~
+	Collection of face detections returned by FaceSession->Detect().
+	Mirrors the OpenPoseResult pattern — C++ fills @detections directly.
+	~#
+	class FaceDetectionResult {
+		@detections : FaceDetection[];
+
+		New : private() {}
+
+		#~
+		Array of detected faces (bounding boxes + landmarks).
+		@return face detection array
+		~#
+		method : public : GetDetections() ~ FaceDetection[] {
+			return @detections;
+		}
+
+		#~
+		Number of detected faces.
+		@return face count
+		~#
+		method : public : GetSize() ~ Int {
+			if(@detections = Nil) { return 0; };
+			return @detections->Size();
+		}
+	}
+
+	#~
+	Collection of face recognition results returned by FaceSession->Recognize().
+	Each entry contains a FaceDetection plus a 512-dim ArcFace embedding.
+	~#
+	class FaceRecognitionResult {
+		@results : FaceResult[];
+
+		New : private() {}
+
+		#~
+		Array of face results (detection + embedding).
+		@return face result array
+		~#
+		method : public : GetResults() ~ FaceResult[] {
+			return @results;
+		}
+
+		#~
+		Number of recognised faces.
+		@return face count
+		~#
+		method : public : GetSize() ~ Int {
+			if(@results = Nil) { return 0; };
+			return @results->Size();
+		}
+	}
+
+	#~
+	Single face detection result from SCRFD, containing the bounding box,
+	confidence score, and five facial landmarks.
+	~#
+	class FaceDetection {
+		@score : Float;
+		@bounds : Rect;
+		@landmarks : Float[];
+
+		New : private() {}
+
+		#~
+		Detection confidence score [0, 1].
+		@return confidence score
+		~#
+		method : public : GetScore() ~ Float {
+			return @score;
+		}
+
+		#~
+		Bounding box in original image coordinates.
+		@return bounding rectangle
+		~#
+		method : public : GetBounds() ~ Rect {
+			return @bounds;
+		}
+
+		#~
+		Five facial landmarks as flat array [x0,y0, x1,y1, x2,y2, x3,y3, x4,y4]:
+		left-eye, right-eye, nose, left-mouth, right-mouth.
+		@return landmark array (10 floats)
+		~#
+		method : public : GetLandmarks() ~ Float[] {
+			return @landmarks;
+		}
+
+		#~
+		String representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			x := @bounds->GetX(); y := @bounds->GetY();
+			w := @bounds->GetWidth(); h := @bounds->GetHeight();
+			return "score={$@score}, bounds=[{$x},{$y},{$w},{$h}]";
+		}
+	}
+
+	#~
+	Face recognition result: detection plus 512-dim ArcFace embedding.
+	Use FaceSession->Compare() to measure similarity between two embeddings.
+	~#
+	class FaceResult {
+		@detection : FaceDetection;
+		@embedding : Float[];
+
+		New : private() {}
+
+		#~
+		The face detection (bounding box + landmarks).
+		@return face detection
+		~#
+		method : public : GetDetection() ~ FaceDetection {
+			return @detection;
+		}
+
+		#~
+		L2-normalised 512-dimensional ArcFace embedding.
+		@return embedding array (512 floats)
+		~#
+		method : public : GetEmbedding() ~ Float[] {
+			return @embedding;
+		}
+
+		#~
+		String representation
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			det_str := @detection <> Nil ? @detection->ToString() : "nil";
+			emb_size := @embedding <> Nil ? @embedding->Size() : 0;
+			return "detection=[{$det_str}], embedding-size={$emb_size}";
+		}
+	}
+
+	#~
+	Face recognition session wrapping an SCRFD detector and an ArcFace recognizer.
+	Detect() returns bounding boxes and landmarks; Recognize() additionally extracts
+	512-dim embeddings for identity comparison via Compare().
+
+	<b>Example</b>
+	<code>
+	session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
+
+	r1 := session->Recognize(image1_bytes, 0.5);
+	r2 := session->Recognize(image2_bytes, 0.5);
+
+	if(r1->GetSize() > 0 & r2->GetSize() > 0) {
+	  faces1 := r1->GetResults();
+	  faces2 := r2->GetResults();
+	  sim := FaceSession->Compare(faces1[0]->GetEmbedding(), faces2[0]->GetEmbedding());
+	  "Similarity: {$sim}"->PrintLine();   # >0.35 = same person
+	};
+	session->Close();
+	</code>
+	~#
+	class FaceSession {
+		@det_session : Int;
+		@rec_session : Int;
+
+		#~
+		Constructor — detection only (no recognizer loaded).
+		@param det_model path to SCRFD detector ONNX model (e.g. det_10g.onnx)
+		~#
+		New(det_model : String) {
+			Init(det_model, Nil, Nil);
+		}
+
+		#~
+		Constructor — detection + recognition.
+		@param det_model path to SCRFD detector ONNX model (e.g. det_10g.onnx)
+		@param rec_model path to ArcFace recognizer ONNX model (e.g. w600k_r50.onnx)
+		~#
+		New(det_model : String, rec_model : String) {
+			Init(det_model, rec_model, Nil);
+		}
+
+		#~
+		Constructor with configuration options.
+		@param det_model path to SCRFD detector ONNX model
+		@param rec_model path to ArcFace recognizer ONNX model
+		@param config key/value execution-provider options (e.g. "ep"->"cpu")
+		~#
+		New(det_model : String, rec_model : String, config : Map<String, String>) {
+			Init(det_model, rec_model, config);
+		}
+
+		method : Init(det_model : String, rec_model : String, config : Map<String, String>) ~ Nil {
+			keys := Vector->New()<String>;
+			values := Vector->New()<String>;
+
+			if(config <> Nil) {
+				key_values := config->GetKeyValues()<Pair<String, String>>;
+				each(key_value in key_values) {
+					keys->AddBack(key_value->GetFirst());
+					values->AddBack(key_value->GetSecond());
+				};
+			};
+
+			keys_array := keys->ToArray();
+			values_array := values->ToArray();
+
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := StringArrayRef->New(keys_array);
+			array_args[2] := StringArrayRef->New(values_array);
+			array_args[3] := det_model;
+			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			@det_session := array_args[0]->As(IntRef)->Get();
+
+			if(rec_model <> Nil) {
+				array_args := Base->New[4];
+				array_args[0] := IntRef->New();
+				array_args[1] := StringArrayRef->New(keys_array);
+				array_args[2] := StringArrayRef->New(values_array);
+				array_args[3] := rec_model;
+				Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+				@rec_session := array_args[0]->As(IntRef)->Get();
+			};
+		}
+
+		#~
+		Closes all loaded sessions and releases resources.
+		~#
+		method : public : Close() ~ Nil {
+			array_args := Base->New[1];
+
+			array_args[0] := IntRef->New(@det_session);
+			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+
+			if(@rec_session <> 0) {
+				array_args[0] := IntRef->New(@rec_session);
+				Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			};
+		}
+
+		#~
+		Detect all faces in an image.
+		@param image raw image bytes (JPEG/PNG)
+		@param conf_threshold detection confidence threshold [0, 1]
+		@return array of FaceDetection results
+		~#
+		method : public : Detect(image : Byte[], conf_threshold : Float) ~ FaceDetectionResult {
+			if(image = Nil) {
+				return Nil;
+			};
+
+			array_args := Base->New[4];
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@det_session);
+			array_args[2] := ByteArrayRef->New(image);
+			array_args[3] := FloatRef->New(conf_threshold);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_face_detect_inf", array_args);
+
+			return array_args[0]->As(FaceDetectionResult);
+		}
+
+		#~
+		Detect faces and extract ArcFace embeddings for each.
+		Requires the recognizer model to have been loaded.
+		@param image raw image bytes (JPEG/PNG)
+		@param conf_threshold detection confidence threshold [0, 1]
+		@return array of FaceResult (detection + 512-dim embedding)
+		~#
+		method : public : Recognize(image : Byte[], conf_threshold : Float) ~ FaceRecognitionResult {
+			if(image = Nil | @rec_session = 0) {
+				return Nil;
+			};
+
+			array_args := Base->New[5];
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@det_session);
+			array_args[2] := IntRef->New(@rec_session);
+			array_args[3] := ByteArrayRef->New(image);
+			array_args[4] := FloatRef->New(conf_threshold);
+
+			Proxy->GetDllProxy()->CallFunction("onnx_face_recognize_inf", array_args);
+
+			return array_args[0]->As(FaceRecognitionResult);
+		}
+
+		#~
+		Compute cosine similarity between two L2-normalised ArcFace embeddings.
+		Returns a value in [-1, 1]; typically >0.35 indicates the same person.
+		@param emb1 first embedding (512 floats)
+		@param emb2 second embedding (512 floats)
+		@return cosine similarity score
+		~#
+		function : Compare(emb1 : Float[], emb2 : Float[]) ~ Float {
+			if(emb1 = Nil | emb2 = Nil | emb1->Size() <> emb2->Size()) {
+				return 0.0;
+			};
+
+			dot := 0.0;
+			for(i := 0; i < emb1->Size(); i += 1;) {
+				dot += emb1[i] * emb2[i];
+			};
+			return dot;
+		}
+	}
 }
