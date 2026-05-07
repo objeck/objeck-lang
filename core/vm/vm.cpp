@@ -200,6 +200,9 @@ void SetEnv() {
   std::wcout.imbue(utf8);
   std::wcin.imbue(utf8);
 #else
+  SetConsoleCP(CP_UTF8);
+  SetConsoleOutputCP(CP_UTF8);
+
   if (_setmode(_fileno(stdin), _O_U8TEXT) < 0) {
     std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
     exit(1);
