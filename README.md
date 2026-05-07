@@ -87,22 +87,6 @@ obc hello && obr hello
   * Fixed all MSVC and GCC compiler warnings
   * Fixed doc generator error on `@hidden` tag
 
-**v2026.4.1** 
-  * **Debug Adapter Protocol (DAP)** — VS Code debugging with conditional breakpoints, ANSI color output, and readline support
-  * **3.3x binarytrees speedup** — young-gen bump allocator, direct JIT-to-JIT calling, atomic CAS mark bits, auto-JIT dispatch fix
-  * **MTHD_CALL JIT whitelist** (x64 + ARM64) — methods containing method calls can now be JIT-compiled and auto-JIT'd
-  * **GC thread safety** — memory barriers in PushFrame/PopFrame paired with acquire fences in GC to fix intermittent threading segfaults
-  * **Code signing** — macOS Developer ID Application + Installer certificates and notarization; Windows Sectigo signing; all automated in CI
-  * **macOS .pkg installer** — signed and notarized native installer with PATH setup via productbuild
-  * Networking: SSE streaming, socket receive timeouts, ReadBytes partial read fix, HTTP client/server hardening
-  * ODBC: BigInt support, connection strings, transactions, error handling, schema discovery
-  * OpenCV: contours, VideoWriter, transforms, normalization, 15 new image processing functions
-  * Phi-3 Vision multimodal inference — 3-model pipeline with FP16 and DirectML/CUDA support
-  * Unified ONNX build system — single source with preprocessor-selected providers (DML, CUDA, QNN, CoreML)
-  * Hash auto-resize at 75% load, Vector in-place Remove, JSON escape/keyword fixes
-  * Fixed the constructor early return crash, CSV.Median, CSV.Average, URL encoding, Response.ToString nil check
-  * [Performance details and benchmarks →](docs/performance.md)
-
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
 ## Downloads
