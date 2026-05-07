@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     host_tmp_dir: str = "/tmp/playground"
 
     # Version (displayed in frontend header)
-    objeck_version: str = "v2026.4.3"
+    objeck_version: str = "v2026.5.0"
 
     # Rate limiting
     rate_limit: str = "10/minute"
