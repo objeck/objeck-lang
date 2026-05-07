@@ -3121,6 +3121,16 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
     wchar_t* str = (wchar_t*)(array + 3);
 #ifdef _MODULE_STDIO
     program->output_buffer << str;
+#elif defined(_WIN32)
+    DWORD consoleMode;
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if(GetConsoleMode(hOut, &consoleMode)) {
+      DWORD written;
+      WriteConsoleW(hOut, str, (DWORD)wcslen(str), &written, nullptr);
+    }
+    else {
+      std::wcout << str;
+    }
 #else
     std::wcout << str;
 #endif
@@ -3128,6 +3138,16 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
   else {
 #ifdef _MODULE_STDIO
     program->output_buffer << L"Nil";
+#elif defined(_WIN32)
+    DWORD consoleMode;
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if(GetConsoleMode(hOut, &consoleMode)) {
+      DWORD written;
+      WriteConsoleW(hOut, L"Nil", 3, &written, nullptr);
+    }
+    else {
+      std::wcout << L"Nil";
+    }
 #else
     std::wcout << L"Nil";
 #endif
@@ -3385,7 +3405,19 @@ bool TrapProcessor::StdErrString(StackProgram* program, size_t* inst, size_t* &o
 
   if(array) {
     const wchar_t* str = (wchar_t*)(array + 3);
+#ifdef _WIN32
+    DWORD consoleMode;
+    HANDLE hErr = GetStdHandle(STD_ERROR_HANDLE);
+    if(GetConsoleMode(hErr, &consoleMode)) {
+      DWORD written;
+      WriteConsoleW(hErr, str, (DWORD)wcslen(str), &written, nullptr);
+    }
+    else {
+      std::wcerr << str;
+    }
+#else
     std::wcerr << str;
+#endif
   }
   else {
     std::wcerr << L"Nil";
