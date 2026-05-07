@@ -38,8 +38,8 @@ No installation needed - write, compile, and run Objeck code directly in your br
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.4.3/objeck-linux-x64_2026.4.3.tgz
-tar xzf objeck-linux-x64_2026.4.3.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.5.0/objeck-linux-x64_2026.5.0.tgz
+tar xzf objeck-linux-x64_2026.5.0.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -60,6 +60,10 @@ obc hello && obr hello
 ## What's New
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
+
+**v2026.5.0** ✅
+  * **Face recognition** — new `FaceSession` API with SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings (InsightFace buffalo_l). Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.
+  * **Windows emoji** — full Unicode supplementary plane output (emoji and other non-BMP characters) now works correctly in cmd.exe and Windows Terminal via `WriteConsoleW`
 
 **v2026.4.3** ✅
   * **DAP debugger hover** — hovering an object shows `ClassName { field=val, ... }` with one-level instance field expansion via `FormatObjectForDap`
@@ -100,7 +104,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.4.3](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.5.0](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
@@ -125,6 +129,17 @@ response := Realtime->Respond("How many James Bond movies?",
 text := response->GetFirst();
 audio := response->GetSecond();
 Mixer->PlayPcm(audio->Get(), 22050, AudioFormat->SDL_AUDIO_S16LSB, 1);
+```
+
+### Face Recognition
+```ruby
+# SCRFD detector + ArcFace R50 embeddings (InsightFace buffalo_l)
+session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
+r1 := session->Recognize(img1_bytes, 0.5);
+r2 := session->Recognize(img2_bytes, 0.5);
+faces1 := r1->GetResults(); faces2 := r2->GetResults();
+sim := FaceSession->Compare(faces1[0]->GetEmbedding(), faces2[0]->GetEmbedding());
+"Same person: {$(sim > 0.35)}"->PrintLine();
 ```
 
 ### Computer Vision
@@ -174,7 +189,8 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - [OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs), [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs), [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs)
 - [NLP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/nlp.obs) (tokenization, TF-IDF, text similarity, sentiment analysis)
 - [OpenCV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/opencv.obs) (computer vision)
-- [ONNX Runtime](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/onnx.obs) (cross-platform ML inference)
+- [ONNX Runtime](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/onnx.obs) (cross-platform ML inference — YOLO, ResNet, DeepLab, OpenPose, Phi-3, face recognition)
+- [Face Recognition](https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md) (SCRFD detector + ArcFace R50 embeddings, InsightFace buffalo_l)
 - [Phi-3 / Phi-3 Vision](https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/opencv_onnx) (local SLM text and vision inference)
 
 **Web & Networking**
@@ -199,7 +215,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
   - ✅ Automated code signing for Windows installers
   - ✅ One-tag releases: `git tag v2026.2.1` → automated distribution in 60 minutes
   - ✅ Parallel builds across 6 platforms (x64/ARM64)
-  - 📖 [Release Process Documentation](docs/release_process.md) • [CI/CD Architecture](docs/CI_CD.md)
+  - 📖 [Release Process Documentation](docs/release_process.md) • [CI/CD Architecture](docs/CI_CD.md) • [System Architecture](docs/architecture.md)
 - 🔍 **Quality**: Coverity static analysis + CodeQL security scanning
 - 🧪 **Testing**: 350+ tests across 3 suites (regression, comprehensive, deploy)
   - **Regression suite**: 10 focused tests for critical functionality
@@ -218,6 +234,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 
 - 🌐 [Web Playground](https://playground.objeck.org) — try Objeck in your browser
 - 📖 [Documentation](https://www.objeck.org)
+- 🏗️ [Architecture](docs/architecture.md) — Mermaid diagrams covering compiler, VM, JIT, libraries, and CI/CD
 - 🎯 [Examples](https://github.com/objeck/objeck-lang/tree/master/programs)
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
 - 🐛 [Issues](https://github.com/objeck/objeck-lang/issues)
