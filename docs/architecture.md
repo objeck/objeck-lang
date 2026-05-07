@@ -460,6 +460,7 @@ mindmap
             gemini: Google Gemini API
             ml: ML utilities
             opencv: Computer vision
+            face: Face detection + recognition
             matrix: Linear algebra
         Web & Networking
             web_server: HTTP server framework
@@ -495,7 +496,7 @@ graph TB
     end
 
     subgraph "AI/ML Stack"
-        C[onnx.obl] --> D[ONNX Runtime 1.18]
+        C[onnx.obl] --> D[ONNX Runtime 1.22+]
         E[opencv.obl] --> F[OpenCV 4.12]
         G[matrix.obl] --> H[Eigen3]
         I[ollama.obl] --> J[HTTP Client]
@@ -534,7 +535,7 @@ graph TB
 | Category | Library | Version | Purpose |
 |----------|---------|---------|---------|
 | **Crypto** | mbedTLS | 3.6.3 | TLS, hashing, encryption |
-| **ML/AI** | ONNX Runtime | 1.18+ | Neural network inference |
+| **ML/AI** | ONNX Runtime | 1.22+ | Neural network inference |
 | **Vision** | OpenCV | 4.12+ | Computer vision, image processing |
 | **Math** | Eigen3 | 3.4+ | Linear algebra, matrices |
 | **Graphics** | SDL2 | 2.30+ | Cross-platform graphics/input |
@@ -559,6 +560,32 @@ class SimpleServer {
   }
 }
 ```
+
+### Face Recognition Example
+
+```objeck
+use API.OpenCV, API.Onnx;
+
+class FaceDemo {
+  function : Main(args : String[]) ~ Nil {
+    session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
+
+    img1 := Image->Load("person_a.jpg")->Convert(Image->Format->JPEG);
+    img2 := Image->Load("person_b.jpg")->Convert(Image->Format->JPEG);
+
+    r1 := session->Recognize(img1, 0.5);
+    r2 := session->Recognize(img2, 0.5);
+
+    faces1 := r1->GetResults();
+    faces2 := r2->GetResults();
+    sim := FaceSession->Compare(faces1[0]->GetEmbedding(), faces2[0]->GetEmbedding());
+    "Similarity: {$sim}"->PrintLine();   # >0.35 = same person
+    session->Close();
+  }
+}
+```
+
+Uses SCRFD 10G-KPS detector + ArcFace R50 recognizer from InsightFace buffalo_l. Runs on DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS).
 
 **Source Files:**
 - `core/compiler/lib_src/*.obs` - Library source code (30+ files)
@@ -1290,6 +1317,7 @@ This architecture demonstrates a modern, multi-platform language implementation 
 ✅ **Modern Development Tools:** REPL, debugger, LSP support
 ✅ **Automated CI/CD:** Multi-platform testing with caching
 ✅ **Cross-Platform:** Linux x64, macOS ARM64 (Apple Silicon), Windows x64/ARM64
+✅ **Full Unicode:** Emoji and supplementary plane characters on all platforms including Windows console
 
 **For More Information:**
 - [Core Implementation README](../core/readme.md)
