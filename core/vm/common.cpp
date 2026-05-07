@@ -48,6 +48,22 @@
 #include "arch/posix/posix.h"
 #endif
 
+#ifdef _WIN32
+// Write a wide string to a Windows handle. Uses WriteConsoleW for live
+// console handles so surrogate pairs arrive intact; falls back to wcout/wcerr
+// for pipes and file redirection (where _O_U8TEXT produces correct UTF-8).
+static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t* str, size_t len) {
+  DWORD consoleMode;
+  if(GetConsoleMode(h, &consoleMode)) {
+    DWORD written;
+    WriteConsoleW(h, str, (DWORD)len, &written, nullptr);
+  }
+  else {
+    fallback.write(str, len);
+  }
+}
+#endif
+
 #include <csignal>
 #include <filesystem>
 
@@ -2924,14 +2940,15 @@ bool TrapProcessor::StdOutChar(StackProgram* program, size_t* inst, size_t* &op_
 #ifdef _MODULE_STDIO
     program->output_buffer << surrogates;
 #else
-    std::wcout << surrogates;
+    WinWriteWide(GetStdHandle(STD_OUTPUT_HANDLE), std::wcout, surrogates, 2);
 #endif
   }
   else {
+    wchar_t ch[2] = { (wchar_t)value, L'\0' };
 #ifdef _MODULE_STDIO
-    program->output_buffer << (wchar_t)value;
+    program->output_buffer << ch[0];
 #else
-    std::wcout << (wchar_t)value;
+    WinWriteWide(GetStdHandle(STD_OUTPUT_HANDLE), std::wcout, ch, 1);
 #endif
   }
 #else
@@ -3122,15 +3139,7 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
 #ifdef _MODULE_STDIO
     program->output_buffer << str;
 #elif defined(_WIN32)
-    DWORD consoleMode;
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if(GetConsoleMode(hOut, &consoleMode)) {
-      DWORD written;
-      WriteConsoleW(hOut, str, (DWORD)wcslen(str), &written, nullptr);
-    }
-    else {
-      std::wcout << str;
-    }
+    WinWriteWide(GetStdHandle(STD_OUTPUT_HANDLE), std::wcout, str, wcslen(str));
 #else
     std::wcout << str;
 #endif
@@ -3139,15 +3148,7 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
 #ifdef _MODULE_STDIO
     program->output_buffer << L"Nil";
 #elif defined(_WIN32)
-    DWORD consoleMode;
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if(GetConsoleMode(hOut, &consoleMode)) {
-      DWORD written;
-      WriteConsoleW(hOut, L"Nil", 3, &written, nullptr);
-    }
-    else {
-      std::wcout << L"Nil";
-    }
+    WinWriteWide(GetStdHandle(STD_OUTPUT_HANDLE), std::wcout, L"Nil", 3);
 #else
     std::wcout << L"Nil";
 #endif
@@ -3340,10 +3341,11 @@ bool TrapProcessor::StdErrChar(StackProgram* program, size_t* inst, size_t* &op_
     surrogates[0] = (wchar_t)(0xD800 + (cp >> 10));
     surrogates[1] = (wchar_t)(0xDC00 + (cp & 0x3FF));
     surrogates[2] = L'\0';
-    std::wcerr << surrogates;
+    WinWriteWide(GetStdHandle(STD_ERROR_HANDLE), std::wcerr, surrogates, 2);
   }
   else {
-    std::wcerr << (wchar_t)value;
+    wchar_t ch[2] = { (wchar_t)value, L'\0' };
+    WinWriteWide(GetStdHandle(STD_ERROR_HANDLE), std::wcerr, ch, 1);
   }
 #else
   std::wcerr << (wchar_t)value;
@@ -3406,15 +3408,7 @@ bool TrapProcessor::StdErrString(StackProgram* program, size_t* inst, size_t* &o
   if(array) {
     const wchar_t* str = (wchar_t*)(array + 3);
 #ifdef _WIN32
-    DWORD consoleMode;
-    HANDLE hErr = GetStdHandle(STD_ERROR_HANDLE);
-    if(GetConsoleMode(hErr, &consoleMode)) {
-      DWORD written;
-      WriteConsoleW(hErr, str, (DWORD)wcslen(str), &written, nullptr);
-    }
-    else {
-      std::wcerr << str;
-    }
+    WinWriteWide(GetStdHandle(STD_ERROR_HANDLE), std::wcerr, str, wcslen(str));
 #else
     std::wcerr << str;
 #endif
