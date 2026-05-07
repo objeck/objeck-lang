@@ -1,0 +1,8 @@
+﻿class TestEmoji {
+    function : Main(args : String[]) ~ Nil {
+        "Hello 😀"->PrintLine();
+        "Rocket 🚀"->PrintLine();
+        "Check ✅"->PrintLine();
+        "Star ⭐"->PrintLine();
+    }
+}
