@@ -58,9 +58,18 @@
   </header>
 
   <main style="text-align: left;">
-   <p>DAP debugger hover + scoping, editor setup (VSCode/Sublime/gvim), LSP crash fixes, and more.</p>
+   <p>Face recognition (SCRFD+ArcFace/InsightFace buffalo_l), Windows emoji fix, LSP enhancements.</p>
 
-   <h3><u>v2026.4.3</u></h3>
+   <h3><u>v2026.5.0</u></h3>
+    <ul>
+        <li><strong>Face recognition</strong> (<code>FaceSession</code>) &mdash; SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings from InsightFace buffalo_l. Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.</li>
+        <li><strong>Windows emoji</strong> &mdash; full Unicode supplementary plane output (emoji and non-BMP characters) now works correctly in cmd.exe and Windows Terminal via <code>WriteConsoleW</code>; pipe/file redirection emits correct UTF-8</li>
+        <li><strong>LSP enhancements</strong> &mdash; typeHierarchy, selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes</li>
+        <li><strong>ARM64 JIT</strong> &mdash; fixed <code>EXT_LIB_FUNC_CALL</code> crash; macOS ONNX build and CodeQL fixes</li>
+        <li><strong><code>OBJECK_JIT_DISABLE</code></strong> &mdash; new boolean env var for cleanly disabling auto-JIT at startup</li>
+    </ul>
+
+   <h3>v2026.4.3</h3>
     <ul>
         <li><strong>DAP debugger hover</strong> &mdash; hovering an object shows <code>ClassName { field=val, ... }</code> with one-level instance field expansion</li>
         <li><strong>DAP instance/class variable scopes</strong> &mdash; Variables pane shows separate Locals, Instance, and Class scopes</li>

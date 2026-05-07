@@ -64,6 +64,9 @@ obc hello && obr hello
 **v2026.5.0** ✅
   * **Face recognition** — new `FaceSession` API with SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings (InsightFace buffalo_l). Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.
   * **Windows emoji** — full Unicode supplementary plane output (emoji and other non-BMP characters) now works correctly in cmd.exe and Windows Terminal via `WriteConsoleW`
+  * **LSP enhancements** — typeHierarchy, selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes
+  * **ARM64 JIT** — fixed EXT_LIB_FUNC_CALL crash; macOS ONNX build and CodeQL fixes
+  * **`OBJECK_JIT_DISABLE`** — new boolean env var for cleanly disabling auto-JIT at startup
 
 **v2026.4.3** ✅
   * **DAP debugger hover** — hovering an object shows `ClassName { field=val, ... }` with one-level instance field expansion via `FormatObjectForDap`
