@@ -134,19 +134,19 @@ void JitAmd64::Epilog()
   long jmp_offset;
 
   jmp_offset = nominal_index - (jmp_nominal_pos + 4);
-  memcpy(&code[jmp_nominal_pos], &jmp_offset, 4);
+  memcpy(&code[(size_t)jmp_nominal_pos], &jmp_offset, 4);
 
   jmp_offset = teardown_index - (jmp_null_pos + 4);
-  memcpy(&code[jmp_null_pos], &jmp_offset, 4);
+  memcpy(&code[(size_t)jmp_null_pos], &jmp_offset, 4);
 
   jmp_offset = teardown_index - (jmp_under_pos + 4);
-  memcpy(&code[jmp_under_pos], &jmp_offset, 4);
+  memcpy(&code[(size_t)jmp_under_pos], &jmp_offset, 4);
 
   jmp_offset = teardown_index - (jmp_over_pos + 4);
-  memcpy(&code[jmp_over_pos], &jmp_offset, 4);
+  memcpy(&code[(size_t)jmp_over_pos], &jmp_offset, 4);
 
   jmp_offset = teardown_index - (jmp_div_pos + 4);
-  memcpy(&code[jmp_div_pos], &jmp_offset, 4);
+  memcpy(&code[(size_t)jmp_div_pos], &jmp_offset, 4);
 
   unsigned char teardown_code[] = {
     // restore registers
@@ -5973,7 +5973,7 @@ bool JitAmd64::Compile(StackMethod* cm)
       const long dest_index = instr->GetOperand();
       const long dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const long offset = dest_offset - src_offset - 4; // 64-bit jump offset
-      memcpy(&code[src_offset], &offset, 4);
+      memcpy(&code[(size_t)src_offset], &offset, 4);
 #ifdef _DEBUG_JIT
       std::wcout << L"jump update: src=" << src_offset
         << L"; dest=" << dest_offset << std::endl;
@@ -5983,25 +5983,25 @@ bool JitAmd64::Compile(StackMethod* cm)
     for(size_t i = 0; i < nil_deref_offsets.size(); ++i) {
       const long index = nil_deref_offsets[i];
       long offset = nil_deref_handler_index - (index + 4);
-      memcpy(&code[index], &offset, 4);
+      memcpy(&code[(size_t)index], &offset, 4);
     }
 
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
       const long index = bounds_less_offsets[i];
       long offset = bounds_less_handler_index - (index + 4);
-      memcpy(&code[index], &offset, 4);
+      memcpy(&code[(size_t)index], &offset, 4);
     }
 
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const long index = bounds_greater_offsets[i];
       long offset = bounds_greater_handler_index - (index + 4);
-      memcpy(&code[index], &offset, 4);
+      memcpy(&code[(size_t)index], &offset, 4);
     }
 
     for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
       const long index = div_by_zero_offsets[i];
       long offset = div_by_zero_handler_index - (index + 4);
-      memcpy(&code[index], &offset, 4);
+      memcpy(&code[(size_t)index], &offset, 4);
     }
 #ifdef _DEBUG_JIT
     std::wcout << L"Caching JIT code: actual=" << code_index

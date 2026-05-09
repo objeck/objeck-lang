@@ -636,7 +636,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
     const long src_array_len = (long)src_array[2];
     const long dest_array_len = (long)dest_array[2];
-    if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+    if(length > 0 && src_offset >= 0 && dest_offset >= 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       char* src_array_ptr = (char*)(src_array + 3);
       char* dest_array_ptr = (char*)(dest_array + 3);
       if(src_array_ptr == dest_array_ptr) {
@@ -669,7 +669,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     const long src_array_len = (long)src_array[2];
     const long dest_array_len = (long)dest_array[2];
 
-    if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+    if(length > 0 && src_offset >= 0 && dest_offset >= 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       const wchar_t* src_array_ptr = (wchar_t*)(src_array + 3);
       wchar_t* dest_array_ptr = (wchar_t*)(dest_array + 3);
       if(src_array_ptr == dest_array_ptr) {
@@ -701,7 +701,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
     const long src_array_len = (long)src_array[0];
     const long dest_array_len = (long)dest_array[0];
-    if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+    if(length > 0 && src_offset >= 0 && dest_offset >= 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       size_t* src_array_ptr = src_array + 3;
       size_t* dest_array_ptr = dest_array + 3;
       if(src_array_ptr == dest_array_ptr) {
@@ -733,7 +733,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
 
     const long src_array_len = (long)src_array[0];
     const long dest_array_len = (long)dest_array[0];
-    if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
+    if(length > 0 && src_offset >= 0 && dest_offset >= 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
       size_t* src_array_ptr = src_array + 3;
       size_t* dest_array_ptr = dest_array + 3;
       if(src_array_ptr == dest_array_ptr) {

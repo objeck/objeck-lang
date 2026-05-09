@@ -835,6 +835,9 @@ void ObjectSerializer::Serialize(size_t* inst) {
 size_t* ObjectDeserializer::DeserializeObject() {
   // read object id
   const INT_VALUE char_array_size = DeserializeInt();
+  if(char_array_size < 0) {
+    return nullptr;
+  }
   char* temp = new char[char_array_size + 1];
   memcpy(temp, buffer + buffer_offset, char_array_size);
   buffer_offset += char_array_size;
@@ -911,6 +914,9 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long byte_array_size = DeserializeInt();
             const long byte_array_dim = DeserializeInt();
             const long byte_array_size_dim = DeserializeInt();
+            if(byte_array_size < 0 || byte_array_dim < 0) {
+              return nullptr;
+            }
             size_t* byte_array = MemoryManager::AllocateArray((size_t)(byte_array_size + ((byte_array_dim + 2) * sizeof(size_t))),
                                                               BYTE_ARY_TYPE, op_stack, *stack_pos, false);
             char* byte_array_ptr = (char*)(byte_array + 3);
@@ -949,6 +955,9 @@ size_t* ObjectDeserializer::DeserializeObject() {
             long char_array_size = DeserializeInt();
             const long char_array_dim = DeserializeInt();
             long char_array_size_dim = DeserializeInt();
+            if(char_array_size < 0 || char_array_dim < 0) {
+              return nullptr;
+            }
             // copy content
             char* in = new char[char_array_size + 1];
             memcpy(in, buffer + buffer_offset, char_array_size);
@@ -998,6 +1007,9 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long array_size = DeserializeInt();
             const long array_dim = DeserializeInt();
             const long array_size_dim = DeserializeInt();
+            if(array_size < 0 || array_dim < 0) {
+              return nullptr;
+            }
             size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
@@ -1037,6 +1049,9 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long array_size = DeserializeInt();
             const long array_dim = DeserializeInt();
             const long array_size_dim = DeserializeInt();
+            if(array_size < 0 || array_dim < 0) {
+              return nullptr;
+            }
             size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
 
@@ -1076,6 +1091,9 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long array_size = DeserializeInt();
             const long array_dim = DeserializeInt();
             const long array_size_dim = DeserializeInt();
+            if(array_size < 0 || array_dim < 0) {
+              return nullptr;
+            }
             size_t* array = MemoryManager::AllocateArray((size_t)(array_size + array_dim + 2), instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
