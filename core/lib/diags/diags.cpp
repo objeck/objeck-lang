@@ -1459,7 +1459,7 @@ extern "C" {
     struct HintInfo {
       std::wstring text;
       int line;
-      int pos;
+      size_t pos;
       int kind; // 1=type, 2=parameter
     };
     std::vector<HintInfo> hints;
@@ -1570,7 +1570,7 @@ extern "C" {
 
     struct TokenInfo {
       int line;
-      int start_char;
+      size_t start_char;
       int length;
       int token_type;
       int token_modifiers;
