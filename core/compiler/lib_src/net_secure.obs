@@ -1364,9 +1364,7 @@ if(client->Connect()) {
 		method : ReadFrame() ~ Byte[] {
 			if(@socket <> Nil) {
 				# read header
-				each(i : 2) {
-					@header[i] := @socket->ReadByte();
-				};
+				@socket->ReadBuffer(0, 2, @header);
 				opcode := (@header[0] and 0xff)->As(Byte);
 
 				if(@is_debug){
@@ -1377,8 +1375,8 @@ if(client->Connect()) {
 				if(opcode = 0x89) {
 					payload_length : Int := @header[1];
 					buffer := Byte->New[payload_length];
-					each(i : payload_length) {
-						buffer[i] := @socket->ReadByte();
+					if(payload_length > 0) {
+						@socket->ReadBuffer(0, payload_length, buffer);
 					};
 
 					if(@is_debug){
@@ -1389,22 +1387,18 @@ if(client->Connect()) {
 					@socket->WriteBuffer(buffer);
 
 					# read header
-					each(i : 2) {
-						@header[i] := @socket->ReadByte();
-					};
+					@socket->ReadBuffer(0, 2, @header);
 					opcode := (@header[0] and 0xff)->As(Byte);
 
 					if(@is_debug){
 						System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 					};
 				};
-				
+
 				if(opcode = 0x81 | opcode = 0x82 | opcode = 0x88) {
 					payload_length : Int := @header[1];
 					if(payload_length = 126) {
-						each(i : 2) {
-							@header[i] := @socket->ReadByte();
-						};
+						@socket->ReadBuffer(0, 2, @header);
 
 						if(@is_debug){
 							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
@@ -1414,10 +1408,7 @@ if(client->Connect()) {
 					}
 					else if(payload_length = 127) {
 						buffer := Byte->New[8];
-
-						each(i : 8) {
-							buffer[i] := @socket->ReadByte();
-						};
+						@socket->ReadBuffer(0, 8, buffer);
 
 						if(@is_debug){
 							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
@@ -1434,8 +1425,8 @@ if(client->Connect()) {
 					if(payload_length < 4294967296) {
 						# read payload
 						buffer := Byte->New[payload_length];
-						each(i : payload_length) {
-							buffer[i] := @socket->ReadByte();
+						if(payload_length > 0) {
+							@socket->ReadBuffer(0, payload_length, buffer);
 						};
 
 						if(opcode = 0x88) {
@@ -1645,16 +1636,14 @@ if(client->Connect()) {
 				@socket->WriteBuffer(frame);
 
 				# read header
-				each(i : 2) {
-					@header[i] := @socket->ReadByte();
-				};
+				@socket->ReadBuffer(0, 2, @header);
 				opcode := (@header[0] and 0xff)->As(Byte);
 				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 
 				payload_length : Int := @header[1];
 				buffer := Byte->New[payload_length];
-				each(i : payload_length) {
-					buffer[i] := @socket->ReadByte();
+				if(payload_length > 0) {
+					@socket->ReadBuffer(0, payload_length, buffer);
 				};
 
 				if(@is_debug){
