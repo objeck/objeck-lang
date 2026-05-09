@@ -1,0 +1,79 @@
+# EXTRA_LIBS: net,net_server
+use System.IO.Net.OAuth;
+
+class OAuthTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# Test 1: fresh token (3600s) is not expired
+		fresh := OAuthToken->New("access_abc", "refresh_abc", 3600, "openid");
+		if(fresh->IsExpired()) {
+			"  FAIL: fresh token (3600s) should not be expired"->PrintLine();
+			pass := false;
+		};
+
+		# Test 2: GetRefreshToken returns value on a fresh (non-expired) token
+		refresh := fresh->GetRefreshToken();
+		if(refresh = Nil | <>refresh->Equals("refresh_abc")) {
+			"  FAIL: GetRefreshToken on fresh token"->PrintLine();
+			pass := false;
+		};
+
+		# Test 3: token with expires_in=0 is immediately expired
+		expired := OAuthToken->New("access_xyz", "refresh_xyz", 0, "openid");
+		if(<>expired->IsExpired()) {
+			"  FAIL: token with expires_in=0 should be expired"->PrintLine();
+			pass := false;
+		};
+
+		# Test 4: GetRefreshToken returns value even on an expired token (key fix —
+		# refresh token is a long-lived credential independent of access token expiry)
+		refresh2 := expired->GetRefreshToken();
+		if(refresh2 = Nil | <>refresh2->Equals("refresh_xyz")) {
+			"  FAIL: GetRefreshToken on expired token should still return refresh token"->PrintLine();
+			pass := false;
+		};
+
+		# Test 5: Set() resets expiry so the token is usable again after a refresh
+		expired->Set("new_access", 3600, "openid email");
+		if(expired->IsExpired()) {
+			"  FAIL: token should not be expired after Set() with 3600s"->PrintLine();
+			pass := false;
+		};
+
+		# Test 6: Set() updates the access token and scope
+		if(<>expired->GetAccessToken()->Equals("new_access")) {
+			"  FAIL: Set() did not update access token"->PrintLine();
+			pass := false;
+		};
+		if(<>expired->GetScope()->Equals("openid email")) {
+			"  FAIL: Set() did not update scope"->PrintLine();
+			pass := false;
+		};
+
+		# Test 7: refresh token is preserved through Set() (Set has no refresh_token param)
+		preserved := expired->GetRefreshToken();
+		if(preserved = Nil | <>preserved->Equals("refresh_xyz")) {
+			"  FAIL: Set() should preserve refresh token"->PrintLine();
+			pass := false;
+		};
+
+		# Test 8: GetAccessToken is always available regardless of expiry
+		if(fresh->GetAccessToken() = Nil | <>fresh->GetAccessToken()->Equals("access_abc")) {
+			"  FAIL: GetAccessToken on fresh token"->PrintLine();
+			pass := false;
+		};
+		if(expired->GetAccessToken() = Nil | <>expired->GetAccessToken()->Equals("new_access")) {
+			"  FAIL: GetAccessToken after Set()"->PrintLine();
+			pass := false;
+		};
+
+		if(pass) {
+			"PASS: OAuth token tests"->PrintLine();
+		}
+		else {
+			"FAIL: OAuth token tests"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
