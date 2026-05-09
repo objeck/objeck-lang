@@ -198,7 +198,7 @@ class WebSocketTest {
 			}
 		};
 		server_thread->Execute(state);
-		System.Concurrency.Thread->Sleep(300);
+		System.Concurrency.Thread->Sleep(1000);
 
 		# -------------------------------------------------------
 		# Test 1: Connect
