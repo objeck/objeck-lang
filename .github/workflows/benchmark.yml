@@ -36,7 +36,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -63,7 +63,7 @@ jobs:
           python3
 
     - name: Cache ccache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.ccache
         key: ${{ runner.os }}-${{ matrix.arch }}-ccache-bench-${{ github.sha }}
@@ -337,7 +337,7 @@ jobs:
         python3 /tmp/gen_summary.py "$CURRENT" "$BASELINE" "$TAG" "$GITHUB_SHA" "${{ matrix.platform }}" >> $GITHUB_STEP_SUMMARY
 
     - name: Upload results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: benchmark-results-${{ matrix.platform }}
         path: |
