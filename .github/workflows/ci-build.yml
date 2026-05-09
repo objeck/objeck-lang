@@ -58,7 +58,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # ============================================
     # Dependency Installation
@@ -67,7 +67,7 @@ jobs:
     # Linux dependencies with caching
     - name: Cache APT packages (Linux)
       if: runner.os == 'Linux'
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: /var/cache/apt/archives
         key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
@@ -97,7 +97,7 @@ jobs:
     # macOS dependencies with caching
     - name: Cache Homebrew downloads (macOS)
       if: runner.os == 'macOS'
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/Library/Caches/Homebrew
         key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/**') }}
@@ -171,7 +171,7 @@ jobs:
     # Windows setup
     - name: Setup Visual Studio (Windows)
       if: runner.os == 'Windows'
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v3
 
     - name: Setup MSVC Environment (Windows)
       if: runner.os == 'Windows'
@@ -198,7 +198,7 @@ jobs:
     - name: Cache OpenCV DLLs (Windows x64)
       if: matrix.platform == 'windows-x64'
       id: opencv-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: core/lib/opencv/win/x64/bin
         key: opencv-4.12.0-win-x64-dlls
@@ -232,7 +232,7 @@ jobs:
 
     - name: Cache ccache
       if: runner.os != 'Windows'
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.ccache
         key: ${{ runner.os }}-${{ matrix.arch }}-ccache-${{ github.sha }}
@@ -563,7 +563,7 @@ jobs:
 
     - name: Upload API documentation
       if: matrix.platform == 'linux-x64'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: api-docs
         path: docs/api.zip
@@ -581,7 +581,7 @@ jobs:
     # ============================================
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: objeck-${{ matrix.platform }}
         path: |

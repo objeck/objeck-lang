@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Extract version
         id: version
@@ -75,7 +75,7 @@ jobs:
           echo "✅ Updated version.h with version $VERSION"
 
       - name: Upload version metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: version-metadata
           path: core/shared/version.h
@@ -140,7 +140,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download version metadata
         uses: actions/download-artifact@v4
@@ -154,7 +154,7 @@ jobs:
 
       - name: Cache APT packages (Linux)
         if: runner.os == 'Linux'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /var/cache/apt/archives
           key: ${{ runner.os }}-${{ matrix.arch }}-apt-release
@@ -180,7 +180,7 @@ jobs:
 
       - name: Cache Homebrew (macOS)
         if: runner.os == 'macOS'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/Library/Caches/Homebrew
@@ -210,7 +210,7 @@ jobs:
 
       - name: Setup Visual Studio (Windows)
         if: runner.os == 'Windows'
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Setup MSVC Environment (Windows)
         if: runner.os == 'Windows'
@@ -237,7 +237,7 @@ jobs:
       - name: Cache OpenCV DLLs (Windows x64)
         if: matrix.platform == 'windows-x64'
         id: opencv-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: core/lib/opencv/win/x64/bin
           key: opencv-4.12.0-win-x64-dlls
@@ -478,7 +478,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-${{ matrix.platform }}
           path: |
@@ -496,7 +496,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download version metadata
         uses: actions/download-artifact@v4
@@ -505,7 +505,7 @@ jobs:
           path: core/shared/
 
       - name: Setup Visual Studio
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Setup MSVC Environment
         uses: ilammy/msvc-dev-cmd@v1
@@ -540,7 +540,7 @@ jobs:
           Write-Output "✅ LSP package created: objeck-lsp_0.0.0.zip"
 
       - name: Upload LSP artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-lsp
           path: objeck-lsp_0.0.0.zip
@@ -561,7 +561,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download version metadata
         uses: actions/download-artifact@v4
@@ -652,7 +652,7 @@ jobs:
           echo "✅ API documentation packaged"
 
       - name: Upload API docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: api-docs
           path: docs/api.zip
