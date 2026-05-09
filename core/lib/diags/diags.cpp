@@ -1,4 +1,4 @@
-/***************************************************************************
+﻿/***************************************************************************
  * Diagnostics support for Objeck
  *
  * Copyright (c) 2021, Randy Hollines
@@ -34,6 +34,8 @@
 #include "../../compiler/parser.h"
 #include "../../compiler/context.h"
 
+#include <mutex>
+
 using namespace frontend;
 
 // SEH guard: prevents access violations from crashing the LSP server process
@@ -58,12 +60,16 @@ static inline void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) { fn(ctx
 //
 // Cache one analyzer per (program, lib_path). The cache is invalidated
 // when the program is released or the lib_path changes.
+static std::mutex s_analyzer_mutex;
 static ContextAnalyzer* s_cached_analyzer = nullptr;
 static ParsedProgram* s_cached_program = nullptr;
 static std::wstring s_cached_lib_path;
 
+static inline size_t safe_pos(int p) { return p > 0 ? static_cast<size_t>(p - 1) : 0; }
+
 static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstring& lib_path)
 {
+  std::lock_guard<std::mutex> lock(s_analyzer_mutex);
   if(s_cached_analyzer && s_cached_program == program && s_cached_lib_path == lib_path) {
     return s_cached_analyzer;
   }
@@ -85,6 +91,7 @@ static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstrin
 
 static void InvalidateAnalyzerCache(ParsedProgram* program)
 {
+  std::lock_guard<std::mutex> lock(s_analyzer_mutex);
   if(s_cached_program == program) {
     delete s_cached_analyzer;
     s_cached_analyzer = nullptr;
@@ -306,7 +313,7 @@ extern "C" {
         klass_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, klass->GetFileName());
         klass_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS; // class type
         klass_symb_obj[ResultPosition::POS_START_LINE] = klass->GetLineNumber() - 1;
-        klass_symb_obj[ResultPosition::POS_START_POS] = klass->GetLinePosition() - 1;
+        klass_symb_obj[ResultPosition::POS_START_POS] = safe_pos(klass->GetLinePosition());
         klass_symb_obj[ResultPosition::POS_END_LINE] = klass->GetEndLineNumber() - 1;
         klass_symb_obj[ResultPosition::POS_END_POS] = klass->GetEndLinePosition() - 1;
         klass_array_ptr[index++] = (size_t)klass_symb_obj;
@@ -345,7 +352,7 @@ extern "C" {
           }
 
           mthd_symb_obj[ResultPosition::POS_START_LINE] = (size_t)mthd->GetLineNumber() - 1;
-          mthd_symb_obj[ResultPosition::POS_START_POS] = mthd->GetLinePosition() - 1;
+          mthd_symb_obj[ResultPosition::POS_START_POS] = safe_pos(mthd->GetLinePosition());
           mthd_symb_obj[ResultPosition::POS_END_LINE] = (size_t)mthd->GetEndLineNumber() - 2;
           mthd_symb_obj[ResultPosition::POS_END_POS] = mthd->GetEndLinePosition();
           mthds_array_ptr[k] = (size_t)mthd_symb_obj;
@@ -428,7 +435,7 @@ extern "C" {
             if(klass) {
               node = klass;
             }
-            // enum item — only use eenum_item if it was actually found
+            // enum item â€” only use eenum_item if it was actually found
             else if(eenum && eenum_item) {
               node = eenum_item;
             }
@@ -445,7 +452,7 @@ extern "C" {
               def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, node->GetFileName());
               def_obj[ResultPosition::POS_START_LINE] = (size_t)node->GetLineNumber() - 1;
               def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
-              def_obj[ResultPosition::POS_START_POS] = (size_t)node->GetLinePosition() - 1;
+              def_obj[ResultPosition::POS_START_POS] = safe_pos(node->GetLinePosition());
               def_obj[ResultPosition::POS_END_POS] = (size_t)node->GetLinePosition() + 80;
               APITools_SetObjectValue(context, 0, def_obj);
             }
@@ -467,7 +474,7 @@ extern "C" {
             def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, found_klass->GetFileName());
             def_obj[ResultPosition::POS_START_LINE] = (size_t)found_klass->GetLineNumber() - 1;
             def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
-            def_obj[ResultPosition::POS_START_POS] = (size_t)found_klass->GetLinePosition() - 1;
+            def_obj[ResultPosition::POS_START_POS] = safe_pos(found_klass->GetLinePosition());
             def_obj[ResultPosition::POS_END_POS] = (size_t)found_klass->GetLinePosition() + 80;
             APITools_SetObjectValue(context, 0, def_obj);
           }
@@ -618,7 +625,7 @@ extern "C" {
                 code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, entry_type_name);
                 code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, entry_var_name);
                 code_action_obj[ResultPosition::POS_START_LINE] = entry->GetType()->GetLineNumber() - 1;
-                code_action_obj[ResultPosition::POS_START_POS] = entry->GetType()->GetLinePosition() - 1;
+                code_action_obj[ResultPosition::POS_START_POS] = safe_pos(entry->GetType()->GetLinePosition());
               }
               // variable match
               else if(entry->GetLineNumber() <= start_line + 1 && entry->GetLinePosition() <= start_char + 1) {
@@ -627,7 +634,7 @@ extern "C" {
                   code_action_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, entry_type_name);
                   code_action_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, entry_var_name);
                   code_action_obj[ResultPosition::POS_START_LINE] = entry->GetType()->GetLineNumber() - 1;
-                  code_action_obj[ResultPosition::POS_START_POS] = entry->GetType()->GetLinePosition() - 1;
+                  code_action_obj[ResultPosition::POS_START_POS] = safe_pos(entry->GetType()->GetLinePosition());
                 }
               }
             }
@@ -964,7 +971,7 @@ extern "C" {
                 def_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, type_class->GetFileName());
                 def_obj[ResultPosition::POS_START_LINE] = (size_t)type_class->GetLineNumber() - 1;
                 def_obj[ResultPosition::POS_END_LINE] = def_obj[ResultPosition::POS_START_LINE];
-                def_obj[ResultPosition::POS_START_POS] = (size_t)type_class->GetLinePosition() - 1;
+                def_obj[ResultPosition::POS_START_POS] = safe_pos(type_class->GetLinePosition());
                 def_obj[ResultPosition::POS_END_POS] = (size_t)type_class->GetLinePosition() + 80;
                 APITools_SetObjectValue(context, 0, def_obj);
               }
@@ -1099,7 +1106,7 @@ extern "C" {
           ref_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, node->GetFileName());
           ref_obj[ResultPosition::POS_START_LINE] = (size_t)node->GetLineNumber() - 1;
           ref_obj[ResultPosition::POS_END_LINE] = ref_obj[ResultPosition::POS_START_LINE];
-          ref_obj[ResultPosition::POS_START_POS] = (size_t)node->GetLinePosition() - 1;
+          ref_obj[ResultPosition::POS_START_POS] = safe_pos(node->GetLinePosition());
           ref_obj[ResultPosition::POS_END_POS] = (size_t)node->GetLinePosition() + 80;
           refs_array_ptr[i] = (size_t)ref_obj;
         }
@@ -1120,14 +1127,14 @@ extern "C" {
     // Output is written into the Analysis instance variable @supertypes_results
     // (slot 8 of the Analysis object), NOT back into the local arg array.
     // The local-array output pattern (used by InlayHints, OutgoingCalls, etc.)
-    // appears unreliable for Result[] casts — those tests have never returned
+    // appears unreliable for Result[] casts â€” those tests have never returned
     // non-Nil data so the cast was never exercised.
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
     const std::wstring uri = APITools_GetStringValue(context, 1);
     const int line_num = (int)APITools_GetIntValue(context, 2);
-    // line_pos (slot 3) and lib_path (slot 4) read but unused — chain walking
+    // line_pos (slot 3) and lib_path (slot 4) read but unused â€” chain walking
     // only needs the parsed AST, not the analyzer.
 
     Class* klass; Method* method; SymbolTable* table;
@@ -1142,7 +1149,7 @@ extern "C" {
       }
       if(!target) return;
 
-      // walk parent chain — match by exact name OR short-suffix, since ParsedBundle
+      // walk parent chain â€” match by exact name OR short-suffix, since ParsedBundle
       // stores classes under their fully-qualified names ("Default.Shape") while
       // GetParentName can return the short form ("Shape") as written in source.
       std::vector<ParsedBundle*> bundles = program->GetBundles();
@@ -1181,7 +1188,7 @@ extern "C" {
           ref_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS;
           ref_obj[ResultPosition::POS_START_LINE] = (size_t)cls->GetLineNumber() - 1;
           ref_obj[ResultPosition::POS_END_LINE] = (size_t)cls->GetEndLineNumber() - 1;
-          ref_obj[ResultPosition::POS_START_POS] = (size_t)cls->GetLinePosition() - 1;
+          ref_obj[ResultPosition::POS_START_POS] = safe_pos(cls->GetLinePosition());
           ref_obj[ResultPosition::POS_END_POS] = (size_t)cls->GetLinePosition() + 80;
           refs_array_ptr[i] = (size_t)ref_obj;
         }
@@ -1189,7 +1196,8 @@ extern "C" {
         // Write into the Analysis instance variable @supertypes_results (slot 8).
         // This is the proven pattern (mirrors FindReferences/CodeRename) and
         // produces a properly type-tagged Result[] the wrapper can cast.
-        prgm_obj[8] = (size_t)refs_array;
+        constexpr size_t ANALYSIS_SLOT_SUPERTYPES_RESULTS = 8; // Analysis::@supertypes_results
+        prgm_obj[ANALYSIS_SLOT_SUPERTYPES_RESULTS] = (size_t)refs_array;
       }
     }
   }
@@ -1240,7 +1248,7 @@ extern "C" {
           result_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, target_method->GetFileName());
           result_obj[ResultPosition::POS_START_LINE] = (size_t)target_method->GetLineNumber() - 1;
           result_obj[ResultPosition::POS_END_LINE] = (size_t)target_method->GetEndLineNumber() - 1;
-          result_obj[ResultPosition::POS_START_POS] = (size_t)target_method->GetLinePosition() - 1;
+          result_obj[ResultPosition::POS_START_POS] = safe_pos(target_method->GetLinePosition());
           result_obj[ResultPosition::POS_END_POS] = (size_t)target_method->GetLinePosition() + 80;
 
           // store class name in POS_CODE as a secondary identifier
@@ -1334,7 +1342,7 @@ extern "C" {
             ref_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, caller->GetFileName());
             ref_obj[ResultPosition::POS_START_LINE] = (size_t)caller->GetLineNumber() - 1;
             ref_obj[ResultPosition::POS_END_LINE] = (size_t)caller->GetEndLineNumber() - 1;
-            ref_obj[ResultPosition::POS_START_POS] = (size_t)caller->GetLinePosition() - 1;
+            ref_obj[ResultPosition::POS_START_POS] = safe_pos(caller->GetLinePosition());
             ref_obj[ResultPosition::POS_END_POS] = (size_t)caller->GetLinePosition() + 80;
             refs_array_ptr[i] = (size_t)ref_obj;
           }
@@ -1417,7 +1425,7 @@ extern "C" {
             ref_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, called->GetFileName());
             ref_obj[ResultPosition::POS_START_LINE] = (size_t)called->GetLineNumber() - 1;
             ref_obj[ResultPosition::POS_END_LINE] = (size_t)called->GetEndLineNumber() - 1;
-            ref_obj[ResultPosition::POS_START_POS] = (size_t)called->GetLinePosition() - 1;
+            ref_obj[ResultPosition::POS_START_POS] = safe_pos(called->GetLinePosition());
             ref_obj[ResultPosition::POS_END_POS] = (size_t)called->GetLinePosition() + 80;
             refs_array_ptr[i] = (size_t)ref_obj;
           }
@@ -1504,7 +1512,7 @@ extern "C" {
                         HintInfo hint;
                         hint.text = param_name + L":";
                         hint.line = param_exprs[p]->GetLineNumber() - 1;
-                        hint.pos = param_exprs[p]->GetLinePosition() - 1;
+                        hint.pos = safe_pos(param_exprs[p]->GetLinePosition());
                         hint.kind = 2; // parameter
                         hints.push_back(hint);
                       }
@@ -1580,7 +1588,7 @@ extern "C" {
         if(cls->GetLineNumber() > 0) {
           TokenInfo t;
           t.line = cls->GetLineNumber() - 1;
-          t.start_char = cls->GetLinePosition() - 1;
+          t.start_char = safe_pos(cls->GetLinePosition());
 
           // extract short class name (after last '.')
           std::wstring cls_name = cls->GetName();
@@ -1624,7 +1632,7 @@ extern "C" {
               Variable* var = static_cast<Variable*>(expr);
               TokenInfo t;
               t.line = expr->GetLineNumber() - 1;
-              t.start_char = expr->GetLinePosition() - 1;
+              t.start_char = safe_pos(expr->GetLinePosition());
               t.length = (int)var->GetName().size();
               t.token_modifiers = 0;
 
@@ -1684,7 +1692,7 @@ extern "C" {
 
         TokenInfo t;
         t.line = en->GetLineNumber() - 1;
-        t.start_char = en->GetLinePosition() - 1;
+        t.start_char = safe_pos(en->GetLinePosition());
 
         std::wstring ename = en->GetName();
         size_t dot_pos = ename.rfind(L'.');

@@ -2821,6 +2821,9 @@ static std::vector<FaceDet> scrfd_decode(
       const int grid_w  = input_w / stride;
       const int anchors = 2;
 
+      const int64_t expected = (int64_t)grid_h * grid_w * anchors;
+      if(sc_list[si].n < expected || bb_list[si].n < expected * 4 || kp_list[si].n < expected * 10) continue;
+
       const float* sc = sc_list[si].ptr;
       const float* bb = bb_list[si].ptr;
       const float* kp = kp_list[si].ptr;
@@ -2972,6 +2975,8 @@ static void face_detect_inf(VMContext& context) {
    const float conf_threshold = (float)APITools_GetFloatValue(context, 3);
 
    if(!det || !img_bytes || img_sz < 1) return;
+   if(std::isnan(conf_threshold) || conf_threshold < 0.0f || conf_threshold > 1.0f) return;
+   if(img_sz > (long)INT_MAX) return;
 
    try {
       cv::Mat buf(1, (int)img_sz, CV_8U, (void*)img_bytes);
@@ -3014,6 +3019,8 @@ static void face_recognize_inf(VMContext& context) {
    const float conf_threshold = (float)APITools_GetFloatValue(context, 4);
 
    if(!det || !rec || !img_bytes || img_sz < 1) return;
+   if(std::isnan(conf_threshold) || conf_threshold < 0.0f || conf_threshold > 1.0f) return;
+   if(img_sz > (long)INT_MAX) return;
 
    try {
       cv::Mat buf(1, (int)img_sz, CV_8U, (void*)img_bytes);
