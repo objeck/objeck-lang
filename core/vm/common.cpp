@@ -56,6 +56,7 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
   DWORD consoleMode;
   if(GetConsoleMode(h, &consoleMode)) {
     DWORD written;
+    if(len > MAXDWORD) return;
     WriteConsoleW(h, str, (DWORD)len, &written, nullptr);
   }
   else {
