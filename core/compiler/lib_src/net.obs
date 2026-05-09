@@ -961,7 +961,7 @@ if(client->Connect()) {
 
 				port := @url->GetPort();
 				if(port < 0) {
-					port := 443;
+					port := 80;
 				};
 				# "### address='{$address}', port={$port}, location='{$location}'"->PrintLine();
 
@@ -1012,11 +1012,11 @@ if(client->Connect()) {
 						# get request headers
 						do {
 							line := socket->ReadLine();
-							if(line->Size() > 0) {
+							if(line <> Nil & line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-								
+
 								# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									@cookies->AddBack(Cookie->New(value));
@@ -1027,7 +1027,7 @@ if(client->Connect()) {
 								};
 							};
 						}
-						while(line->Size() > 0);
+						while(line <> Nil & line->Size() > 0);
 						
 						nonce_hash := @response_headers->Find("sec-websocket-accept");
 						# TODO: validate hash response '258EAFA5-E914-47DA-95CA-C5AB0DC85B11' base64 encoded
@@ -1052,14 +1052,14 @@ if(client->Connect()) {
 		method : public : WriteSocket(data : Byte[], fragment : Bool := false) ~ Bool {
 			chunk_size := 4096;
 			data_size := data->Size();
-						
+
 			if(fragment & data_size > chunk_size) {
 				i := 0;
 
 				if(@is_debug) {
 					"0: write - off={$i}, len={$chunk_size}"->PrintLine();
 				};
-				WriteFrame(data, i, chunk_size, 0, true);
+				WriteFrame(data, i, chunk_size, 2, true);
 
 				for(i := chunk_size; chunk_size + i  < data_size; i += chunk_size) {
 					if(@is_debug) {
@@ -1067,22 +1067,22 @@ if(client->Connect()) {
 					};
 
 					WriteFrame(data, i, chunk_size, 0, true);
-				};	
+				};
 
 				# finish frame
 				if(data_size - i <> 0) {
-					rest := data_size - i;					
+					rest := data_size - i;
 					if(@is_debug) {
 						"2: write - off={$i}, len={$rest}"->PrintLine();
 					};
-					
+
 					WriteFrame(data, i, rest, 0, false);
 				};
-		
+
 				return true;
 			}
 			else {
-				return WriteFrame(data, 0, data->Size(), 1, false);
+				return WriteFrame(data, 0, data_size, 2, false);
 			};
 		}
 
@@ -1097,7 +1097,7 @@ if(client->Connect()) {
 
 			data := message->ToByteArray();
 			data_size := data->Size();
-			
+
 			if(fragment & data_size > chunk_size) {
 				i := 0;
 
@@ -1112,22 +1112,22 @@ if(client->Connect()) {
 					};
 
 					WriteFrame(data, i, chunk_size, 0, true);
-				};	
+				};
 
 				# finish frame
 				if(data_size - i <> 0) {
-					rest := data_size - i;					
+					rest := data_size - i;
 					if(@is_debug) {
 						"2: write - off={$i}, len={$rest}"->PrintLine();
 					};
-					
+
 					WriteFrame(data, i, rest, 0, false);
 				};
-		
+
 				return true;
 			}
 			else {
-				return WriteFrame(data, 0, message->Size(), 1, false);
+				return WriteFrame(data, 0, data_size, 1, false);
 			};
 		}
 
@@ -1407,12 +1407,12 @@ if(client->Connect()) {
 
 		method : native : DecodeInt(bytes : Byte[], offset : Int, num_bytes : Int) ~ Int {
 			value : Int;
-			
+
 			shift := (num_bytes - 1) << 3;
 			end := offset + num_bytes;
 
 			for(i := offset; i < end; i += 1;) {
-				value += bytes[i] and 0xff << shift;
+				value += (bytes[i] and 0xff) << shift;
 				shift -= 8;
 			};
 
@@ -1425,18 +1425,15 @@ if(client->Connect()) {
 		~#
 		method : public : PingSocket() ~ Bool {
 			if(@socket <> Nil) {
-				# ping opcode
-				@socket->WriteByte(0x89);
-				@socket->WriteByte(0x80);
-
-				# payload size
-				@socket->WriteByte(0x0);
-				@socket->WriteByte(0x0);
-
-				# masking bytes
-				@socket->WriteByte(0x0);
-				@socket->WriteByte(0x0);
-				@socket->WriteByte(0x0);
+				# ping frame: FIN+ping, mask bit set, 0 payload, 4-byte mask
+				frame := Byte->New[6];
+				frame[0] := 0x89;
+				frame[1] := 0x80;
+				frame[2] := Int->Random(255);
+				frame[3] := Int->Random(255);
+				frame[4] := Int->Random(255);
+				frame[5] := Int->Random(255);
+				@socket->WriteBuffer(frame);
 
 				# read header
 				each(i : 2) {
@@ -1476,11 +1473,16 @@ if(client->Connect()) {
 		~#
 		method : public : CloseSocket(reason : Int) ~ Nil {
 			if(@socket <> Nil) {
-				@socket->WriteByte(0x88);
-
-				@socket->WriteByte((reason >> 8) and 0xff);
-				@socket->WriteByte(reason and 0xff);
-				
+				frame := Byte->New[8];
+				frame[0] := 0x88;  # FIN + close opcode
+				frame[1] := 0x82;  # mask bit set + 2 bytes payload
+				frame[2] := Int->Random(255);  # masking key
+				frame[3] := Int->Random(255);
+				frame[4] := Int->Random(255);
+				frame[5] := Int->Random(255);
+				frame[6] := ((reason >> 8) and 0xff) xor frame[2];
+				frame[7] := (reason and 0xff) xor frame[3];
+				@socket->WriteBuffer(frame);
 				@socket->Close();
 			};
 		}
