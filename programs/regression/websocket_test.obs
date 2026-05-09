@@ -198,13 +198,19 @@ class WebSocketTest {
 			}
 		};
 		server_thread->Execute(state);
-		System.Concurrency.Thread->Sleep(1000);
 
 		# -------------------------------------------------------
-		# Test 1: Connect
+		# Test 1: Connect (retry up to 3s for slow CI runners)
 		# -------------------------------------------------------
-		ws        := WebSocket->New(Url->New("ws://localhost:{$@port}/"));
-		connected := ws->Connect();
+		ws        : WebSocket;
+		connected := false;
+		each(attempt : 15) {
+			if(<>connected) {
+				System.Concurrency.Thread->Sleep(200);
+				ws := WebSocket->New(Url->New("ws://localhost:{$@port}/"));
+				connected := ws->Connect();
+			};
+		};
 		if(<>connected) {
 			"  FAIL: Connect returned false"->PrintLine();
 			pass := false;
