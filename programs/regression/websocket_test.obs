@@ -1,0 +1,293 @@
+# EXTRA_LIBS: net,cipher
+use Collection, System.IO.Net, Web.HTTP, Cipher;
+
+#~
+Minimal WebSocket echo server built on raw TCPSocketServer.
+Handles the HTTP upgrade handshake and echoes every client frame
+back as an unmasked server frame.
+~#
+class WsEchoServer {
+	@server : TCPSocketServer;
+	@port   : Int;
+
+	New(port : Int) {
+		@port := port;
+		@server := TCPSocketServer->New(port);
+	}
+
+	method : public : Stop() ~ Nil {
+		if(@server <> Nil) {
+			@server->Close();
+		};
+	}
+
+	# Compute Sec-WebSocket-Accept from the client's key.
+	method : ComputeAccept(key : String) ~ String {
+		magic    := "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+		combined := "{$key}{$magic}";
+		hash     := Cipher.Hash->SHA1(combined->ToByteArray());
+		return Cipher.Encrypt->Base64(hash);
+	}
+
+	# Read exactly n bytes into buf[offset..].
+	method : ReadN(client : TCPSocket, buf : Byte[], offset : Int, n : Int) ~ Nil {
+		each(i : n) {
+			buf[offset + i] := client->ReadByte();
+		};
+	}
+
+	# Decode a big-endian integer from n bytes starting at offset.
+	method : DecodeLen(buf : Byte[], offset : Int, n : Int) ~ Int {
+		v := 0;
+		each(i : n) {
+			v := (v << 8) or (buf[offset + i] and 0xff);
+		};
+		return v;
+	}
+
+	# Accept one connection, WS handshake, echo frames until close.
+	method : public : ServeOne() ~ Nil {
+		if(<>@server->Listen(1)) {
+			return;
+		};
+
+		client := @server->Accept();
+		if(client = Nil | <>client->IsOpen()) {
+			return;
+		};
+
+		# Read HTTP request line and headers; extract Sec-WebSocket-Key.
+		client->ReadLine();
+		ws_key : String;
+		line := client->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name  := line->SubString(colon)->ToLower()->Trim();
+				value := line->SubString(colon + 1, line->Size() - colon - 1)->Trim();
+				if(name->Equals("sec-websocket-key")) {
+					ws_key := value;
+				};
+			};
+			line := client->ReadLine();
+		};
+
+		if(ws_key = Nil) {
+			client->Close();
+			return;
+		};
+
+		# Send 101 Switching Protocols.
+		accept := ComputeAccept(ws_key);
+		resp   := "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n";
+		client->WriteString(resp);
+
+		# Echo frames.
+		hdr     := Byte->New[2];
+		ext2    := Byte->New[2];
+		ext8    := Byte->New[8];
+		mask_k  := Byte->New[4];
+		running := true;
+
+		while(running & client->IsOpen()) {
+			ReadN(client, hdr, 0, 2);
+
+			opcode    := (hdr[0] and 0x0f)->As(Int);
+			is_masked := (hdr[1] and 0x80) <> 0;
+			pay_len   := (hdr[1] and 0x7f)->As(Int);
+
+			if(pay_len = 126) {
+				ReadN(client, ext2, 0, 2);
+				pay_len := DecodeLen(ext2, 0, 2);
+			}
+			else if(pay_len = 127) {
+				ReadN(client, ext8, 0, 8);
+				pay_len := DecodeLen(ext8, 0, 8);
+			};
+
+			if(is_masked) {
+				ReadN(client, mask_k, 0, 4);
+			};
+
+			payload := Byte->New[pay_len];
+			ReadN(client, payload, 0, pay_len);
+
+			if(is_masked) {
+				each(k : pay_len) {
+					payload[k] := (payload[k] xor mask_k[k % 4])->As(Byte);
+				};
+			};
+
+			if(opcode = 8) {
+				# close - echo close frame then stop
+				close_resp := Byte->New[4];
+				close_resp[0] := 0x88;
+				close_resp[1] := 0x02;
+				if(pay_len >= 2) {
+					close_resp[2] := payload[0];
+					close_resp[3] := payload[1];
+				};
+				client->WriteBuffer(close_resp);
+				running := false;
+			}
+			else if(opcode = 9) {
+				# ping - send pong
+				pong_frame := Byte->New[2 + pay_len];
+				pong_frame[0] := 0x8a;
+				pong_frame[1] := pay_len;
+				each(k : pay_len) {
+					pong_frame[2 + k] := payload[k];
+				};
+				client->WriteBuffer(pong_frame);
+			}
+			else {
+				# text/binary/continuation - echo with FIN
+				fin_op := (0x80 + opcode)->As(Byte);
+				if(pay_len < 126) {
+					echo_frame := Byte->New[2 + pay_len];
+					echo_frame[0] := fin_op;
+					echo_frame[1] := pay_len;
+					each(k : pay_len) {
+						echo_frame[2 + k] := payload[k];
+					};
+					client->WriteBuffer(echo_frame);
+				}
+				else if(pay_len < 65536) {
+					echo_frame := Byte->New[4 + pay_len];
+					echo_frame[0] := fin_op;
+					echo_frame[1] := 126;
+					echo_frame[2] := ((pay_len >> 8) and 0xff)->As(Byte);
+					echo_frame[3] := (pay_len and 0xff)->As(Byte);
+					each(k : pay_len) {
+						echo_frame[4 + k] := payload[k];
+					};
+					client->WriteBuffer(echo_frame);
+				};
+			};
+		};
+
+		client->Close();
+	}
+}
+
+class WsTestState {
+	@server : WsEchoServer;
+	New() { Parent(); }
+	method : public : SetServer(s : WsEchoServer) ~ Nil { @server := s; }
+	method : public : GetServer() ~ WsEchoServer { return @server; }
+}
+
+class WebSocketTest {
+	@port : static : Int;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		@port := 19876;
+
+		state := WsTestState->New();
+
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				st  := arg->As(WsTestState);
+				srv := WsEchoServer->New(WebSocketTest->Port());
+				st->SetServer(srv);
+				srv->ServeOne();
+			}
+		};
+		server_thread->Execute(state);
+		System.Concurrency.Thread->Sleep(300);
+
+		# -------------------------------------------------------
+		# Test 1: Connect
+		# -------------------------------------------------------
+		ws        := WebSocket->New(Url->New("ws://localhost:{$@port}/"));
+		connected := ws->Connect();
+		if(<>connected) {
+			"  FAIL: Connect returned false"->PrintLine();
+			pass := false;
+		};
+
+		if(connected) {
+			# -------------------------------------------------------
+			# Test 2: send/receive ASCII text
+			# -------------------------------------------------------
+			msg  := "hello websocket";
+			ws->WriteSocket(msg);
+			echo := ws->ReadSocketText();
+			if(echo = Nil | <>echo->Equals(msg)) {
+				got := "nil"; if(echo <> Nil) { got := echo; };
+				"  FAIL: text echo — expected '{$msg}', got '{$got}'"->PrintLine();
+				pass := false;
+			};
+
+			# -------------------------------------------------------
+			# Test 3: send/receive binary payload
+			# -------------------------------------------------------
+			bin := Byte->New[4];
+			bin[0] := 0xde; bin[1] := 0xad; bin[2] := 0xbe; bin[3] := 0xef;
+			ws->WriteSocket(bin);
+			echo_bin := ws->ReadSocketBinary();
+			bin_ok := echo_bin <> Nil & echo_bin->Size() = 4;
+			if(bin_ok) {
+				each(k : 4) {
+					if(echo_bin[k] <> bin[k]) {
+						bin_ok := false;
+					};
+				};
+			};
+			if(<>bin_ok) {
+				"  FAIL: binary echo mismatch"->PrintLine();
+				pass := false;
+			};
+
+			# -------------------------------------------------------
+			# Test 4: ping/pong round-trip
+			# -------------------------------------------------------
+			if(<>ws->PingSocket()) {
+				"  FAIL: PingSocket returned false"->PrintLine();
+				pass := false;
+			};
+
+			# -------------------------------------------------------
+			# Test 5: >255-byte payload exercises 2-byte extended length
+			# -------------------------------------------------------
+			big_size := 300;
+			big := Byte->New[big_size];
+			each(k : big_size) {
+				big[k] := (k and 0xff)->As(Byte);
+			};
+			ws->WriteSocket(big);
+			echo_big := ws->ReadSocketBinary();
+			big_ok := echo_big <> Nil & echo_big->Size() = big_size;
+			if(big_ok) {
+				each(k : big_size) {
+					if(echo_big[k] <> big[k]) {
+						big_ok := false;
+					};
+				};
+			};
+			if(<>big_ok) {
+				"  FAIL: extended-length echo mismatch"->PrintLine();
+				pass := false;
+			};
+
+			# -------------------------------------------------------
+			# Test 6: clean close (reason 1000)
+			# -------------------------------------------------------
+			ws->CloseSocket(1000);
+		};
+
+		System.Concurrency.Thread->Sleep(100);
+
+		if(pass) {
+			"PASS: WebSocket tests"->PrintLine();
+		}
+		else {
+			"FAIL: WebSocket tests"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
