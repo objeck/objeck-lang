@@ -33,8 +33,8 @@ class TestHandler from McpRequestHandler {
 		resource_details := Vector->New()<ResourceContent>;
 
 		resource_details->AddBack(Web.HTTP.Server.MCP.ResourceContent->New(
-			Url->New("file:///c:/temp/my-file.txt"), 
-			"my-file.txt"
+			Url->New("file:///c:/temp/my-file.txt"),
+			"my-file.txt",
 			"text/plain",
 			"Hello from resources/read, check URI\\n\\tHello!"));
 
@@ -45,9 +45,10 @@ class TestHandler from McpRequestHandler {
 		resources := Vector->New()<ResourceItem>;
 
 		resources->AddBack(Web.HTTP.Server.MCP.ResourceItem->New(
-			Url->New("file:///c:/temp/my-file.txt"), 
-			"my-file.txt"
-			"Access to my file", 
+			Url->New("file:///c:/temp/my-file.txt"),
+			"my-file.txt",
+			"my-file.txt",
+			"Access to my file",
 			"text/plain"));
 
 		return resources;
