@@ -1050,7 +1050,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
       for(int j = 0; j < dclrs_num; ++j) {
 #else
       // front to back...
-      for(int j = dclrs_num - 1; j > -1; --j) {
+      for(long j = dclrs_num - 1; j >= 0; --j) {
 #endif
         // update address based upon type
         switch(dclrs[j]->type) {
@@ -1840,7 +1840,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 #else
       StackDclr** dclrs = method->GetDeclarations();
       const long dclrs_num = method->GetNumberDeclarations();
-      for(int j = dclrs_num - 1; j > -1; --j) {
+      for(long j = dclrs_num - 1; j >= 0; --j) {
 #endif
         switch(dclrs[j]->type) {
         case FUNC_PARM: {
