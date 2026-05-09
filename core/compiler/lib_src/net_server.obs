@@ -2448,6 +2448,7 @@ bundle Web.HTTP.Server.MCP {
 		@session_cache : static : Hash<String, Hash<String, String>>;
 		@session_cache_timer : static : CacheTimer;
 		@session_cache_mutex : static : System.Concurrency.ThreadMutex;
+		@session_timeout : static : Int;
 
 		#~
 		Constructor
@@ -2468,6 +2469,7 @@ bundle Web.HTTP.Server.MCP {
 			if(session_timeout <= 0) {
 				return false;
 			};
+			@session_timeout := session_timeout;
 
 			@session_cache_mutex := System.Concurrency.ThreadMutex->New("cache_mutex");
 	 		@session_cache := Hash->New()<String, Hash<String, String>>;
@@ -2496,7 +2498,7 @@ bundle Web.HTTP.Server.MCP {
 							"session: key={$session_key}, diff={$time_diff}"->PrintLine();
 						};
 
-						if(time_diff >= 60) {
+						if(time_diff >= @session_timeout) {
 							expired_session_keys->AddBack(session_key);
 						}
 					};				
@@ -2678,7 +2680,7 @@ bundle Web.HTTP.Server.MCP {
 
 								prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
 								prompts_json->Insert("listChanged", true);
-								capabilities_json->Insert("resources", prompts_json);
+								capabilities_json->Insert("prompts", prompts_json);
 
 								result->Insert("capabilities", capabilities_json);
 
@@ -2735,8 +2737,6 @@ bundle Web.HTTP.Server.MCP {
 								result := JsonElement->New(JsonElement->JsonType->OBJECT);
 								result->Insert("resourceTemplates", templates_array_json);
 
-								ListResources();
-								
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
