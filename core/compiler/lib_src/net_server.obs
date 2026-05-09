@@ -99,8 +99,11 @@ bundle Web.HTTP.Server {
 				};
 
 				while(<>@stop) {
-					params := Collection.Tuple.Quartet->New(callback, @secure_server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
-					thread->Execute(params);
+					secure_client := @secure_server->Accept();
+					if(<>@stop & secure_client <> Nil & secure_client->IsOpen()) {
+						params := Collection.Tuple.Quartet->New(callback, secure_client, @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
+						thread->Execute(params);
+					};
 				};
 			}
 			else {
@@ -167,8 +170,11 @@ bundle Web.HTTP.Server {
 				};
 
 				while(<>@stop) {
-					params := Collection.Tuple.Quartet->New(callback, @server->Accept(), @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
-					thread->Execute(params);
+					client := @server->Accept();
+					if(<>@stop & client <> Nil & client->IsOpen()) {
+						params := Collection.Tuple.Quartet->New(callback, client, @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
+						thread->Execute(params);
+					};
 				};
 			}
 			else {
@@ -2436,6 +2442,8 @@ bundle Web.HTTP.Server.MCP {
 			};
 
 			WebServer->Serve(handler->GetClass(), http_port, @is_debug);
+			McpRequestHandler->StopCacheTimer();
+			@config := Nil;
 		}
 	}
 
@@ -2477,6 +2485,16 @@ bundle Web.HTTP.Server.MCP {
 	 		@session_cache_timer->Start(Nil);
 
 	 		return true;
+		}
+
+		#~
+		Stops the session cache timer
+		~#
+		function : StopCacheTimer() ~ Nil {
+			if(@session_cache_timer <> Nil) {
+				@session_cache_timer->Stop();
+				@session_cache_timer := Nil;
+			};
 		}
 
 		#~
@@ -2677,10 +2695,6 @@ bundle Web.HTTP.Server.MCP {
 								resources_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
 								resources_json->Insert("listChanged", true);
 								capabilities_json->Insert("resources", resources_json);
-
-								prompts_json :=  JsonElement->New(JsonElement->JsonType->OBJECT);
-								prompts_json->Insert("listChanged", true);
-								capabilities_json->Insert("prompts", prompts_json);
 
 								result->Insert("capabilities", capabilities_json);
 
@@ -3873,37 +3887,23 @@ each(i : 3) {
 		@return OAuth token, Nil if error
 		~#
 		method : public : GetToken() ~ OAuthToken {
-			access_token : String; 
-			refresh_token : String;
-
 			token := OAuthHandler->Get();
-			if(token <> Nil) {
-				access_token := token->GetAccessToken();
-				refresh_token := token->GetRefreshToken();
+
+			# valid unexpired token — return immediately
+			if(token <> Nil & <>token->IsExpired()) {
+				return OAuthToken->New(token->GetAccessToken(), token->GetRefreshToken(),
+				                       token->GetExpiresIn(), token->GetScope());
 			};
 
-			if(@config_json <> Nil & access_token = Nil) {
-				client_id := @config_json->GetClientId();
-				state := @config_json->GetState();
-				scope := @config_json->GetScope();
-				redirect_uri := @config_json->GetRedirectUri();
-
-				auth_uri_str := @config_json->GetAuthUri();
-				login_url_str := "{$auth_uri_str}?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}";
-
-				"Please login: {$login_url_str}"->PrintLine();
-
-				OAuthHandler->Initialize(@config_json);				
-				WebServer->Serve(OAuthHandler->New()->GetClass(), @config_json->GetRedirectPort(), false);
-			}
-			else if(@config_json <> Nil & refresh_token <> Nil) {
+			# expired token with a refresh token — silently refresh
+			if(@config_json <> Nil & token <> Nil & token->GetRefreshToken() <> Nil) {
+				refresh_token := token->GetRefreshToken();
 				client_id := @config_json->GetClientId();
 				client_secret := @config_json->GetClientSecret();
 				redirect_uri := @config_json->GetRedirectUri();
 				scope := @config_json->GetScope();
 
 				data := "&client_secret={$client_secret}&client_id={$client_id}&redirect_uri={$redirect_uri}&refresh_token={$refresh_token}&scope={$scope}&grant_type=refresh_token&"->ToByteArray();
-				# data->ToString()->PrintLine();
 
 				token_uri_str := @config_json->GetTokenUri();
 				headers := Collection.Map->New()<String, String>;
@@ -3911,32 +3911,42 @@ each(i : 3) {
 				post_response := HttpsClient->QuickPost(Url->New(token_uri_str), data, "application/x-www-form-urlencoded", headers);
 
 				if(post_response <> Nil) {
-					# post_response->GetContent()->ToString()->PrintLine();			
 					response_json := JsonParser->TextToElement(post_response->GetContent()->ToString());
-						
 					if(response_json->Has("access_token")) {
 						access_token := response_json->Get("access_token")->GetString();
 						expires_in := response_json->Get("expires_in")->GetInt();
 						scope := response_json->Get("scope")->GetString();
 						OAuthHandler->Set(access_token, expires_in, scope);
-					} 
-					else {
-						return Nil;
+
+						token := OAuthHandler->Get();
+						if(token <> Nil) {
+							return OAuthToken->New(token->GetAccessToken(), token->GetRefreshToken(),
+							                       token->GetExpiresIn(), token->GetScope());
+						};
 					};
-				};	
-			}
-			else {
+				};
 				return Nil;
 			};
 
-			token := OAuthHandler->Get();
-			access_token := token->GetAccessToken(); 
-			expires_in := token->GetExpiresIn(); 
-			scope := token->GetScope();
-			refresh_token := token->GetRefreshToken();
-			
-			if(expires_in > 0 & access_token <> Nil & scope <> Nil & refresh_token <> Nil) {
-				return OAuthToken->New(access_token, refresh_token, expires_in, scope);
+			# no token — browser authorization flow
+			if(@config_json <> Nil) {
+				client_id := @config_json->GetClientId();
+				state := @config_json->GetState();
+				scope := @config_json->GetScope();
+				redirect_uri := @config_json->GetRedirectUri();
+
+				auth_uri_str := @config_json->GetAuthUri();
+				login_url_str := "{$auth_uri_str}?client_id={$client_id}&response_type=code&redirect_uri={$redirect_uri}&state={$state}&scope={$scope}";
+				"Please login: {$login_url_str}"->PrintLine();
+
+				OAuthHandler->Initialize(@config_json);
+				WebServer->Serve(OAuthHandler->New()->GetClass(), @config_json->GetRedirectPort(), false);
+
+				token := OAuthHandler->Get();
+				if(token <> Nil) {
+					return OAuthToken->New(token->GetAccessToken(), token->GetRefreshToken(),
+					                       token->GetExpiresIn(), token->GetScope());
+				};
 			};
 
 			return Nil;
@@ -3991,6 +4001,9 @@ each(i : 3) {
 		function : Set(access_token : String, expires_in : Int, scope : String) ~ Nil {
 			if(@token <> Nil) {
 				@token->Set(access_token, expires_in, scope);
+			}
+			else {
+				@token := OAuthToken->New(access_token, Nil, expires_in, scope);
 			};
 		}
 
@@ -4307,11 +4320,15 @@ each(i : 3) {
 		@return refresh token
 		~#
 		method : public : GetRefreshToken() ~ String {
-			if(ReadTokenFormat(@session) <> Nil) {
-				return @refresh_token;
-			};
+			return @refresh_token;
+		}
 
-			return Nil;
+		#~
+		Returns true if the access token has expired
+		@return true if expired, false otherwise
+		~#
+		method : public : IsExpired() ~ Bool {
+			return ReadTokenFormat(@session) = Nil;
 		}
 
 		#~
@@ -4340,6 +4357,7 @@ each(i : 3) {
 			@access_token := access_token;
 			@expires_in := expires_in;
 			@scope := scope;
+			@session := FormatNewToken(@access_token, @expires_in);
 		}
 
 		#~

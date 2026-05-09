@@ -558,8 +558,15 @@ bundle Web.HTTP {
 			total_read := 0;
 			temp := Byte->New[256*1024];
 			do {
-				read := socket->ReadBuffer(0, temp->Size(), temp);
-				# "Post: content_length='{$content_length}, read='{$read}, total_read='{$total_read}"->PrintLine();
+				remaining := content_length - total_read;
+				to_read := remaining;
+				if(to_read > temp->Size()) {
+					to_read := temp->Size();
+				};
+				read := socket->ReadBuffer(0, to_read, temp);
+				if(read < 1) {
+					return buffer;
+				};
 				Runtime->Copy(buffer, total_read, temp, 0, read);
 				total_read += read;
 			}
