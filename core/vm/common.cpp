@@ -6878,8 +6878,8 @@ static bool h3_run_loop(Http3SessionCtx* ctx) {
       if(expiry_ret != 0) return false;
     }
 
-    bool drain = ngtcp2_conn_is_in_draining_period(ctx->conn);
-    bool close = ngtcp2_conn_is_in_closing_period(ctx->conn);
+    bool drain = ngtcp2_conn_in_draining_period(ctx->conn);
+    bool close = ngtcp2_conn_in_closing_period(ctx->conn);
     if(drain || close) {
       return false;
     }
@@ -6956,7 +6956,7 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   }
   gnutls_credentials_set(ctx->tls_session, GNUTLS_CRD_CERTIFICATE, ctx->cred);
   gnutls_server_name_set(ctx->tls_session, GNUTLS_NAME_DNS, host.c_str(), host.size());
-  int prio_ret = gnutls_priority_set_direct(ctx->tls_session,
+  gnutls_priority_set_direct(ctx->tls_session,
       "NORMAL:-VERS-ALL:+VERS-TLS1.3", nullptr);
   gnutls_datum_t alpn_h3 = { (unsigned char*)"h3", 2 };
   gnutls_alpn_set_protocols(ctx->tls_session, &alpn_h3, 1, 0);
@@ -6965,7 +6965,7 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   ctx->conn_ref.get_conn  = h3_get_conn;
   ctx->conn_ref.user_data = ctx;
   gnutls_session_set_ptr(ctx->tls_session, &ctx->conn_ref);
-  int cfg_ret = ngtcp2_crypto_gnutls_configure_client_session(ctx->tls_session);
+  ngtcp2_crypto_gnutls_configure_client_session(ctx->tls_session);
 
   // Generate random QUIC connection IDs
   ngtcp2_cid dcid, scid;
