@@ -46,10 +46,13 @@ class WsEchoServer {
 	}
 
 	# Accept one connection, WS handshake, echo frames until close.
-	method : public : ServeOne() ~ Nil {
+	method : public : ServeOne(state : WsTestState) ~ Nil {
 		if(<>@server->Listen(1)) {
+			"  DBG: server Listen() failed"->PrintLine();
 			return;
 		};
+		state->SetReady(true);
+		"  DBG: server listening"->PrintLine();
 
 		client := @server->Accept();
 		if(client = Nil | <>client->IsOpen()) {
@@ -171,10 +174,13 @@ class WsEchoServer {
 }
 
 class WsTestState {
-	@server : WsEchoServer;
+	@server  : WsEchoServer;
+	@ready   : Bool;
 	New() { Parent(); }
 	method : public : SetServer(s : WsEchoServer) ~ Nil { @server := s; }
 	method : public : GetServer() ~ WsEchoServer { return @server; }
+	method : public : SetReady(r : Bool) ~ Nil { @ready := r; }
+	method : public : IsReady() ~ Bool { return @ready; }
 }
 
 class WebSocketTest {
@@ -194,7 +200,9 @@ class WebSocketTest {
 				st  := arg->As(WsTestState);
 				srv := WsEchoServer->New(WebSocketTest->Port());
 				st->SetServer(srv);
-				srv->ServeOne();
+				"  DBG: server thread started"->PrintLine();
+				srv->ServeOne(st);
+				"  DBG: server thread exiting"->PrintLine();
 			}
 		};
 		server_thread->Execute(state);
@@ -207,8 +215,10 @@ class WebSocketTest {
 		each(attempt : 15) {
 			if(<>connected) {
 				System.Concurrency.Thread->Sleep(200);
+				"  DBG: attempt {$attempt}, server_ready={$state->IsReady()}"->PrintLine();
 				ws := WebSocket->New(Url->New("ws://localhost:{$@port}/"));
 				connected := ws->Connect();
+				"  DBG: attempt {$attempt}, connected={$connected}"->PrintLine();
 			};
 		};
 		if(<>connected) {
