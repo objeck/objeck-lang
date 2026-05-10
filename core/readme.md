@@ -143,7 +143,9 @@ graph TB
 # Install dependencies and build
 sudo apt-get install -y build-essential git libmbedtls-dev unixodbc-dev \
   libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
-  libmp3lame-dev libreadline-dev libeigen3-dev libopencv-dev
+  libmp3lame-dev libreadline-dev libeigen3-dev libopencv-dev \
+  libnghttp2-dev libngtcp2-dev libngtcp2-crypto-gnutls-dev \
+  libnghttp3-dev libgnutls28-dev
 
 cd core/release && ./deploy_posix.sh x64
 export PATH=$PATH:$(pwd)/deploy/bin
@@ -153,7 +155,8 @@ obc --version
 ### 🍎 macOS (One Command)
 ```bash
 # Install Homebrew dependencies
-brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer
+brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer \
+  nghttp2 ngtcp2 nghttp3 gnutls
 
 cd core/release && ./deploy_macos_arm64.sh
 export PATH=$PATH:$(pwd)/deploy/bin
@@ -225,7 +228,9 @@ cd objeck-lang/core/release
 sudo apt-get update && sudo apt-get install -y \
   build-essential git libmbedtls-dev unixodbc-dev \
   libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
-  libmp3lame-dev libreadline-dev unzip libeigen3-dev libopencv-dev
+  libmp3lame-dev libreadline-dev unzip libeigen3-dev libopencv-dev \
+  libnghttp2-dev libngtcp2-dev libngtcp2-crypto-gnutls-dev \
+  libnghttp3-dev libgnutls28-dev
 
 # 3. Build
 ./deploy_posix.sh x64    # For x64
@@ -237,7 +242,11 @@ sudo apt-get update && sudo apt-get install -y \
 ```
 
 **What each dependency does:**
-- `libmbedtls-dev` - Crypto operations (SHA, AES, TLS)
+- `libmbedtls-dev` - Crypto operations (SHA, AES, TLS) — required for `TCPSecureSocket` / HTTPS
+- `libnghttp2-dev` - HTTP/2 framing and HPACK encoding — required for `Http2Client` / `-lib net_h2`
+- `libngtcp2-dev` + `libngtcp2-crypto-gnutls-dev` - QUIC transport — required for `Http3Client` / `-lib net_quic`
+- `libnghttp3-dev` - HTTP/3 framing over QUIC — required for `Http3Client`
+- `libgnutls28-dev` - TLS 1.3 for QUIC (ngtcp2 crypto backend) — required for HTTP/3
 - `libsdl2-*` - Game development, graphics, audio
 - `libopencv-dev` - Computer vision (optional but recommended)
 - `libeigen3-dev` - Linear algebra for ML
@@ -257,7 +266,8 @@ xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # 3. Install dependencies
-brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer
+brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer \
+  nghttp2 ngtcp2 nghttp3 gnutls
 
 # 4. Build
 cd core/release
@@ -296,6 +306,10 @@ cd core/release
 
 **Note:** First ARM64 build automatically downloads mbedTLS (5-10 min one-time setup)
 
+**Network library support on Windows:**
+- **HTTP/2** (`net_h2`): Requires nghttp2 — install via vcpkg: `vcpkg install nghttp2:x64-windows` and add to VS project
+- **HTTP/3** (`net_quic`): Not yet supported on Windows (ngtcp2/GnuTLS MSVC build not wired up)
+
 ---
 
 ### Windows (MSYS2)
@@ -312,7 +326,9 @@ pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc \
   mingw-w64-ucrt-x86_64-mbedtls mingw-w64-ucrt-x86_64-SDL2 \
   mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer \
   mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc \
-  mingw-w64-ucrt-x86_64-eigen3 make unzip
+  mingw-w64-ucrt-x86_64-eigen3 mingw-w64-ucrt-x86_64-nghttp2 \
+  mingw-w64-ucrt-x86_64-ngtcp2 mingw-w64-ucrt-x86_64-nghttp3 \
+  mingw-w64-ucrt-x86_64-gnutls make unzip
 
 # 4. Build
 cd core/release
@@ -447,6 +463,31 @@ sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
 # macOS
 brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer
 ```
+
+**Problem:** `nghttp2.h not found` or `undefined reference to nghttp2_...`
+```bash
+# Linux
+sudo apt-get install libnghttp2-dev
+
+# macOS
+brew install nghttp2
+
+# MSYS2
+pacman -S mingw-w64-ucrt-x86_64-nghttp2
+```
+
+**Problem:** `ngtcp2/ngtcp2.h not found` or HTTP/3 not available at runtime
+```bash
+# Linux (Ubuntu 22.04+)
+sudo apt-get install libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
+
+# macOS
+brew install ngtcp2 nghttp3 gnutls
+
+# MSYS2
+pacman -S mingw-w64-ucrt-x86_64-ngtcp2 mingw-w64-ucrt-x86_64-nghttp3 mingw-w64-ucrt-x86_64-gnutls
+```
+Note: HTTP/3 requires rebuilding the VM with `-DOBJECK_HAS_NGTCP2` (already set in `Makefile.amd64` and `Makefile.arm64`).
 
 **Problem:** `undefined reference to opencv_...`
 ```bash

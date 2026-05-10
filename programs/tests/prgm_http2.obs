@@ -8,6 +8,8 @@ class Http2Test {
 		TestPost();
 		TestHeaders();
 		TestConnectionReuse();
+		TestQuickGet();
+		TestQuickPost();
 
 		"--- Done ---"->PrintLine();
 	}
@@ -134,6 +136,39 @@ class Http2Test {
 		}
 		else {
 			"FAIL (one or more requests failed)"->PrintLine();
+		};
+	}
+
+	function : TestQuickGet() ~ Nil {
+		"Test 5: HTTP/2 QuickGet httpbin.org/get... "->Print();
+		url := Url->New("https://httpbin.org/get");
+		resp := Http2Client->QuickGet(url);
+		if(resp <> Nil & resp->GetCode() = 200) {
+			"PASS (status=200)"->PrintLine();
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
+		};
+	}
+
+	function : TestQuickPost() ~ Nil {
+		"Test 6: HTTP/2 QuickPost httpbin.org/post... "->Print();
+		url := Url->New("https://httpbin.org/post");
+		body := "{\"quick\":\"post\"}"->ToByteArray();
+		resp := Http2Client->QuickPost(url, body, "application/json");
+		if(resp <> Nil & resp->GetCode() = 200) {
+			"PASS (status=200)"->PrintLine();
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
 		};
 	}
 }

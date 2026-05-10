@@ -3023,6 +3023,138 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case SOCK_TCP_SET_KEEPALIVE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SET_KEEPALIVE);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SET_NODELAY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SET_NODELAY);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SET_RECV_TIMEOUT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SET_RECV_TIMEOUT);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SET_SEND_TIMEOUT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SET_SEND_TIMEOUT);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SET_CONN_TIMEOUT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SET_CONN_TIMEOUT);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SET_RCVBUF:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SET_RCVBUF);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SET_SNDBUF:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SET_SNDBUF);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SET_KEEPALIVE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SET_KEEPALIVE);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SET_NODELAY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SET_NODELAY);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SET_RECV_TIMEOUT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SET_RECV_TIMEOUT);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SET_SEND_TIMEOUT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SET_SEND_TIMEOUT);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SET_RCVBUF:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SET_RCVBUF);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SET_SNDBUF:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SET_SNDBUF);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SET_MIN_TLS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SET_MIN_TLS);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_SET_VERIFY_PEER:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_SET_VERIFY_PEER);
+      NextToken();
+      break;
+
+    case SOCK_TCP_SSL_GET_FINGERPRINT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::SOCK_TCP_SSL_GET_FINGERPRINT);
+      NextToken();
+      break;
+
+    case HTTP2_CONNECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HTTP2_CONNECT);
+      NextToken();
+      break;
+
+    case HTTP2_REQUEST:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HTTP2_REQUEST);
+      NextToken();
+      break;
+
+    case HTTP2_CLOSE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HTTP2_CLOSE);
+      NextToken();
+      break;
+
+    case HTTP3_CONNECT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HTTP3_CONNECT);
+      NextToken();
+      break;
+
+    case HTTP3_REQUEST:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HTTP3_REQUEST);
+      NextToken();
+      break;
+
+    case HTTP3_CLOSE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HTTP3_CLOSE);
+      NextToken();
+      break;
+
     case SERL_CHAR:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::SERL_CHAR);
@@ -4996,6 +5128,138 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case SOCK_DTLS_SRV_CLOSE:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::SOCK_DTLS_SRV_CLOSE);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SET_KEEPALIVE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SET_KEEPALIVE);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SET_NODELAY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SET_NODELAY);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SET_RECV_TIMEOUT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SET_RECV_TIMEOUT);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SET_SEND_TIMEOUT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SET_SEND_TIMEOUT);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SET_CONN_TIMEOUT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SET_CONN_TIMEOUT);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SET_RCVBUF:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SET_RCVBUF);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SET_SNDBUF:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SET_SNDBUF);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SET_KEEPALIVE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SET_KEEPALIVE);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SET_NODELAY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SET_NODELAY);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SET_RECV_TIMEOUT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SET_RECV_TIMEOUT);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SET_SEND_TIMEOUT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SET_SEND_TIMEOUT);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SET_RCVBUF:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SET_RCVBUF);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SET_SNDBUF:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SET_SNDBUF);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SET_MIN_TLS:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SET_MIN_TLS);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_SET_VERIFY_PEER:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_SET_VERIFY_PEER);
+     NextToken();
+     break;
+
+  case SOCK_TCP_SSL_GET_FINGERPRINT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::SOCK_TCP_SSL_GET_FINGERPRINT);
+     NextToken();
+     break;
+
+  case HTTP2_CONNECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HTTP2_CONNECT);
+     NextToken();
+     break;
+
+  case HTTP2_REQUEST:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HTTP2_REQUEST);
+     NextToken();
+     break;
+
+  case HTTP2_CLOSE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HTTP2_CLOSE);
+     NextToken();
+     break;
+
+  case HTTP3_CONNECT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HTTP3_CONNECT);
+     NextToken();
+     break;
+
+  case HTTP3_REQUEST:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HTTP3_REQUEST);
+     NextToken();
+     break;
+
+  case HTTP3_CLOSE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HTTP3_CLOSE);
      NextToken();
      break;
 

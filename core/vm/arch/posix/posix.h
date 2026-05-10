@@ -848,7 +848,13 @@ class IPSecureSocket {
 
   static bool SetMinTLSVersion(SecureSocketCtx* sctx, int ver) {
     if(!sctx) return false;
+    // ver: 12 = TLS 1.2, 13 = TLS 1.3
+#if defined(MBEDTLS_VERSION_NUMBER) && MBEDTLS_VERSION_NUMBER >= 0x03000000
     mbedtls_ssl_conf_min_tls_version(&sctx->conf, (mbedtls_ssl_protocol_version)ver);
+#else
+    int minor = (ver == 13) ? MBEDTLS_SSL_MINOR_VERSION_4 : MBEDTLS_SSL_MINOR_VERSION_3;
+    mbedtls_ssl_conf_min_version(&sctx->conf, MBEDTLS_SSL_MAJOR_VERSION_3, minor);
+#endif
     return true;
   }
 
@@ -865,7 +871,8 @@ class IPSecureSocket {
     if(!cert) return "";
 
     unsigned char hash[32];
-    if(mbedtls_sha256(cert->raw.p, cert->raw.len, hash, 0) != 0) return "";
+    const mbedtls_md_info_t* md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+    if(!md_info || mbedtls_md(md_info, cert->raw.p, cert->raw.len, hash) != 0) return "";
 
     char hex[65];
     for(int i = 0; i < 32; i++) {

@@ -129,17 +129,51 @@ Performance is comparable to other JIT-based VMs like JVM and .NET CLR for simil
 
 ## Building the VM
 
+### Dependencies
+
+The VM requires the following libraries at build time:
+
+| Library | Purpose | Linux | macOS | Windows VS | MSYS2 |
+|---------|---------|-------|-------|------------|-------|
+| mbedTLS | TLS, crypto (`TCPSecureSocket`) | `libmbedtls-dev` | `brew install mbedtls` | bundled | `mingw-w64-ucrt-x86_64-mbedtls` |
+| nghttp2 | HTTP/2 (`net_h2`) | `libnghttp2-dev` | `brew install nghttp2` | vcpkg `nghttp2:x64-windows` | `mingw-w64-ucrt-x86_64-nghttp2` |
+| ngtcp2 | QUIC transport (`net_quic`) | `libngtcp2-dev` | `brew install ngtcp2` | not supported | `mingw-w64-ucrt-x86_64-ngtcp2` |
+| ngtcp2-crypto-gnutls | QUIC+TLS 1.3 | `libngtcp2-crypto-gnutls-dev` | (included) | not supported | `mingw-w64-ucrt-x86_64-ngtcp2` |
+| nghttp3 | HTTP/3 frames (`net_quic`) | `libnghttp3-dev` | `brew install nghttp3` | not supported | `mingw-w64-ucrt-x86_64-nghttp3` |
+| GnuTLS | TLS 1.3 for QUIC | `libgnutls28-dev` | `brew install gnutls` | not supported | `mingw-w64-ucrt-x86_64-gnutls` |
+
+HTTP/3 (`OBJECK_HAS_NGTCP2`) requires Ubuntu 22.04+ or equivalent (ngtcp2 ≥ 0.12).
+
 ### Windows (Visual Studio)
 ```bash
 cd core/vm/vs
 msbuild vm.vcxproj /p:Configuration=Release /p:Platform=x64
 ```
 
-### Linux/macOS (Make)
+### Linux x64 (Make)
 ```bash
+# Install dependencies first (see table above)
+sudo apt-get install -y libmbedtls-dev libnghttp2-dev \
+  libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
+
 cd core/vm
-make -f make/Makefile.amd64       # For x64
-make -f make/Makefile.arm64       # For ARM64
+make -f make/Makefile.amd64
+```
+
+### Linux ARM64 (Make)
+```bash
+sudo apt-get install -y libmbedtls-dev libnghttp2-dev \
+  libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
+
+cd core/vm
+make -f make/Makefile.arm64
+```
+
+### macOS (Xcode)
+```bash
+brew install mbedtls nghttp2 ngtcp2 nghttp3 gnutls
+open core/vm/xcode/VM.xcodeproj
+# Build → Product → Build (⌘B)
 ```
 
 ## Implementation Details
@@ -147,7 +181,7 @@ make -f make/Makefile.arm64       # For ARM64
 - **Language**: C++ with STL
 - **Code Generation**: Custom assembler for x64 and ARM64
 - **Line Count**: ~50,000 lines of C++ code
-- **External Dependencies**: Platform APIs only (no external libraries required for base VM)
+- **External Dependencies**: mbedTLS (TLS/crypto), nghttp2 (HTTP/2), ngtcp2+nghttp3+GnuTLS (HTTP/3, Linux/macOS only)
 
 ## Debugging
 

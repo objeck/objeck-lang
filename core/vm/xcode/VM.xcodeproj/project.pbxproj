@@ -319,6 +319,7 @@
 					_OSX,
 					_ARM64,
 					OBJECK_HAS_NGHTTP2,
+					OBJECK_HAS_NGTCP2,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
@@ -343,6 +344,10 @@
 					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
 					"-lnghttp2",
+					"-lngtcp2",
+					"-lngtcp2_crypto_gnutls",
+					"-lnghttp3",
+					"-lgnutls",
 					"-lz",
 				);
 				PRELINK_LIBS = "";
@@ -372,6 +377,7 @@
 					_ARM64,
 					_OBJECK_NATIVE_LIB_PATH,
 					OBJECK_HAS_NGHTTP2,
+					OBJECK_HAS_NGTCP2,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
@@ -397,6 +403,10 @@
 					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
 					"-lnghttp2",
+					"-lngtcp2",
+					"-lngtcp2_crypto_gnutls",
+					"-lnghttp3",
+					"-lgnutls",
 					"-lz",
 				);
 				PRELINK_LIBS = "";

@@ -7,13 +7,15 @@ class Http3Test {
 		TestGet();
 		TestPost();
 		TestConnectionReuse();
+		TestQuickGet();
+		TestQuickPost();
 
 		"--- Done ---"->PrintLine();
 	}
 
 	function : TestGet() ~ Nil {
-		"Test 1: HTTP/3 GET cloudflare-quic.com/... "->Print();
-		client := Http3Client->New("cloudflare-quic.com");
+		"Test 1: HTTP/3 GET quic.nginx.org/... "->Print();
+		client := Http3Client->New("quic.nginx.org");
 		if(<>client->IsConnected()) {
 			"SKIP (no network or ngtcp2 not built)"->PrintLine();
 			return;
@@ -23,7 +25,7 @@ class Http3Test {
 		client->Close();
 
 		if(resp <> Nil & resp->GetCode() = 200) {
-			"PASS (status={$resp->GetCode()})"->PrintLine();
+			"PASS (status=200)"->PrintLine();
 		}
 		else {
 			code := -1;
@@ -35,8 +37,8 @@ class Http3Test {
 	}
 
 	function : TestPost() ~ Nil {
-		"Test 2: HTTP/3 POST... "->Print();
-		client := Http3Client->New("cloudflare-quic.com");
+		"Test 2: HTTP/3 POST quic.nginx.org/... "->Print();
+		client := Http3Client->New("quic.nginx.org");
 		if(<>client->IsConnected()) {
 			"SKIP (no network or ngtcp2 not built)"->PrintLine();
 			return;
@@ -46,7 +48,7 @@ class Http3Test {
 		resp := client->Post("/", body, "application/x-www-form-urlencoded");
 		client->Close();
 
-		if(resp <> Nil & (resp->GetCode() = 200 | resp->GetCode() = 405)) {
+		if(resp <> Nil & (resp->GetCode() = 200 | resp->GetCode() = 405 | resp->GetCode() = 404)) {
 			"PASS (status={$resp->GetCode()})"->PrintLine();
 		}
 		else {
@@ -60,7 +62,7 @@ class Http3Test {
 
 	function : TestConnectionReuse() ~ Nil {
 		"Test 3: HTTP/3 sequential requests on same connection... "->Print();
-		client := Http3Client->New("cloudflare-quic.com");
+		client := Http3Client->New("quic.nginx.org");
 		if(<>client->IsConnected()) {
 			"SKIP (no network or ngtcp2 not built)"->PrintLine();
 			return;
@@ -72,8 +74,8 @@ class Http3Test {
 			ok := false;
 		};
 
-		resp2 := client->Get("/cdn-cgi/trace");
-		if(resp2 = Nil | (resp2->GetCode() <> 200 & resp2->GetCode() <> 404)) {
+		resp2 := client->Get("/");
+		if(resp2 = Nil | resp2->GetCode() <> 200) {
 			ok := false;
 		};
 
@@ -84,6 +86,39 @@ class Http3Test {
 		}
 		else {
 			"FAIL (one or more requests failed)"->PrintLine();
+		};
+	}
+
+	function : TestQuickGet() ~ Nil {
+		"Test 4: HTTP/3 QuickGet quic.nginx.org/... "->Print();
+		url := Url->New("https://quic.nginx.org/");
+		resp := Http3Client->QuickGet(url);
+		if(resp <> Nil & resp->GetCode() = 200) {
+			"PASS (status=200)"->PrintLine();
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
+		};
+	}
+
+	function : TestQuickPost() ~ Nil {
+		"Test 5: HTTP/3 QuickPost quic.nginx.org/... "->Print();
+		url := Url->New("https://quic.nginx.org/");
+		body := "test=data"->ToByteArray();
+		resp := Http3Client->QuickPost(url, body, "application/x-www-form-urlencoded");
+		if(resp <> Nil & (resp->GetCode() = 200 | resp->GetCode() = 405 | resp->GetCode() = 404)) {
+			"PASS (status={$resp->GetCode()})"->PrintLine();
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
 		};
 	}
 }

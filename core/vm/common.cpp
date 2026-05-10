@@ -6353,14 +6353,14 @@ static ssize_t h2_send_cb(nghttp2_session*, const uint8_t* data, size_t len, int
 
 static ssize_t h2_recv_cb(nghttp2_session*, uint8_t* buf, size_t len, int, void* user_data) {
   Http2SessionCtx* ctx = (Http2SessionCtx*)user_data;
-  int status = 0;
-  int ret = IPSecureSocket::ReadBytes((char*)buf, (int)len, ctx->tls);
-  if(ret < 0) {
-    if(ret == MBEDTLS_ERR_SSL_WANT_READ) return NGHTTP2_ERR_WOULDBLOCK;
-    return NGHTTP2_ERR_CALLBACK_FAILURE;
-  }
+  // Once the response stream is complete, return WOULDBLOCK so nghttp2_session_recv
+  // exits gracefully instead of blocking on the next mbedtls_ssl_read.
+  if(ctx->response_complete) return NGHTTP2_ERR_WOULDBLOCK;
+  int ret = mbedtls_ssl_read(&ctx->tls->ssl, buf, (int)len);
+  if(ret > 0) return (ssize_t)ret;
   if(ret == 0) return NGHTTP2_ERR_EOF;
-  return (ssize_t)ret;
+  if(ret == MBEDTLS_ERR_SSL_WANT_READ) return NGHTTP2_ERR_WOULDBLOCK;
+  return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
 static int h2_on_header_cb(nghttp2_session*, const nghttp2_frame* frame,
@@ -6418,8 +6418,11 @@ static bool h2_run_loop(Http2SessionCtx* ctx) {
       if(nghttp2_session_send(ctx->session) != 0) return false;
     }
     if(nghttp2_session_want_read(ctx->session)) {
-      if(nghttp2_session_recv(ctx->session) != 0) return false;
+      int rc = nghttp2_session_recv(ctx->session);
+      // rc==0: success (or WOULDBLOCK from recv_cb); rc<0: error
+      if(rc != 0) return false;
     }
+    if(ctx->response_complete) break;
     if(!nghttp2_session_want_read(ctx->session) && !nghttp2_session_want_write(ctx->session)) break;
   }
   return true;
@@ -6489,42 +6492,34 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
   size_t* host_str = (size_t*)instance[1];
   if(host_str) host_str = (size_t*)host_str[0];
   const std::string host = host_str ? UnicodeToBytes((wchar_t*)(host_str + 3)) : "";
-
-  // Build string storage for nv (must outlive nghttp2_submit_request)
+  // Collect header key/value strings first, then build nva.
+  // IMPORTANT: nva stores raw c_str() pointers. These become dangling if the
+  // backing vectors reallocate after the pointers are captured. We therefore
+  // populate hdr_keys/hdr_vals completely before building nva.
   std::vector<std::string> hdr_keys, hdr_vals;
-  std::vector<nghttp2_nv> nva;
-
-  auto add_hdr = [&](const std::string& k, const std::string& v) {
-    hdr_keys.push_back(k);
-    hdr_vals.push_back(v);
-    nghttp2_nv nv;
-    nv.name     = (uint8_t*)hdr_keys.back().c_str();
-    nv.namelen  = hdr_keys.back().size();
-    nv.value    = (uint8_t*)hdr_vals.back().c_str();
-    nv.valuelen = hdr_vals.back().size();
-    nv.flags    = NGHTTP2_NV_FLAG_NONE;
-    nva.push_back(nv);
-  };
-
-  add_hdr(":method",    method);
-  add_hdr(":path",      path);
-  add_hdr(":scheme",    "https");
-  add_hdr(":authority", host);
-  for(auto& kv : ctx->request_headers) add_hdr(kv.first, kv.second);
 
   std::vector<uint8_t> body_data;
   nghttp2_data_provider* dp_ptr = nullptr;
   nghttp2_data_provider dp;
 
+  hdr_keys.push_back(":method");    hdr_vals.push_back(method);
+  hdr_keys.push_back(":path");      hdr_vals.push_back(path);
+  hdr_keys.push_back(":scheme");    hdr_vals.push_back("https");
+  hdr_keys.push_back(":authority"); hdr_vals.push_back(host);
+  for(auto& kv : ctx->request_headers) {
+    hdr_keys.push_back(kv.first); hdr_vals.push_back(kv.second);
+  }
+
   if(body_array) {
-    size_t* ba = (size_t*)body_array[0];
-    size_t blen = ba[0];
-    uint8_t* bptr = (uint8_t*)(ba + 3);
+    // Byte[] layout: [0]=alloc_count, [1]=dims, [2]=actual_count, [3+]=data
+    size_t blen = body_array[2];
+    uint8_t* bptr = (uint8_t*)(body_array + 3);
     body_data.assign(bptr, bptr + blen);
 
     if(ctype_array) {
       ctype_array = (size_t*)ctype_array[0];
-      add_hdr("content-type", UnicodeToBytes((wchar_t*)(ctype_array + 3)));
+      hdr_keys.push_back("content-type");
+      hdr_vals.push_back(UnicodeToBytes((wchar_t*)(ctype_array + 3)));
     }
 
     struct BodyCtx { const uint8_t* data; size_t len; size_t pos; };
@@ -6541,6 +6536,20 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
       return (ssize_t)n;
     };
     dp_ptr = &dp;
+  }
+
+  // Build nva AFTER all strings are in their final positions (no more push_back below).
+  // Storing c_str() before this point would be unsafe because push_back can reallocate.
+  std::vector<nghttp2_nv> nva;
+  nva.reserve(hdr_keys.size());
+  for(size_t i = 0; i < hdr_keys.size(); i++) {
+    nghttp2_nv nv;
+    nv.name     = (uint8_t*)hdr_keys[i].c_str();
+    nv.namelen  = hdr_keys[i].size();
+    nv.value    = (uint8_t*)hdr_vals[i].c_str();
+    nv.valuelen = hdr_vals[i].size();
+    nv.flags    = NGHTTP2_NV_FLAG_NONE;
+    nva.push_back(nv);
   }
 
   ctx->response_status   = 0;
@@ -6567,12 +6576,18 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
 
   instance[4] = (size_t)ctx->response_status;
 
-  size_t* body_obj = MemoryManager::AllocateArray(ctx->response_body.size() + 1,
-                                                   instructions::BYTE_ARY_TYPE,
-                                                   op_stack, *stack_pos, false);
-  if(!ctx->response_body.empty()) {
-    memcpy((uint8_t*)(body_obj + 3), ctx->response_body.data(), ctx->response_body.size());
-    body_obj[0] = ctx->response_body.size();
+  // Allocate Byte[] for the response body. Standard layout:
+  //   [0] = allocated element count (size+1), [1] = dims, [2] = actual size, [3+] = data
+  const size_t body_size = ctx->response_body.size();
+  const size_t body_dim  = 1;
+  size_t* body_obj = MemoryManager::AllocateArray(
+      body_size + 1 + ((body_dim + 2) * sizeof(size_t)),
+      instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  body_obj[0] = body_size + 1;
+  body_obj[1] = body_dim;
+  body_obj[2] = body_size;
+  if(body_size > 0) {
+    memcpy((uint8_t*)(body_obj + 3), ctx->response_body.data(), body_size);
   }
   instance[5] = (size_t)body_obj;
   instance[6] = (size_t)CreateStringObject(BytesToUnicode(ct), program, op_stack, stack_pos);
@@ -6597,25 +6612,556 @@ bool TrapProcessor::Http2Close(StackProgram* program, size_t* inst, size_t*& op_
 
 // --- HTTP/3 trap implementations ---
 
+#ifdef OBJECK_HAS_NGTCP2
+
+static ngtcp2_tstamp h3_timestamp() {
+  struct timespec tp;
+  clock_gettime(CLOCK_MONOTONIC, &tp);
+  return (ngtcp2_tstamp)tp.tv_sec * NGTCP2_SECONDS + (ngtcp2_tstamp)tp.tv_nsec;
+}
+
+static ngtcp2_conn* h3_get_conn(ngtcp2_crypto_conn_ref* ref) {
+  return ((Http3SessionCtx*)ref->user_data)->conn;
+}
+
+static void h3_rand_cb(uint8_t* dest, size_t destlen, const ngtcp2_rand_ctx*) {
+  gnutls_rnd(GNUTLS_RND_RANDOM, dest, destlen);
+}
+
+static int h3_get_new_connection_id_cb(ngtcp2_conn*, ngtcp2_cid* cid,
+                                        uint8_t* token, size_t cidlen, void*) {
+  gnutls_rnd(GNUTLS_RND_RANDOM, cid->data, cidlen);
+  cid->datalen = cidlen;
+  gnutls_rnd(GNUTLS_RND_RANDOM, token, NGTCP2_STATELESS_RESET_TOKENLEN);
+  return 0;
+}
+
+static int h3_handshake_completed_cb(ngtcp2_conn*, void* user_data) {
+  ((Http3SessionCtx*)user_data)->handshake_complete = true;
+  return 0;
+}
+
+static int h3_recv_stream_data_cb(ngtcp2_conn* conn, uint32_t flags,
+                                   int64_t stream_id, uint64_t,
+                                   const uint8_t* data, size_t datalen,
+                                   void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  if(!ctx->h3conn) return 0;
+  int fin = (flags & NGTCP2_STREAM_DATA_FLAG_FIN) ? 1 : 0;
+  if(nghttp3_conn_read_stream(ctx->h3conn, stream_id, data, datalen, fin) < 0)
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  ngtcp2_conn_extend_max_stream_offset(conn, stream_id, datalen);
+  ngtcp2_conn_extend_max_offset(conn, datalen);
+  return 0;
+}
+
+static int h3_stream_close_cb(ngtcp2_conn*, uint32_t, int64_t stream_id,
+                               uint64_t app_error_code, void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  if(ctx->h3conn) nghttp3_conn_close_stream(ctx->h3conn, stream_id, app_error_code);
+  return 0;
+}
+
+static int h3_stream_stop_sending_cb(ngtcp2_conn*, int64_t stream_id,
+                                      uint64_t, void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  if(ctx->h3conn) nghttp3_conn_shutdown_stream_read(ctx->h3conn, stream_id);
+  return 0;
+}
+
+static int h3_stream_reset_cb(ngtcp2_conn*, int64_t stream_id,
+                               uint64_t, uint64_t, void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  if(ctx->h3conn) nghttp3_conn_shutdown_stream_read(ctx->h3conn, stream_id);
+  return 0;
+}
+
+// nghttp3 callbacks
+
+static int h3ng_recv_header_cb(nghttp3_conn*, int64_t, int32_t,
+                                nghttp3_rcbuf* name, nghttp3_rcbuf* value,
+                                uint8_t, void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  nghttp3_vec nv = nghttp3_rcbuf_get_buf(name);
+  nghttp3_vec vv = nghttp3_rcbuf_get_buf(value);
+  std::string k((const char*)nv.base, nv.len);
+  std::string v((const char*)vv.base, vv.len);
+  if(k == ":status") {
+    try { ctx->response_status = std::stoi(v); } catch(...) {}
+  } else {
+    ctx->response_headers[k] = v;
+  }
+  return 0;
+}
+
+static int h3ng_recv_data_cb(nghttp3_conn*, int64_t, const uint8_t* data,
+                              size_t datalen, void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  ctx->response_body.insert(ctx->response_body.end(), data, data + datalen);
+  return 0;
+}
+
+static int h3ng_end_stream_cb(nghttp3_conn*, int64_t stream_id,
+                               void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  if(stream_id == ctx->last_stream_id) ctx->response_complete = true;
+  return 0;
+}
+
+static int h3ng_stream_close_cb(nghttp3_conn*, int64_t stream_id,
+                                 uint64_t, void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  if(stream_id == ctx->last_stream_id) ctx->response_complete = true;
+  return 0;
+}
+
+static int h3ng_acked_stream_data_cb(nghttp3_conn*, int64_t, uint64_t, void*, void*) {
+  return 0;
+}
+
+static int h3ng_deferred_consume_cb(nghttp3_conn*, int64_t stream_id,
+                                     size_t consumed, void* user_data, void*) {
+  Http3SessionCtx* ctx = (Http3SessionCtx*)user_data;
+  ngtcp2_conn_extend_max_stream_offset(ctx->conn, stream_id, consumed);
+  ngtcp2_conn_extend_max_offset(ctx->conn, consumed);
+  return 0;
+}
+
+// Flush pending QUIC/HTTP3 packets to UDP socket.
+static bool h3_send_packets(Http3SessionCtx* ctx) {
+  uint8_t buf[NGTCP2_MAX_UDP_PAYLOAD_SIZE];
+  ngtcp2_path_storage ps;
+  ngtcp2_path_storage_zero(&ps);
+  ngtcp2_pkt_info pi = {};
+  ngtcp2_tstamp ts = h3_timestamp();
+
+  for(;;) {
+    ngtcp2_ssize datalen = 0;
+    int64_t stream_id = -1;
+    const ngtcp2_vec* vec_ptr = nullptr;
+    size_t vec_cnt = 0;
+    uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_NONE;
+
+    if(ctx->h3conn) {
+      nghttp3_vec vec[16];
+      nghttp3_ssize vcnt;
+      int fin;
+      vcnt = nghttp3_conn_writev_stream(ctx->h3conn, &stream_id, &fin, vec, 16);
+      if(vcnt < 0) return false;
+      if(stream_id >= 0) {
+        vec_ptr = (const ngtcp2_vec*)vec;
+        vec_cnt = (size_t)vcnt;
+        if(fin) flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
+      }
+    }
+
+    ngtcp2_ssize nwrite = ngtcp2_conn_writev_stream(
+        ctx->conn, &ps.path, &pi, buf, sizeof(buf),
+        &datalen, flags, stream_id, vec_ptr, vec_cnt, ts);
+
+    if(nwrite < 0) {
+      return false;
+    }
+    if(nwrite == 0) break;
+
+    if(stream_id >= 0 && datalen > 0 && ctx->h3conn)
+      nghttp3_conn_add_write_offset(ctx->h3conn, stream_id, (size_t)datalen);
+
+    ssize_t sent = sendto(ctx->udp_fd, buf, (size_t)nwrite, 0,
+                          (const struct sockaddr*)&ctx->remote_addr, ctx->remote_addrlen);
+    if(sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK) return false;
+  }
+  return true;
+}
+
+// Drain all pending UDP datagrams into ngtcp2.
+static bool h3_recv_packets(Http3SessionCtx* ctx) {
+  uint8_t buf[65536];
+  struct sockaddr_storage remote;
+  socklen_t remotelen = sizeof(remote);
+
+  for(;;) {
+    ssize_t nread = recvfrom(ctx->udp_fd, buf, sizeof(buf), 0,
+                              (struct sockaddr*)&remote, &remotelen);
+    if(nread < 0) {
+      if(errno == EAGAIN || errno == EWOULDBLOCK) return true;
+      return false;
+    }
+    ngtcp2_path path;
+    path.local.addrlen  = ctx->local_addrlen;
+    path.local.addr     = (struct sockaddr*)&ctx->local_addr;
+    path.remote.addrlen = remotelen;
+    path.remote.addr    = (struct sockaddr*)&remote;
+    ngtcp2_pkt_info pi = {};
+    int ret = ngtcp2_conn_read_pkt(ctx->conn, &path, &pi, buf, (size_t)nread, h3_timestamp());
+    if(ret == NGTCP2_ERR_DRAINING) {
+      return true;
+    }
+    if(ret < 0) {
+      return false;
+    }
+  }
+}
+
+// Create the nghttp3 session and open the three client-side control streams.
+static nghttp3_conn* h3_make_h3conn(Http3SessionCtx* ctx) {
+  nghttp3_settings h3s;
+  nghttp3_settings_default(&h3s);
+  nghttp3_callbacks h3cbs = {};
+  h3cbs.recv_header       = h3ng_recv_header_cb;
+  h3cbs.recv_data         = h3ng_recv_data_cb;
+  h3cbs.stream_close      = h3ng_stream_close_cb;
+  h3cbs.end_stream        = h3ng_end_stream_cb;
+  h3cbs.acked_stream_data = h3ng_acked_stream_data_cb;
+  h3cbs.deferred_consume  = h3ng_deferred_consume_cb;
+
+  nghttp3_conn* h3conn = nullptr;
+  if(nghttp3_conn_client_new(&h3conn, &h3cbs, &h3s, nullptr, ctx) != 0) return nullptr;
+
+  int64_t ctrl_id, qenc_id, qdec_id;
+  if(ngtcp2_conn_open_uni_stream(ctx->conn, &ctrl_id, nullptr) != 0 ||
+     ngtcp2_conn_open_uni_stream(ctx->conn, &qenc_id, nullptr) != 0 ||
+     ngtcp2_conn_open_uni_stream(ctx->conn, &qdec_id, nullptr) != 0 ||
+     nghttp3_conn_bind_control_stream(h3conn, ctrl_id) != 0 ||
+     nghttp3_conn_bind_qpack_streams(h3conn, qenc_id, qdec_id) != 0) {
+    nghttp3_conn_del(h3conn);
+    return nullptr;
+  }
+  return h3conn;
+}
+
+// Drive QUIC I/O until response_complete or until the handshake just finished
+// (in which case it returns true with h3conn set, ready for request submission).
+static bool h3_run_loop(Http3SessionCtx* ctx) {
+  struct timespec tstart;
+  clock_gettime(CLOCK_MONOTONIC, &tstart);
+
+  while(!ctx->response_complete) {
+    struct timespec tnow;
+    clock_gettime(CLOCK_MONOTONIC, &tnow);
+    double elapsed = (tnow.tv_sec - tstart.tv_sec) +
+                     (tnow.tv_nsec - tstart.tv_nsec) * 1e-9;
+    if(elapsed > 30.0) return false;
+
+    if(!h3_send_packets(ctx)) return false;
+
+    // After TLS handshake completes, set up the HTTP/3 session once.
+    // Return to let the caller submit a request before looping again.
+    if(ctx->handshake_complete && !ctx->h3conn) {
+      ctx->h3conn = h3_make_h3conn(ctx);
+      return ctx->h3conn != nullptr;
+    }
+
+    ngtcp2_tstamp expiry = ngtcp2_conn_get_expiry(ctx->conn);
+    ngtcp2_tstamp now_ts = h3_timestamp();
+    int poll_ms;
+    if(expiry <= now_ts) {
+      poll_ms = 0;
+    } else if(expiry == UINT64_MAX) {
+      poll_ms = 500;
+    } else {
+      uint64_t diff = (expiry - now_ts) / 1000000;
+      poll_ms = (int)std::min(diff, (uint64_t)500u);
+    }
+
+    struct pollfd pfd = { ctx->udp_fd, POLLIN, 0 };
+    int n = poll(&pfd, 1, poll_ms);
+
+    if(n > 0 && (pfd.revents & POLLIN)) {
+      if(!h3_recv_packets(ctx)) return false;
+    }
+
+    // Handle QUIC timer expiry
+    ngtcp2_tstamp ts = h3_timestamp();
+    if(ngtcp2_conn_get_expiry(ctx->conn) <= ts) {
+      int expiry_ret = ngtcp2_conn_handle_expiry(ctx->conn, ts);
+      if(expiry_ret != 0) return false;
+    }
+
+    bool drain = ngtcp2_conn_is_in_draining_period(ctx->conn);
+    bool close = ngtcp2_conn_is_in_closing_period(ctx->conn);
+    if(drain || close) {
+      return false;
+    }
+  }
+  return true;
+}
+
+#endif // OBJECK_HAS_NGTCP2
+
 bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  // HTTP/3 via ngtcp2+nghttp3 — stub that fails gracefully when lib not present
-  PopInt(op_stack, stack_pos);
-  PopInt(op_stack, stack_pos);
-  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) instance[0] = 0;
-#ifndef OBJECK_HAS_NGTCP2
-  std::wcerr << L">>> HTTP/3 not available: build with OBJECK_HAS_NGTCP2 <<<" << std::endl;
+  // Stack: port(Int), host(String), instance
+  const int port = (int)PopInt(op_stack, stack_pos);
+  size_t* host_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance   = (size_t*)PopInt(op_stack, stack_pos);
+
+#ifdef OBJECK_HAS_NGTCP2
+  if(!host_array || !instance) { if(instance) instance[0] = 0; return true; }
+
+  host_array = (size_t*)host_array[0];
+  const std::string host = UnicodeToBytes((wchar_t*)(host_array + 3));
+
+  Http3SessionCtx* ctx = new Http3SessionCtx();
+  ctx->host = host;
+
+  // Resolve hostname and create non-blocking UDP socket
+  char portstr[16];
+  snprintf(portstr, sizeof(portstr), "%d", port);
+  struct addrinfo hints = {}, *res = nullptr;
+  hints.ai_family   = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  if(getaddrinfo(host.c_str(), portstr, &hints, &res) != 0) {
+    delete ctx; instance[0] = 0; return true;
+  }
+
+  ctx->udp_fd = (int)socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  if(ctx->udp_fd < 0) {
+    freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
+  }
+  int fflags = fcntl(ctx->udp_fd, F_GETFL, 0);
+  fcntl(ctx->udp_fd, F_SETFL, fflags | O_NONBLOCK);
+
+  // Bind to ephemeral local address
+  struct sockaddr_storage local_ss = {};
+  if(res->ai_family == AF_INET6) {
+    struct sockaddr_in6* la = (struct sockaddr_in6*)&local_ss;
+    la->sin6_family = AF_INET6;
+    la->sin6_addr   = in6addr_any;
+    la->sin6_port   = 0;
+    ctx->local_addrlen = sizeof(*la);
+  } else {
+    struct sockaddr_in* la = (struct sockaddr_in*)&local_ss;
+    la->sin_family      = AF_INET;
+    la->sin_addr.s_addr = INADDR_ANY;
+    la->sin_port        = 0;
+    ctx->local_addrlen  = sizeof(*la);
+  }
+  if(bind(ctx->udp_fd, (struct sockaddr*)&local_ss, ctx->local_addrlen) < 0) {
+    freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
+  }
+  socklen_t actual_local = sizeof(ctx->local_addr);
+  getsockname(ctx->udp_fd, (struct sockaddr*)&ctx->local_addr, &actual_local);
+  ctx->local_addrlen = actual_local;
+
+  memcpy(&ctx->remote_addr, res->ai_addr, res->ai_addrlen);
+  ctx->remote_addrlen = (socklen_t)res->ai_addrlen;
+  freeaddrinfo(res);
+
+  // Set up GnuTLS session for QUIC (TLS 1.3 + ALPN "h3")
+  gnutls_certificate_allocate_credentials(&ctx->cred);
+  gnutls_certificate_set_x509_system_trust(ctx->cred);
+  if(gnutls_init(&ctx->tls_session, GNUTLS_CLIENT | GNUTLS_NONBLOCK) < 0) {
+    delete ctx; instance[0] = 0; return true;
+  }
+  gnutls_credentials_set(ctx->tls_session, GNUTLS_CRD_CERTIFICATE, ctx->cred);
+  gnutls_server_name_set(ctx->tls_session, GNUTLS_NAME_DNS, host.c_str(), host.size());
+  int prio_ret = gnutls_priority_set_direct(ctx->tls_session,
+      "NORMAL:-VERS-ALL:+VERS-TLS1.3", nullptr);
+  gnutls_datum_t alpn_h3 = { (unsigned char*)"h3", 2 };
+  gnutls_alpn_set_protocols(ctx->tls_session, &alpn_h3, 1, 0);
+
+  // Link GnuTLS session to ngtcp2 via conn_ref
+  ctx->conn_ref.get_conn  = h3_get_conn;
+  ctx->conn_ref.user_data = ctx;
+  gnutls_session_set_ptr(ctx->tls_session, &ctx->conn_ref);
+  int cfg_ret = ngtcp2_crypto_gnutls_configure_client_session(ctx->tls_session);
+
+  // Generate random QUIC connection IDs
+  ngtcp2_cid dcid, scid;
+  dcid.datalen = 20;
+  scid.datalen = 8;
+  gnutls_rnd(GNUTLS_RND_RANDOM, dcid.data, dcid.datalen);
+  gnutls_rnd(GNUTLS_RND_RANDOM, scid.data, scid.datalen);
+
+  // Build the QUIC path
+  ngtcp2_path path;
+  path.local.addr     = (struct sockaddr*)&ctx->local_addr;
+  path.local.addrlen  = ctx->local_addrlen;
+  path.remote.addr    = (struct sockaddr*)&ctx->remote_addr;
+  path.remote.addrlen = ctx->remote_addrlen;
+
+  // ngtcp2 settings and transport params
+  ngtcp2_settings settings;
+  ngtcp2_settings_default(&settings);
+  settings.initial_ts = h3_timestamp();
+
+  ngtcp2_transport_params params;
+  ngtcp2_transport_params_default(&params);
+  params.initial_max_stream_data_bidi_local  = 256 * 1024;
+  params.initial_max_stream_data_bidi_remote = 256 * 1024;
+  params.initial_max_stream_data_uni         = 256 * 1024;
+  params.initial_max_data                    = 1 * 1024 * 1024;
+  params.initial_max_streams_bidi            = 100;
+  params.initial_max_streams_uni             = 3;
+
+  // ngtcp2 callbacks: crypto ones come from libngtcp2_crypto, app ones defined above
+  ngtcp2_callbacks cbs = {};
+  cbs.client_initial           = ngtcp2_crypto_client_initial_cb;
+  cbs.recv_crypto_data         = ngtcp2_crypto_recv_crypto_data_cb;
+  cbs.encrypt                  = ngtcp2_crypto_encrypt_cb;
+  cbs.decrypt                  = ngtcp2_crypto_decrypt_cb;
+  cbs.hp_mask                  = ngtcp2_crypto_hp_mask_cb;
+  cbs.update_key               = ngtcp2_crypto_update_key_cb;
+  cbs.delete_crypto_aead_ctx   = ngtcp2_crypto_delete_crypto_aead_ctx_cb;
+  cbs.delete_crypto_cipher_ctx = ngtcp2_crypto_delete_crypto_cipher_ctx_cb;
+  cbs.get_path_challenge_data  = ngtcp2_crypto_get_path_challenge_data_cb;
+  cbs.recv_retry               = ngtcp2_crypto_recv_retry_cb;
+  cbs.handshake_completed      = h3_handshake_completed_cb;
+  cbs.recv_stream_data         = h3_recv_stream_data_cb;
+  cbs.stream_close             = h3_stream_close_cb;
+  cbs.stream_stop_sending      = h3_stream_stop_sending_cb;
+  cbs.stream_reset             = h3_stream_reset_cb;
+  cbs.rand                     = h3_rand_cb;
+  cbs.get_new_connection_id    = h3_get_new_connection_id_cb;
+
+  int conn_ret = ngtcp2_conn_client_new(&ctx->conn, &dcid, &scid, &path,
+                              NGTCP2_PROTO_VER_V1, &cbs, &settings, &params,
+                              nullptr, ctx);
+  if(conn_ret != 0) {
+    delete ctx; instance[0] = 0; return true;
+  }
+  ngtcp2_conn_set_tls_native_handle(ctx->conn, ctx->tls_session);
+
+  // Drive QUIC handshake; h3_run_loop returns once nghttp3 session is ready
+  if(!h3_run_loop(ctx)) {
+    delete ctx; instance[0] = 0; return true;
+  }
+
+  instance[0] = (size_t)ctx;
 #else
-  // TODO: full ngtcp2+nghttp3 QUIC connection
+  if(instance) instance[0] = 0;
+  std::wcerr << L">>> HTTP/3 not available: build with OBJECK_HAS_NGTCP2 <<<" << std::endl;
 #endif
   return true;
 }
 
 bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  for(int i = 0; i < 5; i++) PopInt(op_stack, stack_pos);
+  // Stack: body(Byte[]), content_type(String), path(String), method(String), instance
+  // Result stored in instance[4]=status, instance[5]=body, instance[6]=content_type
+  // Pushes: Bool (1=success)
+  size_t* body_array   = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* ctype_array  = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* path_array   = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* method_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance     = (size_t*)PopInt(op_stack, stack_pos);
+
+#ifdef OBJECK_HAS_NGTCP2
+  Http3SessionCtx* ctx = instance ? (Http3SessionCtx*)instance[0] : nullptr;
+  if(!ctx || !ctx->conn || !ctx->h3conn) {
+    PushInt(0, op_stack, stack_pos); return true;
+  }
+
+  method_array = (size_t*)method_array[0];
+  const std::string method = UnicodeToBytes((wchar_t*)(method_array + 3));
+  path_array   = (size_t*)path_array[0];
+  const std::string path   = UnicodeToBytes((wchar_t*)(path_array + 3));
+
+  size_t* host_str = (size_t*)instance[1];
+  if(host_str) host_str = (size_t*)host_str[0];
+  const std::string host = host_str ? UnicodeToBytes((wchar_t*)(host_str + 3)) : ctx->host;
+
+  // Collect header strings before building nva to avoid dangling c_str() pointers
+  std::vector<std::string> hdr_keys, hdr_vals;
+  hdr_keys.push_back(":method");    hdr_vals.push_back(method);
+  hdr_keys.push_back(":path");      hdr_vals.push_back(path);
+  hdr_keys.push_back(":scheme");    hdr_vals.push_back("https");
+  hdr_keys.push_back(":authority"); hdr_vals.push_back(host);
+  for(auto& kv : ctx->request_headers) {
+    hdr_keys.push_back(kv.first); hdr_vals.push_back(kv.second);
+  }
+
+  // Read request body into a local vector (lives through h3_run_loop)
+  std::vector<uint8_t> body_data;
+  if(body_array) {
+    size_t blen = body_array[2];
+    uint8_t* bptr = (uint8_t*)(body_array + 3);
+    body_data.assign(bptr, bptr + blen);
+    if(ctype_array) {
+      ctype_array = (size_t*)ctype_array[0];
+      hdr_keys.push_back("content-type");
+      hdr_vals.push_back(UnicodeToBytes((wchar_t*)(ctype_array + 3)));
+    }
+  }
+
+  // Build nghttp3_nv array after all push_backs are done
+  std::vector<nghttp3_nv> nva;
+  nva.reserve(hdr_keys.size());
+  for(size_t i = 0; i < hdr_keys.size(); i++) {
+    nghttp3_nv nv;
+    nv.name     = (uint8_t*)hdr_keys[i].c_str();
+    nv.namelen  = hdr_keys[i].size();
+    nv.value    = (uint8_t*)hdr_vals[i].c_str();
+    nv.valuelen = hdr_vals[i].size();
+    nv.flags    = NGHTTP3_NV_FLAG_NONE;
+    nva.push_back(nv);
+  }
+
+  ctx->response_status   = 0;
+  ctx->response_complete = false;
+  ctx->response_headers.clear();
+  ctx->response_body.clear();
+
+  // Open bidirectional QUIC stream for the HTTP/3 request
+  int64_t stream_id;
+  if(ngtcp2_conn_open_bidi_stream(ctx->conn, &stream_id, nullptr) != 0) {
+    PushInt(0, op_stack, stack_pos); return true;
+  }
+  ctx->last_stream_id = stream_id;
+
+  // Optional request body reader
+  struct H3BodyCtx { const uint8_t* data; size_t len; size_t pos; };
+  static thread_local H3BodyCtx h3_bctx;
+  nghttp3_data_reader dr;
+  nghttp3_data_reader* dr_ptr = nullptr;
+  if(!body_data.empty()) {
+    h3_bctx = { body_data.data(), body_data.size(), 0 };
+    dr.read_data = [](nghttp3_conn*, int64_t, nghttp3_vec* vec, size_t,
+                       uint32_t* pflags, void*, void* sdata) -> nghttp3_ssize {
+      H3BodyCtx* bc = (H3BodyCtx*)sdata;
+      if(bc->pos >= bc->len) { *pflags = NGHTTP3_DATA_FLAG_EOF; return 0; }
+      vec[0].base = (uint8_t*)bc->data + bc->pos;
+      vec[0].len  = bc->len - bc->pos;
+      bc->pos = bc->len;
+      *pflags = NGHTTP3_DATA_FLAG_EOF;
+      return 1;
+    };
+    dr_ptr = &dr;
+  }
+
+  if(nghttp3_conn_submit_request(ctx->h3conn, stream_id,
+                                  nva.data(), nva.size(), dr_ptr,
+                                  dr_ptr ? (void*)&h3_bctx : nullptr) != 0) {
+    PushInt(0, op_stack, stack_pos); return true;
+  }
+
+  if(!h3_run_loop(ctx)) {
+    PushInt(0, op_stack, stack_pos); return true;
+  }
+
+  // Store results in instance fields [4]=status, [5]=body(Byte[]), [6]=content_type
+  const std::string ct = ctx->response_headers.count("content-type")
+                          ? ctx->response_headers["content-type"] : "";
+  instance[4] = (size_t)ctx->response_status;
+
+  const size_t body_size = ctx->response_body.size();
+  const size_t body_dim  = 1;
+  size_t* body_obj = MemoryManager::AllocateArray(
+      body_size + 1 + ((body_dim + 2) * sizeof(size_t)),
+      instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  body_obj[0] = body_size + 1;
+  body_obj[1] = body_dim;
+  body_obj[2] = body_size;
+  if(body_size > 0)
+    memcpy((uint8_t*)(body_obj + 3), ctx->response_body.data(), body_size);
+  instance[5] = (size_t)body_obj;
+  instance[6] = (size_t)CreateStringObject(BytesToUnicode(ct), program, op_stack, stack_pos);
+
+  PushInt(1, op_stack, stack_pos);
+#else
   PushInt(0, op_stack, stack_pos);
+#endif
   return true;
 }
 
