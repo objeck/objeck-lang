@@ -552,6 +552,20 @@ bundle Web.HTTP {
 			return ByteBuffer->New(buffer);
 		}
 
+		function : ReadUntilClose(socket : System.IO.InputStream) ~ ByteBuffer {
+			chunk := 4096;
+			output := ByteBuffer->New();
+			buffer := Byte->New[chunk];
+			do {
+				read := socket->ReadBuffer(0, chunk, buffer);
+				if(read > 0) {
+					output->Append(read, buffer);
+				};
+			}
+			while(read > 0);
+			return output;
+		}
+
 		function : ReadPost(content_length : Int, socket : System.IO.InputStream) ~ Byte[] {
 			buffer := Byte->New[content_length];
 
