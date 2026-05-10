@@ -398,18 +398,21 @@ public:
     if(server < 0) {
       return -1;
     }
-    
+
+    int reuse = 1;
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
     struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons(port);
-    
+
     if(::bind(server, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
       close(server);
       return -1;
     }
-    
+
     return server;
   }
   

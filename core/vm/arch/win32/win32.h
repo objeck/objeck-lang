@@ -475,6 +475,9 @@ class IPSocket {
       return -1;
     }
 
+    int reuse = 1;
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse));
+
     struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
