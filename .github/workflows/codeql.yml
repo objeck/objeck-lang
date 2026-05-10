@@ -91,7 +91,7 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
           build-essential git libmbedtls-dev unixodbc-dev \
           libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
-          libreadline-dev unzip libeigen3-dev
+          libreadline-dev unzip libeigen3-dev libnghttp2-dev
         cd core/release && ./deploy_posix.sh x64
 
     - name: Perform CodeQL Analysis

@@ -9897,7 +9897,8 @@ bundle System.IO.Net {
 		@handle : Int;
 		@address : System.String;
 		@port : Int;
-		
+		@connect_timeout : Int;
+
 		#~
 		Default constructor
 		@param address network address
@@ -9907,6 +9908,20 @@ bundle System.IO.Net {
 			Parent();
 			@address := address;
 			@port := port;
+			SOCK_TCP_CONNECT;
+		}
+
+		#~
+		Constructor with connect timeout
+		@param address network address
+		@param port network port
+		@param connect_timeout connect timeout in milliseconds (0 = blocking)
+		~#
+		New(address : System.String, port : Int, connect_timeout : Int) {
+			Parent();
+			@address := address;
+			@port := port;
+			@connect_timeout := connect_timeout;
 			SOCK_TCP_CONNECT;
 		}
 
@@ -10083,6 +10098,69 @@ bundle System.IO.Net {
 		}
 
 		#~
+		Sets the TCP keep-alive option
+		@param enable true to enable, false to disable
+		@return true if successful
+		~#
+		method : public : SetKeepAlive(enable : Bool) ~ Bool {
+			SOCK_TCP_SET_KEEPALIVE;
+		}
+
+		#~
+		Disables Nagle's algorithm (TCP_NODELAY) for low-latency sends
+		@param enable true to disable Nagle, false to re-enable
+		@return true if successful
+		~#
+		method : public : SetNoDelay(enable : Bool) ~ Bool {
+			SOCK_TCP_SET_NODELAY;
+		}
+
+		#~
+		Sets the receive timeout
+		@param ms timeout in milliseconds
+		@return true if successful
+		~#
+		method : public : SetRecvTimeout(ms : Int) ~ Bool {
+			SOCK_TCP_SET_RECV_TIMEOUT;
+		}
+
+		#~
+		Sets the send timeout
+		@param ms timeout in milliseconds
+		@return true if successful
+		~#
+		method : public : SetSendTimeout(ms : Int) ~ Bool {
+			SOCK_TCP_SET_SEND_TIMEOUT;
+		}
+
+		#~
+		Sets the connect timeout for the next connection attempt.
+		Must be called before New() or before reconnecting.
+		@param ms timeout in milliseconds (0 = blocking)
+		~#
+		method : public : SetConnectTimeout(ms : Int) ~ Nil {
+			SOCK_TCP_SET_CONN_TIMEOUT;
+		}
+
+		#~
+		Sets the receive buffer size
+		@param bytes buffer size in bytes
+		@return true if successful
+		~#
+		method : public : SetRecvBufferSize(bytes : Int) ~ Bool {
+			SOCK_TCP_SET_RCVBUF;
+		}
+
+		#~
+		Sets the send buffer size
+		@param bytes buffer size in bytes
+		@return true if successful
+		~#
+		method : public : SetSendBufferSize(bytes : Int) ~ Bool {
+			SOCK_TCP_SET_SNDBUF;
+		}
+
+		#~
 		Get the last error
 		@return last error message, or Nil of no error
 		~#
@@ -10090,7 +10168,7 @@ bundle System.IO.Net {
 			SOCK_IP_ERROR;
 		}
 	}
-	
+
 	#~
 	Secure SSL TCP/IP socket
 	~#
@@ -10281,6 +10359,87 @@ bundle System.IO.Net {
 		this socket is not backed by an output buffer.
 		~#
 		method : public : Flush() ~ Nil {}
+
+		#~
+		Sets the TCP keep-alive option
+		@param enable true to enable, false to disable
+		@return true if successful
+		~#
+		method : public : SetKeepAlive(enable : Bool) ~ Bool {
+			SOCK_TCP_SSL_SET_KEEPALIVE;
+		}
+
+		#~
+		Disables Nagle's algorithm (TCP_NODELAY)
+		@param enable true to disable Nagle, false to re-enable
+		@return true if successful
+		~#
+		method : public : SetNoDelay(enable : Bool) ~ Bool {
+			SOCK_TCP_SSL_SET_NODELAY;
+		}
+
+		#~
+		Sets the receive timeout
+		@param ms timeout in milliseconds
+		@return true if successful
+		~#
+		method : public : SetRecvTimeout(ms : Int) ~ Bool {
+			SOCK_TCP_SSL_SET_RECV_TIMEOUT;
+		}
+
+		#~
+		Sets the send timeout
+		@param ms timeout in milliseconds
+		@return true if successful
+		~#
+		method : public : SetSendTimeout(ms : Int) ~ Bool {
+			SOCK_TCP_SSL_SET_SEND_TIMEOUT;
+		}
+
+		#~
+		Sets the receive buffer size
+		@param bytes buffer size in bytes
+		@return true if successful
+		~#
+		method : public : SetRecvBufferSize(bytes : Int) ~ Bool {
+			SOCK_TCP_SSL_SET_RCVBUF;
+		}
+
+		#~
+		Sets the send buffer size
+		@param bytes buffer size in bytes
+		@return true if successful
+		~#
+		method : public : SetSendBufferSize(bytes : Int) ~ Bool {
+			SOCK_TCP_SSL_SET_SNDBUF;
+		}
+
+		#~
+		Sets minimum TLS protocol version. Call before New() to take effect.
+		Use mbedTLS MBEDTLS_SSL_VERSION_* constants.
+		@param ver TLS version constant
+		@return true if successful
+		~#
+		method : public : SetMinTLSVersion(ver : Int) ~ Bool {
+			SOCK_TCP_SSL_SET_MIN_TLS;
+		}
+
+		#~
+		Enables strict peer certificate verification
+		@param strict true to require valid certificate chain
+		@return true if successful
+		~#
+		method : public : SetVerifyPeer(strict : Bool) ~ Bool {
+			SOCK_TCP_SSL_SET_VERIFY_PEER;
+		}
+
+		#~
+		Returns the SHA-256 fingerprint of the peer certificate as a hex string
+		@return 64-char hex fingerprint, or Nil if unavailable
+		~#
+		method : public : GetCertFingerprint() ~ String {
+			SOCK_TCP_SSL_GET_FINGERPRINT;
+		}
 
 		#~
 		Get the last error

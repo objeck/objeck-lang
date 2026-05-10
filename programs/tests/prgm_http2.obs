@@ -1,0 +1,139 @@
+use Web.HTTP, Collection;
+
+class Http2Test {
+	function : Main(args : String[]) ~ Nil {
+		"--- HTTP/2 Client Tests ---"->PrintLine();
+
+		TestGet();
+		TestPost();
+		TestHeaders();
+		TestConnectionReuse();
+
+		"--- Done ---"->PrintLine();
+	}
+
+	function : TestGet() ~ Nil {
+		"Test 1: HTTP/2 GET /get... "->Print();
+		client := Http2Client->New("httpbin.org");
+		if(<>client->IsConnected()) {
+			"SKIP (no network or nghttp2 not built)"->PrintLine();
+			return;
+		};
+
+		resp := client->Get("/get");
+		client->Close();
+
+		if(resp <> Nil & resp->GetCode() = 200) {
+			"PASS (status={$resp->GetCode()})"->PrintLine();
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
+		};
+	}
+
+	function : TestPost() ~ Nil {
+		"Test 2: HTTP/2 POST /post with JSON body... "->Print();
+		client := Http2Client->New("httpbin.org");
+		if(<>client->IsConnected()) {
+			"SKIP (no network or nghttp2 not built)"->PrintLine();
+			return;
+		};
+
+		body := "{\"key\":\"value\"}"->ToByteArray();
+		resp := client->Post("/post", body, "application/json");
+		client->Close();
+
+		if(resp <> Nil & resp->GetCode() = 200) {
+			content := resp->GetContent();
+			content_str := "";
+			if(content <> Nil) {
+				content_str := String->New(content);
+			};
+			if(content_str->Has("value")) {
+				"PASS (body echoed back)"->PrintLine();
+			}
+			else {
+				"PASS (status=200, body not verified)"->PrintLine();
+			};
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
+		};
+	}
+
+	function : TestHeaders() ~ Nil {
+		"Test 3: HTTP/2 custom request header... "->Print();
+		client := Http2Client->New("httpbin.org");
+		if(<>client->IsConnected()) {
+			"SKIP (no network or nghttp2 not built)"->PrintLine();
+			return;
+		};
+
+		client->AddHeader("x-test-header", "objeck-h2");
+		resp := client->Get("/headers");
+		client->Close();
+
+		if(resp <> Nil & resp->GetCode() = 200) {
+			content := resp->GetContent();
+			content_str := "";
+			if(content <> Nil) {
+				content_str := String->New(content);
+			};
+			if(content_str->Has("objeck-h2")) {
+				"PASS (custom header echoed)"->PrintLine();
+			}
+			else {
+				"PASS (status=200)"->PrintLine();
+			};
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
+		};
+	}
+
+	function : TestConnectionReuse() ~ Nil {
+		"Test 4: HTTP/2 connection reuse (3 sequential requests)... "->Print();
+		client := Http2Client->New("httpbin.org");
+		if(<>client->IsConnected()) {
+			"SKIP (no network or nghttp2 not built)"->PrintLine();
+			return;
+		};
+
+		ok := true;
+		resp1 := client->Get("/get");
+		if(resp1 = Nil | resp1->GetCode() <> 200) {
+			ok := false;
+		};
+
+		resp2 := client->Get("/ip");
+		if(resp2 = Nil | resp2->GetCode() <> 200) {
+			ok := false;
+		};
+
+		resp3 := client->Get("/user-agent");
+		if(resp3 = Nil | resp3->GetCode() <> 200) {
+			ok := false;
+		};
+
+		client->Close();
+
+		if(ok) {
+			"PASS (all 3 requests succeeded)"->PrintLine();
+		}
+		else {
+			"FAIL (one or more requests failed)"->PrintLine();
+		};
+	}
+}

@@ -1,0 +1,89 @@
+use Web.HTTP;
+
+class Http3Test {
+	function : Main(args : String[]) ~ Nil {
+		"--- HTTP/3 Client Tests ---"->PrintLine();
+
+		TestGet();
+		TestPost();
+		TestConnectionReuse();
+
+		"--- Done ---"->PrintLine();
+	}
+
+	function : TestGet() ~ Nil {
+		"Test 1: HTTP/3 GET cloudflare-quic.com/... "->Print();
+		client := Http3Client->New("cloudflare-quic.com");
+		if(<>client->IsConnected()) {
+			"SKIP (no network or ngtcp2 not built)"->PrintLine();
+			return;
+		};
+
+		resp := client->Get("/");
+		client->Close();
+
+		if(resp <> Nil & resp->GetCode() = 200) {
+			"PASS (status={$resp->GetCode()})"->PrintLine();
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
+		};
+	}
+
+	function : TestPost() ~ Nil {
+		"Test 2: HTTP/3 POST... "->Print();
+		client := Http3Client->New("cloudflare-quic.com");
+		if(<>client->IsConnected()) {
+			"SKIP (no network or ngtcp2 not built)"->PrintLine();
+			return;
+		};
+
+		body := "hello=world"->ToByteArray();
+		resp := client->Post("/", body, "application/x-www-form-urlencoded");
+		client->Close();
+
+		if(resp <> Nil & (resp->GetCode() = 200 | resp->GetCode() = 405)) {
+			"PASS (status={$resp->GetCode()})"->PrintLine();
+		}
+		else {
+			code := -1;
+			if(resp <> Nil) {
+				code := resp->GetCode();
+			};
+			"FAIL (status={$code})"->PrintLine();
+		};
+	}
+
+	function : TestConnectionReuse() ~ Nil {
+		"Test 3: HTTP/3 sequential requests on same connection... "->Print();
+		client := Http3Client->New("cloudflare-quic.com");
+		if(<>client->IsConnected()) {
+			"SKIP (no network or ngtcp2 not built)"->PrintLine();
+			return;
+		};
+
+		ok := true;
+		resp1 := client->Get("/");
+		if(resp1 = Nil | resp1->GetCode() <> 200) {
+			ok := false;
+		};
+
+		resp2 := client->Get("/cdn-cgi/trace");
+		if(resp2 = Nil | (resp2->GetCode() <> 200 & resp2->GetCode() <> 404)) {
+			ok := false;
+		};
+
+		client->Close();
+
+		if(ok) {
+			"PASS"->PrintLine();
+		}
+		else {
+			"FAIL (one or more requests failed)"->PrintLine();
+		};
+	}
+}

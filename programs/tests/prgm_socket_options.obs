@@ -1,0 +1,181 @@
+use System.IO.Net;
+
+class SocketOptionsTest {
+	function : Main(args : String[]) ~ Nil {
+		"--- Socket Option Tests ---"->PrintLine();
+
+		TestTcpOptions();
+		TestSecureOptions();
+		TestConnectTimeout();
+
+		"--- Done ---"->PrintLine();
+	}
+
+	function : TestTcpOptions() ~ Nil {
+		"Test 1: TCPSocket SetKeepAlive... "->Print();
+		sock := TCPSocket->New("httpbin.org", 80);
+		if(sock->IsOpen()) {
+			if(sock->SetKeepAlive(true)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetKeepAlive returned false)"->PrintLine();
+			};
+			sock->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+
+		"Test 2: TCPSocket SetNoDelay... "->Print();
+		sock2 := TCPSocket->New("httpbin.org", 80);
+		if(sock2->IsOpen()) {
+			if(sock2->SetNoDelay(true)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetNoDelay returned false)"->PrintLine();
+			};
+			sock2->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+
+		"Test 3: TCPSocket SetRecvTimeout... "->Print();
+		sock3 := TCPSocket->New("httpbin.org", 80);
+		if(sock3->IsOpen()) {
+			if(sock3->SetRecvTimeout(5000)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetRecvTimeout returned false)"->PrintLine();
+			};
+			sock3->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+
+		"Test 4: TCPSocket SetSendTimeout... "->Print();
+		sock4 := TCPSocket->New("httpbin.org", 80);
+		if(sock4->IsOpen()) {
+			if(sock4->SetSendTimeout(5000)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetSendTimeout returned false)"->PrintLine();
+			};
+			sock4->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+
+		"Test 5: TCPSocket SetRecvBufferSize... "->Print();
+		sock5 := TCPSocket->New("httpbin.org", 80);
+		if(sock5->IsOpen()) {
+			if(sock5->SetRecvBufferSize(65536)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetRecvBufferSize returned false)"->PrintLine();
+			};
+			sock5->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+
+		"Test 6: TCPSocket SetSendBufferSize... "->Print();
+		sock6 := TCPSocket->New("httpbin.org", 80);
+		if(sock6->IsOpen()) {
+			if(sock6->SetSendBufferSize(65536)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetSendBufferSize returned false)"->PrintLine();
+			};
+			sock6->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+	}
+
+	function : TestSecureOptions() ~ Nil {
+		"Test 7: TCPSecureSocket SetKeepAlive... "->Print();
+		ssock := TCPSecureSocket->New("httpbin.org", 443);
+		if(ssock->IsOpen()) {
+			if(ssock->SetKeepAlive(true)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetKeepAlive returned false)"->PrintLine();
+			};
+			ssock->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+
+		"Test 8: TCPSecureSocket SetNoDelay... "->Print();
+		ssock2 := TCPSecureSocket->New("httpbin.org", 443);
+		if(ssock2->IsOpen()) {
+			if(ssock2->SetNoDelay(true)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetNoDelay returned false)"->PrintLine();
+			};
+			ssock2->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+
+		"Test 9: TCPSecureSocket SetRecvTimeout... "->Print();
+		ssock3 := TCPSecureSocket->New("httpbin.org", 443);
+		if(ssock3->IsOpen()) {
+			if(ssock3->SetRecvTimeout(5000)) {
+				"PASS"->PrintLine();
+			}
+			else {
+				"FAIL (SetRecvTimeout returned false)"->PrintLine();
+			};
+			ssock3->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+
+		"Test 10: TCPSecureSocket GetCertFingerprint... "->Print();
+		ssock4 := TCPSecureSocket->New("httpbin.org", 443);
+		if(ssock4->IsOpen()) {
+			fp := ssock4->GetCertFingerprint();
+			if(fp <> Nil & fp->Size() > 0) {
+				"PASS (len={$fp->Size()})"->PrintLine();
+			}
+			else {
+				"FAIL (empty fingerprint)"->PrintLine();
+			};
+			ssock4->Close();
+		}
+		else {
+			"SKIP (no network)"->PrintLine();
+		};
+	}
+
+	function : TestConnectTimeout() ~ Nil {
+		"Test 11: Connect timeout fast-fail on unreachable host... "->Print();
+		# 192.0.2.0/24 is TEST-NET-1 (RFC 5737): routable but no host responds
+		sock := TCPSocket->New("192.0.2.1", 80, 300);
+		if(<>sock->IsOpen()) {
+			"PASS (timed out as expected)"->PrintLine();
+		}
+		else {
+			sock->Close();
+			"FAIL (connected to black-hole address)"->PrintLine();
+		};
+	}
+}
