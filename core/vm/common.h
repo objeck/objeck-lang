@@ -64,6 +64,14 @@
 #include <mbedtls/version.h>
 #include <mbedtls/timing.h>
 #include <mbedtls/ssl_cookie.h>
+#include <mbedtls/sha256.h>
+#ifdef OBJECK_HAS_NGHTTP2
+#include <nghttp2/nghttp2.h>
+#endif
+#ifdef OBJECK_HAS_NGTCP2
+#include <ngtcp2/ngtcp2.h>
+#include <nghttp3/nghttp3.h>
+#endif
 
 #ifdef _WIN32
 #include <direct.h>
@@ -215,6 +223,73 @@ struct DtlsServerCtx {
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
     mbedtls_net_free(&listen_fd);
+  }
+};
+
+//
+// HTTP/2 session context (nghttp2-based)
+//
+struct Http2SessionCtx {
+#ifdef OBJECK_HAS_NGHTTP2
+  nghttp2_session* session;
+#else
+  void* session;
+#endif
+  SecureSocketCtx* tls;
+  int              last_stream_id;
+  int              response_status;
+  bool             response_complete;
+  std::map<std::string, std::string> response_headers;
+  std::vector<uint8_t> response_body;
+  std::map<std::string, std::string> request_headers;
+
+  Http2SessionCtx() : session(nullptr), tls(nullptr),
+      last_stream_id(0), response_status(0), response_complete(false) {}
+
+  ~Http2SessionCtx() {
+#ifdef OBJECK_HAS_NGHTTP2
+    if(session) nghttp2_session_del(session);
+#endif
+    if(tls) {
+      mbedtls_ssl_close_notify(&tls->ssl);
+      delete tls;
+    }
+  }
+};
+
+//
+// HTTP/3 session context (ngtcp2+nghttp3 based)
+//
+struct Http3SessionCtx {
+#ifdef OBJECK_HAS_NGTCP2
+  ngtcp2_conn*  conn;
+  nghttp3_conn* h3conn;
+#else
+  void* conn;
+  void* h3conn;
+#endif
+  int    udp_fd;
+  int    response_status;
+  bool   response_complete;
+  std::map<std::string, std::string> response_headers;
+  std::vector<uint8_t> response_body;
+  std::map<std::string, std::string> request_headers;
+
+  Http3SessionCtx() : conn(nullptr), h3conn(nullptr), udp_fd(-1),
+      response_status(0), response_complete(false) {}
+
+  ~Http3SessionCtx() {
+#ifdef OBJECK_HAS_NGTCP2
+    if(h3conn) nghttp3_conn_del(h3conn);
+    if(conn) ngtcp2_conn_del(conn);
+#endif
+    if(udp_fd >= 0) {
+#ifdef _WIN32
+      closesocket(udp_fd);
+#else
+      close(udp_fd);
+#endif
+    }
   }
 };
 
@@ -1989,6 +2064,32 @@ class TrapProcessor {
   static bool SockTcpSslAccept(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSslSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  // TCP socket options
+  static bool SockTcpSetKeepAlive(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSetNoDelay(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSetRecvTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSetSendTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSetConnTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSetRcvBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSetSndBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  // SSL socket options
+  static bool SockTcpSslSetKeepAlive(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSslSetNoDelay(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSslSetRecvTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSslSetSendTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSslSetRcvBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSslSetSndBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSslSetMinTLS(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSslSetVerifyPeer(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockTcpSslGetFingerprint(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  // HTTP/2
+  static bool Http2Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool Http2Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool Http2Close(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  // HTTP/3
+  static bool Http3Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool Http3Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool Http3Close(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);

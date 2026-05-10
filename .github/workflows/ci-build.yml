@@ -82,6 +82,7 @@ jobs:
           build-essential \
           libopencv-dev \
           libmbedtls-dev \
+          libnghttp2-dev \
           unixodbc-dev \
           libsdl2-dev \
           libsdl2-image-dev \

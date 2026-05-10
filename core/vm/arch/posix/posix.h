@@ -45,7 +45,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <netdb.h>
+#include <fcntl.h>
 #include <sys/un.h>
 #include <pwd.h>
 #include <grp.h>
@@ -479,6 +481,113 @@ public:
   static void Close(SOCKET sock) {
     close(sock);
   }
+
+  static bool SetKeepAlive(SOCKET sock, bool enable) {
+    int val = enable ? 1 : 0;
+    return setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val)) == 0;
+  }
+
+  static bool SetNoDelay(SOCKET sock, bool enable) {
+    int val = enable ? 1 : 0;
+    return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) == 0;
+  }
+
+  static bool SetRecvTimeout(SOCKET sock, int ms) {
+    struct timeval tv;
+    tv.tv_sec = ms / 1000;
+    tv.tv_usec = (ms % 1000) * 1000;
+    return setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == 0;
+  }
+
+  static bool SetSendTimeout(SOCKET sock, int ms) {
+    struct timeval tv;
+    tv.tv_sec = ms / 1000;
+    tv.tv_usec = (ms % 1000) * 1000;
+    return setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == 0;
+  }
+
+  static bool SetRecvBufSize(SOCKET sock, int bytes) {
+    return setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bytes, sizeof(bytes)) == 0;
+  }
+
+  static bool SetSendBufSize(SOCKET sock, int bytes) {
+    return setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &bytes, sizeof(bytes)) == 0;
+  }
+
+  static SOCKET OpenWithTimeout(const char* address, int port, int timeout_ms) {
+    SOCKET sock = -1;
+    struct addrinfo* result = nullptr, *ptr = nullptr, hints;
+
+    bzero(&hints, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    std::string port_str = std::to_string(port);
+    if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
+      return -1;
+    }
+
+    for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+      sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+      if(sock < 0) continue;
+
+      // set non-blocking
+      int flags = fcntl(sock, F_GETFL, 0);
+      fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+
+      int ret = connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen);
+      if(ret == 0) {
+        // connected immediately
+        fcntl(sock, F_SETFL, flags);
+        break;
+      }
+      if(errno != EINPROGRESS) {
+        close(sock);
+        sock = -1;
+        continue;
+      }
+
+      // wait with select
+      fd_set wset;
+      FD_ZERO(&wset);
+      FD_SET(sock, &wset);
+      struct timeval tv;
+      tv.tv_sec = timeout_ms / 1000;
+      tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+      ret = select(sock + 1, nullptr, &wset, nullptr, &tv);
+      if(ret <= 0) {
+        close(sock);
+        sock = -1;
+        continue;
+      }
+
+      // check SO_ERROR
+      int err = 0;
+      socklen_t len = sizeof(err);
+      getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len);
+      if(err != 0) {
+        close(sock);
+        sock = -1;
+        continue;
+      }
+
+      // restore blocking
+      fcntl(sock, F_SETFL, flags);
+      break;
+    }
+    freeaddrinfo(result);
+
+    if(sock >= 0) {
+      struct timeval tv;
+      tv.tv_sec = 30;
+      tv.tv_usec = 0;
+      setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    }
+
+    return sock;
+  }
 };
 
 /****************************
@@ -523,6 +632,58 @@ public:
  ****************************/
 class IPSecureSocket {
  public:
+  static bool OpenH2(const char* address, int port, std::string& pem_file, SecureSocketCtx*& sctx) {
+    sctx = new SecureSocketCtx();
+
+    const char* pers = "objeck_ssl_h2_client";
+    int ret = mbedtls_ctr_drbg_seed(&sctx->ctr_drbg, mbedtls_entropy_func, &sctx->entropy,
+                                     (const unsigned char*)pers, strlen(pers));
+    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+
+    std::string cert_path = pem_file.empty()
+      ? UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE : pem_file;
+    ret = mbedtls_x509_crt_parse_file(&sctx->cacert, cert_path.c_str());
+    if(ret < 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+
+    std::string port_str = std::to_string(port);
+    ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
+    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+
+    ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
+                                       MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+
+    mbedtls_ssl_conf_authmode(&sctx->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+    mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
+    mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
+
+    // ALPN: prefer h2, fallback to http/1.1
+    static const char* alpn_list[] = { "h2", "http/1.1", nullptr };
+    mbedtls_ssl_conf_alpn_protocols(&sctx->conf, alpn_list);
+
+    ret = mbedtls_ssl_setup(&sctx->ssl, &sctx->conf);
+    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+
+    ret = mbedtls_ssl_set_hostname(&sctx->ssl, address);
+    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+
+    mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
+
+    while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {
+      if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+        sctx->last_error = ret; delete sctx; sctx = nullptr; return false;
+      }
+    }
+
+    // Verify h2 was negotiated
+    const char* alpn = mbedtls_ssl_get_alpn_protocol(&sctx->ssl);
+    if(!alpn || strcmp(alpn, "h2") != 0) {
+      delete sctx; sctx = nullptr; return false;
+    }
+
+    return true;
+  }
+
   static bool Open(const char* address, int port, std::string& pem_file, SecureSocketCtx*& sctx) {
     sctx = new SecureSocketCtx();
 
@@ -683,6 +844,72 @@ class IPSecureSocket {
       mbedtls_ssl_close_notify(&sctx->ssl);
       delete sctx;
     }
+  }
+
+  static bool SetMinTLSVersion(SecureSocketCtx* sctx, int ver) {
+    if(!sctx) return false;
+    mbedtls_ssl_conf_min_tls_version(&sctx->conf, (mbedtls_ssl_protocol_version)ver);
+    return true;
+  }
+
+  static bool SetVerifyPeer(SecureSocketCtx* sctx, bool strict) {
+    if(!sctx) return false;
+    mbedtls_ssl_conf_authmode(&sctx->conf,
+      strict ? MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_OPTIONAL);
+    return true;
+  }
+
+  static std::string GetCertFingerprint(SecureSocketCtx* sctx) {
+    if(!sctx) return "";
+    const mbedtls_x509_crt* cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
+    if(!cert) return "";
+
+    unsigned char hash[32];
+    if(mbedtls_sha256(cert->raw.p, cert->raw.len, hash, 0) != 0) return "";
+
+    char hex[65];
+    for(int i = 0; i < 32; i++) {
+      snprintf(hex + i * 2, 3, "%02x", hash[i]);
+    }
+    return std::string(hex, 64);
+  }
+
+  static bool SetKeepAlive(SecureSocketCtx* sctx, bool enable) {
+    if(!sctx) return false;
+    int val = enable ? 1 : 0;
+    return setsockopt(sctx->net.fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val)) == 0;
+  }
+
+  static bool SetNoDelay(SecureSocketCtx* sctx, bool enable) {
+    if(!sctx) return false;
+    int val = enable ? 1 : 0;
+    return setsockopt(sctx->net.fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) == 0;
+  }
+
+  static bool SetRecvTimeout(SecureSocketCtx* sctx, int ms) {
+    if(!sctx) return false;
+    struct timeval tv;
+    tv.tv_sec = ms / 1000;
+    tv.tv_usec = (ms % 1000) * 1000;
+    return setsockopt(sctx->net.fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == 0;
+  }
+
+  static bool SetSendTimeout(SecureSocketCtx* sctx, int ms) {
+    if(!sctx) return false;
+    struct timeval tv;
+    tv.tv_sec = ms / 1000;
+    tv.tv_usec = (ms % 1000) * 1000;
+    return setsockopt(sctx->net.fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == 0;
+  }
+
+  static bool SetRecvBufSize(SecureSocketCtx* sctx, int bytes) {
+    if(!sctx) return false;
+    return setsockopt(sctx->net.fd, SOL_SOCKET, SO_RCVBUF, &bytes, sizeof(bytes)) == 0;
+  }
+
+  static bool SetSendBufSize(SecureSocketCtx* sctx, int bytes) {
+    if(!sctx) return false;
+    return setsockopt(sctx->net.fd, SOL_SOCKET, SO_SNDBUF, &bytes, sizeof(bytes)) == 0;
   }
 };
 

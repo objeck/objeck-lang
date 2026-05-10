@@ -99,6 +99,80 @@ std::vector<std::string> IPSocket::Resolve(const char* address) {
 	return addresses;
 }
 
+SOCKET IPSocket::OpenWithTimeout(const char* address, int port, int timeout_ms) {
+  SOCKET sock = INVALID_SOCKET;
+  struct addrinfo* result = nullptr, *ptr = nullptr, hints;
+
+  ZeroMemory(&hints, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+
+  std::string port_str = std::to_string(port);
+  if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
+    return -1;
+  }
+
+  for(ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+    sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+    if(sock == INVALID_SOCKET) continue;
+
+    // set non-blocking
+    u_long mode = 1;
+    ioctlsocket(sock, FIONBIO, &mode);
+
+    int ret = connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen);
+    if(ret == 0) {
+      // connected immediately
+      mode = 0;
+      ioctlsocket(sock, FIONBIO, &mode);
+      break;
+    }
+    if(WSAGetLastError() != WSAEWOULDBLOCK) {
+      closesocket(sock);
+      sock = INVALID_SOCKET;
+      continue;
+    }
+
+    fd_set wset;
+    FD_ZERO(&wset);
+    FD_SET(sock, &wset);
+    struct timeval tv;
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+    ret = select(0, nullptr, &wset, nullptr, &tv);
+    if(ret <= 0) {
+      closesocket(sock);
+      sock = INVALID_SOCKET;
+      continue;
+    }
+
+    // check SO_ERROR
+    int err = 0;
+    int len = sizeof(err);
+    getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&err, &len);
+    if(err != 0) {
+      closesocket(sock);
+      sock = INVALID_SOCKET;
+      continue;
+    }
+
+    // restore blocking
+    mode = 0;
+    ioctlsocket(sock, FIONBIO, &mode);
+    break;
+  }
+  freeaddrinfo(result);
+
+  if(sock != INVALID_SOCKET) {
+    DWORD timeout = 30000;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+  }
+
+  return sock == INVALID_SOCKET ? -1 : sock;
+}
+
 SOCKET IPSocket::Accept(SOCKET server, char* client_address, int& client_port) {
 	struct sockaddr_in pin;
 	int addrlen = sizeof(pin);

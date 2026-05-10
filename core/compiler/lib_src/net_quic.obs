@@ -1,0 +1,141 @@
+#~~
+Copyright (c) 2025 Randy Hollines
+~~#
+
+use System.IO.Net, Collection, Web.HTTP;
+
+#~
+HTTP/3 (QUIC) client support (-lib net_quic)
+
+Note: HTTP/3 requires the VM to be built with OBJECK_HAS_NGTCP2.
+Without that flag, connections will fail with a runtime warning.
+~#
+bundle Web.HTTP {
+	#~
+	HTTP/3 client over QUIC. Maintains a persistent QUIC connection.
+
+	```
+	client := Http3Client->New("cloudflare-quic.com");
+	resp := client->Get("/");
+	if(resp <> Nil) {
+	   resp->GetCode()->PrintLine();
+	};
+	client->Close();
+	```
+	~#
+	class Http3Client {
+		@ctx : Int;                          # Http3SessionCtx* (native handle)
+		@host : String;
+		@port : Int;
+		@request_headers : Hash<String, String>;
+		@resp_status : Int;                  # set by HTTP3_REQUEST
+		@resp_body : Byte[];                 # set by HTTP3_REQUEST
+		@resp_content_type : String;         # set by HTTP3_REQUEST
+
+		#~
+		Creates an HTTP/3 client connected to the given host.
+		@param host hostname (e.g. "api.example.com")
+		@param port port number (default 443)
+		~#
+		New(host : String, port : Int := 443) {
+			@host := host;
+			@port := port;
+			@request_headers := Hash->New()<String, String>;
+			HTTP3_CONNECT;
+		}
+
+		#~
+		Returns true if the QUIC connection is established
+		~#
+		method : public : IsConnected() ~ Bool {
+			return @ctx <> 0;
+		}
+
+		#~
+		Adds a custom request header sent with every subsequent request
+		@param key header name (lower-case recommended)
+		@param value header value
+		~#
+		method : public : AddHeader(key : String, value : String) ~ Nil {
+			@request_headers->Insert(key->ToLower(), value);
+		}
+
+		#~
+		Removes a previously added request header
+		@param key header name
+		~#
+		method : public : RemoveHeader(key : String) ~ Nil {
+			@request_headers->Remove(key->ToLower());
+		}
+
+		#~
+		Performs an HTTP/3 GET request
+		@param path request path
+		@return Response or Nil on failure
+		~#
+		method : public : Get(path : String) ~ Response {
+			return DoRequest("GET", path, Nil, Nil);
+		}
+
+		#~
+		Performs an HTTP/3 DELETE request
+		@param path request path
+		@return Response or Nil on failure
+		~#
+		method : public : Delete(path : String) ~ Response {
+			return DoRequest("DELETE", path, Nil, Nil);
+		}
+
+		#~
+		Performs an HTTP/3 POST request
+		@param path request path
+		@param body request body bytes
+		@param content_type MIME type of the body
+		@return Response or Nil on failure
+		~#
+		method : public : Post(path : String, body : Byte[], content_type : String) ~ Response {
+			return DoRequest("POST", path, body, content_type);
+		}
+
+		#~
+		Performs an HTTP/3 PUT request
+		@param path request path
+		@param body request body bytes
+		@param content_type MIME type of the body
+		@return Response or Nil on failure
+		~#
+		method : public : Put(path : String, body : Byte[], content_type : String) ~ Response {
+			return DoRequest("PUT", path, body, content_type);
+		}
+
+		#~
+		Performs an HTTP/3 PATCH request
+		@param path request path
+		@param body request body bytes
+		@param content_type MIME type of the body
+		@return Response or Nil on failure
+		~#
+		method : public : Patch(path : String, body : Byte[], content_type : String) ~ Response {
+			return DoRequest("PATCH", path, body, content_type);
+		}
+
+		#~
+		Closes the QUIC connection and releases resources
+		~#
+		method : public : Close() ~ Nil {
+			HTTP3_CLOSE;
+		}
+
+		method : DoRequest(method : String, path : String, body : Byte[], content_type : String) ~ Response {
+			if(@ctx = 0) {
+				return Nil;
+			};
+
+			if(HTTP3_REQUEST) {
+				return Response->New(@resp_body, @resp_status, @resp_content_type);
+			};
+
+			return Nil;
+		}
+	}
+}

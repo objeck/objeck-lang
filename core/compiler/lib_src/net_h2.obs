@@ -1,0 +1,138 @@
+#~~
+Copyright (c) 2025 Randy Hollines
+~~#
+
+use System.IO.Net, Collection, Web.HTTP;
+
+#~
+HTTP/2 client support (-lib net_h2)
+~#
+bundle Web.HTTP {
+	#~
+	HTTP/2 client over TLS (h2). Maintains a persistent multiplexed connection.
+
+	```
+	client := Http2Client->New("httpbin.org");
+	resp := client->Get("/get");
+	if(resp <> Nil) {
+	   resp->GetCode()->PrintLine();
+	};
+	client->Close();
+	```
+	~#
+	class Http2Client {
+		@ctx : Int;                          # Http2SessionCtx* (native handle)
+		@host : String;
+		@port : Int;
+		@request_headers : Hash<String, String>;
+		@resp_status : Int;                  # set by HTTP2_REQUEST
+		@resp_body : Byte[];                 # set by HTTP2_REQUEST
+		@resp_content_type : String;         # set by HTTP2_REQUEST
+
+		#~
+		Creates an HTTP/2 client connected to the given host.
+		@param host hostname (e.g. "api.example.com")
+		@param port port number (default 443)
+		~#
+		New(host : String, port : Int := 443) {
+			@host := host;
+			@port := port;
+			@request_headers := Hash->New()<String, String>;
+			HTTP2_CONNECT;
+		}
+
+		#~
+		Returns true if the connection is established
+		~#
+		method : public : IsConnected() ~ Bool {
+			return @ctx <> 0;
+		}
+
+		#~
+		Adds a custom request header sent with every subsequent request
+		@param key header name (lower-case recommended)
+		@param value header value
+		~#
+		method : public : AddHeader(key : String, value : String) ~ Nil {
+			@request_headers->Insert(key->ToLower(), value);
+		}
+
+		#~
+		Removes a previously added request header
+		@param key header name
+		~#
+		method : public : RemoveHeader(key : String) ~ Nil {
+			@request_headers->Remove(key->ToLower());
+		}
+
+		#~
+		Performs an HTTP/2 GET request
+		@param path request path (e.g. "/v1/users")
+		@return Response or Nil on failure
+		~#
+		method : public : Get(path : String) ~ Response {
+			return DoRequest("GET", path, Nil, Nil);
+		}
+
+		#~
+		Performs an HTTP/2 DELETE request
+		@param path request path
+		@return Response or Nil on failure
+		~#
+		method : public : Delete(path : String) ~ Response {
+			return DoRequest("DELETE", path, Nil, Nil);
+		}
+
+		#~
+		Performs an HTTP/2 POST request
+		@param path request path
+		@param body request body bytes
+		@param content_type MIME type of the body
+		@return Response or Nil on failure
+		~#
+		method : public : Post(path : String, body : Byte[], content_type : String) ~ Response {
+			return DoRequest("POST", path, body, content_type);
+		}
+
+		#~
+		Performs an HTTP/2 PUT request
+		@param path request path
+		@param body request body bytes
+		@param content_type MIME type of the body
+		@return Response or Nil on failure
+		~#
+		method : public : Put(path : String, body : Byte[], content_type : String) ~ Response {
+			return DoRequest("PUT", path, body, content_type);
+		}
+
+		#~
+		Performs an HTTP/2 PATCH request
+		@param path request path
+		@param body request body bytes
+		@param content_type MIME type of the body
+		@return Response or Nil on failure
+		~#
+		method : public : Patch(path : String, body : Byte[], content_type : String) ~ Response {
+			return DoRequest("PATCH", path, body, content_type);
+		}
+
+		#~
+		Closes the HTTP/2 connection and releases resources
+		~#
+		method : public : Close() ~ Nil {
+			HTTP2_CLOSE;
+		}
+
+		method : DoRequest(method : String, path : String, body : Byte[], content_type : String) ~ Response {
+			if(@ctx = 0) {
+				return Nil;
+			};
+
+			if(HTTP2_REQUEST) {
+				return Response->New(@resp_body, @resp_status, @resp_content_type);
+			};
+
+			return Nil;
+		}
+	}
+}

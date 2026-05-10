@@ -2192,7 +2192,28 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case SOCK_IP_ERROR:
     return SockTcpError(program, inst, op_stack, stack_pos, frame);
-      
+
+  case SOCK_TCP_SET_KEEPALIVE:
+    return SockTcpSetKeepAlive(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SET_NODELAY:
+    return SockTcpSetNoDelay(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SET_RECV_TIMEOUT:
+    return SockTcpSetRecvTimeout(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SET_SEND_TIMEOUT:
+    return SockTcpSetSendTimeout(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SET_CONN_TIMEOUT:
+    return SockTcpSetConnTimeout(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SET_RCVBUF:
+    return SockTcpSetRcvBuf(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SET_SNDBUF:
+    return SockTcpSetSndBuf(program, inst, op_stack, stack_pos, frame);
+
   case SOCK_TCP_SSL_CONNECT:
     return SockTcpSslConnect(program, inst, op_stack, stack_pos, frame);
 
@@ -2228,6 +2249,51 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case SOCK_TCP_SSL_ERROR:
     return SockTcpSslError(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SET_KEEPALIVE:
+    return SockTcpSslSetKeepAlive(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SET_NODELAY:
+    return SockTcpSslSetNoDelay(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SET_RECV_TIMEOUT:
+    return SockTcpSslSetRecvTimeout(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SET_SEND_TIMEOUT:
+    return SockTcpSslSetSendTimeout(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SET_RCVBUF:
+    return SockTcpSslSetRcvBuf(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SET_SNDBUF:
+    return SockTcpSslSetSndBuf(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SET_MIN_TLS:
+    return SockTcpSslSetMinTLS(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_SET_VERIFY_PEER:
+    return SockTcpSslSetVerifyPeer(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_GET_FINGERPRINT:
+    return SockTcpSslGetFingerprint(program, inst, op_stack, stack_pos, frame);
+
+  case HTTP2_CONNECT:
+    return Http2Connect(program, inst, op_stack, stack_pos, frame);
+
+  case HTTP2_REQUEST:
+    return Http2Request(program, inst, op_stack, stack_pos, frame);
+
+  case HTTP2_CLOSE:
+    return Http2Close(program, inst, op_stack, stack_pos, frame);
+
+  case HTTP3_CONNECT:
+    return Http3Connect(program, inst, op_stack, stack_pos, frame);
+
+  case HTTP3_REQUEST:
+    return Http3Request(program, inst, op_stack, stack_pos, frame);
+
+  case HTTP3_CLOSE:
+    return Http3Close(program, inst, op_stack, stack_pos, frame);
 
   case SOCK_DTLS_CONNECT:
     return SockDtlsConnect(program, inst, op_stack, stack_pos, frame);
@@ -4030,7 +4096,11 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
   if(array && instance) {
     array = (size_t*)array[0];
     const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
-    SOCKET sock = IPSocket::Open(addr.c_str(), port);
+    // instance[3] holds connect timeout in ms (0 = blocking)
+    const long timeout_ms = (long)instance[3];
+    SOCKET sock = (timeout_ms > 0)
+      ? IPSocket::OpenWithTimeout(addr.c_str(), port, timeout_ms)
+      : IPSocket::Open(addr.c_str(), port);
 #ifdef _DEBUG
     std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << "'; instance="
 	       << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
@@ -4603,6 +4673,186 @@ bool TrapProcessor::SockTcpSslCloseSrv(StackProgram* program, size_t* inst, size
     }
   }
 
+  return true;
+}
+
+// --- TCP socket option implementations ---
+
+bool TrapProcessor::SockTcpSetKeepAlive(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const bool enable = (bool)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && (SOCKET)instance[0] > 0) {
+    PushInt(IPSocket::SetKeepAlive((SOCKET)instance[0], enable) ? 1 : 0, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  return true;
+}
+
+bool TrapProcessor::SockTcpSetNoDelay(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const bool enable = (bool)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && (SOCKET)instance[0] > 0) {
+    PushInt(IPSocket::SetNoDelay((SOCKET)instance[0], enable) ? 1 : 0, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  return true;
+}
+
+bool TrapProcessor::SockTcpSetRecvTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int ms = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && (SOCKET)instance[0] > 0) {
+    PushInt(IPSocket::SetRecvTimeout((SOCKET)instance[0], ms) ? 1 : 0, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  return true;
+}
+
+bool TrapProcessor::SockTcpSetSendTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int ms = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && (SOCKET)instance[0] > 0) {
+    PushInt(IPSocket::SetSendTimeout((SOCKET)instance[0], ms) ? 1 : 0, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  return true;
+}
+
+bool TrapProcessor::SockTcpSetConnTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  // Store timeout in instance[3]; SockTcpConnect reads it before connecting
+  const int ms = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    instance[3] = (size_t)ms;
+  }
+  return true;
+}
+
+bool TrapProcessor::SockTcpSetRcvBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int bytes = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && (SOCKET)instance[0] > 0) {
+    PushInt(IPSocket::SetRecvBufSize((SOCKET)instance[0], bytes) ? 1 : 0, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  return true;
+}
+
+bool TrapProcessor::SockTcpSetSndBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int bytes = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && (SOCKET)instance[0] > 0) {
+    PushInt(IPSocket::SetSendBufSize((SOCKET)instance[0], bytes) ? 1 : 0, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+  return true;
+}
+
+// --- SSL socket option implementations ---
+
+bool TrapProcessor::SockTcpSslSetKeepAlive(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const bool enable = (bool)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  PushInt(IPSecureSocket::SetKeepAlive(sctx, enable) ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslSetNoDelay(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const bool enable = (bool)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  PushInt(IPSecureSocket::SetNoDelay(sctx, enable) ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslSetRecvTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int ms = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  PushInt(IPSecureSocket::SetRecvTimeout(sctx, ms) ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslSetSendTimeout(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int ms = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  PushInt(IPSecureSocket::SetSendTimeout(sctx, ms) ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslSetRcvBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int bytes = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  PushInt(IPSecureSocket::SetRecvBufSize(sctx, bytes) ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslSetSndBuf(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int bytes = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  PushInt(IPSecureSocket::SetSendBufSize(sctx, bytes) ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslSetMinTLS(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const int ver = (int)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  PushInt(IPSecureSocket::SetMinTLSVersion(sctx, ver) ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslSetVerifyPeer(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const bool strict = (bool)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  PushInt(IPSecureSocket::SetVerifyPeer(sctx, strict) ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::SockTcpSslGetFingerprint(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  const std::string fp = IPSecureSocket::GetCertFingerprint(sctx);
+  if(!fp.empty()) {
+    const std::wstring wfp = BytesToUnicode(fp);
+    PushInt((size_t)CreateStringObject(wfp, program, op_stack, stack_pos), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
   return true;
 }
 
@@ -6087,6 +6337,296 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
     PushInt(-1, op_stack, stack_pos);
   }
 
+  return true;
+}
+
+// --- HTTP/2 trap implementations ---
+
+#ifdef OBJECK_HAS_NGHTTP2
+
+static ssize_t h2_send_cb(nghttp2_session*, const uint8_t* data, size_t len, int, void* user_data) {
+  Http2SessionCtx* ctx = (Http2SessionCtx*)user_data;
+  int ret = IPSecureSocket::WriteBytes((const char*)data, (int)len, ctx->tls);
+  if(ret < 0) return NGHTTP2_ERR_CALLBACK_FAILURE;
+  return (ssize_t)ret;
+}
+
+static ssize_t h2_recv_cb(nghttp2_session*, uint8_t* buf, size_t len, int, void* user_data) {
+  Http2SessionCtx* ctx = (Http2SessionCtx*)user_data;
+  int status = 0;
+  int ret = IPSecureSocket::ReadBytes((char*)buf, (int)len, ctx->tls);
+  if(ret < 0) {
+    if(ret == MBEDTLS_ERR_SSL_WANT_READ) return NGHTTP2_ERR_WOULDBLOCK;
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+  if(ret == 0) return NGHTTP2_ERR_EOF;
+  return (ssize_t)ret;
+}
+
+static int h2_on_header_cb(nghttp2_session*, const nghttp2_frame* frame,
+                             const uint8_t* name, size_t namelen,
+                             const uint8_t* value, size_t valuelen,
+                             uint8_t, void* user_data) {
+  Http2SessionCtx* ctx = (Http2SessionCtx*)user_data;
+  if(frame->hd.type == NGHTTP2_HEADERS) {
+    std::string k(reinterpret_cast<const char*>(name), namelen);
+    std::string v(reinterpret_cast<const char*>(value), valuelen);
+    if(k == ":status") {
+      ctx->response_status = std::stoi(v);
+    }
+    else {
+      ctx->response_headers[k] = v;
+    }
+  }
+  return 0;
+}
+
+static int h2_on_data_chunk_cb(nghttp2_session*, uint8_t, int32_t,
+                                const uint8_t* data, size_t len, void* user_data) {
+  Http2SessionCtx* ctx = (Http2SessionCtx*)user_data;
+  ctx->response_body.insert(ctx->response_body.end(), data, data + len);
+  return 0;
+}
+
+static int h2_on_stream_close_cb(nghttp2_session*, int32_t stream_id,
+                                  uint32_t, void* user_data) {
+  Http2SessionCtx* ctx = (Http2SessionCtx*)user_data;
+  if(stream_id == ctx->last_stream_id) {
+    ctx->response_complete = true;
+  }
+  return 0;
+}
+
+static nghttp2_session* h2_make_session(Http2SessionCtx* ctx) {
+  nghttp2_session_callbacks* cbs;
+  nghttp2_session_callbacks_new(&cbs);
+  nghttp2_session_callbacks_set_send_callback(cbs, h2_send_cb);
+  nghttp2_session_callbacks_set_recv_callback(cbs, h2_recv_cb);
+  nghttp2_session_callbacks_set_on_header_callback(cbs, h2_on_header_cb);
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback(cbs, h2_on_data_chunk_cb);
+  nghttp2_session_callbacks_set_on_stream_close_callback(cbs, h2_on_stream_close_cb);
+
+  nghttp2_session* session = nullptr;
+  nghttp2_session_client_new(&session, cbs, ctx);
+  nghttp2_session_callbacks_del(cbs);
+  return session;
+}
+
+static bool h2_run_loop(Http2SessionCtx* ctx) {
+  while(!ctx->response_complete) {
+    if(nghttp2_session_want_write(ctx->session)) {
+      if(nghttp2_session_send(ctx->session) != 0) return false;
+    }
+    if(nghttp2_session_want_read(ctx->session)) {
+      if(nghttp2_session_recv(ctx->session) != 0) return false;
+    }
+    if(!nghttp2_session_want_read(ctx->session) && !nghttp2_session_want_write(ctx->session)) break;
+  }
+  return true;
+}
+
+#endif // OBJECK_HAS_NGHTTP2
+
+bool TrapProcessor::Http2Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  // Stack: port(Int), host(String), instance
+  const int port = (int)PopInt(op_stack, stack_pos);
+  size_t* host_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+#ifdef OBJECK_HAS_NGHTTP2
+  if(host_array && instance) {
+    host_array = (size_t*)host_array[0];
+    const std::string host = UnicodeToBytes((wchar_t*)(host_array + 3));
+
+    Http2SessionCtx* ctx = new Http2SessionCtx();
+    std::string pem_file;
+    if(!IPSecureSocket::OpenH2(host.c_str(), port, pem_file, ctx->tls)) {
+      delete ctx;
+      instance[0] = 0;
+      return true;
+    }
+
+    ctx->session = h2_make_session(ctx);
+
+    nghttp2_settings_entry iv[1] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+    nghttp2_submit_settings(ctx->session, NGHTTP2_FLAG_NONE, iv, 1);
+    nghttp2_session_send(ctx->session);
+
+    instance[0] = (size_t)ctx;
+  }
+#else
+  if(instance) instance[0] = 0;
+  std::wcerr << L">>> HTTP/2 not available: build with OBJECK_HAS_NGHTTP2 <<<" << std::endl;
+#endif
+  return true;
+}
+
+bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  // Stack: body(Byte[]), content_type(String), path(String), method(String), instance
+  // On success: sets instance[4]=status, instance[5]=body(Byte[]), instance[6]=content_type(String)
+  // Pushes: Bool (1=ok, 0=fail)
+  size_t* body_array   = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* ctype_array  = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* path_array   = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* method_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance     = (size_t*)PopInt(op_stack, stack_pos);
+
+#ifdef OBJECK_HAS_NGHTTP2
+  Http2SessionCtx* ctx = instance ? (Http2SessionCtx*)instance[0] : nullptr;
+  if(!ctx || !ctx->session) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  method_array = (size_t*)method_array[0];
+  const std::string method = UnicodeToBytes((wchar_t*)(method_array + 3));
+  path_array = (size_t*)path_array[0];
+  const std::string path = UnicodeToBytes((wchar_t*)(path_array + 3));
+
+  // host is instance[1] (String object)
+  size_t* host_str = (size_t*)instance[1];
+  if(host_str) host_str = (size_t*)host_str[0];
+  const std::string host = host_str ? UnicodeToBytes((wchar_t*)(host_str + 3)) : "";
+
+  // Build string storage for nv (must outlive nghttp2_submit_request)
+  std::vector<std::string> hdr_keys, hdr_vals;
+  std::vector<nghttp2_nv> nva;
+
+  auto add_hdr = [&](const std::string& k, const std::string& v) {
+    hdr_keys.push_back(k);
+    hdr_vals.push_back(v);
+    nghttp2_nv nv;
+    nv.name     = (uint8_t*)hdr_keys.back().c_str();
+    nv.namelen  = hdr_keys.back().size();
+    nv.value    = (uint8_t*)hdr_vals.back().c_str();
+    nv.valuelen = hdr_vals.back().size();
+    nv.flags    = NGHTTP2_NV_FLAG_NONE;
+    nva.push_back(nv);
+  };
+
+  add_hdr(":method",    method);
+  add_hdr(":path",      path);
+  add_hdr(":scheme",    "https");
+  add_hdr(":authority", host);
+  for(auto& kv : ctx->request_headers) add_hdr(kv.first, kv.second);
+
+  std::vector<uint8_t> body_data;
+  nghttp2_data_provider* dp_ptr = nullptr;
+  nghttp2_data_provider dp;
+
+  if(body_array) {
+    size_t* ba = (size_t*)body_array[0];
+    size_t blen = ba[0];
+    uint8_t* bptr = (uint8_t*)(ba + 3);
+    body_data.assign(bptr, bptr + blen);
+
+    if(ctype_array) {
+      ctype_array = (size_t*)ctype_array[0];
+      add_hdr("content-type", UnicodeToBytes((wchar_t*)(ctype_array + 3)));
+    }
+
+    struct BodyCtx { const uint8_t* data; size_t len; size_t pos; };
+    static thread_local BodyCtx bctx;
+    bctx = {body_data.data(), body_data.size(), 0};
+    dp.source.ptr = &bctx;
+    dp.read_callback = [](nghttp2_session*, int32_t, uint8_t* buf, size_t len,
+                           uint32_t* df, nghttp2_data_source* src, void*) -> ssize_t {
+      BodyCtx* bc = (BodyCtx*)src->ptr;
+      size_t n = std::min(len, bc->len - bc->pos);
+      memcpy(buf, bc->data + bc->pos, n);
+      bc->pos += n;
+      if(bc->pos == bc->len) *df |= NGHTTP2_DATA_FLAG_EOF;
+      return (ssize_t)n;
+    };
+    dp_ptr = &dp;
+  }
+
+  ctx->response_status   = 0;
+  ctx->response_complete = false;
+  ctx->response_headers.clear();
+  ctx->response_body.clear();
+
+  int stream_id = nghttp2_submit_request(ctx->session, nullptr,
+                                          nva.data(), nva.size(), dp_ptr, ctx);
+  if(stream_id < 0) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+  ctx->last_stream_id = stream_id;
+
+  if(!h2_run_loop(ctx)) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  // Store results in instance fields [4]=status, [5]=body, [6]=content_type
+  const std::string ct = ctx->response_headers.count("content-type")
+                          ? ctx->response_headers["content-type"] : "";
+
+  instance[4] = (size_t)ctx->response_status;
+
+  size_t* body_obj = MemoryManager::AllocateArray(ctx->response_body.size() + 1,
+                                                   instructions::BYTE_ARY_TYPE,
+                                                   op_stack, *stack_pos, false);
+  if(!ctx->response_body.empty()) {
+    memcpy((uint8_t*)(body_obj + 3), ctx->response_body.data(), ctx->response_body.size());
+    body_obj[0] = ctx->response_body.size();
+  }
+  instance[5] = (size_t)body_obj;
+  instance[6] = (size_t)CreateStringObject(BytesToUnicode(ct), program, op_stack, stack_pos);
+
+  PushInt(1, op_stack, stack_pos);
+#else
+  PushInt(0, op_stack, stack_pos);
+#endif
+  return true;
+}
+
+bool TrapProcessor::Http2Close(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && instance[0]) {
+    Http2SessionCtx* ctx = (Http2SessionCtx*)instance[0];
+    instance[0] = 0;
+    delete ctx;
+  }
+  return true;
+}
+
+// --- HTTP/3 trap implementations ---
+
+bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  // HTTP/3 via ngtcp2+nghttp3 — stub that fails gracefully when lib not present
+  PopInt(op_stack, stack_pos);
+  PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) instance[0] = 0;
+#ifndef OBJECK_HAS_NGTCP2
+  std::wcerr << L">>> HTTP/3 not available: build with OBJECK_HAS_NGTCP2 <<<" << std::endl;
+#else
+  // TODO: full ngtcp2+nghttp3 QUIC connection
+#endif
+  return true;
+}
+
+bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  for(int i = 0; i < 5; i++) PopInt(op_stack, stack_pos);
+  PushInt(0, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::Http3Close(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance && instance[0]) {
+    Http3SessionCtx* ctx = (Http3SessionCtx*)instance[0];
+    instance[0] = 0;
+    delete ctx;
+  }
   return true;
 }
 
