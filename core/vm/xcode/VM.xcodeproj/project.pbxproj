@@ -318,22 +318,31 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_OSX,
 					_ARM64,
+					OBJECK_HAS_NGHTTP2,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
-				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
-				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
+				HEADER_SEARCH_PATHS = (
+					../../lib/openssl/macos/include,
+					/opt/homebrew/include,
+				);
+				"HEADER_SEARCH_PATHS[arch=*]" = (
+					../../lib/openssl/macos/include,
+					/opt/homebrew/include,
+				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
+					/opt/homebrew/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				OTHER_LDFLAGS = (
 					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-lnghttp2",
 					"-lz",
 				);
 				PRELINK_LIBS = "";
@@ -362,16 +371,24 @@
 					_OSX,
 					_ARM64,
 					_OBJECK_NATIVE_LIB_PATH,
+					OBJECK_HAS_NGHTTP2,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
-				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
-				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
+				HEADER_SEARCH_PATHS = (
+					../../lib/openssl/macos/include,
+					/opt/homebrew/include,
+				);
+				"HEADER_SEARCH_PATHS[arch=*]" = (
+					../../lib/openssl/macos/include,
+					/opt/homebrew/include,
+				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
+					/opt/homebrew/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				ONLY_ACTIVE_ARCH = YES;
@@ -379,6 +396,7 @@
 					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-lnghttp2",
 					"-lz",
 				);
 				PRELINK_LIBS = "";

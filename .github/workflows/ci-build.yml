@@ -111,6 +111,7 @@ jobs:
         brew install \
           opencv \
           mbedtls \
+          nghttp2 \
           unixodbc \
           sdl2 \
           sdl2_image \
@@ -184,15 +185,16 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Install mbedtls via vcpkg for crypto library
+        # Install mbedtls and nghttp2 via vcpkg
         vcpkg install mbedtls:${{ matrix.arch }}-windows
+        vcpkg install nghttp2:${{ matrix.arch }}-windows
 
         # Set include/lib paths for Visual Studio
         $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
         echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
         echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
 
-        Write-Output "✅ Installed mbedtls for ${{ matrix.arch }}"
+        Write-Output "✅ Installed mbedtls and nghttp2 for ${{ matrix.arch }}"
         Write-Output "Set INCLUDE=$vcpkgRoot\include"
         Write-Output "Set LIB=$vcpkgRoot\lib"
 
@@ -312,6 +314,8 @@ jobs:
         $OBC -src lib_src/ml.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
         $OBC -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
         $OBC -src lib_src/net_common.obs,lib_src/net.obs,lib_src/net_secure.obs -tar lib -lib gen_collect,cipher -opt s3 -dest ../lib/net.obl
+        $OBC -src lib_src/net_h2.obs -tar lib -lib net,gen_collect,cipher -opt s3 -dest ../lib/net_h2.obl
+        $OBC -src lib_src/net_quic.obs -tar lib -lib net,gen_collect,cipher -opt s3 -dest ../lib/net_quic.obl
         $OBC -src lib_src/net_server.obs -tar lib -lib net,json,gen_collect,cipher -opt s3 -dest ../lib/net_server.obl
         $OBC -src lib_src/json_rpc.obs -tar lib -lib json,net -opt s3 -dest ../lib/json_rpc.obl
         $OBC -src lib_src/misc.obs -lib gen_collect,net,json -tar lib -opt s3 -dest ../lib/misc.obl
@@ -542,6 +546,8 @@ jobs:
           ../../../compiler/lib_src/net_common.obs \
           ../../../compiler/lib_src/net.obs \
           ../../../compiler/lib_src/net_secure.obs \
+          ../../../compiler/lib_src/net_h2.obs \
+          ../../../compiler/lib_src/net_quic.obs \
           ../../../compiler/lib_src/net_server.obs \
           ../../../compiler/lib_src/rss.obs \
           ../../../compiler/lib_src/misc.obs \
