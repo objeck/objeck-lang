@@ -1,5 +1,5 @@
 #~~
-Copyright (c) 2025 Randy Hollines
+Copyright (c) 2026 Randy Hollines
 ~~#
 
 use System.IO.Net, Collection, Web.HTTP;
@@ -12,7 +12,8 @@ Without that flag, connections will fail with a runtime warning.
 ~#
 bundle Web.HTTP {
 	#~
-	HTTP/3 client over QUIC. Maintains a persistent QUIC connection.
+	HTTP/3 client over QUIC. Maintains a persistent QUIC connection
+	via a native Http3Session.
 
 	```
 	client := Http3Client->New("cloudflare-quic.com");
@@ -24,13 +25,8 @@ bundle Web.HTTP {
 	```
 	~#
 	class Http3Client {
-		@ctx : Int;                          # Http3SessionCtx* (native handle)
-		@host : String;
-		@port : Int;
+		@session : Http3Session;
 		@request_headers : Hash<String, String>;
-		@resp_status : Int;                  # set by HTTP3_REQUEST
-		@resp_body : Byte[];                 # set by HTTP3_REQUEST
-		@resp_content_type : String;         # set by HTTP3_REQUEST
 
 		#~
 		Creates an HTTP/3 client connected to the given host.
@@ -38,21 +34,19 @@ bundle Web.HTTP {
 		@param port port number (default 443)
 		~#
 		New(host : String, port : Int := 443) {
-			@host := host;
-			@port := port;
+			@session := Http3Session->New(host, port);
 			@request_headers := Hash->New()<String, String>;
-			HTTP3_CONNECT;
 		}
 
 		#~
 		Returns true if the QUIC connection is established
 		~#
 		method : public : IsConnected() ~ Bool {
-			return @ctx <> 0;
+			return @session <> Nil & @session->IsConnected();
 		}
 
 		#~
-		Adds a custom request header sent with every subsequent request
+		Adds a custom request header sent with every subsequent request.
 		@param key header name (lower-case recommended)
 		@param value header value
 		~#
@@ -61,7 +55,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Removes a previously added request header
+		Removes a previously added request header.
 		@param key header name
 		~#
 		method : public : RemoveHeader(key : String) ~ Nil {
@@ -69,25 +63,27 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs an HTTP/3 GET request
+		Performs an HTTP/3 GET request.
 		@param path request path
 		@return Response or Nil on failure
 		~#
 		method : public : Get(path : String) ~ Response {
-			return DoRequest("GET", path, Nil, Nil);
+			empty : Byte[];
+			return DoRequest("GET", path, empty, Nil);
 		}
 
 		#~
-		Performs an HTTP/3 DELETE request
+		Performs an HTTP/3 DELETE request.
 		@param path request path
 		@return Response or Nil on failure
 		~#
 		method : public : Delete(path : String) ~ Response {
-			return DoRequest("DELETE", path, Nil, Nil);
+			empty : Byte[];
+			return DoRequest("DELETE", path, empty, Nil);
 		}
 
 		#~
-		Performs an HTTP/3 POST request
+		Performs an HTTP/3 POST request.
 		@param path request path
 		@param body request body bytes
 		@param content_type MIME type of the body
@@ -98,7 +94,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs an HTTP/3 PUT request
+		Performs an HTTP/3 PUT request.
 		@param path request path
 		@param body request body bytes
 		@param content_type MIME type of the body
@@ -109,7 +105,7 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Performs an HTTP/3 PATCH request
+		Performs an HTTP/3 PATCH request.
 		@param path request path
 		@param body request body bytes
 		@param content_type MIME type of the body
@@ -120,19 +116,217 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Closes the QUIC connection and releases resources
+		Closes the QUIC connection and releases resources.
 		~#
 		method : public : Close() ~ Nil {
-			HTTP3_CLOSE;
+			if(@session <> Nil) {
+				@session->Close();
+			};
 		}
 
-		method : DoRequest(method : String, path : String, body : Byte[], content_type : String) ~ Response {
-			if(@ctx = 0) {
+		#~
+		Performs an HTTP/3 GET from a URL in one call.
+		@param url URL to fetch
+		@return Response or Nil on failure
+		~#
+		function : QuickGet(url : Web.HTTP.Url) ~ Web.HTTP.Response {
+			return QuickGet(url, Nil);
+		}
+
+		#~
+		Performs an HTTP/3 GET from a URL with custom headers.
+		@param url URL to fetch
+		@param headers optional key/value headers
+		@return Response or Nil on failure
+		~#
+		function : QuickGet(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
+			client := MakeClient(url, headers);
+			if(client = Nil) { return Nil; };
+			resp := client->Get(BuildPath(url));
+			client->Close();
+			return resp;
+		}
+
+		#~
+		Performs an HTTP/3 POST from a URL in one call.
+		@param url URL to post to
+		@param data request body
+		@return Response or Nil on failure
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return QuickPost(url, data, "text/plain", Nil);
+		}
+
+		#~
+		Performs an HTTP/3 POST from a URL with a content type.
+		@param url URL to post to
+		@param data request body
+		@param content_type MIME type
+		@return Response or Nil on failure
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickPost(url, data, content_type, Nil);
+		}
+
+		#~
+		Performs an HTTP/3 POST from a URL with content type and headers.
+		@param url URL to post to
+		@param data request body
+		@param content_type MIME type
+		@param headers optional key/value headers
+		@return Response or Nil on failure
+		~#
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {
+			client := MakeClient(url, headers);
+			if(client = Nil) { return Nil; };
+			resp := client->Post(BuildPath(url), data, content_type);
+			client->Close();
+			return resp;
+		}
+
+		#~
+		Performs an HTTP/3 PUT from a URL in one call.
+		@param url URL to put to
+		@param data request body
+		@return Response or Nil on failure
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return QuickPut(url, data, "text/plain", Nil);
+		}
+
+		#~
+		Performs an HTTP/3 PUT from a URL with a content type.
+		@param url URL to put to
+		@param data request body
+		@param content_type MIME type
+		@return Response or Nil on failure
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickPut(url, data, content_type, Nil);
+		}
+
+		#~
+		Performs an HTTP/3 PUT from a URL with content type and headers.
+		@param url URL to put to
+		@param data request body
+		@param content_type MIME type
+		@param headers optional key/value headers
+		@return Response or Nil on failure
+		~#
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {
+			client := MakeClient(url, headers);
+			if(client = Nil) { return Nil; };
+			resp := client->Put(BuildPath(url), data, content_type);
+			client->Close();
+			return resp;
+		}
+
+		#~
+		Performs an HTTP/3 DELETE from a URL in one call.
+		@param url URL to delete
+		@return Response or Nil on failure
+		~#
+		function : QuickDelete(url : Web.HTTP.Url) ~ Web.HTTP.Response {
+			return QuickDelete(url, Nil);
+		}
+
+		#~
+		Performs an HTTP/3 DELETE from a URL with custom headers.
+		@param url URL to delete
+		@param headers optional key/value headers
+		@return Response or Nil on failure
+		~#
+		function : QuickDelete(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
+			client := MakeClient(url, headers);
+			if(client = Nil) { return Nil; };
+			resp := client->Delete(BuildPath(url));
+			client->Close();
+			return resp;
+		}
+
+		#~
+		Performs an HTTP/3 PATCH from a URL in one call.
+		@param url URL to patch
+		@param data request body
+		@return Response or Nil on failure
+		~#
+		function : QuickPatch(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
+			return QuickPatch(url, data, "text/plain", Nil);
+		}
+
+		#~
+		Performs an HTTP/3 PATCH from a URL with a content type.
+		@param url URL to patch
+		@param data request body
+		@param content_type MIME type
+		@return Response or Nil on failure
+		~#
+		function : QuickPatch(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
+			return QuickPatch(url, data, content_type, Nil);
+		}
+
+		#~
+		Performs an HTTP/3 PATCH from a URL with content type and headers.
+		@param url URL to patch
+		@param data request body
+		@param content_type MIME type
+		@param headers optional key/value headers
+		@return Response or Nil on failure
+		~#
+		function : QuickPatch(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {
+			client := MakeClient(url, headers);
+			if(client = Nil) { return Nil; };
+			resp := client->Patch(BuildPath(url), data, content_type);
+			client->Close();
+			return resp;
+		}
+
+		function : MakeClient(url : Web.HTTP.Url, headers : Map<String, String>) ~ Http3Client {
+			host := url->GetHost();
+			if(host = Nil) { return Nil; };
+			if(host->EndsWith('/')) { host := host->SubString(host->Size() - 1); };
+
+			port := url->GetPort();
+			if(port < 1) { port := 443; };
+
+			client := Http3Client->New(host, port);
+			if(<>client->IsConnected()) { return Nil; };
+
+			if(headers <> Nil) {
+				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
+				each(i : header_key_values) {
+					key_value := header_key_values->Get(i);
+					key := key_value->GetFirst();
+					value := key_value->GetSecond();
+					if(value->IsEmpty()) {
+						client->RemoveHeader(key);
+					}
+					else {
+						client->AddHeader(key, value);
+					};
+				};
+			};
+
+			return client;
+		}
+
+		function : BuildPath(url : Web.HTTP.Url) ~ String {
+			path := url->GetPath();
+			if(path = Nil | path->IsEmpty()) { path := "/"; };
+			query := url->GetQuery();
+			if(query <> Nil & <>query->IsEmpty()) {
+				path := "{$path}?{$query}";
+			};
+			return path;
+		}
+
+		method : DoRequest(verb : String, path : String, body : Byte[], content_type : String) ~ Response {
+			if(@session = Nil | <>@session->IsConnected()) {
 				return Nil;
 			};
 
-			if(HTTP3_REQUEST) {
-				return Response->New(@resp_body, @resp_status, @resp_content_type);
+			if(@session->Request(verb, path, body, content_type)) {
+				return Response->New(@session->GetResponseBody(), @session->GetResponseStatus(), @session->GetResponseContentType());
 			};
 
 			return Nil;

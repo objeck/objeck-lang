@@ -11197,6 +11197,157 @@ bundle System.IO.Net {
 			SOCK_DTLS_SRV_CLOSE;
 		}
 	}
+
+	#~
+	HTTP/2 session over TLS. Socket-level primitive for multiplexed HTTP/2
+	requests via nghttp2. Used by net_h2.obl.
+
+	Field layout matches Http2Connect/Http2Request expectations:
+	instance[0]=ctx, instance[1]=host, instance[2]=port, instance[3]=pad,
+	instance[4]=resp_status, instance[5]=resp_body, instance[6]=resp_content_type
+	~#
+	class Http2Session {
+		@ctx : Int;
+		@host : String;
+		@port : Int;
+		@pad : Int;
+		@resp_status : Int;
+		@resp_body : Byte[];
+		@resp_content_type : String;
+
+		#~
+		Opens an HTTP/2 connection to host:port over TLS.
+		@param host hostname (e.g. "api.example.com")
+		@param port port number (default 443)
+		~#
+		New(host : String, port : Int) {
+			Parent();
+			@host := host;
+			@port := port;
+			HTTP2_CONNECT;
+		}
+
+		#~
+		Returns true if the connection is established
+		~#
+		method : public : IsConnected() ~ Bool {
+			return @ctx <> 0;
+		}
+
+		#~
+		Performs a single HTTP/2 request. On success the response fields are
+		populated and the method returns true.
+		@param verb HTTP method string (GET, POST, PUT, DELETE, PATCH)
+		@param path request path (e.g. "/v1/users")
+		@param body request body bytes, or Nil for no body
+		@param content_type MIME type string, or Nil
+		@return true on success, false on failure
+		~#
+		method : public : Request(verb : String, path : String, body : Byte[], content_type : String) ~ Bool {
+			HTTP2_REQUEST;
+		}
+
+		#~
+		Returns the HTTP response status code from the last request
+		~#
+		method : public : GetResponseStatus() ~ Int {
+			return @resp_status;
+		}
+
+		#~
+		Returns the HTTP response body bytes from the last request
+		~#
+		method : public : GetResponseBody() ~ Byte[] {
+			return @resp_body;
+		}
+
+		#~
+		Returns the HTTP response Content-Type from the last request
+		~#
+		method : public : GetResponseContentType() ~ String {
+			return @resp_content_type;
+		}
+
+		#~
+		Closes the HTTP/2 connection and frees native resources
+		~#
+		method : public : Close() ~ Nil {
+			HTTP2_CLOSE;
+		}
+	}
+
+	#~
+	HTTP/3 (QUIC) session. Socket-level primitive for HTTP/3 requests.
+	Used by net_quic.obl.
+	~#
+	class Http3Session {
+		@ctx : Int;
+		@host : String;
+		@port : Int;
+		@pad : Int;
+		@resp_status : Int;
+		@resp_body : Byte[];
+		@resp_content_type : String;
+
+		#~
+		Opens an HTTP/3 QUIC connection to host:port.
+		@param host hostname
+		@param port port number (default 443)
+		~#
+		New(host : String, port : Int) {
+			Parent();
+			@host := host;
+			@port := port;
+			HTTP3_CONNECT;
+		}
+
+		#~
+		Returns true if the QUIC connection is established
+		~#
+		method : public : IsConnected() ~ Bool {
+			return @ctx <> 0;
+		}
+
+		#~
+		Performs a single HTTP/3 request.
+		@param verb HTTP method string
+		@param path request path
+		@param body request body bytes, or Nil
+		@param content_type MIME type string, or Nil
+		@return true on success, false on failure
+		~#
+		method : public : Request(verb : String, path : String, body : Byte[], content_type : String) ~ Bool {
+			HTTP3_REQUEST;
+		}
+
+		#~
+		Returns the HTTP response status code from the last request
+		~#
+		method : public : GetResponseStatus() ~ Int {
+			return @resp_status;
+		}
+
+		#~
+		Returns the HTTP response body bytes from the last request
+		~#
+		method : public : GetResponseBody() ~ Byte[] {
+			return @resp_body;
+		}
+
+		#~
+		Returns the HTTP response Content-Type from the last request
+		~#
+		method : public : GetResponseContentType() ~ String {
+			return @resp_content_type;
+		}
+
+		#~
+		Closes the HTTP/3 connection and frees native resources
+		~#
+		method : public : Close() ~ Nil {
+			HTTP3_CLOSE;
+		}
+	}
 }
 
 #~

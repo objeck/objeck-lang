@@ -83,6 +83,10 @@ jobs:
           libopencv-dev \
           libmbedtls-dev \
           libnghttp2-dev \
+          libngtcp2-dev \
+          libngtcp2-crypto-gnutls-dev \
+          libnghttp3-dev \
+          libgnutls28-dev \
           unixodbc-dev \
           libsdl2-dev \
           libsdl2-image-dev \
@@ -112,6 +116,9 @@ jobs:
           opencv \
           mbedtls \
           nghttp2 \
+          ngtcp2 \
+          nghttp3 \
+          gnutls \
           unixodbc \
           sdl2 \
           sdl2_image \
@@ -440,6 +447,8 @@ jobs:
           $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/lambda_17.obs || exit 1
           $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/regex_4.obs || exit 1
           $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/threads_6.obs || exit 1
+          $OBC -lib cipher,net,gen_collect,net_h2 -src ../../../../programs/tests/prgm_http2.obs || exit 1
+          $OBC -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/prgm_http3.obs || exit 1
           echo "Extended tests compiled successfully"
         fi
 
@@ -480,6 +489,22 @@ jobs:
             echo "threads_6.obe attempt $attempt failed, retrying..."
             sleep 2
           done
+
+          # HTTP/2 tests — SKIP gracefully when network/nghttp2 unavailable
+          http2_out=$($OBR ../../../../programs/tests/prgm_http2.obe 2>&1) || exit 1
+          echo "$http2_out"
+          if echo "$http2_out" | grep -q "FAIL"; then
+            echo "HTTP/2 test failures detected"
+            exit 1
+          fi
+
+          # HTTP/3 tests — SKIP gracefully when network/ngtcp2 unavailable or UDP blocked
+          http3_out=$($OBR ../../../../programs/tests/prgm_http3.obe 2>&1) || exit 1
+          echo "$http3_out"
+          if echo "$http3_out" | grep -q "FAIL"; then
+            echo "HTTP/3 test failures detected"
+            exit 1
+          fi
         fi
 
     # ============================================

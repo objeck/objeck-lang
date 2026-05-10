@@ -65,12 +65,22 @@
 #include <mbedtls/timing.h>
 #include <mbedtls/ssl_cookie.h>
 #include <mbedtls/sha256.h>
+#include <mbedtls/md.h>
 #ifdef OBJECK_HAS_NGHTTP2
 #include <nghttp2/nghttp2.h>
 #endif
 #ifdef OBJECK_HAS_NGTCP2
 #include <ngtcp2/ngtcp2.h>
+#include <ngtcp2/ngtcp2_crypto.h>
+#include <ngtcp2/ngtcp2_crypto_gnutls.h>
 #include <nghttp3/nghttp3.h>
+#include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
+#ifndef _WIN32
+#include <poll.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#endif
 #endif
 
 #ifdef _WIN32
@@ -262,8 +272,18 @@ struct Http2SessionCtx {
 //
 struct Http3SessionCtx {
 #ifdef OBJECK_HAS_NGTCP2
-  ngtcp2_conn*  conn;
-  nghttp3_conn* h3conn;
+  ngtcp2_conn*                    conn;
+  nghttp3_conn*                   h3conn;
+  ngtcp2_crypto_conn_ref          conn_ref;
+  gnutls_session_t                tls_session;
+  gnutls_certificate_credentials_t cred;
+  struct sockaddr_storage         local_addr;
+  struct sockaddr_storage         remote_addr;
+  socklen_t                       local_addrlen;
+  socklen_t                       remote_addrlen;
+  bool                            handshake_complete;
+  int64_t                         last_stream_id;
+  std::string                     host;
 #else
   void* conn;
   void* h3conn;
@@ -275,13 +295,20 @@ struct Http3SessionCtx {
   std::vector<uint8_t> response_body;
   std::map<std::string, std::string> request_headers;
 
-  Http3SessionCtx() : conn(nullptr), h3conn(nullptr), udp_fd(-1),
-      response_status(0), response_complete(false) {}
+  Http3SessionCtx() : conn(nullptr), h3conn(nullptr),
+#ifdef OBJECK_HAS_NGTCP2
+      tls_session(nullptr), cred(nullptr),
+      local_addrlen(0), remote_addrlen(0),
+      handshake_complete(false), last_stream_id(-1),
+#endif
+      udp_fd(-1), response_status(0), response_complete(false) {}
 
   ~Http3SessionCtx() {
 #ifdef OBJECK_HAS_NGTCP2
     if(h3conn) nghttp3_conn_del(h3conn);
     if(conn) ngtcp2_conn_del(conn);
+    if(tls_session) gnutls_deinit(tls_session);
+    if(cred) gnutls_certificate_free_credentials(cred);
 #endif
     if(udp_fd >= 0) {
 #ifdef _WIN32

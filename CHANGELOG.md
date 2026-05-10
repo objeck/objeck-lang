@@ -2,6 +2,28 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.5.1] - 2026-05-10
+
+### New Features
+- **HTTP/2 client** (`-lib net_h2`): New `Http2Client` class for persistent multiplexed TLS connections using ALPN h2 via nghttp2. Supports GET, POST, PUT, DELETE, PATCH and `Quick*` static convenience methods (QuickGet, QuickPost, QuickPut, QuickDelete, QuickPatch) that accept a `Url` object for one-shot requests. Linux, macOS, and MSYS2.
+- **HTTP/3 client** (`-lib net_quic`): New `Http3Client` class for QUIC connections via ngtcp2 + GnuTLS + nghttp3. Same API as Http2Client — instance methods for streaming use and `Quick*` statics for one-shot use. Linux and macOS only (requires `brew install ngtcp2 nghttp3 gnutls`).
+- **Socket options**: New methods on `TCPSocket` and `TCPSecureSocket` — `SetKeepAlive`, `SetNoDelay`, `SetRecvTimeout`, `SetSendTimeout`, `SetRecvBufferSize`, `SetSendBufferSize`, `SetConnectTimeout` (non-blocking connect with timeout). `TCPSecureSocket` adds `SetMinTLSVersion`, `SetVerifyPeer`, `GetCertFingerprint`.
+
+### Libraries
+- **HTTP/2** (`net_h2`): `Http2Client` — persistent HTTP/2 session with full verb support and URL-based `Quick*` convenience functions.
+- **HTTP/3** (`net_quic`): `Http3Client` — QUIC-based HTTP/3 session with full verb support and URL-based `Quick*` convenience functions.
+- **HTTP/1.1** (`net`, `net_secure`): Added `HttpClient->PATCH`, `HttpsClient->PATCH`. Fixed redirect handling for POST and PUT. Added retry-on-reset parity across HTTP/1.1 verbs.
+
+### Infrastructure
+- CI: `net_h2` and `net_quic` tests now run in the Linux extended build step; FAIL output causes the CI job to fail.
+- CI / CodeQL: added `libngtcp2-dev`, `libngtcp2-crypto-gnutls-dev`, `libnghttp3-dev`, `libgnutls28-dev` to all Linux apt-get install blocks. macOS CI adds the equivalent Homebrew packages.
+- macOS Xcode project (`core/vm/xcode/VM.xcodeproj`): added `OBJECK_HAS_NGTCP2` preprocessor flag and `-lngtcp2 -lngtcp2_crypto_gnutls -lnghttp3 -lgnutls` linker flags for Debug and Release.
+- `update_version.sh`: `net_h2.obl` and `net_quic.obl` are now compiled as part of the standard library build.
+- `core/README.md` and `core/vm/README.md` updated with per-platform build dependency tables covering all network libraries.
+
+### Bug Fixes
+- Fixed `HttpsClient` and `HttpClient` redirect not following POST/PUT bodies.
+
 ## [v2026.5.0] - 2026-05-06
 
 ### New Features
