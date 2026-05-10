@@ -333,6 +333,7 @@
 					../../lib/openssl/macos/include,
 					/opt/homebrew/include,
 				);
+				LD_RUNPATH_SEARCH_PATHS = "/opt/homebrew/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
@@ -391,6 +392,7 @@
 					../../lib/openssl/macos/include,
 					/opt/homebrew/include,
 				);
+				LD_RUNPATH_SEARCH_PATHS = "/opt/homebrew/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",

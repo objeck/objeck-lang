@@ -11,11 +11,29 @@ git pull
 ## 2. Install dependencies
 
 ```bash
-brew install ngtcp2 nghttp3 gnutls
-# nghttp2 is usually already present; these add the QUIC/HTTP3 stack
+brew install nghttp2 libnghttp3 gnutls cmake
 ```
 
-Verify the GnuTLS crypto backend shipped with ngtcp2:
+Homebrew's `libngtcp2` ships only the OpenSSL crypto backend, but the VM
+uses GnuTLS.  Build ngtcp2 from source with `ENABLE_GNUTLS=ON`:
+
+```bash
+cd /tmp && git clone --depth 1 https://github.com/ngtcp2/ngtcp2.git && cd ngtcp2
+git submodule update --init --depth 1
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
+      -DENABLE_GNUTLS=ON -DENABLE_OPENSSL=OFF \
+      -DCMAKE_PREFIX_PATH="/opt/homebrew;/opt/homebrew/opt/gnutls" \
+      -DBUILD_TESTING=OFF ..
+make -j$(sysctl -n hw.ncpu)
+# Install to a staging area, then copy into Homebrew prefix:
+make install DESTDIR=/tmp/ngtcp2-install
+cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2* /opt/homebrew/lib/
+mkdir -p /opt/homebrew/include/ngtcp2
+cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
+```
+
+Verify:
 
 ```bash
 ls /opt/homebrew/lib/libngtcp2_crypto_gnutls*
@@ -49,16 +67,22 @@ cp ../vm/misc/*.pem ../release/deploy/lib/
 cd ../release/deploy/bin
 export OBJECK_LIB_PATH=../lib
 
-./obc -src ../../compiler/lib_src/net_h2.obs \
+./obc -src ../../../compiler/lib_src/net_h2.obs \
       -lib net,gen_collect,cipher -opt s3 -tar lib \
       -dest ../lib/net_h2.obl
 
-./obc -src ../../compiler/lib_src/net_quic.obs \
+./obc -src ../../../compiler/lib_src/net_quic.obs \
       -lib net,gen_collect,cipher -opt s3 -tar lib \
       -dest ../lib/net_quic.obl
 ```
 
 ## 6. Run the tests
+
+Set the library path so the VM can find the ngtcp2 and GnuTLS dylibs at runtime:
+
+```bash
+export DYLD_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_LIBRARY_PATH"
+```
 
 ### HTTP/2
 
