@@ -116,7 +116,7 @@ jobs:
           opencv \
           mbedtls \
           nghttp2 \
-          ngtcp2 \
+          libngtcp2 \
           nghttp3 \
           gnutls \
           unixodbc \
