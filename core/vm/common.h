@@ -67,6 +67,12 @@
 #include <mbedtls/sha256.h>
 #include <mbedtls/md.h>
 #ifdef OBJECK_HAS_NGHTTP2
+// ssize_t is POSIX; define it from SSIZE_T before nghttp2.h parses it on Windows
+#if defined(_WIN32) && !defined(_SSIZE_T_DEFINED)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#define _SSIZE_T_DEFINED
+#endif
 #include <nghttp2/nghttp2.h>
 #endif
 #ifdef OBJECK_HAS_NGTCP2

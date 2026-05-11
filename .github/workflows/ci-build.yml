@@ -117,7 +117,7 @@ jobs:
           mbedtls \
           nghttp2 \
           libngtcp2 \
-          nghttp3 \
+          libnghttp3 \
           gnutls \
           unixodbc \
           sdl2 \
