@@ -127,3 +127,6 @@ programs/deploy/test_sdl.obs
 nul
 build.txt
 *.zip
+# Build artifacts
+core/lib/crypto/*.so
+core/vm/obr_dbg

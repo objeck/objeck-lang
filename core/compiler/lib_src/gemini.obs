@@ -201,7 +201,6 @@ each(candidate in candidates) {
 			response_json := GetRequest(Url->New(url_str));
 
 			if(response_json <> Nil) {
-				# response_json->ToString()->PrintLine();
 
 				next_page_json : JsonElement;
 				do {
@@ -241,7 +240,6 @@ each(candidate in candidates) {
 			model_json := GetRequest(url);
 
 			if(model_json <> Nil) {
-				# model_json->ToString()->PrintLine();
 				return Model->New(model_json);
 				
 			};
@@ -433,15 +431,11 @@ each(candidate in candidates) {
 				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
 			};
 
-			# contents_obj_json->ToString()->PrintLine();
-			# "---"->PrintLine();
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
-					# response->ToString()->PrintLine();
-					# "---"->PrintLine();
 
 					return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url, false);
 				};
@@ -536,14 +530,10 @@ each(candidate in candidates) {
 							# add function response
 							content_array_json->Add(parts_obj_array_json);
 
-							# "-- reply with added content data --"->PrintLine();
-							# contents_obj_json->ToString()->PrintLine();
 
 							if(url->GetQueryParameters()->Has("key")) {
 								response := PostRequest(contents_obj_json, url);															
 								if(response <> Nil) {
-									# "-- response to reply with function data --"->PrintLine();
-									# response->ToString()->PrintLine();	
 
 									return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url, is_chat);
 								};
@@ -634,7 +624,6 @@ each(candidate in candidates) {
 						embed_obj_json->Insert("taskType", "CLUSTERING");
 					}
 			};
-			# embed_obj_json->ToString()->PrintLine();
 			
 			model := "models/embedding-001";
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model}:embedContent?key={$key}");
@@ -642,7 +631,6 @@ each(candidate in candidates) {
 				response_json := PostRequest(embed_obj_json, url);
 				if(response_json <> Nil) {
 					values_array_json := response_json->FindElements("embedding/values");
-					# values_array_json->Size()->PrintLine();
 
 					values := Float->New[values_array_json->Size()];
 					each(i : values_array_json) {
@@ -728,7 +716,6 @@ each(candidate in candidates) {
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
-					# response->ToString()->PrintLine();
 					return response->Get("totalTokens")->GetInt();
 				};
 			};
@@ -1356,10 +1343,8 @@ session->ToString()->PrintLine();
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$@model_name}:generateContent?key={$@key}");
 			if(url->GetQueryParameters()->Has("key")) {
-				# @contents_obj_json->ToString()->PrintLine();
 				response := EndPoint->PostRequest(@contents_obj_json, url);
 				if(response <> Nil) {
-					# response->ToString()->PrintLine();
 					candidates := Model->BuildContentResponse(@contents_obj_json, @content_array_json, response, Nil, url, true);
 					return candidates->Last();
 				};
@@ -1910,7 +1895,6 @@ session->ToString()->PrintLine();
 			if(response <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				
-				# response->GetContent()->ToString()->PrintLine();
 				
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -1935,7 +1919,6 @@ session->ToString()->PrintLine();
 			if(response <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				
-				# response->GetContent()->ToString()->PrintLine();			
 				
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -1960,7 +1943,6 @@ session->ToString()->PrintLine();
 			if(response <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				
-				# response->GetContent()->ToString()->PrintLine();			
 				
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -2084,15 +2066,12 @@ bundle API.Google.Gemini.Tuning {
 			query_json := Tuner->New(display_name, description, tuning_task, tune_model_source, base_model, temperature, top_p, top_k);
 			data := query_json->ToString()->ToByteArray();
 
-			# data->ToString()->PrintLine();
-			# "---"->PrintLine();
 
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/tunedModels"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -2125,7 +2104,6 @@ bundle API.Google.Gemini.Tuning {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -2171,7 +2149,6 @@ bundle API.Google.Gemini.Tuning {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/tunedModels"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -2200,7 +2177,6 @@ bundle API.Google.Gemini.Tuning {
 							return Nil;
 						}
 						else {
-							# response->GetContent()->ToString()->PrintLine();							
 							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 							if(response_json = Nil) {
 								"### Error: Unable to parse response ###"->ErrorLine();
@@ -2242,14 +2218,12 @@ bundle API.Google.Gemini.Tuning {
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request_json->Insert("emailAddress", new_email);
 			data := request_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_id}:transferOwnership"), data, "application/json", headers);			
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -2483,8 +2457,6 @@ bundle API.Google.Gemini.Tuning {
 				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
 			};
 
-			# contents_obj_json->ToString()->PrintLine();
-			# "---"->PrintLine();
 
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -2495,7 +2467,6 @@ bundle API.Google.Gemini.Tuning {
 
 			response := HttpsClient->QuickPost(url, data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->PrintLine();
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -2538,7 +2509,6 @@ bundle API.Google.Gemini.Tuning {
 						return Nil;
 					}
 					else {
-						# response->GetContent()->ToString()->PrintLine();							
 						response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 						if(response_json = Nil) {
 							"### Error: Unable to parse response ###"->ErrorLine();
@@ -2578,7 +2548,6 @@ bundle API.Google.Gemini.Tuning {
 			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), "application/json", headers);
 			
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3142,7 +3111,6 @@ each(result in results) {
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request_json->Insert("displayName", name);
 			data := request_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -3151,7 +3119,6 @@ each(result in results) {
 				"application/json", headers);
 
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3215,7 +3182,6 @@ each(result in results) {
 			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), "application/json", headers);
 			
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3245,7 +3211,6 @@ each(result in results) {
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request_json->Insert("query", query);
 			data := request_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -3254,7 +3219,6 @@ each(result in results) {
 				"application/json", headers);
 
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3376,7 +3340,6 @@ each(result in results) {
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request_json->Insert("query", query);
 			data := request_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
@@ -3385,7 +3348,6 @@ each(result in results) {
 				"application/json", headers);
 
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3449,7 +3411,6 @@ each(result in results) {
 			request_json->Insert("displayName", name);
 			request_json->Insert("customMetadata", metadata_array_json);
 			data := request_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 
 			corpora_id := corpus->GetId();
 			token := GetToken();
@@ -3459,7 +3420,6 @@ each(result in results) {
 				"application/json", headers);
 
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3528,7 +3488,6 @@ each(result in results) {
 
 			if(response <> Nil) {
 				
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3557,7 +3516,6 @@ each(result in results) {
 							return Nil;
 						}
 						else {
-							# response->GetContent()->ToString()->PrintLine();
 							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 							if(response_json = Nil) {
 								"### Error: Unable to parse response ###"->ErrorLine();
@@ -3601,7 +3559,6 @@ each(result in results) {
 				"application/json", headers);
 			
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3738,7 +3695,6 @@ each(result in results) {
 			
 			request_json->Insert("customMetadata", metadata_array_json);
 			data := request_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 
 			doc_id := document->GetId();
 			token := GetToken();
@@ -3748,7 +3704,6 @@ each(result in results) {
 				"application/json", headers);
 
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3813,7 +3768,6 @@ each(result in results) {
 				"application/json", headers);
 			
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3846,7 +3800,6 @@ each(result in results) {
 			doc_id := document->GetId();
 			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$doc_id}/chunks"), "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json = Nil) {
@@ -3875,7 +3828,6 @@ each(result in results) {
 							return Nil;
 						}
 						else {
-							# response->GetContent()->ToString()->PrintLine();
 							response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 							if(response_json = Nil) {
 								"### Error: Unable to parse response ###"->ErrorLine();
