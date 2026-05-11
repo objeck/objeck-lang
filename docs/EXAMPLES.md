@@ -4,6 +4,7 @@ Collection of practical code examples demonstrating Objeck's capabilities.
 
 ## Table of Contents
 - [Hello World](#hello-world)
+- [Web & Networking](#web--networking)
 - [AI Integration](#ai-integration)
 - [Computer Vision](#computer-vision)
 - [More Examples](#more-examples)
@@ -29,6 +30,106 @@ class Hello {
     "Hello World"->PrintLine();
     "Καλημέρα κόσμε"->PrintLine();
     "こんにちは 世界"->PrintLine();
+  }
+}
+```
+
+---
+
+<a name="web--networking"></a>
+## Web & Networking
+
+### HTTP/1.1 HTTPS Client
+```ruby
+use Web.HTTP;
+
+class HttpsExample {
+  function : Main(args : String[]) ~ Nil {
+    # Simple GET
+    resp := HttpsClient->QuickGet(Url->New("https://httpbin.org/get"));
+    if(resp <> Nil & resp->GetCode() = 200) {
+      String->New(resp->GetContent())->PrintLine();
+    };
+
+    # POST with JSON
+    body := "{\"lang\":\"objeck\"}"->ToByteArray();
+    resp := HttpsClient->QuickPost(Url->New("https://httpbin.org/post"),
+                                   body, "application/json");
+    resp->GetCode()->PrintLine();   # 200
+  }
+}
+```
+
+### HTTP/2 Client
+```ruby
+use Web.HTTP;
+
+class Http2Example {
+  function : Main(args : String[]) ~ Nil {
+    # Persistent connection — all requests share one TLS session
+    client := Http2Client->New("httpbin.org");
+    if(<>client->IsConnected()) {
+      "HTTP/2 unavailable"->ErrorLine();
+      return;
+    };
+
+    # GET
+    resp := client->Get("/get");
+    "GET status: {$resp->GetCode()}"->PrintLine();   # 200
+
+    # POST with JSON
+    body := "{\"lang\":\"objeck\"}"->ToByteArray();
+    resp := client->Post("/post", body, "application/json");
+    "POST status: {$resp->GetCode()}"->PrintLine();  # 200
+
+    # Custom header
+    client->AddHeader("x-client", "objeck");
+    resp := client->Get("/headers");
+    String->New(resp->GetContent())->PrintLine();
+
+    # Multiple requests reuse the same connection automatically
+    resp1 := client->Get("/ip");
+    resp2 := client->Get("/user-agent");
+
+    client->Close();
+
+    # One-liner for quick fire-and-forget requests
+    resp := Http2Client->QuickGet(Url->New("https://httpbin.org/get"));
+    resp->GetCode()->PrintLine();   # 200
+  }
+}
+```
+
+### HTTP/3 / QUIC Client
+```ruby
+use Web.HTTP;
+
+class Http3Example {
+  function : Main(args : String[]) ~ Nil {
+    # QUIC over UDP — zero round-trip on repeat connections
+    client := Http3Client->New("quic.nginx.org");
+    if(<>client->IsConnected()) {
+      "HTTP/3 unavailable"->ErrorLine();
+      return;
+    };
+
+    # GET
+    resp := client->Get("/");
+    "GET status: {$resp->GetCode()}"->PrintLine();   # 200
+
+    # POST
+    body := "hello=world"->ToByteArray();
+    resp := client->Post("/", body, "application/x-www-form-urlencoded");
+    "POST status: {$resp->GetCode()}"->PrintLine();
+
+    # Connection reuse — second request is free (no new handshake)
+    resp2 := client->Get("/");
+
+    client->Close();
+
+    # One-liner
+    resp := Http3Client->QuickGet(Url->New("https://quic.nginx.org/"));
+    resp->GetCode()->PrintLine();   # 200
   }
 }
 ```
