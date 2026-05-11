@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-<strong>Object-oriented • JIT-compiled • AI-ready • Cross-platform</strong><br>
-Modern programming language with first-class ML and computer vision support
+<strong>Object-oriented • JIT-compiled • AI-native • Network-complete</strong><br>
+Modern programming language — from HTTP/3 to GPT-4, it's all standard library
 </p>
 
 <hr/>
@@ -20,13 +20,14 @@ Modern programming language with first-class ML and computer vision support
 
 **Built for modern development:**
 - 🚀 **JIT-compiled** for performance (ARM64/AMD64)
-- 🤖 **AI/ML first-class**: OpenAI, Gemini, Ollama, OpenCV, ONNX
-- 💻 **Developer-friendly**: REPL shell, LSP plugins for VSCode/Sublime/Kate
-- 🌍 **Cross-platform**: Linux, macOS, Windows (including ARM/RPI)
+- 🤖 **AI-native**: OpenAI, Gemini, Ollama, ONNX, OpenCV — no third-party packages
+- 🌐 **Network-complete**: HTTP/1.1 · HTTP/2 · HTTP/3/QUIC · WebSocket · DTLS — all standard library
+- 💻 **Developer-friendly**: REPL shell, LSP plugins for VSCode/Sublime/Kate, DAP debugger
+- 🌍 **Cross-platform**: Linux, macOS, Windows (x64 + ARM64/RPI)
 - 🔧 **Full-featured**: Threads, generics, closures, reflection, serialization
 
 **Perfect for:**
-AI/ML prototyping • Computer vision • Web services • Game development
+AI/ML prototyping • Computer vision • Web services • Real-time applications • Game development
 
 ## Try It Online
 
