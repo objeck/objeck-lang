@@ -79,7 +79,6 @@ bundle API.OpenAI.Audio {
 				"multipart/form-data; boundary={$boundary}", headers);
 
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
 				model_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(model_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -155,13 +154,11 @@ bundle API.OpenAI.Audio {
 				audio_json->Insert("speed", 1.0);
 			};
 			data := audio_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/audio/speech"), data, "application/json", headers);
-			# response->GetContent()->ToString()->PrintLine();		
 
 			if(response->GetType()->Equals("application/json")) {
 				audio_json := JsonParser->TextToElement(response->GetContent()->ToString());
@@ -1984,7 +1981,6 @@ bundle API.OpenAI.Tuning {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/fine_tuning/jobs"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				tune_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(tune_json = Nil) {
@@ -2032,7 +2028,6 @@ bundle API.OpenAI.Tuning {
 
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(root_json = Nil) {
@@ -2084,7 +2079,6 @@ bundle API.OpenAI.Tuning {
 
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(root_json = Nil) {
@@ -2136,7 +2130,6 @@ bundle API.OpenAI.Tuning {
 
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				
 				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
@@ -2173,7 +2166,6 @@ bundle API.OpenAI.Tuning {
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}"), "application/json", headers);
 			
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
 				tuning_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(tuning_json = Nil) {
 					return Nil;
@@ -2199,7 +2191,6 @@ bundle API.OpenAI.Tuning {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/cancel"), 
 				Byte->New[0], "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
 				tuning_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(tuning_json = Nil) {
 					return Nil;
@@ -2511,7 +2502,6 @@ bundle API.OpenAI {
 			item_json->Insert("content", content_array_json);
 
 			send_msg := builder->PopAll()->ToString();
-			# "send_msg_1=\"{$send_msg}\""->PrintLine();
 			client->WriteSocket(send_msg);
 
 			recv_msg := client->ReadSocketText();
@@ -2558,7 +2548,6 @@ bundle API.OpenAI {
 	      			}
 	      		}
       		}";
-			# "send_msg_2=\"{$update_msg}\""->PrintLine();
       		client->WriteSocket(update_msg);
 
 			recv_msg := client->ReadSocketText();
@@ -2588,7 +2577,6 @@ bundle API.OpenAI {
 	        		\"tool_choice\":\"auto\"
 	        	}
 	        }";
-			# "send_msg_3=\"{$send_msg}\""->PrintLine();
 			client->WriteSocket(send_msg);
 
 			recv_msg := client->ReadSocketText();
@@ -2633,7 +2621,6 @@ bundle API.OpenAI {
 			item_json->Insert("content", content_array_json);
 
 			send_msg := builder->PopAll()->ToString();
-			# "send_msg_1=\"{$send_msg}\""->PrintLine();
 			client->WriteSocket(send_msg);
 
 			recv_msg := client->ReadSocketText();
@@ -2680,7 +2667,6 @@ bundle API.OpenAI {
 	      			}
 	      		}
       		}";
-			# "send_msg_2=\"{$update_msg}\""->PrintLine();
       		client->WriteSocket(update_msg);
 
 			recv_msg := client->ReadSocketText();
@@ -2710,7 +2696,6 @@ bundle API.OpenAI {
 	        		\"tool_choice\":\"auto\"
 	        	}
 	        }";
-			# "send_msg_3=\"{$send_msg}\""->PrintLine();
 			client->WriteSocket(send_msg);
 
 			recv_msg := client->ReadSocketText();
@@ -3101,7 +3086,6 @@ bundle API.OpenAI {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/generations"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(image_json = Nil) {
@@ -3237,7 +3221,6 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/edits"), data, 
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(image_json = Nil) {
@@ -3355,7 +3338,6 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/variations"), data, 
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();
 				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
 
 				if(image_json = Nil) {
@@ -4232,7 +4214,6 @@ session->Close();
 			file := LoadByName(filename, token);
 			
 			if(file = Nil) {
-				# "Uploading file: '{$filename}'"->PrintLine();
 				content := FileReader->ReadBinaryFile(filename);
 				if(content = Nil | content->Size() = 0) {
 					"### Error: Unable to load file: '{$filename}' ###"->PrintLine();
@@ -5042,8 +5023,6 @@ session->Close();
 		New : private(message_json : JsonElement, token : String) {
 			Parent();
 
-# "--- Message ---"->PrintLine();
-# message_json->ToString()->PrintLine();
 
 			@id := message_json->Get("id")->GetString();
 			@created_at := message_json->Get("created_at")->GetInt();
@@ -5193,7 +5172,6 @@ session->Close();
 			};
 
 			data := message_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 			
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
@@ -5384,8 +5362,6 @@ session->Close();
 		
 		method: Set(run_json : JsonElement) ~ Nil {
 
-# "--- Run ---"->PrintLine();
-# run_json->ToString()->PrintLine();
 
 
 			@id := run_json->Get("id")->GetString();
@@ -5426,7 +5402,6 @@ session->Close();
 			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/threads/{$thread_id}/runs"), data, "application/json", headers);
 			if(response <> Nil) {
-				# response->GetContent()->ToString()->PrintLine();				
 				run_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(run_json = Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
@@ -5511,7 +5486,6 @@ session->Close();
 			tool_callback_obj_json->Insert("tool_outputs", tool_callback_array_json);
 
 			data := tool_callback_obj_json->ToString()->ToByteArray();
-			# data->ToString()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
