@@ -743,7 +743,7 @@ each(candidate in candidates) {
 		@param key API key
 		@return list of embedding vectors, one per input text
 		~#
-		function : BatchEmbedContent(model_name : String, texts : Vector<String>, key : String) ~ Vector<Float[]> {
+		function : BatchEmbedContent(model_name : String, texts : Vector<String>, key : String) ~ Vector<EmbeddingValues> {
 			requests_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(text in texts) {
 				content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -767,7 +767,7 @@ each(candidate in candidates) {
 				response_json := PostRequest(body_json, url);
 				if(response_json <> Nil) {
 					embeddings_json := response_json->Get("embeddings");
-					results := Vector->New()<Float[]>;
+					results := Vector->New()<EmbeddingValues>;
 					if(embeddings_json <> Nil) {
 						each(embedding_json in embeddings_json) {
 							values_json := embedding_json->Get("values");
@@ -775,7 +775,7 @@ each(candidate in candidates) {
 							each(i : values_json) {
 								values[i] := values_json->Get(i)->GetFloat();
 							};
-							results->AddBack(values);
+							results->AddBack(EmbeddingValues->New(values));
 						};
 					};
 					return results;
@@ -1437,6 +1437,33 @@ session->ToString()->PrintLine();
 			};
 
 			return buffer;
+		}
+	}
+
+	#~
+	Embedding vector returned by BatchEmbedContent
+	~#
+	class EmbeddingValues {
+		@values : Float[];
+
+		New(values : Float[]) {
+			@values := values;
+		}
+
+		#~
+		Get the raw embedding vector
+		@return float array of embedding values
+		~#
+		method : public : Get() ~ Float[] {
+			return @values;
+		}
+
+		#~
+		Get the number of dimensions
+		@return vector dimension count
+		~#
+		method : public : Size() ~ Int {
+			return @values->Size();
 		}
 	}
 

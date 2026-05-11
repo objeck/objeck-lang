@@ -43,8 +43,9 @@ bundle Default {
 			if(embeddings <> Nil) {
 				"Got {$embeddings->Size()} embedding vector(s):"->PrintLine();
 				each(i : embeddings) {
-					values := embeddings->Get(i);
-					dim := values->Size();
+					emb := embeddings->Get(i);
+					values := emb->Get();
+					dim := emb->Size();
 					# show first 5 dimensions as a preview
 					preview := "";
 					limit := 5;
@@ -65,8 +66,8 @@ bundle Default {
 				# compute cosine similarity between first two if we have at least two
 				if(embeddings->Size() >= 2) {
 					""->PrintLine();
-					a := embeddings->Get(0);
-					b := embeddings->Get(1);
+					a := embeddings->Get(0)->Get();
+					b := embeddings->Get(1)->Get();
 					sim := CosineSimilarity(a, b);
 					"Cosine similarity [0] vs [1]: {$sim}"->PrintLine();
 				};
