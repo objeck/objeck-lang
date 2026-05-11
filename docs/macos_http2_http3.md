@@ -11,14 +11,21 @@ git pull
 ## 2. Install dependencies
 
 ```bash
-brew install nghttp2 libnghttp3 gnutls cmake
+brew install nghttp2 libngtcp2 libnghttp3 gnutls cmake mbedtls
 ```
 
 Homebrew's `libngtcp2` ships only the OpenSSL crypto backend, but the VM
-uses GnuTLS.  Build ngtcp2 from source with `ENABLE_GNUTLS=ON`:
+uses GnuTLS.  Build the GnuTLS backend from source, pinned to the **same
+version** Homebrew installed (mixing versions causes a dyld symbol-not-found
+crash at runtime):
 
 ```bash
-cd /tmp && git clone --depth 1 https://github.com/ngtcp2/ngtcp2.git && cd ngtcp2
+NGTCP2_VER=$(brew list --versions libngtcp2 | awk '{print $2}')
+echo "Building ngtcp2 v${NGTCP2_VER} to match Homebrew"
+
+cd /tmp
+git clone --depth 1 --branch "v${NGTCP2_VER}" https://github.com/ngtcp2/ngtcp2.git
+cd ngtcp2
 git submodule update --init --depth 1
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
@@ -26,11 +33,11 @@ cmake -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
       -DCMAKE_PREFIX_PATH="/opt/homebrew;/opt/homebrew/opt/gnutls" \
       -DBUILD_TESTING=OFF ..
 make -j$(sysctl -n hw.ncpu)
-# Install to a staging area, then copy into Homebrew prefix:
+# Stage, then install with sudo (Homebrew files are root-owned):
 make install DESTDIR=/tmp/ngtcp2-install
-cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2* /opt/homebrew/lib/
-mkdir -p /opt/homebrew/include/ngtcp2
-cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
+sudo cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2* /opt/homebrew/lib/
+sudo mkdir -p /opt/homebrew/include/ngtcp2
+sudo cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
 ```
 
 Verify:
@@ -130,5 +137,6 @@ Test 5: HTTP/3 QuickPost quic.nginx.org/... PASS (status=405)
 ## Notes
 
 - `SKIP (no network or ngtcp2 not built)` means the VM was not built with `OBJECK_HAS_NGTCP2`. Check that the Xcode project preprocessor defines include `OBJECK_HAS_NGTCP2` and `OBJECK_HAS_NGHTTP2`.
-- HTTP/3 test endpoint is `quic.nginx.org`. Cloudflare's QUIC implementation is incompatible with ngtcp2 0.12.x.
+- The ngtcp2 source build **must match** the version installed by Homebrew (`brew list --versions libngtcp2`). Building from `master` installs a newer `libngtcp2_crypto_gnutls` that references symbols absent in Homebrew's base `libngtcp2`, causing a dyld crash at runtime.
+- HTTP/3 test endpoint is `quic.nginx.org`. Cloudflare's QUIC implementation is incompatible with ngtcp2.
 - `OBJECK_LIB_PATH` must point at the `lib/` directory containing `cacert.pem` for TLS certificate verification.
