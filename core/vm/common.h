@@ -90,6 +90,7 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #ifdef _WIN32
+#define NOMINMAX
 #include <direct.h>
 #include <windows.h>
 #include <process.h>
