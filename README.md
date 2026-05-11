@@ -206,7 +206,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 
 ## Libraries
 
-**AI & Machine Learning**
+**AI & Machine Learning** — [📖 Full AI Guide](docs/AI.md)
 - [OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs), [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs), [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs)
 - [NLP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/nlp.obs) (tokenization, TF-IDF, text similarity, sentiment analysis)
 - [OpenCV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/opencv.obs) (computer vision)
