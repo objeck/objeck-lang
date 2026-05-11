@@ -73,12 +73,12 @@
     <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(INCLUDE);</IncludePath>
     <TargetName>obr</TargetName>
     <OutDir>..\$(Configuration)\win64\</OutDir>
-    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64;$(LIB);$(LibraryPath)</LibraryPath>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <LibraryPath>..\..\lib\openssl\win\arm64;..\..\lib\zlib\win\arm64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\lib\openssl\win\arm64;..\..\lib\zlib\win\arm64;$(LIB);$(LibraryPath)</LibraryPath>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(INCLUDE);</IncludePath>
@@ -87,14 +87,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(INCLUDE);</IncludePath>
     <TargetName>obr</TargetName>
-    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\lib\openssl\win\x64;..\..\lib\zlib\win\x64;$(LIB);$(LibraryPath)</LibraryPath>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <IncludePath>..\..\lib\openssl\win\include;..\..\lib\zlib\win;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(INCLUDE);</IncludePath>
     <TargetName>obr</TargetName>
-    <LibraryPath>..\..\lib\openssl\win\arm64;..\..\lib\zlib\win\arm64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\..\lib\openssl\win\arm64;..\..\lib\zlib\win\arm64;$(LIB);$(LibraryPath)</LibraryPath>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
