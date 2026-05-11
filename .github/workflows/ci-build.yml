@@ -138,9 +138,12 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         # Homebrew's libngtcp2 ships only the OpenSSL crypto backend.
-        # The VM requires the GnuTLS backend; build ngtcp2 from source.
+        # The VM requires the GnuTLS backend; build ngtcp2 from source at the
+        # exact version Homebrew installed so ABI is compatible at runtime.
+        NGTCP2_VER=$(brew list --versions libngtcp2 | awk '{print $2}')
+        echo "Building ngtcp2 v${NGTCP2_VER} to match Homebrew libngtcp2"
         cd /tmp
-        git clone --depth 1 https://github.com/ngtcp2/ngtcp2.git
+        git clone --depth 1 --branch "v${NGTCP2_VER}" https://github.com/ngtcp2/ngtcp2.git
         cd ngtcp2
         git submodule update --init --depth 1
         mkdir build && cd build

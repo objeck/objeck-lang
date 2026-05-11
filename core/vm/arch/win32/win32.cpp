@@ -29,6 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
+#define NOMINMAX
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
