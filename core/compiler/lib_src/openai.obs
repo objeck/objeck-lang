@@ -2414,7 +2414,7 @@ bundle API.OpenAI {
 		~#
 		function : Respond(audio : Byte[], model : String, voice : String, token : String) ~ Pair<String, ByteArrayRef> {
 			client := Connect(Url->New("wss://api.openai.com/v1/realtime?model={$model}"), token);
-			if(client <> Nil & <>SendQuery(audio, voice, client)) {
+			if(client = Nil | <>SendQuery(audio, voice, client)) {
 				">>> Error sending query <<<"->PrintLine();
 				return Nil;
 			};
@@ -2447,7 +2447,7 @@ bundle API.OpenAI {
 		~#
 		function : Respond(text : String, model : String, voice : String, token : String) ~ Pair<String, ByteArrayRef> {
 			client := Connect(Url->New("wss://api.openai.com/v1/realtime?model={$model}"), token);
-			if(client <> Nil & <>SendQuery(text, voice, client)) {
+			if(client = Nil | <>SendQuery(text, voice, client)) {
 				">>> Error sending query <<<"->PrintLine();
 				return Nil;
 			};
@@ -2479,7 +2479,7 @@ bundle API.OpenAI {
 				};
 
 				type_str := response_json->Get("type")->GetString();
-				if(type_str = Nil & <>type_str->Equals("session.created")) {
+				if(type_str = Nil | <>type_str->Equals("session.created")) {
 					status_code := client->GetStatusMessage();
 					">>> closed: code={$status_code} <<<"->PrintLine();
 
@@ -2524,10 +2524,11 @@ bundle API.OpenAI {
 			response_json := JsonParser->TextToElement(recv_msg);
 			if(response_json = Nil) {
 				">>> Error: Unable to parse response <<<"->ErrorLine();
+				return false;
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(type_str = Nil & <>type_str->Equals("conversation.item.created")) {
+			if(type_str = Nil | <>type_str->Equals("conversation.item.created")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -2547,7 +2548,7 @@ bundle API.OpenAI {
 	       			\"output_audio_format\": \"pcm16\",
     				\"input_audio_transcription\": {
 						\"model\": \"whisper-1\"
-        			},    				
+        			},
 	    			\"turn_detection\": {
 	      				\"type\": \"server_vad\",
 						\"threshold\": 0.5,
@@ -2569,10 +2570,11 @@ bundle API.OpenAI {
 			response_json := JsonParser->TextToElement(recv_msg);
 			if(response_json = Nil) {
 				">>> Error: Unable to parse response <<<"->ErrorLine();
+				return false;
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(type_str = Nil & <>type_str->Equals("session.updated")) {
+			if(type_str = Nil | <>type_str->Equals("session.updated")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -2599,10 +2601,11 @@ bundle API.OpenAI {
 			response_json := JsonParser->TextToElement(recv_msg);
 			if(response_json = Nil) {
 				">>> Error: Unable to parse response <<<"->ErrorLine();
+				return false;
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(type_str = Nil & <>type_str->Equals("response.created")) {
+			if(type_str = Nil | <>type_str->Equals("response.created")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -2623,7 +2626,7 @@ bundle API.OpenAI {
 			
 			content_elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			content_elem_json->Insert("type", "input_text");
-	        content_elem_json->Insert("text", query)
+	        content_elem_json->Insert("text", query);
 
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			content_array_json->Add(content_elem_json);
@@ -2643,10 +2646,11 @@ bundle API.OpenAI {
 			response_json := JsonParser->TextToElement(recv_msg);
 			if(response_json = Nil) {
 				">>> Error: Unable to parse response <<<"->ErrorLine();
+				return false;
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(type_str = Nil & <>type_str->Equals("conversation.item.created")) {
+			if(type_str = Nil | <>type_str->Equals("conversation.item.created")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -2666,7 +2670,7 @@ bundle API.OpenAI {
 	       			\"output_audio_format\": \"pcm16\",
     				\"input_audio_transcription\": {
 						\"model\": \"whisper-1\"
-        			},    				
+        			},
 	    			\"turn_detection\": {
 	      				\"type\": \"server_vad\",
 						\"threshold\": 0.5,
@@ -2688,10 +2692,11 @@ bundle API.OpenAI {
 			response_json := JsonParser->TextToElement(recv_msg);
 			if(response_json = Nil) {
 				">>> Error: Unable to parse response <<<"->ErrorLine();
+				return false;
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(type_str = Nil & <>type_str->Equals("session.updated")) {
+			if(type_str = Nil | <>type_str->Equals("session.updated")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -2718,10 +2723,11 @@ bundle API.OpenAI {
 			response_json := JsonParser->TextToElement(recv_msg);
 			if(response_json = Nil) {
 				">>> Error: Unable to parse response <<<"->ErrorLine();
+				return false;
 			};
 
 			type_str := response_json->Get("type")->GetString();
-			if(type_str = Nil & <>type_str->Equals("response.created")) {
+			if(type_str = Nil | <>type_str->Equals("response.created")) {
 				error_msg := response_json->Get("error")->Get("message")->GetString();
 				">>> Error: {$error_msg} <<<"->ErrorLine();
 				return false;
@@ -3002,7 +3008,7 @@ bundle API.OpenAI {
 		@return generated images URLs
 		~#
 		method : public : GetUrls() ~ Url[] {
-			return @urls
+			return @urls;
 		}
 
 		#~
@@ -3024,7 +3030,7 @@ bundle API.OpenAI {
 		@return generated image
 		~#
 		function : Create(prompt : String, model : String, size : Image->Size, token : String) ~ API.OpenAI.Image {
-			return Create(prompt, model, -1, Nil, Nil, Image->Size->DALLE_DEFAULT, Nil, Nil, token);
+			return Create(prompt, model, -1, Nil, Nil, size, Nil, Nil, token);
 		}
 
 		#~
