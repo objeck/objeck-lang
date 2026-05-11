@@ -31,6 +31,12 @@
 
 #pragma once
 
+// Must precede any Windows header (including those pulled in by mbedTLS/nghttp2)
+// to prevent min/max macro definitions that break std::min/std::max.
+#if defined(_WIN32)
+#  define NOMINMAX
+#endif
+
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -90,7 +96,6 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #ifdef _WIN32
-#define NOMINMAX
 #include <direct.h>
 #include <windows.h>
 #include <process.h>

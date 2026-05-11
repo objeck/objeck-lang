@@ -150,9 +150,11 @@ jobs:
               -DBUILD_TESTING=OFF ..
         make -j$(sysctl -n hw.ncpu)
         make install DESTDIR=/tmp/ngtcp2-install
-        cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2* /opt/homebrew/lib/
-        mkdir -p /opt/homebrew/include/ngtcp2
-        cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
+        # libnghttp3 pulls in libngtcp2 (OpenSSL build) as a dep; those files are
+        # root-owned, so only install the GnuTLS-specific files that aren't in brew.
+        sudo cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2_crypto_gnutls* /opt/homebrew/lib/
+        sudo mkdir -p /opt/homebrew/include/ngtcp2
+        sudo cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
         echo "ngtcp2 GnuTLS backend installed:"
         ls /opt/homebrew/lib/libngtcp2*
 
@@ -222,10 +224,13 @@ jobs:
         $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
         echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
         echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
+        # Add vcpkg bin to PATH so nghttp2.dll is found at test runtime
+        echo "$vcpkgRoot\bin" >> $env:GITHUB_PATH
 
         Write-Output "✅ Installed mbedtls and nghttp2 for ${{ matrix.arch }}"
         Write-Output "Set INCLUDE=$vcpkgRoot\include"
         Write-Output "Set LIB=$vcpkgRoot\lib"
+        Write-Output "Added to PATH: $vcpkgRoot\bin"
 
     - name: Cache OpenCV DLLs (Windows x64)
       if: matrix.platform == 'windows-x64'
