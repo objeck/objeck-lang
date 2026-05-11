@@ -6,6 +6,8 @@ Collection of practical code examples demonstrating Objeck's capabilities.
 - [Hello World](#hello-world)
 - [Web & Networking](#web--networking)
 - [AI Integration](#ai-integration)
+  - [OpenAI: Realtime, Moderation, Batch, Image Recognition](#ai-integration)
+  - [Gemini: Generate, Grounding, Batch Embeddings, Files, Caching](#ai-integration)
 - [Computer Vision](#computer-vision)
 - [More Examples](#more-examples)
 
@@ -197,6 +199,91 @@ if(response = Nil) {
 };
 
 Data.JSON.JsonElement->Decode(response->GetText())->PrintLine();
+```
+
+### OpenAI Content Moderation
+```ruby
+# Check text for policy violations — returns per-category flags and scores
+result := Moderation->Check("I love programming!", token);
+if(result <> Nil) {
+  "Flagged: {$result->IsFlagged()}"->PrintLine();
+  if(result->IsFlagged()) {
+    score := result->GetScore("violence");
+    "violence score: {$score}"->PrintLine();
+  };
+};
+```
+
+### OpenAI Batch Processing
+```ruby
+# Submit a batch of requests (up to 50k) for async processing at 50% cost
+file_id := "file-abc123";   # upload a .jsonl of requests first
+job := Batch->Create(file_id, "/v1/chat/completions", token);
+if(job <> Nil) {
+  "batch id: {$job->GetId()}"->PrintLine();
+  "status: {$job->GetStatus()}"->PrintLine();   # "validating" → "in_progress" → "completed"
+};
+
+# Poll later
+job := Batch->Get(job->GetId(), token);
+if(job->IsComplete()) {
+  output_file_id := job->GetOutputFileId();
+  "output file: {$output_file_id}"->PrintLine();
+};
+```
+
+### Gemini Google Search Grounding
+```ruby
+# Ground the model's answer in live Google Search results
+content := Content->New("user")->AddPart(TextPart->New("What are the latest AI breakthroughs?"));
+candidates := Model->GenerateContentWithGrounding("models/gemini-2.0-flash", content, token);
+if(candidates <> Nil & <>candidates->IsEmpty()) {
+  candidates->First()->GetAllText()->PrintLine();
+};
+```
+
+### Gemini Batch Embeddings
+```ruby
+# Embed multiple texts in one round-trip
+texts := Vector->New()<String>;
+texts->AddBack("Objeck is a JIT-compiled language");
+texts->AddBack("Python is popular for data science");
+texts->AddBack("Rust focuses on memory safety");
+
+embeddings := Model->BatchEmbedContent("models/text-embedding-004", texts, token);
+each(i : embeddings) {
+  emb := embeddings->Get(i);
+  dim := emb->Size();
+  "  [{$i}] dim={$dim}"->PrintLine();
+};
+```
+
+### Gemini Files API
+```ruby
+# Upload a file for use in model requests
+data := FileReader->ReadBinaryFile("document.pdf");
+file := FileManager->Upload("my-doc", data, "application/pdf", token);
+if(file <> Nil & file->IsActive()) {
+  "URI: {$file->GetUri()}"->PrintLine();
+};
+
+# List and delete
+files := FileManager->List(token);
+each(f in files) {
+  FileManager->Delete(f->GetName(), token);
+};
+```
+
+### Gemini Context Caching
+```ruby
+# Cache large content server-side to avoid re-tokenizing on every request
+content := Content->New("user")->AddPart(TextPart->New(large_system_prompt));
+item := CachedContent->Create("models/gemini-1.5-pro-001", content, 300, "my-cache", token);
+if(item <> Nil) {
+  "name: {$item->GetName()}"->PrintLine();
+  "tokens cached: {$item->GetTokenCount()}"->PrintLine();
+  "expires: {$item->GetExpireTime()}"->PrintLine();
+};
 ```
 
 ---
