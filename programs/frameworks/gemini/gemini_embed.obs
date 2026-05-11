@@ -1,0 +1,98 @@
+#
+# Gemini Batch Embedding example
+#
+# batchEmbedContents sends multiple texts in one round-trip and returns
+# a vector of float embeddings for each, useful for semantic search,
+# clustering, and similarity comparisons.
+#
+# Usage:
+#   gemini_embed                          — run demo with sample texts
+#   gemini_embed "text1" "text2" ...      — embed custom texts
+#
+
+use API.Google.Gemini, Collection;
+
+bundle Default {
+	class GeminiEmbed {
+		function : Main(args : String[]) ~ Nil {
+			token := EndPoint->GetApiKey();
+			if(token = Nil) {
+				"Unable to load API key from 'gemini_api_key.dat'"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			model := "models/text-embedding-004";
+			texts := Vector->New()<String>;
+
+			if(args->Size() > 0) {
+				each(i : args) {
+					texts->AddBack(args[i]);
+				};
+			}
+			else {
+				texts->AddBack("Objeck is a modern programming language with JIT compilation.");
+				texts->AddBack("Python is popular for data science and machine learning.");
+				texts->AddBack("Rust focuses on memory safety without a garbage collector.");
+				texts->AddBack("The quick brown fox jumps over the lazy dog.");
+			};
+
+			count := texts->Size();
+			"Embedding {$count} text(s) with model '{$model}'..."->PrintLine();
+
+			embeddings := Model->BatchEmbedContent(model, texts, token);
+			if(embeddings <> Nil) {
+				"Got {$embeddings->Size()} embedding vector(s):"->PrintLine();
+				each(i : embeddings) {
+					values := embeddings->Get(i);
+					dim := values->Size();
+					# show first 5 dimensions as a preview
+					preview := "";
+					limit := 5;
+					if(dim < limit) {
+						limit := dim;
+					};
+					each(j : limit) {
+						if(j > 0) {
+							preview += ", ";
+						};
+						v := values[j];
+						preview += "{$v}";
+					};
+					text := texts->Get(i);
+					"  [{$i}] dim={$dim}  first=[{$preview}...]  text='{$text}'"->PrintLine();
+				};
+
+				# compute cosine similarity between first two if we have at least two
+				if(embeddings->Size() >= 2) {
+					""->PrintLine();
+					a := embeddings->Get(0);
+					b := embeddings->Get(1);
+					sim := CosineSimilarity(a, b);
+					"Cosine similarity [0] vs [1]: {$sim}"->PrintLine();
+				};
+			}
+			else {
+				"Batch embed failed"->ErrorLine();
+			};
+		}
+
+		function : CosineSimilarity(a : Float[], b : Float[]) ~ Float {
+			dot := 0.0;
+			norm_a := 0.0;
+			norm_b := 0.0;
+
+			each(i : a) {
+				dot += a[i] * b[i];
+				norm_a += a[i] * a[i];
+				norm_b += b[i] * b[i];
+			};
+
+			denom := Float->Sqrt(norm_a) * Float->Sqrt(norm_b);
+			if(denom = 0.0) {
+				return 0.0;
+			};
+
+			return dot / denom;
+		}
+	}
+}

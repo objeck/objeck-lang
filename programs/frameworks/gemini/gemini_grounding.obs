@@ -1,0 +1,58 @@
+#
+# Gemini Google Search Grounding example
+#
+# Grounding connects the model to live Google Search results so answers
+# reflect current information rather than only training data.
+#
+# Usage:
+#   gemini_grounding                         — run default demo queries
+#   gemini_grounding "What happened today?"  — answer a custom question
+#
+
+use API.Google.Gemini;
+
+bundle Default {
+	class GeminiGrounding {
+		function : Main(args : String[]) ~ Nil {
+			token := EndPoint->GetApiKey();
+			if(token = Nil) {
+				"Unable to load API key from 'gemini_api_key.dat'"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			model := "models/gemini-2.0-flash";
+
+			if(args->Size() > 0) {
+				query := args[0];
+				RunQuery(model, query, token);
+			}
+			else {
+				# Demo: questions that benefit from up-to-date search grounding
+				queries := String->New[3];
+				queries[0] := "What are the top AI model releases in the past 6 months?";
+				queries[1] := "What is the current price of Bitcoin?";
+				queries[2] := "What major programming language updates were announced recently?";
+
+				each(i : queries) {
+					query := queries[i];
+					"=== Query: {$query} ==="->PrintLine();
+					RunQuery(model, query, token);
+					"---"->PrintLine();
+				};
+			};
+		}
+
+		function : RunQuery(model : String, query : String, token : String) ~ Nil {
+			content := Content->New("user")->AddPart(TextPart->New(query));
+			candidates := Model->GenerateContentWithGrounding(model, content, token);
+			if(candidates <> Nil & <>candidates->IsEmpty()) {
+				each(candidate in candidates) {
+					candidate->GetAllText()->PrintLine();
+				};
+			}
+			else {
+				"No response received"->ErrorLine();
+			};
+		}
+	}
+}
