@@ -62,6 +62,8 @@ obc hello && obr hello
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
 **v2026.5.0** ✅
+  * **HTTP/2 client** — `Http2Client` with persistent TLS connections, custom headers, GET/POST/PUT/DELETE, and `QuickGet`/`QuickPost` one-liners (nghttp2 + ALPN)
+  * **HTTP/3 / QUIC client** — `Http3Client` over UDP with connection reuse and the same `Quick*` API (ngtcp2 + nghttp3 + GnuTLS)
   * **Face recognition** — new `FaceSession` API with SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings (InsightFace buffalo_l). Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.
   * **Windows emoji** — full Unicode supplementary plane output (emoji and other non-BMP characters) now works correctly in cmd.exe and Windows Terminal via `WriteConsoleW`
   * **LSP enhancements** — typeHierarchy, selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes
@@ -107,6 +109,37 @@ obc hello && obr hello
 > **Note:** All Windows installers are digitally signed. Releases are fully automated via CI/CD and built on GitHub Actions runners.
 
 ## See It In Action
+
+### HTTP/2 Client
+```ruby
+use Web.HTTP;
+
+# Persistent connection — multiple requests share one TLS session
+client := Http2Client->New("httpbin.org");
+resp := client->Get("/get");
+"Status: {$resp->GetCode()}"->PrintLine();    # Status: 200
+
+body := "{\"lang\":\"objeck\"}"->ToByteArray();
+resp2 := client->Post("/post", body, "application/json");
+client->Close();
+
+# One-liner for quick requests
+resp := Http2Client->QuickGet(Url->New("https://httpbin.org/get"));
+```
+
+### HTTP/3 / QUIC Client
+```ruby
+use Web.HTTP;
+
+# QUIC over UDP — zero round-trip connection on repeat visits
+client := Http3Client->New("quic.nginx.org");
+resp := client->Get("/");
+"Status: {$resp->GetCode()}"->PrintLine();    # Status: 200
+client->Close();
+
+# One-liner
+resp := Http3Client->QuickGet(Url->New("https://quic.nginx.org/"));
+```
 
 ### AI Integration
 ```ruby
@@ -181,7 +214,9 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - [Phi-3 / Phi-3 Vision](https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/opencv_onnx) (local SLM text and vision inference)
 
 **Web & Networking**
-- HTTP [server](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs)/[client](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs), [OAuth](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_common.obs)
+- HTTP/1.1 [server](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs)/[client](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_secure.obs), [OAuth](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_common.obs)
+- [HTTP/2](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_h2.obs) — multiplexed TLS client via nghttp2
+- [HTTP/3 / QUIC](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/net_quic.obs) — UDP-based client via ngtcp2 + nghttp3
 - [RSS](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/rss.obs)
 
 **Data**
