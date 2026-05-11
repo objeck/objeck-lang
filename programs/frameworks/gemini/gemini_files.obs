@@ -1,0 +1,105 @@
+#
+# Gemini Files API example
+#
+# Workflow:
+#   1. Upload a file:
+#        gemini_files upload photo.jpg image/jpeg
+#   2. List uploaded files:
+#        gemini_files list
+#   3. Get file metadata:
+#        gemini_files get files/<id>
+#   4. Delete a file:
+#        gemini_files delete files/<id>
+#
+
+use API.Google.Gemini;
+use System.IO.Filesystem;
+
+bundle Default {
+	class GeminiFiles {
+		function : Main(args : String[]) ~ Nil {
+			token := EndPoint->GetApiKey();
+			if(token = Nil) {
+				"Unable to load API key from 'gemini_api_key.dat'"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			command := "list";
+			if(args->Size() > 0) {
+				command := args[0];
+			};
+
+			if(command->Equals("upload") & args->Size() = 3) {
+				filename := args[1];
+				mime_type := args[2];
+
+				data := FileReader->ReadBinaryFile(filename);
+				if(data = Nil | data->Size() = 0) {
+					"Error: unable to read '{$filename}'"->ErrorLine();
+					return;
+				};
+
+				"Uploading '{$filename}' ({$data->Size()} bytes)..."->PrintLine();
+				file := FileManager->Upload(filename, data, mime_type, token);
+				if(file <> Nil) {
+					"Uploaded: {$file->GetName()}"->PrintLine();
+					"URI: {$file->GetUri()}"->PrintLine();
+					"State: {$file->GetState()}"->PrintLine();
+				}
+				else {
+					"Upload failed"->ErrorLine();
+				};
+			}
+			else if(command->Equals("list")) {
+				files := FileManager->List(token);
+				if(files <> Nil) {
+					count := files->Size();
+					"Files ({$count}):"->PrintLine();
+					each(file in files) {
+						name := file->GetName();
+						state := file->GetState();
+						size := file->GetSizeBytes();
+						mime := file->GetMimeType();
+						"  {$name}  {$mime}  state={$state}  bytes={$size}"->PrintLine();
+					};
+				}
+				else {
+					"List failed"->ErrorLine();
+				};
+			}
+			else if(command->Equals("get") & args->Size() = 2) {
+				file_name := args[1];
+				file := FileManager->Get(file_name, token);
+				if(file <> Nil) {
+					"Name: {$file->GetName()}"->PrintLine();
+					"Display: {$file->GetDisplayName()}"->PrintLine();
+					"MIME: {$file->GetMimeType()}"->PrintLine();
+					"Size: {$file->GetSizeBytes()} bytes"->PrintLine();
+					"URI: {$file->GetUri()}"->PrintLine();
+					"State: {$file->GetState()}"->PrintLine();
+					active := file->IsActive();
+					"Active: {$active}"->PrintLine();
+				}
+				else {
+					"Not found: {$file_name}"->ErrorLine();
+				};
+			}
+			else if(command->Equals("delete") & args->Size() = 2) {
+				file_name := args[1];
+				ok := FileManager->Delete(file_name, token);
+				if(ok) {
+					"Deleted: {$file_name}"->PrintLine();
+				}
+				else {
+					"Delete failed for: {$file_name}"->ErrorLine();
+				};
+			}
+			else {
+				"Usage: gemini_files upload <file> <mime_type>"->ErrorLine();
+				"       gemini_files list"->ErrorLine();
+				"       gemini_files get <files/id>"->ErrorLine();
+				"       gemini_files delete <files/id>"->ErrorLine();
+			};
+		}
+	}
+}

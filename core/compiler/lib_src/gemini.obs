@@ -737,6 +737,109 @@ each(candidate in candidates) {
 		}
 
 		#~
+		Generates embeddings for multiple text strings in a single request
+		@param model_name model name (e.g. "models/text-embedding-004")
+		@param texts list of text strings to embed
+		@param key API key
+		@return list of embedding vectors, one per input text
+		~#
+		function : BatchEmbedContent(model_name : String, texts : Vector<String>, key : String) ~ Vector<Float[]> {
+			requests_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(text in texts) {
+				content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				parts_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				part_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				part_obj_json->Insert("text", text);
+				parts_array_json->Add(part_obj_json);
+				content_obj_json->Insert("parts", parts_array_json);
+
+				request_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				request_obj_json->Insert("model", model_name);
+				request_obj_json->Insert("content", content_obj_json);
+				requests_array_json->Add(request_obj_json);
+			};
+
+			body_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			body_json->Insert("requests", requests_array_json);
+
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:batchEmbedContents?key={$key}");
+			if(url->GetQueryParameters()->Has("key")) {
+				response_json := PostRequest(body_json, url);
+				if(response_json <> Nil) {
+					embeddings_json := response_json->Get("embeddings");
+					results := Vector->New()<Float[]>;
+					if(embeddings_json <> Nil) {
+						each(embedding_json in embeddings_json) {
+							values_json := embedding_json->Get("values");
+							values := Float->New[values_json->Size()];
+							each(i : values_json) {
+								values[i] := values_json->Get(i)->GetFloat();
+							};
+							results->AddBack(values);
+						};
+					};
+					return results;
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		Generate content using Google Search grounding for up-to-date information
+		@param model_name model name (e.g. "models/gemini-2.0-flash")
+		@param content user content
+		@param key API key
+		@return list of candidates with grounding metadata
+		~#
+		function : GenerateContentWithGrounding(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
+			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			parts := content->GetParts();
+			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			content_obj_json->Insert("role", content->GetRole());
+
+			parts_obj_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(part in parts) {
+				part_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(part->TypeOf(TextPart)) {
+					text_part := part->As(TextPart);
+					part_obj_json->Insert("text", text_part->GetText());
+				}
+				else if(part->TypeOf(BinaryPart)) {
+					binary_part := part->As(BinaryPart);
+					inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
+					inline_obj_json->Insert("data", binary_part->GetBase64Data());
+					part_obj_json->Insert("inlineData", inline_obj_json);
+				};
+				parts_obj_json->Add(part_obj_json);
+			};
+			content_obj_json->Insert("parts", parts_obj_json);
+			content_array_json->Add(content_obj_json);
+
+			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			contents_obj_json->Insert("contents", content_array_json);
+
+			# Google Search grounding tool
+			google_search_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tool_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tool_obj_json->Insert("googleSearch", google_search_json);
+			tools_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			tools_array_json->Add(tool_obj_json);
+			contents_obj_json->Insert("tools", tools_array_json);
+
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
+			if(url->GetQueryParameters()->Has("key")) {
+				response := PostRequest(contents_obj_json, url);
+				if(response <> Nil) {
+					return BuildContentResponse(contents_obj_json, content_array_json, response, Nil, url, false);
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
 		Get the model's description
 		@return model's description
 		~#
@@ -1334,6 +1437,435 @@ session->ToString()->PrintLine();
 			};
 
 			return buffer;
+		}
+	}
+
+	#~
+	A file resource uploaded via the Gemini Files API
+	~#
+	class GeminiFile from EndPoint {
+		@name : String;
+		@display_name : String;
+		@mime_type : String;
+		@size_bytes : String;
+		@create_time : String;
+		@uri : String;
+		@state : String;
+
+		New(file_json : JsonElement) {
+			Parent();
+			@name := file_json->Get("name")->GetString();
+
+			display_name_json := file_json->Get("displayName");
+			if(display_name_json <> Nil) {
+				@display_name := display_name_json->GetString();
+			};
+
+			mime_type_json := file_json->Get("mimeType");
+			if(mime_type_json <> Nil) {
+				@mime_type := mime_type_json->GetString();
+			};
+
+			size_bytes_json := file_json->Get("sizeBytes");
+			if(size_bytes_json <> Nil) {
+				@size_bytes := size_bytes_json->GetString();
+			};
+
+			create_time_json := file_json->Get("createTime");
+			if(create_time_json <> Nil) {
+				@create_time := create_time_json->GetString();
+			};
+
+			uri_json := file_json->Get("uri");
+			if(uri_json <> Nil) {
+				@uri := uri_json->GetString();
+			};
+
+			state_json := file_json->Get("state");
+			if(state_json <> Nil) {
+				@state := state_json->GetString();
+			};
+		}
+
+		#~
+		Get file resource name (e.g. "files/abc123")
+		@return resource name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get human-readable display name
+		@return display name
+		~#
+		method : public : GetDisplayName() ~ String {
+			return @display_name;
+		}
+
+		#~
+		Get MIME type of the file
+		@return MIME type
+		~#
+		method : public : GetMimeType() ~ String {
+			return @mime_type;
+		}
+
+		#~
+		Get size in bytes as a string
+		@return size bytes string
+		~#
+		method : public : GetSizeBytes() ~ String {
+			return @size_bytes;
+		}
+
+		#~
+		Get file creation timestamp
+		@return creation time (RFC 3339)
+		~#
+		method : public : GetCreateTime() ~ String {
+			return @create_time;
+		}
+
+		#~
+		Get the URI to reference this file in content parts
+		@return file URI
+		~#
+		method : public : GetUri() ~ String {
+			return @uri;
+		}
+
+		#~
+		Get processing state of the file
+		@return state (ACTIVE, PROCESSING, FAILED)
+		~#
+		method : public : GetState() ~ String {
+			return @state;
+		}
+
+		#~
+		Check whether the file is ready for use
+		@return true if state is ACTIVE
+		~#
+		method : public : IsActive() ~ Bool {
+			return @state <> Nil & @state->Equals("ACTIVE");
+		}
+	}
+
+	#~
+	Gemini Files API — upload and manage files for use in model requests
+	~#
+	class FileManager from EndPoint {
+		#~
+		Upload a file using multipart upload
+		@param display_name human-readable name
+		@param data raw file bytes
+		@param mime_type MIME type (e.g. "image/png", "text/plain")
+		@param key API key
+		@return uploaded file resource, or Nil on failure
+		~#
+		function : Upload(display_name : String, data : Byte[], mime_type : String, key : String) ~ GeminiFile {
+			boundary := "gemini_boundary_objeck";
+			meta_json_str := "{\"file\":{\"display_name\":\"{$display_name}\"}}";
+
+			part1_str := "--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{$meta_json_str}\r\n";
+			part2_header_str := "--{$boundary}\r\nContent-Type: {$mime_type}\r\n\r\n";
+			closing_str := "\r\n--{$boundary}--";
+
+			part1_bytes := part1_str->ToByteArray();
+			part2_header_bytes := part2_header_str->ToByteArray();
+			closing_bytes := closing_str->ToByteArray();
+
+			total_size := part1_bytes->Size() + part2_header_bytes->Size() + data->Size() + closing_bytes->Size();
+			full_body := Byte->New[total_size];
+
+			offset := 0;
+			Runtime->Copy(part1_bytes, 0, full_body, offset, part1_bytes->Size());
+			offset += part1_bytes->Size();
+			Runtime->Copy(part2_header_bytes, 0, full_body, offset, part2_header_bytes->Size());
+			offset += part2_header_bytes->Size();
+			Runtime->Copy(data, 0, full_body, offset, data->Size());
+			offset += data->Size();
+			Runtime->Copy(closing_bytes, 0, full_body, offset, closing_bytes->Size());
+
+			content_type := "multipart/related; boundary={$boundary}";
+			url := Url->New("https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=multipart&key={$key}");
+			response := HttpsClient->QuickPost(url, full_body, content_type);
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json <> Nil) {
+					file_json := response_json->Get("file");
+					if(file_json <> Nil) {
+						return GeminiFile->New(file_json);
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		List all uploaded files
+		@param key API key
+		@return list of file resources
+		~#
+		function : List(key : String) ~ Vector<GeminiFile> {
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/files?key={$key}");
+			response_json := GetRequest(url);
+			if(response_json <> Nil) {
+				results := Vector->New()<GeminiFile>;
+				files_json := response_json->Get("files");
+				if(files_json <> Nil) {
+					each(file_json in files_json) {
+						results->AddBack(GeminiFile->New(file_json));
+					};
+				};
+				return results;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get metadata for a specific file
+		@param file_name resource name (e.g. "files/abc123")
+		@param key API key
+		@return file resource, or Nil on failure
+		~#
+		function : Get(file_name : String, key : String) ~ GeminiFile {
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$file_name}?key={$key}");
+			response_json := GetRequest(url);
+			if(response_json <> Nil) {
+				return GeminiFile->New(response_json);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Delete a file resource
+		@param file_name resource name (e.g. "files/abc123")
+		@param key API key
+		@return true if deleted successfully
+		~#
+		function : Delete(file_name : String, key : String) ~ Bool {
+			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$file_name}?key={$key}"), "application/json");
+			return response <> Nil & response->GetCode() = 200;
+		}
+	}
+
+	#~
+	A context cache entry created by the Gemini Caching API
+	~#
+	class CachedContentItem from EndPoint {
+		@name : String;
+		@display_name : String;
+		@model : String;
+		@create_time : String;
+		@expire_time : String;
+		@token_count : Int;
+
+		New(item_json : JsonElement) {
+			Parent();
+			name_json := item_json->Get("name");
+			if(name_json <> Nil) {
+				@name := name_json->GetString();
+			};
+
+			display_name_json := item_json->Get("displayName");
+			if(display_name_json <> Nil) {
+				@display_name := display_name_json->GetString();
+			};
+
+			model_json := item_json->Get("model");
+			if(model_json <> Nil) {
+				@model := model_json->GetString();
+			};
+
+			create_time_json := item_json->Get("createTime");
+			if(create_time_json <> Nil) {
+				@create_time := create_time_json->GetString();
+			};
+
+			expire_time_json := item_json->Get("expireTime");
+			if(expire_time_json <> Nil) {
+				@expire_time := expire_time_json->GetString();
+			};
+
+			usage_json := item_json->Get("usageMetadata");
+			if(usage_json <> Nil) {
+				total_json := usage_json->Get("totalTokenCount");
+				if(total_json <> Nil) {
+					@token_count := total_json->GetInt();
+				};
+			};
+		}
+
+		#~
+		Get cache resource name (e.g. "cachedContents/abc123")
+		@return resource name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get display name
+		@return display name
+		~#
+		method : public : GetDisplayName() ~ String {
+			return @display_name;
+		}
+
+		#~
+		Get the model this cache was created for
+		@return model name
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		#~
+		Get creation timestamp
+		@return creation time (RFC 3339)
+		~#
+		method : public : GetCreateTime() ~ String {
+			return @create_time;
+		}
+
+		#~
+		Get expiration timestamp
+		@return expiration time (RFC 3339)
+		~#
+		method : public : GetExpireTime() ~ String {
+			return @expire_time;
+		}
+
+		#~
+		Get total token count stored in cache
+		@return token count
+		~#
+		method : public : GetTokenCount() ~ Int {
+			return @token_count;
+		}
+	}
+
+	#~
+	Gemini Context Caching API — cache large content to reduce repeated token costs
+	~#
+	class CachedContent from EndPoint {
+		#~
+		Create a cached content resource with default TTL
+		@param model model name (e.g. "models/gemini-1.5-pro-001")
+		@param content content to cache
+		@param ttl_secs time-to-live in seconds
+		@param key API key
+		@return cached content item, or Nil on failure
+		~#
+		function : Create(model : String, content : Content, ttl_secs : Int, key : String) ~ CachedContentItem {
+			return Create(model, content, ttl_secs, Nil, key);
+		}
+
+		#~
+		Create a cached content resource
+		@param model model name (e.g. "models/gemini-1.5-pro-001")
+		@param content content to cache
+		@param ttl_secs time-to-live in seconds
+		@param display_name optional human-readable name
+		@param key API key
+		@return cached content item, or Nil on failure
+		~#
+		function : Create(model : String, content : Content, ttl_secs : Int, display_name : String, key : String) ~ CachedContentItem {
+			parts := content->GetParts();
+			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			content_obj_json->Insert("role", content->GetRole());
+
+			parts_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(part in parts) {
+				part_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(part->TypeOf(TextPart)) {
+					text_part := part->As(TextPart);
+					part_obj_json->Insert("text", text_part->GetText());
+				}
+				else if(part->TypeOf(BinaryPart)) {
+					binary_part := part->As(BinaryPart);
+					inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
+					inline_obj_json->Insert("data", binary_part->GetBase64Data());
+					part_obj_json->Insert("inlineData", inline_obj_json);
+				};
+				parts_array_json->Add(part_obj_json);
+			};
+			content_obj_json->Insert("parts", parts_array_json);
+
+			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			content_array_json->Add(content_obj_json);
+
+			body_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			body_json->Insert("model", model);
+			body_json->Insert("contents", content_array_json);
+			body_json->Insert("ttl", "{$ttl_secs}s");
+
+			if(display_name <> Nil) {
+				body_json->Insert("displayName", display_name);
+			};
+
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/cachedContents?key={$key}");
+			response_json := PostRequest(body_json, url);
+			if(response_json <> Nil) {
+				return CachedContentItem->New(response_json);
+			};
+
+			return Nil;
+		}
+
+		#~
+		List all cached content resources
+		@param key API key
+		@return list of cached content items
+		~#
+		function : List(key : String) ~ Vector<CachedContentItem> {
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/cachedContents?key={$key}");
+			response_json := GetRequest(url);
+			if(response_json <> Nil) {
+				results := Vector->New()<CachedContentItem>;
+				cached_json := response_json->Get("cachedContents");
+				if(cached_json <> Nil) {
+					each(item_json in cached_json) {
+						results->AddBack(CachedContentItem->New(item_json));
+					};
+				};
+				return results;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get a cached content resource by name
+		@param cache_name resource name (e.g. "cachedContents/abc123")
+		@param key API key
+		@return cached content item, or Nil on failure
+		~#
+		function : Get(cache_name : String, key : String) ~ CachedContentItem {
+			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$cache_name}?key={$key}");
+			response_json := GetRequest(url);
+			if(response_json <> Nil) {
+				return CachedContentItem->New(response_json);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Delete a cached content resource
+		@param cache_name resource name (e.g. "cachedContents/abc123")
+		@param key API key
+		@return true if deleted successfully
+		~#
+		function : Delete(cache_name : String, key : String) ~ Bool {
+			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$cache_name}?key={$key}"), "application/json");
+			return response <> Nil & response->GetCode() = 200;
 		}
 	}
 

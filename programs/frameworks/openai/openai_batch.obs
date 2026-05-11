@@ -1,0 +1,136 @@
+use Collection, API.OpenAI, System.IO.Filesystem;
+
+#
+# Batch API example
+#
+# Workflow:
+#   1. Build a .jsonl file of chat completion requests and upload it:
+#        openai_batch upload requests.jsonl
+#   2. Create a batch job from the uploaded file ID:
+#        openai_batch create <file_id>
+#   3. Poll until complete:
+#        openai_batch get <batch_id>
+#   4. List all batch jobs:
+#        openai_batch list
+#   5. Cancel a running batch:
+#        openai_batch cancel <batch_id>
+#
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		token := GetApiKey();
+		if(token <> Nil & args->Size() > 0) {
+			command := args[0];
+
+			if(command->Equals("upload") & args->Size() = 2) {
+				filename := args[1];
+				data := FileReader->ReadBinaryFile(filename);
+				if(data <> Nil) {
+					ok := File->Create(filename, "batch", data, token);
+					if(ok) {
+						"File uploaded. Use 'list-files' to find the file ID."->PrintLine();
+					}
+					else {
+						File->GetLastError()->ErrorLine();
+					};
+				}
+				else {
+					"Error: unable to read '{$filename}'"->ErrorLine();
+				};
+			}
+			else if(command->Equals("list-files")) {
+				files := File->ListFiles(token);
+				if(files <> Nil) {
+					count := files->Size();
+					"Files ({$count}):"->PrintLine();
+					each(file in files) {
+						id := file->GetId();
+						filename := file->GetFilename();
+						purpose := file->GetPurpose();
+						"  {$id}  {$filename}  purpose={$purpose}"->PrintLine();
+					};
+				}
+				else {
+					File->GetLastError()->ErrorLine();
+				};
+			}
+			else if(command->Equals("create") & args->Size() = 2) {
+				file_id := args[1];
+				job := Batch->Create(file_id, "/v1/chat/completions", token);
+				if(job <> Nil) {
+					"Created batch: {$job->GetId()}"->PrintLine();
+					"Status: {$job->GetStatus()}"->PrintLine();
+					"Input file: {$job->GetInputFileId()}"->PrintLine();
+				}
+				else {
+					Batch->GetLastError()->ErrorLine();
+				};
+			}
+			else if(command->Equals("get") & args->Size() = 2) {
+				batch_id := args[1];
+				job := Batch->Get(batch_id, token);
+				if(job <> Nil) {
+					job->ToString()->PrintLine();
+				}
+				else {
+					Batch->GetLastError()->ErrorLine();
+				};
+			}
+			else if(command->Equals("cancel") & args->Size() = 2) {
+				batch_id := args[1];
+				job := Batch->Cancel(batch_id, token);
+				if(job <> Nil) {
+					id := job->GetId();
+					status := job->GetStatus();
+					"Cancelled: {$id}  status={$status}"->PrintLine();
+				}
+				else {
+					Batch->GetLastError()->ErrorLine();
+				};
+			}
+			else if(command->Equals("list")) {
+				jobs := Batch->List(token);
+				if(jobs <> Nil) {
+					count := jobs->Size();
+					"Batch jobs ({$count}):"->PrintLine();
+					each(job in jobs) {
+						id := job->GetId();
+						status := job->GetStatus();
+						endpoint := job->GetEndpoint();
+						"  {$id}  {$endpoint}  status={$status}"->PrintLine();
+					};
+				}
+				else {
+					Batch->GetLastError()->ErrorLine();
+				};
+			}
+			else {
+				Usage();
+			};
+		}
+		else if(token = Nil) {
+			"Error: unable to read openai_api_key.dat"->ErrorLine();
+		}
+		else {
+			Usage();
+		};
+	}
+
+	function : Usage() ~ Nil {
+		"Usage: openai_batch upload <file.jsonl>"->ErrorLine();
+		"       openai_batch list-files"->ErrorLine();
+		"       openai_batch create <file_id>"->ErrorLine();
+		"       openai_batch get <batch_id>"->ErrorLine();
+		"       openai_batch cancel <batch_id>"->ErrorLine();
+		"       openai_batch list"->ErrorLine();
+	}
+
+	function : GetApiKey() ~ String {
+		token := FileReader->ReadFile("openai_api_key.dat");
+		if(token <> Nil) {
+			return token->Trim();
+		};
+
+		return Nil;
+	}
+}

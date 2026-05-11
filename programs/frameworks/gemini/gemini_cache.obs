@@ -1,0 +1,113 @@
+#
+# Gemini Context Caching API example
+#
+# Context caching stores large content server-side so repeated queries
+# don't retransmit and re-tokenize it, reducing cost and latency.
+#
+# Commands:
+#   gemini_cache create [display_name]   — cache sample content for 5 min
+#   gemini_cache list                    — list all cached content
+#   gemini_cache get <cachedContents/id> — show one cache entry
+#   gemini_cache delete <cachedContents/id>
+#
+
+use API.Google.Gemini;
+
+bundle Default {
+	class GeminiCache {
+		function : Main(args : String[]) ~ Nil {
+			token := EndPoint->GetApiKey();
+			if(token = Nil) {
+				"Unable to load API key from 'gemini_api_key.dat'"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			command := "list";
+			if(args->Size() > 0) {
+				command := args[0];
+			};
+
+			if(command->Equals("create")) {
+				display_name := "objeck-cache-demo";
+				if(args->Size() > 1) {
+					display_name := args[1];
+				};
+
+				# A large block of text worth caching
+				large_text := "Objeck is a modern, object-oriented, JIT-compiled programming language. "
+					+ "It supports generics, closures, reflection, serialization, threading, and "
+					+ "first-class AI/ML integration with OpenAI, Gemini, and Ollama. "
+					+ "The runtime targets AMD64 and ARM64 on Linux, macOS, and Windows. "
+					+ "Libraries include HTTP/1.1, HTTP/2, HTTP/3, ONNX, OpenCV, and SDL2. "
+					+ "This content is cached server-side to avoid re-tokenizing on every request.";
+
+				model := "models/gemini-1.5-pro-001";
+				content := Content->New("user")->AddPart(TextPart->New(large_text));
+				"Creating cache '{$display_name}' with model '{$model}'..."->PrintLine();
+				item := CachedContent->Create(model, content, 300, display_name, token);
+				if(item <> Nil) {
+					"Created: {$item->GetName()}"->PrintLine();
+					"Model: {$item->GetModel()}"->PrintLine();
+					"Expires: {$item->GetExpireTime()}"->PrintLine();
+					tokens := item->GetTokenCount();
+					"Tokens: {$tokens}"->PrintLine();
+				}
+				else {
+					"Create failed"->ErrorLine();
+				};
+			}
+			else if(command->Equals("list")) {
+				items := CachedContent->List(token);
+				if(items <> Nil) {
+					count := items->Size();
+					"Cached content ({$count}):"->PrintLine();
+					each(item in items) {
+						name := item->GetName();
+						model := item->GetModel();
+						expires := item->GetExpireTime();
+						tokens := item->GetTokenCount();
+						"  {$name}  model={$model}  expires={$expires}  tokens={$tokens}"->PrintLine();
+					};
+				}
+				else {
+					"List failed"->ErrorLine();
+				};
+			}
+			else if(command->Equals("get") & args->Size() = 2) {
+				cache_name := args[1];
+				item := CachedContent->Get(cache_name, token);
+				if(item <> Nil) {
+					"Name: {$item->GetName()}"->PrintLine();
+					display := item->GetDisplayName();
+					if(display <> Nil) {
+						"Display: {$display}"->PrintLine();
+					};
+					"Model: {$item->GetModel()}"->PrintLine();
+					"Created: {$item->GetCreateTime()}"->PrintLine();
+					"Expires: {$item->GetExpireTime()}"->PrintLine();
+					tokens := item->GetTokenCount();
+					"Tokens: {$tokens}"->PrintLine();
+				}
+				else {
+					"Not found: {$cache_name}"->ErrorLine();
+				};
+			}
+			else if(command->Equals("delete") & args->Size() = 2) {
+				cache_name := args[1];
+				ok := CachedContent->Delete(cache_name, token);
+				if(ok) {
+					"Deleted: {$cache_name}"->PrintLine();
+				}
+				else {
+					"Delete failed for: {$cache_name}"->ErrorLine();
+				};
+			}
+			else {
+				"Usage: gemini_cache create [display_name]"->ErrorLine();
+				"       gemini_cache list"->ErrorLine();
+				"       gemini_cache get <cachedContents/id>"->ErrorLine();
+				"       gemini_cache delete <cachedContents/id>"->ErrorLine();
+			};
+		}
+	}
+}

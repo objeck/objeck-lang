@@ -1,0 +1,84 @@
+use Collection, API.OpenAI, System.IO.Filesystem;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		token := GetApiKey();
+		if(token <> Nil) {
+			command := "demo";
+			if(args->Size() > 0) {
+				command := args[0];
+			};
+
+			if(command->Equals("check") & args->Size() >= 2) {
+				text := args[1];
+				CheckText(text, token);
+			}
+			else if(command->Equals("demo")) {
+				texts := String->New[3];
+				texts[0] := "I love programming and building cool things!";
+				texts[1] := "I want to hurt someone really badly.";
+				texts[2] := "The weather is lovely today.";
+
+				each(i : texts) {
+					text := texts[i];
+					"--- Checking: '{$text}' ---"->PrintLine();
+					CheckText(text, token);
+					""->PrintLine();
+				};
+			}
+			else {
+				"Usage: openai_moderation check <text>"->ErrorLine();
+				"       openai_moderation demo"->ErrorLine();
+			};
+		}
+		else {
+			"Error: unable to read openai_api_key.dat"->ErrorLine();
+		};
+	}
+
+	function : CheckText(text : String, token : String) ~ Nil {
+		result := Moderation->Check(text, token);
+		if(result <> Nil) {
+			"ID: {$result->GetId()}"->PrintLine();
+			"Model: {$result->GetModel()}"->PrintLine();
+			flagged := result->IsFlagged();
+			"Flagged: {$flagged}"->PrintLine();
+
+			if(flagged) {
+				"Active categories:"->PrintLine();
+				category_names := String->New[11];
+				category_names[0] := "harassment";
+				category_names[1] := "harassment/threatening";
+				category_names[2] := "hate";
+				category_names[3] := "hate/threatening";
+				category_names[4] := "self-harm";
+				category_names[5] := "self-harm/instructions";
+				category_names[6] := "self-harm/intent";
+				category_names[7] := "sexual";
+				category_names[8] := "sexual/minors";
+				category_names[9] := "violence";
+				category_names[10] := "violence/graphic";
+
+				each(i : category_names) {
+					cat := category_names[i];
+					if(result->GetCategory(cat)) {
+						score := result->GetScore(cat);
+						"  {$cat}: score={$score}"->PrintLine();
+					};
+				};
+			};
+		}
+		else {
+			Moderation->GetLastError()->ErrorLine();
+		};
+	}
+
+	function : GetApiKey() ~ String {
+		token := FileReader->ReadFile("openai_api_key.dat");
+		if(token <> Nil) {
+			return token->Trim();
+		};
+
+		return Nil;
+	}
+}

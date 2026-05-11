@@ -5757,6 +5757,408 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 	}
 
 	#~
+	Result of a content moderation check
+	~#
+	class ModerationResult {
+		@id : String;
+		@model : String;
+		@flagged : Bool;
+		@result_json : JsonElement;
+
+		New(result_json : JsonElement, id : String, model : String) {
+			@result_json := result_json;
+			@id := id;
+			@model := model;
+			flagged_json := result_json->Get("flagged");
+			if(flagged_json <> Nil) {
+				@flagged := flagged_json->GetBool();
+			};
+		}
+
+		#~
+		@return request ID
+		~#
+		method : public : GetId() ~ String {
+			return @id;
+		}
+
+		#~
+		@return model used for moderation
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		#~
+		@return true if any category was flagged
+		~#
+		method : public : IsFlagged() ~ Bool {
+			return @flagged;
+		}
+
+		#~
+		Check whether a specific category was flagged
+		@param name category name (e.g. 'hate', 'violence', 'sexual')
+		@return true if flagged
+		~#
+		method : public : GetCategory(name : String) ~ Bool {
+			cats_json := @result_json->Get("categories");
+			if(cats_json <> Nil) {
+				cat_json := cats_json->Get(name);
+				if(cat_json <> Nil) {
+					return cat_json->GetBool();
+				};
+			};
+			return false;
+		}
+
+		#~
+		Get the confidence score for a specific category
+		@param name category name
+		@return score in [0.0, 1.0]
+		~#
+		method : public : GetScore(name : String) ~ Float {
+			scores_json := @result_json->Get("category_scores");
+			if(scores_json <> Nil) {
+				score_json := scores_json->Get(name);
+				if(score_json <> Nil) {
+					return score_json->GetFloat();
+				};
+			};
+			return 0.0;
+		}
+
+		#~
+		@return the raw categories JSON element
+		~#
+		method : public : GetCategories() ~ JsonElement {
+			return @result_json->Get("categories");
+		}
+
+		#~
+		@return the raw category_scores JSON element
+		~#
+		method : public : GetScores() ~ JsonElement {
+			return @result_json->Get("category_scores");
+		}
+	}
+
+	#~
+	Moderates text content using OpenAI's moderation models.
+
+```
+result := Moderation->Check("Some text to check", token);
+if(result->IsFlagged()) {
+  "Flagged categories:"->PrintLine();
+  result->GetCategories()->ToString()->PrintLine();
+};
+```
+	~#
+	class Moderation from EndPoint {
+		#~
+		Check content with the default model (omni-moderation-latest)
+		@param input text to moderate
+		@param token API key
+		@return moderation result, Nil on error
+		~#
+		function : Check(input : String, token : String) ~ ModerationResult {
+			return Check(input, "omni-moderation-latest", token);
+		}
+
+		#~
+		Check content with a specific model
+		@param input text to moderate
+		@param model moderation model name
+		@param token API key
+		@return moderation result, Nil on error
+		~#
+		function : Check(input : String, model : String, token : String) ~ ModerationResult {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("input", input);
+			query_json->Insert("model", model);
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/moderations"),
+				query_json->ToString()->ToByteArray(), "application/json", headers);
+
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					SetLastError("Unable to parse moderation response");
+					return Nil;
+				};
+				if(response_json->Has("error")) {
+					SetLastError(response_json->FindElements("error/message")->GetString());
+					return Nil;
+				};
+				id := "";
+				id_json := response_json->Get("id");
+				if(id_json <> Nil) {
+					id := id_json->GetString();
+				};
+				resp_model := model;
+				model_json := response_json->Get("model");
+				if(model_json <> Nil) {
+					resp_model := model_json->GetString();
+				};
+				results_json := response_json->Get("results");
+				if(results_json <> Nil & results_json->Size() > 0) {
+					return ModerationResult->New(results_json->Get(0), id, resp_model);
+				};
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
+	A batch job submitted for asynchronous processing
+	~#
+	class BatchJob {
+		@id : String;
+		@status : String;
+		@endpoint : String;
+		@input_file_id : String;
+		@output_file_id : String;
+		@error_file_id : String;
+		@created_at : Int;
+		@completed_at : Int;
+		@total : Int;
+		@completed : Int;
+		@failed : Int;
+
+		New(job_json : JsonElement) {
+			id_json := job_json->Get("id");
+			if(id_json <> Nil) { @id := id_json->GetString(); };
+			status_json := job_json->Get("status");
+			if(status_json <> Nil) { @status := status_json->GetString(); };
+			ep_json := job_json->Get("endpoint");
+			if(ep_json <> Nil) { @endpoint := ep_json->GetString(); };
+			in_json := job_json->Get("input_file_id");
+			if(in_json <> Nil) { @input_file_id := in_json->GetString(); };
+			out_json := job_json->Get("output_file_id");
+			if(out_json <> Nil) { @output_file_id := out_json->GetString(); };
+			err_json := job_json->Get("error_file_id");
+			if(err_json <> Nil) { @error_file_id := err_json->GetString(); };
+			created_json := job_json->Get("created_at");
+			if(created_json <> Nil) { @created_at := created_json->GetInt(); };
+			done_json := job_json->Get("completed_at");
+			if(done_json <> Nil) { @completed_at := done_json->GetInt(); };
+			counts_json := job_json->Get("request_counts");
+			if(counts_json <> Nil) {
+				total_json := counts_json->Get("total");
+				if(total_json <> Nil) { @total := total_json->GetInt(); };
+				comp_json := counts_json->Get("completed");
+				if(comp_json <> Nil) { @completed := comp_json->GetInt(); };
+				fail_json := counts_json->Get("failed");
+				if(fail_json <> Nil) { @failed := fail_json->GetInt(); };
+			};
+		}
+
+		#~ @return batch ID ~#
+		method : public : GetId() ~ String { return @id; }
+		#~ @return status: 'validating', 'in_progress', 'completed', 'failed', 'cancelled' ~#
+		method : public : GetStatus() ~ String { return @status; }
+		#~ @return API endpoint this batch targets ~#
+		method : public : GetEndpoint() ~ String { return @endpoint; }
+		#~ @return ID of the uploaded input .jsonl file ~#
+		method : public : GetInputFileId() ~ String { return @input_file_id; }
+		#~ @return ID of the output file (available when completed) ~#
+		method : public : GetOutputFileId() ~ String { return @output_file_id; }
+		#~ @return ID of the error file (available when completed) ~#
+		method : public : GetErrorFileId() ~ String { return @error_file_id; }
+		#~ @return Unix timestamp when the batch was created ~#
+		method : public : GetCreatedAt() ~ Int { return @created_at; }
+		#~ @return Unix timestamp when the batch completed ~#
+		method : public : GetCompletedAt() ~ Int { return @completed_at; }
+		#~ @return total number of requests in the batch ~#
+		method : public : GetTotal() ~ Int { return @total; }
+		#~ @return number of successfully completed requests ~#
+		method : public : GetCompleted() ~ Int { return @completed; }
+		#~ @return number of failed requests ~#
+		method : public : GetFailed() ~ Int { return @failed; }
+		#~ @return true if the batch has finished processing ~#
+		method : public : IsComplete() ~ Bool {
+			return @status <> Nil & @status->Equals("completed");
+		}
+
+		method : public : ToString() ~ String {
+			return "BatchJob[id='{$@id}', status='{$@status}', endpoint='{$@endpoint}', total={$@total}, completed={$@completed}, failed={$@failed}]";
+		}
+	}
+
+	#~
+	Batch API for asynchronous bulk request processing.
+
+```
+# 1. build a .jsonl file of requests and upload it
+data := FileReader->ReadFile("requests.jsonl")->ToByteArray();
+file := File->Create("requests.jsonl", "batch", data, token);
+
+# 2. create a batch job
+job := Batch->Create(file->GetId(), "/v1/chat/completions", token);
+job->ToString()->PrintLine();
+
+# 3. poll until done
+job = Batch->Get(job->GetId(), token);
+"Status: {$job->GetStatus()}"->PrintLine();
+```
+	~#
+	class Batch from EndPoint {
+		#~
+		Create a batch job with the 24-hour completion window
+		@param file_id uploaded .jsonl file ID
+		@param endpoint target API endpoint (e.g. '/v1/chat/completions')
+		@param token API key
+		@return created batch job, Nil on error
+		~#
+		function : Create(file_id : String, endpoint : String, token : String) ~ BatchJob {
+			return Create(file_id, endpoint, "24h", token);
+		}
+
+		#~
+		Create a batch job with a custom completion window
+		@param file_id uploaded .jsonl file ID
+		@param endpoint target API endpoint
+		@param completion_window time allowed for completion (only '24h' is currently supported)
+		@param token API key
+		@return created batch job, Nil on error
+		~#
+		function : Create(file_id : String, endpoint : String, completion_window : String, token : String) ~ BatchJob {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("input_file_id", file_id);
+			query_json->Insert("endpoint", endpoint);
+			query_json->Insert("completion_window", completion_window);
+
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/batch"),
+				query_json->ToString()->ToByteArray(), "application/json", headers);
+
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					SetLastError("Unable to parse batch response");
+					return Nil;
+				};
+				if(response_json->Has("error")) {
+					SetLastError(response_json->FindElements("error/message")->GetString());
+					return Nil;
+				};
+				return BatchJob->New(response_json);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Retrieve a batch job by ID
+		@param batch_id batch ID
+		@param token API key
+		@return batch job, Nil on error
+		~#
+		function : Get(batch_id : String, token : String) ~ BatchJob {
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/batch/{$batch_id}"),
+				"application/json", headers);
+
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					SetLastError("Unable to parse batch response");
+					return Nil;
+				};
+				if(response_json->Has("error")) {
+					SetLastError(response_json->FindElements("error/message")->GetString());
+					return Nil;
+				};
+				return BatchJob->New(response_json);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Cancel a running batch job
+		@param batch_id batch ID
+		@param token API key
+		@return updated batch job, Nil on error
+		~#
+		function : Cancel(batch_id : String, token : String) ~ BatchJob {
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/batch/{$batch_id}/cancel"),
+				""->ToByteArray(), "application/json", headers);
+
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					SetLastError("Unable to parse batch cancel response");
+					return Nil;
+				};
+				if(response_json->Has("error")) {
+					SetLastError(response_json->FindElements("error/message")->GetString());
+					return Nil;
+				};
+				return BatchJob->New(response_json);
+			};
+
+			return Nil;
+		}
+
+		#~
+		List recent batch jobs (up to 20)
+		@param token API key
+		@return list of batch jobs, Nil on error
+		~#
+		function : List(token : String) ~ Vector<BatchJob> {
+			return List(20, token);
+		}
+
+		#~
+		List batch jobs with a result limit
+		@param limit maximum number of results
+		@param token API key
+		@return list of batch jobs, Nil on error
+		~#
+		function : List(limit : Int, token : String) ~ Vector<BatchJob> {
+			headers := Map->New()<String, String>;
+			headers->Insert("Authorization", "Bearer {$token}");
+
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/batch?limit={$limit}"),
+				"application/json", headers);
+
+			if(response <> Nil) {
+				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(response_json = Nil) {
+					SetLastError("Unable to parse batch list response");
+					return Nil;
+				};
+				if(response_json->Has("error")) {
+					SetLastError(response_json->FindElements("error/message")->GetString());
+					return Nil;
+				};
+				jobs := Vector->New()<BatchJob>;
+				data_json := response_json->Get("data");
+				if(data_json <> Nil) {
+					each(job_json in data_json) {
+						jobs->AddBack(BatchJob->New(job_json));
+					};
+				};
+				return jobs;
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
 	OpenAI endpoint
 	~#
 	class EndPoint {
