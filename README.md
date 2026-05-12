@@ -62,9 +62,23 @@ obc hello && obr hello
 
 **Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
-**v2026.5.0** ✅
+**v2026.5.1**
   * **HTTP/2 client** — `Http2Client` with persistent TLS connections, custom headers, GET/POST/PUT/DELETE, and `QuickGet`/`QuickPost` one-liners (nghttp2 + ALPN)
   * **HTTP/3 / QUIC client** — `Http3Client` over UDP with connection reuse and the same `Quick*` API (ngtcp2 + nghttp3 + GnuTLS)
+  * **HTTP/1.1 improvements** — PATCH method, redirect handling fixes, retry parity across `HttpClient`/`HttpsClient`
+  * **OpenAI Moderation** — `Moderation->Check()` returns per-category flags and confidence scores
+  * **OpenAI Batch** — `Batch->Create()`/`Get()` for async 50%-cost batch requests (up to 50k at a time)
+  * **Gemini Files API** — upload, list, get, and delete files via `FileManager`
+  * **Gemini Context Caching** — `CachedContent->Create()` for server-side prompt caching with configurable TTL
+  * **Gemini Search Grounding** — `Model->GenerateContentWithGrounding()` anchors responses in live Google Search results
+  * **Gemini Batch Embeddings** — `Model->BatchEmbedContent()` embeds multiple texts in one round-trip
+  * **WebSocket hardening** — 8 bug fixes + bulk `ReadBuffer` I/O replacing per-byte reads
+  * **MCP server fixes** — hang on shutdown and crash-on-stop resolved; regression tests added
+  * **Socket reliability** — `SO_REUSEADDR` on `TCPSocketServer::Bind()` survives TIME_WAIT; `IPSocket::Open()` falls through to next address on `socket()` failure
+  * **Security hardening** — LSP concurrent-request mutex; scrfd tensor bounds check; `conf_threshold` NaN/range guard; `WinWriteWide` DWORD truncation guard
+  * **MSVC optimizations** — Release build improvements for VM and compiler
+
+**v2026.5.0** ✅
   * **Face recognition** — new `FaceSession` API with SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings (InsightFace buffalo_l). Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.
   * **Windows emoji** — full Unicode supplementary plane output (emoji and other non-BMP characters) now works correctly in cmd.exe and Windows Terminal via `WriteConsoleW`
   * **LSP enhancements** — typeHierarchy, selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes
