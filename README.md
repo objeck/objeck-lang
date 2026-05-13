@@ -85,7 +85,7 @@ obc hello && obr hello
   * **ARM64 JIT** — fixed EXT_LIB_FUNC_CALL crash; macOS ONNX build and CodeQL fixes
   * **`OBJECK_JIT_DISABLE`** — new boolean env var for cleanly disabling auto-JIT at startup
 
-**v2026.4.3** ✅
+**v2026.4.3** 
   * **DAP debugger hover** — hovering an object shows `ClassName { field=val, ... }` with one-level instance field expansion via `FormatObjectForDap`
   * **DAP instance/class variable scopes** — Variables pane now shows separate Locals, Instance, and Class scopes with correct memory mapping
   * **DAP stepping + crash fixes** — fixed step-into crash, step-over/step-out scoping, stdout corruption, disconnect access violation, and variable display
@@ -94,15 +94,6 @@ obc hello && obr hello
   * **Configurable JIT threshold** — auto-JIT invocation count can now be tuned
   * Fixed JIT S2F callback param count causing segfault on `String:ToFloat`
   * Hardened HTTPS client against null `ReadLine` on connection failures
-
-**v2026.4.2**
-  * **JIT local variable register cache** (AMD64 + ARM64) — keeps values in registers after store, avoids redundant reloads, evicts on demand when register pool is exhausted
-  * **Hardened JSON, JSON stream, and XML parsers** against malformed input
-  * **DTLS (Datagram TLS) support** — new `DTLSSocket` and `DTLSSocketServer` classes for secure UDP communication (IoT, VoIP, gaming)
-  * **Link-time optimization** — added `-flto=auto` across all GCC Makefiles (AMD64 and ARM64)
-  * **ARM64 native CPU tuning** — `-mcpu=native` auto-detects RPi5 (Cortex-A76) and Jetson Orin (Cortex-A78AE)
-  * Fixed all MSVC and GCC compiler warnings
-  * Fixed doc generator error on `@hidden` tag
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
