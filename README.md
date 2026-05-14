@@ -3,8 +3,7 @@
 </p>
 
 <p align="center">
-<strong>Object-oriented • JIT-compiled • AI-native • Network-complete</strong><br>
-Modern programming language — from HTTP/3 to GPT-4, it's all standard library
+<strong>Object-oriented • JIT-compiled • AI-native • Robust API support
 </p>
 
 <hr/>
