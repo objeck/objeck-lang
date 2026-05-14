@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-<strong>Object-oriented • JIT-compiled • AI-native • Robust API support
+<strong>Object-oriented • JIT-compiled • AI-native • Robust APIs
 </p>
 
 <hr/>
