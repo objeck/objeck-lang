@@ -166,8 +166,8 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ needs.check-trigger.outputs.version }}"
-          $renamer = "core\release\deploy-x64\bin\obr.exe"
-          $renameScript = "core\release\deploy-x64\bin\deploy_rename.obe"
+          $renamer = ".\core\release\deploy-x64\bin\obr.exe"
+          $renameScript = ".\core\release\deploy-x64\bin\deploy_rename.obe"
 
           # Create staging directory
           $stageDir = "release-staging"
