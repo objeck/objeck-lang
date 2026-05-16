@@ -1,3 +1,24 @@
+v2026.5.1 (May 16, 2026)
+===
+HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, WebSocket hardening.
+
+v2026.5.1
+- HTTP/2 client (Http2Client): persistent TLS connections, GET/POST/PUT/DELETE/PATCH, Quick* one-liners via nghttp2 + ALPN
+- HTTP/3 / QUIC client (Http3Client): UDP connections with connection reuse and Quick* API via ngtcp2 + nghttp3 + GnuTLS
+- HTTP/1.1 improvements: PATCH method, redirect handling fixes for POST/PUT, retry parity across HttpClient/HttpsClient
+- OpenAI Moderation: Moderation->Check() returns per-category flags and confidence scores
+- OpenAI Batch: Batch->Create()/Get() for async 50%-cost batch requests (up to 50k at a time)
+- Gemini Files API: upload, list, get, delete files via FileManager
+- Gemini Context Caching: CachedContent->Create() for server-side prompt caching with configurable TTL
+- Gemini Search Grounding: Model->GenerateContentWithGrounding() anchors responses in live Google Search results
+- Gemini Batch Embeddings: Model->BatchEmbedContent() embeds multiple texts in one round-trip
+- WebSocket hardening: 8 bug fixes including bulk ReadBuffer I/O replacing per-byte reads
+- MCP server fixes: hang on shutdown and crash-on-stop resolved; regression tests added
+- Socket reliability: SO_REUSEADDR on TCPSocketServer::Bind() survives TIME_WAIT; IPSocket::Open() falls through to next address on failure
+- EmbeddingValues wrapper to avoid Float[] as generic type parameter
+- MSVC compatibility: NOMINMAX ordering, std::min(); Release build optimizations for VM and compiler
+- CI: CodeQL v4, node24-compatible Actions, nghttp2/ngtcp2 on all platforms
+
 v2026.5.0 (May 7, 2026)
 ===
 Face recognition (SCRFD+ArcFace), Windows emoji fix, LSP enhancements.
