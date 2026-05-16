@@ -47,6 +47,7 @@
           <a href="index.html">Home</a>
           <a href="https://playground.objeck.org">Playground</a>
           <a href="getting_started.html">Quick Start</a>
+          <a href="ai_guide.html">AI Guide</a>
           <a href="https://github.com/objeck/objeck-lang/releases/latest">Downloads</a>
           <a href="readme.html">Changelog</a>
           <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a>
@@ -294,7 +295,7 @@
         </li>
         <li>
          <a href="#ai_ml">
-          AI/ML: Gemini Chat
+          AI &amp; ML (OpenAI, Gemini, Ollama)
          </a>
         </li>
         <li>
@@ -2216,36 +2217,80 @@ if(restored &lt;&gt; Nil) {
 };
 </code></pre>
          <h4 id="ai_ml">
-          AI/ML: Gemini Chat
+          AI &amp; ML
          </h4>
          <p>
-          Objeck includes built-in client libraries for <a href="https://www.objeck.org/api/latest/index.html" target="_blank">OpenAI, Google Gemini, and Ollama</a>. Here is an example using the Gemini API to generate text.
+          Objeck includes built-in client libraries for OpenAI, Google Gemini, Ollama, ONNX Runtime, and OpenCV — no third-party packages, no pip install. The <code>-lib</code> flag links the required libraries at compile time.
          </p>
-         <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
-use Data.JSON;
+
+         <p><strong>OpenAI — cloud chat</strong></p>
+         <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
+
+class OpenAIChat {
+  function : Main(args : String[]) ~ Nil {
+    token := FileReader-&gt;ReadFile("openai_api_key.dat")-&gt;Trim();
+    response := Response-&gt;Respond("gpt-4o-mini",
+      Pair-&gt;New("user", "Explain JIT compilation in one sentence.")&lt;String, String&gt;,
+      token);
+    response-&gt;GetText()-&gt;PrintLine();
+  }
+}
+</code></pre>
+         <pre class="cmd">&gt; obc -src openai_chat.obs -lib net,net_server,json,cipher,misc,openai
+&gt; obr openai_chat</pre>
+
+         <p><strong>Gemini — cloud chat with vision</strong></p>
+         <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, System.IO.Filesystem;
 
 class GeminiChat {
   function : Main(args : String[]) ~ Nil {
-    # create a text prompt
-    content := Content-&gt;New("user");
-    content-&gt;AddPart(TextPart-&gt;New("What is JIT compilation?"));
+    token := EndPoint-&gt;GetApiKey();   # reads gemini_api_key.dat
 
-    # generate a response using Gemini
-    response := Model-&gt;GenerateContent(
-      "gemini-1.5-flash", content, EndPoint-&gt;GetApiKey());
-    if(response &lt;&gt; Nil) {
-      each(i : response) {
-        candidate := response-&gt;Get(i)-&gt;As(Candidate);
-        candidate-&gt;GetContent()-&gt;GetText()-&gt;PrintLine();
-      };
+    # text
+    content := Content-&gt;New("user")-&gt;AddPart(TextPart-&gt;New("What is JIT compilation?"));
+    candidates := Model-&gt;GenerateContent("models/gemini-2.0-flash", content, token);
+    if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
+      candidates-&gt;First()-&gt;GetAllText()-&gt;PrintLine();
+    };
+
+    # image + text
+    bytes := FileReader-&gt;ReadBinaryFile("chart.png");
+    content := Content-&gt;New("user")
+      -&gt;AddPart(TextPart-&gt;New("Summarize this chart."))
+      -&gt;AddPart(BinaryPart-&gt;New(bytes, "image/png"));
+    candidates := Model-&gt;GenerateContent("models/gemini-2.0-flash", content, token);
+    if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
+      candidates-&gt;First()-&gt;GetAllText()-&gt;PrintLine();
     };
   }
 }
 </code></pre>
-         <pre class="cmd">&gt; obc -src gemini_chat.obs -lib net,json,misc,gemini,cipher
+         <pre class="cmd">&gt; obc -src gemini_chat.obs -lib net,net_server,json,cipher,misc,gemini
 &gt; obr gemini_chat</pre>
+
+         <p><strong>Ollama — local models, no API key</strong></p>
+         <pre class="line-numbers"><code class="language-cpp">use API.Ollama;
+
+class LocalChat {
+  function : Main(args : String[]) ~ Nil {
+    # one-shot
+    Completion-&gt;Generate("llama3.2", "What is 2 + 2?")-&gt;PrintLine();
+
+    # multi-turn (context maintained automatically)
+    chat := Chat-&gt;New("llama3.2");
+    r1 := chat-&gt;Send("My name is Alice.");
+    r2 := chat-&gt;Send("What is my name?");
+    r2-&gt;PrintLine();   # "Your name is Alice."
+  }
+}
+</code></pre>
+         <pre class="cmd">&gt; ollama pull llama3.2
+&gt; obc -src local_chat.obs -lib net,json,cipher,misc,ollama
+&gt; obr local_chat</pre>
+
          <p>
-          The <code>-lib</code> flag links the required networking, JSON, and Gemini libraries. See the <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API documentation</a> for OpenAI and Ollama examples.
+          For ONNX local inference, computer vision, NLP, and full API details see the
+          <a href="ai_guide.html">AI Developer Guide</a>.
          </p>
          <h4 id="database">
           Database: ODBC
