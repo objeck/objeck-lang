@@ -583,7 +583,12 @@ jobs:
             libsdl2-mixer-dev \
             libreadline-dev \
             libeigen3-dev \
-            libmp3lame-dev
+            libmp3lame-dev \
+            libnghttp2-dev \
+            libngtcp2-dev \
+            libngtcp2-crypto-gnutls-dev \
+            libnghttp3-dev \
+            libgnutls28-dev
 
       - name: Build compiler and runtime
         run: |
