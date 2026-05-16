@@ -30,9 +30,7 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ## Try It Online
 
-No installation needed - write, compile, and run Objeck code directly in your browser:
-
-👉🏽 Interactive [playground](https://playground.objeck.org) with 33 demo programs across 7 categories with Monaco editor and syntax highlighting.
+👉🏽 [playground.objeck.org](https://playground.objeck.org) — 33 demos across 7 categories, Monaco editor, no install required.
 
 ## Quick Start
 
@@ -58,8 +56,6 @@ obc hello && obr hello
 💡 **Examples**: [github.com/objeck/objeck-lang/programs](https://github.com/objeck/objeck-lang/tree/master/programs)
 
 ## What's New
-
-**Web Playground** — [Try Objeck in your browser](https://playground.objeck.org). Code runs in sandboxed Docker containers on a dedicated server. Includes 33 demos covering the language basics, OOP, algorithms, collections, data processing, and more.
 
 **v2026.5.1** ✅
   * **HTTP/2 client** — `Http2Client` with persistent TLS connections, custom headers, GET/POST/PUT/DELETE, and `QuickGet`/`QuickPost` one-liners (nghttp2 + ALPN)
@@ -261,16 +257,11 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 
 ## Resources
 
-- 🌐 [Web Playground](https://playground.objeck.org) — try Objeck in your browser
 - 📖 [Documentation](https://www.objeck.org)
 - 🏗️ [Architecture](docs/architecture.md) — Mermaid diagrams covering compiler, VM, JIT, libraries, and CI/CD
 - 🎯 [Examples](https://github.com/objeck/objeck-lang/tree/master/programs)
 - 💬 [Discussions](https://github.com/objeck/objeck-lang/discussions)
 - 🐛 [Issues](https://github.com/objeck/objeck-lang/issues)
-
-
-
-
 
 
 
