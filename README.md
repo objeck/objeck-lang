@@ -69,12 +69,11 @@ obc hello && obr hello
   * **ARM64 Windows** — OpenCV and ONNX now fully supported on ARM64 Windows
   * **Improved release process** — self-contained Windows builds with committed nghttp2 libs; CI verifies all binaries and API docs on all platforms before publishing
 
-**v2026.5.0** 
-  * **Face recognition** — new `FaceSession` API with SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings (InsightFace buffalo_l). Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.
-  * **Windows emoji** — full Unicode supplementary plane output (emoji and other non-BMP characters) now works correctly in cmd.exe and Windows Terminal via `WriteConsoleW`
-  * **LSP enhancements** — typeHierarchy, selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes
-  * **ARM64 JIT** — fixed EXT_LIB_FUNC_CALL crash; macOS ONNX build and CodeQL fixes
-  * **`OBJECK_JIT_DISABLE`** — new boolean env var for cleanly disabling auto-JIT at startup
+**v2026.4.3**
+  * **DAP debugger hover** — hovering an object shows `ClassName { field=val, ... }` with instance field expansion
+  * **DAP variable scopes** — Variables pane shows separate Locals, Instance, and Class scopes
+  * **Editor setup** — updated VS Code, Sublime Text, and gvim/Vim DAP+LSP setup for Windows, Linux, and macOS
+  * Bug fixes for DAP step-into crash, step-over/out scoping, stdout corruption, LSP crash on codeAction
 
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
@@ -89,7 +88,7 @@ obc hello && obr hello
 | **Windows** | ARM64 | [MSI Installer](https://github.com/objeck/objeck-lang/releases/latest) / [ZIP](https://github.com/objeck/objeck-lang/releases/latest) |
 | **Linux** | x64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **Linux** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
-| **macOS** | ARM64 (M1/M2/M3) | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **macOS** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **LSP** | All platforms | [ZIP Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 
 📦 **Alternative:** [Sourceforge](https://sourceforge.net/projects/objeck/files/) • 📚 **API Docs:** [objeck.org/api/latest](https://www.objeck.org/api/latest/)
