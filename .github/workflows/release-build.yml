@@ -169,6 +169,7 @@ jobs:
             build-essential \
             libopencv-dev \
             libmbedtls-dev \
+            libnghttp2-dev \
             unixodbc-dev \
             libsdl2-dev \
             libsdl2-image-dev \
@@ -192,7 +193,7 @@ jobs:
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: |
-          brew install opencv mbedtls unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
+          brew install opencv mbedtls nghttp2 unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
           brew cleanup
 
       - name: Select Xcode 16.3+ (macOS)
@@ -222,15 +223,15 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          # Install mbedtls via vcpkg for crypto library
-          vcpkg install mbedtls:${{ matrix.arch }}-windows
+          # Install nghttp2 and mbedtls via vcpkg
+          vcpkg install nghttp2:${{ matrix.arch }}-windows mbedtls:${{ matrix.arch }}-windows
 
           # Set include/lib paths for Visual Studio
           $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
           echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
           echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
 
-          Write-Output "✅ Installed mbedtls for ${{ matrix.arch }}"
+          Write-Output "✅ Installed nghttp2 and mbedtls for ${{ matrix.arch }}"
           Write-Output "Set INCLUDE=$vcpkgRoot\include"
           Write-Output "Set LIB=$vcpkgRoot\lib"
 
