@@ -52,9 +52,19 @@
   </header>
 
   <main style="text-align: left;">
-   <p>HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, WebSocket hardening.</p>
 
-   <h3><u>v2026.5.1</u></h3>
+    <!-- Intro -->
+    <p style="font-size: 1.05rem; color: #555; margin: 0.5rem 0 1.25rem;">
+      AI, networking, and vision — built in. Every release moves the stack forward.
+    </p>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem;">
+      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.5.1</a>
+      <a class="btn btn-secondary" href="getting_started.html">Quick Start</a>
+      <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
+    </div>
+
+    <!-- Changelog -->
+    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.1" style="color: inherit; text-decoration: none;">v2026.5.1</a></u></h3>
     <ul>
         <li><strong>HTTP/2 client</strong> &mdash; <code>Http2Client</code> with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and <code>Quick*</code> one-liners via nghttp2 + ALPN</li>
         <li><strong>HTTP/3 / QUIC client</strong> &mdash; <code>Http3Client</code> over UDP with connection reuse and the same <code>Quick*</code> API (ngtcp2 + nghttp3 + GnuTLS)</li>
@@ -69,16 +79,16 @@
         <li>CI: CodeQL v4, node24-compatible Actions, nghttp2/ngtcp2 on all platforms</li>
     </ul>
 
-   <h3>v2026.5.0</h3>
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.0" style="color: inherit; text-decoration: none;">v2026.5.0</a></h3>
     <ul>
         <li><strong>Face recognition</strong> (<code>FaceSession</code>) &mdash; SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings from InsightFace buffalo_l. Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.</li>
-        <li><strong>Windows emoji</strong> &mdash; full Unicode supplementary plane output (emoji and non-BMP characters) now works correctly in cmd.exe and Windows Terminal via <code>WriteConsoleW</code>; pipe/file redirection emits correct UTF-8</li>
+        <li><strong>Windows emoji</strong> &mdash; full Unicode supplementary plane output (emoji and non-BMP characters) now works correctly in cmd.exe and Windows Terminal via <code>WriteConsoleW</code></li>
         <li><strong>LSP enhancements</strong> &mdash; typeHierarchy, selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes</li>
         <li><strong>ARM64 JIT</strong> &mdash; fixed <code>EXT_LIB_FUNC_CALL</code> crash; macOS ONNX build and CodeQL fixes</li>
         <li><strong><code>OBJECK_JIT_DISABLE</code></strong> &mdash; new boolean env var for cleanly disabling auto-JIT at startup</li>
     </ul>
 
-   <h3>v2026.4.3</h3>
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.3" style="color: inherit; text-decoration: none;">v2026.4.3</a></h3>
     <ul>
         <li><strong>DAP debugger hover</strong> &mdash; hovering an object shows <code>ClassName { field=val, ... }</code> with one-level instance field expansion</li>
         <li><strong>DAP instance/class variable scopes</strong> &mdash; Variables pane shows separate Locals, Instance, and Class scopes</li>
@@ -90,7 +100,7 @@
         <li>Hardened HTTPS client against null ReadLine on connection failures</li>
     </ul>
 
-   <h3>v2026.4.2</h3>
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.2" style="color: inherit; text-decoration: none;">v2026.4.2</a></h3>
     <ul>
         <li><strong>JIT local variable register cache</strong> (AMD64 + ARM64) &mdash; ~3x speedup across all benchmarks</li>
         <li><strong>DTLS support</strong> &mdash; secure UDP via <code>DTLSSocket</code> and <code>DTLSSocketServer</code></li>
@@ -98,343 +108,56 @@
         <li>Hardened JSON/XML parsers, LTO, ARM64 native CPU tuning</li>
     </ul>
 
-   <h3>v2026.4.1</h3>
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.1" style="color: inherit; text-decoration: none;">v2026.4.1</a></h3>
     <ul>
         <li>Debug Adapter Protocol (DAP) for VS Code with conditional breakpoints and ANSI colors</li>
         <li>3.3x binarytrees speedup &mdash; young-gen bump allocator, direct JIT-to-JIT calling</li>
         <li>GC thread safety with memory barriers to fix intermittent threading segfaults</li>
         <li>macOS .pkg installer &mdash; signed and notarized with PATH auto-configuration</li>
-        <li>Code signing fully automated in CI (Apple + Windows)</li>
         <li>Networking, ODBC, OpenCV, Phi-3 Vision improvements</li>
     </ul>
 
-   <h3>v2026.2.1</h3>
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.2.1" style="color: inherit; text-decoration: none;">v2026.2.1</a></h3>
     <ul>
         <li>Added <code>try/otherwise</code> error handling framework</li>
         <li>4.38x nbody speedup, CSE, dead code elimination</li>
         <li>14 debugger and 16 runtime regression tests in CI</li>
-        <li>Bug fixes and JIT compiler improvements</li>
     </ul>
 
-   <h3>v2025.7.0</h3>
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.7.0" style="color: inherit; text-decoration: none;">v2025.7.0</a></h3>
     <ul>
-        <li>Added <code>Hash->Dict(..)</code>, <code>Map->Dict(..)</code> and <code>Vector->Zip(..)</code> to collections</li>
-        <li>Updated style (docs, logos, etc.)</li>
-        <li>Bug fixes</li>
+        <li>Added <code>Hash->Dict()</code>, <code>Map->Dict()</code>, and <code>Vector->Zip()</code> to collections</li>
+        <li>Updated style (docs, logos); bug fixes</li>
     </ul>
 
-    <h3>v2025.6.3</h3>
-       <ul>
-            <li>Support for user-provided HTTPS PEM files</li>
-            <li>Added multi-statement pre/update support <code>for</code> loops</li>
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.6.3" style="color: inherit; text-decoration: none;">v2025.6.3</a></h3>
+    <ul>
+        <li>Support for user-provided HTTPS PEM files</li>
+        <li>Multi-statement pre/update support in <code>for</code> loops</li>
     </ul>
 
-    <h3>v2025.6.2</h3>
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2025.6.2" style="color: inherit; text-decoration: none;">v2025.6.2</a></h3>
     <ul>
         <li>New API documentation system</li>
-        <li>Updated Windows launcher</li>
-        <li>Added support for OpenAI's Responses API</li>
-        <li>Improved JSON scheme support</li>
+        <li>OpenAI Responses API; improved JSON schema support</li>
     </ul>
-   
-   <p>
-    Please refer to the GitHub
-    <a href="https://github.com/objeck/objeck-lang">
-     project site
-    </a>
-    for additional information.
-   </p>
-   <p>
-    The Programmer's Guide is available in the <a href="getting_started.html">Quick Start</a>. Additional examples are available in the
-    <a href="https://rosettacode.org/wiki/Category:Objeck" target="_blank">
-     Rosetta Code
-    </a>
-    . 
-            If you find issues, please submit a
-    <a href="https://github.com/objeck/objeck-lang/issues" target="_blank">
-     ticket
-    </a>
-    .
-   </p>
-   <h3>
-    Getting Started
-   </h3>
-   <p>
-    For new developers, please refer to the
-    <a href="https://www.objeck.org/getting_started.html">
-     getting started guide
-    </a>
-    .
-   </p>
-   <h3>
-    Package directories
-   </h3>
-   <ul>
-    <li>
-     app/ – Windows launcher (optional)
-    </li>
-    <li>
-     bin/ – compiler, debugger, and VM
-    </li>
-    <li>
-     doc/ – general documentation
-    </li>
-    <li>
-     doc/api/ – class library documentation
-    </li>
-    <li>
-     doc/syntax – files to enable syntax highlighting for supported editors
-    </li>
-    <li>
-     examples/ – source code examples, including a 2D game
-    </li>
-    <li>
-     examples/doc – source code for self-documentation system
-    </li>
-    <li>
-     examples/tiny – "tiny" language compiler and VM
-    </li>
-    <li>
-     lib/ – supporting language libraries
-    </li>
-    <li>
-     lib/native/ – native OS shared libraries
-    </li>
-    <li>
-     lib/native/misc – support files for the portable runtime environment
-    </li>
-    <li>
-     lib/sdl/ – host SDL shared libraries
-    </li>
-   </ul>
-   <h3>
-    Windows launcher
-   </h3>
-   <p>
-    The Windows Launcher is a convenient way to run programs and access documentation. On Windows, 
-            configuration information is stored in the
-    <pre class="cmd">%ProgramData%\Objeck</pre>
-    directory and built the first
-            time the app runs. If you move the install location, delete the
-    <pre class="cmd">%ProgramData%\Objeck</pre>
-    directory and rerun the launcher.
-   </p>
-   <h3>
-    Compiling and executing programs
-   </h3>
-   <p>
-    To compile programs outside the
-    <pre class="cmd">bin</pre>
-    directory set, the
-    <pre class="cmd">OBJECK_LIB_PATH</pre>
-    environment 
-            variable must be set. When this variable is set, all library files must be in the directory specified.
-   </p>
-   <p>
-    If the Windows installer is used, these variables will be automatically set.
-   </p>
-   <p>
-    To manually set the environment paths in Windows:
-   </p>
-   <ol>
-    <li>
-     <pre class="cmd">set OBJECK_LIB_PATH=&lt;program_path&gt;\objeck-lang\lib</pre>
-    </li>
-    <li>
-     <pre class="cmd">set PATH=%PATH%;&lt;program_path&gt;\objeck-lang\bin;&lt;program_path&gt;\objeck-lang\lib\sdl</pre>
-    </li>
-    <li>
-     Note: If you compiled Objeck from source under MSYS2 you do not need to include the
-     <pre class="cmd">\objeck-lang\lib\sdl</pre>
-     path as the required SDL2 DLLs are already in the MSYS2 shell's path.
-    </li>
-   </ol>
-   <p>
-    To manually set the environment paths in macOS and Linux:
-   </p>
-   <ol>
-    <li>
-     <pre class="cmd">export PATH=$PATH:&lt;program_path&gt;/objeck-lang/bin</pre>
-    </li>
-    <li>
-     <pre class="cmd">export OBJECK_LIB_PATH=&lt;program_path&gt;/objeck-lang/lib</pre>
-    </li>
-   </ol>
-   <p>
-    On Windows, STDIO may be configured to be UFT-8, UTF-16, or binary by setting the environment variable
-    <pre class="cmd">OBJECK_STDIO</pre>
-    to "binary" or "utf16", the default is UTF-8.
-   </p>
-   <p>
-    Simple compile/execute:
-   </p>
-   <ol>
-    <li>
-     <pre class="cmd">obc -src ..\examples\hello_0.obs</pre>
-     or
-     <pre class="cmd">obc -src 'C:\Program Files\Objeck\objeck-lang\examples\encrypt_7.obs' -lib cipher -dest my_prgm.obe</pre>
-    </li>
-    <li>
-     <pre class="cmd">obr my_prgm</pre>
-    </li>
-   </ol>
-   <p>
-    Compile/execute for code that has library dependencies:
-   </p>
-   <ol>
-    <li>
-     <pre class="cmd">obc -src ..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe</pre>
-    </li>
-    <li>
-     <pre class="cmd">obr xml.obe</pre>
-    </li>
-   </ol>
-   <h3>
-    SDL Support
-   </h3>
-   <p>
-    The 2D gaming framework is built around
-    <a href="https://www.libsdl.org/download-2.0.php">
-     SDL2
-    </a>
-    (&gt;=2.0.9). The Windows distribution contains 
-            the required DLLs. Support for other platforms is below.
-   </p>
-   <h3>
-    For Linux
-   </h3>
-   <p>
-    <pre class="cmd">sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libsdl2-net-dev libsdl2-gfx-dev</pre>
-   </p>
-   <h3>
-    For macOS
-   </h3>
-   <ol>
-    <li>
-     Apple Silicon (arm64)
-    </li>
-    <li>
-     Go to the
-     <pre class="cmd">/lib/native</pre>
-     directory and untar the
-     <pre class="cmd">sdl2_arm64.tgz</pre>
-     file
-    </li>
-    <li>
-     Copy the include and lib files to
-     <pre class="cmd">/usr/local/include</pre>
-     and
-     <pre class="cmd">/usr/local/lib</pre>
-    </li>
-   </ol>
-   <h3>
-    Secure Web Server Support
-   </h3>
-   <p>
-The following steps generate a self-signed SSL certificate for the 'TCPSecureSocketServer' class using 
-            OpenSSL commands (for Windows and Linux):
-   </p>
-   <ol>
-    <li>
-     <pre class="cmd">
-openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout local.key -out local.crt -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,DNS:www.local.net,IP:127.0.0.1"
-</pre>
-    </li>
-    <li>
-     <pre class="cmd">openssl x509 -in local.crt -out cert.pem</pre>
-    </li>
-    <li>
-     <pre class="cmd">openssl rsa -aes256 -in local.key -out local.encrypted.key</pre>
-    </li>
-    <li>
-     <pre class="cmd">mv local.encrypted.key cert.key</pre>
-    </li>
-    <li>
-     <pre class="cmd">rm local.crt local.key</pre>
-    </li>
-    <li>
-     <pre class="cmd">chmod 600 cert.key</pre>
-    </li>
-    <li>
-     Import 'cert.pem' into the host OS
-    </li>
-   </ol>
-   <p>
-    Follow these
-    <a href="https://proxyman.io/posts/2020-09-09-Generate-Self-Signed-Certificate-iOS13-Mac-Catalina">
-     instructions
-    </a>
-    for macOS.
-   </p>
-   <h3>
-    Source Code
-   </h3>
-   <p>
-    The Objeck source repository is located
-    <a href="https://github.com/objeck/objeck-lang">
-     here
-    </a>
-    , and the source can be fetched using the following 
-            GIT command:
-   </p>
-   <ul>
-    <li>
-     <pre class="cmd">git clone https://github.com/objeck/objeck-lang.git</pre>
-    </li>
-   </ul>
-   <h3>
-    License
-   </h3>
-   <p>
-    The software was developed under the FreeBSD
-    <a href="https://opensource.org/licenses/BSD-2-Clause">
-     license
-    </a>
-    . Supporting software licenses can be 
-            found
-    <a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">
-     here
-    </a>
-    .
-   </p>
-   <h3>
-    Bugs and Limitations
-   </h3>
-   <ul>
-    <li>
-     Tested on the following platforms
-     <ul>
-      <li>
-       Windows 10/11 - (ARM64, x64)
-      </li>
-      <li>
-       Ubuntu 24.04 LTS (ARM64, x64)
-      </li>
-      <li>
-       macOS 15.3 - (ARM64)
-      </li>
-     </ul>
-    </li>
-    <li>
-     Intel macOS: You will need to install OpenSSL to use encryption APIs and iODBC to enable database support. 
-                Please refer to the following
-     <a href="http://mac-dev-env.patrickbougie.com/openssl">
-      link
-     </a>
-     for OpenSSL directions and this
-     <a href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX">
-      link
-     </a>
-     for ODBC support.
-    </li>
-    <li>
-     Please file
-     <a href="https://github.com/objeck/objeck-lang/issues" target="_blank">
-      bugs
-     </a>
-     , I do not sleep much.
-    </li>
-   </ul>
+
+    <!-- Footer links -->
+    <div style="margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid #e0e0e0;">
+      <p>
+        <a href="getting_started.html">Quick Start</a> &mdash;
+        <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API Docs</a> &mdash;
+        <a href="https://github.com/objeck/objeck-lang/releases" target="_blank">All Releases</a> &mdash;
+        <a href="https://rosettacode.org/wiki/Category:Objeck" target="_blank">Rosetta Code</a> &mdash;
+        <a href="https://github.com/objeck/objeck-lang/issues" target="_blank">Report an Issue</a>
+      </p>
+      <p style="font-size: 0.9rem; color: #777;">
+        Tested on Windows 10/11, Ubuntu 24.04 LTS, and macOS 15 (ARM64 + x64).
+        Licensed under <a href="https://opensource.org/licenses/BSD-2-Clause">BSD-2-Clause</a>.
+        Source on <a href="https://github.com/objeck/objeck-lang">GitHub</a>.
+      </p>
+    </div>
+
   </main>
   <footer class="footer">
    &copy; 2025-2026 Randy Hollines. All Rights Reserved.
