@@ -15,6 +15,7 @@ Makefile* text eol=lf
 # Binary files - no line ending conversion
 *.exe binary
 *.dll binary
+*.lib binary
 *.so binary
 *.dylib binary
 *.obs binary
