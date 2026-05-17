@@ -279,7 +279,7 @@ jobs:
           vcpkg install opencv4:arm64-windows --feature-flags=-manifests
 
           $vcpkgBin = "C:\vcpkg\installed\arm64-windows\bin"
-          Get-ChildItem "$vcpkgBin\opencv_world*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+          Get-ChildItem "$vcpkgBin\opencv_*4.dll" -ErrorAction SilentlyContinue | ForEach-Object {
             Copy-Item $_.FullName $binDir
             Write-Output "Copied: $($_.Name)"
           }

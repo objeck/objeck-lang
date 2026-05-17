@@ -346,11 +346,8 @@ if [%1] == [arm64] (
 	)
 	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
-	if exist win\arm64\bin\opencv_world4120.dll (
-		copy /y win\arm64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
-	) else (
-		echo Warning: win\arm64\bin\opencv_world4120.dll not found - OpenCV runtime unavailable
-		echo   Install via: vcpkg install opencv4:arm64-windows
+	for %%f in (win\arm64\bin\opencv_*4.dll) do (
+		copy /y %%f ..\..\release\%TARGET%\bin
 	)
 )
 
