@@ -2,44 +2,49 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.5.2] - 2026-05-16
-
-### Bug Fixes
-- Fixed `obr` (VM runtime) absent from all v2026.5.1 platform archives — root cause was `libnghttp2-dev` missing from the main `build` CI job dependency installs (was only in `build-docs` and CodeQL jobs)
-- Fixed API docs (`docs/api.zip`) containing only style files in all prior releases — `build-docs` CI job now commits freshly generated `api.zip` back to `master` with `[skip ci]`
-
-### Infrastructure
-- Added `libnghttp2-dev` to Linux apt-get installs in the main `build` CI job (`release-build.yml`)
-- Added `nghttp2` to macOS Homebrew installs in the main `build` CI job
-- Added `nghttp2:x64-windows` and `nghttp2:arm64-windows` to Windows vcpkg installs in the main `build` CI job
-- Added `vcpkg` include/lib paths to `core/vm/vs/vm.vcxproj` via `$(OBJECK_VCPKG_ROOT)` (falls back to `C:\vcpkg`) so Windows developer builds find nghttp2 headers/libs without manual environment variable setup
-- Added "Verify required binaries" CI step after build: checks that `obr`, `obc`, `obd`, `obi`, `obb` all exist and that `doc/api/` contains 50+ HTML files before artifacts are uploaded
-- `build-docs` job now commits regenerated `api.zip` to `master` after each successful doc build
-
-### Website
-- Added "Changelog" card to the home page (`docs/web/index.html`) creating a clean 2×3 six-card grid; removed the redundant featured DAP card
-
-## [v2026.5.1] - 2026-05-10
+## [v2026.5.2] - 2026-05-17
 
 ### New Features
-- **HTTP/2 client** (`-lib net_h2`): New `Http2Client` class for persistent multiplexed TLS connections using ALPN h2 via nghttp2. Supports GET, POST, PUT, DELETE, PATCH and `Quick*` static convenience methods (QuickGet, QuickPost, QuickPut, QuickDelete, QuickPatch) that accept a `Url` object for one-shot requests. Linux, macOS, and MSYS2.
-- **HTTP/3 client** (`-lib net_quic`): New `Http3Client` class for QUIC connections via ngtcp2 + GnuTLS + nghttp3. Same API as Http2Client — instance methods for streaming use and `Quick*` statics for one-shot use. Linux and macOS only (requires `brew install ngtcp2 nghttp3 gnutls`).
-- **Socket options**: New methods on `TCPSocket` and `TCPSecureSocket` — `SetKeepAlive`, `SetNoDelay`, `SetRecvTimeout`, `SetSendTimeout`, `SetRecvBufferSize`, `SetSendBufferSize`, `SetConnectTimeout` (non-blocking connect with timeout). `TCPSecureSocket` adds `SetMinTLSVersion`, `SetVerifyPeer`, `GetCertFingerprint`.
+- **HTTP/2 client** (`-lib net_h2`): New `Http2Client` class for persistent multiplexed TLS connections using ALPN h2 via nghttp2. Supports GET, POST, PUT, DELETE, PATCH and `Quick*` static convenience methods that accept a `Url` object for one-shot requests. Linux, macOS, and MSYS2.
+- **HTTP/3 client** (`-lib net_quic`): New `Http3Client` class for QUIC connections via ngtcp2 + GnuTLS + nghttp3. Same API as `Http2Client` with `Quick*` statics for one-shot use. Linux and macOS only.
+- **OpenAI Moderation**: `Moderation->Check()` returns per-category flags and confidence scores.
+- **OpenAI Batch**: `Batch->Create()`/`Get()` for async 50%-cost batch requests (up to 50k at a time).
+- **Gemini Files API**: upload, list, get, and delete files via `FileManager`.
+- **Gemini Context Caching**: `CachedContent->Create()` for server-side prompt caching with configurable TTL.
+- **Gemini Search Grounding**: `Model->GenerateContentWithGrounding()` anchors responses in live Google Search results.
+- **Gemini Batch Embeddings**: `Model->BatchEmbedContent()` embeds multiple texts in one round-trip.
+- **EmbeddingValues wrapper**: avoids `Float[]` as generic type parameter.
+- **Socket options**: New methods on `TCPSocket` and `TCPSecureSocket` — `SetKeepAlive`, `SetNoDelay`, `SetRecvTimeout`, `SetSendTimeout`, `SetRecvBufferSize`, `SetSendBufferSize`, `SetConnectTimeout`. `TCPSecureSocket` adds `SetMinTLSVersion`, `SetVerifyPeer`, `GetCertFingerprint`.
+- **`SO_REUSEADDR`** on `TCPSocketServer::Bind()` survives TIME_WAIT restarts; `IPSocket::Open()` falls through to next address on `socket()` failure.
+
+### Bug Fixes
+- Fixed `obr` (VM executable) absent from all platform archives — `libnghttp2-dev` was missing from the main `build` CI job; equivalent gaps on macOS and Windows
+- Fixed `HttpsClient` and `HttpClient` redirect not following POST/PUT bodies
+- Fixed HTTP/1.1 redirect handling for POST and PUT; added retry-on-reset parity across verbs
+- Fixed 8 WebSocket bugs; replaced per-byte reads with bulk `ReadBuffer` I/O
+- Fixed MCP server hang on shutdown and crash-on-stop
+- Fixed MSVC compatibility: NOMINMAX ordering, `std::min()` ambiguity; Release VM/compiler optimizations
+- Fixed Realtime API null-safety issues
+- Fixed ARM64 Windows ONNX `.vcxproj` configs (`Release-QNN|ARM64`, `Release-DML|ARM64`); removed non-existent `onnxruntime_providers.lib` from link deps
 
 ### Libraries
 - **HTTP/2** (`net_h2`): `Http2Client` — persistent HTTP/2 session with full verb support and URL-based `Quick*` convenience functions.
 - **HTTP/3** (`net_quic`): `Http3Client` — QUIC-based HTTP/3 session with full verb support and URL-based `Quick*` convenience functions.
-- **HTTP/1.1** (`net`, `net_secure`): Added `HttpClient->PATCH`, `HttpsClient->PATCH`. Fixed redirect handling for POST and PUT. Added retry-on-reset parity across HTTP/1.1 verbs.
+- **HTTP/1.1** (`net`, `net_secure`): Added `HttpClient->PATCH`, `HttpsClient->PATCH`. Fixed redirect handling for POST and PUT.
 
 ### Infrastructure
-- CI: `net_h2` and `net_quic` tests now run in the Linux extended build step; FAIL output causes the CI job to fail.
-- CI / CodeQL: added `libngtcp2-dev`, `libngtcp2-crypto-gnutls-dev`, `libnghttp3-dev`, `libgnutls28-dev` to all Linux apt-get install blocks. macOS CI adds the equivalent Homebrew packages.
-- macOS Xcode project (`core/vm/xcode/VM.xcodeproj`): added `OBJECK_HAS_NGTCP2` preprocessor flag and `-lngtcp2 -lngtcp2_crypto_gnutls -lnghttp3 -lgnutls` linker flags for Debug and Release.
-- `update_version.sh`: `net_h2.obl` and `net_quic.obl` are now compiled as part of the standard library build.
-- `core/README.md` and `core/vm/README.md` updated with per-platform build dependency tables covering all network libraries.
+- ARM64 Windows OpenCV: switched to split module libs via vcpkg; corrected `Release|ARM64` and `Debug|ARM64` `.vcxproj` configs
+- Committed `nghttp2` headers and import libraries to `core/lib/nghttp2/win/`; Windows builds are now fully self-contained without vcpkg
+- Multi-level NuGet restore: VS-bundled `nuget.exe` → PATH (Chocolatey on CI runners) → download from nuget.org
+- Added HTTP/3 dependencies (`libngtcp2-dev`, `libngtcp2-crypto-gnutls-dev`, `libnghttp3-dev`, `libgnutls28-dev`) to Linux and macOS `release-build.yml`; added ngtcp2 GnuTLS backend build step for macOS
+- Hardened `deploy_windows.cmd` with artifact existence checks after each `devenv` build
+- Added binary verification CI step: `obr`, `obc`, `obd`, `obi`, `obb` + 50+ API HTML files must exist before artifact upload
+- CI: CodeQL v4, node24-compatible Actions, nghttp2/ngtcp2 on all platforms
+- `net_h2.obl` and `net_quic.obl` compiled as part of the standard library build in `update_version.sh`
+- macOS Xcode project: added `OBJECK_HAS_NGTCP2` flag and `-lngtcp2 -lngtcp2_crypto_gnutls -lnghttp3 -lgnutls` linker flags
 
-### Bug Fixes
-- Fixed `HttpsClient` and `HttpClient` redirect not following POST/PUT bodies.
+### Website
+- Added Changelog card to home page (`docs/web/index.html`) creating a clean 2×3 six-card grid
 
 ## [v2026.5.0] - 2026-05-06
 

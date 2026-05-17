@@ -1,8 +1,8 @@
-v2026.5.1 (May 16, 2026)
+v2026.5.2 (May 17, 2026)
 ===
-HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, WebSocket hardening.
+HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, ARM64 Windows support, WebSocket hardening.
 
-v2026.5.1
+v2026.5.2
 - HTTP/2 client (Http2Client): persistent TLS connections, GET/POST/PUT/DELETE/PATCH, Quick* one-liners via nghttp2 + ALPN
 - HTTP/3 / QUIC client (Http3Client): UDP connections with connection reuse and Quick* API via ngtcp2 + nghttp3 + GnuTLS
 - HTTP/1.1 improvements: PATCH method, redirect handling fixes for POST/PUT, retry parity across HttpClient/HttpsClient
@@ -13,11 +13,11 @@ v2026.5.1
 - Gemini Search Grounding: Model->GenerateContentWithGrounding() anchors responses in live Google Search results
 - Gemini Batch Embeddings: Model->BatchEmbedContent() embeds multiple texts in one round-trip
 - WebSocket hardening: 8 bug fixes including bulk ReadBuffer I/O replacing per-byte reads
-- MCP server fixes: hang on shutdown and crash-on-stop resolved; regression tests added
+- MCP server fixes: hang on shutdown and crash-on-stop resolved
 - Socket reliability: SO_REUSEADDR on TCPSocketServer::Bind() survives TIME_WAIT; IPSocket::Open() falls through to next address on failure
 - EmbeddingValues wrapper to avoid Float[] as generic type parameter
-- MSVC compatibility: NOMINMAX ordering, std::min(); Release build optimizations for VM and compiler
-- CI: CodeQL v4, node24-compatible Actions, nghttp2/ngtcp2 on all platforms
+- ARM64 Windows: OpenCV and ONNX fully supported; build configurations corrected
+- Improved release process: self-contained Windows builds; CI verifies all binaries and API docs before publishing
 
 v2026.5.0 (May 7, 2026)
 ===

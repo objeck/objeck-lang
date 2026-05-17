@@ -58,25 +58,16 @@ obc hello && obr hello
 ## What's New
 
 **v2026.5.2**
-  * **Release fix** — `obr` (VM runtime) was absent from all v2026.5.1 platform archives; `nghttp2` was missing from CI build scripts on every platform
-  * **Windows local builds** — vcpkg include/lib paths added to `vm.vcxproj` so dev builds find nghttp2 without manual env var setup
-  * **CI hardening** — binary presence and API doc completeness now verified before artifacts are uploaded; `api.zip` auto-committed to repo after doc generation
-
-**v2026.5.1**
-  * **HTTP/2 client** — `Http2Client` with persistent TLS connections, custom headers, GET/POST/PUT/DELETE, and `QuickGet`/`QuickPost` one-liners (nghttp2 + ALPN)
+  * **HTTP/2 client** — `Http2Client` with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and `Quick*` one-liners (nghttp2 + ALPN)
   * **HTTP/3 / QUIC client** — `Http3Client` over UDP with connection reuse and the same `Quick*` API (ngtcp2 + nghttp3 + GnuTLS)
-  * **HTTP/1.1 improvements** — PATCH method, redirect handling fixes, retry parity across `HttpClient`/`HttpsClient`
-  * **OpenAI Moderation** — `Moderation->Check()` returns per-category flags and confidence scores
-  * **OpenAI Batch** — `Batch->Create()`/`Get()` for async 50%-cost batch requests (up to 50k at a time)
-  * **Gemini Files API** — upload, list, get, and delete files via `FileManager`
-  * **Gemini Context Caching** — `CachedContent->Create()` for server-side prompt caching with configurable TTL
-  * **Gemini Search Grounding** — `Model->GenerateContentWithGrounding()` anchors responses in live Google Search results
-  * **Gemini Batch Embeddings** — `Model->BatchEmbedContent()` embeds multiple texts in one round-trip
+  * **HTTP/1.1 improvements** — PATCH method, redirect handling fixes for POST/PUT, retry parity across `HttpClient`/`HttpsClient`
+  * **OpenAI Moderation & Batch** — `Moderation->Check()` per-category flags/scores; `Batch->Create()`/`Get()` for async 50%-cost batch requests
+  * **Gemini Files, Cache, Grounding, BatchEmbed** — upload/list/get/delete files; server-side prompt caching; Search Grounding; batch embeddings in one round-trip
   * **WebSocket hardening** — 8 bug fixes + bulk `ReadBuffer` I/O replacing per-byte reads
-  * **MCP server fixes** — hang on shutdown and crash-on-stop resolved; regression tests added
-  * **Socket reliability** — `SO_REUSEADDR` on `TCPSocketServer::Bind()` survives TIME_WAIT; `IPSocket::Open()` falls through to next address on `socket()` failure
-  * **Security hardening** — LSP concurrent-request mutex; scrfd tensor bounds check; `conf_threshold` NaN/range guard; `WinWriteWide` DWORD truncation guard
-  * **MSVC optimizations** — Release build improvements for VM and compiler
+  * **MCP server fixes** — hang on shutdown and crash-on-stop resolved
+  * **Socket reliability** — `SO_REUSEADDR` on `TCPSocketServer::Bind()`; `IPSocket::Open()` falls through to next address on failure
+  * **ARM64 Windows** — OpenCV and ONNX now fully supported on ARM64 Windows
+  * **Improved release process** — self-contained Windows builds with committed nghttp2 libs; CI verifies all binaries and API docs on all platforms before publishing
 
 **v2026.5.0** 
   * **Face recognition** — new `FaceSession` API with SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings (InsightFace buffalo_l). Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.
