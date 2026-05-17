@@ -80,48 +80,58 @@
     <!-- Code Examples with Tabs -->
     <section class="code-preview">
       <div class="code-tabs">
-        <button class="code-tab active" data-tab="tab-ai" onclick="showTab('tab-ai')">AI Chat</button>
-        <button class="code-tab" data-tab="tab-web" onclick="showTab('tab-web')">Web Server</button>
+        <button class="code-tab active" data-tab="tab-ai" onclick="showTab('tab-ai')">OpenAI Chat</button>
+        <button class="code-tab" data-tab="tab-h2" onclick="showTab('tab-h2')">HTTP/2 Client</button>
         <button class="code-tab" data-tab="tab-fn" onclick="showTab('tab-fn')">Functional</button>
       </div>
       <div id="tab-ai" class="code-tab-content" style="display: block;">
-        <pre><code><span class="kw">use</span> API.Ollama;
+        <pre><code><span class="kw">use</span> API.OpenAI, API.OpenAI.Chat, Collection;
 
-<span class="kw">class</span> Chat {
+<span class="kw">class</span> CodeReviewer {
   <span class="kw">function</span> : Main(args : String[]) ~ Nil {
-    prompt := args[<span class="num">0</span>];
-    Completion->Generate(<span class="str">"llama3:latest"</span>, prompt)
-      ->PrintLine();
-  }
-}</code></pre>
-      </div>
-      <div id="tab-web" class="code-tab-content" style="display: none;">
-        <pre><code><span class="kw">use</span> System.IO.Net;
+    token  := System.IO.Filesystem.FileReader->ReadFile(<span class="str">"api_key.txt"</span>)->Trim();
+    prompt := Pair->New(<span class="str">"user"</span>, args[<span class="num">0</span>])<span class="kw">&lt;String, String&gt;</span>;
 
-<span class="kw">class</span> Server {
-  <span class="kw">function</span> : Main(args : String[]) ~ Nil {
-    server := TCPSocketServer->New(<span class="num">8080</span>);
-    <span class="kw">if</span>(server->Listen(<span class="num">5</span>)) {
-      <span class="kw">while</span>(<span class="kw">true</span>) {
-        client := server->Accept();
-        client->WriteString(<span class="str">"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"</span>);
-        client->WriteString(<span class="str">"&lt;h1&gt;Hello from Objeck!&lt;/h1&gt;\n"</span>);
-        client->Close();
-      };
+    completion := Completion->Complete(<span class="str">"gpt-4o"</span>, prompt, token);
+    <span class="kw">if</span>(completion <> <span class="kw">Nil</span>) {
+      completion->GetFirstChoice()
+        ->GetMessage()<span class="kw">&lt;String, String&gt;</span>
+        ->GetSecond()->PrintLine();
     };
   }
 }</code></pre>
       </div>
-      <div id="tab-fn" class="code-tab-content" style="display: none;">
-        <pre><code><span class="kw">class</span> Demo {
-  <span class="kw">function</span> : Main(args : String[]) ~ Nil {
-    values := [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>];
-    squares := values->Map(Int)->Do(\(v) => v * v);
-    squares->Each(\(v) => v->PrintLine());
+      <div id="tab-h2" class="code-tab-content" style="display: none;">
+        <pre><code><span class="kw">use</span> Web.HTTP, Collection;
 
-    names := [<span class="str">"Alice"</span>, <span class="str">"Bob"</span>, <span class="str">"Carol"</span>];
-    names->Each(\(name) =>
-      <span class="str">"Hello, {$name}!"</span>->PrintLine());
+<span class="kw">class</span> RepoStats {
+  <span class="kw">function</span> : Main(args : String[]) ~ Nil {
+    client := Http2Client->New(<span class="str">"api.github.com"</span>);
+    client->AddHeader(<span class="str">"user-agent"</span>, <span class="str">"objeck-app"</span>);
+
+    resp := client->Get(<span class="str">"/repos/objeck/objeck-lang"</span>);
+    <span class="kw">if</span>(resp <> <span class="kw">Nil</span>) {
+      <span class="str">"Status : {$resp->GetCode()}"</span>->PrintLine();
+      resp->GetContent()->ToString()->PrintLine();
+    };
+    client->Close();
+  }
+}</code></pre>
+      </div>
+      <div id="tab-fn" class="code-tab-content" style="display: none;">
+        <pre><code><span class="kw">use</span> Collection;
+
+<span class="kw">class</span> WordFilter {
+  <span class="kw">function</span> : Main(args : String[]) ~ Nil {
+    words := Vector->New()<String>;
+    words->AddBack(<span class="str">"compiler"</span>); words->AddBack(<span class="str">"jit"</span>);
+    words->AddBack(<span class="str">"runtime"</span>); words->AddBack(<span class="str">"gc"</span>);
+    words->AddBack(<span class="str">"lambda"</span>);  words->AddBack(<span class="str">"arm64"</span>);
+
+    words->Each(\^(w : String) =>
+      <span class="kw">if</span>(w->Size() > <span class="num">3</span>) {
+        <span class="str">"  {$w->ToUpper()}"</span>->PrintLine();
+      });
   }
 }</code></pre>
       </div>
@@ -239,7 +249,7 @@
   </main>
 
   <footer class="footer">
-    &copy; 2025-2026 Randy Hollines. All Rights Reserved.
+    &copy; 2026 Randy Hollines. All Rights Reserved.
   </footer>
  </body>
 </html>
