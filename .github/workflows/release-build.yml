@@ -231,6 +231,11 @@ jobs:
           echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
           echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
 
+          # Copy nghttp2.dll to deploy bin so obr can load it at runtime
+          $arch = "${{ matrix.arch }}".ToLower()
+          $target = if ("${{ matrix.arch }}" -eq "ARM64") { "deploy-arm64" } else { "deploy-x64" }
+          New-Item -ItemType Directory -Force -Path "core\release\$target\bin" | Out-Null
+          Copy-Item "$vcpkgRoot\bin\nghttp2.dll" "core\release\$target\bin\" -ErrorAction SilentlyContinue
           Write-Output "✅ Installed nghttp2 and mbedtls for ${{ matrix.arch }}"
           Write-Output "Set INCLUDE=$vcpkgRoot\include"
           Write-Output "Set LIB=$vcpkgRoot\lib"
