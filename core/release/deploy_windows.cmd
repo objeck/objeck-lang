@@ -526,14 +526,28 @@ REM onnx support
 cd ..\lib\onnx
 
 REM Restore NuGet packages before building
-REM Prefer VS-bundled nuget.exe; fall back to MSBuild restore (always available in VS Dev Prompt)
+REM 1) Try VS-bundled nuget.exe  2) Try PATH (CI runners have it via Chocolatey)
+REM 3) Download from nuget.org as last resort (needed when VS doesn't bundle it)
 set NUGET_EXE=%VSINSTALLDIR%Common7\IDE\CommonExtensions\Microsoft\NuGet\nuget.exe
-if exist "%NUGET_EXE%" (
-	"%NUGET_EXE%" restore onnx.sln
-) else (
-	echo nuget.exe not found at VS path, using MSBuild restore...
-	msbuild onnx.sln /t:Restore /nologo /verbosity:minimal
+if not exist "%NUGET_EXE%" set NUGET_EXE=
+if "%NUGET_EXE%"=="" (
+	where nuget >nul 2>&1
+	if not errorlevel 1 set NUGET_EXE=nuget
 )
+if "%NUGET_EXE%"=="" (
+	echo nuget.exe not found in VS or PATH - downloading from nuget.org...
+	powershell -Command "Invoke-WebRequest -Uri 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' -OutFile '%TEMP%\nuget.exe' -UseBasicParsing" 2>nul
+	if exist "%TEMP%\nuget.exe" set NUGET_EXE=%TEMP%\nuget.exe
+)
+if "%NUGET_EXE%"=="" (
+	echo.
+	echo ============================================================
+	echo  ERROR: nuget.exe not found and download failed - aborting deploy
+	echo  Install NuGet CLI: choco install nuget.commandline
+	echo ============================================================
+	exit /b 1
+)
+"%NUGET_EXE%" restore onnx.sln
 if errorlevel 1 (
 	echo.
 	echo ============================================================
