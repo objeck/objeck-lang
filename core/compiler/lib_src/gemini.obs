@@ -1565,7 +1565,7 @@ session->ToString()->PrintLine();
 	}
 
 	#~
-	Gemini Files API — upload and manage files for use in model requests
+	Gemini Files API - upload and manage files for use in model requests
 	~#
 	class FileManager from EndPoint {
 		#~
@@ -1763,7 +1763,7 @@ session->ToString()->PrintLine();
 	}
 
 	#~
-	Gemini Context Caching API — cache large content to reduce repeated token costs
+	Gemini Context Caching API - cache large content to reduce repeated token costs
 	~#
 	class CachedContent from EndPoint {
 		#~

@@ -1846,7 +1846,7 @@ bundle API.Onnx {
 
 	#~
 	Collection of face detections returned by FaceSession->Detect().
-	Mirrors the OpenPoseResult pattern — C++ fills @detections directly.
+	Mirrors the OpenPoseResult pattern - C++ fills the detections field directly.
 	~#
 	class FaceDetectionResult {
 		@detections : FaceDetection[];
@@ -2008,7 +2008,7 @@ bundle API.Onnx {
 		@rec_session : Int;
 
 		#~
-		Constructor — detection only (no recognizer loaded).
+		Constructor - detection only (no recognizer loaded).
 		@param det_model path to SCRFD detector ONNX model (e.g. det_10g.onnx)
 		~#
 		New(det_model : String) {
@@ -2016,7 +2016,7 @@ bundle API.Onnx {
 		}
 
 		#~
-		Constructor — detection + recognition.
+		Constructor - detection + recognition.
 		@param det_model path to SCRFD detector ONNX model (e.g. det_10g.onnx)
 		@param rec_model path to ArcFace recognizer ONNX model (e.g. w600k_r50.onnx)
 		~#

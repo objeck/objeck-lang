@@ -182,7 +182,7 @@ bundle System.Diagnostics {
 		}
 
 		#~
-		Get document highlights for the symbol at the cursor — references scoped to the
+		Get document highlights for the symbol at the cursor - references scoped to the
 		current file. Backs textDocument/documentHighlight.
 		@param uri file uri
 		@param line line of symbol
@@ -274,7 +274,7 @@ bundle System.Diagnostics {
 		#~
 		Walk the parent chain of the class at the cursor, returning each
 		supertype in order (immediate parent first, then grandparent, ...).
-		Backs typeHierarchy/supertypes. User-space only — stops at the first
+		Backs typeHierarchy/supertypes. User-space only - stops at the first
 		parent that resolves to a library class.
 		@param uri file uri
 		@param line line of cursor
