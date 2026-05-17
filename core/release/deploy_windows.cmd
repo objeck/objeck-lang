@@ -526,14 +526,18 @@ REM onnx support
 cd ..\lib\onnx
 
 REM Restore NuGet packages before building
-REM Use VS-bundled nuget.exe (avoids PATH dependency); fall back to PATH version
+REM Prefer VS-bundled nuget.exe; fall back to MSBuild restore (always available in VS Dev Prompt)
 set NUGET_EXE=%VSINSTALLDIR%Common7\IDE\CommonExtensions\Microsoft\NuGet\nuget.exe
-if not exist "%NUGET_EXE%" set NUGET_EXE=nuget
-"%NUGET_EXE%" restore onnx.sln
+if exist "%NUGET_EXE%" (
+	"%NUGET_EXE%" restore onnx.sln
+) else (
+	echo nuget.exe not found at VS path, using MSBuild restore...
+	msbuild onnx.sln /t:Restore /nologo /verbosity:minimal
+)
 if errorlevel 1 (
 	echo.
 	echo ============================================================
-	echo  ERROR: nuget restore failed - aborting deploy
+	echo  ERROR: NuGet restore failed - aborting deploy
 	echo ============================================================
 	exit /b 1
 )
