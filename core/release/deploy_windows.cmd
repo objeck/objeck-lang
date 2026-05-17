@@ -82,7 +82,7 @@ if [%1] == [x64] (
 if errorlevel 1 (
 	echo.
 	echo ============================================================
-	echo  ERROR: Build failed - aborting deploy
+	echo  ERROR: objeck.sln build failed - aborting deploy
 	echo ============================================================
 	exit /b 1
 )
@@ -127,6 +127,13 @@ REM native launcher
 if [%1] == [arm64] (
 	cd ..\utils\launcher
 	devenv native_launcher.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: native_launcher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
 	copy ARM64\Release\obb.exe ..\..\release\%TARGET%\bin
 	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
@@ -136,6 +143,13 @@ if [%1] == [arm64] (
 if [%1] == [x64] (
 	cd ..\utils\launcher
 	devenv native_launcher.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: native_launcher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
 	copy x64\Release\obb.exe ..\..\release\%TARGET%\bin
 	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
@@ -151,6 +165,13 @@ cd ..\lib\crypto
 
 if [%1] == [arm64] (
 	devenv crypto.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: crypto.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	if exist ARM64\Release\*.dll (
 		copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
 	) else (
@@ -160,6 +181,13 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	devenv crypto.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: crypto.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	if exist Release\win64\*.dll (
 		copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 	) else (
@@ -173,11 +201,25 @@ cd ..\lib\lame
 
 if [%1] == [arm64] (
 	devenv lame.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: lame.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
 	devenv lame.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: lame.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
@@ -186,11 +228,25 @@ REM app
 cd ..\utils\WindowsApp
 if [%1] == [arm64] (
 	devenv AppLauncher.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: AppLauncher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\*.exe ..\..\release\%TARGET%\app
 )
 
 if [%1] == [x64] (
 	devenv AppLauncher.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: AppLauncher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release\*.exe ..\..\release\%TARGET%\app
 )
 cd ..\..\release
@@ -199,11 +255,25 @@ REM diags
 cd ..\lib\diags
 if [%1] == [arm64] (
 	devenv diag.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: diag.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy vs\Release\ARM64\*.dll* ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
 	devenv diag.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: diag.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy vs\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
@@ -213,32 +283,67 @@ REM odbc support
 cd ..\lib\odbc
 if [%1] == [arm64] (
 	devenv odbc.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: odbc.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
 	devenv odbc.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: odbc.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
 
 REM matrix support
-cd ..\lib\matrix	
+cd ..\lib\matrix
 if [%1] == [arm64] (
 	devenv matrix.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: matrix.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy Release\ARM64\*.dll ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
 	devenv matrix.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: matrix.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
 
 REM opencv support
-cd ..\lib\opencv	
+cd ..\lib\opencv
 if [%1] == [arm64] (
 	devenv opencv.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: opencv.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
 	copy /y win\arm64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
@@ -247,6 +352,13 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	devenv opencv.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: opencv.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
 	copy /y win\x64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
@@ -259,9 +371,23 @@ cd ..\lib\onnx
 
 REM Restore NuGet packages before building
 nuget restore onnx.sln
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: nuget restore failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 if [%1] == [arm64] (
 	devenv onnx.sln /rebuild "Release-QNN|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: onnx.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
 	copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
@@ -269,6 +395,13 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	devenv onnx.sln /rebuild "Release-DML|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: onnx.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release-DML\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
 	copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
@@ -277,10 +410,17 @@ if [%1] == [x64] (
 cd ..\..\release
 
 REM sdl support
-cd ..\lib\sdl	
+cd ..\lib\sdl
 if [%1] == [arm64] (
 	REM sdl
 	devenv sdl\sdl.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: sdl.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy sdl\Release\arm64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
 	copy lib\arm64\*.dll ..\..\release\%TARGET%\lib\sdl
@@ -289,6 +429,13 @@ if [%1] == [arm64] (
 if [%1] == [x64] (
 	REM sdl
 	devenv sdl\sdl.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: sdl.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	copy sdl\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
 	copy lib\x64\*.dll ..\..\release\%TARGET%\lib\sdl
@@ -324,12 +471,12 @@ if exist "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\model.onnx" (
 )
 
 REM build and update docs
-mkdir %TARGET%\doc 
+mkdir %TARGET%\doc
 mkdir %TARGET%\doc\syntax
 xcopy /e ..\..\docs\syntax\* %TARGET%\doc\syntax
 
 REM update and process readme
-mkdir %TARGET%\style 
+mkdir %TARGET%\style
 copy ..\..\docs\style\*.css %TARGET%\style
 copy ..\lib\code_doc\templates\resources\*.png %TARGET%\style
 copy ..\..\docs\readme.html %TARGET%
@@ -356,7 +503,7 @@ if [%2] NEQ [deploy] goto end
 	if [%1] == [x64] (
 		set INSTALL_TARGET=objeck-lang-x64
 	)
-	
+
 	rmdir /q /s %TARGET%\examples\doc
 
 	REM Create directory structure for MSI build (files must be in release-x64 or release-arm64)
