@@ -101,14 +101,6 @@
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>false</VcpkgEnabled>
   </PropertyGroup>
-  <PropertyGroup Label="VcpkgPaths">
-    <VcpkgRoot Condition="'$(OBJECK_VCPKG_ROOT)' != ''">$(OBJECK_VCPKG_ROOT)</VcpkgRoot>
-    <VcpkgRoot Condition="'$(VcpkgRoot)' == ''">C:\vcpkg</VcpkgRoot>
-    <VcpkgX64Include>$(VcpkgRoot)\installed\x64-windows\include</VcpkgX64Include>
-    <VcpkgX64Lib>$(VcpkgRoot)\installed\x64-windows\lib</VcpkgX64Lib>
-    <VcpkgArm64Include>$(VcpkgRoot)\installed\arm64-windows\include</VcpkgArm64Include>
-    <VcpkgArm64Lib>$(VcpkgRoot)\installed\arm64-windows\lib</VcpkgArm64Lib>
-  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -121,7 +113,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/U "_DEBUG" /arch:AVX2 %(AdditionalOptions)</AdditionalOptions>
       <BufferSecurityCheck>true</BufferSecurityCheck>
-      <AdditionalIncludeDirectories>$(VcpkgX64Include);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,7 +141,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <AdditionalOptions>/U "_DEBUG" %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(VcpkgArm64Include);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -183,7 +175,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <AdditionalOptions>/U "_DEBUG" /arch:AVX2 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(VcpkgX64Include);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -219,7 +211,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <AdditionalOptions>/U "_DEBUG" /arch:armv8.1 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(VcpkgArm64Include);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
