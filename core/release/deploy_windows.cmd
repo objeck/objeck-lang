@@ -346,8 +346,12 @@ if [%1] == [arm64] (
 	)
 	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
-	copy /y win\arm64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
-	copy /y win\arm64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+	if exist win\arm64\bin\opencv_world4120.dll (
+		copy /y win\arm64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
+	) else (
+		echo Warning: win\arm64\bin\opencv_world4120.dll not found - OpenCV runtime unavailable
+		echo   Install via: vcpkg install opencv4:arm64-windows
+	)
 )
 
 if [%1] == [x64] (
@@ -361,8 +365,14 @@ if [%1] == [x64] (
 	)
 	copy x64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
-	copy /y win\x64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
-	copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+	if exist win\x64\bin\opencv_world4120.dll (
+		copy /y win\x64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
+	) else (
+		echo Warning: win\x64\bin\opencv_world4120.dll not found - OpenCV runtime unavailable
+	)
+	if exist win\x64\bin\opencv_videoio_ffmpeg4120_64.dll (
+		copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+	)
 )
 cd ..\..\release
 
@@ -390,7 +400,11 @@ if [%1] == [arm64] (
 	)
 	copy ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
-	copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
+	if exist eq\qnn\win\onnx\arm64\bin (
+		copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
+	) else (
+		echo Warning: ONNX QNN runtime DLLs not found for arm64 - ONNX runtime unavailable
+	)
 )
 
 if [%1] == [x64] (
@@ -404,8 +418,14 @@ if [%1] == [x64] (
 	)
 	copy x64\Release-DML\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
-	copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
-	copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
+	if exist packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native (
+		copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
+	) else (
+		echo Warning: OnnxRuntime.DirectML nuget packages not found - ONNX runtime unavailable
+	)
+	if exist packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll (
+		copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
+	)
 )
 cd ..\..\release
 
