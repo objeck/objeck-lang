@@ -276,7 +276,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 
           Write-Output "Installing opencv4:arm64-windows via vcpkg (uses GHA binary cache)..."
-          vcpkg install opencv4:arm64-windows
+          vcpkg install opencv4:arm64-windows --feature-flags=-manifests
 
           $vcpkgBin = "C:\vcpkg\installed\arm64-windows\bin"
           Get-ChildItem "$vcpkgBin\opencv_world*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
