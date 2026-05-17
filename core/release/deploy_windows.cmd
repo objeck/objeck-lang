@@ -69,6 +69,13 @@ copy ..\lib\*.ini %TARGET%\lib
 
 REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: update_version.ps1 failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 REM compiler, runtime and debugger
 if [%1] == [arm64] (
@@ -94,9 +101,15 @@ if [%1] == [arm64] (
 	REM WindowsSdkVerBinPath has trailing backslash, e.g., "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\"
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
-
 	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
 	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
+)
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: ARM64 binary copy/manifest step failed - aborting deploy
+	echo ============================================================
+	exit /b 1
 )
 
 if [%1] == [x64] (
@@ -104,16 +117,28 @@ if [%1] == [x64] (
 	copy ..\repl\release\win64\*.exe %TARGET%\bin
 	copy ..\vm\release\win64\*.exe %TARGET%\bin
 	copy ..\debugger\release\win64\*.exe %TARGET%\bin
-
 	REM Embed manifests AFTER copying binaries
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
-
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
 )
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: x64 binary copy/manifest step failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 copy ..\lib\lame\win\%1\*.dll %TARGET%\bin
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: lame runtime DLL copy failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 REM nghttp2 runtime DLL (required by obr for HTTP/2 support)
 if [%1] == [x64] (
@@ -121,6 +146,13 @@ if [%1] == [x64] (
 )
 if [%1] == [arm64] (
 	copy ..\lib\openssl\win\arm64\nghttp2.dll %TARGET%\bin
+)
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: nghttp2 runtime DLL copy failed - aborting deploy
+	echo ============================================================
+	exit /b 1
 )
 
 REM native launcher
@@ -510,6 +542,13 @@ if [%1] == [x64] (
 	echo Skipping code_doc for ARM64 cross-compilation - using pre-built API docs
 	mkdir %TARGET%\doc\api
 	powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: API docs extraction failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 )
 
 :installer
@@ -569,6 +608,13 @@ if [%2] NEQ [deploy] goto end
 		-d SourceDir=%WIX_SOURCEDIR% ^
 		-ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
 		..\utils\setup\objeck.wxs
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: WiX MSI build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 
 	REM Try to sign MSI if certificate is available
 	signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a %WIX_OUTPUT% 2>nul
@@ -582,8 +628,14 @@ if [%2] NEQ [deploy] goto end
 	if [%1] == [arm64] (
 		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip' -Force"
 	)
-
 	if [%1] == [x64] (
 		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-x64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip' -Force"
+	)
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: ZIP creation failed - aborting deploy
+		echo ============================================================
+		exit /b 1
 	)
 :end
