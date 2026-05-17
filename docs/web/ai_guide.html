@@ -3,32 +3,135 @@
  <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>AI Guide — Objeck Language</title>
-  <meta name="description" content="Build AI and ML applications with Objeck's built-in libraries: OpenAI, Gemini, Ollama, ONNX, OpenCV, and NLP — no third-party packages required."/>
+  <title>AI &amp; ML Developer Guide — Objeck Language</title>
+  <meta name="description" content="Build AI and ML applications with Objeck's built-in libraries: OpenAI, Gemini, Ollama, ONNX, OpenCV, ML, and NLP — no third-party packages required."/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-  <script>
-   hljs.highlightAll();
-  </script>
+  <script>hljs.highlightAll();</script>
+
+  <style>
+    /* ── Page title ── */
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f3f4f6;
+      margin: 0 0 0.4rem;
+      line-height: 1.2;
+    }
+    .page-lead {
+      color: #9ca3af;
+      font-size: 0.97rem;
+      margin-bottom: 1.75rem;
+      line-height: 1.7;
+      max-width: 700px;
+    }
+
+    /* ── Section headings with left accent ── */
+    .container h3 {
+      border-left: 3px solid #3b82f6;
+      padding-left: 12px;
+      margin-top: 3rem;
+    }
+    .container h3:first-of-type { margin-top: 1.25rem; }
+
+    /* ── Subsection (h4) spacing ── */
+    .container h4 {
+      margin-top: 1.75rem;
+      margin-bottom: 0.35rem;
+    }
+
+    /* ── Compile flag badge ── */
+    .lib-flag {
+      display: inline-block;
+      background: #151d28;
+      border: 1px solid #2d3a4d;
+      border-left: 3px solid #3b82f6;
+      border-radius: 4px 8px 8px 4px;
+      padding: 5px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #7dd3fc;
+      margin: 0.5rem 0 1.1rem;
+      letter-spacing: 0.2px;
+    }
+    .lib-flag::before {
+      content: "obc flag: ";
+      color: #4b5563;
+      font-size: 0.72rem;
+    }
+
+    /* ── Prose within sections ── */
+    .container p {
+      color: #d1d5db;
+      margin-bottom: 0.85rem;
+      line-height: 1.7;
+    }
+    .container > p:first-child {
+      color: #9ca3af;
+    }
+
+    /* ── Code block after cmd block ── */
+    pre.cmd + h4,
+    pre + h4,
+    pre + p { margin-top: 1.25rem; }
+
+    /* ── Callout note box ── */
+    .note {
+      background: #1a2332;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 6px 6px 0;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #d1d5db;
+      margin: 0.75rem 0 1rem;
+    }
+    .note strong { color: #f59e0b; }
+
+    /* ── File tree listing ── */
+    .file-tree {
+      background: #151d28;
+      border: 1px solid #2d3a4d;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      line-height: 2;
+      margin: 0.75rem 0 1.5rem;
+      overflow-x: auto;
+    }
+    .file-tree .dir  { color: #7dd3fc; font-weight: 600; }
+    .file-tree .file { color: #86efac; }
+
+    /* ── Quick reference table overrides ── */
+    .ref-table th { background-color: #151d28 !important; color: #a3cefd !important; }
+    .ref-table td { vertical-align: top; }
+    .ref-table tr:nth-child(even) td { background-color: #1a2332; }
+    .ref-table tr:nth-child(odd)  td { background-color: #151d28; }
+    .ref-table tr:hover td { background-color: #2d3a4d; }
+    .ref-table code { white-space: nowrap; }
+
+    /* ── Section separator visual ── */
+    .section-end {
+      border: none;
+      border-top: 1px solid #2d3a4d;
+      margin: 2.5rem 0 0;
+    }
+  </style>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       const menu = document.querySelector(".menu");
       const menuItems = document.querySelector(".menu-items");
-
       menu.addEventListener("click", (e) => {
         e.stopPropagation();
         menuItems.style.display = menuItems.style.display === "block" ? "none" : "block";
       });
-
-      document.addEventListener("click", () => {
-        menuItems.style.display = "none";
-      });
+      document.addEventListener("click", () => { menuItems.style.display = "none"; });
     });
   </script>
-
  </head>
  <body>
 
@@ -37,12 +140,10 @@
       <a href="https://objeck.org/">
         <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png"/>
       </a>
-
       <div class="menu">
         <div class="menu-bar"></div>
         <div class="menu-bar"></div>
         <div class="menu-bar"></div>
-
         <div class="menu-items">
           <a href="index.html">Home</a>
           <a href="https://playground.objeck.org">Playground</a>
@@ -59,11 +160,15 @@
 
   <main role="main" style="text-align: left;">
    <div class="container">
-    <p>
-     All AI and ML capabilities are <strong>standard library</strong> — no pip install, no package.json, no third-party dependencies.
-     Import the relevant bundle and go. See the <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API reference</a> for full class documentation.
+
+    <h1 class="page-title">AI &amp; ML Developer Guide</h1>
+    <p class="page-lead">
+      Every capability on this page is part of the <strong>standard library</strong> — no pip, no npm, no third-party packages.
+      Import the bundle, compile with the flag, and go.
+      See the <a href="https://www.objeck.org/api/latest/index.html" target="_blank">API reference</a> for full class documentation.
     </p>
 
+    <!-- ─── Table of Contents ─── -->
     <div id="toc_container">
      <h4>Contents</h4>
      <ul>
@@ -87,7 +192,16 @@
         <li><a href="#gemini-embed">Embeddings</a></li>
        </ul>
       </li>
-      <li><a href="#ollama">Ollama (Local Models)</a></li>
+      <li><a href="#ollama">Ollama (Local LLMs)</a></li>
+      <li><a href="#ml">Machine Learning</a>
+       <ul>
+        <li><a href="#ml-matrix">Matrix Operations</a></li>
+        <li><a href="#ml-regression">Regression</a></li>
+        <li><a href="#ml-neural">Neural Networks</a></li>
+        <li><a href="#ml-cluster">Clustering &amp; Classification</a></li>
+        <li><a href="#ml-eval">Evaluation &amp; Preprocessing</a></li>
+       </ul>
+      </li>
       <li><a href="#onnx">ONNX Local Inference</a>
        <ul>
         <li><a href="#onnx-face">Face Recognition</a></li>
@@ -101,56 +215,55 @@
      </ul>
     </div>
 
-    <!-- ─────────────────────────────────── Authentication ─── -->
+    <!-- ═══════════════════════════════════════ Authentication ═══ -->
     <h3 id="auth">Authentication</h3>
-    <p>
-     Cloud APIs require API keys. Store them in plain text files in your working directory — the libraries read them automatically.
-    </p>
+    <p>Cloud APIs use API keys stored in plain text files in your working directory.</p>
 
     <h4>OpenAI</h4>
-    <p>Create <code>openai_api_key.dat</code> containing your key. Read it at startup:</p>
+    <p>Create <code>openai_api_key.dat</code> containing your key, then read it at startup:</p>
     <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
 
-token := FileReader-&gt;ReadFile("openai_api_key.dat")-&gt;Trim();
+token := FileReader->ReadFile("openai_api_key.dat")->Trim();
 </code></pre>
 
     <h4>Gemini</h4>
-    <p>Create <code>gemini_api_key.dat</code>. Use the built-in helper:</p>
+    <p>Create <code>gemini_api_key.dat</code> and use the built-in helper:</p>
     <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
 
-token := EndPoint-&gt;GetApiKey();   # reads gemini_api_key.dat
+token := EndPoint->GetApiKey();   # reads gemini_api_key.dat
 </code></pre>
 
     <h4>Ollama</h4>
-    <p>No key needed. Start the Ollama daemon with <code>ollama serve</code>, then pull a model:</p>
-    <pre class="cmd">ollama pull llama3.2</pre>
+    <p>No key required. Start the daemon and pull a model:</p>
+    <pre class="cmd">ollama serve
+ollama pull llama3.2</pre>
 
-    <!-- ─────────────────────────────────── OpenAI ─── -->
+    <!-- ═══════════════════════════════════════ OpenAI ═══ -->
     <h3 id="openai">OpenAI</h3>
-    <p><strong>Compile flag:</strong> <code>-lib net,net_server,json,cipher,misc,openai</code></p>
+    <div class="lib-flag">net,net_server,json,cipher,misc,openai</div>
 
     <h4 id="openai-chat">Chat &amp; Text</h4>
     <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
 
 class ChatExample {
   function : Main(args : String[]) ~ Nil {
-    token := FileReader-&gt;ReadFile("openai_api_key.dat")-&gt;Trim();
+    token := FileReader->ReadFile("openai_api_key.dat")->Trim();
 
     # single-turn
-    response := Response-&gt;Respond("gpt-4o-mini",
-      Pair-&gt;New("user", "Explain JIT compilation in one sentence.")&lt;String, String&gt;,
+    response := Response->Respond("gpt-4o-mini",
+      Pair->New("user", "Explain JIT compilation in one sentence.")<String, String>,
       token);
-    response-&gt;GetText()-&gt;PrintLine();
+    response->GetText()->PrintLine();
 
     # multi-turn conversation
-    messages := Vector-&gt;New()&lt;Pair&lt;String, String&gt;&gt;;
-    messages-&gt;AddBack(Pair-&gt;New("system", "You are a concise coding assistant.")&lt;String, String&gt;);
-    messages-&gt;AddBack(Pair-&gt;New("user", "What is a closure?")&lt;String, String&gt;);
-    messages-&gt;AddBack(Pair-&gt;New("assistant", "A closure captures its enclosing scope.")&lt;String, String&gt;);
-    messages-&gt;AddBack(Pair-&gt;New("user", "Show me one in Objeck.")&lt;String, String&gt;);
+    messages := Vector->New()<Pair<String, String>>;
+    messages->AddBack(Pair->New("system", "You are a concise coding assistant.")<String, String>);
+    messages->AddBack(Pair->New("user",   "What is a closure?")<String, String>);
+    messages->AddBack(Pair->New("assistant", "A closure captures its enclosing scope.")<String, String>);
+    messages->AddBack(Pair->New("user",   "Show me one in Objeck.")<String, String>);
 
-    response := Response-&gt;Respond("gpt-4o-mini", messages, token);
-    response-&gt;GetText()-&gt;PrintLine();
+    response := Response->Respond("gpt-4o-mini", messages, token);
+    response->GetText()->PrintLine();
   }
 }
 </code></pre>
@@ -160,441 +273,665 @@ class ChatExample {
     <h4 id="openai-vision">Vision</h4>
     <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
 
-bytes := FileReader-&gt;ReadBinaryFile("photo.jpg");
-image := ImageQuery-&gt;New("What is in this image?", bytes, ImageQuery-&gt;MimeType-&gt;JPEG);
-query := Pair-&gt;New("user", image)&lt;String, ImageQuery&gt;;
-
-response := Response-&gt;Respond("gpt-4o", query, token);
-response-&gt;GetText()-&gt;PrintLine();
+bytes   := FileReader->ReadBinaryFile("photo.jpg");
+image   := ImageQuery->New("What is in this image?", bytes, ImageQuery->MimeType->JPEG);
+query   := Pair->New("user", image)<String, ImageQuery>;
+response := Response->Respond("gpt-4o", query, token);
+response->GetText()->PrintLine();
 </code></pre>
 
     <h4 id="openai-embed">Embeddings</h4>
     <pre class="line-numbers"><code class="language-cpp">use API.OpenAI;
 
-values := Embedding-&gt;Create("Objeck is a JIT-compiled language",
+values := Embedding->Create("Objeck is a JIT-compiled language",
   "text-embedding-3-small", token);
-if(values &lt;&gt; Nil) {
-  "Dimensions: {$values-&gt;Size()}"->PrintLine();   # 1536
+if(values <> Nil) {
+  "Dimensions: {$values->Size()}"->PrintLine();   # 1536
 };
 </code></pre>
 
     <h4 id="openai-moderation">Moderation</h4>
-    <p>Check text against OpenAI's safety categories and get per-category confidence scores:</p>
+    <p>Per-category safety flags and confidence scores:</p>
     <pre class="line-numbers"><code class="language-cpp">use API.OpenAI;
 
-result := Moderation-&gt;Check("I want to hurt someone.", token);
-if(result &lt;&gt; Nil) {
-  "Flagged: {$result-&gt;IsFlagged()}"->PrintLine();
-  if(result-&gt;IsFlagged()) {
-    score := result-&gt;GetScore("violence");
-    "violence score: {$score}"->PrintLine();
+result := Moderation->Check("I want to hurt someone.", token);
+if(result <> Nil) {
+  "Flagged: {$result->IsFlagged()}"->PrintLine();
+  if(result->IsFlagged()) {
+    "violence score: {$result->GetScore("violence")}"->PrintLine();
   };
 };
 </code></pre>
-    <p>Available categories: <code>harassment</code>, <code>hate</code>, <code>self-harm</code>, <code>sexual</code>, <code>violence</code> (and <code>/threatening</code>, <code>/graphic</code>, <code>/instructions</code>, <code>/intent</code> variants).</p>
+    <p>Categories: <code>harassment</code>, <code>hate</code>, <code>self-harm</code>, <code>sexual</code>, <code>violence</code> (and <code>/threatening</code>, <code>/graphic</code>, <code>/instructions</code>, <code>/intent</code> variants).</p>
 
     <h4 id="openai-batch">Batch Processing</h4>
-    <p>Process up to 50,000 requests asynchronously at 50% of standard API cost. Results available within 24 hours.</p>
+    <p>Up to 50,000 requests at 50% cost. Results within 24 hours.</p>
     <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
 
-# 1. upload a .jsonl file of requests
-data := FileReader-&gt;ReadBinaryFile("requests.jsonl");
-file := File-&gt;Create("requests.jsonl", "batch", data, token);
+# 1. upload request file
+data := FileReader->ReadBinaryFile("requests.jsonl");
+file := File->Create("requests.jsonl", "batch", data, token);
 
-# 2. submit the batch
-job := Batch-&gt;Create(file-&gt;GetId(), "/v1/chat/completions", token);
-"Batch ID: {$job-&gt;GetId()}"->PrintLine();   # status: "validating"
+# 2. submit
+job := Batch->Create(file->GetId(), "/v1/chat/completions", token);
+"Batch ID: {$job->GetId()}"->PrintLine();
 
-# 3. poll for completion (typically minutes to hours)
-job := Batch-&gt;Get(job-&gt;GetId(), token);
-if(job-&gt;IsComplete()) {
-  "Output file: {$job-&gt;GetOutputFileId()}"->PrintLine();
+# 3. poll for completion
+job := Batch->Get(job->GetId(), token);
+if(job->IsComplete()) {
+  "Output file: {$job->GetOutputFileId()}"->PrintLine();
 };
 </code></pre>
-    <p><strong>Request format</strong> (<code>requests.jsonl</code>, one JSON object per line):</p>
+    <p><strong>Request format</strong> — one JSON object per line in <code>requests.jsonl</code>:</p>
     <pre class="line-numbers"><code class="language-json">{"custom_id":"r1","method":"POST","url":"/v1/chat/completions","body":{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}}
 </code></pre>
 
     <h4 id="openai-realtime">Realtime Audio</h4>
-    <p>Send text or audio over a WebSocket and receive both a text transcript and PCM audio response. Requires <code>-lib sdl2</code> for playback.</p>
+    <p>Text or audio over WebSocket; returns transcript and PCM audio. Requires <code>-lib sdl2</code> for playback.</p>
     <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, Game.SDL2;
 
-# text → text + audio
-response := Realtime-&gt;Respond("What time is it in Tokyo?",
+response := Realtime->Respond("What time is it in Tokyo?",
   "gpt-4o-realtime-preview", token);
-if(response &lt;&gt; Nil) {
-  response-&gt;GetFirst()-&gt;PrintLine();                     # transcript
-  audio := response-&gt;GetSecond();
-  Mixer-&gt;PlayPcm(audio-&gt;Get(), 24000,
-    AudioFormat-&gt;SDL_AUDIO_S16LSB, 1);                   # PCM 16-bit LE, 24kHz mono
+if(response <> Nil) {
+  response->GetFirst()->PrintLine();                      # transcript
+  audio := response->GetSecond();
+  Mixer->PlayPcm(audio->Get(), 24000,
+    AudioFormat->SDL_AUDIO_S16LSB, 1);                   # 24 kHz mono PCM
 };
 </code></pre>
 
-    <!-- ─────────────────────────────────── Gemini ─── -->
+    <!-- ═══════════════════════════════════════ Gemini ═══ -->
     <h3 id="gemini">Gemini</h3>
-    <p><strong>Compile flag:</strong> <code>-lib net,net_server,json,cipher,misc,gemini</code></p>
+    <div class="lib-flag">net,net_server,json,cipher,misc,gemini</div>
 
     <h4 id="gemini-chat">Chat &amp; Vision</h4>
     <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
 
 class GeminiChat {
   function : Main(args : String[]) ~ Nil {
-    token := EndPoint-&gt;GetApiKey();
+    token := EndPoint->GetApiKey();
 
     # single-turn text
-    content := Content-&gt;New("user")
-      -&gt;AddPart(TextPart-&gt;New("Why is the sky blue?"));
-    candidates := Model-&gt;GenerateContent("models/gemini-2.0-flash", content, token);
-    if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
-      candidates-&gt;First()-&gt;GetAllText()-&gt;PrintLine();
+    content := Content->New("user")
+      ->AddPart(TextPart->New("Why is the sky blue?"));
+    candidates := Model->GenerateContent("models/gemini-2.0-flash", content, token);
+    if(candidates <> Nil & <>candidates->IsEmpty()) {
+      candidates->First()->GetAllText()->PrintLine();
     };
 
     # image + text
-    bytes := System.IO.Filesystem.FileReader-&gt;ReadBinaryFile("chart.png");
-    content := Content-&gt;New("user")
-      -&gt;AddPart(TextPart-&gt;New("Summarize this chart."))
-      -&gt;AddPart(BinaryPart-&gt;New(bytes, "image/png"));
-    candidates := Model-&gt;GenerateContent("models/gemini-2.0-flash", content, token);
-    if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
-      candidates-&gt;First()-&gt;GetAllText()-&gt;PrintLine();
+    bytes := System.IO.Filesystem.FileReader->ReadBinaryFile("chart.png");
+    content := Content->New("user")
+      ->AddPart(TextPart->New("Summarize this chart."))
+      ->AddPart(BinaryPart->New(bytes, "image/png"));
+    candidates := Model->GenerateContent("models/gemini-2.0-flash", content, token);
+    if(candidates <> Nil & <>candidates->IsEmpty()) {
+      candidates->First()->GetAllText()->PrintLine();
     };
 
-    # multi-turn chat with system instruction
-    chat := Chat-&gt;New("models/gemini-2.0-flash", token);
-    chat-&gt;SetSystemInstruction(
-      Content-&gt;New("system")-&gt;AddPart(TextPart-&gt;New("You are a coding assistant.")));
-    r1 := chat-&gt;SendPart(TextPart-&gt;New("What is a closure?"), "user");
-    r1-&gt;GetAllText()-&gt;PrintLine();
-    r2 := chat-&gt;SendPart(TextPart-&gt;New("Show me one in Objeck."), "user");
-    r2-&gt;GetAllText()-&gt;PrintLine();
+    # multi-turn with system instruction
+    chat := Chat->New("models/gemini-2.0-flash", token);
+    chat->SetSystemInstruction(
+      Content->New("system")->AddPart(TextPart->New("You are a coding assistant.")));
+    chat->SendPart(TextPart->New("What is a closure?"), "user")->GetAllText()->PrintLine();
+    chat->SendPart(TextPart->New("Show me one in Objeck."), "user")->GetAllText()->PrintLine();
   }
 }
 </code></pre>
 
     <h4 id="gemini-grounding">Search Grounding</h4>
-    <p>Anchor model responses in live Google Search results for up-to-date answers:</p>
+    <p>Anchor responses in live Google Search results for up-to-date answers:</p>
     <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
 
-content := Content-&gt;New("user")
-  -&gt;AddPart(TextPart-&gt;New("What major AI models were released this month?"));
+content := Content->New("user")
+  ->AddPart(TextPart->New("What major AI models were released this month?"));
 
-candidates := Model-&gt;GenerateContentWithGrounding(
+candidates := Model->GenerateContentWithGrounding(
   "models/gemini-2.0-flash", content, token);
-if(candidates &lt;&gt; Nil &amp; &lt;&gt;candidates-&gt;IsEmpty()) {
-  candidates-&gt;First()-&gt;GetAllText()-&gt;PrintLine();
+if(candidates <> Nil & <>candidates->IsEmpty()) {
+  candidates->First()->GetAllText()->PrintLine();
 };
 </code></pre>
 
     <h4 id="gemini-files">Files API</h4>
-    <p>Upload files once and reference them across multiple requests without re-uploading:</p>
+    <p>Upload once, reference across many requests without re-uploading:</p>
     <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, System.IO.Filesystem;
 
 # upload
-data := FileReader-&gt;ReadBinaryFile("report.pdf");
-file := FileManager-&gt;Upload("Q1 Report", data, "application/pdf", token);
-if(file &lt;&gt; Nil &amp; file-&gt;IsActive()) {
-  "URI: {$file-&gt;GetUri()}"->PrintLine();
+data := FileReader->ReadBinaryFile("report.pdf");
+file := FileManager->Upload("Q1 Report", data, "application/pdf", token);
+if(file <> Nil & file->IsActive()) {
+  "URI: {$file->GetUri()}"->PrintLine();
 };
 
 # list active files
-files := FileManager-&gt;List(token);
+files := FileManager->List(token);
 each(f in files) {
-  "{$f-&gt;GetName()}: {$f-&gt;GetState()}"->PrintLine();
+  "{$f->GetName()}: {$f->GetState()}"->PrintLine();
 };
 
 # delete
-FileManager-&gt;Delete("files/abc123", token);
+FileManager->Delete("files/abc123", token);
 </code></pre>
 
     <h4 id="gemini-cache">Context Caching</h4>
-    <p>Cache large, reused content server-side to avoid re-tokenization costs on every request:</p>
+    <p>Cache large reused content server-side to avoid re-tokenization cost on every request:</p>
     <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, System.IO.Filesystem;
 
-large_context := FileReader-&gt;ReadFile("legal_document.txt");
-content := Content-&gt;New("user")-&gt;AddPart(TextPart-&gt;New(large_context));
+large_context := FileReader->ReadFile("legal_document.txt");
+content := Content->New("user")->AddPart(TextPart->New(large_context));
 
 # cache for 5 minutes (300 seconds)
-item := CachedContent-&gt;Create(
+item := CachedContent->Create(
   "models/gemini-1.5-pro-001", content, 300, "legal-doc-cache", token);
-if(item &lt;&gt; Nil) {
-  "Tokens cached: {$item-&gt;GetTokenCount()}"->PrintLine();
-  "Expires: {$item-&gt;GetExpireTime()}"->PrintLine();
+if(item <> Nil) {
+  "Tokens cached: {$item->GetTokenCount()}"->PrintLine();
+  "Expires: {$item->GetExpireTime()}"->PrintLine();
 };
 
-# clean up when done
-CachedContent-&gt;Delete("cachedContents/abc123", token);
+CachedContent->Delete("cachedContents/abc123", token);
 </code></pre>
 
     <h4 id="gemini-embed">Embeddings</h4>
     <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
 
 # single embedding (768 dimensions)
-content := Content-&gt;New("user")-&gt;AddPart(TextPart-&gt;New("machine learning"));
-values := Model-&gt;EmbedContent(content, token);
-"Dimensions: {$values-&gt;Size()}"->PrintLine();
+content := Content->New("user")->AddPart(TextPart->New("machine learning"));
+values := Model->EmbedContent(content, token);
+"Dimensions: {$values->Size()}"->PrintLine();
 
 # batch — multiple texts in one round-trip
-texts := Vector-&gt;New()&lt;String&gt;;
-texts-&gt;AddBack("Objeck is JIT-compiled");
-texts-&gt;AddBack("Python uses an interpreter");
-texts-&gt;AddBack("Rust is memory-safe");
+texts := Vector->New()<String>;
+texts->AddBack("Objeck is JIT-compiled");
+texts->AddBack("Python uses an interpreter");
+texts->AddBack("Rust is memory-safe");
 
-embeddings := Model-&gt;BatchEmbedContent("models/text-embedding-004", texts, token);
+embeddings := Model->BatchEmbedContent("models/text-embedding-004", texts, token);
 each(i : embeddings) {
-  "  [{$i}] dim={$embeddings-&gt;Get(i)-&gt;Size()}"->PrintLine();
+  "  [{$i}] dim={$embeddings->Get(i)->Size()}"->PrintLine();
 };
 </code></pre>
 
-    <!-- ─────────────────────────────────── Ollama ─── -->
-    <h3 id="ollama">Ollama (Local Models)</h3>
+    <!-- ═══════════════════════════════════════ Ollama ═══ -->
+    <h3 id="ollama">Ollama (Local LLMs)</h3>
+    <div class="lib-flag">net,json,cipher,misc,ollama</div>
     <p>
-     Run open-source models locally. No API key, no data leaves your machine.
-     <a href="https://ollama.com" target="_blank">Install Ollama</a>, then pull a model:
+      Run open-source models locally. No API key, no data leaves your machine.
+      <a href="https://ollama.com" target="_blank">Install Ollama</a>, start the daemon, then pull a model:
     </p>
-    <pre class="cmd">ollama pull llama3.2</pre>
-    <p><strong>Compile flag:</strong> <code>-lib net,json,cipher,misc,ollama</code></p>
+    <pre class="cmd">ollama serve &amp;&amp; ollama pull llama3.2</pre>
 
     <pre class="line-numbers"><code class="language-cpp">use API.Ollama;
 
 class LocalChat {
   function : Main(args : String[]) ~ Nil {
     # one-shot generation
-    Completion-&gt;Generate("llama3.2", "What is 2 + 2?")-&gt;PrintLine();
+    Completion->Generate("llama3.2", "What is 2 + 2?")->PrintLine();
 
-    # with options
-    opts := Options-&gt;New()-&gt;SetTemperature(0.2);
-    Completion-&gt;Generate("llama3.2", "List 3 capitals of Europe.", opts)-&gt;PrintLine();
+    # with temperature control
+    opts := Options->New()->SetTemperature(0.2);
+    Completion->Generate("llama3.2", "List 3 capitals of Europe.", opts)->PrintLine();
 
-    # multi-turn chat — context is maintained automatically
-    chat := Chat-&gt;New("llama3.2");
-    r1 := chat-&gt;Send("My name is Alice.");
-    r2 := chat-&gt;Send("What is my name?");
-    r2-&gt;PrintLine();   # "Your name is Alice."
+    # multi-turn — context maintained automatically
+    chat := Chat->New("llama3.2");
+    chat->Send("My name is Alice.");
+    chat->Send("What is my name?")->PrintLine();   # "Your name is Alice."
 
     # vision (multimodal models)
-    image := System.IO.Filesystem.File-&gt;New("photo.jpg");
-    Completion-&gt;Generate("llava", "Describe this image.", image)-&gt;PrintLine();
+    image := System.IO.Filesystem.File->New("photo.jpg");
+    Completion->Generate("llava", "Describe this image.", image)->PrintLine();
 
-    # local embeddings (no API key required)
-    values := Model-&gt;Embeddings("nomic-embed-text", "machine learning");
-    "Dimensions: {$values-&gt;Size()}"->PrintLine();
+    # local embeddings
+    values := Model->Embeddings("nomic-embed-text", "machine learning");
+    "Dimensions: {$values->Size()}"->PrintLine();
   }
 }
 </code></pre>
     <pre class="cmd">&gt; obc -src local_chat.obs -lib net,json,cipher,misc,ollama
 &gt; obr local_chat</pre>
 
-    <!-- ─────────────────────────────────── ONNX ─── -->
-    <h3 id="onnx">ONNX Local Inference</h3>
+    <!-- ═══════════════════════════════════════ Machine Learning ═══ -->
+    <h3 id="ml">Machine Learning</h3>
+    <div class="lib-flag">ml</div>
     <p>
-     Run ML models locally using the ONNX Runtime. Supports DirectML (Windows), CUDA (Linux), and CoreML (macOS).
-     No GPU required for CPU inference. Models are loaded from local files — no internet connection needed at runtime.
+      Pure Objeck ML routines backed by the Eigen C++ library — no Python, no external frameworks.
+      Covers linear algebra, regression, neural networks, clustering, and model evaluation.
     </p>
-    <p><strong>Compile flag:</strong> <code>-lib json,cipher,opencv,onnx</code></p>
+
+    <h4 id="ml-matrix">Matrix Operations</h4>
+    <p><code>Matrix2D</code> provides the foundational matrix math used by all other ML classes, plus activation functions used in neural architectures:</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+class MatrixExample {
+  function : Main(args : String[]) ~ Nil {
+    a := [[1.0, 2.0], [3.0, 4.0]];
+    b := [[5.0, 6.0], [7.0, 8.0]];
+
+    # matrix dot product: [[19,22],[43,50]]
+    c := Matrix2D->DotProduct(a, b);
+    rows := c->Size();
+    each(r : rows) {
+      each(col : c[r]->Size()) {
+        "{$c[r,col]} "->Print();
+      };
+      '\n'->Print();
+    };
+
+    # activation functions (element-wise)
+    x := [[0.5, -0.3], [1.2, -0.8]];
+    Matrix2D->ReLU(x);       # max(0, x): [[0.5,0.0],[1.2,0.0]]
+    Matrix2D->Sigmoid(x);    # 1/(1+e^-x)
+    Matrix2D->Tanh(x);       # hyperbolic tangent
+    Matrix2D->Softmax(x);    # probability distribution over rows
+
+    # statistical helpers
+    "Row 0 avg: {$Matrix2D->AverageRow(0, a)}"->PrintLine();  # 1.5
+    "Col 1 sum: {$Matrix2D->SumColumn(1, a)}"->PrintLine();   # 6.0
+    "Std dev:   {$Matrix2D->StdDevColumn(0, a)}"->PrintLine();
+
+    # random matrices for weight initialization
+    weights := Matrix2D->Random(3, 4);          # uniform [0,1]
+    weights := Matrix2D->RandomNormal(0.0, 0.1, 3, 4);  # Gaussian
+  }
+}
+</code></pre>
+
+    <h4 id="ml-regression">Regression</h4>
+    <p><strong>Linear Regression</strong> — least-squares fit for continuous target prediction:</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+class RegressionExample {
+  function : Main(args : String[]) ~ Nil {
+    # features: [size_sqft, rooms]  →  price
+    X := [[800.0, 2.0], [1200.0, 3.0], [1600.0, 4.0], [2000.0, 5.0]];
+    y := [[150000.0], [220000.0], [300000.0], [380000.0]];
+
+    model := LinearRegression->New();
+    if(model->Fit(X, y)) {
+      preds := model->Predict([[1400.0, 3.0]]);
+      "Predicted price: {$preds[0,0]}"->PrintLine();
+      "R²: {$model->GetRSquared()}"->PrintLine();
+
+      coefficients := model->GetCoefficients();
+      each(i : coefficients->Size()) {
+        "w[{$i}] = {$coefficients[i]}"->PrintLine();
+      };
+    };
+  }
+}
+</code></pre>
+
+    <p><strong>Logistic Regression</strong> — gradient descent binary classifier with sigmoid activation:</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+class ClassifierExample {
+  function : Main(args : String[]) ~ Nil {
+    # features: [hours_studied, prev_score]  →  pass/fail
+    X := [[2.0, 55.0], [3.0, 60.0], [7.0, 80.0], [9.0, 90.0]];
+    y := [[0.0], [0.0], [1.0], [1.0]];
+
+    model := LogisticRegression->New(0.01, 2000);
+    if(model->Fit(X, y)) {
+      probs   := model->Predict([[5.0, 72.0]]);
+      classes := model->PredictClass([[5.0, 72.0]]);
+      "Probability: {$probs[0]}"->PrintLine();
+      "Predicted pass: {$classes[0]}"->PrintLine();
+    };
+  }
+}
+</code></pre>
+
+    <h4 id="ml-neural">Neural Networks</h4>
+    <p>Configurable multi-layer network trained with backpropagation. Models can be saved and reloaded:</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML, Collection;
+
+class XorNet {
+  function : Main(args : String[]) ~ Nil {
+    # XOR training data
+    inputs  := Vector->New()<FloatMatrixRef>;
+    targets := Vector->New()<FloatMatrixRef>;
+
+    inputs->AddBack(FloatMatrixRef->New([[0.0, 0.0]])); targets->AddBack(FloatMatrixRef->New([[0.0]]));
+    inputs->AddBack(FloatMatrixRef->New([[0.0, 1.0]])); targets->AddBack(FloatMatrixRef->New([[1.0]]));
+    inputs->AddBack(FloatMatrixRef->New([[1.0, 0.0]])); targets->AddBack(FloatMatrixRef->New([[1.0]]));
+    inputs->AddBack(FloatMatrixRef->New([[1.0, 1.0]])); targets->AddBack(FloatMatrixRef->New([[0.0]]));
+
+    # Train: 2 inputs → 3 hidden (factor) → 1 output
+    net := NeuralNetwork->Train(2, inputs, 3, 1, targets, 0.3, 10000);
+    if(net <> Nil) {
+      query := FloatMatrixRef->New([[1.0, 0.0]]);
+      "1 XOR 0 — confidence: {$net->Confidence(query)}"->PrintLine();  # ~1.0
+      "1 XOR 0 — activated:  {$net->Query(query)}"->PrintLine();       # true
+      net->Store("xor.dat");
+    };
+  }
+}
+</code></pre>
+    <p>Load CSV training data with the built-in reader — it splits inputs and targets automatically:</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML, Collection;
+
+# LoadSplitMatrices: filename, target column offset, train%, line ending
+splits := MatrixReader->LoadSplitMatrices("iris.csv", 4, 0.8, "\n");
+
+# splits[0]=train_inputs  splits[1]=train_targets
+# splits[2]=test_inputs   splits[3]=test_targets
+train_inputs  := splits[0];
+train_targets := splits[1];
+
+net := NeuralNetwork->Train(4, train_inputs, 6, 3, train_targets, 0.05, 5000);
+</code></pre>
+    <pre class="cmd">&gt; obc -src xor_net.obs -lib ml
+&gt; obr xor_net</pre>
+
+    <h4 id="ml-cluster">Clustering &amp; Classification</h4>
+    <p><strong>K-Nearest Neighbors</strong> — instance-based classification over float feature vectors:</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+class KNNExample {
+  function : Main(args : String[]) ~ Nil {
+    # training: [height_cm, weight_kg] with size labels
+    data   := [[162.0, 55.0], [175.0, 75.0], [185.0, 90.0], [155.0, 48.0]];
+    labels := ["S", "M", "L", "XS"];
+
+    knn := KNearestNeighbors->New(data, labels);
+    neighbors := knn->Query(3, [170.0, 68.0]);
+
+    each(n in neighbors) {
+      "{$n->GetCategory()}: distance={$n->GetDistance()}"->PrintLine();
+    };
+  }
+}
+</code></pre>
+
+    <p><strong>K-Means Clustering</strong> — unsupervised grouping with Dunn index quality score:</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML, Collection;
+
+class ClusterExample {
+  function : Main(args : String[]) ~ Nil {
+    records := Vector->New()<FloatArrayRef>;
+    records->AddBack(FloatArrayRef->New([1.0, 1.5]));
+    records->AddBack(FloatArrayRef->New([1.2, 1.3]));
+    records->AddBack(FloatArrayRef->New([8.0, 8.5]));
+    records->AddBack(FloatArrayRef->New([7.8, 8.2]));
+    records->AddBack(FloatArrayRef->New([4.5, 4.0]));
+
+    groups   := ["low", "high"];
+    grouping := KMeans->Group(groups, records, 2, 0.0, 10.0);
+
+    "Dunn Index: {$grouping->GetDunnIndex()}"->PrintLine();
+    each(i : grouping->Size()) {
+      g := grouping->Get(i);
+      "Group '{$g->GetName()}': {$g->Size()} members"->PrintLine();
+    };
+  }
+}
+</code></pre>
+
+    <p><strong>Naive Bayes</strong> — probabilistic text classification (spam detection, sentiment, etc.):</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+class SpamFilter {
+  function : Main(args : String[]) ~ Nil {
+    # "ham" group (index 0)
+    ham := BayesGroup->New(0.6);
+    ham->AddEntry(BayesEntry->New("meeting",  15));
+    ham->AddEntry(BayesEntry->New("report",   12));
+    ham->AddEntry(BayesEntry->New("project",  18));
+
+    # "spam" group (index 1)
+    spam := BayesGroup->New(0.4);
+    spam->AddEntry(BayesEntry->New("buy",   30));
+    spam->AddEntry(BayesEntry->New("free",  25));
+    spam->AddEntry(BayesEntry->New("click", 20));
+
+    classifier := NaiveBayes->New(ham, spam);
+
+    result := classifier->Query(["buy", "free"]);
+    if(result = 1) {
+      "Spam"->PrintLine();
+    } else {
+      "Ham"->PrintLine();
+    };
+  }
+}
+</code></pre>
+
+    <h4 id="ml-eval">Evaluation &amp; Preprocessing</h4>
+    <p><code>FeatureScaler</code> normalizes inputs before training; <code>Metrics</code> evaluates classifier performance:</p>
+    <pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+class EvalExample {
+  function : Main(args : String[]) ~ Nil {
+    # ── Feature scaling ──────────────────────────────
+    raw := [[10.0, 200.0], [20.0, 400.0], [30.0, 600.0]];
+
+    scaled  := FeatureScaler->MinMaxScaler(raw);    # [0, 1]
+    z_score := FeatureScaler->StandardScaler(raw);  # mean=0, std=1
+    l2_norm := FeatureScaler->Normalize(raw);       # L2 row normalization
+
+    # ── Metrics ──────────────────────────────────────
+    predictions := [true,  false, true,  true,  false];
+    actuals     := [true,  true,  false, true,  false];
+
+    "Accuracy:  {$Metrics->Accuracy(predictions, actuals)}"->PrintLine();
+    "Precision: {$Metrics->Precision(predictions, actuals)}"->PrintLine();
+    "Recall:    {$Metrics->Recall(predictions, actuals)}"->PrintLine();
+    "F1 Score:  {$Metrics->F1Score(predictions, actuals)}"->PrintLine();
+    "MCC:       {$Metrics->MCC(predictions, actuals)}"->PrintLine();
+
+    cm := Metrics->ConfusionMatrix(predictions, actuals);
+    Metrics->PrintConfusionMatrix(cm);
+
+    # ── Train/test split ─────────────────────────────
+    data   := [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [9.0, 10.0]];
+    splits := CrossValidation->TrainTestSplit(data, 0.2);  # 80/20
+    train  := splits[0]->Get();
+    test   := splits[1]->Get();
+    "Train rows: {$train->Size()}, Test rows: {$test->Size()}"->PrintLine();
+  }
+}
+</code></pre>
+    <pre class="cmd">&gt; obc -src eval.obs -lib ml
+&gt; obr eval</pre>
+
+    <!-- ═══════════════════════════════════════ ONNX ═══ -->
+    <h3 id="onnx">ONNX Local Inference</h3>
+    <div class="lib-flag">json,cipher,opencv,onnx</div>
+    <p>
+      Run ONNX models locally with hardware acceleration: DirectML (Windows), CUDA (Linux), CoreML (macOS).
+      CPU inference requires no GPU. Models load from local files — no internet at runtime.
+    </p>
 
     <h4 id="onnx-face">Face Recognition</h4>
     <p>
-     Uses <a href="https://github.com/deepinsight/insightface" target="_blank">InsightFace buffalo_l</a>:
-     SCRFD 10G-KPS face detector + ArcFace R50 512-dim embeddings.
+      Uses <a href="https://github.com/deepinsight/insightface" target="_blank">InsightFace buffalo_l</a>:
+      SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings.
     </p>
-    <p><strong>Download models:</strong></p>
     <pre class="cmd">curl -L -o buffalo_l.zip https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip
 unzip buffalo_l.zip   # det_10g.onnx and w600k_r50.onnx</pre>
     <pre class="line-numbers"><code class="language-cpp">use API.Onnx, System.IO.Filesystem;
 
-session := FaceSession-&gt;New("det_10g.onnx", "w600k_r50.onnx");
+session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
 
-img1 := FileReader-&gt;ReadBinaryFile("person_a.jpg");
-img2 := FileReader-&gt;ReadBinaryFile("person_b.jpg");
+img1 := FileReader->ReadBinaryFile("person_a.jpg");
+img2 := FileReader->ReadBinaryFile("person_b.jpg");
 
-r1 := session-&gt;Recognize(img1, 0.5);
-r2 := session-&gt;Recognize(img2, 0.5);
+r1 := session->Recognize(img1, 0.5);
+r2 := session->Recognize(img2, 0.5);
 
-if(r1-&gt;GetSize() &gt; 0 &amp; r2-&gt;GetSize() &gt; 0) {
-  emb1 := r1-&gt;GetResults()[0]-&gt;GetEmbedding();
-  emb2 := r2-&gt;GetResults()[0]-&gt;GetEmbedding();
-  sim := FaceSession-&gt;Compare(emb1, emb2);
+if(r1->GetSize() > 0 & r2->GetSize() > 0) {
+  emb1 := r1->GetResults()[0]->GetEmbedding();
+  emb2 := r2->GetResults()[0]->GetEmbedding();
+  sim  := FaceSession->Compare(emb1, emb2);
   "Similarity: {$sim}"->PrintLine();
-  "Same person: {$(sim &gt; 0.35)}"->PrintLine();
+  "Same person: {$(sim > 0.35)}"->PrintLine();
 };
-session-&gt;Close();
+session->Close();
 </code></pre>
 
     <h4 id="onnx-yolo">Object Detection (YOLO)</h4>
-    <p>
-     Download a YOLOv11 model: <code>yolo export model=yolo11n.pt format=onnx</code> (requires ultralytics).
-    </p>
     <pre class="line-numbers"><code class="language-cpp">use API.Onnx, System.IO.Filesystem;
 
-labels := String-&gt;New[80];   # COCO 80-class labels
+labels := String->New[80];   # COCO class labels
 labels[0] := "person"; labels[1] := "bicycle"; # ... fill all 80
 
-session := YoloSession-&gt;New("yolov11n.onnx");
-img := FileReader-&gt;ReadBinaryFile("street.jpg");
+session := YoloSession->New("yolov11n.onnx");
+img     := FileReader->ReadBinaryFile("street.jpg");
+result  := session->Inference(img, 640, 640, 0.5, labels);
 
-result := session-&gt;Inference(img, 640, 640, 0.5, labels);
-each(d in result-&gt;GetClassifications()) {
-  "{$d-&gt;GetLabel()}: {$d-&gt;GetConfidence()}"->PrintLine();
+each(d in result->GetClassifications()) {
+  "{$d->GetLabel()}: {$d->GetConfidence()}"->PrintLine();
 };
-session-&gt;Close();
+session->Close();
 </code></pre>
 
-    <h4 id="onnx-phi3">Phi-3 (Local SLM)</h4>
-    <p>
-     Run Microsoft's Phi-3 Mini locally for text generation — no internet connection required at inference time.
-    </p>
-    <p><strong>Download model (~2 GB):</strong></p>
+    <h4 id="onnx-phi3">Phi-3 Mini (Local SLM)</h4>
+    <p>Run Microsoft's Phi-3 Mini locally — no internet at inference time. (~2 GB model)</p>
     <pre class="cmd">huggingface-cli download microsoft/Phi-3-mini-4k-instruct-onnx \
   --include "directml/directml-int4-awq-block-128/*"</pre>
     <pre class="line-numbers"><code class="language-cpp">use API.Onnx, System.IO.Filesystem;
 
-tokenizer := Phi3Tokenizer-&gt;New("tokenizer.json");
-session   := Phi3Session-&gt;New("phi3-mini-4k-instruct.onnx");
+tokenizer := Phi3Tokenizer->New("tokenizer.json");
+session   := Phi3Session->New("phi3-mini-4k-instruct.onnx");
 
-prompt    := "&lt;|user|&gt;\nWhat is the capital of France?&lt;|end|&gt;\n&lt;|assistant|&gt;\n";
-token_ids := tokenizer-&gt;Encode(prompt);
-eos       := Int-&gt;New[1]; eos[0] := 32007;
+prompt    := "<|user|>\nWhat is the capital of France?<|end|>\n<|assistant|>\n";
+token_ids := tokenizer->Encode(prompt);
+eos       := Int->New[1]; eos[0] := 32007;
 
-result  := session-&gt;Generate(token_ids, 200, 0.7, eos);
-tokenizer-&gt;Decode(result-&gt;GetTokenIds())-&gt;PrintLine();
-session-&gt;Close();
+result    := session->Generate(token_ids, 200, 0.7, eos);
+tokenizer->Decode(result->GetTokenIds())->PrintLine();
+session->Close();
 </code></pre>
 
-    <!-- ─────────────────────────────────── OpenCV ─── -->
+    <!-- ═══════════════════════════════════════ OpenCV ═══ -->
     <h3 id="opencv">Computer Vision (OpenCV)</h3>
-    <p><strong>Compile flag:</strong> <code>-lib json,cipher,opencv</code></p>
+    <div class="lib-flag">json,cipher,opencv</div>
 
     <pre class="line-numbers"><code class="language-cpp">use API.OpenCV;
 
 class VisionExample {
   function : Main(args : String[]) ~ Nil {
     # load, process, save
-    image   := Image-&gt;New("photo.jpg");
-    gray    := image-&gt;ToGray();
-    blurred := gray-&gt;GaussianBlur(5, 5);
-    edges   := blurred-&gt;Canny(50, 150);
-    edges-&gt;Save("edges.jpg");
+    image   := Image->New("photo.jpg");
+    gray    := image->ToGray();
+    blurred := gray->GaussianBlur(5, 5);
+    edges   := blurred->Canny(50, 150);
+    edges->Save("edges.jpg");
 
-    # Haar cascade face detection
-    detector := FaceDetector-&gt;New("haarcascade_frontalface_default.xml");
-    faces    := detector-&gt;Detect(image);
-    "Faces detected: {$faces-&gt;Size()}"->PrintLine();
+    # face detection via Haar cascade
+    detector := FaceDetector->New("haarcascade_frontalface_default.xml");
+    faces    := detector->Detect(image);
+    "Faces detected: {$faces->Size()}"->PrintLine();
 
-    # resize and color conversion
-    resized := image-&gt;Resize(320, 240);
-    hsv     := resized-&gt;ToHsv();
-    hsv-&gt;Save("hsv_output.jpg");
+    # resize and color space conversion
+    resized := image->Resize(320, 240);
+    resized->ToHsv()->Save("hsv_output.jpg");
   }
 }
 </code></pre>
 
-    <!-- ─────────────────────────────────── NLP ─── -->
+    <!-- ═══════════════════════════════════════ NLP ═══ -->
     <h3 id="nlp">Natural Language Processing</h3>
+    <div class="lib-flag">gen_collect,nlp</div>
     <p>Built-in NLP primitives — no model download required. Pure Objeck bytecode.</p>
-    <p><strong>Compile flag:</strong> <code>-lib gen_collect,nlp</code></p>
 
     <pre class="line-numbers"><code class="language-cpp">use API.ML.NLP;
 
 class NLPExample {
   function : Main(args : String[]) ~ Nil {
-    # sentiment analysis
-    text := "This product is absolutely wonderful!";
-    SentimentAnalyzer-&gt;Classify(text)-&gt;PrintLine();   # "positive"
+    # sentiment
+    SentimentAnalyzer->Classify("This product is absolutely wonderful!")->PrintLine();  # "positive"
 
     # TF-IDF vectorization
-    docs := String-&gt;New[3];
+    docs := String->New[3];
     docs[0] := "cats are pets";
     docs[1] := "dogs are pets";
     docs[2] := "birds can fly";
 
-    tfidf := TF_IDF-&gt;New();
-    tfidf-&gt;Fit(docs);
-    vector := tfidf-&gt;Transform("cats and dogs");
-    each(v in vector) { v-&gt;PrintLine(); };
+    tfidf := TF_IDF->New();
+    tfidf->Fit(docs);
+    vector := tfidf->Transform("cats and dogs");
+    each(v in vector) { v->PrintLine(); };
 
     # cosine similarity
-    sim := TextSimilarity-&gt;Cosine("hello world", "hello there");
+    sim := TextSimilarity->Cosine("hello world", "hello there");
     "Similarity: {$sim}"->PrintLine();
 
     # tokenization
-    tokens := Tokenizer-&gt;Tokenize("The quick brown fox");
-    each(t in tokens) { t-&gt;PrintLine(); };
+    tokens := Tokenizer->Tokenize("The quick brown fox");
+    each(t in tokens) { t->PrintLine(); };
   }
 }
 </code></pre>
-    <pre class="cmd">&gt; obc -src nlp_example.obs -lib gen_collect,nlp
-&gt; obr nlp_example</pre>
+    <pre class="cmd">&gt; obc -src nlp.obs -lib gen_collect,nlp
+&gt; obr nlp</pre>
 
-    <!-- ─────────────────────────────────── Quick Reference ─── -->
+    <!-- ═══════════════════════════════════════ Quick Reference ═══ -->
     <h3 id="ref">Quick Reference</h3>
 
-    <table style="width:100%; border-collapse:collapse; margin-bottom:1.5em;">
+    <table class="ref-table">
      <thead>
-      <tr style="background:#2a2a3a; color:#ccc;">
-       <th style="padding:8px 12px; text-align:left;">Capability</th>
-       <th style="padding:8px 12px; text-align:left;">Class</th>
-       <th style="padding:8px 12px; text-align:left;">Library flag</th>
-       <th style="padding:8px 12px; text-align:left;">Key required</th>
-      </tr>
+      <tr><th>Capability</th><th>Class</th><th>Library flag</th><th>Key</th></tr>
      </thead>
      <tbody>
-      <tr><td style="padding:6px 12px;">Chat / text</td><td><code>Response</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Vision (image input)</td><td><code>Response</code> + <code>ImageQuery</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
-      <tr><td style="padding:6px 12px;">Realtime audio</td><td><code>Realtime</code></td><td><code>openai,sdl2</code></td><td>OpenAI</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Image generation</td><td><code>Image</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
-      <tr><td style="padding:6px 12px;">Text embeddings</td><td><code>Embedding</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Content moderation</td><td><code>Moderation</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
-      <tr><td style="padding:6px 12px;">Batch processing</td><td><code>Batch</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Gemini chat/vision</td><td><code>Model::GenerateContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
-      <tr><td style="padding:6px 12px;">Search grounding</td><td><code>Model::GenerateContentWithGrounding</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">File upload</td><td><code>FileManager</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
-      <tr><td style="padding:6px 12px;">Context caching</td><td><code>CachedContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Gemini embeddings</td><td><code>Model::EmbedContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
-      <tr><td style="padding:6px 12px;">Batch embeddings</td><td><code>Model::BatchEmbedContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Local chat</td><td><code>Completion</code> / <code>Chat</code></td><td><code>ollama</code></td><td>None</td></tr>
-      <tr><td style="padding:6px 12px;">Local embeddings</td><td><code>Model::Embeddings</code></td><td><code>ollama</code></td><td>None</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Face recognition</td><td><code>FaceSession</code></td><td><code>onnx</code></td><td>None</td></tr>
-      <tr><td style="padding:6px 12px;">Object detection</td><td><code>YoloSession</code></td><td><code>onnx</code></td><td>None</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Local SLM</td><td><code>Phi3Session</code></td><td><code>onnx</code></td><td>None</td></tr>
-      <tr><td style="padding:6px 12px;">Image classification</td><td><code>ResNetSession</code></td><td><code>onnx</code></td><td>None</td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Computer vision</td><td><code>Image</code>, <code>FaceDetector</code></td><td><code>opencv</code></td><td>None</td></tr>
-      <tr><td style="padding:6px 12px;">Sentiment / TF-IDF</td><td><code>SentimentAnalyzer</code>, <code>TF_IDF</code></td><td><code>nlp</code></td><td>None</td></tr>
+      <tr><td>Chat / text</td><td><code>Response</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
+      <tr><td>Vision (image input)</td><td><code>Response</code> + <code>ImageQuery</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
+      <tr><td>Realtime audio</td><td><code>Realtime</code></td><td><code>openai,sdl2</code></td><td>OpenAI</td></tr>
+      <tr><td>Text embeddings</td><td><code>Embedding</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
+      <tr><td>Content moderation</td><td><code>Moderation</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
+      <tr><td>Batch processing</td><td><code>Batch</code></td><td><code>openai</code></td><td>OpenAI</td></tr>
+      <tr><td>Gemini chat / vision</td><td><code>Model::GenerateContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
+      <tr><td>Search grounding</td><td><code>Model::GenerateContentWithGrounding</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
+      <tr><td>File upload</td><td><code>FileManager</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
+      <tr><td>Context caching</td><td><code>CachedContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
+      <tr><td>Gemini embeddings</td><td><code>Model::EmbedContent</code> / <code>BatchEmbedContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
+      <tr><td>Local chat / generation</td><td><code>Completion</code>, <code>Chat</code></td><td><code>ollama</code></td><td>None</td></tr>
+      <tr><td>Local embeddings</td><td><code>Model::Embeddings</code></td><td><code>ollama</code></td><td>None</td></tr>
+      <tr><td>Matrix algebra</td><td><code>Matrix2D</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Linear regression</td><td><code>LinearRegression</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Logistic regression</td><td><code>LogisticRegression</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Neural network</td><td><code>NeuralNetwork</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>K-nearest neighbors</td><td><code>KNearestNeighbors</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>K-means clustering</td><td><code>KMeans</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Naive Bayes</td><td><code>NaiveBayes</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Feature scaling</td><td><code>FeatureScaler</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Model evaluation</td><td><code>Metrics</code>, <code>CrossValidation</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Face recognition</td><td><code>FaceSession</code></td><td><code>onnx</code></td><td>None</td></tr>
+      <tr><td>Object detection</td><td><code>YoloSession</code></td><td><code>onnx</code></td><td>None</td></tr>
+      <tr><td>Local SLM</td><td><code>Phi3Session</code></td><td><code>onnx</code></td><td>None</td></tr>
+      <tr><td>Computer vision</td><td><code>Image</code>, <code>FaceDetector</code></td><td><code>opencv</code></td><td>None</td></tr>
+      <tr><td>Sentiment / TF-IDF</td><td><code>SentimentAnalyzer</code>, <code>TF_IDF</code></td><td><code>nlp</code></td><td>None</td></tr>
      </tbody>
     </table>
 
     <h4>Model Recommendations</h4>
-    <table style="width:100%; border-collapse:collapse; margin-bottom:1.5em;">
+    <table class="ref-table">
      <thead>
-      <tr style="background:#2a2a3a; color:#ccc;">
-       <th style="padding:8px 12px; text-align:left;">Task</th>
-       <th style="padding:8px 12px; text-align:left;">OpenAI</th>
-       <th style="padding:8px 12px; text-align:left;">Gemini</th>
-       <th style="padding:8px 12px; text-align:left;">Ollama (local)</th>
-      </tr>
+      <tr><th>Task</th><th>OpenAI</th><th>Gemini</th><th>Ollama (local)</th></tr>
      </thead>
      <tbody>
-      <tr><td style="padding:6px 12px;">General chat</td><td><code>gpt-4o-mini</code></td><td><code>gemini-2.0-flash</code></td><td><code>llama3.2</code></td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Reasoning</td><td><code>o3-mini</code></td><td><code>gemini-2.5-pro</code></td><td><code>qwen2.5</code></td></tr>
-      <tr><td style="padding:6px 12px;">Vision</td><td><code>gpt-4o</code></td><td><code>gemini-2.0-flash</code></td><td><code>llava</code></td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Realtime audio</td><td><code>gpt-4o-realtime-preview</code></td><td>—</td><td>—</td></tr>
-      <tr><td style="padding:6px 12px;">Embeddings</td><td><code>text-embedding-3-small</code></td><td><code>text-embedding-004</code></td><td><code>nomic-embed-text</code></td></tr>
-      <tr style="background:#1e1e2e;"><td style="padding:6px 12px;">Fast + cheap</td><td><code>gpt-4o-mini</code></td><td><code>gemini-2.5-flash</code></td><td><code>phi3</code></td></tr>
+      <tr><td>General chat</td><td><code>gpt-4o-mini</code></td><td><code>gemini-2.0-flash</code></td><td><code>llama3.2</code></td></tr>
+      <tr><td>Reasoning</td><td><code>o3-mini</code></td><td><code>gemini-2.5-pro</code></td><td><code>qwen2.5</code></td></tr>
+      <tr><td>Vision</td><td><code>gpt-4o</code></td><td><code>gemini-2.0-flash</code></td><td><code>llava</code></td></tr>
+      <tr><td>Realtime audio</td><td><code>gpt-4o-realtime-preview</code></td><td>—</td><td>—</td></tr>
+      <tr><td>Text embeddings</td><td><code>text-embedding-3-small</code></td><td><code>text-embedding-004</code></td><td><code>nomic-embed-text</code></td></tr>
+      <tr><td>Fast &amp; cheap</td><td><code>gpt-4o-mini</code></td><td><code>gemini-2.5-flash</code></td><td><code>phi3</code></td></tr>
      </tbody>
     </table>
 
-    <p>
-     Full working examples are in
-     <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks" target="_blank"><code>programs/frameworks/</code></a>:
-    </p>
-    <pre>openai/      openai_chat.obs  openai_vision.obs  openai_moderation.obs
-             openai_batch.obs openai_tune.obs    openai_responses.obs
-
-gemini/      gemini_image.obs gemini_audio.obs   gemini_files.obs
-             gemini_cache.obs gemini_ground.obs  gemini_embed.obs
-
-ollama/      ollama_chat.obs  ollama_vision.obs
-
-opencv_onnx/ face_recog.obs   yolo_detect.obs    phi3_chat.obs</pre>
+    <h4>Example Programs</h4>
+    <p>Full working examples in <a href="https://github.com/objeck/objeck-lang/tree/master/programs/frameworks" target="_blank"><code>programs/frameworks/</code></a>:</p>
+    <div class="file-tree">
+      <span class="dir">openai/</span>      <span class="file">openai_chat.obs</span>  <span class="file">openai_vision.obs</span>  <span class="file">openai_moderation.obs</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">openai_batch.obs</span> <span class="file">openai_tune.obs</span>    <span class="file">openai_responses.obs</span><br>
+      <br>
+      <span class="dir">gemini/</span>      <span class="file">gemini_image.obs</span> <span class="file">gemini_audio.obs</span>   <span class="file">gemini_files.obs</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">gemini_cache.obs</span> <span class="file">gemini_ground.obs</span>  <span class="file">gemini_embed.obs</span><br>
+      <br>
+      <span class="dir">ollama/</span>      <span class="file">ollama_chat.obs</span>  <span class="file">ollama_vision.obs</span><br>
+      <br>
+      <span class="dir">opencv_onnx/</span> <span class="file">face_recog.obs</span>   <span class="file">yolo_detect.obs</span>    <span class="file">phi3_chat.obs</span>
+    </div>
 
    </div>
   </main>
