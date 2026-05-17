@@ -36,8 +36,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.5.1/objeck-linux-x64_2026.5.1.tgz
-tar xzf objeck-linux-x64_2026.5.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.5.2/objeck-linux-x64_2026.5.2.tgz
+tar xzf objeck-linux-x64_2026.5.2.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -57,7 +57,12 @@ obc hello && obr hello
 
 ## What's New
 
-**v2026.5.1** ✅
+**v2026.5.2**
+  * **Release fix** — `obr` (VM runtime) was absent from all v2026.5.1 platform archives; `nghttp2` was missing from CI build scripts on every platform
+  * **Windows local builds** — vcpkg include/lib paths added to `vm.vcxproj` so dev builds find nghttp2 without manual env var setup
+  * **CI hardening** — binary presence and API doc completeness now verified before artifacts are uploaded; `api.zip` auto-committed to repo after doc generation
+
+**v2026.5.1**
   * **HTTP/2 client** — `Http2Client` with persistent TLS connections, custom headers, GET/POST/PUT/DELETE, and `QuickGet`/`QuickPost` one-liners (nghttp2 + ALPN)
   * **HTTP/3 / QUIC client** — `Http3Client` over UDP with connection reuse and the same `Quick*` API (ngtcp2 + nghttp3 + GnuTLS)
   * **HTTP/1.1 improvements** — PATCH method, redirect handling fixes, retry parity across `HttpClient`/`HttpsClient`
@@ -80,21 +85,12 @@ obc hello && obr hello
   * **ARM64 JIT** — fixed EXT_LIB_FUNC_CALL crash; macOS ONNX build and CodeQL fixes
   * **`OBJECK_JIT_DISABLE`** — new boolean env var for cleanly disabling auto-JIT at startup
 
-**v2026.4.3** 
-  * **DAP debugger hover** — hovering an object shows `ClassName { field=val, ... }` with one-level instance field expansion via `FormatObjectForDap`
-  * **DAP instance/class variable scopes** — Variables pane now shows separate Locals, Instance, and Class scopes with correct memory mapping
-  * **DAP stepping + crash fixes** — fixed step-into crash, step-over/step-out scoping, stdout corruption, disconnect access violation, and variable display
-  * **Editor setup refresh** — updated VS Code, Sublime Text, and gvim/Vim DAP+LSP setup for Windows, Linux, and macOS
-  * **LSP crash fixes** — null guards for `textDocument/codeAction` with inferred locals, hover position fix (1-based to 0-based)
-  * **Configurable JIT threshold** — auto-JIT invocation count can now be tuned
-  * Fixed JIT S2F callback param count causing segfault on `String:ToFloat`
-  * Hardened HTTPS client against null `ReadLine` on connection failures
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
 ## Downloads
 
-**Latest Release:** [v2026.5.1](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.5.2](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

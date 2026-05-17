@@ -2,6 +2,23 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.5.2] - 2026-05-16
+
+### Bug Fixes
+- Fixed `obr` (VM runtime) absent from all v2026.5.1 platform archives — root cause was `libnghttp2-dev` missing from the main `build` CI job dependency installs (was only in `build-docs` and CodeQL jobs)
+- Fixed API docs (`docs/api.zip`) containing only style files in all prior releases — `build-docs` CI job now commits freshly generated `api.zip` back to `master` with `[skip ci]`
+
+### Infrastructure
+- Added `libnghttp2-dev` to Linux apt-get installs in the main `build` CI job (`release-build.yml`)
+- Added `nghttp2` to macOS Homebrew installs in the main `build` CI job
+- Added `nghttp2:x64-windows` and `nghttp2:arm64-windows` to Windows vcpkg installs in the main `build` CI job
+- Added `vcpkg` include/lib paths to `core/vm/vs/vm.vcxproj` via `$(OBJECK_VCPKG_ROOT)` (falls back to `C:\vcpkg`) so Windows developer builds find nghttp2 headers/libs without manual environment variable setup
+- Added "Verify required binaries" CI step after build: checks that `obr`, `obc`, `obd`, `obi`, `obb` all exist and that `doc/api/` contains 50+ HTML files before artifacts are uploaded
+- `build-docs` job now commits regenerated `api.zip` to `master` after each successful doc build
+
+### Website
+- Added "Changelog" card to the home page (`docs/web/index.html`) creating a clean 2×3 six-card grid; removed the redundant featured DAP card
+
 ## [v2026.5.1] - 2026-05-10
 
 ### New Features
