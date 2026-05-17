@@ -79,6 +79,14 @@ if [%1] == [x64] (
 	devenv objeck.sln /rebuild "Release|x64"
 )
 
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: Build failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
+
 mkdir %TARGET%\bin
 if [%1] == [arm64] (
 	copy ARM64\Release\*.exe %TARGET%\bin
