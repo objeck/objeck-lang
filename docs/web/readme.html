@@ -58,25 +58,24 @@
       AI, networking, and vision — built in. Every release moves the stack forward.
     </p>
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem;">
-      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.5.1</a>
+      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.5.2</a>
       <a class="btn btn-secondary" href="getting_started.html">Quick Start</a>
       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
     </div>
 
     <!-- Changelog -->
-    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.1" style="color: inherit; text-decoration: none;">v2026.5.1</a></u></h3>
+    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.2" style="color: inherit; text-decoration: none;">v2026.5.2</a></u></h3>
     <ul>
         <li><strong>HTTP/2 client</strong> &mdash; <code>Http2Client</code> with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and <code>Quick*</code> one-liners via nghttp2 + ALPN</li>
         <li><strong>HTTP/3 / QUIC client</strong> &mdash; <code>Http3Client</code> over UDP with connection reuse and the same <code>Quick*</code> API (ngtcp2 + nghttp3 + GnuTLS)</li>
         <li><strong>HTTP/1.1 improvements</strong> &mdash; PATCH method, redirect handling fixes for POST/PUT, retry parity across <code>HttpClient</code>/<code>HttpsClient</code></li>
         <li><strong>OpenAI Moderation &amp; Batch</strong> &mdash; <code>Moderation->Check()</code> per-category flags/scores; <code>Batch->Create()</code>/<code>Get()</code> for async 50%-cost batch requests</li>
         <li><strong>Gemini Files, Cache, Grounding, BatchEmbed</strong> &mdash; upload/list/get/delete files; server-side prompt caching; Search Grounding; batch embeddings in one round-trip</li>
-        <li><strong>WebSocket hardening</strong> &mdash; 8 bug fixes including bulk <code>ReadBuffer</code> I/O replacing per-byte reads</li>
-        <li><strong>MCP server fixes</strong> &mdash; hang on shutdown and crash-on-stop resolved; regression tests added</li>
+        <li><strong>WebSocket hardening</strong> &mdash; 8 bug fixes + bulk <code>ReadBuffer</code> I/O replacing per-byte reads</li>
+        <li><strong>MCP server fixes</strong> &mdash; hang on shutdown and crash-on-stop resolved</li>
         <li><strong>Socket reliability</strong> &mdash; <code>SO_REUSEADDR</code> on <code>TCPSocketServer::Bind()</code>; <code>IPSocket::Open()</code> falls through to next address on failure</li>
-        <li><strong>EmbeddingValues wrapper</strong> &mdash; avoids <code>Float[]</code> as generic type parameter</li>
-        <li><strong>MSVC compatibility</strong> &mdash; NOMINMAX ordering, <code>std::min()</code>; Release build optimizations for VM and compiler</li>
-        <li>CI: CodeQL v4, node24-compatible Actions, nghttp2/ngtcp2 on all platforms</li>
+        <li><strong>ARM64 Windows</strong> &mdash; OpenCV and ONNX now fully supported on ARM64 Windows</li>
+        <li><strong>Improved release process</strong> &mdash; self-contained Windows builds; CI verifies all binaries and API docs on all platforms before publishing</li>
     </ul>
 
     <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.0" style="color: inherit; text-decoration: none;">v2026.5.0</a></h3>
