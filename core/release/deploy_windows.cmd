@@ -119,6 +119,9 @@ REM nghttp2 runtime DLL (required by obr for HTTP/2 support)
 if [%1] == [x64] (
 	copy ..\lib\openssl\win\x64\nghttp2.dll %TARGET%\bin
 )
+if [%1] == [arm64] (
+	copy ..\lib\openssl\win\arm64\nghttp2.dll %TARGET%\bin
+)
 
 REM native launcher
 if [%1] == [arm64] (
@@ -334,7 +337,7 @@ copy ..\..\LICENSE %TARGET%
 
 REM copy docs (skip for ARM64 cross-compilation - can't run ARM64 binaries on x64 host)
 if [%1] == [x64] (
-	call code_doc64.cmd %1 deploy
+	call "%~dp0code_doc64.cmd" %1 deploy
 	rmdir /s /q %1
 ) else (
 	echo Skipping code_doc for ARM64 cross-compilation - using pre-built API docs
