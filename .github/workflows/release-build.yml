@@ -229,14 +229,14 @@ jobs:
 
       - name: Cache OpenCV DLLs (Windows x64)
         if: matrix.platform == 'windows-x64'
-        id: opencv-cache
+        id: opencv-cache-x64
         uses: actions/cache@v5
         with:
           path: core/lib/opencv/win/x64/bin
           key: opencv-4.12.0-win-x64-dlls
 
       - name: Download OpenCV runtime DLLs (Windows x64)
-        if: matrix.platform == 'windows-x64' && steps.opencv-cache.outputs.cache-hit != 'true'
+        if: matrix.platform == 'windows-x64' && steps.opencv-cache-x64.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $opencvVersion = "4.12.0"
@@ -257,6 +257,7 @@ jobs:
 
           Write-Output "OpenCV DLLs installed:"
           Get-ChildItem $binDir
+
 
       - name: Install WiX Toolset (Windows)
         if: runner.os == 'Windows'
