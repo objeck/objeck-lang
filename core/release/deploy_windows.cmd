@@ -93,6 +93,25 @@ if errorlevel 1 (
 	echo ============================================================
 	exit /b 1
 )
+REM Verify build output exists (catches Ctrl+C kills where devenv returns errorlevel 0)
+if [%1] == [arm64] (
+	if not exist "ARM64\Release\obr.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: objeck.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
+)
+if [%1] == [x64] (
+	if not exist "..\vm\release\win64\obr.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: objeck.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
+)
 
 mkdir %TARGET%\bin
 if [%1] == [arm64] (
@@ -166,6 +185,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "ARM64\Release\obn.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: native_launcher.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
 	copy ARM64\Release\obb.exe ..\..\release\%TARGET%\bin
 	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
@@ -179,6 +205,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: native_launcher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release\obn.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: native_launcher.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
@@ -240,6 +273,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "ARM64\Release\libobjk_lame.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: lame.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
 )
 
@@ -249,6 +289,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: lame.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release\libobjk_lame.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: lame.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
@@ -267,6 +314,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "ARM64\Release\ObLauncher.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: AppLauncher.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\*.exe ..\..\release\%TARGET%\app
 )
 
@@ -276,6 +330,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: AppLauncher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release\ObLauncher.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: AppLauncher.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
@@ -294,6 +355,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "vs\Release\ARM64\libobjk_diags.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: diag.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy vs\Release\ARM64\*.dll* ..\..\release\%TARGET%\lib\native
 )
 
@@ -303,6 +371,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: diag.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "vs\Release\x64\libobjk_diags.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: diag.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
@@ -322,6 +397,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "ARM64\Release\libobjk_odbc.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: odbc.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
 )
 
@@ -331,6 +413,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: odbc.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "Release\win64\libobjk_odbc.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: odbc.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
@@ -349,6 +438,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "Release\ARM64\libobjk_ml.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: matrix.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy Release\ARM64\*.dll ..\..\release\%TARGET%\lib\native
 )
 
@@ -358,6 +454,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: matrix.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "Release\x64\libobjk_ml.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: matrix.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
@@ -376,6 +479,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "arm64\Release\libobjk_opencv.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: opencv.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
 	for %%f in (win\arm64\bin\opencv_*4.dll) do (
@@ -389,6 +499,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: opencv.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release\libobjk_opencv.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: opencv.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
@@ -409,21 +526,9 @@ REM onnx support
 cd ..\lib\onnx
 
 REM Restore NuGet packages before building
-REM Locate nuget.exe: try VSINSTALLDIR, then DevEnvDir, then PATH
-set NUGET_EXE=
-if not "%VSINSTALLDIR%"=="" (
-	if exist "%VSINSTALLDIR%Common7\IDE\CommonExtensions\Microsoft\NuGet\nuget.exe" (
-		set NUGET_EXE=%VSINSTALLDIR%Common7\IDE\CommonExtensions\Microsoft\NuGet\nuget.exe
-	)
-)
-if "%NUGET_EXE%"=="" (
-	if not "%DevEnvDir%"=="" (
-		if exist "%DevEnvDir%CommonExtensions\Microsoft\NuGet\nuget.exe" (
-			set NUGET_EXE=%DevEnvDir%CommonExtensions\Microsoft\NuGet\nuget.exe
-		)
-	)
-)
-if "%NUGET_EXE%"=="" set NUGET_EXE=nuget
+REM Use VS-bundled nuget.exe (avoids PATH dependency); fall back to PATH version
+set NUGET_EXE=%VSINSTALLDIR%Common7\IDE\CommonExtensions\Microsoft\NuGet\nuget.exe
+if not exist "%NUGET_EXE%" set NUGET_EXE=nuget
 "%NUGET_EXE%" restore onnx.sln
 if errorlevel 1 (
 	echo.
@@ -442,6 +547,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "ARM64\Release-QNN\libobjk_onnx.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: onnx.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
 	if exist eq\qnn\win\onnx\arm64\bin (
@@ -457,6 +569,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: onnx.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release-DML\libobjk_onnx.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: onnx.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
@@ -485,6 +604,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		exit /b 1
 	)
+	if not exist "sdl\Release\arm64\libobjk_sdl.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: sdl.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy sdl\Release\arm64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
 	copy lib\arm64\*.dll ..\..\release\%TARGET%\lib\sdl
@@ -497,6 +623,13 @@ if [%1] == [x64] (
 		echo.
 		echo ============================================================
 		echo  ERROR: sdl.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "sdl\Release\x64\libobjk_sdl.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: sdl.sln build incomplete - was the build interrupted?
 		echo ============================================================
 		exit /b 1
 	)
