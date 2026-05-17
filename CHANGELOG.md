@@ -46,27 +46,6 @@ All notable changes to Objeck will be documented in this file.
 ### Website
 - Added Changelog card to home page (`docs/web/index.html`) creating a clean 2×3 six-card grid
 
-## [v2026.5.0] - 2026-05-06
-
-### New Features
-- **Face recognition** (`FaceSession`): SCRFD 10G-KPS face detector + ArcFace R50 512-dim embedding recognizer from InsightFace buffalo_l pack. Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No additional native libraries required.
-- **Windows emoji support**: Full Unicode supplementary plane output (emoji and other non-BMP characters) now works correctly in cmd.exe and Windows Terminal. Console string/char output routes through `WriteConsoleW` so surrogate pairs arrive intact; pipe and file redirection continue to emit correct UTF-8 bytes.
-- **LSP enhancements**: New `typeHierarchy` (prepare/supertypes/subtypes), `textDocument/selectionRange`, `workspace/symbol`, `textDocument/foldingRange`, `textDocument/documentHighlight`, and `textDocument/typeDefinition` handlers. Fixed hover non-determinism from per-request `ContextAnalyzer` re-analysis; fixed hover on variable declarations and class references.
-- **`OBJECK_JIT_DISABLE`**: New boolean environment variable for cleanly disabling the auto-JIT at startup without recompiling. Accepts `true`/`1`; useful for debugging and regression isolation.
-
-### Libraries
-- **ONNX**: New `FaceSession`, `FaceDetectionResult`, `FaceRecognitionResult`, `FaceDetection`, `FaceResult` classes. `FaceSession->Compare()` computes cosine similarity between embeddings (>0.35 = same person).
-
-### Bug Fixes
-- Fixed Windows console output corrupting characters above U+FFFF — surrogate pairs were split by `std::wcout` causing each half to render as U+FFFD. Fixed via `WinWriteWide` helper using `WriteConsoleW` for live console handles.
-- Fixed Windows console code page — `SetConsoleCP`/`SetConsoleOutputCP(CP_UTF8)` now called at startup so pipe/redirect output is interpreted correctly.
-- Fixed ARM64 JIT crash on `EXT_LIB_FUNC_CALL` opcodes.
-- Fixed macOS ONNX build (Xcode/Homebrew header path issues); improved CodeQL build configuration.
-
-### Documentation
-- Expanded `core/lib/onnx/README.md` with platform/EP matrix, quick-start examples, and demo list.
-- Updated `core/lib/onnx/MODELS.md` with SCRFD + ArcFace download instructions, Linux CPU/CUDA and macOS CoreML runtime sections.
-
 ## [v2026.4.3] - 2026-04-12
 
 ### New Features
