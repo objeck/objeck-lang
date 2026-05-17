@@ -283,6 +283,51 @@ jobs:
         working-directory: ./core/release
         run: ${{ matrix.deploy_script }}
 
+      - name: Verify required binaries (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $target = if ("${{ matrix.arch }}" -eq "ARM64") { "deploy-arm64" } else { "deploy-x64" }
+          $binDir = "core\release\$target\bin"
+          $required = @("obr.exe", "obc.exe", "obd.exe", "obi.exe", "obb.exe")
+          $missing = @()
+          foreach ($bin in $required) {
+            if (-not (Test-Path "$binDir\$bin")) { $missing += $bin }
+          }
+          if ($missing.Count -gt 0) {
+            Write-Error "❌ Missing binaries in $binDir`: $($missing -join ', ')"
+            exit 1
+          }
+          Write-Output "✅ All required binaries present in $binDir"
+          $apiDir = "core\release\$target\doc\api"
+          $htmlCount = (Get-ChildItem -Path $apiDir -Filter "*.html" -Recurse -ErrorAction SilentlyContinue).Count
+          if ($htmlCount -lt 50) {
+            Write-Error "❌ API docs incomplete in $apiDir`: only $htmlCount HTML files (expected 50+)"
+            exit 1
+          }
+          Write-Output "✅ API docs complete: $htmlCount HTML files"
+
+      - name: Verify required binaries (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          DEPLOY_DIR="core/release/deploy"
+          REQUIRED="obr obc obd obi obb"
+          MISSING=""
+          for bin in $REQUIRED; do
+            [ -f "$DEPLOY_DIR/bin/$bin" ] || MISSING="$MISSING $bin"
+          done
+          if [ -n "$MISSING" ]; then
+            echo "❌ Missing binaries in $DEPLOY_DIR/bin:$MISSING"
+            exit 1
+          fi
+          echo "✅ All required binaries present in $DEPLOY_DIR/bin"
+          HTML_COUNT=$(find "$DEPLOY_DIR/doc/api" -name "*.html" 2>/dev/null | wc -l)
+          if [ "$HTML_COUNT" -lt 50 ]; then
+            echo "❌ API docs incomplete in $DEPLOY_DIR/doc/api: only $HTML_COUNT HTML files (expected 50+)"
+            exit 1
+          fi
+          echo "✅ API docs complete: $HTML_COUNT HTML files"
+
       # ============================================
       # Code Signing (Windows)
       # ============================================
@@ -664,7 +709,24 @@ jobs:
         working-directory: ./docs
         run: |
           zip -r api.zip api/
-          echo "✅ API documentation packaged"
+          HTML_COUNT=$(unzip -l api.zip | grep -c "\.html$" || true)
+          if [ "$HTML_COUNT" -lt 50 ]; then
+            echo "❌ API docs incomplete: only $HTML_COUNT HTML files (expected 50+)"
+            exit 1
+          fi
+          echo "✅ API documentation packaged: $HTML_COUNT HTML files"
+
+      - name: Commit api.zip to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin master
+          git checkout master
+          cp docs/api.zip docs/api.zip
+          git add docs/api.zip
+          git diff --cached --quiet && echo "api.zip unchanged" || \
+            git commit -m "chore: update api.zip for v${{ needs.prepare.outputs.version }} [skip ci]"
+          git push origin master || echo "Push skipped (no changes)"
 
       - name: Upload API docs
         uses: actions/upload-artifact@v6

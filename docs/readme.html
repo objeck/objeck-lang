@@ -59,9 +59,18 @@
   </header>
 
   <main style="text-align: left;">
-   <p>HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, WebSocket hardening.</p>
+   <p>Release integrity fix: obr runtime now present in all platform archives; CI hardened with binary and API doc verification.</p>
 
-   <h3><u>v2026.5.1</u></h3>
+   <h3><u>v2026.5.2</u></h3>
+    <ul>
+        <li><strong>Release fix</strong> &mdash; <code>obr</code> (VM runtime) was absent from all v2026.5.1 platform archives; <code>nghttp2</code> was missing from CI dependency installs on every platform</li>
+        <li><strong>Windows local builds</strong> &mdash; vcpkg include/lib paths added to <code>vm.vcxproj</code> via <code>$(OBJECK_VCPKG_ROOT)</code> so dev builds find nghttp2 without manual env var setup</li>
+        <li><strong>CI hardening</strong> &mdash; binary presence (<code>obr</code>, <code>obc</code>, <code>obd</code>, <code>obi</code>, <code>obb</code>) and API doc completeness (50+ HTML files) now verified before artifacts are uploaded</li>
+        <li><strong>API docs fixed</strong> &mdash; <code>docs/api.zip</code> now contains full HTML documentation; <code>build-docs</code> CI job commits regenerated zip back to repo after each build</li>
+        <li><strong>Website</strong> &mdash; added Changelog card to home page creating a clean 2&times;3 six-card grid</li>
+    </ul>
+
+   <h3>v2026.5.1</h3>
     <ul>
         <li><strong>HTTP/2 client</strong> &mdash; <code>Http2Client</code> with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and <code>Quick*</code> one-liners via nghttp2 + ALPN</li>
         <li><strong>HTTP/3 / QUIC client</strong> &mdash; <code>Http3Client</code> over UDP with connection reuse and the same <code>Quick*</code> API (ngtcp2 + nghttp3 + GnuTLS)</li>

@@ -102,7 +102,7 @@
     <VcpkgEnabled>false</VcpkgEnabled>
   </PropertyGroup>
   <PropertyGroup Label="VcpkgPaths">
-    <VcpkgRoot Condition="'$(VCPKG_ROOT)' != ''">$(VCPKG_ROOT)</VcpkgRoot>
+    <VcpkgRoot Condition="'$(OBJECK_VCPKG_ROOT)' != ''">$(OBJECK_VCPKG_ROOT)</VcpkgRoot>
     <VcpkgRoot Condition="'$(VcpkgRoot)' == ''">C:\vcpkg</VcpkgRoot>
     <VcpkgX64Include>$(VcpkgRoot)\installed\x64-windows\include</VcpkgX64Include>
     <VcpkgX64Lib>$(VcpkgRoot)\installed\x64-windows\lib</VcpkgX64Lib>
@@ -128,7 +128,7 @@
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>msvcrtd.lib;msvcmrtd.lib;libz-static.lib;mbedtls.lib;mbedcrypto.lib;mbedx509.lib;nghttp2.lib;bcrypt.lib;crypt32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VcpkgX64Lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildProjectDirectory)\..\..\..\lib\openssl\win\x64;$(MSBuildProjectDirectory)\..\..\..\lib\zlib\win\x64;$(VcpkgX64Lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
@@ -157,7 +157,7 @@
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>msvcrtd.lib;msvcmrtd.lib;libz-static.lib;mbedtls.lib;mbedcrypto.lib;mbedx509.lib;nghttp2.lib;bcrypt.lib;crypt32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VcpkgArm64Lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildProjectDirectory)\..\..\..\lib\openssl\win\arm64;$(MSBuildProjectDirectory)\..\..\..\lib\zlib\win\arm64;$(VcpkgArm64Lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
@@ -194,7 +194,7 @@
       <SubSystem>Console</SubSystem>
       <AdditionalOptions>/ignore:4099 /ignore:4286  /ignore:4042 /NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>msvcrt.lib;msvcmrt.lib;libz-static.lib;mbedtls.lib;mbedcrypto.lib;mbedx509.lib;nghttp2.lib;bcrypt.lib;crypt32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VcpkgX64Lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildProjectDirectory)\..\..\..\lib\openssl\win\x64;$(MSBuildProjectDirectory)\..\..\..\lib\zlib\win\x64;$(VcpkgX64Lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
@@ -231,7 +231,7 @@
       <SubSystem>Console</SubSystem>
       <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>msvcrt.lib;msvcmrt.lib;libz-static.lib;mbedtls.lib;mbedcrypto.lib;mbedx509.lib;nghttp2.lib;bcrypt.lib;crypt32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VcpkgArm64Lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildProjectDirectory)\..\..\..\lib\openssl\win\arm64;$(MSBuildProjectDirectory)\..\..\..\lib\zlib\win\arm64;$(VcpkgArm64Lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
