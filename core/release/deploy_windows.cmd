@@ -115,6 +115,11 @@ if [%1] == [x64] (
 
 copy ..\lib\lame\win\%1\*.dll %TARGET%\bin
 
+REM nghttp2 runtime DLL (required by obr for HTTP/2 support)
+if [%1] == [x64] (
+	copy ..\lib\openssl\win\x64\nghttp2.dll %TARGET%\bin
+)
+
 REM native launcher
 if [%1] == [arm64] (
 	cd ..\utils\launcher
