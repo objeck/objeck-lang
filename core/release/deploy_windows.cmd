@@ -409,9 +409,21 @@ REM onnx support
 cd ..\lib\onnx
 
 REM Restore NuGet packages before building
-REM Prefer VS-bundled nuget.exe; fall back to PATH version
-set NUGET_EXE=%DevEnvDir%CommonExtensions\Microsoft\NuGet\nuget.exe
-if not exist "%NUGET_EXE%" set NUGET_EXE=nuget
+REM Locate nuget.exe: try VSINSTALLDIR, then DevEnvDir, then PATH
+set NUGET_EXE=
+if not "%VSINSTALLDIR%"=="" (
+	if exist "%VSINSTALLDIR%Common7\IDE\CommonExtensions\Microsoft\NuGet\nuget.exe" (
+		set NUGET_EXE=%VSINSTALLDIR%Common7\IDE\CommonExtensions\Microsoft\NuGet\nuget.exe
+	)
+)
+if "%NUGET_EXE%"=="" (
+	if not "%DevEnvDir%"=="" (
+		if exist "%DevEnvDir%CommonExtensions\Microsoft\NuGet\nuget.exe" (
+			set NUGET_EXE=%DevEnvDir%CommonExtensions\Microsoft\NuGet\nuget.exe
+		)
+	)
+)
+if "%NUGET_EXE%"=="" set NUGET_EXE=nuget
 "%NUGET_EXE%" restore onnx.sln
 if errorlevel 1 (
 	echo.
