@@ -1,0 +1,88 @@
+class FixScopeShadowingTest {
+    @x : Int;
+
+    New() { @x := 100; }
+
+    function : Main(args : String[]) ~ Nil {
+        "Testing variable scoping..."->PrintLine();
+        pass := true;
+
+        obj := FixScopeShadowingTest->New();
+
+        # Instance field access
+        if(obj->GetX() <> 100) {
+            pass := false;
+            "  FAIL: instance field @x"->PrintLine();
+        };
+
+        # Local variable
+        x := 1;
+        if(x <> 1) {
+            pass := false;
+            "  FAIL: outer x"->PrintLine();
+        };
+
+        # Loop variable is local to the loop body
+        sum := 0;
+        for(i := 0; i < 5; i += 1;) {
+            loop_val := i * 2;
+            sum += loop_val;
+        };
+        if(sum <> 20) {
+            pass := false;
+            "  FAIL: loop scope sum = {$sum}"->PrintLine();
+        };
+
+        # Nested loops with same variable name
+        outer_sum := 0;
+        each(i : 3) {
+            inner_sum := 0;
+            each(j : 3) {
+                inner_sum += j;
+            };
+            outer_sum += inner_sum;
+        };
+        if(outer_sum <> 9) {
+            pass := false;
+            "  FAIL: nested loop scope sum = {$outer_sum}"->PrintLine();
+        };
+
+        # Function argument doesn't escape
+        result := Add(5, 7);
+        if(result <> 12) {
+            pass := false;
+            "  FAIL: Add function scope"->PrintLine();
+        };
+
+        # Static variable independent of instance
+        Counter->Set(10);
+        Counter->Increment();
+        if(Counter->Get() <> 11) {
+            pass := false;
+            "  FAIL: static counter = {$Counter->Get()}"->PrintLine();
+        };
+        obj2 := FixScopeShadowingTest->New();
+        # @x on obj should be unchanged
+        if(obj->GetX() <> 100) {
+            pass := false;
+            "  FAIL: obj @x after obj2 creation"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Variable scoping"->PrintLine();
+        } else {
+            "FAIL: Variable scoping"->PrintLine();
+        };
+    }
+
+    method : public : GetX() ~ Int { return @x; }
+
+    function : Add(a : Int, b : Int) ~ Int { return a + b; }
+}
+
+class Counter {
+    @val : static : Int;
+    function : Set(v : Int) ~ Nil { @val := v; }
+    function : Increment() ~ Nil { @val += 1; }
+    function : Get() ~ Int { return @val; }
+}

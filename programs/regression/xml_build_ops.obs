@@ -1,0 +1,79 @@
+use Data.XML;
+
+class XmlBuildOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing XML build operations..."->PrintLine();
+        pass := true;
+
+        # Build root element and get its string representation
+        builder := XmlBuilder->New("root");
+        root := builder->GetRoot();
+        if(root = Nil) {
+            pass := false;
+            "  FAIL: root is Nil"->PrintLine();
+        } else {
+            # Add attribute
+            attr := XmlAttribute->New("version", "1.0");
+            root->AddAttribute(attr);
+
+            # Add child element
+            child := XmlElement->New(XmlElement->Type->ELEMENT, "item");
+            root->AddChild(child);
+
+            s := root->ToString();
+            if(s = Nil | s->Size() = 0) {
+                pass := false;
+                "  FAIL: root ToString empty"->PrintLine();
+            };
+            if(s <> Nil & <>s->Has("root")) {
+                pass := false;
+                "  FAIL: root element name missing"->PrintLine();
+            };
+        };
+
+        # Build and round-trip: build XML then parse it
+        builder2 := XmlBuilder->New("person");
+        person := builder2->GetRoot();
+        if(person <> Nil) {
+            person->AddAttribute(XmlAttribute->New("id", "1"));
+
+            name_elem := XmlElement->New(XmlElement->Type->ELEMENT, "name");
+            age_elem := XmlElement->New(XmlElement->Type->ELEMENT, "age");
+
+            person->AddChild(name_elem);
+            person->AddChild(age_elem);
+
+            xml_str := person->ToString();
+            if(xml_str = Nil | xml_str->Size() = 0) {
+                pass := false;
+                "  FAIL: person XML empty"->PrintLine();
+            } else {
+                if(<>xml_str->Has("person")) {
+                    pass := false;
+                    "  FAIL: person tag missing"->PrintLine();
+                };
+                if(<>xml_str->Has("name")) {
+                    pass := false;
+                    "  FAIL: name tag missing"->PrintLine();
+                };
+            };
+        } else {
+            pass := false;
+            "  FAIL: person element Nil"->PrintLine();
+        };
+
+        # Verify XmlBuilder ToString
+        b3 := XmlBuilder->New("doc", "1.0", "UTF-8");
+        doc_str := b3->ToString();
+        if(doc_str = Nil | doc_str->Size() = 0) {
+            pass := false;
+            "  FAIL: XmlBuilder ToString empty"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: XML build operations"->PrintLine();
+        } else {
+            "FAIL: XML build operations"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,92 @@
+# EXTRA_LIBS: collect
+use Collection;
+
+class CollectNestedOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing nested collection operations..."->PrintLine();
+        pass := true;
+
+        # Vector of Vectors (using IntRef since generics need objects)
+        outer := Vector->New()<Vector<IntRef>>;
+        each(i : 3) {
+            row := Vector->New()<IntRef>;
+            each(j : 4) {
+                row->AddBack(IntRef->New(i * 4 + j));
+            };
+            outer->AddBack(row);
+        };
+
+        if(outer->Size() <> 3) {
+            pass := false;
+            "  FAIL: outer size = {$outer->Size()}"->PrintLine();
+        };
+        if(outer->Get(0)->Size() <> 4) {
+            pass := false;
+            "  FAIL: row size = {$outer->Get(0)->Size()}"->PrintLine();
+        };
+
+        # Sum all elements: 0..11 = 66
+        total := 0;
+        each(row_vec in outer) {
+            each(cell in row_vec) {
+                total += cell->Get();
+            };
+        };
+        if(total <> 66) {
+            pass := false;
+            "  FAIL: nested sum = {$total}"->PrintLine();
+        };
+
+        # Hash of Vectors
+        hv := Hash->New()<String, Vector<IntRef>>;
+        keys := String->New[3];
+        keys[0] := "a"; keys[1] := "b"; keys[2] := "c";
+        each(ki : 3) {
+            v := Vector->New()<IntRef>;
+            each(j : 3) {
+                v->AddBack(IntRef->New(j + 1));
+            };
+            hv->Insert(keys[ki], v);
+        };
+
+        if(hv->Size() <> 3) {
+            pass := false;
+            "  FAIL: hash size = {$hv->Size()}"->PrintLine();
+        };
+
+        vec_a := hv->Find("a");
+        if(vec_a->Size() <> 3) {
+            pass := false;
+            "  FAIL: vec_a size = {$vec_a->Size()}"->PrintLine();
+        };
+        sum_a := 0;
+        each(v in vec_a) { sum_a += v->Get(); };
+        if(sum_a <> 6) {
+            pass := false;
+            "  FAIL: vec_a sum = {$sum_a}"->PrintLine();
+        };
+
+        # Stack of Vectors
+        sv := Stack->New()<Vector<IntRef>>;
+        each(i : 3) {
+            v := Vector->New()<IntRef>;
+            v->AddBack(IntRef->New(i * 10));
+            sv->Push(v);
+        };
+        if(sv->Size() <> 3) {
+            pass := false;
+            "  FAIL: stack size = {$sv->Size()}"->PrintLine();
+        };
+        top_v := sv->Top();
+        if(top_v->Get(0)->Get() <> 20) {
+            pass := false;
+            "  FAIL: stack top = {$top_v->Get(0)->Get()}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Nested collection operations"->PrintLine();
+        } else {
+            "FAIL: Nested collection operations"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,82 @@
+class JitArrayNativeTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT array operations..."->PrintLine();
+        pass := true;
+
+        # Sequential write + read
+        N := 100000;
+        arr := Int->New[N];
+        each(i : N) { arr[i] := i * 3; };
+
+        # Verify spot checks
+        v0 := arr[0];
+        if(v0 <> 0)             { pass := false; "  FAIL: arr[0] = {$v0}"->PrintLine(); };
+        if(arr[1] <> 3)             { pass := false; "  FAIL: arr[1]"->PrintLine(); };
+        if(arr[99999] <> 299997)    { pass := false; "  FAIL: arr[99999]"->PrintLine(); };
+
+        # Array sum
+        sum := 0;
+        each(i : N) { sum += arr[i]; };
+        expected := 3 * (N - 1) * N / 2;
+        if(sum <> expected) {
+            pass := false;
+            "  FAIL: array sum = {$sum}, expected {$expected}"->PrintLine();
+        };
+
+        # Reverse the array in-place
+        half := N / 2;
+        each(i : half) {
+            tmp := arr[i];
+            arr[i] := arr[N - 1 - i];
+            arr[N - 1 - i] := tmp;
+        };
+        rev0 := arr[0];
+        if(rev0 <> 299997) {
+            pass := false;
+            "  FAIL: after reverse arr[0] = {$rev0}"->PrintLine();
+        };
+        revlast := arr[N-1];
+        if(revlast <> 0) {
+            pass := false;
+            "  FAIL: after reverse arr[N-1] = {$revlast}"->PrintLine();
+        };
+
+        # Float array: fill with 1..1000 and find max
+        farr := Float->New[1000];
+        each(i : 1000) {
+            farr[i] := (i + 1)->As(Float);
+        };
+        fmax := farr[0];
+        each(i : 1000) {
+            if(farr[i] > fmax) { fmax := farr[i]; };
+        };
+        if(fmax < 999.5 | fmax > 1000.5) {
+            pass := false;
+            "  FAIL: float array max = {$fmax}"->PrintLine();
+        };
+
+        # 2D array writes
+        mat := Int->New[100, 100];
+        each(r : 100) {
+            each(c : 100) {
+                mat[r, c] := r + c;
+            };
+        };
+        m5050 := mat[50, 50];
+        if(m5050 <> 100) {
+            pass := false;
+            "  FAIL: mat[50,50] = {$m5050}"->PrintLine();
+        };
+        m9999 := mat[99, 99];
+        if(m9999 <> 198) {
+            pass := false;
+            "  FAIL: mat[99,99] = {$m9999}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT array operations"->PrintLine();
+        } else {
+            "FAIL: JIT array operations"->PrintLine();
+        };
+    }
+}

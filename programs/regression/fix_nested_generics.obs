@@ -1,0 +1,81 @@
+use Collection;
+
+class FixNestedGenericsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing nested generic types..."->PrintLine();
+        pass := true;
+
+        # Vector of Pairs
+        vp := Vector->New()<Pair<String, IntRef>>;
+        vp->AddBack(Pair->New("a", IntRef->New(1))<String, IntRef>);
+        vp->AddBack(Pair->New("b", IntRef->New(2))<String, IntRef>);
+        vp->AddBack(Pair->New("c", IntRef->New(3))<String, IntRef>);
+
+        if(vp->Size() <> 3) {
+            pass := false;
+            "  FAIL: vector of pairs size"->PrintLine();
+        };
+
+        sum := 0;
+        each(p in vp) {
+            sum += p->GetSecond()->Get();
+        };
+        if(sum <> 6) {
+            pass := false;
+            "  FAIL: pair sum = {$sum}"->PrintLine();
+        };
+
+        # Hash with Vector values
+        hv := Hash->New()<String, Vector<IntRef>>;
+        v1 := Vector->New()<IntRef>;
+        v1->AddBack(IntRef->New(10));
+        v1->AddBack(IntRef->New(20));
+        hv->Insert("first", v1);
+
+        v2 := Vector->New()<IntRef>;
+        v2->AddBack(IntRef->New(30));
+        hv->Insert("second", v2);
+
+        if(hv->Size() <> 2) {
+            pass := false;
+            "  FAIL: hash of vectors size"->PrintLine();
+        };
+
+        found1 := hv->Find("first");
+        if(found1 = Nil | found1->Size() <> 2) {
+            pass := false;
+            "  FAIL: found first vector"->PrintLine();
+        } else {
+            if(found1->Get(0)->Get() <> 10) {
+                pass := false;
+                "  FAIL: first[0] = {$found1->Get(0)->Get()}"->PrintLine();
+            };
+        };
+
+        found2 := hv->Find("second");
+        if(found2 = Nil | found2->Get(0)->Get() <> 30) {
+            pass := false;
+            "  FAIL: second vector value"->PrintLine();
+        };
+
+        # Stack of Vectors
+        sv := Stack->New()<Vector<IntRef>>;
+        sv->Push(v1);
+        sv->Push(v2);
+        if(sv->Size() <> 2) {
+            pass := false;
+            "  FAIL: stack of vectors size"->PrintLine();
+        };
+        top := sv->Pop();
+        if(top = Nil | top->Get(0)->Get() <> 30) {
+            pass := false;
+            "  FAIL: stack top vector"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Nested generic types"->PrintLine();
+        } else {
+            "FAIL: Nested generic types"->PrintLine();
+        };
+    }
+}

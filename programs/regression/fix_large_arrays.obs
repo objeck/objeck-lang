@@ -1,0 +1,66 @@
+class FixLargeArraysTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing large array allocation..."->PrintLine();
+        pass := true;
+
+        # Large int array: 1M elements
+        N := 1000000;
+        arr := Int->New[N];
+
+        # Fill sequential
+        each(i : N) { arr[i] := i; };
+
+        # Verify first / last / middle
+        if(arr[0] <> 0) {
+            pass := false;
+            "  FAIL: arr[0]"->PrintLine();
+        };
+        if(arr[N - 1] <> N - 1) {
+            v := arr[N-1];
+            pass := false;
+            "  FAIL: arr[N-1] = {$v}"->PrintLine();
+        };
+        mid := N / 2;
+        if(arr[mid] <> mid) {
+            pass := false;
+            "  FAIL: arr[mid]"->PrintLine();
+        };
+
+        # Sum a segment (first 100)
+        seg_sum := 0;
+        each(i : 100) { seg_sum += arr[i]; };
+        if(seg_sum <> 4950) {
+            pass := false;
+            "  FAIL: segment sum = {$seg_sum}"->PrintLine();
+        };
+
+        # Large float array
+        farr := Float->New[100000];
+        each(i : 100000) { farr[i] := i->As(Float) * 0.1; };
+        fval := farr[99999];
+        if(fval < 9999.8 | fval > 10000.1) {
+            pass := false;
+            "  FAIL: farr[99999] = {$fval}"->PrintLine();
+        };
+
+        # Large string array
+        sarr := String->New[1000];
+        each(i : 1000) { sarr[i] := "item{$i}"; };
+        s500 := sarr[500];
+        if(<>s500->Equals("item500")) {
+            pass := false;
+            "  FAIL: sarr[500] = {$s500}"->PrintLine();
+        };
+        s999 := sarr[999];
+        if(<>s999->Equals("item999")) {
+            pass := false;
+            "  FAIL: sarr[999] = {$s999}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Large array allocation"->PrintLine();
+        } else {
+            "FAIL: Large array allocation"->PrintLine();
+        };
+    }
+}

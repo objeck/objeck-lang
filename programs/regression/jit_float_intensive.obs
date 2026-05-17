@@ -1,0 +1,65 @@
+class JitFloatIntensiveTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT float-intensive operations..."->PrintLine();
+        pass := true;
+
+        # Series sum: 1/1 + 1/2 + ... + 1/N (harmonic)
+        n := 10000;
+        harmonic := HarmonicSum(n);
+        if(harmonic < 9.78 | harmonic > 9.79) {
+            pass := false;
+            "  FAIL: harmonic sum(10000) = {$harmonic}"->PrintLine();
+        };
+
+        # Pi approximation via Leibniz series
+        pi_approx := LeibPi(50000);
+        if(pi_approx < 3.141 | pi_approx > 3.142) {
+            pass := false;
+            "  FAIL: Leibniz pi = {$pi_approx}"->PrintLine();
+        };
+
+        # Float array sum: sum of (i+1)*0.001 for i=0..9999 = 0.001*50005000 = 50005
+        arr := Float->New[10000];
+        each(i : 10000) { arr[i] := (i + 1)->As(Float) * 0.001; };
+        arr_sum := 0.0;
+        each(i : 10000) { arr_sum += arr[i]; };
+        if(arr_sum < 50000.0 | arr_sum > 50010.0) {
+            pass := false;
+            "  FAIL: float array sum = {$arr_sum}"->PrintLine();
+        };
+
+        # Repeated float operations
+        acc := 1.0;
+        each(i : 1000) {
+            acc := acc * 1.001;
+        };
+        if(acc < 2.71 | acc > 2.73) {
+            pass := false;
+            "  FAIL: compound growth = {$acc}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT float-intensive"->PrintLine();
+        } else {
+            "FAIL: JIT float-intensive"->PrintLine();
+        };
+    }
+
+    function : HarmonicSum(n : Int) ~ Float {
+        sum := 0.0;
+        each(i : n) {
+            sum += 1.0 / (i + 1)->As(Float);
+        };
+        return sum;
+    }
+
+    function : LeibPi(n : Int) ~ Float {
+        sum := 0.0;
+        sign := 1.0;
+        each(i : n) {
+            sum += sign / (2 * i + 1)->As(Float);
+            sign := sign * -1.0;
+        };
+        return sum * 4.0;
+    }
+}

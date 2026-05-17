@@ -1,0 +1,9 @@
+# EXPECT_RUNTIME_ERROR
+# VM must not crash (segfault) on array out-of-bounds access — exit 1 with message
+class BadRuntimeBounds {
+    function : Main(args : String[]) ~ Nil {
+        arr := Int->New[3];
+        x := arr[99];
+        x->PrintLine();
+    }
+}

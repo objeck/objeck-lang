@@ -1,0 +1,89 @@
+class MathTrigFuncsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing trigonometric functions..."->PrintLine();
+        pass := true;
+
+        pi := 3.14159265358979;
+
+        # Sin
+        s0 := Float->Sin(0.0);
+        if(s0 < -0.001 | s0 > 0.001) {
+            pass := false;
+            "  FAIL: Sin(0) = {$s0}"->PrintLine();
+        };
+        s90 := Float->Sin(pi / 2.0);
+        if(s90 < 0.999 | s90 > 1.001) {
+            pass := false;
+            "  FAIL: Sin(pi/2) = {$s90}"->PrintLine();
+        };
+        s180 := Float->Sin(pi);
+        if(s180 < -0.001 | s180 > 0.001) {
+            pass := false;
+            "  FAIL: Sin(pi) = {$s180}"->PrintLine();
+        };
+
+        # Cos
+        c0 := Float->Cos(0.0);
+        if(c0 < 0.999 | c0 > 1.001) {
+            pass := false;
+            "  FAIL: Cos(0) = {$c0}"->PrintLine();
+        };
+        c90 := Float->Cos(pi / 2.0);
+        if(c90 < -0.001 | c90 > 0.001) {
+            pass := false;
+            "  FAIL: Cos(pi/2) = {$c90}"->PrintLine();
+        };
+        c180 := Float->Cos(pi);
+        if(c180 > -0.999 | c180 < -1.001) {
+            pass := false;
+            "  FAIL: Cos(pi) = {$c180}"->PrintLine();
+        };
+
+        # Tan
+        t0 := Float->Tan(0.0);
+        if(t0 < -0.001 | t0 > 0.001) {
+            pass := false;
+            "  FAIL: Tan(0) = {$t0}"->PrintLine();
+        };
+        t45 := Float->Tan(pi / 4.0);
+        if(t45 < 0.999 | t45 > 1.001) {
+            pass := false;
+            "  FAIL: Tan(pi/4) = {$t45}"->PrintLine();
+        };
+
+        # Pythagorean identity: sin^2 + cos^2 = 1
+        angle := 0.7854;  # ~pi/4
+        sa := Float->Sin(angle);
+        ca := Float->Cos(angle);
+        identity := sa * sa + ca * ca;
+        if(identity < 0.999 | identity > 1.001) {
+            pass := false;
+            "  FAIL: sin^2+cos^2 = {$identity}"->PrintLine();
+        };
+
+        # ArcSin / ArcCos
+        arcsin_half := Float->ArcSin(0.5);
+        if(arcsin_half < 0.523 | arcsin_half > 0.525) {
+            pass := false;
+            "  FAIL: ArcSin(0.5) = {$arcsin_half}"->PrintLine();
+        };
+        arccos_half := Float->ArcCos(0.5);
+        if(arccos_half < 1.046 | arccos_half > 1.048) {
+            pass := false;
+            "  FAIL: ArcCos(0.5) = {$arccos_half}"->PrintLine();
+        };
+
+        # ArcTan
+        arctan_1 := Float->ArcTan(1.0);
+        if(arctan_1 < 0.784 | arctan_1 > 0.786) {
+            pass := false;
+            "  FAIL: ArcTan(1.0) = {$arctan_1}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Trigonometric functions"->PrintLine();
+        } else {
+            "FAIL: Trigonometric functions"->PrintLine();
+        };
+    }
+}

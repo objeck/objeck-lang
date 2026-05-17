@@ -1,0 +1,86 @@
+class CoreBoolOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing boolean operations..."->PrintLine();
+        pass := true;
+
+        # Basic AND / OR / NOT
+        if(<>(true & true)) {
+            pass := false;
+            "  FAIL: true & true"->PrintLine();
+        };
+        if(true & false) {
+            pass := false;
+            "  FAIL: true & false"->PrintLine();
+        };
+        if(<>(true | false)) {
+            pass := false;
+            "  FAIL: true | false"->PrintLine();
+        };
+        if(false | false) {
+            pass := false;
+            "  FAIL: false | false"->PrintLine();
+        };
+        if(<>(<>false)) {
+            pass := false;
+            "  FAIL: <>false should be true"->PrintLine();
+        };
+        if(<>true) {
+            pass := false;
+            "  FAIL: <>true should be false"->PrintLine();
+        };
+
+        # Comparison operators
+        if(<>(5 > 3)) { pass := false; "  FAIL: 5 > 3"->PrintLine(); };
+        if(<>(3 < 5)) { pass := false; "  FAIL: 3 < 5"->PrintLine(); };
+        if(<>(5 >= 5)) { pass := false; "  FAIL: 5 >= 5"->PrintLine(); };
+        if(<>(4 >= 3)) { pass := false; "  FAIL: 4 >= 3"->PrintLine(); };
+        if(<>(3 <= 3)) { pass := false; "  FAIL: 3 <= 3"->PrintLine(); };
+        if(<>(2 <= 4)) { pass := false; "  FAIL: 2 <= 4"->PrintLine(); };
+        if(<>(7 = 7)) { pass := false; "  FAIL: 7 = 7"->PrintLine(); };
+        if(<>(6 <> 7)) { pass := false; "  FAIL: 6 <> 7"->PrintLine(); };
+
+        # Compound expressions
+        x := 10;
+        if(<>(x > 5 & x < 20)) {
+            pass := false;
+            "  FAIL: compound range check"->PrintLine();
+        };
+        if(x < 0 | x > 100) {
+            pass := false;
+            "  FAIL: compound bounds check"->PrintLine();
+        };
+
+        # Bool variables
+        b1 := true;
+        b2 := false;
+        b3 := b1 & b2;
+        if(b3) {
+            pass := false;
+            "  FAIL: b1 & b2 should be false"->PrintLine();
+        };
+        b4 := b1 | b2;
+        if(<>b4) {
+            pass := false;
+            "  FAIL: b1 | b2 should be true"->PrintLine();
+        };
+
+        # Short-circuit: second operand not evaluated when first determines result
+        counter := 0;
+        result := (true | BumpAndTrue(counter));
+        if(result = false) {
+            pass := false;
+            "  FAIL: short-circuit OR"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Boolean operations"->PrintLine();
+        } else {
+            "FAIL: Boolean operations"->PrintLine();
+        };
+    }
+
+    function : BumpAndTrue(counter : Int) ~ Bool {
+        counter += 1;
+        return true;
+    }
+}

@@ -1,0 +1,80 @@
+class StringFindOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string find operations..."->PrintLine();
+        pass := true;
+
+        # Find(char): basic
+        idx := "hello"->Find('l');
+        if(idx <> 2) {
+            pass := false;
+            "  FAIL: Find 'l' = {$idx}"->PrintLine();
+        };
+
+        # Find(char): not found returns -1
+        idx2 := "hello"->Find('z');
+        if(idx2 <> -1) {
+            pass := false;
+            "  FAIL: Find 'z' = {$idx2}"->PrintLine();
+        };
+
+        # Find(string): substring
+        idx3 := "hello world"->Find("world");
+        if(idx3 <> 6) {
+            pass := false;
+            "  FAIL: Find 'world' = {$idx3}"->PrintLine();
+        };
+
+        # Find(string): not found
+        idx4 := "hello world"->Find("xyz");
+        if(idx4 <> -1) {
+            pass := false;
+            "  FAIL: Find 'xyz' = {$idx4}"->PrintLine();
+        };
+
+        # Find(offset, char): start searching from offset
+        s := "abcabc";
+        idx5 := s->Find(1, 'a');
+        if(idx5 <> 3) {
+            pass := false;
+            "  FAIL: Find(1,'a') = {$idx5}"->PrintLine();
+        };
+
+        # Find(offset, string)
+        idx6 := "abcabcabc"->Find(2, "abc");
+        if(idx6 <> 3) {
+            pass := false;
+            "  FAIL: Find(2,'abc') = {$idx6}"->PrintLine();
+        };
+
+        # FindLast(char)
+        idx7 := "hello"->FindLast('l');
+        if(idx7 <> 3) {
+            pass := false;
+            "  FAIL: FindLast 'l' = {$idx7}"->PrintLine();
+        };
+
+        # FindAll(string): returns array of positions
+        positions := "abcabcabc"->FindAll("abc");
+        if(positions->Size() <> 3) {
+            pass := false;
+            "  FAIL: FindAll count = {$positions->Size()}"->PrintLine();
+        };
+        if(positions[0] <> 0 | positions[1] <> 3 | positions[2] <> 6) {
+            pass := false;
+            "  FAIL: FindAll positions wrong"->PrintLine();
+        };
+
+        # Find at start
+        idx8 := "xyz hello"->Find("xyz");
+        if(idx8 <> 0) {
+            pass := false;
+            "  FAIL: Find at start = {$idx8}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: String find operations"->PrintLine();
+        } else {
+            "FAIL: String find operations"->PrintLine();
+        };
+    }
+}

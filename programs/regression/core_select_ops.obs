@@ -1,0 +1,91 @@
+class CoreSelectOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing select/label/other statements..."->PrintLine();
+        pass := true;
+
+        # Basic integer label
+        x := 2;
+        hit := 0;
+        select(x) {
+            label 1: { hit := 1; }
+            label 2: { hit := 2; }
+            label 3: { hit := 3; }
+            other:   { hit := -1; }
+        };
+        if(hit <> 2) {
+            pass := false;
+            "  FAIL: basic label hit = {$hit}"->PrintLine();
+        };
+
+        # other: branch when no label matches
+        y := 99;
+        other_hit := false;
+        select(y) {
+            label 1: { other_hit := false; }
+            label 2: { other_hit := false; }
+            other:   { other_hit := true; }
+        };
+        if(<>other_hit) {
+            pass := false;
+            "  FAIL: other branch not taken"->PrintLine();
+        };
+
+        # select in loop: count label hits
+        ones := 0; twos := 0; others := 0;
+        each(i : 10) {
+            v := i - (i / 3 * 3);  # i mod 3
+            select(v) {
+                label 0: { others += 1; }
+                label 1: { ones += 1; }
+                label 2: { twos += 1; }
+            };
+        };
+        # i=0..9 mod 3: 0,1,2,0,1,2,0,1,2,0 -> zeros=4, ones=3, twos=3
+        if(others <> 4) {
+            pass := false;
+            "  FAIL: loop others = {$others}"->PrintLine();
+        };
+        if(ones <> 3) {
+            pass := false;
+            "  FAIL: loop ones = {$ones}"->PrintLine();
+        };
+        if(twos <> 3) {
+            pass := false;
+            "  FAIL: loop twos = {$twos}"->PrintLine();
+        };
+
+        # select on negative values
+        neg := -1;
+        neg_hit := 0;
+        select(neg) {
+            label -2: { neg_hit := -2; }
+            label -1: { neg_hit := -1; }
+            label 0:  { neg_hit := 0; }
+            other:    { neg_hit := 99; }
+        };
+        if(neg_hit <> -1) {
+            pass := false;
+            "  FAIL: negative label = {$neg_hit}"->PrintLine();
+        };
+
+        # select with expression
+        a := 3; b := 4;
+        expr_hit := 0;
+        select(a + b) {
+            label 6: { expr_hit := 6; }
+            label 7: { expr_hit := 7; }
+            label 8: { expr_hit := 8; }
+            other:   { expr_hit := -1; }
+        };
+        if(expr_hit <> 7) {
+            pass := false;
+            "  FAIL: expression label = {$expr_hit}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Select/label/other statements"->PrintLine();
+        } else {
+            "FAIL: Select/label/other statements"->PrintLine();
+        };
+    }
+}

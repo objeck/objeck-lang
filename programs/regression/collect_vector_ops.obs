@@ -1,0 +1,95 @@
+use Collection;
+
+class CollectVectorOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Vector operations..."->PrintLine();
+        pass := true;
+
+        v := Vector->New()<IntRef>;
+
+        # AddBack / Size
+        each(i : 5) { v->AddBack(IntRef->New(i * 10)); };
+        if(v->Size() <> 5) {
+            pass := false;
+            "  FAIL: size after AddBack = {$v->Size()}"->PrintLine();
+        };
+
+        # Get
+        if(v->Get(0)->Get() <> 0)  { pass := false; "  FAIL: Get(0)"->PrintLine(); };
+        if(v->Get(4)->Get() <> 40) { pass := false; "  FAIL: Get(4)"->PrintLine(); };
+
+        # AddBack another element and check
+        v->AddBack(IntRef->New(50));
+        if(v->Size() <> 6) {
+            pass := false;
+            "  FAIL: size after second AddBack"->PrintLine();
+        };
+        if(v->Get(5)->Get() <> 50) {
+            pass := false;
+            "  FAIL: Get(5) after second AddBack"->PrintLine();
+        };
+
+        # Remove by index
+        removed := v->Remove(5);
+        if(removed->Get() <> 50) {
+            pass := false;
+            "  FAIL: Remove(5) value"->PrintLine();
+        };
+        if(v->Size() <> 5) {
+            pass := false;
+            "  FAIL: size after Remove"->PrintLine();
+        };
+
+        # IsEmpty
+        if(v->IsEmpty()) {
+            pass := false;
+            "  FAIL: IsEmpty on non-empty"->PrintLine();
+        };
+        empty := Vector->New()<IntRef>;
+        if(<>empty->IsEmpty()) {
+            pass := false;
+            "  FAIL: IsEmpty on empty"->PrintLine();
+        };
+
+        # Iteration via each(item in v)
+        sum := 0;
+        each(item in v) {
+            sum += item->Get();
+        };
+        if(sum <> 100) {
+            pass := false;
+            "  FAIL: iteration sum = {$sum}, expected 100"->PrintLine();
+        };
+
+        # Replace vector with new empty vector (simulates clear)
+        v := Vector->New()<IntRef>;
+        if(v->Size() <> 0) {
+            pass := false;
+            "  FAIL: size after new vector"->PrintLine();
+        };
+        if(<>v->IsEmpty()) {
+            pass := false;
+            "  FAIL: IsEmpty after new vector"->PrintLine();
+        };
+
+        # String vector
+        sv := Vector->New()<String>;
+        sv->AddBack("apple");
+        sv->AddBack("banana");
+        sv->AddBack("cherry");
+        if(sv->Size() <> 3) {
+            pass := false;
+            "  FAIL: string vector size"->PrintLine();
+        };
+        if(<>sv->Get(1)->Equals("banana")) {
+            pass := false;
+            "  FAIL: string vector get"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Vector operations"->PrintLine();
+        } else {
+            "FAIL: Vector operations"->PrintLine();
+        };
+    }
+}

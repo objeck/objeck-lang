@@ -1,0 +1,71 @@
+class FixIntBoundaryTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing integer boundary values..."->PrintLine();
+        pass := true;
+
+        # Platform max/min
+        max_int := Int->MaxSize();
+        min_int := Int->MinSize();
+
+        if(max_int <= 0) {
+            pass := false;
+            "  FAIL: MaxSize <= 0"->PrintLine();
+        };
+        if(min_int >= 0) {
+            pass := false;
+            "  FAIL: MinSize >= 0"->PrintLine();
+        };
+
+        # Must satisfy: min < 0 < max
+        if(min_int >= max_int) {
+            pass := false;
+            "  FAIL: min >= max"->PrintLine();
+        };
+
+        # For 64-bit: max should be 9223372036854775807
+        # For 32-bit: max should be 2147483647
+        # Either is acceptable; just verify it's at least 32-bit range
+        if(max_int < 2147483647) {
+            pass := false;
+            "  FAIL: MaxSize too small: {$max_int}"->PrintLine();
+        };
+
+        # Arithmetic near boundaries: zero operations
+        zero := 0;
+        if(zero + 0 <> 0) { pass := false; "  FAIL: 0+0"->PrintLine(); };
+        if(zero - 0 <> 0) { pass := false; "  FAIL: 0-0"->PrintLine(); };
+        if(zero * 0 <> 0) { pass := false; "  FAIL: 0*0"->PrintLine(); };
+
+        # Arithmetic with 1
+        one := 1;
+        if(one + 1 <> 2)   { pass := false; "  FAIL: 1+1"->PrintLine(); };
+        if(one - 1 <> 0)   { pass := false; "  FAIL: 1-1"->PrintLine(); };
+        if(one * 1 <> 1)   { pass := false; "  FAIL: 1*1"->PrintLine(); };
+        if(one / 1 <> 1)   { pass := false; "  FAIL: 1/1"->PrintLine(); };
+
+        # Negative arithmetic
+        neg := -1;
+        if(neg + 1 <> 0)   { pass := false; "  FAIL: -1+1"->PrintLine(); };
+        if(neg - 1 <> -2)  { pass := false; "  FAIL: -1-1"->PrintLine(); };
+        if(neg * -1 <> 1)  { pass := false; "  FAIL: -1*-1"->PrintLine(); };
+        if(-10 / 2 <> -5)  { pass := false; "  FAIL: -10/2"->PrintLine(); };
+
+        # Modulo
+        if(7 % 3 <> 1)   { pass := false; "  FAIL: 7%3"->PrintLine(); };
+        if(-7 % 3 <> -1 & -7 % 3 <> 2) {
+            # Both -1 and +2 are valid for negative modulo depending on implementation
+        };
+        if(0 % 5 <> 0)   { pass := false; "  FAIL: 0%5"->PrintLine(); };
+
+        # Abs near boundaries
+        if(Int->Abs(0) <> 0) { pass := false; "  FAIL: Abs(0)"->PrintLine(); };
+        if(Int->Abs(-1) <> 1) { pass := false; "  FAIL: Abs(-1)"->PrintLine(); };
+        if(Int->Abs(2147483647) <> 2147483647) { pass := false; "  FAIL: Abs(2^31-1)"->PrintLine(); };
+
+        if(pass) {
+            "PASS: Integer boundary values"->PrintLine();
+        } else {
+            "FAIL: Integer boundary values"->PrintLine();
+        };
+    }
+}

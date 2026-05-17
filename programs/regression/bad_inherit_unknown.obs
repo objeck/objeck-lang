@@ -1,0 +1,7 @@
+# EXPECT_COMPILE_ERROR
+class BadInheritUnknown from NoSuchParentEver {
+    New() { Parent(); }
+    function : Main(args : String[]) ~ Nil {
+        "hello"->PrintLine();
+    }
+}

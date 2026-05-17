@@ -1,0 +1,85 @@
+use Collection;
+
+class CollectMapOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Map operations..."->PrintLine();
+        pass := true;
+
+        m := Map->New()<IntRef, String>;
+
+        # Insert and Find
+        m->Insert(IntRef->New(1), "one");
+        m->Insert(IntRef->New(2), "two");
+        m->Insert(IntRef->New(3), "three");
+
+        if(m->Size() <> 3) {
+            pass := false;
+            "  FAIL: size = {$m->Size()}"->PrintLine();
+        };
+
+        v1 := m->Find(IntRef->New(1));
+        if(v1 = Nil | <>v1->Equals("one")) {
+            pass := false;
+            "  FAIL: Find(1)"->PrintLine();
+        };
+        v3 := m->Find(IntRef->New(3));
+        if(v3 = Nil | <>v3->Equals("three")) {
+            pass := false;
+            "  FAIL: Find(3)"->PrintLine();
+        };
+
+        # Missing key
+        vmiss := m->Find(IntRef->New(99));
+        if(vmiss <> Nil) {
+            pass := false;
+            "  FAIL: missing key should return Nil"->PrintLine();
+        };
+
+        # Overwrite
+        m->Insert(IntRef->New(2), "TWO");
+        vu := m->Find(IntRef->New(2));
+        if(vu = Nil | <>vu->Equals("TWO")) {
+            pass := false;
+            "  FAIL: overwrite Find(2)"->PrintLine();
+        };
+
+        # Filter: keep keys > 1
+        filtered := m->Filter(GreaterThanOne(IntRef) ~ Bool);
+        if(filtered->Size() <> 2) {
+            pass := false;
+            "  FAIL: filtered size = {$filtered->Size()}, expected 2"->PrintLine();
+        };
+
+        # GetKeyValues
+        kvs := m->GetKeyValues()<Pair<IntRef, String>>;
+        if(kvs->Size() <> 3) {
+            pass := false;
+            "  FAIL: GetKeyValues size = {$kvs->Size()}"->PrintLine();
+        };
+
+        # Larger map: 50 entries
+        m2 := Map->New()<IntRef, IntRef>;
+        each(i : 50) {
+            m2->Insert(IntRef->New(i), IntRef->New(i * i));
+        };
+        if(m2->Size() <> 50) {
+            pass := false;
+            "  FAIL: 50-entry map size"->PrintLine();
+        };
+        sq7 := m2->Find(IntRef->New(7));
+        if(sq7 = Nil | sq7->Get() <> 49) {
+            pass := false;
+            "  FAIL: 7^2 = {$sq7->Get()}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Map operations"->PrintLine();
+        } else {
+            "FAIL: Map operations"->PrintLine();
+        };
+    }
+
+    function : GreaterThanOne(k : IntRef) ~ Bool {
+        return k->Get() > 1;
+    }
+}

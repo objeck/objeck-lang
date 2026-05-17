@@ -1,0 +1,70 @@
+class MathFloatOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Float arithmetic and methods..."->PrintLine();
+        pass := true;
+
+        # Basic arithmetic
+        a := 3.5;
+        b := 1.5;
+        if(a + b <> 5.0) { pass := false; "  FAIL: 3.5+1.5"->PrintLine(); };
+        if(a - b <> 2.0) { pass := false; "  FAIL: 3.5-1.5"->PrintLine(); };
+        d := a * b;
+        if(d < 5.24 | d > 5.26) { pass := false; "  FAIL: 3.5*1.5 = {$d}"->PrintLine(); };
+        e := a / b;
+        if(e < 2.332 | e > 2.334) { pass := false; "  FAIL: 3.5/1.5 = {$e}"->PrintLine(); };
+
+        # Float->Abs
+        if(Float->Abs(-7.5) <> 7.5) { pass := false; "  FAIL: Abs(-7.5)"->PrintLine(); };
+        if(Float->Abs(0.0) <> 0.0)  { pass := false; "  FAIL: Abs(0.0)"->PrintLine(); };
+
+        # Float->Min / Max
+        if(Float->Min(2.5, 3.5) <> 2.5) { pass := false; "  FAIL: Min(2.5,3.5)"->PrintLine(); };
+        if(Float->Max(2.5, 3.5) <> 3.5) { pass := false; "  FAIL: Max(2.5,3.5)"->PrintLine(); };
+        if(Float->Min(-1.0, -2.0) <> -2.0) { pass := false; "  FAIL: Min(-1,-2)"->PrintLine(); };
+
+        # Compound assignments
+        x := 10.0;
+        x += 5.0;
+        if(x <> 15.0) { pass := false; "  FAIL: +="->PrintLine(); };
+        x -= 3.0;
+        if(x <> 12.0) { pass := false; "  FAIL: -="->PrintLine(); };
+        x *= 2.0;
+        if(x <> 24.0) { pass := false; "  FAIL: *="->PrintLine(); };
+        x /= 4.0;
+        if(x <> 6.0) { pass := false; "  FAIL: /="->PrintLine(); };
+
+        # Comparison
+        if(<>(1.5 < 2.5)) { pass := false; "  FAIL: 1.5 < 2.5"->PrintLine(); };
+        if(<>(2.5 > 1.5)) { pass := false; "  FAIL: 2.5 > 1.5"->PrintLine(); };
+        if(<>(3.0 <= 3.0)) { pass := false; "  FAIL: 3.0 <= 3.0"->PrintLine(); };
+        if(<>(3.0 >= 3.0)) { pass := false; "  FAIL: 3.0 >= 3.0"->PrintLine(); };
+        if(<>(3.0 = 3.0))  { pass := false; "  FAIL: 3.0 = 3.0"->PrintLine(); };
+        if(3.0 <> 3.0)     { pass := false; "  FAIL: 3.0 <> 3.0"->PrintLine(); };
+
+        # Float<->Int conversion
+        fi := 7->As(Float);
+        if(fi < 6.99 | fi > 7.01) { pass := false; "  FAIL: int->float"->PrintLine(); };
+        if_back := 7.9->As(Int);
+        if(if_back <> 7) { pass := false; "  FAIL: float->int truncate"->PrintLine(); };
+
+        # Negative float arithmetic
+        neg := -3.5;
+        if(neg + 1.0 <> -2.5) { pass := false; "  FAIL: -3.5+1.0"->PrintLine(); };
+        if(neg * -2.0 < 6.99 | neg * -2.0 > 7.01) { pass := false; "  FAIL: -3.5*-2.0"->PrintLine(); };
+
+        # Very small / very large
+        small := 0.000001;
+        large := 1000000.0;
+        product := small * large;
+        if(product < 0.999 | product > 1.001) {
+            pass := false;
+            "  FAIL: small*large = {$product}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Float arithmetic and methods"->PrintLine();
+        } else {
+            "FAIL: Float arithmetic and methods"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,7 @@
+# EXPECT_COMPILE_ERROR
+class BadUndefinedVar {
+    function : Main(args : String[]) ~ Nil {
+        y := no_such_variable + 1;
+        "hello"->PrintLine();
+    }
+}

@@ -1,0 +1,91 @@
+# EXTRA_LIBS: collect
+use Collection;
+
+class FuncReduceOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Reduce, Any, All operations..."->PrintLine();
+        pass := true;
+
+        # CompareVector Reduce: sum
+        cv := CompareVector->New()<IntRef>;
+        each(i : 5) { cv->AddBack(IntRef->New(i + 1)); };  # 1..5
+
+        sum := cv->Reduce(IntRef->New(0), Sum(IntRef, IntRef) ~ IntRef);
+        if(sum->Get() <> 15) {
+            pass := false;
+            "  FAIL: Reduce sum = {$sum->Get()}"->PrintLine();
+        };
+
+        # CompareVector Reduce: product
+        cv2 := CompareVector->New()<IntRef>;
+        each(i : 4) { cv2->AddBack(IntRef->New(i + 1)); };  # 1..4
+        prod := cv2->Reduce(IntRef->New(1), Mul(IntRef, IntRef) ~ IntRef);
+        if(prod->Get() <> 24) {
+            pass := false;
+            "  FAIL: Reduce product = {$prod->Get()}"->PrintLine();
+        };
+
+        # Any: true when at least one matches
+        cv3 := CompareVector->New()<IntRef>;
+        each(i : 5) { cv3->AddBack(IntRef->New(i)); };  # 0..4
+        any_neg := cv3->Any(IsNeg(IntRef) ~ Bool);
+        if(any_neg) {
+            pass := false;
+            "  FAIL: Any negative (none)"->PrintLine();
+        };
+        any_gt3 := cv3->Any(GtThree(IntRef) ~ Bool);
+        if(<>any_gt3) {
+            pass := false;
+            "  FAIL: Any > 3 should be true"->PrintLine();
+        };
+
+        # All: true when every element matches
+        cv4 := CompareVector->New()<IntRef>;
+        each(i : 5) { cv4->AddBack(IntRef->New(i + 1)); };  # 1..5
+        all_pos := cv4->All(IsPos(IntRef) ~ Bool);
+        if(<>all_pos) {
+            pass := false;
+            "  FAIL: All positive should be true"->PrintLine();
+        };
+        all_gt3 := cv4->All(GtThree(IntRef) ~ Bool);
+        if(all_gt3) {
+            pass := false;
+            "  FAIL: All > 3 should be false"->PrintLine();
+        };
+
+        # Vector Reduce (plain Vector)
+        v := Vector->New()<IntRef>;
+        each(i : 10) { v->AddBack(IntRef->New(i + 1)); };  # 1..10
+        vsum := v->Reduce(IntRef->New(0), Sum(IntRef, IntRef) ~ IntRef);
+        if(vsum->Get() <> 55) {
+            pass := false;
+            "  FAIL: Vector Reduce sum = {$vsum->Get()}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Reduce, Any, All operations"->PrintLine();
+        } else {
+            "FAIL: Reduce, Any, All operations"->PrintLine();
+        };
+    }
+
+    function : Sum(a : IntRef, b : IntRef) ~ IntRef {
+        return IntRef->New(a->Get() + b->Get());
+    }
+
+    function : Mul(a : IntRef, b : IntRef) ~ IntRef {
+        return IntRef->New(a->Get() * b->Get());
+    }
+
+    function : IsNeg(x : IntRef) ~ Bool {
+        return x->Get() < 0;
+    }
+
+    function : GtThree(x : IntRef) ~ Bool {
+        return x->Get() > 3;
+    }
+
+    function : IsPos(x : IntRef) ~ Bool {
+        return x->Get() > 0;
+    }
+}

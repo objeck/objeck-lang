@@ -1,0 +1,99 @@
+class CoreIntMethodsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Int methods..."->PrintLine();
+        pass := true;
+
+        # Int->Abs
+        if(Int->Abs(-7) <> 7) {
+            pass := false;
+            "  FAIL: Abs(-7)"->PrintLine();
+        };
+        if(Int->Abs(5) <> 5) {
+            pass := false;
+            "  FAIL: Abs(5)"->PrintLine();
+        };
+        if(Int->Abs(0) <> 0) {
+            pass := false;
+            "  FAIL: Abs(0)"->PrintLine();
+        };
+
+        # Int->Min / Max
+        if(Int->Min(3, 8) <> 3) {
+            pass := false;
+            "  FAIL: Min(3,8)"->PrintLine();
+        };
+        if(Int->Min(-5, -2) <> -5) {
+            pass := false;
+            "  FAIL: Min(-5,-2)"->PrintLine();
+        };
+        if(Int->Max(3, 8) <> 8) {
+            pass := false;
+            "  FAIL: Max(3,8)"->PrintLine();
+        };
+        if(Int->Max(-5, -2) <> -2) {
+            pass := false;
+            "  FAIL: Max(-5,-2)"->PrintLine();
+        };
+        # Min/Max with equal values
+        if(Int->Min(4, 4) <> 4) {
+            pass := false;
+            "  FAIL: Min(4,4)"->PrintLine();
+        };
+        if(Int->Max(4, 4) <> 4) {
+            pass := false;
+            "  FAIL: Max(4,4)"->PrintLine();
+        };
+
+        # Int->Pow
+        if(Int->Pow(2, 8) <> 256) {
+            pass := false;
+            "  FAIL: Pow(2,8)"->PrintLine();
+        };
+        if(Int->Pow(10, 3) <> 1000) {
+            pass := false;
+            "  FAIL: Pow(10,3)"->PrintLine();
+        };
+        if(Int->Pow(5, 0) <> 1) {
+            pass := false;
+            "  FAIL: Pow(5,0)"->PrintLine();
+        };
+
+        # Int->MaxSize / MinSize (platform limits)
+        if(Int->MaxSize() <= 0) {
+            pass := false;
+            "  FAIL: MaxSize() should be > 0"->PrintLine();
+        };
+        if(Int->MinSize() >= 0) {
+            pass := false;
+            "  FAIL: MinSize() should be < 0"->PrintLine();
+        };
+
+        # Int->Sqrt (integer sqrt)
+        if(Int->Sqrt(25) <> 5) {
+            pass := false;
+            "  FAIL: Sqrt(25)"->PrintLine();
+        };
+        if(Int->Sqrt(9) <> 3) {
+            pass := false;
+            "  FAIL: Sqrt(9)"->PrintLine();
+        };
+
+        # ToString / ToFloat conversions
+        s := 42->ToString();
+        if(<>s->Equals("42")) {
+            pass := false;
+            "  FAIL: 42->ToString()"->PrintLine();
+        };
+        f := 7->As(Float);
+        if(f < 6.9 | f > 7.1) {
+            pass := false;
+            "  FAIL: 7->As(Float) = {$f}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Int methods"->PrintLine();
+        } else {
+            "FAIL: Int methods"->PrintLine();
+        };
+    }
+}

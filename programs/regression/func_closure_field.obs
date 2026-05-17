@@ -1,0 +1,116 @@
+use Collection;
+
+class Transformer {
+    @func : (IntRef) ~ IntRef;
+
+    New(func : (IntRef) ~ IntRef) {
+        @func := func;
+    }
+
+    method : public : Apply(v : IntRef) ~ IntRef {
+        return @func(v);
+    }
+
+    method : public : ApplyAll(values : CompareVector<IntRef>) ~ CompareVector<IntRef> {
+        out := CompareVector->New()<IntRef>;
+        each(item in values) {
+            out->AddBack(@func(item));
+        };
+        return out;
+    }
+}
+
+class Predicate {
+    @func : (IntRef) ~ Bool;
+
+    New(func : (IntRef) ~ Bool) {
+        @func := func;
+    }
+
+    method : public : Test(v : IntRef) ~ Bool {
+        return @func(v);
+    }
+
+    method : public : CountMatching(values : CompareVector<IntRef>) ~ Int {
+        count := 0;
+        each(item in values) {
+            if(@func(item)) { count += 1; };
+        };
+        return count;
+    }
+}
+
+class FuncClosureFieldTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing function references as class fields..."->PrintLine();
+        pass := true;
+
+        # Transformer with double function
+        t1 := Transformer->New(Double(IntRef) ~ IntRef);
+        r1 := t1->Apply(IntRef->New(5));
+        if(r1->Get() <> 10) {
+            pass := false;
+            "  FAIL: double Apply(5) = {$r1->Get()}"->PrintLine();
+        };
+
+        # Transformer with square function
+        t2 := Transformer->New(Square(IntRef) ~ IntRef);
+        r2 := t2->Apply(IntRef->New(4));
+        if(r2->Get() <> 16) {
+            pass := false;
+            "  FAIL: square Apply(4) = {$r2->Get()}"->PrintLine();
+        };
+
+        # ApplyAll
+        cv := CompareVector->New()<IntRef>;
+        each(i : 5) { cv->AddBack(IntRef->New(i)); };
+
+        doubled := t1->ApplyAll(cv);
+        if(doubled->Size() <> 5) {
+            pass := false;
+            "  FAIL: ApplyAll size"->PrintLine();
+        };
+        if(doubled->Get(4)->Get() <> 8) {
+            pass := false;
+            "  FAIL: doubled[4] = {$doubled->Get(4)->Get()}"->PrintLine();
+        };
+
+        # Predicate field
+        p1 := Predicate->New(IsEven(IntRef) ~ Bool);
+        if(<>p1->Test(IntRef->New(4))) {
+            pass := false;
+            "  FAIL: IsEven(4) should be true"->PrintLine();
+        };
+        if(p1->Test(IntRef->New(3))) {
+            pass := false;
+            "  FAIL: IsEven(3) should be false"->PrintLine();
+        };
+
+        even_count := p1->CountMatching(cv);
+        if(even_count <> 3) {
+            pass := false;
+            "  FAIL: even count in 0..4 = {$even_count}, expected 3"->PrintLine();
+        };
+
+        # Swap transformer
+        t3 := Transformer->New(Negate(IntRef) ~ IntRef);
+        negated := t3->ApplyAll(cv);
+        sum := 0;
+        each(v in negated) { sum += v->Get(); };
+        if(sum <> 0 - 10) {
+            pass := false;
+            "  FAIL: negated sum = {$sum}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Function references as class fields"->PrintLine();
+        } else {
+            "FAIL: Function references as class fields"->PrintLine();
+        };
+    }
+
+    function : Double(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * 2); }
+    function : Square(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * v->Get()); }
+    function : Negate(v : IntRef) ~ IntRef { return IntRef->New(0 - v->Get()); }
+    function : IsEven(v : IntRef) ~ Bool { return v->Get() % 2 = 0; }
+}

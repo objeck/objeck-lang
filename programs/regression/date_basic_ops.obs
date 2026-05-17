@@ -1,0 +1,91 @@
+use System.Time;
+
+class DateBasicOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing date/time basic operations..."->PrintLine();
+        pass := true;
+
+        # Get current time
+        now := System.Time.Date->New(false);
+        if(now = Nil) {
+            pass := false;
+            "  FAIL: GetTime returned Nil"->PrintLine();
+        } else {
+            # Year should be current (2024+)
+            year := now->GetYear();
+            if(year < 2024) {
+                pass := false;
+                "  FAIL: year = {$year}, expected >= 2024"->PrintLine();
+            };
+
+            # Month should be 1-12
+            month := now->GetMonth();
+            if(month < 1 | month > 12) {
+                pass := false;
+                "  FAIL: month = {$month}"->PrintLine();
+            };
+
+            # Day should be 1-31
+            day := now->GetDay();
+            if(day < 1 | day > 31) {
+                pass := false;
+                "  FAIL: day = {$day}"->PrintLine();
+            };
+
+            # Hours 0-23
+            hours := now->GetHours();
+            if(hours < 0 | hours > 23) {
+                pass := false;
+                "  FAIL: hours = {$hours}"->PrintLine();
+            };
+
+            # Minutes 0-59
+            minutes := now->GetMinutes();
+            if(minutes < 0 | minutes > 59) {
+                pass := false;
+                "  FAIL: minutes = {$minutes}"->PrintLine();
+            };
+
+            # WeekDay 0-6
+            wday := now->GetWeekDay();
+            if(wday < 0 | wday > 6) {
+                pass := false;
+                "  FAIL: weekday = {$wday}"->PrintLine();
+            };
+
+            # Weekday name should be non-empty
+            wname := now->GetWeekDayName();
+            if(wname = Nil | wname->Size() = 0) {
+                pass := false;
+                "  FAIL: weekday name empty"->PrintLine();
+            };
+
+            # Month name should be non-empty
+            mname := now->GetMonthName();
+            if(mname = Nil | mname->Size() = 0) {
+                pass := false;
+                "  FAIL: month name empty"->PrintLine();
+            };
+
+            # Date string should be non-empty
+            dstr := now->GetDateString();
+            if(dstr = Nil | dstr->Size() = 0) {
+                pass := false;
+                "  FAIL: date string empty"->PrintLine();
+            };
+
+            # Unix time should be positive
+            unix := now->GetUnixTime();
+            if(unix <= 0) {
+                pass := false;
+                "  FAIL: unix time = {$unix}"->PrintLine();
+            };
+        };
+
+        if(pass) {
+            "PASS: Date/time basic operations"->PrintLine();
+        } else {
+            "FAIL: Date/time basic operations"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,95 @@
+use Collection;
+
+class CollectHashOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Hash operations..."->PrintLine();
+        pass := true;
+
+        h := Hash->New()<String, IntRef>;
+
+        # Insert and Find
+        h->Insert("one", IntRef->New(1));
+        h->Insert("two", IntRef->New(2));
+        h->Insert("three", IntRef->New(3));
+
+        if(h->Size() <> 3) {
+            pass := false;
+            "  FAIL: size = {$h->Size()}, expected 3"->PrintLine();
+        };
+
+        v1 := h->Find("one");
+        if(v1 = Nil | v1->Get() <> 1) {
+            pass := false;
+            "  FAIL: Find(\"one\")"->PrintLine();
+        };
+
+        v3 := h->Find("three");
+        if(v3 = Nil | v3->Get() <> 3) {
+            pass := false;
+            "  FAIL: Find(\"three\")"->PrintLine();
+        };
+
+        # Missing key returns Nil
+        vmiss := h->Find("missing");
+        if(vmiss <> Nil) {
+            pass := false;
+            "  FAIL: Find missing key should return Nil"->PrintLine();
+        };
+
+        # HasKey
+        if(<>h->Has("two")) {
+            pass := false;
+            "  FAIL: Has(\"two\")"->PrintLine();
+        };
+        if(h->Has("four")) {
+            pass := false;
+            "  FAIL: Has(\"four\") should be false"->PrintLine();
+        };
+
+        # Remove
+        h->Remove("two");
+        if(h->Size() <> 2) {
+            pass := false;
+            "  FAIL: size after Remove"->PrintLine();
+        };
+        if(h->Has("two")) {
+            pass := false;
+            "  FAIL: Has after Remove"->PrintLine();
+        };
+
+        # Overwrite existing key
+        h->Insert("one", IntRef->New(100));
+        updated := h->Find("one");
+        if(updated = Nil | updated->Get() <> 100) {
+            pass := false;
+            "  FAIL: overwrite value"->PrintLine();
+        };
+
+        # Iterate keys
+        h2 := Hash->New()<String, IntRef>;
+        each(i : 10) {
+            key := "k{$i}";
+            h2->Insert(key, IntRef->New(i));
+        };
+        if(h2->Size() <> 10) {
+            pass := false;
+            "  FAIL: 10-entry hash size"->PrintLine();
+        };
+        total := 0;
+        keys := h2->GetKeys()<String>;
+        each(k in keys) {
+            val := h2->Find(k);
+            if(val <> Nil) { total += val->Get(); };
+        };
+        if(total <> 45) {
+            pass := false;
+            "  FAIL: key iteration sum = {$total}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Hash operations"->PrintLine();
+        } else {
+            "FAIL: Hash operations"->PrintLine();
+        };
+    }
+}

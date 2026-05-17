@@ -1,0 +1,100 @@
+class FixDeepRecursionTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing deep recursion..."->PrintLine();
+        pass := true;
+
+        # Fibonacci (exponential without memoization — keep small)
+        fib10 := Fib(10);
+        if(fib10 <> 55) {
+            pass := false;
+            "  FAIL: Fib(10) = {$fib10}"->PrintLine();
+        };
+        fib15 := Fib(15);
+        if(fib15 <> 610) {
+            pass := false;
+            "  FAIL: Fib(15) = {$fib15}"->PrintLine();
+        };
+
+        # Linear recursion
+        sum := SumTo(100);
+        expected := 100 * 101 / 2;
+        if(sum <> expected) {
+            pass := false;
+            "  FAIL: SumTo(100) = {$sum}, expected {$expected}"->PrintLine();
+        };
+
+        # Mutual recursion
+        if(<>IsEven(10)) {
+            pass := false;
+            "  FAIL: IsEven(10)"->PrintLine();
+        };
+        if(IsEven(7)) {
+            pass := false;
+            "  FAIL: IsEven(7) should be false"->PrintLine();
+        };
+        if(<>IsOdd(13)) {
+            pass := false;
+            "  FAIL: IsOdd(13)"->PrintLine();
+        };
+
+        # Tower of Hanoi moves count (2^n - 1)
+        hanoi3 := HanoiCount(3);
+        if(hanoi3 <> 7) {
+            pass := false;
+            "  FAIL: HanoiCount(3) = {$hanoi3}"->PrintLine();
+        };
+        hanoi8 := HanoiCount(8);
+        if(hanoi8 <> 255) {
+            pass := false;
+            "  FAIL: HanoiCount(8) = {$hanoi8}"->PrintLine();
+        };
+
+        # Recursive GCD
+        gcd48_18 := Gcd(48, 18);
+        if(gcd48_18 <> 6) {
+            pass := false;
+            "  FAIL: GCD(48,18) = {$gcd48_18}"->PrintLine();
+        };
+        gcd100_75 := Gcd(100, 75);
+        if(gcd100_75 <> 25) {
+            pass := false;
+            "  FAIL: GCD(100,75) = {$gcd100_75}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Deep recursion"->PrintLine();
+        } else {
+            "FAIL: Deep recursion"->PrintLine();
+        };
+    }
+
+    function : Fib(n : Int) ~ Int {
+        if(n <= 1) { return n; };
+        return Fib(n - 1) + Fib(n - 2);
+    }
+
+    function : SumTo(n : Int) ~ Int {
+        if(n = 0) { return 0; };
+        return n + SumTo(n - 1);
+    }
+
+    function : IsEven(n : Int) ~ Bool {
+        if(n = 0) { return true; };
+        return IsOdd(n - 1);
+    }
+
+    function : IsOdd(n : Int) ~ Bool {
+        if(n = 0) { return false; };
+        return IsEven(n - 1);
+    }
+
+    function : HanoiCount(n : Int) ~ Int {
+        if(n = 0) { return 0; };
+        return 2 * HanoiCount(n - 1) + 1;
+    }
+
+    function : Gcd(a : Int, b : Int) ~ Int {
+        if(b = 0) { return a; };
+        return Gcd(b, a % b);
+    }
+}

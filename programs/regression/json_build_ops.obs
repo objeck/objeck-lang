@@ -1,0 +1,93 @@
+use Data.JSON;
+
+class JsonBuildOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JSON build operations..."->PrintLine();
+        pass := true;
+
+        # Build simple object
+        b1 := JsonBuilder->New();
+        b1->PushObject()->Insert("name", "Bob")->Insert("score", 95)->Insert("active", true);
+        root1 := b1->PopAll();
+        if(root1 = Nil) {
+            pass := false;
+            "  FAIL: simple object build"->PrintLine();
+        } else {
+            s := root1->ToString();
+            if(s = Nil | <>s->Has("Bob")) {
+                pass := false;
+                "  FAIL: built object missing name"->PrintLine();
+            };
+            if(s = Nil | <>s->Has("score")) {
+                pass := false;
+                "  FAIL: built object missing score"->PrintLine();
+            };
+        };
+
+        # Build array
+        b2 := JsonBuilder->New();
+        b2->PushArray()->Add(10)->Add(20)->Add(30);
+        root2 := b2->PopAll();
+        if(root2 = Nil) {
+            pass := false;
+            "  FAIL: array build"->PrintLine();
+        } else {
+            s2 := root2->ToString();
+            if(s2 = Nil | <>s2->Has("10")) {
+                pass := false;
+                "  FAIL: array missing 10"->PrintLine();
+            };
+            if(s2 = Nil | <>s2->Has("30")) {
+                pass := false;
+                "  FAIL: array missing 30"->PrintLine();
+            };
+        };
+
+        # Build object with nested object
+        b3 := JsonBuilder->New();
+        b3->PushObject()
+          ->Insert("version", "1.0")
+          ->PushObject("config")
+          ->Insert("debug", false)
+          ->Insert("timeout", 30);
+        root3 := b3->PopAll();
+        if(root3 = Nil) {
+            pass := false;
+            "  FAIL: nested object build"->PrintLine();
+        } else {
+            s3 := root3->ToString();
+            if(s3 = Nil | <>s3->Has("config")) {
+                pass := false;
+                "  FAIL: nested missing config"->PrintLine();
+            };
+            if(s3 = Nil | <>s3->Has("timeout")) {
+                pass := false;
+                "  FAIL: nested missing timeout"->PrintLine();
+            };
+        };
+
+        # Round-trip: build then parse
+        b4 := JsonBuilder->New();
+        b4->PushObject()->Insert("x", 42)->Insert("y", 99);
+        built := b4->PopAll();
+        json_str := built->ToString();
+
+        p4 := JsonParser->New(json_str);
+        if(<>p4->Parse()) {
+            pass := false;
+            "  FAIL: round-trip parse failed"->PrintLine();
+        } else {
+            r4 := p4->GetRoot();
+            if(r4 = Nil | r4->Get("x")->GetInt() <> 42 | r4->Get("y")->GetInt() <> 99) {
+                pass := false;
+                "  FAIL: round-trip values wrong"->PrintLine();
+            };
+        };
+
+        if(pass) {
+            "PASS: JSON build operations"->PrintLine();
+        } else {
+            "FAIL: JSON build operations"->PrintLine();
+        };
+    }
+}

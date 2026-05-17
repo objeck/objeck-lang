@@ -1,0 +1,112 @@
+use Data.JSON;
+
+class JsonParseOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JSON parse operations..."->PrintLine();
+        pass := true;
+
+        # Simple object
+        p1 := JsonParser->New("{\"name\":\"Alice\",\"age\":30}");
+        if(<>p1->Parse()) {
+            pass := false;
+            "  FAIL: simple object parse"->PrintLine();
+        } else {
+            root := p1->GetRoot();
+            if(root = Nil) {
+                pass := false;
+                "  FAIL: root is Nil"->PrintLine();
+            } else {
+                if(<>root->Get("name")->GetString()->Equals("Alice")) {
+                    pass := false;
+                    "  FAIL: name field"->PrintLine();
+                };
+                if(root->Get("age")->GetInt() <> 30) {
+                    pass := false;
+                    "  FAIL: age field"->PrintLine();
+                };
+            };
+        };
+
+        # Array
+        p2 := JsonParser->New("[1,2,3,4,5]");
+        if(<>p2->Parse()) {
+            pass := false;
+            "  FAIL: array parse"->PrintLine();
+        } else {
+            root2 := p2->GetRoot();
+            if(root2 = Nil | root2->Size() <> 5) {
+                pass := false;
+                "  FAIL: array size"->PrintLine();
+            } else {
+                if(root2->Get(0)->GetInt() <> 1) { pass := false; "  FAIL: arr[0]"->PrintLine(); };
+                if(root2->Get(4)->GetInt() <> 5) { pass := false; "  FAIL: arr[4]"->PrintLine(); };
+            };
+        };
+
+        # Nested object
+        p3 := JsonParser->New("{\"outer\":{\"inner\":42}}");
+        if(<>p3->Parse()) {
+            pass := false;
+            "  FAIL: nested parse"->PrintLine();
+        } else {
+            root3 := p3->GetRoot();
+            if(root3 <> Nil) {
+                outer := root3->Get("outer");
+                if(outer = Nil) {
+                    pass := false;
+                    "  FAIL: outer field Nil"->PrintLine();
+                } else {
+                    if(outer->Get("inner")->GetInt() <> 42) {
+                        pass := false;
+                        "  FAIL: inner value"->PrintLine();
+                    };
+                };
+            };
+        };
+
+        # Boolean and null values
+        p4 := JsonParser->New("{\"a\":true,\"b\":false,\"c\":null}");
+        if(<>p4->Parse()) {
+            pass := false;
+            "  FAIL: bool/null parse"->PrintLine();
+        } else {
+            root4 := p4->GetRoot();
+            if(root4 <> Nil) {
+                if(root4->Get("a")->GetType() <> JsonElement->JsonType->TRUE) {
+                    pass := false;
+                    "  FAIL: true type"->PrintLine();
+                };
+                if(root4->Get("b")->GetType() <> JsonElement->JsonType->FALSE) {
+                    pass := false;
+                    "  FAIL: false type"->PrintLine();
+                };
+                if(root4->Get("c")->GetType() <> JsonElement->JsonType->NULL) {
+                    pass := false;
+                    "  FAIL: null type"->PrintLine();
+                };
+            };
+        };
+
+        # Float value
+        p5 := JsonParser->New("{\"pi\":3.14159}");
+        if(<>p5->Parse()) {
+            pass := false;
+            "  FAIL: float parse"->PrintLine();
+        } else {
+            root5 := p5->GetRoot();
+            if(root5 <> Nil) {
+                pi := root5->Get("pi")->GetFloat();
+                if(pi < 3.141 | pi > 3.142) {
+                    pass := false;
+                    "  FAIL: pi value = {$pi}"->PrintLine();
+                };
+            };
+        };
+
+        if(pass) {
+            "PASS: JSON parse operations"->PrintLine();
+        } else {
+            "FAIL: JSON parse operations"->PrintLine();
+        };
+    }
+}

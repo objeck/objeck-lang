@@ -1,0 +1,114 @@
+class CoreCharMethodsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing char methods..."->PrintLine();
+        pass := true;
+
+        # IsAlpha check (manual range comparison)
+        a_ch := 'a';
+        if(<>(a_ch >= 'a' & a_ch <= 'z')) {
+            pass := false;
+            "  FAIL: 'a' should be alpha"->PrintLine();
+        };
+        five_ch := '5';
+        if((five_ch >= 'a' & five_ch <= 'z') | (five_ch >= 'A' & five_ch <= 'Z')) {
+            pass := false;
+            "  FAIL: '5' should not be alpha"->PrintLine();
+        };
+
+        # IsAlphaNumeric check (manual range comparison)
+        if(<>((a_ch >= 'a' & a_ch <= 'z') | (a_ch >= 'A' & a_ch <= 'Z') | (a_ch >= '0' & a_ch <= '9'))) {
+            pass := false;
+            "  FAIL: 'a' should be alphanumeric"->PrintLine();
+        };
+        if(<>((five_ch >= 'a' & five_ch <= 'z') | (five_ch >= 'A' & five_ch <= 'Z') | (five_ch >= '0' & five_ch <= '9'))) {
+            pass := false;
+            "  FAIL: '5' should be alphanumeric"->PrintLine();
+        };
+        sp_ch := ' ';
+        if((sp_ch >= 'a' & sp_ch <= 'z') | (sp_ch >= 'A' & sp_ch <= 'Z') | (sp_ch >= '0' & sp_ch <= '9')) {
+            pass := false;
+            "  FAIL: ' ' should not be alphanumeric"->PrintLine();
+        };
+
+        # Static Char functions
+        if(<>Char->IsDigit('7')) {
+            pass := false;
+            "  FAIL: Char->IsDigit('7')"->PrintLine();
+        };
+        if(Char->IsDigit('a')) {
+            pass := false;
+            "  FAIL: 'a' should not be digit"->PrintLine();
+        };
+
+        if(<>Char->IsUpper('A')) {
+            pass := false;
+            "  FAIL: Char->IsUpper('A')"->PrintLine();
+        };
+        if(Char->IsUpper('a')) {
+            pass := false;
+            "  FAIL: 'a' should not be upper"->PrintLine();
+        };
+
+        if(<>Char->IsLower('z')) {
+            pass := false;
+            "  FAIL: Char->IsLower('z')"->PrintLine();
+        };
+        if(Char->IsLower('Z')) {
+            pass := false;
+            "  FAIL: 'Z' should not be lower"->PrintLine();
+        };
+
+        if(<>Char->IsWhitespace(' ')) {
+            pass := false;
+            "  FAIL: Char->IsWhitespace(' ')"->PrintLine();
+        };
+        if(Char->IsWhitespace('a')) {
+            pass := false;
+            "  FAIL: 'a' should not be whitespace"->PrintLine();
+        };
+
+        # Case conversion (static)
+        up := Char->ToUpper('a');
+        if(up <> 'A') {
+            pass := false;
+            "  FAIL: Char->ToUpper('a') = {$up}"->PrintLine();
+        };
+        lo := Char->ToLower('Z');
+        if(lo <> 'z') {
+            pass := false;
+            "  FAIL: Char->ToLower('Z') = {$lo}"->PrintLine();
+        };
+
+        # Char arithmetic via As(Int)
+        a_val := 'A'->As(Int);
+        if(a_val <> 65) {
+            pass := false;
+            "  FAIL: 'A' as int = {$a_val}"->PrintLine();
+        };
+
+        reconstructed := 65->As(Char);
+        if(reconstructed <> 'A') {
+            pass := false;
+            "  FAIL: 65->As(Char)"->PrintLine();
+        };
+
+        # Iterate string and count digits
+        s := "abc123def456";
+        digit_count := 0;
+        each(i : s->Size()) {
+            if(Char->IsDigit(s->Get(i))) {
+                digit_count += 1;
+            };
+        };
+        if(digit_count <> 6) {
+            pass := false;
+            "  FAIL: digit count = {$digit_count}, expected 6"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Char methods"->PrintLine();
+        } else {
+            "FAIL: Char methods"->PrintLine();
+        };
+    }
+}

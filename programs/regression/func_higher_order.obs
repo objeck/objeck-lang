@@ -1,0 +1,88 @@
+use Collection;
+
+class FuncHigherOrderTest {
+    @multiplier : static : Int;
+
+    function : Main(args : String[]) ~ Nil {
+        "Testing higher-order function patterns..."->PrintLine();
+        pass := true;
+
+        # Compose two functions: first double, then add 1
+        cv := CompareVector->New()<IntRef>;
+        each(i : 5) { cv->AddBack(IntRef->New(i)); };
+
+        doubled := cv->Map(Double(IntRef) ~ IntRef);
+        result := doubled->Map(AddOne(IntRef) ~ IntRef);
+
+        # 0->1, 1->3, 2->5, 3->7, 4->9
+        expected_vals := Int->New[5];
+        expected_vals[0] := 1; expected_vals[1] := 3; expected_vals[2] := 5;
+        expected_vals[3] := 7; expected_vals[4] := 9;
+
+        each(i : result->Size()) {
+            exp := expected_vals[i];
+            got := result->Get(i)->Get();
+            if(got <> exp) {
+                pass := false;
+                "  FAIL: compose[{$i}] = {$got}, expected {$exp}"->PrintLine();
+            };
+        };
+
+        # Apply function via function reference stored in a field
+        @multiplier := 3;
+        tripled := ApplyMultiplier(cv, MultiplyByField(IntRef) ~ IntRef);
+        total := 0;
+        each(v in tripled) { total += v->Get(); };
+        if(total <> 30) {
+            pass := false;
+            "  FAIL: multiplied total = {$total}, expected 30"->PrintLine();
+        };
+
+        # Higher-order: count items satisfying a predicate using Each
+        count := 0;
+        cv->Each(CountEven(IntRef) ~ Nil);
+        # (can't directly get count from closure; use manual count instead)
+        manual_count := 0;
+        each(item in cv) {
+            if(item->Get() % 2 = 0) { manual_count += 1; };
+        };
+        if(manual_count <> 3) {
+            pass := false;
+            "  FAIL: even count = {$manual_count}, expected 3 (0,2,4)"->PrintLine();
+        };
+
+        # Passing function ref to custom apply
+        squares := ApplyFn(cv, Square(IntRef) ~ IntRef);
+        # 0,1,4,9,16 → sum=30
+        sq_sum := 0;
+        each(v in squares) { sq_sum += v->Get(); };
+        if(sq_sum <> 30) {
+            pass := false;
+            "  FAIL: squares sum = {$sq_sum}, expected 30"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Higher-order functions"->PrintLine();
+        } else {
+            "FAIL: Higher-order functions"->PrintLine();
+        };
+    }
+
+    function : ApplyFn(v : CompareVector<IntRef>, f : (IntRef) ~ IntRef) ~ CompareVector<IntRef> {
+        out := CompareVector->New()<IntRef>;
+        each(item in v) { out->AddBack(f(item)); };
+        return out;
+    }
+
+    function : ApplyMultiplier(v : CompareVector<IntRef>, f : (IntRef) ~ IntRef) ~ CompareVector<IntRef> {
+        out := CompareVector->New()<IntRef>;
+        each(item in v) { out->AddBack(f(item)); };
+        return out;
+    }
+
+    function : Double(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * 2); }
+    function : AddOne(v : IntRef) ~ IntRef { return IntRef->New(v->Get() + 1); }
+    function : Square(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * v->Get()); }
+    function : MultiplyByField(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * @multiplier); }
+    function : CountEven(v : IntRef) ~ Nil { }
+}

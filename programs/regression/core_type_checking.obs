@@ -1,0 +1,107 @@
+class Vehicle {
+    @speed : Int;
+    New(speed : Int) { @speed := speed; }
+    method : public : GetSpeed() ~ Int { return @speed; }
+}
+
+class Car from Vehicle {
+    @doors : Int;
+    New(speed : Int, doors : Int) {
+        Parent(speed);
+        @doors := doors;
+    }
+    method : public : GetDoors() ~ Int { return @doors; }
+}
+
+class Truck from Vehicle {
+    @payload : Int;
+    New(speed : Int, payload : Int) {
+        Parent(speed);
+        @payload := payload;
+    }
+    method : public : GetPayload() ~ Int { return @payload; }
+}
+
+class CoreTypeCheckingTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing type checking and casting..."->PrintLine();
+        pass := true;
+
+        car := Car->New(120, 4);
+        truck := Truck->New(90, 5000);
+
+        # TypeOf exact type
+        if(<>car->TypeOf(Car)) {
+            pass := false;
+            "  FAIL: car TypeOf Car"->PrintLine();
+        };
+        # TypeOf base class
+        if(<>car->TypeOf(Vehicle)) {
+            pass := false;
+            "  FAIL: car TypeOf Vehicle"->PrintLine();
+        };
+        # TypeOf wrong subtype
+        if(car->TypeOf(Truck)) {
+            pass := false;
+            "  FAIL: car should not be Truck"->PrintLine();
+        };
+
+        # Array of base type, runtime downcast
+        fleet := Vehicle->New[2];
+        fleet[0] := car;
+        fleet[1] := truck;
+
+        if(<>fleet[0]->TypeOf(Car)) {
+            pass := false;
+            "  FAIL: fleet[0] should be Car"->PrintLine();
+        };
+        if(<>fleet[1]->TypeOf(Truck)) {
+            pass := false;
+            "  FAIL: fleet[1] should be Truck"->PrintLine();
+        };
+
+        # Downcast Car
+        if(fleet[0]->TypeOf(Car)) {
+            c := fleet[0]->As(Car);
+            if(c = Nil) {
+                pass := false;
+                "  FAIL: As(Car) returned Nil"->PrintLine();
+            } else {
+                if(c->GetDoors() <> 4) {
+                    pass := false;
+                    "  FAIL: GetDoors() = {$c->GetDoors()}"->PrintLine();
+                };
+            };
+        };
+
+        # Downcast Truck
+        if(fleet[1]->TypeOf(Truck)) {
+            t := fleet[1]->As(Truck);
+            if(t = Nil) {
+                pass := false;
+                "  FAIL: As(Truck) returned Nil"->PrintLine();
+            } else {
+                if(t->GetPayload() <> 5000) {
+                    pass := false;
+                    "  FAIL: GetPayload() = {$t->GetPayload()}"->PrintLine();
+                };
+            };
+        };
+
+        # GetSpeed accessible via base ref
+        total_speed := 0;
+        each(i : fleet->Size()) {
+            total_speed += fleet[i]->GetSpeed();
+        };
+        if(total_speed <> 210) {
+            pass := false;
+            "  FAIL: total speed = {$total_speed}, expected 210"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Type checking and casting"->PrintLine();
+        } else {
+            "FAIL: Type checking and casting"->PrintLine();
+        };
+    }
+}

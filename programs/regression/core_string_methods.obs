@@ -1,0 +1,109 @@
+class CoreStringMethodsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string methods..."->PrintLine();
+        pass := true;
+
+        # ToUpper / ToLower
+        s := "Hello World";
+        up := s->ToUpper();
+        if(<>up->Equals("HELLO WORLD")) {
+            pass := false;
+            "  FAIL: ToUpper = {$up}"->PrintLine();
+        };
+        lo := s->ToLower();
+        if(<>lo->Equals("hello world")) {
+            pass := false;
+            "  FAIL: ToLower = {$lo}"->PrintLine();
+        };
+
+        # Trim
+        padded := "  trim me  ";
+        trimmed := padded->Trim();
+        if(<>trimmed->Equals("trim me")) {
+            pass := false;
+            "  FAIL: Trim = '{$trimmed}'"->PrintLine();
+        };
+        tf := "  front"->TrimFront();
+        if(<>tf->Equals("front")) {
+            pass := false;
+            "  FAIL: TrimFront = '{$tf}'"->PrintLine();
+        };
+        tb := "back  "->TrimBack();
+        if(<>tb->Equals("back")) {
+            pass := false;
+            "  FAIL: TrimBack = '{$tb}'"->PrintLine();
+        };
+
+        # Find (char and string)
+        src := "abcdef";
+        if(src->Find('c') <> 2) {
+            pass := false;
+            "  FAIL: Find('c')"->PrintLine();
+        };
+        if(src->Find("cde") <> 2) {
+            pass := false;
+            "  FAIL: Find(\"cde\")"->PrintLine();
+        };
+        if(src->Find('z') <> -1) {
+            pass := false;
+            "  FAIL: Find('z') should be -1"->PrintLine();
+        };
+
+        # Has / Contains
+        if(<>src->Has('d')) {
+            pass := false;
+            "  FAIL: Has('d')"->PrintLine();
+        };
+        if(src->Has('z')) {
+            pass := false;
+            "  FAIL: Has('z') should be false"->PrintLine();
+        };
+        if(<>src->Contains("bcd")) {
+            pass := false;
+            "  FAIL: Contains(\"bcd\")"->PrintLine();
+        };
+
+        # StartsWith / EndsWith
+        if(<>"hello"->StartsWith('h')) {
+            pass := false;
+            "  FAIL: StartsWith('h')"->PrintLine();
+        };
+        if(<>"hello"->EndsWith('o')) {
+            pass := false;
+            "  FAIL: EndsWith('o')"->PrintLine();
+        };
+        if(<>"hello"->StartsWith("hel")) {
+            pass := false;
+            "  FAIL: StartsWith(\"hel\")"->PrintLine();
+        };
+        if(<>"hello"->EndsWith("llo")) {
+            pass := false;
+            "  FAIL: EndsWith(\"llo\")"->PrintLine();
+        };
+
+        # ReplaceAll
+        r := "aababca"->ReplaceAll("a", "x");
+        if(<>r->Equals("xxbxbcx")) {
+            pass := false;
+            "  FAIL: ReplaceAll = {$r}"->PrintLine();
+        };
+
+        # Split
+        parts := "one,two,three"->Split(",");
+        if(parts->Size() <> 3) {
+            pass := false;
+            "  FAIL: Split size = {$parts->Size()}"->PrintLine();
+        } else {
+            if(<>parts[0]->Equals("one") | <>parts[1]->Equals("two") | <>parts[2]->Equals("three")) {
+                pass := false;
+                "  FAIL: Split values"->PrintLine();
+            };
+        };
+
+        if(pass) {
+            "PASS: String methods"->PrintLine();
+        } else {
+            "FAIL: String methods"->PrintLine();
+        };
+    }
+}

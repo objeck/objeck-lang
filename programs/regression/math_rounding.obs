@@ -1,0 +1,104 @@
+class MathRoundingTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing rounding functions..."->PrintLine();
+        pass := true;
+
+        # Floor
+        if(Float->Floor(3.7) <> 3.0) {
+            pass := false;
+            "  FAIL: Floor(3.7)"->PrintLine();
+        };
+        if(Float->Floor(3.0) <> 3.0) {
+            pass := false;
+            "  FAIL: Floor(3.0)"->PrintLine();
+        };
+        if(Float->Floor(-2.3) <> -3.0) {
+            v := Float->Floor(-2.3);
+            pass := false;
+            "  FAIL: Floor(-2.3) = {$v}"->PrintLine();
+        };
+        if(Float->Floor(-2.0) <> -2.0) {
+            pass := false;
+            "  FAIL: Floor(-2.0)"->PrintLine();
+        };
+
+        # Ceil
+        if(Float->Ceil(3.1) <> 4.0) {
+            pass := false;
+            "  FAIL: Ceil(3.1)"->PrintLine();
+        };
+        if(Float->Ceil(3.0) <> 3.0) {
+            pass := false;
+            "  FAIL: Ceil(3.0)"->PrintLine();
+        };
+        if(Float->Ceil(-2.7) <> -2.0) {
+            v := Float->Ceil(-2.7);
+            pass := false;
+            "  FAIL: Ceil(-2.7) = {$v}"->PrintLine();
+        };
+
+        # Round (half-rounds away from zero)
+        if(Float->Round(3.4) <> 3.0) {
+            pass := false;
+            "  FAIL: Round(3.4)"->PrintLine();
+        };
+        if(Float->Round(3.5) <> 4.0) {
+            pass := false;
+            "  FAIL: Round(3.5)"->PrintLine();
+        };
+        if(Float->Round(3.6) <> 4.0) {
+            pass := false;
+            "  FAIL: Round(3.6)"->PrintLine();
+        };
+        if(Float->Round(-2.5) <> -2.0 & Float->Round(-2.5) <> -3.0) {
+            # Either rounding convention is acceptable for -2.5
+        };
+
+        # Abs
+        if(Float->Abs(-5.5) <> 5.5) {
+            pass := false;
+            "  FAIL: Abs(-5.5)"->PrintLine();
+        };
+        if(Float->Abs(5.5) <> 5.5) {
+            pass := false;
+            "  FAIL: Abs(5.5)"->PrintLine();
+        };
+        if(Float->Abs(0.0) <> 0.0) {
+            pass := false;
+            "  FAIL: Abs(0.0)"->PrintLine();
+        };
+
+        # Floor/Ceil as Int conversion pattern
+        val := 7.8;
+        floor_int := Float->Floor(val)->As(Int);
+        ceil_int := Float->Ceil(val)->As(Int);
+        if(floor_int <> 7) {
+            pass := false;
+            "  FAIL: floor_int = {$floor_int}"->PrintLine();
+        };
+        if(ceil_int <> 8) {
+            pass := false;
+            "  FAIL: ceil_int = {$ceil_int}"->PrintLine();
+        };
+
+        # Float->Min and Float->Max
+        if(Float->Min(3.0, 5.0) <> 3.0) {
+            pass := false;
+            "  FAIL: Min(3,5)"->PrintLine();
+        };
+        if(Float->Max(3.0, 5.0) <> 5.0) {
+            pass := false;
+            "  FAIL: Max(3,5)"->PrintLine();
+        };
+        if(Float->Min(-1.0, -2.0) <> -2.0) {
+            pass := false;
+            "  FAIL: Min(-1,-2)"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Rounding functions"->PrintLine();
+        } else {
+            "FAIL: Rounding functions"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,104 @@
+class Counter {
+    @count : static : Int;
+    @max_seen : static : Int;
+
+    function : Reset() ~ Nil {
+        @count := 0;
+        @max_seen := 0;
+    }
+
+    function : Increment() ~ Nil {
+        @count += 1;
+        if(@count > @max_seen) {
+            @max_seen := @count;
+        };
+    }
+
+    function : Decrement() ~ Nil {
+        @count -= 1;
+    }
+
+    function : GetCount() ~ Int {
+        return @count;
+    }
+
+    function : GetMax() ~ Int {
+        return @max_seen;
+    }
+}
+
+class Registry {
+    @instances : static : Int;
+
+    New() {
+        @instances += 1;
+    }
+
+    function : GetInstances() ~ Int {
+        return @instances;
+    }
+}
+
+class CoreStaticFieldsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing static fields..."->PrintLine();
+        pass := true;
+
+        # Static counter starts at 0
+        Counter->Reset();
+        if(Counter->GetCount() <> 0) {
+            pass := false;
+            "  FAIL: initial count"->PrintLine();
+        };
+
+        # Increment persists across calls
+        Counter->Increment();
+        Counter->Increment();
+        Counter->Increment();
+        if(Counter->GetCount() <> 3) {
+            c := Counter->GetCount();
+            pass := false;
+            "  FAIL: count after 3 increments = {$c}"->PrintLine();
+        };
+
+        # Max tracked correctly
+        if(Counter->GetMax() <> 3) {
+            m := Counter->GetMax();
+            pass := false;
+            "  FAIL: max = {$m}, expected 3"->PrintLine();
+        };
+
+        Counter->Decrement();
+        if(Counter->GetCount() <> 2) {
+            pass := false;
+            "  FAIL: after decrement"->PrintLine();
+        };
+        # Max unchanged after decrement
+        if(Counter->GetMax() <> 3) {
+            pass := false;
+            "  FAIL: max changed after decrement"->PrintLine();
+        };
+
+        Counter->Reset();
+        if(Counter->GetCount() <> 0) {
+            pass := false;
+            "  FAIL: after reset"->PrintLine();
+        };
+
+        # Instance counting via static field
+        r1 := Registry->New();
+        r2 := Registry->New();
+        r3 := Registry->New();
+        if(Registry->GetInstances() <> 3) {
+            n := Registry->GetInstances();
+            pass := false;
+            "  FAIL: instance count = {$n}, expected 3"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Static fields"->PrintLine();
+        } else {
+            "FAIL: Static fields"->PrintLine();
+        };
+    }
+}

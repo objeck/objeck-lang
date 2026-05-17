@@ -1,0 +1,95 @@
+use Collection;
+
+class FuncFilterOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing functional filter operations..."->PrintLine();
+        pass := true;
+
+        cv := CompareVector->New()<IntRef>;
+        each(i : 10) { cv->AddBack(IntRef->New(i)); };
+
+        # Filter evens via CompareVector->Filter
+        evens := cv->Filter(IsEven(IntRef) ~ Bool);
+        if(evens->Size() <> 5) {
+            pass := false;
+            "  FAIL: even filter size = {$evens->Size()}"->PrintLine();
+        };
+        each(v in evens) {
+            if(v->Get() % 2 <> 0) {
+                pass := false;
+                "  FAIL: odd in even filter: {$v->Get()}"->PrintLine();
+            };
+        };
+
+        # Filter > 5
+        large := cv->Filter(GreaterThan5(IntRef) ~ Bool);
+        if(large->Size() <> 4) {
+            pass := false;
+            "  FAIL: >5 filter size = {$large->Size()}, expected 4"->PrintLine();
+        };
+        each(v in large) {
+            if(v->Get() <= 5) {
+                pass := false;
+                "  FAIL: value <=5 in large filter: {$v->Get()}"->PrintLine();
+            };
+        };
+
+        # Any: at least one element satisfies predicate
+        any_even := cv->Any(IsEven(IntRef) ~ Bool);
+        if(<>any_even) {
+            pass := false;
+            "  FAIL: Any(IsEven) should be true"->PrintLine();
+        };
+        all_large := CompareVector->New()<IntRef>;
+        all_large->AddBack(IntRef->New(10));
+        all_large->AddBack(IntRef->New(20));
+        all_large->AddBack(IntRef->New(1));
+        any_small := all_large->Any(IsSmall(IntRef) ~ Bool);
+        if(<>any_small) {
+            pass := false;
+            "  FAIL: Any(IsSmall) should be true"->PrintLine();
+        };
+
+        # Map: double all values
+        doubled := cv->Map(Double(IntRef) ~ IntRef);
+        if(doubled->Size() <> 10) {
+            pass := false;
+            "  FAIL: mapped size"->PrintLine();
+        };
+        if(doubled->Get(5)->Get() <> 10) {
+            v := doubled->Get(5)->Get();
+            pass := false;
+            "  FAIL: doubled[5] = {$v}, expected 10"->PrintLine();
+        };
+
+        # Reduce: sum
+        total := cv->Reduce(IntRef->New(0), SumPair(IntRef, IntRef) ~ IntRef);
+        if(total->Get() <> 45) {
+            pass := false;
+            "  FAIL: reduce sum = {$total->Get()}"->PrintLine();
+        };
+
+        # Limit: take first N
+        first3 := cv->Limit(3);
+        if(first3->Size() <> 3) {
+            pass := false;
+            "  FAIL: Limit(3) size = {$first3->Size()}"->PrintLine();
+        };
+        if(first3->Get(2)->Get() <> 2) {
+            pass := false;
+            "  FAIL: Limit(3)[2] = {$first3->Get(2)->Get()}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Functional filter operations"->PrintLine();
+        } else {
+            "FAIL: Functional filter operations"->PrintLine();
+        };
+    }
+
+    function : IsEven(v : IntRef) ~ Bool { return v->Get() % 2 = 0; }
+    function : GreaterThan5(v : IntRef) ~ Bool { return v->Get() > 5; }
+    function : IsSmall(v : IntRef) ~ Bool { return v->Get() < 5; }
+    function : Double(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * 2); }
+    function : SumPair(a : IntRef, b : IntRef) ~ IntRef { return IntRef->New(a->Get() + b->Get()); }
+}

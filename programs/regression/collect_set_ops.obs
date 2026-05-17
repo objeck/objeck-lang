@@ -1,0 +1,102 @@
+use Collection;
+
+class CollectSetOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Set operations..."->PrintLine();
+        pass := true;
+
+        s := Set->New()<IntRef>;
+
+        # Insert and Has
+        s->Insert(IntRef->New(10));
+        s->Insert(IntRef->New(20));
+        s->Insert(IntRef->New(30));
+
+        if(s->Size() <> 3) {
+            pass := false;
+            "  FAIL: size = {$s->Size()}, expected 3"->PrintLine();
+        };
+
+        if(<>s->Has(IntRef->New(20))) {
+            pass := false;
+            "  FAIL: Has(20)"->PrintLine();
+        };
+        if(s->Has(IntRef->New(99))) {
+            pass := false;
+            "  FAIL: Has(99) should be false"->PrintLine();
+        };
+
+        # Duplicate insert should not grow size
+        s->Insert(IntRef->New(10));
+        if(s->Size() <> 3) {
+            pass := false;
+            "  FAIL: duplicate insert changed size to {$s->Size()}"->PrintLine();
+        };
+
+        # Remove
+        removed := s->Remove(IntRef->New(20));
+        if(<>removed) {
+            pass := false;
+            "  FAIL: Remove returned false"->PrintLine();
+        };
+        if(s->Size() <> 2) {
+            pass := false;
+            "  FAIL: size after Remove"->PrintLine();
+        };
+        if(s->Has(IntRef->New(20))) {
+            pass := false;
+            "  FAIL: Has after Remove"->PrintLine();
+        };
+
+        # Remove non-existent
+        removed2 := s->Remove(IntRef->New(99));
+        if(removed2) {
+            pass := false;
+            "  FAIL: Remove non-existent should return false"->PrintLine();
+        };
+
+        # IsEmpty
+        if(s->IsEmpty()) {
+            pass := false;
+            "  FAIL: IsEmpty on non-empty set"->PrintLine();
+        };
+
+        # GetKeys
+        keys := s->GetKeys()<IntRef>;
+        if(keys->Size() <> 2) {
+            pass := false;
+            "  FAIL: GetKeys size = {$keys->Size()}"->PrintLine();
+        };
+
+        # Larger set
+        s2 := Set->New()<IntRef>;
+        each(i : 100) {
+            s2->Insert(IntRef->New(i));
+        };
+        if(s2->Size() <> 100) {
+            pass := false;
+            "  FAIL: large set size = {$s2->Size()}"->PrintLine();
+        };
+        if(<>s2->Has(IntRef->New(50))) {
+            pass := false;
+            "  FAIL: large set Has(50)"->PrintLine();
+        };
+        if(s2->Has(IntRef->New(100))) {
+            pass := false;
+            "  FAIL: large set Has(100) should be false"->PrintLine();
+        };
+
+        # Empty
+        s2->Empty();
+        if(<>s2->IsEmpty()) {
+            pass := false;
+            "  FAIL: IsEmpty after Empty()"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Set operations"->PrintLine();
+        } else {
+            "FAIL: Set operations"->PrintLine();
+        };
+    }
+}

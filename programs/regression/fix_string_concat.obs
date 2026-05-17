@@ -1,0 +1,94 @@
+class FixStringConcatTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string concatenation patterns..."->PrintLine();
+        pass := true;
+
+        # Basic Append
+        s := "hello";
+        s->Append(" world");
+        if(<>s->Equals("hello world")) {
+            pass := false;
+            "  FAIL: basic append = '{$s}'"->PrintLine();
+        };
+
+        # Append char
+        s2 := "abc";
+        s2->Append('!');
+        if(<>s2->Equals("abc!")) {
+            pass := false;
+            "  FAIL: append char = '{$s2}'"->PrintLine();
+        };
+
+        # Append int via interpolation
+        n := 42;
+        s3 := "value=";
+        s3->Append("{$n}");
+        if(<>s3->Equals("value=42")) {
+            pass := false;
+            "  FAIL: append int str = '{$s3}'"->PrintLine();
+        };
+
+        # Chain: build CSV row
+        row := "";
+        fields := String->New[4];
+        fields[0] := "a"; fields[1] := "b"; fields[2] := "c"; fields[3] := "d";
+        each(i : 4) {
+            if(i > 0) { row->Append(","); };
+            row->Append(fields[i]);
+        };
+        if(<>row->Equals("a,b,c,d")) {
+            pass := false;
+            "  FAIL: csv row = '{$row}'"->PrintLine();
+        };
+
+        # Build string from integer range
+        digits := "";
+        each(i : 10) {
+            digits->Append("{$i}");
+        };
+        if(<>digits->Equals("0123456789")) {
+            pass := false;
+            "  FAIL: digits = '{$digits}'"->PrintLine();
+        };
+        if(digits->Size() <> 10) {
+            pass := false;
+            "  FAIL: digits size = {$digits->Size()}"->PrintLine();
+        };
+
+        # Repeated append accumulates length
+        acc := "";
+        each(i : 5) {
+            acc->Append("ab");
+        };
+        if(acc->Size() <> 10) {
+            pass := false;
+            "  FAIL: repeated append size = {$acc->Size()}"->PrintLine();
+        };
+        if(<>acc->Equals("ababababab")) {
+            pass := false;
+            "  FAIL: repeated append = '{$acc}'"->PrintLine();
+        };
+
+        # Empty string append
+        empty := "";
+        empty->Append("");
+        if(empty->Size() <> 0) {
+            pass := false;
+            "  FAIL: empty append size = {$empty->Size()}"->PrintLine();
+        };
+
+        # Append preserves existing content
+        base := "prefix";
+        base->Append("_suffix");
+        if(<>base->Equals("prefix_suffix")) {
+            pass := false;
+            "  FAIL: prefix_suffix = '{$base}'"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: String concatenation patterns"->PrintLine();
+        } else {
+            "FAIL: String concatenation patterns"->PrintLine();
+        };
+    }
+}

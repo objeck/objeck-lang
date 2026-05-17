@@ -1,0 +1,98 @@
+use Collection;
+
+class SortableItem implements Compare {
+    @value : Int;
+    @lbl : String;
+
+    New(value : Int, lbl : String) {
+        @value := value;
+        @lbl := lbl;
+    }
+
+    method : public : GetValue() ~ Int { return @value; }
+    method : public : GetLabel() ~ String { return @lbl; }
+
+    method : public : Compare(rhs : System.Compare) ~ Int {
+        rhs_item := rhs->As(SortableItem);
+        if(rhs_item = Nil) { return 0; };
+        if(@value < rhs_item->GetValue()) { return -1; };
+        if(@value > rhs_item->GetValue()) { return 1; };
+        return 0;
+    }
+
+    method : public : HashID() ~ Int {
+        return @value;
+    }
+}
+
+class FuncSortCustomTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing custom sort via Compare..."->PrintLine();
+        pass := true;
+
+        cv := CompareVector->New()<SortableItem>;
+        cv->AddBack(SortableItem->New(5, "five"));
+        cv->AddBack(SortableItem->New(2, "two"));
+        cv->AddBack(SortableItem->New(8, "eight"));
+        cv->AddBack(SortableItem->New(1, "one"));
+        cv->AddBack(SortableItem->New(4, "four"));
+
+        # Sort ascending by value
+        cv->Sort();
+
+        # Verify sorted order
+        expected_vals := Int->New[5];
+        expected_vals[0] := 1; expected_vals[1] := 2; expected_vals[2] := 4;
+        expected_vals[3] := 5; expected_vals[4] := 8;
+
+        each(i : cv->Size()) {
+            got := cv->Get(i)->GetValue();
+            exp := expected_vals[i];
+            if(got <> exp) {
+                pass := false;
+                "  FAIL: sorted[{$i}] = {$got}, expected {$exp}"->PrintLine();
+            };
+        };
+
+        # BinarySearch after sort
+        idx := cv->BinarySearch(SortableItem->New(4, ""));
+        if(idx < 0) {
+            pass := false;
+            "  FAIL: BinarySearch(4) not found"->PrintLine();
+        } else {
+            if(cv->Get(idx)->GetValue() <> 4) {
+                pass := false;
+                "  FAIL: BinarySearch returned wrong item"->PrintLine();
+            };
+        };
+
+        # Has
+        if(<>cv->Has(SortableItem->New(8, ""))) {
+            pass := false;
+            "  FAIL: Has(8)"->PrintLine();
+        };
+        if(cv->Has(SortableItem->New(99, ""))) {
+            pass := false;
+            "  FAIL: Has(99) should be false"->PrintLine();
+        };
+
+        # Reverse
+        rev := cv->Reverse();
+        rev_first := rev->First()->GetValue();
+        if(rev_first <> 8) {
+            pass := false;
+            "  FAIL: reversed first = {$rev_first}"->PrintLine();
+        };
+        rev_last := rev->Last()->GetValue();
+        if(rev_last <> 1) {
+            pass := false;
+            "  FAIL: reversed last = {$rev_last}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Custom sort"->PrintLine();
+        } else {
+            "FAIL: Custom sort"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,80 @@
+class CoreDoWhileTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing do-while loops..."->PrintLine();
+        pass := true;
+
+        # Basic do-while: body executes at least once
+        count := 0;
+        do {
+            count += 1;
+        } while(count < 5);
+        if(count <> 5) {
+            pass := false;
+            "  FAIL: basic do-while count = {$count}"->PrintLine();
+        };
+
+        # do-while with false condition: still executes once
+        ran := false;
+        do {
+            ran := true;
+        } while(false);
+        if(<>ran) {
+            pass := false;
+            "  FAIL: do-while false cond did not run"->PrintLine();
+        };
+
+        # Accumulate in do-while
+        sum := 0;
+        i := 1;
+        do {
+            sum += i;
+            i += 1;
+        } while(i <= 10);
+        if(sum <> 55) {
+            pass := false;
+            "  FAIL: do-while sum = {$sum}"->PrintLine();
+        };
+
+        # Nested do-while
+        outer := 0;
+        inner_total := 0;
+        do {
+            inner := 0;
+            do {
+                inner_total += 1;
+                inner += 1;
+            } while(inner < 3);
+            outer += 1;
+        } while(outer < 4);
+        if(outer <> 4) {
+            pass := false;
+            "  FAIL: nested outer = {$outer}"->PrintLine();
+        };
+        if(inner_total <> 12) {
+            pass := false;
+            "  FAIL: nested inner_total = {$inner_total}"->PrintLine();
+        };
+
+        # do-while counting down
+        n := 10;
+        steps := 0;
+        do {
+            n -= 1;
+            steps += 1;
+        } while(n > 0);
+        if(n <> 0) {
+            pass := false;
+            "  FAIL: countdown n = {$n}"->PrintLine();
+        };
+        if(steps <> 10) {
+            pass := false;
+            "  FAIL: countdown steps = {$steps}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Do-while loops"->PrintLine();
+        } else {
+            "FAIL: Do-while loops"->PrintLine();
+        };
+    }
+}

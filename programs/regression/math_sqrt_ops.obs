@@ -1,0 +1,82 @@
+class MathSqrtOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing square root and related functions..."->PrintLine();
+        pass := true;
+
+        # Sqrt
+        if(Float->Sqrt(0.0) <> 0.0) {
+            pass := false;
+            "  FAIL: Sqrt(0)"->PrintLine();
+        };
+        if(Float->Sqrt(1.0) <> 1.0) {
+            pass := false;
+            "  FAIL: Sqrt(1)"->PrintLine();
+        };
+        s4 := Float->Sqrt(4.0);
+        if(s4 < 1.999 | s4 > 2.001) {
+            pass := false;
+            "  FAIL: Sqrt(4) = {$s4}"->PrintLine();
+        };
+        s9 := Float->Sqrt(9.0);
+        if(s9 < 2.999 | s9 > 3.001) {
+            pass := false;
+            "  FAIL: Sqrt(9) = {$s9}"->PrintLine();
+        };
+        s2 := Float->Sqrt(2.0);
+        if(s2 < 1.414 | s2 > 1.415) {
+            pass := false;
+            "  FAIL: Sqrt(2) = {$s2}"->PrintLine();
+        };
+
+        # Sqrt inverse: sqrt(x)^2 = x
+        x := 7.0;
+        sq := Float->Sqrt(x);
+        back := sq * sq;
+        if(back < 6.999 | back > 7.001) {
+            pass := false;
+            "  FAIL: Sqrt(7)^2 = {$back}"->PrintLine();
+        };
+
+        # Cbrt
+        c8 := Float->Cbrt(8.0);
+        if(c8 < 1.999 | c8 > 2.001) {
+            pass := false;
+            "  FAIL: Cbrt(8) = {$c8}"->PrintLine();
+        };
+        c27 := Float->Cbrt(27.0);
+        if(c27 < 2.999 | c27 > 3.001) {
+            pass := false;
+            "  FAIL: Cbrt(27) = {$c27}"->PrintLine();
+        };
+        c1 := Float->Cbrt(1.0);
+        if(c1 < 0.999 | c1 > 1.001) {
+            pass := false;
+            "  FAIL: Cbrt(1) = {$c1}"->PrintLine();
+        };
+
+        # Int->Sqrt (integer)
+        if(Int->Sqrt(16) <> 4) {
+            pass := false;
+            "  FAIL: Int->Sqrt(16)"->PrintLine();
+        };
+        if(Int->Sqrt(100) <> 10) {
+            pass := false;
+            "  FAIL: Int->Sqrt(100)"->PrintLine();
+        };
+
+        # Cbrt inverse: cbrt(x)^3 = x
+        y := 64.0;
+        cr := Float->Cbrt(y);
+        back2 := cr * cr * cr;
+        if(back2 < 63.99 | back2 > 64.01) {
+            pass := false;
+            "  FAIL: Cbrt(64)^3 = {$back2}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Square root and Cbrt"->PrintLine();
+        } else {
+            "FAIL: Square root and Cbrt"->PrintLine();
+        };
+    }
+}

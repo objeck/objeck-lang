@@ -1,0 +1,72 @@
+class StringSplitOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string split operations..."->PrintLine();
+        pass := true;
+
+        # Split by string delimiter
+        parts := "one,two,three"->Split(",");
+        if(parts->Size() <> 3) {
+            pass := false;
+            "  FAIL: split size = {$parts->Size()}"->PrintLine();
+        } else {
+            if(<>parts[0]->Equals("one"))   { pass := false; "  FAIL: split[0]"->PrintLine(); };
+            if(<>parts[1]->Equals("two"))   { pass := false; "  FAIL: split[1]"->PrintLine(); };
+            if(<>parts[2]->Equals("three")) { pass := false; "  FAIL: split[2]"->PrintLine(); };
+        };
+
+        # Split by char delimiter
+        parts2 := "a:b:c:d"->Split(':');
+        if(parts2->Size() <> 4) {
+            pass := false;
+            "  FAIL: char split size = {$parts2->Size()}"->PrintLine();
+        } else {
+            if(<>parts2[0]->Equals("a")) { pass := false; "  FAIL: char split[0]"->PrintLine(); };
+            if(<>parts2[3]->Equals("d")) { pass := false; "  FAIL: char split[3]"->PrintLine(); };
+        };
+
+        # Split with no delimiter present → empty array
+        parts3 := "hello"->Split(",");
+        if(parts3->Size() <> 0) {
+            pass := false;
+            "  FAIL: no-match split size = {$parts3->Size()}"->PrintLine();
+        };
+
+        # Split on space
+        words := "the quick brown fox"->Split(' ');
+        if(words->Size() <> 4) {
+            pass := false;
+            "  FAIL: word count = {$words->Size()}"->PrintLine();
+        } else {
+            if(<>words[0]->Equals("the"))   { pass := false; "  FAIL: word[0]"->PrintLine(); };
+            if(<>words[3]->Equals("fox"))   { pass := false; "  FAIL: word[3]"->PrintLine(); };
+        };
+
+        # Split multi-char delimiter
+        parts4 := "aa--bb--cc"->Split("--");
+        if(parts4->Size() <> 3) {
+            pass := false;
+            "  FAIL: multi-char split size = {$parts4->Size()}"->PrintLine();
+        } else {
+            if(<>parts4[1]->Equals("bb")) { pass := false; "  FAIL: multi split[1]"->PrintLine(); };
+        };
+
+        # Reassemble split with join-like loop
+        original := "x|y|z";
+        segments := original->Split('|');
+        rebuilt := String->New();
+        each(i : segments->Size()) {
+            if(i > 0) { rebuilt->Append('|'); };
+            rebuilt->Append(segments[i]);
+        };
+        if(<>rebuilt->Equals("x|y|z")) {
+            pass := false;
+            "  FAIL: rebuilt = {$rebuilt->ToString()}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: String split operations"->PrintLine();
+        } else {
+            "FAIL: String split operations"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,94 @@
+class Animal {
+    method : virtual : public : Speak() ~ String;
+    method : virtual : public : Kind() ~ String;
+    method : public : Intro() ~ String { return "{$Kind()} says {$Speak()}"; }
+}
+
+class Dog from Animal {
+    New() { Parent(); }
+    method : public : Speak() ~ String { return "Woof!"; }
+    method : public : Kind() ~ String { return "Dog"; }
+}
+
+class Cat from Animal {
+    New() { Parent(); }
+    method : public : Speak() ~ String { return "Meow!"; }
+    method : public : Kind() ~ String { return "Cat"; }
+}
+
+class Bird from Animal {
+    New() { Parent(); }
+    method : public : Speak() ~ String { return "Tweet!"; }
+    method : public : Kind() ~ String { return "Bird"; }
+}
+
+class FixPolymorphicCallsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing polymorphic method dispatch..."->PrintLine();
+        pass := true;
+
+        # Virtual calls through base class array
+        animals := Animal->New[3];
+        animals[0] := Dog->New();
+        animals[1] := Cat->New();
+        animals[2] := Bird->New();
+
+        expected_sounds := String->New[3];
+        expected_sounds[0] := "Woof!";
+        expected_sounds[1] := "Meow!";
+        expected_sounds[2] := "Tweet!";
+
+        expected_kinds := String->New[3];
+        expected_kinds[0] := "Dog";
+        expected_kinds[1] := "Cat";
+        expected_kinds[2] := "Bird";
+
+        each(i : 3) {
+            s := animals[i]->Speak();
+            if(<>s->Equals(expected_sounds[i])) {
+                pass := false;
+                "  FAIL: Speak[{$i}] = {$s}"->PrintLine();
+            };
+            k := animals[i]->Kind();
+            if(<>k->Equals(expected_kinds[i])) {
+                pass := false;
+                "  FAIL: Kind[{$i}] = {$k}"->PrintLine();
+            };
+            # Intro() calls virtual Kind() and Speak() via @self
+            intro := animals[i]->Intro();
+            if(<>intro->Has(expected_kinds[i])) {
+                pass := false;
+                "  FAIL: Intro[{$i}] missing kind"->PrintLine();
+            };
+        };
+
+        # Polymorphism in function parameter
+        # "Woof!" = 5, "Meow!" = 5, "Tweet!" = 6 => total = 16
+        total_len := 0;
+        each(i : 3) {
+            total_len += SpeakLen(animals[i]);
+        };
+        if(total_len <> 16) {
+            pass := false;
+            "  FAIL: speak len sum = {$total_len}, expected 16"->PrintLine();
+        };
+
+        # Double dispatch simulation
+        d := Dog->New();
+        c := Cat->New();
+        if(d->Speak()->Equals(c->Speak())) {
+            pass := false;
+            "  FAIL: Dog and Cat should speak differently"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Polymorphic method dispatch"->PrintLine();
+        } else {
+            "FAIL: Polymorphic method dispatch"->PrintLine();
+        };
+    }
+
+    function : SpeakLen(a : Animal) ~ Int {
+        return a->Speak()->Size();
+    }
+}

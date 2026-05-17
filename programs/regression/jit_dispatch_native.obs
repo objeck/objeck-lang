@@ -1,0 +1,86 @@
+class JitBase {
+    @id : Int;
+    New(id : Int) { @id := id; }
+    method : public : GetId() ~ Int { return @id; }
+    method : virtual : public : Compute() ~ Int;
+}
+
+class DerivedA from JitBase {
+    New(id : Int) { Parent(id); }
+    method : public : Compute() ~ Int { return @id * 2; }
+}
+
+class DerivedB from JitBase {
+    New(id : Int) { Parent(id); }
+    method : public : Compute() ~ Int { return @id * 3; }
+}
+
+class DerivedC from JitBase {
+    New(id : Int) { Parent(id); }
+    method : public : Compute() ~ Int { return @id * 4; }
+}
+
+class JitDispatchNativeTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT virtual method dispatch..."->PrintLine();
+        pass := true;
+
+        # Build array of polymorphic objects
+        N := 10000;
+        objs := JitBase->New[N];
+        each(i : N) {
+            select(i % 3) {
+                label 0: { objs[i] := DerivedA->New(i); }
+                label 1: { objs[i] := DerivedB->New(i); }
+                other:   { objs[i] := DerivedC->New(i); }
+            };
+        };
+
+        # Sum via virtual dispatch (hot loop)
+        total := 0;
+        each(i : N) {
+            total += objs[i]->Compute();
+        };
+
+        # Expected: sum over i=0..N-1 of (i * multiplier(i%3))
+        # mult: 0->*2, 1->*3, 2->*4
+        expected := 0;
+        each(i : N) {
+            select(i % 3) {
+                label 0: { expected += i * 2; }
+                label 1: { expected += i * 3; }
+                other:   { expected += i * 4; }
+            };
+        };
+        if(total <> expected) {
+            pass := false;
+            "  FAIL: dispatch total = {$total}, expected {$expected}"->PrintLine();
+        };
+
+        # GetId inherited method via dispatch
+        id_sum := 0;
+        each(i : 100) { id_sum += objs[i]->GetId(); };
+        exp_id := 0;
+        each(i : 100) { exp_id += i; };
+        if(id_sum <> exp_id) {
+            pass := false;
+            "  FAIL: id_sum = {$id_sum}"->PrintLine();
+        };
+
+        # TypeOf checks in loop
+        a_count := 0;
+        each(i : 30) {
+            if(objs[i]->TypeOf(DerivedA)) { a_count += 1; };
+        };
+        if(a_count <> 10) {
+            pass := false;
+            "  FAIL: DerivedA count in first 30 = {$a_count}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT virtual dispatch"->PrintLine();
+        } else {
+            "FAIL: JIT virtual dispatch"->PrintLine();
+        };
+    }
+}
