@@ -19,17 +19,6 @@ v2026.5.2
 - ARM64 Windows: OpenCV and ONNX fully supported; build configurations corrected
 - Improved release process: self-contained Windows builds; CI verifies all binaries and API docs before publishing
 
-v2026.5.0 (May 7, 2026)
-===
-Face recognition (SCRFD+ArcFace), Windows emoji fix, LSP enhancements.
-
-v2026.5.0
-- Face recognition (FaceSession): SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings from InsightFace buffalo_l. Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS)
-- Windows emoji: full Unicode supplementary plane output now works in cmd.exe and Windows Terminal via WriteConsoleW; pipe/file redirection emits correct UTF-8
-- LSP enhancements: typeHierarchy (supertypes/subtypes), selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes
-- ARM64 JIT: fixed EXT_LIB_FUNC_CALL crash; macOS ONNX build fixes; CodeQL build improvements
-- OBJECK_JIT_DISABLE: new boolean env var for cleanly disabling auto-JIT at startup
-
 v2026.4.3 (April 12, 2026)
 ===
 DAP debugger hover + scoping, editor setup (VSCode/Sublime/gvim), LSP crash fixes.
