@@ -258,6 +258,34 @@ jobs:
           Write-Output "OpenCV DLLs installed:"
           Get-ChildItem $binDir
 
+      - name: Cache OpenCV DLLs (Windows ARM64)
+        if: matrix.platform == 'windows-arm64'
+        id: opencv-cache-arm64
+        uses: actions/cache@v5
+        with:
+          path: core/lib/opencv/win/arm64/bin
+          key: opencv-4.12.0-win-arm64-dlls
+
+      - name: Install OpenCV ARM64 runtime DLL via vcpkg
+        if: matrix.platform == 'windows-arm64' && steps.opencv-cache-arm64.outputs.cache-hit != 'true'
+        shell: pwsh
+        env:
+          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+        run: |
+          $binDir = "core\lib\opencv\win\arm64\bin"
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+          Write-Output "Installing opencv4:arm64-windows via vcpkg (uses GHA binary cache)..."
+          vcpkg install opencv4:arm64-windows
+
+          $vcpkgBin = "C:\vcpkg\installed\arm64-windows\bin"
+          Get-ChildItem "$vcpkgBin\opencv_world*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName $binDir
+            Write-Output "Copied: $($_.Name)"
+          }
+
+          Write-Output "OpenCV ARM64 DLLs:"
+          Get-ChildItem $binDir
 
       - name: Install WiX Toolset (Windows)
         if: runner.os == 'Windows'
