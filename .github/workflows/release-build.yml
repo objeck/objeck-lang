@@ -767,11 +767,12 @@ jobs:
 
       - name: Commit api.zip to repo
         run: |
+          cp docs/api.zip /tmp/api.zip
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin master
           git checkout master
-          cp api.zip docs/api.zip
+          cp /tmp/api.zip docs/api.zip
           git add docs/api.zip
           git diff --cached --quiet && echo "api.zip unchanged" || \
             git commit -m "chore: update api.zip for v${{ needs.prepare.outputs.version }} [skip ci]"
