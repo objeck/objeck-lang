@@ -12,7 +12,7 @@ Regular expression engine (-lib regex.obl)
 bundle Query.RegEx {
 	#~
 	Regular expression engine.
-	
+
 	<p>Support for following patterns:<p>
 	<ul>
 		<li>any &#8208; .</li>
@@ -24,7 +24,7 @@ bundle Query.RegEx {
 		<li> (one|two|three) &#8208; group</li>
 		<li>[start-end] &#8208; range</li>
 	</ul>
-	
+
 	<p>Support for following special groups:<p>
 	<ul>
 		<li>word &#8208; \w</li>
@@ -35,13 +35,13 @@ bundle Query.RegEx {
 		<li>not white space &#8208; \S</li>
 		<li>repeat &#8208; {least, most}
 	</ul>
-	
+
 	```
 output := HttpsClient->New()->QuickGet(Web.HTTP.Url->New(url))->ToString();
 output_len := output->Size();
 "URL: {$output}, read: {$output_len} character(s)"->PrintLine();
 
-"running regex..."->PrintLine();      
+"running regex..."->PrintLine();
 expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
 
 found := Query.RegEx.RegEx->New(expr)->Find(output)<Result>;
@@ -49,28 +49,24 @@ found := Query.RegEx.RegEx->New(expr)->Find(output)<Result>;
 each(i : found) {
    found->Get(i)->ToString()->PrintLine();
 };
-	```		
+	```
 	~#
-	
+
 	class RegEx {
 		# parsing
 		@tokens : Char[];
 		@token_pos : Int;
-		@token : Char;		
+		@token : Char;
 		@expressions : Vector<Expression>;
 		@error : String;
 		@starts_anchor : Bool;
-		
-		# matching
-		@input : Char[];
-		@input_string : String;
-		@input_pos : Int;
-		@input_char : Char;
+
+		# compiled NFA program (parallel simulation)
+		@program : Vector<Instruction>;
+
+		# matching state
 		@is_exact : Bool;
-		@is_backtracking : Bool;
-		@backtrack_cache : Map<IntRef, Expression>;
-		@backtrack_positions : Vector<IntRef>;
-        
+
 		#~
 		Default constructor
 		@param stream_in regex pattern
@@ -78,10 +74,12 @@ each(i : found) {
 		New(stream_in : String) {
 			@tokens := stream_in->ToCharArray();
 			@expressions := Vector->New()<Expression>;
-			@backtrack_positions := Vector->New()<IntRef>;
-			@backtrack_cache := Map->New()<IntRef, Expression>;
+			@program := Vector->New()<Instruction>;
 
 			Parse();
+			if(@error = Nil) {
+				Compile();
+			};
 		}
 
 		#~
@@ -91,7 +89,7 @@ each(i : found) {
 		method : public : IsOk() ~ Bool {
 			return @error = Nil;
 		}
-		
+
 		#~
 		Looks for an exact regex match
 		@param stream_in string to match against
@@ -100,7 +98,7 @@ each(i : found) {
 		method : public : MatchExact(stream_in : String) ~ Bool {
 			return Evaluate(stream_in, 0) > -1 & @is_exact;
 		}
-		
+
 		#~
 		Matches as much of the string as possible
 		@param stream_in string to match against
@@ -109,7 +107,7 @@ each(i : found) {
 		method : public : Match(stream_in : String) ~ String {
 			return Match(stream_in, 0);
 		}
-		
+
 		#~
 		Matches as much of the string as possible
 		@param stream_in string to match against
@@ -121,23 +119,43 @@ each(i : found) {
 			if(right > -1) {
 				return stream_in->SubString(offset, right - offset);
 			};
-			
+
 			return "";
 		}
-		
+
 		#~
-		Matches the first occurrence 
+		Matches the first occurrence
 		@param stream_in string to match against
 		@return matched string if found, empty string otherwise
 		~#
 		method : public : native : FindFirst(stream_in : String) ~ Result {
+			is_anchored := @expressions->Size() > 0 & @expressions->Get(0)->GetType() = Expression->Type->STARTS_ANCHOR;
+
+			first_char : Char := '\0';
+			if(@expressions->Size() > 0 & @expressions->Get(0)->GetType() = Expression->Type->CHAR) {
+				first_char := @expressions->Get(0)->GetValue();
+			};
+
 			left := 0;
-			while(left < stream_in->Size()) {
+			input_size := stream_in->Size();
+			while(left < input_size) {
+				if(first_char <> '\0') {
+					while(left < input_size & stream_in->Get(left) <> first_char) {
+						left += 1;
+					};
+					if(left >= input_size) {
+						return Nil;
+					};
+				};
+
 				right := Evaluate(stream_in, left);
 				if(right > -1) {
-# return stream_in->SubString(left, right - left);
 					length := right - left;
 					return Result->New(left, length, stream_in->SubString(left, length));
+				};
+
+				if(is_anchored) {
+					return Nil;
 				};
 				left += 1;
 			};
@@ -146,26 +164,49 @@ each(i : found) {
 		}
 
 		#~
-		Finds all occurrences 
+		Finds all occurrences
 		@param stream_in string to match against
 		@return vector of string matches
 		~#
 		method : public : native : Find(stream_in : String) ~ Vector<Result> {
 			matches := Vector->New()<Result>;
 
+			is_anchored := @expressions->Size() > 0 & @expressions->Get(0)->GetType() = Expression->Type->STARTS_ANCHOR;
+
+			first_char : Char := '\0';
+			if(@expressions->Size() > 0 & @expressions->Get(0)->GetType() = Expression->Type->CHAR) {
+				first_char := @expressions->Get(0)->GetValue();
+			};
+
 			left := 0;
-			while(left < stream_in->Size()) {
-				right := Evaluate(stream_in, left);
-				if(right > -1 & left <> right) {
-# IO.Console->Print("\t=== left=")->Print(left)->Print(", right=")->Print(right)->PrintLine(" ===");
-					if(left < right) {
-# matches->AddBack(stream_in->SubString(left, right - left));
-						length := right - left;
-						matches->AddBack(Result->New(left, length, stream_in->SubString(left, length)));
-						left := right - 1;
+			input_size := stream_in->Size();
+			while(left < input_size) {
+				if(first_char <> '\0') {
+					while(left < input_size & stream_in->Get(left) <> first_char) {
+						left += 1;
+					};
+					if(left >= input_size) {
+						left := input_size;
 					};
 				};
-				left += 1;
+
+				if(left < input_size) {
+					right := Evaluate(stream_in, left);
+					if(right > -1 & left <> right) {
+						if(left < right) {
+							length := right - left;
+							matches->AddBack(Result->New(left, length, stream_in->SubString(left, length)));
+							left := right - 1;
+						};
+					};
+
+					if(is_anchored) {
+						left := input_size;
+					}
+					else {
+						left += 1;
+					};
+				};
 			};
 
 			return matches;
@@ -182,15 +223,10 @@ each(i : found) {
 			while(left < stream_in->Size()) {
 				right := Evaluate(stream_in, left);
 				if(right > -1 & left <> right) {
-					# identify start and end of stream_in string
-					start := stream_in->SubString(left);
-					end := stream_in->SubString(right, stream_in->Size() - right);
-					# insert the replacement string
-					stream_in := String->New(start);
-					stream_in->Append(replace);
-					stream_in->Append(end);	
-					
-					return stream_in;
+					result := stream_in->SubString(left);
+					result->Append(replace);
+					result->Append(stream_in->SubString(right, stream_in->Size() - right));
+					return result;
 				};
 				left += 1;
 			};
@@ -209,14 +245,10 @@ each(i : found) {
 			while(left < stream_in->Size()) {
 				right := Evaluate(stream_in, left);
 				if(right > -1 & left <> right) {
-					# identify start and end of stream_in string
-					start := stream_in->SubString(left);
-					end := stream_in->SubString(right, stream_in->Size() - right);
-					# insert the replacement string
-					stream_in := String->New(start);
-					stream_in->Append(replace);
-					stream_in->Append(end);	
-					# update search index
+					result := stream_in->SubString(left);
+					result->Append(replace);
+					result->Append(stream_in->SubString(right, stream_in->Size() - right));
+					stream_in := result;
 					left += replace->Size() - 1;
 				};
 				left += 1;
@@ -225,83 +257,336 @@ each(i : found) {
 			return stream_in;
 		}
 
-		method : native : Evaluate(stream_in : String, offset : Int) ~ Int {
-			if(@error <> Nil) {
-				@error->PrintLine();
-				return -1;
-			};
+		# ---------- parallel NFA simulation ----------
 
-			if(offset >= stream_in->Size()) {
-				return -1;
-			};
-			
-			# reset everything
-			@is_exact := false;
-			@is_backtracking := false;
-			@backtrack_cache->Empty();
-			@backtrack_positions->Empty();
-
-			# process string
-			@input_pos := offset;
-			if(@input_string <> stream_in) {
-				@input_string := stream_in;
-				@input := stream_in->ToCharArray();
-			};			
-			NextInput();
-
-			# match with regex and check final position
-			match := Evaluate(@expressions, 0);
-# IO.Console->Print("@@@ pos=")->Print(@input_pos)->Print(", match=")->Print(match)->Print(", end=")->PrintLine(@input_char);
-			if(match & @input_char <> '\0') {
-				return @input_pos - 1;
-			}
-			else if(match) {
-				@is_exact := true;
-				return @input_pos;
-			};
-			
-			return -1;
+		# Compile the AST expression list into a flat NFA program.
+		method : private : Compile() ~ Nil {
+			CompileExprs(@expressions);
+			@program->AddBack(Instruction->NewOp(Instruction->Op->MATCH));
 		}
-		
-		method : private : NextInput() ~ Nil {
-			if(@input_pos < @input->Size()) {
-				@input_char := @input[@input_pos];
-				@input_pos += 1;
-			}
-			else {
-				@input_char := '\0';
-			};
-		}	
-		
-		method : private : Evaluate(expressions : Vector<Expression>, offset : Int) ~ Bool {
-			for(i := offset; i < expressions->Size(); i += 1;) {
-				if(Evaluate(expressions->Get(i)) = false) {
-					if(@is_backtracking) {
-						@is_backtracking := false;
-# IO.Console->Print("backtracking: token count=")->PrintLine(@backtrack_positions->Size());
-						while(@backtrack_positions->IsEmpty() = false) {							
-							@input_pos := @backtrack_positions->RemoveBack() - 1;
-							NextInput();
-							
-							check := @backtrack_cache->Find(@input_pos);
-							if(offset + 1 < expressions->Size() & check = expressions->Get(offset + 1)) {
-								return true; 
-							};
 
-							if(Evaluate(expressions, offset + 1)) {
-								if(offset + 1 < expressions->Size()) {
-									@backtrack_cache->Insert(@input_pos, expressions->Get(offset + 1));
-								};
-								return true;
-							};
+		method : private : CompileExprs(exprs : Vector<Expression>) ~ Nil {
+			each(i : exprs) {
+				CompileExpr(exprs->Get(i));
+			};
+		}
+
+		method : private : CompileExpr(expr : Expression) ~ Nil {
+			select(expr->GetType()) {
+				label Expression->Type->CHAR: {
+					instr := Instruction->NewChar(expr->GetValue());
+					@program->AddBack(instr);
+				}
+
+				label Expression->Type->ANY: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->ANY));
+				}
+
+				label Expression->Type->DIGIT: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->DIGIT));
+				}
+
+				label Expression->Type->NOT_DIGIT: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->NOT_DIGIT));
+				}
+
+				label Expression->Type->WORD: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->WORD));
+				}
+
+				label Expression->Type->NOT_WORD: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->NOT_WORD));
+				}
+
+				label Expression->Type->WHITESPACE: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->WHITESPACE));
+				}
+
+				label Expression->Type->NOT_WHITESPACE: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->NOT_WHITESPACE));
+				}
+
+				label Expression->Type->CHAR_CLASS: {
+					@program->AddBack(Instruction->NewClass(expr->GetClass(), false));
+				}
+
+				label Expression->Type->CHAR_CLASS_RANGE: {
+					@program->AddBack(Instruction->NewClass(expr->GetClass(), true));
+				}
+
+				label Expression->Type->STARTS_ANCHOR: {
+					# ANC_START checks position; if ok, continue to the wrapped expression
+					anc := Instruction->NewOp(Instruction->Op->ANC_START);
+					@program->AddBack(anc);
+					CompileExpr(expr->GetExpression());
+				}
+
+				label Expression->Type->ENDS_ANCHOR: {
+					CompileExpr(expr->GetExpression());
+					@program->AddBack(Instruction->NewOp(Instruction->Op->ANC_END));
+				}
+
+				label Expression->Type->OR: {
+					# SPLIT t1 t2 ; t1: compile(left) ; JUMP after ; t2: compile(right) ; after:
+					split := Instruction->NewSplit(0, 0);
+					split_pc := @program->Size();
+					@program->AddBack(split);
+
+					t1_pc := @program->Size();
+					CompileExprs(expr->GetLeft());
+
+					jump := Instruction->NewJump(0);
+					jump_pc := @program->Size();
+					@program->AddBack(jump);
+
+					t2_pc := @program->Size();
+					CompileExprs(expr->GetRight());
+
+					after_pc := @program->Size();
+
+					# patch targets
+					@program->Get(split_pc)->SetTarget1(t1_pc);
+					@program->Get(split_pc)->SetTarget2(t2_pc);
+					@program->Get(jump_pc)->SetTarget1(after_pc);
+				}
+
+				label Expression->Type->OPTIONAL: {
+					# SPLIT(body, after) ; body: compile(e) ; after:
+					split := Instruction->NewSplit(0, 0);
+					split_pc := @program->Size();
+					@program->AddBack(split);
+
+					body_pc := @program->Size();
+					CompileExpr(expr->GetExpression());
+
+					after_pc := @program->Size();
+					@program->Get(split_pc)->SetTarget1(body_pc);
+					@program->Get(split_pc)->SetTarget2(after_pc);
+				}
+
+				label Expression->Type->ZERO_MORE: {
+					# L0: SPLIT(L1, after) ; L1: compile(e) ; JUMP(L0) ; after:
+					l0_pc := @program->Size();
+					split := Instruction->NewSplit(0, 0);
+					@program->AddBack(split);
+
+					l1_pc := @program->Size();
+					CompileExpr(expr->GetExpression());
+
+					jump := Instruction->NewJump(l0_pc);
+					@program->AddBack(jump);
+
+					after_pc := @program->Size();
+					@program->Get(l0_pc)->SetTarget1(l1_pc);
+					@program->Get(l0_pc)->SetTarget2(after_pc);
+				}
+
+				label Expression->Type->ONE_MORE: {
+					# L0: compile(e) ; SPLIT(L0, after) ; after:
+					l0_pc := @program->Size();
+					CompileExpr(expr->GetExpression());
+
+					split := Instruction->NewSplit(0, 0);
+					split_pc := @program->Size();
+					@program->AddBack(split);
+
+					after_pc := @program->Size();
+					@program->Get(split_pc)->SetTarget1(l0_pc);
+					@program->Get(split_pc)->SetTarget2(after_pc);
+				}
+
+				label Expression->Type->REPEAT: {
+					least := expr->GetLeast();
+					most := expr->GetMost();
+					inner := expr->GetExpression();
+
+					# mandatory repetitions
+					i := 0;
+					while(i < least) {
+						CompileExpr(inner);
+						i += 1;
+					};
+
+					if(most = -1) {
+						# unlimited optional tail: ZERO_MORE(inner)
+						l0_pc := @program->Size();
+						split := Instruction->NewSplit(0, 0);
+						@program->AddBack(split);
+
+						l1_pc := @program->Size();
+						CompileExpr(inner);
+
+						jump := Instruction->NewJump(l0_pc);
+						@program->AddBack(jump);
+
+						after_pc := @program->Size();
+						@program->Get(l0_pc)->SetTarget1(l1_pc);
+						@program->Get(l0_pc)->SetTarget2(after_pc);
+					}
+					else {
+						# optional repetitions up to most
+						j := least;
+						while(j < most) {
+							split := Instruction->NewSplit(0, 0);
+							split_pc := @program->Size();
+							@program->AddBack(split);
+
+							body_pc := @program->Size();
+							CompileExpr(inner);
+
+							after_pc := @program->Size();
+							@program->Get(split_pc)->SetTarget1(body_pc);
+							@program->Get(split_pc)->SetTarget2(after_pc);
+							j += 1;
 						};
 					};
-					
-					return false;
+				}
+
+				label Expression->Type->SUB_EXPR: {
+					CompileExprs(expr->GetLeft());
+				}
+			};
+		}
+
+		# Follow epsilon transitions and add char-consuming instructions to the thread list.
+		# Uses generation-based visited array to avoid revisiting within the same step.
+		method : private : AddThread(pc : Int, threads : Vector<IntRef>, visited : Int[], gen : Int, pos : Int, input_size : Int, match_holder : IntRef) ~ Nil {
+			prog_size := @program->Size();
+			while(pc < prog_size & visited[pc] <> gen) {
+				visited[pc] := gen;
+				op := @program->Get(pc)->GetOp();
+
+				if(op = Instruction->Op->SPLIT->As(Int)) {
+					t1 := @program->Get(pc)->GetTarget1();
+					t2 := @program->Get(pc)->GetTarget2();
+					AddThread(t1, threads, visited, gen, pos, input_size, match_holder);
+					pc := t2;
+				}
+				else if(op = Instruction->Op->JUMP->As(Int)) {
+					pc := @program->Get(pc)->GetTarget1();
+				}
+				else if(op = Instruction->Op->MATCH->As(Int)) {
+					match_holder->Set(pos);
+					return;
+				}
+				else if(op = Instruction->Op->ANC_START->As(Int)) {
+					if(pos = 0) {
+						pc += 1;
+					}
+					else {
+						return;
+					};
+				}
+				else if(op = Instruction->Op->ANC_END->As(Int)) {
+					if(pos = input_size) {
+						match_holder->Set(pos);
+					};
+					return;
+				}
+				else {
+					# char-consuming instruction: add to active thread list
+					threads->AddBack(IntRef->New(pc));
+					return;
 				};
 			};
-			
-			return true;
+		}
+
+		# Parallel NFA simulation. Returns end position of match, or -1.
+		method : Evaluate(stream_in : String, offset : Int) ~ Int {
+			if(@error <> Nil | @program->Size() = 0) {
+				return -1;
+			};
+
+			input_size := stream_in->Size();
+			if(offset >= input_size) {
+				return -1;
+			};
+
+			@is_exact := false;
+
+			prog_size := @program->Size();
+			visited := Int->New[prog_size];
+			gen := 1;
+
+			match_holder := IntRef->New(-1);
+			current := Vector->New()<IntRef>;
+			AddThread(0, current, visited, gen, offset, input_size, match_holder);
+
+			match_end := match_holder->Get();
+			pos := offset;
+
+			while(pos <= input_size & current->IsEmpty() = false) {
+				c : Char;
+				if(pos < input_size) {
+					c := stream_in->Get(pos);
+				}
+				else {
+					c := '\0';
+				};
+
+				gen += 1;
+				next := Vector->New()<IntRef>;
+				match_holder->Set(-1);
+
+				k := 0;
+				while(k < current->Size()) {
+					pc := current->Get(k)->Get();
+					instr := @program->Get(pc);
+					op := instr->GetOp();
+					matched := false;
+
+					if(op = Instruction->Op->CHAR->As(Int)) {
+						matched := instr->GetChar() = c;
+					}
+					else if(op = Instruction->Op->ANY->As(Int)) {
+						matched := c <> '\0';
+					}
+					else if(op = Instruction->Op->DIGIT->As(Int)) {
+						matched := c->IsDigit();
+					}
+					else if(op = Instruction->Op->NOT_DIGIT->As(Int)) {
+						matched := c <> '\0' & <>c->IsDigit();
+					}
+					else if(op = Instruction->Op->WORD->As(Int)) {
+						matched := c->IsDigit() | c->IsChar() | c = '_';
+					}
+					else if(op = Instruction->Op->NOT_WORD->As(Int)) {
+						matched := c <> '\0' & <>c->IsDigit() & <>c->IsChar() & c <> '_';
+					}
+					else if(op = Instruction->Op->WHITESPACE->As(Int)) {
+						matched := c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xB;
+					}
+					else if(op = Instruction->Op->NOT_WHITESPACE->As(Int)) {
+						matched := c <> '\0' & <>c = ' ' & <>c = '\t' & <>c = '\r' & <>c = '\n' & <>c = 0xB;
+					}
+					else if(op = Instruction->Op->CLASS->As(Int)) {
+						matched := c <> '\0' & InClass(instr->GetClass(), c);
+					}
+					else if(op = Instruction->Op->RANGE->As(Int)) {
+						matched := c <> '\0' & InRange(instr->GetClass(), c);
+					};
+
+					if(matched) {
+						AddThread(pc + 1, next, visited, gen, pos + 1, input_size, match_holder);
+					};
+
+					k += 1;
+				};
+
+				if(match_holder->Get() > -1) {
+					match_end := match_holder->Get();
+				};
+
+				current := next;
+				pos += 1;
+			};
+
+			if(match_end > -1) {
+				@is_exact := match_end = input_size;
+				return match_end;
+			};
+
+			return -1;
 		}
 
 		method : private : InRange(char_class : String, check : Char) ~ Bool {
@@ -312,247 +597,6 @@ each(i : found) {
 			for(i := 0; i < char_class->Size(); i += 1;) {
 				if(char_class->Get(i) = check) {
 					return true;
-				};
-			};
-			
-			return false;
-		}
-		
-		method : native : Evaluate(expression : Expression) ~ Bool {
-			if(expression <> Nil) {
-				if(@is_backtracking & @input_char <> '\0') {
-					@backtrack_positions->AddBack(@input_pos);
-				};
-				
-# IO.Console->Print("--- type=")->Print(expression->GetType()->As(Int))->PrintLine(" ---");
- 				
-				select(expression->GetType()) {
-					# single character
-					label Expression->Type->CHAR: {
-# IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-						if(expression->GetValue() = @input_char) {
-							NextInput();
-							return true;
-						};
-					}
-	
-					# any character
-					label Expression->Type->ANY: {
-# "[### any ###]"->PrintLine();
-						NextInput();
-						return true;							
-					}
-					
-					# digit
-					label Expression->Type->DIGIT: {
-# "[### digit ###]"->PrintLine();
-						if(@input_char->IsDigit()) {
-							NextInput();
-							return true;
-						};
-					}
-
-					# not digit
-					label Expression->Type->NOT_DIGIT: {
-# "[### not digit ###]"->PrintLine();
-						if(<>@input_char->IsDigit()) {
-							NextInput();
-							return true;
-						};
-					}
-					
-					# word
-					label Expression->Type->WORD: {
-# "[### word ###]"->PrintLine();
-						if(@input_char->IsDigit() | @input_char->IsChar() | @input_char = '_') {
-							NextInput();
-							return true;
-						};
-					}
-
-					# not word
-					label Expression->Type->NOT_WORD: {
-# "[### not word ###]"->PrintLine();
-						if(<>@input_char->IsDigit() & <>@input_char->IsChar() & <>@input_char = '_') {
-							NextInput();
-							return true;
-						};
-					}
-					
-					# whitespace
-					label Expression->Type->WHITESPACE: {
-# "[### whitespace ###]"->PrintLine();
-						if(@input_char = ' ' | @input_char = '\t' | @input_char = '\r' | @input_char = '\n' | @input_char = 0xB) {
-							NextInput();
-							return true;
-						};
-					}
-
-					# not whitespace
-					label Expression->Type->NOT_WHITESPACE: {
-# "[### not whitespace ###]"->PrintLine();
-						if(<>@input_char = ' ' & <>@input_char = '\t' & <>@input_char = '\r' & <>@input_char = '\n' & <>@input_char = 0xB) {
-							NextInput();
-							return true;
-						};
-					}
-
-					# class of characters
-					label Expression->Type->CHAR_CLASS: {
-						char_class := expression->GetClass();
-# IO.Console->Print("[### matching range: expr='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
-						if(InClass(char_class, @input_char)) {
-							NextInput();
-							return true;
-						};
-					}
-
-					# range of characters
-					label Expression->Type->CHAR_CLASS_RANGE: {
-# IO.Console->Print("[### matching: range='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");					
-						char_class := expression->GetClass();
-						if(InRange(char_class, @input_char)) {
-							NextInput();
-							return true;
-						};
-					}
-					
-					# starts anchor
-					label Expression->Type->STARTS_ANCHOR: {
-# IO.Console->Print("[### starts anchor: pos=")->Print(@input_pos - 1)->Print(", input='")->Print(@input_char)->PrintLine("' ###]");				
-						if(@input_pos - 1 = 0 & Evaluate(expression->GetExpression())) {
-							return true;				
-						};
-					}
-					
-					# ends anchor
-					label Expression->Type->ENDS_ANCHOR: {
-# "[### ends anchor ###]"->PrintLine();
-						if(Evaluate(expression->GetExpression()) & @input_char = '\0') {
-							return true;				
-						};
-					}
-
-					# logical OR
-					label Expression->Type->OR: {
-# "[### or ###]"->PrintLine();					
-						prev_pos := @input_pos;
-						if(Evaluate(expression->GetLeft(), 0)) {
-							return true;
-						}
-						else {
-							@input_pos := prev_pos - 1;
-							NextInput();
-							return Evaluate(expression->GetRight(), 0);
-						};
-					}
-	
-					# zero or more
-					label Expression->Type->ZERO_MORE: {
-# "[### zero_or_more ###]"->PrintLine();
-						@is_backtracking := true;
-						if(expression->GetExpression()->GetType() = Expression->Type->SUB_EXPR) {
-							do {
-								match := Evaluate(expression->GetExpression()->GetLeft(), 0);
-							} 
-							while(@input_char <> '\0' & match);
-						}
-						else {
-							if(expression->GetExpression()->GetType() = Expression->Type->ANY) {
-								@is_backtracking := true;
-							};
-							
-							do {	
-								match := Evaluate(expression->GetExpression());
-							}
-							while(@input_char <> '\0' & match);
-						};
-						
-						return true;
-					}
-
-					# one or more
-					label Expression->Type->ONE_MORE: {
-# "[### one_or_more ###]"->PrintLine();
-						if(expression->GetExpression()->GetType() = Expression->Type->SUB_EXPR) {
-							if(Evaluate(expression->GetExpression()->GetLeft(), 0)) {
-								@is_backtracking := true;
-
-								do {
-									match := Evaluate(expression->GetExpression()->GetLeft(), 0);
-								} 
-								while(@input_char <> '\0' & match);
-
-								return true;
-							};
-						}
-						else {
-							if(Evaluate(expression->GetExpression())) {
-								@is_backtracking := true;
-								
-								do {	
-									match := Evaluate(expression->GetExpression());
-								}
-								while(@input_char <> '\0' & match);
-
-								return true;
-							};
-						};
-					}
-					
-					# repeat
-					label Expression->Type->REPEAT: {
-# "[### repeat ###]"->PrintLine();
-						count := 0;
-						if(expression->GetExpression()->GetType() = Expression->Type->SUB_EXPR) {
-							do {
-								match := Evaluate(expression->GetExpression()->GetLeft(), 0);
-								if(match) {
-									count += 1;
-								};
-							} 
-							while(@input_char <> '\0' & match);
-						}
-						else {
-							if(expression->GetExpression()->GetType() = Expression->Type->ANY) {
-								@is_backtracking := true;
-							};
-							
-							do {	
-								match := Evaluate(expression->GetExpression());
-								if(match) {
-									count += 1;
-								};
-							}
-							while(@input_char <> '\0' & match);
-						};
-# IO.Console->Print("\tleast=")->Print(expression->GetLeast())->Print(", most=")->Print(expression->GetMost())->Print(", count=")->PrintLine(count);
-						
-						if(expression->GetMost() = -1) {
-							return expression->GetLeast() >= count;
-						}
-						else {
-							return expression->GetLeast() <= count & expression->GetMost() >= count;
-						};
-					}
-					
-					# single optional
-					label Expression->Type->OPTIONAL: {
-# "[### optional ###]"->PrintLine();
-						if(expression->GetExpression()->GetType() = Expression->Type->SUB_EXPR) {
-							Evaluate(expression->GetExpression()->GetLeft(), 0);
-						}
-						else {
-							Evaluate(expression->GetExpression());
-						};
-						
-						return true;
-					}
-					
-					# sub-expression
-					label Expression->Type->SUB_EXPR: {
-						return Evaluate(expression->GetLeft(), 0);						
-					}
 				};
 			};
 
@@ -568,62 +612,56 @@ each(i : found) {
 			else {
 				@token := '\0';
 			};
-		}	
+		}
 
 		method : private : Parse() ~ Nil {
 			NextToken();
 			Binary();
-			
-			# consume starts with
+
 			if(@starts_anchor) {
 				@error := "stray token";
 			};
 		}
-		
+
 		method : private : Binary() ~ Nil {
-			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
 				expression := @expressions->RemoveBack();
 				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
-# IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
 			};
-		
+
 			while(@token <> '\0' & @token <> ')' & @token <> '|') {
-				Unary();		
+				Unary();
 				if(@error <> Nil) {
 					return;
 				};
 			};
-			
+
 			if(@token = '|') {
-				NextToken();				
-				
+				NextToken();
+
 				left := @expressions;
 				@expressions := Vector->New()<Expression>;
-				
+
 				Binary();
 				if(@error <> Nil) {
 					return;
 				};
-				
+
 				right := @expressions;
 				@expressions := Vector->New()<Expression>;
-				
+
 				@expressions->AddBack(Expression->New(left, right));
-# IO.Console->PrintLine("match: or_match");					
 			};
 		}
-		
+
 		method : private : Unary() ~ Nil {
-			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
 				expression := @expressions->RemoveBack();
 				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
-# IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
 			};
-			
+
 			Value();
 			if(@error <> Nil) {
 				return;
@@ -634,7 +672,6 @@ each(i : found) {
 					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(Expression->Type->ZERO_MORE, expression));
 					NextToken();
-# IO.Console->PrintLine("match: zero_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -646,7 +683,6 @@ each(i : found) {
 					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(Expression->Type->ONE_MORE, expression));
 					NextToken();
-# IO.Console->PrintLine("match: one_or_more");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -658,7 +694,6 @@ each(i : found) {
 					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(Expression->Type->OPTIONAL, expression));
 					NextToken();
-# IO.Console->PrintLine("match: optional");					
 				}
 				else {
 					@error := "missing left-hand side operand";
@@ -670,23 +705,22 @@ each(i : found) {
 					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(Expression->Type->ENDS_ANCHOR, expression));
 					NextToken();
-# "match: ends anchor"->PrintLine();
 				}
 				else {
 					@error := "missing left-hand side operand";
 					return;
 				};
-			}	
+			}
 			else if(@token = '{') {
 				if(@expressions->Size() > 0) {
 					NextToken();
-					
+
 					Whitespace();
 					least := Number()->ToInt();
 					if(@error <> Nil) {
 						return;
 					};
-					
+
 					Whitespace();
 					most := -1;
 					if(@token = ',') {
@@ -697,16 +731,14 @@ each(i : found) {
 							return;
 						};
 					};
-					
-					Whitespace();		
+
+					Whitespace();
 					if(@token <> '}') {
 						@error := "expected '}'";
 						return;
 					};
 					NextToken();
-					
-# IO.Console->Print("index: start='")->Print(least)->Print("', most='")->Print(most)->PrintLine("'");										
-					
+
 					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(least, most, expression));
 				}
@@ -716,55 +748,51 @@ each(i : found) {
 				};
 			};
 		}
-		
+
 		method : private : Whitespace() ~ Nil {
 			while(@token <> '\0' & (@token = ' ' | @token = '\t' | @token = '\r' | @token = '\n')) {
 				NextToken();
 			};
 		}
-		
+
 		method : private : Number() ~ String {
 			start := @token_pos - 1;
 			while(@token <> '\0' & @token->IsDigit()) {
 				NextToken();
 			};
-			
+
 			if(start = @token_pos) {
 				@error := "invalid number";
 				return "";
 			};
-			
+
 			return String->New(@tokens, start, @token_pos - start - 1);
 		}
-		
+
 		method : private : Value() ~ Nil {
-			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
 				expression := @expressions->RemoveBack();
 				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
-# IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
-			};		
-		
+			};
+
 			if(@token = '(') {
-				Parentheses();				
+				Parentheses();
 			}
 			else if(@token = '[') {
 				CharacterClass();
 			}
 			else if(@token = '\\') {
 				EscapeCharacter();
-# "char: escaped"->PrintLine();
-			}			
+			}
 			else if(@token = '.') {
 				@expressions->AddBack(Expression->New());
-# "match: any"->PrintLine();			
 				NextToken();
 			}
 			else if(@token = '^') {
 				@starts_anchor := true;
 				NextToken();
-			}			
+			}
 			else {
 				select(@token) {
 					label '*':
@@ -773,26 +801,25 @@ each(i : found) {
 					label '$':
 					label '{': { # nop processed by unary method
 					}
-					
+
 					other: {
 						@expressions->AddBack(Expression->New(@token));
-# IO.Console->Print("match: char=")->PrintLine(@token);				
 						NextToken();
 					}
 				};
 			};
 		}
-		
-		method : private : CharacterClass() ~ Nil {	
+
+		method : private : CharacterClass() ~ Nil {
 			NextToken();
 
 			if(@token->IsChar() = false & @token->IsDigit() = false) {
 				@error := "invalid character class";
 			};
-			
+
 			start := @token_pos - 1;
 			hyphen_count := 0;
-			while(@token <> '\0' & @token <> ']' & (@token = '-' | @token->IsChar() | @token->IsDigit())) { 
+			while(@token <> '\0' & @token <> ']' & (@token = '-' | @token->IsChar() | @token->IsDigit())) {
 				if(@token = '-') {
 					hyphen_count += 1;
 				};
@@ -806,7 +833,7 @@ each(i : found) {
 				return;
 			};
 			NextToken();
-			
+
 			if(hyphen_count > 1) {
 				@error := "invalid character class";
 			};
@@ -815,16 +842,16 @@ each(i : found) {
 			if(hyphen_count = 1) {
 				if(char_class->Size() <> 3) {
 					@error := "invalid character class";
-					return; # to avoid an issue with next statement
+					return;
 				};
-				
+
 				if(char_class->Get(0) >= char_class->Get(2)) {
 					@error := "invalid character class";
 				};
 
-				is_range := true;				
+				is_range := true;
 			};
-# IO.Console->Print("match range: class=")->PrintLine(char_class);
+
 			@expressions->AddBack(Expression->New(char_class, is_range));
 		}
 
@@ -841,13 +868,13 @@ each(i : found) {
 				label '.':
 				label '?':
 				label '^':
-				label '$': 
+				label '$':
 				label '*':
 				label '+': {
 					@expressions->AddBack(Expression->New(@token));
 					NextToken();
 				}
-				
+
 				label 'd': {
 					@expressions->AddBack(Expression->New(Expression->Type->DIGIT));
 					NextToken();
@@ -857,7 +884,7 @@ each(i : found) {
 					@expressions->AddBack(Expression->New(Expression->Type->NOT_DIGIT));
 					NextToken();
 				}
-				
+
 				label 'w': {
 					@expressions->AddBack(Expression->New(Expression->Type->WORD));
 					NextToken();
@@ -867,7 +894,7 @@ each(i : found) {
 					@expressions->AddBack(Expression->New(Expression->Type->NOT_WORD));
 					NextToken();
 				}
-				
+
 				label 's': {
 					@expressions->AddBack(Expression->New(Expression->Type->WHITESPACE));
 					NextToken();
@@ -877,7 +904,7 @@ each(i : found) {
 					@expressions->AddBack(Expression->New(Expression->Type->NOT_WHITESPACE));
 					NextToken();
 				}
-				
+
 				label 'n': {
 					@expressions->AddBack(Expression->New('\n'));
 					NextToken();
@@ -907,25 +934,23 @@ each(i : found) {
 
 		method : private : Parentheses() ~ Nil {
 			NextToken();
-			
+
 			left := @expressions;
 			@expressions := Vector->New()<Expression>;
-				
+
 			Binary();
 			if(@error <> Nil) {
 				return;
 			};
-		
+
 			if(@token <> ')') {
 				@error := "expected ')'";
 				return;
 			};
 			NextToken();
-			
-			# combine lists			
+
 			left->AddBack(Expression->New(@expressions));
 			@expressions := left;
-# IO.Console->PrintLine("parentheses");		
 		}
 	}
 
@@ -966,7 +991,7 @@ each(i : found) {
 		method : public : GetValue() ~ String {
 			return @value;
 		}
-		
+
 		#~
 		Gets the string representation
 		@return string representation
@@ -975,7 +1000,108 @@ each(i : found) {
 			return @value;
 		}
 	}
-	
+
+	# ---------- flat NFA instruction ----------
+	class : private : Instruction {
+		enum Op := 0 {
+			CHAR,
+			ANY,
+			DIGIT,
+			NOT_DIGIT,
+			WORD,
+			NOT_WORD,
+			WHITESPACE,
+			NOT_WHITESPACE,
+			CLASS,
+			RANGE,
+			SPLIT,
+			JUMP,
+			MATCH,
+			ANC_START,
+			ANC_END
+		}
+
+		@op : Int;
+		@char_val : Char;
+		@class_str : String;
+		@target1 : Int;
+		@target2 : Int;
+
+		New(op : Instruction->Op) {
+			@op := op->As(Int);
+		}
+
+		New(op : Instruction->Op, c : Char) {
+			@op := op->As(Int);
+			@char_val := c;
+		}
+
+		New(op : Instruction->Op, class_str : String) {
+			@op := op->As(Int);
+			@class_str := class_str;
+		}
+
+		New(op : Instruction->Op, t1 : Int, t2 : Int) {
+			@op := op->As(Int);
+			@target1 := t1;
+			@target2 := t2;
+		}
+
+		function : NewOp(op : Instruction->Op) ~ Instruction {
+			return Instruction->New(op);
+		}
+
+		function : NewChar(c : Char) ~ Instruction {
+			return Instruction->New(Instruction->Op->CHAR, c);
+		}
+
+		function : NewClass(s : String, is_range : Bool) ~ Instruction {
+			if(is_range) {
+				return Instruction->New(Instruction->Op->RANGE, s);
+			}
+			else {
+				return Instruction->New(Instruction->Op->CLASS, s);
+			};
+		}
+
+		function : NewSplit(t1 : Int, t2 : Int) ~ Instruction {
+			return Instruction->New(Instruction->Op->SPLIT, t1, t2);
+		}
+
+		function : NewJump(t1 : Int) ~ Instruction {
+			instr := Instruction->New(Instruction->Op->JUMP, t1, 0);
+			return instr;
+		}
+
+		method : public : GetOp() ~ Int {
+			return @op;
+		}
+
+		method : public : GetChar() ~ Char {
+			return @char_val;
+		}
+
+		method : public : GetClass() ~ String {
+			return @class_str;
+		}
+
+		method : public : GetTarget1() ~ Int {
+			return @target1;
+		}
+
+		method : public : GetTarget2() ~ Int {
+			return @target2;
+		}
+
+		method : public : SetTarget1(t : Int) ~ Nil {
+			@target1 := t;
+		}
+
+		method : public : SetTarget2(t : Int) ~ Nil {
+			@target2 := t;
+		}
+	}
+
 	# ---------- sub-expression value object ----------
 	class : private : Expression {
 		# expression type
@@ -1008,7 +1134,7 @@ each(i : found) {
 		@right : Vector<Expression>;
 		@least : Int;
 		@most : Int;
-		
+
 		New() {
 			@type := Expression->Type->ANY;
 		}
@@ -1024,7 +1150,7 @@ each(i : found) {
 			@most := most;
 			@expression := expression;
 		}
-		
+
 		New(char_class : String, is_range : Bool) {
 			if(is_range) {
 				@type := Expression->Type->CHAR_CLASS_RANGE;
@@ -1034,16 +1160,16 @@ each(i : found) {
 			};
 			@char_class := char_class;
 		}
-		
+
 		New(left : Vector<Expression>) {
 			@type := Expression->Type->SUB_EXPR;
 			@left := left;
 		}
-		
+
 		New(type : Expression->Type) {
 			@type := type;
 		}
-		
+
 		New(type : Expression->Type, expression : Expression) {
 			@type := type;
 			@expression := expression;
@@ -1058,7 +1184,7 @@ each(i : found) {
 		method : public : GetType() ~ Expression->Type {
 			return @type;
 		}
-		
+
 		method : public : GetValue() ~ Char {
 			return @value;
 		}
@@ -1066,23 +1192,23 @@ each(i : found) {
 		method : public : GetClass() ~ String {
 			return @char_class;
 		}
-		
+
 		method : public : GetLeft() ~ Vector<Expression> {
 			return @left;
 		}
-		
+
 		method : public : GetRight() ~ Vector<Expression> {
 			return @right;
 		}
-			
+
 		method : public : GetLeast() ~ Int {
 			return @least;
 		}
-		
+
 		method : public : GetMost() ~ Int {
 			return @most;
 		}
-		
+
 		method : public : GetExpression() ~ Expression {
 			return @expression;
 		}
