@@ -1921,28 +1921,28 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
       if(interpreter) {
         std::wcout << L"stack:" << std::endl;
         StackMethod* method = cur_frame->method;
-        std::wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << L"'";
+        std::wcout << L"  frame: pos=" << cur_call_stack_pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << L"'";
         const long ip = cur_frame->ip;
         if(ip > -1) {
           StackInstr* instr = cur_frame->method->GetInstruction(ip);
-          std::wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << std::endl;
+          std::wcout << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << std::endl;
         }
         else {
-          std::wcerr << std::endl;
+          std::wcout << std::endl;
         }
 
         long pos = cur_call_stack_pos;
         while(pos--) {
           StackMethod* method = cur_call_stack[pos]->method;
           if(method->GetClass()) {
-            std::wcerr << L"  frame: pos=" << pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << "'";
+            std::wcout << L"  frame: pos=" << pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << "'";
             const long ip = cur_call_stack[pos]->ip;
             if(ip > -1) {
               StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
-              std::wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << std::endl;
+              std::wcout << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << std::endl;
             }
             else {
-              std::wcerr << std::endl;
+              std::wcout << std::endl;
             }
           }
         }
