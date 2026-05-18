@@ -4593,6 +4593,29 @@ each(i : cities) {
 		}
 
 		#~
+		Joins an array of strings with a separator
+		@param parts array of strings to join
+		@param sep separator string
+		@return joined string
+		~#
+		function : Join(parts : String[], sep : String) ~ String {
+			n := parts->Size();
+			if(n = 0) {
+				return "";
+			};
+			buf := String->New();
+			each(i : parts) {
+				if(i > 0 & sep <> Nil) {
+					buf->Append(sep);
+				};
+				if(parts[i] <> Nil) {
+					buf->Append(parts[i]);
+				};
+			};
+			return buf;
+		}
+
+		#~
 		Set integer string format.
 		@param format integer format
 		~#
@@ -5142,6 +5165,34 @@ each(i : cities) {
 		}
 
 		#~
+		Searches for the last occurrence of a string
+		@param str string to search for
+		@return index of last occurrence, -1 otherwise
+		~#
+		method : public : FindLast(str : String) ~ Int {
+			size := str->Size();
+			if(size = 0 | size > @pos) {
+				return -1;
+			};
+			i := @pos - size;
+			while(i > -1) {
+				match := true;
+				j := 0;
+				while(match & j < size) {
+					if(@string[i + j] <> str->Get(j)) {
+						match := false;
+					};
+					j += 1;
+				};
+				if(match) {
+					return i;
+				};
+				i -= 1;
+			};
+			return -1;
+		}
+
+		#~
 		Searches for the first occurrence of a string
 		@param find string to search for
 		@return index of first occurrence, -1 otherwise
@@ -5157,6 +5208,38 @@ each(i : cities) {
 		~#
 		method : public : Contains(find : String) ~ Bool {
 			return Find(find) > -1;
+		}
+
+		#~
+		Checks if string contains a substring, ignoring case
+		@param find string to search for
+		@return true if found, false otherwise
+		~#
+		method : public : ContainsIgnoreCase(find : String) ~ Bool {
+			size := find->Size();
+			if(size = 0) {
+				return true;
+			};
+			if(size > @pos) {
+				return false;
+			};
+			limit := @pos - size;
+			i := 0;
+			while(i <= limit) {
+				match := true;
+				j := 0;
+				while(match & j < size) {
+					if(@string[i + j]->ToLower() <> find->Get(j)->ToLower()) {
+						match := false;
+					};
+					j += 1;
+				};
+				if(match) {
+					return true;
+				};
+				i += 1;
+			};
+			return false;
 		}
 
 		#~
@@ -5265,15 +5348,27 @@ each(i : cities) {
 		@return new string instance
 		~#
 		method : public : ReplaceAll(find : String, replace : String) ~ String {
-			last := @self;
-
-			result := last->Replace(find, replace);
-			while(result <> last) {
-				last := result;
-				result := last->Replace(find, replace);
+			find_size := find->Size();
+			if(find_size = 0) {
+				return String->New(@string);
 			};
-			
-			return result;
+			buf := String->New(@pos);
+			offset := 0;
+			index := Find(offset, find);
+			while(index > -1) {
+				if(index > offset) {
+					buf->Append(SubString(offset, index - offset));
+				};
+				if(replace <> Nil) {
+					buf->Append(replace);
+				};
+				offset := index + find_size;
+				index := Find(offset, find);
+			};
+			if(offset < @pos) {
+				buf->Append(SubString(offset, @pos - offset));
+			};
+			return buf;
 		}
 
 		#~
@@ -5591,13 +5686,70 @@ each(i : cities) {
 
 			return String->New(@string);
 		}
-		
+
+		#~
+		Truncates the string to at most max characters, appending suffix if cut
+		@param max maximum length of result
+		@return truncated string
+		~#
+		method : public : Truncate(max : Int) ~ String {
+			return Truncate(max, "...");
+		}
+
+		#~
+		Truncates the string to at most max characters, appending suffix if cut
+		@param max maximum length of result
+		@param suffix suffix to append when truncated
+		@return truncated string
+		~#
+		method : public : Truncate(max : Int, suffix : String) ~ String {
+			if(max <= 0) {
+				return "";
+			};
+			if(@pos <= max) {
+				return String->New(@string);
+			};
+			suffix_len := 0;
+			if(suffix <> Nil) {
+				suffix_len := suffix->Size();
+			};
+			cut := max - suffix_len;
+			if(cut < 0) {
+				cut := 0;
+			};
+			buf := SubString(0, cut);
+			if(buf = Nil) {
+				buf := "";
+			};
+			if(suffix <> Nil & suffix_len > 0) {
+				buf->Append(suffix);
+			};
+			return buf;
+		}
+
 		#~
 		Returns rather the string is empty
 		@return true if empty, false otherwise 
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @pos = 0 ? true : false; 			
+			return @pos = 0 ? true : false;
+		}
+
+		#~
+		Checks if the string is empty or contains only whitespace
+		@return true if blank, false otherwise
+		~#
+		method : public : IsBlank() ~ Bool {
+			if(@pos = 0) {
+				return true;
+			};
+			each(i : @pos) {
+				c := @string[i];
+				if(<>(c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f')) {
+					return false;
+				};
+			};
+			return true;
 		}
 
 		#~
@@ -5798,10 +5950,51 @@ each(i : cities) {
 
 			return false;
 		}
-		
+
+		#~
+		Checks if the string starts with the given string, ignoring case
+		@param string string to check for
+		@return true if starts with string, false otherwise
+		~#
+		method : public : StartsWithIgnoreCase(string : String) ~ Bool {
+			size := string->Size();
+			if(size > @pos) {
+				return false;
+			};
+			i := 0;
+			while(i < size) {
+				if(@string[i]->ToLower() <> string->Get(i)->ToLower()) {
+					return false;
+				};
+				i += 1;
+			};
+			return true;
+		}
+
+		#~
+		Checks if the string ends with the given string, ignoring case
+		@param string string to check for
+		@return true if ends with string, false otherwise
+		~#
+		method : public : EndsWithIgnoreCase(string : String) ~ Bool {
+			size := string->Size();
+			if(size > @pos) {
+				return false;
+			};
+			offset := @pos - size;
+			i := 0;
+			while(i < size) {
+				if(@string[offset + i]->ToLower() <> string->Get(i)->ToLower()) {
+					return false;
+				};
+				i += 1;
+			};
+			return true;
+		}
+
 		#~
 		Reverses a string
-		@return reversed string 
+		@return reversed string
 		~#
 		method : public : native : Reverse() ~ String {
 			temp := Char->New[@max];
@@ -5906,7 +6099,30 @@ each(i : cities) {
 	
 			return String->New(@string, start, end - start + 1);
 		}
-		
+
+		#~
+		Removes all leading and trailing occurrences of characters in the given set
+		@param chars string of characters to trim
+		@return trimmed string
+		~#
+		method : public : TrimChars(chars : String) ~ String {
+			if(chars = Nil | chars->IsEmpty() | @pos = 0) {
+				return String->New(@string);
+			};
+			start := 0;
+			while(start < @pos & chars->Has(@string[start])) {
+				start += 1;
+			};
+			end := @pos - 1;
+			while(end > start & chars->Has(@string[end])) {
+				end -= 1;
+			};
+			if(start > end) {
+				return "";
+			};
+			return SubString(start, end - start + 1);
+		}
+
 		#~
 		Splits a string into lines
 		@return array of lines
@@ -6286,7 +6502,7 @@ each(i : cities) {
 			if(GetClassID() <> rhs->GetClassID()) {
 				return -1;
 			};
-						
+
 			# check each character
 			right_string := rhs->As(String);
 			for(i := 0; i < @pos; i += 1;) {
@@ -6299,17 +6515,50 @@ each(i : cities) {
 					return -1;
 				};
 			};
-			
+
 			# check length
 			if(@pos > right_string->Size()) {
 				return 1;
 			};
-			
+
 			if(@pos < right_string->Size()) {
 				return -1;
 			};
-			
+
 			# equal
+			return 0;
+		}
+
+		#~
+		Compares two strings, ignoring case
+		@param rhs string to compare
+		@return 0 if equal, -1 if right-hand side is greater, 1 if left-hand side is greater
+		~#
+		method : public : CompareIgnoreCase(rhs : String) ~ Int {
+			rhs_size := rhs->Size();
+			limit : Int;
+			if(@pos < rhs_size) {
+				limit := @pos;
+			}
+			else {
+				limit := rhs_size;
+			};
+			for(i := 0; i < limit; i += 1;) {
+				l := @string[i]->ToLower();
+				r := rhs->Get(i)->ToLower();
+				if(l > r) {
+					return 1;
+				};
+				if(l < r) {
+					return -1;
+				};
+			};
+			if(@pos > rhs_size) {
+				return 1;
+			};
+			if(@pos < rhs_size) {
+				return -1;
+			};
 			return 0;
 		}
 
@@ -6327,6 +6576,24 @@ each(i : cities) {
 		~#
 		method : public : Copy() ~ String {
 			return String->New(@string);
+		}
+
+		#~
+		Returns a string repeated n times
+		@param n number of repetitions
+		@return repeated string
+		~#
+		method : public : Repeat(n : Int) ~ String {
+			if(n <= 0 | @pos = 0) {
+				return "";
+			};
+			buf := String->New(@pos * n);
+			i := 0;
+			while(i < n) {
+				buf->Append(@self);
+				i += 1;
+			};
+			return buf;
 		}
 
 		#~
