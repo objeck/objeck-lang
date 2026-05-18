@@ -66,24 +66,63 @@ for test in *.obs; do
     cd "${DEPLOY_DIR}/bin"
     "$ABS_COMPILER" -src "$ABS_TEST" -lib "$LIBS" -opt s3 -dest "${REGRESSION_DIR}/${NAME}.obe" 2>&1 | tee "${REGRESSION_DIR}/${RESULTS_DIR}/${NAME}_compile.log" > /dev/null
 
-    if [ ${PIPESTATUS[0]} -ne 0 ]; then
-        cd "$REGRESSION_DIR"
-        echo "  [FAIL] Compilation error"
-        cat "${REGRESSION_DIR}/${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null | head -10
+    COMPILE_EXIT=${PIPESTATUS[0]}
+    EXPECT_ERR=0
+    grep -q '# EXPECT_COMPILE_ERROR' "$test" 2>/dev/null && EXPECT_ERR=1
+
+    EXPECT_RT_ERR=0
+    grep -q '# EXPECT_RUNTIME_ERROR' "$test" 2>/dev/null && EXPECT_RT_ERR=1
+
+    cd "$REGRESSION_DIR"
+
+    if [ $COMPILE_EXIT -ne 0 ]; then
+        if [ $EXPECT_ERR -eq 1 ]; then
+            # Compiler rejected bad code as expected — verify it produced output
+            LOG_SIZE=$(wc -c < "${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null || echo 0)
+            if [ "$LOG_SIZE" -gt 0 ]; then
+                echo "  [PASS] (compile error as expected)"
+                ((PASS_COUNT++))
+            else
+                echo "  [FAIL] compiler produced no output — possible crash"
+                ((FAIL_COUNT++))
+            fi
+        else
+            echo "  [FAIL] Compilation error"
+            cat "${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null | head -10
+            ((FAIL_COUNT++))
+        fi
+        continue
+    fi
+
+    if [ $EXPECT_ERR -eq 1 ]; then
+        echo "  [FAIL] should have failed to compile"
         ((FAIL_COUNT++))
         continue
     fi
 
     # Per-test opt-out for auto-JIT (some analyzer tests hit a known
     # arm64 JIT bug; the marker keeps JIT coverage on for everything else).
-    cd "$REGRESSION_DIR"
     if grep -q '# JIT_DISABLE' "$test" 2>/dev/null; then
         OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     else
         "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     fi
+    RUN_EXIT=$?
 
-    if [ $? -eq 0 ]; then
+    if [ $EXPECT_RT_ERR -eq 1 ]; then
+        # Runtime error expected — PASS if VM exited non-zero with output
+        OUT_SIZE=$(wc -c < "$RESULTS_DIR/${NAME}_output.txt" 2>/dev/null || echo 0)
+        if [ $RUN_EXIT -ne 0 ] && [ "$OUT_SIZE" -gt 0 ]; then
+            echo "  [PASS] (runtime error as expected)"
+            ((PASS_COUNT++))
+        elif [ $RUN_EXIT -eq 0 ]; then
+            echo "  [FAIL] should have failed at runtime"
+            ((FAIL_COUNT++))
+        else
+            echo "  [FAIL] VM produced no output — possible crash"
+            ((FAIL_COUNT++))
+        fi
+    elif [ $RUN_EXIT -eq 0 ]; then
         echo "  [PASS]"
         ((PASS_COUNT++))
     else

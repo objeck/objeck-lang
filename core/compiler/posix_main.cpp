@@ -120,7 +120,22 @@ int main(int argc, const char* argv[])
 #endif
 
     // compile source with options
-    status = OptionsCompile(cmd_options, argument_optionals, usage);
+    try {
+      status = OptionsCompile(cmd_options, argument_optionals, usage);
+    }
+    catch(const std::bad_alloc&) {
+      std::wcerr << L"internal error: out of memory" << std::endl;
+      status = SYSTEM_ERROR;
+    }
+    catch(const std::exception& e) {
+      const std::string msg(e.what());
+      std::wcerr << L"internal error: " << std::wstring(msg.begin(), msg.end()) << std::endl;
+      status = SYSTEM_ERROR;
+    }
+    catch(...) {
+      std::wcerr << L"internal error: unexpected exception" << std::endl;
+      status = SYSTEM_ERROR;
+    }
 
 #ifdef _DEBUG
     CloseLogger();

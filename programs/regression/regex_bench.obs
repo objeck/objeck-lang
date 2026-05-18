@@ -1,0 +1,51 @@
+# EXTRA_LIBS: regex
+use Query.RegEx;
+use System.Time;
+
+class RegexBench {
+    function : Main(args : String[]) ~ Nil {
+        # Build ~50k char test strings
+        base1 := "The quick brown fox jumps over the lazy dog";
+        lit_input := "";
+        i := 0; while(i < 1200) { lit_input := "{$lit_input}{$base1}"; i += 1; };
+
+        base2 := "abc 123 def 4567 ghi 89012 jkl 345678";
+        digit_input := "";
+        j := 0; while(j < 1200) { digit_input := "{$digit_input}{$base2}"; j += 1; };
+
+        base3 := "the cat sat on the mat with a dog and a fox";
+        or_input := "";
+        k := 0; while(k < 1200) { or_input := "{$or_input}{$base3}"; k += 1; };
+
+        # literal 'fox'
+        r1 := RegEx->New("fox");
+        t1 := Timer->New(true);
+        c1 := 0;
+        n := 0; while(n < 100) { c1 := r1->Find(lit_input)<Result>->Size(); n += 1; };
+        elapsed1 := t1->GetElapsedTime();
+        "literal 'fox' x100 on ~52k chars: {$elapsed1}s, matches={$c1}"->PrintLine();
+
+        # \d+
+        r2 := RegEx->New("\\d+");
+        t2 := Timer->New(true);
+        c2 := 0;
+        n := 0; while(n < 100) { c2 := r2->Find(digit_input)<Result>->Size(); n += 1; };
+        elapsed2 := t2->GetElapsedTime();
+        "digit '\\d+' x100 on ~46k chars: {$elapsed2}s, matches={$c2}"->PrintLine();
+
+        # fox|dog|cat
+        r3 := RegEx->New("fox|dog|cat");
+        t3 := Timer->New(true);
+        c3 := 0;
+        n := 0; while(n < 100) { c3 := r3->Find(or_input)<Result>->Size(); n += 1; };
+        elapsed3 := t3->GetElapsedTime();
+        "or 'fox|dog|cat' x100 on ~53k chars: {$elapsed3}s, matches={$c3}"->PrintLine();
+
+        # pathological (a+)+b
+        r4 := RegEx->New("(a+)+b");
+        t4 := Timer->New(true);
+        n := 0; while(n < 1000) { r4->FindFirst("aaaaaaaaaaaaaaaaaab"); n += 1; };
+        elapsed4 := t4->GetElapsedTime();
+        "pathological '(a+)+b' x1000: {$elapsed4}s"->PrintLine();
+    }
+}

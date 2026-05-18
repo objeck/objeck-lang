@@ -448,9 +448,8 @@ each(i : found) {
 			};
 		}
 
-		# Follow epsilon transitions and add char-consuming instructions to the thread list.
-		# Uses generation-based visited array to avoid revisiting within the same step.
-		method : private : AddThread(pc : Int, threads : Vector<IntRef>, visited : Int[], gen : Int, pos : Int, input_size : Int, match_holder : IntRef) ~ Nil {
+		# Follow epsilon transitions and record char-consuming PCs in threads[0..n_ref-1].
+		method : private : AddThread(pc : Int, threads : Int[], n_ref : IntRef, visited : Int[], gen : Int, pos : Int, input_size : Int, match_end : IntRef) ~ Nil {
 			prog_size := @program->Size();
 			while(pc < prog_size & visited[pc] <> gen) {
 				visited[pc] := gen;
@@ -459,14 +458,14 @@ each(i : found) {
 				if(op = Instruction->Op->SPLIT->As(Int)) {
 					t1 := @program->Get(pc)->GetTarget1();
 					t2 := @program->Get(pc)->GetTarget2();
-					AddThread(t1, threads, visited, gen, pos, input_size, match_holder);
+					AddThread(t1, threads, n_ref, visited, gen, pos, input_size, match_end);
 					pc := t2;
 				}
 				else if(op = Instruction->Op->JUMP->As(Int)) {
 					pc := @program->Get(pc)->GetTarget1();
 				}
 				else if(op = Instruction->Op->MATCH->As(Int)) {
-					match_holder->Set(pos);
+					match_end->Set(pos);
 					return;
 				}
 				else if(op = Instruction->Op->ANC_START->As(Int)) {
@@ -479,19 +478,21 @@ each(i : found) {
 				}
 				else if(op = Instruction->Op->ANC_END->As(Int)) {
 					if(pos = input_size) {
-						match_holder->Set(pos);
+						match_end->Set(pos);
 					};
 					return;
 				}
 				else {
-					# char-consuming instruction: add to active thread list
-					threads->AddBack(IntRef->New(pc));
+					n := n_ref->Get();
+					threads[n] := pc;
+					n_ref->Set(n + 1);
 					return;
 				};
 			};
 		}
 
 		# Parallel NFA simulation. Returns end position of match, or -1.
+		# Uses two pre-allocated Int[] arrays swapped each step — zero hot-path allocation.
 		method : Evaluate(stream_in : String, offset : Int) ~ Int {
 			if(@error <> Nil | @program->Size() = 0) {
 				return -1;
@@ -506,16 +507,18 @@ each(i : found) {
 
 			prog_size := @program->Size();
 			visited := Int->New[prog_size];
+			cur  := Int->New[prog_size];
+			nxt  := Int->New[prog_size];
+			cur_n := IntRef->New(0);
+			nxt_n := IntRef->New(0);
+			match_holder := IntRef->New(-1);
 			gen := 1;
 
-			match_holder := IntRef->New(-1);
-			current := Vector->New()<IntRef>;
-			AddThread(0, current, visited, gen, offset, input_size, match_holder);
-
+			AddThread(0, cur, cur_n, visited, gen, offset, input_size, match_holder);
 			match_end := match_holder->Get();
 			pos := offset;
 
-			while(pos <= input_size & current->IsEmpty() = false) {
+			while(pos <= input_size & cur_n->Get() > 0) {
 				c : Char;
 				if(pos < input_size) {
 					c := stream_in->Get(pos);
@@ -525,12 +528,13 @@ each(i : found) {
 				};
 
 				gen += 1;
-				next := Vector->New()<IntRef>;
+				nxt_n->Set(0);
 				match_holder->Set(-1);
 
 				k := 0;
-				while(k < current->Size()) {
-					pc := current->Get(k)->Get();
+				lim := cur_n->Get();
+				while(k < lim) {
+					pc := cur[k];
 					instr := @program->Get(pc);
 					op := instr->GetOp();
 					matched := false;
@@ -567,7 +571,7 @@ each(i : found) {
 					};
 
 					if(matched) {
-						AddThread(pc + 1, next, visited, gen, pos + 1, input_size, match_holder);
+						AddThread(pc + 1, nxt, nxt_n, visited, gen, pos + 1, input_size, match_holder);
 					};
 
 					k += 1;
@@ -577,7 +581,13 @@ each(i : found) {
 					match_end := match_holder->Get();
 				};
 
-				current := next;
+				# swap cur/nxt without allocation
+				tmp := cur;
+				cur := nxt;
+				nxt := tmp;
+				cur_n->Set(nxt_n->Get());
+				nxt_n->Set(0);
+
 				pos += 1;
 			};
 

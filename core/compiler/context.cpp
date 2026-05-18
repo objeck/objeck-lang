@@ -818,15 +818,19 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
                                            bool impl_is_static, [[maybe_unused]] bool impl_is_virtual, Method* virtual_method)
 {
   // check method types
+  const std::wstring virtual_class_name = (virtual_method->GetClass() ? virtual_method->GetClass()->GetName() : impl_class->GetName());
   if(impl_mthd_type != virtual_method->GetMethodType()) {
     ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                 virtual_method->GetClass()->GetName());
+                 virtual_class_name);
   }
   // check method returns
   Type* virtual_return = virtual_method->GetReturn();
+  if(!virtual_return) {
+    return;
+  }
   if(impl_return->GetType() != virtual_return->GetType()) {
     ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                 virtual_method->GetClass()->GetName());
+                 virtual_class_name);
   }
   else if(impl_return->GetType() == CLASS_TYPE &&
           impl_return->GetName() != virtual_return->GetName()) {

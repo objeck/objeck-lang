@@ -1039,8 +1039,26 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, size_t* mem, int va
       return oss.str();
     }
 
+    case CHAR_ARY_PARM: {
+      if(value == 0) {
+        return "Nil";
+      }
+      size_t* array = (size_t*)value;
+      const size_t len = array[2];
+      const wchar_t* chars = (const wchar_t*)(array + 3);
+      if(len > 0) {
+        const size_t preview_max = 48;
+        std::wstring wstr(chars, std::min(len, preview_max));
+        std::string result = "\"" + UnicodeToBytes(wstr) + "\"";
+        if(len > preview_max) {
+          result += "...";
+        }
+        return result;
+      }
+      return "\"\"";
+    }
+
     case BYTE_ARY_PARM:
-    case CHAR_ARY_PARM:
     case INT_ARY_PARM:
     case FLOAT_ARY_PARM:
     case OBJ_ARY_PARM: {
@@ -1057,9 +1075,14 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, size_t* mem, int va
       if(value == 0) {
         return "Nil";
       }
-      // Try to get a meaningful representation
+      StackClass* klass = MemoryManager::GetClass((size_t*)value);
       std::ostringstream oss;
-      oss << "object@0x" << std::hex << value;
+      if(klass) {
+        oss << UnicodeToBytes(klass->GetName()) << "@0x" << std::hex << value;
+      }
+      else {
+        oss << "object@0x" << std::hex << value;
+      }
       return oss.str();
     }
 

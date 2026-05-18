@@ -49,33 +49,48 @@
  * Starts the compilation process
  ****************************/
 int Compile(const std::wstring& src_files, const std::wstring& opt, const std::wstring& dest_file, std::vector<std::pair<std::wstring, std::wstring> > &programs, const std::wstring &sys_lib_path, std::wstring &target, bool alt_syntax, bool is_debug, bool show_asm) {
-  // parse source code
-  Parser parser(src_files, alt_syntax, programs);
-  if(parser.Parse()) {
-    const bool is_lib = target == L"lib";
+  try {
+    // parse source code
+    Parser parser(src_files, alt_syntax, programs);
+    if(parser.Parse()) {
+      const bool is_lib = target == L"lib";
 
-    // analyze parse tree
-    ParsedProgram* program = parser.GetProgram();
-    ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
-    if(analyzer.Analyze(is_lib)) {
-      // emit intermediate code
-      IntermediateEmitter intermediate(program, is_lib, is_debug);
-      intermediate.Translate();
-      // intermediate optimizer
-      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
-      optimizer.Optimize();
-      // emit target code
-      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, dest_file);
-      target.Emit();
+      // analyze parse tree
+      ParsedProgram* program = parser.GetProgram();
+      ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
+      if(analyzer.Analyze(is_lib)) {
+        // emit intermediate code
+        IntermediateEmitter intermediate(program, is_lib, is_debug);
+        intermediate.Translate();
+        // intermediate optimizer
+        ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
+        optimizer.Optimize();
+        // emit target code
+        FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, dest_file);
+        target.Emit();
 
-      return SUCCESS;
+        return SUCCESS;
+      }
+      else {
+        return CONTEXT_ERROR;
+      }
     }
-    else {
-      return CONTEXT_ERROR;
-    }
+
+    return PARSE_ERROR;
   }
-  
-  return PARSE_ERROR;
+  catch(const std::bad_alloc&) {
+    std::wcerr << L"internal error: out of memory during compilation" << std::endl;
+    return CONTEXT_ERROR;
+  }
+  catch(const std::exception& e) {
+    const std::string msg(e.what());
+    std::wcerr << L"internal error: " << std::wstring(msg.begin(), msg.end()) << std::endl;
+    return CONTEXT_ERROR;
+  }
+  catch(...) {
+    std::wcerr << L"internal error: unexpected exception during compilation" << std::endl;
+    return CONTEXT_ERROR;
+  }
 }
 
 /****************************

@@ -530,7 +530,7 @@ while(<>heap->IsEmpty()) {
 		@param order sort order
 		~#
 		New(array : H[], order : Heap->Order) {
-			@heap := H->New[5];
+			@heap := H->New[16];
 			@length := 0;
 			@min := order = Heap->Order->MIN ? true : false;
 
@@ -544,7 +544,7 @@ while(<>heap->IsEmpty()) {
 		@param order sort order
 		~#
 		New(order : Heap->Order) {
-			@heap := H->New[5];
+			@heap := H->New[16];
 			@length := 0;
 			@min := order = Heap->Order->MIN ? true : false;
 		}
@@ -664,7 +664,7 @@ while(<>heap->IsEmpty()) {
 		}
 
 		method : Resize() ~ H[] {
-			temp := H->New[@heap->Size() + @heap->Size() / 2];
+			temp := H->New[@heap->Size() * 2];
 			Runtime->Copy(temp, 0, @heap, 0, @heap->Size());
 			return temp;
 		}
@@ -1304,7 +1304,7 @@ hash->Has(408)->PrintLine();
 		New(capacity : Hash->Capacity, auto_resize : Bool := true) {
 			@capacity := capacity;
 			@auto_resize := auto_resize;
-			
+
 			@buckets := CompareList->New[@capacity]<K>;
 			@size := 0;
 		}
@@ -2370,22 +2370,23 @@ function : Example() ~ Nil {
 		method : public : Has(value : H) ~ Bool {
 			start := @head;
 			end := @tail;
-			
-			while(start <> end) {
+
+			count := @size / 2;
+			while(count > 0) {
 				if(value->Compare(start->Get()) = 0) {
 					return true;
-				}
-				else if(value->Compare(end->Get()) = 0) {
+				};
+				if(value->Compare(end->Get()) = 0) {
 					return true;
 				};
-				
 				start := start->GetNext();
 				end := end->GetPrevious();
+				count -= 1;
 			};
-			
-			if(start <> Nil & value->Compare(start->Get()) = 0) {
-				return true;
-			}; 
+
+			if(@size % 2 = 1 & start <> Nil) {
+				return value->Compare(start->Get()) = 0;
+			};
 
 			return false;
 		}

@@ -155,7 +155,22 @@ int main(const int argc, const char* argv[])
     }
     else {
       // execute program
-      status = Execute(argc - vm_param_count, argv + vm_param_count, is_stdio_binary, gc_threshold);
+      try {
+        status = Execute(argc - vm_param_count, argv + vm_param_count, is_stdio_binary, gc_threshold);
+      }
+      catch(const std::bad_alloc&) {
+        std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
+        status = SYSTEM_ERROR;
+      }
+      catch(const std::exception& e) {
+        const std::string msg(e.what());
+        std::wcerr << L">>> virtual machine: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+        status = SYSTEM_ERROR;
+      }
+      catch(...) {
+        std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
+        status = SYSTEM_ERROR;
+      }
     }
 
     // release Winsock
