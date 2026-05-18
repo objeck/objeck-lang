@@ -8,6 +8,10 @@ Caddyfile text eol=lf
 docker-compose*.yml text eol=lf
 Makefile* text eol=lf
 
+# Windows batch files must use CRLF so cmd.exe parses them correctly
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
 # GitHub Actions
 .github/**/*.yml text eol=lf
 .github/**/*.yaml text eol=lf

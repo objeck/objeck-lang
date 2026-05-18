@@ -1,4 +1,5 @@
 # EXTRA_LIBS: regex
+# JIT_DISABLE
 use Query.RegEx;
 use System.Time;
 
