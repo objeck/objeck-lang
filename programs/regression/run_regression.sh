@@ -68,10 +68,10 @@ for test in *.obs; do
 
     COMPILE_EXIT=${PIPESTATUS[0]}
     EXPECT_ERR=0
-    grep -q '# EXPECT_COMPILE_ERROR' "$test" 2>/dev/null && EXPECT_ERR=1
+    grep -q '# EXPECT_COMPILE_ERROR' "$ABS_TEST" 2>/dev/null && EXPECT_ERR=1
 
     EXPECT_RT_ERR=0
-    grep -q '# EXPECT_RUNTIME_ERROR' "$test" 2>/dev/null && EXPECT_RT_ERR=1
+    grep -q '# EXPECT_RUNTIME_ERROR' "$ABS_TEST" 2>/dev/null && EXPECT_RT_ERR=1
 
     cd "$REGRESSION_DIR"
 

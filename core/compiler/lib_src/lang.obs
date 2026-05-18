@@ -4676,7 +4676,7 @@ each(i : cities) {
 			Runtime->Copy(array, 0, @string, 0, @pos);
 			return array;
 		}
-		
+
 		#~
 		Returns a byte array representation of the String
 		@return byte array
@@ -4698,10 +4698,10 @@ each(i : cities) {
 		~#
 		method : public : Append(flag : Bool) ~ Nil {
 			if(flag) {
-				Append("true"->ToCharArray());
+				Append("true");
 			}
 			else {
-				Append("false"->ToCharArray());
+				Append("false");
 			};
 		}
 
@@ -4710,7 +4710,7 @@ each(i : cities) {
 		@param i integer value
 		~#
 		method : public : Append(i : Int) ~ Nil {
-			Append(i->ToString()->ToCharArray());
+			Append(i->ToString());
 		}
 
 		#~
@@ -4718,7 +4718,7 @@ each(i : cities) {
 		@param f float value
 		~#
 		method : public : Append(f : Float) ~ Nil {
-			Append(f->ToString()->ToCharArray());
+			Append(f->ToString());
 		}
 
 		#~
@@ -4726,7 +4726,23 @@ each(i : cities) {
 		@param str string object
 		~#
 		method : public : Append(str : String) ~ Nil {
-			Append(str->ToCharArray());
+			size := str->Size();
+			if(size = 0) {
+				return;
+			};
+			max := @pos + size;
+			if(max >= @max) {
+				@max += max << 1;
+				temp := Char->New[@max];
+				Runtime->Copy(temp, 0, @string, 0, @string->Size());
+				@string := temp;
+			};
+			i := 0;
+			while(i < size) {
+				@string[@pos] := str->Get(i);
+				@pos += 1;
+				i += 1;
+			};
 		}
 		
 		#~
@@ -4756,10 +4772,9 @@ each(i : cities) {
 		@param length number of characters to copy
 		~#
 		method : public : native : Append(array : Char[], offset : Int, length : Int) ~ Nil {
-			if(offset < 0) {
+			if(offset < 0 | length <= 0) {
 				return;
 			};
-			
 			max := @pos + length;
 			if(max >= @max) {
 				@max += max << 1;
@@ -4767,12 +4782,8 @@ each(i : cities) {
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
 			};
-
-			end := offset + length;
-			for(i := offset; i < end & array[i] <> '\0'; i += 1;) {
-				@string[@pos] := array[i];
-				@pos += 1;
-			};
+			Runtime->Copy(@string, @pos, array, offset, length);
+			@pos += length;
 		}
 		
 		#~
@@ -4802,10 +4813,9 @@ each(i : cities) {
 		@param length number of bytes to copy
 		~#
 		method : public : native : Append(array : Byte[], offset : Int, length : Int) ~ Nil {
-			if(offset < 0) {
+			if(offset < 0 | length <= 0) {
 				return;
 			};
-
 			max := @pos + length;
 			if(max >= @max) {
 				@max += max << 1;
@@ -4813,11 +4823,12 @@ each(i : cities) {
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
 			};
-
+			i := offset;
 			end := offset + length;
-			for(i := offset; i < end & array[i] <> '\0'; i += 1;) {
+			while(i < end) {
 				@string[@pos] := array[i];
 				@pos += 1;
+				i += 1;
 			};
 		}
 
