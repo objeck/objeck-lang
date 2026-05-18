@@ -128,7 +128,7 @@ each(i : found) {
 		@param stream_in string to match against
 		@return matched string if found, empty string otherwise
 		~#
-		method : public : native : FindFirst(stream_in : String) ~ Result {
+		method : public : FindFirst(stream_in : String) ~ Result {
 			is_anchored := @expressions->Size() > 0 & @expressions->Get(0)->GetType() = Expression->Type->STARTS_ANCHOR;
 
 			first_char : Char := '\0';
@@ -168,7 +168,7 @@ each(i : found) {
 		@param stream_in string to match against
 		@return vector of string matches
 		~#
-		method : public : native : Find(stream_in : String) ~ Vector<Result> {
+		method : public : Find(stream_in : String) ~ Vector<Result> {
 			matches := Vector->New()<Result>;
 
 			is_anchored := @expressions->Size() > 0 & @expressions->Get(0)->GetType() = Expression->Type->STARTS_ANCHOR;
@@ -218,7 +218,7 @@ each(i : found) {
 		@param replace string to replace the match with
 		@return replaced string
 		~#
-		method : public : native : ReplaceFirst(stream_in : String, replace : String) ~ String {
+		method : public : ReplaceFirst(stream_in : String, replace : String) ~ String {
 			left := 0;
 			while(left < stream_in->Size()) {
 				right := Evaluate(stream_in, left);
@@ -240,7 +240,7 @@ each(i : found) {
 		@param replace string to replace the match with
 		@return replaced string
 		~#
-		method : public : native : ReplaceAll(stream_in : String, replace : String) ~ String {
+		method : public : ReplaceAll(stream_in : String, replace : String) ~ String {
 			left := 0;
 			while(left < stream_in->Size()) {
 				right := Evaluate(stream_in, left);
