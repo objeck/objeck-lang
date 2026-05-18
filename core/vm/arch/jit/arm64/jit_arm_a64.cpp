@@ -926,7 +926,15 @@ void JitArm64::ProcessInstructions() {
     case JMP:
       ProcessJump(instr);
       break;
-      
+
+    case JMP_TABLE:
+      ProcessJumpTable(instr);
+      break;
+
+    case JMP_TABLE_SLOT:
+      // consumed inline by ProcessJumpTable; unreachable in main dispatch
+      break;
+
     case LBL:
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"LBL: id=" << instr->GetOperand() << endl;
@@ -1131,6 +1139,92 @@ void JitArm64::ProcessJump(StackInstr* instr) {
     delete left;
     left = nullptr;
   }
+}
+
+void JitArm64::ProcessJumpTable(StackInstr* instr) {
+  FlushLocalCache();
+
+  const long base = instr->GetOperand();
+  const long size = instr->GetOperand2();
+  const long default_ip = instr->GetOperand3();
+
+  // pop select value from working stack
+  RegInstr* value_ri = working_stack.front();
+  working_stack.pop_front();
+
+  RegisterHolder* val_holder = nullptr;
+  switch(value_ri->GetType()) {
+  case IMM_INT:
+    val_holder = GetRegister();
+    move_imm_reg(value_ri->GetOperand(), val_holder->GetRegister());
+    break;
+  case REG_INT:
+    val_holder = value_ri->GetRegister();
+    break;
+  case MEM_INT:
+    val_holder = GetRegister();
+    move_mem_reg((long)value_ri->GetOperand(), SP, val_holder->GetRegister());
+    break;
+  default:
+    compile_success = false;
+    delete value_ri;
+    return;
+  }
+  delete value_ri;
+
+  Register val_reg = val_holder->GetRegister();
+
+  // val_reg -= base  (wraps to large unsigned if value < base)
+  sub_imm_reg((long)base, val_reg);
+
+  // cmp val_reg, size (unsigned compare)
+  cmp_imm_reg((long)size, val_reg);
+
+  // B.HS default_ip  (unsigned >=; handles both < 0 and >= size cases)
+  AddMachineCode(0x54000002); // B.HS placeholder
+  jmp_table_oob_offsets.emplace_back(code_index - 1, default_ip);
+
+  // get second register for table base pointer
+  RegisterHolder* base_holder = GetRegister();
+  Register base_reg = base_holder->GetRegister();
+
+  // ADR base_reg, #20  — points 5 instruction-slots (20 bytes) ahead to table_data
+  // 5 slots: add-lsl, ldr-w, add-reg, br, then table_data[0]
+  // ADR encoding: 0x10000000 | (immlo<<29) | (immhi<<5) | rd
+  // offset=20: immlo=0b00 (bits 1:0 of 20), immhi=5 (bits 20:2 of 20)
+  AddMachineCode(0x100000A0 | (uint32_t)base_reg); // ADR base_reg, #20
+
+  // ADD val_reg, base_reg, val_reg, LSL #2  → val_reg = &table_data[val_reg]
+  // ARM64: ADD Xd, Xn, Xm, LSL #2 = 0x8B000800 | (Xm<<16) | (Xn<<5) | Xd
+  AddMachineCode(0x8B000800 | ((uint32_t)val_reg << 16) | ((uint32_t)base_reg << 5) | (uint32_t)val_reg);
+
+  // LDR w_val, [val_reg, #0]  — load 32-bit zero-extended byte offset from table
+  // 0xB9400000 | (src<<5) | dest  with offset=0
+  move_mem32_reg(0, val_reg, val_reg);
+
+  // ADD base_reg, base_reg, val_reg  — compute target: table_start + byte_offset
+  add_reg_reg(val_reg, base_reg);
+
+  // BR base_reg
+  AddMachineCode(0xD61F0000 | ((uint32_t)base_reg << 5));
+
+  // emit size zero-words for the byte-offset table (patched in second pass)
+  JmpTableFixup fixup;
+  fixup.table_data_code_index = code_index;
+  for(long s = 0; s < size; s++) {
+    AddMachineCode(0);
+  }
+
+  ReleaseRegister(val_holder);
+  ReleaseRegister(base_holder);
+
+  // consume the following JMP_TABLE_SLOT instructions and record targets
+  for(long s = 0; s < size; s++) {
+    StackInstr* slot = method->GetInstruction(instr_index++);
+    slot->SetOffset(code_index);
+    fixup.slot_targets.push_back(slot->GetOperand()); // 1-based instr index of case-body LBL
+  }
+  jmp_table_fixups.push_back(std::move(fixup));
 }
 
 void JitArm64::ProcessReturnParameters(MemoryType type) {
@@ -4779,6 +4873,8 @@ static bool CanJitInstruction(InstructionType type) {
   case MTHD_CALL:
   case MTHD_CALL_JIT:
   case JMP:
+  case JMP_TABLE:
+  case JMP_TABLE_SLOT:
   case LBL:
   case RTRN:
     // memory allocation
@@ -5012,7 +5108,30 @@ bool JitArm64::Compile(StackMethod* cm)
       const long offset = epilog_index - index + 7;
       code[index] |= offset << 5;
     }
-    
+
+    // JMP_TABLE: patch B.HS out-of-bounds exits
+    for(auto& oob : jmp_table_oob_offsets) {
+      const long src_offset = oob.first;
+      const long dest_offset = method->GetInstruction(oob.second - 1)->GetOffset();
+      const long offset = dest_offset - src_offset;
+      if(offset < 0) {
+        code[src_offset] |= 0xFFFFE0;
+        code[src_offset] ^= (abs(offset) - 1) << 5;
+      }
+      else {
+        code[src_offset] |= offset << 5;
+      }
+    }
+
+    // JMP_TABLE: fill slot offset table (byte offsets from table_data start to each case body)
+    for(auto& fixup : jmp_table_fixups) {
+      for(size_t s = 0; s < fixup.slot_targets.size(); s++) {
+        const long target_code_idx = method->GetInstruction(fixup.slot_targets[s] - 1)->GetOffset();
+        const uint32_t byte_offset = (uint32_t)((target_code_idx - fixup.table_data_code_index) * (long)sizeof(uint32_t));
+        code[fixup.table_data_code_index + (long)s] = byte_offset;
+      }
+    }
+
     // update consts pools
     int ints_index = 0;
     unordered_map<size_t, size_t> int_pool_cache;
