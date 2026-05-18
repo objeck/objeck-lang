@@ -1,3 +1,12 @@
+v2026.5.3 (May 18, 2026)
+===
+Three-tier select dispatch with native jump table (AMD64+ARM64), String->Split fix, spectralnorm fix and optimization.
+
+v2026.5.3
+- Three-tier select dispatch (AMD64 + ARM64 JIT): direct compare for 1 case, linear scan for 2-5 integer cases, O(1) native jump table for 6+ dense integer cases, binary search tree for sparse/string cases
+- Fixed String->Split(Char): last token returned oversized result due to using array capacity instead of logical string length
+- Fixed bench_spectralnorm_native: native allocation bug caused garbage output (~3.84e-156); also rewrote inner loops with incremental float denominator to eliminate I2F conversions
+
 v2026.5.2 (May 17, 2026)
 ===
 HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, ARM64 Windows support, WebSocket hardening.

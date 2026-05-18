@@ -8,7 +8,7 @@ bundle Default {
 			Approximate(n)->PrintLine();
 		}
 
-		# not native: allocates arrays; compute is delegated to native inner functions
+		# not native: allocates arrays; hot compute delegated to native inner functions
 		function : Approximate(n : Int) ~ Float {
 			u := Float->New[n];
 			for(i:=0; i<n; i+=1;) { u[i] := 1.0; };
@@ -30,21 +30,38 @@ bundle Default {
 			return (vBv/vv)->Sqrt();
 		}
 
-		function : native : A(i : Int, j : Int) ~ Float {
-			return 1.0/((i+j)*(i+j+1)/2 +i+1);
-		}
-
+		# Incremental denominator: d(i,j) = (i+j)*(i+j+1)/2 + i+1.
+		# d(i,0) = i*(i+1)/2 + i+1; d(i,j+1) = d(i,j) + (i+j+1).
+		# Step starts at i+1 and increases by 1 each iteration.
+		# Eliminates I2F and integer multiply from the inner loop.
 		function : native : MultiplyAv(n : Int, v : Float[], Av : Float[]) ~ Nil {
 			for(i:=0; i<n; i+=1;){
-				Av[i] := 0;
-				for (j:=0; j<n; j+=1;) { Av[i] += A(i,j)*v[j]; };
+				sum := 0.0;
+				d := (i*(i+1)/2 + i + 1)->As(Float);
+				step := (i + 1)->As(Float);
+				for(j:=0; j<n; j+=1;) {
+					sum += v[j] / d;
+					d += step;
+					step += 1.0;
+				};
+				Av[i] := sum;
 			};
 		}
 
+		# Incremental denominator for transpose: e(i,j) = (i+j)*(i+j+1)/2 + j+1.
+		# e(i,0) = i*(i+1)/2 + 1; e(i,j+1) = e(i,j) + (i+j+2).
+		# Step starts at i+2 and increases by 1 each iteration.
 		function : native : MultiplyAtv(n : Int, v : Float[], Atv : Float[]) ~ Nil {
 			for(i:=0;i<n;i+=1;){
-				Atv[i] := 0;
-				for(j:=0; j<n; j+=1;) { Atv[i] += A(j,i)*v[j]; };
+				sum := 0.0;
+				d := (i*(i+1)/2 + 1)->As(Float);
+				step := (i + 2)->As(Float);
+				for(j:=0; j<n; j+=1;) {
+					sum += v[j] / d;
+					d += step;
+					step += 1.0;
+				};
+				Atv[i] := sum;
 			};
 		}
 

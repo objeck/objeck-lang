@@ -2,6 +2,18 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.5.3] - 2026-05-18
+
+### New Features
+- **Three-tier `select` dispatch** (AMD64 + ARM64 JIT): single-case `select` compiles to a direct compare-and-jump; 2–5 integer cases use a linear scan; 6+ dense integer cases emit a native O(1) jump table (`JMP_TABLE`/`JMP_TABLE_SLOT` opcodes); sparse or string `select` uses a binary search tree — matching the fastest dispatch strategy for each shape automatically.
+
+### Bug Fixes
+- Fixed `String->Split(Char)`: last token was sliced using `@string->Size()` (array capacity) instead of `@pos` (logical string length), producing an oversized trailing token on strings that did not fill the backing array.
+- Fixed `bench_spectralnorm_native` benchmark: allocating arrays inside a `native` JIT function caused op-stack imbalance during nested JIT-to-interpreter callbacks, producing a garbage result (~3.84e-156 instead of ~1.274).
+
+### Performance
+- `bench_spectralnorm_native`: rewrote `MultiplyAv`/`MultiplyAtv` with an incremental floating-point denominator, eliminating `I2F` conversions from the inner loop (2000×2000×40 iterations). Only two integer-to-float conversions now occur per outer row instead of per element.
+
 ## [v2026.5.2] - 2026-05-17
 
 ### New Features
