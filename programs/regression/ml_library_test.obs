@@ -1,4 +1,5 @@
 # EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
 use System.ML, Collection;
 
 class MlLibraryTest {
