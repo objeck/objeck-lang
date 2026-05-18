@@ -1775,6 +1775,20 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, TRY_END));
       break;
 
+    case JMP_TABLE: {
+      const INT_VALUE base = ReadInt();
+      const INT_VALUE range = ReadInt();
+      const INT_VALUE default_ip = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, JMP_TABLE, base, range, default_ip));
+    }
+      break;
+
+    case JMP_TABLE_SLOT: {
+      const INT_VALUE target_ip = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, JMP_TABLE_SLOT, target_ip));
+    }
+      break;
+
     default: {
 #ifdef _DEBUG
       InstructionType instr = (InstructionType)type;

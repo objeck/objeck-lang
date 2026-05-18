@@ -1,0 +1,146 @@
+# Single-case, linear (2-5 cases), jump-table (dense >=6), and binary-tree (sparse) paths
+
+class SelectDispatchTest {
+    function : Main(args : String[]) ~ Nil {
+        pass := true;
+
+        # --- single-case select ---
+        x := 42;
+        r1 := "";
+        select(x) {
+            label 42: { r1 := "hit"; }
+        };
+        if(r1->Compare("hit") <> 0) {
+            "  FAIL: single-case match"->PrintLine();
+            pass := false;
+        };
+
+        r2 := "";
+        select(x) {
+            label 99: { r2 := "hit"; }
+            other: { r2 := "other"; }
+        };
+        if(r2->Compare("other") <> 0) {
+            "  FAIL: single-case other"->PrintLine();
+            pass := false;
+        };
+
+        # --- linear scan (2 cases) ---
+        y := 2;
+        r3 := "";
+        select(y) {
+            label 1: { r3 := "one"; }
+            label 2: { r3 := "two"; }
+        };
+        if(r3->Compare("two") <> 0) {
+            "  FAIL: linear 2-case"->PrintLine();
+            pass := false;
+        };
+
+        # --- linear scan (5 cases) ---
+        z := 4;
+        r4 := 0;
+        select(z) {
+            label 1: { r4 := 10; }
+            label 2: { r4 := 20; }
+            label 3: { r4 := 30; }
+            label 4: { r4 := 40; }
+            label 5: { r4 := 50; }
+        };
+        if(r4 <> 40) {
+            "  FAIL: linear 5-case"->PrintLine();
+            pass := false;
+        };
+
+        # --- linear scan with other ---
+        w := 99;
+        r5 := 0;
+        select(w) {
+            label 1: { r5 := 1; }
+            label 2: { r5 := 2; }
+            label 3: { r5 := 3; }
+            other: { r5 := -1; }
+        };
+        if(r5 <> -1) {
+            "  FAIL: linear other"->PrintLine();
+            pass := false;
+        };
+
+        # --- jump table (dense 12 cases: 0..11) ---
+        each(i : 12) {
+            result := 0;
+            select(i) {
+                label 0:  { result := 100; }
+                label 1:  { result := 101; }
+                label 2:  { result := 102; }
+                label 3:  { result := 103; }
+                label 4:  { result := 104; }
+                label 5:  { result := 105; }
+                label 6:  { result := 106; }
+                label 7:  { result := 107; }
+                label 8:  { result := 108; }
+                label 9:  { result := 109; }
+                label 10: { result := 110; }
+                label 11: { result := 111; }
+            };
+            if(result <> 100 + i) {
+                "  FAIL: jump-table case {$i}"->PrintLine();
+                pass := false;
+            };
+        };
+
+        # --- jump table with holes and other ---
+        r6 := 0;
+        select(7) {
+            label 0:  { r6 := 0; }
+            label 2:  { r6 := 2; }
+            label 4:  { r6 := 4; }
+            label 6:  { r6 := 6; }
+            label 8:  { r6 := 8; }
+            label 10: { r6 := 10; }
+            other: { r6 := -1; }
+        };
+        if(r6 <> -1) {
+            "  FAIL: jump-table hole other"->PrintLine();
+            pass := false;
+        };
+
+        # --- binary tree (sparse: 1, 100, 10000, 1000000, 100000000, 10000000000) ---
+        r7 := 0;
+        v := 10000;
+        select(v) {
+            label 1:           { r7 := 1; }
+            label 100:         { r7 := 2; }
+            label 10000:       { r7 := 3; }
+            label 1000000:     { r7 := 4; }
+            label 100000000:   { r7 := 5; }
+            label 10000000000: { r7 := 6; }
+        };
+        if(r7 <> 3) {
+            "  FAIL: binary-tree sparse"->PrintLine();
+            pass := false;
+        };
+
+        # --- string select (5 labels: uses linear scan on hashed strings) ---
+        s := "banana";
+        r8 := "";
+        select(s) {
+            label "apple":  { r8 := "apple"; }
+            label "banana": { r8 := "banana"; }
+            label "cherry": { r8 := "cherry"; }
+            label "date":   { r8 := "date"; }
+            label "elderberry": { r8 := "elderberry"; }
+        };
+        if(r8->Compare("banana") <> 0) {
+            "  FAIL: string select"->PrintLine();
+            pass := false;
+        };
+
+        if(pass) {
+            "PASS: select dispatch tests"->PrintLine();
+        }
+        else {
+            "FAIL: select dispatch tests"->PrintLine();
+        };
+    }
+}

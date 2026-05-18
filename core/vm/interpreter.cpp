@@ -228,6 +228,24 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
       }
       continue;
 
+    case JMP_TABLE: {
+      const INT64_VALUE value = (INT64_VALUE)op_stack[--(*stack_pos)];
+      const long base = instr->GetOperand();
+      const long size = instr->GetOperand2();
+      const long index = (long)(value - (INT64_VALUE)base);
+      if(index >= 0 && index < size) {
+        ip += index; // ip already advanced past JMP_TABLE; slot[index] is at ip+index
+      }
+      else {
+        ip = instr->GetOperand3();
+      }
+      continue;
+    }
+
+    case JMP_TABLE_SLOT:
+      ip = instr->GetOperand();
+      continue;
+
     default: {
       DispatchResult result = instr_dispatch[instr->GetType()](ctx);
       if(result == DispatchResult::RETURN_JIT) {

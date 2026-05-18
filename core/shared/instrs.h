@@ -193,8 +193,11 @@ namespace instructions {
     // try/error handling
     TRY_START,
     TRY_END,
+    // jump table dispatch (new opcodes at end to preserve existing .obl compatibility)
+    JMP_TABLE,      // O(1) integer dispatch: pop value, subtract base, index table
+    JMP_TABLE_SLOT, // table entry: jumps to resolved case body
     // system directives
-    END_STMTS,    
+    END_STMTS,
   };
 
   // memory reference context, used for

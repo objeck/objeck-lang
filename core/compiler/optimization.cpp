@@ -1106,11 +1106,18 @@ IntermediateBlock* ItermediateOptimizer::CleanLabelsLocation(IntermediateBlock* 
       IntermediateInstruction* instr = input_instrs[i];
 
       // update jumps
-      if(instr->GetType() == JMP || instr->GetType() == TRY_START) {
+      if(instr->GetType() == JMP || instr->GetType() == TRY_START || instr->GetType() == JMP_TABLE_SLOT) {
         const long jump_id = instr->GetOperand();
         std::map<long, IntermediateInstruction*>::iterator jump_result = lbl_ids.find(jump_id);
         if(jump_result != lbl_ids.end()) {
           instr->SetOperand(jump_result->second->GetOperand());
+        }
+      }
+      if(instr->GetType() == JMP_TABLE) {
+        const long def_id = instr->GetOperand3();
+        std::map<long, IntermediateInstruction*>::iterator def_result = lbl_ids.find(def_id);
+        if(def_result != lbl_ids.end()) {
+          instr->SetOperand3(def_result->second->GetOperand());
         }
       }
     }
@@ -1156,6 +1163,20 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
       assert(result != lbl_offsets.end());
 #endif
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRY_START, result->second, instr->GetOperand2()));
+    }
+      break;
+
+    case JMP_TABLE: {
+      std::unordered_map<int, int>::iterator def_result = lbl_offsets.find((int)instr->GetOperand3());
+      const long default_ip = (def_result != lbl_offsets.end()) ? (long)def_result->second : 0;
+      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP_TABLE, instr->GetOperand(), instr->GetOperand2(), default_ip));
+    }
+      break;
+
+    case JMP_TABLE_SLOT: {
+      std::unordered_map<int, int>::iterator slot_result = lbl_offsets.find((int)instr->GetOperand());
+      const long target_ip = (slot_result != lbl_offsets.end()) ? (long)slot_result->second : 0;
+      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP_TABLE_SLOT, target_ip));
     }
       break;
 
@@ -2038,12 +2059,18 @@ IntermediateBlock* ItermediateOptimizer::DeadBlockElimination(IntermediateBlock*
   IntermediateBlock* outputs = new IntermediateBlock;
   std::vector<IntermediateInstruction*> input_instrs = inputs->GetInstructions();
 
-  // Collect all reachable label IDs (JMP targets + TRY_START handler labels)
+  // Collect all reachable label IDs (JMP targets + TRY_START handler labels + JMP_TABLE targets)
   std::unordered_set<long> jmp_targets;
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     const auto type = input_instrs[i]->GetType();
     if(type == JMP || type == TRY_START) {
       jmp_targets.insert(input_instrs[i]->GetOperand());
+    }
+    else if(type == JMP_TABLE) {
+      jmp_targets.insert(input_instrs[i]->GetOperand3()); // default label
+    }
+    else if(type == JMP_TABLE_SLOT) {
+      jmp_targets.insert(input_instrs[i]->GetOperand()); // case body label
     }
   }
 

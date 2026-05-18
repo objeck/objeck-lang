@@ -595,6 +595,20 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       mthd_instrs[i] = StackInstr(line_num, LBL, ReadInt());
       break;
 
+    case JMP_TABLE: {
+      const long base = ReadInt();
+      const long size = ReadInt();
+      const long default_ip = ReadInt();
+      mthd_instrs[i] = StackInstr(line_num, JMP_TABLE, base, size, default_ip);
+    }
+      break;
+
+    case JMP_TABLE_SLOT: {
+      const long target_ip = ReadInt();
+      mthd_instrs[i] = StackInstr(line_num, JMP_TABLE_SLOT, target_ip);
+    }
+      break;
+
     case OBJ_TYPE_OF:
       mthd_instrs[i] = StackInstr(line_num, OBJ_TYPE_OF, ReadInt());
       break;

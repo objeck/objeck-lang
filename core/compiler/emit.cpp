@@ -428,6 +428,16 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     WriteString(operand6, out_stream);
     break;
 
+  case JMP_TABLE:
+    WriteInt(operand, out_stream);
+    WriteInt(operand2, out_stream);
+    WriteInt(operand3, out_stream);
+    break;
+
+  case JMP_TABLE_SLOT:
+    WriteInt(operand, out_stream);
+    break;
+
   case JMP:
   case DYN_MTHD_CALL:
   case LOAD_INT_VAR:
