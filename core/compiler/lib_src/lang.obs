@@ -6324,7 +6324,7 @@ each(i : cities) {
 			};
 
 			if(start <> 0) {
-				strings[count++] := String->New(@string, start, @string->Size() - start);
+				strings[count++] := String->New(@string, start, @pos - start);
 			};
 
 			return strings;
