@@ -136,6 +136,50 @@ class SelectDispatchTest {
             pass := false;
         };
 
+        # --- string BST (6 labels: uses BST on hashed strings) ---
+        r9 := "";
+        select("delta") {
+            label "alpha":   { r9 := "alpha"; }
+            label "beta":    { r9 := "beta"; }
+            label "gamma":   { r9 := "gamma"; }
+            label "delta":   { r9 := "delta"; }
+            label "epsilon": { r9 := "epsilon"; }
+            label "zeta":    { r9 := "zeta"; }
+        };
+        if(r9->Compare("delta") <> 0) {
+            "  FAIL: string BST 6-label match"->PrintLine();
+            pass := false;
+        };
+
+        r10 := "";
+        select("zeta") {
+            label "alpha":   { r10 := "alpha"; }
+            label "beta":    { r10 := "beta"; }
+            label "gamma":   { r10 := "gamma"; }
+            label "delta":   { r10 := "delta"; }
+            label "epsilon": { r10 := "epsilon"; }
+            label "zeta":    { r10 := "zeta"; }
+        };
+        if(r10->Compare("zeta") <> 0) {
+            "  FAIL: string BST 6-label last-slot match"->PrintLine();
+            pass := false;
+        };
+
+        r11 := "";
+        select("nomatch") {
+            label "alpha":   { r11 := "alpha"; }
+            label "beta":    { r11 := "beta"; }
+            label "gamma":   { r11 := "gamma"; }
+            label "delta":   { r11 := "delta"; }
+            label "epsilon": { r11 := "epsilon"; }
+            label "zeta":    { r11 := "zeta"; }
+            other: { r11 := "other"; }
+        };
+        if(r11->Compare("other") <> 0) {
+            "  FAIL: string BST 6-label no-match"->PrintLine();
+            pass := false;
+        };
+
         if(pass) {
             "PASS: select dispatch tests"->PrintLine();
         }

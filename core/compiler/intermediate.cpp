@@ -64,18 +64,21 @@ SelectNode* SelectArrayTree::Divide(int start, int end)
 {
   const int size =  end - start + 1;
   if(size < 4) {
-    if(size == 2) {
+    if(size == 1) {
+      return new SelectNode(++emitter->conditional_label, values[start]);
+    }
+    else if(size == 2) {
       SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
                                         new SelectNode(++emitter->conditional_label, values[start]),
                                         new SelectNode(++emitter->conditional_label, values[start + 1]));
-      return node;  
+      return node;
     }
     else {
-      SelectNode* node = new SelectNode(++emitter->conditional_label, 
+      SelectNode* node = new SelectNode(++emitter->conditional_label,
                                         values[start + 1], values[start + 2],
                                         new SelectNode(++emitter->conditional_label, values[start]),
                                         new SelectNode(++emitter->conditional_label, values[start + 2]));
-      return node;  
+      return node;
     }
   }
   else {
