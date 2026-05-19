@@ -548,7 +548,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case LOAD_INT64_LIT:
-      mthd_instrs[i] = StackInstr(line_num, LOAD_INT64_LIT, ReadInt64());
+      mthd_instrs[i] = StackInstr(line_num, LOAD_INT64_LIT, (long long)ReadInt64());
       break;
 
     case LOAD_CHAR_LIT:
