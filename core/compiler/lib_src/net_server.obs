@@ -1884,12 +1884,13 @@ class RequestHandler from HttpsRequestHandler {
 				request := @client->ReadLine();
 				if(@is_debug) {
 					request_address := @client->GetAddress();
-					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
+					request_str := request <> Nil ? request : "";
+					"===\nRequest: '{$request_str}' from '{$request_address}'\n==="->PrintLine();
 				};
 
 				# parse request
 				request_verb : String; request_path : String;
-				if(request->Size() > 0) {
+				if(request <> Nil & request->Size() > 0) {
 					request_parts := request->Split(" ");
 					if(request_parts->Size() = 3) {
 						request_verb := request_parts[0];
@@ -2163,12 +2164,13 @@ class RequestHandler from HttpsRequestHandler {
 				request := @client->ReadLine();
 				if(@is_debug) {
 					request_address := @client->GetAddress();
-					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
+					request_str := request <> Nil ? request : "";
+					"===\nRequest: '{$request_str}' from '{$request_address}'\n==="->PrintLine();
 				};
 
 				# parse request
 				request_verb : String; request_path : String;
-				if(request->Size() > 0) {
+				if(request <> Nil & request->Size() > 0) {
 					request_parts := request->Split(" ");
 					if(request_parts->Size() = 3) {
 						request_verb := request_parts[0];
