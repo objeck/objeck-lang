@@ -151,14 +151,14 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
     if(node->GetOperation() == CASE_LESS) {
       const INT64_VALUE value = node->GetValue();
       // evaluate less then
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
-    } 
+    }
     else if(node->GetOperation() == CASE_EQUAL) {
       const INT64_VALUE value = node->GetValue();
       // evaluate equal to
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
       // true
@@ -166,21 +166,21 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
       // false
       if(select->GetOther()) {
         emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, other_label, -1));
-      } 
+      }
       else {
         emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, end_label, -1));
       }
-    } 
+    }
     else {
       // evaluate equal to
       const INT64_VALUE value = node->GetValue();
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
       // true
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, value_label_map[value], true));
       // evaluate less then
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, node->GetValue2()));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(emitter->cur_line_num, node->GetValue2()));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
     }
@@ -3314,7 +3314,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
       other_label = ++conditional_label;
     }
 
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(select_stmt, cur_line_num, value));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(select_stmt, cur_line_num, value));
     EmitExpression(select_stmt->GetAssignment()->GetExpression());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
@@ -3389,7 +3389,7 @@ void IntermediateEmitter::EmitSelectLinear(Select* select_stmt)
 
   // sequential equality checks
   for(auto& entry : label_statements) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(select_stmt, cur_line_num, entry.first));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(select_stmt, cur_line_num, entry.first));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, value_label_map[entry.first], 1));

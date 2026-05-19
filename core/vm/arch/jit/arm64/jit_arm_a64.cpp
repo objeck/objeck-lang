@@ -363,6 +363,7 @@ void JitArm64::ProcessInstructions() {
       // load literal
     case LOAD_CHAR_LIT:
     case LOAD_INT_LIT:
+    case LOAD_INT64_LIT:
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"LOAD_INT: value=" << instr->GetOperand() << L"; regs=" << aval_regs.size() << endl;
 #endif
@@ -4798,6 +4799,7 @@ static bool CanJitInstruction(InstructionType type) {
     // loads
   case LOAD_CHAR_LIT:
   case LOAD_INT_LIT:
+  case LOAD_INT64_LIT:
   case LOAD_FLOAT_LIT:
   case LOAD_INST_MEM:
   case LOAD_CLS_MEM:

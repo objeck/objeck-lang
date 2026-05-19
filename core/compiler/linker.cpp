@@ -1105,7 +1105,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case LOAD_INT_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, ReadInt64()));
       break;
-      
+
+    case LOAD_INT64_LIT:
+      instrs.push_back(new LibraryInstr(line_num, LOAD_INT64_LIT, ReadInt64()));
+      break;
+
     case LOAD_CHAR_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_LIT, (int)ReadChar()));
       break;

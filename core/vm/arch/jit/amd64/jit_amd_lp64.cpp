@@ -385,13 +385,14 @@ void JitAmd64::ProcessInstructions() {
       // load literal
     case LOAD_CHAR_LIT:
     case LOAD_INT_LIT:
+    case LOAD_INT64_LIT:
 #ifdef _DEBUG_JIT
-      std::wcout << L"LOAD_INT: value=" << instr->GetOperand() 
+      std::wcout << L"LOAD_INT: value=" << instr->GetOperand()
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       working_stack.push_front(new RegInstr(instr));
       break;
-      
+
       // float literal
     case LOAD_FLOAT_LIT:
 #ifdef _DEBUG_JIT
@@ -5763,6 +5764,7 @@ static bool CanJitInstruction(InstructionType type) {
     // loads
   case LOAD_CHAR_LIT:
   case LOAD_INT_LIT:
+  case LOAD_INT64_LIT:
   case LOAD_FLOAT_LIT:
   case LOAD_INST_MEM:
   case LOAD_CLS_MEM:
@@ -6216,6 +6218,7 @@ RegInstr::RegInstr(StackInstr* si)
     break;
 
   case LOAD_INT_LIT:
+  case LOAD_INT64_LIT:
     type = IMM_INT;
     operand = si->GetInt64Operand();
     break;

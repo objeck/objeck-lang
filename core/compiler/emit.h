@@ -283,6 +283,12 @@ namespace backend {
       return tmp;
     }
 
+    IntermediateInstruction* MakeInt64LitInstruction(frontend::Statement* s, long l, INT64_VALUE o7) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(s, nullptr, l, LOAD_INT64_LIT, o7);
+      instructions.push_back(tmp);
+      return tmp;
+    }
+
     IntermediateInstruction* MakeInstruction(frontend::Statement* s, long l, InstructionType t, long o1, long o2) {
       IntermediateInstruction* tmp = new IntermediateInstruction(s, nullptr, l, t, o1, o2);
       instructions.push_back(tmp);
@@ -327,6 +333,12 @@ namespace backend {
 
     IntermediateInstruction* MakeIntLitInstruction(frontend::Statement* s, frontend::Expression* e, long l, INT64_VALUE o7) {
       IntermediateInstruction* tmp = new IntermediateInstruction(s, e, l, LOAD_INT_LIT, o7);
+      instructions.push_back(tmp);
+      return tmp;
+    }
+
+    IntermediateInstruction* MakeInt64LitInstruction(frontend::Statement* s, frontend::Expression* e, long l, INT64_VALUE o7) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(s, e, l, LOAD_INT64_LIT, o7);
       instructions.push_back(tmp);
       return tmp;
     }
@@ -378,6 +390,12 @@ namespace backend {
 
     IntermediateInstruction* MakeIntLitInstruction(long l, INT64_VALUE o7) {
       IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, LOAD_INT_LIT, o7);
+      instructions.push_back(tmp);
+      return tmp;
+    }
+
+    IntermediateInstruction* MakeInt64LitInstruction(long l, INT64_VALUE o7) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(nullptr, nullptr, l, LOAD_INT64_LIT, o7);
       instructions.push_back(tmp);
       return tmp;
     }

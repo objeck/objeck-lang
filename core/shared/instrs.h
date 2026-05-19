@@ -194,8 +194,9 @@ namespace instructions {
     TRY_START,
     TRY_END,
     // jump table dispatch (new opcodes at end to preserve existing .obl compatibility)
-    JMP_TABLE,      // O(1) integer dispatch: pop value, subtract base, index table
-    JMP_TABLE_SLOT, // table entry: jumps to resolved case body
+    JMP_TABLE,        // O(1) integer dispatch: pop value, subtract base, index table
+    JMP_TABLE_SLOT,   // table entry: jumps to resolved case body
+    LOAD_INT64_LIT,   // 64-bit integer literal for select dispatch (hash values)
     // system directives
     END_STMTS,
   };

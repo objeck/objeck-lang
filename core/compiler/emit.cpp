@@ -384,6 +384,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
 
   switch(type) {
   case LOAD_INT_LIT:
+  case LOAD_INT64_LIT:
     WriteInt64(operand7, out_stream);
     break;
 
@@ -495,6 +496,10 @@ void IntermediateInstruction::Debug(size_t i) {
 
   case LOAD_INT_LIT:
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"LOAD_INT_LIT: value=" << operand7 << std::endl;
+    break;
+
+  case LOAD_INT64_LIT:
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"LOAD_INT64_LIT: value=" << operand7 << std::endl;
     break;
 
   case LOAD_CHAR_LIT: {

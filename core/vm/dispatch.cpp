@@ -49,6 +49,14 @@ static DispatchResult Handle_LOAD_INT_LIT(DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
+static DispatchResult Handle_LOAD_INT64_LIT(DispatchContext& ctx) {
+#ifdef _DEBUG
+  std::wcout << L"stack oper: LOAD_INT64_LIT; call_pos=" << (*ctx.call_stack_pos) << std::endl;
+#endif
+  ctx.interp->PushInt(ctx.instr->GetInt64Operand(), ctx.op_stack, ctx.stack_pos);
+  return DispatchResult::CONTINUE;
+}
+
 static DispatchResult Handle_LOAD_CHAR_LIT(DispatchContext& ctx) {
 #ifdef _DEBUG
   std::wcout << L"stack oper: LOAD_CHAR_LIT; call_pos=" << (*ctx.call_stack_pos) << std::endl;
@@ -1149,8 +1157,11 @@ OpcodeHandler Runtime::instr_dispatch[] = {
   Handle_JMP_TABLE,             // 143: JMP_TABLE
   Handle_JMP_TABLE_SLOT,        // 144: JMP_TABLE_SLOT
 
-  // End marker (145)
-  Handle_END_STMTS              // 145: END_STMTS
+  // 64-bit integer literal for select dispatch (145)
+  Handle_LOAD_INT64_LIT,        // 145: LOAD_INT64_LIT
+
+  // End marker (146)
+  Handle_END_STMTS              // 146: END_STMTS
 };
 
 static_assert(sizeof(Runtime::instr_dispatch) / sizeof(Runtime::instr_dispatch[0]) == instructions::END_STMTS + 1,

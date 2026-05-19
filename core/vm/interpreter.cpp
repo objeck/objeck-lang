@@ -180,6 +180,7 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     // The default dispatch path falls through to the recovery check below.
     switch(instr->GetType()) {
     case LOAD_INT_LIT:
+    case LOAD_INT64_LIT:
       op_stack[(*stack_pos)++] = (size_t)instr->GetInt64Operand();
       continue;
 
