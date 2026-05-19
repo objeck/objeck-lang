@@ -180,6 +180,89 @@ class SelectDispatchTest {
             pass := false;
         };
 
+        # --- variable string BST (6 labels: runtime HashID path) ---
+        sv6 := "gamma";
+        r12 := "";
+        select(sv6) {
+            label "alpha":   { r12 := "alpha"; }
+            label "beta":    { r12 := "beta"; }
+            label "gamma":   { r12 := "gamma"; }
+            label "delta":   { r12 := "delta"; }
+            label "epsilon": { r12 := "epsilon"; }
+            label "zeta":    { r12 := "zeta"; }
+        };
+        if(r12->Compare("gamma") <> 0) {
+            "  FAIL: variable string BST 6-label mid match"->PrintLine();
+            pass := false;
+        };
+
+        sv6b := "zeta";
+        r13 := "";
+        select(sv6b) {
+            label "alpha":   { r13 := "alpha"; }
+            label "beta":    { r13 := "beta"; }
+            label "gamma":   { r13 := "gamma"; }
+            label "delta":   { r13 := "delta"; }
+            label "epsilon": { r13 := "epsilon"; }
+            label "zeta":    { r13 := "zeta"; }
+        };
+        if(r13->Compare("zeta") <> 0) {
+            "  FAIL: variable string BST 6-label last match"->PrintLine();
+            pass := false;
+        };
+
+        sv6c := "nomatch";
+        r14 := "";
+        select(sv6c) {
+            label "alpha":   { r14 := "alpha"; }
+            label "beta":    { r14 := "beta"; }
+            label "gamma":   { r14 := "gamma"; }
+            label "delta":   { r14 := "delta"; }
+            label "epsilon": { r14 := "epsilon"; }
+            label "zeta":    { r14 := "zeta"; }
+            other: { r14 := "other"; }
+        };
+        if(r14->Compare("other") <> 0) {
+            "  FAIL: variable string BST 6-label no-match"->PrintLine();
+            pass := false;
+        };
+
+        # --- variable string BST (11 labels: mirrors MCP ProcessPost dispatch) ---
+        each(i : 11) {
+            sv11 := "";
+            expected := "";
+            if(i = 0) { sv11 := "ping"; expected := "ping"; }
+            else if(i = 1) { sv11 := "initialize"; expected := "initialize"; }
+            else if(i = 2) { sv11 := "notifications/initialized"; expected := "notifications/initialized"; }
+            else if(i = 3) { sv11 := "logging/setLevel"; expected := "logging/setLevel"; }
+            else if(i = 4) { sv11 := "resources/templates/list"; expected := "resources/templates/list"; }
+            else if(i = 5) { sv11 := "resources/list"; expected := "resources/list"; }
+            else if(i = 6) { sv11 := "resources/read"; expected := "resources/read"; }
+            else if(i = 7) { sv11 := "tools/list"; expected := "tools/list"; }
+            else if(i = 8) { sv11 := "tools/call"; expected := "tools/call"; }
+            else if(i = 9) { sv11 := "prompts/list"; expected := "prompts/list"; }
+            else { sv11 := "prompts/get"; expected := "prompts/get"; };
+
+            r15 := "";
+            select(sv11) {
+                label "ping":                      { r15 := "ping"; }
+                label "initialize":                { r15 := "initialize"; }
+                label "notifications/initialized": { r15 := "notifications/initialized"; }
+                label "logging/setLevel":          { r15 := "logging/setLevel"; }
+                label "resources/templates/list":  { r15 := "resources/templates/list"; }
+                label "resources/list":            { r15 := "resources/list"; }
+                label "resources/read":            { r15 := "resources/read"; }
+                label "tools/list":                { r15 := "tools/list"; }
+                label "tools/call":                { r15 := "tools/call"; }
+                label "prompts/list":              { r15 := "prompts/list"; }
+                label "prompts/get":               { r15 := "prompts/get"; }
+            };
+            if(r15->Compare(expected) <> 0) {
+                "  FAIL: variable string BST 11-label case {$i} ('{$sv11}')"->PrintLine();
+                pass := false;
+            };
+        };
+
         if(pass) {
             "PASS: select dispatch tests"->PrintLine();
         }
