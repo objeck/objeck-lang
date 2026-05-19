@@ -588,8 +588,17 @@ bundle Web.HTTP {
 
 			return buffer;
 		}
+
+		# status_line is already stripped of "HTTP/1.X " prefix (e.g. "200 OK" or "200")
+		function : ParseStatusCode(status_line : String) ~ Int {
+			index := status_line->Find(' ');
+			if(index > 0) {
+				return status_line->SubString(index)->ToInt();
+			};
+			return status_line->ToInt();
+		}
 	}
-	
+
 	#~
 	Downloads web content
 	~#

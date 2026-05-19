@@ -504,13 +504,7 @@ if(html <> Nil) {
 			if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 				status_line := status_line->SubString("HTTP/1."->Size() + 2,
 					status_line->Size() - "HTTP/1."->Size() - 2);
-				index := status_line->Find(' ');
-				if(index > 0) {
-					status_code := status_line->SubString(index)->ToInt();
-				}
-				else {
-					status_code := status_line->ToInt();
-				};
+				status_code := WebCommon->ParseStatusCode(status_line);
 			};
 
 			# Read response headers
@@ -666,13 +660,7 @@ if(html <> Nil) {
 					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2,
 							status_line->Size() - "HTTP/1."->Size() - 2);
-						index := status_line->Find(' ');
-						if(index > 0) {
-							status_code := status_line->SubString(index)->ToInt();
-						}
-						else {
-							status_code := status_line->ToInt();
-						};
+						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
 					if(status_code <> 500) {
@@ -1062,13 +1050,7 @@ if(html <> Nil) {
 					if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 						status_line := status_line->SubString("HTTP/1."->Size() + 2,
 							status_line->Size() - "HTTP/1."->Size() - 2);
-						index := status_line->Find(' ');
-						if(index > 0) {
-							status_code := status_line->SubString(index)->ToInt();
-						}
-						else {
-							status_code := status_line->ToInt();
-						};
+						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
 					if(status_code <> 500) {

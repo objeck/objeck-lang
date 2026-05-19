@@ -2012,7 +2012,7 @@ class RequestHandler from HttpsRequestHandler {
 								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
 							}
 							else {
-								@client->WriteString("HTTP/1.1 400 Bad Request\r\n\r\n");
+								@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
 							};
 						}
 
@@ -2040,12 +2040,16 @@ class RequestHandler from HttpsRequestHandler {
 							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
 						}
 
+						label 400 {
+							@client->WriteString("HTTP/1.1 400 Bad Request\r\n\r\n");
+						}
+
 						label 503 {
 							@client->WriteString("HTTP/1.1 503 Service Unavailable\r\n\r\n");
 						}
 
 						other {
-							@client->WriteString("HTTP/1.1 400 Bad Request\r\n\r\n");
+							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
 						}
 					};
 				};
@@ -2287,7 +2291,7 @@ class RequestHandler from HttpsRequestHandler {
 								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
 							}
 							else {
-								@client->WriteString("HTTP/1.1 400 Bad Request\r\n\r\n");
+								@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
 							};
 						}
 
@@ -2315,12 +2319,16 @@ class RequestHandler from HttpsRequestHandler {
 							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
 						}
 
+						label 400 {
+							@client->WriteString("HTTP/1.1 400 Bad Request\r\n\r\n");
+						}
+
 						label 503 {
 							@client->WriteString("HTTP/1.1 503 Service Unavailable\r\n\r\n");
 						}
 
 						other {
-							@client->WriteString("HTTP/1.1 400 Bad Request\r\n\r\n");
+							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
 						}
 					};
 				};
