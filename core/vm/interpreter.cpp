@@ -180,7 +180,6 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     // The default dispatch path falls through to the recovery check below.
     switch(instr->GetType()) {
     case LOAD_INT_LIT:
-    case LOAD_INT64_LIT:
       op_stack[(*stack_pos)++] = (size_t)instr->GetInt64Operand();
       continue;
 
@@ -227,24 +226,6 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
       else if((INT64_VALUE)op_stack[--(*stack_pos)] == instr->GetOperand2()) {
         ip = instr->GetOperand();
       }
-      continue;
-
-    case JMP_TABLE: {
-      const INT64_VALUE value = (INT64_VALUE)op_stack[--(*stack_pos)];
-      const long base = instr->GetOperand();
-      const long size = instr->GetOperand2();
-      const long index = (long)(value - (INT64_VALUE)base);
-      if(index >= 0 && index < size) {
-        ip += index; // ip already advanced past JMP_TABLE; slot[index] is at ip+index
-      }
-      else {
-        ip = instr->GetOperand3();
-      }
-      continue;
-    }
-
-    case JMP_TABLE_SLOT:
-      ip = instr->GetOperand();
       continue;
 
     default: {

@@ -385,14 +385,13 @@ void JitAmd64::ProcessInstructions() {
       // load literal
     case LOAD_CHAR_LIT:
     case LOAD_INT_LIT:
-    case LOAD_INT64_LIT:
 #ifdef _DEBUG_JIT
-      std::wcout << L"LOAD_INT: value=" << instr->GetOperand()
+      std::wcout << L"LOAD_INT: value=" << instr->GetOperand() 
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       working_stack.push_front(new RegInstr(instr));
       break;
-
+      
       // float literal
     case LOAD_FLOAT_LIT:
 #ifdef _DEBUG_JIT
@@ -987,15 +986,7 @@ void JitAmd64::ProcessInstructions() {
     case JMP:
       ProcessJump(instr);
       break;
-
-    case JMP_TABLE:
-      ProcessJumpTable(instr);
-      break;
-
-    case JMP_TABLE_SLOT:
-      // consumed inline by ProcessJumpTable; unreachable in main dispatch
-      break;
-
+      
     case LBL:
 #ifdef _DEBUG_JIT
       std::wcout << L"______ LBL: id=" << instr->GetOperand() << L" ______" << std::endl;
@@ -1196,115 +1187,6 @@ void JitAmd64::ProcessJump(StackInstr* instr) {
     delete left;
     left = nullptr;
   }
-}
-
-void JitAmd64::ProcessJumpTable(StackInstr* instr) {
-  FlushLocalCache();
-
-  const long base = instr->GetOperand();
-  const long size = instr->GetOperand2();
-  const long default_ip = instr->GetOperand3();
-
-  // pop select value from working stack
-  RegInstr* value_ri = working_stack.front();
-  working_stack.pop_front();
-
-  RegisterHolder* val_holder = nullptr;
-  switch(value_ri->GetType()) {
-  case IMM_INT:
-    val_holder = GetRegister();
-    move_imm_reg(value_ri->GetOperand(), val_holder->GetRegister());
-    break;
-  case REG_INT:
-    val_holder = value_ri->GetRegister();
-    break;
-  case MEM_INT:
-    val_holder = GetRegister();
-    move_mem_reg((long)value_ri->GetOperand(), RBP, val_holder->GetRegister());
-    break;
-  default:
-    compile_success = false;
-    delete value_ri;
-    return;
-  }
-  delete value_ri;
-
-  Register val_reg = val_holder->GetRegister();
-
-  // val_reg -= base  (if value < base, wraps to large unsigned value)
-  sub_imm_reg((int64_t)base, val_reg);
-
-  // unsigned compare: cmp val_reg, size
-  cmp_imm_reg((int64_t)size, val_reg);
-
-  // jae rel32 → out of range, jump to default
-  AddMachineCode(0x0f);
-  AddMachineCode(0x83); // jae rel32
-  jmp_table_oob_offsets.emplace_back(code_index, default_ip);
-  AddImm(0); // placeholder
-
-  // get second register for RIP-relative table base
-  RegisterHolder* base_holder = GetRegister();
-  Register base_reg = base_holder->GetRegister();
-
-  // lea base_reg, [rip + delta32]  (7 bytes: REX.W + 8D + ModRM + disp32)
-  // ModRM: mod=00, rm=101 (RIP+disp32), reg=base_reg
-  unsigned char lea_rex = 0x48;
-  if((base_reg > RSP && base_reg < XMM0) || base_reg > XMM7) lea_rex |= 0x01; // REX.B
-  AddMachineCode(lea_rex);
-  AddMachineCode(0x8d);
-  unsigned char lea_modrm = 0x05; // mod=00, rm=101
-  RegisterEncode3(lea_modrm, 2, base_reg); // bits 5:3 = base_reg
-  AddMachineCode(lea_modrm);
-  const long lea_delta_code_offset = code_index;
-  const long lea_rip_base = code_index + 4; // RIP = after this instruction
-  AddImm(0); // placeholder delta32
-
-  // movsxd val_reg, dword [base_reg + val_reg*4]
-  // REX: W=1, R=extended(val_reg), X=extended(val_reg as index), B=extended(base_reg)
-  unsigned char movsxd_rex = 0x48;
-  if((val_reg > RSP && val_reg < XMM0) || val_reg > XMM7) movsxd_rex |= 0x06; // REX.R + REX.X
-  if((base_reg > RSP && base_reg < XMM0) || base_reg > XMM7) movsxd_rex |= 0x01; // REX.B
-  AddMachineCode(movsxd_rex);
-  AddMachineCode(0x63); // MOVSXD
-  unsigned char movsxd_modrm = 0x04; // mod=00, rm=100 (SIB)
-  RegisterEncode3(movsxd_modrm, 2, val_reg); // bits 5:3 = val_reg (destination)
-  AddMachineCode(movsxd_modrm);
-  // SIB: scale=2 (4x), index=val_reg, base=base_reg
-  unsigned char movsxd_sib = 0x80; // scale=10
-  RegisterEncode3(movsxd_sib, 2, val_reg);  // bits 5:3 = index
-  RegisterEncode3(movsxd_sib, 5, base_reg); // bits 2:0 = base
-  AddMachineCode(movsxd_sib);
-
-  // add base_reg, val_reg  → base_reg = table_start + relative_offset = target
-  add_reg_reg(val_reg, base_reg);
-
-  // jmp base_reg
-  if((base_reg > RSP && base_reg < XMM0) || base_reg > XMM7) AddMachineCode(0x41); // REX.B
-  AddMachineCode(0xff);
-  unsigned char jmp_modrm = 0xe0; // mod=11, reg=4 (JMP /4), rm=000
-  RegisterEncode3(jmp_modrm, 5, base_reg); // bits 2:0 = base_reg
-  AddMachineCode(jmp_modrm);
-
-  // emit size * 4 bytes of zeros for the offset table (patched in second pass)
-  JmpTableFixup fixup;
-  fixup.lea_delta_code_offset = lea_delta_code_offset;
-  fixup.lea_rip_base = lea_rip_base;
-  fixup.table_data_code_offset = code_index;
-  for(long s = 0; s < size; s++) {
-    AddImm(0);
-  }
-
-  ReleaseRegister(val_holder);
-  ReleaseRegister(base_holder);
-
-  // consume the following JMP_TABLE_SLOT instructions and record targets
-  for(long s = 0; s < size; s++) {
-    StackInstr* slot = method->GetInstruction(instr_index++);
-    slot->SetOffset(code_index);
-    fixup.slot_targets.push_back(slot->GetOperand()); // 1-based instr index of case-body LBL
-  }
-  jmp_table_fixups.push_back(std::move(fixup));
 }
 
 void JitAmd64::ProcessReturnParameters(MemoryType type) {
@@ -5764,7 +5646,6 @@ static bool CanJitInstruction(InstructionType type) {
     // loads
   case LOAD_CHAR_LIT:
   case LOAD_INT_LIT:
-  case LOAD_INT64_LIT:
   case LOAD_FLOAT_LIT:
   case LOAD_INST_MEM:
   case LOAD_CLS_MEM:
@@ -5847,8 +5728,6 @@ static bool CanJitInstruction(InstructionType type) {
     // DYN_MTHD_CALL: function-reference calls need further investigation
     // before whitelisting (prgm70/71 segfaults with closure patterns)
   case JMP:
-  case JMP_TABLE:
-  case JMP_TABLE_SLOT:
   case LBL:
   case RTRN:
     // memory allocation
@@ -6124,28 +6003,6 @@ bool JitAmd64::Compile(StackMethod* cm)
       long offset = div_by_zero_handler_index - (index + 4);
       memcpy(&code[(size_t)index], &offset, 4);
     }
-
-    // JMP_TABLE: patch jae out-of-bounds exits
-    for(auto& oob : jmp_table_oob_offsets) {
-      const long src_offset = oob.first;
-      const long dest_offset = method->GetInstruction(oob.second)->GetOffset();
-      const long offset = dest_offset - (src_offset + 4);
-      memcpy(&code[(size_t)src_offset], &offset, 4);
-    }
-
-    // JMP_TABLE: patch lea delta and fill slot offset table
-    for(auto& fixup : jmp_table_fixups) {
-      // fill in lea delta: points to table_data from RIP after lea instruction
-      const long delta = fixup.table_data_code_offset - fixup.lea_rip_base;
-      memcpy(&code[(size_t)fixup.lea_delta_code_offset], &delta, 4);
-      // fill in each slot's 4-byte signed offset from table start to target
-      for(size_t s = 0; s < fixup.slot_targets.size(); s++) {
-        const long target_offset = method->GetInstruction(fixup.slot_targets[s])->GetOffset();
-        const int32_t rel = (int32_t)(target_offset - fixup.table_data_code_offset);
-        memcpy(&code[(size_t)(fixup.table_data_code_offset + (long)s * 4)], &rel, 4);
-      }
-    }
-
 #ifdef _DEBUG_JIT
     std::wcout << L"Caching JIT code: actual=" << code_index
       << L", buffer=" << code_buf_max << L" byte(s)" << std::endl;
@@ -6218,7 +6075,6 @@ RegInstr::RegInstr(StackInstr* si)
     break;
 
   case LOAD_INT_LIT:
-  case LOAD_INT64_LIT:
     type = IMM_INT;
     operand = si->GetInt64Operand();
     break;

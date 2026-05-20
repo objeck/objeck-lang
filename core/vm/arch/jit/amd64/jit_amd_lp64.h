@@ -329,15 +329,6 @@ namespace Runtime {
     std::vector<long> bounds_less_offsets;    // code -2
     std::vector<long> bounds_greater_offsets; // code -3
     std::vector<long> div_by_zero_offsets;    // code -4
-    // JMP_TABLE fixup: filled during ProcessJumpTable, resolved in second pass
-    struct JmpTableFixup {
-      long lea_delta_code_offset;   // position of 4-byte RIP delta in lea instruction
-      long lea_rip_base;            // code offset after lea (= RIP value when lea executes)
-      long table_data_code_offset;  // code offset of first 4-byte table entry
-      std::vector<long> slot_targets; // 1-based instr indices of case-body LBLs
-    };
-    std::vector<JmpTableFixup> jmp_table_fixups;
-    std::vector<std::pair<long, long>> jmp_table_oob_offsets; // (jae fixup offset, default_ip 1-based)
     long local_space, org_local_space;
     StackMethod* method;
     long instr_count;
@@ -411,7 +402,6 @@ namespace Runtime {
     void ProcessLoadFloatElement(StackInstr* instr);
     void ProcessStoreFloatElement(StackInstr* instr);
     void ProcessJump(StackInstr* instr);
-    void ProcessJumpTable(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
 

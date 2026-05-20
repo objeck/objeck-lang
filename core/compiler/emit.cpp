@@ -384,7 +384,6 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
 
   switch(type) {
   case LOAD_INT_LIT:
-  case LOAD_INT64_LIT:
     WriteInt64(operand7, out_stream);
     break;
 
@@ -427,16 +426,6 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   case LIB_FUNC_DEF:
     WriteString(operand5, out_stream);
     WriteString(operand6, out_stream);
-    break;
-
-  case JMP_TABLE:
-    WriteInt(operand, out_stream);
-    WriteInt(operand2, out_stream);
-    WriteInt(operand3, out_stream);
-    break;
-
-  case JMP_TABLE_SLOT:
-    WriteInt(operand, out_stream);
     break;
 
   case JMP:
@@ -496,10 +485,6 @@ void IntermediateInstruction::Debug(size_t i) {
 
   case LOAD_INT_LIT:
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"LOAD_INT_LIT: value=" << operand7 << std::endl;
-    break;
-
-  case LOAD_INT64_LIT:
-    GetLogger() << L"  " << std::left << std::setw(6) << i << L"LOAD_INT64_LIT: value=" << operand7 << std::endl;
     break;
 
   case LOAD_CHAR_LIT: {

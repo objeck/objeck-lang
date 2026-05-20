@@ -1105,11 +1105,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case LOAD_INT_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, ReadInt64()));
       break;
-
-    case LOAD_INT64_LIT:
-      instrs.push_back(new LibraryInstr(line_num, LOAD_INT64_LIT, ReadInt64()));
-      break;
-
+      
     case LOAD_CHAR_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_LIT, (int)ReadChar()));
       break;
@@ -1777,20 +1773,6 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
     case TRY_END:
       instrs.push_back(new LibraryInstr(line_num, TRY_END));
-      break;
-
-    case JMP_TABLE: {
-      const INT_VALUE base = ReadInt();
-      const INT_VALUE range = ReadInt();
-      const INT_VALUE default_ip = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, JMP_TABLE, base, range, default_ip));
-    }
-      break;
-
-    case JMP_TABLE_SLOT: {
-      const INT_VALUE target_ip = ReadInt();
-      instrs.push_back(new LibraryInstr(line_num, JMP_TABLE_SLOT, target_ip));
-    }
       break;
 
     default: {

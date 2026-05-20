@@ -1884,13 +1884,12 @@ class RequestHandler from HttpsRequestHandler {
 				request := @client->ReadLine();
 				if(@is_debug) {
 					request_address := @client->GetAddress();
-					request_str := request <> Nil ? request : "";
-					"===\nRequest: '{$request_str}' from '{$request_address}'\n==="->PrintLine();
+					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
 				};
 
 				# parse request
 				request_verb : String; request_path : String;
-				if(request <> Nil & request->Size() > 0) {
+				if(request->Size() > 0) {
 					request_parts := request->Split(" ");
 					if(request_parts->Size() = 3) {
 						request_verb := request_parts[0];
@@ -1998,7 +1997,7 @@ class RequestHandler from HttpsRequestHandler {
 						};
 					}
 					else {
-						@client->WriteString("HTTP/1.1 200 OK\r\n\r\n");
+						@client->WriteString("HTTP/1.1 200\r\n\r\n");
 					};
 				}
 				else {
@@ -2013,7 +2012,7 @@ class RequestHandler from HttpsRequestHandler {
 								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
 							}
 							else {
-								@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+								@client->WriteString("HTTP/1.1 400\r\n\r\n");
 							};
 						}
 
@@ -2041,16 +2040,12 @@ class RequestHandler from HttpsRequestHandler {
 							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
 						}
 
-						label 400 {
-							@client->WriteString("HTTP/1.1 400 Bad Request\r\n\r\n");
-						}
-
 						label 503 {
 							@client->WriteString("HTTP/1.1 503 Service Unavailable\r\n\r\n");
 						}
 
 						other {
-							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+							@client->WriteString("HTTP/1.1 400\r\n\r\n");
 						}
 					};
 				};
@@ -2164,13 +2159,12 @@ class RequestHandler from HttpsRequestHandler {
 				request := @client->ReadLine();
 				if(@is_debug) {
 					request_address := @client->GetAddress();
-					request_str := request <> Nil ? request : "";
-					"===\nRequest: '{$request_str}' from '{$request_address}'\n==="->PrintLine();
+					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
 				};
 
 				# parse request
 				request_verb : String; request_path : String;
-				if(request <> Nil & request->Size() > 0) {
+				if(request->Size() > 0) {
 					request_parts := request->Split(" ");
 					if(request_parts->Size() = 3) {
 						request_verb := request_parts[0];
@@ -2278,7 +2272,7 @@ class RequestHandler from HttpsRequestHandler {
 						};
 					}
 					else {
-						@client->WriteString("HTTP/1.1 200 OK\r\n\r\n");
+						@client->WriteString("HTTP/1.1 200\r\n\r\n");
 					};
 				}
 				else {
@@ -2293,7 +2287,7 @@ class RequestHandler from HttpsRequestHandler {
 								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
 							}
 							else {
-								@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+								@client->WriteString("HTTP/1.1 400\r\n\r\n");
 							};
 						}
 
@@ -2321,16 +2315,12 @@ class RequestHandler from HttpsRequestHandler {
 							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
 						}
 
-						label 400 {
-							@client->WriteString("HTTP/1.1 400 Bad Request\r\n\r\n");
-						}
-
 						label 503 {
 							@client->WriteString("HTTP/1.1 503 Service Unavailable\r\n\r\n");
 						}
 
 						other {
-							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+							@client->WriteString("HTTP/1.1 400\r\n\r\n");
 						}
 					};
 				};
@@ -2670,12 +2660,16 @@ bundle Web.HTTP.Server.MCP {
 						};
 
 						# execute method
-							if(method_name->Equals("ping")) {
+						select(method_name) {
+							# ping
+							label "ping": {
 								id := root_json->Get("id")->GetInt();
 								WriteResponse(Nil, id, response, 200);
 								return false;
 							}
-							else if(method_name->Equals("initialize")) {
+
+							# initialize
+							label "initialize": {
 								name := @config->Get("name")->GetValue();
 								instructions := @config->Get("instructions")->GetValue();
 								version := @config->Get("version")->GetValue();
@@ -2725,7 +2719,9 @@ bundle Web.HTTP.Server.MCP {
 
 								return false;
 							}
-							else if(method_name->Equals("notifications/initialized")) {
+							
+							# notifications/initialized
+							label "notifications/initialized": {
 								if(McpServer->IsDebug()) {
 									"### notifications/initialized ###"->PrintLine();
 								};
@@ -2733,12 +2729,16 @@ bundle Web.HTTP.Server.MCP {
 								response->SetCode(202);
 								return false;
 							}
-							else if(method_name->Equals("logging/setLevel")) {
+							
+							# logging/setLevel
+							label "logging/setLevel": {
 								id := root_json->Get("id")->GetInt();
 								WriteResponse(Nil, id, response, 200);
 								return false;
 							}
-							else if(method_name->Equals("resources/templates/list")) {
+
+							# resources/templates/list
+							label "resources/templates/list": {
 								id := root_json->Get("id")->GetInt();
 
 								templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -2754,7 +2754,9 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-							else if(method_name->Equals("resources/list")) {
+							
+							# resources/list
+							label "resources/list": {
 								id := root_json->Get("id")->GetInt();
 
 								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -2770,7 +2772,9 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-							else if(method_name->Equals("resources/read")) {
+							
+							# resources/read
+							label "resources/read": {
 								id := root_json->Get("id")->GetInt();
 								uri_str := root_json->Get("params")->Get("uri")->GetValue();
 
@@ -2787,7 +2791,9 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-							else if(method_name->Equals("tools/list")) {
+							
+							# tools/list
+							label "tools/list": {
 								id := root_json->Get("id")->GetInt();
 
 								tools := ListTools();
@@ -2803,7 +2809,9 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-							else if(method_name->Equals("tools/call")) {
+
+							# tools/call
+							label "tools/call": {
 								call_name : String; text : String;
 								call_params_json := root_json->Get("params");								
 								if(call_params_json <> Nil) {
@@ -2831,7 +2839,9 @@ bundle Web.HTTP.Server.MCP {
 									};
 								};
 							}
-							else if(method_name->Equals("prompts/list")) {
+
+							# prompts/list
+							label "prompts/list": {
 								id := root_json->Get("id")->GetInt();
 
 								prompts := ListPrompts();
@@ -2847,7 +2857,9 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-							else if(method_name->Equals("prompts/get")) {
+
+							# prompts/get
+							label "prompts/get": {
 								call_name : String; text : String;
 								call_params_json := root_json->Get("params");								
 								if(call_params_json <> Nil) {
@@ -2874,7 +2886,8 @@ bundle Web.HTTP.Server.MCP {
 										return false;
 									};
 								};
-							};
+							}
+						};
 					};
 				};
 			};

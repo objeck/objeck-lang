@@ -204,11 +204,10 @@ namespace Runtime {
     RegInstr(StackInstr* si) {
       switch(si->GetType()) {
       case LOAD_INT_LIT:
-      case LOAD_INT64_LIT:
           type = IMM_INT;
           operand = si->GetInt64Operand();
           break;
-
+          
       case LOAD_CHAR_LIT:
         type = IMM_INT;
         operand = si->GetOperand();
@@ -361,13 +360,6 @@ namespace Runtime {
     vector<long> bounds_less_offsets;    // -2
     vector<long> bounds_greater_offsets; // -3
     vector<long> div_by_zero_offsets;    // code -4
-    // JMP_TABLE fixup: filled during ProcessJumpTable, resolved in second pass
-    struct JmpTableFixup {
-      long table_data_code_index;  // code[] index of first table entry
-      std::vector<long> slot_targets; // 1-based instr indices of case-body LBLs
-    };
-    std::vector<JmpTableFixup> jmp_table_fixups;
-    std::vector<std::pair<long, long>> jmp_table_oob_offsets; // (b.hs code[] index, default_ip 1-based)
     long local_space;
     bool realign_stack;
     StackMethod* method;
@@ -426,7 +418,6 @@ namespace Runtime {
     void ProcessLoadFloatElement(StackInstr* instr);
     void ProcessStoreFloatElement(StackInstr* instr);
     void ProcessJump(StackInstr* instr);
-    void ProcessJumpTable(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
     

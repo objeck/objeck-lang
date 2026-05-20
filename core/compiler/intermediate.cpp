@@ -71,14 +71,14 @@ SelectNode* SelectArrayTree::Divide(int start, int end)
       SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
                                         new SelectNode(++emitter->conditional_label, values[start]),
                                         new SelectNode(++emitter->conditional_label, values[start + 1]));
-      return node;
+      return node;  
     }
     else {
-      SelectNode* node = new SelectNode(++emitter->conditional_label,
+      SelectNode* node = new SelectNode(++emitter->conditional_label, 
                                         values[start + 1], values[start + 2],
                                         new SelectNode(++emitter->conditional_label, values[start]),
                                         new SelectNode(++emitter->conditional_label, values[start + 2]));
-      return node;
+      return node;  
     }
   }
   else {
@@ -151,14 +151,14 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
     if(node->GetOperation() == CASE_LESS) {
       const INT64_VALUE value = node->GetValue();
       // evaluate less then
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(emitter->cur_line_num, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
-    }
+    } 
     else if(node->GetOperation() == CASE_EQUAL) {
       const INT64_VALUE value = node->GetValue();
       // evaluate equal to
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(emitter->cur_line_num, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
       // true
@@ -166,21 +166,21 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
       // false
       if(select->GetOther()) {
         emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, other_label, -1));
-      }
+      } 
       else {
         emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, end_label, -1));
       }
-    }
+    } 
     else {
       // evaluate equal to
       const INT64_VALUE value = node->GetValue();
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(emitter->cur_line_num, value));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, value));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
       // true
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, value_label_map[value], true));
       // evaluate less then
-      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(emitter->cur_line_num, node->GetValue2()));
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(emitter->cur_line_num, node->GetValue2()));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
     }
@@ -3299,187 +3299,55 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
 void IntermediateEmitter::EmitSelect(Select* select_stmt)
 {
   cur_line_num = select_stmt->GetLineNumber();
-  const size_t n = select_stmt->GetLabelStatements().size();
-
-  if(n == 1) {
-    // single-case: direct equality check
+  
+  if(select_stmt->GetLabelStatements().size() > 1) {
+    SelectArrayTree tree(select_stmt, this);
+    tree.Emit();
+  } 
+  else {
+    // get statement and value
     std::map<INT64_VALUE, StatementList*> label_statements = select_stmt->GetLabelStatements();
     std::map<INT64_VALUE, StatementList*>::iterator iter = label_statements.begin();
     INT64_VALUE value = iter->first;
     StatementList* statement_list = iter->second;
 
+    // set labels
     long end_label = ++unconditional_label;
     long other_label = 0;
     if(select_stmt->GetOther()) {
       other_label = ++conditional_label;
     }
-
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(select_stmt, cur_line_num, value));
+    
+    // emit code
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(select_stmt, cur_line_num, value));
     EmitExpression(select_stmt->GetAssignment()->GetExpression());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, other_label, false));
-    }
+    } 
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, end_label, false));
     }
 
+    // label statements
     std::vector<Statement*> statements = statement_list->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       EmitStatement(statements[i]);
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, end_label, -1));
+    
 
+    // other statements
     if(select_stmt->GetOther()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, other_label));
-      StatementList* other_list = select_stmt->GetOther();
-      std::vector<Statement*> other_stmts = other_list->GetStatements();
-      for(size_t i = 0; i < other_stmts.size(); ++i) {
-        EmitStatement(other_stmts[i]);
+      StatementList* statement_list = select_stmt->GetOther();
+      std::vector<Statement*> statements = statement_list->GetStatements();
+      for(size_t i = 0; i < statements.size(); ++i) {
+        EmitStatement(statements[i]);
       }
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, end_label));
   }
-  else if(n <= 5) {
-    EmitSelectLinear(select_stmt);
-  }
-  else if(IsDenseInt(select_stmt)) {
-    EmitSelectJumpTable(select_stmt);
-  }
-  else {
-    SelectArrayTree tree(select_stmt, this);
-    tree.Emit();
-  }
-}
-
-bool IntermediateEmitter::IsDenseInt(Select* select_stmt)
-{
-  const std::map<INT64_VALUE, StatementList*>& label_statements = select_stmt->GetLabelStatements();
-  const size_t n = label_statements.size();
-
-  const INT64_VALUE min_val = label_statements.begin()->first;
-  const INT64_VALUE max_val = label_statements.rbegin()->first;
-
-  if(max_val < min_val) return false;
-  const INT64_VALUE range = max_val - min_val + 1;
-  if(range <= 0 || range > 65536LL) return false;
-
-  return range <= (INT64_VALUE)(2 * n);
-}
-
-void IntermediateEmitter::EmitSelectLinear(Select* select_stmt)
-{
-  cur_line_num = select_stmt->GetLineNumber();
-  const std::map<INT64_VALUE, StatementList*>& label_statements = select_stmt->GetLabelStatements();
-
-  std::map<INT64_VALUE, long> value_label_map;
-  for(auto& entry : label_statements) {
-    value_label_map[entry.first] = ++conditional_label;
-  }
-
-  long other_label = 0;
-  if(select_stmt->GetOther()) {
-    other_label = ++conditional_label;
-  }
-  long end_label = ++unconditional_label;
-
-  // evaluate expression once, store in LOCL var 0
-  EmitExpression(select_stmt->GetAssignment()->GetExpression());
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, STOR_INT_VAR, 0, LOCL));
-
-  // sequential equality checks
-  for(auto& entry : label_statements) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInt64LitInstruction(select_stmt, cur_line_num, entry.first));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, value_label_map[entry.first], 1));
-  }
-
-  // no match
-  if(select_stmt->GetOther()) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, other_label, -1));
-  }
-  else {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, end_label, -1));
-  }
-
-  // case bodies
-  for(auto& entry : label_statements) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, value_label_map[entry.first]));
-    std::vector<Statement*> stmts = entry.second->GetStatements();
-    for(size_t i = 0; i < stmts.size(); ++i) {
-      EmitStatement(stmts[i]);
-    }
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, end_label, -1));
-  }
-
-  // other block
-  if(select_stmt->GetOther()) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, other_label));
-    std::vector<Statement*> other_stmts = select_stmt->GetOther()->GetStatements();
-    for(size_t i = 0; i < other_stmts.size(); ++i) {
-      EmitStatement(other_stmts[i]);
-    }
-  }
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, end_label));
-}
-
-void IntermediateEmitter::EmitSelectJumpTable(Select* select_stmt)
-{
-  cur_line_num = select_stmt->GetLineNumber();
-  const std::map<INT64_VALUE, StatementList*>& label_statements = select_stmt->GetLabelStatements();
-
-  std::map<INT64_VALUE, long> value_label_map;
-  for(auto& entry : label_statements) {
-    value_label_map[entry.first] = ++conditional_label;
-  }
-
-  long default_label = ++conditional_label;
-  long end_label = ++unconditional_label;
-
-  const INT64_VALUE min_val = label_statements.begin()->first;
-  const INT64_VALUE max_val = label_statements.rbegin()->first;
-  const long range = (long)(max_val - min_val + 1);
-
-  // evaluate expression once, store in LOCL var 0
-  EmitExpression(select_stmt->GetAssignment()->GetExpression());
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, STOR_INT_VAR, 0, LOCL));
-
-  // load value for dispatch
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LOAD_INT_VAR, 0, LOCL));
-
-  // jump table dispatch: base, range, default_label
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP_TABLE, (long)min_val, range, default_label));
-
-  // table slots — one per value in [min_val..max_val]
-  for(long offset = 0; offset < range; ++offset) {
-    INT64_VALUE val = min_val + (INT64_VALUE)offset;
-    auto it = value_label_map.find(val);
-    long slot_label = (it != value_label_map.end()) ? it->second : default_label;
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP_TABLE_SLOT, slot_label));
-  }
-
-  // case bodies
-  for(auto& entry : label_statements) {
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, value_label_map[entry.first]));
-    std::vector<Statement*> stmts = entry.second->GetStatements();
-    for(size_t i = 0; i < stmts.size(); ++i) {
-      EmitStatement(stmts[i]);
-    }
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, end_label, -1));
-  }
-
-  // default handler (other or fall-through to end)
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, default_label));
-  if(select_stmt->GetOther()) {
-    std::vector<Statement*> other_stmts = select_stmt->GetOther()->GetStatements();
-    for(size_t i = 0; i < other_stmts.size(); ++i) {
-      EmitStatement(other_stmts[i]);
-    }
-  }
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, end_label, -1));
-
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, end_label));
 }
 
 /****************************

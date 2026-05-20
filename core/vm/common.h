@@ -397,12 +397,6 @@ class StackInstr
     alt_operand.int64_operand = v;
   }
 
-  StackInstr(int l, InstructionType t, long long v) {
-    line_num = l;
-    type = t;
-    alt_operand.int64_operand = (INT64_VALUE)v;
-  }
-
   StackInstr(int l, InstructionType t) {
     line_num = l;
     type = t;

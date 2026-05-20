@@ -49,14 +49,6 @@ static DispatchResult Handle_LOAD_INT_LIT(DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_LOAD_INT64_LIT(DispatchContext& ctx) {
-#ifdef _DEBUG
-  std::wcout << L"stack oper: LOAD_INT64_LIT; call_pos=" << (*ctx.call_stack_pos) << std::endl;
-#endif
-  ctx.interp->PushInt(ctx.instr->GetInt64Operand(), ctx.op_stack, ctx.stack_pos);
-  return DispatchResult::CONTINUE;
-}
-
 static DispatchResult Handle_LOAD_CHAR_LIT(DispatchContext& ctx) {
 #ifdef _DEBUG
   std::wcout << L"stack oper: LOAD_CHAR_LIT; call_pos=" << (*ctx.call_stack_pos) << std::endl;
@@ -662,31 +654,6 @@ static DispatchResult Handle_JMP(DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
-static DispatchResult Handle_JMP_TABLE(DispatchContext& ctx) {
-#ifdef _DEBUG
-  std::wcout << L"stack oper: JMP_TABLE; call_pos=" << (*ctx.call_stack_pos) << std::endl;
-#endif
-  const INT64_VALUE value = (INT64_VALUE)ctx.interp->PopInt(ctx.op_stack, ctx.stack_pos);
-  const long base = ctx.instr->GetOperand();
-  const long size = ctx.instr->GetOperand2();
-  const long index = (long)(value - (INT64_VALUE)base);
-  if(index >= 0 && index < size) {
-    *ctx.ip += index;
-  }
-  else {
-    *ctx.ip = ctx.instr->GetOperand3();
-  }
-  return DispatchResult::CONTINUE;
-}
-
-static DispatchResult Handle_JMP_TABLE_SLOT(DispatchContext& ctx) {
-#ifdef _DEBUG
-  std::wcout << L"stack oper: JMP_TABLE_SLOT; call_pos=" << (*ctx.call_stack_pos) << std::endl;
-#endif
-  *ctx.ip = ctx.instr->GetOperand();
-  return DispatchResult::CONTINUE;
-}
-
 static DispatchResult Handle_LBL([[maybe_unused]] DispatchContext& ctx) {
   // Label - no operation needed
   return DispatchResult::CONTINUE;
@@ -1153,15 +1120,8 @@ OpcodeHandler Runtime::instr_dispatch[] = {
   Handle_TRY_START,             // 141: TRY_START
   Handle_TRY_END,               // 142: TRY_END
 
-  // Jump table dispatch (143-144)
-  Handle_JMP_TABLE,             // 143: JMP_TABLE
-  Handle_JMP_TABLE_SLOT,        // 144: JMP_TABLE_SLOT
-
-  // 64-bit integer literal for select dispatch (145)
-  Handle_LOAD_INT64_LIT,        // 145: LOAD_INT64_LIT
-
-  // End marker (146)
-  Handle_END_STMTS              // 146: END_STMTS
+  // End marker (143)
+  Handle_END_STMTS              // 143: END_STMTS
 };
 
 static_assert(sizeof(Runtime::instr_dispatch) / sizeof(Runtime::instr_dispatch[0]) == instructions::END_STMTS + 1,

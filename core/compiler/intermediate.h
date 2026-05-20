@@ -88,9 +88,6 @@ class IntermediateEmitter {
   void EmitDoWhile(DoWhile* do_while_stmt);
   void EmitWhile(While* while_stmt);
   void EmitSelect(Select* select_stmt);
-  bool IsDenseInt(Select* select_stmt);
-  void EmitSelectLinear(Select* select_stmt);
-  void EmitSelectJumpTable(Select* select_stmt);
   void EmitFor(For* for_stmt);
   void EmitCriticalSection(CriticalSection* critical_stmt);
   void EmitIndices(ExpressionList* indices);
