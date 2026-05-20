@@ -1,5 +1,21 @@
 /***************************************************************************
- * Links pre-compiled code into existing program
+ * Loads and links pre-compiled library (.obl) files into a program.
+ *
+ * This file has two distinct responsibilities:
+ *
+ * 1. Library loading — deserializes binary .obl bytecode into in-memory
+ *    class and method structures. ReadStatement() walks every instruction
+ *    in every library method, reading the correct number of bytes per opcode
+ *    to advance the buffer pointer. Every opcode must have a case here or
+ *    the parser loses its position and exits silently with code 1.
+ *
+ * 2. Reference resolution — patches program references (LIB_MTHD_CALL,
+ *    LIB_NEW_OBJ_INST, etc.) to the correct class/method IDs from the
+ *    loaded libraries.
+ *
+ * NOTE: When adding a new opcode, ReadStatement() in this file must be
+ * updated alongside emit.cpp (Write), loader.cpp (LoadStatements), and
+ * dispatch.cpp (handler + table). Missing this case is a silent failure.
  *
  * Copyright (c) 2025, Randy Hollines
  * All rights reserved.

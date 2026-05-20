@@ -1,5 +1,8 @@
 /***************************************************************************
- * Links pre-compiled code into existing program.
+ * Loads and links pre-compiled library (.obl) files into a program.
+ *
+ * See linker.cpp for a description of the two responsibilities:
+ * binary .obl bytecode parsing (ReadStatement) and reference resolution.
  *
  * Copyright (c) 2025, Randy Hollines
  * All rights reserved.
