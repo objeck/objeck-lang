@@ -464,6 +464,16 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     WriteInt(operand2, out_stream);
     break;
 
+  case JMP_TABLE:
+    WriteInt(operand, out_stream);   // base (min_val, fits int32)
+    WriteInt(operand2, out_stream);  // range
+    WriteInt(operand3, out_stream);  // default_label
+    break;
+
+  case JMP_TABLE_SLOT:
+    WriteInt(operand, out_stream);   // slot target label
+    break;
+
   default:
     break;
   }

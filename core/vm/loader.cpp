@@ -847,6 +847,20 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       // End: instruction caching
       //
 
+    case JMP_TABLE: {
+      const long base = ReadInt();
+      const long range = ReadInt();
+      const long default_ip = ReadInt();
+      mthd_instrs[i] = StackInstr(line_num, JMP_TABLE, base, range, default_ip);
+    }
+      break;
+
+    case JMP_TABLE_SLOT: {
+      const long target_ip = ReadInt();
+      mthd_instrs[i] = StackInstr(line_num, JMP_TABLE_SLOT, target_ip);
+    }
+      break;
+
     case LIB_OBJ_INST_CAST:
       std::wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << std::endl;
       exit(1);

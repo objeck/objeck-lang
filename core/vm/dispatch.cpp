@@ -937,6 +937,26 @@ static DispatchResult Handle_END_STMTS([[maybe_unused]] DispatchContext& ctx) {
   return DispatchResult::CONTINUE;
 }
 
+static DispatchResult Handle_JMP_TABLE(DispatchContext& ctx) {
+  const INT64_VALUE value = ctx.interp->PopInt(ctx.op_stack, ctx.stack_pos);
+  const INT64_VALUE base = (INT64_VALUE)ctx.instr->GetOperand();
+  const INT64_VALUE range = (INT64_VALUE)ctx.instr->GetOperand2();
+  const long default_ip = ctx.instr->GetOperand3();
+  const INT64_VALUE index = value - base;
+  if(index >= 0 && index < range) {
+    // *ctx.ip already points past JMP_TABLE header; slots start there
+    *ctx.ip = ctx.instrs[*ctx.ip + (long)index].GetOperand();
+  } else {
+    *ctx.ip = default_ip;
+  }
+  return DispatchResult::CONTINUE;
+}
+
+static DispatchResult Handle_JMP_TABLE_SLOT([[maybe_unused]] DispatchContext& ctx) {
+  // Never directly executed; consumed by Handle_JMP_TABLE
+  return DispatchResult::CONTINUE;
+}
+
 //
 // Global dispatch table indexed by InstructionType enum
 //
@@ -1120,8 +1140,12 @@ OpcodeHandler Runtime::instr_dispatch[] = {
   Handle_TRY_START,             // 141: TRY_START
   Handle_TRY_END,               // 142: TRY_END
 
-  // End marker (143)
-  Handle_END_STMTS              // 143: END_STMTS
+  // Select jump table (143-144)
+  Handle_JMP_TABLE,             // 143: JMP_TABLE
+  Handle_JMP_TABLE_SLOT,        // 144: JMP_TABLE_SLOT
+
+  // End marker (145)
+  Handle_END_STMTS              // 145: END_STMTS
 };
 
 static_assert(sizeof(Runtime::instr_dispatch) / sizeof(Runtime::instr_dispatch[0]) == instructions::END_STMTS + 1,
