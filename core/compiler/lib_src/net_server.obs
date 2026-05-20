@@ -2670,16 +2670,12 @@ bundle Web.HTTP.Server.MCP {
 						};
 
 						# execute method
-						select(method_name) {
-							# ping
-							label "ping": {
+							if(method_name->Equals("ping")) {
 								id := root_json->Get("id")->GetInt();
 								WriteResponse(Nil, id, response, 200);
 								return false;
 							}
-
-							# initialize
-							label "initialize": {
+							else if(method_name->Equals("initialize")) {
 								name := @config->Get("name")->GetValue();
 								instructions := @config->Get("instructions")->GetValue();
 								version := @config->Get("version")->GetValue();
@@ -2729,9 +2725,7 @@ bundle Web.HTTP.Server.MCP {
 
 								return false;
 							}
-							
-							# notifications/initialized
-							label "notifications/initialized": {
+							else if(method_name->Equals("notifications/initialized")) {
 								if(McpServer->IsDebug()) {
 									"### notifications/initialized ###"->PrintLine();
 								};
@@ -2739,16 +2733,12 @@ bundle Web.HTTP.Server.MCP {
 								response->SetCode(202);
 								return false;
 							}
-							
-							# logging/setLevel
-							label "logging/setLevel": {
+							else if(method_name->Equals("logging/setLevel")) {
 								id := root_json->Get("id")->GetInt();
 								WriteResponse(Nil, id, response, 200);
 								return false;
 							}
-
-							# resources/templates/list
-							label "resources/templates/list": {
+							else if(method_name->Equals("resources/templates/list")) {
 								id := root_json->Get("id")->GetInt();
 
 								templates_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -2764,9 +2754,7 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-							
-							# resources/list
-							label "resources/list": {
+							else if(method_name->Equals("resources/list")) {
 								id := root_json->Get("id")->GetInt();
 
 								resources_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -2782,9 +2770,7 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-							
-							# resources/read
-							label "resources/read": {
+							else if(method_name->Equals("resources/read")) {
 								id := root_json->Get("id")->GetInt();
 								uri_str := root_json->Get("params")->Get("uri")->GetValue();
 
@@ -2801,9 +2787,7 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-							
-							# tools/list
-							label "tools/list": {
+							else if(method_name->Equals("tools/list")) {
 								id := root_json->Get("id")->GetInt();
 
 								tools := ListTools();
@@ -2819,9 +2803,7 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-
-							# tools/call
-							label "tools/call": {
+							else if(method_name->Equals("tools/call")) {
 								call_name : String; text : String;
 								call_params_json := root_json->Get("params");								
 								if(call_params_json <> Nil) {
@@ -2849,9 +2831,7 @@ bundle Web.HTTP.Server.MCP {
 									};
 								};
 							}
-
-							# prompts/list
-							label "prompts/list": {
+							else if(method_name->Equals("prompts/list")) {
 								id := root_json->Get("id")->GetInt();
 
 								prompts := ListPrompts();
@@ -2867,9 +2847,7 @@ bundle Web.HTTP.Server.MCP {
 								WriteResponse(result, id, response, 200);
 								return false;
 							}
-
-							# prompts/get
-							label "prompts/get": {
+							else if(method_name->Equals("prompts/get")) {
 								call_name : String; text : String;
 								call_params_json := root_json->Get("params");								
 								if(call_params_json <> Nil) {
@@ -2896,8 +2874,7 @@ bundle Web.HTTP.Server.MCP {
 										return false;
 									};
 								};
-							}
-						};
+							};
 					};
 				};
 			};
