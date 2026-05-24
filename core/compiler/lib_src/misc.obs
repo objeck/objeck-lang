@@ -21,6 +21,13 @@ date->GetYear()->PrintLine();
 		@param format date string format <p>options: <ul> <li>month=MM</li><li>day=dd</li><li>year=yy(yy)</li><li>hour=hh</li><li>minutes=mm</li><li>seconds=ss</p><ul>
 		@param gmt true is GMT, false otherwise
 		@return Date instance
+
+```
+date := DateUtility->Parse("06/15/2025", "MM/dd/yyyy", false);
+Console->Print("Year: ")->PrintLine(date->GetYear());
+Console->Print("Month: ")->PrintLine(date->GetMonth());
+Console->Print("Day: ")->PrintLine(date->GetDay());
+```
 		~#
 		function : Parse(date_str : String, format : String, gmt : Bool) ~ Date {
 			parts := Map->New()<IntRef, DatePart>;
@@ -169,9 +176,15 @@ date->GetYear()->PrintLine();
 
 		#~
 		Formats date into a string
-		@param date date 
+		@param date date
 		@param format date string format <p>options: <ul> <li>month=MM</li><li>day=dd</li><li>year=yy(yy)</li><li>hour=hh</li><li>minutes=mm</li><li>seconds=ss</p><ul>
 		@return Date instance
+
+```
+date := DateUtility->Parse("01/20/2025", "MM/dd/yyyy", false);
+formatted := DateUtility->Format(date, "dd-MM-yyyy");
+formatted->PrintLine();
+```
 		~#
 		function : Format(date : System.Time.Date, format : String) ~ String {
 			day := date->GetDay();
@@ -239,6 +252,14 @@ date->GetYear()->PrintLine();
 		#~
 		Get the network time
 		@return triplet with: unix time, UTC time and local time
+
+```
+triplet := DateUtility->GetNetworkTime();
+if(triplet <> Nil) {
+  utc := triplet->GetSecond();
+  Console->Print("UTC year: ")->PrintLine(utc->GetYear());
+};
+```
 		~#
 		function : GetNetworkTime() ~ Collection.Tuple.Triplet<IntRef, Date, Date> {
 			response := HttpClient->QuickGet(Url->New("http://worldtimeapi.org/api/ip"));
@@ -298,9 +319,16 @@ bundle System.Utility {
 	~#
 	class Parser {
 		#~
-		Simple tokenizer 
+		Simple tokenizer
 		@param stream_in source input
 		@return vector of string tokens
+
+```
+tokens := Parser->Tokenize("foo + bar * 42");
+each(tok := tokens) {
+  tok->PrintLine();
+};
+```
 		~#
 		function : Tokenize(stream_in : String) ~ Vector<String> {
 			tokens := Vector->New()<String>;
@@ -340,6 +368,15 @@ bundle System.Utility {
 		Command line parser
 		@param args command line arguments
 		@return name/value pairs
+
+```
+args := ["-out=report.txt", "-verbose"];
+params := Parser->CommandParameters(args);
+out_file := params->Find("-out");
+if(out_file <> Nil) {
+  out_file->PrintLine();
+};
+```
 		~#
 		function : CommandParameters(args : String[]) ~ Hash<String, String> {
 			params := Hash->New()<String, String>;
@@ -374,6 +411,13 @@ bundle System.Utility {
 
 		#~
 		Prints and advances the spinner to the next state
+
+```
+for(i := 0; i < 20; i += 1;) {
+  Spinner->Next();
+};
+Spinner->Last();
+```
 		~#
 		function : Next() ~ Nil {
 			select(@state) {
@@ -404,6 +448,13 @@ bundle System.Utility {
 
 		#~
 		Prints the final state
+
+```
+Spinner->Next();
+Spinner->Next();
+Spinner->Last();
+"done"->PrintLine();
+```
 		~#
 		function : Last() ~ Nil {
 			"\r·"->Print();
@@ -441,7 +492,7 @@ bundle System.Utility {
 		#~
 		Constructor
 		@param options options
-	
+
 		<p>Support for following options:<p>
 		<ul>
 		  <li>"function-space" - (true|false)</li>
@@ -449,7 +500,14 @@ bundle System.Utility {
 		  <li>"trim-trailing" - (true|false)</li>
 		  <li>"start-line" - (optional|number)</li>
 		  <li>"end-line" - (optional|number)</li>
-		</ul>		
+		</ul>
+
+```
+opts := Map->New()<String, String>;
+opts->Insert("ident-space", "2");
+opts->Insert("trim-trailing", "true");
+formatter := CodeFormatter->New(opts);
+```
 		~#
 		New(options : Map<String, String>) {
 			ASCII_COLOR_KEYWORD := "\x1B[33m";
@@ -558,8 +616,16 @@ bundle System.Utility {
 
 		#~
 		@param source source code
-		@param is_color true for ascii color formtting, false otherwise
-		@return formatter code
+		@param is_color true for ascii color formatting, false otherwise
+		@return formatted code
+
+```
+opts := Map->New()<String, String>;
+opts->Insert("ident-space", "3");
+formatter := CodeFormatter->New(opts);
+src := "class Foo{method:public:Bar()~Nil{x:=1;}}";
+formatter->Format(src, false)->PrintLine();
+```
 		~#
 		method : public : native : Format(source : String, is_color : Bool) ~ String {
 			scanner := Scanner->New(source);

@@ -29,6 +29,12 @@ pair->GetSecond()->PrintLine();
 		Constructor.
 		@param a first parameter
 		@param b second parameter
+
+```
+pair := Collection.Tuple.Pair->New("hello", 42)<String, IntRef>;
+pair->GetFirst()->PrintLine();  # hello
+pair->GetSecond()->PrintLine(); # 42
+```
 		~#
 		New(a : A, b : B) {
 			@a := a;
@@ -38,6 +44,11 @@ pair->GetSecond()->PrintLine();
 		#~
 		Returns the first value
 		@return first value
+
+```
+pair := Collection.Tuple.Pair->New("alpha", 1)<String, IntRef>;
+pair->GetFirst()->PrintLine(); # alpha
+```
 		~#
 		method : public : GetFirst() ~ A {
 			return @a;
@@ -46,6 +57,11 @@ pair->GetSecond()->PrintLine();
 		#~
 		Returns the second value
 		@return second value
+
+```
+pair := Collection.Tuple.Pair->New("beta", 2)<String, IntRef>;
+pair->GetSecond()->PrintLine(); # 2
+```
 		~#
 		method : public : GetSecond() ~ B {
 			return @b;
@@ -54,6 +70,11 @@ pair->GetSecond()->PrintLine();
 		#~
 		Formats tuple into a string
 		@return string representation
+
+```
+pair := Collection.Tuple.Pair->New("x", 99)<String, IntRef>;
+pair->ToString()->PrintLine(); # [x,99]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -112,6 +133,13 @@ triplet->GetThird()->PrintLine();
 		@param a first parameter
 		@param b second parameter
 		@param c third parameter
+
+```
+t := Collection.Tuple.Triplet->New("Alice", 30, true)<String, IntRef, BoolRef>;
+t->GetFirst()->PrintLine();  # Alice
+t->GetSecond()->PrintLine(); # 30
+t->GetThird()->PrintLine();  # true
+```
 		~#
 		New(a : A, b : B, c : C) {
 			@a := a;
@@ -122,6 +150,11 @@ triplet->GetThird()->PrintLine();
 		#~
 		Returns the first value
 		@return first value
+
+```
+t := Collection.Tuple.Triplet->New("Alice", 30, true)<String, IntRef, BoolRef>;
+t->GetFirst()->PrintLine(); # Alice
+```
 		~#
 		method : public : GetFirst() ~ A {
 			return @a;
@@ -130,6 +163,11 @@ triplet->GetThird()->PrintLine();
 		#~
 		Returns the second value
 		@return second value
+
+```
+t := Collection.Tuple.Triplet->New("Alice", 30, true)<String, IntRef, BoolRef>;
+t->GetSecond()->PrintLine(); # 30
+```
 		~#
 		method : public : GetSecond() ~ B {
 			return @b;
@@ -138,6 +176,11 @@ triplet->GetThird()->PrintLine();
 		#~
 		Returns the third value
 		@return third value
+
+```
+t := Collection.Tuple.Triplet->New("Alice", 30, true)<String, IntRef, BoolRef>;
+t->GetThird()->PrintLine(); # true
+```
 		~#
 		method : public : GetThird() ~ C {
 			return @c;
@@ -146,6 +189,11 @@ triplet->GetThird()->PrintLine();
 		#~
 		Formats tuple into a string
 		@return string representation
+
+```
+t := Collection.Tuple.Triplet->New("Alice", 30, true)<String, IntRef, BoolRef>;
+t->ToString()->PrintLine(); # [Alice,30,true]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -222,6 +270,12 @@ quartet->GetFourth()->PrintLine();
 		@param b second parameter
 		@param c third parameter
 		@param d fourth parameter
+
+```
+q := Collection.Tuple.Quartet->New("Bob", 25, 3.14, true)<String, IntRef, FloatRef, BoolRef>;
+q->GetFirst()->PrintLine();  # Bob
+q->GetFourth()->PrintLine(); # true
+```
 		~#
 		New(a : A, b : B, c : C, d : D) {
 			@a := a;
@@ -233,6 +287,11 @@ quartet->GetFourth()->PrintLine();
 		#~
 		Returns the first value
 		@return first value
+
+```
+q := Collection.Tuple.Quartet->New("Bob", 25, 3.14, true)<String, IntRef, FloatRef, BoolRef>;
+q->GetFirst()->PrintLine(); # Bob
+```
 		~#
 		method : public : GetFirst() ~ A {
 			return @a;
@@ -241,6 +300,11 @@ quartet->GetFourth()->PrintLine();
 		#~
 		Returns the second value
 		@return second value
+
+```
+q := Collection.Tuple.Quartet->New("Bob", 25, 3.14, true)<String, IntRef, FloatRef, BoolRef>;
+q->GetSecond()->PrintLine(); # 25
+```
 		~#
 		method : public : GetSecond() ~ B {
 			return @b;
@@ -249,6 +313,11 @@ quartet->GetFourth()->PrintLine();
 		#~
 		Returns the third value
 		@return third value
+
+```
+q := Collection.Tuple.Quartet->New("Bob", 25, 3.14, true)<String, IntRef, FloatRef, BoolRef>;
+q->GetThird()->PrintLine(); # 3.14
+```
 		~#
 		method : public : GetThird() ~ C {
 			return @c;
@@ -257,6 +326,11 @@ quartet->GetFourth()->PrintLine();
 		#~
 		Returns the fourth value
 		@return fourth value
+
+```
+q := Collection.Tuple.Quartet->New("Bob", 25, 3.14, true)<String, IntRef, FloatRef, BoolRef>;
+q->GetFourth()->PrintLine(); # true
+```
 		~#
 		method : public : GetFourth() ~ D {
 			return @d;
@@ -265,6 +339,11 @@ quartet->GetFourth()->PrintLine();
 		#~
 		Formats tuple into a string
 		@return string representation
+
+```
+q := Collection.Tuple.Quartet->New("Bob", 25, 3.14, true)<String, IntRef, FloatRef, BoolRef>;
+q->ToString()->PrintLine(); # [Bob,25,3.14,true]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -355,6 +434,12 @@ quintet->GetFifth()->PrintLine();
 		@param c third parameter
 		@param d fourth parameter
 		@param e fifth parameter
+
+```
+q := Collection.Tuple.Quintet->New("x", 1, 2.5, 'a', true)<String, IntRef, FloatRef, CharRef, BoolRef>;
+q->GetFirst()->PrintLine();  # x
+q->GetFifth()->PrintLine();  # true
+```
 		~#
 		New(a : A, b : B, c : C, d : D, e : E) {
 			@a := a;
@@ -367,6 +452,11 @@ quintet->GetFifth()->PrintLine();
 		#~
 		Returns the first value
 		@return first value
+
+```
+q := Collection.Tuple.Quintet->New("x", 1, 2.5, 'a', true)<String, IntRef, FloatRef, CharRef, BoolRef>;
+q->GetFirst()->PrintLine(); # x
+```
 		~#
 		method : public : GetFirst() ~ A {
 			return @a;
@@ -375,6 +465,11 @@ quintet->GetFifth()->PrintLine();
 		#~
 		Returns the second value
 		@return second value
+
+```
+q := Collection.Tuple.Quintet->New("x", 1, 2.5, 'a', true)<String, IntRef, FloatRef, CharRef, BoolRef>;
+q->GetSecond()->PrintLine(); # 1
+```
 		~#
 		method : public : GetSecond() ~ B {
 			return @b;
@@ -383,6 +478,11 @@ quintet->GetFifth()->PrintLine();
 		#~
 		Returns the third value
 		@return third value
+
+```
+q := Collection.Tuple.Quintet->New("x", 1, 2.5, 'a', true)<String, IntRef, FloatRef, CharRef, BoolRef>;
+q->GetThird()->PrintLine(); # 2.5
+```
 		~#
 		method : public : GetThird() ~ C {
 			return @c;
@@ -391,6 +491,11 @@ quintet->GetFifth()->PrintLine();
 		#~
 		Returns the fourth value
 		@return fourth value
+
+```
+q := Collection.Tuple.Quintet->New("x", 1, 2.5, 'a', true)<String, IntRef, FloatRef, CharRef, BoolRef>;
+q->GetFourth()->PrintLine(); # a
+```
 		~#
 		method : public : GetFourth() ~ D {
 			return @d;
@@ -399,6 +504,11 @@ quintet->GetFifth()->PrintLine();
 		#~
 		Returns the fifth value
 		@return fifth value
+
+```
+q := Collection.Tuple.Quintet->New("x", 1, 2.5, 'a', true)<String, IntRef, FloatRef, CharRef, BoolRef>;
+q->GetFifth()->PrintLine(); # true
+```
 		~#
 		method : public : GetFifth() ~ E {
 			return @e;
@@ -407,6 +517,11 @@ quintet->GetFifth()->PrintLine();
 		#~
 		Formats tuple into a string
 		@return string representation
+
+```
+q := Collection.Tuple.Quintet->New("x", 1, 2.5, 'a', true)<String, IntRef, FloatRef, CharRef, BoolRef>;
+q->ToString()->PrintLine(); # [x,1,2.5,a,true]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -528,6 +643,13 @@ while(<>heap->IsEmpty()) {
 		Constructor
 		@param array array of values to insert
 		@param order sort order
+
+```
+values := IntRef->New[3];
+values[0] := 5; values[1] := 2; values[2] := 8;
+heap := Collection.Heap->New(values, Collection.Heap->Order->MIN)<IntRef>;
+heap->Pop()->PrintLine(); # 2
+```
 		~#
 		New(array : H[], order : Heap->Order) {
 			@heap := H->New[16];
@@ -542,6 +664,13 @@ while(<>heap->IsEmpty()) {
 	   #~
 		Constructor
 		@param order sort order
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MAX)<IntRef>;
+heap->Insert(IntRef->New(5));
+heap->Insert(IntRef->New(9));
+heap->Pop()->PrintLine(); # 9
+```
 		~#
 		New(order : Heap->Order) {
 			@heap := H->New[16];
@@ -552,8 +681,16 @@ while(<>heap->IsEmpty()) {
 		#~
 		Returns a list of non-Nil values
 		@return list of values
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(3));
+heap->Insert(IntRef->New(1));
+arr := heap->ToArray();
+arr[0]->PrintLine(); # smallest element
+```
 		~#
-		method : public : ToArray() ~ H[] {        
+		method : public : ToArray() ~ H[] {
 			buffer := H->New[@length];
 
 			i := 0;
@@ -569,6 +706,11 @@ while(<>heap->IsEmpty()) {
 		#~
 		Returns the heap capacity
 		@return heap capacity
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Capacity()->PrintLine(); # initial capacity (16)
+```
 		~#
 		method : public : Capacity() ~ Int {
 			return @heap->Size();
@@ -577,6 +719,14 @@ while(<>heap->IsEmpty()) {
 		#~
 		Inserts a value into the heap and extends the heap size if necessary
 		@param value value to insert
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(7));
+heap->Insert(IntRef->New(2));
+heap->Insert(IntRef->New(5));
+heap->Top()->PrintLine(); # 2
+```
 		~#
 		method : public : Insert(value : H) ~ Nil {
 			if(@length >= @heap->Size() - 1) {
@@ -592,6 +742,14 @@ while(<>heap->IsEmpty()) {
 		#~
 		Pop either the smallest or largest value depending upon the sort order
 		@return smallest or largest value
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(4));
+heap->Insert(IntRef->New(1));
+heap->Pop()->PrintLine(); # 1
+heap->Pop()->PrintLine(); # 4
+```
 		~#
 		method : public : Pop() ~ H {
 			result := Top();
@@ -612,6 +770,14 @@ while(<>heap->IsEmpty()) {
 		Searches and pops the given value
 		@param value value to remove
 		@return true if successful, false otherwise
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(3));
+heap->Insert(IntRef->New(7));
+heap->Pop(IntRef->New(7))->PrintLine(); # true
+heap->Size()->PrintLine();              # 1
+```
 		~#
 		method : public : Pop(value : H) ~ Bool {
 			each(i : @heap) {
@@ -638,6 +804,13 @@ while(<>heap->IsEmpty()) {
 		#~
 		Checks to see if the heap is empty
 		@return true if empty, false otherwise
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->IsEmpty()->PrintLine(); # true
+heap->Insert(IntRef->New(1));
+heap->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @length <= 0;
@@ -646,6 +819,13 @@ while(<>heap->IsEmpty()) {
 		#~
 		Check the top of the stack
 		@return value on the top of stack, Nil if stack is empty
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(5));
+heap->Insert(IntRef->New(2));
+heap->Top()->PrintLine(); # 2
+```
 		~#
 		method : public : Top() ~ H {
 			if(IsEmpty()) {
@@ -658,6 +838,13 @@ while(<>heap->IsEmpty()) {
 		#~
 		Size of heap, including Nil values
 		@return size of heap
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(1));
+heap->Insert(IntRef->New(2));
+heap->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @length;
@@ -762,9 +949,16 @@ while(<>heap->IsEmpty()) {
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(3));
+heap->Insert(IntRef->New(1));
+heap->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -839,6 +1033,13 @@ each(value := values) {
 		Default constructor
 		@param type MRU or LRU cache
 		@param max cache max size
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(1, "one");
+cache->Insert(2, "two");
+cache->Find(1)->PrintLine(); # one
+```
 		~#
 		New(type : Cache->Type, max : Int) {
 			@type := type;
@@ -848,9 +1049,16 @@ each(value := values) {
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 2)<IntRef, String>;
+cache->Insert(10, "ten");
+cache->Insert(20, "twenty");
+cache->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			return @cache->ToString();
@@ -860,6 +1068,13 @@ each(value := values) {
 		Inserts a value into the hash
 		@param key key
 		@param value value
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(1, "alpha");
+cache->Insert(2, "beta");
+cache->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Insert(key : K, value : S) ~ Bool {
 			if(key = Nil) {
@@ -894,6 +1109,13 @@ each(value := values) {
 		#~
 		Removes a value from the cache
 		@param key key for value to remove
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(5, "five");
+cache->Remove(5)->PrintLine(); # true
+cache->Has(5)->PrintLine();    # false
+```
 		~#
 		method : public : Remove(key : K) ~ Bool {
 			if(@cache->Has(key)) {
@@ -930,6 +1152,14 @@ each(value := values) {
 		#~
 		Get a collection of keys
 		@return vector of keys
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(1, "a");
+cache->Insert(2, "b");
+keys := cache->GetKeys()<IntRef>;
+keys->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : GetKeys() ~ Vector<K> {
 			return @cache->GetKeys()<K>;
@@ -938,6 +1168,16 @@ each(value := values) {
 		#~
 		Gets a collection of values
 		@return vector of values
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(1, "alpha");
+cache->Insert(2, "beta");
+vals := cache->GetValues()<String>;
+each(v := vals) {
+   v->PrintLine();
+};
+```
 		~#
 		method : public : GetValues() ~ Vector<S> {
 			return @cache->GetValues()<S>;
@@ -946,6 +1186,13 @@ each(value := values) {
 		#~
 		Gets a collection of key/value pairs
 		@return vector of key/value pairs
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 2)<IntRef, String>;
+cache->Insert(10, "ten");
+kvs := cache->GetKeyValues()<Collection.Pair<IntRef, String>>;
+kvs->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : GetKeyValues() ~ Vector<Pair<K, S>> {
 			return @cache->GetKeyValues()<Pair<K, S>>;
@@ -955,6 +1202,13 @@ each(value := values) {
 		Searches for a value in cache and updates access priority for LRU/MRU
 		@param key search key
 		@return found value, Nil if not found
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(1, "one");
+cache->Find(1)->PrintLine();  # one
+cache->Find(99)->PrintLine(); # (Nil — nothing printed)
+```
 		~#
 		method : public : Find(key : K) ~ S {
 			value := @cache->Find(key);
@@ -974,6 +1228,13 @@ each(value := values) {
 		Checks for a value in a cache
 		@param key search key
 		@return true if found, false otherwise
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(7, "seven");
+cache->Has(7)->PrintLine();  # true
+cache->Has(99)->PrintLine(); # false
+```
 		~#
 		method : public : Has(key : K) ~ Bool {
 			return @cache->Find(key) <> Nil;
@@ -982,6 +1243,12 @@ each(value := values) {
 		#~
 		Size of cache
 		@return size of cache
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(1, "a");
+cache->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : Size() ~ Int {
 			return @cache->Size();
@@ -990,6 +1257,13 @@ each(value := values) {
 		#~
 		Checks to see if the cache is empty
 		@return true if empty, false otherwise
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->IsEmpty()->PrintLine(); # true
+cache->Insert(1, "a");
+cache->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @cache->IsEmpty();
@@ -997,6 +1271,13 @@ each(value := values) {
 
 		#~
 		Clears the cache
+
+```
+cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
+cache->Insert(1, "a");
+cache->Empty();
+cache->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@cache->Empty();
@@ -1025,6 +1306,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 
 		#~
 		Default constructor
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("apple");
+set->Add("banana");
+set->Size()->PrintLine(); # 2
+```
 		~#
 		New() {
 			@hash := Hash->New()<H, BoolRef>;
@@ -1034,6 +1322,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 		Adds a value to the set
 		@param value value to add
 		@return true if added, false if already exists
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("apple")->PrintLine();  # true
+set->Add("apple")->PrintLine();  # false (duplicate)
+set->Size()->PrintLine();        # 1
+```
 		~#
 		method : public : Add(value : H) ~ Bool {
 			if(value = Nil | @hash->Has(value)) {
@@ -1047,6 +1342,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 		Checks if a value exists in the set
 		@param value value to check
 		@return true if found, false otherwise
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("hello");
+set->Has("hello")->PrintLine(); # true
+set->Has("world")->PrintLine(); # false
+```
 		~#
 		method : public : Has(value : H) ~ Bool {
 			return @hash->Has(value);
@@ -1056,6 +1358,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 		Removes a value from the set
 		@param value value to remove
 		@return true if removed, false if not found
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("hello");
+set->Remove("hello")->PrintLine(); # true
+set->Has("hello")->PrintLine();    # false
+```
 		~#
 		method : public : Remove(value : H) ~ Bool {
 			return @hash->Remove(value);
@@ -1064,6 +1373,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 		#~
 		Size of set
 		@return number of elements
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("a");
+set->Add("b");
+set->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @hash->Size();
@@ -1072,6 +1388,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 		#~
 		Checks if set is empty
 		@return true if empty, false otherwise
+
+```
+set := Collection.HashSet->New()<String>;
+set->IsEmpty()->PrintLine(); # true
+set->Add("x");
+set->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @hash->IsEmpty();
@@ -1079,6 +1402,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 
 		#~
 		Clears the set
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("a");
+set->Empty();
+set->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@hash->Empty();
@@ -1087,6 +1417,14 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 		#~
 		Gets all values as a vector
 		@return vector of values
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("x");
+set->Add("y");
+v := set->ToVector()<String>;
+v->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : ToVector() ~ Vector<H> {
 			return @hash->GetKeys()<H>;
@@ -1095,6 +1433,14 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 		#~
 		Gets all values as an array
 		@return array of values
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("p");
+set->Add("q");
+arr := set->ToArray();
+arr->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : ToArray() ~ H[] {
 			keys := @hash->GetKeys()<H>;
@@ -1108,6 +1454,13 @@ set->Has(IntRef->New(2))->PrintLine(); # false
 		#~
 		Formats the set into a string
 		@return string representation
+
+```
+set := Collection.HashSet->New()<String>;
+set->Add("a");
+set->Add("b");
+set->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "{";
@@ -1147,6 +1500,12 @@ pair->ToString()->PrintLine();
 		Default constructor
 		@param first compare object
 		@param second object
+
+```
+pair := Collection.Pair->New(IntRef->New(1), "one")<IntRef, String>;
+pair->GetFirst()->PrintLine();  # 1
+pair->GetSecond()->PrintLine(); # one
+```
 		~#
 		New(first : F, second : S) {
 			@first := first;
@@ -1157,14 +1516,25 @@ pair->ToString()->PrintLine();
 		Compares two objects based upon first value
 		@param first compare object
 		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+
+```
+a := Collection.Pair->New(IntRef->New(1), "one")<IntRef, String>;
+b := Collection.Pair->New(IntRef->New(2), "two")<IntRef, String>;
+a->Compare(b->GetFirst())->PrintLine(); # -1
+```
 		~#
 		method : public : Compare(first : System.Compare) ~ Int {
 			return @first->Compare(first);
 		}
-		
+
 		#~
 		Returns the class default hash ID
 		@return hash ID
+
+```
+pair := Collection.Pair->New(IntRef->New(42), "answer")<IntRef, String>;
+pair->HashID()->PrintLine();
+```
 		~#
 		method : public : HashID() ~ Int {
 			return @first->GetInstanceID();
@@ -1173,6 +1543,11 @@ pair->ToString()->PrintLine();
 		#~
 		Gets the first value
 		@return first value
+
+```
+pair := Collection.Pair->New(IntRef->New(7), "seven")<IntRef, String>;
+pair->GetFirst()->PrintLine(); # 7
+```
 		~#
 		method : public : GetFirst() ~ F {
 			return @first;
@@ -1181,6 +1556,12 @@ pair->ToString()->PrintLine();
 		#~
 		Sets the first value
 		@param first first value
+
+```
+pair := Collection.Pair->New(IntRef->New(1), "one")<IntRef, String>;
+pair->SetFirst(IntRef->New(99));
+pair->GetFirst()->PrintLine(); # 99
+```
 		~#
 		method : public : SetFirst(first : F) ~ Nil {
 			@first := first;
@@ -1189,6 +1570,11 @@ pair->ToString()->PrintLine();
 		#~
 		Gets the second value
 		@return second value
+
+```
+pair := Collection.Pair->New(IntRef->New(3), "three")<IntRef, String>;
+pair->GetSecond()->PrintLine(); # three
+```
 		~#
 		method : public : GetSecond() ~ S {
 			return @second;
@@ -1197,15 +1583,26 @@ pair->ToString()->PrintLine();
 		#~
 		Sets the second value
 		@param second second value
+
+```
+pair := Collection.Pair->New(IntRef->New(1), "one")<IntRef, String>;
+pair->SetSecond("ONE");
+pair->GetSecond()->PrintLine(); # ONE
+```
 		~#
 		method : public : SetSecond(second : S) ~ Nil {
 			@second := second;
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+pair := Collection.Pair->New(IntRef->New(5), "five")<IntRef, String>;
+pair->ToString()->PrintLine(); # {5,five}
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "{";
@@ -1285,8 +1682,15 @@ hash->Has(408)->PrintLine();
 		}
 		
 		#~
-		Default constructor 
+		Default constructor
 		@param auto_resize if true, automatically resized the hash table
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("apples", 3);
+hash->Insert("bananas", 5);
+hash->Size()->PrintLine(); # 2
+```
 		~#
 		New(auto_resize : Bool := true) {
 			@auto_resize := auto_resize;
@@ -1297,9 +1701,15 @@ hash->Has(408)->PrintLine();
 		}
 		
 		#~
-		Default constructor 
+		Default constructor
 		@param capacity capacity of hash table
 		@param auto_resize if true, automatically resized the hash table
+
+```
+hash := Collection.Hash->New(Collection.Hash->Capacity->MEDIUM)<String, IntRef>;
+hash->Insert("key", 42);
+hash->Find("key")->PrintLine(); # 42
+```
 		~#
 		New(capacity : Hash->Capacity, auto_resize : Bool := true) {
 			@capacity := capacity;
@@ -1313,6 +1723,14 @@ hash->Has(408)->PrintLine();
 		Converts a vector pairs to a hash
 		@param pairs vector of pairs
 		@return hashed pairs
+
+```
+pairs := Collection.Vector->New()<Collection.Tuple.Pair<String, IntRef>>;
+pairs->AddBack(Collection.Tuple.Pair->New("a", IntRef->New(1))<String, IntRef>);
+pairs->AddBack(Collection.Tuple.Pair->New("b", IntRef->New(2))<String, IntRef>);
+hash := Collection.Hash->Dict(pairs)<String, IntRef>;
+hash->Find("a")->PrintLine(); # 1
+```
 		~#
 		function : Dict(pairs : Vector<Collection.Tuple.Pair<K, V>>) ~ Hash<K, V> {
 			dict := Hash->New()<K, V>;
@@ -1327,9 +1745,16 @@ hash->Has(408)->PrintLine();
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("x", 10);
+hash->Insert("y", 20);
+hash->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -1372,11 +1797,17 @@ hash->Has(408)->PrintLine();
 
 			return buffer;
 		}
-		
+
 		#~
 		Inserts a value into the hash
 		@param key key
 		@param value value
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("count", 42);
+hash->Find("count")->PrintLine(); # 42
+```
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
 			if(key = Nil) {
@@ -1428,6 +1859,12 @@ hash->Has(408)->PrintLine();
 		Searches for a value in a hash
 		@param key search key
 		@return found value, Nil if not found
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("price", 99);
+hash->Find("price")->PrintLine(); # 99
+```
 		~#
 		method : public : native : Find(key : K) ~ V {
 			hash := (key->HashID() % @buckets->Size())->Abs();
@@ -1451,6 +1888,11 @@ hash->Has(408)->PrintLine();
 		#~
 		Gets the hash table capacity
 		@return hash table capacity
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->GetCapacity()->PrintLine();
+```
 		~#
 		method : public : GetCapacity() ~ Hash->Capacity {
 			return @capacity;
@@ -1459,6 +1901,12 @@ hash->Has(408)->PrintLine();
 		#~
 		Sets hash table capacity
 		@param capacity hash table capacity
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->SetCapacity(Collection.Hash->Capacity->MEDIUM);
+hash->GetCapacity()->PrintLine();
+```
 		~#
 		method : public : SetCapacity(capacity : Hash->Capacity) ~ Nil {
 			@capacity := capacity;
@@ -1467,6 +1915,11 @@ hash->Has(408)->PrintLine();
 		#~
 		Gets auto-resize setting
 		@return true if auto-resize is set, false otherwise
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->IsAutoResize()->PrintLine(); # true
+```
 		~#
 		method : public : IsAutoResize() ~ Bool {
 			return @auto_resize;
@@ -1475,6 +1928,12 @@ hash->Has(408)->PrintLine();
 		#~
 		Set auto-resize setting
 		@param auto_resize true if auto-resize is enable, false otherwise
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->SetAutoResize(false);
+hash->IsAutoResize()->PrintLine(); # false
+```
 		~#
 		method : public : SetAutoResize(auto_resize : Bool) ~ Nil {
 			@auto_resize := auto_resize;
@@ -1484,6 +1943,13 @@ hash->Has(408)->PrintLine();
 		Resizes the hash table
 		@param capacity table capacity
 		@param auto_resize true for hash table auto resizing, false otherwise
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("a", 1);
+hash->Resize(Collection.Hash->Capacity->LARGE);
+hash->Find("a")->PrintLine(); # 1
+```
 		~#
 		method : public : native : Resize(capacity : Hash->Capacity, auto_resize : Bool := true) ~ Nil {
 			@capacity := capacity;
@@ -1520,15 +1986,29 @@ hash->Has(408)->PrintLine();
 		Checks for a value in a hash
 		@param key search key
 		@return true if found, false otherwise
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("k", 1);
+hash->Has("k")->PrintLine();   # true
+hash->Has("z")->PrintLine();   # false
+```
 		~#
 		method : public : Has(key : K) ~ Bool {
 			result := Find(key);
 			return result <> Nil;
 		}
-		
+
 		#~
 		Removes a value from the hash
 		@param key key for value to remove
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("del", 9);
+hash->Remove("del")->PrintLine(); # true
+hash->Has("del")->PrintLine();    # false
+```
 		~#
 		method : public : native : Remove(key : K) ~ Bool {
 			hash := (key->HashID() % @buckets->Size())->Abs();
@@ -1555,6 +2035,16 @@ hash->Has(408)->PrintLine();
 		#~
 		Get a collection of keys
 		@return vector of keys
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("a", 1);
+hash->Insert("b", 2);
+keys := hash->GetKeys()<String>;
+each(k := keys) {
+   k->PrintLine();
+};
+```
 		~#
 		method : public : native : GetKeys() ~ Vector<K> {
 			keys := Vector->New()<K>;
@@ -1576,6 +2066,16 @@ hash->Has(408)->PrintLine();
 		#~
 		Gets a collection of values
 		@return vector of values
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("x", 10);
+hash->Insert("y", 20);
+vals := hash->GetValues()<IntRef>;
+each(v := vals) {
+   v->PrintLine();
+};
+```
 		~#
 		method : public : native : GetValues() ~ Vector<V> {
 			values := Vector->New()<V>;
@@ -1597,6 +2097,15 @@ hash->Has(408)->PrintLine();
 		#~
 		Gets a collection of key/value pairs
 		@return vector of key/value pairs
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("m", 100);
+kvs := hash->GetKeyValues()<Collection.Pair<String, IntRef>>;
+each(kv := kvs) {
+   "{kv->GetFirst()}: {kv->GetSecond()}"->PrintLine();
+};
+```
 		~#
 		method : public : GetKeyValues() ~ Vector<Pair<K,V>> {
 			values := Vector->New()<Pair<K,V>>;
@@ -1623,6 +2132,13 @@ hash->Has(408)->PrintLine();
 		
 		#~
 		Clears the map
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("a", 1);
+hash->Empty();
+hash->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@buckets := CompareList->New[@capacity]<K>;
@@ -1632,14 +2148,28 @@ hash->Has(408)->PrintLine();
 		#~
 		Checks to see if the hash table is empty
 		@return true if empty, false otherwise
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->IsEmpty()->PrintLine(); # true
+hash->Insert("a", 1);
+hash->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public: IsEmpty() ~ Bool {
 			return @size = 0;
 		}
-		
+
 		#~
 		Size of map
 		@return size of map
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("a", 1);
+hash->Insert("b", 2);
+hash->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @size;
@@ -1699,7 +2229,14 @@ stack->Size()->PrintLine(); # prints 2
 		@size : Int;
 
 		#~
-		Default constructor 
+		Default constructor
+
+```
+stack := Collection.Stack->New()<String>;
+stack->Push("a");
+stack->Push("b");
+stack->Pop()->PrintLine(); # b
+```
 		~#
 		New() {
 		}
@@ -1707,6 +2244,14 @@ stack->Size()->PrintLine(); # prints 2
 		#~
 		Converts the stack into an object array
 		@return object array
+
+```
+stack := Collection.Stack->New()<String>;
+stack->Push("x");
+stack->Push("y");
+arr := stack->ToArray();
+arr[0]->PrintLine(); # y (top element)
+```
 		~#
 		method : native : public : ToArray() ~ H[] {
 			array := H->New[@size];
@@ -1725,6 +2270,13 @@ stack->Size()->PrintLine(); # prints 2
 		#~
 		Pushes a value onto the stack
 		@param value to push
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->Push(IntRef->New(10));
+stack->Push(IntRef->New(20));
+stack->Top()->PrintLine(); # 20
+```
 		~#
 		method : public : Push(value : H) ~ Nil {
 			if(@head = Nil) {
@@ -1743,6 +2295,14 @@ stack->Size()->PrintLine(); # prints 2
 		Pops values from the stack
 		@param n number of items to pop
 		@return popped valued, Nil if stack is empty
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->Push(IntRef->New(1));
+stack->Push(IntRef->New(2));
+stack->Push(IntRef->New(3));
+stack->Pop(2)->PrintLine(); # 2 (value after skipping 2 items)
+```
 		~#
 		method : native : public : Pop(n : Int) ~ H {
 			value : H := Nil;
@@ -1763,6 +2323,14 @@ stack->Size()->PrintLine(); # prints 2
 		#~
 		Pops a value from the stack
 		@return popped valued, Nil if stack is empty
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->Push(IntRef->New(7));
+stack->Push(IntRef->New(8));
+stack->Pop()->PrintLine(); # 8
+stack->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : Pop() ~ H {
 			value : H;
@@ -1779,6 +2347,13 @@ stack->Size()->PrintLine(); # prints 2
 		#~
 		Check the top of the stack
 		@return value on the top of stack, Nil if stack is empty
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->Push(IntRef->New(42));
+stack->Top()->PrintLine(); # 42
+stack->Size()->PrintLine(); # 1 (Top does not remove)
+```
 		~#
 		method : public : Top() ~ H {
 			value : H;
@@ -1794,6 +2369,13 @@ stack->Size()->PrintLine(); # prints 2
 		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->Push(IntRef->New(1));
+stack->Push(IntRef->New(2));
+stack->ToString()->PrintLine(); # [2,1]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -1821,6 +2403,13 @@ stack->Size()->PrintLine(); # prints 2
 		#~
 		Checks to see if the stack is empty
 		@return true if empty, false otherwise
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->IsEmpty()->PrintLine(); # true
+stack->Push(IntRef->New(1));
+stack->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @head = Nil;
@@ -1828,6 +2417,13 @@ stack->Size()->PrintLine(); # prints 2
 
 		#~
 		Clears the stack
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->Push(IntRef->New(5));
+stack->Empty();
+stack->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@head := Nil;
@@ -1836,6 +2432,13 @@ stack->Size()->PrintLine(); # prints 2
 		#~
 		Size of stack
 		@return size of stack
+
+```
+stack := Collection.Stack->New()<IntRef>;
+stack->Push(IntRef->New(1));
+stack->Push(IntRef->New(2));
+stack->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @size;
@@ -1868,7 +2471,14 @@ queue->Front()->PrintLine();
 		@queue : List<H>;
 		
 		#~
-		Default constructor 
+		Default constructor
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("first");
+queue->AddBack("second");
+queue->Front()->PrintLine(); # first
+```
 		~#
 		New() {
 			@queue := List->New()<H>;
@@ -1877,6 +2487,14 @@ queue->Front()->PrintLine();
 		#~
 		Converts the queue into an object array
 		@return object array
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("a");
+queue->AddBack("b");
+arr := queue->ToArray();
+arr[0]->PrintLine(); # a
+```
 		~#
 		method : public : ToArray() ~ H[] {
 			return @queue->ToArray();
@@ -1885,6 +2503,13 @@ queue->Front()->PrintLine();
 		#~
 		Adds a value to the back of the queue
 		@param value value to add
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("first");
+queue->AddBack("second");
+queue->Back()->PrintLine(); # second
+```
 		~#
 		method : public: AddBack(value : H) ~ Nil {
 			@queue->AddBack(value);
@@ -1893,14 +2518,29 @@ queue->Front()->PrintLine();
 		#~
 		Adds a value to the front of the queue
 		@param value value to add
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("middle");
+queue->AddFront("head");
+queue->Front()->PrintLine(); # head
+```
 		~#
 		method : public: AddFront(value : H) ~ Nil {
 			@queue->AddFront(value);
 		}
-		
+
 		#~
 		Removes a value from the front of the queue
 		@return value removed
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("first");
+queue->AddBack("second");
+queue->RemoveFront()->PrintLine(); # first
+queue->Front()->PrintLine();       # second
+```
 		~#
 		method : public : RemoveFront() ~ H {
 			if(@queue->Size() > 0) {
@@ -1915,6 +2555,14 @@ queue->Front()->PrintLine();
 		#~
 		Removes a value from the back of the queue
 		@return value removed
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("alpha");
+queue->AddBack("beta");
+queue->RemoveBack()->PrintLine(); # beta
+queue->Back()->PrintLine();       # alpha
+```
 		~#
 		method : public : RemoveBack() ~ H {
 			if(@queue->Size() > 0) {
@@ -1929,6 +2577,13 @@ queue->Front()->PrintLine();
 		#~
 		Get the value from the front of the queue
 		@return head value, Nil if queue is empty
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("first");
+queue->AddBack("last");
+queue->Front()->PrintLine(); # first
+```
 		~#
 		method : public: Front() ~ H {
 			return @queue->Front();
@@ -1937,6 +2592,13 @@ queue->Front()->PrintLine();
 		#~
 		Get the value from the back of the queue
 		@return head value, Nil if queue is empty
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("first");
+queue->AddBack("last");
+queue->Back()->PrintLine(); # last
+```
 		~#
 		method : public: Back() ~ H {
 			return @queue->Back();
@@ -1946,6 +2608,13 @@ queue->Front()->PrintLine();
 		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("a");
+queue->AddBack("b");
+queue->ToString()->PrintLine(); # [a,b]
+```
 		~#
 		method : public : ToString() ~ String {
 			return @queue->ToString();
@@ -1953,6 +2622,13 @@ queue->Front()->PrintLine();
 
 		#~
 		Clears the queue
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("a");
+queue->Empty();
+queue->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@queue->Empty();
@@ -1961,6 +2637,13 @@ queue->Front()->PrintLine();
 		#~
 		Checks to see if the queue is empty
 		@return true if empty, false otherwise
+
+```
+queue := Collection.Queue->New()<String>;
+queue->IsEmpty()->PrintLine(); # true
+queue->AddBack("x");
+queue->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @queue->IsEmpty();
@@ -1969,6 +2652,13 @@ queue->Front()->PrintLine();
 		#~
 		Size of queue
 		@return size of queue
+
+```
+queue := Collection.Queue->New()<String>;
+queue->AddBack("a");
+queue->AddBack("b");
+queue->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @queue->Size();
@@ -1989,6 +2679,17 @@ queue->Front()->PrintLine();
 
 		#~
 		Advances the pointer
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+it := list->ForwardIterator()<IntRef>;
+while(it->More()) {
+   it->Get()->PrintLine();
+   it->Next();
+};
+```
 		~#
 		method : public : Next() ~ Nil {
 			if(@node <> Nil) {
@@ -1999,6 +2700,13 @@ queue->Front()->PrintLine();
 		#~
 		Checks to see the pointer can be advanced
 		@return true if pointer can be advanced, false otherwise
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(5));
+it := list->ForwardIterator()<IntRef>;
+it->More()->PrintLine(); # true
+```
 		~#
 		method : public : More() ~ Bool {
 			if(@node <> Nil) {
@@ -2010,6 +2718,15 @@ queue->Front()->PrintLine();
 
 		#~
 		Removes the element at the pointer position
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+it := list->ForwardIterator()<IntRef>;
+it->Remove();
+list->Size()->PrintLine(); # 1
+```
 		~#
 	    method : public : Remove() ~ Nil {
 	    	@list->Remove(@node);
@@ -2018,6 +2735,13 @@ queue->Front()->PrintLine();
 	    #~
 		Gets the value that's currently pointed to
 		@return value value
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(99));
+it := list->ForwardIterator()<IntRef>;
+it->Get()->PrintLine(); # 99
+```
 		~#
 		method : public : Get() ~ H {
 			return @node->Get();
@@ -2038,6 +2762,17 @@ queue->Front()->PrintLine();
 
 	    #~
 		Advances the pointer Backward
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+it := list->BackwardIterator()<IntRef>;
+while(it->More()) {
+   it->Get()->PrintLine();
+   it->Next();
+};
+```
 		~#
 	    method : public : Next() ~ Nil {
 	            if(@node <> Nil) {
@@ -2048,6 +2783,13 @@ queue->Front()->PrintLine();
 	    #~
 		Checks to see the pointer can be advanced Backward
 		@return true if pointer can be advanced, false otherwise
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(5));
+it := list->BackwardIterator()<IntRef>;
+it->More()->PrintLine(); # true
+```
 		~#
 	    method : public : More() ~ Bool {
 	            if(@node <> Nil) {
@@ -2059,6 +2801,15 @@ queue->Front()->PrintLine();
 
 	    #~
 		Removes the element at the pointer position
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+it := list->BackwardIterator()<IntRef>;
+it->Remove();
+list->Size()->PrintLine(); # 1
+```
 		~#
 	    method : public : Remove() ~ Nil {
 	    	@list->Remove(@node);
@@ -2067,6 +2818,13 @@ queue->Front()->PrintLine();
 	    #~
 		Gets the value that's currently pointed to
 		@return current value
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(77));
+it := list->BackwardIterator()<IntRef>;
+it->Get()->PrintLine(); # 77
+```
 		~#
 		method : public : Get() ~ H {
 			return @node->Get();
@@ -2118,6 +2876,13 @@ function : Example() ~ Nil {
 
 		#~
 		Default constructor
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Size()->PrintLine(); # 2
+```
 		~#
 		New() {
 			@size := 0;
@@ -2127,6 +2892,13 @@ function : Example() ~ Nil {
 		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->ToString()->PrintLine(); # [1,2]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -2160,6 +2932,14 @@ function : Example() ~ Nil {
 		#~
 		Converts the list into an object array
 		@return object array
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(10));
+list->AddBack(IntRef->New(20));
+arr := list->ToArray();
+arr[0]->PrintLine(); # 10
+```
 		~#
 		method : public : ToArray() ~ H[] {
 			array := H->New[@size];
@@ -2177,6 +2957,17 @@ function : Example() ~ Nil {
 		#~
 		Instance of a forward iterator
 		@return forward iterator
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+it := list->ForwardIterator()<IntRef>;
+while(it->More()) {
+   it->Get()->PrintLine();
+   it->Next();
+};
+```
 		~#
 		method : public : ForwardIterator() ~ CompareForwardIterator<H> {
 			return CompareForwardIterator->New(@head, @self)<H>;
@@ -2185,6 +2976,17 @@ function : Example() ~ Nil {
 		#~
 		Instance of a backward iterator
 		@return Backward iterator
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+it := list->BackwardIterator()<IntRef>;
+while(it->More()) {
+   it->Get()->PrintLine();
+   it->Next();
+};
+```
 		~#
 		method : public : BackwardIterator() ~ CompareBackwardIterator<H> {
 			return CompareBackwardIterator->New(@tail, @self)<H>;
@@ -2193,6 +2995,13 @@ function : Example() ~ Nil {
 		#~
 		Adds a value to the end
 		@param value value to append
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(5));
+list->AddBack(IntRef->New(10));
+list->Back()->PrintLine(); # 10
+```
 		~#
 		method : public : native : AddBack(value : H) ~ Nil {
 			node := CompareListNode->New(value)<H>;
@@ -2211,6 +3020,14 @@ function : Example() ~ Nil {
 
 		#~
 		Removes the last value from the list
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->RemoveBack();
+list->Back()->PrintLine(); # 1
+```
 		~#
 		method : public : RemoveBack() ~ Nil {
 			Forward();
@@ -2220,6 +3037,13 @@ function : Example() ~ Nil {
 		#~
 		Adds a value to the front
 		@param value value to prepend
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(2));
+list->AddFront(IntRef->New(1));
+list->Front()->PrintLine(); # 1
+```
 		~#
 		method : public : native : AddFront(value : H) ~ Nil {
 			node := CompareListNode->New(value)<H>;
@@ -2238,6 +3062,14 @@ function : Example() ~ Nil {
 
 		#~
 		Removes the first value from the list
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->RemoveFront();
+list->Front()->PrintLine(); # 2
+```
 		~#
 		method : public : RemoveFront() ~ Nil {
 			Rewind();
@@ -2246,6 +3078,15 @@ function : Example() ~ Nil {
 
 		#~
 		Moves the pointer to the start of the list
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Forward();
+list->Rewind();
+list->Get()->PrintLine(); # 1
+```
 		~#
 		method : public : Rewind() ~ Nil {
 			@cursor := @head;
@@ -2253,6 +3094,14 @@ function : Example() ~ Nil {
 
 		#~
 		Moves the pointer to the end of the list
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Forward();
+list->Get()->PrintLine(); # 2
+```
 		~#
 		method : public : Forward() ~ Nil {
 			@cursor := @tail;
@@ -2260,6 +3109,15 @@ function : Example() ~ Nil {
 
 		#~
 		Advances the pointer
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Rewind();
+list->Next();
+list->Get()->PrintLine(); # 2
+```
 		~#
 		method : public : Next() ~ Nil {
 			if(@cursor <> Nil) {
@@ -2269,6 +3127,15 @@ function : Example() ~ Nil {
 
 		#~
 		Retreats the pointer
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Forward();
+list->Previous();
+list->Get()->PrintLine(); # 1
+```
 		~#
 		method : public : Previous() ~ Nil {
 			if(@cursor <> Nil) {
@@ -2279,6 +3146,13 @@ function : Example() ~ Nil {
 		#~
 		Gets the value that's currently pointed to
 		@return value value
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(42));
+list->Rewind();
+list->Get()->PrintLine(); # 42
+```
 		~#
 		method : public : Get() ~ H {
 			if(@cursor <> Nil) {
@@ -2292,6 +3166,14 @@ function : Example() ~ Nil {
 		Maps the given function to each value in the list
 		@param f function to apply
 		@return newly calculated list
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(3));
+list->AddBack(IntRef->New(4));
+doubled := list->Map(\(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * 2); });
+doubled->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Map(f : (H) ~ H) ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
@@ -2310,6 +3192,15 @@ function : Example() ~ Nil {
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filtered list
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->AddBack(IntRef->New(3));
+evens := list->Filter(\(v : IntRef) ~ Bool { return v->Get() % 2 = 0; });
+evens->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
@@ -2331,6 +3222,15 @@ function : Example() ~ Nil {
 		@param a initial value (i.e. accumulator)
 		@param f function to use a reduce
 		@return reduced vector
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->AddBack(IntRef->New(3));
+sum := list->Reduce(IntRef->New(0), \(a : IntRef, v : IntRef) ~ IntRef { return IntRef->New(a->Get() + v->Get()); });
+sum->PrintLine(); # 6
+```
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
 			start := @head;
@@ -2345,6 +3245,15 @@ function : Example() ~ Nil {
 		#~
 		List of all but first element
 		@return all but first element
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->AddBack(IntRef->New(3));
+rest := list->Rest();
+rest->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Rest() ~ CompareList<H> {
 			list : CompareList<H> := CompareList->New()<H>;
@@ -2366,6 +3275,14 @@ function : Example() ~ Nil {
 		Searches for a value
 		@param value value to check for
 		@return true if value is found, false otherwise
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(5));
+list->AddBack(IntRef->New(10));
+list->Has(IntRef->New(5))->PrintLine();  # true
+list->Has(IntRef->New(99))->PrintLine(); # false
+```
 		~#
 		method : public : Has(value : H) ~ Bool {
 			start := @head;
@@ -2395,6 +3312,14 @@ function : Example() ~ Nil {
 		Finds a value in the list and sets the pointer
 		@param value value to search for
 		@return value that's found
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+found := list->Find(IntRef->New(2));
+found->PrintLine(); # 2
+```
 		~#
 		method : public : Find(value : H) ~ H {
 			@cursor := @head;
@@ -2411,6 +3336,15 @@ function : Example() ~ Nil {
 		#~
 		Inserts a value into the list based upon the pointer location
 		@param value value to insert
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(3));
+list->Rewind();
+list->Insert(IntRef->New(2));
+list->Size()->PrintLine(); # 3
+```
 		~#
 		method : public : native : Insert(value : H) ~ Bool {
 			if(@cursor <> Nil & @head <> Nil & @tail <> Nil) {
@@ -2445,6 +3379,15 @@ function : Example() ~ Nil {
 		
 		#~
 		Removes the element at the pointer position
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Rewind();
+list->Remove();
+list->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : native : Remove() ~ Nil {
 			if(@cursor <> Nil) {
@@ -2509,22 +3452,50 @@ function : Example() ~ Nil {
 		#~
 		Checks to see if the pointer is at the front of the list
 		@return true if pointer is at the front of the list, false otherwise
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Rewind();
+list->IsFront()->PrintLine(); # true
+list->Next();
+list->IsFront()->PrintLine(); # false
+```
 		~#
 		method : public : IsFront() ~ Bool {
 			return @cursor = @head;
-		}		
-		
+		}
+
 		#~
 		Checks to see if the pointer is at the end of the list
 		@return true if pointer is at the end of the list, false otherwise
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Forward();
+list->IsBack()->PrintLine(); # true
+```
 		~#
 		method : public : IsBack() ~ Bool {
 			return @cursor = @tail;
 		}
-		
+
 		#~
 		Checks to see the pointer can be advanced
 		@return true if pointer can be advanced, false otherwise
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->Rewind();
+while(list->More()) {
+   list->Get()->PrintLine();
+   list->Next();
+};
+```
 		~#
 		method : public : More() ~ Bool {
 			return @cursor <> Nil;
@@ -2533,6 +3504,13 @@ function : Example() ~ Nil {
 		#~
 		Returns the first element in the list
 		@return first element in the list, Nil if the list is empty
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(10));
+list->AddBack(IntRef->New(20));
+list->Front()->PrintLine(); # 10
+```
 		~#
 		method : public : Front() ~ H {
 			if(@head <> Nil) {
@@ -2545,6 +3523,13 @@ function : Example() ~ Nil {
 		#~
 		Returns the last element in the list
 		@return last element in the list, Nil if the list is empty
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(10));
+list->AddBack(IntRef->New(20));
+list->Back()->PrintLine(); # 20
+```
 		~#
 		method : public : Back() ~ H {
 			if(@tail <> Nil) {
@@ -2556,6 +3541,13 @@ function : Example() ~ Nil {
 
 		#~
 		Clears the list
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->Empty();
+list->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@size := 0;
@@ -2563,18 +3555,32 @@ function : Example() ~ Nil {
 			@tail := Nil;
 			@cursor := Nil;
 		}
-		
+
 		#~
 		Checks to see if the list is empty
 		@return true if empty, false otherwise
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->IsEmpty()->PrintLine(); # true
+list->AddBack(IntRef->New(1));
+list->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
-		
+
 		#~
 		Size of list
 		@return size of list
+
+```
+list := Collection.CompareList->New()<IntRef>;
+list->AddBack(IntRef->New(1));
+list->AddBack(IntRef->New(2));
+list->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @size;
@@ -2629,6 +3635,17 @@ function : Example() ~ Nil {
 
 		#~
 		Advances the pointer
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+it := list->ForwardIterator()<String>;
+while(it->More()) {
+   it->Get()->PrintLine();
+   it->Next();
+};
+```
 		~#
 		method : public : Next() ~ Nil {
 			if(@node <> Nil) {
@@ -2639,6 +3656,13 @@ function : Example() ~ Nil {
 		#~
 		Checks to see the pointer can be advanced
 		@return true if pointer can be advanced, false otherwise
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("x");
+it := list->ForwardIterator()<String>;
+it->More()->PrintLine(); # true
+```
 		~#
 		method : public : More() ~ Bool {
 			return @node <> Nil;
@@ -2646,6 +3670,15 @@ function : Example() ~ Nil {
 
 		#~
 		Removes the element at the pointer position
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+it := list->ForwardIterator()<String>;
+it->Remove();
+list->Size()->PrintLine(); # 1
+```
 		~#
 	    method : public : Remove() ~ Nil {
 	    	@list->Remove(@node);
@@ -2654,6 +3687,13 @@ function : Example() ~ Nil {
 	    #~
 		Gets the value that's currently pointed to
 		@return value value
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("hello");
+it := list->ForwardIterator()<String>;
+it->Get()->PrintLine(); # hello
+```
 		~#
 		method : public : Get() ~ H {
 			return @node->Get();
@@ -2674,16 +3714,34 @@ function : Example() ~ Nil {
 
 		#~
 		Advances the pointer Backward
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+it := list->BackwardIterator()<String>;
+while(it->More()) {
+   it->Get()->PrintLine();
+   it->Next();
+};
+```
 		~#
 	    method : public : Next() ~ Nil {
 	            if(@node <> Nil) {
 	                    @node := @node->GetPrevious();
 	            };
 	    }
-	    
+
 		#~
 		Checks to see the pointer can be advanced Backward
 		@return true if pointer can be advanced, false otherwise
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("x");
+it := list->BackwardIterator()<String>;
+it->More()->PrintLine(); # true
+```
 		~#
 	    method : public : More() ~ Bool {
 	            if(@node <> Nil) {
@@ -2695,6 +3753,15 @@ function : Example() ~ Nil {
 
 	    #~
 		Removes the element at the pointer position
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+it := list->BackwardIterator()<String>;
+it->Remove();
+list->Size()->PrintLine(); # 1
+```
 		~#
 	    method : public : Remove() ~ Nil {
 	    	@list->Remove(@node);
@@ -2703,6 +3770,13 @@ function : Example() ~ Nil {
 	    #~
 		Gets the value that's currently pointed to
 		@return value value
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("last");
+it := list->BackwardIterator()<String>;
+it->Get()->PrintLine(); # last
+```
 		~#
 		method : public : Get() ~ H {
 			return @node->Get();
@@ -2750,7 +3824,13 @@ function : Example() ~ Nil {
 		@cursor : ListNode<H>;
 
 		#~
-		Default constructor 
+		Default constructor
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("hello");
+list->Size()->PrintLine(); # 1
+```
 		~#
 		New() {
 			@size := 0;
@@ -2759,6 +3839,14 @@ function : Example() ~ Nil {
 		#~
 		Converts the list into an object array
 		@return object array
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+arr := list->ToArray();
+arr[0]->PrintLine(); # a
+```
 		~#
 		method : public : ToArray() ~ H[] {
 			array := H->New[@size];
@@ -2776,6 +3864,17 @@ function : Example() ~ Nil {
 		#~
 		Instance of a forward iterator
 		@return forward iterator
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("x");
+list->AddBack("y");
+it := list->ForwardIterator()<String>;
+while(it->More()) {
+   it->Get()->PrintLine();
+   it->Next();
+};
+```
 		~#
 		method : public : ForwardIterator() ~ ForwardIterator<H> {
 			return ForwardIterator->New(@head, @self)<H>;
@@ -2784,6 +3883,17 @@ function : Example() ~ Nil {
 		#~
 		Instance of a backward iterator
 		@return Backward iterator
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("x");
+list->AddBack("y");
+it := list->BackwardIterator()<String>;
+while(it->More()) {
+   it->Get()->PrintLine();
+   it->Next();
+};
+```
 		~#
 		method : public : BackwardIterator() ~ BackwardIterator<H> {
 			return BackwardIterator->New(@tail, @self)<H>;
@@ -2791,7 +3901,14 @@ function : Example() ~ Nil {
 
 		#~
 		Adds a value to the end
-		@param value value to append 
+		@param value value to append
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("first");
+list->AddBack("second");
+list->Back()->PrintLine(); # second
+```
 		~#
 		method : public : native : AddBack(value : H) ~ Nil {
 			node := ListNode->New(value)<H>;
@@ -2809,9 +3926,17 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Maps the given function to each value in the list 
+		Maps the given function to each value in the list
 		@param f function to apply
 		@return newly calculated list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("hello");
+list->AddBack("world");
+upper := list->Map(\(s : String) ~ String { return s->ToUpper(); });
+upper->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Map(f : (H) ~ H) ~ List<H> {
 			list : List<H> := List->New()<H>;
@@ -2829,6 +3954,13 @@ function : Example() ~ Nil {
 		#~
 		Function called for each element
 		@param f function called
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->Each(\(s : String) ~ Nil { s->PrintLine(); });
+```
 		~#
 		method : public : Each(f : (H) ~ Nil) ~ List<H> {
 			start := @head;
@@ -2840,9 +3972,16 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("foo");
+list->AddBack("bar");
+list->ToString()->PrintLine(); # [foo,bar]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -2877,10 +4016,19 @@ function : Example() ~ Nil {
 		Returns a limited list
 		@param l limit
 		@return limited list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->AddBack("c");
+first2 := list->Limit(2);
+first2->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Limit(l : Int) ~ List<H> {
 			list := List->New()<H>;
-			
+
 			if(l > -1) {
 				i := 0;
 				start := @head;
@@ -2899,6 +4047,15 @@ function : Example() ~ Nil {
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filtered list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("apple");
+list->AddBack("banana");
+list->AddBack("apricot");
+filtered := list->Filter(\(s : String) ~ Bool { return s->StartsWith("a"); });
+filtered->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ List<H> {
 			list : List<H> := List->New()<H>;
@@ -2920,6 +4077,15 @@ function : Example() ~ Nil {
 		@param a initial value (i.e. accumulator)
 		@param f function to use a reduce
 		@return reduced vector
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->AddBack("c");
+joined := list->Reduce("", \(acc : String, s : String) ~ String { return acc + s; });
+joined->PrintLine(); # abc
+```
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
 			start := @head;
@@ -2934,6 +4100,16 @@ function : Example() ~ Nil {
 		#~
 		List of all but first element
 		@return all but first element
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->AddBack("c");
+rest := list->Rest();
+rest->Size()->PrintLine();   # 2
+rest->Front()->PrintLine();  # b
+```
 		~#
 		method : public : Rest() ~ List<H> {
 			list : List<H> := List->New()<H>;
@@ -2953,6 +4129,14 @@ function : Example() ~ Nil {
 		
 		#~
 		Removes the last value from the list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->RemoveBack();
+list->Back()->PrintLine(); # a
+```
 		~#
 		method : public : RemoveBack() ~ Nil {
 			Forward();
@@ -2961,7 +4145,14 @@ function : Example() ~ Nil {
 
 		#~
 		Adds a value to the front
-		@param value value to prepend 
+		@param value value to prepend
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("second");
+list->AddFront("first");
+list->Front()->PrintLine(); # first
+```
 		~#
 		method : public : native : AddFront(value : H) ~ Nil {
 			node := ListNode->New(value)<H>;
@@ -2980,6 +4171,14 @@ function : Example() ~ Nil {
 		
 		#~
 		Removes the first value from the list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->RemoveFront();
+list->Front()->PrintLine(); # b
+```
 		~#
 		method : public : RemoveFront() ~ Nil {
 			Rewind();
@@ -2988,20 +4187,46 @@ function : Example() ~ Nil {
 
 		#~
 		Moves the pointer to the start of the list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->Forward();
+list->Rewind();
+list->Get()->PrintLine(); # a
+```
 		~#
 		method : public : Rewind() ~ Nil {
 			@cursor := @head;
-		}		
+		}
 
 		#~
 		Moves the pointer to the end of the list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->Forward();
+list->Get()->PrintLine(); # b
+```
 		~#
 		method : public : Forward() ~ Nil {
 			@cursor := @tail;
-		}		
+		}
 
 		#~
 		Advances the pointer
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->Rewind();
+list->Next();
+list->Get()->PrintLine(); # b
+```
 		~#
 		method : public : Next() ~ Nil {
 			if(@cursor <> Nil) {
@@ -3011,6 +4236,15 @@ function : Example() ~ Nil {
 
 		#~
 		Retreats the pointer
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->Forward();
+list->Previous();
+list->Get()->PrintLine(); # a
+```
 		~#
 		method : public : Previous() ~ Nil {
 			if(@cursor <> Nil) {
@@ -3021,6 +4255,13 @@ function : Example() ~ Nil {
 		#~
 		Gets the value that's currently pointed to
 		@return value value
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("hello");
+list->Rewind();
+list->Get()->PrintLine(); # hello
+```
 		~#
 		method : public : Get() ~ H {
 			if(@cursor <> Nil) {
@@ -3029,10 +4270,19 @@ function : Example() ~ Nil {
 
 			return Nil;
 		}
-				
+
 		#~
 		Inserts a value into the list based upon the pointer location
 		@param value value to insert
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("c");
+list->Rewind();
+list->Insert("b");
+list->Size()->PrintLine(); # 3
+```
 		~#
 		method : public : native : Insert(value : H) ~ Bool {
 			if(@cursor <> Nil & @head <> Nil & @tail <> Nil) {
@@ -3127,22 +4377,48 @@ function : Example() ~ Nil {
 		#~
 		Checks to see if the pointer is at the front of the list
 		@return true if pointer is at the front of the list, false otherwise
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->Rewind();
+list->IsFront()->PrintLine(); # true
+```
 		~#
 		method : public : IsFront() ~ Bool {
 			return @cursor = @head;
-		}		
-		
+		}
+
 		#~
 		Checks to see if the pointer is at the end of the list
 		@return true if pointer is at the end of the list, false otherwise
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->Forward();
+list->IsBack()->PrintLine(); # true
+```
 		~#
 		method : public : IsBack() ~ Bool {
 			return @cursor = @tail;
 		}
-		
+
 		#~
 		Checks to see the pointer can be advanced
 		@return true if pointer can be advanced, false otherwise
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("x");
+list->Rewind();
+while(list->More()) {
+   list->Get()->PrintLine();
+   list->Next();
+};
+```
 		~#
 		method : public : More() ~ Bool {
 			return @cursor <> Nil;
@@ -3151,6 +4427,13 @@ function : Example() ~ Nil {
 		#~
 		Returns the first element in the list
 		@return first element in the list, Nil if the list is empty
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("first");
+list->AddBack("last");
+list->Front()->PrintLine(); # first
+```
 		~#
 		method : public : Front() ~ H {
 			if(@head <> Nil) {
@@ -3163,6 +4446,13 @@ function : Example() ~ Nil {
 		#~
 		Returns the last element in the list
 		@return last element in the list, Nil if the list is empty
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("first");
+list->AddBack("last");
+list->Back()->PrintLine(); # last
+```
 		~#
 		method : public : Back() ~ H {
 			if(@tail <> Nil) {
@@ -3174,6 +4464,13 @@ function : Example() ~ Nil {
 
 		#~
 		Clears the list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("x");
+list->Empty();
+list->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@size := 0;
@@ -3181,18 +4478,32 @@ function : Example() ~ Nil {
 			@tail := Nil;
 			@cursor := Nil;
 		}
-		
+
 		#~
 		Checks to see if the list is empty
 		@return true if empty, false otherwise
+
+```
+list := Collection.List->New()<String>;
+list->IsEmpty()->PrintLine(); # true
+list->AddBack("x");
+list->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
-		
+
 		#~
 		Size of list
 		@return size of list
+
+```
+list := Collection.List->New()<String>;
+list->AddBack("a");
+list->AddBack("b");
+list->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @size;
@@ -3275,6 +4586,12 @@ function : Example() ~ Nil {
 
 		#~
 		Default constructor
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("hello");
+v->Size()->PrintLine(); # 1
+```
 		~#
 		New() {
 			@values := H->New[32];
@@ -3284,6 +4601,13 @@ function : Example() ~ Nil {
 		#~
 		Copy constructor
 		@param values values to copy
+
+```
+arr := String->New[2];
+arr[0] := "a"; arr[1] := "b";
+v := Collection.Vector->New(arr)<String>;
+v->Size()->PrintLine(); # 2
+```
 		~#
 		New(values : H[]) {
 			@values := H->New[values->Size()];
@@ -3294,6 +4618,13 @@ function : Example() ~ Nil {
 		#~
 		Copy constructor
 		@param values values to copy
+
+```
+src := Collection.Vector->New()<String>;
+src->AddBack("x");
+copy := Collection.Vector->New(src)<String>;
+copy->Get(0)->PrintLine(); # x
+```
 		~#
 		New(values : Vector<H>) {
 			@values := values->ToArray();
@@ -3315,6 +4646,15 @@ function : Example() ~ Nil {
 		#~
 		Zip two vectors together
 		@return list of pairs
+
+```
+a := Collection.Vector->New()<String>;
+a->AddBack("x"); a->AddBack("y");
+b := Collection.Vector->New()<String>;
+b->AddBack("1"); b->AddBack("2");
+zipped := Collection.Vector->Zip(a, b)<String>;
+zipped->Get(0)->GetFirst()->PrintLine(); # x
+```
 		~#
 		function : Zip(a : Vector<H>, b : Vector<H>) ~ Vector<Collection.Tuple.Pair<H,H>> {
 			max := a->Size();
@@ -3334,6 +4674,17 @@ function : Example() ~ Nil {
 		#~
 		Zip three vectors together
 		@return list of triplets
+
+```
+a := Collection.Vector->New()<String>;
+a->AddBack("x");
+b := Collection.Vector->New()<String>;
+b->AddBack("y");
+c := Collection.Vector->New()<String>;
+c->AddBack("z");
+zipped := Collection.Vector->Zip(a, b, c)<String>;
+zipped->Size()->PrintLine(); # 1
+```
 		~#
 		function : Zip(a : Vector<H>, b : Vector<H>, c : Vector<H>) ~ Vector<Collection.Tuple.Triplet<H,H,H>> {
 			max := a->Size();
@@ -3355,7 +4706,20 @@ function : Example() ~ Nil {
 
 		#~
 		Zip four vectors together
-		@return list of quintets
+		@return list of quartets
+
+```
+a := Collection.Vector->New()<String>;
+a->AddBack("p");
+b := Collection.Vector->New()<String>;
+b->AddBack("q");
+c := Collection.Vector->New()<String>;
+c->AddBack("r");
+d := Collection.Vector->New()<String>;
+d->AddBack("s");
+zipped := Collection.Vector->Zip(a, b, c, d)<String>;
+zipped->Size()->PrintLine(); # 1
+```
 		~#
 		function : Zip(a : Vector<H>, b : Vector<H>, c : Vector<H>, d : Vector<H>) ~ Vector<Collection.Tuple.Quartet<H,H,H,H>> {
 			max := a->Size();
@@ -3381,12 +4745,19 @@ function : Example() ~ Nil {
 		#~
 		Reverses element order
 		@return reversed vector, if the vector is empty or hold 1 item then the original list is returned
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b"); v->AddBack("c");
+rev := v->Reverse();
+rev->Get(0)->PrintLine(); # c
+```
 		~#
 		method : public : Reverse() ~ Vector<H> {
 			if(@size < 2) {
 				return @self;
 			}
-			
+
 			len := @size;
 			reversed := Collection.Vector->New()<H>;
 			each(i : @size) {
@@ -3397,9 +4768,15 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b");
+v->ToString()->PrintLine(); # [a,b]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -3427,6 +4804,13 @@ function : Example() ~ Nil {
 
 		#~
 		Compresses the Vector freeing unused memory
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("x"); v->AddBack("y");
+v->Compress();
+v->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Compress() ~ Nil {
 			temp : H[] := H->New[@size];
@@ -3435,9 +4819,16 @@ function : Example() ~ Nil {
 		}
 
 		#~
-		Maps the given function to each value in the vector 
+		Maps the given function to each value in the vector
 		@param f function to apply
 		@return newly calculated vector
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("hello"); v->AddBack("world");
+upper := v->Map(\(s : String) ~ String { return s->ToUpper(); });
+upper->Get(0)->PrintLine(); # HELLO
+```
 		~#
 		method : public : Map(f : (H) ~ H) ~ Vector<H> {
 			array : H[] := H->New[@size];
@@ -3451,6 +4842,12 @@ function : Example() ~ Nil {
 		#~
 		Function called for each element
 		@param f function called
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b");
+v->Each(\(s : String) ~ Nil { s->PrintLine(); });
+```
 		~#
 		method : public : Each(f : (H) ~ Nil) ~ Vector<H> {
 			for(i : Int := 0; i < @size; i += 1;) {
@@ -3463,6 +4860,13 @@ function : Example() ~ Nil {
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filtered vector
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("apple"); v->AddBack("banana"); v->AddBack("avocado");
+filtered := v->Filter(\(s : String) ~ Bool { return s->StartsWith("a"); });
+filtered->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ Vector<H> {
 			filtered := Vector->New()<H>;
@@ -3481,6 +4885,13 @@ function : Example() ~ Nil {
 		@param a initial value (i.e. accumulator)
 		@param f function to use a reduce
 		@return reduced value
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b"); v->AddBack("c");
+joined := v->Reduce("", \(acc : String, s : String) ~ String { return acc + s; });
+joined->PrintLine(); # abc
+```
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
 			for(i : Int := 0; i < @size; i += 1;) {
@@ -3494,6 +4905,13 @@ function : Example() ~ Nil {
 		Returns a limited list
 		@param l limit
 		@return limited list
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b"); v->AddBack("c");
+first2 := v->Limit(2);
+first2->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Limit(l : Int) ~ Vector<H> {
 			if(l > -1 & l < @size) {
@@ -3512,6 +4930,13 @@ function : Example() ~ Nil {
 		@param a first value
 		@param b second value
 		@return true if values were swapped
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b");
+v->Swap(0, 1)->PrintLine(); # true
+v->Get(0)->PrintLine(); # b
+```
 		~#
 		method : public : Swap(a : Int, b : Int) ~ Bool {
 			if(a < 0 | b < 0 | a >= @size | b >= @size) {
@@ -3527,7 +4952,14 @@ function : Example() ~ Nil {
 
 		#~
 		Adds a value to the end
-		@param value value to append 
+		@param value value to append
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("first");
+v->AddBack("second");
+v->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : AddBack(value : H) ~ Nil {
 			Expand();
@@ -3538,20 +4970,34 @@ function : Example() ~ Nil {
 		#~
 		Removes the last value
 		@return value
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b");
+v->RemoveBack()->PrintLine(); # b
+v->Size()->PrintLine();       # 1
+```
 		~#
 		method : public : RemoveBack() ~ H {
 			if(@size > 0) {
 				@size -= 1;
 				return @values[@size];
 			};
-	
+
 			return Nil;
 		}
-		
+
 		#~
 		Removes an indexed value
 		@param i index
 		@return value
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b"); v->AddBack("c");
+v->Remove(1)->PrintLine(); # b
+v->Size()->PrintLine();    # 2
+```
 		~#
 		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
@@ -3568,6 +5014,13 @@ function : Example() ~ Nil {
 		Gets an indexed value
 		@param index index
 		@return value, or Nil if invalid index
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b");
+v->Get(0)->PrintLine(); # a
+v->Get(1)->PrintLine(); # b
+```
 		~#
 		method : public : Get(index : Int) ~ H {
 			if(index > -1 & index < @size) {
@@ -3580,6 +5033,12 @@ function : Example() ~ Nil {
 		#~
 		Gets the last value
 		@return last value, or Nil if not set
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b");
+v->Last()->PrintLine(); # b
+```
 		~#
 		method : public : Last() ~ H {
 			last := @size - 1;
@@ -3593,6 +5052,12 @@ function : Example() ~ Nil {
 		#~
 		Gets the first value
 		@return first value, or Nil if not set
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("first"); v->AddBack("second");
+v->First()->PrintLine(); # first
+```
 		~#
 		method : public : First() ~ H {
 			if(@size > 0) {
@@ -3606,43 +5071,77 @@ function : Example() ~ Nil {
 		Sets an indexed value
 		@param value value
 		@param index index
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("old");
+v->Set("new", 0)->PrintLine(); # true
+v->Get(0)->PrintLine();        # new
+```
 		~#
 		method : public : Set(value : H, index : Int) ~ Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
 				return true;
 			};
-			
+
 			return false;
 		}
 
 		#~
 		Clears the vector
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("x");
+v->Empty();
+v->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@values := H->New[32];
 			@size := 0;
 		}
-		
+
 		#~
 		Size of vector
 		@return size of vector
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b");
+v->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
-		
+
 		#~
 		Checks to see if the vector is empty
 		@return true if empty, false otherwise
+
+```
+v := Collection.Vector->New()<String>;
+v->IsEmpty()->PrintLine(); # true
+v->AddBack("x");
+v->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
-		
+
 		#~
 		Converts the vector into an object array
 		@return object array
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("a"); v->AddBack("b");
+arr := v->ToArray();
+arr[0]->PrintLine(); # a
+```
 		~#
 		method : public : ToArray() ~ H[] {
 			array : H[] := H->New[@size];
@@ -3654,6 +5153,12 @@ function : Example() ~ Nil {
 		Checks if any element matches the predicate
 		@param f predicate function
 		@return true if any element matches, false otherwise
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("hello"); v->AddBack("world");
+v->Any(\(s : String) ~ Bool { return s->StartsWith("h"); })->PrintLine(); # true
+```
 		~#
 		method : public : Any(f : (H) ~ Bool) ~ Bool {
 			for(i := 0; i < @size; i += 1;) {
@@ -3668,6 +5173,12 @@ function : Example() ~ Nil {
 		Checks if all elements match the predicate
 		@param f predicate function
 		@return true if all elements match, false otherwise
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("hello"); v->AddBack("world");
+v->All(\(s : String) ~ Bool { return s->Size() > 3; })->PrintLine(); # true
+```
 		~#
 		method : public : All(f : (H) ~ Bool) ~ Bool {
 			for(i := 0; i < @size; i += 1;) {
@@ -3682,6 +5193,12 @@ function : Example() ~ Nil {
 		Counts elements matching the predicate
 		@param f predicate function
 		@return count of matching elements
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("apple"); v->AddBack("apricot"); v->AddBack("banana");
+v->Count(\(s : String) ~ Bool { return s->StartsWith("a"); })->PrintLine(); # 2
+```
 		~#
 		method : public : Count(f : (H) ~ Bool) ~ Int {
 			count := 0;
@@ -3697,6 +5214,12 @@ function : Example() ~ Nil {
 		Finds the first element matching the predicate
 		@param f predicate function
 		@return first matching element, or Nil if not found
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("apple"); v->AddBack("banana");
+v->FindFirst(\(s : String) ~ Bool { return s->StartsWith("b"); })->PrintLine(); # banana
+```
 		~#
 		method : public : FindFirst(f : (H) ~ Bool) ~ H {
 			for(i := 0; i < @size; i += 1;) {
@@ -3711,6 +5234,12 @@ function : Example() ~ Nil {
 		Finds the index of the first element matching the predicate
 		@param f predicate function
 		@return index of first matching element, or -1 if not found
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("apple"); v->AddBack("banana");
+v->FindIndex(\(s : String) ~ Bool { return s->StartsWith("b"); })->PrintLine(); # 1
+```
 		~#
 		method : public : FindIndex(f : (H) ~ Bool) ~ Int {
 			for(i := 0; i < @size; i += 1;) {
@@ -3768,16 +5297,29 @@ function : Show(value : IntRef) ~ Nil {
 		@size : Int;
 		
 		#~
-		Default constructor 
+		Default constructor
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1));
+v->Size()->PrintLine(); # 1
+```
 		~#
 		New() {
 			@values := H->New[32];
 			@size := 0;
 		}
-		
+
 		#~
 		Copy constructor
-		@param values values to copy 
+		@param values values to copy
+
+```
+arr := IntRef->New[2];
+arr[0] := IntRef->New(1); arr[1] := IntRef->New(2);
+v := Collection.CompareVector->New(arr)<IntRef>;
+v->Size()->PrintLine(); # 2
+```
 		~#
 		New(values : H[]) {
 			@values := H->New[values->Size()];
@@ -3787,7 +5329,14 @@ function : Show(value : IntRef) ~ Nil {
 
 		#~
 		Copy constructor
-		@param values values to copy 
+		@param values values to copy
+
+```
+src := Collection.CompareVector->New()<IntRef>;
+src->AddBack(IntRef->New(5));
+copy := Collection.CompareVector->New(src)<IntRef>;
+copy->Get(0)->PrintLine(); # 5
+```
 		~#
 		New(values : CompareVector<H>) {
 			@values := values->ToArray();
@@ -3797,6 +5346,13 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Reverses element order
 		@return reversed vector, if the vector is empty or hold 1 item then the original list is returned
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
+rev := v->Reverse();
+rev->Get(0)->PrintLine(); # 3
+```
 		~#
 		method : public : Reverse() ~ CompareVector<H> {
 			if(@size < 2) {
@@ -3813,9 +5369,15 @@ function : Show(value : IntRef) ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->ToString()->PrintLine(); # [1,2]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -3855,6 +5417,13 @@ function : Show(value : IntRef) ~ Nil {
 
 		#~
 		Compresses the Vector freeing unused memory
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->Compress();
+v->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Compress() ~ Nil {
 			temp : H[] := H->New[@size];
@@ -3863,9 +5432,16 @@ function : Show(value : IntRef) ~ Nil {
 		}
 
 		#~
-		Maps the given function to each value in the vector 
+		Maps the given function to each value in the vector
 		@param f function to apply
 		@return newly calculated vector
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+doubled := v->Map(\(n : IntRef) ~ IntRef { return IntRef->New(n->Get() * 2); });
+doubled->Get(0)->PrintLine(); # 2
+```
 		~#
 		method : public : Map(f : (H) ~ H) ~ CompareVector<H> {
 			array : H[] := H->New[@size];
@@ -3881,6 +5457,13 @@ function : Show(value : IntRef) ~ Nil {
 		Returns a limited list
 		@param l limit
 		@return limited list
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
+first2 := v->Limit(2);
+first2->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Limit(l : Int) ~ CompareVector<H> {
 			if(l > -1 & l < @size) {
@@ -3897,6 +5480,12 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Function called for each element
 		@param f function called
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->Each(\(n : IntRef) ~ Nil { n->PrintLine(); });
+```
 		~#
 		method : public : Each(f : (H) ~ Nil) ~ CompareVector<H> {
 			for(i : Int := 0; i < @size; i += 1;) {
@@ -3907,7 +5496,14 @@ function : Show(value : IntRef) ~ Nil {
 
 		#~
 		Adds a value to the end
-		@param value value to append 
+		@param value value to append
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(10));
+v->AddBack(IntRef->New(20));
+v->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : AddBack(value : H) ~ Nil {
 			Expand();
@@ -3918,20 +5514,34 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Removes the last value
 		@return value
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->RemoveBack()->PrintLine(); # 2
+v->Size()->PrintLine();       # 1
+```
 		~#
 		method : public : RemoveBack() ~ H {
 			if(@size > 0) {
 				@size -= 1;
 				return @values[@size];
 			};
-	
+
 			return Nil;
 		}
-		
+
 		#~
 		Removes an indexed value
 		@param i index
 		@return value
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
+v->Remove(1)->PrintLine(); # 2
+v->Size()->PrintLine();    # 2
+```
 		~#
 		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
@@ -3948,6 +5558,13 @@ function : Show(value : IntRef) ~ Nil {
 		Gets an indexed value
 		@param index index
 		@return value
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(10)); v->AddBack(IntRef->New(20));
+v->Get(0)->PrintLine(); # 10
+v->Get(1)->PrintLine(); # 20
+```
 		~#
 		method : public : Get(index : Int) ~ H {
 			if(index > -1 & index < @size) {
@@ -3960,6 +5577,12 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Gets the last value
 		@return last value, or Nil if not set
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->Last()->PrintLine(); # 2
+```
 		~#
 		method : public : Last() ~ H {
 			last := @size - 1;
@@ -3973,6 +5596,12 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Gets the first value
 		@return first value, or Nil if not set
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(5)); v->AddBack(IntRef->New(10));
+v->First()->PrintLine(); # 5
+```
 		~#
 		method : public : First() ~ H {
 			if(@size > 0) {
@@ -3986,43 +5615,77 @@ function : Show(value : IntRef) ~ Nil {
 		Sets an indexed value
 		@param value value
 		@param index index
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1));
+v->Set(IntRef->New(99), 0)->PrintLine(); # true
+v->Get(0)->PrintLine();                  # 99
+```
 		~#
 		method : public : Set(value : H, index : Int) ~ Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
 				return true;
 			};
-			
+
 			return false;
 		}
 
 		#~
 		Clears the vector
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1));
+v->Empty();
+v->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@values := H->New[32];
 			@size := 0;
 		}
-		
+
 		#~
 		Size of vector
 		@return size of vector
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
-		
+
 		#~
 		Checks to see if the vector is empty
 		@return true if empty, false otherwise
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->IsEmpty()->PrintLine(); # true
+v->AddBack(IntRef->New(1));
+v->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
-		}
+}
 		
 		#~
 		Sorts the values in the vector
-		~#	
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(3)); v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
+v->Sort();
+v->Get(0)->PrintLine(); # 1
+```
+		~#
 		method : public : native : Sort() ~ Nil {
 			a : H[] := @values;
 			b : H[] := H->New[@size];
@@ -4076,6 +5739,13 @@ function : Show(value : IntRef) ~ Nil {
 		Finds a given value in the vector via linear search
 		@param value value to search for
 		@return index of found value, -1 if not found
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(10)); v->AddBack(IntRef->New(20));
+v->Find(IntRef->New(20))->PrintLine();  # 1
+v->Find(IntRef->New(99))->PrintLine();  # -1
+```
 		~#
 		method : public : Find(value : H) ~ Int {
          for(i := 0; i < @size; i += 1;) {
@@ -4091,6 +5761,13 @@ function : Show(value : IntRef) ~ Nil {
 		Performs a binary search O(log n)
 		@param value value to search for
 		@return index of found value, -1 if not found
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(3)); v->AddBack(IntRef->New(5));
+v->Sort();
+v->BinarySearch(IntRef->New(3))->PrintLine(); # 1
+```
 		~#
 		method : public : native : BinarySearch(value : H) ~ Int {
 			low := 0;
@@ -4118,6 +5795,13 @@ function : Show(value : IntRef) ~ Nil {
 		Check of the given value is in the vector
 		@param value value to check for
 		@return true if found, false otherwise
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(5)); v->AddBack(IntRef->New(10));
+v->Has(IntRef->New(5))->PrintLine();  # true
+v->Has(IntRef->New(99))->PrintLine(); # false
+```
 		~#
 		method : public : Has(value : H) ~ Bool {
 			for(i : Int := 0; i < @size; i += 1;) {
@@ -4133,6 +5817,13 @@ function : Show(value : IntRef) ~ Nil {
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filtered vector
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
+evens := v->Filter(\(x : IntRef) ~ Bool { return x->Get() % 2 = 0; })<IntRef>;
+evens->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ CompareVector<H> {
 			filtered := CompareVector->New()<H>;
@@ -4151,6 +5842,13 @@ function : Show(value : IntRef) ~ Nil {
 		@param a initial value (i.e. accumulator)
 		@param f function to use a reduce
 		@return reduced vector
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
+sum := v->Reduce(IntRef->New(0), \(a : IntRef, b : IntRef) ~ IntRef { return IntRef->New(a->Get() + b->Get()); });
+sum->PrintLine(); # 6
+```
 		~#
 		method : public : Reduce(a : H, f : (H, H) ~ H) ~ H {
 			for(i : Int := 0; i < @size; i += 1;) {
@@ -4163,6 +5861,14 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Converts the vector into an object array
 		@return object array
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(7)); v->AddBack(IntRef->New(8));
+arr := v->ToArray()<IntRef>;
+arr[0]->PrintLine(); # 7
+arr[1]->PrintLine(); # 8
+```
 		~#
 		method : public : ToArray() ~ H[] {
 			array : H[] := H->New[@size];
@@ -4173,6 +5879,13 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Returns a new vector with duplicate elements removed
 		@return vector with unique elements only
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(1));
+unique := v->Distinct()<IntRef>;
+unique->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Distinct() ~ CompareVector<H> {
 			result := CompareVector->New()<H>;
@@ -4193,6 +5906,13 @@ function : Show(value : IntRef) ~ Nil {
 		Checks if any element matches the predicate
 		@param f predicate function
 		@return true if any element matches, false otherwise
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(4)); v->AddBack(IntRef->New(9));
+v->Any(\(x : IntRef) ~ Bool { return x->Get() > 5; })->PrintLine(); # true
+v->Any(\(x : IntRef) ~ Bool { return x->Get() > 10; })->PrintLine(); # false
+```
 		~#
 		method : public : Any(f : (H) ~ Bool) ~ Bool {
 			for(i := 0; i < @size; i += 1;) {
@@ -4207,6 +5927,13 @@ function : Show(value : IntRef) ~ Nil {
 		Checks if all elements match the predicate
 		@param f predicate function
 		@return true if all elements match, false otherwise
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(4)); v->AddBack(IntRef->New(6));
+v->All(\(x : IntRef) ~ Bool { return x->Get() % 2 = 0; })->PrintLine(); # true
+v->All(\(x : IntRef) ~ Bool { return x->Get() > 3; })->PrintLine();     # false
+```
 		~#
 		method : public : All(f : (H) ~ Bool) ~ Bool {
 			for(i := 0; i < @size; i += 1;) {
@@ -4221,6 +5948,12 @@ function : Show(value : IntRef) ~ Nil {
 		Counts elements matching the predicate
 		@param f predicate function
 		@return count of matching elements
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
+v->Count(\(x : IntRef) ~ Bool { return x->Get() > 1; })->PrintLine(); # 2
+```
 		~#
 		method : public : Count(f : (H) ~ Bool) ~ Int {
 			count := 0;
@@ -4236,6 +5969,13 @@ function : Show(value : IntRef) ~ Nil {
 		Finds the first element matching the predicate
 		@param f predicate function
 		@return first matching element, or Nil if not found
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(3)); v->AddBack(IntRef->New(7)); v->AddBack(IntRef->New(2));
+found := v->FindFirst(\(x : IntRef) ~ Bool { return x->Get() > 4; });
+found->PrintLine(); # 7
+```
 		~#
 		method : public : FindFirst(f : (H) ~ Bool) ~ H {
 			for(i := 0; i < @size; i += 1;) {
@@ -4250,6 +5990,12 @@ function : Show(value : IntRef) ~ Nil {
 		Finds the index of the first element matching the predicate
 		@param f predicate function
 		@return index of first matching element, or -1 if not found
+
+```
+v := Collection.CompareVector->New()<IntRef>;
+v->AddBack(IntRef->New(3)); v->AddBack(IntRef->New(7)); v->AddBack(IntRef->New(2));
+v->FindIndex(\(x : IntRef) ~ Bool { return x->Get() > 4; })->PrintLine(); # 1
+```
 		~#
 		method : public : FindIndex(f : (H) ~ Bool) ~ Int {
 			for(i := 0; i < @size; i += 1;) {
@@ -4301,12 +6047,18 @@ function : Show(value : IntRef) ~ Nil {
 		@size : Int;
 
 		#~
-		Default constructor 
+		Default constructor
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("alpha", IntRef->New(1));
+map->Size()->PrintLine(); # 1
+```
 		~#
 		New() {
 			@root := Nil;
-			@size := 0;	
-		}		
+			@size := 0;
+		}
 
 		method : native : Skew(node : Collection.TreeNode<K, V>) ~ TreeNode<K, V> {
 			if(node = Nil | node->GetLeft() = Nil) {
@@ -4327,6 +6079,14 @@ function : Show(value : IntRef) ~ Nil {
 		Converts a vector pairs to a map
 		@param pairs vector of pairs
 		@return mapped pairs
+
+```
+pairs := Collection.Vector->New()<Collection.Tuple.Pair<String, IntRef>>;
+pairs->AddBack(Collection.Tuple.Pair->New("one", IntRef->New(1))<String, IntRef>);
+pairs->AddBack(Collection.Tuple.Pair->New("two", IntRef->New(2))<String, IntRef>);
+map := Collection.Map->Dict(pairs)<String, IntRef>;
+map->Find("one")->PrintLine(); # 1
+```
 		~#
 		function : Dict(pairs : Vector<Collection.Tuple.Pair<K, V>>) ~ Map<K, V> {
 			dict := Map->New()<K, V>;
@@ -4343,14 +6103,27 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Size of queue
 		@return size of queue
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("a", IntRef->New(1)); map->Insert("b", IntRef->New(2));
+map->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @size;
 		}
-		
+
 		#~
 		Checks to see if the map is empty
 		@return true if empty, false otherwise
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->IsEmpty()->PrintLine(); # true
+map->Insert("x", IntRef->New(9));
+map->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
@@ -4358,6 +6131,13 @@ function : Show(value : IntRef) ~ Nil {
 
 		#~
 		Clears the map
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("a", IntRef->New(1));
+map->Empty();
+map->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@root := Nil;
@@ -4387,6 +6167,13 @@ function : Show(value : IntRef) ~ Nil {
 		Searches for a value in a map
 		@param key search key
 		@return found value, Nil if not found
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("pi", IntRef->New(3));
+map->Find("pi")->PrintLine();   # 3
+map->Find("e")->PrintLine();    # (Nil)
+```
 		~#
 		method : public : Find(key : K) ~ V {
 			return Find(key, @root);
@@ -4396,6 +6183,13 @@ function : Show(value : IntRef) ~ Nil {
 		Checks for a value in a map
 		@param key search key
 		@return true if found, false otherwise
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("cat", IntRef->New(1));
+map->Has("cat")->PrintLine(); # true
+map->Has("dog")->PrintLine(); # false
+```
 		~#
 		method : public : Has(key : K) ~ Bool {
 			return Find(key, @root) <> Nil;
@@ -4421,6 +6215,12 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Function called for each element
 		@param f function called
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("a", IntRef->New(1)); map->Insert("b", IntRef->New(2));
+map->Each(\(k : String, v : IntRef) ~ Nil { "{$k}={$v}"->PrintLine(); });
+```
 		~#
 		method : public : Each(f : (K, V) ~ Nil) ~ Map<K, V> {
 			Each(@root, f);
@@ -4444,6 +6244,13 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Get a collection of keys
 		@return vector of keys
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("x", IntRef->New(10)); map->Insert("y", IntRef->New(20));
+keys := map->GetKeys()<String>;
+each(k := keys) { k->PrintLine(); }
+```
 		~#
 		method : public : GetKeys() ~  Collection.Vector<K> {
 			vector := Vector->New()<K>;
@@ -4465,8 +6272,15 @@ function : Show(value : IntRef) ~ Nil {
 		}
         
 		#~
-		Get a collection of keys
-		@return vector of keys
+		Get a collection of key-value pairs
+		@return vector of key-value pairs
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("a", IntRef->New(1)); map->Insert("b", IntRef->New(2));
+kvs := map->GetKeyValues()<Collection.Pair<String, IntRef>>;
+each(kv := kvs) { "{$kv->GetFirst()}={$kv->GetSecond()}"->PrintLine(); }
+```
 		~#
 		method : public : GetKeyValues() ~  Collection.Vector<Pair<K,V>> {
 			vector := Vector->New()<Pair<K,V>>;
@@ -4490,9 +6304,15 @@ function : Show(value : IntRef) ~ Nil {
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("a", IntRef->New(1)); map->Insert("b", IntRef->New(2));
+map->ToString()->PrintLine(); # [(a:1),(b:2)]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -4539,6 +6359,13 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Gets a collection of values
 		@return vector of values
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("p", IntRef->New(3)); map->Insert("q", IntRef->New(4));
+values := map->GetValues()<IntRef>;
+each(v := values) { v->PrintLine(); }
+```
 		~#
 		method : public : GetValues() ~  Collection.Vector<V> {
 			vector := Vector->New()<V>;
@@ -4563,6 +6390,12 @@ function : Show(value : IntRef) ~ Nil {
 		Inserts a value into the map
 		@param key key
 		@param value value
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("city", IntRef->New(42));
+map->Find("city")->PrintLine(); # 42
+```
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
 			if(key = Nil) {
@@ -4604,6 +6437,13 @@ function : Show(value : IntRef) ~ Nil {
 		#~
 		Removes a value from the map
 		@param key key for value to remove
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("tmp", IntRef->New(0));
+map->Remove("tmp")->PrintLine();  # true
+map->Has("tmp")->PrintLine();     # false
+```
 		~#
 		method : public : Remove(key : K) ~ Bool {
 			if(@root = Nil) {
@@ -4725,6 +6565,13 @@ function : Show(value : IntRef) ~ Nil {
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filtered map
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("a", IntRef->New(1)); map->Insert("b", IntRef->New(2));
+filtered := map->Filter(\(k : String) ~ Bool { return k->Equals("a"); })<String, IntRef>;
+filtered->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : Filter(f : (K) ~ Bool) ~ Map<K, V> {
 			filtered := Map->New()<K, V>;
@@ -4745,7 +6592,14 @@ function : Show(value : IntRef) ~ Nil {
 		Uses the given function to reduce the values
 		@param a initial value (i.e. accumulator)
 		@param f function to use a reduce
-		@return reduced vector
+		@return reduced value
+
+```
+map := Collection.Map->New()<String, IntRef>;
+map->Insert("a", IntRef->New(0)); map->Insert("b", IntRef->New(0));
+concat := map->Reduce("", \(acc : String, k : String) ~ String { return "{$acc}{$k}"; });
+concat->PrintLine(); # ab
+```
 		~#
 		method : public : Reduce(a : K, f : (K, K) ~ K) ~ K {
 			keys := GetKeys();
@@ -4757,7 +6611,7 @@ function : Show(value : IntRef) ~ Nil {
 			return a;
 		}
 	}
-		
+
 	class : private : TreeNode<K : Compare, V> {
 		@key : K;
 		@value : V;
@@ -4835,7 +6689,13 @@ set->Has("Oakland")->PrintLine();
 		@map : Map<K, Base>;
 
 		#~
-		Default constructor 
+		Default constructor
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("hello");
+set->Size()->PrintLine(); # 1
+```
 		~#
 		New() {
 			@map := Map->New()<K, Base>;
@@ -4844,15 +6704,28 @@ set->Has("Oakland")->PrintLine();
 		#~
 		Inserts a key into the set
 		@param key key
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("apple");
+set->Insert("apple"); # duplicate ignored
+set->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : Insert(key : K) ~ Nil {
 			@map->Insert(key, key);
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("x"); set->Insert("y");
+set->ToString()->PrintLine(); # [x,y]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -4883,24 +6756,45 @@ set->Has("Oakland")->PrintLine();
 		#~
 		Removes a key from the set
 		@param key key for value to remove
-		@return true if removed, false otherwise		
+		@return true if removed, false otherwise
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("go");
+set->Remove("go")->PrintLine();  # true
+set->Has("go")->PrintLine();     # false
+```
 		~#
 		method : public : Remove(key : K) ~ Bool {
 			return @map->Remove(key);
 		}
-    
-    	#~
+
+		#~
 		Checks for key in set
 		@param key search key
 		@return true if found, false otherwise
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("found");
+set->Has("found")->PrintLine();   # true
+set->Has("missing")->PrintLine(); # false
+```
 		~#
 		method : public : Has(key : K) ~ Bool {
 			return @map->Find(key) <> Nil;
 		}
-    
+
 		#~
 		Get a collection of keys
 		@return vector of keys
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("a"); set->Insert("b");
+keys := set->GetKeys()<String>;
+each(k := keys) { k->PrintLine(); }
+```
 		~#
 		method : public : GetKeys() ~ Vector<K> {
 			return @map->GetKeys();
@@ -4908,6 +6802,13 @@ set->Has("Oakland")->PrintLine();
 
 		#~
 		Clears the set
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("item");
+set->Empty();
+set->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@map->Empty();
@@ -4916,14 +6817,27 @@ set->Has("Oakland")->PrintLine();
 		#~
 		Checks to see if the set is empty
 		@return true if empty, false otherwise
+
+```
+set := Collection.Set->New()<String>;
+set->IsEmpty()->PrintLine(); # true
+set->Insert("z");
+set->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
-		
+
 		#~
 		Size of map
 		@return size of queue
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("a"); set->Insert("b"); set->Insert("c");
+set->Size()->PrintLine(); # 3
+```
 		~#
 		method : public : Size() ~ Int {
 			return @map->Size();
@@ -4952,6 +6866,12 @@ set_hash->Has("Oakland")->PrintLine();
 
 		#~
 		Default constructor
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->Insert("hello");
+sh->Size()->PrintLine(); # 1
+```
 		~#
 		New() {
 			@set := HashSet->New()<K>;
@@ -4960,6 +6880,12 @@ set_hash->Has("Oakland")->PrintLine();
 		#~
 		Inserts a key into the set
 		@param key key
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->Insert("blue");
+sh->Has("blue")->PrintLine(); # true
+```
 		~#
 		method : public : Insert(key : K) ~ Nil {
 			@set->Add(key);
@@ -4969,6 +6895,12 @@ set_hash->Has("Oakland")->PrintLine();
 		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->Insert("m"); sh->Insert("n");
+sh->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			return @set->ToString();
@@ -4978,6 +6910,13 @@ set_hash->Has("Oakland")->PrintLine();
 		Removes a key from the set
 		@param key key for value to remove
 		@return true if removed, false otherwise
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->Insert("tmp");
+sh->Remove("tmp")->PrintLine(); # true
+sh->Has("tmp")->PrintLine();    # false
+```
 		~#
 		method : public : Remove(key : K) ~ Bool {
 			return @set->Remove(key);
@@ -4987,6 +6926,13 @@ set_hash->Has("Oakland")->PrintLine();
 		Checks for key in set
 		@param key search key
 		@return true if found, false otherwise
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->Insert("present");
+sh->Has("present")->PrintLine();  # true
+sh->Has("absent")->PrintLine();   # false
+```
 		~#
 		method : public : Has(key : K) ~ Bool {
 			return @set->Has(key);
@@ -4995,6 +6941,13 @@ set_hash->Has("Oakland")->PrintLine();
 		#~
 		Get a collection of keys
 		@return vector of keys
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->Insert("x"); sh->Insert("y");
+keys := sh->GetKeys()<String>;
+keys->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : GetKeys() ~ Vector<K> {
 			return @set->ToVector();
@@ -5002,6 +6955,13 @@ set_hash->Has("Oakland")->PrintLine();
 
 		#~
 		Clears the set
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->Insert("item");
+sh->Empty();
+sh->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@set->Empty();
@@ -5010,6 +6970,13 @@ set_hash->Has("Oakland")->PrintLine();
 		#~
 		Checks to see if the set is empty
 		@return true if empty, false otherwise
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->IsEmpty()->PrintLine(); # true
+sh->Insert("z");
+sh->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @set->IsEmpty();
@@ -5018,6 +6985,12 @@ set_hash->Has("Oakland")->PrintLine();
 		#~
 		Size of set
 		@return number of elements
+
+```
+sh := Collection.SetHash->New()<String>;
+sh->Insert("a"); sh->Insert("b");
+sh->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @set->Size();
@@ -5042,7 +7015,13 @@ each(v := values) {
 		@map : Map<K, Vector<V> >;
 
 		#~
-		Default constructor 
+		Default constructor
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1));
+mmap->Size()->PrintLine(); # 1
+```
 		~#
 		New() {
 			@map := Map->New()<K, Vector<V> >;
@@ -5052,6 +7031,13 @@ each(v := values) {
 		Inserts a value into the map
 		@param key key
 		@param value value
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("fruits", IntRef->New(1));
+mmap->Insert("fruits", IntRef->New(2));
+mmap->Find("fruits")->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Insert(key : K, value : V) ~ Nil {
 			if(key = Nil) {
@@ -5068,10 +7054,17 @@ each(v := values) {
 		}
 
 		#~
-		Checks for a value in a map
+		Finds all values for a key in the map
 		@param key search key
-		@return true if found, false otherwise
-		~#	
+		@return vector of values, or Nil if not found
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("k", IntRef->New(10)); mmap->Insert("k", IntRef->New(20));
+vals := mmap->Find("k")<IntRef>;
+each(v := vals) { v->PrintLine(); } # 10, 20
+```
+		~#
 		method : public : Find(key : K) ~ Vector<V> {
 			return @map->Find(key);
 		}
@@ -5079,14 +7072,28 @@ each(v := values) {
 		#~
 		Get a collection of keys
 		@return vector of keys
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
+keys := mmap->GetKeys()<String>;
+each(k := keys) { k->PrintLine(); }
+```
 		~#
 		method : public : GetKeys() ~ Vector<K> {
 			return @map->GetKeys();
 		}
 
 		#~
-		Gets a collection of values
+		Gets a collection of all values across all keys
 		@return vector of values
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
+all_values := mmap->GetValues()<IntRef>;
+all_values->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : GetValues() ~ Vector<V> {
 			values := Vector->New()<V>;
@@ -5104,9 +7111,15 @@ each(v := values) {
 		}
 
 		#~
-		Formats the collection into a string. If an element implements the 'Stringify' 
+		Formats the collection into a string. If an element implements the 'Stringify'
 		interface, it's 'ToString()' is called.
 		@return string representation
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("a", IntRef->New(2));
+mmap->ToString()->PrintLine(); # [(a:12)]
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "[";
@@ -5162,13 +7175,27 @@ each(v := values) {
 		#~
 		Checks to see if the map is empty
 		@return true if empty, false otherwise
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->IsEmpty()->PrintLine(); # true
+mmap->Insert("a", IntRef->New(1));
+mmap->IsEmpty()->PrintLine(); # false
+```
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @map->Size() = 0;
 		}
 
 		#~
-		Clears the set
+		Clears the map
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1));
+mmap->Empty();
+mmap->IsEmpty()->PrintLine(); # true
+```
 		~#
 		method : public : Empty() ~ Nil {
 			@map->Empty();
@@ -5178,6 +7205,13 @@ each(v := values) {
 		Checks for a value in a map
 		@param key search key
 		@return true if found, false otherwise
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("x", IntRef->New(5));
+mmap->Has("x")->PrintLine(); # true
+mmap->Has("y")->PrintLine(); # false
+```
 		~#
 		method : public : Has(key : K) ~ Bool {
 			return Find(key) <> Nil;
@@ -5186,7 +7220,14 @@ each(v := values) {
 		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
-		@return filter vector
+		@return filtered MultiMap
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
+filtered := mmap->Filter(\(k : String) ~ Bool { return k->Equals("a"); })<String, IntRef>;
+filtered->Size()->PrintLine(); # 1
+```
 		~#
 		method : public : Filter(f : (K) ~ Bool) ~ MultiMap<K, V> {
 			filtered := MultiMap->New()<K, V>;
@@ -5209,7 +7250,14 @@ each(v := values) {
 		Uses the given function to reduce the values
 		@param a initial value (i.e. accumulator)
 		@param f function to use a reduce
-		@return reduced vector
+		@return reduced value
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(0)); mmap->Insert("b", IntRef->New(0));
+concat := mmap->Reduce("", \(acc : String, k : String) ~ String { return "{$acc}{$k}"; });
+concat->PrintLine(); # ab
+```
 		~#
 		method : public : Reduce(a : K, f : (K, K) ~ K) ~ K {
 			keys := GetKeys();
@@ -5224,6 +7272,12 @@ each(v := values) {
 		#~
 		Function called for each element
 		@param f function called
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("a", IntRef->New(2));
+mmap->Each(\(k : String, v : IntRef) ~ Nil { "{$k}={$v}"->PrintLine(); });
+```
 		~#
 		method : public : Each(f : (K, V) ~ Nil) ~ MultiMap<K, V> {
 			keys := GetKeys();
@@ -5240,14 +7294,27 @@ each(v := values) {
 		#~
 		Removes a set of values from the map
 		@param key key for values to remove
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("del", IntRef->New(1)); mmap->Insert("del", IntRef->New(2));
+mmap->Remove("del")->PrintLine(); # true
+mmap->Has("del")->PrintLine();    # false
+```
 		~#
 		method : public : Remove(key : K) ~ Bool {
 			return @map->Remove(key);
 		}
-		
+
 		#~
 		Size of unique keys
 		@return size of unique keys
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
+mmap->Size()->PrintLine(); # 2
+```
 		~#
 		method : public : Size() ~ Int {
 			return @map->Size();
@@ -5256,6 +7323,12 @@ each(v := values) {
 		#~
 		Size of values
 		@return size of values
+
+```
+mmap := Collection.MultiMap->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("a", IntRef->New(2)); mmap->Insert("b", IntRef->New(3));
+mmap->TotalSize()->PrintLine(); # 3
+```
 		~#
 		method : public : TotalSize() ~ Int {
 			total := 0;

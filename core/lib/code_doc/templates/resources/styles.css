@@ -10,7 +10,9 @@
   --header-bg: #cbcbcb;
   --grey-block-bg: #f0f0f0;
   --grey-block-border: #ccc;
-  --code-bg: #f0f4f8;
+  --code-bg: #282c34;
+  --code-text: #abb2bf;
+  --sig-bg: #1e2127;
   --th-bg: #e2e8f0;
   --th-color: #444;
   --td-color: #333;
@@ -19,6 +21,8 @@
   --nav-strong-color: #111;
   --breadcrumb-color: #666;
   --version-color: #4a5568;
+  --copy-btn-bg: rgba(255,255,255,0.15);
+  --copy-btn-hover: rgba(255,255,255,0.25);
 }
 
 body.dark-mode {
@@ -33,7 +37,9 @@ body.dark-mode {
   --header-bg: #2d2d2d;
   --grey-block-bg: #2d2d2d;
   --grey-block-border: #404040;
-  --code-bg: #2a2a2a;
+  --code-bg: #1a1d23;
+  --code-text: #abb2bf;
+  --sig-bg: #141619;
   --th-bg: #333333;
   --th-color: #d4d4d4;
   --td-color: #cccccc;
@@ -65,6 +71,99 @@ body {
 
 header {
   background-color: var(--header-bg);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0.4rem 1rem 0.5rem;
+  gap: 1rem;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+/* ── Global search ─────────────────────────────────── */
+.global-search-wrapper {
+  position: relative;
+}
+
+.global-search {
+  width: 240px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  outline: none;
+}
+
+.global-search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 360px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 6px 16px var(--shadow);
+  display: none;
+  z-index: 1000;
+}
+
+.search-result-item {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  color: var(--text-color);
+}
+
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--hover-bg); }
+
+.sr-ctx {
+  font-size: 0.72rem;
+  color: var(--breadcrumb-color);
+  margin-bottom: 1px;
+}
+
+.sr-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.sr-desc {
+  font-size: 0.78rem;
+  color: var(--td-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+
+.sr-badge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  background: rgba(59,130,246,0.12);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-left: 4px;
 }
 
 .version {
@@ -186,6 +285,7 @@ main {
   margin-bottom: 1rem;
   padding: 8px 12px;
   background-color: var(--code-bg);
+  color: var(--code-text);
   border-radius: 6px;
   border-left: 3px solid var(--accent);
 }
@@ -219,10 +319,11 @@ h2 {
 
 h3 {
   font-size: 18px;
+  margin-bottom: 0.4rem;
 }
 
 h4 {
-  font-size: 8px;
+  font-size: 14px;
 }
 
 .subtitle {
@@ -232,15 +333,54 @@ h4 {
   font-size: 0.95rem;
 }
 
+/* Code blocks — dark themed regardless of light/dark page mode */
 pre {
-  background-color: var(--code-bg);
-  padding: 0.75rem 1rem;
+  position: relative;
+  background-color: var(--code-bg) !important;
+  padding: 1rem 1.25rem;
   border-radius: 8px;
   overflow-x: auto;
-  font-family: Consolas, monospace;
-  font-size: 0.9rem;
+  font-family: "Cascadia Code", Consolas, "Fira Code", monospace;
+  font-size: 0.88rem;
+  line-height: 1.55;
   margin-top: 0.5rem;
   margin-bottom: 1rem;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Signature block inside a method card — slightly different shade */
+.grey-block pre {
+  background-color: var(--sig-bg) !important;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  margin-top: 0.5rem;
+}
+
+/* Copy button — appears on hover */
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-family: inherit;
+  background-color: var(--copy-btn-bg);
+  color: #ccc;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.1s ease;
+  white-space: nowrap;
+}
+
+pre:hover .copy-btn {
+  opacity: 1;
+}
+
+.copy-btn:hover {
+  background-color: var(--copy-btn-hover);
+  color: #fff;
 }
 
 a {
@@ -295,7 +435,109 @@ tr:hover td {
 .grey-block {
   background-color: var(--grey-block-bg);
   border: 1px solid var(--grey-block-border);
-  padding: 16px;
+  padding: 16px 20px;
   margin: 20px 0;
   border-radius: 8px;
+}
+
+/* ── Method badges ─────────────────────────────────── */
+.badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-left: 6px;
+}
+
+.badge-native    { background: #7c3aed22; color: #7c3aed; border: 1px solid #7c3aed44; }
+.badge-virtual   { background: #059669222; color: #059669; border: 1px solid #05966944; }
+.badge-function  { background: #0369a122; color: #0369a1; border: 1px solid #0369a144; }
+.badge-constructor { background: #b4530022; color: #b45300; border: 1px solid #b4530044; }
+
+body.dark-mode .badge-native    { background: #7c3aed33; color: #a78bfa; border-color: #7c3aed55; }
+body.dark-mode .badge-virtual   { background: #05966933; color: #34d399; border-color: #05966955; }
+body.dark-mode .badge-function  { background: #0369a133; color: #38bdf8; border-color: #0369a155; }
+body.dark-mode .badge-constructor { background: #b4530033; color: #fb923c; border-color: #b4530055; }
+
+/* ── Anchor link icon ─────────────────────────────── */
+.anchor-link {
+  font-size: 0.75rem;
+  color: var(--border-color);
+  text-decoration: none;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  vertical-align: middle;
+}
+
+.grey-block h3:hover .anchor-link,
+.grey-block h3 .anchor-link:focus {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* ── Two-column content + TOC layout ──────────────── */
+.content-with-toc {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.content-with-toc .content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toc {
+  width: 190px;
+  flex-shrink: 0;
+}
+
+.toc-inner {
+  position: sticky;
+  top: 1rem;
+  background-color: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.toc-inner h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--breadcrumb-color);
+}
+
+.toc-inner ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toc-inner li {
+  margin: 0.3rem 0;
+}
+
+.toc-inner a {
+  font-size: 0.82rem;
+  color: var(--text-color);
+  text-decoration: none;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toc-inner a:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .toc { display: none; }
 }

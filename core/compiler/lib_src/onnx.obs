@@ -128,6 +128,17 @@ bundle API.Onnx {
 		@param image width width
 		@param conf_threshold confidence threshold
 		@param labels classification labels
+
+```
+labels := ["person", "car", "dog"];
+session := YoloSession->New("yolo11n.onnx");
+image := FileReader->ReadBinaryFile("photo.jpg");
+result := session->Inference(image, 640, 640, 0.5, labels);
+each(cls in result->GetClassifications()) {
+  "{$cls->GetName()}: {$cls->GetConfidence()}"->PrintLine();
+};
+session->Close();
+```
 		~#
 		method : public : Inference(image : Byte[], height : Int, width : Int, conf_threshold : Float, labels : String[]) ~ API.Onnx.YoloResult {
 
@@ -216,6 +227,12 @@ bundle API.Onnx {
 		#~
 		Gets an array of classifications
 		@return array of classifications
+
+```
+each(cls in result->GetClassifications()) {
+  "{$cls->GetName()} ({$cls->GetConfidence()})"->PrintLine();
+};
+```
 		~#
 		method : public : GetClassifications() ~ YoloClassification[] {
 			return @classifications;
@@ -455,6 +472,15 @@ bundle API.Onnx {
 		@param height image height
 		@param image width width
 		@param labels classification labels
+
+```
+labels := ["cat", "dog", "bird"];
+session := ResNetSession->New("resnet50.onnx");
+image := FileReader->ReadBinaryFile("animal.jpg");
+result := session->Inference(image, 224, 224, labels);
+"Top class: {$result->GetName()} ({$result->GetConfidence()})"->PrintLine();
+session->Close();
+```
 		~#
 		method : public : Inference(image : Byte[], height : Int, width : Int, labels : String[]) ~ API.Onnx.ResNetResult {
 			if(image = Nil | labels = Nil) {
@@ -512,6 +538,10 @@ bundle API.Onnx {
 		#~
 		Get classification name
 		@return classification name
+
+```
+"Predicted: {$result->GetName()}"->PrintLine();
+```
 		~#
 		method : public : GetName() ~ String {
 			return @name;
@@ -520,6 +550,10 @@ bundle API.Onnx {
 		#~
 		Get classification confidence
 		@return classification confidence
+
+```
+"Confidence: {$result->GetConfidence()}"->PrintLine();
+```
 		~#
 		method : public : GetConfidence() ~ Float {
 			return @confidence;
@@ -648,6 +682,17 @@ bundle API.Onnx {
 		@param height image height
 		@param image width width
 		@param labels classification labels
+
+```
+labels := ["background", "person", "car"];
+session := DeepLabSession->New("deeplabv3.onnx");
+image := FileReader->ReadBinaryFile("scene.jpg");
+result := session->Inference(image, labels);
+each(cls in result->GetClassifications()) {
+  "{$cls->GetName()}: {$cls->GetConfidence()}%"->PrintLine();
+};
+session->Close();
+```
 		~#
 		method : public : Inference(image : Byte[], labels : String[]) ~ API.Onnx.DeepLabResult {
 			if(image = Nil) {
@@ -940,6 +985,22 @@ bundle API.Onnx {
 		@param image image bytes
 		@param height image height
 		@param image width width
+
+```
+labels := ["nose", "left_eye", "right_eye", "left_ear", "right_ear",
+  "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+  "left_wrist", "right_wrist", "left_hip", "right_hip",
+  "left_knee", "right_knee", "left_ankle", "right_ankle"];
+session := OpenPoseSession->New("openpose.onnx");
+image := FileReader->ReadBinaryFile("person.jpg");
+result := session->Inference(image, labels);
+each(kp in result->GetClassifications()) {
+  if(kp->GetConfidence() > 0) {
+    "{$kp->GetName()}: ({$kp->GetNormalizedX()},{$kp->GetNormalizedY()})"->PrintLine();
+  };
+};
+session->Close();
+```
 		~#
 		method : public : Inference(image : Byte[], labels : String[]) ~ API.Onnx.OpenPoseResult {
 			if(image = Nil) {
@@ -1201,6 +1262,13 @@ bundle API.Onnx {
 		#~
 		Checks if the tokenizer was loaded successfully
 		@return true if loaded
+
+```
+tokenizer := Phi3Tokenizer->New("phi3-mini/tokenizer.json");
+if(tokenizer->IsLoaded()) {
+  "Tokenizer ready, vocab={$tokenizer->GetVocabSize()}"->PrintLine();
+};
+```
 		~#
 		method : public : IsLoaded() ~ Bool {
 			return @id_to_token <> Nil & @vocab_size > 0;
@@ -1210,6 +1278,13 @@ bundle API.Onnx {
 		Decode token IDs to human-readable text
 		@param token_ids array of token IDs
 		@return decoded text string
+
+```
+tokenizer := Phi3Tokenizer->New("phi3-mini/tokenizer.json");
+ids := [1, 3148, 1001, 29901];
+text := tokenizer->Decode(ids);
+text->PrintLine();
+```
 		~#
 		method : public : Decode(token_ids : Int[]) ~ String {
 			if(token_ids = Nil | @id_to_token = Nil) {
@@ -1255,6 +1330,12 @@ bundle API.Onnx {
 		Added/special tokens are matched as whole strings before BPE is applied.
 		@param text input text to tokenize
 		@return array of token IDs
+
+```
+tokenizer := Phi3Tokenizer->New("phi3-mini/tokenizer.json");
+ids := tokenizer->Encode("What is 2+2?");
+"Tokens: {$ids->Size()}"->PrintLine();
+```
 		~#
 		method : public : Encode(text : String) ~ Int[] {
 			if(text = Nil | text->Size() = 0 | @token_to_id->Size() = 0) {
@@ -1534,6 +1615,16 @@ bundle API.Onnx {
 		@param temperature sampling temperature (0.0 for greedy)
 		@param eos_tokens array of end-of-sequence token IDs
 		@return generation result with output token IDs
+
+```
+session := Phi3Session->New("phi3-mini/model.onnx");
+tokenizer := Phi3Tokenizer->New("phi3-mini/tokenizer.json");
+ids := tokenizer->Encode("<|user|>\nWhat is 2+2?<|end|>");
+eos := [32007, 32000];
+result := session->Generate(ids, 128, 0.0, eos);
+tokenizer->Decode(result->GetTokens())->PrintLine();
+session->Close();
+```
 		~#
 		method : public : Generate(token_ids : Int[], max_tokens : Int, temperature : Float, eos_tokens : Int[]) ~ API.Onnx.Phi3Result {
 			if(token_ids = Nil | eos_tokens = Nil) {
@@ -1566,6 +1657,12 @@ bundle API.Onnx {
 		#~
 		Gets the generated token IDs (excluding prompt tokens)
 		@return array of generated token IDs
+
+```
+result := session->Generate(ids, 128, 0.0, eos);
+text := tokenizer->Decode(result->GetTokens());
+text->PrintLine();
+```
 		~#
 		method : public : GetTokens() ~ Int[] {
 			return @generated_tokens;
@@ -2088,6 +2185,14 @@ bundle API.Onnx {
 		@param image raw image bytes (JPEG/PNG)
 		@param conf_threshold detection confidence threshold [0, 1]
 		@return array of FaceDetection results
+
+```
+session := FaceSession->New("det_10g.onnx");
+image := FileReader->ReadBinaryFile("group.jpg");
+result := session->Detect(image, 0.5);
+"Faces found: {$result->GetSize()}"->PrintLine();
+session->Close();
+```
 		~#
 		method : public : Detect(image : Byte[], conf_threshold : Float) ~ FaceDetectionResult {
 			if(image = Nil) {
@@ -2111,6 +2216,16 @@ bundle API.Onnx {
 		@param image raw image bytes (JPEG/PNG)
 		@param conf_threshold detection confidence threshold [0, 1]
 		@return array of FaceResult (detection + 512-dim embedding)
+
+```
+session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
+image := FileReader->ReadBinaryFile("portrait.jpg");
+result := session->Recognize(image, 0.5);
+each(face in result->GetResults()) {
+  "Face score: {$face->GetDetection()->GetScore()}"->PrintLine();
+};
+session->Close();
+```
 		~#
 		method : public : Recognize(image : Byte[], conf_threshold : Float) ~ FaceRecognitionResult {
 			if(image = Nil | @rec_session = 0) {
@@ -2135,6 +2250,13 @@ bundle API.Onnx {
 		@param emb1 first embedding (512 floats)
 		@param emb2 second embedding (512 floats)
 		@return cosine similarity score
+
+```
+r1 := session->Recognize(image1, 0.5);
+r2 := session->Recognize(image2, 0.5);
+sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults()[0]->GetEmbedding());
+"Same person? {$sim > 0.35}"->PrintLine();
+```
 		~#
 		function : Compare(emb1 : Float[], emb2 : Float[]) ~ Float {
 			if(emb1 = Nil | emb2 = Nil | emb1->Size() <> emb2->Size()) {

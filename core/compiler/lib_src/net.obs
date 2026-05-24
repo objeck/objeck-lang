@@ -72,6 +72,15 @@ if(html <> Nil) {
 		Adds a HTTP request header
 		@param name header name
 		@param value header value
+```
+client := Web.HTTP.HttpClient->New();
+client->AddHeader("Authorization", "Bearer my-token-123");
+client->AddHeader("Accept", "application/json");
+response := client->Get(Web.HTTP.Url->New("https://api.example.com/data"));
+if(response <> Nil) {
+  response->ToString()->PrintLine();
+};
+```
 		~#
 		method : public : AddHeader(name : String, value : String) ~ Nil {
 			@request_headers->Insert(name->ToLower(), value);
@@ -80,6 +89,12 @@ if(html <> Nil) {
 		#~
 		Removes a HTTP request header
 		@param name header name
+```
+client := Web.HTTP.HttpClient->New();
+client->AddHeader("X-Debug", "1");
+# remove before production call
+client->RemoveHeader("X-Debug");
+```
 		~#
 		method : public : RemoveHeader(name : String) ~ Nil {
 			@request_headers->Remove(name->ToLower());
@@ -88,6 +103,10 @@ if(html <> Nil) {
 		#~
 		Sets the maximum number of redirects to follow (default 10)
 		@param max maximum redirects
+```
+client := Web.HTTP.HttpClient->New();
+client->SetMaxRedirects(3);
+```
 		~#
 		method : public : SetMaxRedirects(max : Int) ~ Nil {
 			@max_redirects := max;
@@ -97,6 +116,11 @@ if(html <> Nil) {
 		Sets retry behavior for transient errors (429, 503)
 		@param max_retries maximum retry attempts (default 3, 0 to disable)
 		@param delay_ms initial delay between retries in milliseconds (default 1000, doubles each retry)
+```
+client := Web.HTTP.HttpClient->New();
+client->SetRetry(3, 500);  # retry up to 3 times, 500ms between attempts
+response := client->Get(Web.HTTP.Url->New("https://api.example.com/items"));
+```
 		~#
 		method : public : SetRetry(max_retries : Int, delay_ms : Int) ~ Nil {
 			@max_retries := max_retries;
@@ -106,14 +130,26 @@ if(html <> Nil) {
 		#~
 		Sets cookie support
 		@param cookies_enabled true if cookies are enabled, false otherwise
+```
+client := Web.HTTP.HttpClient->New(false);
+client->EnableCookies(true);
+```
 		~#
 		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
 			@cookies_enabled := cookies_enabled;
-		}	
-		
+		}
+
 		#~
 		Gets the cookies
 		@return vector of cookies
+```
+client := Web.HTTP.HttpClient->New(true);
+client->Get(Web.HTTP.Url->New("https://httpbin.org/cookies/set/session/abc"));
+cookies := client->GetCookies();
+each(c in cookies) {
+  c->GetName()->PrintLine();
+};
+```
 		~#
 		method : public : GetCookies() ~ Vector<Cookie> {
 			return @cookies;
@@ -165,6 +201,11 @@ if(html <> Nil) {
 		@param url URL
 		@param data data to post
 		@return read strings
+```
+body := "{\"event\":\"click\"}"->ToByteArray();
+response := Web.HTTP.HttpClient->QuickPost(Web.HTTP.Url->New("https://httpbin.org/post"), body);
+response->GetStatusCode()->PrintLine();
+```
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return HttpClient->New()->Post(url, data);
@@ -176,6 +217,14 @@ if(html <> Nil) {
 		@param data data to post
 		@param content_type content type
 		@return read strings
+```
+body := "{\"x\":1}"->ToByteArray();
+response := Web.HTTP.HttpClient->QuickPost(
+  Web.HTTP.Url->New("https://api.example.com/events"),
+  body,
+  "application/json");
+response->GetStatusCode()->PrintLine();
+```
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
 			return QuickPost(url, data, content_type, Nil);
@@ -211,6 +260,15 @@ if(html <> Nil) {
 		@param data data to oper
 		@param content_type content type
 		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+body := "{\"user\":\"bob\",\"score\":42}"->ToByteArray();
+response := client->Post(
+  Web.HTTP.Url->New("https://api.example.com/scores"),
+  body,
+  "application/json");
+response->GetStatusCode()->PrintLine();
+```
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
 			return PushPullOperation(url, data, content_type, HttpClient->Task->POST);
@@ -221,6 +279,14 @@ if(html <> Nil) {
 		@param url URL
 		@param data data to post
 		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+body := "{\"name\":\"Alice\"}"->ToByteArray();
+response := client->Post(Web.HTTP.Url->New("https://httpbin.org/post"), body);
+if(response <> Nil) {
+  response->GetStatusCode()->PrintLine();
+};
+```
 		~#
 		method : public : Post(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return PushPullOperation(url, data, "text/plain", HttpClient->Task->POST);
@@ -230,6 +296,12 @@ if(html <> Nil) {
 		Performs a HTTP GET and returns results as a String
 		@param url URL
 		@return output buffer
+```
+response := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("https://httpbin.org/get"));
+if(response <> Nil) {
+  response->ToString()->PrintLine();
+};
+```
 		~#
 		function : QuickGet(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return QuickGet(url, "text/plain", Nil);
@@ -240,6 +312,12 @@ if(html <> Nil) {
 		@param url URL
 		@param headers key/value headers
 		@return output buffer
+```
+hdrs := Collection.Map->New()<String, String>;
+hdrs->Insert("Accept", "application/json");
+response := Web.HTTP.HttpClient->QuickGet(Web.HTTP.Url->New("https://api.example.com"), hdrs);
+response->ToString()->PrintLine();
+```
 		~#
 		function : QuickGet(url : Web.HTTP.Url, headers : Map<String, String>) ~ Web.HTTP.Response {
 			return QuickGet(url, "text/plain", headers);
@@ -287,6 +365,13 @@ if(html <> Nil) {
 		Performs a HTTP GET
 		@param url URL
 		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+response := client->Get(Web.HTTP.Url->New("https://httpbin.org/get"));
+if(response <> Nil & response->GetStatusCode() = 200) {
+  response->ToString()->PrintLine();
+};
+```
 		~#
 		method : public : Get(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return Get(url, "text/plain");
@@ -297,6 +382,13 @@ if(html <> Nil) {
 		@param url URL
 		@param content_type content type
 		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+response := client->Get(Web.HTTP.Url->New("https://api.example.com/data"), "application/json");
+if(response <> Nil) {
+  response->ToString()->PrintLine();
+};
+```
 		~#
 		method : public : Get(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
 			return PullOperation(url, content_type, HttpClient->Task->GET);
@@ -363,6 +455,11 @@ if(html <> Nil) {
 		Performs a HTTP DELETE
 		@param url URL
 		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+response := client->Delete(Web.HTTP.Url->New("https://api.example.com/items/42"));
+response->GetStatusCode()->PrintLine();  # 204
+```
 		~#
 		method : public : Delete(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return Delete(url, "text/plain");
@@ -428,6 +525,12 @@ if(html <> Nil) {
 		@param url URL
 		@param data data to post
 		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+body := "{\"name\":\"Updated\"}"->ToByteArray();
+response := client->Put(Web.HTTP.Url->New("https://api.example.com/items/1"), body);
+response->GetStatusCode()->PrintLine();
+```
 		~#
 		method : public : Put(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return Put(url, data, "text/plain");
@@ -494,6 +597,12 @@ if(html <> Nil) {
 		@param url URL
 		@param data data to patch
 		@return string read
+```
+client := Web.HTTP.HttpClient->New();
+body := "{\"status\":\"active\"}"->ToByteArray();
+response := client->Patch(Web.HTTP.Url->New("https://api.example.com/users/5"), body);
+response->GetStatusCode()->PrintLine();
+```
 		~#
 		method : public : Patch(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return Patch(url, data, "text/plain");
@@ -1035,6 +1144,13 @@ if(client->Connect()) {
 		#~
 		Opens a connection to a web socket
 		@return true if connected, false otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  "Connected"->PrintLine();
+  ws->CloseSocket();
+};
+```
 		~#
 		method : public : Connect() ~ Bool {
 			if(@url->GetScheme()->Equals("ws")) {
@@ -1146,6 +1262,13 @@ if(client->Connect()) {
 		@param data binary payload
 		@param fragment true if fragmented, false otherwise
 		@return true if successful, false otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  ws->WriteSocket("ping"->ToByteArray(), false);
+  ws->CloseSocket();
+};
+```
 		~#
 		method : public : WriteSocket(data : Byte[], fragment : Bool := false) ~ Bool {
 			chunk_size := 4096;
@@ -1189,6 +1312,14 @@ if(client->Connect()) {
 		@param message message
 		@param fragment true if fragmented, false otherwise
 		@return true if successful, false otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  ws->WriteSocket("Hello, WebSocket!");
+  ws->ReadSocketText()->PrintLine();
+  ws->CloseSocket();
+};
+```
 		~#
 		method : public : WriteSocket(message : String, fragment : Bool := false) ~ Bool {
 			chunk_size := 4096;
@@ -1232,6 +1363,14 @@ if(client->Connect()) {
 		#~
 		Reads binary input from the web socket
 		@return binary input read, Nil otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://binary.example.com"));
+if(ws->Connect()) {
+  data := ws->ReadSocketBinary();
+  data->Size()->PrintLine();
+  ws->CloseSocket();
+};
+```
 		~#
 		method : public : ReadSocketBinary() ~ Byte[] {
 			return ReadFrame();
@@ -1240,6 +1379,15 @@ if(client->Connect()) {
 		#~
 		Reads text from the web socket
 		@return text read, Nil otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  ws->WriteSocket("Hello");
+  msg := ws->ReadSocketText();
+  msg->PrintLine();
+  ws->CloseSocket();
+};
+```
 		~#
 		method : public : ReadSocketText() ~ String {
 			data := ReadFrame();
@@ -1511,6 +1659,15 @@ if(client->Connect()) {
 		#~
 		Pings the websocket server
 		@return true if pinged, false otherwise
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(ws->Connect()) {
+  if(ws->PingSocket()) {
+    "Server alive"->PrintLine();
+  };
+  ws->CloseSocket();
+};
+```
 		~#
 		method : public : PingSocket() ~ Bool {
 			if(@socket <> Nil) {
@@ -1549,6 +1706,9 @@ if(client->Connect()) {
 
 		#~
 		Closes the web socket connection
+```
+ws->CloseSocket();
+```
 		~#
 		method : public : CloseSocket() ~ Nil {
 			CloseSocket(1000);
@@ -1557,6 +1717,9 @@ if(client->Connect()) {
 		#~
 		Closes the web socket connection
 		@param reason reason to close socket
+```
+ws->CloseSocket(1000);  # 1000 = normal closure
+```
 		~#
 		method : public : CloseSocket(reason : Int) ~ Nil {
 			if(@socket <> Nil) {
@@ -1575,8 +1738,13 @@ if(client->Connect()) {
 		}
 
 		#~
-		Gets the last status code 
-		@return last status code 
+		Gets the last status code
+		@return last status code
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+ws->Connect();
+ws->GetStatusCode()->PrintLine();  # 101
+```
 		~#
 		method : public : GetStatusCode() ~ Int {
 			return @status_code;
@@ -1584,7 +1752,13 @@ if(client->Connect()) {
 
 		#~
 		Gets the last status message
-		@return last status message 
+		@return last status message
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+if(<>ws->Connect()) {
+  ws->GetStatusMessage()->PrintLine();  # error message
+};
+```
 		~#
 		method : public : GetStatusMessage() ~ String {
 			return @status_msg;
@@ -1626,6 +1800,11 @@ if(client->Connect()) {
 		Adds a HTTPS request header
 		@param name header name
 		@param value header value
+```
+ws := Web.HTTP.WebSocket->New(Web.HTTP.Url->New("wss://secure.example.com/ws"));
+ws->AddHeader("Authorization", "Bearer token123");
+ws->Connect();
+```
 		~#
 		method : public : AddHeader(name : String, value : String) ~  Nil {
 			@request_headers->Insert(name->ToLower(), value);

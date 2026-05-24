@@ -29,6 +29,11 @@ bundle Cipher {
 		Hash input using SHA-1
 		@param stream_in bytes to hashed
 		@return hashed bytes
+		```
+		bytes := "Hello World"->ToByteArray();
+		hash := Cipher.Hash->SHA1(bytes); # compute SHA-1 digest
+		Cipher.Encrypt->Base64(hash)->PrintLine(); # print as Base64
+		```
 		~#
 		function : SHA1(stream_in : Byte[]) ~ Byte[] {
 			if(stream_in <> Nil) {
@@ -48,6 +53,11 @@ bundle Cipher {
 		Hash input using SHA-256
 		@param stream_in bytes to hashed
 		@return hashed bytes
+		```
+		bytes := "password123"->ToByteArray();
+		hash := Cipher.Hash->SHA256(bytes); # compute SHA-256 digest
+		Cipher.Encrypt->Base64(hash)->PrintLine(); # print as Base64
+		```
 		~#
 		function : SHA256(stream_in : Byte[]) ~ Byte[] {
 			if(stream_in <> Nil) {
@@ -67,6 +77,11 @@ bundle Cipher {
 		Hash input using SHA-512
 		@param stream_in bytes to hashed
 		@return hashed bytes
+		```
+		bytes := "secret"->ToByteArray();
+		hash := Cipher.Hash->SHA512(bytes); # 64-byte digest
+		Cipher.Encrypt->Base64(hash)->PrintLine();
+		```
 		~#
 		function : SHA512(stream_in : Byte[]) ~ Byte[] {
 			if(stream_in <> Nil) {
@@ -86,6 +101,11 @@ bundle Cipher {
 		Hash input using MD5
 		@param stream_in bytes to hashed
 		@return hashed bytes
+		```
+		bytes := "checksum-data"->ToByteArray();
+		hash := Cipher.Hash->MD5(bytes); # 16-byte MD5 digest
+		Cipher.Encrypt->Base64(hash)->PrintLine();
+		```
 		~#
 		function : MD5(stream_in : Byte[]) ~ Byte[] {
 			if(stream_in <> Nil) {
@@ -105,6 +125,11 @@ bundle Cipher {
 		Hash input using RIPEMD digest
 		@param stream_in bytes to hashed
 		@return hashed bytes
+		```
+		bytes := "blockchain-data"->ToByteArray();
+		hash := Cipher.Hash->RIPEMD160(bytes); # 20-byte digest
+		Cipher.Encrypt->Base64(hash)->PrintLine();
+		```
 		~#
 		function : RIPEMD160(stream_in : Byte[]) ~ Byte[] {
 			if(stream_in <> Nil) {
@@ -131,6 +156,12 @@ bundle Cipher {
 		@param key encryption key
 		@param stream_in bytes to encrypted
 		@return encrypted bytes
+		```
+		key := "mysecretkey123456789012345678901"->ToByteArray(); # 32 bytes
+		plain := "Hello World"->ToByteArray();
+		cipher := Cipher.Encrypt->AES256(key, plain); # encrypt bytes
+		Cipher.Encrypt->Base64(cipher)->PrintLine(); # show as Base64
+		```
 		~#
 		function : AES256(key : Byte[], stream_in : Byte[]) ~ Byte[] {
 			if(key <> Nil & stream_in <> Nil) {
@@ -152,6 +183,11 @@ bundle Cipher {
 		Encode input using Base64
 		@param input bytes to encode
 		@return encoded bytes
+		```
+		bytes := "Hello World"->ToByteArray();
+		encoded := Cipher.Encrypt->Base64(bytes); # encode to Base64 string
+		encoded->PrintLine();
+		```
 		~#
 		function : native : Base64(input : Byte[]) ~ String {
 			array_args := Base->New[2];
@@ -173,6 +209,13 @@ bundle Cipher {
 		@param key encryption key
 		@param stream_in bytes to decrypted
 		@return decrypted bytes
+		```
+		key := "mysecretkey123456789012345678901"->ToByteArray(); # 32 bytes
+		plain := "Hello World"->ToByteArray();
+		cipher := Cipher.Encrypt->AES256(key, plain);
+		result := Cipher.Decrypt->AES256(key, cipher); # recover original
+		result->ToString()->PrintLine();
+		```
 		~#
 		function : AES256(key : Byte[], stream_in : Byte[]) ~ Byte[] {
 			if(key <> Nil & stream_in <> Nil) {
@@ -194,6 +237,11 @@ bundle Cipher {
 		Decrypts input using Base64
 		@param input input bytes to decrypted
 		@return decrypted bytes
+		```
+		encoded := Cipher.Encrypt->Base64("Hello World"->ToByteArray());
+		decoded := Cipher.Decrypt->Base64(encoded); # decode from Base64
+		decoded->ToString()->PrintLine();
+		```
 		~#
 		function : native : Base64(input : String) ~ Byte[] {
 			array_args := Base->New[2];

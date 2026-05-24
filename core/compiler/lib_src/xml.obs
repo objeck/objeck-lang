@@ -27,6 +27,12 @@ builder->ToString()->PrintLine();
 		#~
 		Default constructor
 		@param name root element name
+
+```
+builder := XmlBuilder->New("catalog");
+builder->GetRoot()->AddChild(XmlElement->New(XmlElement->Type->ELEMENT, "book"));
+builder->ToString()->PrintLine();
+```
 		~#
 		New(name : String) {
 			@root := XmlElement->New(XmlElement->Type->ELEMENT, name);
@@ -36,6 +42,11 @@ builder->ToString()->PrintLine();
 		Default constructor
 		@param name root element name
 		@param version XML version tag
+
+```
+builder := XmlBuilder->New("root", "1.0");
+builder->ToString()->PrintLine();
+```
 		~#
 		New(name : String, version : String) {
 			@root := XmlElement->New(XmlElement->Type->ELEMENT, name);
@@ -47,6 +58,11 @@ builder->ToString()->PrintLine();
 		@param name root element name
 		@param version XML version tag
 		@param encoding XML encoding type
+
+```
+builder := XmlBuilder->New("root", "1.0", "UTF-8");
+builder->ToString()->PrintLine();
+```
 		~#
 		New(name : String, version : String, encoding : String) {
 			@root := XmlElement->New(XmlElement->Type->ELEMENT, name);
@@ -57,48 +73,85 @@ builder->ToString()->PrintLine();
 		#~
 		Returns the root node of the XML document
 		@return root node
+
+```
+builder := XmlBuilder->New("items");
+root := builder->GetRoot();
+root->SetContent("hello");
+builder->ToString()->PrintLine();
+```
 		~#
 		method : public : GetRoot() ~ XmlElement {
 			return @root;
 		}
-		
+
 		#~
 		Gets the XML version
 		@return XML version
+
+```
+builder := XmlBuilder->New("root", "1.0");
+builder->GetVersion()->PrintLine();
+```
 		~#
 		method : public : GetVersion() ~ String {
 			return @version;
 		}
-		
+
 		#~
 		Sets the XML version
 		@param version version
 		@return XML version
+
+```
+builder := XmlBuilder->New("root");
+builder->SetVersion("1.1");
+builder->GetVersion()->PrintLine();
+```
 		~#
 		method : public : SetVersion(version : String) ~ Nil {
 			@version := version;
 		}
-		
+
 		#~
 		Gets the XML encoding
 		@return XML encoding
+
+```
+builder := XmlBuilder->New("root", "1.0", "UTF-8");
+builder->GetEncoding()->PrintLine();
+```
 		~#
 		method : public : GetEncoding() ~ String {
 			return @encoding;
 		}
-		
+
 		#~
 		Sets the XML encoding
 		@param encoding encoding version
 		@return XML encoding
+
+```
+builder := XmlBuilder->New("root", "1.0");
+builder->SetEncoding("UTF-8");
+builder->GetEncoding()->PrintLine();
+```
 		~#
 		method : public : SetEncoding(encoding : String) ~ Nil {
 			@encoding := encoding;
 		}
-		
+
 		#~
 		Produces an XML string representation of the document
 		@return string representation of the document
+
+```
+builder := XmlBuilder->New("root", "1.0", "UTF-8");
+child := XmlElement->New(XmlElement->Type->ELEMENT, "name");
+child->SetContent("Alice");
+builder->GetRoot()->AddChild(child);
+builder->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			# add declaration
@@ -184,6 +237,13 @@ if(parser->Parse()) {
 		#~
 		Default constructor
 		@param string XML to parse
+
+```
+parser := XmlParser->New("<root><item>hello</item></root>");
+if(parser->Parse()) {
+  parser->GetRoot()->GetName()->PrintLine();
+};
+```
 		~#
 		New(string : String) {
 			@buffer := string->ToCharArray();
@@ -194,6 +254,14 @@ if(parser->Parse()) {
 		#~
 		Default constructor
 		@param buffer XML to parse
+
+```
+xml := "<data><val>42</val></data>";
+parser := XmlParser->New(xml->ToCharArray());
+if(parser->Parse()) {
+  parser->GetRoot()->GetName()->PrintLine();
+};
+```
 		~#
 		New(buffer : Char[]) {
 			@buffer := buffer;
@@ -204,6 +272,13 @@ if(parser->Parse()) {
 		#~
 		Get the current parsing error
 		@return current parsing error
+
+```
+parser := XmlParser->New("<unclosed>");
+if(parser->Parse() = false) {
+  parser->GetError()->PrintLine();
+};
+```
 		~#
 		method : public : GetError() ~ String {
 			return @error_msg;
@@ -212,6 +287,13 @@ if(parser->Parse()) {
 		#~
 		Gets XML version
 		@return XML version
+
+```
+parser := XmlParser->New("<?xml version=\"1.0\"?><root/>");
+if(parser->Parse()) {
+  parser->GetVersion()->PrintLine();
+};
+```
 		~#
 		method : public : GetVersion() ~ String {
 			element : XmlElement := @declarations->Find("xml");
@@ -228,6 +310,13 @@ if(parser->Parse()) {
 		#~
 		Gets the XML encoding
 		@return XML encoding
+
+```
+parser := XmlParser->New("<?xml version=\"1.0\" encoding=\"UTF-8\"?><root/>");
+if(parser->Parse()) {
+  parser->GetEncoding()->PrintLine();
+};
+```
 		~#
 		method : public : GetEncoding() ~ String {
 			element : XmlElement := @declarations->Find("xml");
@@ -244,6 +333,13 @@ if(parser->Parse()) {
 		#~
 		Produces an XML string representation of the document
 		@return string representation of the document
+
+```
+parser := XmlParser->New("<root><child>text</child></root>");
+if(parser->Parse()) {
+  parser->ToString()->PrintLine();
+};
+```
 		~#
 		method : public : ToString() ~ String {
 			# add declaration
@@ -264,6 +360,16 @@ if(parser->Parse()) {
 		Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.
 		@param path search string
 		@return matching XML elements
+
+```
+parser := XmlParser->New("<store><item><price>9.99</price></item></store>");
+if(parser->Parse()) {
+  results := parser->FindElements("/store/item/price")<XmlElement>;
+  each(e := results) {
+    e->GetContent()->PrintLine();
+  };
+};
+```
 		~#
 		method : public : FindElements(path : String) ~ Vector<XmlElement> {
 			return @root->FindElements(path)<XmlElement>;
@@ -273,6 +379,13 @@ if(parser->Parse()) {
                 Parses an XmlElement text
                 @param text JSON text
                 @return root document element
+
+```
+elem := XmlParser->TextToElement("<msg><body>Hello</body></msg>");
+if(elem <> Nil) {
+  elem->GetFirstChild("body")->GetContent()->PrintLine();
+};
+```
                 ~#
                 function : TextToElement(text : String) ~ XmlElement {
                         parser := XmlParser->New(text);
@@ -286,7 +399,15 @@ if(parser->Parse()) {
 		#~
 		Parses the XML document
 		@return true if parsed, false otherwise
-		~# 
+
+```
+parser := XmlParser->New("<root><item>one</item><item>two</item></root>");
+if(parser->Parse()) {
+  items := parser->FindElements("/root/item")<XmlElement>;
+  Console->PrintLine(items->Size());
+};
+```
+		~#
 		method : public : Parse() ~ Bool {
 			if(@error_msg <> Nil) {
 				return false;
@@ -881,7 +1002,15 @@ if(parser->Parse()) {
 		#~
 		Gets the root XML element
 		@return root XML element
-		~# 
+
+```
+parser := XmlParser->New("<library><book>Dune</book></library>");
+if(parser->Parse()) {
+  root := parser->GetRoot();
+  root->GetName()->PrintLine();
+};
+```
+		~#
 		method : public : GetRoot() ~ XmlElement {
 			return @root;
 		}
@@ -921,6 +1050,14 @@ if(parser->Parse()) {
 		#~
 		Gets the name of the attribute
 		@return attribute name
+
+```
+parser := XmlParser->New("<item id=\"7\"/>");
+if(parser->Parse()) {
+  attrib := parser->GetRoot()->GetAttribute("id");
+  attrib->GetName()->PrintLine();
+};
+```
 		~#
 		method : public : GetName() ~ String {
 			if(@name <> Nil) {
@@ -933,6 +1070,12 @@ if(parser->Parse()) {
 		#~
 		Sets the attribute name
 		@param name attribute name
+
+```
+attrib := XmlAttribute->New("class", "widget");
+attrib->SetName("id");
+attrib->GetName()->PrintLine();
+```
 		~#
 		method : public : SetName(name : String) ~ Nil {
 			@name := name;
@@ -941,6 +1084,14 @@ if(parser->Parse()) {
 		#~
 		Gets the attribute value
 		@return attribute value
+
+```
+parser := XmlParser->New("<img src=\"photo.png\"/>");
+if(parser->Parse()) {
+  attrib := parser->GetRoot()->GetAttribute("src");
+  attrib->GetValue()->PrintLine();
+};
+```
 		~#
 		method : public : GetValue() ~ String {
 			if(@value <> Nil) {
@@ -953,6 +1104,12 @@ if(parser->Parse()) {
 		#~
 		Sets the attribute value
 		@param value attribute value
+
+```
+attrib := XmlAttribute->New("color", "red");
+attrib->SetValue("blue");
+attrib->GetValue()->PrintLine();
+```
 		~#
 		method : public : SetValue(value : String) ~ Nil {
 			@value := value;
@@ -961,6 +1118,11 @@ if(parser->Parse()) {
 		#~
 		Gets the attribute namespace
 		@return attribute namespace
+
+```
+attrib := XmlAttribute->New("xml:lang", "en");
+attrib->GetNamespace()->PrintLine();
+```
 		~#
 		method : public : GetNamespace() ~ String {
 			if(@namespace <> Nil) {
@@ -969,10 +1131,16 @@ if(parser->Parse()) {
 
 			return "";
 		}
-		
+
 		#~
 		Sets the attribute namespace
 		@param namespace attribute namespace
+
+```
+attrib := XmlAttribute->New("lang", "en");
+attrib->SetNamespace("xml");
+attrib->GetNamespace()->PrintLine();
+```
 		~#
 		method : public : SetNamespace(namespace : String) ~ Nil {
 			@namespace := namespace;
@@ -1073,6 +1241,13 @@ if(parser->Parse()) {
 		#~
 		Gets the element name
 		@return element name
+
+```
+parser := XmlParser->New("<product><sku>ABC-1</sku></product>");
+if(parser->Parse()) {
+  parser->GetRoot()->GetName()->PrintLine();
+};
+```
 		~#
 		method : public : GetName() ~ String {
 			if(@name <> Nil) {
@@ -1081,10 +1256,16 @@ if(parser->Parse()) {
 
 			return "";
 		}
-		
+
 		#~
 		Sets the element name
 		@param name element name
+
+```
+elem := XmlElement->New(XmlElement->Type->ELEMENT, "old");
+elem->SetName("new");
+elem->GetName()->PrintLine();
+```
 		~#
 		method : public : SetName(name : String) ~ Nil {
 			@name := name;
@@ -1093,18 +1274,31 @@ if(parser->Parse()) {
 		#~
 		Gets the element namespace
 		@return element namespace
+
+```
+parser := XmlParser->New("<svg:rect xmlns:svg=\"http://www.w3.org/2000/svg\"/>");
+if(parser->Parse()) {
+  parser->GetRoot()->GetNamespace()->PrintLine();
+};
+```
 		~#
 		method : public : GetNamespace() ~ String {
 			if(@namespace <> Nil) {
 				return @namespace->Trim();
 			};
-				
+
 			return "";
 		}
 
 		#~
 		Sets the element namespace
 		@param namespace element namespace
+
+```
+elem := XmlElement->New(XmlElement->Type->ELEMENT, "rect");
+elem->SetNamespace("svg");
+elem->GetNamespace()->PrintLine();
+```
 		~#
 		method : public : SetNamespace(namespace : String) ~ Nil {
 			@namespace := namespace;
@@ -1113,22 +1307,44 @@ if(parser->Parse()) {
 		#~
 		Gets the element type
 		@return element type
+
+```
+parser := XmlParser->New("<root/>");
+if(parser->Parse()) {
+  t := parser->GetRoot()->GetType();
+  if(t = XmlElement->Type->ELEMENT) {
+    "is element"->PrintLine();
+  };
+};
+```
 		~#
 		method : public : GetType() ~ XmlElement->Type {
 			return @type;
 		}
-		
+
 		#~
 		Sets the element type
 		@param type element type
+
+```
+elem := XmlElement->New(XmlElement->Type->ELEMENT, "item");
+elem->SetType(XmlElement->Type->UNARY_ELEMENT);
+```
 		~#
 		method : public : SetType(type : XmlElement->Type) ~ Nil {
 			@type := type;
 		}
 		
 		#~
-		Gets the element content 
+		Gets the element content
 		@return element content
+
+```
+parser := XmlParser->New("<title>Hello World</title>");
+if(parser->Parse()) {
+  parser->GetRoot()->GetContent()->PrintLine();
+};
+```
 		~#
 		method : public : GetContent() ~ String {
 			if(@content <> Nil) {
@@ -1137,18 +1353,30 @@ if(parser->Parse()) {
 
 			return "";
 		}
-		
+
 		#~
 		Sets the element content
 		@param content element content
+
+```
+elem := XmlElement->New(XmlElement->Type->ELEMENT, "desc");
+elem->SetContent("A widget");
+elem->GetContent()->PrintLine();
+```
 		~#
 		method : public : SetContent(content : String) ~ Nil {
 			@content := content;
 		}
 		
 		#~
-		Adds an element attribute 
+		Adds an element attribute
 		@param attrib element attribute
+
+```
+elem := XmlElement->New(XmlElement->Type->ELEMENT, "img");
+elem->AddAttribute(XmlAttribute->New("src", "logo.png"));
+elem->GetAttribute("src")->GetValue()->PrintLine();
+```
 		~#
 		method : public : AddAttribute(attrib : XmlAttribute) ~ Nil {
 			if(@attribs = Nil) {
@@ -1159,8 +1387,16 @@ if(parser->Parse()) {
 		
 		#~
 		Gets an element attribute
-		@param key attribute name 
-		@return element attribute 
+		@param key attribute name
+		@return element attribute
+
+```
+parser := XmlParser->New("<link href=\"http://example.com\"/>");
+if(parser->Parse()) {
+  href := parser->GetRoot()->GetAttribute("href");
+  href->GetValue()->PrintLine();
+};
+```
 		~#
 		method : public : GetAttribute(key : String) ~ XmlAttribute {
 			if(@attribs <> Nil) {
@@ -1173,6 +1409,14 @@ if(parser->Parse()) {
 		#~
 		Adds an XML subelement tag
 		@param tag element tag
+
+```
+root := XmlElement->New(XmlElement->Type->ELEMENT, "list");
+child := XmlElement->New(XmlElement->Type->ELEMENT, "entry");
+child->SetContent("item one");
+root->AddChild(child);
+root->ToString()->PrintLine();
+```
 		~#
 		method : public : AddChild(tag : XmlElement) ~ Nil {
 			if(@children = Nil) {
@@ -1184,6 +1428,13 @@ if(parser->Parse()) {
 		#~
 		Get the number of child elements
 		@return number of child elements
+
+```
+parser := XmlParser->New("<root><a/><b/><c/></root>");
+if(parser->Parse()) {
+  Console->PrintLine(parser->GetRoot()->Size());
+};
+```
 		~#
 		method : public : Size() ~ Int {
 			if(@children <> Nil) {
@@ -1197,6 +1448,13 @@ if(parser->Parse()) {
 		Gets a child element
 		@param i child index
 		@return child element, Nil if not found
+
+```
+parser := XmlParser->New("<root><first/><second/></root>");
+if(parser->Parse()) {
+  parser->GetRoot()->Get(1)->GetName()->PrintLine();
+};
+```
 		~#
 		method : public : Get(i : Int) ~ XmlElement {
 			if(@children <> Nil & i < @children->Size()) {
@@ -1209,22 +1467,43 @@ if(parser->Parse()) {
 		#~
 		Gets a child's parent element
 		@return parent element
+
+```
+parser := XmlParser->New("<root><child/></root>");
+if(parser->Parse()) {
+  child := parser->GetRoot()->Get(0);
+  child->GetParent()->GetName()->PrintLine();
+};
+```
 		~#
 		method : public : GetParent() ~ XmlElement {
 			return @elem_parent;
 		}
-		
+
 		#~
 		Set a child's parent element
 		@param parent parent element
+
+```
+parent := XmlElement->New(XmlElement->Type->ELEMENT, "parent");
+child := XmlElement->New(XmlElement->Type->ELEMENT, "child");
+child->SetParent(parent);
+child->GetParent()->GetName()->PrintLine();
+```
 		~#
 		method : public : SetParent(parent : XmlElement) ~ Nil {
 			@elem_parent := parent;
 		}
 		
 		#~
-		Creates a string representation of the element 
+		Creates a string representation of the element
 		@return string representation of the element
+
+```
+elem := XmlElement->New(XmlElement->Type->ELEMENT, "note");
+elem->SetContent("Buy milk");
+elem->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			input := String->New();
@@ -1299,6 +1578,14 @@ if(parser->Parse()) {
 		Get all child elements that matchs the given filter
 		@param name element name
 		@return child elements
+
+```
+parser := XmlParser->New("<store><item>a</item><item>b</item><desc>info</desc></store>");
+if(parser->Parse()) {
+  items := parser->GetRoot()->GetChildren("item")<XmlElement>;
+  Console->PrintLine(items->Size());
+};
+```
 		~#
 		method : public : native : GetChildren(name : String) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
@@ -1319,6 +1606,13 @@ if(parser->Parse()) {
 		Get the first element that matchs the given filter
 		@param name element name
 		@return first match, Nil otherwise
+
+```
+parser := XmlParser->New("<list><item>first</item><item>second</item></list>");
+if(parser->Parse()) {
+  parser->GetRoot()->GetFirstChild("item")->GetContent()->PrintLine();
+};
+```
 		~#
 		method : public : native : GetFirstChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
@@ -1334,6 +1628,13 @@ if(parser->Parse()) {
 		Get the last element that matchs the given filter
 		@param name element name
 		@return last match, Nil otherwise
+
+```
+parser := XmlParser->New("<list><item>first</item><item>last</item></list>");
+if(parser->Parse()) {
+  parser->GetRoot()->GetLastChild("item")->GetContent()->PrintLine();
+};
+```
 		~#
 		method : public : native : GetLastChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
@@ -1350,6 +1651,14 @@ if(parser->Parse()) {
 		@param name element name
 		@param attrib attrib name
 		@return child elements
+
+```
+parser := XmlParser->New("<root><item id=\"1\">a</item><item>b</item></root>");
+if(parser->Parse()) {
+  tagged := parser->GetRoot()->GetChildren("item", "id")<XmlElement>;
+  Console->PrintLine(tagged->Size());
+};
+```
 		~#
 		method : public : native : GetChildren(name : String, attrib : String) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
@@ -1369,6 +1678,14 @@ if(parser->Parse()) {
 		@param name element name
 		@param max max number of elements to return
 		@return child elements
+
+```
+parser := XmlParser->New("<root><item>a</item><item>b</item><item>c</item></root>");
+if(parser->Parse()) {
+  first_two := parser->GetRoot()->GetChildren("item", 2)<XmlElement>;
+  Console->PrintLine(first_two->Size());
+};
+```
 		~#
 		method : public : native : GetChildren(name : String, max : Int) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
@@ -1390,6 +1707,15 @@ if(parser->Parse()) {
 		#~
 		Get all children
 		@return child elements
+
+```
+parser := XmlParser->New("<root><a/><b/><c/></root>");
+if(parser->Parse()) {
+  each(child := parser->GetRoot()->GetChildren()) {
+    child->GetName()->PrintLine();
+  };
+};
+```
 		~#
 		method : public : GetChildren() ~ Vector<XmlElement> {
 			if(@children <> Nil) {
@@ -1487,6 +1813,14 @@ if(parser->Parse()) {
 		Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.
 		@param path search string
 		@return matching XML elements
+
+```
+parser := XmlParser->New("<catalog><book><title>Dune</title></book></catalog>");
+if(parser->Parse()) {
+  results := parser->GetRoot()->FindElements("/catalog/book/title")<XmlElement>;
+  results->Get(0)->GetContent()->PrintLine();
+};
+```
 		~#
 		method : public : FindElements(path : String) ~ Vector<XmlElement> {
 			children := Vector->New()<XmlElement>;
@@ -1545,6 +1879,12 @@ if(parser->Parse()) {
 		Encodes an XML string
 		@param input string to encode
 		@return encoded string
+
+```
+raw := "price < 10 & size > 5";
+encoded := XmlElement->EncodeString(raw);
+encoded->PrintLine();
+```
 		~#
 		function : EncodeString(input : String) ~ String {
 			out := String->New();
@@ -1597,6 +1937,12 @@ if(parser->Parse()) {
 		Decodes an XML string
 		@param input string to decode
 		@return decoded string
+
+```
+encoded := "&lt;b&gt;bold&lt;/b&gt;";
+decoded := XmlElement->DecodeString(encoded);
+decoded->PrintLine();
+```
 		~#
 		function : DecodeString(input : String) ~ String {
 			max := input->Size();

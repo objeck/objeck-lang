@@ -193,6 +193,13 @@ each(candidate in candidates) {
 		Lists available models
 		@param key API key
 		@return available models
+
+```
+models := Model->List(EndPoint->GetApiKey());
+each(model in models) {
+  model->GetName()->PrintLine();
+};
+```
 		~#
 		function : List(key : String) ~ Vector<Model> {
 			models := Vector->New()<Model>;
@@ -234,6 +241,12 @@ each(candidate in candidates) {
 		@param model_name model name
 		@param key API key
 		@return available models
+
+```
+model := Model->Get(Model->GEMINI_2_0_FLASH(), EndPoint->GetApiKey());
+"Version: {$model->GetVersion()}"->PrintLine();
+"Max output tokens: {$model->GetOutputTokenLimit()}"->PrintLine();
+```
 		~#
 		function : Get(model_name : String, key : String) ~ Model {
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}?key={$key}");
@@ -252,6 +265,14 @@ each(candidate in candidates) {
 		@param model_name model name
 		@param content content for the model
 		@param key API key
+
+```
+content := Content->New("user")->AddPart(TextPart->New("What is the Eiffel Tower?"));
+candidates := Model->GenerateContent(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApiKey());
+each(candidate in candidates) {
+  candidate->GetAllText()->PrintLine();
+};
+```
 		~#
 		function : GenerateContent(model_name : String, content : Content, key : String) ~ Vector<Candidate> {
 			return GenerateContent(model_name, content, Nil, Nil, Nil, Nil, Nil, key);
@@ -567,7 +588,13 @@ each(candidate in candidates) {
 		#~
 		Generates an embedding from the model given an input Content
 		@param content model content=
-		@param key API key		
+		@param key API key
+
+```
+content := Content->New("user")->AddPart(TextPart->New("machine learning"));
+embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
+"Embedding dimensions: {$embedding->Size()}"->PrintLine();
+```
 		~#
 		function : EmbedContent(content : Content, key : String) ~ Float[] {
 			return EmbedContent(content, Nil, Model->TaskType->TASK_TYPE_UNSPECIFIED, key);
@@ -649,7 +676,13 @@ each(candidate in candidates) {
 		Runs a model's tokenizer on input content and returns the token count
 		@param model_name model name
 		@param content content for the model
-		@param key API key		
+		@param key API key
+
+```
+content := Content->New("user")->AddPart(TextPart->New("Hello, world!"));
+count := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApiKey());
+"Token count: {$count}"->PrintLine();
+```
 		~#
 		function : CountTokens(model_name : String, content : Content, key : String) ~ Int {
 			contents := Vector->New()<Content>;
@@ -1288,6 +1321,13 @@ session->ToString()->PrintLine();
 		#~
 		Sets a system instruction for this chat session.
 		@param instruction system instruction content (use TextPart for text instructions)
+
+```
+session := Chat->New(Model->GEMINI_2_0_FLASH(), EndPoint->GetApiKey());
+sys_instr := Content->New("system")->AddPart(TextPart->New("You are a concise assistant."));
+session->SetSystemInstruction(sys_instr);
+session->SendPart(TextPart->New("Hello!"), "user")->GetAllText()->PrintLine();
+```
 		~#
 		method : public : SetSystemInstruction(instruction : Content) ~ Nil {
 			if(instruction <> Nil) {
@@ -1308,10 +1348,18 @@ session->ToString()->PrintLine();
 		}
 
 		#~
-		Send chart part
+		Send chat part
 		@param part prompt chat part
 		@param role prompt role
 		@return prompt response
+
+```
+session := Chat->New(Model->GEMINI_2_0_FLASH(), EndPoint->GetApiKey());
+candidate := session->SendPart(TextPart->New("What is 2 + 2?"), "user");
+candidate->GetAllText()->PrintLine();
+candidate := session->SendPart(TextPart->New("Multiply that by 10."), "user");
+candidate->GetAllText()->PrintLine();
+```
 		~#
 		method : public : SendPart(part : Part, role : String) ~ Candidate {
 			content_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);

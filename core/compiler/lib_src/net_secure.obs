@@ -41,6 +41,15 @@ if(html <> Nil) {
 		#~
 		Default constructor
 		@param cookies_enabled true if cookies are enabled, false otherwise
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->AddHeader("Authorization", "Bearer mytoken");
+		response := client->Get(Web.HTTP.Url->New("https://api.example.com/data"));
+		if(response <> Nil) {
+		  response->GetCode()->PrintLine();  # 200
+		};
+		```
 		~#
 		New(cookies_enabled : Bool := false) {
 			@request_headers := Hash->New()<String, String>;
@@ -59,6 +68,13 @@ if(html <> Nil) {
 		#~
 		Sets the maximum number of redirects to follow (default 10)
 		@param max maximum redirects
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->SetMaxRedirects(5);
+		response := client->Get(Web.HTTP.Url->New("https://httpbin.org/redirect/3"));
+		response->GetCode()->PrintLine();  # 200
+		```
 		~#
 		method : public : SetMaxRedirects(max : Int) ~ Nil {
 			@max_redirects := max;
@@ -68,6 +84,13 @@ if(html <> Nil) {
 		Sets retry behavior for transient errors (429, 503)
 		@param max_retries maximum retry attempts (default 3, 0 to disable)
 		@param delay_ms initial delay between retries in milliseconds (default 1000, doubles each retry)
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->SetRetry(5, 500);  # retry up to 5 times, starting at 500ms
+		response := client->Get(Web.HTTP.Url->New("https://api.example.com/data"));
+		response->GetCode()->PrintLine();
+		```
 		~#
 		method : public : SetRetry(max_retries : Int, delay_ms : Int) ~ Nil {
 			@max_retries := max_retries;
@@ -94,6 +117,14 @@ if(html <> Nil) {
 		Adds a HTTPS request header
 		@param name header name
 		@param value header value
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->AddHeader("Authorization", "Bearer token123");
+		client->AddHeader("Accept", "application/json");
+		response := client->Get(Web.HTTP.Url->New("https://api.example.com/users"));
+		response->GetCode()->PrintLine();
+		```
 		~#
 		method : public : AddHeader(name : String, value : String) ~  Nil {
 			@request_headers->Insert(name->ToLower(), value);
@@ -102,14 +133,28 @@ if(html <> Nil) {
 		#~
 		Removes a HTTPS request header
 		@param name header name
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->RemoveHeader("Cache-Control");  # strip default cache header
+		response := client->Get(Web.HTTP.Url->New("https://api.example.com/data"));
+		response->GetCode()->PrintLine();
+		```
 		~#
 		method : public : RemoveHeader(name : String) ~  Nil {
 			@request_headers->Remove(name->ToLower());
 		}
-		
+
 		#~
 		Sets cookie support
 		@param cookies_enabled true if cookies are enabled, false otherwise
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->EnableCookies(true);
+		client->Get(Web.HTTP.Url->New("https://example.com/login"));  # server sets cookie
+		client->Get(Web.HTTP.Url->New("https://example.com/profile")); # cookie sent automatically
+		```
 		~#
 		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
 			@cookies_enabled := cookies_enabled;
@@ -158,6 +203,12 @@ if(html <> Nil) {
 		#~
 		Gets the socket's X.509 certificate issuer name
 		@return certificate issuer name
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->Get(Web.HTTP.Url->New("https://example.com/"));
+		client->GetIssuer()->PrintLine();   # e.g. "Let's Encrypt Authority X3"
+		```
 		~#
 		method : public : GetIssuer() ~ String {
 			return @cert_issuer;
@@ -166,6 +217,12 @@ if(html <> Nil) {
 		#~
 		Gets the socket's X.509 certificate subject name
 		@return certificate subject name
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->Get(Web.HTTP.Url->New("https://example.com/"));
+		client->GetSubject()->PrintLine();  # e.g. "CN=example.com"
+		```
 		~#
 		method : public : GetSubject() ~ String {
 			return @cert_subject;
@@ -185,6 +242,13 @@ if(html <> Nil) {
 		@param url URL
 		@param data data to oper
 		@return read strings
+
+		```
+		url := Web.HTTP.Url->New("https://httpbin.org/post");
+		body := "field=value"->ToByteArray();
+		response := Web.HTTP.HttpsClient->QuickPost(url, body);
+		response->GetCode()->PrintLine();  # 200
+		```
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return HttpsClient->New()->Post(url, data);
@@ -340,6 +404,13 @@ if(html <> Nil) {
 		@param url URL
 		@param data data to patch
 		@return read strings
+
+		```
+		url := Web.HTTP.Url->New("https://api.example.com/items/1");
+		body := "{\"status\":\"active\"}"->ToByteArray();
+		response := Web.HTTP.HttpsClient->QuickPatch(url, body, "application/json");
+		response->GetCode()->PrintLine();  # 200
+		```
 		~#
 		function : QuickPatch(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return HttpsClient->New()->Patch(url, data);
@@ -420,6 +491,20 @@ if(html <> Nil) {
 		@param data request body
 		@param content_type content type
 		@return SSE stream, or Nil on error
+
+		```
+		client := Web.HTTP.HttpsClient->New();
+		client->AddHeader("Authorization", "Bearer mykey");
+		url := Web.HTTP.Url->New("https://api.openai.com/v1/chat/completions");
+		body := "{\"model\":\"gpt-4o\",\"stream\":true,\"messages\":[]}"->ToByteArray();
+		stream := client->StreamPost(url, body, "application/json");
+		if(stream <> Nil) {
+		  while(stream->HasNext()) {
+		    stream->Next()->GetData()->PrintLine();
+		  };
+		  stream->Close();
+		};
+		```
 		~#
 		method : public : StreamPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ SSEStream {
 			return StreamPost(url, data, content_type, Nil);
@@ -728,6 +813,15 @@ if(html <> Nil) {
 		Performs a HTTPS GET and returns results as a String
 		@param url URL
 		@return output buffer
+
+		```
+		url := Web.HTTP.Url->New("https://httpbin.org/get");
+		response := Web.HTTP.HttpsClient->QuickGet(url);
+		if(response <> Nil) {
+		  response->GetCode()->PrintLine();            # 200
+		  String->New(response->GetContent())->PrintLine();  # JSON body
+		};
+		```
 		~#
 		function : QuickGet(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return QuickGet(url, "text/plain", Nil);
@@ -844,6 +938,12 @@ if(html <> Nil) {
 		Performs a HTTPS DELETE and returns results as a String
 		@param url URL
 		@return output buffer
+
+		```
+		url := Web.HTTP.Url->New("https://api.example.com/items/42");
+		response := Web.HTTP.HttpsClient->QuickDelete(url);
+		response->GetCode()->PrintLine();  # 204
+		```
 		~#
 		function : QuickDelete(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return QuickDelete(url, "text/plain", Nil);
@@ -1188,6 +1288,15 @@ if(client->Connect()) {
 		#~
 		Opens a connection to a web socket
 		@return true if connected, false otherwise
+
+		```
+		client := Web.HTTP.SecureWebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+		if(client->Connect()) {
+		  client->WriteSocket("Hello!");
+		  client->ReadSocketText()->PrintLine();  # Hello!
+		  client->CloseSocket();
+		};
+		```
 		~#
 		method : public : Connect() ~ Bool {
 			if(@url->GetScheme()->Equals("wss")) {
@@ -1299,6 +1408,18 @@ if(client->Connect()) {
 		@param data binary payload
 		@param fragment true if fragmented, false otherwise
 		@return true if successful, false otherwise
+
+		```
+		client := Web.HTTP.SecureWebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+		if(client->Connect()) {
+		  payload := Byte->New[4];
+		  payload[0] := 0xDE; payload[1] := 0xAD; payload[2] := 0xBE; payload[3] := 0xEF;
+		  client->WriteSocket(payload);
+		  echo := client->ReadSocketBinary();
+		  echo->ToHexString()->PrintLine();  # DEADBEEF
+		  client->CloseSocket();
+		};
+		```
 		~#
 		method : public : WriteSocket(data : Byte[], fragment : Bool := false) ~ Bool {
 			chunk_size := 4096;
@@ -1342,6 +1463,16 @@ if(client->Connect()) {
 		@param message message
 		@param fragment true if fragmented, false otherwise
 		@return true if successful, false otherwise
+
+		```
+		client := Web.HTTP.SecureWebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+		if(client->Connect()) {
+		  client->WriteSocket("ping");
+		  reply := client->ReadSocketText();
+		  reply->PrintLine();   # ping
+		  client->CloseSocket();
+		};
+		```
 		~#
 		method : public : WriteSocket(message : String, fragment : Bool := false) ~ Bool {
 			chunk_size := 4096;
@@ -1664,6 +1795,15 @@ if(client->Connect()) {
 		#~
 		Pings the websocket server
 		@return true if pinged, false otherwise
+
+		```
+		client := Web.HTTP.SecureWebSocket->New(Web.HTTP.Url->New("wss://echo.websocket.org"));
+		if(client->Connect()) {
+		  alive := client->PingSocket();
+		  alive->PrintLine();   # true
+		  client->CloseSocket();
+		};
+		```
 		~#
 		method : public : PingSocket() ~ Bool {
 			if(@socket <> Nil) {

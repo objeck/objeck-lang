@@ -392,6 +392,13 @@ bundle API.OpenAI.Responses {
 		#~
 		Get response text
 		@return response text
+
+```
+token := "sk-...";
+msg := Pair->New("user", "Describe the water cycle.")<String, String>;
+resp := Response->Respond("gpt-4o-mini", msg, token);
+resp->GetText()->PrintLine();
+```
 		~#
 		method : public : GetText() ~ String {
 			if(@outputs->Size() = 1) {
@@ -1311,6 +1318,13 @@ bundle API.OpenAI.Chat {
 		#~
 		List of chat completion choices
 		@return completion choices
+
+```
+choices := result->GetChoices();
+each(choice in choices) {
+  choice->GetMessage()->GetSecond()->PrintLine();
+};
+```
 		~#
 		method : public : GetChoices() ~ Vector<API.OpenAI.Chat.Choice> {
 			return @choices;
@@ -1319,6 +1333,13 @@ bundle API.OpenAI.Chat {
 		#~
 		List of chat completion choices
 		@return completion choices
+
+```
+choice := result->GetFirstChoice();
+role := choice->GetMessage()->GetFirst();
+text := choice->GetMessage()->GetSecond();
+"{$role}: {$text}"->PrintLine();
+```
 		~#
 		method : public : GetFirstChoice() ~ API.OpenAI.Chat.Choice {
 			if(@choices->Size() > 0) {
@@ -1367,6 +1388,14 @@ bundle API.OpenAI.Chat {
 		@param model ID of the model to use
 		@param token API token
 		@return completion response
+
+```
+token := "sk-...";
+msg := Pair->New("user", "What is the speed of light?")<String, String>;
+result := Completion->Complete("gpt-4o-mini", msg, token);
+choice := result->GetFirstChoice();
+choice->GetMessage()->GetSecond()->PrintLine();
+```
 		~#
 		function : Complete(model : String, message : Pair<String, String>, token : String) ~ Completion {
 			messages := Vector->New()<Pair<String, String>>;
@@ -1734,10 +1763,20 @@ bundle API.OpenAI.Chat {
 		}
 
 		#~
-		Sends a message to the assistant 
+		Sends a message to the assistant
 		@param query message to send
 		@param user user name
 		@return response message, Nil of error
+
+```
+session := Conversation->New(assistant, token);
+response := session->Send("Summarize today's news", "user");
+contents := response->GetContents();
+each(content in contents) {
+  content->GetSecond()->As(String)->PrintLine();
+};
+session->Close();
+```
 		~#
 		method : public : Send(query : String, user : String)  ~ Message {
 			Message->Create(user, query, @thread, @token);

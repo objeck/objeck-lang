@@ -37,6 +37,15 @@ bundle Web.HTTP {
 
 		#~
 		Returns true if the connection is established
+
+		```
+		client := Web.HTTP.Http2Client->New("api.example.com");
+		if(client->IsConnected()) {
+		  resp := client->Get("/status");
+		  resp->GetCode()->PrintLine();  # 200
+		};
+		client->Close();
+		```
 		~#
 		method : public : IsConnected() ~ Bool {
 			return @session <> Nil & @session->IsConnected();
@@ -46,6 +55,15 @@ bundle Web.HTTP {
 		Adds a custom request header sent with every subsequent request.
 		@param key header name (lower-case recommended)
 		@param value header value
+
+		```
+		client := Web.HTTP.Http2Client->New("api.example.com");
+		client->AddHeader("authorization", "Bearer mytoken");
+		client->AddHeader("accept", "application/json");
+		resp := client->Get("/v1/data");
+		resp->GetCode()->PrintLine();
+		client->Close();
+		```
 		~#
 		method : public : AddHeader(key : String, value : String) ~ Nil {
 			@request_headers->Insert(key->ToLower(), value);
@@ -54,6 +72,14 @@ bundle Web.HTTP {
 		#~
 		Removes a previously added request header.
 		@param key header name
+
+		```
+		client := Web.HTTP.Http2Client->New("api.example.com");
+		client->AddHeader("x-trace-id", "abc");
+		client->RemoveHeader("x-trace-id");  # strip before next request
+		resp := client->Get("/health");
+		client->Close();
+		```
 		~#
 		method : public : RemoveHeader(key : String) ~ Nil {
 			@request_headers->Remove(key->ToLower());
@@ -63,6 +89,16 @@ bundle Web.HTTP {
 		Performs an HTTP/2 GET request.
 		@param path request path (e.g. "/v1/users")
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http2Client->New("httpbin.org");
+		resp := client->Get("/get");
+		if(resp <> Nil) {
+		  resp->GetCode()->PrintLine();              # 200
+		  String->New(resp->GetContent())->PrintLine();  # JSON body
+		};
+		client->Close();
+		```
 		~#
 		method : public : Get(path : String) ~ Response {
 			empty : Byte[];
@@ -73,6 +109,13 @@ bundle Web.HTTP {
 		Performs an HTTP/2 DELETE request.
 		@param path request path
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http2Client->New("api.example.com");
+		resp := client->Delete("/items/42");
+		resp->GetCode()->PrintLine();  # 204
+		client->Close();
+		```
 		~#
 		method : public : Delete(path : String) ~ Response {
 			empty : Byte[];
@@ -85,6 +128,14 @@ bundle Web.HTTP {
 		@param body request body bytes
 		@param content_type MIME type of the body
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http2Client->New("httpbin.org");
+		payload := "{\"key\":\"value\"}"->ToByteArray();
+		resp := client->Post("/post", payload, "application/json");
+		resp->GetCode()->PrintLine();  # 200
+		client->Close();
+		```
 		~#
 		method : public : Post(path : String, body : Byte[], content_type : String) ~ Response {
 			return DoRequest("POST", path, body, content_type);
@@ -96,6 +147,14 @@ bundle Web.HTTP {
 		@param body request body bytes
 		@param content_type MIME type of the body
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http2Client->New("api.example.com");
+		payload := "{\"name\":\"updated\"}"->ToByteArray();
+		resp := client->Put("/items/1", payload, "application/json");
+		resp->GetCode()->PrintLine();  # 200
+		client->Close();
+		```
 		~#
 		method : public : Put(path : String, body : Byte[], content_type : String) ~ Response {
 			return DoRequest("PUT", path, body, content_type);
@@ -107,6 +166,14 @@ bundle Web.HTTP {
 		@param body request body bytes
 		@param content_type MIME type of the body
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http2Client->New("api.example.com");
+		payload := "{\"status\":\"active\"}"->ToByteArray();
+		resp := client->Patch("/items/1", payload, "application/json");
+		resp->GetCode()->PrintLine();  # 200
+		client->Close();
+		```
 		~#
 		method : public : Patch(path : String, body : Byte[], content_type : String) ~ Response {
 			return DoRequest("PATCH", path, body, content_type);
@@ -114,6 +181,13 @@ bundle Web.HTTP {
 
 		#~
 		Closes the HTTP/2 connection and releases resources.
+
+		```
+		client := Web.HTTP.Http2Client->New("api.example.com");
+		resp := client->Get("/data");
+		resp->GetCode()->PrintLine();
+		client->Close();  # release NGHTTP2 session
+		```
 		~#
 		method : public : Close() ~ Nil {
 			if(@session <> Nil) {
@@ -125,6 +199,15 @@ bundle Web.HTTP {
 		Performs an HTTP/2 GET from a URL in one call.
 		@param url URL to fetch
 		@return Response or Nil on failure
+
+		```
+		url := Web.HTTP.Url->New("https://httpbin.org/get");
+		resp := Web.HTTP.Http2Client->QuickGet(url);
+		if(resp <> Nil) {
+		  resp->GetCode()->PrintLine();              # 200
+		  String->New(resp->GetContent())->PrintLine();
+		};
+		```
 		~#
 		function : QuickGet(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return QuickGet(url, Nil);
@@ -149,6 +232,13 @@ bundle Web.HTTP {
 		@param url URL to post to
 		@param data request body
 		@return Response or Nil on failure
+
+		```
+		url := Web.HTTP.Url->New("https://httpbin.org/post");
+		body := "{\"x\":1}"->ToByteArray();
+		resp := Web.HTTP.Http2Client->QuickPost(url, body, "application/json");
+		resp->GetCode()->PrintLine();  # 200
+		```
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return QuickPost(url, data, "text/plain", Nil);
@@ -222,6 +312,12 @@ bundle Web.HTTP {
 		Performs an HTTP/2 DELETE from a URL in one call.
 		@param url URL to delete
 		@return Response or Nil on failure
+
+		```
+		url := Web.HTTP.Url->New("https://api.example.com/items/7");
+		resp := Web.HTTP.Http2Client->QuickDelete(url);
+		resp->GetCode()->PrintLine();  # 204
+		```
 		~#
 		function : QuickDelete(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return QuickDelete(url, Nil);

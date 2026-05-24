@@ -1,7 +1,7 @@
 #~~
-# Objeck encryption routines 
+# Objeck MP3 encoding routines
 # Copyright (c) 2023 Randy Hollines
-~~#	
+~~#
 
 use System.API;
 
@@ -26,7 +26,9 @@ bundle Game.SDL2.Aux {
 	~#
 	class Lame {
 		#~
-		Converts a PCM audio stream to MP3 audio stream 
+		Converts a PCM audio stream to an MP3 audio stream
+		@param stream_in raw PCM audio bytes
+		@return MP3-encoded bytes, Nil if the input is Nil or encoding fails
 		~#
 		function : PcmToMp3(stream_in : Byte[]) ~ Byte[] {
 			if(stream_in <> Nil) {

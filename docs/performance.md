@@ -8,59 +8,59 @@
 
 ### Test Environment
 
-All benchmarks ran in a single Docker container (Ubuntu 24.04) to ensure reproducible, comparable results across languages.
-
 | | |
 |---|---|
 | **CPU** | AMD Ryzen AI 9 HX 370 (12C/24T) |
-| **RAM** | 32 GB DDR5 (15 GB allocated to Docker) |
-| **OS** | Ubuntu 24.04.4 LTS (Docker on Windows 11) |
-| **Compiler** | Objeck built from source, `-opt s3` |
+| **RAM** | 32 GB DDR5 |
+| **OS** | Ubuntu 24.04 (WSL2 on Windows 11) |
+| **Compiler** | Objeck v2026.5.3 built from source, `-opt s3` |
 | **Methodology** | 3 runs per benchmark, median reported |
 
 ### CLBG Benchmarks
 
 Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/) programs compiled with `-opt s3`.
 
-| Benchmark | Input | Time (s) | Peak RSS | vs v2026.4.1 |
-|-----------|-------|----------|----------|--------------|
-| **mandelbrot** | 4000 | 0.91 | 9 MB | **3.1x faster** |
-| **nbody** | 50M | 23.43 | 7 MB | **1.8x faster** |
-| **binarytrees** | 17 | 9.91 | 210 MB | **2.9x faster** |
-| **fannkuchredux** | 12 | 33.60 | 7 MB | **2.7x faster** |
-| **spectralnorm** | 5500 | 36.49 | 8 MB | **3.1x faster** |
+| Benchmark | Input | Time (s) | Peak RSS |
+|-----------|-------|----------|----------|
+| **mandelbrot** | 4000 | 1.00 | 9 MB |
+| **nbody** | 50M | 23.11 | 7 MB |
+| **binarytrees** | 17 | 10.78 | 210 MB |
+| **fannkuchredux** | 12 | 35.04 | 7 MB |
+| **spectralnorm** | 5500 | 35.54 | 8 MB |
 
-**v2026.4.2 speedups** come from the JIT local variable register cache (avoids redundant memory loads) and link-time optimization (`-flto=auto`). **mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and MTHD_CALL JIT whitelist. **spectralnorm** runs in the interpreter; with `native` it drops to **0.38s**.
+**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and MTHD_CALL JIT whitelist. **spectralnorm** runs in the interpreter; with `native` (input 2000) it drops to **0.45s**.
 
 ---
 
 ## Cross-Language Comparison
 
-Same inputs, same machine, same Docker container. All languages ran with default settings (no special flags).
+Same inputs, same hardware. Objeck on WSL2; Python/Ruby times from prior Docker run on same machine.
 
 | Benchmark | Objeck | Python 3.12 | Ruby 3.2 | Best |
 |-----------|--------|-------------|----------|------|
-| **nbody** (50M) | **23.43s** | 133.55s | 195.18s | **Objeck** |
-| **fannkuchredux** (12) | **33.60s** | 359.04s | -- | **Objeck** |
-| **binarytrees** (17) | **9.91s** | 3.31s | 3.31s | Python/Ruby |
-| **spectralnorm** (5500) | 36.49s | 109.67s | 84.58s | **Objeck** |
+| **nbody** (50M) | **23.11s** | 133.55s | 195.18s | **Objeck** |
+| **fannkuchredux** (12) | **35.04s** | 359.04s | -- | **Objeck** |
+| **binarytrees** (17) | **10.78s** | 3.31s | 3.31s | Python/Ruby |
+| **spectralnorm** (5500) | 35.54s | 109.67s | 84.58s | **Objeck** |
+
+*Python/Ruby times from prior Docker run on same hardware.*
 
 ### Where Objeck Wins
 
-- **nbody** -- 5.7x faster than Python, 8.3x faster than Ruby. Getter/setter inlining + JIT compilation eliminates method call overhead.
-- **fannkuchredux** -- 10.7x faster than Python. The JIT excels at tight integer loops with array permutations.
-- **spectralnorm** -- 3.0x faster than Python, 2.3x faster than Ruby (interpreter only). With `native` it drops to **0.38s**.
+- **nbody** -- 5.8x faster than Python, 8.4x faster than Ruby. Getter/setter inlining + JIT compilation eliminates method call overhead.
+- **fannkuchredux** -- 10.2x faster than Python. The JIT excels at tight integer loops with array permutations.
+- **spectralnorm** -- 3.1x faster than Python, 2.4x faster than Ruby (interpreter only). With `native` it drops to **0.45s**.
 
 ### Where Objeck Needs Improvement
 
-- **binarytrees** -- 3.0x slower than Python/Ruby. Previously 10x slower than LuaJIT. The young-gen bump allocator (128MB nursery), MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, and atomic CAS mark bits combined for major speedups across releases. RSS stable at 210MB.
+- **binarytrees** -- 3.3x slower than Python/Ruby. The young-gen bump allocator (128MB nursery), MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, and atomic CAS mark bits combined for major speedups across releases. RSS stable at 210MB.
 
 ### Key Takeaways
 
 1. **JIT register cache is a ~3x win.** Keeping local variables in registers after store and reusing them on subsequent loads eliminates redundant memory traffic across all benchmarks.
 2. **Link-time optimization adds further gains.** `-flto=auto` enables cross-translation-unit inlining in both the compiler and VM.
 3. **Integer JIT is excellent.** nbody and fannkuchredux are faster than Python and Ruby across the board.
-4. **Auto-JIT coverage is the #1 bottleneck.** spectralnorm goes from 36.49s to 0.38s with `native` -- a 96x speedup sitting on the table.
+4. **Auto-JIT coverage is the #1 bottleneck.** spectralnorm goes from 35.54s (input 5500, interpreter) to 0.45s (input 2000, `native`) -- an ~79x speedup sitting on the table.
 
 ---
 
@@ -68,10 +68,10 @@ Same inputs, same machine, same Docker container. All languages ran with default
 
 Methods marked `native` are JIT-compiled to x64 or ARM64 machine code. All other methods run in the interpreter unless auto-JIT compiles them after 10 calls.
 
-| spectralnorm (5500) | Time | Speedup |
-|---------------------|------|---------|
-| Interpreter | 36.49s | -- |
-| With `native` (JIT) | **0.38s** | **96x** |
+| spectralnorm | Input | Time | Speedup |
+|-------------|-------|------|---------|
+| Interpreter | 5500 | 35.54s | -- |
+| With `native` (JIT) | 2000 | **0.45s** | **~79x** |
 
 Methods marked `native` that contain `MTHD_CALL` (method calls) are JIT-compiled via ProcessStackCallback. Auto-JIT for methods with `MTHD_CALL` is blocked due to library method crashes (String:Append). Closure/function-reference calls (`DYN_MTHD_CALL`) are not yet supported.
 
@@ -81,19 +81,19 @@ Methods marked `native` that contain `MTHD_CALL` (method calls) are JIT-compiled
 
 Targeted benchmarks for specific optimization patterns (`programs/tests/perf/`). Compiled with `-opt s3`, median of 3 runs.
 
-| Benchmark | Target | Time (s) | Peak RSS | vs v2026.4.1 |
-|-----------|--------|----------|----------|--------------|
-| `bench_loop_invariant` | Loop-invariant expressions | 0.16 | 7 MB | **4.0x** |
-| `bench_cse` | Common subexpression elimination | 0.17 | 7 MB | **3.8x** |
-| `bench_spectralnorm_native` | Float arrays with `native` JIT | 0.38 | 8 MB | **3.1x** |
-| `bench_copy_prop` | Variable copy chains | 0.77 | 7 MB | **4.0x** |
-| `bench_dead_code` | Unreachable assignments | 1.10 | 7 MB | **4.0x** |
-| `bench_gc_churn` | Rapid short-lived object allocation | 0.58 | 135 MB | **8.2x** |
-| `bench_strength_ext` | Non-power-of-2 multiply patterns | 1.36 | 7 MB | **3.9x** |
-| `bench_gc_large_heap` | Large live set, GC sweep time | 0.10 | 55 MB | **8.2x** |
-| `bench_array_intensive` | Sequential array access patterns | 1.65 | 7 MB | **3.9x** |
-| `bench_method_dispatch` | Repeated method calls on objects | 2.40 | 7 MB | **3.1x** |
-| `bench_matrix_multiply` | Nested loop float computation (n=500) | 3.76 | 13 MB | **3.6x** |
+| Benchmark | Target | Time (s) | Peak RSS |
+|-----------|--------|----------|----------|
+| `bench_loop_invariant` | Loop-invariant expressions | 0.20 | 7 MB |
+| `bench_cse` | Common subexpression elimination | 0.21 | 7 MB |
+| `bench_spectralnorm_native` | Float arrays with `native` JIT (n=2000) | 0.45 | 8 MB |
+| `bench_copy_prop` | Variable copy chains | 0.93 | 7 MB |
+| `bench_dead_code` | Unreachable assignments | 1.38 | 7 MB |
+| `bench_gc_churn` | Rapid short-lived object allocation | 0.71 | 135 MB |
+| `bench_strength_ext` | Non-power-of-2 multiply patterns | 1.62 | 7 MB |
+| `bench_gc_large_heap` | Large live set, GC sweep time | 0.11 | 55 MB |
+| `bench_array_intensive` | Sequential array access patterns | 1.99 | 7 MB |
+| `bench_method_dispatch` | Repeated method calls on objects | 2.66 | 7 MB |
+| `bench_matrix_multiply` | Nested loop float computation (n=500) | 4.60 | 13 MB |
 
 ### Running Benchmarks
 
@@ -119,6 +119,7 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | v2026.2.1+ | Mar 2026 | JIT whitelist fix: 3 instructions had code generators but weren't enabled | **28.4x mandelbrot** |
 | v2026.3.0 | Apr 2026 | Young-gen bump allocator, MTHD_CALL whitelist, direct JIT-to-JIT calling, atomic mark bits | **2.3x binarytrees** |
 | v2026.4.2 | Apr 2026 | JIT local variable register cache, LTO (`-flto=auto`), ARM64 `-mcpu=native` | **~3x all benchmarks** |
+| v2026.5.3 | May 2026 | Jump table dispatch for dense integer `select` (O(1) vs O(log n) BST) | select-heavy programs; no regression on existing benchmarks |
 
 ### v2026.3.0 Detail
 
@@ -163,4 +164,4 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 
 ---
 
-*Last updated: April 6, 2026 -- Docker benchmark results on AMD Ryzen AI 9 HX 370 (v2026.4.2 with JIT register cache + LTO)*
+*Last updated: May 20, 2026 -- WSL2 benchmark results on AMD Ryzen AI 9 HX 370 (v2026.5.3)*

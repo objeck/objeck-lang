@@ -41,6 +41,13 @@ bundle System.ML {
 		Calculates the Euclidean Distance between the two vectors
 		@param m1 data matrix
 		@return Euclidean Distance between the two vectors
+
+```
+# Two 3D points: [1,4], [2,5], [3,6] paired as columns
+points := [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]];
+dist := Matrix2D->EuclideanDistance(points);
+"Distance: {$dist}"->PrintLine();
+```
 		~#
 		function : native : EuclideanDistance(m1 : Float[,]) ~ Float {
 			dims := m1->Size();
@@ -63,6 +70,15 @@ bundle System.ML {
 		@param m1 data matrix
 		@param m2 result matrix
 		@return least squares
+
+```
+A := [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]];
+b := [[1.0], [2.0], [3.0]];
+coeffs := Matrix2D->Solve(A, b);
+each(c in coeffs) {
+  c->PrintLine();
+};
+```
 		~#
 		function : native : Solve(m1 : Float[,], m2 : Float[,]) ~ Float[] {
 			if(m1 <> Nil | m2 <> Nil) {
@@ -643,6 +659,11 @@ bundle System.ML {
 		Sigmoid 'S' function
 		@param x input value
 		@return Sigmoid value
+
+```
+val := Matrix2D->Sigmoid(2.0);
+"Sigmoid(2.0)={$val}"->PrintLine();
+```
 		~#
 		function : native : Sigmoid(x : Float) ~ Float {
 			return 1.0 / (1.0 + Float->Pow(Float->E(), -1.0 * x));
@@ -705,6 +726,11 @@ bundle System.ML {
 		ReLU (Rectified Linear Unit) activation function
 		@param x input value
 		@return ReLU value (max(0, x))
+
+```
+"ReLU(-1.5)={$Matrix2D->ReLU(-1.5)}"->PrintLine();
+"ReLU(3.2)={$Matrix2D->ReLU(3.2)}"->PrintLine();
+```
 		~#
 		function : native : ReLU(x : Float) ~ Float {
 			return x > 0.0 ? x : 0.0;
@@ -765,6 +791,10 @@ bundle System.ML {
 		Tanh (Hyperbolic Tangent) activation function
 		@param x input value
 		@return Tanh value
+
+```
+"Tanh(0.5)={$Matrix2D->Tanh(0.5)}"->PrintLine();
+```
 		~#
 		function : native : Tanh(x : Float) ~ Float {
 			return (Float->Pow(Float->E(), x) - Float->Pow(Float->E(), -x)) /
@@ -795,6 +825,14 @@ bundle System.ML {
 		Softmax activation function for classification
 		@param b matrix (single row or column vector)
 		@return normalized probability distribution
+
+```
+logits := [[1.0], [2.0], [3.0]];
+probs := Matrix2D->Softmax(logits);
+each(i : probs->Size()[0]) {
+  probs[i,0]->PrintLine();
+};
+```
 		~#
 		function : native : Softmax(b : Float[,]) ~ Float[,] {
 			b_dims := b->Size();
@@ -1119,6 +1157,16 @@ solver->GetRSquared()->PrintLine();
 	#~
 	Simple linear regression using least squares.
 	Fits y = X * coefficients via the normal equation.
+
+```
+X := [[1.0, 1.0], [1.0, 2.0], [1.0, 3.0]];
+y := [[2.0], [4.0], [6.0]];
+model := LinearRegression->New();
+model->Fit(X, y);
+preds := model->Predict([[1.0, 4.0]]);
+"Predicted: {$preds[0,0]}"->PrintLine();
+"R-squared: {$model->GetRSquared()}"->PrintLine();
+```
 	~#
 	class LinearRegression {
 		@coefficients : Float[];
@@ -1127,6 +1175,10 @@ solver->GetRSquared()->PrintLine();
 
 		#~
 		Constructor
+
+```
+model := LinearRegression->New();
+```
 		~#
 		New() {
 			@is_fitted := false;
@@ -1137,6 +1189,15 @@ solver->GetRSquared()->PrintLine();
 		@param X feature matrix (rows=samples, cols=features)
 		@param y target matrix (rows=samples, cols=1)
 		@return true if fitting succeeded
+
+```
+X := [[1.0, 1.0], [1.0, 2.0], [1.0, 3.0]];
+y := [[2.0], [4.0], [6.0]];
+model := LinearRegression->New();
+if(model->Fit(X, y)) {
+  "Fitted. R²={$model->GetRSquared()}"->PrintLine();
+};
+```
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
 			if(X = Nil | y = Nil) {
@@ -1187,6 +1248,13 @@ solver->GetRSquared()->PrintLine();
 		Predicts target values for new input data.
 		@param X feature matrix
 		@return prediction matrix, or Nil if not fitted
+
+```
+preds := model->Predict([[1.0, 5.0], [1.0, 6.0]]);
+each(i : preds->Size()[0]) {
+  preds[i,0]->PrintLine();
+};
+```
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[,] {
 			if(<>@is_fitted | X = Nil) {
@@ -1212,6 +1280,13 @@ solver->GetRSquared()->PrintLine();
 		#~
 		Gets the computed coefficients.
 		@return coefficient array, or Nil if not fitted
+
+```
+coeffs := model->GetCoefficients();
+each(c in coeffs) {
+  c->PrintLine();
+};
+```
 		~#
 		method : public : GetCoefficients() ~ Float[] {
 			return @coefficients;
@@ -1220,6 +1295,10 @@ solver->GetRSquared()->PrintLine();
 		#~
 		Gets the R-squared goodness of fit.
 		@return R-squared value
+
+```
+"Model R²={$model->GetRSquared()}"->PrintLine();
+```
 		~#
 		method : public : GetRSquared() ~ Float {
 			return @r_squared;
@@ -1237,6 +1316,15 @@ solver->GetRSquared()->PrintLine();
 	#~
 	Logistic regression using gradient descent with sigmoid activation.
 	Binary classification only.
+
+```
+X := [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+y := [[0.0], [0.0], [0.0], [1.0]];
+model := LogisticRegression->New(0.1, 1000);
+model->Fit(X, y);
+labels := model->PredictClass([[1.0, 1.0]]);
+labels[0]->PrintLine();
+```
 	~#
 	class LogisticRegression {
 		@weights : Float[];
@@ -1248,6 +1336,10 @@ solver->GetRSquared()->PrintLine();
 		Constructor
 		@param learning_rate step size for gradient descent
 		@param iterations number of training iterations
+
+```
+model := LogisticRegression->New(0.01, 500);
+```
 		~#
 		New(learning_rate : Float, iterations : Int) {
 			@learning_rate := learning_rate;
@@ -1267,6 +1359,13 @@ solver->GetRSquared()->PrintLine();
 		@param X feature matrix (rows=samples, cols=features)
 		@param y target array (0.0 or 1.0 values, rows=samples, cols=1)
 		@return true if fitting succeeded
+
+```
+X := [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
+y := [[0.0], [0.0], [1.0]];
+model := LogisticRegression->New(0.1, 200);
+model->Fit(X, y);
+```
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
 			if(X = Nil | y = Nil) {
@@ -1317,6 +1416,11 @@ solver->GetRSquared()->PrintLine();
 		Predicts probabilities for input data.
 		@param X feature matrix
 		@return probability array (values between 0 and 1)
+
+```
+probs := model->Predict([[2.0, 3.0]]);
+"Probability: {$probs[0]}"->PrintLine();
+```
 		~#
 		method : public : Predict(X : Float[,]) ~ Float[] {
 			if(<>@is_fitted | X = Nil) {
@@ -1343,6 +1447,13 @@ solver->GetRSquared()->PrintLine();
 		Predicts class labels for input data (threshold 0.5).
 		@param X feature matrix
 		@return boolean class predictions
+
+```
+labels := model->PredictClass([[5.0, 6.0], [1.0, 0.5]]);
+each(label in labels) {
+  label->PrintLine();
+};
+```
 		~#
 		method : public : PredictClass(X : Float[,]) ~ Bool[] {
 			probs := Predict(X);

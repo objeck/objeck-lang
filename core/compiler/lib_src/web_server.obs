@@ -42,6 +42,17 @@ bundle Web.Server {
 		#~
 		Gets the request method
 		@return request method
+
+		```
+		# inside a web server handler:
+		method := request->GetMethod();
+		if(method = Web.Server.Request->Method->GET) {
+		  response->WriteBody("Hello from GET");
+		} else if(method = Web.Server.Request->Method->POST) {
+		  body := request->ReadBody();
+		  response->WriteBody(String->New(body));
+		};
+		```
 		~#
 		method : public : GetMethod() ~ Request->Method {
 			array_args := Base->New[2];
@@ -84,6 +95,12 @@ bundle Web.Server {
 		#~
 		Gets a the remote address
 		@return remote address
+
+		```
+		# log the full request URL in a handler:
+		url := request->GetRequestUrl();
+		url->PrintLine();  # e.g. /api/users?page=2
+		```
 		~#
 		method : public : GetRequestUrl() ~ String {
 			array_args := Base->New[2];
@@ -98,6 +115,11 @@ bundle Web.Server {
 		#~
 		Gets a the remote address
 		@return remote address
+
+		```
+		addr := request->GetRemoteAddress();
+		addr->PrintLine();  # e.g. 192.168.1.10
+		```
 		~#
 		method : public : GetRemoteAddress() ~ String {
 			array_args := Base->New[2];
@@ -112,6 +134,11 @@ bundle Web.Server {
 		#~
 		Gets a the local address
 		@return local address
+
+		```
+		local := request->GetLocalAddress();
+		local->PrintLine();  # e.g. 0.0.0.0:8080
+		```
 		~#
 		method : public : GetLocalAddress() ~ String {
 			array_args := Base->New[2];
@@ -127,6 +154,13 @@ bundle Web.Server {
 		Gets a HTTP header
 		@param name header name
 		@return header value
+
+		```
+		content_type := request->GetHeader("Content-Type");
+		if(content_type <> Nil) {
+		  content_type->PrintLine();  # application/json
+		};
+		```
 		~#
 		method : public : GetHeader(name : String) ~ String {
 			array_args := Base->New[3];
@@ -142,6 +176,14 @@ bundle Web.Server {
 		#~
 		Reads the request body (i.e. POST)
 		@return request body
+
+		```
+		if(request->GetMethod() = Web.Server.Request->Method->POST) {
+		  body := request->ReadBody();
+		  text := String->New(body);
+		  text->PrintLine();
+		};
+		```
 		~#
 		method : public : ReadBody() ~ Byte[] {
 			array_args := Base->New[3];
@@ -163,6 +205,13 @@ bundle Web.Server {
 		Parses URL encoding
 		@param encoded encoded bytes
 		@return name value pairs
+
+		```
+		body := String->New(request->ReadBody());
+		params := Web.Server.Request->ParseUrlEncoding(body);
+		params->Find("username")->PrintLine();  # e.g. alice
+		params->Find("password")->PrintLine();  # e.g. secret
+		```
 		~#
 		function : ParseUrlEncoding(encoded : String) ~ Map<String, String> {
 	        decodings := Map->New()<String, String>;
@@ -340,14 +389,32 @@ bundle Web.Server {
 		Get MIME content header
 		@param name header name
 		@return header value
+
+		```
+		parts := Web.Server.Request->ParseMultipartEncoding(request->ReadBody());
+		if(parts <> Nil & parts->Size() > 0) {
+		  part := parts->Get(0);
+		  disp := part->GetHeader("content-disposition");
+		  disp->PrintLine();  # form-data; name="file"; filename="upload.txt"
+		};
+		```
 		~#
-	    method : public : GetHeader(name : String) ~ String {    
+	    method : public : GetHeader(name : String) ~ String {
 	        return @headers->Find(name);
 	    }
 
 	    #~
 		Get MIME content
 		@return MIME bytes
+
+		```
+		parts := Web.Server.Request->ParseMultipartEncoding(request->ReadBody());
+		if(parts <> Nil & parts->Size() > 0) {
+		  part := parts->Get(0);
+		  data := part->GetContent();
+		  data->Size()->PrintLine();  # byte count of uploaded data
+		};
+		```
 		~#
 	    method : public : GetContent() ~ Byte[] {
 	        return @content;
@@ -363,6 +430,11 @@ bundle Web.Server {
 		#~
 		Set the content type
 		@param type content type
+
+		```
+		response->SetContentType("application/json");
+		response->WriteBody("{\"status\":\"ok\"}");
+		```
 		~#
 		method : public : SetContentType(type : String) ~ Nil {
 			array_args := Base->New[2];
@@ -376,6 +448,12 @@ bundle Web.Server {
 		Writes a string response to the message body
 		@param data string response
 		@return number of bytes sent
+
+		```
+		response->SetContentType("text/html");
+		bytes_sent := response->WriteBody("<html><body>Hello</body></html>");
+		bytes_sent->PrintLine();  # number of bytes written
+		```
 		~#
 		method : public : WriteBody(data : String) ~ Int {
 			array_args := Base->New[3];
@@ -393,6 +471,12 @@ bundle Web.Server {
 		Writes a byte array response to the message body
 		@param data byte array response
 		@return number of bytes sent
+
+		```
+		img_bytes := System.IO.Filesystem.FileReader->ReadBinaryFile("logo.png");
+		response->SetContentType("image/png");
+		response->WriteBody(img_bytes);
+		```
 		~#
 		method : public : WriteBody(data : Byte[]) ~ Int {
 			array_args := Base->New[3];
@@ -410,6 +494,11 @@ bundle Web.Server {
 		Redirects a quary URL
 		@param url URL redirect
 		@return number of bytes sent
+
+		```
+		# redirect to a new URL
+		response->Redirect("https://example.com/new-path");
+		```
 		~#
 		method : public : Redirect (url : String) ~ Bool {
 			array_args := Base->New[3];
@@ -428,6 +517,12 @@ bundle Web.Server {
 		@param name header name
 		@param value header value
 		@return true successful, false otherwise
+
+		```
+		response->SetHeader("Cache-Control", "no-cache");
+		response->SetHeader("X-Custom-Header", "my-value");
+		response->WriteBody("OK");
+		```
 		~#
 		method : public : SetHeader(name : String, value : String) ~ Bool {
 			array_args := Base->New[4];
@@ -446,6 +541,12 @@ bundle Web.Server {
 		Removes a HTTP header
 		@param name header name
 		@return true successful, false otherwise
+
+		```
+		response->SetHeader("X-Debug", "1");
+		response->RemoveHeader("X-Debug");  # strip before sending
+		response->WriteBody("Done");
+		```
 		~#
 		method : public : RemoveHeader(name : String) ~ Bool {
 			array_args := Base->New[3];
@@ -461,6 +562,12 @@ bundle Web.Server {
 
 		#~
 		Clears the entire body response
+
+		```
+		response->WriteBody("draft content");
+		response->ClearAll();              # discard draft
+		response->WriteBody("final content");
+		```
 		~#
 		method : public : ClearAll() ~ Nil {
 			array_args := Base->New[1];

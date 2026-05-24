@@ -70,6 +70,16 @@ each(i : found) {
 		#~
 		Default constructor
 		@param stream_in regex pattern
+
+```
+re := RegEx->New("\\d+");
+if(re->IsOk()) {
+  results := re->Find("order 42 ships on day 7")<Result>;
+  each(r := results) {
+    r->GetValue()->PrintLine();
+  };
+};
+```
 		~#
 		New(stream_in : String) {
 			@tokens := stream_in->ToCharArray();
@@ -85,6 +95,13 @@ each(i : found) {
 		#~
 		Check of the regex was parsed correctly
 		@return true if parsed, false otherwise
+
+```
+re := RegEx->New("[a-z]+");
+if(re->IsOk()) {
+  "pattern compiled ok"->PrintLine();
+};
+```
 		~#
 		method : public : IsOk() ~ Bool {
 			return @error = Nil;
@@ -94,6 +111,13 @@ each(i : found) {
 		Looks for an exact regex match
 		@param stream_in string to match against
 		@return true if exact, false otherwise
+
+```
+re := RegEx->New("\\d{4}-\\d{2}-\\d{2}");
+if(re->MatchExact("2025-06-15")) {
+  "valid date format"->PrintLine();
+};
+```
 		~#
 		method : public : MatchExact(stream_in : String) ~ Bool {
 			return Evaluate(stream_in, 0) > -1 & @is_exact;
@@ -103,6 +127,12 @@ each(i : found) {
 		Matches as much of the string as possible
 		@param stream_in string to match against
 		@return matched string if found, empty string otherwise
+
+```
+re := RegEx->New("\\w+");
+matched := re->Match("hello world");
+matched->PrintLine();
+```
 		~#
 		method : public : Match(stream_in : String) ~ String {
 			return Match(stream_in, 0);
@@ -113,6 +143,12 @@ each(i : found) {
 		@param stream_in string to match against
 		@param offset offset into the to match against
 		@return matched string if found, empty string otherwise
+
+```
+re := RegEx->New("\\d+");
+matched := re->Match("skip 42 here", 5);
+matched->PrintLine();
+```
 		~#
 		method : public : Match(stream_in : String, offset : Int) ~ String {
 			right := Evaluate(stream_in, offset);
@@ -127,6 +163,15 @@ each(i : found) {
 		Matches the first occurrence
 		@param stream_in string to match against
 		@return matched string if found, empty string otherwise
+
+```
+re := RegEx->New("[A-Z][a-z]+");
+result := re->FindFirst("Hello World");
+if(result <> Nil) {
+  result->GetValue()->PrintLine();
+  Console->PrintLine(result->GetStart());
+};
+```
 		~#
 		method : public : FindFirst(stream_in : String) ~ Result {
 			is_anchored := @expressions->Size() > 0 & @expressions->Get(0)->GetType() = Expression->Type->STARTS_ANCHOR;
@@ -167,6 +212,14 @@ each(i : found) {
 		Finds all occurrences
 		@param stream_in string to match against
 		@return vector of string matches
+
+```
+re := RegEx->New("\\d+");
+results := re->Find("1 cat, 2 dogs, 3 birds")<Result>;
+each(r := results) {
+  r->GetValue()->PrintLine();
+};
+```
 		~#
 		method : public : Find(stream_in : String) ~ Vector<Result> {
 			matches := Vector->New()<Result>;
@@ -217,6 +270,12 @@ each(i : found) {
 		@param stream_in string to match against
 		@param replace string to replace the match with
 		@return replaced string
+
+```
+re := RegEx->New("\\d+");
+result := re->ReplaceFirst("order 42 ships on day 7", "NUM");
+result->PrintLine();
+```
 		~#
 		method : public : ReplaceFirst(stream_in : String, replace : String) ~ String {
 			left := 0;
@@ -239,6 +298,12 @@ each(i : found) {
 		@param stream_in string to match against
 		@param replace string to replace the match with
 		@return replaced string
+
+```
+re := RegEx->New("\\d+");
+result := re->ReplaceAll("order 42 ships on day 7", "NUM");
+result->PrintLine();
+```
 		~#
 		method : public : ReplaceAll(stream_in : String, replace : String) ~ String {
 			left := 0;
@@ -981,6 +1046,14 @@ each(i : found) {
 		#~
 		Gets the starting index of match
 		@return starting index of match
+
+```
+re := RegEx->New("\\d+");
+r := re->FindFirst("price: 99 dollars");
+if(r <> Nil) {
+  Console->PrintLine(r->GetStart());
+};
+```
 		~#
 		method : public : GetStart() ~ Int {
 			return @start;
@@ -989,6 +1062,14 @@ each(i : found) {
 		#~
 		Gets the string length of the match
 		@return string length of the match
+
+```
+re := RegEx->New("\\w+");
+r := re->FindFirst("hello world");
+if(r <> Nil) {
+  Console->PrintLine(r->GetLength());
+};
+```
 		~#
 		method : public : GetLength() ~ Int {
 			return @length;
@@ -997,6 +1078,14 @@ each(i : found) {
 		#~
 		Gets the string value
 		@return string value
+
+```
+re := RegEx->New("[A-Z][a-z]+");
+r := re->FindFirst("The Quick Brown Fox");
+if(r <> Nil) {
+  r->GetValue()->PrintLine();
+};
+```
 		~#
 		method : public : GetValue() ~ String {
 			return @value;
@@ -1005,6 +1094,14 @@ each(i : found) {
 		#~
 		Gets the string representation
 		@return string representation
+
+```
+re := RegEx->New("\\d+");
+results := re->Find("a1 b22 c333")<Result>;
+each(r := results) {
+  r->ToString()->PrintLine();
+};
+```
 		~#
 		method : public : ToString() ~ String {
 			return @value;

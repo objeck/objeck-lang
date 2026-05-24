@@ -1044,6 +1044,7 @@ class FuncSnippet from Snippet {
 	@is_new : Bool;
 	@types : static : Map<String, IntRef>;
 	@ignore_params : Bool;
+	@code : String;
 	
 	New(buffer : String) {
 		Parent(buffer);
@@ -1153,6 +1154,26 @@ class FuncSnippet from Snippet {
 		return @desc;
 	}
 
+	method : public : GetCode() ~ String {
+		return @code;
+	}
+
+	method : public : IsFunction() ~ Bool {
+		return @is_func;
+	}
+
+	method : public : IsNative() ~ Bool {
+		return @is_native;
+	}
+
+	method : public : IsVirtual() ~ Bool {
+		return @is_virtual;
+	}
+
+	method : public : IsNew() ~ Bool {
+		return @is_new;
+	}
+
 	method : public : GetParamTags() ~ Map<String, SnippetTag> {
 		return @tags;
 	}
@@ -1217,10 +1238,36 @@ class FuncSnippet from Snippet {
 			};
 		};
 
+		# parse optional inline code example (``` ... ```)
+		if(@cur_char = '`' & @nxt_char = '`') {
+			NextChar(); NextChar();
+			if(@cur_char = '`') {
+				NextChar();
+				buffer := "";
+				while(@cur_char <> '\0' & <>(@cur_char = '`' & @nxt_char = '`')) {
+					if(@cur_char <> '\t') {
+						buffer->Append(@cur_char);
+					};
+					NextChar();
+				};
+
+				if(@cur_char = '`') {
+					NextChar(); NextChar(); NextChar();
+					@code := Data.XML.XmlElement->EncodeString(buffer->Trim());
+				}
+				else {
+					return false;
+				};
+			}
+			else {
+				return false;
+			};
+		};
+
 		if(<>MatchCommentEnd()) {
 			return false;
 		};
-		
+
 		# parse function
 		func_type := ParseIdent();
 		if(func_type->Size() > 0) {

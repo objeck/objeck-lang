@@ -70,6 +70,14 @@ stream->Close();
 		#~
 		Constructor
 		@param input input stream
+		```
+		stream := FileReader->New("data.json");
+		if(stream->IsOpen()) {
+		  parser := Data.JSON.Stream.StreamParser->New(stream);
+		  parser->Next();
+		  stream->Close();
+		};
+		```
 		~#
 		New(input : InputStream) {
 			@input := input;
@@ -94,6 +102,15 @@ stream->Close();
 		Find element by name
 		@param name element by name
 		@return true if found, false otherwise
+		```
+		stream := FileReader->New("config.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		if(parser->FindElement("version")) { # seek to "version" label
+		  parser->Next();
+		  parser->GetTypeValue()->PrintLine(); # print the value
+		};
+		stream->Close();
+		```
 		~#
 		method : public : FindElement(name : String) ~ Bool {
 			while(Next()) {
@@ -110,6 +127,16 @@ stream->Close();
 		@param name element by name
 		@param level element level
 		@return true if found, false otherwise
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		# find "id" only at nesting depth 2
+		if(parser->FindElement("id", 2)) {
+		  parser->Next();
+		  parser->GetTypeValue()->PrintLine();
+		};
+		stream->Close();
+		```
 		~#
 		method : public : FindElement(name : String, level : Int) ~ Bool {
 			while(Next()) {
@@ -125,6 +152,15 @@ stream->Close();
 		Find element by type
 		@param type element by type
 		@return true if found, false otherwise
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		# advance to the first array token
+		if(parser->FindElement(Data.JSON.Stream.StreamParser->Type->ARRAY)) {
+		  parser->GetTypeValue()->PrintLine(); # prints "["
+		};
+		stream->Close();
+		```
 		~#
 		method : public : FindElement(type : StreamParser->Type) ~ Bool {
 			while(Next()) {
@@ -141,6 +177,15 @@ stream->Close();
 		@param type element by type
 		@param level element level
 		@return true if found, false otherwise
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		# find a number token at depth 1
+		if(parser->FindElement(Data.JSON.Stream.StreamParser->Type->NUMBER, 1)) {
+		  parser->GetTypeValue()->PrintLine();
+		};
+		stream->Close();
+		```
 		~#
 		method : public : FindElement(type : StreamParser->Type, level : Int) ~ Bool {
 			while(Next()) {
@@ -341,6 +386,15 @@ stream->Close();
 		#~
 		Get JSON type
 		@return JSON type
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		while(parser->Next()) {
+		  type := parser->GetType(); # get enum type of current token
+		  parser->GetTypeName()->PrintLine();
+		};
+		stream->Close();
+		```
 		~#
 		method : public : GetType() ~ StreamParser->Type {
 			return @type;
@@ -349,6 +403,14 @@ stream->Close();
 		#~
 		Get JSON type name
 		@return JSON type name
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		while(parser->Next()) {
+		  parser->GetTypeName()->PrintLine(); # e.g. "label", "string", "number"
+		};
+		stream->Close();
+		```
 		~#
 		method : public : GetTypeName() ~ String {
 			select(@type) {
@@ -399,6 +461,15 @@ stream->Close();
 		#~
 		Get JSON values
 		@return JSON value if it exists, blank string otherwise
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		while(parser->Next()) {
+		  value := parser->GetTypeValue(); # get string form of token
+		  value->PrintLine();
+		};
+		stream->Close();
+		```
 		~#
 		method : public : GetTypeValue() ~ String {
 			select(@type) {
@@ -443,6 +514,15 @@ stream->Close();
 		#~
 		Get JSON parse level. Level increase as objects and arrays are parsed.
 		@return JSON parse level
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		while(parser->Next()) {
+		  level := parser->GetLevel(); # depth: 0=top, 1=first object, etc.
+		  "{$level}: {$parser->GetTypeValue()}"->PrintLine();
+		};
+		stream->Close();
+		```
 		~#
 		method : public : GetLevel() ~ Int {
 			return @level;
@@ -452,6 +532,16 @@ stream->Close();
 		Checks the current parse level
 		@param level parse level
 		@return current parse level
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		while(parser->Next()) {
+		  if(parser->AtLevel(1)) { # only process tokens at depth 1
+		    parser->GetTypeValue()->PrintLine();
+		  };
+		};
+		stream->Close();
+		```
 		~#
 		method : public : AtLevel(level : Int) ~ Bool {
 			return @level = level & @type <> StreamParser->Type->OBJECT_END & @type <> StreamParser->Type->ARRAY_END;
@@ -460,6 +550,15 @@ stream->Close();
 		#~
 		Checks if a parsing error occurred
 		@return true if error, false otherwise
+		```
+		stream := FileReader->New("broken.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		while(parser->Next()) { };
+		if(parser->HasError()) { # true if malformed JSON was encountered
+		  "Parse failed"->ErrorLine();
+		};
+		stream->Close();
+		```
 		~#
 		method : public : HasError() ~ Bool {
 			return @has_error;
@@ -468,6 +567,16 @@ stream->Close();
 		#~
 		Checks for the next JSON token
 		@return true if next token exists, false otherwise
+		```
+		stream := FileReader->New("data.json");
+		parser := Data.JSON.Stream.StreamParser->New(stream);
+		while(parser->Next()) { # iterate all tokens
+		  parser->GetTypeName()->Print();
+		  " => "->Print();
+		  parser->GetTypeValue()->PrintLine();
+		};
+		stream->Close();
+		```
 		~#
 		method : public : Next() ~ Bool {
 			if(@cur_char = '\0') {
