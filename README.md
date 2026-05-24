@@ -57,6 +57,13 @@ obc hello && obr hello
 
 ## What's New
 
+**v2026.5.3**
+  * **JIT `select` dispatch** — dense integer `select` (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST — best strategy chosen automatically on AMD64 and ARM64
+  * **API documentation overhaul** — bundle overview panels, 500+ inline code examples, global search index, two-column TOC, method badges, and anchor links across all 32 library pages
+  * **ODBC improvements** — live SQLite integration test; transaction support (`Commit`/`Rollback`/`SetAutoCommit`) verified; `GetColumns` metadata
+  * **Bug fixes** — `HttpRequestHandler` Nil safety on dropped connections; `String->Split(Char)` trailing token fix; `bench_spectralnorm_native` JIT stack-balance fix
+  * **Performance** — `bench_spectralnorm_native` inner loop: incremental FP denominator eliminates per-element `I2F` conversions
+
 **v2026.5.2**
   * **HTTP/2 client** — `Http2Client` with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and `Quick*` one-liners (nghttp2 + ALPN)
   * **HTTP/3 / QUIC client** — `Http3Client` over UDP with connection reuse and the same `Quick*` API (ngtcp2 + nghttp3 + GnuTLS)

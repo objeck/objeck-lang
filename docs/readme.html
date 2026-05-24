@@ -59,7 +59,16 @@
   </header>
 
   <main style="text-align: left;">
-   <p>HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, ARM64 Windows support, WebSocket hardening.</p>
+   <p>JIT select dispatch, API doc overhaul, ODBC improvements, and bug fixes.</p>
+
+   <h3><u>v2026.5.3</u></h3>
+    <ul>
+        <li><strong>JIT <code>select</code> dispatch</strong> &mdash; dense integer <code>select</code> (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST &mdash; best strategy chosen automatically on AMD64 and ARM64</li>
+        <li><strong>API documentation overhaul</strong> &mdash; bundle overview panels, 500+ inline code examples, global search index, two-column TOC, method badges, and anchor links across all 32 library pages</li>
+        <li><strong>ODBC improvements</strong> &mdash; live SQLite integration test; transaction support (<code>Commit</code>/<code>Rollback</code>/<code>SetAutoCommit</code>) verified; <code>GetColumns</code> metadata</li>
+        <li><strong>Bug fixes</strong> &mdash; <code>HttpRequestHandler</code> Nil safety on dropped connections; <code>String->Split(Char)</code> trailing token fix; <code>bench_spectralnorm_native</code> JIT stack-balance fix</li>
+        <li><strong>Performance</strong> &mdash; <code>bench_spectralnorm_native</code>: incremental FP denominator eliminates per-element <code>I2F</code> conversions from the inner loop</li>
+    </ul>
 
    <h3><u>v2026.5.2</u></h3>
     <ul>
