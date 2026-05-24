@@ -1,8 +1,10 @@
 FROM ubuntu:24.04
 
-# Only install libssl3 and libmbedtls runtime (for cipher library and VM)
+# Runtime libs: TLS, HTTP/2, and HTTP/3 support for VM
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libssl3t64 libmbedtls14t64 zlib1g && \
+    apt-get install -y --no-install-recommends \
+        libssl3t64 libmbedtls14t64 zlib1g \
+        libnghttp2-14 libngtcp2-9 libngtcp2-crypto-gnutls2 libnghttp3-3 && \
     rm -rf /var/lib/apt/lists/* && \
     rm -f /usr/bin/apt* /usr/bin/dpkg* /usr/bin/wget /usr/bin/curl
 
