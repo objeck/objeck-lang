@@ -1,0 +1,197 @@
+#~
+# ODBC SQLite Integration Test
+# Tests live database operations against an in-memory SQLite database.
+# Requires the SQLite3 ODBC Driver to be installed.
+# EXTRA_LIBS: odbc
+~#
+
+use Database.ODBC;
+
+class OdbcSqliteTest {
+    function : Main(args : String[]) ~ Nil {
+        "--- ODBC SQLite Integration Test ---"->PrintLine();
+
+        conn := Database.ODBC.Connection->New("objeck_sqlite_test", "", "");
+
+        if(<>conn->IsOpen()) {
+            err := conn->GetLastError();
+            "FAIL: Cannot open connection: {$err}"->PrintLine();
+            return;
+        };
+        "PASS: Connection opened"->PrintLine();
+
+        passed := true;
+
+        # --- DDL ---
+        conn->Update("CREATE TABLE people (id INTEGER, name VARCHAR(100), score REAL, note VARCHAR(100))");
+        "PASS: CREATE TABLE"->PrintLine();
+
+        # --- Direct INSERT ---
+        conn->Update("INSERT INTO people VALUES (1, 'Alice', 95.5, 'top')");
+        conn->Update("INSERT INTO people VALUES (2, 'Bob', 72.3, NULL)");
+        conn->Update("INSERT INTO people VALUES (3, 'Carol', 88.0, 'mid')");
+
+        # --- SELECT and verify row values ---
+        rs := conn->Select("SELECT id, name, score, note FROM people ORDER BY id");
+
+        # Row 1
+        if(rs->Next()) {
+            id := rs->GetInt(1);
+            name := rs->GetVarchar(2);
+            score := rs->GetDouble(3);
+            if(id = 1 & name->Equals("Alice") & score > 95.0) {
+                "PASS: Row 1 (Alice)"->PrintLine();
+            }
+            else {
+                "FAIL: Row 1 values"->PrintLine();
+                passed := false;
+            };
+        }
+        else {
+            "FAIL: No row 1"->PrintLine();
+            passed := false;
+        };
+
+        # Row 2 — note column is NULL
+        if(rs->Next()) {
+            id := rs->GetInt(1);
+            name := rs->GetVarchar(2);
+            rs->GetVarchar(4);
+            is_null := rs->IsNull();
+            if(id = 2 & name->Equals("Bob") & is_null) {
+                "PASS: Row 2 (Bob, NULL note)"->PrintLine();
+            }
+            else {
+                "FAIL: Row 2 NULL check"->PrintLine();
+                passed := false;
+            };
+        }
+        else {
+            "FAIL: No row 2"->PrintLine();
+            passed := false;
+        };
+
+        # Row 3
+        if(rs->Next()) {
+            id := rs->GetInt(1);
+            note := rs->GetVarchar(4);
+            if(id = 3 & note->Equals("mid")) {
+                "PASS: Row 3 (Carol)"->PrintLine();
+            }
+            else {
+                "FAIL: Row 3 values"->PrintLine();
+                passed := false;
+            };
+        }
+        else {
+            "FAIL: No row 3"->PrintLine();
+            passed := false;
+        };
+
+        if(rs->Next()) {
+            "FAIL: Unexpected extra row"->PrintLine();
+            passed := false;
+        };
+        rs->Close();
+
+        # --- Parameterized INSERT ---
+        stmt := conn->CreateParameterStatement("INSERT INTO people VALUES (?, ?, ?, ?)");
+        stmt->SetInt(1, 4);
+        stmt->SetVarchar(2, "Dave");
+        stmt->SetDouble(3, 61.0);
+        stmt->SetVarchar(4);
+        stmt->Update();
+        stmt->Close();
+
+        rs2 := conn->Select("SELECT name, score, note FROM people WHERE id = 4");
+        if(rs2->Next()) {
+            name := rs2->GetVarchar(1);
+            score := rs2->GetDouble(2);
+            rs2->GetVarchar(3);
+            is_null := rs2->IsNull();
+            if(name->Equals("Dave") & score > 60.9 & is_null) {
+                "PASS: Parameterized INSERT"->PrintLine();
+            }
+            else {
+                "FAIL: Parameterized INSERT values"->PrintLine();
+                passed := false;
+            };
+        }
+        else {
+            "FAIL: Parameterized INSERT row not found"->PrintLine();
+            passed := false;
+        };
+        rs2->Close();
+
+        # --- Transactions: Rollback ---
+        conn->SetAutoCommit(false);
+        conn->Update("INSERT INTO people VALUES (5, 'Eve', 99.0, 'rollback')");
+        conn->Rollback();
+        conn->SetAutoCommit(true);
+
+        rs3 := conn->Select("SELECT COUNT(*) FROM people WHERE id = 5");
+        if(rs3->Next()) {
+            count := rs3->GetInt(1);
+            if(count = 0) {
+                "PASS: Rollback"->PrintLine();
+            }
+            else {
+                "FAIL: Rollback did not remove row"->PrintLine();
+                passed := false;
+            };
+        };
+        rs3->Close();
+
+        # --- Transactions: Commit ---
+        conn->SetAutoCommit(false);
+        conn->Update("INSERT INTO people VALUES (5, 'Eve', 99.0, 'committed')");
+        conn->Commit();
+        conn->SetAutoCommit(true);
+
+        rs4 := conn->Select("SELECT name FROM people WHERE id = 5");
+        if(rs4->Next()) {
+            name := rs4->GetVarchar(1);
+            if(name->Equals("Eve")) {
+                "PASS: Commit"->PrintLine();
+            }
+            else {
+                "FAIL: Commit row has wrong name"->PrintLine();
+                passed := false;
+            };
+        }
+        else {
+            "FAIL: Committed row not found"->PrintLine();
+            passed := false;
+        };
+        rs4->Close();
+
+        # --- GetColumns ---
+        cols := conn->GetColumns("people");
+        found_id := false;
+        if(cols <> Nil) {
+            each(i : cols) {
+                if(cols[i]->StartsWith("id")) {
+                    found_id := true;
+                };
+            };
+        };
+        if(found_id) {
+            "PASS: GetColumns"->PrintLine();
+        }
+        else {
+            "FAIL: GetColumns did not find 'id' column"->PrintLine();
+            passed := false;
+        };
+
+        conn->Close();
+
+        if(passed) {
+            "---
+PASS"->PrintLine();
+        }
+        else {
+            "---
+FAIL"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,12 @@
+--- ODBC SQLite Integration Test ---
+PASS: Connection opened
+PASS: CREATE TABLE
+PASS: Row 1 (Alice)
+PASS: Row 2 (Bob, NULL note)
+PASS: Row 3 (Carol)
+PASS: Parameterized INSERT
+PASS: Rollback
+PASS: Commit
+PASS: GetColumns
+---
+PASS

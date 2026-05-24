@@ -223,7 +223,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(enable ? 1 : 0);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_set_autocommit", array_args);
-				return array_args[0]->As(IntRef)->Get() = 1;
+				result := array_args[0]->As(IntRef);
+				return result->Get() = 1;
 			};
 
 			return false;
@@ -239,7 +240,8 @@ bundle Database.ODBC {
 				array_args[0] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_commit", array_args);
-				return array_args[0]->As(IntRef)->Get() = 1;
+				result := array_args[0]->As(IntRef);
+				return result->Get() = 1;
 			};
 
 			return false;
@@ -255,7 +257,8 @@ bundle Database.ODBC {
 				array_args[0] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_rollback", array_args);
-				return array_args[0]->As(IntRef)->Get() = 1;
+				result := array_args[0]->As(IntRef);
+				return result->Get() = 1;
 			};
 
 			return false;
