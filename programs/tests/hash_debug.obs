@@ -1,0 +1,65 @@
+class HashDebug {
+    function : Main(args : String[]) ~ Nil {
+        s0 := "ping";
+        s1 := "initialize";
+        s2 := "notifications/initialized";
+        s3 := "logging/setLevel";
+        s4 := "resources/templates/list";
+        s5 := "resources/list";
+        s6 := "resources/read";
+        s7 := "tools/list";
+        s8 := "tools/call";
+        s9 := "prompts/list";
+        s10 := "prompts/get";
+
+        "=== Hash values ==="->PrintLine();
+        "  ping={$s0->HashID()}"->PrintLine();
+        "  initialize={$s1->HashID()}"->PrintLine();
+        "  notifications/initialized={$s2->HashID()}"->PrintLine();
+        "  logging/setLevel={$s3->HashID()}"->PrintLine();
+        "  resources/templates/list={$s4->HashID()}"->PrintLine();
+        "  resources/list={$s5->HashID()}"->PrintLine();
+        "  resources/read={$s6->HashID()}"->PrintLine();
+        "  tools/list={$s7->HashID()}"->PrintLine();
+        "  tools/call={$s8->HashID()}"->PrintLine();
+        "  prompts/list={$s9->HashID()}"->PrintLine();
+        "  prompts/get={$s10->HashID()}"->PrintLine();
+
+        "=== Direct select test (no loop) ==="->PrintLine();
+        sv := "ping";
+        r := "";
+        select(sv) {
+            label "ping":                      { r := "ping"; }
+            label "initialize":                { r := "initialize"; }
+            label "notifications/initialized": { r := "notifications/initialized"; }
+            label "logging/setLevel":          { r := "logging/setLevel"; }
+            label "resources/templates/list":  { r := "resources/templates/list"; }
+            label "resources/list":            { r := "resources/list"; }
+            label "resources/read":            { r := "resources/read"; }
+            label "tools/list":                { r := "tools/list"; }
+            label "tools/call":                { r := "tools/call"; }
+            label "prompts/list":              { r := "prompts/list"; }
+            label "prompts/get":               { r := "prompts/get"; }
+            other: { r := "<other>"; }
+        };
+        "  ping -> '{$r}' [{$((r->Compare(\"ping\") = 0 ? \"PASS\" : \"FAIL\"))}]"->PrintLine();
+
+        sv := "tools/call";
+        r := "";
+        select(sv) {
+            label "ping":                      { r := "ping"; }
+            label "initialize":                { r := "initialize"; }
+            label "notifications/initialized": { r := "notifications/initialized"; }
+            label "logging/setLevel":          { r := "logging/setLevel"; }
+            label "resources/templates/list":  { r := "resources/templates/list"; }
+            label "resources/list":            { r := "resources/list"; }
+            label "resources/read":            { r := "resources/read"; }
+            label "tools/list":                { r := "tools/list"; }
+            label "tools/call":                { r := "tools/call"; }
+            label "prompts/list":              { r := "prompts/list"; }
+            label "prompts/get":               { r := "prompts/get"; }
+            other: { r := "<other>"; }
+        };
+        "  tools/call -> '{$r}' [{$((r->Compare(\"tools/call\") = 0 ? \"PASS\" : \"FAIL\"))}]"->PrintLine();
+    }
+}

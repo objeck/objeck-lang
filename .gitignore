@@ -126,6 +126,8 @@ programs/deploy/test_sdl.obs
 # Misc
 nul
 build.txt
+/git
+core/release/out.txt
 *.zip
 # Build artifacts
 core/lib/crypto/*.so

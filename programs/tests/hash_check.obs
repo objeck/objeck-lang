@@ -1,0 +1,21 @@
+class HashCheck {
+    function : Main(args : String[]) ~ Nil {
+        s := "banana";
+        h := s->HashID();
+        "runtime hash of 'banana': {$h}"->PrintLine();
+
+        r := "";
+        select(s) {
+            label "banana": { r := "match"; }
+            other: { r := "no-match"; }
+        };
+        "select(s) with s='banana': {$r}"->PrintLine();
+
+        r2 := "";
+        select("banana") {
+            label "banana": { r2 := "literal-match"; }
+            other: { r2 := "literal-no-match"; }
+        };
+        "select(literal 'banana'): {$r2}"->PrintLine();
+    }
+}

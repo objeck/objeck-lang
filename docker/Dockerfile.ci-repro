@@ -1,0 +1,70 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libssl-dev \
+    libmbedtls-dev \
+    libnghttp2-dev \
+    unixodbc-dev \
+    libsdl2-dev \
+    libsdl2-image-dev \
+    libsdl2-ttf-dev \
+    libsdl2-mixer-dev \
+    libreadline-dev \
+    libeigen3-dev \
+    libmp3lame-dev \
+    zlib1g-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy only what we need for building the compiler and VM
+COPY core/shared /build/core/shared
+COPY core/compiler/make /build/core/compiler/make
+COPY core/compiler/*.cpp /build/core/compiler/
+COPY core/compiler/*.h /build/core/compiler/
+COPY core/compiler/lib_src /build/core/compiler/lib_src
+COPY core/vm/make /build/core/vm/make
+COPY core/vm/*.cpp /build/core/vm/
+COPY core/vm/*.h /build/core/vm/
+COPY core/vm/arch /build/core/vm/arch
+
+# Copy the pre-built .obl files and .ini from core/lib (just the files, not subdirs)
+COPY core/lib/*.obl /build/core/lib/
+COPY core/lib/*.ini /build/core/lib/
+
+# Copy lib source files needed to rebuild .obl files
+# (compiler's update_version.sh will rebuild from lib_src)
+
+# Copy VM misc (SSL certs etc.)
+COPY core/vm/misc /build/core/vm/misc
+
+# Copy the update_version.sh bootstrap script
+COPY core/compiler/update_version.sh /build/core/compiler/
+
+# Copy programs for testing
+COPY programs/regression/mcp_server_test.obs /build/programs/regression/
+COPY programs/regression/select_dispatch_test.obs /build/programs/regression/
+COPY programs/tests/mcp_debug_test.obs /build/programs/tests/
+
+WORKDIR /build
+
+# Build bootstrap: sys_obc first, then full obc, then rebuild .obl files
+# (This mirrors the CI step "Build bootstrap (Linux x64 only)")
+RUN cd /build/core/compiler && chmod +x update_version.sh && ./update_version.sh
+
+# Build VM (obr)
+RUN cd /build/core/vm && cp make/Makefile.amd64 Makefile && make clean && make -j$(nproc)
+
+# Set up deploy directory
+RUN mkdir -p /build/core/release/deploy-x64/bin /build/core/release/deploy-x64/lib
+RUN cp /build/core/compiler/obc /build/core/release/deploy-x64/bin/
+RUN cp /build/core/vm/obr /build/core/release/deploy-x64/bin/
+RUN cp /build/core/lib/*.obl /build/core/release/deploy-x64/lib/
+RUN cp /build/core/lib/*.ini /build/core/release/deploy-x64/lib/ 2>/dev/null || true
+
+ENV PATH="/build/core/release/deploy-x64/bin:${PATH}"
+ENV OBJECK_LIB_PATH="/build/core/release/deploy-x64/lib"
+
+WORKDIR /build
+CMD ["/bin/bash"]
