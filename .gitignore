@@ -130,3 +130,8 @@ build.txt
 # Build artifacts
 core/lib/crypto/*.so
 core/vm/obr_dbg
+
+# Large media files (host externally)
+*.mp4
+*.pptx
+*.ppt
