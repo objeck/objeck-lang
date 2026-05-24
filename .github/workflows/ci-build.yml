@@ -103,12 +103,10 @@ jobs:
     - name: Configure ODBC test DSN (Linux)
       if: runner.os == 'Linux'
       run: |
-        cat >> ~/.odbc.ini << 'EOF'
-[objeck_sqlite_test]
-Description=Objeck ODBC regression test DSN
-Driver=SQLite3
-Database=:memory:
-EOF
+        echo '[objeck_sqlite_test]' >> ~/.odbc.ini
+        echo 'Description=Objeck ODBC regression test DSN' >> ~/.odbc.ini
+        echo 'Driver=SQLite3' >> ~/.odbc.ini
+        echo 'Database=:memory:' >> ~/.odbc.ini
 
     # macOS dependencies with caching
     - name: Cache Homebrew downloads (macOS)
