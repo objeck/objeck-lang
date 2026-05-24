@@ -88,6 +88,7 @@ jobs:
           libnghttp3-dev \
           libgnutls28-dev \
           unixodbc-dev \
+          libsqliteodbc \
           libsdl2-dev \
           libsdl2-image-dev \
           libsdl2-ttf-dev \
@@ -98,6 +99,16 @@ jobs:
           ccache \
           expect
         sudo chmod -R a+r /var/cache/apt/archives
+
+    - name: Configure ODBC test DSN (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        cat >> ~/.odbc.ini << 'EOF'
+[objeck_sqlite_test]
+Description=Objeck ODBC regression test DSN
+Driver=SQLite3
+Database=:memory:
+EOF
 
     # macOS dependencies with caching
     - name: Cache Homebrew downloads (macOS)
