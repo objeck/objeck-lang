@@ -2,7 +2,7 @@ use Collection;
 use System.API;
 
 #~
-Support for basic code diagnostics (-lib diags)
+Static analysis and language-server support. Analyzer parses Objeck source files and returns symbols, diagnostics, hover info, completions, references, and definitions for IDE tooling. Compile with -lib diags.
 ~#
 bundle System.Diagnostics {
 	class : private: Proxy {

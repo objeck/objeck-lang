@@ -2416,7 +2416,7 @@ bundle API.OpenAI.Tuning {
 }
 
 #~
-Support for OpenAIs models, assistants, realtime and general APIs (-lib openai)
+OpenAI API client. Supports Chat Completions (GPT-4o, o1, etc.), Embeddings, Image Generation (DALL-E), and function/tool calling. Set OPENAI_API_KEY environment variable before use. Compile with -lib openai.
 ~#
 bundle API.OpenAI {
 	#~

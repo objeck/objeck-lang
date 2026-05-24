@@ -5,8 +5,8 @@ use Data.XML;
 use Web.HTTP;
 
 #~
-Provides support for RSS (-lib rss)
-~#	
+RSS feed reader. RSSReader fetches and parses RSS 2.0 feeds from a URL or string; RSSChannel and RSSPost expose title, description, link, and publication date. Compile with -lib rss.
+~#
 bundle Web.RSS {
 	#~
 	Reader for RSS feeds

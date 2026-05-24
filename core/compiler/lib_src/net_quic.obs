@@ -5,10 +5,7 @@ Copyright (c) 2026 Randy Hollines
 use System.IO.Net, Collection, Web.HTTP;
 
 #~
-HTTP/3 (QUIC) client support (-lib net_quic)
-
-Note: HTTP/3 requires the VM to be built with OBJECK_HAS_NGTCP2.
-Without that flag, connections will fail with a runtime warning.
+HTTP/3 (QUIC) client for ultra-low-latency requests over UDP. Http3Client API mirrors HttpClient; ideal for mobile and high-packet-loss networks. Compile with -lib net_quic.
 ~#
 bundle Web.HTTP {
 	#~

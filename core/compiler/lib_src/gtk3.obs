@@ -1,7 +1,7 @@
 use System.API;
 
 #~
-Provides GUI support via GTK3 (-lib gtk3.obl)
+GTK3 GUI toolkit bindings for building native desktop applications on Linux. Wraps GtkApplication and GtkWindow lifecycle, focus management, and window relationships. Compile with -lib gtk3.
 ~#
 bundle GTK3 {
 	class : private: Proxy {

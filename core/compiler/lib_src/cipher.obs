@@ -6,7 +6,7 @@
 use System.API;
 
 #~
-Provides encryption and encoding functionality (-lib cipher)
+Cryptographic utilities including AES-256 encryption/decryption, SHA-1/256/512 and MD5 hashing, HMAC signing, and Base64 encoding/decoding. Compile with -lib cipher.
 ~#
 bundle Cipher {
 	class : private: Proxy {

@@ -6,7 +6,7 @@ Copyright (c) 2017-2020 Randy Hollines
 use System.API;
 
 #~
-General SDL2 wrapper (-lib sdl2)
+SDL2 multimedia library for 2D graphics, input handling, audio playback, and window management. Core types: Window, Renderer, Texture, Surface, Event, and Mixer. Compile with -lib sdl2.
 ~#
 bundle Game.SDL2 {
 	class : private: Proxy {

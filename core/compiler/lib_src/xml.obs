@@ -6,7 +6,7 @@
 use Collection;
 
 #~
-Support for parsing XML documents (-lib xml)
+XML parsing and building library. XmlParser reads XML into an XmlElement tree with attribute and child-node navigation; XmlBuilder constructs XML documents. Compile with -lib xml.
 ~#
 bundle Data.XML {
 	#~

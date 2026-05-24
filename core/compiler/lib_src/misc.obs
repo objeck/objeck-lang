@@ -1,8 +1,8 @@
 use Web.HTTP, Collection, Data.JSON, System.Time, System.IO.Filesystem;
 
 #~
-Provides support for conversions (-lib misc)
-~#	
+Date, time, and elapsed-timer utilities. Date provides current date/time and arithmetic (AddDays, AddHours). Timer measures wall-clock elapsed time. Included in lang.obl.
+~#
 bundle System.Time {
 	#~
 	Utilities for handling dates
@@ -311,8 +311,8 @@ if(triplet <> Nil) {
 }
 
 #~
-Various support utilities (-lib misc)
-~#	
+Miscellaneous runtime utilities: UUID generation, date string parsing and formatting, command-line parameter handling, network time retrieval, and console spinner animations. Included in lang.obl.
+~#
 bundle System.Utility {
 	#~
 	Utilities for parsing

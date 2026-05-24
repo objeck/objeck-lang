@@ -10,7 +10,7 @@ use System.IO.Filesystem;
 use Data.XML;
 
 #~
-Supports processing of semi-structured data (-lib query)
+In-memory object query engine. Table stores typed records and supports filtering, aggregation (sum, average), and CSV/filesystem import. Finder provides filesystem search. Compile with -lib query.
 ~#
 bundle Query.Structured {
 	#~

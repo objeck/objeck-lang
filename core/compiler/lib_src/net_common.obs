@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use System.IO.Net, Collection;
 
 #~
-Web client support (-lib net)
+Shared networking types used across all HTTP libraries: Url (parsing and construction), Response (status code, headers, body), Cookie, and WebDownloader for streaming downloads. Compile with -lib net.
 ~#
 bundle Web.HTTP {
 	#~

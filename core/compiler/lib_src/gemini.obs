@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme;
 
 #~
-Google Gemini ML client APIs (-lib gemini)
+Google Gemini API client. Supports text generation, multimodal inputs (image, audio, video), chat sessions, function calling, and caching. Set GOOGLE_API_KEY before use. Compile with -lib gemini.
 ~#
 bundle API.Google.Gemini {
 	#~

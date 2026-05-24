@@ -7,7 +7,7 @@
 use Collection;
 
 #~
-Regular expression engine (-lib regex.obl)
+Regular expression matching and replacement. RegEx compiles a pattern once and supports full match, substring search, capture groups, and global replacement. Included in lang.obl.
 ~#
 bundle Query.RegEx {
 	#~

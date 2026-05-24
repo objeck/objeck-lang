@@ -8,7 +8,7 @@ use Collection;
 use Data.JSON;
 
 #~
-2D gaming framework that uses SDL2 (-lib sdl_game)
+SDL2-based game framework with sprite management, collision detection, tilemaps, camera, and scene graph. Builds on sdl2.obl for structured 2D game development. Compile with -lib sdl2.
 ~#
 bundle Game.Framework {
 	#~

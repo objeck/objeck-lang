@@ -5,7 +5,7 @@ Music: Yo-Yo Ma, Beethoven for Three
 ~~#
 
 #~
-Support for JSON stream parsing (-lib json_stream)
+Streaming JSON parser for processing large documents without loading the full tree into memory. Reads tokens sequentially via a cursor-based API. Compile with -lib json.
 ~#
 bundle Data.JSON.Stream {
 	#~

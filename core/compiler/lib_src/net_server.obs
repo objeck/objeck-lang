@@ -1,7 +1,7 @@
 use System.IO.Net, Collection, Data.JSON, Web.HTTP, Data.JSON.Scheme;
 
 #~
-Web server support (-lib net_server)
+HTTP server framework. WebServer registers route handlers for GET/POST/PUT/DELETE, parses query params and multipart form data, and supports OAuth token exchange. Compile with -lib net_server.
 ~#
 bundle Web.HTTP.Server {
 	#~

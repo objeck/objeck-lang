@@ -5,7 +5,7 @@ Copyright (c) 2026 Randy Hollines
 use System.IO.Net, Collection, Web.HTTP;
 
 #~
-HTTP/2 client support (-lib net_h2)
+HTTP/2 client with multiplexed streams over a single TLS connection. Http2Client API mirrors HttpClient; use for servers that support HTTP/2 for lower latency. Compile with -lib net_h2.
 ~#
 bundle Web.HTTP {
 	#~

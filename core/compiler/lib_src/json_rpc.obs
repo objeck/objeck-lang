@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use Data.JSON, Collection, System.IO.Net;
 
 #~
-JSON RPC support (-lib json_rpc)
+JSON-RPC 2.0 client and server. Client sends method calls to a remote endpoint and returns typed results; Server dispatches incoming requests to registered handlers. Compile with -lib json_rpc.
 ~#
 bundle Data.JSON.RPC {
 	#~

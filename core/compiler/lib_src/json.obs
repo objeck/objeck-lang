@@ -7,7 +7,7 @@
 use Collection;
 
 #~
-Support for parsing JSON strings and documents (-lib json.obl)
+JSON parsing and building library. JsonParser reads JSON strings into a JsonElement tree; JsonBuilder constructs JSON documents using a stack-based API. Compile with -lib json.
 ~#
 bundle Data.JSON {
 	#~

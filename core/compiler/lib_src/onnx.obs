@@ -6,7 +6,7 @@
 use Collection, System.API, API.OpenCV, Data.JSON, System.IO.Filesystem;
 
 #~
-ONNX runtime inference (-lib onnx)
+ONNX Runtime inference library for running pre-trained models. Supports object detection (YOLO), image classification (ResNet), segmentation (DeepLab), pose estimation (OpenPose), face recognition, and Phi-3 text generation. Compile with -lib onnx.
 ~#
 bundle API.Onnx {
 	class : private : Proxy {

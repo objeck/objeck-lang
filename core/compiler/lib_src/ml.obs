@@ -10,7 +10,7 @@ use Collection;
 use Data.CSV;
 
 #~
-Machine learning and data science routines (-lib ml)
+Machine learning library with linear regression, logistic regression, k-means clustering, and matrix operations. Designed for tabular data; supports training, prediction, and model evaluation. Compile with -lib ml.
 ~#
 bundle System.ML {
 	class : private: Proxy {

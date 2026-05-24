@@ -1,7 +1,7 @@
 use Collection;
 
 #~
-Support for web servers. Note, shared library implementations (.so, .dll) specified in the 'config.ini' file using the 'lib_name' parameter.
+Lightweight embedded web server. Handles inbound HTTP requests with typed access to method, path, headers, and body; Response supports content-type, compression, redirects, and cookies. Compile with -lib net_server.
 ~#
 bundle Web.Server {
 	class : private: Proxy {

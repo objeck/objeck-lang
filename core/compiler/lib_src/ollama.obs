@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme, System.IO.Filesystem;
 
 #~
-Ollama client APIs (-lib ollama)
+Ollama local LLM client. Runs models (Llama, Mistral, Phi, etc.) locally via the Ollama server. Supports streaming completions, chat sessions, embeddings, and model management. Compile with -lib ollama.
 ~#
 bundle API.Ollama {
 	#~

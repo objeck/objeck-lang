@@ -2,7 +2,7 @@ use Collection;
 use System.API;
 
 #~
-Database access support via ODBC (-lib odbc)
+ODBC database access layer. Connection manages database sessions; Statement and ParameterStatement execute SQL queries; ResultSet iterates over rows and extracts typed column values. Compile with -lib odbc.
 ~#
 bundle Database.ODBC {
 	class : private: Proxy {

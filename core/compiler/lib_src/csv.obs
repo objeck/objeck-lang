@@ -5,7 +5,7 @@
 use Collection;
 
 #~
-Process and perform calculations on CSV files (-lib csv.obl)
+CSV parsing and generation. CsvParser reads delimited text into typed rows and columns; CsvWriter builds CSV output. Supports custom delimiters and quoted fields. Compile with -lib csv.
 ~#
 bundle Data.CSV {
 	#~

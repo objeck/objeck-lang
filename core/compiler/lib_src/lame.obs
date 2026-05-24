@@ -6,7 +6,7 @@
 use System.API;
 
 #~
-Auxiliary SDL support classes (-lib lame)
+MP3 encoding library wrapping LAME. Converts raw PCM audio data to MP3 byte streams. Suitable for audio recording and streaming applications. Compile with -lib lame.
 ~#
 bundle Game.SDL2.Aux {
 	class : private: Proxy {

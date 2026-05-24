@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use System.IO.Net, Collection;
 
 #~
-Web client support (-lib net)
+HTTP/1.1 client library. HttpClient supports GET, POST, PUT, PATCH, DELETE with headers, cookies, retries, and redirects. WebSocket provides full-duplex text and binary messaging. Compile with -lib net.
 ~#
 bundle Web.HTTP {
 	#~

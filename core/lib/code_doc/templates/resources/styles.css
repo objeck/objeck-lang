@@ -279,6 +279,25 @@ main {
   text-decoration: underline;
 }
 
+.bundle-overview {
+  font-size: 0.88rem;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+  padding: 8px 12px;
+  background-color: var(--grey-block-bg);
+  border-radius: 6px;
+  border-left: 3px solid var(--border-color);
+}
+
+.bundle-overview-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--breadcrumb-color);
+  margin-right: 6px;
+}
+
 .inheritance-info {
   font-size: 0.9rem;
   color: var(--breadcrumb-color);

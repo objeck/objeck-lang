@@ -14,7 +14,7 @@ note: compile compiler with -D_SYSTEM flag (on Linux)
 ~#	
 
 #~
-Core system classes 
+Core runtime library providing primitive types (Bool, Byte, Char, Int, Float, String), base collections, and system utilities. Every Objeck program links against this bundle automatically via lang.obl.
 ~#
 bundle System {
 	#~
@@ -7233,9 +7233,9 @@ bundle System.API {
 }
 
 #~
-Provides support for dates and times
-~#	
-bundle System.Time {	
+Date, time, and elapsed-timer utilities. Date provides current date/time and arithmetic (AddDays, AddHours). Timer measures wall-clock elapsed time. Included in lang.obl.
+~#
+bundle System.Time {
 	#~
 	Provides date and time functionality
 	```
@@ -8028,7 +8028,7 @@ class Counter from System.Concurrency.Thread {
 }
 
 #~
-Provides I/O functions
+File and console I/O primitives. FileReader and FileWriter handle sequential file access; Console provides stdin/stdout operations. Included in lang.obl — no extra -lib flag needed.
 ~#
 bundle System.IO {
 	#~

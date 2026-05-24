@@ -9,7 +9,7 @@
 ~#
 
 #~
-Tuple classes (-lib gen_collect)
+Typed tuple classes (Pair, Triple, Quad) for grouping related values without defining a class. Immutable by design; use as map keys or return values. Compile with -lib gen_collect.
 ~#
 bundle Collection.Tuple {
 	#~
@@ -604,8 +604,8 @@ q->ToString()->PrintLine(); # [x,1,2.5,a,true]
 }
 
 #~
-Generic collection framework (-lib gen_collect)
-~#	
+Generic collections library: Vector (dynamic array), Map (hash map), Set, MultiMap, Stack, Queue, and Pair. Provides typed iteration, sorting, filtering, and functional operations (Reduce, Any, All). Compile with -lib gen_collect.
+~#
 bundle Collection {
 	#~
 	Generic binary heap

@@ -9,7 +9,7 @@
 use Collection;
 
 #~
-Natural Language Processing utilities (-lib nlp)
+Natural language processing toolkit. Provides tokenization, text preprocessing, TF-IDF vectorization, cosine similarity, and sentiment analysis. Works with plain strings — no external model required. Compile with -lib nlp.
 ~#
 bundle System.NLP {
 	#~

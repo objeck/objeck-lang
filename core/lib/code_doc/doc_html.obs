@@ -196,6 +196,13 @@ class HtmlMaker {
 		main_html += class_block->GetShortName();
 		main_html += "</div>";
 
+		bundle_desc := @bundle_snippit->GetDesc();
+		if(bundle_desc <> Nil & bundle_desc->Size() > 0) {
+			main_html += "<div class='bundle-overview'><span class='bundle-overview-label'>Bundle</span> ";
+			main_html += bundle_desc;
+			main_html += "</div>";
+		};
+
 		main_html += "<h2>";
 		if(class_block->IsInterface()) {
 			main_html += "<i>";
@@ -423,6 +430,13 @@ class HtmlMaker {
 		main_html += " &rsaquo; ";
 		main_html += enum_block->GetName();
 		main_html += "</div>";
+
+		bundle_desc := @bundle_snippit->GetDesc();
+		if(bundle_desc <> Nil & bundle_desc->Size() > 0) {
+			main_html += "<div class='bundle-overview'><span class='bundle-overview-label'>Bundle</span> ";
+			main_html += bundle_desc;
+			main_html += "</div>";
+		};
 
 		main_html += "<h2>";
 		main_html += enum_block->GetName();
