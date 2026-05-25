@@ -1,3 +1,14 @@
+#~
+# Phi-3 Vision multimodal demo — describe an image
+#
+# Model required: Phi-3 Vision 128K Instruct (INT4, ~2.5 GB total)
+#   huggingface-cli download microsoft/Phi-3-vision-128k-instruct-onnx-directml \
+#     --include "directml-int4-rtn-block-32/*" \
+#     --local-dir data/models/phi3v
+#
+# Usage: obr demo_phi3v_describe <image_file> data/models/phi3v/directml-int4-rtn-block-32
+# Guide: https://github.com/objeck/objeck-lang/blob/master/docs/MODELS.md#onnx-models
+~#
 use API.Onnx, System.IO.Filesystem, Collection;
 
 class Demo {

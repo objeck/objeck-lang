@@ -1,3 +1,14 @@
+#~
+# Phi-3 Mini text generation demo
+#
+# Model required: Phi-3 Mini 4K Instruct (INT4, ~2 GB)
+#   huggingface-cli download microsoft/Phi-3-mini-4k-instruct-onnx \
+#     --include "directml/directml-int4-awq-block-128/*" \
+#     --local-dir data/models/phi3
+#
+# Usage: obr demo_phi3_haiku data/models/phi3/directml/directml-int4-awq-block-128
+# Guide: https://github.com/objeck/objeck-lang/blob/master/docs/MODELS.md#onnx-models
+~#
 use API.Onnx, Collection;
 
 class Demo {

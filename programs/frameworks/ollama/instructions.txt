@@ -1,8 +1,30 @@
-Install
+Setup
 ---
-download: https://ollama.com/download
-install/run: ollama run llama3
+1. Download and install Ollama: https://ollama.com/download
+2. Pull a model (choose one):
 
-API test (on Windows)
---- 
-* curl -H "Content-Type: application/json" -X POST http://localhost:11434/api/generate -d "{  \"model\": \"llama3\",  \"prompt\": \"Why is the sky blue?\" }"
+   ollama pull llama3.2        # general chat/reasoning (~2 GB)
+   ollama pull phi3            # lightweight/fast (~2.3 GB)
+   ollama pull llava           # vision/multimodal (~4.7 GB)
+   ollama pull qwen2.5-coder   # code generation (~1.5 GB)
+   ollama pull nomic-embed-text # embeddings (~274 MB)
+
+   Browse the full model library: https://ollama.com/library
+
+3. Verify Ollama is running:
+   ollama list
+
+API test (Windows/Linux)
+---
+curl -H "Content-Type: application/json" -X POST http://localhost:11434/api/generate \
+  -d "{\"model\": \"llama3.2\", \"prompt\": \"Why is the sky blue?\", \"stream\": false}"
+
+Build examples
+---
+Windows: build.cmd
+Linux:   bash build.sh
+
+More info
+---
+AI Developer Guide: https://www.objeck.org/ai_guide.html
+Model guide:        https://github.com/objeck/objeck-lang/blob/master/docs/MODELS.md

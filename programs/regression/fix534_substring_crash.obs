@@ -1,0 +1,67 @@
+#~
+# Fix #534: String->SubString crash on negative or zero length argument
+# Tests that negative or zero length returns Nil instead of crashing
+~#
+
+class Fix534Test {
+  function : Main(args : String[]) ~ Nil {
+    "Testing fix for #534: SubString negative/zero length..."->PrintLine();
+    pass := true;
+
+    # Test 1: Negative length returns Nil (previously crashed)
+    s := "Hello World";
+    r := s->SubString(0, -1);
+    if(r <> Nil) {
+      pass := false;
+      "  FAIL: SubString(0, -1) should return Nil"->PrintLine();
+    };
+
+    # Test 2: Large offset + small negative length (positive end bypass)
+    r2 := s->SubString(8, -3);
+    if(r2 <> Nil) {
+      pass := false;
+      "  FAIL: SubString(8, -3) should return Nil"->PrintLine();
+    };
+
+    # Test 3: Negative length with offset 0 and large negative value
+    r3 := s->SubString(0, -100);
+    if(r3 <> Nil) {
+      pass := false;
+      "  FAIL: SubString(0, -100) should return Nil"->PrintLine();
+    };
+
+    # Test 4: Zero length returns Nil (existing behavior preserved)
+    r4 := s->SubString(0, 0);
+    if(r4 <> Nil) {
+      pass := false;
+      "  FAIL: SubString(0, 0) should return Nil"->PrintLine();
+    };
+
+    # Test 5: Normal SubString still works correctly
+    r5 := "Hello World"->SubString(6, 5);
+    if(r5 = Nil | r5->Equals("World") = false) {
+      pass := false;
+      "  FAIL: SubString(6, 5) should return 'World'"->PrintLine();
+    };
+
+    # Test 6: SubString at end of string (exact fit)
+    r6 := "abcdef"->SubString(3, 3);
+    if(r6 = Nil | r6->Equals("def") = false) {
+      pass := false;
+      "  FAIL: SubString(3, 3) should return 'def'"->PrintLine();
+    };
+
+    # Test 7: Negative offset returns Nil
+    r7 := s->SubString(-1, 3);
+    if(r7 <> Nil) {
+      pass := false;
+      "  FAIL: SubString(-1, 3) should return Nil"->PrintLine();
+    };
+
+    if(pass) {
+      "PASS: Fix #534 SubString negative/zero length"->PrintLine();
+    } else {
+      "FAIL: Fix #534 SubString negative/zero length"->PrintLine();
+    };
+  }
+}
