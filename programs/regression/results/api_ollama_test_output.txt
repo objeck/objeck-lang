@@ -1,2 +1,4 @@
-SKIP: Ollama not running
+  Ollama models found: 1
+  Generate OK
+  Chat OK
 PASS: Ollama API tests
