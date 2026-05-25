@@ -6583,8 +6583,12 @@ each(i : cities) {
 				return Nil;
 			};
 
+			if(length < 0) {
+				return Nil;
+			};
+
 			end : Int := length + offset;
-			if(end < 0 | end > @pos) {
+			if(end > @pos) {
 				return Nil;
 			};
 

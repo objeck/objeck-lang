@@ -1,6 +1,13 @@
 #~~
 # Face recognition demo — SCRFD detector + ArcFace recognizer (InsightFace buffalo_l)
 # Tests: detection, embedding dimension, same-person similarity, different-person dissimilarity
+#
+# Models required (~191 MB, from InsightFace buffalo_l):
+#   curl -L -o buffalo_l.zip \
+#     https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip
+#   unzip buffalo_l.zip det_10g.onnx w600k_r50.onnx -d data/models/
+#
+# Guide: https://github.com/objeck/objeck-lang/blob/master/docs/MODELS.md#onnx-models
 ~~#
 
 use System.IO.Filesystem, API.OpenCV, API.Onnx;

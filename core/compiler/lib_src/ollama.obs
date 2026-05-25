@@ -194,7 +194,9 @@ response->PrintLine();
 ```
 		~#
 		function : Generate(model : String, prompt : String) ~ String {
-			return JsonElement->Decode(Generate(model, prompt, Nil));
+			result := Generate(model, prompt, Nil);
+			if(result = Nil) { return Nil; };
+			return JsonElement->Decode(result);
 		}
 
 		#~
@@ -256,7 +258,9 @@ response->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 
 				# post_response_str->PrintLine();
 				# "---"->PrintLine();
@@ -335,7 +339,9 @@ response->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 
 				# post_response_str->PrintLine();
 				# "---"->PrintLine();
@@ -394,7 +400,9 @@ chat->Send("Goodbye?")->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
@@ -488,7 +496,9 @@ json_reply->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
@@ -569,7 +579,9 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
@@ -956,10 +968,12 @@ if(Model->Pull("llama3")) {
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return false; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
-	
+
 				post_response_json := JsonParser->TextToElement(post_response_str);
 				if(post_response_json <> Nil) {
 					status_json := post_response_json->Get("status")
@@ -1002,7 +1016,9 @@ if(info <> Nil) {
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->Size()->PrintLine();
 	
@@ -1110,7 +1126,9 @@ if(embeddings <> Nil) {
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->Size()->PrintLine();
 	
@@ -1164,10 +1182,12 @@ if(Model->Create("my-assistant", modelfile)) {
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return false; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
-	
+
 				post_response_json := JsonParser->TextToElement(post_response_str);
 				if(post_response_json <> Nil) {
 					status_json := post_response_json->Get("status")

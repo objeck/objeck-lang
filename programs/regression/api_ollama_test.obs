@@ -45,7 +45,7 @@ class ApiOllamaTest {
 
 			# Simple generation (use first available model)
 			if(models->Size() > 0) {
-				model_name := models->Get(0)->As(ModelPulled)->GetName();
+				model_name := models->Get(0)->GetPulled()->GetName();
 				response := Completion->Generate(model_name, "Say hello in one word");
 				if(response = Nil | response->IsEmpty()) {
 					"  FAIL: Generate returned empty"->PrintLine();
