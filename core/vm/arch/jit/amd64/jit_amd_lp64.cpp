@@ -2428,18 +2428,15 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
   RegisterHolder* holder = nullptr;
   switch(type) {
   case SIN_FLOAT:
-    fld_mem((long)left->GetOperand(), RBP);
-    fsin();
+    holder = call_xfunc(sin, left);
     break;
 
   case COS_FLOAT:
-    fld_mem((long)left->GetOperand(), RBP);
-    fcos();
+    holder = call_xfunc(cos, left);
     break;
 
   case TAN_FLOAT:
-    fld_mem((long)left->GetOperand(), RBP);
-    ftan();
+    holder = call_xfunc(tan, left);
     break;
 
   case LOG_FLOAT:
