@@ -1,0 +1,107 @@
+#~
+LSP Feature Test: Shapes hierarchy
+
+Tests: type definition, implementation, semantic tokens, document highlight,
+folding range, selection range, document symbols.
+~#
+
+#
+# Interface for shapes — test "Go to Implementation"
+# Place cursor on "Drawable" and use Go to Implementation to find
+# Circle and Rectangle below.
+#
+interface Drawable {
+	method : virtual : public : Draw() ~ Nil;
+	method : virtual : public : GetArea() ~ Float;
+}
+
+#~
+Base shape class — test "Go to Type Definition"
+Place cursor on a Shape variable and use Go to Type Definition
+to jump here.
+~#
+class Shape {
+	@name : String;
+	@color : String;
+
+	New(name : String, color : String) {
+		@name := name;
+		@color := color;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetColor() ~ String {
+		return @color;
+	}
+
+	#~
+	Describe the shape.
+	Test: call hierarchy — who calls Describe?
+	~#
+	method : public : Describe() ~ String {
+		n := GetName();
+		c := GetColor();
+		return n;
+	}
+}
+
+#~
+Circle — implements Drawable.
+Test: Go to Implementation on Drawable should find this class.
+~#
+class Circle from Shape implements Drawable {
+	@radius : Float;
+
+	New(color : String, radius : Float) {
+		Parent("Circle", color);
+		@radius := radius;
+	}
+
+	method : public : Draw() ~ Nil {
+		name := GetName();
+		"Drawing {$name}"->PrintLine();
+	}
+
+	method : public : GetArea() ~ Float {
+		return 3.14159 * @radius * @radius;
+	}
+
+	method : public : GetRadius() ~ Float {
+		return @radius;
+	}
+}
+
+#~
+Rectangle — implements Drawable.
+Test: Go to Implementation on Drawable should also find this class.
+~#
+class Rectangle from Shape implements Drawable {
+	@width : Float;
+	@height : Float;
+
+	New(color : String, width : Float, height : Float) {
+		Parent("Rectangle", color);
+		@width := width;
+		@height := height;
+	}
+
+	method : public : Draw() ~ Nil {
+		name := GetName();
+		"Drawing {$name}"->PrintLine();
+	}
+
+	method : public : GetArea() ~ Float {
+		return @width * @height;
+	}
+
+	method : public : GetWidth() ~ Float {
+		return @width;
+	}
+
+	method : public : GetHeight() ~ Float {
+		return @height;
+	}
+}

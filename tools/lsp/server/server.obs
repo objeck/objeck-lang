@@ -1,0 +1,901 @@
+use Collection;
+use System.IO.Net;
+use Data.JSON;
+
+bundle LSP {
+	#~
+	LSP TCP server
+	~#
+	class LintServer {
+		@port : Int;
+		@is_debug : Bool;
+
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 2) {
+				port : Int;
+
+				if(args[1]->Equals("stdio")) {
+					Runtime->SetProperty("stdio", "binary");
+					port := -1;
+				}
+				else if(args[1]->Equals("pipe")) {
+					port := -2;
+				}
+				else {
+					port := args[1]->ToInt();
+				};
+
+				AstProxy->Init(args[0]);
+				LintServer->New(port, false)->Listen();
+			}
+			else if(args->Size() = 3 & args[2]->Equals("debug")) {
+				port : Int;
+
+				if(args[1]->Equals("stdio")) {
+					Runtime->SetProperty("stdio", "binary");
+					port := -1;
+				}
+				else if(args[1]->Equals("pipe")) {
+					port := -2;
+				}
+				else {
+					port := args[1]->ToInt();
+				};
+				
+				AstProxy->Init(args[0]);
+				LintServer->New(port, true)->Listen();
+			};
+		}
+
+		New(port : Int, is_debug : Bool) {
+			@port := port;
+			@is_debug := is_debug;
+		}
+
+		method : public : Listen() ~ Nil {
+			server : TCPSocketServer;
+			leaving {
+				if(server <> Nil) {
+					server->Close();
+				};
+			};
+
+			if(@is_debug) {
+				dir := System.IO.Filesystem.Logger->Instance()->GetDirectory();
+				info := System.IO.Filesystem.Logger->Instance()->GetInfoFile();
+				error := System.IO.Filesystem.Logger->Instance()->GetErrorFile();
+				
+				"----"->ErrorLine();
+				"Logging diretory='{$dir}'"->ErrorLine();
+				"\tInfo file='{$info}'"->ErrorLine();
+				"\tError file='{$error}'"->ErrorLine();
+				"----"->ErrorLine();
+
+				if(@port > -1) {
+					"Objeck LSP server: port {$@port}"->ErrorLine();
+				}
+				else if(@port = -1) {
+					"Objeck LSP server: using stdio"->ErrorLine();
+				}
+				else {
+					"Objeck LSP server: pipe 'objk-pipe'"->ErrorLine();
+				};
+			};
+						
+			# use sockets
+			if(@port > -1) {
+				server := TCPSocketServer->New(@port);
+				if(server->Listen(5)) {
+					while(true) {
+						LintService->New(Nil, server->Accept(), @is_debug)->Execute(Nil);
+					};
+				};
+			}
+			# use std pipes
+			else if(@port = -1) {
+				LintService->New(Nil, Nil, @is_debug)->Run(Nil);
+			}
+			# use std pipes
+			else if(@port = -2) {
+				pipe := Pipe->New("objk-pipe", Pipe->Mode->CREATE);
+				LintService->New(pipe, Nil, @is_debug)->Run(Nil);
+			};
+		}
+	}
+
+	#~
+	Handles TCP client requests
+	~#
+	class LintService from LspWorker {
+		@decoded_folder_uri : String;
+		@build_json_file : String;
+
+		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
+			Parent(pipe, socket, is_debug);
+		}
+
+		#
+		# Callbacks
+		#
+		method : CallbackReferences(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos:= params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->FindReferences(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackRename(id : Int, params : JsonElement) ~ Nil {
+			new_name := params->FindElements("newName")->GetValue();
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			if(IsDebug()) {
+				System.IO.Filesystem.Logger->Instance()->Info("=> CallbackRename: new_name={$new_name}, uri={$uri}, line_pos={$line_pos}, char_pos={$char_pos}");
+			};
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->CodeRename(new_name, line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackDeclaration(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->FindDeclaration(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackDefinition(id : Int, params : JsonElement) ~ Nil {
+			if(IsDebug()) {
+				System.IO.Filesystem.Logger->Instance()->Info("=> CallbackDefinition");
+			};
+
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->FindDefinition(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackSignatureHelp(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->SignatureHelp(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackFormatDocument(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			tab_size := params->FindElements("options/tabSize")->GetValue();
+			insert_spaces := params->FindElements("options/insertSpaces")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->FormatDocument(tab_size->ToInt(), insert_spaces->Equals("true"));
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackFormatRange(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			tab_size := params->FindElements("options/tabSize")->GetValue();
+			insert_spaces := params->FindElements("options/insertSpaces")->GetValue();
+
+			start_line := params->FindElements("range/start/line")->GetValue();
+			start_char := params->FindElements("range/start/character")->GetValue();
+
+			end_line := params->FindElements("range/end/line")->GetValue();
+			end_char := params->FindElements("range/end/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->FormatRange(tab_size->ToInt(), insert_spaces->Equals("true"), start_line->ToInt(), start_char->ToInt(), end_line->ToInt(), end_char->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackTypeDefinition(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->FindTypeDefinition(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackImplementation(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->FindImplementation(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackPrepareCallHierarchy(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				item := document->PrepareCallHierarchy(line_pos->ToInt(), char_pos->ToInt());
+				if(item <> Nil) {
+					array := JsonElement->New(JsonElement->JsonType->ARRAY);
+					array->Add(item);
+					WriteRpcResponse(id, array);
+				}
+				else {
+					WriteRpcResponse(id, Nil);
+				};
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackIncomingCalls(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("item/uri")->GetValue();
+			line_pos := params->FindElements("item/range/start/line");
+			char_pos := params->FindElements("item/range/start/character");
+
+			if(uri <> Nil & line_pos <> Nil & char_pos <> Nil) {
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					response := document->IncomingCalls(line_pos->GetInt(), char_pos->GetInt());
+					WriteRpcResponse(id, response);
+				}
+				else {
+					WriteRpcResponse(id, Nil);
+				};
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackOutgoingCalls(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("item/uri")->GetValue();
+			line_pos := params->FindElements("item/range/start/line");
+			char_pos := params->FindElements("item/range/start/character");
+
+			if(uri <> Nil & line_pos <> Nil & char_pos <> Nil) {
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					response := document->OutgoingCalls(line_pos->GetInt(), char_pos->GetInt());
+					WriteRpcResponse(id, response);
+				}
+				else {
+					WriteRpcResponse(id, Nil);
+				};
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackPrepareTypeHierarchy(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->PrepareTypeHierarchy(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		# typeHierarchy/supertypes & /subtypes both receive a TypeHierarchyItem in
+		# params.item. We re-resolve from item/uri + item/range/start so the same
+		# Document.TypeHierarchy* methods can be used regardless of which side
+		# (prepare or follow-up) the request came from.
+		method : CallbackTypeHierarchySupertypes(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("item/uri")->GetValue();
+			line_pos := params->FindElements("item/range/start/line");
+			char_pos := params->FindElements("item/range/start/character");
+
+			if(uri <> Nil & line_pos <> Nil & char_pos <> Nil) {
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					response := document->TypeHierarchySupertypes(line_pos->GetInt(), char_pos->GetInt());
+					WriteRpcResponse(id, response);
+				}
+				else {
+					WriteRpcResponse(id, Nil);
+				};
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackTypeHierarchySubtypes(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("item/uri")->GetValue();
+			line_pos := params->FindElements("item/range/start/line");
+			char_pos := params->FindElements("item/range/start/character");
+
+			if(uri <> Nil & line_pos <> Nil & char_pos <> Nil) {
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					response := document->TypeHierarchySubtypes(line_pos->GetInt(), char_pos->GetInt());
+					WriteRpcResponse(id, response);
+				}
+				else {
+					WriteRpcResponse(id, Nil);
+				};
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackInlayHint(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			start_line := params->FindElements("range/start/line");
+			end_line := params->FindElements("range/end/line");
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil & start_line <> Nil & end_line <> Nil) {
+				response := document->InlayHint(start_line->GetInt(), end_line->GetInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackSemanticTokensFull(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->SemanticTokensFull();
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackDocumentHighlight(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->DocumentHighlight(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackFoldingRange(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->FoldingRange();
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackSelectionRange(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			positions := params->FindElements("positions");
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->SelectionRange(positions);
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackHover(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			doc := @workspace->GetDocument(uri);
+			if(doc <> Nil) {
+				response := doc->Hover(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackCodeAction(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+
+			start_line := params->FindElements("range/start/line")->GetInt();
+			start_char := params->FindElements("range/start/character")->GetInt();
+			
+			response : JsonElement;
+
+			diagnostics_json := params->FindElements("context/diagnostics");
+			each(i : diagnostics_json) {
+				diagnostic_json := diagnostics_json->Get(i);
+
+				diagnostic_start_line := diagnostic_json->FindElements("range/start/line")->GetInt();
+				diagnostic_start_char := diagnostic_json->FindElements("range/start/character")->GetInt();
+
+				diagnostic_end_line := diagnostic_json->FindElements("range/end/line")->GetInt();
+				diagnostic_end_char := diagnostic_json->FindElements("range/end/character")->GetInt();
+
+				diagnostic_message := diagnostic_json->FindElements("message")->GetValue();
+
+				if(start_line = diagnostic_start_line & start_char = diagnostic_start_char) {
+					only_json := params->FindElements("context/only");
+					document := @workspace->GetDocument(uri);
+					if(document <> Nil & only_json <> Nil & only_json->GetType() = JsonElement->JsonType->ARRAY & only_json->Size() = 1) {
+						response := document->CodeAction(diagnostic_start_line, diagnostic_start_char, diagnostic_end_line, diagnostic_end_char, diagnostic_message, only_json->Get(0)->GetValue(), @build_json_file);
+					};
+				};
+			};
+
+			WriteRpcResponse(id, response);
+		}
+
+		method : CallbackCompletion(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			line_pos := params->FindElements("position/line")->GetValue();
+			char_pos := params->FindElements("position/character")->GetValue();
+
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				response := document->Completion(line_pos->ToInt(), char_pos->ToInt());
+				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackInitialize(id : Int, params : JsonElement) ~ Nil {
+			workspace := params->FindElements("capabilities/workspace");
+			if(workspace <> Nil) {
+				configuration := params->FindElements("capabilities/workspace/configuration");
+				if(configuration <> Nil & configuration->GetValue()->Equals("true")) {
+					workspace_folders := params->FindElements("workspaceFolders");
+					each(i : workspace_folders) {
+						workspace_folder := workspace_folders->Get(i);
+						
+						folder_name_obj := workspace_folder->Get("name");
+						folder_uri_obj := workspace_folder->Get("uri");
+						if(folder_name_obj <> Nil & folder_uri_obj <> Nil) {
+							folder_name := folder_name_obj->GetValue();
+							folder_uri := folder_uri_obj->GetValue();
+
+							if(@is_debug) {
+								System.IO.Filesystem.Logger->Instance()->Info("\n--- Added workspace:  folder_uri='{$folder_uri}', folder_name='{$folder_name}' ---\n");
+							};
+							ProcessConfiguration(folder_name, folder_uri);
+						};
+					};
+				};
+			};
+			
+			# build response
+			response := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			capabilities := response->AddChild("capabilities");
+			completionProvider := capabilities->AddChild("completionProvider");
+			completionProvider->Insert("resolveProvider", false);
+			triggerCharacters := JsonElement->New(JsonElement->JsonType->ARRAY);
+			triggerCharacters->Add("@");
+			triggerCharacters->Add(".");
+			triggerCharacters->Add(">");
+			completionProvider->Insert("triggerCharacters", triggerCharacters);
+
+			signatureHelpProvider := capabilities->AddChild("signatureHelpProvider");
+			triggerCharacters := JsonElement->New(JsonElement->JsonType->ARRAY);
+			triggerCharacters->Add("(");
+			triggerCharacters->Add(",");
+			signatureHelpProvider->Insert("triggerCharacters", triggerCharacters);
+
+			workspace := capabilities->AddChild("workspace");
+			workspace_folders := workspace->AddChild("workspaceFolders");
+			workspace_folders->Insert("supported", true);
+			workspace_folders->Insert("changeNotifications", true);
+
+			documentSync := capabilities->AddChild("textDocumentSync");
+			documentSyncSave := documentSync->AddChild("save");
+			documentSyncSave->Insert("includeText", true);
+			documentSync->Insert("openClose", true);
+			documentSync->Insert("change", 2);
+			
+			capabilities->Insert("workspace", workspace);
+			capabilities->Insert("documentSymbolProvider", true);
+			capabilities->Insert("codeActionProvider", true);
+			capabilities->Insert("referencesProvider", true);
+			capabilities->Insert("declarationProvider", true);
+			capabilities->Insert("definitionProvider", true);
+			capabilities->Insert("renameProvider", true);
+			capabilities->Insert("hoverProvider", true);
+			capabilities->Insert("documentFormattingProvider", true);
+			capabilities->Insert("documentRangeFormattingProvider", true);
+			capabilities->Insert("workspaceSymbolProvider", true);
+			capabilities->Insert("documentHighlightProvider", true);
+			capabilities->Insert("foldingRangeProvider", true);
+			capabilities->Insert("selectionRangeProvider", true);
+			capabilities->Insert("typeDefinitionProvider", true);
+			capabilities->Insert("implementationProvider", true);
+			capabilities->Insert("inlayHintProvider", true);
+
+			callHierarchyProvider := capabilities->AddChild("callHierarchyProvider");
+			callHierarchyProvider->Insert("id", "objeck-call-hierarchy");
+
+			typeHierarchyProvider := capabilities->AddChild("typeHierarchyProvider");
+			typeHierarchyProvider->Insert("id", "objeck-type-hierarchy");
+
+			semanticTokensLegend := JsonElement->New(JsonElement->JsonType->OBJECT);
+			tokenTypes := JsonElement->New(JsonElement->JsonType->ARRAY);
+			tokenTypes->Add("namespace");
+			tokenTypes->Add("type");
+			tokenTypes->Add("class");
+			tokenTypes->Add("enum");
+			tokenTypes->Add("interface");
+			tokenTypes->Add("function");
+			tokenTypes->Add("method");
+			tokenTypes->Add("property");
+			tokenTypes->Add("variable");
+			tokenTypes->Add("parameter");
+			tokenTypes->Add("enumMember");
+			semanticTokensLegend->Insert("tokenTypes", tokenTypes);
+
+			tokenModifiers := JsonElement->New(JsonElement->JsonType->ARRAY);
+			tokenModifiers->Add("declaration");
+			tokenModifiers->Add("static");
+			tokenModifiers->Add("readonly");
+			semanticTokensLegend->Insert("tokenModifiers", tokenModifiers);
+
+			semanticTokensProvider := capabilities->AddChild("semanticTokensProvider");
+			semanticTokensProvider->Insert("legend", semanticTokensLegend);
+			semanticTokensProvider->Insert("full", true);
+
+			WriteRpcResponse(id, response);
+
+			# register watchers
+			RegisterWatchers();
+		}
+
+		method : ProcessConfiguration(folder_name : String, folder_uri : String) ~ Nil {
+			@workspace->SetRoot(folder_name, folder_uri);
+
+			@decoded_folder_uri := Web.HTTP.Url->Decode(folder_uri);
+			if(@decoded_folder_uri->StartsWith("file:///")) {
+				offset : Int;
+				if(Query.RegEx.RegEx->New("file:///([a-z]|[A-Z]):.*")->MatchExact(@decoded_folder_uri)) {
+					offset := "file:///"->Size();
+				}
+				else {
+					offset := "file://"->Size();
+				};
+				@decoded_folder_uri->Delete(0, offset);
+			};
+			@build_json_file := String->New(@decoded_folder_uri);
+			@build_json_file += "/build.json";
+			
+			LoadConfigurationFile();
+		}
+
+		method : LoadConfigurationFile() ~ Nil {
+			text := System.IO.Filesystem.FileReader->ReadFile(@build_json_file);
+			if(text <> Nil) {
+				json :=JsonParser->New(text);
+				if(json->Parse()) {
+					root := json->GetRoot();
+					
+					files_json := root->Get("files");
+					libs_json := root->Get("libs");
+					if(files_json <> Nil & libs_json <> Nil) {
+						file_strs := String->New[files_json->Size()];
+						each(i : files_json) {
+							file_strs[i] := files_json->Get(i)->GetValue();
+						};
+
+						libs_str := "";
+						each(i : libs_json) {
+							libs_str += libs_json->Get(i)->GetValue();
+							libs_str += ',';
+						};
+
+						if(<>libs_str->IsEmpty()) {
+							libs_str->Pop();
+						};
+
+						if(@is_debug) {
+							System.IO.Filesystem.Logger->Instance()->Info("--- Files and libraries:  @decoded_folder_uri='{$@decoded_folder_uri}', libs_str='{$libs_str}' ---\n");
+						};
+
+						@workspace->SetFilesLibs(@decoded_folder_uri, file_strs, libs_str);
+					};
+				}
+				else {
+					System.IO.Filesystem.Logger->Instance()->Error("--- Unable to parse configuration '{$@build_json_file}' ---");
+				};
+			}
+			else {
+				System.IO.Filesystem.Logger->Instance()->Error("--- Unable to load configuration '{$@build_json_file}' ---");
+			};
+		}
+
+		method : RegisterWatchers() ~ Nil {
+			watcher := JsonElement->New(JsonElement->JsonType->OBJECT);
+			watcher->Insert("globPattern", "**/*.json");
+
+			watchers_array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			watchers_array->Add(watcher);
+
+			watchers_obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+			watchers_obj->Insert("watchers", watchers_array);
+
+			registrar := JsonElement->New(JsonElement->JsonType->OBJECT);
+			registrar->Insert("id", "d929fc04-b4ac-4907-a3b3-0508710f3c42");
+			registrar->Insert("method", "workspace/didChangeWatchedFiles");
+			registrar->Insert("registerOptions", watchers_obj);
+
+			registrars_array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			registrars_array->Add(registrar);
+
+			registrars_obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+			registrars_obj->Insert("registrations", registrars_array);
+
+			WriteRpcCapability(101, registrars_obj);
+		}
+
+		method : CallbackShutdown(id : Int, params : JsonElement) ~ Nil {
+			if(IsDebug()) {
+				System.IO.Filesystem.Logger->Instance()->Info("=> CallbackShutdown");
+			};
+
+			WriteRpcResponse(id, Nil);
+			@quit := true;
+		}
+
+		method : CallbackDocumentSymbol(id : Int, params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri");
+			if(uri <> Nil) {
+				url_str := uri->GetValue();
+				document := @workspace->GetDocument(url_str);
+				if(document <> Nil & url_str <> Nil) {
+					WriteRpcResponse(id, document->GetSymbols(url_str));
+				}
+				else {
+					WriteRpcResponse(id, Nil);
+				};
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackWorkspaceSymbol(id : Int, params : JsonElement) ~ Nil {
+			query := params->FindElements("query")->GetValue();
+			response := @workspace->GetSymbol(query);
+			WriteRpcResponse(id, response);
+		}
+
+		method : CallbackResolve(id : Int, params : JsonElement) ~ Nil {
+			# write response
+	        WriteRpcResponse(id, params);
+		}
+
+		#
+		# Notifications
+		#
+		method : NotifyInitialized(params : JsonElement) ~ Nil {
+			@is_initialized := true;
+		}
+
+		method : NotifyCancel(params : JsonElement) ~ Nil {
+			id := params->Get("id")->GetValue();
+
+			if(IsDebug()) {
+				System.IO.Filesystem.Logger->Instance()->Info("NotifyCancel: id={$id}");
+			};
+		}
+
+		method : NotifyDidChangeWatchedFiles(params : JsonElement) ~ Nil {
+			changes := params->Get("changes");
+			each(i : changes) {
+				change := changes->Get(i);
+
+				uri := change->Get("uri")->GetValue();
+				type := change->Get("type")->GetValue()->ToInt();
+
+				if(IsDebug()) {
+					System.IO.Filesystem.Logger->Instance()->Info("NotifyDidChangeWatchedFiles: uri='{$uri}', uri={$type}");
+				};
+
+				# configuration file added or changed
+				if(type = 1 | type = 2) {
+					LoadConfigurationFile();
+				};
+			};
+		}
+
+		method : NotifyDidOpen(params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			text := params->FindElements("textDocument/text")->GetValue();
+
+			if(IsDebug()) {
+				System.IO.Filesystem.Logger->Instance()->Info("NotifyDidOpen: uri='{$uri}', text=\"{$text}\"");
+			};
+			
+			document := Document->New(uri, text, @workspace, IsDebug());
+			@workspace->AddDocument(uri, document);
+			WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+		}
+
+		method : NotifyDidSave(params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue()
+			document := @workspace->GetDocument(uri);			
+			if(document <> Nil) {
+				text_json := params->Get("text");
+				if(text_json = Nil) {
+					document->Reload();
+				}
+				else {
+					document->Refresh(text_json->GetValue());
+				};
+
+				if(IsDebug()) {
+					from_text := text_json <> Nil;
+					System.IO.Filesystem.Logger->Instance()->Info("NotifyDidSave: uri='{$uri}', from_text={$from_text}");
+				};
+				
+				WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+			};
+		}
+		
+		method : NotifyDidClose(params : JsonElement) ~ Nil {
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			document:= @workspace->GetDocument(params->FindElements("textDocument/uri")->GetValue());
+			if(document <> Nil) {
+				@workspace->RemoveDocument(uri, document);
+
+				empty_diagnostics := JsonElement->New(JsonElement->JsonType->OBJECT);
+				empty_diagnostics->Insert("uri", uri);
+				empty_diagnostics->Insert("diagnostics", JsonElement->New(JsonElement->JsonType->ARRAY));
+				WriteRpcRequest("textDocument/publishDiagnostics", empty_diagnostics);
+			};
+		}
+
+		method : NotifyDidChangeWorkspace(params : JsonElement) ~ Nil {
+			added := params->FindElements("event/added");
+			each(i : added) {
+				folder := added->Get(i);
+				
+				folder_uri := folder->Get("uri")->GetValue();
+				folder_name := folder->Get("name")->GetValue();
+				if(@is_debug) {
+					System.IO.Filesystem.Logger->Instance()->Info("--- Added workspace: '{$folder_uri}', '{$folder_name}' ---");
+				};
+			};
+
+			removed := params->FindElements("event/removed");
+			each(i : removed) {
+				folder := removed->Get(i);
+				
+				folder_uri := folder->Get("uri")->GetValue();
+				folder_name := folder->Get("name")->GetValue();
+				if(@is_debug) {
+					System.IO.Filesystem.Logger->Instance()->Info("--- Removed workspace: '{$folder_uri}', '{$folder_name}' ---");
+				};
+			};
+		}
+		
+		method : NotifyDidChange(params : JsonElement) ~ Nil {
+			if(IsDebug()) {
+				System.IO.Filesystem.Logger->Instance()->Info("NotifyDidChange");
+			};
+
+			uri := params->FindElements("textDocument/uri")->GetValue();
+			document:= @workspace->GetDocument(uri);
+			changes := params->FindElements("contentChanges");
+			if(document <> Nil & changes <> Nil) {
+				each(i : changes) {
+					change := changes->Get(i);
+					
+					if(change->Has("range")) {
+						text := change->Get("text")->GetValue();
+						start_line := change->FindElements("range/start/line")->GetValue();
+						start_char := change->FindElements("range/start/character")->GetValue();
+
+						range_length_json := change->Get("rangeLength");
+						end_line_json := change->FindElements("range/end/line");
+						end_char_json := change->FindElements("range/end/character");
+
+						if(range_length_json <> Nil & text <> Nil & start_line <> Nil & start_char <> Nil) {
+							range_length := range_length_json->GetValue();
+							document->Update(range_length->ToInt(), text, start_line->ToInt(), start_char->ToInt());
+						}
+						else if(text <> Nil & start_line <> Nil & start_char <> Nil  & end_line_json <> Nil & end_char_json <> Nil) {
+							end_line := end_line_json->GetValue();
+							end_char := end_char_json->GetValue();
+							document->Update(text, start_line->ToInt(), start_char->ToInt(), end_line->ToInt(), end_char->ToInt());
+						};
+					}
+					else {
+						text := change->Get("text")->GetValue();
+						if(text <> Nil) {
+							document->UpdateAll(text);
+						};
+					};
+				};
+
+				WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+			};
+		}
+	}
+}

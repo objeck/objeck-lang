@@ -1,0 +1,18 @@
+class Hello {
+  function : Main(args : String[]) ~ Nil {    aa := 7;
+abc := aa + 13;  
+
+            abc->PrintLine(); }
+
+  function : Add(l : Int, r : Int) ~ Int {
+    z := 1 + r;
+    select(z) {
+      label 4: {
+        "four"->PrintLine();
+      }    label 2: {
+        "two"->PrintLine();
+      } };
+
+    return l + r;
+  }
+}

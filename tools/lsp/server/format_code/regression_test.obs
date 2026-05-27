@@ -1,0 +1,222 @@
+use Collection;
+
+#~
+Regression tests for LSP code formatter and new LSP features
+(document highlight, folding range, selection range).
+~#
+class FormatterRegressionTest {
+	@passed : static : Int;
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+			@passed += 1;
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"=== Formatter Regression Tests ==="->PrintLine();
+
+		TestBasicFormatting();
+		TestTabIndentation();
+		TestSpaceIndentation();
+		TestCommentPreservation();
+		TestStringLiteralPreservation();
+		TestRangeFormatting();
+		TestTrimTrailing();
+		TestKeywordFormatting();
+		TestOperatorSpacing();
+		TestNestedBlocks();
+
+		p := @passed;
+		f := @failed;
+		"\n  Results: {$p} passed, {$f} failed"->PrintLine();
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : TestBasicFormatting() ~ Nil {
+		"\n>> Basic formatting..."->PrintLine();
+
+		src := "class Foo{@x:Int;New(){@x:=0;}method:public:GetX()~Int{return @x;}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Basic: result not nil", result <> Nil);
+		Check("Basic: contains class keyword", result->Find("class") > -1);
+		Check("Basic: contains newlines", result->Find("\n") > -1);
+		Check("Basic: opening brace on same line", result->Find("{\n") > -1);
+	}
+
+	function : TestTabIndentation() ~ Nil {
+		"\n>> Tab indentation..."->PrintLine();
+
+		src := "class Foo{New(){@x:=1;}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Tabs: result not nil", result <> Nil);
+		Check("Tabs: contains tab chars", result->Find("\t") > -1);
+	}
+
+	function : TestSpaceIndentation() ~ Nil {
+		"\n>> Space indentation..."->PrintLine();
+
+		src := "class Foo{New(){@x:=1;}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "4");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Spaces: result not nil", result <> Nil);
+		# with ident-space=4, should not have tab chars
+		Check("Spaces: no tab chars", result->Find("\t") = -1);
+	}
+
+	function : TestCommentPreservation() ~ Nil {
+		"\n>> Comment preservation..."->PrintLine();
+
+		src := "class Foo{# line comment\nNew(){#~ multi\ncomment ~#@x:=1;}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Comments: result not nil", result <> Nil);
+		Check("Comments: line comment preserved", result->Find("# line comment") > -1);
+		Check("Comments: multi-comment start preserved", result->Find("#~") > -1);
+		Check("Comments: multi-comment end preserved", result->Find("~#") > -1);
+	}
+
+	function : TestStringLiteralPreservation() ~ Nil {
+		"\n>> String literal preservation..."->PrintLine();
+
+		src := "class Foo{New(){@x:=\"hello world\";}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Strings: result not nil", result <> Nil);
+		Check("Strings: literal preserved", result->Find("\"hello world\"") > -1);
+	}
+
+	function : TestRangeFormatting() ~ Nil {
+		"\n>> Range formatting..."->PrintLine();
+
+		src := "class Foo{\nNew(){\n@x:=1;\n}\n}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("start-line", "2");
+		options->Insert("end-line", "3");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Range: result not nil", result <> Nil);
+		Check("Range: result not empty", result->Size() > 0);
+	}
+
+	function : TestTrimTrailing() ~ Nil {
+		"\n>> Trim trailing..."->PrintLine();
+
+		src := "class Foo{New(){@x:=1;}}   ";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Trim: result not nil", result <> Nil);
+		Check("Trim: no trailing spaces", <>result->EndsWith(" "));
+		Check("Trim: no trailing tabs", <>result->EndsWith("\t"));
+	}
+
+	function : TestKeywordFormatting() ~ Nil {
+		"\n>> Keyword formatting..."->PrintLine();
+
+		src := "class Bar{method:public:DoIt()~Nil{if(true){return;}else{x:=1;}}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Keywords: result not nil", result <> Nil);
+		Check("Keywords: 'class' present", result->Find("class") > -1);
+		Check("Keywords: 'method' present", result->Find("method") > -1);
+		Check("Keywords: 'public' present", result->Find("public") > -1);
+		Check("Keywords: 'if' present", result->Find("if") > -1);
+		Check("Keywords: 'else' present", result->Find("else") > -1);
+		Check("Keywords: 'return' present", result->Find("return") > -1);
+	}
+
+	function : TestOperatorSpacing() ~ Nil {
+		"\n>> Operator spacing..."->PrintLine();
+
+		src := "class Foo{New(){@x:=1+2;@y:=3*4;}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Operators: result not nil", result <> Nil);
+		Check("Operators: assignment ':=' present", result->Find(":=") > -1);
+		Check("Operators: '+' present", result->Find("+") > -1);
+		Check("Operators: '*' present", result->Find("*") > -1);
+	}
+
+	function : TestNestedBlocks() ~ Nil {
+		"\n>> Nested blocks..."->PrintLine();
+
+		src := "class Foo{method:public:Do()~Nil{each(i:items){if(i>0){x:=i;}}}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Nested: result not nil", result <> Nil);
+
+		# count opening braces - should match closing braces
+		open_count := 0;
+		close_count := 0;
+		each(i : result) {
+			if(result->Get(i) = '{') {
+				open_count += 1;
+			}
+			else if(result->Get(i) = '}') {
+				close_count += 1;
+			};
+		};
+		Check("Nested: brace balance", open_count = close_count);
+		Check("Nested: has 4 brace pairs", open_count = 4);
+	}
+}

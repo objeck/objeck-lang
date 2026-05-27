@@ -1,0 +1,14 @@
+{
+	"files": [
+		"a.obs",
+		"b.obs"
+	],
+	"libs": [
+		"gen_collect.obl",
+		"regex.obl",
+		"net.obl",
+		"misc.obl",
+		"odbc.obl"
+	],
+	"flags": ""
+}

@@ -1,0 +1,101 @@
+use Collection;
+
+#~
+LSP Feature Test: Main entry point
+
+Open this file in VS Code with the Objeck LSP extension to test:
+
+== Type Definition (Ctrl+Shift+click or "Go to Type Definition") ==
+1. Place cursor on 'circle' (line 38) -> should jump to class Circle in shapes.obs
+2. Place cursor on 'dog' (line 43) -> should jump to class Dog in animals.obs
+3. Place cursor on 'shapes' (line 49) -> should jump to class Vector
+
+== Implementation (Ctrl+F12 or "Go to Implementation") ==
+4. Place cursor on 'Drawable' (line 30) -> should list Circle and Rectangle
+5. Place cursor on 'Speaker' (line 31) -> should list Dog and Cat
+6. Place cursor on 'Draw' in the Drawable interface -> should find Circle.Draw and Rectangle.Draw
+
+== Call Hierarchy (right-click -> "Show Call Hierarchy") ==
+7. Place cursor on 'ProcessShape' (line 58) -> Incoming: called from Main. Outgoing: calls Describe, Draw, GetArea
+8. Place cursor on 'MakeNoise' (line 68) -> Incoming: called from Main. Outgoing: calls Speak
+
+== Inlay Hints (should appear automatically) ==
+9. Line 38: Circle->New("red", 5.0) -> hints: 'color:' and 'radius:'
+10. Line 39: Rectangle->New("blue", 10.0, 20.0) -> hints: 'color:', 'width:', 'height:'
+11. Line 43: Dog->New("Labrador") -> hint: 'breed:'
+12. Line 44: Cat->New(true) -> hint: 'indoor:'
+
+== Semantic Tokens (visible as syntax highlighting) ==
+13. Class names (Shape, Circle, Dog) should have 'class' highlighting
+14. Interface names (Drawable, Speaker) should have 'interface' highlighting
+15. Method calls (Draw, GetArea) should have 'method' highlighting
+16. Instance vars (@name, @color) should have 'property' highlighting
+17. Static functions should have 'function' highlighting
+18. Enum (AnimalType) should have 'enum' highlighting
+
+== Document Highlight ==
+19. Click on any '@name' -> all occurrences in the file should highlight
+
+== Folding Ranges ==
+20. Click fold arrows next to class/method/if blocks -> should fold correctly
+21. Multi-line comments should also be foldable
+
+== Selection Range (Shift+Alt+Right to expand selection) ==
+22. Place cursor inside a method body, expand selection -> should grow to method, then class
+
+== Document Formatting (Shift+Alt+F) ==
+23. Mess up indentation, then format -> should fix indentation
+~#
+
+class Main {
+	function : Main(args : String[]) ~ Nil {
+		# create shapes — test type definition + inlay hints
+		circle := Circle->New("red", 5.0);
+		rect := Rectangle->New("blue", 10.0, 20.0);
+
+		# create animals — test inlay hints with different param counts
+		animals_list := Vector->New()<Animal>;
+		dog := Dog->New("Labrador");
+		cat := Cat->New(true);
+
+		# test call hierarchy — ProcessShape calls several methods
+		ProcessShape(circle);
+		ProcessShape(rect);
+
+		# test call hierarchy — MakeNoise calls Speak
+		shapes := Vector->New()<Drawable>;
+		shapes->AddBack(circle);
+		shapes->AddBack(rect);
+
+		MakeNoise(dog);
+		MakeNoise(cat);
+
+		# test document highlight — click on 'circle' to see all refs
+		area := circle->GetArea();
+		radius := circle->GetRadius();
+		"Area: {$area}, Radius: {$radius}"->PrintLine();
+	}
+
+	#~
+	Process a shape: calls Describe, Draw, and GetArea.
+	Test: call hierarchy incoming (Main calls this) and outgoing (this calls Draw etc.)
+	~#
+	function : ProcessShape(shape : Shape) ~ Nil {
+		shape->Describe();
+
+		drawable := shape->As(Drawable);
+		if(drawable <> Nil) {
+			drawable->Draw();
+			area := drawable->GetArea();
+		};
+	}
+
+	#~
+	Make an animal speak.
+	Test: call hierarchy — incoming from Main, outgoing to Speak.
+	~#
+	function : MakeNoise(speaker : Speaker) ~ Nil {
+		sound := speaker->Speak();
+		sound->PrintLine();
+	}
+}

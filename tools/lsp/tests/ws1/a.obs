@@ -1,0 +1,37 @@
+class Test {
+	@abc : ValueRef;
+	
+	New() {
+		@abc := ValueRef->New(7);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		vh : ValueRef := ValueRef->New(13);
+		vh->GetValue(5)->PrintLine();
+		
+		DoIt(7);
+
+		t := Test->New();
+		t->Bar()->PrintLine();
+
+		f := Fie->ONE;
+		xx := f + f;
+	}
+
+	method : Foo(a : Int) ~ Int {
+		elem : JsonElement;
+	
+		
+		return 14 + @abc->GetValue(12) * 7;
+	}
+
+	method : Bar() ~ Bool {
+		gag := 6;
+		gag := gag - @abc->GetValue(13)          -gag;
+		return @abc = @abc;
+	}
+	
+	function : DoIt(i : Int) ~ Int {
+		return i * 13;
+	}
+}

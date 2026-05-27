@@ -1,0 +1,1605 @@
+use Collection, System.IO.Net, System.IO, Data.JSON;
+
+bundle LSP {
+	#~
+	Abstract socket server worker
+	~#
+	class LspWorker from System.Concurrency.Thread {
+		@quit : Bool;
+		@is_initialized : Bool;
+		@is_debug : Bool;
+		@workspace : LspWorkspace;
+		@socket : TCPSocket;
+		@pipe : Pipe;
+		@cancel_id : Int;
+
+		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
+			Parent();
+
+			@socket := socket;
+			@pipe := pipe;
+
+			@is_debug := is_debug;
+			@cancel_id := -1;
+			@workspace := LspWorkspace->New(@is_debug);
+		}
+
+		method : public : Run(param : Base) ~ Nil {
+			while(<>@quit) {
+				request := ReadRpcRequest();
+				if(request <> Nil) {
+					ProcessResponse(request);
+				}	
+				else {
+					@quit := true;
+				};
+			};
+
+			if(@socket <> Nil) {
+				@socket->Close();
+			}
+			else if(@pipe <> Nil) {
+				@pipe->Close();
+			};
+		}
+
+		method : public : IsDebug() ~ Bool {
+			return @is_debug;
+		}
+
+		#
+		# Notifications
+		#
+		method : virtual : NotifyInitialized(params : JsonElement) ~ Nil;
+		method : virtual : NotifyCancel(params : JsonElement) ~ Nil;
+		method : virtual : NotifyDidOpen(params : JsonElement) ~ Nil;
+		method : virtual : NotifyDidChange(params : JsonElement) ~ Nil;
+		method : virtual : NotifyDidChangeWatchedFiles(params : JsonElement) ~ Nil;
+		method : virtual : NotifyDidSave(params : JsonElement) ~ Nil;
+		method : virtual : NotifyDidClose(params : JsonElement) ~ Nil;
+		method : virtual : NotifyDidChangeWorkspace(params : JsonElement) ~ Nil;
+
+		#
+		# Callbacks
+		#
+		method : virtual : CallbackInitialize(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackShutdown(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackCompletion(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackHover(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackCodeAction(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackResolve(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackRename(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackDocumentSymbol(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackWorkspaceSymbol(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackReferences(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackDeclaration(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackDefinition(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackSignatureHelp(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackFormatDocument(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackFormatRange(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackDocumentHighlight(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackFoldingRange(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackSelectionRange(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackTypeDefinition(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackImplementation(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackPrepareCallHierarchy(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackIncomingCalls(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackOutgoingCalls(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackInlayHint(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackSemanticTokensFull(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackPrepareTypeHierarchy(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackTypeHierarchySupertypes(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackTypeHierarchySubtypes(id : Int, params : JsonElement) ~ Nil;
+
+		# --- process requests ---
+		method : ProcessResponse(request : RpcRequest) ~ Nil {
+			id := request->GetId();
+			method_id := request->GetMethod();
+			
+			# notification
+			if(id->IsNeg()) {
+				if(@is_debug) {
+					System.IO.Filesystem.Logger->Instance()->Info("NOTIFICATION='{$method_id}'\n");
+				};
+
+				select(method_id) {
+					label "initialized" {
+						NotifyInitialized(request->GetParams());
+					}
+					
+					label "$/cancelRequest" {
+						NotifyCancel(request->GetParams());
+					}
+					
+					label "workspace/didChangeWatchedFiles" {
+						NotifyDidChangeWatchedFiles(request->GetParams());
+					}
+					
+					label "textDocument/didOpen" {
+						NotifyDidOpen(request->GetParams());
+					}
+					
+					label "textDocument/didChange" {
+						NotifyDidChange(request->GetParams());
+					}
+					
+					label "textDocument/didSave" {
+						NotifyDidSave(request->GetParams());
+					}
+					
+					label "textDocument/didClose" {
+						NotifyDidClose(request->GetParams());
+					}
+					
+					label "workspace/didChangeWorkspaceFolders" {
+						NotifyDidChangeWorkspace(request->GetParams());
+					}
+
+					label "exit" {
+						Runtime->Exit(0);
+					}
+
+					other {
+						if(@is_debug) {
+							System.IO.Filesystem.Logger->Instance()->Error("*** Unknown notification='{$method_id}' ***");
+						};
+					}
+				};
+			}
+			# callback
+			else {
+				if(@is_debug) {
+					System.IO.Filesystem.Logger->Instance()->Info("METHOD='{$method_id}', id={$id}");
+				};
+
+				select(method_id) {
+					label "initialize" {
+						CallbackInitialize(id, request->GetParams());
+					}
+					
+					label "textDocument/completion" {
+						CallbackCompletion(id, request->GetParams());
+					}
+					
+					label "textDocument/hover" {
+						CallbackHover(id, request->GetParams());
+					}
+					
+					label "textDocument/codeAction" {
+						CallbackCodeAction(id, request->GetParams());
+					}
+					
+					label "completionItem/resolve" {
+						CallbackResolve(id, request->GetParams());
+					}
+					
+					label "textDocument/rename" {
+						CallbackRename(id, request->GetParams());
+					}
+					
+					label "textDocument/documentSymbol" {
+						CallbackDocumentSymbol(id, request->GetParams());
+					}
+					
+					label "workspace/symbol" {
+						CallbackWorkspaceSymbol(id, request->GetParams());
+					}
+					
+					label "textDocument/references" {
+						CallbackReferences(id, request->GetParams());
+					}
+					
+					label "textDocument/declaration" {
+						CallbackDeclaration(id, request->GetParams());
+					}
+					
+					label "textDocument/definition" {
+						CallbackDefinition(id, request->GetParams());
+					}
+					
+					label "textDocument/signatureHelp" {
+						CallbackSignatureHelp(id, request->GetParams());
+					}
+					
+					label "shutdown" {
+						CallbackShutdown(id, request->GetParams());
+					}
+					
+					label "textDocument/formatting" {
+						CallbackFormatDocument(id, request->GetParams());
+					}
+
+					
+					label "textDocument/rangeFormatting" {
+						CallbackFormatRange(id, request->GetParams());
+					}
+
+					label "textDocument/documentHighlight" {
+						CallbackDocumentHighlight(id, request->GetParams());
+					}
+
+					label "textDocument/foldingRange" {
+						CallbackFoldingRange(id, request->GetParams());
+					}
+
+					label "textDocument/selectionRange" {
+						CallbackSelectionRange(id, request->GetParams());
+					}
+
+					label "textDocument/typeDefinition" {
+						CallbackTypeDefinition(id, request->GetParams());
+					}
+
+					label "textDocument/implementation" {
+						CallbackImplementation(id, request->GetParams());
+					}
+
+					label "textDocument/prepareCallHierarchy" {
+						CallbackPrepareCallHierarchy(id, request->GetParams());
+					}
+
+					label "callHierarchy/incomingCalls" {
+						CallbackIncomingCalls(id, request->GetParams());
+					}
+
+					label "callHierarchy/outgoingCalls" {
+						CallbackOutgoingCalls(id, request->GetParams());
+					}
+
+					label "textDocument/inlayHint" {
+						CallbackInlayHint(id, request->GetParams());
+					}
+
+					label "textDocument/semanticTokens/full" {
+						CallbackSemanticTokensFull(id, request->GetParams());
+					}
+
+					label "textDocument/prepareTypeHierarchy" {
+						CallbackPrepareTypeHierarchy(id, request->GetParams());
+					}
+
+					label "typeHierarchy/supertypes" {
+						CallbackTypeHierarchySupertypes(id, request->GetParams());
+					}
+
+					label "typeHierarchy/subtypes" {
+						CallbackTypeHierarchySubtypes(id, request->GetParams());
+					}
+
+					other {
+						if(@is_debug & <>method_id->Equals("<none>")) {
+							System.IO.Filesystem.Logger->Instance()->Error("*** Unknown method='{$method_id}' ***");
+						};
+					}
+				};
+			};
+		}
+
+		# --- utilities ---
+		method : ReadString() ~ String {
+			line : String;
+			if(@socket <> Nil) {
+				line := @socket->ReadLine();
+				@socket->ReadLine();
+			}
+			else if(@pipe <> Nil) {
+				line := @pipe->ReadLine();
+				# pipe message mode: the full message (header + body) arrives in one read.
+				# extract body after the double \r\n if present.
+				body_start := line->Find("\r\n\r\n");
+				if(body_start > -1) {
+					header := line->SubString(body_start);
+					body := line->SubString(body_start + 4, line->Size() - body_start - 4);
+					index := header->Find(':');
+					if(index > 0) {
+						if(@is_debug) {
+							System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$body}'");
+						};
+						return body;
+					};
+				}
+				else {
+					@pipe->ReadLine();
+				};
+			}
+			else {
+				line := Console->ReadLine();
+				Console->ReadLine();
+			};
+
+			index := line->Find(':');
+			if(index > 0) {
+				index += 2;
+				length := line->SubString(index, line->Size() - index)->ToInt();
+
+				# read from socket
+				if(@socket <> Nil) {
+					buffer := Byte->New[length];
+					@socket->ReadBuffer(0, buffer->Size(), buffer);
+
+					text := String->New(buffer->ToUnicode());
+					if(@is_debug) {
+						System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$text}'");
+					};
+
+					return text;
+				}
+				# read from pipe - fallback for split messages
+				else if(@pipe <> Nil) {
+					buffer := Byte->New[length];
+					@pipe->ReadBuffer(0, buffer->Size(), buffer);
+					text := String->New(buffer->ToUnicode());
+
+					if(@is_debug) {
+						System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$text}'");
+					};
+
+					return text;
+				}
+				# read from stdin
+				else {
+					buffer := Char->New[length];
+					Console->ReadBuffer(0, buffer->Size(), buffer);
+					text := String->New(buffer);
+					if(@is_debug) {
+						System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$text}'");
+					};
+
+					return text;
+				};
+			};
+
+			return "";
+		}
+
+		method : WriteString(text : String) ~ Nil {
+			length := text->Size();
+			line := "Content-Length: {$length}\r\n\r\n{$text}";
+
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("WRITE='{$line}'");
+			};
+
+			# write to socket
+			if(@socket <> Nil) {
+				@socket->WriteString(line);
+			}
+			# write to pipe
+			else if(@pipe <> Nil) {
+				@pipe->WriteString(line);
+			}
+			# write to stdout
+			else {
+				Console->WriteString(line);
+				Console->Flush();
+			};
+		}
+
+		method : ReadRpcRequest() ~ RpcRequest {
+			text := ReadString();
+			if(<>text->IsEmpty()) {
+				json :=JsonParser->New(text);
+				if(json->Parse()) {
+					node := json->GetRoot();
+					
+					id := -1;
+					id_elem := node->Get("id");
+					if(id_elem <> Nil) {
+						id := id_elem->GetValue()->ToInt();
+					};
+
+					ver := node->Get("jsonrpc");
+					
+					mthd : String;
+					mthd_elem := node->Get("method");
+					if(mthd_elem <> Nil) {
+						mthd := mthd_elem->GetValue();
+					}
+					else {
+						mthd := "<none>";
+					};
+
+					params := node->Get("params");
+					if(params = Nil) {
+						params := node->Get("result");
+					};
+
+					if(ver <> Nil & ver->GetValue()->Equals("2.0") & mthd <> Nil) {
+						return RpcRequest->New(id, mthd, params);
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		# --- capability ---
+		method : WriteRpcCapability(id : Int, params : JsonElement) ~ Nil {
+			node := JsonElement->New(JsonElement->JsonType->OBJECT);
+			
+			node->Insert("jsonrpc", "2.0");
+			node->Insert("method", "client/registerCapability");
+			node->Insert("params", params);
+			node->Insert("id", id);
+
+			WriteString(node->ToString());
+		}
+
+		# --- response ---
+		method : WriteRpcResponse(id : Int, result : JsonElement) ~ Nil {
+			if(id = @cancel_id) {
+				@cancel_id := -1;
+			}
+			else {
+				node := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+				node->Insert("jsonrpc", "2.0");
+				if(result = Nil) {
+					node->Insert("result", JsonElement->New(JsonElement->JsonType->NULL));
+				}
+				else {
+					node->Insert("result", result);
+				};
+
+				if(id > -1) {
+					node->Insert("id", id);
+				};
+
+				WriteString(node->ToString());
+			};
+		}
+
+		# --- request ---
+		method : WriteRpcRequest(kind : String, result : JsonElement) ~ Nil {
+			node := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			node->Insert("jsonrpc", "2.0");
+			node->Insert("method", kind);
+
+			if(result = Nil) {
+				node->Insert("params", JsonElement->New(JsonElement->JsonType->NULL));
+			}
+			else {
+				node->Insert("params", result);
+			};
+
+			WriteString(node->ToString());
+		}
+	}
+
+	#~
+	Workspaace
+	~#
+	class : private : LspWorkspace {
+		@is_debug : Bool;
+		@name : String;
+		@root : String;
+		@local_path : String;
+		@file_strs : String[];		
+		@libs_str : String;		
+		@documents : Map<String, Document>;
+		@texts : String[,];
+
+		New(is_debug : Bool) {
+			@is_debug := is_debug;
+			@documents := Map->New()<String, Document>;
+		}
+
+		method : public : SetRoot(name : String, root : String) ~ Nil {
+			@name := name;
+			@root := root;
+		}
+
+		method : public : SetFilesLibs(local_path : String, file_strs : String[], libs_str : String) ~ Nil {
+			@local_path := local_path;
+			@file_strs := file_strs;
+			@libs_str := libs_str;
+		}
+
+		method : public : GetTexts(uri : String, use_alt : Bool) ~ String[,] {
+			# workspace
+			if(@file_strs <> Nil) {
+				file_count := @file_strs->Size();
+				if(file_count > 0) {
+					@texts := String->New[file_count, 2];
+
+					each(i : file_count) {
+						local_file_path := String->New(@local_path);
+						local_file_path += '/';
+						local_file_path += @file_strs[i];
+
+						file_uri := String->New(@root);
+						file_uri += '/';
+						file_uri += @file_strs[i];
+
+						text : String;
+						document := @documents->Find(file_uri);
+						if(document <> Nil) {
+							if(use_alt) {
+								text := document->GetAltText();
+							}
+							else {
+								text := document->GetText();
+							};
+
+							if(@is_debug & text <> Nil) {
+								size := text->Size();
+								System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
+							};
+						}
+						else {
+							text := System.IO.Filesystem.FileReader->ReadFile(local_file_path);
+							if(@is_debug & text <> Nil) {
+								size := text->Size();
+								System.IO.Filesystem.Logger->Instance()->Info("### From disk: local_file_path='{$local_file_path}', size={$size} ###");
+							};
+						};
+
+						if(text = Nil) {
+							System.IO.Filesystem.Logger->Instance()->Error("Unable to open file: {$local_file_path}");
+						}
+						else {
+							@texts[i,0] := file_uri;
+							@texts[i,1] := text;
+						};
+					};
+
+					return @texts;
+				};
+			}
+			# non-workspace
+			else {
+				@libs_str := "gen_collect.obl,gen_collect.obl,net.obl,json.obl,cipher.obl,misc.obl";
+
+				key_values := @documents->GetKeyValues()<Pair<String, Document>>;
+				@texts := String->New[1, 2];
+				each(i : key_values) {
+					key_value := key_values->Get(i);
+					
+					file_uri := key_value->GetFirst();
+					if(file_uri->Equals(uri)) {
+						document := key_value->GetSecond();
+
+						text : String;
+						if(use_alt) {
+							text := document->GetAltText();
+						}
+						else {
+							text := document->GetText();
+						};
+
+						if(@is_debug & text <> Nil) {
+							size := text->Size();
+							System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
+						};
+
+						@texts[0,0] := file_uri;
+						@texts[0,1] := text;
+					};
+				};
+			};
+			
+			return @texts;
+		}
+
+		method : public : GetLibs() ~ String {
+			return @libs_str;
+		}
+
+		method : public : GetDocument(uri : String) ~ Document {
+			return @documents->Find(uri);
+		}
+
+		method : public : AddDocument(uri : String, document : Document) ~ Nil {
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("=> Add: {$uri}");
+			};
+
+			@documents->Remove(uri);
+			@documents->Insert(uri, document);
+		}
+
+		method : public : RemoveDocument(uri : String, document : Document) ~ Nil {
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("=> Remove: {$uri}");
+			};
+
+			if(@documents->Remove(uri)) {
+				document->Release();
+			};
+		}
+
+		method : public : GetSymbol(query : String) ~ JsonElement {
+			uri : String;
+			uris := @documents->GetKeys()<String>;
+			if(uris->Size() = 1) {
+				uri := uris->Get(0);
+			};
+
+			proxy := AstProxy->New(@self, uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			if(proxy->Build()) {
+				return proxy->GetSymbol(query, uris, GetLibs());
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
+	In-memory text document
+	~#
+	class : private : Document {
+		@workspace : LspWorkspace;
+		@uri : String;
+		@text : String;
+		@alt_text : String;
+		@is_debug : Bool;
+
+		New(uri : String, text : String, workspace : LspWorkspace, is_debug : Bool) {
+			@workspace := workspace;
+			@uri := uri;
+			@text := GetText(text);
+			@is_debug := is_debug;
+		}
+
+		method : public : Refresh(text : String) ~ Nil {
+			@text := GetText(text);
+		}
+		
+		method : public : Reload() ~ Nil {
+			if(@uri->StartsWith("file://")) {
+				filename : String;
+				if(System.IO.Filesystem.Directory->GetSlash() = '\\') {
+					offset := "file:///"->Size();
+					filename := @uri->SubString(offset, @uri->Size() - offset);
+					filename := filename->ReplaceAll('/', '\\');
+				}	
+				else {
+					offset := "file://"->Size();
+					filename := @uri->SubString(offset, @uri->Size() - offset);
+				};
+								
+				text := System.IO.Filesystem.FileReader->ReadFile(filename);
+				if(text <> Nil) {
+					@text := text;
+				};
+			};
+		}
+		
+		method : public : GetDiagnostics() ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			was_analyzed := BoolRef->New();
+			result := proxy->GetDiagnostics(was_analyzed, @uri, @workspace->GetLibs());
+			if(was_analyzed->Get()) {
+				@alt_text := @text->Clone()->As(String);
+			};
+
+			return result;
+		}
+
+		method : public : GetSymbols(uri : String) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			if(proxy->Build()) {
+				return proxy->GetSymbols(uri, @workspace->GetLibs());
+			};
+
+			return Nil;
+		}
+
+		method : public : FindReferences(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->FindReferences(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : CodeRename(new_name : String, line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->CodeRename(new_name, line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+		
+		method : public : FindDeclaration(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->FindDeclaration(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : FindDefinition(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->FindDefinition(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : Completion(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, true, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+			
+			index := GetDocumentIndex(line_pos, char_pos);
+			if(index > -1) {
+				var_str := ""; mthd_str := "";
+				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
+					return proxy->Completion(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+				};
+			};
+
+			return Nil;
+		}
+
+		method : public : Hover(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, true, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+			
+			index := GetDocumentIndex(line_pos, char_pos);
+			if(index > -1) {
+				var_str := ""; mthd_str := "";
+				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
+					return proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+				};
+			};
+
+			return Nil;
+		}
+
+		method : public : SignatureHelp(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, true, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			index := GetDocumentIndex(line_pos, char_pos);
+			if(index > -1) {
+				var_str := "";	mthd_str := "";
+				if(GetVariableMethodStrings(index, var_str, mthd_str)) {
+					return proxy->SignatureHelp(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+				};
+			};
+			
+			return Nil;
+		}
+
+		method : public : CodeAction(start_range_line : Int, start_range_char : Int, end_range_line : Int, end_range_char : Int, message : String, context : String, build_file : String) ~  JsonElement {
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("=> CodeAction: uri='{$@uri}'");
+			};
+			
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			if(context->Equals("quickfix") & message->StartsWith("Undefined class")) {
+				start := message->Find('\'');
+				last := message->FindLast('\'');
+
+				if(last > start) {
+					start += 1;
+					return proxy->CodeAction(@uri, start_range_line, start_range_char, message->SubString(start, last - start), build_file);
+				};
+			};
+
+			return Nil;
+		}
+
+		method : public : FindTypeDefinition(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->FindTypeDefinition(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : FindImplementation(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->FindImplementation(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : PrepareCallHierarchy(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->PrepareCallHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : IncomingCalls(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->IncomingCalls(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : OutgoingCalls(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->OutgoingCalls(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : InlayHint(start_line : Int, end_line : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs());
+		}
+
+		method : public : SemanticTokensFull() ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->SemanticTokens(@uri, @workspace->GetLibs());
+		}
+
+		method : public : DocumentHighlight(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->DocumentHighlight(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : PrepareTypeHierarchy(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->PrepareTypeHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : TypeHierarchySupertypes(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->TypeHierarchySupertypes(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : TypeHierarchySubtypes(line_pos : Int, char_pos : Int) ~ JsonElement {
+			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
+			leaving {
+				proxy->Release();
+			};
+
+			return proxy->TypeHierarchySubtypes(line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		method : public : FoldingRange() ~ JsonElement {
+			if(@text = Nil) {
+				return Nil;
+			};
+
+			array := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			# stack for brace line tracking
+			brace_lines := Int->New[256];
+			brace_top := 0;
+
+			cur_line := 0;
+			in_string := false;
+			in_char := false;
+			in_line_comment := false;
+			in_multi_comment := false;
+			multi_comment_start := -1;
+
+			for(i := 0; i < @text->Size(); i += 1;) {
+				c := @text->Get(i);
+				next_c := '\0';
+				if(i + 1 < @text->Size()) {
+					next_c := @text->Get(i + 1);
+				};
+
+				if(c = '\n') {
+					cur_line += 1;
+					in_line_comment := false;
+				};
+
+				if(in_line_comment) {
+					# skip
+				}
+				else if(in_multi_comment) {
+					if(c = '~' & next_c = '#') {
+						range := JsonElement->New(JsonElement->JsonType->OBJECT);
+						range->Insert("startLine", multi_comment_start);
+						range->Insert("endLine", cur_line);
+						range->Insert("kind", "comment");
+						array->Add(range);
+						in_multi_comment := false;
+						i += 1;
+					};
+				}
+				else if(in_string) {
+					if(c = '\\') {
+						i += 1;
+					}
+					else if(c = '"') {
+						in_string := false;
+					};
+				}
+				else if(in_char) {
+					if(c = '\\') {
+						i += 1;
+					}
+					else if(c = '\'') {
+						in_char := false;
+					};
+				}
+				else {
+					if(c = '#') {
+						if(next_c = '~') {
+							in_multi_comment := true;
+							multi_comment_start := cur_line;
+							i += 1;
+						}
+						else {
+							in_line_comment := true;
+						};
+					}
+					else if(c = '"') {
+						in_string := true;
+					}
+					else if(c = '\'') {
+						in_char := true;
+					}
+					else if(c = '{') {
+						if(brace_top < 256) {
+							brace_lines[brace_top] := cur_line;
+							brace_top += 1;
+						};
+					}
+					else if(c = '}') {
+						if(brace_top > 0) {
+							brace_top -= 1;
+							start_line := brace_lines[brace_top];
+							if(cur_line > start_line) {
+								range := JsonElement->New(JsonElement->JsonType->OBJECT);
+								range->Insert("startLine", start_line);
+								range->Insert("endLine", cur_line);
+								array->Add(range);
+							};
+						};
+					};
+				};
+			};
+
+			return array;
+		}
+
+		method : public : SelectionRange(positions : JsonElement) ~ JsonElement {
+			if(@text = Nil | positions = Nil) {
+				return Nil;
+			};
+
+			# collect all brace pairs with char positions
+			open_lines := Int->New[256];
+			open_chars := Int->New[256];
+			close_lines := Int->New[256];
+			close_chars := Int->New[256];
+			pair_count := 0;
+
+			brace_stack_lines := Int->New[256];
+			brace_stack_chars := Int->New[256];
+			brace_top := 0;
+
+			cur_line := 0;
+			cur_char := 0;
+			in_string := false;
+			in_char := false;
+			in_line_comment := false;
+			in_multi_comment := false;
+
+			for(i := 0; i < @text->Size(); i += 1;) {
+				c := @text->Get(i);
+				next_c := '\0';
+				if(i + 1 < @text->Size()) {
+					next_c := @text->Get(i + 1);
+				};
+
+				if(c = '\n') {
+					cur_line += 1;
+					cur_char := 0;
+					in_line_comment := false;
+				}
+				else {
+					if(in_line_comment) {
+						# skip
+					}
+					else if(in_multi_comment) {
+						if(c = '~' & next_c = '#') {
+							in_multi_comment := false;
+							i += 1;
+							cur_char += 1;
+						};
+					}
+					else if(in_string) {
+						if(c = '\\') {
+							i += 1;
+							cur_char += 1;
+						}
+						else if(c = '"') {
+							in_string := false;
+						};
+					}
+					else if(in_char) {
+						if(c = '\\') {
+							i += 1;
+							cur_char += 1;
+						}
+						else if(c = '\'') {
+							in_char := false;
+						};
+					}
+					else {
+						if(c = '#') {
+							if(next_c = '~') {
+								in_multi_comment := true;
+								i += 1;
+								cur_char += 1;
+							}
+							else {
+								in_line_comment := true;
+							};
+						}
+						else if(c = '"') {
+							in_string := true;
+						}
+						else if(c = '\'') {
+							in_char := true;
+						}
+						else if(c = '{') {
+							if(brace_top < 256) {
+								brace_stack_lines[brace_top] := cur_line;
+								brace_stack_chars[brace_top] := cur_char;
+								brace_top += 1;
+							};
+						}
+						else if(c = '}') {
+							if(brace_top > 0 & pair_count < 256) {
+								brace_top -= 1;
+								open_lines[pair_count] := brace_stack_lines[brace_top];
+								open_chars[pair_count] := brace_stack_chars[brace_top];
+								close_lines[pair_count] := cur_line;
+								close_chars[pair_count] := cur_char;
+								pair_count += 1;
+							};
+						};
+					};
+
+					cur_char += 1;
+				};
+			};
+
+			# build response for each position
+			result := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			each(p : positions) {
+				pos := positions->Get(p);
+				pos_line := pos->FindElements("line")->GetInt();
+				pos_char := pos->FindElements("character")->GetInt();
+
+				# find containing blocks sorted by size (innermost first)
+				# simple bubble sort by span size
+				containing_indices := Int->New[pair_count];
+				containing_count := 0;
+
+				for(j := 0; j < pair_count; j += 1;) {
+					if(pos_line > open_lines[j] | (pos_line = open_lines[j] & pos_char >= open_chars[j])) {
+						if(pos_line < close_lines[j] | (pos_line = close_lines[j] & pos_char <= close_chars[j])) {
+							containing_indices[containing_count] := j;
+							containing_count += 1;
+						};
+					};
+				};
+
+				# sort by span size ascending (innermost first)
+				for(a := 0; a < containing_count - 1; a += 1;) {
+					for(b := a + 1; b < containing_count; b += 1;) {
+						idx_a := containing_indices[a];
+						idx_b := containing_indices[b];
+						span_a := (close_lines[idx_a] - open_lines[idx_a]) * 10000 + (close_chars[idx_a] - open_chars[idx_a]);
+						span_b := (close_lines[idx_b] - open_lines[idx_b]) * 10000 + (close_chars[idx_b] - open_chars[idx_b]);
+						if(span_a > span_b) {
+							tmp := containing_indices[a];
+							containing_indices[a] := containing_indices[b];
+							containing_indices[b] := tmp;
+						};
+					};
+				};
+
+				# build nested selection range from outermost to innermost
+				selection : JsonElement;
+
+				for(k := containing_count - 1; k >= 0; k -= 1;) {
+					idx := containing_indices[k];
+
+					range_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					start_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					start_json->Insert("line", open_lines[idx]);
+					start_json->Insert("character", open_chars[idx]);
+					end_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					end_json->Insert("line", close_lines[idx]);
+					end_json->Insert("character", close_chars[idx] + 1);
+					range_json->Insert("start", start_json);
+					range_json->Insert("end", end_json);
+
+					node := JsonElement->New(JsonElement->JsonType->OBJECT);
+					node->Insert("range", range_json);
+					if(selection <> Nil) {
+						node->Insert("parent", selection);
+					};
+					selection := node;
+				};
+
+				if(selection <> Nil) {
+					result->Add(selection);
+				}
+				else {
+					# fallback: whole document range
+					doc_end := GetDocumentEnd();
+					range_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					start_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					start_json->Insert("line", 0);
+					start_json->Insert("character", 0);
+					end_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					end_json->Insert("line", doc_end[0]);
+					end_json->Insert("character", doc_end[1]);
+					range_json->Insert("start", start_json);
+					range_json->Insert("end", end_json);
+
+					node := JsonElement->New(JsonElement->JsonType->OBJECT);
+					node->Insert("range", range_json);
+					result->Add(node);
+				};
+			};
+
+			return result;
+		}
+
+		method : public : FormatRange(tab_spaces : Int, insert_spaces : Bool, start_range_line : Int, start_range_char : Int, end_range_line : Int, end_range_char : Int) ~  JsonElement {
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("=> FormatRange: uri='{$@uri}', tab_spaces={$tab_spaces}, insert_spaces={$insert_spaces}, start=({$start_range_line},{$start_range_char}), end=({$end_range_line},{$end_range_char})");
+			};
+
+			# create formatter
+			options := Map->New()<String, String>;
+			options->Insert("function-space", "false");
+			if(insert_spaces) {
+				options->Insert("ident-space", tab_spaces->ToString());
+			};
+			options->Insert("start-line", (start_range_line + 1)->ToString());
+			options->Insert("end-line", (end_range_line + 1)->ToString());
+
+			formatter := CodeFormatter->New(options);
+			new_text := PutText(formatter->Format(GetText(@text)));
+
+			# format and upate json
+			edits_builder := JsonBuilder->New();
+			edits_builder->PushArray();
+			
+			edits_builder->PushObject();
+			edits_builder->Insert("newText", new_text);
+
+			edits_builder->PushObject("range");
+			obj := edits_builder->PushObject("start");
+			obj->Insert("line", start_range_line);
+			if(new_text->StartsWith(' ') | new_text->StartsWith('\t')) {
+				obj->Insert("character", start_range_char);
+			}
+			else {
+				obj->Insert("character", 0);
+			};
+			
+			edits_builder->Pop();
+
+			obj := edits_builder->PushObject("end");
+			obj->Insert("line", end_range_line);
+			obj->Insert("character", end_range_char);
+
+			edits_builder->Pop();
+			edits_builder->Pop();
+			edits_builder->Pop();
+			
+			return edits_builder->Pop();
+		}
+
+		method : public : FormatDocument(tab_spaces : Int, insert_spaces : Bool) ~  JsonElement {
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("=> FormatDocument: uri='{$@uri}', tab_spaces={$tab_spaces}, insert_spaces={$insert_spaces}");
+			};
+
+			# get ranges
+			end_ranges := GetDocumentEnd();
+
+			end_line := end_ranges[0];
+			end_index := end_ranges[1];
+
+			# create formatter
+			options := Map->New()<String, String>;
+			options->Insert("function-space", "false");
+			options->Insert("trim-trailing", "true");
+			if(insert_spaces) {
+				options->Insert("ident-space", tab_spaces->ToString());
+			};
+			formatter := CodeFormatter->New(options);
+			new_text := PutText(formatter->Format(GetText(@text)));
+			
+			# format and upate json
+			edits_builder := JsonBuilder->New();
+			edits_builder->PushArray();
+			
+			edits_builder->PushObject();
+			edits_builder->Insert("newText", new_text);
+
+			edits_builder->PushObject("range");
+			obj := edits_builder->PushObject("start");
+			obj->Insert("line", 0);
+			obj->Insert("character", 0);
+			edits_builder->Pop();
+
+			obj := edits_builder->PushObject("end");
+			obj->Insert("line", end_line);
+			obj->Insert("character", end_index);
+
+			return edits_builder->PopAll();
+		}
+
+		method : public : GetVariableMethodStrings(index : Int, var_str : String, mthd_str : String, offset : Bool := true) ~ Bool {
+			start_pos := index;
+
+			while(index >= 0 & (@text->Get(index)->IsChar() | @text->Get(index) = '_'  | @text->Get(index) = '@' | @text->Get(index) = '(' | @text->Get(index) = ')')) {
+				index -= 1;
+			};
+			end_pos := index;
+
+			length := start_pos - end_pos;
+			if(offset) {
+				length -= 2;
+			};
+
+			if(length > 0) {
+				mthd_str += @text->SubString(end_pos + 1, length);
+			};
+
+			while(index >= 0 & (@text->Get(index) = ' ' | 
+					(index >= 1 & @text->Get(index) = 'n' & @text->Get(index - 1) = '\\') |
+					(index >= 1 & @text->Get(index) = 'r' & @text->Get(index - 1) = '\\') |
+					(index >= 1 & @text->Get(index) = 't' & @text->Get(index - 1) = '\\'))) {
+				index -= 1;
+				if(index >= 1 & @text->Get(index - 1) = '\\') {
+					index -= 1;
+				};
+			};
+
+			has_var := index >= 1 & @text->Get(index) = '>' & @text->Get(index - 1) = '-';
+			if(has_var) {
+				index -= 2;
+				
+				start_pos := index;
+
+				# variable
+				if(@text->Get(index)->IsChar() | @text->Get(index) = '_' |  @text->Get(index) = '@') {
+					while(index >= 0 & (@text->Get(index)->IsChar() | @text->Get(index) = '_' |  @text->Get(index) = '@')) {
+						index -= 1;
+					};
+				}
+				# character
+				else if(@text->Get(index) = '\'') {
+					index -= 1;
+					while(index >= 1 & @text->Get(index) <> '\'' & @text->Get(index - 1) <> '\\') {
+						index -= 1;
+					};
+					index -= 1;
+				}
+				# string
+				else if(@text->Get(index) = '"') {
+					index -= 1;
+					while(index >= 1 & @text->Get(index) <> '"' & @text->Get(index - 1) <> '\\') {
+						index -= 1;
+					};
+					index -= 1;
+				};
+
+				end_pos := index;
+
+				length := start_pos - end_pos;
+				if(length > 0) {
+					var_str += @text->SubString(end_pos + 1, length);
+				};
+			};
+
+			return <>(var_str->IsEmpty() & mthd_str->IsEmpty());
+		}
+
+		method : public : UpdateAll(text : String) ~ Nil {
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("### UpdatAll: text='{$text}' ###");
+			};
+
+			@text := GetText(text);
+		}
+
+		method : public : Update(text : String, start_line : Int, start_char: Int, end_line : Int, end_char : Int) ~ Nil {
+			start := GetDocumentIndex(start_line, start_char);
+			end :=  GetDocumentIndex(end_line, end_char);
+			Update(start, end - start, text);
+		}
+
+		method : public : Update(range_length : Int, text : String, start_line : Int, start_char: Int) ~ Nil {
+			start := GetDocumentIndex(start_line, start_char);
+			Update(start, range_length, text);
+		}
+
+		method : Update(start : Int, range_length : Int, text : String) ~ Nil {
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("### Update: start={$start}, range_length={$range_length}, text='{$text}'; ###");
+			};
+
+			if(start > -1) {
+				if(range_length > 0) {
+					@text->Delete(start, range_length);
+				};
+				@text->Insert(start, GetText(text));
+			};
+		}
+
+		method : public : Release() ~ Nil {
+			@text := @alt_text := Nil;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		method : public : GetAltText() ~ String {
+			return @alt_text;
+		}
+
+		method : GetLineCharacterIndex(index : Int, line_pos : IntRef, char_pos : IntRef) ~ Nil {
+			cur_line := 0;
+			cur_char := 0;
+
+			for(pos := 0; pos < index; pos += 1;) {
+				char := @text->Get(pos);
+				next_char := '\0';				
+				if(pos + 1 < @text->Size()) {
+					next_char := @text->Get(pos + 1);
+				};
+
+				if(char = '\\') {
+					pos += 1;
+					
+					if(next_char = 'n') {
+							cur_line += 1;
+							cur_char := 0;
+					}
+					else if(next_char <> 'r') {
+						cur_char += 1;
+					};
+				}
+				else {
+					cur_char += 1;
+				};
+			};
+
+			line_pos->Set(cur_line);
+			char_pos->Set(cur_char - 1);
+		}
+
+		method : GetDocumentIndex(line_pos : Int, char_pos : Int) ~ Int {
+			if(@text = Nil  | (line_pos = 0 & char_pos = 0)) {
+				return 0;
+			};
+			
+			cur_line := 0; cur_char := 0;
+			each(pos : @text) {
+				char := @text->Get(pos);
+				next_char := '\0';				
+				if(pos + 1 < @text->Size()) {
+					next_char := @text->Get(pos + 1);
+				};
+
+				if(char = '\n') {
+					cur_line += 1;					
+				};
+				cur_char += 1;
+
+				if(cur_line = line_pos) {
+					index := cur_char + char_pos;
+					if(cur_line = 0) {
+						index -= 1;
+					};
+					
+					return index;
+				};
+			};
+
+			return -1;
+		}
+
+		method : GetDocumentEnd() ~ Int[] {
+			indexes := Int->New[2];
+
+			cur_line := 0; cur_char := 0;
+			each(pos : @text) {
+				char := @text->Get(pos);
+				next_char := '\0';				
+				if(pos + 1 < @text->Size()) {
+					next_char := @text->Get(pos + 1);
+				};
+
+				if(char = '\n') {
+					cur_line += 1;
+					cur_char := 0;			
+				};
+				cur_char += 1;
+			};
+			indexes[0] := cur_line;
+			indexes[1] := cur_char;
+
+			return indexes;
+		}
+
+		function : PutText(text : String) ~ String {
+			out := "";
+
+			each(i : text) {
+				cur_char := text->Get(i);
+				select(cur_char) {
+					label '\t' {
+						out += "\\t";
+					}
+
+					label '\r' {
+						out += "\\r";
+					}
+
+					label '\n' {
+						out += "\\n";
+					}
+
+					label '\\' {
+						out += "\\\\";
+					}
+
+					label '"' {
+						out += "\\\"";
+					}
+
+					other {
+						out += cur_char;
+					}
+				};
+			};
+
+			return out;
+		}
+
+		function : GetText(text : String) ~ String {
+			out := "";
+
+			each(i : text) {
+				cur_char := text->Get(i);
+				next_char := '\0';
+				if(i + 1 < text->Size()) {
+					next_char := text->Get(i + 1);
+				};
+
+				if(cur_char = '\\') {
+					select(next_char) {
+						label 't' {
+							out += '\t';
+							i += 1;
+						}
+
+						label 'r' {
+							out += '\r';
+							i += 1;
+						}
+
+						label 'n' {
+							out += '\n';
+							i += 1;
+						}
+
+						label '\\' {
+							out += '\\';
+							i += 1;
+						}
+
+						label '"' {
+							out += '"';
+							i += 1;
+						}
+
+						other {
+							out += cur_char;
+						}
+					};
+				}
+				else {
+					out += cur_char;
+				};
+			};
+
+			return out;
+		}
+
+		method : DumpDocument() ~ Nil {
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("TEXT='{$@text}'");
+			};
+		}
+	}
+
+	#~
+	Handles JSON-RPC requests
+	~#
+	class : private : RpcRequest {
+		@id : Int;
+		@mthd : String;
+		@params : JsonElement;
+		@is_debug : Bool;
+
+		New(id : Int, mthd : String, params : JsonElement) {
+			@id := id;
+			@mthd := mthd;
+			@params := params;
+			@is_debug := true;
+		}
+
+		method : public : GetId() ~ Int {
+			return @id;
+		}
+
+		method : public : GetMethod() ~ String {
+			return @mthd;
+		}
+
+		method : public : GetParams() ~ JsonElement {
+			return @params;
+		}
+	}
+}

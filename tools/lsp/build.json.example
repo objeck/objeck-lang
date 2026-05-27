@@ -1,0 +1,11 @@
+{
+	"files": [
+		"main.obs"
+	],
+	"libs": [
+		"gen_collect.obl",
+		"net.obl",
+		"json.obl"
+	],
+	"flags": ""
+}

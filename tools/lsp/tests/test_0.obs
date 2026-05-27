@@ -1,0 +1,54 @@
+class Hello {
+	New(a : Int) {
+		@a := a;
+	}
+
+	function : Main(args : String []) ~ Nil {
+		a := 13;
+		a->PrintLine();
+		b := 1 +2 / 3;
+
+		if(a >= 1) {
+			a *= 3;
+		};
+		z := a + b;
+		select(a) {
+			label 5: {
+				a := 45;
+			}
+
+			label 6: {
+				a := 45;
+			}
+
+			other {
+				a := 12;
+			}
+		};
+
+		each(i : b) {
+			13->PrintLine();
+			break;
+		};
+
+		Foo(2, 3);
+		Bar(b);
+		"Hello 	 World"->PrintLine();
+		0x34->PrintLine();
+
+		c := '\u0444';
+		c->Size()->PrintLine();
+	}
+
+	function : Bar(a : Int) ~ Int {
+		return a * 5;
+	}
+
+	function : Foo(a : Int, b : Int) ~ Int {
+		return 13 + 7;
+	}
+
+	method : private : Get() ~ Float {
+		return 3.145;
+	}
+}

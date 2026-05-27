@@ -1,0 +1,13 @@
+{
+	"files": [
+		"scanner.obs",
+		"formatter.obs",
+		"test.obs"
+	],
+	"libs": [
+		"gen_collect.obl",
+		"regex.obl",
+		"misc.obl"
+	],
+	"flags": ""
+}

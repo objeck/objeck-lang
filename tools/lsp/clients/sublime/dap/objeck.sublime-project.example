@@ -1,0 +1,35 @@
+// Example .sublime-project for debugging Objeck programs in Sublime.
+//
+// Save as `<your-project>.sublime-project` and open via
+// Project > Open Project. Then `Debugger > Start` to launch.
+//
+// Requires:
+//  - The Sublime "Debugger" package installed via Package Control
+//  - clients/sublime/dap/objeck_dap_adapter.py installed in
+//    Packages/Objeck/ (the install.sh / install.cmd script does this)
+//  - Compile your .obs source with debug symbols:
+//      obc -src myprog.obs -debug
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "debugger_configurations": [
+        {
+            "name": "Debug current Objeck file",
+            "type": "objeck",
+            "request": "launch",
+            "program": "${folder}/${file_base_name}.obe",
+            "sourceDir": "${folder}"
+        },
+        {
+            "name": "Debug myprog.obe",
+            "type": "objeck",
+            "request": "launch",
+            "program": "${folder}/myprog.obe",
+            "sourceDir": "${folder}",
+            "args": ""
+        }
+    ]
+}

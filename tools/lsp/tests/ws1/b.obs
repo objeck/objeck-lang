@@ -1,0 +1,31 @@
+class FooBar {
+	New() {
+		
+	}
+}
+
+enum Fie {
+	ONE,
+	TWO,
+	THREE
+}
+
+class ValueRef {
+	@value : Int;
+
+	New(value : Int) {
+		@value := GetValue(3);
+	}
+
+	method : public : GetValue(a : Int) ~ Int {
+		return @value / a;
+	}
+}
+
+enum Foo {
+	A, B, C
+}
+
+consts Bar {
+	A := 18, B := 9, C := 99
+}

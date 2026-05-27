@@ -1,0 +1,657 @@
+use System.IO.Filesystem;
+use Collection;
+
+class CodeFormatter {
+	@token : Token;
+	@prev_token : Token;
+	@next_token : Token;
+	@skip_space : Bool;
+
+	@stmt_space : Bool;
+	@ident_space : Int;
+
+	@buffer : String;
+	@start_range : Int;
+	@end_range : Int;
+
+	@trim_trailing : Bool;
+
+	New(options : Map<String, String>) {
+		# get options
+		stmt_space_check := options->Find("function-space");
+		@stmt_space := stmt_space_check <> Nil & stmt_space_check->Equals("true");
+
+		# trim trailing
+		trim_trailing_check := options->Find("trim-trailing");
+		@trim_trailing := trim_trailing_check <> Nil & trim_trailing_check->Equals("true");
+
+		@ident_space := 0;
+		ident_space_check := options->Find("ident-space");
+		if(ident_space_check <> Nil & <>ident_space_check->IsEmpty()) {
+			@ident_space := ident_space_check->ToInt() - 1;
+		};
+		
+		# get start and end range
+		@start_range := -1;
+		start_line_check := options->Find("start-line");
+		if(start_line_check <> Nil & <>start_line_check->IsEmpty()) {
+			@start_range := start_line_check->ToInt();
+		};
+
+		@end_range := -1;
+		end_line_check := options->Find("end-line");
+		if(end_line_check <> Nil & <>end_line_check->IsEmpty()) {
+			@end_range := end_line_check->ToInt();
+		};
+
+# "ranges: ({$@start_range},{$@end_range})"->PrintLine();
+
+		@buffer := "";
+	}
+
+	method : AppendBuffer(str : String) ~ Nil {
+		if(InRange()) {
+			if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
+				@buffer->Pop();
+			};
+
+			@buffer += str;
+		};
+	}
+
+	method : AppendBuffer(char : Char) ~ Nil {
+		if(InRange()) {
+			if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
+				@buffer->Pop();
+			};
+
+			@buffer += char;
+		};
+	}
+
+	method : PopBuffer() ~ Nil {
+		if(InRange()) {
+			@buffer->Pop();
+		};
+	}
+
+	method : InRange() ~ Bool {
+		return (@start_range < 0 & @end_range < 0) | (@token <> Nil & @start_range <= @token->GetLine() & @end_range >= @token->GetLine());
+	}	
+
+	method : public : Format(source : String) ~ String {
+		scanner := Scanner->New(source);
+		if(scanner->Scan()) {
+			tab_space := 0;
+			insert_tabs := false;
+
+			@skip_space := false;
+			in_label := false;
+			in_for := false;
+			in_consts := false;
+			in_new := false;
+
+			@prev_token := Token->New(-1, Token->Type->OTHER, "other");
+
+			tokens := scanner->GetTokens();
+			each(i : tokens) {
+				if(insert_tabs) {
+					TabSpace(tab_space, @ident_space);
+					insert_tabs := false;
+				};
+
+				# set current, previous and next tokens
+				if(@token <> Nil) {
+					@prev_token := @token;
+				};
+
+				if(@next_token <> Nil) {
+					@token := @next_token;
+				}
+				else {
+					@token := tokens->Get(i);
+				};
+
+				if(i + 1 < tokens->Size()) {
+					@next_token := tokens->Get(i + 1);
+				}
+				else {
+					@next_token := Token->New(-1, Token->Type->OTHER, "other");
+				};
+				
+				select(@token->GetType()) {
+					label Token->Type->CLASS_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
+						AppendBuffer("class");
+					}
+
+					label Token->Type->FUNCTION_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
+
+						AppendBuffer("function");
+					}
+
+					label Token->Type->METHOD_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
+						AppendBuffer("method");
+					}
+
+					label Token->Type->PUBLIC_ID {
+						AppendBuffer("public");
+					}
+
+					label Token->Type->PRIVATE_ID {
+						AppendBuffer("private");
+					}
+
+					label Token->Type->IF_ID {
+						AppendBuffer("if");
+					}
+
+					label Token->Type->ELSE_ID {
+						AppendBuffer('\n');
+						TabSpace(tab_space, @ident_space);
+						AppendBuffer("else");
+					}					
+
+					label Token->Type->DO_ID {
+						AppendBuffer("do");
+					}
+
+					label Token->Type->WHILE_ID {
+						AppendBuffer("while");
+					}
+
+					label Token->Type->FOR_ID {
+						AppendBuffer("for");
+						in_for := true;
+					}
+
+					label Token->Type->EACH_ID {
+						AppendBuffer("each");
+					}
+
+					label Token->Type->BREAK_ID {
+						AppendBuffer("break");
+					}
+
+					label Token->Type->CONTINUE_ID {
+						AppendBuffer("continue");
+					}
+
+					label Token->Type->RETURN_ID {
+						AppendBuffer("return");
+					}
+
+					label Token->Type->ALIAS_ID {
+						AppendBuffer("alias");
+					}
+
+					label Token->Type->LEAVING_ID {
+						AppendBuffer("leaving");
+					}
+
+					label Token->Type->USE_ID {
+						AppendBuffer("use");
+					}
+
+					label Token->Type->NATIVE_ID {
+						AppendBuffer("native");
+					}
+
+					label Token->Type->STATIC_ID {
+						AppendBuffer("static");
+					}
+
+					label Token->Type->SELECT_ID {
+						AppendBuffer("select");
+					}
+
+					label Token->Type->LABEL_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
+						AppendBuffer("label");
+						in_label := true;
+						@skip_space := false;
+					}
+
+					label Token->Type->OTHER_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
+						AppendBuffer("other");
+						in_label := true;
+						@skip_space := false;
+					}
+
+					label Token->Type->OTHERWISE_ID {
+						VerticalSpace(@prev_token, tab_space, @ident_space);
+						AppendBuffer("otherwise");
+						in_label := true;
+						@skip_space := false;
+					}
+
+					label Token->Type->ASGN {
+						AppendBuffer(":=");
+					}
+
+					label Token->Type->ASSESSOR {
+						PopBuffer();
+						AppendBuffer("->");
+					}
+
+					label Token->Type->LINE_COMMENT {
+						AppendBuffer('#');
+						AppendBuffer(@token->GetValue());
+						AppendBuffer('\n');
+						@skip_space := insert_tabs := true;
+					}
+
+					label Token->Type->MULTI_COMMENT {
+						AppendBuffer("#~");
+						AppendBuffer(@token->GetValue());
+						AppendBuffer("~#");
+					}
+
+					label Token->Type->SEMI {
+						PopBuffer();
+						AppendBuffer(';');
+
+						if(@next_token->GetType() <> Token->Type->CCBRACE & @next_token->GetType() <> Token->Type->VTAB & <>in_for) {
+							AppendBuffer('\n');
+							
+							@skip_space := true;
+							if(<>in_for) {
+								insert_tabs := true;
+							};
+						};
+
+						in_new := false;
+					}
+
+					label Token->Type->LESS {
+						AppendBuffer('<');
+						@skip_space := true;
+					}
+
+					label Token->Type->GTR {
+						if(in_new) {
+							PopBuffer();
+						};
+
+						AppendBuffer('>');
+					}
+
+					label Token->Type->COMMA {
+						PopBuffer();
+						AppendBuffer(',');
+
+						if(in_consts) {
+							AppendBuffer('\n');
+							insert_tabs := @skip_space := true;
+						};
+					}
+
+					label Token->Type->NEQL {
+						AppendBuffer("<>");
+					}
+
+					label Token->Type->AND {
+						AppendBuffer('&');
+					}
+
+					label Token->Type->OR {
+						AppendBuffer('|');
+					}
+
+					label Token->Type->QUESTION {
+						AppendBuffer('?');
+					}
+
+					label Token->Type->IDENT {
+						if(@prev_token->GetType() = Token->Type->ASSESSOR | 
+								@prev_token->GetType() = Token->Type->ADD_ADD | 
+								@prev_token->GetType() = Token->Type->SUB_SUB) {
+							PopBuffer();
+						};
+						value := @token->GetValue();
+						AppendBuffer("{$value}");
+					}
+
+					label Token->Type->STRING_LIT {
+						AppendBuffer('"');
+						AppendBuffer(@token->GetValue());
+						AppendBuffer('"');
+					}
+
+					label Token->Type->CHAR_LIT {
+						AppendBuffer('\'');
+						AppendBuffer(@token->GetValue());
+						AppendBuffer('\'');
+					}
+
+					label Token->Type->NUM_LIT {
+						AppendBuffer(@token->GetValue());
+					}
+
+					label Token->Type->STRING_ID {
+						AppendBuffer("String");
+					}
+
+					label Token->Type->INT_ID {
+						AppendBuffer("Int");
+					}
+
+					label Token->Type->FLOAT_ID {
+						AppendBuffer("Float");
+					}
+
+					label Token->Type->CHAR_ID {
+						AppendBuffer("Char");
+					}
+
+					label Token->Type->BOOL_ID {
+						AppendBuffer("Bool");
+					}
+
+					label Token->Type->BYTE_ID {
+						AppendBuffer("Byte");
+					}
+
+					label Token->Type->NIL_ID {
+						AppendBuffer("Nil");
+					}
+
+					label Token->Type->AND_ID {
+						AppendBuffer("and");
+					}
+
+					label Token->Type->OR_ID {
+						AppendBuffer("or");
+					}
+
+					label Token->Type->XOR_ID {
+						AppendBuffer("xor");
+					}
+
+					label Token->Type->VIRTUAL_ID {
+						AppendBuffer("virtual");
+					}
+
+					label Token->Type->BUNDLE_ID {
+						AppendBuffer("bundle");
+					}
+
+					label Token->Type->INTERFACE_ID {
+						AppendBuffer("interface");
+					}
+
+					label Token->Type->IMPLEMENTS_ID {
+						AppendBuffer("implements");
+					}
+
+					label Token->Type->ENUM_ID {
+						AppendBuffer("enum");
+					}
+
+					label Token->Type->CONSTS_ID {
+						in_consts := true;
+						AppendBuffer("consts");
+					}
+
+					label Token->Type->REVERSE_ID {
+						AppendBuffer("reverse");
+					}
+
+					label Token->Type->PARENT_ID {
+						AppendBuffer("parent");
+					}
+
+					label Token->Type->FROM_ID {
+						AppendBuffer("from");
+					}
+
+					label Token->Type->TRUE_ID {
+						AppendBuffer("true");
+					}
+
+					label Token->Type->FALSE_ID {
+						AppendBuffer("false");
+					}
+
+					label Token->Type->NEW_ID {
+						PopBuffer();
+						AppendBuffer("New");
+						@skip_space := in_new := true;
+					}
+
+					label Token->Type->AS_ID {
+						AppendBuffer("As");
+					}
+
+					label Token->Type->TYPE_OF_ID {
+						AppendBuffer("TypeOf");
+					}
+
+					label Token->Type->CRITICAL_ID {
+						AppendBuffer("critical");
+					}
+
+					label Token->Type->COLON {
+						if(in_label) {
+							PopBuffer();
+						};
+						AppendBuffer(':');
+					}
+
+					label Token->Type->ADD {
+						AppendBuffer('+');
+					}
+
+					label Token->Type->SUB {
+						AppendBuffer('-');
+					}
+
+					label Token->Type->MUL {
+						AppendBuffer('*');
+					}
+
+					label Token->Type->DIV {
+						AppendBuffer('/');
+					}
+
+					label Token->Type->MOD {
+						AppendBuffer('%');
+					}
+
+					label Token->Type->FWD_SLASH {
+						AppendBuffer('\'');
+					}
+
+					label Token->Type->EQL {
+						AppendBuffer('=');
+					}
+
+					label Token->Type->LESS_EQL {
+						AppendBuffer("<=");
+					}
+
+					label Token->Type->GTR_EQL {
+						AppendBuffer(">=");
+					}
+
+					label Token->Type->ADD_ASN {
+						AppendBuffer("+=");
+					}
+
+					label Token->Type->SUB_ASN {
+						AppendBuffer("-=");
+					}
+
+					label Token->Type->ADD_ADD {
+						AppendBuffer("++");
+					}
+
+					label Token->Type->SUB_SUB {
+						AppendBuffer("--");
+					}
+
+					label Token->Type->MUL_ASN {
+						AppendBuffer("*=");
+					}
+
+					label Token->Type->DIV_ASN {
+						AppendBuffer("/=");
+					}
+
+					label Token->Type->LAMBDA {
+						AppendBuffer("=>");
+					}
+
+					label Token->Type->TILDE {
+						AppendBuffer('~');
+					}
+
+					label Token->Type->OBRACE {
+						if(@prev_token->GetType() = Token->Type->IDENT) {
+							PopBuffer();
+						};
+						AppendBuffer('[');
+						@skip_space := true;
+					}
+
+					label Token->Type->CBRACE {
+						if(@prev_token->GetType() <> Token->Type->OBRACE) {
+							PopBuffer();
+						};
+						AppendBuffer(']');
+					}
+
+					label Token->Type->OPREN {
+						if(<>@stmt_space) {
+							select(@prev_token->GetType()) {
+								label Token->Type->IDENT
+								label Token->Type->IF_ID
+								label Token->Type->FOR_ID
+								label Token->Type->EACH_ID
+								label Token->Type->SELECT_ID
+								label Token->Type->WHILE_ID {
+									PopBuffer();
+								}
+							};
+						};
+
+						AppendBuffer('(');
+						@skip_space := true;
+					}
+
+					label Token->Type->CPREN {
+						if(@prev_token->GetType() <> Token->Type->OPREN) {
+							PopBuffer();
+						};
+
+						if(in_for) {
+							in_for := false;
+						};
+
+						AppendBuffer(')');
+					}
+
+					label Token->Type->OCBRACE {
+						AppendBuffer("{\n");
+						@skip_space := true;
+						tab_space += 1;
+						insert_tabs := true;
+
+						if(in_label) {
+							in_label := false;
+						};
+					}
+
+					label Token->Type->CCBRACE {
+						AppendBuffer('\n');
+						tab_space -= 1;
+						TabSpace(tab_space, @ident_space);
+						AppendBuffer('}'); # TODO: Fix me!
+
+						if(in_consts) {
+							in_consts := false;
+						};
+					}
+
+					label Token->Type->VTAB {
+						if(@next_token->GetType() <> Token->Type->CCBRACE) {
+							AppendBuffer("\n\n");
+							TabSpace(tab_space, @ident_space);
+							@skip_space := true;
+						};
+					}
+
+					other {
+						"--- OTHER ---"->ErrorLine();
+					}
+				};
+
+				if(<>@skip_space) {
+					AppendBuffer(' ');
+				}
+				else {
+					@skip_space := false;
+				};
+			};
+		};
+		
+		# clean up output
+		offset_start := 0;
+		each(i : @buffer) {
+			if(@buffer->Get(i) = '\n' | @buffer->Get(i) = '\r') {
+				offset_start += 1;
+			}
+			else {
+				break;
+			};
+		};
+
+		offset_end := 0;
+		reverse(i : @buffer) {
+			if(@buffer->Get(i) = ' ' | @buffer->Get(i) = '\t') {
+				offset_end += 1;
+			}
+			else {
+				break;
+			};
+		};
+
+		formatted := @buffer->SubString(offset_start, @buffer->Size() - offset_start - offset_end);
+		
+		if(@trim_trailing) {
+			formatted := formatted->Trim();
+		};
+
+		return formatted;
+	}
+
+	method : VerticalSpace(@prev_token : Token, tab_space : Int, @ident_space : Int) ~ Nil {
+		if(@prev_token->GetType() = Token->Type->CCBRACE) {
+			AppendBuffer("\n\n");
+			TabSpace(tab_space, @ident_space);
+			@skip_space := true;
+		};
+	}
+
+	method : TabSpace(tab_space : Int, @ident_space : Int) ~ Nil {
+		if(@ident_space > 0) {
+			c := c2 := ' ';
+# c := '·'; c2 := '•';
+			each(i : tab_space) {
+				
+				each(j : @ident_space) {
+					AppendBuffer(c);
+				};
+				AppendBuffer(c2);
+			};
+		}
+		else {
+			each(i : tab_space) {
+				AppendBuffer('\t');
+			};
+		};
+	}
+}
