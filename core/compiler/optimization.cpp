@@ -656,8 +656,16 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
       // look for conflicting jump offsets
     case instructions::LBL:
     case instructions::JMP:
-      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end() && 
+    case instructions::JMP_TABLE_SLOT:
+      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end() &&
          lbl_jmp_offsets.find(mthd_called_instr->GetOperand() + JUMP_OFF_INC) != lbl_jmp_offsets.end()) {
+        return false;
+      }
+      break;
+
+    case instructions::JMP_TABLE:
+      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand3()) != lbl_jmp_offsets.end() &&
+         lbl_jmp_offsets.find(mthd_called_instr->GetOperand3() + JUMP_OFF_INC) != lbl_jmp_offsets.end()) {
         return false;
       }
       break;
@@ -961,6 +969,14 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       lbl_jmp_offsets.insert(instr->GetOperand());
       break;
 
+    case JMP_TABLE:
+      lbl_jmp_offsets.insert(instr->GetOperand3());
+      break;
+
+    case JMP_TABLE_SLOT:
+      lbl_jmp_offsets.insert(instr->GetOperand());
+      break;
+
     default:
       break;
     }
@@ -1034,10 +1050,20 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
             break;
 
           case LBL:
-            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, mthd_called_instr->GetOperand() + jump_inline_offset, 
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, mthd_called_instr->GetOperand() + jump_inline_offset,
                                                                                      mthd_called_instr->GetOperand2()));
             break;
 
+          case JMP_TABLE:
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP_TABLE,
+              mthd_called_instr->GetOperand(), mthd_called_instr->GetOperand2(),
+              mthd_called_instr->GetOperand3() + jump_inline_offset));
+            break;
+
+          case JMP_TABLE_SLOT:
+            outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP_TABLE_SLOT,
+              mthd_called_instr->GetOperand() + jump_inline_offset));
+            break;
 
           default:
             outputs->AddInstruction(mthd_called_instr);
