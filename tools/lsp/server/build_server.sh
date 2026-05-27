@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OBJECK_ROOT=../../objeck-lang
+OBJECK_ROOT=${OBJECK_ROOT:-../../objeck-lang}
 
 export PATH=$PATH:$OBJECK_ROOT/core/release/deploy/bin
 export OBJECK_LIB_PATH=$OBJECK_ROOT/core/release/deploy/lib
