@@ -262,8 +262,21 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     // close file
     in.close();
 
+    // new format: [uncmp_size:4][zlib...]; old format: raw zlib (first byte = 0x78 CMF)
+    uint32_t uncmp_hint = 0;
+    const char* src;
+    uLong src_size;
+    if((uint8_t)buffer[0] == 0x78) {
+      src = buffer;
+      src_size = (uLong)buffer_size;
+    } else {
+      memcpy(&uncmp_hint, buffer, sizeof(uncmp_hint));
+      src = buffer + sizeof(uncmp_hint);
+      src_size = (uLong)(buffer_size - sizeof(uncmp_hint));
+    }
+
     uLong dest_len;
-    char* out = OutputStream::UncompressZlib(buffer, (uLong)buffer_size, dest_len);
+    char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
     if(!out) {
       std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
       exit(1);
