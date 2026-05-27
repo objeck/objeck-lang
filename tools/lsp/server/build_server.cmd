@@ -2,7 +2,8 @@
 SETLOCAL
 
 SET PORT=%1
-IF "%OBJECK_ROOT%"=="" SET OBJECK_ROOT=..\..\objeck-lang
+IF "%OBJECK_ROOT%"=="" SET OBJECK_ROOT=..\..\..
+
 
 cd /d %~dp0
 
