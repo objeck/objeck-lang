@@ -653,19 +653,17 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
       }
       break;
 
-      // look for conflicting jump offsets
+      // look for conflicting jump offsets (check that the shifted label won't land on an outer method label)
     case instructions::LBL:
     case instructions::JMP:
     case instructions::JMP_TABLE_SLOT:
-      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end() &&
-         lbl_jmp_offsets.find(mthd_called_instr->GetOperand() + JUMP_OFF_INC) != lbl_jmp_offsets.end()) {
+      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand() + jump_inline_offset) != lbl_jmp_offsets.end()) {
         return false;
       }
       break;
 
     case instructions::JMP_TABLE:
-      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand3()) != lbl_jmp_offsets.end() &&
-         lbl_jmp_offsets.find(mthd_called_instr->GetOperand3() + JUMP_OFF_INC) != lbl_jmp_offsets.end()) {
+      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand3() + jump_inline_offset) != lbl_jmp_offsets.end()) {
         return false;
       }
       break;
@@ -1201,6 +1199,9 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 
     case JMP_TABLE: {
       std::unordered_map<int, int>::iterator def_result = lbl_offsets.find((int)instr->GetOperand3());
+#ifdef _DEBUG
+      assert(def_result != lbl_offsets.end());
+#endif
       const long default_ip = (def_result != lbl_offsets.end()) ? (long)def_result->second : 0;
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP_TABLE,
         instr->GetOperand(), instr->GetOperand2(), default_ip));
@@ -1209,6 +1210,9 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
 
     case JMP_TABLE_SLOT: {
       std::unordered_map<int, int>::iterator slot_result = lbl_offsets.find((int)instr->GetOperand());
+#ifdef _DEBUG
+      assert(slot_result != lbl_offsets.end());
+#endif
       const long target_ip = (slot_result != lbl_offsets.end()) ? (long)slot_result->second : 0;
       outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP_TABLE_SLOT, target_ip));
     }
