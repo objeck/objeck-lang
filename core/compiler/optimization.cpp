@@ -1099,6 +1099,12 @@ IntermediateBlock* ItermediateOptimizer::CleanLabelsLocation(IntermediateBlock* 
     }
   }
 
+  // finalize merged label if consecutive LBLs ended the stream (no trailing non-LBL triggered SetOperand)
+  if(new_label_instr) {
+    new_label_instr->SetOperand((long)++new_label_id);
+    new_label_instr = nullptr;
+  }
+
   // update jump for redundant labels
   if(new_label_id != unconditional_label) {
     unconditional_label = new_label_id;

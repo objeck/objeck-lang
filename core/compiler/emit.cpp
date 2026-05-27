@@ -1009,6 +1009,14 @@ void IntermediateInstruction::Debug(size_t i) {
     }
     break;
 
+  case JMP_TABLE:
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"JMP_TABLE: base=" << operand << L", range=" << operand2 << L", default=" << operand3 << std::endl;
+    break;
+
+  case JMP_TABLE_SLOT:
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"JMP_TABLE_SLOT: target=" << operand << std::endl;
+    break;
+
   case OBJ_INST_CAST: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"OBJ_INST_CAST: to='" << klass->GetName() << L"', id=" << operand << std::endl;

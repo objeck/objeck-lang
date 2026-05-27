@@ -2533,12 +2533,14 @@ void JitAmd64::ProcessFloatSquareRoot([[maybe_unused]] StackInstr* instruction) 
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
-#ifdef _DEBUG_JIT
-  assert(left->GetType() == MEM_FLOAT);
-#endif
-
-  RegisterHolder* holder = GetXmmRegister();
-  move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
+  RegisterHolder* holder;
+  if(left->GetType() == REG_FLOAT) {
+    holder = left->GetRegister();
+  }
+  else {
+    holder = GetXmmRegister();
+    move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
+  }
   sqrt_xreg_xreg(holder->GetRegister(), holder->GetRegister());
   
   working_stack.push_front(new RegInstr(holder));
@@ -2551,12 +2553,14 @@ void JitAmd64::ProcessFloatRound([[maybe_unused]] StackInstr* instruction, wchar
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
-#ifdef _DEBUG_JIT
-  assert(left->GetType() == MEM_FLOAT);
-#endif
-
-  RegisterHolder* holder = GetXmmRegister();
-  move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
+  RegisterHolder* holder;
+  if(left->GetType() == REG_FLOAT) {
+    holder = left->GetRegister();
+  }
+  else {
+    holder = GetXmmRegister();
+    move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
+  }
   round_xreg_xreg(holder->GetRegister(), holder->GetRegister(), mode);
 
   working_stack.push_front(new RegInstr(holder));
@@ -3062,7 +3066,15 @@ void JitAmd64::loop(long offset)
 RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
 {
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
-  move_mem_xreg((long)left->GetOperand(), RBP, XMM0);
+  if(left->GetType() == REG_FLOAT) {
+    if(left->GetRegister()->GetRegister() != XMM0) {
+      move_xreg_xreg(left->GetRegister()->GetRegister(), XMM0);
+    }
+    ReleaseXmmRegister(left->GetRegister());
+  }
+  else {
+    move_mem_xreg((long)left->GetOperand(), RBP, XMM0);
+  }
 
 #ifdef _WIN64
   sub_imm_reg(32, RSP);
@@ -3094,10 +3106,26 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
 #endif
 
   move_xreg_mem(XMM1, TMP_XMM_1, RBP);
-  move_mem_xreg((long)left->GetOperand(), RBP, XMM1);
+  if(left->GetType() == REG_FLOAT) {
+    if(left->GetRegister()->GetRegister() != XMM1) {
+      move_xreg_xreg(left->GetRegister()->GetRegister(), XMM1);
+    }
+    ReleaseXmmRegister(left->GetRegister());
+  }
+  else {
+    move_mem_xreg((long)left->GetOperand(), RBP, XMM1);
+  }
 
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
-  move_mem_xreg((long)right->GetOperand(), RBP, XMM0);
+  if(right->GetType() == REG_FLOAT) {
+    if(right->GetRegister()->GetRegister() != XMM0) {
+      move_xreg_xreg(right->GetRegister()->GetRegister(), XMM0);
+    }
+    ReleaseXmmRegister(right->GetRegister());
+  }
+  else {
+    move_mem_xreg((long)right->GetOperand(), RBP, XMM0);
+  }
 
 #ifdef _WIN64
   sub_imm_reg(32, RSP);
