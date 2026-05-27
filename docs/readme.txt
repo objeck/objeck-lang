@@ -1,3 +1,16 @@
+Unreleased
+===
+AMD64 JIT trig/float crash fixes, inline optimizer jump-table fix, binary file integrity hardening, LSP consolidated into main repo.
+
+Unreleased
+- Fixed AMD64 JIT sin/cos/tan and related trig: x87 fsin/fcos/ftan replaced with call_xfunc for consistent cross-platform results
+- Fixed AMD64 JIT REG_FLOAT input crash in call_xfunc/sqrt/round (float register state corruption before dispatch)
+- Fixed inline optimizer: JMP_TABLE/JMP_TABLE_SLOT label operands not shifted by jump_inline_offset, causing select-heavy inlined methods to jump to ip=0
+- Fixed CleanLabelsLocation: end-of-stream overread on consecutive LBL nodes at end of instruction list
+- Fixed String->SubString crash on negative or zero length argument (#534)
+- Binary file hardening: [uncmp_size:4] prepended before zlib stream; compress2() at level 9; malloc replaces calloc; old format auto-detected via 0x78 CMF byte
+- LSP server consolidated into tools/lsp/ in main repo; CI build-lsp rewritten (Ubuntu, full toolchain, vsce package); publish-vscode job added for marketplace publishing
+
 v2026.5.3 (May 18, 2026)
 ===
 Three-tier select dispatch with native jump table (AMD64+ARM64), String->Split fix, spectralnorm fix and optimization.

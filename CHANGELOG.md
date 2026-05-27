@@ -2,6 +2,28 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+### Bug Fixes
+- **AMD64 JIT trig**: `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh` were using x87 `fsin`/`fcos`/`ftan` — replaced with `call_xfunc` to use the C runtime (consistent with ARM64 and the LOG/EXP fixes in v2026.5.3)
+- **AMD64 JIT float input**: `REG_FLOAT` as the source operand of `call_xfunc`/`sqrt`/`round` caused a crash due to incorrect register state when a float value was loaded from memory immediately before the dispatch
+- **Inline optimizer jump tables**: `InlineMethod` did not shift `JMP_TABLE`/`JMP_TABLE_SLOT` label operands by `jump_inline_offset` when inlining methods containing `select` jump tables, causing every slot to resolve to ip=0
+- **`CleanLabelsLocation` end-of-stream**: consecutive `LBL` nodes at the very end of an instruction list read one instruction past the end of the stream
+- **`CanInlineMethod` conflict check**: used the `JUMP_OFF_INC` constant instead of the actual `jump_inline_offset` accumulator, producing false-positive label conflicts that unnecessarily blocked inlining
+- **`String->SubString`**: crash on negative or zero length argument (#534)
+
+### Security / Performance
+- **Binary file integrity**: `.obe`/`.obl` files now store the uncompressed size as a 4-byte header before the zlib stream — eliminates the allocation guessing/doubling loop on load and lays the groundwork for future integrity checks
+- Switched from `compress()` (level 6) to `compress2()` at `Z_BEST_COMPRESSION` (level 9) — ~10–15% smaller binary files at no runtime cost
+- Replaced `calloc` with `malloc` in `CompressZlib`/`UncompressZlib` — removes wasteful zero-initialisation of buffers that are immediately overwritten by the codec
+- **Backward-compatible**: files in the old raw-zlib format (CMF byte `0x78`) are automatically detected and continue to load without recompilation
+
+### Infrastructure
+- Consolidated the `objeck-lsp` repository into `tools/lsp/` — LSP is tightly coupled to each toolchain build and must be updated with every release
+- Rewrote CI `build-lsp` job: Ubuntu runner, builds Linux x64 toolchain, compiles `objeck_lsp.obe` via `build_server.sh`, packages VS Code extension with `vsce`, assembles versioned `objeck-lsp_VERSION.zip`
+- Added `publish-vscode` CI job: publishes the VS Code extension to the marketplace on release using the `VSCE_PAT` secret
+- `build_server.sh` / `build_server.cmd`: `OBJECK_ROOT` is now configurable via environment variable (defaults to `../../..` relative to `tools/lsp/server/`)
+
 ## [v2026.5.3] - 2026-05-24
 
 ### New Features
