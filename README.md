@@ -59,9 +59,12 @@ obc hello && obr hello
 
 **v2026.5.3**
   * **JIT `select` dispatch** — dense integer `select` (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST — best strategy chosen automatically on AMD64 and ARM64
+  * **JIT trig/float fixes** — AMD64 x87 `fsin`/`fcos`/`ftan` replaced with `call_xfunc` for consistent cross-platform results; fixed `REG_FLOAT` register corruption crash in `call_xfunc`/`sqrt`/`round`
+  * **Binary file hardening** — 4-byte uncompressed-size header prepended to every `.obe`/`.obl`; level-9 zlib compression (~5% smaller); old format auto-detected via CMF byte for backward compatibility
+  * **LSP consolidated** — LSP server moved into main repo (`tools/lsp/`); CI rebuilds the server and VS Code extension on every release; `publish-vscode` job auto-publishes to the VS Code Marketplace
   * **API documentation overhaul** — bundle overview panels, 500+ inline code examples, global search index, two-column TOC, method badges, and anchor links across all 32 library pages
   * **ODBC improvements** — live SQLite integration test; transaction support (`Commit`/`Rollback`/`SetAutoCommit`) verified; `GetColumns` metadata
-  * **Bug fixes** — `HttpRequestHandler` Nil safety on dropped connections; `String->Split(Char)` trailing token fix; `bench_spectralnorm_native` JIT stack-balance fix
+  * **Bug fixes** — `String->Split(Char)` trailing token fix; `String->SubString` crash on negative/zero length; inline optimizer jump-table label shift fix; `CleanLabelsLocation` end-of-stream overread fix
   * **Performance** — `bench_spectralnorm_native` inner loop: incremental FP denominator eliminates per-element `I2F` conversions
 
 **v2026.5.2**
@@ -75,13 +78,6 @@ obc hello && obr hello
   * **Socket reliability** — `SO_REUSEADDR` on `TCPSocketServer::Bind()`; `IPSocket::Open()` falls through to next address on failure
   * **ARM64 Windows** — OpenCV and ONNX now fully supported on ARM64 Windows
   * **Improved release process** — self-contained Windows builds with committed nghttp2 libs; CI verifies all binaries and API docs on all platforms before publishing
-
-**v2026.4.3**
-  * **DAP debugger hover** — hovering an object shows `ClassName { field=val, ... }` with instance field expansion
-  * **DAP variable scopes** — Variables pane shows separate Locals, Instance, and Class scopes
-  * **Editor setup** — updated VS Code, Sublime Text, and gvim/Vim DAP+LSP setup for Windows, Linux, and macOS
-  * Bug fixes for DAP step-into crash, step-over/out scoping, stdout corruption, LSP crash on codeAction
-
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
