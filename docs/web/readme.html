@@ -58,12 +58,19 @@
       AI, networking, and vision — built in. Every release moves the stack forward.
     </p>
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem;">
-      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.5.2</a>
+      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.5.4</a>
       <a class="btn btn-secondary" href="getting_started.html">Quick Start</a>
       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
     </div>
 
     <!-- Changelog -->
+    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.4" style="color: inherit; text-decoration: none;">v2026.5.4</a></u></h3>
+    <ul>
+        <li><strong>Debugger test reliability</strong> &mdash; Windows CI debugger tests fixed; <code>.obe</code>/<code>.obl</code> format detection now correctly handles the edge case where a new-format size-header LSB collides with the <code>0x78</code> zlib CMF byte</li>
+        <li><strong>LSP shell script permissions</strong> &mdash; all <code>tools/lsp/</code> shell scripts now carry the execute bit in git, fixing <code>Permission denied</code> in the LSP release CI job</li>
+        <li><strong>Release workflow hardening</strong> &mdash; <code>git checkout -f master</code> prevents dirty-tree abort when committing <code>api.zip</code> from a tag-based build</li>
+    </ul>
+
     <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.3" style="color: inherit; text-decoration: none;">v2026.5.3</a></u></h3>
     <ul>
         <li><strong>JIT <code>select</code> dispatch</strong> &mdash; dense integer <code>select</code> (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST &mdash; best strategy chosen automatically on AMD64 and ARM64</li>
