@@ -824,7 +824,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin master
-          git checkout master
+          git checkout -f master
           cp /tmp/api.zip docs/api.zip
           git add docs/api.zip
           git diff --cached --quiet && echo "api.zip unchanged" || \
