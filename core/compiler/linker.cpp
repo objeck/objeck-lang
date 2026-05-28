@@ -739,11 +739,16 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     // close file
     in.close();
 
-    // new format: [uncmp_size:4][zlib...]; old format: raw zlib (first byte = 0x78 CMF)
+    // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
+    // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
+    // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
     uint32_t uncmp_hint = 0;
     const char* src;
     unsigned long src_size;
-    if((uint8_t)buffer[0] == 0x78) {
+    const bool zlib_at_4 = buffer_size >= 6 &&
+                            static_cast<uint8_t>(buffer[4]) == 0x78 &&
+                            (0x78u * 256u + static_cast<uint8_t>(buffer[5])) % 31u == 0u;
+    if(static_cast<uint8_t>(buffer[0]) == 0x78 && !zlib_at_4) {
       src = buffer;
       src_size = static_cast<unsigned long>(buffer_size);
     } else {
