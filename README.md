@@ -36,8 +36,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.5.2/objeck-linux-x64_2026.5.2.tgz
-tar xzf objeck-linux-x64_2026.5.2.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.5.4/objeck-linux-x64_2026.5.4.tgz
+tar xzf objeck-linux-x64_2026.5.4.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -56,6 +56,11 @@ obc hello && obr hello
 💡 **Examples**: [github.com/objeck/objeck-lang/programs](https://github.com/objeck/objeck-lang/tree/master/programs)
 
 ## What's New
+
+**v2026.5.4**
+  * **Debugger test reliability** — Windows CI debugger tests fixed; `.obe`/`.obl` format detection now correctly handles the edge case where a new-format size-header LSB collides with the `0x78` zlib CMF byte
+  * **LSP shell script permissions** — all `tools/lsp/` shell scripts now have execute bit set in git, fixing `Permission denied` in release CI
+  * **Release workflow** — `git checkout -f master` prevents dirty-tree abort when committing `api.zip` from a tag-based build
 
 **v2026.5.3**
   * **JIT `select` dispatch** — dense integer `select` (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST — best strategy chosen automatically on AMD64 and ARM64
@@ -83,7 +88,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.5.2](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.5.4](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
