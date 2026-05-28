@@ -30,7 +30,7 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ## Try It Online
 
-👉🏽 [playground.objeck.org](https://playground.objeck.org) — 33 demos across 7 categories, Monaco editor, no install required.
+👉🏽 [Playground](https://playground.objeck.org) — 33 demos across 7 categories, Monaco editor, no install required.
 
 ## Quick Start
 
@@ -238,7 +238,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
   - Full cross-platform coverage (Windows/Linux/macOS, x64/ARM64)
 
 **Editor Support:**
-- LSP plugins for [VSCode, Sublime, Kate, and more](https://github.com/objeck/objeck-lsp)
+- LSP plugins for [VSCode, Sublime, Kate, Neovim, Emacs, Helix, and more](tools/lsp/)
 - REPL for interactive development
 - API docs at [objeck.org](https://www.objeck.org)
 

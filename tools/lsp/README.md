@@ -7,8 +7,8 @@ Code intelligence for 7 editors across Windows, Linux, and macOS
 <hr/>
 
 <p align="center">
-  <a href="https://github.com/objeck/objeck-lsp/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lsp/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
-  <a href="https://github.com/objeck/objeck-lsp/releases"><img src="https://img.shields.io/github/v/release/objeck/objeck-lsp?sort=semver" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/github/v/release/objeck/objeck-lang?sort=date" alt="Latest Release"></a>
 </p>
 
 The Objeck LSP server brings code intelligence to the [Objeck](https://github.com/objeck/objeck-lang) programming language &mdash; diagnostics, completion, hover docs, go-to-definition, rename, formatting, and more. It runs on **Windows**, **Linux**, and **macOS** (AMD64 and ARM64).
@@ -54,7 +54,7 @@ Open the folder in your editor and the LSP server handles the rest.
 
 | Editor | Transport | Setup |
 |--------|-----------|-------|
-| **VS Code** | Named pipe | Install the [`.vsix` extension](https://github.com/objeck/objeck-lsp/releases), set install path in settings |
+| **VS Code** | Named pipe | Install the [`.vsix` extension](https://github.com/objeck/objeck-lang/releases/latest), set install path in settings |
 | **Sublime Text** | STDIO | Add config from [`clients/sublime/`](clients/sublime/) to LSP settings |
 | **Kate** | STDIO | Add server entry in LSP Client settings ([instructions](README.txt)) |
 | **ecode** | STDIO | Add server to [`lspclient.json`](README.txt) |
@@ -188,4 +188,4 @@ obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code
 - [Install Guide](docs/install_guide.html) &mdash; detailed setup for all editors
 - [README.txt](README.txt) &mdash; quick-reference setup instructions
 - [Objeck Language](https://github.com/objeck/objeck-lang) &mdash; compiler, runtime, and documentation
-- [Issues](https://github.com/objeck/objeck-lsp/issues) &mdash; bug reports and feature requests
+- [Issues](https://github.com/objeck/objeck-lang/issues) &mdash; bug reports and feature requests

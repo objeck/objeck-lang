@@ -1,8 +1,8 @@
 ;;; objeck-mode.el --- Major mode for Objeck with Eglot LSP support -*- lexical-binding: t; -*-
 
 ;; Author: Objeck Contributors
-;; URL: https://github.com/objeck/objeck-lsp
-;; Version: 2026.2.0
+;; URL: https://github.com/objeck/objeck-lang
+;; Version: 2026.5.3
 ;; Package-Requires: ((emacs "29.1"))
 
 ;;; Commentary:
