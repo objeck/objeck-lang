@@ -65,14 +65,12 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return true;
   }
 
-  // Auto-JIT: skip methods containing MTHD_CALL/DYN_MTHD_CALL.
-  // MTHD_CALL works for explicit 'native' methods via ProcessStackCallback +
-  // direct JIT-to-JIT calling, but auto-JIT'd library methods (String:Append,
-  // String:ToCharArray) crash due to callback interaction issues.
-  // DYN_MTHD_CALL has closure parameter handling issues.
+  // Auto-JIT: skip methods containing DYN_MTHD_CALL (closure parameter
+  // handling issues — prgm70/71 segfault with certain closure patterns).
+  // MTHD_CALL is now allowed: uses ProcessStackCallback the same way
+  // explicit 'native' methods do, which is already proven correct.
   for(long i = 0; i < callee->GetInstructionCount(); ++i) {
-    const InstructionType type = callee->GetInstruction(i)->GetType();
-    if(type == MTHD_CALL || type == DYN_MTHD_CALL) {
+    if(callee->GetInstruction(i)->GetType() == DYN_MTHD_CALL) {
       callee->SetJitAttempted();
       return false;
     }
