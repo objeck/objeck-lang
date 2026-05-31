@@ -120,6 +120,7 @@ run_objeck_bench "bench_matrix_multiply" "500" "$PERF_CSV"
 run_objeck_bench "bench_method_dispatch" ""    "$PERF_CSV"
 run_objeck_bench "bench_copy_prop"       ""    "$PERF_CSV"
 run_objeck_bench "bench_dead_code"       ""    "$PERF_CSV"
+run_objeck_bench "bench_tco"             ""    "$PERF_CSV"
 run_objeck_bench "bench_spectralnorm_native" "" "$PERF_CSV" 2>/dev/null || true
 echo ""
 

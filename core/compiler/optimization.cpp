@@ -228,6 +228,12 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(std::vector
     return inputs;
   }
 
+  // 0.5 - tail call optimization (s1+)
+#ifdef _DEBUG
+  GetLogger() << L"  Tail call optimization..." << std::endl;
+#endif
+  inputs = TailCallOpt(inputs);
+
   // single iteration for now; double iteration showed regression due to overhead
   const int num_iterations = 1;
 
@@ -262,6 +268,14 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(std::vector
       GetLogger() << L"  CSE..." << std::endl;
 #endif
       RunPass(inputs, [this](IntermediateBlock* b) { return CSE(b); });
+    }
+
+    // 1.65 - loop-invariant code motion (s2+)
+    if(optimization_level > 1) {
+#ifdef _DEBUG
+      GetLogger() << L"  LICM..." << std::endl;
+#endif
+      RunPass(inputs, [this](IntermediateBlock* b) { return LICM(b); });
     }
 
     // 1.7 - fold integers (s1+)
@@ -2134,5 +2148,374 @@ IntermediateBlock* ItermediateOptimizer::DeadBlockElimination(IntermediateBlock*
   }
 
   return outputs;
+}
+
+//
+// ------------------- Tail Call Optimization -------------------
+//
+// Calling convention recap:
+//   Caller pushes: [arg0, arg1, ..., argN-1, instance]  (instance on TOP)
+//   MTHD_CALL: pops instance, gives callee stack [arg0..argN-1]
+//   Callee prologue: STOR slot[N-1], ..., STOR slot[0]  (pops all args)
+//
+// TCO approach: insert LBL tco_body AFTER the prologue STORs in the first block.
+// At each tail-call site, replace MTHD_CALL+RTRN with:
+//   POP_INT              (discard the new instance — same object, reuse frame's mem[0])
+//   STOR slot[N-1] LOCL  (mirror prologue: store arg N-1)
+//   ...
+//   STOR slot[0]   LOCL
+//   JMP tco_body         (jump past the prologue into the body)
+//
+std::vector<IntermediateBlock*> ItermediateOptimizer::TailCallOpt(std::vector<IntermediateBlock*> inputs)
+{
+  const std::wstring mthd_name = current_method->GetName();
+
+  // skip: Main, constructors, and/or methods, virtual methods
+  if(mthd_name.find(L":Main:") != std::wstring::npos ||
+     mthd_name.find(L":New:") != std::wstring::npos ||
+     current_method->HasAndOr() ||
+     current_method->IsVirtual()) {
+    return inputs;
+  }
+
+  // skip methods with exception handling — TCO would escape the try frame
+  for(auto& block : inputs) {
+    for(auto* instr : block->GetInstructions()) {
+      if(instr->GetType() == TRY_START) {
+        return inputs;
+      }
+    }
+  }
+
+  // collect the prologue STOR sequence from the first block
+  // (initial unbroken run of STOR_*_VAR LOCL = param setup)
+  std::vector<IntermediateInstruction*> prologue;
+  if(!inputs.empty()) {
+    for(auto* instr : inputs[0]->GetInstructions()) {
+      if((instr->GetType() == STOR_INT_VAR || instr->GetType() == STOR_FLOAT_VAR ||
+          instr->GetType() == STOR_FUNC_VAR) && instr->GetOperand2() == LOCL) {
+        prologue.push_back(instr);
+      }
+      else {
+        break;
+      }
+    }
+  }
+
+  const int self_class_id = current_method->GetClass()->GetId();
+  const int self_method_id = current_method->GetId();
+  const int tco_body_label = ++unconditional_label;
+  bool found_tco = false;
+
+  // first pass: rewrite tail calls
+  std::vector<IntermediateBlock*> tco_outputs;
+  for(auto* block : inputs) {
+    IntermediateBlock* out_block = new IntermediateBlock;
+    std::vector<IntermediateInstruction*> instrs = block->GetInstructions();
+
+    for(size_t i = 0; i < instrs.size(); ++i) {
+      IntermediateInstruction* instr = instrs[i];
+
+      if(instr->GetType() == MTHD_CALL &&
+         instr->GetOperand() == self_class_id &&
+         instr->GetOperand2() == self_method_id &&
+         i + 1 < instrs.size() &&
+         instrs[i + 1]->GetType() == RTRN) {
+        // tail call: pop the instance (top of stack), re-store args to locals, jump to body
+        out_block->AddInstruction(
+          IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
+        for(auto* stor : prologue) {
+          out_block->AddInstruction(
+            IntermediateFactory::Instance()->MakeInstruction(cur_line_num, stor->GetType(),
+                                                             stor->GetOperand(), LOCL));
+        }
+        out_block->AddInstruction(
+          IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, tco_body_label, -1));
+        ++i; // consume the RTRN
+        found_tco = true;
+      }
+      else {
+        out_block->AddInstruction(instr);
+      }
+    }
+
+    tco_outputs.push_back(out_block);
+    delete block;
+  }
+
+  if(!found_tco) {
+    --unconditional_label; // reclaim unused label id
+    return tco_outputs;
+  }
+
+  // second pass: insert tco_body label after the prologue STORs in the first block
+  {
+    std::vector<IntermediateInstruction*> existing = tco_outputs[0]->GetInstructions();
+    IntermediateBlock* new_first = new IntermediateBlock;
+    // copy prologue STORs
+    for(size_t i = 0; i < prologue.size(); ++i) {
+      new_first->AddInstruction(existing[i]);
+    }
+    // insert the body label (TCO loops jump here)
+    new_first->AddInstruction(
+      IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, tco_body_label, 0));
+    // copy the rest of the body
+    for(size_t i = prologue.size(); i < existing.size(); ++i) {
+      new_first->AddInstruction(existing[i]);
+    }
+    delete tco_outputs[0];
+    tco_outputs[0] = new_first;
+  }
+
+#ifdef _DEBUG
+  GetLogger() << L"  TCO applied: " << current_method->GetName() << std::endl;
+#endif
+
+  return tco_outputs;
+}
+
+//
+// ------------------- Loop-Invariant Code Motion (LICM) -------------------
+//
+IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
+{
+  // RunPass deletes the input block after we return — never return input or delete it.
+  std::vector<IntermediateInstruction*> instrs = input->GetInstructions();
+
+  // build label-id → position map for back-edge detection
+  std::unordered_map<int, size_t> lbl_pos;
+  for(size_t i = 0; i < instrs.size(); ++i) {
+    if(instrs[i]->GetType() == LBL) {
+      lbl_pos[(int)instrs[i]->GetOperand()] = i;
+    }
+  }
+
+  // find natural loop back-edges: unconditional JMP targeting an earlier label
+  struct Loop { size_t header; size_t backedge; };
+  std::vector<Loop> loops;
+  for(size_t i = 0; i < instrs.size(); ++i) {
+    if(instrs[i]->GetType() == JMP && instrs[i]->GetOperand2() < 0) {
+      auto it = lbl_pos.find((int)instrs[i]->GetOperand());
+      if(it != lbl_pos.end() && it->second < i) {
+        loops.push_back({it->second, i});
+      }
+    }
+  }
+
+  // allocate a fresh LOCL int slot and update method metadata
+  auto alloc_int_slot = [this]() -> int {
+    int slot = (int)current_method->GetEntries()->GetParameters().size() +
+               (current_method->HasAndOr() ? 1 : 0);
+    current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
+    current_method->SetSpace(current_method->GetSpace() + (int)sizeof(INT64_VALUE));
+    return slot;
+  };
+
+  std::set<size_t> skip_pos;
+  std::map<size_t, std::vector<IntermediateInstruction*>> insert_before;
+
+  for(auto& loop : loops) {
+    const size_t lo = loop.header;
+    const size_t hi = loop.backedge;
+
+    // collect write counts for every LOCL slot written inside this loop
+    std::map<int, int> store_counts;
+    for(size_t i = lo; i <= hi; ++i) {
+      if(skip_pos.count(i)) continue;
+      auto* instr = instrs[i];
+      if(instr->GetOperand2() == LOCL) {
+        switch(instr->GetType()) {
+        case STOR_INT_VAR: case STOR_FLOAT_VAR: case STOR_FUNC_VAR:
+          store_counts[instr->GetOperand()]++;
+          break;
+        default:
+          break;
+        }
+      }
+    }
+
+    // collect LOCL slots written anywhere OUTSIDE this loop in the same block
+    std::set<int> outside_store_slots;
+    for(size_t i = 0; i < instrs.size(); ++i) {
+      if(i >= lo && i <= hi) continue;
+      if(skip_pos.count(i)) continue;
+      auto* instr = instrs[i];
+      if(instr->GetOperand2() == LOCL) {
+        switch(instr->GetType()) {
+        case STOR_INT_VAR: case STOR_FLOAT_VAR: case STOR_FUNC_VAR:
+          outside_store_slots.insert(instr->GetOperand());
+          break;
+        default:
+          break;
+        }
+      }
+    }
+
+    // === Pattern 1: LOAD_INT_VAR arr LOCL + LOAD_ARY_SIZE ===
+    // Hoist array-size reads when the array variable is loop-invariant.
+    std::map<int, int> arr_to_tmp; // arr_slot → tmp_slot (reuse per unique arr)
+    for(size_t i = lo; i + 1 <= hi; ++i) {
+      if(skip_pos.count(i) || skip_pos.count(i + 1)) continue;
+      auto* instr = instrs[i];
+      auto* next  = instrs[i + 1];
+
+      if(instr->GetType() == LOAD_INT_VAR && instr->GetOperand2() == LOCL &&
+         next->GetType()  == LOAD_ARY_SIZE &&
+         !store_counts.count(instr->GetOperand())) {
+        const int arr_slot = instr->GetOperand();
+
+        int tmp_slot;
+        auto existing = arr_to_tmp.find(arr_slot);
+        if(existing != arr_to_tmp.end()) {
+          tmp_slot = existing->second;
+        }
+        else {
+          tmp_slot = alloc_int_slot();
+          arr_to_tmp[arr_slot] = tmp_slot;
+          // emit: LOAD arr, LOAD_ARY_SIZE, STOR tmp — before the loop header
+          auto& pre = insert_before[lo];
+          pre.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR,  arr_slot, LOCL));
+          pre.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_ARY_SIZE));
+          pre.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,  tmp_slot, LOCL));
+        }
+
+        // replace the in-loop pair with a single load from the cached slot
+        skip_pos.insert(i);
+        skip_pos.insert(i + 1);
+        insert_before[i].push_back(
+          IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, tmp_slot, LOCL));
+        ++i; // skip LOAD_ARY_SIZE
+      }
+    }
+
+    // === Pattern 2: Loop-invariant arithmetic statements ===
+    // Detect stack-balanced pure-LOCL arithmetic ending in STOR_*_VAR.
+    int stack_depth = 0;
+    std::vector<size_t> stmt_idx;
+    bool stmt_safe = true;
+    std::set<int> stmt_loads; // LOCL slots read in this statement
+
+    auto reset_stmt = [&](size_t /* next */) {
+      stack_depth = 0;
+      stmt_idx.clear();
+      stmt_safe = true;
+      stmt_loads.clear();
+    };
+
+    for(size_t i = lo; i <= hi; ++i) {
+      if(skip_pos.count(i)) { reset_stmt(i + 1); continue; }
+      auto* instr = instrs[i];
+      InstructionType t = instr->GetType();
+
+      switch(t) {
+      case LOAD_INT_LIT:
+      case LOAD_CHAR_LIT:
+        stack_depth++;
+        stmt_idx.push_back(i);
+        break;
+
+      case LOAD_FLOAT_LIT:
+        stack_depth++;
+        stmt_idx.push_back(i);
+        break;
+
+      case LOAD_INT_VAR:
+        if(instr->GetOperand2() != LOCL) { stmt_safe = false; }
+        else { stmt_loads.insert(instr->GetOperand()); }
+        stack_depth++;
+        stmt_idx.push_back(i);
+        break;
+
+      case LOAD_FLOAT_VAR:
+        if(instr->GetOperand2() != LOCL) { stmt_safe = false; }
+        else { stmt_loads.insert(instr->GetOperand()); }
+        stack_depth++;
+        stmt_idx.push_back(i);
+        break;
+
+      // binary ops (pop 2, push 1)
+      case ADD_INT:      case SUB_INT:      case MUL_INT:      case DIV_INT:      case MOD_INT:
+      case BIT_AND_INT:  case BIT_OR_INT:   case BIT_XOR_INT:
+      case SHL_INT:      case SHR_INT:
+      case EQL_INT:      case NEQL_INT:     case LES_INT:      case GTR_INT:
+      case LES_EQL_INT:  case GTR_EQL_INT:
+      case AND_INT:      case OR_INT:
+        if(stack_depth < 2) { reset_stmt(i + 1); break; }
+        stack_depth--;
+        stmt_idx.push_back(i);
+        break;
+
+      case ADD_FLOAT:    case SUB_FLOAT:    case MUL_FLOAT:    case DIV_FLOAT:
+      case EQL_FLOAT:    case NEQL_FLOAT:   case LES_FLOAT:    case GTR_FLOAT:
+      case LES_EQL_FLOAT: case GTR_EQL_FLOAT:
+        if(stack_depth < 2) { reset_stmt(i + 1); break; }
+        stack_depth--;
+        stmt_idx.push_back(i);
+        break;
+
+      // conversion / unary ops (pop 1, push 1)
+      case I2F:    case F2I:
+      case BIT_NOT_INT:
+        if(stack_depth < 1) { reset_stmt(i + 1); break; }
+        stmt_idx.push_back(i);
+        break;
+
+      // statement end: STOR with depth 1 → LOCL slot
+      case STOR_INT_VAR:
+      case STOR_FLOAT_VAR: {
+        if(instr->GetOperand2() == LOCL && stack_depth == 1 &&
+           stmt_safe && !stmt_idx.empty()) {
+          const int stor_slot = instr->GetOperand();
+
+          bool can_hoist =
+            store_counts.count(stor_slot) && store_counts[stor_slot] == 1 &&
+            !outside_store_slots.count(stor_slot);
+
+          if(can_hoist) {
+            for(int s : stmt_loads) {
+              if(store_counts.count(s) && store_counts[s] > 0) {
+                can_hoist = false;
+                break;
+              }
+            }
+          }
+
+          if(can_hoist) {
+            auto& pre = insert_before[lo];
+            for(size_t idx : stmt_idx) {
+              pre.push_back(instrs[idx]);
+              skip_pos.insert(idx);
+            }
+            pre.push_back(instr);
+            skip_pos.insert(i);
+          }
+        }
+        reset_stmt(i + 1);
+        break;
+      }
+
+      default:
+        reset_stmt(i + 1);
+        break;
+      }
+    }
+  }
+
+  // build output block: inject hoisted instructions, omit hoisted originals
+  // always return a new block — RunPass owns and deletes the input
+  IntermediateBlock* licm_output = new IntermediateBlock;
+  for(size_t i = 0; i < instrs.size(); ++i) {
+    auto it = insert_before.find(i);
+    if(it != insert_before.end()) {
+      for(auto* h : it->second) {
+        licm_output->AddInstruction(h);
+      }
+    }
+    if(!skip_pos.count(i)) {
+      licm_output->AddInstruction(instrs[i]);
+    }
+  }
+
+  return licm_output;
 }
 

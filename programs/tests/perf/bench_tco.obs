@@ -1,0 +1,26 @@
+class BenchTco {
+	# Tail-recursive accumulator — TCO converts the recursive call to a JMP.
+	# Without TCO this stack-overflows at depth ~10k; with TCO it runs as a tight loop.
+	function : Sum(n : Int, acc : Int) ~ Int {
+		if(n = 0) {
+			return acc;
+		};
+		return Sum(n - 1, acc + n);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		n := 1000000;
+		if(args->Size() > 0) {
+			n := args[0]->ToInt();
+		};
+
+		# Repeat the recursion many times so the timing is measurable
+		iters := 200;
+		result := 0;
+		for(i := 0; i < iters; i += 1;) {
+			result := Sum(n, 0);
+		};
+
+		result->PrintLine();
+	}
+}

@@ -1,0 +1,38 @@
+class LicmTest {
+  # LICM Pattern 1: arr->Size() should be hoisted out of loop condition
+  function : ArraySizeTest() ~ Nil {
+    arr := Int->New[1000];
+    total := 0;
+    for(i := 0; i < arr->Size(); i += 1;) {
+      total += 1;
+    };
+    if(total = 1000) {
+      "PASS: LICM array size hoist"->PrintLine();
+    }
+    else {
+      "FAIL: LICM array size, expected 1000 got {$total}"->PrintLine();
+    };
+  }
+
+  # LICM Pattern 2: invariant arithmetic computation
+  function : InvariantArithTest() ~ Nil {
+    a := 6;
+    b := 7;
+    sum := 0;
+    for(i := 0; i < 100; i += 1;) {
+      sum += i;
+    };
+    result := a * b;  # computed outside loop already, but tests the optimizer doesn't break normal code
+    if(result = 42 & sum = 4950) {
+      "PASS: LICM invariant arith"->PrintLine();
+    }
+    else {
+      "FAIL: LICM arith, result={$result} sum={$sum}"->PrintLine();
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    ArraySizeTest();
+    InvariantArithTest();
+  }
+}
