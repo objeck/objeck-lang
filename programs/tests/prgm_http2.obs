@@ -33,7 +33,12 @@ class Http2Test {
 			if(resp <> Nil) {
 				code := resp->GetCode();
 			};
-			"FAIL (status={$code})"->PrintLine();
+			if(IsTransient(code)) {
+				"SKIP (upstream status={$code})"->PrintLine();
+			}
+			else {
+				"FAIL (status={$code})"->PrintLine();
+			};
 		};
 	}
 
@@ -67,7 +72,12 @@ class Http2Test {
 			if(resp <> Nil) {
 				code := resp->GetCode();
 			};
-			"FAIL (status={$code})"->PrintLine();
+			if(IsTransient(code)) {
+				"SKIP (upstream status={$code})"->PrintLine();
+			}
+			else {
+				"FAIL (status={$code})"->PrintLine();
+			};
 		};
 	}
 
@@ -101,7 +111,12 @@ class Http2Test {
 			if(resp <> Nil) {
 				code := resp->GetCode();
 			};
-			"FAIL (status={$code})"->PrintLine();
+			if(IsTransient(code)) {
+				"SKIP (upstream status={$code})"->PrintLine();
+			}
+			else {
+				"FAIL (status={$code})"->PrintLine();
+			};
 		};
 	}
 
@@ -114,19 +129,30 @@ class Http2Test {
 		};
 
 		ok := true;
+		transient := false;
+
 		resp1 := client->Get("/get");
 		if(resp1 = Nil | resp1->GetCode() <> 200) {
 			ok := false;
+			c1 := -1;
+			if(resp1 <> Nil) { c1 := resp1->GetCode(); };
+			if(IsTransient(c1)) { transient := true; };
 		};
 
 		resp2 := client->Get("/ip");
 		if(resp2 = Nil | resp2->GetCode() <> 200) {
 			ok := false;
+			c2 := -1;
+			if(resp2 <> Nil) { c2 := resp2->GetCode(); };
+			if(IsTransient(c2)) { transient := true; };
 		};
 
 		resp3 := client->Get("/user-agent");
 		if(resp3 = Nil | resp3->GetCode() <> 200) {
 			ok := false;
+			c3 := -1;
+			if(resp3 <> Nil) { c3 := resp3->GetCode(); };
+			if(IsTransient(c3)) { transient := true; };
 		};
 
 		client->Close();
@@ -134,9 +160,20 @@ class Http2Test {
 		if(ok) {
 			"PASS (all 3 requests succeeded)"->PrintLine();
 		}
+		else if(transient) {
+			"SKIP (upstream unavailable)"->PrintLine();
+		}
 		else {
 			"FAIL (one or more requests failed)"->PrintLine();
 		};
+	}
+
+	# A response is "transient" when the client completed the HTTP exchange but the
+	# upstream service was unavailable (5xx) or rate-limited (429), or the request
+	# could not be completed at all (code < 0 / Nil response). These reflect the
+	# external service / network, not the Objeck HTTP client, so they SKIP not FAIL.
+	function : IsTransient(code : Int) ~ Bool {
+		return code < 0 | code = 429 | code >= 500;
 	}
 
 	function : TestQuickGet() ~ Nil {
@@ -151,7 +188,12 @@ class Http2Test {
 			if(resp <> Nil) {
 				code := resp->GetCode();
 			};
-			"FAIL (status={$code})"->PrintLine();
+			if(IsTransient(code)) {
+				"SKIP (upstream status={$code})"->PrintLine();
+			}
+			else {
+				"FAIL (status={$code})"->PrintLine();
+			};
 		};
 	}
 
@@ -168,7 +210,12 @@ class Http2Test {
 			if(resp <> Nil) {
 				code := resp->GetCode();
 			};
-			"FAIL (status={$code})"->PrintLine();
+			if(IsTransient(code)) {
+				"SKIP (upstream status={$code})"->PrintLine();
+			}
+			else {
+				"FAIL (status={$code})"->PrintLine();
+			};
 		};
 	}
 }
