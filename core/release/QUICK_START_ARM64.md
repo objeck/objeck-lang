@@ -134,5 +134,4 @@ core/release/
 ## Additional Resources
 
 - [mbedTLS Build Instructions](../lib/crypto/BUILD_MBEDTLS_ARM64.md)
-- [ARM64 Build Fix Details](../lib/crypto/WINDOWS_ARM64_BUILD_FIX.md)
 - [Main README](../../readme.md)

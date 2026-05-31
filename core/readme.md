@@ -350,7 +350,7 @@ cd core/release
 ### Automated Testing (CI)
 
 **GitHub Actions** runs on every commit:
-- ✅ Linux x64, macOS x64/ARM64, Windows x64
+- ✅ Linux x64/ARM64, macOS ARM64, Windows x64/ARM64
 - ✅ 17 deployment tests + 10 regression tests
 - ✅ Multi-platform builds with caching
 
@@ -605,16 +605,16 @@ GC: Mark-and-sweep with generational collection
 
 ## Version Info
 
-**Current:** v2026.2.1
-**Released:** February 2026
+**Current:** v2026.6.0
+**Released:** May 2026
 **License:** BSD 3-Clause
 
 **Recent improvements:**
-- ARM64 JIT optimizations (11 fixes)
-- Memory manager O(1) lookups
-- mbedTLS crypto migration
-- Multi-platform CI with caching
-- Windows ARM64 support
+- Compiler TCO (tail-call optimization) and LICM (loop-invariant code motion)
+- Auto-JIT for `MTHD_CALL` with extended interpreter fast-path
+- Three-tier `select` dispatch (direct compare / linear scan / native jump table)
+- AMD64 JIT trig/float correctness fixes
+- Multi-platform CI (Linux x64/ARM64, macOS ARM64, Windows x64/ARM64)
 
 See [CHANGELOG.md](../CHANGELOG.md) for full history.
 

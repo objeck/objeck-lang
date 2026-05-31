@@ -1331,4 +1331,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on improving this archi
 
 ---
 
-*Last updated: February 2026 | Version: 2026.2.1*
+*Last updated: May 2026 | Version: 2026.6.0*
