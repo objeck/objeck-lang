@@ -13,6 +13,10 @@ jobs:
   build:
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
+    # Backstop so a hung test/step can never tie up a runner for the default
+    # 6 hours (per-test timeouts in run_regression.sh are the first line of
+    # defense; this caps the whole job).
+    timeout-minutes: 60
 
     strategy:
       fail-fast: false

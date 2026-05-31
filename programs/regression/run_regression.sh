@@ -24,6 +24,19 @@ mkdir -p "$RESULTS_DIR"
 PASS_COUNT=0
 FAIL_COUNT=0
 
+# Per-test wall-clock cap so a hung/infinite-loop test fails fast instead of
+# pinning the CI job until GitHub's 6-hour limit. Use GNU coreutils 'timeout'
+# (Linux) or 'gtimeout' (macOS+brew); degrade gracefully if neither exists.
+TEST_TIMEOUT=${TEST_TIMEOUT:-60}
+if command -v timeout >/dev/null 2>&1; then
+    TIMEOUT="timeout ${TEST_TIMEOUT}"
+elif command -v gtimeout >/dev/null 2>&1; then
+    TIMEOUT="gtimeout ${TEST_TIMEOUT}"
+else
+    TIMEOUT=""
+    echo "WARNING: no 'timeout'/'gtimeout' found — tests run without a per-test cap"
+fi
+
 echo "========================================"
 echo "  Objeck Regression Test Suite"
 echo "  Platform: $PLATFORM"
@@ -103,11 +116,19 @@ for test in *.obs; do
     # Per-test opt-out for auto-JIT (some analyzer tests hit a known
     # arm64 JIT bug; the marker keeps JIT coverage on for everything else).
     if grep -q '# JIT_DISABLE' "$test" 2>/dev/null; then
-        OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+        $TIMEOUT env OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     else
-        "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+        $TIMEOUT "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     fi
     RUN_EXIT=$?
+
+    # 124 = killed by 'timeout'. Always a hard FAIL — never let a hang masquerade
+    # as an expected runtime error (which only needs a non-zero exit + output).
+    if [ $RUN_EXIT -eq 124 ]; then
+        echo "  [FAIL] test timed out after ${TEST_TIMEOUT}s (possible hang / infinite loop)"
+        ((FAIL_COUNT++))
+        continue
+    fi
 
     if [ $EXPECT_RT_ERR -eq 1 ]; then
         # Runtime error expected — PASS if VM exited non-zero with output
