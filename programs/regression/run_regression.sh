@@ -23,6 +23,16 @@ mkdir -p "$RESULTS_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+FAILED_TESTS=()
+
+# Record a failure: print it, remember the test name + reason for the final
+# summary, and bump the counter. Keeps the end-of-run report from forcing the
+# reader to scroll back through hundreds of log lines to find what broke.
+record_fail() {
+    echo "  [FAIL] $1"
+    FAILED_TESTS+=("${NAME} — $1")
+    ((FAIL_COUNT++))
+}
 
 # Per-test wall-clock cap so a hung/infinite-loop test fails fast instead of
 # pinning the CI job until GitHub's 6-hour limit. Use GNU coreutils 'timeout'
@@ -96,37 +106,35 @@ for test in *.obs; do
                 echo "  [PASS] (compile error as expected)"
                 ((PASS_COUNT++))
             else
-                echo "  [FAIL] compiler produced no output — possible crash"
-                ((FAIL_COUNT++))
+                record_fail "compiler produced no output — possible crash"
             fi
         else
-            echo "  [FAIL] Compilation error"
+            record_fail "compilation error"
             cat "${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null | head -10
-            ((FAIL_COUNT++))
         fi
         continue
     fi
 
     if [ $EXPECT_ERR -eq 1 ]; then
-        echo "  [FAIL] should have failed to compile"
-        ((FAIL_COUNT++))
+        record_fail "should have failed to compile"
         continue
     fi
 
     # Per-test opt-out for auto-JIT (some analyzer tests hit a known
     # arm64 JIT bug; the marker keeps JIT coverage on for everything else).
+    SECONDS=0
     if grep -q '# JIT_DISABLE' "$test" 2>/dev/null; then
         $TIMEOUT env OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     else
         $TIMEOUT "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     fi
     RUN_EXIT=$?
+    ELAPSED=$SECONDS
 
     # 124 = killed by 'timeout'. Always a hard FAIL — never let a hang masquerade
     # as an expected runtime error (which only needs a non-zero exit + output).
     if [ $RUN_EXIT -eq 124 ]; then
-        echo "  [FAIL] test timed out after ${TEST_TIMEOUT}s (possible hang / infinite loop)"
-        ((FAIL_COUNT++))
+        record_fail "timed out after ${TEST_TIMEOUT}s (possible hang / infinite loop)"
         continue
     fi
 
@@ -134,22 +142,19 @@ for test in *.obs; do
         # Runtime error expected — PASS if VM exited non-zero with output
         OUT_SIZE=$(wc -c < "$RESULTS_DIR/${NAME}_output.txt" 2>/dev/null || echo 0)
         if [ $RUN_EXIT -ne 0 ] && [ "$OUT_SIZE" -gt 0 ]; then
-            echo "  [PASS] (runtime error as expected)"
+            echo "  [PASS] (runtime error as expected, ${ELAPSED}s)"
             ((PASS_COUNT++))
         elif [ $RUN_EXIT -eq 0 ]; then
-            echo "  [FAIL] should have failed at runtime"
-            ((FAIL_COUNT++))
+            record_fail "should have failed at runtime"
         else
-            echo "  [FAIL] VM produced no output — possible crash"
-            ((FAIL_COUNT++))
+            record_fail "VM produced no output — possible crash"
         fi
     elif [ $RUN_EXIT -eq 0 ]; then
-        echo "  [PASS]"
+        echo "  [PASS] (${ELAPSED}s)"
         ((PASS_COUNT++))
     else
-        echo "  [FAIL] Runtime error"
+        record_fail "runtime error (exit ${RUN_EXIT})"
         cat "$RESULTS_DIR/${NAME}_output.txt" 2>/dev/null | head -200
-        ((FAIL_COUNT++))
     fi
 done
 
@@ -160,5 +165,35 @@ echo ""
 echo "========================================"
 echo "  Results: $PASS_COUNT passed, $FAIL_COUNT failed"
 echo "========================================"
+
+# List exactly what failed so the reader never has to scroll the full log.
+if [ $FAIL_COUNT -gt 0 ]; then
+    echo ""
+    echo "Failed tests:"
+    for t in "${FAILED_TESTS[@]}"; do
+        echo "  ✗ ${t}"
+    done
+fi
+
+# Emit a GitHub Actions step summary when running in CI, so the pass/fail
+# breakdown (and the names of any failures) is visible on the run's summary
+# page without opening the raw job log.
+if [ -n "$GITHUB_STEP_SUMMARY" ]; then
+    {
+        echo "### Regression — ${PLATFORM}: ${PASS_COUNT} passed, ${FAIL_COUNT} failed"
+        if [ $FAIL_COUNT -gt 0 ]; then
+            echo ""
+            echo "| Result | Test — reason |"
+            echo "| :----: | :------------ |"
+            for t in "${FAILED_TESTS[@]}"; do
+                echo "| ❌ | ${t} |"
+            done
+        else
+            echo ""
+            echo "All regression tests passed ✅"
+        fi
+        echo ""
+    } >> "$GITHUB_STEP_SUMMARY"
+fi
 
 [ $FAIL_COUNT -eq 0 ] && exit 0 || exit 1

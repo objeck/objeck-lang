@@ -532,23 +532,9 @@ jobs:
             echo "threads_6.obe attempt $attempt failed, retrying..."
             sleep 2
           done
-
-          # HTTP/2 tests — SKIP gracefully when network/nghttp2 unavailable
-          http2_out=$($OBR ../../../../programs/tests/prgm_http2.obe 2>&1) || exit 1
-          echo "$http2_out"
-          if echo "$http2_out" | grep -q "FAIL"; then
-            echo "HTTP/2 test failures detected"
-            exit 1
-          fi
-
-          # HTTP/3 tests — SKIP gracefully when network/ngtcp2 unavailable or UDP blocked
-          http3_out=$($OBR ../../../../programs/tests/prgm_http3.obe 2>&1) || exit 1
-          echo "$http3_out"
-          if echo "$http3_out" | grep -q "FAIL"; then
-            echo "HTTP/3 test failures detected"
-            exit 1
-          fi
         fi
+        # NOTE: HTTP/2 and HTTP/3 tests are intentionally NOT here. They depend
+        # on live upstream servers and run as a separate non-gating step below.
 
     # ============================================
     # Regression Tests
@@ -583,6 +569,70 @@ jobs:
       working-directory: ./programs/regression
       shell: cmd
       run: run_debugger_tests.cmd ${{ matrix.arch }}
+
+    # ============================================
+    # Network Tests (quarantined / non-gating)
+    #
+    # HTTP/2 (nghttp2) and HTTP/3 (ngtcp2/QUIC) tests hit LIVE upstream servers
+    # and fail for reasons outside this repo: upstream 5xx/429, or UDP egress
+    # blocked on the runner. continue-on-error keeps a transient outage from
+    # reding the whole matrix; the step's own badge + the run summary still
+    # surface real regressions so they aren't silently ignored.
+    # ============================================
+
+    - name: Run network tests (non-gating)
+      if: matrix.platform == 'linux-x64'
+      continue-on-error: true
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      shell: bash
+      run: |
+        OBR="./obr"
+        status=0
+
+        {
+          echo "### Network tests (non-gating) — linux-x64"
+          echo ""
+          echo "| Result | Test | Note |"
+          echo "| :----: | :--- | :--- |"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        run_net() {
+          local name="$1" obe="$2" out
+          echo "=== $name ==="
+          if ! out=$("$OBR" "$obe" 2>&1); then
+            echo "$out"
+            echo "| ⚠️ | $name | VM exited non-zero (upstream/network?) |" >> "$GITHUB_STEP_SUMMARY"
+            status=1
+            return
+          fi
+          echo "$out"
+          if echo "$out" | grep -q "FAIL"; then
+            echo "| ❌ | $name | reported FAIL |" >> "$GITHUB_STEP_SUMMARY"
+            status=1
+          else
+            echo "| ✅ | $name | passed / skipped |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+        }
+
+        run_net "HTTP/2" ../../../../programs/tests/prgm_http2.obe
+        run_net "HTTP/3" ../../../../programs/tests/prgm_http3.obe
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+
+        if [ $status -ne 0 ]; then
+          echo "::warning::Network tests reported failures (non-gating); see run summary"
+        fi
+        # Exit non-zero so the step badge reflects reality; continue-on-error
+        # above keeps the overall job green.
+        exit $status
+
+    - name: Upload regression logs (on failure)
+      if: failure() && matrix.platform != 'windows-arm64'
+      uses: actions/upload-artifact@v6
+      with:
+        name: regression-logs-${{ matrix.platform }}
+        path: programs/regression/results/**
+        retention-days: 7
+        if-no-files-found: ignore
 
     # ============================================
     # API Documentation (Linux x64 only)
@@ -677,12 +727,33 @@ jobs:
     needs: build
     if: always()
     steps:
-      - name: Check build status
+      - name: Report build status
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ needs.build.result }}" = "success" ]; then
             echo "✅ All platform builds succeeded"
+            echo "### ✅ CI — all platform builds succeeded" >> "$GITHUB_STEP_SUMMARY"
             exit 0
-          else
-            echo "❌ Some platform builds failed"
-            exit 1
           fi
+
+          echo "❌ Build result: ${{ needs.build.result }}"
+          {
+            echo "### ❌ CI — build ${{ needs.build.result }}"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # fail-fast is off, so the rolled-up result hides which platforms
+          # broke. Ask the API for the specific failed matrix legs by name.
+          failed=$(gh run view "${{ github.run_id }}" --repo "${{ github.repository }}" \
+            --json jobs -q '.jobs[] | select(.conclusion=="failure") | .name' 2>/dev/null || true)
+          if [ -n "$failed" ]; then
+            echo "Failed jobs:"
+            echo "$failed" | sed 's/^/  ❌ /'
+            {
+              echo "| Failed job |"
+              echo "| :--------- |"
+              echo "$failed" | sed 's/.*/| & |/'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 1

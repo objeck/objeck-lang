@@ -41,6 +41,11 @@ if not exist "%RESULTS_DIR%" mkdir "%RESULTS_DIR%"
 set PASS_COUNT=0
 set FAIL_COUNT=0
 
+REM Accumulate failed test names+reasons in a file (robust string handling in
+REM batch); consumed for the end-of-run failed list and the CI step summary.
+set FAILED_FILE=%RESULTS_DIR%\_failed_list.txt
+if exist "%FAILED_FILE%" del "%FAILED_FILE%"
+
 echo ========================================
 echo   Objeck Regression Test Suite
 echo   Platform: %PLATFORM%
@@ -79,15 +84,18 @@ for %%f in (*.obs) do (
                 set /a PASS_COUNT+=1
             ) else (
                 echo   FAIL ^(compiler produced no output — possible crash^)
+                >>"%FAILED_FILE%" echo %%~nf - compiler produced no output ^(possible crash^)
                 set /a FAIL_COUNT+=1
             )
         ) else (
             echo   FAIL ^(compilation error^)
+            >>"%FAILED_FILE%" echo %%~nf - compilation error
             set /a FAIL_COUNT+=1
         )
     ) else (
         if defined EXPECT_ERR (
             echo   FAIL ^(should have failed to compile^)
+            >>"%FAILED_FILE%" echo %%~nf - should have failed to compile
             set /a FAIL_COUNT+=1
         ) else (
             REM Per-test opt-out for auto-JIT (mirrors the bash runner)
@@ -108,15 +116,18 @@ for %%f in (*.obs) do (
                         set /a PASS_COUNT+=1
                     ) else (
                         echo   FAIL ^(VM produced no output — possible crash^)
+                        >>"%FAILED_FILE%" echo %%~nf - VM produced no output ^(possible crash^)
                         set /a FAIL_COUNT+=1
                     )
                 ) else (
                     echo   FAIL ^(should have failed at runtime^)
+                    >>"%FAILED_FILE%" echo %%~nf - should have failed at runtime
                     set /a FAIL_COUNT+=1
                 )
             ) else (
                 if !RUN_RESULT! neq 0 (
                     echo   FAIL ^(runtime error^)
+                    >>"%FAILED_FILE%" echo %%~nf - runtime error ^(exit !RUN_RESULT!^)
                     set /a FAIL_COUNT+=1
                 ) else (
                     echo   PASS
@@ -131,6 +142,27 @@ echo.
 echo ========================================
 echo   Results: !PASS_COUNT! passed, !FAIL_COUNT! failed
 echo ========================================
+
+REM List exactly what failed so the reader never has to scroll the full log.
+if !FAIL_COUNT! gtr 0 (
+    echo.
+    echo Failed tests:
+    if exist "%FAILED_FILE%" for /f "usebackq delims=" %%l in ("%FAILED_FILE%") do echo   x %%l
+)
+
+REM Emit a GitHub Actions step summary when running in CI.
+if defined GITHUB_STEP_SUMMARY (
+    >>"%GITHUB_STEP_SUMMARY%" echo ### Regression - %PLATFORM%: !PASS_COUNT! passed, !FAIL_COUNT! failed
+    >>"%GITHUB_STEP_SUMMARY%" echo.
+    if !FAIL_COUNT! gtr 0 (
+        >>"%GITHUB_STEP_SUMMARY%" echo ^| Result ^| Test - reason ^|
+        >>"%GITHUB_STEP_SUMMARY%" echo ^| :----: ^| :------------ ^|
+        if exist "%FAILED_FILE%" for /f "usebackq delims=" %%l in ("%FAILED_FILE%") do >>"%GITHUB_STEP_SUMMARY%" echo ^| FAIL ^| %%l ^|
+    ) else (
+        >>"%GITHUB_STEP_SUMMARY%" echo All regression tests passed
+    )
+    >>"%GITHUB_STEP_SUMMARY%" echo.
+)
 
 if !FAIL_COUNT! gtr 0 exit /b 1
 exit /b 0
