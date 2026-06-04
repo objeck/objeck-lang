@@ -1,0 +1,16 @@
+# gitleaks configuration — see https://github.com/gitleaks/gitleaks
+# Extends the built-in ruleset; only adds project-specific allowlisting.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+Framework examples read credentials from local *_api_key.dat files. These files
+are excluded by .gitignore and any keys that ever landed in them have been
+rotated, so findings in those paths are not actionable. Real secrets elsewhere
+are still reported.
+"""
+paths = [
+  '''.*_api_key\.dat$''',
+]
