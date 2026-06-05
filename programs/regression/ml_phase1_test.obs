@@ -115,6 +115,28 @@ class MlPhase1Test {
 			pass := false;
 		};
 
+		# --- KMeans: k-means++ seeding recovers two clean clusters (3/3) ---
+		recs := Vector->New()<FloatArrayRef>;
+		recs->AddBack(FloatArrayRef->New([1.0, 1.0]));
+		recs->AddBack(FloatArrayRef->New([1.5, 0.5]));
+		recs->AddBack(FloatArrayRef->New([0.5, 1.5]));
+		recs->AddBack(FloatArrayRef->New([9.0, 9.0]));
+		recs->AddBack(FloatArrayRef->New([9.5, 8.5]));
+		recs->AddBack(FloatArrayRef->New([8.5, 9.5]));
+		km := KMeans->Group(["a", "b"], recs, 2, 0.0, 10.0, 100, 42);
+		km_total := 0;
+		km_ok := true;
+		for(i := 0; i < km->Size(); i += 1;) {
+			kg := km->Get(i);
+			if(kg->Size() <> 3) {
+				km_ok := false;
+			};
+			km_total += kg->Size();
+		};
+		if(km_total <> 6 | <>km_ok) {
+			pass := false;
+		};
+
 		if(pass) {
 			"PASS: ML phase1 tests"->PrintLine();
 		}

@@ -3255,10 +3255,27 @@ each(group in groups) {
 		@return labeled grouping
 		~#
 		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ KMeansGrouping {
-			# https://www.ibm.com/support/pages/how-does-k-mean-cluster-node-select-initial-records-clustering
-			centroids := InitalCentroids(group_labels, records, record_length, min_value, max_value);
-			updated_centroids := FloatArrayRef->New[group_labels->Size()];
-			
+			return Group(group_labels, records, record_length, min_value, max_value, 100, 1);
+		}
+
+		#~
+		K-Means clustering with k-means++ seeding (deterministic for a given seed),
+		an iteration cap, and explicit empty-cluster handling.
+		@param group_labels group labels; the count determines K
+		@param records input records (all of equal length)
+		@param record_length length of each record
+		@param min_value smallest record value (kept for API compatibility)
+		@param max_value largest record value (kept for API compatibility)
+		@param max_iterations hard cap on refinement iterations
+		@param seed PRNG seed for reproducible k-means++ initialization
+		@return labeled grouping
+		~#
+		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float, max_iterations : Int, seed : Int) ~ KMeansGrouping {
+			rand := Random->New(seed);
+			k := group_labels->Size();
+			centroids := KMeansPlusPlus(k, records, rand);
+			updated_centroids := FloatArrayRef->New[k];
+
 			groups := Hash->New()<String, Vector<FloatArrayRef>>;
 			each(centroid_label in group_labels) {
 				groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
@@ -3266,24 +3283,20 @@ each(group in groups) {
 
 			iter := 0;
 			has_changed := true;
-			while(has_changed) {
-				if(@debug) {
-					"=== {$iter} ==="->PrintLine();
-					iter += 1;
-				}
+			while(has_changed & iter < max_iterations) {
+				iter += 1;
 
 				each(datum in records) {
 					shortest_index := -1;
 					shortest_distance := Float->Inf();
-					
+
 					each(i : centroids) {
 						centroid := centroids[i];
-
 						distance := Distance(datum, centroid);
-						if(distance <= shortest_distance) {
+						if(distance < shortest_distance) {
 							shortest_distance := distance;
 							shortest_index := i;
-						}
+						};
 					};
 
 					nearest_centroid_label := group_labels[shortest_index];
@@ -3294,26 +3307,22 @@ each(group in groups) {
 				group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
 				each(i : group_key_values) {
 					group_key_value := group_key_values->Get(i);
-
-					group_label := group_key_value->GetFirst();
 					group := group_key_value->GetSecond();
-
-					if(@debug) {
-						group_size := group->Size();
-						"label='{$group_label}', size={$group_size}: {$group}"->PrintLine();
-					};
 
 					update := Average(group, record_length);
 					if(update <> Nil) {
 						updated_centroids[i] := update;
+					}
+					else {
+						# empty cluster: retain its previous centroid
+						updated_centroids[i] := centroids[i];
 					};
 				};
 
-				# update of centroids and rebuilding of buckets
 				has_changed := HasChanged(centroids, updated_centroids);
 				if(has_changed) {
 					centroids := updated_centroids;
-					updated_centroids := FloatArrayRef->New[group_labels->Size()];
+					updated_centroids := FloatArrayRef->New[k];
 
 					each(centroid_label in group_labels) {
 						if(groups->Remove(centroid_label)) {
@@ -3326,15 +3335,51 @@ each(group in groups) {
 			return KMeansGrouping->New(groups);
 		}
 
-		function : native : InitalCentroids(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ FloatArrayRef[] {
-			centroids := FloatArrayRef->New[group_labels->Size()];
+		# k-means++ seeding: the first center is a uniformly random record; each
+		# subsequent center is chosen with probability proportional to the squared
+		# distance from the nearest already-chosen center. Deterministic given rand.
+		function : native : KMeansPlusPlus(k : Int, records : Vector<FloatArrayRef>, rand : Random) ~ FloatArrayRef[] {
+			centroids := FloatArrayRef->New[k];
+			n := records->Size();
+			if(n = 0 | k = 0) {
+				return centroids;
+			};
 
-			each(i : centroids) {
-				random_values := Float->New[record_length];
-				each(j : random_values) {
-					random_values[j] := Float->Random(min_value + 0.001, max_value - 0.001);
+			first := rand->NextInt(n);
+			centroids[0] := records->Get(first);
+
+			chosen := 1;
+			while(chosen < k) {
+				dists := Float->New[n];
+				total := 0.0;
+				for(i := 0; i < n; i += 1;) {
+					datum := records->Get(i);
+					best := Float->Inf();
+					for(c := 0; c < chosen; c += 1;) {
+						d := Distance(datum, centroids[c]);
+						if(d < best) {
+							best := d;
+						};
+					};
+					dd := best * best;
+					dists[i] := dd;
+					total += dd;
 				};
-				centroids[i] := FloatArrayRef->New(random_values);
+
+				target := rand->NextReal() * total;
+				cum := 0.0;
+				pick := n - 1;
+				picked := false;
+				for(i := 0; i < n; i += 1;) {
+					cum += dists[i];
+					if(<>picked & cum >= target) {
+						pick := i;
+						picked := true;
+					};
+				};
+
+				centroids[chosen] := records->Get(pick);
+				chosen += 1;
 			};
 
 			return centroids;
@@ -3345,28 +3390,22 @@ each(group in groups) {
 				return false;
 			};
 
-			has_changed := false;
+			# Converged when every centroid coordinate moved less than the tolerance.
+			# Returns true as soon as any coordinate moved at least `tolerance`.
+			tolerance := 0.001;
 			each(i : old_centroids) {
-				temp := old_centroids[i];
-				if(temp = Nil) {
+				a := old_centroids[i];
+				b := new_centroids[i];
+				if(a = Nil | b = Nil) {
 					return false;
 				};
-				old_centroid_values := temp->Get();
+				a_values := a->Get();
+				b_values := b->Get();
 
-				temp := new_centroids[i];
-				if(temp = Nil) {
-					return false;
-				};
-				new_centroid_values := temp->Get();
-				
-				each(j : old_centroid_values) {
-					old_centroid_value := old_centroid_values[j];
-					new_centroid_value := new_centroid_values[j];
-
-					has_changed := Float->Abs(old_centroid_value - new_centroid_value) < 0.001;
-					if(<>has_changed) {
+				each(j : a_values) {
+					if(Float->Abs(a_values[j] - b_values[j]) >= tolerance) {
 						return true;
-					}
+					};
 				};
 			};
 
