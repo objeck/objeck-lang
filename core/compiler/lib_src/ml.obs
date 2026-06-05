@@ -2379,126 +2379,123 @@ matched_perc := (matched / possible * 100.0)->As(Int);
 ```
 	~#
 	class RandomForest {
-		@decisions : Vector<Split>;
 		@num_trees : Int;
+		@max_depth : Int;
+		@min_samples : Int;
+		@seed : Int;
+		@trees : Vector<DecisionTree>;
 
 		#~
-		Constructor
-		@param num_trees number of trees to generate
+		Constructor with default tree hyperparameters (max depth 8, min samples 1,
+		fixed seed for reproducible bootstrap sampling).
+		@param num_trees number of trees in the ensemble
+
+```
+forest := RandomForest->New(16);
+```
 		~#
 		New(num_trees : Int) {
 			@num_trees := num_trees;
+			@max_depth := 8;
+			@min_samples := 1;
+			@seed := 1;
 		}
 
-		New : private (num_trees : Int, decisions : Vector<Split>) {
-			@decisions := decisions;
+		#~
+		Constructor with explicit tree hyperparameters.
+		@param num_trees number of trees in the ensemble
+		@param max_depth maximum depth of each tree
+		@param min_samples minimum samples required to split a node
+		@param seed PRNG seed for reproducible bootstrap sampling
+		~#
+		New(num_trees : Int, max_depth : Int, min_samples : Int, seed : Int) {
 			@num_trees := num_trees;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@seed := seed;
 		}
 
 		#~
-		Calculates a list of decision splits
-		@param split_perc percentage of data to use for training
-		@param input training matrix
+		Trains the ensemble: builds num_trees decision trees, each fitted to its own
+		bootstrap sample (rows drawn with replacement) of the training data. Each row
+		is boolean features with the class label in the LAST column.
+		@param input training matrix (features..., label) of Bool
+
+```
+forest := RandomForest->New(16);
+forest->Train(data);
+preds := forest->Predict(data);
+```
 		~#
-		method : public : native : Train(split_perc : Float, input : BoolMatrixRef) ~ Nil {
-			Train(split_perc, input->Get());
-		}
+		method : public : Train(input : Bool[,]) ~ Nil {
+			@trees := Vector->New()<DecisionTree>;
+			rand := Random->New(@seed);
 
-		#~
-		Calculates a list of decision splits
-		@param split_perc percentage of data to use for training
-		@param input training matrix
-		~#
-		method : public : native : Train(split_perc : Float, input : Bool[,]) ~ Nil {
-			data := BoolMatrixRef->New(input);
-			best_match := 0.0;
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			ntrees := @num_trees;
 
-			each(i : @num_trees) {				
-				split_data := data->Split(split_perc);
-				training_data := split_data[0];
-				test_data := split_data[1];
-
-				decisions := DecisionTree->Train(training_data->Get());
-				result := DecisionTree->Query(decisions, test_data->Get());
-
-				possible := result->Rows()->As(Float);
-				acheived := DecisionTree->Matches(2, result)->As(Float);
-
-				outcome := acheived / possible;
-				if(outcome > best_match) {
-					best_match := outcome;
-					@decisions := decisions; 
+			for(t := 0; t < ntrees; t += 1;) {
+				sample := Bool->New[rows, cols];
+				for(i := 0; i < rows; i += 1;) {
+					pick := rand->NextInt(rows);
+					for(c := 0; c < cols; c += 1;) {
+						sample[i, c] := input[pick, c];
+					};
 				};
-				data := data->Bootstrap();
+
+				tree := DecisionTree->New(@max_depth, @min_samples);
+				tree->Fit(sample);
+				@trees->AddBack(tree);
 			};
 		}
 
 		#~
-		Splits a matrix based on a list of decisions
-		@param input matrix to be split
-		@return split matrix
+		Predicts class labels by majority vote across all trees (ties resolve to true).
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predicted classes
 		~#
-		method : public : native : Query(input : BoolMatrixRef) ~ Bool[,] {
-			return Query(input->Get());
-		}
+		method : public : Predict(input : Bool[,]) ~ Bool[] {
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
 
-		#~
-		Splits a matrix based on a list of decisions
-		@param input matrix to be split
-		@return split matrix
-		~#
-		method : public : native : Query(input : Bool[,]) ~ Bool[,] {
-			if(@decisions <> Nil) {
-				return DecisionTree->Query(@decisions, input);
+			result := Bool->New[rows];
+			if(@trees = Nil) {
+				return result;
 			};
+			ntrees := @trees->Size();
 
-			return Nil;
-		}
-
-		#~
-		Loads a saved random forest
-		@param filename file to store to
-		@return random forest
-		~#
-		function : Load(filename : String) ~ RandomForest {
-			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
-			if(data <> Nil) {
-				deserializer := System.IO.Deserializer->New(data);
-				
-				num_trees := deserializer->ReadInt();
-				
-				decisions := Vector->New()<Split>;
-				num_decisions := deserializer->ReadInt();
-				each(i : num_decisions) {
-					decisions->AddBack(deserializer->ReadObject()->As(Split));
+			for(i := 0; i < rows; i += 1;) {
+				row := Bool->New[cols];
+				for(c := 0; c < cols; c += 1;) {
+					row[c] := input[i, c];
 				};
 
-				return RandomForest->New(num_trees, decisions);
-			}
+				votes_true := 0;
+				for(t := 0; t < ntrees; t += 1;) {
+					tree := @trees->Get(t);
+					if(tree->Predict(row)) {
+						votes_true += 1;
+					};
+				};
 
-			return Nil;
+				result[i] := votes_true * 2 >= ntrees;
+			};
+
+			return result;
 		}
 
 		#~
-		Saves a random forest
-		@param filename file to save to
-		@return true if successful, false otherwise
+		Whether the ensemble has been trained.
+		@return true if trained
 		~#
-		method : public : Store(filename : String) ~ Bool {
-			if(@decisions <> Nil) {
-				serializer := System.IO.Serializer->New();
-
-				serializer->Write(@num_trees);
-				
-				serializer->Write(@decisions->Size());
-				each(decision : @decisions) {
-					serializer->Write(decision);
-				};
-
-				return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		method : public : IsFitted() ~ Bool {
+			if(@trees = Nil) {
+				return false;
 			};
-
-			return false;
+			return @trees->Size() > 0;
 		}
 	}
 

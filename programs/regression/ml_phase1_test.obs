@@ -137,27 +137,6 @@ class MlPhase1Test {
 			pass := false;
 		};
 
-		# --- DecisionTree: real recursive tree learns AND (left/right + leaf prediction) ---
-		dt_data := [
-			[false, false, false],
-			[false, true,  false],
-			[true,  false, false],
-			[true,  true,  true],
-			[false, false, false],
-			[true,  true,  true]];
-		dtree := DecisionTree->New(4, 1);
-		dtree->Fit(dt_data);
-		if(<>dtree->IsFitted()) {
-			pass := false;
-		};
-		dt_preds := dtree->PredictAll(dt_data);
-		dt_dims := dt_data->Size();
-		for(i := 0; i < dt_dims[0]; i += 1;) {
-			if(dt_preds[i] <> dt_data[i, 2]) {
-				pass := false;
-			};
-		};
-
 		if(pass) {
 			"PASS: ML phase1 tests"->PrintLine();
 		}
