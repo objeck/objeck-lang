@@ -2540,7 +2540,289 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 (acheived / possible)->PrintLine();
 ```
 	~#
+	#~
+	A node in a DecisionTree: either a leaf carrying a boolean prediction, or an
+	internal node that branches on a boolean feature (false -> left, true -> right).
+	~#
+	class TreeNode {
+		@is_leaf : Bool;
+		@prediction : Bool;
+		@feature : Int;
+		@left : TreeNode;
+		@right : TreeNode;
+
+		New : private (is_leaf : Bool, prediction : Bool, feature : Int) {
+			@is_leaf := is_leaf;
+			@prediction := prediction;
+			@feature := feature;
+		}
+
+		#~
+		Creates a leaf node.
+		@param prediction class the leaf predicts
+		@return leaf node
+		~#
+		function : NewLeaf(prediction : Bool) ~ TreeNode {
+			return TreeNode->New(true, prediction, -1);
+		}
+
+		#~
+		Creates an internal split node.
+		@param feature feature index to branch on
+		@return internal node
+		~#
+		function : NewInternal(feature : Int) ~ TreeNode {
+			return TreeNode->New(false, false, feature);
+		}
+
+		method : public : IsLeaf() ~ Bool { return @is_leaf; }
+		method : public : GetPrediction() ~ Bool { return @prediction; }
+		method : public : GetFeature() ~ Int { return @feature; }
+		method : public : GetLeft() ~ TreeNode { return @left; }
+		method : public : GetRight() ~ TreeNode { return @right; }
+		method : public : SetLeft(n : TreeNode) ~ Nil { @left := n; }
+		method : public : SetRight(n : TreeNode) ~ Nil { @right := n; }
+	}
+
 	class DecisionTree {
+		@root : TreeNode;
+		@max_depth : Int;
+		@min_samples : Int;
+
+		#~
+		Creates an (unfitted) decision tree classifier.
+		@param max_depth maximum tree depth
+		@param min_samples minimum samples required to split a node
+
+```
+tree := DecisionTree->New(4, 1);
+```
+		~#
+		New(max_depth : Int, min_samples : Int) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+		}
+
+		#~
+		Fits a real recursive binary tree to boolean training data. Each row is a
+		set of boolean features with the class label in the LAST column. Nodes
+		branch on the feature with the lowest weighted Gini impurity and stop at
+		max_depth, min_samples, or a pure node (leaf = majority class).
+		@param input training matrix (features..., label) of Bool
+
+```
+data := [
+  [false, false, false],
+  [false, true,  false],
+  [true,  false, false],
+  [true,  true,  true]];   # label = f0 AND f1
+tree := DecisionTree->New(4, 1);
+tree->Fit(data);
+tree->Predict([true, true])->PrintLine();   # true
+```
+		~#
+		method : public : Fit(input : Bool[,]) ~ Nil {
+			@root := BuildNode(input, 0);
+		}
+
+		#~
+		Predicts the class for a single feature row by walking the tree.
+		@param row feature values (trailing label column, if present, is ignored)
+		@return predicted class
+		~#
+		method : public : Predict(row : Bool[]) ~ Bool {
+			node := @root;
+			while(node <> Nil) {
+				if(node->IsLeaf()) {
+					return node->GetPrediction();
+				};
+
+				f := node->GetFeature();
+				if(row[f]) {
+					node := node->GetRight();
+				}
+				else {
+					node := node->GetLeft();
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Predicts classes for every row of an input matrix.
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predictions
+		~#
+		method : public : PredictAll(input : Bool[,]) ~ Bool[] {
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Bool->New[rows];
+			each(r : rows) {
+				row := Bool->New[cols];
+				each(c : cols) {
+					row[c] := input[r, c];
+				};
+				result[r] := Predict(row);
+			};
+
+			return result;
+		}
+
+		#~
+		Whether the tree has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @root <> Nil;
+		}
+
+		# Recursively builds a tree node from a data subset.
+		method : BuildNode(data : Bool[,], depth : Int) ~ TreeNode {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			target_col := cols - 1;
+
+			majority := MajorityClass(data);
+			if(rows <= @min_samples | depth >= @max_depth | IsPure(data)) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			best_imp := 1000000.0;
+			best_feature := -1;
+			for(f := 0; f < target_col; f += 1;) {
+				imp := SplitImpurity(data, f);
+				if(imp < best_imp) {
+					best_imp := imp;
+					best_feature := f;
+				};
+			};
+
+			if(best_feature < 0 | best_imp >= 1000000.0) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			left_data := SubsetOn(data, best_feature, false);
+			right_data := SubsetOn(data, best_feature, true);
+			left_dims := left_data->Size();
+			right_dims := right_data->Size();
+			if(left_dims[0] = 0 | right_dims[0] = 0) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			node := TreeNode->NewInternal(best_feature);
+			node->SetLeft(BuildNode(left_data, depth + 1));
+			node->SetRight(BuildNode(right_data, depth + 1));
+			return node;
+		}
+
+		# Returns the subset of rows whose `feature` column equals `want`.
+		method : SubsetOn(data : Bool[,], feature : Int, want : Bool) ~ Bool[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			cnt := 0;
+			each(r : rows) {
+				if(data[r, feature] = want) {
+					cnt += 1;
+				};
+			};
+
+			out := Bool->New[cnt, cols];
+			idx := 0;
+			each(r : rows) {
+				if(data[r, feature] = want) {
+					each(c : cols) {
+						out[idx, c] := data[r, c];
+					};
+					idx += 1;
+				};
+			};
+
+			return out;
+		}
+
+		# Majority class label in the data (ties resolve to true).
+		method : MajorityClass(data : Bool[,]) ~ Bool {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			target_col := cols - 1;
+
+			pos := 0;
+			each(r : rows) {
+				if(data[r, target_col]) {
+					pos += 1;
+				};
+			};
+
+			return pos * 2 >= rows;
+		}
+
+		# Whether every row shares the same label.
+		method : IsPure(data : Bool[,]) ~ Bool {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0) {
+				return true;
+			};
+			target_col := cols - 1;
+
+			first := data[0, target_col];
+			each(r : rows) {
+				if(data[r, target_col] <> first) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		# Weighted Gini impurity of splitting `data` on `feature`. Returns a large
+		# sentinel when the feature does not actually partition the rows (so it is
+		# never selected); a perfect split correctly yields 0.0 (the minimum).
+		method : SplitImpurity(data : Bool[,], feature : Int) ~ Float {
+			left := SubsetOn(data, feature, false);
+			right := SubsetOn(data, feature, true);
+
+			left_dims := left->Size();
+			right_dims := right->Size();
+			ln := left_dims[0];
+			rn := right_dims[0];
+			if(ln = 0 | rn = 0) {
+				return 1000000.0;
+			};
+
+			n := (ln + rn)->As(Float);
+			return (ln->As(Float) / n) * GiniOf(left) + (rn->As(Float) / n) * GiniOf(right);
+		}
+
+		# Gini impurity of a data subset based on its label (last) column.
+		method : GiniOf(data : Bool[,]) ~ Float {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0) {
+				return 0.0;
+			};
+			target_col := cols - 1;
+
+			pos := 0;
+			each(r : rows) {
+				if(data[r, target_col]) {
+					pos += 1;
+				};
+			};
+
+			p := pos->As(Float) / rows->As(Float);
+			return 1.0 - (p * p + (1.0 - p) * (1.0 - p));
+		}
+
 		#~
 		Splits a matrix based on a list of decisions
 		@param decisions list of decisions
