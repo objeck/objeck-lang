@@ -81,6 +81,25 @@ class MlPhase1Test {
 			pass := false;
 		};
 
+		# --- LinearRegression: intercept + metrics + prediction ---
+		lx := [[1.0],[2.0],[3.0],[4.0]];
+		ly := [[3.0],[5.0],[7.0],[9.0]];   # y = 2x + 1
+		lr := LinearRegression->New();
+		if(<>lr->Fit(lx, ly, true)) {
+			pass := false;
+		};
+		lc := lr->GetCoefficients();
+		if(Float->Abs(lc[0] - 1.0) > 0.001 | Float->Abs(lc[1] - 2.0) > 0.001) {
+			pass := false;
+		};
+		if(lr->GetRSquared() < 0.999 | lr->GetRMSE() > 0.001) {
+			pass := false;
+		};
+		lp := lr->Predict([[5.0]]);
+		if(Float->Abs(lp[0,0] - 11.0) > 0.001) {
+			pass := false;
+		};
+
 		if(pass) {
 			"PASS: ML phase1 tests"->PrintLine();
 		}

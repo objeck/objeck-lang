@@ -1247,6 +1247,10 @@ preds := model->Predict([[1.0, 4.0]]);
 	class LinearRegression {
 		@coefficients : Float[];
 		@r_squared : Float;
+		@adj_r_squared : Float;
+		@mse : Float;
+		@rmse : Float;
+		@fit_intercept : Bool;
 		@is_fitted : Bool;
 
 		#~
@@ -1276,6 +1280,29 @@ if(model->Fit(X, y)) {
 ```
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			return Fit(X, y, false);
+		}
+
+		#~
+		Fits the model to training data, optionally estimating an intercept term.
+		When fit_intercept is true a leading column of 1.0s is prepended to the
+		design matrix and coefficient 0 holds the intercept. Computes R-squared,
+		adjusted R-squared, MSE and RMSE; returns false on a singular / ill-
+		conditioned system (the underlying solver yields no solution).
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@param fit_intercept whether to estimate a bias/intercept term
+		@return true if fitting succeeded
+
+```
+X := [[1.0], [2.0], [3.0]];
+y := [[3.0], [5.0], [7.0]];   # y = 2x + 1
+model := LinearRegression->New();
+model->Fit(X, y, true);       # intercept ~ 1, slope ~ 2
+"RMSE={$model->GetRMSE()}"->PrintLine();
+```
+		~#
+		method : public : Fit(X : Float[,], y : Float[,], fit_intercept : Bool) ~ Bool {
 			if(X = Nil | y = Nil) {
 				return false;
 			};
@@ -1286,28 +1313,42 @@ if(model->Fit(X, y)) {
 				return false;
 			};
 
-			@coefficients := Matrix2D->Solve(X, y);
+			@fit_intercept := fit_intercept;
+
+			design : Float[,];
+			if(fit_intercept) {
+				design := PrependOnes(X);
+			}
+			else {
+				design := X;
+			};
+
+			@coefficients := Matrix2D->Solve(design, y);
 			if(@coefficients = Nil) {
+				# singular / ill-conditioned system: no unique solution
+				@is_fitted := false;
 				return false;
 			};
 
-			# compute r-squared
-			avg := Matrix2D->AverageColumn(0, y);
+			@is_fitted := true;
+
+			# goodness-of-fit metrics
 			rows := y_dims[0];
-			cols := x_dims[1];
+			num_features := x_dims[1];
+			avg := Matrix2D->AverageColumn(0, y);
 
 			ss_res := 0.0;
 			ss_tot := 0.0;
 			each(i : rows) {
-				predicted := 0.0;
-				each(j : cols) {
-					predicted += @coefficients[j] * X[i,j];
-				};
+				predicted := PredictRow(X, i);
 				residual := y[i,0] - predicted;
 				ss_res += residual * residual;
 				diff := y[i,0] - avg;
 				ss_tot += diff * diff;
 			};
+
+			@mse := ss_res / rows->As(Float);
+			@rmse := @mse->Sqrt();
 
 			if(ss_tot > 0.0) {
 				@r_squared := 1.0 - (ss_res / ss_tot);
@@ -1316,8 +1357,52 @@ if(model->Fit(X, y)) {
 				@r_squared := 0.0;
 			};
 
-			@is_fitted := true;
+			# adjusted R^2 = 1 - (1 - R^2)(n - 1)/(n - p - 1)
+			denom := rows - num_features - 1;
+			if(denom > 0) {
+				@adj_r_squared := 1.0 - (1.0 - @r_squared) * (rows - 1)->As(Float) / denom->As(Float);
+			}
+			else {
+				@adj_r_squared := @r_squared;
+			};
+
 			return true;
+		}
+
+		# Predicts a single row using the fitted coefficients, honoring the
+		# intercept convention chosen at fit time.
+		method : PredictRow(X : Float[,], row : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			sum := 0.0;
+			offset := 0;
+			if(@fit_intercept) {
+				sum := @coefficients[0];
+				offset := 1;
+			};
+			each(j : cols) {
+				sum += @coefficients[j + offset] * X[row,j];
+			};
+
+			return sum;
+		}
+
+		# Returns a copy of X with a leading column of 1.0s (intercept design column).
+		method : PrependOnes(X : Float[,]) ~ Float[,] {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			out := Float->New[rows, cols + 1];
+			each(i : rows) {
+				out[i, 0] := 1.0;
+				each(j : cols) {
+					out[i, j + 1] := X[i,j];
+				};
+			};
+
+			return out;
 		}
 
 		#~
@@ -1339,15 +1424,10 @@ each(i : preds->Size()[0]) {
 
 			x_dims := X->Size();
 			rows := x_dims[0];
-			cols := x_dims[1];
 
 			result := Float->New[rows, 1];
 			each(i : rows) {
-				sum := 0.0;
-				each(j : cols) {
-					sum += @coefficients[j] * X[i,j];
-				};
-				result[i, 0] := sum;
+				result[i, 0] := PredictRow(X, i);
 			};
 
 			return result;
@@ -1378,6 +1458,63 @@ each(c in coeffs) {
 		~#
 		method : public : GetRSquared() ~ Float {
 			return @r_squared;
+		}
+
+		#~
+		Gets the adjusted R-squared, which penalizes additional predictors.
+		@return adjusted R-squared value
+		~#
+		method : public : GetAdjustedRSquared() ~ Float {
+			return @adj_r_squared;
+		}
+
+		#~
+		Gets the mean squared error over the training data.
+		@return MSE
+		~#
+		method : public : GetMSE() ~ Float {
+			return @mse;
+		}
+
+		#~
+		Gets the root mean squared error over the training data.
+		@return RMSE
+		~#
+		method : public : GetRMSE() ~ Float {
+			return @rmse;
+		}
+
+		#~
+		Scores the model on the given data, returning the R-squared (coefficient
+		of determination) of its predictions against the true targets.
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			if(<>@is_fitted | X = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
 		}
 
 		#~
