@@ -100,6 +100,21 @@ class MlPhase1Test {
 			pass := false;
 		};
 
+		# --- LogisticRegression: bias + convergence (AND) + loss ---
+		gx := [[0.0,0.0],[0.0,1.0],[1.0,0.0],[1.0,1.0]];
+		gand := [[0.0],[0.0],[0.0],[1.0]];
+		clf := LogisticRegression->New(0.5, 5000);
+		clf->Fit(gx, gand);
+		if(clf->Score(gx, gand) < 0.999) {
+			pass := false;
+		};
+		if(clf->GetLoss() > 0.1) {
+			pass := false;
+		};
+		if(Float->Abs(clf->GetBias()) < 0.0001) {
+			pass := false;
+		};
+
 		if(pass) {
 			"PASS: ML phase1 tests"->PrintLine();
 		}

@@ -1541,8 +1541,11 @@ labels[0]->PrintLine();
 	~#
 	class LogisticRegression {
 		@weights : Float[];
+		@bias : Float;
 		@learning_rate : Float;
 		@iterations : Int;
+		@l2 : Float;
+		@loss : Float;
 		@is_fitted : Bool;
 
 		#~
@@ -1557,14 +1560,35 @@ model := LogisticRegression->New(0.01, 500);
 		New(learning_rate : Float, iterations : Int) {
 			@learning_rate := learning_rate;
 			@iterations := iterations;
+			@l2 := 0.0;
 			@is_fitted := false;
 		}
 
 		#~
-		Sigmoid activation function
+		Constructor with L2 (ridge) regularization.
+		@param learning_rate step size for gradient descent
+		@param iterations number of training iterations
+		@param l2 L2 regularization strength (0.0 disables it)
+		~#
+		New(learning_rate : Float, iterations : Int, l2 : Float) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@l2 := l2;
+			@is_fitted := false;
+		}
+
+		#~
+		Numerically stable logistic sigmoid. Branching on the sign of x avoids
+		Float->Exp overflow for large-magnitude inputs.
+		@param x input value
+		@return sigmoid(x) in (0.0, 1.0)
 		~#
 		function : LogSigmoid(x : Float) ~ Float {
-			return 1.0 / (1.0 + Float->Exp(x * -1.0));
+			if(x >= 0.0) {
+				return 1.0 / (1.0 + Float->Exp(x * -1.0));
+			};
+			ex := Float->Exp(x);
+			return ex / (1.0 + ex);
 		}
 
 		#~
@@ -1594,22 +1618,22 @@ model->Fit(X, y);
 				return false;
 			};
 
-			# initialize weights to zero
+			# initialize weights and bias to zero
 			@weights := Float->New[cols];
+			@bias := 0.0;
 
-			# gradient descent
+			# batch gradient descent with optional L2 (ridge) penalty
 			each(iter : @iterations) {
-				# compute predictions
 				predictions := Float->New[rows];
 				each(i : rows) {
-					z := 0.0;
+					z := @bias;
 					each(j : cols) {
 						z += X[i,j] * @weights[j];
 					};
 					predictions[i] := LogSigmoid(z);
 				};
 
-				# compute gradients and update weights
+				# weight gradients (L2 penalty applies to weights, not bias)
 				each(j : cols) {
 					gradient := 0.0;
 					each(i : rows) {
@@ -1617,10 +1641,20 @@ model->Fit(X, y);
 						gradient += error * X[i,j];
 					};
 					gradient := gradient / rows->As(Float);
+					gradient += @l2 * @weights[j];
 					@weights[j] -= @learning_rate * gradient;
 				};
+
+				# bias gradient (mean error)
+				bias_grad := 0.0;
+				each(i : rows) {
+					bias_grad += predictions[i] - y[i,0];
+				};
+				bias_grad := bias_grad / rows->As(Float);
+				@bias -= @learning_rate * bias_grad;
 			};
 
+			@loss := ComputeLoss(X, y);
 			@is_fitted := true;
 			return true;
 		}
@@ -1646,7 +1680,7 @@ probs := model->Predict([[2.0, 3.0]]);
 
 			result := Float->New[rows];
 			each(i : rows) {
-				z := 0.0;
+				z := @bias;
 				each(j : cols) {
 					z += X[i,j] * @weights[j];
 				};
@@ -1688,6 +1722,74 @@ each(label in labels) {
 		~#
 		method : public : GetWeights() ~ Float[] {
 			return @weights;
+		}
+
+		#~
+		Gets the learned bias / intercept term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Gets the final binary cross-entropy loss recorded at the end of training.
+		Note: batch gradient descent assumes roughly comparable feature scales --
+		apply FeatureScaler (e.g. StandardScaler) to inputs for reliable convergence.
+		@return training loss
+		~#
+		method : public : GetLoss() ~ Float {
+			return @loss;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		# Binary cross-entropy loss with probability clipping to avoid log(0).
+		method : ComputeLoss(X : Float[,], y : Float[,]) ~ Float {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			eps := 0.0000001;
+			total := 0.0;
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += X[i,j] * @weights[j];
+				};
+				p := LogSigmoid(z);
+				if(p < eps) {
+					p := eps;
+				};
+				if(p > 1.0 - eps) {
+					p := 1.0 - eps;
+				};
+				yi := y[i,0];
+				total += yi * p->Log() + (1.0 - yi) * (1.0 - p)->Log();
+			};
+
+			return -1.0 * total / rows->As(Float);
 		}
 
 		#~
