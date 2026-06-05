@@ -1,0 +1,91 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for the System.ML correctness fixes (phase 1):
+seedable PRNG, DotSigmoid dimension guard, StdDev bounds, NaiveBayes
+(log-space + Laplace + no mutation), and KNN ordering + majority vote.
+~#
+use System.ML, Collection;
+
+class MlPhase1Test {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- Seedable PRNG: determinism + range ---
+		a := Random->New(42);
+		b := Random->New(42);
+		for(i := 0; i < 1000; i += 1;) {
+			if(a->NextInt(100) <> b->NextInt(100)) {
+				pass := false;
+			};
+		};
+		r := Random->New(7);
+		v := r->NextReal();
+		if(v <= 0.0 | v >= 1.0) {
+			pass := false;
+		};
+
+		# --- DotSigmoid dimension guard ---
+		# valid: (2x3) . (3x2) -> non-Nil
+		m1 := [[1.0,2.0,3.0],[4.0,5.0,6.0]];
+		m2 := [[1.0,0.0],[0.0,1.0],[1.0,1.0]];
+		if(Matrix2D->DotSigmoid(m1, m2) = Nil) {
+			pass := false;
+		};
+		# invalid: (2x3) . (2x2) -> Nil (a_cols 3 <> b_rows 2)
+		m3 := [[1.0,0.0],[0.0,1.0]];
+		if(Matrix2D->DotSigmoid(m1, m3) <> Nil) {
+			pass := false;
+		};
+
+		# --- StdDev out-of-range bounds: returns 0.0, no crash ---
+		mm := [[1.0,2.0],[3.0,4.0]];
+		if(Matrix2D->StdDevRow(9, mm) <> 0.0) {
+			pass := false;
+		};
+		if(Matrix2D->StdDevColumn(9, mm) <> 0.0) {
+			pass := false;
+		};
+
+		# --- NaiveBayes: spam classification + repeatable (no mutation) ---
+		normal := BayesGroup->New(8.0 / 12.0);
+		normal->AddEntry(BayesEntry->New("dear", 8));
+		normal->AddEntry(BayesEntry->New("friend", 5));
+		normal->AddEntry(BayesEntry->New("lunch", 3));
+		normal->AddEntry(BayesEntry->New("money", 1));
+		spam := BayesGroup->New(4.0 / 12.0);
+		spam->AddEntry(BayesEntry->New("dear", 2));
+		spam->AddEntry(BayesEntry->New("friend", 1));
+		spam->AddEntry(BayesEntry->New("lunch", 0));
+		spam->AddEntry(BayesEntry->New("money", 4));
+		bayes := NaiveBayes->New(normal, spam);
+		q := ["lunch", "money", "money", "money", "money"];
+		if(bayes->Query(q) <> 1 | bayes->Query(q) <> 1) {
+			pass := false;
+		};
+
+		# --- KNN: ascending ordering + majority-vote Classify ---
+		matrix := [ [51.0,167.0],[58.0,169.0],[62.0,182.0],[69.0,176.0],
+		            [64.0,173.0],[65.0,172.0],[56.0,174.0],[57.0,173.0],[55.0,170.0] ];
+		labels := ["underweight","normal","normal","normal","normal","underweight","normal","normal","normal"];
+		knn := KNearestNeighbors->New(matrix, labels);
+		nn := knn->Query(3, [57.0, 170.0]);
+		for(i := 0; i < nn->Size() - 1; i += 1;) {
+			lo := nn[i];
+			hi := nn[i + 1];
+			if(lo->GetDistance() > hi->GetDistance()) {
+				pass := false;
+			};
+		};
+		if(<>knn->Classify(3, [57.0, 170.0])->Equals("normal")) {
+			pass := false;
+		};
+
+		if(pass) {
+			"PASS: ML phase1 tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML phase1 tests"->PrintLine();
+		};
+	}
+}

@@ -26,6 +26,72 @@ bundle System.ML {
 	}
 
 	#~
+	Deterministic, seedable pseudo-random number generator (MINSTD linear
+	congruential generator). Use this instead of `Float->Random()` when you need
+	reproducible results -- k-means++ seeding, shuffling, and unit tests.
+
+```
+rand := System.ML.Random->New(42);
+rand->NextInt(6)->PrintLine();   # reproducible dice roll in [0, 6)
+rand->NextReal()->PrintLine();   # value in (0.0, 1.0)
+```
+	~#
+	class Random {
+		@state : Int;
+
+		#~
+		Creates a seeded generator
+		@param seed initial seed (values <= 0 are normalized to a valid state)
+		~#
+		New(seed : Int) {
+			s := seed % 2147483647;
+			if(s <= 0) {
+				s += 2147483646;
+			};
+			@state := s;
+		}
+
+		#~
+		Advances the generator and returns the next raw integer in [1, 2147483646]
+		@return pseudo-random integer
+		~#
+		method : public : NextInt() ~ Int {
+			@state := (16807 * @state) % 2147483647;
+			return @state;
+		}
+
+		#~
+		Returns a non-negative integer less than bound
+		@param bound exclusive upper bound (must be > 0)
+		@return value in [0, bound)
+		~#
+		method : public : NextInt(bound : Int) ~ Int {
+			if(bound <= 0) {
+				return 0;
+			};
+			return NextInt() % bound;
+		}
+
+		#~
+		Returns a real in the open interval (0.0, 1.0)
+		@return pseudo-random real
+		~#
+		method : public : NextReal() ~ Float {
+			return NextInt()->As(Float) / 2147483647.0;
+		}
+
+		#~
+		Returns a real in the half-open interval [min, max)
+		@param min lower bound
+		@param max upper bound (exclusive)
+		@return pseudo-random real in range
+		~#
+		method : public : NextReal(min : Float, max : Float) ~ Float {
+			return min + (max - min) * NextReal();
+		}
+	}
+
+	#~
 	2D matrix operations
 	~#
 	class Matrix2D {
@@ -220,7 +286,12 @@ each(c in coeffs) {
 
 		function : StdDevRow(row : Int, m : Float[,]) ~ Float {
 			m_dim := m->Size();
+			m_rows := m_dim[0];
 			m_cols := m_dim[1];
+
+			if(row < 0 | row >= m_rows) {
+				return 0.0;
+			};
 
 			total_sum := 0.0;
 			each(i : m_cols) {
@@ -312,6 +383,11 @@ each(c in coeffs) {
 		function : StdDevColumn(col : Int, m : Float[,]) ~ Float {
 			m_dim := m->Size();
 			m_rows := m_dim[0];
+			m_cols := m_dim[1];
+
+			if(col < 0 | col >= m_cols) {
+				return 0.0;
+			};
 
 			total_sum := 0.0;
 			each(i : m_rows) {
@@ -704,7 +780,7 @@ val := Matrix2D->Sigmoid(2.0);
 			b_rows := b_dims[0];
 			b_cols := b_dims[1];
 
-			if(a_cols <> b_rows & a_rows <> b_cols) {
+			if(a_cols <> b_rows) {
 				return Nil;
 			};
 
@@ -1965,6 +2041,7 @@ else if(args->Size() = 1) {
 					target_index := 0;
 					for(i := input_length; i < row->Size(); i += 1;) {
 						target_array[target_index, 0] := row->Get(i)->ToFloat();
+						target_index += 1;
 					};
 
 					inputs->AddBack(FloatMatrixRef->New(input_array));
@@ -2021,6 +2098,7 @@ else if(args->Size() = 1) {
 					target_count := 0;
 					for(i := input_length; i < row->Size(); i += 1;) {
 						target_array[target_count, 0] := row->Get(i)->ToFloat();
+						target_count += 1;
 					};
 
 					if(count < train_count) {
@@ -2295,7 +2373,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 
 				out := Bool->New[split_len, cols];
 				count := 0;
-				if(index > -1 & index < rows) {
+				if(index > -1 & index < cols) {
 					each(row : rows) {
 						if(input[row, index]) {
 							each(k : cols) {
@@ -2624,64 +2702,55 @@ else {
 		@return 0 if left, 1 if right, -1 otherwise
 		~#
 		method : public : Query(terms : String[]) ~ Int {
-			left := Query(terms, @left);
-			right := Query(terms, @right);
-
-# "left={$left}, right={$right}"->PrintLine();
-
-			if(left = 0.0 | right = 0.0) {
+			if(terms = Nil | terms->Size() = 0) {
 				return -1;
 			};
 
-			if(left > right) {
+			# Log-space scores (higher = more likely); compare directly
+			left := Query(terms, @left);
+			right := Query(terms, @right);
+
+			if(left >= right) {
 				return 0;
 			};
 
 			return 1;
 		}
 
+		#~
+		Computes the Laplace-smoothed log-probability that the given terms belong
+		to the supplied group. Likelihoods are summed in log space to avoid
+		floating-point underflow on long term lists, and the group's counts are
+		never mutated (so queries are side-effect free and repeatable).
+		@param terms observed terms
+		@param group class group to score against
+		@return log-probability score (higher is more likely)
+		~#
 		method : Query(terms : String[], group : BayesGroup) ~ Float {
 			entries := group->GetEntries();
-			prob := group->GetProbability();
-
-			sum := 0.0;
+			prior := group->GetProbability();
 			values := entries->GetValues()<BayesEntry>;
+
+			vocab := values->Size()->As(Float);
+			total := 0.0;
 			each(value := values) {
-				sum += value->GetCount();
+				total += value->GetCount();
 			};
 
-			index := 0;
-			results := Map->New()<String, FloatRef>;
-			each(value := values) {
-				if(value->GetCount() = 0) {
-					value->SetCount(1);
-					sum += values->Size();
-				};
-				count := value->GetCount()
-				name := value->GetName();
-				result := count / sum;
-				results->Insert(name, result);
-
-# "{$name}: ({$count}/{$sum})={$result} * {$prob}"->PrintLine();
-				
-				index += 1;
-			};
-
-			result :=  0.0;
+			# Sum log-likelihoods with add-one (Laplace) smoothing
+			log_prob := prior->Log();
 			each(term := terms) {
-				find := results->Find(term);
+				find := entries->Find(term);
+				count := 0.0;
 				if(find <> Nil) {
-					if(result = 0.0) {
-						result := find->Get();
-					}
-					else {
-						result *= find->Get();
-					};
+					count := find->GetCount()->As(Float);
 				};
+				likelihood := (count + 1.0) / (total + vocab);
+				log_prob += likelihood->Log();
 			};
 
-			return prob * result;
-		}		
+			return log_prob;
+		}
 	}
 
 	#~
@@ -2738,7 +2807,48 @@ each(neighbor := nearest) {
 		@return k nearest neighbors 
 		~#
 		method : public : Query(k : Int, query : Float[]) ~ KNeighbor[] {
-			return Query(query, k);		
+			return Query(query, k);
+		}
+
+		#~
+		Classifies a query point by majority vote of its k nearest neighbors.
+		Ties are broken in favor of the label that first reaches the top count.
+		@param k number of neighbors to poll
+		@param query input feature vector
+		@return predicted category label (empty string if there are no neighbors)
+
+```
+knn := KNearestNeighbors->New(matrix, labels);
+knn->Classify(3, [57.0, 170.0])->PrintLine();
+```
+		~#
+		method : public : Classify(k : Int, query : Float[]) ~ String {
+			neighbors := Query(k, query);
+			if(neighbors = Nil | neighbors->Size() = 0) {
+				return "";
+			};
+
+			best_label := "";
+			best_count := -1;
+			for(i := 0; i < neighbors->Size(); i += 1;) {
+				neighbor := neighbors[i];
+				cat := neighbor->GetCategory();
+
+				count := 0;
+				for(j := 0; j < neighbors->Size(); j += 1;) {
+					peer := neighbors[j];
+					if(peer->GetCategory()->Equals(cat)) {
+						count += 1;
+					};
+				};
+
+				if(count > best_count) {
+					best_count := count;
+					best_label := cat;
+				};
+			};
+
+			return best_label;
 		}
 
 		method : native : Query(query : Float[], k : Int) ~ KNeighbor[] {
@@ -2756,11 +2866,15 @@ each(neighbor := nearest) {
 				distances->AddBack(KNeighbor->New(dist, i, @labels[i]));
 			};
 
-			distances->Sort();			
+			# Ascending by distance: nearest neighbors first
+			distances->Sort();
+			if(k > distances->Size()) {
+				k := distances->Size();
+			};
+
 			results := KNeighbor->New[k];
-			i := distances->Size() - 1;
-			while(k > 0) {
-				results[--k] := distances->Get(i--);
+			each(i : k) {
+				results[i] := distances->Get(i);
 			};
 
 			return results;
@@ -2815,10 +2929,10 @@ each(neighbor := nearest) {
 			bar := right->GetDistance();
 			# foo := Float->Compare(bar, @dist);
 
-			if(bar < @dist) {
+			if(@dist < bar) {
 				return -1;
 			}
-			else if(bar > @dist) {
+			else if(@dist > bar) {
 				return 1;
 			};
 
