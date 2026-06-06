@@ -1061,6 +1061,15 @@ void JitArm64::ProcessLoad(StackInstr* instr) {
 
 void JitArm64::ProcessJump(StackInstr* instr) {
   FlushLocalCache();
+  // A conditional jump consumes its comparison value; if the compile-time
+  // stack model has diverged (e.g. a front-end type bug fed unexpected
+  // operand kinds to an earlier instruction), fail the compile cleanly so
+  // the method falls back to the interpreter instead of crashing.
+  if(working_stack.empty() && (instr->GetOperand2() >= 0 || skip_jump)) {
+    compile_success = false;
+    skip_jump = false;
+    return;
+  }
   if(!skip_jump) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size()
@@ -1994,6 +2003,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2025,6 +2038,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2057,11 +2074,16 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
 
   default:
+    compile_success = false;
     break;
   }
 
@@ -2122,6 +2144,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2158,6 +2184,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2201,11 +2231,16 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
 
   default:
+    compile_success = false;
     break;
   }
 
