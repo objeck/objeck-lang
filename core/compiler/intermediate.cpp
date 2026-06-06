@@ -648,7 +648,7 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
 
   // get short file name
   const std::wstring &file_name = current_class->GetFileName();
-  size_t offset = file_name.rfind(L"/\\");
+  size_t offset = file_name.find_last_of(L"/\\");
   std::wstring short_file_name;
   if(offset == std::wstring::npos) {
     short_file_name = file_name;

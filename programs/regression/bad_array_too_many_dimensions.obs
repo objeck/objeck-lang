@@ -1,0 +1,7 @@
+# EXPECT_COMPILE_ERROR
+
+class BadArrayTooManyDimensions {
+    function : Main(args : String[]) ~ Nil {
+        values := Int->New[1, 1, 1, 1, 1, 1, 1, 1, 1];
+    }
+}
