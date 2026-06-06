@@ -1,0 +1,10 @@
+# EXPECT_COMPILE_ERROR
+class BadWrongReturn {
+    function : Main(args : String[]) ~ Nil {
+        n := GetNum();
+        "done"->PrintLine();
+    }
+    function : GetNum() ~ Int {
+        return "this is a string not an int";
+    }
+}

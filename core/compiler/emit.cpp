@@ -464,6 +464,16 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     WriteInt(operand2, out_stream);
     break;
 
+  case JMP_TABLE:
+    WriteInt(operand, out_stream);   // base (min_val, fits int32)
+    WriteInt(operand2, out_stream);  // range
+    WriteInt(operand3, out_stream);  // default_label
+    break;
+
+  case JMP_TABLE_SLOT:
+    WriteInt(operand, out_stream);   // slot target label
+    break;
+
   default:
     break;
   }
@@ -997,6 +1007,14 @@ void IntermediateInstruction::Debug(size_t i) {
     else {
       GetLogger() << L"  " << std::left << std::setw(6) << i << L"JMP: index=" << operand << L", conditional=" << (operand2 ? "true" : "false") << std::endl;
     }
+    break;
+
+  case JMP_TABLE:
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"JMP_TABLE: base=" << operand << L", range=" << operand2 << L", default=" << operand3 << std::endl;
+    break;
+
+  case JMP_TABLE_SLOT:
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"JMP_TABLE_SLOT: target=" << operand << std::endl;
     break;
 
   case OBJ_INST_CAST: {

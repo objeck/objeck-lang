@@ -6,30 +6,120 @@
     <title>Objeck Documentation</title>
     <link rel="stylesheet" href="style/styles.css" />
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/mono-blue.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 
     <script>
+      // Objeck language definition for highlight.js
+      hljs.registerLanguage('objeck', function(hljs) {
+        return {
+          name: 'Objeck',
+          case_insensitive: false,
+          keywords: {
+            keyword: 'bundle class function method use if else elseif while for each do ' +
+                     'return select label break continue leaving New Base Parent',
+            literal: 'Nil true false',
+            type: 'Int Float Char Bool String Byte',
+            built_in: 'public private static native abstract interface virtual override'
+          },
+          contains: [
+            hljs.COMMENT('#~~', '~~#'),
+            hljs.COMMENT('#~', '~#'),
+            hljs.COMMENT('#', '$'),
+            hljs.QUOTE_STRING_MODE,
+            { className: 'string', begin: "'", end: "'" },
+            hljs.C_NUMBER_MODE,
+            {
+              className: 'punctuation',
+              begin: ':=|->|<>|~\\s',
+              relevance: 0
+            }
+          ]
+        };
+      });
+
       window.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(window.location.search);
         const targetId = params.get('scrollTo');
         const nav = document.getElementById('side-nav');
         const target = document.getElementById(targetId);
         if (nav && target) {
-
           const offset = 100;
           const scrollTop = target.offsetTop - offset;
-
-          nav.scrollTo({
-            top: scrollTop < 0 ? 0 : scrollTop,
-            behavior: 'smooth'
-          });
-
+          nav.scrollTo({ top: scrollTop < 0 ? 0 : scrollTop, behavior: 'smooth' });
         }
       });
 
       document.addEventListener('DOMContentLoaded', () => {
         hljs.highlightAll();
+
+        // Global full-text search
+        (function() {
+          const input = document.getElementById('global-search');
+          const resultsEl = document.getElementById('search-results');
+          if (!input || !resultsEl) return;
+          let index = null;
+          fetch('search_index.json').then(r => r.json()).then(d => { index = d; }).catch(() => {});
+
+          function runSearch() {
+            const q = input.value.trim().toLowerCase();
+            resultsEl.innerHTML = '';
+            if (!q || !index) { resultsEl.style.display = 'none'; return; }
+            const hits = index.filter(item =>
+              item.name.toLowerCase().includes(q) ||
+              (item.desc && item.desc.toLowerCase().includes(q)) ||
+              item.bundle.toLowerCase().includes(q)
+            ).slice(0, 16);
+            if (!hits.length) { resultsEl.style.display = 'none'; return; }
+            hits.forEach(function(item) {
+              const a = document.createElement('a');
+              a.className = 'search-result-item';
+              a.href = item.url;
+              const ctx = item.type === 'method'
+                ? item.bundle + ' &rsaquo; ' + item['class']
+                : item.bundle;
+              const badge = item.type === 'method'
+                ? ' <span class="sr-badge">method</span>' : '';
+              a.innerHTML =
+                '<div class="sr-ctx">' + ctx + '</div>' +
+                '<div class="sr-name">' + item.name + badge + '</div>' +
+                (item.desc ? '<div class="sr-desc">' + item.desc.slice(0, 80) + '</div>' : '');
+              resultsEl.appendChild(a);
+            });
+            resultsEl.style.display = 'block';
+          }
+
+          input.addEventListener('input', runSearch);
+          input.addEventListener('focus', function() {
+            if (this.value.trim() && resultsEl.children.length) resultsEl.style.display = 'block';
+          });
+          document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !resultsEl.contains(e.target))
+              resultsEl.style.display = 'none';
+          });
+          input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { resultsEl.style.display = 'none'; input.blur(); }
+          });
+        })();
+
+        // Copy buttons on all <pre> code blocks
+        document.querySelectorAll('pre').forEach(function(pre) {
+          const btn = document.createElement('button');
+          btn.className = 'copy-btn';
+          btn.textContent = 'Copy';
+          btn.addEventListener('click', function() {
+            const code = pre.querySelector('code');
+            const text = (code || pre).innerText;
+            navigator.clipboard.writeText(text).then(function() {
+              btn.textContent = '✓ Copied';
+              setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+            }).catch(function() {
+              btn.textContent = 'Error';
+              setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+            });
+          });
+          pre.appendChild(btn);
+        });
 
         // nav search filter
         const searchInput = document.getElementById('nav-search');
@@ -102,7 +192,13 @@
   <body>
     <header>
       <a href='index.html'><img id='site-logo' src='style/objeck-logo.png' style="max-width: 20%; height: auto;" /></a>
-      <div class="version">v@version <button id="dark-mode-toggle" class="theme-toggle">Dark</button></div>
+      <div class="header-right">
+        <div class="global-search-wrapper">
+          <input type="text" id="global-search" placeholder="Search APIs…" class="global-search" autocomplete="off" spellcheck="false" />
+          <div id="search-results" class="search-results"></div>
+        </div>
+        <div class="version">v@version <button id="dark-mode-toggle" class="theme-toggle">Dark</button></div>
+      </div>
     </header>
     <div class="container">
       <div class="nav-wrapper">

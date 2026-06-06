@@ -193,8 +193,11 @@ namespace instructions {
     // try/error handling
     TRY_START,
     TRY_END,
+    // select jump table dispatch
+    JMP_TABLE,
+    JMP_TABLE_SLOT,
     // system directives
-    END_STMTS,    
+    END_STMTS,
   };
 
   // memory reference context, used for

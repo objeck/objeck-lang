@@ -1,0 +1,489 @@
+#~
+Classic AI: tabular reinforcement learning
+Copyright (c) 2026 Randy Hollines
+~#
+
+use Collection;
+
+bundle System.AI {
+	#~
+	One environment transition: the next state, the reward received, and
+	whether the episode ended.
+	~#
+	class StepResult {
+		@next_state : Int;
+		@reward : Float;
+		@done : Bool;
+
+		New(next_state : Int, reward : Float, done : Bool) {
+			@next_state := next_state;
+			@reward := reward;
+			@done := done;
+		}
+
+		method : public : GetNextState() ~ Int { return @next_state; }
+		method : public : GetReward() ~ Float { return @reward; }
+		method : public : IsDone() ~ Bool { return @done; }
+	}
+
+	#~
+	A tabular RL environment: integer states 0..S-1, integer actions 0..A-1.
+	~#
+	interface Environment {
+		#~
+		Gets the number of states.
+		@return state count
+		~#
+		method : virtual : public : GetNumStates() ~ Int;
+
+		#~
+		Gets the number of actions.
+		@return action count
+		~#
+		method : virtual : public : GetNumActions() ~ Int;
+
+		#~
+		Resets the environment for a new episode.
+		@return starting state
+		~#
+		method : virtual : public : Reset() ~ Int;
+
+		#~
+		Takes an action in a state.
+		@param state current state
+		@param action action id
+		@return transition result
+		~#
+		method : virtual : public : Step(state : Int, action : Int) ~ System.AI.StepResult;
+	}
+
+	#~
+	Shared tabular value-learning plumbing: the Q table, epsilon-greedy
+	action selection and greedy policy extraction.
+	~#
+	class : private : QTable {
+		function : Create(states : Int, actions : Int) ~ Float[,] {
+			return Float->New[states, actions];
+		}
+
+		function : EpsilonGreedy(q : Float[,], state : Int, actions : Int, epsilon : Float, rand : AiRandom) ~ Int {
+			if(rand->NextReal() < epsilon) {
+				return rand->NextInt(actions);
+			};
+			return Greedy(q, state, actions);
+		}
+
+		function : Greedy(q : Float[,], state : Int, actions : Int) ~ Int {
+			best := 0;
+			each(a : actions) {
+				if(q[state,a] > q[state,best]) {
+					best := a;
+				};
+			};
+			return best;
+		}
+
+		function : MaxValue(q : Float[,], state : Int, actions : Int) ~ Float {
+			best := q[state,0];
+			each(a : actions) {
+				if(q[state,a] > best) {
+					best := q[state,a];
+				};
+			};
+			return best;
+		}
+	}
+
+	#~
+	Off-policy Q-learning: epsilon-greedy behavior with a greedy bootstrap,
+	Q(s,a) += alpha*(r + gamma*max_a' Q(s',a') - Q(s,a)). Seeded for
+	reproducible training.
+
+```
+agent := QLearning->New(0.1, 0.95, 0.2, 7);
+agent->Train(env, 500, 100);
+best := agent->BestAction(state);
+```
+	~#
+	class QLearning {
+		@alpha : Float;
+		@gamma : Float;
+		@epsilon : Float;
+		@seed : Int;
+		@q : Float[,];
+		@num_actions : Int;
+		@is_trained : Bool;
+
+		#~
+		Constructor
+		@param alpha learning rate
+		@param gamma discount factor
+		@param epsilon exploration probability
+		@param seed PRNG seed for reproducible training
+		~#
+		New(alpha : Float, gamma : Float, epsilon : Float, seed : Int) {
+			@alpha := alpha;
+			@gamma := gamma;
+			@epsilon := epsilon;
+			@seed := seed;
+			@is_trained := false;
+		}
+
+		#~
+		Trains the agent.
+		@param env environment
+		@param episodes number of episodes
+		@param max_steps per-episode step cap
+		@return true if training ran
+		~#
+		method : public : Train(env : Environment, episodes : Int, max_steps : Int) ~ Bool {
+			if(env = Nil | env->GetNumStates() < 1 | env->GetNumActions() < 1) {
+				return false;
+			};
+
+			states := env->GetNumStates();
+			@num_actions := env->GetNumActions();
+			@q := QTable->Create(states, @num_actions);
+			rand := AiRandom->New(@seed);
+
+			each(e : episodes) {
+				state := env->Reset();
+				done := false;
+				each(step : max_steps) {
+					if(<>done) {
+						action := QTable->EpsilonGreedy(@q, state, @num_actions, @epsilon, rand);
+						result := env->Step(state, action);
+						next := result->GetNextState();
+
+						target := result->GetReward();
+						if(<>result->IsDone()) {
+							target += @gamma * QTable->MaxValue(@q, next, @num_actions);
+						};
+						@q[state,action] := @q[state,action] + @alpha * (target - @q[state,action]);
+
+						state := next;
+						done := result->IsDone();
+					};
+				};
+			};
+
+			@is_trained := true;
+			return true;
+		}
+
+		#~
+		Gets the greedy action for a state.
+		@param state state id
+		@return best action, or -1 when untrained
+		~#
+		method : public : BestAction(state : Int) ~ Int {
+			if(<>@is_trained) {
+				return -1;
+			};
+			return QTable->Greedy(@q, state, @num_actions);
+		}
+
+		#~
+		Gets the learned Q table (states x actions).
+		@return Q table, or Nil when untrained
+		~#
+		method : public : GetQ() ~ Float[,] {
+			return @q;
+		}
+
+		#~
+		Whether the agent has been trained.
+		@return true if trained
+		~#
+		method : public : IsTrained() ~ Bool {
+			return @is_trained;
+		}
+	}
+
+	#~
+	On-policy SARSA: epsilon-greedy behavior bootstrapping on the action
+	actually taken, Q(s,a) += alpha*(r + gamma*Q(s',a') - Q(s,a)). Seeded
+	for reproducible training.
+	~#
+	class Sarsa {
+		@alpha : Float;
+		@gamma : Float;
+		@epsilon : Float;
+		@seed : Int;
+		@q : Float[,];
+		@num_actions : Int;
+		@is_trained : Bool;
+
+		#~
+		Constructor
+		@param alpha learning rate
+		@param gamma discount factor
+		@param epsilon exploration probability
+		@param seed PRNG seed for reproducible training
+		~#
+		New(alpha : Float, gamma : Float, epsilon : Float, seed : Int) {
+			@alpha := alpha;
+			@gamma := gamma;
+			@epsilon := epsilon;
+			@seed := seed;
+			@is_trained := false;
+		}
+
+		#~
+		Trains the agent.
+		@param env environment
+		@param episodes number of episodes
+		@param max_steps per-episode step cap
+		@return true if training ran
+		~#
+		method : public : Train(env : Environment, episodes : Int, max_steps : Int) ~ Bool {
+			if(env = Nil | env->GetNumStates() < 1 | env->GetNumActions() < 1) {
+				return false;
+			};
+
+			states := env->GetNumStates();
+			@num_actions := env->GetNumActions();
+			@q := QTable->Create(states, @num_actions);
+			rand := AiRandom->New(@seed);
+
+			each(e : episodes) {
+				state := env->Reset();
+				action := QTable->EpsilonGreedy(@q, state, @num_actions, @epsilon, rand);
+				done := false;
+				each(step : max_steps) {
+					if(<>done) {
+						result := env->Step(state, action);
+						next := result->GetNextState();
+
+						target := result->GetReward();
+						next_action := 0;
+						if(<>result->IsDone()) {
+							next_action := QTable->EpsilonGreedy(@q, next, @num_actions, @epsilon, rand);
+							target += @gamma * @q[next,next_action];
+						};
+						@q[state,action] := @q[state,action] + @alpha * (target - @q[state,action]);
+
+						state := next;
+						action := next_action;
+						done := result->IsDone();
+					};
+				};
+			};
+
+			@is_trained := true;
+			return true;
+		}
+
+		#~
+		Gets the greedy action for a state.
+		@param state state id
+		@return best action, or -1 when untrained
+		~#
+		method : public : BestAction(state : Int) ~ Int {
+			if(<>@is_trained) {
+				return -1;
+			};
+			return QTable->Greedy(@q, state, @num_actions);
+		}
+
+		#~
+		Gets the learned Q table (states x actions).
+		@return Q table, or Nil when untrained
+		~#
+		method : public : GetQ() ~ Float[,] {
+			return @q;
+		}
+
+		#~
+		Whether the agent has been trained.
+		@return true if trained
+		~#
+		method : public : IsTrained() ~ Bool {
+			return @is_trained;
+		}
+	}
+
+	#~
+	An explicit finite Markov decision process solved by value iteration.
+	Transitions are added as (state, action) -> (next, probability, reward)
+	tuples; probabilities for each (state, action) should sum to 1.
+
+```
+mdp := MarkovDecisionProcess->New(3, 2);
+mdp->AddTransition(0, 1, 1, 1.0, 0.0);
+mdp->AddTransition(1, 1, 2, 1.0, 10.0);
+mdp->Solve(0.9, 0.000001, 1000);
+policy := mdp->GetPolicy();
+```
+	~#
+	class MarkovDecisionProcess {
+		@num_states : Int;
+		@num_actions : Int;
+		@next_states : Int[];
+		@probs : Float[];
+		@rewards : Float[];
+		@trans_state : Int[];
+		@trans_action : Int[];
+		@trans_count : Int;
+		@values : Float[];
+		@policy : Int[];
+		@is_solved : Bool;
+
+		#~
+		Constructor
+		@param num_states number of states
+		@param num_actions number of actions
+		~#
+		New(num_states : Int, num_actions : Int) {
+			@num_states := num_states;
+			@num_actions := num_actions;
+
+			capacity := 16;
+			@next_states := Int->New[capacity];
+			@probs := Float->New[capacity];
+			@rewards := Float->New[capacity];
+			@trans_state := Int->New[capacity];
+			@trans_action := Int->New[capacity];
+			@trans_count := 0;
+			@is_solved := false;
+		}
+
+		#~
+		Adds a transition.
+		@param state source state
+		@param action action id
+		@param next resulting state
+		@param prob transition probability
+		@param reward transition reward
+		@return true if added, false on invalid ids
+		~#
+		method : public : AddTransition(state : Int, action : Int, next : Int, prob : Float, reward : Float) ~ Bool {
+			if(state < 0 | state >= @num_states | next < 0 | next >= @num_states |
+				action < 0 | action >= @num_actions) {
+				return false;
+			};
+
+			capacity := @next_states->Size();
+			if(@trans_count = capacity) {
+				new_capacity := capacity * 2;
+				grown_next := Int->New[new_capacity];
+				grown_probs := Float->New[new_capacity];
+				grown_rewards := Float->New[new_capacity];
+				grown_state := Int->New[new_capacity];
+				grown_action := Int->New[new_capacity];
+				each(i : capacity) {
+					grown_next[i] := @next_states[i];
+					grown_probs[i] := @probs[i];
+					grown_rewards[i] := @rewards[i];
+					grown_state[i] := @trans_state[i];
+					grown_action[i] := @trans_action[i];
+				};
+				@next_states := grown_next;
+				@probs := grown_probs;
+				@rewards := grown_rewards;
+				@trans_state := grown_state;
+				@trans_action := grown_action;
+			};
+
+			@next_states[@trans_count] := next;
+			@probs[@trans_count] := prob;
+			@rewards[@trans_count] := reward;
+			@trans_state[@trans_count] := state;
+			@trans_action[@trans_count] := action;
+			@trans_count += 1;
+
+			return true;
+		}
+
+		#~
+		Solves the MDP by value iteration and extracts the greedy policy.
+		States without transitions for an action treat that action's value
+		as negative infinity; states with no transitions at all hold value 0.
+		@param gamma discount factor
+		@param tolerance stop when no state value changes more than this
+		@param max_iterations iteration cap
+		@return true when solved
+		~#
+		method : public : Solve(gamma : Float, tolerance : Float, max_iterations : Int) ~ Bool {
+			@values := Float->New[@num_states];
+			@policy := Int->New[@num_states];
+
+			q := Float->New[@num_states, @num_actions];
+			has_action := Bool->New[@num_states, @num_actions];
+
+			converged := false;
+			each(iter : max_iterations) {
+				if(<>converged) {
+					# expected value of every (state, action)
+					each(s : @num_states) {
+						each(a : @num_actions) {
+							q[s,a] := 0.0;
+							has_action[s,a] := false;
+						};
+					};
+					each(t : @trans_count) {
+						s := @trans_state[t];
+						a := @trans_action[t];
+						q[s,a] := q[s,a] + @probs[t] * (@rewards[t] + gamma * @values[@next_states[t]]);
+						has_action[s,a] := true;
+					};
+
+					# greedy backup
+					max_delta := 0.0;
+					each(s : @num_states) {
+						best_value := 0.0;
+						best_action := 0;
+						found := false;
+						each(a : @num_actions) {
+							if(has_action[s,a]) {
+								if(<>found | q[s,a] > best_value) {
+									best_value := q[s,a];
+									best_action := a;
+									found := true;
+								};
+							};
+						};
+
+						delta := Float->Abs(best_value - @values[s]);
+						if(delta > max_delta) {
+							max_delta := delta;
+						};
+						@values[s] := best_value;
+						@policy[s] := best_action;
+					};
+
+					if(max_delta < tolerance) {
+						converged := true;
+					};
+				};
+			};
+
+			@is_solved := true;
+			return true;
+		}
+
+		#~
+		Gets the optimal state values.
+		@return value array, or Nil when unsolved
+		~#
+		method : public : GetValues() ~ Float[] {
+			return @values;
+		}
+
+		#~
+		Gets the greedy policy (best action per state).
+		@return policy array, or Nil when unsolved
+		~#
+		method : public : GetPolicy() ~ Int[] {
+			return @policy;
+		}
+
+		#~
+		Whether the MDP has been solved.
+		@return true if solved
+		~#
+		method : public : IsSolved() ~ Bool {
+			return @is_solved;
+		}
+	}
+}

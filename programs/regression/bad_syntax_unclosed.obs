@@ -1,0 +1,6 @@
+# EXPECT_COMPILE_ERROR
+class BadSyntaxUnclosed {
+    function : Main(args : String[]) ~ Nil {
+        x := 1;
+        "hello"->PrintLine();
+    # missing closing braces for function and class

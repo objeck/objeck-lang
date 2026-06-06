@@ -1,7 +1,7 @@
 use System.IO.Net, Collection, Data.JSON, Web.HTTP, Data.JSON.Scheme;
 
 #~
-Web server support (-lib net_server)
+HTTP server framework. WebServer registers route handlers for GET/POST/PUT/DELETE, parses query params and multipart form data, and supports OAuth token exchange. Compile with -lib net_server.
 ~#
 bundle Web.HTTP.Server {
 	#~
@@ -18,6 +18,11 @@ bundle Web.HTTP.Server {
 		#~
 		Starts a HTTPS server that listens for requests
 		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json' target='_blank'>example</a>)
+
+		```
+		# start an HTTPS server from a JSON config file
+		Web.HTTP.Server.WebServer->ServeSecure("config/server_config.json");
+		```
 		~#
 		function : ServeSecure(filename : String) ~ Nil {
 			if(@server_config = Nil) {
@@ -128,6 +133,11 @@ bundle Web.HTTP.Server {
 		@param callback class inherited from 'HttpRequestHandler'
 		@param port server port
 		@param is_debug true for debug output, false otherwise
+
+		```
+		# start an HTTP server on port 8080 using MyHandler
+		Web.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);
+		```
 		~#
 		function : Serve(callback : Class, port : Int) ~ Nil {
 			Serve(callback, port, false);
@@ -185,6 +195,11 @@ bundle Web.HTTP.Server {
 
 		#~
 		Stops the server
+
+		```
+		# stop a running HTTP or HTTPS server
+		Web.HTTP.Server.WebServer->Stop();
+		```
 		~#
 		function : Stop() ~ Nil {
 			@stop := true;
@@ -903,6 +918,14 @@ bundle Web.HTTP.Server {
 		Gets a parameter value
 		@param name parameter name
 		@return parameter value
+
+		```
+		# inside ProcessGet or ProcessPost:
+		name := request->GetParam("username");
+		if(name <> Nil) {
+		  "Hello, {$name}!"->PrintLine();
+		};
+		```
 		~#
 		method : public : GetParam(name : String) ~ String {
 			ParseParams();
@@ -1029,6 +1052,14 @@ bundle Web.HTTP.Server {
 		#~
 		Gets the request body content
 		@return request content
+
+		```
+		# inside ProcessPost:
+		if(request->HasContent()) {
+		  body := request->GetContent();
+		  body->PrintLine();  # raw POST body string
+		};
+		```
 		~#
 		method : public : GetContent() ~ String {
 			return @content->ToString();
@@ -1061,6 +1092,12 @@ bundle Web.HTTP.Server {
 		#~
 		Gets the request path
 		@return request path
+
+		```
+		# inside ProcessGet:
+		path := request->GetPath();
+		path->PrintLine();  # e.g. /api/users
+		```
 		~#
 		method : public : GetPath() ~ String {
 			return @request_path;
@@ -1125,6 +1162,14 @@ bundle Web.HTTP.Server {
 		#~
 		Adds a cookie
 		@param cookie cookie
+
+		```
+		session := Web.HTTP.Cookie->New("session", "abc123");
+		session->AddAttrib("Path", "/");
+		session->AddAttrib("HttpOnly", Nil);
+		response->AddCookie(session);
+		response->SetCodeContent(200, "OK");
+		```
 		~#
 		method : public : AddCookie(cookie : Cookie) ~ Nil {
 			@cookies->Insert(cookie->GetName(), cookie);
@@ -1240,6 +1285,12 @@ bundle Web.HTTP.Server {
 		#~
 		Set the response compression, should be called after the content is set
 		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+
+		```
+		response->SetContent("<html>Hello</html>");
+		response->SetCompression(Web.HTTP.Server.Response->Compression->GZIP);
+		response->SetCode(200);
+		```
 		~#
 		method : public : SetCompression(compression : Compression) ~ Nil {
 			if(<>@is_compressed & @content <> Nil) {
@@ -1310,6 +1361,12 @@ bundle Web.HTTP.Server {
 		Set response code and content
 		@param code response code
 		@param content response content
+
+		```
+		# inside ProcessGet — send a 200 response with HTML body:
+		html := "<html><body>Hello!</body></html>";
+		response->SetCodeContent(200, html);
+		```
 		~#
 		method : public : SetCodeContent(code : Int, content : Byte[]) ~ Nil {
 			@code := code;
@@ -1331,6 +1388,12 @@ bundle Web.HTTP.Server {
 		@param code response code
 		@param type content type
 		@param content response content
+
+		```
+		# inside ProcessGet — send a JSON response:
+		json := "{\"status\":\"ok\"}"->ToByteArray();
+		response->SetCodeTypeContent(200, "application/json", json);
+		```
 		~#
 		method : public : SetCodeTypeContent(code : Int, type : String, content : Byte[]) ~ Nil {
 			@code := code;
@@ -1387,6 +1450,12 @@ bundle Web.HTTP.Server {
 		#~
 		Set response reason
 		@param reason response reason
+
+		```
+		# redirect with a reason URL
+		response->SetCode(302);
+		response->SetReason("https://example.com/new-location");
+		```
 		~#
 		method : public : SetReason(reason : String) ~ Nil {
 			@reason := reason;
@@ -1479,6 +1548,16 @@ bundle Web.HTTP.Server {
 
 		#~
 		Constructor
+
+		```
+		encoder := Web.HTTP.Server.MultipartEncoder->New();
+		headers := Map->New()<String, String>;
+		headers->Insert("Content-Disposition", "form-data; name=\"file\"; filename=\"data.txt\"");
+		part := Web.HTTP.Server.MultipartContent->New(headers, "hello world"->ToByteArray());
+		encoder->Add(part);
+		boundary := "multipart/form-data; boundary={$encoder->GetBoundary()}";
+		bytes := encoder->ToByteArray();
+		```
 		~#
 		New() {
 			@parts := Vector->New()<MultipartContent>;
@@ -1488,6 +1567,14 @@ bundle Web.HTTP.Server {
 		#~
 		Add a multipart encoding content part
 		@param part content part to add
+
+		```
+		encoder := Web.HTTP.Server.MultipartEncoder->New();
+		headers := Map->New()<String, String>;
+		headers->Insert("Content-Disposition", "form-data; name=\"field\"");
+		part := Web.HTTP.Server.MultipartContent->New(headers, "value"->ToByteArray());
+		encoder->Add(part);
+		```
 		~#
 		method : public : Add(part : MultipartContent) ~ Nil {
 			@parts->AddBack(part);
@@ -3885,6 +3972,16 @@ each(i : 3) {
 		#~
 		Get an OAuth token
 		@return OAuth token, Nil if error
+
+		```
+		scopes := ["https://www.googleapis.com/auth/drive.readonly"];
+		client := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes);
+		token := client->GetToken();
+		if(token <> Nil) {
+		  token->GetAccessToken()->PrintLine();
+		  token->IsExpired()->PrintLine();  # false
+		};
+		```
 		~#
 		method : public : GetToken() ~ OAuthToken {
 			token := OAuthHandler->Get();
@@ -4363,6 +4460,15 @@ each(i : 3) {
 		#~
 		Get token as string
 		@return token as string
+
+		```
+		scopes := ["https://www.googleapis.com/auth/drive"];
+		client := System.IO.Net.OAuth.OAuthClient->New("client_secret.json", scopes);
+		token := client->GetToken();
+		if(token <> Nil) {
+		  token->ToString()->PrintLine();
+		};
+		```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";

@@ -1,0 +1,82 @@
+#~
+Regression test for the JIT frame-dependent trap crash (2026-06).
+
+Traps such as SERL_INT/SERL_FLOAT/SERL_CHAR (Serializer->Write), SYS_TIME
+(Date->New) and FILE_*_TIME read or write interpreter locals via frame->mem.
+The JIT trap callback passes a null frame and JIT-compiled methods keep their
+locals in native stack slots, so once a method containing one of these traps
+crossed the auto-JIT call threshold (10), the next call segfaulted. The fix
+rejects such methods in the AMD64 and ARM64 JIT pre-scans so they stay
+interpreted.
+
+This test intentionally does NOT set JIT_DISABLE: each trap wrapper below is
+called well past the auto-JIT threshold so the bug (if reintroduced) crashes
+the run instead of failing an assertion.
+~#
+use System.IO, System.Time;
+
+class JitFrameTrapTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- Serializer: SERL_INT / SERL_FLOAT / SERL_CHAR past the JIT threshold ---
+		serializer := Serializer->New();
+		each(i : 50) {
+			serializer->Write(i);
+		};
+		each(i : 20) {
+			serializer->Write(i->As(Float) * 0.5);
+		};
+		each(i : 15) {
+			serializer->Write('a');
+		};
+		bytes := serializer->Serialize();
+		if(bytes = Nil | bytes->Size() = 0) {
+			pass := false;
+			"  FAIL: serialize"->PrintLine();
+		};
+
+		# --- Deserializer: DESERL_* round-trip of the same stream ---
+		if(pass) {
+			deserializer := Deserializer->New(bytes);
+			each(i : 50) {
+				value := deserializer->ReadInt();
+				if(value <> i) {
+					pass := false;
+					"  FAIL: int round-trip {$i}: {$value}"->PrintLine();
+				};
+			};
+			each(i : 20) {
+				value := deserializer->ReadFloat();
+				expected := i->As(Float) * 0.5;
+				if(Float->Abs(value - expected) > 0.000001) {
+					pass := false;
+					"  FAIL: float round-trip {$i}: {$value}"->PrintLine();
+				};
+			};
+			each(i : 15) {
+				value := deserializer->ReadChar();
+				if(value <> 'a') {
+					pass := false;
+					"  FAIL: char round-trip {$i}"->PrintLine();
+				};
+			};
+		};
+
+		# --- SYS_TIME: Date->New past the JIT threshold ---
+		each(i : 15) {
+			now := Date->New();
+			if(now->GetYear() < 2020) {
+				pass := false;
+				"  FAIL: Date->New year"->PrintLine();
+			};
+		};
+
+		if(pass) {
+			"PASS: JIT frame-trap tests"->PrintLine();
+		}
+		else {
+			"FAIL: JIT frame-trap tests"->PrintLine();
+		};
+	}
+}

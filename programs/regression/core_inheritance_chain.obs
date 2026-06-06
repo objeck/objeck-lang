@@ -1,0 +1,90 @@
+class A {
+    @x : Int;
+    New(x : Int) { @x := x; }
+    method : public : GetX() ~ Int { return @x; }
+    method : public : Name() ~ String { return "A"; }
+    method : public : DoubleX() ~ Int { return @x * 2; }
+}
+
+class B from A {
+    @y : Int;
+    New(x : Int, y : Int) {
+        Parent(x);
+        @y := y;
+    }
+    method : public : GetY() ~ Int { return @y; }
+    method : public : Name() ~ String { return "B"; }
+    method : public : Sum() ~ Int { return @x + @y; }
+}
+
+class C from B {
+    @z : Int;
+    New(x : Int, y : Int, z : Int) {
+        Parent(x, y);
+        @z := z;
+    }
+    method : public : GetZ() ~ Int { return @z; }
+    method : public : Name() ~ String { return "C"; }
+    method : public : Total() ~ Int { return @x + @y + @z; }
+}
+
+class D from C {
+    @w : Int;
+    New(x : Int, y : Int, z : Int, w : Int) {
+        Parent(x, y, z);
+        @w := w;
+    }
+    method : public : GetW() ~ Int { return @w; }
+    method : public : Name() ~ String { return "D"; }
+    method : public : Grand() ~ Int { return @x + @y + @z + @w; }
+}
+
+class CoreInheritanceChainTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing inheritance chain..."->PrintLine();
+        pass := true;
+
+        d := D->New(1, 2, 3, 4);
+
+        # Fields visible at each level
+        if(d->GetX() <> 1) { pass := false; "  FAIL: GetX"->PrintLine(); };
+        if(d->GetY() <> 2) { pass := false; "  FAIL: GetY"->PrintLine(); };
+        if(d->GetZ() <> 3) { pass := false; "  FAIL: GetZ"->PrintLine(); };
+        if(d->GetW() <> 4) { pass := false; "  FAIL: GetW"->PrintLine(); };
+
+        # Methods from each level
+        if(d->DoubleX() <> 2) { pass := false; "  FAIL: DoubleX (A)"->PrintLine(); };
+        if(d->Sum() <> 3) { pass := false; "  FAIL: Sum (B)"->PrintLine(); };
+        if(d->Total() <> 6) { pass := false; "  FAIL: Total (C)"->PrintLine(); };
+        if(d->Grand() <> 10) { pass := false; "  FAIL: Grand (D)"->PrintLine(); };
+
+        # Each level overrides Name()
+        if(<>d->Name()->Equals("D")) {
+            pass := false;
+            "  FAIL: D Name = {$d->Name()}"->PrintLine();
+        };
+
+        # TypeOf through hierarchy
+        if(<>d->TypeOf(D)) { pass := false; "  FAIL: TypeOf D"->PrintLine(); };
+        if(<>d->TypeOf(C)) { pass := false; "  FAIL: TypeOf C"->PrintLine(); };
+        if(<>d->TypeOf(B)) { pass := false; "  FAIL: TypeOf B"->PrintLine(); };
+        if(<>d->TypeOf(A)) { pass := false; "  FAIL: TypeOf A"->PrintLine(); };
+
+        # Dispatch via concrete D reference
+        d2 := D->New(10, 20, 30, 40);
+        if(<>d2->Name()->Equals("D")) {
+            pass := false;
+            "  FAIL: D Name via d2 = {$d2->Name()}"->PrintLine();
+        };
+        if(d2->DoubleX() <> 20) {
+            pass := false;
+            "  FAIL: DoubleX via d2"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Inheritance chain"->PrintLine();
+        } else {
+            "FAIL: Inheritance chain"->PrintLine();
+        };
+    }
+}

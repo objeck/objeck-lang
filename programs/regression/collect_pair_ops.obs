@@ -1,0 +1,82 @@
+use Collection;
+
+class CollectPairOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Pair operations..."->PrintLine();
+        pass := true;
+
+        # String/Int pair
+        p1 := Pair->New("hello", IntRef->New(42))<String, IntRef>;
+        if(<>p1->GetFirst()->Equals("hello")) {
+            pass := false;
+            "  FAIL: Pair GetFirst"->PrintLine();
+        };
+        if(p1->GetSecond()->Get() <> 42) {
+            pass := false;
+            "  FAIL: Pair GetSecond"->PrintLine();
+        };
+
+        # Pair with two strings
+        p2 := Pair->New("key", "value")<String, String>;
+        if(<>p2->GetFirst()->Equals("key")) {
+            pass := false;
+            "  FAIL: string pair first"->PrintLine();
+        };
+        if(<>p2->GetSecond()->Equals("value")) {
+            pass := false;
+            "  FAIL: string pair second"->PrintLine();
+        };
+
+        # Pair with two IntRef
+        p3 := Pair->New(IntRef->New(10), IntRef->New(20))<IntRef, IntRef>;
+        sum := p3->GetFirst()->Get() + p3->GetSecond()->Get();
+        if(sum <> 30) {
+            pass := false;
+            "  FAIL: int pair sum = {$sum}"->PrintLine();
+        };
+
+        # Vector of typed Pairs
+        pairs := Vector->New()<Pair<String, IntRef>>;
+        each(i : 5) {
+            key := "item{$i}";
+            pairs->AddBack(Pair->New(key, IntRef->New(i * 10))<String, IntRef>);
+        };
+        if(pairs->Size() <> 5) {
+            pass := false;
+            "  FAIL: pairs vector size"->PrintLine();
+        };
+
+        # Retrieve and verify last pair
+        last := pairs->Get(4);
+        if(last <> Nil) {
+            if(<>last->GetFirst()->Equals("item4")) {
+                pass := false;
+                "  FAIL: last pair key"->PrintLine();
+            };
+            if(last->GetSecond()->Get() <> 40) {
+                n := last->GetSecond()->Get();
+                pass := false;
+                "  FAIL: last pair value = {$n}"->PrintLine();
+            };
+        } else {
+            pass := false;
+            "  FAIL: last pair is Nil"->PrintLine();
+        };
+
+        # Sum all values
+        total := 0;
+        each(p in pairs) {
+            total += p->GetSecond()->Get();
+        };
+        if(total <> 100) {
+            pass := false;
+            "  FAIL: pairs sum = {$total}, expected 100"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Pair operations"->PrintLine();
+        } else {
+            "FAIL: Pair operations"->PrintLine();
+        };
+    }
+}

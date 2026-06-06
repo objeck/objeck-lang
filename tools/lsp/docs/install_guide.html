@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Objeck LSP &mdash; Installation Guide</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --border: #d1d5db;
+    --code-bg: #f3f4f6;
+    --code-fg: #111827;
+    --nav-bg: #f9fafb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111827;
+      --fg: #e5e7eb;
+      --accent: #60a5fa;
+      --accent-light: #1e293b;
+      --border: #374151;
+      --code-bg: #1f2937;
+      --code-fg: #e5e7eb;
+      --nav-bg: #1f2937;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--fg);
+    background: var(--bg);
+    max-width: 52rem;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.35rem; margin-top: 2.5rem; margin-bottom: 0.75rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  p, li { margin-bottom: 0.5rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.875em;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0.75rem 0 1rem;
+    border: 1px solid var(--border);
+  }
+  pre code { background: none; padding: 0; font-size: 0.85em; }
+  nav {
+    background: var(--nav-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+  }
+  nav ul { list-style: none; columns: 2; }
+  nav li { margin-bottom: 0.25rem; }
+  .subtitle { color: #6b7280; margin-bottom: 1.5rem; }
+  .note {
+    background: var(--accent-light);
+    border-left: 4px solid var(--accent);
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 0.75rem 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.9rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--code-bg); font-weight: 600; }
+  ol { padding-left: 1.5rem; }
+  ul { padding-left: 1.5rem; }
+  @media print {
+    body { max-width: none; }
+    nav ul { columns: 1; }
+    pre { white-space: pre-wrap; word-wrap: break-word; }
+  }
+  @media (max-width: 600px) {
+    nav ul { columns: 1; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Objeck LSP &mdash; Installation Guide</h1>
+<p class="subtitle">Language Server Protocol support for the <a href="https://github.com/objeck/objeck-lang">Objeck</a> programming language</p>
+
+<nav>
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#prerequisites">Prerequisites</a></li>
+    <li><a href="#workspace">Workspace &amp; build.json</a></li>
+    <li><a href="#vscode">VS Code</a></li>
+    <li><a href="#sublime">Sublime Text</a></li>
+    <li><a href="#kate">Kate</a></li>
+    <li><a href="#ecode">ecode</a></li>
+    <li><a href="#neovim">Neovim</a></li>
+    <li><a href="#emacs">Emacs</a></li>
+    <li><a href="#helix">Helix</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+  </ul>
+</nav>
+
+<!-- ===== Prerequisites ===== -->
+<h2 id="prerequisites">Prerequisites</h2>
+<ol>
+  <li><strong>Install Objeck</strong> &mdash; download the latest release from <a href="https://github.com/objeck/objeck-lang">github.com/objeck/objeck-lang</a>.</li>
+  <li><strong>Set environment variables</strong> (required for all editors except VS&nbsp;Code, which sets them internally):
+    <table>
+      <tr><th>Variable</th><th>Value</th><th>Notes</th></tr>
+      <tr><td><code>OBJECK_LIB_PATH</code></td><td>Path to Objeck <code>lib</code> directory</td><td>Required</td></tr>
+      <tr><td><code>OBJECK_STDIO</code></td><td><code>binary</code></td><td>Required when using stdio transport</td></tr>
+    </table>
+  </li>
+  <li><strong>Verify installation</strong> &mdash; run <code>obr --version</code> in a terminal. If the command is not found, add the Objeck <code>bin</code> directory to your <code>PATH</code>.</li>
+</ol>
+
+<div class="note">
+  <strong>Self-Contained Deployment:</strong> The install scripts create a self-contained LSP deployment at <code>~/.objeck-lsp/</code> that includes a copy of the Objeck runtime (<code>bin/</code>, <code>lib/</code>) and server files. This isolates the LSP server from Objeck rebuilds so your editor stays stable while you update the compiler.
+</div>
+
+<!-- ===== Automated Install ===== -->
+<h2 id="automated-install">Automated Install</h2>
+<p>The install scripts set up the self-contained deployment and configure your editor automatically. Run from the extracted release directory:</p>
+
+<h3>Windows</h3>
+<pre><code># User install (no admin required)
+scripts\install.cmd C:\Users\you\objeck vscode
+
+# System-wide install
+scripts\install.cmd "C:\Program Files\Objeck" all</code></pre>
+
+<h3>Linux / macOS</h3>
+<pre><code>chmod +x scripts/install.sh
+
+# User install
+./scripts/install.sh ~/objeck sublime
+
+# System-wide install
+./scripts/install.sh /usr/local/objeck all</code></pre>
+
+<p>Supported editors: <code>vscode</code>, <code>sublime</code>, <code>neovim</code>, <code>emacs</code>, <code>all</code></p>
+<p>The first argument is the path to your Objeck installation &mdash; it can be any directory, whether user-local or system-wide. The LSP deployment itself always goes to <code>~/.objeck-lsp/</code> (per-user, no admin required).</p>
+
+<p>To update the runtime and server after rebuilding Objeck, use the update scripts:</p>
+<pre><code># Windows
+scripts\update_lsp.cmd C:\Users\you\objeck
+
+# Linux / macOS
+./scripts/update_lsp.sh ~/objeck</code></pre>
+
+<h3>Platform-specific paths</h3>
+<table>
+  <tr><th>Platform</th><th>User install</th><th>System-wide install</th></tr>
+  <tr><td>Windows</td><td><code>C:\Users\you\objeck</code></td><td><code>C:\Program Files\Objeck</code></td></tr>
+  <tr><td>Linux</td><td><code>~/objeck</code></td><td><code>/usr/local/objeck</code></td></tr>
+  <tr><td>macOS</td><td><code>~/objeck</code></td><td><code>/usr/local/objeck</code></td></tr>
+</table>
+
+<!-- ===== Workspace ===== -->
+<h2 id="workspace">Workspace &amp; build.json</h2>
+<p>For multi-file projects, create a <code>build.json</code> file in your project root:</p>
+<pre><code>{
+  "files": [
+    "main.obs",
+    "helper.obs"
+  ],
+  "libs": [
+    "gen_collect.obl",
+    "net.obl",
+    "json.obl"
+  ],
+  "flags": ""
+}</code></pre>
+<p>Open the <em>directory</em> containing <code>build.json</code> in your editor so the LSP server discovers it as the workspace root.</p>
+
+<!-- ===== VS Code ===== -->
+<h2 id="vscode">VS Code</h2>
+<ol>
+  <li>Download the <code>.vsix</code> file from the <a href="https://github.com/objeck/objeck-lsp/releases">releases page</a>.</li>
+  <li>In VS Code, open the Extensions panel (<kbd>Ctrl+Shift+X</kbd>) and drag-and-drop the <code>.vsix</code> file.</li>
+  <li>Edit the Objeck install directory in VS Code settings:
+    <ul>
+      <li><code>objk.win.install.dir</code> &mdash; Windows install path</li>
+      <li><code>objk.posix.install.dir</code> &mdash; Linux / macOS install path</li>
+    </ul>
+  </li>
+  <li>On macOS / Linux, ensure <code>server/lsp_server.sh</code> inside the extension directory is Unix-formatted and has execute permission (<code>chmod +x</code>).</li>
+  <li>Restart VS Code.</li>
+</ol>
+
+<!-- ===== Sublime ===== -->
+<h2 id="sublime">Sublime Text</h2>
+<ol>
+  <li>Install the <a href="https://packagecontrol.io/packages/LSP">LSP</a> package via Package Control.</li>
+  <li>Install Objeck syntax highlighting (<a href="https://github.com/objeck/objeck-lang/blob/master/docs/syntax/howto.html">how-to</a>).</li>
+  <li>Open <em>Preferences &gt; Package Settings &gt; LSP &gt; Settings</em> and add:</li>
+</ol>
+<pre><code>{
+  "clients": {
+    "objeck": {
+      "enabled": true,
+      "command": [
+        "&lt;objeck_lsp_path&gt;/bin/obr.exe",
+        "&lt;objeck_lsp_path&gt;/objeck_lsp.obe",
+        "&lt;objeck_lsp_path&gt;/objk_apis.json",
+        "stdio"
+      ],
+      "env": {
+        "OBJECK_LIB_PATH": "&lt;objeck_lsp_path&gt;/lib",
+        "OBJECK_STDIO": "binary"
+      },
+      "selector": "source.objeck-obs"
+    }
+  }
+}</code></pre>
+<div class="note">Replace <code>&lt;objeck_lsp_path&gt;</code> with your self-contained deployment path (e.g. <code>~/.objeck-lsp</code>). The install script sets this automatically.</div>
+<ol start="4">
+  <li>Open <em>Tools &gt; LSP &gt; Enable Language Server Globally</em> and select <strong>objeck</strong>.</li>
+</ol>
+
+<!-- ===== Kate ===== -->
+<h2 id="kate">Kate</h2>
+<ol>
+  <li>Open <em>Settings &gt; Configure Kate &gt; LSP Client &gt; User Server Settings</em>.</li>
+  <li>Add the following configuration:</li>
+</ol>
+<pre><code>{
+  "servers": {
+    "objeck": {
+      "command": [
+        "&lt;objeck_lsp_path&gt;/bin/obr.exe",
+        "&lt;objeck_lsp_path&gt;/objeck_lsp.obe",
+        "&lt;objeck_lsp_path&gt;/objk_apis.json",
+        "stdio"
+      ],
+      "url": "https://github.com/objeck/objeck-lsp",
+      "highlightingModeRegex": "^Objeck$"
+    }
+  }
+}</code></pre>
+<div class="note">Kate does not support per-server environment variables. Set <code>OBJECK_LIB_PATH</code> and <code>OBJECK_STDIO</code> system-wide on Windows, or in your shell profile on Linux / macOS.</div>
+
+<!-- ===== ecode ===== -->
+<h2 id="ecode">ecode</h2>
+<ol>
+  <li>Install the LSP plugin in ecode.</li>
+  <li>Edit the LSP client config file:
+    <ul>
+      <li>Windows: <code>%APPDATA%\ecode\plugins\lspclient.json</code></li>
+      <li>Linux / macOS: <code>~/.config/ecode/plugins/lspclient.json</code></li>
+    </ul>
+  </li>
+  <li>Add the following under <code>"servers"</code>:</li>
+</ol>
+<pre><code>{
+  "command": "obr &lt;lsp_server_path&gt;/objeck_lsp.obe &lt;lsp_server_path&gt;/objk_apis.json stdio",
+  "file_patterns": ["%.obs"],
+  "language": "objeck",
+  "name": "objeck",
+  "url": "https://objeck.org/"
+}</code></pre>
+
+<!-- ===== Neovim ===== -->
+<h2 id="neovim">Neovim</h2>
+<p>Requires <strong>Neovim 0.11+</strong> (built-in <code>vim.lsp.config</code> / <code>vim.lsp.enable</code>).</p>
+<ol>
+  <li>Copy <code>clients/neovim/objeck.lua</code> to your LSP config directory:
+    <ul>
+      <li>Windows: <code>%LOCALAPPDATA%\nvim\lsp\objeck.lua</code></li>
+      <li>Linux / macOS: <code>~/.config/nvim/lsp/objeck.lua</code></li>
+    </ul>
+  </li>
+  <li>Copy <code>clients/neovim/objeck.vim</code> to your syntax directory:
+    <ul>
+      <li>Windows: <code>%LOCALAPPDATA%\nvim\syntax\objeck.vim</code></li>
+      <li>Linux / macOS: <code>~/.config/nvim/syntax/objeck.vim</code></li>
+    </ul>
+  </li>
+  <li>Edit the <code>cmd</code> and <code>cmd_env</code> paths in <code>objeck.lua</code> to point to your installation.</li>
+  <li>Add to your <code>init.lua</code>:</li>
+</ol>
+<pre><code>vim.filetype.add({ extension = { obs = 'objeck' } })
+vim.lsp.enable('objeck')</code></pre>
+<p>The LSP config uses <code>build.json</code> as the workspace root marker. The syntax file provides highlighting independent of the LSP server.</p>
+
+<!-- ===== Emacs ===== -->
+<h2 id="emacs">Emacs</h2>
+<p>Requires <strong>Emacs 29+</strong> (built-in Eglot).</p>
+<ol>
+  <li>Copy <code>clients/emacs/objeck-mode.el</code> to your load-path:
+    <ul>
+      <li>Windows: <code>%APPDATA%\.emacs.d\lisp\</code></li>
+      <li>Linux / macOS: <code>~/.emacs.d/lisp/</code></li>
+    </ul>
+  </li>
+  <li>Edit the server command paths and <code>OBJECK_LIB_PATH</code> inside the file.</li>
+  <li>Add to your <code>init.el</code>:</li>
+</ol>
+<pre><code>(add-to-list 'load-path (expand-file-name "lisp" user-emacs-directory))
+(require 'objeck-mode)
+(add-hook 'objeck-mode-hook 'eglot-ensure)</code></pre>
+<div class="note">The <code>eglot-ensure</code> hook automatically starts the LSP server when opening <code>.obs</code> files. The mode includes built-in syntax highlighting (font-lock) for Objeck keywords, types, and builtins.</div>
+<ol start="4">
+  <li>Open any <code>.obs</code> file &mdash; Eglot will start the LSP server automatically.</li>
+</ol>
+
+<!-- ===== Helix ===== -->
+<h2 id="helix">Helix</h2>
+<ol>
+  <li>Merge the contents of <code>clients/helix/languages.toml</code> into <code>~/.config/helix/languages.toml</code>.</li>
+  <li>Edit the <code>args</code> paths to point to your Objeck installation.</li>
+  <li>Open any <code>.obs</code> file &mdash; Helix will start the language server automatically.</li>
+</ol>
+
+<!-- ===== Troubleshooting ===== -->
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3>Server does not start</h3>
+<ul>
+  <li>Verify <code>obr --version</code> works in a terminal.</li>
+  <li>Check that <code>OBJECK_LIB_PATH</code> points to the Objeck <code>lib</code> directory.</li>
+  <li>When using stdio transport, ensure <code>OBJECK_STDIO=binary</code> is set.</li>
+  <li>On Linux/macOS, confirm the server script has execute permission.</li>
+</ul>
+
+<h3>No diagnostics or completion</h3>
+<ul>
+  <li>Make sure you opened the <em>folder</em> containing <code>build.json</code>, not just a single file.</li>
+  <li>Verify the file paths in <code>build.json</code> are correct and relative to the project root.</li>
+  <li>Check the <code>libs</code> list includes all required <code>.obl</code> files.</li>
+</ul>
+
+<h3>Diagnostics appear but are mispositioned</h3>
+<ul>
+  <li>Ensure you are using the latest LSP server (<code>objeck_lsp.obe</code>) matching your Objeck installation version.</li>
+</ul>
+
+<h3>VS Code: extension does not activate</h3>
+<ul>
+  <li>Confirm the file has a <code>.obs</code> extension.</li>
+  <li>Check the Objeck install directory setting matches your actual installation.</li>
+  <li>Open the Output panel (<em>View &gt; Output</em>) and select <strong>Objeck Language Server</strong> for logs.</li>
+</ul>
+
+<h3>Enabling debug logging</h3>
+<p>Start the server with the <code>debug</code> flag to write detailed logs:</p>
+<pre><code>obr objeck_lsp.obe objk_apis.json stdio debug</code></pre>
+<p>Logs are written to the system temp directory. Check the server's stderr output for the exact log file location.</p>
+
+<hr style="margin-top: 3rem; border: none; border-top: 1px solid var(--border);">
+<p style="font-size: 0.85rem; color: #6b7280; margin-top: 1rem;">
+  Objeck LSP &mdash; <a href="https://github.com/objeck/objeck-lsp">github.com/objeck/objeck-lsp</a>
+</p>
+
+</body>
+</html>

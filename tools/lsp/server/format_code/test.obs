@@ -1,0 +1,20 @@
+use System.IO.Filesystem, Collection;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			source := FileReader->ReadFile(args[0]);
+			if(source <> Nil) {
+				options := Map->New()<String, String>;
+				options->Insert("function-space", "false");
+				options->Insert("ident-space", "3");
+				options->Insert("trim-trailing", "true");
+#				options->Insert("start-line", "1");
+#				options->Insert("end-line", "2");
+				
+				formatted := CodeFormatter->New(options)->Format(source);
+				"|{$formatted}|"->PrintLine();
+			};
+		};
+	}
+}

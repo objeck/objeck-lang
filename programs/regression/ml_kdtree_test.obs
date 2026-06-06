@@ -1,0 +1,143 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for System.ML KDTree (overhaul phase 3): for several queries
+and k values over a fixed 2-D dataset the k-nearest distance sequence must
+match a brute-force scan exactly and contain no duplicate rows (ties may
+order differently between the two scans, so distances are compared, not
+indexes), plus edge cases (k larger than the tree, mismatched query width).
+~#
+use System.ML, Collection;
+
+class MlKdTreeTest {
+	function : BruteForce(data : Float[,], k : Int, query : Float[]) ~ Int[] {
+		dims := data->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		count := k;
+		if(count > rows) {
+			count := rows;
+		};
+
+		best_rows := Int->New[count];
+		best_dists := Float->New[count];
+		each(i : count) {
+			best_dists[i] := Float->Inf();
+		};
+
+		each(r : rows) {
+			dist_sq := 0.0;
+			each(j : cols) {
+				diff := query[j] - data[r,j];
+				dist_sq += diff * diff;
+			};
+
+			if(dist_sq < best_dists[count - 1]) {
+				pos := count - 1;
+				while(pos > 0 & best_dists[pos - 1] > dist_sq) {
+					best_dists[pos] := best_dists[pos - 1];
+					best_rows[pos] := best_rows[pos - 1];
+					pos -= 1;
+				};
+				best_dists[pos] := dist_sq;
+				best_rows[pos] := r;
+			};
+		};
+
+		return best_rows;
+	}
+
+	function : DistSq(data : Float[,], row : Int, query : Float[]) ~ Float {
+		dims := data->Size();
+		cols := dims[1];
+
+		dist_sq := 0.0;
+		each(j : cols) {
+			diff := query[j] - data[row,j];
+			dist_sq += diff * diff;
+		};
+
+		return dist_sq;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# fixed 2-D points (ties exist for some queries; distances compared)
+		data := [
+			[2.0, 3.0], [5.0, 4.0], [9.0, 6.0], [4.0, 7.0], [8.0, 1.0],
+			[7.0, 2.0], [1.0, 9.0], [6.0, 8.0], [3.0, 1.0], [9.5, 9.5],
+			[0.5, 0.5], [5.5, 5.5], [2.5, 7.5], [8.5, 4.5], [4.5, 2.5]];
+
+		tree := KDTree->New(data);
+		if(tree->Size() <> 15) {
+			pass := false;
+			"  FAIL: tree size"->PrintLine();
+		};
+
+		# several queries and k values must match brute force exactly
+		queries := [
+			[5.0, 5.0], [0.0, 0.0], [10.0, 10.0], [7.2, 3.1], [2.2, 8.8], [4.9, 4.1]];
+		ks := [1, 3, 5, 15];
+
+		each(q : 6) {
+			query := Float->New[2];
+			query[0] := queries[q,0];
+			query[1] := queries[q,1];
+
+			each(n : 4) {
+				k := ks[n];
+				expected := BruteForce(data, k, query);
+				actual := tree->Nearest(k, query);
+
+				if(actual = Nil | actual->Size() <> expected->Size()) {
+					pass := false;
+					"  FAIL: query {$q} k={$k} size"->PrintLine();
+				}
+				else {
+					# distance sequences must match rank for rank
+					each(i : expected) {
+						d_actual := DistSq(data, actual[i], query);
+						d_expected := DistSq(data, expected[i], query);
+						if(Float->Abs(d_actual - d_expected) > 0.000000001) {
+							pass := false;
+							"  FAIL: query {$q} k={$k} distance rank {$i}"->PrintLine();
+						};
+					};
+
+					# no row may appear twice
+					each(i : actual) {
+						for(j := i + 1; j < actual->Size(); j += 1;) {
+							if(actual[i] = actual[j]) {
+								pass := false;
+								"  FAIL: query {$q} k={$k} duplicate row"->PrintLine();
+							};
+						};
+					};
+				};
+			};
+		};
+
+		# k larger than the tree returns every row
+		all_rows := tree->Nearest(50, [5.0, 5.0]);
+		if(all_rows = Nil | all_rows->Size() <> 15) {
+			pass := false;
+			"  FAIL: oversized k"->PrintLine();
+		};
+
+		# mismatched query width is rejected
+		bad := tree->Nearest(3, [1.0, 2.0, 3.0]);
+		if(bad <> Nil) {
+			pass := false;
+			"  FAIL: mismatched query width accepted"->PrintLine();
+		};
+
+		if(pass) {
+			"PASS: ML KDTree tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML KDTree tests"->PrintLine();
+		};
+	}
+}

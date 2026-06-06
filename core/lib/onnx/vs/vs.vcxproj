@@ -191,10 +191,10 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120d.lib;onnxruntime.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_core4d.lib;opencv_imgproc4d.lib;opencv_imgcodecs4d.lib;opencv_highgui4d.lib;opencv_calib3d4d.lib;opencv_dnn4d.lib;opencv_features2d4d.lib;opencv_flann4d.lib;opencv_ml4d.lib;opencv_objdetect4d.lib;opencv_photo4d.lib;opencv_stitching4d.lib;opencv_video4d.lib;opencv_videoio4d.lib;onnxruntime.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>pushd ..\..\..\..\programs\frameworks\opencv_onnx &amp;&amp; build_onnx.cmd arm64 Debug dml &amp;&amp; popd</Command>
+      <Command></Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- Release-DML|x64 -->
@@ -230,7 +230,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120.lib;onnxruntime.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_core4.lib;opencv_imgproc4.lib;opencv_imgcodecs4.lib;opencv_highgui4.lib;opencv_calib3d4.lib;opencv_dnn4.lib;opencv_features2d4.lib;opencv_flann4.lib;opencv_ml4.lib;opencv_objdetect4.lib;opencv_photo4.lib;opencv_stitching4.lib;opencv_video4.lib;opencv_videoio4.lib;onnxruntime.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <!-- Release-CUDA|x64 -->
@@ -266,7 +266,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_world4120.lib;onnxruntime.lib;onnxruntime_providers.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);opencv_core4.lib;opencv_imgproc4.lib;opencv_imgcodecs4.lib;opencv_highgui4.lib;opencv_calib3d4.lib;opencv_dnn4.lib;opencv_features2d4.lib;opencv_flann4.lib;opencv_ml4.lib;opencv_objdetect4.lib;opencv_photo4.lib;opencv_stitching4.lib;opencv_video4.lib;opencv_videoio4.lib;onnxruntime.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <!-- Release-Vitis|x64 -->

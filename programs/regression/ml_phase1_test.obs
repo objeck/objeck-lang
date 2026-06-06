@@ -1,0 +1,147 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for the System.ML correctness fixes (phase 1):
+seedable PRNG, DotSigmoid dimension guard, StdDev bounds, NaiveBayes
+(log-space + Laplace + no mutation), and KNN ordering + majority vote.
+~#
+use System.ML, Collection;
+
+class MlPhase1Test {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- Seedable PRNG: determinism + range ---
+		a := Random->New(42);
+		b := Random->New(42);
+		for(i := 0; i < 1000; i += 1;) {
+			if(a->NextInt(100) <> b->NextInt(100)) {
+				pass := false;
+			};
+		};
+		r := Random->New(7);
+		v := r->NextReal();
+		if(v <= 0.0 | v >= 1.0) {
+			pass := false;
+		};
+
+		# --- DotSigmoid dimension guard ---
+		# valid: (2x3) . (3x2) -> non-Nil
+		m1 := [[1.0,2.0,3.0],[4.0,5.0,6.0]];
+		m2 := [[1.0,0.0],[0.0,1.0],[1.0,1.0]];
+		if(Matrix2D->DotSigmoid(m1, m2) = Nil) {
+			pass := false;
+		};
+		# invalid: (2x3) . (2x2) -> Nil (a_cols 3 <> b_rows 2)
+		m3 := [[1.0,0.0],[0.0,1.0]];
+		if(Matrix2D->DotSigmoid(m1, m3) <> Nil) {
+			pass := false;
+		};
+
+		# --- StdDev out-of-range bounds: returns 0.0, no crash ---
+		mm := [[1.0,2.0],[3.0,4.0]];
+		if(Matrix2D->StdDevRow(9, mm) <> 0.0) {
+			pass := false;
+		};
+		if(Matrix2D->StdDevColumn(9, mm) <> 0.0) {
+			pass := false;
+		};
+
+		# --- NaiveBayes: spam classification + repeatable (no mutation) ---
+		normal := BayesGroup->New(8.0 / 12.0);
+		normal->AddEntry(BayesEntry->New("dear", 8));
+		normal->AddEntry(BayesEntry->New("friend", 5));
+		normal->AddEntry(BayesEntry->New("lunch", 3));
+		normal->AddEntry(BayesEntry->New("money", 1));
+		spam := BayesGroup->New(4.0 / 12.0);
+		spam->AddEntry(BayesEntry->New("dear", 2));
+		spam->AddEntry(BayesEntry->New("friend", 1));
+		spam->AddEntry(BayesEntry->New("lunch", 0));
+		spam->AddEntry(BayesEntry->New("money", 4));
+		bayes := NaiveBayes->New(normal, spam);
+		q := ["lunch", "money", "money", "money", "money"];
+		if(bayes->Query(q) <> 1 | bayes->Query(q) <> 1) {
+			pass := false;
+		};
+
+		# --- KNN: ascending ordering + majority-vote Classify ---
+		matrix := [ [51.0,167.0],[58.0,169.0],[62.0,182.0],[69.0,176.0],
+		            [64.0,173.0],[65.0,172.0],[56.0,174.0],[57.0,173.0],[55.0,170.0] ];
+		labels := ["underweight","normal","normal","normal","normal","underweight","normal","normal","normal"];
+		knn := KNearestNeighbors->New(matrix, labels);
+		nn := knn->Query(3, [57.0, 170.0]);
+		for(i := 0; i < nn->Size() - 1; i += 1;) {
+			lo := nn[i];
+			hi := nn[i + 1];
+			if(lo->GetDistance() > hi->GetDistance()) {
+				pass := false;
+			};
+		};
+		if(<>knn->Classify(3, [57.0, 170.0])->Equals("normal")) {
+			pass := false;
+		};
+
+		# --- LinearRegression: intercept + metrics + prediction ---
+		lx := [[1.0],[2.0],[3.0],[4.0]];
+		ly := [[3.0],[5.0],[7.0],[9.0]];   # y = 2x + 1
+		lr := LinearRegression->New();
+		if(<>lr->Fit(lx, ly, true)) {
+			pass := false;
+		};
+		lc := lr->GetCoefficients();
+		if(Float->Abs(lc[0] - 1.0) > 0.001 | Float->Abs(lc[1] - 2.0) > 0.001) {
+			pass := false;
+		};
+		if(lr->GetRSquared() < 0.999 | lr->GetRMSE() > 0.001) {
+			pass := false;
+		};
+		lp := lr->Predict([[5.0]]);
+		if(Float->Abs(lp[0,0] - 11.0) > 0.001) {
+			pass := false;
+		};
+
+		# --- LogisticRegression: bias + convergence (AND) + loss ---
+		gx := [[0.0,0.0],[0.0,1.0],[1.0,0.0],[1.0,1.0]];
+		gand := [[0.0],[0.0],[0.0],[1.0]];
+		clf := LogisticRegression->New(0.5, 5000);
+		clf->Fit(gx, gand);
+		if(clf->Score(gx, gand) < 0.999) {
+			pass := false;
+		};
+		if(clf->GetLoss() > 0.1) {
+			pass := false;
+		};
+		if(Float->Abs(clf->GetBias()) < 0.0001) {
+			pass := false;
+		};
+
+		# --- KMeans: k-means++ seeding recovers two clean clusters (3/3) ---
+		recs := Vector->New()<FloatArrayRef>;
+		recs->AddBack(FloatArrayRef->New([1.0, 1.0]));
+		recs->AddBack(FloatArrayRef->New([1.5, 0.5]));
+		recs->AddBack(FloatArrayRef->New([0.5, 1.5]));
+		recs->AddBack(FloatArrayRef->New([9.0, 9.0]));
+		recs->AddBack(FloatArrayRef->New([9.5, 8.5]));
+		recs->AddBack(FloatArrayRef->New([8.5, 9.5]));
+		km := KMeans->Group(["a", "b"], recs, 2, 0.0, 10.0, 100, 42);
+		km_total := 0;
+		km_ok := true;
+		for(i := 0; i < km->Size(); i += 1;) {
+			kg := km->Get(i);
+			if(kg->Size() <> 3) {
+				km_ok := false;
+			};
+			km_total += kg->Size();
+		};
+		if(km_total <> 6 | <>km_ok) {
+			pass := false;
+		};
+
+		if(pass) {
+			"PASS: ML phase1 tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML phase1 tests"->PrintLine();
+		};
+	}
+}

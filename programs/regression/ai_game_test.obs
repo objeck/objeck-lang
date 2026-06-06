@@ -1,0 +1,187 @@
+# EXTRA_LIBS: ai,gen_collect
+# JIT_DISABLE
+#~
+Regression tests for System.AI adversarial search using tic-tac-toe:
+Minimax takes a win-in-1, blocks the opponent's win-in-1, and perfect
+self-play always draws; MCTS (seeded) also finds the win-in-1.
+~#
+use System.AI;
+
+#~
+Tic-tac-toe position: cells 0-8, 0 = empty, 1 = X (maximizer), 2 = O.
+~#
+class TttState implements GameState {
+	@board : Int[];
+	@x_to_move : Bool;
+
+	New(board : Int[], x_to_move : Bool) {
+		@board := board;
+		@x_to_move := x_to_move;
+	}
+
+	function : Start() ~ TttState {
+		return TttState->New(Int->New[9], true);
+	}
+
+	method : public : GetMoves() ~ Int[] {
+		if(Winner() <> 0) {
+			return Int->New[0];
+		};
+
+		count := 0;
+		each(i : 9) {
+			if(@board[i] = 0) {
+				count += 1;
+			};
+		};
+
+		moves := Int->New[count];
+		at := 0;
+		each(i : 9) {
+			if(@board[i] = 0) {
+				moves[at] := i;
+				at += 1;
+			};
+		};
+
+		return moves;
+	}
+
+	method : public : Apply(move : Int) ~ System.AI.GameState {
+		board := Int->New[9];
+		each(i : 9) {
+			board[i] := @board[i];
+		};
+
+		if(@x_to_move) {
+			board[move] := 1;
+		}
+		else {
+			board[move] := 2;
+		};
+
+		return TttState->New(board, <>@x_to_move);
+	}
+
+	method : public : IsTerminal() ~ Bool {
+		if(Winner() <> 0) {
+			return true;
+		};
+
+		each(i : 9) {
+			if(@board[i] = 0) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	method : public : Evaluate() ~ Float {
+		winner := Winner();
+		if(winner = 1) {
+			return 1.0;
+		};
+		if(winner = 2) {
+			return -1.0;
+		};
+		return 0.0;
+	}
+
+	method : public : IsMaximizing() ~ Bool {
+		return @x_to_move;
+	}
+
+	method : Winner() ~ Int {
+		lines := [
+			[0, 1, 2], [3, 4, 5], [6, 7, 8],
+			[0, 3, 6], [1, 4, 7], [2, 5, 8],
+			[0, 4, 8], [2, 4, 6]];
+		each(i : 8) {
+			a := @board[lines[i,0]];
+			if(a <> 0 & a = @board[lines[i,1]] & a = @board[lines[i,2]]) {
+				return a;
+			};
+		};
+		return 0;
+	}
+
+	method : public : GetBoard() ~ Int[] {
+		return @board;
+	}
+}
+
+class AiGameTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# X to move with two in a row: 1 1 _ / 2 2 _ / _ _ _
+		# X wins NOW at 2 (O threatens at 5)
+		win_board := [1, 1, 0, 2, 2, 0, 0, 0, 0];
+		win_state := TttState->New(win_board, true);
+
+		minimax := Minimax->New(9);
+		move := minimax->FindBestMove(win_state);
+		if(move <> 2) {
+			pass := false;
+			"  FAIL: minimax win-in-1, chose {$move}"->PrintLine();
+		};
+		if(minimax->GetNodesSearched() < 1) {
+			pass := false;
+			"  FAIL: minimax node accounting"->PrintLine();
+		};
+
+		# X cannot win immediately: 1 _ _ / 2 2 _ / 1 _ _ — X must block at 5
+		block_board := [1, 0, 0, 2, 2, 0, 1, 0, 0];
+		block_state := TttState->New(block_board, true);
+		move := minimax->FindBestMove(block_state);
+		if(move <> 5) {
+			pass := false;
+			"  FAIL: minimax block, chose {$move}"->PrintLine();
+		};
+
+		# O to move mirrors the logic: O wins at 5
+		o_board := [1, 1, 0, 2, 2, 0, 1, 0, 0];
+		o_state := TttState->New(o_board, false);
+		move := minimax->FindBestMove(o_state);
+		if(move <> 5) {
+			pass := false;
+			"  FAIL: minimax O win-in-1, chose {$move}"->PrintLine();
+		};
+
+		# perfect self-play from the start is always a draw
+		state := TttState->Start()->As(System.AI.GameState);
+		while(<>state->IsTerminal()) {
+			best := minimax->FindBestMove(state);
+			state := state->Apply(best);
+		};
+		if(state->Evaluate() <> 0.0) {
+			outcome := state->Evaluate();
+			pass := false;
+			"  FAIL: perfect self-play outcome {$outcome}"->PrintLine();
+		};
+
+		# MCTS finds the win-in-1 with seeded playouts
+		mcts := MonteCarloTreeSearch->New(1500, 1.414, 7);
+		move := mcts->FindBestMove(TttState->New(win_board, true));
+		if(move <> 2) {
+			pass := false;
+			"  FAIL: mcts win-in-1, chose {$move}"->PrintLine();
+		};
+
+		# terminal/empty positions return -1
+		full_board := [1, 2, 1, 2, 1, 2, 2, 1, 2];
+		none := minimax->FindBestMove(TttState->New(full_board, true));
+		if(none <> -1) {
+			pass := false;
+			"  FAIL: terminal position move"->PrintLine();
+		};
+
+		if(pass) {
+			"PASS: AI game search tests"->PrintLine();
+		}
+		else {
+			"FAIL: AI game search tests"->PrintLine();
+		};
+	}
+}

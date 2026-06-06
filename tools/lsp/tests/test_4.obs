@@ -1,0 +1,10 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		str := "Hello World!";
+		each( index  : str) {			
+			str->Get(    index  )->PrintLine();
+		};
+		foo := 13;
+		foo += foo    ;
+	}
+}

@@ -22,8 +22,9 @@ This document lists all regression tests, what they validate, and comprehensive 
 | 14 | `jit_native_float_array.obs` | AMD64 JIT | Float array creation and math operations in native context | - | ARM64, x64 | ✅ |
 | 15 | `try_otherwise.obs` | Core Language | Exception handling with try/otherwise | - | ARM64, x64 | ✅ |
 | 16 | `fix524_array_cast_chain.obs` | Bug Fix | Array cast chain fix | - | ARM64, x64 | ✅ |
+| 17 | `fix534_substring_crash.obs` | Bug Fix | SubString crash on negative or zero length | 75c4c3ed0 | ARM64, x64 | ✅ |
 
-**Total Runtime Tests:** 16
+**Total Runtime Tests:** 17
 **ARM64 JIT Tests:** 4
 **AMD64 JIT Tests:** 4
 **Core Language Tests:** 8

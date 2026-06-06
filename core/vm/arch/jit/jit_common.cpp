@@ -65,14 +65,12 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return true;
   }
 
-  // Auto-JIT: skip methods containing MTHD_CALL/DYN_MTHD_CALL.
-  // MTHD_CALL works for explicit 'native' methods via ProcessStackCallback +
-  // direct JIT-to-JIT calling, but auto-JIT'd library methods (String:Append,
-  // String:ToCharArray) crash due to callback interaction issues.
-  // DYN_MTHD_CALL has closure parameter handling issues.
+  // Auto-JIT: skip methods containing DYN_MTHD_CALL (closure parameter
+  // handling issues — prgm70/71 segfault with certain closure patterns).
+  // MTHD_CALL is now allowed: uses ProcessStackCallback the same way
+  // explicit 'native' methods do, which is already proven correct.
   for(long i = 0; i < callee->GetInstructionCount(); ++i) {
-    const InstructionType type = callee->GetInstruction(i)->GetType();
-    if(type == MTHD_CALL || type == DYN_MTHD_CALL) {
+    if(callee->GetInstruction(i)->GetType() == DYN_MTHD_CALL) {
       callee->SetJitAttempted();
       return false;
     }
@@ -189,7 +187,28 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       Runtime::StackInterpreter::ReleaseStackFrame(frame);
 
       if(status < 0) {
-        std::wcerr << L">>> Error in JIT-to-JIT call: method='" << callee->GetName() << L"' <<<" << std::endl;
+        // mirror the interpreter's runtime error reporting so the one-line
+        // failure is actionable (status codes set by the JIT guard stubs)
+        const wchar_t* reason;
+        switch(status) {
+        case -1:
+          reason = L"Attempting to dereference a 'Nil' memory instance";
+          break;
+        case -2:
+        case -3:
+          reason = L"Index out of bounds";
+          break;
+        case -4:
+          reason = L"Divide by zero";
+          break;
+        default:
+          reason = L"Unknown runtime error";
+          break;
+        }
+        std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
+                   << L"', status=" << status << L", self=" << callee_inst
+                   << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
+                   << L"' <<<" << std::endl;
         exit(1);
       }
       break;

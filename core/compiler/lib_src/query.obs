@@ -10,7 +10,7 @@ use System.IO.Filesystem;
 use Data.XML;
 
 #~
-Supports processing of semi-structured data (-lib query)
+In-memory object query engine. Table stores typed records and supports filtering, aggregation (sum, average), and CSV/filesystem import. Finder provides filesystem search. Compile with -lib query.
 ~#
 bundle Query.Structured {
 	#~
@@ -74,6 +74,10 @@ each(i : results) {
 		#~
 		Gets the table name
 		@return table name
+		```
+		table := Query.Structured.Table->New("products", ["sku", "price"]);
+		table->GetName()->PrintLine(); # prints "products"
+		```
 		~#
 		method : public : GetName() ~ String {
 			return @name;
@@ -83,6 +87,11 @@ each(i : results) {
 		Get column index by name
 		@param name column name
 		@return column name
+		```
+		table := Query.Structured.Table->New("items", ["name", "qty"]);
+		idx := table->GetIndex("qty"); # returns 2 (pk=0, name=1, qty=2)
+		"qty column index={$idx}"->PrintLine();
+		```
 		~#
 		method : public : native : GetIndex(name : String) ~ Int {
 			found := @column_map->Find(name);
@@ -94,8 +103,14 @@ each(i : results) {
 		}
 		
 		#~
-		Get all row1
-		@return all row1
+		Get all rows
+		@return all rows
+		```
+		table := Query.Structured.Table->New("items", ["name"]);
+		row := table->Insert(); row->Set("name", "Alpha");
+		all := table->GetAll(); # retrieve every row
+		each(i : all) { all->Get(i)->ToString()->PrintLine(); };
+		```
 		~#
 		method : public : native : GetAll() ~ Vector<Row> {
 			matches := Vector->New()<Row>;
@@ -110,9 +125,15 @@ each(i : results) {
 		}
 		
 		#~
-		Get row1 by primary key
+		Get row by primary key
 		@param pk primary key
-		@return row1
+		@return row
+		```
+		table := Query.Structured.Table->New("items", ["name"]);
+		row := table->Insert(); row->Set("name", "Beta");
+		found := table->Get(0); # fetch row with pk=0
+		found->ToString()->PrintLine();
+		```
 		~#
 		method : public : native : Get(pk : Int) ~ Row {
 			return @keys->Find(pk);
@@ -130,6 +151,14 @@ each(i : results) {
 		Gets unique rows by column name
 		@param name column name
 		@return unique rows
+		```
+		table := Query.Structured.Table->New("sales", ["region"]);
+		r1 := table->Insert(); r1->Set("region", "East");
+		r2 := table->Insert(); r2->Set("region", "East"); # duplicate
+		r3 := table->Insert(); r3->Set("region", "West");
+		unique := table->Unique("region"); # 2 rows: East, West
+		"unique regions: {$unique->Size()}"->PrintLine();
+		```
 		~#
 		method : public : Unique(name : String) ~ Vector<Row> {
 			out := Vector->New()<Row>;
@@ -162,6 +191,13 @@ each(i : results) {
 		Gets the column average
 		@param name column name
 		@return column average
+		```
+		table := Query.Structured.Table->New("scores", ["score"]);
+		r1 := table->Insert(); r1->Set("score", IntRef->New(80));
+		r2 := table->Insert(); r2->Set("score", IntRef->New(90));
+		avg := table->Average("score"); # returns 85.0
+		"avg={$avg}"->PrintLine();
+		```
 		~#
 		method : public : Average(name : String) ~ Float {
 			index := GetIndex(name);		
@@ -194,6 +230,13 @@ each(i : results) {
 		Gets the column sum
 		@param name column name
 		@return column sum
+		```
+		table := Query.Structured.Table->New("sales", ["amount"]);
+		r1 := table->Insert(); r1->Set("amount", FloatRef->New(19.99));
+		r2 := table->Insert(); r2->Set("amount", FloatRef->New(5.01));
+		total := table->Sum("amount"); # returns 25.0
+		"total={$total}"->PrintLine();
+		```
 		~#
 		method : public : Sum(name : String) ~ Float {
 			index := GetIndex(name);		
@@ -294,10 +337,16 @@ each(i : results) {
 		}
 		
 		#~
-		Query table using SQL-like syntax. Support for 'select', 'from', 'where', 
+		Query table using SQL-like syntax. Support for 'select', 'from', 'where',
 		'distinct', 'order by' and logical operators.
 		@param statement query statement
 		@return result table
+		```
+		table := Query.Structured.Table->New("emp", ["name", "dept"]);
+		r := table->Insert(); r->Set("name", "Carol"); r->Set("dept", "Eng");
+		rs := table->Query("select name from emp where dept = 'Eng'");
+		rs->ToString()->PrintLine();
+		```
 		~#
 		method : public : Query(statement : String) ~ Table {
 			@query := Query->New(statement, @self);
@@ -334,9 +383,16 @@ each(i : results) {
 		}
 		
 		#~
-		Inserts a new row1 into the table. After the row1 
-		has been added it's values will need to be set.
-		@return newly inserted row1
+		Inserts a new row into the table. After the row
+		has been added its values will need to be set.
+		@return newly inserted row
+		```
+		table := Query.Structured.Table->New("tasks", ["title", "done"]);
+		row := table->Insert(); # add empty row
+		row->Set("title", "Write tests");
+		row->Set("done", Row->False());
+		row->ToString()->PrintLine();
+		```
 		~#
 		method : public : native : Insert() ~ Row {
 			pk := IntRef->New(@count);
@@ -360,9 +416,15 @@ each(i : results) {
 		}
 		
 		#~
-		Delete row1 by primary key
+		Delete row by primary key
 		@param pk primary key
-		@return true of successful, false otherwise
+		@return true if successful, false otherwise
+		```
+		table := Query.Structured.Table->New("items", ["name"]);
+		row := table->Insert(); row->Set("name", "Temp");
+		ok := table->Delete(0); # remove row with pk=0
+		"deleted={$ok}"->PrintLine();
+		```
 		~#
 		method : public : native : Delete(pk : Int) ~ Bool {
 			row1 := @keys->Find(pk);
@@ -429,6 +491,13 @@ each(i : results) {
 		@param table_name table name
 		@param path to CSV
 		@return new table
+		```
+		table := Query.Structured.Table->FromCsv("orders", "orders.csv");
+		if(table <> Nil) {
+		  rs := table->Query("select * from orders where total > 100");
+		  rs->ToString()->PrintLine();
+		};
+		```
 		~#
 		function : FromCsv(table_name : String, path : String) ~ Table {
 			csv := Data.CSV.CsvTable->New(FileReader->ReadFile(path));
@@ -507,6 +576,11 @@ each(i : results) {
 		@param table_name table name
 		@param path to directory
 		@return new table
+		```
+		table := Query.Structured.Table->FromFilesystem("files", "/tmp/");
+		rs := table->Query("select name from files where is_dir = false");
+		rs->ToString()->PrintLine(); # list only files, not directories
+		```
 		~#
 		function : FromFilesystem(table_name : String, path : String) ~ Table {
 			table := Table->New(table_name, ["name", "path_name", "create_date", "owner", "is_dir", "is_readonly"]);
@@ -1829,6 +1903,11 @@ each(i : results) {
 		#~
 		Default constructor
 		@param expr regex expression
+		```
+		finder := Query.Structured.Finder->New(".*\\.obs$"); # match .obs files
+		matches := finder->FindFiles("/home/user/src");
+		each(i : matches) { matches->Get(i)->PrintLine(); };
+		```
 		~#
 		New(expr : String) {
 			@regex := RegEx->New(expr);
@@ -1838,6 +1917,13 @@ each(i : results) {
 		Finds matching files in a given directory
 		@param path root directory to start searching
 		@return matching file names
+		```
+		finder := Query.Structured.Finder->New(".*\\.json$"); # find JSON files
+		results := finder->FindFiles("/etc/");
+		each(i : results) {
+		  results->Get(i)->PrintLine();
+		};
+		```
 		~#
 		method : public : FindFiles(path : String) ~ Vector<String> {
 			matches := Vector->New()<String>;

@@ -1,0 +1,83 @@
+class JitStringOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT string operations..."->PrintLine();
+        pass := true;
+
+        # Many string comparisons
+        ok_cmp := true;
+        each(i : 10000) {
+            a := "hello";
+            b := "hello";
+            if(<>a->Equals(b)) { ok_cmp := false; };
+        };
+        if(<>ok_cmp) {
+            pass := false;
+            "  FAIL: many equals comparisons"->PrintLine();
+        };
+
+        # String building loop
+        total_len := 0;
+        each(i : 1000) {
+            s := "item{$i}";
+            total_len += s->Size();
+        };
+        # "item0" is 5, "item9" is 5, "item10" is 6, etc.
+        # Items 0-9 (10 items): 5 chars each = 50
+        # Items 10-99 (90 items): 6 chars each = 540
+        # Items 100-999 (900 items): 7 chars each = 6300
+        expected_len := 50 + 540 + 6300;
+        if(total_len <> expected_len) {
+            pass := false;
+            "  FAIL: total_len = {$total_len}, expected {$expected_len}"->PrintLine();
+        };
+
+        # ToUpper in loop
+        upper_ok := true;
+        each(i : 1000) {
+            up := "hello"->ToUpper();
+            if(<>up->Equals("HELLO")) { upper_ok := false; };
+        };
+        if(<>upper_ok) {
+            pass := false;
+            "  FAIL: ToUpper in loop"->PrintLine();
+        };
+
+        # Find in loop
+        find_ok := true;
+        each(i : 5000) {
+            idx := "abcdef"->Find('d');
+            if(idx <> 3) { find_ok := false; };
+        };
+        if(<>find_ok) {
+            pass := false;
+            "  FAIL: Find in loop"->PrintLine();
+        };
+
+        # SubString in loop
+        sub_ok := true;
+        each(i : 5000) {
+            sub := "Hello World"->SubString(6, 5);
+            if(<>sub->Equals("World")) { sub_ok := false; };
+        };
+        if(<>sub_ok) {
+            pass := false;
+            "  FAIL: SubString in loop"->PrintLine();
+        };
+
+        # Contains in loop
+        has_ok := true;
+        each(i : 5000) {
+            if(<>"the quick brown fox"->Contains("brown")) { has_ok := false; };
+        };
+        if(<>has_ok) {
+            pass := false;
+            "  FAIL: Contains in loop"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT string operations"->PrintLine();
+        } else {
+            "FAIL: JIT string operations"->PrintLine();
+        };
+    }
+}

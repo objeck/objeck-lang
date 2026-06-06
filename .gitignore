@@ -117,6 +117,9 @@ programs/frameworks/opencv_onnx/data/media/visdrone/
 # Benchmark results
 perf-results/
 
+# Scratch / work-in-progress (not part of the build)
+wip/
+
 # Local test scripts
 programs/regression/run_tests.sh
 programs/tests/clbg/run_binarytrees.sh
@@ -126,7 +129,14 @@ programs/deploy/test_sdl.obs
 # Misc
 nul
 build.txt
+/git
+core/release/out.txt
 *.zip
 # Build artifacts
 core/lib/crypto/*.so
 core/vm/obr_dbg
+
+# Large media files (host externally)
+*.mp4
+*.pptx
+*.ppt

@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use System.IO.Net, Collection;
 
 #~
-Web client support (-lib net)
+Shared networking types used across all HTTP libraries: Url (parsing and construction), Response (status code, headers, body), Cookie, and WebDownloader for streaming downloads. Compile with -lib net.
 ~#
 bundle Web.HTTP {
 	#~
@@ -25,6 +25,16 @@ bundle Web.HTTP {
 		#~
 		Parsed URL into components
 		@param url raw URL
+
+		```
+		url := Web.HTTP.Url->New("https://example.com:8080/path?q=hello#section");
+		url->GetScheme()->PrintLine();  # https
+		url->GetHost()->PrintLine();    # example.com
+		url->GetPort()->PrintLine();    # 8080
+		url->GetPath()->PrintLine();    # /path
+		url->GetQuery()->PrintLine();   # q=hello
+		url->GetFragment()->PrintLine(); # section
+		```
 		~#
 		New(url : String) {
 			@url := url;
@@ -52,6 +62,13 @@ bundle Web.HTTP {
 		#~
 		Gets the name/value query parameters
 		@return query parameters, Nil if URL cannot be parsed
+
+		```
+		url := Web.HTTP.Url->New("https://api.example.com/search?name=foo&lang=objeck");
+		params := url->GetQueryParameters();
+		params->Find("name")->PrintLine();  # foo
+		params->Find("lang")->PrintLine();  # objeck
+		```
 		~#
 		method : public : GetQueryParameters() ~ Map<String, String> {
 			if(@parsed & @query_params = Nil) {
@@ -280,8 +297,14 @@ bundle Web.HTTP {
 
 		#~
 		General encoding for HTML or XML strings
-		@param str string to encode 
-		@return encoded string 
+		@param str string to encode
+		@return encoded string
+
+		```
+		raw := "hello world & foo=bar";
+		encoded := Web.HTTP.Url->Encode(raw);
+		encoded->PrintLine();  # hello%20world%20%26%20foo%3Dbar
+		```
 		~#
 		function : native : Encode(str : String) ~ String {
 			buffer := String->New();
@@ -398,9 +421,15 @@ bundle Web.HTTP {
 		}
 
 		#~
-		General decoding for HTML or XML strings		
+		General decoding for HTML or XML strings
 		@param str encoded string
 		@return decoded string
+
+		```
+		encoded := "hello%20world%20%26%20foo%3Dbar";
+		decoded := Web.HTTP.Url->Decode(encoded);
+		decoded->PrintLine();  # hello world & foo=bar
+		```
 		~#
 		function : native : Decode(str : String) ~ String {
 			buffer := String->New();
@@ -427,6 +456,16 @@ bundle Web.HTTP {
 		#~
 		String representation of URL
 		@return string representation of URL
+
+		```
+		url := Web.HTTP.Url->New("https://example.com/path?q=hello");
+		url->ToString()->PrintLine();
+		# 'https://example.com/path?q=hello
+		#   scheme='https'
+		#   host='example.com'
+		#   path='/path'
+		#   query='q=hello'
+		```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "'{$@url}\n";
@@ -588,8 +627,17 @@ bundle Web.HTTP {
 
 			return buffer;
 		}
+
+		# status_line is already stripped of "HTTP/1.X " prefix (e.g. "200 OK" or "200")
+		function : ParseStatusCode(status_line : String) ~ Int {
+			index := status_line->Find(' ');
+			if(index > 0) {
+				return status_line->SubString(index)->ToInt();
+			};
+			return status_line->ToInt();
+		}
 	}
-	
+
 	#~
 	Downloads web content
 	~#
@@ -599,6 +647,17 @@ bundle Web.HTTP {
 		@param urls list of URLs to download content from
 		@param headers key/value headers
 		@return map of URLs and content
+
+		```
+		urls := Vector->New()<Web.HTTP.Url>;
+		urls->AddBack(Web.HTTP.Url->New("https://example.com/a"));
+		urls->AddBack(Web.HTTP.Url->New("https://example.com/b"));
+		results := Web.HTTP.WebDownloader->Download(urls, Nil);
+		each(result in results) {
+		  result->GetFirst()->GetUrl()->PrintLine();
+		  result->GetSecond()->Get()->Size()->PrintLine();
+		};
+		```
 		~#
 		function : Download(urls : Vector<Url>, headers : Map<String, String>) ~ Vector<Pair<Url, ByteArrayRef>> {
 			group_size := 3;
@@ -682,6 +741,13 @@ bundle Web.HTTP {
 		@param name cookie name
 		@param value cookie value
 		@param is_debug true to display debug information
+
+		```
+		cookie := Web.HTTP.Cookie->New("session", "abc123", false);
+		cookie->GetName()->PrintLine();   # session
+		cookie->GetValue()->PrintLine();  # abc123
+		cookie->ToString()->PrintLine();  # session=abc123
+		```
 		~#
 		New(name : String, value : String, is_debug : Bool) {
 			@name := name;
@@ -776,6 +842,13 @@ bundle Web.HTTP {
 		@param name attribute name
 		@param value attribute value
 		@return true if added, false otherwise
+
+		```
+		cookie := Web.HTTP.Cookie->New("id", "42");
+		cookie->AddAttrib("Path", "/");
+		cookie->AddAttrib("HttpOnly", Nil);
+		cookie->ToString()->PrintLine();  # id=42; Path=/; HttpOnly
+		```
 		~#
 		method : public : AddAttrib(name : String, value : String) ~ Bool {
 			if(@attribs = Nil) {
@@ -1012,6 +1085,15 @@ bundle Web.HTTP {
 		#~
 		Gets content type
 		@return content type
+
+		```
+		url := Web.HTTP.Url->New("https://httpbin.org/get");
+		response := Web.HTTP.HttpsClient->QuickGet(url);
+		if(response <> Nil) {
+		  response->GetType()->PrintLine();     # application/json
+		  response->GetCode()->PrintLine();     # 200
+		};
+		```
 		~#
 		method : public : GetType() ~ String {
 			return @type;
@@ -1020,6 +1102,14 @@ bundle Web.HTTP {
 		#~
 		Gets response content
 		@return response content
+
+		```
+		response := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New("https://httpbin.org/get"));
+		if(response <> Nil) {
+		  bytes := response->GetContent();
+		  String->New(bytes)->PrintLine();  # raw response body
+		};
+		```
 		~#
 		method : public : GetContent() ~ Byte[] {
 			return @content;
@@ -1036,6 +1126,13 @@ bundle Web.HTTP {
 		#~
 		Get the string representation
 		@return string representation
+
+		```
+		response := Web.HTTP.HttpsClient->QuickGet(Web.HTTP.Url->New("https://httpbin.org/get"));
+		if(response <> Nil) {
+		  response->ToString()->PrintLine();  # code=200, type=application/json, content_length=...
+		};
+		```
 		~#
 		method : public : ToString() ~ String {
 			content_length := 0;

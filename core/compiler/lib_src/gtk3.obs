@@ -1,7 +1,7 @@
 use System.API;
 
 #~
-Provides GUI support via GTK3 (-lib gtk3.obl)
+GTK3 GUI toolkit bindings for building native desktop applications on Linux. Wraps GtkApplication and GtkWindow lifecycle, focus management, and window relationships. Compile with -lib gtk3.
 ~#
 bundle GTK3 {
 	class : private: Proxy {
@@ -275,6 +275,10 @@ bundle GTK3 {
 			Proxy->GetDllProxy()->CallFunction("window_remove_accel_group", array_args);
 		}
 
+		#~
+		Activates the current focused widget within the window
+		@return true if a widget was focused and activated
+		~#
 		method : public : ActivateFocus() ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -286,6 +290,10 @@ bundle GTK3 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Gets the widget that currently has keyboard focus within the window
+		@return focused GtkWidget, Nil if no widget has focus
+		~#
 		method : public : GetFocus() ~ GtkWidget {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -301,6 +309,10 @@ bundle GTK3 {
 			return Nil;
 		}
 
+		#~
+		Gets the default widget for the window — the widget activated when the user presses Enter
+		@return default GtkWidget
+		~#
 		method : public : GetDefaultWidget() ~ GtkWidget {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New();
@@ -311,7 +323,11 @@ bundle GTK3 {
 			value := array_args[0]->As(IntRef);
 			return GtkWidget->New(value->Get());
 		}
-		
+
+		#~
+		Sets the transient parent window. A transient window is kept above its parent and minimized/destroyed with it.
+		@param parent parent GtkWindow
+		~#
 		method : public : SetTransientFor(parent : GtkWindow) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New(@window);
@@ -319,12 +335,16 @@ bundle GTK3 {
 
 			Proxy->GetDllProxy()->CallFunction("window_set_transient_for", array_args);
 		}
-		
+
+		#~
+		Attaches the window to a specific widget, used for popup-style windows
+		@param attach_widget widget to attach to
+		~#
 		method : public : SetAttachedTo(attach_widget : GtkWidget) ~ Nil {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New(@window);
 			array_args[1] := attach_widget;
-			
+
 			Proxy->GetDllProxy()->CallFunction("window_set_attached_to", array_args);
 		}
 	}

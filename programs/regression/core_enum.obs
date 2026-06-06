@@ -1,0 +1,91 @@
+enum Direction {
+    North,
+    South,
+    East,
+    West
+}
+
+enum Status := 10 {
+    Active,
+    Inactive,
+    Pending
+}
+
+class CoreEnumTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing enums..."->PrintLine();
+        pass := true;
+
+        # Basic enum value and comparison
+        d := Direction->North;
+        if(d <> Direction->North) {
+            pass := false;
+            "  FAIL: enum equality"->PrintLine();
+        };
+        if(d = Direction->South) {
+            pass := false;
+            "  FAIL: enum false equality"->PrintLine();
+        };
+
+        # Enum in select
+        select(d) {
+            label Direction->North: {
+                # correct
+            }
+            label Direction->South: {
+                pass := false;
+                "  FAIL: enum select matched South"->PrintLine();
+            }
+            other: {
+                pass := false;
+                "  FAIL: enum select matched other"->PrintLine();
+            }
+        };
+
+        # Enum with custom start value (Status starts at 10)
+        s := Status->Active;
+        if(s <> Status->Active) {
+            pass := false;
+            "  FAIL: custom-start enum equality"->PrintLine();
+        };
+        if(s = Status->Inactive) {
+            pass := false;
+            "  FAIL: custom-start enum false equality"->PrintLine();
+        };
+
+        # Enum comparison: different values must differ
+        if(Direction->East = Direction->West) {
+            pass := false;
+            "  FAIL: distinct enum values should not be equal"->PrintLine();
+        };
+
+        # Enum assignment and reassignment
+        d2 := Direction->South;
+        d2 := Direction->East;
+        if(d2 <> Direction->East) {
+            pass := false;
+            "  FAIL: enum reassignment"->PrintLine();
+        };
+
+        # Select over all enum labels
+        matched := 0;
+        each(i : 4) {
+            select(i) {
+                label 0: { if(Direction->North <> Direction->South) { matched += 1; }; }
+                label 1: { if(Direction->South <> Direction->North) { matched += 1; }; }
+                label 2: { if(Direction->East  <> Direction->West)  { matched += 1; }; }
+                other:   { if(Direction->West  <> Direction->East)  { matched += 1; }; }
+            };
+        };
+        if(matched <> 4) {
+            pass := false;
+            "  FAIL: enum iteration count = {$matched}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Enum types"->PrintLine();
+        } else {
+            "FAIL: Enum types"->PrintLine();
+        };
+    }
+}

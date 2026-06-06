@@ -1,0 +1,83 @@
+class FixChainedCallsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing chained method calls..."->PrintLine();
+        pass := true;
+
+        # Fluent StringBuilder chain
+        sb := StrBuilder->New();
+        sb->Append("Hello")->Append(", ")->Append("World")->Append("!");
+        s := sb->ToString();
+        if(<>s->Equals("Hello, World!")) {
+            pass := false;
+            "  FAIL: StrBuilder chain = {$s}"->PrintLine();
+        };
+
+        # String method chain (Trim -> ToLower -> ToUpper)
+        result := "  Hello World  "->Trim()->ToLower()->ToUpper();
+        if(<>result->Equals("HELLO WORLD")) {
+            pass := false;
+            "  FAIL: trim->lower->upper = {$result}"->PrintLine();
+        };
+
+        # Chain with Find (break into two steps — JIT limitation)
+        upper := "abcdef"->ToUpper();
+        idx := upper->Find('C');
+        if(idx <> 2) {
+            pass := false;
+            "  FAIL: chain Find = {$idx}"->PrintLine();
+        };
+
+        # Numeric chain
+        val := 3->As(Float);
+        sq := val * val;
+        sq_int := Float->Round(sq)->As(Int);
+        if(sq_int <> 9) {
+            pass := false;
+            "  FAIL: numeric chain = {$sq_int}"->PrintLine();
+        };
+
+        # Linked list traversal (sequential construction)
+        n4 := ChainNode->New(4);
+        n3 := ChainNode->New(3);
+        n3->SetNext(n4);
+        n2 := ChainNode->New(2);
+        n2->SetNext(n3);
+        n1 := ChainNode->New(1);
+        n1->SetNext(n2);
+        node_sum := 0;
+        cur := n1;
+        while(cur <> Nil) {
+            node_sum += cur->GetValue();
+            cur := cur->GetNext();
+        };
+        if(node_sum <> 10) {
+            pass := false;
+            "  FAIL: linked node sum = {$node_sum}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Chained method calls"->PrintLine();
+        } else {
+            "FAIL: Chained method calls"->PrintLine();
+        };
+    }
+}
+
+class StrBuilder {
+    @buf : String;
+    New() { @buf := ""; }
+    method : public : Append(s : String) ~ StrBuilder {
+        @buf->Append(s);
+        return @self;
+    }
+    method : public : ToString() ~ String { return @buf; }
+}
+
+class ChainNode {
+    @value : Int;
+    @next : ChainNode;
+    New(value : Int) { @value := value; }
+    method : public : SetNext(n : ChainNode) ~ Nil { @next := n; }
+    method : public : GetValue() ~ Int { return @value; }
+    method : public : GetNext() ~ ChainNode { return @next; }
+}

@@ -2410,6 +2410,8 @@ namespace frontend {
     bool was_called;
     bool is_interface;
     bool is_public;
+    bool is_record;
+    bool is_readonly_record;
     MethodCall* anonymous_call;
     std::vector<std::wstring> interface_names;
     std::vector<Class*> generic_classes;
@@ -2434,6 +2436,7 @@ namespace frontend {
       interface_names = e;
       generic_classes = g;      
       is_virtual = is_generic = was_called = false;
+      is_record = is_readonly_record = false;
       anonymous_call = nullptr;
       symbol_table = nullptr;
       generic_interface = nullptr;
@@ -2454,6 +2457,7 @@ namespace frontend {
       parent = nullptr;
       lib_parent = nullptr;      
       is_virtual = is_generic = was_called = false;
+      is_record = is_readonly_record = false;
       anonymous_call = nullptr;
       symbol_table = nullptr;
       generic_interface = nullptr;
@@ -2472,6 +2476,7 @@ namespace frontend {
       lib_parent = nullptr;       
       is_virtual = was_called = false;
       is_generic = g;
+      is_record = is_readonly_record = false;
       anonymous_call = nullptr;
       symbol_table = nullptr;
       generic_interface = nullptr;
@@ -2590,6 +2595,22 @@ namespace frontend {
 
     bool IsPublic() {
       return is_public;
+    }
+
+    void SetRecord(bool r) {
+      is_record = r;
+    }
+
+    bool IsRecord() {
+      return is_record;
+    }
+
+    void SetReadonlyRecord(bool r) {
+      is_readonly_record = r;
+    }
+
+    bool IsReadonlyRecord() {
+      return is_readonly_record;
     }
 
     void SetPublic(bool p) {
@@ -3753,27 +3774,45 @@ namespace frontend {
     }
   };
 
+  // Static-array literal pool comparators: strict-weak ordering by length,
+  // then element CONTENTS, so identical literals dedup to one pool entry and
+  // distinct literals never collide. (Comparing the heap pointer instead of
+  // contents defeated dedup, and the old bool comparator used '==', which
+  // made std::map treat ANY two distinct bool literals as equivalent — every
+  // bool array literal after the first silently reused the first one's data.)
   struct int_string_comp {
     bool operator() (IntStringHolder* lhs, IntStringHolder* rhs) const {
-      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
+      if(lhs->length != rhs->length) {
+        return lhs->length < rhs->length;
+      }
+      return memcmp(lhs->value, rhs->value, lhs->length * sizeof(INT64_VALUE)) < 0;
     }
   };
 
   struct byte_string_comp {
     bool operator() (ByteStringHolder* lhs, ByteStringHolder* rhs) const {
-      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
+      if(lhs->length != rhs->length) {
+        return lhs->length < rhs->length;
+      }
+      return memcmp(lhs->value, rhs->value, lhs->length * sizeof(char)) < 0;
     }
   };
 
   struct float_string_comp {
     bool operator() (FloatStringHolder* lhs, FloatStringHolder* rhs) const {
-      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
+      if(lhs->length != rhs->length) {
+        return lhs->length < rhs->length;
+      }
+      return memcmp(lhs->value, rhs->value, lhs->length * sizeof(FLOAT_VALUE)) < 0;
     }
   };
 
   struct bool_string_comp {
     bool operator() (BoolStringHolder* lhs, BoolStringHolder* rhs) const {
-      return std::tie(lhs->length, lhs->value) == std::tie(rhs->length, rhs->value);
+      if(lhs->length != rhs->length) {
+        return lhs->length < rhs->length;
+      }
+      return memcmp(lhs->value, rhs->value, lhs->length * sizeof(bool)) < 0;
     }
   };
 

@@ -1,0 +1,119 @@
+# EXTRA_LIBS: regex
+use Query.RegEx;
+
+class RegexDfaTest {
+    function : Main(args : String[]) ~ Nil {
+        ok := 0;
+        bad := 0;
+
+        # --- literal char ---
+        if(Exact("abc", "abc")) { ok += 1; } else { "FAIL literal exact"->PrintLine(); bad += 1; };
+        if(<>Exact("abc", "abcd")) { ok += 1; } else { "FAIL literal no-exact"->PrintLine(); bad += 1; };
+        if(Find1("abc", "xabcy", "abc")) { ok += 1; } else { "FAIL literal find"->PrintLine(); bad += 1; };
+
+        # --- any (.) ---
+        if(Exact("a.c", "abc")) { ok += 1; } else { "FAIL any exact"->PrintLine(); bad += 1; };
+        if(Exact("a.c", "aXc")) { ok += 1; } else { "FAIL any exact 2"->PrintLine(); bad += 1; };
+
+        # --- optional (?) ---
+        if(Exact("colou?r", "colour")) { ok += 1; } else { "FAIL optional present"->PrintLine(); bad += 1; };
+        if(Exact("colou?r", "color")) { ok += 1; } else { "FAIL optional absent"->PrintLine(); bad += 1; };
+        if(<>Exact("colou?r", "colouur")) { ok += 1; } else { "FAIL optional double"->PrintLine(); bad += 1; };
+
+        # --- zero or more (*) ---
+        if(Exact("ab*c", "ac")) { ok += 1; } else { "FAIL zero_more zero"->PrintLine(); bad += 1; };
+        if(Exact("ab*c", "abc")) { ok += 1; } else { "FAIL zero_more one"->PrintLine(); bad += 1; };
+        if(Exact("ab*c", "abbbbc")) { ok += 1; } else { "FAIL zero_more many"->PrintLine(); bad += 1; };
+
+        # --- one or more (+) ---
+        if(<>Exact("ab+c", "ac")) { ok += 1; } else { "FAIL one_more zero"->PrintLine(); bad += 1; };
+        if(Exact("ab+c", "abc")) { ok += 1; } else { "FAIL one_more one"->PrintLine(); bad += 1; };
+        if(Exact("ab+c", "abbbbc")) { ok += 1; } else { "FAIL one_more many"->PrintLine(); bad += 1; };
+
+        # --- char range ---
+        if(Exact("1[3-5]9", "139")) { ok += 1; } else { "FAIL range low"->PrintLine(); bad += 1; };
+        if(Exact("1[3-5]9", "149")) { ok += 1; } else { "FAIL range mid"->PrintLine(); bad += 1; };
+        if(Exact("1[3-5]9", "159")) { ok += 1; } else { "FAIL range high"->PrintLine(); bad += 1; };
+        if(<>Exact("1[3-5]9", "129")) { ok += 1; } else { "FAIL range out"->PrintLine(); bad += 1; };
+
+        # --- char class ---
+        if(Exact("[abc]+", "abc")) { ok += 1; } else { "FAIL class multi"->PrintLine(); bad += 1; };
+        if(<>Exact("[abc]+", "xyz")) { ok += 1; } else { "FAIL class miss"->PrintLine(); bad += 1; };
+
+        # --- OR (|) ---
+        if(Exact("cat|dog", "cat")) { ok += 1; } else { "FAIL or left"->PrintLine(); bad += 1; };
+        if(Exact("cat|dog", "dog")) { ok += 1; } else { "FAIL or right"->PrintLine(); bad += 1; };
+        if(<>Exact("cat|dog", "fish")) { ok += 1; } else { "FAIL or miss"->PrintLine(); bad += 1; };
+
+        # --- repeat ({n}) ---
+        if(Exact("a{3}", "aaa")) { ok += 1; } else { "FAIL repeat exact"->PrintLine(); bad += 1; };
+        if(<>Exact("a{3}", "aa")) { ok += 1; } else { "FAIL repeat short"->PrintLine(); bad += 1; };
+        if(Exact("a{2,4}", "aa")) { ok += 1; } else { "FAIL repeat range low"->PrintLine(); bad += 1; };
+        if(Exact("a{2,4}", "aaaa")) { ok += 1; } else { "FAIL repeat range high"->PrintLine(); bad += 1; };
+        if(<>Exact("a{2,4}", "a")) { ok += 1; } else { "FAIL repeat range under"->PrintLine(); bad += 1; };
+        if(<>Exact("a{2,4}", "aaaaa")) { ok += 1; } else { "FAIL repeat range over"->PrintLine(); bad += 1; };
+
+        # --- anchors ---
+        r := RegEx->New("^hello")->FindFirst("hello world");
+        if(r <> Nil & r->GetValue()->Equals("hello")) { ok += 1; } else { "FAIL anchor start match"->PrintLine(); bad += 1; };
+        r := RegEx->New("^hello")->FindFirst("say hello");
+        if(r = Nil) { ok += 1; } else { "FAIL anchor start mid"->PrintLine(); bad += 1; };
+        r := RegEx->New("world$")->FindFirst("hello world");
+        if(r <> Nil & r->GetValue()->Equals("world")) { ok += 1; } else { "FAIL anchor end match"->PrintLine(); bad += 1; };
+
+        # --- escape sequences ---
+        if(Exact("\\d+", "123")) { ok += 1; } else { "FAIL digit+"->PrintLine(); bad += 1; };
+        if(<>Exact("\\d+", "abc")) { ok += 1; } else { "FAIL digit+ miss"->PrintLine(); bad += 1; };
+        if(Exact("\\D+", "abc")) { ok += 1; } else { "FAIL not-digit+"->PrintLine(); bad += 1; };
+        if(Exact("\\w+", "hello_123")) { ok += 1; } else { "FAIL word+"->PrintLine(); bad += 1; };
+        if(Exact("\\S+", "hello")) { ok += 1; } else { "FAIL not-whitespace+"->PrintLine(); bad += 1; };
+
+        # --- sub-expression ---
+        if(Exact("(ab)+", "ababab")) { ok += 1; } else { "FAIL subexpr+"->PrintLine(); bad += 1; };
+        if(Exact("(ab)+", "ab")) { ok += 1; } else { "FAIL subexpr+ one"->PrintLine(); bad += 1; };
+        if(<>Exact("(ab)+", "ac")) { ok += 1; } else { "FAIL subexpr+ miss"->PrintLine(); bad += 1; };
+
+        # --- ReplaceAll ---
+        replaced := RegEx->New(" a ")->ReplaceAll("I am a string", " another ");
+        if(replaced->Equals("I am another string")) { ok += 1; } else { "FAIL ReplaceAll: {$replaced}"->PrintLine(); bad += 1; };
+
+        # --- ReplaceFirst ---
+        replaced := RegEx->New("\\d+")->ReplaceFirst("abc 123 def 456", "NUM");
+        if(replaced->Equals("abc NUM def 456")) { ok += 1; } else { "FAIL ReplaceFirst: {$replaced}"->PrintLine(); bad += 1; };
+
+        # --- Find (all matches) ---
+        found := RegEx->New("\\d+")->Find("a1 b22 c333")<Result>;
+        if(found->Size() = 3) { ok += 1; } else { n := found->Size(); "FAIL Find count: {$n}"->PrintLine(); bad += 1; };
+
+        # --- complex: version pattern ---
+        found := RegEx->New("((4\\.[0-3])|(2\\.[0-3]))")->Find("Mozilla/4.0")<Result>;
+        if(found->Size() = 1 & found->Get(0)->GetValue()->Equals("4.0")) { ok += 1; } else { "FAIL version pattern"->PrintLine(); bad += 1; };
+
+        # --- pathological: (a+)+ must not hang ---
+        r := RegEx->New("(a+)+b")->FindFirst("aaaaaaaaaaaaaaaaaab");
+        if(r <> Nil & r->GetValue()->Equals("aaaaaaaaaaaaaaaaaab")) { ok += 1; } else { "FAIL pathological (a+)+b"->PrintLine(); bad += 1; };
+
+        # --- no match pathological: (a+)+ against no-b string must return fast ---
+        r := RegEx->New("(a+)+b")->FindFirst("aaaaaaaaaaaaaaaaaaX");
+        if(r = Nil) { ok += 1; } else { "FAIL pathological no-match"->PrintLine(); bad += 1; };
+
+        "---"->PrintLine();
+        "Passed: {$ok}"->PrintLine();
+        "Failed: {$bad}"->PrintLine();
+        if(bad = 0) {
+            "PASS"->PrintLine();
+        }
+        else {
+            "FAIL"->PrintLine();
+        };
+    }
+
+    function : Exact(pattern : String, input : String) ~ Bool {
+        return RegEx->New(pattern)->MatchExact(input);
+    }
+
+    function : Find1(pattern : String, input : String, expected : String) ~ Bool {
+        r := RegEx->New(pattern)->FindFirst(input);
+        return r <> Nil & r->GetValue()->Equals(expected);
+    }
+}

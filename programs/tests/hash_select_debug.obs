@@ -1,0 +1,32 @@
+class HashSelectDebug {
+    function : TestSelect(m : String) ~ Nil {
+        h := m->HashID();
+        "method='{$m}' hash={$h}"->PrintLine();
+
+        result := "";
+        select(m) {
+            label "ping":           { result := "PING"; }
+            label "initialize":     { result := "INIT"; }
+            label "tools/list":     { result := "TOOLS_LIST"; }
+            label "resources/list": { result := "RES_LIST"; }
+            label "tools/call":     { result := "TOOLS_CALL"; }
+            label "prompts/list":   { result := "PROMPTS_LIST"; }
+            other:                  { result := "MISS"; }
+        };
+        if(result->Equals("MISS")) {
+            "  FAIL: select MISSED"->PrintLine();
+        } else {
+            "  OK: matched -> {$result}"->PrintLine();
+        };
+    }
+
+    function : Main(args : String[]) ~ Nil {
+        TestSelect("ping");
+        TestSelect("initialize");
+        TestSelect("tools/list");
+        TestSelect("resources/list");
+        TestSelect("tools/call");
+        TestSelect("prompts/list");
+        TestSelect("nomatch");
+    }
+}

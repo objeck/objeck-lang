@@ -1,0 +1,173 @@
+#~
+Objeck HTML code documentation system
+Copyright (c) 2021 Randy Hollines
+~#
+
+use System.IO.Filesystem;
+use Collection;
+use Data.JSON;
+
+class JsonMaker {
+	@parser : SnippetParser;
+	@css_path : String;
+	@version : String;
+	
+	#~
+	DOC ME
+	~#
+	New(args : String[]) {
+		@css_path := args[0];
+		@version := args[1];
+		@parser := SnippetParser->New(args);
+	}
+	
+	#~
+	DOC ME
+	~#
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() > 2) {
+			JsonMaker->New(args)->Make();
+		};
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : Make() ~ Bool {
+		if(<>@parser->Parse()) {
+			"--- Unable to parse source file ---"->ErrorLine();
+			return false;
+		};
+
+		## bundles
+		bundles := @parser->GetBundles();
+		bundle_pairs := bundles->GetKeyValues()<Pair<String, BundleSnippet>>;
+
+		classes_bundle := Vector->New()<Foo>;
+
+		buffer := "{\n\t\"class-details\": {\n\t";
+		each(i : bundle_pairs) {
+			bundle_pair := bundle_pairs->Get(i);
+			bundle_name := bundle_pair->GetFirst();
+			bundle_snippet := bundle_pair->GetSecond();
+
+			# classes
+			classes := bundle_pair->GetSecond()->GetClasses();
+			if(<>classes->IsEmpty()) {
+				class_key_values := classes->GetKeyValues()<Pair<String, ClassSnippet>>;
+				each(j : class_key_values) {
+					class_key_value := class_key_values->Get(j);
+					class_name := String->New(bundle_name);
+					class_name += '.';
+					short_class_name := class_key_value->GetFirst();
+					class_name += short_class_name;
+
+					classes_bundle->AddBack(Foo->New(short_class_name, bundle_name, bundle_snippet->GetFile()));
+					ProcessClass(class_name, class_key_value->GetSecond(), buffer);
+
+					if(j + 1 < class_key_values->Size()) {
+						buffer += ",\n\t";
+					};
+				};
+
+				if(i + 1 < bundle_pairs->Size()) {
+					buffer += ",\n\t";
+				};
+			};			
+		};
+		buffer += "\n\t},\n\t\"class-bundle-names\": {\n\t";
+
+		each(i : classes_bundle) {
+			foo := classes_bundle->Get(i);
+
+			class_name := foo->GetClassName();
+			bundle_name := foo->GetBundleName();
+			file_name := foo->GetFileName();
+
+			buffer += "\t\"{$class_name}\": {\n\t\t\t\"bundle\": \"{$bundle_name}\"\n,\t\t\t\"file\": \"{$file_name}\"\n \t\t}";
+
+			if(i + 1 < classes_bundle->Size()) {
+				buffer += ",\n\t";
+			};
+		};
+		buffer += "\n\t}\n}";
+		
+		FileWriter->WriteFile("out.json", buffer);
+
+		return true;
+	}
+
+	method : ProcessClass(class_name : String, snippet : ClassSnippet, buffer : String) ~ Nil {
+		description := JsonElement->Encode(snippet->GetDesc());
+
+		buffer += "\t\"{$class_name}\": {\n";
+		buffer += "\t\t\t\"description\": ";
+		buffer += "\"{$description}\",\n";
+		buffer += "\t\t\t\"functions\": {\n";
+
+		function_names := snippet->GetFunctionNames()<String>;
+		each(i : function_names) {
+			function_name := function_names->Get(i);
+
+			buffer += "\t\t\t\t\"{$function_name}\": {\n";
+			buffer += "\t\t\t\t\t\"descriptions\": [";
+
+			functions := snippet->GetFunctions(function_name)<FuncSnippet>;
+			each(j : functions) {
+				func := functions->Get(j);
+				description := JsonElement->Encode(func->GetDesc());
+				signature := func->GetSignature();
+
+				params_buffer := "";
+				params := func->GetParams();
+				each(k : params) {
+					param := params->Get(k);
+					name := param->GetName();
+					type_name := param->GetTypeName();
+					params_buffer += "\\n\\n{$name}: {$type_name}";
+				};
+
+				if(func->GetReturnType() <> Nil) {
+					return_str := func->GetReturnType()->GetTypeName();
+					params_buffer += "\\n\\nreturn: {$return_str}";
+				};
+
+				buffer += "\"**{$description}**\\n\\n```{$signature}```\\n\\n{$params_buffer}\"";
+				if(j + 1 < functions->Size()) {
+					buffer += ", ";
+				};
+			};
+			buffer += "]\n\t\t\t\t}";
+
+			if(i + 1 < function_names->Size()) {
+				buffer += ",\n";
+			};
+		};
+
+		buffer += "\n\t\t\t}\n\t\t}";
+	}
+}
+
+class Foo {
+	@short_class_name : String;
+	@bundle_name : String;
+	@file_name : String;
+
+	New(short_class_name : String, bundle_name : String, file_name : String) {
+		@short_class_name := short_class_name;
+		@bundle_name := bundle_name;
+		@file_name := file_name;
+	}
+
+	method : public : GetClassName() ~ String {
+		return @short_class_name;
+	}
+
+	method : public : GetBundleName() ~ String {
+		return @bundle_name;
+	}
+
+	method : public : GetFileName() ~ String {
+		return @file_name;
+	}
+}

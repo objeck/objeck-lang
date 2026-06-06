@@ -321,6 +321,9 @@ public:
     double compress_ratio = (double)out_buffer.size() / (double)dest_len;
     GetLogger() << L"[file out: uncompressed=" << out_buffer.size() << L", compressed=" << dest_len << L", ratio = " << round(compress_ratio) << L"x]" << std::endl;
 #endif
+    // prepend uncompressed size so loaders can allocate exactly
+    const uint32_t uncmp_size = (uint32_t)out_buffer.size();
+    file_out.write(reinterpret_cast<const char*>(&uncmp_size), sizeof(uncmp_size));
     file_out.write(compressed, dest_len);
     free(compressed);
     compressed = nullptr;
@@ -407,10 +410,10 @@ public:
   //
   static char* CompressZlib(const char* src, unsigned long src_len, unsigned long &out_len) {
     const unsigned long buffer_max = compressBound(src_len);
-    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+    char* buffer = (char*)malloc(buffer_max);
 
     out_len = buffer_max;
-    const int status = compress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
+    const int status = compress2((Bytef*)buffer, &out_len, (Bytef*)src, src_len, Z_BEST_COMPRESSION);
     if(status != Z_OK) {
       free(buffer);
       buffer = nullptr;
@@ -420,13 +423,13 @@ public:
     return buffer;
   }
 
-  static char* UncompressZlib(const char* src, unsigned long src_len, unsigned long &out_len) {
-
-    unsigned long buffer_max = src_len << 2;
+  static char* UncompressZlib(const char* src, unsigned long src_len, unsigned long &out_len, unsigned long hint = 0) {
+    // use the stored uncompressed size when available; fall back to heuristic
+    unsigned long buffer_max = (hint > 0) ? hint : (src_len << 2);
     if(buffer_max > COMPRESS_BUFFER_LIMIT) {
       buffer_max = COMPRESS_BUFFER_LIMIT;
     }
-    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+    char* buffer = (char*)malloc(buffer_max);
 
     bool success = false;
     do {
@@ -439,7 +442,7 @@ public:
       case Z_BUF_ERROR:
         free(buffer);
         buffer_max <<= 1;
-        buffer = (char*)calloc(buffer_max, sizeof(char));
+        buffer = (char*)malloc(buffer_max);
         break;
 
       case Z_MEM_ERROR:
@@ -448,7 +451,7 @@ public:
         buffer = nullptr;
         return nullptr;
       }
-    } 
+    }
     while(buffer_max < COMPRESS_BUFFER_LIMIT && !success);
 
     free(buffer);

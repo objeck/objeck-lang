@@ -1,0 +1,115 @@
+class Shape {
+    @color : String;
+
+    New(color : String) {
+        @color := color;
+    }
+
+    method : public : GetColor() ~ String {
+        return @color;
+    }
+
+    method : virtual : public : Area() ~ Float;
+    method : virtual : public : Perimeter() ~ Float;
+
+    method : public : Describe() ~ String {
+        a := Area();
+        return "{$@color} shape area={$a}";
+    }
+}
+
+class Rectangle from Shape {
+    @width : Float;
+    @height : Float;
+
+    New(color : String, width : Float, height : Float) {
+        Parent(color);
+        @width := width;
+        @height := height;
+    }
+
+    method : public : Area() ~ Float {
+        return @width * @height;
+    }
+
+    method : public : Perimeter() ~ Float {
+        return 2.0 * (@width + @height);
+    }
+}
+
+class Circle from Shape {
+    @radius : Float;
+
+    New(color : String, radius : Float) {
+        Parent(color);
+        @radius := radius;
+    }
+
+    method : public : Area() ~ Float {
+        return 3.14159 * @radius * @radius;
+    }
+
+    method : public : Perimeter() ~ Float {
+        return 2.0 * 3.14159 * @radius;
+    }
+}
+
+class CoreAbstractVirtualTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing abstract virtual methods..."->PrintLine();
+        pass := true;
+
+        rect := Rectangle->New("red", 4.0, 5.0);
+        area := rect->Area();
+        if(area < 19.9 | area > 20.1) {
+            pass := false;
+            "  FAIL: Rectangle area = {$area}"->PrintLine();
+        };
+
+        perim := rect->Perimeter();
+        if(perim < 17.9 | perim > 18.1) {
+            pass := false;
+            "  FAIL: Rectangle perimeter = {$perim}"->PrintLine();
+        };
+
+        circle := Circle->New("blue", 3.0);
+        c_area := circle->Area();
+        if(c_area < 28.2 | c_area > 28.4) {
+            pass := false;
+            "  FAIL: Circle area = {$c_area}"->PrintLine();
+        };
+
+        # Virtual dispatch through base class array
+        shapes := Shape->New[2];
+        shapes[0] := rect;
+        shapes[1] := circle;
+
+        total := 0.0;
+        each(i : shapes->Size()) {
+            total += shapes[i]->Area();
+        };
+        if(total < 48.1 | total > 48.5) {
+            pass := false;
+            "  FAIL: polymorphic total area = {$total}"->PrintLine();
+        };
+
+        # Describe() uses virtual Area() internally
+        desc := rect->Describe();
+        if(<>desc->Has("red")) {
+            pass := false;
+            "  FAIL: Describe() missing color"->PrintLine();
+        };
+
+        # GetColor inherited from base
+        if(<>circle->GetColor()->Equals("blue")) {
+            pass := false;
+            "  FAIL: GetColor() via inheritance"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Abstract virtual methods"->PrintLine();
+        } else {
+            "FAIL: Abstract virtual methods"->PrintLine();
+        };
+    }
+}

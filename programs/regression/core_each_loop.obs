@@ -1,0 +1,84 @@
+use Collection;
+
+class CoreEachLoopTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing each() loop patterns..."->PrintLine();
+        pass := true;
+
+        # each(i : N) — iterates 0 to N-1
+        sum1 := 0;
+        each(i : 10) {
+            sum1 += i;
+        };
+        if(sum1 <> 45) {
+            pass := false;
+            "  FAIL: each(i:10) sum = {$sum1}"->PrintLine();
+        };
+
+        # each(i : N) with break
+        stopped := 0;
+        each(i : 100) {
+            if(i = 5) { break; };
+            stopped := i;
+        };
+        if(stopped <> 4) {
+            pass := false;
+            "  FAIL: each break stopped at {$stopped}"->PrintLine();
+        };
+
+        # each(i : N) with continue
+        odd_sum := 0;
+        each(i : 10) {
+            if(i % 2 = 0) { continue; };
+            odd_sum += i;
+        };
+        if(odd_sum <> 25) {
+            pass := false;
+            "  FAIL: each continue odd_sum = {$odd_sum}"->PrintLine();
+        };
+
+        # each over string characters
+        s := "Hello";
+        char_count := 0;
+        each(i : s) {
+            char_count += 1;
+        };
+        if(char_count <> 5) {
+            pass := false;
+            "  FAIL: each over string count = {$char_count}"->PrintLine();
+        };
+
+        # each(v in collection) — foreach over Vector
+        v := Vector->New()<IntRef>;
+        each(n : 5) {
+            v->AddBack(IntRef->New(n * 2));
+        };
+        vec_sum := 0;
+        each(item in v) {
+            vec_sum += item->Get();
+        };
+        if(vec_sum <> 20) {
+            pass := false;
+            "  FAIL: each-in vector sum = {$vec_sum}"->PrintLine();
+        };
+
+        # Nested each loops
+        product := 0;
+        each(i : 3) {
+            each(j : 3) {
+                product += i * j;
+            };
+        };
+        # sum of i*j for i,j in 0..2 = 0+0+0 + 0+1+2 + 0+2+4 = 9
+        if(product <> 9) {
+            pass := false;
+            "  FAIL: nested each product = {$product}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Each loop patterns"->PrintLine();
+        } else {
+            "FAIL: Each loop patterns"->PrintLine();
+        };
+    }
+}

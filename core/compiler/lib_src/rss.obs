@@ -5,8 +5,8 @@ use Data.XML;
 use Web.HTTP;
 
 #~
-Provides support for RSS (-lib rss)
-~#	
+RSS feed reader. RSSReader fetches and parses RSS 2.0 feeds from a URL or string; RSSChannel and RSSPost expose title, description, link, and publication date. Compile with -lib rss.
+~#
 bundle Web.RSS {
 	#~
 	Reader for RSS feeds
@@ -18,9 +18,16 @@ bundle Web.RSS {
 
 		#~
 		Default constructor
-		@param url RSS URL 
+		@param url RSS URL
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  reader->GetChannel()->GetTitle()->PrintLine();
+};
+```
 		~#
-		New(url : String) { 
+		New(url : String) {
 			xml := FetchXml(url);
 			if(xml->Size() > 0) {
 				parser := XmlParser->New(xml);
@@ -35,6 +42,15 @@ bundle Web.RSS {
 		#~
 		Get RSS channel meta data
 		@return RSS meta data
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  channel := reader->GetChannel();
+  channel->GetTitle()->PrintLine();
+  channel->GetLink()->PrintLine();
+};
+```
 		~#
 		method : public : GetChannel() ~ RSSChannel {			
 			return @channel;
@@ -43,6 +59,15 @@ bundle Web.RSS {
 		#~
 		Get RSS posts
 		@return RSS posts
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  each(post := reader->GetPosts()) {
+    post->GetTitle()->PrintLine();
+  };
+};
+```
 		~#
 		method : public : GetPosts() ~ Vector<RSSPost> {
 			if(@is_ok) {
@@ -55,6 +80,15 @@ bundle Web.RSS {
 		#~
 		Checks to see if RSS XML was successfully retrieved and parsed
 		@return true if success, false otherwise
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  "Feed loaded successfully"->PrintLine();
+} else {
+  "Failed to load feed"->PrintLine();
+};
+```
 		~#
 		method : public : IsOk() ~ Bool {
 			return @is_ok;
@@ -151,6 +185,13 @@ bundle Web.RSS {
 		#~
 		Gets the title
 		@return title
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  reader->GetChannel()->GetTitle()->PrintLine();
+};
+```
 		~#
 		method : public : GetTitle() ~ String {
 			return @title;
@@ -159,6 +200,13 @@ bundle Web.RSS {
 		#~
 		Gets the description
 		@return description
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  reader->GetChannel()->GetDescription()->PrintLine();
+};
+```
 		~#
 		method : public : GetDescription() ~ String {
 			return @description;
@@ -167,6 +215,13 @@ bundle Web.RSS {
 		#~
 		Gets the link
 		@return link
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  reader->GetChannel()->GetLink()->PrintLine();
+};
+```
 		~#
 		method : public : GetLink() ~ String {
 			return @link;
@@ -198,6 +253,14 @@ bundle Web.RSS {
 		#~
 		Gets the title
 		@return title
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  posts := reader->GetPosts();
+  posts->Get(0)->GetTitle()->PrintLine();
+};
+```
 		~#
 		method : public : GetTitle() ~ String {
 			return @title;
@@ -206,6 +269,14 @@ bundle Web.RSS {
 		#~
 		Gets the description
 		@return description
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  posts := reader->GetPosts();
+  posts->Get(0)->GetDescription()->PrintLine();
+};
+```
 		~#
 		method : public : GetDescription() ~ String {
 			return @description;
@@ -214,6 +285,14 @@ bundle Web.RSS {
 		#~
 		Gets the link
 		@return link
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  posts := reader->GetPosts();
+  posts->Get(0)->GetLink()->PrintLine();
+};
+```
 		~#
 		method : public : GetLink() ~ String {
 			return @link;
@@ -222,6 +301,14 @@ bundle Web.RSS {
 		#~
 		Gets the date string
 		@return date string
+
+```
+reader := RSSReader->New("https://feeds.bbci.co.uk/news/rss.xml");
+if(reader->IsOk()) {
+  posts := reader->GetPosts();
+  posts->Get(0)->GetDate()->PrintLine();
+};
+```
 		~#
 		method : public : GetDate() ~ String {
 			return @date;

@@ -8,59 +8,60 @@
 
 ### Test Environment
 
-All benchmarks ran in a single Docker container (Ubuntu 24.04) to ensure reproducible, comparable results across languages.
-
 | | |
 |---|---|
 | **CPU** | AMD Ryzen AI 9 HX 370 (12C/24T) |
-| **RAM** | 32 GB DDR5 (15 GB allocated to Docker) |
-| **OS** | Ubuntu 24.04.4 LTS (Docker on Windows 11) |
-| **Compiler** | Objeck built from source, `-opt s3` |
+| **RAM** | 32 GB DDR5 |
+| **OS** | Ubuntu 24.04 (WSL2 on Windows 11) |
+| **Compiler** | Objeck v2026.6.0 built from source, `-opt s3` |
 | **Methodology** | 3 runs per benchmark, median reported |
 
 ### CLBG Benchmarks
 
 Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.debian.net/benchmarksgame/) programs compiled with `-opt s3`.
 
-| Benchmark | Input | Time (s) | Peak RSS | vs v2026.4.1 |
-|-----------|-------|----------|----------|--------------|
-| **mandelbrot** | 4000 | 0.91 | 9 MB | **3.1x faster** |
-| **nbody** | 50M | 23.43 | 7 MB | **1.8x faster** |
-| **binarytrees** | 17 | 9.91 | 210 MB | **2.9x faster** |
-| **fannkuchredux** | 12 | 33.60 | 7 MB | **2.7x faster** |
-| **spectralnorm** | 5500 | 36.49 | 8 MB | **3.1x faster** |
+| Benchmark | Input | Time (s) | Peak RSS |
+|-----------|-------|----------|----------|
+| **mandelbrot** | 4000 | 0.94 | 9 MB |
+| **nbody** | 50M | 23.31 | 7 MB |
+| **binarytrees** | 17 | 10.03 | 210 MB |
+| **fannkuchredux** | 12 | 35.15 | 7 MB |
+| **spectralnorm** | 5500 | 37.44 | 8 MB |
 
-**v2026.4.2 speedups** come from the JIT local variable register cache (avoids redundant memory loads) and link-time optimization (`-flto=auto`). **mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and MTHD_CALL JIT whitelist. **spectralnorm** runs in the interpreter; with `native` it drops to **0.38s**.
+**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and auto-JIT for methods containing `MTHD_CALL`. **spectralnorm** runs in the interpreter; with `native` (input 2000) it drops to **0.45s**.
 
 ---
 
 ## Cross-Language Comparison
 
-Same inputs, same machine, same Docker container. All languages ran with default settings (no special flags).
+Same inputs, same hardware. Objeck on WSL2; Python/Ruby times from prior Docker run on same machine.
 
 | Benchmark | Objeck | Python 3.12 | Ruby 3.2 | Best |
 |-----------|--------|-------------|----------|------|
-| **nbody** (50M) | **23.43s** | 133.55s | 195.18s | **Objeck** |
-| **fannkuchredux** (12) | **33.60s** | 359.04s | -- | **Objeck** |
-| **binarytrees** (17) | **9.91s** | 3.31s | 3.31s | Python/Ruby |
-| **spectralnorm** (5500) | 36.49s | 109.67s | 84.58s | **Objeck** |
+| **nbody** (50M) | **23.31s** | 133.55s | 195.18s | **Objeck** |
+| **fannkuchredux** (12) | **35.15s** | 359.04s | -- | **Objeck** |
+| **binarytrees** (17) | **10.03s** | 3.31s | 3.31s | Python/Ruby |
+| **spectralnorm** (5500) | 37.44s | 109.67s | 84.58s | **Objeck** |
+
+*Python/Ruby times from prior Docker run on same hardware.*
 
 ### Where Objeck Wins
 
-- **nbody** -- 5.7x faster than Python, 8.3x faster than Ruby. Getter/setter inlining + JIT compilation eliminates method call overhead.
-- **fannkuchredux** -- 10.7x faster than Python. The JIT excels at tight integer loops with array permutations.
-- **spectralnorm** -- 3.0x faster than Python, 2.3x faster than Ruby (interpreter only). With `native` it drops to **0.38s**.
+- **nbody** -- 5.7x faster than Python, 8.4x faster than Ruby. Getter/setter inlining + JIT compilation eliminates method call overhead.
+- **fannkuchredux** -- 10.2x faster than Python. The JIT excels at tight integer loops with array permutations.
+- **spectralnorm** -- 2.9x faster than Python, 2.3x faster than Ruby (interpreter only). With `native` it drops to **0.45s**.
 
 ### Where Objeck Needs Improvement
 
-- **binarytrees** -- 3.0x slower than Python/Ruby. Previously 10x slower than LuaJIT. The young-gen bump allocator (128MB nursery), MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, and atomic CAS mark bits combined for major speedups across releases. RSS stable at 210MB.
+- **binarytrees** -- 3.0x slower than Python/Ruby. The young-gen bump allocator (128MB nursery), MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, atomic CAS mark bits, and auto-JIT for MTHD_CALL methods combined for major speedups across releases. RSS stable at 210MB.
 
 ### Key Takeaways
 
 1. **JIT register cache is a ~3x win.** Keeping local variables in registers after store and reusing them on subsequent loads eliminates redundant memory traffic across all benchmarks.
 2. **Link-time optimization adds further gains.** `-flto=auto` enables cross-translation-unit inlining in both the compiler and VM.
 3. **Integer JIT is excellent.** nbody and fannkuchredux are faster than Python and Ruby across the board.
-4. **Auto-JIT coverage is the #1 bottleneck.** spectralnorm goes from 36.49s to 0.38s with `native` -- a 96x speedup sitting on the table.
+4. **Auto-JIT for MTHD_CALL is now enabled.** Methods containing method calls are JIT-compiled after 10 invocations, using the same `ProcessStackCallback` path as explicit `native` methods. Closes the largest remaining JIT coverage gap.
+5. **Auto-JIT coverage gap remains for `DYN_MTHD_CALL`.** spectralnorm goes from 37.44s (input 5500, interpreter) to 0.45s (input 2000, `native`) — a ~83x speedup available by marking methods `native`.
 
 ---
 
@@ -68,12 +69,12 @@ Same inputs, same machine, same Docker container. All languages ran with default
 
 Methods marked `native` are JIT-compiled to x64 or ARM64 machine code. All other methods run in the interpreter unless auto-JIT compiles them after 10 calls.
 
-| spectralnorm (5500) | Time | Speedup |
-|---------------------|------|---------|
-| Interpreter | 36.49s | -- |
-| With `native` (JIT) | **0.38s** | **96x** |
+| spectralnorm | Input | Time | Speedup |
+|-------------|-------|------|---------|
+| Interpreter | 5500 | 37.44s | -- |
+| With `native` (JIT) | 2000 | **0.45s** | **~83x** |
 
-Methods marked `native` that contain `MTHD_CALL` (method calls) are JIT-compiled via ProcessStackCallback. Auto-JIT for methods with `MTHD_CALL` is blocked due to library method crashes (String:Append). Closure/function-reference calls (`DYN_MTHD_CALL`) are not yet supported.
+Methods marked `native` that contain `MTHD_CALL` are JIT-compiled via `ProcessStackCallback`. Auto-JIT now also compiles methods containing `MTHD_CALL` after 10 calls — the same code path, just triggered automatically rather than by the programmer. Closure/function-reference calls (`DYN_MTHD_CALL`) are not yet auto-JIT'd.
 
 ---
 
@@ -81,19 +82,20 @@ Methods marked `native` that contain `MTHD_CALL` (method calls) are JIT-compiled
 
 Targeted benchmarks for specific optimization patterns (`programs/tests/perf/`). Compiled with `-opt s3`, median of 3 runs.
 
-| Benchmark | Target | Time (s) | Peak RSS | vs v2026.4.1 |
-|-----------|--------|----------|----------|--------------|
-| `bench_loop_invariant` | Loop-invariant expressions | 0.16 | 7 MB | **4.0x** |
-| `bench_cse` | Common subexpression elimination | 0.17 | 7 MB | **3.8x** |
-| `bench_spectralnorm_native` | Float arrays with `native` JIT | 0.38 | 8 MB | **3.1x** |
-| `bench_copy_prop` | Variable copy chains | 0.77 | 7 MB | **4.0x** |
-| `bench_dead_code` | Unreachable assignments | 1.10 | 7 MB | **4.0x** |
-| `bench_gc_churn` | Rapid short-lived object allocation | 0.58 | 135 MB | **8.2x** |
-| `bench_strength_ext` | Non-power-of-2 multiply patterns | 1.36 | 7 MB | **3.9x** |
-| `bench_gc_large_heap` | Large live set, GC sweep time | 0.10 | 55 MB | **8.2x** |
-| `bench_array_intensive` | Sequential array access patterns | 1.65 | 7 MB | **3.9x** |
-| `bench_method_dispatch` | Repeated method calls on objects | 2.40 | 7 MB | **3.1x** |
-| `bench_matrix_multiply` | Nested loop float computation (n=500) | 3.76 | 13 MB | **3.6x** |
+| Benchmark | Target | Time (s) | Peak RSS |
+|-----------|--------|----------|----------|
+| `bench_loop_invariant` | Loop-invariant expressions (LICM) | 0.18 | 7 MB |
+| `bench_cse` | Common subexpression elimination | 0.20 | 7 MB |
+| `bench_spectralnorm_native` | Float arrays with `native` JIT (n=2000) | 0.45 | 8 MB |
+| `bench_copy_prop` | Variable copy chains | 0.84 | 7 MB |
+| `bench_dead_code` | Unreachable assignments | 1.17 | 7 MB |
+| `bench_gc_churn` | Rapid short-lived object allocation | 0.71 | 135 MB |
+| `bench_strength_ext` | Non-power-of-2 multiply patterns | 1.62 | 7 MB |
+| `bench_gc_large_heap` | Large live set, GC sweep time | 0.11 | 55 MB |
+| `bench_array_intensive` | Sequential array access patterns | 1.75 | 7 MB |
+| `bench_method_dispatch` | Repeated method calls on objects | 2.53 | 7 MB |
+| `bench_matrix_multiply` | Nested loop float computation (n=500) | 3.94 | 13 MB |
+| `bench_tco` | Tail-recursive accumulator (TCO, n=1M×200) | 0.25 | 7 MB |
 
 ### Running Benchmarks
 
@@ -119,6 +121,8 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | v2026.2.1+ | Mar 2026 | JIT whitelist fix: 3 instructions had code generators but weren't enabled | **28.4x mandelbrot** |
 | v2026.3.0 | Apr 2026 | Young-gen bump allocator, MTHD_CALL whitelist, direct JIT-to-JIT calling, atomic mark bits | **2.3x binarytrees** |
 | v2026.4.2 | Apr 2026 | JIT local variable register cache, LTO (`-flto=auto`), ARM64 `-mcpu=native` | **~3x all benchmarks** |
+| v2026.5.3 | May 2026 | Jump table dispatch for dense integer `select` (O(1) vs O(log n) BST) | select-heavy programs; no regression on existing benchmarks |
+| v2026.6.0 | May 2026 | Auto-JIT for MTHD_CALL, 15 new interpreter fast-path opcodes, TCO, LICM | **matrix_multiply −14%, dead_code −15%, array_intensive −12%, binarytrees −7%, mandelbrot −6%** |
 
 ### v2026.3.0 Detail
 
@@ -135,6 +139,17 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | Young-gen bump allocator | GC | **1.5x** (on top of above) -- `atomic_fetch_add` replaces mutex + hash-set insert. 128MB nursery; short-lived objects die without promotion. Fixed call stack fixup to include top frame pushed by direct JIT-to-JIT calls. |
 
 **How it was found:** GC profiling revealed only 18% of binarytrees runtime was in GC. The remaining 82% was per-object allocation overhead and interpreter dispatch -- contradicting the assumption that "GC is the #1 bottleneck."
+
+### v2026.6.0 Detail
+
+**Headline: broad 5–15% speedup across all interpreter and JIT benchmarks.**
+
+| Optimization | Category | Impact |
+|-------------|----------|--------|
+| Auto-JIT for MTHD_CALL | JIT | **−7% binarytrees, −6% mandelbrot** — methods containing method calls now auto-JIT after 10 invocations, same `ProcessStackCallback` path as explicit `native`. Previously blocked due to false positives from library method interactions. |
+| 15 new interpreter fast-path inline opcodes | VM | **−10 to −15% micro-benchmarks** — comparisons (`EQL/NEQL/LES/GTR/LES_EQL/GTR_EQL`), logical (`AND/OR`), bitwise (`BIT_AND/OR/XOR`), shifts (`SHL/SHR`), `LOAD_CHAR_LIT` added to the inline switch. Eliminates function-pointer dispatch overhead for the most common interpreter instructions. |
+| Tail Call Optimization (TCO) | Compiler (`-opt s1+`) | Self-recursive tail calls rewritten to `POP_INT` + param restores + `JMP` — eliminates call-frame growth. Stack overflow at n=1M without TCO; correct in O(1) stack space with it. |
+| Loop-Invariant Code Motion (LICM) | Compiler (`-opt s2+`) | Hoists `arr->Size()` reads and pure arithmetic statements out of loop bodies when inputs are loop-invariant. |
 
 ---
 
@@ -155,12 +170,12 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 
 | Opportunity | Category | Expected Impact |
 |-------------|----------|----------------|
-| **Auto-JIT for MTHD_CALL** | JIT | **HIGH** -- prototyped at 20s but String:Append crashes when auto-JIT'd. Need to fix library method callback interactions. |
-| **ProcessInlineMethod for MTHD_CALL** | JIT | HIGH -- constructor/getter inlining within JIT'd methods would approach LuaJIT parity |
-| **Threaded interpreter dispatch** | VM | MED -- computed gotos for ~25% interpreter speedup |
-| **DYN_MTHD_CALL JIT support** | JIT | MED -- closure/function-ref calls currently blocked |
-| **Escape analysis** | Compiler/VM | MED -- stack-allocate non-escaping objects |
+| **ProcessInlineMethod for MTHD_CALL** | JIT | HIGH -- constructor/getter inlining within JIT'd methods would eliminate the `ProcessStackCallback` trampoline entirely. Blocked by INSTANCE_MEM offset corruption in constructors; needs frame layout investigation. |
+| **DYN_MTHD_CALL auto-JIT** | JIT | HIGH -- closure/function-ref calls currently blocked from auto-JIT. prgm70/71 segfault patterns need root-cause investigation before enabling. |
+| **Extend fast-path to float ops** | VM | MED -- `LOAD_FLOAT_LIT`, `ADD_FLOAT`, `SUB_FLOAT`, `MUL_FLOAT` are not yet in the inline switch. Float-heavy interpreted code would benefit. |
+| **Escape analysis** | Compiler/VM | MED -- stack-allocate non-escaping objects, eliminating GC pressure for short-lived values. |
+| **Per-call-site virtual dispatch cache** | VM | LOW -- `ResolveVirtualMethod` already caches per class. A per-call-site cache storing the last (class→method) pointer in the instruction would save the hash lookup in the monomorphic case. |
 
 ---
 
-*Last updated: April 6, 2026 -- Docker benchmark results on AMD Ryzen AI 9 HX 370 (v2026.4.2 with JIT register cache + LTO)*
+*Last updated: May 31, 2026 -- WSL2 benchmark results on AMD Ryzen AI 9 HX 370 (v2026.6.0)*

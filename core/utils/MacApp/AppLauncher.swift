@@ -156,28 +156,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func checkVersion() {
-    guard let url = URL(string: "https://www.objeck.org/doc/api/version.txt"),
-          let data = try? String(contentsOf: url, encoding: .utf8),
-          let remote = Int(data.trimmingCharacters(in: .whitespacesAndNewlines))
-    else { return }
+    // URLSession with a timeout: String(contentsOf:) blocks without one and
+    // is deprecated for network URLs
+    guard let url = URL(string: "https://www.objeck.org/doc/api/version.txt") else { return }
 
-    let localPath = "\(installPath)/doc/api/version.txt"
-    guard let localData = try? String(contentsOfFile: localPath, encoding: .utf8),
-          let local = Int(localData.trimmingCharacters(in: .whitespacesAndNewlines))
-    else { return }
+    var request = URLRequest(url: url)
+    request.timeoutInterval = 5
 
-    if local < remote {
-      DispatchQueue.main.async {
-        let alert = NSAlert()
-        alert.messageText = "Update Available"
-        alert.informativeText = "A newer version of Objeck is available."
-        alert.addButton(withTitle: "Visit Website")
-        alert.addButton(withTitle: "Later")
-        if alert.runModal() == .alertFirstButtonReturn {
-          NSWorkspace.shared.open(URL(string: "https://www.objeck.org")!)
+    URLSession.shared.dataTask(with: request) { data, _, _ in
+      guard let data = data,
+            let body = String(data: data, encoding: .utf8),
+            let remote = Int(body.trimmingCharacters(in: .whitespacesAndNewlines))
+      else { return }
+
+      let localPath = "\(self.installPath)/doc/api/version.txt"
+      guard let localData = try? String(contentsOfFile: localPath, encoding: .utf8),
+            let local = Int(localData.trimmingCharacters(in: .whitespacesAndNewlines))
+      else { return }
+
+      if local < remote {
+        DispatchQueue.main.async {
+          let alert = NSAlert()
+          alert.messageText = "Update Available"
+          alert.informativeText = "A newer version of Objeck is available."
+          alert.addButton(withTitle: "Visit Website")
+          alert.addButton(withTitle: "Later")
+          if alert.runModal() == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(URL(string: "https://www.objeck.org")!)
+          }
         }
       }
-    }
+    }.resume()
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

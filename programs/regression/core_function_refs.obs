@@ -1,0 +1,92 @@
+use Collection;
+
+class CoreFunctionRefsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing function references..."->PrintLine();
+        pass := true;
+
+        values := CompareVector->New()<IntRef>;
+        each(i : 10) {
+            values->AddBack(IntRef->New(i));
+        };
+
+        # Filter via function reference
+        evens := FilterValues(values, IsEven(IntRef) ~ Bool);
+        if(evens->Size() <> 5) {
+            sz := evens->Size();
+            pass := false;
+            "  FAIL: even filter size = {$sz}, expected 5"->PrintLine();
+        };
+        each(v in evens) {
+            if(v->Get() % 2 <> 0) {
+                pass := false;
+                n := v->Get();
+                "  FAIL: odd value in even filter: {$n}"->PrintLine();
+            };
+        };
+
+        # Filter via second function reference
+        odds := FilterValues(values, IsOdd(IntRef) ~ Bool);
+        if(odds->Size() <> 5) {
+            sz := odds->Size();
+            pass := false;
+            "  FAIL: odd filter size = {$sz}, expected 5"->PrintLine();
+        };
+
+        # Reduce via function reference
+        total := ReduceValues(values, Sum(IntRef, IntRef) ~ IntRef);
+        if(total->Get() <> 45) {
+            s := total->Get();
+            pass := false;
+            "  FAIL: sum = {$s}, expected 45"->PrintLine();
+        };
+
+        # Apply transform via function reference
+        doubled := MapValues(values, Double(IntRef) ~ IntRef);
+        if(doubled->Size() <> 10) {
+            pass := false;
+            "  FAIL: doubled size"->PrintLine();
+        };
+        first := doubled->Get(0);
+        if(first->Get() <> 0) {
+            pass := false;
+            "  FAIL: doubled[0] = {$first->Get()}"->PrintLine();
+        };
+        last := doubled->Get(9);
+        if(last->Get() <> 18) {
+            pass := false;
+            "  FAIL: doubled[9] = {$last->Get()}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Function references"->PrintLine();
+        } else {
+            "FAIL: Function references"->PrintLine();
+        };
+    }
+
+    function : FilterValues(v : CompareVector<IntRef>, f : (IntRef) ~ Bool) ~ CompareVector<IntRef> {
+        out := CompareVector->New()<IntRef>;
+        each(item in v) {
+            if(f(item)) { out->AddBack(item); };
+        };
+        return out;
+    }
+
+    function : ReduceValues(v : CompareVector<IntRef>, f : (IntRef, IntRef) ~ IntRef) ~ IntRef {
+        acc := IntRef->New(0);
+        each(item in v) { acc := f(acc, item); };
+        return acc;
+    }
+
+    function : MapValues(v : CompareVector<IntRef>, f : (IntRef) ~ IntRef) ~ CompareVector<IntRef> {
+        out := CompareVector->New()<IntRef>;
+        each(item in v) { out->AddBack(f(item)); };
+        return out;
+    }
+
+    function : IsEven(v : IntRef) ~ Bool { return v->Get() % 2 = 0; }
+    function : IsOdd(v : IntRef) ~ Bool { return v->Get() % 2 <> 0; }
+    function : Sum(a : IntRef, b : IntRef) ~ IntRef { return IntRef->New(a->Get() + b->Get()); }
+    function : Double(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * 2); }
+}

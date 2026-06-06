@@ -170,6 +170,10 @@ jobs:
             libopencv-dev \
             libmbedtls-dev \
             libnghttp2-dev \
+            libngtcp2-dev \
+            libngtcp2-crypto-gnutls-dev \
+            libnghttp3-dev \
+            libgnutls28-dev \
             unixodbc-dev \
             libsdl2-dev \
             libsdl2-image-dev \
@@ -193,8 +197,34 @@ jobs:
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: |
-          brew install opencv mbedtls nghttp2 unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
+          brew install opencv mbedtls nghttp2 libnghttp3 gnutls cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
           brew cleanup
+
+          # Add Homebrew bin to PATH
+          export PATH="/opt/homebrew/bin:$PATH"
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+
+      - name: Build ngtcp2 with GnuTLS backend (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          NGTCP2_VER=$(brew list --versions libngtcp2 | awk '{print $2}')
+          echo "Building ngtcp2 v${NGTCP2_VER} to match Homebrew libngtcp2"
+          cd /tmp
+          git clone --depth 1 --branch "v${NGTCP2_VER}" https://github.com/ngtcp2/ngtcp2.git
+          cd ngtcp2
+          git submodule update --init --depth 1
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
+                -DENABLE_GNUTLS=ON -DENABLE_OPENSSL=OFF \
+                -DCMAKE_PREFIX_PATH="/opt/homebrew;/opt/homebrew/opt/gnutls" \
+                -DBUILD_TESTING=OFF ..
+          make -j$(sysctl -n hw.ncpu)
+          make install DESTDIR=/tmp/ngtcp2-install
+          sudo cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2_crypto_gnutls* /opt/homebrew/lib/
+          sudo mkdir -p /opt/homebrew/include/ngtcp2
+          sudo cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
+          echo "ngtcp2 GnuTLS backend installed:"
+          ls /opt/homebrew/lib/libngtcp2*
 
       - name: Select Xcode 16.3+ (macOS)
         if: runner.os == 'macOS'
@@ -229,14 +259,14 @@ jobs:
 
       - name: Cache OpenCV DLLs (Windows x64)
         if: matrix.platform == 'windows-x64'
-        id: opencv-cache
+        id: opencv-cache-x64
         uses: actions/cache@v5
         with:
           path: core/lib/opencv/win/x64/bin
           key: opencv-4.12.0-win-x64-dlls
 
       - name: Download OpenCV runtime DLLs (Windows x64)
-        if: matrix.platform == 'windows-x64' && steps.opencv-cache.outputs.cache-hit != 'true'
+        if: matrix.platform == 'windows-x64' && steps.opencv-cache-x64.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $opencvVersion = "4.12.0"
@@ -256,6 +286,35 @@ jobs:
           Remove-Item -Recurse opencv-extract -Force
 
           Write-Output "OpenCV DLLs installed:"
+          Get-ChildItem $binDir
+
+      - name: Cache OpenCV DLLs (Windows ARM64)
+        if: matrix.platform == 'windows-arm64'
+        id: opencv-cache-arm64
+        uses: actions/cache@v5
+        with:
+          path: core/lib/opencv/win/arm64/bin
+          key: opencv-4.12.0-win-arm64-dlls
+
+      - name: Install OpenCV ARM64 runtime DLL via vcpkg
+        if: matrix.platform == 'windows-arm64' && steps.opencv-cache-arm64.outputs.cache-hit != 'true'
+        shell: pwsh
+        env:
+          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+        run: |
+          $binDir = "core\lib\opencv\win\arm64\bin"
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+          Write-Output "Installing opencv4:arm64-windows via vcpkg (uses GHA binary cache)..."
+          vcpkg install opencv4:arm64-windows --feature-flags=-manifests
+
+          $vcpkgBin = "C:\vcpkg\installed\arm64-windows\bin"
+          Get-ChildItem "$vcpkgBin\opencv_*4.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName $binDir
+            Write-Output "Copied: $($_.Name)"
+          }
+
+          Write-Output "OpenCV ARM64 DLLs:"
           Get-ChildItem $binDir
 
       - name: Install WiX Toolset (Windows)
@@ -530,7 +589,7 @@ jobs:
   build-lsp:
     name: Build LSP Package
     needs: prepare
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -542,53 +601,106 @@ jobs:
           name: version-metadata
           path: core/shared/
 
-      - name: Setup Visual Studio
-        uses: microsoft/setup-msbuild@v3
-
-      - name: Setup MSVC Environment
-        uses: ilammy/msvc-dev-cmd@v1
+      - name: Cache APT packages
+        uses: actions/cache@v5
         with:
-          arch: x64
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-x64-apt-release
+          restore-keys: |
+            ${{ runner.os }}-x64-apt-
 
-      - name: Install Windows dependencies
-        shell: pwsh
+      - name: Install Linux dependencies
         run: |
-          # nghttp2 and mbedtls headers/libs are committed to core/lib/openssl/win/{x64,arm64}/
-          # and core/lib/openssl/win/include/ — no vcpkg install needed
-          Write-Output "✅ Windows deps self-contained in repo (no vcpkg required)"
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libopencv-dev \
+            libmbedtls-dev \
+            libnghttp2-dev \
+            libngtcp2-dev \
+            libngtcp2-crypto-gnutls-dev \
+            libnghttp3-dev \
+            libgnutls28-dev \
+            unixodbc-dev \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-ttf-dev \
+            libsdl2-mixer-dev \
+            libreadline-dev \
+            libeigen3-dev \
+            libmp3lame-dev
 
-      - name: Build LSP
+      - name: Build Linux x64 toolchain
         working-directory: ./core/release
-        shell: cmd
-        run: deploy_windows.cmd x64
+        run: ./deploy_posix.sh x64 deploy
 
-      - name: Package LSP
-        shell: pwsh
+      - name: Build LSP server
+        working-directory: ./tools/lsp/server
+        env:
+          OBJECK_ROOT: ../../..
+        run: ./build_server.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install VS Code extension dependencies
+        working-directory: ./tools/lsp/clients/vscode
+        run: npm install
+
+      - name: Update extension version
+        working-directory: ./tools/lsp/clients/vscode
         run: |
-          $version = "${{ needs.prepare.outputs.version }}"
-          $lspDir = "objeck-lsp"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+          echo "✅ Extension version set to $VERSION"
 
-          # Create LSP directory structure
-          New-Item -ItemType Directory -Force -Path $lspDir
-          New-Item -ItemType Directory -Force -Path "$lspDir\bin"
-          New-Item -ItemType Directory -Force -Path "$lspDir\lib"
+      - name: Package VS Code extension
+        working-directory: ./tools/lsp/clients/vscode
+        run: npx vsce package --out objeck-lsp.vsix
 
-          # Copy LSP binaries (compiler and runtime)
-          Copy-Item "core\release\deploy-x64\bin\obc.exe" "$lspDir\bin\"
-          Copy-Item "core\release\deploy-x64\bin\obr.exe" "$lspDir\bin\"
-          Copy-Item "core\release\deploy-x64\lib\*.obl" "$lspDir\lib\"
-          Copy-Item "core\release\deploy-x64\lib\*.ini" "$lspDir\lib\"
+      - name: Assemble LSP zip
+        run: |
+          LSP_DIR="objeck-lsp"
+          mkdir -p "$LSP_DIR/bin" "$LSP_DIR/lib"
 
-          # Create ZIP
-          Compress-Archive -Path $lspDir -DestinationPath "objeck-lsp_0.0.0.zip"
+          # Server bytecode
+          cp tools/lsp/clients/vscode/server/objeck_lsp.obe "$LSP_DIR/"
 
-          Write-Output "✅ LSP package created: objeck-lsp_0.0.0.zip"
+          # Runtime binary and standard libraries
+          cp core/release/deploy/bin/obr "$LSP_DIR/bin/"
+          cp core/release/deploy/lib/*.obl "$LSP_DIR/lib/"
+
+          # Editor client configs
+          cp -r tools/lsp/clients/vim "$LSP_DIR/"
+          cp -r tools/lsp/clients/neovim "$LSP_DIR/"
+          cp -r tools/lsp/clients/emacs "$LSP_DIR/"
+          cp -r tools/lsp/clients/helix "$LSP_DIR/"
+          cp -r tools/lsp/clients/sublime "$LSP_DIR/"
+
+          # VS Code extension
+          cp tools/lsp/clients/vscode/objeck-lsp.vsix "$LSP_DIR/"
+
+          # Scripts
+          cp -r tools/lsp/scripts "$LSP_DIR/"
+
+          # Use 0.0.0 so the version rename tool in release-publish picks it up
+          zip -r "objeck-lsp_0.0.0.zip" "$LSP_DIR"
+          echo "✅ LSP package created: objeck-lsp_0.0.0.zip"
 
       - name: Upload LSP artifact
         uses: actions/upload-artifact@v6
         with:
           name: release-lsp
           path: objeck-lsp_0.0.0.zip
+          retention-days: 7
+
+      - name: Upload VS Code extension artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: vscode-extension
+          path: tools/lsp/clients/vscode/objeck-lsp.vsix
           retention-days: 7
 
   # ============================================
@@ -685,7 +797,17 @@ jobs:
             ../../../compiler/lib_src/rss.obs \
             ../../../compiler/lib_src/misc.obs \
             ../../../compiler/lib_src/diags.obs \
-            ../../../compiler/lib_src/ml.obs \
+            ../../../compiler/lib_src/ml_core.obs \
+            ../../../compiler/lib_src/ml_linear.obs \
+            ../../../compiler/lib_src/ml_tree.obs \
+            ../../../compiler/lib_src/ml_bayes.obs \
+            ../../../compiler/lib_src/ml_neighbors.obs \
+            ../../../compiler/lib_src/ml_cluster.obs \
+            ../../../compiler/lib_src/ml_data.obs \
+            ../../../compiler/lib_src/ai_search.obs \
+            ../../../compiler/lib_src/ai_game.obs \
+            ../../../compiler/lib_src/ai_optimize.obs \
+            ../../../compiler/lib_src/ai_rl.obs \
             ../../../compiler/lib_src/openai.obs \
             ../../../compiler/lib_src/gemini.obs \
             ../../../compiler/lib_src/ollama.obs \
@@ -708,11 +830,12 @@ jobs:
 
       - name: Commit api.zip to repo
         run: |
+          cp docs/api.zip /tmp/api.zip
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin master
-          git checkout master
-          cp docs/api.zip docs/api.zip
+          git checkout -f master
+          cp /tmp/api.zip docs/api.zip
           git add docs/api.zip
           git diff --cached --quiet && echo "api.zip unchanged" || \
             git commit -m "chore: update api.zip for v${{ needs.prepare.outputs.version }} [skip ci]"

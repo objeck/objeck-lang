@@ -1,0 +1,78 @@
+class MathRandomOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing random number operations..."->PrintLine();
+        pass := true;
+
+        # Int->Random(max): returns [0, max] inclusive
+        in_range := true;
+        each(i : 1000) {
+            r := Int->Random(100);
+            if(r < 0 | r > 100) { in_range := false; };
+        };
+        if(<>in_range) {
+            pass := false;
+            "  FAIL: Int->Random(100) out of range"->PrintLine();
+        };
+
+        # Int->Random(start, end): returns [start, end] inclusive
+        in_range2 := true;
+        each(i : 1000) {
+            r := Int->Random(50, 100);
+            if(r < 50 | r > 100) { in_range2 := false; };
+        };
+        if(<>in_range2) {
+            pass := false;
+            "  FAIL: Int->Random(50,100) out of range"->PrintLine();
+        };
+
+        # Float->Random(): should be in [0, 1)
+        in_range3 := true;
+        each(i : 1000) {
+            r := Float->Random();
+            if(r < 0.0 | r >= 1.0) { in_range3 := false; };
+        };
+        if(<>in_range3) {
+            pass := false;
+            "  FAIL: Float->Random() out of [0,1)"->PrintLine();
+        };
+
+        # Float->Random(max): should be in [0, max)
+        in_range4 := true;
+        each(i : 1000) {
+            r := Float->Random(10.0);
+            if(r < 0.0 | r >= 10.0) { in_range4 := false; };
+        };
+        if(<>in_range4) {
+            pass := false;
+            "  FAIL: Float->Random(10.0) out of range"->PrintLine();
+        };
+
+        # Statistical: average of many randoms should be near max/2
+        total := 0;
+        N := 10000;
+        each(i : N) { total += Int->Random(100); };
+        avg := total / N;
+        # Expected around 49-50; accept 40-60 as reasonable
+        if(avg < 40 | avg > 60) {
+            pass := false;
+            "  FAIL: random avg = {$avg}, expected ~50"->PrintLine();
+        };
+
+        # Uniqueness: 1000 random values should not all be the same
+        all_same := true;
+        first := Int->Random(1000000);
+        each(i : 100) {
+            if(Int->Random(1000000) <> first) { all_same := false; };
+        };
+        if(all_same) {
+            pass := false;
+            "  FAIL: all random values identical"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Random number operations"->PrintLine();
+        } else {
+            "FAIL: Random number operations"->PrintLine();
+        };
+    }
+}

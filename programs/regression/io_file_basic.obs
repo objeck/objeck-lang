@@ -1,0 +1,81 @@
+use System.IO.Filesystem;
+
+class IoFileBasicTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing basic file I/O..."->PrintLine();
+        pass := true;
+
+        filename := "regression_file_test.tmp";
+
+        # Write a file
+        writer := FileWriter->New(filename);
+        if(writer->IsOpen()) {
+            writer->WriteString("Hello, Objeck!\n");
+            writer->WriteString("Line two\n");
+            writer->WriteString("42\n");
+            writer->Close();
+        } else {
+            pass := false;
+            "  FAIL: could not open file for writing"->PrintLine();
+        };
+
+        # Check file exists
+        if(<>File->Exists(filename)) {
+            pass := false;
+            "  FAIL: file does not exist after write"->PrintLine();
+        };
+
+        # Read it back
+        if(pass) {
+            reader := FileReader->New(filename);
+            if(reader->IsOpen()) {
+                line1 := reader->ReadLine();
+                line2 := reader->ReadLine();
+                line3 := reader->ReadLine();
+                reader->Close();
+
+                if(line1 = Nil | <>line1->Has("Hello")) {
+                    pass := false;
+                    "  FAIL: line1 = {$line1}"->PrintLine();
+                };
+                if(line2 = Nil | <>line2->Has("Line two")) {
+                    pass := false;
+                    "  FAIL: line2 = {$line2}"->PrintLine();
+                };
+                if(line3 = Nil | <>line3->Equals("42")) {
+                    pass := false;
+                    "  FAIL: line3 = {$line3}"->PrintLine();
+                };
+            } else {
+                pass := false;
+                "  FAIL: could not open file for reading"->PrintLine();
+            };
+        };
+
+        # Get file size
+        if(pass) {
+            sz := File->Size(filename);
+            if(sz <= 0) {
+                pass := false;
+                "  FAIL: file size = {$sz}"->PrintLine();
+            };
+        };
+
+        # Delete the temp file
+        deleted := File->Delete(filename);
+        if(<>deleted) {
+            pass := false;
+            "  FAIL: Delete returned false"->PrintLine();
+        };
+        if(File->Exists(filename)) {
+            pass := false;
+            "  FAIL: file still exists after Delete"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Basic file I/O"->PrintLine();
+        } else {
+            "FAIL: Basic file I/O"->PrintLine();
+        };
+    }
+}

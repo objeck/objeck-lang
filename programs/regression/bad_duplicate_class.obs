@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR
+class DuplicateClass {
+    function : Main(args : String[]) ~ Nil {
+        "first"->PrintLine();
+    }
+}
+
+class DuplicateClass {
+    function : Main(args : String[]) ~ Nil {
+        "second"->PrintLine();
+    }
+}

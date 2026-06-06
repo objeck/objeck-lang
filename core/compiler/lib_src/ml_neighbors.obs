@@ -1,0 +1,399 @@
+#~~
+# Objeck machine learning library: nearest neighbors
+# Copyright (c) 2024-2026 Randy Hollines
+#
+# Credits:
+# Eigen matrix library - https://eigen.tuxfamily.org
+~~#
+
+use Collection;
+use Data.CSV;
+
+#~
+Nearest-neighbor search and classification: KNearestNeighbors with majority-vote Classify and the exact KDTree index. Compile with -lib ml.
+~#
+bundle System.ML {
+	#~
+	A node in a KDTree: the row it holds, the dimension it splits on, and the
+	child subtrees.
+	~#
+	class : private : KDNode {
+		@row : Int;
+		@dim : Int;
+		@left : KDNode;
+		@right : KDNode;
+
+		New(row : Int, dim : Int) {
+			@row := row;
+			@dim := dim;
+		}
+
+		method : public : GetRow() ~ Int { return @row; }
+		method : public : GetDim() ~ Int { return @dim; }
+		method : public : GetLeft() ~ KDNode { return @left; }
+		method : public : GetRight() ~ KDNode { return @right; }
+		method : public : SetLeft(n : KDNode) ~ Nil { @left := n; }
+		method : public : SetRight(n : KDNode) ~ Nil { @right := n; }
+	}
+
+	#~
+	K-d tree for fast exact nearest-neighbor queries over numeric rows.
+	Built by median splits cycling through the dimensions; queries prune
+	subtrees whose splitting plane lies farther than the current k-th best
+	distance. Equivalent results to a brute-force scan (Euclidean).
+
+```
+tree := KDTree->New(matrix);
+nearest := tree->Nearest(3, [57.0, 170.0]);   # row indexes, closest first
+```
+	~#
+	class KDTree {
+		@data : Float[,];
+		@root : KDNode;
+		@size : Int;
+		@cols : Int;
+
+		#~
+		Builds the tree from a data matrix.
+		@param data matrix (rows=samples, cols=features)
+		~#
+		New(data : Float[,]) {
+			@data := data;
+			if(data <> Nil) {
+				dims := data->Size();
+				@size := dims[0];
+				@cols := dims[1];
+
+				if(@size > 0 & @cols > 0) {
+					indexes := Int->New[@size];
+					each(i : @size) {
+						indexes[i] := i;
+					};
+					@root := Build(indexes, 0, @size - 1, 0);
+				};
+			};
+		}
+
+		# Builds a subtree over indexes[lo..hi] splitting on depth % cols.
+		method : Build(indexes : Int[], lo : Int, hi : Int, depth : Int) ~ KDNode {
+			if(lo > hi) {
+				return Nil;
+			};
+
+			dim := depth % @cols;
+			SortByDim(indexes, lo, hi, dim);
+			mid := lo + (hi - lo) / 2;
+
+			node := KDNode->New(indexes[mid], dim);
+			node->SetLeft(Build(indexes, lo, mid - 1, depth + 1));
+			node->SetRight(Build(indexes, mid + 1, hi, depth + 1));
+			return node;
+		}
+
+		# In-place quicksort of indexes[lo..hi] by the dim-th coordinate.
+		method : SortByDim(indexes : Int[], lo : Int, hi : Int, dim : Int) ~ Nil {
+			if(lo >= hi) {
+				return;
+			};
+
+			pivot := @data[indexes[lo + (hi - lo) / 2], dim];
+			i := lo;
+			j := hi;
+			while(i <= j) {
+				while(@data[indexes[i], dim] < pivot) {
+					i += 1;
+				};
+				while(@data[indexes[j], dim] > pivot) {
+					j -= 1;
+				};
+				if(i <= j) {
+					tmp := indexes[i];
+					indexes[i] := indexes[j];
+					indexes[j] := tmp;
+					i += 1;
+					j -= 1;
+				};
+			};
+
+			SortByDim(indexes, lo, j, dim);
+			SortByDim(indexes, i, hi, dim);
+		}
+
+		#~
+		Finds the k nearest rows to the query point.
+		@param k number of neighbors
+		@param query query point (length = features)
+		@return row indexes sorted closest-first (fewer than k when the tree is smaller), or Nil on invalid input
+		~#
+		method : public : Nearest(k : Int, query : Float[]) ~ Int[] {
+			if(@root = Nil | query = Nil | k < 1 | query->Size() <> @cols) {
+				return Nil;
+			};
+
+			count := k;
+			if(count > @size) {
+				count := @size;
+			};
+
+			# best-so-far lists, sorted ascending by distance
+			best_rows := Int->New[count];
+			best_dists := Float->New[count];
+			each(i : count) {
+				best_dists[i] := Float->Inf();
+			};
+
+			Search(@root, query, best_rows, best_dists, count);
+
+			return best_rows;
+		}
+
+		method : Search(node : KDNode, query : Float[], best_rows : Int[], best_dists : Float[], count : Int) ~ Nil {
+			if(node = Nil) {
+				return;
+			};
+
+			row := node->GetRow();
+			dist_sq := 0.0;
+			each(j : @cols) {
+				diff := query[j] - @data[row,j];
+				dist_sq += diff * diff;
+			};
+
+			# insert into the sorted best list if it beats the current worst
+			if(dist_sq < best_dists[count - 1]) {
+				pos := count - 1;
+				while(pos > 0 & best_dists[pos - 1] > dist_sq) {
+					best_dists[pos] := best_dists[pos - 1];
+					best_rows[pos] := best_rows[pos - 1];
+					pos -= 1;
+				};
+				best_dists[pos] := dist_sq;
+				best_rows[pos] := row;
+			};
+
+			dim := node->GetDim();
+			delta := query[dim] - @data[row,dim];
+
+			near : KDNode;
+			far : KDNode;
+			if(delta < 0.0) {
+				near := node->GetLeft();
+				far := node->GetRight();
+			}
+			else {
+				near := node->GetRight();
+				far := node->GetLeft();
+			};
+
+			Search(near, query, best_rows, best_dists, count);
+
+			# the far side can only matter when the splitting plane is closer
+			# than the current k-th best distance
+			if(delta * delta < best_dists[count - 1]) {
+				Search(far, query, best_rows, best_dists, count);
+			};
+		}
+
+		#~
+		Gets the number of rows indexed.
+		@return row count
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+	}
+
+	class KNearestNeighbors {
+		@matrix : Float[,];
+		@labels : String[];
+
+		#~
+		Constructor.
+		@param matrix matrix input matrix
+		@param labels categories labels
+		~#
+		New(matrix : Float[,], labels : String[]) {
+			@matrix := matrix;
+			@labels := labels;
+		}
+
+		#~
+		Query the matrix for classification
+		@param k number of nearest neighbors 
+		@param query input query
+		@return k nearest neighbors 
+		~#
+		method : public : Query(k : Int, query : Float[]) ~ KNeighbor[] {
+			return Query(query, k);
+		}
+
+		#~
+		Classifies a query point by majority vote of its k nearest neighbors.
+		Ties are broken in favor of the label that first reaches the top count.
+		@param k number of neighbors to poll
+		@param query input feature vector
+		@return predicted category label (empty string if there are no neighbors)
+
+```
+knn := KNearestNeighbors->New(matrix, labels);
+knn->Classify(3, [57.0, 170.0])->PrintLine();
+```
+		~#
+		method : public : Classify(k : Int, query : Float[]) ~ String {
+			neighbors := Query(k, query);
+			if(neighbors = Nil | neighbors->Size() = 0) {
+				return "";
+			};
+
+			best_label := "";
+			best_count := -1;
+			for(i := 0; i < neighbors->Size(); i += 1;) {
+				neighbor := neighbors[i];
+				cat := neighbor->GetCategory();
+
+				count := 0;
+				for(j := 0; j < neighbors->Size(); j += 1;) {
+					peer := neighbors[j];
+					if(peer->GetCategory()->Equals(cat)) {
+						count += 1;
+					};
+				};
+
+				if(count > best_count) {
+					best_count := count;
+					best_label := cat;
+				};
+			};
+
+			return best_label;
+		}
+
+		method : native : Query(query : Float[], k : Int) ~ KNeighbor[] {
+			dims := @matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			distances := Collection.CompareVector->New()<KNeighbor>;
+			row := Float->New[cols];	
+			each(i : rows) {
+				each(j : cols) {
+					row[j] := @matrix[i,j];
+				};
+				dist := EuclideanDistance(row, query);
+				distances->AddBack(KNeighbor->New(dist, i, @labels[i]));
+			};
+
+			# Ascending by distance: nearest neighbors first
+			distances->Sort();
+			if(k > distances->Size()) {
+				k := distances->Size();
+			};
+
+			results := KNeighbor->New[k];
+			each(i : k) {
+				results[i] := distances->Get(i);
+			};
+
+			return results;
+		}
+
+		method : native : EuclideanDistance(a : Float[], b : Float[]) ~ Float {
+			if(a->Size() <> b->Size()) {
+				return 0.0;
+			};
+
+			total := 0.0;
+			
+			each(i : a) {
+				diff := b[i] - a[i];
+				total += diff * diff;
+			};
+
+			return total->Sqrt();
+		}
+	}
+
+	#~
+	K-Neighbor result
+	~#
+	class KNeighbor implements Compare {
+		@dist : Float;
+		@row : Int;
+		@cat : String;
+
+		#~
+		Constructor.
+		@param dist distance value
+		@param row row index
+		@param cat category label
+		~#
+		New(dist : Float, row : Int, cat : String) {
+			@dist := dist;
+			@row := row;
+			@cat := cat;
+		}
+
+		#~
+		Compares neighbors 
+		@param rhs neighbor to compare
+		@return 0 if equal, -1 if types differ, 1 if equal
+		~#
+		method : public : Compare(rhs:System.Compare) ~ Int {
+			if(@self->GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+			right : KNeighbor := rhs->As(KNeighbor);
+			bar := right->GetDistance();
+			# foo := Float->Compare(bar, @dist);
+
+			if(@dist < bar) {
+				return -1;
+			}
+			else if(@dist > bar) {
+				return 1;
+			};
+
+			return 0;
+		}
+
+		#~
+		Returns a unique hash ID for a boolean
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return @dist * 4000000;
+		}
+
+		#~
+		Get the distance
+		@return distance
+		~#
+		method : public : GetDistance() ~ Float {
+			return @dist;
+		}
+
+		#~
+		Get the row index
+		@return row index
+		~#
+		method : public : GetRow() ~ Int {
+			return @row;
+		}
+
+		#~
+		Get the category label
+		@return category label
+		~#
+		method : public : GetCategory() ~ String {
+			return @cat;
+		}
+
+		#~
+		Returns a string representation of the neighbor
+		@return string representation of the neighbor
+		~#
+		method : public : ToString() ~ String {
+			return "{$@row}: distance={$@dist}, category={$@cat}";
+		}
+	}
+}

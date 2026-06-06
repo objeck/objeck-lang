@@ -1,0 +1,83 @@
+class MathLogExpTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing logarithm and exponent functions..."->PrintLine();
+        pass := true;
+
+        # Natural log
+        ln1 := Float->Log(1.0);
+        if(ln1 < -0.001 | ln1 > 0.001) {
+            pass := false;
+            "  FAIL: Log(1.0) = {$ln1}"->PrintLine();
+        };
+        lne := Float->Log(2.71828);
+        if(lne < 0.999 | lne > 1.001) {
+            pass := false;
+            "  FAIL: Log(e) = {$lne}"->PrintLine();
+        };
+        ln10 := Float->Log(10.0);
+        if(ln10 < 2.302 | ln10 > 2.304) {
+            pass := false;
+            "  FAIL: Log(10) = {$ln10}"->PrintLine();
+        };
+
+        # Log2
+        l2_1 := Float->Log2(1.0);
+        if(l2_1 < -0.001 | l2_1 > 0.001) {
+            pass := false;
+            "  FAIL: Log2(1) = {$l2_1}"->PrintLine();
+        };
+        l2_8 := Float->Log2(8.0);
+        if(l2_8 < 2.999 | l2_8 > 3.001) {
+            pass := false;
+            "  FAIL: Log2(8) = {$l2_8}"->PrintLine();
+        };
+        l2_1024 := Float->Log2(1024.0);
+        if(l2_1024 < 9.999 | l2_1024 > 10.001) {
+            pass := false;
+            "  FAIL: Log2(1024) = {$l2_1024}"->PrintLine();
+        };
+
+        # Exp (e^x)
+        exp0 := Float->Exp(0.0);
+        if(exp0 < 0.999 | exp0 > 1.001) {
+            pass := false;
+            "  FAIL: Exp(0) = {$exp0}"->PrintLine();
+        };
+        exp1 := Float->Exp(1.0);
+        if(exp1 < 2.717 | exp1 > 2.720) {
+            pass := false;
+            "  FAIL: Exp(1) = {$exp1}"->PrintLine();
+        };
+        exp2 := Float->Exp(2.0);
+        if(exp2 < 7.388 | exp2 > 7.390) {
+            pass := false;
+            "  FAIL: Exp(2) = {$exp2}"->PrintLine();
+        };
+
+        # Log / Exp inverse: log(exp(x)) = x
+        x := 3.5;
+        roundtrip := Float->Log(Float->Exp(x));
+        if(roundtrip < 3.499 | roundtrip > 3.501) {
+            pass := false;
+            "  FAIL: Log(Exp(3.5)) = {$roundtrip}"->PrintLine();
+        };
+
+        # Float->Pow
+        p2_10 := Float->Pow(2.0, 10.0);
+        if(p2_10 < 1023.9 | p2_10 > 1024.1) {
+            pass := false;
+            "  FAIL: Pow(2,10) = {$p2_10}"->PrintLine();
+        };
+        p10_3 := Float->Pow(10.0, 3.0);
+        if(p10_3 < 999.9 | p10_3 > 1000.1) {
+            pass := false;
+            "  FAIL: Pow(10,3) = {$p10_3}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Logarithm and exponent functions"->PrintLine();
+        } else {
+            "FAIL: Logarithm and exponent functions"->PrintLine();
+        };
+    }
+}

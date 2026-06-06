@@ -12,6 +12,16 @@
 	},
 	"features": [
 		{
+			"version": "v2026.6.0",
+			"items": [
+				"Compiler: Tail Call Optimization (TCO) — self-recursive tail calls rewritten to jumps, eliminating stack growth (-opt s1+)",
+				"Compiler: Loop-Invariant Code Motion (LICM) — hoists arr->Size() reads and pure arithmetic out of loop bodies (-opt s2+)",
+				"VM: Auto-JIT now compiles methods containing MTHD_CALL after 10 invocations (5-15% speedup across benchmarks)",
+				"VM: Extended interpreter fast-path with 15 additional inline opcodes (comparisons, bitwise, shifts, logical)",
+				"Performance: bench_matrix_multiply -14%, bench_dead_code -15%, bench_array_intensive -12%, binarytrees -7%, mandelbrot -6%"
+			]
+		},
+		{
 			"version": "v2024.10.0",
 			"items": [
 				"Fixed bugs #501 and #503"

@@ -1,0 +1,64 @@
+class JitConditionalNativeTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT conditional branches..."->PrintLine();
+        pass := true;
+
+        # Classify 100000 integers
+        N := 100000;
+        pos := 0; neg := 0; zero := 0;
+        each(i : N) {
+            v := i - 50000;
+            if(v > 0)      { pos += 1; }
+            else if(v < 0) { neg += 1; }
+            else           { zero += 1; };
+        };
+        if(pos <> 49999)  { pass := false; "  FAIL: pos = {$pos}"->PrintLine(); };
+        if(neg <> 50000)  { pass := false; "  FAIL: neg = {$neg}"->PrintLine(); };
+        if(zero <> 1)     { pass := false; "  FAIL: zero = {$zero}"->PrintLine(); };
+
+        # Select with many labels (JIT jump table)
+        counts := Int->New[4];
+        each(i : 10000) {
+            select(i % 4) {
+                label 0: { counts[0] += 1; }
+                label 1: { counts[1] += 1; }
+                label 2: { counts[2] += 1; }
+                other:   { counts[3] += 1; }
+            };
+        };
+        each(bucket : 4) {
+            if(counts[bucket] <> 2500) {
+                c := counts[bucket];
+                pass := false;
+                "  FAIL: bucket[{$bucket}] = {$c}"->PrintLine();
+            };
+        };
+
+        # Boolean short-circuit in hot loop
+        short_count := 0;
+        each(i : 10000) {
+            if(i % 2 = 0 & i % 3 = 0) { short_count += 1; };
+        };
+        if(short_count <> 1667) {
+            pass := false;
+            "  FAIL: divisible by 6 count = {$short_count}"->PrintLine();
+        };
+
+        # Conditional with float comparison
+        float_gt := 0;
+        each(i : 1000) {
+            v := i->As(Float) * 0.1;
+            if(v > 50.0) { float_gt += 1; };
+        };
+        if(float_gt <> 499) {
+            pass := false;
+            "  FAIL: float_gt = {$float_gt}, expected 499"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT conditional branches"->PrintLine();
+        } else {
+            "FAIL: JIT conditional branches"->PrintLine();
+        };
+    }
+}

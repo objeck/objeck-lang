@@ -69,6 +69,13 @@ copy ..\lib\*.ini %TARGET%\lib
 
 REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: update_version.ps1 failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 REM compiler, runtime and debugger
 if [%1] == [arm64] (
@@ -82,9 +89,28 @@ if [%1] == [x64] (
 if errorlevel 1 (
 	echo.
 	echo ============================================================
-	echo  ERROR: Build failed - aborting deploy
+	echo  ERROR: objeck.sln build failed - aborting deploy
 	echo ============================================================
 	exit /b 1
+)
+REM Verify build output exists (catches Ctrl+C kills where devenv returns errorlevel 0)
+if [%1] == [arm64] (
+	if not exist "ARM64\Release\obr.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: objeck.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
+)
+if [%1] == [x64] (
+	if not exist "..\vm\release\win64\obr.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: objeck.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 )
 
 mkdir %TARGET%\bin
@@ -94,9 +120,15 @@ if [%1] == [arm64] (
 	REM WindowsSdkVerBinPath has trailing backslash, e.g., "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\"
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
-
 	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
 	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
+)
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: ARM64 binary copy/manifest step failed - aborting deploy
+	echo ============================================================
+	exit /b 1
 )
 
 if [%1] == [x64] (
@@ -104,16 +136,28 @@ if [%1] == [x64] (
 	copy ..\repl\release\win64\*.exe %TARGET%\bin
 	copy ..\vm\release\win64\*.exe %TARGET%\bin
 	copy ..\debugger\release\win64\*.exe %TARGET%\bin
-
 	REM Embed manifests AFTER copying binaries
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
-
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
 	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
 )
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: x64 binary copy/manifest step failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 copy ..\lib\lame\win\%1\*.dll %TARGET%\bin
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: lame runtime DLL copy failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 REM nghttp2 runtime DLL (required by obr for HTTP/2 support)
 if [%1] == [x64] (
@@ -122,11 +166,32 @@ if [%1] == [x64] (
 if [%1] == [arm64] (
 	copy ..\lib\openssl\win\arm64\nghttp2.dll %TARGET%\bin
 )
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: nghttp2 runtime DLL copy failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 REM native launcher
 if [%1] == [arm64] (
 	cd ..\utils\launcher
 	devenv native_launcher.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: native_launcher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "ARM64\Release\obn.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: native_launcher.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
 	copy ARM64\Release\obb.exe ..\..\release\%TARGET%\bin
 	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
@@ -136,6 +201,20 @@ if [%1] == [arm64] (
 if [%1] == [x64] (
 	cd ..\utils\launcher
 	devenv native_launcher.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: native_launcher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release\obn.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: native_launcher.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
 	copy x64\Release\obb.exe ..\..\release\%TARGET%\bin
 	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
@@ -151,6 +230,13 @@ cd ..\lib\crypto
 
 if [%1] == [arm64] (
 	devenv crypto.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: crypto.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	if exist ARM64\Release\*.dll (
 		copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
 	) else (
@@ -160,6 +246,13 @@ if [%1] == [arm64] (
 
 if [%1] == [x64] (
 	devenv crypto.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: crypto.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 	if exist Release\win64\*.dll (
 		copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 	) else (
@@ -173,11 +266,39 @@ cd ..\lib\lame
 
 if [%1] == [arm64] (
 	devenv lame.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: lame.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "ARM64\Release\libobjk_lame.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: lame.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
 	devenv lame.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: lame.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release\libobjk_lame.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: lame.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
@@ -186,11 +307,39 @@ REM app
 cd ..\utils\WindowsApp
 if [%1] == [arm64] (
 	devenv AppLauncher.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: AppLauncher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "ARM64\Release\ObLauncher.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: AppLauncher.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\*.exe ..\..\release\%TARGET%\app
 )
 
 if [%1] == [x64] (
 	devenv AppLauncher.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: AppLauncher.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release\ObLauncher.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: AppLauncher.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release\*.exe ..\..\release\%TARGET%\app
 )
 cd ..\..\release
@@ -199,11 +348,39 @@ REM diags
 cd ..\lib\diags
 if [%1] == [arm64] (
 	devenv diag.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: diag.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "vs\Release\ARM64\libobjk_diags.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: diag.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy vs\Release\ARM64\*.dll* ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
 	devenv diag.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: diag.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "vs\Release\x64\libobjk_diags.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: diag.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy vs\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
@@ -213,44 +390,135 @@ REM odbc support
 cd ..\lib\odbc
 if [%1] == [arm64] (
 	devenv odbc.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: odbc.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "ARM64\Release\libobjk_odbc.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: odbc.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
 	devenv odbc.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: odbc.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "Release\win64\libobjk_odbc.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: odbc.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
 
 REM matrix support
-cd ..\lib\matrix	
+cd ..\lib\matrix
 if [%1] == [arm64] (
 	devenv matrix.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: matrix.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "Release\ARM64\libobjk_ml.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: matrix.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy Release\ARM64\*.dll ..\..\release\%TARGET%\lib\native
 )
 
 if [%1] == [x64] (
 	devenv matrix.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: matrix.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "Release\x64\libobjk_ml.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: matrix.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 )
 cd ..\..\release
 
 REM opencv support
-cd ..\lib\opencv	
+cd ..\lib\opencv
 if [%1] == [arm64] (
 	devenv opencv.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: opencv.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "arm64\Release\libobjk_opencv.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: opencv.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
-	copy /y win\arm64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
-	copy /y win\arm64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+	for %%f in (win\arm64\bin\opencv_*4.dll) do (
+		copy /y %%f ..\..\release\%TARGET%\bin
+	)
 )
 
 if [%1] == [x64] (
 	devenv opencv.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: opencv.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release\libobjk_opencv.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: opencv.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
 
-	copy /y win\x64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
-	copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+	if exist win\x64\bin\opencv_world4120.dll (
+		copy /y win\x64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
+	) else (
+		echo Warning: win\x64\bin\opencv_world4120.dll not found - OpenCV runtime unavailable
+	)
+	if exist win\x64\bin\opencv_videoio_ffmpeg4120_64.dll (
+		copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+	)
 )
 cd ..\..\release
 
@@ -258,29 +526,109 @@ REM onnx support
 cd ..\lib\onnx
 
 REM Restore NuGet packages before building
-nuget restore onnx.sln
+REM 1) Try VS-bundled nuget.exe  2) Try PATH (CI runners have it via Chocolatey)
+REM 3) Download from nuget.org as last resort (needed when VS doesn't bundle it)
+set NUGET_EXE=%VSINSTALLDIR%Common7\IDE\CommonExtensions\Microsoft\NuGet\nuget.exe
+if not exist "%NUGET_EXE%" set NUGET_EXE=
+if "%NUGET_EXE%"=="" (
+	where nuget >nul 2>&1
+	if not errorlevel 1 set NUGET_EXE=nuget
+)
+if "%NUGET_EXE%"=="" (
+	echo nuget.exe not found in VS or PATH - downloading from nuget.org...
+	powershell -Command "Invoke-WebRequest -Uri 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' -OutFile '%TEMP%\nuget.exe' -UseBasicParsing" 2>nul
+	if exist "%TEMP%\nuget.exe" set NUGET_EXE=%TEMP%\nuget.exe
+)
+if "%NUGET_EXE%"=="" (
+	echo.
+	echo ============================================================
+	echo  ERROR: nuget.exe not found and download failed - aborting deploy
+	echo  Install NuGet CLI: choco install nuget.commandline
+	echo ============================================================
+	exit /b 1
+)
+"%NUGET_EXE%" restore onnx.sln
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: NuGet restore failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
 
 if [%1] == [arm64] (
 	devenv onnx.sln /rebuild "Release-QNN|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: onnx.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "ARM64\Release-QNN\libobjk_onnx.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: onnx.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
-	copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
+	if exist eq\qnn\win\onnx\arm64\bin (
+		copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
+	) else (
+		echo Warning: ONNX QNN runtime DLLs not found for arm64 - ONNX runtime unavailable
+	)
 )
 
 if [%1] == [x64] (
 	devenv onnx.sln /rebuild "Release-DML|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: onnx.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "x64\Release-DML\libobjk_onnx.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: onnx.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy x64\Release-DML\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
 
-	copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
-	copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
+	if exist packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native (
+		copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
+	) else (
+		echo Warning: OnnxRuntime.DirectML nuget packages not found - ONNX runtime unavailable
+	)
+	if exist packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll (
+		copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
+	)
 )
 cd ..\..\release
 
 REM sdl support
-cd ..\lib\sdl	
+cd ..\lib\sdl
 if [%1] == [arm64] (
 	REM sdl
 	devenv sdl\sdl.sln /rebuild "Release|ARM64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: sdl.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "sdl\Release\arm64\libobjk_sdl.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: sdl.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy sdl\Release\arm64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
 	copy lib\arm64\*.dll ..\..\release\%TARGET%\lib\sdl
@@ -289,6 +637,20 @@ if [%1] == [arm64] (
 if [%1] == [x64] (
 	REM sdl
 	devenv sdl\sdl.sln /rebuild "Release|x64"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: sdl.sln build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "sdl\Release\x64\libobjk_sdl.dll" (
+		echo.
+		echo ============================================================
+		echo  ERROR: sdl.sln build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
 	copy sdl\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
 	copy lib\x64\*.dll ..\..\release\%TARGET%\lib\sdl
@@ -324,12 +686,12 @@ if exist "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\model.onnx" (
 )
 
 REM build and update docs
-mkdir %TARGET%\doc 
+mkdir %TARGET%\doc
 mkdir %TARGET%\doc\syntax
 xcopy /e ..\..\docs\syntax\* %TARGET%\doc\syntax
 
 REM update and process readme
-mkdir %TARGET%\style 
+mkdir %TARGET%\style
 copy ..\..\docs\style\*.css %TARGET%\style
 copy ..\lib\code_doc\templates\resources\*.png %TARGET%\style
 copy ..\..\docs\readme.html %TARGET%
@@ -343,6 +705,13 @@ if [%1] == [x64] (
 	echo Skipping code_doc for ARM64 cross-compilation - using pre-built API docs
 	mkdir %TARGET%\doc\api
 	powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force"
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: API docs extraction failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 )
 
 :installer
@@ -356,7 +725,7 @@ if [%2] NEQ [deploy] goto end
 	if [%1] == [x64] (
 		set INSTALL_TARGET=objeck-lang-x64
 	)
-	
+
 	rmdir /q /s %TARGET%\examples\doc
 
 	REM Create directory structure for MSI build (files must be in release-x64 or release-arm64)
@@ -402,6 +771,13 @@ if [%2] NEQ [deploy] goto end
 		-d SourceDir=%WIX_SOURCEDIR% ^
 		-ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
 		..\utils\setup\objeck.wxs
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: WiX MSI build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
 
 	REM Try to sign MSI if certificate is available
 	signtool sign /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /a %WIX_OUTPUT% 2>nul
@@ -415,8 +791,14 @@ if [%2] NEQ [deploy] goto end
 	if [%1] == [arm64] (
 		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip' -Force"
 	)
-
 	if [%1] == [x64] (
 		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-x64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip' -Force"
+	)
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: ZIP creation failed - aborting deploy
+		echo ============================================================
+		exit /b 1
 	)
 :end

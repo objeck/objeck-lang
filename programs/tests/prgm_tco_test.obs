@@ -1,0 +1,18 @@
+class TcoTest {
+  function : Sum(n : Int, acc : Int) ~ Int {
+    if(n = 0) {
+      return acc;
+    };
+    return Sum(n - 1, acc + n);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    result := Sum(100000, 0);
+    if(result = 5000050000) {
+      "PASS: TCO Sum(100000) = {$result}"->PrintLine();
+    }
+    else {
+      "FAIL: expected 5000050000, got {$result}"->PrintLine();
+    };
+  }
+}

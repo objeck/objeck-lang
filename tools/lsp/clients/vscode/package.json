@@ -1,0 +1,124 @@
+{
+	"name": "objeck-lsp",
+	"description": "Language server for Objeck",
+	"icon": "images/gear_wheel_128.png",
+	"author": "Randy Hollines",
+	"license": "New BSD",
+	"version": "2026.5.3",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/objeck/objeck-lsp"
+	},
+	"publisher": "objeck-lsp",
+	"categories": [
+		"Programming Languages",
+		"Formatters",
+		"Debuggers"
+	],
+	"keywords": [
+		"multi-root ready"
+	],
+	"engines": {
+		"vscode": "^1.75.0"
+	},
+	"activationEvents": [
+		"onLanguage:objeck",
+		"onDebug:objeck"
+	],
+	"main": "./client/out/extension",
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "LSP configuration",
+			"properties": {
+				"objk.win.install.dir": {
+					"type": "string",
+					"default": "C:\\Program Files\\Objeck",
+					"description": "Objeck Windows install directory"
+				},
+				"objk.posix.install.dir": {
+					"type": "string",
+					"default": "/usr/local/objeck",
+					"description": "Objeck Posix install directory"
+				}
+			}
+		},
+		"languages": [{
+            "id": "objeck",
+            "aliases": ["Objeck", "objeck"],
+            "extensions": [".obs"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "objeck",
+            "scopeName": "source.objeck",
+            "path": "./syntaxes/objeck.tmLanguage.json"
+        }],
+		"breakpoints": [
+			{ "language": "objeck" }
+		],
+		"debuggers": [{
+			"type": "objeck",
+			"label": "Objeck Debug",
+			"languages": ["objeck"],
+			"configurationAttributes": {
+				"launch": {
+					"required": ["program"],
+					"properties": {
+						"program": {
+							"type": "string",
+							"description": "Path to the compiled Objeck binary (.obe file)"
+						},
+						"sourceDir": {
+							"type": "string",
+							"description": "Path to the source files directory",
+							"default": "${workspaceFolder}"
+						},
+						"args": {
+							"type": "string",
+							"description": "Program arguments",
+							"default": ""
+						}
+					}
+				}
+			},
+			"initialConfigurations": [{
+				"type": "objeck",
+				"request": "launch",
+				"name": "Debug Objeck Program",
+				"program": "${workspaceFolder}/${fileBasenameNoExtension}.obe",
+				"sourceDir": "${workspaceFolder}"
+			}],
+			"configurationSnippets": [{
+				"label": "Objeck: Launch",
+				"description": "Launch and debug an Objeck program",
+				"body": {
+					"type": "objeck",
+					"request": "launch",
+					"name": "Debug ${1:program}",
+					"program": "^\"\\${workspaceFolder}/${2:app}.obe\"",
+					"sourceDir": "^\"\\${workspaceFolder}\""
+				}
+			}]
+		}]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -b",
+		"watch": "tsc -b -w",
+		"postinstall": "cd client && npm install && cd ..",
+		"test": "sh ./scripts/e2e.sh"
+	},
+	"devDependencies": {
+		"@types/mocha": "^10.0.0",
+		"@types/node": "^20.0.0",
+		"@typescript-eslint/eslint-plugin": "^7.0.0",
+		"@typescript-eslint/parser": "^7.0.0",
+		"eslint": "^8.56.0",
+		"mocha": "^10.7.0",
+		"typescript": "^5.4.0"
+	},
+	"overrides": {
+		"serialize-javascript": ">=7.0.5"
+	}
+}

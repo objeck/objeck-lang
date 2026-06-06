@@ -1,0 +1,94 @@
+class CoreArrayOperationsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing array operations..."->PrintLine();
+        pass := true;
+
+        # Size
+        arr := Int->New[5];
+        if(arr->Size() <> 5) {
+            pass := false;
+            "  FAIL: Size() = {$arr->Size()}"->PrintLine();
+        };
+
+        # Fill and access
+        each(i : 5) { arr[i] := i * i; };
+        if(arr[0] <> 0) { pass := false; "  FAIL: arr[0]"->PrintLine(); };
+        if(arr[3] <> 9) { pass := false; "  FAIL: arr[3]"->PrintLine(); };
+        if(arr[4] <> 16) { pass := false; "  FAIL: arr[4]"->PrintLine(); };
+
+        # Copy array
+        copy := arr->Copy();
+        if(copy->Size() <> 5) {
+            pass := false;
+            "  FAIL: Copy size"->PrintLine();
+        };
+        if(copy[2] <> 4) {
+            v2 := copy[2];
+            pass := false;
+            "  FAIL: Copy[2] = {$v2}"->PrintLine();
+        };
+
+        # Modifying copy doesn't affect original
+        copy[0] := 999;
+        if(arr[0] <> 0) {
+            pass := false;
+            "  FAIL: Copy mutation affected original"->PrintLine();
+        };
+
+        # String array
+        sa := String->New[3];
+        sa[0] := "alpha";
+        sa[1] := "beta";
+        sa[2] := "gamma";
+        if(sa->Size() <> 3) { pass := false; "  FAIL: string array size"->PrintLine(); };
+        if(<>sa[1]->Equals("beta")) { pass := false; "  FAIL: sa[1]"->PrintLine(); };
+
+        # Float array
+        fa := Float->New[4];
+        fa[0] := 1.1; fa[1] := 2.2; fa[2] := 3.3; fa[3] := 4.4;
+        sum := 0.0;
+        each(i : fa->Size()) { sum += fa[i]; };
+        if(sum < 11.0 | sum > 11.1) {
+            pass := false;
+            "  FAIL: float array sum = {$sum}"->PrintLine();
+        };
+
+        # Boolean array
+        ba := Bool->New[5];
+        ba[0] := true; ba[1] := false; ba[2] := true; ba[3] := false; ba[4] := true;
+        true_count := 0;
+        each(i : ba->Size()) {
+            if(ba[i]) { true_count += 1; };
+        };
+        if(true_count <> 3) {
+            pass := false;
+            "  FAIL: bool true count = {$true_count}"->PrintLine();
+        };
+
+        # Char array
+        ca := Char->New[3];
+        ca[0] := 'a'; ca[1] := 'b'; ca[2] := 'c';
+        if(ca[2] <> 'c') {
+            pass := false;
+            "  FAIL: char array"->PrintLine();
+        };
+
+        # Iterate array in reverse
+        iarr := Int->New[5];
+        each(i : 5) { iarr[i] := i + 1; };
+        rev_sum := 0;
+        for(i := iarr->Size() - 1; i >= 0; i -= 1;) {
+            rev_sum += iarr[i];
+        };
+        if(rev_sum <> 15) {
+            pass := false;
+            "  FAIL: reverse iteration sum = {$rev_sum}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Array operations"->PrintLine();
+        } else {
+            "FAIL: Array operations"->PrintLine();
+        };
+    }
+}

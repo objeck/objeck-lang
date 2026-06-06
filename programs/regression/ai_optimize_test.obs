@@ -1,0 +1,134 @@
+# EXTRA_LIBS: ai,gen_collect
+# JIT_DISABLE
+#~
+Regression tests for System.AI optimization: GeneticAlgorithm solves OneMax
+(all-ones chromosome), SimulatedAnnealing and HillClimbing minimize a shifted
+quadratic bowl to near the known optimum, and seeded runs are reproducible.
+~#
+use System.AI;
+
+#~
+OneMax: fitness = number of true bits.
+~#
+class OneMax implements FitnessFunction {
+	New() {}
+
+	method : public : Fitness(genes : Bool[]) ~ Float {
+		count := 0;
+		each(i : genes) {
+			if(genes[i]) {
+				count += 1;
+			};
+		};
+		return count->As(Float);
+	}
+}
+
+#~
+Bowl: energy = (x - 3)^2 + (y + 1)^2, minimum 0 at (3, -1).
+~#
+class Bowl implements EnergyFunction {
+	New() {}
+
+	method : public : Energy(state : Float[]) ~ Float {
+		dx := state[0] - 3.0;
+		dy := state[1] + 1.0;
+		return dx * dx + dy * dy;
+	}
+}
+
+class AiOptimizeTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- GA: OneMax with 24 bits is solved exactly ---
+		ga := GeneticAlgorithm->New(40, 24, 0.02, 0.9, 7);
+		best := ga->Run(OneMax->New(), 80);
+		if(best = Nil) {
+			pass := false;
+			"  FAIL: ga run"->PrintLine();
+		}
+		else {
+			if(ga->GetBestFitness() < 24.0) {
+				fit := ga->GetBestFitness();
+				pass := false;
+				"  FAIL: ga onemax fitness {$fit}"->PrintLine();
+			};
+			each(i : best) {
+				if(<>best[i]) {
+					pass := false;
+					"  FAIL: ga onemax bit {$i}"->PrintLine();
+				};
+			};
+		};
+
+		# reproducibility: same seed, same best fitness
+		again := GeneticAlgorithm->New(40, 24, 0.02, 0.9, 7);
+		again->Run(OneMax->New(), 80);
+		if(Float->Abs(again->GetBestFitness() - ga->GetBestFitness()) > 0.000001) {
+			pass := false;
+			"  FAIL: ga reproducibility"->PrintLine();
+		};
+
+		# --- SA: quadratic bowl from a poor start ---
+		start := [-8.0, 9.0];
+		sa := SimulatedAnnealing->New(10.0, 0.995, 0.5, 7);
+		sa_best := sa->Run(Bowl->New(), start, 4000);
+		if(sa_best = Nil) {
+			pass := false;
+			"  FAIL: sa run"->PrintLine();
+		}
+		else {
+			if(sa->GetBestEnergy() > 0.05) {
+				e := sa->GetBestEnergy();
+				pass := false;
+				"  FAIL: sa energy {$e}"->PrintLine();
+			};
+			if(Float->Abs(sa_best[0] - 3.0) > 0.3 | Float->Abs(sa_best[1] + 1.0) > 0.3) {
+				pass := false;
+				"  FAIL: sa optimum location"->PrintLine();
+			};
+		};
+
+		# the start state must not be modified
+		if(Float->Abs(start[0] + 8.0) > 0.000001 | Float->Abs(start[1] - 9.0) > 0.000001) {
+			pass := false;
+			"  FAIL: sa mutated the start state"->PrintLine();
+		};
+
+		# --- HC: same bowl with restarts ---
+		hc := HillClimbing->New(0.5, 50, 5.0, 7);
+		hc_best := hc->Run(Bowl->New(), start, 3000);
+		if(hc_best = Nil) {
+			pass := false;
+			"  FAIL: hc run"->PrintLine();
+		}
+		else {
+			if(hc->GetBestEnergy() > 0.05) {
+				e := hc->GetBestEnergy();
+				pass := false;
+				"  FAIL: hc energy {$e}"->PrintLine();
+			};
+		};
+
+		# invalid inputs are rejected
+		no_fitness := ga->Run(Nil, 10);
+		if(no_fitness <> Nil) {
+			pass := false;
+			"  FAIL: nil fitness accepted"->PrintLine();
+		};
+		nil_state : Float[];
+		no_start := sa->Run(Bowl->New(), nil_state, 10);
+		if(no_start <> Nil) {
+			pass := false;
+			"  FAIL: nil start accepted"->PrintLine();
+		};
+
+		if(pass) {
+			"PASS: AI optimization tests"->PrintLine();
+		}
+		else {
+			"FAIL: AI optimization tests"->PrintLine();
+		};
+	}
+}

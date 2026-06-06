@@ -1,0 +1,8 @@
+# EXPECT_RUNTIME_ERROR
+# VM must not crash (segfault) when dereferencing a nil object — exit 1 with message
+class BadRuntimeNull {
+    function : Main(args : String[]) ~ Nil {
+        s : String;
+        s->Size()->PrintLine();
+    }
+}

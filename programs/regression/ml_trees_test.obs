@@ -1,0 +1,60 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for the System.ML tree models: the real recursive DecisionTree
+(left/right children + leaf prediction) and the RandomForest voting ensemble.
+Kept in a small dedicated method so the boolean training matrices compile cleanly.
+~#
+use System.ML, Collection;
+
+class MlTreesTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- DecisionTree: learns AND (label = f0 AND f1) ---
+		dt_data := [
+			[false, false, false],
+			[false, true,  false],
+			[true,  false, false],
+			[true,  true,  true],
+			[false, false, false],
+			[true,  true,  true]];
+		dtree := DecisionTree->New(4, 1);
+		dtree->Fit(dt_data);
+		if(<>dtree->IsFitted()) {
+			pass := false;
+		};
+		dt_preds := dtree->PredictAll(dt_data);
+		dt_dims := dt_data->Size();
+		dt_n := dt_dims[0];
+		for(i := 0; i < dt_n; i += 1;) {
+			if(dt_preds[i] <> dt_data[i, 2]) {
+				pass := false;
+			};
+		};
+
+		# --- RandomForest: bootstrap voting ensemble fits the same rule ---
+		forest := RandomForest->New(21, 6, 1, 7);
+		forest->Fit(dt_data);
+		if(<>forest->IsFitted()) {
+			pass := false;
+		};
+		rf_preds := forest->Predict(dt_data);
+		rf_correct := 0;
+		for(i := 0; i < dt_n; i += 1;) {
+			if(rf_preds[i] = dt_data[i, 2]) {
+				rf_correct += 1;
+			};
+		};
+		if(rf_correct < dt_n) {
+			pass := false;
+		};
+
+		if(pass) {
+			"PASS: ML trees tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML trees tests"->PrintLine();
+		};
+	}
+}

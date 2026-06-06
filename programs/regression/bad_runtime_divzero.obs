@@ -1,0 +1,10 @@
+# EXPECT_RUNTIME_ERROR
+# VM must not crash (segfault) on integer division by zero — exit 1 with message
+class BadRuntimeDivZero {
+    function : Main(args : String[]) ~ Nil {
+        a := 42;
+        b := 0;
+        c := a / b;
+        c->PrintLine();
+    }
+}

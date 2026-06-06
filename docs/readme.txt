@@ -1,8 +1,30 @@
-v2026.5.1 (May 16, 2026)
+Unreleased
 ===
-HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, WebSocket hardening.
+AMD64 JIT trig/float crash fixes, inline optimizer jump-table fix, binary file integrity hardening, LSP consolidated into main repo.
 
-v2026.5.1
+Unreleased
+- Fixed AMD64 JIT sin/cos/tan and related trig: x87 fsin/fcos/ftan replaced with call_xfunc for consistent cross-platform results
+- Fixed AMD64 JIT REG_FLOAT input crash in call_xfunc/sqrt/round (float register state corruption before dispatch)
+- Fixed inline optimizer: JMP_TABLE/JMP_TABLE_SLOT label operands not shifted by jump_inline_offset, causing select-heavy inlined methods to jump to ip=0
+- Fixed CleanLabelsLocation: end-of-stream overread on consecutive LBL nodes at end of instruction list
+- Fixed String->SubString crash on negative or zero length argument (#534)
+- Binary file hardening: [uncmp_size:4] prepended before zlib stream; compress2() at level 9; malloc replaces calloc; old format auto-detected via 0x78 CMF byte
+- LSP server consolidated into tools/lsp/ in main repo; CI build-lsp rewritten (Ubuntu, full toolchain, vsce package); publish-vscode job added for marketplace publishing
+
+v2026.5.3 (May 18, 2026)
+===
+Three-tier select dispatch with native jump table (AMD64+ARM64), String->Split fix, spectralnorm fix and optimization.
+
+v2026.5.3
+- Three-tier select dispatch (AMD64 + ARM64 JIT): direct compare for 1 case, linear scan for 2-5 integer cases, O(1) native jump table for 6+ dense integer cases, binary search tree for sparse/string cases
+- Fixed String->Split(Char): last token returned oversized result due to using array capacity instead of logical string length
+- Fixed bench_spectralnorm_native: native allocation bug caused garbage output (~3.84e-156); also rewrote inner loops with incremental float denominator to eliminate I2F conversions
+
+v2026.5.2 (May 17, 2026)
+===
+HTTP/2+3/QUIC clients, Gemini/OpenAI API expansion, ARM64 Windows support, WebSocket hardening.
+
+v2026.5.2
 - HTTP/2 client (Http2Client): persistent TLS connections, GET/POST/PUT/DELETE/PATCH, Quick* one-liners via nghttp2 + ALPN
 - HTTP/3 / QUIC client (Http3Client): UDP connections with connection reuse and Quick* API via ngtcp2 + nghttp3 + GnuTLS
 - HTTP/1.1 improvements: PATCH method, redirect handling fixes for POST/PUT, retry parity across HttpClient/HttpsClient
@@ -13,22 +35,11 @@ v2026.5.1
 - Gemini Search Grounding: Model->GenerateContentWithGrounding() anchors responses in live Google Search results
 - Gemini Batch Embeddings: Model->BatchEmbedContent() embeds multiple texts in one round-trip
 - WebSocket hardening: 8 bug fixes including bulk ReadBuffer I/O replacing per-byte reads
-- MCP server fixes: hang on shutdown and crash-on-stop resolved; regression tests added
+- MCP server fixes: hang on shutdown and crash-on-stop resolved
 - Socket reliability: SO_REUSEADDR on TCPSocketServer::Bind() survives TIME_WAIT; IPSocket::Open() falls through to next address on failure
 - EmbeddingValues wrapper to avoid Float[] as generic type parameter
-- MSVC compatibility: NOMINMAX ordering, std::min(); Release build optimizations for VM and compiler
-- CI: CodeQL v4, node24-compatible Actions, nghttp2/ngtcp2 on all platforms
-
-v2026.5.0 (May 7, 2026)
-===
-Face recognition (SCRFD+ArcFace), Windows emoji fix, LSP enhancements.
-
-v2026.5.0
-- Face recognition (FaceSession): SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings from InsightFace buffalo_l. Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS)
-- Windows emoji: full Unicode supplementary plane output now works in cmd.exe and Windows Terminal via WriteConsoleW; pipe/file redirection emits correct UTF-8
-- LSP enhancements: typeHierarchy (supertypes/subtypes), selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes
-- ARM64 JIT: fixed EXT_LIB_FUNC_CALL crash; macOS ONNX build fixes; CodeQL build improvements
-- OBJECK_JIT_DISABLE: new boolean env var for cleanly disabling auto-JIT at startup
+- ARM64 Windows: OpenCV and ONNX fully supported; build configurations corrected
+- Improved release process: self-contained Windows builds; CI verifies all binaries and API docs before publishing
 
 v2026.4.3 (April 12, 2026)
 ===

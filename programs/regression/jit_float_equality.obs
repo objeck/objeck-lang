@@ -1,0 +1,96 @@
+#~
+Regression test for float equality compares on array elements (2026-06).
+
+The front-end chose EQL_FLOAT/NEQL_FLOAT only when an operand's eval type was
+Float with dimension 0, so `values[i] <> values[j]` (an indexed element whose
+eval type keeps the array's dimension) emitted the INTEGER compare: the
+interpreter bit-compared doubles and the AMD64 JIT crashed at compile time
+(integer compare handed XMM operands corrupted its stack model, then a
+conditional jump popped an empty deque). Fixed by treating indexed Float
+array accesses as scalar compares, plus JIT-side guards that fail a compile
+cleanly on operand-kind mismatches.
+
+This test intentionally runs with the JIT ENABLED and calls the compare
+helpers past the auto-JIT threshold.
+~#
+
+class JitFloatEquality {
+	function : CountChanges(values : Float[]) ~ Int {
+		count := values->Size();
+		changes := 0;
+		for(v := 0; v < count - 1; v += 1;) {
+			if(values[v] <> values[v + 1]) {
+				changes += 1;
+			};
+		};
+		return changes;
+	}
+
+	function : CountMatches(values : Float[], target : Float) ~ Int {
+		matches := 0;
+		each(i : values) {
+			if(values[i] = target) {
+				matches += 1;
+			};
+		};
+		return matches;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing float equality compares..."->PrintLine();
+		pass := true;
+
+		data := [1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 1.0, 1.0];
+
+		# call far past the auto-JIT threshold so both helpers run compiled
+		each(round : 25) {
+			changes := CountChanges(data);
+			if(changes <> 3) {
+				pass := false;
+				"  FAIL: element <> element, round {$round}: {$changes}"->PrintLine();
+			};
+
+			matches := CountMatches(data, 2.0);
+			if(matches <> 3) {
+				pass := false;
+				"  FAIL: element = literal, round {$round}: {$matches}"->PrintLine();
+			};
+		};
+
+		# 2-D element compares take the same path
+		grid := [[1.5, 2.5], [1.5, 9.5]];
+		same := 0;
+		each(round : 15) {
+			if(grid[0,0] = grid[1,0]) {
+				same += 1;
+			};
+			if(grid[0,1] <> grid[1,1]) {
+				same += 1;
+			};
+		};
+		if(same <> 30) {
+			pass := false;
+			"  FAIL: 2-D element compares: {$same}"->PrintLine();
+		};
+
+		# array REFERENCE equality still compares identity, not contents
+		a := [1.0, 2.0];
+		b := [1.0, 2.0];
+		c := a;
+		if(a = b) {
+			pass := false;
+			"  FAIL: distinct arrays compared equal"->PrintLine();
+		};
+		if(a <> c) {
+			pass := false;
+			"  FAIL: aliased array compared unequal"->PrintLine();
+		};
+
+		if(pass) {
+			"PASS: Float equality compares"->PrintLine();
+		}
+		else {
+			"FAIL: Float equality compares"->PrintLine();
+		};
+	}
+}

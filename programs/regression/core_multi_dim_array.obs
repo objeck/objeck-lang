@@ -1,0 +1,82 @@
+class CoreMultiDimArrayTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing multi-dimensional arrays..."->PrintLine();
+        pass := true;
+
+        # 2D array: rows x cols
+        rows := 3;
+        cols := 4;
+        matrix := Int->New[rows, cols];
+
+        # Fill with row * 10 + col
+        each(r : rows) {
+            each(c : cols) {
+                matrix[r, c] := r * 10 + c;
+            };
+        };
+
+        # Verify values
+        if(matrix[0, 0] <> 0)  { pass := false; "  FAIL: [0,0]"->PrintLine(); };
+        if(matrix[0, 3] <> 3)  { pass := false; "  FAIL: [0,3]"->PrintLine(); };
+        if(matrix[1, 0] <> 10) { pass := false; "  FAIL: [1,0]"->PrintLine(); };
+        if(matrix[2, 3] <> 23) { pass := false; "  FAIL: [2,3]"->PrintLine(); };
+
+        # Sum entire matrix
+        total := 0;
+        each(r : rows) {
+            each(c : cols) {
+                total += matrix[r, c];
+            };
+        };
+        expected := 0;
+        each(r : rows) {
+            each(c : cols) {
+                expected += r * 10 + c;
+            };
+        };
+        if(total <> expected) {
+            pass := false;
+            "  FAIL: matrix sum = {$total}"->PrintLine();
+        };
+
+        # 2D float array
+        fmat := Float->New[2, 2];
+        fmat[0, 0] := 1.5;
+        fmat[0, 1] := 2.5;
+        fmat[1, 0] := 3.5;
+        fmat[1, 1] := 4.5;
+        fsum := fmat[0,0] + fmat[0,1] + fmat[1,0] + fmat[1,1];
+        if(fsum < 11.9 | fsum > 12.1) {
+            pass := false;
+            "  FAIL: float matrix sum = {$fsum}"->PrintLine();
+        };
+
+        # Fixed 2D string array (3x4 grid)
+        grid := String->New[3, 4];
+        grid[0, 0] := "aa"; grid[0, 1] := "ab"; grid[0, 2] := "ac"; grid[0, 3] := "ad";
+        grid[1, 0] := "ba"; grid[1, 1] := "bb"; grid[1, 2] := "bc"; grid[1, 3] := "bd";
+        grid[2, 0] := "ca"; grid[2, 1] := "cb"; grid[2, 2] := "cc"; grid[2, 3] := "cd";
+
+        g01 := grid[0, 1];
+        if(<>g01->Equals("ab")) {
+            pass := false;
+            "  FAIL: grid[0,1] = {$g01}"->PrintLine();
+        };
+        g22 := grid[2, 2];
+        if(<>g22->Equals("cc")) {
+            pass := false;
+            "  FAIL: grid[2,2] = {$g22}"->PrintLine();
+        };
+        g13 := grid[1, 3];
+        if(<>g13->Equals("bd")) {
+            pass := false;
+            "  FAIL: grid[1,3] = {$g13}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Multi-dimensional arrays"->PrintLine();
+        } else {
+            "FAIL: Multi-dimensional arrays"->PrintLine();
+        };
+    }
+}

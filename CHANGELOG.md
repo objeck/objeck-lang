@@ -2,65 +2,84 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.5.2] - 2026-05-16
+## [Unreleased]
 
 ### Bug Fixes
-- Fixed `obr` (VM runtime) absent from all v2026.5.1 platform archives — root cause was `libnghttp2-dev` missing from the main `build` CI job dependency installs (was only in `build-docs` and CodeQL jobs)
-- Fixed API docs (`docs/api.zip`) containing only style files in all prior releases — `build-docs` CI job now commits freshly generated `api.zip` back to `master` with `[skip ci]`
+- **AMD64 JIT trig**: `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh` were using x87 `fsin`/`fcos`/`ftan` — replaced with `call_xfunc` to use the C runtime (consistent with ARM64 and the LOG/EXP fixes in v2026.5.3)
+- **AMD64 JIT float input**: `REG_FLOAT` as the source operand of `call_xfunc`/`sqrt`/`round` caused a crash due to incorrect register state when a float value was loaded from memory immediately before the dispatch
+- **Inline optimizer jump tables**: `InlineMethod` did not shift `JMP_TABLE`/`JMP_TABLE_SLOT` label operands by `jump_inline_offset` when inlining methods containing `select` jump tables, causing every slot to resolve to ip=0
+- **`CleanLabelsLocation` end-of-stream**: consecutive `LBL` nodes at the very end of an instruction list read one instruction past the end of the stream
+- **`CanInlineMethod` conflict check**: used the `JUMP_OFF_INC` constant instead of the actual `jump_inline_offset` accumulator, producing false-positive label conflicts that unnecessarily blocked inlining
+- **`String->SubString`**: crash on negative or zero length argument (#534)
+
+### Security / Performance
+- **Binary file integrity**: `.obe`/`.obl` files now store the uncompressed size as a 4-byte header before the zlib stream — eliminates the allocation guessing/doubling loop on load and lays the groundwork for future integrity checks
+- Switched from `compress()` (level 6) to `compress2()` at `Z_BEST_COMPRESSION` (level 9) — ~10–15% smaller binary files at no runtime cost
+- Replaced `calloc` with `malloc` in `CompressZlib`/`UncompressZlib` — removes wasteful zero-initialisation of buffers that are immediately overwritten by the codec
+- **Backward-compatible**: files in the old raw-zlib format (CMF byte `0x78`) are automatically detected and continue to load without recompilation
 
 ### Infrastructure
-- Added `libnghttp2-dev` to Linux apt-get installs in the main `build` CI job (`release-build.yml`)
-- Added `nghttp2` to macOS Homebrew installs in the main `build` CI job
-- Added `nghttp2:x64-windows` and `nghttp2:arm64-windows` to Windows vcpkg installs in the main `build` CI job
-- Added `vcpkg` include/lib paths to `core/vm/vs/vm.vcxproj` via `$(OBJECK_VCPKG_ROOT)` (falls back to `C:\vcpkg`) so Windows developer builds find nghttp2 headers/libs without manual environment variable setup
-- Added "Verify required binaries" CI step after build: checks that `obr`, `obc`, `obd`, `obi`, `obb` all exist and that `doc/api/` contains 50+ HTML files before artifacts are uploaded
-- `build-docs` job now commits regenerated `api.zip` to `master` after each successful doc build
+- Consolidated the `objeck-lsp` repository into `tools/lsp/` — LSP is tightly coupled to each toolchain build and must be updated with every release
+- Rewrote CI `build-lsp` job: Ubuntu runner, builds Linux x64 toolchain, compiles `objeck_lsp.obe` via `build_server.sh`, packages VS Code extension with `vsce`, assembles versioned `objeck-lsp_VERSION.zip`
+- Added `publish-vscode` CI job: publishes the VS Code extension to the marketplace on release using the `VSCE_PAT` secret
+- `build_server.sh` / `build_server.cmd`: `OBJECK_ROOT` is now configurable via environment variable (defaults to `../../..` relative to `tools/lsp/server/`)
 
-### Website
-- Added "Changelog" card to the home page (`docs/web/index.html`) creating a clean 2×3 six-card grid; removed the redundant featured DAP card
-
-## [v2026.5.1] - 2026-05-10
+## [v2026.5.3] - 2026-05-24
 
 ### New Features
-- **HTTP/2 client** (`-lib net_h2`): New `Http2Client` class for persistent multiplexed TLS connections using ALPN h2 via nghttp2. Supports GET, POST, PUT, DELETE, PATCH and `Quick*` static convenience methods (QuickGet, QuickPost, QuickPut, QuickDelete, QuickPatch) that accept a `Url` object for one-shot requests. Linux, macOS, and MSYS2.
-- **HTTP/3 client** (`-lib net_quic`): New `Http3Client` class for QUIC connections via ngtcp2 + GnuTLS + nghttp3. Same API as Http2Client — instance methods for streaming use and `Quick*` statics for one-shot use. Linux and macOS only (requires `brew install ngtcp2 nghttp3 gnutls`).
-- **Socket options**: New methods on `TCPSocket` and `TCPSecureSocket` — `SetKeepAlive`, `SetNoDelay`, `SetRecvTimeout`, `SetSendTimeout`, `SetRecvBufferSize`, `SetSendBufferSize`, `SetConnectTimeout` (non-blocking connect with timeout). `TCPSecureSocket` adds `SetMinTLSVersion`, `SetVerifyPeer`, `GetCertFingerprint`.
+- **Three-tier `select` dispatch** (AMD64 + ARM64 JIT): single-case `select` compiles to a direct compare-and-jump; 2–5 integer cases use a linear scan; 6+ dense integer cases emit a native O(1) jump table (`JMP_TABLE`/`JMP_TABLE_SLOT` opcodes); sparse or string `select` uses a binary search tree — matching the fastest dispatch strategy for each shape automatically.
+
+### Bug Fixes
+- Fixed `HttpRequestHandler` and `HttpsRequestHandler`: `ReadLine()` can return `Nil` on a dropped or errored connection; calling `->Size()` on `Nil` produced a SIGSEGV in the MCP server and any HTTP server that receives an abrupt client disconnect before sending a request line.
+- Fixed `String->Split(Char)`: last token was sliced using `@string->Size()` (array capacity) instead of `@pos` (logical string length), producing an oversized trailing token on strings that did not fill the backing array.
+- Fixed `bench_spectralnorm_native` benchmark: allocating arrays inside a `native` JIT function caused op-stack imbalance during nested JIT-to-interpreter callbacks, producing a garbage result (~3.84e-156 instead of ~1.274).
+
+### Performance
+- `bench_spectralnorm_native`: rewrote `MultiplyAv`/`MultiplyAtv` with an incremental floating-point denominator, eliminating `I2F` conversions from the inner loop (2000×2000×40 iterations). Only two integer-to-float conversions now occur per outer row instead of per element.
+
+## [v2026.5.2] - 2026-05-17
+
+### New Features
+- **HTTP/2 client** (`-lib net_h2`): New `Http2Client` class for persistent multiplexed TLS connections using ALPN h2 via nghttp2. Supports GET, POST, PUT, DELETE, PATCH and `Quick*` static convenience methods that accept a `Url` object for one-shot requests. Linux, macOS, and MSYS2.
+- **HTTP/3 client** (`-lib net_quic`): New `Http3Client` class for QUIC connections via ngtcp2 + GnuTLS + nghttp3. Same API as `Http2Client` with `Quick*` statics for one-shot use. Linux and macOS only.
+- **OpenAI Moderation**: `Moderation->Check()` returns per-category flags and confidence scores.
+- **OpenAI Batch**: `Batch->Create()`/`Get()` for async 50%-cost batch requests (up to 50k at a time).
+- **Gemini Files API**: upload, list, get, and delete files via `FileManager`.
+- **Gemini Context Caching**: `CachedContent->Create()` for server-side prompt caching with configurable TTL.
+- **Gemini Search Grounding**: `Model->GenerateContentWithGrounding()` anchors responses in live Google Search results.
+- **Gemini Batch Embeddings**: `Model->BatchEmbedContent()` embeds multiple texts in one round-trip.
+- **EmbeddingValues wrapper**: avoids `Float[]` as generic type parameter.
+- **Socket options**: New methods on `TCPSocket` and `TCPSecureSocket` — `SetKeepAlive`, `SetNoDelay`, `SetRecvTimeout`, `SetSendTimeout`, `SetRecvBufferSize`, `SetSendBufferSize`, `SetConnectTimeout`. `TCPSecureSocket` adds `SetMinTLSVersion`, `SetVerifyPeer`, `GetCertFingerprint`.
+- **`SO_REUSEADDR`** on `TCPSocketServer::Bind()` survives TIME_WAIT restarts; `IPSocket::Open()` falls through to next address on `socket()` failure.
+
+### Bug Fixes
+- Fixed `obr` (VM executable) absent from all platform archives — `libnghttp2-dev` was missing from the main `build` CI job; equivalent gaps on macOS and Windows
+- Fixed `HttpsClient` and `HttpClient` redirect not following POST/PUT bodies
+- Fixed HTTP/1.1 redirect handling for POST and PUT; added retry-on-reset parity across verbs
+- Fixed 8 WebSocket bugs; replaced per-byte reads with bulk `ReadBuffer` I/O
+- Fixed MCP server hang on shutdown and crash-on-stop
+- Fixed MSVC compatibility: NOMINMAX ordering, `std::min()` ambiguity; Release VM/compiler optimizations
+- Fixed Realtime API null-safety issues
+- Fixed ARM64 Windows ONNX `.vcxproj` configs (`Release-QNN|ARM64`, `Release-DML|ARM64`); removed non-existent `onnxruntime_providers.lib` from link deps
 
 ### Libraries
 - **HTTP/2** (`net_h2`): `Http2Client` — persistent HTTP/2 session with full verb support and URL-based `Quick*` convenience functions.
 - **HTTP/3** (`net_quic`): `Http3Client` — QUIC-based HTTP/3 session with full verb support and URL-based `Quick*` convenience functions.
-- **HTTP/1.1** (`net`, `net_secure`): Added `HttpClient->PATCH`, `HttpsClient->PATCH`. Fixed redirect handling for POST and PUT. Added retry-on-reset parity across HTTP/1.1 verbs.
+- **HTTP/1.1** (`net`, `net_secure`): Added `HttpClient->PATCH`, `HttpsClient->PATCH`. Fixed redirect handling for POST and PUT.
 
 ### Infrastructure
-- CI: `net_h2` and `net_quic` tests now run in the Linux extended build step; FAIL output causes the CI job to fail.
-- CI / CodeQL: added `libngtcp2-dev`, `libngtcp2-crypto-gnutls-dev`, `libnghttp3-dev`, `libgnutls28-dev` to all Linux apt-get install blocks. macOS CI adds the equivalent Homebrew packages.
-- macOS Xcode project (`core/vm/xcode/VM.xcodeproj`): added `OBJECK_HAS_NGTCP2` preprocessor flag and `-lngtcp2 -lngtcp2_crypto_gnutls -lnghttp3 -lgnutls` linker flags for Debug and Release.
-- `update_version.sh`: `net_h2.obl` and `net_quic.obl` are now compiled as part of the standard library build.
-- `core/README.md` and `core/vm/README.md` updated with per-platform build dependency tables covering all network libraries.
+- ARM64 Windows OpenCV: switched to split module libs via vcpkg; corrected `Release|ARM64` and `Debug|ARM64` `.vcxproj` configs
+- Committed `nghttp2` headers and import libraries to `core/lib/nghttp2/win/`; Windows builds are now fully self-contained without vcpkg
+- Multi-level NuGet restore: VS-bundled `nuget.exe` → PATH (Chocolatey on CI runners) → download from nuget.org
+- Added HTTP/3 dependencies (`libngtcp2-dev`, `libngtcp2-crypto-gnutls-dev`, `libnghttp3-dev`, `libgnutls28-dev`) to Linux and macOS `release-build.yml`; added ngtcp2 GnuTLS backend build step for macOS
+- Hardened `deploy_windows.cmd` with artifact existence checks after each `devenv` build
+- Added binary verification CI step: `obr`, `obc`, `obd`, `obi`, `obb` + 50+ API HTML files must exist before artifact upload
+- CI: CodeQL v4, node24-compatible Actions, nghttp2/ngtcp2 on all platforms
+- `net_h2.obl` and `net_quic.obl` compiled as part of the standard library build in `update_version.sh`
+- macOS Xcode project: added `OBJECK_HAS_NGTCP2` flag and `-lngtcp2 -lngtcp2_crypto_gnutls -lnghttp3 -lgnutls` linker flags
 
-### Bug Fixes
-- Fixed `HttpsClient` and `HttpClient` redirect not following POST/PUT bodies.
-
-## [v2026.5.0] - 2026-05-06
-
-### New Features
-- **Face recognition** (`FaceSession`): SCRFD 10G-KPS face detector + ArcFace R50 512-dim embedding recognizer from InsightFace buffalo_l pack. Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No additional native libraries required.
-- **Windows emoji support**: Full Unicode supplementary plane output (emoji and other non-BMP characters) now works correctly in cmd.exe and Windows Terminal. Console string/char output routes through `WriteConsoleW` so surrogate pairs arrive intact; pipe and file redirection continue to emit correct UTF-8 bytes.
-- **LSP enhancements**: New `typeHierarchy` (prepare/supertypes/subtypes), `textDocument/selectionRange`, `workspace/symbol`, `textDocument/foldingRange`, `textDocument/documentHighlight`, and `textDocument/typeDefinition` handlers. Fixed hover non-determinism from per-request `ContextAnalyzer` re-analysis; fixed hover on variable declarations and class references.
-- **`OBJECK_JIT_DISABLE`**: New boolean environment variable for cleanly disabling the auto-JIT at startup without recompiling. Accepts `true`/`1`; useful for debugging and regression isolation.
-
-### Libraries
-- **ONNX**: New `FaceSession`, `FaceDetectionResult`, `FaceRecognitionResult`, `FaceDetection`, `FaceResult` classes. `FaceSession->Compare()` computes cosine similarity between embeddings (>0.35 = same person).
-
-### Bug Fixes
-- Fixed Windows console output corrupting characters above U+FFFF — surrogate pairs were split by `std::wcout` causing each half to render as U+FFFD. Fixed via `WinWriteWide` helper using `WriteConsoleW` for live console handles.
-- Fixed Windows console code page — `SetConsoleCP`/`SetConsoleOutputCP(CP_UTF8)` now called at startup so pipe/redirect output is interpreted correctly.
-- Fixed ARM64 JIT crash on `EXT_LIB_FUNC_CALL` opcodes.
-- Fixed macOS ONNX build (Xcode/Homebrew header path issues); improved CodeQL build configuration.
-
-### Documentation
-- Expanded `core/lib/onnx/README.md` with platform/EP matrix, quick-start examples, and demo list.
-- Updated `core/lib/onnx/MODELS.md` with SCRFD + ArcFace download instructions, Linux CPU/CUDA and macOS CoreML runtime sections.
+### Website
+- Added Changelog card to home page (`docs/web/index.html`) creating a clean 2×3 six-card grid
 
 ## [v2026.4.3] - 2026-04-12
 

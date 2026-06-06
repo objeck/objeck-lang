@@ -9,7 +9,7 @@
 use Collection;
 
 #~
-Natural Language Processing utilities (-lib nlp)
+Natural language processing toolkit. Provides tokenization, text preprocessing, TF-IDF vectorization, cosine similarity, and sentiment analysis. Works with plain strings — no external model required. Compile with -lib nlp.
 ~#
 bundle System.NLP {
 	#~
@@ -27,6 +27,13 @@ bigrams := System.NLP.Tokenizer->WordNGrams(words, 2);
 		Tokenizes text into words using whitespace and punctuation as delimiters
 		@param text input text to tokenize
 		@return array of word tokens
+
+```
+words := Tokenizer->WordTokenize("Hello, world! How are you?");
+each(w in words) {
+  w->PrintLine();
+};
+```
 		~#
 		function : WordTokenize(text : String) ~ String[] {
 			if(text = Nil | text->IsEmpty()) {
@@ -67,6 +74,13 @@ bigrams := System.NLP.Tokenizer->WordNGrams(words, 2);
 		Tokenizes text into sentences using common sentence delimiters
 		@param text input text to tokenize
 		@return array of sentence tokens
+
+```
+sents := Tokenizer->SentenceTokenize("Hello! How are you? I am fine.");
+each(s in sents) {
+  s->PrintLine();
+};
+```
 		~#
 		function : SentenceTokenize(text : String) ~ String[] {
 			if(text = Nil | text->IsEmpty()) {
@@ -107,6 +121,13 @@ bigrams := System.NLP.Tokenizer->WordNGrams(words, 2);
 		@param text input text
 		@param n size of n-grams
 		@return array of n-gram strings
+
+```
+trigrams := Tokenizer->CharNGrams("hello", 3);
+each(g in trigrams) {
+  g->PrintLine();
+};
+```
 		~#
 		function : CharNGrams(text : String, n : Int) ~ String[] {
 			if(text = Nil | text->IsEmpty() | n <= 0 | n > text->Size()) {
@@ -129,6 +150,14 @@ bigrams := System.NLP.Tokenizer->WordNGrams(words, 2);
 		@param tokens array of word tokens
 		@param n size of n-grams
 		@return array of n-gram strings (words joined by spaces)
+
+```
+words := Tokenizer->WordTokenize("the quick brown fox");
+bigrams := Tokenizer->WordNGrams(words, 2);
+each(g in bigrams) {
+  g->PrintLine();
+};
+```
 		~#
 		function : WordNGrams(tokens : String[], n : Int) ~ String[] {
 			if(tokens = Nil | tokens->Size() = 0 | n <= 0 | n > tokens->Size()) {
@@ -202,6 +231,11 @@ stemmed := System.NLP.TextPreprocessor->StemAll(filtered);
 		Converts text to lowercase
 		@param text input text
 		@return lowercase text
+
+```
+lower := TextPreprocessor->Lowercase("Hello WORLD");
+lower->PrintLine();
+```
 		~#
 		function : Lowercase(text : String) ~ String {
 			if(text = Nil) {
@@ -215,6 +249,14 @@ stemmed := System.NLP.TextPreprocessor->StemAll(filtered);
 		Removes common English stopwords from token array
 		@param tokens array of word tokens
 		@return filtered token array without stopwords
+
+```
+words := Tokenizer->WordTokenize("The cat sat on the mat");
+filtered := TextPreprocessor->RemoveStopwords(words);
+each(w in filtered) {
+  w->PrintLine();
+};
+```
 		~#
 		function : RemoveStopwords(tokens : String[]) ~ String[] {
 			Init();
@@ -239,6 +281,11 @@ stemmed := System.NLP.TextPreprocessor->StemAll(filtered);
 		Removes punctuation from text
 		@param text input text
 		@return text with punctuation removed
+
+```
+clean := TextPreprocessor->RemovePunctuation("Hello, world! How's it going?");
+clean->PrintLine();
+```
 		~#
 		function : RemovePunctuation(text : String) ~ String {
 			if(text = Nil) {
@@ -269,6 +316,11 @@ stemmed := System.NLP.TextPreprocessor->StemAll(filtered);
 		Basic Porter stemmer - reduces words to their root form
 		@param word input word
 		@return stemmed word
+
+```
+TextPreprocessor->Stem("running")->PrintLine();
+TextPreprocessor->Stem("happily")->PrintLine();
+```
 		~#
 		function : Stem(word : String) ~ String {
 			if(word = Nil | word->Size() < 3) {
@@ -307,6 +359,14 @@ stemmed := System.NLP.TextPreprocessor->StemAll(filtered);
 		Applies stemming to all tokens in array
 		@param tokens array of word tokens
 		@return array of stemmed tokens
+
+```
+words := Tokenizer->WordTokenize("running quickly and happily");
+stemmed := TextPreprocessor->StemAll(words);
+each(s in stemmed) {
+  s->PrintLine();
+};
+```
 		~#
 		function : StemAll(tokens : String[]) ~ String[] {
 			if(tokens = Nil | tokens->Size() = 0) {
@@ -351,6 +411,13 @@ vocab := tfidf->GetVocabulary();
 		#~
 		Fits the TF-IDF model on a corpus of documents
 		@param documents array of document strings
+
+```
+docs := ["the cat sat on the mat", "the dog ran in the park", "cats and dogs are pets"];
+tfidf := TF_IDF->New();
+tfidf->Fit(docs);
+"Vocabulary size: {$tfidf->GetVocabularySize()}"->PrintLine();
+```
 		~#
 		method : public : Fit(documents : String[]) ~ Nil {
 			if(documents = Nil | documents->Size() = 0) {
@@ -412,6 +479,11 @@ vocab := tfidf->GetVocabulary();
 		Transforms a document into a TF-IDF vector
 		@param document input document string
 		@return TF-IDF vector as float array
+
+```
+vec := tfidf->Transform("the cat chased the dog");
+"Vector length: {$vec->Size()}"->PrintLine();
+```
 		~#
 		method : public : Transform(document : String) ~ Float[] {
 			if(@vocabulary->Size() = 0) {
@@ -455,6 +527,14 @@ vocab := tfidf->GetVocabulary();
 		#~
 		Gets the vocabulary (word to index mapping)
 		@return vocabulary hash map
+
+```
+vocab := tfidf->GetVocabulary();
+keys := vocab->GetKeys()<String>;
+each(k in keys) {
+  k->PrintLine();
+};
+```
 		~#
 		method : public : GetVocabulary() ~ Hash<String, IntRef> {
 			return @vocabulary;
@@ -490,6 +570,13 @@ distance := System.NLP.TextSimilarity->LevenshteinDistance("kitten", "sitting");
 		@param vec1 first vector
 		@param vec2 second vector
 		@return cosine similarity (0.0 to 1.0)
+
+```
+v1 := [1.0, 0.0, 1.0];
+v2 := [1.0, 1.0, 0.0];
+sim := TextSimilarity->CosineSimilarity(v1, v2);
+"Similarity: {$sim}"->PrintLine();
+```
 		~#
 		function : CosineSimilarity(vec1 : Float[], vec2 : Float[]) ~ Float {
 			if(vec1 = Nil | vec2 = Nil | vec1->Size() <> vec2->Size()) {
@@ -518,6 +605,13 @@ distance := System.NLP.TextSimilarity->LevenshteinDistance("kitten", "sitting");
 		@param tokens1 first token array
 		@param tokens2 second token array
 		@return Jaccard similarity (0.0 to 1.0)
+
+```
+t1 := ["cat", "sat", "mat"];
+t2 := ["cat", "sat", "log"];
+jaccard := TextSimilarity->JaccardSimilarity(t1, t2);
+"Jaccard: {$jaccard}"->PrintLine();
+```
 		~#
 		function : JaccardSimilarity(tokens1 : String[], tokens2 : String[]) ~ Float {
 			if(tokens1 = Nil | tokens2 = Nil | (tokens1->Size() = 0 & tokens2->Size() = 0)) {
@@ -563,6 +657,11 @@ distance := System.NLP.TextSimilarity->LevenshteinDistance("kitten", "sitting");
 		@param str1 first string
 		@param str2 second string
 		@return edit distance (number of edits needed)
+
+```
+dist := TextSimilarity->LevenshteinDistance("kitten", "sitting");
+"Edit distance: {$dist}"->PrintLine();
+```
 		~#
 		function : LevenshteinDistance(str1 : String, str2 : String) ~ Int {
 			if(str1 = Nil) {
@@ -627,6 +726,11 @@ distance := System.NLP.TextSimilarity->LevenshteinDistance("kitten", "sitting");
 		@param str1 first string
 		@param str2 second string
 		@return normalized distance (0.0 to 1.0)
+
+```
+nd := TextSimilarity->NormalizedEditDistance("kitten", "sitting");
+"Normalized distance: {$nd}"->PrintLine();
+```
 		~#
 		function : NormalizedEditDistance(str1 : String, str2 : String) ~ Float {
 			distance := LevenshteinDistance(str1, str2);
@@ -712,6 +816,11 @@ result->ToString()->PrintLine();
 		Analyzes sentiment of text and returns a sentiment score
 		@param text input text to analyze
 		@return sentiment score (positive = positive sentiment, negative = negative sentiment, 0 = neutral)
+
+```
+score := SentimentAnalyzer->Analyze("This product is absolutely wonderful!");
+"Score: {$score}"->PrintLine();
+```
 		~#
 		function : Analyze(text : String) ~ Int {
 			Init();
@@ -744,6 +853,11 @@ result->ToString()->PrintLine();
 		Classifies text sentiment as positive, negative, or neutral
 		@param text input text to classify
 		@return sentiment label: "positive", "negative", or "neutral"
+
+```
+label := SentimentAnalyzer->Classify("This is terrible and horrible.");
+label->PrintLine();
+```
 		~#
 		function : Classify(text : String) ~ String {
 			score := Analyze(text);
@@ -762,6 +876,11 @@ result->ToString()->PrintLine();
 		Gets detailed sentiment analysis with scores
 		@param text input text to analyze
 		@return sentiment result with score and classification
+
+```
+result := SentimentAnalyzer->AnalyzeDetailed("Amazing and wonderful experience!");
+result->ToString()->PrintLine();
+```
 		~#
 		function : AnalyzeDetailed(text : String) ~ SentimentResult {
 			score := Analyze(text);
@@ -797,6 +916,11 @@ label := result->GetClassification();
 		#~
 		Gets the sentiment score
 		@return sentiment score
+
+```
+result := SentimentAnalyzer->AnalyzeDetailed("Great job!");
+"Score: {$result->GetScore()}"->PrintLine();
+```
 		~#
 		method : public : GetScore() ~ Int {
 			return @score;
@@ -805,6 +929,11 @@ label := result->GetClassification();
 		#~
 		Gets the classification label
 		@return classification (positive, negative, or neutral)
+
+```
+result := SentimentAnalyzer->AnalyzeDetailed("Awful product!");
+result->GetClassification()->PrintLine();
+```
 		~#
 		method : public : GetClassification() ~ String {
 			return @classification;

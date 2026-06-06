@@ -58,34 +58,40 @@
       AI, networking, and vision — built in. Every release moves the stack forward.
     </p>
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem;">
-      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.5.1</a>
+      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.5.4</a>
       <a class="btn btn-secondary" href="getting_started.html">Quick Start</a>
       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
     </div>
 
     <!-- Changelog -->
-    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.1" style="color: inherit; text-decoration: none;">v2026.5.1</a></u></h3>
+    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.4" style="color: inherit; text-decoration: none;">v2026.5.4</a></u></h3>
+    <ul>
+        <li><strong>Debugger test reliability</strong> &mdash; Windows CI debugger tests fixed; <code>.obe</code>/<code>.obl</code> format detection now correctly handles the edge case where a new-format size-header LSB collides with the <code>0x78</code> zlib CMF byte</li>
+        <li><strong>LSP shell script permissions</strong> &mdash; all <code>tools/lsp/</code> shell scripts now carry the execute bit in git, fixing <code>Permission denied</code> in the LSP release CI job</li>
+        <li><strong>Release workflow hardening</strong> &mdash; <code>git checkout -f master</code> prevents dirty-tree abort when committing <code>api.zip</code> from a tag-based build</li>
+    </ul>
+
+    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.3" style="color: inherit; text-decoration: none;">v2026.5.3</a></u></h3>
+    <ul>
+        <li><strong>JIT <code>select</code> dispatch</strong> &mdash; dense integer <code>select</code> (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST &mdash; best strategy chosen automatically on AMD64 and ARM64</li>
+        <li><strong>API documentation overhaul</strong> &mdash; bundle overview panels, 500+ inline code examples, global search index, two-column TOC, method badges, and anchor links across all 32 library pages</li>
+        <li><strong>ODBC improvements</strong> &mdash; live SQLite integration test; transaction support (<code>Commit</code>/<code>Rollback</code>/<code>SetAutoCommit</code>) verified; <code>GetColumns</code> metadata</li>
+        <li><strong>Bug fixes</strong> &mdash; <code>HttpRequestHandler</code> Nil safety on dropped connections; <code>String->Split(Char)</code> trailing token fix; <code>bench_spectralnorm_native</code> JIT stack-balance fix</li>
+        <li><strong>Performance</strong> &mdash; <code>bench_spectralnorm_native</code>: incremental FP denominator eliminates per-element <code>I2F</code> conversions from the inner loop</li>
+    </ul>
+
+    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.2" style="color: inherit; text-decoration: none;">v2026.5.2</a></u></h3>
     <ul>
         <li><strong>HTTP/2 client</strong> &mdash; <code>Http2Client</code> with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and <code>Quick*</code> one-liners via nghttp2 + ALPN</li>
         <li><strong>HTTP/3 / QUIC client</strong> &mdash; <code>Http3Client</code> over UDP with connection reuse and the same <code>Quick*</code> API (ngtcp2 + nghttp3 + GnuTLS)</li>
         <li><strong>HTTP/1.1 improvements</strong> &mdash; PATCH method, redirect handling fixes for POST/PUT, retry parity across <code>HttpClient</code>/<code>HttpsClient</code></li>
         <li><strong>OpenAI Moderation &amp; Batch</strong> &mdash; <code>Moderation->Check()</code> per-category flags/scores; <code>Batch->Create()</code>/<code>Get()</code> for async 50%-cost batch requests</li>
         <li><strong>Gemini Files, Cache, Grounding, BatchEmbed</strong> &mdash; upload/list/get/delete files; server-side prompt caching; Search Grounding; batch embeddings in one round-trip</li>
-        <li><strong>WebSocket hardening</strong> &mdash; 8 bug fixes including bulk <code>ReadBuffer</code> I/O replacing per-byte reads</li>
-        <li><strong>MCP server fixes</strong> &mdash; hang on shutdown and crash-on-stop resolved; regression tests added</li>
+        <li><strong>WebSocket hardening</strong> &mdash; 8 bug fixes + bulk <code>ReadBuffer</code> I/O replacing per-byte reads</li>
+        <li><strong>MCP server fixes</strong> &mdash; hang on shutdown and crash-on-stop resolved</li>
         <li><strong>Socket reliability</strong> &mdash; <code>SO_REUSEADDR</code> on <code>TCPSocketServer::Bind()</code>; <code>IPSocket::Open()</code> falls through to next address on failure</li>
-        <li><strong>EmbeddingValues wrapper</strong> &mdash; avoids <code>Float[]</code> as generic type parameter</li>
-        <li><strong>MSVC compatibility</strong> &mdash; NOMINMAX ordering, <code>std::min()</code>; Release build optimizations for VM and compiler</li>
-        <li>CI: CodeQL v4, node24-compatible Actions, nghttp2/ngtcp2 on all platforms</li>
-    </ul>
-
-    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.0" style="color: inherit; text-decoration: none;">v2026.5.0</a></h3>
-    <ul>
-        <li><strong>Face recognition</strong> (<code>FaceSession</code>) &mdash; SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings from InsightFace buffalo_l. Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.</li>
-        <li><strong>Windows emoji</strong> &mdash; full Unicode supplementary plane output (emoji and non-BMP characters) now works correctly in cmd.exe and Windows Terminal via <code>WriteConsoleW</code></li>
-        <li><strong>LSP enhancements</strong> &mdash; typeHierarchy, selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes</li>
-        <li><strong>ARM64 JIT</strong> &mdash; fixed <code>EXT_LIB_FUNC_CALL</code> crash; macOS ONNX build and CodeQL fixes</li>
-        <li><strong><code>OBJECK_JIT_DISABLE</code></strong> &mdash; new boolean env var for cleanly disabling auto-JIT at startup</li>
+        <li><strong>ARM64 Windows</strong> &mdash; OpenCV and ONNX now fully supported on ARM64 Windows</li>
+        <li><strong>Improved release process</strong> &mdash; self-contained Windows builds; CI verifies all binaries and API docs on all platforms before publishing</li>
     </ul>
 
     <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.4.3" style="color: inherit; text-decoration: none;">v2026.4.3</a></h3>
@@ -160,7 +166,7 @@
 
   </main>
   <footer class="footer">
-   &copy; 2025-2026 Randy Hollines. All Rights Reserved.
+   &copy; 2026 Randy Hollines. All Rights Reserved.
   </footer>
  </body>
 </html>

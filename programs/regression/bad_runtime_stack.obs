@@ -1,0 +1,18 @@
+# EXPECT_RUNTIME_ERROR
+# JIT_DISABLE
+# VM must not crash (segfault) on call stack overflow — exit 1 with message.
+# NOTE 1: the recursion MUST stay non-tail (the "+ n" after the call) so the
+# TCO compiler pass cannot rewrite it into a loop — otherwise it would never
+# overflow the stack and would hang forever instead of erroring out.
+# NOTE 2: JIT_DISABLE forces the interpreter path, whose frame-count guard
+# reports "call stack bounds have been exceeded" and exits cleanly. Under
+# auto-JIT the recursive method is compiled and overflows the native C stack
+# (SIGSEGV) before that guard can fire, which is what this test guards against.
+class BadRuntimeStack {
+    function : Inf(n : Int) ~ Int {
+        return Inf(n + 1) + n;
+    }
+    function : Main(args : String[]) ~ Nil {
+        Inf(0)->PrintLine();
+    }
+}

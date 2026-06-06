@@ -17,18 +17,29 @@ function Run-DebuggerTest {
 
     Write-Host -NoNewline "Running: ${TestName}..."
 
-    # Write commands to a temp file for input redirection
-    $inputFile = "$env:TEMP\obd_input_$TestName.txt"
+    $inputFile  = "$env:TEMP\obd_input_$TestName.txt"
     $outputFile = "$env:TEMP\obd_output_$TestName.txt"
+    $errFile    = "$env:TEMP\obd_err_$TestName.txt"
+    $batchFile  = "$env:TEMP\obd_run_$TestName.bat"
+
+    # Write commands file (CRLF, ascii)
     ($Commands + @("q")) | Out-File -FilePath $inputFile -Encoding ascii
 
-    # Run debugger with file-based I/O redirection
-    $proc = Start-Process -FilePath $Debugger `
-        -ArgumentList "-b `"$TestBin`" -src `"$SrcDir`"" `
-        -RedirectStandardInput $inputFile `
-        -RedirectStandardOutput $outputFile `
-        -RedirectStandardError "$env:TEMP\obd_err_$TestName.txt" `
-        -NoNewWindow -PassThru -Wait
+    # Build a temp batch file that uses native cmd I/O redirection.
+    # This avoids the Start-Process stdout-pipe race condition on CI runners.
+    $batch = "@echo off`r`n"
+    $batch += "`"$Debugger`" -b `"$TestBin`" -src `"$SrcDir`" < `"$inputFile`" > `"$outputFile`" 2> `"$errFile`"`r`n"
+    [System.IO.File]::WriteAllText($batchFile, $batch, [System.Text.Encoding]::ASCII)
+
+    # cmd /c runs the batch synchronously; output files are fully written on return
+    $exitCode = 0
+    try {
+        & cmd.exe /c "`"$batchFile`""
+        $exitCode = $LASTEXITCODE
+    }
+    catch {
+        $exitCode = -1
+    }
 
     $output = ""
     if (Test-Path $outputFile) {
@@ -36,15 +47,22 @@ function Run-DebuggerTest {
         if ($null -eq $output) { $output = "" }
     }
 
-    # Clean up temp files
-    Remove-Item $inputFile -Force -ErrorAction SilentlyContinue
-    Remove-Item $outputFile -Force -ErrorAction SilentlyContinue
-    Remove-Item "$env:TEMP\obd_err_$TestName.txt" -Force -ErrorAction SilentlyContinue
+    $errOutput = ""
+    if (Test-Path $errFile) {
+        $errOutput = Get-Content $errFile -Raw -ErrorAction SilentlyContinue
+        if ($null -eq $errOutput) { $errOutput = "" }
+    }
 
-    # Save output
+    # Clean up temp files
+    Remove-Item $inputFile  -Force -ErrorAction SilentlyContinue
+    Remove-Item $outputFile -Force -ErrorAction SilentlyContinue
+    Remove-Item $errFile    -Force -ErrorAction SilentlyContinue
+    Remove-Item $batchFile  -Force -ErrorAction SilentlyContinue
+
+    # Save full output to results log
     $output | Out-File -FilePath "$ResultsDir\debugger_${TestName}.log" -Encoding utf8
 
-    # Check expected patterns (use literal string match to avoid wildcard issues with [] etc.)
+    # Check expected patterns
     $allPass = $true
     foreach ($pattern in $ExpectedPatterns) {
         if (-not $output.Contains($pattern)) {
@@ -58,6 +76,9 @@ function Run-DebuggerTest {
         Write-Host " [PASS]"
         $script:PassCount++
     } else {
+        if ($errOutput.Trim().Length -gt 0) {
+            Write-Host "  stderr: $errOutput"
+        }
         Write-Host "  [FAIL]"
         $script:FailCount++
     }

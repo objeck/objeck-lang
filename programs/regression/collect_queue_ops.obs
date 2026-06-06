@@ -1,0 +1,94 @@
+use Collection;
+
+class CollectQueueOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Queue operations..."->PrintLine();
+        pass := true;
+
+        q := Queue->New()<IntRef>;
+
+        # IsEmpty on new queue
+        if(<>q->IsEmpty()) {
+            pass := false;
+            "  FAIL: new queue should be empty"->PrintLine();
+        };
+
+        # AddBack (enqueue)
+        q->AddBack(IntRef->New(10));
+        q->AddBack(IntRef->New(20));
+        q->AddBack(IntRef->New(30));
+        if(q->Size() <> 3) {
+            pass := false;
+            "  FAIL: size after enqueue = {$q->Size()}"->PrintLine();
+        };
+
+        # Front (peek) doesn't remove
+        f := q->Front();
+        if(f = Nil | f->Get() <> 10) {
+            pass := false;
+            "  FAIL: Front() = {$f->Get()}, expected 10"->PrintLine();
+        };
+        if(q->Size() <> 3) {
+            pass := false;
+            "  FAIL: Front() changed size"->PrintLine();
+        };
+
+        # Back (peek tail)
+        b := q->Back();
+        if(b = Nil | b->Get() <> 30) {
+            pass := false;
+            "  FAIL: Back() = {$b->Get()}, expected 30"->PrintLine();
+        };
+
+        # RemoveFront (FIFO order)
+        r1 := q->RemoveFront();
+        if(r1 = Nil | r1->Get() <> 10) {
+            pass := false;
+            "  FAIL: RemoveFront #1 = {$r1->Get()}, expected 10"->PrintLine();
+        };
+        r2 := q->RemoveFront();
+        if(r2 = Nil | r2->Get() <> 20) {
+            pass := false;
+            "  FAIL: RemoveFront #2 = {$r2->Get()}, expected 20"->PrintLine();
+        };
+        r3 := q->RemoveFront();
+        if(r3 = Nil | r3->Get() <> 30) {
+            pass := false;
+            "  FAIL: RemoveFront #3 = {$r3->Get()}, expected 30"->PrintLine();
+        };
+        if(<>q->IsEmpty()) {
+            pass := false;
+            "  FAIL: queue should be empty after all removes"->PrintLine();
+        };
+
+        # AddFront (priority enqueue)
+        q->AddBack(IntRef->New(100));
+        q->AddFront(IntRef->New(1));
+        head := q->RemoveFront();
+        if(head->Get() <> 1) {
+            pass := false;
+            "  FAIL: AddFront priority = {$head->Get()}, expected 1"->PrintLine();
+        };
+
+        # FIFO correctness with 50 items
+        q2 := Queue->New()<IntRef>;
+        each(i : 50) { q2->AddBack(IntRef->New(i)); };
+        ok := true;
+        n := 0;
+        while(<>q2->IsEmpty()) {
+            v := q2->RemoveFront();
+            if(v->Get() <> n) { ok := false; };
+            n += 1;
+        };
+        if(<>ok) {
+            pass := false;
+            "  FAIL: FIFO order for 50 items"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Queue operations"->PrintLine();
+        } else {
+            "FAIL: Queue operations"->PrintLine();
+        };
+    }
+}

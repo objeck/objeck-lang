@@ -1,0 +1,97 @@
+class StringNumberConvTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string/number conversions..."->PrintLine();
+        pass := true;
+
+        # Int->ToString
+        s1 := 42->ToString();
+        if(<>s1->Equals("42")) {
+            pass := false;
+            "  FAIL: 42->ToString()"->PrintLine();
+        };
+        s2 := (-99)->ToString();
+        if(<>s2->Equals("-99")) {
+            pass := false;
+            "  FAIL: -99->ToString()"->PrintLine();
+        };
+        s3 := 0->ToString();
+        if(<>s3->Equals("0")) {
+            pass := false;
+            "  FAIL: 0->ToString()"->PrintLine();
+        };
+
+        # String->ToInt
+        n1 := "123"->ToInt();
+        if(n1 <> 123) {
+            pass := false;
+            "  FAIL: \"123\"->ToInt()"->PrintLine();
+        };
+        n2 := "-456"->ToInt();
+        if(n2 <> -456) {
+            pass := false;
+            "  FAIL: \"-456\"->ToInt()"->PrintLine();
+        };
+        n3 := "0"->ToInt();
+        if(n3 <> 0) {
+            pass := false;
+            "  FAIL: \"0\"->ToInt()"->PrintLine();
+        };
+
+        # Float->ToString
+        f1 := 3.14->ToString();
+        if(f1->Size() < 3) {
+            pass := false;
+            "  FAIL: 3.14->ToString() too short"->PrintLine();
+        };
+
+        # String->ToFloat
+        fv := "2.718"->ToFloat();
+        if(fv < 2.717 | fv > 2.719) {
+            pass := false;
+            "  FAIL: \"2.718\"->ToFloat() = {$fv}"->PrintLine();
+        };
+        fv2 := "0.5"->ToFloat();
+        if(fv2 < 0.499 | fv2 > 0.501) {
+            pass := false;
+            "  FAIL: \"0.5\"->ToFloat() = {$fv2}"->PrintLine();
+        };
+
+        # As(Char) / As(Int) conversions
+        ch := 65->As(Char);
+        if(ch <> 'A') {
+            pass := false;
+            "  FAIL: 65->As(Char)"->PrintLine();
+        };
+        int_back := 'Z'->As(Int);
+        if(int_back <> 90) {
+            pass := false;
+            "  FAIL: 'Z'->As(Int) = {$int_back}"->PrintLine();
+        };
+
+        # Int->As(Float) and Float->As(Int)
+        fi := 7->As(Float);
+        if(fi < 6.9 | fi > 7.1) {
+            pass := false;
+            "  FAIL: 7->As(Float)"->PrintLine();
+        };
+        if_back := 9.9->As(Int);
+        if(if_back <> 9) {
+            pass := false;
+            "  FAIL: 9.9->As(Int) = {$if_back}"->PrintLine();
+        };
+
+        # Round-trip: int -> string -> int
+        orig := 12345;
+        rt := orig->ToString()->ToInt();
+        if(rt <> orig) {
+            pass := false;
+            "  FAIL: round-trip {$orig} -> {$rt}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: String/number conversions"->PrintLine();
+        } else {
+            "FAIL: String/number conversions"->PrintLine();
+        };
+    }
+}

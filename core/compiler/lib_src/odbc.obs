@@ -2,7 +2,7 @@ use Collection;
 use System.API;
 
 #~
-Database access support via ODBC (-lib odbc)
+ODBC database access layer. Connection manages database sessions; Statement and ParameterStatement execute SQL queries; ResultSet iterates over rows and extracts typed column values. Compile with -lib odbc.
 ~#
 bundle Database.ODBC {
 	class : private: Proxy {
@@ -28,6 +28,15 @@ bundle Database.ODBC {
 		@param ds ODBC data source
 		@param username ODBC connection name
 		@param password ODBC connection password
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "admin", "pass");
+		if(conn->IsOpen()) {
+		  rs := conn->Select("SELECT name FROM users");
+		  while(rs->Next()) { rs->GetVarchar(1)->PrintLine(); };
+		  rs->Close();
+		  conn->Close();
+		};
+		```
 		~#
 		New(ds : String, username : String, password : String) {
 			Parent();
@@ -46,6 +55,14 @@ bundle Database.ODBC {
 		#~
 		Constructor using a connection string
 		@param conn_str ODBC connection string (e.g. "Driver={SQL Server};Server=localhost;Database=mydb;Uid=user;Pwd=pass;")
+		```
+		cs := "Driver={SQLite3};Database=app.db;";
+		conn := Database.ODBC.Connection->New(cs); # connect via connection string
+		if(conn->IsOpen()) {
+		  conn->Update("CREATE TABLE IF NOT EXISTS log (msg VARCHAR(255))");
+		  conn->Close();
+		};
+		```
 		~#
 		New(conn_str : String) {
 			Parent();
@@ -62,6 +79,13 @@ bundle Database.ODBC {
 		#~
 		Check rather a connect is open
 		@return true if connected, false otherwise
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		if(conn->IsOpen()) { # verify connection succeeded
+		  "Connected!"->PrintLine();
+		  conn->Close();
+		};
+		```
 		~#
 		method : public : IsOpen() ~ Bool {
 			return @native_connection <> 0;
@@ -84,6 +108,14 @@ bundle Database.ODBC {
 		Executes a SQL update statement
 		@param sql SQL statement
 		@return result code
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		if(conn->IsOpen()) {
+		  rc := conn->Update("INSERT INTO log(msg) VALUES ('hello')");
+		  "rows affected: {$rc}"->PrintLine();
+		  conn->Close();
+		};
+		```
 		~#
 		method : public : Update(sql : String) ~ Int {
 			if(@native_connection <> 0) {
@@ -105,6 +137,17 @@ bundle Database.ODBC {
 		Executes a SQL select statement
 		@param sql SQL statement
 		@return result set
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		if(conn->IsOpen()) {
+		  rs := conn->Select("SELECT id, name FROM users"); # execute query
+		  while(rs->Next()) {
+		    rs->GetVarchar("name")->PrintLine();
+		  };
+		  rs->Close();
+		  conn->Close();
+		};
+		```
 		~#
 		method : public : Select(sql : String) ~ ResultSet {
 			if(@native_connection <> 0) {
@@ -127,9 +170,19 @@ bundle Database.ODBC {
 		}
 		
 		#~
-		Create a parametrized SQL statement 
+		Create a parametrized SQL statement
 		@param sql SQL statement
 		@return result set
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		if(conn->IsOpen()) {
+		  stmt := conn->CreateParameterStatement("INSERT INTO users(name,age) VALUES(?,?)");
+		  stmt->SetVarchar(1, "Alice"); # bind first parameter
+		  stmt->SetInt(2, 30);          # bind second parameter
+		  stmt->Update();
+		  conn->Close();
+		};
+		```
 		~#
 		method : public : CreateParameterStatement(sql : String) ~ ParameterStatement {
 			if(@native_connection <> 0) {
@@ -155,6 +208,13 @@ bundle Database.ODBC {
 		Sets autocommit mode. When false, changes must be explicitly committed.
 		@param enable true for autocommit, false for manual transaction control
 		@return true if successful
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		conn->SetAutoCommit(false); # start manual transaction
+		conn->Update("DELETE FROM temp_log");
+		conn->Commit(); # commit changes
+		conn->Close();
+		```
 		~#
 		method : public : SetAutoCommit(enable : Bool) ~ Bool {
 			if(@native_connection <> 0) {
@@ -163,7 +223,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(enable ? 1 : 0);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_set_autocommit", array_args);
-				return array_args[0]->As(IntRef)->Get() = 1;
+				result := array_args[0]->As(IntRef);
+				return result->Get() = 1;
 			};
 
 			return false;
@@ -179,7 +240,8 @@ bundle Database.ODBC {
 				array_args[0] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_commit", array_args);
-				return array_args[0]->As(IntRef)->Get() = 1;
+				result := array_args[0]->As(IntRef);
+				return result->Get() = 1;
 			};
 
 			return false;
@@ -195,7 +257,8 @@ bundle Database.ODBC {
 				array_args[0] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_rollback", array_args);
-				return array_args[0]->As(IntRef)->Get() = 1;
+				result := array_args[0]->As(IntRef);
+				return result->Get() = 1;
 			};
 
 			return false;
@@ -204,6 +267,13 @@ bundle Database.ODBC {
 		#~
 		Gets the last error message from the connection.
 		@return error message string, or empty if no error
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		if(conn->Update("BAD SQL") < 0) {
+		  conn->GetLastError()->PrintLine(); # print connection error
+		};
+		conn->Close();
+		```
 		~#
 		method : public : GetLastError() ~ String {
 			if(@native_connection <> 0) {
@@ -222,6 +292,14 @@ bundle Database.ODBC {
 		#~
 		Gets the list of table names in the data source.
 		@return array of table names, or Nil on failure
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		if(conn->IsOpen()) {
+		  tables := conn->GetTables(); # list all tables
+		  each(t in tables) { tables[t]->PrintLine(); };
+		  conn->Close();
+		};
+		```
 		~#
 		method : public : GetTables() ~ String[] {
 			if(@native_connection <> 0) {
@@ -244,6 +322,14 @@ bundle Database.ODBC {
 		Gets column information for a table as name:type pairs.
 		@param table table name
 		@return array of column descriptors (name:type), or Nil on failure
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		if(conn->IsOpen()) {
+		  cols := conn->GetColumns("users"); # get column descriptors
+		  each(c in cols) { cols[c]->PrintLine(); };
+		  conn->Close();
+		};
+		```
 		~#
 		method : public : GetColumns(table : String) ~ String[] {
 			if(@native_connection <> 0) {
@@ -589,6 +675,13 @@ bundle Database.ODBC {
 		@param pos parameter position
 		@param value string value
 		@return true if set, false otherwise
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		stmt := conn->CreateParameterStatement("INSERT INTO users(name) VALUES(?)");
+		stmt->SetVarchar(1, "Bob"); # bind string to first parameter
+		stmt->Update();
+		conn->Close();
+		```
 		~#
 		method : public : SetVarchar(pos : Int, value : String) ~ Bool {		
 			if(@native_stmt <> 0 & @native_names <> 0) {
@@ -791,6 +884,15 @@ bundle Database.ODBC {
 		Executes a SQL update statement. Statement is closed after calling.
 		@param sql SQL statement
 		@return result code
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		stmt := conn->CreateParameterStatement("UPDATE users SET age=? WHERE name=?");
+		stmt->SetInt(1, 31);
+		stmt->SetVarchar(2, "Alice");
+		rc := stmt->Update(); # execute and close statement
+		"rows={$rc}"->PrintLine();
+		conn->Close();
+		```
 		~#
 		method : public : Update() ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
@@ -820,6 +922,15 @@ bundle Database.ODBC {
 		Executes a SQL select statement
 		@param sql SQL statement
 		@return result set
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		stmt := conn->CreateParameterStatement("SELECT name FROM users WHERE age > ?");
+		stmt->SetInt(1, 25);
+		rs := stmt->Select(); # execute prepared select
+		while(rs->Next()) { rs->GetVarchar("name")->PrintLine(); };
+		rs->Close();
+		conn->Close();
+		```
 		~#
 		method : public : Select() ~ ResultSet {
 			if(@native_stmt <> 0 & @native_names <> 0) {
@@ -909,6 +1020,15 @@ bundle Database.ODBC {
 		#~
 		Moves the cursor to the next row in the result set
 		@return true if cursor was moved, false otherwise
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		rs := conn->Select("SELECT name FROM users");
+		while(rs->Next()) { # advance row by row
+		  rs->GetVarchar("name")->PrintLine();
+		};
+		rs->Close();
+		conn->Close();
+		```
 		~#
 		method : public : Next() ~ Bool {
 			if(@native_stmt <> 0 & @native_names <> 0) {
@@ -938,6 +1058,16 @@ bundle Database.ODBC {
 		Gets an integer value
 		@param column column ID
 		@return integer value
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		rs := conn->Select("SELECT id, age FROM users");
+		while(rs->Next()) {
+		  age := rs->GetInt(2); # column 2 = age
+		  "age={$age}"->PrintLine();
+		};
+		rs->Close();
+		conn->Close();
+		```
 		~#
 		method : public : GetInt(column : Int) ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
@@ -1250,6 +1380,16 @@ bundle Database.ODBC {
 		Gets a varchar value
 		@param column column ID
 		@return varchar value
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		rs := conn->Select("SELECT name FROM users");
+		while(rs->Next()) {
+		  name := rs->GetVarchar(1); # read column 1 as string
+		  if(name <> Nil) { name->PrintLine(); };
+		};
+		rs->Close();
+		conn->Close();
+		```
 		~#
 		method : public : GetVarchar(column : Int) ~ String {
 			if(@native_stmt <> 0 & @native_names <> 0) {
@@ -1737,6 +1877,16 @@ bundle Database.ODBC {
 		#~
 		Converts a ODBC date into a system date
 		@return system date
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		rs := conn->Select("SELECT created_on FROM events");
+		if(rs->Next()) {
+		  d := rs->GetDate("created_on");
+		  sys_date := d->ToDate(); # convert to System.Time.Date
+		  sys_date->ToString()->PrintLine();
+		};
+		conn->Close();
+		```
 		~#
 		method : public : ToDate() ~ System.Time.Date {
 			return System.Time.Date->New(@day, @month, @year, false);
@@ -1903,6 +2053,16 @@ bundle Database.ODBC {
 		#~
 		Converts a timestamp into a system date
 		@return system date
+		```
+		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
+		rs := conn->Select("SELECT updated_at FROM log");
+		if(rs->Next()) {
+		  ts := rs->GetTimestamp("updated_at");
+		  sys_date := ts->ToDate(); # convert to System.Time.Date
+		  sys_date->ToString()->PrintLine();
+		};
+		conn->Close();
+		```
 		~#
 		method : public : ToDate() ~ System.Time.Date {
 			date := System.Time.Date->New(@day, @month, @year, false);

@@ -1,0 +1,130 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for System.ML GaussianMixture (overhaul phase 3): EM on two
+well-separated blobs recovers the grouping (label-agnostic), responsibilities
+are decisive, the recovered means/weights match the blobs, fits are
+reproducible for a fixed seed, and Store/Load round-trips.
+~#
+use System.ML, System.IO.Filesystem, Collection;
+
+class MlGmmTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		eps := 0.000001;
+		model_file := "ml_gmm_model_test.tmp";
+
+		# rows 0-5: blob around (1,1); rows 6-11: blob around (8,8)
+		X := [
+			[1.0, 1.0], [1.2, 0.9], [0.9, 1.1], [1.1, 1.2], [0.8, 0.9], [1.0, 1.1],
+			[8.0, 8.0], [8.2, 7.9], [7.9, 8.1], [8.1, 8.2], [7.8, 7.9], [8.0, 8.1]];
+
+		gmm := GaussianMixture->New(2, 7);
+		if(gmm->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted gmm stored"->PrintLine();
+		};
+
+		if(<>gmm->Fit(X)) {
+			pass := false;
+			"  FAIL: gmm fit"->PrintLine();
+		}
+		else {
+			assignments := gmm->PredictClass(X);
+
+			# label-agnostic: blob members agree, blobs differ
+			each(i : 6) {
+				if(assignments[i] <> assignments[0]) {
+					pass := false;
+					"  FAIL: blob A assignment row {$i}"->PrintLine();
+				};
+			};
+			for(i := 6; i < 12; i += 1;) {
+				if(assignments[i] <> assignments[6]) {
+					pass := false;
+					"  FAIL: blob B assignment row {$i}"->PrintLine();
+				};
+			};
+			if(assignments[0] = assignments[6]) {
+				pass := false;
+				"  FAIL: blobs share a component"->PrintLine();
+			};
+
+			# responsibilities are decisive for well-separated blobs
+			resp := gmm->Predict(X);
+			own := assignments[0];
+			if(resp[0,own] < 0.99) {
+				r := resp[0,own];
+				pass := false;
+				"  FAIL: gmm responsibility {$r}"->PrintLine();
+			};
+
+			# weights ~ 0.5 each; one mean near (1,1), the other near (8,8)
+			weights := gmm->GetWeights();
+			if(Float->Abs(weights[0] - 0.5) > 0.05 | Float->Abs(weights[1] - 0.5) > 0.05) {
+				pass := false;
+				"  FAIL: gmm weights"->PrintLine();
+			};
+
+			means := gmm->GetMeans();
+			a := assignments[0];
+			b := assignments[6];
+			if(Float->Abs(means[a,0] - 1.0) > 0.3 | Float->Abs(means[a,1] - 1.0) > 0.3 |
+				Float->Abs(means[b,0] - 8.0) > 0.3 | Float->Abs(means[b,1] - 8.0) > 0.3) {
+				pass := false;
+				"  FAIL: gmm means"->PrintLine();
+			};
+
+			if(gmm->GetLogLikelihood() = Float->NegInf()) {
+				pass := false;
+				"  FAIL: gmm log-likelihood"->PrintLine();
+			};
+		};
+
+		# reproducibility: same seed, same assignments
+		again := GaussianMixture->New(2, 7);
+		if(<>again->Fit(X)) {
+			pass := false;
+			"  FAIL: gmm refit"->PrintLine();
+		}
+		else {
+			a1 := gmm->PredictClass(X);
+			a2 := again->PredictClass(X);
+			each(i : 12) {
+				if(a1[i] <> a2[i]) {
+					pass := false;
+					"  FAIL: gmm reproducibility row {$i}"->PrintLine();
+				};
+			};
+		};
+
+		# Store/Load round-trip
+		if(<>gmm->Store(model_file)) {
+			pass := false;
+			"  FAIL: gmm store"->PrintLine();
+		};
+		loaded := GaussianMixture->Load(model_file);
+		if(loaded = Nil | <>loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: gmm load"->PrintLine();
+		}
+		else {
+			before := gmm->Predict(X);
+			after := loaded->Predict(X);
+			each(i : 12) {
+				if(Float->Abs(before[i,0] - after[i,0]) > eps | Float->Abs(before[i,1] - after[i,1]) > eps) {
+					pass := false;
+					"  FAIL: gmm round-trip responsibility {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		if(pass) {
+			"PASS: ML Gaussian mixture tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML Gaussian mixture tests"->PrintLine();
+		};
+	}
+}

@@ -1,0 +1,105 @@
+class Calculator {
+    New() {}
+
+    method : public : Add(a : Int, b : Int) ~ Int {
+        return a + b;
+    }
+
+    method : public : Add(a : Float, b : Float) ~ Float {
+        return a + b;
+    }
+
+    method : public : Add(a : Int, b : Int, c : Int) ~ Int {
+        return a + b + c;
+    }
+
+    method : public : Describe(value : Int) ~ String {
+        return "int:{$value}";
+    }
+
+    method : public : Describe(value : Float) ~ String {
+        return "float:{$value}";
+    }
+
+    method : public : Describe(value : String) ~ String {
+        return "str:{$value}";
+    }
+}
+
+class CoreMethodOverloadTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing method overloading..."->PrintLine();
+        pass := true;
+
+        calc := Calculator->New();
+
+        # Int overload
+        r1 := calc->Add(3, 4);
+        if(r1 <> 7) {
+            pass := false;
+            "  FAIL: Add(int,int) = {$r1}"->PrintLine();
+        };
+
+        # Float overload
+        r2 := calc->Add(1.5, 2.5);
+        if(r2 < 3.9 | r2 > 4.1) {
+            pass := false;
+            "  FAIL: Add(float,float) = {$r2}"->PrintLine();
+        };
+
+        # Three-int overload
+        r3 := calc->Add(1, 2, 3);
+        if(r3 <> 6) {
+            pass := false;
+            "  FAIL: Add(int,int,int) = {$r3}"->PrintLine();
+        };
+
+        # Describe overloads
+        d1 := calc->Describe(42);
+        if(<>d1->Has("int")) {
+            pass := false;
+            "  FAIL: Describe(int) = {$d1}"->PrintLine();
+        };
+
+        d2 := calc->Describe(3.14);
+        if(<>d2->Has("float")) {
+            pass := false;
+            "  FAIL: Describe(float) = {$d2}"->PrintLine();
+        };
+
+        d3 := calc->Describe("hello");
+        if(<>d3->Has("str")) {
+            pass := false;
+            "  FAIL: Describe(str) = {$d3}"->PrintLine();
+        };
+
+        # Function-level overloads
+        a := Max(10, 20);
+        if(a <> 20) {
+            pass := false;
+            "  FAIL: Max(int) = {$a}"->PrintLine();
+        };
+
+        b := Max(1.1, 2.2);
+        if(b < 2.1 | b > 2.3) {
+            pass := false;
+            "  FAIL: Max(float) = {$b}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Method overloading"->PrintLine();
+        } else {
+            "FAIL: Method overloading"->PrintLine();
+        };
+    }
+
+    function : Max(a : Int, b : Int) ~ Int {
+        if(a > b) { return a; };
+        return b;
+    }
+
+    function : Max(a : Float, b : Float) ~ Float {
+        if(a > b) { return a; };
+        return b;
+    }
+}

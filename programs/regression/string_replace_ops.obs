@@ -1,0 +1,81 @@
+class StringReplaceOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string replace operations..."->PrintLine();
+        pass := true;
+
+        # ReplaceAll(string, string)
+        r1 := "hello world hello"->ReplaceAll("hello", "hi");
+        if(<>r1->Equals("hi world hi")) {
+            pass := false;
+            "  FAIL: ReplaceAll str = '{$r1}'"->PrintLine();
+        };
+
+        # ReplaceAll — no match, string unchanged
+        r2 := "abcdef"->ReplaceAll("xyz", "123");
+        if(<>r2->Equals("abcdef")) {
+            pass := false;
+            "  FAIL: ReplaceAll no match = '{$r2}'"->PrintLine();
+        };
+
+        # ReplaceAll(char, char)
+        r3 := "a.b.c.d"->ReplaceAll('.', '-');
+        if(<>r3->Equals("a-b-c-d")) {
+            pass := false;
+            "  FAIL: ReplaceAll char = '{$r3}'"->PrintLine();
+        };
+
+        # RemoveAll(string)
+        r4 := "hello world"->RemoveAll("l");
+        if(<>r4->Equals("heo word")) {
+            pass := false;
+            "  FAIL: RemoveAll str = '{$r4}'"->PrintLine();
+        };
+
+        # RemoveAll(char)
+        r5 := "a1b2c3"->RemoveAll('1');
+        if(<>r5->Equals("ab2c3")) {
+            pass := false;
+            "  FAIL: RemoveAll char = '{$r5}'"->PrintLine();
+        };
+
+        # Replace first occurrence only
+        r6 := "aaa"->Replace("a", "b");
+        if(<>r6->Equals("baa")) {
+            pass := false;
+            "  FAIL: Replace first = '{$r6}'"->PrintLine();
+        };
+
+        # Has(char): presence check
+        if(<>"hello"->Has('e')) {
+            pass := false;
+            "  FAIL: Has 'e'"->PrintLine();
+        };
+        if("hello"->Has('z')) {
+            pass := false;
+            "  FAIL: Has 'z' should be false"->PrintLine();
+        };
+
+        # Has(string): substring presence
+        if(<>"hello world"->Has("world")) {
+            pass := false;
+            "  FAIL: Has 'world'"->PrintLine();
+        };
+        if("hello world"->Has("xyz")) {
+            pass := false;
+            "  FAIL: Has 'xyz' should be false"->PrintLine();
+        };
+
+        # ReplaceAll with empty pattern becomes no-op
+        r7 := "test"->ReplaceAll("x", "y");
+        if(<>r7->Equals("test")) {
+            pass := false;
+            "  FAIL: ReplaceAll no-op = '{$r7}'"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: String replace operations"->PrintLine();
+        } else {
+            "FAIL: String replace operations"->PrintLine();
+        };
+    }
+}

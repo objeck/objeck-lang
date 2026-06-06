@@ -1,0 +1,11 @@
+{
+	"files": [
+		"shapes.obs",
+		"animals.obs",
+		"main.obs"
+	],
+	"libs": [
+		"gen_collect.obl"
+	],
+	"flags": ""
+}

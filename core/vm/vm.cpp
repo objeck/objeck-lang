@@ -44,14 +44,28 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
 {
   if(argc > 1) {
     wchar_t** commands = ProcessCommandLine(argc, argv);
+
     Loader loader(argc, commands);
-    loader.Load();
+    try {
+      loader.Load();
+    }
+    catch(const std::exception& e) {
+      const std::string msg(e.what());
+      std::wcerr << L">>> load error: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+      CleanUpCommandLine(argc, commands);
+      return USAGE_ERROR;
+    }
+    catch(...) {
+      std::wcerr << L">>> load error: unable to load program <<<" << std::endl;
+      CleanUpCommandLine(argc, commands);
+      return USAGE_ERROR;
+    }
 
     // execute
     size_t* op_stack = new size_t[OP_STACK_SIZE];
     size_t* stack_pos = new size_t;
     (*stack_pos) = 0;
-    
+
 #ifdef _TIMING
     clock_t start = clock();
 #endif
@@ -61,7 +75,28 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
 #endif
     Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram(), gc_threshold);
     Runtime::StackInterpreter::AddThread(intpr);
-    intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
+    try {
+      intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
+    }
+    catch(const std::bad_alloc&) {
+      std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
+      delete[] op_stack; delete stack_pos;
+      CleanUpCommandLine(argc, commands);
+      return USAGE_ERROR;
+    }
+    catch(const std::exception& e) {
+      const std::string msg(e.what());
+      std::wcerr << L">>> virtual machine: internal error: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+      delete[] op_stack; delete stack_pos;
+      CleanUpCommandLine(argc, commands);
+      return USAGE_ERROR;
+    }
+    catch(...) {
+      std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
+      delete[] op_stack; delete stack_pos;
+      CleanUpCommandLine(argc, commands);
+      return USAGE_ERROR;
+    }
     
 #ifdef _DEBUG
     std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;

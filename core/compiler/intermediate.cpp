@@ -64,7 +64,10 @@ SelectNode* SelectArrayTree::Divide(int start, int end)
 {
   const int size =  end - start + 1;
   if(size < 4) {
-    if(size == 2) {
+    if(size == 1) {
+      return new SelectNode(++emitter->conditional_label, values[start]);
+    }
+    else if(size == 2) {
       SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
                                         new SelectNode(++emitter->conditional_label, values[start]),
                                         new SelectNode(++emitter->conditional_label, values[start + 1]));
@@ -645,7 +648,7 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
 
   // get short file name
   const std::wstring &file_name = current_class->GetFileName();
-  size_t offset = file_name.rfind(L"/\\");
+  size_t offset = file_name.find_last_of(L"/\\");
   std::wstring short_file_name;
   if(offset == std::wstring::npos) {
     short_file_name = file_name;
@@ -3296,12 +3299,9 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
 void IntermediateEmitter::EmitSelect(Select* select_stmt)
 {
   cur_line_num = select_stmt->GetLineNumber();
-  
-  if(select_stmt->GetLabelStatements().size() > 1) {
-    SelectArrayTree tree(select_stmt, this);
-    tree.Emit();
-  } 
-  else {
+
+  const size_t n = select_stmt->GetLabelStatements().size();
+  if(n == 1) {
     // get statement and value
     std::map<INT64_VALUE, StatementList*> label_statements = select_stmt->GetLabelStatements();
     std::map<INT64_VALUE, StatementList*>::iterator iter = label_statements.begin();
@@ -3314,14 +3314,14 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     if(select_stmt->GetOther()) {
       other_label = ++conditional_label;
     }
-    
+
     // emit code
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(select_stmt, cur_line_num, value));
     EmitExpression(select_stmt->GetAssignment()->GetExpression());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, other_label, false));
-    } 
+    }
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, end_label, false));
     }
@@ -3332,7 +3332,6 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
       EmitStatement(statements[i]);
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, end_label, -1));
-    
 
     // other statements
     if(select_stmt->GetOther()) {
@@ -3345,6 +3344,92 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, LBL, end_label));
   }
+  else if(IsIntegerSelect(select_stmt) && IsDenseInt(select_stmt)) {
+    EmitSelectJumpTable(select_stmt);
+  }
+  else {
+    SelectArrayTree tree(select_stmt, this);
+    tree.Emit();
+  }
+}
+
+bool IntermediateEmitter::IsIntegerSelect(Select* select_stmt)
+{
+  const auto& labels = select_stmt->GetLabelStatements();
+  const INT64_VALUE min_val = labels.begin()->first;
+  const INT64_VALUE max_val = labels.rbegin()->first;
+  return min_val >= (INT64_VALUE)INT32_MIN && max_val <= (INT64_VALUE)INT32_MAX;
+}
+
+bool IntermediateEmitter::IsDenseInt(Select* select_stmt)
+{
+  const auto& labels = select_stmt->GetLabelStatements();
+  const size_t n = labels.size();
+  const INT64_VALUE min_val = labels.begin()->first;
+  const INT64_VALUE max_val = labels.rbegin()->first;
+  if(max_val < min_val) return false;
+  const INT64_VALUE range = max_val - min_val + 1;
+  if(range <= 0 || range > 65536LL) return false;
+  return range <= (INT64_VALUE)(2 * n);
+}
+
+void IntermediateEmitter::EmitSelectJumpTable(Select* select_stmt)
+{
+  cur_line_num = select_stmt->GetLineNumber();
+  const auto& label_stmts = select_stmt->GetLabelStatements();
+
+  // assign a target label to each case
+  std::map<INT64_VALUE, long> value_to_label;
+  for(const auto& entry : label_stmts) {
+    value_to_label[entry.first] = ++conditional_label;
+  }
+  long default_label = ++conditional_label;
+  long end_label = ++unconditional_label;
+
+  const INT64_VALUE min_val = label_stmts.begin()->first;
+  const INT64_VALUE max_val = label_stmts.rbegin()->first;
+  const long range = (long)(max_val - min_val + 1);
+
+  // evaluate select expression; result consumed by JMP_TABLE
+  EmitExpression(select_stmt->GetAssignment()->GetExpression());
+
+  // JMP_TABLE header: base(min_val), range, default_label
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
+    select_stmt, cur_line_num, JMP_TABLE, (long)min_val, range, default_label));
+
+  // one slot per value in [min_val..max_val], pointing to case label or default
+  for(long offset = 0; offset < range; ++offset) {
+    INT64_VALUE val = min_val + (INT64_VALUE)offset;
+    auto it = value_to_label.find(val);
+    long slot_target = (it != value_to_label.end()) ? it->second : default_label;
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
+      select_stmt, cur_line_num, JMP_TABLE_SLOT, slot_target));
+  }
+
+  // case bodies
+  for(const auto& entry : label_stmts) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
+      select_stmt, cur_line_num, LBL, value_to_label[entry.first]));
+    for(Statement* stmt : entry.second->GetStatements()) {
+      EmitStatement(stmt);
+    }
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
+      select_stmt, cur_line_num, JMP, end_label, -1));
+  }
+
+  // default (other) block
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
+    select_stmt, cur_line_num, LBL, default_label));
+  if(select_stmt->GetOther()) {
+    for(Statement* stmt : select_stmt->GetOther()->GetStatements()) {
+      EmitStatement(stmt);
+    }
+  }
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
+    select_stmt, cur_line_num, JMP, end_label, -1));
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
+    select_stmt, cur_line_num, LBL, end_label));
 }
 
 /****************************
@@ -5044,6 +5129,35 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
 }
 
 /****************************
+ * True when the expression evaluates to a scalar Float VALUE: either a
+ * dimension-0 Float, or an INDEXED Float array access (the element). An
+ * unindexed Float array variable compares as a reference (integer compare).
+ * Used to pick EQL_FLOAT/NEQL_FLOAT vs EQL_INT/NEQL_INT; the old
+ * dimension-only test classified `values[i] <> values[j]` as an integer
+ * compare, which bit-compared floats in the interpreter and crashed the
+ * JIT compiler (int compare handed XMM operands).
+ ****************************/
+static bool IsScalarFloat(frontend::Expression* e)
+{
+  if(!e->GetEvalType() || e->GetEvalType()->GetType() != frontend::FLOAT_TYPE) {
+    return false;
+  }
+
+  if(e->GetEvalType()->GetDimension() < 1) {
+    return true;
+  }
+
+  if(e->GetExpressionType() == frontend::VAR_EXPR) {
+    frontend::Variable* var = static_cast<frontend::Variable*>(e);
+    if(var->GetIndices()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/****************************
  * Translates a calculation
  ****************************/
 void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
@@ -5113,8 +5227,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   EntryType eval_type = expression->GetEvalType()->GetType();
   switch(expression->GetExpressionType()) {
   case EQL_EXPR:
-    if((left->GetEvalType()->GetType() == frontend::FLOAT_TYPE && left->GetEvalType()->GetDimension() < 1) ||
-       (right->GetEvalType()->GetType() == frontend::FLOAT_TYPE && right->GetEvalType()->GetDimension() < 1)) {
+    if(IsScalarFloat(left) || IsScalarFloat(right)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, EQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, EQL_INT));
@@ -5123,8 +5236,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
 
   case NEQL_EXPR:
-    if((left->GetEvalType()->GetType() == frontend::FLOAT_TYPE && left->GetEvalType()->GetDimension() < 1) ||
-       (right->GetEvalType()->GetType() == frontend::FLOAT_TYPE && right->GetEvalType()->GetDimension() < 1)) {
+    if(IsScalarFloat(left) || IsScalarFloat(right)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, NEQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, NEQL_INT));

@@ -1,0 +1,10 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		"Hello World"->Size()->PrintLine();
+		low := 13;
+		cde += low - 9;
+		low := low;
+
+		(low + cde)->PrintLine();
+	}
+}

@@ -14,7 +14,7 @@ note: compile compiler with -D_SYSTEM flag (on Linux)
 ~#	
 
 #~
-Core system classes 
+Core runtime library providing primitive types (Bool, Byte, Char, Int, Float, String), base collections, and system utilities. Every Objeck program links against this bundle automatically via lang.obl.
 ~#
 bundle System {
 	#~
@@ -1375,6 +1375,12 @@ bundle System {
 	
 	#~
 	Integer class represents an operating system long value
+	```
+	n := Int->Random(100);         # random 0–99
+	abs := Int->Abs(-42);          # 42
+	mx  := Int->Max(10, 20);       # 20
+	Int->Sort(v);                  # sort int array in-place
+	```
 	~#
 	class $Int from Number {
 		#~
@@ -1457,6 +1463,10 @@ bundle System {
 		@param range_start minimum value
 		@param range_end maximum value
 		@return pseudo random value
+		```
+		temp := Int->Random(-10, 40);
+		"Temp: {$temp}°C"->PrintLine();
+		```
 		~#
 		function : Random(range_start : Int, range_end : Int) ~ Int {
 			if(range_start >= range_end) {
@@ -1470,6 +1480,10 @@ bundle System {
 		Returns a random number between 0 and max value, inclusive
 		@param max max value
 		@return random number within range
+		```
+		dice := Int->Random(6) + 1;
+		"Rolled: {$dice}"->PrintLine();
+		```
 		~#
 		function : Random(max : Int) ~ Int {
 			max += 1;
@@ -1485,6 +1499,9 @@ bundle System {
 		@param b power base
 		@param r power to raise
 		@return pseudo power value
+		```
+		Int->Pow(2, 10)->PrintLine();  # 1024
+		```
 		~#
 		function : Pow(b : Int, r : Int) ~ Int {
 			return Float->Pow(b->As(Float), r->As(Float))->Round();
@@ -1520,6 +1537,9 @@ bundle System {
 		Calculates the square root
 		@ignore-params
 		@return square root value
+		```
+		Int->Sqrt(144)->PrintLine();  # 12
+		```
 		~#
 		function : Sqrt(a : Int) ~ Int {
 			return Float->Sqrt(a->As(Float))->Round();
@@ -1539,6 +1559,9 @@ bundle System {
 		@param l value to compare
 		@param r value to compare
 		@return smallest integer value
+		```
+		Int->Min(3, 7)->PrintLine();  # 3
+		```
 		~#
 		function : native : Min(l : Int, r : Int) ~ Int {
 			if(l < r) {
@@ -1570,6 +1593,9 @@ bundle System {
 		@param l value to compare
 		@param r value to compare
 		@return largest integer value
+		```
+		Int->Max(3, 7)->PrintLine();  # 7
+		```
 		~#
 		function : native : Max(l : Int, r : Int) ~ Int {
 			if(l > r) {
@@ -1595,6 +1621,9 @@ bundle System {
 		Returns the absolute value
 		@ignore-params
 		@return absolute value
+		```
+		Int->Abs(-99)->PrintLine();  # 99
+		```
 		~#
 		function : Abs(v : Int) ~ Int {
 			if(v < 0) {
@@ -1800,6 +1829,10 @@ bundle System {
 		Returns the string value
 		@ignore-params
 		@return string value
+		```
+		s := Int->ToString(255);
+		s->PrintLine();  # 255
+		```
 		~#
 		function : ToString(v : Int) ~ String {
 			buffer := Char->New[72];
@@ -1994,7 +2027,13 @@ bundle System {
 
 	#~
 	Float class represents a double-precision floating-point value
-	~#	
+	```
+	pi  := Float->Pi();            # 3.14159...
+	e   := Float->E();             # 2.71828...
+	sq  := Float->Sqrt(2.0);       # 1.41421...
+	rnd := Float->Random();        # 0.0–1.0
+	```
+	~#
 	class $Float from Number {
 		#~
 		Calculates the factorial value
@@ -2052,6 +2091,10 @@ bundle System {
 		#~
 		Value of Pi
 		@return value of Pi
+		```
+		area := Float->Pi() * 5.0 * 5.0;
+		"Circle area: {$area}"->PrintLine();
+		```
 		~#
 		function : Pi() ~ Float {
 			return 3.1415926536;
@@ -2064,6 +2107,9 @@ bundle System {
 		#~
 		Value of E
 		@return value of E
+		```
+		Float->E()->PrintLine();  # 2.718281828...
+		```
 		~#
 		function : E() ~ Float {
 			return 2.7182818285;
@@ -2112,6 +2158,9 @@ bundle System {
 		Returns the Int value
 		@ignore-params
 		@return value
+		```
+		Float->ToInt(9.99)->PrintLine();  # 9
+		```
 		~#
 		function : ToInt(v : Float) ~ Int {
 			return v->As(Int);
@@ -2184,6 +2233,9 @@ bundle System {
 		Returns the absolute value
 		@ignore-params
 		@return absolute value
+		```
+		Float->Abs(-3.14)->PrintLine();  # 3.14
+		```
 		~#
 		function : Abs(v : Float) ~ Float {
 			if(v < 0.0) {
@@ -2210,6 +2262,9 @@ bundle System {
 		Calculates the floor value
 		@ignore-params
 		@return floor value
+		```
+		Float->Floor(3.9)->PrintLine();  # 3.0
+		```
 		~#
 		function : Floor(f : Float) ~ Float {
 			FLOR_FLOAT;
@@ -2219,6 +2274,9 @@ bundle System {
 		Calculates the ceiling value
 		@ignore-params
 		@return ceiling value
+		```
+		Float->Ceil(3.1)->PrintLine();  # 4.0
+		```
 		~#
 		function : Ceil(f : Float) ~ Float {
 			CEIL_FLOAT;
@@ -2237,6 +2295,10 @@ bundle System {
 		Calculates the sine value
 		@ignore-params
 		@return sine value
+		```
+		angle := Float->Pi() / 6.0;
+		Float->Sin(angle)->PrintLine();  # 0.5
+		```
 		~#
 		function : Sin(f : Float) ~ Float {
 			SIN_FLOAT;
@@ -2246,6 +2308,10 @@ bundle System {
 		Calculates the cosine value
 		@ignore-params
 		@return cosine value
+		```
+		angle := Float->Pi() / 3.0;
+		Float->Cos(angle)->PrintLine();  # 0.5
+		```
 		~#
 		function : Cos(f : Float) ~ Float {
 			COS_FLOAT;
@@ -2255,6 +2321,10 @@ bundle System {
 		Calculates the tangent value
 		@ignore-params
 		@return tangent value
+		```
+		angle := Float->Pi() / 4.0;
+		Float->Tan(angle)->PrintLine();  # ~1.0
+		```
 		~#
 		function : Tan(f : Float) ~ Float {
 			TAN_FLOAT;
@@ -2383,6 +2453,9 @@ bundle System {
 		Calculates the log value
 		@ignore-params
 		@return log value
+		```
+		Float->Log(Float->E())->PrintLine();  # 1.0
+		```
 		~#
 		function : Log(f : Float) ~ Float {
 			LOG_FLOAT;
@@ -2392,6 +2465,9 @@ bundle System {
 		Rounds the value
 		@ignore-params
 		@return rounded value
+		```
+		Float->Round(3.7)->PrintLine();  # 4.0
+		```
 		~#
 		function : Round(f : Float) ~ Float {
 			ROUND_FLOAT;
@@ -2410,6 +2486,9 @@ bundle System {
 		Calculates the common (base-10) logarithm value
 		@ignore-params
 		@return common (base-10) logarithm value
+		```
+		Float->Log10(1000.0)->PrintLine();  # 3.0
+		```
 		~#
 		function : Log10(f : Float) ~ Float {
 			LOG10_FLOAT;
@@ -2435,6 +2514,9 @@ bundle System {
 		Calculates the square root value
 		@ignore-params
 		@return square root value
+		```
+		Float->Sqrt(16.0)->PrintLine();  # 4.0
+		```
 		~#
 		function : Sqrt(f : Float) ~ Float {
 			SQRT_FLOAT;
@@ -2444,6 +2526,10 @@ bundle System {
 		Returns a pseudo random value between 0.0 and 1.0, inclusive
 		@ignore-params
 		@return pseudo random value
+		```
+		r := Float->Random();
+		"Random 0–1: {$r}"->PrintLine();
+		```
 		~#
 		function : Random() ~ Float {
 			RAND_FLOAT;
@@ -2453,6 +2539,10 @@ bundle System {
 		Returns a pseudo random value between 0.0 and max, inclusive
 		@param max maximum value
 		@return pseudo random value
+		```
+		r := Float->Random(100.0);
+		"Random 0–100: {$r}"->PrintLine();
+		```
 		~#
 		function : Random(max : Float) ~ Float {
 			return Random() * max;	
@@ -2487,6 +2577,9 @@ bundle System {
 		@param b power base
 		@param r power to raise
 		@return pseudo power value
+		```
+		Float->Pow(2.0, 8.0)->PrintLine();  # 256.0
+		```
 		~#
 		function : Pow(b : Float, r : Float) ~ Float {
 			POW_FLOAT;
@@ -2573,6 +2666,10 @@ bundle System {
 		Returns a string representation of the value
 		@ignore-params
 		@return string representation of the value
+		```
+		s := Float->ToString(3.14);
+		s->PrintLine();  # 3.14
+		```
 		~#
 		function : native : ToString(f : Float) ~ String {
 			buffer := Char->New[64];
@@ -4593,6 +4690,29 @@ each(i : cities) {
 		}
 
 		#~
+		Joins an array of strings with a separator
+		@param parts array of strings to join
+		@param sep separator string
+		@return joined string
+		~#
+		function : Join(parts : String[], sep : String) ~ String {
+			n := parts->Size();
+			if(n = 0) {
+				return "";
+			};
+			buf := String->New();
+			each(i : parts) {
+				if(i > 0 & sep <> Nil) {
+					buf->Append(sep);
+				};
+				if(parts[i] <> Nil) {
+					buf->Append(parts[i]);
+				};
+			};
+			return buf;
+		}
+
+		#~
 		Set integer string format.
 		@param format integer format
 		~#
@@ -4653,7 +4773,7 @@ each(i : cities) {
 			Runtime->Copy(array, 0, @string, 0, @pos);
 			return array;
 		}
-		
+
 		#~
 		Returns a byte array representation of the String
 		@return byte array
@@ -4675,10 +4795,10 @@ each(i : cities) {
 		~#
 		method : public : Append(flag : Bool) ~ Nil {
 			if(flag) {
-				Append("true"->ToCharArray());
+				Append("true");
 			}
 			else {
-				Append("false"->ToCharArray());
+				Append("false");
 			};
 		}
 
@@ -4687,7 +4807,7 @@ each(i : cities) {
 		@param i integer value
 		~#
 		method : public : Append(i : Int) ~ Nil {
-			Append(i->ToString()->ToCharArray());
+			Append(i->ToString());
 		}
 
 		#~
@@ -4695,15 +4815,36 @@ each(i : cities) {
 		@param f float value
 		~#
 		method : public : Append(f : Float) ~ Nil {
-			Append(f->ToString()->ToCharArray());
+			Append(f->ToString());
 		}
 
 		#~
 		Appends a string
 		@param str string object
+		```
+		s := "Hello";
+		s->Append(", World");
+		s->PrintLine();  # Hello, World
+		```
 		~#
 		method : public : Append(str : String) ~ Nil {
-			Append(str->ToCharArray());
+			size := str->Size();
+			if(size = 0) {
+				return;
+			};
+			max := @pos + size;
+			if(max >= @max) {
+				@max += max << 1;
+				temp := Char->New[@max];
+				Runtime->Copy(temp, 0, @string, 0, @string->Size());
+				@string := temp;
+			};
+			i := 0;
+			while(i < size) {
+				@string[@pos] := str->Get(i);
+				@pos += 1;
+				i += 1;
+			};
 		}
 		
 		#~
@@ -4733,10 +4874,9 @@ each(i : cities) {
 		@param length number of characters to copy
 		~#
 		method : public : native : Append(array : Char[], offset : Int, length : Int) ~ Nil {
-			if(offset < 0) {
+			if(offset < 0 | length <= 0) {
 				return;
 			};
-			
 			max := @pos + length;
 			if(max >= @max) {
 				@max += max << 1;
@@ -4744,12 +4884,8 @@ each(i : cities) {
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
 			};
-
-			end := offset + length;
-			for(i := offset; i < end & array[i] <> '\0'; i += 1;) {
-				@string[@pos] := array[i];
-				@pos += 1;
-			};
+			Runtime->Copy(@string, @pos, array, offset, length);
+			@pos += length;
 		}
 		
 		#~
@@ -4779,10 +4915,9 @@ each(i : cities) {
 		@param length number of bytes to copy
 		~#
 		method : public : native : Append(array : Byte[], offset : Int, length : Int) ~ Nil {
-			if(offset < 0) {
+			if(offset < 0 | length <= 0) {
 				return;
 			};
-
 			max := @pos + length;
 			if(max >= @max) {
 				@max += max << 1;
@@ -4790,11 +4925,12 @@ each(i : cities) {
 				Runtime->Copy(temp, 0, @string, 0, @string->Size());
 				@string := temp;
 			};
-
+			i := offset;
 			end := offset + length;
-			for(i := offset; i < end & array[i] <> '\0'; i += 1;) {
+			while(i < end) {
 				@string[@pos] := array[i];
 				@pos += 1;
+				i += 1;
 			};
 		}
 
@@ -4838,6 +4974,10 @@ each(i : cities) {
 		Searches for the first occurrence of a character
 		@param char character to search for
 		@return index of first occurrence, -1 otherwise
+		```
+		pos := "Hello"->Find('l');
+		pos->PrintLine();  # 2
+		```
 		~#
 		method : public : Find(char : Char) ~ Int {
 			return Find(0, char);
@@ -5142,9 +5282,41 @@ each(i : cities) {
 		}
 
 		#~
+		Searches for the last occurrence of a string
+		@param str string to search for
+		@return index of last occurrence, -1 otherwise
+		~#
+		method : public : FindLast(str : String) ~ Int {
+			size := str->Size();
+			if(size = 0 | size > @pos) {
+				return -1;
+			};
+			i := @pos - size;
+			while(i > -1) {
+				match := true;
+				j := 0;
+				while(match & j < size) {
+					if(@string[i + j] <> str->Get(j)) {
+						match := false;
+					};
+					j += 1;
+				};
+				if(match) {
+					return i;
+				};
+				i -= 1;
+			};
+			return -1;
+		}
+
+		#~
 		Searches for the first occurrence of a string
 		@param find string to search for
 		@return index of first occurrence, -1 otherwise
+		```
+		pos := "Hello World"->Find("World");
+		"Found at: {$pos}"->PrintLine();  # Found at: 6
+		```
 		~#
 		method : public : Find(find : String) ~ Int {
 			return Find(0, find);
@@ -5154,9 +5326,46 @@ each(i : cities) {
 		Checks if string contains a substring
 		@param find string to search for
 		@return true if found, false otherwise
+		```
+		if("Hello World"->Contains("World")) {
+		  "Found"->PrintLine();
+		};
+		```
 		~#
 		method : public : Contains(find : String) ~ Bool {
 			return Find(find) > -1;
+		}
+
+		#~
+		Checks if string contains a substring, ignoring case
+		@param find string to search for
+		@return true if found, false otherwise
+		~#
+		method : public : ContainsIgnoreCase(find : String) ~ Bool {
+			size := find->Size();
+			if(size = 0) {
+				return true;
+			};
+			if(size > @pos) {
+				return false;
+			};
+			limit := @pos - size;
+			i := 0;
+			while(i <= limit) {
+				match := true;
+				j := 0;
+				while(match & j < size) {
+					if(@string[i + j]->ToLower() <> find->Get(j)->ToLower()) {
+						match := false;
+					};
+					j += 1;
+				};
+				if(match) {
+					return true;
+				};
+				i += 1;
+			};
+			return false;
 		}
 
 		#~
@@ -5263,17 +5472,33 @@ each(i : cities) {
 		@param find string to search for
 		@param replace string to replace with
 		@return new string instance
+		```
+		result := "cat and cat"->ReplaceAll("cat", "dog");
+		result->PrintLine();  # dog and dog
+		```
 		~#
 		method : public : ReplaceAll(find : String, replace : String) ~ String {
-			last := @self;
-
-			result := last->Replace(find, replace);
-			while(result <> last) {
-				last := result;
-				result := last->Replace(find, replace);
+			find_size := find->Size();
+			if(find_size = 0) {
+				return String->New(@string);
 			};
-			
-			return result;
+			buf := String->New(@pos);
+			offset := 0;
+			index := Find(offset, find);
+			while(index > -1) {
+				if(index > offset) {
+					buf->Append(SubString(offset, index - offset));
+				};
+				if(replace <> Nil) {
+					buf->Append(replace);
+				};
+				offset := index + find_size;
+				index := Find(offset, find);
+			};
+			if(offset < @pos) {
+				buf->Append(SubString(offset, @pos - offset));
+			};
+			return buf;
 		}
 
 		#~
@@ -5330,6 +5555,10 @@ each(i : cities) {
 		@param find string to search for
 		@param replace string to replace with
 		@return new string instance
+		```
+		result := "aabbcc"->Replace("bb", "XX");
+		result->PrintLine();  # aaXXcc
+		```
 		~#
 		method : public : Replace(find : String, replace : String) ~ String {
 			index := Find(find);
@@ -5591,13 +5820,76 @@ each(i : cities) {
 
 			return String->New(@string);
 		}
-		
+
+		#~
+		Truncates the string to at most max characters, appending suffix if cut
+		@param max maximum length of result
+		@return truncated string
+		~#
+		method : public : Truncate(max : Int) ~ String {
+			return Truncate(max, "...");
+		}
+
+		#~
+		Truncates the string to at most max characters, appending suffix if cut
+		@param max maximum length of result
+		@param suffix suffix to append when truncated
+		@return truncated string
+		~#
+		method : public : Truncate(max : Int, suffix : String) ~ String {
+			if(max <= 0) {
+				return "";
+			};
+			if(@pos <= max) {
+				return String->New(@string);
+			};
+			suffix_len := 0;
+			if(suffix <> Nil) {
+				suffix_len := suffix->Size();
+			};
+			cut := max - suffix_len;
+			if(cut < 0) {
+				cut := 0;
+			};
+			buf := SubString(0, cut);
+			if(buf = Nil) {
+				buf := "";
+			};
+			if(suffix <> Nil & suffix_len > 0) {
+				buf->Append(suffix);
+			};
+			return buf;
+		}
+
 		#~
 		Returns rather the string is empty
-		@return true if empty, false otherwise 
+		@return true if empty, false otherwise
+		```
+		str := "";
+		if(str->IsEmpty()) {
+		  "Empty string"->PrintLine();
+		};
+		```
 		~#
 		method : public : IsEmpty() ~ Bool {
-			return @pos = 0 ? true : false; 			
+			return @pos = 0 ? true : false;
+		}
+
+		#~
+		Checks if the string is empty or contains only whitespace
+		@return true if blank, false otherwise
+		~#
+		method : public : IsBlank() ~ Bool {
+			if(@pos = 0) {
+				return true;
+			};
+			each(i : @pos) {
+				c := @string[i];
+				if(<>(c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f')) {
+					return false;
+				};
+			};
+			return true;
 		}
 
 		#~
@@ -5612,15 +5904,22 @@ each(i : cities) {
 		#~
 		Return the size of the string
 		@return size of the string
+		```
+		"Hello"->Size()->PrintLine();  # 5
+		```
 		~#
 		method : public : Size() ~ Int {
-			return @pos;			
+			return @pos;
 		}
-  
+
 		#~
 		Returns character at the given index
 		@param index index offset
 		@return character at index
+		```
+		ch := "Hello"->Get(1);
+		ch->PrintLine();  # e
+		```
 		~#
 		method : public : native : Get(index : Int) ~ Char {
 			if(index > -1 & index < @pos) {
@@ -5684,6 +5983,10 @@ each(i : cities) {
 		#~
 		Parses the string into an integer
 		@return integer value
+		```
+		n := "42"->ToInt();
+		(n * 2)->PrintLine();  # 84
+		```
 		~#
 		method : public : ToInt() ~ Int {
 			return ToInt(10);
@@ -5701,6 +6004,10 @@ each(i : cities) {
 		#~
 		Parses the string into a float
 		@return float value
+		```
+		f := "3.14"->ToFloat();
+		(f * 2.0)->PrintLine();  # 6.28
+		```
 		~#
 		method : public : ToFloat() ~ Float {
 			S2F;
@@ -5739,6 +6046,11 @@ each(i : cities) {
 		Checks if the string starts with the given character
 		@param char character to compare
 		@return true if starts with character, false otherwise
+		```
+		if("https://example.com"->StartsWith('h')) {
+		  "Starts with h"->PrintLine();
+		};
+		```
 		~#
 		method : public : StartsWith(char : Char) ~ Bool {
 			return char <> '\0' & Get(0) = char;
@@ -5748,6 +6060,11 @@ each(i : cities) {
 		Checks if the string ends with the given character
 		@param char character to compare
 		@return true if ends with character, false otherwise
+		```
+		if("report.pdf"->EndsWith('f')) {
+		  "Ends with f"->PrintLine();
+		};
+		```
 		~#
 		method : public : EndsWith(char : Char) ~ Bool {
 			return char <> '\0' & Get(@pos - 1) = char;
@@ -5757,6 +6074,12 @@ each(i : cities) {
 		Checks if the string starts with the given string
 		@param string string to check for
 		@return true if starts with string, false otherwise
+		```
+		url := "https://example.com";
+		if(url->StartsWith("https://")) {
+		  "Secure"->PrintLine();
+		};
+		```
 		~#
 		method : public : StartsWith(string : String) ~ Bool {
 			size := string->Size();
@@ -5778,6 +6101,12 @@ each(i : cities) {
 		Checks if the string ends with the given string
 		@param string string to check for
 		@return true if ends with string, false otherwise
+		```
+		file := "report.pdf";
+		if(file->EndsWith(".pdf")) {
+		  "PDF file"->PrintLine();
+		};
+		```
 		~#
 		method : public : native : EndsWith(string : String) ~ Bool {
 			size := string->Size();
@@ -5798,10 +6127,54 @@ each(i : cities) {
 
 			return false;
 		}
-		
+
+		#~
+		Checks if the string starts with the given string, ignoring case
+		@param string string to check for
+		@return true if starts with string, false otherwise
+		~#
+		method : public : StartsWithIgnoreCase(string : String) ~ Bool {
+			size := string->Size();
+			if(size > @pos) {
+				return false;
+			};
+			i := 0;
+			while(i < size) {
+				if(@string[i]->ToLower() <> string->Get(i)->ToLower()) {
+					return false;
+				};
+				i += 1;
+			};
+			return true;
+		}
+
+		#~
+		Checks if the string ends with the given string, ignoring case
+		@param string string to check for
+		@return true if ends with string, false otherwise
+		~#
+		method : public : EndsWithIgnoreCase(string : String) ~ Bool {
+			size := string->Size();
+			if(size > @pos) {
+				return false;
+			};
+			offset := @pos - size;
+			i := 0;
+			while(i < size) {
+				if(@string[offset + i]->ToLower() <> string->Get(i)->ToLower()) {
+					return false;
+				};
+				i += 1;
+			};
+			return true;
+		}
+
 		#~
 		Reverses a string
-		@return reversed string 
+		@return reversed string
+		```
+		"Hello"->Reverse()->PrintLine();  # olleH
+		```
 		~#
 		method : public : native : Reverse() ~ String {
 			temp := Char->New[@max];
@@ -5872,6 +6245,10 @@ each(i : cities) {
 		#~
 		Removes all leading and trailing white space
 		@return trimmed string
+		```
+		cleaned := "  hello world  "->Trim();
+		cleaned->PrintLine();  # hello world
+		```
 		~#
 		method : public : native : Trim() ~ String {
 			if(@pos = 0) {
@@ -5906,7 +6283,30 @@ each(i : cities) {
 	
 			return String->New(@string, start, end - start + 1);
 		}
-		
+
+		#~
+		Removes all leading and trailing occurrences of characters in the given set
+		@param chars string of characters to trim
+		@return trimmed string
+		~#
+		method : public : TrimChars(chars : String) ~ String {
+			if(chars = Nil | chars->IsEmpty() | @pos = 0) {
+				return String->New(@string);
+			};
+			start := 0;
+			while(start < @pos & chars->Has(@string[start])) {
+				start += 1;
+			};
+			end := @pos - 1;
+			while(end > start & chars->Has(@string[end])) {
+				end -= 1;
+			};
+			if(start > end) {
+				return "";
+			};
+			return SubString(start, end - start + 1);
+		}
+
 		#~
 		Splits a string into lines
 		@return array of lines
@@ -5986,7 +6386,13 @@ each(i : cities) {
 		#~
 		Splits a string based upon delimiter
 		@param delim splitting delimiter
-		@return array of split sub strings 
+		@return array of split sub strings
+		```
+		parts := "one,two,three"->Split(",");
+		each(part in parts) {
+		  part->PrintLine();
+		};
+		```
 		~#
 		method : public : Split(delim : String) ~ String[] {
 			delim_size := delim->Size();
@@ -6069,7 +6475,11 @@ each(i : cities) {
 		#~
 		Splits a string based upon delimiter
 		@param delim splitting delimiter
-		@return array of split sub strings 
+		@return array of split sub strings
+		```
+		parts := "a:b:c"->Split(':');
+		parts->Size()->PrintLine();  # 3
+		```
 		~#
 		method : public : Split(delim : Char) ~ String[] {
 			count := 0;
@@ -6097,7 +6507,7 @@ each(i : cities) {
 			};
 
 			if(start <> 0) {
-				strings[count++] := String->New(@string, start, @string->Size() - start);
+				strings[count++] := String->New(@string, start, @pos - start);
 			};
 
 			return strings;
@@ -6106,6 +6516,9 @@ each(i : cities) {
 		#~
 		Transforms a to upper case
 		@return upper case string
+		```
+		"hello"->ToUpper()->PrintLine();  # HELLO
+		```
 		~#
 		method : public : native : ToUpper() ~ String {
 			array := Char->New[@pos];
@@ -6124,6 +6537,9 @@ each(i : cities) {
 		#~
 		Transforms a to lower case
 		@return lower case string
+		```
+		"WORLD"->ToLower()->PrintLine();  # world
+		```
 		~#
 		method : public : native : ToLower() ~ String {
 			array := Char->New[@pos];
@@ -6143,6 +6559,10 @@ each(i : cities) {
 		Creates a sub-string
 		@param length max length of sub-string
 		@return sub-string
+		```
+		tail := "Hello World"->SubString(5);
+		tail->PrintLine();  # Hello
+		```
 		~#
 		method : public : SubString(length : Int) ~ String {
 			return SubString(0, length);
@@ -6153,14 +6573,22 @@ each(i : cities) {
 		@param offset index offset
 		@param length max length of sub-string
 		@return sub-string
+		```
+		sub := "Hello World"->SubString(6, 5);
+		sub->PrintLine();  # World
+		```
 		~#
 		method : public : SubString(offset : Int, length : Int) ~ String {
 			if(offset < 0 | offset > @pos) {
 				return Nil;
 			};
 
+			if(length < 0) {
+				return Nil;
+			};
+
 			end : Int := length + offset;
-			if(end < 0 | end > @pos) {
+			if(end > @pos) {
 				return Nil;
 			};
 
@@ -6176,6 +6604,11 @@ each(i : cities) {
 		Compares two strings
 		@param rhs string to compare
 		@return true if equal, false otherwise
+		```
+		if("hello"->Equals("hello")) {
+		  "Match"->PrintLine();
+		};
+		```
 		~#
 		method : public : native : Equals(rhs : String) ~ Bool {
 			if(@pos <> rhs->Size()) {
@@ -6286,7 +6719,7 @@ each(i : cities) {
 			if(GetClassID() <> rhs->GetClassID()) {
 				return -1;
 			};
-						
+
 			# check each character
 			right_string := rhs->As(String);
 			for(i := 0; i < @pos; i += 1;) {
@@ -6299,17 +6732,50 @@ each(i : cities) {
 					return -1;
 				};
 			};
-			
+
 			# check length
 			if(@pos > right_string->Size()) {
 				return 1;
 			};
-			
+
 			if(@pos < right_string->Size()) {
 				return -1;
 			};
-			
+
 			# equal
+			return 0;
+		}
+
+		#~
+		Compares two strings, ignoring case
+		@param rhs string to compare
+		@return 0 if equal, -1 if right-hand side is greater, 1 if left-hand side is greater
+		~#
+		method : public : CompareIgnoreCase(rhs : String) ~ Int {
+			rhs_size := rhs->Size();
+			limit : Int;
+			if(@pos < rhs_size) {
+				limit := @pos;
+			}
+			else {
+				limit := rhs_size;
+			};
+			for(i := 0; i < limit; i += 1;) {
+				l := @string[i]->ToLower();
+				r := rhs->Get(i)->ToLower();
+				if(l > r) {
+					return 1;
+				};
+				if(l < r) {
+					return -1;
+				};
+			};
+			if(@pos > rhs_size) {
+				return 1;
+			};
+			if(@pos < rhs_size) {
+				return -1;
+			};
 			return 0;
 		}
 
@@ -6327,6 +6793,24 @@ each(i : cities) {
 		~#
 		method : public : Copy() ~ String {
 			return String->New(@string);
+		}
+
+		#~
+		Returns a string repeated n times
+		@param n number of repetitions
+		@return repeated string
+		~#
+		method : public : Repeat(n : Int) ~ String {
+			if(n <= 0 | @pos = 0) {
+				return "";
+			};
+			buf := String->New(@pos * n);
+			i := 0;
+			while(i < n) {
+				buf->Append(@self);
+				i += 1;
+			};
+			return buf;
 		}
 
 		#~
@@ -6753,12 +7237,17 @@ bundle System.API {
 }
 
 #~
-Provides support for dates and times
-~#	
-bundle System.Time {	
+Date, time, and elapsed-timer utilities. Date provides current date/time and arithmetic (AddDays, AddHours). Timer measures wall-clock elapsed time. Included in lang.obl.
+~#
+bundle System.Time {
 	#~
-	Provides date and time functionality 
-	~#	
+	Provides date and time functionality
+	```
+	today := System.Time.Date->New();
+	today->GetDateString()->PrintLine();   # e.g. 2026-05-23
+	today->GetTimeString(true)->PrintLine(); # 24-hr time
+	```
+	~#
 	class Date implements System.Compare, System.Clone, System.Stringify {
 		@day : Int;
 		@month : Int;
@@ -6924,6 +7413,10 @@ bundle System.Time {
 		#~
 		Returns the day
 		@return day
+		```
+		d := System.Time.Date->New();
+		"Date: {$d->GetMonth()}/{$d->GetDay()}/{$d->GetYear()}"->PrintLine();
+		```
 		~#
 		method : public : GetDay() ~ Int {
 			return @day;
@@ -6951,8 +7444,11 @@ bundle System.Time {
 		}
 
 		#~
-		Returns the month 
+		Returns the month
 		@return 1-12 month value
+		```
+		System.Time.Date->New()->GetMonth()->PrintLine();
+		```
 		~#
 		method : public : GetMonth() ~ Int {
 			return @month;
@@ -6972,24 +7468,33 @@ bundle System.Time {
 		}
 
 		#~
-		Returns the year 
+		Returns the year
 		@return year
+		```
+		System.Time.Date->New()->GetYear()->PrintLine();
+		```
 		~#
 		method : public : GetYear() ~ Int {
 			return @year;
 		}
 		
 		#~
-		Returns the hours 
+		Returns the hours
 		@return hours
+		```
+		System.Time.Date->New()->GetHours()->PrintLine();
+		```
 		~#
 		method : public : GetHours() ~ Int {
 			return @hours;
 		}
 		
 		#~
-		Returns the minutes  
+		Returns the minutes
 		@return minutes
+		```
+		System.Time.Date->New()->GetMinutes()->PrintLine();
+		```
 		~#
 		method : public : GetMinutes() ~ Int {
 			return @mins;
@@ -6999,6 +7504,11 @@ bundle System.Time {
 		Gets the time string
 		@param is_24hr true if 24-hour clock, false otherwise
 		@return time string
+		```
+		d := System.Time.Date->New();
+		d->GetTimeString(false)->PrintLine();  # 3:45 PM
+		d->GetTimeString(true)->PrintLine();   # 15:45
+		```
 		~#
 		method : public : GetTimeString(is_24hr : Bool := true) ~ String {
 			buffer := "";
@@ -7039,6 +7549,10 @@ bundle System.Time {
 		#~
 		Gets the date string
 		@return date string
+		```
+		d := System.Time.Date->New();
+		d->GetDateString()->PrintLine();  # 2026-05-23
+		```
 		~#
 		method : public : GetDateString() ~ String {
 			buffer := "";
@@ -7053,8 +7567,11 @@ bundle System.Time {
 		}
 		
 		#~
-		Returns the seconds  
+		Returns the seconds
 		@return seconds
+		```
+		System.Time.Date->New()->GetSeconds()->PrintLine();
+		```
 		~#
 		method : public : GetSeconds() ~ Int {
 			return @secs;
@@ -7063,6 +7580,11 @@ bundle System.Time {
 		#~
 		Add days to the date
 		@param value days to add
+		```
+		d := System.Time.Date->New();
+		d->AddDays(7);
+		d->GetDateString()->PrintLine();  # one week from today
+		```
 		~#
 		method : public : AddDays(value : Int) ~ Nil {
 			DATE_TIME_ADD_DAYS;
@@ -7071,6 +7593,11 @@ bundle System.Time {
 		#~
 		Add hours to the date
 		@param value hours to add
+		```
+		d := System.Time.Date->New();
+		d->AddHours(24);
+		d->GetDateString()->PrintLine();  # tomorrow
+		```
 		~#
 		method : public : AddHours(value : Int) ~ Nil {
 			DATE_TIME_ADD_HOURS;
@@ -7103,6 +7630,9 @@ bundle System.Time {
 		#~
 		Creates a string representation of the date
 		@return string representation of the date
+		```
+		System.Time.Date->New()->ToString()->PrintLine();
+		```
 		~#
 		method : public : ToString() ~ String {
 			out := String->New();
@@ -7289,8 +7819,16 @@ bundle System.Time {
 	}
 	
 	#~
-	Provides elapsed time 
-	~#	
+	Provides elapsed time
+	```
+	timer := System.Time.Timer->New();
+	timer->Start();
+	# ... work ...
+	timer->End();
+	elapsed := timer->GetElapsedTime();
+	"Elapsed: {$elapsed}s"->PrintLine();
+	```
+	~#
 	class Timer {
 		@elapsed : Int;
 		@running : Bool;
@@ -7309,6 +7847,10 @@ bundle System.Time {
 		
 		#~
 		Starts the timer
+		```
+		timer := System.Time.Timer->New();
+		timer->Start();
+		```
 		~#
 		method : public : Start() ~ Nil {
 			TIMER_START;
@@ -7317,6 +7859,9 @@ bundle System.Time {
 		
 		#~
 		Ends the timer
+		```
+		timer->End();
+		```
 		~#
 		method : public : End() ~ Nil {
 			TIMER_END;
@@ -7325,6 +7870,10 @@ bundle System.Time {
 		
 		#~
 		Number of clock ticks per/second
+		```
+		secs := timer->GetElapsedTime();
+		"Time: {$secs} seconds"->PrintLine();
+		```
 		~#
 		method : public : GetElapsedTime() ~ Float {
 			if(@running) {
@@ -7483,7 +8032,7 @@ class Counter from System.Concurrency.Thread {
 }
 
 #~
-Provides I/O functions
+File and console I/O primitives. FileReader and FileWriter handle sequential file access; Console provides stdin/stdout operations. Included in lang.obl — no extra -lib flag needed.
 ~#
 bundle System.IO {
 	#~
@@ -7616,6 +8165,9 @@ bundle System.IO {
 		#~
 		Writes a character string
 		@param str string to be written
+		```
+		System.IO.Console->WriteString("Processing...\n");
+		```
 		~#
 		function : public : WriteString(str : System.String) ~ Int {
 			return WriteString(str->ToCharArray());
@@ -7666,6 +8218,11 @@ bundle System.IO {
 		#~
 		Reads a string from STDIN
 		@return string read
+		```
+		"Enter your name: "->Print();
+		name := System.IO.Console->ReadLine();
+		"Hello, {$name}!"->PrintLine();
+		```
 		~#
 		function : ReadLine() ~ System.String {
 			console := IO.ConsoleIO->Instance();
@@ -8589,6 +9146,13 @@ Supports filesystem operations
 bundle System.IO.Filesystem {	
 	#~
 	Provides file operations
+	```
+	# static file utilities
+	if(System.IO.File->Exists("data.txt")) {
+	  content := System.IO.FileReader->ReadFile("data.txt");
+	  System.IO.FileWriter->WriteFile("copy.txt", content);
+	};
+	```
 	~#
 	class File {
 		@handle : Int;
@@ -8679,6 +9243,10 @@ bundle System.IO.Filesystem {
 		Returns the size of the file
 		@param n filename
 		@return size of the file
+		```
+		bytes := System.IO.File->Size("data.bin");
+		"Size: {$bytes} bytes"->PrintLine();
+		```
 		~#
 		function : Size(n : System.String) ~ Int {
 			FILE_SIZE;
@@ -8814,6 +9382,11 @@ bundle System.IO.Filesystem {
 		Deletes the file
 		@param n filename
 		@return true if file was deleted, false otherwise
+		```
+		if(System.IO.File->Delete("temp.txt")) {
+		  "Deleted"->PrintLine();
+		};
+		```
 		~#
 		function : Delete(n : System.String) ~ Bool {
 			FILE_DELETE;
@@ -8921,6 +9494,11 @@ bundle System.IO.Filesystem {
 		Checks if a file exists
 		@param n filename
 		@return true if file exists
+		```
+		if(System.IO.File->Exists("config.json")) {
+		  "File found"->PrintLine();
+		};
+		```
 		~#
 		function : Exists(n : System.String) ~ Bool {
 			FILE_EXISTS;
@@ -8939,6 +9517,9 @@ bundle System.IO.Filesystem {
 		@param o original filename
 		@param n new filename
 		@return true if file was renamed
+		```
+		System.IO.File->Rename("old.txt", "new.txt");
+		```
 		~#
 		function : Rename(o : System.String, n : System.String) ~ Bool {
 			FILE_RENAME;
@@ -8949,6 +9530,9 @@ bundle System.IO.Filesystem {
 		@param s source filename
 		@param d destination filename
 		@return true if file was copied
+		```
+		System.IO.File->Copy("source.txt", "backup.txt");
+		```
 		~#
 		function : Copy(s : System.String, d : System.String) ~ Bool {
 			return Copy(s, d, false);
@@ -8968,6 +9552,14 @@ bundle System.IO.Filesystem {
 
 	#~
 	Supports file read operations
+	```
+	reader := System.IO.FileReader->New("data.txt");
+	while(reader->IsEOF() <> true) {
+	  line := reader->ReadLine();
+	  line->PrintLine();
+	};
+	reader->Close();
+	```
 	~#
 	class FileReader from File implements System.IO.InputStream {
 		#~
@@ -8977,10 +9569,15 @@ bundle System.IO.Filesystem {
 		New(name : System.String) {
 			Parent(name);
 			FILE_OPEN_READ;
-		}	
+		}
 
 		#~
 		Closes the file
+		```
+		reader := System.IO.FileReader->New("file.txt");
+		# ... read operations ...
+		reader->Close();
+		```
 		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
@@ -8989,6 +9586,12 @@ bundle System.IO.Filesystem {
 		#~
 		Reads a byte
 		@return byte read
+		```
+		reader := System.IO.FileReader->New("data.bin");
+		b := reader->ReadByte();
+		b->PrintLine();
+		reader->Close();
+		```
 		~#
 		method : public : ReadByte() ~ Byte {
 			FILE_IN_BYTE;
@@ -9017,8 +9620,17 @@ bundle System.IO.Filesystem {
 		}
 
 		#~
-		Reads a string until a newline or character return is detected 
+		Reads a string until a newline or character return is detected
 		@return character string
+		```
+		reader := System.IO.FileReader->New("log.txt");
+		line := reader->ReadLine();
+		while(line <> Nil) {
+		  line->PrintLine();
+		  line := reader->ReadLine();
+		};
+		reader->Close();
+		```
 		~#
 		method : public : ReadLine() ~ System.String {
 			if(IsEoF()) {
@@ -9033,11 +9645,17 @@ bundle System.IO.Filesystem {
 		method : ReadString(buffer : Char[]) ~ Nil {
 			FILE_IN_STRING;
 		}
-		
+
 		#~
 		Reads a file's contents into a string
 		@param name filename
 		@return character string, Nil if file is not found
+		```
+		content := System.IO.FileReader->ReadFile("readme.txt");
+		if(content <> Nil) {
+		  content->PrintLine();
+		};
+		```
 		~#
 		function : ReadFile(name : String) ~ String {
 			len := File->Size(name);
@@ -9077,6 +9695,11 @@ bundle System.IO.Filesystem {
 	
 	#~
 	Supports file write operations
+	```
+	writer := System.IO.FileWriter->New("output.txt");
+	writer->WriteString("Hello, World!\n");
+	writer->Close();
+	```
 	~#
 	class FileWriter from File implements System.IO.OutputStream {
 		#~
@@ -9115,6 +9738,9 @@ bundle System.IO.Filesystem {
 		@param name filename
 		@param content string to write
 		@return true if successful, false otherwise
+		```
+		System.IO.FileWriter->WriteFile("output.txt", "Hello, World!");
+		```
 		~#
 		function : WriteFile(name : String, content : String) ~ Bool {
 			writer : FileWriter := FileWriter->New(name);
@@ -9132,20 +9758,29 @@ bundle System.IO.Filesystem {
 		@param name filename
 		@param content to write
 		@return true if successful, false otherwise
+		```
+		data := Byte[]{72, 101, 108, 108, 111};
+		System.IO.FileWriter->WriteFile("bytes.bin", data);
+		```
 		~#
 		function : WriteFile(name : String, content : Byte[]) ~ Bool {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteBuffer(content);
-				writer->Close();				
+				writer->Close();
 				return true;
 			};
 
 			return false;
 		}
-		
+
 		#~
 		Closes a file
+		```
+		writer := System.IO.FileWriter->New("file.txt");
+		writer->WriteString("done");
+		writer->Close();
+		```
 		~#
 		method : public : Close() ~ Nil {
 			FILE_CLOSE;
@@ -9155,6 +9790,11 @@ bundle System.IO.Filesystem {
 		Writes a byte
 		@param b byte to write
 		@return true if byte was written, false otherwise
+		```
+		writer := System.IO.FileWriter->New("out.bin");
+		writer->WriteByte(65);  # 'A'
+		writer->Close();
+		```
 		~#
 		method : public : WriteByte(b : Int) ~ Bool {
 			FILE_OUT_BYTE;
@@ -9203,6 +9843,11 @@ bundle System.IO.Filesystem {
 		#~
 		Writes a character string
 		@param str string to be written
+		```
+		writer := System.IO.FileWriter->New("log.txt");
+		writer->WriteString("Event logged\n");
+		writer->Close();
+		```
 		~#
 		method : public : WriteString(str : System.String) ~ Nil {
 			WriteString(str->ToCharArray());
@@ -9212,7 +9857,7 @@ bundle System.IO.Filesystem {
 			FILE_OUT_STRING;
 		}
 	}
-	
+
 	#~
 	Supports file read and write operations
 	~#

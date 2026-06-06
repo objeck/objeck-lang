@@ -1,5 +1,21 @@
 /***************************************************************************
- * Links pre-compiled code into existing program
+ * Loads and links pre-compiled library (.obl) files into a program.
+ *
+ * This file has two distinct responsibilities:
+ *
+ * 1. Library loading — deserializes binary .obl bytecode into in-memory
+ *    class and method structures. ReadStatement() walks every instruction
+ *    in every library method, reading the correct number of bytes per opcode
+ *    to advance the buffer pointer. Every opcode must have a case here or
+ *    the parser loses its position and exits silently with code 1.
+ *
+ * 2. Reference resolution — patches program references (LIB_MTHD_CALL,
+ *    LIB_NEW_OBJ_INST, etc.) to the correct class/method IDs from the
+ *    loaded libraries.
+ *
+ * NOTE: When adding a new opcode, ReadStatement() in this file must be
+ * updated alongside emit.cpp (Write), loader.cpp (LoadStatements), and
+ * dispatch.cpp (handler + table). Missing this case is a silent failure.
  *
  * Copyright (c) 2025, Randy Hollines
  * All rights reserved.
@@ -723,8 +739,26 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     // close file
     in.close();
 
+    // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
+    // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
+    // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
+    uint32_t uncmp_hint = 0;
+    const char* src;
+    unsigned long src_size;
+    const bool zlib_at_4 = buffer_size >= 6 &&
+                            static_cast<uint8_t>(buffer[4]) == 0x78 &&
+                            (0x78u * 256u + static_cast<uint8_t>(buffer[5])) % 31u == 0u;
+    if(static_cast<uint8_t>(buffer[0]) == 0x78 && !zlib_at_4) {
+      src = buffer;
+      src_size = static_cast<unsigned long>(buffer_size);
+    } else {
+      memcpy(&uncmp_hint, buffer, sizeof(uncmp_hint));
+      src = buffer + sizeof(uncmp_hint);
+      src_size = static_cast<unsigned long>(buffer_size - sizeof(uncmp_hint));
+    }
+
     unsigned long dest_len;
-    char* out = OutputStream::UncompressZlib(buffer, static_cast<unsigned long>(buffer_size), dest_len);
+    char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
     if(!out) {
       std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
       exit(1);
@@ -1773,6 +1807,20 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
     case TRY_END:
       instrs.push_back(new LibraryInstr(line_num, TRY_END));
+      break;
+
+    case JMP_TABLE: {
+      const INT_VALUE base = ReadInt();
+      const INT_VALUE range = ReadInt();
+      const INT_VALUE default_label = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, JMP_TABLE, base, range, default_label));
+    }
+      break;
+
+    case JMP_TABLE_SLOT: {
+      const INT_VALUE target = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, JMP_TABLE_SLOT, target));
+    }
       break;
 
     default: {

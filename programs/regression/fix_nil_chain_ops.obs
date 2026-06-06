@@ -1,0 +1,91 @@
+class FixNilChainOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Try()/Otherwise() nil-chain patterns..."->PrintLine();
+        pass := true;
+
+        # Otherwise with Nil string
+        s : String;
+        r := s->Otherwise("fallback");
+        if(<>r->Equals("fallback")) {
+            pass := false;
+            "  FAIL: Nil->Otherwise"->PrintLine();
+        };
+
+        # Otherwise with non-Nil value — returns original
+        s2 := "hello";
+        r2 := s2->Otherwise("fallback");
+        if(<>r2->Equals("hello")) {
+            pass := false;
+            "  FAIL: non-Nil->Otherwise"->PrintLine();
+        };
+
+        # Try on Nil object — returns Nil proxy
+        obj : String;
+        v1 := obj->Try()->Size();
+        if(v1 <> 0) {
+            pass := false;
+            "  FAIL: Nil->Try()->Size() = {$v1}"->PrintLine();
+        };
+
+        # Try + Otherwise: Nil propagates to Otherwise
+        v2 := obj->Try()->Size()->Otherwise(-1);
+        if(v2 <> -1) {
+            pass := false;
+            "  FAIL: Nil->Try()->Size()->Otherwise(-1) = {$v2}"->PrintLine();
+        };
+
+        # Try on non-Nil: passes through
+        obj2 := "world";
+        v3 := obj2->Try()->Size();
+        if(v3 <> 5) {
+            pass := false;
+            "  FAIL: 'world'->Try()->Size() = {$v3}"->PrintLine();
+        };
+
+        # Try + Otherwise on non-Nil: returns actual value
+        v4 := obj2->Try()->Size()->Otherwise(-1);
+        if(v4 <> 5) {
+            pass := false;
+            "  FAIL: 'world'->Try()->Size()->Otherwise(-1) = {$v4}"->PrintLine();
+        };
+
+        # Chained Otherwise fallback chain
+        n1 : String;
+        n2 : String;
+        final := n1->Otherwise(n2->Otherwise("ultimate"));
+        if(<>final->Equals("ultimate")) {
+            pass := false;
+            "  FAIL: chained Otherwise = {$final}"->PrintLine();
+        };
+
+        # nil check guard pattern
+        maybe : String;
+        safe_len := 0;
+        if(maybe <> Nil) {
+            safe_len := maybe->Size();
+        } else {
+            safe_len := -1;
+        };
+        if(safe_len <> -1) {
+            pass := false;
+            "  FAIL: nil guard = {$safe_len}"->PrintLine();
+        };
+
+        # Non-nil guard
+        maybe2 := "test";
+        safe_len2 := 0;
+        if(maybe2 <> Nil) {
+            safe_len2 := maybe2->Size();
+        };
+        if(safe_len2 <> 4) {
+            pass := false;
+            "  FAIL: non-nil guard = {$safe_len2}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Nil chain operations"->PrintLine();
+        } else {
+            "FAIL: Nil chain operations"->PrintLine();
+        };
+    }
+}

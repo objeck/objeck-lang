@@ -1,0 +1,273 @@
+# Single-case, linear (2-5 cases), jump-table (dense >=6), and binary-tree (sparse) paths
+
+class SelectDispatchTest {
+    function : Main(args : String[]) ~ Nil {
+        pass := true;
+
+        # --- single-case select ---
+        x := 42;
+        r1 := "";
+        select(x) {
+            label 42: { r1 := "hit"; }
+        };
+        if(r1->Compare("hit") <> 0) {
+            "  FAIL: single-case match"->PrintLine();
+            pass := false;
+        };
+
+        r2 := "";
+        select(x) {
+            label 99: { r2 := "hit"; }
+            other: { r2 := "other"; }
+        };
+        if(r2->Compare("other") <> 0) {
+            "  FAIL: single-case other"->PrintLine();
+            pass := false;
+        };
+
+        # --- linear scan (2 cases) ---
+        y := 2;
+        r3 := "";
+        select(y) {
+            label 1: { r3 := "one"; }
+            label 2: { r3 := "two"; }
+        };
+        if(r3->Compare("two") <> 0) {
+            "  FAIL: linear 2-case"->PrintLine();
+            pass := false;
+        };
+
+        # --- linear scan (5 cases) ---
+        z := 4;
+        r4 := 0;
+        select(z) {
+            label 1: { r4 := 10; }
+            label 2: { r4 := 20; }
+            label 3: { r4 := 30; }
+            label 4: { r4 := 40; }
+            label 5: { r4 := 50; }
+        };
+        if(r4 <> 40) {
+            "  FAIL: linear 5-case"->PrintLine();
+            pass := false;
+        };
+
+        # --- linear scan with other ---
+        w := 99;
+        r5 := 0;
+        select(w) {
+            label 1: { r5 := 1; }
+            label 2: { r5 := 2; }
+            label 3: { r5 := 3; }
+            other: { r5 := -1; }
+        };
+        if(r5 <> -1) {
+            "  FAIL: linear other"->PrintLine();
+            pass := false;
+        };
+
+        # --- jump table (dense 12 cases: 0..11) ---
+        each(i : 12) {
+            result := 0;
+            select(i) {
+                label 0:  { result := 100; }
+                label 1:  { result := 101; }
+                label 2:  { result := 102; }
+                label 3:  { result := 103; }
+                label 4:  { result := 104; }
+                label 5:  { result := 105; }
+                label 6:  { result := 106; }
+                label 7:  { result := 107; }
+                label 8:  { result := 108; }
+                label 9:  { result := 109; }
+                label 10: { result := 110; }
+                label 11: { result := 111; }
+            };
+            if(result <> 100 + i) {
+                "  FAIL: jump-table case {$i}"->PrintLine();
+                pass := false;
+            };
+        };
+
+        # --- jump table with holes and other ---
+        r6 := 0;
+        select(7) {
+            label 0:  { r6 := 0; }
+            label 2:  { r6 := 2; }
+            label 4:  { r6 := 4; }
+            label 6:  { r6 := 6; }
+            label 8:  { r6 := 8; }
+            label 10: { r6 := 10; }
+            other: { r6 := -1; }
+        };
+        if(r6 <> -1) {
+            "  FAIL: jump-table hole other"->PrintLine();
+            pass := false;
+        };
+
+        # --- binary tree (sparse: 1, 100, 10000, 1000000, 100000000, 10000000000) ---
+        r7 := 0;
+        v := 10000;
+        select(v) {
+            label 1:           { r7 := 1; }
+            label 100:         { r7 := 2; }
+            label 10000:       { r7 := 3; }
+            label 1000000:     { r7 := 4; }
+            label 100000000:   { r7 := 5; }
+            label 10000000000: { r7 := 6; }
+        };
+        if(r7 <> 3) {
+            "  FAIL: binary-tree sparse"->PrintLine();
+            pass := false;
+        };
+
+        # --- string select (5 labels: uses linear scan on hashed strings) ---
+        s := "banana";
+        r8 := "";
+        select(s) {
+            label "apple":  { r8 := "apple"; }
+            label "banana": { r8 := "banana"; }
+            label "cherry": { r8 := "cherry"; }
+            label "date":   { r8 := "date"; }
+            label "elderberry": { r8 := "elderberry"; }
+        };
+        if(r8->Compare("banana") <> 0) {
+            "  FAIL: string select"->PrintLine();
+            pass := false;
+        };
+
+        # --- string BST (6 labels: uses BST on hashed strings) ---
+        r9 := "";
+        select("delta") {
+            label "alpha":   { r9 := "alpha"; }
+            label "beta":    { r9 := "beta"; }
+            label "gamma":   { r9 := "gamma"; }
+            label "delta":   { r9 := "delta"; }
+            label "epsilon": { r9 := "epsilon"; }
+            label "zeta":    { r9 := "zeta"; }
+        };
+        if(r9->Compare("delta") <> 0) {
+            "  FAIL: string BST 6-label match"->PrintLine();
+            pass := false;
+        };
+
+        r10 := "";
+        select("zeta") {
+            label "alpha":   { r10 := "alpha"; }
+            label "beta":    { r10 := "beta"; }
+            label "gamma":   { r10 := "gamma"; }
+            label "delta":   { r10 := "delta"; }
+            label "epsilon": { r10 := "epsilon"; }
+            label "zeta":    { r10 := "zeta"; }
+        };
+        if(r10->Compare("zeta") <> 0) {
+            "  FAIL: string BST 6-label last-slot match"->PrintLine();
+            pass := false;
+        };
+
+        r11 := "";
+        select("nomatch") {
+            label "alpha":   { r11 := "alpha"; }
+            label "beta":    { r11 := "beta"; }
+            label "gamma":   { r11 := "gamma"; }
+            label "delta":   { r11 := "delta"; }
+            label "epsilon": { r11 := "epsilon"; }
+            label "zeta":    { r11 := "zeta"; }
+            other: { r11 := "other"; }
+        };
+        if(r11->Compare("other") <> 0) {
+            "  FAIL: string BST 6-label no-match"->PrintLine();
+            pass := false;
+        };
+
+        # --- variable string BST (6 labels: runtime HashID path) ---
+        sv6 := "gamma";
+        r12 := "";
+        select(sv6) {
+            label "alpha":   { r12 := "alpha"; }
+            label "beta":    { r12 := "beta"; }
+            label "gamma":   { r12 := "gamma"; }
+            label "delta":   { r12 := "delta"; }
+            label "epsilon": { r12 := "epsilon"; }
+            label "zeta":    { r12 := "zeta"; }
+        };
+        if(r12->Compare("gamma") <> 0) {
+            "  FAIL: variable string BST 6-label mid match"->PrintLine();
+            pass := false;
+        };
+
+        sv6b := "zeta";
+        r13 := "";
+        select(sv6b) {
+            label "alpha":   { r13 := "alpha"; }
+            label "beta":    { r13 := "beta"; }
+            label "gamma":   { r13 := "gamma"; }
+            label "delta":   { r13 := "delta"; }
+            label "epsilon": { r13 := "epsilon"; }
+            label "zeta":    { r13 := "zeta"; }
+        };
+        if(r13->Compare("zeta") <> 0) {
+            "  FAIL: variable string BST 6-label last match"->PrintLine();
+            pass := false;
+        };
+
+        sv6c := "nomatch";
+        r14 := "";
+        select(sv6c) {
+            label "alpha":   { r14 := "alpha"; }
+            label "beta":    { r14 := "beta"; }
+            label "gamma":   { r14 := "gamma"; }
+            label "delta":   { r14 := "delta"; }
+            label "epsilon": { r14 := "epsilon"; }
+            label "zeta":    { r14 := "zeta"; }
+            other: { r14 := "other"; }
+        };
+        if(r14->Compare("other") <> 0) {
+            "  FAIL: variable string BST 6-label no-match"->PrintLine();
+            pass := false;
+        };
+
+        # --- variable string BST (11 labels: mirrors MCP ProcessPost dispatch) ---
+        each(i : 11) {
+            sv11 := "";
+            expected := "";
+            if(i = 0) { sv11 := "ping"; expected := "ping"; }
+            else if(i = 1) { sv11 := "initialize"; expected := "initialize"; }
+            else if(i = 2) { sv11 := "notifications/initialized"; expected := "notifications/initialized"; }
+            else if(i = 3) { sv11 := "logging/setLevel"; expected := "logging/setLevel"; }
+            else if(i = 4) { sv11 := "resources/templates/list"; expected := "resources/templates/list"; }
+            else if(i = 5) { sv11 := "resources/list"; expected := "resources/list"; }
+            else if(i = 6) { sv11 := "resources/read"; expected := "resources/read"; }
+            else if(i = 7) { sv11 := "tools/list"; expected := "tools/list"; }
+            else if(i = 8) { sv11 := "tools/call"; expected := "tools/call"; }
+            else if(i = 9) { sv11 := "prompts/list"; expected := "prompts/list"; }
+            else { sv11 := "prompts/get"; expected := "prompts/get"; };
+
+            r15 := "";
+            select(sv11) {
+                label "ping":                      { r15 := "ping"; }
+                label "initialize":                { r15 := "initialize"; }
+                label "notifications/initialized": { r15 := "notifications/initialized"; }
+                label "logging/setLevel":          { r15 := "logging/setLevel"; }
+                label "resources/templates/list":  { r15 := "resources/templates/list"; }
+                label "resources/list":            { r15 := "resources/list"; }
+                label "resources/read":            { r15 := "resources/read"; }
+                label "tools/list":                { r15 := "tools/list"; }
+                label "tools/call":                { r15 := "tools/call"; }
+                label "prompts/list":              { r15 := "prompts/list"; }
+                label "prompts/get":               { r15 := "prompts/get"; }
+            };
+            if(r15->Compare(expected) <> 0) {
+                "  FAIL: variable string BST 11-label case {$i} ('{$sv11}')"->PrintLine();
+                pass := false;
+            };
+        };
+
+        if(pass) {
+            "PASS: select dispatch tests"->PrintLine();
+        }
+        else {
+            "FAIL: select dispatch tests"->PrintLine();
+        };
+    }
+}

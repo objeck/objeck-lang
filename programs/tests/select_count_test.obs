@@ -1,0 +1,56 @@
+bundle Default {
+    class SelectCountTest {
+        function : Main(args : String[]) ~ Nil {
+            "=== 5 cases ==="->PrintLine();
+            Test5("ping")->PrintLine();
+            Test5("alpha")->PrintLine();
+            Test5("nomatch")->PrintLine();
+
+            "=== 6 cases ==="->PrintLine();
+            Test6("ping")->PrintLine();
+            Test6("alpha")->PrintLine();
+            Test6("nomatch")->PrintLine();
+
+            "=== 7 cases ==="->PrintLine();
+            Test7("ping")->PrintLine();
+            Test7("alpha")->PrintLine();
+            Test7("nomatch")->PrintLine();
+        }
+
+        function : Test5(s : String) ~ String {
+            select(s) {
+                label "ping": { return "PING"; }
+                label "alpha": { return "ALPHA"; }
+                label "beta": { return "BETA"; }
+                label "gamma": { return "GAMMA"; }
+                label "delta": { return "DELTA"; }
+            };
+            return "NO_MATCH";
+        }
+
+        function : Test6(s : String) ~ String {
+            select(s) {
+                label "ping": { return "PING"; }
+                label "alpha": { return "ALPHA"; }
+                label "beta": { return "BETA"; }
+                label "gamma": { return "GAMMA"; }
+                label "delta": { return "DELTA"; }
+                label "epsilon": { return "EPSILON"; }
+            };
+            return "NO_MATCH";
+        }
+
+        function : Test7(s : String) ~ String {
+            select(s) {
+                label "ping": { return "PING"; }
+                label "alpha": { return "ALPHA"; }
+                label "beta": { return "BETA"; }
+                label "gamma": { return "GAMMA"; }
+                label "delta": { return "DELTA"; }
+                label "epsilon": { return "EPSILON"; }
+                label "zeta": { return "ZETA"; }
+            };
+            return "NO_MATCH";
+        }
+    }
+}

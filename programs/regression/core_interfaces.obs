@@ -1,0 +1,106 @@
+interface Describable {
+    method : virtual : public : Describe() ~ String;
+    method : virtual : public : GetId() ~ Int;
+}
+
+interface Serializable {
+    method : virtual : public : Serialize() ~ String;
+}
+
+class Animal implements Describable {
+    @name : String;
+    @id : Int;
+
+    New(id : Int, name : String) {
+        @id := id;
+        @name := name;
+    }
+
+    method : public : Describe() ~ String {
+        return "Animal: {$@name}";
+    }
+
+    method : public : GetId() ~ Int {
+        return @id;
+    }
+}
+
+class Dog from Animal implements Serializable {
+    New(id : Int, name : String) {
+        Parent(id, name);
+    }
+
+    method : public : Serialize() ~ String {
+        return "Dog:{$@id}:{$@name}";
+    }
+}
+
+class CoreInterfacesTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing interfaces..."->PrintLine();
+        pass := true;
+
+        dog := Dog->New(42, "Rex");
+
+        # Interface method call via implementing class
+        if(dog->GetId() <> 42) {
+            pass := false;
+            "  FAIL: GetId()"->PrintLine();
+        };
+
+        desc := dog->Describe();
+        if(<>desc->Has("Rex")) {
+            pass := false;
+            "  FAIL: Describe() missing name"->PrintLine();
+        };
+
+        ser := dog->Serialize();
+        if(<>ser->Has("Dog")) {
+            pass := false;
+            "  FAIL: Serialize() missing prefix"->PrintLine();
+        };
+
+        # TypeOf base class
+        if(<>dog->TypeOf(Animal)) {
+            pass := false;
+            "  FAIL: TypeOf Animal"->PrintLine();
+        };
+
+        if(<>dog->TypeOf(Dog)) {
+            pass := false;
+            "  FAIL: TypeOf Dog"->PrintLine();
+        };
+
+        # Polymorphism via base class reference
+        a : Animal := Dog->New(7, "Buddy");
+        if(a->GetId() <> 7) {
+            pass := false;
+            "  FAIL: Polymorphic GetId()"->PrintLine();
+        };
+        if(<>a->Describe()->Has("Buddy")) {
+            pass := false;
+            "  FAIL: Polymorphic Describe()"->PrintLine();
+        };
+
+        # Array of interface-typed elements
+        animals := Animal->New[3];
+        animals[0] := Dog->New(1, "Alpha");
+        animals[1] := Dog->New(2, "Beta");
+        animals[2] := Dog->New(3, "Gamma");
+
+        sum := 0;
+        each(i : animals->Size()) {
+            sum += animals[i]->GetId();
+        };
+        if(sum <> 6) {
+            pass := false;
+            "  FAIL: Sum of ids = {$sum}, expected 6"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Interfaces"->PrintLine();
+        } else {
+            "FAIL: Interfaces"->PrintLine();
+        };
+    }
+}

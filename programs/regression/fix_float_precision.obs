@@ -1,0 +1,85 @@
+class FixFloatPrecisionTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing floating point precision..."->PrintLine();
+        pass := true;
+
+        # IEEE 754 double has ~15-16 significant digits
+        # Basic precision tests
+        pi := 3.14159265358979;
+        if(pi < 3.14159 | pi > 3.14160) {
+            pass := false;
+            "  FAIL: pi precision = {$pi}"->PrintLine();
+        };
+
+        # Accumulated error: sum 0.1 ten times
+        sum := 0.0;
+        each(i : 10) { sum += 0.1; };
+        # Due to floating point, not exactly 1.0
+        if(sum < 0.9999 | sum > 1.0001) {
+            pass := false;
+            "  FAIL: 0.1*10 sum = {$sum}"->PrintLine();
+        };
+
+        # Cancellation: large - small keeps precision
+        large := 1000000.0;
+        small := 0.001;
+        diff := large + small - large;
+        if(diff < 0.0009 | diff > 0.0011) {
+            pass := false;
+            "  FAIL: cancellation diff = {$diff}"->PrintLine();
+        };
+
+        # Multiply/divide roundtrip
+        x := 1.23456789;
+        y := x * 1000.0 / 1000.0;
+        if(y < 1.23456 | y > 1.23458) {
+            pass := false;
+            "  FAIL: roundtrip = {$y}"->PrintLine();
+        };
+
+        # Comparison with epsilon
+        a := 0.1 + 0.2;
+        b := 0.3;
+        eps := 0.0000001;
+        diff2 := Float->Abs(a - b);
+        if(diff2 > eps) {
+            # This is a known FP behavior, not a failure
+            # Just verify Abs works correctly
+        };
+
+        # Large number arithmetic
+        big := 1.0e10;
+        big2 := big + 1.0;
+        diff3 := big2 - big;
+        if(diff3 < 0.9 | diff3 > 1.1) {
+            pass := false;
+            "  FAIL: large number diff = {$diff3}"->PrintLine();
+        };
+
+        # Float comparison with tolerance
+        c := Float->Sqrt(2.0);
+        c_sq := c * c;
+        if(Float->Abs(c_sq - 2.0) > 0.0000001) {
+            pass := false;
+            "  FAIL: sqrt(2)^2 = {$c_sq}"->PrintLine();
+        };
+
+        # Denormal-like: very small positive
+        tiny := 0.000000001;
+        if(tiny <= 0.0) {
+            pass := false;
+            "  FAIL: tiny should be > 0"->PrintLine();
+        };
+        if(tiny * 1000000000.0 < 0.9 | tiny * 1000000000.0 > 1.1) {
+            v := tiny * 1000000000.0;
+            pass := false;
+            "  FAIL: tiny*1e9 = {$v}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Float precision"->PrintLine();
+        } else {
+            "FAIL: Float precision"->PrintLine();
+        };
+    }
+}

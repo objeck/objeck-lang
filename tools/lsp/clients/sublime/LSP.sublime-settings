@@ -1,0 +1,22 @@
+// Settings in here override those in "LSP/LSP.sublime-settings"
+//
+// For a self-contained deployment, copy obr.exe, libs, and LSP server
+// files to a single directory (e.g. ~/.objeck-lsp/) and update paths below.
+{
+	"clients": {
+		"objeck": {
+			"enabled": true,
+			"command": [
+				"<objeck_lsp_path>/bin/obr.exe",
+				"<objeck_lsp_path>/objeck_lsp.obe",
+				"<objeck_lsp_path>/objk_apis.json",
+				"stdio"
+			],
+			"env": {
+				"OBJECK_LIB_PATH": "<objeck_lsp_path>/lib",
+				"OBJECK_STDIO": "binary"
+			},
+			"selector": "source.objeck-obs"
+		}
+	}
+}

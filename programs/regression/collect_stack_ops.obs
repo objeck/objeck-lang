@@ -1,0 +1,104 @@
+use Collection;
+
+class CollectStackOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing Stack operations..."->PrintLine();
+        pass := true;
+
+        stk := Stack->New()<IntRef>;
+
+        # IsEmpty on new stack
+        if(<>stk->IsEmpty()) {
+            pass := false;
+            "  FAIL: new stack should be empty"->PrintLine();
+        };
+
+        # Push
+        stk->Push(IntRef->New(1));
+        stk->Push(IntRef->New(2));
+        stk->Push(IntRef->New(3));
+        if(stk->Size() <> 3) {
+            pass := false;
+            "  FAIL: size after pushes = {$stk->Size()}"->PrintLine();
+        };
+
+        # Top (peek without pop)
+        top := stk->Top();
+        if(top = Nil | top->Get() <> 3) {
+            pass := false;
+            "  FAIL: Top() = {$top->Get()}, expected 3"->PrintLine();
+        };
+        if(stk->Size() <> 3) {
+            pass := false;
+            "  FAIL: Top() changed size"->PrintLine();
+        };
+
+        # Pop (LIFO order)
+        p1 := stk->Pop();
+        if(p1 = Nil | p1->Get() <> 3) {
+            pass := false;
+            "  FAIL: Pop() #1 = {$p1->Get()}, expected 3"->PrintLine();
+        };
+        p2 := stk->Pop();
+        if(p2 = Nil | p2->Get() <> 2) {
+            pass := false;
+            "  FAIL: Pop() #2 = {$p2->Get()}, expected 2"->PrintLine();
+        };
+        p3 := stk->Pop();
+        if(p3 = Nil | p3->Get() <> 1) {
+            pass := false;
+            "  FAIL: Pop() #3 = {$p3->Get()}, expected 1"->PrintLine();
+        };
+
+        if(<>stk->IsEmpty()) {
+            pass := false;
+            "  FAIL: stack should be empty after all pops"->PrintLine();
+        };
+
+        # String stack
+        ss := Stack->New()<String>;
+        ss->Push("first");
+        ss->Push("second");
+        ss->Push("third");
+
+        # Pop in LIFO order
+        s1 := ss->Pop();
+        if(<>s1->Equals("third")) {
+            pass := false;
+            "  FAIL: string pop #1 = {$s1}"->PrintLine();
+        };
+        s2 := ss->Pop();
+        if(<>s2->Equals("second")) {
+            pass := false;
+            "  FAIL: string pop #2 = {$s2}"->PrintLine();
+        };
+
+        # Empty() clears all
+        ss->Empty();
+        if(<>ss->IsEmpty()) {
+            pass := false;
+            "  FAIL: IsEmpty after Empty()"->PrintLine();
+        };
+
+        # Depth simulation: push 100, pop 100, verify LIFO
+        stk2 := Stack->New()<IntRef>;
+        each(i : 100) { stk2->Push(IntRef->New(i)); };
+        ok := true;
+        n := 99;
+        while(<>stk2->IsEmpty()) {
+            v := stk2->Pop();
+            if(v->Get() <> n) { ok := false; };
+            n -= 1;
+        };
+        if(<>ok) {
+            pass := false;
+            "  FAIL: LIFO order for 100 items"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Stack operations"->PrintLine();
+        } else {
+            "FAIL: Stack operations"->PrintLine();
+        };
+    }
+}

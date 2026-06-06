@@ -1,0 +1,77 @@
+use System.Time;
+
+class DateArithmeticTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing date/time arithmetic..."->PrintLine();
+        pass := true;
+
+        now := System.Time.Date->New(false);
+        if(now = Nil) {
+            pass := false;
+            "  FAIL: GetTime returned Nil"->PrintLine();
+        } else {
+            orig_day := now->GetDay();
+            orig_month := now->GetMonth();
+            orig_year := now->GetYear();
+            orig_unix := now->GetUnixTime();
+
+            # Clone for mutation
+            later := now->Clone();
+            if(later = Nil) {
+                pass := false;
+                "  FAIL: Clone() returned Nil"->PrintLine();
+            } else {
+                # AddDays
+                later->AddDays(1);
+                new_unix := later->GetUnixTime();
+
+                # Adding a day must increase unix time by ~86400 seconds
+                # Accept 20-27 hours to tolerate timezone offset in GetUnixTime
+                diff := new_unix - orig_unix;
+                if(diff < 72000 | diff > 100000) {
+                    pass := false;
+                    "  FAIL: AddDays(1) diff = {$diff}"->PrintLine();
+                };
+
+                # AddHours: accept 1-5 hours
+                h := now->Clone();
+                h->AddHours(2);
+                hdiff := h->GetUnixTime() - orig_unix;
+                if(hdiff < 3600 | hdiff > 18000) {
+                    pass := false;
+                    "  FAIL: AddHours(2) diff = {$hdiff}"->PrintLine();
+                };
+
+                # AddMinutes: accept 10-200 minutes
+                m := now->Clone();
+                m->AddMinutes(30);
+                mdiff := m->GetUnixTime() - orig_unix;
+                if(mdiff < 600 | mdiff > 12000) {
+                    pass := false;
+                    "  FAIL: AddMinutes(30) diff = {$mdiff}"->PrintLine();
+                };
+
+                # Year must remain valid after adding days
+                next := now->Clone();
+                next->AddDays(10);
+                if(next->GetYear() < orig_year) {
+                    pass := false;
+                    "  FAIL: year regressed after AddDays"->PrintLine();
+                };
+
+                # GetTimeString should produce non-empty string
+                ts := now->GetTimeString(true);
+                if(ts = Nil | ts->Size() = 0) {
+                    pass := false;
+                    "  FAIL: GetTimeString empty"->PrintLine();
+                };
+            };
+        };
+
+        if(pass) {
+            "PASS: Date/time arithmetic"->PrintLine();
+        } else {
+            "FAIL: Date/time arithmetic"->PrintLine();
+        };
+    }
+}

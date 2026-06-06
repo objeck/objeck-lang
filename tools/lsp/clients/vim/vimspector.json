@@ -1,0 +1,15 @@
+{
+    "_comment": "Adapter definition for vimspector. Place this at ~/.vimspector.json. Per-project launch configs go in <project>/.vimspector.json (see vimspector.project.json.example).",
+    "adapters": {
+        "objeck": {
+            "name": "objeck",
+            "command": [
+                "${env:USERPROFILE}\\.objeck-lsp\\bin\\obd.exe",
+                "--dap"
+            ],
+            "env": {
+                "OBJECK_LIB_PATH": "${env:USERPROFILE}\\.objeck-lsp\\lib"
+            }
+        }
+    }
+}

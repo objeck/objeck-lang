@@ -5,10 +5,7 @@ Copyright (c) 2026 Randy Hollines
 use System.IO.Net, Collection, Web.HTTP;
 
 #~
-HTTP/3 (QUIC) client support (-lib net_quic)
-
-Note: HTTP/3 requires the VM to be built with OBJECK_HAS_NGTCP2.
-Without that flag, connections will fail with a runtime warning.
+HTTP/3 (QUIC) client for ultra-low-latency requests over UDP. Http3Client API mirrors HttpClient; ideal for mobile and high-packet-loss networks. Compile with -lib net_quic.
 ~#
 bundle Web.HTTP {
 	#~
@@ -40,6 +37,15 @@ bundle Web.HTTP {
 
 		#~
 		Returns true if the QUIC connection is established
+
+		```
+		client := Web.HTTP.Http3Client->New("cloudflare-quic.com");
+		if(client->IsConnected()) {
+		  resp := client->Get("/");
+		  resp->GetCode()->PrintLine();  # 200
+		};
+		client->Close();
+		```
 		~#
 		method : public : IsConnected() ~ Bool {
 			return @session <> Nil & @session->IsConnected();
@@ -49,6 +55,15 @@ bundle Web.HTTP {
 		Adds a custom request header sent with every subsequent request.
 		@param key header name (lower-case recommended)
 		@param value header value
+
+		```
+		client := Web.HTTP.Http3Client->New("api.example.com");
+		client->AddHeader("authorization", "Bearer mytoken");
+		client->AddHeader("accept", "application/json");
+		resp := client->Get("/v1/items");
+		resp->GetCode()->PrintLine();
+		client->Close();
+		```
 		~#
 		method : public : AddHeader(key : String, value : String) ~ Nil {
 			@request_headers->Insert(key->ToLower(), value);
@@ -57,6 +72,14 @@ bundle Web.HTTP {
 		#~
 		Removes a previously added request header.
 		@param key header name
+
+		```
+		client := Web.HTTP.Http3Client->New("api.example.com");
+		client->AddHeader("x-debug", "1");
+		client->RemoveHeader("x-debug");
+		resp := client->Get("/ping");
+		client->Close();
+		```
 		~#
 		method : public : RemoveHeader(key : String) ~ Nil {
 			@request_headers->Remove(key->ToLower());
@@ -66,6 +89,16 @@ bundle Web.HTTP {
 		Performs an HTTP/3 GET request.
 		@param path request path
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http3Client->New("cloudflare-quic.com");
+		resp := client->Get("/cdn-cgi/trace");
+		if(resp <> Nil) {
+		  resp->GetCode()->PrintLine();              # 200
+		  String->New(resp->GetContent())->PrintLine();
+		};
+		client->Close();
+		```
 		~#
 		method : public : Get(path : String) ~ Response {
 			empty : Byte[];
@@ -76,6 +109,13 @@ bundle Web.HTTP {
 		Performs an HTTP/3 DELETE request.
 		@param path request path
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http3Client->New("api.example.com");
+		resp := client->Delete("/records/5");
+		resp->GetCode()->PrintLine();  # 204
+		client->Close();
+		```
 		~#
 		method : public : Delete(path : String) ~ Response {
 			empty : Byte[];
@@ -88,6 +128,14 @@ bundle Web.HTTP {
 		@param body request body bytes
 		@param content_type MIME type of the body
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http3Client->New("api.example.com");
+		payload := "{\"name\":\"test\"}"->ToByteArray();
+		resp := client->Post("/items", payload, "application/json");
+		resp->GetCode()->PrintLine();  # 201
+		client->Close();
+		```
 		~#
 		method : public : Post(path : String, body : Byte[], content_type : String) ~ Response {
 			return DoRequest("POST", path, body, content_type);
@@ -99,6 +147,14 @@ bundle Web.HTTP {
 		@param body request body bytes
 		@param content_type MIME type of the body
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http3Client->New("api.example.com");
+		payload := "{\"value\":99}"->ToByteArray();
+		resp := client->Put("/settings/theme", payload, "application/json");
+		resp->GetCode()->PrintLine();  # 200
+		client->Close();
+		```
 		~#
 		method : public : Put(path : String, body : Byte[], content_type : String) ~ Response {
 			return DoRequest("PUT", path, body, content_type);
@@ -110,6 +166,14 @@ bundle Web.HTTP {
 		@param body request body bytes
 		@param content_type MIME type of the body
 		@return Response or Nil on failure
+
+		```
+		client := Web.HTTP.Http3Client->New("api.example.com");
+		payload := "{\"active\":false}"->ToByteArray();
+		resp := client->Patch("/users/3", payload, "application/json");
+		resp->GetCode()->PrintLine();  # 200
+		client->Close();
+		```
 		~#
 		method : public : Patch(path : String, body : Byte[], content_type : String) ~ Response {
 			return DoRequest("PATCH", path, body, content_type);
@@ -117,6 +181,13 @@ bundle Web.HTTP {
 
 		#~
 		Closes the QUIC connection and releases resources.
+
+		```
+		client := Web.HTTP.Http3Client->New("api.example.com");
+		resp := client->Get("/data");
+		resp->GetCode()->PrintLine();
+		client->Close();  # release QUIC/ngtcp2 session
+		```
 		~#
 		method : public : Close() ~ Nil {
 			if(@session <> Nil) {
@@ -128,6 +199,15 @@ bundle Web.HTTP {
 		Performs an HTTP/3 GET from a URL in one call.
 		@param url URL to fetch
 		@return Response or Nil on failure
+
+		```
+		url := Web.HTTP.Url->New("https://cloudflare-quic.com/cdn-cgi/trace");
+		resp := Web.HTTP.Http3Client->QuickGet(url);
+		if(resp <> Nil) {
+		  resp->GetCode()->PrintLine();              # 200
+		  String->New(resp->GetContent())->PrintLine();
+		};
+		```
 		~#
 		function : QuickGet(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return QuickGet(url, Nil);
@@ -152,6 +232,13 @@ bundle Web.HTTP {
 		@param url URL to post to
 		@param data request body
 		@return Response or Nil on failure
+
+		```
+		url := Web.HTTP.Url->New("https://api.example.com/submit");
+		body := "{\"msg\":\"hello\"}"->ToByteArray();
+		resp := Web.HTTP.Http3Client->QuickPost(url, body, "application/json");
+		resp->GetCode()->PrintLine();  # 200
+		```
 		~#
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return QuickPost(url, data, "text/plain", Nil);
@@ -225,6 +312,12 @@ bundle Web.HTTP {
 		Performs an HTTP/3 DELETE from a URL in one call.
 		@param url URL to delete
 		@return Response or Nil on failure
+
+		```
+		url := Web.HTTP.Url->New("https://api.example.com/items/12");
+		resp := Web.HTTP.Http3Client->QuickDelete(url);
+		resp->GetCode()->PrintLine();  # 204
+		```
 		~#
 		function : QuickDelete(url : Web.HTTP.Url) ~ Web.HTTP.Response {
 			return QuickDelete(url, Nil);

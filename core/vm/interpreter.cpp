@@ -216,6 +216,96 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
       continue;
     }
 
+    case LOAD_CHAR_LIT:
+      op_stack[(*stack_pos)++] = (size_t)instr->GetOperand();
+      continue;
+
+    // integer comparisons (pop 2, push 0/1)
+    case EQL_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (INT64_VALUE)op_stack[sp - 1] == (INT64_VALUE)op_stack[sp - 2];
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case NEQL_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (INT64_VALUE)op_stack[sp - 1] != (INT64_VALUE)op_stack[sp - 2];
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case LES_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (INT64_VALUE)op_stack[sp - 1] < (INT64_VALUE)op_stack[sp - 2];
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case GTR_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (INT64_VALUE)op_stack[sp - 1] > (INT64_VALUE)op_stack[sp - 2];
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case LES_EQL_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (INT64_VALUE)op_stack[sp - 1] <= (INT64_VALUE)op_stack[sp - 2];
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case GTR_EQL_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (INT64_VALUE)op_stack[sp - 1] >= (INT64_VALUE)op_stack[sp - 2];
+      *stack_pos = sp - 1;
+      continue;
+    }
+
+    // logical ops
+    case AND_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (INT64_VALUE)op_stack[sp - 1] && (INT64_VALUE)op_stack[sp - 2];
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case OR_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (INT64_VALUE)op_stack[sp - 1] || (INT64_VALUE)op_stack[sp - 2];
+      *stack_pos = sp - 1;
+      continue;
+    }
+
+    // bitwise ops
+    case BIT_AND_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] & (INT64_VALUE)op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case BIT_OR_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] | (INT64_VALUE)op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case BIT_XOR_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] ^ (INT64_VALUE)op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+
+    // shift ops
+    case SHL_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] << (INT64_VALUE)op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case SHR_INT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] >> (INT64_VALUE)op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+
     case LBL:
       continue;
 
@@ -2780,7 +2870,6 @@ StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t
   frame->jit_called = false;
   frame->jit_mem = nullptr;
   frame->jit_offset = 0;
-  frame->jit_inst_mem = nullptr;
 #ifdef _DEBUG
   std::wcout << L"fetching frame=" << frame << std::endl;
 #endif

@@ -1,0 +1,103 @@
+use Collection;
+
+class CollectCompareVectorTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing CompareVector operations..."->PrintLine();
+        pass := true;
+
+        cv := CompareVector->New()<IntRef>;
+        each(i : 5) { cv->AddBack(IntRef->New(5 - i)); };  # 5,4,3,2,1
+
+        if(cv->Size() <> 5) {
+            pass := false;
+            "  FAIL: size = {$cv->Size()}"->PrintLine();
+        };
+
+        # First / Last
+        if(cv->First()->Get() <> 5) {
+            pass := false;
+            "  FAIL: First() = {$cv->First()->Get()}"->PrintLine();
+        };
+        if(cv->Last()->Get() <> 1) {
+            pass := false;
+            "  FAIL: Last() = {$cv->Last()->Get()}"->PrintLine();
+        };
+
+        # Sort
+        cv->Sort();
+        if(cv->First()->Get() <> 1) {
+            pass := false;
+            "  FAIL: after Sort First() = {$cv->First()->Get()}"->PrintLine();
+        };
+        if(cv->Last()->Get() <> 5) {
+            pass := false;
+            "  FAIL: after Sort Last() = {$cv->Last()->Get()}"->PrintLine();
+        };
+
+        # BinarySearch (sorted array required)
+        idx := cv->BinarySearch(IntRef->New(3));
+        if(idx < 0) {
+            pass := false;
+            "  FAIL: BinarySearch(3) not found"->PrintLine();
+        };
+
+        # Has
+        if(<>cv->Has(IntRef->New(4))) {
+            pass := false;
+            "  FAIL: Has(4)"->PrintLine();
+        };
+        if(cv->Has(IntRef->New(99))) {
+            pass := false;
+            "  FAIL: Has(99) should be false"->PrintLine();
+        };
+
+        # Find (linear)
+        fi := cv->Find(IntRef->New(2));
+        if(fi < 0) {
+            pass := false;
+            "  FAIL: Find(2)"->PrintLine();
+        };
+
+        # Filter
+        evens := cv->Filter(IsEven(IntRef) ~ Bool);
+        if(evens->Size() <> 2) {
+            pass := false;
+            "  FAIL: filtered evens count = {$evens->Size()}"->PrintLine();
+        };
+
+        # Reduce
+        total := cv->Reduce(IntRef->New(0), SumPair(IntRef, IntRef) ~ IntRef);
+        if(total->Get() <> 15) {
+            pass := false;
+            "  FAIL: reduce sum = {$total->Get()}"->PrintLine();
+        };
+
+        # Reverse
+        rev := cv->Reverse();
+        if(rev->First()->Get() <> 5) {
+            pass := false;
+            "  FAIL: reversed First() = {$rev->First()->Get()}"->PrintLine();
+        };
+
+        # Distinct (no duplicates in fresh sorted list)
+        cv2 := CompareVector->New()<IntRef>;
+        cv2->AddBack(IntRef->New(1));
+        cv2->AddBack(IntRef->New(2));
+        cv2->AddBack(IntRef->New(2));
+        cv2->AddBack(IntRef->New(3));
+        d := cv2->Distinct();
+        if(d->Size() <> 3) {
+            pass := false;
+            "  FAIL: Distinct size = {$d->Size()}, expected 3"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: CompareVector operations"->PrintLine();
+        } else {
+            "FAIL: CompareVector operations"->PrintLine();
+        };
+    }
+
+    function : IsEven(v : IntRef) ~ Bool { return v->Get() % 2 = 0; }
+    function : SumPair(a : IntRef, b : IntRef) ~ IntRef { return IntRef->New(a->Get() + b->Get()); }
+}

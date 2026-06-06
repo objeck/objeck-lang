@@ -1,0 +1,102 @@
+class CoreBitwiseOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing bitwise operations..."->PrintLine();
+        pass := true;
+
+        # AND
+        if((0xFF and 0x0F) <> 0x0F) {
+            pass := false;
+            "  FAIL: AND 0xFF and 0x0F"->PrintLine();
+        };
+        if((0b1010 and 0b1100) <> 0b1000) {
+            pass := false;
+            "  FAIL: AND 0b1010 and 0b1100"->PrintLine();
+        };
+
+        # OR
+        if((0xF0 or 0x0F) <> 0xFF) {
+            pass := false;
+            "  FAIL: OR 0xF0 or 0x0F"->PrintLine();
+        };
+        if((0b1010 or 0b0101) <> 0b1111) {
+            pass := false;
+            "  FAIL: OR 0b1010 or 0b0101"->PrintLine();
+        };
+
+        # XOR
+        if((0xFF xor 0x0F) <> 0xF0) {
+            pass := false;
+            "  FAIL: XOR 0xFF xor 0x0F"->PrintLine();
+        };
+        if((5 xor 5) <> 0) {
+            pass := false;
+            "  FAIL: XOR self = 0"->PrintLine();
+        };
+        if((0 xor 7) <> 7) {
+            pass := false;
+            "  FAIL: XOR with 0"->PrintLine();
+        };
+
+        # Left shift
+        if((1 << 4) <> 16) {
+            pass := false;
+            "  FAIL: 1 << 4"->PrintLine();
+        };
+        if((3 << 2) <> 12) {
+            pass := false;
+            "  FAIL: 3 << 2"->PrintLine();
+        };
+
+        # Right shift
+        if((16 >> 2) <> 4) {
+            pass := false;
+            "  FAIL: 16 >> 2"->PrintLine();
+        };
+        if((255 >> 4) <> 15) {
+            pass := false;
+            "  FAIL: 255 >> 4"->PrintLine();
+        };
+
+        # Compound bitwise assignments (using keyword operators)
+        x := 0xFF;
+        x := x and 0x0F;
+        if(x <> 0x0F) {
+            pass := false;
+            "  FAIL: and assignment"->PrintLine();
+        };
+
+        y := 0xF0;
+        y := y or 0x0F;
+        if(y <> 0xFF) {
+            pass := false;
+            "  FAIL: or assignment"->PrintLine();
+        };
+
+        z := 0xFF;
+        z := z xor 0x0F;
+        if(z <> 0xF0) {
+            pass := false;
+            "  FAIL: xor assignment"->PrintLine();
+        };
+
+        # Bit flag patterns
+        READ  := 4;
+        WRITE := 2;
+        EXEC  := 1;
+        perms := READ or WRITE;
+        if((perms and READ) = 0) {
+            pass := false;
+            "  FAIL: read flag check"->PrintLine();
+        };
+        if((perms and EXEC) <> 0) {
+            pass := false;
+            "  FAIL: exec flag should be clear"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Bitwise operations"->PrintLine();
+        } else {
+            "FAIL: Bitwise operations"->PrintLine();
+        };
+    }
+}

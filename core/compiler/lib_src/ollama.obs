@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme, System.IO.Filesystem;
 
 #~
-Ollama client APIs (-lib ollama)
+Ollama local LLM client. Runs models (Llama, Mistral, Phi, etc.) locally via the Ollama server. Supports streaming completions, chat sessions, embeddings, and model management. Compile with -lib ollama.
 ~#
 bundle API.Ollama {
 	#~
@@ -187,9 +187,16 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
 		@return query response
+
+```
+response := Completion->Generate("llama3", "What is the capital of France?");
+response->PrintLine();
+```
 		~#
 		function : Generate(model : String, prompt : String) ~ String {
-			return JsonElement->Decode(Generate(model, prompt, Nil));
+			result := Generate(model, prompt, Nil);
+			if(result = Nil) { return Nil; };
+			return JsonElement->Decode(result);
 		}
 
 		#~
@@ -198,6 +205,12 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		@param prompt prompt
 		@param options generation options (temperature, top_p, etc.)
 		@return query response
+
+```
+opts := Options->New()->SetTemperature(0.3)->SetTopP(0.85);
+response := Completion->Generate("llama3", "Summarize quantum entanglement briefly.", opts);
+response->PrintLine();
+```
 		~#
 		function : Generate(model : String, prompt : String, options : Options) ~ String {
 			return Generate(model, prompt, Nil, options);
@@ -245,7 +258,9 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 
 				# post_response_str->PrintLine();
 				# "---"->PrintLine();
@@ -271,6 +286,12 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 		@param prompt prompt
 		@param image image file
 		@return query response
+
+```
+image := System.IO.Filesystem.File->New("photo.png");
+response := Completion->Generate("llava", "Describe what you see in this image.", image);
+response->PrintLine();
+```
 		~#
 		function : Generate(model : String, prompt : String, image : File) ~ String {
 			images := File->New[1];
@@ -318,7 +339,9 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 
 				# post_response_str->PrintLine();
 				# "---"->PrintLine();
@@ -377,7 +400,9 @@ chat->Send("Goodbye?")->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
@@ -392,6 +417,12 @@ chat->Send("Goodbye?")->PrintLine();
 		Chat response from the model given an input
 		@param message chat message
 		@return chat response
+
+```
+chat := Chat->New("llama3");
+chat->Send("What year did the Berlin Wall fall?")->PrintLine();
+chat->Send("Who was the US president at the time?")->PrintLine();
+```
 		~#
 		method : public : Send(message : String) ~ String {
 			return Send(message, Nil, Nil, Nil);
@@ -402,6 +433,12 @@ chat->Send("Goodbye?")->PrintLine();
 		@param message chat message
 		@param options generation options
 		@return chat response
+
+```
+opts := Options->New()->SetTemperature(0.5);
+chat := Chat->New("llama3");
+chat->Send("Write a haiku about mountains.", opts)->PrintLine();
+```
 		~#
 		method : public : Send(message : String, options : Options) ~ String {
 			return Send(message, Nil, options, Nil);
@@ -414,6 +451,13 @@ chat->Send("Goodbye?")->PrintLine();
 		@param options generation options
 		@param tools tool definitions for function calling
 		@return chat response
+
+```
+opts := Options->New()->SetTemperature(0.0);
+chat := Chat->New("llama3");
+json_reply := chat->Send("List three colors as JSON.", "json", opts, Nil);
+json_reply->PrintLine();
+```
 		~#
 		method : public : Send(message : String, format : String, options : Options, tools : Vector<Tool>) ~ String {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -452,7 +496,9 @@ chat->Send("Goodbye?")->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
@@ -478,6 +524,12 @@ chat->Send("Goodbye?")->PrintLine();
 		@param message chat message
 		@param image image file
 		@return chat response
+
+```
+chat := Chat->New("llava");
+image := System.IO.Filesystem.File->New("diagram.png");
+chat->Send("What does this diagram show?", image)->PrintLine();
+```
 		~#
 		method : public : Send(message : String, image : File) ~ String {
 			images := File->New[1];
@@ -527,7 +579,9 @@ chat->Send("Goodbye?")->PrintLine();
 
 			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
@@ -843,8 +897,17 @@ chat->Send("Goodbye?")->PrintLine();
 		}
 
 		#~
-		List the models available 
+		List the models available
 		@return list of models available
+
+```
+models := Model->List();
+if(models <> Nil) {
+  each(m in models) {
+    m->GetPulled()->GetName()->PrintLine();
+  };
+};
+```
 		~#
 		function : List() ~ Vector<Model> {
 			host := EndPoint->GetHost();
@@ -885,6 +948,12 @@ chat->Send("Goodbye?")->PrintLine();
 		Download a model from the ollama library
 		@param name name of the model to pull
 		@return true if successful, false otherwise
+
+```
+if(Model->Pull("llama3")) {
+  "Model downloaded successfully."->PrintLine();
+};
+```
 		~#
 		function : Pull(name : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -899,10 +968,12 @@ chat->Send("Goodbye?")->PrintLine();
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return false; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
-	
+
 				post_response_json := JsonParser->TextToElement(post_response_str);
 				if(post_response_json <> Nil) {
 					status_json := post_response_json->Get("status")
@@ -923,6 +994,14 @@ chat->Send("Goodbye?")->PrintLine();
 		Show information about a model
 		@param name name of the model to show
 		@return model
+
+```
+info := Model->Show("llama3");
+if(info <> Nil) {
+  info->GetPulled()->GetName()->PrintLine();
+  info->GetDetails()->ToString()->PrintLine();
+};
+```
 		~#
 		function : Show(name : String) ~ Model {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -937,7 +1016,9 @@ chat->Send("Goodbye?")->PrintLine();
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->Size()->PrintLine();
 	
@@ -964,6 +1045,12 @@ chat->Send("Goodbye?")->PrintLine();
 		Delete a model and its data.
 		@param name name of the model to delete
 		@return true if successful, false otherwise
+
+```
+if(Model->Delete("llama3")) {
+  "Model deleted."->PrintLine();
+};
+```
 		~#
 		function : Delete(name : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -986,7 +1073,13 @@ chat->Send("Goodbye?")->PrintLine();
 		Copy a model
 		@param src source name of the model to copy
 		@param dest destination name of the model to copy
-		@return true if successful, false otherwise 
+		@return true if successful, false otherwise
+
+```
+if(Model->Copy("llama3", "llama3-backup")) {
+  "Model copied."->PrintLine();
+};
+```
 		~#
 		function : Copy(src : String, dest : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1011,7 +1104,14 @@ chat->Send("Goodbye?")->PrintLine();
 		Generate embeddings from a model
 		@param model name of model to generate embeddings from
 		@param prompt text to generate embeddings for
-		@return true if successful, false otherwise
+		@return embedding vector as Float array
+
+```
+embeddings := Model->Embeddings("nomic-embed-text", "The sky is blue.");
+if(embeddings <> Nil) {
+  "Dimensions: {$embeddings->Size()}"->PrintLine();
+};
+```
 		~#
 		function : Embeddings(model : String, prompt  : String) ~ Float[] {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1026,7 +1126,9 @@ chat->Send("Goodbye?")->PrintLine();
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return Nil; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->Size()->PrintLine();
 	
@@ -1058,6 +1160,13 @@ chat->Send("Goodbye?")->PrintLine();
 		@param name name of the model to create
 		@param modelfile contents of the Modelfile
 		@return true if successful, false otherwise
+
+```
+modelfile := "FROM llama3\nSYSTEM \"You are a helpful assistant.\"";
+if(Model->Create("my-assistant", modelfile)) {
+  "Custom model created."->PrintLine();
+};
+```
 		~#
 		function : Create(name : String, modelfile  : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1073,10 +1182,12 @@ chat->Send("Goodbye?")->PrintLine();
 	
 			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
 			if(post_response <> Nil) {
-				post_response_str := post_response->GetContent()->ToString();
+				post_response_content := post_response->GetContent();
+				if(post_response_content = Nil) { return false; };
+				post_response_str := post_response_content->ToString();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
-	
+
 				post_response_json := JsonParser->TextToElement(post_response_str);
 				if(post_response_json <> Nil) {
 					status_json := post_response_json->Get("status")

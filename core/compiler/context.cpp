@@ -192,7 +192,7 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 
   // check and process errors
   if(!errors.empty()) {
-    std::map<int, std::wstring>::iterator error;
+    std::multimap<int, std::wstring>::iterator error;
     for(error = errors.begin(); error != errors.end(); ++error) {
 #if defined(_DIAG_LIB) || defined(_MODULE)
       error_strings.push_back(error->second);
@@ -211,7 +211,7 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 #ifndef _MODULE
   // check and process warnings
   if(!warnings.empty()) {
-    std::map<int, std::wstring>::iterator warning;
+    std::multimap<int, std::wstring>::iterator warning;
     for(warning = warnings.begin(); warning != warnings.end(); ++warning) {
 #ifdef _DIAG_LIB
       warning_strings.push_back(warning->second);
@@ -354,7 +354,7 @@ bool ContextAnalyzer::Analyze(bool is_lib)
             lib_parent->AddChild(klass);
           }
           else {
-            ProcessError(klass, L"Attempting to inherent from an undefined class type");
+            ProcessError(klass, L"Cannot inherit from an undefined class type");
           }
         }
       }
@@ -818,15 +818,19 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
                                            bool impl_is_static, [[maybe_unused]] bool impl_is_virtual, Method* virtual_method)
 {
   // check method types
+  const std::wstring virtual_class_name = (virtual_method->GetClass() ? virtual_method->GetClass()->GetName() : impl_class->GetName());
   if(impl_mthd_type != virtual_method->GetMethodType()) {
     ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                 virtual_method->GetClass()->GetName());
+                 virtual_class_name);
   }
   // check method returns
   Type* virtual_return = virtual_method->GetReturn();
+  if(!virtual_return) {
+    return;
+  }
   if(impl_return->GetType() != virtual_return->GetType()) {
     ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                 virtual_method->GetClass()->GetName());
+                 virtual_class_name);
   }
   else if(impl_return->GetType() == CLASS_TYPE &&
           impl_return->GetName() != virtual_return->GetName()) {
@@ -1267,7 +1271,7 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     }
   }
   else {
-    ProcessError(lambda, L"Deceleration and parameter size mismatch");
+    ProcessError(lambda, L"Declaration and parameter size mismatch");
   }
 }
 
@@ -2257,7 +2261,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
 
   if(variable->GetPreStatement() && variable->GetPostStatement()) {
-    ProcessError(variable, L"Variable cannot have pre and pos operations");
+    ProcessError(variable, L"Variable cannot have pre and post operations");
   }
   else if(variable->GetPreStatement() && !variable->IsPreStatementChecked()) {
     OperationAssignment* pre_stmt = variable->GetPreStatement();
@@ -2922,6 +2926,9 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   std::vector<Expression*> expressions = call_params->GetExpressions();
   if(expressions.size() == 0) {
     ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
+  }
+  else if(expressions.size() > 8) {
+    ProcessError(static_cast<Expression*>(method_call), L"Array dimensions cannot exceed 8");
   }
   
   // TODO: check for dimension size of 1, looking at type
@@ -5066,6 +5073,11 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   Variable* variable = assignment->GetVariable();
   if(variable) {
     AnalyzeVariable(variable, depth + 1);
+    if(current_class && current_class->IsReadonlyRecord() && current_method &&
+       current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
+       variable->GetName().size() > 0 && variable->GetName()[0] == L'@') {
+      ProcessError(variable, L"Cannot assign to readonly record field outside constructor");
+    }
   }
 
   // get last expression for assignment

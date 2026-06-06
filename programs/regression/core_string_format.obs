@@ -1,0 +1,92 @@
+class CoreStringFormatTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string interpolation and formatting..."->PrintLine();
+        pass := true;
+
+        # Basic interpolation
+        name := "World";
+        s1 := "Hello, {$name}!";
+        if(<>s1->Equals("Hello, World!")) {
+            pass := false;
+            "  FAIL: basic interpolation = {$s1}"->PrintLine();
+        };
+
+        # Int interpolation
+        n := 42;
+        s2 := "value={$n}";
+        if(<>s2->Equals("value=42")) {
+            pass := false;
+            "  FAIL: int interpolation = {$s2}"->PrintLine();
+        };
+
+        # Float interpolation
+        f := 3.14;
+        s3 := "pi={$f}";
+        if(<>s3->Has("3.14")) {
+            pass := false;
+            "  FAIL: float interpolation = {$s3}"->PrintLine();
+        };
+
+        # Bool interpolation
+        b := true;
+        s4 := "flag={$b}";
+        if(s4->Size() = 0) {
+            pass := false;
+            "  FAIL: bool interpolation empty"->PrintLine();
+        };
+
+        # Expression in interpolation: compute first
+        a := 5;
+        c := 3;
+        sum_ac := a + c;
+        s5 := "sum={$sum_ac}";
+        if(<>s5->Has("8")) {
+            pass := false;
+            "  FAIL: expr interpolation = {$s5}"->PrintLine();
+        };
+
+        # Method call in interpolation
+        s6 := "upper={$name->ToUpper()}";
+        if(<>s6->Has("WORLD")) {
+            pass := false;
+            "  FAIL: method interpolation = {$s6}"->PrintLine();
+        };
+
+        # String concatenation via Append
+        sb := String->New();
+        sb->Append("Hello");
+        sb->Append(", ");
+        sb->Append("World");
+        sb->Append('!');
+        built := sb->ToString();
+        if(<>built->Equals("Hello, World!")) {
+            pass := false;
+            "  FAIL: string append = {$built}"->PrintLine();
+        };
+
+        # Int append to string builder
+        sb2 := String->New();
+        sb2->Append("count=");
+        sb2->Append(7);
+        r2 := sb2->ToString();
+        if(<>r2->Equals("count=7")) {
+            pass := false;
+            "  FAIL: int append = {$r2}"->PrintLine();
+        };
+
+        # Nested interpolation
+        prefix := "item";
+        idx := 3;
+        s7 := "{$prefix}_{$idx}";
+        if(<>s7->Equals("item_3")) {
+            pass := false;
+            "  FAIL: nested interpolation = {$s7}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: String interpolation and formatting"->PrintLine();
+        } else {
+            "FAIL: String interpolation and formatting"->PrintLine();
+        };
+    }
+}

@@ -140,6 +140,12 @@ class ItermediateOptimizer {
   // peephole optimization
   IntermediateBlock* PeepholeOptimize(IntermediateBlock* inputs);
 
+  // tail call optimization
+  std::vector<IntermediateBlock*> TailCallOpt(std::vector<IntermediateBlock*> inputs);
+
+  // loop-invariant code motion
+  IntermediateBlock* LICM(IntermediateBlock* input);
+
   bool CanInlineMethod(IntermediateMethod* mthd_called, std::set<IntermediateMethod*> &inlined_mthds, std::set<int> &lbl_jmp_offsets);
   
   int CanInlineSetterGetter(IntermediateMethod* mthd_called);

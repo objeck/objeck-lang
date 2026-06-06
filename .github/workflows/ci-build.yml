@@ -13,6 +13,10 @@ jobs:
   build:
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
+    # Backstop so a hung test/step can never tie up a runner for the default
+    # 6 hours (per-test timeouts in run_regression.sh are the first line of
+    # defense; this caps the whole job).
+    timeout-minutes: 60
 
     strategy:
       fail-fast: false
@@ -88,6 +92,7 @@ jobs:
           libnghttp3-dev \
           libgnutls28-dev \
           unixodbc-dev \
+          libsqliteodbc \
           libsdl2-dev \
           libsdl2-image-dev \
           libsdl2-ttf-dev \
@@ -98,6 +103,14 @@ jobs:
           ccache \
           expect
         sudo chmod -R a+r /var/cache/apt/archives
+
+    - name: Configure ODBC test DSN (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        echo '[objeck_sqlite_test]' >> ~/.odbc.ini
+        echo 'Description=Objeck ODBC regression test DSN' >> ~/.odbc.ini
+        echo 'Driver=SQLite3' >> ~/.odbc.ini
+        echo 'Database=:memory:' >> ~/.odbc.ini
 
     # macOS dependencies with caching
     - name: Cache Homebrew downloads (macOS)
@@ -219,9 +232,26 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Install mbedtls and nghttp2 via vcpkg
-        vcpkg install mbedtls:${{ matrix.arch }}-windows
-        vcpkg install nghttp2:${{ matrix.arch }}-windows
+        # Install mbedtls and nghttp2 via vcpkg. The installs download tools
+        # and sources from external CDNs that intermittently 504 (a transient
+        # ninja download failed a whole leg on 2026-06-06), so retry with a
+        # short backoff before giving up.
+        function Install-VcpkgPackage([string]$pkg) {
+          $max = 3
+          for($i = 1; $i -le $max; $i++) {
+            vcpkg install $pkg
+            if($LASTEXITCODE -eq 0) {
+              return
+            }
+            if($i -lt $max) {
+              Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in 20s..."
+              Start-Sleep -Seconds 20
+            }
+          }
+          throw "vcpkg install $pkg failed after $max attempts"
+        }
+        Install-VcpkgPackage "mbedtls:${{ matrix.arch }}-windows"
+        Install-VcpkgPackage "nghttp2:${{ matrix.arch }}-windows"
 
         # Set include/lib paths for Visual Studio
         $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
@@ -238,6 +268,10 @@ jobs:
     - name: Cache OpenCV DLLs (Windows x64)
       if: matrix.platform == 'windows-x64'
       id: opencv-cache
+      # The cache is only an optimization — a transient cache-service error must
+      # not fail the build. On a miss/error, cache-hit != 'true' and the download
+      # step below fetches the DLLs anyway.
+      continue-on-error: true
       uses: actions/cache@v5
       with:
         path: core/lib/opencv/win/x64/bin
@@ -253,7 +287,19 @@ jobs:
 
         $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
         Write-Output "Downloading OpenCV $opencvVersion from $url ..."
-        Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
+        # same transient-CDN-failure class as the vcpkg installs: bounded retry
+        $max = 3
+        for($i = 1; $i -le $max; $i++) {
+          try {
+            Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
+            break
+          }
+          catch {
+            if($i -eq $max) { throw }
+            Write-Output "OpenCV download failed (attempt $i/$max); retrying in 20s..."
+            Start-Sleep -Seconds 20
+          }
+        }
 
         7z x opencv-dl.exe -oopencv-extract -y | Out-Null
 
@@ -348,7 +394,8 @@ jobs:
         $OBC -src lib_src/xml.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/xml.obl
         $OBC -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex.obl
         $OBC -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
-        $OBC -src lib_src/ml.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
+        $OBC -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/ml_bayes.obs,lib_src/ml_neighbors.obs,lib_src/ml_cluster.obs,lib_src/ml_data.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
+        $OBC -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl
         $OBC -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
         $OBC -src lib_src/net_common.obs,lib_src/net.obs,lib_src/net_secure.obs -tar lib -lib gen_collect,cipher -opt s3 -dest ../lib/net.obl
         $OBC -src lib_src/net_h2.obs -tar lib -lib net,gen_collect,cipher -opt s3 -dest ../lib/net_h2.obl
@@ -519,23 +566,9 @@ jobs:
             echo "threads_6.obe attempt $attempt failed, retrying..."
             sleep 2
           done
-
-          # HTTP/2 tests — SKIP gracefully when network/nghttp2 unavailable
-          http2_out=$($OBR ../../../../programs/tests/prgm_http2.obe 2>&1) || exit 1
-          echo "$http2_out"
-          if echo "$http2_out" | grep -q "FAIL"; then
-            echo "HTTP/2 test failures detected"
-            exit 1
-          fi
-
-          # HTTP/3 tests — SKIP gracefully when network/ngtcp2 unavailable or UDP blocked
-          http3_out=$($OBR ../../../../programs/tests/prgm_http3.obe 2>&1) || exit 1
-          echo "$http3_out"
-          if echo "$http3_out" | grep -q "FAIL"; then
-            echo "HTTP/3 test failures detected"
-            exit 1
-          fi
         fi
+        # NOTE: HTTP/2 and HTTP/3 tests are intentionally NOT here. They depend
+        # on live upstream servers and run as a separate non-gating step below.
 
     # ============================================
     # Regression Tests
@@ -570,6 +603,70 @@ jobs:
       working-directory: ./programs/regression
       shell: cmd
       run: run_debugger_tests.cmd ${{ matrix.arch }}
+
+    # ============================================
+    # Network Tests (quarantined / non-gating)
+    #
+    # HTTP/2 (nghttp2) and HTTP/3 (ngtcp2/QUIC) tests hit LIVE upstream servers
+    # and fail for reasons outside this repo: upstream 5xx/429, or UDP egress
+    # blocked on the runner. continue-on-error keeps a transient outage from
+    # reding the whole matrix; the step's own badge + the run summary still
+    # surface real regressions so they aren't silently ignored.
+    # ============================================
+
+    - name: Run network tests (non-gating)
+      if: matrix.platform == 'linux-x64'
+      continue-on-error: true
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      shell: bash
+      run: |
+        OBR="./obr"
+        status=0
+
+        {
+          echo "### Network tests (non-gating) — linux-x64"
+          echo ""
+          echo "| Result | Test | Note |"
+          echo "| :----: | :--- | :--- |"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        run_net() {
+          local name="$1" obe="$2" out
+          echo "=== $name ==="
+          if ! out=$("$OBR" "$obe" 2>&1); then
+            echo "$out"
+            echo "| ⚠️ | $name | VM exited non-zero (upstream/network?) |" >> "$GITHUB_STEP_SUMMARY"
+            status=1
+            return
+          fi
+          echo "$out"
+          if echo "$out" | grep -q "FAIL"; then
+            echo "| ❌ | $name | reported FAIL |" >> "$GITHUB_STEP_SUMMARY"
+            status=1
+          else
+            echo "| ✅ | $name | passed / skipped |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+        }
+
+        run_net "HTTP/2" ../../../../programs/tests/prgm_http2.obe
+        run_net "HTTP/3" ../../../../programs/tests/prgm_http3.obe
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+
+        if [ $status -ne 0 ]; then
+          echo "::warning::Network tests reported failures (non-gating); see run summary"
+        fi
+        # Exit non-zero so the step badge reflects reality; continue-on-error
+        # above keeps the overall job green.
+        exit $status
+
+    - name: Upload regression logs (on failure)
+      if: failure() && matrix.platform != 'windows-arm64'
+      uses: actions/upload-artifact@v6
+      with:
+        name: regression-logs-${{ matrix.platform }}
+        path: programs/regression/results/**
+        retention-days: 7
+        if-no-files-found: ignore
 
     # ============================================
     # API Documentation (Linux x64 only)
@@ -607,7 +704,17 @@ jobs:
           ../../../compiler/lib_src/rss.obs \
           ../../../compiler/lib_src/misc.obs \
           ../../../compiler/lib_src/diags.obs \
-          ../../../compiler/lib_src/ml.obs \
+          ../../../compiler/lib_src/ml_core.obs \
+          ../../../compiler/lib_src/ml_linear.obs \
+          ../../../compiler/lib_src/ml_tree.obs \
+          ../../../compiler/lib_src/ml_bayes.obs \
+          ../../../compiler/lib_src/ml_neighbors.obs \
+          ../../../compiler/lib_src/ml_cluster.obs \
+          ../../../compiler/lib_src/ml_data.obs \
+          ../../../compiler/lib_src/ai_search.obs \
+          ../../../compiler/lib_src/ai_game.obs \
+          ../../../compiler/lib_src/ai_optimize.obs \
+          ../../../compiler/lib_src/ai_rl.obs \
           ../../../compiler/lib_src/openai.obs \
           ../../../compiler/lib_src/gemini.obs \
           ../../../compiler/lib_src/ollama.obs \
@@ -615,7 +722,10 @@ jobs:
           ../../../compiler/lib_src/opencv.obs \
           ../../../compiler/lib_src/onnx.obs \
           ../../../compiler/lib_src/nlp.obs \
-          ../../../compiler/lib_src/lame.obs
+          ../../../compiler/lib_src/lame.obs \
+          ../../../compiler/lib_src/math.obs \
+          ../../../compiler/lib_src/gtk3.obs \
+          ../../../compiler/lib_src/web_server.obs
 
     - name: Package API documentation
       if: matrix.platform == 'linux-x64'
@@ -661,12 +771,33 @@ jobs:
     needs: build
     if: always()
     steps:
-      - name: Check build status
+      - name: Report build status
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ needs.build.result }}" = "success" ]; then
             echo "✅ All platform builds succeeded"
+            echo "### ✅ CI — all platform builds succeeded" >> "$GITHUB_STEP_SUMMARY"
             exit 0
-          else
-            echo "❌ Some platform builds failed"
-            exit 1
           fi
+
+          echo "❌ Build result: ${{ needs.build.result }}"
+          {
+            echo "### ❌ CI — build ${{ needs.build.result }}"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # fail-fast is off, so the rolled-up result hides which platforms
+          # broke. Ask the API for the specific failed matrix legs by name.
+          failed=$(gh run view "${{ github.run_id }}" --repo "${{ github.repository }}" \
+            --json jobs -q '.jobs[] | select(.conclusion=="failure") | .name' 2>/dev/null || true)
+          if [ -n "$failed" ]; then
+            echo "Failed jobs:"
+            echo "$failed" | sed 's/^/  ❌ /'
+            {
+              echo "| Failed job |"
+              echo "| :--------- |"
+              echo "$failed" | sed 's/.*/| & |/'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 1

@@ -27,6 +27,18 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Image Classification (ResNet)](#image-classification-resnet)
 - [Computer Vision (OpenCV)](#computer-vision-opencv)
 - [Natural Language Processing](#natural-language-processing)
+- [Machine Learning (System.ML)](#machine-learning-systemml)
+  - [Regression](#regression)
+  - [Classification](#classification)
+  - [Clustering & Decomposition](#clustering--decomposition)
+  - [Neural Network](#neural-network)
+  - [Model Persistence](#model-persistence)
+- [Classic AI (System.AI)](#classic-ai-systemai)
+  - [Graph Search](#graph-search)
+  - [Game Playing](#game-playing)
+  - [Optimization](#optimization)
+  - [Reinforcement Learning](#reinforcement-learning)
+- [Library Aliases](#library-aliases)
 - [Quick Reference](#quick-reference)
 
 ---
@@ -703,6 +715,268 @@ sim := TextSimilarity->Cosine("hello world", "hello there");
 
 ---
 
+## Machine Learning (System.ML)
+
+Classical machine learning, pure standard library — no native model runtimes needed. Every estimator follows the same API: `Fit`, `Predict` (and `PredictClass` for classifiers), `Score`, `IsFitted`, and `Store`/`Load` for model persistence. Stochastic algorithms take a seed for reproducible results.
+
+```
+obc -src program.obs -lib ml,gen_collect,csv -dest program.obe
+```
+
+### Regression
+
+```ruby
+use System.ML;
+
+# ordinary least squares with an intercept: y = 2x + 1
+X := [[1.0], [2.0], [3.0], [4.0]];
+y := [[3.0], [5.0], [7.0], [9.0]];
+
+model := LinearRegression->New();
+model->Fit(X, y, true);
+"R²={$model->GetRSquared()} RMSE={$model->GetRMSE()}"->PrintLine();
+
+preds := model->Predict([[5.0]]);
+preds[0,0]->PrintLine();    # ~11.0
+```
+
+```ruby
+# ridge (L2): closed form, shrinks coefficients as alpha grows
+ridge := RidgeRegression->New(0.1);
+ridge->Fit(X, y);
+
+# lasso (L1): drives uninformative feature coefficients exactly to zero
+lasso := LassoRegression->New(0.5);
+lasso->Fit(Xs, ys);
+coeffs := lasso->GetCoefficients();   # sparse
+
+# elastic net mixes both penalties
+enet := ElasticNet->New(0.1, 0.5);    # alpha, l1_ratio
+enet->Fit(X, y);
+```
+
+### Classification
+
+```ruby
+# logistic regression with L2 regularization
+log := LogisticRegression->New(0.5, 2000, 0.001);
+log->Fit(X, y);                        # y holds 0.0 / 1.0 labels
+labels := log->PredictClass(X);        # Bool[]
+acc := log->Score(X, y);
+
+# linear SVM (hinge loss) and perceptron share the same shape
+svm := SVM->New(0.01, 0.1, 500);       # lambda, learning rate, epochs
+svm->Fit(X, y);
+margins := svm->Predict(X);            # signed distances from the plane
+
+# multiclass Gaussian naive Bayes over integer labels 0..C-1
+gnb := GaussianNaiveBayes->New();
+gnb->Fit(X, y);
+classes := gnb->PredictClass(X);       # Int[]
+```
+
+```ruby
+# trees and ensembles work on Bool[,] rows: features..., label LAST
+data := [
+  [false, false, false],
+  [false, true,  false],
+  [true,  false, false],
+  [true,  true,  true]];    # label = f0 AND f1
+
+tree := DecisionTree->New(4, 1);       # max depth, min samples
+tree->Fit(data);
+tree->Predict([true, true])->PrintLine();
+
+forest := RandomForest->New(16);       # bootstrap + majority vote
+forest->Fit(data);
+forest->Score(data)->PrintLine();
+
+booster := AdaBoost->New(16);          # boosted decision stumps
+booster->Fit(data);
+```
+
+```ruby
+# k-nearest neighbors with an exact KDTree index
+tree := KDTree->New(matrix);
+nearest := tree->Nearest(3, [57.0, 170.0]);   # row indexes, closest first
+```
+
+### Clustering & Decomposition
+
+```ruby
+# DBSCAN discovers the cluster count and labels outliers -1
+scanner := DBSCAN->New(0.8, 3);        # eps, min points
+scanner->Fit(X);
+labels := scanner->GetLabels();
+count := scanner->GetNumClusters();
+
+# Gaussian mixture: soft clustering by EM, reproducible per seed
+gmm := GaussianMixture->New(2, 7);     # components, seed
+gmm->Fit(X);
+resp := gmm->Predict(X);               # responsibilities
+hard := gmm->PredictClass(X);
+
+# PCA: project to the top components, reconstruct, explain variance
+pca := PCA->New(1);
+pca->Fit(X);
+reduced := pca->Transform(X);
+ratios := pca->GetExplainedVarianceRatio();
+```
+
+### Neural Network
+
+```ruby
+use System.ML, Collection;
+
+# feed-forward network with hidden/output bias: learns XOR
+inputs := Vector->New()<FloatMatrixRef>;
+inputs->AddBack(FloatMatrixRef->New([[0.0], [0.0]]));
+inputs->AddBack(FloatMatrixRef->New([[0.0], [1.0]]));
+inputs->AddBack(FloatMatrixRef->New([[1.0], [0.0]]));
+inputs->AddBack(FloatMatrixRef->New([[1.0], [1.0]]));
+
+targets := Vector->New()<FloatMatrixRef>;
+targets->AddBack(FloatMatrixRef->New([[0.01]]));
+targets->AddBack(FloatMatrixRef->New([[0.99]]));
+targets->AddBack(FloatMatrixRef->New([[0.99]]));
+targets->AddBack(FloatMatrixRef->New([[0.01]]));
+
+# inputs, hidden factor, outputs, rate, iterations
+network := NeuralNetwork->Train(2, inputs, 8, 1, targets, 0.5, 12500);
+network->Confidence(FloatMatrixRef->New([[0.0], [1.0]]))->PrintLine();  # ~0.99
+```
+
+### Model Persistence
+
+Every estimator round-trips through `Store`/`Load`; loaded models reproduce the original predictions exactly.
+
+```ruby
+model->Store("model.dat");
+loaded := LinearRegression->Load("model.dat");
+loaded->Predict(X);
+```
+
+---
+
+## Classic AI (System.AI)
+
+Search, game playing, optimization and tabular reinforcement learning — `-lib ai` (or the `@ai` alias). All stochastic algorithms are seeded for reproducible runs.
+
+```
+obc -src program.obs -lib ai,gen_collect -dest program.obe
+```
+
+### Graph Search
+
+```ruby
+use System.AI;
+
+graph := Graph->New(6);                # nodes 0..5
+graph->AddEdge(0, 1, 1.0);             # directed; add both ways if undirected
+graph->AddEdge(1, 2, 1.0);
+graph->AddEdge(2, 5, 1.0);
+graph->AddEdge(0, 5, 100.0);
+
+# minimum cost
+result := Dijkstra->FindPath(graph, 0, 5);
+"cost={$result->GetCost()}"->PrintLine();          # 3.0
+path := result->GetPath();                          # [0, 1, 2, 5]
+
+# A* with a per-node heuristic (admissible -> same cost, fewer expansions)
+heuristic := [3.0, 2.0, 1.0, 0.0, 0.0, 0.0];
+result := AStar->FindPath(graph, 0, 5, heuristic);
+
+# fewest hops / reachability
+result := BreadthFirst->FindPath(graph, 0, 5);      # takes the direct edge
+result := DepthFirst->FindPath(graph, 0, 5);
+```
+
+### Game Playing
+
+Implement the `GameState` interface (`GetMoves`, `Apply`, `IsTerminal`, `Evaluate`, `IsMaximizing` — evaluation is always from the maximizing player's perspective), then search it:
+
+```ruby
+# perfect play with alpha-beta pruning
+searcher := Minimax->New(9);            # depth limit
+best := searcher->FindBestMove(state);
+
+# Monte Carlo tree search for bigger branching factors
+mcts := MonteCarloTreeSearch->New(2000, 1.414, 7);  # playouts, UCB1 c, seed
+best := mcts->FindBestMove(state);
+```
+
+### Optimization
+
+```ruby
+# genetic algorithm over Bool[] chromosomes: implement FitnessFunction
+class OneMax implements FitnessFunction {
+  New() {}
+  method : public : Fitness(genes : Bool[]) ~ Float {
+    count := 0;
+    each(i : genes) { if(genes[i]) { count += 1; }; };
+    return count->As(Float);
+  }
+}
+
+ga := GeneticAlgorithm->New(40, 24, 0.02, 0.9, 7);  # pop, genes, mutate, cross, seed
+best := ga->Run(OneMax->New(), 80);
+"fitness: {$ga->GetBestFitness()}"->PrintLine();    # 24.0
+```
+
+```ruby
+# simulated annealing / hill climbing over Float[] states: implement EnergyFunction
+sa := SimulatedAnnealing->New(10.0, 0.995, 0.5, 7); # temp, cooling, step, seed
+best := sa->Run(energy, [-8.0, 9.0], 4000);
+
+hc := HillClimbing->New(0.5, 50, 5.0, 7);           # step, patience, restart range, seed
+best := hc->Run(energy, start, 3000);
+```
+
+### Reinforcement Learning
+
+Implement the `Environment` interface (`GetNumStates`, `GetNumActions`, `Reset`, `Step`), then train:
+
+```ruby
+agent := QLearning->New(0.2, 0.95, 0.2, 7);  # alpha, gamma, epsilon, seed
+agent->Train(env, 400, 60);                  # episodes, max steps
+best := agent->BestAction(state);
+
+# on-policy variant
+sarsa := Sarsa->New(0.2, 0.95, 0.2, 7);
+sarsa->Train(env, 400, 60);
+```
+
+```ruby
+# explicit MDP solved by value iteration
+mdp := MarkovDecisionProcess->New(6, 2);     # states, actions
+mdp->AddTransition(0, 1, 1, 1.0, -1.0);      # state, action, next, prob, reward
+mdp->AddTransition(4, 1, 5, 1.0, 10.0);
+mdp->Solve(0.95, 0.000001, 1000);            # gamma, tolerance, max iterations
+policy := mdp->GetPolicy();
+values := mdp->GetValues();
+```
+
+---
+
+## Library Aliases
+
+`-lib` accepts `@`-prefixed aliases that expand to groups of libraries, defined in `lib/configobjk.ini` next to the installed `.obl` files:
+
+```
+obc -src program.obs -lib @ai -dest program.obe
+```
+
+| Alias | Expands to | Use for |
+|---|---|---|
+| `@std` | `json`, `json_stream`, `net`, `cipher` | everyday networked apps |
+| `@ml` | `gemini`, `openai`, `net_server`, `misc` | hosted LLM APIs |
+| `@ai` | `ai`, `ml`, `gen_collect`, `csv` | local System.ML / System.AI work |
+| `@game` | `sdl2`, `sdl_game` | SDL games |
+
+Aliases and explicit names mix freely (`-lib @ai,json`). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`. An unknown alias fails with `Unknown library alias` — check the spelling and that `OBJECK_LIB_PATH` points at the library directory.
+
+---
+
 ## Quick Reference
 
 | Capability | Class | Library | Key |
@@ -731,6 +1005,18 @@ sim := TextSimilarity->Cosine("hello world", "hello there");
 | Segmentation | `DeepLabSession` | `onnx` | None |
 | Computer vision | `Image`, `FaceDetector` | `opencv` | None |
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
+| Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
+| Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
+| Probabilistic classifiers | `GaussianNaiveBayes`, `NaiveBayes` | `ml` | None |
+| Trees & ensembles | `DecisionTree`, `RandomForest`, `AdaBoost` | `ml` | None |
+| Nearest neighbors | `KNearestNeighbors`, `KDTree` | `ml` | None |
+| Clustering | `KMeans`, `DBSCAN`, `GaussianMixture` | `ml` | None |
+| Decomposition | `PCA` | `ml` | None |
+| Neural network | `NeuralNetwork` | `ml` | None |
+| Graph search | `Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst` | `ai` | None |
+| Game playing | `Minimax`, `MonteCarloTreeSearch` | `ai` | None |
+| Metaheuristics | `GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing` | `ai` | None |
+| Reinforcement learning | `QLearning`, `Sarsa`, `MarkovDecisionProcess` | `ai` | None |
 
 ### Model Recommendations
 

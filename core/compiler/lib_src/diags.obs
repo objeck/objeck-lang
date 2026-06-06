@@ -2,7 +2,7 @@ use Collection;
 use System.API;
 
 #~
-Support for basic code diagnostics (-lib diags)
+Static analysis and language-server support. Analyzer parses Objeck source files and returns symbols, diagnostics, hover info, completions, references, and definitions for IDE tooling. Compile with -lib diags.
 ~#
 bundle System.Diagnostics {
 	class : private: Proxy {
@@ -25,6 +25,14 @@ bundle System.Diagnostics {
 		Parsers source file for analysis
 		@param src_file file to parse
 		@return object instance used for analysis
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("hello.obs");
+		if(analysis->IsParsed()) {
+		  was_analyzed := BoolRef->New(false);
+		  diags := analysis->GetDiagnostics(was_analyzed, "file:///hello.obs", "/usr/lib/objeck");
+		  analysis->Release();
+		};
+		```
 		~#
 		function : ParseFile(src_file : String) ~ Analysis {
 			array_args := Base->New[5];
@@ -47,6 +55,15 @@ bundle System.Diagnostics {
 		Parsers text for analysis
 		@param src_strs named text to parse, name/content
 		@return object instance used for analysis
+		```
+		src := String->New[1, 2];
+		src[0, 0] := "main.obs";
+		src[0, 1] := "bundle App { class Main { function : Main(args : String[]) ~ Nil { } } }";
+		analysis := System.Diagnostics.Analyzer->ParseText(src);
+		if(analysis->IsParsed()) {
+		  analysis->Release();
+		};
+		```
 		~#
 		function : ParseText(src_strs : String[,]) ~ Analysis {
 			dims := src_strs->Size();
@@ -110,6 +127,15 @@ bundle System.Diagnostics {
 		#~
 		Check to see if source was parsed
 		@return true if parsed, false otherwise
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		if(analysis->IsParsed()) {   # true = no syntax errors
+		  "OK"->PrintLine();
+		} else {
+		  "Syntax error"->PrintLine();
+		};
+		analysis->Release();
+		```
 		~#
 		method : public : IsParsed() ~ Bool {
 			return @is_parsed;
@@ -128,6 +154,14 @@ bundle System.Diagnostics {
 		@param uri file uri
 		@param sys_path system library path
 		@return analysis symbols
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		if(analysis->IsParsed()) {
+		  syms := analysis->GetSymbols("file:///app.obs", "/usr/lib/objeck");
+		  syms->ToString()->PrintLine(); # root symbol tree entry
+		  analysis->Release();
+		};
+		```
 		~#
 		method : public : GetSymbols(uri : String, sys_path : String) ~ Result {
 			if(@symbols_result = Nil) {
@@ -147,6 +181,15 @@ bundle System.Diagnostics {
 		@param uri file uri
 		@param sys_path system library path
 		@return analysis errors, Nil of no errors
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		was_ok := BoolRef->New(false);
+		errs := analysis->GetDiagnostics(was_ok, "file:///app.obs", "/usr/lib/objeck");
+		if(errs <> Nil) {
+		  each(i : errs) { errs[i]->ToString()->PrintLine(); };
+		};
+		analysis->Release();
+		```
 		~#
 		method : public : GetDiagnostics(was_analyzed : BoolRef, uri : String, sys_path : String) ~ Result[] {
 			if(@diagnostics_results = Nil) {
@@ -168,6 +211,15 @@ bundle System.Diagnostics {
 		@param pos character position of symbol
 		@param sys_path system library path
 		@return symbol references, Nil of none found
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		uri := "file:///app.obs";
+		refs := analysis->FindReferences(uri, 10, 5, "/usr/lib/objeck");
+		if(refs <> Nil) {
+		  each(i : refs) { refs[i]->ToString()->PrintLine(); };
+		};
+		analysis->Release();
+		```
 		~#
 		method : public : FindReferences(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
 			array_args := Base->New[5];
@@ -182,7 +234,7 @@ bundle System.Diagnostics {
 		}
 
 		#~
-		Get document highlights for the symbol at the cursor — references scoped to the
+		Get document highlights for the symbol at the cursor - references scoped to the
 		current file. Backs textDocument/documentHighlight.
 		@param uri file uri
 		@param line line of symbol
@@ -274,7 +326,7 @@ bundle System.Diagnostics {
 		#~
 		Walk the parent chain of the class at the cursor, returning each
 		supertype in order (immediate parent first, then grandparent, ...).
-		Backs typeHierarchy/supertypes. User-space only — stops at the first
+		Backs typeHierarchy/supertypes. User-space only - stops at the first
 		parent that resolves to a library class.
 		@param uri file uri
 		@param line line of cursor
@@ -416,7 +468,15 @@ bundle System.Diagnostics {
 		@param var_str variable string name
 		@param mthd_str method string name
 		@param sys_path system library path
-		@return hover references, Nil of none found
+		@return hover references, Nil if none found
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		hover := analysis->Hover("file:///app.obs", 20, 12, "conn", "Close", "/usr/lib/objeck");
+		if(hover <> Nil) {
+		  hover->GetDescription()->PrintLine(); # show signature markdown
+		};
+		analysis->Release();
+		```
 		~#
 		method : public : Hover(uri : String, line : Int, pos : Int, var_str : String, mthd_str : String, sys_path : String) ~ Result {
 			array_args := Base->New[8];
@@ -433,7 +493,7 @@ bundle System.Diagnostics {
 			return array_args[0]->As(Result);
 		}
 		
-		#~	
+		#~
 		Get completion options
 		@param uri file uri
 		@param line line of symbol
@@ -441,7 +501,15 @@ bundle System.Diagnostics {
 		@param var_str variable string name
 		@param mthd_str method string name
 		@param sys_path system library path
-		@return symbol references, Nil of none found
+		@return completion result, Nil if none found
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		items := analysis->Completion("file:///app.obs", 8, 3, "conn", "", "/usr/lib/objeck");
+		if(items <> Nil) {
+		  items->ToString()->PrintLine(); # JSON completion list
+		};
+		analysis->Release();
+		```
 		~#
 		method : public : Completion(uri : String, line : Int, pos : Int, var_str : String, mthd_str : String, sys_path : String) ~ Result {
 			array_args := Base->New[8];
@@ -485,7 +553,15 @@ bundle System.Diagnostics {
 		@param line line of symbol
 		@param pos character position of symbol
 		@param sys_path system library path
-		@return symbol deceleration, Nil of none found
+		@return symbol definition, Nil if none found
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		defn := analysis->FindDefinition("file:///app.obs", 15, 8, "/usr/lib/objeck");
+		if(defn <> Nil) {
+		  defn->GetName()->PrintLine(); # name of the defined symbol
+		};
+		analysis->Release();
+		```
 		~#
 		method : public : FindDefinition(uri : String, line : Int, pos : Int, sys_path : String) ~ Result {
 			array_args := Base->New[6];
@@ -646,6 +722,11 @@ bundle System.Diagnostics {
 
 		#~
 		Release native resources, required for clean up.
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		# ... use analysis ...
+		analysis->Release(); # always release to free C-side parse tree
+		```
 		~#
 		method : public : Release() ~ Nil {
 			array_args := Base->New[1];
@@ -692,6 +773,15 @@ bundle System.Diagnostics {
 		#~
 		Get start line
 		@return start line
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		defn := analysis->FindDefinition("file:///app.obs", 10, 4, "/usr/lib/objeck");
+		if(defn <> Nil) {
+		  line := defn->GetStartLine(); # 0-based line of the symbol
+		  "line={$line}"->PrintLine();
+		};
+		analysis->Release();
+		```
 		~#
 		method : public : GetStartLine() ~ Int {
 			return @start_line;
@@ -732,6 +822,14 @@ bundle System.Diagnostics {
 		#~
 		Get result name
 		@return result name
+		```
+		analysis := System.Diagnostics.Analyzer->ParseFile("app.obs");
+		syms := analysis->GetSymbols("file:///app.obs", "/usr/lib/objeck");
+		if(syms <> Nil) {
+		  syms->GetName()->PrintLine(); # e.g. bundle or class name
+		};
+		analysis->Release();
+		```
 		~#
 		method : public : GetName() ~ String {
 			return @name;

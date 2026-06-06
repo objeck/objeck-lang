@@ -1,0 +1,23 @@
+{
+    "_comment": "Per-project vimspector config. Save this as <project>/.vimspector.json next to your .obs files. The 'objeck' adapter is registered globally via ~/.vimspector.json.",
+    "configurations": {
+        "Debug current Objeck file": {
+            "adapter": "objeck",
+            "configuration": {
+                "request": "launch",
+                "type": "objeck",
+                "program": "${workspaceRoot}/${fileBasenameNoExtension}.obe",
+                "sourceDir": "${workspaceRoot}"
+            }
+        },
+        "Debug myprog.obe": {
+            "adapter": "objeck",
+            "configuration": {
+                "request": "launch",
+                "type": "objeck",
+                "program": "${workspaceRoot}/myprog.obe",
+                "sourceDir": "${workspaceRoot}"
+            }
+        }
+    }
+}

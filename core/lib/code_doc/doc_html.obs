@@ -99,8 +99,80 @@ class HtmlMaker {
 			};			
 		};
 		System.Utility.Spinner->Last();
-		
+
+		CreateSearchIndex(bundles);
+
 		return true;
+	}
+
+	#~
+	Generates search_index.json for client-side full-text search
+	@param bundles parsed bundle map
+	~#
+	method : CreateSearchIndex(bundles : Map<String, BundleSnippet>) ~ Nil {
+		json := "[";
+		first := true;
+
+		bundle_keys := bundles->GetKeys()<String>;
+		each(i : bundle_keys) {
+			bundle_block := bundles->Find(bundle_keys->Get(i));
+			if(bundle_block->IsParsed()) {
+				bundle_name := bundle_block->GetName();
+
+				classes := bundle_block->GetClasses();
+				class_keys := classes->GetKeys()<String>;
+				each(j : class_keys) {
+					class_block := classes->Find(class_keys->Get(j));
+					if(class_block->IsParsed()) {
+						class_url := GetClassLink(class_block);
+						class_name := class_block->GetShortName();
+						class_desc := class_block->GetDesc()->ReplaceAll("\"", "&quot;")->ReplaceAll("\n", " ")->ReplaceAll("\r", "");
+
+						if(<>first) { json += ","; };
+						first := false;
+						json += "{\"type\":\"class\",\"bundle\":\"";
+						json += bundle_name;
+						json += "\",\"name\":\"";
+						json += class_name;
+						json += "\",\"desc\":\"";
+						json += class_desc;
+						json += "\",\"url\":\"";
+						json += class_url;
+						json += "\"}";
+
+						func_names := class_block->GetFunctionNames();
+						each(func_name in func_names) {
+							funcs := class_block->GetFunctions(func_name);
+							if(<>funcs->IsEmpty()) {
+								func := funcs->Get(0);
+								func_link := class_name->ToLower() + '-' + func_name->ToLower();
+								func_desc := func->GetDesc()->ReplaceAll("\"", "&quot;")->ReplaceAll("\n", " ")->ReplaceAll("\r", "");
+
+								json += ",{\"type\":\"method\",\"bundle\":\"";
+								json += bundle_name;
+								json += "\",\"class\":\"";
+								json += class_name;
+								json += "\",\"name\":\"";
+								json += func_name;
+								json += "\",\"desc\":\"";
+								json += func_desc;
+								json += "\",\"url\":\"";
+								json += class_url;
+								json += "#";
+								json += func_link;
+								json += "\"}";
+							};
+						};
+					};
+				};
+			};
+		};
+
+		json += "]";
+
+		out := FileWriter->New("../html/search_index.json");
+		out->WriteString(json);
+		out->Close();
 	}
 	
 	#~
@@ -115,12 +187,21 @@ class HtmlMaker {
 		html := template_html->ReplaceAll("@version", @version);
 		html := html->ReplaceAll("@nav", nav_html);
 
-		# set main - breadcrumb
-		main_html := "<div class='breadcrumb'><a href='index.html'>All Bundles</a> &rsaquo; ";
+		toc_html := "";
+
+		# set main - breadcrumb (wrapped in two-column layout)
+		main_html := "<div class='content-with-toc'><div class='content'><div class='breadcrumb'><a href='index.html'>All Bundles</a> &rsaquo; ";
 		main_html += class_block->GetBundleName();
 		main_html += " &rsaquo; ";
 		main_html += class_block->GetShortName();
 		main_html += "</div>";
+
+		bundle_desc := @bundle_snippit->GetDesc();
+		if(bundle_desc <> Nil & bundle_desc->Size() > 0) {
+			main_html += "<div class='bundle-overview'><span class='bundle-overview-label'>Bundle</span> ";
+			main_html += bundle_desc;
+			main_html += "</div>";
+		};
 
 		main_html += "<h2>";
 		if(class_block->IsInterface()) {
@@ -162,26 +243,30 @@ class HtmlMaker {
 		};
 
 		if(class_block->GetCode() <> Nil) {
-			main_html += "<pre><code class='language-cpp'>";
+			main_html += "<pre><code class='language-objeck'>";
 			main_html += class_block->GetCode();
 			main_html += "</code></pre>";
 		};
 
 		func_names := class_block->GetFunctionNames();
 		if(<>func_names->IsEmpty()) {
-			main_html += "<h3>Operations</h3>";
+			toc_html += "<aside class='toc'><div class='toc-inner'><h4>On This Page</h4><ul>";
+			main_html += "<h3>Operations</h3><ul>";
 
-			main_html += "<ul>";
-			
 			# write 'New' methods first
 			each(func_name in func_names) {
 				func_link := class_block->GetShortName()->ToLower() + '-' + func_name->ToLower();
 				if(func_name->StartsWith("New")) {
-					main_html += "<li><a href='#"
+					main_html += "<li><a href='#";
 					main_html += func_link;
 					main_html += "'>";
 					main_html += func_name;
 					main_html += "</a></li>";
+					toc_html += "<li><a href='#";
+					toc_html += func_link;
+					toc_html += "'>";
+					toc_html += func_name;
+					toc_html += "</a></li>";
 				};
 			};
 
@@ -189,15 +274,21 @@ class HtmlMaker {
 			each(func_name in func_names) {
 				func_link := class_block->GetShortName()->ToLower() + '-' + func_name->ToLower();
 				if(<>func_name->StartsWith("New")) {
-					main_html += "<li><a href='#"
+					main_html += "<li><a href='#";
 					main_html += func_link;
 					main_html += "'>";
 					main_html += func_name;
 					main_html += "</a></li>";
+					toc_html += "<li><a href='#";
+					toc_html += func_link;
+					toc_html += "'>";
+					toc_html += func_name;
+					toc_html += "</a></li>";
 				};
 			};
-			
+
 			main_html += "</ul>";
+			toc_html += "</ul></div></aside>";
 		}
 		else {
 			main_html += "<h3>No Defined Operations</h3>";
@@ -216,14 +307,31 @@ class HtmlMaker {
 				main_html += "<div class='grey-block'><a id='";
 				main_html += func_link;
 				main_html += "'></a><h3>";
-      			
-      			main_html += func_name;
+
+				main_html += func_name;
+				main_html += " <a class='anchor-link' href='#";
+				main_html += func_link;
+				main_html += "'>#</a>";
+
+				if(func->IsNative()) {
+					main_html += " <span class='badge badge-native'>native</span>";
+				}
+				else if(func->IsVirtual()) {
+					main_html += " <span class='badge badge-virtual'>virtual</span>";
+				}
+				else if(func->IsNew()) {
+					main_html += " <span class='badge badge-constructor'>constructor</span>";
+				}
+				else if(func->IsFunction()) {
+					main_html += " <span class='badge badge-function'>function</span>";
+				};
+
       			main_html += "</h3><p>";
       			main_html += func_desc;
       			
-      			main_html += "</p><code>"
+      			main_html += "</p><pre><code class='language-objeck'>"
       			main_html += func_sig;
-      			main_html += "</code>";
+      			main_html += "</code></pre>";
       			# write parameters
 
       			param_tags := func->GetParamTags();
@@ -276,11 +384,24 @@ class HtmlMaker {
 
 	      			main_html += "</tr></table>";
 	      		};
-	      		main_html += "<br /></div>";
+
+	      		# per-function code example
+	      		if(func->GetCode() <> Nil) {
+	      			main_html += "<p><b>Example</b></p><pre><code class='language-objeck'>";
+	      			main_html += func->GetCode();
+	      			main_html += "</code></pre>";
+	      		};
+
+	      		main_html += "</div>";
 			}
 		};
 
-		# write file	
+		# close two-column layout and append sticky TOC
+		main_html += "</div>";
+		main_html += toc_html;
+		main_html += "</div>";
+
+		# write file
 		html := html->ReplaceAll("@main", main_html);
 
 		filename := GetClassLink(class_block, "../html/");
@@ -309,6 +430,13 @@ class HtmlMaker {
 		main_html += " &rsaquo; ";
 		main_html += enum_block->GetName();
 		main_html += "</div>";
+
+		bundle_desc := @bundle_snippit->GetDesc();
+		if(bundle_desc <> Nil & bundle_desc->Size() > 0) {
+			main_html += "<div class='bundle-overview'><span class='bundle-overview-label'>Bundle</span> ";
+			main_html += bundle_desc;
+			main_html += "</div>";
+		};
 
 		main_html += "<h2>";
 		main_html += enum_block->GetName();

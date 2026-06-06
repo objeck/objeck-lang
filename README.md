@@ -12,7 +12,7 @@
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/github/v/release/objeck/objeck-lang?sort=semver" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/github/v/release/objeck/objeck-lang?sort=date" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -30,14 +30,14 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ## Try It Online
 
-👉🏽 [playground.objeck.org](https://playground.objeck.org) — 33 demos across 7 categories, Monaco editor, no install required.
+👉🏽 [Playground](https://playground.objeck.org) — 33 demos across 7 categories, Monaco editor, no install required.
 
 ## Quick Start
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.5.2/objeck-linux-x64_2026.5.2.tgz
-tar xzf objeck-linux-x64_2026.5.2.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.5.4/objeck-linux-x64_2026.5.4.tgz
+tar xzf objeck-linux-x64_2026.5.4.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -57,40 +57,35 @@ obc hello && obr hello
 
 ## What's New
 
-**v2026.5.2**
-  * **Release fix** — `obr` (VM runtime) was absent from all v2026.5.1 platform archives; `nghttp2` was missing from CI build scripts on every platform
-  * **Windows local builds** — vcpkg include/lib paths added to `vm.vcxproj` so dev builds find nghttp2 without manual env var setup
-  * **CI hardening** — binary presence and API doc completeness now verified before artifacts are uploaded; `api.zip` auto-committed to repo after doc generation
+**v2026.6.0**
+  * **New `System.AI` library** (`-lib ai` or `@ai`) — classic AI in the standard library: graph search (`Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst`), adversarial game search (`Minimax` with alpha-beta, `MonteCarloTreeSearch`), metaheuristics (`GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing`) and tabular RL (`QLearning`, `Sarsa`, `MarkovDecisionProcess` value iteration); all stochastic algorithms seeded for reproducible runs
+  * **`System.ML` overhaul** — 13 new estimators (`RidgeRegression`/`LassoRegression`/`ElasticNet`, `Perceptron`, `SVM`, `PCA`, `GaussianNaiveBayes`, `AdaBoost`, `DBSCAN`, `GaussianMixture`, `KDTree`); real recursive `DecisionTree` and voting `RandomForest`; k-means++ `KMeans`; `NeuralNetwork` hidden/output bias (clean XOR convergence); seedable `System.ML.Random`; uniform `Fit`/`Predict`/`Score`/`IsFitted`/`Store`/`Load` API across every estimator. *Breaking:* `RandomForest->Train` is now `Fit`; stored `NeuralNetwork` model files must be regenerated
+  * **`record` types** — `record Point { @x : Int; @y : Int; }` generates the constructor and accessors; `record : readonly :` omits setters and the compiler rejects field assignment outside constructors; supports generics, inheritance and user-defined member overrides
+  * **VM/JIT fix** — traps reading interpreter locals (`Serializer->Write`, `Date->New`, file-time queries) crashed once a method crossed the auto-JIT threshold; such methods now stay interpreted on AMD64 and ARM64
+  * **Compiler fixes** — bool array literals after the first in a program no longer receive the first literal's data (broken literal-pool comparator); literal dedup now works for all array types; array dimensions capped at 8 with a proper diagnostic
+  * **Library aliases documented** — `-lib @std`/`@ml`/`@game` and the new `@ai` group, user-editable via `lib/configobjk.ini`; AI/ML developer guide gains `System.ML` and `System.AI` sections with runnable examples
+  * **CI hardening** — vcpkg installs retry on transient CDN failures; `mcp_server_test` validates JSON-RPC bodies before accepting
 
-**v2026.5.1**
-  * **HTTP/2 client** — `Http2Client` with persistent TLS connections, custom headers, GET/POST/PUT/DELETE, and `QuickGet`/`QuickPost` one-liners (nghttp2 + ALPN)
-  * **HTTP/3 / QUIC client** — `Http3Client` over UDP with connection reuse and the same `Quick*` API (ngtcp2 + nghttp3 + GnuTLS)
-  * **HTTP/1.1 improvements** — PATCH method, redirect handling fixes, retry parity across `HttpClient`/`HttpsClient`
-  * **OpenAI Moderation** — `Moderation->Check()` returns per-category flags and confidence scores
-  * **OpenAI Batch** — `Batch->Create()`/`Get()` for async 50%-cost batch requests (up to 50k at a time)
-  * **Gemini Files API** — upload, list, get, and delete files via `FileManager`
-  * **Gemini Context Caching** — `CachedContent->Create()` for server-side prompt caching with configurable TTL
-  * **Gemini Search Grounding** — `Model->GenerateContentWithGrounding()` anchors responses in live Google Search results
-  * **Gemini Batch Embeddings** — `Model->BatchEmbedContent()` embeds multiple texts in one round-trip
-  * **WebSocket hardening** — 8 bug fixes + bulk `ReadBuffer` I/O replacing per-byte reads
-  * **MCP server fixes** — hang on shutdown and crash-on-stop resolved; regression tests added
-  * **Socket reliability** — `SO_REUSEADDR` on `TCPSocketServer::Bind()` survives TIME_WAIT; `IPSocket::Open()` falls through to next address on `socket()` failure
-  * **Security hardening** — LSP concurrent-request mutex; scrfd tensor bounds check; `conf_threshold` NaN/range guard; `WinWriteWide` DWORD truncation guard
-  * **MSVC optimizations** — Release build improvements for VM and compiler
+**v2026.5.4**
+  * **Debugger test reliability** — Windows CI debugger tests fixed; `.obe`/`.obl` format detection now correctly handles the edge case where a new-format size-header LSB collides with the `0x78` zlib CMF byte
+  * **LSP shell script permissions** — all `tools/lsp/` shell scripts now have execute bit set in git, fixing `Permission denied` in release CI
+  * **Release workflow** — `git checkout -f master` prevents dirty-tree abort when committing `api.zip` from a tag-based build
 
-**v2026.5.0** 
-  * **Face recognition** — new `FaceSession` API with SCRFD 10G-KPS detector + ArcFace R50 512-dim embeddings (InsightFace buffalo_l). Cross-platform: DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS). No extra native libs required.
-  * **Windows emoji** — full Unicode supplementary plane output (emoji and other non-BMP characters) now works correctly in cmd.exe and Windows Terminal via `WriteConsoleW`
-  * **LSP enhancements** — typeHierarchy, selectionRange, workspace/symbol, foldingRange, documentHighlight, go-to-type-definition; hover correctness and non-determinism fixes
-  * **ARM64 JIT** — fixed EXT_LIB_FUNC_CALL crash; macOS ONNX build and CodeQL fixes
-  * **`OBJECK_JIT_DISABLE`** — new boolean env var for cleanly disabling auto-JIT at startup
-
+**v2026.5.3**
+  * **JIT `select` dispatch** — dense integer `select` (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST — best strategy chosen automatically on AMD64 and ARM64
+  * **JIT trig/float fixes** — AMD64 x87 `fsin`/`fcos`/`ftan` replaced with `call_xfunc` for consistent cross-platform results; fixed `REG_FLOAT` register corruption crash in `call_xfunc`/`sqrt`/`round`
+  * **Binary file hardening** — 4-byte uncompressed-size header prepended to every `.obe`/`.obl`; level-9 zlib compression (~5% smaller); old format auto-detected via CMF byte for backward compatibility
+  * **LSP consolidated** — LSP server moved into main repo (`tools/lsp/`); CI rebuilds the server and VS Code extension on every release; `publish-vscode` job auto-publishes to the VS Code Marketplace
+  * **API documentation overhaul** — bundle overview panels, 500+ inline code examples, global search index, two-column TOC, method badges, and anchor links across all 32 library pages
+  * **ODBC improvements** — live SQLite integration test; transaction support (`Commit`/`Rollback`/`SetAutoCommit`) verified; `GetColumns` metadata
+  * **Bug fixes** — `String->Split(Char)` trailing token fix; `String->SubString` crash on negative/zero length; inline optimizer jump-table label shift fix; `CleanLabelsLocation` end-of-stream overread fix
+  * **Performance** — `bench_spectralnorm_native` inner loop: incremental FP denominator eliminates per-element `I2F` conversions
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
 ## Downloads
 
-**Latest Release:** [v2026.5.2](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.5.4](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
@@ -98,7 +93,7 @@ obc hello && obr hello
 | **Windows** | ARM64 | [MSI Installer](https://github.com/objeck/objeck-lang/releases/latest) / [ZIP](https://github.com/objeck/objeck-lang/releases/latest) |
 | **Linux** | x64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **Linux** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
-| **macOS** | ARM64 (M1/M2/M3) | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **macOS** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **LSP** | All platforms | [ZIP Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 
 📦 **Alternative:** [Sourceforge](https://sourceforge.net/projects/objeck/files/) • 📚 **API Docs:** [objeck.org/api/latest](https://www.objeck.org/api/latest/)
@@ -202,13 +197,13 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 
 ## Libraries
 
-**AI & Machine Learning** — [📖 AI Developer Guide](https://www.objeck.org/ai_guide.html) · [GitHub source](docs/AI.md)
+**AI & Machine Learning** — [📖 AI Developer Guide](https://www.objeck.org/ai_guide.html) · [GitHub source](docs/AI.md) · [🤖 Getting Models](docs/MODELS.md)
 - [OpenAI](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/openai.obs) — chat, vision, realtime audio, image generation, embeddings, moderation, batch
 - [Gemini](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/gemini.obs) — chat, vision, search grounding, files, context caching, batch embeddings
-- [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs) — local LLM chat, vision, and embeddings (no API key)
+- [Ollama](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/ollama.obs) — local LLM chat, vision, and embeddings; recommended models: `llama3.2`, `phi3`, `llava` ([get models →](docs/MODELS.md#ollama-models))
 - [NLP](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/nlp.obs) — tokenization, TF-IDF, text similarity, sentiment analysis
 - [OpenCV](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/opencv.obs) — computer vision: detection, transforms, video
-- [ONNX Runtime](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/onnx.obs) — local ML inference: YOLO, ResNet, DeepLab, OpenPose, Phi-3, face recognition
+- [ONNX Runtime](https://github.com/objeck/objeck-lang/blob/master/core/compiler/lib_src/onnx.obs) — local ML inference: YOLO, ResNet, DeepLab, OpenPose, Phi-3, face recognition ([get models →](docs/MODELS.md#onnx-models))
 - [Face Recognition](https://github.com/objeck/objeck-lang/blob/master/core/lib/onnx/README.md) — SCRFD detector + ArcFace R50 (InsightFace buffalo_l)
 - [Phi-3 / Phi-3 Vision](https://github.com/objeck/objeck-lang/tree/master/programs/frameworks/opencv_onnx) — local SLM text and multimodal inference
 
@@ -245,7 +240,7 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
   - Full cross-platform coverage (Windows/Linux/macOS, x64/ARM64)
 
 **Editor Support:**
-- LSP plugins for [VSCode, Sublime, Kate, and more](https://github.com/objeck/objeck-lsp)
+- LSP plugins for [VSCode, Sublime, Kate, Neovim, Emacs, Helix, and more](tools/lsp/)
 - REPL for interactive development
 - API docs at [objeck.org](https://www.objeck.org)
 

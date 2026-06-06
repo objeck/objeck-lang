@@ -6,7 +6,7 @@
 use System.API, Data.JSON;
 
 #~
-Open Computer Vision (OpenCV) support for image rendering and compilation. (-lib onnx)
+OpenCV computer vision library. Image supports loading, saving, resizing, color conversion, blurring, edge detection, cropping, and drawing. VideoCapture reads from files or camera streams. Compile with -lib opencv.
 ~#
 bundle API.OpenCV {
 	class : private : Proxy {
@@ -170,6 +170,15 @@ bundle API.OpenCV {
 		Open video file or a capturing device or a IP video stream
 		@param id device ID
 		@return true if open, false otherwise
+
+```
+cap := VideoCapture->New(0);
+if(cap->Open(0)) {
+  frame := cap->Read();
+  frame->Save("frame.jpg");
+  cap->Release();
+};
+```
 		~#
 		method : public : Open(id : Int) ~ Bool {
 			array_args := Base->New[3];
@@ -206,6 +215,15 @@ bundle API.OpenCV {
 		Open video file or a capturing device or a IP video stream
 		@param name device name
 		@return true if open, false otherwise
+
+```
+cap := VideoCapture->New("video.mp4");
+if(cap->Open("video.mp4")) {
+  frame := cap->Read();
+  frame->Show("First Frame");
+  cap->Release();
+};
+```
 		~#
 		method : public : Open(name : String) ~ Bool {
 			array_args := Base->New[3];
@@ -339,6 +357,13 @@ bundle API.OpenCV {
 		Load image from file
 		@param image_path image file path
 		@return loaded image
+
+```
+image := Image->Load("photo.jpg");
+if(<>image->IsEmpty()) {
+  "Loaded: {$image->Columns()}x{$image->Rows()}"->PrintLine();
+};
+```
 		~#
 		function : Load(image_path : String) ~ API.OpenCV.Image {
 			array_args := Base->New[2];
@@ -353,8 +378,14 @@ bundle API.OpenCV {
 
 		#~
 		Load image from bytes
-		@param image_path image file path
+		@param image_bytes raw image bytes
 		@return loaded image
+
+```
+raw := System.IO.Filesystem.FileReader->ReadBinaryFile("photo.jpg");
+image := Image->Load(raw);
+"Rows: {$image->Rows()}, Cols: {$image->Columns()}"->PrintLine();
+```
 		~#
 		function : Load(image_bytes : Byte[]) ~ API.OpenCV.Image {
 			array_args := Base->New[2];
@@ -385,6 +416,11 @@ bundle API.OpenCV {
 		#~
 		Shows an image
 		@param title dialog title
+
+```
+image := Image->Load("photo.jpg");
+image->Show("Preview");
+```
 		~#
 		method : public : Show(title : String) ~ Nil {
 			Show(title, 1.0);
@@ -426,6 +462,12 @@ bundle API.OpenCV {
 		Convert an image to a given byte format
 		@param format output format
 		@return converted image bytes
+
+```
+image := Image->Load("photo.jpg");
+png_bytes := image->Convert(Image->Format->PNG);
+"PNG bytes: {$png_bytes->Size()}"->PrintLine();
+```
 		~#
 		method : public : Convert(format : Image->Format) ~ Byte[] {			
 			array_args := Base->New[3];
@@ -447,8 +489,16 @@ bundle API.OpenCV {
 		@param thickness bounding rectangle thickness
 		@param type bounding rectangle type
 		@return updated image
+
+```
+image := Image->Load("photo.jpg");
+box := Rect->New(50, 50, 100, 80);
+red := Scalar->New(0.0, 0.0, 255.0);
+annotated := image->DrawRectangle(box, red, 2);
+annotated->Save("annotated.jpg");
+```
 		~#
-		method : public : DrawRectangle(rect : Rect, color : Scalar, thickness : Int := 1, 
+		method : public : DrawRectangle(rect : Rect, color : Scalar, thickness : Int := 1,
 				type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
 			array_args := Base->New[6];
 
@@ -498,8 +548,15 @@ bundle API.OpenCV {
 		@param thickness bounding circle thickness
 		@param type bounding circle type
 		@return updated image
+
+```
+image := Image->Load("photo.jpg");
+white := Scalar->New(255.0, 255.0, 255.0);
+labeled := image->DrawText("Hello!", Point->New(10, 30), Font->FONT_HERSHEY_SIMPLEX, 1.0, white);
+labeled->Save("labeled.jpg");
+```
 		~#
-		method : public : DrawText(text : String, pt : Point, font : Font, scale : Float, color : Scalar, 
+		method : public : DrawText(text : String, pt : Point, font : Font, scale : Float, color : Scalar,
 				thickness : Int := 1, type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
 			array_args := Base->New[9];
 
@@ -525,8 +582,14 @@ bundle API.OpenCV {
 		@param fy y-scale factor
 		@param interpolation filling missing pixels method
 		@return updated image
+
+```
+image := Image->Load("photo.jpg");
+resized := image->Resize(Size->New(320, 240));
+resized->Save("thumb.jpg");
+```
 		~#
-		method : public : Resize(sz : Size, fx : Float := 0.0, fy : Float := 0.0, 
+		method : public : Resize(sz : Size, fx : Float := 0.0, fy : Float := 0.0,
 				interpolation : InterpolationFlags := InterpolationFlags->INTER_LINEAR) ~ API.OpenCV.Image {
 			array_args := Base->New[6];
 
@@ -588,6 +651,12 @@ bundle API.OpenCV {
 		Converts image color space
 		@param code color conversion code from ColorConversionCodes
 		@return converted image
+
+```
+image := Image->Load("photo.jpg");
+gray := image->CvtColor(6);
+gray->Save("gray.png");
+```
 		~#
 		method : public : CvtColor(code : Int) ~ Image {
 			array_args := Base->New[3];
@@ -607,6 +676,12 @@ bundle API.OpenCV {
 		@param ksize_h kernel height (must be odd)
 		@param sigmaX Gaussian kernel standard deviation in X direction
 		@return blurred image
+
+```
+image := Image->Load("photo.jpg");
+blurred := image->GaussianBlur(5, 5, 1.5);
+blurred->Save("blurred.jpg");
+```
 		~#
 		method : public : GaussianBlur(ksize_w : Int, ksize_h : Int, sigmaX : Float) ~ Image {
 			array_args := Base->New[5];
@@ -626,6 +701,12 @@ bundle API.OpenCV {
 		Applies median blur to the image
 		@param ksize aperture size (must be odd and greater than 1)
 		@return blurred image
+
+```
+image := Image->Load("noisy.jpg");
+denoised := image->MedianBlur(3);
+denoised->Save("denoised.jpg");
+```
 		~#
 		method : public : MedianBlur(ksize : Int) ~ Image {
 			array_args := Base->New[3];
@@ -665,6 +746,13 @@ bundle API.OpenCV {
 		@param threshold1 first threshold for hysteresis procedure
 		@param threshold2 second threshold for hysteresis procedure
 		@return edge-detected image
+
+```
+image := Image->Load("photo.jpg");
+gray := image->CvtColor(6);
+edges := gray->Canny(50.0, 150.0);
+edges->Save("edges.png");
+```
 		~#
 		method : public : Canny(threshold1 : Float, threshold2 : Float) ~ Image {
 			array_args := Base->New[4];
@@ -816,6 +904,14 @@ bundle API.OpenCV {
 		Saves an image to file
 		@param path output file path
 		@return true if saved successfully, false otherwise
+
+```
+image := Image->Load("input.jpg");
+blurred := image->GaussianBlur(5, 5, 1.5);
+if(blurred->Save("output.jpg")) {
+  "Saved."->PrintLine();
+};
+```
 		~#
 		method : public : Save(path : String) ~ Bool {
 			array_args := Base->New[3];
@@ -834,6 +930,12 @@ bundle API.OpenCV {
 		Flips an image
 		@param flipCode 0 for vertical, 1 for horizontal, -1 for both
 		@return flipped image
+
+```
+image := Image->Load("photo.jpg");
+mirrored := image->Flip(1);
+mirrored->Save("mirrored.jpg");
+```
 		~#
 		method : public : Flip(flipCode : Int) ~ Image {
 			array_args := Base->New[3];
@@ -851,6 +953,13 @@ bundle API.OpenCV {
 		Crops an image using a rectangle region of interest
 		@param rect bounding rectangle for the crop region
 		@return cropped image
+
+```
+image := Image->Load("photo.jpg");
+region := Rect->New(10, 10, 200, 150);
+cropped := image->Crop(region);
+cropped->Save("cropped.jpg");
+```
 		~#
 		method : public : Crop(rect : Rect) ~ Image {
 			array_args := Base->New[3];

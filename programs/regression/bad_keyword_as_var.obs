@@ -1,0 +1,8 @@
+# EXPECT_COMPILE_ERROR
+class BadKeywordAsVar {
+    function : Main(args : String[]) ~ Nil {
+        label := 5;
+        other := 10;
+        "hello"->PrintLine();
+    }
+}

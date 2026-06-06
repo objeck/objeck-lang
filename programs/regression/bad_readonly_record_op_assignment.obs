@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR
+
+record : readonly : Frozen {
+    @x : Int;
+
+    method : public : Bump() ~ Nil {
+        @x += 1;
+    }
+}
+
+class BadReadonlyRecordOpAssignment {
+    function : Main(args : String[]) ~ Nil {
+        Frozen->New(1)->Bump();
+    }
+}

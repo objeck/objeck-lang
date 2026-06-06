@@ -1,0 +1,122 @@
+# EXTRA_LIBS: ai,gen_collect
+# JIT_DISABLE
+#~
+Regression tests for System.AI graph search: Dijkstra finds the minimum-cost
+path even when a direct (expensive) edge exists, A* with an admissible
+heuristic matches Dijkstra's cost without expanding more nodes, BreadthFirst
+finds the fewest-hops path, DepthFirst reaches the goal, and unreachable /
+invalid queries are rejected cleanly.
+~#
+use System.AI;
+
+class AiSearchTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		eps := 0.000001;
+
+		# nodes 0..6; node 6 is isolated
+		# cheap chain: 0-1-2-5 (cost 3); direct heavy edge 0-5 (cost 100);
+		# detour: 0-3-5 (cost 11.5)
+		graph := Graph->New(7);
+		graph->AddEdge(0, 1, 1.0);
+		graph->AddEdge(1, 2, 1.0);
+		graph->AddEdge(2, 5, 1.0);
+		graph->AddEdge(0, 5, 100.0);
+		graph->AddEdge(0, 3, 1.5);
+		graph->AddEdge(3, 5, 10.0);
+
+		if(graph->GetNumNodes() <> 7 | graph->GetNumEdges() <> 6) {
+			pass := false;
+			"  FAIL: graph counts"->PrintLine();
+		};
+		if(graph->AddEdge(-1, 2, 1.0) | graph->AddEdge(0, 9, 1.0)) {
+			pass := false;
+			"  FAIL: invalid edge accepted"->PrintLine();
+		};
+
+		# --- Dijkstra: min-cost path 0-1-2-5, cost 3 ---
+		dij := Dijkstra->FindPath(graph, 0, 5);
+		if(<>dij->Found() | Float->Abs(dij->GetCost() - 3.0) > eps) {
+			pass := false;
+			"  FAIL: dijkstra cost"->PrintLine();
+		}
+		else {
+			path := dij->GetPath();
+			if(path->Size() <> 4 | path[0] <> 0 | path[1] <> 1 | path[2] <> 2 | path[3] <> 5) {
+				pass := false;
+				"  FAIL: dijkstra path"->PrintLine();
+			};
+		};
+
+		# --- A*: admissible heuristic gives the same cost, no extra work ---
+		heuristic := [3.0, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0];
+		astar := AStar->FindPath(graph, 0, 5, heuristic);
+		if(<>astar->Found() | Float->Abs(astar->GetCost() - 3.0) > eps) {
+			pass := false;
+			"  FAIL: a-star cost"->PrintLine();
+		}
+		else {
+			if(astar->GetExpanded() > dij->GetExpanded()) {
+				a := astar->GetExpanded();
+				d := dij->GetExpanded();
+				pass := false;
+				"  FAIL: a-star expanded {$a} > dijkstra {$d}"->PrintLine();
+			};
+		};
+
+		# mismatched heuristic length is rejected
+		bad := AStar->FindPath(graph, 0, 5, [1.0, 2.0]);
+		if(bad->Found()) {
+			pass := false;
+			"  FAIL: bad heuristic accepted"->PrintLine();
+		};
+
+		# --- BFS: fewest hops takes the direct edge (1 hop, cost 1) ---
+		bfs := BreadthFirst->FindPath(graph, 0, 5);
+		if(<>bfs->Found() | Float->Abs(bfs->GetCost() - 1.0) > eps) {
+			pass := false;
+			"  FAIL: bfs hops"->PrintLine();
+		}
+		else {
+			path := bfs->GetPath();
+			if(path->Size() <> 2 | path[0] <> 0 | path[1] <> 5) {
+				pass := false;
+				"  FAIL: bfs path"->PrintLine();
+			};
+		};
+
+		# --- DFS: reaches the goal with a valid endpoint pair ---
+		dfs := DepthFirst->FindPath(graph, 0, 5);
+		if(<>dfs->Found()) {
+			pass := false;
+			"  FAIL: dfs not found"->PrintLine();
+		}
+		else {
+			path := dfs->GetPath();
+			last := path->Size() - 1;
+			if(path[0] <> 0 | path[last] <> 5 | Float->Abs(dfs->GetCost() - last->As(Float)) > eps) {
+				pass := false;
+				"  FAIL: dfs path"->PrintLine();
+			};
+		};
+
+		# --- unreachable and invalid nodes ---
+		none := Dijkstra->FindPath(graph, 0, 6);
+		if(none->Found() | none->GetPath()->Size() <> 0) {
+			pass := false;
+			"  FAIL: unreachable"->PrintLine();
+		};
+		oob := Dijkstra->FindPath(graph, 0, 99);
+		if(oob->Found()) {
+			pass := false;
+			"  FAIL: out-of-bounds goal"->PrintLine();
+		};
+
+		if(pass) {
+			"PASS: AI search tests"->PrintLine();
+		}
+		else {
+			"FAIL: AI search tests"->PrintLine();
+		};
+	}
+}

@@ -1117,6 +1117,15 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
 
 void JitAmd64::ProcessJump(StackInstr* instr) {
   FlushLocalCache();
+  // A conditional jump consumes its comparison value; if the compile-time
+  // stack model has diverged (e.g. a front-end type bug fed unexpected
+  // operand kinds to an earlier instruction), fail the compile cleanly so
+  // the method falls back to the interpreter instead of crashing.
+  if(working_stack.empty() && (instr->GetOperand2() >= 0 || skip_jump)) {
+    compile_success = false;
+    skip_jump = false;
+    return;
+  }
   if(!skip_jump) {
 #ifdef _DEBUG_JIT
     std::wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size()
@@ -2126,6 +2135,10 @@ void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }      
     break; 
@@ -2158,6 +2171,10 @@ void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2190,11 +2207,16 @@ void JitAmd64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
 
   default:
+    compile_success = false;
     break;
   }
   
@@ -2277,6 +2299,10 @@ void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }      
     break; 
@@ -2335,6 +2361,10 @@ void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2401,17 +2431,22 @@ void JitAmd64::ProcessFloatCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
 
   default:
+    compile_success = false;
     break;
   }
 
   delete left;
   left = nullptr;
-    
+
   delete right;
   right = nullptr;
 }
@@ -2428,18 +2463,15 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
   RegisterHolder* holder = nullptr;
   switch(type) {
   case SIN_FLOAT:
-    fld_mem((long)left->GetOperand(), RBP);
-    fsin();
+    holder = call_xfunc(sin, left);
     break;
 
   case COS_FLOAT:
-    fld_mem((long)left->GetOperand(), RBP);
-    fcos();
+    holder = call_xfunc(cos, left);
     break;
 
   case TAN_FLOAT:
-    fld_mem((long)left->GetOperand(), RBP);
-    ftan();
+    holder = call_xfunc(tan, left);
     break;
 
   case LOG_FLOAT:
@@ -2536,12 +2568,14 @@ void JitAmd64::ProcessFloatSquareRoot([[maybe_unused]] StackInstr* instruction) 
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
-#ifdef _DEBUG_JIT
-  assert(left->GetType() == MEM_FLOAT);
-#endif
-
-  RegisterHolder* holder = GetXmmRegister();
-  move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
+  RegisterHolder* holder;
+  if(left->GetType() == REG_FLOAT) {
+    holder = left->GetRegister();
+  }
+  else {
+    holder = GetXmmRegister();
+    move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
+  }
   sqrt_xreg_xreg(holder->GetRegister(), holder->GetRegister());
   
   working_stack.push_front(new RegInstr(holder));
@@ -2554,12 +2588,14 @@ void JitAmd64::ProcessFloatRound([[maybe_unused]] StackInstr* instruction, wchar
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
-#ifdef _DEBUG_JIT
-  assert(left->GetType() == MEM_FLOAT);
-#endif
-
-  RegisterHolder* holder = GetXmmRegister();
-  move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
+  RegisterHolder* holder;
+  if(left->GetType() == REG_FLOAT) {
+    holder = left->GetRegister();
+  }
+  else {
+    holder = GetXmmRegister();
+    move_mem_xreg((long)left->GetOperand(), RBP, holder->GetRegister());
+  }
   round_xreg_xreg(holder->GetRegister(), holder->GetRegister(), mode);
 
   working_stack.push_front(new RegInstr(holder));
@@ -3065,7 +3101,15 @@ void JitAmd64::loop(long offset)
 RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
 {
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
-  move_mem_xreg((long)left->GetOperand(), RBP, XMM0);
+  if(left->GetType() == REG_FLOAT) {
+    if(left->GetRegister()->GetRegister() != XMM0) {
+      move_xreg_xreg(left->GetRegister()->GetRegister(), XMM0);
+    }
+    ReleaseXmmRegister(left->GetRegister());
+  }
+  else {
+    move_mem_xreg((long)left->GetOperand(), RBP, XMM0);
+  }
 
 #ifdef _WIN64
   sub_imm_reg(32, RSP);
@@ -3097,10 +3141,26 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
 #endif
 
   move_xreg_mem(XMM1, TMP_XMM_1, RBP);
-  move_mem_xreg((long)left->GetOperand(), RBP, XMM1);
+  if(left->GetType() == REG_FLOAT) {
+    if(left->GetRegister()->GetRegister() != XMM1) {
+      move_xreg_xreg(left->GetRegister()->GetRegister(), XMM1);
+    }
+    ReleaseXmmRegister(left->GetRegister());
+  }
+  else {
+    move_mem_xreg((long)left->GetOperand(), RBP, XMM1);
+  }
 
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
-  move_mem_xreg((long)right->GetOperand(), RBP, XMM0);
+  if(right->GetType() == REG_FLOAT) {
+    if(right->GetRegister()->GetRegister() != XMM0) {
+      move_xreg_xreg(right->GetRegister()->GetRegister(), XMM0);
+    }
+    ReleaseXmmRegister(right->GetRegister());
+  }
+  else {
+    move_mem_xreg((long)right->GetOperand(), RBP, XMM0);
+  }
 
 #ifdef _WIN64
   sub_imm_reg(32, RSP);
@@ -5444,6 +5504,7 @@ bool JitAmd64::CanInlineMethod(StackMethod* callee) {
   if(!callee || callee == method) return false;           // no recursion
   if(callee->IsVirtual()) return false;                   // static dispatch only
   if(callee->GetInstructionCount() > MAX_INLINE_SIZE) return false;
+  if(HasFrameDependentTrap(callee)) return false;         // null frame in trap callback
 
   for(long i = 0; i < callee->GetInstructionCount(); ++i) {
     InstructionType type = callee->GetInstruction(i)->GetType();
@@ -5814,6 +5875,12 @@ bool JitAmd64::Compile(StackMethod* cm)
       if(scan_instr->GetType() == JMP && scan_instr->GetOperand() < i) {
         detected_loops.push_back({scan_instr->GetOperand(), i});
       }
+    }
+
+    // frame->mem-dependent traps can't run from JIT code (null frame in the
+    // trap callback; locals live in native stack slots)
+    if(HasFrameDependentTrap(method)) {
+      return false;
     }
 
 #ifdef _DEBUG_JIT

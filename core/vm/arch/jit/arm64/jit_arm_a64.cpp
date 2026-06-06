@@ -32,6 +32,7 @@
 #include "jit_arm_a64.h"
 
 #include <bitset>
+#include <cstddef>
 
 using namespace Runtime;
 
@@ -1060,6 +1061,15 @@ void JitArm64::ProcessLoad(StackInstr* instr) {
 
 void JitArm64::ProcessJump(StackInstr* instr) {
   FlushLocalCache();
+  // A conditional jump consumes its comparison value; if the compile-time
+  // stack model has diverged (e.g. a front-end type bug fed unexpected
+  // operand kinds to an earlier instruction), fail the compile cleanly so
+  // the method falls back to the interpreter instead of crashing.
+  if(working_stack.empty() && (instr->GetOperand2() >= 0 || skip_jump)) {
+    compile_success = false;
+    skip_jump = false;
+    return;
+  }
   if(!skip_jump) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size()
@@ -1736,13 +1746,29 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     regs.pop();
     dirty_regs.pop();
   }
-  
+
   while(!dirty_fp_regs.empty()) {
     RegInstr* left = fp_regs.top();
     move_mem_freg(dirty_fp_regs.top(), SP, left->GetRegister()->GetRegister());
     // update
     fp_regs.pop();
     dirty_fp_regs.pop();
+  }
+
+  // Reload INSTANCE_MEM from frame->mem[0] in case the GC moved the young
+  // 'self' object during the callback: the GC fixes up frame->mem[0] but
+  // cannot see the copy in this frame's [SP+INSTANCE_MEM] slot (parity with
+  // the AMD64 fix). ARM64 isn't passed frame->mem directly, so derive it
+  // from the &frame->jit_mem pointer held in the JIT_MEM slot.
+  {
+    const long mem_delta = (long)(offsetof(StackFrame, jit_mem) - offsetof(StackFrame, mem));
+    RegisterHolder* tmp = GetRegister();
+    move_mem_reg(JIT_MEM, SP, tmp->GetRegister());           // tmp = &frame->jit_mem
+    sub_imm_reg(mem_delta, tmp->GetRegister());              // tmp = &frame->mem
+    move_mem_reg(0, tmp->GetRegister(), tmp->GetRegister()); // tmp = frame->mem
+    move_mem_reg(0, tmp->GetRegister(), tmp->GetRegister()); // tmp = frame->mem[0]
+    move_reg_mem(tmp->GetRegister(), INSTANCE_MEM, SP);      // refresh self
+    ReleaseRegister(tmp);
   }
 }
 
@@ -1977,6 +2003,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2008,6 +2038,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2040,11 +2074,16 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
 
   default:
+    compile_success = false;
     break;
   }
 
@@ -2105,6 +2144,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2141,6 +2184,10 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
@@ -2184,11 +2231,16 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
       break;
 
     default:
+      // unexpected operand kind (e.g. a float fed to an integer compare by a
+      // front-end type bug): fail the compile cleanly so the method falls
+      // back to the interpreter instead of corrupting the stack model
+      compile_success = false;
       break;
     }
     break;
 
   default:
+    compile_success = false;
     break;
   }
 
@@ -4857,6 +4909,12 @@ bool JitArm64::Compile(StackMethod* cm)
       if(!CanJitInstruction(method->GetInstruction(i)->GetType())) {
         return false;
       }
+    }
+
+    // frame->mem-dependent traps can't run from JIT code (null frame in the
+    // trap callback; locals live in native stack slots)
+    if(HasFrameDependentTrap(method)) {
+      return false;
     }
 
 #ifdef _DEBUG_JIT_JIT

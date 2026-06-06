@@ -7,7 +7,7 @@
 use Collection;
 
 #~
-Support for parsing JSON strings and documents (-lib json.obl)
+JSON parsing and building library. JsonParser reads JSON strings into a JsonElement tree; JsonBuilder constructs JSON documents using a stack-based API. Compile with -lib json.
 ~#
 bundle Data.JSON {
 	#~
@@ -48,6 +48,14 @@ builder->Pop()->ToString()->PrintLine();
 
 		#~
 		Pushes an object element on the stack
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		root := builder->PushObject();
+		root->Insert("status", "ok");
+		root->Insert("count", 3);
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : PushObject() ~ JsonBuilder {
 			if(@stack->IsEmpty()) {
@@ -65,6 +73,15 @@ builder->Pop()->ToString()->PrintLine();
 		#~
 		Pushes an object element on the stack
 		@param name object name
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		root := builder->PushObject();
+		addr := root->PushObject("address");
+		addr->Insert("city", "Oakland");
+		addr->Insert("zip", "94612");
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : PushObject(name : String) ~ JsonBuilder {
 			if(@stack->IsEmpty()) {
@@ -86,6 +103,16 @@ builder->Pop()->ToString()->PrintLine();
 
 		#~
 		Pushes an array element on the stack
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		root := builder->PushObject();
+		arr := root->PushArray("scores");
+		arr->Add(95);
+		arr->Add(87);
+		arr->Add(92);
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : PushArray() ~ JsonBuilder {
 			if(@stack->IsEmpty()) {
@@ -103,6 +130,14 @@ builder->Pop()->ToString()->PrintLine();
 		#~
 		Pops a value
 		@return popped element
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		root := builder->PushObject();
+		root->Insert("x", 1);
+		json := builder->Pop();
+		json->ToString()->PrintLine();
+		```
 		~#
 		method : public : Pop() ~ JsonElement {
 			if(@stack->IsEmpty()) {
@@ -117,6 +152,13 @@ builder->Pop()->ToString()->PrintLine();
 		#~
 		Pop all values
 		@return last popped element
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		builder->PushObject()->Insert("a", 1);
+		json := builder->PopAll();
+		json->ToString()->PrintLine();
+		```
 		~#
 		method : public : PopAll() ~ JsonElement {
 			if(@stack->IsEmpty()) {
@@ -136,6 +178,15 @@ builder->Pop()->ToString()->PrintLine();
 		Adds a value
 		@param value value
 		@return true if successful, false otherwise
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		arr := builder->PushArray();
+		arr->Add("red");
+		arr->Add("green");
+		arr->Add("blue");
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : Add(value : String) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
@@ -150,6 +201,15 @@ builder->Pop()->ToString()->PrintLine();
 		Adds a value
 		@param value value
 		@return true if successful, false otherwise
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		arr := builder->PushArray();
+		arr->Add(1);
+		arr->Add(2);
+		arr->Add(3);
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : Add(value : Int) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->ARRAY) {
@@ -207,6 +267,14 @@ builder->Pop()->ToString()->PrintLine();
 		@param name element name
 		@param value value
 		@return true if successful, false otherwise
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		root := builder->PushObject();
+		root->Insert("age", 30);
+		root->Insert("score", 99);
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : Insert(name : String, value : Int) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
@@ -222,6 +290,14 @@ builder->Pop()->ToString()->PrintLine();
 		@param name element name
 		@param value value
 		@return true if successful, false otherwise
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		root := builder->PushObject();
+		root->Insert("price", 9.99);
+		root->Insert("tax", 0.08);
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : Insert(name : String, value : Float) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
@@ -237,6 +313,14 @@ builder->Pop()->ToString()->PrintLine();
 		@param name element name
 		@param value value
 		@return true if successful, false otherwise
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		root := builder->PushObject();
+		root->Insert("name", "Alice");
+		root->Insert("role", "admin");
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : Insert(name : String, value : String) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
@@ -252,6 +336,14 @@ builder->Pop()->ToString()->PrintLine();
 		@param name element name
 		@param value value
 		@return true if successful, false otherwise
+
+		```
+		builder := Data.JSON.JsonBuilder->New();
+		root := builder->PushObject();
+		root->Insert("active", true);
+		root->Insert("verified", false);
+		builder->Pop()->ToString()->PrintLine();
+		```
 		~#
 		method : public : Insert(name : String, value : Bool) ~ JsonBuilder {
 			if(@stack->IsEmpty() | @stack->Top()->GetType() <> JsonType->OBJECT) {
@@ -360,6 +452,11 @@ if(doc <> Nil) {
 		Parses JSON text
 		@param text JSON text
 		@return root document element
+
+		```
+		elem := Data.JSON.JsonParser->TextToElement("{\"k\":\"v\"}");
+		elem->Get("k")->GetString()->PrintLine();  # v
+		```
 		~#
 		function : TextToElement(text : String) ~ JsonElement {
 			parser := JsonParser->New(text);
@@ -373,6 +470,16 @@ if(doc <> Nil) {
 		#~
 		Parses a Json string
 		@return true is successful, false otherwise
+
+		```
+		parser := Data.JSON.JsonParser->New("{\"name\":\"Alice\",\"age\":30}");
+		if(parser->Parse()) {
+		  root := parser->GetRoot();
+		  root->Get("name")->GetString()->PrintLine();
+		} else {
+		  parser->GetError()->PrintLine();
+		};
+		```
 		~#
 		method : public : Parse() ~ Bool {
 			NextToken();
@@ -389,6 +496,13 @@ if(doc <> Nil) {
     	#~
 		Get the current parsing error
 		@return parsing error, Nil if none
+
+		```
+		parser := Data.JSON.JsonParser->New("{bad json}");
+		if(<>parser->Parse()) {
+		  parser->GetError()->PrintLine();
+		};
+		```
 		~#
 		method : public : GetError() ~ String {
 			return @error_msg;
@@ -397,6 +511,13 @@ if(doc <> Nil) {
     	#~
 		Get document root
 		@return root Json element
+
+		```
+		parser := Data.JSON.JsonParser->New("{\"x\":1}");
+		parser->Parse();
+		root := parser->GetRoot();
+		root->Get("x")->GetInt()->PrintLine();  # 1
+		```
 		~#
 		method : public : GetRoot() ~ JsonElement {
 			return @root;
@@ -929,6 +1050,13 @@ obj->ToString()->PrintLine();
 		#~
 		Gets the type
 		@return type
+
+		```
+		elem := Data.JSON.JsonParser->TextToElement("42");
+		if(elem->GetType() = Data.JSON.JsonElement->JsonType->NUMBER) {
+		  "Is number"->PrintLine();
+		};
+		```
 		~#
 		method : public : GetType() ~ JsonElement->JsonType {
 			return @type;
@@ -937,6 +1065,13 @@ obj->ToString()->PrintLine();
 		#~
 		Checks for 'null' JSON value
 		@return true if 'null', false otherwise
+
+		```
+		elem := Data.JSON.JsonParser->TextToElement("null");
+		if(elem->IsNull()) {
+		  "Null value"->PrintLine();
+		};
+		```
 		~#
 		method : public : IsNull() ~ Bool {
 			return @type = JsonType->NULL;
@@ -958,6 +1093,11 @@ obj->ToString()->PrintLine();
 		#~
 		Gets the string value
 		@return string value
+
+		```
+		elem := Data.JSON.JsonParser->TextToElement("\"hello\"");
+		elem->GetValue()->PrintLine();  # hello
+		```
 		~#
 		method : public : GetValue() ~ String {
 			return GetString();
@@ -966,6 +1106,11 @@ obj->ToString()->PrintLine();
 		#~
 		Gets the string value
 		@return string value
+
+		```
+		root := Data.JSON.JsonParser->TextToElement("{\"city\":\"Oakland\"}");
+		root->Get("city")->GetString()->PrintLine();  # Oakland
+		```
 		~#
 		method : public : GetString() ~ String {
 			if(@value <> Nil) {
@@ -978,6 +1123,11 @@ obj->ToString()->PrintLine();
 		#~
 		Gets the integer value
 		@return integer value
+
+		```
+		root := Data.JSON.JsonParser->TextToElement("{\"port\":8080}");
+		root->Get("port")->GetInt()->PrintLine();  # 8080
+		```
 		~#
 		method : public : GetInt() ~ Int {
 			if(@value <> Nil) {
@@ -990,6 +1140,11 @@ obj->ToString()->PrintLine();
 		#~
 		Gets the float value
 		@return float value
+
+		```
+		root := Data.JSON.JsonParser->TextToElement("{\"pi\":3.14}");
+		root->Get("pi")->GetFloat()->PrintLine();  # 3.14
+		```
 		~#
 		method : public : GetFloat() ~ Float {
 			if(@value <> Nil) {
@@ -1002,6 +1157,11 @@ obj->ToString()->PrintLine();
 		#~
 		Gets the float value
 		@return float value
+
+		```
+		root := Data.JSON.JsonParser->TextToElement("{\"active\":true}");
+		root->Get("active")->GetBool()->PrintLine();  # true
+		```
 		~#
 		method : public : GetBool() ~ Bool {
 			if(@value <> Nil) {
@@ -1015,6 +1175,11 @@ obj->ToString()->PrintLine();
 		Gets an indexed value from an array type
 		@param index index
 		@return indexed value
+
+		```
+		arr := Data.JSON.JsonParser->TextToElement("[10,20,30]");
+		arr->Get(1)->GetInt()->PrintLine();  # 20
+		```
 		~#
 		method : public : Get(index : Int) ~ JsonElement {
 			if(@array_elems <> Nil & index >= 0 & index < @array_elems->Size()) {
@@ -1037,6 +1202,11 @@ obj->ToString()->PrintLine();
 		Gets a named value from an object type
 		@param name element name
 		@return element value
+
+		```
+		obj := Data.JSON.JsonParser->TextToElement("{\"x\":42}");
+		obj->Get("x")->GetInt()->PrintLine();  # 42
+		```
 		~#
 		method : public : Get(name : String) ~ JsonElement {
 			if(@map_elems <> Nil) {
@@ -1059,6 +1229,13 @@ obj->ToString()->PrintLine();
 		Adds an element
 		@param elem element
 		@return true if successful, false otherwise
+
+		```
+		arr := Data.JSON.JsonElement->New(Data.JSON.JsonElement->JsonType->ARRAY);
+		item := Data.JSON.JsonElement->New(Data.JSON.JsonElement->JsonType->NUMBER, "42");
+		arr->Add(item);
+		arr->Size()->PrintLine();  # 1
+		```
 		~#
 		method : public : Add(elem : JsonElement) ~ Bool {
 			if(@type = JsonElement->JsonType->ARRAY) {
@@ -1079,6 +1256,13 @@ obj->ToString()->PrintLine();
 		Adds a value
 		@param value value
 		@return true if successful, false otherwise
+
+		```
+		arr := Data.JSON.JsonElement->New(Data.JSON.JsonElement->JsonType->ARRAY);
+		arr->Add("apple");
+		arr->Add("banana");
+		arr->ToString()->PrintLine();
+		```
 		~#
 		method : public : Add(value : String) ~ Bool {
 			if(@type = JsonElement->JsonType->ARRAY) {
@@ -1179,6 +1363,13 @@ obj->ToString()->PrintLine();
 		@param name value name
 		@param value value
 		@return true if successful, false otherwise
+
+		```
+		obj := Data.JSON.JsonElement->New(Data.JSON.JsonElement->JsonType->OBJECT);
+		obj->Insert("lang", "Objeck");
+		obj->Insert("version", "2026");
+		obj->ToString()->PrintLine();
+		```
 		~#
 		method : public : Insert(name : String, value : String) ~ Bool {        
 			if(@type = JsonElement->JsonType->OBJECT) {
@@ -1382,6 +1573,11 @@ obj->ToString()->PrintLine();
 		#~
 		Gets the size of an array or object value
 		@return size of an array or object value
+
+		```
+		arr := Data.JSON.JsonParser->TextToElement("[1,2,3,4,5]");
+		arr->Size()->PrintLine();  # 5
+		```
 		~#
 		method : public : Size() ~ Int {
 			if(@array_elems <> Nil) {
@@ -1426,6 +1622,12 @@ obj->ToString()->PrintLine();
 		#~
 		Stringify the JSON element
 		@return JSON string
+
+		```
+		obj := Data.JSON.JsonElement->New(Data.JSON.JsonElement->JsonType->OBJECT);
+		obj->Insert("ok", true);
+		obj->ToString()->PrintLine();  # {"ok":true}
+		```
 		~#
 		method : public : ToString() ~ String {
 			output := String->New();
@@ -1436,6 +1638,11 @@ obj->ToString()->PrintLine();
 		#~
 		Stringify and format the JSON element
 		@return formatted JSON string
+
+		```
+		obj := Data.JSON.JsonParser->TextToElement("{\"a\":1,\"b\":2}");
+		obj->ToFormattedString()->PrintLine();
+		```
 		~#
 		method : public : ToFormattedString() ~ String {
 			output := String->New();
@@ -1553,6 +1760,12 @@ obj->ToString()->PrintLine();
 		Queries the object graph. Object attributes referenced by '/' while array elements are referenced by '[index]'. Example "cars/[last]/make".
 		@param path query path
 		@return matching element
+
+		```
+		json := Data.JSON.JsonParser->TextToElement("{\"users\":[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]}");
+		alice := json->FindElements("users/[0]/name");
+		alice->GetString()->PrintLine();  # Alice
+		```
 		~#
 		method : public : FindElements(path : String) ~ JsonElement {					
 			filters := path->Split("/");

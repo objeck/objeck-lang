@@ -1,0 +1,7 @@
+# EXPECT_COMPILE_ERROR
+class BadCallUndefined {
+    function : Main(args : String[]) ~ Nil {
+        s := "hello";
+        s->NoSuchMethodOnString(42, "extra");
+    }
+}

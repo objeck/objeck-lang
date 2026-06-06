@@ -1,0 +1,247 @@
+# DEBUG VERSION of mcp_server_test.obs
+#
+# Identical to programs/regression/mcp_server_test.obs except:
+#   1. "debug" set to true  -> enables server-side diagnostic output:
+#        "### POST ####"                     printed if no session header
+#        ShowPayload(content)                printed after body is read
+#        "[Post: method_name='...']"         printed after JSON is parsed
+#        ">>> Unknown Message <<<"           printed (to stderr) when no
+#                                            select label matched
+#   2. Port changed to 18800                (avoids conflict with the
+#                                            regression test on 18799)
+#   3. PASS/FAIL lines are preserved so the output is still grep-able.
+#
+# Usage (from deploy-x64/bin/):
+#   ./obc -src ../../../programs/tests/mcp_debug_test.obs \
+#         -lib net,net_server,cipher -dest /tmp/mcp_debug_test.obe
+#   ./obr /tmp/mcp_debug_test.obe
+#
+# Diagnosing the Linux HTTP-500 failure
+# --------------------------------------
+# ProcessPost falls through to SetCode(204) when one of these is false:
+#   (a) request->HasContent()     -> no ShowPayload output at all
+#   (b) parser->Parse()           -> ShowPayload present, no method_name line
+#   (c) method_name <> Nil        -> ShowPayload present, no method_name line
+#   (d) select label matched      -> method_name line present + "Unknown Message"
+#
+# SetCode(204) is the correct internal value for "nothing matched", but
+# ProcessResponse()'s select has no label 204 and its `other` branch writes
+# "HTTP/1.1 500 Internal Server Error", which is why the client sees 500.
+
+# EXTRA_LIBS: net,net_server,cipher
+use Collection, Data.JSON, System.IO.Net, Web.HTTP, Web.HTTP.Server, Web.HTTP.Server.MCP;
+
+#
+# Tracks whether ListResources was called as a side-effect of
+# resources/templates/list (was a bug: a stray call was present).
+#
+class TrackingMcpHandler from McpRequestHandler {
+	@resources_side_effect : static : Bool;
+
+	New() { Parent(); }
+
+	method : ListResources() ~ Vector<ResourceItem> {
+		@resources_side_effect := true;
+		return Vector->New()<ResourceItem>;
+	}
+
+	method : ListTemplates() ~ Vector<ResourceTemplate> {
+		return Vector->New()<ResourceTemplate>;
+	}
+
+	method : GetResource(uri : Url) ~ Vector<ResourceContent> {
+		return Vector->New()<ResourceContent>;
+	}
+
+	method : ListTools() ~ Vector<ToolItem> {
+		return Vector->New()<ToolItem>;
+	}
+
+	method : CallTool(name : String, arguments : JsonElement) ~ Vector<ToolContent> {
+		return Vector->New()<ToolContent>;
+	}
+
+	method : ListPrompts() ~ Vector<PromptItem> {
+		return Vector->New()<PromptItem>;
+	}
+
+	method : CallPrompt(name : String, arguments : JsonElement) ~ Vector<PromptMessage> {
+		return Vector->New()<PromptMessage>;
+	}
+
+	function : WasResourcesSideEffect() ~ Bool {
+		return @resources_side_effect;
+	}
+
+	function : ResetResourcesSideEffect() ~ Nil {
+		@resources_side_effect := false;
+	}
+}
+
+class McpDebugTest {
+	@port : static : Int;
+
+	function : Port() ~ Int {
+		return @port;
+	}
+
+	function : Post(url : String, payload : String) ~ Web.HTTP.Response {
+		client := HttpClient->New();
+		client->AddHeader("Content-Type", "application/json");
+		return client->Post(Url->New(url), payload->ToByteArray(), "application/json");
+	}
+
+	function : PostWithSession(url : String, payload : String, session_id : String) ~ Web.HTTP.Response {
+		client := HttpClient->New();
+		client->AddHeader("Content-Type", "application/json");
+		client->AddHeader("mcp-session-id", session_id);
+		return client->Post(Url->New(url), payload->ToByteArray(), "application/json");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		@port := 18800;  # changed from 18799 to avoid conflict with regression test
+		base_url := "http://localhost:{$@port}/";
+
+		# Start MCP server in a background thread
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				config_builder := JsonBuilder->New();
+				elem_json := config_builder->PushObject();
+				elem_json->Insert("name", "Test MCP Server");
+				elem_json->Insert("instructions", "Regression test server");
+				elem_json->Insert("version", "0.0.1");
+				elem_json->Insert("http_port", McpDebugTest->Port());
+				elem_json->Insert("http_session_timeout", 30);
+				elem_json->Insert("debug", true);  # KEY CHANGE: was false
+				config_json := config_builder->Pop();
+				McpServer->Serve(config_json, TrackingMcpHandler->New());
+			}
+		};
+		server_thread->Execute(Nil);
+		System.Concurrency.Thread->Sleep(500);
+
+		# ------------------------------------------------------------------
+		# Test 1: initialize
+		# With debug=true the server will print:
+		#   "### POST ####"       (no session header)
+		#   ShowPayload(...)      (the raw request body bytes)
+		#   "[Post: method_name='initialize']"
+		# If instead we see ">>> Unknown Message <<<" on stderr, the select
+		# failed to match "initialize" (BST dispatch bug on this platform).
+		# If ShowPayload is missing, HasContent() returned false (body not read).
+		# ------------------------------------------------------------------
+		"--- Test 1: initialize ---"->PrintLine();
+		init_payload := "{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{}},\"id\":1}";
+		r1 := McpDebugTest->Post(base_url, init_payload);
+
+		if(r1 = Nil | r1->GetCode() <> 200) {
+			code := -1; if(r1 <> Nil) { code := r1->GetCode(); };
+			"  FAIL: initialize - unexpected response code {$code}"->PrintLine();
+			pass := false;
+		}
+		else {
+			root := JsonParser->TextToElement(r1->GetContent()->ToString());
+			if(root = Nil | root->Get("result") = Nil) {
+				"  FAIL: initialize - response is not valid JSON-RPC"->PrintLine();
+				pass := false;
+			}
+			else {
+				caps := root->Get("result")->Get("capabilities");
+				if(caps = Nil) {
+					"  FAIL: initialize - no capabilities object"->PrintLine();
+					pass := false;
+				}
+				else {
+					if(<>caps->Has("prompts")) {
+						"  FAIL: initialize - 'prompts' capability missing"->PrintLine();
+						pass := false;
+					};
+					if(<>caps->Has("resources")) {
+						"  FAIL: initialize - 'resources' capability missing"->PrintLine();
+						pass := false;
+					};
+					if(<>caps->Has("tools")) {
+						"  FAIL: initialize - 'tools' capability missing"->PrintLine();
+						pass := false;
+					};
+				};
+			};
+		};
+
+		# ------------------------------------------------------------------
+		# Test 2: ping
+		# ------------------------------------------------------------------
+		"--- Test 2: ping ---"->PrintLine();
+		ping_payload := "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":2}";
+		r2 := McpDebugTest->Post(base_url, ping_payload);
+
+		if(r2 = Nil | r2->GetCode() <> 200) {
+			code := -1; if(r2 <> Nil) { code := r2->GetCode(); };
+			"  FAIL: ping - unexpected response code {$code}"->PrintLine();
+			pass := false;
+		};
+
+		# ------------------------------------------------------------------
+		# Test 3: resources/templates/list must NOT call ListResources()
+		# ------------------------------------------------------------------
+		"--- Test 3: resources/templates/list ---"->PrintLine();
+		TrackingMcpHandler->ResetResourcesSideEffect();
+		templates_payload := "{\"jsonrpc\":\"2.0\",\"method\":\"resources/templates/list\",\"id\":3}";
+		r3 := McpDebugTest->Post(base_url, templates_payload);
+
+		if(r3 = Nil | r3->GetCode() <> 200) {
+			code := -1; if(r3 <> Nil) { code := r3->GetCode(); };
+			"  FAIL: resources/templates/list - unexpected response code {$code}"->PrintLine();
+			pass := false;
+		};
+		System.Concurrency.Thread->Sleep(100);
+		if(TrackingMcpHandler->WasResourcesSideEffect()) {
+			"  FAIL: resources/templates/list - spuriously called ListResources()"->PrintLine();
+			pass := false;
+		};
+
+		# ------------------------------------------------------------------
+		# Test 4: unknown session ID must return 404
+		# ------------------------------------------------------------------
+		"--- Test 4: invalid session (expect 404) ---"->PrintLine();
+		tools_payload := "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":4}";
+		r4 := McpDebugTest->PostWithSession(base_url, tools_payload, "invalid-session-does-not-exist");
+
+		if(r4 = Nil | r4->GetCode() <> 404) {
+			code := -1; if(r4 <> Nil) { code := r4->GetCode(); };
+			"  FAIL: invalid session - expected 404, got {$code}"->PrintLine();
+			pass := false;
+		};
+
+		# ------------------------------------------------------------------
+		# Test 5: tools/list without a session returns 200 and a tools array
+		# ------------------------------------------------------------------
+		"--- Test 5: tools/list ---"->PrintLine();
+		r5 := McpDebugTest->Post(base_url, tools_payload);
+
+		if(r5 = Nil | r5->GetCode() <> 200) {
+			code := -1; if(r5 <> Nil) { code := r5->GetCode(); };
+			"  FAIL: tools/list - unexpected response code {$code}"->PrintLine();
+			pass := false;
+		}
+		else {
+			root5 := JsonParser->TextToElement(r5->GetContent()->ToString());
+			if(root5 = Nil | root5->Get("result") = Nil | root5->Get("result")->Get("tools") = Nil) {
+				"  FAIL: tools/list - response missing result.tools"->PrintLine();
+				pass := false;
+			};
+		};
+
+		WebServer->Stop();
+
+		if(pass) {
+			"PASS: MCP server tests"->PrintLine();
+		}
+		else {
+			"FAIL: MCP server tests"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

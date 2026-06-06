@@ -1,0 +1,86 @@
+#~
+LSP Feature Test: Animals hierarchy
+
+Tests: call hierarchy (incoming/outgoing), inlay hints (parameter names),
+find references, rename.
+~#
+
+interface Speaker {
+	method : virtual : public : Speak() ~ String;
+}
+
+class Animal {
+	@name : String;
+	@legs : Int;
+
+	New(name : String, legs : Int) {
+		@name := name;
+		@legs := legs;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : public : GetLegs() ~ Int {
+		return @legs;
+	}
+
+	#~
+	Test: inlay hints — parameters "name" and "legs" should appear
+	at call sites like Animal->New("Dog", 4).
+	~#
+	method : public : native : ToString() ~ String;
+}
+
+class Dog from Animal implements Speaker {
+	@breed : String;
+
+	New(breed : String) {
+		Parent("Dog", 4);
+		@breed := breed;
+	}
+
+	method : public : Speak() ~ String {
+		return "Woof!";
+	}
+
+	method : public : GetBreed() ~ String {
+		return @breed;
+	}
+
+	#~
+	Test: call hierarchy outgoing — calls Speak() and GetName()
+	~#
+	method : public : Greet() ~ Nil {
+		sound := Speak();
+		name := GetName();
+		breed := GetBreed();
+	}
+}
+
+class Cat from Animal implements Speaker {
+	@indoor : Bool;
+
+	New(indoor : Bool) {
+		Parent("Cat", 4);
+		@indoor := indoor;
+	}
+
+	method : public : Speak() ~ String {
+		return "Meow!";
+	}
+
+	method : public : IsIndoor() ~ Bool {
+		return @indoor;
+	}
+}
+
+#~
+Test: semantic tokens — this enum should be highlighted as 'enum' type.
+~#
+enum AnimalType {
+	DOG,
+	CAT,
+	BIRD
+}

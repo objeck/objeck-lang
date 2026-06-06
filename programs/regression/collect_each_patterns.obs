@@ -1,0 +1,96 @@
+use Collection;
+
+class CollectEachPatternsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing each() patterns with collections..."->PrintLine();
+        pass := true;
+
+        # each(v in Vector)
+        v := Vector->New()<IntRef>;
+        each(i : 5) { v->AddBack(IntRef->New(i + 1)); };
+        sum := 0;
+        each(item in v) { sum += item->Get(); };
+        if(sum <> 15) {
+            pass := false;
+            "  FAIL: each-in vector sum = {$sum}"->PrintLine();
+        };
+
+        # each(v in CompareVector)
+        cv := CompareVector->New()<IntRef>;
+        each(i : 4) { cv->AddBack(IntRef->New(i * 2)); };
+        cv_sum := 0;
+        each(item in cv) { cv_sum += item->Get(); };
+        if(cv_sum <> 12) {
+            pass := false;
+            "  FAIL: each-in cvector sum = {$cv_sum}"->PrintLine();
+        };
+
+        # each over String characters
+        s := "Hello";
+        uppers := 0;
+        each(i : s) {
+            if(Char->IsUpper(s->Get(i))) { uppers += 1; };
+        };
+        if(uppers <> 1) {
+            pass := false;
+            "  FAIL: uppercase count = {$uppers}, expected 1"->PrintLine();
+        };
+
+        # each(i : N) index-based with collection
+        total := 0;
+        each(i : v->Size()) {
+            total += v->Get(i)->Get();
+        };
+        if(total <> 15) {
+            pass := false;
+            "  FAIL: index-based sum = {$total}"->PrintLine();
+        };
+
+        # Nested each over two vectors
+        a := Vector->New()<IntRef>;
+        b := Vector->New()<IntRef>;
+        each(i : 3) { a->AddBack(IntRef->New(i + 1)); };
+        each(i : 3) { b->AddBack(IntRef->New((i + 1) * 10)); };
+        dot := 0;
+        each(i : a->Size()) {
+            dot += a->Get(i)->Get() * b->Get(i)->Get();
+        };
+        # 1*10 + 2*20 + 3*30 = 10 + 40 + 90 = 140
+        if(dot <> 140) {
+            pass := false;
+            "  FAIL: dot product = {$dot}, expected 140"->PrintLine();
+        };
+
+        # each with break
+        first_gt3 := -1;
+        each(item in cv) {
+            if(item->Get() > 3) {
+                first_gt3 := item->Get();
+                break;
+            };
+        };
+        if(first_gt3 <> 4) {
+            pass := false;
+            "  FAIL: first > 3 = {$first_gt3}, expected 4"->PrintLine();
+        };
+
+        # each with Hash keys
+        h := Hash->New()<String, IntRef>;
+        h->Insert("a", IntRef->New(1));
+        h->Insert("b", IntRef->New(2));
+        h->Insert("c", IntRef->New(3));
+        keys := h->GetKeys()<String>;
+        key_count := 0;
+        each(k in keys) { key_count += 1; };
+        if(key_count <> 3) {
+            pass := false;
+            "  FAIL: hash key iteration count = {$key_count}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Each patterns with collections"->PrintLine();
+        } else {
+            "FAIL: Each patterns with collections"->PrintLine();
+        };
+    }
+}

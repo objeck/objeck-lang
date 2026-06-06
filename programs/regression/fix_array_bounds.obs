@@ -1,0 +1,93 @@
+class FixArrayBoundsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing array bounds and safety..."->PrintLine();
+        pass := true;
+
+        # Zero-length array
+        empty := Int->New[0];
+        if(empty->Size() <> 0) {
+            pass := false;
+            "  FAIL: zero-length size = {$empty->Size()}"->PrintLine();
+        };
+
+        # Single-element array
+        one := Int->New[1];
+        one[0] := 42;
+        if(one[0] <> 42) {
+            pass := false;
+            "  FAIL: single element"->PrintLine();
+        };
+        if(one->Size() <> 1) {
+            pass := false;
+            "  FAIL: single array size"->PrintLine();
+        };
+
+        # Last valid index
+        arr := Int->New[10];
+        each(i : 10) { arr[i] := i; };
+        if(arr[9] <> 9) {
+            v9 := arr[9];
+            pass := false;
+            "  FAIL: arr[9] = {$v9}"->PrintLine();
+        };
+
+        # Sequential reads match writes
+        data := Int->New[256];
+        each(i : 256) { data[i] := i * 2; };
+        ok := true;
+        each(i : 256) {
+            if(data[i] <> i * 2) { ok := false; };
+        };
+        if(<>ok) {
+            pass := false;
+            "  FAIL: sequential data mismatch"->PrintLine();
+        };
+
+        # Strided access
+        stride := Int->New[1000];
+        each(i : 1000) { stride[i] := 0; };
+        each(i : 100) { stride[i * 10] := i + 1; };
+        sum := 0;
+        each(i : 100) { sum += stride[i * 10]; };
+        if(sum <> 5050) {
+            pass := false;
+            "  FAIL: strided sum = {$sum}"->PrintLine();
+        };
+
+        # Copy boundary
+        src := Int->New[5];
+        each(i : 5) { src[i] := i + 100; };
+        dst := src->Copy();
+        if(dst->Size() <> 5) {
+            pass := false;
+            "  FAIL: copy size"->PrintLine();
+        };
+        if(dst[0] <> 100 | dst[4] <> 104) {
+            pass := false;
+            "  FAIL: copy values"->PrintLine();
+        };
+
+        # Object array element access
+        oa := String->New[4];
+        oa[0] := "zero"; oa[1] := "one"; oa[2] := "two"; oa[3] := "three";
+        if(<>oa[0]->Equals("zero"))  { pass := false; "  FAIL: oa[0]"->PrintLine(); };
+        if(<>oa[3]->Equals("three")) { pass := false; "  FAIL: oa[3]"->PrintLine(); };
+
+        # Default values: Int array initialized to 0
+        defaults := Int->New[10];
+        all_zero := true;
+        each(i : 10) {
+            if(defaults[i] <> 0) { all_zero := false; };
+        };
+        if(<>all_zero) {
+            pass := false;
+            "  FAIL: int array not zero-initialized"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: Array bounds and safety"->PrintLine();
+        } else {
+            "FAIL: Array bounds and safety"->PrintLine();
+        };
+    }
+}

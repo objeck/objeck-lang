@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use Data.JSON, Collection, System.IO.Net;
 
 #~
-JSON RPC support (-lib json_rpc)
+JSON-RPC 2.0 client and server. Client sends method calls to a remote endpoint and returns typed results; Server dispatches incoming requests to registered handlers. Compile with -lib json_rpc.
 ~#
 bundle Data.JSON.RPC {
 	#~
@@ -20,6 +20,18 @@ bundle Data.JSON.RPC {
 		Constructor
 		@param funcs collection of named function calls
 		@param port server port
+		```
+		funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
+		# register an "add" method
+		funcs->Insert("add", Func2Ref->New(\
+		  method(params : JsonElement) ~ JsonElement {
+		    a := params->Get("a")->GetInt();
+		    b := params->Get("b")->GetInt();
+		    return JsonElement->New(a + b);
+		  }));
+		server := Data.JSON.RPC.Server->New(funcs, 9090);
+		server->Process(); # blocks, accepts connections
+		```
 		~#
 		New(funcs : Hash<String, Func2Ref<JsonElement, JsonElement>>, port : Int) {
 			@funcs := funcs;
@@ -30,6 +42,11 @@ bundle Data.JSON.RPC {
 
 		#~
 		Start the server to accept requests
+		```
+		funcs := Hash->New()<String, Func2Ref<JsonElement, JsonElement>>;
+		server := Data.JSON.RPC.Server->New(funcs, 9090);
+		server->Process(); # listen on port 9090 for incoming RPC calls
+		```
 		~#
 		method : public : Process() ~ Nil {
 			while(@server->Listen(8)) {
@@ -115,6 +132,12 @@ bundle Data.JSON.RPC {
 		Constructor
 		@param address server address
 		@param port server port
+		```
+		client := Data.JSON.RPC.Client->New("localhost", 9090);
+		params := JsonParser->TextToElement("{\"a\": 3, \"b\": 4}");
+		result := client->Call("add", params);
+		if(result <> Nil) { result->GetInt()->PrintLine(); }; # 7
+		```
 		~#
 		New(address : String, port : Int) {
 			@address := address;
@@ -127,6 +150,14 @@ bundle Data.JSON.RPC {
 		@param func_name name of function to call
 		@param func_params function call parameters
 		@return JSON response
+		```
+		client := Data.JSON.RPC.Client->New("localhost", 9090);
+		params := JsonParser->TextToElement("{\"x\": 10}");
+		result := client->Call("square", params); # invoke remote method
+		if(result <> Nil) {
+		  result->GetInt()->PrintLine(); # print returned value
+		};
+		```
 		~#
 		method : public : Call(func_name : String,  func_params: JsonElement) ~ JsonElement {
 			@server := TCPSocket->New(@address, @port);
@@ -178,6 +209,15 @@ bundle Data.JSON.RPC {
 		#~
 		Get the last error
 		@return last error
+		```
+		client := Data.JSON.RPC.Client->New("localhost", 9090);
+		params := JsonParser->TextToElement("{}");
+		result := client->Call("missing_method", params);
+		if(result = Nil) {
+		  err := client->GetLastError(); # retrieve error code and message
+		  err->GetSecond()->PrintLine();
+		};
+		```
 		~#
 		method : public : GetLastError() ~ Collection.Tuple.Pair<IntRef, String> {
 			return @last_error;

@@ -1,0 +1,66 @@
+class JitLoopNativeTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing JIT loop-intensive operations..."->PrintLine();
+        pass := true;
+
+        # Large for loop sum
+        sum1 := 0;
+        for(i := 0; i < 1000000; i += 1;) {
+            sum1 += i;
+        };
+        expected1 := 999999 * 1000000 / 2;
+        if(sum1 <> expected1) {
+            pass := false;
+            "  FAIL: large loop sum = {$sum1}"->PrintLine();
+        };
+
+        # Nested loops: multiplication table sum
+        nested_sum := 0;
+        each(i : 100) {
+            each(j : 100) {
+                nested_sum += i * j;
+            };
+        };
+        # sum(i*j, i in 0..99, j in 0..99) = sum(i, 0..99)^2 = (99*100/2)^2 = 4950^2 = 24502500
+        if(nested_sum <> 24502500) {
+            pass := false;
+            "  FAIL: nested sum = {$nested_sum}"->PrintLine();
+        };
+
+        # Loop with conditional
+        count_fizz := 0;
+        each(i : 1000) {
+            if(i % 15 = 0) { count_fizz += 1; };
+        };
+        if(count_fizz <> 67) {
+            pass := false;
+            "  FAIL: fizzbuzz count = {$count_fizz}"->PrintLine();
+        };
+
+        # While loop countdown
+        n := 100000;
+        while(n > 0) { n -= 1; };
+        if(n <> 0) {
+            pass := false;
+            "  FAIL: countdown n = {$n}"->PrintLine();
+        };
+
+        # do-while style: loop until condition
+        acc := 0;
+        k := 1;
+        while(k <= 100) {
+            acc += k;
+            k += 1;
+        };
+        if(acc <> 5050) {
+            pass := false;
+            "  FAIL: 1..100 sum = {$acc}"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: JIT loop-intensive"->PrintLine();
+        } else {
+            "FAIL: JIT loop-intensive"->PrintLine();
+        };
+    }
+}

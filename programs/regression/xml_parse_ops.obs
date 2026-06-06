@@ -1,0 +1,101 @@
+use Data.XML;
+
+class XmlParseOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing XML parse operations..."->PrintLine();
+        pass := true;
+
+        # Simple element
+        p1 := XmlParser->New("<root><name>Alice</name></root>");
+        if(<>p1->Parse()) {
+            pass := false;
+            "  FAIL: simple XML parse"->PrintLine();
+        } else {
+            doc := p1->GetRoot();
+            if(doc = Nil) {
+                pass := false;
+                "  FAIL: root is Nil"->PrintLine();
+            } else {
+                children := doc->GetChildren();
+                if(children = Nil | children->Size() = 0) {
+                    pass := false;
+                    "  FAIL: no children"->PrintLine();
+                } else {
+                    child := children->Get(0)->As(XmlElement);
+                    if(child = Nil) {
+                        pass := false;
+                        "  FAIL: child cast failed"->PrintLine();
+                    } else {
+                        name := child->GetName();
+                        if(name = Nil | <>name->Equals("name")) {
+                            pass := false;
+                            "  FAIL: child name = {$name}"->PrintLine();
+                        };
+                    };
+                };
+            };
+        };
+
+        # Element with text content
+        p2 := XmlParser->New("<result><id>42</id><type>test</type></result>");
+        if(<>p2->Parse()) {
+            pass := false;
+            "  FAIL: attribute parse"->PrintLine();
+        } else {
+            root2 := p2->GetRoot();
+            if(root2 <> Nil) {
+                kids2 := root2->GetChildren();
+                if(kids2 = Nil | kids2->Size() <> 2) {
+                    pass := false;
+                    "  FAIL: expected 2 result children"->PrintLine();
+                };
+            };
+        };
+
+        # Multiple children
+        p3 := XmlParser->New("<list><item>one</item><item>two</item><item>three</item></list>");
+        if(<>p3->Parse()) {
+            pass := false;
+            "  FAIL: multi-child parse"->PrintLine();
+        } else {
+            root3 := p3->GetRoot();
+            if(root3 <> Nil) {
+                kids := root3->GetChildren();
+                if(kids = Nil | kids->Size() <> 3) {
+                    count := 0;
+                    if(kids <> Nil) { count := kids->Size(); };
+                    pass := false;
+                    "  FAIL: child count = {$count}"->PrintLine();
+                };
+            };
+        };
+
+        # Nested elements
+        p4 := XmlParser->New("<outer><middle><inner>value</inner></middle></outer>");
+        if(<>p4->Parse()) {
+            pass := false;
+            "  FAIL: nested parse"->PrintLine();
+        } else {
+            root4 := p4->GetRoot();
+            if(root4 <> Nil) {
+                middle_kids := root4->GetChildren();
+                if(middle_kids <> Nil & middle_kids->Size() > 0) {
+                    middle := middle_kids->Get(0)->As(XmlElement);
+                    if(middle <> Nil) {
+                        inner_kids := middle->GetChildren();
+                        if(inner_kids = Nil | inner_kids->Size() = 0) {
+                            pass := false;
+                            "  FAIL: no inner children"->PrintLine();
+                        };
+                    };
+                };
+            };
+        };
+
+        if(pass) {
+            "PASS: XML parse operations"->PrintLine();
+        } else {
+            "FAIL: XML parse operations"->PrintLine();
+        };
+    }
+}

@@ -1,0 +1,7 @@
+# EXPECT_COMPILE_ERROR
+class BadUndefinedType {
+    function : Main(args : String[]) ~ Nil {
+        x : NoSuchClassEverDefined;
+        x := NoSuchClassEverDefined->New();
+    }
+}

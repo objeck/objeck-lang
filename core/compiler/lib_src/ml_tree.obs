@@ -1,0 +1,1940 @@
+#~~
+# Objeck machine learning library: decision trees and ensembles
+# Copyright (c) 2024-2026 Randy Hollines
+#
+# Credits:
+# Eigen matrix library - https://eigen.tuxfamily.org
+~~#
+
+use Collection;
+use Data.CSV;
+
+#~
+Tree models and ensembles: DecisionTree, RandomForest, AdaBoost, RegressionTree and GradientBoostedTrees. Compile with -lib ml.
+~#
+bundle System.ML {
+	#~
+	Random forest algorithm
+```
+forest := RandomForest->New(8);
+forest->Train(0.3, data);
+result := forest->Query(data);
+
+possible := Bool->Rows(result)->As(Float);
+matched := DecisionTree->Matches(result->Columns() - 1, result)->As(Float);
+matched_perc := (matched / possible * 100.0)->As(Int);
+"matched {$matched_perc}%"->PrintLine();
+```
+	~#
+	class RandomForest {
+		@num_trees : Int;
+		@max_depth : Int;
+		@min_samples : Int;
+		@seed : Int;
+		@trees : Vector<DecisionTree>;
+
+		#~
+		Constructor with default tree hyperparameters (max depth 8, min samples 1,
+		fixed seed for reproducible bootstrap sampling).
+		@param num_trees number of trees in the ensemble
+
+```
+forest := RandomForest->New(16);
+```
+		~#
+		New(num_trees : Int) {
+			@num_trees := num_trees;
+			@max_depth := 8;
+			@min_samples := 1;
+			@seed := 1;
+		}
+
+		#~
+		Constructor with explicit tree hyperparameters.
+		@param num_trees number of trees in the ensemble
+		@param max_depth maximum depth of each tree
+		@param min_samples minimum samples required to split a node
+		@param seed PRNG seed for reproducible bootstrap sampling
+		~#
+		New(num_trees : Int, max_depth : Int, min_samples : Int, seed : Int) {
+			@num_trees := num_trees;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@seed := seed;
+		}
+
+		New : private (num_trees : Int, max_depth : Int, min_samples : Int, seed : Int, trees : Vector<DecisionTree>) {
+			@num_trees := num_trees;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@seed := seed;
+			@trees := trees;
+		}
+
+		#~
+		Fits the ensemble: builds num_trees decision trees, each fitted to its own
+		bootstrap sample (rows drawn with replacement) of the training data. Each row
+		is boolean features with the class label in the LAST column.
+		@param input training matrix (features..., label) of Bool
+
+```
+forest := RandomForest->New(16);
+forest->Fit(data);
+preds := forest->Predict(data);
+```
+		~#
+		method : public : Fit(input : Bool[,]) ~ Nil {
+			@trees := Vector->New()<DecisionTree>;
+			rand := Random->New(@seed);
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			ntrees := @num_trees;
+
+			for(t := 0; t < ntrees; t += 1;) {
+				sample := Bool->New[rows, cols];
+				for(i := 0; i < rows; i += 1;) {
+					pick := rand->NextInt(rows);
+					for(c := 0; c < cols; c += 1;) {
+						sample[i, c] := input[pick, c];
+					};
+				};
+
+				tree := DecisionTree->New(@max_depth, @min_samples);
+				tree->Fit(sample);
+				@trees->AddBack(tree);
+			};
+		}
+
+		#~
+		Predicts class labels by majority vote across all trees (ties resolve to true).
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predicted classes
+		~#
+		method : public : Predict(input : Bool[,]) ~ Bool[] {
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Bool->New[rows];
+			if(@trees = Nil) {
+				return result;
+			};
+			ntrees := @trees->Size();
+
+			for(i := 0; i < rows; i += 1;) {
+				row := Bool->New[cols];
+				for(c := 0; c < cols; c += 1;) {
+					row[c] := input[i, c];
+				};
+
+				votes_true := 0;
+				for(t := 0; t < ntrees; t += 1;) {
+					tree := @trees->Get(t);
+					if(tree->Predict(row)) {
+						votes_true += 1;
+					};
+				};
+
+				result[i] := votes_true * 2 >= ntrees;
+			};
+
+			return result;
+		}
+
+		#~
+		Computes classification accuracy on labeled data, comparing the ensemble's
+		majority-vote predictions against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>IsFitted() | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := Predict(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
+		Whether the ensemble has been trained.
+		@return true if trained
+		~#
+		method : public : IsFitted() ~ Bool {
+			if(@trees = Nil) {
+				return false;
+			};
+			return @trees->Size() > 0;
+		}
+
+		#~
+		Saves the fitted ensemble to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>IsFitted()) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_trees);
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			serializer->Write(@seed);
+
+			ntrees := @trees->Size();
+			serializer->Write(ntrees);
+			each(t : ntrees) {
+				@trees->Get(t)->WriteTo(serializer);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted ensemble from a file.
+		@param filename file to load from
+		@return fitted ensemble, or Nil on failure
+		~#
+		function : Load(filename : String) ~ RandomForest {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_trees := deserializer->ReadInt();
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+			seed := deserializer->ReadInt();
+
+			ntrees := deserializer->ReadInt();
+			trees := Vector->New()<DecisionTree>;
+			each(t : ntrees) {
+				tree := DecisionTree->ReadFrom(deserializer);
+				if(tree = Nil) {
+					return Nil;
+				};
+				trees->AddBack(tree);
+			};
+
+			return RandomForest->New(num_trees, max_depth, min_samples, seed, trees);
+		}
+	}
+
+	#~
+	Discrete AdaBoost over single-feature boolean decision stumps. Each round
+	picks the stump (feature + polarity) with the lowest weighted error, gives
+	it a vote of alpha = 0.5*ln((1-err)/err) and re-weights the samples to
+	focus on mistakes; prediction is the sign of the weighted stump vote.
+	Deterministic. Boosting stops early when no stump beats chance.
+
+```
+# label (last column) = majority of three boolean features
+booster := AdaBoost->New(16);
+booster->Fit(data);
+preds := booster->Predict(data);
+```
+	~#
+	class AdaBoost {
+		@num_learners : Int;
+		@features : Int[];
+		@polarities : Bool[];
+		@alphas : Float[];
+		@learner_count : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param num_learners maximum number of boosting rounds
+		~#
+		New(num_learners : Int) {
+			@num_learners := num_learners;
+			@is_fitted := false;
+		}
+
+		New : private (num_learners : Int, features : Int[], polarities : Bool[], alphas : Float[], learner_count : Int) {
+			@num_learners := num_learners;
+			@features := features;
+			@polarities := polarities;
+			@alphas := alphas;
+			@learner_count := learner_count;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the boosted ensemble. Each row is boolean features with the class
+		label in the LAST column.
+		@param input training matrix (features..., label) of Bool
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(input : Bool[,]) ~ Bool {
+			if(input = Nil) {
+				return false;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return false;
+			};
+			target_col := cols - 1;
+			num_features := cols - 1;
+
+			@features := Int->New[@num_learners];
+			@polarities := Bool->New[@num_learners];
+			@alphas := Float->New[@num_learners];
+			@learner_count := 0;
+
+			# uniform initial sample weights
+			weights := Float->New[rows];
+			each(i : rows) {
+				weights[i] := 1.0 / rows->As(Float);
+			};
+
+			done := false;
+			each(t : @num_learners) {
+				if(<>done) {
+					# pick the stump (feature, polarity) with lowest weighted error
+					best_feature := -1;
+					best_polarity := true;
+					best_error := 1.0;
+
+					each(f : num_features) {
+						# polarity true: predict the feature value itself
+						err_true := 0.0;
+						each(i : rows) {
+							if(input[i,f] <> input[i,target_col]) {
+								err_true += weights[i];
+							};
+						};
+
+						if(err_true < best_error) {
+							best_error := err_true;
+							best_feature := f;
+							best_polarity := true;
+						};
+
+						# polarity false: predict the inverted feature value
+						err_false := 1.0 - err_true;
+						if(err_false < best_error) {
+							best_error := err_false;
+							best_feature := f;
+							best_polarity := false;
+						};
+					};
+
+					# stop when no stump beats chance (with a small epsilon so a
+					# perfect stump cannot divide by zero)
+					if(best_feature < 0 | best_error >= 0.5) {
+						done := true;
+					}
+					else {
+						eps := 0.0000000001;
+						bounded := best_error;
+						if(bounded < eps) {
+							bounded := eps;
+						};
+						alpha := 0.5 * ((1.0 - bounded) / bounded)->Log();
+
+						@features[@learner_count] := best_feature;
+						@polarities[@learner_count] := best_polarity;
+						@alphas[@learner_count] := alpha;
+						@learner_count += 1;
+
+						# re-weight: mistakes up by e^alpha, hits down by e^-alpha
+						up := Float->Exp(alpha);
+						down := Float->Exp(-1.0 * alpha);
+						total := 0.0;
+						each(i : rows) {
+							predicted := input[i,best_feature];
+							if(<>best_polarity) {
+								predicted := <>predicted;
+							};
+
+							if(predicted <> input[i,target_col]) {
+								weights[i] := weights[i] * up;
+							}
+							else {
+								weights[i] := weights[i] * down;
+							};
+							total += weights[i];
+						};
+
+						each(i : rows) {
+							weights[i] := weights[i] / total;
+						};
+
+						# a perfect stump leaves nothing to boost
+						if(best_error <= eps) {
+							done := true;
+						};
+					};
+				};
+			};
+
+			@is_fitted := @learner_count > 0;
+			return @is_fitted;
+		}
+
+		#~
+		Predicts class labels by the sign of the weighted stump vote.
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predicted classes, or Nil if not fitted
+		~#
+		method : public : Predict(input : Bool[,]) ~ Bool[] {
+			if(<>@is_fitted | input = Nil) {
+				return Nil;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+
+			result := Bool->New[rows];
+			each(i : rows) {
+				vote := 0.0;
+				each(t : @learner_count) {
+					predicted := input[i, @features[t]];
+					if(<>@polarities[t]) {
+						predicted := <>predicted;
+					};
+
+					if(predicted) {
+						vote += @alphas[t];
+					}
+					else {
+						vote -= @alphas[t];
+					};
+				};
+				result[i] := vote >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the number of boosting rounds actually used (early-stops when no
+		stump beats chance or a stump is perfect).
+		@return learner count
+		~#
+		method : public : GetLearnerCount() ~ Int {
+			return @learner_count;
+		}
+
+		#~
+		Computes classification accuracy on labeled data, comparing predictions
+		against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>@is_fitted | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := Predict(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
+		Whether the ensemble has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted ensemble to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_learners);
+			serializer->Write(@learner_count);
+
+			each(t : @learner_count) {
+				serializer->Write(@features[t]);
+				if(@polarities[t]) {
+					serializer->Write(1);
+				}
+				else {
+					serializer->Write(0);
+				};
+				serializer->Write(@alphas[t]);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted ensemble from a file.
+		@param filename file to load from
+		@return fitted ensemble, or Nil on failure
+		~#
+		function : Load(filename : String) ~ AdaBoost {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_learners := deserializer->ReadInt();
+			learner_count := deserializer->ReadInt();
+			if(num_learners < 1 | learner_count < 1 | learner_count > num_learners) {
+				return Nil;
+			};
+
+			features := Int->New[num_learners];
+			polarities := Bool->New[num_learners];
+			alphas := Float->New[num_learners];
+			each(t : learner_count) {
+				features[t] := deserializer->ReadInt();
+				polarities[t] := deserializer->ReadInt() = 1;
+				alphas[t] := deserializer->ReadFloat();
+			};
+
+			return AdaBoost->New(num_learners, features, polarities, alphas, learner_count);
+		}
+	}
+
+	#~
+	A node in a RegressionTree: either a leaf carrying a mean prediction, or
+	an internal node splitting a numeric feature at a threshold (<= left).
+	~#
+	class RegressionTreeNode {
+		@is_leaf : Bool;
+		@value : Float;
+		@feature : Int;
+		@threshold : Float;
+		@left : RegressionTreeNode;
+		@right : RegressionTreeNode;
+
+		New : private (is_leaf : Bool, value : Float, feature : Int, threshold : Float) {
+			@is_leaf := is_leaf;
+			@value := value;
+			@feature := feature;
+			@threshold := threshold;
+		}
+
+		#~
+		Creates a leaf node.
+		@param value mean target the leaf predicts
+		@return leaf node
+		~#
+		function : NewLeaf(value : Float) ~ RegressionTreeNode {
+			return RegressionTreeNode->New(true, value, -1, 0.0);
+		}
+
+		#~
+		Creates an internal split node.
+		@param feature feature index to split on
+		@param threshold split threshold (<= goes left)
+		@return internal node
+		~#
+		function : NewInternal(feature : Int, threshold : Float) ~ RegressionTreeNode {
+			return RegressionTreeNode->New(false, 0.0, feature, threshold);
+		}
+
+		method : public : IsLeaf() ~ Bool { return @is_leaf; }
+		method : public : GetValue() ~ Float { return @value; }
+		method : public : GetFeature() ~ Int { return @feature; }
+		method : public : GetThreshold() ~ Float { return @threshold; }
+		method : public : GetLeft() ~ RegressionTreeNode { return @left; }
+		method : public : GetRight() ~ RegressionTreeNode { return @right; }
+		method : public : SetLeft(n : RegressionTreeNode) ~ Nil { @left := n; }
+		method : public : SetRight(n : RegressionTreeNode) ~ Nil { @right := n; }
+	}
+
+	#~
+	Regression tree over numeric features: recursive binary splits chosen to
+	minimize the children's summed squared error (variance reduction), with
+	depth and minimum-sample stops; leaves predict the mean target.
+	Deterministic. Also the base learner for GradientBoostedTrees.
+
+```
+tree := RegressionTree->New(4, 2);
+tree->Fit(X, y);                       # y is rows x 1
+pred := tree->Predict([2.5]);
+```
+	~#
+	class RegressionTree {
+		@max_depth : Int;
+		@min_samples : Int;
+		@root : RegressionTreeNode;
+
+		#~
+		Creates an (unfitted) regression tree.
+		@param max_depth maximum tree depth
+		@param min_samples minimum samples required to split a node
+		~#
+		New(max_depth : Int, min_samples : Int) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+		}
+
+		New : private (max_depth : Int, min_samples : Int, root : RegressionTreeNode) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@root := root;
+		}
+
+		#~
+		Fits the tree to numeric training data.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			if(rows <> y_dims[0] | rows = 0 | x_dims[1] = 0) {
+				return false;
+			};
+
+			targets := Float->New[rows];
+			each(i : rows) {
+				targets[i] := y[i,0];
+			};
+
+			indexes := Int->New[rows];
+			each(i : rows) {
+				indexes[i] := i;
+			};
+
+			@root := BuildNode(X, targets, indexes, rows, 0);
+			return true;
+		}
+
+		# Recursively builds a node over the rows listed in indexes[0..count-1].
+		method : BuildNode(X : Float[,], targets : Float[], indexes : Int[], count : Int, depth : Int) ~ RegressionTreeNode {
+			mean := 0.0;
+			each(i : count) {
+				mean += targets[indexes[i]];
+			};
+			mean := mean / count->As(Float);
+
+			if(count <= @min_samples | depth >= @max_depth) {
+				return RegressionTreeNode->NewLeaf(mean);
+			};
+
+			# baseline error of keeping this node a leaf
+			node_sse := 0.0;
+			each(i : count) {
+				diff := targets[indexes[i]] - mean;
+				node_sse += diff * diff;
+			};
+			if(node_sse <= 0.0000000001) {
+				# already pure
+				return RegressionTreeNode->NewLeaf(mean);
+			};
+
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			best_feature := -1;
+			best_threshold := 0.0;
+			best_sse := node_sse;
+
+			# candidate thresholds: midpoints between consecutive sorted values
+			values := Float->New[count];
+			each(f : cols) {
+				each(i : count) {
+					values[i] := X[indexes[i], f];
+				};
+				SortValues(values, 0, count - 1);
+
+				for(v := 0; v < count - 1; v += 1;) {
+					if(values[v] <> values[v + 1]) {
+						threshold := (values[v] + values[v + 1]) / 2.0;
+						sse := SplitError(X, targets, indexes, count, f, threshold);
+						if(sse < best_sse) {
+							best_sse := sse;
+							best_feature := f;
+							best_threshold := threshold;
+						};
+					};
+				};
+			};
+
+			if(best_feature < 0) {
+				return RegressionTreeNode->NewLeaf(mean);
+			};
+
+			# partition the index list
+			left_indexes := Int->New[count];
+			right_indexes := Int->New[count];
+			left_count := 0;
+			right_count := 0;
+			each(i : count) {
+				row := indexes[i];
+				if(X[row, best_feature] <= best_threshold) {
+					left_indexes[left_count] := row;
+					left_count += 1;
+				}
+				else {
+					right_indexes[right_count] := row;
+					right_count += 1;
+				};
+			};
+
+			if(left_count = 0 | right_count = 0) {
+				return RegressionTreeNode->NewLeaf(mean);
+			};
+
+			node := RegressionTreeNode->NewInternal(best_feature, best_threshold);
+			node->SetLeft(BuildNode(X, targets, left_indexes, left_count, depth + 1));
+			node->SetRight(BuildNode(X, targets, right_indexes, right_count, depth + 1));
+			return node;
+		}
+
+		# summed squared error of the two children produced by the split
+		method : SplitError(X : Float[,], targets : Float[], indexes : Int[], count : Int, feature : Int, threshold : Float) ~ Float {
+			left_sum := 0.0;
+			left_count := 0;
+			right_sum := 0.0;
+			right_count := 0;
+			each(i : count) {
+				row := indexes[i];
+				if(X[row, feature] <= threshold) {
+					left_sum += targets[row];
+					left_count += 1;
+				}
+				else {
+					right_sum += targets[row];
+					right_count += 1;
+				};
+			};
+
+			if(left_count = 0 | right_count = 0) {
+				return Float->Inf();
+			};
+
+			left_mean := left_sum / left_count->As(Float);
+			right_mean := right_sum / right_count->As(Float);
+
+			sse := 0.0;
+			each(i : count) {
+				row := indexes[i];
+				diff : Float;
+				if(X[row, feature] <= threshold) {
+					diff := targets[row] - left_mean;
+				}
+				else {
+					diff := targets[row] - right_mean;
+				};
+				sse += diff * diff;
+			};
+
+			return sse;
+		}
+
+		method : SortValues(values : Float[], lo : Int, hi : Int) ~ Nil {
+			if(lo >= hi) {
+				return;
+			};
+
+			pivot := values[lo + (hi - lo) / 2];
+			i := lo;
+			j := hi;
+			while(i <= j) {
+				while(values[i] < pivot) {
+					i += 1;
+				};
+				while(values[j] > pivot) {
+					j -= 1;
+				};
+				if(i <= j) {
+					tmp := values[i];
+					values[i] := values[j];
+					values[j] := tmp;
+					i += 1;
+					j -= 1;
+				};
+			};
+
+			SortValues(values, lo, j);
+			SortValues(values, i, hi);
+		}
+
+		#~
+		Predicts the target for a single feature row by walking the tree.
+		@param row feature values
+		@return predicted target
+		~#
+		method : public : Predict(row : Float[]) ~ Float {
+			node := @root;
+			while(node <> Nil) {
+				if(node->IsLeaf()) {
+					return node->GetValue();
+				};
+
+				if(row[node->GetFeature()] <= node->GetThreshold()) {
+					node := node->GetLeft();
+				}
+				else {
+					node := node->GetRight();
+				};
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Predicts targets for every row of an input matrix.
+		@param X feature matrix
+		@return prediction matrix (rows x 1), or Nil if not fitted
+		~#
+		method : public : PredictAll(X : Float[,]) ~ Float[,] {
+			if(<>IsFitted() | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows, 1];
+			row := Float->New[cols];
+			each(r : rows) {
+				each(c : cols) {
+					row[c] := X[r,c];
+				};
+				result[r,0] := Predict(row);
+			};
+
+			return result;
+		}
+
+		#~
+		Scores the tree on the given data (R-squared of predictions).
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictAll(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				residual := y[i,0] - preds[i,0];
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the tree has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @root <> Nil;
+		}
+
+		#~
+		Saves the fitted tree to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>IsFitted()) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			WriteTo(serializer);
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted tree from a file.
+		@param filename file to load from
+		@return fitted tree, or Nil on failure
+		~#
+		function : Load(filename : String) ~ RegressionTree {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			return ReadFrom(System.IO.Deserializer->New(data));
+		}
+
+		#~
+		Serializes the tree (hyperparameters + nodes in pre-order) onto an
+		existing serializer; used by Store and by GradientBoostedTrees.
+		@param serializer destination serializer
+		~#
+		method : public : WriteTo(serializer : System.IO.Serializer) ~ Nil {
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			WriteNode(serializer, @root);
+		}
+
+		#~
+		Reads a tree previously written with WriteTo from a deserializer.
+		@param deserializer source deserializer
+		@return fitted tree, or Nil on failure
+		~#
+		function : ReadFrom(deserializer : System.IO.Deserializer) ~ RegressionTree {
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+
+			root := ReadNode(deserializer);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			return RegressionTree->New(max_depth, min_samples, root);
+		}
+
+		method : WriteNode(serializer : System.IO.Serializer, node : RegressionTreeNode) ~ Nil {
+			if(node->IsLeaf()) {
+				serializer->Write(1);
+				serializer->Write(node->GetValue());
+			}
+			else {
+				serializer->Write(0);
+				serializer->Write(node->GetFeature());
+				serializer->Write(node->GetThreshold());
+				WriteNode(serializer, node->GetLeft());
+				WriteNode(serializer, node->GetRight());
+			};
+		}
+
+		function : ReadNode(deserializer : System.IO.Deserializer) ~ RegressionTreeNode {
+			is_leaf := deserializer->ReadInt();
+			if(is_leaf = 1) {
+				return RegressionTreeNode->NewLeaf(deserializer->ReadFloat());
+			};
+
+			feature := deserializer->ReadInt();
+			threshold := deserializer->ReadFloat();
+			node := RegressionTreeNode->NewInternal(feature, threshold);
+
+			left := ReadNode(deserializer);
+			right := ReadNode(deserializer);
+			if(left = Nil | right = Nil) {
+				return Nil;
+			};
+
+			node->SetLeft(left);
+			node->SetRight(right);
+			return node;
+		}
+	}
+
+	#~
+	Gradient boosted regression trees with squared-error loss: the model
+	starts at the target mean and each stage fits a RegressionTree to the
+	current residuals, added with a shrinkage (learning rate) factor.
+	Deterministic.
+
+```
+gbt := GradientBoostedTrees->New(50, 0.1, 3, 2);
+gbt->Fit(X, y);
+"R²={$gbt->Score(X, y)}"->PrintLine();
+```
+	~#
+	class GradientBoostedTrees {
+		@num_trees : Int;
+		@learning_rate : Float;
+		@max_depth : Int;
+		@min_samples : Int;
+		@base : Float;
+		@trees : Vector<RegressionTree>;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param num_trees boosting stages
+		@param learning_rate shrinkage per stage (e.g. 0.1)
+		@param max_depth maximum depth of each tree
+		@param min_samples minimum samples required to split a node
+		~#
+		New(num_trees : Int, learning_rate : Float, max_depth : Int, min_samples : Int) {
+			@num_trees := num_trees;
+			@learning_rate := learning_rate;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@is_fitted := false;
+		}
+
+		New : private (num_trees : Int, learning_rate : Float, max_depth : Int, min_samples : Int, base : Float, trees : Vector<RegressionTree>) {
+			@num_trees := num_trees;
+			@learning_rate := learning_rate;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@base := base;
+			@trees := trees;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the boosted ensemble.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil | @num_trees < 1) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			if(rows <> y_dims[0] | rows = 0 | x_dims[1] = 0) {
+				return false;
+			};
+
+			# F0: the target mean
+			@base := 0.0;
+			each(i : rows) {
+				@base += y[i,0];
+			};
+			@base := @base / rows->As(Float);
+
+			predictions := Float->New[rows];
+			each(i : rows) {
+				predictions[i] := @base;
+			};
+
+			@trees := Vector->New()<RegressionTree>;
+			residuals := Float->New[rows, 1];
+
+			each(t : @num_trees) {
+				each(i : rows) {
+					residuals[i,0] := y[i,0] - predictions[i];
+				};
+
+				tree := RegressionTree->New(@max_depth, @min_samples);
+				tree->Fit(X, residuals);
+				@trees->AddBack(tree);
+
+				stage := tree->PredictAll(X);
+				each(i : rows) {
+					predictions[i] += @learning_rate * stage[i,0];
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Predicts targets for every row of an input matrix.
+		@param X feature matrix
+		@return prediction matrix (rows x 1), or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows, 1];
+			row := Float->New[cols];
+			ntrees := @trees->Size();
+			each(r : rows) {
+				each(c : cols) {
+					row[c] := X[r,c];
+				};
+
+				sum := @base;
+				each(t : ntrees) {
+					sum += @learning_rate * @trees->Get(t)->Predict(row);
+				};
+				result[r,0] := sum;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the number of boosting stages fitted.
+		@return tree count
+		~#
+		method : public : GetTreeCount() ~ Int {
+			if(@trees = Nil) {
+				return 0;
+			};
+			return @trees->Size();
+		}
+
+		#~
+		Scores the ensemble on the given data (R-squared of predictions).
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := Predict(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				residual := y[i,0] - preds[i,0];
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the ensemble has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted ensemble to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_trees);
+			serializer->Write(@learning_rate);
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			serializer->Write(@base);
+
+			ntrees := @trees->Size();
+			serializer->Write(ntrees);
+			each(t : ntrees) {
+				@trees->Get(t)->WriteTo(serializer);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted ensemble from a file.
+		@param filename file to load from
+		@return fitted ensemble, or Nil on failure
+		~#
+		function : Load(filename : String) ~ GradientBoostedTrees {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_trees := deserializer->ReadInt();
+			learning_rate := deserializer->ReadFloat();
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+			base := deserializer->ReadFloat();
+
+			ntrees := deserializer->ReadInt();
+			if(ntrees < 1) {
+				return Nil;
+			};
+
+			trees := Vector->New()<RegressionTree>;
+			each(t : ntrees) {
+				tree := RegressionTree->ReadFrom(deserializer);
+				if(tree = Nil) {
+					return Nil;
+				};
+				trees->AddBack(tree);
+			};
+
+			return GradientBoostedTrees->New(num_trees, learning_rate, max_depth, min_samples, base, trees);
+		}
+	}
+
+	#~
+	Binary decision tree algorithm
+
+```
+data := BoolMatrixRef->New([
+  [true, false, true]
+  [true, false, true]
+  [true, true, true]
+  [true, true, true]
+  [true, true, true]
+  [true, true, true]
+  [true, true, true]
+  [true, true, true]
+  [false, true, true]
+  [false, true, true]
+  [true, true, false]
+  [true, true, false]
+  [false, true, false]
+  [false, true, false]
+  [false, true, false]
+  [false, true, false]
+  [false, false, false]
+  [false, false, false]
+  [false, false, false]
+  [false, false, false]
+]);
+split_data := data->Split(0.3);
+training_data := split_data[0];
+test_data := split_data[1];
+
+decisions := DecisionTree->Split(training_data->Get());
+result := DecisionTree->Decide(decisions, test_data->Get());
+
+possible := result->Rows()->As(Float);
+acheived := DecisionTree->Matches(2, result)->As(Float);
+(acheived / possible)->PrintLine();
+```
+	~#
+
+	#~
+	A node in a DecisionTree: either a leaf carrying a boolean prediction, or an
+	internal node that branches on a boolean feature (false -> left, true -> right).
+	~#
+	class TreeNode {
+		@is_leaf : Bool;
+		@prediction : Bool;
+		@feature : Int;
+		@left : TreeNode;
+		@right : TreeNode;
+
+		New : private (is_leaf : Bool, prediction : Bool, feature : Int) {
+			@is_leaf := is_leaf;
+			@prediction := prediction;
+			@feature := feature;
+		}
+
+		#~
+		Creates a leaf node.
+		@param prediction class the leaf predicts
+		@return leaf node
+		~#
+		function : NewLeaf(prediction : Bool) ~ TreeNode {
+			return TreeNode->New(true, prediction, -1);
+		}
+
+		#~
+		Creates an internal split node.
+		@param feature feature index to branch on
+		@return internal node
+		~#
+		function : NewInternal(feature : Int) ~ TreeNode {
+			return TreeNode->New(false, false, feature);
+		}
+
+		method : public : IsLeaf() ~ Bool { return @is_leaf; }
+		method : public : GetPrediction() ~ Bool { return @prediction; }
+		method : public : GetFeature() ~ Int { return @feature; }
+		method : public : GetLeft() ~ TreeNode { return @left; }
+		method : public : GetRight() ~ TreeNode { return @right; }
+		method : public : SetLeft(n : TreeNode) ~ Nil { @left := n; }
+		method : public : SetRight(n : TreeNode) ~ Nil { @right := n; }
+	}
+
+	class DecisionTree {
+		@root : TreeNode;
+		@max_depth : Int;
+		@min_samples : Int;
+
+		#~
+		Creates an (unfitted) decision tree classifier.
+		@param max_depth maximum tree depth
+		@param min_samples minimum samples required to split a node
+
+```
+tree := DecisionTree->New(4, 1);
+```
+		~#
+		New(max_depth : Int, min_samples : Int) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+		}
+
+		New : private (max_depth : Int, min_samples : Int, root : TreeNode) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@root := root;
+		}
+
+		#~
+		Fits a real recursive binary tree to boolean training data. Each row is a
+		set of boolean features with the class label in the LAST column. Nodes
+		branch on the feature with the lowest weighted Gini impurity and stop at
+		max_depth, min_samples, or a pure node (leaf = majority class).
+		@param input training matrix (features..., label) of Bool
+
+```
+data := [
+  [false, false, false],
+  [false, true,  false],
+  [true,  false, false],
+  [true,  true,  true]];   # label = f0 AND f1
+tree := DecisionTree->New(4, 1);
+tree->Fit(data);
+tree->Predict([true, true])->PrintLine();   # true
+```
+		~#
+		method : public : Fit(input : Bool[,]) ~ Nil {
+			@root := BuildNode(input, 0);
+		}
+
+		#~
+		Predicts the class for a single feature row by walking the tree.
+		@param row feature values (trailing label column, if present, is ignored)
+		@return predicted class
+		~#
+		method : public : Predict(row : Bool[]) ~ Bool {
+			node := @root;
+			while(node <> Nil) {
+				if(node->IsLeaf()) {
+					return node->GetPrediction();
+				};
+
+				f := node->GetFeature();
+				if(row[f]) {
+					node := node->GetRight();
+				}
+				else {
+					node := node->GetLeft();
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Predicts classes for every row of an input matrix.
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predictions
+		~#
+		method : public : PredictAll(input : Bool[,]) ~ Bool[] {
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Bool->New[rows];
+			each(r : rows) {
+				row := Bool->New[cols];
+				each(c : cols) {
+					row[c] := input[r, c];
+				};
+				result[r] := Predict(row);
+			};
+
+			return result;
+		}
+
+		#~
+		Computes classification accuracy on labeled data, comparing predictions
+		against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>IsFitted() | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := PredictAll(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
+		Whether the tree has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @root <> Nil;
+		}
+
+		#~
+		Saves the fitted tree to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>IsFitted()) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			WriteTo(serializer);
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted tree from a file.
+		@param filename file to load from
+		@return fitted tree, or Nil on failure
+		~#
+		function : Load(filename : String) ~ DecisionTree {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			return ReadFrom(System.IO.Deserializer->New(data));
+		}
+
+		#~
+		Serializes the tree (hyperparameters + nodes in pre-order) onto an existing
+		serializer; used by Store and by ensembles that embed trees (RandomForest).
+		@param serializer destination serializer
+		~#
+		method : public : WriteTo(serializer : System.IO.Serializer) ~ Nil {
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			WriteNode(serializer, @root);
+		}
+
+		#~
+		Reads a tree previously written with WriteTo from a deserializer.
+		@param deserializer source deserializer
+		@return fitted tree, or Nil on failure
+		~#
+		function : ReadFrom(deserializer : System.IO.Deserializer) ~ DecisionTree {
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+
+			root := ReadNode(deserializer);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			return DecisionTree->New(max_depth, min_samples, root);
+		}
+
+		# Pre-order node serialization: leaf flag, then prediction (leaf) or
+		# feature index + left/right subtrees (internal). Internal nodes always
+		# have both children (see BuildNode).
+		method : WriteNode(serializer : System.IO.Serializer, node : TreeNode) ~ Nil {
+			if(node->IsLeaf()) {
+				serializer->Write(1);
+				if(node->GetPrediction()) {
+					serializer->Write(1);
+				}
+				else {
+					serializer->Write(0);
+				};
+			}
+			else {
+				serializer->Write(0);
+				serializer->Write(node->GetFeature());
+				WriteNode(serializer, node->GetLeft());
+				WriteNode(serializer, node->GetRight());
+			};
+		}
+
+		function : ReadNode(deserializer : System.IO.Deserializer) ~ TreeNode {
+			is_leaf := deserializer->ReadInt();
+			if(is_leaf = 1) {
+				return TreeNode->NewLeaf(deserializer->ReadInt() = 1);
+			};
+
+			node := TreeNode->NewInternal(deserializer->ReadInt());
+
+			left := ReadNode(deserializer);
+			right := ReadNode(deserializer);
+			if(left = Nil | right = Nil) {
+				return Nil;
+			};
+
+			node->SetLeft(left);
+			node->SetRight(right);
+			return node;
+		}
+
+		# Recursively builds a tree node from a data subset.
+		method : BuildNode(data : Bool[,], depth : Int) ~ TreeNode {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			target_col := cols - 1;
+
+			majority := MajorityClass(data);
+			if(rows <= @min_samples | depth >= @max_depth | IsPure(data)) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			best_imp := 1000000.0;
+			best_feature := -1;
+			for(f := 0; f < target_col; f += 1;) {
+				imp := SplitImpurity(data, f);
+				if(imp < best_imp) {
+					best_imp := imp;
+					best_feature := f;
+				};
+			};
+
+			if(best_feature < 0 | best_imp >= 1000000.0) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			left_data := SubsetOn(data, best_feature, false);
+			right_data := SubsetOn(data, best_feature, true);
+			left_dims := left_data->Size();
+			right_dims := right_data->Size();
+			if(left_dims[0] = 0 | right_dims[0] = 0) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			node := TreeNode->NewInternal(best_feature);
+			node->SetLeft(BuildNode(left_data, depth + 1));
+			node->SetRight(BuildNode(right_data, depth + 1));
+			return node;
+		}
+
+		# Returns the subset of rows whose `feature` column equals `want`.
+		method : SubsetOn(data : Bool[,], feature : Int, want : Bool) ~ Bool[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			cnt := 0;
+			each(r : rows) {
+				if(data[r, feature] = want) {
+					cnt += 1;
+				};
+			};
+
+			out := Bool->New[cnt, cols];
+			idx := 0;
+			each(r : rows) {
+				if(data[r, feature] = want) {
+					each(c : cols) {
+						out[idx, c] := data[r, c];
+					};
+					idx += 1;
+				};
+			};
+
+			return out;
+		}
+
+		# Majority class label in the data (ties resolve to true).
+		method : MajorityClass(data : Bool[,]) ~ Bool {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			target_col := cols - 1;
+
+			pos := 0;
+			each(r : rows) {
+				if(data[r, target_col]) {
+					pos += 1;
+				};
+			};
+
+			return pos * 2 >= rows;
+		}
+
+		# Whether every row shares the same label.
+		method : IsPure(data : Bool[,]) ~ Bool {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0) {
+				return true;
+			};
+			target_col := cols - 1;
+
+			first := data[0, target_col];
+			each(r : rows) {
+				if(data[r, target_col] <> first) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		# Weighted Gini impurity of splitting `data` on `feature`. Returns a large
+		# sentinel when the feature does not actually partition the rows (so it is
+		# never selected); a perfect split correctly yields 0.0 (the minimum).
+		method : SplitImpurity(data : Bool[,], feature : Int) ~ Float {
+			left := SubsetOn(data, feature, false);
+			right := SubsetOn(data, feature, true);
+
+			left_dims := left->Size();
+			right_dims := right->Size();
+			ln := left_dims[0];
+			rn := right_dims[0];
+			if(ln = 0 | rn = 0) {
+				return 1000000.0;
+			};
+
+			n := (ln + rn)->As(Float);
+			return (ln->As(Float) / n) * GiniOf(left) + (rn->As(Float) / n) * GiniOf(right);
+		}
+
+		# Gini impurity of a data subset based on its label (last) column.
+		method : GiniOf(data : Bool[,]) ~ Float {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0) {
+				return 0.0;
+			};
+			target_col := cols - 1;
+
+			pos := 0;
+			each(r : rows) {
+				if(data[r, target_col]) {
+					pos += 1;
+				};
+			};
+
+			p := pos->As(Float) / rows->As(Float);
+			return 1.0 - (p * p + (1.0 - p) * (1.0 - p));
+		}
+
+		#~
+		Splits a matrix based on a list of decisions
+		@param decisions list of decisions
+		@param input matrix to be split
+		@return split matrix
+		~#
+		function : native : Query(decisions : Vector<Split>, input : Bool[,]) ~ Bool[,] {
+			each(decision := decisions) {
+				out := Split(decision->GetIndex(), input);
+				if(out = Nil) {
+					return input;
+				};
+				input := out;
+			}
+
+			return input;
+		}
+
+		#~
+		Calculates a list of decision splits
+		@param input training matrix
+		@return list of decision tree splits
+		~#
+		function : native : Train(input : Bool[,]) ~ Vector<Split> {					
+			decisions := Vector->New()<Split>;
+			dims := input->Size();
+			
+			cols := dims[1] - 1;
+			if(cols > 0) {
+				done := false;
+				while(<>done) {
+					best_wgi := 1000000.0;
+					best_index := -1;
+
+					each(i : cols) {
+						wgi := WeightedGini(i, cols, input);
+						if(wgi <> 0.0 & wgi < best_wgi) {
+							best_wgi := wgi;
+							best_index := i;
+						}
+					}
+
+					if(best_index > - 1) {
+						input := Split(best_index, input);
+						decisions->AddBack(Split->New(best_index, best_wgi));
+
+					}
+					else {
+						done := true;
+					};
+				};
+			};
+
+			return decisions;
+		}
+
+		#~
+		Splits a matrix along the given column
+		@param index index used to split
+		@param input matrix to split
+		@return split matrix
+		~#
+		function : native : Split(index : Int, input : Bool[,]) ~ Bool[,] {
+			split_len := Matches(index, input);
+			if(split_len > 0) {
+				dims := input->Size();
+				rows := dims[0];
+				cols := dims[1];
+
+				out := Bool->New[split_len, cols];
+				count := 0;
+				if(index > -1 & index < cols) {
+					each(row : rows) {
+						if(input[row, index]) {
+							each(k : cols) {
+								out[count, k] := input[row, k];
+							};
+							count += 1;
+						};
+					};
+				};
+
+				return out;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Calculates the Gini index
+		@param acheived number acheived
+		@param goal achievement target
+		@return Gini index
+		~#
+		function : native : Gini(acheived : Float, goal : Float) ~ Float {
+			reached := acheived / goal;
+			not_reached := (goal - acheived) / goal;
+			return 1 - (reached*reached + not_reached*not_reached);
+		}
+
+		function : native : WeightedGini(test : Int, target : Int, input : Bool[,]) ~ Float {
+			wgi := 0.0;
+
+			dims := input->Size();
+			size := dims[0]->As(Float);
+
+			# left
+			goal := Matches(test, input);
+			if(goal > 0.0) {
+				wgi += goal / size * Gini(Acheived(test, target, input), goal);
+			}
+			else {
+				return 0.0;
+			};
+
+			
+			# right
+			goal := Mismatches(test, input);
+			if(goal > 0.0) {
+				wgi += goal / size * Gini(Unacheived(test, target, input), goal);
+			}
+			else {
+				return 0.0;
+			};
+
+			return wgi;
+		}
+
+		#~
+		Count matches in a column
+		@param index column index
+		@param matrix matrix matrix to inspect
+		@return number of matches
+		~#
+		function : Matches(index : Int, matrix : Bool[,]) ~ Int {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(index > -1 & index < rows) {
+				each(row : rows) {
+					if(matrix[row, index]) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		#~
+		Count mismatches in a column
+		@param index column index
+		@param matrix matrix matrix to inspect
+		@return number of mismatches
+		~#
+		function : Mismatches(index : Int, matrix : Bool[,]) ~ Int {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(index > -1 & index < rows) {
+				each(row : rows) {
+					if(matrix[row, index] = false) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		function : native : Acheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
+				each(row : rows) {
+					if(matrix[row, test_index] & matrix[row, goal_index]) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		function : native : Unacheived(test_index : Int, goal_index : Int, matrix : Bool[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+
+			count := 0;
+			if(test_index > -1 & test_index < rows & goal_index > -1 & goal_index < rows) {
+				each(row : rows) {
+					if(matrix[row, test_index] = false & matrix[row, goal_index]) {
+						count += 1;
+					};
+				};
+			};
+
+			return count;
+		}
+
+		#~
+		Loads a boolean input matrix from a CSV file of 1s and 0s
+		@param filename CSV file to load
+		@return boolean matrix
+		~#
+		function : LoadCsv(filename : String) ~ Bool[,] {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+			if(table->IsParsed()) {
+				row_size := table->Size();
+				if(row_size->Size() > 1) {
+					column := table->Get(1);
+					column_size := column->Size();
+
+					matrix := Bool->New[row_size - 1, column_size];
+					for(i := 1; i < row_size; i += 1;) {
+						each(j : column_size) {
+							value := table->Get(i)->Get(j)->ToLower();
+							if(value->Equals(["0", "0.0", "false", "o", "f"])) {
+								matrix[i - 1, j] := false;
+							}
+							else {
+								matrix[i - 1, j] := true;	
+							};
+						};
+					};
+
+					return matrix;
+				};
+			};
+
+			return Nil;
+		}
+	}
+
+	class Split {
+		@index : Int;
+		@weighted_gini : Float;
+		
+		New(index : Int, weighted_gini : Float) {
+			@index := index;
+			@weighted_gini := weighted_gini;
+		}
+
+		method : public : GetWeightedGini() ~ Float {
+			return @weighted_gini;
+		}
+
+		method : public : GetIndex() ~ Int {
+			return @index;
+		}
+
+		method : public : ToString() ~ String {
+			return "index={$@index},weighted_gini={$@weighted_gini}";
+		}
+	}
+}

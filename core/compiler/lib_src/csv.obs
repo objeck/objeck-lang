@@ -5,7 +5,7 @@
 use Collection;
 
 #~
-Process and perform calculations on CSV files (-lib csv.obl)
+CSV parsing and generation. CsvParser reads delimited text into typed rows and columns; CsvWriter builds CSV output. Supports custom delimiters and quoted fields. Compile with -lib csv.
 ~#
 bundle Data.CSV {
 	#~
@@ -47,6 +47,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Gets the row ID
 		@return id
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+row := csv->Get(1);
+Console->PrintLine(row->Id());
+```
 		~#
 		method : public : Id() ~ Int {
 			return @id;
@@ -56,6 +62,13 @@ row->Size()->PrintLine();       # column count
 		Gets the indexed row value
 		@param index index
 		@return row value
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+row := csv->Get(1);
+row->Get(0)->PrintLine();
+row->Get(1)->PrintLine();
+```
 		~#
 		method : public : Get(index : Int) ~ String {
 			if(index < @columns->Size()) {
@@ -69,6 +82,13 @@ row->Size()->PrintLine();       # column count
 		Gets the indexed row value
 		@param name name
 		@return row value
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+row := csv->Get(1);
+row->Get("name")->PrintLine();
+row->Get("age")->PrintLine();
+```
 		~#
 		method : public : Get(name : String) ~ String {
 			index := @table->GetRowId(name);
@@ -84,6 +104,13 @@ row->Size()->PrintLine();       # column count
 		@param value value to set
 		@param index index
 		@return true of value was set, false otherwise
+
+```
+csv := CsvTable->New("name,score\r\nAlice,0\r\nBob,0");
+row := csv->Get(1);
+row->Set(1, "95");
+row->Get(1)->PrintLine();
+```
 		~#
 		method : public : Set(index : Int, value : String) ~ Bool {
 			if(@read_only = false & index < @columns->Size()) {
@@ -98,6 +125,13 @@ row->Size()->PrintLine();       # column count
 		@param name name
 		@param value value
 		@return true of value was set, false otherwise
+
+```
+csv := CsvTable->New("name,score\r\nAlice,0\r\nBob,0");
+row := csv->Get(1);
+row->Set("score", "88");
+row->Get("score")->PrintLine();
+```
 		~#
 		method : public : Set(name : String, value : String) ~ Bool {
 			return Set(@table->GetRowId(name), value);
@@ -106,6 +140,13 @@ row->Size()->PrintLine();       # column count
 		#~
 		Appends value to the end of the row
 		@param value to append
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30");
+row := csv->Get(1);
+row->Append("engineer");
+Console->PrintLine(row->Size());
+```
 		~#
 		method : public : Append(value : String) ~ Nil {
 			@columns->AddBack(value);
@@ -114,6 +155,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Gets the row size
 		@return row size
+
+```
+csv := CsvTable->New("a,b,c\r\n1,2,3");
+row := csv->Get(1);
+Console->PrintLine(row->Size());
+```
 		~#
 		method : public : Size() ~ Int {
 			return @columns->Size();
@@ -122,6 +169,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Calculates the row sum
 		@return row sum
+
+```
+csv := CsvTable->New("a,b,c\r\n10,20,30");
+row := csv->Get(1);
+Console->PrintLine(row->Sum());
+```
 		~#
 		method : public : Sum() ~ Float {
 			return Sum(0, @columns->Size());
@@ -162,6 +215,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Calculates the row average
 		@return row average
+
+```
+csv := CsvTable->New("a,b,c\r\n10,20,30");
+row := csv->Get(1);
+Console->PrintLine(row->Average());
+```
 		~#
 		method : public : Average() ~ Float {
 			return Average(0, @columns->Size());
@@ -193,6 +252,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Calculates the row median
 		@return row median
+
+```
+csv := CsvTable->New("a,b,c,d\r\n1,3,5,7");
+row := csv->Get(1);
+Console->PrintLine(row->Median());
+```
 		~#
 		method : public : Median() ~ Float {
 			if(@columns->Size() = 1) {
@@ -221,6 +286,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Formats the row into a string
 		@return string representation of the row
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30");
+row := csv->Get(1);
+row->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";
@@ -242,6 +313,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Formats the row into a JSON object string
 		@return JSON object string
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30");
+row := csv->Get(1);
+row->ToJson()->PrintLine();
+```
 		~#
 		method : public : ToJson() ~ String {
 			headers := @table->GetHeaders();
@@ -291,23 +368,41 @@ row->Size()->PrintLine();       # column count
 		#~
 		Gets the row size
 		@return row size
+
+```
+csv := CsvTable->New("x,y\r\n1,2\r\n3,4\r\n5,6");
+col := csv->ColumnValues("x");
+Console->PrintLine(col->Size());
+```
 		~#
 		method : public : Size() ~ Int {
 			return @rows->Size();
 		}
-		
+
 		#~
 		Gets the indexed row value
 		@param index index
 		@return row value
+
+```
+csv := CsvTable->New("city,pop\r\nParis,2M\r\nLondon,9M");
+col := csv->ColumnValues("city");
+col->Get(0)->PrintLine();
+```
 		~#
 		method : public : Get(index : Int) ~ String {
 			return @rows->Get(index);
 		}
-		
+
 		#~
 		Calculates the column sum
 		@return column sum
+
+```
+csv := CsvTable->New("a,b\r\n10,20\r\n30,40");
+col := csv->ColumnValues("a");
+Console->PrintLine(col->Sum());
+```
 		~#
 		method : public : Sum() ~ Float {
 			return Sum(0, @rows->Size());
@@ -348,6 +443,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Calculates the column average
 		@return column average
+
+```
+csv := CsvTable->New("score,grade\r\n80,B\r\n90,A\r\n70,C");
+col := csv->ColumnValues("score");
+Console->PrintLine(col->Average());
+```
 		~#
 		method : public : Average() ~ Float {
 			return Average(0, @rows->Size());
@@ -379,6 +480,12 @@ row->Size()->PrintLine();       # column count
 		#~
 		Calculates the column median
 		@return column median
+
+```
+csv := CsvTable->New("val,tag\r\n1,a\r\n3,b\r\n5,c\r\n7,d");
+col := csv->ColumnValues("val");
+Console->PrintLine(col->Median());
+```
 		~#
 		method : public : Median() ~ Float {
 			if(@rows->Size() = 1) {
@@ -428,6 +535,13 @@ if(csv->IsParsed()) {
 		#~
 		Constructor
 		@param data CSV data with CRNL line endings
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+if(csv->IsParsed()) {
+  Console->PrintLine(csv->Size());
+};
+```
 		~#
 		New(data : String) {
 			Init(data, "\r\n");
@@ -437,6 +551,13 @@ if(csv->IsParsed()) {
 		Constructor
 		@param data CSV data
 		@param ending line ending
+
+```
+csv := CsvTable->New("name,age\nAlice,30\nBob,25", "\n");
+if(csv->IsParsed()) {
+  Console->PrintLine(csv->Size());
+};
+```
 		~#
 		New(data : String, ending : String) {
 			Init(data, ending);
@@ -483,6 +604,13 @@ if(csv->IsParsed()) {
 		#~
 		Returns rather the file has been successfully parsed
 		@return true if successfully parsed, false otherwise
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30");
+if(csv->IsParsed()) {
+  "parsed ok"->PrintLine();
+};
+```
 		~#
 		method : public : IsParsed() ~ Bool {
 			return @is_parsed;
@@ -492,6 +620,11 @@ if(csv->IsParsed()) {
 		Gets row name
 		@param name name
 		@return row index
+
+```
+csv := CsvTable->New("name,age,city\r\nAlice,30,NY");
+Console->PrintLine(csv->GetRowId("age"));
+```
 		~#
 		method : public : GetRowId(name : String) ~ Int {
 			index := @header_names->Find(name);
@@ -505,6 +638,13 @@ if(csv->IsParsed()) {
 		#~
 		Gets header names
 		@return header names
+
+```
+csv := CsvTable->New("name,age,city\r\nAlice,30,NY");
+headers := csv->GetHeaders();
+headers->Get(0)->PrintLine();
+headers->Get(1)->PrintLine();
+```
 		~#
 		method : public : GetHeaders() ~ CsvRow {
 			if(@is_parsed) {
@@ -517,7 +657,13 @@ if(csv->IsParsed()) {
 		#~
 		Appends a column to the end of the table
 		@param name name of column to add
-		@return ture if column was added, false otherwise
+		@return true if column was added, false otherwise
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+csv->AppendColumn("score");
+Console->PrintLine(csv->RowSize());
+```
 		~#
 		method : public : AppendColumn(name : String) ~ Bool {
 			if(@header_names->Has(name) = false & @is_parsed) {
@@ -537,6 +683,12 @@ if(csv->IsParsed()) {
 		Removes a row from the table
 		@param id row to delete
 		@return true if deleted false otherwise
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+csv->Delete(1);
+Console->PrintLine(csv->Size());
+```
 		~#
 		method : public : Delete(id : Int) ~ Bool {
 			if(id = 0) {
@@ -549,6 +701,11 @@ if(csv->IsParsed()) {
 		#~
 		Gets the size of rows
 		@return row size
+
+```
+csv := CsvTable->New("a,b,c\r\n1,2,3");
+Console->PrintLine(csv->RowSize());
+```
 		~#
 		method : public : RowSize() ~ Int {
 			if(<>@is_parsed) {
@@ -640,6 +797,12 @@ if(csv->IsParsed()) {
 		Gets an indexed row
 		@param index index
 		@return row
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+row := csv->Get(1);
+row->Get("name")->PrintLine();
+```
 		~#
 		method : public : Get(index : Int) ~ CsvRow {
 			if(<>@is_parsed) {
@@ -652,6 +815,11 @@ if(csv->IsParsed()) {
 		#~
 		Gets the number of rows
 		@return number of rows
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25\r\nCarol,28");
+Console->PrintLine(csv->Size());
+```
 		~#
 		method : public : Size() ~ Int {
 			if(<>@is_parsed) {
@@ -665,7 +833,13 @@ if(csv->IsParsed()) {
 		Searches a given column for matching values
 		@param name column name
 		@param value value to search for
-		@return table of matching results 
+		@return table of matching results
+
+```
+csv := CsvTable->New("name,dept\r\nAlice,Eng\r\nBob,HR\r\nCarol,Eng");
+results := csv->Matches("dept", "Eng");
+Console->PrintLine(results->Size());
+```
 		~#
 		method : public : Matches(name : String, value : String) ~ CsvTable {
 			index := @header_names->Find(name);
@@ -705,6 +879,12 @@ if(csv->IsParsed()) {
 		@param name column name
 		@param value value to search for
 		@return number of occurrences
+
+```
+csv := CsvTable->New("name,dept\r\nAlice,Eng\r\nBob,HR\r\nCarol,Eng");
+count := csv->CountMatches("dept", "Eng");
+Console->PrintLine(count);
+```
 		~#
 		method : public : CountMatches(name : String, value : String) ~ Int {
 			index := @header_names->Find(name);
@@ -741,7 +921,13 @@ if(csv->IsParsed()) {
 		Searches a given column for like values
 		@param name column name
 		@param value value to search for
-		@return table of like results 
+		@return table of like results
+
+```
+csv := CsvTable->New("name,role\r\nAlice,Engineer\r\nBob,Manager\r\nCarol,Engineering Lead");
+results := csv->Contains("role", "Engin");
+Console->PrintLine(results->Size());
+```
 		~#
 		method : public : Contains(name : String, value : String) ~ CsvTable {
 			index := @header_names->Find(name);
@@ -781,6 +967,12 @@ if(csv->IsParsed()) {
 		@param name column name
 		@param value value to search for
 		@return number of occurrences
+
+```
+csv := CsvTable->New("name,role\r\nAlice,Engineer\r\nBob,Manager\r\nCarol,Senior Engineer");
+count := csv->CountContains("role", "Engineer");
+Console->PrintLine(count);
+```
 		~#
 		method : public : CountContains(name : String, value : String) ~ Int {
 			index := @header_names->Find(name);
@@ -816,6 +1008,11 @@ if(csv->IsParsed()) {
 		#~
 		Formats the table into a string
 		@return string representation of the table
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+csv->ToString()->PrintLine();
+```
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";
@@ -832,6 +1029,11 @@ if(csv->IsParsed()) {
 		#~
 		Formats the table into a JSON object string
 		@return JSON object string
+
+```
+csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+csv->ToJson()->PrintLine();
+```
 		~#
 		method : public : ToJson() ~ String {
 			buffer := "["
@@ -852,6 +1054,12 @@ if(csv->IsParsed()) {
 		Get unique values for a given row
 		@param name column name
 		@return unique values for the given row
+
+```
+csv := CsvTable->New("name,dept\r\nAlice,Eng\r\nBob,HR\r\nCarol,Eng");
+uniq := csv->UniqueColumnValues("dept");
+Console->PrintLine(uniq->Size());
+```
 		~#
 		method : public : UniqueColumnValues(name : String) ~ CsvColumn {
 			index := @header_names->Find(name);
@@ -866,6 +1074,12 @@ if(csv->IsParsed()) {
 		Get values for a given row
 		@param index column index
 		@return values for the given row
+
+```
+csv := CsvTable->New("name,score\r\nAlice,90\r\nBob,85");
+col := csv->ColumnValues(1);
+Console->PrintLine(col->Sum());
+```
 		~#
 		method : public : ColumnValues(index : Int) ~ CsvColumn {
 			if(index >= RowSize()) {
@@ -885,6 +1099,12 @@ if(csv->IsParsed()) {
 		Get values for a given row
 		@param name column name
 		@return values for the given row
+
+```
+csv := CsvTable->New("name,score\r\nAlice,90\r\nBob,85");
+col := csv->ColumnValues("score");
+Console->PrintLine(col->Average());
+```
 		~#
 		method : public : ColumnValues(name : String) ~ CsvColumn {
 			index := @header_names->Find(name);

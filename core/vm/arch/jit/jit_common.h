@@ -116,6 +116,50 @@ public:
   static bool TryAutoJitCompile(StackMethod* callee);
   static void PatchCallSites(StackMethod* callee, long patch_value);
 
+  // True if the method contains a trap that reads or writes interpreter
+  // locals via frame->mem (SERL_* writers, SYS_TIME/GMT_TIME, FILE_*_TIME,
+  // LOAD_CLS_BY_INST). JIT-compiled methods keep locals in native stack
+  // slots and the JIT trap callback passes a null frame, so methods with
+  // these traps must remain interpreted (both AMD64 and ARM64 reject them
+  // in their pre-scans).
+  static bool HasFrameDependentTrap(StackMethod* mthd) {
+    for(long i = 0; i < mthd->GetInstructionCount(); ++i) {
+      const InstructionType type = mthd->GetInstruction(i)->GetType();
+      if(type == TRAP || type == TRAP_RTRN) {
+        // the trap id is the integer literal pushed directly before the trap
+        if(i == 0) {
+          return true;
+        }
+        StackInstr* id_instr = mthd->GetInstruction(i - 1);
+        if(id_instr->GetType() != LOAD_INT_LIT) {
+          // can't identify the trap statically; be conservative
+          return true;
+        }
+        switch(id_instr->GetInt64Operand()) {
+        case instructions::SYS_TIME:
+        case instructions::GMT_TIME:
+        case instructions::FILE_CREATE_TIME:
+        case instructions::FILE_MODIFIED_TIME:
+        case instructions::FILE_ACCESSED_TIME:
+        case instructions::LOAD_CLS_BY_INST:
+        case instructions::SERL_CHAR:
+        case instructions::SERL_INT:
+        case instructions::SERL_FLOAT:
+        case instructions::SERL_OBJ_INST:
+        case instructions::SERL_BYTE_ARY:
+        case instructions::SERL_CHAR_ARY:
+        case instructions::SERL_INT_ARY:
+        case instructions::SERL_OBJ_ARY:
+        case instructions::SERL_FLOAT_ARY:
+          return true;
+        default:
+          break;
+        }
+      }
+    }
+    return false;
+  }
+
   inline static size_t PopInt(size_t* op_stack, size_t* stack_pos);
   inline static void PushInt(size_t* op_stack, size_t* stack_pos, size_t value);
   inline static FLOAT_VALUE PopFloat(size_t* op_stack, size_t* stack_pos);

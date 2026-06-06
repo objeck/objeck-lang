@@ -1,0 +1,171 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for the System.ML regularized linear models (overhaul
+phase 2): RidgeRegression (closed-form, shrinkage behavior), LassoRegression
+(coordinate descent, sparsity: a pure-noise feature's coefficient is driven
+to exactly zero), ElasticNet (fits cleanly, lasso-equivalent at l1_ratio=1),
+and Store/Load round-trips.
+~#
+use System.ML, System.IO.Filesystem, Collection;
+
+class MlRegularizedTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		eps := 0.000001;
+		model_file := "ml_regularized_model_test.tmp";
+
+		# y = 2x + 1, exact
+		X := [[1.0], [2.0], [3.0], [4.0], [5.0]];
+		y := [[3.0], [5.0], [7.0], [9.0], [11.0]];
+
+		# --- Ridge: small alpha tracks OLS; large alpha shrinks the slope ---
+		ridge := RidgeRegression->New(0.001);
+		if(<>ridge->Fit(X, y)) {
+			pass := false;
+			"  FAIL: ridge fit"->PrintLine();
+		}
+		else {
+			coeffs := ridge->GetCoefficients();
+			if(Float->Abs(coeffs[1] - 2.0) > 0.01 | Float->Abs(coeffs[0] - 1.0) > 0.05) {
+				slope := coeffs[1];
+				pass := false;
+				"  FAIL: ridge small-alpha slope {$slope}"->PrintLine();
+			};
+			if(ridge->Score(X, y) < 0.999) {
+				pass := false;
+				"  FAIL: ridge score"->PrintLine();
+			};
+		};
+
+		heavy := RidgeRegression->New(1000.0);
+		if(<>heavy->Fit(X, y)) {
+			pass := false;
+			"  FAIL: heavy ridge fit"->PrintLine();
+		}
+		else {
+			small := heavy->GetCoefficients();
+			full := ridge->GetCoefficients();
+			if(Float->Abs(small[1]) >= Float->Abs(full[1])) {
+				pass := false;
+				"  FAIL: ridge shrinkage"->PrintLine();
+			};
+		};
+
+		# unfitted Store must refuse; fitted round-trip must match
+		fresh_ridge := RidgeRegression->New(0.1);
+		if(fresh_ridge->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted ridge stored"->PrintLine();
+		};
+		if(<>ridge->Store(model_file)) {
+			pass := false;
+			"  FAIL: ridge store"->PrintLine();
+		};
+		ridge_loaded := RidgeRegression->Load(model_file);
+		if(ridge_loaded = Nil | <>ridge_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: ridge load"->PrintLine();
+		}
+		else {
+			before := ridge->Predict(X);
+			after := ridge_loaded->Predict(X);
+			each(i : 5) {
+				if(Float->Abs(before[i,0] - after[i,0]) > eps) {
+					pass := false;
+					"  FAIL: ridge round-trip prediction {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		# --- Lasso: zeroes a pure-noise feature, keeps the informative one ---
+		# y depends only on the first feature; the second is irrelevant noise
+		Xs := [
+			[1.0, 0.3], [2.0, -0.4], [3.0, 0.1], [4.0, -0.2], [5.0, 0.5],
+			[6.0, -0.1], [7.0, 0.2], [8.0, -0.5], [9.0, 0.4], [10.0, -0.3]];
+		ys := [[2.0], [4.0], [6.0], [8.0], [10.0], [12.0], [14.0], [16.0], [18.0], [20.0]];
+
+		lasso := LassoRegression->New(0.5);
+		if(<>lasso->Fit(Xs, ys)) {
+			pass := false;
+			"  FAIL: lasso fit"->PrintLine();
+		}
+		else {
+			lc := lasso->GetCoefficients();
+			if(lc[1] <> 0.0) {
+				noise_coeff := lc[1];
+				pass := false;
+				"  FAIL: lasso sparsity, noise coeff {$noise_coeff}"->PrintLine();
+			};
+			if(lc[0] < 1.5 | lc[0] > 2.5) {
+				slope := lc[0];
+				pass := false;
+				"  FAIL: lasso informative coeff {$slope}"->PrintLine();
+			};
+			if(lasso->Score(Xs, ys) < 0.95) {
+				pass := false;
+				"  FAIL: lasso score"->PrintLine();
+			};
+		};
+
+		# --- ElasticNet: high score on clean data; l1_ratio=1 matches lasso ---
+		enet := ElasticNet->New(0.1, 0.5);
+		if(<>enet->Fit(X, y)) {
+			pass := false;
+			"  FAIL: elastic-net fit"->PrintLine();
+		}
+		else if(enet->Score(X, y) < 0.99) {
+			pass := false;
+			"  FAIL: elastic-net score"->PrintLine();
+		};
+
+		enet_l1 := ElasticNet->New(0.5, 1.0);
+		if(<>enet_l1->Fit(Xs, ys)) {
+			pass := false;
+			"  FAIL: elastic-net l1 fit"->PrintLine();
+		}
+		else {
+			ec := enet_l1->GetCoefficients();
+			lc := lasso->GetCoefficients();
+			if(Float->Abs(ec[0] - lc[0]) > eps | Float->Abs(ec[1] - lc[1]) > eps) {
+				pass := false;
+				"  FAIL: elastic-net l1_ratio=1 vs lasso"->PrintLine();
+			};
+		};
+
+		# elastic-net Store/Load round-trip
+		if(<>enet->Store(model_file)) {
+			pass := false;
+			"  FAIL: elastic-net store"->PrintLine();
+		};
+		enet_loaded := ElasticNet->Load(model_file);
+		if(enet_loaded = Nil | <>enet_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: elastic-net load"->PrintLine();
+		}
+		else {
+			before := enet->Predict(X);
+			after := enet_loaded->Predict(X);
+			each(i : 5) {
+				if(Float->Abs(before[i,0] - after[i,0]) > eps) {
+					pass := false;
+					"  FAIL: elastic-net round-trip prediction {$i}"->PrintLine();
+				};
+			};
+
+			if(Float->Abs(enet->GetIntercept() - enet_loaded->GetIntercept()) > eps) {
+				pass := false;
+				"  FAIL: elastic-net round-trip intercept"->PrintLine();
+			};
+		};
+		File->Delete(model_file);
+
+		if(pass) {
+			"PASS: ML regularized regression tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML regularized regression tests"->PrintLine();
+		};
+	}
+}

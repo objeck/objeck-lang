@@ -54,7 +54,7 @@ graph TB
     subgraph "Virtual Machine"
         Loader["Bytecode Loader"]
         Interpreter["Runtime Interpreter<br/>(Stack-based VM)"]
-        HotCode["Hot Code Detection<br/>(100+ call threshold)"]
+        HotCode["Hot Code Detection<br/>(10-call threshold, default)"]
         JIT_ARM["ARM64 JIT<br/>(AArch64)"]
         JIT_AMD["AMD64 JIT<br/>(x86-64)"]
         CodeCache["JIT Code Cache"]
@@ -261,7 +261,7 @@ flowchart TB
 ```mermaid
 stateDiagram-v2
     [*] --> Interpreted
-    Interpreted --> Profiling: 100+ calls
+    Interpreted --> Profiling: 10+ calls
     Profiling --> JIT_Compiling: Hot threshold met
     JIT_Compiling --> Native_Execution: Compilation complete
     Native_Execution --> [*]: Method returns
@@ -305,7 +305,7 @@ graph TB
 
 **Key Features:**
 - **Tiered Execution:** Interpreter → Profiling → JIT
-- **Hot Code Detection:** Automatic at 100+ calls
+- **Hot Code Detection:** Automatic at 10 calls (default; configurable via `OBJECK_JIT_THRESHOLD`)
 - **Platform-Specific JIT:** Separate compilers for ARM64/x64
 - **Efficient Memory:** O(1) object lookups, generational GC
 
@@ -1331,4 +1331,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on improving this archi
 
 ---
 
-*Last updated: February 2026 | Version: 2026.2.1*
+*Last updated: May 2026 | Version: 2026.6.0*

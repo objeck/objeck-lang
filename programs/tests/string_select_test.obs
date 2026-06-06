@@ -1,0 +1,29 @@
+bundle Default {
+    class StringSelectTest {
+        function : Main(args : String[]) ~ Nil {
+            TestSelect("ping")->PrintLine();
+            TestSelect("initialize")->PrintLine();
+            TestSelect("tools/list")->PrintLine();
+            TestSelect("resources/templates/list")->PrintLine();
+            TestSelect("notifications/initialized")->PrintLine();
+            TestSelect("nomatch")->PrintLine();
+        }
+
+        function : TestSelect(s : String) ~ String {
+            select(s) {
+                label "ping": { return "PING"; }
+                label "initialize": { return "INIT"; }
+                label "notifications/initialized": { return "NOTIF"; }
+                label "logging/setLevel": { return "LOG"; }
+                label "resources/templates/list": { return "RES_TMPL"; }
+                label "resources/list": { return "RES_LIST"; }
+                label "resources/read": { return "RES_READ"; }
+                label "tools/list": { return "TOOLS"; }
+                label "tools/call": { return "TOOLS_CALL"; }
+                label "prompts/list": { return "PROMPTS"; }
+                label "prompts/get": { return "PROMPTS_GET"; }
+            };
+            return "NO_MATCH";
+        }
+    }
+}

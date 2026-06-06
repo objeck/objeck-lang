@@ -262,8 +262,26 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     // close file
     in.close();
 
+    // new format: [uncmp_size:4][zlib...]; old format: raw zlib (CMF byte = 0x78)
+    // When size LSB == 0x78, bytes[4..5] disambiguate: compress2(Z_BEST_COMPRESSION)
+    // always emits 0x78 0xDA; check (CMF*256+FLG)%31==0 to confirm valid zlib header.
+    uint32_t uncmp_hint = 0;
+    const char* src;
+    uLong src_size;
+    const bool zlib_at_4 = buffer_size >= 6 &&
+                            (uint8_t)buffer[4] == 0x78 &&
+                            (0x78u * 256u + (uint8_t)buffer[5]) % 31u == 0u;
+    if((uint8_t)buffer[0] == 0x78 && !zlib_at_4) {
+      src = buffer;
+      src_size = (uLong)buffer_size;
+    } else {
+      memcpy(&uncmp_hint, buffer, sizeof(uncmp_hint));
+      src = buffer + sizeof(uncmp_hint);
+      src_size = (uLong)(buffer_size - sizeof(uncmp_hint));
+    }
+
     uLong dest_len;
-    char* out = OutputStream::UncompressZlib(buffer, (uLong)buffer_size, dest_len);
+    char* out = OutputStream::UncompressZlib(src, src_size, dest_len, uncmp_hint);
     if(!out) {
       std::wcerr << L"Unable to uncompress file: " << filename << std::endl;
       exit(1);
@@ -846,6 +864,20 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       //
       // End: instruction caching
       //
+
+    case JMP_TABLE: {
+      const long base = ReadInt();
+      const long range = ReadInt();
+      const long default_ip = ReadInt();
+      mthd_instrs[i] = StackInstr(line_num, JMP_TABLE, base, range, default_ip);
+    }
+      break;
+
+    case JMP_TABLE_SLOT: {
+      const long target_ip = ReadInt();
+      mthd_instrs[i] = StackInstr(line_num, JMP_TABLE_SLOT, target_ip);
+    }
+      break;
 
     case LIB_OBJ_INST_CAST:
       std::wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << std::endl;
