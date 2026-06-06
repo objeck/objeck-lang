@@ -6359,6 +6359,169 @@ each(group in groups) {
 	}
 
 	#~
+	Density-based spatial clustering (DBSCAN). Groups points that are densely
+	packed (at least min_points neighbors within eps, Euclidean) and labels
+	sparse points as noise (-1). Unlike KMeans the cluster count is discovered,
+	clusters may be any shape, and the result is deterministic for a given
+	input order.
+
+```
+scanner := DBSCAN->New(1.0, 3);
+scanner->Fit(X);
+labels := scanner->GetLabels();   # cluster id per row; -1 = noise
+```
+	~#
+	class DBSCAN {
+		@eps : Float;
+		@min_points : Int;
+		@labels : Int[];
+		@num_clusters : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param eps neighborhood radius (Euclidean)
+		@param min_points minimum neighbors (inclusive of the point itself) for a core point
+		~#
+		New(eps : Float, min_points : Int) {
+			@eps := eps;
+			@min_points := min_points;
+			@is_fitted := false;
+		}
+
+		#~
+		Clusters the data. Region growing visits rows in order, so results are
+		deterministic for a given input.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if clustering succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			if(rows = 0) {
+				return false;
+			};
+
+			# -2 = unvisited, -1 = noise, >= 0 = cluster id
+			@labels := Int->New[rows];
+			each(i : rows) {
+				@labels[i] := -2;
+			};
+
+			@num_clusters := 0;
+			queue := Int->New[rows];
+
+			each(i : rows) {
+				if(@labels[i] = -2) {
+					neighbors := RegionQuery(X, i);
+					if(neighbors->Size() < @min_points) {
+						@labels[i] := -1;
+					}
+					else {
+						# new cluster: grow it breadth-first from the seed.
+						# Points are claimed (labeled) when enqueued, so each
+						# point enters the queue at most once and the fixed
+						# queue of `rows` entries can never overflow.
+						cluster := @num_clusters;
+						@num_clusters += 1;
+						@labels[i] := cluster;
+
+						head := 0;
+						tail := 0;
+						each(n : neighbors) {
+							q := neighbors[n];
+							if(@labels[q] = -2 | @labels[q] = -1) {
+								@labels[q] := cluster;
+								queue[tail] := q;
+								tail += 1;
+							};
+						};
+
+						while(head < tail) {
+							p := queue[head];
+							head += 1;
+
+							p_neighbors := RegionQuery(X, p);
+							if(p_neighbors->Size() >= @min_points) {
+								# core point: claim and extend the frontier
+								each(n : p_neighbors) {
+									q := p_neighbors[n];
+									if(@labels[q] = -2 | @labels[q] = -1) {
+										@labels[q] := cluster;
+										queue[tail] := q;
+										tail += 1;
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		# Indexes of all rows within eps of row i (inclusive of i itself).
+		method : RegionQuery(X : Float[,], i : Int) ~ Int[] {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			eps_sq := @eps * @eps;
+			found := Int->New[rows];
+			count := 0;
+			each(j : rows) {
+				dist_sq := 0.0;
+				each(c : cols) {
+					diff := X[i,c] - X[j,c];
+					dist_sq += diff * diff;
+				};
+
+				if(dist_sq <= eps_sq) {
+					found[count] := j;
+					count += 1;
+				};
+			};
+
+			result := Int->New[count];
+			each(j : count) {
+				result[j] := found[j];
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the per-row cluster labels (-1 = noise).
+		@return label array, or Nil if not fitted
+		~#
+		method : public : GetLabels() ~ Int[] {
+			return @labels;
+		}
+
+		#~
+		Gets the number of clusters discovered.
+		@return cluster count
+		~#
+		method : public : GetNumClusters() ~ Int {
+			return @num_clusters;
+		}
+
+		#~
+		Whether the clustering has been run.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+	}
+
+	#~
 	K-Means grouping result
 	~#
 	class KMeansGrouping {

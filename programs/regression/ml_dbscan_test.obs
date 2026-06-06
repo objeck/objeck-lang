@@ -1,0 +1,101 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for System.ML DBSCAN (overhaul phase 3): two dense blobs
+plus far-away outliers — the cluster count is discovered (2), blob members
+share a label, the blobs get different labels, outliers are noise (-1), and
+border points are absorbed into their core's cluster.
+~#
+use System.ML, Collection;
+
+class MlDbscanTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# rows 0-4: blob A; rows 5-9: blob B; rows 10-11: isolated noise
+		X := [
+			[1.0, 1.0], [1.2, 0.9], [0.9, 1.1], [1.1, 1.2], [1.0, 0.8],
+			[8.0, 8.0], [8.2, 7.9], [7.9, 8.1], [8.1, 8.2], [8.0, 7.8],
+			[4.5, 1.0], [1.0, 15.0]];
+
+		scanner := DBSCAN->New(0.8, 3);
+		if(scanner->IsFitted()) {
+			pass := false;
+			"  FAIL: fitted before Fit"->PrintLine();
+		};
+
+		if(<>scanner->Fit(X)) {
+			pass := false;
+			"  FAIL: dbscan fit"->PrintLine();
+		}
+		else {
+			if(scanner->GetNumClusters() <> 2) {
+				count := scanner->GetNumClusters();
+				pass := false;
+				"  FAIL: dbscan cluster count {$count}"->PrintLine();
+			};
+
+			labels := scanner->GetLabels();
+
+			# blob A is one cluster
+			each(i : 5) {
+				if(labels[i] <> labels[0]) {
+					pass := false;
+					"  FAIL: blob A label row {$i}"->PrintLine();
+				};
+			};
+
+			# blob B is one cluster, different from A
+			for(i := 5; i < 10; i += 1;) {
+				if(labels[i] <> labels[5]) {
+					pass := false;
+					"  FAIL: blob B label row {$i}"->PrintLine();
+				};
+			};
+			if(labels[0] = labels[5]) {
+				pass := false;
+				"  FAIL: blobs share a label"->PrintLine();
+			};
+
+			# outliers are noise
+			if(labels[10] <> -1 | labels[11] <> -1) {
+				pass := false;
+				"  FAIL: outliers not noise"->PrintLine();
+			};
+		};
+
+		# border absorption: a point within eps of a core point joins the
+		# cluster even though its own neighborhood is sparse
+		Y := [
+			[1.0, 1.0], [1.2, 1.0], [1.1, 1.1], [1.0, 1.2],
+			[1.9, 1.0],
+			[9.0, 9.0]];
+		border := DBSCAN->New(0.8, 4);
+		if(<>border->Fit(Y)) {
+			pass := false;
+			"  FAIL: border fit"->PrintLine();
+		}
+		else {
+			b_labels := border->GetLabels();
+			if(border->GetNumClusters() <> 1) {
+				pass := false;
+				"  FAIL: border cluster count"->PrintLine();
+			};
+			if(b_labels[4] <> b_labels[0]) {
+				pass := false;
+				"  FAIL: border point not absorbed"->PrintLine();
+			};
+			if(b_labels[5] <> -1) {
+				pass := false;
+				"  FAIL: distant point not noise"->PrintLine();
+			};
+		};
+
+		if(pass) {
+			"PASS: ML DBSCAN tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML DBSCAN tests"->PrintLine();
+		};
+	}
+}
