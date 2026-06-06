@@ -232,9 +232,26 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Install mbedtls and nghttp2 via vcpkg
-        vcpkg install mbedtls:${{ matrix.arch }}-windows
-        vcpkg install nghttp2:${{ matrix.arch }}-windows
+        # Install mbedtls and nghttp2 via vcpkg. The installs download tools
+        # and sources from external CDNs that intermittently 504 (a transient
+        # ninja download failed a whole leg on 2026-06-06), so retry with a
+        # short backoff before giving up.
+        function Install-VcpkgPackage([string]$pkg) {
+          $max = 3
+          for($i = 1; $i -le $max; $i++) {
+            vcpkg install $pkg
+            if($LASTEXITCODE -eq 0) {
+              return
+            }
+            if($i -lt $max) {
+              Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in 20s..."
+              Start-Sleep -Seconds 20
+            }
+          }
+          throw "vcpkg install $pkg failed after $max attempts"
+        }
+        Install-VcpkgPackage "mbedtls:${{ matrix.arch }}-windows"
+        Install-VcpkgPackage "nghttp2:${{ matrix.arch }}-windows"
 
         # Set include/lib paths for Visual Studio
         $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
