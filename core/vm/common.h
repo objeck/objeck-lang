@@ -1494,7 +1494,6 @@ struct StackFrame {
   bool jit_called;
   size_t* jit_mem;
   long jit_offset;
-  size_t* jit_inst_mem;  // pointer to JIT frame's INSTANCE_MEM slot for GC fixup
 };
 
 /********************************

@@ -187,7 +187,28 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       Runtime::StackInterpreter::ReleaseStackFrame(frame);
 
       if(status < 0) {
-        std::wcerr << L">>> Error in JIT-to-JIT call: method='" << callee->GetName() << L"' <<<" << std::endl;
+        // mirror the interpreter's runtime error reporting so the one-line
+        // failure is actionable (status codes set by the JIT guard stubs)
+        const wchar_t* reason;
+        switch(status) {
+        case -1:
+          reason = L"Attempting to dereference a 'Nil' memory instance";
+          break;
+        case -2:
+        case -3:
+          reason = L"Index out of bounds";
+          break;
+        case -4:
+          reason = L"Divide by zero";
+          break;
+        default:
+          reason = L"Unknown runtime error";
+          break;
+        }
+        std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
+                   << L"', status=" << status << L", self=" << callee_inst
+                   << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
+                   << L"' <<<" << std::endl;
         exit(1);
       }
       break;
