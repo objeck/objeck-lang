@@ -192,7 +192,7 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 
   // check and process errors
   if(!errors.empty()) {
-    std::map<int, std::wstring>::iterator error;
+    std::multimap<int, std::wstring>::iterator error;
     for(error = errors.begin(); error != errors.end(); ++error) {
 #if defined(_DIAG_LIB) || defined(_MODULE)
       error_strings.push_back(error->second);
@@ -211,7 +211,7 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 #ifndef _MODULE
   // check and process warnings
   if(!warnings.empty()) {
-    std::map<int, std::wstring>::iterator warning;
+    std::multimap<int, std::wstring>::iterator warning;
     for(warning = warnings.begin(); warning != warnings.end(); ++warning) {
 #ifdef _DIAG_LIB
       warning_strings.push_back(warning->second);
@@ -354,7 +354,7 @@ bool ContextAnalyzer::Analyze(bool is_lib)
             lib_parent->AddChild(klass);
           }
           else {
-            ProcessError(klass, L"Attempting to inherent from an undefined class type");
+            ProcessError(klass, L"Cannot inherit from an undefined class type");
           }
         }
       }
@@ -1271,7 +1271,7 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     }
   }
   else {
-    ProcessError(lambda, L"Deceleration and parameter size mismatch");
+    ProcessError(lambda, L"Declaration and parameter size mismatch");
   }
 }
 
@@ -2261,7 +2261,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
 
   if(variable->GetPreStatement() && variable->GetPostStatement()) {
-    ProcessError(variable, L"Variable cannot have pre and pos operations");
+    ProcessError(variable, L"Variable cannot have pre and post operations");
   }
   else if(variable->GetPreStatement() && !variable->IsPreStatementChecked()) {
     OperationAssignment* pre_stmt = variable->GetPreStatement();

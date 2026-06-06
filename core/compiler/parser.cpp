@@ -197,7 +197,8 @@ void Parser::ProcessError(const std::wstring &msg, ParseNode * node)
 #endif
 
   const std::wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L",1): " + msg));
+  const std::wstring &str_line_pos = ToString(node->GetLinePosition());
+  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
@@ -209,7 +210,7 @@ bool Parser::CheckErrors()
   if(errors.size()) {
     const size_t error_max = 8;
 
-    std::map<int, std::wstring>::iterator error = errors.begin();
+    std::multimap<int, std::wstring>::iterator error = errors.begin();
     if(errors.size() > error_max) {
       for(size_t i = 0; i < error_max; ++error, ++i) {
 #if defined(_DIAG_LIB) || defined(_MODULE)
@@ -3443,7 +3444,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     default:
       if(semi_colon) {
         if(!Match(TOKEN_SEMI_COLON)) {
-          ProcessError(L"Invalid statement expected ';'", TOKEN_SEMI_COLON);
+          ProcessError(L"Invalid statement; expected ';'", TOKEN_SEMI_COLON);
         }
         NextToken();
       }
@@ -6621,7 +6622,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_UNKNOWN:
-      ProcessError(L"Unknown token in an invalid expression ", TOKEN_SEMI_COLON);
+      ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
       break;
 
     default:
@@ -6679,7 +6680,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_UNKNOWN:
-      ProcessError(L"Unknown token in an invalid expression ", TOKEN_SEMI_COLON);
+      ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
       break;
 
     default:

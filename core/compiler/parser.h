@@ -91,7 +91,7 @@ class Parser {
   Scanner* scanner;
   SymbolTableManager* symbol_table;
   std::map<ScannerTokenType, std::wstring> error_msgs;
-  std::map<int, std::wstring> errors;
+  std::multimap<int, std::wstring> errors;
   std::wstring src_path;
   std::vector<std::pair<std::wstring, std::wstring> > programs;
   bool expand_generic_def;
