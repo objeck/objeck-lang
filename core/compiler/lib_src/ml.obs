@@ -5933,6 +5933,196 @@ each(neighbor := nearest) {
 };
 ```
 ~#
+	#~
+	A node in a KDTree: the row it holds, the dimension it splits on, and the
+	child subtrees.
+	~#
+	class : private : KDNode {
+		@row : Int;
+		@dim : Int;
+		@left : KDNode;
+		@right : KDNode;
+
+		New(row : Int, dim : Int) {
+			@row := row;
+			@dim := dim;
+		}
+
+		method : public : GetRow() ~ Int { return @row; }
+		method : public : GetDim() ~ Int { return @dim; }
+		method : public : GetLeft() ~ KDNode { return @left; }
+		method : public : GetRight() ~ KDNode { return @right; }
+		method : public : SetLeft(n : KDNode) ~ Nil { @left := n; }
+		method : public : SetRight(n : KDNode) ~ Nil { @right := n; }
+	}
+
+	#~
+	K-d tree for fast exact nearest-neighbor queries over numeric rows.
+	Built by median splits cycling through the dimensions; queries prune
+	subtrees whose splitting plane lies farther than the current k-th best
+	distance. Equivalent results to a brute-force scan (Euclidean).
+
+```
+tree := KDTree->New(matrix);
+nearest := tree->Nearest(3, [57.0, 170.0]);   # row indexes, closest first
+```
+	~#
+	class KDTree {
+		@data : Float[,];
+		@root : KDNode;
+		@size : Int;
+		@cols : Int;
+
+		#~
+		Builds the tree from a data matrix.
+		@param data matrix (rows=samples, cols=features)
+		~#
+		New(data : Float[,]) {
+			@data := data;
+			if(data <> Nil) {
+				dims := data->Size();
+				@size := dims[0];
+				@cols := dims[1];
+
+				if(@size > 0 & @cols > 0) {
+					indexes := Int->New[@size];
+					each(i : @size) {
+						indexes[i] := i;
+					};
+					@root := Build(indexes, 0, @size - 1, 0);
+				};
+			};
+		}
+
+		# Builds a subtree over indexes[lo..hi] splitting on depth % cols.
+		method : Build(indexes : Int[], lo : Int, hi : Int, depth : Int) ~ KDNode {
+			if(lo > hi) {
+				return Nil;
+			};
+
+			dim := depth % @cols;
+			SortByDim(indexes, lo, hi, dim);
+			mid := lo + (hi - lo) / 2;
+
+			node := KDNode->New(indexes[mid], dim);
+			node->SetLeft(Build(indexes, lo, mid - 1, depth + 1));
+			node->SetRight(Build(indexes, mid + 1, hi, depth + 1));
+			return node;
+		}
+
+		# In-place quicksort of indexes[lo..hi] by the dim-th coordinate.
+		method : SortByDim(indexes : Int[], lo : Int, hi : Int, dim : Int) ~ Nil {
+			if(lo >= hi) {
+				return;
+			};
+
+			pivot := @data[indexes[lo + (hi - lo) / 2], dim];
+			i := lo;
+			j := hi;
+			while(i <= j) {
+				while(@data[indexes[i], dim] < pivot) {
+					i += 1;
+				};
+				while(@data[indexes[j], dim] > pivot) {
+					j -= 1;
+				};
+				if(i <= j) {
+					tmp := indexes[i];
+					indexes[i] := indexes[j];
+					indexes[j] := tmp;
+					i += 1;
+					j -= 1;
+				};
+			};
+
+			SortByDim(indexes, lo, j, dim);
+			SortByDim(indexes, i, hi, dim);
+		}
+
+		#~
+		Finds the k nearest rows to the query point.
+		@param k number of neighbors
+		@param query query point (length = features)
+		@return row indexes sorted closest-first (fewer than k when the tree is smaller), or Nil on invalid input
+		~#
+		method : public : Nearest(k : Int, query : Float[]) ~ Int[] {
+			if(@root = Nil | query = Nil | k < 1 | query->Size() <> @cols) {
+				return Nil;
+			};
+
+			count := k;
+			if(count > @size) {
+				count := @size;
+			};
+
+			# best-so-far lists, sorted ascending by distance
+			best_rows := Int->New[count];
+			best_dists := Float->New[count];
+			each(i : count) {
+				best_dists[i] := Float->Inf();
+			};
+
+			Search(@root, query, best_rows, best_dists, count);
+
+			return best_rows;
+		}
+
+		method : Search(node : KDNode, query : Float[], best_rows : Int[], best_dists : Float[], count : Int) ~ Nil {
+			if(node = Nil) {
+				return;
+			};
+
+			row := node->GetRow();
+			dist_sq := 0.0;
+			each(j : @cols) {
+				diff := query[j] - @data[row,j];
+				dist_sq += diff * diff;
+			};
+
+			# insert into the sorted best list if it beats the current worst
+			if(dist_sq < best_dists[count - 1]) {
+				pos := count - 1;
+				while(pos > 0 & best_dists[pos - 1] > dist_sq) {
+					best_dists[pos] := best_dists[pos - 1];
+					best_rows[pos] := best_rows[pos - 1];
+					pos -= 1;
+				};
+				best_dists[pos] := dist_sq;
+				best_rows[pos] := row;
+			};
+
+			dim := node->GetDim();
+			delta := query[dim] - @data[row,dim];
+
+			near : KDNode;
+			far : KDNode;
+			if(delta < 0.0) {
+				near := node->GetLeft();
+				far := node->GetRight();
+			}
+			else {
+				near := node->GetRight();
+				far := node->GetLeft();
+			};
+
+			Search(near, query, best_rows, best_dists, count);
+
+			# the far side can only matter when the splitting plane is closer
+			# than the current k-th best distance
+			if(delta * delta < best_dists[count - 1]) {
+				Search(far, query, best_rows, best_dists, count);
+			};
+		}
+
+		#~
+		Gets the number of rows indexed.
+		@return row count
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+	}
+
 	class KNearestNeighbors {
 		@matrix : Float[,];
 		@labels : String[];
