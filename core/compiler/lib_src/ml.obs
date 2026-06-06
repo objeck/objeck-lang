@@ -3227,6 +3227,668 @@ labels := model->PredictClass(X);
 	}
 
 	#~
+	Principal component analysis via power iteration with deflation on the
+	sample covariance matrix. Deterministic (fixed initialization vector).
+	Components are unit-length rows of a k x d matrix; sign is arbitrary.
+
+```
+pca := PCA->New(1);
+pca->Fit(X);
+reduced := pca->Transform(X);          # n x 1
+ratios := pca->GetExplainedVarianceRatio();
+```
+	~#
+	class PCA {
+		@num_components : Int;
+		@mean : Float[];
+		@components : Float[,];
+		@eigenvalues : Float[];
+		@total_variance : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param num_components number of principal components to keep
+		~#
+		New(num_components : Int) {
+			@num_components := num_components;
+			@is_fitted := false;
+		}
+
+		New : private (num_components : Int, mean : Float[], components : Float[,], eigenvalues : Float[], total_variance : Float) {
+			@num_components := num_components;
+			@mean := mean;
+			@components := components;
+			@eigenvalues := eigenvalues;
+			@total_variance := total_variance;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the decomposition: centers the data, builds the sample covariance
+		matrix and extracts the top components by power iteration + deflation.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows < 2 | cols = 0 | @num_components < 1 | @num_components > cols) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# center the data
+			@mean := Float->New[cols];
+			each(j : cols) {
+				sum := 0.0;
+				each(i : rows) {
+					sum += X[i,j];
+				};
+				@mean[j] := sum / n;
+			};
+
+			centered := Float->New[rows, cols];
+			each(i : rows) {
+				each(j : cols) {
+					centered[i,j] := X[i,j] - @mean[j];
+				};
+			};
+
+			# sample covariance: C = X'X / (n - 1)
+			cov := Float->New[cols, cols];
+			each(a : cols) {
+				each(b : cols) {
+					sum := 0.0;
+					each(i : rows) {
+						sum += centered[i,a] * centered[i,b];
+					};
+					cov[a,b] := sum / (n - 1.0);
+				};
+			};
+
+			@total_variance := 0.0;
+			each(j : cols) {
+				@total_variance += cov[j,j];
+			};
+
+			# power iteration with deflation for the top components
+			@components := Float->New[@num_components, cols];
+			@eigenvalues := Float->New[@num_components];
+
+			each(c : @num_components) {
+				# deterministic non-degenerate initialization
+				v := Float->New[cols];
+				each(j : cols) {
+					v[j] := 1.0 / (j + 1)->As(Float);
+				};
+				Normalize(v);
+
+				each(iter : 1000) {
+					next := Float->New[cols];
+					each(a : cols) {
+						sum := 0.0;
+						each(b : cols) {
+							sum += cov[a,b] * v[b];
+						};
+						next[a] := sum;
+					};
+
+					# re-orthogonalize against the components already found so
+					# residual deflation error cannot accumulate across
+					# components (keeps the basis orthonormal to machine
+					# precision, which full-rank reconstruction relies on)
+					for(p := 0; p < c; p += 1;) {
+						proj := 0.0;
+						each(j : cols) {
+							proj += next[j] * @components[p,j];
+						};
+						each(j : cols) {
+							next[j] -= proj * @components[p,j];
+						};
+					};
+
+					norm := Normalize(next);
+					if(norm = 0.0) {
+						# no remaining variance in this direction
+						each(j : cols) {
+							next[j] := v[j];
+						};
+					};
+
+					# converged when the direction stops moving (sign-agnostic)
+					dot := 0.0;
+					each(j : cols) {
+						dot += next[j] * v[j];
+					};
+					v := next;
+					if(Float->Abs(dot) > 0.999999999999) {
+						break;
+					};
+				};
+
+				# Rayleigh quotient gives the eigenvalue for the unit vector
+				lambda := 0.0;
+				each(a : cols) {
+					row_sum := 0.0;
+					each(b : cols) {
+						row_sum += cov[a,b] * v[b];
+					};
+					lambda += v[a] * row_sum;
+				};
+
+				@eigenvalues[c] := lambda;
+				each(j : cols) {
+					@components[c,j] := v[j];
+				};
+
+				# deflate: C -= lambda * v v'
+				each(a : cols) {
+					each(b : cols) {
+						cov[a,b] -= lambda * v[a] * v[b];
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		method : Normalize(v : Float[]) ~ Float {
+			norm := 0.0;
+			each(j : v) {
+				norm += v[j] * v[j];
+			};
+			norm := norm->Sqrt();
+
+			if(norm > 0.0) {
+				each(j : v) {
+					v[j] := v[j] / norm;
+				};
+			};
+
+			return norm;
+		}
+
+		#~
+		Projects data onto the fitted components.
+		@param X data matrix (rows=samples, cols=features)
+		@return projected matrix (rows x num_components), or Nil if not fitted
+		~#
+		method : public : Transform(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows, @num_components];
+			each(i : rows) {
+				each(c : @num_components) {
+					sum := 0.0;
+					each(j : cols) {
+						sum += (X[i,j] - @mean[j]) * @components[c,j];
+					};
+					result[i,c] := sum;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Maps projected data back into the original feature space.
+		@param Z projected matrix (rows x num_components)
+		@return reconstruction (rows x features), or Nil if not fitted
+		~#
+		method : public : InverseTransform(Z : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | Z = Nil) {
+				return Nil;
+			};
+
+			z_dims := Z->Size();
+			rows := z_dims[0];
+			comp_dims := @components->Size();
+			cols := comp_dims[1];
+
+			result := Float->New[rows, cols];
+			each(i : rows) {
+				each(j : cols) {
+					sum := @mean[j];
+					each(c : @num_components) {
+						sum += Z[i,c] * @components[c,j];
+					};
+					result[i,j] := sum;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted components (num_components x features; unit rows).
+		@return component matrix, or Nil if not fitted
+		~#
+		method : public : GetComponents() ~ Float[,] {
+			return @components;
+		}
+
+		#~
+		Gets the variance explained by each component (eigenvalues).
+		@return explained variance array, or Nil if not fitted
+		~#
+		method : public : GetExplainedVariance() ~ Float[] {
+			return @eigenvalues;
+		}
+
+		#~
+		Gets the fraction of total variance explained by each component.
+		@return ratio array, or Nil if not fitted
+		~#
+		method : public : GetExplainedVarianceRatio() ~ Float[] {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+
+			ratios := Float->New[@num_components];
+			if(@total_variance > 0.0) {
+				each(c : @num_components) {
+					ratios[c] := @eigenvalues[c] / @total_variance;
+				};
+			};
+
+			return ratios;
+		}
+
+		#~
+		Gets the per-feature means used for centering.
+		@return mean array, or Nil if not fitted
+		~#
+		method : public : GetMean() ~ Float[] {
+			return @mean;
+		}
+
+		#~
+		Whether the decomposition has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted decomposition to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_components);
+
+			cols := @mean->Size();
+			serializer->Write(cols);
+			each(j : cols) {
+				serializer->Write(@mean[j]);
+			};
+
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@components[c,j]);
+				};
+			};
+
+			each(c : @num_components) {
+				serializer->Write(@eigenvalues[c]);
+			};
+
+			serializer->Write(@total_variance);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted decomposition from a file.
+		@param filename file to load from
+		@return fitted decomposition, or Nil on failure
+		~#
+		function : Load(filename : String) ~ PCA {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_components := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_components < 1 | cols < 1) {
+				return Nil;
+			};
+
+			mean := Float->New[cols];
+			each(j : cols) {
+				mean[j] := deserializer->ReadFloat();
+			};
+
+			components := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					components[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			eigenvalues := Float->New[num_components];
+			each(c : num_components) {
+				eigenvalues[c] := deserializer->ReadFloat();
+			};
+
+			total_variance := deserializer->ReadFloat();
+
+			return PCA->New(num_components, mean, components, eigenvalues, total_variance);
+		}
+	}
+
+	#~
+	Gaussian naive Bayes for continuous features and integer class labels.
+	Per class and feature it fits a mean and variance, then classifies by
+	maximum log-joint probability (log prior + sum of log Gaussian
+	likelihoods). Variances are floored for numerical stability.
+
+```
+X := [[1.0], [1.2], [8.0], [8.2]];
+y := [[0.0], [0.0], [1.0], [1.0]];
+gnb := GaussianNaiveBayes->New();
+gnb->Fit(X, y);
+classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
+```
+	~#
+	class GaussianNaiveBayes {
+		@num_classes : Int;
+		@priors : Float[];
+		@means : Float[,];
+		@variances : Float[,];
+		@is_fitted : Bool;
+
+		New() {
+			@is_fitted := false;
+		}
+
+		New : private (num_classes : Int, priors : Float[], means : Float[,], variances : Float[,]) {
+			@num_classes := num_classes;
+			@priors := priors;
+			@means := means;
+			@variances := variances;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits per-class feature means/variances and class priors. Class labels
+		are the integer values 0..C-1 in the target column; every class in the
+		range must appear at least once.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y class labels (integer values stored as Float, rows x 1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			# classes are 0..max label
+			max_label := 0;
+			each(i : rows) {
+				label_id := y[i,0]->As(Int);
+				if(label_id < 0) {
+					return false;
+				};
+				if(label_id > max_label) {
+					max_label := label_id;
+				};
+			};
+			@num_classes := max_label + 1;
+
+			counts := Int->New[@num_classes];
+			@means := Float->New[@num_classes, cols];
+			@variances := Float->New[@num_classes, cols];
+
+			each(i : rows) {
+				c := y[i,0]->As(Int);
+				counts[c] += 1;
+				each(j : cols) {
+					@means[c,j] += X[i,j];
+				};
+			};
+
+			each(c : @num_classes) {
+				if(counts[c] = 0) {
+					# a class id in the range never appears
+					return false;
+				};
+				each(j : cols) {
+					@means[c,j] := @means[c,j] / counts[c]->As(Float);
+				};
+			};
+
+			each(i : rows) {
+				c := y[i,0]->As(Int);
+				each(j : cols) {
+					diff := X[i,j] - @means[c,j];
+					@variances[c,j] += diff * diff;
+				};
+			};
+
+			# variance floor keeps degenerate (constant) features finite
+			floor := 0.000000001;
+			each(c : @num_classes) {
+				each(j : cols) {
+					@variances[c,j] := @variances[c,j] / counts[c]->As(Float);
+					if(@variances[c,j] < floor) {
+						@variances[c,j] := floor;
+					};
+				};
+			};
+
+			@priors := Float->New[@num_classes];
+			each(c : @num_classes) {
+				@priors[c] := counts[c]->As(Float) / rows->As(Float);
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes the log-joint probability of each class for every row.
+		@param X feature matrix
+		@return rows x classes matrix of log-joint scores, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			two_pi := 2.0 * Float->Pi();
+			result := Float->New[rows, @num_classes];
+			each(i : rows) {
+				each(c : @num_classes) {
+					log_joint := @priors[c]->Log();
+					each(j : cols) {
+						variance := @variances[c,j];
+						diff := X[i,j] - @means[c,j];
+						log_joint -= 0.5 * ((two_pi * variance)->Log() + diff * diff / variance);
+					};
+					result[i,c] := log_joint;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts the most likely class for every row.
+		@param X feature matrix
+		@return per-row class ids, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Int[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			score_dims := scores->Size();
+			rows := score_dims[0];
+
+			result := Int->New[rows];
+			each(i : rows) {
+				best := 0;
+				each(c : @num_classes) {
+					if(scores[i,c] > scores[i,best]) {
+						best := c;
+					};
+				};
+				result[i] := best;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the number of classes seen at fit time.
+		@return class count
+		~#
+		method : public : GetNumClasses() ~ Int {
+			return @num_classes;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true class labels (integer values stored as Float, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				if(preds[i] = y[i,0]->As(Int)) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_classes);
+
+			mean_dims := @means->Size();
+			cols := mean_dims[1];
+			serializer->Write(cols);
+
+			each(c : @num_classes) {
+				serializer->Write(@priors[c]);
+			};
+			each(c : @num_classes) {
+				each(j : cols) {
+					serializer->Write(@means[c,j]);
+				};
+			};
+			each(c : @num_classes) {
+				each(j : cols) {
+					serializer->Write(@variances[c,j]);
+				};
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ GaussianNaiveBayes {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_classes := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_classes < 1 | cols < 1) {
+				return Nil;
+			};
+
+			priors := Float->New[num_classes];
+			each(c : num_classes) {
+				priors[c] := deserializer->ReadFloat();
+			};
+
+			means := Float->New[num_classes, cols];
+			each(c : num_classes) {
+				each(j : cols) {
+					means[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			variances := Float->New[num_classes, cols];
+			each(c : num_classes) {
+				each(j : cols) {
+					variances[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			return GaussianNaiveBayes->New(num_classes, priors, means, variances);
+		}
+	}
+
+	#~
 	Boolean matrix reference
 	~#
 	class BoolMatrixRef {
