@@ -26,6 +26,72 @@ bundle System.ML {
 	}
 
 	#~
+	Deterministic, seedable pseudo-random number generator (MINSTD linear
+	congruential generator). Use this instead of `Float->Random()` when you need
+	reproducible results -- k-means++ seeding, shuffling, and unit tests.
+
+```
+rand := System.ML.Random->New(42);
+rand->NextInt(6)->PrintLine();   # reproducible dice roll in [0, 6)
+rand->NextReal()->PrintLine();   # value in (0.0, 1.0)
+```
+	~#
+	class Random {
+		@state : Int;
+
+		#~
+		Creates a seeded generator
+		@param seed initial seed (values <= 0 are normalized to a valid state)
+		~#
+		New(seed : Int) {
+			s := seed % 2147483647;
+			if(s <= 0) {
+				s += 2147483646;
+			};
+			@state := s;
+		}
+
+		#~
+		Advances the generator and returns the next raw integer in [1, 2147483646]
+		@return pseudo-random integer
+		~#
+		method : public : NextInt() ~ Int {
+			@state := (16807 * @state) % 2147483647;
+			return @state;
+		}
+
+		#~
+		Returns a non-negative integer less than bound
+		@param bound exclusive upper bound (must be > 0)
+		@return value in [0, bound)
+		~#
+		method : public : NextInt(bound : Int) ~ Int {
+			if(bound <= 0) {
+				return 0;
+			};
+			return NextInt() % bound;
+		}
+
+		#~
+		Returns a real in the open interval (0.0, 1.0)
+		@return pseudo-random real
+		~#
+		method : public : NextReal() ~ Float {
+			return NextInt()->As(Float) / 2147483647.0;
+		}
+
+		#~
+		Returns a real in the half-open interval [min, max)
+		@param min lower bound
+		@param max upper bound (exclusive)
+		@return pseudo-random real in range
+		~#
+		method : public : NextReal(min : Float, max : Float) ~ Float {
+			return min + (max - min) * NextReal();
+		}
+	}
+
+	#~
 	2D matrix operations
 	~#
 	class Matrix2D {
@@ -220,7 +286,12 @@ each(c in coeffs) {
 
 		function : StdDevRow(row : Int, m : Float[,]) ~ Float {
 			m_dim := m->Size();
+			m_rows := m_dim[0];
 			m_cols := m_dim[1];
+
+			if(row < 0 | row >= m_rows) {
+				return 0.0;
+			};
 
 			total_sum := 0.0;
 			each(i : m_cols) {
@@ -312,6 +383,11 @@ each(c in coeffs) {
 		function : StdDevColumn(col : Int, m : Float[,]) ~ Float {
 			m_dim := m->Size();
 			m_rows := m_dim[0];
+			m_cols := m_dim[1];
+
+			if(col < 0 | col >= m_cols) {
+				return 0.0;
+			};
 
 			total_sum := 0.0;
 			each(i : m_rows) {
@@ -704,7 +780,7 @@ val := Matrix2D->Sigmoid(2.0);
 			b_rows := b_dims[0];
 			b_cols := b_dims[1];
 
-			if(a_cols <> b_rows & a_rows <> b_cols) {
+			if(a_cols <> b_rows) {
 				return Nil;
 			};
 
@@ -1171,6 +1247,10 @@ preds := model->Predict([[1.0, 4.0]]);
 	class LinearRegression {
 		@coefficients : Float[];
 		@r_squared : Float;
+		@adj_r_squared : Float;
+		@mse : Float;
+		@rmse : Float;
+		@fit_intercept : Bool;
 		@is_fitted : Bool;
 
 		#~
@@ -1182,6 +1262,16 @@ model := LinearRegression->New();
 		~#
 		New() {
 			@is_fitted := false;
+		}
+
+		New : private (coefficients : Float[], fit_intercept : Bool, r_squared : Float, adj_r_squared : Float, mse : Float, rmse : Float) {
+			@coefficients := coefficients;
+			@fit_intercept := fit_intercept;
+			@r_squared := r_squared;
+			@adj_r_squared := adj_r_squared;
+			@mse := mse;
+			@rmse := rmse;
+			@is_fitted := true;
 		}
 
 		#~
@@ -1200,6 +1290,29 @@ if(model->Fit(X, y)) {
 ```
 		~#
 		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			return Fit(X, y, false);
+		}
+
+		#~
+		Fits the model to training data, optionally estimating an intercept term.
+		When fit_intercept is true a leading column of 1.0s is prepended to the
+		design matrix and coefficient 0 holds the intercept. Computes R-squared,
+		adjusted R-squared, MSE and RMSE; returns false on a singular / ill-
+		conditioned system (the underlying solver yields no solution).
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@param fit_intercept whether to estimate a bias/intercept term
+		@return true if fitting succeeded
+
+```
+X := [[1.0], [2.0], [3.0]];
+y := [[3.0], [5.0], [7.0]];   # y = 2x + 1
+model := LinearRegression->New();
+model->Fit(X, y, true);       # intercept ~ 1, slope ~ 2
+"RMSE={$model->GetRMSE()}"->PrintLine();
+```
+		~#
+		method : public : Fit(X : Float[,], y : Float[,], fit_intercept : Bool) ~ Bool {
 			if(X = Nil | y = Nil) {
 				return false;
 			};
@@ -1210,28 +1323,42 @@ if(model->Fit(X, y)) {
 				return false;
 			};
 
-			@coefficients := Matrix2D->Solve(X, y);
+			@fit_intercept := fit_intercept;
+
+			design : Float[,];
+			if(fit_intercept) {
+				design := PrependOnes(X);
+			}
+			else {
+				design := X;
+			};
+
+			@coefficients := Matrix2D->Solve(design, y);
 			if(@coefficients = Nil) {
+				# singular / ill-conditioned system: no unique solution
+				@is_fitted := false;
 				return false;
 			};
 
-			# compute r-squared
-			avg := Matrix2D->AverageColumn(0, y);
+			@is_fitted := true;
+
+			# goodness-of-fit metrics
 			rows := y_dims[0];
-			cols := x_dims[1];
+			num_features := x_dims[1];
+			avg := Matrix2D->AverageColumn(0, y);
 
 			ss_res := 0.0;
 			ss_tot := 0.0;
 			each(i : rows) {
-				predicted := 0.0;
-				each(j : cols) {
-					predicted += @coefficients[j] * X[i,j];
-				};
+				predicted := PredictRow(X, i);
 				residual := y[i,0] - predicted;
 				ss_res += residual * residual;
 				diff := y[i,0] - avg;
 				ss_tot += diff * diff;
 			};
+
+			@mse := ss_res / rows->As(Float);
+			@rmse := @mse->Sqrt();
 
 			if(ss_tot > 0.0) {
 				@r_squared := 1.0 - (ss_res / ss_tot);
@@ -1240,8 +1367,52 @@ if(model->Fit(X, y)) {
 				@r_squared := 0.0;
 			};
 
-			@is_fitted := true;
+			# adjusted R^2 = 1 - (1 - R^2)(n - 1)/(n - p - 1)
+			denom := rows - num_features - 1;
+			if(denom > 0) {
+				@adj_r_squared := 1.0 - (1.0 - @r_squared) * (rows - 1)->As(Float) / denom->As(Float);
+			}
+			else {
+				@adj_r_squared := @r_squared;
+			};
+
 			return true;
+		}
+
+		# Predicts a single row using the fitted coefficients, honoring the
+		# intercept convention chosen at fit time.
+		method : PredictRow(X : Float[,], row : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			sum := 0.0;
+			offset := 0;
+			if(@fit_intercept) {
+				sum := @coefficients[0];
+				offset := 1;
+			};
+			each(j : cols) {
+				sum += @coefficients[j + offset] * X[row,j];
+			};
+
+			return sum;
+		}
+
+		# Returns a copy of X with a leading column of 1.0s (intercept design column).
+		method : PrependOnes(X : Float[,]) ~ Float[,] {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			out := Float->New[rows, cols + 1];
+			each(i : rows) {
+				out[i, 0] := 1.0;
+				each(j : cols) {
+					out[i, j + 1] := X[i,j];
+				};
+			};
+
+			return out;
 		}
 
 		#~
@@ -1263,15 +1434,10 @@ each(i : preds->Size()[0]) {
 
 			x_dims := X->Size();
 			rows := x_dims[0];
-			cols := x_dims[1];
 
 			result := Float->New[rows, 1];
 			each(i : rows) {
-				sum := 0.0;
-				each(j : cols) {
-					sum += @coefficients[j] * X[i,j];
-				};
-				result[i, 0] := sum;
+				result[i, 0] := PredictRow(X, i);
 			};
 
 			return result;
@@ -1305,11 +1471,134 @@ each(c in coeffs) {
 		}
 
 		#~
+		Gets the adjusted R-squared, which penalizes additional predictors.
+		@return adjusted R-squared value
+		~#
+		method : public : GetAdjustedRSquared() ~ Float {
+			return @adj_r_squared;
+		}
+
+		#~
+		Gets the mean squared error over the training data.
+		@return MSE
+		~#
+		method : public : GetMSE() ~ Float {
+			return @mse;
+		}
+
+		#~
+		Gets the root mean squared error over the training data.
+		@return RMSE
+		~#
+		method : public : GetRMSE() ~ Float {
+			return @rmse;
+		}
+
+		#~
+		Scores the model on the given data, returning the R-squared (coefficient
+		of determination) of its predictions against the true targets.
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			if(<>@is_fitted | X = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
 		Whether the model has been fitted.
 		@return true if fitted
 		~#
 		method : public : IsFitted() ~ Bool {
 			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model (coefficients, intercept convention and training
+		metrics) to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+
+			if(@fit_intercept) {
+				serializer->Write(1);
+			}
+			else {
+				serializer->Write(0);
+			};
+
+			count := @coefficients->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@coefficients[i]);
+			};
+
+			serializer->Write(@r_squared);
+			serializer->Write(@adj_r_squared);
+			serializer->Write(@mse);
+			serializer->Write(@rmse);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ LinearRegression {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			fit_intercept := deserializer->ReadInt() = 1;
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			coefficients := Float->New[count];
+			each(i : count) {
+				coefficients[i] := deserializer->ReadFloat();
+			};
+
+			r_squared := deserializer->ReadFloat();
+			adj_r_squared := deserializer->ReadFloat();
+			mse := deserializer->ReadFloat();
+			rmse := deserializer->ReadFloat();
+
+			return LinearRegression->New(coefficients, fit_intercept, r_squared, adj_r_squared, mse, rmse);
 		}
 	}
 
@@ -1328,8 +1617,11 @@ labels[0]->PrintLine();
 	~#
 	class LogisticRegression {
 		@weights : Float[];
+		@bias : Float;
 		@learning_rate : Float;
 		@iterations : Int;
+		@l2 : Float;
+		@loss : Float;
 		@is_fitted : Bool;
 
 		#~
@@ -1344,14 +1636,45 @@ model := LogisticRegression->New(0.01, 500);
 		New(learning_rate : Float, iterations : Int) {
 			@learning_rate := learning_rate;
 			@iterations := iterations;
+			@l2 := 0.0;
 			@is_fitted := false;
 		}
 
 		#~
-		Sigmoid activation function
+		Constructor with L2 (ridge) regularization.
+		@param learning_rate step size for gradient descent
+		@param iterations number of training iterations
+		@param l2 L2 regularization strength (0.0 disables it)
+		~#
+		New(learning_rate : Float, iterations : Int, l2 : Float) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@l2 := l2;
+			@is_fitted := false;
+		}
+
+		New : private (learning_rate : Float, iterations : Int, l2 : Float, weights : Float[], bias : Float, loss : Float) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@l2 := l2;
+			@weights := weights;
+			@bias := bias;
+			@loss := loss;
+			@is_fitted := true;
+		}
+
+		#~
+		Numerically stable logistic sigmoid. Branching on the sign of x avoids
+		Float->Exp overflow for large-magnitude inputs.
+		@param x input value
+		@return sigmoid(x) in (0.0, 1.0)
 		~#
 		function : LogSigmoid(x : Float) ~ Float {
-			return 1.0 / (1.0 + Float->Exp(x * -1.0));
+			if(x >= 0.0) {
+				return 1.0 / (1.0 + Float->Exp(x * -1.0));
+			};
+			ex := Float->Exp(x);
+			return ex / (1.0 + ex);
 		}
 
 		#~
@@ -1381,22 +1704,22 @@ model->Fit(X, y);
 				return false;
 			};
 
-			# initialize weights to zero
+			# initialize weights and bias to zero
 			@weights := Float->New[cols];
+			@bias := 0.0;
 
-			# gradient descent
+			# batch gradient descent with optional L2 (ridge) penalty
 			each(iter : @iterations) {
-				# compute predictions
 				predictions := Float->New[rows];
 				each(i : rows) {
-					z := 0.0;
+					z := @bias;
 					each(j : cols) {
 						z += X[i,j] * @weights[j];
 					};
 					predictions[i] := LogSigmoid(z);
 				};
 
-				# compute gradients and update weights
+				# weight gradients (L2 penalty applies to weights, not bias)
 				each(j : cols) {
 					gradient := 0.0;
 					each(i : rows) {
@@ -1404,10 +1727,20 @@ model->Fit(X, y);
 						gradient += error * X[i,j];
 					};
 					gradient := gradient / rows->As(Float);
+					gradient += @l2 * @weights[j];
 					@weights[j] -= @learning_rate * gradient;
 				};
+
+				# bias gradient (mean error)
+				bias_grad := 0.0;
+				each(i : rows) {
+					bias_grad += predictions[i] - y[i,0];
+				};
+				bias_grad := bias_grad / rows->As(Float);
+				@bias -= @learning_rate * bias_grad;
 			};
 
+			@loss := ComputeLoss(X, y);
 			@is_fitted := true;
 			return true;
 		}
@@ -1433,7 +1766,7 @@ probs := model->Predict([[2.0, 3.0]]);
 
 			result := Float->New[rows];
 			each(i : rows) {
-				z := 0.0;
+				z := @bias;
 				each(j : cols) {
 					z += X[i,j] * @weights[j];
 				};
@@ -1478,11 +1811,139 @@ each(label in labels) {
 		}
 
 		#~
+		Gets the learned bias / intercept term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Gets the final binary cross-entropy loss recorded at the end of training.
+		Note: batch gradient descent assumes roughly comparable feature scales --
+		apply FeatureScaler (e.g. StandardScaler) to inputs for reliable convergence.
+		@return training loss
+		~#
+		method : public : GetLoss() ~ Float {
+			return @loss;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		# Binary cross-entropy loss with probability clipping to avoid log(0).
+		method : ComputeLoss(X : Float[,], y : Float[,]) ~ Float {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			eps := 0.0000001;
+			total := 0.0;
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += X[i,j] * @weights[j];
+				};
+				p := LogSigmoid(z);
+				if(p < eps) {
+					p := eps;
+				};
+				if(p > 1.0 - eps) {
+					p := 1.0 - eps;
+				};
+				yi := y[i,0];
+				total += yi * p->Log() + (1.0 - yi) * (1.0 - p)->Log();
+			};
+
+			return -1.0 * total / rows->As(Float);
+		}
+
+		#~
 		Whether the model has been fitted.
 		@return true if fitted
 		~#
 		method : public : IsFitted() ~ Bool {
 			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model (weights, bias, hyperparameters and final loss)
+		to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+			serializer->Write(@l2);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+			serializer->Write(@loss);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ LogisticRegression {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+			l2 := deserializer->ReadFloat();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+			loss := deserializer->ReadFloat();
+
+			return LogisticRegression->New(learning_rate, iterations, l2, weights, bias, loss);
 		}
 	}
 
@@ -1730,6 +2191,8 @@ else if(args->Size() = 1) {
 		@learning_rate : Float;
 		@weight_inputs_hidden : Float[,];
 		@weight_outputs_hidden : Float[,];
+		@bias_hidden : Float[,];
+		@bias_output : Float[,];
 		@threshold : Float;
 		@attempts : Int;
 
@@ -1754,17 +2217,24 @@ else if(args->Size() = 1) {
 			@hidden_nodes := hidden_nodes;
 			@output_nodes := output_nodes;
 			@learning_rate := learning_rate;
-			
+
 			@threshold := 0.80;
 			@attempts := 10;
 
 			@weight_inputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @hidden_nodes, @input_nodes);
 			@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
+
+			# bias vectors start at zero (standard practice; symmetry is already
+			# broken by the random weights)
+			@bias_hidden := Float->New[@hidden_nodes->As(Int), 1];
+			@bias_output := Float->New[@output_nodes->As(Int), 1];
 		}
 
-		New : private (weight_inputs_hidden : Float[,], weight_outputs_hidden : Float[,]) {
+		New : private (weight_inputs_hidden : Float[,], weight_outputs_hidden : Float[,], bias_hidden : Float[,], bias_output : Float[,]) {
 			@weight_inputs_hidden := weight_inputs_hidden;
 			@weight_outputs_hidden := weight_outputs_hidden;
+			@bias_hidden := bias_hidden;
+			@bias_output := bias_output;
 
 			@threshold := 0.80;
 			@attempts := 10;
@@ -1815,92 +2285,96 @@ else if(args->Size() = 1) {
 		}
 
 		#~
-		Loads network inputs and outputs
-		@param filename file to store to
-		@return true if successful, false otherwise
+		Loads a stored network (weights and biases). Note: the format gained the
+		two bias vectors with the bias support; files stored by older versions
+		cannot be loaded.
+		@param filename file to load from
+		@return loaded network, or Nil on failure
 		~#
 		function : Load(filename : String) ~ NeuralNetwork {
 			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
-			if(data <> Nil) {
-				# read inputs weight
-				deserializer := System.IO.Deserializer->New(data);
-				height := deserializer->ReadInt();
-				width := deserializer->ReadInt();
+			if(data = Nil) {
+				return Nil;
+			};
 
-				weight_inputs_hidden := Float->New[height, width];
-				each(i : height) {
-					each(j : width) {
-						weight_inputs_hidden[i,j] := deserializer->ReadFloat();
-					};
-				};
-				height := deserializer->ReadInt();
-				width := deserializer->ReadInt();
+			deserializer := System.IO.Deserializer->New(data);
+			weight_inputs_hidden := ReadMatrix(deserializer);
+			weight_outputs_hidden := ReadMatrix(deserializer);
+			bias_hidden := ReadMatrix(deserializer);
+			bias_output := ReadMatrix(deserializer);
 
-				weight_outputs_hidden := Float->New[height, width];
-				each(i : height) {
-					each(j : width) {
-						weight_outputs_hidden[i,j] := deserializer->ReadFloat();
-					};
-				};
+			if(weight_inputs_hidden = Nil | weight_outputs_hidden = Nil | bias_hidden = Nil | bias_output = Nil) {
+				return Nil;
+			};
 
-				return NeuralNetwork->New(weight_inputs_hidden, weight_outputs_hidden);
-			}
-
-			return Nil;
+			return NeuralNetwork->New(weight_inputs_hidden, weight_outputs_hidden, bias_hidden, bias_output);
 		}
 
 		#~
-		Saves final network inputs and outputs
+		Saves the network's weights and biases
 		@param filename file to store to
 		@return true if successful, false otherwise
 		~#
 		method : public : Store(filename : String) ~ Bool {
-			input_dims := @weight_inputs_hidden->Size();
-			if((input_dims->Size() = 2 & input_dims[0] > 0 & input_dims[1] > 0) = false) {
-				return false;
-			}
-
-			# write inputs weight
-			height := input_dims[0];
-			width := input_dims[1];
-
 			serializer := System.IO.Serializer->New();
 
-			serializer->Write(height);
-			serializer->Write(width);
-
-			each(i : height) {
-				each(j : width) {
-					serializer->Write(@weight_inputs_hidden[i,j])
-				};
-			};
-			# write outputs weight
-			output_dims := @weight_outputs_hidden->Size();
-			if((output_dims->Size() = 2 & output_dims[0] > 0 & output_dims[1] > 0) = false) {
+			if(<>WriteMatrix(serializer, @weight_inputs_hidden) |
+				<>WriteMatrix(serializer, @weight_outputs_hidden) |
+				<>WriteMatrix(serializer, @bias_hidden) |
+				<>WriteMatrix(serializer, @bias_output)) {
 				return false;
-			}
-
-			# write outputs weight
-			height := output_dims[0];
-			width := output_dims[1];
-
-			serializer->Write(height);
-			serializer->Write(width);
-
-			each(i : height) {
-				each(j : width) {
-					serializer->Write(@weight_outputs_hidden[i,j])
-				};
 			};
-			
+
 			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
 		}
 
+		# Writes a matrix as height, width, then row-major values.
+		function : WriteMatrix(serializer : System.IO.Serializer, m : Float[,]) ~ Bool {
+			if(m = Nil) {
+				return false;
+			};
+
+			dims := m->Size();
+			if((dims->Size() = 2 & dims[0] > 0 & dims[1] > 0) = false) {
+				return false;
+			};
+
+			height := dims[0];
+			width := dims[1];
+			serializer->Write(height);
+			serializer->Write(width);
+			each(i : height) {
+				each(j : width) {
+					serializer->Write(m[i,j]);
+				};
+			};
+
+			return true;
+		}
+
+		# Reads a matrix written by WriteMatrix; Nil on invalid dimensions.
+		function : ReadMatrix(deserializer : System.IO.Deserializer) ~ Float[,] {
+			height := deserializer->ReadInt();
+			width := deserializer->ReadInt();
+			if(height < 1 | width < 1) {
+				return Nil;
+			};
+
+			m := Float->New[height, width];
+			each(i : height) {
+				each(j : width) {
+					m[i,j] := deserializer->ReadFloat();
+				};
+			};
+
+			return m;
+		}
+
 		method : Query(inputs : Float[,]) ~ Float[,] {
-			# calculate signals into hidden layer
-			hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, inputs);
+			# calculate signals into hidden layer (weights * inputs + bias)
+			hidden_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_inputs_hidden, inputs), @bias_hidden));
 			# calculate the signals emerging from final output layer
-			return Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
+			return Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_outputs_hidden, hidden_outputs), @bias_output));
 		}
 
 		method : Train(inputs : Vector<FloatMatrixRef>, targets : Vector<FloatMatrixRef>, rate : Float, iterations : Int) ~ Nil {
@@ -1911,24 +2385,33 @@ else if(args->Size() = 1) {
 						target := targets->Get(j)->Get();
 
 						# calculate signals into hidden layer
-						hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, stream_in);
+						hidden_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_inputs_hidden, stream_in), @bias_hidden));
 						# calculate signals into final output layer
-						final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
+						final_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_outputs_hidden, hidden_outputs), @bias_output));
 						# output layer error is the (target - actual)
 						output_errors := Matrix2D->Subtract(target, final_outputs);
 						# hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 						hidden_errors := Matrix2D->DotProduct(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
-						# update the weights for the links between the stream_in and hidden layers
-						@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Adjust(rate, hidden_errors, hidden_outputs, stream_in));
-						# update the weights for the links between the hidden and output layers
-						@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, Adjust(rate, output_errors, final_outputs, hidden_outputs));
+
+						# per-layer deltas (error * sigmoid gradient), computed before
+						# any update so both layers see consistent pre-update state
+						output_delta := Delta(output_errors, final_outputs);
+						hidden_delta := Delta(hidden_errors, hidden_outputs);
+
+						# update weights and biases; the bias gradient is the layer
+						# delta itself (its "input" is the constant 1.0)
+						@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, Matrix2D->Multiple(rate, Matrix2D->DotProduct(output_delta, Matrix2D->Transpose(hidden_outputs))));
+						@bias_output := Matrix2D->Add(@bias_output, Matrix2D->Multiple(rate, output_delta));
+						@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Matrix2D->Multiple(rate, Matrix2D->DotProduct(hidden_delta, Matrix2D->Transpose(stream_in))));
+						@bias_hidden := Matrix2D->Add(@bias_hidden, Matrix2D->Multiple(rate, hidden_delta));
 					};
 				};
 			};
 		}
 
-		method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
-			return Matrix2D->Multiple(rate, Matrix2D->DotProduct(Matrix2D->HadamardProduct(errors, Matrix2D->HadamardProduct(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
+		# error * outputs * (1 - outputs): the backpropagated sigmoid gradient
+		method : Delta(errors : Float[,], outputs : Float[,]) ~ Float[,] {
+			return Matrix2D->HadamardProduct(errors, Matrix2D->HadamardProduct(outputs, Matrix2D->Subtract(1.0, outputs)));
 		}
 	}
 
@@ -1965,6 +2448,7 @@ else if(args->Size() = 1) {
 					target_index := 0;
 					for(i := input_length; i < row->Size(); i += 1;) {
 						target_array[target_index, 0] := row->Get(i)->ToFloat();
+						target_index += 1;
 					};
 
 					inputs->AddBack(FloatMatrixRef->New(input_array));
@@ -2021,6 +2505,7 @@ else if(args->Size() = 1) {
 					target_count := 0;
 					for(i := input_length; i < row->Size(); i += 1;) {
 						target_array[target_count, 0] := row->Get(i)->ToFloat();
+						target_count += 1;
 					};
 
 					if(count < train_count) {
@@ -2062,126 +2547,215 @@ matched_perc := (matched / possible * 100.0)->As(Int);
 ```
 	~#
 	class RandomForest {
-		@decisions : Vector<Split>;
 		@num_trees : Int;
+		@max_depth : Int;
+		@min_samples : Int;
+		@seed : Int;
+		@trees : Vector<DecisionTree>;
 
 		#~
-		Constructor
-		@param num_trees number of trees to generate
+		Constructor with default tree hyperparameters (max depth 8, min samples 1,
+		fixed seed for reproducible bootstrap sampling).
+		@param num_trees number of trees in the ensemble
+
+```
+forest := RandomForest->New(16);
+```
 		~#
 		New(num_trees : Int) {
 			@num_trees := num_trees;
+			@max_depth := 8;
+			@min_samples := 1;
+			@seed := 1;
 		}
 
-		New : private (num_trees : Int, decisions : Vector<Split>) {
-			@decisions := decisions;
+		#~
+		Constructor with explicit tree hyperparameters.
+		@param num_trees number of trees in the ensemble
+		@param max_depth maximum depth of each tree
+		@param min_samples minimum samples required to split a node
+		@param seed PRNG seed for reproducible bootstrap sampling
+		~#
+		New(num_trees : Int, max_depth : Int, min_samples : Int, seed : Int) {
 			@num_trees := num_trees;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@seed := seed;
+		}
+
+		New : private (num_trees : Int, max_depth : Int, min_samples : Int, seed : Int, trees : Vector<DecisionTree>) {
+			@num_trees := num_trees;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@seed := seed;
+			@trees := trees;
 		}
 
 		#~
-		Calculates a list of decision splits
-		@param split_perc percentage of data to use for training
-		@param input training matrix
+		Fits the ensemble: builds num_trees decision trees, each fitted to its own
+		bootstrap sample (rows drawn with replacement) of the training data. Each row
+		is boolean features with the class label in the LAST column.
+		@param input training matrix (features..., label) of Bool
+
+```
+forest := RandomForest->New(16);
+forest->Fit(data);
+preds := forest->Predict(data);
+```
 		~#
-		method : public : native : Train(split_perc : Float, input : BoolMatrixRef) ~ Nil {
-			Train(split_perc, input->Get());
-		}
+		method : public : Fit(input : Bool[,]) ~ Nil {
+			@trees := Vector->New()<DecisionTree>;
+			rand := Random->New(@seed);
 
-		#~
-		Calculates a list of decision splits
-		@param split_perc percentage of data to use for training
-		@param input training matrix
-		~#
-		method : public : native : Train(split_perc : Float, input : Bool[,]) ~ Nil {
-			data := BoolMatrixRef->New(input);
-			best_match := 0.0;
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			ntrees := @num_trees;
 
-			each(i : @num_trees) {				
-				split_data := data->Split(split_perc);
-				training_data := split_data[0];
-				test_data := split_data[1];
-
-				decisions := DecisionTree->Train(training_data->Get());
-				result := DecisionTree->Query(decisions, test_data->Get());
-
-				possible := result->Rows()->As(Float);
-				acheived := DecisionTree->Matches(2, result)->As(Float);
-
-				outcome := acheived / possible;
-				if(outcome > best_match) {
-					best_match := outcome;
-					@decisions := decisions; 
+			for(t := 0; t < ntrees; t += 1;) {
+				sample := Bool->New[rows, cols];
+				for(i := 0; i < rows; i += 1;) {
+					pick := rand->NextInt(rows);
+					for(c := 0; c < cols; c += 1;) {
+						sample[i, c] := input[pick, c];
+					};
 				};
-				data := data->Bootstrap();
+
+				tree := DecisionTree->New(@max_depth, @min_samples);
+				tree->Fit(sample);
+				@trees->AddBack(tree);
 			};
 		}
 
 		#~
-		Splits a matrix based on a list of decisions
-		@param input matrix to be split
-		@return split matrix
+		Predicts class labels by majority vote across all trees (ties resolve to true).
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predicted classes
 		~#
-		method : public : native : Query(input : BoolMatrixRef) ~ Bool[,] {
-			return Query(input->Get());
-		}
+		method : public : Predict(input : Bool[,]) ~ Bool[] {
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
 
-		#~
-		Splits a matrix based on a list of decisions
-		@param input matrix to be split
-		@return split matrix
-		~#
-		method : public : native : Query(input : Bool[,]) ~ Bool[,] {
-			if(@decisions <> Nil) {
-				return DecisionTree->Query(@decisions, input);
+			result := Bool->New[rows];
+			if(@trees = Nil) {
+				return result;
+			};
+			ntrees := @trees->Size();
+
+			for(i := 0; i < rows; i += 1;) {
+				row := Bool->New[cols];
+				for(c := 0; c < cols; c += 1;) {
+					row[c] := input[i, c];
+				};
+
+				votes_true := 0;
+				for(t := 0; t < ntrees; t += 1;) {
+					tree := @trees->Get(t);
+					if(tree->Predict(row)) {
+						votes_true += 1;
+					};
+				};
+
+				result[i] := votes_true * 2 >= ntrees;
 			};
 
-			return Nil;
+			return result;
 		}
 
 		#~
-		Loads a saved random forest
+		Computes classification accuracy on labeled data, comparing the ensemble's
+		majority-vote predictions against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>IsFitted() | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := Predict(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
+		Whether the ensemble has been trained.
+		@return true if trained
+		~#
+		method : public : IsFitted() ~ Bool {
+			if(@trees = Nil) {
+				return false;
+			};
+			return @trees->Size() > 0;
+		}
+
+		#~
+		Saves the fitted ensemble to a file.
 		@param filename file to store to
-		@return random forest
-		~#
-		function : Load(filename : String) ~ RandomForest {
-			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
-			if(data <> Nil) {
-				deserializer := System.IO.Deserializer->New(data);
-				
-				num_trees := deserializer->ReadInt();
-				
-				decisions := Vector->New()<Split>;
-				num_decisions := deserializer->ReadInt();
-				each(i : num_decisions) {
-					decisions->AddBack(deserializer->ReadObject()->As(Split));
-				};
-
-				return RandomForest->New(num_trees, decisions);
-			}
-
-			return Nil;
-		}
-
-		#~
-		Saves a random forest
-		@param filename file to save to
 		@return true if successful, false otherwise
 		~#
 		method : public : Store(filename : String) ~ Bool {
-			if(@decisions <> Nil) {
-				serializer := System.IO.Serializer->New();
-
-				serializer->Write(@num_trees);
-				
-				serializer->Write(@decisions->Size());
-				each(decision : @decisions) {
-					serializer->Write(decision);
-				};
-
-				return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+			if(<>IsFitted()) {
+				return false;
 			};
 
-			return false;
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_trees);
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			serializer->Write(@seed);
+
+			ntrees := @trees->Size();
+			serializer->Write(ntrees);
+			each(t : ntrees) {
+				@trees->Get(t)->WriteTo(serializer);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted ensemble from a file.
+		@param filename file to load from
+		@return fitted ensemble, or Nil on failure
+		~#
+		function : Load(filename : String) ~ RandomForest {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_trees := deserializer->ReadInt();
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+			seed := deserializer->ReadInt();
+
+			ntrees := deserializer->ReadInt();
+			trees := Vector->New()<DecisionTree>;
+			each(t : ntrees) {
+				tree := DecisionTree->ReadFrom(deserializer);
+				if(tree = Nil) {
+					return Nil;
+				};
+				trees->AddBack(tree);
+			};
+
+			return RandomForest->New(num_trees, max_depth, min_samples, seed, trees);
 		}
 	}
 
@@ -2223,7 +2797,421 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 (acheived / possible)->PrintLine();
 ```
 	~#
+	#~
+	A node in a DecisionTree: either a leaf carrying a boolean prediction, or an
+	internal node that branches on a boolean feature (false -> left, true -> right).
+	~#
+	class TreeNode {
+		@is_leaf : Bool;
+		@prediction : Bool;
+		@feature : Int;
+		@left : TreeNode;
+		@right : TreeNode;
+
+		New : private (is_leaf : Bool, prediction : Bool, feature : Int) {
+			@is_leaf := is_leaf;
+			@prediction := prediction;
+			@feature := feature;
+		}
+
+		#~
+		Creates a leaf node.
+		@param prediction class the leaf predicts
+		@return leaf node
+		~#
+		function : NewLeaf(prediction : Bool) ~ TreeNode {
+			return TreeNode->New(true, prediction, -1);
+		}
+
+		#~
+		Creates an internal split node.
+		@param feature feature index to branch on
+		@return internal node
+		~#
+		function : NewInternal(feature : Int) ~ TreeNode {
+			return TreeNode->New(false, false, feature);
+		}
+
+		method : public : IsLeaf() ~ Bool { return @is_leaf; }
+		method : public : GetPrediction() ~ Bool { return @prediction; }
+		method : public : GetFeature() ~ Int { return @feature; }
+		method : public : GetLeft() ~ TreeNode { return @left; }
+		method : public : GetRight() ~ TreeNode { return @right; }
+		method : public : SetLeft(n : TreeNode) ~ Nil { @left := n; }
+		method : public : SetRight(n : TreeNode) ~ Nil { @right := n; }
+	}
+
 	class DecisionTree {
+		@root : TreeNode;
+		@max_depth : Int;
+		@min_samples : Int;
+
+		#~
+		Creates an (unfitted) decision tree classifier.
+		@param max_depth maximum tree depth
+		@param min_samples minimum samples required to split a node
+
+```
+tree := DecisionTree->New(4, 1);
+```
+		~#
+		New(max_depth : Int, min_samples : Int) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+		}
+
+		New : private (max_depth : Int, min_samples : Int, root : TreeNode) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@root := root;
+		}
+
+		#~
+		Fits a real recursive binary tree to boolean training data. Each row is a
+		set of boolean features with the class label in the LAST column. Nodes
+		branch on the feature with the lowest weighted Gini impurity and stop at
+		max_depth, min_samples, or a pure node (leaf = majority class).
+		@param input training matrix (features..., label) of Bool
+
+```
+data := [
+  [false, false, false],
+  [false, true,  false],
+  [true,  false, false],
+  [true,  true,  true]];   # label = f0 AND f1
+tree := DecisionTree->New(4, 1);
+tree->Fit(data);
+tree->Predict([true, true])->PrintLine();   # true
+```
+		~#
+		method : public : Fit(input : Bool[,]) ~ Nil {
+			@root := BuildNode(input, 0);
+		}
+
+		#~
+		Predicts the class for a single feature row by walking the tree.
+		@param row feature values (trailing label column, if present, is ignored)
+		@return predicted class
+		~#
+		method : public : Predict(row : Bool[]) ~ Bool {
+			node := @root;
+			while(node <> Nil) {
+				if(node->IsLeaf()) {
+					return node->GetPrediction();
+				};
+
+				f := node->GetFeature();
+				if(row[f]) {
+					node := node->GetRight();
+				}
+				else {
+					node := node->GetLeft();
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Predicts classes for every row of an input matrix.
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predictions
+		~#
+		method : public : PredictAll(input : Bool[,]) ~ Bool[] {
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Bool->New[rows];
+			each(r : rows) {
+				row := Bool->New[cols];
+				each(c : cols) {
+					row[c] := input[r, c];
+				};
+				result[r] := Predict(row);
+			};
+
+			return result;
+		}
+
+		#~
+		Computes classification accuracy on labeled data, comparing predictions
+		against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>IsFitted() | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := PredictAll(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
+		Whether the tree has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @root <> Nil;
+		}
+
+		#~
+		Saves the fitted tree to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>IsFitted()) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			WriteTo(serializer);
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted tree from a file.
+		@param filename file to load from
+		@return fitted tree, or Nil on failure
+		~#
+		function : Load(filename : String) ~ DecisionTree {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			return ReadFrom(System.IO.Deserializer->New(data));
+		}
+
+		#~
+		Serializes the tree (hyperparameters + nodes in pre-order) onto an existing
+		serializer; used by Store and by ensembles that embed trees (RandomForest).
+		@param serializer destination serializer
+		~#
+		method : public : WriteTo(serializer : System.IO.Serializer) ~ Nil {
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			WriteNode(serializer, @root);
+		}
+
+		#~
+		Reads a tree previously written with WriteTo from a deserializer.
+		@param deserializer source deserializer
+		@return fitted tree, or Nil on failure
+		~#
+		function : ReadFrom(deserializer : System.IO.Deserializer) ~ DecisionTree {
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+
+			root := ReadNode(deserializer);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			return DecisionTree->New(max_depth, min_samples, root);
+		}
+
+		# Pre-order node serialization: leaf flag, then prediction (leaf) or
+		# feature index + left/right subtrees (internal). Internal nodes always
+		# have both children (see BuildNode).
+		method : WriteNode(serializer : System.IO.Serializer, node : TreeNode) ~ Nil {
+			if(node->IsLeaf()) {
+				serializer->Write(1);
+				if(node->GetPrediction()) {
+					serializer->Write(1);
+				}
+				else {
+					serializer->Write(0);
+				};
+			}
+			else {
+				serializer->Write(0);
+				serializer->Write(node->GetFeature());
+				WriteNode(serializer, node->GetLeft());
+				WriteNode(serializer, node->GetRight());
+			};
+		}
+
+		function : ReadNode(deserializer : System.IO.Deserializer) ~ TreeNode {
+			is_leaf := deserializer->ReadInt();
+			if(is_leaf = 1) {
+				return TreeNode->NewLeaf(deserializer->ReadInt() = 1);
+			};
+
+			node := TreeNode->NewInternal(deserializer->ReadInt());
+
+			left := ReadNode(deserializer);
+			right := ReadNode(deserializer);
+			if(left = Nil | right = Nil) {
+				return Nil;
+			};
+
+			node->SetLeft(left);
+			node->SetRight(right);
+			return node;
+		}
+
+		# Recursively builds a tree node from a data subset.
+		method : BuildNode(data : Bool[,], depth : Int) ~ TreeNode {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			target_col := cols - 1;
+
+			majority := MajorityClass(data);
+			if(rows <= @min_samples | depth >= @max_depth | IsPure(data)) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			best_imp := 1000000.0;
+			best_feature := -1;
+			for(f := 0; f < target_col; f += 1;) {
+				imp := SplitImpurity(data, f);
+				if(imp < best_imp) {
+					best_imp := imp;
+					best_feature := f;
+				};
+			};
+
+			if(best_feature < 0 | best_imp >= 1000000.0) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			left_data := SubsetOn(data, best_feature, false);
+			right_data := SubsetOn(data, best_feature, true);
+			left_dims := left_data->Size();
+			right_dims := right_data->Size();
+			if(left_dims[0] = 0 | right_dims[0] = 0) {
+				return TreeNode->NewLeaf(majority);
+			};
+
+			node := TreeNode->NewInternal(best_feature);
+			node->SetLeft(BuildNode(left_data, depth + 1));
+			node->SetRight(BuildNode(right_data, depth + 1));
+			return node;
+		}
+
+		# Returns the subset of rows whose `feature` column equals `want`.
+		method : SubsetOn(data : Bool[,], feature : Int, want : Bool) ~ Bool[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			cnt := 0;
+			each(r : rows) {
+				if(data[r, feature] = want) {
+					cnt += 1;
+				};
+			};
+
+			out := Bool->New[cnt, cols];
+			idx := 0;
+			each(r : rows) {
+				if(data[r, feature] = want) {
+					each(c : cols) {
+						out[idx, c] := data[r, c];
+					};
+					idx += 1;
+				};
+			};
+
+			return out;
+		}
+
+		# Majority class label in the data (ties resolve to true).
+		method : MajorityClass(data : Bool[,]) ~ Bool {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			target_col := cols - 1;
+
+			pos := 0;
+			each(r : rows) {
+				if(data[r, target_col]) {
+					pos += 1;
+				};
+			};
+
+			return pos * 2 >= rows;
+		}
+
+		# Whether every row shares the same label.
+		method : IsPure(data : Bool[,]) ~ Bool {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0) {
+				return true;
+			};
+			target_col := cols - 1;
+
+			first := data[0, target_col];
+			each(r : rows) {
+				if(data[r, target_col] <> first) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		# Weighted Gini impurity of splitting `data` on `feature`. Returns a large
+		# sentinel when the feature does not actually partition the rows (so it is
+		# never selected); a perfect split correctly yields 0.0 (the minimum).
+		method : SplitImpurity(data : Bool[,], feature : Int) ~ Float {
+			left := SubsetOn(data, feature, false);
+			right := SubsetOn(data, feature, true);
+
+			left_dims := left->Size();
+			right_dims := right->Size();
+			ln := left_dims[0];
+			rn := right_dims[0];
+			if(ln = 0 | rn = 0) {
+				return 1000000.0;
+			};
+
+			n := (ln + rn)->As(Float);
+			return (ln->As(Float) / n) * GiniOf(left) + (rn->As(Float) / n) * GiniOf(right);
+		}
+
+		# Gini impurity of a data subset based on its label (last) column.
+		method : GiniOf(data : Bool[,]) ~ Float {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0) {
+				return 0.0;
+			};
+			target_col := cols - 1;
+
+			pos := 0;
+			each(r : rows) {
+				if(data[r, target_col]) {
+					pos += 1;
+				};
+			};
+
+			p := pos->As(Float) / rows->As(Float);
+			return 1.0 - (p * p + (1.0 - p) * (1.0 - p));
+		}
+
 		#~
 		Splits a matrix based on a list of decisions
 		@param decisions list of decisions
@@ -2295,7 +3283,7 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 
 				out := Bool->New[split_len, cols];
 				count := 0;
-				if(index > -1 & index < rows) {
+				if(index > -1 & index < cols) {
 					each(row : rows) {
 						if(input[row, index]) {
 							each(k : cols) {
@@ -2624,64 +3612,55 @@ else {
 		@return 0 if left, 1 if right, -1 otherwise
 		~#
 		method : public : Query(terms : String[]) ~ Int {
-			left := Query(terms, @left);
-			right := Query(terms, @right);
-
-# "left={$left}, right={$right}"->PrintLine();
-
-			if(left = 0.0 | right = 0.0) {
+			if(terms = Nil | terms->Size() = 0) {
 				return -1;
 			};
 
-			if(left > right) {
+			# Log-space scores (higher = more likely); compare directly
+			left := Query(terms, @left);
+			right := Query(terms, @right);
+
+			if(left >= right) {
 				return 0;
 			};
 
 			return 1;
 		}
 
+		#~
+		Computes the Laplace-smoothed log-probability that the given terms belong
+		to the supplied group. Likelihoods are summed in log space to avoid
+		floating-point underflow on long term lists, and the group's counts are
+		never mutated (so queries are side-effect free and repeatable).
+		@param terms observed terms
+		@param group class group to score against
+		@return log-probability score (higher is more likely)
+		~#
 		method : Query(terms : String[], group : BayesGroup) ~ Float {
 			entries := group->GetEntries();
-			prob := group->GetProbability();
-
-			sum := 0.0;
+			prior := group->GetProbability();
 			values := entries->GetValues()<BayesEntry>;
+
+			vocab := values->Size()->As(Float);
+			total := 0.0;
 			each(value := values) {
-				sum += value->GetCount();
+				total += value->GetCount();
 			};
 
-			index := 0;
-			results := Map->New()<String, FloatRef>;
-			each(value := values) {
-				if(value->GetCount() = 0) {
-					value->SetCount(1);
-					sum += values->Size();
-				};
-				count := value->GetCount()
-				name := value->GetName();
-				result := count / sum;
-				results->Insert(name, result);
-
-# "{$name}: ({$count}/{$sum})={$result} * {$prob}"->PrintLine();
-				
-				index += 1;
-			};
-
-			result :=  0.0;
+			# Sum log-likelihoods with add-one (Laplace) smoothing
+			log_prob := prior->Log();
 			each(term := terms) {
-				find := results->Find(term);
+				find := entries->Find(term);
+				count := 0.0;
 				if(find <> Nil) {
-					if(result = 0.0) {
-						result := find->Get();
-					}
-					else {
-						result *= find->Get();
-					};
+					count := find->GetCount()->As(Float);
 				};
+				likelihood := (count + 1.0) / (total + vocab);
+				log_prob += likelihood->Log();
 			};
 
-			return prob * result;
-		}		
+			return log_prob;
+		}
 	}
 
 	#~
@@ -2738,7 +3717,48 @@ each(neighbor := nearest) {
 		@return k nearest neighbors 
 		~#
 		method : public : Query(k : Int, query : Float[]) ~ KNeighbor[] {
-			return Query(query, k);		
+			return Query(query, k);
+		}
+
+		#~
+		Classifies a query point by majority vote of its k nearest neighbors.
+		Ties are broken in favor of the label that first reaches the top count.
+		@param k number of neighbors to poll
+		@param query input feature vector
+		@return predicted category label (empty string if there are no neighbors)
+
+```
+knn := KNearestNeighbors->New(matrix, labels);
+knn->Classify(3, [57.0, 170.0])->PrintLine();
+```
+		~#
+		method : public : Classify(k : Int, query : Float[]) ~ String {
+			neighbors := Query(k, query);
+			if(neighbors = Nil | neighbors->Size() = 0) {
+				return "";
+			};
+
+			best_label := "";
+			best_count := -1;
+			for(i := 0; i < neighbors->Size(); i += 1;) {
+				neighbor := neighbors[i];
+				cat := neighbor->GetCategory();
+
+				count := 0;
+				for(j := 0; j < neighbors->Size(); j += 1;) {
+					peer := neighbors[j];
+					if(peer->GetCategory()->Equals(cat)) {
+						count += 1;
+					};
+				};
+
+				if(count > best_count) {
+					best_count := count;
+					best_label := cat;
+				};
+			};
+
+			return best_label;
 		}
 
 		method : native : Query(query : Float[], k : Int) ~ KNeighbor[] {
@@ -2756,11 +3776,15 @@ each(neighbor := nearest) {
 				distances->AddBack(KNeighbor->New(dist, i, @labels[i]));
 			};
 
-			distances->Sort();			
+			# Ascending by distance: nearest neighbors first
+			distances->Sort();
+			if(k > distances->Size()) {
+				k := distances->Size();
+			};
+
 			results := KNeighbor->New[k];
-			i := distances->Size() - 1;
-			while(k > 0) {
-				results[--k] := distances->Get(i--);
+			each(i : k) {
+				results[i] := distances->Get(i);
 			};
 
 			return results;
@@ -2815,10 +3839,10 @@ each(neighbor := nearest) {
 			bar := right->GetDistance();
 			# foo := Float->Compare(bar, @dist);
 
-			if(bar < @dist) {
+			if(@dist < bar) {
 				return -1;
 			}
-			else if(bar > @dist) {
+			else if(@dist > bar) {
 				return 1;
 			};
 
@@ -2902,10 +3926,27 @@ each(group in groups) {
 		@return labeled grouping
 		~#
 		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ KMeansGrouping {
-			# https://www.ibm.com/support/pages/how-does-k-mean-cluster-node-select-initial-records-clustering
-			centroids := InitalCentroids(group_labels, records, record_length, min_value, max_value);
-			updated_centroids := FloatArrayRef->New[group_labels->Size()];
-			
+			return Group(group_labels, records, record_length, min_value, max_value, 100, 1);
+		}
+
+		#~
+		K-Means clustering with k-means++ seeding (deterministic for a given seed),
+		an iteration cap, and explicit empty-cluster handling.
+		@param group_labels group labels; the count determines K
+		@param records input records (all of equal length)
+		@param record_length length of each record
+		@param min_value smallest record value (kept for API compatibility)
+		@param max_value largest record value (kept for API compatibility)
+		@param max_iterations hard cap on refinement iterations
+		@param seed PRNG seed for reproducible k-means++ initialization
+		@return labeled grouping
+		~#
+		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float, max_iterations : Int, seed : Int) ~ KMeansGrouping {
+			rand := Random->New(seed);
+			k := group_labels->Size();
+			centroids := KMeansPlusPlus(k, records, rand);
+			updated_centroids := FloatArrayRef->New[k];
+
 			groups := Hash->New()<String, Vector<FloatArrayRef>>;
 			each(centroid_label in group_labels) {
 				groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
@@ -2913,24 +3954,20 @@ each(group in groups) {
 
 			iter := 0;
 			has_changed := true;
-			while(has_changed) {
-				if(@debug) {
-					"=== {$iter} ==="->PrintLine();
-					iter += 1;
-				}
+			while(has_changed & iter < max_iterations) {
+				iter += 1;
 
 				each(datum in records) {
 					shortest_index := -1;
 					shortest_distance := Float->Inf();
-					
+
 					each(i : centroids) {
 						centroid := centroids[i];
-
 						distance := Distance(datum, centroid);
-						if(distance <= shortest_distance) {
+						if(distance < shortest_distance) {
 							shortest_distance := distance;
 							shortest_index := i;
-						}
+						};
 					};
 
 					nearest_centroid_label := group_labels[shortest_index];
@@ -2941,26 +3978,22 @@ each(group in groups) {
 				group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
 				each(i : group_key_values) {
 					group_key_value := group_key_values->Get(i);
-
-					group_label := group_key_value->GetFirst();
 					group := group_key_value->GetSecond();
-
-					if(@debug) {
-						group_size := group->Size();
-						"label='{$group_label}', size={$group_size}: {$group}"->PrintLine();
-					};
 
 					update := Average(group, record_length);
 					if(update <> Nil) {
 						updated_centroids[i] := update;
+					}
+					else {
+						# empty cluster: retain its previous centroid
+						updated_centroids[i] := centroids[i];
 					};
 				};
 
-				# update of centroids and rebuilding of buckets
 				has_changed := HasChanged(centroids, updated_centroids);
 				if(has_changed) {
 					centroids := updated_centroids;
-					updated_centroids := FloatArrayRef->New[group_labels->Size()];
+					updated_centroids := FloatArrayRef->New[k];
 
 					each(centroid_label in group_labels) {
 						if(groups->Remove(centroid_label)) {
@@ -2973,15 +4006,51 @@ each(group in groups) {
 			return KMeansGrouping->New(groups);
 		}
 
-		function : native : InitalCentroids(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ FloatArrayRef[] {
-			centroids := FloatArrayRef->New[group_labels->Size()];
+		# k-means++ seeding: the first center is a uniformly random record; each
+		# subsequent center is chosen with probability proportional to the squared
+		# distance from the nearest already-chosen center. Deterministic given rand.
+		function : native : KMeansPlusPlus(k : Int, records : Vector<FloatArrayRef>, rand : Random) ~ FloatArrayRef[] {
+			centroids := FloatArrayRef->New[k];
+			n := records->Size();
+			if(n = 0 | k = 0) {
+				return centroids;
+			};
 
-			each(i : centroids) {
-				random_values := Float->New[record_length];
-				each(j : random_values) {
-					random_values[j] := Float->Random(min_value + 0.001, max_value - 0.001);
+			first := rand->NextInt(n);
+			centroids[0] := records->Get(first);
+
+			chosen := 1;
+			while(chosen < k) {
+				dists := Float->New[n];
+				total := 0.0;
+				for(i := 0; i < n; i += 1;) {
+					datum := records->Get(i);
+					best := Float->Inf();
+					for(c := 0; c < chosen; c += 1;) {
+						d := Distance(datum, centroids[c]);
+						if(d < best) {
+							best := d;
+						};
+					};
+					dd := best * best;
+					dists[i] := dd;
+					total += dd;
 				};
-				centroids[i] := FloatArrayRef->New(random_values);
+
+				target := rand->NextReal() * total;
+				cum := 0.0;
+				pick := n - 1;
+				picked := false;
+				for(i := 0; i < n; i += 1;) {
+					cum += dists[i];
+					if(<>picked & cum >= target) {
+						pick := i;
+						picked := true;
+					};
+				};
+
+				centroids[chosen] := records->Get(pick);
+				chosen += 1;
 			};
 
 			return centroids;
@@ -2992,28 +4061,22 @@ each(group in groups) {
 				return false;
 			};
 
-			has_changed := false;
+			# Converged when every centroid coordinate moved less than the tolerance.
+			# Returns true as soon as any coordinate moved at least `tolerance`.
+			tolerance := 0.001;
 			each(i : old_centroids) {
-				temp := old_centroids[i];
-				if(temp = Nil) {
+				a := old_centroids[i];
+				b := new_centroids[i];
+				if(a = Nil | b = Nil) {
 					return false;
 				};
-				old_centroid_values := temp->Get();
+				a_values := a->Get();
+				b_values := b->Get();
 
-				temp := new_centroids[i];
-				if(temp = Nil) {
-					return false;
-				};
-				new_centroid_values := temp->Get();
-				
-				each(j : old_centroid_values) {
-					old_centroid_value := old_centroid_values[j];
-					new_centroid_value := new_centroid_values[j];
-
-					has_changed := Float->Abs(old_centroid_value - new_centroid_value) < 0.001;
-					if(<>has_changed) {
+				each(j : a_values) {
+					if(Float->Abs(a_values[j] - b_values[j]) >= tolerance) {
 						return true;
-					}
+					};
 				};
 			};
 

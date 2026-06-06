@@ -5469,6 +5469,7 @@ bool JitAmd64::CanInlineMethod(StackMethod* callee) {
   if(!callee || callee == method) return false;           // no recursion
   if(callee->IsVirtual()) return false;                   // static dispatch only
   if(callee->GetInstructionCount() > MAX_INLINE_SIZE) return false;
+  if(HasFrameDependentTrap(callee)) return false;         // null frame in trap callback
 
   for(long i = 0; i < callee->GetInstructionCount(); ++i) {
     InstructionType type = callee->GetInstruction(i)->GetType();
@@ -5839,6 +5840,12 @@ bool JitAmd64::Compile(StackMethod* cm)
       if(scan_instr->GetType() == JMP && scan_instr->GetOperand() < i) {
         detected_loops.push_back({scan_instr->GetOperand(), i});
       }
+    }
+
+    // frame->mem-dependent traps can't run from JIT code (null frame in the
+    // trap callback; locals live in native stack slots)
+    if(HasFrameDependentTrap(method)) {
+      return false;
     }
 
 #ifdef _DEBUG_JIT

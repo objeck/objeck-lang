@@ -4859,6 +4859,12 @@ bool JitArm64::Compile(StackMethod* cm)
       }
     }
 
+    // frame->mem-dependent traps can't run from JIT code (null frame in the
+    // trap callback; locals live in native stack slots)
+    if(HasFrameDependentTrap(method)) {
+      return false;
+    }
+
 #ifdef _DEBUG_JIT_JIT
     const long cls_id = method->GetClass()->GetId();
     const long mthd_id = method->GetId();

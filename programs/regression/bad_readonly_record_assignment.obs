@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR
+
+record : readonly : Frozen {
+    @x : Int;
+
+    method : public : Replace(x : Int) ~ Nil {
+        @x := x;
+    }
+}
+
+class BadReadonlyRecordAssignment {
+    function : Main(args : String[]) ~ Nil {
+        Frozen->New(1)->Replace(2);
+    }
+}

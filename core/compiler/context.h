@@ -243,8 +243,8 @@ class ContextAnalyzer {
   SymbolTableManager* symbol_table;
   Lambda* capture_lambda;
   std::pair<Lambda*, MethodCall*> lambda_inferred;
-  std::map<int, std::wstring> errors;
-  std::map<int, std::wstring> warnings;
+  std::multimap<int, std::wstring> errors;
+  std::multimap<int, std::wstring> warnings;
   std::vector<std::wstring> alt_error_method_names;
   std::map<const std::wstring, Type*> type_map;
   std::unordered_set<std::wstring> holder_types;

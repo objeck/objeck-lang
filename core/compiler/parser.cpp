@@ -197,7 +197,8 @@ void Parser::ProcessError(const std::wstring &msg, ParseNode * node)
 #endif
 
   const std::wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L",1): " + msg));
+  const std::wstring &str_line_pos = ToString(node->GetLinePosition());
+  errors.insert(std::pair<int, std::wstring>(node->GetLineNumber(), node->GetFileName() + L":(" + str_line_num + L',' + str_line_pos + L"): " + msg));
 }
 
 /****************************
@@ -209,7 +210,7 @@ bool Parser::CheckErrors()
   if(errors.size()) {
     const size_t error_max = 8;
 
-    std::map<int, std::wstring>::iterator error = errors.begin();
+    std::multimap<int, std::wstring>::iterator error = errors.begin();
     if(errors.size() > error_max) {
       for(size_t i = 0; i < error_max; ++error, ++i) {
 #if defined(_DIAG_LIB) || defined(_MODULE)
@@ -479,6 +480,7 @@ void Parser::ParseBundle(int depth)
             break;
 
           case TOKEN_CLASS_ID:
+          case TOKEN_RECORD_ID:
             bundle->AddClass(ParseClass(bundle_name, depth + 1));
             break;
 
@@ -487,7 +489,7 @@ void Parser::ParseBundle(int depth)
             break;
 
           default:
-            ProcessError(L"Expected 'class', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
+            ProcessError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
             NextToken();
             break;
           }
@@ -503,7 +505,7 @@ void Parser::ParseBundle(int depth)
       program->AddUses(lib_uses, static_uses, file_name);
     }
     // parse class
-    else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
+    else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_RECORD_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
       std::wstring bundle_name = L"";
       
       ParsedBundle* bundle = program->GetBundle(bundle_name);
@@ -533,6 +535,7 @@ void Parser::ParseBundle(int depth)
           break;
 
         case TOKEN_CLASS_ID:
+        case TOKEN_RECORD_ID:
           bundle->AddClass(ParseClass(bundle_name, depth + 1));
           break;
 
@@ -545,7 +548,7 @@ void Parser::ParseBundle(int depth)
           break;
 
         default:
-          ProcessError(L"Expected 'class', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
+          ProcessError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
           NextToken();
           break;
         }
@@ -558,7 +561,7 @@ void Parser::ParseBundle(int depth)
     }
     // error
     else {
-      ProcessError(L"Expected 'use', 'bundle', 'class, 'interface', 'enum' or 'consts'");
+      ProcessError(L"Expected 'use', 'bundle', 'class', 'record', 'interface', 'enum' or 'consts'");
       NextToken();
     }
   }
@@ -906,28 +909,39 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
 {
   int line_num = GetLineNumber();
   int line_pos = GetLinePosition();
+  const int class_line_num = line_num;
+  const int class_line_pos = line_pos;
   const std::wstring file_name = GetFileName();
 
   bool is_public = true;
+  bool is_record = Match(TOKEN_RECORD_ID);
+  bool is_readonly_record = false;
   NextToken();
 
   if(Match(TOKEN_COLON)) {
     NextToken();
-    if(Match(TOKEN_PUBLIC_ID)) {
-      NextToken();
-    }
-    else if(Match(TOKEN_PRIVATE_ID)) {
-      is_public = false;
-      NextToken();
-    }
-    else {
-      ProcessError(L"Expected 'public' or 'private'");
-    }
+    while(!Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
+      if(Match(TOKEN_PUBLIC_ID)) {
+        is_public = true;
+        NextToken();
+      }
+      else if(Match(TOKEN_PRIVATE_ID)) {
+        is_public = false;
+        NextToken();
+      }
+      else if(is_record && Match(TOKEN_READONLY_ID)) {
+        is_readonly_record = true;
+        NextToken();
+      }
+      else {
+        ProcessError(is_record ? L"Expected 'public', 'private' or 'readonly'" : L"Expected 'public' or 'private'");
+      }
 
-    if(!Match(TOKEN_COLON)) {
-      ProcessError(TOKEN_COLON);
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(TOKEN_COLON);
+      }
+      NextToken();
     }
-    NextToken();
   }
 
   if(!Match(TOKEN_IDENT)) {
@@ -1002,8 +1016,10 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
     ProcessError(L"Class has already been defined");
   }
 
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, -1, -1, cls_name, parent_cls_name,
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, class_line_num, class_line_pos, -1, -1, cls_name, parent_cls_name,
                                                     interface_names, generic_classes, is_public, false);
+  klass->SetRecord(is_record);
+  klass->SetReadonlyRecord(is_readonly_record);
   current_class = klass;
 
   // add '@self' entry
@@ -1069,10 +1085,176 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
   }
   NextToken();
 
+  if(klass->IsRecord()) {
+    GenerateRecordMethods(klass, file_name, class_line_num, class_line_pos, depth + 1);
+  }
+
   symbol_table->PreviousParseScope(current_class->GetName());
   current_class = nullptr;
 
   return klass;
+}
+
+void Parser::GenerateRecordMethods(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth)
+{
+  std::vector<Declaration*> fields;
+  std::vector<Statement*> statements = klass->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    if(statements[i]->GetStatementType() == DECLARATION_STMT) {
+      // comma declaration lists chain names last-to-first; walk the chain and
+      // reverse the group so generated constructor parameters follow source
+      // order. Static fields are class-level state, not per-instance record
+      // components, so they get no constructor parameter or accessors.
+      std::vector<Declaration*> group;
+      Declaration* declaration = static_cast<Declaration*>(statements[i]);
+      while(declaration) {
+        SymbolEntry* entry = declaration->GetEntry();
+        if(entry && !entry->IsStatic()) {
+          group.push_back(declaration);
+        }
+        declaration = declaration->GetChild();
+      }
+      fields.insert(fields.end(), group.rbegin(), group.rend());
+    }
+  }
+
+  Method* previous_method = current_method;
+
+  if(!klass->HasDefaultNew()) {
+    const std::wstring method_name = klass->GetName() + L":New";
+    Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, line_num, line_pos, method_name, NEW_PUBLIC_METHOD, false, false);
+    current_method = method;
+    symbol_table->NewParseScope();
+
+    DeclarationList* declarations = TreeFactory::Instance()->MakeDeclarationList();
+    StatementList* body = TreeFactory::Instance()->MakeStatementList();
+
+    if(!klass->GetParentName().empty()) {
+      body->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, PARENT_CALL, L"",
+                                                                 TreeFactory::Instance()->MakeExpressionList()));
+    }
+
+    for(size_t i = 0; i < fields.size(); ++i) {
+      SymbolEntry* field_entry = fields[i]->GetEntry();
+      if(field_entry && field_entry->GetType()) {
+        std::wstring field_name = field_entry->GetName();
+        const size_t index = field_name.find_last_of(L':');
+        if(index != std::wstring::npos) {
+          field_name = field_name.substr(index + 1);
+        }
+
+        std::wstring param_name = field_name;
+        if(param_name.size() > 0 && param_name[0] == L'@') {
+          param_name = param_name.substr(1);
+        }
+
+        Type* param_type = TypeFactory::Instance()->MakeType(field_entry->GetType());
+        SymbolEntry* param_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(param_name),
+                                                                            param_type, false, true);
+        symbol_table->CurrentParseScope()->AddEntry(param_entry);
+        declarations->AddDeclaration(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, param_entry,
+                                                                              (Declaration*)nullptr));
+
+        Variable* left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, field_name);
+        Variable* right = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, param_name);
+        body->AddStatement(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, left, right));
+      }
+    }
+
+    method->SetDeclarations(declarations);
+    method->SetStatements(body);
+    method->SetReturn(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName(), file_name, line_num, line_pos));
+    method->SetEndLineNumber(line_num);
+    method->SetEndLinePosition(line_pos);
+
+    // a user-defined constructor with the same signature takes precedence
+    // over the generated one; pop the discarded scope under a unique key so
+    // the parse-scope stack stays balanced (PreviousParseScope early-returns
+    // without popping when the name is already registered)
+    if(klass->AddMethod(method)) {
+      symbol_table->PreviousParseScope(method->GetParsedName());
+    }
+    else {
+      symbol_table->PreviousParseScope(method->GetParsedName() + L" <record-generated>");
+    }
+  }
+
+  for(size_t i = 0; i < fields.size(); ++i) {
+    SymbolEntry* field_entry = fields[i]->GetEntry();
+    if(field_entry && field_entry->GetType()) {
+      std::wstring field_name = field_entry->GetName();
+      const size_t index = field_name.find_last_of(L':');
+      if(index != std::wstring::npos) {
+        field_name = field_name.substr(index + 1);
+      }
+
+      std::wstring property_name = field_name;
+      if(property_name.size() > 0 && property_name[0] == L'@') {
+        property_name = property_name.substr(1);
+      }
+      if(property_name.size() > 0 && property_name[0] >= L'a' && property_name[0] <= L'z') {
+        property_name[0] = property_name[0] - L'a' + L'A';
+      }
+
+      const std::wstring getter_name = klass->GetName() + L":Get" + property_name;
+      Method* getter = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, line_num, line_pos, getter_name, PUBLIC_METHOD, false, false);
+      current_method = getter;
+      symbol_table->NewParseScope();
+      getter->SetDeclarations(TreeFactory::Instance()->MakeDeclarationList());
+      StatementList* getter_body = TreeFactory::Instance()->MakeStatementList();
+      getter_body->AddStatement(TreeFactory::Instance()->MakeReturn(file_name, line_num, line_pos, line_num, line_pos,
+                                                                    TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, field_name)));
+      getter->SetStatements(getter_body);
+      getter->SetReturn(TypeFactory::Instance()->MakeType(field_entry->GetType()));
+      getter->SetEndLineNumber(line_num);
+      getter->SetEndLinePosition(line_pos);
+      // a user-defined getter with the same signature takes precedence
+      if(klass->AddMethod(getter)) {
+        symbol_table->PreviousParseScope(getter->GetParsedName());
+      }
+      else {
+        symbol_table->PreviousParseScope(getter->GetParsedName() + L" <record-generated>");
+      }
+
+      if(!klass->IsReadonlyRecord()) {
+        const std::wstring setter_name = klass->GetName() + L":Set" + property_name;
+        Method* setter = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, line_num, line_pos, setter_name, PUBLIC_METHOD, false, false);
+        current_method = setter;
+        symbol_table->NewParseScope();
+
+        DeclarationList* setter_declarations = TreeFactory::Instance()->MakeDeclarationList();
+        std::wstring param_name = field_name;
+        if(param_name.size() > 0 && param_name[0] == L'@') {
+          param_name = param_name.substr(1);
+        }
+        Type* param_type = TypeFactory::Instance()->MakeType(field_entry->GetType());
+        SymbolEntry* param_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(param_name),
+                                                                            param_type, false, true);
+        symbol_table->CurrentParseScope()->AddEntry(param_entry);
+        setter_declarations->AddDeclaration(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, param_entry,
+                                                                                    (Declaration*)nullptr));
+
+        StatementList* setter_body = TreeFactory::Instance()->MakeStatementList();
+        setter_body->AddStatement(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos,
+                                                                         TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, field_name),
+                                                                         TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, param_name)));
+        setter->SetDeclarations(setter_declarations);
+        setter->SetStatements(setter_body);
+        setter->SetReturn(TypeFactory::Instance()->MakeType(NIL_TYPE, file_name, line_num, line_pos));
+        setter->SetEndLineNumber(line_num);
+        setter->SetEndLinePosition(line_pos);
+        // a user-defined setter with the same signature takes precedence
+        if(klass->AddMethod(setter)) {
+          symbol_table->PreviousParseScope(setter->GetParsedName());
+        }
+        else {
+          symbol_table->PreviousParseScope(setter->GetParsedName() + L" <record-generated>");
+        }
+      }
+    }
+  }
+
+  current_method = previous_method;
 }
 
 /****************************
@@ -3283,7 +3465,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     default:
       if(semi_colon) {
         if(!Match(TOKEN_SEMI_COLON)) {
-          ProcessError(L"Invalid statement expected ';'", TOKEN_SEMI_COLON);
+          ProcessError(L"Invalid statement; expected ';'", TOKEN_SEMI_COLON);
         }
         NextToken();
       }
@@ -6461,7 +6643,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_UNKNOWN:
-      ProcessError(L"Unknown token in an invalid expression ", TOKEN_SEMI_COLON);
+      ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
       break;
 
     default:
@@ -6519,7 +6701,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_UNKNOWN:
-      ProcessError(L"Unknown token in an invalid expression ", TOKEN_SEMI_COLON);
+      ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
       break;
 
     default:
