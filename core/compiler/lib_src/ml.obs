@@ -6522,6 +6522,449 @@ labels := scanner->GetLabels();   # cluster id per row; -1 = noise
 	}
 
 	#~
+	Gaussian mixture model with diagonal covariance, fitted by expectation-
+	maximization. Component means are seeded k-means++-style with the seedable
+	System.ML.Random for reproducible fits; the E-step works in the log domain
+	for numerical stability and variances are floored. Training stops when the
+	average log-likelihood improves by less than the tolerance.
+
+```
+gmm := GaussianMixture->New(2, 7);
+gmm->Fit(X);
+components := gmm->PredictClass(X);     # hard assignments
+resp := gmm->Predict(X);                # soft responsibilities
+```
+	~#
+	class GaussianMixture {
+		@num_components : Int;
+		@max_iterations : Int;
+		@tolerance : Float;
+		@seed : Int;
+		@weights : Float[];
+		@means : Float[,];
+		@variances : Float[,];
+		@log_likelihood : Float;
+		@iterations_run : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor with default optimization settings (100 iterations,
+		tolerance 0.000001).
+		@param num_components number of mixture components
+		@param seed PRNG seed for reproducible initialization
+		~#
+		New(num_components : Int, seed : Int) {
+			@num_components := num_components;
+			@max_iterations := 100;
+			@tolerance := 0.000001;
+			@seed := seed;
+			@is_fitted := false;
+		}
+
+		#~
+		Constructor with explicit optimization settings.
+		@param num_components number of mixture components
+		@param max_iterations EM iteration cap
+		@param tolerance stop when average log-likelihood improves less than this
+		@param seed PRNG seed for reproducible initialization
+		~#
+		New(num_components : Int, max_iterations : Int, tolerance : Float, seed : Int) {
+			@num_components := num_components;
+			@max_iterations := max_iterations;
+			@tolerance := tolerance;
+			@seed := seed;
+			@is_fitted := false;
+		}
+
+		New : private (num_components : Int, weights : Float[], means : Float[,], variances : Float[,], log_likelihood : Float) {
+			@num_components := num_components;
+			@weights := weights;
+			@means := means;
+			@variances := variances;
+			@log_likelihood := log_likelihood;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the mixture by EM.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows < @num_components | @num_components < 1 | cols = 0) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# global per-feature variance for initialization and flooring
+			global_var := Float->New[cols];
+			each(j : cols) {
+				mean := 0.0;
+				each(i : rows) {
+					mean += X[i,j];
+				};
+				mean := mean / n;
+
+				sq := 0.0;
+				each(i : rows) {
+					diff := X[i,j] - mean;
+					sq += diff * diff;
+				};
+				global_var[j] := sq / n;
+				if(global_var[j] < 0.000001) {
+					global_var[j] := 0.000001;
+				};
+			};
+
+			# k-means++-style seeding of the component means
+			rand := Random->New(@seed);
+			@means := Float->New[@num_components, cols];
+			first := rand->NextInt(rows);
+			each(j : cols) {
+				@means[0,j] := X[first,j];
+			};
+
+			chosen := 1;
+			while(chosen < @num_components) {
+				dists := Float->New[rows];
+				total := 0.0;
+				each(i : rows) {
+					best := Float->Inf();
+					each(c : chosen) {
+						d := 0.0;
+						each(j : cols) {
+							diff := X[i,j] - @means[c,j];
+							d += diff * diff;
+						};
+						if(d < best) {
+							best := d;
+						};
+					};
+					dists[i] := best;
+					total += best;
+				};
+
+				target := rand->NextReal() * total;
+				cum := 0.0;
+				pick := rows - 1;
+				picked := false;
+				each(i : rows) {
+					cum += dists[i];
+					if(<>picked & cum >= target) {
+						pick := i;
+						picked := true;
+					};
+				};
+
+				each(j : cols) {
+					@means[chosen,j] := X[pick,j];
+				};
+				chosen += 1;
+			};
+
+			# uniform weights, global variances
+			@weights := Float->New[@num_components];
+			@variances := Float->New[@num_components, cols];
+			each(c : @num_components) {
+				@weights[c] := 1.0 / @num_components->As(Float);
+				each(j : cols) {
+					@variances[c,j] := global_var[j];
+				};
+			};
+
+			# EM
+			resp := Float->New[rows, @num_components];
+			previous_ll := Float->NegInf();
+			@iterations_run := 0;
+
+			converged := false;
+			each(iter : @max_iterations) {
+				if(<>converged) {
+					@iterations_run += 1;
+
+					# E-step: responsibilities via log-sum-exp
+					ll := 0.0;
+					each(i : rows) {
+						log_joint := Float->New[@num_components];
+						max_log := Float->NegInf();
+						each(c : @num_components) {
+							log_joint[c] := @weights[c]->Log() + LogGaussian(X, i, c);
+							if(log_joint[c] > max_log) {
+								max_log := log_joint[c];
+							};
+						};
+
+						sum_exp := 0.0;
+						each(c : @num_components) {
+							sum_exp += Float->Exp(log_joint[c] - max_log);
+						};
+						log_norm := max_log + sum_exp->Log();
+						ll += log_norm;
+
+						each(c : @num_components) {
+							resp[i,c] := Float->Exp(log_joint[c] - log_norm);
+						};
+					};
+					ll := ll / n;
+
+					# M-step
+					each(c : @num_components) {
+						resp_sum := 0.0;
+						each(i : rows) {
+							resp_sum += resp[i,c];
+						};
+
+						if(resp_sum < 0.0000000001) {
+							resp_sum := 0.0000000001;
+						};
+						@weights[c] := resp_sum / n;
+
+						each(j : cols) {
+							mean := 0.0;
+							each(i : rows) {
+								mean += resp[i,c] * X[i,j];
+							};
+							mean := mean / resp_sum;
+							@means[c,j] := mean;
+						};
+
+						each(j : cols) {
+							variance := 0.0;
+							each(i : rows) {
+								diff := X[i,j] - @means[c,j];
+								variance += resp[i,c] * diff * diff;
+							};
+							variance := variance / resp_sum;
+							# floor relative to the global scale
+							floor := 0.000001 * global_var[j];
+							if(variance < floor) {
+								variance := floor;
+							};
+							@variances[c,j] := variance;
+						};
+					};
+
+					if(ll - previous_ll < @tolerance & @iterations_run > 1) {
+						converged := true;
+					};
+					previous_ll := ll;
+				};
+			};
+
+			@log_likelihood := previous_ll;
+			@is_fitted := true;
+			return true;
+		}
+
+		# log N(X[i] | means[c], diag(variances[c]))
+		method : LogGaussian(X : Float[,], i : Int, c : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			two_pi := 2.0 * Float->Pi();
+			sum := 0.0;
+			each(j : cols) {
+				variance := @variances[c,j];
+				diff := X[i,j] - @means[c,j];
+				sum -= 0.5 * ((two_pi * variance)->Log() + diff * diff / variance);
+			};
+
+			return sum;
+		}
+
+		#~
+		Computes soft component responsibilities for every row.
+		@param X data matrix
+		@return rows x components responsibility matrix, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+
+			result := Float->New[rows, @num_components];
+			each(i : rows) {
+				log_joint := Float->New[@num_components];
+				max_log := Float->NegInf();
+				each(c : @num_components) {
+					log_joint[c] := @weights[c]->Log() + LogGaussian(X, i, c);
+					if(log_joint[c] > max_log) {
+						max_log := log_joint[c];
+					};
+				};
+
+				sum_exp := 0.0;
+				each(c : @num_components) {
+					sum_exp += Float->Exp(log_joint[c] - max_log);
+				};
+				log_norm := max_log + sum_exp->Log();
+
+				each(c : @num_components) {
+					result[i,c] := Float->Exp(log_joint[c] - log_norm);
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts the most likely component for every row.
+		@param X data matrix
+		@return per-row component ids, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Int[] {
+			resp := Predict(X);
+			if(resp = Nil) {
+				return Nil;
+			};
+
+			resp_dims := resp->Size();
+			rows := resp_dims[0];
+
+			result := Int->New[rows];
+			each(i : rows) {
+				best := 0;
+				each(c : @num_components) {
+					if(resp[i,c] > resp[i,best]) {
+						best := c;
+					};
+				};
+				result[i] := best;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted component means (components x features).
+		@return mean matrix, or Nil if not fitted
+		~#
+		method : public : GetMeans() ~ Float[,] {
+			return @means;
+		}
+
+		#~
+		Gets the fitted mixture weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the final average log-likelihood of the training data.
+		@return average log-likelihood
+		~#
+		method : public : GetLogLikelihood() ~ Float {
+			return @log_likelihood;
+		}
+
+		#~
+		Gets the number of EM iterations actually run.
+		@return iterations run
+		~#
+		method : public : GetIterationsRun() ~ Int {
+			return @iterations_run;
+		}
+
+		#~
+		Whether the mixture has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted mixture to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_components);
+
+			mean_dims := @means->Size();
+			cols := mean_dims[1];
+			serializer->Write(cols);
+
+			each(c : @num_components) {
+				serializer->Write(@weights[c]);
+			};
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@means[c,j]);
+				};
+			};
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@variances[c,j]);
+				};
+			};
+			serializer->Write(@log_likelihood);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted mixture from a file.
+		@param filename file to load from
+		@return fitted mixture, or Nil on failure
+		~#
+		function : Load(filename : String) ~ GaussianMixture {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_components := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_components < 1 | cols < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[num_components];
+			each(c : num_components) {
+				weights[c] := deserializer->ReadFloat();
+			};
+
+			means := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					means[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			variances := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					variances[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			log_likelihood := deserializer->ReadFloat();
+
+			return GaussianMixture->New(num_components, weights, means, variances, log_likelihood);
+		}
+	}
+
+	#~
 	K-Means grouping result
 	~#
 	class KMeansGrouping {
