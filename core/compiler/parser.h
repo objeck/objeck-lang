@@ -169,6 +169,7 @@ class Parser {
   void ParseText(std::pair<std::wstring, std::wstring>& progam);
   void ParseBundle(int depth);
   Class* ParseClass(const std::wstring& bundle_id, int depth);
+  void GenerateRecordMethods(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth);
   Class* ParseInterface(const std::wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Lambda* ParseLambda(int depth);

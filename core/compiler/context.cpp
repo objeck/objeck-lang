@@ -2927,6 +2927,9 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   if(expressions.size() == 0) {
     ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
   }
+  else if(expressions.size() > 8) {
+    ProcessError(static_cast<Expression*>(method_call), L"Array dimensions cannot exceed 8");
+  }
   
   // TODO: check for dimension size of 1, looking at type
   else if(method_call->GetEvalType() && expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) && expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() == 1) {
@@ -5070,6 +5073,11 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   Variable* variable = assignment->GetVariable();
   if(variable) {
     AnalyzeVariable(variable, depth + 1);
+    if(current_class && current_class->IsReadonlyRecord() && current_method &&
+       current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
+       variable->GetName().size() > 0 && variable->GetName()[0] == L'@') {
+      ProcessError(variable, L"Cannot assign to readonly record field outside constructor");
+    }
   }
 
   // get last expression for assignment
