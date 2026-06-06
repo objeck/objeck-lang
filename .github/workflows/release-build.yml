@@ -798,6 +798,10 @@ jobs:
             ../../../compiler/lib_src/misc.obs \
             ../../../compiler/lib_src/diags.obs \
             ../../../compiler/lib_src/ml.obs \
+            ../../../compiler/lib_src/ai_search.obs \
+            ../../../compiler/lib_src/ai_game.obs \
+            ../../../compiler/lib_src/ai_optimize.obs \
+            ../../../compiler/lib_src/ai_rl.obs \
             ../../../compiler/lib_src/openai.obs \
             ../../../compiler/lib_src/gemini.obs \
             ../../../compiler/lib_src/ollama.obs \

@@ -1,0 +1,349 @@
+#~
+Classic AI: adversarial game search
+Copyright (c) 2026 Randy Hollines
+~#
+
+use Collection;
+
+bundle System.AI {
+	#~
+	A two-player, zero-sum game position. Moves are integers chosen by the
+	implementation (board cells, column ids, etc.). Evaluate scores the
+	position from the MAXIMIZING player's perspective (positive = good for
+	the maximizer); IsMaximizing reports whose turn it is.
+	~#
+	interface GameState {
+		#~
+		Gets the legal moves for the player to move.
+		@return move ids (empty when terminal)
+		~#
+		method : virtual : public : GetMoves() ~ Int[];
+
+		#~
+		Applies a move, producing the successor position.
+		@param move move id
+		@return successor state
+		~#
+		method : virtual : public : Apply(move : Int) ~ System.AI.GameState;
+
+		#~
+		Whether the game is over in this position.
+		@return true when terminal
+		~#
+		method : virtual : public : IsTerminal() ~ Bool;
+
+		#~
+		Scores the position from the maximizing player's perspective.
+		@return positive = good for the maximizer
+		~#
+		method : virtual : public : Evaluate() ~ Float;
+
+		#~
+		Whose turn it is.
+		@return true when the maximizing player moves next
+		~#
+		method : virtual : public : IsMaximizing() ~ Bool;
+	}
+
+	#~
+	Depth-limited minimax with alpha-beta pruning over a GameState.
+	Deterministic: ties resolve to the first move in GetMoves() order.
+
+```
+searcher := Minimax->New(9);
+best := searcher->FindBestMove(state);
+```
+	~#
+	class Minimax {
+		@max_depth : Int;
+		@nodes_searched : Int;
+
+		#~
+		Constructor
+		@param max_depth search depth limit (plies)
+		~#
+		New(max_depth : Int) {
+			@max_depth := max_depth;
+		}
+
+		#~
+		Finds the best move for the player to move.
+		@param state position to search
+		@return best move id, or -1 when no moves exist
+		~#
+		method : public : FindBestMove(state : GameState) ~ Int {
+			if(state = Nil | state->IsTerminal()) {
+				return -1;
+			};
+
+			moves := state->GetMoves();
+			if(moves->Size() = 0) {
+				return -1;
+			};
+
+			@nodes_searched := 0;
+			maximizing := state->IsMaximizing();
+
+			best_move := moves[0];
+			best_value : Float;
+			if(maximizing) {
+				best_value := Float->NegInf();
+			}
+			else {
+				best_value := Float->Inf();
+			};
+
+			each(i : moves) {
+				value := AlphaBeta(state->Apply(moves[i]), @max_depth - 1, Float->NegInf(), Float->Inf());
+				if(maximizing & value > best_value) {
+					best_value := value;
+					best_move := moves[i];
+				}
+				else if(<>maximizing & value < best_value) {
+					best_value := value;
+					best_move := moves[i];
+				};
+			};
+
+			return best_move;
+		}
+
+		method : AlphaBeta(state : GameState, depth : Int, alpha : Float, beta : Float) ~ Float {
+			@nodes_searched += 1;
+
+			if(depth <= 0 | state->IsTerminal()) {
+				return state->Evaluate();
+			};
+
+			moves := state->GetMoves();
+			if(moves->Size() = 0) {
+				return state->Evaluate();
+			};
+
+			if(state->IsMaximizing()) {
+				value := Float->NegInf();
+				each(i : moves) {
+					child := AlphaBeta(state->Apply(moves[i]), depth - 1, alpha, beta);
+					if(child > value) {
+						value := child;
+					};
+					if(value > alpha) {
+						alpha := value;
+					};
+					if(alpha >= beta) {
+						break;
+					};
+				};
+				return value;
+			};
+
+			value := Float->Inf();
+			each(i : moves) {
+				child := AlphaBeta(state->Apply(moves[i]), depth - 1, alpha, beta);
+				if(child < value) {
+					value := child;
+				};
+				if(value < beta) {
+					beta := value;
+				};
+				if(alpha >= beta) {
+					break;
+				};
+			};
+			return value;
+		}
+
+		#~
+		Gets the number of nodes evaluated by the last search.
+		@return node count
+		~#
+		method : public : GetNodesSearched() ~ Int {
+			return @nodes_searched;
+		}
+	}
+
+	#~
+	A node in the Monte Carlo search tree.
+	~#
+	class : private : McNode {
+		@state : GameState;
+		@move : Int;
+		@parent : McNode;
+		@children : McNode[];
+		@child_count : Int;
+		@untried : Int[];
+		@untried_count : Int;
+		@visits : Int;
+		@total : Float;
+
+		New(state : GameState, move : Int, parent : McNode) {
+			@state := state;
+			@move := move;
+			@parent := parent;
+
+			moves := state->GetMoves();
+			@untried := moves;
+			@untried_count := moves->Size();
+			@children := McNode->New[@untried->Size()];
+			@child_count := 0;
+		}
+
+		method : public : GetState() ~ GameState { return @state; }
+		method : public : GetMove() ~ Int { return @move; }
+		method : public : GetParent() ~ McNode { return @parent; }
+		method : public : GetVisits() ~ Int { return @visits; }
+		method : public : GetTotal() ~ Float { return @total; }
+		method : public : GetChildCount() ~ Int { return @child_count; }
+		method : public : GetChild(i : Int) ~ McNode { return @children[i]; }
+		method : public : GetUntriedCount() ~ Int { return @untried_count; }
+
+		method : public : Record(result : Float) ~ Nil {
+			@visits += 1;
+			@total += result;
+		}
+
+		# removes and returns the untried move at the given position
+		method : public : TakeUntried(at : Int) ~ Int {
+			move := @untried[at];
+			@untried[at] := @untried[@untried_count - 1];
+			@untried_count -= 1;
+			return move;
+		}
+
+		method : public : AddChild(child : McNode) ~ Nil {
+			@children[@child_count] := child;
+			@child_count += 1;
+		}
+	}
+
+	#~
+	Monte Carlo tree search (UCT) over a GameState. Each playout selects by
+	the UCB1 rule, expands one node, plays uniformly random moves to the end
+	(or the rollout cap) and backs the evaluation up the tree. Seeded for
+	reproducible searches; the most-visited root child is returned.
+
+```
+mcts := MonteCarloTreeSearch->New(2000, 1.414, 7);
+best := mcts->FindBestMove(state);
+```
+	~#
+	class MonteCarloTreeSearch {
+		@playouts : Int;
+		@exploration : Float;
+		@seed : Int;
+		@rollout_cap : Int;
+
+		#~
+		Constructor
+		@param playouts number of playouts per search
+		@param exploration UCB1 exploration constant (typically ~1.4)
+		@param seed PRNG seed for reproducible searches
+		~#
+		New(playouts : Int, exploration : Float, seed : Int) {
+			@playouts := playouts;
+			@exploration := exploration;
+			@seed := seed;
+			@rollout_cap := 200;
+		}
+
+		#~
+		Finds the best move for the player to move.
+		@param state position to search
+		@return best move id, or -1 when no moves exist
+		~#
+		method : public : FindBestMove(state : GameState) ~ Int {
+			if(state = Nil | state->IsTerminal()) {
+				return -1;
+			};
+
+			if(state->GetMoves()->Size() = 0) {
+				return -1;
+			};
+
+			rand := AiRandom->New(@seed);
+			root := McNode->New(state, -1, Nil);
+
+			each(p : @playouts) {
+				# selection: descend while fully expanded
+				node := root;
+				while(node->GetUntriedCount() = 0 & node->GetChildCount() > 0) {
+					node := Select(node);
+				};
+
+				# expansion
+				if(node->GetUntriedCount() > 0 & <>node->GetState()->IsTerminal()) {
+					at := rand->NextInt(node->GetUntriedCount());
+					move := node->TakeUntried(at);
+					child := McNode->New(node->GetState()->Apply(move), move, node);
+					node->AddChild(child);
+					node := child;
+				};
+
+				# rollout: uniform random play
+				result := Rollout(node->GetState(), rand);
+
+				# backpropagation
+				walk := node;
+				while(walk <> Nil) {
+					walk->Record(result);
+					walk := walk->GetParent();
+				};
+			};
+
+			# most-visited root child
+			best_move := -1;
+			best_visits := -1;
+			each(i : root->GetChildCount()) {
+				child := root->GetChild(i);
+				if(child->GetVisits() > best_visits) {
+					best_visits := child->GetVisits();
+					best_move := child->GetMove();
+				};
+			};
+
+			return best_move;
+		}
+
+		# UCB1 from the perspective of the player to move at the node
+		method : Select(node : McNode) ~ McNode {
+			maximizing := node->GetState()->IsMaximizing();
+			log_visits := node->GetVisits()->As(Float)->Log();
+
+			best := node->GetChild(0);
+			best_score := Float->NegInf();
+			each(i : node->GetChildCount()) {
+				child := node->GetChild(i);
+				visits := child->GetVisits()->As(Float);
+
+				exploit := child->GetTotal() / visits;
+				if(<>maximizing) {
+					exploit := -1.0 * exploit;
+				};
+
+				score := exploit + @exploration * (log_visits / visits)->Sqrt();
+				if(score > best_score) {
+					best_score := score;
+					best := child;
+				};
+			};
+
+			return best;
+		}
+
+		method : Rollout(state : GameState, rand : AiRandom) ~ Float {
+			walk := state;
+			each(step : @rollout_cap) {
+				if(walk->IsTerminal()) {
+					break;
+				};
+				moves := walk->GetMoves();
+				if(moves->Size() = 0) {
+					break;
+				};
+				walk := walk->Apply(moves[rand->NextInt(moves->Size())]);
+			};
+
+			return walk->Evaluate();
+		}
+	}
+}

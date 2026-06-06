@@ -1,0 +1,395 @@
+#~
+Classic AI: optimization and metaheuristics
+Copyright (c) 2026 Randy Hollines
+~#
+
+use Collection;
+
+bundle System.AI {
+	#~
+	Fitness of a boolean chromosome for GeneticAlgorithm (higher is better).
+	~#
+	interface FitnessFunction {
+		#~
+		Scores a chromosome.
+		@param genes chromosome bits
+		@return fitness (higher is better)
+		~#
+		method : virtual : public : Fitness(genes : Bool[]) ~ Float;
+	}
+
+	#~
+	Energy of a numeric state for SimulatedAnnealing/HillClimbing (lower is
+	better).
+	~#
+	interface EnergyFunction {
+		#~
+		Scores a state.
+		@param state state vector
+		@return energy (lower is better)
+		~#
+		method : virtual : public : Energy(state : Float[]) ~ Float;
+	}
+
+	#~
+	Generational genetic algorithm over boolean chromosomes: tournament
+	selection, single-point crossover, per-bit mutation and single-member
+	elitism. Seeded for reproducible runs.
+
+```
+ga := GeneticAlgorithm->New(40, 24, 0.02, 0.9, 7);
+best := ga->Run(fitness, 60);
+"best fitness: {$ga->GetBestFitness()}"->PrintLine();
+```
+	~#
+	class GeneticAlgorithm {
+		@population_size : Int;
+		@gene_count : Int;
+		@mutation_rate : Float;
+		@crossover_rate : Float;
+		@seed : Int;
+		@best_genes : Bool[];
+		@best_fitness : Float;
+
+		#~
+		Constructor
+		@param population_size chromosomes per generation (>= 2)
+		@param gene_count bits per chromosome
+		@param mutation_rate per-bit flip probability
+		@param crossover_rate probability a pair is crossed rather than copied
+		@param seed PRNG seed for reproducible runs
+		~#
+		New(population_size : Int, gene_count : Int, mutation_rate : Float, crossover_rate : Float, seed : Int) {
+			@population_size := population_size;
+			@gene_count := gene_count;
+			@mutation_rate := mutation_rate;
+			@crossover_rate := crossover_rate;
+			@seed := seed;
+			@best_fitness := Float->NegInf();
+		}
+
+		#~
+		Evolves a population and returns the best chromosome found.
+		@param fitness fitness function (higher is better)
+		@param generations number of generations
+		@return best chromosome, or Nil on invalid settings
+		~#
+		method : public : Run(fitness : FitnessFunction, generations : Int) ~ Bool[] {
+			if(fitness = Nil | @population_size < 2 | @gene_count < 1) {
+				return Nil;
+			};
+
+			rand := AiRandom->New(@seed);
+
+			# random initial population
+			population := Bool->New[@population_size, @gene_count];
+			each(i : @population_size) {
+				each(j : @gene_count) {
+					population[i,j] := rand->NextReal() < 0.5;
+				};
+			};
+
+			scores := Float->New[@population_size];
+			scratch := Bool->New[@gene_count];
+			@best_genes := Bool->New[@gene_count];
+			@best_fitness := Float->NegInf();
+
+			each(g : generations) {
+				# evaluate and track the all-time best
+				elite := 0;
+				each(i : @population_size) {
+					each(j : @gene_count) {
+						scratch[j] := population[i,j];
+					};
+					scores[i] := fitness->Fitness(scratch);
+					if(scores[i] > scores[elite]) {
+						elite := i;
+					};
+				};
+
+				if(scores[elite] > @best_fitness) {
+					@best_fitness := scores[elite];
+					each(j : @gene_count) {
+						@best_genes[j] := population[elite,j];
+					};
+				};
+
+				# next generation: elitism then tournament + crossover + mutation
+				offspring := Bool->New[@population_size, @gene_count];
+				each(j : @gene_count) {
+					offspring[0,j] := population[elite,j];
+				};
+
+				produced := 1;
+				while(produced < @population_size) {
+					a := Tournament(scores, rand);
+					b := Tournament(scores, rand);
+
+					cut := @gene_count;
+					if(rand->NextReal() < @crossover_rate & @gene_count > 1) {
+						cut := 1 + rand->NextInt(@gene_count - 1);
+					};
+
+					each(j : @gene_count) {
+						source : Int;
+						if(j < cut) {
+							source := a;
+						}
+						else {
+							source := b;
+						};
+
+						bit := population[source,j];
+						if(rand->NextReal() < @mutation_rate) {
+							bit := <>bit;
+						};
+						offspring[produced,j] := bit;
+					};
+					produced += 1;
+				};
+
+				population := offspring;
+			};
+
+			return @best_genes;
+		}
+
+		# 3-way tournament: best of three random members
+		method : Tournament(scores : Float[], rand : AiRandom) ~ Int {
+			best := rand->NextInt(@population_size);
+			each(round : 2) {
+				challenger := rand->NextInt(@population_size);
+				if(scores[challenger] > scores[best]) {
+					best := challenger;
+				};
+			};
+			return best;
+		}
+
+		#~
+		Gets the best fitness seen during the last run.
+		@return best fitness
+		~#
+		method : public : GetBestFitness() ~ Float {
+			return @best_fitness;
+		}
+	}
+
+	#~
+	Simulated annealing over a numeric state vector: a random coordinate is
+	perturbed uniformly within +/- step_size, worse states are accepted with
+	probability e^(-delta/T), and the temperature cools geometrically.
+	Seeded for reproducible runs.
+
+```
+sa := SimulatedAnnealing->New(10.0, 0.95, 0.5, 7);
+best := sa->Run(energy, start, 2000);
+```
+	~#
+	class SimulatedAnnealing {
+		@initial_temperature : Float;
+		@cooling : Float;
+		@step_size : Float;
+		@seed : Int;
+		@best_energy : Float;
+
+		#~
+		Constructor
+		@param initial_temperature starting temperature (> 0)
+		@param cooling geometric cooling factor per iteration (0..1)
+		@param step_size maximum coordinate perturbation
+		@param seed PRNG seed for reproducible runs
+		~#
+		New(initial_temperature : Float, cooling : Float, step_size : Float, seed : Int) {
+			@initial_temperature := initial_temperature;
+			@cooling := cooling;
+			@step_size := step_size;
+			@seed := seed;
+			@best_energy := Float->Inf();
+		}
+
+		#~
+		Minimizes the energy starting from the given state.
+		@param energy energy function (lower is better)
+		@param start starting state (copied, not modified)
+		@param iterations annealing steps
+		@return best state found, or Nil on invalid input
+		~#
+		method : public : Run(energy : EnergyFunction, start : Float[], iterations : Int) ~ Float[] {
+			if(energy = Nil | start = Nil | start->Size() = 0) {
+				return Nil;
+			};
+
+			rand := AiRandom->New(@seed);
+			n := start->Size();
+
+			current := Float->New[n];
+			each(j : n) {
+				current[j] := start[j];
+			};
+			current_energy := energy->Energy(current);
+
+			best := Float->New[n];
+			each(j : n) {
+				best[j] := current[j];
+			};
+			@best_energy := current_energy;
+
+			temperature := @initial_temperature;
+			candidate := Float->New[n];
+
+			each(iter : iterations) {
+				each(j : n) {
+					candidate[j] := current[j];
+				};
+				at := rand->NextInt(n);
+				candidate[at] := candidate[at] + (rand->NextReal() * 2.0 - 1.0) * @step_size;
+
+				candidate_energy := energy->Energy(candidate);
+				delta := candidate_energy - current_energy;
+
+				accept := delta <= 0.0;
+				if(<>accept & temperature > 0.0) {
+					accept := rand->NextReal() < Float->Exp(-1.0 * delta / temperature);
+				};
+
+				if(accept) {
+					tmp := current;
+					current := candidate;
+					candidate := tmp;
+					current_energy := candidate_energy;
+
+					if(current_energy < @best_energy) {
+						@best_energy := current_energy;
+						each(j : n) {
+							best[j] := current[j];
+						};
+					};
+				};
+
+				temperature := temperature * @cooling;
+			};
+
+			return best;
+		}
+
+		#~
+		Gets the best (lowest) energy seen during the last run.
+		@return best energy
+		~#
+		method : public : GetBestEnergy() ~ Float {
+			return @best_energy;
+		}
+	}
+
+	#~
+	Random-restart stochastic hill climbing over a numeric state vector:
+	each step perturbs one random coordinate and keeps strict improvements;
+	when no improvement is found for `patience` consecutive steps the search
+	restarts from a random point within +/- restart_range of the start.
+	Seeded for reproducible runs.
+
+```
+hc := HillClimbing->New(0.5, 50, 5.0, 7);
+best := hc->Run(energy, start, 2000);
+```
+	~#
+	class HillClimbing {
+		@step_size : Float;
+		@patience : Int;
+		@restart_range : Float;
+		@seed : Int;
+		@best_energy : Float;
+
+		#~
+		Constructor
+		@param step_size maximum coordinate perturbation
+		@param patience steps without improvement before a restart
+		@param restart_range restart sampling half-range around the start state
+		@param seed PRNG seed for reproducible runs
+		~#
+		New(step_size : Float, patience : Int, restart_range : Float, seed : Int) {
+			@step_size := step_size;
+			@patience := patience;
+			@restart_range := restart_range;
+			@seed := seed;
+			@best_energy := Float->Inf();
+		}
+
+		#~
+		Minimizes the energy starting from the given state.
+		@param energy energy function (lower is better)
+		@param start starting state (copied, not modified)
+		@param iterations total climbing steps across restarts
+		@return best state found, or Nil on invalid input
+		~#
+		method : public : Run(energy : EnergyFunction, start : Float[], iterations : Int) ~ Float[] {
+			if(energy = Nil | start = Nil | start->Size() = 0) {
+				return Nil;
+			};
+
+			rand := AiRandom->New(@seed);
+			n := start->Size();
+
+			current := Float->New[n];
+			each(j : n) {
+				current[j] := start[j];
+			};
+			current_energy := energy->Energy(current);
+
+			best := Float->New[n];
+			each(j : n) {
+				best[j] := current[j];
+			};
+			@best_energy := current_energy;
+
+			stale := 0;
+			candidate := Float->New[n];
+
+			each(iter : iterations) {
+				each(j : n) {
+					candidate[j] := current[j];
+				};
+				at := rand->NextInt(n);
+				candidate[at] := candidate[at] + (rand->NextReal() * 2.0 - 1.0) * @step_size;
+
+				candidate_energy := energy->Energy(candidate);
+				if(candidate_energy < current_energy) {
+					tmp := current;
+					current := candidate;
+					candidate := tmp;
+					current_energy := candidate_energy;
+					stale := 0;
+
+					if(current_energy < @best_energy) {
+						@best_energy := current_energy;
+						each(j : n) {
+							best[j] := current[j];
+						};
+					};
+				}
+				else {
+					stale += 1;
+					if(stale >= @patience) {
+						# restart near the original start
+						each(j : n) {
+							current[j] := start[j] + (rand->NextReal() * 2.0 - 1.0) * @restart_range;
+						};
+						current_energy := energy->Energy(current);
+						stale := 0;
+					};
+				};
+			};
+
+			return best;
+		}
+
+		#~
+		Gets the best (lowest) energy seen during the last run.
+		@return best energy
+		~#
+		method : public : GetBestEnergy() ~ Float {
+			return @best_energy;
+		}
+	}
+}

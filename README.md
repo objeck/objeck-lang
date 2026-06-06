@@ -57,6 +57,15 @@ obc hello && obr hello
 
 ## What's New
 
+**v2026.6.0**
+  * **New `System.AI` library** (`-lib ai` or `@ai`) — classic AI in the standard library: graph search (`Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst`), adversarial game search (`Minimax` with alpha-beta, `MonteCarloTreeSearch`), metaheuristics (`GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing`) and tabular RL (`QLearning`, `Sarsa`, `MarkovDecisionProcess` value iteration); all stochastic algorithms seeded for reproducible runs
+  * **`System.ML` overhaul** — 13 new estimators (`RidgeRegression`/`LassoRegression`/`ElasticNet`, `Perceptron`, `SVM`, `PCA`, `GaussianNaiveBayes`, `AdaBoost`, `DBSCAN`, `GaussianMixture`, `KDTree`); real recursive `DecisionTree` and voting `RandomForest`; k-means++ `KMeans`; `NeuralNetwork` hidden/output bias (clean XOR convergence); seedable `System.ML.Random`; uniform `Fit`/`Predict`/`Score`/`IsFitted`/`Store`/`Load` API across every estimator. *Breaking:* `RandomForest->Train` is now `Fit`; stored `NeuralNetwork` model files must be regenerated
+  * **`record` types** — `record Point { @x : Int; @y : Int; }` generates the constructor and accessors; `record : readonly :` omits setters and the compiler rejects field assignment outside constructors; supports generics, inheritance and user-defined member overrides
+  * **VM/JIT fix** — traps reading interpreter locals (`Serializer->Write`, `Date->New`, file-time queries) crashed once a method crossed the auto-JIT threshold; such methods now stay interpreted on AMD64 and ARM64
+  * **Compiler fixes** — bool array literals after the first in a program no longer receive the first literal's data (broken literal-pool comparator); literal dedup now works for all array types; array dimensions capped at 8 with a proper diagnostic
+  * **Library aliases documented** — `-lib @std`/`@ml`/`@game` and the new `@ai` group, user-editable via `lib/configobjk.ini`; AI/ML developer guide gains `System.ML` and `System.AI` sections with runnable examples
+  * **CI hardening** — vcpkg installs retry on transient CDN failures; `mcp_server_test` validates JSON-RPC bodies before accepting
+
 **v2026.5.4**
   * **Debugger test reliability** — Windows CI debugger tests fixed; `.obe`/`.obl` format detection now correctly handles the edge case where a new-format size-header LSB collides with the `0x78` zlib CMF byte
   * **LSP shell script permissions** — all `tools/lsp/` shell scripts now have execute bit set in git, fixing `Permission denied` in release CI
@@ -71,18 +80,6 @@ obc hello && obr hello
   * **ODBC improvements** — live SQLite integration test; transaction support (`Commit`/`Rollback`/`SetAutoCommit`) verified; `GetColumns` metadata
   * **Bug fixes** — `String->Split(Char)` trailing token fix; `String->SubString` crash on negative/zero length; inline optimizer jump-table label shift fix; `CleanLabelsLocation` end-of-stream overread fix
   * **Performance** — `bench_spectralnorm_native` inner loop: incremental FP denominator eliminates per-element `I2F` conversions
-
-**v2026.5.2**
-  * **HTTP/2 client** — `Http2Client` with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and `Quick*` one-liners (nghttp2 + ALPN)
-  * **HTTP/3 / QUIC client** — `Http3Client` over UDP with connection reuse and the same `Quick*` API (ngtcp2 + nghttp3 + GnuTLS)
-  * **HTTP/1.1 improvements** — PATCH method, redirect handling fixes for POST/PUT, retry parity across `HttpClient`/`HttpsClient`
-  * **OpenAI Moderation & Batch** — `Moderation->Check()` per-category flags/scores; `Batch->Create()`/`Get()` for async 50%-cost batch requests
-  * **Gemini Files, Cache, Grounding, BatchEmbed** — upload/list/get/delete files; server-side prompt caching; Search Grounding; batch embeddings in one round-trip
-  * **WebSocket hardening** — 8 bug fixes + bulk `ReadBuffer` I/O replacing per-byte reads
-  * **MCP server fixes** — hang on shutdown and crash-on-stop resolved
-  * **Socket reliability** — `SO_REUSEADDR` on `TCPSocketServer::Bind()`; `IPSocket::Open()` falls through to next address on failure
-  * **ARM64 Windows** — OpenCV and ONNX now fully supported on ARM64 Windows
-  * **Improved release process** — self-contained Windows builds with committed nghttp2 libs; CI verifies all binaries and API docs on all platforms before publishing
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
