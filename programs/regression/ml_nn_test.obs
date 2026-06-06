@@ -1,0 +1,80 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Regression tests for the System.ML NeuralNetwork with hidden/output bias
+vectors (ML overhaul item 3): the network learns the AND gate, and Store/Load
+round-trips weights AND biases (loaded confidences match the trained network).
+
+This test intentionally does NOT set JIT_DISABLE: training runs 12k backprop
+steps, well past the auto-JIT threshold, which is where the pre-bias attempt
+crashed (the JIT frame-trap bug, since fixed); Store also exercises the
+SERL_* traps that bug affected.
+~#
+use System.ML, System.IO.Filesystem, Collection;
+
+class MlNnTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		model_file := "ml_nn_model_test.tmp";
+
+		# --- AND gate: 2 inputs -> 8 hidden -> 1 output ---
+		inputs := Vector->New()<FloatMatrixRef>;
+		inputs->AddBack(FloatMatrixRef->New([[0.0], [0.0]]));
+		inputs->AddBack(FloatMatrixRef->New([[0.0], [1.0]]));
+		inputs->AddBack(FloatMatrixRef->New([[1.0], [0.0]]));
+		inputs->AddBack(FloatMatrixRef->New([[1.0], [1.0]]));
+
+		targets := Vector->New()<FloatMatrixRef>;
+		targets->AddBack(FloatMatrixRef->New([[0.01]]));
+		targets->AddBack(FloatMatrixRef->New([[0.01]]));
+		targets->AddBack(FloatMatrixRef->New([[0.01]]));
+		targets->AddBack(FloatMatrixRef->New([[0.99]]));
+
+		# 3000 iterations x 4 samples = 12k backprop steps
+		network := NeuralNetwork->Train(2, inputs, 4, 1, targets, 0.5, 3000);
+
+		# true case clearly high, false cases clearly low; (0,0) is the origin
+		# input, which the bias terms let the network separate
+		conf_11 := network->Confidence(FloatMatrixRef->New([[1.0], [1.0]]));
+		conf_00 := network->Confidence(FloatMatrixRef->New([[0.0], [0.0]]));
+		conf_01 := network->Confidence(FloatMatrixRef->New([[0.0], [1.0]]));
+		conf_10 := network->Confidence(FloatMatrixRef->New([[1.0], [0.0]]));
+
+		if(conf_11 < 0.7) {
+			pass := false;
+			"  FAIL: AND (1,1) confidence {$conf_11}"->PrintLine();
+		};
+		if(conf_00 > 0.3 | conf_01 > 0.3 | conf_10 > 0.3) {
+			pass := false;
+			"  FAIL: AND false cases {$conf_00}, {$conf_01}, {$conf_10}"->PrintLine();
+		};
+
+		# --- Store/Load: weights AND biases round-trip ---
+		if(<>network->Store(model_file)) {
+			pass := false;
+			"  FAIL: store"->PrintLine();
+		};
+
+		loaded := NeuralNetwork->Load(model_file);
+		if(loaded = Nil) {
+			pass := false;
+			"  FAIL: load"->PrintLine();
+		}
+		else {
+			eps := 0.000001;
+			loaded_11 := loaded->Confidence(FloatMatrixRef->New([[1.0], [1.0]]));
+			loaded_00 := loaded->Confidence(FloatMatrixRef->New([[0.0], [0.0]]));
+			if(Float->Abs(loaded_11 - conf_11) > eps | Float->Abs(loaded_00 - conf_00) > eps) {
+				pass := false;
+				"  FAIL: round-trip confidences {$loaded_11} vs {$conf_11}, {$loaded_00} vs {$conf_00}"->PrintLine();
+			};
+		};
+		File->Delete(model_file);
+
+		if(pass) {
+			"PASS: ML neural network tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML neural network tests"->PrintLine();
+		};
+	}
+}

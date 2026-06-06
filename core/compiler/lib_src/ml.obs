@@ -2191,6 +2191,8 @@ else if(args->Size() = 1) {
 		@learning_rate : Float;
 		@weight_inputs_hidden : Float[,];
 		@weight_outputs_hidden : Float[,];
+		@bias_hidden : Float[,];
+		@bias_output : Float[,];
 		@threshold : Float;
 		@attempts : Int;
 
@@ -2215,17 +2217,24 @@ else if(args->Size() = 1) {
 			@hidden_nodes := hidden_nodes;
 			@output_nodes := output_nodes;
 			@learning_rate := learning_rate;
-			
+
 			@threshold := 0.80;
 			@attempts := 10;
 
 			@weight_inputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @hidden_nodes, @input_nodes);
 			@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
+
+			# bias vectors start at zero (standard practice; symmetry is already
+			# broken by the random weights)
+			@bias_hidden := Float->New[@hidden_nodes->As(Int), 1];
+			@bias_output := Float->New[@output_nodes->As(Int), 1];
 		}
 
-		New : private (weight_inputs_hidden : Float[,], weight_outputs_hidden : Float[,]) {
+		New : private (weight_inputs_hidden : Float[,], weight_outputs_hidden : Float[,], bias_hidden : Float[,], bias_output : Float[,]) {
 			@weight_inputs_hidden := weight_inputs_hidden;
 			@weight_outputs_hidden := weight_outputs_hidden;
+			@bias_hidden := bias_hidden;
+			@bias_output := bias_output;
 
 			@threshold := 0.80;
 			@attempts := 10;
@@ -2276,92 +2285,96 @@ else if(args->Size() = 1) {
 		}
 
 		#~
-		Loads network inputs and outputs
-		@param filename file to store to
-		@return true if successful, false otherwise
+		Loads a stored network (weights and biases). Note: the format gained the
+		two bias vectors with the bias support; files stored by older versions
+		cannot be loaded.
+		@param filename file to load from
+		@return loaded network, or Nil on failure
 		~#
 		function : Load(filename : String) ~ NeuralNetwork {
 			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
-			if(data <> Nil) {
-				# read inputs weight
-				deserializer := System.IO.Deserializer->New(data);
-				height := deserializer->ReadInt();
-				width := deserializer->ReadInt();
+			if(data = Nil) {
+				return Nil;
+			};
 
-				weight_inputs_hidden := Float->New[height, width];
-				each(i : height) {
-					each(j : width) {
-						weight_inputs_hidden[i,j] := deserializer->ReadFloat();
-					};
-				};
-				height := deserializer->ReadInt();
-				width := deserializer->ReadInt();
+			deserializer := System.IO.Deserializer->New(data);
+			weight_inputs_hidden := ReadMatrix(deserializer);
+			weight_outputs_hidden := ReadMatrix(deserializer);
+			bias_hidden := ReadMatrix(deserializer);
+			bias_output := ReadMatrix(deserializer);
 
-				weight_outputs_hidden := Float->New[height, width];
-				each(i : height) {
-					each(j : width) {
-						weight_outputs_hidden[i,j] := deserializer->ReadFloat();
-					};
-				};
+			if(weight_inputs_hidden = Nil | weight_outputs_hidden = Nil | bias_hidden = Nil | bias_output = Nil) {
+				return Nil;
+			};
 
-				return NeuralNetwork->New(weight_inputs_hidden, weight_outputs_hidden);
-			}
-
-			return Nil;
+			return NeuralNetwork->New(weight_inputs_hidden, weight_outputs_hidden, bias_hidden, bias_output);
 		}
 
 		#~
-		Saves final network inputs and outputs
+		Saves the network's weights and biases
 		@param filename file to store to
 		@return true if successful, false otherwise
 		~#
 		method : public : Store(filename : String) ~ Bool {
-			input_dims := @weight_inputs_hidden->Size();
-			if((input_dims->Size() = 2 & input_dims[0] > 0 & input_dims[1] > 0) = false) {
-				return false;
-			}
-
-			# write inputs weight
-			height := input_dims[0];
-			width := input_dims[1];
-
 			serializer := System.IO.Serializer->New();
 
-			serializer->Write(height);
-			serializer->Write(width);
-
-			each(i : height) {
-				each(j : width) {
-					serializer->Write(@weight_inputs_hidden[i,j])
-				};
-			};
-			# write outputs weight
-			output_dims := @weight_outputs_hidden->Size();
-			if((output_dims->Size() = 2 & output_dims[0] > 0 & output_dims[1] > 0) = false) {
+			if(<>WriteMatrix(serializer, @weight_inputs_hidden) |
+				<>WriteMatrix(serializer, @weight_outputs_hidden) |
+				<>WriteMatrix(serializer, @bias_hidden) |
+				<>WriteMatrix(serializer, @bias_output)) {
 				return false;
-			}
-
-			# write outputs weight
-			height := output_dims[0];
-			width := output_dims[1];
-
-			serializer->Write(height);
-			serializer->Write(width);
-
-			each(i : height) {
-				each(j : width) {
-					serializer->Write(@weight_outputs_hidden[i,j])
-				};
 			};
-			
+
 			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
 		}
 
+		# Writes a matrix as height, width, then row-major values.
+		function : WriteMatrix(serializer : System.IO.Serializer, m : Float[,]) ~ Bool {
+			if(m = Nil) {
+				return false;
+			};
+
+			dims := m->Size();
+			if((dims->Size() = 2 & dims[0] > 0 & dims[1] > 0) = false) {
+				return false;
+			};
+
+			height := dims[0];
+			width := dims[1];
+			serializer->Write(height);
+			serializer->Write(width);
+			each(i : height) {
+				each(j : width) {
+					serializer->Write(m[i,j]);
+				};
+			};
+
+			return true;
+		}
+
+		# Reads a matrix written by WriteMatrix; Nil on invalid dimensions.
+		function : ReadMatrix(deserializer : System.IO.Deserializer) ~ Float[,] {
+			height := deserializer->ReadInt();
+			width := deserializer->ReadInt();
+			if(height < 1 | width < 1) {
+				return Nil;
+			};
+
+			m := Float->New[height, width];
+			each(i : height) {
+				each(j : width) {
+					m[i,j] := deserializer->ReadFloat();
+				};
+			};
+
+			return m;
+		}
+
 		method : Query(inputs : Float[,]) ~ Float[,] {
-			# calculate signals into hidden layer
-			hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, inputs);
+			# calculate signals into hidden layer (weights * inputs + bias)
+			hidden_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_inputs_hidden, inputs), @bias_hidden));
 			# calculate the signals emerging from final output layer
-			return Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
+			return Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_outputs_hidden, hidden_outputs), @bias_output));
 		}
 
 		method : Train(inputs : Vector<FloatMatrixRef>, targets : Vector<FloatMatrixRef>, rate : Float, iterations : Int) ~ Nil {
@@ -2372,24 +2385,33 @@ else if(args->Size() = 1) {
 						target := targets->Get(j)->Get();
 
 						# calculate signals into hidden layer
-						hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, stream_in);
+						hidden_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_inputs_hidden, stream_in), @bias_hidden));
 						# calculate signals into final output layer
-						final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
+						final_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_outputs_hidden, hidden_outputs), @bias_output));
 						# output layer error is the (target - actual)
 						output_errors := Matrix2D->Subtract(target, final_outputs);
 						# hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 						hidden_errors := Matrix2D->DotProduct(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
-						# update the weights for the links between the stream_in and hidden layers
-						@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Adjust(rate, hidden_errors, hidden_outputs, stream_in));
-						# update the weights for the links between the hidden and output layers
-						@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, Adjust(rate, output_errors, final_outputs, hidden_outputs));
+
+						# per-layer deltas (error * sigmoid gradient), computed before
+						# any update so both layers see consistent pre-update state
+						output_delta := Delta(output_errors, final_outputs);
+						hidden_delta := Delta(hidden_errors, hidden_outputs);
+
+						# update weights and biases; the bias gradient is the layer
+						# delta itself (its "input" is the constant 1.0)
+						@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, Matrix2D->Multiple(rate, Matrix2D->DotProduct(output_delta, Matrix2D->Transpose(hidden_outputs))));
+						@bias_output := Matrix2D->Add(@bias_output, Matrix2D->Multiple(rate, output_delta));
+						@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Matrix2D->Multiple(rate, Matrix2D->DotProduct(hidden_delta, Matrix2D->Transpose(stream_in))));
+						@bias_hidden := Matrix2D->Add(@bias_hidden, Matrix2D->Multiple(rate, hidden_delta));
 					};
 				};
 			};
 		}
 
-		method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
-			return Matrix2D->Multiple(rate, Matrix2D->DotProduct(Matrix2D->HadamardProduct(errors, Matrix2D->HadamardProduct(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
+		# error * outputs * (1 - outputs): the backpropagated sigmoid gradient
+		method : Delta(errors : Float[,], outputs : Float[,]) ~ Float[,] {
+			return Matrix2D->HadamardProduct(errors, Matrix2D->HadamardProduct(outputs, Matrix2D->Subtract(1.0, outputs)));
 		}
 	}
 
