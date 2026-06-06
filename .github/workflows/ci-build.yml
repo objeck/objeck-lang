@@ -287,7 +287,19 @@ jobs:
 
         $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
         Write-Output "Downloading OpenCV $opencvVersion from $url ..."
-        Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
+        # same transient-CDN-failure class as the vcpkg installs: bounded retry
+        $max = 3
+        for($i = 1; $i -le $max; $i++) {
+          try {
+            Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
+            break
+          }
+          catch {
+            if($i -eq $max) { throw }
+            Write-Output "OpenCV download failed (attempt $i/$max); retrying in 20s..."
+            Start-Sleep -Seconds 20
+          }
+        }
 
         7z x opencv-dl.exe -oopencv-extract -y | Out-Null
 

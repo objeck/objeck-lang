@@ -11,8 +11,9 @@ and tabular reinforcement learning (-lib ai)
 ~#
 bundle System.AI {
 	#~
-	Seedable PRNG shared by the System.AI bundle (MINSTD, matching
-	System.ML.Random) so stochastic algorithms are reproducible.
+	Seedable PRNG shared by the System.AI bundle (MINSTD with the same
+	multiplier as System.ML.Random, so a given seed produces the same
+	sequence in both bundles) keeping stochastic algorithms reproducible.
 	~#
 	class : private : AiRandom {
 		@state : Int;
@@ -25,7 +26,7 @@ bundle System.AI {
 		}
 
 		method : public : NextInt() ~ Int {
-			@state := @state * 48271 % 2147483647;
+			@state := @state * 16807 % 2147483647;
 			return @state;
 		}
 
@@ -229,105 +230,11 @@ result := Dijkstra->FindPath(graph, 0, 3);
 		function : NotFound() ~ SearchResult {
 			return SearchResult->New(false, Int->New[0], 0.0, 0);
 		}
-	}
 
-	#~
-	Dijkstra's single-pair shortest path over non-negative edge weights.
-
-```
-result := Dijkstra->FindPath(graph, 0, 5);
-if(result->Found()) {
-  result->GetCost()->PrintLine();
-};
-```
-	~#
-	class Dijkstra {
-		#~
-		Finds the minimum-cost path between two nodes.
-		@param graph graph to search
-		@param start start node id
-		@param goal goal node id
-		@return search result
-		~#
-		function : FindPath(graph : Graph, start : Int, goal : Int) ~ SearchResult {
-			if(SearchSupport->Invalid(graph, start, goal)) {
-				return SearchSupport->NotFound();
-			};
-
-			n := graph->GetNumNodes();
-			dist := Float->New[n];
-			prev := Int->New[n];
-			done := Bool->New[n];
-			each(i : n) {
-				dist[i] := Float->Inf();
-				prev[i] := -1;
-			};
-			dist[start] := 0.0;
-
-			expanded := 0;
-			each(round : n) {
-				# next closest unfinished node
-				node := -1;
-				best := Float->Inf();
-				each(i : n) {
-					if(<>done[i] & dist[i] < best) {
-						best := dist[i];
-						node := i;
-					};
-				};
-
-				if(node = -1) {
-					break;
-				};
-
-				done[node] := true;
-				expanded += 1;
-
-				if(node = goal) {
-					return SearchResult->New(true, SearchSupport->BuildPath(prev, start, goal), dist[goal], expanded);
-				};
-
-				edge := graph->FirstEdge(node);
-				while(edge <> -1) {
-					to := graph->EdgeTo(edge);
-					relaxed := dist[node] + graph->EdgeWeight(edge);
-					if(relaxed < dist[to]) {
-						dist[to] := relaxed;
-						prev[to] := node;
-					};
-					edge := graph->NextEdge(edge);
-				};
-			};
-
-			return SearchSupport->NotFound();
-		}
-	}
-
-	#~
-	A* single-pair shortest path: Dijkstra ordered by f = g + h using a
-	per-node heuristic array. With an admissible heuristic (never
-	overestimating the remaining cost) the result cost equals Dijkstra's
-	while typically expanding fewer nodes.
-
-```
-# heuristic[i] = straight-line estimate from node i to the goal
-result := AStar->FindPath(graph, 0, 5, heuristic);
-```
-	~#
-	class AStar {
-		#~
-		Finds the minimum-cost path between two nodes guided by a heuristic.
-		@param graph graph to search
-		@param start start node id
-		@param goal goal node id
-		@param heuristic estimated remaining cost per node id (length = node count)
-		@return search result
-		~#
-		function : FindPath(graph : Graph, start : Int, goal : Int, heuristic : Float[]) ~ SearchResult {
-			if(SearchSupport->Invalid(graph, start, goal) | heuristic = Nil | heuristic->Size() <> graph->GetNumNodes()) {
-				return SearchSupport->NotFound();
-			};
-
+		# best-first search ordered by f = g + h over non-negative edge
+		# weights; with an all-zero heuristic this is exactly Dijkstra's
+		# algorithm (both Dijkstra and AStar delegate here)
+		function : BestFirst(graph : Graph, start : Int, goal : Int, heuristic : Float[]) ~ SearchResult {
 			n := graph->GetNumNodes();
 			dist := Float->New[n];
 			prev := Int->New[n];
@@ -361,7 +268,7 @@ result := AStar->FindPath(graph, 0, 5, heuristic);
 				expanded += 1;
 
 				if(node = goal) {
-					return SearchResult->New(true, SearchSupport->BuildPath(prev, start, goal), dist[goal], expanded);
+					return SearchResult->New(true, BuildPath(prev, start, goal), dist[goal], expanded);
 				};
 
 				edge := graph->FirstEdge(node);
@@ -376,7 +283,64 @@ result := AStar->FindPath(graph, 0, 5, heuristic);
 				};
 			};
 
-			return SearchSupport->NotFound();
+			return NotFound();
+		}
+	}
+
+	#~
+	Dijkstra's single-pair shortest path over non-negative edge weights.
+
+```
+result := Dijkstra->FindPath(graph, 0, 5);
+if(result->Found()) {
+  result->GetCost()->PrintLine();
+};
+```
+	~#
+	class Dijkstra {
+		#~
+		Finds the minimum-cost path between two nodes.
+		@param graph graph to search
+		@param start start node id
+		@param goal goal node id
+		@return search result
+		~#
+		function : FindPath(graph : Graph, start : Int, goal : Int) ~ SearchResult {
+			if(SearchSupport->Invalid(graph, start, goal)) {
+				return SearchSupport->NotFound();
+			};
+
+			# Dijkstra is best-first search with a zero heuristic
+			return SearchSupport->BestFirst(graph, start, goal, Float->New[graph->GetNumNodes()]);
+		}
+	}
+
+	#~
+	A* single-pair shortest path: Dijkstra ordered by f = g + h using a
+	per-node heuristic array. With an admissible heuristic (never
+	overestimating the remaining cost) the result cost equals Dijkstra's
+	while typically expanding fewer nodes.
+
+```
+# heuristic[i] = straight-line estimate from node i to the goal
+result := AStar->FindPath(graph, 0, 5, heuristic);
+```
+	~#
+	class AStar {
+		#~
+		Finds the minimum-cost path between two nodes guided by a heuristic.
+		@param graph graph to search
+		@param start start node id
+		@param goal goal node id
+		@param heuristic estimated remaining cost per node id (length = node count)
+		@return search result
+		~#
+		function : FindPath(graph : Graph, start : Int, goal : Int, heuristic : Float[]) ~ SearchResult {
+			if(SearchSupport->Invalid(graph, start, goal) | heuristic = Nil | heuristic->Size() <> graph->GetNumNodes()) {
+				return SearchSupport->NotFound();
+			};
+
+			return SearchSupport->BestFirst(graph, start, goal, heuristic);
 		}
 	}
 
