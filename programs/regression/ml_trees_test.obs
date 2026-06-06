@@ -35,7 +35,7 @@ class MlTreesTest {
 
 		# --- RandomForest: bootstrap voting ensemble fits the same rule ---
 		forest := RandomForest->New(21, 6, 1, 7);
-		forest->Train(dt_data);
+		forest->Fit(dt_data);
 		if(<>forest->IsFitted()) {
 			pass := false;
 		};

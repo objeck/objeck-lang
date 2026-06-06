@@ -1264,6 +1264,16 @@ model := LinearRegression->New();
 			@is_fitted := false;
 		}
 
+		New : private (coefficients : Float[], fit_intercept : Bool, r_squared : Float, adj_r_squared : Float, mse : Float, rmse : Float) {
+			@coefficients := coefficients;
+			@fit_intercept := fit_intercept;
+			@r_squared := r_squared;
+			@adj_r_squared := adj_r_squared;
+			@mse := mse;
+			@rmse := rmse;
+			@is_fitted := true;
+		}
+
 		#~
 		Fits the model to training data using least squares.
 		@param X feature matrix (rows=samples, cols=features)
@@ -1524,6 +1534,72 @@ each(c in coeffs) {
 		method : public : IsFitted() ~ Bool {
 			return @is_fitted;
 		}
+
+		#~
+		Saves the fitted model (coefficients, intercept convention and training
+		metrics) to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+
+			if(@fit_intercept) {
+				serializer->Write(1);
+			}
+			else {
+				serializer->Write(0);
+			};
+
+			count := @coefficients->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@coefficients[i]);
+			};
+
+			serializer->Write(@r_squared);
+			serializer->Write(@adj_r_squared);
+			serializer->Write(@mse);
+			serializer->Write(@rmse);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ LinearRegression {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			fit_intercept := deserializer->ReadInt() = 1;
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			coefficients := Float->New[count];
+			each(i : count) {
+				coefficients[i] := deserializer->ReadFloat();
+			};
+
+			r_squared := deserializer->ReadFloat();
+			adj_r_squared := deserializer->ReadFloat();
+			mse := deserializer->ReadFloat();
+			rmse := deserializer->ReadFloat();
+
+			return LinearRegression->New(coefficients, fit_intercept, r_squared, adj_r_squared, mse, rmse);
+		}
 	}
 
 	#~
@@ -1575,6 +1651,16 @@ model := LogisticRegression->New(0.01, 500);
 			@iterations := iterations;
 			@l2 := l2;
 			@is_fitted := false;
+		}
+
+		New : private (learning_rate : Float, iterations : Int, l2 : Float, weights : Float[], bias : Float, loss : Float) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@l2 := l2;
+			@weights := weights;
+			@bias := bias;
+			@loss := loss;
+			@is_fitted := true;
 		}
 
 		#~
@@ -1798,6 +1884,66 @@ each(label in labels) {
 		~#
 		method : public : IsFitted() ~ Bool {
 			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model (weights, bias, hyperparameters and final loss)
+		to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+			serializer->Write(@l2);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+			serializer->Write(@loss);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ LogisticRegression {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+			l2 := deserializer->ReadFloat();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+			loss := deserializer->ReadFloat();
+
+			return LogisticRegression->New(learning_rate, iterations, l2, weights, bias, loss);
 		}
 	}
 
@@ -2415,19 +2561,27 @@ forest := RandomForest->New(16);
 			@seed := seed;
 		}
 
+		New : private (num_trees : Int, max_depth : Int, min_samples : Int, seed : Int, trees : Vector<DecisionTree>) {
+			@num_trees := num_trees;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@seed := seed;
+			@trees := trees;
+		}
+
 		#~
-		Trains the ensemble: builds num_trees decision trees, each fitted to its own
+		Fits the ensemble: builds num_trees decision trees, each fitted to its own
 		bootstrap sample (rows drawn with replacement) of the training data. Each row
 		is boolean features with the class label in the LAST column.
 		@param input training matrix (features..., label) of Bool
 
 ```
 forest := RandomForest->New(16);
-forest->Train(data);
+forest->Fit(data);
 preds := forest->Predict(data);
 ```
 		~#
-		method : public : Train(input : Bool[,]) ~ Nil {
+		method : public : Fit(input : Bool[,]) ~ Nil {
 			@trees := Vector->New()<DecisionTree>;
 			rand := Random->New(@seed);
 
@@ -2488,6 +2642,35 @@ preds := forest->Predict(data);
 		}
 
 		#~
+		Computes classification accuracy on labeled data, comparing the ensemble's
+		majority-vote predictions against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>IsFitted() | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := Predict(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
 		Whether the ensemble has been trained.
 		@return true if trained
 		~#
@@ -2496,6 +2679,61 @@ preds := forest->Predict(data);
 				return false;
 			};
 			return @trees->Size() > 0;
+		}
+
+		#~
+		Saves the fitted ensemble to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>IsFitted()) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_trees);
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			serializer->Write(@seed);
+
+			ntrees := @trees->Size();
+			serializer->Write(ntrees);
+			each(t : ntrees) {
+				@trees->Get(t)->WriteTo(serializer);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted ensemble from a file.
+		@param filename file to load from
+		@return fitted ensemble, or Nil on failure
+		~#
+		function : Load(filename : String) ~ RandomForest {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_trees := deserializer->ReadInt();
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+			seed := deserializer->ReadInt();
+
+			ntrees := deserializer->ReadInt();
+			trees := Vector->New()<DecisionTree>;
+			each(t : ntrees) {
+				tree := DecisionTree->ReadFrom(deserializer);
+				if(tree = Nil) {
+					return Nil;
+				};
+				trees->AddBack(tree);
+			};
+
+			return RandomForest->New(num_trees, max_depth, min_samples, seed, trees);
 		}
 	}
 
@@ -2600,6 +2838,12 @@ tree := DecisionTree->New(4, 1);
 			@min_samples := min_samples;
 		}
 
+		New : private (max_depth : Int, min_samples : Int, root : TreeNode) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@root := root;
+		}
+
 		#~
 		Fits a real recursive binary tree to boolean training data. Each row is a
 		set of boolean features with the class label in the LAST column. Nodes
@@ -2669,11 +2913,137 @@ tree->Predict([true, true])->PrintLine();   # true
 		}
 
 		#~
+		Computes classification accuracy on labeled data, comparing predictions
+		against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>IsFitted() | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := PredictAll(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
 		Whether the tree has been fitted.
 		@return true if fitted
 		~#
 		method : public : IsFitted() ~ Bool {
 			return @root <> Nil;
+		}
+
+		#~
+		Saves the fitted tree to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>IsFitted()) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			WriteTo(serializer);
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted tree from a file.
+		@param filename file to load from
+		@return fitted tree, or Nil on failure
+		~#
+		function : Load(filename : String) ~ DecisionTree {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			return ReadFrom(System.IO.Deserializer->New(data));
+		}
+
+		#~
+		Serializes the tree (hyperparameters + nodes in pre-order) onto an existing
+		serializer; used by Store and by ensembles that embed trees (RandomForest).
+		@param serializer destination serializer
+		~#
+		method : public : WriteTo(serializer : System.IO.Serializer) ~ Nil {
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			WriteNode(serializer, @root);
+		}
+
+		#~
+		Reads a tree previously written with WriteTo from a deserializer.
+		@param deserializer source deserializer
+		@return fitted tree, or Nil on failure
+		~#
+		function : ReadFrom(deserializer : System.IO.Deserializer) ~ DecisionTree {
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+
+			root := ReadNode(deserializer);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			return DecisionTree->New(max_depth, min_samples, root);
+		}
+
+		# Pre-order node serialization: leaf flag, then prediction (leaf) or
+		# feature index + left/right subtrees (internal). Internal nodes always
+		# have both children (see BuildNode).
+		method : WriteNode(serializer : System.IO.Serializer, node : TreeNode) ~ Nil {
+			if(node->IsLeaf()) {
+				serializer->Write(1);
+				if(node->GetPrediction()) {
+					serializer->Write(1);
+				}
+				else {
+					serializer->Write(0);
+				};
+			}
+			else {
+				serializer->Write(0);
+				serializer->Write(node->GetFeature());
+				WriteNode(serializer, node->GetLeft());
+				WriteNode(serializer, node->GetRight());
+			};
+		}
+
+		function : ReadNode(deserializer : System.IO.Deserializer) ~ TreeNode {
+			is_leaf := deserializer->ReadInt();
+			if(is_leaf = 1) {
+				return TreeNode->NewLeaf(deserializer->ReadInt() = 1);
+			};
+
+			node := TreeNode->NewInternal(deserializer->ReadInt());
+
+			left := ReadNode(deserializer);
+			right := ReadNode(deserializer);
+			if(left = Nil | right = Nil) {
+				return Nil;
+			};
+
+			node->SetLeft(left);
+			node->SetRight(right);
+			return node;
 		}
 
 		# Recursively builds a tree node from a data subset.

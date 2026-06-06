@@ -1,0 +1,210 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for the System.ML estimator API consistency sweep (item 11):
+RandomForest Fit (renamed from Train), Score on DecisionTree/RandomForest, and
+Store/Load round-trips for LinearRegression, LogisticRegression, DecisionTree
+and RandomForest (loaded models must reproduce the original predictions).
+~#
+use System.ML, System.IO.Filesystem, Collection;
+
+class MlApiTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		eps := 0.000001;
+		model_file := "ml_api_model_test.tmp";
+
+		# --- LinearRegression: Store/Load round-trip (y = 2x + 1) ---
+		lin_x := [[1.0], [2.0], [3.0], [4.0]];
+		lin_y := [[3.0], [5.0], [7.0], [9.0]];
+		lin := LinearRegression->New();
+
+		# unfitted models must refuse to store
+		if(lin->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted LinearRegression stored"->PrintLine();
+		};
+
+		if(<>lin->Fit(lin_x, lin_y, true)) {
+			pass := false;
+			"  FAIL: LinearRegression fit"->PrintLine();
+		};
+
+		if(<>lin->Store(model_file)) {
+			pass := false;
+			"  FAIL: LinearRegression store"->PrintLine();
+		};
+
+		lin_loaded := LinearRegression->Load(model_file);
+		if(lin_loaded = Nil | <>lin_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: LinearRegression load"->PrintLine();
+		}
+		else {
+			before := lin->Predict(lin_x);
+			after := lin_loaded->Predict(lin_x);
+			each(i : 4) {
+				if(Float->Abs(before[i,0] - after[i,0]) > eps) {
+					pass := false;
+					"  FAIL: LinearRegression round-trip prediction {$i}"->PrintLine();
+				};
+			};
+
+			if(Float->Abs(lin->GetRSquared() - lin_loaded->GetRSquared()) > eps |
+				Float->Abs(lin->GetRMSE() - lin_loaded->GetRMSE()) > eps) {
+				pass := false;
+				"  FAIL: LinearRegression round-trip metrics"->PrintLine();
+			};
+		};
+		File->Delete(model_file);
+
+		# --- LogisticRegression: Store/Load round-trip (AND gate) ---
+		log_x := [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+		log_y := [[0.0], [0.0], [0.0], [1.0]];
+		log := LogisticRegression->New(0.5, 2000, 0.001);
+
+		if(log->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted LogisticRegression stored"->PrintLine();
+		};
+
+		if(<>log->Fit(log_x, log_y)) {
+			pass := false;
+			"  FAIL: LogisticRegression fit"->PrintLine();
+		};
+
+		if(<>log->Store(model_file)) {
+			pass := false;
+			"  FAIL: LogisticRegression store"->PrintLine();
+		};
+
+		log_loaded := LogisticRegression->Load(model_file);
+		if(log_loaded = Nil | <>log_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: LogisticRegression load"->PrintLine();
+		}
+		else {
+			before := log->Predict(log_x);
+			after := log_loaded->Predict(log_x);
+			each(i : 4) {
+				if(Float->Abs(before[i] - after[i]) > eps) {
+					pass := false;
+					"  FAIL: LogisticRegression round-trip probability {$i}"->PrintLine();
+				};
+			};
+
+			if(Float->Abs(log->GetBias() - log_loaded->GetBias()) > eps |
+				Float->Abs(log->GetLoss() - log_loaded->GetLoss()) > eps) {
+				pass := false;
+				"  FAIL: LogisticRegression round-trip bias/loss"->PrintLine();
+			};
+
+			if(Float->Abs(log_loaded->Score(log_x, log_y) - 1.0) > eps) {
+				pass := false;
+				"  FAIL: loaded LogisticRegression score"->PrintLine();
+			};
+		};
+		File->Delete(model_file);
+
+		# --- DecisionTree: Score + Store/Load round-trip (label = f0 AND f1) ---
+		dt_data := [
+			[false, false, false],
+			[false, true,  false],
+			[true,  false, false],
+			[true,  true,  true],
+			[false, false, false],
+			[true,  true,  true]];
+		dtree := DecisionTree->New(4, 1);
+
+		if(dtree->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted DecisionTree stored"->PrintLine();
+		};
+
+		dtree->Fit(dt_data);
+		if(Float->Abs(dtree->Score(dt_data) - 1.0) > eps) {
+			pass := false;
+			"  FAIL: DecisionTree score"->PrintLine();
+		};
+
+		if(<>dtree->Store(model_file)) {
+			pass := false;
+			"  FAIL: DecisionTree store"->PrintLine();
+		};
+
+		dtree_loaded := DecisionTree->Load(model_file);
+		if(dtree_loaded = Nil | <>dtree_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: DecisionTree load"->PrintLine();
+		}
+		else {
+			before := dtree->PredictAll(dt_data);
+			after := dtree_loaded->PredictAll(dt_data);
+			each(i : 6) {
+				if(before[i] <> after[i]) {
+					pass := false;
+					"  FAIL: DecisionTree round-trip prediction {$i}"->PrintLine();
+				};
+			};
+
+			if(Float->Abs(dtree_loaded->Score(dt_data) - 1.0) > eps) {
+				pass := false;
+				"  FAIL: loaded DecisionTree score"->PrintLine();
+			};
+		};
+		File->Delete(model_file);
+
+		# --- RandomForest: Fit (renamed) + Score + Store/Load round-trip ---
+		forest := RandomForest->New(21, 6, 1, 7);
+
+		if(forest->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted RandomForest stored"->PrintLine();
+		};
+
+		forest->Fit(dt_data);
+		if(<>forest->IsFitted()) {
+			pass := false;
+			"  FAIL: RandomForest fit"->PrintLine();
+		};
+
+		if(Float->Abs(forest->Score(dt_data) - 1.0) > eps) {
+			pass := false;
+			"  FAIL: RandomForest score"->PrintLine();
+		};
+
+		if(<>forest->Store(model_file)) {
+			pass := false;
+			"  FAIL: RandomForest store"->PrintLine();
+		};
+
+		forest_loaded := RandomForest->Load(model_file);
+		if(forest_loaded = Nil | <>forest_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: RandomForest load"->PrintLine();
+		}
+		else {
+			before := forest->Predict(dt_data);
+			after := forest_loaded->Predict(dt_data);
+			each(i : 6) {
+				if(before[i] <> after[i]) {
+					pass := false;
+					"  FAIL: RandomForest round-trip prediction {$i}"->PrintLine();
+				};
+			};
+
+			if(Float->Abs(forest_loaded->Score(dt_data) - 1.0) > eps) {
+				pass := false;
+				"  FAIL: loaded RandomForest score"->PrintLine();
+			};
+		};
+		File->Delete(model_file);
+
+		if(pass) {
+			"PASS: ML API tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML API tests"->PrintLine();
+		};
+	}
+}
