@@ -1,0 +1,2142 @@
+#~~
+# Objeck machine learning library: linear models
+# Copyright (c) 2024-2026 Randy Hollines
+#
+# Credits:
+# Eigen matrix library - https://eigen.tuxfamily.org
+~~#
+
+use Collection;
+use Data.CSV;
+
+#~
+Linear models: LinearRegression, RidgeRegression, LassoRegression, ElasticNet, LogisticRegression, Perceptron and linear SVM, all sharing the Fit/Predict/Score/Store/Load estimator API. Compile with -lib ml.
+~#
+bundle System.ML {
+	#~
+	Solves a system of linear equations
+```
+m1 := [
+  [1., 1., 2., 3.]
+  [1., 4., 5., 6.]
+  [1., 7., 8., 9.]];
+
+m2 := [
+  [6.]
+  [16.]
+  [23.]];
+
+solver := System.ML.LinearSolver->New(m1, m2)->Calculate(1);
+solver->GetRSquared()->PrintLine();
+```
+	~#
+	class LinearSolver {
+		@m1 : Float[,];
+		@m2 : Float[,];
+
+		#~
+		Constructor
+		@param m1 first matrix
+		@param m2 second matrix
+		~#
+		New(m1 : Float[,], m2 : Float[,]) {
+			@m1 := m1;
+			@m2 := m2;
+		}
+
+		#~
+		Calculates the equation coefficients
+		@param offset offset column for r-squared
+		@return equation coefficients and r-squared
+		~#
+		method : public : Calculate(offset : Int) ~ LinearResult {
+			coeff := System.ML.Matrix2D->Solve(@m1, @m2);
+			r_sqrd := GetRSquared(coeff, offset);
+			return LinearResult->New(coeff, r_sqrd);
+		}
+
+		method : GetRSquared(c : Float[], offset : Int) ~ Float {
+			avg := System.ML.Matrix2D->AverageColumn(0, @m2);
+
+			m1_dims := @m2->Size();
+			m2_rows := m1_dims[0];
+
+			dom := 0.;
+			each(i : m2_rows) {
+				term := @m2[i,0] - avg;
+				dom += term * term;
+			};
+
+			m1_dims := @m1->Size();
+			m1_cols := m1_dims[1];
+
+			num := 0.;
+			each(i : m2_rows) {
+				sub_total := 0.;
+
+				for(j := offset; j < m1_cols; j += 1;) {
+					sub_total += c[j] * @m1[i,j];
+				};
+
+				term := avg - sub_total;
+				num += term * term;
+			};
+# "{$num} / {$dom}"->PrintLine();				
+			
+			return num/dom;
+		}
+	}
+
+	#~
+	Result of liner equations
+	~#
+	class LinearResult {
+		@coeffs : Float[];
+		@r_sqrd : Float;
+
+		#~
+		Constructor
+		@param coeffs coefficient matrix
+		@param r_sqrd r-squared value
+		~#
+		New(coeffs : Float[], r_sqrd : Float) {
+			@coeffs := coeffs;
+			@r_sqrd := r_sqrd;
+		}
+
+		#~
+		Gets the equation coefficients 
+		@return equation coefficients
+		~#
+		method : public : GetCoefficients() ~ Float[] {
+			return @coeffs;
+		}
+
+		#~
+		Gets r-squared
+		@return r-squared
+		~#
+		method : public : GetRSquared() ~ Float {
+			return @r_sqrd;
+		}
+
+		#~
+		Formats the result into a string
+		@return string representation 
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			count := 0;
+			coeff_num := @coeffs->Size();
+			buffer += "r_sqrt={$@r_sqrd}, # of coeffs={$coeff_num}\n";
+			each(coeff := @coeffs) {
+				if(count = 0) {
+					buffer += "  slope={$coeff}\n";
+				}
+				else {
+					buffer += "  x{$count}={$coeff}\n";
+				};
+				count += 1;
+			};
+
+			return buffer;
+		}
+	}
+
+	#~
+	Simple linear regression using least squares.
+	Fits y = X * coefficients via the normal equation.
+
+```
+X := [[1.0, 1.0], [1.0, 2.0], [1.0, 3.0]];
+y := [[2.0], [4.0], [6.0]];
+model := LinearRegression->New();
+model->Fit(X, y);
+preds := model->Predict([[1.0, 4.0]]);
+"Predicted: {$preds[0,0]}"->PrintLine();
+"R-squared: {$model->GetRSquared()}"->PrintLine();
+```
+	~#
+	class LinearRegression {
+		@coefficients : Float[];
+		@r_squared : Float;
+		@adj_r_squared : Float;
+		@mse : Float;
+		@rmse : Float;
+		@fit_intercept : Bool;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+
+```
+model := LinearRegression->New();
+```
+		~#
+		New() {
+			@is_fitted := false;
+		}
+
+		New : private (coefficients : Float[], fit_intercept : Bool, r_squared : Float, adj_r_squared : Float, mse : Float, rmse : Float) {
+			@coefficients := coefficients;
+			@fit_intercept := fit_intercept;
+			@r_squared := r_squared;
+			@adj_r_squared := adj_r_squared;
+			@mse := mse;
+			@rmse := rmse;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the model to training data using least squares.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+
+```
+X := [[1.0, 1.0], [1.0, 2.0], [1.0, 3.0]];
+y := [[2.0], [4.0], [6.0]];
+model := LinearRegression->New();
+if(model->Fit(X, y)) {
+  "Fitted. R²={$model->GetRSquared()}"->PrintLine();
+};
+```
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			return Fit(X, y, false);
+		}
+
+		#~
+		Fits the model to training data, optionally estimating an intercept term.
+		When fit_intercept is true a leading column of 1.0s is prepended to the
+		design matrix and coefficient 0 holds the intercept. Computes R-squared,
+		adjusted R-squared, MSE and RMSE; returns false on a singular / ill-
+		conditioned system (the underlying solver yields no solution).
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@param fit_intercept whether to estimate a bias/intercept term
+		@return true if fitting succeeded
+
+```
+X := [[1.0], [2.0], [3.0]];
+y := [[3.0], [5.0], [7.0]];   # y = 2x + 1
+model := LinearRegression->New();
+model->Fit(X, y, true);       # intercept ~ 1, slope ~ 2
+"RMSE={$model->GetRMSE()}"->PrintLine();
+```
+		~#
+		method : public : Fit(X : Float[,], y : Float[,], fit_intercept : Bool) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			if(x_dims[0] <> y_dims[0]) {
+				return false;
+			};
+
+			@fit_intercept := fit_intercept;
+
+			design : Float[,];
+			if(fit_intercept) {
+				design := PrependOnes(X);
+			}
+			else {
+				design := X;
+			};
+
+			@coefficients := Matrix2D->Solve(design, y);
+			if(@coefficients = Nil) {
+				# singular / ill-conditioned system: no unique solution
+				@is_fitted := false;
+				return false;
+			};
+
+			@is_fitted := true;
+
+			# goodness-of-fit metrics
+			rows := y_dims[0];
+			num_features := x_dims[1];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			@mse := ss_res / rows->As(Float);
+			@rmse := @mse->Sqrt();
+
+			if(ss_tot > 0.0) {
+				@r_squared := 1.0 - (ss_res / ss_tot);
+			}
+			else {
+				@r_squared := 0.0;
+			};
+
+			# adjusted R^2 = 1 - (1 - R^2)(n - 1)/(n - p - 1)
+			denom := rows - num_features - 1;
+			if(denom > 0) {
+				@adj_r_squared := 1.0 - (1.0 - @r_squared) * (rows - 1)->As(Float) / denom->As(Float);
+			}
+			else {
+				@adj_r_squared := @r_squared;
+			};
+
+			return true;
+		}
+
+		# Predicts a single row using the fitted coefficients, honoring the
+		# intercept convention chosen at fit time.
+		method : PredictRow(X : Float[,], row : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			sum := 0.0;
+			offset := 0;
+			if(@fit_intercept) {
+				sum := @coefficients[0];
+				offset := 1;
+			};
+			each(j : cols) {
+				sum += @coefficients[j + offset] * X[row,j];
+			};
+
+			return sum;
+		}
+
+		# Returns a copy of X with a leading column of 1.0s (intercept design column).
+		method : PrependOnes(X : Float[,]) ~ Float[,] {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			out := Float->New[rows, cols + 1];
+			each(i : rows) {
+				out[i, 0] := 1.0;
+				each(j : cols) {
+					out[i, j + 1] := X[i,j];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Predicts target values for new input data.
+		@param X feature matrix
+		@return prediction matrix, or Nil if not fitted
+
+```
+preds := model->Predict([[1.0, 5.0], [1.0, 6.0]]);
+each(i : preds->Size()[0]) {
+  preds[i,0]->PrintLine();
+};
+```
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+
+			result := Float->New[rows, 1];
+			each(i : rows) {
+				result[i, 0] := PredictRow(X, i);
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the computed coefficients.
+		@return coefficient array, or Nil if not fitted
+
+```
+coeffs := model->GetCoefficients();
+each(c in coeffs) {
+  c->PrintLine();
+};
+```
+		~#
+		method : public : GetCoefficients() ~ Float[] {
+			return @coefficients;
+		}
+
+		#~
+		Gets the R-squared goodness of fit.
+		@return R-squared value
+
+```
+"Model R²={$model->GetRSquared()}"->PrintLine();
+```
+		~#
+		method : public : GetRSquared() ~ Float {
+			return @r_squared;
+		}
+
+		#~
+		Gets the adjusted R-squared, which penalizes additional predictors.
+		@return adjusted R-squared value
+		~#
+		method : public : GetAdjustedRSquared() ~ Float {
+			return @adj_r_squared;
+		}
+
+		#~
+		Gets the mean squared error over the training data.
+		@return MSE
+		~#
+		method : public : GetMSE() ~ Float {
+			return @mse;
+		}
+
+		#~
+		Gets the root mean squared error over the training data.
+		@return RMSE
+		~#
+		method : public : GetRMSE() ~ Float {
+			return @rmse;
+		}
+
+		#~
+		Scores the model on the given data, returning the R-squared (coefficient
+		of determination) of its predictions against the true targets.
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			if(<>@is_fitted | X = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model (coefficients, intercept convention and training
+		metrics) to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+
+			if(@fit_intercept) {
+				serializer->Write(1);
+			}
+			else {
+				serializer->Write(0);
+			};
+
+			count := @coefficients->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@coefficients[i]);
+			};
+
+			serializer->Write(@r_squared);
+			serializer->Write(@adj_r_squared);
+			serializer->Write(@mse);
+			serializer->Write(@rmse);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ LinearRegression {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			fit_intercept := deserializer->ReadInt() = 1;
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			coefficients := Float->New[count];
+			each(i : count) {
+				coefficients[i] := deserializer->ReadFloat();
+			};
+
+			r_squared := deserializer->ReadFloat();
+			adj_r_squared := deserializer->ReadFloat();
+			mse := deserializer->ReadFloat();
+			rmse := deserializer->ReadFloat();
+
+			return LinearRegression->New(coefficients, fit_intercept, r_squared, adj_r_squared, mse, rmse);
+		}
+	}
+
+	#~
+	Ridge (L2-regularized) linear regression solved in closed form via the
+	regularized normal equations (X'X + alpha*I)w = X'y. The intercept term,
+	when fitted, is not penalized. Larger alpha shrinks coefficients toward
+	zero; alpha = 0.0 reduces to ordinary least squares.
+
+```
+X := [[1.0], [2.0], [3.0]];
+y := [[3.0], [5.0], [7.0]];  # y = 2x + 1
+model := RidgeRegression->New(0.1);
+model->Fit(X, y);
+"slope~2: {$model->GetCoefficients()[1]}"->PrintLine();
+```
+	~#
+	class RidgeRegression {
+		@alpha : Float;
+		@coefficients : Float[];
+		@fit_intercept : Bool;
+		@r_squared : Float;
+		@adj_r_squared : Float;
+		@mse : Float;
+		@rmse : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param alpha L2 regularization strength (>= 0.0)
+		~#
+		New(alpha : Float) {
+			@alpha := alpha;
+			@is_fitted := false;
+		}
+
+		New : private (alpha : Float, coefficients : Float[], fit_intercept : Bool, r_squared : Float, adj_r_squared : Float, mse : Float, rmse : Float) {
+			@alpha := alpha;
+			@coefficients := coefficients;
+			@fit_intercept := fit_intercept;
+			@r_squared := r_squared;
+			@adj_r_squared := adj_r_squared;
+			@mse := mse;
+			@rmse := rmse;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the model with an intercept term.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			return Fit(X, y, true);
+		}
+
+		#~
+		Fits the model, optionally estimating an unpenalized intercept.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@param fit_intercept whether to estimate a bias/intercept term
+		@return true if fitting succeeded (false on a singular system)
+		~#
+		method : public : Fit(X : Float[,], y : Float[,], fit_intercept : Bool) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			if(x_dims[0] <> y_dims[0]) {
+				return false;
+			};
+
+			@fit_intercept := fit_intercept;
+
+			design : Float[,];
+			if(fit_intercept) {
+				design := PrependOnes(X);
+			}
+			else {
+				design := X;
+			};
+
+			# regularized normal equations: (X'X + alpha*I)w = X'y; the
+			# intercept column (index 0) is not penalized
+			design_t := Matrix2D->Transpose(design);
+			gram := Matrix2D->DotProduct(design_t, design);
+			k_dims := gram->Size();
+			k := k_dims[0];
+
+			start := 0;
+			if(fit_intercept) {
+				start := 1;
+			};
+			for(j := start; j < k; j += 1;) {
+				gram[j,j] := gram[j,j] + @alpha;
+			};
+
+			rhs := Matrix2D->DotProduct(design_t, y);
+			@coefficients := Matrix2D->Solve(gram, rhs);
+			if(@coefficients = Nil) {
+				@is_fitted := false;
+				return false;
+			};
+
+			@is_fitted := true;
+
+			# goodness-of-fit metrics over the training data
+			rows := y_dims[0];
+			num_features := x_dims[1];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			@mse := ss_res / rows->As(Float);
+			@rmse := @mse->Sqrt();
+
+			if(ss_tot > 0.0) {
+				@r_squared := 1.0 - (ss_res / ss_tot);
+			}
+			else {
+				@r_squared := 0.0;
+			};
+
+			denom := rows - num_features - 1;
+			if(denom > 0) {
+				@adj_r_squared := 1.0 - (1.0 - @r_squared) * (rows - 1)->As(Float) / denom->As(Float);
+			}
+			else {
+				@adj_r_squared := @r_squared;
+			};
+
+			return true;
+		}
+
+		method : PredictRow(X : Float[,], row : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			sum := 0.0;
+			offset := 0;
+			if(@fit_intercept) {
+				sum := @coefficients[0];
+				offset := 1;
+			};
+			each(j : cols) {
+				sum += @coefficients[j + offset] * X[row,j];
+			};
+
+			return sum;
+		}
+
+		method : PrependOnes(X : Float[,]) ~ Float[,] {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			out := Float->New[rows, cols + 1];
+			each(i : rows) {
+				out[i, 0] := 1.0;
+				each(j : cols) {
+					out[i, j + 1] := X[i,j];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Predicts target values for new input data.
+		@param X feature matrix
+		@return prediction matrix, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+
+			result := Float->New[rows, 1];
+			each(i : rows) {
+				result[i, 0] := PredictRow(X, i);
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted coefficients (index 0 is the intercept when fitted).
+		@return coefficient array, or Nil if not fitted
+		~#
+		method : public : GetCoefficients() ~ Float[] {
+			return @coefficients;
+		}
+
+		#~
+		Gets the R-squared over the training data.
+		@return R-squared value
+		~#
+		method : public : GetRSquared() ~ Float {
+			return @r_squared;
+		}
+
+		#~
+		Gets the adjusted R-squared over the training data.
+		@return adjusted R-squared value
+		~#
+		method : public : GetAdjustedRSquared() ~ Float {
+			return @adj_r_squared;
+		}
+
+		#~
+		Gets the mean squared error over the training data.
+		@return MSE
+		~#
+		method : public : GetMSE() ~ Float {
+			return @mse;
+		}
+
+		#~
+		Gets the root mean squared error over the training data.
+		@return RMSE
+		~#
+		method : public : GetRMSE() ~ Float {
+			return @rmse;
+		}
+
+		#~
+		Scores the model on the given data (R-squared of predictions).
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			if(<>@is_fitted | X = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@alpha);
+
+			if(@fit_intercept) {
+				serializer->Write(1);
+			}
+			else {
+				serializer->Write(0);
+			};
+
+			count := @coefficients->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@coefficients[i]);
+			};
+
+			serializer->Write(@r_squared);
+			serializer->Write(@adj_r_squared);
+			serializer->Write(@mse);
+			serializer->Write(@rmse);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ RidgeRegression {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			alpha := deserializer->ReadFloat();
+			fit_intercept := deserializer->ReadInt() = 1;
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			coefficients := Float->New[count];
+			each(i : count) {
+				coefficients[i] := deserializer->ReadFloat();
+			};
+
+			r_squared := deserializer->ReadFloat();
+			adj_r_squared := deserializer->ReadFloat();
+			mse := deserializer->ReadFloat();
+			rmse := deserializer->ReadFloat();
+
+			return RidgeRegression->New(alpha, coefficients, fit_intercept, r_squared, adj_r_squared, mse, rmse);
+		}
+	}
+
+	#~
+	Elastic-net regularized linear regression fitted by cyclic coordinate
+	descent on mean-centered data with an unpenalized intercept. Minimizes
+	(1/2n)||y - Xw - b||^2 + alpha*(l1_ratio*|w|_1 + (1-l1_ratio)/2*|w|_2^2).
+	l1_ratio = 1.0 is the lasso; l1_ratio = 0.0 is ridge (use RidgeRegression
+	for the closed-form solution). The L1 term drives uninformative feature
+	coefficients exactly to zero.
+
+```
+model := ElasticNet->New(0.1, 0.5);
+model->Fit(X, y);
+preds := model->Predict(X);
+```
+	~#
+	class ElasticNet {
+		@alpha : Float;
+		@l1_ratio : Float;
+		@iterations : Int;
+		@tolerance : Float;
+		@coefficients : Float[];
+		@intercept : Float;
+		@r_squared : Float;
+		@mse : Float;
+		@rmse : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor with default optimization settings (1000 iterations,
+		tolerance 0.0001).
+		@param alpha overall regularization strength (>= 0.0)
+		@param l1_ratio mix between L1 (1.0) and L2 (0.0) penalties
+		~#
+		New(alpha : Float, l1_ratio : Float) {
+			@alpha := alpha;
+			@l1_ratio := l1_ratio;
+			@iterations := 1000;
+			@tolerance := 0.0001;
+			@is_fitted := false;
+		}
+
+		#~
+		Constructor with explicit optimization settings.
+		@param alpha overall regularization strength (>= 0.0)
+		@param l1_ratio mix between L1 (1.0) and L2 (0.0) penalties
+		@param iterations maximum coordinate-descent sweeps
+		@param tolerance stop when no coefficient moves more than this in a sweep
+		~#
+		New(alpha : Float, l1_ratio : Float, iterations : Int, tolerance : Float) {
+			@alpha := alpha;
+			@l1_ratio := l1_ratio;
+			@iterations := iterations;
+			@tolerance := tolerance;
+			@is_fitted := false;
+		}
+
+		New : private (alpha : Float, l1_ratio : Float, iterations : Int, tolerance : Float, coefficients : Float[], intercept : Float, r_squared : Float, mse : Float, rmse : Float) {
+			@alpha := alpha;
+			@l1_ratio := l1_ratio;
+			@iterations := iterations;
+			@tolerance := tolerance;
+			@coefficients := coefficients;
+			@intercept := intercept;
+			@r_squared := r_squared;
+			@mse := mse;
+			@rmse := rmse;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the model using cyclic coordinate descent.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# center features and targets so the intercept needs no penalty
+			mean_x := Float->New[cols];
+			each(j : cols) {
+				sum := 0.0;
+				each(i : rows) {
+					sum += X[i,j];
+				};
+				mean_x[j] := sum / n;
+			};
+
+			mean_y := 0.0;
+			each(i : rows) {
+				mean_y += y[i,0];
+			};
+			mean_y := mean_y / n;
+
+			centered := Float->New[rows, cols];
+			col_sq := Float->New[cols];
+			each(j : cols) {
+				sq := 0.0;
+				each(i : rows) {
+					v := X[i,j] - mean_x[j];
+					centered[i,j] := v;
+					sq += v * v;
+				};
+				col_sq[j] := sq;
+			};
+
+			residual_y := Float->New[rows];
+			each(i : rows) {
+				residual_y[i] := y[i,0] - mean_y;
+			};
+
+			# cyclic coordinate descent with soft-thresholding; predictions
+			# are maintained incrementally for O(n) coordinate updates
+			weights := Float->New[cols];
+			preds := Float->New[rows];
+			l1_pen := @alpha * @l1_ratio * n;
+			l2_pen := @alpha * (1.0 - @l1_ratio) * n;
+
+			converged := false;
+			each(iter : @iterations) {
+				if(<>converged) {
+					max_delta := 0.0;
+					each(j : cols) {
+						rho := 0.0;
+						each(i : rows) {
+							rho += centered[i,j] * (residual_y[i] - preds[i] + centered[i,j] * weights[j]);
+						};
+
+						denom := col_sq[j] + l2_pen;
+						new_weight := 0.0;
+						if(denom > 0.0) {
+							if(rho > l1_pen) {
+								new_weight := (rho - l1_pen) / denom;
+							}
+							else if(rho < -1.0 * l1_pen) {
+								new_weight := (rho + l1_pen) / denom;
+							};
+						};
+
+						delta := new_weight - weights[j];
+						if(delta <> 0.0) {
+							each(i : rows) {
+								preds[i] += centered[i,j] * delta;
+							};
+							weights[j] := new_weight;
+						};
+
+						abs_delta := Float->Abs(delta);
+						if(abs_delta > max_delta) {
+							max_delta := abs_delta;
+						};
+					};
+
+					if(max_delta < @tolerance) {
+						converged := true;
+					};
+				};
+			};
+
+			@coefficients := weights;
+			@intercept := mean_y;
+			each(j : cols) {
+				@intercept -= weights[j] * mean_x[j];
+			};
+			@is_fitted := true;
+
+			# goodness-of-fit metrics over the training data
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - mean_y;
+				ss_tot += diff * diff;
+			};
+
+			@mse := ss_res / n;
+			@rmse := @mse->Sqrt();
+
+			if(ss_tot > 0.0) {
+				@r_squared := 1.0 - (ss_res / ss_tot);
+			}
+			else {
+				@r_squared := 0.0;
+			};
+
+			return true;
+		}
+
+		method : PredictRow(X : Float[,], row : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			sum := @intercept;
+			each(j : cols) {
+				sum += @coefficients[j] * X[row,j];
+			};
+
+			return sum;
+		}
+
+		#~
+		Predicts target values for new input data.
+		@param X feature matrix
+		@return prediction matrix, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+
+			result := Float->New[rows, 1];
+			each(i : rows) {
+				result[i, 0] := PredictRow(X, i);
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted feature coefficients (the intercept is separate).
+		@return coefficient array, or Nil if not fitted
+		~#
+		method : public : GetCoefficients() ~ Float[] {
+			return @coefficients;
+		}
+
+		#~
+		Gets the fitted intercept term.
+		@return intercept
+		~#
+		method : public : GetIntercept() ~ Float {
+			return @intercept;
+		}
+
+		#~
+		Gets the R-squared over the training data.
+		@return R-squared value
+		~#
+		method : public : GetRSquared() ~ Float {
+			return @r_squared;
+		}
+
+		#~
+		Gets the mean squared error over the training data.
+		@return MSE
+		~#
+		method : public : GetMSE() ~ Float {
+			return @mse;
+		}
+
+		#~
+		Gets the root mean squared error over the training data.
+		@return RMSE
+		~#
+		method : public : GetRMSE() ~ Float {
+			return @rmse;
+		}
+
+		#~
+		Scores the model on the given data (R-squared of predictions).
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			if(<>@is_fitted | X = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@alpha);
+			serializer->Write(@l1_ratio);
+			serializer->Write(@iterations);
+			serializer->Write(@tolerance);
+
+			count := @coefficients->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@coefficients[i]);
+			};
+
+			serializer->Write(@intercept);
+			serializer->Write(@r_squared);
+			serializer->Write(@mse);
+			serializer->Write(@rmse);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ ElasticNet {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			alpha := deserializer->ReadFloat();
+			l1_ratio := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+			tolerance := deserializer->ReadFloat();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			coefficients := Float->New[count];
+			each(i : count) {
+				coefficients[i] := deserializer->ReadFloat();
+			};
+
+			intercept := deserializer->ReadFloat();
+			r_squared := deserializer->ReadFloat();
+			mse := deserializer->ReadFloat();
+			rmse := deserializer->ReadFloat();
+
+			return ElasticNet->New(alpha, l1_ratio, iterations, tolerance, coefficients, intercept, r_squared, mse, rmse);
+		}
+	}
+
+	#~
+	Lasso (L1-regularized) linear regression: an ElasticNet with l1_ratio
+	fixed at 1.0. The L1 penalty drives uninformative feature coefficients
+	exactly to zero, performing feature selection. Store/Load round-trip via
+	the ElasticNet format (Load returns an ElasticNet).
+
+```
+model := LassoRegression->New(0.1);
+model->Fit(X, y);  # sparse coefficients
+```
+	~#
+	class LassoRegression from ElasticNet {
+		#~
+		Constructor with default optimization settings.
+		@param alpha L1 regularization strength (>= 0.0)
+		~#
+		New(alpha : Float) {
+			Parent(alpha, 1.0);
+		}
+
+		#~
+		Constructor with explicit optimization settings.
+		@param alpha L1 regularization strength (>= 0.0)
+		@param iterations maximum coordinate-descent sweeps
+		@param tolerance stop when no coefficient moves more than this in a sweep
+		~#
+		New(alpha : Float, iterations : Int, tolerance : Float) {
+			Parent(alpha, 1.0, iterations, tolerance);
+		}
+	}
+
+	#~
+	Logistic regression using gradient descent with sigmoid activation.
+	Binary classification only.
+
+```
+X := [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+y := [[0.0], [0.0], [0.0], [1.0]];
+model := LogisticRegression->New(0.1, 1000);
+model->Fit(X, y);
+labels := model->PredictClass([[1.0, 1.0]]);
+labels[0]->PrintLine();
+```
+	~#
+	class LogisticRegression {
+		@weights : Float[];
+		@bias : Float;
+		@learning_rate : Float;
+		@iterations : Int;
+		@l2 : Float;
+		@loss : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param learning_rate step size for gradient descent
+		@param iterations number of training iterations
+
+```
+model := LogisticRegression->New(0.01, 500);
+```
+		~#
+		New(learning_rate : Float, iterations : Int) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@l2 := 0.0;
+			@is_fitted := false;
+		}
+
+		#~
+		Constructor with L2 (ridge) regularization.
+		@param learning_rate step size for gradient descent
+		@param iterations number of training iterations
+		@param l2 L2 regularization strength (0.0 disables it)
+		~#
+		New(learning_rate : Float, iterations : Int, l2 : Float) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@l2 := l2;
+			@is_fitted := false;
+		}
+
+		New : private (learning_rate : Float, iterations : Int, l2 : Float, weights : Float[], bias : Float, loss : Float) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@l2 := l2;
+			@weights := weights;
+			@bias := bias;
+			@loss := loss;
+			@is_fitted := true;
+		}
+
+		#~
+		Numerically stable logistic sigmoid. Branching on the sign of x avoids
+		Float->Exp overflow for large-magnitude inputs.
+		@param x input value
+		@return sigmoid(x) in (0.0, 1.0)
+		~#
+		function : LogSigmoid(x : Float) ~ Float {
+			if(x >= 0.0) {
+				return 1.0 / (1.0 + Float->Exp(x * -1.0));
+			};
+			ex := Float->Exp(x);
+			return ex / (1.0 + ex);
+		}
+
+		#~
+		Fits the model to training data using gradient descent.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target array (0.0 or 1.0 values, rows=samples, cols=1)
+		@return true if fitting succeeded
+
+```
+X := [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
+y := [[0.0], [0.0], [1.0]];
+model := LogisticRegression->New(0.1, 200);
+model->Fit(X, y);
+```
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			if(rows <> y_dims[0]) {
+				return false;
+			};
+
+			# initialize weights and bias to zero
+			@weights := Float->New[cols];
+			@bias := 0.0;
+
+			# batch gradient descent with optional L2 (ridge) penalty
+			each(iter : @iterations) {
+				predictions := Float->New[rows];
+				each(i : rows) {
+					z := @bias;
+					each(j : cols) {
+						z += X[i,j] * @weights[j];
+					};
+					predictions[i] := LogSigmoid(z);
+				};
+
+				# weight gradients (L2 penalty applies to weights, not bias)
+				each(j : cols) {
+					gradient := 0.0;
+					each(i : rows) {
+						error := predictions[i] - y[i,0];
+						gradient += error * X[i,j];
+					};
+					gradient := gradient / rows->As(Float);
+					gradient += @l2 * @weights[j];
+					@weights[j] -= @learning_rate * gradient;
+				};
+
+				# bias gradient (mean error)
+				bias_grad := 0.0;
+				each(i : rows) {
+					bias_grad += predictions[i] - y[i,0];
+				};
+				bias_grad := bias_grad / rows->As(Float);
+				@bias -= @learning_rate * bias_grad;
+			};
+
+			@loss := ComputeLoss(X, y);
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Predicts probabilities for input data.
+		@param X feature matrix
+		@return probability array (values between 0 and 1)
+
+```
+probs := model->Predict([[2.0, 3.0]]);
+"Probability: {$probs[0]}"->PrintLine();
+```
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows];
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += X[i,j] * @weights[j];
+				};
+				result[i] := LogSigmoid(z);
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts class labels for input data (threshold 0.5).
+		@param X feature matrix
+		@return boolean class predictions
+
+```
+labels := model->PredictClass([[5.0, 6.0], [1.0, 0.5]]);
+each(label in labels) {
+  label->PrintLine();
+};
+```
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			probs := Predict(X);
+			if(probs = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[probs->Size()];
+			each(i : probs) {
+				result[i] := probs[i] >= 0.5;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the learned weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the learned bias / intercept term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Gets the final binary cross-entropy loss recorded at the end of training.
+		Note: batch gradient descent assumes roughly comparable feature scales --
+		apply FeatureScaler (e.g. StandardScaler) to inputs for reliable convergence.
+		@return training loss
+		~#
+		method : public : GetLoss() ~ Float {
+			return @loss;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		# Binary cross-entropy loss with probability clipping to avoid log(0).
+		method : ComputeLoss(X : Float[,], y : Float[,]) ~ Float {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			eps := 0.0000001;
+			total := 0.0;
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += X[i,j] * @weights[j];
+				};
+				p := LogSigmoid(z);
+				if(p < eps) {
+					p := eps;
+				};
+				if(p > 1.0 - eps) {
+					p := 1.0 - eps;
+				};
+				yi := y[i,0];
+				total += yi * p->Log() + (1.0 - yi) * (1.0 - p)->Log();
+			};
+
+			return -1.0 * total / rows->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model (weights, bias, hyperparameters and final loss)
+		to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+			serializer->Write(@l2);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+			serializer->Write(@loss);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ LogisticRegression {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+			l2 := deserializer->ReadFloat();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+			loss := deserializer->ReadFloat();
+
+			return LogisticRegression->New(learning_rate, iterations, l2, weights, bias, loss);
+		}
+	}
+
+	#~
+	Classic Rosenblatt perceptron: a mistake-driven linear binary classifier.
+	Deterministic (samples are visited in order each epoch) and guaranteed to
+	converge on linearly separable data; training stops early after an epoch
+	with no mistakes.
+
+```
+X := [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+y := [[0.0], [1.0], [1.0], [1.0]];   # OR
+model := Perceptron->New(0.1, 100);
+model->Fit(X, y);
+labels := model->PredictClass(X);
+```
+	~#
+	class Perceptron {
+		@learning_rate : Float;
+		@iterations : Int;
+		@weights : Float[];
+		@bias : Float;
+		@epochs_run : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param learning_rate update step size
+		@param iterations maximum training epochs
+		~#
+		New(learning_rate : Float, iterations : Int) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@is_fitted := false;
+		}
+
+		New : private (learning_rate : Float, iterations : Int, weights : Float[], bias : Float, epochs_run : Int) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@weights := weights;
+			@bias := bias;
+			@epochs_run := epochs_run;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the perceptron with the classic mistake-driven update rule.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (0.0 or 1.0 values, rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			@weights := Float->New[cols];
+			@bias := 0.0;
+			@epochs_run := 0;
+
+			converged := false;
+			each(epoch : @iterations) {
+				if(<>converged) {
+					@epochs_run += 1;
+					mistakes := 0;
+
+					each(i : rows) {
+						z := @bias;
+						each(j : cols) {
+							z += @weights[j] * X[i,j];
+						};
+
+						predicted := 0.0;
+						if(z >= 0.0) {
+							predicted := 1.0;
+						};
+
+						error := y[i,0] - predicted;
+						if(error <> 0.0) {
+							mistakes += 1;
+							update := @learning_rate * error;
+							each(j : cols) {
+								@weights[j] += update * X[i,j];
+							};
+							@bias += update;
+						};
+					};
+
+					if(mistakes = 0) {
+						converged := true;
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes raw decision values (w*x + b) for input data.
+		@param X feature matrix
+		@return decision value array, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows];
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += @weights[j] * X[i,j];
+				};
+				result[i] := z;
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts class labels (decision value >= 0).
+		@param X feature matrix
+		@return boolean class predictions, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the learned weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the learned bias term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Gets the number of training epochs actually run (early-stops after an
+		epoch with no mistakes).
+		@return epochs run
+		~#
+		method : public : GetEpochsRun() ~ Int {
+			return @epochs_run;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+			serializer->Write(@epochs_run);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ Perceptron {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+			epochs_run := deserializer->ReadInt();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+
+			return Perceptron->New(learning_rate, iterations, weights, bias, epochs_run);
+		}
+	}
+
+	#~
+	Linear support vector machine trained by deterministic full-batch
+	subgradient descent on the L2-regularized hinge loss:
+	lambda/2*||w||^2 + (1/n)*sum(max(0, 1 - y*(w*x + b))), with labels mapped
+	internally from {0,1} to {-1,+1}. The bias is not regularized.
+
+```
+model := SVM->New(0.01, 0.1, 500);
+model->Fit(X, y);
+labels := model->PredictClass(X);
+```
+	~#
+	class SVM {
+		@lambda : Float;
+		@learning_rate : Float;
+		@iterations : Int;
+		@weights : Float[];
+		@bias : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param lambda L2 regularization strength (> 0.0)
+		@param learning_rate subgradient step size
+		@param iterations training epochs
+		~#
+		New(lambda : Float, learning_rate : Float, iterations : Int) {
+			@lambda := lambda;
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@is_fitted := false;
+		}
+
+		New : private (lambda : Float, learning_rate : Float, iterations : Int, weights : Float[], bias : Float) {
+			@lambda := lambda;
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@weights := weights;
+			@bias := bias;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the SVM by full-batch subgradient descent on the hinge loss.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (0.0 or 1.0 values, rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# map {0,1} labels to {-1,+1}
+			signs := Float->New[rows];
+			each(i : rows) {
+				if(y[i,0] >= 0.5) {
+					signs[i] := 1.0;
+				}
+				else {
+					signs[i] := -1.0;
+				};
+			};
+
+			@weights := Float->New[cols];
+			@bias := 0.0;
+
+			grad_w := Float->New[cols];
+			each(epoch : @iterations) {
+				# subgradient of the average hinge loss over margin violators
+				each(j : cols) {
+					grad_w[j] := @lambda * @weights[j];
+				};
+				grad_b := 0.0;
+
+				each(i : rows) {
+					z := @bias;
+					each(j : cols) {
+						z += @weights[j] * X[i,j];
+					};
+
+					margin := signs[i] * z;
+					if(margin < 1.0) {
+						scale := signs[i] / n;
+						each(j : cols) {
+							grad_w[j] -= scale * X[i,j];
+						};
+						grad_b -= scale;
+					};
+				};
+
+				each(j : cols) {
+					@weights[j] -= @learning_rate * grad_w[j];
+				};
+				@bias -= @learning_rate * grad_b;
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes raw decision values (w*x + b) for input data. The sign gives
+		the class; the magnitude reflects distance from the separating plane.
+		@param X feature matrix
+		@return decision value array, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows];
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += @weights[j] * X[i,j];
+				};
+				result[i] := z;
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts class labels (decision value >= 0).
+		@param X feature matrix
+		@return boolean class predictions, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the learned weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the learned bias term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@lambda);
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ SVM {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			lambda := deserializer->ReadFloat();
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+
+			return SVM->New(lambda, learning_rate, iterations, weights, bias);
+		}
+	}
+}

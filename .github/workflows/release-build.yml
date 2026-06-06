@@ -797,7 +797,13 @@ jobs:
             ../../../compiler/lib_src/rss.obs \
             ../../../compiler/lib_src/misc.obs \
             ../../../compiler/lib_src/diags.obs \
-            ../../../compiler/lib_src/ml.obs \
+            ../../../compiler/lib_src/ml_core.obs \
+            ../../../compiler/lib_src/ml_linear.obs \
+            ../../../compiler/lib_src/ml_tree.obs \
+            ../../../compiler/lib_src/ml_bayes.obs \
+            ../../../compiler/lib_src/ml_neighbors.obs \
+            ../../../compiler/lib_src/ml_cluster.obs \
+            ../../../compiler/lib_src/ml_data.obs \
             ../../../compiler/lib_src/ai_search.obs \
             ../../../compiler/lib_src/ai_game.obs \
             ../../../compiler/lib_src/ai_optimize.obs \

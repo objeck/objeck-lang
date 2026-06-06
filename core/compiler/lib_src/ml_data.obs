@@ -1,0 +1,801 @@
+#~~
+# Objeck machine learning library: data preparation, metrics and decomposition
+# Copyright (c) 2024-2026 Randy Hollines
+#
+# Credits:
+# Eigen matrix library - https://eigen.tuxfamily.org
+~~#
+
+use Collection;
+use Data.CSV;
+
+#~
+Data preparation and evaluation: FeatureScaler, Metrics, CrossValidation and PCA decomposition. Compile with -lib ml.
+~#
+bundle System.ML {
+	#~
+	Principal component analysis via power iteration with deflation on the
+	sample covariance matrix. Deterministic (fixed initialization vector).
+	Components are unit-length rows of a k x d matrix; sign is arbitrary.
+
+```
+pca := PCA->New(1);
+pca->Fit(X);
+reduced := pca->Transform(X);          # n x 1
+ratios := pca->GetExplainedVarianceRatio();
+```
+	~#
+	class PCA {
+		@num_components : Int;
+		@mean : Float[];
+		@components : Float[,];
+		@eigenvalues : Float[];
+		@total_variance : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param num_components number of principal components to keep
+		~#
+		New(num_components : Int) {
+			@num_components := num_components;
+			@is_fitted := false;
+		}
+
+		New : private (num_components : Int, mean : Float[], components : Float[,], eigenvalues : Float[], total_variance : Float) {
+			@num_components := num_components;
+			@mean := mean;
+			@components := components;
+			@eigenvalues := eigenvalues;
+			@total_variance := total_variance;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the decomposition: centers the data, builds the sample covariance
+		matrix and extracts the top components by power iteration + deflation.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows < 2 | cols = 0 | @num_components < 1 | @num_components > cols) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# center the data
+			@mean := Float->New[cols];
+			each(j : cols) {
+				sum := 0.0;
+				each(i : rows) {
+					sum += X[i,j];
+				};
+				@mean[j] := sum / n;
+			};
+
+			centered := Float->New[rows, cols];
+			each(i : rows) {
+				each(j : cols) {
+					centered[i,j] := X[i,j] - @mean[j];
+				};
+			};
+
+			# sample covariance: C = X'X / (n - 1)
+			cov := Float->New[cols, cols];
+			each(a : cols) {
+				each(b : cols) {
+					sum := 0.0;
+					each(i : rows) {
+						sum += centered[i,a] * centered[i,b];
+					};
+					cov[a,b] := sum / (n - 1.0);
+				};
+			};
+
+			@total_variance := 0.0;
+			each(j : cols) {
+				@total_variance += cov[j,j];
+			};
+
+			# power iteration with deflation for the top components
+			@components := Float->New[@num_components, cols];
+			@eigenvalues := Float->New[@num_components];
+
+			each(c : @num_components) {
+				# deterministic non-degenerate initialization
+				v := Float->New[cols];
+				each(j : cols) {
+					v[j] := 1.0 / (j + 1)->As(Float);
+				};
+				Normalize(v);
+
+				each(iter : 1000) {
+					next := Float->New[cols];
+					each(a : cols) {
+						sum := 0.0;
+						each(b : cols) {
+							sum += cov[a,b] * v[b];
+						};
+						next[a] := sum;
+					};
+
+					# re-orthogonalize against the components already found so
+					# residual deflation error cannot accumulate across
+					# components (keeps the basis orthonormal to machine
+					# precision, which full-rank reconstruction relies on)
+					for(p := 0; p < c; p += 1;) {
+						proj := 0.0;
+						each(j : cols) {
+							proj += next[j] * @components[p,j];
+						};
+						each(j : cols) {
+							next[j] -= proj * @components[p,j];
+						};
+					};
+
+					norm := Normalize(next);
+					if(norm = 0.0) {
+						# no remaining variance in this direction
+						each(j : cols) {
+							next[j] := v[j];
+						};
+					};
+
+					# converged when the direction stops moving (sign-agnostic)
+					dot := 0.0;
+					each(j : cols) {
+						dot += next[j] * v[j];
+					};
+					v := next;
+					if(Float->Abs(dot) > 0.999999999999) {
+						break;
+					};
+				};
+
+				# Rayleigh quotient gives the eigenvalue for the unit vector
+				lambda := 0.0;
+				each(a : cols) {
+					row_sum := 0.0;
+					each(b : cols) {
+						row_sum += cov[a,b] * v[b];
+					};
+					lambda += v[a] * row_sum;
+				};
+
+				@eigenvalues[c] := lambda;
+				each(j : cols) {
+					@components[c,j] := v[j];
+				};
+
+				# deflate: C -= lambda * v v'
+				each(a : cols) {
+					each(b : cols) {
+						cov[a,b] -= lambda * v[a] * v[b];
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		method : Normalize(v : Float[]) ~ Float {
+			norm := 0.0;
+			each(j : v) {
+				norm += v[j] * v[j];
+			};
+			norm := norm->Sqrt();
+
+			if(norm > 0.0) {
+				each(j : v) {
+					v[j] := v[j] / norm;
+				};
+			};
+
+			return norm;
+		}
+
+		#~
+		Projects data onto the fitted components.
+		@param X data matrix (rows=samples, cols=features)
+		@return projected matrix (rows x num_components), or Nil if not fitted
+		~#
+		method : public : Transform(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows, @num_components];
+			each(i : rows) {
+				each(c : @num_components) {
+					sum := 0.0;
+					each(j : cols) {
+						sum += (X[i,j] - @mean[j]) * @components[c,j];
+					};
+					result[i,c] := sum;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Maps projected data back into the original feature space.
+		@param Z projected matrix (rows x num_components)
+		@return reconstruction (rows x features), or Nil if not fitted
+		~#
+		method : public : InverseTransform(Z : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | Z = Nil) {
+				return Nil;
+			};
+
+			z_dims := Z->Size();
+			rows := z_dims[0];
+			comp_dims := @components->Size();
+			cols := comp_dims[1];
+
+			result := Float->New[rows, cols];
+			each(i : rows) {
+				each(j : cols) {
+					sum := @mean[j];
+					each(c : @num_components) {
+						sum += Z[i,c] * @components[c,j];
+					};
+					result[i,j] := sum;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted components (num_components x features; unit rows).
+		@return component matrix, or Nil if not fitted
+		~#
+		method : public : GetComponents() ~ Float[,] {
+			return @components;
+		}
+
+		#~
+		Gets the variance explained by each component (eigenvalues).
+		@return explained variance array, or Nil if not fitted
+		~#
+		method : public : GetExplainedVariance() ~ Float[] {
+			return @eigenvalues;
+		}
+
+		#~
+		Gets the fraction of total variance explained by each component.
+		@return ratio array, or Nil if not fitted
+		~#
+		method : public : GetExplainedVarianceRatio() ~ Float[] {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+
+			ratios := Float->New[@num_components];
+			if(@total_variance > 0.0) {
+				each(c : @num_components) {
+					ratios[c] := @eigenvalues[c] / @total_variance;
+				};
+			};
+
+			return ratios;
+		}
+
+		#~
+		Gets the per-feature means used for centering.
+		@return mean array, or Nil if not fitted
+		~#
+		method : public : GetMean() ~ Float[] {
+			return @mean;
+		}
+
+		#~
+		Whether the decomposition has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted decomposition to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_components);
+
+			cols := @mean->Size();
+			serializer->Write(cols);
+			each(j : cols) {
+				serializer->Write(@mean[j]);
+			};
+
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@components[c,j]);
+				};
+			};
+
+			each(c : @num_components) {
+				serializer->Write(@eigenvalues[c]);
+			};
+
+			serializer->Write(@total_variance);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted decomposition from a file.
+		@param filename file to load from
+		@return fitted decomposition, or Nil on failure
+		~#
+		function : Load(filename : String) ~ PCA {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_components := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_components < 1 | cols < 1) {
+				return Nil;
+			};
+
+			mean := Float->New[cols];
+			each(j : cols) {
+				mean[j] := deserializer->ReadFloat();
+			};
+
+			components := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					components[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			eigenvalues := Float->New[num_components];
+			each(c : num_components) {
+				eigenvalues[c] := deserializer->ReadFloat();
+			};
+
+			total_variance := deserializer->ReadFloat();
+
+			return PCA->New(num_components, mean, components, eigenvalues, total_variance);
+		}
+	}
+
+	#~
+	Feature scaling and normalization utilities
+	~#
+	class FeatureScaler {
+		#~
+		Standardizes features by removing mean and scaling to unit variance (Z-score normalization)
+		@param data input matrix
+		@return standardized matrix with mean=0 and std=1
+		~#
+		function : native : StandardScaler(data : Float[,]) ~ Float[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Float->New[rows, cols];
+
+			# Standardize each column
+			each(col : cols) {
+				# Calculate mean
+				sum := 0.0;
+				each(row : rows) {
+					sum += data[row, col];
+				};
+				mean := sum / rows->As(Float);
+
+				# Calculate standard deviation
+				sum_sq := 0.0;
+				each(row : rows) {
+					diff := data[row, col] - mean;
+					sum_sq += diff * diff;
+				};
+				std := Float->Sqrt(sum_sq / rows->As(Float));
+
+				# Standardize
+				each(row : rows) {
+					if(std > 0.0) {
+						result[row, col] := (data[row, col] - mean) / std;
+					}
+					else {
+						result[row, col] := 0.0;
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Scales features to a [0, 1] range (Min-Max normalization)
+		@param data input matrix
+		@return scaled matrix with values in [0, 1]
+		~#
+		function : native : MinMaxScaler(data : Float[,]) ~ Float[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Float->New[rows, cols];
+
+			# Scale each column
+			each(col : cols) {
+				# Find min and max
+				min_val := data[0, col];
+				max_val := data[0, col];
+
+				each(row : rows) {
+					if(data[row, col] < min_val) {
+						min_val := data[row, col];
+					};
+					if(data[row, col] > max_val) {
+						max_val := data[row, col];
+					};
+				};
+
+				# Scale to [0, 1]
+				range := max_val - min_val;
+				each(row : rows) {
+					if(range > 0.0) {
+						result[row, col] := (data[row, col] - min_val) / range;
+					}
+					else {
+						result[row, col] := 0.0;
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Normalizes each row to unit norm (L2 normalization)
+		@param data input matrix
+		@return normalized matrix where each row has L2 norm = 1
+		~#
+		function : native : Normalize(data : Float[,]) ~ Float[,] {
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Float->New[rows, cols];
+
+			# Normalize each row
+			each(row : rows) {
+				# Calculate L2 norm
+				sum_sq := 0.0;
+				each(col : cols) {
+					sum_sq += data[row, col] * data[row, col];
+				};
+				norm := Float->Sqrt(sum_sq);
+
+				# Normalize
+				each(col : cols) {
+					if(norm > 0.0) {
+						result[row, col] := data[row, col] / norm;
+					}
+					else {
+						result[row, col] := 0.0;
+					};
+				};
+			};
+
+			return result;
+		}
+	}
+
+	#~
+	Model evaluation metrics for classification tasks
+	~#
+	class Metrics {
+		#~
+		Calculates accuracy: (TP + TN) / Total
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return accuracy score between 0.0 and 1.0
+		~#
+		function : native : Accuracy(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : predictions) {
+				if(predictions[i] = actuals[i]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / predictions->Size()->As(Float);
+		}
+
+		#~
+		Calculates precision: TP / (TP + FP)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return precision score between 0.0 and 1.0
+		~#
+		function : native : Precision(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			tp := 0; # True Positives
+			fp := 0; # False Positives
+
+			each(i : predictions) {
+				if(predictions[i] & actuals[i]) {
+					tp += 1;
+				}
+				else if(predictions[i] & <>actuals[i]) {
+					fp += 1;
+				};
+			};
+
+			if(tp + fp = 0) {
+				return 0.0;
+			};
+
+			return tp->As(Float) / (tp + fp)->As(Float);
+		}
+
+		#~
+		Calculates recall (sensitivity): TP / (TP + FN)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return recall score between 0.0 and 1.0
+		~#
+		function : native : Recall(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			tp := 0; # True Positives
+			fn := 0; # False Negatives
+
+			each(i : predictions) {
+				if(predictions[i] & actuals[i]) {
+					tp += 1;
+				}
+				else if(<>predictions[i] & actuals[i]) {
+					fn += 1;
+				};
+			};
+
+			if(tp + fn = 0) {
+				return 0.0;
+			};
+
+			return tp->As(Float) / (tp + fn)->As(Float);
+		}
+
+		#~
+		Calculates F1 score: 2 * (Precision * Recall) / (Precision + Recall)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return F1 score between 0.0 and 1.0
+		~#
+		function : native : F1Score(predictions : Bool[], actuals : Bool[]) ~ Float {
+			precision := Precision(predictions, actuals);
+			recall := Recall(predictions, actuals);
+
+			if(precision + recall = 0.0) {
+				return 0.0;
+			};
+
+			return 2.0 * (precision * recall) / (precision + recall);
+		}
+
+		#~
+		Creates a confusion matrix
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return 2x2 confusion matrix [[TN, FP], [FN, TP]]
+		~#
+		function : native : ConfusionMatrix(predictions : Bool[], actuals : Bool[]) ~ Int[,] {
+			matrix := Int->New[2, 2];
+
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return matrix;
+			};
+
+			each(i : predictions) {
+				# TN (0,0), FP (0,1), FN (1,0), TP (1,1)
+				pred_idx := predictions[i] ? 1 : 0;
+				actual_idx := actuals[i] ? 1 : 0;
+				matrix[actual_idx, pred_idx] += 1;
+			};
+
+			return matrix;
+		}
+
+		#~
+		Calculates Matthews Correlation Coefficient (MCC)
+		@param predictions predicted boolean values
+		@param actuals actual boolean values
+		@return MCC score between -1.0 and 1.0
+		~#
+		function : native : MCC(predictions : Bool[], actuals : Bool[]) ~ Float {
+			if(predictions->Size() <> actuals->Size() | predictions->Size() = 0) {
+				return 0.0;
+			};
+
+			tp := 0; tn := 0; fp := 0; fn := 0;
+
+			each(i : predictions) {
+				if(predictions[i] & actuals[i]) {
+					tp += 1;
+				}
+				else if(<>predictions[i] & <>actuals[i]) {
+					tn += 1;
+				}
+				else if(predictions[i] & <>actuals[i]) {
+					fp += 1;
+				}
+				else {
+					fn += 1;
+				};
+			};
+
+			numerator := (tp * tn - fp * fn)->As(Float);
+			denominator := Float->Sqrt((tp + fp)->As(Float) * (tp + fn)->As(Float) *
+			                           (tn + fp)->As(Float) * (tn + fn)->As(Float));
+
+			if(denominator = 0.0) {
+				return 0.0;
+			};
+
+			return numerator / denominator;
+		}
+
+		#~
+		Prints a formatted confusion matrix
+		@param matrix 2x2 confusion matrix
+		~#
+		function : native : PrintConfusionMatrix(matrix : Int[,]) ~ Nil {
+			tn := matrix[0,0];
+			fp := matrix[0,1];
+			fn := matrix[1,0];
+			tp := matrix[1,1];
+
+			"Confusion Matrix:"->PrintLine();
+			"                Predicted"->PrintLine();
+			"              Negative  Positive"->PrintLine();
+			"Actual Neg  |   {$tn}   |   {$fp}   |"->PrintLine();
+			"Actual Pos  |   {$fn}   |   {$tp}   |"->PrintLine();
+		}
+	}
+
+	#~
+	Cross-validation utilities for model evaluation
+	~#
+	class CrossValidation {
+		#~
+		Splits data into K folds for cross-validation
+		@param data input matrix
+		@param k number of folds
+		@return array of K fold indices
+		~#
+		function : native : KFold(data : Float[,], k : Int) ~ Vector[]<IntRef> {
+			dims := data->Size();
+			rows := dims[0];
+
+			if(k <= 0 | k > rows) {
+				return Nil;
+			};
+
+			fold_size := rows / k;
+			indices := Int->New[rows];
+			each(i : rows) {
+				indices[i] := i;
+			};
+
+			# Shuffle indices
+			each(i : rows) {
+				j := (rows - 1)->Random();
+				temp := indices[i];
+				indices[i] := indices[j];
+				indices[j] := temp;
+			};
+
+			# Create folds
+			folds := Vector->New[k]<IntRef>;
+			each(fold : k) {
+				fold_indices := Vector->New()<IntRef>;
+				start := fold * fold_size;
+				ending := fold = k - 1 ? rows : (fold + 1) * fold_size;
+
+				for(i := start; i < ending; i += 1;) {
+					fold_indices->AddBack(indices[i]);
+				};
+
+				folds[fold] := fold_indices;
+			};
+
+			return folds;
+		}
+
+		#~
+		Splits data into training and test sets
+		@param data input matrix
+		@param test_ratio percentage of data for testing (0.0 to 1.0)
+		@return array with [training_data, test_data]
+		~#
+		function : native : TrainTestSplit(data : Float[,], test_ratio : Float) ~ FloatMatrixRef[] {
+			if(test_ratio <= 0.0 | test_ratio >= 1.0) {
+				return Nil;
+			};
+
+			dims := data->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			test_size := (rows->As(Float) * test_ratio)->As(Int);
+			train_size := rows - test_size;
+
+			# Shuffle indices
+			indices := Int->New[rows];
+			each(i : rows) {
+				indices[i] := i;
+			};
+
+			each(i : rows) {
+				j := (rows - 1)->Random();
+				temp := indices[i];
+				indices[i] := indices[j];
+				indices[j] := temp;
+			};
+
+			# Split data
+			train_data := Float->New[train_size, cols];
+			test_data := Float->New[test_size, cols];
+
+			each(i : train_size) {
+				idx := indices[i];
+				each(j : cols) {
+					train_data[i, j] := data[idx, j];
+				};
+			};
+
+			for(i := train_size; i < rows; i += 1;) {
+				idx := indices[i];
+				each(j : cols) {
+					test_data[i - train_size, j] := data[idx, j];
+				};
+			};
+
+			result := FloatMatrixRef->New[2];
+			result[0] := FloatMatrixRef->New(train_data);
+			result[1] := FloatMatrixRef->New(test_data);
+
+			return result;
+		}
+	}
+}
