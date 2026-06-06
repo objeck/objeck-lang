@@ -1,0 +1,499 @@
+#~
+Classic AI: graph search
+Copyright (c) 2026 Randy Hollines
+~#
+
+use Collection;
+
+#~
+Classic AI algorithms: graph search, adversarial game search, optimization
+and tabular reinforcement learning (-lib ai)
+~#
+bundle System.AI {
+	#~
+	Seedable PRNG shared by the System.AI bundle (MINSTD, matching
+	System.ML.Random) so stochastic algorithms are reproducible.
+	~#
+	class : private : AiRandom {
+		@state : Int;
+
+		New(seed : Int) {
+			@state := seed % 2147483647;
+			if(@state <= 0) {
+				@state += 2147483646;
+			};
+		}
+
+		method : public : NextInt() ~ Int {
+			@state := @state * 48271 % 2147483647;
+			return @state;
+		}
+
+		method : public : NextInt(bound : Int) ~ Int {
+			return NextInt() % bound;
+		}
+
+		method : public : NextReal() ~ Float {
+			return NextInt()->As(Float) / 2147483647.0;
+		}
+	}
+
+	#~
+	Weighted directed graph over integer node ids 0..n-1, stored as compact
+	per-node adjacency lists that grow automatically. For an undirected edge
+	add both directions.
+
+```
+graph := Graph->New(4);
+graph->AddEdge(0, 1, 2.5);
+graph->AddEdge(1, 3, 1.0);
+result := Dijkstra->FindPath(graph, 0, 3);
+```
+	~#
+	class Graph {
+		@num_nodes : Int;
+		@head : Int[];
+		@edge_to : Int[];
+		@edge_weight : Float[];
+		@edge_next : Int[];
+		@edge_count : Int;
+
+		#~
+		Constructor
+		@param num_nodes number of nodes (ids 0..num_nodes-1)
+		~#
+		New(num_nodes : Int) {
+			@num_nodes := num_nodes;
+			@head := Int->New[num_nodes];
+			each(i : num_nodes) {
+				@head[i] := -1;
+			};
+
+			capacity := 16;
+			@edge_to := Int->New[capacity];
+			@edge_weight := Float->New[capacity];
+			@edge_next := Int->New[capacity];
+			@edge_count := 0;
+		}
+
+		#~
+		Adds a directed weighted edge.
+		@param src source node id
+		@param to destination node id
+		@param weight edge weight (>= 0 for the shortest-path searches)
+		@return true if the edge was added, false on an invalid node id
+		~#
+		method : public : AddEdge(src : Int, to : Int, weight : Float) ~ Bool {
+			if(src < 0 | src >= @num_nodes | to < 0 | to >= @num_nodes) {
+				return false;
+			};
+
+			capacity := @edge_to->Size();
+			if(@edge_count = capacity) {
+				new_capacity := capacity * 2;
+				grown_to := Int->New[new_capacity];
+				grown_weight := Float->New[new_capacity];
+				grown_next := Int->New[new_capacity];
+				each(i : capacity) {
+					grown_to[i] := @edge_to[i];
+					grown_weight[i] := @edge_weight[i];
+					grown_next[i] := @edge_next[i];
+				};
+				@edge_to := grown_to;
+				@edge_weight := grown_weight;
+				@edge_next := grown_next;
+			};
+
+			@edge_to[@edge_count] := to;
+			@edge_weight[@edge_count] := weight;
+			@edge_next[@edge_count] := @head[src];
+			@head[src] := @edge_count;
+			@edge_count += 1;
+
+			return true;
+		}
+
+		#~
+		Gets the number of nodes.
+		@return node count
+		~#
+		method : public : GetNumNodes() ~ Int {
+			return @num_nodes;
+		}
+
+		#~
+		Gets the number of edges.
+		@return edge count
+		~#
+		method : public : GetNumEdges() ~ Int {
+			return @edge_count;
+		}
+
+		# adjacency-list walk: first edge id for a node, -1 when exhausted
+		method : public : FirstEdge(node : Int) ~ Int {
+			return @head[node];
+		}
+
+		method : public : NextEdge(edge : Int) ~ Int {
+			return @edge_next[edge];
+		}
+
+		method : public : EdgeTo(edge : Int) ~ Int {
+			return @edge_to[edge];
+		}
+
+		method : public : EdgeWeight(edge : Int) ~ Float {
+			return @edge_weight[edge];
+		}
+	}
+
+	#~
+	Result of a graph search: whether the goal was reached, the node path
+	from start to goal, its cost, and how many nodes were expanded.
+	~#
+	class SearchResult {
+		@found : Bool;
+		@path : Int[];
+		@cost : Float;
+		@expanded : Int;
+
+		New(found : Bool, path : Int[], cost : Float, expanded : Int) {
+			@found := found;
+			@path := path;
+			@cost := cost;
+			@expanded := expanded;
+		}
+
+		#~
+		Whether a path to the goal was found.
+		@return true if found
+		~#
+		method : public : Found() ~ Bool {
+			return @found;
+		}
+
+		#~
+		Gets the path from start to goal inclusive (empty when not found).
+		@return node id path
+		~#
+		method : public : GetPath() ~ Int[] {
+			return @path;
+		}
+
+		#~
+		Gets the total path cost (sum of edge weights; hop count for the
+		unweighted searches; 0.0 when not found).
+		@return path cost
+		~#
+		method : public : GetCost() ~ Float {
+			return @cost;
+		}
+
+		#~
+		Gets the number of nodes expanded during the search.
+		@return expanded node count
+		~#
+		method : public : GetExpanded() ~ Int {
+			return @expanded;
+		}
+	}
+
+	#~
+	Shared plumbing for the graph searches.
+	~#
+	class : private : SearchSupport {
+		# reconstructs start..goal from the predecessor array
+		function : BuildPath(prev : Int[], start : Int, goal : Int) ~ Int[] {
+			length := 1;
+			walk := goal;
+			while(walk <> start) {
+				walk := prev[walk];
+				length += 1;
+			};
+
+			path := Int->New[length];
+			walk := goal;
+			for(i := length - 1; i >= 0; i -= 1;) {
+				path[i] := walk;
+				walk := prev[walk];
+			};
+
+			return path;
+		}
+
+		function : Invalid(graph : Graph, start : Int, goal : Int) ~ Bool {
+			n := graph->GetNumNodes();
+			return start < 0 | start >= n | goal < 0 | goal >= n;
+		}
+
+		function : NotFound() ~ SearchResult {
+			return SearchResult->New(false, Int->New[0], 0.0, 0);
+		}
+	}
+
+	#~
+	Dijkstra's single-pair shortest path over non-negative edge weights.
+
+```
+result := Dijkstra->FindPath(graph, 0, 5);
+if(result->Found()) {
+  result->GetCost()->PrintLine();
+};
+```
+	~#
+	class Dijkstra {
+		#~
+		Finds the minimum-cost path between two nodes.
+		@param graph graph to search
+		@param start start node id
+		@param goal goal node id
+		@return search result
+		~#
+		function : FindPath(graph : Graph, start : Int, goal : Int) ~ SearchResult {
+			if(SearchSupport->Invalid(graph, start, goal)) {
+				return SearchSupport->NotFound();
+			};
+
+			n := graph->GetNumNodes();
+			dist := Float->New[n];
+			prev := Int->New[n];
+			done := Bool->New[n];
+			each(i : n) {
+				dist[i] := Float->Inf();
+				prev[i] := -1;
+			};
+			dist[start] := 0.0;
+
+			expanded := 0;
+			each(round : n) {
+				# next closest unfinished node
+				node := -1;
+				best := Float->Inf();
+				each(i : n) {
+					if(<>done[i] & dist[i] < best) {
+						best := dist[i];
+						node := i;
+					};
+				};
+
+				if(node = -1) {
+					break;
+				};
+
+				done[node] := true;
+				expanded += 1;
+
+				if(node = goal) {
+					return SearchResult->New(true, SearchSupport->BuildPath(prev, start, goal), dist[goal], expanded);
+				};
+
+				edge := graph->FirstEdge(node);
+				while(edge <> -1) {
+					to := graph->EdgeTo(edge);
+					relaxed := dist[node] + graph->EdgeWeight(edge);
+					if(relaxed < dist[to]) {
+						dist[to] := relaxed;
+						prev[to] := node;
+					};
+					edge := graph->NextEdge(edge);
+				};
+			};
+
+			return SearchSupport->NotFound();
+		}
+	}
+
+	#~
+	A* single-pair shortest path: Dijkstra ordered by f = g + h using a
+	per-node heuristic array. With an admissible heuristic (never
+	overestimating the remaining cost) the result cost equals Dijkstra's
+	while typically expanding fewer nodes.
+
+```
+# heuristic[i] = straight-line estimate from node i to the goal
+result := AStar->FindPath(graph, 0, 5, heuristic);
+```
+	~#
+	class AStar {
+		#~
+		Finds the minimum-cost path between two nodes guided by a heuristic.
+		@param graph graph to search
+		@param start start node id
+		@param goal goal node id
+		@param heuristic estimated remaining cost per node id (length = node count)
+		@return search result
+		~#
+		function : FindPath(graph : Graph, start : Int, goal : Int, heuristic : Float[]) ~ SearchResult {
+			if(SearchSupport->Invalid(graph, start, goal) | heuristic = Nil | heuristic->Size() <> graph->GetNumNodes()) {
+				return SearchSupport->NotFound();
+			};
+
+			n := graph->GetNumNodes();
+			dist := Float->New[n];
+			prev := Int->New[n];
+			done := Bool->New[n];
+			each(i : n) {
+				dist[i] := Float->Inf();
+				prev[i] := -1;
+			};
+			dist[start] := 0.0;
+
+			expanded := 0;
+			each(round : n) {
+				# next unfinished node with the lowest f = g + h
+				node := -1;
+				best := Float->Inf();
+				each(i : n) {
+					if(<>done[i] & dist[i] < Float->Inf()) {
+						f := dist[i] + heuristic[i];
+						if(f < best) {
+							best := f;
+							node := i;
+						};
+					};
+				};
+
+				if(node = -1) {
+					break;
+				};
+
+				done[node] := true;
+				expanded += 1;
+
+				if(node = goal) {
+					return SearchResult->New(true, SearchSupport->BuildPath(prev, start, goal), dist[goal], expanded);
+				};
+
+				edge := graph->FirstEdge(node);
+				while(edge <> -1) {
+					to := graph->EdgeTo(edge);
+					relaxed := dist[node] + graph->EdgeWeight(edge);
+					if(relaxed < dist[to]) {
+						dist[to] := relaxed;
+						prev[to] := node;
+					};
+					edge := graph->NextEdge(edge);
+				};
+			};
+
+			return SearchSupport->NotFound();
+		}
+	}
+
+	#~
+	Breadth-first search: fewest-hops path, ignoring edge weights. The
+	result cost is the hop count.
+	~#
+	class BreadthFirst {
+		#~
+		Finds the fewest-hops path between two nodes.
+		@param graph graph to search
+		@param start start node id
+		@param goal goal node id
+		@return search result
+		~#
+		function : FindPath(graph : Graph, start : Int, goal : Int) ~ SearchResult {
+			if(SearchSupport->Invalid(graph, start, goal)) {
+				return SearchSupport->NotFound();
+			};
+
+			n := graph->GetNumNodes();
+			prev := Int->New[n];
+			seen := Bool->New[n];
+			each(i : n) {
+				prev[i] := -1;
+			};
+
+			queue := Int->New[n];
+			head := 0;
+			tail := 0;
+			queue[tail] := start;
+			tail += 1;
+			seen[start] := true;
+
+			expanded := 0;
+			while(head < tail) {
+				node := queue[head];
+				head += 1;
+				expanded += 1;
+
+				if(node = goal) {
+					path := SearchSupport->BuildPath(prev, start, goal);
+					return SearchResult->New(true, path, (path->Size() - 1)->As(Float), expanded);
+				};
+
+				edge := graph->FirstEdge(node);
+				while(edge <> -1) {
+					to := graph->EdgeTo(edge);
+					if(<>seen[to]) {
+						seen[to] := true;
+						prev[to] := node;
+						queue[tail] := to;
+						tail += 1;
+					};
+					edge := graph->NextEdge(edge);
+				};
+			};
+
+			return SearchSupport->NotFound();
+		}
+	}
+
+	#~
+	Depth-first search: finds A path (not necessarily shortest), useful for
+	reachability. The result cost is the hop count of the found path.
+	~#
+	class DepthFirst {
+		#~
+		Finds a path between two nodes by iterative depth-first search.
+		@param graph graph to search
+		@param start start node id
+		@param goal goal node id
+		@return search result
+		~#
+		function : FindPath(graph : Graph, start : Int, goal : Int) ~ SearchResult {
+			if(SearchSupport->Invalid(graph, start, goal)) {
+				return SearchSupport->NotFound();
+			};
+
+			n := graph->GetNumNodes();
+			prev := Int->New[n];
+			seen := Bool->New[n];
+			each(i : n) {
+				prev[i] := -1;
+			};
+
+			stack := Int->New[n];
+			top := 0;
+			stack[top] := start;
+			top += 1;
+			seen[start] := true;
+
+			expanded := 0;
+			while(top > 0) {
+				top -= 1;
+				node := stack[top];
+				expanded += 1;
+
+				if(node = goal) {
+					path := SearchSupport->BuildPath(prev, start, goal);
+					return SearchResult->New(true, path, (path->Size() - 1)->As(Float), expanded);
+				};
+
+				edge := graph->FirstEdge(node);
+				while(edge <> -1) {
+					to := graph->EdgeTo(edge);
+					if(<>seen[to]) {
+						seen[to] := true;
+						prev[to] := node;
+						stack[top] := to;
+						top += 1;
+					};
+					edge := graph->NextEdge(edge);
+				};
+			};
+
+			return SearchSupport->NotFound();
+		}
+	}
+}
