@@ -1,12 +1,38 @@
 #~
 # Core Records Test
 # Exercises record-generated constructors, accessors, mutators, generics, readonly syntax,
-# and class-parity inheritance.
+# class-parity inheritance, comma declarations, static-field exclusion, and
+# user-defined member precedence over generated members.
 ~#
 
 record Point {
     @x : Int;
     @y : Int;
+}
+
+record CommaPair {
+    @first, @second : Int;
+}
+
+record Counted {
+    @value : Int;
+    @total : static : Int;
+}
+
+record Validated {
+    @x : Int;
+
+    New(x : Int) {
+        @x := x + 1;
+    }
+}
+
+record Wrapped {
+    @deg : Int;
+
+    method : public : GetDeg() ~ Int {
+        return @deg + 100;
+    }
 }
 
 record : readonly : ReadonlyPoint {
@@ -60,6 +86,34 @@ class CoreRecordsTest {
         if(named->GetX() <> 1 | named->GetY() <> 2 | <>named->GetName()->Equals("origin")) {
             pass := false;
             "  FAIL: inherited record behavior"->PrintLine();
+        };
+
+        # comma-declared fields: constructor parameters follow source order
+        pair := CommaPair->New(1, 2);
+        if(pair->GetFirst() <> 1 | pair->GetSecond() <> 2) {
+            pass := false;
+            "  FAIL: comma declaration parameter order"->PrintLine();
+        };
+
+        # static fields are excluded from the generated constructor/accessors
+        counted := Counted->New(9);
+        if(counted->GetValue() <> 9) {
+            pass := false;
+            "  FAIL: static field excluded from record constructor"->PrintLine();
+        };
+
+        # a user-defined constructor with the generated signature wins
+        validated := Validated->New(1);
+        if(validated->GetX() <> 2) {
+            pass := false;
+            "  FAIL: user-defined constructor precedence"->PrintLine();
+        };
+
+        # a user-defined accessor with the generated signature wins
+        wrapped := Wrapped->New(1);
+        if(wrapped->GetDeg() <> 101) {
+            pass := false;
+            "  FAIL: user-defined getter precedence"->PrintLine();
         };
 
         if(pass) {

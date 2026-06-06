@@ -489,7 +489,7 @@ void Parser::ParseBundle(int depth)
             break;
 
           default:
-            ProcessError(L"Expected 'class', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
+            ProcessError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
             NextToken();
             break;
           }
@@ -548,7 +548,7 @@ void Parser::ParseBundle(int depth)
           break;
 
         default:
-          ProcessError(L"Expected 'class', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
+          ProcessError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
           NextToken();
           break;
         }
@@ -561,7 +561,7 @@ void Parser::ParseBundle(int depth)
     }
     // error
     else {
-      ProcessError(L"Expected 'use', 'bundle', 'class, 'interface', 'enum' or 'consts'");
+      ProcessError(L"Expected 'use', 'bundle', 'class', 'record', 'interface', 'enum' or 'consts'");
       NextToken();
     }
   }
@@ -1101,11 +1101,20 @@ void Parser::GenerateRecordMethods(Class* klass, const std::wstring& file_name, 
   std::vector<Statement*> statements = klass->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
     if(statements[i]->GetStatementType() == DECLARATION_STMT) {
+      // comma declaration lists chain names last-to-first; walk the chain and
+      // reverse the group so generated constructor parameters follow source
+      // order. Static fields are class-level state, not per-instance record
+      // components, so they get no constructor parameter or accessors.
+      std::vector<Declaration*> group;
       Declaration* declaration = static_cast<Declaration*>(statements[i]);
       while(declaration) {
-        fields.push_back(declaration);
+        SymbolEntry* entry = declaration->GetEntry();
+        if(entry && !entry->IsStatic()) {
+          group.push_back(declaration);
+        }
         declaration = declaration->GetChild();
       }
+      fields.insert(fields.end(), group.rbegin(), group.rend());
     }
   }
 
@@ -1157,10 +1166,16 @@ void Parser::GenerateRecordMethods(Class* klass, const std::wstring& file_name, 
     method->SetReturn(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName(), file_name, line_num, line_pos));
     method->SetEndLineNumber(line_num);
     method->SetEndLinePosition(line_pos);
-    symbol_table->PreviousParseScope(method->GetParsedName());
 
-    if(!klass->AddMethod(method)) {
-      ProcessError(L"Method/function already defined or overloaded '" + method->GetName() + L"'", method);
+    // a user-defined constructor with the same signature takes precedence
+    // over the generated one; pop the discarded scope under a unique key so
+    // the parse-scope stack stays balanced (PreviousParseScope early-returns
+    // without popping when the name is already registered)
+    if(klass->AddMethod(method)) {
+      symbol_table->PreviousParseScope(method->GetParsedName());
+    }
+    else {
+      symbol_table->PreviousParseScope(method->GetParsedName() + L" <record-generated>");
     }
   }
 
@@ -1193,9 +1208,12 @@ void Parser::GenerateRecordMethods(Class* klass, const std::wstring& file_name, 
       getter->SetReturn(TypeFactory::Instance()->MakeType(field_entry->GetType()));
       getter->SetEndLineNumber(line_num);
       getter->SetEndLinePosition(line_pos);
-      symbol_table->PreviousParseScope(getter->GetParsedName());
-      if(!klass->AddMethod(getter)) {
-        ProcessError(L"Method/function already defined or overloaded '" + getter->GetName() + L"'", getter);
+      // a user-defined getter with the same signature takes precedence
+      if(klass->AddMethod(getter)) {
+        symbol_table->PreviousParseScope(getter->GetParsedName());
+      }
+      else {
+        symbol_table->PreviousParseScope(getter->GetParsedName() + L" <record-generated>");
       }
 
       if(!klass->IsReadonlyRecord()) {
@@ -1225,9 +1243,12 @@ void Parser::GenerateRecordMethods(Class* klass, const std::wstring& file_name, 
         setter->SetReturn(TypeFactory::Instance()->MakeType(NIL_TYPE, file_name, line_num, line_pos));
         setter->SetEndLineNumber(line_num);
         setter->SetEndLinePosition(line_pos);
-        symbol_table->PreviousParseScope(setter->GetParsedName());
-        if(!klass->AddMethod(setter)) {
-          ProcessError(L"Method/function already defined or overloaded '" + setter->GetName() + L"'", setter);
+        // a user-defined setter with the same signature takes precedence
+        if(klass->AddMethod(setter)) {
+          symbol_table->PreviousParseScope(setter->GetParsedName());
+        }
+        else {
+          symbol_table->PreviousParseScope(setter->GetParsedName() + L" <record-generated>");
         }
       }
     }
