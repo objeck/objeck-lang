@@ -2703,6 +2703,530 @@ each(label in labels) {
 	}
 
 	#~
+	Classic Rosenblatt perceptron: a mistake-driven linear binary classifier.
+	Deterministic (samples are visited in order each epoch) and guaranteed to
+	converge on linearly separable data; training stops early after an epoch
+	with no mistakes.
+
+```
+X := [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+y := [[0.0], [1.0], [1.0], [1.0]];   # OR
+model := Perceptron->New(0.1, 100);
+model->Fit(X, y);
+labels := model->PredictClass(X);
+```
+	~#
+	class Perceptron {
+		@learning_rate : Float;
+		@iterations : Int;
+		@weights : Float[];
+		@bias : Float;
+		@epochs_run : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param learning_rate update step size
+		@param iterations maximum training epochs
+		~#
+		New(learning_rate : Float, iterations : Int) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@is_fitted := false;
+		}
+
+		New : private (learning_rate : Float, iterations : Int, weights : Float[], bias : Float, epochs_run : Int) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@weights := weights;
+			@bias := bias;
+			@epochs_run := epochs_run;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the perceptron with the classic mistake-driven update rule.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (0.0 or 1.0 values, rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			@weights := Float->New[cols];
+			@bias := 0.0;
+			@epochs_run := 0;
+
+			converged := false;
+			each(epoch : @iterations) {
+				if(<>converged) {
+					@epochs_run += 1;
+					mistakes := 0;
+
+					each(i : rows) {
+						z := @bias;
+						each(j : cols) {
+							z += @weights[j] * X[i,j];
+						};
+
+						predicted := 0.0;
+						if(z >= 0.0) {
+							predicted := 1.0;
+						};
+
+						error := y[i,0] - predicted;
+						if(error <> 0.0) {
+							mistakes += 1;
+							update := @learning_rate * error;
+							each(j : cols) {
+								@weights[j] += update * X[i,j];
+							};
+							@bias += update;
+						};
+					};
+
+					if(mistakes = 0) {
+						converged := true;
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes raw decision values (w*x + b) for input data.
+		@param X feature matrix
+		@return decision value array, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows];
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += @weights[j] * X[i,j];
+				};
+				result[i] := z;
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts class labels (decision value >= 0).
+		@param X feature matrix
+		@return boolean class predictions, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the learned weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the learned bias term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Gets the number of training epochs actually run (early-stops after an
+		epoch with no mistakes).
+		@return epochs run
+		~#
+		method : public : GetEpochsRun() ~ Int {
+			return @epochs_run;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+			serializer->Write(@epochs_run);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ Perceptron {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+			epochs_run := deserializer->ReadInt();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+
+			return Perceptron->New(learning_rate, iterations, weights, bias, epochs_run);
+		}
+	}
+
+	#~
+	Linear support vector machine trained by deterministic full-batch
+	subgradient descent on the L2-regularized hinge loss:
+	lambda/2*||w||^2 + (1/n)*sum(max(0, 1 - y*(w*x + b))), with labels mapped
+	internally from {0,1} to {-1,+1}. The bias is not regularized.
+
+```
+model := SVM->New(0.01, 0.1, 500);
+model->Fit(X, y);
+labels := model->PredictClass(X);
+```
+	~#
+	class SVM {
+		@lambda : Float;
+		@learning_rate : Float;
+		@iterations : Int;
+		@weights : Float[];
+		@bias : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param lambda L2 regularization strength (> 0.0)
+		@param learning_rate subgradient step size
+		@param iterations training epochs
+		~#
+		New(lambda : Float, learning_rate : Float, iterations : Int) {
+			@lambda := lambda;
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@is_fitted := false;
+		}
+
+		New : private (lambda : Float, learning_rate : Float, iterations : Int, weights : Float[], bias : Float) {
+			@lambda := lambda;
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@weights := weights;
+			@bias := bias;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the SVM by full-batch subgradient descent on the hinge loss.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (0.0 or 1.0 values, rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# map {0,1} labels to {-1,+1}
+			signs := Float->New[rows];
+			each(i : rows) {
+				if(y[i,0] >= 0.5) {
+					signs[i] := 1.0;
+				}
+				else {
+					signs[i] := -1.0;
+				};
+			};
+
+			@weights := Float->New[cols];
+			@bias := 0.0;
+
+			grad_w := Float->New[cols];
+			each(epoch : @iterations) {
+				# subgradient of the average hinge loss over margin violators
+				each(j : cols) {
+					grad_w[j] := @lambda * @weights[j];
+				};
+				grad_b := 0.0;
+
+				each(i : rows) {
+					z := @bias;
+					each(j : cols) {
+						z += @weights[j] * X[i,j];
+					};
+
+					margin := signs[i] * z;
+					if(margin < 1.0) {
+						scale := signs[i] / n;
+						each(j : cols) {
+							grad_w[j] -= scale * X[i,j];
+						};
+						grad_b -= scale;
+					};
+				};
+
+				each(j : cols) {
+					@weights[j] -= @learning_rate * grad_w[j];
+				};
+				@bias -= @learning_rate * grad_b;
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes raw decision values (w*x + b) for input data. The sign gives
+		the class; the magnitude reflects distance from the separating plane.
+		@param X feature matrix
+		@return decision value array, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows];
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += @weights[j] * X[i,j];
+				};
+				result[i] := z;
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts class labels (decision value >= 0).
+		@param X feature matrix
+		@return boolean class predictions, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the learned weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the learned bias term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@lambda);
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ SVM {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			lambda := deserializer->ReadFloat();
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+
+			return SVM->New(lambda, learning_rate, iterations, weights, bias);
+		}
+	}
+
+	#~
 	Boolean matrix reference
 	~#
 	class BoolMatrixRef {

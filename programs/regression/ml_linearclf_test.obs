@@ -1,0 +1,135 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for the System.ML linear classifiers (overhaul phase 2):
+Perceptron (mistake-driven, converges + early-stops on separable data) and
+linear SVM (hinge-loss subgradient descent, margin sanity), plus Store/Load
+round-trips for both.
+~#
+use System.ML, System.IO.Filesystem, Collection;
+
+class MlLinearClfTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		eps := 0.000001;
+		model_file := "ml_linearclf_model_test.tmp";
+
+		# --- Perceptron: learns OR, converges before the epoch cap ---
+		or_x := [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+		or_y := [[0.0], [1.0], [1.0], [1.0]];
+
+		perceptron := Perceptron->New(0.1, 100);
+		if(perceptron->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted perceptron stored"->PrintLine();
+		};
+
+		if(<>perceptron->Fit(or_x, or_y)) {
+			pass := false;
+			"  FAIL: perceptron fit"->PrintLine();
+		}
+		else {
+			if(Float->Abs(perceptron->Score(or_x, or_y) - 1.0) > eps) {
+				pass := false;
+				"  FAIL: perceptron OR accuracy"->PrintLine();
+			};
+			if(perceptron->GetEpochsRun() >= 100) {
+				pass := false;
+				"  FAIL: perceptron early stop"->PrintLine();
+			};
+
+			labels := perceptron->PredictClass(or_x);
+			if(labels[0] | <>labels[1] | <>labels[2] | <>labels[3]) {
+				pass := false;
+				"  FAIL: perceptron OR labels"->PrintLine();
+			};
+		};
+
+		# perceptron Store/Load round-trip
+		if(<>perceptron->Store(model_file)) {
+			pass := false;
+			"  FAIL: perceptron store"->PrintLine();
+		};
+		p_loaded := Perceptron->Load(model_file);
+		if(p_loaded = Nil | <>p_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: perceptron load"->PrintLine();
+		}
+		else {
+			before := perceptron->Predict(or_x);
+			after := p_loaded->Predict(or_x);
+			each(i : 4) {
+				if(Float->Abs(before[i] - after[i]) > eps) {
+					pass := false;
+					"  FAIL: perceptron round-trip decision {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		# --- SVM: separable 2D clusters; perfect accuracy + margin sanity ---
+		svm_x := [
+			[1.0, 1.0], [1.5, 2.0], [2.0, 1.5], [1.0, 2.0], [2.0, 2.0],
+			[6.0, 6.0], [6.5, 7.0], [7.0, 6.5], [6.0, 7.0], [7.0, 7.0]];
+		svm_y := [[0.0], [0.0], [0.0], [0.0], [0.0], [1.0], [1.0], [1.0], [1.0], [1.0]];
+
+		svm := SVM->New(0.01, 0.1, 500);
+		if(svm->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted svm stored"->PrintLine();
+		};
+
+		if(<>svm->Fit(svm_x, svm_y)) {
+			pass := false;
+			"  FAIL: svm fit"->PrintLine();
+		}
+		else {
+			if(Float->Abs(svm->Score(svm_x, svm_y) - 1.0) > eps) {
+				pass := false;
+				"  FAIL: svm accuracy"->PrintLine();
+			};
+
+			# decision values: negative side for class 0, positive for class 1,
+			# and a point deep inside a cluster scores farther from the plane
+			# than one near the boundary
+			scores := svm->Predict([[1.0, 1.0], [2.0, 2.0], [9.0, 9.0], [6.0, 6.0]]);
+			if(scores[0] >= 0.0 | scores[2] <= 0.0) {
+				pass := false;
+				"  FAIL: svm decision signs"->PrintLine();
+			};
+			if(scores[2] <= scores[3]) {
+				pass := false;
+				"  FAIL: svm margin ordering"->PrintLine();
+			};
+		};
+
+		# svm Store/Load round-trip
+		if(<>svm->Store(model_file)) {
+			pass := false;
+			"  FAIL: svm store"->PrintLine();
+		};
+		s_loaded := SVM->Load(model_file);
+		if(s_loaded = Nil | <>s_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: svm load"->PrintLine();
+		}
+		else {
+			before := svm->Predict(svm_x);
+			after := s_loaded->Predict(svm_x);
+			each(i : 10) {
+				if(Float->Abs(before[i] - after[i]) > eps) {
+					pass := false;
+					"  FAIL: svm round-trip decision {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		if(pass) {
+			"PASS: ML linear classifier tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML linear classifier tests"->PrintLine();
+		};
+	}
+}
