@@ -1,0 +1,1687 @@
+#~~
+# Objeck machine learning library: matrix operations, neural network and shared types
+# Copyright (c) 2024-2026 Randy Hollines
+#
+# Credits:
+# Eigen matrix library - https://eigen.tuxfamily.org
+~~#
+
+use Collection;
+use Data.CSV;
+
+#~
+Core machine learning types: the seedable Random generator, Matrix2D linear algebra and activations, matrix reference holders, the NeuralNetwork and CSV-backed MatrixReader. Compile with -lib ml.
+~#
+bundle System.ML {
+	class : private: Proxy {
+		@lib_proxy : static : System.API.DllProxy;
+		
+		function : GetDllProxy() ~ System.API.DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := System.API.DllProxy->New("libobjk_ml");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
+	#~
+	Deterministic, seedable pseudo-random number generator (MINSTD linear
+	congruential generator). Use this instead of `Float->Random()` when you need
+	reproducible results -- k-means++ seeding, shuffling, and unit tests.
+
+```
+rand := System.ML.Random->New(42);
+rand->NextInt(6)->PrintLine();   # reproducible dice roll in [0, 6)
+rand->NextReal()->PrintLine();   # value in (0.0, 1.0)
+```
+	~#
+	class Random {
+		@state : Int;
+
+		#~
+		Creates a seeded generator
+		@param seed initial seed (values <= 0 are normalized to a valid state)
+		~#
+		New(seed : Int) {
+			s := seed % 2147483647;
+			if(s <= 0) {
+				s += 2147483646;
+			};
+			@state := s;
+		}
+
+		#~
+		Advances the generator and returns the next raw integer in [1, 2147483646]
+		@return pseudo-random integer
+		~#
+		method : public : NextInt() ~ Int {
+			@state := (16807 * @state) % 2147483647;
+			return @state;
+		}
+
+		#~
+		Returns a non-negative integer less than bound
+		@param bound exclusive upper bound (must be > 0)
+		@return value in [0, bound)
+		~#
+		method : public : NextInt(bound : Int) ~ Int {
+			if(bound <= 0) {
+				return 0;
+			};
+			return NextInt() % bound;
+		}
+
+		#~
+		Returns a real in the open interval (0.0, 1.0)
+		@return pseudo-random real
+		~#
+		method : public : NextReal() ~ Float {
+			return NextInt()->As(Float) / 2147483647.0;
+		}
+
+		#~
+		Returns a real in the half-open interval [min, max)
+		@param min lower bound
+		@param max upper bound (exclusive)
+		@return pseudo-random real in range
+		~#
+		method : public : NextReal(min : Float, max : Float) ~ Float {
+			return min + (max - min) * NextReal();
+		}
+	}
+
+	#~
+	2D matrix operations
+	~#
+	class Matrix2D {
+		function : private : SafeDiv(num : Float, dom : Float) ~ Float {
+			if(dom = 0.0) {
+				return dom;
+			};
+
+			return num / dom;
+		}
+
+		#~
+		Calculates the Euclidean Distance between the two vectors
+		@param m1 data matrix
+		@return Euclidean Distance between the two vectors
+
+```
+# Two 3D points: [1,4], [2,5], [3,6] paired as columns
+points := [[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]];
+dist := Matrix2D->EuclideanDistance(points);
+"Distance: {$dist}"->PrintLine();
+```
+		~#
+		function : native : EuclideanDistance(m1 : Float[,]) ~ Float {
+			dims := m1->Size();
+			rows := dims[0];
+
+			accumulator := 0.0;
+			each(i : rows) {
+				value := m1[i,0] - m1[i,1];
+				if(value > -0.1e-4 & value < 0.1e-4) {
+					value := 0.0;
+				};
+				accumulator += value * value;
+			};
+
+			return accumulator->Sqrt();
+		}
+
+		#~
+		Solves a unit of equations
+		@param m1 data matrix
+		@param m2 result matrix
+		@return least squares
+
+```
+A := [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]];
+b := [[1.0], [2.0], [3.0]];
+coeffs := Matrix2D->Solve(A, b);
+each(c in coeffs) {
+  c->PrintLine();
+};
+```
+		~#
+		function : native : Solve(m1 : Float[,], m2 : Float[,]) ~ Float[] {
+			if(m1 <> Nil | m2 <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatArrayRef->New();
+				array_args[1] := FloatMatrixRef->New(m1);
+				array_args[2] := FloatMatrixRef->New(m2);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_solve_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatArrayRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Parsers a decimal value
+		@param m matrix
+		@return decimal value
+		~#
+		function : ToFloat(m : Float[,]) ~ Float {
+			dim := m->Size();
+			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
+				return m[0,0];
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Parsers a boolean value
+		@param m matrix
+		@return boolean value
+		~#
+		function : ToBool(m : Float[,]) ~ Bool {
+			return ToInt(m) <> 0;
+		}
+
+		#~
+		Parsers an integer value
+		@param m matrix
+		@return integer value
+		~#
+		function : ToInt(m : Float[,]) ~ Int {
+			return Float->Round(ToFloat(m));
+		}
+
+		#~
+		Creates an identity a matrix
+		@param s size of matrix
+		@return row from matrix
+		~#
+		function : native : Identity(s : Int) ~ Float[,] {
+			m := Float->New[s,s];
+
+			each(i : s) {
+				each(j : s) {
+					if(i = j) {
+						m[i,j] := 1;
+					};
+				};
+			};
+
+			return m;
+		}
+
+		#~
+		Get the row from a matrix
+		@param r row index
+		@param matrix matrix
+		@return row from matrix
+		~#
+		function : native : GetRow(r : Int, matrix : Float[,]) ~ Float[] {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(r < rows) {
+				row := Float->New[cols];
+
+				each(i : cols) {
+					row[i] := matrix[r, i];
+				};
+
+				return row;
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Sum of the given row
+		@param r row index
+		@param matrix matrix
+		@return sum of the row
+		~#
+		function : native : SumRow(r : Int, matrix : Float[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(r < rows) {
+				sum := 0.0;
+
+				each(i : cols) {
+					sum += matrix[r, i];
+				};
+
+				return sum;
+			};
+			
+			return 0.0;
+		}
+
+		#~
+		Average of the given row
+		@param r row index
+		@param matrix matrix
+		@return average of the row
+		~#
+		function : native : AverageRow(r : Int, matrix : Float[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(r < rows) {
+				sum := 0.0;
+
+				each(i : cols) {
+					sum += matrix[r, i];
+				};
+
+				return SafeDiv(sum, cols->As(Float));
+			};
+			
+			return 0.0;
+		}
+
+		function : StdDevRow(row : Int, m : Float[,]) ~ Float {
+			m_dim := m->Size();
+			m_rows := m_dim[0];
+			m_cols := m_dim[1];
+
+			if(row < 0 | row >= m_rows) {
+				return 0.0;
+			};
+
+			total_sum := 0.0;
+			each(i : m_cols) {
+				total_sum += m[row,i];
+			};
+			m_avg := SafeDiv(total_sum, m_cols->As(Float));
+
+			total_sum := 0.0;
+			each(i : m_cols) {
+				term := m[row,i] - m_avg;
+				total_sum += term * term;
+			};
+
+			return Float->Sqrt(SafeDiv(total_sum, (m_cols->As(Float) - 1.)));
+		}
+
+		#~
+		Get the column from a matrix
+		@param c column index
+		@param matrix matrix
+		@return column from matrix
+		~#
+		function : native : GetColumn(c : Int, matrix : Float[,]) ~ Float[] {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(c < cols) {
+				col := Float->New[rows];
+
+				each(i : rows) {
+					col[i] := matrix[i, c];
+				};
+
+				return col;
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Sum of the given column
+		@param c column index
+		@param matrix matrix
+		@return sum of the column
+		~#
+		function : native : SumColumn(c : Int, matrix : Float[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(c < cols) {
+				sum := 0;
+
+				each(i : rows) {
+					sum += matrix[i, c];
+				};
+
+				return sum;
+			};
+			
+			return 0.0;
+		}
+
+		#~
+		Average of the given column
+		@param c column index
+		@param matrix matrix
+		@return average of the column
+		~#
+		function : native : AverageColumn(c : Int, matrix : Float[,]) ~ Float {
+			dims := matrix->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			if(c < cols) {
+				sum := 0;
+				
+				each(i : rows) {
+					sum += matrix[i, c];
+				};
+
+				return SafeDiv(sum, rows->As(Float));
+			};
+			
+			return 0.0;
+		}
+
+		function : StdDevColumn(col : Int, m : Float[,]) ~ Float {
+			m_dim := m->Size();
+			m_rows := m_dim[0];
+			m_cols := m_dim[1];
+
+			if(col < 0 | col >= m_cols) {
+				return 0.0;
+			};
+
+			total_sum := 0.0;
+			each(i : m_rows) {
+				total_sum += m[i,col];
+			};
+			m_avg := SafeDiv(total_sum, m_rows->As(Float));
+
+			total_sum := 0.0;
+			each(i : m_rows) {
+				term := m[i,col] - m_avg;
+				total_sum += term * term;
+			};
+
+			return Float->Sqrt(SafeDiv(total_sum, (m_rows->As(Float) - 1.)));
+		}
+
+		#~
+		Adds a constant to a matrix
+		@param c constant
+		@param m matrix
+		@return updated matrix
+		~#
+		function : native : Add(c : Float, m : Float[,]) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatRef->New(c);
+				array_args[2] := FloatMatrixRef->New(m);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_add_scalar_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Adds a constant to a matrix
+		@param m matrix
+		@param c constant
+		@return updated matrix
+		~#
+		function : native : Add(m : Float[,], c : Float) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m);				
+				array_args[2] := FloatRef->New(c);				
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_add_matrix_scalar", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Adds two matrices
+		@param m1 left matrix
+		@param m2 right matrix
+		@return updated matrix
+		~#
+		function : native : Add(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			if(m1 <> Nil | m2 <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m1);
+				array_args[2] := FloatMatrixRef->New(m2);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_add_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Subtracts a constant from a matrix
+		@param c constant
+		@param m matrix
+		@return updated matrix
+		~#
+		function : native : Subtract(c : Float, m : Float[,]) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatRef->New(c);
+				array_args[2] := FloatMatrixRef->New(m);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_sub_scalar_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Adds a constant to a matrix
+		@param m matrix
+		@param c constant
+		@return updated matrix
+		~#
+		function : native : Subtract(m : Float[,], c : Float) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m);				
+				array_args[2] := FloatRef->New(c);				
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_sub_matrix_scalar", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Subtracts two matrices
+		@param m1 left matrix
+		@param m2 right matrix
+		@return updated matrix
+		~#
+		function : native : Subtract(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			if(m1 <> Nil | m2 <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m1);
+				array_args[2] := FloatMatrixRef->New(m2);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_sub_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Multiplies a constant by a matrix
+		@param c constant
+		@param m matrix
+		@return updated matrix
+		~#
+		function : native : Multiple(c : Float, m : Float[,]) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatRef->New(c);
+				array_args[2] := FloatMatrixRef->New(m);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_mul_scalar_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Multiplies a constant by a matrix
+		@param m matrix
+		@param c constant
+		@return updated matrix
+		~#
+		function : native : Multiple(m : Float[,], c : Float) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m);				
+				array_args[2] := FloatRef->New(c);				
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_mul_matrix_scalar", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Multiplies two matrices using the Hadamard rule
+		@param m1 left matrix
+		@param m2 right matrix
+		@return updated matrix
+		~#
+		function : native : HadamardProduct(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			m1_dims := m1->Size();
+			m1_rows := m1_dims[0];
+			m1_cols := m1_dims[1];
+
+			m2_dims := m2->Size();
+			m2_rows := m2_dims[0];
+			m2_cols := m2_dims[1];
+
+			if(m1_rows <> m2_rows | m1_cols <> m2_cols) {
+				return Nil;
+			};
+
+			c := Float->New[m1_rows, m2_cols];
+			for(i := 0; i < m1_rows; i += 1;) {
+				for(j := 0; j < m2_cols; j += 1;) {
+					c[i,j] := m1[i,j] * m2[i,j];
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Calculates the dot product.
+		@param m1 left matrix
+		@param m2 right matrix
+		@return updated matrix
+		~#
+		function : native : DotProduct(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			if(m1 <> Nil | m2 <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m1);
+				array_args[2] := FloatMatrixRef->New(m2);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_dot_matrix_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Divides a constant by a matrix
+		@param c constant
+		@param m matrix
+		@return updated matrix
+		~#
+		function : native : Divide(c : Float, m : Float[,]) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatRef->New(c);
+				array_args[2] := FloatMatrixRef->New(m);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_div_scalar_matrix", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Divides a constant by a matrix
+		@param m matrix
+		@param c constant
+		@return updated matrix
+		~#
+		function : native : Divide(m : Float[,], c : Float) ~ Float[,] {
+			if(m <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(m);				
+				array_args[2] := FloatRef->New(c);				
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_div_matrix_scalar", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Divides two matrices using the Hadamard rule
+		@param m1 left matrix
+		@param m2 right matrix
+		@return updated matrix
+		~#
+		function : native : HadamardDivide(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
+			m1_dims := m1->Size();
+			m1_rows := m1_dims[0];
+			m1_cols := m1_dims[1];
+
+			m2_dims := m2->Size();
+			m2_rows := m2_dims[0];
+			m2_cols := m2_dims[1];
+
+			if(m1_rows <> m2_rows | m1_cols <> m2_cols) {
+				return Nil;
+			};
+
+			c := Float->New[m1_rows, m2_cols];
+			for(i := 0; i < m1_rows; i += 1;) {
+				for(j := 0; j < m2_cols; j += 1;) {
+					c[i,j] := SafeDiv(m1[i,j], m2[i,j]);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Transpose of matrix
+		@param a matrix
+		@return transposed matrix
+		~#
+		function : native : Transpose(a : Float[,]) ~ Float[,] {
+			if(a <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_transpose", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Inverse of matrix
+		@param a matrix
+		@return inverted matrix
+		~#
+		function : native : Inverse(a : Float[,]) ~ Float[,] {
+			if(a <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := FloatMatrixRef->New();
+				array_args[1] := FloatMatrixRef->New(a);
+				Proxy->GetDllProxy()->CallFunction("ml_matrix_inverse", array_args);
+				
+				holder := array_args[0]->As(FloatMatrixRef);
+				return holder->Get();
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Sigmoid 'S' function
+		@param x input value
+		@return Sigmoid value
+
+```
+val := Matrix2D->Sigmoid(2.0);
+"Sigmoid(2.0)={$val}"->PrintLine();
+```
+		~#
+		function : native : Sigmoid(x : Float) ~ Float {
+			return 1.0 / (1.0 + Float->Pow(Float->E(), -1.0 * x));
+		}
+
+		#~
+		Applies the Sigmoid function to all elements
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : Sigmoid(b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := Sigmoid(b[i,j]);
+				};
+			};
+
+			return c;
+		}
+		
+		#~
+		Calculates the Dot Product applying while applying the Sigmoid function to all elements
+		@param a matrix
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : DotSigmoid(a : Float[,], b : Float[,]) ~ Float[,] {
+			a_dims := a->Size();
+			a_rows := a_dims[0];
+			a_cols := a_dims[1];
+
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			if(a_cols <> b_rows) {
+				return Nil;
+			};
+
+			c := Float->New[a_rows, b_cols];
+			for(a_col := 0; a_col < a_rows; a_col += 1;) {
+				for(right_col := 0; right_col < b_cols; right_col += 1;) {
+					cx := 0.0;
+					for(x_col := 0; x_col < b_rows; x_col += 1;) {
+						cx += a[a_col, x_col] * b[x_col, right_col];
+					};
+					c[a_col, right_col] := Sigmoid(cx);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		ReLU (Rectified Linear Unit) activation function
+		@param x input value
+		@return ReLU value (max(0, x))
+
+```
+"ReLU(-1.5)={$Matrix2D->ReLU(-1.5)}"->PrintLine();
+"ReLU(3.2)={$Matrix2D->ReLU(3.2)}"->PrintLine();
+```
+		~#
+		function : native : ReLU(x : Float) ~ Float {
+			return x > 0.0 ? x : 0.0;
+		}
+
+		#~
+		Applies the ReLU function to all elements
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : ReLU(b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := ReLU(b[i,j]);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Leaky ReLU activation function
+		@param x input value
+		@param alpha slope for negative values (default 0.01)
+		@return Leaky ReLU value
+		~#
+		function : native : LeakyReLU(x : Float, alpha : Float) ~ Float {
+			return x > 0.0 ? x : alpha * x;
+		}
+
+		#~
+		Applies the Leaky ReLU function to all elements
+		@param b matrix
+		@param alpha slope for negative values
+		@return updated matrix
+		~#
+		function : native : LeakyReLU(b : Float[,], alpha : Float) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := LeakyReLU(b[i,j], alpha);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Tanh (Hyperbolic Tangent) activation function
+		@param x input value
+		@return Tanh value
+
+```
+"Tanh(0.5)={$Matrix2D->Tanh(0.5)}"->PrintLine();
+```
+		~#
+		function : native : Tanh(x : Float) ~ Float {
+			return (Float->Pow(Float->E(), x) - Float->Pow(Float->E(), -x)) /
+			       (Float->Pow(Float->E(), x) + Float->Pow(Float->E(), -x));
+		}
+
+		#~
+		Applies the Tanh function to all elements
+		@param b matrix
+		@return updated matrix
+		~#
+		function : native : Tanh(b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := Tanh(b[i,j]);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Softmax activation function for classification
+		@param b matrix (single row or column vector)
+		@return normalized probability distribution
+
+```
+logits := [[1.0], [2.0], [3.0]];
+probs := Matrix2D->Softmax(logits);
+each(i : probs->Size()[0]) {
+  probs[i,0]->PrintLine();
+};
+```
+		~#
+		function : native : Softmax(b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			# Find max for numerical stability
+			max_val := b[0,0];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					if(b[i,j] > max_val) {
+						max_val := b[i,j];
+					};
+				};
+			};
+
+			# Compute exp(x - max) and sum
+			exp_sum := 0.0;
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := Float->Pow(Float->E(), b[i,j] - max_val);
+					exp_sum += c[i,j];
+				};
+			};
+
+			# Normalize
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := SafeDiv(c[i,j], exp_sum);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Generates a random 2D array of values from 0.0 to 1.0
+		@param rows rows
+		@param cols columns
+		@return updated matrix
+		~#
+		function : Random(rows : Int, cols : Int) ~ Float[,] {
+			m := Float->New[rows, cols];
+
+			for(i := 0; i < rows; i += 1;) {
+				for(j := 0; j < cols; j += 1;) {
+					m[i,j] := Float->Random();
+				};
+			};
+			
+			return m;
+		}
+		
+		#~
+		Generates a random normal distribution of values
+		@param mean center of values
+		@param variance variance in values
+		@param rows rows
+		@param cols columns
+		@return updated matrix
+		~#
+		function : RandomNormal(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
+			m := Float->New[rows, cols];
+
+			for(i := 0; i < rows; i += 1;) {
+				for(j := 0; j < cols; j += 1;) {
+					m[i,j] := RandomNormal(mean, variance);
+				};
+			};
+
+			return m;
+		}
+
+		#~
+		Generates a random normal value
+		@param mean center of values
+		@param variance variance in values
+		@return updated matrix
+		~#
+		function : RandomNormal(mean : Float, variance : Float) ~ Float {
+			return  (-2.0 * variance * Float->Random()->Log())->Sqrt() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
+		}
+
+		#~
+		Splits a matrix
+		@param b matrix
+		@param offset offset index
+		@param count number of rows to split
+		@param is_row true for row split, false for column
+		@return copied matrix
+		~#
+		function : native : Split(b : Float[,], offset : Int, count : Int, is_row : Bool) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+			
+			c : Float[,];
+			if(is_row) {
+				if(count + offset <= 0 | count + offset > b_rows) {
+					return Nil;
+				};
+
+				c := Float->New[count, b_cols];
+				count := count + offset;
+				for(row := offset; row < count; row += 1;) {
+					for(col := 0; col < b_cols; col += 1;) {
+						c[row - offset, col] := b[row, col];
+					};
+				};
+			}
+			else {
+				if(count + offset <= 0 | count + offset > b_cols) {
+					return Nil;
+				};
+
+				c := Float->New[b_rows, count];
+				count := count + offset;
+				for(row := 0; row < b_rows; row += 1;) {
+					for(col := offset; col < count; col += 1;) {
+						c[row, col - offset] := b[row, col];
+					};
+				};
+			};
+
+			return c;
+		}
+		
+		#~
+		Concatenates two matrix
+		@param a left matrix
+		@param b right matrix
+		@param is_row true concatenate by rows, false for columns
+		@return concatenated matrix
+		~#
+		function : Concatenate(a : Float[,], b : Float[,], is_row : Bool) ~ Float[,] {
+			a_dims := a->Size();
+			a_rows := a_dims[0];
+			a_cols := a_dims[1];
+
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c : Float[,];
+			if(is_row) {
+				if(a_cols <> b_cols) {
+					return Nil;
+				};
+
+				c_rows := a_rows + b_rows;
+				c := Float->New[c_rows, a_cols];
+
+				for(row := 0; row < a_rows; row += 1;) {
+					for(col := 0; col < a_cols; col += 1;) {
+						c[row, col] := a[row, col];
+					};
+				};
+
+				for(row := 0; row < b_rows; row += 1;) {
+					for(col := 0; col < b_cols; col += 1;) {
+						c[row + a_rows, col] := b[row, col];
+					};
+				};
+			}
+			else {
+				if(a_rows <> b_rows) {
+					return Nil;
+				};
+
+				c_cols := a_cols + b_cols;
+				c := Float->New[a_rows, c_cols];
+
+				for(row := 0; row < a_rows; row += 1;) {
+					for(col := 0; col < a_cols; col += 1;) {
+						c[row, col] := a[row, col];
+					};
+				};
+
+				for(row := 0; row < b_rows; row += 1;) {
+					for(col := 0; col < b_cols; col += 1;) {
+						c[row, col + a_cols] := b[row, col];
+					};
+				};
+			};
+
+			return c;
+		}
+	}
+
+	#~
+	Boolean matrix reference
+	~#
+	class BoolMatrixRef {
+		@value : Bool[,];
+
+		#~
+		Default constructor
+		~#
+		New() {
+			Parent();
+		}
+
+		#~
+		Copy constructor
+		@param value boolean value
+		~#
+		New(value : Bool[,]) {
+			Parent();
+			@value := value;
+		}
+
+		#~
+		Returns the number of rows in the matrix
+		@return number of rows in the matrix
+		~#
+		method : public : Rows() ~ Int {
+			return @value->Rows();
+		}
+
+		#~
+		Returns the number of columns in the matrix
+		@return number of columns in the matrix
+		~#
+		method : public : Columns() ~ Int {
+			return @value->Columns();
+		}
+
+		#~
+		Get boolean value
+		@return boolean value
+		~#
+		method : public : Get() ~ Bool[,] {
+			return @value;
+		}
+
+		#~
+		Formats the matrix into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return @value->ToString();
+		}
+		
+		#~
+		Builds random bootstrapped dataset
+		@return bootstrapped dataset
+		~#
+		method : native : public : Bootstrap() ~ BoolMatrixRef {		
+			dims := @value->Size();
+			rows := dims[0];
+			cols := dims[1];
+			
+			random_rows := Int->New[rows];
+			each(i : rows) {
+				random_rows[i] := (rows - 1)->Random();
+			};
+			
+			bag_matrix := Bool->New[rows, cols];
+			each(i : rows) {
+				random_row := random_rows[i];
+				each(j : cols) {
+					bag_matrix[i, j] := @value[random_row, j];
+				};
+			};
+
+			return BoolMatrixRef->New(bag_matrix);
+		}
+
+		#~
+		Splits a 2D boolean matrix
+		@param training_offset index of first column with target data. The first element is the train dateset, while the second is the test data
+		@return split matrix of training and data sets
+		~#
+		method : public : Split(training_offset : Float) ~ BoolMatrixRef[] {
+			dims := @value->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			training_rows := (rows->As(Float) * training_offset)->As(Int);
+			training_matrix := Bool->New[training_rows, cols];
+			dims := training_matrix->Size();
+			train_rows := dims[0];
+
+			each(i : train_rows) {
+				each(j : cols) {
+					training_matrix[i, j] := @value[i, j];
+				};
+			};
+
+			data_rows := rows - training_rows;
+			data_matrix := Bool->New[data_rows, cols];
+			dims := data_matrix->Size();
+			data_rows := dims[0];
+
+			each(i : data_rows) {
+				each(j : cols) {
+					data_matrix[i, j] := @value[training_rows, j];
+				};
+				training_rows += 1;
+			};
+
+			outputs := BoolMatrixRef->New[2];
+			outputs[0] := BoolMatrixRef->New(training_matrix);
+			outputs[1] := BoolMatrixRef->New(data_matrix);
+
+			return outputs;
+		}
+	}
+
+	#~
+	Float matrix reference with convenience methods
+	~#
+	class FloatMatrixRef {
+		@value : Float[,];
+
+		#~
+		Default constructor
+		~#
+		New() {
+			Parent();
+		}
+
+		#~
+		Copy constructor
+		@param value boolean value
+		~#
+		New(value : Float[,]) {
+			Parent();
+			@value := value;
+		}
+
+		#~
+		Get float value
+		@return float value
+		~#
+		method : public : Get() ~ Float[,] {
+			return @value;
+		}
+
+		#~
+		Set boolean value
+		@param value boolean value		
+		~#
+		method : public : Set(value : Float[,]) ~ Nil {
+			@value := value;
+		}
+
+		#~
+		Formats the matrix into a string
+		@return string representation
+		~#
+		method : public : ToString() ~ String {
+			return @value->ToString();
+		}
+
+		#~
+		Parsers a boolean value
+		@return boolean value
+		~#
+		method : public : ToBool() ~ Bool {
+			return ToInt() <> 0;
+		}
+
+		#~
+		Parsers an integer value
+		@return integer value
+		~#
+		method : public : ToInt() ~ Int {
+			return Float->Round(ToFloat());
+		}
+
+		#~
+		Parsers a decimal value
+		@return decimal value
+		~#
+		method : public : ToFloat() ~ Float {
+			dim := @value->Size();
+			if(dim->Size() = 2 & dim[0] = 1 & dim[1] = 1) {
+				return @value[0,0];
+			};
+
+			return 0.0;
+		}
+	}
+
+	#~
+	Simple neural network. Input values should be scaled to between 0.0 to 1.0. 
+	The tuned network should return outputs between 0.0 to 1.0.
+
+	```
+network : NeuralNetwork;
+filename := "data/model.dat";
+inputs_targets := MatrixReader->LoadSplitMatrices(args[0], 1, 0.8); # 20% test data
+
+# load model
+if(args->Size() = 2) {
+   network := NeuralNetwork->Load(filename);
+   "Loaded model..."->PrintLine();
+
+   "Testing model..."->PrintLine();
+   tests := inputs_targets[2];
+   answers := inputs_targets[3];
+
+   failures := 0;
+   each(i : answers) {
+      answer := answers->Get(i)->ToBool();
+      predict := network->Query(FloatMatrixRef->New(tests->Get(i)->Get()));
+      if(predict <> answer) {
+         failures += 1;
+      };
+   };
+
+   correct := 100.0 * (1.0 - failures->As(Float) / tests->Size()->As(Float));
+   System.IO.Console->Print("Tests: ")->Print(tests->Size())->Print(", correct: ")->SetFloatPrecision(5)->Print(correct)->PrintLine("%");
+}
+# train and store model
+else if(args->Size() = 1) {
+   "Training model..."->PrintLine();
+   network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01725, 256);
+   if(inputs_targets <> Nil) {
+      network->Store(filename);
+      "Stored model..."->PrintLine();
+   };
+}
+	```
+	~#
+	class NeuralNetwork {
+		@input_nodes : Float;
+		@hidden_nodes : Float;
+		@output_nodes : Float;
+		@learning_rate : Float;
+		@weight_inputs_hidden : Float[,];
+		@weight_outputs_hidden : Float[,];
+		@bias_hidden : Float[,];
+		@bias_output : Float[,];
+		@threshold : Float;
+		@attempts : Int;
+
+		#~
+		Trains the network
+		@param input_nodes number of input nodes
+		@param inputs : training inputs
+		@param hidden_factor size of hidden layer, factor of input (i.e. input_nodes * hidden_factor)
+		@param output_nodes training outputs
+		@param targets training targets
+		@param learning_rate learning rate
+		@param iterations number of training iterations
+		~#
+		function : Train(input_nodes : Int, inputs : Vector<FloatMatrixRef>, hidden_factor : Int, output_nodes : Int, targets : Vector<FloatMatrixRef>, learning_rate : Float, iterations : Int) ~ NeuralNetwork {
+			network := NeuralNetwork->New(input_nodes, hidden_factor * input_nodes, output_nodes, learning_rate);
+			network->Train(inputs, targets, learning_rate, iterations);
+			return network;		
+		}
+		
+		New : private (input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
+			@input_nodes := input_nodes;
+			@hidden_nodes := hidden_nodes;
+			@output_nodes := output_nodes;
+			@learning_rate := learning_rate;
+
+			@threshold := 0.80;
+			@attempts := 10;
+
+			@weight_inputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @hidden_nodes, @input_nodes);
+			@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Pow(@input_nodes, -1.0), @output_nodes, @hidden_nodes);
+
+			# bias vectors start at zero (standard practice; symmetry is already
+			# broken by the random weights)
+			@bias_hidden := Float->New[@hidden_nodes->As(Int), 1];
+			@bias_output := Float->New[@output_nodes->As(Int), 1];
+		}
+
+		New : private (weight_inputs_hidden : Float[,], weight_outputs_hidden : Float[,], bias_hidden : Float[,], bias_output : Float[,]) {
+			@weight_inputs_hidden := weight_inputs_hidden;
+			@weight_outputs_hidden := weight_outputs_hidden;
+			@bias_hidden := bias_hidden;
+			@bias_output := bias_output;
+
+			@threshold := 0.80;
+			@attempts := 10;
+		}
+
+		#~
+		Sets the activation threshold. Activation if output > threshold or < 1.0 - threshold
+		@param threshold activation threshold default is 0.85
+		@param attempts number of activation attempts
+		~#
+		method : public : SetActivation(threshold : Float, attempts : Int) ~ Nil {
+			@threshold := threshold;
+			@attempts := attempts;
+		}
+
+		#~
+		Query the network
+		@param inputs query inputs
+		@return true if activated, false otherwise
+		~#
+		method : public : Query(inputs : FloatMatrixRef) ~ Bool {
+			# try and fail is unsuccessful
+			each(i : @attempts) {
+				result := Confidence(inputs);
+				if(result > @threshold) {
+					return true;
+				};		
+			};
+
+			return false;
+		}
+
+		#~
+		Query the network's confidence for the give inputs
+		@param inputs query inputs
+		@return confidence percentage
+		~#
+		method : public : Confidence(inputs : FloatMatrixRef) ~ Float {
+			outputs := Query(inputs->Get());
+			if(outputs <> Nil) {
+				dims := outputs->Size();
+				if(dims->Size() = 2 & dims[0] = 1 & dims[1] = 1) {
+					return outputs[0,0];
+				};
+			};
+
+			return 0.0
+		}
+
+		#~
+		Loads a stored network (weights and biases). Note: the format gained the
+		two bias vectors with the bias support; files stored by older versions
+		cannot be loaded.
+		@param filename file to load from
+		@return loaded network, or Nil on failure
+		~#
+		function : Load(filename : String) ~ NeuralNetwork {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			weight_inputs_hidden := ReadMatrix(deserializer);
+			weight_outputs_hidden := ReadMatrix(deserializer);
+			bias_hidden := ReadMatrix(deserializer);
+			bias_output := ReadMatrix(deserializer);
+
+			if(weight_inputs_hidden = Nil | weight_outputs_hidden = Nil | bias_hidden = Nil | bias_output = Nil) {
+				return Nil;
+			};
+
+			return NeuralNetwork->New(weight_inputs_hidden, weight_outputs_hidden, bias_hidden, bias_output);
+		}
+
+		#~
+		Saves the network's weights and biases
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			serializer := System.IO.Serializer->New();
+
+			if(<>WriteMatrix(serializer, @weight_inputs_hidden) |
+				<>WriteMatrix(serializer, @weight_outputs_hidden) |
+				<>WriteMatrix(serializer, @bias_hidden) |
+				<>WriteMatrix(serializer, @bias_output)) {
+				return false;
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		# Writes a matrix as height, width, then row-major values.
+		function : WriteMatrix(serializer : System.IO.Serializer, m : Float[,]) ~ Bool {
+			if(m = Nil) {
+				return false;
+			};
+
+			dims := m->Size();
+			if((dims->Size() = 2 & dims[0] > 0 & dims[1] > 0) = false) {
+				return false;
+			};
+
+			height := dims[0];
+			width := dims[1];
+			serializer->Write(height);
+			serializer->Write(width);
+			each(i : height) {
+				each(j : width) {
+					serializer->Write(m[i,j]);
+				};
+			};
+
+			return true;
+		}
+
+		# Reads a matrix written by WriteMatrix; Nil on invalid dimensions.
+		function : ReadMatrix(deserializer : System.IO.Deserializer) ~ Float[,] {
+			height := deserializer->ReadInt();
+			width := deserializer->ReadInt();
+			if(height < 1 | width < 1) {
+				return Nil;
+			};
+
+			m := Float->New[height, width];
+			each(i : height) {
+				each(j : width) {
+					m[i,j] := deserializer->ReadFloat();
+				};
+			};
+
+			return m;
+		}
+
+		method : Query(inputs : Float[,]) ~ Float[,] {
+			# calculate signals into hidden layer (weights * inputs + bias)
+			hidden_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_inputs_hidden, inputs), @bias_hidden));
+			# calculate the signals emerging from final output layer
+			return Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_outputs_hidden, hidden_outputs), @bias_output));
+		}
+
+		method : Train(inputs : Vector<FloatMatrixRef>, targets : Vector<FloatMatrixRef>, rate : Float, iterations : Int) ~ Nil {
+			if(inputs->Size() = targets->Size()) {
+				each(i : iterations) {
+					each(j : inputs) {
+						stream_in := inputs->Get(j)->Get();
+						target := targets->Get(j)->Get();
+
+						# calculate signals into hidden layer
+						hidden_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_inputs_hidden, stream_in), @bias_hidden));
+						# calculate signals into final output layer
+						final_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_outputs_hidden, hidden_outputs), @bias_output));
+						# output layer error is the (target - actual)
+						output_errors := Matrix2D->Subtract(target, final_outputs);
+						# hidden layer error is the output_errors, split by weights, recombined at hidden nodes
+						hidden_errors := Matrix2D->DotProduct(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
+
+						# per-layer deltas (error * sigmoid gradient), computed before
+						# any update so both layers see consistent pre-update state
+						output_delta := Delta(output_errors, final_outputs);
+						hidden_delta := Delta(hidden_errors, hidden_outputs);
+
+						# update weights and biases; the bias gradient is the layer
+						# delta itself (its "input" is the constant 1.0)
+						@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, Matrix2D->Multiple(rate, Matrix2D->DotProduct(output_delta, Matrix2D->Transpose(hidden_outputs))));
+						@bias_output := Matrix2D->Add(@bias_output, Matrix2D->Multiple(rate, output_delta));
+						@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Matrix2D->Multiple(rate, Matrix2D->DotProduct(hidden_delta, Matrix2D->Transpose(stream_in))));
+						@bias_hidden := Matrix2D->Add(@bias_hidden, Matrix2D->Multiple(rate, hidden_delta));
+					};
+				};
+			};
+		}
+
+		# error * outputs * (1 - outputs): the backpropagated sigmoid gradient
+		method : Delta(errors : Float[,], outputs : Float[,]) ~ Float[,] {
+			return Matrix2D->HadamardProduct(errors, Matrix2D->HadamardProduct(outputs, Matrix2D->Subtract(1.0, outputs)));
+		}
+	}
+
+	#~
+	Utilities for reading data from CSV data sources 
+	~#
+	class MatrixReader {
+		#~
+		Load input and output data into matrices
+		@param filename file to process
+		@param target_offset index of first column with target data
+		@return input and output matrix data
+		~#
+		function : public : LoadMatrices(filename : String, target_offset : Int) ~ Vector[]<FloatMatrixRef> {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+			if(table->IsParsed()) {
+				inputs := Vector->New()<FloatMatrixRef>;
+				targets := Vector->New()<FloatMatrixRef>;
+
+				each(row := table) {
+					input_length := row->Size() - target_offset;
+					target_length := row->Size() - input_length;
+					if(input_length < 0) {
+						return Nil;
+					};
+
+					input_array := Float->New[input_length, 1];
+					target_array := Float->New[target_length, 1];
+
+					each(i : input_length) {
+						input_array[i, 0] := row->Get(i)->ToFloat();
+					};
+
+					target_index := 0;
+					for(i := input_length; i < row->Size(); i += 1;) {
+						target_array[target_index, 0] := row->Get(i)->ToFloat();
+						target_index += 1;
+					};
+
+					inputs->AddBack(FloatMatrixRef->New(input_array));
+					targets->AddBack(FloatMatrixRef->New(target_array));
+				};
+
+				input_targets := Vector->New[2]<FloatMatrixRef>;
+				input_targets[0] := inputs;
+				input_targets[1] := targets;
+
+				return input_targets;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Load input and output data into split matrices for training and testing
+		@param filename file to process
+		@param target_offset index of first column with output data
+		@param training_perc percentage of data used for training
+		@param line_ending CSV line ending (i.e. Unix, Windows, etc.), default CRLF per the spec 
+		@return split matrices for training and testing, first two matrices are training, latter two test data
+		~#
+		function : public : LoadSplitMatrices(filename : String, target_offset : Int, training_perc : Float, line_ending : String := "\r\n") ~ Vector[]<FloatMatrixRef> {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename), line_ending);
+			if(table->IsParsed()) {
+				train_count := (table->Size()->As(Float) * training_perc)->As(Int);
+				if(train_count < 1) {
+					return Nil;
+				};
+
+				training_inputs := Vector->New()<FloatMatrixRef>;
+				training_targets := Vector->New()<FloatMatrixRef>;
+
+				test_inputs := Vector->New()<FloatMatrixRef>;
+				test_targets := Vector->New()<FloatMatrixRef>;
+
+				count := 0;
+				each(row := table) {
+					input_length := row->Size() - target_offset;
+					target_length := row->Size() - input_length;
+					if(input_length < 0) {
+						return Nil;
+					};
+
+					input_array := Float->New[input_length, 1];
+					target_array := Float->New[target_length, 1];
+
+					each(i : input_length) {
+						input_array[i, 0] := row->Get(i)->ToFloat();
+					};
+
+					target_count := 0;
+					for(i := input_length; i < row->Size(); i += 1;) {
+						target_array[target_count, 0] := row->Get(i)->ToFloat();
+						target_count += 1;
+					};
+
+					if(count < train_count) {
+						training_inputs->AddBack(FloatMatrixRef->New(input_array));
+						training_targets->AddBack(FloatMatrixRef->New(target_array));
+					}
+					else {
+						test_inputs->AddBack(FloatMatrixRef->New(input_array));
+						test_targets->AddBack(FloatMatrixRef->New(target_array));
+					};
+
+					count += 1;
+				};
+
+				input_training_targets := Vector->New[4]<FloatMatrixRef>;
+				input_training_targets[0] := training_inputs;
+				input_training_targets[1] := training_targets;
+				input_training_targets[2] := test_inputs;
+				input_training_targets[3] := test_targets;
+
+				return input_training_targets;
+			};
+
+			return Nil;
+		}
+	}
+}

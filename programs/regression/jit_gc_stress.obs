@@ -1,0 +1,60 @@
+# EXTRA_LIBS: gen_collect
+#~
+JIT + GC interaction stress (2026-06). One CI run on linux-x64 failed with a
+JIT-to-JIT runtime error in Collection.Vector:IsEmpty during API-doc
+generation and never reproduced (75+ adversarial local attempts on Windows
+and Linux with forced GC pressure and JIT threshold 1). This test keeps a
+standing, deterministic exerciser of that surface on every platform: deep
+recursive JIT-to-JIT calls that allocate arrays, strings and collections on
+every frame, with an exact expected total so any pointer corruption shows up
+as a wrong value or a crash rather than silence.
+
+Intentionally runs with the JIT ENABLED.
+~#
+use Collection;
+
+class JitGcStress {
+	function : Main(args : String[]) ~ Nil {
+		"Testing JIT/GC stress..."->PrintLine();
+
+		grand := 0;
+		each(round : 300) {
+			v := Vector->New()<IntRef>;
+			each(i : 40) {
+				v->AddBack(IntRef->New(i));
+			};
+			grand += Walk(v, 0);
+		};
+
+		if(grand = 171900) {
+			"PASS: JIT/GC stress"->PrintLine();
+		}
+		else {
+			"FAIL: JIT/GC stress, total {$grand}"->PrintLine();
+		};
+	}
+
+	# allocation-heavy recursion: every frame allocates an Int array, grows a
+	# string and builds a fresh Vector while holding live references across
+	# the allocating calls below it
+	function : Walk(v : Vector<IntRef>, depth : Int) ~ Int {
+		if(depth > 18 | v->IsEmpty()) {
+			return 0;
+		};
+
+		scratch := Int->New[96];
+		each(i : 96) {
+			scratch[i] := depth + i;
+		};
+
+		text := "d";
+		text += depth;
+
+		child := Vector->New()<IntRef>;
+		each(i : 8) {
+			child->AddBack(IntRef->New(i * depth));
+		};
+
+		return scratch[depth % 96] + text->Size() + Walk(child, depth + 1) + v->Size();
+	}
+}

@@ -1,0 +1,143 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for System.ML gradient boosting (overhaul phase 3 leftover):
+a RegressionTree learns a step function exactly, GradientBoostedTrees fits a
+nonlinear target (y = x^2) far better than a straight line can, more boosting
+stages reduce training error, and both round-trip through Store/Load.
+~#
+use System.ML, System.IO.Filesystem, Collection;
+
+class MlGbtTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		eps := 0.000001;
+		model_file := "ml_gbt_model_test.tmp";
+
+		# --- RegressionTree: a step function is learned exactly ---
+		step_x := [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0], [7.0], [8.0]];
+		step_y := [[10.0], [10.0], [10.0], [10.0], [50.0], [50.0], [50.0], [50.0]];
+
+		rtree := RegressionTree->New(3, 1);
+		if(rtree->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted regression tree stored"->PrintLine();
+		};
+
+		if(<>rtree->Fit(step_x, step_y)) {
+			pass := false;
+			"  FAIL: regression tree fit"->PrintLine();
+		}
+		else {
+			if(Float->Abs(rtree->Predict([2.0]) - 10.0) > eps |
+				Float->Abs(rtree->Predict([7.0]) - 50.0) > eps) {
+				pass := false;
+				"  FAIL: regression tree step values"->PrintLine();
+			};
+			if(rtree->Score(step_x, step_y) < 0.9999) {
+				pass := false;
+				"  FAIL: regression tree step score"->PrintLine();
+			};
+		};
+
+		# regression tree Store/Load round-trip
+		if(<>rtree->Store(model_file)) {
+			pass := false;
+			"  FAIL: regression tree store"->PrintLine();
+		};
+		rtree_loaded := RegressionTree->Load(model_file);
+		if(rtree_loaded = Nil | <>rtree_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: regression tree load"->PrintLine();
+		}
+		else {
+			before := rtree->PredictAll(step_x);
+			after := rtree_loaded->PredictAll(step_x);
+			each(i : 8) {
+				if(Float->Abs(before[i,0] - after[i,0]) > eps) {
+					pass := false;
+					"  FAIL: regression tree round-trip {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		# --- GBT: nonlinear y = x^2 over [-5, 5] ---
+		rows := 21;
+		gx := Float->New[rows, 1];
+		gy := Float->New[rows, 1];
+		each(i : rows) {
+			x := -5.0 + i->As(Float) * 0.5;
+			gx[i,0] := x;
+			gy[i,0] := x * x;
+		};
+
+		# a straight line cannot explain a parabola (R^2 ~ 0)
+		line := LinearRegression->New();
+		line->Fit(gx, gy, true);
+		line_score := line->Score(gx, gy);
+		if(line_score > 0.5) {
+			pass := false;
+			"  FAIL: linear baseline unexpectedly fits {$line_score}"->PrintLine();
+		};
+
+		gbt := GradientBoostedTrees->New(50, 0.2, 3, 2);
+		if(gbt->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted gbt stored"->PrintLine();
+		};
+
+		if(<>gbt->Fit(gx, gy)) {
+			pass := false;
+			"  FAIL: gbt fit"->PrintLine();
+		}
+		else {
+			gbt_score := gbt->Score(gx, gy);
+			if(gbt_score < 0.95) {
+				pass := false;
+				"  FAIL: gbt parabola score {$gbt_score}"->PrintLine();
+			};
+			if(gbt->GetTreeCount() <> 50) {
+				pass := false;
+				"  FAIL: gbt tree count"->PrintLine();
+			};
+
+			# boosting helps: a 5-stage model fits worse than the 50-stage one
+			small := GradientBoostedTrees->New(5, 0.2, 3, 2);
+			small->Fit(gx, gy);
+			if(small->Score(gx, gy) >= gbt_score) {
+				pass := false;
+				"  FAIL: gbt staged improvement"->PrintLine();
+			};
+		};
+
+		# gbt Store/Load round-trip
+		if(<>gbt->Store(model_file)) {
+			pass := false;
+			"  FAIL: gbt store"->PrintLine();
+		};
+		gbt_loaded := GradientBoostedTrees->Load(model_file);
+		if(gbt_loaded = Nil | <>gbt_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: gbt load"->PrintLine();
+		}
+		else {
+			before := gbt->Predict(gx);
+			after := gbt_loaded->Predict(gx);
+			each(i : rows) {
+				if(Float->Abs(before[i,0] - after[i,0]) > eps) {
+					pass := false;
+					"  FAIL: gbt round-trip {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		if(pass) {
+			"PASS: ML gradient boosting tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML gradient boosting tests"->PrintLine();
+		};
+	}
+}

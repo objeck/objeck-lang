@@ -2870,7 +2870,6 @@ StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t
   frame->jit_called = false;
   frame->jit_mem = nullptr;
   frame->jit_offset = 0;
-  frame->jit_inst_mem = nullptr;
 #ifdef _DEBUG
   std::wcout << L"fetching frame=" << frame << std::endl;
 #endif

@@ -1,0 +1,1128 @@
+#~~
+# Objeck machine learning library: clustering
+# Copyright (c) 2024-2026 Randy Hollines
+#
+# Credits:
+# Eigen matrix library - https://eigen.tuxfamily.org
+~~#
+
+use Collection;
+use Data.CSV;
+
+#~
+Clustering: KMeans with k-means++ seeding, density-based DBSCAN and the GaussianMixture EM model. Compile with -lib ml.
+~#
+bundle System.ML {
+#~
+	K-Means clustering algorithm
+	
+	```
+records->AddBack(FloatArrayRef->New([9.677901811, 3.044481052]));
+records->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
+records->AddBack(FloatArrayRef->New([9.340432657, 2.896683906]));
+records->AddBack(FloatArrayRef->New([7.674354483, 4.765027229]));
+records->AddBack(FloatArrayRef->New([8.656404515, 0.481807722]));
+# ...
+
+labels := ["group-a","group-b", "group-c"];
+groups := KMeans->Group(labels, records, 2, 0.0, 10.0);
+groups->GetGroupNames()->ToString()->PrintLine();
+
+groups->GetDunnIndex()->PrintLine();
+
+each(group in groups) {
+  group->GetName()->PrintLine();
+  group->GetArrayValue(0)->PrintLine();
+}
+	```
+~#
+	class KMeans {
+		@debug : static : Bool;
+
+		#~
+		K-Means group clustering
+		@param group_labels group labels used to tag groups also specify K
+		@param records input records
+		@param record_length length of records, all records lengths be the same
+		@param min_value smallest record value
+		@param max_value largest record value
+		@return labeled grouping
+		~#
+		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float) ~ KMeansGrouping {
+			return Group(group_labels, records, record_length, min_value, max_value, 100, 1);
+		}
+
+		#~
+		K-Means clustering with k-means++ seeding (deterministic for a given seed),
+		an iteration cap, and explicit empty-cluster handling.
+		@param group_labels group labels; the count determines K
+		@param records input records (all of equal length)
+		@param record_length length of each record
+		@param min_value smallest record value (kept for API compatibility)
+		@param max_value largest record value (kept for API compatibility)
+		@param max_iterations hard cap on refinement iterations
+		@param seed PRNG seed for reproducible k-means++ initialization
+		@return labeled grouping
+		~#
+		function : native : Group(group_labels : String[], records : Vector<FloatArrayRef>, record_length : Int, min_value : Float, max_value : Float, max_iterations : Int, seed : Int) ~ KMeansGrouping {
+			rand := Random->New(seed);
+			k := group_labels->Size();
+			centroids := KMeansPlusPlus(k, records, rand);
+			updated_centroids := FloatArrayRef->New[k];
+
+			groups := Hash->New()<String, Vector<FloatArrayRef>>;
+			each(centroid_label in group_labels) {
+				groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
+			};
+
+			iter := 0;
+			has_changed := true;
+			while(has_changed & iter < max_iterations) {
+				iter += 1;
+
+				each(datum in records) {
+					shortest_index := -1;
+					shortest_distance := Float->Inf();
+
+					each(i : centroids) {
+						centroid := centroids[i];
+						distance := Distance(datum, centroid);
+						if(distance < shortest_distance) {
+							shortest_distance := distance;
+							shortest_index := i;
+						};
+					};
+
+					nearest_centroid_label := group_labels[shortest_index];
+					group := groups->Find(nearest_centroid_label)<FloatArrayRef>;
+					group->AddBack(datum);
+				};
+
+				group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
+				each(i : group_key_values) {
+					group_key_value := group_key_values->Get(i);
+					group := group_key_value->GetSecond();
+
+					update := Average(group, record_length);
+					if(update <> Nil) {
+						updated_centroids[i] := update;
+					}
+					else {
+						# empty cluster: retain its previous centroid
+						updated_centroids[i] := centroids[i];
+					};
+				};
+
+				has_changed := HasChanged(centroids, updated_centroids);
+				if(has_changed) {
+					centroids := updated_centroids;
+					updated_centroids := FloatArrayRef->New[k];
+
+					each(centroid_label in group_labels) {
+						if(groups->Remove(centroid_label)) {
+							groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
+						};
+					};
+				};
+			};
+
+			return KMeansGrouping->New(groups);
+		}
+
+		# k-means++ seeding: the first center is a uniformly random record; each
+		# subsequent center is chosen with probability proportional to the squared
+		# distance from the nearest already-chosen center. Deterministic given rand.
+		function : native : KMeansPlusPlus(k : Int, records : Vector<FloatArrayRef>, rand : Random) ~ FloatArrayRef[] {
+			centroids := FloatArrayRef->New[k];
+			n := records->Size();
+			if(n = 0 | k = 0) {
+				return centroids;
+			};
+
+			first := rand->NextInt(n);
+			centroids[0] := records->Get(first);
+
+			chosen := 1;
+			while(chosen < k) {
+				dists := Float->New[n];
+				total := 0.0;
+				for(i := 0; i < n; i += 1;) {
+					datum := records->Get(i);
+					best := Float->Inf();
+					for(c := 0; c < chosen; c += 1;) {
+						d := Distance(datum, centroids[c]);
+						if(d < best) {
+							best := d;
+						};
+					};
+					dd := best * best;
+					dists[i] := dd;
+					total += dd;
+				};
+
+				target := rand->NextReal() * total;
+				cum := 0.0;
+				pick := n - 1;
+				picked := false;
+				for(i := 0; i < n; i += 1;) {
+					cum += dists[i];
+					if(<>picked & cum >= target) {
+						pick := i;
+						picked := true;
+					};
+				};
+
+				centroids[chosen] := records->Get(pick);
+				chosen += 1;
+			};
+
+			return centroids;
+		}
+
+		function : native : HasChanged(old_centroids : FloatArrayRef[], new_centroids : FloatArrayRef[]) ~ Bool {
+			if(old_centroids = Nil | new_centroids = Nil) {
+				return false;
+			};
+
+			# Converged when every centroid coordinate moved less than the tolerance.
+			# Returns true as soon as any coordinate moved at least `tolerance`.
+			tolerance := 0.001;
+			each(i : old_centroids) {
+				a := old_centroids[i];
+				b := new_centroids[i];
+				if(a = Nil | b = Nil) {
+					return false;
+				};
+				a_values := a->Get();
+				b_values := b->Get();
+
+				each(j : a_values) {
+					if(Float->Abs(a_values[j] - b_values[j]) >= tolerance) {
+						return true;
+					};
+				};
+			};
+
+			return false;
+		}
+
+		function : native : Average(group : Vector<FloatArrayRef>, record_length : Int) ~FloatArrayRef {
+			if(group->IsEmpty()) {
+				return Nil;
+			};
+
+			average_values := Float->New[record_length];
+			each(i : average_values) {
+				sum := 0.0;
+				each(array in group) {
+					array_values := array->Get();
+					sum += array_values[i];
+				};
+				average := sum / group->Size()->As(Float);
+				average_values[i] := average;
+			}
+
+			return FloatArrayRef->New(average_values);
+		}
+
+		function : native : Distance(left : FloatArrayRef, right : FloatArrayRef) ~ Float {
+			if(left = Nil | right = Nil) {
+				return 0.0;
+			};
+
+			left_values := left->Get(); right_values := right->Get();
+			if(left_values->Size() <> right_values->Size()) {
+				return 0.0;
+			};
+
+			distance := 0.0;
+	        each(i : left_values) {
+	            distance += Float->Pow(left_values[i] - right_values[i], 2.0);
+	        };
+
+	        return distance->Sqrt();
+		}
+	}
+
+	#~
+	Density-based spatial clustering (DBSCAN). Groups points that are densely
+	packed (at least min_points neighbors within eps, Euclidean) and labels
+	sparse points as noise (-1). Unlike KMeans the cluster count is discovered,
+	clusters may be any shape, and the result is deterministic for a given
+	input order.
+
+```
+scanner := DBSCAN->New(1.0, 3);
+scanner->Fit(X);
+labels := scanner->GetLabels();   # cluster id per row; -1 = noise
+```
+	~#
+	class DBSCAN {
+		@eps : Float;
+		@min_points : Int;
+		@labels : Int[];
+		@num_clusters : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param eps neighborhood radius (Euclidean)
+		@param min_points minimum neighbors (inclusive of the point itself) for a core point
+		~#
+		New(eps : Float, min_points : Int) {
+			@eps := eps;
+			@min_points := min_points;
+			@is_fitted := false;
+		}
+
+		#~
+		Clusters the data. Region growing visits rows in order, so results are
+		deterministic for a given input.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if clustering succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			if(rows = 0) {
+				return false;
+			};
+
+			# -2 = unvisited, -1 = noise, >= 0 = cluster id
+			@labels := Int->New[rows];
+			each(i : rows) {
+				@labels[i] := -2;
+			};
+
+			@num_clusters := 0;
+			queue := Int->New[rows];
+
+			each(i : rows) {
+				if(@labels[i] = -2) {
+					neighbors := RegionQuery(X, i);
+					if(neighbors->Size() < @min_points) {
+						@labels[i] := -1;
+					}
+					else {
+						# new cluster: grow it breadth-first from the seed.
+						# Points are claimed (labeled) when enqueued, so each
+						# point enters the queue at most once and the fixed
+						# queue of `rows` entries can never overflow.
+						cluster := @num_clusters;
+						@num_clusters += 1;
+						@labels[i] := cluster;
+
+						head := 0;
+						tail := 0;
+						each(n : neighbors) {
+							q := neighbors[n];
+							if(@labels[q] = -2 | @labels[q] = -1) {
+								@labels[q] := cluster;
+								queue[tail] := q;
+								tail += 1;
+							};
+						};
+
+						while(head < tail) {
+							p := queue[head];
+							head += 1;
+
+							p_neighbors := RegionQuery(X, p);
+							if(p_neighbors->Size() >= @min_points) {
+								# core point: claim and extend the frontier
+								each(n : p_neighbors) {
+									q := p_neighbors[n];
+									if(@labels[q] = -2 | @labels[q] = -1) {
+										@labels[q] := cluster;
+										queue[tail] := q;
+										tail += 1;
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		# Indexes of all rows within eps of row i (inclusive of i itself).
+		method : RegionQuery(X : Float[,], i : Int) ~ Int[] {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			eps_sq := @eps * @eps;
+			found := Int->New[rows];
+			count := 0;
+			each(j : rows) {
+				dist_sq := 0.0;
+				each(c : cols) {
+					diff := X[i,c] - X[j,c];
+					dist_sq += diff * diff;
+				};
+
+				if(dist_sq <= eps_sq) {
+					found[count] := j;
+					count += 1;
+				};
+			};
+
+			result := Int->New[count];
+			each(j : count) {
+				result[j] := found[j];
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the per-row cluster labels (-1 = noise).
+		@return label array, or Nil if not fitted
+		~#
+		method : public : GetLabels() ~ Int[] {
+			return @labels;
+		}
+
+		#~
+		Gets the number of clusters discovered.
+		@return cluster count
+		~#
+		method : public : GetNumClusters() ~ Int {
+			return @num_clusters;
+		}
+
+		#~
+		Whether the clustering has been run.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+	}
+
+	#~
+	Gaussian mixture model with diagonal covariance, fitted by expectation-
+	maximization. Component means are seeded k-means++-style with the seedable
+	System.ML.Random for reproducible fits; the E-step works in the log domain
+	for numerical stability and variances are floored. Training stops when the
+	average log-likelihood improves by less than the tolerance.
+
+```
+gmm := GaussianMixture->New(2, 7);
+gmm->Fit(X);
+components := gmm->PredictClass(X);     # hard assignments
+resp := gmm->Predict(X);                # soft responsibilities
+```
+	~#
+	class GaussianMixture {
+		@num_components : Int;
+		@max_iterations : Int;
+		@tolerance : Float;
+		@seed : Int;
+		@weights : Float[];
+		@means : Float[,];
+		@variances : Float[,];
+		@log_likelihood : Float;
+		@iterations_run : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor with default optimization settings (100 iterations,
+		tolerance 0.000001).
+		@param num_components number of mixture components
+		@param seed PRNG seed for reproducible initialization
+		~#
+		New(num_components : Int, seed : Int) {
+			@num_components := num_components;
+			@max_iterations := 100;
+			@tolerance := 0.000001;
+			@seed := seed;
+			@is_fitted := false;
+		}
+
+		#~
+		Constructor with explicit optimization settings.
+		@param num_components number of mixture components
+		@param max_iterations EM iteration cap
+		@param tolerance stop when average log-likelihood improves less than this
+		@param seed PRNG seed for reproducible initialization
+		~#
+		New(num_components : Int, max_iterations : Int, tolerance : Float, seed : Int) {
+			@num_components := num_components;
+			@max_iterations := max_iterations;
+			@tolerance := tolerance;
+			@seed := seed;
+			@is_fitted := false;
+		}
+
+		New : private (num_components : Int, weights : Float[], means : Float[,], variances : Float[,], log_likelihood : Float) {
+			@num_components := num_components;
+			@weights := weights;
+			@means := means;
+			@variances := variances;
+			@log_likelihood := log_likelihood;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the mixture by EM.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows < @num_components | @num_components < 1 | cols = 0) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# global per-feature variance for initialization and flooring
+			global_var := Float->New[cols];
+			each(j : cols) {
+				mean := 0.0;
+				each(i : rows) {
+					mean += X[i,j];
+				};
+				mean := mean / n;
+
+				sq := 0.0;
+				each(i : rows) {
+					diff := X[i,j] - mean;
+					sq += diff * diff;
+				};
+				global_var[j] := sq / n;
+				if(global_var[j] < 0.000001) {
+					global_var[j] := 0.000001;
+				};
+			};
+
+			# k-means++-style seeding of the component means
+			rand := Random->New(@seed);
+			@means := Float->New[@num_components, cols];
+			first := rand->NextInt(rows);
+			each(j : cols) {
+				@means[0,j] := X[first,j];
+			};
+
+			chosen := 1;
+			while(chosen < @num_components) {
+				dists := Float->New[rows];
+				total := 0.0;
+				each(i : rows) {
+					best := Float->Inf();
+					each(c : chosen) {
+						d := 0.0;
+						each(j : cols) {
+							diff := X[i,j] - @means[c,j];
+							d += diff * diff;
+						};
+						if(d < best) {
+							best := d;
+						};
+					};
+					dists[i] := best;
+					total += best;
+				};
+
+				target := rand->NextReal() * total;
+				cum := 0.0;
+				pick := rows - 1;
+				picked := false;
+				each(i : rows) {
+					cum += dists[i];
+					if(<>picked & cum >= target) {
+						pick := i;
+						picked := true;
+					};
+				};
+
+				each(j : cols) {
+					@means[chosen,j] := X[pick,j];
+				};
+				chosen += 1;
+			};
+
+			# uniform weights, global variances
+			@weights := Float->New[@num_components];
+			@variances := Float->New[@num_components, cols];
+			each(c : @num_components) {
+				@weights[c] := 1.0 / @num_components->As(Float);
+				each(j : cols) {
+					@variances[c,j] := global_var[j];
+				};
+			};
+
+			# EM
+			resp := Float->New[rows, @num_components];
+			previous_ll := Float->NegInf();
+			@iterations_run := 0;
+
+			converged := false;
+			each(iter : @max_iterations) {
+				if(<>converged) {
+					@iterations_run += 1;
+
+					# E-step: responsibilities via log-sum-exp
+					ll := 0.0;
+					each(i : rows) {
+						log_joint := Float->New[@num_components];
+						max_log := Float->NegInf();
+						each(c : @num_components) {
+							log_joint[c] := @weights[c]->Log() + LogGaussian(X, i, c);
+							if(log_joint[c] > max_log) {
+								max_log := log_joint[c];
+							};
+						};
+
+						sum_exp := 0.0;
+						each(c : @num_components) {
+							sum_exp += Float->Exp(log_joint[c] - max_log);
+						};
+						log_norm := max_log + sum_exp->Log();
+						ll += log_norm;
+
+						each(c : @num_components) {
+							resp[i,c] := Float->Exp(log_joint[c] - log_norm);
+						};
+					};
+					ll := ll / n;
+
+					# M-step
+					each(c : @num_components) {
+						resp_sum := 0.0;
+						each(i : rows) {
+							resp_sum += resp[i,c];
+						};
+
+						if(resp_sum < 0.0000000001) {
+							resp_sum := 0.0000000001;
+						};
+						@weights[c] := resp_sum / n;
+
+						each(j : cols) {
+							mean := 0.0;
+							each(i : rows) {
+								mean += resp[i,c] * X[i,j];
+							};
+							mean := mean / resp_sum;
+							@means[c,j] := mean;
+						};
+
+						each(j : cols) {
+							variance := 0.0;
+							each(i : rows) {
+								diff := X[i,j] - @means[c,j];
+								variance += resp[i,c] * diff * diff;
+							};
+							variance := variance / resp_sum;
+							# floor relative to the global scale
+							floor := 0.000001 * global_var[j];
+							if(variance < floor) {
+								variance := floor;
+							};
+							@variances[c,j] := variance;
+						};
+					};
+
+					if(ll - previous_ll < @tolerance & @iterations_run > 1) {
+						converged := true;
+					};
+					previous_ll := ll;
+				};
+			};
+
+			@log_likelihood := previous_ll;
+			@is_fitted := true;
+			return true;
+		}
+
+		# log N(X[i] | means[c], diag(variances[c]))
+		method : LogGaussian(X : Float[,], i : Int, c : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			two_pi := 2.0 * Float->Pi();
+			sum := 0.0;
+			each(j : cols) {
+				variance := @variances[c,j];
+				diff := X[i,j] - @means[c,j];
+				sum -= 0.5 * ((two_pi * variance)->Log() + diff * diff / variance);
+			};
+
+			return sum;
+		}
+
+		#~
+		Computes soft component responsibilities for every row.
+		@param X data matrix
+		@return rows x components responsibility matrix, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+
+			result := Float->New[rows, @num_components];
+			each(i : rows) {
+				log_joint := Float->New[@num_components];
+				max_log := Float->NegInf();
+				each(c : @num_components) {
+					log_joint[c] := @weights[c]->Log() + LogGaussian(X, i, c);
+					if(log_joint[c] > max_log) {
+						max_log := log_joint[c];
+					};
+				};
+
+				sum_exp := 0.0;
+				each(c : @num_components) {
+					sum_exp += Float->Exp(log_joint[c] - max_log);
+				};
+				log_norm := max_log + sum_exp->Log();
+
+				each(c : @num_components) {
+					result[i,c] := Float->Exp(log_joint[c] - log_norm);
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts the most likely component for every row.
+		@param X data matrix
+		@return per-row component ids, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Int[] {
+			resp := Predict(X);
+			if(resp = Nil) {
+				return Nil;
+			};
+
+			resp_dims := resp->Size();
+			rows := resp_dims[0];
+
+			result := Int->New[rows];
+			each(i : rows) {
+				best := 0;
+				each(c : @num_components) {
+					if(resp[i,c] > resp[i,best]) {
+						best := c;
+					};
+				};
+				result[i] := best;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted component means (components x features).
+		@return mean matrix, or Nil if not fitted
+		~#
+		method : public : GetMeans() ~ Float[,] {
+			return @means;
+		}
+
+		#~
+		Gets the fitted mixture weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the final average log-likelihood of the training data.
+		@return average log-likelihood
+		~#
+		method : public : GetLogLikelihood() ~ Float {
+			return @log_likelihood;
+		}
+
+		#~
+		Gets the number of EM iterations actually run.
+		@return iterations run
+		~#
+		method : public : GetIterationsRun() ~ Int {
+			return @iterations_run;
+		}
+
+		#~
+		Whether the mixture has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted mixture to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_components);
+
+			mean_dims := @means->Size();
+			cols := mean_dims[1];
+			serializer->Write(cols);
+
+			each(c : @num_components) {
+				serializer->Write(@weights[c]);
+			};
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@means[c,j]);
+				};
+			};
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@variances[c,j]);
+				};
+			};
+			serializer->Write(@log_likelihood);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted mixture from a file.
+		@param filename file to load from
+		@return fitted mixture, or Nil on failure
+		~#
+		function : Load(filename : String) ~ GaussianMixture {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_components := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_components < 1 | cols < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[num_components];
+			each(c : num_components) {
+				weights[c] := deserializer->ReadFloat();
+			};
+
+			means := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					means[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			variances := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					variances[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			log_likelihood := deserializer->ReadFloat();
+
+			return GaussianMixture->New(num_components, weights, means, variances, log_likelihood);
+		}
+	}
+
+	#~
+	K-Means grouping result
+	~#
+	class KMeansGrouping {
+		@groups : Hash<String, KMeansGroup>;
+		@group_names : String[];
+		@dunn_index : Float;
+
+		@debug : static : Bool;
+
+		New(groups : Hash<String, Vector<FloatArrayRef>>) {
+			group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
+			@groups := Hash->New()<String, KMeansGroup>;
+			@group_names := String->New[group_key_values->Size()];			
+			@dunn_index := -1.0;
+			
+			each(i : group_key_values) {
+				group_key_value := group_key_values->Get(i);
+
+				group := group_key_value->GetSecond();
+				group_name := group_key_value->GetFirst();
+				@group_names[i] := group_name->Copy();
+				@groups->Insert(group_name, KMeansGroup->New(group_name, group));
+			};
+		}
+
+		#~
+		Get the number of groups
+		@return number of groups
+		~#
+		method : public : Size() ~ Int {
+			return @groups->Size();
+		}
+
+		#~
+		Get a group by index
+		@param i index
+		@return group
+		~#
+		method : public : Get(i : Int) ~ KMeansGroup {
+			if(i > -1 & i < @group_names->Size()) {
+				return @groups->Find(@group_names[i])
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get an array of group names
+		@return array of group names
+		~#
+		method : public : GetGroupNames() ~ String[] {
+			return @group_names;
+		}
+
+		#~
+		Get a group by name
+		@param name group name
+		@return group
+		~#
+		method : public : GetGroup(name : String) ~ KMeansGroup {
+			return @groups->Find(name);
+		}
+
+		#~
+		Calculates the Dunn index
+		@param groups K-Mean grouping
+		@return Dunn index, higher values indicate more distinct clusters
+		~#
+		method : public : GetDunnIndex() ~ Float {
+			if(@dunn_index < 0.0) {
+				group_key_values := @groups->GetKeyValues()<Pair<String, KMeansGroup>>;
+
+				max_intra_distance := 0.0;
+				each(group_key_value in group_key_values) {
+					group := group_key_value->GetSecond()->GetValues();
+					group_name := group_key_value->GetFirst();
+					
+					if(@debug) {
+						group_size := group->Size();
+						"group: name='{$group_name}', size={$group_size}\n---"->PrintLine();
+					};
+
+					each(left_array in group) {			
+						each(right_array in group) {
+							if(left_array <> right_array) {
+								distance := KMeans->Distance(left_array, right_array);
+								if(distance > max_intra_distance) {
+									max_intra_distance := distance;
+								}
+							};
+						};
+					};
+				};
+
+				if(@debug) {
+					"max_intra_distance={$max_intra_distance}\n---"->PrintLine();
+				};
+
+				min_inter_distance := Float->Inf();
+				each(left_key_value in group_key_values) {
+					left_group := left_key_value->GetSecond()->GetValues();
+					left_group_name := left_key_value->GetFirst();
+
+					each(right_key_value in group_key_values) {
+						right_group := right_key_value->GetSecond()->GetValues();
+						right_group_name := right_key_value->GetFirst();
+						if(<>left_group_name->Equals(right_group_name)) {
+							each(left_array in left_group) {
+								each(right_array in right_group) {
+									distance := KMeans->Distance(left_array, right_array);
+									if(distance < min_inter_distance) {
+										min_inter_distance := distance;
+									};
+								};
+							};
+						};
+					};
+				};
+
+				if(@debug) {
+					"min_inter_distance={$min_inter_distance}\n---"->PrintLine();
+				};
+
+				@dunn_index := min_inter_distance / max_intra_distance;
+			};
+
+			return @dunn_index;
+		}
+		
+		#~
+		String representation of the object
+		@return groups representation of the object
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			buffer->Append('[');
+			group_key_values := @groups->GetKeyValues()<Pair<String, KMeansGroup>>;			
+			each(i : group_key_values) {
+				group_key_value := group_key_values->Get(i);
+				group := group_key_value->GetSecond();
+				group_name := group_key_value->GetFirst();
+
+				buffer->Append("{\"name\": \"");
+				buffer->Append(group_name);
+				buffer->Append("\",\"values\":[");
+				buffer->Append(group->ToString());
+				buffer->Append("]}");
+
+				if(i + 1 < group_key_values->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
+	}
+
+	#~
+	KMeans group
+	~#
+	class KMeansGroup {
+		@name : String;
+		@arrays : Vector<FloatArrayRef>;
+
+		New(name : String, arrays : Vector<FloatArrayRef>) {
+			@name := name;
+			@arrays := arrays;
+		}
+
+		#~
+		Get the name of the group
+		@return name of the group
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get group values
+		@return group values
+		~#
+		method : public : GetValues() ~ Vector<FloatArrayRef> {
+			return @arrays;
+		}
+
+		#~
+		Get group values as an array
+		@param i index
+		@return group values as an array
+		~#
+		method : public : GetArrayValue(i : Int) ~ Float[] {
+			if(i > -1 & i < @arrays->Size()) {
+				array := @arrays->Get(i)->Get();
+				columns := array->Size();
+
+				matrix := Float->New[columns];
+				each(j : array) {
+					matrix[j] := array[j];
+				};
+
+				return matrix;
+
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get the size of the group
+		@return size of the group
+		~#
+		method : public : Size() ~ Int {
+			return @arrays->Size();
+		}
+
+		#~
+		Get array by index
+		@param i index
+		@return array
+		~#
+		method : public : Get(i : Int) ~ FloatArrayRef {
+			if(i > -1 & i < @arrays->Size()) {
+				return @arrays->Get(i);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get group as a value matrix
+		@return value matrix
+		~#
+		method : native : public : GetArrayValues() ~ Float[,] {
+			matrix : Float[,];
+
+			if(<>@arrays->IsEmpty()) {
+				rows := @arrays->Size();
+				array := @arrays->Get(0)->Get();
+				columns := array->Size();
+
+				matrix := Float->New[rows, columns];
+				each(i : @arrays) {
+					array := @arrays->Get(i)->Get();
+					each(j : array) {
+						matrix[i, j] := array[j];
+					}
+				};
+			};
+
+			return matrix;
+		}
+
+		#~
+		String representation of the object
+		@return groups representation of the object
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			if(<>@arrays->IsEmpty()) {
+				each(i : @arrays) {
+					array := @arrays->Get(i)->Get();
+					buffer->Append(array->ToString());
+					if(i + 1 < @arrays->Size()) {
+						buffer->Append(',');
+					};
+				};
+			};
+
+			return buffer;
+		}
+	}
+}

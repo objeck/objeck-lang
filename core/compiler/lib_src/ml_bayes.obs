@@ -1,0 +1,529 @@
+#~~
+# Objeck machine learning library: Bayesian classifiers
+# Copyright (c) 2024-2026 Randy Hollines
+#
+# Credits:
+# Eigen matrix library - https://eigen.tuxfamily.org
+~~#
+
+use Collection;
+use Data.CSV;
+
+#~
+Bayesian classifiers: multinomial NaiveBayes for term counts and GaussianNaiveBayes for continuous features. Compile with -lib ml.
+~#
+bundle System.ML {
+	#~
+	Gaussian naive Bayes for continuous features and integer class labels.
+	Per class and feature it fits a mean and variance, then classifies by
+	maximum log-joint probability (log prior + sum of log Gaussian
+	likelihoods). Variances are floored for numerical stability.
+
+```
+X := [[1.0], [1.2], [8.0], [8.2]];
+y := [[0.0], [0.0], [1.0], [1.0]];
+gnb := GaussianNaiveBayes->New();
+gnb->Fit(X, y);
+classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
+```
+	~#
+	class GaussianNaiveBayes {
+		@num_classes : Int;
+		@priors : Float[];
+		@means : Float[,];
+		@variances : Float[,];
+		@is_fitted : Bool;
+
+		New() {
+			@is_fitted := false;
+		}
+
+		New : private (num_classes : Int, priors : Float[], means : Float[,], variances : Float[,]) {
+			@num_classes := num_classes;
+			@priors := priors;
+			@means := means;
+			@variances := variances;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits per-class feature means/variances and class priors. Class labels
+		are the integer values 0..C-1 in the target column; every class in the
+		range must appear at least once.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y class labels (integer values stored as Float, rows x 1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			# classes are 0..max label
+			max_label := 0;
+			each(i : rows) {
+				label_id := y[i,0]->As(Int);
+				if(label_id < 0) {
+					return false;
+				};
+				if(label_id > max_label) {
+					max_label := label_id;
+				};
+			};
+			@num_classes := max_label + 1;
+
+			counts := Int->New[@num_classes];
+			@means := Float->New[@num_classes, cols];
+			@variances := Float->New[@num_classes, cols];
+
+			each(i : rows) {
+				c := y[i,0]->As(Int);
+				counts[c] += 1;
+				each(j : cols) {
+					@means[c,j] += X[i,j];
+				};
+			};
+
+			each(c : @num_classes) {
+				if(counts[c] = 0) {
+					# a class id in the range never appears
+					return false;
+				};
+				each(j : cols) {
+					@means[c,j] := @means[c,j] / counts[c]->As(Float);
+				};
+			};
+
+			each(i : rows) {
+				c := y[i,0]->As(Int);
+				each(j : cols) {
+					diff := X[i,j] - @means[c,j];
+					@variances[c,j] += diff * diff;
+				};
+			};
+
+			# variance floor keeps degenerate (constant) features finite
+			floor := 0.000000001;
+			each(c : @num_classes) {
+				each(j : cols) {
+					@variances[c,j] := @variances[c,j] / counts[c]->As(Float);
+					if(@variances[c,j] < floor) {
+						@variances[c,j] := floor;
+					};
+				};
+			};
+
+			@priors := Float->New[@num_classes];
+			each(c : @num_classes) {
+				@priors[c] := counts[c]->As(Float) / rows->As(Float);
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes the log-joint probability of each class for every row.
+		@param X feature matrix
+		@return rows x classes matrix of log-joint scores, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			two_pi := 2.0 * Float->Pi();
+			result := Float->New[rows, @num_classes];
+			each(i : rows) {
+				each(c : @num_classes) {
+					log_joint := @priors[c]->Log();
+					each(j : cols) {
+						variance := @variances[c,j];
+						diff := X[i,j] - @means[c,j];
+						log_joint -= 0.5 * ((two_pi * variance)->Log() + diff * diff / variance);
+					};
+					result[i,c] := log_joint;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts the most likely class for every row.
+		@param X feature matrix
+		@return per-row class ids, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Int[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			score_dims := scores->Size();
+			rows := score_dims[0];
+
+			result := Int->New[rows];
+			each(i : rows) {
+				best := 0;
+				each(c : @num_classes) {
+					if(scores[i,c] > scores[i,best]) {
+						best := c;
+					};
+				};
+				result[i] := best;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the number of classes seen at fit time.
+		@return class count
+		~#
+		method : public : GetNumClasses() ~ Int {
+			return @num_classes;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true class labels (integer values stored as Float, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				if(preds[i] = y[i,0]->As(Int)) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_classes);
+
+			mean_dims := @means->Size();
+			cols := mean_dims[1];
+			serializer->Write(cols);
+
+			each(c : @num_classes) {
+				serializer->Write(@priors[c]);
+			};
+			each(c : @num_classes) {
+				each(j : cols) {
+					serializer->Write(@means[c,j]);
+				};
+			};
+			each(c : @num_classes) {
+				each(j : cols) {
+					serializer->Write(@variances[c,j]);
+				};
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ GaussianNaiveBayes {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_classes := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_classes < 1 | cols < 1) {
+				return Nil;
+			};
+
+			priors := Float->New[num_classes];
+			each(c : num_classes) {
+				priors[c] := deserializer->ReadFloat();
+			};
+
+			means := Float->New[num_classes, cols];
+			each(c : num_classes) {
+				each(j : cols) {
+					means[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			variances := Float->New[num_classes, cols];
+			each(c : num_classes) {
+				each(j : cols) {
+					variances[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			return GaussianNaiveBayes->New(num_classes, priors, means, variances);
+		}
+	}
+
+	#~
+	Naive Bayes entry of term with counts
+	~#
+	class BayesEntry {
+		@name : String;
+		@count : Int;
+		@bayes : Float;
+
+		#~
+		Constructor
+		@param name entry name
+		@param count count of occurrences 
+		~#
+		New(name : String, count : Int) {
+			@name := name;
+			@count := count;
+		}
+
+		#~
+		Get the entry name
+		@return entry name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get the entry count
+		@return entry count
+		~#
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		Set the entry count
+		@param count entry count
+		~#
+		method : public : SetCount(count : Int) ~ Nil {
+			@count := count;
+		}
+	}
+
+	#~
+	Naive Bayes group of entries
+	~#
+	class BayesGroup {
+		@entries : Map<String, BayesEntry>;
+		@prob : Float;
+
+		#~
+		Sets the initial probability
+		@param prob initial probability
+		~#
+		New(prob : Float) {
+			@prob := prob;
+			@entries := Map->New()<String, BayesEntry>;
+		}
+
+		#~
+		Adds an entry
+		@param entry entry to add
+		@return true if added, false otherwise
+		~#
+		method : public : AddEntry(entry : BayesEntry) ~ Bool {
+			if(@entries->Has(entry->GetName())) {
+				return false;
+			};
+
+			@entries->Insert(entry->GetName(), entry);
+			return true;
+		}
+
+		#~
+		Gets entries
+		@return entries
+		~#
+		method : public : GetEntries() ~ Map<String, BayesEntry> {
+			return @entries;
+		}
+
+		#~
+		Gets the initial probability
+		@return probability
+		~#
+		method : public : GetProbability() ~ Float {
+			return @prob;
+		}
+	}
+
+	#~
+	Naive Bayes ML algorithm
+
+```
+normal := BayesGroup->New(8.0 / 12.0);
+normal->AddEntry(BayesEntry->New("dear", 8));		
+normal->AddEntry(BayesEntry->New("friend", 5));
+normal->AddEntry(BayesEntry->New("lunch", 3));
+normal->AddEntry(BayesEntry->New("money", 1));
+
+spam := BayesGroup->New(4.0 / 12.0);
+spam->AddEntry(BayesEntry->New("dear", 2));
+spam->AddEntry(BayesEntry->New("friend", 1));
+spam->AddEntry(BayesEntry->New("lunch", 0));
+spam->AddEntry(BayesEntry->New("money", 4));
+
+bayes := NaiveBayes->New(normal, spam);
+finding := bayes->Query(["lunch", "money", "money", "money", "money"]);
+
+if(finding = 0) {
+  "normal"->PrintLine();
+}
+else if(finding = 1) {
+  "spam"->PrintLine();	
+}
+else {
+  "invalid"->PrintLine();	
+}	
+	```
+	~#
+	class NaiveBayes {
+		@left : BayesGroup;
+		@right : BayesGroup;
+
+		#~
+		Constructor
+		@param left left group
+		@param right right group
+		~#
+		New(left : BayesGroup, right : BayesGroup) {
+			@left := left;
+			@right := right;
+		}
+
+		#~
+		Query to Naive Bayes
+		@param terms list of term to calculate
+		@return 0 if left, 1 if right, -1 otherwise
+		~#
+		method : public : Query(terms : String[]) ~ Int {
+			if(terms = Nil | terms->Size() = 0) {
+				return -1;
+			};
+
+			# Log-space scores (higher = more likely); compare directly
+			left := Query(terms, @left);
+			right := Query(terms, @right);
+
+			if(left >= right) {
+				return 0;
+			};
+
+			return 1;
+		}
+
+		#~
+		Computes the Laplace-smoothed log-probability that the given terms belong
+		to the supplied group. Likelihoods are summed in log space to avoid
+		floating-point underflow on long term lists, and the group's counts are
+		never mutated (so queries are side-effect free and repeatable).
+		@param terms observed terms
+		@param group class group to score against
+		@return log-probability score (higher is more likely)
+		~#
+		method : Query(terms : String[], group : BayesGroup) ~ Float {
+			entries := group->GetEntries();
+			prior := group->GetProbability();
+			values := entries->GetValues()<BayesEntry>;
+
+			vocab := values->Size()->As(Float);
+			total := 0.0;
+			each(value := values) {
+				total += value->GetCount();
+			};
+
+			# Sum log-likelihoods with add-one (Laplace) smoothing
+			log_prob := prior->Log();
+			each(term := terms) {
+				find := entries->Find(term);
+				count := 0.0;
+				if(find <> Nil) {
+					count := find->GetCount()->As(Float);
+				};
+				likelihood := (count + 1.0) / (total + vocab);
+				log_prob += likelihood->Log();
+			};
+
+			return log_prob;
+		}
+	}
+
+	#~
+	K-Nearest Neighbors algorithm
+
+```
+matrix := [
+  [51.0,  167.0]
+  [58.0, 169.0]
+  [62.0, 182.0]
+  [69.0, 176.0]
+  [64.0, 173.0]
+  [65.0, 172.0]
+  [56.0, 174.0]
+  [57.0, 173.0]
+  [55.0, 170.0]];
+
+labels := [
+  "underweight", 
+  "normal", 
+  "normal", 
+  "normal", 
+  "normal", 
+  "underweight", 
+  "normal", 
+  "normal", 
+  "normal"];
+
+knn := KNearestNeighbors->New(matrix, labels);
+nearest := knn->Query(3, [57.0, 170.0]);
+each(neighbor := nearest) {
+  neighbor->ToString()->PrintLine();
+};
+```
+~#
+}

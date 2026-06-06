@@ -522,7 +522,7 @@ class Snippet {
 	
 	method : ParseDesc() ~ String {
 		ParseWhiteSpace();
-		
+
 		ident := "";
 		done := false;
 		while(<>done) {
@@ -534,19 +534,39 @@ class Snippet {
 					ParseWhiteSpace();
 					ident->Append(' ');
 				}
-				label '~':
-				label '`':
+				label '`': {
+					# stop only at a code fence (``...); a single inline
+					# backtick (`like this`) is part of the description
+					if(@nxt_char = '`') {
+						done := true;
+					}
+					else {
+						ident->Append(@cur_char);
+						NextChar();
+					};
+				}
+				label '~': {
+					# stop only at the comment terminator (~#); a bare tilde
+					# ("typically ~1.4") is part of the description
+					if(@nxt_char = '#') {
+						done := true;
+					}
+					else {
+						ident->Append(@cur_char);
+						NextChar();
+					};
+				}
 				label '@':
 				label '\0': {
 					done := true;
-				}				
+				}
 				other: {
 					ident->Append(@cur_char);
 					NextChar();
 				}
 			};
 		};
-		
+
 		return ident->Trim();
 	}
 

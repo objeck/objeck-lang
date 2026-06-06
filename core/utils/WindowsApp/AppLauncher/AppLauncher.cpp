@@ -4,10 +4,12 @@
 
 #include <gdiplus.h>
 #include <commctrl.h>
+#include <winhttp.h>
 
 #pragma comment (lib,"Gdiplus.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
+#pragma comment(lib, "winhttp.lib")
 
 using namespace Gdiplus;
 
@@ -51,6 +53,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
   UNREFERENCED_PARAMETER(hPrevInstance);
   UNREFERENCED_PARAMETER(lpCmdLine);
 
+  // crisp rendering on scaled displays
+  SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
   InitGDIPlus();
 
   // Initialize global strings
@@ -81,21 +86,29 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 }
 
 BOOL EnableMicaEffect(HWND hwnd) {
-    BOOL enabled = TRUE;
     DWM_SYSTEMBACKDROP_TYPE backdropType = DWMSBT_MAINWINDOW;
     DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropType, sizeof(backdropType));
+
+    // match the system light/dark titlebar preference
+    DWORD appsUseLight = 1, valueSize = sizeof(appsUseLight);
+    RegGetValue(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                L"AppsUseLightTheme", RRF_RT_REG_DWORD, nullptr, &appsUseLight, &valueSize);
+    BOOL darkMode = appsUseLight ? FALSE : TRUE;
+    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
 
     return TRUE;
 }
 
-HFONT CreateModernFont() {
-    return CreateFont(0, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                      DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                      CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Segoe UI Variable");
+// one shared UI font for every control (was leaking an HFONT per button)
+HFONT GetModernFont() {
+    static HFONT font = CreateFont(0, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                                   DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                   CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Segoe UI Variable");
+    return font;
 }
 
 void ApplyModernStyle(HWND hwnd) {
-    SendMessage(hwnd, WM_SETFONT, (WPARAM)CreateModernFont(), TRUE);
+    SendMessage(hwnd, WM_SETFONT, (WPARAM)GetModernFont(), TRUE);
     SetWindowTheme(hwnd, L"Explorer", NULL);
 }
 
@@ -164,9 +177,6 @@ void GetWindowsFromProcessId(DWORD pId, std::vector <HWND>& hWnds)
   } while(curWnd != nullptr);
 }
 
-#include <gdiplus.h>
-
-using namespace Gdiplus;
 using namespace std;
 
 // Helper to load a GDI+ Image from resource
@@ -219,45 +229,32 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 
   EnableMicaEffect(hWnd);
 
-  // Load stock icon (e.g., command prompt icon)
-  SHSTOCKICONINFO cmdIcon = { sizeof(cmdIcon) };
-  if(!SHGetStockIconInfo(SIID_RENAME, SHGSI_ICON, &cmdIcon)) {
-    HWND hWndCmdButton = CreateWindow(WC_BUTTON, L"Command Prompt", WS_VISIBLE | WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                      10, 145, wndWidth - padding, buttonHeight, hWnd, (HMENU)CMD_BUTTON, hInstance, nullptr);
-    ApplyModernStyle(hWndCmdButton);
-    ApplyButtonIcon(hWndCmdButton, cmdIcon.hIcon);
-  }
+  // buttons are always created; the stock icon is decoration and may be
+  // unavailable (previously a failed icon lookup silently dropped the button)
+  struct LauncherAction {
+    LPCWSTR text;
+    int id;
+    int y;
+    SHSTOCKICONID icon;
+  };
+  const LauncherAction actions[] = {
+    { L"Command Prompt",      CMD_BUTTON,     145,                    SIID_RENAME },
+    { L"API Documentation",   API_BUTTON,     buttonHeight * 1 + 155, SIID_DOCASSOC },
+    { L"Code Examples",       EXAMPLE_BUTTON, buttonHeight * 2 + 165, SIID_AUTOLIST },
+    { L"Text Editor Support", EDITOR_BUTTON,  buttonHeight * 3 + 175, SIID_STACK },
+    { L"Read Me",             README_BUTTON,  buttonHeight * 4 + 185, SIID_HELP },
+  };
 
-  SHSTOCKICONINFO apiIcon = { sizeof(apiIcon) };
-  if(!SHGetStockIconInfo(SIID_DOCASSOC, SHGSI_ICON, &apiIcon)) {
-    HWND hWndApiButton = CreateWindow(WC_BUTTON, L"API Documentation", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                      10, buttonHeight * 1 + 155, wndWidth - padding, buttonHeight, hWnd, (HMENU)API_BUTTON, hInstance, nullptr);
-    ApplyModernStyle(hWndApiButton);
-    ApplyButtonIcon(hWndApiButton, apiIcon.hIcon);
-  }
+  for(const LauncherAction& action : actions) {
+    HWND hWndButton = CreateWindow(WC_BUTTON, action.text, WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                   10, action.y, wndWidth - padding, buttonHeight, hWnd,
+                                   (HMENU)(INT_PTR)action.id, hInstance, nullptr);
+    ApplyModernStyle(hWndButton);
 
-  SHSTOCKICONINFO exIcon = { sizeof(exIcon) };
-  if(!SHGetStockIconInfo(SIID_AUTOLIST, SHGSI_ICON, &exIcon)) {
-    HWND hWndExamplesButton = CreateWindow(WC_BUTTON, L"Code Examples", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                           10, buttonHeight * 2 + 165, wndWidth - padding, buttonHeight, hWnd, (HMENU)EXAMPLE_BUTTON, hInstance, nullptr);
-    ApplyModernStyle(hWndExamplesButton);
-    ApplyButtonIcon(hWndExamplesButton, exIcon.hIcon);
-  }
-
-  SHSTOCKICONINFO editIcon = { sizeof(editIcon) };
-  if(!SHGetStockIconInfo(SIID_STACK, SHGSI_ICON, &editIcon)) {
-    HWND hWndEditorButton = CreateWindow(WC_BUTTON, L"Text Editor Support", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                         10, buttonHeight * 3 + 175, wndWidth - padding, buttonHeight, hWnd, (HMENU)EDITOR_BUTTON, hInstance, nullptr);
-    ApplyModernStyle(hWndEditorButton);
-    ApplyButtonIcon(hWndEditorButton, editIcon.hIcon);
-  }
-
-  SHSTOCKICONINFO readIcon = { sizeof(readIcon) };
-  if(!SHGetStockIconInfo(SIID_HELP, SHGSI_ICON, &readIcon)) {
-    HWND hWndReadmeButton = CreateWindow(WC_BUTTON, L"Read Me", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                         10, buttonHeight * 4 + 185, wndWidth - padding, buttonHeight, hWnd, (HMENU)README_BUTTON, hInstance, nullptr);
-    ApplyModernStyle(hWndReadmeButton);
-    ApplyButtonIcon(hWndReadmeButton, readIcon.hIcon);
+    SHSTOCKICONINFO icon = { sizeof(icon) };
+    if(SUCCEEDED(SHGetStockIconInfo(action.icon, SHGSI_ICON, &icon))) {
+      ApplyButtonIcon(hWndButton, icon.hIcon);
+    }
   }
 
   ShowWindow(hWnd, nCmdShow);
@@ -315,7 +312,10 @@ unsigned int WINAPI VersionCheck(LPVOID arg)
 
 VOID CALLBACK VersionCheckProc(HWND hWnd, UINT message, UINT idTimer, DWORD dwTime)
 {
-  _beginthreadex(nullptr, 0, VersionCheck, hWnd, 0, nullptr);
+  HANDLE thread = (HANDLE)_beginthreadex(nullptr, 0, VersionCheck, hWnd, 0, nullptr);
+  if(thread) {
+    CloseHandle(thread); // fire and forget; don't leak the handle
+  }
   KillTimer(hWnd, VERSION_TIMER);
 }
 
@@ -409,10 +409,13 @@ BOOL InitEnvironment()
 {
   WCHAR buffer[MAX_PATH];
 
-  // get current directory
-  if(!GetCurrentDirectory(MAX_PATH - 1, buffer)) {
+  // derive the install location from the executable itself; the working
+  // directory depends on how the launcher was started (shortcut "Start in",
+  // double-click, command line) and previously broke every relative path
+  if(!GetModuleFileName(nullptr, buffer, MAX_PATH - 1)) {
     return FALSE;
   }
+  PathRemoveFileSpec(buffer);
   applicationPath = buffer;
 
   // get program data directory
@@ -462,7 +465,7 @@ BOOL InitEnvironment()
   pathText += L", x86 Linux)";
 #endif
 
-  pathText += L"\r\n@echo Copyright(c) 2025, Randy Hollines\r\n@echo =========================================";
+  pathText += L"\r\n@echo Copyright(c) 2026, Randy Hollines\r\n@echo =========================================";
   WriteLineToFile(cmdFile, pathText);
 
   pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin;" + applicationPath + L"\\..\\lib\\sdl";
@@ -486,37 +489,41 @@ BOOL InitEnvironment()
   return TRUE;
 }
 
-BOOL GetLatestVersion()
+int GetLatestVersion()
 {
-  const int bufferSize = 4096;
+  // WinHTTP (WinINet is legacy for applications); every path releases its
+  // handles exactly once
+  int version = -1;
 
-  HANDLE hInit = InternetOpen(L"Agent", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-  if(!hInit) {
-    InternetCloseHandle(hInit);
+  HINTERNET hSession = WinHttpOpen(L"ObjeckLauncher", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+                                   WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+  if(!hSession) {
     return -1;
   }
+  WinHttpSetTimeouts(hSession, 5000, 5000, 5000, 5000);
 
-  HANDLE hOpen = InternetOpenUrl(hInit, L"https://www.objeck.org/doc/api/version.txt", 0, 0, INTERNET_FLAG_RAW_DATA, 0);
-  if(!hOpen) {
-    InternetCloseHandle(hInit);
-    InternetCloseHandle(hInit);
-    return -1;
+  HINTERNET hConnect = WinHttpConnect(hSession, L"www.objeck.org", INTERNET_DEFAULT_HTTPS_PORT, 0);
+  if(hConnect) {
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", L"/doc/api/version.txt",
+                                            nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                            WINHTTP_FLAG_SECURE);
+    if(hRequest) {
+      if(WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+         WinHttpReceiveResponse(hRequest, nullptr)) {
+        CHAR buffer[64];
+        ZeroMemory(buffer, sizeof(buffer));
+        DWORD bytesRead = 0;
+        if(WinHttpReadData(hRequest, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
+          version = atoi(buffer);
+        }
+      }
+      WinHttpCloseHandle(hRequest);
+    }
+    WinHttpCloseHandle(hConnect);
   }
+  WinHttpCloseHandle(hSession);
 
-  CHAR buffer[bufferSize];
-  ZeroMemory(&buffer, bufferSize);
-
-  DWORD bytesRead;
-  if(!InternetReadFile(hOpen, (LPVOID)buffer, bufferSize, &bytesRead)) {
-    InternetCloseHandle(hOpen);
-    InternetCloseHandle(hInit);
-    return -1;
-  }
-
-  InternetCloseHandle(hOpen);
-  InternetCloseHandle(hInit);
-
-  return atoi(buffer);
+  return version;
 }
 
 int GetLocalVersion()
@@ -550,5 +557,5 @@ BOOL WriteLineToFile(HANDLE file, std::wstring text)
   DWORD writtenBytes;
   std::string asciiText = UnicodeToBytes(text);
   WriteFile(file, asciiText.c_str(), (DWORD)asciiText.size(), &writtenBytes, nullptr);
-  return writtenBytes = (DWORD)asciiText.size();
+  return writtenBytes == (DWORD)asciiText.size();
 }

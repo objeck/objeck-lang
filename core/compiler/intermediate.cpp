@@ -5129,6 +5129,35 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
 }
 
 /****************************
+ * True when the expression evaluates to a scalar Float VALUE: either a
+ * dimension-0 Float, or an INDEXED Float array access (the element). An
+ * unindexed Float array variable compares as a reference (integer compare).
+ * Used to pick EQL_FLOAT/NEQL_FLOAT vs EQL_INT/NEQL_INT; the old
+ * dimension-only test classified `values[i] <> values[j]` as an integer
+ * compare, which bit-compared floats in the interpreter and crashed the
+ * JIT compiler (int compare handed XMM operands).
+ ****************************/
+static bool IsScalarFloat(frontend::Expression* e)
+{
+  if(!e->GetEvalType() || e->GetEvalType()->GetType() != frontend::FLOAT_TYPE) {
+    return false;
+  }
+
+  if(e->GetEvalType()->GetDimension() < 1) {
+    return true;
+  }
+
+  if(e->GetExpressionType() == frontend::VAR_EXPR) {
+    frontend::Variable* var = static_cast<frontend::Variable*>(e);
+    if(var->GetIndices()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/****************************
  * Translates a calculation
  ****************************/
 void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
@@ -5198,8 +5227,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   EntryType eval_type = expression->GetEvalType()->GetType();
   switch(expression->GetExpressionType()) {
   case EQL_EXPR:
-    if((left->GetEvalType()->GetType() == frontend::FLOAT_TYPE && left->GetEvalType()->GetDimension() < 1) ||
-       (right->GetEvalType()->GetType() == frontend::FLOAT_TYPE && right->GetEvalType()->GetDimension() < 1)) {
+    if(IsScalarFloat(left) || IsScalarFloat(right)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, EQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, EQL_INT));
@@ -5208,8 +5236,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
 
   case NEQL_EXPR:
-    if((left->GetEvalType()->GetType() == frontend::FLOAT_TYPE && left->GetEvalType()->GetDimension() < 1) ||
-       (right->GetEvalType()->GetType() == frontend::FLOAT_TYPE && right->GetEvalType()->GetDimension() < 1)) {
+    if(IsScalarFloat(left) || IsScalarFloat(right)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, NEQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, NEQL_INT));
