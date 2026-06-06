@@ -4997,6 +4997,695 @@ preds := booster->Predict(data);
 	}
 
 	#~
+	A node in a RegressionTree: either a leaf carrying a mean prediction, or
+	an internal node splitting a numeric feature at a threshold (<= left).
+	~#
+	class RegressionTreeNode {
+		@is_leaf : Bool;
+		@value : Float;
+		@feature : Int;
+		@threshold : Float;
+		@left : RegressionTreeNode;
+		@right : RegressionTreeNode;
+
+		New : private (is_leaf : Bool, value : Float, feature : Int, threshold : Float) {
+			@is_leaf := is_leaf;
+			@value := value;
+			@feature := feature;
+			@threshold := threshold;
+		}
+
+		#~
+		Creates a leaf node.
+		@param value mean target the leaf predicts
+		@return leaf node
+		~#
+		function : NewLeaf(value : Float) ~ RegressionTreeNode {
+			return RegressionTreeNode->New(true, value, -1, 0.0);
+		}
+
+		#~
+		Creates an internal split node.
+		@param feature feature index to split on
+		@param threshold split threshold (<= goes left)
+		@return internal node
+		~#
+		function : NewInternal(feature : Int, threshold : Float) ~ RegressionTreeNode {
+			return RegressionTreeNode->New(false, 0.0, feature, threshold);
+		}
+
+		method : public : IsLeaf() ~ Bool { return @is_leaf; }
+		method : public : GetValue() ~ Float { return @value; }
+		method : public : GetFeature() ~ Int { return @feature; }
+		method : public : GetThreshold() ~ Float { return @threshold; }
+		method : public : GetLeft() ~ RegressionTreeNode { return @left; }
+		method : public : GetRight() ~ RegressionTreeNode { return @right; }
+		method : public : SetLeft(n : RegressionTreeNode) ~ Nil { @left := n; }
+		method : public : SetRight(n : RegressionTreeNode) ~ Nil { @right := n; }
+	}
+
+	#~
+	Regression tree over numeric features: recursive binary splits chosen to
+	minimize the children's summed squared error (variance reduction), with
+	depth and minimum-sample stops; leaves predict the mean target.
+	Deterministic. Also the base learner for GradientBoostedTrees.
+
+```
+tree := RegressionTree->New(4, 2);
+tree->Fit(X, y);                       # y is rows x 1
+pred := tree->Predict([2.5]);
+```
+	~#
+	class RegressionTree {
+		@max_depth : Int;
+		@min_samples : Int;
+		@root : RegressionTreeNode;
+
+		#~
+		Creates an (unfitted) regression tree.
+		@param max_depth maximum tree depth
+		@param min_samples minimum samples required to split a node
+		~#
+		New(max_depth : Int, min_samples : Int) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+		}
+
+		New : private (max_depth : Int, min_samples : Int, root : RegressionTreeNode) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@root := root;
+		}
+
+		#~
+		Fits the tree to numeric training data.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			if(rows <> y_dims[0] | rows = 0 | x_dims[1] = 0) {
+				return false;
+			};
+
+			targets := Float->New[rows];
+			each(i : rows) {
+				targets[i] := y[i,0];
+			};
+
+			indexes := Int->New[rows];
+			each(i : rows) {
+				indexes[i] := i;
+			};
+
+			@root := BuildNode(X, targets, indexes, rows, 0);
+			return true;
+		}
+
+		# Recursively builds a node over the rows listed in indexes[0..count-1].
+		method : BuildNode(X : Float[,], targets : Float[], indexes : Int[], count : Int, depth : Int) ~ RegressionTreeNode {
+			mean := 0.0;
+			each(i : count) {
+				mean += targets[indexes[i]];
+			};
+			mean := mean / count->As(Float);
+
+			if(count <= @min_samples | depth >= @max_depth) {
+				return RegressionTreeNode->NewLeaf(mean);
+			};
+
+			# baseline error of keeping this node a leaf
+			node_sse := 0.0;
+			each(i : count) {
+				diff := targets[indexes[i]] - mean;
+				node_sse += diff * diff;
+			};
+			if(node_sse <= 0.0000000001) {
+				# already pure
+				return RegressionTreeNode->NewLeaf(mean);
+			};
+
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			best_feature := -1;
+			best_threshold := 0.0;
+			best_sse := node_sse;
+
+			# candidate thresholds: midpoints between consecutive sorted values
+			values := Float->New[count];
+			each(f : cols) {
+				each(i : count) {
+					values[i] := X[indexes[i], f];
+				};
+				SortValues(values, 0, count - 1);
+
+				for(v := 0; v < count - 1; v += 1;) {
+					if(values[v] <> values[v + 1]) {
+						threshold := (values[v] + values[v + 1]) / 2.0;
+						sse := SplitError(X, targets, indexes, count, f, threshold);
+						if(sse < best_sse) {
+							best_sse := sse;
+							best_feature := f;
+							best_threshold := threshold;
+						};
+					};
+				};
+			};
+
+			if(best_feature < 0) {
+				return RegressionTreeNode->NewLeaf(mean);
+			};
+
+			# partition the index list
+			left_indexes := Int->New[count];
+			right_indexes := Int->New[count];
+			left_count := 0;
+			right_count := 0;
+			each(i : count) {
+				row := indexes[i];
+				if(X[row, best_feature] <= best_threshold) {
+					left_indexes[left_count] := row;
+					left_count += 1;
+				}
+				else {
+					right_indexes[right_count] := row;
+					right_count += 1;
+				};
+			};
+
+			if(left_count = 0 | right_count = 0) {
+				return RegressionTreeNode->NewLeaf(mean);
+			};
+
+			node := RegressionTreeNode->NewInternal(best_feature, best_threshold);
+			node->SetLeft(BuildNode(X, targets, left_indexes, left_count, depth + 1));
+			node->SetRight(BuildNode(X, targets, right_indexes, right_count, depth + 1));
+			return node;
+		}
+
+		# summed squared error of the two children produced by the split
+		method : SplitError(X : Float[,], targets : Float[], indexes : Int[], count : Int, feature : Int, threshold : Float) ~ Float {
+			left_sum := 0.0;
+			left_count := 0;
+			right_sum := 0.0;
+			right_count := 0;
+			each(i : count) {
+				row := indexes[i];
+				if(X[row, feature] <= threshold) {
+					left_sum += targets[row];
+					left_count += 1;
+				}
+				else {
+					right_sum += targets[row];
+					right_count += 1;
+				};
+			};
+
+			if(left_count = 0 | right_count = 0) {
+				return Float->Inf();
+			};
+
+			left_mean := left_sum / left_count->As(Float);
+			right_mean := right_sum / right_count->As(Float);
+
+			sse := 0.0;
+			each(i : count) {
+				row := indexes[i];
+				diff : Float;
+				if(X[row, feature] <= threshold) {
+					diff := targets[row] - left_mean;
+				}
+				else {
+					diff := targets[row] - right_mean;
+				};
+				sse += diff * diff;
+			};
+
+			return sse;
+		}
+
+		method : SortValues(values : Float[], lo : Int, hi : Int) ~ Nil {
+			if(lo >= hi) {
+				return;
+			};
+
+			pivot := values[lo + (hi - lo) / 2];
+			i := lo;
+			j := hi;
+			while(i <= j) {
+				while(values[i] < pivot) {
+					i += 1;
+				};
+				while(values[j] > pivot) {
+					j -= 1;
+				};
+				if(i <= j) {
+					tmp := values[i];
+					values[i] := values[j];
+					values[j] := tmp;
+					i += 1;
+					j -= 1;
+				};
+			};
+
+			SortValues(values, lo, j);
+			SortValues(values, i, hi);
+		}
+
+		#~
+		Predicts the target for a single feature row by walking the tree.
+		@param row feature values
+		@return predicted target
+		~#
+		method : public : Predict(row : Float[]) ~ Float {
+			node := @root;
+			while(node <> Nil) {
+				if(node->IsLeaf()) {
+					return node->GetValue();
+				};
+
+				if(row[node->GetFeature()] <= node->GetThreshold()) {
+					node := node->GetLeft();
+				}
+				else {
+					node := node->GetRight();
+				};
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Predicts targets for every row of an input matrix.
+		@param X feature matrix
+		@return prediction matrix (rows x 1), or Nil if not fitted
+		~#
+		method : public : PredictAll(X : Float[,]) ~ Float[,] {
+			if(<>IsFitted() | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows, 1];
+			row := Float->New[cols];
+			each(r : rows) {
+				each(c : cols) {
+					row[c] := X[r,c];
+				};
+				result[r,0] := Predict(row);
+			};
+
+			return result;
+		}
+
+		#~
+		Scores the tree on the given data (R-squared of predictions).
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictAll(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				residual := y[i,0] - preds[i,0];
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the tree has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @root <> Nil;
+		}
+
+		#~
+		Saves the fitted tree to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>IsFitted()) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			WriteTo(serializer);
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted tree from a file.
+		@param filename file to load from
+		@return fitted tree, or Nil on failure
+		~#
+		function : Load(filename : String) ~ RegressionTree {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			return ReadFrom(System.IO.Deserializer->New(data));
+		}
+
+		#~
+		Serializes the tree (hyperparameters + nodes in pre-order) onto an
+		existing serializer; used by Store and by GradientBoostedTrees.
+		@param serializer destination serializer
+		~#
+		method : public : WriteTo(serializer : System.IO.Serializer) ~ Nil {
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			WriteNode(serializer, @root);
+		}
+
+		#~
+		Reads a tree previously written with WriteTo from a deserializer.
+		@param deserializer source deserializer
+		@return fitted tree, or Nil on failure
+		~#
+		function : ReadFrom(deserializer : System.IO.Deserializer) ~ RegressionTree {
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+
+			root := ReadNode(deserializer);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			return RegressionTree->New(max_depth, min_samples, root);
+		}
+
+		method : WriteNode(serializer : System.IO.Serializer, node : RegressionTreeNode) ~ Nil {
+			if(node->IsLeaf()) {
+				serializer->Write(1);
+				serializer->Write(node->GetValue());
+			}
+			else {
+				serializer->Write(0);
+				serializer->Write(node->GetFeature());
+				serializer->Write(node->GetThreshold());
+				WriteNode(serializer, node->GetLeft());
+				WriteNode(serializer, node->GetRight());
+			};
+		}
+
+		function : ReadNode(deserializer : System.IO.Deserializer) ~ RegressionTreeNode {
+			is_leaf := deserializer->ReadInt();
+			if(is_leaf = 1) {
+				return RegressionTreeNode->NewLeaf(deserializer->ReadFloat());
+			};
+
+			feature := deserializer->ReadInt();
+			threshold := deserializer->ReadFloat();
+			node := RegressionTreeNode->NewInternal(feature, threshold);
+
+			left := ReadNode(deserializer);
+			right := ReadNode(deserializer);
+			if(left = Nil | right = Nil) {
+				return Nil;
+			};
+
+			node->SetLeft(left);
+			node->SetRight(right);
+			return node;
+		}
+	}
+
+	#~
+	Gradient boosted regression trees with squared-error loss: the model
+	starts at the target mean and each stage fits a RegressionTree to the
+	current residuals, added with a shrinkage (learning rate) factor.
+	Deterministic.
+
+```
+gbt := GradientBoostedTrees->New(50, 0.1, 3, 2);
+gbt->Fit(X, y);
+"R²={$gbt->Score(X, y)}"->PrintLine();
+```
+	~#
+	class GradientBoostedTrees {
+		@num_trees : Int;
+		@learning_rate : Float;
+		@max_depth : Int;
+		@min_samples : Int;
+		@base : Float;
+		@trees : Vector<RegressionTree>;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param num_trees boosting stages
+		@param learning_rate shrinkage per stage (e.g. 0.1)
+		@param max_depth maximum depth of each tree
+		@param min_samples minimum samples required to split a node
+		~#
+		New(num_trees : Int, learning_rate : Float, max_depth : Int, min_samples : Int) {
+			@num_trees := num_trees;
+			@learning_rate := learning_rate;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@is_fitted := false;
+		}
+
+		New : private (num_trees : Int, learning_rate : Float, max_depth : Int, min_samples : Int, base : Float, trees : Vector<RegressionTree>) {
+			@num_trees := num_trees;
+			@learning_rate := learning_rate;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@base := base;
+			@trees := trees;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the boosted ensemble.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil | @num_trees < 1) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			if(rows <> y_dims[0] | rows = 0 | x_dims[1] = 0) {
+				return false;
+			};
+
+			# F0: the target mean
+			@base := 0.0;
+			each(i : rows) {
+				@base += y[i,0];
+			};
+			@base := @base / rows->As(Float);
+
+			predictions := Float->New[rows];
+			each(i : rows) {
+				predictions[i] := @base;
+			};
+
+			@trees := Vector->New()<RegressionTree>;
+			residuals := Float->New[rows, 1];
+
+			each(t : @num_trees) {
+				each(i : rows) {
+					residuals[i,0] := y[i,0] - predictions[i];
+				};
+
+				tree := RegressionTree->New(@max_depth, @min_samples);
+				tree->Fit(X, residuals);
+				@trees->AddBack(tree);
+
+				stage := tree->PredictAll(X);
+				each(i : rows) {
+					predictions[i] += @learning_rate * stage[i,0];
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Predicts targets for every row of an input matrix.
+		@param X feature matrix
+		@return prediction matrix (rows x 1), or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows, 1];
+			row := Float->New[cols];
+			ntrees := @trees->Size();
+			each(r : rows) {
+				each(c : cols) {
+					row[c] := X[r,c];
+				};
+
+				sum := @base;
+				each(t : ntrees) {
+					sum += @learning_rate * @trees->Get(t)->Predict(row);
+				};
+				result[r,0] := sum;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the number of boosting stages fitted.
+		@return tree count
+		~#
+		method : public : GetTreeCount() ~ Int {
+			if(@trees = Nil) {
+				return 0;
+			};
+			return @trees->Size();
+		}
+
+		#~
+		Scores the ensemble on the given data (R-squared of predictions).
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := Predict(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				residual := y[i,0] - preds[i,0];
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the ensemble has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted ensemble to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_trees);
+			serializer->Write(@learning_rate);
+			serializer->Write(@max_depth);
+			serializer->Write(@min_samples);
+			serializer->Write(@base);
+
+			ntrees := @trees->Size();
+			serializer->Write(ntrees);
+			each(t : ntrees) {
+				@trees->Get(t)->WriteTo(serializer);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted ensemble from a file.
+		@param filename file to load from
+		@return fitted ensemble, or Nil on failure
+		~#
+		function : Load(filename : String) ~ GradientBoostedTrees {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_trees := deserializer->ReadInt();
+			learning_rate := deserializer->ReadFloat();
+			max_depth := deserializer->ReadInt();
+			min_samples := deserializer->ReadInt();
+			base := deserializer->ReadFloat();
+
+			ntrees := deserializer->ReadInt();
+			if(ntrees < 1) {
+				return Nil;
+			};
+
+			trees := Vector->New()<RegressionTree>;
+			each(t : ntrees) {
+				tree := RegressionTree->ReadFrom(deserializer);
+				if(tree = Nil) {
+					return Nil;
+				};
+				trees->AddBack(tree);
+			};
+
+			return GradientBoostedTrees->New(num_trees, learning_rate, max_depth, min_samples, base, trees);
+		}
+	}
+
+	#~
 	Binary decision tree algorithm
 
 ```
