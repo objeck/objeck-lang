@@ -3774,27 +3774,45 @@ namespace frontend {
     }
   };
 
+  // Static-array literal pool comparators: strict-weak ordering by length,
+  // then element CONTENTS, so identical literals dedup to one pool entry and
+  // distinct literals never collide. (Comparing the heap pointer instead of
+  // contents defeated dedup, and the old bool comparator used '==', which
+  // made std::map treat ANY two distinct bool literals as equivalent — every
+  // bool array literal after the first silently reused the first one's data.)
   struct int_string_comp {
     bool operator() (IntStringHolder* lhs, IntStringHolder* rhs) const {
-      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
+      if(lhs->length != rhs->length) {
+        return lhs->length < rhs->length;
+      }
+      return memcmp(lhs->value, rhs->value, lhs->length * sizeof(INT64_VALUE)) < 0;
     }
   };
 
   struct byte_string_comp {
     bool operator() (ByteStringHolder* lhs, ByteStringHolder* rhs) const {
-      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
+      if(lhs->length != rhs->length) {
+        return lhs->length < rhs->length;
+      }
+      return memcmp(lhs->value, rhs->value, lhs->length * sizeof(char)) < 0;
     }
   };
 
   struct float_string_comp {
     bool operator() (FloatStringHolder* lhs, FloatStringHolder* rhs) const {
-      return std::tie(lhs->length, lhs->value) < std::tie(rhs->length, rhs->value);
+      if(lhs->length != rhs->length) {
+        return lhs->length < rhs->length;
+      }
+      return memcmp(lhs->value, rhs->value, lhs->length * sizeof(FLOAT_VALUE)) < 0;
     }
   };
 
   struct bool_string_comp {
     bool operator() (BoolStringHolder* lhs, BoolStringHolder* rhs) const {
-      return std::tie(lhs->length, lhs->value) == std::tie(rhs->length, rhs->value);
+      if(lhs->length != rhs->length) {
+        return lhs->length < rhs->length;
+      }
+      return memcmp(lhs->value, rhs->value, lhs->length * sizeof(bool)) < 0;
     }
   };
 

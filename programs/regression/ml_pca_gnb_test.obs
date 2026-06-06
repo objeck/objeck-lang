@@ -1,0 +1,159 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for System.ML PCA (power-iteration decomposition: dominant
+diagonal direction recovered, explained-variance ratios, transform/inverse
+reconstruction) and GaussianNaiveBayes (3-class separation, log-joint
+ordering), plus Store/Load round-trips for both (overhaul phase 2).
+~#
+use System.ML, System.IO.Filesystem, Collection;
+
+class MlPcaGnbTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		eps := 0.000001;
+		model_file := "ml_pca_gnb_model_test.tmp";
+
+		# --- PCA: data hugging the y=x diagonal; first component ~ (1,1)/sqrt(2) ---
+		X := [
+			[1.0, 1.1], [2.0, 1.9], [3.0, 3.2], [4.0, 3.8], [5.0, 5.1],
+			[6.0, 6.2], [7.0, 6.8], [8.0, 8.1], [9.0, 9.0], [10.0, 10.2]];
+
+		pca := PCA->New(2);
+		if(pca->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted pca stored"->PrintLine();
+		};
+
+		if(<>pca->Fit(X)) {
+			pass := false;
+			"  FAIL: pca fit"->PrintLine();
+		}
+		else {
+			# dominant direction is the diagonal (sign-agnostic)
+			comps := pca->GetComponents();
+			diag := 0.7071067811;
+			if(Float->Abs(Float->Abs(comps[0,0]) - diag) > 0.05 |
+				Float->Abs(Float->Abs(comps[0,1]) - diag) > 0.05) {
+				c0 := comps[0,0]; c1 := comps[0,1];
+				pass := false;
+				"  FAIL: pca dominant component ({$c0}, {$c1})"->PrintLine();
+			};
+
+			ratios := pca->GetExplainedVarianceRatio();
+			if(ratios[0] < 0.95) {
+				r0 := ratios[0];
+				pass := false;
+				"  FAIL: pca explained variance ratio {$r0}"->PrintLine();
+			};
+			if(ratios[0] < ratios[1]) {
+				pass := false;
+				"  FAIL: pca component ordering"->PrintLine();
+			};
+
+			# k = full rank: transform + inverse reconstructs the data
+			reduced := pca->Transform(X);
+			restored := pca->InverseTransform(reduced);
+			each(i : 10) {
+				if(Float->Abs(restored[i,0] - X[i,0]) > 0.0001 |
+					Float->Abs(restored[i,1] - X[i,1]) > 0.0001) {
+					pass := false;
+					"  FAIL: pca reconstruction row {$i}"->PrintLine();
+				};
+			};
+		};
+
+		# pca Store/Load round-trip
+		if(<>pca->Store(model_file)) {
+			pass := false;
+			"  FAIL: pca store"->PrintLine();
+		};
+		pca_loaded := PCA->Load(model_file);
+		if(pca_loaded = Nil | <>pca_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: pca load"->PrintLine();
+		}
+		else {
+			before := pca->Transform(X);
+			after := pca_loaded->Transform(X);
+			each(i : 10) {
+				if(Float->Abs(before[i,0] - after[i,0]) > eps | Float->Abs(before[i,1] - after[i,1]) > eps) {
+					pass := false;
+					"  FAIL: pca round-trip projection {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		# --- GaussianNaiveBayes: three separated clusters ---
+		gx := [
+			[1.0, 1.0], [1.2, 0.8], [0.8, 1.2], [1.1, 1.1],
+			[8.0, 8.0], [8.2, 7.8], [7.8, 8.2], [8.1, 8.1],
+			[1.0, 8.0], [1.2, 7.8], [0.8, 8.2], [1.1, 8.1]];
+		gy := [[0.0], [0.0], [0.0], [0.0], [1.0], [1.0], [1.0], [1.0], [2.0], [2.0], [2.0], [2.0]];
+
+		gnb := GaussianNaiveBayes->New();
+		if(gnb->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted gnb stored"->PrintLine();
+		};
+
+		if(<>gnb->Fit(gx, gy)) {
+			pass := false;
+			"  FAIL: gnb fit"->PrintLine();
+		}
+		else {
+			if(gnb->GetNumClasses() <> 3) {
+				pass := false;
+				"  FAIL: gnb class count"->PrintLine();
+			};
+			if(Float->Abs(gnb->Score(gx, gy) - 1.0) > eps) {
+				pass := false;
+				"  FAIL: gnb training accuracy"->PrintLine();
+			};
+
+			# held-out points near each cluster center
+			held := gnb->PredictClass([[1.05, 0.95], [7.9, 8.05], [0.95, 7.9]]);
+			if(held[0] <> 0 | held[1] <> 1 | held[2] <> 2) {
+				pass := false;
+				"  FAIL: gnb held-out classification"->PrintLine();
+			};
+
+			# log-joint of the true class must beat the others
+			joint := gnb->Predict([[1.05, 0.95]]);
+			if(joint[0,0] <= joint[0,1] | joint[0,0] <= joint[0,2]) {
+				pass := false;
+				"  FAIL: gnb log-joint ordering"->PrintLine();
+			};
+		};
+
+		# gnb Store/Load round-trip
+		if(<>gnb->Store(model_file)) {
+			pass := false;
+			"  FAIL: gnb store"->PrintLine();
+		};
+		gnb_loaded := GaussianNaiveBayes->Load(model_file);
+		if(gnb_loaded = Nil | <>gnb_loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: gnb load"->PrintLine();
+		}
+		else {
+			before := gnb->PredictClass(gx);
+			after := gnb_loaded->PredictClass(gx);
+			each(i : 12) {
+				if(before[i] <> after[i]) {
+					pass := false;
+					"  FAIL: gnb round-trip prediction {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		if(pass) {
+			"PASS: ML PCA and Gaussian NB tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML PCA and Gaussian NB tests"->PrintLine();
+		};
+	}
+}

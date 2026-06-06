@@ -1603,6 +1603,761 @@ each(c in coeffs) {
 	}
 
 	#~
+	Ridge (L2-regularized) linear regression solved in closed form via the
+	regularized normal equations (X'X + alpha*I)w = X'y. The intercept term,
+	when fitted, is not penalized. Larger alpha shrinks coefficients toward
+	zero; alpha = 0.0 reduces to ordinary least squares.
+
+```
+X := [[1.0], [2.0], [3.0]];
+y := [[3.0], [5.0], [7.0]];  # y = 2x + 1
+model := RidgeRegression->New(0.1);
+model->Fit(X, y);
+"slope~2: {$model->GetCoefficients()[1]}"->PrintLine();
+```
+	~#
+	class RidgeRegression {
+		@alpha : Float;
+		@coefficients : Float[];
+		@fit_intercept : Bool;
+		@r_squared : Float;
+		@adj_r_squared : Float;
+		@mse : Float;
+		@rmse : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param alpha L2 regularization strength (>= 0.0)
+		~#
+		New(alpha : Float) {
+			@alpha := alpha;
+			@is_fitted := false;
+		}
+
+		New : private (alpha : Float, coefficients : Float[], fit_intercept : Bool, r_squared : Float, adj_r_squared : Float, mse : Float, rmse : Float) {
+			@alpha := alpha;
+			@coefficients := coefficients;
+			@fit_intercept := fit_intercept;
+			@r_squared := r_squared;
+			@adj_r_squared := adj_r_squared;
+			@mse := mse;
+			@rmse := rmse;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the model with an intercept term.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			return Fit(X, y, true);
+		}
+
+		#~
+		Fits the model, optionally estimating an unpenalized intercept.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@param fit_intercept whether to estimate a bias/intercept term
+		@return true if fitting succeeded (false on a singular system)
+		~#
+		method : public : Fit(X : Float[,], y : Float[,], fit_intercept : Bool) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			if(x_dims[0] <> y_dims[0]) {
+				return false;
+			};
+
+			@fit_intercept := fit_intercept;
+
+			design : Float[,];
+			if(fit_intercept) {
+				design := PrependOnes(X);
+			}
+			else {
+				design := X;
+			};
+
+			# regularized normal equations: (X'X + alpha*I)w = X'y; the
+			# intercept column (index 0) is not penalized
+			design_t := Matrix2D->Transpose(design);
+			gram := Matrix2D->DotProduct(design_t, design);
+			k_dims := gram->Size();
+			k := k_dims[0];
+
+			start := 0;
+			if(fit_intercept) {
+				start := 1;
+			};
+			for(j := start; j < k; j += 1;) {
+				gram[j,j] := gram[j,j] + @alpha;
+			};
+
+			rhs := Matrix2D->DotProduct(design_t, y);
+			@coefficients := Matrix2D->Solve(gram, rhs);
+			if(@coefficients = Nil) {
+				@is_fitted := false;
+				return false;
+			};
+
+			@is_fitted := true;
+
+			# goodness-of-fit metrics over the training data
+			rows := y_dims[0];
+			num_features := x_dims[1];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			@mse := ss_res / rows->As(Float);
+			@rmse := @mse->Sqrt();
+
+			if(ss_tot > 0.0) {
+				@r_squared := 1.0 - (ss_res / ss_tot);
+			}
+			else {
+				@r_squared := 0.0;
+			};
+
+			denom := rows - num_features - 1;
+			if(denom > 0) {
+				@adj_r_squared := 1.0 - (1.0 - @r_squared) * (rows - 1)->As(Float) / denom->As(Float);
+			}
+			else {
+				@adj_r_squared := @r_squared;
+			};
+
+			return true;
+		}
+
+		method : PredictRow(X : Float[,], row : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			sum := 0.0;
+			offset := 0;
+			if(@fit_intercept) {
+				sum := @coefficients[0];
+				offset := 1;
+			};
+			each(j : cols) {
+				sum += @coefficients[j + offset] * X[row,j];
+			};
+
+			return sum;
+		}
+
+		method : PrependOnes(X : Float[,]) ~ Float[,] {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			out := Float->New[rows, cols + 1];
+			each(i : rows) {
+				out[i, 0] := 1.0;
+				each(j : cols) {
+					out[i, j + 1] := X[i,j];
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Predicts target values for new input data.
+		@param X feature matrix
+		@return prediction matrix, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+
+			result := Float->New[rows, 1];
+			each(i : rows) {
+				result[i, 0] := PredictRow(X, i);
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted coefficients (index 0 is the intercept when fitted).
+		@return coefficient array, or Nil if not fitted
+		~#
+		method : public : GetCoefficients() ~ Float[] {
+			return @coefficients;
+		}
+
+		#~
+		Gets the R-squared over the training data.
+		@return R-squared value
+		~#
+		method : public : GetRSquared() ~ Float {
+			return @r_squared;
+		}
+
+		#~
+		Gets the adjusted R-squared over the training data.
+		@return adjusted R-squared value
+		~#
+		method : public : GetAdjustedRSquared() ~ Float {
+			return @adj_r_squared;
+		}
+
+		#~
+		Gets the mean squared error over the training data.
+		@return MSE
+		~#
+		method : public : GetMSE() ~ Float {
+			return @mse;
+		}
+
+		#~
+		Gets the root mean squared error over the training data.
+		@return RMSE
+		~#
+		method : public : GetRMSE() ~ Float {
+			return @rmse;
+		}
+
+		#~
+		Scores the model on the given data (R-squared of predictions).
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			if(<>@is_fitted | X = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@alpha);
+
+			if(@fit_intercept) {
+				serializer->Write(1);
+			}
+			else {
+				serializer->Write(0);
+			};
+
+			count := @coefficients->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@coefficients[i]);
+			};
+
+			serializer->Write(@r_squared);
+			serializer->Write(@adj_r_squared);
+			serializer->Write(@mse);
+			serializer->Write(@rmse);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ RidgeRegression {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			alpha := deserializer->ReadFloat();
+			fit_intercept := deserializer->ReadInt() = 1;
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			coefficients := Float->New[count];
+			each(i : count) {
+				coefficients[i] := deserializer->ReadFloat();
+			};
+
+			r_squared := deserializer->ReadFloat();
+			adj_r_squared := deserializer->ReadFloat();
+			mse := deserializer->ReadFloat();
+			rmse := deserializer->ReadFloat();
+
+			return RidgeRegression->New(alpha, coefficients, fit_intercept, r_squared, adj_r_squared, mse, rmse);
+		}
+	}
+
+	#~
+	Elastic-net regularized linear regression fitted by cyclic coordinate
+	descent on mean-centered data with an unpenalized intercept. Minimizes
+	(1/2n)||y - Xw - b||^2 + alpha*(l1_ratio*|w|_1 + (1-l1_ratio)/2*|w|_2^2).
+	l1_ratio = 1.0 is the lasso; l1_ratio = 0.0 is ridge (use RidgeRegression
+	for the closed-form solution). The L1 term drives uninformative feature
+	coefficients exactly to zero.
+
+```
+model := ElasticNet->New(0.1, 0.5);
+model->Fit(X, y);
+preds := model->Predict(X);
+```
+	~#
+	class ElasticNet {
+		@alpha : Float;
+		@l1_ratio : Float;
+		@iterations : Int;
+		@tolerance : Float;
+		@coefficients : Float[];
+		@intercept : Float;
+		@r_squared : Float;
+		@mse : Float;
+		@rmse : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor with default optimization settings (1000 iterations,
+		tolerance 0.0001).
+		@param alpha overall regularization strength (>= 0.0)
+		@param l1_ratio mix between L1 (1.0) and L2 (0.0) penalties
+		~#
+		New(alpha : Float, l1_ratio : Float) {
+			@alpha := alpha;
+			@l1_ratio := l1_ratio;
+			@iterations := 1000;
+			@tolerance := 0.0001;
+			@is_fitted := false;
+		}
+
+		#~
+		Constructor with explicit optimization settings.
+		@param alpha overall regularization strength (>= 0.0)
+		@param l1_ratio mix between L1 (1.0) and L2 (0.0) penalties
+		@param iterations maximum coordinate-descent sweeps
+		@param tolerance stop when no coefficient moves more than this in a sweep
+		~#
+		New(alpha : Float, l1_ratio : Float, iterations : Int, tolerance : Float) {
+			@alpha := alpha;
+			@l1_ratio := l1_ratio;
+			@iterations := iterations;
+			@tolerance := tolerance;
+			@is_fitted := false;
+		}
+
+		New : private (alpha : Float, l1_ratio : Float, iterations : Int, tolerance : Float, coefficients : Float[], intercept : Float, r_squared : Float, mse : Float, rmse : Float) {
+			@alpha := alpha;
+			@l1_ratio := l1_ratio;
+			@iterations := iterations;
+			@tolerance := tolerance;
+			@coefficients := coefficients;
+			@intercept := intercept;
+			@r_squared := r_squared;
+			@mse := mse;
+			@rmse := rmse;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the model using cyclic coordinate descent.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# center features and targets so the intercept needs no penalty
+			mean_x := Float->New[cols];
+			each(j : cols) {
+				sum := 0.0;
+				each(i : rows) {
+					sum += X[i,j];
+				};
+				mean_x[j] := sum / n;
+			};
+
+			mean_y := 0.0;
+			each(i : rows) {
+				mean_y += y[i,0];
+			};
+			mean_y := mean_y / n;
+
+			centered := Float->New[rows, cols];
+			col_sq := Float->New[cols];
+			each(j : cols) {
+				sq := 0.0;
+				each(i : rows) {
+					v := X[i,j] - mean_x[j];
+					centered[i,j] := v;
+					sq += v * v;
+				};
+				col_sq[j] := sq;
+			};
+
+			residual_y := Float->New[rows];
+			each(i : rows) {
+				residual_y[i] := y[i,0] - mean_y;
+			};
+
+			# cyclic coordinate descent with soft-thresholding; predictions
+			# are maintained incrementally for O(n) coordinate updates
+			weights := Float->New[cols];
+			preds := Float->New[rows];
+			l1_pen := @alpha * @l1_ratio * n;
+			l2_pen := @alpha * (1.0 - @l1_ratio) * n;
+
+			converged := false;
+			each(iter : @iterations) {
+				if(<>converged) {
+					max_delta := 0.0;
+					each(j : cols) {
+						rho := 0.0;
+						each(i : rows) {
+							rho += centered[i,j] * (residual_y[i] - preds[i] + centered[i,j] * weights[j]);
+						};
+
+						denom := col_sq[j] + l2_pen;
+						new_weight := 0.0;
+						if(denom > 0.0) {
+							if(rho > l1_pen) {
+								new_weight := (rho - l1_pen) / denom;
+							}
+							else if(rho < -1.0 * l1_pen) {
+								new_weight := (rho + l1_pen) / denom;
+							};
+						};
+
+						delta := new_weight - weights[j];
+						if(delta <> 0.0) {
+							each(i : rows) {
+								preds[i] += centered[i,j] * delta;
+							};
+							weights[j] := new_weight;
+						};
+
+						abs_delta := Float->Abs(delta);
+						if(abs_delta > max_delta) {
+							max_delta := abs_delta;
+						};
+					};
+
+					if(max_delta < @tolerance) {
+						converged := true;
+					};
+				};
+			};
+
+			@coefficients := weights;
+			@intercept := mean_y;
+			each(j : cols) {
+				@intercept -= weights[j] * mean_x[j];
+			};
+			@is_fitted := true;
+
+			# goodness-of-fit metrics over the training data
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - mean_y;
+				ss_tot += diff * diff;
+			};
+
+			@mse := ss_res / n;
+			@rmse := @mse->Sqrt();
+
+			if(ss_tot > 0.0) {
+				@r_squared := 1.0 - (ss_res / ss_tot);
+			}
+			else {
+				@r_squared := 0.0;
+			};
+
+			return true;
+		}
+
+		method : PredictRow(X : Float[,], row : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			sum := @intercept;
+			each(j : cols) {
+				sum += @coefficients[j] * X[row,j];
+			};
+
+			return sum;
+		}
+
+		#~
+		Predicts target values for new input data.
+		@param X feature matrix
+		@return prediction matrix, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+
+			result := Float->New[rows, 1];
+			each(i : rows) {
+				result[i, 0] := PredictRow(X, i);
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted feature coefficients (the intercept is separate).
+		@return coefficient array, or Nil if not fitted
+		~#
+		method : public : GetCoefficients() ~ Float[] {
+			return @coefficients;
+		}
+
+		#~
+		Gets the fitted intercept term.
+		@return intercept
+		~#
+		method : public : GetIntercept() ~ Float {
+			return @intercept;
+		}
+
+		#~
+		Gets the R-squared over the training data.
+		@return R-squared value
+		~#
+		method : public : GetRSquared() ~ Float {
+			return @r_squared;
+		}
+
+		#~
+		Gets the mean squared error over the training data.
+		@return MSE
+		~#
+		method : public : GetMSE() ~ Float {
+			return @mse;
+		}
+
+		#~
+		Gets the root mean squared error over the training data.
+		@return RMSE
+		~#
+		method : public : GetRMSE() ~ Float {
+			return @rmse;
+		}
+
+		#~
+		Scores the model on the given data (R-squared of predictions).
+		@param X feature matrix
+		@param y true target matrix (rows x 1)
+		@return R-squared, or 0.0 if not fitted or inputs are invalid
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			if(<>@is_fitted | X = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			y_dims := y->Size();
+			rows := y_dims[0];
+			avg := Matrix2D->AverageColumn(0, y);
+
+			ss_res := 0.0;
+			ss_tot := 0.0;
+			each(i : rows) {
+				predicted := PredictRow(X, i);
+				residual := y[i,0] - predicted;
+				ss_res += residual * residual;
+				diff := y[i,0] - avg;
+				ss_tot += diff * diff;
+			};
+
+			if(ss_tot > 0.0) {
+				return 1.0 - (ss_res / ss_tot);
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@alpha);
+			serializer->Write(@l1_ratio);
+			serializer->Write(@iterations);
+			serializer->Write(@tolerance);
+
+			count := @coefficients->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@coefficients[i]);
+			};
+
+			serializer->Write(@intercept);
+			serializer->Write(@r_squared);
+			serializer->Write(@mse);
+			serializer->Write(@rmse);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ ElasticNet {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			alpha := deserializer->ReadFloat();
+			l1_ratio := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+			tolerance := deserializer->ReadFloat();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			coefficients := Float->New[count];
+			each(i : count) {
+				coefficients[i] := deserializer->ReadFloat();
+			};
+
+			intercept := deserializer->ReadFloat();
+			r_squared := deserializer->ReadFloat();
+			mse := deserializer->ReadFloat();
+			rmse := deserializer->ReadFloat();
+
+			return ElasticNet->New(alpha, l1_ratio, iterations, tolerance, coefficients, intercept, r_squared, mse, rmse);
+		}
+	}
+
+	#~
+	Lasso (L1-regularized) linear regression: an ElasticNet with l1_ratio
+	fixed at 1.0. The L1 penalty drives uninformative feature coefficients
+	exactly to zero, performing feature selection. Store/Load round-trip via
+	the ElasticNet format (Load returns an ElasticNet).
+
+```
+model := LassoRegression->New(0.1);
+model->Fit(X, y);  # sparse coefficients
+```
+	~#
+	class LassoRegression from ElasticNet {
+		#~
+		Constructor with default optimization settings.
+		@param alpha L1 regularization strength (>= 0.0)
+		~#
+		New(alpha : Float) {
+			Parent(alpha, 1.0);
+		}
+
+		#~
+		Constructor with explicit optimization settings.
+		@param alpha L1 regularization strength (>= 0.0)
+		@param iterations maximum coordinate-descent sweeps
+		@param tolerance stop when no coefficient moves more than this in a sweep
+		~#
+		New(alpha : Float, iterations : Int, tolerance : Float) {
+			Parent(alpha, 1.0, iterations, tolerance);
+		}
+	}
+
+	#~
 	Logistic regression using gradient descent with sigmoid activation.
 	Binary classification only.
 
@@ -1944,6 +2699,1192 @@ each(label in labels) {
 			loss := deserializer->ReadFloat();
 
 			return LogisticRegression->New(learning_rate, iterations, l2, weights, bias, loss);
+		}
+	}
+
+	#~
+	Classic Rosenblatt perceptron: a mistake-driven linear binary classifier.
+	Deterministic (samples are visited in order each epoch) and guaranteed to
+	converge on linearly separable data; training stops early after an epoch
+	with no mistakes.
+
+```
+X := [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+y := [[0.0], [1.0], [1.0], [1.0]];   # OR
+model := Perceptron->New(0.1, 100);
+model->Fit(X, y);
+labels := model->PredictClass(X);
+```
+	~#
+	class Perceptron {
+		@learning_rate : Float;
+		@iterations : Int;
+		@weights : Float[];
+		@bias : Float;
+		@epochs_run : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param learning_rate update step size
+		@param iterations maximum training epochs
+		~#
+		New(learning_rate : Float, iterations : Int) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@is_fitted := false;
+		}
+
+		New : private (learning_rate : Float, iterations : Int, weights : Float[], bias : Float, epochs_run : Int) {
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@weights := weights;
+			@bias := bias;
+			@epochs_run := epochs_run;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the perceptron with the classic mistake-driven update rule.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (0.0 or 1.0 values, rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			@weights := Float->New[cols];
+			@bias := 0.0;
+			@epochs_run := 0;
+
+			converged := false;
+			each(epoch : @iterations) {
+				if(<>converged) {
+					@epochs_run += 1;
+					mistakes := 0;
+
+					each(i : rows) {
+						z := @bias;
+						each(j : cols) {
+							z += @weights[j] * X[i,j];
+						};
+
+						predicted := 0.0;
+						if(z >= 0.0) {
+							predicted := 1.0;
+						};
+
+						error := y[i,0] - predicted;
+						if(error <> 0.0) {
+							mistakes += 1;
+							update := @learning_rate * error;
+							each(j : cols) {
+								@weights[j] += update * X[i,j];
+							};
+							@bias += update;
+						};
+					};
+
+					if(mistakes = 0) {
+						converged := true;
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes raw decision values (w*x + b) for input data.
+		@param X feature matrix
+		@return decision value array, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows];
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += @weights[j] * X[i,j];
+				};
+				result[i] := z;
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts class labels (decision value >= 0).
+		@param X feature matrix
+		@return boolean class predictions, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the learned weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the learned bias term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Gets the number of training epochs actually run (early-stops after an
+		epoch with no mistakes).
+		@return epochs run
+		~#
+		method : public : GetEpochsRun() ~ Int {
+			return @epochs_run;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+			serializer->Write(@epochs_run);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ Perceptron {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+			epochs_run := deserializer->ReadInt();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+
+			return Perceptron->New(learning_rate, iterations, weights, bias, epochs_run);
+		}
+	}
+
+	#~
+	Linear support vector machine trained by deterministic full-batch
+	subgradient descent on the L2-regularized hinge loss:
+	lambda/2*||w||^2 + (1/n)*sum(max(0, 1 - y*(w*x + b))), with labels mapped
+	internally from {0,1} to {-1,+1}. The bias is not regularized.
+
+```
+model := SVM->New(0.01, 0.1, 500);
+model->Fit(X, y);
+labels := model->PredictClass(X);
+```
+	~#
+	class SVM {
+		@lambda : Float;
+		@learning_rate : Float;
+		@iterations : Int;
+		@weights : Float[];
+		@bias : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param lambda L2 regularization strength (> 0.0)
+		@param learning_rate subgradient step size
+		@param iterations training epochs
+		~#
+		New(lambda : Float, learning_rate : Float, iterations : Int) {
+			@lambda := lambda;
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@is_fitted := false;
+		}
+
+		New : private (lambda : Float, learning_rate : Float, iterations : Int, weights : Float[], bias : Float) {
+			@lambda := lambda;
+			@learning_rate := learning_rate;
+			@iterations := iterations;
+			@weights := weights;
+			@bias := bias;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the SVM by full-batch subgradient descent on the hinge loss.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y target matrix (0.0 or 1.0 values, rows=samples, cols=1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# map {0,1} labels to {-1,+1}
+			signs := Float->New[rows];
+			each(i : rows) {
+				if(y[i,0] >= 0.5) {
+					signs[i] := 1.0;
+				}
+				else {
+					signs[i] := -1.0;
+				};
+			};
+
+			@weights := Float->New[cols];
+			@bias := 0.0;
+
+			grad_w := Float->New[cols];
+			each(epoch : @iterations) {
+				# subgradient of the average hinge loss over margin violators
+				each(j : cols) {
+					grad_w[j] := @lambda * @weights[j];
+				};
+				grad_b := 0.0;
+
+				each(i : rows) {
+					z := @bias;
+					each(j : cols) {
+						z += @weights[j] * X[i,j];
+					};
+
+					margin := signs[i] * z;
+					if(margin < 1.0) {
+						scale := signs[i] / n;
+						each(j : cols) {
+							grad_w[j] -= scale * X[i,j];
+						};
+						grad_b -= scale;
+					};
+				};
+
+				each(j : cols) {
+					@weights[j] -= @learning_rate * grad_w[j];
+				};
+				@bias -= @learning_rate * grad_b;
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes raw decision values (w*x + b) for input data. The sign gives
+		the class; the magnitude reflects distance from the separating plane.
+		@param X feature matrix
+		@return decision value array, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows];
+			each(i : rows) {
+				z := @bias;
+				each(j : cols) {
+					z += @weights[j] * X[i,j];
+				};
+				result[i] := z;
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts class labels (decision value >= 0).
+		@param X feature matrix
+		@return boolean class predictions, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Bool[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the learned weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the learned bias term.
+		@return bias
+		~#
+		method : public : GetBias() ~ Float {
+			return @bias;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true labels (0.0/1.0, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				actual := y[i,0] >= 0.5;
+				if(preds[i] = actual) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@lambda);
+			serializer->Write(@learning_rate);
+			serializer->Write(@iterations);
+
+			count := @weights->Size();
+			serializer->Write(count);
+			each(i : count) {
+				serializer->Write(@weights[i]);
+			};
+
+			serializer->Write(@bias);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ SVM {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			lambda := deserializer->ReadFloat();
+			learning_rate := deserializer->ReadFloat();
+			iterations := deserializer->ReadInt();
+
+			count := deserializer->ReadInt();
+			if(count < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[count];
+			each(i : count) {
+				weights[i] := deserializer->ReadFloat();
+			};
+
+			bias := deserializer->ReadFloat();
+
+			return SVM->New(lambda, learning_rate, iterations, weights, bias);
+		}
+	}
+
+	#~
+	Principal component analysis via power iteration with deflation on the
+	sample covariance matrix. Deterministic (fixed initialization vector).
+	Components are unit-length rows of a k x d matrix; sign is arbitrary.
+
+```
+pca := PCA->New(1);
+pca->Fit(X);
+reduced := pca->Transform(X);          # n x 1
+ratios := pca->GetExplainedVarianceRatio();
+```
+	~#
+	class PCA {
+		@num_components : Int;
+		@mean : Float[];
+		@components : Float[,];
+		@eigenvalues : Float[];
+		@total_variance : Float;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param num_components number of principal components to keep
+		~#
+		New(num_components : Int) {
+			@num_components := num_components;
+			@is_fitted := false;
+		}
+
+		New : private (num_components : Int, mean : Float[], components : Float[,], eigenvalues : Float[], total_variance : Float) {
+			@num_components := num_components;
+			@mean := mean;
+			@components := components;
+			@eigenvalues := eigenvalues;
+			@total_variance := total_variance;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the decomposition: centers the data, builds the sample covariance
+		matrix and extracts the top components by power iteration + deflation.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows < 2 | cols = 0 | @num_components < 1 | @num_components > cols) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# center the data
+			@mean := Float->New[cols];
+			each(j : cols) {
+				sum := 0.0;
+				each(i : rows) {
+					sum += X[i,j];
+				};
+				@mean[j] := sum / n;
+			};
+
+			centered := Float->New[rows, cols];
+			each(i : rows) {
+				each(j : cols) {
+					centered[i,j] := X[i,j] - @mean[j];
+				};
+			};
+
+			# sample covariance: C = X'X / (n - 1)
+			cov := Float->New[cols, cols];
+			each(a : cols) {
+				each(b : cols) {
+					sum := 0.0;
+					each(i : rows) {
+						sum += centered[i,a] * centered[i,b];
+					};
+					cov[a,b] := sum / (n - 1.0);
+				};
+			};
+
+			@total_variance := 0.0;
+			each(j : cols) {
+				@total_variance += cov[j,j];
+			};
+
+			# power iteration with deflation for the top components
+			@components := Float->New[@num_components, cols];
+			@eigenvalues := Float->New[@num_components];
+
+			each(c : @num_components) {
+				# deterministic non-degenerate initialization
+				v := Float->New[cols];
+				each(j : cols) {
+					v[j] := 1.0 / (j + 1)->As(Float);
+				};
+				Normalize(v);
+
+				each(iter : 1000) {
+					next := Float->New[cols];
+					each(a : cols) {
+						sum := 0.0;
+						each(b : cols) {
+							sum += cov[a,b] * v[b];
+						};
+						next[a] := sum;
+					};
+
+					# re-orthogonalize against the components already found so
+					# residual deflation error cannot accumulate across
+					# components (keeps the basis orthonormal to machine
+					# precision, which full-rank reconstruction relies on)
+					for(p := 0; p < c; p += 1;) {
+						proj := 0.0;
+						each(j : cols) {
+							proj += next[j] * @components[p,j];
+						};
+						each(j : cols) {
+							next[j] -= proj * @components[p,j];
+						};
+					};
+
+					norm := Normalize(next);
+					if(norm = 0.0) {
+						# no remaining variance in this direction
+						each(j : cols) {
+							next[j] := v[j];
+						};
+					};
+
+					# converged when the direction stops moving (sign-agnostic)
+					dot := 0.0;
+					each(j : cols) {
+						dot += next[j] * v[j];
+					};
+					v := next;
+					if(Float->Abs(dot) > 0.999999999999) {
+						break;
+					};
+				};
+
+				# Rayleigh quotient gives the eigenvalue for the unit vector
+				lambda := 0.0;
+				each(a : cols) {
+					row_sum := 0.0;
+					each(b : cols) {
+						row_sum += cov[a,b] * v[b];
+					};
+					lambda += v[a] * row_sum;
+				};
+
+				@eigenvalues[c] := lambda;
+				each(j : cols) {
+					@components[c,j] := v[j];
+				};
+
+				# deflate: C -= lambda * v v'
+				each(a : cols) {
+					each(b : cols) {
+						cov[a,b] -= lambda * v[a] * v[b];
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		method : Normalize(v : Float[]) ~ Float {
+			norm := 0.0;
+			each(j : v) {
+				norm += v[j] * v[j];
+			};
+			norm := norm->Sqrt();
+
+			if(norm > 0.0) {
+				each(j : v) {
+					v[j] := v[j] / norm;
+				};
+			};
+
+			return norm;
+		}
+
+		#~
+		Projects data onto the fitted components.
+		@param X data matrix (rows=samples, cols=features)
+		@return projected matrix (rows x num_components), or Nil if not fitted
+		~#
+		method : public : Transform(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			result := Float->New[rows, @num_components];
+			each(i : rows) {
+				each(c : @num_components) {
+					sum := 0.0;
+					each(j : cols) {
+						sum += (X[i,j] - @mean[j]) * @components[c,j];
+					};
+					result[i,c] := sum;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Maps projected data back into the original feature space.
+		@param Z projected matrix (rows x num_components)
+		@return reconstruction (rows x features), or Nil if not fitted
+		~#
+		method : public : InverseTransform(Z : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | Z = Nil) {
+				return Nil;
+			};
+
+			z_dims := Z->Size();
+			rows := z_dims[0];
+			comp_dims := @components->Size();
+			cols := comp_dims[1];
+
+			result := Float->New[rows, cols];
+			each(i : rows) {
+				each(j : cols) {
+					sum := @mean[j];
+					each(c : @num_components) {
+						sum += Z[i,c] * @components[c,j];
+					};
+					result[i,j] := sum;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted components (num_components x features; unit rows).
+		@return component matrix, or Nil if not fitted
+		~#
+		method : public : GetComponents() ~ Float[,] {
+			return @components;
+		}
+
+		#~
+		Gets the variance explained by each component (eigenvalues).
+		@return explained variance array, or Nil if not fitted
+		~#
+		method : public : GetExplainedVariance() ~ Float[] {
+			return @eigenvalues;
+		}
+
+		#~
+		Gets the fraction of total variance explained by each component.
+		@return ratio array, or Nil if not fitted
+		~#
+		method : public : GetExplainedVarianceRatio() ~ Float[] {
+			if(<>@is_fitted) {
+				return Nil;
+			};
+
+			ratios := Float->New[@num_components];
+			if(@total_variance > 0.0) {
+				each(c : @num_components) {
+					ratios[c] := @eigenvalues[c] / @total_variance;
+				};
+			};
+
+			return ratios;
+		}
+
+		#~
+		Gets the per-feature means used for centering.
+		@return mean array, or Nil if not fitted
+		~#
+		method : public : GetMean() ~ Float[] {
+			return @mean;
+		}
+
+		#~
+		Whether the decomposition has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted decomposition to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_components);
+
+			cols := @mean->Size();
+			serializer->Write(cols);
+			each(j : cols) {
+				serializer->Write(@mean[j]);
+			};
+
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@components[c,j]);
+				};
+			};
+
+			each(c : @num_components) {
+				serializer->Write(@eigenvalues[c]);
+			};
+
+			serializer->Write(@total_variance);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted decomposition from a file.
+		@param filename file to load from
+		@return fitted decomposition, or Nil on failure
+		~#
+		function : Load(filename : String) ~ PCA {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_components := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_components < 1 | cols < 1) {
+				return Nil;
+			};
+
+			mean := Float->New[cols];
+			each(j : cols) {
+				mean[j] := deserializer->ReadFloat();
+			};
+
+			components := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					components[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			eigenvalues := Float->New[num_components];
+			each(c : num_components) {
+				eigenvalues[c] := deserializer->ReadFloat();
+			};
+
+			total_variance := deserializer->ReadFloat();
+
+			return PCA->New(num_components, mean, components, eigenvalues, total_variance);
+		}
+	}
+
+	#~
+	Gaussian naive Bayes for continuous features and integer class labels.
+	Per class and feature it fits a mean and variance, then classifies by
+	maximum log-joint probability (log prior + sum of log Gaussian
+	likelihoods). Variances are floored for numerical stability.
+
+```
+X := [[1.0], [1.2], [8.0], [8.2]];
+y := [[0.0], [0.0], [1.0], [1.0]];
+gnb := GaussianNaiveBayes->New();
+gnb->Fit(X, y);
+classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
+```
+	~#
+	class GaussianNaiveBayes {
+		@num_classes : Int;
+		@priors : Float[];
+		@means : Float[,];
+		@variances : Float[,];
+		@is_fitted : Bool;
+
+		New() {
+			@is_fitted := false;
+		}
+
+		New : private (num_classes : Int, priors : Float[], means : Float[,], variances : Float[,]) {
+			@num_classes := num_classes;
+			@priors := priors;
+			@means := means;
+			@variances := variances;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits per-class feature means/variances and class priors. Class labels
+		are the integer values 0..C-1 in the target column; every class in the
+		range must appear at least once.
+		@param X feature matrix (rows=samples, cols=features)
+		@param y class labels (integer values stored as Float, rows x 1)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Float[,]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			y_dims := y->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows <> y_dims[0] | rows = 0 | cols = 0) {
+				return false;
+			};
+
+			# classes are 0..max label
+			max_label := 0;
+			each(i : rows) {
+				label_id := y[i,0]->As(Int);
+				if(label_id < 0) {
+					return false;
+				};
+				if(label_id > max_label) {
+					max_label := label_id;
+				};
+			};
+			@num_classes := max_label + 1;
+
+			counts := Int->New[@num_classes];
+			@means := Float->New[@num_classes, cols];
+			@variances := Float->New[@num_classes, cols];
+
+			each(i : rows) {
+				c := y[i,0]->As(Int);
+				counts[c] += 1;
+				each(j : cols) {
+					@means[c,j] += X[i,j];
+				};
+			};
+
+			each(c : @num_classes) {
+				if(counts[c] = 0) {
+					# a class id in the range never appears
+					return false;
+				};
+				each(j : cols) {
+					@means[c,j] := @means[c,j] / counts[c]->As(Float);
+				};
+			};
+
+			each(i : rows) {
+				c := y[i,0]->As(Int);
+				each(j : cols) {
+					diff := X[i,j] - @means[c,j];
+					@variances[c,j] += diff * diff;
+				};
+			};
+
+			# variance floor keeps degenerate (constant) features finite
+			floor := 0.000000001;
+			each(c : @num_classes) {
+				each(j : cols) {
+					@variances[c,j] := @variances[c,j] / counts[c]->As(Float);
+					if(@variances[c,j] < floor) {
+						@variances[c,j] := floor;
+					};
+				};
+			};
+
+			@priors := Float->New[@num_classes];
+			each(c : @num_classes) {
+				@priors[c] := counts[c]->As(Float) / rows->As(Float);
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		#~
+		Computes the log-joint probability of each class for every row.
+		@param X feature matrix
+		@return rows x classes matrix of log-joint scores, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			two_pi := 2.0 * Float->Pi();
+			result := Float->New[rows, @num_classes];
+			each(i : rows) {
+				each(c : @num_classes) {
+					log_joint := @priors[c]->Log();
+					each(j : cols) {
+						variance := @variances[c,j];
+						diff := X[i,j] - @means[c,j];
+						log_joint -= 0.5 * ((two_pi * variance)->Log() + diff * diff / variance);
+					};
+					result[i,c] := log_joint;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts the most likely class for every row.
+		@param X feature matrix
+		@return per-row class ids, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Int[] {
+			scores := Predict(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			score_dims := scores->Size();
+			rows := score_dims[0];
+
+			result := Int->New[rows];
+			each(i : rows) {
+				best := 0;
+				each(c : @num_classes) {
+					if(scores[i,c] > scores[i,best]) {
+						best := c;
+					};
+				};
+				result[i] := best;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the number of classes seen at fit time.
+		@return class count
+		~#
+		method : public : GetNumClasses() ~ Int {
+			return @num_classes;
+		}
+
+		#~
+		Computes classification accuracy on the given data.
+		@param X feature matrix
+		@param y true class labels (integer values stored as Float, rows x 1)
+		@return fraction of correctly classified samples
+		~#
+		method : public : Score(X : Float[,], y : Float[,]) ~ Float {
+			preds := PredictClass(X);
+			if(preds = Nil | y = Nil) {
+				return 0.0;
+			};
+
+			correct := 0;
+			each(i : preds) {
+				if(preds[i] = y[i,0]->As(Int)) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / preds->Size()->As(Float);
+		}
+
+		#~
+		Whether the model has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted model to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_classes);
+
+			mean_dims := @means->Size();
+			cols := mean_dims[1];
+			serializer->Write(cols);
+
+			each(c : @num_classes) {
+				serializer->Write(@priors[c]);
+			};
+			each(c : @num_classes) {
+				each(j : cols) {
+					serializer->Write(@means[c,j]);
+				};
+			};
+			each(c : @num_classes) {
+				each(j : cols) {
+					serializer->Write(@variances[c,j]);
+				};
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted model from a file.
+		@param filename file to load from
+		@return fitted model, or Nil on failure
+		~#
+		function : Load(filename : String) ~ GaussianNaiveBayes {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_classes := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_classes < 1 | cols < 1) {
+				return Nil;
+			};
+
+			priors := Float->New[num_classes];
+			each(c : num_classes) {
+				priors[c] := deserializer->ReadFloat();
+			};
+
+			means := Float->New[num_classes, cols];
+			each(c : num_classes) {
+				each(j : cols) {
+					means[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			variances := Float->New[num_classes, cols];
+			each(c : num_classes) {
+				each(j : cols) {
+					variances[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			return GaussianNaiveBayes->New(num_classes, priors, means, variances);
 		}
 	}
 
@@ -2760,8 +4701,304 @@ preds := forest->Predict(data);
 	}
 
 	#~
+	Discrete AdaBoost over single-feature boolean decision stumps. Each round
+	picks the stump (feature + polarity) with the lowest weighted error, gives
+	it a vote of alpha = 0.5*ln((1-err)/err) and re-weights the samples to
+	focus on mistakes; prediction is the sign of the weighted stump vote.
+	Deterministic. Boosting stops early when no stump beats chance.
+
+```
+# label (last column) = majority of three boolean features
+booster := AdaBoost->New(16);
+booster->Fit(data);
+preds := booster->Predict(data);
+```
+	~#
+	class AdaBoost {
+		@num_learners : Int;
+		@features : Int[];
+		@polarities : Bool[];
+		@alphas : Float[];
+		@learner_count : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param num_learners maximum number of boosting rounds
+		~#
+		New(num_learners : Int) {
+			@num_learners := num_learners;
+			@is_fitted := false;
+		}
+
+		New : private (num_learners : Int, features : Int[], polarities : Bool[], alphas : Float[], learner_count : Int) {
+			@num_learners := num_learners;
+			@features := features;
+			@polarities := polarities;
+			@alphas := alphas;
+			@learner_count := learner_count;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the boosted ensemble. Each row is boolean features with the class
+		label in the LAST column.
+		@param input training matrix (features..., label) of Bool
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(input : Bool[,]) ~ Bool {
+			if(input = Nil) {
+				return false;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return false;
+			};
+			target_col := cols - 1;
+			num_features := cols - 1;
+
+			@features := Int->New[@num_learners];
+			@polarities := Bool->New[@num_learners];
+			@alphas := Float->New[@num_learners];
+			@learner_count := 0;
+
+			# uniform initial sample weights
+			weights := Float->New[rows];
+			each(i : rows) {
+				weights[i] := 1.0 / rows->As(Float);
+			};
+
+			done := false;
+			each(t : @num_learners) {
+				if(<>done) {
+					# pick the stump (feature, polarity) with lowest weighted error
+					best_feature := -1;
+					best_polarity := true;
+					best_error := 1.0;
+
+					each(f : num_features) {
+						# polarity true: predict the feature value itself
+						err_true := 0.0;
+						each(i : rows) {
+							if(input[i,f] <> input[i,target_col]) {
+								err_true += weights[i];
+							};
+						};
+
+						if(err_true < best_error) {
+							best_error := err_true;
+							best_feature := f;
+							best_polarity := true;
+						};
+
+						# polarity false: predict the inverted feature value
+						err_false := 1.0 - err_true;
+						if(err_false < best_error) {
+							best_error := err_false;
+							best_feature := f;
+							best_polarity := false;
+						};
+					};
+
+					# stop when no stump beats chance (with a small epsilon so a
+					# perfect stump cannot divide by zero)
+					if(best_feature < 0 | best_error >= 0.5) {
+						done := true;
+					}
+					else {
+						eps := 0.0000000001;
+						bounded := best_error;
+						if(bounded < eps) {
+							bounded := eps;
+						};
+						alpha := 0.5 * ((1.0 - bounded) / bounded)->Log();
+
+						@features[@learner_count] := best_feature;
+						@polarities[@learner_count] := best_polarity;
+						@alphas[@learner_count] := alpha;
+						@learner_count += 1;
+
+						# re-weight: mistakes up by e^alpha, hits down by e^-alpha
+						up := Float->Exp(alpha);
+						down := Float->Exp(-1.0 * alpha);
+						total := 0.0;
+						each(i : rows) {
+							predicted := input[i,best_feature];
+							if(<>best_polarity) {
+								predicted := <>predicted;
+							};
+
+							if(predicted <> input[i,target_col]) {
+								weights[i] := weights[i] * up;
+							}
+							else {
+								weights[i] := weights[i] * down;
+							};
+							total += weights[i];
+						};
+
+						each(i : rows) {
+							weights[i] := weights[i] / total;
+						};
+
+						# a perfect stump leaves nothing to boost
+						if(best_error <= eps) {
+							done := true;
+						};
+					};
+				};
+			};
+
+			@is_fitted := @learner_count > 0;
+			return @is_fitted;
+		}
+
+		#~
+		Predicts class labels by the sign of the weighted stump vote.
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predicted classes, or Nil if not fitted
+		~#
+		method : public : Predict(input : Bool[,]) ~ Bool[] {
+			if(<>@is_fitted | input = Nil) {
+				return Nil;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+
+			result := Bool->New[rows];
+			each(i : rows) {
+				vote := 0.0;
+				each(t : @learner_count) {
+					predicted := input[i, @features[t]];
+					if(<>@polarities[t]) {
+						predicted := <>predicted;
+					};
+
+					if(predicted) {
+						vote += @alphas[t];
+					}
+					else {
+						vote -= @alphas[t];
+					};
+				};
+				result[i] := vote >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the number of boosting rounds actually used (early-stops when no
+		stump beats chance or a stump is perfect).
+		@return learner count
+		~#
+		method : public : GetLearnerCount() ~ Int {
+			return @learner_count;
+		}
+
+		#~
+		Computes classification accuracy on labeled data, comparing predictions
+		against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>@is_fitted | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := Predict(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
+		Whether the ensemble has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted ensemble to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_learners);
+			serializer->Write(@learner_count);
+
+			each(t : @learner_count) {
+				serializer->Write(@features[t]);
+				if(@polarities[t]) {
+					serializer->Write(1);
+				}
+				else {
+					serializer->Write(0);
+				};
+				serializer->Write(@alphas[t]);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted ensemble from a file.
+		@param filename file to load from
+		@return fitted ensemble, or Nil on failure
+		~#
+		function : Load(filename : String) ~ AdaBoost {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_learners := deserializer->ReadInt();
+			learner_count := deserializer->ReadInt();
+			if(num_learners < 1 | learner_count < 1 | learner_count > num_learners) {
+				return Nil;
+			};
+
+			features := Int->New[num_learners];
+			polarities := Bool->New[num_learners];
+			alphas := Float->New[num_learners];
+			each(t : learner_count) {
+				features[t] := deserializer->ReadInt();
+				polarities[t] := deserializer->ReadInt() = 1;
+				alphas[t] := deserializer->ReadFloat();
+			};
+
+			return AdaBoost->New(num_learners, features, polarities, alphas, learner_count);
+		}
+	}
+
+	#~
 	Binary decision tree algorithm
-	
+
 ```
 data := BoolMatrixRef->New([
   [true, false, true]
@@ -3696,6 +5933,196 @@ each(neighbor := nearest) {
 };
 ```
 ~#
+	#~
+	A node in a KDTree: the row it holds, the dimension it splits on, and the
+	child subtrees.
+	~#
+	class : private : KDNode {
+		@row : Int;
+		@dim : Int;
+		@left : KDNode;
+		@right : KDNode;
+
+		New(row : Int, dim : Int) {
+			@row := row;
+			@dim := dim;
+		}
+
+		method : public : GetRow() ~ Int { return @row; }
+		method : public : GetDim() ~ Int { return @dim; }
+		method : public : GetLeft() ~ KDNode { return @left; }
+		method : public : GetRight() ~ KDNode { return @right; }
+		method : public : SetLeft(n : KDNode) ~ Nil { @left := n; }
+		method : public : SetRight(n : KDNode) ~ Nil { @right := n; }
+	}
+
+	#~
+	K-d tree for fast exact nearest-neighbor queries over numeric rows.
+	Built by median splits cycling through the dimensions; queries prune
+	subtrees whose splitting plane lies farther than the current k-th best
+	distance. Equivalent results to a brute-force scan (Euclidean).
+
+```
+tree := KDTree->New(matrix);
+nearest := tree->Nearest(3, [57.0, 170.0]);   # row indexes, closest first
+```
+	~#
+	class KDTree {
+		@data : Float[,];
+		@root : KDNode;
+		@size : Int;
+		@cols : Int;
+
+		#~
+		Builds the tree from a data matrix.
+		@param data matrix (rows=samples, cols=features)
+		~#
+		New(data : Float[,]) {
+			@data := data;
+			if(data <> Nil) {
+				dims := data->Size();
+				@size := dims[0];
+				@cols := dims[1];
+
+				if(@size > 0 & @cols > 0) {
+					indexes := Int->New[@size];
+					each(i : @size) {
+						indexes[i] := i;
+					};
+					@root := Build(indexes, 0, @size - 1, 0);
+				};
+			};
+		}
+
+		# Builds a subtree over indexes[lo..hi] splitting on depth % cols.
+		method : Build(indexes : Int[], lo : Int, hi : Int, depth : Int) ~ KDNode {
+			if(lo > hi) {
+				return Nil;
+			};
+
+			dim := depth % @cols;
+			SortByDim(indexes, lo, hi, dim);
+			mid := lo + (hi - lo) / 2;
+
+			node := KDNode->New(indexes[mid], dim);
+			node->SetLeft(Build(indexes, lo, mid - 1, depth + 1));
+			node->SetRight(Build(indexes, mid + 1, hi, depth + 1));
+			return node;
+		}
+
+		# In-place quicksort of indexes[lo..hi] by the dim-th coordinate.
+		method : SortByDim(indexes : Int[], lo : Int, hi : Int, dim : Int) ~ Nil {
+			if(lo >= hi) {
+				return;
+			};
+
+			pivot := @data[indexes[lo + (hi - lo) / 2], dim];
+			i := lo;
+			j := hi;
+			while(i <= j) {
+				while(@data[indexes[i], dim] < pivot) {
+					i += 1;
+				};
+				while(@data[indexes[j], dim] > pivot) {
+					j -= 1;
+				};
+				if(i <= j) {
+					tmp := indexes[i];
+					indexes[i] := indexes[j];
+					indexes[j] := tmp;
+					i += 1;
+					j -= 1;
+				};
+			};
+
+			SortByDim(indexes, lo, j, dim);
+			SortByDim(indexes, i, hi, dim);
+		}
+
+		#~
+		Finds the k nearest rows to the query point.
+		@param k number of neighbors
+		@param query query point (length = features)
+		@return row indexes sorted closest-first (fewer than k when the tree is smaller), or Nil on invalid input
+		~#
+		method : public : Nearest(k : Int, query : Float[]) ~ Int[] {
+			if(@root = Nil | query = Nil | k < 1 | query->Size() <> @cols) {
+				return Nil;
+			};
+
+			count := k;
+			if(count > @size) {
+				count := @size;
+			};
+
+			# best-so-far lists, sorted ascending by distance
+			best_rows := Int->New[count];
+			best_dists := Float->New[count];
+			each(i : count) {
+				best_dists[i] := Float->Inf();
+			};
+
+			Search(@root, query, best_rows, best_dists, count);
+
+			return best_rows;
+		}
+
+		method : Search(node : KDNode, query : Float[], best_rows : Int[], best_dists : Float[], count : Int) ~ Nil {
+			if(node = Nil) {
+				return;
+			};
+
+			row := node->GetRow();
+			dist_sq := 0.0;
+			each(j : @cols) {
+				diff := query[j] - @data[row,j];
+				dist_sq += diff * diff;
+			};
+
+			# insert into the sorted best list if it beats the current worst
+			if(dist_sq < best_dists[count - 1]) {
+				pos := count - 1;
+				while(pos > 0 & best_dists[pos - 1] > dist_sq) {
+					best_dists[pos] := best_dists[pos - 1];
+					best_rows[pos] := best_rows[pos - 1];
+					pos -= 1;
+				};
+				best_dists[pos] := dist_sq;
+				best_rows[pos] := row;
+			};
+
+			dim := node->GetDim();
+			delta := query[dim] - @data[row,dim];
+
+			near : KDNode;
+			far : KDNode;
+			if(delta < 0.0) {
+				near := node->GetLeft();
+				far := node->GetRight();
+			}
+			else {
+				near := node->GetRight();
+				far := node->GetLeft();
+			};
+
+			Search(near, query, best_rows, best_dists, count);
+
+			# the far side can only matter when the splitting plane is closer
+			# than the current k-th best distance
+			if(delta * delta < best_dists[count - 1]) {
+				Search(far, query, best_rows, best_dists, count);
+			};
+		}
+
+		#~
+		Gets the number of rows indexed.
+		@return row count
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+	}
+
 	class KNearestNeighbors {
 		@matrix : Float[,];
 		@labels : String[];
@@ -4118,6 +6545,612 @@ each(group in groups) {
 	        };
 
 	        return distance->Sqrt();
+		}
+	}
+
+	#~
+	Density-based spatial clustering (DBSCAN). Groups points that are densely
+	packed (at least min_points neighbors within eps, Euclidean) and labels
+	sparse points as noise (-1). Unlike KMeans the cluster count is discovered,
+	clusters may be any shape, and the result is deterministic for a given
+	input order.
+
+```
+scanner := DBSCAN->New(1.0, 3);
+scanner->Fit(X);
+labels := scanner->GetLabels();   # cluster id per row; -1 = noise
+```
+	~#
+	class DBSCAN {
+		@eps : Float;
+		@min_points : Int;
+		@labels : Int[];
+		@num_clusters : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param eps neighborhood radius (Euclidean)
+		@param min_points minimum neighbors (inclusive of the point itself) for a core point
+		~#
+		New(eps : Float, min_points : Int) {
+			@eps := eps;
+			@min_points := min_points;
+			@is_fitted := false;
+		}
+
+		#~
+		Clusters the data. Region growing visits rows in order, so results are
+		deterministic for a given input.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if clustering succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			if(rows = 0) {
+				return false;
+			};
+
+			# -2 = unvisited, -1 = noise, >= 0 = cluster id
+			@labels := Int->New[rows];
+			each(i : rows) {
+				@labels[i] := -2;
+			};
+
+			@num_clusters := 0;
+			queue := Int->New[rows];
+
+			each(i : rows) {
+				if(@labels[i] = -2) {
+					neighbors := RegionQuery(X, i);
+					if(neighbors->Size() < @min_points) {
+						@labels[i] := -1;
+					}
+					else {
+						# new cluster: grow it breadth-first from the seed.
+						# Points are claimed (labeled) when enqueued, so each
+						# point enters the queue at most once and the fixed
+						# queue of `rows` entries can never overflow.
+						cluster := @num_clusters;
+						@num_clusters += 1;
+						@labels[i] := cluster;
+
+						head := 0;
+						tail := 0;
+						each(n : neighbors) {
+							q := neighbors[n];
+							if(@labels[q] = -2 | @labels[q] = -1) {
+								@labels[q] := cluster;
+								queue[tail] := q;
+								tail += 1;
+							};
+						};
+
+						while(head < tail) {
+							p := queue[head];
+							head += 1;
+
+							p_neighbors := RegionQuery(X, p);
+							if(p_neighbors->Size() >= @min_points) {
+								# core point: claim and extend the frontier
+								each(n : p_neighbors) {
+									q := p_neighbors[n];
+									if(@labels[q] = -2 | @labels[q] = -1) {
+										@labels[q] := cluster;
+										queue[tail] := q;
+										tail += 1;
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+
+			@is_fitted := true;
+			return true;
+		}
+
+		# Indexes of all rows within eps of row i (inclusive of i itself).
+		method : RegionQuery(X : Float[,], i : Int) ~ Int[] {
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+
+			eps_sq := @eps * @eps;
+			found := Int->New[rows];
+			count := 0;
+			each(j : rows) {
+				dist_sq := 0.0;
+				each(c : cols) {
+					diff := X[i,c] - X[j,c];
+					dist_sq += diff * diff;
+				};
+
+				if(dist_sq <= eps_sq) {
+					found[count] := j;
+					count += 1;
+				};
+			};
+
+			result := Int->New[count];
+			each(j : count) {
+				result[j] := found[j];
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the per-row cluster labels (-1 = noise).
+		@return label array, or Nil if not fitted
+		~#
+		method : public : GetLabels() ~ Int[] {
+			return @labels;
+		}
+
+		#~
+		Gets the number of clusters discovered.
+		@return cluster count
+		~#
+		method : public : GetNumClusters() ~ Int {
+			return @num_clusters;
+		}
+
+		#~
+		Whether the clustering has been run.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+	}
+
+	#~
+	Gaussian mixture model with diagonal covariance, fitted by expectation-
+	maximization. Component means are seeded k-means++-style with the seedable
+	System.ML.Random for reproducible fits; the E-step works in the log domain
+	for numerical stability and variances are floored. Training stops when the
+	average log-likelihood improves by less than the tolerance.
+
+```
+gmm := GaussianMixture->New(2, 7);
+gmm->Fit(X);
+components := gmm->PredictClass(X);     # hard assignments
+resp := gmm->Predict(X);                # soft responsibilities
+```
+	~#
+	class GaussianMixture {
+		@num_components : Int;
+		@max_iterations : Int;
+		@tolerance : Float;
+		@seed : Int;
+		@weights : Float[];
+		@means : Float[,];
+		@variances : Float[,];
+		@log_likelihood : Float;
+		@iterations_run : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor with default optimization settings (100 iterations,
+		tolerance 0.000001).
+		@param num_components number of mixture components
+		@param seed PRNG seed for reproducible initialization
+		~#
+		New(num_components : Int, seed : Int) {
+			@num_components := num_components;
+			@max_iterations := 100;
+			@tolerance := 0.000001;
+			@seed := seed;
+			@is_fitted := false;
+		}
+
+		#~
+		Constructor with explicit optimization settings.
+		@param num_components number of mixture components
+		@param max_iterations EM iteration cap
+		@param tolerance stop when average log-likelihood improves less than this
+		@param seed PRNG seed for reproducible initialization
+		~#
+		New(num_components : Int, max_iterations : Int, tolerance : Float, seed : Int) {
+			@num_components := num_components;
+			@max_iterations := max_iterations;
+			@tolerance := tolerance;
+			@seed := seed;
+			@is_fitted := false;
+		}
+
+		New : private (num_components : Int, weights : Float[], means : Float[,], variances : Float[,], log_likelihood : Float) {
+			@num_components := num_components;
+			@weights := weights;
+			@means := means;
+			@variances := variances;
+			@log_likelihood := log_likelihood;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the mixture by EM.
+		@param X data matrix (rows=samples, cols=features)
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+			cols := x_dims[1];
+			if(rows < @num_components | @num_components < 1 | cols = 0) {
+				return false;
+			};
+
+			n := rows->As(Float);
+
+			# global per-feature variance for initialization and flooring
+			global_var := Float->New[cols];
+			each(j : cols) {
+				mean := 0.0;
+				each(i : rows) {
+					mean += X[i,j];
+				};
+				mean := mean / n;
+
+				sq := 0.0;
+				each(i : rows) {
+					diff := X[i,j] - mean;
+					sq += diff * diff;
+				};
+				global_var[j] := sq / n;
+				if(global_var[j] < 0.000001) {
+					global_var[j] := 0.000001;
+				};
+			};
+
+			# k-means++-style seeding of the component means
+			rand := Random->New(@seed);
+			@means := Float->New[@num_components, cols];
+			first := rand->NextInt(rows);
+			each(j : cols) {
+				@means[0,j] := X[first,j];
+			};
+
+			chosen := 1;
+			while(chosen < @num_components) {
+				dists := Float->New[rows];
+				total := 0.0;
+				each(i : rows) {
+					best := Float->Inf();
+					each(c : chosen) {
+						d := 0.0;
+						each(j : cols) {
+							diff := X[i,j] - @means[c,j];
+							d += diff * diff;
+						};
+						if(d < best) {
+							best := d;
+						};
+					};
+					dists[i] := best;
+					total += best;
+				};
+
+				target := rand->NextReal() * total;
+				cum := 0.0;
+				pick := rows - 1;
+				picked := false;
+				each(i : rows) {
+					cum += dists[i];
+					if(<>picked & cum >= target) {
+						pick := i;
+						picked := true;
+					};
+				};
+
+				each(j : cols) {
+					@means[chosen,j] := X[pick,j];
+				};
+				chosen += 1;
+			};
+
+			# uniform weights, global variances
+			@weights := Float->New[@num_components];
+			@variances := Float->New[@num_components, cols];
+			each(c : @num_components) {
+				@weights[c] := 1.0 / @num_components->As(Float);
+				each(j : cols) {
+					@variances[c,j] := global_var[j];
+				};
+			};
+
+			# EM
+			resp := Float->New[rows, @num_components];
+			previous_ll := Float->NegInf();
+			@iterations_run := 0;
+
+			converged := false;
+			each(iter : @max_iterations) {
+				if(<>converged) {
+					@iterations_run += 1;
+
+					# E-step: responsibilities via log-sum-exp
+					ll := 0.0;
+					each(i : rows) {
+						log_joint := Float->New[@num_components];
+						max_log := Float->NegInf();
+						each(c : @num_components) {
+							log_joint[c] := @weights[c]->Log() + LogGaussian(X, i, c);
+							if(log_joint[c] > max_log) {
+								max_log := log_joint[c];
+							};
+						};
+
+						sum_exp := 0.0;
+						each(c : @num_components) {
+							sum_exp += Float->Exp(log_joint[c] - max_log);
+						};
+						log_norm := max_log + sum_exp->Log();
+						ll += log_norm;
+
+						each(c : @num_components) {
+							resp[i,c] := Float->Exp(log_joint[c] - log_norm);
+						};
+					};
+					ll := ll / n;
+
+					# M-step
+					each(c : @num_components) {
+						resp_sum := 0.0;
+						each(i : rows) {
+							resp_sum += resp[i,c];
+						};
+
+						if(resp_sum < 0.0000000001) {
+							resp_sum := 0.0000000001;
+						};
+						@weights[c] := resp_sum / n;
+
+						each(j : cols) {
+							mean := 0.0;
+							each(i : rows) {
+								mean += resp[i,c] * X[i,j];
+							};
+							mean := mean / resp_sum;
+							@means[c,j] := mean;
+						};
+
+						each(j : cols) {
+							variance := 0.0;
+							each(i : rows) {
+								diff := X[i,j] - @means[c,j];
+								variance += resp[i,c] * diff * diff;
+							};
+							variance := variance / resp_sum;
+							# floor relative to the global scale
+							floor := 0.000001 * global_var[j];
+							if(variance < floor) {
+								variance := floor;
+							};
+							@variances[c,j] := variance;
+						};
+					};
+
+					if(ll - previous_ll < @tolerance & @iterations_run > 1) {
+						converged := true;
+					};
+					previous_ll := ll;
+				};
+			};
+
+			@log_likelihood := previous_ll;
+			@is_fitted := true;
+			return true;
+		}
+
+		# log N(X[i] | means[c], diag(variances[c]))
+		method : LogGaussian(X : Float[,], i : Int, c : Int) ~ Float {
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			two_pi := 2.0 * Float->Pi();
+			sum := 0.0;
+			each(j : cols) {
+				variance := @variances[c,j];
+				diff := X[i,j] - @means[c,j];
+				sum -= 0.5 * ((two_pi * variance)->Log() + diff * diff / variance);
+			};
+
+			return sum;
+		}
+
+		#~
+		Computes soft component responsibilities for every row.
+		@param X data matrix
+		@return rows x components responsibility matrix, or Nil if not fitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Float[,] {
+			if(<>@is_fitted | X = Nil) {
+				return Nil;
+			};
+
+			x_dims := X->Size();
+			rows := x_dims[0];
+
+			result := Float->New[rows, @num_components];
+			each(i : rows) {
+				log_joint := Float->New[@num_components];
+				max_log := Float->NegInf();
+				each(c : @num_components) {
+					log_joint[c] := @weights[c]->Log() + LogGaussian(X, i, c);
+					if(log_joint[c] > max_log) {
+						max_log := log_joint[c];
+					};
+				};
+
+				sum_exp := 0.0;
+				each(c : @num_components) {
+					sum_exp += Float->Exp(log_joint[c] - max_log);
+				};
+				log_norm := max_log + sum_exp->Log();
+
+				each(c : @num_components) {
+					result[i,c] := Float->Exp(log_joint[c] - log_norm);
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Predicts the most likely component for every row.
+		@param X data matrix
+		@return per-row component ids, or Nil if not fitted
+		~#
+		method : public : PredictClass(X : Float[,]) ~ Int[] {
+			resp := Predict(X);
+			if(resp = Nil) {
+				return Nil;
+			};
+
+			resp_dims := resp->Size();
+			rows := resp_dims[0];
+
+			result := Int->New[rows];
+			each(i : rows) {
+				best := 0;
+				each(c : @num_components) {
+					if(resp[i,c] > resp[i,best]) {
+						best := c;
+					};
+				};
+				result[i] := best;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the fitted component means (components x features).
+		@return mean matrix, or Nil if not fitted
+		~#
+		method : public : GetMeans() ~ Float[,] {
+			return @means;
+		}
+
+		#~
+		Gets the fitted mixture weights.
+		@return weight array, or Nil if not fitted
+		~#
+		method : public : GetWeights() ~ Float[] {
+			return @weights;
+		}
+
+		#~
+		Gets the final average log-likelihood of the training data.
+		@return average log-likelihood
+		~#
+		method : public : GetLogLikelihood() ~ Float {
+			return @log_likelihood;
+		}
+
+		#~
+		Gets the number of EM iterations actually run.
+		@return iterations run
+		~#
+		method : public : GetIterationsRun() ~ Int {
+			return @iterations_run;
+		}
+
+		#~
+		Whether the mixture has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted mixture to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_components);
+
+			mean_dims := @means->Size();
+			cols := mean_dims[1];
+			serializer->Write(cols);
+
+			each(c : @num_components) {
+				serializer->Write(@weights[c]);
+			};
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@means[c,j]);
+				};
+			};
+			each(c : @num_components) {
+				each(j : cols) {
+					serializer->Write(@variances[c,j]);
+				};
+			};
+			serializer->Write(@log_likelihood);
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted mixture from a file.
+		@param filename file to load from
+		@return fitted mixture, or Nil on failure
+		~#
+		function : Load(filename : String) ~ GaussianMixture {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_components := deserializer->ReadInt();
+			cols := deserializer->ReadInt();
+			if(num_components < 1 | cols < 1) {
+				return Nil;
+			};
+
+			weights := Float->New[num_components];
+			each(c : num_components) {
+				weights[c] := deserializer->ReadFloat();
+			};
+
+			means := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					means[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			variances := Float->New[num_components, cols];
+			each(c : num_components) {
+				each(j : cols) {
+					variances[c,j] := deserializer->ReadFloat();
+				};
+			};
+
+			log_likelihood := deserializer->ReadFloat();
+
+			return GaussianMixture->New(num_components, weights, means, variances, log_likelihood);
 		}
 	}
 

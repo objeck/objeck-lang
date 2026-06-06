@@ -71,7 +71,11 @@ class McpServerTest {
 	#
 	# Sends a POST, retrying a few times when the server gives a transient
 	# failure under CI load: no response, the wrong status code, or an empty
-	# body for a 200 (a partial/empty read manifests as missing JSON fields).
+	# or TRUNCATED body for a 200. Every 200 response in this test is a
+	# JSON-RPC reply carrying a "result" member, so a 200 is only accepted
+	# once its body parses as JSON with "result" — a partial read that
+	# produced a non-empty but cut-off body retries instead of failing the
+	# per-test assertions (seen as "missing result.tools" on arm64 CI).
 	# The per-test assertions below still strictly validate the final response.
 	#
 	function : Request(url : String, payload : String, session : String, expect : Int, retries : Int) ~ Web.HTTP.Response {
@@ -89,7 +93,10 @@ class McpServerTest {
 				};
 				content := resp->GetContent();
 				if(content <> Nil & content->Size() > 0) {
-					return resp;
+					root := JsonParser->TextToElement(content->ToString());
+					if(root <> Nil & root->Get("result") <> Nil) {
+						return resp;
+					};
 				};
 			};
 			System.Concurrency.Thread->Sleep(200);

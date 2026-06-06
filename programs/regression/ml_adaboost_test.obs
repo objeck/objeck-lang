@@ -1,0 +1,118 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+# JIT_DISABLE
+#~
+Regression tests for System.ML AdaBoost (overhaul phase 3): boosting over
+boolean decision stumps learns the 3-feature majority function — which no
+single stump can represent (a lone stump gets at most 6/8 right) — plus
+early-stop accounting and a Store/Load round-trip.
+~#
+use System.ML, System.IO.Filesystem, Collection;
+
+class MlAdaBoostTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		eps := 0.000001;
+		model_file := "ml_adaboost_model_test.tmp";
+
+		# label (last column) = majority(f0, f1, f2): all 8 input combinations
+		data := [
+			[false, false, false, false],
+			[false, false, true,  false],
+			[false, true,  false, false],
+			[false, true,  true,  true],
+			[true,  false, false, false],
+			[true,  false, true,  true],
+			[true,  true,  false, true],
+			[true,  true,  true,  true]];
+
+		booster := AdaBoost->New(16);
+		if(booster->Store(model_file)) {
+			pass := false;
+			"  FAIL: unfitted booster stored"->PrintLine();
+		};
+
+		if(<>booster->Fit(data)) {
+			pass := false;
+			"  FAIL: adaboost fit"->PrintLine();
+		}
+		else {
+			if(Float->Abs(booster->Score(data) - 1.0) > eps) {
+				score := booster->Score(data);
+				pass := false;
+				"  FAIL: adaboost majority accuracy {$score}"->PrintLine();
+			};
+
+			# majority is not representable by one stump, so boosting must
+			# have combined several
+			if(booster->GetLearnerCount() < 3) {
+				pass := false;
+				"  FAIL: adaboost learner count"->PrintLine();
+			};
+
+			preds := booster->Predict(data);
+			each(i : 8) {
+				if(preds[i] <> data[i,3]) {
+					pass := false;
+					"  FAIL: adaboost prediction {$i}"->PrintLine();
+				};
+			};
+		};
+
+		# a single perfect stump: label = f0; boosting stops after one round
+		simple := [
+			[false, false, false],
+			[false, true,  false],
+			[true,  false, true],
+			[true,  true,  true]];
+		one := AdaBoost->New(16);
+		if(<>one->Fit(simple)) {
+			pass := false;
+			"  FAIL: single-stump fit"->PrintLine();
+		}
+		else {
+			if(one->GetLearnerCount() <> 1) {
+				count := one->GetLearnerCount();
+				pass := false;
+				"  FAIL: single-stump early stop, used {$count}"->PrintLine();
+			};
+			if(Float->Abs(one->Score(simple) - 1.0) > eps) {
+				pass := false;
+				"  FAIL: single-stump accuracy"->PrintLine();
+			};
+		};
+
+		# Store/Load round-trip
+		if(<>booster->Store(model_file)) {
+			pass := false;
+			"  FAIL: adaboost store"->PrintLine();
+		};
+		loaded := AdaBoost->Load(model_file);
+		if(loaded = Nil | <>loaded->IsFitted()) {
+			pass := false;
+			"  FAIL: adaboost load"->PrintLine();
+		}
+		else {
+			if(loaded->GetLearnerCount() <> booster->GetLearnerCount()) {
+				pass := false;
+				"  FAIL: adaboost round-trip learner count"->PrintLine();
+			};
+
+			before := booster->Predict(data);
+			after := loaded->Predict(data);
+			each(i : 8) {
+				if(before[i] <> after[i]) {
+					pass := false;
+					"  FAIL: adaboost round-trip prediction {$i}"->PrintLine();
+				};
+			};
+		};
+		File->Delete(model_file);
+
+		if(pass) {
+			"PASS: ML AdaBoost tests"->PrintLine();
+		}
+		else {
+			"FAIL: ML AdaBoost tests"->PrintLine();
+		};
+	}
+}
