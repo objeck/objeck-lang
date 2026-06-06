@@ -4701,8 +4701,304 @@ preds := forest->Predict(data);
 	}
 
 	#~
+	Discrete AdaBoost over single-feature boolean decision stumps. Each round
+	picks the stump (feature + polarity) with the lowest weighted error, gives
+	it a vote of alpha = 0.5*ln((1-err)/err) and re-weights the samples to
+	focus on mistakes; prediction is the sign of the weighted stump vote.
+	Deterministic. Boosting stops early when no stump beats chance.
+
+```
+# label (last column) = majority of three boolean features
+booster := AdaBoost->New(16);
+booster->Fit(data);
+preds := booster->Predict(data);
+```
+	~#
+	class AdaBoost {
+		@num_learners : Int;
+		@features : Int[];
+		@polarities : Bool[];
+		@alphas : Float[];
+		@learner_count : Int;
+		@is_fitted : Bool;
+
+		#~
+		Constructor
+		@param num_learners maximum number of boosting rounds
+		~#
+		New(num_learners : Int) {
+			@num_learners := num_learners;
+			@is_fitted := false;
+		}
+
+		New : private (num_learners : Int, features : Int[], polarities : Bool[], alphas : Float[], learner_count : Int) {
+			@num_learners := num_learners;
+			@features := features;
+			@polarities := polarities;
+			@alphas := alphas;
+			@learner_count := learner_count;
+			@is_fitted := true;
+		}
+
+		#~
+		Fits the boosted ensemble. Each row is boolean features with the class
+		label in the LAST column.
+		@param input training matrix (features..., label) of Bool
+		@return true if fitting succeeded
+		~#
+		method : public : Fit(input : Bool[,]) ~ Bool {
+			if(input = Nil) {
+				return false;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return false;
+			};
+			target_col := cols - 1;
+			num_features := cols - 1;
+
+			@features := Int->New[@num_learners];
+			@polarities := Bool->New[@num_learners];
+			@alphas := Float->New[@num_learners];
+			@learner_count := 0;
+
+			# uniform initial sample weights
+			weights := Float->New[rows];
+			each(i : rows) {
+				weights[i] := 1.0 / rows->As(Float);
+			};
+
+			done := false;
+			each(t : @num_learners) {
+				if(<>done) {
+					# pick the stump (feature, polarity) with lowest weighted error
+					best_feature := -1;
+					best_polarity := true;
+					best_error := 1.0;
+
+					each(f : num_features) {
+						# polarity true: predict the feature value itself
+						err_true := 0.0;
+						each(i : rows) {
+							if(input[i,f] <> input[i,target_col]) {
+								err_true += weights[i];
+							};
+						};
+
+						if(err_true < best_error) {
+							best_error := err_true;
+							best_feature := f;
+							best_polarity := true;
+						};
+
+						# polarity false: predict the inverted feature value
+						err_false := 1.0 - err_true;
+						if(err_false < best_error) {
+							best_error := err_false;
+							best_feature := f;
+							best_polarity := false;
+						};
+					};
+
+					# stop when no stump beats chance (with a small epsilon so a
+					# perfect stump cannot divide by zero)
+					if(best_feature < 0 | best_error >= 0.5) {
+						done := true;
+					}
+					else {
+						eps := 0.0000000001;
+						bounded := best_error;
+						if(bounded < eps) {
+							bounded := eps;
+						};
+						alpha := 0.5 * ((1.0 - bounded) / bounded)->Log();
+
+						@features[@learner_count] := best_feature;
+						@polarities[@learner_count] := best_polarity;
+						@alphas[@learner_count] := alpha;
+						@learner_count += 1;
+
+						# re-weight: mistakes up by e^alpha, hits down by e^-alpha
+						up := Float->Exp(alpha);
+						down := Float->Exp(-1.0 * alpha);
+						total := 0.0;
+						each(i : rows) {
+							predicted := input[i,best_feature];
+							if(<>best_polarity) {
+								predicted := <>predicted;
+							};
+
+							if(predicted <> input[i,target_col]) {
+								weights[i] := weights[i] * up;
+							}
+							else {
+								weights[i] := weights[i] * down;
+							};
+							total += weights[i];
+						};
+
+						each(i : rows) {
+							weights[i] := weights[i] / total;
+						};
+
+						# a perfect stump leaves nothing to boost
+						if(best_error <= eps) {
+							done := true;
+						};
+					};
+				};
+			};
+
+			@is_fitted := @learner_count > 0;
+			return @is_fitted;
+		}
+
+		#~
+		Predicts class labels by the sign of the weighted stump vote.
+		@param input matrix of feature rows (a trailing label column is ignored)
+		@return per-row predicted classes, or Nil if not fitted
+		~#
+		method : public : Predict(input : Bool[,]) ~ Bool[] {
+			if(<>@is_fitted | input = Nil) {
+				return Nil;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+
+			result := Bool->New[rows];
+			each(i : rows) {
+				vote := 0.0;
+				each(t : @learner_count) {
+					predicted := input[i, @features[t]];
+					if(<>@polarities[t]) {
+						predicted := <>predicted;
+					};
+
+					if(predicted) {
+						vote += @alphas[t];
+					}
+					else {
+						vote -= @alphas[t];
+					};
+				};
+				result[i] := vote >= 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		Gets the number of boosting rounds actually used (early-stops when no
+		stump beats chance or a stump is perfect).
+		@return learner count
+		~#
+		method : public : GetLearnerCount() ~ Int {
+			return @learner_count;
+		}
+
+		#~
+		Computes classification accuracy on labeled data, comparing predictions
+		against the class label in the LAST column.
+		@param input labeled matrix (features..., label) of Bool
+		@return fraction of correctly classified rows, or 0.0 if not fitted
+		~#
+		method : public : Score(input : Bool[,]) ~ Float {
+			if(<>@is_fitted | input = Nil) {
+				return 0.0;
+			};
+
+			dims := input->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows = 0 | cols < 2) {
+				return 0.0;
+			};
+
+			preds := Predict(input);
+			correct := 0;
+			each(i : rows) {
+				if(preds[i] = input[i, cols - 1]) {
+					correct += 1;
+				};
+			};
+
+			return correct->As(Float) / rows->As(Float);
+		}
+
+		#~
+		Whether the ensemble has been fitted.
+		@return true if fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @is_fitted;
+		}
+
+		#~
+		Saves the fitted ensemble to a file.
+		@param filename file to store to
+		@return true if successful, false otherwise
+		~#
+		method : public : Store(filename : String) ~ Bool {
+			if(<>@is_fitted) {
+				return false;
+			};
+
+			serializer := System.IO.Serializer->New();
+			serializer->Write(@num_learners);
+			serializer->Write(@learner_count);
+
+			each(t : @learner_count) {
+				serializer->Write(@features[t]);
+				if(@polarities[t]) {
+					serializer->Write(1);
+				}
+				else {
+					serializer->Write(0);
+				};
+				serializer->Write(@alphas[t]);
+			};
+
+			return System.IO.Filesystem.FileWriter->WriteFile(filename, serializer->Serialize());
+		}
+
+		#~
+		Loads a fitted ensemble from a file.
+		@param filename file to load from
+		@return fitted ensemble, or Nil on failure
+		~#
+		function : Load(filename : String) ~ AdaBoost {
+			data := System.IO.Filesystem.FileReader->ReadBinaryFile(filename);
+			if(data = Nil) {
+				return Nil;
+			};
+
+			deserializer := System.IO.Deserializer->New(data);
+			num_learners := deserializer->ReadInt();
+			learner_count := deserializer->ReadInt();
+			if(num_learners < 1 | learner_count < 1 | learner_count > num_learners) {
+				return Nil;
+			};
+
+			features := Int->New[num_learners];
+			polarities := Bool->New[num_learners];
+			alphas := Float->New[num_learners];
+			each(t : learner_count) {
+				features[t] := deserializer->ReadInt();
+				polarities[t] := deserializer->ReadInt() = 1;
+				alphas[t] := deserializer->ReadFloat();
+			};
+
+			return AdaBoost->New(num_learners, features, polarities, alphas, learner_count);
+		}
+	}
+
+	#~
 	Binary decision tree algorithm
-	
+
 ```
 data := BoolMatrixRef->New([
   [true, false, true]
