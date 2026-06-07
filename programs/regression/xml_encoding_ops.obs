@@ -1,0 +1,136 @@
+#~
+Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is
+rejected (previously parsed as success), stray closing tags fail instead of
+dereferencing an empty stack, EncodeText escapes exactly the five markup
+characters, the decoded accessors (GetDecodedContent/GetDecodedValue)
+round-trip entities including numeric references, and SetEncodedContent
+produces documents the parser accepts (the raw SetContent contract is
+unchanged).
+~#
+use Data.XML;
+
+class XmlEncodingOpsTest {
+	function : Main(args : String[]) ~ Nil {
+		"Testing XML encoding operations..."->PrintLine();
+		pass := true;
+
+		# --- truncated documents are rejected ---
+		t1 := XmlParser->New("<a><b>");
+		if(t1->Parse()) {
+			pass := false;
+			"  FAIL: truncated document accepted"->PrintLine();
+		};
+		t2 := XmlParser->New("<a><b>text</b>");
+		if(t2->Parse()) {
+			pass := false;
+			"  FAIL: unclosed root accepted"->PrintLine();
+		};
+
+		# a stray closing tag must fail cleanly, not crash
+		t3 := XmlParser->New("<a></a></b>");
+		if(t3->Parse()) {
+			pass := false;
+			"  FAIL: stray closing tag accepted"->PrintLine();
+		};
+
+		# well-formed documents still parse
+		t4 := XmlParser->New("<a><b>text</b></a>");
+		if(<>t4->Parse()) {
+			pass := false;
+			"  FAIL: well-formed document rejected"->PrintLine();
+		};
+		t5 := XmlParser->New("<a><b/></a>");
+		if(<>t5->Parse()) {
+			pass := false;
+			"  FAIL: unary element document rejected"->PrintLine();
+		};
+
+		# --- EncodeText: exactly the five markup characters ---
+		encoded := XmlElement->EncodeText("a < b > c & \"d\" 'e' f");
+		if(<>encoded->Equals("a &lt; b &gt; c &amp; &quot;d&quot; &apos;e&apos; f")) {
+			pass := false;
+			"  FAIL: EncodeText output [{$encoded}]"->PrintLine();
+		};
+
+		# whitespace stays readable (unlike EncodeString)
+		spaced := XmlElement->EncodeText("one two\tthree\nfour");
+		if(<>spaced->Equals("one two\tthree\nfour")) {
+			pass := false;
+			"  FAIL: EncodeText touched whitespace"->PrintLine();
+		};
+
+		# EncodeText output decodes back to the original
+		round := XmlElement->DecodeString(encoded);
+		if(<>round->Equals("a < b > c & \"d\" 'e' f")) {
+			pass := false;
+			"  FAIL: EncodeText/DecodeString round trip [{$round}]"->PrintLine();
+		};
+
+		# --- decoded accessors ---
+		p1 := XmlParser->New("<root note=\"5 &lt; 6 &amp; 7\"><msg>x &gt; y &apos;q&apos; &#x41;</msg></root>");
+		if(<>p1->Parse()) {
+			pass := false;
+			"  FAIL: entity document parse"->PrintLine();
+		}
+		else {
+			root := p1->GetRoot();
+
+			attrib := root->GetAttribute("note");
+			# the raw value keeps entity references (the parser additionally
+			# encodes attribute whitespace internally, so only assert the
+			# entities survive un-decoded)
+			raw_value := attrib->GetValue();
+			if(<>raw_value->Has("&lt;") | <>raw_value->Has("&amp;")) {
+				pass := false;
+				"  FAIL: raw attribute value [{$raw_value}]"->PrintLine();
+			};
+			decoded_value := attrib->GetDecodedValue();
+			if(<>decoded_value->Equals("5 < 6 & 7")) {
+				pass := false;
+				"  FAIL: decoded attribute value [{$decoded_value}]"->PrintLine();
+			};
+
+			msg := root->GetFirstChild("msg");
+			decoded_content := msg->GetDecodedContent();
+			if(<>decoded_content->Equals("x > y 'q' A")) {
+				pass := false;
+				"  FAIL: decoded content [{$decoded_content}]"->PrintLine();
+			};
+		};
+
+		# --- SetEncodedContent: built documents reparse ---
+		builder := XmlBuilder->New("root", "1.0", "UTF-8");
+		child := XmlElement->New(XmlElement->Type->ELEMENT, "msg");
+		child->SetEncodedContent("5 < 6 & \"7\"");
+		builder->GetRoot()->AddChild(child);
+		built := builder->ToString();
+
+		reparse := XmlParser->New(built);
+		if(<>reparse->Parse()) {
+			pass := false;
+			"  FAIL: built document rejected [{$built}]"->PrintLine();
+		}
+		else {
+			back := reparse->GetRoot()->GetFirstChild("msg")->GetDecodedContent();
+			if(<>back->Equals("5 < 6 & \"7\"")) {
+				pass := false;
+				"  FAIL: built content round trip [{$back}]"->PrintLine();
+			};
+		};
+
+		# raw SetContent contract unchanged: caller-encoded text serializes as-is
+		raw_child := XmlElement->New(XmlElement->Type->ELEMENT, "pre");
+		raw_child->SetContent("already &lt;encoded&gt;");
+		if(<>raw_child->GetContent()->Equals("already &lt;encoded&gt;")) {
+			pass := false;
+			"  FAIL: SetContent altered its input"->PrintLine();
+		};
+
+		if(pass) {
+			"PASS: XML encoding operations"->PrintLine();
+		}
+		else {
+			"FAIL: XML encoding operations"->PrintLine();
+		};
+	}
+}

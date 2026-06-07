@@ -460,6 +460,11 @@ if(parser->Parse()) {
 					};
 				}
 				else if(tag->GetType() = XmlElement->Type->CLOSING_ELEMENT) {
+					if(stack->IsEmpty()) {
+						@error_msg := "Closing tag without a matching open element...";
+						return false;
+					};
+
 					top : XmlElement := stack->Top();
 					if(top->GetType() = XmlElement->Type->ELEMENT) {
 						stack->Pop();
@@ -468,7 +473,7 @@ if(parser->Parse()) {
 						@error_msg := "Mismatch tag types...";
 						return false;
 					};
-					
+
 					if(top->GetName()->Equals(tag->GetName()) <> true) {
 						@error_msg := "Mismatch tag names...";
 						return false;
@@ -489,13 +494,21 @@ if(parser->Parse()) {
 					return false;
 				};
 			};
-			
+
+			# a truncated document (input ended with elements still open)
+			# must not parse successfully
+			if(stack->IsEmpty() = false) {
+				unclosed := stack->Top()->GetName();
+				@error_msg := "Unexpected end of document: unclosed element '{$unclosed}'...";
+				return false;
+			};
+
 			return true;
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# ignores whitespace
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : native : IgnoreWhiteSpace() ~ Nil {
 			# ignore whitespace
 			if(@buffer_pos < @buffer->Size()) {
@@ -1082,8 +1095,10 @@ attrib->GetName()->PrintLine();
 		}
 
 		#~
-		Gets the attribute value
-		@return attribute value
+		Gets the attribute value as it appeared in the source: entity
+		references such as &amp;amp; are NOT decoded. Use GetDecodedValue
+		for the decoded text.
+		@return raw attribute value
 
 ```
 parser := XmlParser->New("<img src=\"photo.png\"/>");
@@ -1099,6 +1114,24 @@ if(parser->Parse()) {
 			};
 
 			return "";
+		}
+
+		#~
+		Gets the attribute value with XML entity references decoded
+		(&amp;lt; &amp;gt; &amp;amp; &amp;quot; &amp;apos; and numeric
+		references).
+		@return decoded attribute value
+
+```
+parser := XmlParser->New("<a title=\"5 &lt; 6\"/>");
+if(parser->Parse()) {
+  attrib := parser->GetRoot()->GetAttribute("title");
+  attrib->GetDecodedValue()->PrintLine();   # 5 < 6
+};
+```
+		~#
+		method : public : GetDecodedValue() ~ String {
+			return XmlElement->DecodeString(GetValue());
 		}
 
 		#~
@@ -1336,8 +1369,10 @@ elem->SetType(XmlElement->Type->UNARY_ELEMENT);
 		}
 		
 		#~
-		Gets the element content
-		@return element content
+		Gets the element content as it appeared in the source: entity
+		references such as &amp;lt; are NOT decoded. Use GetDecodedContent
+		for the decoded text.
+		@return raw element content
 
 ```
 parser := XmlParser->New("<title>Hello World</title>");
@@ -1355,8 +1390,27 @@ if(parser->Parse()) {
 		}
 
 		#~
-		Sets the element content
-		@param content element content
+		Gets the element content with XML entity references decoded
+		(&amp;lt; &amp;gt; &amp;amp; &amp;quot; &amp;apos; and numeric
+		references).
+		@return decoded element content
+
+```
+parser := XmlParser->New("<title>5 &lt; 6</title>");
+if(parser->Parse()) {
+  parser->GetRoot()->GetDecodedContent()->PrintLine();   # 5 < 6
+};
+```
+		~#
+		method : public : GetDecodedContent() ~ String {
+			return DecodeString(GetContent());
+		}
+
+		#~
+		Sets the element content AS-IS: the text is serialized verbatim, so
+		markup characters must already be encoded (see SetEncodedContent and
+		EncodeText).
+		@param content raw element content
 
 ```
 elem := XmlElement->New(XmlElement->Type->ELEMENT, "desc");
@@ -1366,6 +1420,25 @@ elem->GetContent()->PrintLine();
 		~#
 		method : public : SetContent(content : String) ~ Nil {
 			@content := content;
+		}
+
+		#~
+		Sets the element content, encoding XML markup characters so the
+		serialized document stays well-formed.
+		@param content plain text content (encoded automatically)
+
+```
+elem := XmlElement->New(XmlElement->Type->ELEMENT, "desc");
+elem->SetEncodedContent("5 < 6 & 7");
+```
+		~#
+		method : public : SetEncodedContent(content : String) ~ Nil {
+			if(content <> Nil) {
+				@content := EncodeText(content);
+			}
+			else {
+				@content := Nil;
+			};
 		}
 		
 		#~
@@ -1876,7 +1949,58 @@ if(parser->Parse()) {
 		}
 		
 		#~
-		Encodes an XML string
+		Encodes the five XML markup characters (&lt; &gt; &amp; &quot; ')
+		and leaves everything else — including whitespace — untouched.
+		Use this for readable element content and attribute values;
+		EncodeString additionally encodes whitespace as numeric references
+		for exact whitespace preservation.
+		@param input plain text
+		@return text safe to embed in element content or attribute values
+
+```
+raw := "price < 10 & size > 5";
+XmlElement->EncodeText(raw)->PrintLine();   # price &lt; 10 &amp; size &gt; 5
+```
+		~#
+		function : EncodeText(input : String) ~ String {
+			out := String->New();
+
+			each(i : input) {
+				c := input->Get(i);
+				select(c) {
+					label '<': {
+						out->Append("&lt;");
+					}
+
+					label '>': {
+						out->Append("&gt;");
+					}
+
+					label '&': {
+						out->Append("&amp;");
+					}
+
+					label '"': {
+						out->Append("&quot;");
+					}
+
+					label '\'': {
+						out->Append("&apos;");
+					}
+
+					other: {
+						out->Append(c);
+					}
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Encodes an XML string, including whitespace as numeric character
+		references (for exact whitespace preservation in attribute values).
+		For readable content encoding see EncodeText.
 		@param input string to encode
 		@return encoded string
 
@@ -2032,6 +2156,7 @@ decoded->PrintLine();
 								if(i < max & input->Get(i) = 's') {
 									i += 1;
 									if(i < max & input->Get(i) = ';') {
+										i += 1;
 										out->Append('\'');
 									}
 									else {
