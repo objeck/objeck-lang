@@ -295,7 +295,7 @@
         </li>
         <li>
          <a href="#ai_ml">
-          AI &amp; ML (OpenAI, Gemini, Ollama)
+          AI &amp; ML
          </a>
         </li>
         <li>
@@ -2292,6 +2292,60 @@ class LocalChat {
          <pre class="cmd">&gt; ollama pull llama3.2
 &gt; obc -src local_chat.obs -lib net,json,cipher,misc,ollama
 &gt; obr local_chat</pre>
+
+         <p><strong>System.ML — linear regression</strong></p>
+         <p>
+          The <code>ml</code> library provides classical ML algorithms: regression, classification, clustering, neural networks, and more.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">use System.ML;
+
+class HousePrices {
+  function : Main(args : String[]) ~ Nil {
+    # features: [sqft, rooms]  →  price
+    X := [[800.0, 2.0], [1200.0, 3.0], [1600.0, 4.0], [2000.0, 5.0]];
+    y := [[150000.0], [220000.0], [300000.0], [380000.0]];
+
+    model := LinearRegression-&gt;New();
+    if(model-&gt;Fit(X, y)) {
+      preds := model-&gt;Predict([[1400.0, 3.0]]);
+      "Predicted: {$preds[0,0]}"-&gt;PrintLine();
+      "R²: {$model-&gt;GetRSquared()}"-&gt;PrintLine();
+    };
+  }
+}
+</code></pre>
+         <pre class="cmd">&gt; obc -src house_prices.obs -lib ml
+&gt; obr house_prices</pre>
+
+         <p><strong>System.AI — graph search</strong></p>
+         <p>
+          The <code>ai</code> library covers graph search, adversarial game trees, metaheuristic optimization, and reinforcement learning.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp">use System.AI;
+
+class PathFinder {
+  function : Main(args : String[]) ~ Nil {
+    # weighted graph: 0→1→3 cheaper than 0→3 direct
+    graph := Graph-&gt;New(4);
+    graph-&gt;AddEdge(0, 1, 1.0);
+    graph-&gt;AddEdge(1, 2, 2.0);
+    graph-&gt;AddEdge(0, 3, 10.0);
+    graph-&gt;AddEdge(1, 3, 3.0);
+
+    result := Dijkstra-&gt;FindPath(graph, 0, 3);
+    if(result-&gt;Found()) {
+      "Cost: {$result-&gt;GetCost()}"-&gt;PrintLine();
+      path := result-&gt;GetPath();
+      each(i : path) {
+        "{$path[i]} "-&gt;Print();
+      };
+      "\n"-&gt;Print();
+    };
+  }
+}
+</code></pre>
+         <pre class="cmd">&gt; obc -src path_finder.obs -lib ai,gen_collect
+&gt; obr path_finder</pre>
 
          <p>
           For ONNX local inference, computer vision, NLP, and full API details see the
