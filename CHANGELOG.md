@@ -4,8 +4,55 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+## [v2026.6.0] - 2026-06-07
+
+### New Features
+- **`System.AI` library** (`-lib ai` / `@ai`): classic AI in the standard library — graph search (`Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst` over a shared best-first core), adversarial game search (`Minimax` with alpha-beta pruning, `MonteCarloTreeSearch`), metaheuristics (`GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing`), and tabular reinforcement learning (`QLearning`, `Sarsa`, `MarkovDecisionProcess` value iteration); all stochastic algorithms are seedable for reproducible runs
+- **`System.ML` overhaul**: 13 new estimators — `RidgeRegression`, `LassoRegression`, `ElasticNet`, `Perceptron`, `SVM`, `PCA`, `GaussianNaiveBayes`, `AdaBoost`, `DBSCAN`, `GaussianMixture`, `KDTree`, `RegressionTree`, `GradientBoostedTrees`; real recursive `DecisionTree` and voting `RandomForest`; `KMeans` k-means++ seeding, iteration cap, and empty-cluster handling; `NeuralNetwork` hidden/output bias vectors (clean XOR convergence); `LinearRegression`/`LogisticRegression` intercepts, stable sigmoid, L2 regularization, and `Score`; seedable `System.ML.Random`; uniform `Fit`/`Predict`/`Score`/`IsFitted`/`Store`/`Load` API across every estimator; `ml.obs` split into seven thematic source files
+- **`record` types**: `record Point { @x : Int; @y : Int; }` generates the constructor and accessors; `record : readonly :` omits setters and the compiler rejects field assignment outside constructors; supports generics, inheritance, and user-defined member overrides
+- **Tail Call Optimization (TCO)**: self-recursive tail calls rewritten to jumps, eliminating stack growth (`-opt s1`+)
+- **Loop-Invariant Code Motion (LICM)**: hoists `arr->Size()` reads and pure arithmetic out of loop bodies (`-opt s2`+)
+
+### Breaking Changes
+- `RandomForest->Train` is now `Fit` (uniform estimator API)
+- Stored `NeuralNetwork` model files must be regenerated (serialized format gained bias vectors)
+
 ### Bug Fixes
-- **AMD64 JIT trig**: `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh` were using x87 `fsin`/`fcos`/`ftan` — replaced with `call_xfunc` to use the C runtime (consistent with ARM64 and the LOG/EXP fixes in v2026.5.3)
+- **VM/JIT frame-dependent traps**: traps reading interpreter locals (`Serializer->Write`, `Date->New`, file-time queries) crashed once a method crossed the auto-JIT threshold; such methods now stay interpreted on AMD64 and ARM64
+- **ARM64 JIT**: stale `self` reload after JIT-to-interpreter callbacks; JIT-to-JIT errors are now diagnosable; operand-kind compile guards ported from AMD64
+- **Float equality on array elements**: was compiled as an integer compare in the JIT
+- **Bool array literals**: every bool static-array literal after the first silently received the first literal's data (broken literal-pool comparator); literal dedup now works for all array types; array dimensions capped at 8 with a proper diagnostic
+- **Launchers**: Windows defect sweep; macOS version-check modernization
+- **Doc parser**: inline backticks and bare tildes in descriptions no longer break API doc generation
+
+### Performance
+- Auto-JIT now compiles methods containing `MTHD_CALL` after 10 invocations (5–15% speedup across benchmarks)
+- Interpreter fast-path extended with 15 additional inline opcodes (comparisons, bitwise, shifts, logical)
+- `bench_matrix_multiply` −14%, `bench_dead_code` −15%, `bench_array_intensive` −12%, `binarytrees` −7%, `mandelbrot` −6%
+
+### Documentation / Infrastructure
+- Library aliases documented: `-lib @std`/`@ml`/`@game` and the new `@ai` group, user-editable via `lib/configobjk.ini`; AI/ML developer guide gains `System.ML` and `System.AI` sections with runnable examples
+- CI hardening: vcpkg installs retry on transient CDN failures; `mcp_server_test` validates JSON-RPC bodies before accepting; flaky network tests quarantined with failure observability; regression timeouts added
+
+## [v2026.5.4] - 2026-05-28
+
+### Bug Fixes
+- **`.obe`/`.obl` format detection**: correctly handles the edge case where a new-format size-header LSB collides with the `0x78` zlib CMF byte (fixed Windows CI debugger tests)
+- **LSP shell script permissions**: all `tools/lsp/` shell scripts now have the execute bit set in git, fixing `Permission denied` in release CI
+
+### Infrastructure
+- Release workflow: `git checkout -f master` prevents a dirty-tree abort when committing `api.zip` from a tag-based build
+
+## [v2026.5.3] - 2026-05-24
+
+### New Features
+- **Three-tier `select` dispatch** (AMD64 + ARM64 JIT): single-case `select` compiles to a direct compare-and-jump; 2–5 integer cases use a linear scan; 6+ dense integer cases emit a native O(1) jump table (`JMP_TABLE`/`JMP_TABLE_SLOT` opcodes); sparse or string `select` uses a binary search tree — matching the fastest dispatch strategy for each shape automatically.
+
+### Bug Fixes
+- Fixed `HttpRequestHandler` and `HttpsRequestHandler`: `ReadLine()` can return `Nil` on a dropped or errored connection; calling `->Size()` on `Nil` produced a SIGSEGV in the MCP server and any HTTP server that receives an abrupt client disconnect before sending a request line.
+- Fixed `String->Split(Char)`: last token was sliced using `@string->Size()` (array capacity) instead of `@pos` (logical string length), producing an oversized trailing token on strings that did not fill the backing array.
+- Fixed `bench_spectralnorm_native` benchmark: allocating arrays inside a `native` JIT function caused op-stack imbalance during nested JIT-to-interpreter callbacks, producing a garbage result (~3.84e-156 instead of ~1.274).
+- **AMD64 JIT trig**: `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh` were using x87 `fsin`/`fcos`/`ftan` — replaced with `call_xfunc` to use the C runtime (consistent with ARM64 and the LOG/EXP fixes)
 - **AMD64 JIT float input**: `REG_FLOAT` as the source operand of `call_xfunc`/`sqrt`/`round` caused a crash due to incorrect register state when a float value was loaded from memory immediately before the dispatch
 - **Inline optimizer jump tables**: `InlineMethod` did not shift `JMP_TABLE`/`JMP_TABLE_SLOT` label operands by `jump_inline_offset` when inlining methods containing `select` jump tables, causing every slot to resolve to ip=0
 - **`CleanLabelsLocation` end-of-stream**: consecutive `LBL` nodes at the very end of an instruction list read one instruction past the end of the stream
@@ -18,24 +65,14 @@ All notable changes to Objeck will be documented in this file.
 - Replaced `calloc` with `malloc` in `CompressZlib`/`UncompressZlib` — removes wasteful zero-initialisation of buffers that are immediately overwritten by the codec
 - **Backward-compatible**: files in the old raw-zlib format (CMF byte `0x78`) are automatically detected and continue to load without recompilation
 
+### Performance
+- `bench_spectralnorm_native`: rewrote `MultiplyAv`/`MultiplyAtv` with an incremental floating-point denominator, eliminating `I2F` conversions from the inner loop (2000×2000×40 iterations). Only two integer-to-float conversions now occur per outer row instead of per element.
+
 ### Infrastructure
 - Consolidated the `objeck-lsp` repository into `tools/lsp/` — LSP is tightly coupled to each toolchain build and must be updated with every release
 - Rewrote CI `build-lsp` job: Ubuntu runner, builds Linux x64 toolchain, compiles `objeck_lsp.obe` via `build_server.sh`, packages VS Code extension with `vsce`, assembles versioned `objeck-lsp_VERSION.zip`
 - Added `publish-vscode` CI job: publishes the VS Code extension to the marketplace on release using the `VSCE_PAT` secret
 - `build_server.sh` / `build_server.cmd`: `OBJECK_ROOT` is now configurable via environment variable (defaults to `../../..` relative to `tools/lsp/server/`)
-
-## [v2026.5.3] - 2026-05-24
-
-### New Features
-- **Three-tier `select` dispatch** (AMD64 + ARM64 JIT): single-case `select` compiles to a direct compare-and-jump; 2–5 integer cases use a linear scan; 6+ dense integer cases emit a native O(1) jump table (`JMP_TABLE`/`JMP_TABLE_SLOT` opcodes); sparse or string `select` uses a binary search tree — matching the fastest dispatch strategy for each shape automatically.
-
-### Bug Fixes
-- Fixed `HttpRequestHandler` and `HttpsRequestHandler`: `ReadLine()` can return `Nil` on a dropped or errored connection; calling `->Size()` on `Nil` produced a SIGSEGV in the MCP server and any HTTP server that receives an abrupt client disconnect before sending a request line.
-- Fixed `String->Split(Char)`: last token was sliced using `@string->Size()` (array capacity) instead of `@pos` (logical string length), producing an oversized trailing token on strings that did not fill the backing array.
-- Fixed `bench_spectralnorm_native` benchmark: allocating arrays inside a `native` JIT function caused op-stack imbalance during nested JIT-to-interpreter callbacks, producing a garbage result (~3.84e-156 instead of ~1.274).
-
-### Performance
-- `bench_spectralnorm_native`: rewrote `MultiplyAv`/`MultiplyAtv` with an incremental floating-point denominator, eliminating `I2F` conversions from the inner loop (2000×2000×40 iterations). Only two integer-to-float conversions now occur per outer row instead of per element.
 
 ## [v2026.5.2] - 2026-05-17
 
@@ -203,7 +240,7 @@ All notable changes to Objeck will be documented in this file.
 - Removed disabled legacy CI workflow (superseded by `ci-build.yml`)
 - Refactored `OptimizeMethod()` with `RunPass` helper for cleaner pass management
 
-## [v2026.2.0] - 2026-02-12 ✅ Current Release
+## [v2026.2.0] - 2026-02-12
 
 ### New Features
 - **NLP Library**: Comprehensive natural language processing with tokenization, TF-IDF, similarity, and sentiment analysis
