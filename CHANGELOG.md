@@ -24,6 +24,10 @@ All notable changes to Objeck will be documented in this file.
 - **Bool array literals**: every bool static-array literal after the first silently received the first literal's data (broken literal-pool comparator); literal dedup now works for all array types; array dimensions capped at 8 with a proper diagnostic
 - **Launchers**: Windows defect sweep; macOS version-check modernization
 - **Doc parser**: inline backticks and bare tildes in descriptions no longer break API doc generation
+- **XML parser**: truncated documents (elements left unclosed at end of input) and stray closing tags were silently accepted; both now fail cleanly. `XmlElement->DecodeString` dropped the trailing semicolon when decoding `&apos;`
+
+### Libraries
+- **Data.XML conveniences** (additive; raw `SetContent`/`GetContent`/`GetValue` contract unchanged): `XmlElement->EncodeText` escapes exactly the five markup characters while leaving whitespace readable; `SetEncodedContent` produces well-formed output; `GetDecodedContent` and `XmlAttribute->GetDecodedValue` return entity-decoded text
 
 ### Performance
 - Auto-JIT now compiles methods containing `MTHD_CALL` after 10 invocations (5–15% speedup across benchmarks)
@@ -32,6 +36,8 @@ All notable changes to Objeck will be documented in this file.
 
 ### Documentation / Infrastructure
 - Library aliases documented: `-lib @std`/`@ml`/`@game` and the new `@ai` group, user-editable via `lib/configobjk.ini`; AI/ML developer guide gains `System.ML` and `System.AI` sections with runnable examples
+- API reference regenerated (438 pages; `System.AI` classes grouped correctly); `architecture.md` mermaid diagrams fixed and the GC description corrected (young generation moves survivors)
+- ARM bootstrap (`update_version_arm.sh`) built `opencv` before its `json` dependency — reordered so a clean ARM bootstrap succeeds
 - CI hardening: vcpkg installs retry on transient CDN failures; `mcp_server_test` validates JSON-RPC bodies before accepting; flaky network tests quarantined with failure observability; regression timeouts added
 
 ## [v2026.5.4] - 2026-05-28

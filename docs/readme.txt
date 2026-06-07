@@ -1,8 +1,26 @@
-Unreleased
+v2026.6.0 (June 7, 2026)
+===
+New System.AI library, a System.ML overhaul, record types, JIT/compiler fixes, and library improvements.
+
+v2026.6.0
+- New System.AI library (-lib ai / @ai): graph search (Dijkstra, AStar, BreadthFirst, DepthFirst), adversarial game search (Minimax with alpha-beta, MonteCarloTreeSearch), metaheuristics (GeneticAlgorithm, SimulatedAnnealing, HillClimbing), and tabular reinforcement learning (QLearning, Sarsa, MarkovDecisionProcess); all stochastic algorithms seedable
+- System.ML overhaul: 13 new estimators (RidgeRegression, LassoRegression, ElasticNet, Perceptron, SVM, PCA, GaussianNaiveBayes, AdaBoost, DBSCAN, GaussianMixture, KDTree, RegressionTree, GradientBoostedTrees); real recursive DecisionTree and voting RandomForest; KMeans k-means++ seeding; NeuralNetwork hidden/output bias; seedable System.ML.Random; uniform Fit/Predict/Score/IsFitted/Store/Load API; ml.obs split into seven source files
+- BREAKING: RandomForest->Train is now Fit; stored NeuralNetwork model files must be regenerated
+- record types: record Point { @x : Int; @y : Int; } generates the constructor and accessors; record : readonly : omits setters and rejects field assignment outside constructors; supports generics, inheritance, and user-defined member overrides
+- Fixed VM/JIT frame-dependent traps (Serializer->Write, Date->New, file-time queries) crashing past the auto-JIT threshold on AMD64 and ARM64
+- Fixed ARM64 JIT stale self after JIT-to-interpreter callbacks; JIT-to-JIT errors now diagnosable; operand-kind compile guards ported from AMD64
+- Fixed float equality on array elements compiled as an integer compare in the JIT
+- Fixed bool array literals: every bool static-array literal after the first received the first literal's data; literal dedup now works for all array types; array dimensions capped at 8
+- Data.XML: truncated/malformed documents now rejected instead of parsing as success; &apos; decoding fixed; added EncodeText, SetEncodedContent, GetDecodedContent, GetDecodedValue
+- Library aliases (-lib @std/@ml/@ai/@game) documented and user-editable via lib/configobjk.ini
+- Launchers: Windows defect sweep; macOS version-check modernization
+- Performance: auto-JIT compiles MTHD_CALL methods after 10 invocations (5-15% faster); 15 additional inline opcodes; bench_matrix_multiply -14%, bench_dead_code -15%
+
+v2026.5.4 (May 28, 2026)
 ===
 AMD64 JIT trig/float crash fixes, inline optimizer jump-table fix, binary file integrity hardening, LSP consolidated into main repo.
 
-Unreleased
+v2026.5.4
 - Fixed AMD64 JIT sin/cos/tan and related trig: x87 fsin/fcos/ftan replaced with call_xfunc for consistent cross-platform results
 - Fixed AMD64 JIT REG_FLOAT input crash in call_xfunc/sqrt/round (float register state corruption before dispatch)
 - Fixed inline optimizer: JMP_TABLE/JMP_TABLE_SLOT label operands not shifted by jump_inline_offset, causing select-heavy inlined methods to jump to ip=0

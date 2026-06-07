@@ -63,6 +63,7 @@ obc hello && obr hello
   * **`record` types** — `record Point { @x : Int; @y : Int; }` generates the constructor and accessors; `record : readonly :` omits setters and the compiler rejects field assignment outside constructors; supports generics, inheritance and user-defined member overrides
   * **VM/JIT fix** — traps reading interpreter locals (`Serializer->Write`, `Date->New`, file-time queries) crashed once a method crossed the auto-JIT threshold; such methods now stay interpreted on AMD64 and ARM64
   * **Compiler fixes** — bool array literals after the first in a program no longer receive the first literal's data (broken literal-pool comparator); literal dedup now works for all array types; array dimensions capped at 8 with a proper diagnostic
+  * **XML library improvements** — truncated/malformed documents are now rejected instead of parsing as success; `&apos;` decoding fixed; new `EncodeText`, `SetEncodedContent`, `GetDecodedContent` and `GetDecodedValue` conveniences
   * **Library aliases documented** — `-lib @std`/`@ml`/`@game` and the new `@ai` group, user-editable via `lib/configobjk.ini`; AI/ML developer guide gains `System.ML` and `System.AI` sections with runnable examples
   * **CI hardening** — vcpkg installs retry on transient CDN failures; `mcp_server_test` validates JSON-RPC bodies before accepting
 

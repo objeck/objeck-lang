@@ -59,9 +59,18 @@
   </header>
 
   <main style="text-align: left;">
-   <p>JIT select dispatch, API doc overhaul, ODBC improvements, and bug fixes.</p>
+   <p>New <code>System.AI</code> library, a <code>System.ML</code> overhaul, <code>record</code> types, JIT/compiler fixes, and library improvements.</p>
 
-   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.3" style="color: inherit; text-decoration: none;">v2026.5.3</a></u></h3>
+   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.0" style="color: inherit; text-decoration: none;">v2026.6.0</a></u></h3>
+    <ul>
+        <li><strong>New <code>System.AI</code> library</strong> (<code>-lib ai</code> / <code>@ai</code>) &mdash; classic AI in the standard library: graph search (<code>Dijkstra</code>, <code>AStar</code>, <code>BreadthFirst</code>, <code>DepthFirst</code>), adversarial game search (<code>Minimax</code> with alpha-beta, <code>MonteCarloTreeSearch</code>), metaheuristics (<code>GeneticAlgorithm</code>, <code>SimulatedAnnealing</code>, <code>HillClimbing</code>), and tabular reinforcement learning (<code>QLearning</code>, <code>Sarsa</code>, <code>MarkovDecisionProcess</code>); all stochastic algorithms are seedable</li>
+        <li><strong><code>System.ML</code> overhaul</strong> &mdash; 13 new estimators (regularized regression, SVM, perceptron, PCA, Gaussian naive Bayes, AdaBoost, DBSCAN, Gaussian mixture, KD-tree, gradient-boosted trees); real recursive <code>DecisionTree</code> and voting <code>RandomForest</code>; <code>NeuralNetwork</code> bias vectors; seedable <code>System.ML.Random</code>; a uniform <code>Fit</code>/<code>Predict</code>/<code>Score</code>/<code>Store</code>/<code>Load</code> API. <em>Breaking:</em> <code>RandomForest-&gt;Train</code> is now <code>Fit</code>; stored <code>NeuralNetwork</code> models must be regenerated</li>
+        <li><strong><code>record</code> types</strong> &mdash; generate constructor and accessors from field declarations; <code>record : readonly :</code> omits setters and rejects field assignment outside constructors; supports generics and inheritance</li>
+        <li><strong>JIT &amp; compiler fixes</strong> &mdash; frame-dependent traps stay interpreted past the auto-JIT threshold (AMD64 + ARM64); ARM64 stale-<code>self</code> reload after callbacks; float equality on array elements no longer mis-compiled; bool array literal-pool corruption fixed</li>
+        <li><strong>Library improvements</strong> &mdash; library aliases (<code>@std</code>/<code>@ml</code>/<code>@ai</code>/<code>@game</code>) documented; Data.XML rejects truncated documents, fixes <code>&amp;apos;</code> decoding, and adds <code>EncodeText</code>/<code>SetEncodedContent</code>/<code>GetDecodedContent</code>/<code>GetDecodedValue</code></li>
+    </ul>
+
+   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.3" style="color: inherit; text-decoration: none;">v2026.5.3</a></h3>
     <ul>
         <li><strong>JIT <code>select</code> dispatch</strong> &mdash; dense integer <code>select</code> (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST &mdash; best strategy chosen automatically on AMD64 and ARM64</li>
         <li><strong>API documentation overhaul</strong> &mdash; bundle overview panels, 500+ inline code examples, global search index, two-column TOC, method badges, and anchor links across all 32 library pages</li>
