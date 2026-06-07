@@ -481,7 +481,7 @@ mindmap
             lame: MP3 encoding
         Database & Security
             odbc: Database connectivity
-            cipher: Encryption (mbedTLS)
+            cipher: Encryption via mbedTLS
         Collections & Generics
             gen_collect: Generic collections
             Vector, Map, Hash, List
@@ -962,20 +962,17 @@ sequenceDiagram
 
 ```mermaid
 mindmap
-    root((Memory Manager
-    v2026.2.1))
-        O(1) Lookups
+    root((Memory Manager v2026.2.1))
+        Constant-time lookups
             Hash-based object table
             No linear scans
-            Constant-time access
-        In-place Sweeping
-            No object copying
-            Reduced memory moves
+        Generational collection
+            Young gen frequent and fast
+            Old gen infrequent and thorough
+            Survivors promoted with forwarding pointers
+        Old-gen sweeping in place
+            No old-object copying
             Better cache locality
-        Generational Collection
-            Young gen: frequent, fast
-            Old gen: infrequent, thorough
-            Age-based promotion
         Performance
             30% faster allocation
             40% faster GC pause
@@ -997,7 +994,7 @@ mindmap
 **Key Characteristics:**
 - **O(1) Object Lookup:** Hash-based, no linear scans
 - **Generational:** Separate young/old generations
-- **Mark & Sweep:** Non-moving collector (in-place)
+- **Mark & Sweep:** Young generation moves survivors (promote-and-forward with pointer fixup); old generation is swept in place
 - **Large Objects:** Separate heap for > 85KB objects
 - **Stop-the-World:** Brief pauses for GC
 - **Promotion:** Long-lived objects moved to old gen

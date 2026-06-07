@@ -5,6 +5,9 @@ Copyright (c) 2026 Randy Hollines
 
 use Collection;
 
+#~
+Optimization metaheuristics: GeneticAlgorithm over boolean chromosomes plus SimulatedAnnealing and HillClimbing over numeric states. Compile with -lib ai.
+~#
 bundle System.AI {
 	#~
 	Fitness of a boolean chromosome for GeneticAlgorithm (higher is better).

@@ -5,6 +5,9 @@ Copyright (c) 2026 Randy Hollines
 
 use Collection;
 
+#~
+Adversarial game search: the GameState interface with Minimax alpha-beta and Monte Carlo tree search. Compile with -lib ai.
+~#
 bundle System.AI {
 	#~
 	A two-player, zero-sum game position. Moves are integers chosen by the
