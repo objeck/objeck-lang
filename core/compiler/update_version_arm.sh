@@ -18,7 +18,8 @@ make -f make/Makefile.arm64
 ./obc -src lib_src/json.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json.obl
 ./obc -src lib_src/regex.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/regex.obl
 ./obc -src lib_src/csv.obs -tar lib -lib gen_collect -opt s3 -dest ../lib/csv.obl
-./obc -src lib_src/ml.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
+./obc -src lib_src/ml_core.obs,lib_src/ml_linear.obs,lib_src/ml_tree.obs,lib_src/ml_bayes.obs,lib_src/ml_neighbors.obs,lib_src/ml_cluster.obs,lib_src/ml_data.obs -lib gen_collect,csv -tar lib -opt s3 -dest ../lib/ml.obl
+./obc -src lib_src/ai_search.obs,lib_src/ai_game.obs,lib_src/ai_optimize.obs,lib_src/ai_rl.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/ai.obl
 ./obc -src lib_src/nlp.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/nlp.obl
 ./obc -src lib_src/net_common.obs,lib_src/net.obs,lib_src/net_secure.obs -tar lib -lib gen_collect,cipher -opt s3 -dest ../lib/net.obl
 ./obc -src lib_src/net_h2.obs -tar lib -lib net,gen_collect,cipher -opt s3 -dest ../lib/net_h2.obl

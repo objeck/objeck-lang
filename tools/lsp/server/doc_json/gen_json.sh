@@ -32,10 +32,22 @@ obr doc_json.obe templates "$VERSION" \
 	$LIB_SRC/net.obs \
 	$LIB_SRC/net_secure.obs \
 	$LIB_SRC/net_server.obs \
+	$LIB_SRC/net_h2.obs \
+	$LIB_SRC/net_quic.obs \
 	$LIB_SRC/rss.obs \
 	$LIB_SRC/misc.obs \
 	$LIB_SRC/diags.obs \
-	$LIB_SRC/ml.obs \
+	$LIB_SRC/ml_core.obs \
+	$LIB_SRC/ml_linear.obs \
+	$LIB_SRC/ml_tree.obs \
+	$LIB_SRC/ml_bayes.obs \
+	$LIB_SRC/ml_neighbors.obs \
+	$LIB_SRC/ml_cluster.obs \
+	$LIB_SRC/ml_data.obs \
+	$LIB_SRC/ai_search.obs \
+	$LIB_SRC/ai_game.obs \
+	$LIB_SRC/ai_optimize.obs \
+	$LIB_SRC/ai_rl.obs \
 	$LIB_SRC/nlp.obs \
 	$LIB_SRC/openai.obs \
 	$LIB_SRC/gemini.obs \
@@ -43,6 +55,9 @@ obr doc_json.obe templates "$VERSION" \
 	$LIB_SRC/opencv.obs \
 	$LIB_SRC/onnx.obs \
 	$LIB_SRC/json_rpc.obs \
-	$LIB_SRC/lame.obs
+	$LIB_SRC/lame.obs \
+	$LIB_SRC/math.obs \
+	$LIB_SRC/gtk3.obs \
+	$LIB_SRC/web_server.obs
 
 mv out.json ../objk_apis.json

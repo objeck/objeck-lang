@@ -9,7 +9,7 @@ if [%1] NEQ [dll] goto end
 	copy /y Debug\x64\libobjk_ml.dll %OBJECK_LIB_PATH%\native
 :end
 
-obc -src %BASE_DIR%\core\compiler\lib_src\ml.obs -tar lib -lib csv -dest %BASE_DIR%\core\lib\ml.obl
+obc -src %BASE_DIR%\core\compiler\lib_src\ml_core.obs,%BASE_DIR%\core\compiler\lib_src\ml_linear.obs,%BASE_DIR%\core\compiler\lib_src\ml_tree.obs,%BASE_DIR%\core\compiler\lib_src\ml_bayes.obs,%BASE_DIR%\core\compiler\lib_src\ml_neighbors.obs,%BASE_DIR%\core\compiler\lib_src\ml_cluster.obs,%BASE_DIR%\core\compiler\lib_src\ml_data.obs -tar lib -lib csv -dest %BASE_DIR%\core\lib\ml.obl
 copy /y %BASE_DIR%\core\lib\ml.obl %OBJECK_LIB_PATH%\ml.obl
 
 pushd %BASE_DIR%\programs\tests
