@@ -36,8 +36,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.5.4/objeck-linux-x64_2026.5.4.tgz
-tar xzf objeck-linux-x64_2026.5.4.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.6.0/objeck-linux-x64_2026.6.0.tgz
+tar xzf objeck-linux-x64_2026.6.0.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -86,7 +86,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.5.4](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.6.0](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
