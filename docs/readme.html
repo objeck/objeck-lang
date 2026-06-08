@@ -32,7 +32,11 @@
     <div class="banner">
       <!-- Centered Logo -->
       <a href="https://objeck.org/">
-        <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png" />
+        <!-- dark wordmark on light themes; light wordmark on dark themes -->
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="style/objeck-logo-alt.png" />
+          <img alt="Objeck Logo" class="logo" src="style/objeck-logo.png" />
+        </picture>
       </a>
       <!-- Centered Tagline -->
       <h1 class="tagline">High-level Code @ Native Speed</h1>
