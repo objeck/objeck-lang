@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 VERSION=${1:-0.0.0}
 
-OBJECK_ROOT=../../../objeck-lang
+OBJECK_ROOT=../../../..
 LIB_SRC=$OBJECK_ROOT/core/compiler/lib_src
 
 export PATH=$PATH:$OBJECK_ROOT/core/release/deploy/bin

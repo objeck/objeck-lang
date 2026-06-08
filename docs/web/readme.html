@@ -58,13 +58,22 @@
       AI, networking, and vision — built in. Every release moves the stack forward.
     </p>
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem;">
-      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.5.4</a>
+      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.6.0</a>
       <a class="btn btn-secondary" href="getting_started.html">Quick Start</a>
       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
     </div>
 
     <!-- Changelog -->
-    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.4" style="color: inherit; text-decoration: none;">v2026.5.4</a></u></h3>
+    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.0" style="color: inherit; text-decoration: none;">v2026.6.0</a></u></h3>
+    <ul>
+        <li><strong>New <code>System.AI</code> library</strong> (<code>-lib ai</code> / <code>@ai</code>) &mdash; classic AI in the standard library: graph search (<code>Dijkstra</code>, <code>AStar</code>, <code>BreadthFirst</code>, <code>DepthFirst</code>), adversarial game search (<code>Minimax</code> with alpha-beta, <code>MonteCarloTreeSearch</code>), metaheuristics (<code>GeneticAlgorithm</code>, <code>SimulatedAnnealing</code>, <code>HillClimbing</code>), and tabular reinforcement learning (<code>QLearning</code>, <code>Sarsa</code>, <code>MarkovDecisionProcess</code>); all stochastic algorithms are seedable</li>
+        <li><strong><code>System.ML</code> overhaul</strong> &mdash; 13 new estimators (regularized regression, SVM, perceptron, PCA, Gaussian naive Bayes, AdaBoost, DBSCAN, Gaussian mixture, KD-tree, gradient-boosted trees); real recursive <code>DecisionTree</code> and voting <code>RandomForest</code>; <code>NeuralNetwork</code> bias vectors; seedable <code>System.ML.Random</code>; a uniform <code>Fit</code>/<code>Predict</code>/<code>Score</code>/<code>Store</code>/<code>Load</code> API. <em>Breaking:</em> <code>RandomForest-&gt;Train</code> is now <code>Fit</code>; stored <code>NeuralNetwork</code> models must be regenerated</li>
+        <li><strong><code>record</code> types</strong> &mdash; generate constructor and accessors from field declarations; <code>record : readonly :</code> omits setters and rejects field assignment outside constructors; supports generics and inheritance</li>
+        <li><strong>JIT &amp; compiler fixes</strong> &mdash; frame-dependent traps stay interpreted past the auto-JIT threshold (AMD64 + ARM64); ARM64 stale-<code>self</code> reload after callbacks; float equality on array elements no longer mis-compiled; bool array literal-pool corruption fixed</li>
+        <li><strong>Library improvements</strong> &mdash; library aliases (<code>@std</code>/<code>@ml</code>/<code>@ai</code>/<code>@game</code>) documented; Data.XML rejects truncated documents, fixes <code>&amp;apos;</code> decoding, and adds <code>EncodeText</code>/<code>SetEncodedContent</code>/<code>GetDecodedContent</code>/<code>GetDecodedValue</code></li>
+    </ul>
+
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.5.4" style="color: inherit; text-decoration: none;">v2026.5.4</a></h3>
     <ul>
         <li><strong>Debugger test reliability</strong> &mdash; Windows CI debugger tests fixed; <code>.obe</code>/<code>.obl</code> format detection now correctly handles the edge case where a new-format size-header LSB collides with the <code>0x78</code> zlib CMF byte</li>
         <li><strong>LSP shell script permissions</strong> &mdash; all <code>tools/lsp/</code> shell scripts now carry the execute bit in git, fixing <code>Permission denied</code> in the LSP release CI job</li>

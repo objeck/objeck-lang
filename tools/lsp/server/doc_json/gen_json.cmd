@@ -6,7 +6,7 @@ cd /d %~dp0
 SET VERSION=%1
 IF "%VERSION%"=="" SET VERSION=0.0.0
 
-SET OBJECK_ROOT=..\..\..\objeck-lang
+SET OBJECK_ROOT=..\..\..\..
 SET LIB_SRC=%OBJECK_ROOT%\core\compiler\lib_src
 
 SET PATH=%PATH%;%OBJECK_ROOT%\core\release\deploy-x64\bin

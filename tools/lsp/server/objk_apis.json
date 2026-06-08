@@ -5969,6 +5969,244 @@
 				}
 			}
 		},
+		"System.AI.AStar": {
+			"description": "A* single-pair shortest path: Dijkstra ordered by f = g + h using a per-node heuristic array. With an admissible heuristic (never overestimating the remaining cost) the result cost equals Dijkstra's while typically expanding fewer nodes.",
+			"functions": {
+				"FindPath": {
+					"descriptions": ["**Finds the minimum-cost path between two nodes guided by a heuristic.**\n\n```function : FindPath(graph:Graph, start:Int, goal:Int, heuristic:Float[]) ~ SearchResult```\n\n\n\ngraph: Graph\n\nstart: Int\n\ngoal: Int\n\nheuristic: Float[]\n\nreturn: SearchResult"]
+				}
+			}
+		},
+		"System.AI.BreadthFirst": {
+			"description": "Breadth-first search: fewest-hops path, ignoring edge weights. The result cost is the hop count.",
+			"functions": {
+				"FindPath": {
+					"descriptions": ["**Finds the fewest-hops path between two nodes.**\n\n```function : FindPath(graph:Graph, start:Int, goal:Int) ~ SearchResult```\n\n\n\ngraph: Graph\n\nstart: Int\n\ngoal: Int\n\nreturn: SearchResult"]
+				}
+			}
+		},
+		"System.AI.DepthFirst": {
+			"description": "Depth-first search: finds A path (not necessarily shortest), useful for reachability. The result cost is the hop count of the found path.",
+			"functions": {
+				"FindPath": {
+					"descriptions": ["**Finds a path between two nodes by iterative depth-first search.**\n\n```function : FindPath(graph:Graph, start:Int, goal:Int) ~ SearchResult```\n\n\n\ngraph: Graph\n\nstart: Int\n\ngoal: Int\n\nreturn: SearchResult"]
+				}
+			}
+		},
+		"System.AI.Dijkstra": {
+			"description": "Dijkstra's single-pair shortest path over non-negative edge weights.",
+			"functions": {
+				"FindPath": {
+					"descriptions": ["**Finds the minimum-cost path between two nodes.**\n\n```function : FindPath(graph:Graph, start:Int, goal:Int) ~ SearchResult```\n\n\n\ngraph: Graph\n\nstart: Int\n\ngoal: Int\n\nreturn: SearchResult"]
+				}
+			}
+		},
+		"System.AI.EnergyFunction": {
+			"description": "Energy of a numeric state for SimulatedAnnealing\/HillClimbing (lower is better).",
+			"functions": {
+				"Energy": {
+					"descriptions": ["**Scores a state.**\n\n```method : public : virutal : Energy(state:Float[]) ~ Float```\n\n\n\nstate: Float[]\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.AI.Environment": {
+			"description": "A tabular RL environment: integer states 0..S-1, integer actions 0..A-1.",
+			"functions": {
+				"GetNumActions": {
+					"descriptions": ["**Gets the number of actions.**\n\n```method : public : virutal : GetNumActions() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNumStates": {
+					"descriptions": ["**Gets the number of states.**\n\n```method : public : virutal : GetNumStates() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Reset": {
+					"descriptions": ["**Resets the environment for a new episode.**\n\n```method : public : virutal : Reset() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Step": {
+					"descriptions": ["**Takes an action in a state.**\n\n```method : public : virutal : Step(state:Int, action:Int) ~ System.AI.StepResult```\n\n\n\nstate: Int\n\naction: Int\n\nreturn: System.AI.StepResult"]
+				}
+			}
+		},
+		"System.AI.FitnessFunction": {
+			"description": "Fitness of a boolean chromosome for GeneticAlgorithm (higher is better).",
+			"functions": {
+				"Fitness": {
+					"descriptions": ["**Scores a chromosome.**\n\n```method : public : virutal : Fitness(genes:Bool[]) ~ Float```\n\n\n\ngenes: Bool[]\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.AI.GameState": {
+			"description": "A two-player, zero-sum game position. Moves are integers chosen by the implementation (board cells, column ids, etc.). Evaluate scores the position from the MAXIMIZING player's perspective (positive = good for the maximizer); IsMaximizing reports whose turn it is.",
+			"functions": {
+				"Apply": {
+					"descriptions": ["**Applies a move, producing the successor position.**\n\n```method : public : virutal : Apply(move:Int) ~ System.AI.GameState```\n\n\n\nmove: Int\n\nreturn: System.AI.GameState"]
+				},
+				"Evaluate": {
+					"descriptions": ["**Scores the position from the maximizing player's perspective.**\n\n```method : public : virutal : Evaluate() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMoves": {
+					"descriptions": ["**Gets the legal moves for the player to move.**\n\n```method : public : virutal : GetMoves() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"IsMaximizing": {
+					"descriptions": ["**Whose turn it is.**\n\n```method : public : virutal : IsMaximizing() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsTerminal": {
+					"descriptions": ["**Whether the game is over in this position.**\n\n```method : public : virutal : IsTerminal() ~ Bool```\n\n\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.AI.GeneticAlgorithm": {
+			"description": "Generational genetic algorithm over boolean chromosomes: tournament selection, single-point crossover, per-bit mutation and single-member elitism. Seeded for reproducible runs.",
+			"functions": {
+				"GetBestFitness": {
+					"descriptions": ["**Gets the best fitness seen during the last run.**\n\n```method : public : GetBestFitness() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(population_size:Int, gene_count:Int, mutation_rate:Float, crossover_rate:Float, seed:Int)```\n\n\n\npopulation_size: Int\n\ngene_count: Int\n\nmutation_rate: Float\n\ncrossover_rate: Float\n\nseed: Int"]
+				},
+				"Run": {
+					"descriptions": ["**Evolves a population and returns the best chromosome found.**\n\n```method : public : Run(fitness:FitnessFunction, generations:Int) ~ Bool[]```\n\n\n\nfitness: FitnessFunction\n\ngenerations: Int\n\nreturn: Bool[]"]
+				}
+			}
+		},
+		"System.AI.Graph": {
+			"description": "Weighted directed graph over integer node ids 0..n-1, stored as compact per-node adjacency lists that grow automatically. For an undirected edge add both directions.",
+			"functions": {
+				"AddEdge": {
+					"descriptions": ["**Adds a directed weighted edge.**\n\n```method : public : AddEdge(src:Int, to:Int, weight:Float) ~ Bool```\n\n\n\nsrc: Int\n\nto: Int\n\nweight: Float\n\nreturn: Bool"]
+				},
+				"GetNumEdges": {
+					"descriptions": ["**Gets the number of edges.**\n\n```method : public : GetNumEdges() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNumNodes": {
+					"descriptions": ["**Gets the number of nodes.**\n\n```method : public : GetNumNodes() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(num_nodes:Int)```\n\n\n\nnum_nodes: Int"]
+				}
+			}
+		},
+		"System.AI.MarkovDecisionProcess": {
+			"description": "An explicit finite Markov decision process solved by value iteration. Transitions are added as (state, action) -> (next, probability, reward) tuples; probabilities for each (state, action) should sum to 1.",
+			"functions": {
+				"AddTransition": {
+					"descriptions": ["**Adds a transition.**\n\n```method : public : AddTransition(state:Int, action:Int, next:Int, prob:Float, reward:Float) ~ Bool```\n\n\n\nstate: Int\n\naction: Int\n\nnext: Int\n\nprob: Float\n\nreward: Float\n\nreturn: Bool"]
+				},
+				"GetPolicy": {
+					"descriptions": ["**Gets the greedy policy (best action per state).**\n\n```method : public : GetPolicy() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetValues": {
+					"descriptions": ["**Gets the optimal state values.**\n\n```method : public : GetValues() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsSolved": {
+					"descriptions": ["**Whether the MDP has been solved.**\n\n```method : public : IsSolved() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(num_states:Int, num_actions:Int)```\n\n\n\nnum_states: Int\n\nnum_actions: Int"]
+				},
+				"Solve": {
+					"descriptions": ["**Solves the MDP by value iteration and extracts the greedy policy. States without transitions for an action treat that action's value as negative infinity; states with no transitions at all hold value 0.**\n\n```method : public : Solve(gamma:Float, tolerance:Float, max_iterations:Int) ~ Bool```\n\n\n\ngamma: Float\n\ntolerance: Float\n\nmax_iterations: Int\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.AI.Minimax": {
+			"description": "Depth-limited minimax with alpha-beta pruning over a GameState. Deterministic: ties resolve to the first move in GetMoves() order.",
+			"functions": {
+				"FindBestMove": {
+					"descriptions": ["**Finds the best move for the player to move.**\n\n```method : public : FindBestMove(state:GameState) ~ Int```\n\n\n\nstate: GameState\n\nreturn: Int"]
+				},
+				"GetNodesSearched": {
+					"descriptions": ["**Gets the number of nodes evaluated by the last search.**\n\n```method : public : GetNodesSearched() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(max_depth:Int)```\n\n\n\nmax_depth: Int"]
+				}
+			}
+		},
+		"System.AI.MonteCarloTreeSearch": {
+			"description": "Monte Carlo tree search (UCT) over a GameState. Each playout selects by the UCB1 rule, expands one node, plays uniformly random moves to the end (or the rollout cap) and backs the evaluation up the tree. Seeded for reproducible searches; the most-visited root child is returned.",
+			"functions": {
+				"FindBestMove": {
+					"descriptions": ["**Finds the best move for the player to move.**\n\n```method : public : FindBestMove(state:GameState) ~ Int```\n\n\n\nstate: GameState\n\nreturn: Int"]
+				}
+			}
+		},
+		"System.AI.QLearning": {
+			"description": "Off-policy Q-learning: epsilon-greedy behavior with a greedy bootstrap, Q(s,a) += alpha*(r + gamma*max_a' Q(s',a') - Q(s,a)). Seeded for reproducible training.",
+			"functions": {
+				"BestAction": {
+					"descriptions": ["**Gets the greedy action for a state.**\n\n```method : public : BestAction(state:Int) ~ Int```\n\n\n\nstate: Int\n\nreturn: Int"]
+				},
+				"GetQ": {
+					"descriptions": ["**Gets the learned Q table (states x actions).**\n\n```method : public : GetQ() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"IsTrained": {
+					"descriptions": ["**Whether the agent has been trained.**\n\n```method : public : IsTrained() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(alpha:Float, gamma:Float, epsilon:Float, seed:Int)```\n\n\n\nalpha: Float\n\ngamma: Float\n\nepsilon: Float\n\nseed: Int"]
+				},
+				"Train": {
+					"descriptions": ["**Trains the agent.**\n\n```method : public : Train(env:Environment, episodes:Int, max_steps:Int) ~ Bool```\n\n\n\nenv: Environment\n\nepisodes: Int\n\nmax_steps: Int\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.AI.Sarsa": {
+			"description": "On-policy SARSA: epsilon-greedy behavior bootstrapping on the action actually taken, Q(s,a) += alpha*(r + gamma*Q(s',a') - Q(s,a)). Seeded for reproducible training.",
+			"functions": {
+				"BestAction": {
+					"descriptions": ["**Gets the greedy action for a state.**\n\n```method : public : BestAction(state:Int) ~ Int```\n\n\n\nstate: Int\n\nreturn: Int"]
+				},
+				"GetQ": {
+					"descriptions": ["**Gets the learned Q table (states x actions).**\n\n```method : public : GetQ() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"IsTrained": {
+					"descriptions": ["**Whether the agent has been trained.**\n\n```method : public : IsTrained() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(alpha:Float, gamma:Float, epsilon:Float, seed:Int)```\n\n\n\nalpha: Float\n\ngamma: Float\n\nepsilon: Float\n\nseed: Int"]
+				},
+				"Train": {
+					"descriptions": ["**Trains the agent.**\n\n```method : public : Train(env:Environment, episodes:Int, max_steps:Int) ~ Bool```\n\n\n\nenv: Environment\n\nepisodes: Int\n\nmax_steps: Int\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.AI.SearchResult": {
+			"description": "Result of a graph search: whether the goal was reached, the node path from start to goal, its cost, and how many nodes were expanded.",
+			"functions": {
+				"Found": {
+					"descriptions": ["**Whether a path to the goal was found.**\n\n```method : public : Found() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"GetCost": {
+					"descriptions": ["**Gets the total path cost (sum of edge weights; hop count for the unweighted searches; 0.0 when not found).**\n\n```method : public : GetCost() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetExpanded": {
+					"descriptions": ["**Gets the number of nodes expanded during the search.**\n\n```method : public : GetExpanded() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPath": {
+					"descriptions": ["**Gets the path from start to goal inclusive (empty when not found).**\n\n```method : public : GetPath() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				}
+			}
+		},
+		"System.AI.SimulatedAnnealing": {
+			"description": "Simulated annealing over a numeric state vector: a random coordinate is perturbed uniformly within +\/- step_size, worse states are accepted with probability e^(-delta\/T), and the temperature cools geometrically. Seeded for reproducible runs.",
+			"functions": {
+				"GetBestEnergy": {
+					"descriptions": ["**Gets the best (lowest) energy seen during the last run.**\n\n```method : public : GetBestEnergy() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(initial_temperature:Float, cooling:Float, step_size:Float, seed:Int)```\n\n\n\ninitial_temperature: Float\n\ncooling: Float\n\nstep_size: Float\n\nseed: Int"]
+				},
+				"Run": {
+					"descriptions": ["**Minimizes the energy starting from the given state.**\n\n```method : public : Run(energy:EnergyFunction, start:Float[], iterations:Int) ~ Float[]```\n\n\n\nenergy: EnergyFunction\n\nstart: Float[]\n\niterations: Int\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.AI.StepResult": {
+			"description": "One environment transition: the next state, the reward received, and whether the episode ended.",
+			"functions": {
+
+			}
+		},
 		"System.API.DllProxy": {
 			"description": "Class allow programmers to load native shared libraries that can be called by Objeck classes. Programmers can call native C functions within these libraries.",
 			"functions": {
@@ -6954,6 +7192,35 @@
 				}
 			}
 		},
+		"System.ML.AdaBoost": {
+			"description": "Discrete AdaBoost over single-feature boolean decision stumps. Each round picks the stump (feature + polarity) with the lowest weighted error, gives it a vote of alpha = 0.5*ln((1-err)\/err) and re-weights the samples to focus on mistakes; prediction is the sign of the weighted stump vote. Deterministic. Boosting stops early when no stump beats chance.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the boosted ensemble. Each row is boolean features with the class label in the LAST column.**\n\n```method : public : Fit(input:Bool[,]) ~ Bool```\n\n\n\ninput: Bool[,]\n\nreturn: Bool"]
+				},
+				"GetLearnerCount": {
+					"descriptions": ["**Gets the number of boosting rounds actually used (early-stops when no stump beats chance or a stump is perfect).**\n\n```method : public : GetLearnerCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the ensemble has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted ensemble from a file.**\n\n```function : Load(filename:String) ~ AdaBoost```\n\n\n\nfilename: String\n\nreturn: AdaBoost"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(num_learners:Int)```\n\n\n\nnum_learners: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts class labels by the sign of the weighted stump vote.**\n\n```method : public : Predict(input:Bool[,]) ~ Bool[]```\n\n\n\ninput: Bool[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**Computes classification accuracy on labeled data, comparing predictions against the class label in the LAST column.**\n\n```method : public : Score(input:Bool[,]) ~ Float```\n\n\n\ninput: Bool[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted ensemble to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
 		"System.ML.BayesEntry": {
 			"description": "Naive Bayes entry of term with counts",
 			"functions": {
@@ -7025,29 +7292,64 @@
 				}
 			}
 		},
-		"System.ML.DecisionTree": {
-			"description": "Binary decision tree algorithm",
+		"System.ML.DBSCAN": {
+			"description": "Density-based spatial clustering (DBSCAN). Groups points that are densely packed (at least min_points neighbors within eps, Euclidean) and labels sparse points as noise (-1). Unlike KMeans the cluster count is discovered, clusters may be any shape, and the result is deterministic for a given input order.",
 			"functions": {
-				"Gini": {
-					"descriptions": ["**Calculates the Gini index**\n\n```function : native : Gini(acheived:Float, goal:Float) ~ Float```\n\n\n\nacheived: Float\n\ngoal: Float\n\nreturn: Float"]
+				"Fit": {
+					"descriptions": ["**Clusters the data. Region growing visits rows in order, so results are deterministic for a given input.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
 				},
-				"LoadCsv": {
-					"descriptions": ["**Loads a boolean input matrix from a CSV file of 1s and 0s**\n\n```function : LoadCsv(filename:String) ~ Bool[,]```\n\n\n\nfilename: String\n\nreturn: Bool[,]"]
+				"GetLabels": {
+					"descriptions": ["**Gets the per-row cluster labels (-1 = noise).**\n\n```method : public : GetLabels() ~ Int[]```\n\n\n\nreturn: Int[]"]
 				},
-				"Matches": {
-					"descriptions": ["**Count matches in a column**\n\n```function : Matches(index:Int, matrix:Bool[,]) ~ Int```\n\n\n\nindex: Int\n\nmatrix: Bool[,]\n\nreturn: Int"]
+				"GetNumClusters": {
+					"descriptions": ["**Gets the number of clusters discovered.**\n\n```method : public : GetNumClusters() ~ Int```\n\n\n\nreturn: Int"]
 				},
-				"Mismatches": {
-					"descriptions": ["**Count mismatches in a column**\n\n```function : Mismatches(index:Int, matrix:Bool[,]) ~ Int```\n\n\n\nindex: Int\n\nmatrix: Bool[,]\n\nreturn: Int"]
+				"IsFitted": {
+					"descriptions": ["**Whether the clustering has been run.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
-				"Query": {
-					"descriptions": ["**Splits a matrix based on a list of decisions**\n\n```function : native : Query(decisions:Vector&lt;Split&gt;, input:Bool[,]) ~ Bool[,]```\n\n\n\ndecisions: Vector&lt;Split&gt;\n\ninput: Bool[,]\n\nreturn: Bool[,]"]
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(eps:Float, min_points:Int)```\n\n\n\neps: Float\n\nmin_points: Int"]
+				}
+			}
+		},
+		"System.ML.ElasticNet": {
+			"description": "Elastic-net regularized linear regression fitted by cyclic coordinate descent on mean-centered data with an unpenalized intercept. Minimizes (1\/2n)||y - Xw - b||^2 + alpha*(l1_ratio*|w|_1 + (1-l1_ratio)\/2*|w|_2^2). l1_ratio = 1.0 is the lasso; l1_ratio = 0.0 is ridge (use RidgeRegression for the closed-form solution). The L1 term drives uninformative feature coefficients exactly to zero.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the model using cyclic coordinate descent.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool"]
 				},
-				"Split": {
-					"descriptions": ["**Splits a matrix along the given column**\n\n```function : native : Split(index:Int, input:Bool[,]) ~ Bool[,]```\n\n\n\nindex: Int\n\ninput: Bool[,]\n\nreturn: Bool[,]"]
+				"GetCoefficients": {
+					"descriptions": ["**Gets the fitted feature coefficients (the intercept is separate).**\n\n```method : public : GetCoefficients() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
-				"Train": {
-					"descriptions": ["**Calculates a list of decision splits**\n\n```function : native : Train(input:Bool[,]) ~ Vector&lt;Split&gt;```\n\n\n\ninput: Bool[,]\n\nreturn: Vector&lt;Split&gt;"]
+				"GetIntercept": {
+					"descriptions": ["**Gets the fitted intercept term.**\n\n```method : public : GetIntercept() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMSE": {
+					"descriptions": ["**Gets the mean squared error over the training data.**\n\n```method : public : GetMSE() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRMSE": {
+					"descriptions": ["**Gets the root mean squared error over the training data.**\n\n```method : public : GetRMSE() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRSquared": {
+					"descriptions": ["**Gets the R-squared over the training data.**\n\n```method : public : GetRSquared() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the model has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted model from a file.**\n\n```function : Load(filename:String) ~ ElasticNet```\n\n\n\nfilename: String\n\nreturn: ElasticNet"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with default optimization settings (1000 iterations, tolerance 0.0001).**\n\n```New(alpha:Float, l1_ratio:Float)```\n\n\n\nalpha: Float\n\nl1_ratio: Float", "**Constructor with explicit optimization settings.**\n\n```New(alpha:Float, l1_ratio:Float, iterations:Int, tolerance:Float)```\n\n\n\nalpha: Float\n\nl1_ratio: Float\n\niterations: Int\n\ntolerance: Float"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts target values for new input data.**\n\n```method : public : Predict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Score": {
+					"descriptions": ["**Scores the model on the given data (R-squared of predictions).**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -7091,11 +7393,124 @@
 				}
 			}
 		},
+		"System.ML.GaussianMixture": {
+			"description": "Gaussian mixture model with diagonal covariance, fitted by expectation- maximization. Component means are seeded k-means++-style with the seedable System.ML.Random for reproducible fits; the E-step works in the log domain for numerical stability and variances are floored. Training stops when the average log-likelihood improves by less than the tolerance.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the mixture by EM.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"GetIterationsRun": {
+					"descriptions": ["**Gets the number of EM iterations actually run.**\n\n```method : public : GetIterationsRun() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLogLikelihood": {
+					"descriptions": ["**Gets the final average log-likelihood of the training data.**\n\n```method : public : GetLogLikelihood() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMeans": {
+					"descriptions": ["**Gets the fitted component means (components x features).**\n\n```method : public : GetMeans() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetWeights": {
+					"descriptions": ["**Gets the fitted mixture weights.**\n\n```method : public : GetWeights() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the mixture has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted mixture from a file.**\n\n```function : Load(filename:String) ~ GaussianMixture```\n\n\n\nfilename: String\n\nreturn: GaussianMixture"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with default optimization settings (100 iterations, tolerance 0.000001).**\n\n```New(num_components:Int, seed:Int)```\n\n\n\nnum_components: Int\n\nseed: Int", "**Constructor with explicit optimization settings.**\n\n```New(num_components:Int, max_iterations:Int, tolerance:Float, seed:Int)```\n\n\n\nnum_components: Int\n\nmax_iterations: Int\n\ntolerance: Float\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Computes soft component responsibilities for every row.**\n\n```method : public : Predict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"PredictClass": {
+					"descriptions": ["**Predicts the most likely component for every row.**\n\n```method : public : PredictClass(X:Float[,]) ~ Int[]```\n\n\n\nX: Float[,]\n\nreturn: Int[]"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted mixture to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.GaussianNaiveBayes": {
+			"description": "Gaussian naive Bayes for continuous features and integer class labels. Per class and feature it fits a mean and variance, then classifies by maximum log-joint probability (log prior + sum of log Gaussian likelihoods). Variances are floored for numerical stability.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits per-class feature means\/variances and class priors. Class labels are the integer values 0..C-1 in the target column; every class in the range must appear at least once.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool"]
+				},
+				"GetNumClasses": {
+					"descriptions": ["**Gets the number of classes seen at fit time.**\n\n```method : public : GetNumClasses() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the model has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted model from a file.**\n\n```function : Load(filename:String) ~ GaussianNaiveBayes```\n\n\n\nfilename: String\n\nreturn: GaussianNaiveBayes"]
+				},
+				"Predict": {
+					"descriptions": ["**Computes the log-joint probability of each class for every row.**\n\n```method : public : Predict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"PredictClass": {
+					"descriptions": ["**Predicts the most likely class for every row.**\n\n```method : public : PredictClass(X:Float[,]) ~ Int[]```\n\n\n\nX: Float[,]\n\nreturn: Int[]"]
+				},
+				"Score": {
+					"descriptions": ["**Computes classification accuracy on the given data.**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.GradientBoostedTrees": {
+			"description": "Gradient boosted regression trees with squared-error loss: the model starts at the target mean and each stage fits a RegressionTree to the current residuals, added with a shrinkage (learning rate) factor. Deterministic.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the boosted ensemble.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool"]
+				},
+				"GetTreeCount": {
+					"descriptions": ["**Gets the number of boosting stages fitted.**\n\n```method : public : GetTreeCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the ensemble has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted ensemble from a file.**\n\n```function : Load(filename:String) ~ GradientBoostedTrees```\n\n\n\nfilename: String\n\nreturn: GradientBoostedTrees"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(num_trees:Int, learning_rate:Float, max_depth:Int, min_samples:Int)```\n\n\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nmin_samples: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts targets for every row of an input matrix.**\n\n```method : public : Predict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Score": {
+					"descriptions": ["**Scores the ensemble on the given data (R-squared of predictions).**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted ensemble to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.KDTree": {
+			"description": "K-d tree for fast exact nearest-neighbor queries over numeric rows. Built by median splits cycling through the dimensions; queries prune subtrees whose splitting plane lies farther than the current k-th best distance. Equivalent results to a brute-force scan (Euclidean).",
+			"functions": {
+				"Nearest": {
+					"descriptions": ["**Finds the k nearest rows to the query point.**\n\n```method : public : Nearest(k:Int, query:Float[]) ~ Int[]```\n\n\n\nk: Int\n\nquery: Float[]\n\nreturn: Int[]"]
+				},
+				"New": {
+					"descriptions": ["**Builds the tree from a data matrix.**\n\n```New(data:Float[,])```\n\n\n\ndata: Float[,]", "**Constructor.**\n\n```New(matrix:Float[,], labels:String[])```\n\n\n\nmatrix: Float[,]\n\nlabels: String[]"]
+				},
+				"Query": {
+					"descriptions": ["**Query the matrix for classification**\n\n```method : public : Query(k:Int, query:Float[]) ~ KNeighbor[]```\n\n\n\nk: Int\n\nquery: Float[]\n\nreturn: KNeighbor[]"]
+				},
+				"Size": {
+					"descriptions": ["**Gets the number of rows indexed.**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
 		"System.ML.KMeans": {
 			"description": "K-Means clustering algorithm",
 			"functions": {
 				"Group": {
-					"descriptions": ["**K-Means group clustering**\n\n```function : native : Group(group_labels:String[], records:Vector&lt;FloatArrayRef&gt;, record_length:Int, min_value:Float, max_value:Float) ~ KMeansGrouping```\n\n\n\ngroup_labels: String[]\n\nrecords: Vector&lt;FloatArrayRef&gt;\n\nrecord_length: Int\n\nmin_value: Float\n\nmax_value: Float\n\nreturn: KMeansGrouping"]
+					"descriptions": ["**K-Means group clustering**\n\n```function : native : Group(group_labels:String[], records:Vector&lt;FloatArrayRef&gt;, record_length:Int, min_value:Float, max_value:Float) ~ KMeansGrouping```\n\n\n\ngroup_labels: String[]\n\nrecords: Vector&lt;FloatArrayRef&gt;\n\nrecord_length: Int\n\nmin_value: Float\n\nmax_value: Float\n\nreturn: KMeansGrouping", "**K-Means clustering with k-means++ seeding (deterministic for a given seed), an iteration cap, and explicit empty-cluster handling.**\n\n```function : native : Group(group_labels:String[], records:Vector&lt;FloatArrayRef&gt;, record_length:Int, min_value:Float, max_value:Float, max_iterations:Int, seed:Int) ~ KMeansGrouping```\n\n\n\ngroup_labels: String[]\n\nrecords: Vector&lt;FloatArrayRef&gt;\n\nrecord_length: Int\n\nmin_value: Float\n\nmax_value: Float\n\nmax_iterations: Int\n\nseed: Int\n\nreturn: KMeansGrouping"]
 				}
 			}
 		},
@@ -7148,17 +7563,6 @@
 				}
 			}
 		},
-		"System.ML.KNearestNeighbors": {
-			"description": "K-Nearest Neighbors algorithm",
-			"functions": {
-				"New": {
-					"descriptions": ["**Constructor.**\n\n```New(matrix:Float[,], labels:String[])```\n\n\n\nmatrix: Float[,]\n\nlabels: String[]"]
-				},
-				"Query": {
-					"descriptions": ["**Query the matrix for classification**\n\n```method : public : Query(k:Int, query:Float[]) ~ KNeighbor[]```\n\n\n\nk: Int\n\nquery: Float[]\n\nreturn: KNeighbor[]"]
-				}
-			}
-		},
 		"System.ML.KNeighbor": {
 			"description": "K-Neighbor result",
 			"functions": {
@@ -7185,11 +7589,37 @@
 				}
 			}
 		},
+		"System.ML.LassoRegression": {
+			"description": "Lasso (L1-regularized) linear regression: an ElasticNet with l1_ratio fixed at 1.0. The L1 penalty drives uninformative feature coefficients exactly to zero, performing feature selection. Store\/Load round-trip via the ElasticNet format (Load returns an ElasticNet).",
+			"functions": {
+				"New": {
+					"descriptions": ["**Constructor with default optimization settings.**\n\n```New(alpha:Float)```\n\n\n\nalpha: Float", "**Constructor with explicit optimization settings.**\n\n```New(alpha:Float, iterations:Int, tolerance:Float)```\n\n\n\nalpha: Float\n\niterations: Int\n\ntolerance: Float"]
+				}
+			}
+		},
 		"System.ML.LinearRegression": {
 			"description": "Simple linear regression using least squares. Fits y = X * coefficients via the normal equation.",
 			"functions": {
+				"GetAdjustedRSquared": {
+					"descriptions": ["**Gets the adjusted R-squared, which penalizes additional predictors.**\n\n```method : public : GetAdjustedRSquared() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMSE": {
+					"descriptions": ["**Gets the mean squared error over the training data.**\n\n```method : public : GetMSE() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRMSE": {
+					"descriptions": ["**Gets the root mean squared error over the training data.**\n\n```method : public : GetRMSE() ~ Float```\n\n\n\nreturn: Float"]
+				},
 				"IsFitted": {
 					"descriptions": ["**Whether the model has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted model from a file.**\n\n```function : Load(filename:String) ~ LinearRegression```\n\n\n\nfilename: String\n\nreturn: LinearRegression"]
+				},
+				"Score": {
+					"descriptions": ["**Scores the model on the given data, returning the R-squared (coefficient of determination) of its predictions against the true targets.**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted model (coefficients, intercept convention and training metrics) to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -7224,14 +7654,32 @@
 		"System.ML.LogisticRegression": {
 			"description": "Logistic regression using gradient descent with sigmoid activation. Binary classification only.",
 			"functions": {
+				"GetBias": {
+					"descriptions": ["**Gets the learned bias \/ intercept term.**\n\n```method : public : GetBias() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetLoss": {
+					"descriptions": ["**Gets the final binary cross-entropy loss recorded at the end of training. Note: batch gradient descent assumes roughly comparable feature scales -- apply FeatureScaler (e.g. StandardScaler) to inputs for reliable convergence.**\n\n```method : public : GetLoss() ~ Float```\n\n\n\nreturn: Float"]
+				},
 				"GetWeights": {
 					"descriptions": ["**Gets the learned weights.**\n\n```method : public : GetWeights() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
 				"IsFitted": {
 					"descriptions": ["**Whether the model has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
+				"Load": {
+					"descriptions": ["**Loads a fitted model from a file.**\n\n```function : Load(filename:String) ~ LogisticRegression```\n\n\n\nfilename: String\n\nreturn: LogisticRegression"]
+				},
 				"LogSigmoid": {
-					"descriptions": ["**Sigmoid activation function**\n\n```function : LogSigmoid() ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+					"descriptions": ["**Numerically stable logistic sigmoid. Branching on the sign of x avoids Float->Exp overflow for large-magnitude inputs.**\n\n```function : LogSigmoid(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor with L2 (ridge) regularization.**\n\n```New(learning_rate:Float, iterations:Int, l2:Float)```\n\n\n\nlearning_rate: Float\n\niterations: Int\n\nl2: Float"]
+				},
+				"Score": {
+					"descriptions": ["**Computes classification accuracy on the given data.**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted model (weights, bias, hyperparameters and final loss) to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -7368,7 +7816,7 @@
 					"descriptions": ["**Constructor**\n\n```New(left:BayesGroup, right:BayesGroup)```\n\n\n\nleft: BayesGroup\n\nright: BayesGroup"]
 				},
 				"Query": {
-					"descriptions": ["**Query to Naive Bayes**\n\n```method : public : Query(terms:String[]) ~ Int```\n\n\n\nterms: String[]\n\nreturn: Int"]
+					"descriptions": ["**Query to Naive Bayes**\n\n```method : public : Query(terms:String[]) ~ Int```\n\n\n\nterms: String[]\n\nreturn: Int", "**Computes the Laplace-smoothed log-probability that the given terms belong to the supplied group. Likelihoods are summed in log space to avoid floating-point underflow on long term lists, and the group's counts are never mutated (so queries are side-effect free and repeatable).**\n\n```method : private : Query(terms:String[], group:BayesGroup) ~ Float```\n\n\n\nterms: String[]\n\ngroup: BayesGroup\n\nreturn: Float"]
 				}
 			}
 		},
@@ -7379,7 +7827,7 @@
 					"descriptions": ["**Query the network's confidence for the give inputs**\n\n```method : public : Confidence(inputs:FloatMatrixRef) ~ Float```\n\n\n\ninputs: FloatMatrixRef\n\nreturn: Float"]
 				},
 				"Load": {
-					"descriptions": ["**Loads network inputs and outputs**\n\n```function : Load(filename:String) ~ NeuralNetwork```\n\n\n\nfilename: String\n\nreturn: NeuralNetwork"]
+					"descriptions": ["**Loads a stored network (weights and biases). Note: the format gained the two bias vectors with the bias support; files stored by older versions cannot be loaded.**\n\n```function : Load(filename:String) ~ NeuralNetwork```\n\n\n\nfilename: String\n\nreturn: NeuralNetwork"]
 				},
 				"Query": {
 					"descriptions": ["**Query the network**\n\n```method : public : Query(inputs:FloatMatrixRef) ~ Bool```\n\n\n\ninputs: FloatMatrixRef\n\nreturn: Bool"]
@@ -7388,30 +7836,287 @@
 					"descriptions": ["**Sets the activation threshold. Activation if output > threshold or < 1.0 - threshold**\n\n```method : public : SetActivation(threshold:Float, attempts:Int) ~ Nil```\n\n\n\nthreshold: Float\n\nattempts: Int\n\nreturn: Nil"]
 				},
 				"Store": {
-					"descriptions": ["**Saves final network inputs and outputs**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+					"descriptions": ["**Saves the network's weights and biases**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
 				},
 				"Train": {
 					"descriptions": ["**Trains the network**\n\n```function : Train(input_nodes:Int, inputs:Vector&lt;FloatMatrixRef&gt;, hidden_factor:Int, output_nodes:Int, targets:Vector&lt;FloatMatrixRef&gt;, learning_rate:Float, iterations:Int) ~ NeuralNetwork```\n\n\n\ninput_nodes: Int\n\ninputs: Vector&lt;FloatMatrixRef&gt;\n\nhidden_factor: Int\n\noutput_nodes: Int\n\ntargets: Vector&lt;FloatMatrixRef&gt;\n\nlearning_rate: Float\n\niterations: Int\n\nreturn: NeuralNetwork"]
 				}
 			}
 		},
+		"System.ML.PCA": {
+			"description": "Principal component analysis via power iteration with deflation on the sample covariance matrix. Deterministic (fixed initialization vector). Components are unit-length rows of a k x d matrix; sign is arbitrary.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the decomposition: centers the data, builds the sample covariance matrix and extracts the top components by power iteration + deflation.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool"]
+				},
+				"GetComponents": {
+					"descriptions": ["**Gets the fitted components (num_components x features; unit rows).**\n\n```method : public : GetComponents() ~ Float[,]```\n\n\n\nreturn: Float[,]"]
+				},
+				"GetExplainedVariance": {
+					"descriptions": ["**Gets the variance explained by each component (eigenvalues).**\n\n```method : public : GetExplainedVariance() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetExplainedVarianceRatio": {
+					"descriptions": ["**Gets the fraction of total variance explained by each component.**\n\n```method : public : GetExplainedVarianceRatio() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetMean": {
+					"descriptions": ["**Gets the per-feature means used for centering.**\n\n```method : public : GetMean() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"InverseTransform": {
+					"descriptions": ["**Maps projected data back into the original feature space.**\n\n```method : public : InverseTransform(Z:Float[,]) ~ Float[,]```\n\n\n\nZ: Float[,]\n\nreturn: Float[,]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the decomposition has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted decomposition from a file.**\n\n```function : Load(filename:String) ~ PCA```\n\n\n\nfilename: String\n\nreturn: PCA"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(num_components:Int)```\n\n\n\nnum_components: Int"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted decomposition to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				},
+				"Transform": {
+					"descriptions": ["**Projects data onto the fitted components.**\n\n```method : public : Transform(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				}
+			}
+		},
+		"System.ML.Perceptron": {
+			"description": "Classic Rosenblatt perceptron: a mistake-driven linear binary classifier. Deterministic (samples are visited in order each epoch) and guaranteed to converge on linearly separable data; training stops early after an epoch with no mistakes.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the perceptron with the classic mistake-driven update rule.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool"]
+				},
+				"GetBias": {
+					"descriptions": ["**Gets the learned bias term.**\n\n```method : public : GetBias() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetEpochsRun": {
+					"descriptions": ["**Gets the number of training epochs actually run (early-stops after an epoch with no mistakes).**\n\n```method : public : GetEpochsRun() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWeights": {
+					"descriptions": ["**Gets the learned weights.**\n\n```method : public : GetWeights() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the model has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted model from a file.**\n\n```function : Load(filename:String) ~ Perceptron```\n\n\n\nfilename: String\n\nreturn: Perceptron"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(learning_rate:Float, iterations:Int)```\n\n\n\nlearning_rate: Float\n\niterations: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Computes raw decision values (w*x + b) for input data.**\n\n```method : public : Predict(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"PredictClass": {
+					"descriptions": ["**Predicts class labels (decision value >= 0).**\n\n```method : public : PredictClass(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**Computes classification accuracy on the given data.**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
 		"System.ML.RandomForest": {
 			"description": "Random forest algorithm",
 			"functions": {
+				"IsFitted": {
+					"descriptions": ["**Whether the ensemble has been trained.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"Load": {
-					"descriptions": ["**Loads a saved random forest**\n\n```function : Load(filename:String) ~ RandomForest```\n\n\n\nfilename: String\n\nreturn: RandomForest"]
+					"descriptions": ["**Loads a fitted ensemble from a file.**\n\n```function : Load(filename:String) ~ RandomForest```\n\n\n\nfilename: String\n\nreturn: RandomForest"]
 				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New(num_trees:Int)```\n\n\n\nnum_trees: Int"]
+					"descriptions": ["**Constructor with explicit tree hyperparameters.**\n\n```New(num_trees:Int, max_depth:Int, min_samples:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nmax_depth: Int\n\nmin_samples: Int\n\nseed: Int"]
 				},
-				"Query": {
-					"descriptions": ["**Splits a matrix based on a list of decisions**\n\n```method : public : native : Query(input:BoolMatrixRef) ~ Bool[,]```\n\n\n\ninput: BoolMatrixRef\n\nreturn: Bool[,]", "**Splits a matrix based on a list of decisions**\n\n```method : public : native : Query(input:Bool[,]) ~ Bool[,]```\n\n\n\ninput: Bool[,]\n\nreturn: Bool[,]"]
+				"Predict": {
+					"descriptions": ["**Predicts class labels by majority vote across all trees (ties resolve to true).**\n\n```method : public : Predict(input:Bool[,]) ~ Bool[]```\n\n\n\ninput: Bool[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**Computes classification accuracy on labeled data, comparing the ensemble's majority-vote predictions against the class label in the LAST column.**\n\n```method : public : Score(input:Bool[,]) ~ Float```\n\n\n\ninput: Bool[,]\n\nreturn: Float"]
 				},
 				"Store": {
-					"descriptions": ["**Saves a random forest**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+					"descriptions": ["**Saves the fitted ensemble to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.RegressionTree": {
+			"description": "Regression tree over numeric features: recursive binary splits chosen to minimize the children's summed squared error (variance reduction), with depth and minimum-sample stops; leaves predict the mean target. Deterministic. Also the base learner for GradientBoostedTrees.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the tree to numeric training data.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the tree has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted tree from a file.**\n\n```function : Load(filename:String) ~ RegressionTree```\n\n\n\nfilename: String\n\nreturn: RegressionTree"]
+				},
+				"New": {
+					"descriptions": ["**Creates an (unfitted) regression tree.**\n\n```New(max_depth:Int, min_samples:Int)```\n\n\n\nmax_depth: Int\n\nmin_samples: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts the target for a single feature row by walking the tree.**\n\n```method : public : Predict(row:Float[]) ~ Float```\n\n\n\nrow: Float[]\n\nreturn: Float"]
+				},
+				"PredictAll": {
+					"descriptions": ["**Predicts targets for every row of an input matrix.**\n\n```method : public : PredictAll(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"ReadFrom": {
+					"descriptions": ["**Reads a tree previously written with WriteTo from a deserializer.**\n\n```function : ReadFrom(deserializer:System.IO.Deserializer) ~ RegressionTree```\n\n\n\ndeserializer: System.IO.Deserializer\n\nreturn: RegressionTree"]
+				},
+				"Score": {
+					"descriptions": ["**Scores the tree on the given data (R-squared of predictions).**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted tree to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				},
+				"WriteTo": {
+					"descriptions": ["**Serializes the tree (hyperparameters + nodes in pre-order) onto an existing serializer; used by Store and by GradientBoostedTrees.**\n\n```method : public : WriteTo(serializer:System.IO.Serializer) ~ Nil```\n\n\n\nserializer: System.IO.Serializer\n\nreturn: Nil"]
+				}
+			}
+		},
+		"System.ML.RegressionTreeNode": {
+			"description": "A node in a RegressionTree: either a leaf carrying a mean prediction, or an internal node splitting a numeric feature at a threshold (<= left).",
+			"functions": {
+				"NewInternal": {
+					"descriptions": ["**Creates an internal split node.**\n\n```function : NewInternal(feature:Int, threshold:Float) ~ RegressionTreeNode```\n\n\n\nfeature: Int\n\nthreshold: Float\n\nreturn: RegressionTreeNode"]
+				},
+				"NewLeaf": {
+					"descriptions": ["**Creates a leaf node.**\n\n```function : NewLeaf(value:Float) ~ RegressionTreeNode```\n\n\n\nvalue: Float\n\nreturn: RegressionTreeNode"]
+				}
+			}
+		},
+		"System.ML.RidgeRegression": {
+			"description": "Ridge (L2-regularized) linear regression solved in closed form via the regularized normal equations (X'X + alpha*I)w = X'y. The intercept term, when fitted, is not penalized. Larger alpha shrinks coefficients toward zero; alpha = 0.0 reduces to ordinary least squares.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the model with an intercept term.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool", "**Fits the model, optionally estimating an unpenalized intercept.**\n\n```method : public : Fit(X:Float[,], y:Float[,], fit_intercept:Bool) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nfit_intercept: Bool\n\nreturn: Bool"]
+				},
+				"GetAdjustedRSquared": {
+					"descriptions": ["**Gets the adjusted R-squared over the training data.**\n\n```method : public : GetAdjustedRSquared() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCoefficients": {
+					"descriptions": ["**Gets the fitted coefficients (index 0 is the intercept when fitted).**\n\n```method : public : GetCoefficients() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetMSE": {
+					"descriptions": ["**Gets the mean squared error over the training data.**\n\n```method : public : GetMSE() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRMSE": {
+					"descriptions": ["**Gets the root mean squared error over the training data.**\n\n```method : public : GetRMSE() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRSquared": {
+					"descriptions": ["**Gets the R-squared over the training data.**\n\n```method : public : GetRSquared() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the model has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted model from a file.**\n\n```function : Load(filename:String) ~ RidgeRegression```\n\n\n\nfilename: String\n\nreturn: RidgeRegression"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(alpha:Float)```\n\n\n\nalpha: Float"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts target values for new input data.**\n\n```method : public : Predict(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Score": {
+					"descriptions": ["**Scores the model on the given data (R-squared of predictions).**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.SVM": {
+			"description": "Linear support vector machine trained by deterministic full-batch subgradient descent on the L2-regularized hinge loss: lambda\/2*||w||^2 + (1\/n)*sum(max(0, 1 - y*(w*x + b))), with labels mapped internally from {0,1} to {-1,+1}. The bias is not regularized.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the SVM by full-batch subgradient descent on the hinge loss.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool"]
+				},
+				"GetBias": {
+					"descriptions": ["**Gets the learned bias term.**\n\n```method : public : GetBias() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWeights": {
+					"descriptions": ["**Gets the learned weights.**\n\n```method : public : GetWeights() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the model has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted model from a file.**\n\n```function : Load(filename:String) ~ SVM```\n\n\n\nfilename: String\n\nreturn: SVM"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(lambda:Float, learning_rate:Float, iterations:Int)```\n\n\n\nlambda: Float\n\nlearning_rate: Float\n\niterations: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Computes raw decision values (w*x + b) for input data. The sign gives the class; the magnitude reflects distance from the separating plane.**\n\n```method : public : Predict(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"PredictClass": {
+					"descriptions": ["**Predicts class labels (decision value >= 0).**\n\n```method : public : PredictClass(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"Score": {
+					"descriptions": ["**Computes classification accuracy on the given data.**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.TreeNode": {
+			"description": "A node in a DecisionTree: either a leaf carrying a boolean prediction, or an internal node that branches on a boolean feature (false -> left, true -> right).",
+			"functions": {
+				"Gini": {
+					"descriptions": ["**Calculates the Gini index**\n\n```function : native : Gini(acheived:Float, goal:Float) ~ Float```\n\n\n\nacheived: Float\n\ngoal: Float\n\nreturn: Float"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether the tree has been fitted.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads a fitted tree from a file.**\n\n```function : Load(filename:String) ~ DecisionTree```\n\n\n\nfilename: String\n\nreturn: DecisionTree"]
+				},
+				"LoadCsv": {
+					"descriptions": ["**Loads a boolean input matrix from a CSV file of 1s and 0s**\n\n```function : LoadCsv(filename:String) ~ Bool[,]```\n\n\n\nfilename: String\n\nreturn: Bool[,]"]
+				},
+				"Matches": {
+					"descriptions": ["**Count matches in a column**\n\n```function : Matches(index:Int, matrix:Bool[,]) ~ Int```\n\n\n\nindex: Int\n\nmatrix: Bool[,]\n\nreturn: Int"]
+				},
+				"Mismatches": {
+					"descriptions": ["**Count mismatches in a column**\n\n```function : Mismatches(index:Int, matrix:Bool[,]) ~ Int```\n\n\n\nindex: Int\n\nmatrix: Bool[,]\n\nreturn: Int"]
+				},
+				"NewInternal": {
+					"descriptions": ["**Creates an internal split node.**\n\n```function : NewInternal(feature:Int) ~ TreeNode```\n\n\n\nfeature: Int\n\nreturn: TreeNode"]
+				},
+				"NewLeaf": {
+					"descriptions": ["**Creates a leaf node.**\n\n```function : NewLeaf(prediction:Bool) ~ TreeNode```\n\n\n\nprediction: Bool\n\nreturn: TreeNode"]
+				},
+				"Predict": {
+					"descriptions": ["**Predicts the class for a single feature row by walking the tree.**\n\n```method : public : Predict(row:Bool[]) ~ Bool```\n\n\n\nrow: Bool[]\n\nreturn: Bool"]
+				},
+				"PredictAll": {
+					"descriptions": ["**Predicts classes for every row of an input matrix.**\n\n```method : public : PredictAll(input:Bool[,]) ~ Bool[]```\n\n\n\ninput: Bool[,]\n\nreturn: Bool[]"]
+				},
+				"Query": {
+					"descriptions": ["**Splits a matrix based on a list of decisions**\n\n```function : native : Query(decisions:Vector&lt;Split&gt;, input:Bool[,]) ~ Bool[,]```\n\n\n\ndecisions: Vector&lt;Split&gt;\n\ninput: Bool[,]\n\nreturn: Bool[,]"]
+				},
+				"ReadFrom": {
+					"descriptions": ["**Reads a tree previously written with WriteTo from a deserializer.**\n\n```function : ReadFrom(deserializer:System.IO.Deserializer) ~ DecisionTree```\n\n\n\ndeserializer: System.IO.Deserializer\n\nreturn: DecisionTree"]
+				},
+				"Score": {
+					"descriptions": ["**Computes classification accuracy on labeled data, comparing predictions against the class label in the LAST column.**\n\n```method : public : Score(input:Bool[,]) ~ Float```\n\n\n\ninput: Bool[,]\n\nreturn: Float"]
+				},
+				"Split": {
+					"descriptions": ["**Splits a matrix along the given column**\n\n```function : native : Split(index:Int, input:Bool[,]) ~ Bool[,]```\n\n\n\nindex: Int\n\ninput: Bool[,]\n\nreturn: Bool[,]"]
+				},
+				"Store": {
+					"descriptions": ["**Saves the fitted tree to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
 				},
 				"Train": {
-					"descriptions": ["**Calculates a list of decision splits**\n\n```method : public : native : Train(split_perc:Float, input:BoolMatrixRef) ~ Nil```\n\n\n\nsplit_perc: Float\n\ninput: BoolMatrixRef\n\nreturn: Nil", "**Calculates a list of decision splits**\n\n```method : public : native : Train(split_perc:Float, input:Bool[,]) ~ Nil```\n\n\n\nsplit_perc: Float\n\ninput: Bool[,]\n\nreturn: Nil"]
+					"descriptions": ["**Calculates a list of decision splits**\n\n```function : native : Train(input:Bool[,]) ~ Vector&lt;Split&gt;```\n\n\n\ninput: Bool[,]\n\nreturn: Vector&lt;Split&gt;"]
+				},
+				"WriteTo": {
+					"descriptions": ["**Serializes the tree (hyperparameters + nodes in pre-order) onto an existing serializer; used by Store and by ensembles that embed trees (RandomForest).**\n\n```method : public : WriteTo(serializer:System.IO.Serializer) ~ Nil```\n\n\n\nserializer: System.IO.Serializer\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -7605,6 +8310,52 @@
 				},
 				"ToString": {
 					"descriptions": ["**Formats a cookie into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"Web.HTTP.Http2Client": {
+			"description": "HTTP\/2 client over TLS (h2). Maintains a persistent multiplexed connection via a native Http2Session.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Creates an HTTP\/2 client connected to the given host.**\n\n```New(host:String, port:Int)```\n\n\n\nhost: String\n\nport: Int"]
+				},
+				"QuickDelete": {
+					"descriptions": ["**Performs an HTTP\/2 DELETE from a URL with custom headers.**\n\n```function : QuickDelete(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickGet": {
+					"descriptions": ["**Performs an HTTP\/2 GET from a URL with custom headers.**\n\n```function : QuickGet(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickPatch": {
+					"descriptions": ["**Performs an HTTP\/2 PATCH from a URL in one call.**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/2 PATCH from a URL with a content type.**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/2 PATCH from a URL with content type and headers.**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickPost": {
+					"descriptions": ["**Performs an HTTP\/2 POST from a URL with a content type.**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/2 POST from a URL with content type and headers.**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickPut": {
+					"descriptions": ["**Performs an HTTP\/2 PUT from a URL in one call.**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/2 PUT from a URL with a content type.**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/2 PUT from a URL with content type and headers.**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				}
+			}
+		},
+		"Web.HTTP.Http3Client": {
+			"description": "HTTP\/3 client over QUIC. Maintains a persistent QUIC connection via a native Http3Session.",
+			"functions": {
+				"New": {
+					"descriptions": ["**Creates an HTTP\/3 client connected to the given host.**\n\n```New(host:String, port:Int)```\n\n\n\nhost: String\n\nport: Int"]
+				},
+				"QuickDelete": {
+					"descriptions": ["**Performs an HTTP\/3 DELETE from a URL with custom headers.**\n\n```function : QuickDelete(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickGet": {
+					"descriptions": ["**Performs an HTTP\/3 GET from a URL with custom headers.**\n\n```function : QuickGet(url:Web.HTTP.Url, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickPatch": {
+					"descriptions": ["**Performs an HTTP\/3 PATCH from a URL in one call.**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/3 PATCH from a URL with a content type.**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/3 PATCH from a URL with content type and headers.**\n\n```function : QuickPatch(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickPost": {
+					"descriptions": ["**Performs an HTTP\/3 POST from a URL with a content type.**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/3 POST from a URL with content type and headers.**\n\n```function : QuickPost(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
+				},
+				"QuickPut": {
+					"descriptions": ["**Performs an HTTP\/3 PUT from a URL in one call.**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[]) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/3 PUT from a URL with a content type.**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[], content_type:String) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nreturn: Web.HTTP.Response", "**Performs an HTTP\/3 PUT from a URL with content type and headers.**\n\n```function : QuickPut(url:Web.HTTP.Url, data:Byte[], content_type:String, headers:Map&lt;String,String&gt;) ~ Web.HTTP.Response```\n\n\n\nurl: Web.HTTP.Url\n\ndata: Byte[]\n\ncontent_type: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Web.HTTP.Response"]
 				}
 			}
 		},
@@ -8490,1343 +9241,1475 @@
 	"class-bundle-names": {
 		"AudioPart": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"BinaryPart": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"CachedContent": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"CachedContentItem": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Candidate": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Chat": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Content": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"EmbeddingValues": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"EndPoint": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"FileManager": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"GeminiFile": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Model": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"OAuthEndPoint": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Part": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"TextPart": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Chunk": {
 			"bundle": "API.Google.Gemini.Corpus"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Corpus": {
 			"bundle": "API.Google.Gemini.Corpus"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Document": {
 			"bundle": "API.Google.Gemini.Corpus"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Dataset": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Hyperparameters": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"TunedModel": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Tuner": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"TuningExample": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"TuningTask": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Chat": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"Completion": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"EndPoint": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"Model": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"ModelDetails": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"ModelInfo": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"ModelPulled": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"Options": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"Tool": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"DeepLabClassification": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"DeepLabResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"DeepLabSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceDetection": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceDetectionResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceRecognitionResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"OnnxRuntime": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"OpenPoseClassification": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"OpenPoseResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"OpenPoseSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Phi3Result": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Phi3Session": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Phi3Tokenizer": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Phi3VisionSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"ResNetResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"ResNetSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"YoloClassification": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"YoloResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"YoloSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Assistant": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Batch": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"BatchJob": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Contents": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Embedding": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"EndPoint": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"File": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"FileQuery": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Image": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"ImageQuery": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Message": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Models": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Moderation": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"ModerationResult": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Realtime": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Run": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Thread": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"VectorStore": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"VectorStoreFile": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Speech": {
 			"bundle": "API.OpenAI.Audio"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Transcription": {
 			"bundle": "API.OpenAI.Audio"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Choice": {
 			"bundle": "API.OpenAI.Chat"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Completion": {
 			"bundle": "API.OpenAI.Chat"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Conversation": {
 			"bundle": "API.OpenAI.Chat"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Content": {
 			"bundle": "API.OpenAI.Responses"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Output": {
 			"bundle": "API.OpenAI.Responses"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Response": {
 			"bundle": "API.OpenAI.Responses"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Tool": {
 			"bundle": "API.OpenAI.Responses"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Checkpoint": {
 			"bundle": "API.OpenAI.Tuning"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Job": {
 			"bundle": "API.OpenAI.Tuning"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Tuner": {
 			"bundle": "API.OpenAI.Tuning"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Image": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Point": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Rect": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Scalar": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Size": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"VideoCapture": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"VideoWriter": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Analysis": {
 			"bundle": "App"
-,			"file": ""
+,			"file": "diags.obl"
  		},
 		"Decrypt": {
 			"bundle": "Cipher"
-,			"file": ""
+,			"file": "cipher.obl"
  		},
 		"Encrypt": {
 			"bundle": "Cipher"
-,			"file": ""
+,			"file": "cipher.obl"
  		},
 		"Hash": {
 			"bundle": "Cipher"
-,			"file": ""
+,			"file": "cipher.obl"
  		},
 		"BackwardIterator": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Cache": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CompareBackwardIterator": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CompareForwardIterator": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CompareList": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CompareVector": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"ForwardIterator": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Hash": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"HashSet": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Heap": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"List": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Map": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"MultiMap": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Pair": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Queue": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Set": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"SetHash": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Stack": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Vector": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Pair": {
 			"bundle": "Collection.Tuple"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Quartet": {
 			"bundle": "Collection.Tuple"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Quintet": {
 			"bundle": "Collection.Tuple"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Triplet": {
 			"bundle": "Collection.Tuple"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CsvColumn": {
 			"bundle": "Data.CSV"
-,			"file": ""
+,			"file": "csv.obl"
  		},
 		"CsvRow": {
 			"bundle": "Data.CSV"
-,			"file": ""
+,			"file": "csv.obl"
  		},
 		"CsvTable": {
 			"bundle": "Data.CSV"
-,			"file": ""
+,			"file": "csv.obl"
  		},
 		"JsonBuilder": {
 			"bundle": "Data.JSON"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"JsonElement": {
 			"bundle": "Data.JSON"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"JsonParser": {
 			"bundle": "Data.JSON"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"Client": {
 			"bundle": "Data.JSON.RPC"
-,			"file": ""
+,			"file": "json_rpc.obl"
  		},
 		"Server": {
 			"bundle": "Data.JSON.RPC"
-,			"file": ""
+,			"file": "json_rpc.obl"
  		},
 		"FunctionType": {
 			"bundle": "Data.JSON.Scheme"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"ParameterType": {
 			"bundle": "Data.JSON.Scheme"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"StreamParser": {
 			"bundle": "Data.JSON.Stream"
-,			"file": ""
+,			"file": "json_stream.obl"
  		},
 		"XmlAttribute": {
 			"bundle": "Data.XML"
-,			"file": ""
+,			"file": "xml.obl"
  		},
 		"XmlBuilder": {
 			"bundle": "Data.XML"
-,			"file": ""
+,			"file": "xml.obl"
  		},
 		"XmlElement": {
 			"bundle": "Data.XML"
-,			"file": ""
+,			"file": "xml.obl"
  		},
 		"XmlParser": {
 			"bundle": "Data.XML"
-,			"file": ""
+,			"file": "xml.obl"
  		},
 		"ColumnInfo": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"Connection": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"Date": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"ParameterStatement": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"ResultSet": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"Timestamp": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"AnimatedImageSprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"GameFramework": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"ImageSprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Position": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Rectangle": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Shape": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Sprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"TextSprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"TitledImageSprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Vector2": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"CPU": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Clipboard": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Color": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Core": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Cursor": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Display": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"DisplayMode": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Event": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Filesystem": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Font": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"GameController": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"GameControllerButtonBind": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Hints": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Image": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"JoyAxisEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"JoyButtonEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"JoyHatEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Joystick": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Keyboard": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"KeyboardEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Keysym": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MixChunk": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MixMusic": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Mixer": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MouseButtonEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MouseMotionEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MouseWheelEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"PixelData": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"PixelFormat": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Platform": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Point": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Power": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Rect": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Renderer": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"RendererInfo": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Surface": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"TextInputEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Texture": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Timer": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Window": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Lame": {
 			"bundle": "Game.SDL2.Aux"
-,			"file": ""
+,			"file": "lame.obl"
  		},
 		"RegEx": {
 			"bundle": "Query.RegEx"
-,			"file": ""
+,			"file": "regex.obl"
  		},
 		"Result": {
 			"bundle": "Query.RegEx"
-,			"file": ""
+,			"file": "regex.obl"
  		},
 		"Finder": {
 			"bundle": "Query.Structured"
-,			"file": ""
+,			"file": "query.obl"
  		},
 		"Row": {
 			"bundle": "Query.Structured"
-,			"file": ""
+,			"file": "query.obl"
  		},
 		"Table": {
 			"bundle": "Query.Structured"
-,			"file": ""
+,			"file": "query.obl"
  		},
 		"Base": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"BaseArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"BasicCompare": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Bool": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"BoolArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"BoolRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Byte": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"ByteArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"ByteBuffer": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"ByteRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Char": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CharArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CharRange": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CharRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Clone": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CommandOutput": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Compare": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CompareArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Float": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FloatArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FloatRange": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FloatRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Func2Ref": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Func3Ref": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Func4Ref": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FuncRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Int": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"IntArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"IntRange": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"IntRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Number": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Primitive": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Range": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Runtime": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"String": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"StringArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Stringify": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
+ 		},
+		"AStar": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"BreadthFirst": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"DepthFirst": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"Dijkstra": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"EnergyFunction": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"Environment": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"FitnessFunction": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"GameState": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"GeneticAlgorithm": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"Graph": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"MarkovDecisionProcess": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"Minimax": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"MonteCarloTreeSearch": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"QLearning": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"Sarsa": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"SearchResult": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"SimulatedAnnealing": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
+ 		},
+		"StepResult": {
+			"bundle": "System.AI"
+,			"file": "ai_search.obl"
  		},
 		"DllProxy": {
 			"bundle": "System.API"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Thread": {
 			"bundle": "System.Concurrency"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"ThreadMutex": {
 			"bundle": "System.Concurrency"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Analyzer": {
 			"bundle": "System.Diagnostics"
-,			"file": ""
+,			"file": "diags.obl"
  		},
 		"Console": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Deserializer": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"InputStream": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"OutputStream": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Pipe": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Serializer": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Directory": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"File": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FileReader": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FileReaderWriter": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FileWriter": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"HardLink": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Logger": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"SymbolicLink": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"DTLSSocket": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"DTLSSocketServer": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Http2Session": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Http3Session": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TCPSecureSocket": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TCPSecureSocketServer": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TCPSocket": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TCPSocketServer": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"UDPSocket": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"UDPSocketServer": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"OAuthClient": {
 			"bundle": "System.IO.Net.OAuth"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"OAuthToken": {
 			"bundle": "System.IO.Net.OAuth"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"Class": {
 			"bundle": "System.Introspection"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"DataType": {
 			"bundle": "System.Introspection"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Method": {
 			"bundle": "System.Introspection"
-,			"file": ""
+,			"file": "lang.obl"
+ 		},
+		"AdaBoost": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"BayesEntry": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"BayesGroup": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"BoolMatrixRef": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"CrossValidation": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
-		"DecisionTree": {
+		"DBSCAN": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"ElasticNet": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"FeatureScaler": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"FloatMatrixRef": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"GaussianMixture": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"GaussianNaiveBayes": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"GradientBoostedTrees": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"KDTree": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"KMeans": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"KMeansGroup": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"KMeansGrouping": {
 			"bundle": "System.ML"
-,			"file": ""
- 		},
-		"KNearestNeighbors": {
-			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"KNeighbor": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"LassoRegression": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"LinearRegression": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"LinearResult": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"LinearSolver": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"LogisticRegression": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"Matrix2D": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"MatrixReader": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"Metrics": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"NaiveBayes": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"NeuralNetwork": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"PCA": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"Perceptron": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"RandomForest": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"RegressionTree": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"RegressionTreeNode": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"RidgeRegression": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"SVM": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"TreeNode": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"SentimentAnalyzer": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"SentimentResult": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"TF_IDF": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"TextPreprocessor": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"TextSimilarity": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"Tokenizer": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"Alarm": {
 			"bundle": "System.Time"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Date": {
 			"bundle": "System.Time"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"DateUtility": {
 			"bundle": "System.Time"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Timer": {
 			"bundle": "System.Time"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CodeFormatter": {
 			"bundle": "System.Utility"
-,			"file": ""
+,			"file": "misc.obl"
  		},
 		"Parser": {
 			"bundle": "System.Utility"
-,			"file": ""
+,			"file": "misc.obl"
  		},
 		"Spinner": {
 			"bundle": "System.Utility"
-,			"file": ""
+,			"file": "misc.obl"
  		},
 		"Cookie": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
+ 		},
+		"Http2Client": {
+			"bundle": "Web.HTTP"
+,			"file": "net_common.obl"
+ 		},
+		"Http3Client": {
+			"bundle": "Web.HTTP"
+,			"file": "net_common.obl"
  		},
 		"HttpClient": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"HttpsClient": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"Response": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"SSEEvent": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"SSEStream": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"SecureWebSocket": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"Url": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"WebDownloader": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"WebSocket": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"HttpRequestHandler": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"HttpsRequestHandler": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"MultipartContent": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"MultipartDecoder": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"MultipartEncoder": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"Request": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"RequestPageHandler": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"Response": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"WebServer": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"WebServerConfig": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"McpRequestHandler": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"McpServer": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"PromptArgument": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"PromptItem": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"PromptMessage": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ResourceContent": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ResourceItem": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ResourceTemplate": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ToolContent": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ToolItem": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"RSSChannel": {
 			"bundle": "Web.RSS"
-,			"file": ""
+,			"file": "rss.obl"
  		},
 		"RSSPost": {
 			"bundle": "Web.RSS"
-,			"file": ""
+,			"file": "rss.obl"
  		},
 		"RSSReader": {
 			"bundle": "Web.RSS"
-,			"file": ""
+,			"file": "rss.obl"
  		},
 		"Result": {
 			"bundle": "for"
-,			"file": ""
+,			"file": "diags.obl"
  		}
 	}
 }
