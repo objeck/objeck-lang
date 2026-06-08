@@ -1,8 +1,19 @@
 import AppKit
 
+/// Content view that reports system dark/light (effective appearance) changes
+/// so the window can re-theme live when the user toggles Appearance.
+final class AppearanceView: NSView {
+  var onAppearanceChange: (() -> Void)?
+  override func viewDidChangeEffectiveAppearance() {
+    super.viewDidChangeEffectiveAppearance()
+    onAppearanceChange?()
+  }
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate {
   var window: NSWindow!
   var installPath: String = ""
+  let logoView = NSImageView()
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     // Bundle.main.bundlePath is the .app directory itself (…/app/Objeck.app),
@@ -37,19 +48,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     window.titlebarAppearsTransparent = true
     window.titleVisibility = .hidden
 
-    let contentView = NSView(frame: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight))
+    let contentView = AppearanceView(frame: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight))
     contentView.translatesAutoresizingMaskIntoConstraints = false
+    contentView.onAppearanceChange = { [weak self] in self?.updateLogo() }
     window.contentView = contentView
 
-    // Logo
-    let logoView = NSImageView()
+    // Logo (image chosen for the active dark/light appearance)
     logoView.translatesAutoresizingMaskIntoConstraints = false
     logoView.imageScaling = .scaleProportionallyUpOrDown
-
-    let bannerPath = "\(installPath)/doc/api/style/objeck-logo-alt.png"
-    if let image = NSImage(contentsOfFile: bannerPath) {
-      logoView.image = image
-    }
+    updateLogo()
     contentView.addSubview(logoView)
 
     // Separator
@@ -86,7 +93,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Layout
     NSLayoutConstraint.activate([
       logoView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 24),
-      logoView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+      logoView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
       logoView.widthAnchor.constraint(equalToConstant: 120),
       logoView.heightAnchor.constraint(equalToConstant: 46),
 
@@ -101,6 +108,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
+  }
+
+  /// Pick the logo that reads against the current background: the dark-lettered
+  /// logo for light mode, the white "alt" logo for dark mode. The shipped PNGs
+  /// are two-color (blue accent), so we swap assets rather than tint a template.
+  func updateLogo() {
+    let appearance = window?.effectiveAppearance ?? NSApp.effectiveAppearance
+    let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    let name = isDark ? "objeck-logo-alt.png" : "objeck-logo.png"
+    let path = "\(installPath)/doc/api/style/\(name)"
+    if let image = NSImage(contentsOfFile: path) {
+      logoView.image = image
+    }
   }
 
   func makeButton(title: String, symbol: String, action: Selector) -> NSButton {
