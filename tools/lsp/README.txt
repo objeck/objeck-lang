@@ -1,3 +1,8 @@
+v2026.6.0
+* New System.AI library, System.ML overhaul, record types, JIT/compiler fixes
+* Bumped to support Objeck v2026.6.0
+---
+
 v2026.5.3
 * JIT select dispatch, API doc overhaul, ODBC improvements, bug fixes
 * Bumped to support Objeck v2026.5.3
