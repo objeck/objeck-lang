@@ -5,12 +5,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   var installPath: String = ""
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    // Bundle.main.bundlePath is the .app directory itself (…/app/Objeck.app),
+    // not the executable. Strip Objeck.app then app to reach the install root.
     let bundlePath = Bundle.main.bundlePath
     installPath = URL(fileURLWithPath: bundlePath)
-      .deletingLastPathComponent()  // MacOS
-      .deletingLastPathComponent()  // Contents
-      .deletingLastPathComponent()  // Objeck.app
-      .deletingLastPathComponent()  // app
+      .deletingLastPathComponent()  // Objeck.app -> …/app
+      .deletingLastPathComponent()  // app        -> install root
       .path
 
     setupWindow()
@@ -63,7 +63,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     stack.translatesAutoresizingMaskIntoConstraints = false
     stack.orientation = .vertical
     stack.spacing = 8
-    stack.alignment = .centerX
+    stack.alignment = .leading
+    stack.distribution = .fill
     contentView.addSubview(stack)
 
     let actions: [(String, String, Selector)] = [
@@ -77,14 +78,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     for (title, symbolName, action) in actions {
       let button = makeButton(title: title, symbol: symbolName, action: action)
       stack.addArrangedSubview(button)
-      button.widthAnchor.constraint(equalToConstant: windowWidth - 48).isActive = true
+      // full-width buttons (match the stack width) so titles left-justify like Windows
+      button.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
       button.heightAnchor.constraint(equalToConstant: 40).isActive = true
     }
 
     // Layout
     NSLayoutConstraint.activate([
       logoView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 24),
-      logoView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+      logoView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
       logoView.widthAnchor.constraint(equalToConstant: 120),
       logoView.heightAnchor.constraint(equalToConstant: 46),
 
@@ -93,7 +95,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       separator.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
 
       stack.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 16),
-      stack.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+      stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+      stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
     ])
 
     window.makeKeyAndOrderFront(nil)
@@ -110,6 +113,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     button.target = self
     button.action = action
     button.imagePosition = .imageLeft
+    button.alignment = .left
     button.contentTintColor = .controlAccentColor
 
     if #available(macOS 11.0, *) {
