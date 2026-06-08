@@ -154,6 +154,14 @@ ul li,ol li {
 margin-bottom:6px
 }
 
+/* full-width anchor so the inline logo always centers, regardless of the
+   <a>/<picture> wrapping inside the flex banner */
+.banner a {
+display:block;
+width:100%;
+text-align:center
+}
+
 .logo {
 margin-top:6px;
 height:85px;
