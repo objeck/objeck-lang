@@ -10,6 +10,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
 #pragma comment(lib, "winhttp.lib")
+#pragma comment(lib, "comctl32.lib")
 
 using namespace Gdiplus;
 
@@ -28,6 +29,16 @@ WCHAR szWindowClass[MAX_LOADSTRING];
 std::wstring applicationPath;
 std::wstring programDataPath;
 Image* bannerImage;
+UINT g_dpi = 96;  // DPI of the launcher window; set once the window exists
+
+// scale a logical (96-DPI) measurement to the window's actual DPI
+static int Scale(int value, UINT dpi) { return MulDiv(value, dpi, 96); }
+
+// shared layout metrics in logical (96-DPI) units; used by InitInstance
+// (window/button layout) and WM_PAINT (banner) so they stay aligned
+static const int kMargin     = 18;
+static const int kBannerTop  = 18;
+static const int kBannerBand = 120;
 
 ATOM RegisterWndClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
@@ -99,11 +110,14 @@ BOOL EnableMicaEffect(HWND hwnd) {
     return TRUE;
 }
 
-// one shared UI font for every control (was leaking an HFONT per button)
+// one shared UI font for every control (was leaking an HFONT per button).
+// Created lazily so it picks up g_dpi, which InitInstance sets before the
+// first control is made; an 11pt font keeps the button labels readable at
+// any display scale.
 HFONT GetModernFont() {
-    static HFONT font = CreateFont(0, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                                   DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                   CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Segoe UI Variable");
+    static HFONT font = CreateFontW(-MulDiv(11, g_dpi, 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                    CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Segoe UI Variable");
     return font;
 }
 
@@ -113,7 +127,29 @@ void ApplyModernStyle(HWND hwnd) {
 }
 
 void ApplyButtonIcon(HWND hwnd, HICON hIcon) {
-    SendMessage(hwnd, BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
+    // Use a button image list aligned left (BM_SETIMAGE centers the icon+text
+    // group, which looks off in a left-aligned list). Size the list to the
+    // icon's real pixels so it isn't clipped or padded.
+    int cx = GetSystemMetrics(SM_CXICON), cy = GetSystemMetrics(SM_CYICON);
+    ICONINFO ii = {};
+    if(GetIconInfo(hIcon, &ii)) {
+        BITMAP bm = {};
+        if(GetObject(ii.hbmColor ? ii.hbmColor : ii.hbmMask, sizeof(bm), &bm)) {
+            cx = bm.bmWidth;
+            cy = ii.hbmColor ? bm.bmHeight : bm.bmHeight / 2;  // mask is double-height
+        }
+        if(ii.hbmColor) DeleteObject(ii.hbmColor);
+        if(ii.hbmMask) DeleteObject(ii.hbmMask);
+    }
+
+    HIMAGELIST himl = ImageList_Create(cx, cy, ILC_COLOR32 | ILC_MASK, 1, 0);
+    ImageList_AddIcon(himl, hIcon);
+
+    BUTTON_IMAGELIST bil = {};
+    bil.himl = himl;
+    bil.uAlign = BUTTON_IMAGELIST_ALIGN_LEFT;
+    bil.margin = { Scale(kMargin, g_dpi), 0, Scale(10, g_dpi), 0 };  // pad left edge, gap before text
+    Button_SetImageList(hwnd, &bil);
 }
 
 ATOM RegisterWndClass(HINSTANCE hInstance)
@@ -212,49 +248,71 @@ Image* LoadImageFromResource(HINSTANCE hInstance, UINT resourceID, LPCWSTR resou
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
   hInst = hInstance;
 
-  const int wndWidth = 420;
-  const int wndHeight = 645;
-  const int buttonHeight = 82;
-  const int padding = 35;
-
   bannerImage = LoadImageFromResource(hInst, IDC_APP_ICON, L"PNG");
-  
-  HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-                            CW_USEDEFAULT, CW_USEDEFAULT, wndWidth, wndHeight, nullptr,
-                            nullptr, hInstance, nullptr);
+
+  const DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+
+  // Create the window first so we can query the DPI of the monitor it landed
+  // on, then size it precisely for that scale factor. The app is per-monitor
+  // DPI aware, so fixed pixel sizes render tiny and cramped on high-DPI
+  // displays (clipped title, overflowing banner, buttons below the edge).
+  HWND hWnd = CreateWindowW(szWindowClass, szTitle, style,
+                            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+                            nullptr, nullptr, hInstance, nullptr);
 
   if(!hWnd) {
     return FALSE;
   }
 
-  EnableMicaEffect(hWnd);
+  const UINT dpi = GetDpiForWindow(hWnd);
+  g_dpi = dpi;  // GetModernFont() reads this when it builds the shared font
 
   // buttons are always created; the stock icon is decoration and may be
   // unavailable (previously a failed icon lookup silently dropped the button)
   struct LauncherAction {
     LPCWSTR text;
     int id;
-    int y;
     SHSTOCKICONID icon;
   };
   const LauncherAction actions[] = {
-    { L"Command Prompt",      CMD_BUTTON,     145,                    SIID_RENAME },
-    { L"API Documentation",   API_BUTTON,     buttonHeight * 1 + 155, SIID_DOCASSOC },
-    { L"Code Examples",       EXAMPLE_BUTTON, buttonHeight * 2 + 165, SIID_AUTOLIST },
-    { L"Text Editor Support", EDITOR_BUTTON,  buttonHeight * 3 + 175, SIID_STACK },
-    { L"Read Me",             README_BUTTON,  buttonHeight * 4 + 185, SIID_HELP },
+    { L"Command Prompt",      CMD_BUTTON,     SIID_RENAME },
+    { L"API Documentation",   API_BUTTON,     SIID_DOCASSOC },
+    { L"Code Examples",       EXAMPLE_BUTTON, SIID_AUTOLIST },
+    { L"Text Editor Support", EDITOR_BUTTON,  SIID_STACK },
+    { L"Read Me",             README_BUTTON,  SIID_HELP },
   };
 
+  // uniform vertical rhythm for the button stack (logical units)
+  const int buttonHeight = 56;
+  const int buttonGap    = 12;
+  const int buttonTop    = kBannerTop + kBannerBand + 18;
+  const int clientWidth  = 380;
+  const int buttonCount  = ARRAYSIZE(actions);
+  const int clientHeight = buttonTop + buttonCount * buttonHeight +
+                           (buttonCount - 1) * buttonGap + 18;
+
+  // resize so the CLIENT area is exactly clientWidth x clientHeight at this DPI
+  RECT rc = { 0, 0, Scale(clientWidth, dpi), Scale(clientHeight, dpi) };
+  AdjustWindowRectExForDpi(&rc, style, FALSE, 0, dpi);
+  SetWindowPos(hWnd, nullptr, 0, 0, rc.right - rc.left, rc.bottom - rc.top,
+               SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+  EnableMicaEffect(hWnd);
+
+  int y = buttonTop;
   for(const LauncherAction& action : actions) {
-    HWND hWndButton = CreateWindow(WC_BUTTON, action.text, WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                   10, action.y, wndWidth - padding, buttonHeight, hWnd,
-                                   (HMENU)(INT_PTR)action.id, hInstance, nullptr);
+    HWND hWndButton = CreateWindow(WC_BUTTON, action.text,
+                                   WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_LEFT | BS_VCENTER,
+                                   Scale(kMargin, dpi), Scale(y, dpi),
+                                   Scale(clientWidth - 2 * kMargin, dpi), Scale(buttonHeight, dpi),
+                                   hWnd, (HMENU)(INT_PTR)action.id, hInstance, nullptr);
     ApplyModernStyle(hWndButton);
 
     SHSTOCKICONINFO icon = { sizeof(icon) };
-    if(SUCCEEDED(SHGetStockIconInfo(action.icon, SHGSI_ICON, &icon))) {
+    if(SUCCEEDED(SHGetStockIconInfo(action.icon, SHGSI_ICON | SHGSI_LARGEICON, &icon))) {
       ApplyButtonIcon(hWndButton, icon.hIcon);
     }
+    y += buttonHeight + buttonGap;
   }
 
   ShowWindow(hWnd, nCmdShow);
@@ -390,8 +448,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     HDC hdc = BeginPaint(hWnd, &ps);
 
     if(bannerImage) {
+      RECT rc;
+      GetClientRect(hWnd, &rc);
+      const UINT dpi = GetDpiForWindow(hWnd);
+
+      const int bandTop = Scale(kBannerTop, dpi);
+      const int bandH   = Scale(kBannerBand, dpi);
+      const int maxW    = rc.right - Scale(2 * kMargin, dpi);
+
+      // fit the wordmark into its band, preserving aspect ratio, centered
+      const UINT iw = bannerImage->GetWidth();
+      const UINT ih = bannerImage->GetHeight();
+      int h = bandH;
+      int w = MulDiv(h, iw, ih);
+      if(w > maxW) { w = maxW; h = MulDiv(w, ih, iw); }
+      const int x = (rc.right - w) / 2;
+      const int yImg = bandTop + (bandH - h) / 2;
+
       Graphics graphics(hdc);
-      graphics.DrawImage(bannerImage, 60, 10, bannerImage->GetWidth(), bannerImage->GetHeight());
+      graphics.SetInterpolationMode(InterpolationModeHighQualityBicubic);
+      graphics.DrawImage(bannerImage, x, yImg, w, h);
     }
 
     EndPaint(hWnd, &ps);
