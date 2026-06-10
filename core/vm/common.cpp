@@ -836,7 +836,7 @@ void ObjectSerializer::Serialize(size_t* inst) {
 size_t* ObjectDeserializer::DeserializeObject() {
   // read object id
   const INT_VALUE char_array_size = DeserializeInt();
-  if(char_array_size < 0) {
+  if(char_array_size < 0 || !CanRead(char_array_size)) {
     return nullptr;
   }
   char* temp = new char[char_array_size + 1];
@@ -915,7 +915,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long byte_array_size = DeserializeInt();
             const long byte_array_dim = DeserializeInt();
             const long byte_array_size_dim = DeserializeInt();
-            if(byte_array_size < 0 || byte_array_dim < 0) {
+            if(byte_array_size < 0 || byte_array_dim < 0 || !CanRead(byte_array_size)) {
               return nullptr;
             }
             size_t* byte_array = MemoryManager::AllocateArray((size_t)(byte_array_size + ((byte_array_dim + 2) * sizeof(size_t))),
@@ -1820,7 +1820,11 @@ wchar_t TrapProcessor::DeserializeChar(size_t* inst)
   size_t* byte_array = (size_t*)inst[0];
   const long dest_pos = (long)inst[1];
 
-  if(byte_array && dest_pos < (long)byte_array[0]) {
+  // Require the full 'num' bytes to be in range, not just the start offset
+  // (num and the source buffer are attacker-controlled). Bounding num also
+  // keeps 'num + 1' below from overflowing.
+  if(byte_array && num >= 0 && dest_pos >= 0 && dest_pos <= (long)byte_array[0] &&
+     num <= (long)byte_array[0] - dest_pos) {
     const char* byte_array_ptr = (char*)(byte_array + 3);
     char* in = new char[num + 1];
     memcpy(in, byte_array_ptr + dest_pos, num);
@@ -1865,7 +1869,9 @@ INT_VALUE TrapProcessor::DeserializeInt(size_t* inst)
   size_t* byte_array = (size_t*)inst[0];
   const long dest_pos = (long)inst[1];
 
-  if(byte_array && dest_pos < (long)byte_array[0]) {
+  // Require all sizeof(value) bytes to be in range, not just the start offset.
+  if(byte_array && dest_pos >= 0 && dest_pos <= (long)byte_array[0] &&
+     (long)sizeof(INT_VALUE) <= (long)byte_array[0] - dest_pos) {
     const char* byte_array_ptr = (char*)(byte_array + 3);
     INT_VALUE value;
     memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
@@ -8655,7 +8661,14 @@ void TrapProcessor::ReadSerializedBytes(size_t* dest_array, const size_t* src_ar
     const long src_array_size = (long)src_array[0];
     long dest_array_size = (long)dest_array[0];
 
-    if(dest_pos < src_array_size) {
+    // Source bytes consumed per logical element: 8 for int/float arrays, 1 for
+    // byte/char. dest_array_size is attacker-controlled; previously only the
+    // start offset was checked, allowing a large over-read past the source
+    // buffer into a program-visible array (memory disclosure).
+    const long elem = (type == INT_ARY_PARM) ? (long)sizeof(INT_VALUE)
+                    : (type == FLOAT_ARY_PARM) ? (long)sizeof(FLOAT_VALUE) : 1;
+    if(dest_pos >= 0 && dest_array_size >= 0 && dest_pos <= src_array_size &&
+       dest_array_size <= (src_array_size - dest_pos) / elem) {
       const char* src_array_ptr = (char*)(src_array + 3);
       char* dest_array_ptr = (char*)(dest_array + 3);
 

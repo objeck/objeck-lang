@@ -342,23 +342,23 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
 
 size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, size_t stack_pos, bool collect)
 {
-  size_t calc_size;
+  size_t elem_size;
   size_t* mem;
   switch (type) {
   case BYTE_ARY_TYPE:
-    calc_size = size * sizeof(char);
+    elem_size = sizeof(char);
     break;
 
   case CHAR_ARY_TYPE:
-    calc_size = size * sizeof(wchar_t);
+    elem_size = sizeof(wchar_t);
     break;
 
   case INT_TYPE:
-    calc_size = size * sizeof(size_t);
+    elem_size = sizeof(size_t);
     break;
 
   case FLOAT_TYPE:
-    calc_size = size * sizeof(FLOAT_VALUE);
+    elem_size = sizeof(FLOAT_VALUE);
     break;
 
   default:
@@ -366,6 +366,14 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
     exit(1);
   }
 
+  // Guard against integer overflow in the size computation: a wrapped value
+  // would under-allocate while the logical array bound (mem[0]) stays huge,
+  // letting in-range indices address memory past the buffer. Fail closed.
+  if(size > (~(size_t)0 - sizeof(size_t) * EXTRA_BUF_SIZE) / elem_size) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    exit(1);
+  }
+  const size_t calc_size = size * elem_size;
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
 
   // Allocate in old gen (bump allocator disabled — promotion/fixup cannot safely

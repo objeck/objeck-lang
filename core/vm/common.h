@@ -915,6 +915,12 @@ class StackClass {
 #ifdef _DEBUG
     assert(id > -1 && id < method_num);
 #endif
+    // Release-mode bounds check: a method id from a crafted call instruction
+    // could otherwise read past methods[] and return a wild pointer that the
+    // interpreter would then invoke. Matches StackProgram::GetClass.
+    if(id < 0 || id >= method_num) {
+      return nullptr;
+    }
     return methods[id];
   }
 
@@ -1603,8 +1609,24 @@ class ObjectDeserializer
   size_t* instance;
   long instance_pos;
   std::map<INT_VALUE, size_t*> mem_cache;
+  bool read_error = false;
+
+  // Bounds guard: returns true only if 'n' more bytes can be read at the current
+  // offset without running past the input buffer. The buffer comes from an
+  // attacker-controllable Byte[] (network/file), so every read must be checked.
+  bool CanRead(INT_VALUE n) {
+    // Compare in 64-bit (INT_VALUE) so a large attacker-supplied size cannot
+    // truncate on platforms where 'long' is 32-bit (Windows).
+    if(n < 0 || buffer_offset < 0 || (INT_VALUE)buffer_offset > (INT_VALUE)buffer_array_size ||
+       n > (INT_VALUE)buffer_array_size - (INT_VALUE)buffer_offset) {
+      read_error = true;
+      return false;
+    }
+    return true;
+  }
 
   char DeserializeByte() {
+    if(!CanRead((long)sizeof(char))) { return 0; }
     char value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
@@ -1615,6 +1637,7 @@ class ObjectDeserializer
   wchar_t DeserializeChar() {
     // read
     const int num = DeserializeInt();
+    if(num < 0 || !CanRead(num)) { read_error = true; return L'\0'; }
     char* in = new char[num + 1];
     memcpy(in, buffer + buffer_offset, num);
     in[num] = '\0';
@@ -1630,6 +1653,7 @@ class ObjectDeserializer
   }
 
   INT_VALUE DeserializeInt() {
+    if(!CanRead((long)sizeof(INT_VALUE))) { return 0; }
     INT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
@@ -1638,6 +1662,7 @@ class ObjectDeserializer
   }
 
   FLOAT_VALUE DeserializeFloat() {
+    if(!CanRead((long)sizeof(FLOAT_VALUE))) { return 0; }
     FLOAT_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);

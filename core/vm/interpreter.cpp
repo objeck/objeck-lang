@@ -1751,13 +1751,24 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, siz
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
+    // overflow-safe accumulation; AllocateArray applies the final element-size guard
+    if(value != 0 && size > (~(size_t)0) / value) {
+      std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+      exit(1);
+    }
     size *= value;
     indices[dim++] = value;
   }
 
-  size_t* mem = is_float ? 
-    (size_t*)MemoryManager::AllocateArray(static_cast<long>(size) + dim + 2, FLOAT_TYPE, op_stack, *stack_pos) :
-    (size_t*)MemoryManager::AllocateArray(static_cast<long>(size) + dim + 2, INT_TYPE, op_stack, *stack_pos);
+  // Pass the full size_t element count (no narrowing cast — a 32-bit 'long'
+  // truncation would under-allocate while mem[0] below stays huge → OOB).
+  if(size > (~(size_t)0) - (size_t)dim - 2) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    exit(1);
+  }
+  size_t* mem = is_float ?
+    (size_t*)MemoryManager::AllocateArray(size + (size_t)dim + 2, FLOAT_TYPE, op_stack, *stack_pos) :
+    (size_t*)MemoryManager::AllocateArray(size + (size_t)dim + 2, INT_TYPE, op_stack, *stack_pos);
   mem[0] = size;
   mem[1] = dim;
 
@@ -1780,13 +1791,23 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
+    if(value != 0 && size > (~(size_t)0) / value) {
+      std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+      exit(1);
+    }
     size *= value;
     indices[dim++] = value;
   }
 
-  // null terminated string 
+  // null terminated string
   size++;
-  size_t* mem = MemoryManager::AllocateArray((long)(size + ((static_cast<size_t>(dim) + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
+  // overflow-safe header addition; no narrowing cast (a 32-bit 'long' truncation
+  // would under-allocate while mem[0] stays huge → OOB).
+  if(size == 0 || size > (~(size_t)0) - (static_cast<size_t>(dim) + 2) * sizeof(size_t)) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    exit(1);
+  }
+  size_t* mem = MemoryManager::AllocateArray(size + ((static_cast<size_t>(dim) + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1808,13 +1829,23 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
+    if(value != 0 && size > (~(size_t)0) / value) {
+      std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+      exit(1);
+    }
     size *= value;
     indices[dim++] = value;
   }
 
-  // null-terminated string 
+  // null-terminated string
   size++;
-  size_t* mem = MemoryManager::AllocateArray((long)(size + ((static_cast<size_t>(dim) + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
+  // overflow-safe header addition; no narrowing cast (a 32-bit 'long' truncation
+  // would under-allocate while mem[0] stays huge → OOB).
+  if(size == 0 || size > (~(size_t)0) - (static_cast<size_t>(dim) + 2) * sizeof(size_t)) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    exit(1);
+  }
+  size_t* mem = MemoryManager::AllocateArray(size + ((static_cast<size_t>(dim) + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   memcpy(mem + 2, indices, dim * sizeof(size_t));

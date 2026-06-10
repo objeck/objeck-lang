@@ -305,6 +305,10 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 void Loader::LoadClasses()
 {
   const int num_classes = ReadInt();
+  if(num_classes < 0) {
+    std::wcerr << L">>> Corrupt bytecode: negative class count <<<" << std::endl;
+    exit(1);
+  }
   long* cls_hierarchy = new long[num_classes];
   long** cls_interfaces = new long*[num_classes];
   StackClass** classes = new StackClass*[num_classes];
@@ -316,6 +320,12 @@ void Loader::LoadClasses()
   for(int i = 0; i < num_classes; ++i) {
     // read id and pid
     const int id = ReadInt();
+    // Validate before any classes[id]/cls_interfaces[id]/cls_hierarchy[id] store:
+    // a crafted .obe could otherwise drive an arbitrary-offset heap write.
+    if(id < 0 || id >= num_classes) {
+      std::wcerr << L">>> Corrupt bytecode: class id out of range <<<" << std::endl;
+      exit(1);
+    }
     std::wstring name = ReadString();
     const int pid = ReadInt();
     std::wstring parent_name = ReadString();
@@ -413,14 +423,23 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
 void Loader::LoadMethods(StackClass* cls, bool is_debug)
 {
   const int number = ReadInt();
+  if(number < 0) {
+    std::wcerr << L">>> Corrupt bytecode: negative method count <<<" << std::endl;
+    exit(1);
+  }
 #ifdef _DEBUG
   std::wcout << L"Reading " << number << L" method(s)..." << std::endl;
 #endif
-  
+
   StackMethod** methods = new StackMethod*[number];
   for(int i = 0; i < number; ++i) {
     // id
     const int id = ReadInt();
+    // Validate before the methods[id] store (crafted .obe → arbitrary heap write).
+    if(id < 0 || id >= number) {
+      std::wcerr << L">>> Corrupt bytecode: method id out of range <<<" << std::endl;
+      exit(1);
+    }
     // method type
     const bool is_virtual = ReadByte() != 0;
     // has and/or
