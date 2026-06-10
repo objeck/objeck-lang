@@ -575,6 +575,21 @@ public:
  ****************************/
 class IPSecureSocket {
  public:
+  // Operator opt-out of TLS certificate verification for secure CLIENT sockets,
+  // intended ONLY for testing against self-signed/dev servers. Default is OFF —
+  // certificates are verified (chain + hostname). Enable for a test run with
+  // OBJECK_TLS_INSECURE_SKIP_VERIFY=1. Cached on first read.
+  static bool InsecureSkipVerify() {
+    static int cached = -1;
+    if(cached < 0) {
+      size_t len = 0;
+      char val[8] = { 0 };
+      cached = (!getenv_s(&len, val, sizeof(val), "OBJECK_TLS_INSECURE_SKIP_VERIFY") && len > 0 &&
+                (val[0] == '1' || val[0] == 't' || val[0] == 'T' || val[0] == 'y' || val[0] == 'Y')) ? 1 : 0;
+    }
+    return cached == 1;
+  }
+
   static bool OpenH2(const char* address, int port, const std::string& pem_file, SecureSocketCtx*& sctx) {
     sctx = new SecureSocketCtx();
 
@@ -596,7 +611,14 @@ class IPSecureSocket {
                                        MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
     if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
 
-    mbedtls_ssl_conf_authmode(&sctx->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+    // REQUIRED by default: abort the handshake on any certificate failure
+    // (untrusted CA, expired, hostname mismatch). With OPTIONAL the handshake
+    // completes and the result must be checked manually via
+    // mbedtls_ssl_get_verify_result(); that check was absent here, so any
+    // certificate was accepted (MITM). OPTIONAL is used only when the operator
+    // opts into insecure mode for testing (see InsecureSkipVerify()).
+    mbedtls_ssl_conf_authmode(&sctx->conf,
+      InsecureSkipVerify() ? MBEDTLS_SSL_VERIFY_OPTIONAL : MBEDTLS_SSL_VERIFY_REQUIRED);
     mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
     mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
 
@@ -684,8 +706,12 @@ class IPSecureSocket {
       return false;
     }
 
-    // VERIFY_OPTIONAL allows self-signed certs (matching previous OpenSSL behavior)
-    mbedtls_ssl_conf_authmode(&sctx->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+    // REQUIRED by default so an untrusted/self-signed certificate aborts the
+    // handshake (prevents MITM). Operators can opt into accepting self-signed
+    // certs for testing via OBJECK_TLS_INSECURE_SKIP_VERIFY (see below).
+    const bool insecure_skip_verify = InsecureSkipVerify();
+    mbedtls_ssl_conf_authmode(&sctx->conf,
+      insecure_skip_verify ? MBEDTLS_SSL_VERIFY_OPTIONAL : MBEDTLS_SSL_VERIFY_REQUIRED);
     mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
     mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
 
@@ -718,13 +744,18 @@ class IPSecureSocket {
       }
     }
 
-    // Verify peer certificate (allow self-signed)
-    uint32_t flags = mbedtls_ssl_get_verify_result(&sctx->ssl);
-    if(flags != 0 && flags != MBEDTLS_X509_BADCERT_NOT_TRUSTED) {
-      sctx->last_error = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
-      delete sctx;
-      sctx = nullptr;
-      return false;
+    // In the default (secure) mode the handshake already enforced verification
+    // via VERIFY_REQUIRED, so reaching here means the cert is valid. In insecure
+    // test mode we used VERIFY_OPTIONAL, so accept an untrusted/self-signed cert
+    // but still reject other failures (e.g. hostname mismatch, expiry).
+    if(insecure_skip_verify) {
+      uint32_t flags = mbedtls_ssl_get_verify_result(&sctx->ssl);
+      if(flags != 0 && flags != MBEDTLS_X509_BADCERT_NOT_TRUSTED) {
+        sctx->last_error = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
+        delete sctx;
+        sctx = nullptr;
+        return false;
+      }
     }
 
     return true;

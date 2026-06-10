@@ -6965,6 +6965,14 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   }
   gnutls_credentials_set(ctx->tls_session, GNUTLS_CRD_CERTIFICATE, ctx->cred);
   gnutls_server_name_set(ctx->tls_session, GNUTLS_NAME_DNS, host.c_str(), host.size());
+  // Verify the server certificate chain (against system trust set above) and
+  // that it matches the requested hostname. Without this GnuTLS performs no peer
+  // verification, so the QUIC handshake would complete against any certificate
+  // (MITM). On failure the handshake aborts with a verification error. Operators
+  // can skip this for testing via OBJECK_TLS_INSECURE_SKIP_VERIFY.
+  if(!IPSecureSocket::InsecureSkipVerify()) {
+    gnutls_session_set_verify_cert(ctx->tls_session, host.c_str(), 0);
+  }
   int prio_ret = gnutls_priority_set_direct(ctx->tls_session,
       "NORMAL:-VERS-ALL:+VERS-TLS1.3", nullptr);
   gnutls_datum_t alpn_h3 = { (unsigned char*)"h3", 2 };
