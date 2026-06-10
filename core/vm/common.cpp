@@ -734,10 +734,10 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
             SerializeInt((INT_VALUE)array[2]);
             size_t* array_ptr = array + 3;
 
-            // values
-            for(int i = 0; i < array_size; i++) {
-              SerializeInt((INT_VALUE)array_ptr[i]);
-            }
+            // values: Int elements are stored as size_t (8 bytes); SerializeInt
+            // would truncate each to int32 (losing values > 2^32). Write the raw
+            // 8-byte elements (the deserializer reads them back the same way).
+            SerializeBytes(array_ptr, array_size * (long)sizeof(size_t));
           }
         }
         else {
@@ -1017,10 +1017,13 @@ size_t* ObjectDeserializer::DeserializeObject() {
             array[1] = array_dim;
             array[2] = array_size_dim;
             size_t* array_ptr = array + 3;
-            // copy content
-            for(int i = 0; i < array_size; i++) {
-              array_ptr[i] = DeserializeInt();
+            // copy content: raw 8-byte elements (must match SerializeBytes on the
+            // serialize side). Bounds-check the attacker-controlled length first.
+            if(!CanRead((INT_VALUE)array_size * (INT_VALUE)sizeof(size_t))) {
+              return nullptr;
             }
+            memcpy(array_ptr, buffer + buffer_offset, (size_t)array_size * sizeof(size_t));
+            buffer_offset += array_size * sizeof(size_t);
 #ifdef _DEBUG
             std::wcout << L"--- DESERIALIZING: int array; value=" << array << L",  size=" << array_size << L" ---" << std::endl;
 #endif
