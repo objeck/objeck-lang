@@ -951,7 +951,7 @@ class IPSecureSocket {
 
 class IPDtlsSocket {
  public:
-  static bool Open(const char* address, int port, const std::string &pem_file, DtlsSocketCtx* &sctx, bool verify = false) {
+  static bool Open(const char* address, int port, const std::string &pem_file, DtlsSocketCtx* &sctx, bool verify = true) {
     sctx = new DtlsSocketCtx();
 
     const char* pers = "objeck_dtls_client";
@@ -1006,7 +1006,12 @@ class IPDtlsSocket {
       return false;
     }
 
-    mbedtls_ssl_conf_authmode(&sctx->conf, verify ? MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_OPTIONAL);
+    // Verify by default (chain + hostname), consistent with the TCP/HTTP-2/3
+    // clients. An explicit verify=true always enforces it; otherwise it is still
+    // enforced unless the operator opts into insecure mode for testing.
+    const bool require_cert = verify || !IPSecureSocket::InsecureSkipVerify();
+    mbedtls_ssl_conf_authmode(&sctx->conf,
+      require_cert ? MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_OPTIONAL);
     mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
     mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
 
@@ -1039,7 +1044,7 @@ class IPDtlsSocket {
     }
 
     uint32_t flags = mbedtls_ssl_get_verify_result(&sctx->ssl);
-    if(verify && flags != 0) {
+    if(require_cert && flags != 0) {
       sctx->last_error = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
       delete sctx;
       sctx = nullptr;
