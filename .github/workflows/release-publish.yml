@@ -102,7 +102,9 @@ jobs:
     name: Prepare Release Assets
     needs: check-trigger
     if: needs.check-trigger.outputs.should_publish == 'true'
-    runs-on: windows-latest
+    # Pinned to windows-2022 (VS2022 / toolset v143); 'windows-latest' now
+    # redirects to a VS2026 image (v180) that lacks v143 → MSB8020.
+    runs-on: windows-2022
 
     outputs:
       version: ${{ steps.version.outputs.version }}

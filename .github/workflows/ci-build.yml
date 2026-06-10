@@ -23,14 +23,19 @@ jobs:
       matrix:
         include:
           # Windows builds
+          # Pinned to windows-2022 (VS2022 / toolset v143). 'windows-latest' is
+          # being redirected to a VS2026 image (toolset v180) that lacks v143,
+          # which the .vcxproj files target — and which local dev uses — so the
+          # build fails with MSB8020. Repin to windows-latest only after the
+          # projects are retargeted to a toolset the new image provides.
           - platform: windows-x64
-            os: windows-latest
+            os: windows-2022
             arch: x64
             deploy_script: deploy_windows.cmd x64
             shell: cmd
 
           - platform: windows-arm64
-            os: windows-latest
+            os: windows-2022
             arch: ARM64
             deploy_script: deploy_windows.cmd arm64
             shell: cmd

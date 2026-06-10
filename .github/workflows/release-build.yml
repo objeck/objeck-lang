@@ -94,9 +94,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Pinned to windows-2022 (VS2022 / toolset v143); 'windows-latest' now
+          # redirects to a VS2026 image (v180) that lacks v143 → MSB8020.
           # Windows x64
           - platform: windows-x64
-            os: windows-latest
+            os: windows-2022
             arch: x64
             deploy_script: deploy_windows.cmd x64 deploy
             shell: cmd
@@ -104,7 +106,7 @@ jobs:
 
           # Windows ARM64 (cross-compiled on x64 runner)
           - platform: windows-arm64
-            os: windows-latest
+            os: windows-2022
             arch: ARM64
             deploy_script: deploy_windows.cmd arm64 deploy
             shell: cmd
