@@ -53,17 +53,18 @@ obr --version
    - Dispatches to JIT-compiled code when available
 
 2. **JIT Compiler**
-   - Converts hot bytecode paths to native machine code
-   - Architecture-specific code generation (x64, ARM64)
-   - Runtime profiling and optimization
-   - Inline caching for method calls
+   - Converts hot methods to native machine code (auto-JIT by call count)
+   - Architecture-specific code generation (x64 whitelist, ARM64 blacklist)
+   - Local register caching and (x64) method inlining
+   - Direct JIT-to-JIT calling via call-site patching (`MTHD_CALL` → `MTHD_CALL_JIT`)
+   - See [JIT internals](arch/jit/README.md)
 
 3. **Memory Manager**
-   - Generational garbage collector
-   - Mark-and-sweep algorithm with optimization
-   - Automatic memory reclamation
-   - Reference counting for certain objects
-   - Memory pooling for performance
+   - Generational mark-and-sweep collector
+   - Young nursery (bump-allocated objects) + old generation
+   - Automatic memory reclamation; old-gen free-list cache
+   - Lock-free CAS marking; parallel root scanning
+   - See [memory manager internals](arch/README.md)
 
 4. **Platform Abstraction Layer**
    - Unified interface for Windows and POSIX systems
@@ -82,27 +83,29 @@ Bytecode → Interpreter → [Hot Path Detection] → JIT Compiler → Native Co
 
 ### JIT Compilation Strategy
 
-The VM uses tiered compilation:
-1. **Interpretation**: Initial execution via bytecode interpreter
-2. **Profiling**: Track frequently executed code paths
-3. **Compilation**: Convert hot paths to native machine code
-4. **Optimization**: Apply platform-specific optimizations
-5. **Caching**: Cache compiled code for reuse
+The VM uses call-count-driven auto-JIT (no multi-tier recompilation):
+1. **Interpretation**: methods start in the bytecode interpreter
+2. **Counting**: each call increments a per-method counter
+3. **Compilation**: at the threshold (`OBJECK_JIT_THRESHOLD`, default 10) the method's next entry compiles to native code, after a `CanJitInstruction` pre-scan
+4. **Patching**: call sites are rewritten to dispatch straight to native code (`MTHD_CALL` → `MTHD_CALL_JIT`)
+5. **Reuse**: compiled native code is cached on the method
+
+Set `OBJECK_JIT_DISABLE=1` to stay fully interpreted. See [JIT internals](arch/jit/README.md) for the full lifecycle and the callback bridge.
 
 ## Memory Management
 
 ### Garbage Collection
 
 The VM uses a generational mark-and-sweep collector:
-- **Young Generation**: Short-lived objects, frequent collection
-- **Old Generation**: Long-lived objects, infrequent collection
-- **Large Object Heap**: Separate heap for large allocations
-- **Incremental Collection**: Reduces pause times
+- **Young generation (nursery)**: objects are bump-allocated here and most die without ever entering the old-gen set
+- **Old generation**: nursery survivors are promoted here; arrays are allocated here directly (they bypass the nursery — see [internals](arch/README.md))
+- **Minor vs. major GC**: minor collections scan the remembered set (via a write barrier) + roots and recycle the nursery; major collections sweep both generations
+- **Stop-the-world, parallel mark**: collection pauses the mutator but fans root scanning across threads with lock-free CAS mark bits
 
 ### Object Layout
 
 Objects are laid out in memory with:
-- Object header (type information, GC metadata)
+- Object header (type/class pointer, packed GC mark/generation/remembered-set bits)
 - Instance variables
 - Array data (for arrays)
 - Alignment padding
@@ -117,15 +120,14 @@ Objects are laid out in memory with:
 ## Performance
 
 ### Optimizations
-- JIT compilation with register allocation
-- Inline caching for method dispatch
-- String interning
+- JIT compilation with local register caching
+- Direct JIT-to-JIT calling (no interpreter trampoline) via call-site patching
+- Method inlining (x64) and power-of-two division strength reduction
+- Young-generation bump allocation (lock-free) for short-lived objects
 - Constant pool optimization
-- Branch prediction hints
-- SIMD instructions (where applicable)
 
 ### Benchmarks
-Performance is comparable to other JIT-based VMs like JVM and .NET CLR for similar workloads.
+See [`docs/performance.md`](../../docs/performance.md) for current cross-language and version-over-version numbers.
 
 ## Building the VM
 
@@ -198,4 +200,5 @@ The VM integrates with the Objeck debugger (obd) through:
 - [Compiler](../compiler/README.md) - Bytecode generation
 - [Debugger](../debugger/README.md) - Debugging support
 - [JIT Architecture](arch/jit/README.md) - JIT compiler internals
+- [Memory Manager](arch/README.md) - garbage collector internals
 - [API Documentation](https://www.objeck.org) - Runtime API reference
