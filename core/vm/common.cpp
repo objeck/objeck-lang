@@ -8601,8 +8601,10 @@ void TrapProcessor::SerializeArray(const size_t* array, ParamType type, size_t* 
       SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
       SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
       SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
-      // write data
-      WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), inst, op_stack, stack_pos);
+      // write data. Int array elements are stored as size_t (8 bytes), not
+      // INT_VALUE (int32) — using sizeof(INT_VALUE) here serialized only the
+      // first half of the elements (ReadSerializedBytes must match).
+      WriteSerializedBytes(array_ptr, array_size * sizeof(size_t), inst, op_stack, stack_pos);
     }
       break;
 
@@ -8665,7 +8667,7 @@ void TrapProcessor::ReadSerializedBytes(size_t* dest_array, const size_t* src_ar
     // byte/char. dest_array_size is attacker-controlled; previously only the
     // start offset was checked, allowing a large over-read past the source
     // buffer into a program-visible array (memory disclosure).
-    const long elem = (type == INT_ARY_PARM) ? (long)sizeof(INT_VALUE)
+    const long elem = (type == INT_ARY_PARM) ? (long)sizeof(size_t)
                     : (type == FLOAT_ARY_PARM) ? (long)sizeof(FLOAT_VALUE) : 1;
     if(dest_pos >= 0 && dest_array_size >= 0 && dest_pos <= src_array_size &&
        dest_array_size <= (src_array_size - dest_pos) / elem) {
@@ -8690,7 +8692,9 @@ void TrapProcessor::ReadSerializedBytes(size_t* dest_array, const size_t* src_ar
          break;
 
       case INT_ARY_PARM:
-        dest_array_size *= sizeof(INT_VALUE);
+        // Int elements are stored as size_t (8 bytes), not INT_VALUE (int32);
+        // must match the serialize side in SerializeArray.
+        dest_array_size *= sizeof(size_t);
         memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
         break;
 
