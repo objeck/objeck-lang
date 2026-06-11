@@ -3292,7 +3292,10 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     wchar_t* buffer = (wchar_t*)(array + 3);
     // allocate temporary buffer
     char* byte_buffer = new char[num * 2 + 1];
-    size_t read = fread(byte_buffer + offset, 1, num, stdin);
+    // Read into the temp buffer at 0, not +offset (see FileInCharAry): the temp
+    // is sized for 'num' and offset was checked against the destination, so a
+    // large offset overflowed the heap allocation.
+    size_t read = fread(byte_buffer, 1, num, stdin);
     if(read) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -5941,7 +5944,9 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
 
     // read from pipe
     char* byte_buffer = new char[num * 2 + 1];
-    const size_t read = Pipe::ReadByteArray(byte_buffer, offset, num, pipe);
+    // offset 0: the temp buffer is sized for 'num'; offset belongs to the
+    // destination, not this buffer (see FileInCharAry heap-overflow fix).
+    const size_t read = Pipe::ReadByteArray(byte_buffer, 0, num, pipe);
     byte_buffer[read] = '\0';
     std::wstring in(BytesToUnicode(byte_buffer));
 
@@ -6129,7 +6134,8 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     wchar_t* buffer = (wchar_t*)(array + 3);
     // allocate temporary buffer
     char* byte_buffer = new char[num * 2 + 1];
-    int read = IPSocket::ReadBytes(byte_buffer + offset, num, sock);
+    // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
+    int read = IPSocket::ReadBytes(byte_buffer, num, sock);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -6272,7 +6278,8 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
-    int read = IPSecureSocket::ReadBytes(byte_buffer + offset, num, sctx);
+    // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
+    int read = IPSecureSocket::ReadBytes(byte_buffer, num, sctx);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -7671,7 +7678,8 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
-    int read = IPDtlsSocket::ReadBytes(byte_buffer + offset, num, sctx);
+    // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
+    int read = IPDtlsSocket::ReadBytes(byte_buffer, num, sctx);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -7782,7 +7790,10 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
 
     // read from file
     char* byte_buffer = new char[num * 2 + 1];
-    const size_t read = fread(byte_buffer + offset, 1, num, file);
+    // Read into the temp buffer at 0, not at +offset: byte_buffer is sized for
+    // 'num' only, and 'offset' was bounds-checked against the destination array,
+    // not this buffer — a large offset overflowed the heap allocation.
+    const size_t read = fread(byte_buffer, 1, num, file);
     byte_buffer[read] = '\0';
     std::wstring in(BytesToUnicode(byte_buffer));
     
