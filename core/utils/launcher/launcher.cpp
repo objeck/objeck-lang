@@ -168,7 +168,7 @@ char** BuildArguments(const string& spawn_str, int argc, char* argv[])
   spawn_args[1] = _strdup(".\\app\\app.obe");
 #else
   spawn_args[0] = strdup(spawn_str.c_str());
-  spawn_args[0] = spawn_args[1] = strdup("./app/app.obe");
+  spawn_args[1] = strdup("./app/app.obe");
 #endif
 
   for(int i = 1; i < argc; ++i) {
@@ -197,11 +197,39 @@ const string GetWorkingDirectory()
 
   return "";
 #else
+  // Resolve the directory containing this executable (mirrors the Windows
+  // GetModuleFileName branch). The old getcwd() approach depended on how the
+  // launcher was started: a Finder double-click (or running it from another
+  // directory) gives a cwd that isn't the bundle root, so every relative path
+  // (runtime/bin/obr, ./app/app.obe) resolved against the wrong directory.
   char exe_full_path[MAX_ENV_PATH] = { 0 };
-  if(!getcwd(exe_full_path, MAX_ENV_PATH)) {
+#ifdef __APPLE__
+  char raw_path[MAX_ENV_PATH] = { 0 };
+  uint32_t size = MAX_ENV_PATH;
+  // _NSGetExecutablePath may return a relative/symlinked path; realpath() makes it absolute
+  if(_NSGetExecutablePath(raw_path, &size) != 0 || !realpath(raw_path, exe_full_path)) {
     return "";
   }
-  return string(exe_full_path);
+#else
+  const ssize_t len = readlink("/proc/self/exe", exe_full_path, MAX_ENV_PATH - 1);
+  if(len < 0) {
+    return "";
+  }
+  exe_full_path[len] = '\0';
+#endif
+  const string dir_full_path = exe_full_path;
+  const size_t dir_full_path_index = dir_full_path.find_last_of('/');
+  if(dir_full_path_index != string::npos) {
+    // run relative to the bundle root so './app/app.obe' and the program's own
+    // relative resource paths resolve no matter where the launch came from
+    const string exe_dir = dir_full_path.substr(0, dir_full_path_index);
+    if(chdir(exe_dir.c_str())) {
+      return "";
+    }
+    return exe_dir;
+  }
+
+  return "";
 #endif
 }
 

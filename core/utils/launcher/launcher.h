@@ -42,6 +42,11 @@
 #include "process.h"
 #else
 #include <unistd.h>
+#include <stdint.h>
+#include <stdlib.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 #endif
 
 #define MAX_ENV_PATH 1024
