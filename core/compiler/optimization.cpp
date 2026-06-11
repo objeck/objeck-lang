@@ -1408,8 +1408,16 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 
     case STOR_INT_VAR:
       outputs->AddInstruction(instr);
-      if(set_int && instr->GetOperand2() == LOCL) {
-        value_prop_map[instr->GetOperand()].int_value = int_value;
+      if(instr->GetOperand2() == LOCL) {
+        if(set_int) {
+          value_prop_map[instr->GetOperand()].int_value = int_value;
+        }
+        else {
+          // Reassigned from a non-constant: invalidate any stale constant for
+          // this slot, otherwise a later load is wrongly replaced with the old
+          // literal (e.g. x:=5; y:=x; x:=z+w; return x returned 5).
+          value_prop_map.erase(instr->GetOperand());
+        }
       }
       set_int = set_float = false;
       break;
@@ -1454,8 +1462,15 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
 
     case STOR_FLOAT_VAR:
       outputs->AddInstruction(instr);
-      if(set_float && instr->GetOperand2() == LOCL) {
-        value_prop_map[instr->GetOperand()].float_value = float_value;
+      if(instr->GetOperand2() == LOCL) {
+        if(set_float) {
+          value_prop_map[instr->GetOperand()].float_value = float_value;
+        }
+        else {
+          // Reassigned from a non-constant: invalidate any stale constant
+          // (see STOR_INT_VAR above).
+          value_prop_map.erase(instr->GetOperand());
+        }
       }
       set_int = set_float = false;
       break;
