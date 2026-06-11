@@ -9,9 +9,9 @@
 	<key>CFBundleIdentifier</key>
 	<string>org.objeck.launcher</string>
 	<key>CFBundleVersion</key>
-	<string>2026.2.1</string>
+	<string>2026.6.0</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2026.2.1</string>
+	<string>2026.6.0</string>
 	<key>CFBundleExecutable</key>
 	<string>AppLauncher</string>
 	<key>CFBundleIconFile</key>
