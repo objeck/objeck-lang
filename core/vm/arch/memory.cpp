@@ -203,12 +203,16 @@ void MemoryManager::BeginBlocking()
 void MemoryManager::EndBlocking()
 {
   MUTEX_LOCK(&stw_lock);
-  parked_count.fetch_sub(1, std::memory_order_acq_rel);
-  // If a collection started while we were blocked, wait for it before resuming
-  // mutation (our roots must stay stable until the marker is done).
+  // If a collection is in progress, stay parked (still COUNTED) until it
+  // finishes, THEN decrement — like SafePoint. Decrementing first would leave
+  // this thread parked-but-uncounted and the collector would wait forever for a
+  // count it can never reach (the deadlock). Holding stw_lock across the wait
+  // and the decrement means no new collection can start in the gap (the
+  // collector takes stw_lock to set stw_active).
   while(stw_active.load(std::memory_order_acquire)) {
     SLEEP_CONDITION(&stw_cv, &stw_lock);
   }
+  parked_count.fetch_sub(1, std::memory_order_acq_rel);
   MUTEX_UNLOCK(&stw_lock);
 }
 

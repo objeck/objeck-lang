@@ -573,9 +573,14 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       exit(1);
     }
 
+    // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
+    // counts as parked, otherwise a collection on another thread waits forever for
+    // it to reach a safepoint (the JIT path previously omitted this — deadlock).
+    MemoryManager::BeginBlocking();
 #ifdef _WIN32
     HANDLE vm_thread = (HANDLE)instance[0];
     if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
+      MemoryManager::EndBlocking();
       std::wcerr << L"Unable to join thread!" << std::endl;
       exit(-1);
     }
@@ -583,15 +588,21 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     void* status;
     pthread_t vm_thread = (pthread_t)instance[0];
     if(pthread_join(vm_thread, &status)) {
+      MemoryManager::EndBlocking();
       std::wcerr << L"Unable to join thread!" << std::endl;
       exit(-1);
     }
-#endif      
+#endif
+    MemoryManager::EndBlocking();
   }
     break;
 
-  case THREAD_SLEEP:
-    std::this_thread::sleep_for(std::chrono::milliseconds(PopInt(op_stack, stack_pos)));
+  case THREAD_SLEEP: {
+    const long sleep_ms = (long)PopInt(op_stack, stack_pos);
+    MemoryManager::BeginBlocking();   // sleeping blocks — count as parked
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+    MemoryManager::EndBlocking();
+  }
     break;
 
   case THREAD_MUTEX: {
