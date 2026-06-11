@@ -347,14 +347,19 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     // Align to sizeof(size_t) boundary for bump allocator
     const size_t aligned_total = (total_size + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
 
-    // Try young generation bump allocation first
+    // Try young generation bump allocation first. Advance young_offset with a CAS
+    // that commits ONLY when the block fits: a plain fetch_add over-advances under
+    // concurrency (many threads add past the end without rolling back), leaving
+    // young_offset > young_region_size. The collector then uses young_offset as the
+    // length of its young walk + reset memset, running off the end of the mapping —
+    // promoting garbage as objects (corruption) and overrunning memset (crash).
     if(young_region) {
       size_t offset = young_offset.load(std::memory_order_relaxed);
-      if(offset + aligned_total <= young_region_size) {
-        size_t new_offset = young_offset.fetch_add(aligned_total, std::memory_order_relaxed);
-        if(new_offset + aligned_total <= young_region_size) {
+      while(offset + aligned_total <= young_region_size) {
+        if(young_offset.compare_exchange_weak(offset, offset + aligned_total,
+                                              std::memory_order_relaxed)) {
           // Bump allocation succeeded
-          size_t* raw_mem = (size_t*)(young_region + new_offset);
+          size_t* raw_mem = (size_t*)(young_region + offset);
           raw_mem[0] = alloc_size;  // store size for promotion
           mem = raw_mem + 1;
           mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
@@ -364,21 +369,25 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
           allocation_size += size;
           return mem;
         }
+        // CAS failed: offset was reloaded with the current value — re-test and retry
       }
       // Young gen full — trigger GC to promote survivors and reset
       if(collect) {
         CollectMajor(op_stack, stack_pos);
-        // Retry bump allocation after GC
-        size_t retry_offset = young_offset.fetch_add(aligned_total, std::memory_order_relaxed);
-        if(retry_offset + aligned_total <= young_region_size) {
-          size_t* raw_mem = (size_t*)(young_region + retry_offset);
-          raw_mem[0] = alloc_size;
-          mem = raw_mem + 1;
-          mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
-          mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
-          mem += EXTRA_BUF_SIZE;
-          allocation_size += size;
-          return mem;
+        // Retry bump allocation after GC (young_offset reset to 0)
+        size_t retry_offset = young_offset.load(std::memory_order_relaxed);
+        while(retry_offset + aligned_total <= young_region_size) {
+          if(young_offset.compare_exchange_weak(retry_offset, retry_offset + aligned_total,
+                                                std::memory_order_relaxed)) {
+            size_t* raw_mem = (size_t*)(young_region + retry_offset);
+            raw_mem[0] = alloc_size;
+            mem = raw_mem + 1;
+            mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
+            mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
+            mem += EXTRA_BUF_SIZE;
+            allocation_size += size;
+            return mem;
+          }
         }
       }
     }
