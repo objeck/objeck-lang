@@ -731,9 +731,9 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
         var["value"] = FormatVariableValue(*dclr, frame, mem_index + offset);
         var["type"] = FormatVariableType(*dclr);
 
-        // Advance index: floats and funcs take 2 slots
+        // Advance index: a Float is ONE slot in the 64-bit layout; only funcs take two
         mem_index++;
-        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+        if(dclr->type == FUNC_PARM) {
           mem_index++;
         }
         var["variablesReference"] = 0;
@@ -775,7 +775,8 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
           variables.push_back(var);
 
           mem_index++;
-          if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          // A Float is ONE slot in the 64-bit layout; only funcs take two.
+          if(dclr->type == FUNC_PARM) {
             mem_index++;
           }
         }
@@ -816,7 +817,8 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
           variables.push_back(var);
 
           mem_index++;
-          if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+          // A Float is ONE slot in the 64-bit layout; only funcs take two.
+          if(dclr->type == FUNC_PARM) {
             mem_index++;
           }
         }

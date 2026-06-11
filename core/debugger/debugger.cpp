@@ -2263,7 +2263,8 @@ static std::wstring FormatObjectForDap(StackClass* klass, size_t* instance)
     }
 
     inst_idx++;
-    if(idclr->type == FLOAT_PARM || idclr->type == FUNC_PARM) {
+    // A Float is ONE slot in the 64-bit layout; only funcs take two.
+    if(idclr->type == FUNC_PARM) {
       inst_idx++;
     }
   }
@@ -2403,7 +2404,8 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
       }
 
       mem_index++;
-      if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+      // A Float is ONE slot in the 64-bit layout; only funcs take two.
+      if(dclr->type == FUNC_PARM) {
         mem_index++;
       }
     }

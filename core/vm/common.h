@@ -650,7 +650,9 @@ class StackMethod {
           return true;
         }
 
-        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+        // A Float occupies ONE instance/local slot in the 64-bit layout (see the
+        // compiler's CalculateEntrySpace); only FUNC_PARM is two slots.
+        if(dclr->type == FUNC_PARM) {
           index++;
         }
       }
@@ -953,7 +955,9 @@ class StackClass {
           return true;
         }
 
-        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+        // A Float occupies ONE instance/local slot in the 64-bit layout (see the
+        // compiler's CalculateEntrySpace); only FUNC_PARM is two slots.
+        if(dclr->type == FUNC_PARM) {
           index++;
         }
       }
@@ -971,7 +975,9 @@ class StackClass {
           return true;
         }
 
-        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+        // A Float occupies ONE instance/local slot in the 64-bit layout (see the
+        // compiler's CalculateEntrySpace); only FUNC_PARM is two slots.
+        if(dclr->type == FUNC_PARM) {
           index++;
         }
       }
@@ -1014,7 +1020,9 @@ class StackClass {
           return true;
         }
         // update
-        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+        // A Float occupies ONE instance/local slot in the 64-bit layout (see the
+        // compiler's CalculateEntrySpace); only FUNC_PARM is two slots.
+        if(dclr->type == FUNC_PARM) {
           index++;
         }
       }
@@ -1037,7 +1045,9 @@ class StackClass {
           return true;
         }
         // update
-        if(dclr->type == FLOAT_PARM || dclr->type == FUNC_PARM) {
+        // A Float occupies ONE instance/local slot in the 64-bit layout (see the
+        // compiler's CalculateEntrySpace); only FUNC_PARM is two slots.
+        if(dclr->type == FUNC_PARM) {
           index++;
         }
       }
