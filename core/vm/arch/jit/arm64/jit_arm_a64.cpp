@@ -933,6 +933,7 @@ void JitArm64::ProcessInstructions() {
       std::wcout << L"LBL: id=" << instr->GetOperand() << endl;
 #endif
       FlushLocalCache();
+      EmitJitSafePoint();   // poll for stop-the-world GC at every label (loop back-edge)
       break;
       
     default: {
@@ -1770,6 +1771,18 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     move_reg_mem(tmp->GetRegister(), INSTANCE_MEM, SP);      // refresh self
     ReleaseRegister(tmp);
   }
+}
+
+// GC safepoint: poll MemoryManager::SafePoint() so a JITed loop parks for a
+// stop-the-world collection. Emitted at every label (loop back-edges target a
+// label re-executed each iteration). The working stack is flushed at a label so
+// no live JIT temp is held; persistent JIT state lives in SP-relative slots, not
+// caller-saved registers, and SafePoint takes no params and returns void, so the
+// call clobbers nothing the JIT relies on (x30 is saved in the prologue). Mirror
+// of the AMD64 JitAmd64::EmitJitSafePoint.
+void JitArm64::EmitJitSafePoint() {
+  move_imm_reg((size_t)MemoryManager::SafePoint, X10);
+  call_reg(X10);
 }
 
 void JitArm64::ProcessReturn(long params) {
