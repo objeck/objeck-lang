@@ -402,6 +402,7 @@ namespace Runtime {
     void ProcessLoadFloatElement(StackInstr* instr);
     void ProcessStoreFloatElement(StackInstr* instr);
     void ProcessJump(StackInstr* instr);
+    void EmitJitSafePoint();
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
 

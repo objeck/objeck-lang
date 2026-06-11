@@ -992,6 +992,15 @@ void JitAmd64::ProcessInstructions() {
       std::wcout << L"______ LBL: id=" << instr->GetOperand() << L" ______" << std::endl;
 #endif
       FlushLocalCache();
+      // GC safepoint at every label. Every loop back-edge (conditional OR
+      // unconditional) targets a label that re-executes each iteration, and the
+      // working stack is empty at a label, so a plain safepoint call loses no
+      // live JIT value. Polling at all labels (not just detected loop headers)
+      // guarantees a JITed loop always reaches a safepoint regardless of how the
+      // back-edge is encoded; extra polls at if/else merges are a cheap
+      // flag-check-and-return. Without this a JITed no-allocation loop never
+      // parks and the stop-the-world collector deadlocks.
+      EmitJitSafePoint();
       break;
       
     default:
@@ -1115,6 +1124,24 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
   }
 }
 
+// Emit a GC safepoint poll: call MemoryManager::SafePoint(), which parks this
+// thread if a collection is in progress. Emitted only at unconditional loop
+// back-edges, where the working stack is empty and locals are already flushed,
+// so the call clobbers no live JIT value (volatiles are dead here; callee-saved
+// regs incl. RBP frame are ABI-preserved). Without this a JITed no-allocation
+// loop never reaches a safepoint and the stop-the-world collector deadlocks.
+void JitAmd64::EmitJitSafePoint() {
+#ifdef _WIN64
+  sub_imm_reg(32, RSP);   // shadow space (RSP stays 16-aligned)
+  move_imm_reg((size_t)MemoryManager::SafePoint, R10);
+  call_reg(R10);
+  add_imm_reg(32, RSP);
+#else
+  move_imm_reg((size_t)MemoryManager::SafePoint, R15);
+  call_reg(R15);
+#endif
+}
+
 void JitAmd64::ProcessJump(StackInstr* instr) {
   FlushLocalCache();
   // A conditional jump consumes its comparison value; if the compile-time
@@ -1136,7 +1163,7 @@ void JitAmd64::ProcessJump(StackInstr* instr) {
     }
     else {
       RegInstr* left = working_stack.front();
-      working_stack.pop_front(); 
+      working_stack.pop_front();
 
       switch(left->GetType()) {
       case IMM_INT:{
