@@ -864,7 +864,11 @@ static DispatchResult Handle_THREAD_SLEEP(DispatchContext& ctx) {
   std::wcout << L"stack oper: THREAD_SLEEP; call_pos=" << (*ctx.call_stack_pos) << std::endl;
 #endif
   INT64_VALUE sleep_time = (INT64_VALUE)ctx.interp->PopInt(ctx.op_stack, ctx.stack_pos);
+  // Sleeping blocks this thread; count it as parked so a collection elsewhere
+  // doesn't wait forever for it to reach a safepoint.
+  MemoryManager::BeginBlocking();
   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+  MemoryManager::EndBlocking();
   return DispatchResult::CONTINUE;
 }
 

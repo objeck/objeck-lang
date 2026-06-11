@@ -117,7 +117,24 @@ class MemoryManager {
   static std::atomic<size_t> dirty_count;
 
   static std::atomic<bool> minor_gc_mode;
-  
+
+  // Cooperative stop-the-world coordination. The collector frees objects whose
+  // roots it cannot see; while other mutator threads run, their in-flight roots
+  // (registers / mid-opcode C-locals) aren't on the scannable op-stack, so live
+  // objects get collected (use-after-free). Mutators poll SafePoint() at clean
+  // points (dispatch loop + allocation) and park while a collection runs, so the
+  // marker sees a complete, stable root set. Single-threaded programs never park.
+  static std::atomic<long> mutator_count;   // registered mutator threads (incl. main)
+  static std::atomic<long> parked_count;    // mutators currently parked at a safepoint
+  static std::atomic<bool> stw_active;      // a collection is in progress
+#ifdef _WIN32
+  static CRITICAL_SECTION stw_lock;
+  static CONDITION_VARIABLE stw_cv;
+#else
+  static pthread_mutex_t stw_lock;
+  static pthread_cond_t stw_cv;
+#endif
+
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
   static CRITICAL_SECTION pda_frame_lock;
@@ -221,6 +238,15 @@ class MemoryManager {
   
  public:
   static void Initialize(StackProgram* p, size_t m);
+
+  // Cooperative stop-the-world API (see field comments above).
+  static void RegisterMutator();    // a thread begins executing bytecode
+  static void UnregisterMutator();  // a thread finishes executing bytecode
+  static void SafePoint();          // poll: park if a collection is in progress
+  // Bracket a blocking operation (sleep / join / I/O): the thread's VM state is
+  // frozen and scannable, so count it as parked for the duration.
+  static void BeginBlocking();
+  static void EndBlocking();
 
   static FLOAT_VALUE GetRandomValue();
   

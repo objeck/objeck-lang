@@ -160,8 +160,17 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   ctx.interp = this;
   ctx.halt = &halt;
 
+  // GC safepoint polling. Poll every 1024 opcodes so a thread in a no-allocation
+  // loop still reaches a safepoint promptly (bounded collector wait) without a
+  // per-opcode atomic on the hot path. Allocation is also a safepoint (below),
+  // so allocation-heavy threads park immediately. Single-threaded runs never park.
+  unsigned safepoint_ticks = 0;
+
   // execute using dispatch table
   do {
+    if((++safepoint_ticks & 0x3FF) == 0) {
+      MemoryManager::SafePoint();
+    }
     StackInstr* instr = &instrs[ip++];
     ctx.instr = instr;
 
@@ -1430,9 +1439,13 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #endif
   }
 
+  // Joining blocks in a syscall — count this thread as parked so a collection on
+  // another thread doesn't wait forever for it to reach a safepoint.
+  MemoryManager::BeginBlocking();
 #ifdef _WIN32
   HANDLE vm_thread = (HANDLE)instance[0];
   if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
+    MemoryManager::EndBlocking();
     std::wcerr << L">>> Unable to join thread! <<<" << std::endl;
 #ifdef _NO_HALT
     return;
@@ -1444,6 +1457,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   void* status;
   pthread_t vm_thread = (pthread_t)instance[0];
   if(pthread_join(vm_thread, &status)) {
+    MemoryManager::EndBlocking();
     std::wcerr << L">>> Unable to join thread! <<<" << std::endl;
 #ifdef _NO_HALT
     return;
@@ -1452,6 +1466,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #endif
   }
 #endif
+  MemoryManager::EndBlocking();
 }
 
 void StackInterpreter::ThreadMutex([[maybe_unused]] size_t* &op_stack, size_t* &stack_pos)
@@ -1947,7 +1962,10 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
   AddThread(intpr);
+  MemoryManager::RegisterMutator();
+  MemoryManager::SafePoint();   // park immediately if a collection is already underway
   intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
+  MemoryManager::UnregisterMutator();
   
 #ifdef _DEBUG
   std::wcout << L"# final std::stack: pos=" << (*thread_stack_pos) << L", thread=" << vm_thread << L" #" << std::endl;
@@ -1991,7 +2009,10 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
   AddThread(intpr);
+  MemoryManager::RegisterMutator();
+  MemoryManager::SafePoint();   // park immediately if a collection is already underway
   intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
+  MemoryManager::UnregisterMutator();
 
 #ifdef _DEBUG
   std::wcout << L"# final std::stack: pos=" << (*thread_stack_pos) << L", thread=" << pthread_self() << L" #" << std::endl;

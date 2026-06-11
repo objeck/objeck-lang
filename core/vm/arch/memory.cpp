@@ -61,6 +61,16 @@ size_t* MemoryManager::dirty_list[DIRTY_LIST_MAX];
 std::atomic<size_t> MemoryManager::dirty_count;
 
 std::atomic<bool> MemoryManager::minor_gc_mode;
+std::atomic<long> MemoryManager::mutator_count(1);   // main thread is mutator #1
+std::atomic<long> MemoryManager::parked_count(0);
+std::atomic<bool> MemoryManager::stw_active(false);
+#ifdef _WIN32
+CRITICAL_SECTION MemoryManager::stw_lock;
+CONDITION_VARIABLE MemoryManager::stw_cv;
+#else
+pthread_mutex_t MemoryManager::stw_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t MemoryManager::stw_cv = PTHREAD_COND_INITIALIZER;
+#endif
 
 #ifdef _MEM_LOGGING
 ofstream MemoryManager::mem_logger;
@@ -136,9 +146,70 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   InitializeCriticalSection(&allocated_lock);
   InitializeCriticalSection(&marked_sweep_lock);
   InitializeCriticalSection(&free_memory_cache_lock);
+  InitializeCriticalSection(&stw_lock);
+  InitializeConditionVariable(&stw_cv);
 #endif
 
+  mutator_count.store(1, std::memory_order_relaxed);   // main thread
+  parked_count.store(0, std::memory_order_relaxed);
+  stw_active.store(false, std::memory_order_relaxed);
+
   initialized = true;
+}
+
+// --- Cooperative stop-the-world ----------------------------------------------
+
+void MemoryManager::RegisterMutator()
+{
+  mutator_count.fetch_add(1, std::memory_order_acq_rel);
+}
+
+void MemoryManager::UnregisterMutator()
+{
+  // If a collection is waiting for this thread to park, leaving counts as parking.
+  mutator_count.fetch_sub(1, std::memory_order_acq_rel);
+  MUTEX_LOCK(&stw_lock);
+  WAKE_ALL_CONDITION(&stw_cv);   // collector may now have all-but-self parked
+  MUTEX_UNLOCK(&stw_lock);
+}
+
+// Poll point: if a collection is in progress, park here (a clean point where all
+// of this thread's live roots are on its op-stack/frames) until it completes.
+void MemoryManager::SafePoint()
+{
+  if(!stw_active.load(std::memory_order_acquire)) {
+    return;
+  }
+  MUTEX_LOCK(&stw_lock);
+  parked_count.fetch_add(1, std::memory_order_acq_rel);
+  WAKE_ALL_CONDITION(&stw_cv);   // tell the collector we've parked
+  while(stw_active.load(std::memory_order_acquire)) {
+    SLEEP_CONDITION(&stw_cv, &stw_lock);
+  }
+  parked_count.fetch_sub(1, std::memory_order_acq_rel);
+  MUTEX_UNLOCK(&stw_lock);
+}
+
+// A thread about to block in a syscall (sleep / join / I/O) freezes its VM state,
+// which is then stable and scannable — so count it as parked for the duration.
+void MemoryManager::BeginBlocking()
+{
+  MUTEX_LOCK(&stw_lock);
+  parked_count.fetch_add(1, std::memory_order_acq_rel);
+  WAKE_ALL_CONDITION(&stw_cv);
+  MUTEX_UNLOCK(&stw_lock);
+}
+
+void MemoryManager::EndBlocking()
+{
+  MUTEX_LOCK(&stw_lock);
+  parked_count.fetch_sub(1, std::memory_order_acq_rel);
+  // If a collection started while we were blocked, wait for it before resuming
+  // mutation (our roots must stay stable until the marker is done).
+  while(stw_active.load(std::memory_order_acquire)) {
+    SLEEP_CONDITION(&stw_cv, &stw_lock);
+  }
+  MUTEX_UNLOCK(&stw_lock);
 }
 
 FLOAT_VALUE MemoryManager::GetRandomValue() {
@@ -253,6 +324,10 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 
 size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect)
 {
+  // Allocation is a safepoint: park here if another thread is collecting. Reached
+  // from JITed code too (it calls back to allocate), so allocation-heavy threads
+  // park promptly even without interpreter dispatch polling.
+  if(collect) { SafePoint(); }
   StackClass* cls = prgm->GetClass(obj_id);
 #ifdef _DEBUG_GC
   assert(cls);
@@ -342,6 +417,8 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
 
 size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, size_t stack_pos, bool collect)
 {
+  // Allocation safepoint (see AllocateObject).
+  if(collect) { SafePoint(); }
   size_t elem_size;
   size_t* mem;
   switch (type) {
@@ -591,22 +668,51 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
 #ifdef _WIN32
   // only one thread at a time can invoke the gargabe collector
   if(!TryEnterCriticalSection(&marked_sweep_lock)) {
+    // Another thread is collecting. Count as parked (this thread's VM roots are
+    // stable while it blocks here) and wait the collection out, rather than
+    // mutating concurrently. A one-shot SafePoint would race the collector
+    // setting stw_active just after it won the lock.
+    BeginBlocking();
+    EnterCriticalSection(&marked_sweep_lock);
+    LeaveCriticalSection(&marked_sweep_lock);
+    EndBlocking();
     return;
   }
 #else
   if(pthread_mutex_trylock(&marked_sweep_lock)) {
+    BeginBlocking();
+    pthread_mutex_lock(&marked_sweep_lock);
+    pthread_mutex_unlock(&marked_sweep_lock);
+    EndBlocking();
     return;
-  }  
+  }
 #endif
+
+  // Stop the world: wait until every OTHER mutator has parked at a safepoint, so
+  // the marker scans a complete, stable root set and never frees a live object
+  // whose root is in a running thread's registers / mid-opcode C-locals.
+  MUTEX_LOCK(&stw_lock);
+  stw_active.store(true, std::memory_order_release);
+  while(parked_count.load(std::memory_order_acquire) <
+        mutator_count.load(std::memory_order_acquire) - 1) {
+    SLEEP_CONDITION(&stw_cv, &stw_lock);
+  }
+  MUTEX_UNLOCK(&stw_lock);
 #endif
 
   CollectionInfo* info = new CollectionInfo;
-  info->op_stack = op_stack; 
+  info->op_stack = op_stack;
   info->stack_pos = stack_pos;
 
   CollectMemory(info);
 
 #ifndef _GC_SERIAL
+  // Resume the world.
+  MUTEX_LOCK(&stw_lock);
+  stw_active.store(false, std::memory_order_release);
+  WAKE_ALL_CONDITION(&stw_cv);
+  MUTEX_UNLOCK(&stw_lock);
+
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 

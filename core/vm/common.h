@@ -335,9 +335,13 @@ struct Http3SessionCtx {
 #ifdef _WIN32
 #define MUTEX_LOCK EnterCriticalSection
 #define MUTEX_UNLOCK LeaveCriticalSection
+#define WAKE_ALL_CONDITION(cv) WakeAllConditionVariable(cv)
+#define SLEEP_CONDITION(cv, cs) SleepConditionVariableCS((cv), (cs), INFINITE)
 #else
 #define MUTEX_LOCK pthread_mutex_lock
 #define MUTEX_UNLOCK pthread_mutex_unlock
+#define WAKE_ALL_CONDITION(cv) pthread_cond_broadcast(cv)
+#define SLEEP_CONDITION(cv, mtx) pthread_cond_wait((cv), (mtx))
 #endif
 
 using namespace instructions;
