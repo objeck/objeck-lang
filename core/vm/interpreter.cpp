@@ -1966,25 +1966,32 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   MemoryManager::SafePoint();   // park immediately if a collection is already underway
   intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
   MemoryManager::UnregisterMutator();
-  
+
 #ifdef _DEBUG
   std::wcout << L"# final std::stack: pos=" << (*thread_stack_pos) << L", thread=" << vm_thread << L" #" << std::endl;
 #endif
 
-  // clean up
+  // clean up — ORDER MATTERS. Remove this thread's GC roots (its monitor, via
+  // ~StackInterpreter -> RemovePdaMethodRoot) BEFORE freeing the op/stack memory
+  // those roots point to. RemovePdaMethodRoot takes pda_monitor_lock, which the
+  // collector also holds while scanning/fixing monitors, so once delete intpr
+  // returns no collector can reach this thread's op_stack/stack_pos. Freeing them
+  // first (the previous order) let a collection on another thread read a freed
+  // stack_pos (garbage length) and fix up a freed op_stack -> use-after-free:
+  // garbage values and crashes that scale with thread-teardown churn.
+  RemoveThread(intpr);
+  delete intpr;
+  intpr = nullptr;
+
   delete[] thread_op_stack;
   thread_op_stack = nullptr;
 
   delete thread_stack_pos;
   thread_stack_pos = nullptr;
-  
-  RemoveThread(intpr);
-  delete intpr;
-  intpr = nullptr;
 
   delete holder;
   holder = nullptr;
-  
+
   return 0;
 }
 #else
@@ -2018,20 +2025,27 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   std::wcout << L"# final std::stack: pos=" << (*thread_stack_pos) << L", thread=" << pthread_self() << L" #" << std::endl;
 #endif
   
-  // clean up
+  // clean up — ORDER MATTERS. Remove this thread's GC roots (its monitor, via
+  // ~StackInterpreter -> RemovePdaMethodRoot) BEFORE freeing the op/stack memory
+  // those roots point to. RemovePdaMethodRoot takes pda_monitor_lock, which the
+  // collector also holds while scanning/fixing monitors, so once delete intpr
+  // returns no collector can reach this thread's op_stack/stack_pos. Freeing them
+  // first (the previous order) let a collection on another thread read a freed
+  // stack_pos (garbage length) and fix up a freed op_stack -> use-after-free:
+  // garbage values and crashes that scale with thread-teardown churn.
+  RemoveThread(intpr);
+  delete intpr;
+  intpr = nullptr;
+
   delete[] thread_op_stack;
   thread_op_stack = nullptr;
 
   delete thread_stack_pos;
   thread_stack_pos = nullptr;
 
-  RemoveThread(intpr);
-  delete intpr;
-  intpr = nullptr;
-  
   delete holder;
   holder = nullptr;
-  
+
   return nullptr;
 }
 #endif
