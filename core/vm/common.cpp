@@ -659,6 +659,27 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
       }
       break;
 
+      case FUNC_PARM:
+      {
+        // A function reference occupies TWO instance slots: a packed method
+        // reference (slot 0) and a captured-instance pointer (slot 1). The method
+        // reference (class/method ids) is process-independent and is serialized;
+        // the captured pointer is process-specific and is dropped (restored Nil).
+        // So a non-capturing method reference round-trips, a capturing closure
+        // degrades safely, and — crucially — the field AFTER the func no longer
+        // desyncs (there was previously no FUNC_PARM case, so mem wasn't advanced).
+        const size_t method_ref = *mem;
+        if(method_ref) {
+          SerializeByte(1);
+          SerializeInt((INT64_VALUE)method_ref);
+        }
+        else {
+          SerializeByte(0);
+        }
+        mem += 2;
+      }
+      break;
+
       case BYTE_ARY_PARM:
       {
         size_t* array = (size_t*)(*mem);
@@ -906,6 +927,22 @@ size_t* ObjectDeserializer::DeserializeObject() {
         // A Float occupies one instance slot (see the serialize side); advancing
         // by 2 wrote the next field past its slot.
         instance_pos += 1;
+      }
+      break;
+
+      case FUNC_PARM:
+      {
+        // Restore the packed method reference (slot 0); the captured instance
+        // (slot 1) was not serialized, so it is restored as Nil. A func ref is
+        // TWO slots — see the serialize side.
+        if(!DeserializeByte()) {
+          instance[instance_pos] = 0;
+        }
+        else {
+          instance[instance_pos] = (size_t)DeserializeInt();
+        }
+        instance[instance_pos + 1] = 0;
+        instance_pos += 2;
       }
       break;
 
