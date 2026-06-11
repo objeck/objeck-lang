@@ -2449,7 +2449,7 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
         break;
 
       // binary ops (pop 2, push 1)
-      case ADD_INT:      case SUB_INT:      case MUL_INT:      case DIV_INT:      case MOD_INT:
+      case ADD_INT:      case SUB_INT:      case MUL_INT:
       case BIT_AND_INT:  case BIT_OR_INT:   case BIT_XOR_INT:
       case SHL_INT:      case SHR_INT:
       case EQL_INT:      case NEQL_INT:     case LES_INT:      case GTR_INT:
@@ -2458,6 +2458,18 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
         if(stack_depth < 2) { reset_stmt(i + 1); break; }
         stack_depth--;
         stmt_idx.push_back(i);
+        break;
+
+      // DIV_INT / MOD_INT can TRAP (divide by zero). Track the stack like other
+      // binary ops but mark the statement unsafe so it is never hoisted out of a
+      // loop that may execute zero times — doing so would turn a never-evaluated
+      // division into an always-evaluated div-by-zero. (Float division yields
+      // inf/nan instead of trapping, so it stays hoistable above.)
+      case DIV_INT:      case MOD_INT:
+        if(stack_depth < 2) { reset_stmt(i + 1); break; }
+        stack_depth--;
+        stmt_idx.push_back(i);
+        stmt_safe = false;
         break;
 
       case ADD_FLOAT:    case SUB_FLOAT:    case MUL_FLOAT:    case DIV_FLOAT:
