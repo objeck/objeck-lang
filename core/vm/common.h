@@ -1561,7 +1561,7 @@ class ObjectSerializer
     }
   }
 
-  inline void SerializeInt(const INT_VALUE v) {
+  inline void SerializeInt(const INT64_VALUE v) {
     char* bp = (char*)&v;
     for(size_t i = 0; i < sizeof(v); ++i) {
       values.push_back(*(bp + i));
@@ -1652,9 +1652,9 @@ class ObjectDeserializer
     return out;
   }
 
-  INT_VALUE DeserializeInt() {
-    if(!CanRead((long)sizeof(INT_VALUE))) { return 0; }
-    INT_VALUE value;
+  INT64_VALUE DeserializeInt() {
+    if(!CanRead((INT_VALUE)sizeof(INT64_VALUE))) { return 0; }
+    INT64_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
 
@@ -2335,12 +2335,12 @@ class TrapProcessor {
   // 
   // serializes an int
   // 
-  static void SerializeInt(INT_VALUE value, size_t* inst, size_t* &op_stack, size_t* &stack_pos);
+  static void SerializeInt(INT64_VALUE value, size_t* inst, size_t* &op_stack, size_t* &stack_pos);
 
   // 
   // deserializes an int
   // 
-  static INT_VALUE DeserializeInt(size_t* inst);
+  static INT64_VALUE DeserializeInt(size_t* inst);
 
   // 
   // serializes a float

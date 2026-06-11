@@ -637,7 +637,7 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
         std::wcout << L"\t" << i << L": ----- serializing int: value="
           << (*mem) << L", size=" << sizeof(INT_VALUE) << L" byte(s) -----" << std::endl;
 #endif
-        SerializeInt((INT_VALUE)*mem);
+        SerializeInt((INT64_VALUE)*mem);
         // update
         mem++;
         break;
@@ -651,8 +651,11 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
           << sizeof(FLOAT_VALUE) << L" byte(s) -----" << std::endl;
 #endif
         SerializeFloat(value);
-        // update
-        mem += 2;
+        // update: a Float occupies ONE instance slot in the 64-bit object layout
+        // (a slot is size_t = 8 bytes). Advancing by 2 (a 32-bit-era leftover, when
+        // a slot was 4 bytes) read the field after a Float from the wrong slot, so
+        // it serialized as 0/Nil.
+        mem += 1;
       }
       break;
 
@@ -900,7 +903,9 @@ size_t* ObjectDeserializer::DeserializeObject() {
 #ifdef _DEBUG
         std::wcout << L"--- DESERIALIZING float: value=" << value << L" ---" << std::endl;
 #endif
-        instance_pos += 2;
+        // A Float occupies one instance slot (see the serialize side); advancing
+        // by 2 wrote the next field past its slot.
+        instance_pos += 1;
       }
       break;
 
@@ -1848,7 +1853,7 @@ wchar_t TrapProcessor::DeserializeChar(size_t* inst)
   return 0;
 }
 
-void TrapProcessor::SerializeInt(INT_VALUE value, size_t* inst, size_t*& op_stack, size_t*& stack_pos)
+void TrapProcessor::SerializeInt(INT64_VALUE value, size_t* inst, size_t*& op_stack, size_t*& stack_pos)
 {
   const long src_buffer_size = sizeof(value);
   size_t* dest_buffer = (size_t*)inst[0];
@@ -1867,16 +1872,16 @@ void TrapProcessor::SerializeInt(INT_VALUE value, size_t* inst, size_t*& op_stac
   }
 }
 
-INT_VALUE TrapProcessor::DeserializeInt(size_t* inst)
+INT64_VALUE TrapProcessor::DeserializeInt(size_t* inst)
 {
   size_t* byte_array = (size_t*)inst[0];
   const long dest_pos = (long)inst[1];
 
   // Require all sizeof(value) bytes to be in range, not just the start offset.
   if(byte_array && dest_pos >= 0 && dest_pos <= (long)byte_array[0] &&
-     (long)sizeof(INT_VALUE) <= (long)byte_array[0] - dest_pos) {
+     (long)sizeof(INT64_VALUE) <= (long)byte_array[0] - dest_pos) {
     const char* byte_array_ptr = (char*)(byte_array + 3);
-    INT_VALUE value;
+    INT64_VALUE value;
     memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
     inst[1] = dest_pos + sizeof(value);
 
@@ -5173,7 +5178,7 @@ bool TrapProcessor::SerlInt(StackProgram* program, size_t* inst, size_t* &op_sta
   std::wcout << L"# serializing int #" << std::endl;
 #endif
   SerializeInt(INT_PARM, inst, op_stack, stack_pos);
-  SerializeInt((INT_VALUE)frame->mem[1], inst, op_stack, stack_pos);
+  SerializeInt((INT64_VALUE)frame->mem[1], inst, op_stack, stack_pos);
   return true;
 }
 
@@ -8689,7 +8694,11 @@ void TrapProcessor::ReadSerializedBytes(size_t* dest_array, const size_t* src_ar
         // copy
         dest_array[0] = out.size();
         dest_array[2] = out.size();
-        dest_array_size *= sizeof(wchar_t);
+        // NOTE: do NOT scale dest_array_size by sizeof(wchar_t) here. The source
+        // consumed dest_array_size *bytes* (UnicodeToBytes output), and the shared
+        // inst[1] advance below uses dest_array_size as that source byte count.
+        // Scaling it over-advanced the read position and desynced every following
+        // read (e.g. a String/Char[] followed by more serialized values).
         memcpy(dest_array_ptr, out.c_str(), out.size() * sizeof(wchar_t));
       }
          break;
