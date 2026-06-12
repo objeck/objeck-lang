@@ -4168,9 +4168,16 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
     const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
     // instance[3] holds connect timeout in ms (0 = blocking)
     const long timeout_ms = (long)instance[3];
+    // connect() can block for a long time; park for the duration. The instance
+    // ref is re-rooted on the op_stack so GC promotion fixup relocates it, then
+    // re-read after the wait (a raw pointer held across a park can go stale).
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     SOCKET sock = (timeout_ms > 0)
       ? IPSocket::OpenWithTimeout(addr.c_str(), port, timeout_ms)
       : IPSocket::Open(addr.c_str(), port);
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
     std::wcout << L"# socket connect: addr='" << BytesToUnicode(addr) << "'; instance="
 	       << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
@@ -4247,7 +4254,11 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
     SOCKET server = (SOCKET)instance[0];
     char client_address[SMALL_BUFFER_MAX] = {0};
     int client_port;
+    // accept() blocks indefinitely; park so a stop-the-world collection elsewhere
+    // can proceed (only C locals are touched while parked)
+    MemoryManager::BeginBlocking();
     SOCKET client = IPSocket::Accept(server, client_address, client_port);
+    MemoryManager::EndBlocking();
 #ifdef _DEBUG
     std::wcout << L"# socket accept: instance=" << instance << L"(" << (size_t)instance << L")" << L"; ip="
       << BytesToUnicode(client_address) << L"; port=" << client_port << L"; addr=" << server << L"("
@@ -4293,7 +4304,10 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
       << L"; array=" << array << L"(" << (size_t)array << L")" << std::endl;
 #endif        
     const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
+    // send() can block on a full buffer; park (data is C heap, safe across a park)
+    MemoryManager::BeginBlocking();
     IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);
+    MemoryManager::EndBlocking();
   }
 
   return true;
@@ -4309,9 +4323,15 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
     int status;
 
     if((long)sock > -1) {
+      const int capacity = (int)array[0];
       int index = 0;
       char value;
       bool end_line = false;
+      // the read loop blocks on the socket; park for its duration. Only C locals
+      // are touched while parked; the array ref is re-rooted on the op_stack so
+      // GC promotion fixup relocates it, then re-read after the wait.
+      PushInt((size_t)array, op_stack, stack_pos);
+      MemoryManager::BeginBlocking();
       do {
         value = IPSocket::ReadByte(sock, status);
         if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
@@ -4321,13 +4341,15 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
           end_line = true;
         }
       }
-      while(!end_line && index < (int)array[0] - 1);
+      while(!end_line && index < capacity - 1);
       buffer[index] = '\0';
 
       // assume LF
       if(value == '\r') {
         IPSocket::ReadByte(sock, status);
       }
+      MemoryManager::EndBlocking();
+      array = (size_t*)PopInt(op_stack, stack_pos);
 
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
@@ -4619,8 +4641,14 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
     if(srv) {
       SecureSocketCtx* client = new SecureSocketCtx();
 
-      // Accept raw TCP connection
+      // Accept raw TCP connection. accept() blocks indefinitely; park so STW GC
+      // elsewhere can proceed. The instance ref is re-rooted on the op_stack so
+      // promotion fixup relocates it (srv/client are C heap, safe across a park).
+      PushInt((size_t)instance, op_stack, stack_pos);
+      MemoryManager::BeginBlocking();
       int ret = mbedtls_net_accept(&srv->listen_fd, &client->net, nullptr, 0, nullptr);
+      MemoryManager::EndBlocking();
+      instance = (size_t*)PopInt(op_stack, stack_pos);
       if(ret != 0) {
         delete client;
         PushInt(0, op_stack, stack_pos);
@@ -6146,7 +6174,11 @@ bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &
   if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     int status;
-    PushInt(IPSocket::ReadByte(sock, status), op_stack, stack_pos);
+    // blocking read; park so a stop-the-world collection elsewhere can proceed
+    MemoryManager::BeginBlocking();
+    const char value = IPSocket::ReadByte(sock, status);
+    MemoryManager::EndBlocking();
+    PushInt(value, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -6164,8 +6196,20 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
-    char* buffer = (char*)(array + 3);
-    PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
+    // blocking read; park for the duration. recv() lands in a temp C buffer (a
+    // parked thread's GC array can be moved by promotion mid-read), and the
+    // array ref is re-rooted on the op_stack so fixup relocates it.
+    char* temp = new char[num > 0 ? num : 1];
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const int read = IPSocket::ReadBytes(temp, (int)num, sock);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    if(read > 0) {
+      memcpy((char*)(array + 3) + offset, temp, read);
+    }
+    delete[] temp;
+    PushInt(read, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -6183,11 +6227,17 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
-    wchar_t* buffer = (wchar_t*)(array + 3);
     // allocate temporary buffer
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
+    // Blocking read: park for the duration, with the array ref re-rooted on the
+    // op_stack so GC promotion fixup relocates it while we wait.
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     int read = IPSocket::ReadBytes(byte_buffer, num, sock);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    wchar_t* buffer = (wchar_t*)(array + 3);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -6218,7 +6268,10 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
+    // send() can block on a full buffer; park so STW GC elsewhere can proceed
+    MemoryManager::BeginBlocking();
     IPSocket::WriteByte((char)value, sock);
+    MemoryManager::EndBlocking();
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -6237,8 +6290,16 @@ bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
-    char* buffer = (char*)(array + 3);
-    PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
+    // send() can block on a full buffer; park for the duration. Data is staged
+    // in a temp C buffer first — a parked thread's GC array can be moved (and
+    // its young-gen slot reused) by promotion mid-send.
+    char* temp = new char[num > 0 ? num : 1];
+    memcpy(temp, (char*)(array + 3) + offset, num);
+    MemoryManager::BeginBlocking();
+    const int sent = IPSocket::WriteBytes(temp, (int)num, sock);
+    MemoryManager::EndBlocking();
+    delete[] temp;
+    PushInt(sent, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -6258,9 +6319,12 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
     SOCKET sock = (SOCKET)instance[0];
     const wchar_t* buffer = (wchar_t*)(array + 3);
     
-    // convert to bytes and write out
+    // convert to bytes and write out (buffer_out is C heap, safe across a park)
     std::string buffer_out = UnicodeToBytes(buffer);
-    PushInt(IPSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sock), op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const int sent = IPSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sock);
+    MemoryManager::EndBlocking();
+    PushInt(sent, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -7540,8 +7604,13 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
     if(srv) {
       DtlsSocketCtx* client_sctx = new DtlsSocketCtx();
 
-      // Accept raw connection
+      // Accept raw connection. accept() blocks indefinitely; park so STW GC
+      // elsewhere can proceed (see SockTcpSslAccept for the re-rooting rationale)
+      PushInt((size_t)instance, op_stack, stack_pos);
+      MemoryManager::BeginBlocking();
       int ret = mbedtls_net_accept(&srv->listen_fd, &client_sctx->net, nullptr, 0, nullptr);
+      MemoryManager::EndBlocking();
+      instance = (size_t*)PopInt(op_stack, stack_pos);
       if(ret != 0) {
         delete client_sctx;
         PushInt(0, op_stack, stack_pos);
