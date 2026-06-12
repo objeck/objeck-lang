@@ -312,12 +312,24 @@ class MemoryManager {
   static size_t* AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect = true);
   static size_t* AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, size_t stack_pos, bool collect = true);
 
-  // Generational GC write barrier: lock-free dirty list append
+  // Generational GC write barrier: lock-free dirty list append. Mutator
+  // threads can race each other here (the collector only touches these bits
+  // under stop-the-world), so the flag word is accessed atomically — a plain
+  // |= is a data race that weakly-ordered hardware (ARM64) is free to break.
   static inline void WriteBarrier(size_t* target_obj) {
     if(!target_obj) return;
-    if(!(target_obj[MARKED_FLAG] & GC_OLD_BIT)) return;      // young target, skip
-    if(target_obj[MARKED_FLAG] & GC_RSET_BIT) return;         // already tracked
-    target_obj[MARKED_FLAG] |= GC_RSET_BIT;
+#ifdef _WIN32
+    const size_t flags = (size_t)ReadNoFence64((volatile LONG64*)&target_obj[MARKED_FLAG]);
+#else
+    const size_t flags = __atomic_load_n(&target_obj[MARKED_FLAG], __ATOMIC_RELAXED);
+#endif
+    if(!(flags & GC_OLD_BIT)) return;      // young target, skip
+    if(flags & GC_RSET_BIT) return;        // already tracked
+#ifdef _WIN32
+    _InterlockedOr64((volatile LONG64*)&target_obj[MARKED_FLAG], (LONG64)GC_RSET_BIT);
+#else
+    __atomic_fetch_or(&target_obj[MARKED_FLAG], GC_RSET_BIT, __ATOMIC_RELAXED);
+#endif
     size_t idx = dirty_count.fetch_add(1, std::memory_order_relaxed);
     if(idx < DIRTY_LIST_MAX) {
       dirty_list[idx] = target_obj;
