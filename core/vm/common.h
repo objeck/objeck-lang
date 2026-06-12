@@ -1628,11 +1628,11 @@ class ObjectDeserializer
   // Bounds guard: returns true only if 'n' more bytes can be read at the current
   // offset without running past the input buffer. The buffer comes from an
   // attacker-controllable Byte[] (network/file), so every read must be checked.
-  bool CanRead(INT_VALUE n) {
-    // Compare in 64-bit (INT_VALUE) so a large attacker-supplied size cannot
-    // truncate on platforms where 'long' is 32-bit (Windows).
-    if(n < 0 || buffer_offset < 0 || (INT_VALUE)buffer_offset > (INT_VALUE)buffer_array_size ||
-       n > (INT_VALUE)buffer_array_size - (INT_VALUE)buffer_offset) {
+  bool CanRead(INT64_VALUE n) {
+    // Compare in 64-bit so a large attacker-supplied size cannot truncate or
+    // overflow on platforms where 'long' is 32-bit (Windows).
+    if(n < 0 || buffer_offset < 0 || (INT64_VALUE)buffer_offset > (INT64_VALUE)buffer_array_size ||
+       n > (INT64_VALUE)buffer_array_size - (INT64_VALUE)buffer_offset) {
       read_error = true;
       return false;
     }
@@ -1650,7 +1650,7 @@ class ObjectDeserializer
 
   wchar_t DeserializeChar() {
     // read
-    const int num = DeserializeInt();
+    const INT_VALUE num = DeserializeInt32();
     if(num < 0 || !CanRead(num)) { read_error = true; return L'\0'; }
     char* in = new char[num + 1];
     memcpy(in, buffer + buffer_offset, num);
@@ -1667,12 +1667,24 @@ class ObjectDeserializer
   }
 
   INT64_VALUE DeserializeInt() {
-    if(!CanRead((INT_VALUE)sizeof(INT64_VALUE))) { return 0; }
+    if(!CanRead((INT64_VALUE)sizeof(INT64_VALUE))) { return 0; }
     INT64_VALUE value;
     memcpy(&value, buffer + buffer_offset, sizeof(value));
     buffer_offset += sizeof(value);
 
     return value;
+  }
+
+  // Sizes, dimensions and cache ids in well-formed streams always fit in 32
+  // bits; anything wider is corrupt/hostile input, so flag a read error
+  // instead of silently truncating.
+  INT_VALUE DeserializeInt32() {
+    const INT64_VALUE value = DeserializeInt();
+    if(value < INT32_MIN || value > INT32_MAX) {
+      read_error = true;
+      return 0;
+    }
+    return (INT_VALUE)value;
   }
 
   FLOAT_VALUE DeserializeFloat() {

@@ -859,8 +859,8 @@ void ObjectSerializer::Serialize(size_t* inst) {
  ********************************/
 size_t* ObjectDeserializer::DeserializeObject() {
   // read object id
-  const INT_VALUE char_array_size = DeserializeInt();
-  if(char_array_size < 0 || !CanRead(char_array_size)) {
+  const INT_VALUE char_array_size = DeserializeInt32();
+  if(read_error || char_array_size < 0 || !CanRead(char_array_size)) {
     return nullptr;
   }
   char* temp = new char[char_array_size + 1];
@@ -878,7 +878,10 @@ size_t* ObjectDeserializer::DeserializeObject() {
     std::wcout << L"--- DESERIALIZING object: name='" << cls_name << L"' ---" << std::endl;
 #endif
     
-    INT_VALUE mem_id = DeserializeInt();
+    INT_VALUE mem_id = DeserializeInt32();
+    if(read_error) {
+      return nullptr;
+    }
     if(mem_id < 0) {
       instance = MemoryManager::AllocateObject(cls->GetId(), op_stack, *stack_pos, false);
       mem_cache[-mem_id] = instance;
@@ -952,12 +955,12 @@ size_t* ObjectDeserializer::DeserializeObject() {
           instance[instance_pos++] = 0;
         }
         else {
-          INT_VALUE mem_id = DeserializeInt();
+          INT_VALUE mem_id = DeserializeInt32();
           if(mem_id < 0) {
-            const long byte_array_size = DeserializeInt();
-            const long byte_array_dim = DeserializeInt();
-            const long byte_array_size_dim = DeserializeInt();
-            if(byte_array_size < 0 || byte_array_dim < 0 || !CanRead(byte_array_size)) {
+            const INT_VALUE byte_array_size = DeserializeInt32();
+            const INT_VALUE byte_array_dim = DeserializeInt32();
+            const INT_VALUE byte_array_size_dim = DeserializeInt32();
+            if(read_error || byte_array_size < 0 || byte_array_dim < 0 || !CanRead(byte_array_size)) {
               return nullptr;
             }
             size_t* byte_array = MemoryManager::AllocateArray((size_t)(byte_array_size + ((byte_array_dim + 2) * sizeof(size_t))),
@@ -993,12 +996,12 @@ size_t* ObjectDeserializer::DeserializeObject() {
           instance[instance_pos++] = 0;
         }
         else {
-          INT_VALUE mem_id = DeserializeInt();
+          INT_VALUE mem_id = DeserializeInt32();
           if(mem_id < 0) {
-            long char_array_size = DeserializeInt();
-            const long char_array_dim = DeserializeInt();
-            long char_array_size_dim = DeserializeInt();
-            if(char_array_size < 0 || char_array_dim < 0) {
+            INT_VALUE char_array_size = DeserializeInt32();
+            const INT_VALUE char_array_dim = DeserializeInt32();
+            INT_VALUE char_array_size_dim = DeserializeInt32();
+            if(read_error || char_array_size < 0 || char_array_dim < 0 || !CanRead(char_array_size)) {
               return nullptr;
             }
             // copy content
@@ -1014,7 +1017,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             std::wcout << L"--- DESERIALIZING: char array; value=" << out << L", size="
               << char_array_size << L" ---" << std::endl;
 #endif
-            char_array_size = char_array_size_dim = (long)out.size();
+            char_array_size = char_array_size_dim = (INT_VALUE)out.size();
             size_t* char_array = MemoryManager::AllocateArray(char_array_size +
               ((char_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
             char_array[0] = char_array_size;
@@ -1045,12 +1048,12 @@ size_t* ObjectDeserializer::DeserializeObject() {
           instance[instance_pos++] = 0;
         }
         else {
-          INT_VALUE mem_id = DeserializeInt();
+          INT_VALUE mem_id = DeserializeInt32();
           if(mem_id < 0) {
-            const long array_size = DeserializeInt();
-            const long array_dim = DeserializeInt();
-            const long array_size_dim = DeserializeInt();
-            if(array_size < 0 || array_dim < 0) {
+            const INT_VALUE array_size = DeserializeInt32();
+            const INT_VALUE array_dim = DeserializeInt32();
+            const INT_VALUE array_size_dim = DeserializeInt32();
+            if(read_error || array_size < 0 || array_dim < 0) {
               return nullptr;
             }
             size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, instructions::INT_TYPE,
@@ -1060,8 +1063,9 @@ size_t* ObjectDeserializer::DeserializeObject() {
             array[2] = array_size_dim;
             size_t* array_ptr = array + 3;
             // copy content: raw 8-byte elements (must match SerializeBytes on the
-            // serialize side). Bounds-check the attacker-controlled length first.
-            if(!CanRead((INT_VALUE)array_size * (INT_VALUE)sizeof(size_t))) {
+            // serialize side). Bounds-check the attacker-controlled length first,
+            // multiplying in 64-bit so the byte count cannot wrap.
+            if(!CanRead((INT64_VALUE)array_size * (INT64_VALUE)sizeof(size_t))) {
               return nullptr;
             }
             memcpy(array_ptr, buffer + buffer_offset, (size_t)array_size * sizeof(size_t));
@@ -1090,12 +1094,13 @@ size_t* ObjectDeserializer::DeserializeObject() {
           instance[instance_pos++] = 0;
         }
         else {
-          INT_VALUE mem_id = DeserializeInt();
+          INT_VALUE mem_id = DeserializeInt32();
           if(mem_id < 0) {
-            const long array_size = DeserializeInt();
-            const long array_dim = DeserializeInt();
-            const long array_size_dim = DeserializeInt();
-            if(array_size < 0 || array_dim < 0) {
+            const INT_VALUE array_size = DeserializeInt32();
+            const INT_VALUE array_dim = DeserializeInt32();
+            const INT_VALUE array_size_dim = DeserializeInt32();
+            if(read_error || array_size < 0 || array_dim < 0 ||
+               !CanRead((INT64_VALUE)array_size * (INT64_VALUE)sizeof(FLOAT_VALUE))) {
               return nullptr;
             }
             size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, instructions::INT_TYPE,
@@ -1132,12 +1137,12 @@ size_t* ObjectDeserializer::DeserializeObject() {
           instance[instance_pos++] = 0;
         }
         else {
-          INT_VALUE mem_id = DeserializeInt();
+          INT_VALUE mem_id = DeserializeInt32();
           if(mem_id < 0) {
-            const long array_size = DeserializeInt();
-            const long array_dim = DeserializeInt();
-            const long array_size_dim = DeserializeInt();
-            if(array_size < 0 || array_dim < 0) {
+            const INT_VALUE array_size = DeserializeInt32();
+            const INT_VALUE array_dim = DeserializeInt32();
+            const INT_VALUE array_size_dim = DeserializeInt32();
+            if(read_error || array_size < 0 || array_dim < 0) {
               return nullptr;
             }
             size_t* array = MemoryManager::AllocateArray((size_t)(array_size + array_dim + 2), instructions::INT_TYPE,
@@ -1204,7 +1209,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
     }
   }
 
-  return instance;
+  return read_error ? nullptr : instance;
 }
 
 /********************************
@@ -1711,9 +1716,18 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
   long dest_pos = (long)inst[1];
 
   if(dest_pos < (long)src_array[0]) {
-    const long dest_array_size = DeserializeInt(inst);
-    const long dest_array_dim = DeserializeInt(inst);
-    const long dest_array_dim_size = DeserializeInt(inst);
+    const INT64_VALUE dest_array_size64 = DeserializeInt(inst);
+    const INT64_VALUE dest_array_dim64 = DeserializeInt(inst);
+    const INT64_VALUE dest_array_dim_size64 = DeserializeInt(inst);
+    // sizes are attacker-controlled; reject anything that doesn't fit in 32 bits
+    if(dest_array_size64 < 0 || dest_array_size64 > INT32_MAX ||
+       dest_array_dim64 < 0 || dest_array_dim64 > INT32_MAX ||
+       dest_array_dim_size64 < 0 || dest_array_dim_size64 > INT32_MAX) {
+      return nullptr;
+    }
+    const long dest_array_size = (long)dest_array_size64;
+    const long dest_array_dim = (long)dest_array_dim64;
+    const long dest_array_dim_size = (long)dest_array_dim_size64;
 
     size_t* dest_array;
     if(type == BYTE_ARY_PARM) {
@@ -1861,15 +1875,16 @@ void TrapProcessor::SerializeChar(wchar_t value, size_t* inst, size_t*& op_stack
 
 wchar_t TrapProcessor::DeserializeChar(size_t* inst)
 {
-  const int num = DeserializeInt(inst);
+  const INT64_VALUE num = DeserializeInt(inst);
   size_t* byte_array = (size_t*)inst[0];
   const long dest_pos = (long)inst[1];
 
   // Require the full 'num' bytes to be in range, not just the start offset
   // (num and the source buffer are attacker-controlled). Bounding num also
-  // keeps 'num + 1' below from overflowing.
+  // keeps 'num + 1' below from overflowing. Compare in 64-bit so a huge num
+  // cannot truncate.
   if(byte_array && num >= 0 && dest_pos >= 0 && dest_pos <= (long)byte_array[0] &&
-     num <= (long)byte_array[0] - dest_pos) {
+     num <= (INT64_VALUE)((long)byte_array[0] - dest_pos)) {
     const char* byte_array_ptr = (char*)(byte_array + 3);
     char* in = new char[num + 1];
     memcpy(in, byte_array_ptr + dest_pos, num);
