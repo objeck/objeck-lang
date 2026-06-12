@@ -714,8 +714,11 @@ static void yolo_image_inf(VMContext& context) {
       std::vector<float> input_tensor_values = yolo_preprocess_letterbox(img, resize_height, resize_width, pp);
       std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
 
-      // Detect model input type
-      auto ti = session->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
+      // Detect model input type. GetTensorTypeAndShapeInfo() returns a VIEW into
+      // the TypeInfo, so the TypeInfo must outlive it — calling it on the
+      // temporary read freed memory and returned garbage element types.
+      Ort::TypeInfo input_type_info = session->GetInputTypeInfo(0);
+      auto ti = input_type_info.GetTensorTypeAndShapeInfo();
       auto elem = ti.GetElementType(); // ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT or _FLOAT16
 
       // Build tensor that matches the model input type (FP16 if model expects FP16)
@@ -994,7 +997,9 @@ static void resnet_image_inf(VMContext& context) {
       std::vector<float> input_tensor_values = resnet_preprocess(img, resize_height, resize_width);
       std::array<int64_t, 4> input_shape = { 1, 3, resize_height, resize_width };
 
-      auto ti = session->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
+      // keep the TypeInfo alive: GetTensorTypeAndShapeInfo() is a view (see yolo path)
+      Ort::TypeInfo input_type_info = session->GetInputTypeInfo(0);
+      auto ti = input_type_info.GetTensorTypeAndShapeInfo();
       auto elem = ti.GetElementType();
 
       Ort::Value input_tensor = make_tensor_match_input_type(
@@ -1346,8 +1351,11 @@ static void openpose_image_inf(VMContext& context) {
          out_names_s[i] = session->GetOutputNameAllocated(i, alloc).get(); out_names[i] = out_names_s[i].c_str();
       }
 
-      // Input shape/type
-      auto input_type_shape = session->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo();
+      // Input shape/type — keep the TypeInfo alive: GetTensorTypeAndShapeInfo()
+      // is a view (see yolo path); the temporary version returned garbage shapes,
+      // silently forcing the 368x368 fallback below
+      Ort::TypeInfo input_type_info = session->GetInputTypeInfo(0);
+      auto input_type_shape = input_type_info.GetTensorTypeAndShapeInfo();
       auto input_shape_vec = input_type_shape.GetShape(); // expect [1,3,H,W]
       int input_height = input_shape_vec.size() >= 3 && input_shape_vec[2] > 0 ? (int)input_shape_vec[2] : 368;
       int input_width = input_shape_vec.size() >= 4 && input_shape_vec[3] > 0 ? (int)input_shape_vec[3] : 368;
