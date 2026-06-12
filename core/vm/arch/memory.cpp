@@ -1417,7 +1417,12 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
     long call_stack_pos = *(monitor->call_stack_pos);
     std::atomic_thread_fence(std::memory_order_acquire);
 
-    if(call_stack_pos > 0) {
+    // >= 0 (not > 0): at call_stack_pos==0 the thread is executing its TOP-LEVEL
+    // method, whose frame lives in cur_frame with an empty call_stack. The old
+    // `> 0` guard skipped that frame entirely, so a thread parked while running
+    // its top method (between inlined ops) had its locals unscanned -> freed.
+    // call_stack_pos==-1 is the constructor state (cur_frame uninitialized) — skip.
+    if(call_stack_pos >= 0) {
       StackFrame** call_stack = monitor->call_stack;
       StackFrame* cur_frame = *(monitor->cur_frame);
 
@@ -1448,6 +1453,33 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
         }
         else if(frame) {
           frames.push_back(frame);
+        }
+      }
+    }
+
+    // Mark THIS thread's operand stack. CheckStack only marks the GC-triggering
+    // thread's op_stack (info->op_stack), but FixupRoots later relocates refs in
+    // EVERY monitor's op_stack. That asymmetry meant an object live solely via a
+    // PARKED thread's op_stack slot (a transient mid-expression, not yet stored to
+    // a frame local) went unmarked -> swept -> fixup then chased a dangling pointer.
+    // Mark exactly the slots fixup will touch, for every thread. (Re-marking the
+    // triggering thread's stack here is harmless — CheckObject is idempotent.)
+    size_t* mon_op_stack = monitor->op_stack;
+    size_t* mon_stack_pos = monitor->stack_pos;
+    if(mon_op_stack && mon_stack_pos) {
+      const size_t pos = *mon_stack_pos;
+      std::atomic_thread_fence(std::memory_order_acquire);
+      for(size_t i = 0; i <= pos; ++i) {
+        size_t* check_mem = (size_t*)mon_op_stack[i];
+#ifndef _GC_SERIAL
+        MUTEX_LOCK(&allocated_lock);
+#endif
+        const bool found = IsAllocated(check_mem);
+#ifndef _GC_SERIAL
+        MUTEX_UNLOCK(&allocated_lock);
+#endif
+        if(found) {
+          CheckObject(check_mem, false, 1);
         }
       }
     }
@@ -1887,7 +1919,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
     long call_stack_pos = *(monitor->call_stack_pos);
     std::atomic_thread_fence(std::memory_order_acquire);
 
-    if(call_stack_pos > 0) {
+    // >= 0: also fix up the top-level method frame (cur_frame at call_stack_pos==0),
+    // matching the mark side. -1 is the constructor state (cur_frame invalid).
+    if(call_stack_pos >= 0) {
       StackFrame** call_stack = monitor->call_stack;
       StackFrame* cur_frame = *(monitor->cur_frame);
 

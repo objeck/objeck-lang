@@ -1,0 +1,112 @@
+#~
+# Multithreaded GC stop-the-world stress test.
+#
+# Guards the GC bugs fixed on branch fix/gc-stop-the-world:
+#   1. The JIT-compiled THREAD_JOIN / THREAD_SLEEP handlers blocked in the join
+#      syscall WITHOUT the BeginBlocking/EndBlocking park-bracket the interpreter
+#      path already had. A stop-the-world collection on another thread then waited
+#      forever for the joining thread to reach a safepoint -> deadlock.
+#   2. EndBlocking decremented the parked count BEFORE waiting out an active
+#      collection, leaving a thread parked-but-uncounted -> the same deadlock.
+#   3. The mark phase skipped a thread's top-level method frame (cur_frame) when
+#      call_stack_pos == 0, so a thread parked in its top method (between inlined
+#      instance-var ops) had its frame locals unmarked -> freed while still live.
+#   4. The mark phase marked only the GC-triggering thread's operand stack, while
+#      the fixup phase relocated refs in EVERY thread's operand stack. An object
+#      live solely via a PARKED thread's op-stack slot was freed, then fixup chased
+#      the dangling pointer. (Both 3 and 4 are root-registration gaps, not moving
+#      bugs; they surface as corrupted list values under multi-thread churn.)
+#
+# Many threads allocate heavily (forcing frequent cross-thread collections) while
+# main repeatedly spawns and joins them (exercising the JIT-compiled join path).
+# Premature collection of a still-live object surfaces as a corrupted linked-list
+# value (-> non-zero exit / FAIL); a handshake deadlock surfaces as a hang, which
+# the regression runner kills at its timeout and records as a hard FAIL.
+#
+# IMPORTANT: must run with JIT ENABLED — the join bug is JIT-only. Do NOT add a
+# '# JIT_DISABLE' marker to this test.
+~#
+
+use System.Concurrency;
+
+class GcBox {
+  @v : Int;
+  @next : GcBox;
+
+  New(v : Int) { @v := v; @next := Nil; }
+  method : public : V() ~ Int { return @v; }
+  method : public : SetV(v : Int) ~ Nil { @v := v; }
+  method : public : Next() ~ GcBox { return @next; }
+  method : public : SetNext(b : GcBox) ~ Nil { @next := b; }
+}
+
+class GcWorker from Thread {
+  @id : Int;
+  @iters : Int;
+  @errors : Int;
+
+  New(id : Int, iters : Int) {
+    Parent("gc-worker");
+    @id := id; @iters := iters; @errors := 0;
+  }
+
+  method : public : Errors() ~ Int { return @errors; }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    # a long-lived list that must survive untouched across many collections
+    head := GcBox->New(@id);
+    for(k := 0; k < 200; k += 1;) {
+      n := GcBox->New(@id);
+      n->SetNext(head);
+      head := n;
+    };
+
+    # churn: allocate a lot of short-lived garbage to force collections while the
+    # objects above (head list, b) must stay live and unchanged
+    for(i := 0; i < @iters; i += 1;) {
+      b := GcBox->New(@id);
+      expected := @id;
+      sum := 0;
+      for(j := 0; j < 8; j += 1;) {
+        sum += b->V();
+        b->SetV(@id);
+        junk := GcBox->New(i + j);
+        junk->SetNext(GcBox->New(j));
+      };
+      if(sum <> @id * 8) { @errors += 1; };
+      if(b->V() <> expected) { @errors += 1; };
+    };
+
+    # walk the long-lived list: every node must still hold @id
+    cur := head;
+    while(cur <> Nil) {
+      if(cur->V() <> @id) { @errors += 1; };
+      cur := cur->Next();
+    };
+  }
+}
+
+class ThreadGcStress {
+  function : Main(args : String[]) ~ Nil {
+    nthreads := 12;
+    iters := 25000;
+    rounds := 10;
+    total_errors := 0;
+
+    "Running multithreaded GC stop-the-world stress..."->PrintLine();
+    for(r := 0; r < rounds; r += 1;) {
+      workers := GcWorker->New[nthreads];
+      each(i : workers) { workers[i] := GcWorker->New(i + 1, iters); };
+      each(i : workers) { workers[i]->Execute(Nil); };
+      each(i : workers) { workers[i]->Join(); };
+      each(i : workers) { total_errors += workers[i]->Errors(); };
+    };
+
+    if(total_errors = 0) {
+      "PASS: multithreaded GC stop-the-world stress"->PrintLine();
+    } else {
+      "FAIL: multithreaded GC stress - {$total_errors} corruption(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
