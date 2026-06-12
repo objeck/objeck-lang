@@ -114,6 +114,29 @@ extern "C" {
          }
 
 #if defined(ONNX_EP_COREML)
+         // Persist the compiled CoreML model across runs. Without
+         // ModelCacheDirectory the EP compiles the ONNX graph into a temp dir and
+         // DELETES it when the session closes, so every process start pays the
+         // full CoreML compile (measured: 7.6s for DeepLabV3 vs 67ms cached).
+         // Users can override with their own path or pass an empty string to
+         // disable. Note (per the ORT header): the cache key hashes the model
+         // path — replacing a model file in place requires clearing the cache.
+         auto cache_opt = provider_options.find("ModelCacheDirectory");
+         if(cache_opt == provider_options.end()) {
+            const char* home = getenv("HOME");
+            if(home) {
+               const std::string cache_dir = std::string(home) + "/Library/Caches/objeck-onnx";
+               std::error_code ec;
+               std::filesystem::create_directories(cache_dir, ec);
+               if(!ec) {
+                  provider_options["ModelCacheDirectory"] = cache_dir;
+               }
+            }
+         }
+         else if(cache_opt->second.empty()) {
+            provider_options.erase(cache_opt);
+         }
+
          // Try CoreML first, fall back to CPU if it fails
          // (CoreML EP has issues with models using external data files)
          const Ort::Session* session = nullptr;
