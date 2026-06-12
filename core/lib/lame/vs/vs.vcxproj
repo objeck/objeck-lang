@@ -130,7 +130,8 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);libmp3lame-static.lib</AdditionalDependencies>
-      <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
+      <!-- /ignore:4099 - prebuilt libmp3lame-static.lib ships without its PDB -->
+      <AdditionalOptions>/NODEFAULTLIB:LIBCMT /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -146,7 +147,8 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);libmp3lame-static.lib</AdditionalDependencies>
-      <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
+      <!-- /ignore:4099 - prebuilt libmp3lame-static.lib ships without its PDB -->
+      <AdditionalOptions>/NODEFAULTLIB:LIBCMT /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

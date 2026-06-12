@@ -163,7 +163,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
+      <!-- /sdl is incompatible with the intentional /GS- below (D9025) -->
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_WIN64;_OBJECK_NATIVE_LIB_PATH;OBJECK_HAS_NGHTTP2</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
@@ -199,7 +200,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
+      <!-- /sdl is incompatible with the intentional /GS- below (D9025) -->
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_WIN64;_ARM64;_OBJECK_NATIVE_LIB_PATH;OBJECK_HAS_NGHTTP2</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnablePREfast>false</EnablePREfast>
@@ -218,7 +220,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <SubSystem>Console</SubSystem>
-      <AdditionalOptions>/ignore:4099 /ignore:4286 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/ignore:4099 /ignore:4286 /NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>msvcrt.lib;msvcmrt.lib;libz-static.lib;mbedtls.lib;mbedcrypto.lib;mbedx509.lib;nghttp2.lib;bcrypt.lib;crypt32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
