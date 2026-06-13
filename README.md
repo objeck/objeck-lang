@@ -58,6 +58,7 @@ obc hello && obr hello
 ## What's New
 
 ### v2026.6.1
+  * **String interpolation — expressions, format specifiers, and `String->Format`** — `"{$...}"` now accepts arbitrary expressions (`"{$i + 1}"`, `"{$a * b - c}"`, `"{$x > y}"`), not just variables and method calls. Inline format specifiers use Python/.NET colon syntax for precision, width, alignment, and radix — `"{$pi:.2}"`, `"{$n:05}"`, `"{$s:<10}"`, `"{$v:x}"`, `"{$v:b}"` — and the new `String->Format("{0} = {1}", a, b)` adds positional templating with `{{`/`}}` escaping. See [string features →](docs/FEATURES.md#strings)
   * **Generics — bounds, compound/F-bounds, and variance** — type parameters gain compound bounds `T : A & B` (a concrete argument must satisfy every bound), F-bounded constraints `T : Compare<T>`, and declaration-site variance: `out T` (covariant, e.g. `Producer<Dog>` usable as `Producer<Animal>`) and `in T` (contravariant). Variance is checked soundly in both directions and preserved across the `.obl` library boundary; the stdlib's read-only iterators are now covariant. Existing invariant generics and syntax are unchanged (`out` stays a usable identifier), and generic type-mismatch errors now print readable types like `Hash<String, IntRef>`
   * **Multithreaded garbage collection** — the generational collector is now cooperative stop-the-world: mutator threads park at safepoints (interpreter dispatch, JIT loop back-edges on AMD64 and ARM64, allocation, and blocking `join`/`sleep`/socket I/O) so the collector always marks a complete, stable root set. Fixes freed-live-object corruption and use-after-free under heavy thread churn, plus a JIT-loop collector deadlock; single-threaded programs never park
   * **Secure sockets verify certificates by default** — TLS and DTLS clients (TCP, HTTP/2, HTTP/3, DTLS) now validate the certificate chain and hostname by default instead of accepting any certificate; set `OBJECK_TLS_INSECURE_SKIP_VERIFY=1` to opt into self-signed/dev servers
@@ -193,6 +194,12 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - Closures and lambda expressions
 - First-class functions
 - [See functional examples →](docs/FEATURES.md#functional)
+
+**Strings & Formatting**
+- Interpolation with expressions: `"{$i + 1}"`, `"{$obj->M()}"`
+- Format specifiers: `"{$pi:.2}"`, `"{$n:05}"`, `"{$v:x}"`
+- Positional templates: `String->Format("{0} = {1}", a, b)`
+- [See string features →](docs/FEATURES.md#strings)
 
 **Platform Support**
 - Unicode, file I/O, sockets, named pipes

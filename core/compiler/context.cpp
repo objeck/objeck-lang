@@ -1999,36 +1999,14 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
       if(var_start > -1) {
         if(str[i] == L'}') {
           const std::wstring token = str.substr(static_cast<std::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::size_type>(var_start) + 2, i - var_start - 2);
-          if(IsComplexExpression(token)) {
-            AnalyzeCharacterStringExpression(token, char_str, depth);
-          }
-          else {
-            SymbolEntry* entry = GetEntry(token);
-            if(entry) {
-              AnalyzeCharacterStringVariable(entry, char_str, depth);
-            }
-            else {
-              ProcessError(char_str, L"Undefined variable: '" + token + L"'");
-            }
-          }
+          AnalyzeInterpolatedToken(token, char_str, depth);
           // update
           var_start = -1;
           str_start = (int)i + 1;
         }
         else if(i + 1 == str.size()) {
           const std::wstring token = str.substr(static_cast<std::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::size_type>(var_start) + 1, i - var_start);
-          if(IsComplexExpression(token)) {
-            AnalyzeCharacterStringExpression(token, char_str, depth);
-          }
-          else {
-            SymbolEntry* entry = GetEntry(token);
-            if(entry) {
-              AnalyzeCharacterStringVariable(entry, char_str, depth);
-            }
-            else {
-              ProcessError(char_str, L"Undefined variable: '" + token + L"'");
-            }
-          }
+          AnalyzeInterpolatedToken(token, char_str, depth);
           // update
           var_start = -1;
           str_start = (int)i + 1;
@@ -8511,13 +8489,18 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
 
 /****************************
  * Check if token contains expression operators
- * (method call, array access, etc.)
+ * (method call, array access, arithmetic/comparison/logical operators, etc.)
  ****************************/
 bool ContextAnalyzer::IsComplexExpression(const std::wstring& token)
 {
-  return token.find(L"->") != std::wstring::npos ||
+  // A method call / array access, or any operator expression (arithmetic,
+  // comparison, logical). The operator set includes '-' and '>', so a method
+  // accessor "->" is covered here too. Identifiers and '@fields' contain none
+  // of these characters, so a bare variable like "i" or "@x" stays on the
+  // simple-variable path.
+  return token.find(L'(') != std::wstring::npos ||
          token.find(L'[') != std::wstring::npos ||
-         token.find(L'(') != std::wstring::npos;
+         token.find_first_of(L"+-*/%<>=&|^") != std::wstring::npos;
 }
 
 /****************************
@@ -8606,6 +8589,241 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
 
   // Add as EXPRESSION segment
   char_str->AddSegment(expr, to_string_method, to_string_lib_method);
+}
+
+namespace {
+  // Parsed Python/.NET-style interpolation format spec, e.g. ".2", "05", "<10", "x".
+  struct FormatSpec {
+    bool valid = false;
+    bool left_justify = false;   // '<' present ('>' or default is right-justify)
+    bool zero_pad = false;       // leading '0' before the width
+    bool has_width = false;
+    int  width = 0;
+    bool has_precision = false;
+    int  precision = 0;
+    wchar_t radix = 0;           // 'x' hex, 'b' binary, 0 = none
+  };
+
+  // Grammar: [ '<' | '>' ] [ '0' ] [ width ] [ '.' precision ]  |  'x'  |  'b'
+  FormatSpec ParseFormatSpec(const std::wstring& spec_in) {
+    FormatSpec fs;
+
+    const size_t a = spec_in.find_first_not_of(L" \t");
+    if(a == std::wstring::npos) {
+      return fs;  // empty -> invalid
+    }
+    const size_t b = spec_in.find_last_not_of(L" \t");
+    const std::wstring s = spec_in.substr(a, b - a + 1);
+
+    // pure radix
+    if(s == L"x" || s == L"X") { fs.radix = L'x'; fs.valid = true; return fs; }
+    if(s == L"b" || s == L"B") { fs.radix = L'b'; fs.valid = true; return fs; }
+
+    size_t i = 0;
+    // alignment
+    if(s[i] == L'<') { fs.left_justify = true; ++i; }
+    else if(s[i] == L'>') { fs.left_justify = false; ++i; }
+    // zero-pad flag (only meaningful with a width)
+    if(i < s.size() && s[i] == L'0') { fs.zero_pad = true; ++i; }
+    // width
+    const size_t wstart = i;
+    while(i < s.size() && s[i] >= L'0' && s[i] <= L'9') { ++i; }
+    if(i > wstart) { fs.has_width = true; fs.width = std::stoi(s.substr(wstart, i - wstart)); }
+    // precision
+    if(i < s.size() && s[i] == L'.') {
+      ++i;
+      const size_t pstart = i;
+      while(i < s.size() && s[i] >= L'0' && s[i] <= L'9') { ++i; }
+      if(i == pstart) { return fs; }   // '.' with no digits -> invalid
+      fs.has_precision = true;
+      fs.precision = std::stoi(s.substr(pstart, i - pstart));
+    }
+
+    // the whole spec must be consumed and carry at least a width or precision
+    if(i != s.size() || (!fs.has_width && !fs.has_precision)) {
+      return fs;
+    }
+
+    fs.valid = true;
+    return fs;
+  }
+}
+
+void ContextAnalyzer::AnalyzeInterpolatedToken(const std::wstring& token, CharacterString* char_str, int depth)
+{
+  std::wstring expr_part, spec_part;
+  if(SplitFormatSpec(token, expr_part, spec_part)) {
+    AnalyzeCharacterStringFormat(expr_part, spec_part, char_str, depth);
+  }
+  else if(IsComplexExpression(token)) {
+    AnalyzeCharacterStringExpression(token, char_str, depth);
+  }
+  else {
+    SymbolEntry* entry = GetEntry(token);
+    if(entry) {
+      AnalyzeCharacterStringVariable(entry, char_str, depth);
+    }
+    else {
+      ProcessError(char_str, L"Undefined variable: '" + token + L"'");
+    }
+  }
+}
+
+/****************************
+ * Splits an interpolation token into an expression and an optional format
+ * specifier at a top-level ':'. A ':' inside parens/brackets/quotes, or one that
+ * pairs with a ternary '?', is not a separator. Returns true if a spec was found.
+ ****************************/
+bool ContextAnalyzer::SplitFormatSpec(const std::wstring& token, std::wstring& expr_out, std::wstring& spec_out)
+{
+  int paren = 0, bracket = 0, ternary = 0;
+  bool in_str = false, in_chr = false;
+
+  for(size_t i = 0; i < token.size(); ++i) {
+    const wchar_t c = token[i];
+
+    if(in_str) {
+      if(c == L'\\') { ++i; }
+      else if(c == L'"') { in_str = false; }
+      continue;
+    }
+    if(in_chr) {
+      if(c == L'\\') { ++i; }
+      else if(c == L'\'') { in_chr = false; }
+      continue;
+    }
+
+    switch(c) {
+    case L'"':  in_str = true;  break;
+    case L'\'': in_chr = true;  break;
+    case L'(':  ++paren;        break;
+    case L')':  if(paren > 0)   { --paren; }   break;
+    case L'[':  ++bracket;      break;
+    case L']':  if(bracket > 0) { --bracket; } break;
+    case L'?':
+      if(paren == 0 && bracket == 0) { ++ternary; }
+      break;
+    case L':':
+      if(paren == 0 && bracket == 0) {
+        if(ternary > 0) {
+          --ternary;   // ternary colon (a ? b : c), not a format separator
+        }
+        else {
+          expr_out = token.substr(0, i);
+          spec_out = token.substr(i + 1);
+          return true;
+        }
+      }
+      break;
+    default:
+      break;
+    }
+  }
+
+  return false;
+}
+
+/****************************
+ * Analyzes an interpolation token that carries a format specifier, e.g. "pi:.2".
+ * The spec is desugared into a chain of existing library helpers (Float->ToString
+ * with precision, Int->ToHexString/ToBinaryString, String->PadTo) producing a
+ * System.String, which is emitted as an ordinary EXPRESSION segment.
+ ****************************/
+void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text, const std::wstring& spec_text, CharacterString* char_str, int depth)
+{
+  const FormatSpec fs = ParseFormatSpec(spec_text);
+  if(!fs.valid) {
+    ProcessError(char_str, L"Invalid format specifier in string interpolation: '" + spec_text + L"'");
+    return;
+  }
+
+  // Unescape quotes in the expression text (\" -> ")
+  std::wstring expr;
+  for(size_t i = 0; i < expr_text.size(); ++i) {
+    if(expr_text[i] == L'\\' && i + 1 < expr_text.size() && expr_text[i + 1] == L'"') {
+      expr += L'"';
+      ++i;
+    }
+    else {
+      expr += expr_text[i];
+    }
+  }
+
+  // Probe the expression's type to pick the natural stringifier (only needed when
+  // no radix/precision is given). The probe AST is discarded.
+  Type* probe_type = nullptr;
+  {
+    Expression* probe = Parser::ParseExpressionText(expr, char_str->GetFileName(),
+                                                    char_str->GetLineNumber(), char_str->GetLinePosition(), current_class);
+    if(!probe) {
+      ProcessError(char_str, L"Invalid expression in string interpolation: '" + expr_text + L"'");
+      return;
+    }
+    AnalyzeExpression(probe, depth + 1);
+    probe_type = probe->GetEvalType();
+  }
+  if(!probe_type) {
+    ProcessError(char_str, L"Cannot determine type of expression: '" + expr_text + L"'");
+    return;
+  }
+
+  // Compose a wrapper expression (as text) over existing library helpers.
+  const std::wstring inner = L"(" + expr + L")";
+  std::wstring wrapped;
+
+  if(fs.radix == L'x') {
+    wrapped = L"Int->ToHexString(" + inner + L"->As(Int))";
+  }
+  else if(fs.radix == L'b') {
+    wrapped = L"Int->ToBinaryString(" + inner + L"->As(Int))";
+  }
+  else if(fs.has_precision) {
+    wrapped = L"Float->ToString(" + inner + L"->As(Float), " + std::to_wstring(fs.precision) + L")";
+  }
+  else {
+    switch(probe_type->GetType()) {
+    case FLOAT_TYPE:   wrapped = L"Float->ToString(" + inner + L")"; break;
+    case INT_TYPE:     wrapped = L"Int->ToString(" + inner + L")";   break;
+    case CHAR_TYPE:    wrapped = L"Char->ToString(" + inner + L")";  break;
+    case BYTE_TYPE:    wrapped = L"Byte->ToString(" + inner + L")";  break;
+    case BOOLEAN_TYPE: wrapped = L"Bool->ToString(" + inner + L")";  break;
+    case CLASS_TYPE:
+      if(probe_type->GetName() == L"System.String" || probe_type->GetName() == L"String") {
+        wrapped = inner;
+      }
+      else {
+        wrapped = inner + L"->ToString()";
+      }
+      break;
+    default:
+      wrapped = inner + L"->ToString()";
+      break;
+    }
+  }
+
+  // Apply width / justification / zero-pad to the resulting string.
+  if(fs.has_width) {
+    const wchar_t pad = fs.zero_pad ? L'0' : L' ';
+    // right-justify (default / '>') pads on the left; '<' pads on the right
+    const std::wstring is_left = fs.left_justify ? L"false" : L"true";
+    wrapped = L"(" + wrapped + L")->PadTo(" + std::to_wstring(fs.width) + L", '" + std::wstring(1, pad) + L"', " + is_left + L")";
+  }
+
+  Expression* expr_node = Parser::ParseExpressionText(wrapped, char_str->GetFileName(),
+                                                      char_str->GetLineNumber(), char_str->GetLinePosition(), current_class);
+  if(!expr_node) {
+    ProcessError(char_str, L"Invalid format expression in string interpolation: '" + expr_text + L":" + spec_text + L"'");
+    return;
+  }
+  AnalyzeExpression(expr_node, depth + 1);
+
+  if(!expr_node->GetEvalType()) {
+    ProcessError(char_str, L"Cannot apply format specifier '" + spec_text + L"' to expression: '" + expr_text + L"'");
+    return;
+  }
+
+  // The composed expression yields System.String; no extra ToString needed.
+  char_str->AddSegment(expr_node, nullptr, nullptr);
 }
 
 void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)

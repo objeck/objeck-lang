@@ -23,7 +23,20 @@ class StringDemo {
 
     # Reverse
     word := "racecar";
-    "'{$word}' reversed: "->Print();
-    word->Reverse()->PrintLine();
+    "'{$word}' reversed: {$word->Reverse()}"->PrintLine();
+
+    # Expressions inside interpolation
+    a := 6; b := 7;
+    "{$a} * {$b} = {$a * b}"->PrintLine();           # 6 * 7 = 42
+
+    # Format specifiers: precision, width/zero-pad, alignment, radix
+    pi := 3.14159;
+    "pi to 2 places: {$pi:.2}"->PrintLine();         # 3.14
+    "padded id:      {$b:04}"->PrintLine();          # 0007
+    "left  | {$word:<10} |"->PrintLine();            # racecar    |
+    "hex of 255:     {$255:x}"->PrintLine();         # 0xff
+
+    # Positional templating with String->Format
+    String->Format("{0} has {1} letters", word, IntRef->New(word->Size()))->PrintLine();
   }
 }

@@ -1,0 +1,38 @@
+# Verifies operator expressions inside "{$...}" string interpolation.
+use System;
+
+class CoreStringInterpExprTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string interpolation expressions..."->PrintLine();
+        pass := true;
+
+        i := 41;
+        a := 3; b := 4; c := 2;
+
+        pass := Check("{$i + 1}", "42", pass);
+        pass := Check("{$a * b - c}", "10", pass);
+        pass := Check("{$i % 2 = 0}", "false", pass);
+        pass := Check("{$a > b}", "false", pass);
+        pass := Check("{$a * 2 + b}", "10", pass);
+        # mixed literal + expression + bare variable
+        pass := Check("sum={$a + b}, var={$i}", "sum=7, var=41", pass);
+        # method call combined with arithmetic (already supported path)
+        pass := Check("{$args->Size() + 1}", "1", pass);
+
+        if(pass) {
+            "PASS: String interpolation expressions"->PrintLine();
+        }
+        else {
+            "FAIL: String interpolation expressions"->PrintLine();
+            Runtime->Exit(1);
+        };
+    }
+
+    function : Check(actual : String, expected : String, pass : Bool) ~ Bool {
+        if(<>actual->Equals(expected)) {
+            "  FAIL: got '{$actual}', expected '{$expected}'"->PrintLine();
+            return false;
+        };
+        return pass;
+    }
+}

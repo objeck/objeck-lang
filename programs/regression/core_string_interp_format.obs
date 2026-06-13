@@ -1,0 +1,49 @@
+# Verifies inline format specifiers "{$expr:spec}" in string interpolation.
+use System;
+
+class CoreStringInterpFormatTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing string interpolation format specifiers..."->PrintLine();
+        pass := true;
+
+        pi := 3.14159;
+        n := 42;
+        v := 255;
+        s := "hi";
+
+        # precision
+        pass := Check("{$pi:.2}", "3.14", pass);
+        pass := Check("{$pi:.0}", "3", pass);
+        # width (right-justified by default) and zero-pad
+        pass := Check("[{$n:5}]", "[   42]", pass);
+        pass := Check("{$n:05}", "00042", pass);
+        # explicit alignment
+        pass := Check("[{$s:<6}]", "[hi    ]", pass);
+        pass := Check("[{$s:>6}]", "[    hi]", pass);
+        # radix
+        pass := Check("{$v:x}", "0xff", pass);
+        pass := Check("{$v:b}", "11111111", pass);
+        # precision + width combo
+        pass := Check("[{$pi:8.2}]", "[    3.14]", pass);
+        # negative value through an expression
+        pass := Check("{$-pi:.3}", "-3.142", pass);
+        # format applied to a method-call expression
+        pass := Check("{$args->Size():03}", "000", pass);
+
+        if(pass) {
+            "PASS: String interpolation format specifiers"->PrintLine();
+        }
+        else {
+            "FAIL: String interpolation format specifiers"->PrintLine();
+            Runtime->Exit(1);
+        };
+    }
+
+    function : Check(actual : String, expected : String, pass : Bool) ~ Bool {
+        if(<>actual->Equals(expected)) {
+            "  FAIL: got '{$actual}', expected '{$expected}'"->PrintLine();
+            return false;
+        };
+        return pass;
+    }
+}

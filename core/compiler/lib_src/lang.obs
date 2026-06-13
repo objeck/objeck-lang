@@ -2677,6 +2677,49 @@ bundle System {
 			return String->New(buffer, false);
 		}
 
+		#~
+		Returns a fixed-point string representation of the float with a given
+		number of decimal places (rounded). Used by string-interpolation format
+		specifiers, e.g. "{$pi:.2}".
+		@param value float value
+		@param precision number of decimal places (negative is treated as 0)
+		@return fixed-point string representation
+		```
+		Float->ToString(3.14159, 2)->PrintLine();  # 3.14
+		```
+		~#
+		function : ToString(value : Float, precision : Int) ~ String {
+			if(precision < 0) {
+				precision := 0;
+			};
+
+			f := value;
+			result := String->New();
+			if(f < 0.0) {
+				result->Append('-');
+				f := f * -1.0;
+			};
+
+			scale := Float->Pow(10.0, precision);
+			scaled := Float->Round(f * scale);
+
+			int_part := Float->Floor(scaled / scale)->As(Int);
+			frac_part := (scaled - (int_part->As(Float) * scale))->As(Int);
+
+			result->Append(int_part);
+			if(precision > 0) {
+				result->Append('.');
+				frac_str := Int->ToString(frac_part);
+				pad_count := precision - frac_str->Size();
+				each(i : pad_count) {
+					result->Append('0');
+				};
+				result->Append(frac_str);
+			};
+
+			return result;
+		}
+
 		function : native : ToString(v : Float[]) ~ String {
 			out := "[";
 			each(i : v) {
@@ -5859,6 +5902,139 @@ each(i : cities) {
 				buf->Append(suffix);
 			};
 			return buf;
+		}
+
+		#~
+		Pads the string with a fill character to a minimum total width. If the
+		string is already at least 'width' long it is returned unchanged. Used by
+		string-interpolation format specifiers, e.g. "{$n:05}" or "{$s:<10}".
+		@param width minimum total width
+		@param ch fill character
+		@param is_left if true, pad on the left (right-justify); otherwise pad on the right
+		@return padded string
+		```
+		"42"->PadTo(5, '0', true)->PrintLine();   # 00042
+		"hi"->PadTo(6, ' ', false)->PrintLine();  # 'hi    '
+		```
+		~#
+		method : public : PadTo(width : Int, ch : Char, is_left : Bool) ~ String {
+			if(@pos >= width) {
+				return String->New(@string);
+			};
+
+			return Pad(ch, width - @pos, is_left);
+		}
+
+		#~
+		Formats a string by substituting positional placeholders {0}, {1}, ...
+		with the string value of the matching argument. Use {{ and }} for literal
+		braces. Arguments are stringified via their 'ToString' (Stringify).
+		@param fmt format string with {n} placeholders
+		@param args substitution arguments
+		@return formatted string
+		```
+		String->Format("{0} = {1}", "x", 42)->PrintLine();  # x = 42
+		```
+		~#
+		function : Format(fmt : String, args : System.Base[]) ~ String {
+			result := String->New();
+			if(fmt = Nil) {
+				return result;
+			};
+
+			size := fmt->Size();
+			i := 0;
+			while(i < size) {
+				c := fmt->Get(i);
+
+				if(c = '{') {
+					# escaped '{{'
+					if(i + 1 < size & fmt->Get(i + 1) = '{') {
+						result->Append('{');
+						i += 2;
+					}
+					else {
+						close := fmt->Find(i + 1, '}');
+						if(close < 0) {
+							result->Append('{');
+							i += 1;
+						}
+						else {
+							token := fmt->SubString(i + 1, close - i - 1);
+							index := token->ToInt();
+							if(index >= 0 & index < args->Size() & args[index] <> Nil) {
+								value := args[index];
+								if(value->TypeOf(Stringify)) {
+									result->Append(value->As(System.Stringify)->ToString());
+								}
+								else {
+									result->Append(value->GetInstanceID()->ToHexString());
+								};
+							};
+							i := close + 1;
+						};
+					};
+				}
+				else if(c = '}') {
+					# escaped '}}'
+					if(i + 1 < size & fmt->Get(i + 1) = '}') {
+						result->Append('}');
+						i += 2;
+					}
+					else {
+						result->Append('}');
+						i += 1;
+					};
+				}
+				else {
+					result->Append(c);
+					i += 1;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Formats a string with a single positional argument. See Format(String, System.Base[]).
+		~#
+		function : Format(fmt : String, arg0 : System.Base) ~ String {
+			args := System.Base->New[1];
+			args[0] := arg0;
+			return Format(fmt, args);
+		}
+
+		#~
+		Formats a string with two positional arguments. See Format(String, System.Base[]).
+		~#
+		function : Format(fmt : String, arg0 : System.Base, arg1 : System.Base) ~ String {
+			args := System.Base->New[2];
+			args[0] := arg0;
+			args[1] := arg1;
+			return Format(fmt, args);
+		}
+
+		#~
+		Formats a string with three positional arguments. See Format(String, System.Base[]).
+		~#
+		function : Format(fmt : String, arg0 : System.Base, arg1 : System.Base, arg2 : System.Base) ~ String {
+			args := System.Base->New[3];
+			args[0] := arg0;
+			args[1] := arg1;
+			args[2] := arg2;
+			return Format(fmt, args);
+		}
+
+		#~
+		Formats a string with four positional arguments. See Format(String, System.Base[]).
+		~#
+		function : Format(fmt : String, arg0 : System.Base, arg1 : System.Base, arg2 : System.Base, arg3 : System.Base) ~ String {
+			args := System.Base->New[4];
+			args[0] := arg0;
+			args[1] := arg1;
+			args[2] := arg2;
+			args[3] := arg3;
+			return Format(fmt, args);
 		}
 
 		#~

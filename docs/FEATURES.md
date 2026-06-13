@@ -5,6 +5,7 @@ Comprehensive guide to Objeck's language features with examples.
 ## Table of Contents
 - [Object-Oriented Programming](#oop)
 - [Functional Programming](#functional)
+- [Strings & Formatting](#strings)
 - [Platform Support](#platform)
 
 ---
@@ -197,6 +198,74 @@ function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
   @g := g;
   return Compose(Int) ~ Int;
 }
+```
+
+---
+
+<a name="strings"></a>
+## Strings & Formatting
+
+### Interpolation
+Embed a value in a string literal with `{$...}`. The braces may hold any
+expression — a bare variable, a field, an arithmetic / comparison / logical
+expression, an array access, or a method call:
+```ruby
+name := "World";
+i := 41;
+"Hello, {$name}!"->PrintLine();             # Hello, World!
+"next = {$i + 1}"->PrintLine();             # next = 42
+"even? {$i % 2 = 0}"->PrintLine();          # even? false
+"upper = {$name->ToUpper()}"->PrintLine();  # upper = WORLD
+```
+
+### Format specifiers
+Append `:spec` to an interpolated expression for precision, width, alignment, or
+radix (Python / .NET–style):
+
+| Spec | Example | Result |
+|------|---------|--------|
+| `.N` — precision | `"{$pi:.2}"` | `3.14` |
+| `N` — min width (right-justified) | `"[{$n:5}]"` | `[   42]` |
+| `0N` — zero-pad | `"{$n:05}"` | `00042` |
+| `<N` — left-justify | `"[{$s:<6}]"` | `[hi    ]` |
+| `>N` — right-justify | `"[{$s:>6}]"` | `[    hi]` |
+| `x` — hexadecimal | `"{$v:x}"` | `0xff` |
+| `b` — binary | `"{$v:b}"` | `11111111` |
+| width + precision | `"[{$pi:8.2}]"` | `[    3.14]` |
+
+```ruby
+pi := 3.14159; n := 42; v := 255;
+"pi  = {$pi:.2}"->PrintLine();   # pi  = 3.14
+"id  = {$n:05}"->PrintLine();    # id  = 00042
+"hex = {$v:x}"->PrintLine();     # hex = 0xff
+```
+
+### String->Format
+For a positional template — handy when the format string is reused or built at
+runtime — use `String->Format`. Placeholders `{0}`, `{1}`, … are replaced by the
+matching argument's `ToString`; `{{` and `}}` produce literal braces:
+```ruby
+String->Format("{0} = {1}", "x", "y")->PrintLine();      # x = y
+String->Format("{1} before {0}", "a", "b")->PrintLine(); # b before a
+```
+String and object arguments are passed directly; primitive values are boxed with
+their holder type (`IntRef`, `FloatRef`, …):
+```ruby
+use System;
+String->Format("n = {0}", IntRef->New(42))->PrintLine(); # n = 42
+```
+> For mixing primitive values, string interpolation (`"{$x}"` / `"{$x:.2}"`) is
+> usually more convenient than `Format`.
+
+### Building strings manually
+`String` also provides `Append`, `Pad` / `PadTo`, `Justify`, and `Truncate` for
+incremental construction:
+```ruby
+buffer := String->New();
+buffer->Append("count=");
+buffer->Append(7);
+buffer->ToString()->PrintLine();           # count=7
+"42"->PadTo(5, '0', true)->PrintLine();     # 00042
 ```
 
 ---

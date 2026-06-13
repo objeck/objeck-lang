@@ -1,0 +1,8 @@
+# EXPECT_COMPILE_ERROR
+# An unrecognized interpolation format specifier must be rejected at compile time.
+class BadStringInterpFormat {
+    function : Main(args : String[]) ~ Nil {
+        n := 42;
+        "{$n:zq}"->PrintLine();
+    }
+}

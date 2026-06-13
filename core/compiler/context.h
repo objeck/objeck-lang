@@ -362,6 +362,16 @@ class ContextAnalyzer {
   // validate character string expression (for interpolated method calls, array access, etc.)
   void AnalyzeCharacterStringExpression(const std::wstring& expr_text, CharacterString* char_str, int depth);
 
+  // validate a single interpolation token: dispatches to format-spec, expression, or variable
+  void AnalyzeInterpolatedToken(const std::wstring& token, CharacterString* char_str, int depth);
+
+  // validate an interpolation token carrying a format specifier, e.g. "pi:.2"
+  void AnalyzeCharacterStringFormat(const std::wstring& expr_text, const std::wstring& spec_text, CharacterString* char_str, int depth);
+
+  // split an interpolation token into expression / format-spec at a top-level ':'
+  // (ignores ':' inside parens/brackets/quotes and ternary '?:'); returns true if a spec was found
+  bool SplitFormatSpec(const std::wstring& token, std::wstring& expr_out, std::wstring& spec_out);
+
   // check if token contains expression operators (method call, array access, etc.)
   bool IsComplexExpression(const std::wstring& token);
 

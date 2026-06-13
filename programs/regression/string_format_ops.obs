@@ -1,0 +1,40 @@
+# Verifies String->Format() positional substitution.
+use System;
+
+class StringFormatOpsTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing String->Format()..."->PrintLine();
+        pass := true;
+
+        # positional substitution with String args
+        pass := Check(String->Format("{0} = {1}", "x", "y"), "x = y", pass);
+        # reordered positions
+        pass := Check(String->Format("{1} before {0}", "a", "b"), "b before a", pass);
+        # brace escaping
+        pass := Check(String->Format("{{lit}} {0}", "ok"), "{lit} ok", pass);
+        # three args
+        pass := Check(String->Format("{0}-{1}-{2}", "p", "q", "r"), "p-q-r", pass);
+        # primitive args via holder boxing
+        pass := Check(String->Format("n={0}", IntRef->New(42)), "n=42", pass);
+        # array form
+        items := System.Base->New[2];
+        items[0] := "k"; items[1] := "v";
+        pass := Check(String->Format("{0}={1}", items), "k=v", pass);
+
+        if(pass) {
+            "PASS: String->Format()"->PrintLine();
+        }
+        else {
+            "FAIL: String->Format()"->PrintLine();
+            Runtime->Exit(1);
+        };
+    }
+
+    function : Check(actual : String, expected : String, pass : Bool) ~ Bool {
+        if(<>actual->Equals(expected)) {
+            "  FAIL: got '{$actual}', expected '{$expected}'"->PrintLine();
+            return false;
+        };
+        return pass;
+    }
+}
