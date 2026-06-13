@@ -57,6 +57,17 @@ obc hello && obr hello
 
 ## What's New
 
+**v2026.6.1**
+  * **Multithreaded garbage collection** — the generational collector is now cooperative stop-the-world: mutator threads park at safepoints (interpreter dispatch, JIT loop back-edges on AMD64 and ARM64, allocation, and blocking `join`/`sleep`/socket I/O) so the collector always marks a complete, stable root set. Fixes freed-live-object corruption and use-after-free under heavy thread churn, plus a JIT-loop collector deadlock; single-threaded programs never park
+  * **Secure sockets verify certificates by default** — TLS and DTLS clients (TCP, HTTP/2, HTTP/3, DTLS) now validate the certificate chain and hostname by default instead of accepting any certificate; set `OBJECK_TLS_INSECURE_SKIP_VERIFY=1` to opt into self-signed/dev servers
+  * **Serialization correctness** — 64-bit `Int` values and `Int[]` elements (standalone and object-nested) no longer truncate to 32 bits or drop half the array; function-reference object fields now (de)serialize without desyncing the fields after them. *Note:* the serialized integer wire format widened to 8 bytes
+  * **Memory-safety hardening** — object deserializers bounds-check attacker-supplied lengths/offsets and 64-bit sizes before reading; fixed a heap overflow in the `Char[]` read traps (file/stdin/pipe/socket/SSL/DTLS) reachable from ordinary code via a large offset
+  * **Compiler fixes** — constant propagation no longer keeps a stale literal after a slot is reassigned from a non-constant expression; LICM no longer hoists integer divide/modulo out of a zero-trip loop (which turned a never-evaluated division into a divide-by-zero trap)
+  * **Debugger fix** — variables declared after a `Float` field or local now read from the correct slot (a `Float` is one 8-byte slot) instead of showing garbage
+  * **ONNX** — on macOS the compiled CoreML model is cached across runs (`~/Library/Caches/objeck-onnx`), cutting cold session loads from seconds to milliseconds (~35× faster warm starts); fixed a dangling `TypeInfo` that could mis-detect a model's input dtype/shape
+  * **macOS launcher** — portable app bundles now resolve their own location instead of trusting the working directory, so they launch correctly from Finder or any directory
+  * **Reproducible builds** — compiling unchanged library source now produces byte-identical `.obl` files (deterministic anonymous-class naming), and Windows/ARM64 build warnings and a `NativeCode` ODR violation were cleared
+
 **v2026.6.0**
   * **New `System.AI` library** (`-lib ai` or `@ai`) — classic AI in the standard library: graph search (`Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst`), adversarial game search (`Minimax` with alpha-beta, `MonteCarloTreeSearch`), metaheuristics (`GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing`) and tabular RL (`QLearning`, `Sarsa`, `MarkovDecisionProcess` value iteration); all stochastic algorithms seeded for reproducible runs
   * **`System.ML` overhaul** — 13 new estimators (`RidgeRegression`/`LassoRegression`/`ElasticNet`, `Perceptron`, `SVM`, `PCA`, `GaussianNaiveBayes`, `AdaBoost`, `DBSCAN`, `GaussianMixture`, `KDTree`, `RegressionTree`, `GradientBoostedTrees`); real recursive `DecisionTree` and voting `RandomForest`; k-means++ `KMeans`; `NeuralNetwork` hidden/output bias (clean XOR convergence); seedable `System.ML.Random`; uniform `Fit`/`Predict`/`Score`/`IsFitted`/`Store`/`Load` API across every estimator. *Breaking:* `RandomForest->Train` is now `Fit`; stored `NeuralNetwork` model files must be regenerated
@@ -72,15 +83,6 @@ obc hello && obr hello
   * **LSP shell script permissions** — all `tools/lsp/` shell scripts now have execute bit set in git, fixing `Permission denied` in release CI
   * **Release workflow** — `git checkout -f master` prevents dirty-tree abort when committing `api.zip` from a tag-based build
 
-**v2026.5.3**
-  * **JIT `select` dispatch** — dense integer `select` (6+ cases) emits a native O(1) jump table; small sets use a linear scan; sparse/string falls back to BST — best strategy chosen automatically on AMD64 and ARM64
-  * **JIT trig/float fixes** — AMD64 x87 `fsin`/`fcos`/`ftan` replaced with `call_xfunc` for consistent cross-platform results; fixed `REG_FLOAT` register corruption crash in `call_xfunc`/`sqrt`/`round`
-  * **Binary file hardening** — 4-byte uncompressed-size header prepended to every `.obe`/`.obl`; level-9 zlib compression (~5% smaller); old format auto-detected via CMF byte for backward compatibility
-  * **LSP consolidated** — LSP server moved into main repo (`tools/lsp/`); CI rebuilds the server and VS Code extension on every release; `publish-vscode` job auto-publishes to the VS Code Marketplace
-  * **API documentation overhaul** — bundle overview panels, 500+ inline code examples, global search index, two-column TOC, method badges, and anchor links across all 32 library pages
-  * **ODBC improvements** — live SQLite integration test; transaction support (`Commit`/`Rollback`/`SetAutoCommit`) verified; `GetColumns` metadata
-  * **Bug fixes** — `String->Split(Char)` trailing token fix; `String->SubString` crash on negative/zero length; inline optimizer jump-table label shift fix; `CleanLabelsLocation` end-of-stream overread fix
-  * **Performance** — `bench_spectralnorm_native` inner loop: incremental FP denominator eliminates per-element `I2F` conversions
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
