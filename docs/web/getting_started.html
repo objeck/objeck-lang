@@ -1275,18 +1275,39 @@ for(h := -6; h &lt;= 6; h+=1;) {
           String Interpolation
          </h3>
          <p>
-          Variable values can be embedded directly into string literals using the <code>{$variable}</code> syntax. This is useful for building formatted output without manual string concatenation.
+          Values can be embedded directly into string literals using the <code>{$...}</code> syntax — a cleaner alternative to manual concatenation. The braces may hold any expression: a bare variable, a field, an arithmetic / comparison / logical expression, an array access, or a method call.
          </p>
          <pre><code class="language-cpp">name := "Objeck";
 version := 2026;
-"Welcome to {$name} v{$version}!"-&gt;PrintLine();
+"Welcome to {$name} v{$version}!"-&gt;PrintLine();   # Welcome to Objeck v2026!
 
-x := 3.14;
-y := 2.71;
-"x={$x}, y={$y}, sum={$(x + y)}"-&gt;PrintLine();
+i := 41;
+a := 3; b := 4;
+"next  = {$i + 1}"-&gt;PrintLine();                  # next  = 42
+"area  = {$a * b}"-&gt;PrintLine();                  # area  = 12
+"even? = {$i % 2 = 0}"-&gt;PrintLine();              # even? = false
+"upper = {$name-&gt;ToUpper()}"-&gt;PrintLine();        # upper = OBJECK
 </code></pre>
          <p>
-          The <code>$</code> prefix before a string literal treats it as a verbatim string, ignoring escape characters like <code>\n</code> and <code>\t</code>.
+          Append <code>:spec</code> to an interpolated expression to control precision, width, alignment, or radix, using Python / .NET&ndash;style format specifiers.
+         </p>
+         <pre><code class="language-cpp">pi := 3.14159; n := 42; v := 255; s := "hi";
+"{$pi:.2}"-&gt;PrintLine();    # 3.14       precision
+"[{$n:5}]"-&gt;PrintLine();    # [   42]    minimum width, right-justified
+"{$n:05}"-&gt;PrintLine();     # 00042      zero-padded
+"[{$s:&lt;6}]"-&gt;PrintLine();   # [hi    ]   left-justified
+"[{$s:&gt;6}]"-&gt;PrintLine();   # [    hi]   right-justified
+"{$v:x}"-&gt;PrintLine();      # 0xff       hexadecimal
+"{$v:b}"-&gt;PrintLine();      # 11111111   binary
+</code></pre>
+         <p>
+          For a positional template &mdash; handy when the format string is reused or built at runtime &mdash; use <code>String-&gt;Format</code>. The placeholders <code>{0}</code>, <code>{1}</code>, &hellip; are replaced by the matching argument; <code>{{</code> and <code>}}</code> produce literal braces.
+         </p>
+         <pre><code class="language-cpp">String-&gt;Format("{0} = {1}", "x", "y")-&gt;PrintLine();      # x = y
+String-&gt;Format("{1} before {0}", "a", "b")-&gt;PrintLine(); # b before a
+</code></pre>
+         <p>
+          The <code>$</code> prefix before a string literal instead treats it as a verbatim string, ignoring escape characters like <code>\n</code> and <code>\t</code>.
          </p>
          <pre><code class="language-cpp">path := $"C:\Users\objeck\files";
 path-&gt;PrintLine(); # prints: C:\Users\objeck\files
