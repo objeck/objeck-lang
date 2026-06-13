@@ -1331,11 +1331,10 @@ set->Size()->PrintLine();        # 1
 ```
 		~#
 		method : public : Add(value : H) ~ Bool {
-			if(value = Nil | @hash->Has(value)) {
+			if(value = Nil) {
 				return false;
 			};
-			@hash->Insert(value, true);
-			return true;
+			return @hash->InsertIfAbsent(value, true);
 		}
 
 		#~
@@ -1670,15 +1669,15 @@ hash->Has(408)->PrintLine();
 		@auto_resize : Bool;
 
 		#~
-		Hash table capacity. Load factors: SMALL=500, MEDIUM=9k, LARGE=900k, EX_LARGE=9M, HUGE=90M
+		Hash table capacity. Load factors: SMALL=500, MEDIUM=2k, LARGE=9k, EX_LARGE=36k, HUGE=147k
 		@class Hash
 		~#
 		consts Capacity {
 			SMALL := 769,
-			MEDIUM := 12289,
-			LARGE := 1572869,
-			EX_LARGE := 12582917,
-			HUGE := 100663319
+			MEDIUM := 3079,
+			LARGE := 12289,
+			EX_LARGE := 49157,
+			HUGE := 196613
 		}
 		
 		#~
@@ -1759,38 +1758,43 @@ hash->ToString()->PrintLine();
 		method : public : ToString() ~ String {
 			buffer := "[";
 
-			pairs := GetKeyValues()<Pair<K,V>>;
-			each(i : pairs) {
-				# get string value if instance implements 'Stringify'
-				pair := pairs->Get(i)<Pair<K,V>>;
+			count := 0;
+			for(i := 0; i < @buckets->Size(); i += 1;) {
+				if(@buckets[i] <> Nil) {
+					list := @buckets[i];
+					list->Rewind();
+					while(list->More()) {
+						if(count > 0) {
+							buffer->Append(',');
+						};
 
-				key := pair->GetFirst();
-				if(key->TypeOf(Stringify)) {
-					buffer->Append('(');
-					buffer->Append(key->As(System.Stringify)->ToString());
-				}
-				# use instance ID instead
-				else {
-					buffer->Append('(');
-					buffer->Append(key->GetInstanceID()->ToHexString());
-				};
+						pair : HashPair<V> := list->Get()<V>;
+						key : K := pair->GetKey();
+						buffer->Append('(');
+						if(key->TypeOf(Stringify)) {
+							buffer->Append(key->As(System.Stringify)->ToString());
+						}
+						else {
+							buffer->Append(key->GetInstanceID()->ToHexString());
+						};
 
-				buffer->Append(':');
+						buffer->Append(':');
 
-				value := pair->GetSecond();
-				if(value->TypeOf(Stringify)) {
-					buffer->Append(value->As(System.Stringify)->ToString());
-					buffer->Append(')');
-				}
-				# use instance ID instead
-				else {
-					buffer->Append(value->GetInstanceID()->ToHexString());
-					buffer->Append(')');
-				};
+						value := pair->Get();
+						if(value = Nil) {
+							buffer->Append("<Nil>");
+						}
+						else if(value->TypeOf(Stringify)) {
+							buffer->Append(value->As(System.Stringify)->ToString());
+						}
+						else {
+							buffer->Append(value->GetInstanceID()->ToHexString());
+						};
+						buffer->Append(')');
 
-				# add comma
-				if(i + 1 < pairs->Size()) {
-					buffer->Append(',');
+						count += 1;
+						list->Next();
+					};
 				};
 			};
 			buffer->Append(']');
@@ -1853,6 +1857,47 @@ hash->Find("count")->PrintLine(); # 42
 				list->AddBack(HashPair->New(key->As(Compare), value)<V>);
 				@size += 1;
 			};
+		}
+
+		method : public : InsertIfAbsent(key : K, value : V) ~ Bool {
+			if(key = Nil) {
+				return false;
+			};
+
+			if(@auto_resize & (@size + 1) * 100 / @capacity > 75) {
+				if(@capacity = Capacity->SMALL) {
+					Resize(Hash->Capacity->MEDIUM);
+				}
+				else if(@capacity = Capacity->MEDIUM) {
+					Resize(Hash->Capacity->LARGE);
+				}
+				else if(@capacity = Capacity->LARGE) {
+					Resize(Hash->Capacity->EX_LARGE);
+				}
+				else if(@capacity = Capacity->EX_LARGE) {
+					Resize(Hash->Capacity->HUGE);
+				};
+			};
+
+			hash := (key->HashID() % @buckets->Size())->Abs();
+			list := @buckets[hash];
+			if(list = Nil) {
+				list := CompareList->New()<K>;
+				@buckets[hash] := list;
+			};
+
+			list->Rewind();
+			while(list->More()) {
+				pair : HashPair<V> := list->Get()<V>;
+				if(pair->Compare(key) = 0) {
+					return false;
+				};
+				list->Next();
+			};
+
+			list->AddBack(HashPair->New(key->As(Compare), value)<V>);
+			@size += 1;
+			return true;
 		}
 
 		#~
@@ -1995,8 +2040,24 @@ hash->Has("z")->PrintLine();   # false
 ```
 		~#
 		method : public : Has(key : K) ~ Bool {
-			result := Find(key);
-			return result <> Nil;
+			if(key = Nil) {
+				return false;
+			};
+
+			hash := (key->HashID() % @buckets->Size())->Abs();
+			list := @buckets[hash];
+			if(list <> Nil) {
+				list->Rewind();
+				while(list->More()) {
+					pair : HashPair<V> := list->Get()<V>;
+					if(pair->Compare(key) = 0) {
+						return true;
+					};
+					list->Next();
+				};
+			};
+
+			return false;
 		}
 
 		#~
@@ -2048,6 +2109,7 @@ each(k := keys) {
 		~#
 		method : public : native : GetKeys() ~ Vector<K> {
 			keys := Vector->New()<K>;
+			keys->Reserve(@size);
 			for(i := 0; i < @buckets->Size(); i += 1;) {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
@@ -2079,6 +2141,7 @@ each(v := vals) {
 		~#
 		method : public : native : GetValues() ~ Vector<V> {
 			values := Vector->New()<V>;
+			values->Reserve(@size);
 			for(i := 0; i < @buckets->Size(); i += 1;) {
 				if(@buckets[i] <> Nil) {
 					list := @buckets[i];
@@ -2109,6 +2172,7 @@ each(kv := kvs) {
 		~#
 		method : public : GetKeyValues() ~ Vector<Pair<K,V>> {
 			values := Vector->New()<Pair<K,V>>;
+			values->Reserve(@size);
 
 			for(i := 0; i < @buckets->Size(); i += 1;) {
 				if(@buckets[i] <> Nil) {
@@ -4615,6 +4679,18 @@ v->Size()->PrintLine(); # 2
 			Runtime->Copy(@values, 0, values, 0, @size);
  		}
 
+		method : public : Reserve(capacity : Int) ~ Nil {
+			if(capacity < 1) {
+				capacity := 1;
+			};
+
+			if(capacity > @values->Size()) {
+				temp : H[] := H->New[capacity];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
+			};
+		}
+
 		#~
 		Copy constructor
 		@param values values to copy
@@ -4663,6 +4739,7 @@ zipped->Get(0)->GetFirst()->PrintLine(); # x
 			};
 
 			zipped := Vector->New()<Collection.Tuple.Pair<H,H>>;
+			zipped->Reserve(max);
 			each(i : max) {
 				tuple := Collection.Tuple.Pair->New(a->Get(i), b->Get(i))<H, H>;
 				zipped->AddBack(tuple)<Collection.Tuple.Pair<H,H>>;
@@ -4696,6 +4773,7 @@ zipped->Size()->PrintLine(); # 1
 			};
 
 			zipped := Vector->New()<Collection.Tuple.Triplet<H,H,H>>;
+			zipped->Reserve(max);
 			each(i : max) {
 				tuple := Collection.Tuple.Triplet->New(a->Get(i), b->Get(i), c->Get(i))<H,H,H>;
 				zipped->AddBack(tuple)<Collection.Tuple.Triplet<H,H,H>>;
@@ -4734,6 +4812,7 @@ zipped->Size()->PrintLine(); # 1
 			};
 
 			zipped := Vector->New()<Collection.Tuple.Quartet<H,H,H,H>>;
+			zipped->Reserve(max);
 			each(i : max) {
 				tuple := Collection.Tuple.Quartet->New(a->Get(i), b->Get(i), c->Get(i), d->Get(i))<H,H,H,H>;
 				zipped->AddBack(tuple)<Collection.Tuple.Quartet<H,H,H,H>>;
@@ -4760,6 +4839,7 @@ rev->Get(0)->PrintLine(); # c
 
 			len := @size;
 			reversed := Collection.Vector->New()<H>;
+			reversed->Reserve(@size);
 			each(i : @size) {
 				reversed->AddBack(@values[--len])
 			};
@@ -4870,6 +4950,7 @@ filtered->Size()->PrintLine(); # 2
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ Vector<H> {
 			filtered := Vector->New()<H>;
+			filtered->Reserve(@size);
 
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(f(@values[i])) {
@@ -4981,7 +5062,9 @@ v->Size()->PrintLine();       # 1
 		method : public : RemoveBack() ~ H {
 			if(@size > 0) {
 				@size -= 1;
-				return @values[@size];
+				value := @values[@size];
+				@values[@size] := Nil;
+				return value;
 			};
 
 			return Nil;
@@ -5004,6 +5087,7 @@ v->Size()->PrintLine();    # 2
 				value := @values[i];
 				@size -= 1;
 				Runtime->Copy(@values, i, @values, i + 1, @size - i);
+				@values[@size] := Nil;
 				return value;
 			};
 
@@ -5343,6 +5427,18 @@ copy->Get(0)->PrintLine(); # 5
 			@size := values->Size();
 		}
 
+		method : public : Reserve(capacity : Int) ~ Nil {
+			if(capacity < 1) {
+				capacity := 1;
+			};
+
+			if(capacity > @values->Size()) {
+				temp : H[] := H->New[capacity];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
+			};
+		}
+
 		#~
 		Reverses element order
 		@return reversed vector, if the vector is empty or hold 1 item then the original list is returned
@@ -5361,6 +5457,7 @@ rev->Get(0)->PrintLine(); # 3
 
 			len := @size;
 			reversed := Collection.CompareVector->New()<H>;
+			reversed->Reserve(@size);
 			each(i : @size) {
 				reversed->AddBack(@values[--len])
 			};
@@ -5525,7 +5622,9 @@ v->Size()->PrintLine();       # 1
 		method : public : RemoveBack() ~ H {
 			if(@size > 0) {
 				@size -= 1;
-				return @values[@size];
+				value := @values[@size];
+				@values[@size] := Nil;
+				return value;
 			};
 
 			return Nil;
@@ -5548,6 +5647,7 @@ v->Size()->PrintLine();    # 2
 				value := @values[i];
 				@size -= 1;
 				Runtime->Copy(@values, i, @values, i + 1, @size - i);
+				@values[@size] := Nil;
 				return value;
 			};
 
@@ -5687,6 +5787,10 @@ v->Get(0)->PrintLine(); # 1
 ```
 		~#
 		method : public : native : Sort() ~ Nil {
+			if(@size < 2) {
+				return;
+			};
+
 			a : H[] := @values;
 			b : H[] := H->New[@size];
 			MergeSort(0, @size - 1, a, b);
@@ -5694,11 +5798,28 @@ v->Get(0)->PrintLine(); # 1
 		
 		method : MergeSort(low : Int, hi : Int, a : H[], b : H[]) ~ Nil {
 			if(low < hi) {
+				if(hi - low < 16) {
+					InsertionSort(low, hi, a);
+					return;
+				};
+
 				mid := (low + hi) >> 1;
 				MergeSort(low, mid, a, b);
 				MergeSort(mid + 1, hi, a, b);
 				Merge(low, mid, hi, a, b);
 			};	
+		}
+
+		method : InsertionSort(low : Int, hi : Int, a : H[]) ~ Nil {
+			for(i := low + 1; i <= hi; i += 1;) {
+				value := a[i];
+				j := i - 1;
+				while(j >= low & a[j]->Compare(value) > 0) {
+					a[j + 1] := a[j];
+					j -= 1;
+				};
+				a[j + 1] := value;
+			};
 		}
 		
 		method : native : Merge(low : Int, mid : Int, hi : Int, a : H[], b : H[]) ~ Nil {
@@ -5827,6 +5948,7 @@ evens->Size()->PrintLine(); # 1
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ CompareVector<H> {
 			filtered := CompareVector->New()<H>;
+			filtered->Reserve(@size);
 			
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(f(@values[i])) {
@@ -5889,6 +6011,7 @@ unique->Size()->PrintLine(); # 2
 		~#
 		method : public : Distinct() ~ CompareVector<H> {
 			result := CompareVector->New()<H>;
+			result->Reserve(@size);
 			seen := Hash->New()<H, BoolRef>;
 
 			for(i := 0; i < @size; i += 1;) {
@@ -6176,7 +6299,21 @@ map->Find("e")->PrintLine();    # (Nil)
 ```
 		~#
 		method : public : Find(key : K) ~ V {
-			return Find(key, @root);
+			node := @root;
+			while(node <> Nil) {
+				cmp := key->Compare(node->GetKey());
+				if(cmp < 0) {
+					node := node->GetLeft();
+				}
+				else if(cmp > 0) {
+					node := node->GetRight();
+				}
+				else {
+					return node->Get();		
+				};
+			};
+
+			return Nil;
 		}
 		
 		#~
@@ -6192,7 +6329,21 @@ map->Has("dog")->PrintLine(); # false
 ```
 		~#
 		method : public : Has(key : K) ~ Bool {
-			return Find(key, @root) <> Nil;
+			node := @root;
+			while(node <> Nil) {
+				cmp := key->Compare(node->GetKey());
+				if(cmp < 0) {
+					node := node->GetLeft();
+				}
+				else if(cmp > 0) {
+					node := node->GetRight();
+				}
+				else {
+					return true;		
+				};
+			};
+
+			return false;
 		}
 		
 		method : Find(key : K, node : Collection.TreeNode<K, V>) ~ V {
@@ -6254,6 +6405,7 @@ each(k := keys) { k->PrintLine(); }
 		~#
 		method : public : GetKeys() ~  Collection.Vector<K> {
 			vector := Vector->New()<K>;
+			vector->Reserve(@size);
 			GetKeys(@root, vector);
 			return vector;
 		}
@@ -6284,6 +6436,7 @@ each(kv := kvs) { "{$kv->GetFirst()}={$kv->GetSecond()}"->PrintLine(); }
 		~#
 		method : public : GetKeyValues() ~  Collection.Vector<Pair<K,V>> {
 			vector := Vector->New()<Pair<K,V>>;
+			vector->Reserve(@size);
 			GetKeyValues(@root, vector);
 			return vector;
 		}
@@ -6317,43 +6470,48 @@ map->ToString()->PrintLine(); # [(a:1),(b:2)]
 		method : public : ToString() ~ String {
 			buffer := "[";
 
-			pairs := GetKeyValues()<Pair<K,V>>;
-			each(i : pairs) {
-				# get string value if instance implements 'Stringify'
-				pair := pairs->Get(i)<Pair<K,V>>;
+			ToString(@root, buffer, 0);
+			buffer->Append(']');
 
-				key := pair->GetFirst();
+			return buffer;
+		}
+
+		method : ToString(node : Collection.TreeNode<K, V>, buffer : String, count : Int) ~ Int {
+			if(node <> Nil) {
+				count := ToString(node->GetLeft(), buffer, count);
+
+				if(count > 0) {
+					buffer->Append(',');
+				};
+
+				key := node->GetKey();
+				buffer->Append('(');
 				if(key->TypeOf(Stringify)) {
-					buffer->Append('(');
 					buffer->Append(key->As(System.Stringify)->ToString());
 				}
-				# use instance ID instead
 				else {
-					buffer->Append('(');
 					buffer->Append(key->GetInstanceID()->ToHexString());
 				};
 
 				buffer->Append(':');
 
-				value := pair->GetSecond();
-				if(value->TypeOf(Stringify)) {
-					buffer->Append(value->As(System.Stringify)->ToString());
-					buffer->Append(')');
+				value := node->Get();
+				if(value = Nil) {
+					buffer->Append("<Nil>");
 				}
-				# use instance ID instead
+				else if(value->TypeOf(Stringify)) {
+					buffer->Append(value->As(System.Stringify)->ToString());
+				}
 				else {
 					buffer->Append(value->GetInstanceID()->ToHexString());
-					buffer->Append(')');
 				};
+				buffer->Append(')');
 
-				# add comma
-				if(i + 1 < pairs->Size()) {
-					buffer->Append(',');
-				};
+				count += 1;
+				count := ToString(node->GetRight(), buffer, count);
 			};
-			buffer->Append(']');
 
-			return buffer;
+			return count;
 		}
         
 		#~
@@ -6369,6 +6527,7 @@ each(v := values) { v->PrintLine(); }
 		~#
 		method : public : GetValues() ~  Collection.Vector<V> {
 			vector := Vector->New()<V>;
+			vector->Reserve(@size);
 			GetValues(@root, vector);
 			return vector;
 		}
@@ -6575,17 +6734,22 @@ filtered->Size()->PrintLine(); # 1
 		~#
 		method : public : Filter(f : (K) ~ Bool) ~ Map<K, V> {
 			filtered := Map->New()<K, V>;
-
-			pairs := GetKeyValues();
-			each(i : pairs) {
-				pair := pairs->Get(i);
-				key := pair->GetFirst();
-				if(f(key)) {
-					filtered->Insert(key, pair->GetSecond());
-				};
-			};
+			Filter(@root, filtered, f);
 
 			return filtered;
+		}
+
+		method : Filter(node : Collection.TreeNode<K, V>, filtered : Map<K, V>, f : (K) ~ Bool) ~ Nil {
+			if(node <> Nil) {
+				Filter(node->GetLeft(), filtered, f);
+
+				key := node->GetKey();
+				if(f(key)) {
+					filtered->Insert(key, node->Get());
+				};
+
+				Filter(node->GetRight(), filtered, f);
+			};
 		}
 
 		#~
@@ -6602,10 +6766,14 @@ concat->PrintLine(); # ab
 ```
 		~#
 		method : public : Reduce(a : K, f : (K, K) ~ K) ~ K {
-			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
-				a := f(a, key);
+			return Reduce(@root, a, f);
+		}
+
+		method : Reduce(node : Collection.TreeNode<K, V>, a : K, f : (K, K) ~ K) ~ K {
+			if(node <> Nil) {
+				a := Reduce(node->GetLeft(), a, f);
+				a := f(a, node->GetKey());
+				a := Reduce(node->GetRight(), a, f);
 			};
 
 			return a;
@@ -6782,7 +6950,7 @@ set->Has("missing")->PrintLine(); # false
 ```
 		~#
 		method : public : Has(key : K) ~ Bool {
-			return @map->Find(key) <> Nil;
+			return @map->Has(key);
 		}
 
 		#~
@@ -7097,6 +7265,7 @@ all_values->Size()->PrintLine(); # 2
 		~#
 		method : public : GetValues() ~ Vector<V> {
 			values := Vector->New()<V>;
+			values->Reserve(TotalSize());
 
 			keys := @map->GetKeys();
 			each(i : keys) {
@@ -7214,7 +7383,7 @@ mmap->Has("y")->PrintLine(); # false
 ```
 		~#
 		method : public : Has(key : K) ~ Bool {
-			return Find(key) <> Nil;
+			return @map->Has(key);
 		}
 
 		#~
