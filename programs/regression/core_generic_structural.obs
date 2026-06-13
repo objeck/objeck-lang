@@ -1,0 +1,49 @@
+#~
+Exercises the structural generic type comparison: deeply nested generic type
+arguments must round-trip and compare correctly (Hash of Vector of Pair, etc.).
+~#
+use Collection;
+
+class CoreGenericStructural {
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+
+    # Hash<String, Vector<Pair<IntRef, String>>>
+    h := Hash->New()<String, Vector<Pair<IntRef, String>>>;
+    v := Vector->New()<Pair<IntRef, String>>;
+    v->AddBack(Pair->New(IntRef->New(1), "one")<IntRef, String>);
+    v->AddBack(Pair->New(IntRef->New(2), "two")<IntRef, String>);
+    h->Insert("nums", v);
+
+    got := h->Find("nums");
+    if(got = Nil | got->Size() <> 2) {
+      pass := false;
+      "  FAIL: nested hash/vector/pair retrieval"->PrintLine();
+    };
+
+    # round-trip the nested element types
+    first := got->Get(0);
+    if(first->GetFirst()->Get() <> 1 | first->GetSecond()->Equals("one") = false) {
+      pass := false;
+      "  FAIL: nested pair element values"->PrintLine();
+    };
+
+    # Vector<Vector<IntRef>> — homogeneous deep nesting (retrieve via typed local,
+    # the supported erasure pattern: concrete args flow through declared variables)
+    vv := Vector->New()<Vector<IntRef>>;
+    inner := Vector->New()<IntRef>;
+    inner->AddBack(IntRef->New(42));
+    vv->AddBack(inner);
+    got_inner := vv->Get(0);
+    if(got_inner->Get(0)->Get() <> 42) {
+      pass := false;
+      "  FAIL: vector of vector"->PrintLine();
+    };
+
+    if(pass) {
+      "PASS: structural generics"->PrintLine();
+    } else {
+      "FAIL: structural generics"->PrintLine();
+    };
+  }
+}

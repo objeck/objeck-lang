@@ -138,6 +138,35 @@ static std::wstring FormatGenericType(frontend::Type* type)
   return out;
 }
 
+// Structural equality of two already-resolved (bound-/concrete-substituted)
+// generic argument types: same base name, same array dimension, and recursively
+// equal type arguments. Replaces the previous approach of building "<Name|Arg>"
+// strings and comparing them — same acceptance, but robust to name formatting
+// and free of per-comparison string allocation.
+static bool StructuralGenericEquals(frontend::Type* a, frontend::Type* b)
+{
+  if(!a || !b) {
+    return a == b;
+  }
+  if(a->GetName() != b->GetName()) {
+    return false;
+  }
+  if(a->GetDimension() != b->GetDimension()) {
+    return false;
+  }
+  const std::vector<frontend::Type*> a_args = a->GetGenerics();
+  const std::vector<frontend::Type*> b_args = b->GetGenerics();
+  if(a_args.size() != b_args.size()) {
+    return false;
+  }
+  for(size_t i = 0; i < a_args.size(); ++i) {
+    if(!StructuralGenericEquals(a_args[i], b_args[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /****************************
  * Emits an error
  ****************************/
@@ -7147,35 +7176,18 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           }
         }
 
-        // const std::wstring left_type_name = left_generic_type->GetName();
-        // const std::wstring right_type_name = right_generic_type->GetName();
-
-        std::wstring left_type_name = L'<' + left_generic_type->GetName();
-        if(left_generic_type->HasGenerics()) {
-          std::vector<Type*> left_generics = left_generic_type->GetGenerics();
-          AppendGenericNames(left_type_name, left_generics);
-        }
-        left_type_name += L'>';
-
-        std::wstring right_type_name = L'<' + right_generic_type->GetName();
-        if(right_generic_type->HasGenerics()) {
-          std::vector<Type*> right_generics = right_generic_type->GetGenerics();
-          AppendGenericNames(right_type_name, right_generics);
-        }
-        right_type_name += L'>';
-
-        // alternative mapping signature
-        if(left_generic_type->IsResolved() && left_type_name != right_type_name) {
-          right_type_name = L'<' + right_generic_type->GetName();
+        // Structurally compare the resolved argument types. This replaces building
+        // and comparing "<Name|Arg>" strings — same invariant, name-based acceptance,
+        // applied recursively and without per-comparison string allocation.
+        if(left_generic_type->IsResolved() && !StructuralGenericEquals(left_generic_type, right_generic_type)) {
+          // alternative mapping: re-resolve the right side against the left's class
+          // and retry — preserves the original fallback for cross-parameter mappings.
+          Type* mapped_right = right_generic_type;
           if(right_generic_type->HasGenerics()) {
-            Type* right_concrete_type = ResolveGenericType(left_generic_type, expression, right_klass, lib_right_klass);
-            right_concrete_types.push_back(right_concrete_type);
-            std::vector<Type*> right_generic_concrete_types = right_concrete_type->GetGenerics();
-            AppendGenericNames(right_type_name, right_generic_concrete_types);
+            mapped_right = ResolveGenericType(left_generic_type, expression, right_klass, lib_right_klass);
+            right_concrete_types.push_back(mapped_right);
           }
-          right_type_name += L'>';
-
-          if(left_type_name != right_type_name) {
+          if(!StructuralGenericEquals(left_generic_type, mapped_right)) {
             if(check_only) {
               return false;
             }
