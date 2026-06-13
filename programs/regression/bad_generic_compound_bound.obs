@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR
+#~
+A concrete type argument that satisfies only one of a compound bound (T : A & B)
+must be rejected. OnlyNamed implements Named but not Aged, so Box<OnlyNamed> is
+incompatible with the 'Aged' bound.
+~#
+interface Named { method : virtual : public : GetLabel() ~ String; }
+interface Aged  { method : virtual : public : GetAge() ~ Int; }
+
+class OnlyNamed implements Named {
+  method : public : GetLabel() ~ String { return "x"; }
+}
+
+class Box<T : Named & Aged> { @item : T; New(item : T) { @item := item; } }
+
+class BadGenericCompoundBound {
+  function : Use(b : Box<OnlyNamed>) ~ Nil {}
+  function : Main(args : String[]) ~ Nil {}
+}

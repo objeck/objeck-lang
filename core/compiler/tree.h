@@ -2415,7 +2415,8 @@ namespace frontend {
     MethodCall* anonymous_call;
     std::vector<std::wstring> interface_names;
     std::vector<Class*> generic_classes;
-    Type* generic_interface;
+    Type* generic_interface;                       // primary/erasure bound (first)
+    std::vector<Type*> extra_generic_interfaces;   // additional bounds (T : A & B & ...)
 #ifdef _DIAG_LIB
     std::vector<Expression*> diagnostic_expressions;
 #endif
@@ -2527,8 +2528,28 @@ namespace frontend {
       interface_names.push_back(n);
     }
 
+    // Adds an additional bound for compound constraints (T : A & B). The first
+    // bound stays in generic_interface (the erasure type); extras are validated
+    // as further constraints but do not change erasure.
+    void AddGenericInterface(const std::wstring &n) {
+      extra_generic_interfaces.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, n));
+      interface_names.push_back(n);
+    }
+
     Type* GetGenericInterface() {
       return generic_interface;
+    }
+
+    // All bounds (primary first, then extras) for full constraint validation.
+    std::vector<Type*> GetAllGenericInterfaces() {
+      std::vector<Type*> all;
+      if(generic_interface) {
+        all.push_back(generic_interface);
+      }
+      for(size_t i = 0; i < extra_generic_interfaces.size(); ++i) {
+        all.push_back(extra_generic_interfaces[i]);
+      }
+      return all;
     }
 
     const std::wstring GetName() const {
@@ -2654,8 +2675,16 @@ namespace frontend {
         Class* generic_class = generic_classes[i];
         std::wstring generic_string = generic_class->GetName();
         generic_string += L'|';
+        // Encode all bounds separated by '&'. A single bound emits exactly the
+        // old "name|bound" form, so existing libraries serialize byte-identically.
         if(generic_class->HasGenericInterface()) {
-          generic_string += generic_class->GetGenericInterface()->GetName();
+          const std::vector<Type*> bounds = generic_class->GetAllGenericInterfaces();
+          for(size_t b = 0; b < bounds.size(); ++b) {
+            if(b > 0) {
+              generic_string += L'&';
+            }
+            generic_string += bounds[b]->GetName();
+          }
         }
         generic_strings.push_back(generic_string);
       }

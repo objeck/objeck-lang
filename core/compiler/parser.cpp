@@ -5808,6 +5808,17 @@ std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name,
         const std::wstring interface_name = scanner->GetToken()->GetIdentifier();
         klass->SetGenericInterface(interface_name);
         NextToken();
+
+        // additional bounds for compound constraints: T : A & B & ...
+        while(Match(TOKEN_AND)) {
+          NextToken();
+          if(!Match(TOKEN_IDENT)) {
+            ProcessError(TOKEN_IDENT);
+          }
+          const std::wstring extra_interface_name = scanner->GetToken()->GetIdentifier();
+          klass->AddGenericInterface(extra_interface_name);
+          NextToken();
+        }
       }
 
       if(Match(TOKEN_LES)) {

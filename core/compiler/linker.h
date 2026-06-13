@@ -450,21 +450,34 @@ class LibraryClass {
   bool is_debug;
   std::wstring file_name;
   std::vector<LibraryClass*> generic_classes;
-  frontend::Type* generic_interface;
+  frontend::Type* generic_interface;                       // primary/erasure bound
+  std::vector<frontend::Type*> extra_generic_interfaces;   // additional bounds (A & B)
 
   std::map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> CopyClosureEntries();
-  
+
  public:
    LibraryClass(const std::wstring &n, const std::wstring &g) {
      name = n;
-     if(g.empty()) {
-       generic_interface = nullptr;
-     }
-     else {
-       generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, g);
+     // The serialized bound may encode compound constraints as "A&B&..."; the
+     // first is the primary/erasure bound, the rest are extra constraints. A
+     // single bound has no '&' and round-trips exactly as before.
+     generic_interface = nullptr;
+     if(!g.empty()) {
+       size_t start = 0;
+       size_t amp = g.find(L'&');
+       generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE,
+                             g.substr(0, amp == std::wstring::npos ? g.size() : amp));
+       while(amp != std::wstring::npos) {
+         start = amp + 1;
+         amp = g.find(L'&', start);
+         const std::wstring extra = g.substr(start, (amp == std::wstring::npos ? g.size() : amp) - start);
+         if(!extra.empty()) {
+           extra_generic_interfaces.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, extra));
+         }
+       }
      }
      is_generic = true;
-     
+
      library = nullptr;
      cls_entries= inst_entries = nullptr;
    }
@@ -596,6 +609,18 @@ class LibraryClass {
 
   bool HasGenericInterface() {
     return generic_interface != nullptr;
+  }
+
+  // All bounds (primary first, then extras) for full constraint validation.
+  std::vector<frontend::Type*> GetAllGenericInterfaces() {
+    std::vector<frontend::Type*> all;
+    if(generic_interface) {
+      all.push_back(generic_interface);
+    }
+    for(size_t i = 0; i < extra_generic_interfaces.size(); ++i) {
+      all.push_back(extra_generic_interfaces[i]);
+    }
+    return all;
   }
 
   const std::wstring &GetParentName() const {

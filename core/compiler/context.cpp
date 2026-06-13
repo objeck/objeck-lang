@@ -729,21 +729,24 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, [[maybe_unused]] const int d
     if(HasProgramOrLibraryClass(generic_class_name)) {
       ProcessError(klass, L"Generic reference '" + generic_class_name + L"' previously defined as a class");
     }
-    // check backing interface
+    // check backing interface(s) — every bound of a compound constraint (A & B)
     if(generic_class->HasGenericInterface()) {
-      Type* generic_inf_type = generic_class->GetGenericInterface();
-      Class* klass_generic_inf = nullptr; LibraryClass* lib_klass_generic_inf = nullptr; 
-      if(GetProgramOrLibraryClass(generic_inf_type, klass_generic_inf, lib_klass_generic_inf)) {
-        if(klass_generic_inf) {
-          generic_inf_type->SetName(klass_generic_inf->GetName());
+      const std::vector<Type*> bounds = generic_class->GetAllGenericInterfaces();
+      for(size_t b = 0; b < bounds.size(); ++b) {
+        Type* generic_inf_type = bounds[b];
+        Class* klass_generic_inf = nullptr; LibraryClass* lib_klass_generic_inf = nullptr;
+        if(GetProgramOrLibraryClass(generic_inf_type, klass_generic_inf, lib_klass_generic_inf)) {
+          if(klass_generic_inf) {
+            generic_inf_type->SetName(klass_generic_inf->GetName());
+          }
+          else {
+            generic_inf_type->SetName(lib_klass_generic_inf->GetName());
+          }
         }
         else {
-          generic_inf_type->SetName(lib_klass_generic_inf->GetName());
+          const std::wstring generic_inf_name = generic_inf_type->GetName();
+          ProcessError(klass, L"Undefined backing generic interface: '" + generic_inf_name + L"'");
         }
-      }
-      else {
-        const std::wstring generic_inf_name = generic_inf_type->GetName();
-        ProcessError(klass, L"Undefined backing generic interface: '" + generic_inf_name + L"'");
       }
     }
   }
@@ -2702,26 +2705,26 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
       Type* concrete_type = concrete_types[i];
       LibraryClass* class_generic = class_generics[i];
       if(class_generic->HasGenericInterface()) {
-        const std::wstring backing_inf_name = class_generic->GetGenericInterface()->GetName();
         const std::wstring concrete_name = concrete_type->GetName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-        if(GetProgramOrLibraryClass(concrete_type, inf_klass, inf_lib_klass)) {
-          if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
-            ProcessError(node, L"Concrete class: '" + concrete_name +
-                         L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
-          }
-        }
-        else {
+        bool resolved = GetProgramOrLibraryClass(concrete_type, inf_klass, inf_lib_klass);
+        if(!resolved) {
           inf_klass = current_class->GetGenericClass(concrete_name);
-          if(inf_klass) {
+          resolved = (inf_klass != nullptr);
+        }
+        if(resolved) {
+          // the concrete class must satisfy EVERY bound (T : A & B & ...)
+          const std::vector<Type*> bounds = class_generic->GetAllGenericInterfaces();
+          for(size_t b = 0; b < bounds.size(); ++b) {
+            const std::wstring backing_inf_name = bounds[b]->GetName();
             if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
               ProcessError(node, L"Concrete class: '" + concrete_name +
                            L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
             }
           }
-          else {
-            ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_name) + L"'");
-          }
+        }
+        else {
+          ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_name) + L"'");
         }
       }
       else {
@@ -2752,26 +2755,26 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
 
       Class* class_generic = class_generics[i];
       if(class_generic->HasGenericInterface()) {
-        const std::wstring backing_inf_name = GetProgramOrLibraryClassName(class_generic->GetGenericInterface()->GetName());
         const std::wstring concrete_name = concrete_type->GetName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-        if(GetProgramOrLibraryClass(concrete_type, inf_klass, inf_lib_klass)) {
-          if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
-            ProcessError(node, L"Concrete class: '" + concrete_name +
-                         L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
-          }
-        }
-        else {
+        bool resolved = GetProgramOrLibraryClass(concrete_type, inf_klass, inf_lib_klass);
+        if(!resolved) {
           inf_klass = current_class->GetGenericClass(concrete_name);
-          if(inf_klass) {
+          resolved = (inf_klass != nullptr);
+        }
+        if(resolved) {
+          // the concrete class must satisfy EVERY bound (T : A & B & ...)
+          const std::vector<Type*> bounds = class_generic->GetAllGenericInterfaces();
+          for(size_t b = 0; b < bounds.size(); ++b) {
+            const std::wstring backing_inf_name = GetProgramOrLibraryClassName(bounds[b]->GetName());
             if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
               ProcessError(node, L"Concrete class: '" + concrete_name +
                            L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
             }
           }
-          else {
-            ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_name) + L"'");
-          }
+        }
+        else {
+          ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_name) + L"'");
         }
       }
       else {
@@ -3795,14 +3798,15 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
           Type* concrete_type = concrete_types[i];
           Class* class_generic = class_generics[i];
           if(class_generic->HasGenericInterface()) {
-            Type* backing_type = class_generic->GetGenericInterface();
-            // backing type
-            ResolveClassEnumType(backing_type);
-            const std::wstring backing_name = backing_type->GetName();
             // concrete type
             ResolveClassEnumType(concrete_type);
-            // validate backing
-            ValidateGenericBacking(concrete_type, backing_name, static_cast<Expression*>(method_call));
+            // validate against EVERY bound (T : A & B & ...)
+            const std::vector<Type*> bounds = class_generic->GetAllGenericInterfaces();
+            for(size_t b = 0; b < bounds.size(); ++b) {
+              Type* backing_type = bounds[b];
+              ResolveClassEnumType(backing_type);
+              ValidateGenericBacking(concrete_type, backing_type->GetName(), static_cast<Expression*>(method_call));
+            }
           }
         }
       }
@@ -4103,14 +4107,15 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
           Type* concrete_type = concrete_types[i];
           LibraryClass* class_generic = class_generics[i];
           if(class_generic->HasGenericInterface()) {
-            Type* backing_type = class_generic->GetGenericInterface();
-            // backing type
-            ResolveClassEnumType(backing_type);
-            const std::wstring backing_name = backing_type->GetName();
             // concrete type
             ResolveClassEnumType(concrete_type);
-            // validate backing
-            ValidateGenericBacking(concrete_type, backing_name, static_cast<Expression*>(method_call));
+            // validate against EVERY bound (T : A & B & ...)
+            const std::vector<Type*> bounds = class_generic->GetAllGenericInterfaces();
+            for(size_t b = 0; b < bounds.size(); ++b) {
+              Type* backing_type = bounds[b];
+              ResolveClassEnumType(backing_type);
+              ValidateGenericBacking(concrete_type, backing_type->GetName(), static_cast<Expression*>(method_call));
+            }
           }
           else if(concrete_types.size() == 1) {
             // concrete type

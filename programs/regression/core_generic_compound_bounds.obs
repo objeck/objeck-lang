@@ -1,0 +1,31 @@
+#~
+Compound generic bounds (T : A & B): a concrete type argument must satisfy ALL
+bounds. Person implements both Named and Aged, so Box<Person> is accepted and
+member access via the primary (erasure) bound works.
+~#
+interface Named { method : virtual : public : GetLabel() ~ String; }
+interface Aged  { method : virtual : public : GetAge() ~ Int; }
+
+class Person implements Named, Aged {
+  @n : String; @a : Int;
+  New(n : String, a : Int) { @n := n; @a := a; }
+  method : public : GetLabel() ~ String { return @n; }
+  method : public : GetAge() ~ Int { return @a; }
+}
+
+class Box<T : Named & Aged> {
+  @item : T;
+  New(item : T) { @item := item; }
+  method : public : Label() ~ String { return @item->GetLabel(); }
+}
+
+class CoreGenericCompoundBounds {
+  function : Main(args : String[]) ~ Nil {
+    b := Box->New(Person->New("Ada", 36))<Person>;
+    if(b->Label()->Equals("Ada")) {
+      "PASS: compound bounds"->PrintLine();
+    } else {
+      "FAIL: compound bounds"->PrintLine();
+    };
+  }
+}
