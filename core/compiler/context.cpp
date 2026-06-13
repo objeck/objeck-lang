@@ -5277,8 +5277,34 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
     }
     else if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->HasConcreteTypes()) {
       MethodCall* mthd_call = static_cast<MethodCall*>(expression);
-      if(variable->GetEntry()->GetType() && variable->GetEntry()->GetType()->GetGenerics().size() != mthd_call->GetConcreteTypes().size()) {
-        ProcessError(variable, L"Generic size mismatch, ensure calling parameters and generic types match");
+      if(variable->GetEntry()->GetType()) {
+        const std::vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
+        const std::vector<Type*> concrete_types = mthd_call->GetConcreteTypes();
+        if(var_types.size() != concrete_types.size()) {
+          ProcessError(variable, L"Generic size mismatch, ensure calling parameters and generic types match");
+        }
+        else {
+          // Same invariant name check as the generics branch above. It is applied
+          // here too so a mismatch is caught deterministically even when the
+          // expression's eval type did not carry resolved generics: that path took
+          // this count-only branch and skipped the comparison, intermittently
+          // letting a bad assignment (e.g. Vector<IntRef> -> Vector<String>) slip
+          // through. The concrete types come from the explicit '<...>' arguments,
+          // so they are already resolved.
+          for(size_t i = 0; i < var_types.size(); ++i) {
+            Type* var_type = var_types[i];
+            ResolveClassEnumType(var_type);
+
+            Type* concrete_type = concrete_types[i];
+            ResolveClassEnumType(concrete_type);
+
+            if(var_type->GetName() != concrete_type->GetName()) {
+              ProcessError(variable, L"Generic type mismatch for class '" + variable->GetEntry()->GetType()->GetName() +
+                           L"' between generic types: '" + FormatTypeString(var_type->GetName()) +
+                           L"' and '" + FormatTypeString(concrete_type->GetName()) + L"'");
+            }
+          }
+        }
       }
     }
 
