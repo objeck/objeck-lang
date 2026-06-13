@@ -1,144 +1,109 @@
-# Objeck REPL (obr)
+# Objeck REPL (obi)
 
-Interactive Read-Eval-Print Loop for rapid prototyping and experimentation with Objeck. The REPL provides an interactive shell where you can write and execute Objeck code immediately without creating source files.
+Interactive shell for rapid prototyping and experimentation with Objeck. `obi` lets you write and run code immediately without creating source files, and doubles as a small line-oriented editor for the buffer it builds up.
 
-## Features
+## How it works
 
-- **Interactive execution**: Write and run code in real-time
-- **In-memory compilation**: Fast compilation with basic optimizations
-- **Auto-completion**: Tab completion for classes and methods (where supported)
-- **Multi-line support**: Write complex expressions across multiple lines
-- **Import support**: Use standard libraries interactively
-- **Reduced noise**: Suppresses warnings for unused variables
-- **History**: Navigate previous commands with arrow keys
+`obi` keeps an in-memory program — a `class Repl { function : Main(args : String[]) ~ Nil { ... } }` scaffold — and inserts the statements you type into `Main`. Each time you enter something, the buffer is recompiled and re-run, so the program always reflects everything you've added.
+
+Two input styles control whether a line is *kept* or *evaluated once*:
+
+- **End a line with `;`** — it becomes part of the program. The buffer re-runs, so persisted statements (including their side effects and output) run again on each subsequent entry.
+- **Omit the `;`** — the line is evaluated as an expression, its value is printed, and it is **not** kept. Use this to inspect values without cluttering (or re-running) the program.
+
+```ruby
+$ obi
+Objeck REPL (2026.6.x)
+['/h' for help, omit ';' to print an expression]
+---
+> 40 + 2            # expression — printed once, not kept
+42
+> x := 10           # declaration — kept (a trailing ';' is added for you)
+> x * 2             # expression using the variable
+20
+> "hi {$x}"->PrintLine();   # statement — kept, re-runs with the buffer
+hi 10
+```
+
+> **Tip:** prefer `:=` for state you want to keep and `;`-less expressions for inspection. Because the whole buffer re-runs on each entry, a *persisted* statement with an external side effect (an API call, a file write, a counter) will fire again every time — keep those as one-shot expressions or run the finished program with `obc`/`obr`.
+
+### Multi-line blocks
+
+When a line leaves braces open, `obi` keeps prompting with `...` until they balance, so blocks and control flow can be entered naturally:
+
+```ruby
+> if(x > 5) {
+... "big"->PrintLine();
+... }
+big
+```
+
+### Errors roll back
+
+If a line you add fails to compile, the errors are shown and the line is **discarded** so the buffer stays runnable — you won't get stuck re-hitting the same error.
 
 ## Usage
 
 ```bash
-# Start REPL
-obr
-
-# Or load and execute a program
-obr myprogram.obe
-
-# Run with additional libraries
-obr -lib mylib.obl
+obi                                 # start the interactive shell
+obi --file hello.obs                # load a source file, run it, then drop into the shell
+obi -f hello.obs --library mylib    # load with extra libraries
+obi --inline 'Int->New(42)->PrintLine();' --quit   # run one statement and exit
 ```
 
-## Interactive Session Example
+### Command-line options
 
-```ruby
-$ obr
-Objeck REPL v2026.2.0
+| Option | Description |
+|--------|-------------|
+| `--help`, `-h` | Show help |
+| `--file`, `-f <files>` | Source files (comma-separated) |
+| `--inline`, `-i <code>` | Inline source statements |
+| `--library`, `-l <libs>` | Linked libraries (comma-separated) |
+| `--optimize`, `-o <level>` | Optimization level `s0`–`s3` |
+| `--quit`, `-q` | Exit after executing the supplied code |
 
-> "Hello, REPL!"->PrintLine();
-Hello, REPL!
+## Interactive commands
 
-> x := 42;
-> y := x * 2;
-> y->PrintLine();
-84
-
-> use Collection;
-> list := List->New()<IntRef>;
-> list->AddBack(1); list->AddBack(2); list->AddBack(3);
-> list->Size()->PrintLine();
-3
-
-> # Multi-line function
-> function : Factorial(n : Int) ~ Int {
-... if(n <= 1) { return 1; };
-... return n * Factorial(n - 1);
-... }
-> Factorial(5)->PrintLine();
-120
-
-> # Use AI libraries
-> use API.OpenAI;
-> token := System.IO.Filesystem.FileReader->ReadFile("api_key.txt");
-> response := Response->Respond("gpt-4o-mini", "What is 2+2?", token);
-> response->GetText()->PrintLine();
-The answer is 4.
-
-> quit
-```
-
-## Commands
+All commands start with `/`.
 
 | Command | Description |
 |---------|-------------|
-| `help` | Show help information |
-| `clear` | Clear screen |
-| `vars` | Show defined variables |
-| `quit` or `exit` | Exit REPL |
+| `/h` | Help |
+| `/q` | Quit |
+| `/x` | Reset the buffer (and libraries/optimization) |
+| `/c` | Clear the screen |
+| `/l` | List the program |
+| `/v` | List defined variables |
+| `/g <n>` | Move the cursor to line *n* |
+| `/i` | Insert a line below the cursor |
+| `/m` | Insert multiple lines (end with `/m`) |
+| `/r [n]` | Replace line *n* (or the current line) |
+| `/d <n>` | Delete line *n* (or a range, e.g. `2-4`) |
+| `/a` | Set command-line arguments |
+| `/u` | Set library `use` statements |
+| `/p` | Set the compiler optimization level |
+| `/o <file>` | Open a source file |
+| `/s <file>.obs` | Save the buffer to a `.obs` file |
+
+## Output & color
+
+`obi` colorizes the prompt, status lines, and errors when writing to a terminal. Color is automatically disabled when output is piped or redirected, and honors the [`NO_COLOR`](https://no-color.org) convention.
 
 ## Architecture
 
-The REPL consists of:
-- **Interactive Parser**: Parses statements and expressions interactively
-- **In-Memory Document**: Maintains code context across statements
-- **Incremental Compiler**: Compiles new code against existing context
-- **VM Integration**: Directly executes compiled bytecode
-- **State Management**: Preserves variable values between statements
-
-### Compilation Strategy
-
-The REPL uses a simplified compilation pipeline:
-1. **Level 1 optimization**: Basic optimizations only for speed
-2. **Warning suppression**: Reduces noise from experimental code
-3. **Incremental linking**: Links new code with existing definitions
-4. **JIT execution**: Executes code immediately via VM
-
-## Use Cases
-
-### Rapid Prototyping
-```ruby
-> # Test OpenCV face detection quickly
-> use Computer.Vision;
-> detector := FaceDetector->New("haarcascade_frontalface_default.xml");
-> image := Image->New("photo.jpg");
-> faces := detector->Detect(image);
-> faces->Size()->PrintLine();
-5
-```
-
-### API Exploration
-```ruby
-> # Experiment with Gemini API
-> use API.Gemini;
-> content := Content->New("user")->AddPart(TextPart->New("Hello!"));
-> response := Model->GenerateContent("models/gemini-2.5-flash", content, Nil, key);
-> response->First()->GetAllText()->PrintLine();
-```
-
-### Quick Calculations
-```ruby
-> # Complex number operations
-> use Collection;
-> (1..100)->Reduce(\(a,b) => a + b, 0)->PrintLine();
-5050
-```
-
-### Learning & Teaching
-The REPL is ideal for learning Objeck syntax and exploring libraries interactively.
-
-## Implementation
-
-- **Language**: C++ with STL
-- **JIT Support**: Direct machine code generation via VM
-- **Line Editing**: Platform-specific terminal support
-- **Compilation**: Shared infrastructure with main compiler
+- **Document**: the in-memory buffer (read-only scaffold lines + your read/write lines)
+- **Editor**: the command loop, input classification (expression vs. statement vs. block), and multi-line handling
+- **ObjeckLang**: shared compiler front-end — compiles the buffer in memory and executes it on the VM
 
 ## Limitations
 
-- Some optimizations are disabled for compilation speed
-- Complex multi-file programs should use regular compilation
-- Debug symbols are not generated in REPL mode
-- Some platform-specific features may have limited support
+- Each entry recompiles and re-runs the whole buffer; there is no persistent live VM state between entries (a variable's value is recomputed from its declaration each run).
+- Arrow-key history and tab-completion are not yet available (input is plain line entry).
+- Debug symbols are not generated; for multi-file programs and debugging, use `obc`/`obr`/`obd`.
 
 ## See Also
 
-- [Main README](../../README.md) - Project overview
-- [Compiler](../compiler/README.md) - Full compilation options
-- [Virtual Machine](../vm/README.md) - VM architecture
-- [API Documentation](https://www.objeck.org) - Library reference
+- [Main README](../../README.md) — project overview
+- [Compiler](../compiler/README.md) — full compilation options
+- [Virtual Machine](../vm/README.md) — VM architecture
+- [API Documentation](https://www.objeck.org) — library reference

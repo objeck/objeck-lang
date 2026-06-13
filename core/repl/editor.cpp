@@ -35,6 +35,7 @@
 #include "../compiler/compiler.h"
 #include "../vm/vm.h"
 #include "../shared/version.h"
+#include "../debugger/color.h"
 
 //
 // Document
@@ -288,9 +289,12 @@ Editor::Editor() : doc(DEFAULT_FILE_NAME)
 
 void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int mode, bool is_exit)
 {
+  Runtime::ColorInit();
+
   // process command line
   if(input.empty()) {
-    std::wcout << L"Objeck REPL (" << VERSION_STRING << L")\n['/h' for help]\n---" << std::endl;
+    std::wcout << Runtime::C(Runtime::CLR_BOLD) << L"Objeck REPL (" << VERSION_STRING << L")" << Runtime::C(Runtime::CLR_RESET)
+               << Runtime::C(Runtime::CLR_GRAY) << L"\n['/h' for help, omit ';' to print an expression]\n---" << Runtime::C(Runtime::CLR_RESET) << std::endl;
   }
   else {
     // set libraries
@@ -327,10 +331,10 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
     }
   }
 
-  std::wstring in; 
+  std::wstring in;
   bool done = false;
   do {
-    std::wcout << L"> ";
+    std::wcout << Runtime::C(Runtime::CLR_GREEN) << L"> " << Runtime::C(Runtime::CLR_RESET);
     std::getline(std::wcin, in);
 
     // command
@@ -372,10 +376,40 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
         DoExecute();
         break;
 
+        // insert single line below current position
+      case L'i':
+        if(in.size() == 2) {
+          DoInsertBelow();
+        }
+        else {
+          std::wcout << SYNTAX_ERROR << std::endl;
+        }
+        break;
+
         // insert multiple lines
       case L'm':
         DoInsertMultiLine(in);
         DoExecute();
+        break;
+
+        // list defined variables
+      case L'v':
+        if(in.size() == 2) {
+          DoVars();
+        }
+        else {
+          std::wcout << SYNTAX_ERROR << std::endl;
+        }
+        break;
+
+        // clear screen
+      case L'c':
+        if(in.size() == 2) {
+          DoClear();
+        }
+        else {
+          std::wcout << SYNTAX_ERROR << std::endl;
+        }
         break;
 
         // delete line
@@ -449,13 +483,9 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
         break;
       }
     }
-    // insert and execute
-    else if(!in.empty()) {
-      DoInsertLine(in);
-      DoExecute();
-    }
+    // evaluate expression / statement (handles multi-line, echo, rollback)
     else {
-      DoExecute();
+      DoInput(in);
     }
   }
   while(!done);
@@ -465,21 +495,23 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
 
 void Editor::DoHelp()
 {
-  std::wcout << "=> Commands" << std::endl;
-  std::wcout << "  /q: quit" << std::endl;
-  std::wcout << "  /x: reset" << std::endl;
-  std::wcout << "  /h: help" << std::endl;
-  std::wcout << "  /l: list program" << std::endl;
-  std::wcout << "  /g: goto line" << std::endl;
-  std::wcout << "  /i: insert line below" << std::endl;
-  std::wcout << "  /m: insert multiple lines below" << std::endl;
-  std::wcout << "  /r: replace line" << std::endl;
-  std::wcout << "  /d: delete line (or lines i.e., '2-4')" << std::endl;
-  std::wcout << "  /a: add command line arguments" << std::endl;
-  std::wcout << "  /u: set library use statements" << std::endl;
-  std::wcout << "  /p: set compiler optimization" << std::endl;
-  std::wcout << "  /o: open file by name" << std::endl;
-  std::wcout << "  /s: save buffer or current file" << std::endl;
+  const wchar_t* hdr = Runtime::C(Runtime::CLR_BOLD);
+  const wchar_t* cmd = Runtime::C(Runtime::CLR_CYAN);
+  const wchar_t* rst = Runtime::C(Runtime::CLR_RESET);
+
+  std::wcout << hdr << "=> Entering code" << rst << std::endl;
+  std::wcout << "  end a line with " << cmd << "';'" << rst << "   add a statement to the program (re-runs the buffer)" << std::endl;
+  std::wcout << "  omit the " << cmd << "';'" << rst << "          evaluate the line as an expression and print its value" << std::endl;
+  std::wcout << "  open brace " << cmd << "'{'" << rst << "        keeps reading until braces balance (multi-line block)" << std::endl;
+  std::wcout << hdr << "=> Commands" << rst << std::endl;
+  std::wcout << "  " << cmd << "/q" << rst << ": quit                 " << cmd << "/x" << rst << ": reset buffer" << std::endl;
+  std::wcout << "  " << cmd << "/h" << rst << ": help                 " << cmd << "/c" << rst << ": clear screen" << std::endl;
+  std::wcout << "  " << cmd << "/l" << rst << ": list program         " << cmd << "/v" << rst << ": list defined variables" << std::endl;
+  std::wcout << "  " << cmd << "/g" << rst << ": goto line            " << cmd << "/a" << rst << ": add command-line arguments" << std::endl;
+  std::wcout << "  " << cmd << "/i" << rst << ": insert line below    " << cmd << "/m" << rst << ": insert multiple lines below" << std::endl;
+  std::wcout << "  " << cmd << "/r" << rst << ": replace line         " << cmd << "/d" << rst << ": delete line (or range, e.g. '2-4')" << std::endl;
+  std::wcout << "  " << cmd << "/u" << rst << ": set library uses     " << cmd << "/p" << rst << ": set compiler optimization" << std::endl;
+  std::wcout << "  " << cmd << "/o" << rst << ": open file by name    " << cmd << "/s" << rst << ": save buffer to <name>.obs" << std::endl;
   std::wcout << "---" << std::endl;
   std::wcout << "User guide: https://objeck.org/getting_started.html" << std::endl;
 }
@@ -760,7 +792,7 @@ void Editor::DoUseLibraries(std::wstring &in)
   }
 }
 
-void Editor::DoExecute()
+bool Editor::DoExecute()
 {
   // setup file name and source pair
   std::vector<std::pair<std::wstring, std::wstring>> file_source;
@@ -771,13 +803,15 @@ void Editor::DoExecute()
   if(lang.Compile(file_source, compiler_opt_level)) {
     // execute
     lang.Execute(cmd_args);
+    return true;
   }
   else {
     // show errors
     auto errors = lang.GetErrors();
     for(auto& error : errors) {
-      std::wcout << error << std::endl;
+      std::wcout << Runtime::C(Runtime::CLR_RED) << error << Runtime::C(Runtime::CLR_RESET) << std::endl;
     }
+    return false;
   }
 }
 
@@ -789,4 +823,156 @@ bool Editor::AppendLine(std::wstring line)
   }
 
   return false;
+}
+
+int Editor::BraceDelta(const std::wstring& line)
+{
+  int delta = 0;
+  bool in_str = false, in_chr = false;
+
+  for(size_t i = 0; i < line.size(); ++i) {
+    const wchar_t c = line[i];
+
+    if(in_str) {
+      if(c == L'\\') { ++i; }
+      else if(c == L'"') { in_str = false; }
+      continue;
+    }
+    if(in_chr) {
+      if(c == L'\\') { ++i; }
+      else if(c == L'\'') { in_chr = false; }
+      continue;
+    }
+
+    if(c == L'#') { break; }            // rest of line is a comment
+    else if(c == L'"') { in_str = true; }
+    else if(c == L'\'') { in_chr = true; }
+    else if(c == L'{') { ++delta; }
+    else if(c == L'}') { --delta; }
+  }
+
+  return delta;
+}
+
+void Editor::DoInput(std::wstring in)
+{
+  Trim(in);
+
+  // empty line: re-run the current buffer
+  if(in.empty()) {
+    DoExecute();
+    return;
+  }
+
+  // accumulate a block while braces stay open (multi-line if/while/function bodies)
+  std::vector<std::wstring> block;
+  block.push_back(in);
+  int depth = BraceDelta(in);
+  while(depth > 0) {
+    std::wcout << Runtime::C(Runtime::CLR_GRAY) << L"... " << Runtime::C(Runtime::CLR_RESET);
+    std::wstring cont;
+    if(!std::getline(std::wcin, cont)) {
+      break;   // EOF / piped input exhausted
+    }
+    block.push_back(cont);
+    depth += BraceDelta(cont);
+  }
+
+  std::wstring first = block.front();
+  Trim(first);
+  const bool is_block = (block.size() > 1) || (!first.empty() && first.back() == L'{');
+  const bool is_stmt  = (!first.empty() && first.back() == L';');
+  const bool is_decl  = (first.find(L":=") != std::wstring::npos);
+
+  // a single value-expression (no ';', no ':=', not a block): print it once and don't persist
+  if(!is_block && !is_stmt && !is_decl) {
+    DoEvalExpression(first);
+    return;
+  }
+
+  // statement(s): insert, run, and roll back if it breaks compilation
+  const size_t start_pos = cur_pos;
+  size_t inserted = 0;
+  for(auto& line : block) {
+    std::wstring l = line;
+    Trim(l);
+    // a bare declaration without a terminator still gets one so it compiles
+    if(!l.empty() && l.back() != L';' && l.back() != L'{' && l.back() != L'}' &&
+       l.find(L":=") != std::wstring::npos) {
+      l += L';';
+    }
+    if(AppendLine(l)) {
+      inserted++;
+    }
+  }
+
+  if(!DoExecute()) {
+    for(size_t i = 0; i < inserted; ++i) {
+      doc.DeleteLine(start_pos);
+    }
+    cur_pos = start_pos;
+    std::wcout << Runtime::C(Runtime::CLR_GRAY) << L"=> line discarded; buffer unchanged" << Runtime::C(Runtime::CLR_RESET) << std::endl;
+  }
+}
+
+void Editor::DoEvalExpression(const std::wstring& expr)
+{
+  const size_t p = cur_pos;
+  const std::wstring wrapped = L"(" + expr + L")->ToString()->PrintLine();";
+  if(AppendLine(wrapped)) {
+    DoExecute();          // prints the value, or shows a compile error in red
+    doc.DeleteLine(p);    // one-shot: never persisted, so it can't replay
+    cur_pos = p;
+  }
+}
+
+void Editor::DoVars()
+{
+  // No live VM symbol table is kept between runs, so report the declarations
+  // currently in the buffer (lines containing ':=').
+  const std::wstring src = doc.ToString();
+  std::wstringstream ss(src);
+  std::wstring line;
+  std::vector<std::pair<std::wstring, std::wstring>> vars;
+
+  while(std::getline(ss, line)) {
+    const size_t a = line.find(L":=");
+    if(a != std::wstring::npos) {
+      std::wstring name = line.substr(0, a);
+      std::wstring val = line.substr(a + 2);
+      Trim(name);
+      Trim(val);
+      if(!val.empty() && val.back() == L';') {
+        val.pop_back();
+        Trim(val);
+      }
+      if(!name.empty()) {
+        vars.push_back(make_pair(name, val));
+      }
+    }
+  }
+
+  std::wcout << Runtime::C(Runtime::CLR_BOLD) << L"=> Variables" << Runtime::C(Runtime::CLR_RESET) << std::endl;
+  if(vars.empty()) {
+    std::wcout << Runtime::C(Runtime::CLR_GRAY) << L"  (none)" << Runtime::C(Runtime::CLR_RESET) << std::endl;
+    return;
+  }
+  for(auto& v : vars) {
+    std::wcout << L"  " << Runtime::C(Runtime::CLR_CYAN) << v.first << Runtime::C(Runtime::CLR_RESET)
+               << L" := " << v.second << std::endl;
+  }
+}
+
+void Editor::DoClear()
+{
+  // ANSI clear-screen + home; C() returns the sequence only when VT/color is active
+  std::wcout << Runtime::C(L"\033[2J\033[H") << std::flush;
+}
+
+void Editor::DoInsertBelow()
+{
+  std::wcout << Runtime::C(Runtime::CLR_GRAY) << L"Insert] " << Runtime::C(Runtime::CLR_RESET);
+  std::wstring line;
+  std::getline(std::wcin, line);
+  DoInput(line);
 }

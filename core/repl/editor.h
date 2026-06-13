@@ -154,7 +154,12 @@ public:
   // commands
   void DoReset();
   void DoHelp();
-  void DoExecute();
+  bool DoExecute();
+  void DoInput(std::wstring in);
+  void DoEvalExpression(const std::wstring& expr);
+  void DoVars();
+  void DoClear();
+  void DoInsertBelow();
   void DoUseLibraries(std::wstring &in);
   void DoOptLevel(std::wstring& in);
   void DoInsertLine(std::wstring &in);
@@ -169,6 +174,9 @@ public:
 
   // utility functions
   bool AppendLine(std::wstring line);
+
+  // net change in brace depth for a line, ignoring string/char literals and '#' comments
+  static int BraceDelta(const std::wstring& line);
   
   static inline void LeftTrim(std::wstring& str) {
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), [] (wchar_t ch) {
