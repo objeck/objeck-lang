@@ -582,6 +582,10 @@ jobs:
     - name: Run regression tests (POSIX)
       if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
+      # Temporary: surface generic type-arg state to diagnose the intermittent
+      # bad_generic_arg_mismatch miss (prints [generic-diag] lines during compile).
+      env:
+        OBJECK_DIAG_GENERICS: "1"
       run: |
         chmod +x run_regression.sh
         ARCH="${{ matrix.arch }}"
@@ -592,6 +596,10 @@ jobs:
       if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
       shell: cmd
+      # Temporary: surface generic type-arg state to diagnose the intermittent
+      # bad_generic_arg_mismatch miss (prints [generic-diag] lines during compile).
+      env:
+        OBJECK_DIAG_GENERICS: "1"
       run: run_regression.cmd ${{ matrix.arch }}
 
     - name: Run debugger tests (POSIX)

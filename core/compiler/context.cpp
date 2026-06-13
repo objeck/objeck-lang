@@ -5216,6 +5216,38 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
       }
     }
 
+    // Diagnostic for the rare generic-mismatch miss (intermittent CI failure in
+    // bad_generic_arg_mismatch). Enabled only when OBJECK_DIAG_GENERICS is set, so
+    // it adds no overhead and changes no behavior by default. When a generic-typed
+    // variable is assigned, it records whether the expression's eval type carries
+    // generics (-> name-compared, mismatch caught at :5235) or not (-> only the
+    // arg COUNT is checked at the else-if below, where a name mismatch slips through).
+    {
+      static const bool diag_generics = []{
+#ifdef _WIN32
+        size_t len = 0; char buf[8];
+        return getenv_s(&len, buf, sizeof(buf), "OBJECK_DIAG_GENERICS") == 0 && len > 0;
+#else
+        return std::getenv("OBJECK_DIAG_GENERICS") != nullptr;
+#endif
+      }();
+      if(diag_generics && variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE &&
+         variable->GetEntry() && variable->GetEntry()->GetType() && variable->GetEntry()->GetType()->HasGenerics()) {
+        Type* et = expression->GetEvalType();
+        const bool is_mc = (expression->GetExpressionType() == METHOD_CALL_EXPR);
+        std::wcerr << L"[generic-diag] " << variable->GetLineNumber() << L':' << variable->GetLinePosition()
+                   << L" var=" << variable->GetEvalType()->GetName()
+                   << L" varGenN=" << variable->GetEntry()->GetType()->GetGenerics().size()
+                   << L" exprEval=" << (et ? et->GetName() : L"<null>")
+                   << L" exprHasGen=" << ((et && et->HasGenerics()) ? L"Y" : L"N")
+                   << L" exprGenN=" << (et ? et->GetGenerics().size() : (size_t)0)
+                   << L" isMethodCall=" << (is_mc ? L"Y" : L"N")
+                   << L" hasConcrete=" << ((is_mc && static_cast<MethodCall*>(expression)->HasConcreteTypes()) ? L"Y" : L"N")
+                   << L" -> branch=" << ((et && et->HasGenerics()) ? L"name-check" : L"count-only")
+                   << std::endl;
+      }
+    }
+
     // handle generics, update entry
     if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics() && variable->GetEntry() && variable->GetEntry()->GetType()) {
       const std::vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
