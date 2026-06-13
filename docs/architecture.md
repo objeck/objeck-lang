@@ -902,6 +902,30 @@ graph TB
     style N fill:#ffe1e1
 ```
 
+### Multithreaded Collection (Cooperative Stop-the-World)
+
+With multiple threads running, a collection cannot begin until every other
+thread has reached a known-safe point. Objeck uses a **cooperative**
+stop-the-world scheme rather than OS thread suspension:
+
+- **Safepoints.** Each mutator polls a safepoint in the interpreter dispatch
+  loop and again on each allocation. When a collection is requested, threads
+  observe the request at their next safepoint and **park** until it completes.
+  The AMD64 and ARM64 JITs emit the same safepoint poll at every label so
+  JIT-compiled code parks just as promptly as interpreted code.
+- **Blocking calls.** A thread about to block in a syscall (thread `Join`/sleep,
+  socket I/O) brackets the call with *begin/end-blocking* markers so it counts as
+  already parked — a collection never waits on a thread stuck in a blocking read.
+- **Root scanning.** Once all threads are parked, the collector marks from every
+  thread's roots: static fields, each thread's full call stack **including the
+  currently-executing top-level frame**, and each thread's operand stack. The set
+  of roots scanned by the mark phase is exactly the set the fixup phase rewrites,
+  so a live object can never be reclaimed while a reference to it survives in a
+  parked thread's frame or operand stack.
+
+The collector remains generational and non-OS-suspending; correctness comes from
+complete root coverage at the safepoint, not from freezing threads mid-instruction.
+
 ### Hash-Based O(1) Lookup
 
 ```mermaid

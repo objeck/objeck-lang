@@ -100,7 +100,7 @@ The VM uses a generational mark-and-sweep collector:
 - **Young generation (nursery)**: objects are bump-allocated here and most die without ever entering the old-gen set
 - **Old generation**: nursery survivors are promoted here; arrays are allocated here directly (they bypass the nursery — see [internals](arch/README.md))
 - **Minor vs. major GC**: minor collections scan the remembered set (via a write barrier) + roots and recycle the nursery; major collections sweep both generations
-- **Parallel mark**: root scanning fans out across threads with lock-free CAS mark bits. Note: a collection is serialized against other collections (a `trylock` guards re-entry) but does **not** suspend other mutator threads — see the threading caveat below
+- **Parallel mark**: root scanning fans out across threads with lock-free CAS mark bits. A collection is serialized against other collections (a `trylock` guards re-entry) and runs **cooperative stop-the-world**: other mutator threads park at safepoints (in the dispatch loop, at allocation, and across blocking syscalls such as thread join/sleep and socket I/O) for the duration of the collection
 
 ### Object Layout
 
@@ -115,7 +115,7 @@ Objects are laid out in memory with:
 - Native OS threads (pthreads on Unix, Windows threads on Windows)
 - Thread-local storage for VM state
 - Mutex and condition variable support
-- Garbage collection runs concurrently with other threads (collections are serialized against each other via a `trylock`, but mutator threads are not suspended during a collection)
+- Garbage collection runs **cooperative stop-the-world**: collections are serialized against each other via a `trylock`, and other mutator threads park at safepoints (dispatch loop, allocation, and blocking syscalls) for the duration of a collection
 
 ## Performance
 

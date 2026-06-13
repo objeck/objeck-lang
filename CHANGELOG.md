@@ -4,6 +4,29 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+### New Features
+- **Multithreaded stop-the-world garbage collection**: the collector now coordinates safely across threads. Mutators poll safepoints in the interpreter dispatch loop and at allocation, park while a collection runs, and bracket blocking syscalls (thread join/sleep, socket I/O) so a stop-the-world pause can always proceed; the AMD64 and ARM64 JITs emit safepoint polls at every label. Validated on Windows, Linux, and macOS across x64 and ARM64.
+- **Reproducible library builds**: compiling unchanged `.obs` source now produces byte-identical `.obl` output. Anonymous classes are named from their source location instead of a random token, and string-`select` cases and closure declarations are emitted in a stable (source/`mthd_id`) order rather than heap-pointer order, so committed libraries no longer churn on every rebuild.
+
+### Security
+- **TLS server-certificate verification is now on by default**: secure client sockets and DTLS connections verify the server certificate chain. Self-signed certificates for local testing can be allowed with `OBJECK_TLS_INSECURE_SKIP_VERIFY=1`.
+- **Hardened untrusted-input deserialization**: object deserializers reject hostile 64-bit sizes, a `Char[]` read trap no longer lets an attacker-controllable offset overflow the heap, and additional untrusted-input paths were hardened against memory corruption.
+
+### Bug Fixes
+- **GC value corruption under heavy thread churn**: a thread executing its top-level method (or holding an object only on a parked thread's operand stack) could have those live references missed by the mark phase and reclaimed mid-use. The mark phase now scans the top-level frame and every thread's operand stack, exactly matching what the fixup phase rewrites. Also: the young-generation bump pointer is bounded with a compare-and-swap so a collection can't run off the region, a thread's GC roots are deregistered before its stacks are freed (no use-after-free during teardown), the JIT join/sleep paths park correctly, and the write-barrier flag is accessed atomically on weakly-ordered ARM64.
+- **Serialization correctness**: integer arrays dropped half their elements; object-nested integer arrays truncated 64-bit values to 32 bits; object function-reference fields desynced and lost data; several further 64-bit / `Char[]` / `Float`-slot serialization bugs were fixed.
+- **Compiler**: constant propagation emitted a stale literal after a non-constant reassignment; LICM hoisted trapping `DIV_INT`/`MOD_INT` out of loops that may never execute.
+- **Debugger**: locals and fields appearing after a `Float` field/local showed wrong values.
+- **macOS / launcher**: portable application bundles failed when launched from outside their own directory; a stale `Objeck.app` bundle version was corrected.
+
+### Performance
+- **ONNX on macOS**: compiled CoreML models are persisted across runs (~35× faster warm start), and `Ort::TypeInfo` is kept alive while reading tensor type/shape.
+
+### Documentation / Infrastructure
+- AMD64/ARM64 JIT and VM/memory-manager architecture READMEs expanded; `architecture.md` documents the cooperative multithreaded stop-the-world model.
+- Build: resolved `D9025`/`LNK4099`/`LNK4098` warnings and a `NativeCode` ODR violation.
+- CI: Windows runners pinned to `windows-2022` (VS2022 toolset v143).
+
 ## [v2026.6.0] - 2026-06-07
 
 ### New Features
