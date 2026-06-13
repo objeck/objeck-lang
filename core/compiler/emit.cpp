@@ -290,11 +290,24 @@ void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
   inst_entries->Write(is_debug, out_stream);
 
   // write closure declarations
+  // closure_entries is keyed by an IntermediateDeclarations* (heap pointer), so
+  // iterating the map directly emits in pointer-address order — which varies on
+  // every compile (ASLR) and makes the .obl non-reproducible. Sort a snapshot by
+  // the stable (mthd_id, name) key before emitting so the output is byte-
+  // deterministic. mthd_id is unique per lambda method; name is a safety tiebreak.
   WriteInt((int)closure_entries.size(), out_stream);
-  std::map<IntermediateDeclarations*, std::pair<std::wstring, int> >::iterator iter;
-  for(iter = closure_entries.begin(); iter != closure_entries.end(); ++iter) {
-    std::pair<std::wstring, int> id = iter->second;
-    IntermediateDeclarations* closure_dclrs = iter->first;
+  typedef std::pair<IntermediateDeclarations*, std::pair<std::wstring, int> > ClosureEntry;
+  std::vector<ClosureEntry> sorted_closures(closure_entries.begin(), closure_entries.end());
+  std::sort(sorted_closures.begin(), sorted_closures.end(),
+            [](const ClosureEntry& a, const ClosureEntry& b) {
+              if(a.second.second != b.second.second) {
+                return a.second.second < b.second.second;  // by mthd_id
+              }
+              return a.second.first < b.second.first;       // tiebreak by name
+            });
+  for(size_t i = 0; i < sorted_closures.size(); ++i) {
+    std::pair<std::wstring, int> id = sorted_closures[i].second;
+    IntermediateDeclarations* closure_dclrs = sorted_closures[i].first;
     if(emit_lib) {
       WriteString(id.first, out_stream);
     }

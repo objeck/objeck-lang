@@ -7070,7 +7070,24 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
     return;
   }
 
-  const std::wstring cls_name = method_call->GetVariableName() + L".#Anonymous." + RandomString(8) + L'#';
+  // Build a DETERMINISTIC unique suffix from the source location instead of a
+  // random token. A random suffix made the same source compile to a different
+  // class name every time, which propagated into the emitted (.obl) bytecode and
+  // made library builds non-reproducible. The source basename + line + column
+  // uniquely identify an anonymous class (no two can share a source position),
+  // are stable across compiles, path-independent, and collision-safe across
+  // separately-compiled libraries.
+  std::wstring file_base = file_name;
+  const size_t slash_pos = file_base.find_last_of(L"/\\");
+  if(slash_pos != std::wstring::npos) {
+    file_base = file_base.substr(slash_pos + 1);
+  }
+  const size_t dot_pos = file_base.find_last_of(L'.');
+  if(dot_pos != std::wstring::npos) {
+    file_base = file_base.substr(0, dot_pos);
+  }
+  const std::wstring cls_name = method_call->GetVariableName() + L".#Anonymous." +
+    file_base + L'_' + std::to_wstring(line_num) + L'_' + std::to_wstring(line_pos) + L'#';
 
   std::vector<std::wstring> interface_names;
   if(Match(TOKEN_IMPLEMENTS_ID)) {

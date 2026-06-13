@@ -4561,13 +4561,36 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
     ProcessError(select_stmt, L"Select statement must have at least one label");
   }
   
-  std::map<ExpressionList*, StatementList*>::iterator iter;
   // duplicate value vector
   INT64_VALUE value = 0;
   std::map<INT64_VALUE, StatementList*> label_statements;
-  for(iter = statements.begin(); iter != statements.end(); ++iter) {
+  // Iterate the cases in a deterministic (source-position) order. `statements` is
+  // keyed by ExpressionList* (a heap pointer), so iterating it directly visits the
+  // cases in pointer-address order, which varies on every compile (ASLR). The
+  // case-label strings are interned into the char-string pool right here (via
+  // AnalyzeExpressions, before they are hashed for the jump table), so that
+  // pointer order leaked into the pool and made the emitted .obl non-reproducible.
+  // Sorting by the first case expression's source position restores a stable,
+  // parse-like order without changing semantics — label_statements is value-keyed,
+  // so its final contents are independent of insertion order.
+  std::vector<std::pair<ExpressionList*, StatementList*> > ordered_cases(statements.begin(), statements.end());
+  std::sort(ordered_cases.begin(), ordered_cases.end(),
+            [](const std::pair<ExpressionList*, StatementList*>& a, const std::pair<ExpressionList*, StatementList*>& b) {
+              const std::vector<Expression*> a_exprs = a.first->GetExpressions();
+              const std::vector<Expression*> b_exprs = b.first->GetExpressions();
+              Expression* a_first = a_exprs.empty() ? nullptr : a_exprs.front();
+              Expression* b_first = b_exprs.empty() ? nullptr : b_exprs.front();
+              if(!a_first || !b_first) {
+                return a_first < b_first;
+              }
+              if(a_first->GetLineNumber() != b_first->GetLineNumber()) {
+                return a_first->GetLineNumber() < b_first->GetLineNumber();
+              }
+              return a_first->GetLinePosition() < b_first->GetLinePosition();
+            });
+  for(size_t c = 0; c < ordered_cases.size(); ++c) {
     // expressions
-    ExpressionList* expressions = iter->first;
+    ExpressionList* expressions = ordered_cases[c].first;
     AnalyzeExpressions(expressions, depth + 1);
     // check expression type
     std::vector<Expression*> expression_list = expressions->GetExpressions();
@@ -4630,7 +4653,7 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
       }
 
       // statements get associated here and validated below
-      label_statements.insert(std::pair<INT64_VALUE, StatementList*>(value, iter->second));
+      label_statements.insert(std::pair<INT64_VALUE, StatementList*>(value, ordered_cases[c].second));
     }
   }
   select_stmt->SetLabelStatements(label_statements);
