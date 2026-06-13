@@ -285,6 +285,7 @@ Editor::Editor() : doc(DEFAULT_FILE_NAME)
   compiler_libs = USES_STRING;
   compiler_opt_level = L"s1";
   cur_pos = doc.Reset();
+  tutorial_step = 0;
 }
 
 void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int mode, bool is_exit)
@@ -294,7 +295,7 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
   // process command line
   if(input.empty()) {
     std::wcout << Runtime::C(Runtime::CLR_BOLD) << L"Objeck REPL (" << VERSION_STRING << L")" << Runtime::C(Runtime::CLR_RESET)
-               << Runtime::C(Runtime::CLR_GRAY) << L"\n['/h' for help, omit ';' to print an expression]\n---" << Runtime::C(Runtime::CLR_RESET) << std::endl;
+               << Runtime::C(Runtime::CLR_GRAY) << L"\n['/h' help | '/t' guided tutorial | omit ';' to print an expression]\n---" << Runtime::C(Runtime::CLR_RESET) << std::endl;
   }
   else {
     // set libraries
@@ -412,6 +413,11 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
         }
         break;
 
+        // guided tutorial
+      case L't':
+        DoTutorial(in);
+        break;
+
         // delete line
       case L'd':
         if(DoDeleteLine(in)) {
@@ -504,6 +510,7 @@ void Editor::DoHelp()
   std::wcout << "  omit the " << cmd << "';'" << rst << "          evaluate the line as an expression and print its value" << std::endl;
   std::wcout << "  open brace " << cmd << "'{'" << rst << "        keeps reading until braces balance (multi-line block)" << std::endl;
   std::wcout << hdr << "=> Commands" << rst << std::endl;
+  std::wcout << "  " << cmd << "/t" << rst << ": guided tutorial (step-by-step; " << cmd << "/t <n>" << rst << " to jump)" << std::endl;
   std::wcout << "  " << cmd << "/q" << rst << ": quit                 " << cmd << "/x" << rst << ": reset buffer" << std::endl;
   std::wcout << "  " << cmd << "/h" << rst << ": help                 " << cmd << "/c" << rst << ": clear screen" << std::endl;
   std::wcout << "  " << cmd << "/l" << rst << ": list program         " << cmd << "/v" << rst << ": list defined variables" << std::endl;
@@ -918,12 +925,21 @@ void Editor::DoInput(std::wstring in)
 void Editor::DoEvalExpression(const std::wstring& expr)
 {
   const size_t p = cur_pos;
-  const std::wstring wrapped = L"(" + expr + L")->ToString()->PrintLine();";
-  if(AppendLine(wrapped)) {
-    DoExecute();          // prints the value, or shows a compile error in red
-    doc.DeleteLine(p);    // one-shot: never persisted, so it can't replay
-    cur_pos = p;
+  // Evaluate through a temp variable. This keeps operator precedence intact and
+  // avoids a parenthesized cascade like "(a->b())->ToString()", which the
+  // compiler mis-parses (the trailing call binds to the inner receiver).
+  size_t inserted = 0;
+  if(AppendLine(L"replEvalTmp := " + expr + L";")) {
+    inserted++;
   }
+  if(AppendLine(L"replEvalTmp->ToString()->PrintLine();")) {
+    inserted++;
+  }
+  DoExecute();            // prints the value, or shows a compile error in red
+  for(size_t i = 0; i < inserted; ++i) {
+    doc.DeleteLine(p);    // one-shot: never persisted, so it can't replay
+  }
+  cur_pos = p;
 }
 
 void Editor::DoVars()
@@ -967,6 +983,104 @@ void Editor::DoClear()
 {
   // ANSI clear-screen + home; C() returns the sequence only when VT/color is active
   std::wcout << Runtime::C(L"\033[2J\033[H") << std::flush;
+}
+
+void Editor::DoTutorial(std::wstring& in)
+{
+  struct Lesson {
+    const wchar_t* title;
+    const wchar_t* body;
+    const wchar_t* example;
+    const wchar_t* shows;
+  };
+
+  static const Lesson lessons[] = {
+    { L"Expressions print themselves",
+      L"Type an expression without a ';' and obi evaluates it and prints the value.",
+      L"40 + 2\n\"objeck\"->Size()",
+      L"42\n6" },
+    { L"Variables with :=",
+      L"':=' declares a variable and keeps it in your program for later lines.",
+      L"name := \"Objeck\"\nname->ToUpper()",
+      L"OBJECK" },
+    { L"Statements vs. expressions",
+      L"End a line with ';' to keep it as a statement that re-runs with the buffer.\nOmit ';' to just see a value. Strings interpolate with {$...}.",
+      L"\"Hi {$name}!\"->PrintLine();",
+      L"Hi Objeck!" },
+    { L"Formatting numbers",
+      L"Inside {$...} add a ':' format spec for precision, width, or radix.",
+      L"\"pi  = {$3.14159:.2}\"\n\"hex = {$255:x}\"",
+      L"pi  = 3.14\nhex = 0xff" },
+    { L"Collections",
+      L"obi preloads 'use Collection;'. Containers are generic, e.g. Vector<IntRef>.",
+      L"v := Vector->New()<IntRef>;\nv->AddBack(10); v->AddBack(20);\nv->Size()",
+      L"2" },
+    { L"Multi-line blocks",
+      L"Leave a brace open and obi keeps reading (the '...' prompt) until it closes.",
+      L"if(name->Size() > 3) {\n  \"long name\"->PrintLine();\n}",
+      L"long name" },
+    { L"Loops",
+      L"Ordinary control flow works too.",
+      L"for(i := 0; i < 3; i += 1;) { i->PrintLine(); };",
+      L"0\n1\n2" },
+    { L"Where to go next",
+      L"'/l' lists your program, '/v' shows variables, '/s name.obs' saves it.\nFull guide: https://objeck.org/getting_started.html",
+      L"/l",
+      L"(your program so far)" },
+  };
+  const size_t total = sizeof(lessons) / sizeof(lessons[0]);
+
+  // optional numeric argument: jump to that step
+  std::wstring arg = (in.size() > 2) ? in.substr(2) : L"";
+  Trim(arg);
+  if(!arg.empty()) {
+    try {
+      const size_t n = (size_t)std::stoul(arg);
+      if(n >= 1 && n <= total) {
+        tutorial_step = n - 1;
+      }
+      else {
+        std::wcout << L"=> Tutorial steps are 1.." << total << L'.' << std::endl;
+        return;
+      }
+    }
+    catch(...) {
+      std::wcout << SYNTAX_ERROR << std::endl;
+      return;
+    }
+  }
+
+  // finished: announce and reset for next time
+  if(tutorial_step >= total) {
+    std::wcout << Runtime::C(Runtime::CLR_GREEN) << L"=> Tutorial complete - happy hacking!"
+               << Runtime::C(Runtime::CLR_RESET) << L" ('/t 1' to start over)" << std::endl;
+    tutorial_step = 0;
+    return;
+  }
+
+  const Lesson& lesson = lessons[tutorial_step];
+  const wchar_t* hdr = Runtime::C(Runtime::CLR_BOLD);
+  const wchar_t* cyan = Runtime::C(Runtime::CLR_CYAN);
+  const wchar_t* gray = Runtime::C(Runtime::CLR_GRAY);
+  const wchar_t* rst = Runtime::C(Runtime::CLR_RESET);
+
+  auto print_indented = [](const wchar_t* text, const std::wstring& indent) {
+    std::wstringstream ss(text);
+    std::wstring ln;
+    while(std::getline(ss, ln)) {
+      std::wcout << indent << ln << std::endl;
+    }
+  };
+
+  std::wcout << hdr << L"=> Tutorial " << (tutorial_step + 1) << L'/' << total << L": " << lesson.title << rst << std::endl;
+  print_indented(lesson.body, L"  ");
+  std::wcout << cyan << L"  Try:" << rst << std::endl;
+  print_indented(lesson.example, L"    ");
+  std::wcout << gray << L"  Shows:" << rst << std::endl;
+  print_indented(lesson.shows, L"    ");
+  std::wcout << gray << L"  (type the example, then '/t' for the next step | '/t <n>' to jump)" << rst << std::endl;
+
+  tutorial_step++;
 }
 
 void Editor::DoInsertBelow()

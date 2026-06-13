@@ -141,6 +141,7 @@ class Editor {
   std::wstring compiler_opt_level;
   std::wstring cmd_args;
   size_t cur_pos;
+  size_t tutorial_step;
 
 public:
   Editor();
@@ -159,6 +160,7 @@ public:
   void DoEvalExpression(const std::wstring& expr);
   void DoVars();
   void DoClear();
+  void DoTutorial(std::wstring& in);
   void DoInsertBelow();
   void DoUseLibraries(std::wstring &in);
   void DoOptLevel(std::wstring& in);

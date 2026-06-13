@@ -2,6 +2,8 @@
 
 Interactive shell for rapid prototyping and experimentation with Objeck. `obi` lets you write and run code immediately without creating source files, and doubles as a small line-oriented editor for the buffer it builds up.
 
+> **New to Objeck?** Start `obi` and type `/t` for a short, hands-on guided tutorial that walks you through expressions, variables, formatting, collections, and control flow one step at a time.
+
 ## How it works
 
 `obi` keeps an in-memory program — a `class Repl { function : Main(args : String[]) ~ Nil { ... } }` scaffold — and inserts the statements you type into `Main`. Each time you enter something, the buffer is recompiled and re-run, so the program always reflects everything you've added.
@@ -69,6 +71,7 @@ All commands start with `/`.
 | Command | Description |
 |---------|-------------|
 | `/h` | Help |
+| `/t` | Guided step-by-step tutorial (`/t <n>` to jump to a step) |
 | `/q` | Quit |
 | `/x` | Reset the buffer (and libraries/optimization) |
 | `/c` | Clear the screen |
