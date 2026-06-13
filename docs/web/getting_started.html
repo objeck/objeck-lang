@@ -2431,11 +2431,63 @@ class DbExample {
           Tools to make Objeck programming easier to use.
          </p>
          <h3 id="repl">
-          REPL Shell
+          REPL Shell (obi)
          </h3>
          <p>
-          The interactive read–eval–print loop (REPL) shell allows users to quickly test their code without writing a complete program or compiling source files. REPL commands can be listed by typing 'help' or 'h.' Future releases of Objeck will include enhancements to the shell, such as the ability to load and save source files and enhanced editing capabilities.
+          <code>obi</code> is an interactive read–eval–print shell for trying out Objeck
+          without creating a source file. It keeps an in-memory program and recompiles and
+          re-runs it each time you enter a line, so the buffer always reflects everything
+          you've added. Start it by running <code>obi</code> with no arguments.
          </p>
+         <pre class="cmd">&gt; obi
+Objeck REPL (2026.6.x)
+['/h' help | '/t' guided tutorial | omit ';' to print an expression]
+---</pre>
+         <p>
+          <b>New to the language?</b> Type <code>/t</code> for a short, hands-on guided
+          tutorial that steps through expressions, variables, formatting, collections, and
+          control flow one lesson at a time (<code>/t &lt;n&gt;</code> jumps to a step).
+         </p>
+         <p>
+          How a line is handled depends on whether it ends with a semicolon:
+         </p>
+         <ul>
+          <li>End a line with <code>;</code> — it is <b>kept</b> as part of the program and re-runs with the buffer.</li>
+          <li>Omit the <code>;</code> — the line is <b>evaluated as an expression</b> and its value is printed once (it is not kept).</li>
+          <li>A <code>:=</code> declaration is kept so later lines can use the variable.</li>
+         </ul>
+         <pre class="cmd">&gt; 40 + 2            # expression — printed once
+42
+&gt; name := "Objeck"  # declaration — kept
+&gt; name-&gt;ToUpper()   # expression using the variable
+OBJECK
+&gt; "Hi {$name}!"-&gt;PrintLine();   # statement — kept
+Hi Objeck!</pre>
+         <p>
+          When a line leaves a brace open, <code>obi</code> keeps prompting with
+          <code>...</code> until it closes, so blocks and control flow can span several
+          lines. A line that fails to compile is reported and discarded, leaving the buffer
+          runnable.
+         </p>
+         <pre class="cmd">&gt; if(name-&gt;Size() &gt; 3) {
+... "long name"-&gt;PrintLine();
+... }
+long name</pre>
+         <p>
+          Commands start with <code>/</code>; type <code>/h</code> for the full list. The most useful are:
+         </p>
+         <ul>
+          <li><code>/t</code> — guided tutorial (<code>/t &lt;n&gt;</code> to jump)</li>
+          <li><code>/l</code> — list the current program; <code>/v</code> — show defined variables</li>
+          <li><code>/s name.obs</code> — save the buffer to a file; <code>/o file.obs</code> — open one</li>
+          <li><code>/u</code> — set library <code>use</code> statements; <code>/a</code> — set command-line arguments</li>
+          <li><code>/x</code> — reset the buffer; <code>/q</code> — quit</li>
+         </ul>
+         <p>
+          You can also start from an existing file or run a one-off statement directly:
+         </p>
+         <pre class="cmd">&gt; obi --file prog.obs                 # load a file, run it, then drop into the shell
+&gt; obi --inline 'Int-&gt;New(42)-&gt;PrintLine();' --quit   # run one statement and exit</pre>
          <h3 id="debugger">
           Debugger
          </h3>
