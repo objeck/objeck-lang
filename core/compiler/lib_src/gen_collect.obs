@@ -2732,7 +2732,7 @@ queue->Size()->PrintLine(); # 2
 	#~
 	Forward iterator of comparables
 	~#
-	class CompareForwardIterator<H : Compare> {
+	class CompareForwardIterator<out H : Compare> {
 		@node : CompareListNode<H>;
 		@list : CompareList<H>;
 		
@@ -2815,7 +2815,7 @@ it->Get()->PrintLine(); # 99
 	#~
 	Backward iterator of comparables
 	~#
-	class CompareBackwardIterator<H : Compare> {
+	class CompareBackwardIterator<out H : Compare> {
 	    @node : CompareListNode<H>;
 	    @list : CompareList<H>;
 
@@ -3688,7 +3688,7 @@ list->Size()->PrintLine(); # 2
 	#~
 	Forward iterator
 	~#
-	class ForwardIterator<H> {
+	class ForwardIterator<out H> {
 		@node : ListNode<H>;
 		@list : List<H>;
 		
@@ -3767,7 +3767,7 @@ it->Get()->PrintLine(); # hello
 	#~
 	Backward iterator
 	~#
-	class BackwardIterator<H> {
+	class BackwardIterator<out H> {
 	    @node : ListNode<H>;
 	    @list : List<H>;
 
