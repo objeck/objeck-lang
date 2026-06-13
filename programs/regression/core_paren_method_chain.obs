@@ -1,0 +1,38 @@
+# Verifies a method call on a parenthesized method-call expression chains onto
+# the parenthesized result instead of overwriting the inner call.
+use System;
+
+class CoreParenMethodChainTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing parenthesized method chains..."->PrintLine();
+        pass := true;
+
+        # ( receiver->method() )->method2()  must apply method2 to the result
+        pass := Check(("objeck"->Size())->ToString(), "6", pass);
+        pass := Check((("objeck")->Size())->ToString(), "6", pass);
+        # deeper inner chain inside the parentheses
+        pass := Check(("a,b,c"->ToUpper())->Size()->ToString(), "5", pass);
+        # nested parentheses
+        pass := Check((("hi"->ToUpper()))->ToString(), "HI", pass);
+        # no-paren chain still works (regression guard)
+        pass := Check("objeck"->Size()->ToString(), "6", pass);
+        # arithmetic in parens still works (regression guard)
+        pass := Check(((1 + 2))->ToString(), "3", pass);
+
+        if(pass) {
+            "PASS: Parenthesized method chains"->PrintLine();
+        }
+        else {
+            "FAIL: Parenthesized method chains"->PrintLine();
+            Runtime->Exit(1);
+        };
+    }
+
+    function : Check(actual : String, expected : String, pass : Bool) ~ Bool {
+        if(<>actual->Equals(expected)) {
+            "  FAIL: got '{$actual}', expected '{$expected}'"->PrintLine();
+            return false;
+        };
+        return pass;
+    }
+}

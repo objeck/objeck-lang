@@ -7056,15 +7056,23 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
   NextToken();
 
   if(expression) {
-    expression->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
+    // Attach to the END of any existing method-call chain. A parenthesized
+    // expression such as (a->b())->c() arrives here with b() already attached
+    // to 'expression'; without walking to the tail we would overwrite b() with
+    // c() and silently drop the inner call.
+    Expression* tail = expression;
+    while(tail->GetMethodCall()) {
+      tail = tail->GetMethodCall();
+    }
+    tail->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
     // subsequent method calls
     if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
        !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
-      ParseMethodCall(expression->GetMethodCall(), depth + 1);
+      ParseMethodCall(tail->GetMethodCall(), depth + 1);
     }
     // type cast
     else {
-      ParseCastTypeOf(expression->GetMethodCall(), depth + 1);
+      ParseCastTypeOf(tail->GetMethodCall(), depth + 1);
     }
   }
 }
