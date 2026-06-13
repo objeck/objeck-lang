@@ -23,6 +23,14 @@ This document lists all regression tests, what they validate, and comprehensive 
 | 15 | `try_otherwise.obs` | Core Language | Exception handling with try/otherwise | - | ARM64, x64 | ✅ |
 | 16 | `fix524_array_cast_chain.obs` | Bug Fix | Array cast chain fix | - | ARM64, x64 | ✅ |
 | 17 | `fix534_substring_crash.obs` | Bug Fix | SubString crash on negative or zero length | 75c4c3ed0 | ARM64, x64 | ✅ |
+| 18 | `core_generic_structural.obs` | Generics | Nested generic round-trip (Hash/Vector/Pair) | 5b4a8c73b | ARM64, x64 | ✅ |
+| 19 | `core_generic_compound_bounds.obs` | Generics | Compound bounds `T : A & B` (accept) | 76b4e9d46 | ARM64, x64 | ✅ |
+| 20 | `core_generic_fbound.obs` | Generics | F-bounded constraint `T : Compare<T>` (accept) | 02fd97596 | ARM64, x64 | ✅ |
+| 21 | `core_generic_variance.obs` | Generics | Variance `out`/`in` (covariant + contravariant accept) | a833a2ab8 | ARM64, x64 | ✅ |
+| 22 | `bad_generic_arg_mismatch.obs` | Generics (neg) | Invariant type-argument mismatch rejected | 18b5a404b | ARM64, x64 | ✅ |
+| 23 | `bad_generic_compound_bound.obs` | Generics (neg) | Missing compound bound rejected | 76b4e9d46 | ARM64, x64 | ✅ |
+| 24 | `bad_generic_fbound.obs` | Generics (neg) | Unsatisfied F-bound rejected | 02fd97596 | ARM64, x64 | ✅ |
+| 25 | `bad_generic_variance.obs` | Generics (neg) | Unsound variance direction rejected | a833a2ab8 | ARM64, x64 | ✅ |
 
 **Total Runtime Tests:** 17
 **ARM64 JIT Tests:** 4
@@ -74,7 +82,8 @@ This document lists all regression tests, what they validate, and comprehensive 
 | **Float Array + Math** | ✅ Complete | jit_native_float_array | ✅ |
 | **Class Field Storage (GC)** | ✅ Complete | jit_native_cls_fields | ✅ |
 | **Lambdas/Closures** | ⏳ Partial | - | ⚠️ Complex syntax |
-| **Collections** | ⏳ Partial | - | ⚠️ Generic issues |
+| **Generics (bounds/variance)** | ✅ Complete | core_generic_*, bad_generic_* | ✅ Compound & F-bounds, `out`/`in` variance |
+| **Collections** | ✅ Basic | core_generic_structural, fix_nested_generics | ✅ |
 | **Threads** | ❌ None | - | 📋 TODO |
 | **File I/O** | ❌ None | - | 📋 TODO |
 | **Exceptions** | ❌ None | - | 📋 TODO |
