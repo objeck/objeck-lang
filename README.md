@@ -57,7 +57,7 @@ obc hello && obr hello
 
 ## What's New
 
-**v2026.6.1**
+### v2026.6.1
   * **Generics — bounds, compound/F-bounds, and variance** — type parameters gain compound bounds `T : A & B` (a concrete argument must satisfy every bound), F-bounded constraints `T : Compare<T>`, and declaration-site variance: `out T` (covariant, e.g. `Producer<Dog>` usable as `Producer<Animal>`) and `in T` (contravariant). Variance is checked soundly in both directions and preserved across the `.obl` library boundary; the stdlib's read-only iterators are now covariant. Existing invariant generics and syntax are unchanged (`out` stays a usable identifier), and generic type-mismatch errors now print readable types like `Hash<String, IntRef>`
   * **Multithreaded garbage collection** — the generational collector is now cooperative stop-the-world: mutator threads park at safepoints (interpreter dispatch, JIT loop back-edges on AMD64 and ARM64, allocation, and blocking `join`/`sleep`/socket I/O) so the collector always marks a complete, stable root set. Fixes freed-live-object corruption and use-after-free under heavy thread churn, plus a JIT-loop collector deadlock; single-threaded programs never park
   * **Secure sockets verify certificates by default** — TLS and DTLS clients (TCP, HTTP/2, HTTP/3, DTLS) now validate the certificate chain and hostname by default instead of accepting any certificate; set `OBJECK_TLS_INSECURE_SKIP_VERIFY=1` to opt into self-signed/dev servers
@@ -69,7 +69,7 @@ obc hello && obr hello
   * **macOS launcher** — portable app bundles now resolve their own location instead of trusting the working directory, so they launch correctly from Finder or any directory
   * **Reproducible builds** — compiling unchanged library source now produces byte-identical `.obl` files (deterministic anonymous-class naming), and Windows/ARM64 build warnings and a `NativeCode` ODR violation were cleared
 
-**v2026.6.0**
+### v2026.6.0
   * **New `System.AI` library** (`-lib ai` or `@ai`) — classic AI in the standard library: graph search (`Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst`), adversarial game search (`Minimax` with alpha-beta, `MonteCarloTreeSearch`), metaheuristics (`GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing`) and tabular RL (`QLearning`, `Sarsa`, `MarkovDecisionProcess` value iteration); all stochastic algorithms seeded for reproducible runs
   * **`System.ML` overhaul** — 13 new estimators (`RidgeRegression`/`LassoRegression`/`ElasticNet`, `Perceptron`, `SVM`, `PCA`, `GaussianNaiveBayes`, `AdaBoost`, `DBSCAN`, `GaussianMixture`, `KDTree`, `RegressionTree`, `GradientBoostedTrees`); real recursive `DecisionTree` and voting `RandomForest`; k-means++ `KMeans`; `NeuralNetwork` hidden/output bias (clean XOR convergence); seedable `System.ML.Random`; uniform `Fit`/`Predict`/`Score`/`IsFitted`/`Store`/`Load` API across every estimator. *Breaking:* `RandomForest->Train` is now `Fit`; stored `NeuralNetwork` model files must be regenerated
   * **`record` types** — `record Point { @x : Int; @y : Int; }` generates the constructor and accessors; `record : readonly :` omits setters and the compiler rejects field assignment outside constructors; supports generics, inheritance and user-defined member overrides
@@ -79,7 +79,7 @@ obc hello && obr hello
   * **Library aliases documented** — `-lib @std`/`@ml`/`@game` and the new `@ai` group, user-editable via `lib/configobjk.ini`; AI/ML developer guide gains `System.ML` and `System.AI` sections with runnable examples
   * **CI hardening** — vcpkg installs retry on transient CDN failures; `mcp_server_test` validates JSON-RPC bodies before accepting
 
-**v2026.5.4**
+### v2026.5.4
   * **Debugger test reliability** — Windows CI debugger tests fixed; `.obe`/`.obl` format detection now correctly handles the edge case where a new-format size-header LSB collides with the `0x78` zlib CMF byte
   * **LSP shell script permissions** — all `tools/lsp/` shell scripts now have execute bit set in git, fixing `Permission denied` in release CI
   * **Release workflow** — `git checkout -f master` prevents dirty-tree abort when committing `api.zip` from a tag-based build
