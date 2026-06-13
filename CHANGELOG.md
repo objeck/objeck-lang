@@ -5,6 +5,7 @@ All notable changes to Objeck will be documented in this file.
 ## [Unreleased]
 
 ### New Features
+- **Generics: bounds, compound/F-bounds, and variance**: type parameters gain `T : A & B` compound bounds (a concrete argument must satisfy every bound), F-bounded constraints `T : Compare<T>`, and declaration-site variance — `out T` (covariant) and `in T` (contravariant) — checked soundly in both directions and preserved across the `.obl` library boundary. Existing invariant generics and syntax are unchanged (`out` stays a usable identifier); generic type-mismatch diagnostics now render readable types (`Hash<String, IntRef>`).
 - **Multithreaded stop-the-world garbage collection**: the collector now coordinates safely across threads. Mutators poll safepoints in the interpreter dispatch loop and at allocation, park while a collection runs, and bracket blocking syscalls (thread join/sleep, socket I/O) so a stop-the-world pause can always proceed; the AMD64 and ARM64 JITs emit safepoint polls at every label. Validated on Windows, Linux, and macOS across x64 and ARM64.
 - **Reproducible library builds**: compiling unchanged `.obs` source now produces byte-identical `.obl` output. Anonymous classes are named from their source location instead of a random token, and string-`select` cases and closure declarations are emitted in a stable (source/`mthd_id`) order rather than heap-pointer order, so committed libraries no longer churn on every rebuild.
 

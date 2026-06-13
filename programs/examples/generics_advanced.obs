@@ -1,0 +1,82 @@
+#~
+Advanced generics: type-parameter bounds, compound bounds (A & B), F-bounded
+constraints (Compare<T>), and declaration-site variance (out / in).
+
+Build & run:
+  obc -src generics_advanced.obs -dest generics_advanced.obe
+  obr generics_advanced.obe
+~#
+
+use System;
+
+# --- bounds + compound bounds ----------------------------------------------
+interface Named { method : virtual : public : Label() ~ String; }
+interface Aged  { method : virtual : public : Age() ~ Int; }
+
+class Person implements Named, Aged {
+  @name : String;
+  @age : Int;
+  New(name : String, age : Int) { @name := name; @age := age; }
+  method : public : Label() ~ String { return @name; }
+  method : public : Age() ~ Int { return @age; }
+}
+
+# T must satisfy BOTH bounds; member access uses the primary (erasure) bound.
+class Card<T : Named & Aged> {
+  @who : T;
+  New(who : T) { @who := who; }
+  method : public : Show() ~ String { return @who->Label(); }
+}
+
+# --- F-bounded constraint ---------------------------------------------------
+class Score implements Compare {
+  @v : Int;
+  New(v : Int) { @v := v; }
+  method : public : Compare(rhs : System.Compare) ~ Int {
+    that := rhs->As(Score);
+    return @v - that->Get();
+  }
+  method : public : HashID() ~ Int { return @v; }
+  method : public : Get() ~ Int { return @v; }
+}
+
+# T must be comparable to itself.
+class Ranked<T : Compare<T>> {
+  @item : T;
+  New(item : T) { @item := item; }
+  method : public : Item() ~ T { return @item; }
+}
+
+# --- variance ---------------------------------------------------------------
+class Animal { New() {} method : public : Kind() ~ String { return "animal"; } }
+class Dog from Animal { New() { Parent(); } method : public : Kind() ~ String { return "dog"; } }
+
+class Producer<out T> { @v : T; New() {}  method : public : Get() ~ T { return @v; } }   # covariant
+class Consumer<in T>  { @v : T; New() {}  method : public : Take(x : T) ~ Nil {} }       # contravariant
+
+class GenericsAdvanced {
+  function : Main(args : String[]) ~ Nil {
+    # compound bound: Person satisfies both Named and Aged
+    card := Card->New(Person->New("Ada", 36))<Person>;
+    who := card->Show();
+    who->PrintLine();                   # Ada
+
+    # F-bound: Score is comparable to itself
+    r := Ranked->New(Score->New(42))<Score>;
+    got := r->Item();
+    got->HashID()->PrintLine();         # 42
+
+    # covariance: Producer<Dog> usable where Producer<Animal> is expected
+    pd := Producer->New()<Dog>;
+    UseProducer(pd);                    # used producer
+
+    # contravariance: Consumer<Animal> usable where Consumer<Dog> is expected
+    ca := Consumer->New()<Animal>;
+    UseConsumer(ca);                    # used consumer
+
+    "done"->PrintLine();
+  }
+
+  function : UseProducer(p : Producer<Animal>) ~ Nil { "used producer"->PrintLine(); }
+  function : UseConsumer(c : Consumer<Dog>) ~ Nil { "used consumer"->PrintLine(); }
+}

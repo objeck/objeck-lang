@@ -58,6 +58,13 @@ The optimizer performs the following optimizations in order:
 
 As of v5.x, the compiler supports generics through type erasure, similar to Java. Generic types are compiled to their upper bounds, with runtime type checks inserted where necessary. Type boxing allows primitives to be used seamlessly with generic containers.
 
+Type parameters support:
+
+- **Bounds** — `T : Bound` constrains a parameter to an interface; the first bound is the erasure type.
+- **Compound bounds** — `T : A & B` requires the concrete argument to satisfy every bound.
+- **F-bounded constraints** — the bound may itself be generic and self-referential, e.g. `T : Compare<T>`. The constraint is enforced against the bound's raw interface (consistent with erasure).
+- **Declaration-site variance** — `out T` (covariant) and `in T` (contravariant) relax the default invariance during generic type-argument checking; `out` is recognized contextually so it remains usable as an ordinary identifier. Variance is sound in both directions and is preserved across the `.obl` library boundary.
+
 ## Implementation
 
 - **Language**: C++ with STL

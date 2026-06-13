@@ -86,6 +86,42 @@ map->Insert(408, "Sunnyvale");
 map->ToString()->PrintLine();
 ```
 
+#### Type-parameter bounds
+A type parameter can require an interface bound (`T : Bound`); a concrete argument
+must implement it. Multiple bounds combine with `&`, and a bound may be generic
+(F-bounded, e.g. self-comparable):
+```ruby
+# single bound
+class SortedBox<T : Compare> { ... }
+
+# compound bound: T must satisfy BOTH interfaces
+class Entry<T : Compare & Stringify> { ... }
+
+# F-bounded: T must be comparable to itself
+class Sorter<T : Compare<T>> { ... }
+```
+
+#### Variance (`out` / `in`)
+Declaration-site variance relaxes the default invariance. A covariant parameter
+(`out T`) lets `Producer<Dog>` be used where `Producer<Animal>` is expected; a
+contravariant parameter (`in T`) lets `Consumer<Animal>` be used where
+`Consumer<Dog>` is expected. Omitting the modifier keeps the safe, invariant
+default.
+```ruby
+class Animal {}
+class Dog from Animal { New() { Parent(); } }
+
+class Producer<out T> { @v : T; New() {}  method : public : Get() ~ T { return @v; } }
+
+class Test {
+  function : Use(p : Producer<Animal>) ~ Nil {}
+  function : Main(args : String[]) ~ Nil {
+    pd := Producer->New()<Dog>;
+    Use(pd);   # accepted: Producer<Dog> is a Producer<Animal>
+  }
+}
+```
+
 ### Type Boxing
 ```ruby
 list := Collection.List->New()<IntRef>;
