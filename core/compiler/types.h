@@ -114,6 +114,15 @@ namespace frontend {
   };
 
   /****************************
+   * Generic type-parameter variance
+   ****************************/
+  enum GenericVariance {
+    GENERIC_INVARIANT = 0,   // default: exact type-argument match
+    GENERIC_COVARIANT,       // 'out' T : Foo<Derived> usable as Foo<Base>
+    GENERIC_CONTRAVARIANT    // 'in'  T : Foo<Base> usable as Foo<Derived>
+  };
+
+  /****************************
    * Method types
    ****************************/
   enum MethodCallType {    

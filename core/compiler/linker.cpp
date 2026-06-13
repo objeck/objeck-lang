@@ -621,7 +621,24 @@ LibraryClass::LibraryClass(const std::wstring& n, const std::wstring& p, const s
         concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
       }
 
-      generic_classes.push_back(new LibraryClass(generic_name, concrete_name));
+      // The bound segment may carry a trailing "|out"/"|in" variance marker. Split
+      // it off so the bound itself stays clean; absence means invariant (default).
+      frontend::GenericVariance variance = frontend::GENERIC_INVARIANT;
+      const size_t var_sep = concrete_name.find(L'|');
+      if(var_sep != std::wstring::npos) {
+        const std::wstring var_str = concrete_name.substr(var_sep + 1);
+        concrete_name = concrete_name.substr(0, var_sep);
+        if(var_str == L"out") {
+          variance = frontend::GENERIC_COVARIANT;
+        }
+        else if(var_str == L"in") {
+          variance = frontend::GENERIC_CONTRAVARIANT;
+        }
+      }
+
+      LibraryClass* generic_lib_class = new LibraryClass(generic_name, concrete_name);
+      generic_lib_class->SetVariance(variance);
+      generic_classes.push_back(generic_lib_class);
     }
   }
 

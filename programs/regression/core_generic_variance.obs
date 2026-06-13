@@ -1,0 +1,22 @@
+#~
+Declaration-site variance: 'out T' (covariant) lets Producer<Dog> be used where
+Producer<Animal> is expected; 'in T' (contravariant) lets Consumer<Animal> be
+used where Consumer<Dog> is expected.
+~#
+class Animal { New() {} method : public : Kind() ~ String { return "animal"; } }
+class Dog from Animal { New() { Parent(); } method : public : Kind() ~ String { return "dog"; } }
+
+class Producer<out T> { @item : T; New() {} method : public : Get() ~ T { return @item; } }
+class Consumer<in T> { @x : T; New() {} method : public : Take(v : T) ~ Nil {} }
+
+class CoreGenericVariance {
+  function : UseProducer(p : Producer<Animal>) ~ Nil {}
+  function : UseConsumer(c : Consumer<Dog>) ~ Nil {}
+  function : Main(args : String[]) ~ Nil {
+    pd := Producer->New()<Dog>;
+    UseProducer(pd);          # covariant: Producer<Dog> -> Producer<Animal>
+    ca := Consumer->New()<Animal>;
+    UseConsumer(ca);          # contravariant: Consumer<Animal> -> Consumer<Dog>
+    "PASS: variance"->PrintLine();
+  }
+}

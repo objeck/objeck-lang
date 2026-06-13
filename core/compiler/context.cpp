@@ -3420,7 +3420,9 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
             // calculate exact match
             if(IsClassEnumParameterMatch(calling_type, method_type)) {
               if(calling_type->HasGenerics() || method_type->HasGenerics()) {
-                if(CheckGenericEqualTypes(calling_type, method_type, calling_param, true)) {
+                // here the call argument (calling_type) is the source and the
+                // method parameter (method_type) is the target, so left_is_target=false
+                if(CheckGenericEqualTypes(calling_type, method_type, calling_param, true, false)) {
                   return 0;
                 }
                 return -1;
@@ -7108,8 +7110,20 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   }
 }
 
-bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression* expression, bool check_only)
+bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression* expression, bool check_only, bool left_is_target)
 {
+  // is `sub` a subtype of (assignable to) `super`? equal types qualify.
+  auto IsArgSubtype = [&](Type* sub, Type* super) -> bool {
+    if(StructuralGenericEquals(sub, super)) {
+      return true;
+    }
+    Class* sub_klass = nullptr; LibraryClass* sub_lib_klass = nullptr;
+    if(GetProgramOrLibraryClass(sub, sub_klass, sub_lib_klass)) {
+      return ValidDownCast(super->GetName(), sub_klass, sub_lib_klass);
+    }
+    return false;
+  };
+
   // note, enums and consts checked elsewhere
   Class* left_klass = nullptr; LibraryClass* lib_left_klass = nullptr;
   if(!GetProgramOrLibraryClass(left, left_klass, lib_left_klass) && !current_class->GetGenericClass(left->GetName())) {
@@ -7178,6 +7192,28 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           }
           else {
             right_generic_type = ResolveGenericType(right_generic_type, expression, left_klass, lib_left_klass);
+          }
+        }
+
+        // Declaration-site variance: if the i-th type parameter of the (shared)
+        // generic class is covariant ('out') or contravariant ('in'), accept a
+        // subtype/supertype argument instead of requiring exact equality. The
+        // target/source roles depend on which side is the assignment target.
+        GenericVariance variance = GENERIC_INVARIANT;
+        if(left_klass && i < left_klass->GetGenericClasses().size()) {
+          variance = left_klass->GetGenericClasses()[i]->GetVariance();
+        }
+        else if(lib_left_klass && i < lib_left_klass->GetGenericClasses().size()) {
+          variance = lib_left_klass->GetGenericClasses()[i]->GetVariance();
+        }
+        if(variance != GENERIC_INVARIANT && left_generic_type->IsResolved()) {
+          Type* target_arg = left_is_target ? left_generic_type : right_generic_type;
+          Type* source_arg = left_is_target ? right_generic_type : left_generic_type;
+          const bool variance_ok = (variance == GENERIC_COVARIANT)
+              ? IsArgSubtype(source_arg, target_arg)   // out: source <: target
+              : IsArgSubtype(target_arg, source_arg);  // in:  target <: source
+          if(variance_ok) {
+            continue;
           }
         }
 

@@ -5783,6 +5783,20 @@ std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name,
     NextToken();
 
     while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
+      // optional declaration-site variance preceding the parameter name:
+      //   'in T'  -> contravariant   'out T' -> covariant
+      // 'in' is a keyword (TOKEN_IN_ID); 'out' is matched contextually (an
+      // identifier followed by the parameter identifier) so it stays a usable name.
+      GenericVariance variance = GENERIC_INVARIANT;
+      if(Match(TOKEN_IN_ID) && Match(TOKEN_IDENT, SECOND_INDEX)) {
+        variance = GENERIC_CONTRAVARIANT;
+        NextToken();
+      }
+      else if(Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"out" && Match(TOKEN_IDENT, SECOND_INDEX)) {
+        variance = GENERIC_COVARIANT;
+        NextToken();
+      }
+
       // identifier
       if(!Match(TOKEN_IDENT)) {
         ProcessError(TOKEN_IDENT);
@@ -5791,6 +5805,7 @@ std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name,
       NextToken();
 
       Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, line_pos, -1, -1, generic_klass, true);
+      klass->SetVariance(variance);
       for(size_t i = 0; i < generic_classes.size(); ++i) {
         if(bundle_name.size() > 0) {
           generic_klass.insert(0, L".");

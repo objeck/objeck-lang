@@ -452,6 +452,7 @@ class LibraryClass {
   std::vector<LibraryClass*> generic_classes;
   frontend::Type* generic_interface;                       // primary/erasure bound
   std::vector<frontend::Type*> extra_generic_interfaces;   // additional bounds (A & B)
+  frontend::GenericVariance generic_variance = frontend::GENERIC_INVARIANT;  // out/in variance
 
   std::map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> CopyClosureEntries();
 
@@ -609,6 +610,14 @@ class LibraryClass {
 
   bool HasGenericInterface() {
     return generic_interface != nullptr;
+  }
+
+  void SetVariance(frontend::GenericVariance v) {
+    generic_variance = v;
+  }
+
+  frontend::GenericVariance GetVariance() {
+    return generic_variance;
   }
 
   // All bounds (primary first, then extras) for full constraint validation.

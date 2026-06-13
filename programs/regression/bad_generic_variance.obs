@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR
+#~
+Variance must stay sound: a covariant 'out T' does NOT allow the reverse
+direction. Producer<Animal> is not assignable to Producer<Dog>.
+~#
+class Animal { New() {} }
+class Dog from Animal { New() { Parent(); } }
+class Producer<out T> { @item : T; New() {} method : public : Get() ~ T { return @item; } }
+class BadGenericVariance {
+  function : NeedDog(p : Producer<Dog>) ~ Nil {}
+  function : Main(args : String[]) ~ Nil {
+    pa := Producer->New()<Animal>;
+    NeedDog(pa);
+  }
+}

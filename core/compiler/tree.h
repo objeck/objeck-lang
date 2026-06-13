@@ -2417,6 +2417,7 @@ namespace frontend {
     std::vector<Class*> generic_classes;
     Type* generic_interface;                       // primary/erasure bound (first)
     std::vector<Type*> extra_generic_interfaces;   // additional bounds (T : A & B & ...)
+    GenericVariance generic_variance = GENERIC_INVARIANT;  // out/in declaration-site variance
 #ifdef _DIAG_LIB
     std::vector<Expression*> diagnostic_expressions;
 #endif
@@ -2538,6 +2539,14 @@ namespace frontend {
 
     Type* GetGenericInterface() {
       return generic_interface;
+    }
+
+    void SetVariance(GenericVariance v) {
+      generic_variance = v;
+    }
+
+    GenericVariance GetVariance() {
+      return generic_variance;
     }
 
     // All bounds (primary first, then extras) for full constraint validation.
@@ -2685,6 +2694,15 @@ namespace frontend {
             }
             generic_string += bounds[b]->GetName();
           }
+        }
+        // Append variance only when non-default ("name|bound|out"/"|in"); invariant
+        // params emit "name|bound" exactly as before, so existing libraries are
+        // byte-identical.
+        if(generic_class->GetVariance() == GENERIC_COVARIANT) {
+          generic_string += L"|out";
+        }
+        else if(generic_class->GetVariance() == GENERIC_CONTRAVARIANT) {
+          generic_string += L"|in";
         }
         generic_strings.push_back(generic_string);
       }

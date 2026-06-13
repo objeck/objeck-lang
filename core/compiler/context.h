@@ -547,7 +547,7 @@ class ContextAnalyzer {
   void AnalyzeCast(Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth);
-  bool CheckGenericEqualTypes(Type* left, Type* right, Expression* expression, bool check_only = false);
+  bool CheckGenericEqualTypes(Type* left, Type* right, Expression* expression, bool check_only = false, bool left_is_target = true);
   void AnalyzeAssignment(Assignment * assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
   void AnalyzeIf(If* if_stmt, const int depth);
