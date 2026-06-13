@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR
+#~
+Guards the generic type-argument compatibility check (and its readable
+diagnostic). Assigning a Vector<IntRef> instance to a Vector<String>-typed
+variable must be rejected: the element type arguments are incompatible.
+~#
+use Collection;
+
+class BadGenericArgMismatch {
+  function : Main(args : String[]) ~ Nil {
+    v : Vector<String>;
+    v := Vector->New()<IntRef>;
+    v->Size()->PrintLine();
+  }
+}

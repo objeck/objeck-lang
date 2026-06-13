@@ -112,6 +112,32 @@ static const std::wstring ShortTypeName(frontend::Type* type)
   }
 }
 
+// Renders a type the way the user wrote it — e.g. "Hash<String, IntRef>" or
+// "Vector<Pair<String, IntRef>>[]" — for diagnostics. Recurses through generic
+// arguments and appends array dimensions. Used only in error text.
+static std::wstring FormatGenericType(frontend::Type* type)
+{
+  if(!type) {
+    return L"<unknown>";
+  }
+  std::wstring out = ShortTypeName(type);
+  if(type->HasGenerics()) {
+    out += L'<';
+    const std::vector<frontend::Type*> args = type->GetGenerics();
+    for(size_t i = 0; i < args.size(); ++i) {
+      if(i > 0) {
+        out += L", ";
+      }
+      out += FormatGenericType(args[i]);
+    }
+    out += L'>';
+  }
+  for(int i = 0; i < type->GetDimension(); ++i) {
+    out += L"[]";
+  }
+  return out;
+}
+
 /****************************
  * Emits an error
  ****************************/
@@ -7069,7 +7095,7 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
       if(check_only) {
         return false;
       }
-      ProcessError(expression, L"Concrete size mismatch");
+      ProcessError(expression, L"Generic type argument count mismatch: '" + FormatGenericType(left) + L"' and '" + FormatGenericType(right) + L"'");
     }
     else {
       std::vector<Type*> right_concrete_types;
@@ -7153,7 +7179,7 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
             if(check_only) {
               return false;
             }
-            ProcessError(expression, L"Cannot map generic/concrete class to concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
+            ProcessError(expression, L"Incompatible generic type arguments: '" + FormatGenericType(left) + L"' and '" + FormatGenericType(right) + L"'");
           }
         }
       }
