@@ -1,0 +1,31 @@
+#~
+F-bounded type-parameter constraint (T : Compare<T>): the bound may be generic
+and self-referential. The constraint is enforced against the bound's raw
+interface (System.Compare); IntBox implements it, so Sorter<IntBox> is accepted.
+~#
+use System;
+
+class IntBox implements Compare {
+  @v : Int;
+  New(v : Int) { @v := v; }
+  method : public : Compare(rhs : System.Compare) ~ Int { return 0; }
+  method : public : HashID() ~ Int { return @v; }
+}
+
+class Sorter<T : Compare<T>> {
+  @item : T;
+  New(item : T) { @item := item; }
+  method : public : Item() ~ T { return @item; }
+}
+
+class CoreGenericFbound {
+  function : Main(args : String[]) ~ Nil {
+    s := Sorter->New(IntBox->New(7))<IntBox>;
+    got := s->Item();
+    if(got->HashID() = 7) {
+      "PASS: f-bounds"->PrintLine();
+    } else {
+      "FAIL: f-bounds"->PrintLine();
+    };
+  }
+}

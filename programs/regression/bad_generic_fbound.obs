@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR
+#~
+A concrete argument that does not satisfy an F-bounded constraint (T : Compare<T>)
+must be rejected. Plain does not implement System.Compare.
+~#
+use System;
+class Plain { @v : Int; New(v : Int) { @v := v; } }
+class Sorter<T : Compare<T>> { @item : T; New(item : T) { @item := item; } }
+class BadGenericFbound {
+  function : Use(s : Sorter<Plain>) ~ Nil {}
+  function : Main(args : String[]) ~ Nil {}
+}

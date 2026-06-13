@@ -5808,6 +5808,13 @@ std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name,
         const std::wstring interface_name = scanner->GetToken()->GetIdentifier();
         klass->SetGenericInterface(interface_name);
         NextToken();
+        // F-bounded constraint (T : Compare<T>): accept and consume the bound's
+        // type arguments. They are intentionally NOT retained — the constraint is
+        // enforced against the bound's raw interface (consistent with erasure), and
+        // keeping a self-referential argument would recurse during type resolution.
+        if(Match(TOKEN_LES)) {
+          ParseGenericTypes(depth + 1);
+        }
 
         // additional bounds for compound constraints: T : A & B & ...
         while(Match(TOKEN_AND)) {
@@ -5818,6 +5825,20 @@ std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name,
           const std::wstring extra_interface_name = scanner->GetToken()->GetIdentifier();
           klass->AddGenericInterface(extra_interface_name);
           NextToken();
+          if(Match(TOKEN_LES)) {
+            ParseGenericTypes(depth + 1);  // F-bounded extra: consume, do not retain
+          }
+        }
+
+        // If an F-bound ended in '>>' (e.g. <T : Compare<T>>), ParseGenericTypes
+        // consumed the shift-right token and the second '>' closes THIS generic
+        // parameter list. Terminate here — the closer is already consumed, so we
+        // must not fall through to the trailing NextToken below.
+        if(expand_generic_def) {
+          expand_generic_def = false;
+          klass->SetEndLineNumber(GetLineNumber());
+          klass->SetEndLinePosition(GetLinePosition());
+          return generic_classes;
         }
       }
 
