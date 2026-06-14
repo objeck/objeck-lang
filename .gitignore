@@ -39,9 +39,12 @@ UpgradeLog.htm
 # Sublime Text user workspace files
 *.sublime-workspace
 
-# Claude — ignore everything except the shared skills (release process, etc.)
+# Claude — ignore .claude contents everywhere (incl. stray ones Claude Code drops
+# in subdirectories), but keep the shared release-process skills at the repo root.
 .claude/*
+**/.claude/*
 !.claude/skills/
+!.claude/skills/**
 
 # Build output directories
 **/x64/Debug/
