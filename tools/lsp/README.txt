@@ -1,3 +1,8 @@
+v2026.6.1
+* Cooperative stop-the-world GC, VM serialization/deserialization hardening, TLS cert verification, compiler/debugger fixes
+* Bumped to support Objeck v2026.6.1
+---
+
 v2026.6.0
 * New System.AI library, System.ML overhaul, record types, JIT/compiler fixes
 * Bumped to support Objeck v2026.6.0

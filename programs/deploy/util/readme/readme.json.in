@@ -32,7 +32,7 @@
 			"items": [
 				"Added library support for JSON-RPC",
 				"Code generation optimized to eliminate redundant labels",
-				"Added trim front and back to the 'System.String'"
+				"Added trim front and back to the 'System.String'",
 				"Refactored the 'Collections.Stack' class to be list vs. array based",
 				"Fixed bugs #501 and #502"
 			]

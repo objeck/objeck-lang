@@ -1,3 +1,22 @@
+v2026.6.1 (June 14, 2026)
+===
+String interpolation with expressions and format specifiers, generic bounds and variance, cooperative multithreaded GC, a major command-line and VS Code debugger expansion, and TLS certificate verification.
+
+v2026.6.1
+- String interpolation: "{$...}" now accepts arbitrary expressions ("{$i + 1}", "{$a * b - c}", "{$x > y}"), Python/.NET-style format specifiers for precision/width/alignment/radix ("{$pi:.2}", "{$n:05}", "{$s:<10}", "{$v:x}", "{$v:b}"), and a positional String->Format("{0} = {1}", a, b) helper
+- Generics: compound bounds (T : A & B), F-bounded constraints (T : Compare<T>), and declaration-site variance (out T covariant, in T contravariant), checked soundly and preserved across the .obl boundary; readable generic type-mismatch diagnostics
+- Multithreaded stop-the-world GC: mutator threads park at safepoints (interpreter dispatch, JIT back-edges on AMD64/ARM64, allocation, and blocking join/sleep/socket I/O) so the collector always marks a complete root set; fixes freed-live-object corruption and use-after-free under thread churn
+- Debugger (obd): frame navigation (frame/up/down) and locals, set <var> = <expr>, breakpoints by method (b Class->Method), temporary breakpoints (tbreak), enable/disable/ignore counts, watchpoints (watch/watches/unwatch), until <line>, repeat-on-Enter, and non-executable-line relocation; conditional breakpoints (b file:line if <expr>) now parse correctly
+- Debugger (DAP / VS Code): setVariable, function breakpoints, logpoints, in-process restart, and exception breakpoints (break on an uncaught runtime error)
+- New Web.Server library (-lib web_server) for simple HTTP servers
+- Reproducible library builds: compiling unchanged .obs source now produces byte-identical .obl output
+- Security: secure client and DTLS sockets verify server certificates by default (set OBJECK_TLS_INSECURE_SKIP_VERIFY=1 to opt out); hardened VM deserializers against hostile 64-bit sizes and a Char[] read-trap heap overflow
+- Serialization correctness: int arrays dropped half their elements and truncated 64-bit values to 32 bits; Char[] desync; Float field slot; object function-reference fields. Note: the serialized integer wire format widened to 8 bytes
+- Compiler: LICM no longer hoists trapping DIV_INT/MOD_INT out of zero-trip loops; ConstantProp no longer emits a stale literal after a non-constant reassignment
+- ONNX: macOS persists compiled CoreML models across runs (35x faster warm start); keep Ort::TypeInfo alive while reading tensor type/shape
+- Launcher: fixed portable bundles failing when launched outside their directory
+- Build: fixed D9025/LNK4099/LNK4098 warnings and a NativeCode ODR violation; CI pinned to windows-2022 (VS2022 toolset v143)
+
 v2026.6.0 (June 7, 2026)
 ===
 New System.AI library, a System.ML overhaul, record types, JIT/compiler fixes, and library improvements.
