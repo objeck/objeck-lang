@@ -10233,11 +10233,6 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
   for(size_t i = 0; i < class_entries.size(); ++i) {
     SymbolEntry* class_entry = class_entries[i];
 
-    // add declaration only if the entry has a valid source position
-    const std::wstring full_entry_name = class_entry->GetName();
-    const size_t full_entry_index = full_entry_name.find_last_of(L':');
-    // Skip declaration Variable creation — only add references below
-
     // add variable references
     const std::vector<Variable*> variables = class_entry->GetVariables();
     for(size_t j = 0; j < variables.size(); ++j) {

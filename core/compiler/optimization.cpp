@@ -1374,10 +1374,10 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
   IntermediateBlock* outputs = new IntermediateBlock;
 
   bool set_int = false;
-  INT64_VALUE int_value;
+  INT64_VALUE int_value = 0;
 
   bool set_float = false;
-  double float_value;
+  double float_value = 0.0;
 
   std::unordered_map<INT64_VALUE, PropValue> value_prop_map;
 

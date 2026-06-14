@@ -794,7 +794,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case BYTE_ARY_PARM:
           if(reference->GetIndices()) {
-            std::wcout << L"print: type=Byte, value=" << (void*)((unsigned char)reference->GetIntValue()) << std::endl;
+            std::wcout << L"print: type=Byte, value=" << (void*)(uintptr_t)((unsigned char)reference->GetIntValue()) << std::endl;
           }
           else {
             std::wcout << L"print: type=Byte[], value=" << reference->GetIntValue() << L"(" << (void*)reference->GetIntValue() << L")";
@@ -931,7 +931,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"System.ByteRef") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              std::wcout << L"print: type=System.ByteHolder, value=" << (void*)((unsigned char)instance[0]) << std::endl;
+              std::wcout << L"print: type=System.ByteHolder, value=" << (void*)(uintptr_t)((unsigned char)instance[0]) << std::endl;
             }
             else {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;

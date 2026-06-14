@@ -6571,8 +6571,8 @@ static bool h2_run_loop(Http2SessionCtx* ctx) {
 bool TrapProcessor::Http2Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   // Stack: port(Int), host(String), instance
-  const int port = (int)PopInt(op_stack, stack_pos);
-  size_t* host_array = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] const int port = (int)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* host_array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
 #ifdef OBJECK_HAS_NGHTTP2
@@ -6608,11 +6608,11 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
   // Stack: body(Byte[]), content_type(String), path(String), method(String), instance
   // On success: sets instance[4]=status, instance[5]=body(Byte[]), instance[6]=content_type(String)
   // Pushes: Bool (1=ok, 0=fail)
-  size_t* body_array   = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* ctype_array  = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* path_array   = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* method_array = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* instance     = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* body_array   = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* ctype_array  = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* path_array   = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* method_array = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* instance     = (size_t*)PopInt(op_stack, stack_pos);
 
 #ifdef OBJECK_HAS_NGHTTP2
   Http2SessionCtx* ctx = instance ? (Http2SessionCtx*)instance[0] : nullptr;
@@ -7038,8 +7038,8 @@ static bool h3_run_loop(Http3SessionCtx* ctx) {
 bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   // Stack: port(Int), host(String), instance
-  const int port = (int)PopInt(op_stack, stack_pos);
-  size_t* host_array = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] const int port = (int)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* host_array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance   = (size_t*)PopInt(op_stack, stack_pos);
 
 #ifdef OBJECK_HAS_NGTCP2
@@ -7110,7 +7110,7 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   if(!IPSecureSocket::InsecureSkipVerify()) {
     gnutls_session_set_verify_cert(ctx->tls_session, host.c_str(), 0);
   }
-  int prio_ret = gnutls_priority_set_direct(ctx->tls_session,
+  gnutls_priority_set_direct(ctx->tls_session,
       "NORMAL:-VERS-ALL:+VERS-TLS1.3", nullptr);
   gnutls_datum_t alpn_h3 = { (unsigned char*)"h3", 2 };
   gnutls_alpn_set_protocols(ctx->tls_session, &alpn_h3, 1, 0);
@@ -7119,7 +7119,7 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   ctx->conn_ref.get_conn  = h3_get_conn;
   ctx->conn_ref.user_data = ctx;
   gnutls_session_set_ptr(ctx->tls_session, &ctx->conn_ref);
-  int cfg_ret = ngtcp2_crypto_gnutls_configure_client_session(ctx->tls_session);
+  ngtcp2_crypto_gnutls_configure_client_session(ctx->tls_session);
 
   // Generate random QUIC connection IDs
   ngtcp2_cid dcid, scid;
@@ -7195,11 +7195,11 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
   // Stack: body(Byte[]), content_type(String), path(String), method(String), instance
   // Result stored in instance[4]=status, instance[5]=body, instance[6]=content_type
   // Pushes: Bool (1=success)
-  size_t* body_array   = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* ctype_array  = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* path_array   = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* method_array = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* instance     = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* body_array   = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* ctype_array  = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* path_array   = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* method_array = (size_t*)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* instance     = (size_t*)PopInt(op_stack, stack_pos);
 
 #ifdef OBJECK_HAS_NGTCP2
   Http3SessionCtx* ctx = instance ? (Http3SessionCtx*)instance[0] : nullptr;
