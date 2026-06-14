@@ -36,12 +36,27 @@ def log_result(name, ok, detail=""):
         print(f"  [FAIL] {name}  {detail}")
 
 
+def make_env(bin_dir):
+    """Environment so obc/obd resolve their libraries on every platform."""
+    env = dict(os.environ)
+    lib = os.path.join(os.path.dirname(bin_dir), "lib")
+    native = os.path.join(lib, "native")
+    env["OBJECK_LIB_PATH"] = lib + os.sep
+    if sys.platform == "darwin":
+        env["DYLD_LIBRARY_PATH"] = native + os.pathsep + env.get("DYLD_LIBRARY_PATH", "")
+    elif os.name != "nt":
+        env["LD_LIBRARY_PATH"] = native + os.pathsep + env.get("LD_LIBRARY_PATH", "")
+    return env
+
+
 class DapClient:
     """Minimal DAP stdio client with a background reader."""
 
-    def __init__(self, obd, source_dir):
+    def __init__(self, obd, source_dir, bin_dir):
+        # run from bin_dir with lib env set so obd loads .obl/native libs
         self.proc = subprocess.Popen([obd, "--dap"], stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE)
+                                     stdout=subprocess.PIPE, cwd=bin_dir,
+                                     env=make_env(bin_dir))
         self.q = queue.Queue()
         self.seq = 0
         self.source_dir = source_dir
@@ -112,17 +127,17 @@ def compile_test(obc, src, dest, bin_dir):
     log = os.path.join(REG_DIR, "results",
                        os.path.basename(dest) + "_compile.log")
     os.makedirs(os.path.join(REG_DIR, "results"), exist_ok=True)
-    # run from bin_dir so obc resolves its ../lib path
+    # run from bin_dir (with lib env) so obc resolves its ../lib path
     with open(log, "wb") as f:
         rc = subprocess.run([obc, "-src", src, "-dest", dest, "-debug"],
                             stdout=f, stderr=subprocess.STDOUT,
-                            cwd=bin_dir).returncode
+                            cwd=bin_dir, env=make_env(bin_dir)).returncode
     return rc == 0 and os.path.exists(dest)
 
 
-def run_core_scenarios(obd, src_obs, obe, source_dir):
+def run_core_scenarios(obd, src_obs, obe, source_dir, bin_dir):
     """breakpoint -> variables -> setVariable -> function bp -> logpoint -> restart."""
-    c = DapClient(obd, source_dir)
+    c = DapClient(obd, source_dir, bin_dir)
     c.send("initialize", {"adapterID": "objeck"})
     init = c.wait_response("initialize")
     caps = (init or {}).get("body", {})
@@ -203,8 +218,8 @@ def run_core_scenarios(obd, src_obs, obe, source_dir):
     log_result("clean exit", code == 0, f"exit={code}")
 
 
-def run_function_breakpoint(obd, obe, source_dir):
-    c = DapClient(obd, source_dir)
+def run_function_breakpoint(obd, obe, source_dir, bin_dir):
+    c = DapClient(obd, source_dir, bin_dir)
     c.send("initialize", {"adapterID": "objeck"})
     c.wait_response("initialize")
     c.send("launch", {"program": obe, "sourceDir": source_dir})
@@ -226,8 +241,8 @@ def run_function_breakpoint(obd, obe, source_dir):
     c.close()
 
 
-def run_exception_breakpoint(obd, obe, source_dir):
-    c = DapClient(obd, source_dir)
+def run_exception_breakpoint(obd, obe, source_dir, bin_dir):
+    c = DapClient(obd, source_dir, bin_dir)
     c.send("initialize", {"adapterID": "objeck"})
     init = c.wait_response("initialize")
     filters = (init or {}).get("body", {}).get("exceptionBreakpointFilters", [])
@@ -251,7 +266,8 @@ def main():
     if len(sys.argv) < 2:
         print("usage: run_dap_tests.py <bin_dir>")
         return 2
-    bin_dir = sys.argv[1]
+    # absolute so subprocesses launched with cwd=bin_dir still resolve binaries
+    bin_dir = os.path.abspath(sys.argv[1])
     exe = ".exe" if os.name == "nt" else ""
     obc = os.path.join(bin_dir, "obc" + exe)
     obd = os.path.join(bin_dir, "obd" + exe)
@@ -276,11 +292,11 @@ def main():
         return 1
 
     print("\nCore scenarios (breakpoint/variables/setVariable/logpoint/restart):")
-    run_core_scenarios(obd, core_src, core_obe, REG_DIR)
+    run_core_scenarios(obd, core_src, core_obe, REG_DIR, bin_dir)
     print("\nFunction breakpoints:")
-    run_function_breakpoint(obd, core_obe, REG_DIR)
+    run_function_breakpoint(obd, core_obe, REG_DIR, bin_dir)
     print("\nException breakpoints:")
-    run_exception_breakpoint(obd, exc_obe, REG_DIR)
+    run_exception_breakpoint(obd, exc_obe, REG_DIR, bin_dir)
 
     for f in (core_obe, exc_obe):
         try:
