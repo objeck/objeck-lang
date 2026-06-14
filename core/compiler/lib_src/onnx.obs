@@ -24,13 +24,12 @@ bundle API.Onnx {
 	#~
 	ONNX runtime utilities for querying execution providers.
 
-	<b>Example</b>
-	<code>
+	```
 	providers := OnnxRuntime->GetProviders();
 	each(p in providers) {
 	  p->PrintLine();
 	};
-	</code>
+	```
 	~#
 	class OnnxRuntime {
 		#~
@@ -53,8 +52,7 @@ bundle API.Onnx {
 	Supports YOLO11/YOLO12 with fused head, letterbox preprocessing,
 	and automatic FP16/FP32 input handling.
 
-	<b>Example</b>
-	<code>
+	```
 	labels := ["person", "bicycle", "car"];
 	session := YoloSession->New("yolo11n.onnx");
 	result := session->Inference(image_bytes, 640, 640, 0.5, labels);
@@ -62,7 +60,7 @@ bundle API.Onnx {
 	  "{cls->GetName()}: {cls->GetConfidence()}"->PrintLine();
 	};
 	session->Close();
-	</code>
+	```
 	~#
 	class YoloSession {
 		@session : Int;
@@ -400,14 +398,13 @@ each(cls in result->GetClassifications()) {
 	ResNet inference session for image classification.
 	Performs ImageNet-style classification with softmax probability normalization.
 
-	<b>Example</b>
-	<code>
+	```
 	labels := ["tabby cat", "golden retriever", "sports car"];
 	session := ResNetSession->New("resnet50.onnx");
 	result := session->Inference(image_bytes, 224, 224, labels);
 	"Top: {result->GetName()} ({result->GetConfidence()})"->PrintLine();
 	session->Close();
-	</code>
+	```
 	~#
 	class ResNetSession {
 		@session : Int;
@@ -608,8 +605,7 @@ session->Close();
 	Auto-detects model input dimensions and supports both NCHW and NHWC layouts.
 	Returns per-class coverage percentages and polygon boundaries.
 
-	<b>Example</b>
-	<code>
+	```
 	labels := ["background", "person", "bicycle", "car"];
 	session := DeepLabSession->New("deeplabv3.onnx");
 	result := session->Inference(image_bytes, labels);
@@ -617,7 +613,7 @@ session->Close();
 	  "{cls->GetName()}: {cls->GetConfidence()}%"->PrintLine();
 	};
 	session->Close();
-	</code>
+	```
 	~#
 	class DeepLabSession {
 		@session : Int;
@@ -907,8 +903,7 @@ session->Close();
 	Uses letterbox preprocessing with inverse keypoint mapping for accurate coordinates.
 	Supports 18/19/25/26/57-channel output configurations.
 
-	<b>Example</b>
-	<code>
+	```
 	labels := ["nose", "left_eye", "right_eye", "left_ear", "right_ear",
 	  "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
 	  "left_wrist", "right_wrist", "left_hip", "right_hip",
@@ -921,7 +916,7 @@ session->Close();
 	  };
 	};
 	session->Close();
-	</code>
+	```
 	~#
 	class OpenPoseSession {
 		@session : Int;
@@ -1158,13 +1153,12 @@ session->Close();
 	Phi-3 tokenizer for encoding text to token IDs and decoding token IDs back to text.
 	Loads a HuggingFace tokenizer.json file and supports BPE encoding/decoding.
 
-	<b>Example</b>
-	<code>
+	```
 	tokenizer := Phi3Tokenizer->New("phi3-mini/tokenizer.json");
 	ids := tokenizer->Encode("What is 2+2?");
 	text := tokenizer->Decode(ids);
 	text->PrintLine();
-	</code>
+	```
 	~#
 	class Phi3Tokenizer {
 		@id_to_token : String[];
@@ -1539,8 +1533,7 @@ ids := tokenizer->Encode("What is 2+2?");
 	Supports autoregressive generation with KV-cache management,
 	temperature-based sampling, and configurable EOS tokens.
 
-	<b>Example</b>
-	<code>
+	```
 	session := Phi3Session->New("phi3-mini/model.onnx");
 	token_ids := [1, 3148, 1001, 29901, 825, 338, 29871, 29906, 718, 29871, 29906, 29973];
 	eos_tokens := [2, 32007];
@@ -1549,7 +1542,7 @@ ids := tokenizer->Encode("What is 2+2?");
 	  token->PrintLine();
 	};
 	session->Close();
-	</code>
+	```
 	~#
 	class Phi3Session {
 		@session : Int;
@@ -1695,8 +1688,7 @@ text->PrintLine();
 	Accepts raw image bytes (JPEG/PNG) and pre-tokenized prompt tokens split into
 	prefix (before image placeholder) and suffix (after image placeholder) segments.
 
-	<b>Example</b>
-	<code>
+	```
 	model_dir := "phi3v-directml/";
 	session := Phi3VisionSession->New(
 	  model_dir + "phi-3-v-128k-instruct-vision.onnx",
@@ -1711,7 +1703,7 @@ text->PrintLine();
 	  token->PrintLine();
 	};
 	session->Close();
-	</code>
+	```
 	~#
 	class Phi3VisionSession {
 		@vision_session : Int;
@@ -2084,8 +2076,7 @@ text->PrintLine();
 	Detect() returns bounding boxes and landmarks; Recognize() additionally extracts
 	512-dim embeddings for identity comparison via Compare().
 
-	<b>Example</b>
-	<code>
+	```
 	session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
 
 	r1 := session->Recognize(image1_bytes, 0.5);
@@ -2098,7 +2089,7 @@ text->PrintLine();
 	  "Similarity: {$sim}"->PrintLine();   # >0.35 = same person
 	};
 	session->Close();
-	</code>
+	```
 	~#
 	class FaceSession {
 		@det_session : Int;

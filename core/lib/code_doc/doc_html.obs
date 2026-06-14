@@ -243,7 +243,7 @@ class HtmlMaker {
 		};
 
 		if(class_block->GetCode() <> Nil) {
-			main_html += "<pre><code class='language-objeck'>";
+			main_html += "<p><b>Example</b></p><pre><code class='language-objeck'>";
 			main_html += class_block->GetCode();
 			main_html += "</code></pre>";
 		};
