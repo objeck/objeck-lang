@@ -2973,6 +2973,15 @@ void Runtime::StackInterpreter::ReleaseStackFrame(StackFrame* frame)
 
 void Runtime::StackInterpreter::StackErrorUnwind()
 {
+#ifdef _DEBUGGER
+  // An uncaught runtime error reached the top of the stack (no try/error
+  // handler recovered it). Give the debugger a chance to break here before the
+  // VM halts, so DAP "uncaught" exception breakpoints can stop and inspect.
+  if(debugger) {
+    debugger->OnRuntimeError(call_stack, *call_stack_pos, *stack_frame);
+  }
+#endif
+
   long pos = (*call_stack_pos);
 #ifdef _NO_HALT
   std::wcerr << L"Unwinding local stack (" << this << L"):" << std::endl;

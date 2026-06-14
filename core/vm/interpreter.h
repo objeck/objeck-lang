@@ -652,5 +652,12 @@ namespace Runtime {
 
     // execute method
     void Execute(size_t* op_stack, size_t* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called);
+
+#ifdef _DEBUGGER
+    // Ask the dispatch loop to stop at the next opcode boundary. Used by the
+    // debugger to cleanly unwind a parked run (DAP disconnect/restart) instead
+    // of letting the program drain to completion.
+    void RequestHalt() { halt = true; }
+#endif
   };
 }

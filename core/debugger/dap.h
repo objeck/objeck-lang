@@ -55,6 +55,8 @@ namespace Runtime {
     bool step_over_requested;
     bool step_out_requested;
     bool disconnect_requested;
+    bool restart_requested;
+    bool break_on_exception;
 
     // Captured state at breakpoint
     int stopped_line;
@@ -124,6 +126,8 @@ namespace Runtime {
     void HandleEvaluate(int seq, const json& args);
     void HandleSetVariable(int seq, const json& args);
     void HandleSetFunctionBreakpoints(int seq, const json& args);
+    void HandleSetExceptionBreakpoints(int seq, const json& args);
+    void HandleRestart(int seq, const json& args);
 
     // Source path resolution
     std::string ResolveSourcePath(const std::wstring& file_name);
@@ -159,6 +163,13 @@ namespace Runtime {
     bool IsStepOver() const { return step_over_requested; }
     bool IsStepOut() const { return step_out_requested; }
     bool IsDisconnected() const { return disconnect_requested; }
+
+    // True between a restart request and the next run starting; the current run
+    // must halt (but the adapter must keep running, unlike a disconnect)
+    bool IsRestarting() const { return restart_requested; }
+
+    // True when the client enabled the "uncaught" exception breakpoint filter
+    bool BreaksOnException() const { return break_on_exception; }
   };
 }
 

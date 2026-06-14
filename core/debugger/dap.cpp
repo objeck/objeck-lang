@@ -56,6 +56,8 @@ DapAdapter::DapAdapter()
   step_over_requested = false;
   step_out_requested = false;
   disconnect_requested = false;
+  restart_requested = false;
+  break_on_exception = false;
   stopped_frame = nullptr;
   stopped_call_stack = nullptr;
   stopped_call_stack_pos = 0;
@@ -375,6 +377,12 @@ void DapAdapter::Run()
     else if(command == "setFunctionBreakpoints") {
       HandleSetFunctionBreakpoints(request_seq, args);
     }
+    else if(command == "setExceptionBreakpoints") {
+      HandleSetExceptionBreakpoints(request_seq, args);
+    }
+    else if(command == "restart") {
+      HandleRestart(request_seq, args);
+    }
     else {
       // Unknown command — respond with success to avoid VS Code errors
       SendResponse(request_seq, command);
@@ -417,13 +425,15 @@ void DapAdapter::HandleInitialize(int request_seq, const json& args)
   capabilities["supportsStepBack"] = false;
   capabilities["supportsSetVariable"] = true;
   capabilities["supportsFunctionBreakpoints"] = true;
-  // In-process restart is intentionally not advertised: an Objeck program
-  // stopped at a breakpoint is parked deep in the VM's native call stack and
-  // the global MemoryManager cannot be safely re-initialized mid-execution.
-  // With this false, DAP clients implement the restart button via a clean
-  // terminate + relaunch (a fresh process), which works without crashing.
-  capabilities["supportsRestartRequest"] = false;
+  capabilities["supportsRestartRequest"] = true;
   capabilities["supportsLogPoints"] = true;
+
+  // exception breakpoints: break on an uncaught Objeck runtime error
+  json filter;
+  filter["filter"] = "uncaught";
+  filter["label"] = "Uncaught Runtime Errors";
+  filter["default"] = false;
+  capabilities["exceptionBreakpointFilters"] = json::array({filter});
 
   SendResponse(request_seq, "initialize", capabilities);
 
@@ -538,7 +548,26 @@ void DapAdapter::HandleConfigurationDone(int request_seq, const json& args)
   // VM race the C runtime teardown and access-violate.
   if(debugger && is_launched) {
     vm_thread = std::thread([this]() {
-      debugger->DapRun();
+      // Re-run on restart from this same thread. The current run is halted
+      // cleanly (RequestHalt via the disconnect path), so a fresh DapRun
+      // re-loads the program from scratch — equivalent to a CLI re-run.
+      bool again = true;
+      while(again) {
+        debugger->DapRun();
+
+        // Decide whether to loop under the lock so a restart request that
+        // arrives while DapRun is unwinding isn't lost or double-counted.
+        std::lock_guard<std::mutex> lock(mtx);
+        again = restart_requested;
+        restart_requested = false;
+        if(again) {
+          // clear the stop flags for the fresh run
+          disconnect_requested = false;
+          is_stopped = false;
+          is_terminated = false;
+        }
+      }
+
       // Program finished naturally — only fire `terminated` if the user
       // didn't already request disconnect (otherwise the editor sees a
       // late terminated event after it expects us to be gone).
@@ -915,6 +944,7 @@ void DapAdapter::HandleDisconnect(int request_seq, const json& args)
   // If stopped, resume so the VM thread can exit
   {
     std::lock_guard<std::mutex> lock(mtx);
+    restart_requested = false;   // a disconnect must never trigger a re-run
     resume_requested = true;
     is_stopped = false;
     cv.notify_all();
@@ -1015,6 +1045,38 @@ void DapAdapter::HandleSetFunctionBreakpoints(int request_seq, const json& args)
   json body;
   body["breakpoints"] = verified;
   SendResponse(request_seq, "setFunctionBreakpoints", body);
+}
+
+void DapAdapter::HandleSetExceptionBreakpoints(int request_seq, const json& args)
+{
+  // enable break-on-error if the "uncaught" filter is selected
+  break_on_exception = false;
+  json filters = args.value("filters", json::array());
+  for(const auto& f : filters) {
+    if(f.is_string() && f.get<std::string>() == "uncaught") {
+      break_on_exception = true;
+    }
+  }
+
+  SendResponse(request_seq, "setExceptionBreakpoints");
+}
+
+void DapAdapter::HandleRestart(int request_seq, const json& args)
+{
+  // Ask the VM worker thread to end the current run and loop back into DapRun.
+  // We set restart_requested (NOT disconnect_requested) so the parked run halts
+  // via RequestHalt while the adapter's main loop keeps serving requests.
+  // Breakpoints persist in the Debugger across runs.
+  {
+    std::lock_guard<std::mutex> lock(mtx);
+    restart_requested = true;
+    resume_requested = true;
+    is_stopped = false;
+    is_terminated = false;
+    cv.notify_all();
+  }
+
+  SendResponse(request_seq, "restart");
 }
 
 void DapAdapter::EmitLogPoint(const std::wstring& message)

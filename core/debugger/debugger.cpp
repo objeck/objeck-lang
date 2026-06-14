@@ -339,7 +339,12 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
           dap_adapter->OnStopped(reason, line_num, file_name, frame, call_stack, call_stack_pos);
 
           // After resume, check what stepping mode was requested
-          if(dap_adapter->IsDisconnected()) {
+          if(dap_adapter->IsDisconnected() || dap_adapter->IsRestarting()) {
+            // cleanly unwind the parked run (disconnect ends the session;
+            // restart loops the worker back into a fresh DapRun)
+            if(interpreter) {
+              interpreter->RequestHalt();
+            }
             return;
           }
           if(dap_adapter->IsStepInto()) {
@@ -393,7 +398,58 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     }
   }
 }
-  
+
+void Runtime::Debugger::OnRuntimeError(StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
+{
+  // Only break for DAP clients that enabled the "uncaught" exception filter.
+  if(mode != DebugMode::DAP || !dap_adapter || !dap_adapter->BreaksOnException()) {
+    return;
+  }
+  if(!frame || !frame->method) {
+    return;
+  }
+
+  int line_num = -1;
+  std::wstring file_name;
+  if(frame->method->GetClass()) {
+    file_name = frame->method->GetClass()->GetFileName();
+  }
+  if(frame->ip > -1) {
+    line_num = frame->method->GetInstruction(frame->ip)->GetLineNumber();
+  }
+
+  // the faulting instruction may carry no line; fall back to the nearest caller
+  // frame that does, so the editor lands on a meaningful source location
+  if(line_num <= 0 && call_stack) {
+    for(long pos = call_stack_pos - 1; pos >= 0; --pos) {
+      StackFrame* caller = call_stack[pos];
+      if(caller && caller->method && caller->ip > -1) {
+        const int ln = caller->method->GetInstruction(caller->ip)->GetLineNumber();
+        if(ln > 0) {
+          line_num = ln;
+          if(caller->method->GetClass()) {
+            file_name = caller->method->GetClass()->GetFileName();
+          }
+          frame = caller;
+          break;
+        }
+      }
+    }
+  }
+
+  // publish the error site as the current stop context
+  cur_line_num = line_num;
+  cur_file_name = file_name;
+  cur_frame = frame;
+  cur_method = frame->method;
+  cur_call_stack = call_stack;
+  cur_call_stack_pos = call_stack_pos;
+  eval_frame = frame;
+  eval_frame_pos = call_stack_pos;
+
+  dap_adapter->OnStopped("exception", line_num, file_name, frame, call_stack, call_stack_pos);
+}
+
 
 void Runtime::Debugger::ProcessSrc(Load* load) 
 {
@@ -556,7 +612,10 @@ void Runtime::Debugger::DoLoad()
   loader = new Loader(argc, argv);
   loader->Load();
 
-  if(do_mem_init) {
+  // Initialize on first load, or re-initialize after a prior run tore the
+  // MemoryManager down (a DAP restart re-runs DapRun in-process, and the
+  // previous run's cleanup called MemoryManager::Clear()).
+  if(do_mem_init || !MemoryManager::IsInitialized()) {
     MemoryManager::Initialize(loader->GetProgram(), 0);
     cur_line_num = 1;
   }

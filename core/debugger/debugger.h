@@ -390,6 +390,9 @@ namespace Runtime {
 
     // runtime callback
     void ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame);
+
+    // runtime callback for an uncaught runtime error (DAP exception breakpoints)
+    void OnRuntimeError(StackFrame** call_stack, long call_stack_pos, StackFrame* frame);
   };
 }
 

@@ -100,7 +100,23 @@ class MemoryManager {
   static std::unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static std::unordered_set<StackFrame**> pda_frames;
   static std::vector<StackFrame*> jit_frames; // deleted elsewhere
-  static std::unordered_map<size_t, std::list<size_t*>*> free_memory_cache;
+  // Free-list cache: intrusive singly-linked lists bucketed by power-of-two pool
+  // size (bucket index = log2(pool)). Each cached block stores its actual size in
+  // word [0] (preserved across caching) and the next-free pointer in word [1]
+  // (cleared on reuse), so caching a freed block needs no separate node
+  // allocation. Pools run 2^0..2^22 (ALIGN_POOL_MAX), so 23 buckets cover them.
+  static const size_t FREE_POOL_COUNT = 23;
+  // Keep the bucket count locked to ALIGN_POOL_MAX: PoolIndex(ALIGN_POOL_MAX)
+  // must be the last valid index, else AddFreeCache/GetFreeMemory index out of
+  // bounds. Fails loudly if either constant is changed without the other.
+  static_assert((size_t(1) << (FREE_POOL_COUNT - 1)) == ALIGN_POOL_MAX,
+                "FREE_POOL_COUNT must equal log2(ALIGN_POOL_MAX) + 1");
+  // The intrusive list stores the next-free link in block word [1], so every
+  // cached block must be at least 2 words. GetMemory blocks are alloc_size + a
+  // size word, and alloc_size includes EXTRA_BUF_SIZE words, so this holds.
+  static_assert(EXTRA_BUF_SIZE >= 1,
+                "free-list link lives in block word [1]; blocks need >= 2 words");
+  static size_t* free_buckets[FREE_POOL_COUNT];
   static size_t free_memory_cache_size;
 
   // Young generation: contiguous bump-allocated region
@@ -234,7 +250,19 @@ class MemoryManager {
   void static inline AddFreeCache(size_t pool, size_t* raw_mem);
   static size_t* GetFreeMemory(size_t size);
   static size_t AlignMemorySize(size_t size);
-  static void ClearFreeMemory(bool all = false);
+  static void ClearFreeMemory();
+
+  // Bucket index for a power-of-two pool size (log2). 'pool' is always a power
+  // of two produced by AlignMemorySize, so the lowest set bit is its log2.
+  static inline size_t PoolIndex(size_t pool) {
+#ifdef _WIN32
+    unsigned long idx;
+    _BitScanForward64(&idx, (unsigned __int64)pool);
+    return (size_t)idx;
+#else
+    return (size_t)__builtin_ctzll(pool);
+#endif
+  }
   
  public:
   static void Initialize(StackProgram* p, size_t m);
@@ -250,15 +278,22 @@ class MemoryManager {
 
   static FLOAT_VALUE GetRandomValue();
   
+  static bool IsInitialized() {
+    return initialized;
+  }
+
   static void Clear() {
+    // idempotent: a second Clear (e.g. a debugger run + restart both tearing
+    // down) must not double-free the young region or double-delete the locks
+    if(!initialized) {
+      return;
+    }
+
 #ifdef _MEM_LOGGING
     mem_logger.close();
 #endif
 
-    if(!free_memory_cache.empty()) {
-      ClearFreeMemory(true);
-      free_memory_cache.clear();
-    }
+    ClearFreeMemory();
 
     // Free old generation (individually allocated)
     for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
