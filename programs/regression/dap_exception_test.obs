@@ -1,0 +1,16 @@
+# Triggers an uncaught runtime error (Nil dereference) so the DAP test suite
+# can verify exception breakpoints stop on it.
+class DapExceptionTest {
+  function : Main(args : String[]) ~ Nil {
+    "before"->PrintLine();
+    obj : DapExceptionTest;
+    obj->Touch();          # obj is Nil -> uncaught runtime error here
+    "after"->PrintLine();
+  }
+
+  method : public : Touch() ~ Nil {
+    @value := 1;
+  }
+
+  @value : Int;
+}

@@ -617,6 +617,25 @@ jobs:
       shell: cmd
       run: run_debugger_tests.cmd ${{ matrix.arch }}
 
+    - name: Run DAP tests (POSIX)
+      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        echo "Running DAP tests with bin: $BIN"
+        python3 run_dap_tests.py "$BIN"
+
+    - name: Run DAP tests (Windows)
+      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python run_dap_tests.py "%BIN%"
+
     # ============================================
     # Network Tests (quarantined / non-gating)
     #
