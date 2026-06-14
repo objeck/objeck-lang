@@ -135,6 +135,8 @@ core/release/out.txt
 # Build artifacts
 core/lib/crypto/*.so
 core/vm/obr_dbg
+core/release/build.log
+core/lib/onnx/eq/*.dylib
 
 # Large media files (host externally)
 *.mp4
