@@ -1,5 +1,7 @@
 # Triggers an uncaught runtime error (Nil dereference) so the DAP test suite
-# can verify exception breakpoints stop on it.
+# can verify exception breakpoints stop on it. The main regression runner also
+# discovers this file; the marker below tells it the runtime error is expected.
+# EXPECT_RUNTIME_ERROR
 class DapExceptionTest {
   function : Main(args : String[]) ~ Nil {
     "before"->PrintLine();
