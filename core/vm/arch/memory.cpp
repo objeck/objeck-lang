@@ -38,7 +38,7 @@ std::unordered_set<StackFrame**> MemoryManager::pda_frames;
 std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 std::vector<StackFrame*> MemoryManager::jit_frames;
 
-std::unordered_map<size_t, std::list<size_t*>*> MemoryManager::free_memory_cache;
+size_t* MemoryManager::free_buckets[MemoryManager::FREE_POOL_COUNT];
 size_t MemoryManager::free_memory_cache_size;
 
 bool MemoryManager::initialized;
@@ -106,6 +106,7 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   allocation_size = 0;
   uncollected_count = 0;
   free_memory_cache_size = 0;
+  memset(free_buckets, 0, sizeof(free_buckets));
 
   // Young generation bump allocator
   young_region_size = YOUNG_REGION_SIZE;
@@ -536,18 +537,13 @@ void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
-  const size_t mem_size = raw_mem[0];
-  free_memory_cache_size += mem_size;
+  free_memory_cache_size += raw_mem[0];
 
-  std::unordered_map<size_t, std::list<size_t*>*>::iterator result = free_memory_cache.find(pool);
-  if(result == free_memory_cache.end()) {
-    std::list<size_t*>* pool_list = new std::list<size_t*>;
-    pool_list->push_front(raw_mem);
-    free_memory_cache.insert(std::pair<size_t, std::list<size_t*>*>(pool, pool_list));
-  }
-  else {
-    result->second->push_front(raw_mem);
-  }
+  // Push onto the bucket's intrusive list: word [0] holds the block's actual
+  // size (kept), word [1] becomes the next-free link. No node allocation.
+  const size_t idx = PoolIndex(pool);
+  raw_mem[1] = (size_t)free_buckets[idx];
+  free_buckets[idx] = raw_mem;
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&free_memory_cache_lock);
 #endif
@@ -562,24 +558,29 @@ size_t* MemoryManager::GetFreeMemory(size_t size) {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
-  std::unordered_map<size_t, std::list<size_t*>*>::iterator result = free_memory_cache.find(cache_size);
-  if(result != free_memory_cache.end() && !result->second->empty()) {
-    std::list<size_t*>* free_cache = result->second;
-
-    // Find first entry with actual size >= requested (entries in the same
-    // aligned bucket may have different actual sizes)
-    for(auto iter = free_cache->begin(); iter != free_cache->end(); ++iter) {
-      size_t* check_mem = *iter;
-      if(check_mem[0] >= size) {
-        free_cache->erase(iter);
-        free_memory_cache_size -= check_mem[0];
-        memset(check_mem + 1, 0, check_mem[0]);
-#ifndef _GC_SERIAL
-        MUTEX_UNLOCK(&free_memory_cache_lock);
-#endif
-        return check_mem + 1;
+  // Find first block with actual size >= requested (blocks in the same aligned
+  // bucket may have different actual sizes), unlinking it from the list.
+  const size_t idx = PoolIndex(cache_size);
+  size_t* prev = nullptr;
+  size_t* check_mem = free_buckets[idx];
+  while(check_mem) {
+    size_t* next = (size_t*)check_mem[1];
+    if(check_mem[0] >= size) {
+      if(prev) {
+        prev[1] = (size_t)next;
       }
+      else {
+        free_buckets[idx] = next;
+      }
+      free_memory_cache_size -= check_mem[0];
+      memset(check_mem + 1, 0, check_mem[0]);   // also clears the next link
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&free_memory_cache_lock);
+#endif
+      return check_mem + 1;
     }
+    prev = check_mem;
+    check_mem = next;
   }
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&free_memory_cache_lock);
@@ -601,31 +602,20 @@ size_t MemoryManager::AlignMemorySize(size_t size) {
   return size > ALIGN_POOL_MAX ? 0 : size;
 }
 
-void MemoryManager::ClearFreeMemory(bool all) {
+void MemoryManager::ClearFreeMemory() {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
-  std::unordered_map<size_t, std::list<size_t*>*>::iterator iter = free_memory_cache.begin();
-  for(; iter != free_memory_cache.end(); ++iter) {
-    std::list<size_t*>* free_cache = iter->second;
-
-    while(!free_cache->empty()) {
-      size_t* raw_mem = free_cache->front();
-      free_cache->pop_front();
-
-      const size_t size = raw_mem[0];
-      free_memory_cache_size -= size;
-
+  for(size_t i = 0; i < FREE_POOL_COUNT; ++i) {
+    size_t* raw_mem = free_buckets[i];
+    while(raw_mem) {
+      size_t* next = (size_t*)raw_mem[1];
+      free_memory_cache_size -= raw_mem[0];
       free(raw_mem);
-      raw_mem = nullptr;
+      raw_mem = next;
     }
-
-    if(all) {
-      delete free_cache;
-      free_cache = nullptr;
-    }
+    free_buckets[i] = nullptr;
   }
-
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&free_memory_cache_lock);
 #endif
