@@ -114,7 +114,7 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
       StackMethod* method = methods[m];
       if(!method) continue;
 
-      const int instr_count = method->GetInstructionCount();
+      const int instr_count = static_cast<int>(method->GetInstructionCount());
       for(int i = 0; i < instr_count; ++i) {
         StackInstr* instr = method->GetInstruction(i);
         const InstructionType type = instr->GetType();
@@ -422,7 +422,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
         else if(float_format == L"hex") {
           formatter << std::hexfloat;
         }
-        formatter << std::setprecision(stoll(float_precision));
+        formatter << std::setprecision(static_cast<int>(stoll(float_precision)));
 
         formatter << value;
         conv = formatter.str();
@@ -442,7 +442,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
         conv = formatter.str();
       }
       else if(!float_precision.empty()) {
-        formatter << std::setprecision(stoll(float_precision));
+        formatter << std::setprecision(static_cast<int>(stoll(float_precision)));
 
         formatter << value;
         conv = formatter.str();
@@ -507,7 +507,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       break;
           }
         }
-        PushInt(op_stack, stack_pos, std::stoll(str, nullptr, base));
+        PushInt(op_stack, stack_pos, std::stoll(str, nullptr, static_cast<int>(base)));
       }
       catch(std::invalid_argument& e) {
 #ifdef _WIN32

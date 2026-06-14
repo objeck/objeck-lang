@@ -1065,8 +1065,8 @@ void* MemoryManager::CheckStatic([[maybe_unused]] void* arg)
 #endif
 {
   StackClass** clss = prgm->GetClasses();
-  const int cls_num = prgm->GetClassNumber();
-  
+  const int cls_num = static_cast<int>(prgm->GetClassNumber());
+
   for(int i = 0; i < cls_num; ++i) {
     StackClass* cls = clss[i];
     CheckMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), cls->GetNumberClassDeclarations(), 0);
@@ -1179,7 +1179,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
 #ifdef _DEBUG_GC
           std::wcout << L"\t" << j << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << std::endl;
 #endif
-          std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(mthd_id);
+          std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
           if(MarkMemory(lambda_mem)) {
             CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
           }
@@ -1568,7 +1568,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 #ifdef _DEBUG_GC
       std::wcout << L"\t" << i << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << std::endl;
 #endif
-      std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(mthd_id);
+      std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
       if(MarkMemory(lambda_mem)) {
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
@@ -1857,7 +1857,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 
   // Fix up static class memory
   StackClass** clss = prgm->GetClasses();
-  const int cls_num = prgm->GetClassNumber();
+  const int cls_num = static_cast<int>(prgm->GetClassNumber());
   for(int i = 0; i < cls_num; ++i) {
     StackClass* cls = clss[i];
     FixupMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), cls->GetNumberClassDeclarations());

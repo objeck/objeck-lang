@@ -60,13 +60,13 @@ void Loader::LoadConfiguration()
 
 void Loader::Load()
 {
-  const int ver_num = ReadInt();
+  const int ver_num = static_cast<int>(ReadInt());
   if(ver_num != VER_NUM) {
     std::wcerr << L"This executable appears to be invalid or compiled with an incompatible version of the tool chain." << std::endl;
     exit(1);
   } 
 
-  const int magic_num = ReadInt();
+  const int magic_num = static_cast<int>(ReadInt());
   switch(magic_num) {
   case MAGIC_NUM_LIB:
     std::wcerr << L"Unable to use execute shared library '" << filename << L"'." << std::endl;
@@ -81,17 +81,17 @@ void Loader::Load()
   }
 
   // read string id
-  string_cls_id = ReadInt();
+  string_cls_id = static_cast<int>(ReadInt());
 
   int i;
 
   //
   // read float strings
   //
-  num_float_strings = ReadInt();
+  num_float_strings = static_cast<int>(ReadInt());
   FLOAT_VALUE** float_strings = new FLOAT_VALUE*[num_float_strings];
   for(i = 0; i < num_float_strings; ++i) {
-    const int float_string_length = ReadInt();
+    const int float_string_length = static_cast<int>(ReadInt());
     FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -113,10 +113,10 @@ void Loader::Load()
   //
   // read boolean strings
   //
-  num_bool_strings = ReadInt();
+  num_bool_strings = static_cast<int>(ReadInt());
   bool** bool_strings = new bool* [num_bool_strings];
   for(i = 0; i < num_bool_strings; ++i) {
-    const int bool_string_length = ReadInt();
+    const int bool_string_length = static_cast<int>(ReadInt());
     bool* bool_string = new bool[bool_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -139,10 +139,10 @@ void Loader::Load()
   //
   // read byte strings
   //
-  num_byte_strings = ReadInt();
+  num_byte_strings = static_cast<int>(ReadInt());
   char** byte_strings = new char*[num_byte_strings];
   for(i = 0; i < num_byte_strings; ++i) {
-    const int byte_string_length = ReadInt();
+    const int byte_string_length = static_cast<int>(ReadInt());
     char* byte_string = new char[byte_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -164,10 +164,10 @@ void Loader::Load()
   //
   // read int strings
   //
-  num_int_strings = ReadInt();
+  num_int_strings = static_cast<int>(ReadInt());
   INT64_VALUE** int_strings = new INT64_VALUE *[num_int_strings];
   for(i = 0; i < num_int_strings; ++i) {
-    const int int_string_length = ReadInt();
+    const int int_string_length = static_cast<int>(ReadInt());
     INT64_VALUE* int_string = new INT64_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -189,7 +189,7 @@ void Loader::Load()
   //
   // read char strings
   //
-  num_char_strings = ReadInt();
+  num_char_strings = static_cast<int>(ReadInt());
   wchar_t** char_strings = new wchar_t*[num_char_strings + arguments.size()];
   for(i = 0; i < num_char_strings; ++i) {
     const std::wstring value = ReadString();
@@ -226,8 +226,8 @@ void Loader::Load()
 #endif
   
   // read start class and method ids
-  start_class_id = ReadInt();
-  start_method_id = ReadInt();
+  start_class_id = static_cast<int>(ReadInt());
+  start_method_id = static_cast<int>(ReadInt());
 #ifdef _DEBUG
   std::wcout << L"Program starting point: " << start_class_id << L"," << start_method_id << std::endl;
 #endif
@@ -304,7 +304,7 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 
 void Loader::LoadClasses()
 {
-  const int num_classes = ReadInt();
+  const int num_classes = static_cast<int>(ReadInt());
   if(num_classes < 0) {
     std::wcerr << L">>> Corrupt bytecode: negative class count <<<" << std::endl;
     exit(1);
@@ -319,7 +319,7 @@ void Loader::LoadClasses()
 
   for(int i = 0; i < num_classes; ++i) {
     // read id and pid
-    const int id = ReadInt();
+    const int id = static_cast<int>(ReadInt());
     // Validate before any classes[id]/cls_interfaces[id]/cls_hierarchy[id] store:
     // a crafted .obe could otherwise drive an arbitrary-offset heap write.
     if(id < 0 || id >= num_classes) {
@@ -327,11 +327,11 @@ void Loader::LoadClasses()
       exit(1);
     }
     std::wstring name = ReadString();
-    const int pid = ReadInt();
+    const int pid = static_cast<int>(ReadInt());
     std::wstring parent_name = ReadString();
 
     // read interface ids
-    const int num_interfaces = ReadInt();
+    const int num_interfaces = static_cast<int>(ReadInt());
     if(num_interfaces > 0) {
       long* interfaces = new long[num_interfaces + 1];
       int j = 0;
@@ -353,24 +353,24 @@ void Loader::LoadClasses()
     }
 
     // space
-    const int cls_space = ReadInt();
-    const int inst_space = ReadInt();
+    const int cls_space = static_cast<int>(ReadInt());
+    const int inst_space = static_cast<int>(ReadInt());
 
     // read class declarations
-    const int cls_num_dclrs = ReadInt();
+    const int cls_num_dclrs = static_cast<int>(ReadInt());
     StackDclr** cls_dclrs = LoadDeclarations(cls_num_dclrs, is_debug);
 
     // read instance declarations
-    const int inst_num_dclrs = ReadInt();
+    const int inst_num_dclrs = static_cast<int>(ReadInt());
     StackDclr** inst_dclrs = LoadDeclarations(inst_num_dclrs, is_debug);
     
     // read closure declarations
     std::map<int, std::pair<int, StackDclr**> > closure_dclr_map;
-    const int num_closure_dclrs = ReadInt();
+    const int num_closure_dclrs = static_cast<int>(ReadInt());
     for(int i = 0; i < num_closure_dclrs; ++i) {
-      const int closure_mthd_id = ReadInt();
+      const int closure_mthd_id = static_cast<int>(ReadInt());
       // read closure declarations
-      const int closure_num_dclrs = ReadInt();
+      const int closure_num_dclrs = static_cast<int>(ReadInt());
       StackDclr** closure_dclrs = LoadDeclarations(closure_num_dclrs, is_debug);
       // add declarations to map
       closure_dclr_map[closure_mthd_id] = std::pair<int, StackDclr**>(closure_num_dclrs, closure_dclrs);
@@ -406,7 +406,7 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
   StackDclr** dclrs = new StackDclr * [num_dclrs];
   for(int j = 0; j < num_dclrs; ++j) {
     // set type
-    int type = ReadInt();
+    int type = static_cast<int>(ReadInt());
     // set name
     std::wstring name;
     if(is_debug) {
@@ -422,7 +422,7 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
 
 void Loader::LoadMethods(StackClass* cls, bool is_debug)
 {
-  const int number = ReadInt();
+  const int number = static_cast<int>(ReadInt());
   if(number < 0) {
     std::wcerr << L">>> Corrupt bytecode: negative method count <<<" << std::endl;
     exit(1);
@@ -434,7 +434,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
   StackMethod** methods = new StackMethod*[number];
   for(int i = 0; i < number; ++i) {
     // id
-    const int id = ReadInt();
+    const int id = static_cast<int>(ReadInt());
     // Validate before the methods[id] store (crafted .obe → arbitrary heap write).
     if(id < 0 || id >= number) {
       std::wcerr << L">>> Corrupt bytecode: method id out of range <<<" << std::endl;
@@ -451,16 +451,16 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // return
     const std::wstring rtrn_name = ReadString();
     // params
-    const int params = ReadInt();
+    const int params = static_cast<int>(ReadInt());
     // space
-    const int mem_size = ReadInt();
+    const int mem_size = static_cast<int>(ReadInt());
     // read type parameters
-    const int num_dclrs = ReadInt();
+    const int num_dclrs = static_cast<int>(ReadInt());
 
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int j = 0; j < num_dclrs; ++j) {
       // set type
-      const int type = ReadInt();
+      const int type = static_cast<int>(ReadInt());
       // set name
       std::wstring name;
       if(is_debug) {
@@ -568,7 +568,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   for(unsigned long i = 0; i < num_instrs; ++i) {
     const int type = ReadByte();
     if(is_debug) {
-      line_num = ReadInt();
+      line_num = static_cast<int>(ReadInt());
     }
 
     switch(type) {
@@ -922,5 +922,5 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   }
 
   // copy and set instructions
-  method->SetInstructions(mthd_instrs, num_instrs);
+  method->SetInstructions(mthd_instrs, static_cast<int>(num_instrs));
 }

@@ -446,16 +446,16 @@ public:
   }
   
   static int WriteByte(const char value, SOCKET sock) {
-    return send(sock, &value, 1, 0);
+    return static_cast<int>(send(sock, &value, 1, 0));
   }
   
   static int WriteBytes(const char* values, int len, SOCKET sock) {
-    return send(sock, values, len, 0);
+    return static_cast<int>(send(sock, values, len, 0));
   }
   
   static char ReadByte(SOCKET sock, int &status) {
     char value;
-    status = recv(sock, &value, 1, 0);
+    status = static_cast<int>(recv(sock, &value, 1, 0));
     if(status < 0) {
       return '\0';
     }
@@ -466,7 +466,7 @@ public:
   static int ReadBytes(char* values, int len, SOCKET sock) {
     int total = 0;
     while(total < len) {
-      int status = recv(sock, values + total, len - total, 0);
+      int status = static_cast<int>(recv(sock, values + total, len - total, 0));
       if(status < 0) {
         return total > 0 ? total : -1;
       }

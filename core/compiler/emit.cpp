@@ -392,7 +392,7 @@ void IntermediateBlock::Write(bool is_debug, OutputStream& out_stream) {
 void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   WriteByte(type, out_stream);
   if(is_debug) {
-    WriteInt(line_num, out_stream);
+    WriteInt(static_cast<int32_t>(line_num), out_stream);
   }
 
   switch(type) {
@@ -410,7 +410,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   case OBJ_TYPE_OF:
   case TRAP:
   case TRAP_RTRN:
-    WriteInt(operand, out_stream);
+    WriteInt(static_cast<int32_t>(operand), out_stream);
     break;
 
   case LOAD_CHAR_LIT:
@@ -419,9 +419,9 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
 
   case instructions::ASYNC_MTHD_CALL:
   case MTHD_CALL:
-    WriteInt(operand, out_stream);
-    WriteInt(operand2, out_stream);
-    WriteInt(operand3, out_stream);
+    WriteInt(static_cast<int32_t>(operand), out_stream);
+    WriteInt(static_cast<int32_t>(operand2), out_stream);
+    WriteInt(static_cast<int32_t>(operand3), out_stream);
     break;
 
   case LIB_NEW_OBJ_INST:
@@ -431,7 +431,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     break;
 
   case LIB_MTHD_CALL:
-    WriteInt(operand3, out_stream);
+    WriteInt(static_cast<int32_t>(operand3), out_stream);
     WriteString(operand5, out_stream);
     WriteString(operand6, out_stream);
     break;
@@ -460,8 +460,8 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   case STOR_CHAR_ARY_ELM:
   case STOR_INT_ARY_ELM:
   case STOR_FLOAT_ARY_ELM:
-    WriteInt(operand, out_stream);
-    WriteInt(operand2, out_stream);
+    WriteInt(static_cast<int32_t>(operand), out_stream);
+    WriteInt(static_cast<int32_t>(operand2), out_stream);
     break;
 
   case LOAD_FLOAT_LIT:
@@ -469,22 +469,22 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     break;
 
   case LBL:
-    WriteInt(operand, out_stream);
+    WriteInt(static_cast<int32_t>(operand), out_stream);
     break;
 
   case TRY_START:
-    WriteInt(operand, out_stream);
-    WriteInt(operand2, out_stream);
+    WriteInt(static_cast<int32_t>(operand), out_stream);
+    WriteInt(static_cast<int32_t>(operand2), out_stream);
     break;
 
   case JMP_TABLE:
-    WriteInt(operand, out_stream);   // base (min_val, fits int32)
-    WriteInt(operand2, out_stream);  // range
-    WriteInt(operand3, out_stream);  // default_label
+    WriteInt(static_cast<int32_t>(operand), out_stream);   // base (min_val, fits int32)
+    WriteInt(static_cast<int32_t>(operand2), out_stream);  // range
+    WriteInt(static_cast<int32_t>(operand3), out_stream);  // default_label
     break;
 
   case JMP_TABLE_SLOT:
-    WriteInt(operand, out_stream);   // slot target label
+    WriteInt(static_cast<int32_t>(operand), out_stream);   // slot target label
     break;
 
   default:
@@ -984,7 +984,7 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case MTHD_CALL: {
-    IntermediateMethod* method = IntermediateProgram::Instance()->GetClass(operand)->GetMethod(operand2);
+    IntermediateMethod* method = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand))->GetMethod(static_cast<int>(operand2));
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"MTHD_CALL: method='" << method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << std::endl;
   }
     break;
@@ -1031,13 +1031,13 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case OBJ_INST_CAST: {
-    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
+    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand));
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"OBJ_INST_CAST: to='" << klass->GetName() << L"', id=" << operand << std::endl;
   }
     break;
     
   case OBJ_TYPE_OF: {
-    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
+    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand));
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"OBJ_TYPE_OF: check='" << klass->GetName() << L"', id=" << operand << std::endl;
   }
     break;
@@ -1059,7 +1059,7 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case NEW_OBJ_INST: {
-    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(operand);
+    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand));
     GetLogger() << L"  " << std::left << std::setw(6) << i << L"NEW_OBJ_INST: class='" << klass->GetName() << L"'" << std::endl;
   }
     break;

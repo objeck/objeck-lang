@@ -519,7 +519,7 @@ void StackInterpreter::Str2Int(size_t* &op_stack, size_t* &stack_pos)
           break;
         }
       }
-      PushInt(std::stoll(str, nullptr, base), op_stack, stack_pos);
+      PushInt(std::stoll(str, nullptr, static_cast<int>(base)), op_stack, stack_pos);
     }
     catch(std::exception &e) {
 #ifdef _WIN32    
@@ -667,7 +667,7 @@ void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
       else if(float_format == L"hex") {
         formatter << std::hexfloat;
       }
-      formatter << std::setprecision(stoll(float_precision));
+      formatter << std::setprecision(static_cast<int>(stoll(float_precision)));
       
       formatter << value;
       conv = formatter.str();
@@ -687,7 +687,7 @@ void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
 			conv = formatter.str();
     }
     else if(!float_precision.empty()) {
-			formatter << std::setprecision(stoll(float_precision));
+			formatter << std::setprecision(static_cast<int>(stoll(float_precision)));
 
 			formatter << value;
 			conv = formatter.str();

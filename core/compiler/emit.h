@@ -74,7 +74,7 @@ namespace backend {
     }
 
     inline void WriteUnsigned(unsigned long value, OutputStream& out_stream) {
-      out_stream.WriteUnsigned(value);
+      out_stream.WriteUnsigned(static_cast<int>(value));
     }
 
     inline void WriteChar(wchar_t value, OutputStream& out_stream) {

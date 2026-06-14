@@ -248,7 +248,7 @@ void IntermediateEmitter::Translate()
   // emit program
   EmitBundles();
   
-  imm_program->SetStringClassId(string_cls_id);
+  imm_program->SetStringClassId(static_cast<int>(string_cls_id));
 
   Class* start_class = parsed_program->GetStartClass();
   Method* start_method = parsed_program->GetStartMethod();
@@ -3693,7 +3693,7 @@ void IntermediateEmitter::EmitIf(If* if_stmt)
   cur_line_num = static_cast<Statement*>(if_stmt)->GetLineNumber();
   
   long end_label = ++unconditional_label;
-  EmitIf(if_stmt, ++conditional_label, end_label);
+  EmitIf(if_stmt, ++conditional_label, static_cast<int>(end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(if_stmt, cur_line_num, LBL, end_label));
 }
 
@@ -3727,7 +3727,7 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
 
     // if-else
     if(if_stmt->GetNext()) {
-      EmitIf(if_stmt->GetNext(), conditional, end_label);
+      EmitIf(if_stmt->GetNext(), static_cast<int>(conditional), end_label);
     }
     // else
     if(if_stmt->GetElseStatements()) {

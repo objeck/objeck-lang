@@ -1668,7 +1668,7 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     non_params = 0;
   }
   else {
-    non_params = (int32_t)working_stack.size() - params;
+    non_params = static_cast<int>(static_cast<int>(working_stack.size()) - params);
   }
   
 #ifdef _DEBUG_JIT_JIT
@@ -2307,11 +2307,11 @@ void JitArm64::move_reg_mem(Register src, long offset, Register dest) {
   uint32_t op_code = 0xF9000000;
   uint32_t op_dest = dest << 5;
   op_code |= op_dest;
-  
+
   uint32_t op_src = src;
   op_code |= op_src;
-  
-  uint32_t op_offset = abs(offset);
+
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
   op_code |= op_offset / sizeof(size_t) << 10;
     
   // encode
@@ -2331,7 +2331,7 @@ void JitArm64::move_reg_mem32(Register src, long offset, Register dest) {
   uint32_t op_src = src;
   op_code |= op_src;
 
-  uint32_t op_offset = abs(offset);
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
   op_code |= (op_offset / 4) << 10;
 
   // encode
@@ -2351,7 +2351,7 @@ void JitArm64::move_reg_mem16(Register src, long offset, Register dest) {
   uint32_t op_src = src;
   op_code |= op_src;
 
-  uint32_t op_offset = abs(offset);
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
   op_code |= (op_offset / 2) << 10;
 
   // encode
@@ -2372,9 +2372,9 @@ void JitArm64::move_mem_reg(long offset, Register src, Register dest) {
   uint32_t op_dest = dest;
   op_code |= op_dest;
   
-  uint32_t op_offset = abs(offset) / sizeof(size_t);
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset) / sizeof(size_t));
   op_code |= op_offset << 10;
-  
+
   // encode
   AddMachineCode(op_code);
 }
@@ -2392,7 +2392,7 @@ void JitArm64::move_mem32_reg(long offset, Register src, Register dest) {
   uint32_t op_dest = dest;
   op_code |= op_dest;
 
-  uint32_t op_offset = abs(offset) / 4;
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset) / 4);
   op_code |= op_offset << 10;
 
   // encode
@@ -2529,7 +2529,7 @@ void JitArm64::add_imm_reg(long imm, Register reg) {
     uint32_t op_dest = reg;
     op_code |= op_dest;
     
-    uint32_t op_imm = imm << 10;
+    uint32_t op_imm = static_cast<uint32_t>(imm) << 10;
     op_code |= op_imm;
     
     // encode
@@ -3174,11 +3174,11 @@ void JitArm64::move_mem_freg(long offset, Register src, Register dest) {
   uint32_t op_code = 0xFD400000;
   uint32_t op_src = src << 5;
   op_code |= op_src;
-  
+
   uint32_t op_dest = dest;
   op_code |= op_dest;
-  
-  uint32_t op_offset = abs(offset) / sizeof(size_t);
+
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset) / sizeof(size_t));
   op_code |= op_offset << 10;
   
   // encode
@@ -3199,9 +3199,9 @@ void JitArm64::move_freg_mem(Register src, long offset, Register dest) {
   uint32_t op_src = src;
   op_code |= op_src;
   
-  uint32_t op_offset = abs(offset);
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
   op_code |= op_offset / sizeof(size_t) << 10;
-    
+
   // encode
   AddMachineCode(op_code);
 }
@@ -3864,11 +3864,11 @@ void JitArm64::move_reg_mem8(Register src, long offset, Register dest) {
   uint32_t op_code = 0x39000000;
   uint32_t op_dest = dest << 5;
   op_code |= op_dest;
-  
+
   uint32_t op_src = src;
   op_code |= op_src;
-  
-  uint32_t op_offset = abs(offset);
+
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
   op_code |= op_offset << 10;
 
   // encode
@@ -3889,7 +3889,7 @@ void JitArm64::move_mem16_reg(long offset, Register src, Register dest) {
   uint32_t op_dest = dest;
   op_code |= op_dest;
 
-  uint32_t op_offset = abs(offset) / 2;
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset) / 2);
   op_code |= op_offset << 10;
 
   // encode
@@ -3911,7 +3911,7 @@ void JitArm64::move_mem8_reg(long offset, Register src, Register dest) {
   uint32_t op_dest = dest;
   op_code |= op_dest;
 
-  uint32_t op_offset = abs(offset);
+  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
   op_code |= op_offset << 10;
 
   // encode
@@ -5129,7 +5129,7 @@ bool JitArm64::Compile(StackMethod* cm)
 #endif
     
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, ints, float_consts));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, static_cast<int>(code_index)), code_index, ints, float_consts));
     
     free(code);
     code = nullptr;
@@ -5154,8 +5154,8 @@ void JitRuntime::Initialize(StackProgram* p)
 long JitRuntime::Execute(StackMethod* method, size_t* inst, size_t* op_stack, size_t* stack_pos,
                           StackFrame** call_stack, long* call_stack_pos, StackFrame* frame)
 {
-  const int32_t cls_id = method->GetClass()->GetId();
-  const int32_t mthd_id = method->GetId();
+  const int32_t cls_id = static_cast<int>(method->GetClass()->GetId());
+  const int32_t mthd_id = static_cast<int>(method->GetId());
   NativeCode* native_code = method->GetNativeCode();
   int64_t* int_consts = native_code->GetInts();
 

@@ -80,7 +80,7 @@ class Loader {
   }
 
   inline std::wstring ReadString() {
-    const int size = ReadInt();
+    const int size = static_cast<int>(ReadInt());
     std::string in(buffer, size);
     buffer += size;    
     
@@ -96,7 +96,7 @@ class Loader {
   inline wchar_t ReadChar() {
     wchar_t out;
     
-    const int size = ReadInt(); 
+    const int size = static_cast<int>(ReadInt());
     if(size) {
       std::string in(buffer, size);
       buffer += size;

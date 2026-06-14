@@ -1544,9 +1544,9 @@ void TrapProcessor::ProcessSetTime1(size_t* &op_stack, size_t* &stack_pos)
     struct tm curr_time;
     memset(&curr_time, 0, sizeof(struct tm));
 
-    curr_time.tm_mday = day;
-    curr_time.tm_mon = month - 1;
-    curr_time.tm_year = year - 1900;
+    curr_time.tm_mday = static_cast<int>(day);
+    curr_time.tm_mon = static_cast<int>(month - 1);
+    curr_time.tm_year = static_cast<int>(year - 1900);
     mktime(&curr_time);
 
     // set instance values
@@ -1577,12 +1577,12 @@ void TrapProcessor::ProcessSetTime2(size_t* &op_stack, size_t* &stack_pos)
     memset(&curr_time, 0, sizeof(struct tm));
 
     // update time
-    curr_time.tm_year = year - 1900;
-    curr_time.tm_mon = month - 1;
-    curr_time.tm_mday = day;
-    curr_time.tm_hour = hours;
-    curr_time.tm_min = mins;
-    curr_time.tm_sec = secs;
+    curr_time.tm_year = static_cast<int>(year - 1900);
+    curr_time.tm_mon = static_cast<int>(month - 1);
+    curr_time.tm_mday = static_cast<int>(day);
+    curr_time.tm_hour = static_cast<int>(hours);
+    curr_time.tm_min = static_cast<int>(mins);
+    curr_time.tm_sec = static_cast<int>(secs);
     mktime(&curr_time);
 
     // set instance values
@@ -2875,7 +2875,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
   size_t* mem = MemoryManager::AllocateArray(size + dim + 2, instructions::INT_TYPE,
                                              op_stack, *stack_pos);
   int i, j;
-  for(i = 0, j = size + 2; i < size; i++) {
+  for(i = 0, j = static_cast<int>(size + 2); i < size; i++) {
     mem[i + 3] = array[--j];
   }
   mem[0] = size;
@@ -3241,7 +3241,7 @@ bool TrapProcessor::StdOutFloatPer(StackProgram* program, size_t* inst, size_t*&
 #ifdef _MODULE_STDIO
   program->output_buffer << std::setprecision(std_per);
 #else
-  std::wcout << std::setprecision(std_per);
+  std::wcout << std::setprecision(static_cast<int>(std_per));
 #endif
 
   return true;
@@ -3257,7 +3257,7 @@ bool TrapProcessor::StdOutWidth(StackProgram* program, size_t* inst, size_t*& op
 #ifdef _MODULE_STDIO
   program->output_buffer << std::setw(std_width);
 #else
-  std::wcout << std::setw(std_width);
+  std::wcout << std::setw(static_cast<int>(std_width));
 #endif
 
   return true;
@@ -3538,7 +3538,7 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
       std::wcerr << std::scientific;
     }
     else {
-      std::wcerr << std::setprecision(stoll(precision));
+      std::wcerr << std::setprecision(static_cast<int>(stoll(precision)));
     }
     
     std::wcerr << value;
@@ -4174,8 +4174,8 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     SOCKET sock = (timeout_ms > 0)
-      ? IPSocket::OpenWithTimeout(addr.c_str(), port, timeout_ms)
-      : IPSocket::Open(addr.c_str(), port);
+      ? IPSocket::OpenWithTimeout(addr.c_str(), static_cast<int>(port), static_cast<int>(timeout_ms))
+      : IPSocket::Open(addr.c_str(), static_cast<int>(port));
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
@@ -4194,7 +4194,7 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
   long port = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
-    SOCKET server = IPSocket::Bind(port);
+    SOCKET server = IPSocket::Bind(static_cast<int>(port));
 #ifdef _DEBUG
     std::wcout << L"# socket bind: port=" << port << L"; instance=" << instance << L"("
       << (size_t)instance << L")" << L"; addr=" << server << L"(" << (size_t)server
@@ -4218,7 +4218,7 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
       << L"(" << (size_t)instance << L")" << L"; addr=" << server << L"("
       << (long)server << L") #" << std::endl;
 #endif
-    if(IPSocket::Listen(server, backlog)) {
+    if(IPSocket::Listen(server, static_cast<int>(backlog))) {
       PushInt(1, op_stack, stack_pos);
     }
     else {
@@ -4386,7 +4386,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     IPSecureSocket::Close((SecureSocketCtx*)instance[0]);
 
     SecureSocketCtx* sctx = nullptr;
-    const bool is_open = IPSecureSocket::Open(addr.c_str(), port, pem_file, sctx);
+    const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx);
     if(is_open) {
       instance[0] = (size_t)sctx;
       instance[1] = 0;
@@ -4997,7 +4997,7 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
   if(inst) {
     const long port = (long)inst[2];
     SOCKET sock; struct sockaddr_in* addr;
-    if(UDPSocket::Bind(port, sock, addr)) {
+    if(UDPSocket::Bind(static_cast<int>(port), sock, addr)) {
       inst[0] = sock;
       inst[1] = (size_t)addr;
     }
@@ -5008,7 +5008,7 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   if(inst) {
-    SOCKET sock = inst[0];
+    SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     UDPSocket::Close(sock, addr_in);
   }
@@ -5019,7 +5019,7 @@ bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& o
 bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
-    SOCKET sock = inst[0];
+    SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
     char value;
@@ -5045,12 +5045,12 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && instance[0] && offset > -1 && offset + num <= (long)array[0]) {
-    SOCKET sock = inst[0];
+    SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     char* buffer = (char*)(array + 3);
 
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int read = recvfrom(sock, buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size);
+    const int read = static_cast<int>(recvfrom(sock, buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
     if(read < 0) {
       PushInt(read, op_stack, stack_pos);
     }
@@ -5072,14 +5072,14 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
-    SOCKET sock = inst[0];
+    SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
     wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
 
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int read = recvfrom(sock, byte_buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size);
+    const int read = static_cast<int>(recvfrom(sock, byte_buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
     byte_buffer[read] = '\0';
     std::wstring in(BytesToUnicode(byte_buffer));
 
@@ -5115,14 +5115,14 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
-    SOCKET sock = inst[0];
+    SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
 
     const wchar_t* buffer = (wchar_t*)(array + 3);
     std::string buffer_out = UnicodeToBytes(buffer);
-    
-    const int sent = sendto(sock, buffer_out.c_str(), (int)buffer_out.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
+
+    const int sent = static_cast<int>(sendto(sock, buffer_out.c_str(), (int)buffer_out.size(), 0, (struct sockaddr*)addr_in, addr_in_size));
     PushInt(sent, op_stack, stack_pos);
   }
   else {
@@ -5136,11 +5136,11 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
   char value = (char)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
-    SOCKET sock = inst[0];
+    SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int sent = sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size);
+    const int sent = static_cast<int>(sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size));
     if(sent < 0) {
       PushInt(sent > -1, op_stack, stack_pos);
     }
@@ -5163,12 +5163,12 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
 
   if(instance && instance[0] && offset > -1 && offset + num <= (long)array[0]) {
 
-    SOCKET sock = inst[0];
+    SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     const char* buffer = (char*)(array + 3);
 
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int sent = sendto(sock, buffer, num, 0, (struct sockaddr*)addr_in, addr_in_size);
+    const int sent = static_cast<int>(sendto(sock, buffer, num, 0, (struct sockaddr*)addr_in, addr_in_size));
     if(sent < 0) {
       PushInt(sent, op_stack, stack_pos);
     }
@@ -5188,14 +5188,14 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance && (long)instance[0] > -1) {
     char buffer[MID_BUFFER_MAX] = {0};
-    
-    SOCKET sock = inst[0];
+
+    SOCKET sock = static_cast<int>(inst[0]);
 
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
 
     if((long)sock > -1) {
-      const int read = recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size);
+      const int read = static_cast<int>(recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size));
       if(read > -1) {
         buffer[read] = '\0';
 
@@ -5229,7 +5229,7 @@ bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t
 #endif        
     const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int sent = sendto(sock, data.c_str(), (int)data.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
+    const int sent = static_cast<int>(sendto(sock, data.c_str(), (int)data.size(), 0, (struct sockaddr*)addr_in, addr_in_size));
     if(sent < 0) {
       PushInt(sent, op_stack, stack_pos);
     }
@@ -5687,7 +5687,7 @@ bool TrapProcessor::TrapProcessor::CRC32Bytes(StackProgram* program, size_t* ins
   const uLong in_len = (uLong)array[2];
 
   // calculate CRC
-  const uLong crc = crc32(0, (Bytef*)in, in_len);
+  const uLong crc = crc32(0, (Bytef*)in, static_cast<uInt>(in_len));
   PushInt(crc, op_stack, stack_pos);
 
   return true;
@@ -6234,7 +6234,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     // op_stack so GC promotion fixup relocates it while we wait.
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    int read = IPSocket::ReadBytes(byte_buffer, num, sock);
+    int read = IPSocket::ReadBytes(byte_buffer, static_cast<int>(num), sock);
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     wchar_t* buffer = (wchar_t*)(array + 3);
@@ -6395,7 +6395,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
-    int read = IPSecureSocket::ReadBytes(byte_buffer, num, sctx);
+    int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -6446,7 +6446,7 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, si
   if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     char* buffer = (char*)(array + 3);
-    PushInt(IPSecureSocket::WriteBytes(buffer + offset, num, sctx), op_stack, stack_pos);
+    PushInt(IPSecureSocket::WriteBytes(buffer + offset, static_cast<int>(num), sctx), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -7354,7 +7354,7 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
     IPDtlsSocket::Close((DtlsSocketCtx*)instance[0]);
 
     DtlsSocketCtx* sctx = nullptr;
-    const bool is_open = IPDtlsSocket::Open(addr.c_str(), port, pem_file, sctx, verify);
+    const bool is_open = IPDtlsSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx, verify);
     if(is_open) {
       instance[0] = (size_t)sctx;
       instance[1] = 0;
@@ -7778,7 +7778,7 @@ bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_
   if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     char* buffer = (char*)(array + 3);
-    int read = IPDtlsSocket::ReadBytes(buffer + offset, num, sctx);
+    int read = IPDtlsSocket::ReadBytes(buffer + offset, static_cast<int>(num), sctx);
     PushInt(read, op_stack, stack_pos);
   }
   else {
@@ -7800,7 +7800,7 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
     wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
-    int read = IPDtlsSocket::ReadBytes(byte_buffer, num, sctx);
+    int read = IPDtlsSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -7851,7 +7851,7 @@ bool TrapProcessor::SockDtlsOutByteAry(StackProgram* program, size_t* inst, size
   if(array && instance && offset > -1 && offset + num <= (long)array[0]) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     char* buffer = (char*)(array + 3);
-    PushInt(IPDtlsSocket::WriteBytes(buffer + offset, num, sctx), op_stack, stack_pos);
+    PushInt(IPDtlsSocket::WriteBytes(buffer + offset, static_cast<int>(num), sctx), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);

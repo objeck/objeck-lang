@@ -542,7 +542,7 @@ public:
       }
 
       stream.next_out = (Bytef*)(buffer + stream.total_out);
-      stream.avail_out = (uInt)buffer_max - stream.total_out;
+      stream.avail_out = (uInt)(buffer_max - stream.total_out);
 
       const int status = inflate(&stream, Z_SYNC_FLUSH);
       if(status == Z_STREAM_END) {
@@ -649,7 +649,7 @@ public:
       }
 
       stream.next_out = (Bytef*)(buffer + stream.total_out);
-      stream.avail_out = (uInt)buffer_max - stream.total_out;
+      stream.avail_out = (uInt)(buffer_max - stream.total_out);
 
       const int status = inflate(&stream, Z_SYNC_FLUSH);
       if(status == Z_STREAM_END) {

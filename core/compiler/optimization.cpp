@@ -440,7 +440,7 @@ IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock*
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
-      IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+      IntermediateMethod* mthd_called = program->GetClass(static_cast<int>(instr->GetOperand()))->GetMethod(static_cast<int>(instr->GetOperand2()));
       int status = CanInlineSetterGetter(mthd_called);
       //  getter instance pattern
       if(status == 0) {
@@ -671,13 +671,13 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
     case instructions::LBL:
     case instructions::JMP:
     case instructions::JMP_TABLE_SLOT:
-      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand() + jump_inline_offset) != lbl_jmp_offsets.end()) {
+      if(lbl_jmp_offsets.find(static_cast<int>(mthd_called_instr->GetOperand() + jump_inline_offset)) != lbl_jmp_offsets.end()) {
         return false;
       }
       break;
 
     case instructions::JMP_TABLE:
-      if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand3() + jump_inline_offset) != lbl_jmp_offsets.end()) {
+      if(lbl_jmp_offsets.find(static_cast<int>(mthd_called_instr->GetOperand3() + jump_inline_offset)) != lbl_jmp_offsets.end()) {
         return false;
       }
       break;
@@ -978,15 +978,15 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
     switch(instr->GetType()) {
     case LBL:
     case JMP:
-      lbl_jmp_offsets.insert(instr->GetOperand());
+      lbl_jmp_offsets.insert(static_cast<int>(instr->GetOperand()));
       break;
 
     case JMP_TABLE:
-      lbl_jmp_offsets.insert(instr->GetOperand3());
+      lbl_jmp_offsets.insert(static_cast<int>(instr->GetOperand3()));
       break;
 
     case JMP_TABLE_SLOT:
-      lbl_jmp_offsets.insert(instr->GetOperand());
+      lbl_jmp_offsets.insert(static_cast<int>(instr->GetOperand()));
       break;
 
     default:
@@ -999,7 +999,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
     IntermediateInstruction* instr = input_instrs[i];
 
     if(instr->GetType() == MTHD_CALL) {
-      IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+      IntermediateMethod* mthd_called = program->GetClass(static_cast<int>(instr->GetOperand()))->GetMethod(static_cast<int>(instr->GetOperand2()));
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
         // calculate offset
@@ -1194,7 +1194,7 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
     IntermediateInstruction* instr = input_instrs[i];
     switch(instr->GetType()) {
     case JMP: {
-      std::unordered_map<int, int>::iterator result = lbl_offsets.find(instr->GetOperand());
+      std::unordered_map<int, int>::iterator result = lbl_offsets.find(static_cast<int>(instr->GetOperand()));
 #ifdef _DEBUG
       assert(result != lbl_offsets.end());
 #endif
@@ -1203,7 +1203,7 @@ IntermediateBlock* ItermediateOptimizer::JumpToLocation(IntermediateBlock* input
       break;
 
     case TRY_START: {
-      std::unordered_map<int, int>::iterator result = lbl_offsets.find(instr->GetOperand());
+      std::unordered_map<int, int>::iterator result = lbl_offsets.find(static_cast<int>(instr->GetOperand()));
 #ifdef _DEBUG
       assert(result != lbl_offsets.end());
 #endif
@@ -2341,7 +2341,7 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
       if(instr->GetOperand2() == LOCL) {
         switch(instr->GetType()) {
         case STOR_INT_VAR: case STOR_FLOAT_VAR: case STOR_FUNC_VAR:
-          store_counts[instr->GetOperand()]++;
+          store_counts[static_cast<int>(instr->GetOperand())]++;
           break;
         default:
           break;
@@ -2358,7 +2358,7 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
       if(instr->GetOperand2() == LOCL) {
         switch(instr->GetType()) {
         case STOR_INT_VAR: case STOR_FLOAT_VAR: case STOR_FUNC_VAR:
-          outside_store_slots.insert(instr->GetOperand());
+          outside_store_slots.insert(static_cast<int>(instr->GetOperand()));
           break;
         default:
           break;
@@ -2376,8 +2376,8 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
 
       if(instr->GetType() == LOAD_INT_VAR && instr->GetOperand2() == LOCL &&
          next->GetType()  == LOAD_ARY_SIZE &&
-         !store_counts.count(instr->GetOperand())) {
-        const int arr_slot = instr->GetOperand();
+         !store_counts.count(static_cast<int>(instr->GetOperand()))) {
+        const int arr_slot = static_cast<int>(instr->GetOperand());
 
         int tmp_slot;
         auto existing = arr_to_tmp.find(arr_slot);
@@ -2436,14 +2436,14 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
 
       case LOAD_INT_VAR:
         if(instr->GetOperand2() != LOCL) { stmt_safe = false; }
-        else { stmt_loads.insert(instr->GetOperand()); }
+        else { stmt_loads.insert(static_cast<int>(instr->GetOperand())); }
         stack_depth++;
         stmt_idx.push_back(i);
         break;
 
       case LOAD_FLOAT_VAR:
         if(instr->GetOperand2() != LOCL) { stmt_safe = false; }
-        else { stmt_loads.insert(instr->GetOperand()); }
+        else { stmt_loads.insert(static_cast<int>(instr->GetOperand())); }
         stack_depth++;
         stmt_idx.push_back(i);
         break;
@@ -2492,7 +2492,7 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
       case STOR_FLOAT_VAR: {
         if(instr->GetOperand2() == LOCL && stack_depth == 1 &&
            stmt_safe && !stmt_idx.empty()) {
-          const int stor_slot = instr->GetOperand();
+          const int stor_slot = static_cast<int>(instr->GetOperand());
 
           bool can_hoist =
             store_counts.count(stor_slot) && store_counts[stor_slot] == 1 &&
