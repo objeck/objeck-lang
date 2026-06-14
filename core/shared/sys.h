@@ -853,23 +853,6 @@ inline CommandLineParseResult ParseCommandLine(int argc, const char* argv[]) {
 }
 
 /**
- * Legacy command line parser wrapper (for backward compatibility)
- * @deprecated Use ParseCommandLine() instead for enhanced GNU-style syntax support
- * Note: Function name contains typo (Commnad instead of Command) but kept for compatibility
- */
-inline std::map<const std::wstring, std::wstring> ParseCommnadLine(int argc, const char* argv[], std::wstring &path_string) {
-  CommandLineParseResult result = ParseCommandLine(argc, argv);
-  path_string = result.reconstructed_path;
-
-  // Log errors to stderr if any
-  for(const auto& error : result.errors) {
-    std::wcerr << L"Warning: " << error << std::endl;
-  }
-
-  return result.arguments;
-}
-
-/**
  * Check if a command line argument exists
  */
 inline bool HasCommandLineArgument(
