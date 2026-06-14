@@ -367,6 +367,26 @@ run_test "clear_breaks" '
     expect eof
 ' 'no breakpoints defined.'
 
+# ========================================
+# Test 15: Conditional breakpoint (b file:line if <expr>)
+# Factorial(5) recurses n = 5,4,3,2,1; the condition makes line 51
+# fire only when n = 3, exercising the "if <expr>" clause.
+# ========================================
+run_test "conditional_break" '
+    expect ">"
+    send "b debugger_test.obs:51 if n = 3\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p n\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' 'added breakpoint|break: file=|Main->Factorial|print: type=Int/Byte/Bool, value=3'
+
 echo ""
 echo "========================================"
 echo "  Results: $PASS_COUNT passed, $FAIL_COUNT failed"

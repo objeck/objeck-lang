@@ -145,6 +145,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_DELETE_ID:
     case TOKEN_HELP_ID:
     case TOKEN_RUN_ID:
+    case TOKEN_IF_ID:
       tokens[index]->SetType(ident_type);
       break;
     default:

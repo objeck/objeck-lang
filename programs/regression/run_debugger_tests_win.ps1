@@ -196,6 +196,16 @@ Run-DebuggerTest "clear_breaks" @(
     "breaks"
 ) @("no breakpoints defined.")
 
+# Test 15: Conditional breakpoint (b file:line if <expr>)
+# Factorial(5) recurses n = 5,4,3,2,1; the condition makes line 51
+# fire only when n = 3, exercising the "if <expr>" clause.
+Run-DebuggerTest "conditional_break" @(
+    "b debugger_test.obs:51 if n = 3",
+    "r",
+    "p n",
+    "c"
+) @("added breakpoint", "break: file=", "Main->Factorial", "print: type=Int/Byte/Bool, value=3")
+
 Write-Host ""
 Write-Host "========================================"
 Write-Host "  Results: $PassCount passed, $FailCount failed"
