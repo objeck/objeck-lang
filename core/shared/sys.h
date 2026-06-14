@@ -35,8 +35,6 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <io.h>
-#elif defined(_ARM64)
-#include <codecvt>
 #endif
 
 #include <math.h>
@@ -189,13 +187,39 @@ inline bool BytesToCharacter(const std::string &in, wchar_t &out) {
   
   if(buffer.size() != 1) {
 #if defined(_ARM64) && defined(_OSX)
-    std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cvt;
-    buffer = cvt.from_bytes(in);
-    if(buffer.size() != 1) {
+    // Decode the UTF-8 input as a single code point. Replaces the deprecated
+    // std::wstring_convert/std::codecvt_utf8 (removed in C++26). On macOS
+    // wchar_t is 32-bit, so any Unicode code point fits.
+    const unsigned char* bytes = reinterpret_cast<const unsigned char*>(in.data());
+    const size_t len = in.size();
+    char32_t cp = 0;
+    size_t consumed = 0;
+    if(len >= 1 && bytes[0] < 0x80) {
+      cp = bytes[0];
+      consumed = 1;
+    }
+    else if(len >= 2 && (bytes[0] & 0xE0) == 0xC0 && (bytes[1] & 0xC0) == 0x80) {
+      cp = (static_cast<char32_t>(bytes[0] & 0x1F) << 6) | (bytes[1] & 0x3F);
+      consumed = 2;
+    }
+    else if(len >= 3 && (bytes[0] & 0xF0) == 0xE0 && (bytes[1] & 0xC0) == 0x80 && (bytes[2] & 0xC0) == 0x80) {
+      cp = (static_cast<char32_t>(bytes[0] & 0x0F) << 12) | (static_cast<char32_t>(bytes[1] & 0x3F) << 6) | (bytes[2] & 0x3F);
+      consumed = 3;
+    }
+    else if(len >= 4 && (bytes[0] & 0xF8) == 0xF0 && (bytes[1] & 0xC0) == 0x80 && (bytes[2] & 0xC0) == 0x80 && (bytes[3] & 0xC0) == 0x80) {
+      cp = (static_cast<char32_t>(bytes[0] & 0x07) << 18) | (static_cast<char32_t>(bytes[1] & 0x3F) << 12) | (static_cast<char32_t>(bytes[2] & 0x3F) << 6) | (bytes[3] & 0x3F);
+      consumed = 4;
+    }
+    else {
       return false;
     }
-    
-    out = buffer[0];
+
+    // require the whole input to be exactly one character
+    if(consumed != len) {
+      return false;
+    }
+
+    out = static_cast<wchar_t>(cp);
     return true;
 #else
     return false;
