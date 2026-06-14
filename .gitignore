@@ -39,8 +39,9 @@ UpgradeLog.htm
 # Sublime Text user workspace files
 *.sublime-workspace
 
-# Claude
-.claude/
+# Claude — ignore everything except the shared skills (release process, etc.)
+.claude/*
+!.claude/skills/
 
 # Build output directories
 **/x64/Debug/
