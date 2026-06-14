@@ -60,6 +60,14 @@ This generates from `.in` templates:
 > (and the lib-build lists in `update_version.sh` / `update_version_arm.sh` and
 > the CI `Rebuild libraries (Windows)` step) so docs and builds stay in step.
 
+> **Also bump the web-playground version constant by hand.**
+> `programs/web-playground/backend/app/config.py` hard-codes
+> `objeck_version: str = "v<VERSION>"` (the string the playground header and
+> `/api/health` report). It is **not** templated from `version.in`, so a release
+> that forgets it ships a playground reporting the previous version even after a
+> successful deploy. This bit 2026.6.1 — the playground served `v2026.6.0` until
+> the constant was bumped and re-deployed.
+
 ### 4. Full Windows build via `deploy_windows.cmd`
 
 This must run from a VS Developer Command Prompt or have `VCINSTALLDIR` set. Run:

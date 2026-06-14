@@ -67,6 +67,16 @@ curl -fsS https://playground.objeck.org/api/health | jq -r '.version'
 # must equal v<VERSION>  (the health endpoint returns the 'v' prefix)
 ```
 
+> **If the version is stale after a successful deploy**, the reported string comes
+> from `programs/web-playground/backend/app/config.py` (`objeck_version`), a
+> hand-maintained constant — not from `version.h`. Bump it in the repo, commit,
+> push, and re-deploy. Watch for a **stale local pin on the server**: the VPS may
+> carry a hand-edited `config.py` (older version) that a `git stash pop` will
+> conflict against — resolve with `git checkout HEAD -- <config.py>` to take the
+> committed value, then restart `playground.service`. A bad resolution leaves
+> `<<<<<<<` conflict markers in the file and uvicorn dies with `SyntaxError`
+> (health stays `502`).
+
 If `playground.objeck.org` is unreachable, try the host directly:
 `curl -fsS https://$PLAYGROUND_HOST/api/health`.
 
