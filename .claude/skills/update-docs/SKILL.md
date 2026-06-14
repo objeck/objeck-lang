@@ -106,5 +106,8 @@ Read `CHANGELOG.md`.
 
 ### 6. Verify
 
+- **Cross-check all four files against `CHANGELOG.md` for the version.** They must tell a consistent story — every flagship feature in the changelog should appear in README.md, `docs/readme.html`, and `docs/readme.txt` (each at its own altitude). A version is often partially pre-authored (e.g. `CHANGELOG` + `README` done, `readme.html`/`readme.txt` not, or a draft `readme.txt` written before later features landed); finish the laggards rather than assuming one file represents all.
+- **Give flagship features prominence.** A headline feature (e.g. a debugger overhaul, a new language feature) belongs near the top as its own bullet, not buried as a one-line "fix". Lead with what users will care about most.
+- Confirm each file has the new version at the top and no stale current-version strings remain (`grep` for the previous version's number / "Download v<OLD>").
 - Show the user the changes made to each file (brief summary, not full diffs)
 - Do NOT commit automatically — let the user decide when to commit

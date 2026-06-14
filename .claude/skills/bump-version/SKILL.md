@@ -49,6 +49,17 @@ This generates from `.in` templates:
 - `programs/deploy/util/readme/readme.json` (from `readme.json.in`)
 - Windows `.rc` resource files for compiler, VM, debugger, REPL, launcher
 
+> **Curate `readme.json.in` by hand.** Only `@VERSION@`/`@YEAR@` are templated —
+> the `title` and the `features` array are hand-maintained. Before generating,
+> add a new `{ "version": "v<VERSION>", "items": [...] }` block at the top of
+> `features` and set `title` to a one-line summary of the release. If you skip
+> this, the generated `readme.json` ships the new version number over the
+> previous release's feature list (a visible glitch in the deploy README).
+>
+> Likewise, if a library was added/removed, sync the obc list in `code_doc64.in`
+> (and the lib-build lists in `update_version.sh` / `update_version_arm.sh` and
+> the CI `Rebuild libraries (Windows)` step) so docs and builds stay in step.
+
 ### 4. Full Windows build via `deploy_windows.cmd`
 
 This must run from a VS Developer Command Prompt or have `VCINSTALLDIR` set. Run:

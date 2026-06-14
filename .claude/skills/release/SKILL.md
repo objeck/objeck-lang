@@ -213,6 +213,7 @@ The `docs/web/` directory contains the website content served from objeck.org. I
   - Replace the `<p>` summary at the top of `<main>` with the new summary.
   - Insert the new `<h3><u>v<VERSION></u></h3>` changelog block.
   - Strip `<u>` from the previously-latest entry.
+  - Update the `Download v<VERSION>` button — `docs/web/readme.html` has a hardcoded `<a class="btn btn-primary" ...>Download v<OLD></a>`; bump its text to the new version.
   - Keep `docs/web/readme.html`'s existing nav bar (`<a href="index.html">Home</a>` etc.).
 
 **4b. Update `docs/web/index.html`** — grep for any hardcoded `v202x.x.x` version strings (not `/releases/latest` or `/api/latest/` links). Update only those hits. Also update the Download button text if it contains a version number. Most releases need minimal changes here.
