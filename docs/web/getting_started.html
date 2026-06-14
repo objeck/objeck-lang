@@ -2744,6 +2744,104 @@ goodbye.</pre>
           </tr>
           <tr>
            <td>
+            tbreak
+           </td>
+           <td>
+            sets a temporary (one-shot) breakpoint that fires once then is removed
+           </td>
+           <td>
+            tbreak luhn.obs:17
+           </td>
+          </tr>
+          <tr>
+           <td>
+            break (method)
+           </td>
+           <td>
+            breaks at a method's first body line
+           </td>
+           <td>
+            b Luhn-&gt;IsValid
+           </td>
+          </tr>
+          <tr>
+           <td>
+            enable / disable
+           </td>
+           <td>
+            enables or disables a breakpoint by id (no id = all)
+           </td>
+           <td>
+            disable 2
+           </td>
+          </tr>
+          <tr>
+           <td>
+            ignore
+           </td>
+           <td>
+            skips the next &lt;count&gt; hits of a breakpoint
+           </td>
+           <td>
+            ignore 1 3
+           </td>
+          </tr>
+          <tr>
+           <td>
+            watch / watches / unwatch
+           </td>
+           <td>
+            breaks when an expression's value changes; lists / removes watchpoints
+           </td>
+           <td>
+            watch total
+           </td>
+          </tr>
+          <tr>
+           <td>
+            until
+           </td>
+           <td>
+            runs until a line in the current frame is reached
+           </td>
+           <td>
+            until 42
+           </td>
+          </tr>
+          <tr>
+           <td>
+            [f]rame / up / down
+           </td>
+           <td>
+            selects a stack frame to inspect (and its locals); moves to the caller / callee
+           </td>
+           <td>
+            frame 1
+           </td>
+          </tr>
+          <tr>
+           <td>
+            locals
+           </td>
+           <td>
+            prints every local in the selected frame
+           </td>
+           <td>
+           </td>
+          </tr>
+          <tr>
+           <td>
+            set
+           </td>
+           <td>
+            assigns a new value to a live Int/Char/Float variable
+           </td>
+           <td>
+            set count = 0
+           </td>
+          </tr>
+          <tr>
+           <td>
             [q]uit
            </td>
            <td>
@@ -2753,6 +2851,9 @@ goodbye.</pre>
            </td>
           </tr>
          </table>
+         <p>
+          Pressing <strong>Enter</strong> on an empty line repeats the previous command — handy for stepping with <code>n</code>/<code>s</code>.
+         </p>
          <h3 id="vscode_debug">
           VS Code Debugging
          </h3>
@@ -2794,9 +2895,12 @@ goodbye.</pre>
           <li>Click the <strong>gutter</strong> next to line numbers to set breakpoints (red dots)</li>
           <li>Press <strong>F5</strong> to start debugging</li>
           <li>Use the debug toolbar: <strong>Continue</strong> (F5), <strong>Step Over</strong> (F10), <strong>Step Into</strong> (F11), <strong>Step Out</strong> (Shift+F11)</li>
-          <li>Inspect local variables in the <strong>Variables</strong> panel</li>
+          <li>Inspect local variables in the <strong>Variables</strong> panel, and edit an <code>Int</code>/<code>Char</code>/<code>Float</code> local by double-clicking its value</li>
           <li>View the <strong>Call Stack</strong> panel to see the current execution context</li>
           <li>Conditional breakpoints are supported: right-click a breakpoint and add an expression (e.g. <code>i &gt; 3</code>)</li>
+          <li><strong>Function breakpoints</strong> (Breakpoints panel &rarr; <strong>+</strong>, e.g. <code>Main-&gt;Factorial</code>) and <strong>logpoints</strong> (right-click gutter &rarr; Add Logpoint, with <code>{expr}</code> interpolation) are supported</li>
+          <li><strong>Exception breakpoints</strong>: enable <strong>Uncaught Runtime Errors</strong> in the Breakpoints panel to stop on an uncaught Objeck runtime error (e.g. a <code>Nil</code> dereference)</li>
+          <li><strong>Restart</strong> (Ctrl+Shift+F5) re-runs the program in-process</li>
          </ul>
          <h3 id="create_portable">
           Generating a Portable Runtime

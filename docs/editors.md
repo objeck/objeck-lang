@@ -57,9 +57,13 @@ Press **F5** to start debugging. Features:
 
 - Breakpoints (click gutter or F9)
 - Conditional breakpoints (right-click breakpoint > Edit Condition, e.g. `i > 3`)
+- Function breakpoints (Breakpoints panel > **+**, e.g. `Main->Factorial`, `Main.Factorial`, or a bare `Factorial`)
+- Logpoints (right-click gutter > Add Logpoint — log a `{expr}`-interpolated message and keep running instead of stopping)
+- Exception breakpoints (Breakpoints panel > **Uncaught Runtime Errors** — stop on an uncaught Objeck runtime error such as a `Nil` dereference)
 - Step Over (F10), Step Into (F11), Step Out (Shift+F11)
-- Variable inspection in the **Variables** panel
+- Variable inspection in the **Variables** panel; edit an `Int`/`Char`/`Float` local in place (double-click the value)
 - Call stack in the **Call Stack** panel
+- Restart (Ctrl+Shift+F5) re-runs the program in-process without relaunching the adapter
 - Expression evaluation in the **Debug Console**
 - Program output (`PrintLine`, `Print`, stderr) appears in the **Debug Console** as DAP `output` events — `obd --dap` redirects the running program's stdout/stderr through capture pipes so the protocol stream stays clean.
 
