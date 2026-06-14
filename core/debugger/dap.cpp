@@ -369,6 +369,12 @@ void DapAdapter::Run()
     else if(command == "evaluate") {
       HandleEvaluate(request_seq, args);
     }
+    else if(command == "setVariable") {
+      HandleSetVariable(request_seq, args);
+    }
+    else if(command == "setFunctionBreakpoints") {
+      HandleSetFunctionBreakpoints(request_seq, args);
+    }
     else {
       // Unknown command — respond with success to avoid VS Code errors
       SendResponse(request_seq, command);
@@ -409,9 +415,15 @@ void DapAdapter::HandleInitialize(int request_seq, const json& args)
   capabilities["supportsConfigurationDoneRequest"] = true;
   capabilities["supportsEvaluateForHovers"] = true;
   capabilities["supportsStepBack"] = false;
-  capabilities["supportsSetVariable"] = false;
-  capabilities["supportsFunctionBreakpoints"] = false;
+  capabilities["supportsSetVariable"] = true;
+  capabilities["supportsFunctionBreakpoints"] = true;
+  // In-process restart is intentionally not advertised: an Objeck program
+  // stopped at a breakpoint is parked deep in the VM's native call stack and
+  // the global MemoryManager cannot be safely re-initialized mid-execution.
+  // With this false, DAP clients implement the restart button via a clean
+  // terminate + relaunch (a fresh process), which works without crashing.
   capabilities["supportsRestartRequest"] = false;
+  capabilities["supportsLogPoints"] = true;
 
   SendResponse(request_seq, "initialize", capabilities);
 
@@ -486,16 +498,23 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
   for(const auto& bp : breakpoints_json) {
     int line = bp.value("line", 0);
     std::string condition_str = bp.value("condition", "");
+    std::string log_message_str = bp.value("logMessage", "");
 
     bool added = false;
     if(debugger && line > 0) {
-      // Parse condition if provided
-      Expression* condition = nullptr;
-      if(!condition_str.empty()) {
-        std::wstring wcond = BytesToUnicode(condition_str);
-        condition = debugger->ParseCondition(wcond);
+      if(!log_message_str.empty()) {
+        // logpoint: log-and-continue instead of stopping
+        added = debugger->AddLogPoint(line, wfile_name, BytesToUnicode(log_message_str));
       }
-      added = debugger->AddBreak(line, wfile_name, condition);
+      else {
+        // Parse condition if provided
+        Expression* condition = nullptr;
+        if(!condition_str.empty()) {
+          std::wstring wcond = BytesToUnicode(condition_str);
+          condition = debugger->ParseCondition(wcond);
+        }
+        added = debugger->AddBreak(line, wfile_name, condition);
+      }
     }
 
     json bp_result;
@@ -934,6 +953,96 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
   SendResponse(request_seq, "evaluate", body);
 }
 
+void DapAdapter::HandleSetVariable(int request_seq, const json& args)
+{
+  if(!is_stopped || !debugger) {
+    SendResponse(request_seq, "setVariable", json::object(), false, "Not stopped");
+    return;
+  }
+
+  const int ref = args.value("variablesReference", 0);
+  const std::string name = args.value("name", "");
+  const std::string value = args.value("value", "");
+
+  // map the scope handle back to a frame index
+  int frame_index = -1;
+  if(ref >= SCOPE_HANDLE_BASE && ref < VAR_HANDLE_BASE) {
+    frame_index = ref - SCOPE_HANDLE_BASE;
+  }
+  else if(ref >= INST_SCOPE_HANDLE_BASE && ref < CLS_SCOPE_HANDLE_BASE) {
+    frame_index = ref - INST_SCOPE_HANDLE_BASE;
+  }
+  else if(ref >= CLS_SCOPE_HANDLE_BASE) {
+    frame_index = ref - CLS_SCOPE_HANDLE_BASE;
+  }
+
+  if(frame_index < 0 || name.empty()) {
+    SendResponse(request_seq, "setVariable", json::object(), false, "Invalid variable reference");
+    return;
+  }
+
+  std::wstring result = debugger->SetVariableForDap(frame_index, BytesToUnicode(name), BytesToUnicode(value));
+  if(result == L"<error>") {
+    SendResponse(request_seq, "setVariable", json::object(), false, "Cannot set variable (only Int/Char/Float locals are assignable)");
+    return;
+  }
+
+  json body;
+  body["value"] = UnicodeToBytes(result);
+  body["variablesReference"] = 0;
+  SendResponse(request_seq, "setVariable", body);
+}
+
+void DapAdapter::HandleSetFunctionBreakpoints(int request_seq, const json& args)
+{
+  json breakpoints_json = args.value("breakpoints", json::array());
+
+  json verified = json::array();
+  for(const auto& bp : breakpoints_json) {
+    std::string name = bp.value("name", "");
+    std::string condition_str = bp.value("condition", "");
+
+    bool added = false;
+    if(debugger && !name.empty()) {
+      added = debugger->AddMethodBreak(BytesToUnicode(name), BytesToUnicode(condition_str));
+    }
+
+    json bp_result;
+    bp_result["verified"] = added;
+    verified.push_back(bp_result);
+  }
+
+  json body;
+  body["breakpoints"] = verified;
+  SendResponse(request_seq, "setFunctionBreakpoints", body);
+}
+
+void DapAdapter::EmitLogPoint(const std::wstring& message)
+{
+  // interpolate {expr} fragments by evaluating each in the current frame
+  std::wstring out;
+  size_t i = 0;
+  while(i < message.size()) {
+    if(message[i] == L'{') {
+      const size_t end = message.find(L'}', i);
+      if(end != std::wstring::npos) {
+        const std::wstring expr = message.substr(i + 1, end - i - 1);
+        std::wstring value = debugger ? debugger->EvaluateForDap(expr) : L"<error>";
+        out += value;
+        i = end + 1;
+        continue;
+      }
+    }
+    out += message[i++];
+  }
+  out += L"\n";
+
+  json body;
+  body["category"] = "console";
+  body["output"] = UnicodeToBytes(out);
+  SendEvent("output", body);
+}
+
 // ============================================
 // Callbacks from Debugger
 // ============================================
@@ -941,6 +1050,12 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
 void DapAdapter::OnStopped(const std::string& reason, int line, const std::wstring& file,
                            StackFrame* frame, StackFrame** call_stack, long call_stack_pos)
 {
+  // While draining the current run for a disconnect/restart, don't surface
+  // breakpoint stops to the client.
+  if(disconnect_requested) {
+    return;
+  }
+
   {
     std::lock_guard<std::mutex> lock(mtx);
     is_stopped = true;
@@ -1006,8 +1121,9 @@ std::string DapAdapter::FormatVariableValue(StackDclr& dclr, StackFrame* frame, 
     return "<unavailable>";
   }
 
-  // Check bounds: mem_size is in bytes, each slot is sizeof(size_t)
-  long mem_slots = frame->method->GetMemorySize() / sizeof(size_t);
+  // Bounds: mem_size is a slot count (NewMemory allocates mem_size + 2 size_t
+  // slots; +2 covers the @self slot and the and/or temporary).
+  long mem_slots = frame->method->GetMemorySize() + 2;
   if(var_index >= mem_slots) {
     return "<out of scope>";
   }

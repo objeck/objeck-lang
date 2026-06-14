@@ -281,6 +281,17 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         found_break = false;
       }
 
+      // DAP logpoints: log the message (with {expr} interpolation) and resume
+      // instead of stopping
+      if(found_break && !hit_break->log_message.empty() && mode == DebugMode::DAP && dap_adapter) {
+        cur_frame = eval_frame = frame;
+        cur_call_stack = call_stack;
+        cur_call_stack_pos = call_stack_pos;
+        eval_frame_pos = call_stack_pos;
+        dap_adapter->EmitLogPoint(hit_break->log_message);
+        found_break = false;
+      }
+
       // one-shot (temporary) breakpoints fire once then vanish
       const bool temp_hit = (found_break && hit_break->temporary);
 
@@ -488,7 +499,9 @@ void Runtime::Debugger::ProcessRun() {
   if(loader && program_file_param.size() > 0) {
     DoLoad();
     cur_program = loader->GetProgram();
-    
+    // resolve any function breakpoints queued before load
+    ResolvePendingMethodBreaks();
+
     // execute
     op_stack = new size_t[CALC_STACK_SIZE];
     stack_pos = new size_t;
@@ -1764,7 +1777,11 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstrin
   return nullptr;
 }
 
-bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name, Expression* condition, bool temporary)
+// forward declarations for file-scope helpers defined further below
+static StackProgram* DbgProgram(StackProgram* cur_program, Loader* loader);
+static StackFrame* DbgFrameAt(long pos, StackFrame* top, StackFrame** call_stack, long top_pos);
+
+bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name, Expression* condition, bool temporary, const std::wstring& log_message)
 {
   if(line_num > 0 && !FindBreak(line_num, file_name)) {
     UserBreak* user_break = new UserBreak;
@@ -1777,11 +1794,138 @@ bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name, Ex
     user_break->ignore_count = 0;
     user_break->last_line = -1;
     user_break->last_pos = -1;
+    user_break->log_message = log_message;
     breaks.push_back(user_break);
     return true;
   }
 
   return false;
+}
+
+std::wstring Runtime::Debugger::SetVariableForDap(int frame_index, const std::wstring& name, const std::wstring& value_str)
+{
+  if(!interpreter) {
+    return L"<error>";
+  }
+
+  // select the requested frame for evaluation
+  StackFrame* saved_eval = eval_frame;
+  const long saved_pos = eval_frame_pos;
+  eval_frame = DbgFrameAt(frame_index, cur_frame, cur_call_stack, cur_call_stack_pos);
+  eval_frame_pos = frame_index;
+
+  // resolve the target slot
+  ref_slot = nullptr;
+  ref_slot_type = -1;
+  ref_mem = nullptr;
+  ref_klass = nullptr;
+  is_error = false;
+  Reference* reference = TreeFactory::Instance()->MakeReference(name);
+  EvaluateExpression(reference);
+
+  std::wstring result = L"<error>";
+  if(!is_error && ref_slot) {
+    size_t* slot = ref_slot;
+    const int slot_type = ref_slot_type;
+    try {
+      const std::string narrow = UnicodeToBytes(value_str);
+      if(slot_type == FLOAT_PARM) {
+        FLOAT_VALUE fv = std::stod(narrow);
+        memcpy(slot, &fv, sizeof(FLOAT_VALUE));
+      }
+      else {
+        const long iv = std::stol(narrow, nullptr, 0);
+        *slot = (size_t)iv;
+      }
+      result = value_str;
+    }
+    catch(...) {
+      result = L"<error>";
+    }
+  }
+
+  // restore the inspection frame to the stopped top
+  is_error = false;
+  eval_frame = saved_eval;
+  eval_frame_pos = saved_pos;
+  return result;
+}
+
+bool Runtime::Debugger::AddMethodBreak(const std::wstring& spec, const std::wstring& condition_str)
+{
+  // if the symbol table isn't loaded yet (DAP sets these before the program
+  // runs), queue the spec and resolve it once the program loads
+  if(!DbgProgram(cur_program, loader)) {
+    pending_method_breaks.push_back(std::make_pair(spec, condition_str));
+    return true;
+  }
+
+  std::wstring cls_name;
+  std::wstring mthd_name;
+
+  const size_t arrow = spec.find(L"->");
+  if(arrow != std::wstring::npos) {
+    cls_name = spec.substr(0, arrow);
+    mthd_name = spec.substr(arrow + 2);
+  }
+  else {
+    const size_t dot = spec.find_last_of(L'.');
+    if(dot != std::wstring::npos) {
+      cls_name = spec.substr(0, dot);
+      mthd_name = spec.substr(dot + 1);
+    }
+    else {
+      mthd_name = spec;
+    }
+  }
+
+  std::wstring file;
+  int line = -1;
+  bool resolved = false;
+  if(!cls_name.empty()) {
+    resolved = MethodEntryLocation(cls_name, mthd_name, file, line);
+  }
+  else {
+    // bare method name: search all debug classes for a match
+    StackProgram* prog = DbgProgram(cur_program, loader);
+    if(prog) {
+      StackClass** classes = prog->GetClasses();
+      const long class_num = prog->GetClassNumber();
+      for(long i = 0; i < class_num && !resolved; ++i) {
+        if(classes[i]->IsDebug()) {
+          resolved = MethodEntryLocation(classes[i]->GetName(), mthd_name, file, line);
+        }
+      }
+    }
+  }
+
+  if(!resolved) {
+    return false;
+  }
+
+  Expression* condition = nullptr;
+  if(!condition_str.empty()) {
+    condition = ParseCondition(condition_str);
+  }
+  return AddBreak(line, file, condition);
+}
+
+bool Runtime::Debugger::AddLogPoint(int line_num, const std::wstring& file_name, const std::wstring& log_message)
+{
+  return AddBreak(line_num, file_name, nullptr, false, log_message);
+}
+
+void Runtime::Debugger::ResolvePendingMethodBreaks()
+{
+  if(pending_method_breaks.empty() || !DbgProgram(cur_program, loader)) {
+    return;
+  }
+
+  std::vector<std::pair<std::wstring, std::wstring>> pending;
+  pending.swap(pending_method_breaks);
+  for(size_t i = 0; i < pending.size(); ++i) {
+    AddMethodBreak(pending[i].first, pending[i].second);
+  }
 }
 
 void Runtime::Debugger::ListBreaks()
@@ -2780,6 +2924,8 @@ void Runtime::Debugger::DapRun() {
     // Run the program
     DoLoad();
     cur_program = loader->GetProgram();
+    // resolve any function breakpoints queued before load
+    ResolvePendingMethodBreaks();
 
     op_stack = new size_t[CALC_STACK_SIZE];
     stack_pos = new size_t;

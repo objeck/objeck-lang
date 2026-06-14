@@ -122,6 +122,8 @@ namespace Runtime {
     void HandlePause(int seq, const json& args);
     void HandleDisconnect(int seq, const json& args);
     void HandleEvaluate(int seq, const json& args);
+    void HandleSetVariable(int seq, const json& args);
+    void HandleSetFunctionBreakpoints(int seq, const json& args);
 
     // Source path resolution
     std::string ResolveSourcePath(const std::wstring& file_name);
@@ -147,6 +149,10 @@ namespace Runtime {
 
     // Called when program terminates
     void OnTerminated();
+
+    // Called from Debugger::ProcessInstruction for a logpoint: emit the message
+    // (with {expr} interpolation) as an output event without stopping
+    void EmitLogPoint(const std::wstring& message);
 
     // Check if DAP wants a specific stepping mode
     bool IsStepInto() const { return step_into_requested; }

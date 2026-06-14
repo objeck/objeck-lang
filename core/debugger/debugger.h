@@ -69,6 +69,9 @@ namespace Runtime {
     // instructions on the same source line only count as one hit
     int last_line;
     long last_pos;
+    // DAP logpoint: when non-empty, the breakpoint logs this message (with
+    // {expr} interpolation) and resumes instead of stopping
+    std::wstring log_message;
   } UserBreak;
 
   typedef struct _WatchPoint {
@@ -164,6 +167,9 @@ namespace Runtime {
     // the first opcode of each line-entry (a source line maps to many opcodes)
     int prev_instr_line;
     long prev_instr_pos;
+    // DAP function breakpoints set before the program loads; resolved to file:line
+    // once the symbol table is available (in DapRun/ProcessRun)
+    std::vector<std::pair<std::wstring, std::wstring>> pending_method_breaks;
     // interpreter variables
     std::vector<std::wstring> arguments;
     StackInterpreter* interpreter;
@@ -189,8 +195,8 @@ namespace Runtime {
     // searches for a valid breakpoint based upon the line number provided
     UserBreak* FindBreak(int line_num, const std::wstring& file_name);
 
-    // adds a break (with optional condition expression)
-    bool AddBreak(int line_num, const std::wstring &file_name, Expression* condition = nullptr, bool temporary = false);
+    // adds a break (with optional condition expression / logpoint message)
+    bool AddBreak(int line_num, const std::wstring &file_name, Expression* condition = nullptr, bool temporary = false, const std::wstring& log_message = L"");
 
     // lists all breaks
     void ListBreaks();
@@ -364,6 +370,20 @@ namespace Runtime {
 
     // evaluate an expression and return result as string (for DAP evaluate)
     std::wstring EvaluateForDap(const std::wstring& expr_str);
+
+    // set a variable's value in a given frame (for DAP setVariable); returns the
+    // new value formatted, or L"<error>" on failure
+    std::wstring SetVariableForDap(int frame_index, const std::wstring& name, const std::wstring& value_str);
+
+    // add a breakpoint at a method's entry (for DAP function breakpoints); spec
+    // may be "Class->Method", "Class.Method", or a bare "Method"
+    bool AddMethodBreak(const std::wstring& spec, const std::wstring& condition_str = L"");
+
+    // resolve any function breakpoints queued before the program loaded
+    void ResolvePendingMethodBreaks();
+
+    // add a breakpoint carrying a logpoint message (for DAP logpoints)
+    bool AddLogPoint(int line_num, const std::wstring& file_name, const std::wstring& log_message);
 
     // searches for a valid breakpoint based upon the line number provided
     UserBreak* FindBreak(int line_num);

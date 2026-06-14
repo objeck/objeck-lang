@@ -97,13 +97,22 @@ obd --dap
 
 In DAP mode, the debugger communicates over stdin/stdout using JSON-RPC with Content-Length framing. VS Code launches `obd --dap` automatically when you press F5 with the Objeck extension installed.
 
-**Supported DAP requests:** initialize, launch, setBreakpoints, configurationDone, threads, stackTrace, scopes, variables, continue, next, stepIn, stepOut, pause, disconnect, evaluate
+**Supported DAP requests:** initialize, launch, setBreakpoints, setFunctionBreakpoints, configurationDone, threads, stackTrace, scopes, variables, setVariable, continue, next, stepIn, stepOut, pause, disconnect, evaluate
 
 **Features:**
 - Conditional breakpoints (expression evaluation)
+- Function breakpoints (`Class->Method`, `Class.Method`, or a bare method name)
+- Logpoints (breakpoints with a `{expr}`-interpolated message that log and continue)
 - Variable inspection (locals, parameters, instance/class fields)
+- Setting variable values from the editor (`setVariable`, Int/Char/Float locals)
 - Call stack navigation
 - ANSI color output
+
+> **Restart** is intentionally not advertised (`supportsRestartRequest: false`).
+> An Objeck program stopped at a breakpoint is parked deep in the VM's native
+> call stack, and the global memory manager cannot be re-initialized
+> mid-execution. With the capability off, DAP clients implement the restart
+> button as a clean terminate + relaunch (a fresh process).
 
 See [docs/editors.md](../../docs/editors.md) for VS Code setup instructions.
 
