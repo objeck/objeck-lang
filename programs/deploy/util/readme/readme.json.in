@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Bug fixes and improved performance",
+	"title": "String interpolation, generics, multithreaded GC, and a major debugger upgrade",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,18 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.6.1",
+			"items": [
+				"Language: string interpolation with expressions and format specifiers (\"{$pi:.2}\", \"{$total * rate}\") plus String->Format positional templating",
+				"Language: generics with bounds, F-bounds, and declaration-site variance (out/in covariance/contravariance)",
+				"VM: cooperative multithreaded stop-the-world garbage collection with JIT safepoints on AMD64 and ARM64",
+				"Debugger: major command-line (obd) and VS Code (DAP) upgrade — frame navigation, locals, set-variable, method/conditional/temporary breakpoints, watchpoints, function breakpoints, logpoints, in-process restart, and exception breakpoints",
+				"Security: TLS and DTLS clients verify server certificates by default; hardened untrusted-input deserialization",
+				"Libraries: new Web.Server HTTP library; reproducible byte-identical .obl builds",
+				"Fixes: serialization correctness (64-bit ints and Int[], function-reference fields); compiler LICM/ConstantProp; macOS ONNX CoreML cache (~35x faster warm starts)"
+			]
+		},
 		{
 			"version": "v2026.6.0",
 			"items": [
