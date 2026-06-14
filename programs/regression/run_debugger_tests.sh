@@ -387,6 +387,170 @@ run_test "conditional_break" '
     expect eof
 ' 'added breakpoint|break: file=|Main->Factorial|print: type=Int/Byte/Bool, value=3'
 
+# ========================================
+# Test 16: Frame navigation (frame/up/down/locals across frames)
+# ========================================
+run_test "frame_nav" '
+    expect ">"
+    send "b debugger_test.obs:51 if n = 3\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "locals\r"
+    expect ">"
+    send "up\r"
+    expect ">"
+    send "locals\r"
+    expect ">"
+    send "down\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "locals (frame #|value=3|frame #|value=4"
+
+# ========================================
+# Test 17: set <var> = <value> mutates a live variable
+# ========================================
+run_test "set_var" '
+    expect ">"
+    send "b debugger_test.obs:51 if n = 3\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "set n = 99\r"
+    expect ">"
+    send "p n\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "set: value=99|print: type=Int/Byte/Bool, value=99"
+
+# ========================================
+# Test 18: breakpoint by method (b Class->Method)
+# ========================================
+run_test "method_break" '
+    expect ">"
+    send "b Main->Factorial\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p n\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "added breakpoint|Main->Factorial|print: type=Int/Byte/Bool, value=5"
+
+# ========================================
+# Test 19: temporary (one-shot) breakpoint fires once
+# ========================================
+run_test "tbreak" '
+    expect ">"
+    send "tbreak debugger_test.obs:51\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p n\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "[temporary]|break: file=|print: type=Int/Byte/Bool, value=5|Factorial(5)=120"
+
+# ========================================
+# Test 20: disable suppresses a breakpoint
+# ========================================
+run_test "disable_break" '
+    expect ">"
+    send "b debugger_test.obs:51\r"
+    expect ">"
+    send "disable 1\r"
+    expect ">"
+    send "r\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "disabled 1 breakpoint|Factorial(5)=120"
+
+# ========================================
+# Test 21: ignore count skips the next N hits
+# ========================================
+run_test "ignore_count" '
+    expect ">"
+    send "b debugger_test.obs:51\r"
+    expect ">"
+    send "ignore 1 2\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p n\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "will be ignored|print: type=Int/Byte/Bool, value=3"
+
+# ========================================
+# Test 22: until <line> runs to a line in the current frame
+# ========================================
+run_test "until_line" '
+    expect ">"
+    send "b debugger_test.obs:46\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "until 47\r"
+    expect ">"
+    send "p result\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "running until|break: file=|print: type=Int/Byte/Bool, value=120"
+
+# ========================================
+# Test 23: breakpoint on a non-executable line is relocated with a note
+# ========================================
+run_test "nonexec_line" '
+    expect ">"
+    send "b debugger_test.obs:1\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "has no executable code|added breakpoint"
+
+# ========================================
+# Test 24: watchpoint breaks when a watched variable changes
+# ========================================
+run_test "watchpoint" '
+    expect ">"
+    send "b debugger_test.obs:51 if n = 3\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "watch n\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "added watchpoint|watch #1 changed"
+
 echo ""
 echo "========================================"
 echo "  Results: $PASS_COUNT passed, $FAIL_COUNT failed"

@@ -191,6 +191,18 @@ namespace frontend {
     STEP_OUT_COMMAND,
     STACK_COMMAND,
     HELP_COMMAND,
+    LOCALS_COMMAND,
+    SET_COMMAND,
+    UP_COMMAND,
+    DOWN_COMMAND,
+    TBREAK_COMMAND,
+    ENABLE_COMMAND,
+    DISABLE_COMMAND,
+    IGNORE_COMMAND,
+    UNTIL_COMMAND,
+    WATCH_COMMAND,
+    WATCHES_COMMAND,
+    UNWATCH_COMMAND,
   };
 
   /****************************
@@ -254,12 +266,14 @@ namespace frontend {
     std::wstring file_name;
     int line_num;
     Expression* condition;
+    std::wstring mthd_name;
 
   public:
-    FilePostion(CommandType t, const std::wstring &fn, int ln, Expression* cond = nullptr) : BasicCommand(t) {
+    FilePostion(CommandType t, const std::wstring &fn, int ln, Expression* cond = nullptr, const std::wstring &mn = L"") : BasicCommand(t) {
       file_name = fn;
       line_num = ln;
       condition = cond;
+      mthd_name = mn;
     }
 
     ~FilePostion() {
@@ -275,6 +289,11 @@ namespace frontend {
 
     Expression* GetCondition() {
       return condition;
+    }
+
+    // non-empty when the breakpoint targets a class/method rather than file:line
+    const std::wstring& GetMethodName() {
+      return mthd_name;
     }
   };
 
@@ -334,15 +353,119 @@ namespace frontend {
   * Frame class
   ****************************/
   class Frame : public Command {
+    int frame_num;
+
   public:
-    Frame() {
+    Frame(int n = -1) {
+      frame_num = n;
     }
 
     ~Frame() {
     }
 
+    int GetFrameNumber() {
+      return frame_num;
+    }
+
     const CommandType GetCommandType() {
       return FRAME_COMMAND;
+    }
+  };
+
+  /****************************
+  * Set class (set <ref> = <expr>)
+  ****************************/
+  class Set : public Command {
+    Expression* reference;
+    Expression* value;
+
+  public:
+    Set(Expression* r, Expression* v) {
+      reference = r;
+      value = v;
+    }
+
+    ~Set() {
+    }
+
+    Expression* GetReference() {
+      return reference;
+    }
+
+    Expression* GetValue() {
+      return value;
+    }
+
+    const CommandType GetCommandType() {
+      return SET_COMMAND;
+    }
+  };
+
+  /****************************
+  * NumCommand class (enable/disable/ignore/up/down by id/count)
+  ****************************/
+  class NumCommand : public Command {
+    CommandType type;
+    int id;
+    int count;
+
+  public:
+    NumCommand(CommandType t, int i, int c = 0) {
+      type = t;
+      id = i;
+      count = c;
+    }
+
+    ~NumCommand() {
+    }
+
+    int GetId() {
+      return id;
+    }
+
+    int GetCount() {
+      return count;
+    }
+
+    const CommandType GetCommandType() {
+      return type;
+    }
+  };
+
+  /****************************
+  * Watch class (watch <expr> / unwatch <id>)
+  ****************************/
+  class Watch : public Command {
+    CommandType type;
+    Expression* expression;
+    std::wstring text;
+    int id;
+
+  public:
+    Watch(CommandType t, Expression* e, const std::wstring& s, int i = -1) {
+      type = t;
+      expression = e;
+      text = s;
+      id = i;
+    }
+
+    ~Watch() {
+    }
+
+    Expression* GetExpression() {
+      return expression;
+    }
+
+    const std::wstring& GetText() {
+      return text;
+    }
+
+    int GetId() {
+      return id;
+    }
+
+    const CommandType GetCommandType() {
+      return type;
     }
   };
 
@@ -740,8 +863,8 @@ namespace frontend {
       return tmp;
     }
 
-    FilePostion* MakeFilePostion(CommandType t, const std::wstring &file_name, int line_num, Expression* cond = nullptr) {
-      FilePostion* tmp = new FilePostion(t, file_name, line_num, cond);
+    FilePostion* MakeFilePostion(CommandType t, const std::wstring &file_name, int line_num, Expression* cond = nullptr, const std::wstring &mthd_name = L"") {
+      FilePostion* tmp = new FilePostion(t, file_name, line_num, cond, mthd_name);
       nodes.push_back(tmp);
       return tmp;
     }
@@ -760,6 +883,30 @@ namespace frontend {
 
     Print* MakePrint(Expression* e) {
       Print* tmp = new Print(e);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    Frame* MakeFrame(int n = -1) {
+      Frame* tmp = new Frame(n);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    Set* MakeSet(Expression* r, Expression* v) {
+      Set* tmp = new Set(r, v);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    NumCommand* MakeNumCommand(CommandType t, int id, int count = 0) {
+      NumCommand* tmp = new NumCommand(t, id, count);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    Watch* MakeWatch(CommandType t, Expression* e, const std::wstring& s, int id = -1) {
+      Watch* tmp = new Watch(t, e, s, id);
       nodes.push_back(tmp);
       return tmp;
     }

@@ -83,10 +83,15 @@ class Parser {
   Command* ParseStatement(int depth);
   Command* ParseLoad(CommandType type, int depth);
   Command* ParseList(int depth);
-  Command* ParseBreakDelete(bool is_break, int depth);
+  Command* ParseBreakDelete(CommandType cmd_type, int depth);
   Command* ParsePrint(int depth);
   Command* ParseInfo(int depth);
   Command* ParseFrame(int depth);
+  Command* ParseSet(int depth);
+  Command* ParseNumCommand(CommandType type, int depth);
+  Command* ParseUntil(int depth);
+  Command* ParseWatch(int depth);
+  Command* ParseUnwatch(int depth);
   ExpressionList* ParseIndices(int depth);
   Expression* ParseExpression(int depth);
   Expression* ParseLogic(int depth);

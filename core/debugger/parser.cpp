@@ -199,11 +199,11 @@ Command* Parser::ParseStatement(int depth)
       break;
 
     case TOKEN_BREAK_ID:
-      command = ParseBreakDelete(true, depth + 1);
+      command = ParseBreakDelete(BREAK_COMMAND, depth + 1);
       break;
 
     case TOKEN_DELETE_ID:
-      command = ParseBreakDelete(false, depth + 1);
+      command = ParseBreakDelete(DELETE_COMMAND, depth + 1);
       break;
 
     case TOKEN_PRINT_ID:
@@ -216,6 +216,58 @@ Command* Parser::ParseStatement(int depth)
 
     case TOKEN_FRAME_ID:
       command = ParseFrame(depth + 1);
+      break;
+
+    case TOKEN_UP_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(UP_COMMAND);
+      break;
+
+    case TOKEN_DOWN_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(DOWN_COMMAND);
+      break;
+
+    case TOKEN_LOCALS_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(LOCALS_COMMAND);
+      break;
+
+    case TOKEN_SET_ID:
+      command = ParseSet(depth + 1);
+      break;
+
+    case TOKEN_TBREAK_ID:
+      command = ParseBreakDelete(TBREAK_COMMAND, depth + 1);
+      break;
+
+    case TOKEN_ENABLE_ID:
+      command = ParseNumCommand(ENABLE_COMMAND, depth + 1);
+      break;
+
+    case TOKEN_DISABLE_ID:
+      command = ParseNumCommand(DISABLE_COMMAND, depth + 1);
+      break;
+
+    case TOKEN_IGNORE_ID:
+      command = ParseNumCommand(IGNORE_COMMAND, depth + 1);
+      break;
+
+    case TOKEN_UNTIL_ID:
+      command = ParseUntil(depth + 1);
+      break;
+
+    case TOKEN_WATCH_ID:
+      command = ParseWatch(depth + 1);
+      break;
+
+    case TOKEN_WATCHES_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(WATCHES_COMMAND);
+      break;
+
+    case TOKEN_UNWATCH_ID:
+      command = ParseUnwatch(depth + 1);
       break;
 
     case TOKEN_CLEAR_ID:
@@ -306,31 +358,51 @@ Command* Parser::ParseLoad(CommandType type, int depth) {
   return TreeFactory::Instance()->MakeLoad(type, file_name);
 }
 
-Command* Parser::ParseBreakDelete(bool is_break, int depth) {
+Command* Parser::ParseBreakDelete(CommandType cmd_type, int depth) {
 #ifdef _DEBUG
   Show(L"Break", depth);
 #endif
+  const bool is_break = (cmd_type != DELETE_COMMAND);
   NextToken();
 
-  // file name
+  // first identifier: either a file name (file:line) or a class name (Class->Method)
   std::wstring file_name;
+  std::wstring mthd_name;
+  int line_num = -1;
+
   if(Match(TOKEN_IDENT)) {
     file_name = scanner->GetToken()->GetIdentifier();
     NextToken();
-    if(!Match(TOKEN_COLON)) {
-      ProcessError(TOKEN_COLON);
-    }
-    NextToken();
-  }
 
-  // line number
-  int line_num = -1;
-  if(Match(TOKEN_INT_LIT)) {
-    line_num = scanner->GetToken()->GetIntLit();
-    NextToken();
+    // method form: Class->Method
+    if(Match(TOKEN_ASSESSOR)) {
+      NextToken();
+      if(Match(TOKEN_IDENT)) {
+        mthd_name = scanner->GetToken()->GetIdentifier();
+        NextToken();
+      }
+      else {
+        ProcessError(L"Expected method name");
+      }
+    }
+    // file form: file:line
+    else {
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(TOKEN_COLON);
+      }
+      NextToken();
+
+      if(Match(TOKEN_INT_LIT)) {
+        line_num = scanner->GetToken()->GetIntLit();
+        NextToken();
+      }
+      else {
+        line_num = -1;
+        NextToken();
+      }
+    }
   }
   else {
-    line_num = -1;
     NextToken();
   }
 
@@ -342,10 +414,10 @@ Command* Parser::ParseBreakDelete(bool is_break, int depth) {
   }
 
   if(is_break) {
-    return TreeFactory::Instance()->MakeFilePostion(BREAK_COMMAND, file_name, line_num, condition);
+    return TreeFactory::Instance()->MakeFilePostion(cmd_type, file_name, line_num, condition, mthd_name);
   }
 
-  return TreeFactory::Instance()->MakeFilePostion(DELETE_COMMAND, file_name, line_num);
+  return TreeFactory::Instance()->MakeFilePostion(DELETE_COMMAND, file_name, line_num, nullptr, mthd_name);
 }
 
 Command* Parser::ParsePrint(int depth) {
@@ -408,7 +480,105 @@ Command* Parser::ParseInfo(int depth) {
 
 Command* Parser::ParseFrame(int depth) {
   NextToken();
-  return nullptr;
+
+  // optional frame number: frame N
+  int frame_num = -1;
+  if(Match(TOKEN_INT_LIT)) {
+    frame_num = scanner->GetToken()->GetIntLit();
+    NextToken();
+  }
+
+  return TreeFactory::Instance()->MakeFrame(frame_num);
+}
+
+Command* Parser::ParseSet(int depth) {
+  NextToken();
+
+  // target reference only (ParseExpression would greedily eat the '=' as equality)
+  Expression* reference = nullptr;
+  if(Match(TOKEN_IDENT)) {
+    const std::wstring &ident = scanner->GetToken()->GetIdentifier();
+    NextToken();
+    reference = ParseReference(ident, depth + 1);
+  }
+  else if(Match(TOKEN_SELF_ID)) {
+    NextToken();
+    reference = ParseReference(depth + 1);
+  }
+  else {
+    ProcessError(L"Expected variable name in set command");
+  }
+
+  // assignment operator (scanner emits TOKEN_ASSIGN for ':=' and TOKEN_EQL for '=')
+  if(Match(TOKEN_ASSIGN) || Match(TOKEN_EQL)) {
+    NextToken();
+  }
+  else {
+    ProcessError(L"Expected '=' in set command");
+  }
+
+  // value expression
+  Expression* value = ParseExpression(depth + 1);
+
+  return TreeFactory::Instance()->MakeSet(reference, value);
+}
+
+Command* Parser::ParseNumCommand(CommandType type, int depth) {
+  NextToken();
+
+  int id = -1;
+  if(Match(TOKEN_INT_LIT)) {
+    id = scanner->GetToken()->GetIntLit();
+    NextToken();
+  }
+
+  // ignore <id> <count>
+  int count = 0;
+  if(type == IGNORE_COMMAND && Match(TOKEN_INT_LIT)) {
+    count = scanner->GetToken()->GetIntLit();
+    NextToken();
+  }
+
+  return TreeFactory::Instance()->MakeNumCommand(type, id, count);
+}
+
+Command* Parser::ParseUntil(int depth) {
+  NextToken();
+
+  std::wstring file_name;
+  int line_num = -1;
+  if(Match(TOKEN_IDENT)) {
+    file_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+    if(Match(TOKEN_COLON)) {
+      NextToken();
+    }
+  }
+  if(Match(TOKEN_INT_LIT)) {
+    line_num = scanner->GetToken()->GetIntLit();
+    NextToken();
+  }
+
+  return TreeFactory::Instance()->MakeFilePostion(UNTIL_COMMAND, file_name, line_num);
+}
+
+Command* Parser::ParseWatch(int depth) {
+  NextToken();
+
+  Expression* expression = ParseExpression(depth + 1);
+  return TreeFactory::Instance()->MakeWatch(WATCH_COMMAND, expression, L"");
+}
+
+Command* Parser::ParseUnwatch(int depth) {
+  NextToken();
+
+  int id = -1;
+  if(Match(TOKEN_INT_LIT)) {
+    id = scanner->GetToken()->GetIntLit();
+    NextToken();
+  }
+
+  return TreeFactory::Instance()->MakeWatch(UNWATCH_COMMAND, nullptr, L"", id);
 }
 
 /****************************

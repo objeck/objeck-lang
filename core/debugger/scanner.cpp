@@ -108,6 +108,18 @@ void Scanner::LoadKeywords()
   ident_map[L"class"] = TOKEN_CLASS_ID;
   ident_map[L"method"] = TOKEN_METHOD_ID;
   ident_map[L"if"] = TOKEN_IF_ID;
+  ident_map[L"?up"] = TOKEN_UP_ID;
+  ident_map[L"?down"] = TOKEN_DOWN_ID;
+  ident_map[L"?locals"] = TOKEN_LOCALS_ID;
+  ident_map[L"?set"] = TOKEN_SET_ID;
+  ident_map[L"?tbreak"] = TOKEN_TBREAK_ID;
+  ident_map[L"?enable"] = TOKEN_ENABLE_ID;
+  ident_map[L"?disable"] = TOKEN_DISABLE_ID;
+  ident_map[L"?ignore"] = TOKEN_IGNORE_ID;
+  ident_map[L"?until"] = TOKEN_UNTIL_ID;
+  ident_map[L"?watch"] = TOKEN_WATCH_ID;
+  ident_map[L"?watches"] = TOKEN_WATCHES_ID;
+  ident_map[L"?unwatch"] = TOKEN_UNWATCH_ID;
 }
 
 /****************************
@@ -146,6 +158,18 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_HELP_ID:
     case TOKEN_RUN_ID:
     case TOKEN_IF_ID:
+    case TOKEN_UP_ID:
+    case TOKEN_DOWN_ID:
+    case TOKEN_LOCALS_ID:
+    case TOKEN_SET_ID:
+    case TOKEN_TBREAK_ID:
+    case TOKEN_ENABLE_ID:
+    case TOKEN_DISABLE_ID:
+    case TOKEN_IGNORE_ID:
+    case TOKEN_UNTIL_ID:
+    case TOKEN_WATCH_ID:
+    case TOKEN_WATCHES_ID:
+    case TOKEN_UNWATCH_ID:
       tokens[index]->SetType(ident_type);
       break;
     default:

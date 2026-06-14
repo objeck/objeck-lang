@@ -206,6 +206,82 @@ Run-DebuggerTest "conditional_break" @(
     "c"
 ) @("added breakpoint", "break: file=", "Main->Factorial", "print: type=Int/Byte/Bool, value=3")
 
+# Test 16: Frame navigation (frame / up / down / locals across frames)
+# Stop in Factorial at n=3; the caller frame has n=4.
+Run-DebuggerTest "frame_nav" @(
+    "b debugger_test.obs:51 if n = 3",
+    "r",
+    "locals",
+    "up",
+    "locals",
+    "down",
+    "c"
+) @("locals (frame #", "value=3", "frame #", "value=4")
+
+# Test 17: set <var> = <value> mutates a live variable
+Run-DebuggerTest "set_var" @(
+    "b debugger_test.obs:51 if n = 3",
+    "r",
+    "set n = 99",
+    "p n",
+    "c"
+) @("set: value=99", "print: type=Int/Byte/Bool, value=99")
+
+# Test 18: breakpoint by method (b Class->Method) lands on the first body line
+Run-DebuggerTest "method_break" @(
+    "b Main->Factorial",
+    "r",
+    "p n",
+    "c"
+) @("added breakpoint", "Main->Factorial", "print: type=Int/Byte/Bool, value=5")
+
+# Test 19: temporary (one-shot) breakpoint fires once
+Run-DebuggerTest "tbreak" @(
+    "tbreak debugger_test.obs:51",
+    "r",
+    "p n",
+    "c"
+) @("[temporary]", "break: file=", "print: type=Int/Byte/Bool, value=5", "Factorial(5)=120")
+
+# Test 20: disable suppresses a breakpoint; program runs to completion
+Run-DebuggerTest "disable_break" @(
+    "b debugger_test.obs:51",
+    "disable 1",
+    "r"
+) @("disabled 1 breakpoint", "Factorial(5)=120")
+
+# Test 21: ignore count skips the next N hits (n = 5,4 skipped -> break at n=3)
+Run-DebuggerTest "ignore_count" @(
+    "b debugger_test.obs:51",
+    "ignore 1 2",
+    "r",
+    "p n",
+    "c"
+) @("will be ignored", "print: type=Int/Byte/Bool, value=3")
+
+# Test 22: until <line> runs to a line in the current frame
+Run-DebuggerTest "until_line" @(
+    "b debugger_test.obs:46",
+    "r",
+    "until 47",
+    "p result",
+    "c"
+) @("running until", "break: file=", "print: type=Int/Byte/Bool, value=120")
+
+# Test 23: breakpoint on a non-executable line is relocated with a note
+Run-DebuggerTest "nonexec_line" @(
+    "b debugger_test.obs:1",
+    "q"
+) @("has no executable code", "added breakpoint")
+
+# Test 24: watchpoint breaks when a watched variable changes
+Run-DebuggerTest "watchpoint" @(
+    "b debugger_test.obs:51 if n = 3",
+    "r",
+    "watch n",
+    "c"
+) @("added watchpoint", "watch #1 changed")
+
 Write-Host ""
 Write-Host "========================================"
 Write-Host "  Results: $PassCount passed, $FailCount failed"

@@ -52,15 +52,27 @@ obd -b myapp.obe -src ../src
 | Command | Shortcut | Description |
 |---------|----------|-------------|
 | `run` | `r` | Start/restart program |
-| `break <file>:<line>` | `b` | Set breakpoint |
-| `breaks` | | List all breakpoints |
+| `break <file>:<line> [if <expr>]` | `b` | Set breakpoint (optionally conditional) |
+| `break <Class>-><Method>` | `b` | Break at a method's first body line |
+| `tbreak <file>:<line>` | | Temporary (one-shot) breakpoint |
+| `breaks` | | List all breakpoints (with ids/state) |
 | `delete <file>:<line>` | `d` | Remove breakpoint |
+| `enable [<id>]` / `disable [<id>]` | | Enable/disable breakpoint(s) |
+| `ignore <id> <count>` | | Skip the next `<count>` hits of a breakpoint |
 | `clear` | | Clear all breakpoints |
+| `watch <expr>` | | Break when `<expr>` changes (data breakpoint) |
+| `watches` | | List watchpoints |
+| `unwatch [<id>]` | | Remove watchpoint(s) |
 | `cont` | `c` | Continue execution |
 | `step` | `s` | Step into |
 | `next` | `n` | Step over |
 | `jump` | `j` | Step out |
+| `until <line>` | | Run until `<line>` in the current frame |
 | `print <expr>` | `p` | Print expression |
+| `set <var> = <expr>` | | Assign a new value to a live variable |
+| `locals` | | Print all locals in the selected frame |
+| `frame [<n>]` | `f` | Show/select a stack frame |
+| `up` / `down` | | Move to the caller / callee frame |
 | `list [<file>:<line>]` | `l` | List source code |
 | `stack` | | Show call stack |
 | `memory` | `m` | Show memory stats |
@@ -70,6 +82,8 @@ obd -b myapp.obe -src ../src
 | `args '<args>'` | | Set program arguments |
 | `help` | `h` | Show help |
 | `quit` | `q` | Exit debugger |
+
+An empty line (just pressing Enter) repeats the previous command, which is handy for repeated `step`/`next`.
 
 Full command documentation: [Debugger Guide](https://www.objeck.org/getting_started.html#debugger)
 

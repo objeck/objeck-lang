@@ -234,13 +234,24 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       }
       */
 
-      UserBreak* hit_break = ((continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos) ? FindBreak(line_num, file_name) : nullptr);
+      // only consider a breakpoint on the first opcode of each line-entry, so a
+      // multi-opcode source line counts as a single hit (matters for ignore/temp)
+      const bool new_line_instr = (line_num != prev_instr_line || call_stack_pos != prev_instr_pos);
+      prev_instr_line = line_num;
+      prev_instr_pos = call_stack_pos;
+
+      UserBreak* hit_break = ((new_line_instr && (continue_state == 2 || line_num != cur_line_num || call_stack_pos != cur_call_stack_pos)) ? FindBreak(line_num, file_name) : nullptr);
       bool found_break = (hit_break != nullptr);
+
+      // honor disabled breakpoints
+      if(found_break && !hit_break->enabled) {
+        found_break = false;
+      }
 
       // evaluate conditional breakpoint
       if(found_break && hit_break->condition) {
         // set frame context for expression evaluation
-        cur_frame = frame;
+        cur_frame = eval_frame = frame;
         cur_call_stack = call_stack;
         cur_call_stack_pos = call_stack_pos;
         ref_mem = nullptr;
@@ -263,12 +274,41 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         is_error = false;
       }
 
-      if(found_break) {
+      // honor ignore counts (skip the next N hits); new_line_instr guarantees this
+      // runs once per logical hit, not once per opcode on the line
+      if(found_break && hit_break->ignore_count > 0) {
+        hit_break->ignore_count--;
+        found_break = false;
+      }
+
+      // one-shot (temporary) breakpoints fire once then vanish
+      const bool temp_hit = (found_break && hit_break->temporary);
+
+      // run-to-line (until)
+      bool until_hit = false;
+      if(until_line > 0 && line_num == until_line &&
+         (until_file.empty() || file_name == until_file || FindBreak(line_num, file_name))) {
+        until_hit = (line_num != cur_line_num || call_stack_pos != cur_call_stack_pos);
+      }
+      if(until_hit) {
+        until_line = -1;
+        until_file.clear();
+      }
+
+      // data breakpoints (watchpoints)
+      const bool watch_hit = CheckWatches(frame, call_stack, call_stack_pos);
+
+      if(found_break || until_hit || watch_hit) {
         continue_state = 0;
       }
-      
 
-      if(found_break || found_next_line || step_into || step_out) {
+      if(temp_hit) {
+        breaks.remove(hit_break);
+        delete hit_break;
+        hit_break = nullptr;
+      }
+
+      if(found_break || found_next_line || step_into || step_out || until_hit || watch_hit) {
         // set current line
         cur_line_num = line_num;
         cur_file_name = file_name;
@@ -276,6 +316,9 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         cur_method = frame->method;
         cur_call_stack = call_stack;
         cur_call_stack_pos = call_stack_pos;
+        // reset the inspection frame to the top of the stack on every stop
+        eval_frame = frame;
+        eval_frame_pos = call_stack_pos;
 
         is_step_into = is_step_out = is_next_line = false;
 
@@ -321,6 +364,10 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
           do {
             std::wstring line;
             ReadLine(line);
+            // gdb-style: empty input repeats the previous command
+            if(line.empty()) {
+              line = last_cmd;
+            }
             if(line.size() > 0) {
               command = ProcessCommand(line);
             }
@@ -328,7 +375,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
               command = nullptr;
             }
           } while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != STEP_IN_COMMAND &&
-                               command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != STEP_OUT_COMMAND));
+                               command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != STEP_OUT_COMMAND &&
+                               command->GetCommandType() != UNTIL_COMMAND));
         }
       }
     }
@@ -511,12 +559,32 @@ void Runtime::Debugger::DoLoad()
 }
 
 void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
+  const bool temporary = (break_command->GetCommandType() == TBREAK_COMMAND);
+  Expression* condition = break_command->GetCondition();
+
   int line_num = break_command->GetLineNumber();
+  std::wstring file_name = break_command->GetFileName();
+
+  // method form: b Class->Method  (resolve to the method's first executable line)
+  const std::wstring& mthd_name = break_command->GetMethodName();
+  if(!mthd_name.empty()) {
+    std::wstring resolved_file;
+    int resolved_line = -1;
+    if(MethodEntryLocation(file_name, mthd_name, resolved_file, resolved_line)) {
+      file_name = resolved_file;
+      line_num = resolved_line;
+    }
+    else {
+      std::wcout << L"unable to resolve method '" << file_name << L"->" << mthd_name
+                 << L"' (ensure the binary is loaded and compiled with debug symbols)." << std::endl;
+      is_error = true;
+      return;
+    }
+  }
+
   if(line_num < 0) {
     line_num = cur_line_num;
   }
-
-  std::wstring file_name = break_command->GetFileName();
   if(file_name.size() == 0) {
     file_name = cur_file_name;
   }
@@ -530,11 +598,27 @@ void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
   }
 
   if(file_name.size() != 0 && FileExists(path)) {
-    Expression* condition = break_command->GetCondition();
-    if(AddBreak(line_num, file_name, condition)) {
+    // warn/relocate when the requested line carries no executable instruction
+    if(mthd_name.empty() && !LineHasInstruction(file_name, line_num)) {
+      const int near_line = NearestExecutableLine(file_name, line_num);
+      if(near_line > 0 && near_line != line_num) {
+        std::wcout << C(CLR_YELLOW) << L"note: line " << line_num
+                   << L" has no executable code; moved breakpoint to line " << near_line << C(CLR_RESET) << std::endl;
+        line_num = near_line;
+      }
+      else if(near_line <= 0) {
+        std::wcout << C(CLR_YELLOW) << L"warning: line " << line_num
+                   << L" has no executable code; this breakpoint may never trigger." << C(CLR_RESET) << std::endl;
+      }
+    }
+
+    if(AddBreak(line_num, file_name, condition, temporary)) {
       std::wcout << L"added breakpoint: file='" << C(CLR_CYAN) << file_name << L":" << line_num << C(CLR_RESET) << L"'";
       if(condition) {
         std::wcout << L" " << C(CLR_YELLOW) << L"[conditional]" << C(CLR_RESET);
+      }
+      if(temporary) {
+        std::wcout << L" " << C(CLR_YELLOW) << L"[temporary]" << C(CLR_RESET);
       }
       std::wcout << std::endl;
     }
@@ -1180,7 +1264,9 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
 }
 
 void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext context) {
-  StackMethod* method = cur_frame->method;
+  // evaluate against the frame currently selected for inspection (frame/up/down)
+  StackFrame* eframe = eval_frame ? eval_frame : cur_frame;
+  StackMethod* method = eframe->method;
   //
   // instance reference
   //
@@ -1203,6 +1289,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
         case CHAR_PARM:
         case INT_PARM:
           reference->SetIntValue(ref_mem[dclr_value.id]);
+          ref_slot = &ref_mem[dclr_value.id];
+          ref_slot_type = dclr_value.type;
           break;
 
         case FUNC_PARM:
@@ -1214,6 +1302,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
           FLOAT_VALUE value;
           memcpy(&value, &ref_mem[dclr_value.id], sizeof(FLOAT_VALUE));
           reference->SetFloatValue(value);
+          ref_slot = &ref_mem[dclr_value.id];
+          ref_slot_type = dclr_value.type;
         }
           break;
 
@@ -1256,7 +1346,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
   // method reference
   //
   else {
-    ref_mem = cur_frame->mem;
+    ref_mem = eframe->mem;
     if(ref_mem) {
       StackDclr dclr_value;
 
@@ -1285,16 +1375,19 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
             dclr_value.id++;
           }
           else if(context == INST) {
-            ref_mem = (size_t*)cur_frame->mem[0];
+            ref_mem = (size_t*)eframe->mem[0];
           }
           else if(context == CLS) {
-            ref_mem = cur_frame->method->GetClass()->GetClassMemory();
+            ref_mem = eframe->method->GetClass()->GetClassMemory();
           }
 
           switch(dclr_value.type) {
           case CHAR_PARM:
           case INT_PARM:
             reference->SetIntValue(ref_mem[dclr_value.id + offset]);
+            // capture slot for 'set'
+            ref_slot = &ref_mem[dclr_value.id + offset];
+            ref_slot_type = dclr_value.type;
             break;
 
           case FUNC_PARM:
@@ -1306,6 +1399,9 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
             FLOAT_VALUE value;
             memcpy(&value, &ref_mem[dclr_value.id + offset], sizeof(FLOAT_VALUE));
             reference->SetFloatValue(value);
+            // capture slot for 'set'
+            ref_slot = &ref_mem[dclr_value.id + offset];
+            ref_slot_type = dclr_value.type;
           }
             break;
 
@@ -1668,13 +1764,19 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const std::wstrin
   return nullptr;
 }
 
-bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name, Expression* condition)
+bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name, Expression* condition, bool temporary)
 {
   if(line_num > 0 && !FindBreak(line_num, file_name)) {
     UserBreak* user_break = new UserBreak;
+    user_break->id = next_break_id++;
     user_break->line_num = line_num;
     user_break->file_name = file_name;
     user_break->condition = condition;
+    user_break->enabled = true;
+    user_break->temporary = temporary;
+    user_break->ignore_count = 0;
+    user_break->last_line = -1;
+    user_break->last_pos = -1;
     breaks.push_back(user_break);
     return true;
   }
@@ -1687,12 +1789,461 @@ void Runtime::Debugger::ListBreaks()
   std::wcout << L"breaks:" << std::endl;
   std::list<UserBreak*>::iterator iter;
   for(iter = breaks.begin(); iter != breaks.end(); iter++) {
-    std::wcout << L"  break: file='" << C(CLR_CYAN) << (*iter)->file_name << L":" << (*iter)->line_num << C(CLR_RESET) << L"'";
-    if((*iter)->condition) {
+    UserBreak* user_break = *iter;
+    std::wcout << L"  break #" << user_break->id << L": file='" << C(CLR_CYAN) << user_break->file_name << L":" << user_break->line_num << C(CLR_RESET) << L"'";
+    if(user_break->condition) {
       std::wcout << L" " << C(CLR_YELLOW) << L"[conditional]" << C(CLR_RESET);
+    }
+    if(user_break->temporary) {
+      std::wcout << L" " << C(CLR_YELLOW) << L"[temporary]" << C(CLR_RESET);
+    }
+    if(!user_break->enabled) {
+      std::wcout << L" " << C(CLR_RED) << L"[disabled]" << C(CLR_RESET);
+    }
+    if(user_break->ignore_count > 0) {
+      std::wcout << L" " << C(CLR_YELLOW) << L"[ignore " << user_break->ignore_count << L"]" << C(CLR_RESET);
     }
     std::wcout << std::endl;
   }
+}
+
+// basename helper (strip directory components)
+static std::wstring DbgBaseName(const std::wstring& f) {
+  const size_t sep = f.find_last_of(L"/\\");
+  return (sep == std::wstring::npos) ? f : f.substr(sep + 1);
+}
+
+// returns the loaded program (available after the binary is loaded, even pre-run)
+static StackProgram* DbgProgram(StackProgram* cur_program, Loader* loader) {
+  if(cur_program) {
+    return cur_program;
+  }
+  return loader ? loader->GetProgram() : nullptr;
+}
+
+bool Runtime::Debugger::LineHasInstruction(const std::wstring& file_name, int line_num) {
+  StackProgram* prog = DbgProgram(cur_program, loader);
+  if(!prog) {
+    // can't validate without a loaded program; assume valid
+    return true;
+  }
+
+  const std::wstring want = DbgBaseName(file_name);
+  StackClass** classes = prog->GetClasses();
+  const long class_num = prog->GetClassNumber();
+  for(long i = 0; i < class_num; ++i) {
+    StackClass* klass = classes[i];
+    if(!klass->IsDebug() || DbgBaseName(klass->GetFileName()) != want) {
+      continue;
+    }
+    StackMethod** methods = klass->GetMethods();
+    const int mthd_num = klass->GetMethodCount();
+    for(int m = 0; m < mthd_num; ++m) {
+      StackMethod* method = methods[m];
+      const long instr_num = method->GetInstructionCount();
+      for(long k = 0; k < instr_num; ++k) {
+        if(method->GetInstruction(k)->GetLineNumber() == line_num) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+int Runtime::Debugger::NearestExecutableLine(const std::wstring& file_name, int line_num) {
+  StackProgram* prog = DbgProgram(cur_program, loader);
+  if(!prog) {
+    return -1;
+  }
+
+  const std::wstring want = DbgBaseName(file_name);
+  int best = -1;
+  int best_dist = INT_MAX;
+  StackClass** classes = prog->GetClasses();
+  const long class_num = prog->GetClassNumber();
+  for(long i = 0; i < class_num; ++i) {
+    StackClass* klass = classes[i];
+    if(!klass->IsDebug() || DbgBaseName(klass->GetFileName()) != want) {
+      continue;
+    }
+    StackMethod** methods = klass->GetMethods();
+    const int mthd_num = klass->GetMethodCount();
+    for(int m = 0; m < mthd_num; ++m) {
+      StackMethod* method = methods[m];
+      const long instr_num = method->GetInstructionCount();
+      for(long k = 0; k < instr_num; ++k) {
+        const int ln = method->GetInstruction(k)->GetLineNumber();
+        // prefer the closest line at or after the requested line
+        if(ln >= line_num && (ln - line_num) < best_dist) {
+          best_dist = ln - line_num;
+          best = ln;
+        }
+      }
+    }
+  }
+
+  return best;
+}
+
+bool Runtime::Debugger::MethodEntryLocation(const std::wstring& cls_name, const std::wstring& mthd_name, std::wstring& out_file, int& out_line) {
+  StackProgram* prog = DbgProgram(cur_program, loader);
+  if(!prog) {
+    return false;
+  }
+
+  StackClass* klass = prog->GetClass(cls_name);
+  if(!klass || !klass->IsDebug()) {
+    return false;
+  }
+
+  std::vector<StackMethod*> methods = klass->GetMethods(mthd_name);
+  if(methods.empty()) {
+    return false;
+  }
+
+  // first method overload; land on the first body line (skip the signature line
+  // so parameters are live), falling back to the entry line if there is no body
+  StackMethod* method = methods[0];
+  const long instr_num = method->GetInstructionCount();
+  int entry_line = -1;
+  for(long k = 0; k < instr_num; ++k) {
+    const int ln = method->GetInstruction(k)->GetLineNumber();
+    if(ln <= 0) {
+      continue;
+    }
+    if(entry_line < 0) {
+      entry_line = ln;
+    }
+    else if(ln > entry_line) {
+      out_file = DbgBaseName(klass->GetFileName());
+      out_line = ln;
+      return true;
+    }
+  }
+
+  if(entry_line > 0) {
+    out_file = DbgBaseName(klass->GetFileName());
+    out_line = entry_line;
+    return true;
+  }
+
+  return false;
+}
+
+// returns the StackFrame for a logical frame position (top == cur_call_stack_pos)
+static StackFrame* DbgFrameAt(long pos, StackFrame* top, StackFrame** call_stack, long top_pos) {
+  if(pos >= top_pos) {
+    return top;
+  }
+  if(pos < 0) {
+    return call_stack[0];
+  }
+  return call_stack[pos];
+}
+
+void Runtime::Debugger::ShowFrame() {
+  if(!interpreter) {
+    std::wcout << L"program is not running." << std::endl;
+    return;
+  }
+
+  StackFrame* frame = DbgFrameAt(eval_frame_pos, cur_frame, cur_call_stack, cur_call_stack_pos);
+  StackMethod* method = frame->method;
+  std::wcout << L"frame #" << eval_frame_pos << L": class='" << C(CLR_GREEN) << method->GetClass()->GetName()
+             << C(CLR_RESET) << L"', method='" << C(CLR_GREEN) << PrintMethod(method) << C(CLR_RESET) << L"'";
+  const long ip = frame->ip;
+  if(ip > -1) {
+    StackInstr* instr = method->GetInstruction(ip);
+    std::wcout << L", file=" << C(CLR_CYAN) << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << C(CLR_RESET);
+  }
+  std::wcout << std::endl;
+}
+
+void Runtime::Debugger::ProcessFrame(Frame* frame) {
+  if(!interpreter) {
+    std::wcout << L"program is not running." << std::endl;
+    return;
+  }
+
+  const int num = frame->GetFrameNumber();
+  if(num >= 0) {
+    if(num > cur_call_stack_pos) {
+      std::wcout << L"no such frame (valid range 0.." << cur_call_stack_pos << L")." << std::endl;
+      return;
+    }
+    eval_frame_pos = num;
+    eval_frame = DbgFrameAt(eval_frame_pos, cur_frame, cur_call_stack, cur_call_stack_pos);
+  }
+  ShowFrame();
+}
+
+void Runtime::Debugger::ProcessFrameShift(int delta) {
+  if(!interpreter) {
+    std::wcout << L"program is not running." << std::endl;
+    return;
+  }
+
+  long new_pos = eval_frame_pos + delta;
+  if(new_pos < 0) {
+    new_pos = 0;
+    std::wcout << L"already at outermost frame." << std::endl;
+  }
+  else if(new_pos > cur_call_stack_pos) {
+    new_pos = cur_call_stack_pos;
+    std::wcout << L"already at innermost frame." << std::endl;
+  }
+  eval_frame_pos = new_pos;
+  eval_frame = DbgFrameAt(eval_frame_pos, cur_frame, cur_call_stack, cur_call_stack_pos);
+  ShowFrame();
+}
+
+void Runtime::Debugger::ProcessLocals() {
+  if(!interpreter) {
+    std::wcout << L"program is not running." << std::endl;
+    return;
+  }
+
+  StackFrame* frame = DbgFrameAt(eval_frame_pos, cur_frame, cur_call_stack, cur_call_stack_pos);
+  StackMethod* method = frame->method;
+  StackDclr** dclrs = method->GetDeclarations();
+  const long dclr_num = method->GetNumberDeclarations();
+  if(dclr_num <= 0) {
+    std::wcout << L"no locals in this frame." << std::endl;
+    return;
+  }
+
+  std::wcout << L"locals (frame #" << eval_frame_pos << L"):" << std::endl;
+  for(long i = 0; i < dclr_num; ++i) {
+    const std::wstring& full = dclrs[i]->name;
+    const std::wstring bare = full.substr(full.find_last_of(L':') + 1);
+    if(bare.empty()) {
+      continue;
+    }
+    std::wcout << L"  " << C(CLR_BOLD) << bare << C(CLR_RESET) << L" -> ";
+    Reference* reference = TreeFactory::Instance()->MakeReference(bare);
+    Print* print = TreeFactory::Instance()->MakePrint(reference);
+    ProcessPrint(print);
+  }
+}
+
+void Runtime::Debugger::ProcessSet(Set* set) {
+  if(!interpreter) {
+    std::wcout << L"program is not running." << std::endl;
+    return;
+  }
+
+  // resolve the target slot
+  ref_slot = nullptr;
+  ref_slot_type = -1;
+  ref_mem = nullptr;
+  ref_klass = nullptr;
+  is_error = false;
+  EvaluateExpression(set->GetReference());
+  if(is_error || !ref_slot) {
+    std::wcout << L"cannot set: target must be an assignable Int/Char/Float variable." << std::endl;
+    is_error = false;
+    return;
+  }
+
+  // capture slot before evaluating the value (which reuses ref_slot)
+  size_t* slot = ref_slot;
+  const int slot_type = ref_slot_type;
+
+  // evaluate the new value
+  ref_mem = nullptr;
+  ref_klass = nullptr;
+  is_error = false;
+  Expression* value = set->GetValue();
+  EvaluateExpression(value);
+  if(is_error) {
+    std::wcout << L"cannot set: invalid value expression." << std::endl;
+    is_error = false;
+    return;
+  }
+
+  if(slot_type == FLOAT_PARM) {
+    FLOAT_VALUE fv = value->GetFloatEval() ? value->GetFloatValue() : (FLOAT_VALUE)(long)value->GetIntValue();
+    memcpy(slot, &fv, sizeof(FLOAT_VALUE));
+    std::wcout << L"set: " << C(CLR_BOLD) << L"value=" << fv << C(CLR_RESET) << std::endl;
+  }
+  else {
+    const size_t iv = value->GetFloatEval() ? (size_t)(long)value->GetFloatValue() : (size_t)value->GetIntValue();
+    *slot = iv;
+    std::ios_base::fmtflags flags(std::wcout.flags());
+    std::wcout << L"set: " << C(CLR_BOLD) << L"value=" << (long)iv << L"(0x" << std::hex << (long)iv << L")" << C(CLR_RESET) << std::endl;
+    std::wcout.flags(flags);
+  }
+}
+
+void Runtime::Debugger::ProcessEnableDisable(int id, bool enable) {
+  if(breaks.empty()) {
+    std::wcout << L"no breakpoints defined." << std::endl;
+    return;
+  }
+
+  int count = 0;
+  for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); ++iter) {
+    if(id < 0 || (*iter)->id == id) {
+      (*iter)->enabled = enable;
+      count++;
+    }
+  }
+
+  if(count == 0) {
+    std::wcout << L"no breakpoint with id #" << id << L"." << std::endl;
+  }
+  else {
+    std::wcout << (enable ? L"enabled " : L"disabled ") << count << L" breakpoint(s)." << std::endl;
+  }
+}
+
+void Runtime::Debugger::ProcessIgnore(int id, int count) {
+  UserBreak* target = nullptr;
+  for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); ++iter) {
+    if((*iter)->id == id) {
+      target = *iter;
+      break;
+    }
+  }
+
+  if(!target) {
+    std::wcout << L"no breakpoint with id #" << id << L"." << std::endl;
+    return;
+  }
+
+  target->ignore_count = count;
+  std::wcout << L"breakpoint #" << id << L" will be ignored for the next " << count << L" hit(s)." << std::endl;
+}
+
+void Runtime::Debugger::ProcessUntil(FilePostion* until_command) {
+  if(!interpreter) {
+    std::wcout << L"program is not running." << std::endl;
+    return;
+  }
+
+  int line_num = until_command->GetLineNumber();
+  if(line_num <= 0) {
+    std::wcout << L"usage: until <line>" << std::endl;
+    return;
+  }
+
+  std::wstring file_name = until_command->GetFileName();
+  if(file_name.empty()) {
+    file_name = cur_file_name;
+  }
+
+  until_line = line_num;
+  until_file = file_name;
+  continue_state = 1;
+  std::wcout << L"running until " << C(CLR_CYAN) << DbgBaseName(file_name) << L":" << line_num << C(CLR_RESET) << std::endl;
+}
+
+void Runtime::Debugger::ProcessWatch(Watch* watch) {
+  WatchPoint* wp = new WatchPoint;
+  wp->id = next_watch_id++;
+  wp->expression = watch->GetExpression();
+  wp->text = watch->GetText();
+  wp->has_value = false;
+  wp->is_float = false;
+  wp->last_int = 0;
+  wp->last_float = 0.0;
+  watches.push_back(wp);
+  std::wcout << L"added watchpoint #" << wp->id << L"." << std::endl;
+}
+
+void Runtime::Debugger::ProcessUnwatch(int id) {
+  for(std::list<WatchPoint*>::iterator iter = watches.begin(); iter != watches.end(); ++iter) {
+    if(id < 0 || (*iter)->id == id) {
+      WatchPoint* wp = *iter;
+      iter = watches.erase(iter);
+      delete wp;
+      std::wcout << L"removed watchpoint." << std::endl;
+      if(id >= 0) {
+        return;
+      }
+      if(iter == watches.end()) {
+        break;
+      }
+    }
+  }
+}
+
+void Runtime::Debugger::ProcessWatches() {
+  if(watches.empty()) {
+    std::wcout << L"no watchpoints defined." << std::endl;
+    return;
+  }
+
+  std::wcout << L"watches:" << std::endl;
+  for(std::list<WatchPoint*>::iterator iter = watches.begin(); iter != watches.end(); ++iter) {
+    std::wcout << L"  watch #" << (*iter)->id << std::endl;
+  }
+}
+
+bool Runtime::Debugger::CheckWatches(StackFrame* frame, StackFrame** call_stack, long call_stack_pos) {
+  if(watches.empty()) {
+    return false;
+  }
+
+  // evaluate each watch expression against the current (top) frame
+  StackFrame* saved_eval = eval_frame;
+  eval_frame = frame;
+
+  bool triggered = false;
+  for(std::list<WatchPoint*>::iterator iter = watches.begin(); iter != watches.end(); ++iter) {
+    WatchPoint* wp = *iter;
+    if(!wp->expression) {
+      continue;
+    }
+
+    ref_mem = nullptr;
+    ref_klass = nullptr;
+    is_error = false;
+    EvaluateExpression(wp->expression);
+    if(is_error) {
+      // variable not in scope in this frame; skip
+      is_error = false;
+      continue;
+    }
+
+    const bool is_float = wp->expression->GetFloatEval();
+    bool changed = false;
+    size_t new_int = 0;
+    FLOAT_VALUE new_float = 0.0;
+    if(is_float) {
+      new_float = wp->expression->GetFloatValue();
+      changed = wp->has_value && (new_float != wp->last_float);
+    }
+    else {
+      new_int = (size_t)wp->expression->GetIntValue();
+      changed = wp->has_value && (new_int != wp->last_int);
+    }
+
+    if(changed && mode == DebugMode::CLI) {
+      std::wcout << C(CLR_YELLOW) << L"watch #" << wp->id << L" changed: ";
+      if(is_float) {
+        std::wcout << L"old=" << wp->last_float << L", new=" << new_float;
+      }
+      else {
+        std::wcout << L"old=" << (long)wp->last_int << L", new=" << (long)new_int;
+      }
+      std::wcout << C(CLR_RESET) << std::endl;
+    }
+
+    wp->is_float = is_float;
+    wp->last_int = new_int;
+    wp->last_float = new_float;
+    wp->has_value = true;
+    if(changed) {
+      triggered = true;
+    }
+  }
+
+  is_error = false;
+  eval_frame = saved_eval;
+  return triggered;
 }
 
 void Runtime::Debugger::PrintDeclarations(StackDclr** dclrs, int dclrs_num)
@@ -1754,6 +2305,9 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
 #ifdef _DEBUG
   std::wcout << L"input: |" << line << L"|" << std::endl;
 #endif
+
+  // remember the command so an empty Enter can repeat it (gdb-style)
+  last_cmd = line;
 
   // parser input
   Parser parser;
@@ -1954,10 +2508,76 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
       }
       break;
 
+    case FRAME_COMMAND:
+      ProcessFrame(static_cast<Frame*>(command));
+      break;
+
+    case UP_COMMAND:
+      ProcessFrameShift(-1);
+      break;
+
+    case DOWN_COMMAND:
+      ProcessFrameShift(1);
+      break;
+
+    case LOCALS_COMMAND:
+      ProcessLocals();
+      break;
+
+    case SET_COMMAND:
+      ProcessSet(static_cast<Set*>(command));
+      break;
+
+    case TBREAK_COMMAND:
+      ProcessBreak(static_cast<FilePostion*>(command));
+      break;
+
+    case ENABLE_COMMAND:
+      ProcessEnableDisable(static_cast<NumCommand*>(command)->GetId(), true);
+      break;
+
+    case DISABLE_COMMAND:
+      ProcessEnableDisable(static_cast<NumCommand*>(command)->GetId(), false);
+      break;
+
+    case IGNORE_COMMAND: {
+      NumCommand* num_command = static_cast<NumCommand*>(command);
+      ProcessIgnore(num_command->GetId(), num_command->GetCount());
+    }
+      break;
+
+    case UNTIL_COMMAND:
+      ProcessUntil(static_cast<FilePostion*>(command));
+      break;
+
+    case WATCH_COMMAND:
+      ProcessWatch(static_cast<Watch*>(command));
+      break;
+
+    case WATCHES_COMMAND:
+      ProcessWatches();
+      break;
+
+    case UNWATCH_COMMAND:
+      ProcessUnwatch(static_cast<Watch*>(command)->GetId());
+      break;
+
     case HELP_COMMAND:
       std::wcout << L"\n" << C(CLR_BOLD) << L"Commands:" << C(CLR_RESET) << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"r, run" << C(CLR_RESET) << L"                  Start/restart program" << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"b, break" << C(CLR_RESET) << L" <file>:<line> [if <expr>]  Set breakpoint" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"b, break" << C(CLR_RESET) << L" <Class>-><Method>  Break at method entry" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"tbreak" << C(CLR_RESET) << L" <file>:<line>    Temporary (one-shot) breakpoint" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"enable/disable" << C(CLR_RESET) << L" [<id>]   Enable/disable breakpoint(s)" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"ignore" << C(CLR_RESET) << L" <id> <count>     Skip next <count> hits of a breakpoint" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"watch" << C(CLR_RESET) << L" <expr>            Break when <expr> changes" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"watches" << C(CLR_RESET) << L"                 List watchpoints" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"unwatch" << C(CLR_RESET) << L" [<id>]          Remove watchpoint(s)" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"until" << C(CLR_RESET) << L" <line>            Run until <line> in the current frame" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"frame" << C(CLR_RESET) << L" [<n>]             Show/select stack frame" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"up / down" << C(CLR_RESET) << L"               Move to caller / callee frame" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"locals" << C(CLR_RESET) << L"                  Print all locals in the current frame" << std::endl;
+      std::wcout << L"  " << C(CLR_GREEN) << L"set" << C(CLR_RESET) << L" <var> = <expr>      Assign a new value to a variable" << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"breaks" << C(CLR_RESET) << L"                  List all breakpoints" << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"d, delete" << C(CLR_RESET) << L" <file>:<line>  Remove breakpoint" << std::endl;
       std::wcout << L"  " << C(CLR_GREEN) << L"clear" << C(CLR_RESET) << L"                   Clear all breakpoints" << std::endl;
@@ -2117,6 +2737,20 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
   ref_mem = nullptr;
   ref_klass = nullptr;
   is_step_out = false;
+  eval_frame = nullptr;
+  eval_frame_pos = 0;
+  until_line = -1;
+  until_file.clear();
+  prev_instr_line = -1;
+  prev_instr_pos = -1;
+
+  // clear watchpoints
+  while(!watches.empty()) {
+    WatchPoint* tmp = watches.front();
+    watches.erase(watches.begin());
+    delete tmp;
+    tmp = nullptr;
+  }
 }
 
 // ============================================
@@ -2458,6 +3092,10 @@ void Runtime::Debugger::Debug() {
   while(true) {
     std::wstring line;
     ReadLine(line);
+    // gdb-style: empty input repeats the previous command
+    if(line.empty()) {
+      line = last_cmd;
+    }
     if(line.size() > 0) {
       ProcessCommand(line);
     }

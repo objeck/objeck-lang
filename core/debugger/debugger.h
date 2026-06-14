@@ -58,10 +58,28 @@ namespace Runtime {
   enum class DebugMode { CLI, DAP };
   
   typedef struct _UserBreak {
+    int id;
     int line_num;
     std::wstring file_name;
     Expression* condition;
+    bool enabled;
+    bool temporary;
+    int ignore_count;
+    // last (line, frame) this break decremented its ignore count, so multiple
+    // instructions on the same source line only count as one hit
+    int last_line;
+    long last_pos;
   } UserBreak;
+
+  typedef struct _WatchPoint {
+    int id;
+    std::wstring text;
+    Expression* expression;
+    bool has_value;
+    bool is_float;
+    size_t last_int;
+    FLOAT_VALUE last_float;
+  } WatchPoint;
 
   /********************************
   * Source file
@@ -127,6 +145,25 @@ namespace Runtime {
     int continue_state;
     size_t* ref_mem;
     StackClass* ref_klass;
+    // frame selected for inspection (frame/up/down); evaluation reads from here
+    StackFrame* eval_frame;
+    long eval_frame_pos;
+    // captured slot for 'set' (address + memory type of the resolved primitive)
+    size_t* ref_slot;
+    int ref_slot_type;
+    // gdb-style repeat-last-command on empty input
+    std::wstring last_cmd;
+    // breakpoint / watchpoint bookkeeping
+    int next_break_id;
+    int next_watch_id;
+    std::list<WatchPoint*> watches;
+    // run-to-line (until); -1 when inactive
+    int until_line;
+    std::wstring until_file;
+    // previous instruction's (line, frame) so a breakpoint is evaluated only on
+    // the first opcode of each line-entry (a source line maps to many opcodes)
+    int prev_instr_line;
+    long prev_instr_pos;
     // interpreter variables
     std::vector<std::wstring> arguments;
     StackInterpreter* interpreter;
@@ -153,7 +190,7 @@ namespace Runtime {
     UserBreak* FindBreak(int line_num, const std::wstring& file_name);
 
     // adds a break (with optional condition expression)
-    bool AddBreak(int line_num, const std::wstring &file_name, Expression* condition = nullptr);
+    bool AddBreak(int line_num, const std::wstring &file_name, Expression* condition = nullptr, bool temporary = false);
 
     // lists all breaks
     void ListBreaks();
@@ -179,6 +216,22 @@ namespace Runtime {
     void ProcessBreaks();
     void ProcessDelete(FilePostion* break_command);
     void ProcessPrint(Print* print);
+    void ProcessFrame(Frame* frame);
+    void ProcessFrameShift(int delta);
+    void ShowFrame();
+    void ProcessLocals();
+    void ProcessSet(Set* set);
+    void ProcessEnableDisable(int id, bool enable);
+    void ProcessIgnore(int id, int count);
+    void ProcessUntil(FilePostion* until_command);
+    void ProcessWatch(Watch* watch);
+    void ProcessUnwatch(int id);
+    void ProcessWatches();
+    bool CheckWatches(StackFrame* frame, StackFrame** call_stack, long call_stack_pos);
+    // breakpoint helpers
+    bool LineHasInstruction(const std::wstring& file_name, int line_num);
+    int NearestExecutableLine(const std::wstring& file_name, int line_num);
+    bool MethodEntryLocation(const std::wstring& cls_name, const std::wstring& mthd_name, std::wstring& out_file, int& out_line);
     void ClearBreaks();
     void EvaluateExpression(Expression* expression);
     void EvaluateReference(Reference* &reference, MemoryContext context);
@@ -269,6 +322,17 @@ namespace Runtime {
       loader = nullptr;
       mode = DebugMode::CLI;
       dap_adapter = nullptr;
+      eval_frame = nullptr;
+      eval_frame_pos = 0;
+      ref_slot = nullptr;
+      ref_slot_type = -1;
+      next_break_id = 1;
+      next_watch_id = 1;
+      until_line = -1;
+      prev_instr_line = -1;
+      prev_instr_pos = -1;
+      is_step_into = is_next_line = false;
+      continue_state = 0;
     }
 
     ~Debugger() {
