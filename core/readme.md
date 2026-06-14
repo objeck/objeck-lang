@@ -605,8 +605,8 @@ GC: Mark-and-sweep with generational collection
 
 ## Version Info
 
-**Current:** v2026.6.0
-**Released:** May 2026
+**Current:** v2026.6.1
+**Released:** June 2026
 **License:** BSD 3-Clause
 
 **Recent improvements:**

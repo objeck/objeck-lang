@@ -4,6 +4,8 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+## [v2026.6.1] - 2026-06-14
+
 ### New Features
 - **String interpolation — expressions, format specifiers, and `String->Format`**: `"{$...}"` interpolation now accepts arbitrary expressions (arithmetic, comparison, logical — e.g. `"{$i + 1}"`, `"{$a * b - c}"`, `"{$x > y}"`), not just bare variables and calls. Inline format specifiers in Python/.NET colon syntax control precision, width, alignment, and radix: `"{$pi:.2}"`, `"{$n:5}"` / `"{$n:05}"`, `"{$s:<10}"` / `"{$s:>10}"`, `"{$v:x}"` (hex), `"{$v:b}"` (binary). A new positional helper `String->Format("{0} = {1}", a, b)` (with `{{`/`}}` escaping) complements interpolation for reusable/runtime format strings. Backed by new library helpers `Float->ToString(value, precision)` and `String->PadTo(width, ch, is_left)`; specifiers desugar onto existing helpers with no new VM opcodes.
 - **Generics: bounds, compound/F-bounds, and variance**: type parameters gain `T : A & B` compound bounds (a concrete argument must satisfy every bound), F-bounded constraints `T : Compare<T>`, and declaration-site variance — `out T` (covariant) and `in T` (contravariant) — checked soundly in both directions and preserved across the `.obl` library boundary. Existing invariant generics and syntax are unchanged (`out` stays a usable identifier); generic type-mismatch diagnostics now render readable types (`Hash<String, IntRef>`).
