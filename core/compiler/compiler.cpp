@@ -112,7 +112,19 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
 #endif  
 #else
   setlocale(LC_ALL, "");
-  setlocale(LC_CTYPE, "UTF-8");
+  // Source files are UTF-8, and the scanner decodes them with mbstowcs(), which
+  // honors LC_CTYPE. Force a UTF-8 LC_CTYPE so a non-ASCII byte (e.g. an em-dash
+  // in a comment) decodes instead of failing. The locale name "UTF-8" is only
+  // valid on macOS; glibc rejects it (setlocale returns NULL, leaving the ambient
+  // locale — "C"/"POSIX" in a bare environment, where mbstowcs() rejects every
+  // non-ASCII byte and the source reads back empty -> "Unable to open source
+  // file"). Fall through to portable UTF-8 locale names; C.UTF-8 is always
+  // present on glibc.
+  if(!setlocale(LC_CTYPE, "UTF-8") &&      // macOS
+     !setlocale(LC_CTYPE, "C.UTF-8") &&    // glibc (always available)
+     !setlocale(LC_CTYPE, "en_US.UTF-8")) {
+    setlocale(LC_CTYPE, "en_US.utf8");     // last-resort spelling
+  }
 #endif
   
   // Check for version flag (support --version, -ver, -v)
