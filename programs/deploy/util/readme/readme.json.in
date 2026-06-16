@@ -12,6 +12,13 @@
 	},
 	"features": [
 		{
+			"version": "v2026.6.2",
+			"items": [
+				"Documentation: API reference code examples now render as formatted, syntax-highlighted blocks — the ONNX library examples previously appeared as run-on inline text",
+				"Tooling: the release-process skills (version bump, release, docs, playground deploy) are now versioned in the repo"
+			]
+		},
+		{
 			"version": "v2026.6.1",
 			"items": [
 				"Language: string interpolation with expressions and format specifiers (\"{$pi:.2}\", \"{$total * rate}\") plus String->Format positional templating",
