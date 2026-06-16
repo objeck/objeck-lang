@@ -87,19 +87,30 @@ int main(const int argc, const char* argv[])
     }
 
     // enable UTF-8 environment
-#if defined(_X64)
-    char* locale = setlocale(LC_ALL, ""); 
-    std::locale lollocale(locale);
-    setlocale(LC_ALL, locale); 
-    wcout.imbue(lollocale);
-#elif defined(_ARM64)
+#if defined(_X64) || defined(_ARM64)
     char* locale = setlocale(LC_ALL, "");
+    // Bytecode string literals are UTF-8. If the ambient locale is not UTF-8
+    // (e.g. LANG unset -> "C"), they can neither be decoded (BytesToUnicode ->
+    // mbstowcs, at load) nor printed (wcout), so obr aborts with
+    // ">>> Unable to read unicode std::string <<<". Switch to a UTF-8 locale:
+    // "C.UTF-8" is always present on glibc and keeps '.' as the decimal
+    // separator (LC_NUMERIC unchanged for float output); "UTF-8" is the macOS
+    // spelling. An ambient UTF-8 locale is left untouched.
+    {
+      const std::string loc(locale ? locale : "");
+      if(loc.find("UTF-8") == std::string::npos && loc.find("utf8") == std::string::npos &&
+         loc.find("UTF8") == std::string::npos) {
+        char* utf8 = setlocale(LC_ALL, "C.UTF-8");
+        if(!utf8) { utf8 = setlocale(LC_ALL, "en_US.UTF-8"); }
+        if(!utf8) { utf8 = setlocale(LC_ALL, "UTF-8"); }  // macOS
+        if(utf8) { locale = utf8; }
+      }
+    }
     std::locale lollocale(locale);
     setlocale(LC_ALL, locale);
     wcout.imbue(lollocale);
-    setlocale(LC_ALL, "en_US.UTF-8");
 #else
-    setlocale(LC_ALL, "en_US.utf8"); 
+    setlocale(LC_ALL, "en_US.utf8");
 #endif
     
     //
