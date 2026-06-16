@@ -1778,11 +1778,26 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
 // label re-executed each iteration). The working stack is flushed at a label so
 // no live JIT temp is held; persistent JIT state lives in SP-relative slots, not
 // caller-saved registers, and SafePoint takes no params and returns void, so the
-// call clobbers nothing the JIT relies on (x30 is saved in the prologue). Mirror
-// of the AMD64 JitAmd64::EmitJitSafePoint.
+// call clobbers nothing the JIT relies on (x30 is saved in the prologue).
+//
+// A hot loop crosses a label each iteration, so the common case (no collection)
+// must stay off the call path: inline a load-acquire of the stop-the-world flag
+// and only CALL SafePoint() when it is set. ldarb mirrors SafePoint's acquire
+// load on the weak ARM64 memory model. X10/X11 are caller-saved temps, dead at a
+// label. Mirror of the AMD64 JitAmd64::EmitJitSafePoint.
 void JitArm64::EmitJitSafePoint() {
+  // Fast path: ldarb W11, [&stw_active]; cbz W11, skip
+  move_imm_reg((size_t)MemoryManager::StwActiveAddr(), X10);          // X10 = &stw_active
+  AddMachineCode(0x08DFFC00 | ((X10 & 0x1F) << 5) | (X11 & 0x1F));    // ldarb W11, [X10]
+  const long cbz_index = code_index;
+  cbz_reg(X11);                                                       // cbz W11, skip (patched below)
+  // Slow path: a collection is active — park.
   move_imm_reg((size_t)MemoryManager::SafePoint, X10);
   call_reg(X10);
+  // Backpatch the cbz imm19 (bits 23:5, offset in instructions) to land past the call.
+  const long skip_index = code_index;
+  const int32_t imm19 = (int32_t)(skip_index - cbz_index);
+  code[(size_t)cbz_index] |= ((uint32_t)(imm19 & 0x7FFFF)) << 5;
 }
 
 void JitArm64::ProcessReturn(long params) {

@@ -1124,13 +1124,22 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
   }
 }
 
-// Emit a GC safepoint poll: call MemoryManager::SafePoint(), which parks this
-// thread if a collection is in progress. Emitted only at unconditional loop
-// back-edges, where the working stack is empty and locals are already flushed,
-// so the call clobbers no live JIT value (volatiles are dead here; callee-saved
-// regs incl. RBP frame are ABI-preserved). Without this a JITed no-allocation
-// loop never reaches a safepoint and the stop-the-world collector deadlocks.
+// Emit a GC safepoint poll. Parks this thread if a collection is in progress.
+// Emitted at every label; a hot loop crosses one each iteration, so the common
+// case (no collection) must stay off the call path: inline a load+test of the
+// stop-the-world flag and only CALL MemoryManager::SafePoint() when it is set.
+// At a label the working stack is empty and locals are flushed, so RAX and the
+// call-clobbered volatiles are all dead here (callee-saved regs incl. the RBP
+// frame are ABI-preserved). Without this a JITed no-allocation loop never
+// reaches a safepoint and the stop-the-world collector deadlocks.
 void JitAmd64::EmitJitSafePoint() {
+  // Fast path: cmp byte [&stw_active], 0 ; je skip
+  move_imm_reg((int64_t)MemoryManager::StwActiveAddr(), RAX);
+  AddMachineCode(0x80); AddMachineCode(0x38); AddMachineCode(0x00);  // cmp byte ptr [rax], 0
+  AddMachineCode(0x0f); AddMachineCode(0x84);                        // je rel32
+  long je_pos = code_index;
+  AddImm(0);
+  // Slow path: a collection is active — park.
 #ifdef _WIN64
   sub_imm_reg(32, RSP);   // shadow space (RSP stays 16-aligned)
   move_imm_reg((size_t)MemoryManager::SafePoint, R10);
@@ -1140,6 +1149,10 @@ void JitAmd64::EmitJitSafePoint() {
   move_imm_reg((size_t)MemoryManager::SafePoint, R15);
   call_reg(R15);
 #endif
+  // Backpatch the je to land here, past the slow-path call.
+  long skip_index = code_index;
+  long jmp_offset = skip_index - (je_pos + 4);
+  memcpy(&code[(size_t)je_pos], &jmp_offset, 4);
 }
 
 void JitAmd64::ProcessJump(StackInstr* instr) {
