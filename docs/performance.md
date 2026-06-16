@@ -173,16 +173,56 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 
 ---
 
-## Future Work
+## Speedup Roadmap
+
+Prioritized by leverage, grounded in the cross-language run above. The single
+clearest signal: **Objeck already beats Python/Ruby on JIT-friendly loops but
+loses to everything — including the interpreters — on allocation-bound work
+(binarytrees), and trails Java/LuaJIT on float loops.** So the highest-value work
+is allocation throughput and float codegen, not more integer-loop tuning.
+
+### P0 — Recover the GC-safepoint regression *(in progress)*
+
+The cooperative stop-the-world work (v2026.6.2) emits an unconditional
+`call MemoryManager::SafePoint` at **every JIT label**, which regressed
+label-dense integer loops (fannkuchredux ~35s → ~59s; the call/ret + optimization
+barrier is paid every loop iteration) while barely touching float/call-dominated
+loops (spectralnorm_native +7%).
+
+| Step | Status | Impact |
+|------|--------|--------|
+| Inline the flag test, call only when a collection is active (`cmp [stw_active],0; je skip`) | **AMD64 done, validated** (branch `perf/jit-safepoint-inline`); ARM64 mirror pending on-device test | fannkuch 71.6s → 56.9s (**−20%**, recovers ~71% of the regression); GC/JIT + multithreaded-STW stress green |
+| Cache `&stw_active` in a callee-saved reg at the prologue | TODO | drops the 10-byte `mov imm64` per label — most of the residual ~6s |
+| Emit the poll only at true loop back-edges, not at if/else merges | TODO | fewer polls in branchy code; needs back-edge detection |
+
+### P1 — Allocation & GC throughput *(the #1 cross-language gap)*
+
+binarytrees is the one benchmark Objeck loses to *every* peer (Java 22x, even the
+interpreters ~2x). The young-gen bump allocator helped, but per-object allocation
++ a call into the allocator still dominates.
 
 | Opportunity | Category | Expected Impact |
 |-------------|----------|----------------|
-| **ProcessInlineMethod for MTHD_CALL** | JIT | HIGH -- constructor/getter inlining within JIT'd methods would eliminate the `ProcessStackCallback` trampoline entirely. Blocked by INSTANCE_MEM offset corruption in constructors; needs frame layout investigation. |
-| **DYN_MTHD_CALL auto-JIT** | JIT | HIGH -- closure/function-ref calls currently blocked from auto-JIT. prgm70/71 segfault patterns need root-cause investigation before enabling. |
-| **Extend fast-path to float ops** | VM | MED -- `LOAD_FLOAT_LIT`, `ADD_FLOAT`, `SUB_FLOAT`, `MUL_FLOAT` are not yet in the inline switch. Float-heavy interpreted code would benefit. |
-| **Escape analysis** | Compiler/VM | MED -- stack-allocate non-escaping objects, eliminating GC pressure for short-lived values. |
-| **Per-call-site virtual dispatch cache** | VM | LOW -- `ResolveVirtualMethod` already caches per class. A per-call-site cache storing the last (class→method) pointer in the instruction would save the hash lookup in the monomorphic case. |
+| **Escape analysis** — stack-allocate objects that don't outlive their frame (tree nodes, short-lived temps) | Compiler/VM | **HIGH** — removes GC pressure entirely for non-escaping values; directly targets the binarytrees loss |
+| **Inline the young-gen bump-alloc fast path into JIT'd code** | JIT | **HIGH** — replace the allocator `call` for nursery objects with an inline `atomic_fetch_add` + bounds check |
+| **Thread-local allocation buffers (TLAB)** | GC | MED — cut `young_offset` CAS contention under multithreaded allocation |
+
+### P2 — Close JIT coverage gaps
+
+| Opportunity | Category | Expected Impact |
+|-------------|----------|----------------|
+| **DYN_MTHD_CALL auto-JIT** — closure / function-ref calls | JIT | **HIGH** — spectralnorm goes 48s (interpreter) → 0.45s (`native`, input 2000); this gap keeps float-method code in the interpreter. prgm70/71 segfault patterns need root-cause first |
+| **Float JIT codegen + float fast-path opcodes** (`LOAD_FLOAT_LIT`, `ADD/SUB/MUL_FLOAT`) | JIT/VM | **HIGH** — Java and LuaJIT lead specifically on float loops (nbody, spectralnorm); the inline switch is integer-only today |
+| **ProcessInlineMethod for MTHD_CALL** — getter/ctor inlining inside JIT'd methods | JIT | MED — eliminates the `ProcessStackCallback` trampoline. Blocked by INSTANCE_MEM offset corruption in constructors; needs frame-layout work |
+| **Per-call-site monomorphic virtual dispatch cache** | VM | LOW — store the last (class→method) pointer in the instruction to skip the hash lookup in the common case |
+
+### P3 — Measurement & methodology
+
+| Opportunity | Impact |
+|-------------|--------|
+| Stand up a **native (non-Docker) cross-language harness** so peer comparisons aren't muddied by the ~30–50% Docker interpreter overhead documented above | makes the numbers above directly comparable to the WSL2 single-language tables |
+| Add **Java + LuaJIT to the gating perf CI** so regressions like the safepoint one are caught automatically | the fannkuch regression shipped unnoticed because nothing compared releases head-to-head |
 
 ---
 
-*Last updated: June 16, 2026 -- single-language CLBG/micro tables are WSL2 (v2026.6.0); the Cross-Language Comparison is a unified Docker run (v2026.6.2) adding LuaJIT 2.1 and OpenJDK 21. AMD Ryzen AI 9 HX 370.*
+*Last updated: June 16, 2026 -- single-language CLBG/micro tables are WSL2 (v2026.6.0); the Cross-Language Comparison is a unified Docker run (v2026.6.2) adding LuaJIT 2.1 and OpenJDK 21. AMD Ryzen AI 9 HX 370. Added the prioritized Speedup Roadmap (P0 safepoint fix in progress on branch `perf/jit-safepoint-inline`).*
