@@ -28,6 +28,7 @@ echo "Objeck:  $($OBC 2>&1 | head -1 || echo 'built from source')"
 echo "Python:  $(python3 --version 2>&1)"
 echo "Ruby:    $(ruby --version 2>&1 | head -1)"
 echo "LuaJIT:  $(luajit -v 2>&1 | head -1)"
+echo "Java:    $(java -version 2>&1 | head -1)"
 echo "Runs:    $RUNS"
 echo "============================================="
 echo ""
@@ -174,6 +175,17 @@ run_lang_bench "luajit" "nbody"         "luajit $CROSS/nbody.lua $NBODY_N"      
 run_lang_bench "luajit" "binarytrees"   "luajit $CROSS/binarytrees.lua $BINARYTREES_N"  "$CROSS_CSV"
 run_lang_bench "luajit" "spectralnorm"  "luajit $CROSS/spectralnorm.lua $SPECTRALNORM_N" "$CROSS_CSV"
 run_lang_bench "luajit" "fannkuchredux" "luajit $CROSS/fannkuchredux.lua $FANNKUCH_N"   "$CROSS_CSV"
+
+# Java (HotSpot) — compile once, then time the timed runs (excludes javac, like the others)
+JAVA_OUT=/tmp/bench-java
+mkdir -p "$JAVA_OUT"
+echo ">>> Compiling Java benchmarks (javac)"
+javac -d "$JAVA_OUT" "$CROSS"/nbody.java "$CROSS"/binarytrees.java \
+    "$CROSS"/spectralnorm.java "$CROSS"/fannkuchredux.java 2>/dev/null
+run_lang_bench "java" "nbody"         "java -cp $JAVA_OUT nbody $NBODY_N"               "$CROSS_CSV"
+run_lang_bench "java" "binarytrees"   "java -cp $JAVA_OUT binarytrees $BINARYTREES_N"   "$CROSS_CSV"
+run_lang_bench "java" "spectralnorm"  "java -cp $JAVA_OUT spectralnorm $SPECTRALNORM_N"  "$CROSS_CSV"
+run_lang_bench "java" "fannkuchredux" "java -cp $JAVA_OUT fannkuchredux $FANNKUCH_N"     "$CROSS_CSV"
 
 echo ""
 

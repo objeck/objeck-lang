@@ -34,34 +34,41 @@ Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.de
 
 ## Cross-Language Comparison
 
-Same inputs, same hardware. Objeck on WSL2; Python/Ruby times from prior Docker run on same machine.
+All five languages measured in **one Docker run on identical inputs** (`perf-results/docker/Dockerfile`), so these times are directly comparable to each other. Median of 3 runs.
 
-| Benchmark | Objeck | Python 3.12 | Ruby 3.2 | Best |
-|-----------|--------|-------------|----------|------|
-| **nbody** (50M) | **23.31s** | 133.55s | 195.18s | **Objeck** |
-| **fannkuchredux** (12) | **35.15s** | 359.04s | -- | **Objeck** |
-| **binarytrees** (17) | **10.03s** | 3.31s | 3.31s | Python/Ruby |
-| **spectralnorm** (5500) | 37.44s | 109.67s | 84.58s | **Objeck** |
+| | |
+|---|---|
+| **Objeck** | v2026.6.2, `-opt s3` |
+| **Python** | 3.12.3 (CPython) |
+| **Ruby** | 3.2.3 |
+| **LuaJIT** | 2.1 (tracing JIT) |
+| **Java** | OpenJDK 21.0.11 (HotSpot, tiered JIT) |
+| **Host** | AMD Ryzen AI 9 HX 370, Ubuntu 24.04.4 in Docker |
 
-*Python/Ruby times from prior Docker run on same hardware.*
+> **Compare *within* this table, not against the WSL2 tables above.** Under Docker Desktop's virtualized backend (and its reduced memory ceiling) Objeck's *interpreter*-bound benchmarks run ~30–50% slower than the native-WSL2 CLBG table — while JIT/`native` code (e.g. `spectralnorm_native`) is nearly unaffected. The numbers below are an internally consistent, same-environment comparison; the WSL2 table is the reference for Objeck's best-case single-language results.
 
-### Where Objeck Wins
+| Benchmark | Input | Objeck | Python 3.12 | Ruby 3.2 | LuaJIT 2.1 | Java 21 | Best |
+|-----------|-------|--------|-------------|----------|------------|---------|------|
+| **nbody** | 50M | 19.21s | 145.49s | 272.82s | 5.57s | **2.90s** | Java |
+| **binarytrees** | 17 | 10.33s | 4.49s | 4.70s | 4.63s | **0.47s** | Java |
+| **spectralnorm** | 5500 | 48.01s | 149.76s | 108.46s | 1.61s | **1.29s** | Java |
+| **fannkuchredux** | 12 | 59.40s | 509.88s | 1762.01s | 154.51s | **33.20s** | Java |
 
-- **nbody** -- 5.7x faster than Python, 8.4x faster than Ruby. Getter/setter inlining + JIT compilation eliminates method call overhead.
-- **fannkuchredux** -- 10.2x faster than Python. The JIT excels at tight integer loops with array permutations.
-- **spectralnorm** -- 2.9x faster than Python, 2.3x faster than Ruby (interpreter only). With `native` it drops to **0.45s**.
+### Reading the table
 
-### Where Objeck Needs Improvement
-
-- **binarytrees** -- 3.0x slower than Python/Ruby. The young-gen bump allocator (128MB nursery), MTHD_CALL JIT whitelist, direct JIT-to-JIT calling, atomic CAS mark bits, and auto-JIT for MTHD_CALL methods combined for major speedups across releases. RSS stable at 210MB.
+- **Java (HotSpot) sets the ceiling — it wins all four.** A mature tiered JIT plus escape analysis and a generational GC is the bar a younger JIT is measured against, and it's a useful target for where Objeck can still go.
+- **Objeck beats both Python and Ruby on 3 of 4** — and by wide margins where the JIT engages: nbody **7.6x** faster than Python / **14.2x** faster than Ruby; fannkuchredux **8.6x** / **29.7x**; spectralnorm **3.1x** / **2.3x** (interpreter only).
+- **Objeck beats LuaJIT on fannkuchredux** (59.40s vs 154.51s, **2.6x faster**) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT, and Objeck's method-JIT handles it well. This is the standout result.
+- **binarytrees is Objeck's weak spot — slower than even the interpreters here.** Allocation/GC throughput dominates; Java's generational GC + escape analysis is **22x** faster (0.47s vs 10.33s). This is the clearest improvement target.
+- **spectralnorm in the interpreter (48s) understates Objeck.** With `native` the same kernel drops to **0.45s at input 2000** (see micro-benchmarks); the gap is auto-JIT coverage (`DYN_MTHD_CALL`), not raw capability.
 
 ### Key Takeaways
 
-1. **JIT register cache is a ~3x win.** Keeping local variables in registers after store and reusing them on subsequent loads eliminates redundant memory traffic across all benchmarks.
-2. **Link-time optimization adds further gains.** `-flto=auto` enables cross-translation-unit inlining in both the compiler and VM.
-3. **Integer JIT is excellent.** nbody and fannkuchredux are faster than Python and Ruby across the board.
-4. **Auto-JIT for MTHD_CALL is now enabled.** Methods containing method calls are JIT-compiled after 10 invocations, using the same `ProcessStackCallback` path as explicit `native` methods. Closes the largest remaining JIT coverage gap.
-5. **Auto-JIT coverage gap remains for `DYN_MTHD_CALL`.** spectralnorm goes from 37.44s (input 5500, interpreter) to 0.45s (input 2000, `native`) — a ~83x speedup available by marking methods `native`.
+1. **Against scripting peers, Objeck is decisively faster.** On JIT-friendly numeric and integer loops it leads Python and Ruby by 3–30x.
+2. **Against compiled-class JITs (Java, LuaJIT), Objeck trails on float loops but is competitive — and ahead — on the right integer workload** (fannkuchredux beats LuaJIT).
+3. **Allocation throughput is the #1 gap.** binarytrees is the one benchmark where Objeck loses to everything; escape analysis / faster young-gen allocation is the highest-leverage future work.
+4. **Auto-JIT coverage gap remains for `DYN_MTHD_CALL`.** spectralnorm runs in the interpreter (48s) but `native` reaches 0.45s (input 2000) — a large speedup currently left on the table for closure/function-ref-heavy code.
+5. **Measurement environment matters.** Objeck's interpreter is more sensitive to virtualization than its JIT; native/WSL2 numbers are meaningfully better than the Docker numbers shown here.
 
 ---
 
@@ -178,4 +185,4 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 
 ---
 
-*Last updated: May 31, 2026 -- WSL2 benchmark results on AMD Ryzen AI 9 HX 370 (v2026.6.0)*
+*Last updated: June 16, 2026 -- single-language CLBG/micro tables are WSL2 (v2026.6.0); the Cross-Language Comparison is a unified Docker run (v2026.6.2) adding LuaJIT 2.1 and OpenJDK 21. AMD Ryzen AI 9 HX 370.*

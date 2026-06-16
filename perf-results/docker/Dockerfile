@@ -9,10 +9,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     zlib1g-dev \
     libmbedtls-dev \
+    libnghttp2-dev \
+    libngtcp2-dev \
+    libngtcp2-crypto-gnutls-dev \
+    libnghttp3-dev \
+    libgnutls28-dev \
     libreadline-dev \
     python3 \
     ruby \
     luajit \
+    default-jdk-headless \
     bc \
     time \
     && rm -rf /var/lib/apt/lists/*
@@ -68,7 +74,7 @@ COPY programs/tests/perf/ /benchmarks/perf/
 COPY perf-results/cross-lang/benchmarks/ /benchmarks/cross-lang/
 
 # Strip UTF-8 BOM and Windows CRLF from all source files
-RUN find /benchmarks -type f \( -name '*.obs' -o -name '*.py' -o -name '*.rb' -o -name '*.lua' -o -name '*.sh' \) \
+RUN find /benchmarks -type f \( -name '*.obs' -o -name '*.py' -o -name '*.rb' -o -name '*.lua' -o -name '*.java' -o -name '*.sh' \) \
     -exec sed -i '1s/^\xEF\xBB\xBF//' {} \; \
     -exec sed -i 's/\r$//' {} \;
 

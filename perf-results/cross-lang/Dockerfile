@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     ruby \
     luajit \
+    default-jdk-headless \
     bc \
     sed \
     && rm -rf /var/lib/apt/lists/*
@@ -11,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /benchmarks
 COPY benchmarks/ /benchmarks/
 
-RUN sed -i 's/\r$//' /benchmarks/*.sh /benchmarks/*.py /benchmarks/*.rb /benchmarks/*.lua && \
+RUN sed -i 's/\r$//' /benchmarks/*.sh /benchmarks/*.py /benchmarks/*.rb /benchmarks/*.lua /benchmarks/*.java && \
     chmod +x /benchmarks/run_cross_lang.sh
 
 CMD ["bash", "/benchmarks/run_cross_lang.sh"]

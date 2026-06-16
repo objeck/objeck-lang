@@ -1,9 +1,10 @@
 #!/bin/bash
 
-NBODY_N=5000000
+# Inputs match the Objeck CLBG table in docs/performance.md for fair comparison
+NBODY_N=50000000
 BINARYTREES_N=17
-SPECTRALNORM_N=2000
-FANNKUCH_N=11
+SPECTRALNORM_N=5500
+FANNKUCH_N=12
 RUNS=3
 
 CSV=/results/cross_lang_results.csv
@@ -29,6 +30,7 @@ echo "============================================"
 echo "  Python: $(python3 --version 2>&1)"
 echo "  Ruby:   $(ruby --version 2>&1 | head -1)"
 echo "  LuaJIT: $(luajit -v 2>&1 | head -1)"
+echo "  Java:   $(java -version 2>&1 | head -1)"
 echo "============================================"
 echo ""
 
@@ -49,6 +51,15 @@ run_bench "luajit" "nbody" "luajit /benchmarks/nbody.lua $NBODY_N"
 run_bench "luajit" "binarytrees" "luajit /benchmarks/binarytrees.lua $BINARYTREES_N"
 run_bench "luajit" "spectralnorm" "luajit /benchmarks/spectralnorm.lua $SPECTRALNORM_N"
 run_bench "luajit" "fannkuchredux" "luajit /benchmarks/fannkuchredux.lua $FANNKUCH_N"
+
+# Java (HotSpot) — compile once; timed runs exclude javac, matching the other languages
+echo "=== Compiling Java benchmarks (javac) ==="
+javac -d /benchmarks/java-out /benchmarks/nbody.java /benchmarks/binarytrees.java \
+  /benchmarks/spectralnorm.java /benchmarks/fannkuchredux.java
+run_bench "java" "nbody" "java -cp /benchmarks/java-out nbody $NBODY_N"
+run_bench "java" "binarytrees" "java -cp /benchmarks/java-out binarytrees $BINARYTREES_N"
+run_bench "java" "spectralnorm" "java -cp /benchmarks/java-out spectralnorm $SPECTRALNORM_N"
+run_bench "java" "fannkuchredux" "java -cp /benchmarks/java-out fannkuchredux $FANNKUCH_N"
 
 echo ""
 echo "=== COMPLETE ==="
