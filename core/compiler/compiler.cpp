@@ -52,31 +52,30 @@ int Compile(const std::wstring& src_files, const std::wstring& opt, const std::w
   try {
     // parse source code
     Parser parser(src_files, alt_syntax, programs);
-    if(parser.Parse()) {
-      const bool is_lib = target == L"lib";
-
-      // analyze parse tree
-      ParsedProgram* program = parser.GetProgram();
-      ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
-      if(analyzer.Analyze(is_lib)) {
-        // emit intermediate code
-        IntermediateEmitter intermediate(program, is_lib, is_debug);
-        intermediate.Translate();
-        // intermediate optimizer
-        ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
-        optimizer.Optimize();
-        // emit target code
-        FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, dest_file);
-        target.Emit();
-
-        return SUCCESS;
-      }
-      else {
-        return CONTEXT_ERROR;
-      }
+    if(!parser.Parse()) {
+      return PARSE_ERROR;
     }
 
-    return PARSE_ERROR;
+    const bool is_lib = target == L"lib";
+
+    // analyze parse tree
+    ParsedProgram* program = parser.GetProgram();
+    ContextAnalyzer analyzer(program, sys_lib_path, is_lib);
+    if(!analyzer.Analyze(is_lib)) {
+      return CONTEXT_ERROR;
+    }
+
+    // emit intermediate code
+    IntermediateEmitter intermediate(program, is_lib, is_debug);
+    intermediate.Translate();
+    // intermediate optimizer
+    ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt, is_lib, is_debug);
+    optimizer.Optimize();
+    // emit target code
+    FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, show_asm, dest_file);
+    target.Emit();
+
+    return SUCCESS;
   }
   catch(const std::bad_alloc&) {
     std::wcerr << L"internal error: out of memory during compilation" << std::endl;
