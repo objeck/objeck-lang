@@ -108,10 +108,85 @@ inline size_t HashString(const wchar_t* char_ary) {
   return HashString(char_ary, wcslen(char_ary));
 }
 
+#ifndef _WIN32
+/**
+ * Locale-independent UTF-8 <-> wide conversion (POSIX wchar_t is 32-bit, so it
+ * holds any Unicode code point). Replaces mbstowcs()/wcstombs(), which decode
+ * per the process LC_CTYPE and therefore reject every non-ASCII byte when the
+ * ambient locale is "C"/"POSIX" (e.g. LANG unset). Strict: malformed input
+ * (truncated/overlong sequences, surrogates, out-of-range) fails, matching the
+ * behavior mbstowcs already had in a correct UTF-8 locale.
+ */
+inline bool Utf8ToWide(const char* in, size_t len, std::wstring& out) {
+  const unsigned char* b = reinterpret_cast<const unsigned char*>(in);
+  size_t i = 0;
+  while(i < len) {
+    const unsigned char c = b[i];
+    char32_t cp;
+    if(c < 0x80) {                                          // 1 byte: 0xxxxxxx
+      cp = c;
+      i += 1;
+    }
+    else if((c & 0xE0) == 0xC0) {                           // 2 bytes
+      if(i + 1 >= len || (b[i + 1] & 0xC0) != 0x80) { return false; }
+      cp = (static_cast<char32_t>(c & 0x1F) << 6) | (b[i + 1] & 0x3F);
+      if(cp < 0x80) { return false; }                       // overlong
+      i += 2;
+    }
+    else if((c & 0xF0) == 0xE0) {                           // 3 bytes
+      if(i + 2 >= len || (b[i + 1] & 0xC0) != 0x80 || (b[i + 2] & 0xC0) != 0x80) { return false; }
+      cp = (static_cast<char32_t>(c & 0x0F) << 12) | (static_cast<char32_t>(b[i + 1] & 0x3F) << 6) | (b[i + 2] & 0x3F);
+      if(cp < 0x800 || (cp >= 0xD800 && cp <= 0xDFFF)) { return false; }  // overlong / surrogate
+      i += 3;
+    }
+    else if((c & 0xF8) == 0xF0) {                           // 4 bytes
+      if(i + 3 >= len || (b[i + 1] & 0xC0) != 0x80 || (b[i + 2] & 0xC0) != 0x80 || (b[i + 3] & 0xC0) != 0x80) { return false; }
+      cp = (static_cast<char32_t>(c & 0x07) << 18) | (static_cast<char32_t>(b[i + 1] & 0x3F) << 12) |
+           (static_cast<char32_t>(b[i + 2] & 0x3F) << 6) | (b[i + 3] & 0x3F);
+      if(cp < 0x10000 || cp > 0x10FFFF) { return false; }   // overlong / out of range
+      i += 4;
+    }
+    else {
+      return false;                                         // invalid lead byte
+    }
+    out.push_back(static_cast<wchar_t>(cp));
+  }
+  return true;
+}
+
+inline bool WideToUtf8(const wchar_t* in, size_t len, std::string& out) {
+  for(size_t i = 0; i < len; ++i) {
+    const char32_t cp = static_cast<char32_t>(in[i]);
+    if(cp < 0x80) {
+      out.push_back(static_cast<char>(cp));
+    }
+    else if(cp < 0x800) {
+      out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+      out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    }
+    else if(cp < 0x10000) {
+      if(cp >= 0xD800 && cp <= 0xDFFF) { return false; }    // unpaired surrogate
+      out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+      out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+      out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    }
+    else if(cp <= 0x10FFFF) {
+      out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+      out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+      out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+      out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    }
+    else {
+      return false;                                         // out of Unicode range
+    }
+  }
+  return true;
+}
+#endif
 
 /**
- * Converts UTF-8 bytes a 
- * Unicode string 
+ * Converts UTF-8 bytes a
+ * Unicode string
  */
 inline bool BytesToUnicode(const std::string &in, std::wstring &out) {
 #ifdef _WIN32
@@ -137,31 +212,9 @@ inline bool BytesToUnicode(const std::string &in, std::wstring &out) {
   delete[] buffer;
   buffer = nullptr;  
 #else
-  // allocate space
-  size_t size = mbstowcs(nullptr, in.c_str(), in.size());
-  if(size == (size_t)-1) {
-    return false;
-  }
-
-  if(size < in.size()) {
-    size = in.size();
-  }
-  wchar_t* buffer = new wchar_t[size + 1];
-  // convert
-  size_t check = mbstowcs(buffer, in.c_str(), in.size());
-  if(check == (size_t)-1) {
-    delete[] buffer;
-    buffer = nullptr;
-    return false;
-  }
-  buffer[size] = L'\0';
-
-  // create string
-  out.append(buffer, size);
-
-  // clean up
-  delete[] buffer;
-  buffer = nullptr;
+  // Locale-independent UTF-8 decode (mbstowcs honors LC_CTYPE and fails outside
+  // a UTF-8 locale, e.g. when LANG is unset).
+  return Utf8ToWide(in.data(), in.size(), out);
 #endif
 
   return true;
@@ -257,29 +310,11 @@ inline bool UnicodeToBytes(const std::wstring &in, std::string &out) {
   delete[] buffer;
   buffer = nullptr;
 #else
-  // convert string
-  size_t size = wcstombs(nullptr, in.c_str(), 0);
-  if(size == (size_t)-1) {
-    return false;
-  }
-  char* buffer = new char[size + 1];
-  
-  size_t check = wcstombs(buffer, in.c_str(), size);
-  if(check == (size_t)-1) {
-    delete[] buffer;
-    buffer = nullptr;
-    return false;
-  }
-  buffer[size] = '\0';
-  
-  // create string      
-  out.append(buffer, size);
-
-  // clean up
-  delete[] buffer;
-  buffer = nullptr;
+  // Locale-independent UTF-8 encode (wcstombs honors LC_CTYPE and fails outside
+  // a UTF-8 locale).
+  return WideToUtf8(in.data(), in.size(), out);
 #endif
-  
+
   return true;
 }
 
@@ -986,24 +1021,20 @@ inline wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
     return nullptr;;
   }
 #else
-  size_t wsize = mbstowcs(nullptr, buffer, buffer_size);
-  if(wsize == (size_t)-1) {
+  // Locale-independent UTF-8 decode of the source bytes. mbstowcs honors
+  // LC_CTYPE and rejects every non-ASCII byte outside a UTF-8 locale (LANG
+  // unset), which surfaced as the misleading "Unable to open source file".
+  std::wstring wstr;
+  if(!Utf8ToWide(buffer, buffer_size, wstr)) {
     free(buffer);
-    return nullptr;;
+    return nullptr;
   }
-  
-  if(wsize < buffer_size) {
-    wsize = buffer_size;
-  }
-  wchar_t* wbuffer = new wchar_t[wsize + 1];
-
-  size_t check = mbstowcs(wbuffer, buffer, buffer_size);
-  if(check == (size_t)-1) {
-    free(buffer);
-    delete[] wbuffer;
-    return nullptr;;
-  }
-  wbuffer[wsize] = L'\0';
+  wchar_t* wbuffer = new wchar_t[wstr.size() + 1];
+  std::char_traits<wchar_t>::copy(wbuffer, wstr.c_str(), wstr.size());
+  wbuffer[wstr.size()] = L'\0';
+  // Report the wide-char count (was left as the byte count, which over-runs the
+  // wide buffer for any multibyte source).
+  buffer_size = wstr.size();
 #endif
 
   free(buffer);
