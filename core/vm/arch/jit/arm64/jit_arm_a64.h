@@ -32,6 +32,7 @@
 #pragma once
 
 #include "../jit_common.h"
+#include <unordered_set>
 
 using namespace std;
 
@@ -374,6 +375,9 @@ namespace Runtime {
     long code_buf_max;
     bool compile_success;
     bool skip_jump;
+    // instruction indices of loop-header labels (back-edge targets); only these
+    // labels need a GC safepoint poll — if/else merge labels are skipped.
+    unordered_set<long> safepoint_lbl_indices;
     // CBZ/CBNZ optimization: track last comparison
     bool last_cmp_was_zero;
     Register last_cmp_reg;

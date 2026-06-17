@@ -67,7 +67,14 @@ void JitAmd64::Prolog() {
     0x48, 0x52,                  // push $rdx
     0x48, 0x57,                  // push $rdi
     0x48, 0x56,                  // push $rsi
-#ifndef _WIN64
+#ifdef _WIN64
+    // R12 is callee-saved and not used by the register allocator; reserve it to
+    // cache &stw_active (see below). On Linux it is already pushed in the block
+    // below. The extra `sub rsp,8` keeps RSP 16-byte aligned for the slow-path
+    // SafePoint call (one push would otherwise leave it misaligned).
+    0x49, 0x54,                  // push r12
+    0x48, 0x83, 0xec, 0x08,      // sub  rsp, 8   (alignment filler)
+#else
     0x49, 0x50,                  // push r8
     0x49, 0x51,                  // push r9
     0x49, 0x52,                  // push r10
@@ -76,13 +83,18 @@ void JitAmd64::Prolog() {
     0x49, 0x55,                  // push r13
     0x49, 0x56,                  // push r14
     0x49, 0x57,                  // push r15
-#endif  
+#endif
   };
   const long setup_size = sizeof(setup_code);
   // copy setup
   for(long i = 0; i < setup_size; ++i) {
     AddMachineCode(setup_code[i]);
   }
+
+  // Cache &stw_active in R12 (callee-saved) once per method. Each LBL's GC
+  // safepoint poll then becomes a 5-byte `cmp byte [r12],0` instead of a 10-byte
+  // movabs + 3-byte cmp — the per-label win in label-dense integer loops.
+  move_imm_reg((int64_t)MemoryManager::StwActiveAddr(), R12);
 }
 
 void JitAmd64::Epilog() 
@@ -150,7 +162,10 @@ void JitAmd64::Epilog()
 
   unsigned char teardown_code[] = {
     // restore registers
-#ifndef _WIN64
+#ifdef _WIN64
+    0x48, 0x83, 0xc4, 0x08,  // add  rsp, 8   (undo alignment filler)
+    0x49, 0x5c,       // pop r12
+#else
     0x49, 0x5f,       // pop r15
     0x49, 0x5e,       // pop r14
     0x49, 0x5d,       // pop r13
@@ -159,7 +174,7 @@ void JitAmd64::Epilog()
     0x49, 0x5a,       // pop r10
     0x49, 0x59,       // pop r9
     0x49, 0x58,       // pop r8
-#endif  
+#endif
     0x48, 0x5e,       // pop $rsi
     0x48, 0x5f,       // pop $rdi
     0x48, 0x5a,       // pop $rdx
@@ -992,15 +1007,19 @@ void JitAmd64::ProcessInstructions() {
       std::wcout << L"______ LBL: id=" << instr->GetOperand() << L" ______" << std::endl;
 #endif
       FlushLocalCache();
-      // GC safepoint at every label. Every loop back-edge (conditional OR
-      // unconditional) targets a label that re-executes each iteration, and the
-      // working stack is empty at a label, so a plain safepoint call loses no
-      // live JIT value. Polling at all labels (not just detected loop headers)
-      // guarantees a JITed loop always reaches a safepoint regardless of how the
-      // back-edge is encoded; extra polls at if/else merges are a cheap
-      // flag-check-and-return. Without this a JITed no-allocation loop never
-      // parks and the stop-the-world collector deadlocks.
-      EmitJitSafePoint();
+      // GC safepoint only at loop-header labels (back-edge targets). A label is
+      // the target of a backward jump iff it heads a loop, and every cyclic path
+      // in the bytecode contains such a back-edge, so polling these labels alone
+      // guarantees every JITed loop reaches a safepoint (else the stop-the-world
+      // collector deadlocks on a no-allocation loop). Forward-only labels
+      // (if/else merges) re-execute at most once per call and are skipped — that
+      // removes the poll from branchy straight-line code. The working stack is
+      // empty at a label, so the poll loses no live JIT value. Inlined callees
+      // contain no labels (CanInlineMethod rejects control flow), so all loops
+      // live in this instruction stream and are covered by safepoint_lbl_indices.
+      if(safepoint_lbl_indices.find(instr_index - 1) != safepoint_lbl_indices.end()) {
+        EmitJitSafePoint();
+      }
       break;
       
     default:
@@ -1133,9 +1152,10 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
 // frame are ABI-preserved). Without this a JITed no-allocation loop never
 // reaches a safepoint and the stop-the-world collector deadlocks.
 void JitAmd64::EmitJitSafePoint() {
-  // Fast path: cmp byte [&stw_active], 0 ; je skip
-  move_imm_reg((int64_t)MemoryManager::StwActiveAddr(), RAX);
-  AddMachineCode(0x80); AddMachineCode(0x38); AddMachineCode(0x00);  // cmp byte ptr [rax], 0
+  // Fast path: cmp byte [r12], 0 ; je skip
+  // R12 caches &stw_active (loaded once in the prologue), so the common no-GC
+  // case is a single 5-byte memory compare with no per-label address load.
+  AddMachineCode(0x41); AddMachineCode(0x80); AddMachineCode(0x3c); AddMachineCode(0x24); AddMachineCode(0x00);  // cmp byte ptr [r12], 0
   AddMachineCode(0x0f); AddMachineCode(0x84);                        // je rel32
   long je_pos = code_index;
   AddImm(0);
@@ -5902,6 +5922,7 @@ bool JitAmd64::Compile(StackMethod* cm)
 
     // Pre-scan: reject methods with unsupported instructions, detect loops
     detected_loops.clear();
+    safepoint_lbl_indices.clear();
     is_inlining = false;
     inline_callee = nullptr;
     inline_local_offset = 0;
@@ -5911,9 +5932,12 @@ bool JitAmd64::Compile(StackMethod* cm)
       if(!CanJitInstruction(scan_instr->GetType())) {
         return false;
       }
-      // detect loops via backward jumps
+      // detect loops via backward jumps (a JMP operand is the target instruction
+      // index; a target earlier than the jump is a loop back-edge)
       if(scan_instr->GetType() == JMP && scan_instr->GetOperand() < i) {
         detected_loops.push_back({scan_instr->GetOperand(), i});
+        // the back-edge target label is a loop header — it needs a safepoint poll
+        safepoint_lbl_indices.insert(scan_instr->GetOperand());
       }
     }
 

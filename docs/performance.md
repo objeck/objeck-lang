@@ -192,8 +192,8 @@ loops (spectralnorm_native +7%).
 | Step | Status | Impact |
 |------|--------|--------|
 | Inline the flag test, call only when a collection is active (`cmp [stw_active],0; je skip`) | **AMD64 done, validated** (branch `perf/jit-safepoint-inline`); ARM64 mirror pending on-device test | fannkuch 71.6s → 56.9s (**−20%**, recovers ~71% of the regression); GC/JIT + multithreaded-STW stress green |
-| Cache `&stw_active` in a callee-saved reg at the prologue | TODO | drops the 10-byte `mov imm64` per label — most of the residual ~6s |
-| Emit the poll only at true loop back-edges, not at if/else merges | TODO | fewer polls in branchy code; needs back-edge detection |
+| Cache `&stw_active` in a callee-saved reg (R12) at the prologue | **AMD64 done, validated**; ARM64 **deferred** (RED_ZONE frame slots are fully packed — needs an extra callee-saved slot, only safely addable/validatable on an ARM64 box) | each label's poll is now a 5-byte `cmp byte [r12],0` (was a 10-byte `movabs` + 3-byte `cmp`). fannkuch-12 38.4s → 34.7s (**−10%** on top of the inline fix, and far less run-to-run variance); 157/158 regression pass (only the pre-existing `core_opencv` native-lib failure) |
+| Emit the poll only at true loop back-edges, not at if/else merges | **AMD64 done, validated**; **ARM64 done, cross-compiles** (pending on-device test) | reuses the back-edge pre-scan: a label gets a poll only if it is the target of a backward jump (loop header). AMD64 inlined callees carry no control flow (`CanInlineMethod` rejects `JMP`/`LBL`) and ARM64 has no inlining, so every loop is covered. AMD64 fannkuch-12 34.7s → 32.5s (**−6%** more); 157/158 regression pass with no STW deadlock (threading/GC tests green). ARM64 mirrors the same logic (note: ARM64 JMP operand is target-index + 1) |
 
 ### P1 — Allocation & GC throughput *(the #1 cross-language gap)*
 
