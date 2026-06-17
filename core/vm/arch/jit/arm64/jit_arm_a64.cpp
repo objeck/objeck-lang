@@ -85,6 +85,20 @@ void JitArm64::Prolog() {
   for(int i = 0; i < setup_size; ++i) {
     AddMachineCode(setup_code[i]);
   }
+
+  // Save callee-saved X19 and cache &stw_active in it once per method (restored in
+  // the epilog). Each loop back-edge's GC safepoint poll then becomes a 2-instr
+  // `ldarb W11,[X19]; cbz` instead of re-materializing the 64-bit &stw_active
+  // address (movz + 3x movk) every poll. Mirror of the AMD64 R12 caching.
+  // The save slot is the top 8 bytes of the frame (final_local_space - 8). This is
+  // the one spot a callee-saved value survives: every fixed slot 0..RED_ZONE and the
+  // local region are written by callbacks or zeroed by RegisterRoot at entry; only
+  // [local_space + 8, final_local_space) is untouched. Below the incoming-arg area
+  // (at/above final_local_space) and above the GC root scan, so X19 (a non-heap
+  // pointer anyway) is never scanned or clobbered.
+  const long stw_save_off = final_local_space - (long)sizeof(size_t);
+  move_reg_mem(X19, stw_save_off, SP);                              // str x19, [sp, #stw_save_off]
+  move_imm_reg((size_t)MemoryManager::StwActiveAddr(), X19);         // X19 = &stw_active
 }
 
 // tear down of stack frame
@@ -129,6 +143,12 @@ void JitArm64::Epilog() {
   add_offset |= final_local_space << 10;
   
   move_imm_reg(0, X0);
+  // Restore callee-saved X19 (cached &stw_active) from the top-of-frame slot the
+  // prologue used. Emitted here, before the teardown block, so it is reached by both
+  // the nominal fall-through and every error-exit branch above (which all target the
+  // first teardown instruction). Done before `add sp` so the offset is still valid.
+  const long stw_save_off = final_local_space - (long)sizeof(size_t);
+  move_mem_reg(stw_save_off, SP, X19);                             // ldr x19, [sp, #stw_save_off]
   // Restore callee-saved FP registers D8-D15 (non-overlapping with temp slots)
   uint32_t teardown_code[] = {
     0xFD4063E8, // ldr d8, [sp, #192]
@@ -1781,21 +1801,24 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
 }
 
 // GC safepoint: poll MemoryManager::SafePoint() so a JITed loop parks for a
-// stop-the-world collection. Emitted at every label (loop back-edges target a
-// label re-executed each iteration). The working stack is flushed at a label so
-// no live JIT temp is held; persistent JIT state lives in SP-relative slots, not
-// caller-saved registers, and SafePoint takes no params and returns void, so the
-// call clobbers nothing the JIT relies on (x30 is saved in the prologue).
+// stop-the-world collection. Emitted only at loop-header labels (back-edge
+// targets), so every cyclic path hits one each iteration. The working stack is
+// flushed at a label so no live JIT temp is held; persistent JIT state lives in
+// SP-relative slots, not caller-saved registers, and SafePoint takes no params
+// and returns void, so the call clobbers nothing the JIT relies on (x30 is saved
+// in the prologue).
 //
-// A hot loop crosses a label each iteration, so the common case (no collection)
+// A hot loop crosses the header each iteration, so the common case (no collection)
 // must stay off the call path: inline a load-acquire of the stop-the-world flag
 // and only CALL SafePoint() when it is set. ldarb mirrors SafePoint's acquire
-// load on the weak ARM64 memory model. X10/X11 are caller-saved temps, dead at a
-// label. Mirror of the AMD64 JitAmd64::EmitJitSafePoint.
+// load on the weak ARM64 memory model. &stw_active is cached in callee-saved X19
+// (prologue), so the fast path needs no address materialization; X10/X11 are
+// caller-saved scratch, dead at a label. Mirror of JitAmd64::EmitJitSafePoint.
 void JitArm64::EmitJitSafePoint() {
-  // Fast path: ldarb W11, [&stw_active]; cbz W11, skip
-  move_imm_reg((size_t)MemoryManager::StwActiveAddr(), X10);          // X10 = &stw_active
-  AddMachineCode(0x08DFFC00 | ((X10 & 0x1F) << 5) | (X11 & 0x1F));    // ldarb W11, [X10]
+  // Fast path: ldarb W11, [X19]; cbz W11, skip. X19 caches &stw_active (loaded once
+  // in the prologue), so the common no-collection path is just this load + branch —
+  // no per-poll address materialization. ldarb keeps SafePoint's acquire ordering.
+  AddMachineCode(0x08DFFC00 | ((X19 & 0x1F) << 5) | (X11 & 0x1F));    // ldarb W11, [X19]
   const long cbz_index = code_index;
   cbz_reg(X11);                                                       // cbz W11, skip (patched below)
   // Slow path: a collection is active — park.
