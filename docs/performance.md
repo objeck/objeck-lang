@@ -38,36 +38,36 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 
 | | |
 |---|---|
-| **Objeck** | v2026.6.2, `-opt s3` |
+| **Objeck** | v2026.6.2 + JIT GC-safepoint fixes (PR #539), `-opt s3` |
 | **Python** | 3.12.3 (CPython) |
 | **Ruby** | 3.2.3 |
 | **LuaJIT** | 2.1 (tracing JIT) |
 | **Java** | OpenJDK 21.0.11 (HotSpot, tiered JIT) |
-| **Host** | AMD Ryzen AI 9 HX 370, Ubuntu 24.04.4 in Docker |
+| **Host** | AMD Ryzen 9 7950X3D (16C/32T), Ubuntu 24.04.4 in Docker (32 vCPU / 62 GB) |
 
 > **Compare *within* this table, not against the WSL2 tables above.** Under Docker Desktop's virtualized backend (and its reduced memory ceiling) Objeck's *interpreter*-bound benchmarks run ~30–50% slower than the native-WSL2 CLBG table — while JIT/`native` code (e.g. `spectralnorm_native`) is nearly unaffected. The numbers below are an internally consistent, same-environment comparison; the WSL2 table is the reference for Objeck's best-case single-language results.
 
 | Benchmark | Input | Objeck | Python 3.12 | Ruby 3.2 | LuaJIT 2.1 | Java 21 | Best |
 |-----------|-------|--------|-------------|----------|------------|---------|------|
-| **nbody** | 50M | 19.21s | 145.49s | 272.82s | 5.57s | **2.90s** | Java |
-| **binarytrees** | 17 | 10.33s | 4.49s | 4.70s | 4.63s | **0.47s** | Java |
-| **spectralnorm** | 5500 | 48.01s | 149.76s | 108.46s | 1.61s | **1.29s** | Java |
-| **fannkuchredux** | 12 | 59.40s | 509.88s | 1762.01s | 154.51s | **33.20s** | Java |
+| **nbody** | 50M | 17.70s | 136.91s | 201.22s | 4.30s | **2.30s** | Java |
+| **binarytrees** | 17 | 7.79s | 3.51s | 3.49s | 3.34s | **0.24s** | Java |
+| **spectralnorm** | 5500 | 43.11s | 125.74s | 85.83s | **1.11s** | 1.17s | LuaJIT |
+| **fannkuchredux** | 12 | 30.67s | 415.40s | 1166.46s | 117.07s | **20.60s** | Java |
 
 ### Reading the table
 
-- **Java (HotSpot) sets the ceiling — it wins all four.** A mature tiered JIT plus escape analysis and a generational GC is the bar a younger JIT is measured against, and it's a useful target for where Objeck can still go.
-- **Objeck beats both Python and Ruby on 3 of 4** — and by wide margins where the JIT engages: nbody **7.6x** faster than Python / **14.2x** faster than Ruby; fannkuchredux **8.6x** / **29.7x**; spectralnorm **3.1x** / **2.3x** (interpreter only).
-- **Objeck beats LuaJIT on fannkuchredux** (59.40s vs 154.51s, **2.6x faster**) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT, and Objeck's method-JIT handles it well. This is the standout result.
-- **binarytrees is Objeck's weak spot — slower than even the interpreters here.** Allocation/GC throughput dominates; Java's generational GC + escape analysis is **22x** faster (0.47s vs 10.33s). This is the clearest improvement target.
-- **spectralnorm in the interpreter (48s) understates Objeck.** With `native` the same kernel drops to **0.45s at input 2000** (see micro-benchmarks); the gap is auto-JIT coverage (`DYN_MTHD_CALL`), not raw capability.
+- **Java (HotSpot) sets the ceiling — it wins 3 of 4** (nbody, binarytrees, fannkuchredux); LuaJIT takes spectralnorm (1.11s vs Java's 1.17s). A mature tiered JIT plus escape analysis and a generational GC is the bar a younger JIT is measured against.
+- **Objeck beats both Python and Ruby on 3 of 4** — by wide margins where the JIT engages: nbody **7.7x** faster than Python / **11.4x** faster than Ruby; fannkuchredux **13.5x** / **38x**; spectralnorm **2.9x** / **2.0x** (interpreter only).
+- **Objeck beats LuaJIT on fannkuchredux** (30.67s vs 117.07s, **3.8x faster**) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT, and Objeck's method-JIT handles it well. The new back-edge GC-safepoint work (PR #539) roughly halved Objeck's fannkuch time, closing the gap to Java to ~1.5x.
+- **binarytrees is Objeck's weak spot — slower than even the interpreters here.** Allocation/GC throughput dominates; Java's generational GC + escape analysis is **~32x** faster (0.24s vs 7.79s). This is the clearest improvement target (P1 on the roadmap).
+- **spectralnorm in the interpreter (43s) understates Objeck.** With `native` the same kernel drops to **0.45s at input 2000** (see micro-benchmarks); the gap is auto-JIT coverage (`DYN_MTHD_CALL`), not raw capability.
 
 ### Key Takeaways
 
 1. **Against scripting peers, Objeck is decisively faster.** On JIT-friendly numeric and integer loops it leads Python and Ruby by 3–30x.
 2. **Against compiled-class JITs (Java, LuaJIT), Objeck trails on float loops but is competitive — and ahead — on the right integer workload** (fannkuchredux beats LuaJIT).
 3. **Allocation throughput is the #1 gap.** binarytrees is the one benchmark where Objeck loses to everything; escape analysis / faster young-gen allocation is the highest-leverage future work.
-4. **Auto-JIT coverage gap remains for `DYN_MTHD_CALL`.** spectralnorm runs in the interpreter (48s) but `native` reaches 0.45s (input 2000) — a large speedup currently left on the table for closure/function-ref-heavy code.
+4. **Auto-JIT coverage gap remains for `DYN_MTHD_CALL`.** spectralnorm runs in the interpreter (43s) but `native` reaches 0.45s (input 2000) — a large speedup currently left on the table for closure/function-ref-heavy code.
 5. **Measurement environment matters.** Objeck's interpreter is more sensitive to virtualization than its JIT; native/WSL2 numbers are meaningfully better than the Docker numbers shown here.
 
 ---
@@ -225,4 +225,4 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 
 ---
 
-*Last updated: June 16, 2026 -- single-language CLBG/micro tables are WSL2 (v2026.6.0); the Cross-Language Comparison is a unified Docker run (v2026.6.2) adding LuaJIT 2.1 and OpenJDK 21. AMD Ryzen AI 9 HX 370. Added the prioritized Speedup Roadmap (P0 safepoint fix in progress on branch `perf/jit-safepoint-inline`).*
+*Last updated: June 17, 2026 -- the Cross-Language Comparison was re-run on an AMD Ryzen 9 7950X3D (Docker, 32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539): Objeck fannkuchredux dropped 59.4s → 30.7s. Single-language CLBG/micro tables above are still the earlier WSL2 run (v2026.6.0, HX 370) and have not been re-measured on this box. P0 safepoint roadmap: AMD64 complete; ARM64 back-edge done (validated on Apple Silicon), ARM64 register-cache step deferred.*
