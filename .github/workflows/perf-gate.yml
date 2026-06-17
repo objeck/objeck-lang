@@ -1,0 +1,111 @@
+name: Perf Gate
+
+# Native (non-Docker) cross-language perf gate. Builds Objeck on the runner and
+# runs it head-to-head against Java (HotSpot) and LuaJIT in one pass, then checks
+# the Objeck-vs-peer time ratios against a committed baseline. Ratios on the same
+# run cancel CI machine noise, so a relative regression (like the GC-safepoint
+# one) is caught regardless of how fast the runner is.
+#
+# Rollout: currently REPORT-ONLY (--no-fail) because the committed baseline is an
+# approximation from a dev box. To enforce hard failures: run this workflow once,
+# download the "perf-baseline-measured" artifact, commit it as
+# perf-results/perf_baseline.json, then remove the `--no-fail` flag below.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'core/vm/**'
+      - 'core/compiler/**'
+      - 'core/shared/**'
+      - 'perf-results/**'
+      - '.github/workflows/perf-gate.yml'
+  pull_request:
+    paths:
+      - 'core/vm/**'
+      - 'core/compiler/**'
+      - 'core/shared/**'
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: 'Runs per benchmark'
+        required: false
+        default: '3'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  perf-gate:
+    name: Perf gate (linux-x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install build deps + peer runtimes
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libmbedtls-dev libnghttp2-dev libngtcp2-dev \
+            libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev \
+            zlib1g-dev libreadline-dev ccache bc \
+            default-jdk-headless luajit
+
+      - name: Cache ccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-perfgate-ccache-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-perfgate-ccache-
+
+      - name: Setup ccache
+        run: ccache --max-size=500M && ccache --set-config=compression=true
+
+      - name: Build Objeck (obc + obr)
+        working-directory: core/vm
+        env: { CC: ccache gcc, CXX: ccache g++ }
+        run: |
+          cp make/Makefile.amd64 Makefile
+          make -j$(nproc)
+          # compiler too
+          cd ../compiler
+          cp make/Makefile.amd64 Makefile
+          make -j$(nproc) OBJECK_LIB_PATH=///".///"
+
+      - name: Assemble minimal bin dir (obc, obr, libs)
+        id: bindir
+        run: |
+          BIN=/tmp/objk/bin
+          mkdir -p "$BIN"
+          cp core/compiler/obc core/vm/obr "$BIN"/
+          cp core/lib/*.obl "$BIN"/ 2>/dev/null || true
+          cp core/lib/*.ini "$BIN"/ 2>/dev/null || true
+          chmod +x "$BIN"/obc "$BIN"/obr
+          "$BIN"/obc -version | head -1 || true
+          echo "dir=$BIN" >> $GITHUB_OUTPUT
+
+      - name: Run native cross-language harness
+        run: |
+          bash perf-results/cross-lang/run_native.sh \
+            "${{ steps.bindir.outputs.dir }}" /tmp/perf.csv "${{ github.event.inputs.runs || '3' }}"
+          echo "---- results ----"; cat /tmp/perf.csv
+
+      - name: Perf gate (report-only for now)
+        run: |
+          # report into the job summary; --no-fail until a CI-measured baseline is committed
+          python3 perf-results/check_perf_gate.py /tmp/perf.csv --no-fail --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Produce CI-measured baseline (for committing)
+        run: |
+          cp perf-results/perf_baseline.json /tmp/perf_baseline.prev.json 2>/dev/null || true
+          python3 perf-results/check_perf_gate.py /tmp/perf.csv --update-baseline --baseline /tmp/perf_baseline.measured.json
+
+      - name: Upload results + measured baseline
+        uses: actions/upload-artifact@v6
+        with:
+          name: perf-gate-results
+          path: |
+            /tmp/perf.csv
+            /tmp/perf_baseline.measured.json
+          retention-days: 90
