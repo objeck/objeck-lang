@@ -183,7 +183,7 @@ loses to everything — including the interpreters — on allocation-bound work
 (binarytrees), and trails Java/LuaJIT on float loops.** So the highest-value work
 is allocation throughput and float codegen, not more integer-loop tuning.
 
-### P0 — Recover the GC-safepoint regression *(in progress)*
+### P0 — Recover the GC-safepoint regression *(complete — both arches)*
 
 The cooperative stop-the-world work (v2026.6.2) emits an unconditional
 `call MemoryManager::SafePoint` at **every JIT label**, which regressed
@@ -227,4 +227,4 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 
 ---
 
-*Last updated: June 17, 2026 -- the entire page (CLBG, micro, and cross-language) was re-measured in one unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539, Objeck v2026.6.2): fannkuchredux dropped 59.4s → 30.7s. Numbers are Docker (interpreter-bound rows ~30–50% slower than a native build); a native re-run is future work. P0 safepoint roadmap: AMD64 complete; ARM64 back-edge done (validated on Apple Silicon); ARM64 register-cache step deferred.*
+*Last updated: June 17, 2026 -- the entire page (CLBG, micro, and cross-language) was re-measured in one unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539, Objeck v2026.6.2): fannkuchredux dropped 59.4s → 30.7s. Numbers are Docker (interpreter-bound rows ~30–50% slower than a native build); a native re-run is future work. P0 safepoint roadmap: complete on both arches — AMD64 (all three steps) and ARM64 (back-edge + X19 register-cache, validated on Apple Silicon).*
