@@ -68,6 +68,15 @@ This generates from `.in` templates:
 > successful deploy. This bit 2026.6.1 — the playground served `v2026.6.0` until
 > the constant was bumped and re-deployed.
 
+> **Also bump the README "Latest Release" badge by hand.** `README.md` (line ~15)
+> uses a **static** shields.io badge:
+> `https://img.shields.io/badge/release-v<VERSION>-blue`. It was switched from the
+> dynamic `github/v/release` endpoint because that endpoint intermittently
+> rendered `unable to select next github token from pool` (a shields.io
+> server-side error when its GitHub API token pool is exhausted). The static badge
+> never calls the API, but must be bumped to `v<VERSION>` every release or it
+> shows the previous version.
+
 ### 4. Full Windows build via `deploy_windows.cmd`
 
 This must run from a VS Developer Command Prompt or have `VCINSTALLDIR` set. Run:
