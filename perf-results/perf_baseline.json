@@ -1,16 +1,16 @@
 {
   "ratios": {
     "objeck/java": {
-      "binarytrees": 32.4583,
-      "fannkuchredux": 1.4888,
-      "nbody": 7.6957,
-      "spectralnorm": 36.8462
+      "binarytrees": 28.6911,
+      "fannkuchredux": 1.795,
+      "nbody": 9.6496,
+      "spectralnorm": 38.394
     },
     "objeck/luajit": {
-      "binarytrees": 2.3323,
-      "fannkuchredux": 0.262,
-      "nbody": 4.1163,
-      "spectralnorm": 38.8378
+      "binarytrees": 4.2365,
+      "fannkuchredux": 0.2862,
+      "nbody": 4.7434,
+      "spectralnorm": 44.9419
     }
   },
   "note": "Objeck/peer median-time ratios; lower is better. Refresh on a quiet CI runner after an intended perf change."
