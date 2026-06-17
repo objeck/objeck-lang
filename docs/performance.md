@@ -10,11 +10,13 @@
 
 | | |
 |---|---|
-| **CPU** | AMD Ryzen AI 9 HX 370 (12C/24T) |
-| **RAM** | 32 GB DDR5 |
-| **OS** | Ubuntu 24.04 (WSL2 on Windows 11) |
-| **Compiler** | Objeck v2026.6.0 built from source, `-opt s3` |
+| **CPU** | AMD Ryzen 9 7950X3D (16C/32T) |
+| **RAM** | 128 GB (62 GB visible in Docker) |
+| **OS** | Ubuntu 24.04.4 in Docker (Windows 11 host) |
+| **Compiler** | Objeck v2026.6.2 + JIT GC-safepoint fixes (PR #539), built from source, `-opt s3` |
 | **Methodology** | 3 runs per benchmark, median reported |
+
+> All tables below come from a **single unified Docker run** (`perf-results/docker/Dockerfile`) on the box above, so the single-language and cross-language numbers are directly comparable. Note Docker's virtualized backend runs Objeck's **interpreter**-bound benchmarks ~30–50% slower than a native (bare-metal/WSL2) build, while JIT/`native` code is nearly unaffected — so the interpreter rows here are conservative.
 
 ### CLBG Benchmarks
 
@@ -22,13 +24,13 @@ Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.de
 
 | Benchmark | Input | Time (s) | Peak RSS |
 |-----------|-------|----------|----------|
-| **mandelbrot** | 4000 | 0.94 | 9 MB |
-| **nbody** | 50M | 23.31 | 7 MB |
-| **binarytrees** | 17 | 10.03 | 210 MB |
-| **fannkuchredux** | 12 | 35.15 | 7 MB |
-| **spectralnorm** | 5500 | 37.44 | 8 MB |
+| **mandelbrot** | 4000 | 0.81 | 12 MB |
+| **nbody** | 50M | 17.70 | 10 MB |
+| **binarytrees** | 17 | 7.79 | 207 MB |
+| **fannkuchredux** | 12 | 30.67 | 12 MB |
+| **spectralnorm** | 5500 | 43.11 | 11 MB |
 
-**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and auto-JIT for methods containing `MTHD_CALL`. **spectralnorm** runs in the interpreter; with `native` (input 2000) it drops to **0.45s**.
+**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and auto-JIT for methods containing `MTHD_CALL`. **fannkuchredux** is the headline gain from the new back-edge GC-safepoint work (PR #539). **spectralnorm** runs in the interpreter; with `native` (input 2000) it drops to **0.37s**.
 
 ---
 
@@ -45,7 +47,7 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 | **Java** | OpenJDK 21.0.11 (HotSpot, tiered JIT) |
 | **Host** | AMD Ryzen 9 7950X3D (16C/32T), Ubuntu 24.04.4 in Docker (32 vCPU / 62 GB) |
 
-> **Compare *within* this table, not against the WSL2 tables above.** Under Docker Desktop's virtualized backend (and its reduced memory ceiling) Objeck's *interpreter*-bound benchmarks run ~30–50% slower than the native-WSL2 CLBG table — while JIT/`native` code (e.g. `spectralnorm_native`) is nearly unaffected. The numbers below are an internally consistent, same-environment comparison; the WSL2 table is the reference for Objeck's best-case single-language results.
+> Same unified Docker run as the single-language tables above, so every number on this page is directly comparable. As noted, Objeck's *interpreter*-bound benchmarks (e.g. spectralnorm) would run ~30–50% faster on a native build; JIT/`native` code is essentially unaffected by Docker.
 
 | Benchmark | Input | Objeck | Python 3.12 | Ruby 3.2 | LuaJIT 2.1 | Java 21 | Best |
 |-----------|-------|--------|-------------|----------|------------|---------|------|
@@ -60,15 +62,15 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 - **Objeck beats both Python and Ruby on 3 of 4** — by wide margins where the JIT engages: nbody **7.7x** faster than Python / **11.4x** faster than Ruby; fannkuchredux **13.5x** / **38x**; spectralnorm **2.9x** / **2.0x** (interpreter only).
 - **Objeck beats LuaJIT on fannkuchredux** (30.67s vs 117.07s, **3.8x faster**) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT, and Objeck's method-JIT handles it well. The new back-edge GC-safepoint work (PR #539) roughly halved Objeck's fannkuch time, closing the gap to Java to ~1.5x.
 - **binarytrees is Objeck's weak spot — slower than even the interpreters here.** Allocation/GC throughput dominates; Java's generational GC + escape analysis is **~32x** faster (0.24s vs 7.79s). This is the clearest improvement target (P1 on the roadmap).
-- **spectralnorm in the interpreter (43s) understates Objeck.** With `native` the same kernel drops to **0.45s at input 2000** (see micro-benchmarks); the gap is auto-JIT coverage (`DYN_MTHD_CALL`), not raw capability.
+- **spectralnorm in the interpreter (43s) understates Objeck.** With `native` the same kernel drops to **0.37s at input 2000** (see micro-benchmarks); the gap is auto-JIT coverage (`DYN_MTHD_CALL`), not raw capability.
 
 ### Key Takeaways
 
 1. **Against scripting peers, Objeck is decisively faster.** On JIT-friendly numeric and integer loops it leads Python and Ruby by 3–30x.
 2. **Against compiled-class JITs (Java, LuaJIT), Objeck trails on float loops but is competitive — and ahead — on the right integer workload** (fannkuchredux beats LuaJIT).
 3. **Allocation throughput is the #1 gap.** binarytrees is the one benchmark where Objeck loses to everything; escape analysis / faster young-gen allocation is the highest-leverage future work.
-4. **Auto-JIT coverage gap remains for `DYN_MTHD_CALL`.** spectralnorm runs in the interpreter (43s) but `native` reaches 0.45s (input 2000) — a large speedup currently left on the table for closure/function-ref-heavy code.
-5. **Measurement environment matters.** Objeck's interpreter is more sensitive to virtualization than its JIT; native/WSL2 numbers are meaningfully better than the Docker numbers shown here.
+4. **Auto-JIT coverage gap remains for `DYN_MTHD_CALL`.** spectralnorm runs in the interpreter (43s) but `native` reaches 0.37s (input 2000) — a large speedup currently left on the table for closure/function-ref-heavy code.
+5. **Measurement environment matters.** Objeck's interpreter is more sensitive to virtualization than its JIT; native (non-Docker) numbers would be meaningfully better than the Docker numbers shown here.
 
 ---
 
@@ -78,8 +80,8 @@ Methods marked `native` are JIT-compiled to x64 or ARM64 machine code. All other
 
 | spectralnorm | Input | Time | Speedup |
 |-------------|-------|------|---------|
-| Interpreter | 5500 | 37.44s | -- |
-| With `native` (JIT) | 2000 | **0.45s** | **~83x** |
+| Interpreter | 5500 | 43.11s | -- |
+| With `native` (JIT) | 2000 | **0.37s** | **~100x** (smaller input) |
 
 Methods marked `native` that contain `MTHD_CALL` are JIT-compiled via `ProcessStackCallback`. Auto-JIT now also compiles methods containing `MTHD_CALL` after 10 calls — the same code path, just triggered automatically rather than by the programmer. Closure/function-reference calls (`DYN_MTHD_CALL`) are not yet auto-JIT'd.
 
@@ -91,18 +93,18 @@ Targeted benchmarks for specific optimization patterns (`programs/tests/perf/`).
 
 | Benchmark | Target | Time (s) | Peak RSS |
 |-----------|--------|----------|----------|
-| `bench_loop_invariant` | Loop-invariant expressions (LICM) | 0.18 | 7 MB |
-| `bench_cse` | Common subexpression elimination | 0.20 | 7 MB |
-| `bench_spectralnorm_native` | Float arrays with `native` JIT (n=2000) | 0.45 | 8 MB |
-| `bench_copy_prop` | Variable copy chains | 0.84 | 7 MB |
-| `bench_dead_code` | Unreachable assignments | 1.17 | 7 MB |
-| `bench_gc_churn` | Rapid short-lived object allocation | 0.71 | 135 MB |
-| `bench_strength_ext` | Non-power-of-2 multiply patterns | 1.62 | 7 MB |
-| `bench_gc_large_heap` | Large live set, GC sweep time | 0.11 | 55 MB |
-| `bench_array_intensive` | Sequential array access patterns | 1.75 | 7 MB |
-| `bench_method_dispatch` | Repeated method calls on objects | 2.53 | 7 MB |
-| `bench_matrix_multiply` | Nested loop float computation (n=500) | 3.94 | 13 MB |
-| `bench_tco` | Tail-recursive accumulator (TCO, n=1M×200) | 0.25 | 7 MB |
+| `bench_loop_invariant` | Loop-invariant expressions (LICM) | 0.24 | 12 MB |
+| `bench_cse` | Common subexpression elimination | 0.25 | 11 MB |
+| `bench_spectralnorm_native` | Float arrays with `native` JIT (n=2000) | 0.37 | 10 MB |
+| `bench_copy_prop` | Variable copy chains | 1.19 | 10 MB |
+| `bench_dead_code` | Unreachable assignments | 1.68 | 10 MB |
+| `bench_gc_churn` | Rapid short-lived object allocation | 0.64 | 138 MB |
+| `bench_strength_ext` | Non-power-of-2 multiply patterns | 2.14 | 10 MB |
+| `bench_gc_large_heap` | Large live set, GC sweep time | 0.07 | 58 MB |
+| `bench_array_intensive` | Sequential array access patterns | 2.40 | 12 MB |
+| `bench_method_dispatch` | Repeated method calls on objects | 2.96 | 11 MB |
+| `bench_matrix_multiply` | Nested loop float computation (n=500) | 4.82 | 16 MB |
+| `bench_tco` | Tail-recursive accumulator (TCO, n=1M×200) | 0.33 | 10 MB |
 
 ### Running Benchmarks
 
@@ -211,7 +213,7 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 
 | Opportunity | Category | Expected Impact |
 |-------------|----------|----------------|
-| **DYN_MTHD_CALL auto-JIT** — closure / function-ref calls | JIT | **HIGH** — spectralnorm goes 48s (interpreter) → 0.45s (`native`, input 2000); this gap keeps float-method code in the interpreter. prgm70/71 segfault patterns need root-cause first |
+| **DYN_MTHD_CALL auto-JIT** — closure / function-ref calls | JIT | **HIGH** — spectralnorm goes 43s (interpreter) → 0.37s (`native`, input 2000); this gap keeps float-method code in the interpreter. prgm70/71 segfault patterns need root-cause first |
 | **Float JIT codegen + float fast-path opcodes** (`LOAD_FLOAT_LIT`, `ADD/SUB/MUL_FLOAT`) | JIT/VM | **HIGH** — Java and LuaJIT lead specifically on float loops (nbody, spectralnorm); the inline switch is integer-only today |
 | **ProcessInlineMethod for MTHD_CALL** — getter/ctor inlining inside JIT'd methods | JIT | MED — eliminates the `ProcessStackCallback` trampoline. Blocked by INSTANCE_MEM offset corruption in constructors; needs frame-layout work |
 | **Per-call-site monomorphic virtual dispatch cache** | VM | LOW — store the last (class→method) pointer in the instruction to skip the hash lookup in the common case |
@@ -220,9 +222,9 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 
 | Opportunity | Impact |
 |-------------|--------|
-| Stand up a **native (non-Docker) cross-language harness** so peer comparisons aren't muddied by the ~30–50% Docker interpreter overhead documented above | makes the numbers above directly comparable to the WSL2 single-language tables |
+| Stand up a **native (non-Docker) cross-language harness** so peer comparisons aren't muddied by the ~30–50% Docker interpreter overhead documented above | gives bare-metal interpreter numbers; the current page is entirely Docker |
 | Add **Java + LuaJIT to the gating perf CI** so regressions like the safepoint one are caught automatically | the fannkuch regression shipped unnoticed because nothing compared releases head-to-head |
 
 ---
 
-*Last updated: June 17, 2026 -- the Cross-Language Comparison was re-run on an AMD Ryzen 9 7950X3D (Docker, 32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539): Objeck fannkuchredux dropped 59.4s → 30.7s. Single-language CLBG/micro tables above are still the earlier WSL2 run (v2026.6.0, HX 370) and have not been re-measured on this box. P0 safepoint roadmap: AMD64 complete; ARM64 back-edge done (validated on Apple Silicon), ARM64 register-cache step deferred.*
+*Last updated: June 17, 2026 -- the entire page (CLBG, micro, and cross-language) was re-measured in one unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539, Objeck v2026.6.2): fannkuchredux dropped 59.4s → 30.7s. Numbers are Docker (interpreter-bound rows ~30–50% slower than a native build); a native re-run is future work. P0 safepoint roadmap: AMD64 complete; ARM64 back-edge done (validated on Apple Silicon); ARM64 register-cache step deferred.*
