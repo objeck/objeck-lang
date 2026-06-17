@@ -676,7 +676,15 @@ void JitAmd64::ProcessInstructions() {
             << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       // note: object id passed in instruction param
+      // Inline young-gen bump-alloc fast path; callback is the slow path. Both
+      // leave the new pointer on the op stack for ProcessReturnParameters.
+      StackClass* new_klass = program->GetClass(instr->GetOperand());
+      const long inline_done = EmitNewObjectInline(new_klass);
       ProcessStackCallback(NEW_OBJ_INST, instr, instr_index, 0);
+      if(inline_done >= 0) {
+        const int off = (int)(code_index - (inline_done + 4));
+        memcpy(&code[(size_t)inline_done], &off, 4);   // backpatch success jmp past callback
+      }
       ProcessReturnParameters(INT_TYPE);
     }
       break;
@@ -1151,6 +1159,78 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
 // call-clobbered volatiles are all dead here (callee-saved regs incl. the RBP
 // frame are ABI-preserved). Without this a JITed no-allocation loop never
 // reaches a safepoint and the stop-the-world collector deadlocks.
+// Inline young-gen bump alloc for NEW_OBJ_INST (mirror MemoryManager::AllocateObject).
+// Returns code offset of the success-path jmp (rel32) for the caller to backpatch.
+long JitAmd64::EmitNewObjectInline(StackClass* cls) {
+  const long size = cls->GetInstanceMemorySize();
+  const size_t alloc_size = (size_t)size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
+  const size_t total_size = alloc_size + sizeof(size_t);
+  const size_t aligned_total = (total_size + sizeof(size_t) - 1) & ~((size_t)(sizeof(size_t) - 1));
+  const int64_t nil_type = instructions::MemoryType::NIL_TYPE;
+
+  FlushLocalCache();
+  move_reg_mem(RAX, TMP_REG_0, RBP);
+  move_reg_mem(RBX, TMP_REG_1, RBP);
+  move_reg_mem(RCX, TMP_REG_2, RBP);
+  move_reg_mem(RDX, TMP_REG_3, RBP);
+
+  move_imm_reg((int64_t)MemoryManager::YoungOffsetAddr(), RBX);   // RBX = &young_offset
+
+  const long retry_index = code_index;
+  move_mem_reg(0, RBX, RAX);                          // RAX = young_offset (expected)
+  move_reg_reg(RAX, RCX);                             // RCX = expected
+  add_imm_reg((int64_t)aligned_total, RCX);          // RCX = new_offset
+  move_imm_reg((int64_t)MemoryManager::YoungRegionSizeAddr(), RDX);
+  move_mem_reg(0, RDX, RDX);                          // RDX = young_region_size
+  AddMachineCode(0x48); AddMachineCode(0x39); AddMachineCode(0xD1);   // cmp rcx, rdx
+  AddMachineCode(0x0f); AddMachineCode(0x87);                         // ja OVERFLOW
+  const long ja_pos = code_index; AddImm(0);
+  AddMachineCode(0xf0); AddMachineCode(0x48); AddMachineCode(0x0f);
+  AddMachineCode(0xb1); AddMachineCode(0x0b);        // lock cmpxchg [rbx], rcx
+  AddMachineCode(0x0f); AddMachineCode(0x85);                         // jne retry
+  const long jne_pos = code_index; AddImm(0);
+  { int off = (int)(retry_index - (jne_pos + 4)); memcpy(&code[(size_t)jne_pos], &off, 4); }
+
+  move_imm_reg((int64_t)MemoryManager::YoungRegionAddr(), RDX);
+  move_mem_reg(0, RDX, RDX);                          // RDX = young_region base
+  add_reg_reg(RAX, RDX);                              // RDX = raw_mem = base + offset
+  move_imm_reg((int64_t)alloc_size, RAX); move_reg_mem(RAX, 0, RDX);
+  move_imm_reg(nil_type, RAX);            move_reg_mem(RAX, (long)sizeof(size_t), RDX);
+  move_imm_reg((int64_t)(size_t)cls, RAX); move_reg_mem(RAX, (long)(sizeof(size_t) * 2), RDX);
+  add_imm_reg((int64_t)(sizeof(size_t) * (EXTRA_BUF_SIZE + 1)), RDX);  // RDX = result ptr
+
+  move_mem_reg(OP_STACK, RBP, RAX);                   // RAX = op_stack base
+  move_mem_reg(STACK_POS, RBP, RBX);                  // RBX = &stack_pos counter
+#ifdef _WIN64
+  move_mem_reg32(0, RBX, RCX);                        // RCX = counter (32-bit on Win64)
+#else
+  move_mem_reg(0, RBX, RCX);                          // RCX = counter (64-bit)
+#endif
+  shl_imm_reg(3, RCX);
+  add_reg_reg(RCX, RAX);                              // RAX = op_stack + counter*8
+  move_reg_mem(RDX, 0, RAX);                          // op_stack[counter] = result
+  inc_mem(0, RBX);                                    // ++*stack_pos
+
+  // allocation_size += size (match AllocateObject — drives the major-GC trigger;
+  // skipping it starves GC -> old-gen bloat -> O(n^2) collection time).
+  move_imm_reg((int64_t)MemoryManager::AllocationSizeAddr(), RAX);
+  AddMachineCode(0x48); AddMachineCode(0x81); AddMachineCode(0x00); AddImm((int)size); // add qword [rax], size
+
+  move_mem_reg(TMP_REG_0, RBP, RAX);
+  move_mem_reg(TMP_REG_1, RBP, RBX);
+  move_mem_reg(TMP_REG_2, RBP, RCX);
+  move_mem_reg(TMP_REG_3, RBP, RDX);
+  AddMachineCode(0xe9);
+  const long done_jmp_pos = code_index; AddImm(0);
+
+  { int off = (int)(code_index - (ja_pos + 4)); memcpy(&code[(size_t)ja_pos], &off, 4); }   // OVERFLOW:
+  move_mem_reg(TMP_REG_0, RBP, RAX);
+  move_mem_reg(TMP_REG_1, RBP, RBX);
+  move_mem_reg(TMP_REG_2, RBP, RCX);
+  move_mem_reg(TMP_REG_3, RBP, RDX);
+  return done_jmp_pos;
+}
+
 void JitAmd64::EmitJitSafePoint() {
   // Fast path: cmp byte [r12], 0 ; je skip
   // R12 caches &stw_active (loaded once in the prologue), so the common no-GC

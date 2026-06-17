@@ -275,6 +275,11 @@ class MemoryManager {
   // the JIT loads this flag and skips the SafePoint() call when no collection is
   // active, so a hot JITed loop pays only a load+test+branch per poll, not a call.
   static void* StwActiveAddr() { return (void*)&stw_active; }
+  // Young-gen bump-allocator state addresses for the JIT's inline NEW_OBJ_INST.
+  static void* YoungOffsetAddr() { return (void*)&young_offset; }
+  static void* YoungRegionAddr() { return (void*)&young_region; }
+  static void* YoungRegionSizeAddr() { return (void*)&young_region_size; }
+  static void* AllocationSizeAddr() { return (void*)&allocation_size; }
   // Bracket a blocking operation (sleep / join / I/O): the thread's VM state is
   // frozen and scannable, so count it as parked for the duration.
   static void BeginBlocking();
