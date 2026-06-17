@@ -933,7 +933,14 @@ void JitArm64::ProcessInstructions() {
       std::wcout << L"LBL: id=" << instr->GetOperand() << endl;
 #endif
       FlushLocalCache();
-      EmitJitSafePoint();   // poll for stop-the-world GC at every label (loop back-edge)
+      // GC safepoint only at loop-header labels (back-edge targets). Every cyclic
+      // path contains a back-edge, so polling these labels alone guarantees each
+      // JITed loop reaches a safepoint (else the stop-the-world collector
+      // deadlocks); forward-only labels (if/else merges) are skipped. ARM64 has no
+      // method inlining, so all loops live in this instruction stream.
+      if(safepoint_lbl_indices.find(instr_index - 1) != safepoint_lbl_indices.end()) {
+        EmitJitSafePoint();   // poll for stop-the-world GC at this loop header
+      }
       break;
       
     default: {
@@ -4933,9 +4940,21 @@ bool JitArm64::Compile(StackMethod* cm)
     // MTHD_CALL is supported via ProcessStackCallback + direct JIT-to-JIT
     // calling. STOR_INT_ARY_ELM is safe — integer array stores don't hold
     // references.
+    safepoint_lbl_indices.clear();
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
-      if(!CanJitInstruction(method->GetInstruction(i)->GetType())) {
+      StackInstr* scan_instr = method->GetInstruction(i);
+      if(!CanJitInstruction(scan_instr->GetType())) {
         return false;
+      }
+      // detect loops via backward jumps. On ARM64 a JMP operand is the target
+      // instruction index + 1 (see the jump backpatch: dest_index = operand - 1).
+      // A target earlier than the jump is a loop back-edge; its target label is a
+      // loop header and is the only kind of label that needs a safepoint poll.
+      if(scan_instr->GetType() == JMP) {
+        const long target_index = scan_instr->GetOperand() - 1;
+        if(target_index < i) {
+          safepoint_lbl_indices.insert(target_index);
+        }
       }
     }
 

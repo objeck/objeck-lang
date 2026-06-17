@@ -32,6 +32,7 @@
 #pragma once
 
 #include "../jit_common.h"
+#include <unordered_set>
 
 namespace Runtime {
 #ifdef _WIN64
@@ -352,6 +353,9 @@ namespace Runtime {
       long backedge_index;   // backward JMP instruction index
     };
     std::vector<LoopInfo> detected_loops;
+    // instruction indices of loop-header labels (back-edge targets); only these
+    // labels need a GC safepoint poll — if/else merge labels are skipped.
+    std::unordered_set<long> safepoint_lbl_indices;
 
     // local variable register cache: keeps registers live after store
     // to avoid redundant reloads. Evicted on demand when pool is empty.
