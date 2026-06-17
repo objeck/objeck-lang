@@ -25,6 +25,11 @@ for a in "$@"; do [ "$a" = "--with-scripting" ] && WITH_SCRIPTING=1; done
 
 OBC="$BIN_DIR/obc"
 OBR="$BIN_DIR/obr"
+# obc/obr resolve the standard .obl libraries via OBJECK_LIB_PATH; the perf-gate
+# workflow stages obc/obr + *.obl together in BIN_DIR. Without this, every Objeck
+# compile fails ("Unable to read library: lang.obl") and the gate silently has no
+# Objeck data to compare. Point it at BIN_DIR (override only if caller didn't set it).
+export OBJECK_LIB_PATH="${OBJECK_LIB_PATH:-$BIN_DIR}"
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_OBJ="$SELF_DIR/../../programs/tests/clbg"   # Objeck CLBG sources
 SRC_X="$SELF_DIR/benchmarks"                     # cross-language sources
