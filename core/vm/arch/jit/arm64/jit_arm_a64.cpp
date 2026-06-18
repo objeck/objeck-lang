@@ -4227,18 +4227,27 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
 
   InstructionType type = instruction->GetType();
 #ifdef _DEBUG_JIT_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
   
-  // save D0, if needed
-  RegisterHolder *holder = GetFpRegister();
-  if(holder->GetRegister() != D0) {
-    move_freg_mem(D0, TMP_D0, SP);
+  // Save D0 and load the argument into it. A cached local arrives as REG_FLOAT
+  // (value already in a float reg); a slot or constant arrives as MEM_FLOAT. The
+  // old code always did move_mem_freg(operand), but a REG_FLOAT's "operand" is
+  // register bookkeeping, not an SP slot -> a garbage argument (e.g. atan got 0).
+  // The result register is allocated AFTER the call (below): allocating it here,
+  // while a cached operand is still live, can spill that operand's register and
+  // corrupt the argument. Mirrors AMD64 call_xfunc.
+  move_freg_mem(D0, TMP_D0, SP);
+  if(left->GetType() == REG_FLOAT) {
+    if(left->GetRegister()->GetRegister() != D0) {
+      move_freg_freg(left->GetRegister()->GetRegister(), D0);
+    }
+    ReleaseFpRegister(left->GetRegister());
   }
-  
-  // load D0
-  move_mem_freg((long)left->GetOperand(), SP, D0);
-  
+  else {
+    move_mem_freg((long)left->GetOperand(), SP, D0);
+  }
+
   // choose function
   double(*func_ptr)(double);
   switch (type) {
@@ -4328,10 +4337,13 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   move_imm_reg((size_t)func_ptr, X9);
   call_reg(X9);
   move_mem_reg(TMP_X0, SP, X9);
-  
-  // get return and restore D0, if needed
-  move_freg_freg(D0, holder->GetRegister());
+
+  // Result is in D0. Allocate the holder now (the cached operand, if any, was
+  // already released above, so this can't spill a live argument), move the result
+  // into it, and restore D0 unless the holder is D0 itself.
+  RegisterHolder* holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
+    move_freg_freg(D0, holder->GetRegister());
     move_mem_freg(TMP_D0, SP, D0);
   }
   working_stack.push_front(new RegInstr(holder));
@@ -4346,35 +4358,36 @@ void JitArm64::ProcessFloatRound(StackInstr* instruction, const wchar_t mode)
   working_stack.pop_front();
   
 #ifdef _DEBUG_JIT_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
   
-  // save D0, if needed
-  RegisterHolder *holder = GetFpRegister();
-  if(holder->GetRegister() != D0) {
-    move_freg_mem(D0, TMP_D0, SP);
-  }
-  
-  // load D0
-  move_mem_freg((long)left->GetOperand(), SP, D0);
-  
-  if(mode == L'f') {
-    floor_freg_freg(D0 , D0);
-  }
-  else if(mode == L'c') {
-    ceil_freg_freg(D0 , D0);
+  // frintm/frintp/frintn are freg->freg with no libc call, so round in place. A
+  // cached local arrives as REG_FLOAT (already in a float reg); a slot or constant
+  // arrives as MEM_FLOAT. The old code always did move_mem_freg(operand) into D0,
+  // but a REG_FLOAT's "operand" is register bookkeeping, not an SP slot -> it
+  // rounded a garbage value (e.g. Floor(3.14)->As(Int) yielded INT64_MIN).
+  RegisterHolder* holder;
+  if(left->GetType() == REG_FLOAT) {
+    holder = left->GetRegister();
   }
   else {
-    round_freg_freg(D0 , D0);
+    holder = GetFpRegister();
+    move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
   }
-  
-  // get return and restore D0, if needed
-  move_freg_freg(D0, holder->GetRegister());
-  if(holder->GetRegister() != D0) {
-    move_mem_freg(TMP_D0, SP, D0);
+
+  const Register fr = holder->GetRegister();
+  if(mode == L'f') {
+    floor_freg_freg(fr, fr);
   }
+  else if(mode == L'c') {
+    ceil_freg_freg(fr, fr);
+  }
+  else {
+    round_freg_freg(fr, fr);
+  }
+
   working_stack.push_front(new RegInstr(holder));
-  
+
   delete left;
   left = nullptr;
 }
@@ -4385,26 +4398,26 @@ void JitArm64::ProcessFloatSquareRoot(StackInstr* instruction)
   working_stack.pop_front();
   
 #ifdef _DEBUG_JIT_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
   
-  // save D0, if needed
-  RegisterHolder *holder = GetFpRegister();
-  if(holder->GetRegister() != D0) {
-    move_freg_mem(D0, TMP_D0, SP);
+  // fsqrt is freg->freg with no libc call, so take the square root in place.
+  // REG_FLOAT = cached local (already in a float reg); MEM_FLOAT = slot/constant.
+  // The old code always did move_mem_freg(operand), reading a cached operand's
+  // register bookkeeping as a bogus SP slot.
+  RegisterHolder* holder;
+  if(left->GetType() == REG_FLOAT) {
+    holder = left->GetRegister();
   }
-  
-  // load D0
-  move_mem_freg((long)left->GetOperand(), SP, D0);
-  sqrt_freg_freg(D0 , D0);
-  
-  // get return and restore D0, if needed
-  move_freg_freg(D0, holder->GetRegister());
-  if(holder->GetRegister() != D0) {
-    move_mem_freg(TMP_D0, SP, D0);
+  else {
+    holder = GetFpRegister();
+    move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
   }
+
+  sqrt_freg_freg(holder->GetRegister(), holder->GetRegister());
+
   working_stack.push_front(new RegInstr(holder));
-  
+
   delete left;
   left = nullptr;
 }
@@ -4419,20 +4432,36 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
 
   InstructionType type = instruction->GetType();
 #ifdef _DEBUG_JIT_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
   
-  // save D0, if needed
-  RegisterHolder *holder = GetFpRegister();
-  if(holder->GetRegister() != D0) {
-    move_freg_mem(D0, TMP_D0, SP);
-  }
+  // Save D0/D1. The result holder is allocated after the call (below), not here:
+  // allocating it while a cached operand is still live could spill that operand's
+  // register and corrupt the argument.
+  move_freg_mem(D0, TMP_D0, SP);
   move_freg_mem(D1, TMP_D1, SP);
-   
-  // load D0
-  move_mem_freg((long)right->GetOperand(), SP, D0);
-  move_mem_freg((long)left->GetOperand(), SP, D1);
-  
+
+  // Load D0=right, D1=left. Either operand may be a cached float register
+  // (REG_FLOAT) rather than a slot (MEM_FLOAT). A REG_FLOAT's "operand" is register
+  // bookkeeping, not an SP slot, so the old direct move_mem_freg read garbage for
+  // cached float locals. Resolve any cached operand to a scratch slot FIRST so the
+  // two register loads below can't clobber each other (e.g. right cached in D1,
+  // left in D0).
+  long right_off = (long)right->GetOperand();
+  if(right->GetType() == REG_FLOAT) {
+    move_freg_mem(right->GetRegister()->GetRegister(), TMP_D2, SP);
+    ReleaseFpRegister(right->GetRegister());
+    right_off = TMP_D2;
+  }
+  long left_off = (long)left->GetOperand();
+  if(left->GetType() == REG_FLOAT) {
+    move_freg_mem(left->GetRegister()->GetRegister(), TMP_D3, SP);
+    ReleaseFpRegister(left->GetRegister());
+    left_off = TMP_D3;
+  }
+  move_mem_freg(right_off, SP, D0);
+  move_mem_freg(left_off, SP, D1);
+
   // choose function
   double(*func_ptr)(double, double);
   switch (type) {
@@ -4459,17 +4488,22 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   call_reg(X9);
   move_mem_reg(TMP_X0, SP, X9);
   
-  // get return and restore D0, if needed
-  move_freg_freg(D0, holder->GetRegister());
-  move_mem_freg(TMP_D1, SP, D1);
+  // Result is in D0. Allocate the holder now (both operands already released),
+  // move the result into it, and restore the caller's D0/D1 from their temps —
+  // skipping whichever the holder aliases (that register now holds the result).
+  RegisterHolder* holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
+    move_freg_freg(D0, holder->GetRegister());
     move_mem_freg(TMP_D0, SP, D0);
   }
+  if(holder->GetRegister() != D1) {
+    move_mem_freg(TMP_D1, SP, D1);
+  }
   working_stack.push_front(new RegInstr(holder));
-  
+
   delete left;
   left = nullptr;
-  
+
   delete right;
   right = nullptr;
 }
