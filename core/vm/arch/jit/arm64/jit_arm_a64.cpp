@@ -4340,10 +4340,12 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
 
   // Result is in D0. Allocate the holder now (the cached operand, if any, was
   // already released above, so this can't spill a live argument), move the result
-  // into it, and restore D0 unless the holder is D0 itself.
+  // into it, and restore D0 unless the holder is D0 itself. Use a true fmov Dd,Dn:
+  // move_freg_freg bridges through a GP reg and drops a value that lives only in
+  // the FP register (which a libc call result does), so it can't be used here.
   RegisterHolder* holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
-    move_freg_freg(D0, holder->GetRegister());
+    AddMachineCode(0x1E604000 | ((uint32_t)D0 << 5) | (uint32_t)holder->GetRegister());  // fmov D{holder}, D0
     move_mem_freg(TMP_D0, SP, D0);
   }
   working_stack.push_front(new RegInstr(holder));
@@ -4491,9 +4493,11 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   // Result is in D0. Allocate the holder now (both operands already released),
   // move the result into it, and restore the caller's D0/D1 from their temps —
   // skipping whichever the holder aliases (that register now holds the result).
+  // Use a true fmov Dd,Dn (move_freg_freg bridges through a GP reg and would drop
+  // the libc result, which lives only in the FP register).
   RegisterHolder* holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
-    move_freg_freg(D0, holder->GetRegister());
+    AddMachineCode(0x1E604000 | ((uint32_t)D0 << 5) | (uint32_t)holder->GetRegister());  // fmov D{holder}, D0
     move_mem_freg(TMP_D0, SP, D0);
   }
   if(holder->GetRegister() != D1) {
