@@ -45,6 +45,14 @@
 // Auto-JIT: methods called more than threshold times are JIT compiled.
 // Pre-scan validation (CanJitInstruction) runs before resource allocation,
 // so unsupported instructions cause immediate return false with no corruption.
+//
+// NOTE: lowering this default to 1 yields a large win on closure/numeric code
+// (spectralnorm 2000: 0.44s vs 7.0s at 10, 16x — only threshold=1 JITs the
+// outermost hot method before its single huge first call). It is NOT safe to
+// do yet: threshold=1 compiles many rarely-exercised methods and surfaces
+// several latent JIT miscompiles (chained transcendental float calls produce
+// NaN, string-interpolation paths, etc.). Those must be fixed first. See the
+// DYN_MTHD_CALL fixes in this change set for two such bugs already addressed.
 // Tunables:
 //   OBJECK_JIT_DISABLE=1   — turn auto-JIT off entirely
 //   OBJECK_JIT_THRESHOLD=N — call-count threshold (must be positive)
