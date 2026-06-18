@@ -596,8 +596,10 @@ void JitArm64::ProcessInstructions() {
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << endl;
 #endif
-      // passing instance variable
-      ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 3);
+      // Working stack at the call = [args..., func-ref word2 (instance), func-ref
+      // word1 (packed cls<<16|mthd)] = operand + 2 entries. (Was +3, over-counting
+      // by one -> ProcessStackCallback marshalled past the stack -> crash.)
+      ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 2);
       ProcessReturnParameters((MemoryType)instr->GetOperand2());
     }
       break;
@@ -4868,6 +4870,8 @@ static bool CanJitInstruction(InstructionType type) {
   case TANH_FLOAT:
   case CBRT_FLOAT:
   case LOG_FLOAT:
+  case LOG2_FLOAT:
+  case LOG10_FLOAT:
   case EXP_FLOAT:
   case TRUNC_FLOAT:
   case GAMMA_FLOAT:
@@ -4876,6 +4880,7 @@ static bool CanJitInstruction(InstructionType type) {
   case CEIL_FLOAT:
   case SQRT_FLOAT:
   case POW_FLOAT:
+  case ATAN2_FLOAT:
   case MOD_FLOAT:
   case RAND_FLOAT:
     // float compare
@@ -4885,9 +4890,11 @@ static bool CanJitInstruction(InstructionType type) {
   case GTR_EQL_FLOAT:
   case EQL_FLOAT:
   case NEQL_FLOAT:
-    // control flow (DYN_MTHD_CALL/DYN_MTHD_CALL_JIT rejected — closure issues)
+    // control flow
   case MTHD_CALL:
   case MTHD_CALL_JIT:
+  case DYN_MTHD_CALL:        // P2: function-reference / closure call JIT
+  case DYN_MTHD_CALL_JIT:
   case JMP:
   case LBL:
   case RTRN:
@@ -4919,6 +4926,13 @@ static bool CanJitInstruction(InstructionType type) {
     // traps
   case TRAP:
   case TRAP_RTRN:
+    // conversions
+  case F2I:
+  case I2F:
+  case I2S:
+  case S2I:
+  case F2S:
+  case S2F:
     // casting
   case OBJ_TYPE_OF:
   case OBJ_INST_CAST:
@@ -4954,15 +4968,13 @@ bool JitArm64::Compile(StackMethod* cm)
 
     // Pre-scan: reject methods the JIT cannot safely compile. The default
     // branch in ProcessInstruction calls exit(1) on any unhandled opcode, so
-    // anything not in the supported set below MUST be rejected here. Three
+    // anything not in the supported set below MUST be rejected here. Two
     // implemented instructions are also rejected for correctness:
     //   STOR_CLS_INST_INT_VAR / COPY_CLS_INST_INT_VAR — no JIT write barrier
     //     for class field stores.
-    //   DYN_MTHD_CALL / DYN_MTHD_CALL_JIT — closure/function-ref parameter
-    //     handling issues.
-    // MTHD_CALL is supported via ProcessStackCallback + direct JIT-to-JIT
-    // calling. STOR_INT_ARY_ELM is safe — integer array stores don't hold
-    // references.
+    // MTHD_CALL and DYN_MTHD_CALL (P2) are supported via ProcessStackCallback
+    // + direct JIT-to-JIT calling. STOR_INT_ARY_ELM is safe — integer array
+    // stores don't hold references.
     safepoint_lbl_indices.clear();
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       StackInstr* scan_instr = method->GetInstruction(i);
