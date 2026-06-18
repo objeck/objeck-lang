@@ -65,16 +65,7 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return true;
   }
 
-  // Auto-JIT: skip methods containing DYN_MTHD_CALL (closure parameter
-  // handling issues — prgm70/71 segfault with certain closure patterns).
-  // MTHD_CALL is now allowed: uses ProcessStackCallback the same way
-  // explicit 'native' methods do, which is already proven correct.
-  for(long i = 0; i < callee->GetInstructionCount(); ++i) {
-    if(callee->GetInstruction(i)->GetType() == DYN_MTHD_CALL) {
-      callee->SetJitAttempted();
-      return false;
-    }
-  }
+  // P2: DYN_MTHD_CALL auto-JIT enabled (function-reference/closure calls).
 
 #if defined(_M_ARM64)
   Runtime::JitArm64 jit_compiler;
@@ -154,7 +145,16 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   switch(instr_id) {
   case MTHD_CALL:
   case DYN_MTHD_CALL: {
-    StackMethod* callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+    // For DYN_MTHD_CALL the target is the packed func-ref word on the op stack
+    // (cls<<16|mthd), NOT the instr operands (param-count/return-type).
+    StackMethod* callee;
+    if(instr_id == DYN_MTHD_CALL) {
+      const size_t fref = op_stack[(*stack_pos) - 1];
+      callee = program->GetClass((long)((fref >> 16) & 0xFFFF))->GetMethod((long)(fref & 0xFFFF));
+    }
+    else {
+      callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+    }
 
 #ifndef _NO_JIT
     // Auto-JIT: compile hot callees from JIT code (no counting overhead)
@@ -166,6 +166,7 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     // without going through the interpreter as a trampoline. This eliminates
     // frame creation + instruction dispatch + MTHD_CALL handler overhead.
     if(callee->GetNativeCode()) {
+      if(instr_id == DYN_MTHD_CALL) { --(*stack_pos); }   // discard func-ref word; instance below
       // Pop instance from op_stack (same as ProcessMethodCall)
       size_t* callee_inst = (size_t*)op_stack[--(*stack_pos)];
 

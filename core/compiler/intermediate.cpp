@@ -1348,33 +1348,58 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     }      
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
 
-    // emit dynamic call
-    switch(method_call->GetRougeReturn()) {
-    case instructions::INT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
-      if(!method_call->GetMethodCall()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+    // Determine the func-ref's ACTUAL return type for the DYN_MTHD_CALL operand2.
+    // GetRougeReturn() is only set for standalone calls (it stays NIL in
+    // assignment / return / expression context), but the JIT relies on operand2
+    // to marshal the call result; a wrong NIL there underflows the JIT working
+    // stack. The interpreter ignores operand2, so this is safe for it. The POP
+    // (result-discard) logic below stays keyed on GetRougeReturn() unchanged.
+    instructions::MemoryType dyn_rtrn = instructions::NIL_TYPE;
+    Type* dyn_fret = entry->GetType() ? entry->GetType()->GetFunctionReturn() : nullptr;
+    if(dyn_fret && dyn_fret->GetType() != frontend::NIL_TYPE) {
+      if(dyn_fret->GetDimension() > 0) {
+        dyn_rtrn = instructions::INT_TYPE;
       }
-      break;
-  
-    case instructions::FLOAT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
-      if(!method_call->GetMethodCall()) {
+      else {
+        switch(dyn_fret->GetType()) {
+        case frontend::BOOLEAN_TYPE:
+        case frontend::BYTE_TYPE:
+        case frontend::CHAR_TYPE:
+        case frontend::INT_TYPE:
+        case frontend::CLASS_TYPE:
+          dyn_rtrn = instructions::INT_TYPE;
+          break;
+        case frontend::FLOAT_TYPE:
+          dyn_rtrn = instructions::FLOAT_TYPE;
+          break;
+        case frontend::FUNC_TYPE:
+          dyn_rtrn = instructions::FUNC_TYPE;
+          break;
+        default:
+          break;
+        }
+      }
+    }
+
+    // emit dynamic call (operand2 = real return type so the JIT can marshal it)
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), dyn_rtrn));
+
+    // discard the result for standalone calls (rogue return is only set then)
+    if(!method_call->GetMethodCall()) {
+      switch(method_call->GetRougeReturn()) {
+      case instructions::INT_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+        break;
+      case instructions::FLOAT_TYPE:
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
-      }
-      break;
-  
-    case instructions::FUNC_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
-      if(!method_call->GetMethodCall()) {
+        break;
+      case instructions::FUNC_TYPE:
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));  
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+        break;
+      default:
+        break;
       }
-      break;
-  
-    default:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
-      break;
     }
 
     // check nesting
@@ -4060,34 +4085,56 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     }      
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
     
-    switch(method_call->GetRougeReturn()) {
-    case instructions::INT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
-      if(!method_call->GetMethodCall()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+    // operand2 = the func-ref's ACTUAL return type (GetRougeReturn() is NIL in
+    // assignment/expression context, but the JIT needs the real type to marshal
+    // the result; the interpreter ignores operand2). POP-discard logic below
+    // stays keyed on GetRougeReturn() unchanged. Mirrors the fix at the other
+    // functional-call emission site.
+    instructions::MemoryType dyn_rtrn = instructions::NIL_TYPE;
+    Type* dyn_fret = entry->GetType() ? entry->GetType()->GetFunctionReturn() : nullptr;
+    if(dyn_fret && dyn_fret->GetType() != frontend::NIL_TYPE) {
+      if(dyn_fret->GetDimension() > 0) {
+        dyn_rtrn = instructions::INT_TYPE;
       }
-      break;
-  
-    case instructions::FLOAT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
-      if(!method_call->GetMethodCall()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
+      else {
+        switch(dyn_fret->GetType()) {
+        case frontend::BOOLEAN_TYPE:
+        case frontend::BYTE_TYPE:
+        case frontend::CHAR_TYPE:
+        case frontend::INT_TYPE:
+        case frontend::CLASS_TYPE:
+          dyn_rtrn = instructions::INT_TYPE;
+          break;
+        case frontend::FLOAT_TYPE:
+          dyn_rtrn = instructions::FLOAT_TYPE;
+          break;
+        case frontend::FUNC_TYPE:
+          dyn_rtrn = instructions::FUNC_TYPE;
+          break;
+        default:
+          break;
+        }
       }
-      break;
-
-    case instructions::FUNC_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
-      if(!method_call->GetMethodCall()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
-      }
-      break;
-      
-    default:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
-      break;
     }
-      
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), dyn_rtrn));
+    if(!method_call->GetMethodCall()) {
+      switch(method_call->GetRougeReturn()) {
+      case instructions::INT_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+        break;
+      case instructions::FLOAT_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
+        break;
+      case instructions::FUNC_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+        break;
+      default:
+        break;
+      }
+    }
+
     // emit nested calls
     bool is_nested = false; // function call
     method_call = method_call->GetMethodCall();

@@ -624,11 +624,10 @@ void JitAmd64::ProcessInstructions() {
       break;
 
     case DYN_MTHD_CALL: {
-#ifdef _DEBUG_JIT
-      std::wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
-#endif  
-      // passing instance variable
-      ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 3);
+      // Working stack at the call = [args..., func-ref word2 (instance), func-ref
+      // word1 (packed cls<<16|mthd)] = operand + 2 entries. (Was +3, over-counting
+      // by one -> ProcessStackCallback marshalled past the stack -> crash.)
+      ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 2);
       ProcessReturnParameters((MemoryType)instr->GetOperand2());
     }
       break;
@@ -5926,8 +5925,8 @@ static bool CanJitInstruction(InstructionType type) {
     // control flow
   case MTHD_CALL:
   case MTHD_CALL_JIT:
-    // DYN_MTHD_CALL: function-reference calls need further investigation
-    // before whitelisting (prgm70/71 segfaults with closure patterns)
+  case DYN_MTHD_CALL:        // P2: function-reference / closure call JIT
+  case DYN_MTHD_CALL_JIT:
   case JMP:
   case LBL:
   case RTRN:
