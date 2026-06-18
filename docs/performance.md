@@ -132,6 +132,7 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | v2026.4.2 | Apr 2026 | JIT local variable register cache, LTO (`-flto=auto`), ARM64 `-mcpu=native` | **~3x all benchmarks** |
 | v2026.5.3 | May 2026 | Jump table dispatch for dense integer `select` (O(1) vs O(log n) BST) | select-heavy programs; no regression on existing benchmarks |
 | v2026.6.0 | May 2026 | Auto-JIT for MTHD_CALL, 15 new interpreter fast-path opcodes, TCO, LICM | **matrix_multiply −14%, dead_code −15%, array_intensive −12%, binarytrees −7%, mandelbrot −6%** |
+| v2026.6.2+ | Jun 2026 | ARM64 forced-JIT correctness hardening (PR #548, #551) | Correctness, not speed — clears every ARM64 JIT miscompile that forced JIT exposes, **unblocking a lower auto-JIT threshold** (the auto-JIT trigger is still 10 calls; these fixes let it drop without miscompiling cold helpers). Full ARM64 suite green at `OBJECK_JIT_THRESHOLD=1`. |
 
 ### v2026.3.0 Detail
 
@@ -159,6 +160,20 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | 15 new interpreter fast-path inline opcodes | VM | **−10 to −15% micro-benchmarks** — comparisons (`EQL/NEQL/LES/GTR/LES_EQL/GTR_EQL`), logical (`AND/OR`), bitwise (`BIT_AND/OR/XOR`), shifts (`SHL/SHR`), `LOAD_CHAR_LIT` added to the inline switch. Eliminates function-pointer dispatch overhead for the most common interpreter instructions. |
 | Tail Call Optimization (TCO) | Compiler (`-opt s1+`) | Self-recursive tail calls rewritten to `POP_INT` + param restores + `JMP` — eliminates call-frame growth. Stack overflow at n=1M without TCO; correct in O(1) stack space with it. |
 | Loop-Invariant Code Motion (LICM) | Compiler (`-opt s2+`) | Hoists `arr->Size()` reads and pure arithmetic statements out of loop bodies when inputs are loop-invariant. |
+
+### v2026.6.2+ Detail (ARM64 forced-JIT correctness)
+
+**Headline: no benchmark moves, but every ARM64 JIT miscompile that forced JIT (`OBJECK_JIT_THRESHOLD=1`) exposed is now fixed — a prerequisite for lowering the auto-JIT threshold below 10.** These were latent because cold helper methods rarely reach the trigger, so they ran interpreted; forcing JIT surfaced them. Found with the JIT's `_DEBUG_JIT_JIT` codegen disassembly and lldb.
+
+| Fix | Category | Bug |
+|-----|----------|-----|
+| Cached-local float operands in transcendental/round ops (PR #548) | JIT (ARM64) | `ProcessFloatOperation`/`Operation2`/`Round`/`SquareRoot` read a `REG_FLOAT` operand's register bookkeeping as a stack slot → garbage (e.g. `atan` got 0). |
+| libc float result dropped when holder ≠ D0 (PR #548) | JIT (ARM64) | The result move used `move_freg_freg`'s GP-bridge (swapped FMOV opcodes), dropping an FP-only `pow`/`sin`/`exp` result. Now a true `fmov Dd,Dn`. |
+| Working-stack regs clobbered across inlined float libc calls (PR #548) | JIT (ARM64) | An inlined `Float->Pow`'s `blr` clobbers caller-saved temps; pending working-stack ints are now spilled across the call (`Sum5`/`Int->Pow`). |
+| Unary float-op argument dropped when not in D0 (PR #551) | JIT (ARM64) | Same GP-bridge bug on the *argument* load — `exp` inside `1/(1+exp(x))` got a stale arg, diverging LogisticRegression (`ml_phase1`). |
+| `imm19` not masked in error-handler branch backpatch (PR #551) | JIT (ARM64) | A backward (negative) div-by-zero / bounds / null-deref branch sign-extended over the `b.cond` opcode → illegal instruction (`ml_gbt` SIGILL). Now masked to `& 0x7FFFF`. |
+| Deferred local load stale after an overwriting store (PR #551) | JIT (ARM64) | A TCO'd `return Gcd(b, a%b)` stored `b:=a%b` before the deferred `LOAD b` was consumed, so `a:=a%b` (GCD→0). `ProcessStore` now materializes pending refs to the slot first. |
+| `Int->MinSize()` returned `INT64_MAX` (PR #551) | Library | `2->Pow(63)` computes `+2^63` in float and saturates on F2I; fixed to `1 << 63`. (Not a JIT bug — failed interpreted too; was masked by exit-code-based tests that printed `FAIL` without `Runtime->Exit(1)`.) |
 
 ---
 
@@ -218,6 +233,7 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 | **Float JIT codegen + float fast-path opcodes** (`LOAD_FLOAT_LIT`, `ADD/SUB/MUL_FLOAT`) | JIT/VM | **HIGH** — Java and LuaJIT lead specifically on float loops (nbody, spectralnorm); the inline switch is integer-only today |
 | **ProcessInlineMethod for MTHD_CALL** — getter/ctor inlining inside JIT'd methods | JIT | MED — eliminates the `ProcessStackCallback` trampoline. Blocked by INSTANCE_MEM offset corruption in constructors; needs frame-layout work |
 | **Per-call-site monomorphic virtual dispatch cache** | VM | LOW — store the last (class→method) pointer in the instruction to skip the hash lookup in the common case |
+| **Lower the auto-JIT threshold** (currently 10 calls) | VM | MED — now *unblocked* on ARM64: the forced-JIT (`THRESHOLD=1`) correctness fixes above mean cold helpers JIT correctly, so the trigger can drop to compile warm code sooner. Measure the compile-time-vs-runtime trade-off before changing the default; re-validate x64 at the lower threshold first |
 
 ### P3 — Measurement & methodology
 
@@ -228,4 +244,4 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 
 ---
 
-*Last updated: June 17, 2026 -- the entire page (CLBG, micro, and cross-language) was re-measured in one unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539, Objeck v2026.6.2): fannkuchredux dropped 59.4s → 30.7s. Numbers are Docker (interpreter-bound rows ~30–50% slower than a native build); a native re-run is future work. P0 safepoint roadmap: complete on both arches — AMD64 (all three steps) and ARM64 (back-edge + X19 register-cache, validated on Apple Silicon).*
+*Last updated: June 18, 2026 -- benchmark tables are the unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539, Objeck v2026.6.2): fannkuchredux dropped 59.4s → 30.7s. Numbers are Docker (interpreter-bound rows ~30–50% slower than a native build); a native re-run is future work. P0 safepoint roadmap: complete on both arches — AMD64 (all three steps) and ARM64 (back-edge + X19 register-cache, validated on Apple Silicon). Jun 18: a chain of ARM64 forced-JIT correctness fixes merged (PR #548, #551) — the full ARM64 suite is now green at `OBJECK_JIT_THRESHOLD=1`, unblocking a future auto-JIT threshold reduction (see Optimization History).*
