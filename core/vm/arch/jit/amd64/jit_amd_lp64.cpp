@@ -2655,6 +2655,10 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
     holder = call_xfunc(acos, left);
     break;
 
+  case ATAN_FLOAT:
+    holder = call_xfunc(atan, left);
+    break;
+
   case ACOSH_FLOAT:
     holder = call_xfunc(acosh, left);
     break;
@@ -3999,11 +4003,15 @@ void JitAmd64::round_xreg_xreg(Register src, Register dest, wchar_t mode) {
   RegisterEncode3(code, 5, src);
   AddMachineCode(code);
 
+  // ROUNDSD rounding-mode immediate: 0x0 = nearest, 0x1 = round down (floor),
+  // 0x2 = round up (ceil), 0x3 = truncate. (Ceil and floor were swapped here,
+  // so Float->Floor emitted ceil and vice versa — only observable once a method
+  // using them was JIT-compiled.)
   if(mode == L'c') {
-    AddMachineCode(0x1);
+    AddMachineCode(0x2);
   }
   else if(mode == L'f') {
-    AddMachineCode(0x2);
+    AddMachineCode(0x1);
   }
   else {
     AddMachineCode(0x0);

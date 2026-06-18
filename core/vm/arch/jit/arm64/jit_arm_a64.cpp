@@ -215,7 +215,7 @@ void JitArm64::RegisterRoot() {
   // compare
   cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
 #ifdef _DEBUG_JIT_JIT
-  std::std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
+  std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
 #endif
   AddMachineCode(0x540000CB);
   
@@ -736,7 +736,7 @@ void JitArm64::ProcessInstructions() {
 
     case ZERO_BYTE_ARY: {
 #ifdef _DEBUG_JIT
-      std::std::wcout << L"ZERO_BYTE_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+      std::wcout << L"ZERO_BYTE_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       ProcessStackCallback(ZERO_BYTE_ARY, instr, instr_index, 5);
     }
@@ -744,7 +744,7 @@ void JitArm64::ProcessInstructions() {
 
     case ZERO_CHAR_ARY: {
 #ifdef _DEBUG_JIT
-      std::std::wcout << L"ZERO_CHAR_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+      std::wcout << L"ZERO_CHAR_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       ProcessStackCallback(ZERO_CHAR_ARY, instr, instr_index, 5);
     }
@@ -752,7 +752,7 @@ void JitArm64::ProcessInstructions() {
 
     case ZERO_INT_ARY: {
 #ifdef _DEBUG_JIT
-      std::std::wcout << L"ZERO_INT_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+      std::wcout << L"ZERO_INT_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       ProcessStackCallback(ZERO_INT_ARY, instr, instr_index, 5);
     }
@@ -760,7 +760,7 @@ void JitArm64::ProcessInstructions() {
 
     case ZERO_FLOAT_ARY: {
 #ifdef _DEBUG_JIT
-      std::std::wcout << L"ZERO_FLOAT_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
+      std::wcout << L"ZERO_FLOAT_ARY: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       ProcessStackCallback(ZERO_FLOAT_ARY, instr, instr_index, 5);
     }
@@ -959,7 +959,7 @@ void JitArm64::ProcessInstructions() {
 
       case BIT_NOT_INT:
 #ifdef _DEBUG_JIT
-      std::std::wcout << L"BIT_NOT_INT: regs=" << aval_regs.size() << endl;
+      std::wcout << L"BIT_NOT_INT: regs=" << aval_regs.size() << endl;
 #endif
       ProcessNot(instr);
       break;
@@ -1163,7 +1163,7 @@ void JitArm64::ProcessJump(StackInstr* instr) {
 
       // compare with register
 #ifdef _DEBUG_JIT_JIT
-      std::std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
+      std::wcout << L"  " << (++instr_count) << L": [b.eq]" << std::endl;
 #endif
       AddMachineCode(0x54000000);
       
@@ -3060,7 +3060,7 @@ void JitArm64::and_mem_reg(long offset, Register src, Register dest) {
 
 void JitArm64::not_reg(Register reg) {
 #ifdef _DEBUG_JIT
-  std::std::wcout << L"  " << (++instr_count) << L": [not " << GetRegisterName(reg) << L"]" << std::endl;
+  std::wcout << L"  " << (++instr_count) << L": [not " << GetRegisterName(reg) << L"]" << std::endl;
 #endif
   uint32_t op_code = 0xAA2003E0;
   
@@ -4002,7 +4002,7 @@ bool JitArm64::cond_jmp(InstructionType type) {
       case LES_INT:
       case LES_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
 #endif
         AddMachineCode(0x5400000B);
         break;
@@ -4010,7 +4010,7 @@ bool JitArm64::cond_jmp(InstructionType type) {
       case GTR_INT:
       case GTR_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.gt]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.gt]" << std::endl;
 #endif
         AddMachineCode(0x5400000C);
         break;
@@ -4046,7 +4046,7 @@ bool JitArm64::cond_jmp(InstructionType type) {
       case LES_EQL_INT:
       case LES_EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.le]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.le]" << std::endl;
 #endif
         AddMachineCode(0x5400000D);
         break;
@@ -4054,7 +4054,7 @@ bool JitArm64::cond_jmp(InstructionType type) {
       case GTR_EQL_INT:
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
 #endif
         AddMachineCode(0x5400000A);
         break;
@@ -4071,7 +4071,7 @@ bool JitArm64::cond_jmp(InstructionType type) {
       case LES_INT:
       case LES_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
 #endif
         AddMachineCode(0x5400000A);
         break;
@@ -4079,7 +4079,7 @@ bool JitArm64::cond_jmp(InstructionType type) {
       case GTR_INT:
       case GTR_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.le]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.le]" << std::endl;
 #endif
         AddMachineCode(0x5400000D);
         break;
@@ -4115,7 +4115,7 @@ bool JitArm64::cond_jmp(InstructionType type) {
       case LES_EQL_INT:
       case LES_EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.gt]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.gt]" << std::endl;
 #endif
         AddMachineCode(0x5400000C);
         break;
@@ -4123,7 +4123,7 @@ bool JitArm64::cond_jmp(InstructionType type) {
       case GTR_EQL_INT:
       case GTR_EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-        std::std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
 #endif
         AddMachineCode(0x5400000B);
         break;
@@ -4173,7 +4173,7 @@ void JitArm64::cmov_reg(Register reg, InstructionType oper)
   case EQL_INT:
   case EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-    std::std::wcout << L"  " << (++instr_count) << L": [cset  w9, eq]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [cset  w9, eq]" << std::endl;
 #endif
     AddMachineCode(0x1A9F17E9);
     break;
@@ -4181,21 +4181,21 @@ void JitArm64::cmov_reg(Register reg, InstructionType oper)
   case NEQL_INT:
   case NEQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-    std::std::wcout << L"  " << (++instr_count) << L": [cset  w9, ne]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [cset  w9, ne]" << std::endl;
 #endif
     AddMachineCode(0x1A9F07E9);
     break;
     
   case LES_EQL_INT:
 #ifdef _DEBUG_JIT_JIT
-      std::std::wcout << L"  " << (++instr_count) << L": [cset  w9, le]" << std::endl;
+      std::wcout << L"  " << (++instr_count) << L": [cset  w9, le]" << std::endl;
 #endif
     AddMachineCode(0x1A9FC7E9);
     break;
     
   case LES_EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-    std::std::wcout << L"  " << (++instr_count) << L": [cset  w9, ls]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [cset  w9, ls]" << std::endl;
 #endif
     AddMachineCode(0X1A9F87E9);
     break;
@@ -4203,7 +4203,7 @@ void JitArm64::cmov_reg(Register reg, InstructionType oper)
   case GTR_EQL_INT:
   case GTR_EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
-    std::std::wcout << L"  " << (++instr_count) << L": [cset  w9, ge]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [cset  w9, ge]" << std::endl;
 #endif
     AddMachineCode(0x1A9FB7E9);
     break;
@@ -4213,7 +4213,7 @@ void JitArm64::cmov_reg(Register reg, InstructionType oper)
   }
   
 #ifdef _DEBUG_JIT_JIT
-    std::std::wcout << L"  " << (++instr_count) << L": [and x8, x0, #0x1]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [and x8, x0, #0x1]" << std::endl;
 #endif
   op_code = 0x92400120;
   op_code |= reg;
@@ -4227,18 +4227,45 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
 
   InstructionType type = instruction->GetType();
 #ifdef _DEBUG_JIT_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
-  
-  // save D0, if needed
-  RegisterHolder *holder = GetFpRegister();
-  if(holder->GetRegister() != D0) {
-    move_freg_mem(D0, TMP_D0, SP);
+
+  // Preserve caller-saved working-stack registers across the libc call below (see
+  // ProcessFloatOperation2 for the rationale): spill int temps to TMP_X1..TMP_X5,
+  // fall back to the interpreter for cases that do not fit.
+  vector<pair<Register, long> > spilled_ws;
+  long ws_off = TMP_X1;
+  for(RegInstr* pending : working_stack) {
+    if(pending->GetType() == REG_INT) {
+      if(ws_off > TMP_X5) { compile_success = false; break; }
+      const Register r = pending->GetRegister()->GetRegister();
+      move_reg_mem(r, ws_off, SP);
+      spilled_ws.push_back(make_pair(r, ws_off));
+      ws_off += sizeof(size_t);
+    }
+    else if(pending->GetType() == REG_FLOAT && pending->GetRegister()->GetRegister() <= D7) {
+      compile_success = false;
+    }
   }
-  
-  // load D0
-  move_mem_freg((long)left->GetOperand(), SP, D0);
-  
+
+  // Save D0 and load the argument into it. A cached local arrives as REG_FLOAT
+  // (value already in a float reg); a slot or constant arrives as MEM_FLOAT. The
+  // old code always did move_mem_freg(operand), but a REG_FLOAT's "operand" is
+  // register bookkeeping, not an SP slot -> a garbage argument (e.g. atan got 0).
+  // The result register is allocated AFTER the call (below): allocating it here,
+  // while a cached operand is still live, can spill that operand's register and
+  // corrupt the argument. Mirrors AMD64 call_xfunc.
+  move_freg_mem(D0, TMP_D0, SP);
+  if(left->GetType() == REG_FLOAT) {
+    if(left->GetRegister()->GetRegister() != D0) {
+      move_freg_freg(left->GetRegister()->GetRegister(), D0);
+    }
+    ReleaseFpRegister(left->GetRegister());
+  }
+  else {
+    move_mem_freg((long)left->GetOperand(), SP, D0);
+  }
+
   // choose function
   double(*func_ptr)(double);
   switch (type) {
@@ -4328,14 +4355,25 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   move_imm_reg((size_t)func_ptr, X9);
   call_reg(X9);
   move_mem_reg(TMP_X0, SP, X9);
-  
-  // get return and restore D0, if needed
-  move_freg_freg(D0, holder->GetRegister());
+
+  // Result is in D0. Allocate the holder now (the cached operand, if any, was
+  // already released above, so this can't spill a live argument), move the result
+  // into it, and restore D0 unless the holder is D0 itself. Use a true fmov Dd,Dn:
+  // move_freg_freg bridges through a GP reg and drops a value that lives only in
+  // the FP register (which a libc call result does), so it can't be used here.
+  RegisterHolder* holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
+    AddMachineCode(0x1E604000 | ((uint32_t)D0 << 5) | (uint32_t)holder->GetRegister());  // fmov D{holder}, D0
     move_mem_freg(TMP_D0, SP, D0);
   }
+
+  // restore the working-stack registers the call clobbered
+  for(size_t s = 0; s < spilled_ws.size(); ++s) {
+    move_mem_reg(spilled_ws[s].second, SP, spilled_ws[s].first);
+  }
+
   working_stack.push_front(new RegInstr(holder));
-  
+
   delete left;
   left = nullptr;
 }
@@ -4346,35 +4384,36 @@ void JitArm64::ProcessFloatRound(StackInstr* instruction, const wchar_t mode)
   working_stack.pop_front();
   
 #ifdef _DEBUG_JIT_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
   
-  // save D0, if needed
-  RegisterHolder *holder = GetFpRegister();
-  if(holder->GetRegister() != D0) {
-    move_freg_mem(D0, TMP_D0, SP);
-  }
-  
-  // load D0
-  move_mem_freg((long)left->GetOperand(), SP, D0);
-  
-  if(mode == L'f') {
-    floor_freg_freg(D0 , D0);
-  }
-  else if(mode == L'c') {
-    ceil_freg_freg(D0 , D0);
+  // frintm/frintp/frintn are freg->freg with no libc call, so round in place. A
+  // cached local arrives as REG_FLOAT (already in a float reg); a slot or constant
+  // arrives as MEM_FLOAT. The old code always did move_mem_freg(operand) into D0,
+  // but a REG_FLOAT's "operand" is register bookkeeping, not an SP slot -> it
+  // rounded a garbage value (e.g. Floor(3.14)->As(Int) yielded INT64_MIN).
+  RegisterHolder* holder;
+  if(left->GetType() == REG_FLOAT) {
+    holder = left->GetRegister();
   }
   else {
-    round_freg_freg(D0 , D0);
+    holder = GetFpRegister();
+    move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
   }
-  
-  // get return and restore D0, if needed
-  move_freg_freg(D0, holder->GetRegister());
-  if(holder->GetRegister() != D0) {
-    move_mem_freg(TMP_D0, SP, D0);
+
+  const Register fr = holder->GetRegister();
+  if(mode == L'f') {
+    floor_freg_freg(fr, fr);
   }
+  else if(mode == L'c') {
+    ceil_freg_freg(fr, fr);
+  }
+  else {
+    round_freg_freg(fr, fr);
+  }
+
   working_stack.push_front(new RegInstr(holder));
-  
+
   delete left;
   left = nullptr;
 }
@@ -4385,26 +4424,26 @@ void JitArm64::ProcessFloatSquareRoot(StackInstr* instruction)
   working_stack.pop_front();
   
 #ifdef _DEBUG_JIT_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
   
-  // save D0, if needed
-  RegisterHolder *holder = GetFpRegister();
-  if(holder->GetRegister() != D0) {
-    move_freg_mem(D0, TMP_D0, SP);
+  // fsqrt is freg->freg with no libc call, so take the square root in place.
+  // REG_FLOAT = cached local (already in a float reg); MEM_FLOAT = slot/constant.
+  // The old code always did move_mem_freg(operand), reading a cached operand's
+  // register bookkeeping as a bogus SP slot.
+  RegisterHolder* holder;
+  if(left->GetType() == REG_FLOAT) {
+    holder = left->GetRegister();
   }
-  
-  // load D0
-  move_mem_freg((long)left->GetOperand(), SP, D0);
-  sqrt_freg_freg(D0 , D0);
-  
-  // get return and restore D0, if needed
-  move_freg_freg(D0, holder->GetRegister());
-  if(holder->GetRegister() != D0) {
-    move_mem_freg(TMP_D0, SP, D0);
+  else {
+    holder = GetFpRegister();
+    move_mem_freg((long)left->GetOperand(), SP, holder->GetRegister());
   }
+
+  sqrt_freg_freg(holder->GetRegister(), holder->GetRegister());
+
   working_stack.push_front(new RegInstr(holder));
-  
+
   delete left;
   left = nullptr;
 }
@@ -4419,20 +4458,58 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
 
   InstructionType type = instruction->GetType();
 #ifdef _DEBUG_JIT_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
-  
-  // save D0, if needed
-  RegisterHolder *holder = GetFpRegister();
-  if(holder->GetRegister() != D0) {
-    move_freg_mem(D0, TMP_D0, SP);
+
+  // Preserve caller-saved working-stack registers across the libc call below. The
+  // call clobbers x0-x17/d0-d7, but any pending working-stack temp (e.g. an earlier
+  // F2I result awaiting an add, when Float->Pow is inlined into this method) must
+  // survive — the operand allocator never spills it because it does not know about
+  // this hidden call. Spill int temps to TMP_X1..TMP_X5; fall back to the
+  // interpreter for the rarer cases that do not fit (a caller-saved float temp, or
+  // more int temps than scratch slots).
+  vector<pair<Register, long> > spilled_ws;
+  long ws_off = TMP_X1;
+  for(RegInstr* pending : working_stack) {
+    if(pending->GetType() == REG_INT) {
+      if(ws_off > TMP_X5) { compile_success = false; break; }
+      const Register r = pending->GetRegister()->GetRegister();
+      move_reg_mem(r, ws_off, SP);
+      spilled_ws.push_back(make_pair(r, ws_off));
+      ws_off += sizeof(size_t);
+    }
+    else if(pending->GetType() == REG_FLOAT && pending->GetRegister()->GetRegister() <= D7) {
+      compile_success = false;
+    }
   }
+
+  // Save D0/D1. The result holder is allocated after the call (below), not here:
+  // allocating it while a cached operand is still live could spill that operand's
+  // register and corrupt the argument.
+  move_freg_mem(D0, TMP_D0, SP);
   move_freg_mem(D1, TMP_D1, SP);
-   
-  // load D0
-  move_mem_freg((long)right->GetOperand(), SP, D0);
-  move_mem_freg((long)left->GetOperand(), SP, D1);
-  
+
+  // Load D0=right, D1=left. Either operand may be a cached float register
+  // (REG_FLOAT) rather than a slot (MEM_FLOAT). A REG_FLOAT's "operand" is register
+  // bookkeeping, not an SP slot, so the old direct move_mem_freg read garbage for
+  // cached float locals. Resolve any cached operand to a scratch slot FIRST so the
+  // two register loads below can't clobber each other (e.g. right cached in D1,
+  // left in D0).
+  long right_off = (long)right->GetOperand();
+  if(right->GetType() == REG_FLOAT) {
+    move_freg_mem(right->GetRegister()->GetRegister(), TMP_D2, SP);
+    ReleaseFpRegister(right->GetRegister());
+    right_off = TMP_D2;
+  }
+  long left_off = (long)left->GetOperand();
+  if(left->GetType() == REG_FLOAT) {
+    move_freg_mem(left->GetRegister()->GetRegister(), TMP_D3, SP);
+    ReleaseFpRegister(left->GetRegister());
+    left_off = TMP_D3;
+  }
+  move_mem_freg(right_off, SP, D0);
+  move_mem_freg(left_off, SP, D1);
+
   // choose function
   double(*func_ptr)(double, double);
   switch (type) {
@@ -4459,17 +4536,30 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   call_reg(X9);
   move_mem_reg(TMP_X0, SP, X9);
   
-  // get return and restore D0, if needed
-  move_freg_freg(D0, holder->GetRegister());
-  move_mem_freg(TMP_D1, SP, D1);
+  // Result is in D0. Allocate the holder now (both operands already released),
+  // move the result into it, and restore the caller's D0/D1 from their temps —
+  // skipping whichever the holder aliases (that register now holds the result).
+  // Use a true fmov Dd,Dn (move_freg_freg bridges through a GP reg and would drop
+  // the libc result, which lives only in the FP register).
+  RegisterHolder* holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
+    AddMachineCode(0x1E604000 | ((uint32_t)D0 << 5) | (uint32_t)holder->GetRegister());  // fmov D{holder}, D0
     move_mem_freg(TMP_D0, SP, D0);
   }
+  if(holder->GetRegister() != D1) {
+    move_mem_freg(TMP_D1, SP, D1);
+  }
+
+  // restore the working-stack registers the call clobbered
+  for(size_t s = 0; s < spilled_ws.size(); ++s) {
+    move_mem_reg(spilled_ws[s].second, SP, spilled_ws[s].first);
+  }
+
   working_stack.push_front(new RegInstr(holder));
-  
+
   delete left;
   left = nullptr;
-  
+
   delete right;
   right = nullptr;
 }
