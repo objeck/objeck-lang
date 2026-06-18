@@ -1474,6 +1474,30 @@ void JitArm64::ProcessStore(StackInstr* instr) {
         ReleaseFpRegister(freg_it->second);
         local_freg_cache.erase(freg_it);
       }
+
+      // Materialize any pending working-stack value that defers to this slot
+      // BEFORE it is overwritten. A deferred LOAD of this local (a MEM_INT/
+      // MEM_FLOAT still pointing at the slot) would otherwise read the post-store
+      // value. This is what breaks TCO'd self-recursive tail calls: e.g.
+      // `return Gcd(b, a%b)` compiles to LOAD b; ...; STOR b (:=a%b); STOR a
+      // (:= the deferred b) -- without this, the second store reads b's slot,
+      // which now holds a%b, so a := a%b instead of the old b.
+      const long stor_slot = instr->GetOperand3();
+      for(size_t wi = 0; wi < working_stack.size(); ++wi) {
+        RegInstr* pend = working_stack[wi];
+        if(pend->GetType() == MEM_INT && (long)pend->GetOperand() == stor_slot) {
+          RegisterHolder* mh = GetRegister();
+          move_mem_reg(stor_slot, SP, mh->GetRegister());
+          delete pend;
+          working_stack[wi] = new RegInstr(mh);
+        }
+        else if(pend->GetType() == MEM_FLOAT && (long)pend->GetOperand() == stor_slot) {
+          RegisterHolder* mh = GetFpRegister();
+          move_mem_freg(stor_slot, SP, mh->GetRegister());
+          delete pend;
+          working_stack[wi] = new RegInstr(mh);
+        }
+      }
     }
   }
   // class or instance memory
