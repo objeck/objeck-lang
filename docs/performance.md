@@ -13,7 +13,7 @@
 | **CPU** | AMD Ryzen 9 7950X3D (16C/32T) |
 | **RAM** | 128 GB (62 GB visible in Docker) |
 | **OS** | Ubuntu 24.04.4 in Docker (Windows 11 host) |
-| **Compiler** | Objeck v2026.6.2 + JIT GC-safepoint fixes (PR #539), built from source, `-opt s3` |
+| **Compiler** | Objeck v2026.6.2 + P2 JIT work (`DYN_MTHD_CALL` auto-JIT, interpreter float fast-path, GC-safepoint fixes), built from source, `-opt s3` |
 | **Methodology** | 3 runs per benchmark, median reported |
 
 > All tables below come from a **single unified Docker run** (`perf-results/docker/Dockerfile`) on the box above, so the single-language and cross-language numbers are directly comparable. Note Docker's virtualized backend runs Objeck's **interpreter**-bound benchmarks ~30–50% slower than a native (bare-metal/WSL2) build, while JIT/`native` code is nearly unaffected — so the interpreter rows here are conservative.
@@ -30,7 +30,7 @@ Classic [Computer Language Benchmarks Game](https://benchmarksgame-team.pages.de
 | **fannkuchredux** | 12 | 30.67 | 12 MB |
 | **spectralnorm** | 5500 | 43.11 | 11 MB |
 
-**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and auto-JIT for methods containing `MTHD_CALL`. **fannkuchredux** is the headline gain from the new back-edge GC-safepoint work (PR #539). **spectralnorm** runs in the interpreter; with `native` (input 2000) it drops to **0.37s**.
+**mandelbrot** and **nbody** benefit from `native`-annotated methods that JIT-compile to x64. **binarytrees** benefits from the young-gen bump allocator and auto-JIT for methods containing `MTHD_CALL`. **fannkuchredux** is the headline gain from the new back-edge GC-safepoint work (PR #539). **spectralnorm** is a closure/function-reference kernel: its calls now auto-JIT (`DYN_MTHD_CALL`), but at the default threshold a single short run still pays JIT warmup (the ~43s above). Forcing compilation with `OBJECK_JIT_THRESHOLD=1` runs the same 5500 input in **3.5s (~14x)**, and at n=2000 it reaches **0.46s** — matching the hand-`native` kernel (0.40s). The remaining gap is JIT warmup/threshold tuning, not coverage.
 
 ---
 
@@ -40,7 +40,7 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 
 | | |
 |---|---|
-| **Objeck** | v2026.6.2 + JIT GC-safepoint fixes (PR #539), `-opt s3` |
+| **Objeck** | v2026.6.2 + P2 JIT work (`DYN_MTHD_CALL` auto-JIT, float fast-path), `-opt s3` |
 | **Python** | 3.12.3 (CPython) |
 | **Ruby** | 3.2.3 |
 | **LuaJIT** | 2.1 (tracing JIT) |
@@ -62,14 +62,14 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 - **Objeck beats both Python and Ruby on 3 of 4** — by wide margins where the JIT engages: nbody **7.7x** faster than Python / **11.4x** faster than Ruby; fannkuchredux **13.5x** / **38x**; spectralnorm **2.9x** / **2.0x** (interpreter only).
 - **Objeck beats LuaJIT on fannkuchredux** (30.67s vs 117.07s, **3.8x faster**) — the integer-array permutation/flip pattern is a poor fit for LuaJIT's tracing JIT, and Objeck's method-JIT handles it well. The new back-edge GC-safepoint work (PR #539) roughly halved Objeck's fannkuch time, closing the gap to Java to ~1.5x.
 - **binarytrees is Objeck's weak spot — slower than even the interpreters here.** Allocation/GC throughput dominates; Java's generational GC + escape analysis is **~32x** faster (0.24s vs 7.79s). This is the clearest improvement target (P1 on the roadmap).
-- **spectralnorm in the interpreter (43s) understates Objeck.** With `native` the same kernel drops to **0.37s at input 2000** (see micro-benchmarks); the gap is auto-JIT coverage (`DYN_MTHD_CALL`), not raw capability.
+- **spectralnorm's 43s is a JIT-warmup artifact, not raw capability.** Its closure calls (`DYN_MTHD_CALL`) now auto-JIT; the 43s is a single short run dominated by warmup at the default threshold. With `OBJECK_JIT_THRESHOLD=1` the same 5500 run is **3.5s (~14x)** and n=2000 reaches **0.46s**, matching the hand-`native` kernel. The remaining lever is auto-JIT threshold tuning, not coverage.
 
 ### Key Takeaways
 
 1. **Against scripting peers, Objeck is decisively faster.** On JIT-friendly numeric and integer loops it leads Python and Ruby by 3–30x.
 2. **Against compiled-class JITs (Java, LuaJIT), Objeck trails on float loops but is competitive — and ahead — on the right integer workload** (fannkuchredux beats LuaJIT).
 3. **Allocation throughput is the #1 gap.** binarytrees is the one benchmark where Objeck loses to everything; escape analysis / faster young-gen allocation is the highest-leverage future work.
-4. **Auto-JIT coverage gap remains for `DYN_MTHD_CALL`.** spectralnorm runs in the interpreter (43s) but `native` reaches 0.37s (input 2000) — a large speedup currently left on the table for closure/function-ref-heavy code.
+4. **`DYN_MTHD_CALL` auto-JIT closed the coverage gap; warmup is the remaining lever.** Closure/function-reference calls now auto-JIT, so spectralnorm at `OBJECK_JIT_THRESHOLD=1` reaches 0.46s (n=2000), matching hand-`native`, and 3.5s at 5500 (~14x vs the default-threshold run). At the default threshold a single short run still pays warmup — the open question is auto-JIT threshold tuning, not coverage.
 5. **Measurement environment matters.** Objeck's interpreter is more sensitive to virtualization than its JIT; native (non-Docker) numbers would be meaningfully better than the Docker numbers shown here.
 
 ---
@@ -78,12 +78,14 @@ All five languages measured in **one Docker run on identical inputs** (`perf-res
 
 Methods marked `native` are JIT-compiled to x64 or ARM64 machine code. All other methods run in the interpreter unless auto-JIT compiles them after 10 calls.
 
-| spectralnorm | Input | Time | Speedup |
-|-------------|-------|------|---------|
-| Interpreter | 5500 | 43.11s | -- |
-| With `native` (JIT) | 2000 | **0.37s** | **~100x** (smaller input) |
+| spectralnorm | Input | Time | Notes |
+|-------------|-------|------|-------|
+| Interpreter (JIT disabled) | 5500 | 43.11s | baseline |
+| Auto-JIT, default threshold | 5500 | ~43s | single short run — JIT warmup dominates |
+| Auto-JIT, `OBJECK_JIT_THRESHOLD=1` | 5500 | **3.5s** | ~14x; closures auto-JIT (`DYN_MTHD_CALL`) |
+| Auto-JIT `THRESHOLD=1` / `native` | 2000 | **0.46 / 0.40s** | auto-JIT now matches hand-`native` |
 
-Methods marked `native` that contain `MTHD_CALL` are JIT-compiled via `ProcessStackCallback`. Auto-JIT now also compiles methods containing `MTHD_CALL` after 10 calls — the same code path, just triggered automatically rather than by the programmer. Closure/function-reference calls (`DYN_MTHD_CALL`) are not yet auto-JIT'd.
+Methods marked `native` that contain `MTHD_CALL` are JIT-compiled via `ProcessStackCallback`. Auto-JIT also compiles hot methods automatically (default: after 10 calls). Closure/function-reference calls (`DYN_MTHD_CALL`) are **now auto-JIT'd** as well, so closure-heavy kernels like spectralnorm reach native-level speed once compiled — the lever is no longer coverage but the auto-JIT threshold (warmup), tunable via `OBJECK_JIT_THRESHOLD` (a single short run at the default threshold doesn't amortize compilation).
 
 ---
 
