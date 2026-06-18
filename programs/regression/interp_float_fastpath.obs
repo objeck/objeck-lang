@@ -1,0 +1,63 @@
+# JIT_DISABLE
+# Exercises the interpreter's inlined float fast-path (ADD/SUB/MUL_FLOAT and the
+# six float comparisons added in P2). JIT is disabled so every float op goes
+# through the interpreter dispatch loop, not native code. Values are accumulated
+# in loops so they are not constant-folded — the inlined ops must run for real.
+class InterpFloatFastPath {
+    function : Main(args : String[]) ~ Nil {
+        "Testing interpreter float fast-path..."->PrintLine();
+        pass := true;
+
+        # ADD_FLOAT in a loop: sum 0.5 a thousand times -> 500.0
+        sum := 0.0;
+        for(i := 0; i < 1000; i += 1;) { sum += 0.5; };
+        if(sum < 499.999 | sum > 500.001) { pass := false; "  FAIL: ADD loop = {$sum}"->PrintLine(); };
+
+        # SUB_FLOAT operand order (non-commutative): start high, subtract down
+        diff := 1000.0;
+        for(i := 0; i < 1000; i += 1;) { diff -= 0.25; };
+        if(diff < 749.999 | diff > 750.001) { pass := false; "  FAIL: SUB loop = {$diff}"->PrintLine(); };
+        # direct order check: 10.0 - 3.0 = 7.0 (not -7.0)
+        a := 10.0; b := 3.0;
+        if(a - b <> 7.0) { pass := false; "  FAIL: SUB order 10-3"->PrintLine(); };
+
+        # MUL_FLOAT: repeated doubling 2^10 = 1024.0
+        prod := 1.0;
+        for(i := 0; i < 10; i += 1;) { prod *= 2.0; };
+        if(prod < 1023.999 | prod > 1024.001) { pass := false; "  FAIL: MUL loop = {$prod}"->PrintLine(); };
+
+        # All six float comparisons (results 0/1 pushed by inlined ops)
+        x := 2.5; y := 4.0;
+        if(<>(x < y))   { pass := false; "  FAIL: LES_FLOAT"->PrintLine(); };
+        if(x > y)       { pass := false; "  FAIL: GTR_FLOAT false"->PrintLine(); };
+        if(<>(y > x))   { pass := false; "  FAIL: GTR_FLOAT true"->PrintLine(); };
+        if(<>(x <= 2.5)){ pass := false; "  FAIL: LES_EQL_FLOAT"->PrintLine(); };
+        if(<>(y >= 4.0)){ pass := false; "  FAIL: GTR_EQL_FLOAT"->PrintLine(); };
+        if(<>(x = 2.5)) { pass := false; "  FAIL: EQL_FLOAT"->PrintLine(); };
+        if(x <> 2.5)    { pass := false; "  FAIL: NEQL_FLOAT (should be equal)"->PrintLine(); };
+        if(<>(x <> y))  { pass := false; "  FAIL: NEQL_FLOAT (should differ)"->PrintLine(); };
+
+        # Negative operands through the fast path
+        neg := -8.0;
+        if(neg + 3.0 <> -5.0)  { pass := false; "  FAIL: neg ADD"->PrintLine(); };
+        if(neg - 2.0 <> -10.0) { pass := false; "  FAIL: neg SUB"->PrintLine(); };
+        if(neg * -0.5 <> 4.0)  { pass := false; "  FAIL: neg MUL"->PrintLine(); };
+
+        # Comparison driving control flow inside a counting loop. Threshold 4.95
+        # sits between the 4.9 and 5.0 accumulation grid points, so tiny 0.1
+        # rounding drift can't flip the count: t exceeds it for i=49..99 -> 51.
+        count := 0;
+        t := 0.0;
+        for(i := 0; i < 100; i += 1;) {
+            t += 0.1;
+            if(t > 4.95) { count += 1; };
+        };
+        if(count <> 51) { pass := false; "  FAIL: compare-in-loop count = {$count}"->PrintLine(); };
+
+        if(pass) {
+            "PASS: interpreter float fast-path"->PrintLine();
+        } else {
+            "FAIL: interpreter float fast-path"->PrintLine();
+        };
+    }
+}

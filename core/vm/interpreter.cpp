@@ -315,6 +315,69 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
       continue;
     }
 
+    // float arithmetic (operands bit-stored in op_stack slots; left=sp-1, right=sp-2,
+    // matching AddFloat/SubFloat/MulFloat). DIV_FLOAT is NOT inlined — its
+    // divide-by-zero path needs the recovery check below, same as DIV_INT/MOD_INT.
+    case ADD_FLOAT: {
+      const size_t sp = *stack_pos;
+      *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]) =
+        *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) + *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case SUB_FLOAT: {
+      const size_t sp = *stack_pos;
+      *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]) =
+        *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) - *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case MUL_FLOAT: {
+      const size_t sp = *stack_pos;
+      *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]) =
+        *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) * *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+
+    // float comparisons (pop 2, push 0/1)
+    case LES_FLOAT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) < *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case GTR_FLOAT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) > *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case LES_EQL_FLOAT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) <= *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case GTR_EQL_FLOAT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) >= *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case EQL_FLOAT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) == *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+    case NEQL_FLOAT: {
+      const size_t sp = *stack_pos;
+      op_stack[sp - 2] = *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]) != *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
+      *stack_pos = sp - 1;
+      continue;
+    }
+
     case LBL:
       continue;
 
