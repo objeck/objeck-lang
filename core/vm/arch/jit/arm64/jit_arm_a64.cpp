@@ -5257,25 +5257,25 @@ bool JitArm64::Compile(StackMethod* cm)
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const long index = deref_offsets[i];
       const long offset = epilog_index - index + 1;
-      code[index] |= offset << 5;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
     
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
       const long index = bounds_less_offsets[i];
       const long offset = epilog_index - index + 3;
-      code[index] |= offset << 5;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
 
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const long index = bounds_greater_offsets[i];
       const long offset = epilog_index - index + 5;
-      code[index] |= offset << 5;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
     
     for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
       const long index = div_by_zero_offsets[i];
       const long offset = epilog_index - index + 7;
-      code[index] |= offset << 5;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
     
     // update consts pools
