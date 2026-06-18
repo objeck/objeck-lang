@@ -246,9 +246,17 @@ void JitAmd64::ProcessParameters(long params) {
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
     
-    if(instr->GetType() == STOR_LOCL_INT_VAR || instr->GetType() == STOR_CLS_INST_INT_VAR) {
+    // A parameter may arrive as STOR_* (pop into slot) or, when the optimizer
+    // keeps the incoming arg on the stack to reuse it directly (e.g. forwarding
+    // a param straight into a call: `f(x)` with x a param), as COPY_* (store to
+    // slot AND leave on the working stack). COPY_* must be routed to ProcessCopy,
+    // not ProcessStore, or it leaves the stack unbalanced. Crucially, an int
+    // COPY_LOCL_INT_VAR param must be classified as int here, not fall through
+    // to the float else-branch (which would read it into an XMM reg and crash).
+    if(instr->GetType() == STOR_LOCL_INT_VAR || instr->GetType() == STOR_CLS_INST_INT_VAR ||
+       instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
       dec_mem(0, stack_pos_holder->GetRegister());
-#ifdef _WIN64    
+#ifdef _WIN64
       move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
 #else
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
@@ -258,8 +266,13 @@ void JitAmd64::ProcessParameters(long params) {
       RegisterHolder* dest_holder = GetRegister();
       move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
-      // store int
-      ProcessStore(instr);
+      // store int (COPY keeps the value on the working stack for later use)
+      if(instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
+        ProcessCopy(instr);
+      }
+      else {
+        ProcessStore(instr);
+      }
     }
     else if(instr->GetType() == STOR_FUNC_VAR) {
       dec_mem(0, stack_pos_holder->GetRegister());  
@@ -295,12 +308,17 @@ void JitAmd64::ProcessParameters(long params) {
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
 #endif    
       shl_imm_reg(3, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister()); 
+      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
       move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
 
-      // store float
-      ProcessStore(instr);
+      // store float (COPY keeps the value on the working stack for later use)
+      if(instr->GetType() == COPY_FLOAT_VAR) {
+        ProcessCopy(instr);
+      }
+      else {
+        ProcessStore(instr);
+      }
     }
     ReleaseRegister(op_stack_holder);
     ReleaseRegister(stack_pos_holder);
@@ -6009,6 +6027,20 @@ bool JitAmd64::Compile(StackMethod* cm)
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       StackInstr* scan_instr = method->GetInstruction(i);
       if(!CanJitInstruction(scan_instr->GetType())) {
+        return false;
+      }
+      // DYN_MTHD_CALL return marshalling (ProcessReturnParameters) is driven by
+      // operand2 (the func-ref's return MemoryType). For a generic func-ref
+      // (`(H)~H`) compiled in library mode the return type collapses to NIL_TYPE
+      // — indistinguishable from a genuinely void func-ref (`(H)~Nil`). If we
+      // JIT such a call and the result IS consumed (e.g. `a[i] := f(x)` in
+      // Collection.Map/Filter/Reduce), no value is marshalled back and the next
+      // instruction underflows the working stack -> crash. Reject these methods
+      // so they run in the interpreter (which marshals results dynamically and
+      // handles them correctly). Concrete-return func-refs (e.g. spectralnorm's
+      // `~Float` closures) keep a non-NIL operand2 and still JIT.
+      if((scan_instr->GetType() == DYN_MTHD_CALL || scan_instr->GetType() == DYN_MTHD_CALL_JIT) &&
+         scan_instr->GetOperand2() == instructions::MemoryType::NIL_TYPE) {
         return false;
       }
       // detect loops via backward jumps (a JMP operand is the target instruction

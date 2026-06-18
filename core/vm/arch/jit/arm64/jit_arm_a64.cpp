@@ -254,7 +254,15 @@ void JitArm64::ProcessParameters(long params) {
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
       
-    if(instr->GetType() == STOR_LOCL_INT_VAR || instr->GetType() == STOR_CLS_INST_INT_VAR) {
+    // A parameter may arrive as STOR_* (pop into slot) or, when the optimizer
+    // keeps the incoming arg on the stack to reuse it directly (e.g. forwarding
+    // a param into a call: `f(x)` with x a param), as COPY_* (store to slot AND
+    // leave on the working stack). COPY_* must route to ProcessCopy, not
+    // ProcessStore. An int COPY_LOCL_INT_VAR param must also be classified as
+    // int here, not fall through to the float else-branch (which would read it
+    // into an FP reg and crash). Mirrors the AMD64 fix.
+    if(instr->GetType() == STOR_LOCL_INT_VAR || instr->GetType() == STOR_CLS_INST_INT_VAR ||
+       instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
       RegisterHolder* dest_holder = GetRegister();
       dec_mem(0, stack_pos_holder->GetRegister());
       move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
@@ -262,8 +270,13 @@ void JitArm64::ProcessParameters(long params) {
       add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
       move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
-      // store int
-      ProcessStore(instr);
+      // store int (COPY keeps the value on the working stack for later use)
+      if(instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
+        ProcessCopy(instr);
+      }
+      else {
+        ProcessStore(instr);
+      }
     }
     else if(instr->GetType() == STOR_FUNC_VAR) {
       RegisterHolder* dest_holder = GetRegister();
@@ -294,8 +307,13 @@ void JitArm64::ProcessParameters(long params) {
       add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
       move_mem_freg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
-      // store float
-      ProcessStore(instr);
+      // store float (COPY keeps the value on the working stack for later use)
+      if(instr->GetType() == COPY_FLOAT_VAR) {
+        ProcessCopy(instr);
+      }
+      else {
+        ProcessStore(instr);
+      }
     }
     ReleaseRegister(op_stack_holder);
     ReleaseRegister(stack_pos_holder);
@@ -4979,6 +4997,18 @@ bool JitArm64::Compile(StackMethod* cm)
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       StackInstr* scan_instr = method->GetInstruction(i);
       if(!CanJitInstruction(scan_instr->GetType())) {
+        return false;
+      }
+      // DYN_MTHD_CALL return marshalling is driven by operand2 (the func-ref's
+      // return MemoryType). A generic func-ref (`(H)~H`) compiled in library
+      // mode collapses to NIL_TYPE — indistinguishable from a genuinely void
+      // func-ref. JIT'ing such a call when the result IS consumed (e.g.
+      // `a[i] := f(x)` in Collection.Map/Filter/Reduce) marshals no value and
+      // underflows the working stack -> crash. Reject -> run in the interpreter.
+      // Concrete-return func-refs keep a non-NIL operand2 and still JIT. Mirrors
+      // the AMD64 guard.
+      if((scan_instr->GetType() == DYN_MTHD_CALL || scan_instr->GetType() == DYN_MTHD_CALL_JIT) &&
+         scan_instr->GetOperand2() == instructions::MemoryType::NIL_TYPE) {
         return false;
       }
       // detect loops via backward jumps. On ARM64 a JMP operand is the target
