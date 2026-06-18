@@ -4257,8 +4257,13 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   // corrupt the argument. Mirrors AMD64 call_xfunc.
   move_freg_mem(D0, TMP_D0, SP);
   if(left->GetType() == REG_FLOAT) {
-    if(left->GetRegister()->GetRegister() != D0) {
-      move_freg_freg(left->GetRegister()->GetRegister(), D0);
+    const Register src = left->GetRegister()->GetRegister();
+    if(src != D0) {
+      // True fmov D0, D{src}. move_freg_freg bridges through a GP reg and would
+      // load garbage for a value that lives only in the FP register (the common
+      // case when the argument isn't already in D0, e.g. Exp(x*-1.0) inside
+      // 1.0/(1.0+Exp(..))), giving exp the wrong argument.
+      AddMachineCode(0x1E604000 | ((uint32_t)src << 5));  // fmov D0, D{src}
     }
     ReleaseFpRegister(left->GetRegister());
   }

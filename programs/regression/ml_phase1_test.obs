@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ml,gen_collect,csv
-# JIT_DISABLE
 #~
 Regression tests for the System.ML correctness fixes (phase 1):
 seedable PRNG, DotSigmoid dimension guard, StdDev bounds, NaiveBayes
