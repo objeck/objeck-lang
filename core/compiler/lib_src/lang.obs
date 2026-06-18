@@ -1452,10 +1452,12 @@ bundle System {
 
 		#~
 		Returns the minimum size of an integer
-		@return maximum size of an integer
+		@return minimum size of an integer
 		~#
 		function : MinSize() ~ Int {
-			return 2->Pow(63);
+			# INT64_MIN (two's-complement sign bit). 2->Pow(63) was wrong: it
+			# computes +2^63 in float, which saturates to INT64_MAX on F2I.
+			return 1 << 63;
 		}
 		
 		#~
