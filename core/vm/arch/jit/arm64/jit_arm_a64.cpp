@@ -1474,6 +1474,30 @@ void JitArm64::ProcessStore(StackInstr* instr) {
         ReleaseFpRegister(freg_it->second);
         local_freg_cache.erase(freg_it);
       }
+
+      // Materialize any pending working-stack value that defers to this slot
+      // BEFORE it is overwritten. A deferred LOAD of this local (a MEM_INT/
+      // MEM_FLOAT still pointing at the slot) would otherwise read the post-store
+      // value. This is what breaks TCO'd self-recursive tail calls: e.g.
+      // `return Gcd(b, a%b)` compiles to LOAD b; ...; STOR b (:=a%b); STOR a
+      // (:= the deferred b) -- without this, the second store reads b's slot,
+      // which now holds a%b, so a := a%b instead of the old b.
+      const long stor_slot = instr->GetOperand3();
+      for(size_t wi = 0; wi < working_stack.size(); ++wi) {
+        RegInstr* pend = working_stack[wi];
+        if(pend->GetType() == MEM_INT && (long)pend->GetOperand() == stor_slot) {
+          RegisterHolder* mh = GetRegister();
+          move_mem_reg(stor_slot, SP, mh->GetRegister());
+          delete pend;
+          working_stack[wi] = new RegInstr(mh);
+        }
+        else if(pend->GetType() == MEM_FLOAT && (long)pend->GetOperand() == stor_slot) {
+          RegisterHolder* mh = GetFpRegister();
+          move_mem_freg(stor_slot, SP, mh->GetRegister());
+          delete pend;
+          working_stack[wi] = new RegInstr(mh);
+        }
+      }
     }
   }
   // class or instance memory
@@ -4257,8 +4281,13 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   // corrupt the argument. Mirrors AMD64 call_xfunc.
   move_freg_mem(D0, TMP_D0, SP);
   if(left->GetType() == REG_FLOAT) {
-    if(left->GetRegister()->GetRegister() != D0) {
-      move_freg_freg(left->GetRegister()->GetRegister(), D0);
+    const Register src = left->GetRegister()->GetRegister();
+    if(src != D0) {
+      // True fmov D0, D{src}. move_freg_freg bridges through a GP reg and would
+      // load garbage for a value that lives only in the FP register (the common
+      // case when the argument isn't already in D0, e.g. Exp(x*-1.0) inside
+      // 1.0/(1.0+Exp(..))), giving exp the wrong argument.
+      AddMachineCode(0x1E604000 | ((uint32_t)src << 5));  // fmov D0, D{src}
     }
     ReleaseFpRegister(left->GetRegister());
   }
@@ -5252,25 +5281,25 @@ bool JitArm64::Compile(StackMethod* cm)
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const long index = deref_offsets[i];
       const long offset = epilog_index - index + 1;
-      code[index] |= offset << 5;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
     
     for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
       const long index = bounds_less_offsets[i];
       const long offset = epilog_index - index + 3;
-      code[index] |= offset << 5;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
 
     for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
       const long index = bounds_greater_offsets[i];
       const long offset = epilog_index - index + 5;
-      code[index] |= offset << 5;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
     
     for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
       const long index = div_by_zero_offsets[i];
       const long offset = epilog_index - index + 7;
-      code[index] |= offset << 5;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
     }
     
     // update consts pools

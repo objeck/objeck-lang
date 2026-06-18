@@ -66,6 +66,7 @@ class FixIntBoundaryTest {
             "PASS: Integer boundary values"->PrintLine();
         } else {
             "FAIL: Integer boundary values"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

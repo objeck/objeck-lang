@@ -94,6 +94,7 @@ class CoreIntMethodsTest {
             "PASS: Int methods"->PrintLine();
         } else {
             "FAIL: Int methods"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }
