@@ -171,7 +171,8 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | GC lock-free mark via snapshot | 0.64x slower | Copying entire `allocated_memory` set before each mark phase was O(n) |
 | Inline limit 512 | 0.91x slower | Exceeded JIT register allocator capacity |
 | Auto-JIT MTHD_CALL via interpreter trampoline | 0.5x slower | Per-call trampoline overhead exceeded interpreter cost. Fixed by adding direct JIT-to-JIT calling. |
-| ProcessInlineMethod for MTHD_CALL | Crashes | Inlining constructors corrupts INSTANCE_MEM save/restore offsets. Needs frame layout investigation. |
+| ProcessInlineMethod for MTHD_CALL | Miscompiles broadly | Wiring `ProcessInlineMethod` into the MTHD_CALL path fails 36 regression tests. Constructors lose the implicit new-instance result (popped into INSTANCE_MEM, never pushed back) — excluding them clears 24. But the rest persist **even when restricted to pure, instance-memory-free leaf callees**: the inliner's register/working-stack handling miscompiles small methods inlined into high-register-pressure callers (ML/network/collection code). The shared register allocator and working stack don't compose correctly across the inline boundary. Needs a rewrite of `ProcessInlineMethod`, not an incremental fix; left disabled (dead code). Direct JIT-to-JIT calling already removes most call overhead, so the payoff is small. |
+| Monomorphic per-call-site dispatch cache | Net regression | Caching `(call-site, receiver-class) → method` on each `StackInstr` to skip `ResolveVirtualMethod`'s map lookup. Measured: monomorphic virtual 3.35s→3.53s, non-virtual 2.75s→2.83s, bimorphic flat — all worse or equal. The extra `StackInstr` fields (+50% size) cost more in dcache pressure than the saved lookup, and `virtual_methods` is already a hashed `unordered_map`. Reverted. |
 
 ---
 
