@@ -1,0 +1,33 @@
+# Regression for the TCO deferred-local-load miscompile (both arches).
+# A self-recursive tail call that forwards a BARE LOCAL as an argument
+# (`return Gcd(b, a%b)` — param 0 is just `b`) is TCO-rewritten to stores into
+# the parameter slots. The JIT defers the bare `b` load as a pointer to b's
+# slot; the `b := a%b` store then overwrites that slot before the deferred load
+# is consumed, so the other parameter reads a%b instead of the old b.
+# Gcd is called >10 times so it auto-JITs at the DEFAULT threshold (the bug
+# otherwise only shows at OBJECK_JIT_THRESHOLD=1, where Gcd JITs on first call).
+use System;
+
+class JitTcoBareLocal {
+    function : Main(args : String[]) ~ Nil {
+        pass := true;
+        for(i := 0; i < 25; i += 1;) {
+            if(Gcd(48, 18) <> 6)     { pass := false; "  FAIL: Gcd(48,18)"->PrintLine(); };
+            if(Gcd(1071, 462) <> 21) { pass := false; "  FAIL: Gcd(1071,462)"->PrintLine(); };
+            if(Gcd(17, 5) <> 1)      { pass := false; "  FAIL: Gcd(17,5)"->PrintLine(); };
+            if(Gcd(100, 0) <> 100)   { pass := false; "  FAIL: Gcd(100,0)"->PrintLine(); };
+        };
+        if(pass) {
+            "PASS: TCO bare-local tail-call arg"->PrintLine();
+        }
+        else {
+            "FAIL: TCO bare-local tail-call arg"->PrintLine();
+            Runtime->Exit(1);
+        };
+    }
+
+    function : Gcd(a : Int, b : Int) ~ Int {
+        if(b = 0) { return a; };
+        return Gcd(b, a % b);
+    }
+}

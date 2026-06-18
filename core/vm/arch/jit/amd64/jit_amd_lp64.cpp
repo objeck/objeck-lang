@@ -1680,6 +1680,31 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
         ReleaseXmmRegister(xreg_it->second);
         local_xreg_cache.erase(xreg_it);
       }
+
+      // Materialize any pending working-stack value that defers to this slot
+      // BEFORE it is overwritten. A deferred LOAD of this local (a MEM_INT/
+      // MEM_FLOAT still pointing at the slot) would otherwise read the post-store
+      // value. This is what breaks TCO'd self-recursive tail calls where a bare
+      // local is forwarded as an argument: e.g. `return Gcd(b, a%b)` compiles to
+      // LOAD b; ...; STOR b (:=a%b); STOR a (:= the deferred b) -- without this,
+      // the second store reads b's slot, which now holds a%b, so a := a%b instead
+      // of the old b. (Mirrors the ARM64 fix.)
+      const long stor_slot = instr->GetOperand3();
+      for(size_t wi = 0; wi < working_stack.size(); ++wi) {
+        RegInstr* pend = working_stack[wi];
+        if(pend->GetType() == MEM_INT && (long)pend->GetOperand() == stor_slot) {
+          RegisterHolder* mh = GetRegister();
+          move_mem_reg(stor_slot, RBP, mh->GetRegister());
+          delete pend;
+          working_stack[wi] = new RegInstr(mh);
+        }
+        else if(pend->GetType() == MEM_FLOAT && (long)pend->GetOperand() == stor_slot) {
+          RegisterHolder* mh = GetXmmRegister();
+          move_mem_xreg(stor_slot, RBP, mh->GetRegister());
+          delete pend;
+          working_stack[wi] = new RegInstr(mh);
+        }
+      }
     }
   }
   // class or instance memory
