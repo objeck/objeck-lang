@@ -97,7 +97,15 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
       CleanUpCommandLine(argc, commands);
       return USAGE_ERROR;
     }
-    
+
+    // Quiesce any still-running VM threads (e.g. web-server request workers)
+    // before `loader` destructs and frees the program. Otherwise a worker can be
+    // mid auto-JIT (PatchCallSites walking the class tables) while ~StackProgram
+    // frees them -> use-after-free crash at exit. Halt the others (not `intpr`,
+    // which is this thread) and wait briefly for them to unwind and deregister.
+    Runtime::StackInterpreter::HaltAllExcept(intpr);
+    Runtime::StackInterpreter::WaitForThreadsToDrain(intpr, 2000);
+
 #ifdef _DEBUG
     std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;
     if((*stack_pos) > 0) {

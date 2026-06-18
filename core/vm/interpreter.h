@@ -35,6 +35,7 @@
 #include <random>
 #include <string.h>
 #include <thread>
+#include <chrono>
 
 #ifdef _WIN32
 #include "arch/memory.h"
@@ -524,7 +525,62 @@ namespace Runtime {
     void Halt() {
       halt = true;
     }
-    
+
+    // Halt every registered interpreter EXCEPT `self`. Used at program teardown
+    // so other VM threads (e.g. web-server request workers) stop before the
+    // Loader frees the program — otherwise a worker can auto-JIT (PatchCallSites
+    // walks the class tables) while ~StackProgram frees them => use-after-free.
+    // Never halts `self` (the thread running teardown), so it stays usable.
+    static void HaltAllExcept(StackInterpreter* self) {
+#ifdef _WIN32
+      EnterCriticalSection(&intpr_threads_cs);
+#else
+      pthread_mutex_lock(&intpr_threads_mutex);
+#endif
+      for(std::set<StackInterpreter*>::iterator iter = intpr_threads.begin(); iter != intpr_threads.end(); ++iter) {
+        if(*iter != self) {
+          (*iter)->Halt();
+        }
+      }
+#ifdef _WIN32
+      LeaveCriticalSection(&intpr_threads_cs);
+#else
+      pthread_mutex_unlock(&intpr_threads_mutex);
+#endif
+    }
+
+    // Wait (bounded) until only `self` (or nothing) remains registered, i.e.
+    // every other thread has unwound and deregistered (RemoveThread). Returns
+    // true if drained, false on timeout (a worker blocked in a syscall may not
+    // observe Halt; the caller proceeds anyway). Pair with HaltAllExcept.
+    static bool WaitForThreadsToDrain(StackInterpreter* self, long timeout_ms) {
+      long waited_ms = 0;
+      while(waited_ms < timeout_ms) {
+        size_t remaining;
+#ifdef _WIN32
+        EnterCriticalSection(&intpr_threads_cs);
+#else
+        pthread_mutex_lock(&intpr_threads_mutex);
+#endif
+        remaining = intpr_threads.size();
+        // self stays registered during Release teardown (RemoveThread is only in
+        // the _SANITIZE path), so <= 1 means no other threads remain.
+        const bool only_self = (remaining <= 1);
+        (void)self;
+#ifdef _WIN32
+        LeaveCriticalSection(&intpr_threads_cs);
+#else
+        pthread_mutex_unlock(&intpr_threads_mutex);
+#endif
+        if(only_self) {
+          return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        waited_ms++;
+      }
+      return false;
+    }
+
     // free static resources
     static void Clear() {
       while(!cached_frames.empty()) {
