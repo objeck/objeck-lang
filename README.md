@@ -57,6 +57,14 @@ obc hello && obr hello
 
 ## What's New
 
+### v2026.6.2 ✅
+  * **Major JIT & GC performance work** — the cooperative stop-the-world GC safepoint poll (new in v2026.6.1) is now nearly free in JIT'd code: an inline flag test that only calls the collector when a collection is active, reading `&stw_active` from a register cached at the prologue (R12/X19) and emitted only at loop back-edges. `fannkuchredux` roughly halved (~59s → ~31s), recovering the full regression on AMD64 and ARM64. Closure / function-reference calls (`DYN_MTHD_CALL`) now **auto-JIT** on both architectures — `spectralnorm` reaches `native`-level speed once warm (43s interpreted → 0.46s at n=2000, matching the hand-`native` kernel). Nursery allocation for `NEW_OBJ_INST` is inlined on AMD64, and the interpreter gains a float fast-path. See [performance →](docs/performance.md)
+  * **JIT correctness hardening** — a sweep of float-codegen and tail-call bugs surfaced by forcing JIT (`OBJECK_JIT_THRESHOLD=1`): AMD64 `Floor`/`Ceil`/`ArcTan` codegen and two latent `DYN_MTHD_CALL` miscompiles; ARM64 transcendental/round cached-local operands, dropped libc float result/argument, working-stack registers clobbered across inlined float calls, and an `imm19` backpatch SIGILL (`ml_gbt`); and a TCO deferred-load corruption (e.g. `return Gcd(b, a%b)`) on both architectures. The full ARM64 suite is now green at `OBJECK_JIT_THRESHOLD=1`
+  * **UTF-8 in any locale** — `obc` reading UTF-8 source and `obr` loading/printing UTF-8 strings no longer break under a `C`/non-UTF-8 process locale; `sys.h` now uses systemic locale-independent UTF-8 codecs instead of `mbstowcs`/`wcstombs`
+  * **VM shutdown race fixed** — worker threads are quiesced before program teardown, removing a JIT-shutdown thread race
+  * **`Int->MinSize()`** now returns `INT64_MIN` (was `INT64_MAX` — the float `2->Pow(63)` path saturated on conversion)
+  * **Native cross-language perf gate (CI)** — a non-Docker harness measures Objeck against Python/Ruby/LuaJIT/Java with committed baseline ratios, so performance regressions are caught automatically
+
 ### v2026.6.1 ✅
   * **String interpolation — expressions, format specifiers, and `String->Format`** — `"{$...}"` now accepts arbitrary expressions (`"{$i + 1}"`, `"{$a * b - c}"`, `"{$x > y}"`), not just variables and method calls. Inline format specifiers use Python/.NET colon syntax for precision, width, alignment, and radix — `"{$pi:.2}"`, `"{$n:05}"`, `"{$s:<10}"`, `"{$v:x}"`, `"{$v:b}"` — and the new `String->Format("{0} = {1}", a, b)` adds positional templating with `{{`/`}}` escaping. See [string features →](docs/FEATURES.md#strings)
   * **Generics — bounds, compound/F-bounds, and variance** — type parameters gain compound bounds `T : A & B` (a concrete argument must satisfy every bound), F-bounded constraints `T : Compare<T>`, and declaration-site variance: `out T` (covariant, e.g. `Producer<Dog>` usable as `Producer<Animal>`) and `in T` (contravariant). Variance is checked soundly in both directions and preserved across the `.obl` library boundary; the stdlib's read-only iterators are now covariant. Existing invariant generics and syntax are unchanged (`out` stays a usable identifier), and generic type-mismatch errors now print readable types like `Hash<String, IntRef>`
@@ -80,11 +88,6 @@ obc hello && obr hello
   * **XML library improvements** — truncated/malformed documents are now rejected instead of parsing as success; `&apos;` decoding fixed; new `EncodeText`, `SetEncodedContent`, `GetDecodedContent` and `GetDecodedValue` conveniences
   * **Library aliases documented** — `-lib @std`/`@ml`/`@game` and the new `@ai` group, user-editable via `lib/configobjk.ini`; AI/ML developer guide gains `System.ML` and `System.AI` sections with runnable examples
   * **CI hardening** — vcpkg installs retry on transient CDN failures; `mcp_server_test` validates JSON-RPC bodies before accepting
-
-### v2026.5.4
-  * **Debugger test reliability** — Windows CI debugger tests fixed; `.obe`/`.obl` format detection now correctly handles the edge case where a new-format size-header LSB collides with the `0x78` zlib CMF byte
-  * **LSP shell script permissions** — all `tools/lsp/` shell scripts now have execute bit set in git, fixing `Permission denied` in release CI
-  * **Release workflow** — `git checkout -f master` prevents dirty-tree abort when committing `api.zip` from a tag-based build
 
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)

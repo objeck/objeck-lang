@@ -1,3 +1,17 @@
+v2026.6.2 (June 19, 2026)
+===
+Major JIT and garbage-collection performance work (a near-free GC safepoint poll, auto-JIT for closure/function-reference calls, inline nursery allocation), a sweep of JIT float-codegen correctness fixes, and locale-independent UTF-8 I/O.
+
+v2026.6.2
+- Performance: the cooperative stop-the-world GC safepoint poll is now nearly free in JIT'd code -- an inline flag test that calls the collector only when a collection is active, reading &stw_active from a register cached at the prologue (R12 on AMD64, X19 on ARM64), emitted only at loop back-edges. fannkuchredux roughly halved (~59s -> ~31s), recovering the full v2026.6.1 regression on both AMD64 and ARM64
+- Performance: auto-JIT for DYN_MTHD_CALL (closure / function-reference calls) on AMD64 and ARM64 -- spectralnorm reaches native-level speed once warm (43s interpreted -> 0.46s at n=2000, matching the hand-native kernel)
+- Performance: inline young-generation bump allocation for NEW_OBJ_INST (AMD64); interpreter float fast-path; ARM64 JIT whitelist parity with AMD64
+- Fixed JIT float-codegen and tail-call bugs surfaced by forcing JIT (OBJECK_JIT_THRESHOLD=1): AMD64 Floor/Ceil/ArcTan and two latent DYN_MTHD_CALL miscompiles; ARM64 transcendental/round cached-local operands, dropped libc float result/argument, working-stack registers across inlined float calls, imm19 backpatch SIGILL (ml_gbt); TCO deferred-load corruption (return Gcd(b, a%b)) on both architectures. Full ARM64 suite green at OBJECK_JIT_THRESHOLD=1
+- Fixed UTF-8 breaking under a C/non-UTF-8 process locale: obc reading UTF-8 source and obr loading/printing UTF-8 strings; sys.h now uses systemic locale-independent UTF-8 codecs instead of mbstowcs/wcstombs
+- Fixed a VM shutdown thread race by quiescing worker threads before program teardown
+- Int->MinSize() now returns INT64_MIN instead of INT64_MAX
+- CI: native (non-Docker) cross-language perf gate measures Objeck against Python/Ruby/LuaJIT/Java with committed baseline ratios; refreshed performance docs and speedup roadmap
+
 v2026.6.1 (June 14, 2026)
 ===
 String interpolation with expressions and format specifiers, generic bounds and variance, cooperative multithreaded GC, a major command-line and VS Code debugger expansion, and TLS certificate verification.

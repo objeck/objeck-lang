@@ -4,6 +4,35 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+## [v2026.6.2] - 2026-06-19
+
+### Performance
+- **GC safepoint poll made nearly free in JIT'd loops**: the cooperative stop-the-world safepoint (added in v2026.6.1) emitted an unconditional `call MemoryManager::SafePoint` at every JIT label, which regressed label-dense integer loops. The poll is now (1) an inline flag test that calls into the collector only when a collection is actually active, (2) reads `&stw_active` from a callee-saved register cached at the prologue (R12 on AMD64, X19 on ARM64), and (3) emitted only at true loop back-edges rather than every label. Net: `fannkuchredux` dropped roughly in half (~59s → ~31s in the Docker harness), recovering the full regression on both AMD64 and ARM64. Validated against the GC/JIT and multithreaded stop-the-world stress suites.
+- **Auto-JIT for `DYN_MTHD_CALL` (closure / function-reference calls)** on AMD64 and ARM64: closure-heavy and function-reference kernels now JIT-compile once warm instead of staying in the interpreter. `spectralnorm` (input 5500) goes from 43s interpreted to 3.5s with `OBJECK_JIT_THRESHOLD=1`, and at n=2000 reaches 0.46s — matching the hand-`native` kernel (0.40s). The remaining lever is auto-JIT threshold/warmup tuning, not coverage.
+- **Inline young-generation bump allocation for `NEW_OBJ_INST` (AMD64)**: nursery object allocation is emitted inline (`atomic_fetch_add` + bounds check) instead of a call into the allocator on the hot path.
+- **Interpreter float fast-path** inlined directly in the dispatch loop, alongside the integer fast-paths added in v2026.6.0.
+- **ARM64 JIT whitelist parity** with AMD64 so the same instruction set auto-JITs on both architectures.
+
+### Bug Fixes
+- **JIT float-codegen correctness** (surfaced by forcing JIT with `OBJECK_JIT_THRESHOLD=1`):
+  - AMD64 `Floor`/`Ceil`/`ArcTan` float codegen corrected.
+  - AMD64: two latent `DYN_MTHD_CALL` miscompiles fixed.
+  - ARM64: transcendental/round ops read a `REG_FLOAT` operand's register bookkeeping as a stack slot, producing garbage (e.g. `atan` returned 0); fixed.
+  - ARM64: a libc float-call result/argument was dropped when its holder register wasn't `D0` (the GP-bridge `move_freg_freg` swapped FMOV opcodes); now a true `fmov Dd,Dn`. This had diverged `LogisticRegression` (`exp` in `1/(1+exp(x))`).
+  - ARM64: pending working-stack integers are now spilled across an inlined float libc call whose `blr` clobbers caller-saved temps (`Sum5`/`Int->Pow`).
+  - ARM64: `imm19` is masked (`& 0x7FFFF`) in the error-handler branch backpatch — a backward div-by-zero/bounds/null-deref branch was sign-extending over the `b.cond` opcode and producing an illegal instruction (`ml_gbt` SIGILL).
+  - AMD64 and ARM64: a TCO'd self-recursive tail call (e.g. `return Gcd(b, a%b)`) stored into a slot before a deferred `LOAD` of that slot was consumed, corrupting the value; `ProcessStore` now materializes pending references to the slot first.
+- **VM shutdown thread race**: worker threads are quiesced before program teardown, fixing a race during JIT program shutdown.
+- **UTF-8 in a non-UTF-8 locale**: `obc` failed to read UTF-8 source and `obr` failed to load/print UTF-8 strings when the process locale was `C`/non-UTF-8. Replaced `mbstowcs`/`wcstombs` with systemic locale-independent UTF-8 codecs in `sys.h`, plus `setlocale` fallbacks.
+
+### Libraries
+- **`Int->MinSize()`** now returns `INT64_MIN` instead of `INT64_MAX` (`2->Pow(63)` computed `+2^63` in float and saturated on float-to-int conversion; fixed to `1 << 63`).
+
+### Infrastructure
+- **Native cross-language perf gate (CI)**: a non-Docker harness (`perf-results/cross-lang/run_native.sh`, `perf-results/check_perf_gate.py`, `perf-results/perf_baseline.json`, `.github/workflows/perf-gate.yml`) measures Objeck against Python/Ruby/LuaJIT/Java with committed baseline ratios, so performance regressions like the safepoint one are caught automatically.
+- **Refactor**: `Compile()` flattened into early-return guard clauses.
+- **Docs**: `docs/performance.md` refreshed with unified-Docker numbers on a 7950X3D and a prioritized speedup roadmap; static release badge added to `README.md`; deploy/bump skills hardened.
+
 ## [v2026.6.1] - 2026-06-14
 
 ### New Features
