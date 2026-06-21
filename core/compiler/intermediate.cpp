@@ -5186,11 +5186,34 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
  ****************************/
 static bool IsScalarFloat(frontend::Expression* e)
 {
-  if(!e->GetEvalType() || e->GetEvalType()->GetType() != frontend::FLOAT_TYPE) {
+  // Effective stack type of the operand. A trailing cast/method-call changes the
+  // value actually pushed -- e.g. `(12.0 + x)->As(Int)` pushes an Int even though
+  // the sub-expression's own eval type is Float. The comparison opcode must match
+  // the post-cast type (mirrors EmitCalculation, which emits the operand then its
+  // method-call + cast); otherwise an integer compare gets a FLOAT opcode, which
+  // bit-compares ints and feeds mismatched operands to the JIT (crash/corruption).
+  frontend::Type* type = e->GetEvalType();
+  frontend::MethodCall* mc = e->GetMethodCall();
+  if(mc) {
+    while(mc->GetMethodCall()) {
+      mc = mc->GetMethodCall();
+    }
+    if(mc->GetCastType()) {
+      type = mc->GetCastType();
+    }
+    else if(mc->GetEvalType()) {
+      type = mc->GetEvalType();
+    }
+  }
+  else if(e->GetCastType()) {
+    type = e->GetCastType();
+  }
+
+  if(!type || type->GetType() != frontend::FLOAT_TYPE) {
     return false;
   }
 
-  if(e->GetEvalType()->GetDimension() < 1) {
+  if(type->GetDimension() < 1) {
     return true;
   }
 
@@ -5292,8 +5315,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
 
   case LES_EXPR:
-    if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+    if(IsScalarFloat(left) || IsScalarFloat(right)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LES_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LES_INT));
@@ -5302,8 +5324,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
 
   case GTR_EXPR:
-    if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+    if(IsScalarFloat(left) || IsScalarFloat(right)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, GTR_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, GTR_INT));
@@ -5312,8 +5333,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
 
   case LES_EQL_EXPR:
-    if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+    if(IsScalarFloat(left) || IsScalarFloat(right)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LES_EQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LES_EQL_INT));
@@ -5322,8 +5342,7 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
     break;
 
   case GTR_EQL_EXPR:
-    if(left->GetEvalType()->GetType() == frontend::FLOAT_TYPE ||
-       right->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+    if(IsScalarFloat(left) || IsScalarFloat(right)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, GTR_EQL_FLOAT));
     } else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, GTR_EQL_INT));
