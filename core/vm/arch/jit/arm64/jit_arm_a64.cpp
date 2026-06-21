@@ -414,6 +414,14 @@ void JitArm64::ProcessInstructions() {
       std::wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand()
             << L"; regs=" << aval_regs.size() << endl;
 #endif
+      // Bounds-check the per-method float-constant pool. Overrunning float_consts
+      // writes the literal's bit pattern (e.g. 0.02 -> 0x3F94...) past the array
+      // end and trashes an adjacent heap block, corrupting the heap and crashing
+      // late and non-deterministically. Bail to the interpreter instead.
+      if(floats_index >= MAX_DBLS) {
+        compile_success = false;
+        break;
+      }
       float_consts[floats_index] = instr->GetFloatOperand();
       working_stack.push_front(new RegInstr(&float_consts[floats_index++]));
       break;

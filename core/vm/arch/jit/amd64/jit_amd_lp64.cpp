@@ -428,9 +428,17 @@ void JitAmd64::ProcessInstructions() {
       // float literal
     case LOAD_FLOAT_LIT:
 #ifdef _DEBUG_JIT
-      std::wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand() 
+      std::wcout << L"LOAD_FLOAT_LIT: value=" << instr->GetFloatOperand()
             << L"; regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
+      // Bounds-check the per-method float-constant pool. Overrunning float_consts
+      // writes the literal's bit pattern past the array end and trashes an adjacent
+      // heap block; bail to the interpreter instead. (MAX_DBLS is larger here than
+      // on arm64, so this is latent on x64, but guard it for parity.)
+      if(floats_index >= MAX_DBLS) {
+        compile_success = false;
+        break;
+      }
       float_consts[floats_index] = instr->GetFloatOperand();
       working_stack.push_front(new RegInstr(&float_consts[floats_index++]));
       break;
