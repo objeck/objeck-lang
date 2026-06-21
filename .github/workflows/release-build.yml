@@ -199,7 +199,18 @@ jobs:
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: |
-          brew install opencv onnxruntime mbedtls nghttp2 libnghttp3 gnutls cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
+          # Install only formulae that aren't already present. The hosted runner
+          # preinstalls newer gnutls/libnghttp3/cmake than these formulae, so a
+          # plain `brew install` aborts with "already installed" (red CI error
+          # annotations) even though the build is fine. Skip present packages and
+          # install the rest, so genuine install failures still surface.
+          for pkg in opencv onnxruntime mbedtls nghttp2 libnghttp3 gnutls cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame; do
+            if brew list --versions "$pkg" >/dev/null 2>&1; then
+              echo "✓ $pkg already installed — skipping"
+            else
+              brew install "$pkg"
+            fi
+          done
           brew cleanup
 
           # Add Homebrew bin to PATH
