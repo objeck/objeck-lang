@@ -119,6 +119,7 @@ run_test() {
 run_test "help" '
     expect ">"
     send "h\r"
+    expect "q, quit"
     expect ">"
     send "q\r"
     expect eof
