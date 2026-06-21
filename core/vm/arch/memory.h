@@ -179,7 +179,10 @@ class MemoryManager {
   // Generational GC helpers
   static inline bool IsYoung(size_t* mem) {
     uint8_t* p = (uint8_t*)mem;
-    return p >= young_region && p < young_region + young_offset.load(std::memory_order_relaxed);
+    // acquire pairs with the release fence in AllocateObject's young bump path so a
+    // thread that observes the advanced offset also observes the object's header
+    // stores (ARM64 weak memory model).
+    return p >= young_region && p < young_region + young_offset.load(std::memory_order_acquire);
   }
 
   static inline bool IsAllocated(size_t* mem) {
@@ -188,6 +191,32 @@ class MemoryManager {
 
   static inline bool IsOldGen(size_t* mem) {
     return mem && (mem[MARKED_FLAG] & GC_OLD_BIT);
+  }
+
+  // Generational GC fixup helper. Given a slot value, returns the relocated old-gen
+  // address if the slot points to a promoted young object, else 0. Conservative scans
+  // (operand stacks, JIT temps) pass untyped words here: a non-pointer value that
+  // merely aliases the young address range is rejected because its forwarding word
+  // won't be a genuine member of old_generation. (Do NOT gate on IsAllocated/IsOldGen:
+  // IsAllocated==IsYoung for young-range values and would also misfire on real old-gen
+  // pointers whose MARKED_FLAG holds GC_OLD_BIT, not a forwarding address.)
+  static inline size_t ForwardedAddr(size_t* ref) {
+    if(ref && IsYoung(ref)) {
+      const size_t fwd = ref[MARKED_FLAG];
+      if(fwd && old_generation.count((size_t*)fwd)) {
+        return fwd;
+      }
+    }
+    return 0;
+  }
+
+  // Relocate a single slot in place if it holds a pointer to a promoted young object.
+  // Safe for conservative scans (operand stacks, JIT temps) of untyped words.
+  static inline void FixupSlot(size_t* slot) {
+    const size_t fwd = ForwardedAddr((size_t*)*slot);
+    if(fwd) {
+      *slot = fwd;
+    }
   }
 
   static void CollectMinor(size_t* op_stack, size_t stack_pos);

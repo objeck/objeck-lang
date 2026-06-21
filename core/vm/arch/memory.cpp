@@ -366,7 +366,13 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
           mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
           mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
           mem += EXTRA_BUF_SIZE;
-          // Young object: no GC_OLD_BIT, no hash set insert, no mutex
+          // Young object: no GC_OLD_BIT, no hash set insert, no mutex.
+          // Explicitly clear the GC flag word — do NOT rely on the region being
+          // pre-zeroed (the post-GC reset memset only covers the prior high-water mark).
+          mem[MARKED_FLAG] = 0;
+          // release fence: header stores must be visible before this object can be
+          // observed as young (pairs with the acquire load of young_offset in IsYoung).
+          std::atomic_thread_fence(std::memory_order_release);
           allocation_size += size;
           return mem;
         }
@@ -386,6 +392,8 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
             mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
             mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
             mem += EXTRA_BUF_SIZE;
+            mem[MARKED_FLAG] = 0;
+            std::atomic_thread_fence(std::memory_order_release);
             allocation_size += size;
             return mem;
           }
@@ -1767,10 +1775,25 @@ void MemoryManager::FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_
   for(long i = 0; i < dcls_size; ++i) {
     switch(dclrs[i]->type) {
     case FUNC_PARM: {
-      size_t* ref = (size_t*)*(mem + 1);
-      if(ref && IsYoung(ref)) {
-        size_t fwd = ref[MARKED_FLAG];
-        if(fwd) *(mem + 1) = fwd;
+      // Relocate the closure pointer if it was promoted...
+      size_t* lambda_mem = (size_t*)*(mem + 1);
+      const size_t fwd = ForwardedAddr(lambda_mem);
+      if(fwd) {
+        *(mem + 1) = fwd;
+        lambda_mem = (size_t*)fwd;
+      }
+      // ...then descend into the closure's captured memory, mirroring CheckMemory's
+      // FUNC_PARM case. The mark side traverses captures; if fixup does not, a young
+      // object captured by a closure is promoted but its captured slot keeps pointing
+      // at the old nursery address -> dangling after the nursery is reset. The
+      // recursion follows closure nesting only (acyclic by construction), so it ends.
+      if(lambda_mem) {
+        const size_t mthd_cls_id = *mem;
+        const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
+        const long mthd_id = mthd_cls_id & 0xFFFF;
+        std::pair<int, StackDclr**> closure_dclrs =
+          prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+        FixupMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first);
       }
       mem += 2;
       break;
@@ -1781,11 +1804,8 @@ void MemoryManager::FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case CHAR_ARY_PARM:
     case INT_ARY_PARM:
     case FLOAT_ARY_PARM: {
-      size_t* ref = (size_t*)(*mem);
-      if(ref && IsYoung(ref)) {
-        size_t fwd = ref[MARKED_FLAG];
-        if(fwd) *mem = fwd;
-      }
+      const size_t fwd = ForwardedAddr((size_t*)(*mem));
+      if(fwd) *mem = fwd;
       mem++;
       break;
     }
@@ -1817,24 +1837,19 @@ void MemoryManager::FixupObject(size_t* mem)
     size_t dim = mem[1];
     size_t* objects = mem + 2 + dim;
     for(size_t i = 0; i < size; ++i) {
-      size_t* ref = (size_t*)objects[i];
-      if(ref && IsYoung(ref)) {
-        size_t fwd = ref[MARKED_FLAG];
-        if(fwd) objects[i] = fwd;
-      }
+      const size_t fwd = ForwardedAddr((size_t*)objects[i]);
+      if(fwd) objects[i] = fwd;
     }
   }
 }
 
 void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 {
-  // Fix up GC-triggering thread's operand stack
+  // Fix up GC-triggering thread's operand stack. Conservative scan of untyped words:
+  // FixupSlot validates the forwarding target so a plain integer that merely aliases
+  // the young address range is not misread as a relocatable reference.
   for(size_t i = 0; i <= stack_pos; ++i) {
-    size_t* ref = (size_t*)op_stack[i];
-    if(ref && IsYoung(ref)) {
-      size_t fwd = ref[MARKED_FLAG];
-      if(fwd) op_stack[i] = fwd;
-    }
+    FixupSlot(&op_stack[i]);
   }
 
   // Fix up other threads' operand stacks via monitors
@@ -1846,11 +1861,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
     if(other_op_stack && other_stack_pos && other_op_stack != op_stack) {
       size_t pos = *other_stack_pos;
       for(size_t i = 0; i <= pos; ++i) {
-        size_t* ref = (size_t*)other_op_stack[i];
-        if(ref && IsYoung(ref)) {
-          size_t fwd = ref[MARKED_FLAG];
-          if(fwd) other_op_stack[i] = fwd;
-        }
+        FixupSlot(&other_op_stack[i]);  // conservative scan — validated relocation
       }
     }
   }
@@ -1995,10 +2006,21 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 #endif
         switch(dclrs[j]->type) {
         case FUNC_PARM: {
-          size_t* ref = (size_t*)*(mem + 1);
-          if(ref && IsYoung(ref)) {
-            size_t fwd = ref[MARKED_FLAG];
-            if(fwd) *(mem + 1) = fwd;
+          // Relocate the closure pointer, then descend into its captured memory
+          // (mirror CheckMemory / FixupMemory FUNC_PARM — see B1 there).
+          size_t* lambda_mem = (size_t*)*(mem + 1);
+          const size_t fwd = ForwardedAddr(lambda_mem);
+          if(fwd) {
+            *(mem + 1) = fwd;
+            lambda_mem = (size_t*)fwd;
+          }
+          if(lambda_mem) {
+            const size_t mthd_cls_id = *mem;
+            const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
+            const long mthd_id = mthd_cls_id & 0xFFFF;
+            std::pair<int, StackDclr**> closure_dclrs =
+              prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+            FixupMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first);
           }
           mem += 2;
           break;
@@ -2009,11 +2031,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
         case CHAR_ARY_PARM:
         case INT_ARY_PARM:
         case FLOAT_ARY_PARM: {
-          size_t* ref = (size_t*)(*mem);
-          if(ref && IsYoung(ref)) {
-            size_t fwd = ref[MARKED_FLAG];
-            if(fwd) *mem = fwd;
-          }
+          FixupSlot(mem);
           mem++;
           break;
         }
@@ -2023,26 +2041,19 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
         }
       }
 
-      // Fix up JIT temps
+      // Fix up JIT temps (conservative scan of untyped words — FixupSlot validates
+      // the forwarding target, so spilled scratch / float bit-patterns that merely
+      // alias the young address range are not misread as relocatable references).
 #ifdef _ARM64
       size_t* start = frame->jit_mem - 1;
       for(int k = 0; k > -JIT_TMP_LOOK_BACK; --k) {
-        size_t* ref = (size_t*)start[k];
+        FixupSlot(&start[k]);
+      }
 #else
       for(int k = 0; k < JIT_TMP_LOOK_BACK; ++k) {
-        size_t* ref = (size_t*)mem[k];
-#endif
-        if(ref && IsYoung(ref)) {
-          size_t fwd = ref[MARKED_FLAG];
-          if(fwd) {
-#ifdef _ARM64
-            start[k] = (size_t)fwd;
-#else
-            mem[k] = (size_t)fwd;
-#endif
-          }
-        }
+        FixupSlot(&mem[k]);
       }
+#endif
     }
   }
 }
