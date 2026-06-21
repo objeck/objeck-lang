@@ -47,13 +47,44 @@ Revert `YOUNG_REGION_SIZE` to 128 MB afterward.
   smashes a system-malloc block. **Allocation density controls detectability**, which is why the
   stress repro is needed — it's not a GC bug.
 
+## Update (2026-06-21): it's a wrong-VALUE store (type confusion), not a wild base
+
+A stricter validator was tried: a runtime check before every `move_reg_mem`/`move_freg_mem`
+(base != SP) that aborts if the base is an **implausible pointer** (not 8-byte aligned, `< 0x1000`,
+or `>= 0x0000_8000_0000_0000` — the float-bit-pattern range) **or** an out-of-bounds offset into a
+live old-gen object. It **never fired**, yet the game still crashed (mostly SIGBUS/SIGSEGV now).
+
+So the corrupting store has a **valid base and a valid in-bounds offset** — what's wrong is the
+**VALUE**: a float (e.g. the literal `0.02` = `0x3F947AE147AE147B`) is written where a pointer/int
+belongs. The renderer later follows that field as a pointer and jumps to `0.02` (the SIGBUS PC).
+This is a **type confusion on the working stack** — a float-typed value consumed where an
+int/object-reference value is expected — not a wild base and not a wrong address.
+
+Also ruled out this pass: a *persistent* working-stack imbalance. A check at the end of
+`ProcessInstructions` (compile finished with `compile_success` but a non-empty working stack) never
+fired, so the stack is balanced at method boundaries — any type confusion is transient/mid-method.
+
 ## Best remaining hypothesis
 
-A JIT store through a **base register that holds a non-object value** (a garbage/float-bit pointer
-from a mis-tracked working-stack slot or register). The store validator skipped it because the base
-isn't a live old-gen object (the validator was made lenient — skip non-object bases — to avoid false
-positives on legitimate `op_stack`/frame writes). So the catch-all could not distinguish a *wild*
-base from a *legit non-object* base (`op_stack`, `call_stack`, frame).
+A **float value reaching an int/object store** via a register/working-stack **type mismatch** in
+codegen. Leads to chase next:
+- the known-buggy `move_freg_freg` GP-bridge (reads `X{src}` not `D{src}`) and every caller that
+  still relies on it — a float bridged through the wrong GP register lands as a bogus int/pointer;
+- any path where an `IMM_FLOAT`/`REG_FLOAT`/`MEM_FLOAT` working-stack entry is consumed by an
+  integer/reference store (`ProcessStore`, `ProcessStoreIntElement`, parameter marshalling) without
+  an `I2F`/`F2I` conversion;
+- whether the compiler comparison/cast fix (`fix/compiler-cmp-cast-type`) removes one source of such
+  mismatches but not all (the game still corrupted with the *recompiled* bytecode in a 32 KB-young
+  stress run, so at least one more source remains).
+
+## How to catch it next
+
+Instrument the **value** (not the base) at integer/reference stores: pass the stored value to a
+validator and assert that a store targeting a **reference-typed field/element** holds a plausible
+pointer or null — abort otherwise, printing the JIT method name (track it via a save/restored global
+set in `ProcessJitMethodCall` and the JIT-to-JIT path). The field/element type is known at codegen
+time from the instruction/declarations, so the check can be limited to reference stores to avoid
+false positives on legitimate large-int values.
 
 ## Suggested next step
 
