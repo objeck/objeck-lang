@@ -57,7 +57,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.6.2 ✅
+### v2026.6.2 
   * **Major JIT & GC performance work** — the cooperative stop-the-world GC safepoint poll (new in v2026.6.1) is now nearly free in JIT'd code: an inline flag test that only calls the collector when a collection is active, reading `&stw_active` from a register cached at the prologue (R12/X19) and emitted only at loop back-edges. `fannkuchredux` roughly halved (~59s → ~31s), recovering the full regression on AMD64 and ARM64. Closure / function-reference calls (`DYN_MTHD_CALL`) now **auto-JIT** on both architectures — `spectralnorm` reaches `native`-level speed once warm (43s interpreted → 0.46s at n=2000, matching the hand-`native` kernel). Nursery allocation for `NEW_OBJ_INST` is inlined on AMD64, and the interpreter gains a float fast-path. See [performance →](docs/performance.md)
   * **JIT correctness hardening** — a sweep of float-codegen and tail-call bugs surfaced by forcing JIT (`OBJECK_JIT_THRESHOLD=1`): AMD64 `Floor`/`Ceil`/`ArcTan` codegen and two latent `DYN_MTHD_CALL` miscompiles; ARM64 transcendental/round cached-local operands, dropped libc float result/argument, working-stack registers clobbered across inlined float calls, and an `imm19` backpatch SIGILL (`ml_gbt`); and a TCO deferred-load corruption (e.g. `return Gcd(b, a%b)`) on both architectures. The full ARM64 suite is now green at `OBJECK_JIT_THRESHOLD=1`
   * **UTF-8 in any locale** — `obc` reading UTF-8 source and `obr` loading/printing UTF-8 strings no longer break under a `C`/non-UTF-8 process locale; `sys.h` now uses systemic locale-independent UTF-8 codecs instead of `mbstowcs`/`wcstombs`
