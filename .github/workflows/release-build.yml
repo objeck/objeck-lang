@@ -199,7 +199,7 @@ jobs:
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: |
-          brew install opencv mbedtls nghttp2 libnghttp3 gnutls cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
+          brew install opencv onnxruntime mbedtls nghttp2 libnghttp3 gnutls cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame
           brew cleanup
 
           # Add Homebrew bin to PATH

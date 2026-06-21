@@ -132,6 +132,7 @@ jobs:
       run: |
         brew install \
           opencv \
+          onnxruntime \
           mbedtls \
           nghttp2 \
           libnghttp3 \

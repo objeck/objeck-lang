@@ -75,7 +75,7 @@ namespace Runtime {
 
   // buffer sizes
 #define MAX_INTS 128
-#define MAX_DBLS 64
+#define MAX_DBLS 256
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
 
