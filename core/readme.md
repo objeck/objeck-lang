@@ -217,7 +217,9 @@ For Windows development using WSL for bootstrap:
 
 ### Linux (x64 / ARM64)
 
-**Supported:** Ubuntu 20.04+, Debian 11+, Fedora 35+
+**Supported:** Ubuntu 22.04+, Debian 12+, Fedora 37+
+
+> The minimum versions are set by the QUIC / HTTP-3 packages (`libngtcp2-dev`, `libngtcp2-crypto-gnutls-dev`, `libnghttp3-dev`), which older releases don't ship. The default build always enables HTTP/3 (`-DOBJECK_HAS_NGTCP2`), so install the full dependency list below in one go — installing packages piecemeal will fail on `ngtcp2/ngtcp2.h: No such file or directory`. To build on an older distro without those packages, see [build without HTTP/3](#build-errors).
 
 ```bash
 # 1. Clone repository
@@ -487,7 +489,9 @@ brew install ngtcp2 nghttp3 gnutls
 # MSYS2
 pacman -S mingw-w64-ucrt-x86_64-ngtcp2 mingw-w64-ucrt-x86_64-nghttp3 mingw-w64-ucrt-x86_64-gnutls
 ```
-Note: HTTP/3 requires rebuilding the VM with `-DOBJECK_HAS_NGTCP2` (already set in `Makefile.amd64` and `Makefile.arm64`).
+Note: HTTP/3 requires rebuilding the VM with `-DOBJECK_HAS_NGTCP2` (already set in `Makefile.amd64` and `Makefile.arm64`). Because the flag is set unconditionally, the QUIC packages are **required** for a default build — install all of them, not one at a time.
+
+**To build *without* HTTP/3** (e.g. on a distro that doesn't package `ngtcp2`): in `core/vm/make/Makefile.amd64` (and `Makefile.arm64`), remove `-DOBJECK_HAS_NGTCP2` from `ARGS`, and drop `-lngtcp2 -lngtcp2_crypto_gnutls -lnghttp3 -lgnutls` from the link line. The VM then builds with HTTP/2 but `net_quic` / `Http3Client` is unavailable.
 
 **Problem:** `undefined reference to opencv_...`
 ```bash
