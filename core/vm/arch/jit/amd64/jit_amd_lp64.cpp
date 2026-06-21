@@ -592,6 +592,13 @@ void JitAmd64::ProcessInstructions() {
             << aux_regs.size() << std::endl;
 #endif
       ProcessFloatCalculation(instr);
+      // ProcessFloatCalculation pops both operands; on an unexpected operand
+      // kind it sets compile_success=false and pushes nothing back. Honor that
+      // here before touching working_stack, or front()/pop_front() underflow
+      // the (now-empty) deque and dereference a garbage RegInstr.
+      if(!compile_success) {
+        break;
+      }
 
       RegInstr* left = working_stack.front();
       working_stack.pop_front(); // pop invalid xmm register
@@ -3286,6 +3293,15 @@ void JitAmd64::loop(long offset)
 
 RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
 {
+  // The libc call below clobbers caller-saved GP/XMM registers. Any local
+  // variable still held in the register cache (e.g. an object 'self'/param
+  // loaded before a Float->Sin) would be destroyed, and ProcessLoad's
+  // cache-hit path would then hand back the clobbered register -- a wild
+  // (often float-bit) pointer that corrupts the heap on the next store.
+  // Stores are write-through, so flushing just drops the cached registers;
+  // later loads reload from memory.
+  FlushLocalCache();
+
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
   if(left->GetType() == REG_FLOAT) {
     if(left->GetRegister()->GetRegister() != XMM0) {
@@ -3321,6 +3337,9 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
 {
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
+
+  // See call_xfunc: drop cached locals across the clobbering libc call.
+  FlushLocalCache();
 
 #ifdef _DEBUG_JIT
   assert(right->GetType() == MEM_FLOAT);

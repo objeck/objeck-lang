@@ -4254,6 +4254,15 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
 
+  // Drop cached locals across the clobbering libc call. A local var held in the
+  // register cache (e.g. an object 'self'/param loaded before a Float->Sin) lives
+  // in a caller-saved reg the libc blr destroys; ProcessLoad's cache-hit path
+  // would then return the clobbered reg -- a wild (often float-bit) pointer that
+  // corrupts the heap on the next store. Stores are write-through, so flushing
+  // just drops the cached registers; later loads reload from memory. (The
+  // working-stack spill below only covers in-flight temps, not the local cache.)
+  FlushLocalCache();
+
   // Preserve caller-saved working-stack registers across the libc call below (see
   // ProcessFloatOperation2 for the rationale): spill int temps to TMP_X1..TMP_X5,
   // fall back to the interpreter for cases that do not fit.
@@ -4489,6 +4498,9 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
 #ifdef _DEBUG_JIT_JIT
   assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
+
+  // Drop cached locals across the clobbering libc call (see ProcessFloatOperation).
+  FlushLocalCache();
 
   // Preserve caller-saved working-stack registers across the libc call below. The
   // call clobbers x0-x17/d0-d7, but any pending working-stack temp (e.g. an earlier
