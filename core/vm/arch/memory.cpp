@@ -1001,15 +1001,28 @@ void* MemoryManager::CollectMemory(void* arg)
 
   // --- Clear dirty list and RSET bits ---
   {
-    size_t dc = dirty_count.load(std::memory_order_relaxed);
-    size_t clear_count = dc < DIRTY_LIST_MAX ? dc : DIRTY_LIST_MAX;
-    for(size_t i = 0; i < clear_count; ++i) {
-      if(dirty_list[i] && old_generation.count(dirty_list[i])) {
-        dirty_list[i][MARKED_FLAG] &= ~GC_RSET_BIT;
+    size_t dc = dirty_count.load(std::memory_order_acquire);
+    if(dc > DIRTY_LIST_MAX) {
+      // Overflow: objects dirtied past DIRTY_LIST_MAX had GC_RSET_BIT set by the
+      // write barrier but were never recorded in dirty_list, so the list-based clear
+      // would miss them and leave a stale rset bit that permanently suppresses their
+      // future write barrier. Clear the bit across all of old gen instead.
+      for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
+        (*iter)[MARKED_FLAG] &= ~GC_RSET_BIT;
       }
-      dirty_list[i] = nullptr;
+      for(size_t i = 0; i < DIRTY_LIST_MAX; ++i) {
+        dirty_list[i] = nullptr;
+      }
     }
-    dirty_count.store(0, std::memory_order_relaxed);
+    else {
+      for(size_t i = 0; i < dc; ++i) {
+        if(dirty_list[i] && old_generation.count(dirty_list[i])) {
+          dirty_list[i][MARKED_FLAG] &= ~GC_RSET_BIT;
+        }
+        dirty_list[i] = nullptr;
+      }
+    }
+    dirty_count.store(0, std::memory_order_release);
   }
 
   // Adjust GC constraints based on collection effectiveness
