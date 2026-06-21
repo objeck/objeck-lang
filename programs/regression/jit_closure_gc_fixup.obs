@@ -1,0 +1,65 @@
+# Regression for the generational-GC fixup of closure captures (bug B1).
+# The GC mark phase descends into a closure's captured variables, but the fixup
+# phase did NOT -- so a young object captured by a closure was kept alive and
+# promoted to old gen, yet the closure's captured slot kept pointing at the old
+# young-nursery address. After the nursery was reset to zero that slot dangled,
+# producing corrupted reads or a crash on the next access.
+#
+# Each closure captures its own Box (a heap object) via MakeClosure's parameter.
+# The large Int-array loop forces several major GCs that promote the captured
+# boxes and run the fixup phase. If fixup mishandles closure captures, the values
+# come back wrong (or the VM crashes) and the test exits non-zero.
+use Collection;
+
+class Box {
+  @v : Int;
+  New(v : Int) {
+    @v := v;
+  }
+  method : public : GetV() ~ Int {
+    return @v;
+  }
+}
+
+class ClosureGcFixup {
+  function : Main(args : String[]) ~ Nil {
+    funcs := Vector->New()<FuncRef<Box>>;
+    for(i := 0; i < 200; i += 1;) {
+      funcs->AddBack(MakeClosure(Box->New(i * 7)));
+    };
+
+    # Force major GC(s): ~80MB of array allocation, well past the heap threshold,
+    # so the captured boxes are promoted and the fixup phase runs over them.
+    for(j := 0; j < 100; j += 1;) {
+      junk := Int->New[100000];
+      junk[0] := j;
+    };
+
+    pass := true;
+    idx := 0;
+    each(i : funcs) {
+      value := funcs->Get(i);
+      fn := value->Get();
+      box := fn();              # the closure returns its captured (now promoted) Box
+      got := box->GetV();
+      expected := idx * 7;
+      if(got <> expected) {
+        pass := false;
+        "  FAIL: closure capture got="->Print(); got->Print(); " expected="->Print(); expected->PrintLine();
+      };
+      idx += 1;
+    };
+
+    if(pass) {
+      "PASS: closure-captured objects survive GC promotion"->PrintLine();
+    }
+    else {
+      "FAIL: closure capture corrupted by GC"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : MakeClosure(b : Box) ~ FuncRef<Box> {
+    return FuncRef->New(\() ~ Box : () => b)<Box>;
+  }
+}
