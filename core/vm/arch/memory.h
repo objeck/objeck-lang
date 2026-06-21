@@ -201,7 +201,18 @@ class MemoryManager {
   // IsAllocated==IsYoung for young-range values and would also misfire on real old-gen
   // pointers whose MARKED_FLAG holds GC_OLD_BIT, not a forwarding address.)
   static inline size_t ForwardedAddr(size_t* ref) {
-    if(ref && IsYoung(ref)) {
+    uint8_t* p = (uint8_t*)ref;
+    // Reading ref[MARKED_FLAG] dereferences the word *below* ref (MARKED_FLAG == -1).
+    // Conservative scans (operand stacks, JIT temps) pass untyped words; a non-pointer
+    // value that merely aliases the young range -- common on ARM64, whose JIT-temp
+    // window overlaps float/scratch slots -- must not fault that read. Require ref to
+    // be 8-byte aligned and far enough into the nursery that ref-1 stays mapped, and
+    // strictly below the bump offset. A real young object's mem pointer is always
+    // young_region + offset + (1 + EXTRA_BUF_SIZE) words, so it passes; stray words
+    // pointing at/just past the region edges are rejected before the header read.
+    if(((uintptr_t)p & (sizeof(size_t) - 1)) == 0 &&
+       p >= young_region + sizeof(size_t) &&
+       p < young_region + young_offset.load(std::memory_order_acquire)) {
       const size_t fwd = ref[MARKED_FLAG];
       if(fwd && old_generation.count((size_t*)fwd)) {
         return fwd;
