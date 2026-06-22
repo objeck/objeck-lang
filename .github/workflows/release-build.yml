@@ -170,7 +170,7 @@ jobs:
         run: |
           mkdir -p ~/apt-cache/partial
           sudo apt-get update
-          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" \
+          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
             build-essential \
             libopencv-dev \
             libmbedtls-dev \
@@ -632,7 +632,7 @@ jobs:
         run: |
           mkdir -p ~/apt-cache/partial
           sudo apt-get update
-          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" \
+          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
             build-essential \
             libopencv-dev \
             libmbedtls-dev \
