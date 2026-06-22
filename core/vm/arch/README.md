@@ -79,5 +79,7 @@ A surviving young object is copied into a fresh old-gen allocation; a **forwardi
 
 > Note: arrays never move (they're allocated directly in old gen), which is precisely why array fixup isn't required today — and why enabling array bump-allocation is gated on completing interior-pointer fixup coverage.
 
+> **ARM64 note (resolved).** The nursery's first on-device validation hit a SIGSEGV when a JIT-compiled closure captured in a collection was invoked (surfaced by the `jit_closure_gc_fixup` regression). It *looked* like a promotion/fixup defect but was **not** a GC bug. The ARM64 JIT's memory encoders only emitted a scaled **unsigned** `LDR`, so a **negative** displacement — e.g. the second word of a 2-word func-ref loaded at `op_stack[pos-1]` — was `abs()`'d and read the slot *above* the base, handing the lambda a garbage `self`. The fix routes every ARM64 load/store through one signed-offset helper that emits `LDUR`/`STUR` for negative offsets (PRs #560, #561); amd64's displacements were already signed, so x64 was never affected. The GC's own promotion and pointer-fixup logic (including the closure-capture fixup that makes mark and fixup symmetric, PR #558) was correct. Independent of the JIT, this is also why the GC's *own* conservative reads of JIT-frame temps must validate a candidate as a genuine forwarded old-gen object before relocating it, rather than trusting a raw young-range hit.
+
 ### Implementation
 C++ using the STL. Core sources: `memory.h`, `memory.cpp`. Platform shims under `posix/` and `win32/`.
