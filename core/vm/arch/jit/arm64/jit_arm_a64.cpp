@@ -2403,64 +2403,45 @@ void JitArm64::move_reg_reg(Register src, Register dest) {
   }
 }
 
+// Shared load/store emitter with a SIGNED byte displacement. Centralizes the
+// sign handling that each per-encoder abs() used to get wrong: a non-negative
+// offset uses the scaled unsigned-immediate LDR/STR (imm12 = offset/scale, the
+// historical encoding -- byte-identical); a negative offset uses the unscaled
+// signed LDUR/STUR form (the same opcode with bit 24 cleared and a signed 9-bit
+// byte displacement in [20:12]) because the scaled imm12 cannot represent it.
+// base = Rn (address reg), data = Rt (value reg), scale = access width (8/4/2/1).
+void JitArm64::emit_ldst_imm(uint32_t scaled_op, long scale, long offset, Register base, Register data) {
+  uint32_t op_code = scaled_op | ((uint32_t)base << 5) | (uint32_t)data;
+  if(offset < 0) {
+    assert(offset >= -256);
+    op_code &= ~0x01000000u;                           // scaled LDR/STR -> unscaled LDUR/STUR
+    op_code |= ((uint32_t)(offset & 0x1FF)) << 12;     // simm9 (signed byte offset)
+  }
+  else {
+    op_code |= static_cast<uint32_t>((size_t)offset / (size_t)scale) << 10;  // imm12 (scaled)
+  }
+  AddMachineCode(op_code);
+}
+
 void JitArm64::move_reg_mem(Register src, long offset, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [str " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
-  assert(offset > -1);
 #endif
-  
-  uint32_t op_code = 0xF9000000;
-  uint32_t op_dest = dest << 5;
-  op_code |= op_dest;
-
-  uint32_t op_src = src;
-  op_code |= op_src;
-
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
-  op_code |= op_offset / sizeof(size_t) << 10;
-    
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0xF9000000, sizeof(size_t), offset, dest, src);
 }
 
 void JitArm64::move_reg_mem32(Register src, long offset, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [str.w " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
-  assert(offset > -1);
 #endif
-  
-  uint32_t op_code = 0xB9000000;
-  uint32_t op_dest = dest << 5;
-  op_code |= op_dest;
-
-  uint32_t op_src = src;
-  op_code |= op_src;
-
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
-  op_code |= (op_offset / 4) << 10;
-
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0xB9000000, 4, offset, dest, src);
 }
 
 void JitArm64::move_reg_mem16(Register src, long offset, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [str.w " << GetRegisterName(src) << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
-  assert(offset > -1);
 #endif
-
-  uint32_t op_code = 0x79000000;
-  uint32_t op_dest = dest << 5;
-  op_code |= op_dest;
-
-  uint32_t op_src = src;
-  op_code |= op_src;
-
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
-  op_code |= (op_offset / 2) << 10;
-
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0x79000000, 2, offset, dest, src);
 }
 
 
@@ -2468,49 +2449,14 @@ void JitArm64::move_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
 #endif
-
-  uint32_t op_code;
-  if(offset < 0) {
-    // LDUR (unscaled, signed 9-bit byte offset) for negative displacements. The
-    // scaled LDR below takes an UNSIGNED imm12 (offset/8) and cannot encode a
-    // negative offset at all -- the old code abs()'d it and read the wrong word
-    // above the base (e.g. op_stack[pos+1] instead of op_stack[pos-1]).
-    assert(offset >= -256);
-    op_code = 0xF8400000;
-    op_code |= (uint32_t)(src) << 5;
-    op_code |= (uint32_t)dest;
-    op_code |= ((uint32_t)(offset & 0x1FF)) << 12;
-  }
-  else {
-    // LDR (unsigned, offset scaled by 8 for a 64-bit load)
-    op_code = 0xF9400000;
-    op_code |= (uint32_t)(src) << 5;
-    op_code |= (uint32_t)dest;
-    op_code |= static_cast<uint32_t>((size_t)offset / sizeof(size_t)) << 10;
-  }
-
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0xF9400000, sizeof(size_t), offset, src, dest);
 }
 
 void JitArm64::move_mem32_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"  " << (++instr_count) << L": [ldr.w " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
-    assert(offset > -1);
 #endif
-  
-  uint32_t op_code = 0xB9400000;
-  uint32_t op_src = src << 5;
-  op_code |= op_src;
-
-  uint32_t op_dest = dest;
-  op_code |= op_dest;
-
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset) / 4);
-  op_code |= op_offset << 10;
-
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0xB9400000, 4, offset, src, dest);
 }
 
 // TODO: 64-bits all around?
@@ -3285,18 +3231,7 @@ void JitArm64::move_mem_freg(long offset, Register src, Register dest) {
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
-  uint32_t op_code = 0xFD400000;
-  uint32_t op_src = src << 5;
-  op_code |= op_src;
-
-  uint32_t op_dest = dest;
-  op_code |= op_dest;
-
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset) / sizeof(size_t));
-  op_code |= op_offset << 10;
-  
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0xFD400000, sizeof(size_t), offset, src, dest);
 }
 
 void JitArm64::move_freg_mem(Register src, long offset, Register dest) {
@@ -3305,19 +3240,7 @@ void JitArm64::move_freg_mem(Register src, long offset, Register dest) {
         << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]"
         << endl;
 #endif
-  
-  uint32_t op_code = 0xFD000000;
-  uint32_t op_dest = dest << 5;
-  op_code |= op_dest;
-  
-  uint32_t op_src = src;
-  op_code |= op_src;
-  
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
-  op_code |= op_offset / sizeof(size_t) << 10;
-
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0xFD000000, sizeof(size_t), offset, dest, src);
 }
 
 void JitArm64::move_imm_memf(RegInstr* instr, long offset, Register dest) {
@@ -3972,42 +3895,16 @@ void JitArm64::move_reg_mem8(Register src, long offset, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [strb " << GetRegisterName(src)
         << L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << std::endl;
-  assert(offset > -1);
 #endif
-  
-  uint32_t op_code = 0x39000000;
-  uint32_t op_dest = dest << 5;
-  op_code |= op_dest;
-
-  uint32_t op_src = src;
-  op_code |= op_src;
-
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
-  op_code |= op_offset << 10;
-
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0x39000000, 1, offset, dest, src);
 }
 
 void JitArm64::move_mem16_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [ldrh " << GetRegisterName(dest)
     << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
-  assert(offset > -1);
 #endif
-
-  uint32_t op_code = 0x79400000;
-  uint32_t op_src = src << 5;
-  op_code |= op_src;
-
-  uint32_t op_dest = dest;
-  op_code |= op_dest;
-
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset) / 2);
-  op_code |= op_offset << 10;
-
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0x79400000, 2, offset, src, dest);
 }
 
 
@@ -4015,21 +3912,8 @@ void JitArm64::move_mem8_reg(long offset, Register src, Register dest) {
   #ifdef _DEBUG_JIT_JIT
     std::wcout << L"  " << (++instr_count) << L": [ldrb " << GetRegisterName(dest)
           << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
-    assert(offset > -1);
   #endif
-
-  uint32_t op_code = 0x39400000;
-  uint32_t op_src = src << 5;
-  op_code |= op_src;
-
-  uint32_t op_dest = dest;
-  op_code |= op_dest;
-
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset));
-  op_code |= op_offset << 10;
-
-  // encode
-  AddMachineCode(op_code);
+  emit_ldst_imm(0x39400000, 1, offset, src, dest);
 }
 
 //

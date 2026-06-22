@@ -682,6 +682,12 @@ namespace Runtime {
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, long offset, Register dest);
     void move_mem_reg(long offset, Register src, Register dest);
+    // Shared load/store emitter with a SIGNED byte displacement. base=Rn (address),
+    // data=Rt (value), scale=access width (8/4/2/1). Non-negative offsets use the
+    // scaled unsigned-immediate LDR/STR (byte-identical to the historical encoding);
+    // negative offsets use the unscaled signed LDUR/STUR form the scaled imm cannot
+    // represent. Centralizes the sign handling that the old per-encoder abs() broke.
+    void emit_ldst_imm(uint32_t scaled_op, long scale, long offset, Register base, Register data);
     void move_imm_memf(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
 #ifdef _WIN64
