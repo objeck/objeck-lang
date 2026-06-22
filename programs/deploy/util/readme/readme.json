@@ -14,6 +14,7 @@
 		{
 			"version": "v2026.6.2",
 			"items": [
+				"VM: fixed an ARM64 JIT SIGSEGV when invoking a JIT-compiled closure captured in a collection — the backend's memory encoders couldn't represent a negative offset and read the wrong stack slot; all ARM64 load/stores now route through a signed-offset helper (x64 was never affected)",
 				"Documentation: API reference code examples now render as formatted, syntax-highlighted blocks — the ONNX library examples previously appeared as run-on inline text",
 				"Tooling: the release-process skills (version bump, release, docs, playground deploy) are now versioned in the repo"
 			]
