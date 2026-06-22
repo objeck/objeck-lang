@@ -154,11 +154,13 @@ jobs:
       # Install Dependencies (Same as CI)
       # ============================================
 
+      # Cache a USER-OWNED archive dir; restoring root-owned /var/cache/apt/archives
+      # as the unprivileged runner fails with "tar: ...deb: Permission denied".
       - name: Cache APT packages (Linux)
         if: runner.os == 'Linux'
         uses: actions/cache@v5
         with:
-          path: /var/cache/apt/archives
+          path: ~/apt-cache
           key: ${{ runner.os }}-${{ matrix.arch }}-apt-release
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-apt-
@@ -166,8 +168,9 @@ jobs:
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
+          mkdir -p ~/apt-cache/partial
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" \
             build-essential \
             libopencv-dev \
             libmbedtls-dev \
@@ -184,6 +187,7 @@ jobs:
             libreadline-dev \
             libeigen3-dev \
             libmp3lame-dev
+          sudo chown -R "$(id -u):$(id -g)" ~/apt-cache
 
       - name: Cache Homebrew (macOS)
         if: runner.os == 'macOS'
@@ -614,18 +618,21 @@ jobs:
           name: version-metadata
           path: core/shared/
 
+      # Cache a USER-OWNED archive dir; restoring root-owned /var/cache/apt/archives
+      # as the unprivileged runner fails with "tar: ...deb: Permission denied".
       - name: Cache APT packages
         uses: actions/cache@v5
         with:
-          path: /var/cache/apt/archives
+          path: ~/apt-cache
           key: ${{ runner.os }}-x64-apt-release
           restore-keys: |
             ${{ runner.os }}-x64-apt-
 
       - name: Install Linux dependencies
         run: |
+          mkdir -p ~/apt-cache/partial
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" \
             build-essential \
             libopencv-dev \
             libmbedtls-dev \
@@ -642,6 +649,7 @@ jobs:
             libreadline-dev \
             libeigen3-dev \
             libmp3lame-dev
+          sudo chown -R "$(id -u):$(id -g)" ~/apt-cache
 
       - name: Build Linux x64 toolchain
         working-directory: ./core/release

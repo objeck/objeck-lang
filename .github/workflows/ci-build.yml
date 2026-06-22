@@ -73,12 +73,17 @@ jobs:
     # Dependency Installation
     # ============================================
 
-    # Linux dependencies with caching
+    # Linux dependencies with caching. Cache a USER-OWNED archive dir (~/apt-cache)
+    # rather than the root-owned /var/cache/apt/archives -- restoring the latter as
+    # the unprivileged runner fails with "tar: ...deb: Permission denied" (it can't
+    # overwrite the root-owned .debs), which silently disabled the cache and spammed
+    # the log with libopencv-*.deb errors. apt downloads into ~/apt-cache via
+    # Dir::Cache::archives, so a cache hit skips re-downloading.
     - name: Cache APT packages (Linux)
       if: runner.os == 'Linux'
       uses: actions/cache@v5
       with:
-        path: /var/cache/apt/archives
+        path: ~/apt-cache
         key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.arch }}-apt-
@@ -86,8 +91,9 @@ jobs:
     - name: Install Linux dependencies
       if: runner.os == 'Linux'
       run: |
+        mkdir -p ~/apt-cache/partial
         sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" \
           build-essential \
           libopencv-dev \
           libmbedtls-dev \
@@ -107,7 +113,9 @@ jobs:
           libmp3lame-dev \
           ccache \
           expect
-        sudo chmod -R a+r /var/cache/apt/archives
+        # apt writes the .debs as root; make them runner-owned so the cache-save
+        # step (which runs unprivileged) can read them without permission errors.
+        sudo chown -R "$(id -u):$(id -g)" ~/apt-cache
 
     - name: Configure ODBC test DSN (Linux)
       if: runner.os == 'Linux'
