@@ -287,8 +287,11 @@ void JitArm64::ProcessParameters(long params) {
       move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
+      // The func value's second word sits one slot BELOW op_stack[pos]; move_mem_reg
+      // now emits a signed LDUR for the negative displacement (it previously abs()'d
+      // it and read the wrong word above the base).
       move_mem_reg(-(long)(sizeof(size_t)), op_stack_holder->GetRegister(), dest_holder2->GetRegister());
-      
+
       move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
       dec_mem(0, stack_pos_holder->GetRegister());
       
@@ -363,8 +366,13 @@ void JitArm64::ProcessFunctionCallParameter() {
   
   move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
   working_stack.push_front(new RegInstr(op_stack_holder));
-  
-  move_mem_reg(4, holder->GetRegister(), holder->GetRegister());
+
+  // Second word of the returned 2-word func value {block_ptr, mthd_cls_id}.
+  // move_mem_reg scales the byte offset by /sizeof(size_t) to build the LDR imm12,
+  // so a literal 4 collapses to imm12=0 and re-reads word 0 -- duplicating block_ptr
+  // and dropping mthd_cls_id, which later lands the method-id in the closure-block
+  // slot and SIGSEGVs on invoke. sizeof(size_t) encodes imm12=1 -> [base,#8].
+  move_mem_reg(sizeof(size_t), holder->GetRegister(), holder->GetRegister());
   working_stack.push_front(new RegInstr(holder));
   
   ReleaseRegister(stack_pos_holder);
@@ -2459,18 +2467,27 @@ void JitArm64::move_reg_mem16(Register src, long offset, Register dest) {
 void JitArm64::move_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG_JIT_JIT
     std::wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) << L", (" << GetRegisterName(src) << L", #" << offset << L")]" << std::endl;
-    assert(offset > -1);
 #endif
-  
-  uint32_t op_code = 0xF9400000;
-  uint32_t op_src = src << 5;
-  op_code |= op_src;
-  
-  uint32_t op_dest = dest;
-  op_code |= op_dest;
-  
-  uint32_t op_offset = static_cast<uint32_t>(abs(offset) / sizeof(size_t));
-  op_code |= op_offset << 10;
+
+  uint32_t op_code;
+  if(offset < 0) {
+    // LDUR (unscaled, signed 9-bit byte offset) for negative displacements. The
+    // scaled LDR below takes an UNSIGNED imm12 (offset/8) and cannot encode a
+    // negative offset at all -- the old code abs()'d it and read the wrong word
+    // above the base (e.g. op_stack[pos+1] instead of op_stack[pos-1]).
+    assert(offset >= -256);
+    op_code = 0xF8400000;
+    op_code |= (uint32_t)(src) << 5;
+    op_code |= (uint32_t)dest;
+    op_code |= ((uint32_t)(offset & 0x1FF)) << 12;
+  }
+  else {
+    // LDR (unsigned, offset scaled by 8 for a 64-bit load)
+    op_code = 0xF9400000;
+    op_code |= (uint32_t)(src) << 5;
+    op_code |= (uint32_t)dest;
+    op_code |= static_cast<uint32_t>((size_t)offset / sizeof(size_t)) << 10;
+  }
 
   // encode
   AddMachineCode(op_code);
