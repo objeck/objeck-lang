@@ -119,8 +119,9 @@ namespace frontend {
     bool is_self;
     bool is_param;
     bool is_loaded;
+    bool is_closure;
 
-  SymbolEntry(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &n, Type* t, 
+  SymbolEntry(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &n, Type* t,
         bool s, bool c, bool e = false) : ParseNode(file_name, line_num, line_pos) {
       name = n;
       id = -1;
@@ -129,6 +130,7 @@ namespace frontend {
       is_local = c;
       is_self = e;
       is_param = is_loaded = false;
+      is_closure = false;
     }
 
     ~SymbolEntry() {
@@ -149,6 +151,14 @@ namespace frontend {
 
     bool IsLoaded() {
       return is_loaded;
+    }
+
+    void SetClosureEntry() {
+      is_closure = true;
+    }
+
+    bool IsClosureEntry() {
+      return is_closure;
     }
 
     void SetType(Type* t) {

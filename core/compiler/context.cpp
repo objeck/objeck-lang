@@ -2270,6 +2270,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       else {
         const std::wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
         SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(var_scope_name, capture_entry->GetType(), false, false);
+        copy_entry->SetClosureEntry();
         symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
 
         variable->SetTypes(copy_entry->GetType());

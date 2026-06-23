@@ -846,6 +846,14 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
   long closure_space = 0;
   IntermediateDeclarations* closure_dclrs = new IntermediateDeclarations;
   std::vector<std::pair<SymbolEntry*, SymbolEntry*> > closure_copies = lambda->GetClosures();
+  // Closure captures are stored at closure-LOCAL offsets (0-based per lambda),
+  // matching the positional GC closure-declaration scan. They were excluded from
+  // class-instance numbering, so assign their ids here. Without this, a second
+  // capturing lambda inherits class-global ids and its stores overflow the
+  // per-lambda closure allocation (heap corruption).
+  for(size_t i = 0; i < closure_copies.size(); ++i) {
+    closure_copies[i].first->SetId((int)i);
+  }
   for(size_t i = 0; i < closure_copies.size(); ++i) {
     SymbolEntry* entry = closure_copies[i].second;
     switch(entry->GetType()->GetType()) {
@@ -6495,6 +6503,9 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
         
     for(size_t i = 0; i < entries.size(); ++i) {
       SymbolEntry* entry = entries[i];
+      if(entry->IsClosureEntry()) {
+        continue;
+      }
       if(!entry->IsSelf() && entry->IsStatic() == is_static) {
         switch(entry->GetType()->GetType()) {
         case frontend::BOOLEAN_TYPE:
