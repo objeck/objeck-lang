@@ -1,0 +1,58 @@
+# Regression for direct FuncRef callability `v()` and functional-call result
+# chaining `v()->Method()` / `fn()->Method()` in expression context.
+#
+# - `v()` (v is a FuncRef<R>) desugars to (v->Get())() via a hidden temp,
+#   reusing the existing DYN_MTHD_CALL lowering (no VM/JIT change).
+# - chaining a method on a functional-call result in expression context
+#   (`v()->Get()`, `fn()->Get()`) previously loaded `self` as the receiver
+#   instead of the call result; now fixed to mirror statement context.
+#
+# Exits non-zero on any mismatch so the suite catches a regression in every
+# JIT mode.
+use Collection;
+
+class ClosureDirectCall {
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+
+    # direct call, result bound
+    v := Mk(7);
+    r := v();
+    if(r->Get() <> 7) { pass := false; };
+
+    # direct call with inline ->Get() chaining (expression position)
+    if(v()->Get() <> 7) { pass := false; };
+    sum := v()->Get() + v()->Get();
+    if(sum <> 14) { pass := false; };
+
+    # direct call on a FuncRef pulled from a collection, inline chaining
+    fns := Vector->New()<FuncRef<IntRef>>;
+    for(i := 0; i < 5; i += 1;) { fns->AddBack(Mk(i * 7)); };
+    idx := 0;
+    each(i : fns) {
+      f := fns->Get(i);
+      if(f()->Get() <> idx * 7) { pass := false; };
+      idx += 1;
+    };
+
+    # standalone statement (result discarded) must not crash
+    v();
+
+    # classic two-step, with inline chaining on the call result
+    fn := v->Get();
+    if(fn()->Get() <> 7) { pass := false; };
+
+    if(pass) {
+      "PASS: direct FuncRef call"->PrintLine();
+    }
+    else {
+      "FAIL: direct FuncRef call"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Mk(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+  }
+}

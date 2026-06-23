@@ -1326,6 +1326,16 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
     }
 
+    // Desugared direct FuncRef call `v()`: compute `v->Get()` (leaving the
+    // `() ~ R` func value on the stack) and materialize it into the functional
+    // temp, so the LOAD_FUNC_VAR + DYN_MTHD_CALL below work unchanged.
+    MethodCall* func_ref_unwrap = method_call->GetFuncRefUnwrap();
+    if(func_ref_unwrap) {
+      EmitMethodCall(func_ref_unwrap, true);
+      SymbolEntry* tmp_entry = method_call->GetFunctionalEntry();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, STOR_FUNC_VAR, tmp_entry->GetId(), LOCL));
+    }
+
     // emit function variable
     MemoryContext mem_context;
     SymbolEntry* entry = method_call->GetFunctionalEntry();
@@ -4063,6 +4073,16 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
     }
 
+    // Desugared direct FuncRef call `v()`: compute `v->Get()` (leaving the
+    // `() ~ R` func value on the stack) and materialize it into the functional
+    // temp, so the LOAD_FUNC_VAR + DYN_MTHD_CALL below work unchanged.
+    MethodCall* func_ref_unwrap = method_call->GetFuncRefUnwrap();
+    if(func_ref_unwrap) {
+      EmitMethodCall(func_ref_unwrap, true);
+      SymbolEntry* tmp_entry = method_call->GetFunctionalEntry();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, STOR_FUNC_VAR, tmp_entry->GetId(), LOCL));
+    }
+
     // emit function variable
     MemoryContext mem_context;
     SymbolEntry* entry = method_call->GetFunctionalEntry();
@@ -4135,8 +4155,16 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       }
     }
 
-    // emit nested calls
-    bool is_nested = false; // function call
+    // emit nested calls -- after a functional call (DYN_MTHD_CALL) the result
+    // is left on the stack, so the first chained call is nested when the
+    // function returns an object. Mirrors the statement-emission site; without
+    // this, `fn()->Method()` in expression context loaded `self` as the
+    // receiver instead of the call result (pre-existing functional-chaining bug).
+    Type* nested_type = entry->GetType();
+    if(nested_type->GetType() == frontend::FUNC_TYPE) {
+      nested_type = nested_type->GetFunctionReturn();
+    }
+    bool is_nested = method_call->GetMethodCall() && nested_type->GetType() == CLASS_TYPE;
     method_call = method_call->GetMethodCall();
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
