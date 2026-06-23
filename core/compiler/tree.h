@@ -2863,6 +2863,7 @@ namespace frontend {
     bool is_dyn_func_call;
     instructions::MemoryType is_rouge_return;
     SymbolEntry* dyn_func_entry;
+    MethodCall* func_ref_unwrap;
     std::vector<Type*> concrete_types;
     int mid_line_num;
     int mid_line_pos;
@@ -2892,6 +2893,7 @@ namespace frontend {
       original_klass = nullptr;
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
+      func_ref_unwrap = nullptr;
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
@@ -2916,6 +2918,7 @@ namespace frontend {
       original_klass = nullptr;
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
+      func_ref_unwrap = nullptr;
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
@@ -2938,6 +2941,7 @@ namespace frontend {
       original_klass = nullptr;
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
+      func_ref_unwrap = nullptr;
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
@@ -2963,6 +2967,7 @@ namespace frontend {
       original_klass = nullptr;
       original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
+      func_ref_unwrap = nullptr;
       func_rtrn = nullptr;
       is_rouge_return = instructions::NIL_TYPE;
       anonymous_klass = nullptr;
@@ -3015,6 +3020,17 @@ namespace frontend {
 
     SymbolEntry* GetFunctionalEntry() {
       return dyn_func_entry;
+    }
+
+    // For a desugared direct FuncRef call `v(args)`: the synthesized `v->Get()`
+    // unwrap whose result is materialized into the functional-entry temp before
+    // the DYN_MTHD_CALL. Null for ordinary `fn()` functional calls.
+    void SetFuncRefUnwrap(MethodCall* m) {
+      func_ref_unwrap = m;
+    }
+
+    MethodCall* GetFuncRefUnwrap() {
+      return func_ref_unwrap;
     }
 
     void SetEnumCall(bool e) {

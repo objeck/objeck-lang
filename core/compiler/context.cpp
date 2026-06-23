@@ -4170,6 +4170,39 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
 {
   // dynamic function call that is not bound to a class/function until runtime
   SymbolEntry* entry = GetEntry(method_call->GetMethodName());
+
+  // Direct call of a FuncRef<R> instance: `v()` desugars to `(v->Get())()`.
+  // FuncRef only wraps a nullary `() ~ R`, so the call is always zero-arg.
+  // Synthesize and resolve the `v->Get()` unwrap, materialize its `() ~ R`
+  // result into a hidden local temp, then fall through to the ordinary
+  // functional-call path on that temp -- reusing the existing
+  // STOR/LOAD_FUNC_VAR + DYN_MTHD_CALL lowering (no VM/JIT change).
+  if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE &&
+     entry->GetType()->GetName() == L"System.FuncRef" && !method_call->GetFuncRefUnwrap()) {
+    Statement* mc_stmt = static_cast<Statement*>(method_call);
+    const std::wstring mc_file = mc_stmt->GetFileName();
+    const int mc_ln = mc_stmt->GetLineNumber();
+    const int mc_lp = mc_stmt->GetLinePosition();
+    ExpressionList* no_args = TreeFactory::Instance()->MakeExpressionList();
+    MethodCall* unwrap = TreeFactory::Instance()->MakeMethodCall(
+      mc_file, mc_ln, mc_lp,
+      method_call->GetMidLineNumber(), method_call->GetMidLinePosition(),
+      mc_stmt->GetEndLineNumber(), mc_stmt->GetEndLinePosition(),
+      method_call->GetMethodName(), L"Get", no_args);
+    AnalyzeMethodCall(unwrap, depth + 1);
+
+    Type* unwrap_type = unwrap->GetEvalType();
+    if(unwrap_type && unwrap_type->GetType() == FUNC_TYPE) {
+      const std::wstring tmp_name = current_method->GetName() + L":#funcref_tmp#" +
+        std::to_wstring(mc_ln) + L'#' + std::to_wstring(mc_lp);
+      SymbolEntry* tmp = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, unwrap_type, false, true);
+      current_table->AddEntry(tmp, true);
+      tmp->WasLoaded();
+      method_call->SetFuncRefUnwrap(unwrap);
+      entry = tmp;  // continue as a functional call on the unwrapped temp
+    }
+  }
+
   if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
     entry->WasLoaded();
 

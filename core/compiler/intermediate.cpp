@@ -1326,6 +1326,16 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
     }
 
+    // Desugared direct FuncRef call `v()`: compute `v->Get()` (leaving the
+    // `() ~ R` func value on the stack) and materialize it into the functional
+    // temp, so the LOAD_FUNC_VAR + DYN_MTHD_CALL below work unchanged.
+    MethodCall* func_ref_unwrap = method_call->GetFuncRefUnwrap();
+    if(func_ref_unwrap) {
+      EmitMethodCall(func_ref_unwrap, true);
+      SymbolEntry* tmp_entry = method_call->GetFunctionalEntry();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, STOR_FUNC_VAR, tmp_entry->GetId(), LOCL));
+    }
+
     // emit function variable
     MemoryContext mem_context;
     SymbolEntry* entry = method_call->GetFunctionalEntry();
@@ -4061,6 +4071,16 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       EmitMethodCallParameters(temp);
       // update
       temp = static_cast<MethodCall*>(temp->GetPreviousExpression());
+    }
+
+    // Desugared direct FuncRef call `v()`: compute `v->Get()` (leaving the
+    // `() ~ R` func value on the stack) and materialize it into the functional
+    // temp, so the LOAD_FUNC_VAR + DYN_MTHD_CALL below work unchanged.
+    MethodCall* func_ref_unwrap = method_call->GetFuncRefUnwrap();
+    if(func_ref_unwrap) {
+      EmitMethodCall(func_ref_unwrap, true);
+      SymbolEntry* tmp_entry = method_call->GetFunctionalEntry();
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, STOR_FUNC_VAR, tmp_entry->GetId(), LOCL));
     }
 
     // emit function variable

@@ -1,0 +1,58 @@
+# Regression for direct FuncRef callability: `v()` where v is a FuncRef<R>
+# instance. The compiler desugars v() to (v->Get())() via a hidden temp,
+# reusing the existing DYN_MTHD_CALL lowering. Exercises expression-RHS,
+# bound-collection-element, and standalone-statement positions, and confirms
+# the classic two-step still works. Exits non-zero on any mismatch so the suite
+# catches a regression in every JIT mode.
+#
+# NOTE: results are bound to a variable before calling ->Get(); chaining a
+# method directly on a functional-call result (`v()->Get()`) hits a separate,
+# pre-existing functional-call-chaining bug and is intentionally avoided here.
+use Collection;
+
+class ClosureDirectCall {
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+
+    # direct call, expression RHS
+    v := Mk(7);
+    r := v();
+    if(r->Get() <> 7) { pass := false; };
+
+    # direct call again on the same FuncRef (pure capture, stable)
+    r2 := v();
+    if(r2->Get() <> 7) { pass := false; };
+
+    # direct call on a FuncRef pulled from a collection (bound to a variable)
+    fns := Vector->New()<FuncRef<IntRef>>;
+    for(i := 0; i < 5; i += 1;) { fns->AddBack(Mk(i * 7)); };
+    idx := 0;
+    each(i : fns) {
+      f := fns->Get(i);
+      fr := f();
+      if(fr->Get() <> idx * 7) { pass := false; };
+      idx += 1;
+    };
+
+    # standalone statement (result discarded) must not crash
+    v();
+
+    # the classic two-step must still work unchanged
+    fn := v->Get();
+    tr := fn();
+    if(tr->Get() <> 7) { pass := false; };
+
+    if(pass) {
+      "PASS: direct FuncRef call"->PrintLine();
+    }
+    else {
+      "FAIL: direct FuncRef call"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Mk(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+  }
+}
