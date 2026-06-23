@@ -2258,6 +2258,9 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     const std::wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
     SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
     if(capture_entry) {
+      // capturing a variable in a closure is a use of it; mark the enclosing
+      // entry loaded so it isn't reported as unreferenced (see CheckUnreferencedVariables)
+      capture_entry->WasLoaded();
       if(capture_lambda->HasClosure(capture_entry)) {
         SymbolEntry* copy_entry = capture_lambda->GetClosure(capture_entry);
         variable->SetTypes(copy_entry->GetType());
