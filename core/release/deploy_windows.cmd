@@ -547,14 +547,26 @@ if "%NUGET_EXE%"=="" (
 	echo ============================================================
 	exit /b 1
 )
+REM Retry the restore: nuget.org intermittently returns transient errors
+REM (HTTP 502 Bad Gateway, dropped connections) on package downloads such as
+REM Microsoft.AI.DirectML, which would otherwise abort an entire release build.
+set NUGET_MAX_ATTEMPTS=5
+set NUGET_ATTEMPT=0
+:nuget_restore_retry
+set /a NUGET_ATTEMPT+=1
 "%NUGET_EXE%" restore onnx.sln
-if errorlevel 1 (
+if not errorlevel 1 goto nuget_restore_ok
+if %NUGET_ATTEMPT% geq %NUGET_MAX_ATTEMPTS% (
 	echo.
 	echo ============================================================
-	echo  ERROR: NuGet restore failed - aborting deploy
+	echo  ERROR: NuGet restore failed after %NUGET_MAX_ATTEMPTS% attempts - aborting deploy
 	echo ============================================================
 	exit /b 1
 )
+echo NuGet restore attempt %NUGET_ATTEMPT% of %NUGET_MAX_ATTEMPTS% failed ^(transient nuget.org error?^) - retrying in 15s...
+powershell -Command "Start-Sleep -Seconds 15" >nul 2>&1
+goto nuget_restore_retry
+:nuget_restore_ok
 
 if [%1] == [arm64] (
 	devenv onnx.sln /rebuild "Release-QNN|ARM64"
