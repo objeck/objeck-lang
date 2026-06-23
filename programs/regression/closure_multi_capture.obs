@@ -1,0 +1,43 @@
+# Regression for multiple capturing lambdas in one class.
+#
+# Each lambda's captured variables live in per-lambda closure memory at
+# CLOSURE-LOCAL offsets. They were being numbered with class-global instance
+# ids, so a second capturing lambda's capture got a higher id and its closure
+# store wrote past the (per-lambda-sized) closure allocation -> intermittent
+# heap corruption under GC. The fix assigns closure-local (0-based per lambda)
+# ids at emit time. This test defines several capturing lambdas and exercises
+# them under heavy GC churn; it exits non-zero on any wrong value.
+use Collection;
+
+class ClosureMultiCapture {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+    for(j := 0; j < 4000; j += 1;) {
+      a := MkA(j);       ar := a();  if(ar->Get() <> j) { bad += 1; };
+      b := MkB(j + 1);   br := b();  if(br->Get() <> j + 1) { bad += 1; };
+      c := MkC(j, j*2);  cr := c();  if(cr->Get() <> j * 3) { bad += 1; };
+      junk := Int->New[32];   # GC pressure
+    };
+    if(bad = 0) {
+      "PASS: multi-capture closures"->PrintLine();
+    }
+    else {
+      "FAIL: multi-capture closures"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : MkA(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+  }
+  function : MkB(n : Int) ~ FuncRef<IntRef> {
+    y := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => y)<IntRef>;
+  }
+  # a third distinct capturing lambda
+  function : MkC(p : Int, q : Int) ~ FuncRef<IntRef> {
+    r := IntRef->New(p + q);
+    return FuncRef->New(\() ~ IntRef : () => r)<IntRef>;
+  }
+}
