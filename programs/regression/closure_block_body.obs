@@ -1,0 +1,73 @@
+# Regression for lambda block bodies: `\(...) ~ R : () => { ...; return e; }`.
+# Previously a `{ }` lambda body accepted only a single if/select statement;
+# now it accepts an arbitrary statement list (with the caller's own return),
+# including type-inferred (`:=`) locals declared inside the lambda. The
+# single-expression body `=> e` is unchanged (sugar for `{ return e; }`).
+#
+# Defines several block-body lambdas (which create multiple capturing closures)
+# and exercises them under GC churn -- this also depends on the closure-local
+# capture-id fix to avoid heap corruption across multiple lambdas.
+use Collection;
+
+class ClosureBlockBody {
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+    for(j := 0; j < 3000; j += 1;) {
+      # block body with a := local and a loop: sum 0..n-1
+      s := SumTo(5);
+      r := s();
+      if(r->Get() <> 10) { pass := false; };          # 0+1+2+3+4
+
+      # block body with control flow (early return)
+      c := Clamp(7);
+      cr := c();
+      if(cr->Get() <> 5) { pass := false; };          # min(7,5) capped at 5
+
+      cz := Clamp(2);
+      czr := cz();
+      if(czr->Get() <> 2) { pass := false; };
+
+      # the classic single-expression body still works
+      e := Identity(42);
+      er := e();
+      if(er->Get() <> 42) { pass := false; };
+
+      junk := Int->New[32];   # GC pressure
+    };
+
+    if(pass) {
+      "PASS: lambda block body"->PrintLine();
+    }
+    else {
+      "FAIL: lambda block body"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  # block body: inferred local + for loop + explicit return
+  function : SumTo(n : Int) ~ FuncRef<IntRef> {
+    return FuncRef->New(\() ~ IntRef : () => {
+      acc := IntRef->New(0);
+      for(k := 0; k < n; k += 1;) {
+        acc->Set(acc->Get() + k);
+      };
+      return acc;
+    })<IntRef>;
+  }
+
+  # block body: control flow with early return
+  function : Clamp(v : Int) ~ FuncRef<IntRef> {
+    return FuncRef->New(\() ~ IntRef : () => {
+      if(v > 5) {
+        return IntRef->New(5);
+      };
+      return IntRef->New(v);
+    })<IntRef>;
+  }
+
+  # single-expression body (unchanged)
+  function : Identity(v : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(v);
+    return FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+  }
+}
