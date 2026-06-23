@@ -4155,8 +4155,16 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       }
     }
 
-    // emit nested calls
-    bool is_nested = false; // function call
+    // emit nested calls -- after a functional call (DYN_MTHD_CALL) the result
+    // is left on the stack, so the first chained call is nested when the
+    // function returns an object. Mirrors the statement-emission site; without
+    // this, `fn()->Method()` in expression context loaded `self` as the
+    // receiver instead of the call result (pre-existing functional-chaining bug).
+    Type* nested_type = entry->GetType();
+    if(nested_type->GetType() == frontend::FUNC_TYPE) {
+      nested_type = nested_type->GetFunctionReturn();
+    }
+    bool is_nested = method_call->GetMethodCall() && nested_type->GetType() == CLASS_TYPE;
     method_call = method_call->GetMethodCall();
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
