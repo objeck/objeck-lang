@@ -1349,16 +1349,37 @@ Lambda* Parser::ParseLambda(int depth) {
   current_method = method;
   symbol_table->NewParseScope();
 
-  // parse derived, alias, or types 
+  // parse derived, alias, or types
   Type* type = nullptr;
   std::wstring alias_name;
   if(Match(TOKEN_OPEN_PAREN)) {
-    type = ParseType(depth + 1);
-
-    if(!Match(TOKEN_COLON)) {
-      ProcessError(TOKEN_COLON);
+    // Disambiguate the explicit-type form `\(<sig>) ~ R : (<params>) => body`
+    // from the bare form `\(<params>) => body` (type inferred from context).
+    // Both start with `(...)`; in the typed form the matching `)` is followed
+    // by `~` (the function type's return marker), in the bare form it is not.
+    int scan = 1;
+    int paren_depth = 1;
+    while(paren_depth > 0 && !Match(TOKEN_END_OF_STREAM, scan)) {
+      if(Match(TOKEN_OPEN_PAREN, scan)) {
+        paren_depth++;
+      }
+      else if(Match(TOKEN_CLOSED_PAREN, scan)) {
+        paren_depth--;
+      }
+      scan++;
     }
-    NextToken();
+
+    if(Match(TOKEN_TILDE, scan)) {
+      // explicit function-type signature
+      type = ParseType(depth + 1);
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(TOKEN_COLON);
+      }
+      NextToken();
+    }
+    // else: bare lambda -- the `(...)` is the parameter list, type is inferred
+    // from context; fall through to parameter parsing below with type == nullptr
   }
   else if(Match(TOKEN_HAT)) {
     NextToken();
