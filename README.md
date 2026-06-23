@@ -12,7 +12,7 @@
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.6.1-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.6.2-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -57,7 +57,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.6.2 
+### v2026.6.2 ✅
   * **Major JIT & GC performance work** — the cooperative stop-the-world GC safepoint poll (new in v2026.6.1) is now nearly free in JIT'd code: an inline flag test that only calls the collector when a collection is active, reading `&stw_active` from a register cached at the prologue (R12/X19) and emitted only at loop back-edges. `fannkuchredux` roughly halved (~59s → ~31s), recovering the full regression on AMD64 and ARM64. Closure / function-reference calls (`DYN_MTHD_CALL`) now **auto-JIT** on both architectures — `spectralnorm` reaches `native`-level speed once warm (43s interpreted → 0.46s at n=2000, matching the hand-`native` kernel). Nursery allocation for `NEW_OBJ_INST` is inlined on AMD64, and the interpreter gains a float fast-path. See [performance →](docs/performance.md)
   * **JIT correctness hardening** — a sweep of float-codegen and tail-call bugs surfaced by forcing JIT (`OBJECK_JIT_THRESHOLD=1`): AMD64 `Floor`/`Ceil`/`ArcTan` codegen and two latent `DYN_MTHD_CALL` miscompiles; ARM64 transcendental/round cached-local operands, dropped libc float result/argument, working-stack registers clobbered across inlined float calls, and an `imm19` backpatch SIGILL (`ml_gbt`); and a TCO deferred-load corruption (e.g. `return Gcd(b, a%b)`) on both architectures; and an ARM64 negative-offset load bug that crashed when a JIT-compiled closure captured in a collection (`Vector<FuncRef>`) was invoked — its memory encoders couldn't represent a negative displacement and read the wrong stack slot, now routed through a signed-offset `LDUR`/`STUR` helper (x64 was never affected). The full ARM64 suite is now green at `OBJECK_JIT_THRESHOLD=1`
   * **UTF-8 in any locale** — `obc` reading UTF-8 source and `obr` loading/printing UTF-8 strings no longer break under a `C`/non-UTF-8 process locale; `sys.h` now uses systemic locale-independent UTF-8 codecs instead of `mbstowcs`/`wcstombs`
@@ -65,7 +65,7 @@ obc hello && obr hello
   * **`Int->MinSize()`** now returns `INT64_MIN` (was `INT64_MAX` — the float `2->Pow(63)` path saturated on conversion)
   * **Native cross-language perf gate (CI)** — a non-Docker harness measures Objeck against Python/Ruby/LuaJIT/Java with committed baseline ratios, so performance regressions are caught automatically
 
-### v2026.6.1 ✅
+### v2026.6.1
   * **String interpolation — expressions, format specifiers, and `String->Format`** — `"{$...}"` now accepts arbitrary expressions (`"{$i + 1}"`, `"{$a * b - c}"`, `"{$x > y}"`), not just variables and method calls. Inline format specifiers use Python/.NET colon syntax for precision, width, alignment, and radix — `"{$pi:.2}"`, `"{$n:05}"`, `"{$s:<10}"`, `"{$v:x}"`, `"{$v:b}"` — and the new `String->Format("{0} = {1}", a, b)` adds positional templating with `{{`/`}}` escaping. See [string features →](docs/FEATURES.md#strings)
   * **Generics — bounds, compound/F-bounds, and variance** — type parameters gain compound bounds `T : A & B` (a concrete argument must satisfy every bound), F-bounded constraints `T : Compare<T>`, and declaration-site variance: `out T` (covariant, e.g. `Producer<Dog>` usable as `Producer<Animal>`) and `in T` (contravariant). Variance is checked soundly in both directions and preserved across the `.obl` library boundary; the stdlib's read-only iterators are now covariant. Existing invariant generics and syntax are unchanged (`out` stays a usable identifier), and generic type-mismatch errors now print readable types like `Hash<String, IntRef>`
   * **Multithreaded garbage collection** — the generational collector is now cooperative stop-the-world: mutator threads park at safepoints (interpreter dispatch, JIT loop back-edges on AMD64 and ARM64, allocation, and blocking `join`/`sleep`/socket I/O) so the collector always marks a complete, stable root set. Fixes freed-live-object corruption and use-after-free under heavy thread churn, plus a JIT-loop collector deadlock; single-threaded programs never park
@@ -94,7 +94,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.6.1](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.6.2](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

@@ -609,7 +609,7 @@ GC: Mark-and-sweep with generational collection
 
 ## Version Info
 
-**Current:** v2026.6.1
+**Current:** v2026.6.2
 **Released:** June 2026
 **License:** BSD 3-Clause
 
