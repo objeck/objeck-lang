@@ -39,6 +39,17 @@ class ClosureBareLambda {
     vr := v();
     if(vr->Get() <> 3) { pass := false; };
 
+    # bare lambda passed directly as a method argument typed FuncRef<R>
+    if(CallIt(\() => x) <> 5) { pass := false; };
+
+    # bare lambda passed to a generic collection element typed FuncRef<R>
+    vec := Vector->New()<FuncRef<IntRef>>;
+    y := IntRef->New(11);
+    vec->AddBack(\() => y);
+    ve := vec->Get(0);
+    vr2 := ve();
+    if(vr2->Get() <> 11) { pass := false; };
+
     if(pass) {
       "PASS: bare lambda auto-wrap"->PrintLine();
     }
@@ -46,6 +57,12 @@ class ClosureBareLambda {
       "FAIL: bare lambda auto-wrap"->PrintLine();
       Runtime->Exit(1);
     };
+  }
+
+  # bare lambda passed as a FuncRef<R> method argument auto-wraps
+  function : CallIt(fr : FuncRef<IntRef>) ~ Int {
+    r := fr();
+    return r->Get();
   }
 
   # bare lambda returned, auto-wrapped into FuncRef<IntRef>
