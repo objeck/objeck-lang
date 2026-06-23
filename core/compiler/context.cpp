@@ -1114,6 +1114,44 @@ void ContextAnalyzer::CheckUnreferencedVariables(Method* method)
 }
 
 /****************************
+ * Auto-wraps a bare lambda `\(...) => body` into `FuncRef->New(lambda)<R>`
+ * when it appears where a FuncRef<R> is expected (assignment, return, etc.),
+ * so the lambda body's return type is inferred from R. Returns the original
+ * expression unchanged when no wrapping applies.
+ ****************************/
+Expression* ContextAnalyzer::WrapBareLambdaInFuncRef(Expression* expression, Type* expected, const int depth)
+{
+  // the expected type may carry the short ("FuncRef") or qualified
+  // ("System.FuncRef") name depending on where it was resolved
+  if(expression && expression->GetExpressionType() == LAMBDA_EXPR && expected &&
+     expected->GetType() == CLASS_TYPE &&
+     (expected->GetName() == L"System.FuncRef" || expected->GetName() == L"FuncRef")) {
+    Lambda* lambda = static_cast<Lambda*>(expression);
+    // only bare lambdas: no explicit `~ R :` signature and no alias name
+    if(!lambda->GetLambdaType() && lambda->GetName().empty()) {
+      const std::vector<Type*> generics = expected->GetGenerics();
+      if(generics.size() == 1) {
+        const std::wstring file_name = lambda->GetFileName();
+        const int line_num = lambda->GetLineNumber();
+        const int line_pos = lambda->GetLinePosition();
+
+        ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+        args->AddExpression(lambda);
+        MethodCall* wrap = TreeFactory::Instance()->MakeMethodCall(
+          file_name, line_num, line_pos, line_num, line_pos, NEW_INST_CALL, L"FuncRef", args);
+
+        std::vector<Type*> concrete;
+        concrete.push_back(TypeFactory::Instance()->MakeType(generics[0]));
+        wrap->SetConcreteTypes(concrete);
+        return wrap;
+      }
+    }
+  }
+
+  return expression;
+}
+
+/****************************
  * Analyzes a lambda function
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
@@ -5052,6 +5090,12 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   Type* mthd_type = current_method->GetReturn();
   Expression* expression = rtrn->GetExpression();
   if(expression) {
+    // auto-wrap a bare lambda when the return type is FuncRef<R>
+    Expression* wrapped = WrapBareLambdaInFuncRef(expression, mthd_type, depth);
+    if(wrapped != expression) {
+      rtrn->SetExpression(wrapped);
+      expression = wrapped;
+    }
     AnalyzeExpression(expression, depth + 1);
     // Handle string concatenation: replace ADD_EXPR with STR_CONCAT_EXPR
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
@@ -5209,6 +5253,14 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   // get last expression for assignment
   Expression* expression = assignment->GetExpression();
   if(expression) {
+    // auto-wrap a bare lambda when the assignment target is FuncRef<R>
+    if(variable && variable->GetEvalType()) {
+      Expression* wrapped = WrapBareLambdaInFuncRef(expression, variable->GetEvalType(), depth);
+      if(wrapped != expression) {
+        assignment->SetExpression(wrapped);
+        expression = wrapped;
+      }
+    }
     AnalyzeExpression(expression, depth + 1);
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
       expression = expression->GetPreviousExpression();

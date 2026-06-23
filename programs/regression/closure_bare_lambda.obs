@@ -1,0 +1,77 @@
+# Regression for bare lambdas `\(...) => body` with the return type inferred
+# from context, auto-wrapping into FuncRef<R>:
+#
+#   FuncRef->New(\() => x)<IntRef>        # explicit New, annotation dropped
+#   f : FuncRef<IntRef> := \() => x       # assignment target -> auto-wrap
+#   return \() => x                       # return type FuncRef<IntRef> -> auto-wrap
+#
+# The verbose form `\() ~ IntRef : () => x` is unchanged. Block bodies and
+# params work with the bare form too.
+use Collection;
+
+class ClosureBareLambda {
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+
+    # bare lambda as an assignment target typed FuncRef<R>
+    x := IntRef->New(5);
+    f : FuncRef<IntRef> := \() => x;
+    r := f();
+    if(r->Get() <> 5) { pass := false; };
+
+    # bare lambda returned where the method returns FuncRef<R>
+    g := Mk(7);
+    gr := g();
+    if(gr->Get() <> 7) { pass := false; };
+
+    # bare lambda inside explicit FuncRef->New (annotation dropped)
+    h := MkNew(9);
+    hr := h();
+    if(hr->Get() <> 9) { pass := false; };
+
+    # bare lambda with a block body, auto-wrapped on return
+    s := SumTo(5);
+    sr := s();
+    if(sr->Get() <> 10) { pass := false; };
+
+    # the verbose form still works
+    v := MkVerbose(3);
+    vr := v();
+    if(vr->Get() <> 3) { pass := false; };
+
+    if(pass) {
+      "PASS: bare lambda auto-wrap"->PrintLine();
+    }
+    else {
+      "FAIL: bare lambda auto-wrap"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  # bare lambda returned, auto-wrapped into FuncRef<IntRef>
+  function : Mk(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n);
+    return \() => x;
+  }
+
+  # bare lambda inside an explicit FuncRef->New (the `~ IntRef :` is dropped)
+  function : MkNew(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n);
+    return FuncRef->New(\() => x)<IntRef>;
+  }
+
+  # bare lambda with a block body
+  function : SumTo(n : Int) ~ FuncRef<IntRef> {
+    return \() => {
+      acc := IntRef->New(0);
+      for(k := 0; k < n; k += 1;) { acc->Set(acc->Get() + k); };
+      return acc;
+    };
+  }
+
+  # verbose form, unchanged
+  function : MkVerbose(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+  }
+}

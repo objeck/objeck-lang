@@ -537,6 +537,7 @@ class ContextAnalyzer {
   void AnalyzeExpressions(ExpressionList* parameters, const int depth);
   void AnalyzeExpression(Expression* expression, const int depth);
   void AnalyzeLambda(Lambda* param1, const int depth);
+  Expression* WrapBareLambdaInFuncRef(Expression* expression, Type* expected, const int depth);
   Type* ResolveAlias(const std::wstring& name, const std::wstring& fn, int ln, int lp);
   Type* ResolveAlias(const std::wstring& name, ParseNode* node) {
     return ResolveAlias(name, node->GetFileName(), node->GetLineNumber(), node->GetLinePosition());
