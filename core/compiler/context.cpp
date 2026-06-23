@@ -1249,13 +1249,59 @@ Type* ContextAnalyzer::ResolveAlias(const std::wstring& name, const std::wstring
   return alias_type;
 }
 
+/****************************
+ * Wraps the deferred bare-lambda argument of a method call into
+ * FuncRef->New(lambda)<R>, replaces it in the call's parameters, and analyzes
+ * the wrap (which builds the lambda via the normal FuncRef->New(...)<R> path).
+ * Returns true when the argument was wrapped.
+ ****************************/
+bool ContextAnalyzer::DerivedFuncRefLambdaArg(MethodCall* lambda_inferred_call, Type* resolved_param)
+{
+  Expression* bare_lambda = static_cast<Expression*>(lambda_inferred.first);
+  Expression* wrap = WrapBareLambdaInFuncRef(bare_lambda, resolved_param, 0);
+  if(wrap == bare_lambda) {
+    return false;
+  }
+
+  ExpressionList* call_params = lambda_inferred_call->GetCallingParameters();
+  if(!call_params) {
+    return false;
+  }
+
+  const std::vector<Expression*> exprs = call_params->GetExpressions();
+  for(size_t i = 0; i < exprs.size(); ++i) {
+    if(exprs[i] == bare_lambda) {
+      call_params->SetExpression(wrap, i);
+      // re-analyzing the wrap re-enters the inferred-lambda machinery for the
+      // FuncRef->New(...) call, which builds the lambda from its `<R>` generic
+      AnalyzeExpression(wrap, 0);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 Method* ContextAnalyzer::DerivedLambdaFunction(std::vector<Method*>& alt_mthds)
 {
   if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
     Method* alt_mthd = alt_mthds[0];
     std::vector<Declaration*> alt_mthd_types = alt_mthd->GetDeclarations()->GetDeclarations();
-    if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetEntry() && 
+    // a bare lambda passed where the sole parameter resolves to FuncRef<R>
+    // auto-wraps into FuncRef->New(lambda)<R> (mirrors the assign/return wrap).
+    // Resolve generics first -- a collection element type is often a generic
+    // placeholder (`@T`) that resolves to FuncRef<R>.
+    if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetEntry()) {
+      Type* resolved_param = ResolveGenericType(alt_mthd_types[0]->GetEntry()->GetType(), lambda_inferred_call, alt_mthd->GetClass(), nullptr);
+      if(resolved_param && resolved_param->GetType() == CLASS_TYPE &&
+         (resolved_param->GetName() == L"System.FuncRef" || resolved_param->GetName() == L"FuncRef")) {
+        if(DerivedFuncRefLambdaArg(lambda_inferred_call, resolved_param)) {
+          return alt_mthd;
+        }
+      }
+    }
+    if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetEntry() &&
        alt_mthd_types[0]->GetEntry()->GetType()->GetType() == FUNC_TYPE) {
       // set parameters
       std::vector<Type*> inferred_type_params;
@@ -1286,6 +1332,18 @@ LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*
     MethodCall* lambda_inferred_call = lambda_inferred.second;
     LibraryMethod* alt_mthd = alt_mthds[0];
     std::vector<frontend::Type*> alt_mthd_types = alt_mthd->GetDeclarationTypes();
+    // bare lambda passed where the sole parameter resolves to FuncRef<R>
+    // auto-wraps (resolve generics first -- collection element types are often
+    // a generic placeholder `@T` that resolves to FuncRef<R>)
+    if(alt_mthd_types.size() == 1) {
+      Type* resolved_param = ResolveGenericType(alt_mthd_types[0], lambda_inferred_call, nullptr, alt_mthd->GetLibraryClass());
+      if(resolved_param && resolved_param->GetType() == CLASS_TYPE &&
+         (resolved_param->GetName() == L"System.FuncRef" || resolved_param->GetName() == L"FuncRef")) {
+        if(DerivedFuncRefLambdaArg(lambda_inferred_call, resolved_param)) {
+          return alt_mthd;
+        }
+      }
+    }
     if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetType() == FUNC_TYPE) {
       // set parameters
       std::vector<Type*> inferred_type_params;
