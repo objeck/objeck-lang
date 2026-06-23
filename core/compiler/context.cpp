@@ -4178,28 +4178,40 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   // functional-call path on that temp -- reusing the existing
   // STOR/LOAD_FUNC_VAR + DYN_MTHD_CALL lowering (no VM/JIT change).
   if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE &&
-     entry->GetType()->GetName() == L"System.FuncRef" && !method_call->GetFuncRefUnwrap()) {
-    Statement* mc_stmt = static_cast<Statement*>(method_call);
-    const std::wstring mc_file = mc_stmt->GetFileName();
-    const int mc_ln = mc_stmt->GetLineNumber();
-    const int mc_lp = mc_stmt->GetLinePosition();
-    ExpressionList* no_args = TreeFactory::Instance()->MakeExpressionList();
-    MethodCall* unwrap = TreeFactory::Instance()->MakeMethodCall(
-      mc_file, mc_ln, mc_lp,
-      method_call->GetMidLineNumber(), method_call->GetMidLinePosition(),
-      mc_stmt->GetEndLineNumber(), mc_stmt->GetEndLinePosition(),
-      method_call->GetMethodName(), L"Get", no_args);
-    AnalyzeMethodCall(unwrap, depth + 1);
+     entry->GetType()->GetName() == L"System.FuncRef") {
+    if(method_call->GetFuncRefUnwrap()) {
+      // Already desugared on an earlier pass (binary-op operands are analyzed
+      // more than once). Reuse the functional temp established the first time
+      // instead of re-synthesizing, otherwise `entry` stays the raw FuncRef and
+      // the call is wrongly rejected as undefined.
+      entry = method_call->GetFunctionalEntry();
+    }
+    else {
+      Statement* mc_stmt = static_cast<Statement*>(method_call);
+      const std::wstring mc_file = mc_stmt->GetFileName();
+      const int mc_ln = mc_stmt->GetLineNumber();
+      const int mc_lp = mc_stmt->GetLinePosition();
+      ExpressionList* no_args = TreeFactory::Instance()->MakeExpressionList();
+      MethodCall* unwrap = TreeFactory::Instance()->MakeMethodCall(
+        mc_file, mc_ln, mc_lp,
+        method_call->GetMidLineNumber(), method_call->GetMidLinePosition(),
+        mc_stmt->GetEndLineNumber(), mc_stmt->GetEndLinePosition(),
+        method_call->GetMethodName(), L"Get", no_args);
+      AnalyzeMethodCall(unwrap, depth + 1);
 
-    Type* unwrap_type = unwrap->GetEvalType();
-    if(unwrap_type && unwrap_type->GetType() == FUNC_TYPE) {
-      const std::wstring tmp_name = current_method->GetName() + L":#funcref_tmp#" +
-        std::to_wstring(mc_ln) + L'#' + std::to_wstring(mc_lp);
-      SymbolEntry* tmp = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, unwrap_type, false, true);
-      current_table->AddEntry(tmp, true);
-      tmp->WasLoaded();
-      method_call->SetFuncRefUnwrap(unwrap);
-      entry = tmp;  // continue as a functional call on the unwrapped temp
+      Type* unwrap_type = unwrap->GetEvalType();
+      if(unwrap_type && unwrap_type->GetType() == FUNC_TYPE) {
+        // unique per desugar site -- two `v()` on one line share a line/position,
+        // so a counter (not line:pos) is required to avoid temp-name collisions
+        static int func_ref_tmp_id = 0;
+        const std::wstring tmp_name = current_method->GetName() + L":#funcref_tmp#" +
+          std::to_wstring(func_ref_tmp_id++);
+        SymbolEntry* tmp = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, unwrap_type, false, true);
+        current_table->AddEntry(tmp, true);
+        tmp->WasLoaded();
+        method_call->SetFuncRefUnwrap(unwrap);
+        entry = tmp;  // continue as a functional call on the unwrapped temp
+      }
     }
   }
 

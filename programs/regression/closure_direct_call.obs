@@ -1,46 +1,46 @@
-# Regression for direct FuncRef callability: `v()` where v is a FuncRef<R>
-# instance. The compiler desugars v() to (v->Get())() via a hidden temp,
-# reusing the existing DYN_MTHD_CALL lowering. Exercises expression-RHS,
-# bound-collection-element, and standalone-statement positions, and confirms
-# the classic two-step still works. Exits non-zero on any mismatch so the suite
-# catches a regression in every JIT mode.
+# Regression for direct FuncRef callability `v()` and functional-call result
+# chaining `v()->Method()` / `fn()->Method()` in expression context.
 #
-# NOTE: results are bound to a variable before calling ->Get(); chaining a
-# method directly on a functional-call result (`v()->Get()`) hits a separate,
-# pre-existing functional-call-chaining bug and is intentionally avoided here.
+# - `v()` (v is a FuncRef<R>) desugars to (v->Get())() via a hidden temp,
+#   reusing the existing DYN_MTHD_CALL lowering (no VM/JIT change).
+# - chaining a method on a functional-call result in expression context
+#   (`v()->Get()`, `fn()->Get()`) previously loaded `self` as the receiver
+#   instead of the call result; now fixed to mirror statement context.
+#
+# Exits non-zero on any mismatch so the suite catches a regression in every
+# JIT mode.
 use Collection;
 
 class ClosureDirectCall {
   function : Main(args : String[]) ~ Nil {
     pass := true;
 
-    # direct call, expression RHS
+    # direct call, result bound
     v := Mk(7);
     r := v();
     if(r->Get() <> 7) { pass := false; };
 
-    # direct call again on the same FuncRef (pure capture, stable)
-    r2 := v();
-    if(r2->Get() <> 7) { pass := false; };
+    # direct call with inline ->Get() chaining (expression position)
+    if(v()->Get() <> 7) { pass := false; };
+    sum := v()->Get() + v()->Get();
+    if(sum <> 14) { pass := false; };
 
-    # direct call on a FuncRef pulled from a collection (bound to a variable)
+    # direct call on a FuncRef pulled from a collection, inline chaining
     fns := Vector->New()<FuncRef<IntRef>>;
     for(i := 0; i < 5; i += 1;) { fns->AddBack(Mk(i * 7)); };
     idx := 0;
     each(i : fns) {
       f := fns->Get(i);
-      fr := f();
-      if(fr->Get() <> idx * 7) { pass := false; };
+      if(f()->Get() <> idx * 7) { pass := false; };
       idx += 1;
     };
 
     # standalone statement (result discarded) must not crash
     v();
 
-    # the classic two-step must still work unchanged
+    # classic two-step, with inline chaining on the call result
     fn := v->Get();
-    tr := fn();
-    if(tr->Get() <> 7) { pass := false; };
+    if(fn()->Get() <> 7) { pass := false; };
 
     if(pass) {
       "PASS: direct FuncRef call"->PrintLine();
