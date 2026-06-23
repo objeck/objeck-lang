@@ -1406,28 +1406,16 @@ Lambda* Parser::ParseLambda(int depth) {
   }
   NextToken();
 
-  // parse statement
-  StatementList * statements = TreeFactory::Instance()->MakeStatementList();
+  // parse body
+  StatementList* statements;
+  // block body: `\(...) => { stmt; ...; return expr; }` -- arbitrary statements,
+  // the caller supplies the return (previously restricted to a single if/select)
   if(Match(TOKEN_OPEN_BRACE)) {
-    NextToken();
-
-    Statement* statement = ParseStatement(depth + 1);
-    if(!statement) {
-      return nullptr;
-    }
-
-    if(statement->GetStatementType() != IF_STMT && statement->GetStatementType() != SELECT_STMT) {
-      ProcessError(L"Expected 'if' or 'select' statement", TOKEN_SEMI_COLON);
-    }
-    statements->AddStatement(statement);
-
-    if(!Match(TOKEN_CLOSED_BRACE)) {
-      ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
-    }
-    NextToken();
+    statements = ParseStatementList(depth + 1);
   }
-  // parse expression
+  // expression body: `\(...) => expr` -- sugar for `{ return expr; }`
   else {
+    statements = TreeFactory::Instance()->MakeStatementList();
     Expression* expression = ParseExpression(depth + 1);
     Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression);
     statements->AddStatement(rtrn_stmt);

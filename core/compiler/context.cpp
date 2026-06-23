@@ -2279,6 +2279,20 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
         capture_lambda->AddClosure(copy_entry, capture_entry);
       }
     }
+    else {
+      // not a capture -- a new type-inferred local declared inside the lambda
+      // body (e.g. `a := ...` in a `{ }` block body). Create it in the lambda's
+      // own scope, mirroring the normal type-inferred-variable path below.
+      const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
+      SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
+      current_table->AddEntry(var_entry, true);
+      if(variable->IsAlt()) {
+        var_entry->WasLoaded();
+      }
+      variable->SetTypes(var_entry->GetType());
+      variable->SetEntry(var_entry);
+      var_entry->AddVariable(variable);
+    }
   }
   // type inferred variable
   else if(current_method) {
