@@ -42,7 +42,7 @@ size_t* MemoryManager::free_buckets[MemoryManager::FREE_POOL_COUNT];
 size_t MemoryManager::free_memory_cache_size;
 
 bool MemoryManager::initialized;
-size_t MemoryManager::allocation_size;
+std::atomic<size_t> MemoryManager::allocation_size;
 size_t MemoryManager::mem_max_size;
 size_t MemoryManager::uncollected_count;
 size_t MemoryManager::collected_count;
@@ -373,7 +373,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
           // release fence: header stores must be visible before this object can be
           // observed as young (pairs with the acquire load of young_offset in IsYoung).
           std::atomic_thread_fence(std::memory_order_release);
-          allocation_size += size;
+          allocation_size.fetch_add(size, std::memory_order_relaxed);
           return mem;
         }
         // CAS failed: offset was reloaded with the current value — re-test and retry
@@ -394,7 +394,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
             mem += EXTRA_BUF_SIZE;
             mem[MARKED_FLAG] = 0;
             std::atomic_thread_fence(std::memory_order_release);
-            allocation_size += size;
+            allocation_size.fetch_add(size, std::memory_order_relaxed);
             return mem;
           }
         }
@@ -2135,6 +2135,15 @@ void MemoryManager::CollectMajor(size_t* op_stack, size_t stack_pos)
 {
   minor_gc_mode.store(false, std::memory_order_release);
   CollectAllMemory(op_stack, stack_pos);
+}
+
+// Slow-path target for JIT-emitted write barriers (see JitArm64/JitAmd64
+// EmitWriteBarrier). The JIT already tested GC_OLD_BIT/GC_RSET_BIT inline; the
+// shared WriteBarrier re-tests (idempotent) so this stays correct if reached
+// directly. Kept non-inline so codegen can take a stable function address.
+void MemoryManager::JitWriteBarrier(size_t* target_obj)
+{
+  WriteBarrier(target_obj);
 }
 
 // ---- End Generational GC ----

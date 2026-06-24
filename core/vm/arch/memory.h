@@ -167,8 +167,11 @@ class MemoryManager {
   static pthread_mutex_t free_memory_cache_lock;
 #endif
     
+  // allocation_size is bumped lock-free on the young fast path (AllocateObject and
+  // the JIT inline allocator) and under 'allocated_lock' on the old-gen path, so it
+  // must be atomic to avoid lost updates that would skew the major-GC trigger (H3).
+  static std::atomic<size_t> allocation_size;
   // note: protected by 'allocated_lock'
-  static size_t allocation_size;
   static size_t mem_max_size;
   static size_t uncollected_count;
   static size_t collected_count;
@@ -420,6 +423,11 @@ class MemoryManager {
     }
     // If overflow: next minor GC falls back to full old-gen scan
   }
+
+  // Non-inline, stably-addressable entry point for JIT-emitted write barriers. The
+  // JIT inlines the fast-path test (skip when the holder is young or already tracked)
+  // and only calls this for the rare slow path that records the holder in the rset.
+  static void JitWriteBarrier(size_t* target_obj);
   
   // object verification
   static size_t* ValidObjectCast(size_t* mem, long to_id, long* cls_hierarchy, long** cls_interfaces);
