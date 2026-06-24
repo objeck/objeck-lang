@@ -378,9 +378,20 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
         }
         // CAS failed: offset was reloaded with the current value — re-test and retry
       }
-      // Young gen full — trigger GC to promote survivors and reset
+      // Young gen full — collect to promote survivors and reset the nursery.
       if(collect) {
-        CollectMajor(op_stack, stack_pos);
+        // Minor GC (scan the remembered set + roots, promote reachable young
+        // objects, recycle the nursery without sweeping old gen) is the common,
+        // cheap case. Fall back to a full major GC once the old generation has
+        // grown past the heap threshold, since only a major GC reclaims dead
+        // old-gen objects. Requires the JIT/interpreter write barriers (H1) so the
+        // remembered set captures every old->young store.
+        if(old_allocation_size > mem_max_size) {
+          CollectMajor(op_stack, stack_pos);
+        }
+        else {
+          CollectMinor(op_stack, stack_pos);
+        }
         // Retry bump allocation after GC (young_offset reset to 0)
         size_t retry_offset = young_offset.load(std::memory_order_relaxed);
         while(retry_offset + aligned_total <= young_region_size) {
@@ -1025,27 +1036,32 @@ void* MemoryManager::CollectMemory(void* arg)
     dirty_count.store(0, std::memory_order_release);
   }
 
-  // Adjust GC constraints based on collection effectiveness
-  size_t total_dead = dead_young_size + dead_old_count;
-  if(total_dead == 0) {
-    if(uncollected_count < UNCOLLECTED_COUNT) {
-      uncollected_count++;
-    }
-    else {
-      mem_max_size <<= 4;
-      uncollected_count = 0;
-    }
-  }
-  else if(mem_max_size != MEM_START_MAX) {
-    if(collected_count < COLLECTED_COUNT) {
-      collected_count++;
-    }
-    else {
-      mem_max_size >>= 2;
-      if(mem_max_size <= 0) {
-        mem_max_size = MEM_START_MAX;
+  // Adjust GC constraints based on collection effectiveness. Only major GCs drive
+  // this: a minor GC's dead count reflects only dead young objects (it never sweeps
+  // old gen), so letting it grow/shrink mem_max_size would mis-tune the heap and
+  // skew the minor-vs-major trigger.
+  if(!minor_gc_mode.load(std::memory_order_acquire)) {
+    size_t total_dead = dead_young_size + dead_old_count;
+    if(total_dead == 0) {
+      if(uncollected_count < UNCOLLECTED_COUNT) {
+        uncollected_count++;
       }
-      collected_count = 0;
+      else {
+        mem_max_size <<= 4;
+        uncollected_count = 0;
+      }
+    }
+    else if(mem_max_size != MEM_START_MAX) {
+      if(collected_count < COLLECTED_COUNT) {
+        collected_count++;
+      }
+      else {
+        mem_max_size >>= 2;
+        if(mem_max_size <= 0) {
+          mem_max_size = MEM_START_MAX;
+        }
+        collected_count = 0;
+      }
     }
   }
 

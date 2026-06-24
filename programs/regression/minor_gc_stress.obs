@@ -1,0 +1,68 @@
+# Regression for generational MINOR GC: old objects holding young references.
+#
+# 'keep' is an object array (always old gen) holding references to young Holder
+# objects. Storing a young ref into the old array goes through the JIT/interpreter
+# write barrier, which records the array in the remembered set. The churn loop then
+# allocates enough short-lived young objects to fill the 128MB nursery several times,
+# triggering minor GCs. Each minor GC scans only the remembered set + roots, so it
+# MUST find the kept young objects through 'keep', promote them, and fix up the array
+# slots. If the barrier, remembered set, promotion, or fixup is wrong, the kept
+# objects dangle (wrong value or crash) after the nursery is recycled.
+#
+# Note: needs to allocate > ~128MB of young objects to exercise minor GC at all, so
+# the churn loop count is deliberately large.
+class MinorGcStress {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+
+    # Old-gen container holding young references (store -> write barrier -> rset).
+    keep := Holder->New[64];
+    for(i := 0; i < 64; i += 1;) {
+      keep[i] := Holder->New(i * 7);
+    };
+
+    # Churn: fill the nursery many times over with immediately-dead young objects.
+    for(j := 0; j < 12000000; j += 1;) {
+      tmp := Holder->New(j);
+      if(tmp->Get() < 0) { bad += 1; };  # use tmp so it isn't optimized away
+    };
+
+    # The kept young objects must have been promoted with correct values.
+    for(i := 0; i < 64; i += 1;) {
+      if(keep[i] = Nil) { bad += 1; }
+      else if(keep[i]->Get() <> i * 7) { bad += 1; };
+    };
+
+    # Re-store fresh young refs after promotion (keep is now old) and churn again to
+    # exercise a second round of remembered-set tracking on already-promoted slots.
+    for(i := 0; i < 64; i += 1;) {
+      keep[i] := Holder->New(i + 100);
+    };
+    for(j := 0; j < 6000000; j += 1;) {
+      tmp := Holder->New(j);
+      if(tmp->Get() < 0) { bad += 1; };
+    };
+    for(i := 0; i < 64; i += 1;) {
+      if(keep[i] = Nil) { bad += 1; }
+      else if(keep[i]->Get() <> i + 100) { bad += 1; };
+    };
+
+    if(bad = 0) {
+      "PASS: minor GC old->young remembered set"->PrintLine();
+    }
+    else {
+      "FAIL: minor GC old->young remembered set"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
+
+class Holder {
+  @v : Int;
+  New(v : Int) {
+    @v := v;
+  }
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
