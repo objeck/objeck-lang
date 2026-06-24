@@ -2093,14 +2093,39 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 {
 #ifndef _GC_SERIAL
 #ifdef _WIN32
+  // only one thread at a time can invoke the garbage collector
   if(!TryEnterCriticalSection(&marked_sweep_lock)) {
+    // Another thread is collecting. Park (counted) and wait the collection out
+    // rather than returning while still running: a running thread would stall
+    // the other collector's stop-the-world wait and could mutate mid-collection.
+    BeginBlocking();
+    EnterCriticalSection(&marked_sweep_lock);
+    LeaveCriticalSection(&marked_sweep_lock);
+    EndBlocking();
     return;
   }
 #else
   if(pthread_mutex_trylock(&marked_sweep_lock)) {
+    BeginBlocking();
+    pthread_mutex_lock(&marked_sweep_lock);
+    pthread_mutex_unlock(&marked_sweep_lock);
+    EndBlocking();
     return;
   }
 #endif
+
+  // Stop the world before touching the remembered set, roots, or the nursery. A
+  // minor GC scans old->young refs, promotes young survivors, fixes up references
+  // and resets young_offset; if any other mutator keeps running it can hold a live
+  // young ref only in its registers / op-stack (never scanned -> freed -> dangling)
+  // or bump-allocate into the nursery being recycled. Mirrors CollectAllMemory.
+  MUTEX_LOCK(&stw_lock);
+  stw_active.store(true, std::memory_order_release);
+  while(parked_count.load(std::memory_order_acquire) <
+        mutator_count.load(std::memory_order_acquire) - 1) {
+    SLEEP_CONDITION(&stw_cv, &stw_lock);
+  }
+  MUTEX_UNLOCK(&stw_lock);
 #endif
 
 #ifdef _DEBUG_GC
@@ -2136,6 +2161,12 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
   CollectMemory(info);
 
 #ifndef _GC_SERIAL
+  // Resume the world.
+  MUTEX_LOCK(&stw_lock);
+  stw_active.store(false, std::memory_order_release);
+  WAKE_ALL_CONDITION(&stw_cv);
+  MUTEX_UNLOCK(&stw_lock);
+
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
