@@ -1,0 +1,257 @@
+use Game.SDL2;
+use Game.Framework;
+
+#~
+The Amiga "Boing Ball" (1984) -- recreated in Objeck with SDL2.
+
+A red/white checkered sphere spins as it bounces on a purple grid, with a drop
+shadow, just like the demo Dale Luck & RJ Mical hacked together overnight for CES.
+
+Objeck twist: the grid carries a faint "OBJECK" wordmark, and the sphere is
+rendered live each frame from its 3D normals (no pre-baked frames) -- Objeck's
+JIT does the per-pixel sphere math in real time.
+
+  compile: obc -src boing_ball.obs -lib sdl2,sdl_game
+  run:     obr boing_ball
+~#
+class BoingBall {
+  @framework : GameFramework;
+
+  # precomputed sphere (flat DIAM x DIAM grids over the ball's bounding box)
+  @lat_idx : Int[];     # latitude checker index (constant per pixel)
+  @lon0 : Float[];      # base longitude (spin is added each frame)
+  @band : Int[];        # depth shade band 0..2, or -1 outside the disc
+  @inv_cell : Float;    # checker cells per radian
+
+  # ball palette: [0..2] red full/mid/dark, [3..5] white full/mid/dark
+  @br : Int[]; @bg : Int[]; @bb : Int[];
+
+  # colors that the gfx primitives take as objects
+  @shadow_col : Color;
+  @mark_col : Color;
+
+  # physics
+  @bx : Float; @by : Float; @vx : Float; @vy : Float;
+  @spin : Float; @spin_dir : Int;
+
+  # 7x5 bitmaps (row-major) for the OBJECK wordmark
+  @glyphs : String[];
+
+  function : Main(args : String[]) ~ Nil {
+    BoingBall->New()->Run();
+  }
+
+  New() {
+    @framework := GameFramework->New(C->W, C->H, "Boing Ball - Objeck edition");
+    @framework->SetClearColor(Color->New(116, 0, 116));   # purple backdrop
+    @shadow_col := Color->New(64, 0, 70);
+    @mark_col := Color->New(150, 24, 150);
+    Setup();
+  }
+
+  method : Setup() ~ Nil {
+    # ball shades
+    @br := Int->New[6];  @bg := Int->New[6];  @bb := Int->New[6];
+    @br[0] := 224; @bg[0] := 44;  @bb[0] := 44;    # red full
+    @br[1] := 184; @bg[1] := 34;  @bb[1] := 34;    # red mid
+    @br[2] := 142; @bg[2] := 26;  @bb[2] := 26;    # red dark
+    @br[3] := 240; @bg[3] := 240; @bb[3] := 244;   # white full
+    @br[4] := 202; @bg[4] := 202; @bb[4] := 208;   # white mid
+    @br[5] := 160; @bg[5] := 160; @bb[5] := 168;   # white dark
+
+    r := C->R;
+    diam := C->DIAM;
+    rad := r->As(Float);
+    @inv_cell := 8.0 / Float->Pi();   # 8 checker cells across pi radians
+
+    n := diam * diam;
+    @lat_idx := Int->New[n];
+    @lon0 := Float->New[n];
+    @band := Int->New[n];
+
+    for(py := 0; py < diam; py += 1;) {
+      ny := ((py - r)->As(Float) + 0.5) / rad;
+      for(px := 0; px < diam; px += 1;) {
+        nx := ((px - r)->As(Float) + 0.5) / rad;
+        d2 := nx * nx + ny * ny;
+        idx := py * diam + px;
+        if(d2 <= 1.0) {
+          nz := (1.0 - d2)->Sqrt();
+          lat := Float->ArcSin(ny);
+          lon := Float->ArcTan2(nx, nz);
+          @lat_idx[idx] := (lat * @inv_cell + 1000.0)->As(Int);
+          @lon0[idx] := lon;
+          @band[idx] := nz >= 0.66 ? 0 : (nz >= 0.34 ? 1 : 2);
+        }
+        else {
+          @band[idx] := -1;
+        };
+      };
+    };
+
+    @bx := C->W->As(Float) / 2.0;
+    @by := 150.0;
+    @vx := 3.4;
+    @vy := 0.0;
+    @spin := 0.0;
+    @spin_dir := 1;
+
+    @glyphs := String->New[6];
+    @glyphs[0] := "0111010001100011000110001100010111";  # O
+    @glyphs[1] := "1111010001100011111010001100011111";  # B
+    @glyphs[2] := "0011100010000100001010010100100110";  # J
+    @glyphs[3] := "1111110000100001111010000100001111";  # E
+    @glyphs[4] := "0111010001100001000010000100010111";  # C
+    @glyphs[5] := "1000110010101001100010100100101000";  # K
+  }
+
+  method : Run() ~ Nil {
+    if(<>@framework->IsOk()) {
+      "--- Error initializing SDL ---"->ErrorLine();
+      return;
+    };
+
+    e := @framework->GetEvent();
+    quit := false;
+    while(<>quit) {
+      @framework->FrameStart();
+      @framework->Clear();
+
+      while(e->Poll() <> 0) {
+        if(e->GetType() = EventType->SDL_QUIT) {
+          quit := true;
+        };
+      };
+
+      Update();
+      r := @framework->GetRenderer();
+      DrawGrid(r);
+      DrawWordmark(r);
+      DrawShadow(r);
+      DrawBall(r);
+
+      @framework->Show();
+      @framework->FrameEnd();
+    };
+
+    leaving {
+      @framework->Quit();
+    };
+  }
+
+  method : Update() ~ Nil {
+    rad := C->R->As(Float);
+    @vy += 0.55;            # gravity
+    @bx += @vx;
+    @by += @vy;
+
+    if(@by + rad >= C->FLOOR->As(Float)) {
+      @by := C->FLOOR->As(Float) - rad;
+      @vy := @vy * -1.0;    # perfect bounce -> perpetual
+    };
+    if(@bx - rad <= C->WALL_L->As(Float)) {
+      @bx := C->WALL_L->As(Float) + rad;
+      @vx := @vx * -1.0;
+      @spin_dir := @spin_dir * -1;
+    }
+    else if(@bx + rad >= C->WALL_R->As(Float)) {
+      @bx := C->WALL_R->As(Float) - rad;
+      @vx := @vx * -1.0;
+      @spin_dir := @spin_dir * -1;
+    };
+
+    @spin += 0.05 * @spin_dir->As(Float);
+  }
+
+  # Live per-pixel sphere: for each scanline, emit horizontal runs of constant
+  # color (checker parity x depth band) as single DrawLine calls.
+  method : DrawBall(r : Renderer) ~ Nil {
+    diam := C->DIAM;
+    lx := @bx->As(Int) - C->R;
+    ty := @by->As(Int) - C->R;
+
+    for(py := 0; py < diam; py += 1;) {
+      base := py * diam;
+      sy := ty + py;
+      run := -1;
+      start := 0;
+      for(px := 0; px < diam; px += 1;) {
+        idx := base + px;
+        ci := -1;
+        b := @band[idx];
+        if(b >= 0) {
+          li := ((@lon0[idx] + @spin) * @inv_cell + 1000.0)->As(Int);
+          parity := (li + @lat_idx[idx]) % 2;
+          ci := parity * 3 + b;
+        };
+        if(ci <> run) {
+          if(run >= 0) {
+            r->SetDrawColor(@br[run], @bg[run], @bb[run], 255);
+            r->DrawLine(lx + start, sy, lx + px - 1, sy);
+          };
+          run := ci;
+          start := px;
+        };
+      };
+      if(run >= 0) {
+        r->SetDrawColor(@br[run], @bg[run], @bb[run], 255);
+        r->DrawLine(lx + start, sy, lx + diam - 1, sy);
+      };
+    };
+  }
+
+  method : DrawShadow(r : Renderer) ~ Nil {
+    sx := @bx->As(Int) + 34;
+    sy := @by->As(Int) + 30;
+    r->FilledEllipseColor(sx, sy, C->R, (C->R * 6) / 10, @shadow_col);
+  }
+
+  method : DrawGrid(r : Renderer) ~ Nil {
+    r->SetDrawColor(168, 36, 168, 255);
+    g := C->GRID;
+    gx := 0;
+    while(gx <= C->W) {
+      r->DrawLine(gx, 0, gx, C->H);
+      gx += g;
+    };
+    gy := 0;
+    while(gy <= C->H) {
+      r->DrawLine(0, gy, C->W, gy);
+      gy += g;
+    };
+  }
+
+  method : DrawWordmark(r : Renderer) ~ Nil {
+    cell := 13;
+    cols := 5;
+    rows := 7;
+    letter_w := cols * cell + cell;             # 5 cells + 1 cell gap
+    total := 6 * letter_w - cell;
+    x0 := (C->W - total) / 2;
+    y0 := (C->H - rows * cell) / 2;
+
+    for(gi := 0; gi < 6; gi += 1;) {
+      glyph := @glyphs[gi];
+      for(row := 0; row < rows; row += 1;) {
+        for(col := 0; col < cols; col += 1;) {
+          if(glyph->Get(row * cols + col) = '1') {
+            cx := x0 + gi * letter_w + col * cell;
+            cy := y0 + row * cell;
+            r->BoxColor(cx, cy, cx + cell - 3, cy + cell - 3, @mark_col);
+          };
+        };
+      };
+    };
+  }
+}
+
+consts C {
+  W := 640,
+  H := 512,
+  R := 90,
+  DIAM := 180,
+  GRID := 32,
+  FLOOR := 470,
+  WALL_L := 40,
+  WALL_R := 600
+}

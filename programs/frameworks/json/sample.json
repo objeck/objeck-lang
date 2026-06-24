@@ -1,0 +1,6 @@
+{
+  "name": "Objeck",
+  "version": "2026.6.3",
+  "tags": ["jit", "gc", "closures"],
+  "stable": true
+}
