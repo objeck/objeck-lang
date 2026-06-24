@@ -1315,6 +1315,10 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, size_t* &stack_pos)
     else {
       memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
     }
+    // Generational GC write barrier: an Int[] can hold object references (object
+    // arrays are int arrays of pointers), so a bulk copy can deposit young refs into
+    // an old destination array invisibly to a minor GC. Record the destination.
+    MemoryManager::WriteBarrier(dest_array);
     PushInt(1, op_stack, stack_pos);
   }
   else {

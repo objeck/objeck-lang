@@ -1246,7 +1246,9 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   // allocation_size += size (match AllocateObject — drives the major-GC trigger;
   // skipping it starves GC -> old-gen bloat -> O(n^2) collection time).
   move_imm_reg((int64_t)MemoryManager::AllocationSizeAddr(), RAX);
-  AddMachineCode(0x48); AddMachineCode(0x81); AddMachineCode(0x00); AddImm((int)size); // add qword [rax], size
+  // lock add qword [rax], size -- allocation_size is std::atomic (H3); the bare add
+  // raced the locked old-gen updates and lost increments, skewing the major-GC trigger.
+  AddMachineCode(0xF0); AddMachineCode(0x48); AddMachineCode(0x81); AddMachineCode(0x00); AddImm((int)size);
 
   move_mem_reg(TMP_REG_0, RBP, RAX);
   move_mem_reg(TMP_REG_1, RBP, RBX);
@@ -1548,10 +1550,23 @@ void JitAmd64::ProcessStoreCharElement(StackInstr* instr) {
 }
 
 void JitAmd64::ProcessStoreIntElement(StackInstr* instr) {
+  // Capture the array base for the write barrier before ArrayIndex rewrites the base
+  // register into the element address. An Int[] element store can deposit a young
+  // object reference into an (always old-gen) array; a minor GC must see it via the
+  // remembered set.
+  RegInstr* arr = working_stack.front();
+  RegisterHolder* base_holder = GetRegister();
+  if(arr->GetType() == MEM_INT) {
+    move_mem_reg((long)arr->GetOperand(), RBP, base_holder->GetRegister());
+  }
+  else {  // REG_INT (IMM_INT is rejected by ArrayIndex)
+    move_reg_reg(arr->GetRegister()->GetRegister(), base_holder->GetRegister());
+  }
+
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
-  
+
   switch(left->GetType()) {
   case IMM_INT:
     move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
@@ -1576,7 +1591,10 @@ void JitAmd64::ProcessStoreIntElement(StackInstr* instr) {
     break;
   }
   ReleaseRegister(elem_holder);
-  
+
+  EmitWriteBarrier(base_holder->GetRegister());
+  ReleaseRegister(base_holder);
+
   delete left;
   left = nullptr;
 }
@@ -1672,6 +1690,57 @@ void JitAmd64::ProcessIntToFloat([[maybe_unused]] StackInstr* instr) {
 
   delete left;
   left = nullptr;
+}
+
+// Inline generational write barrier for a reference store into 'holder'. The fast
+// path (holder young, or old but already in the remembered set) is a load + mask +
+// compare + branch and never calls out. Only the first young-ref store into a given
+// old object reaches the slow path, which preserves the caller-saved registers the
+// JIT may have live (cached locals, COPY's pending working-stack value), hands the
+// holder to the runtime, and restores them. Emit while 'holder' still holds the
+// destination object pointer. No-op unless minor GC ever runs; under major-only GC
+// the recorded remembered set is simply cleared each cycle.
+void JitAmd64::EmitWriteBarrier(Register holder) {
+  RegisterHolder* flags_holder = GetRegister();
+  Register flags = flags_holder->GetRegister();
+
+  // flags = holder[MARKED_FLAG]   (MARKED_FLAG == -1 word)
+  move_mem_reg(MARKED_FLAG * (long)sizeof(size_t), holder, flags);
+  // barrier needed iff (flags & (OLD|RSET)) == OLD  -- old-gen and not yet tracked
+  and_imm_reg(GC_OLD_BIT | GC_RSET_BIT, flags);
+  cmp_imm_reg(GC_OLD_BIT, flags);
+  ReleaseRegister(flags_holder);
+
+  // jne skip
+  AddMachineCode(0x0F);
+  AddMachineCode(0x85);
+  const long skip_patch = code_index;
+  AddImm(0);
+
+  // --- slow path: record holder in the remembered set ---
+  // Save the JIT-allocatable caller-saved GP registers (even count keeps the stack
+  // 16-byte aligned for the call) so cached locals / pending values survive.
+#ifdef _WIN64
+  push_reg(RAX); push_reg(RCX); push_reg(RDX); push_reg(R9);   // R9: alignment pad
+  move_reg_reg(holder, RCX);                                   // arg0 = holder (MS x64)
+  sub_imm_reg(32, RSP);                                        // shadow space
+  move_imm_reg((size_t)MemoryManager::JitWriteBarrier, R10);
+  call_reg(R10);
+  add_imm_reg(32, RSP);
+  pop_reg(R9); pop_reg(RDX); pop_reg(RCX); pop_reg(RAX);
+#else
+  push_reg(RAX); push_reg(RCX); push_reg(RDX);
+  push_reg(R8);  push_reg(R10); push_reg(R11);
+  move_reg_reg(holder, RDI);                                   // arg0 = holder (System V)
+  move_imm_reg((size_t)MemoryManager::JitWriteBarrier, R11);
+  call_reg(R11);
+  pop_reg(R11); pop_reg(R10); pop_reg(R8);
+  pop_reg(RDX); pop_reg(RCX); pop_reg(RAX);
+#endif
+
+  // skip:
+  const int32_t skip_rel = (int32_t)(code_index - (skip_patch + 4));
+  memcpy(&code[skip_patch], &skip_rel, sizeof(skip_rel));
 }
 
 void JitAmd64::ProcessStore(StackInstr* instr) {
@@ -1850,6 +1919,11 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
   }
 
   if(addr_holder) {
+    // Generational write barrier on instance-field reference stores (not static
+    // class memory, which has no GC header).
+    if(instr->GetOperand2() != CLS) {
+      EmitWriteBarrier(dest);
+    }
     ReleaseRegister(addr_holder);
   }
 
@@ -1883,12 +1957,17 @@ void JitAmd64::ProcessCopy(StackInstr* instr) {
     move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
     CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
+    // Generational write barrier on instance-field reference stores (not static
+    // class memory). Emitted while 'holder' still pins the destination object.
+    if(instr->GetOperand2() != CLS) {
+      EmitWriteBarrier(dest);
+    }
     ReleaseRegister(holder);
-    
+
     delete left;
     left = nullptr;
   }
-  
+
   RegInstr* left = working_stack.front();
   switch(left->GetType()) {
   case IMM_INT: {

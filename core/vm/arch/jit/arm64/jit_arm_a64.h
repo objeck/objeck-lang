@@ -410,6 +410,7 @@ namespace Runtime {
     void ProcessReturn(long params = -1);
     void ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params);
     void EmitJitSafePoint();
+    void EmitWriteBarrier(Register holder);
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter();
     void ProcessFunctionCallParameter();

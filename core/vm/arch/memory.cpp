@@ -42,7 +42,7 @@ size_t* MemoryManager::free_buckets[MemoryManager::FREE_POOL_COUNT];
 size_t MemoryManager::free_memory_cache_size;
 
 bool MemoryManager::initialized;
-size_t MemoryManager::allocation_size;
+std::atomic<size_t> MemoryManager::allocation_size;
 size_t MemoryManager::mem_max_size;
 size_t MemoryManager::uncollected_count;
 size_t MemoryManager::collected_count;
@@ -373,14 +373,25 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
           // release fence: header stores must be visible before this object can be
           // observed as young (pairs with the acquire load of young_offset in IsYoung).
           std::atomic_thread_fence(std::memory_order_release);
-          allocation_size += size;
+          allocation_size.fetch_add(size, std::memory_order_relaxed);
           return mem;
         }
         // CAS failed: offset was reloaded with the current value — re-test and retry
       }
-      // Young gen full — trigger GC to promote survivors and reset
+      // Young gen full — collect to promote survivors and reset the nursery.
       if(collect) {
-        CollectMajor(op_stack, stack_pos);
+        // Minor GC (scan the remembered set + roots, promote reachable young
+        // objects, recycle the nursery without sweeping old gen) is the common,
+        // cheap case. Fall back to a full major GC once the old generation has
+        // grown past the heap threshold, since only a major GC reclaims dead
+        // old-gen objects. Requires the JIT/interpreter write barriers (H1) so the
+        // remembered set captures every old->young store.
+        if(old_allocation_size > mem_max_size) {
+          CollectMajor(op_stack, stack_pos);
+        }
+        else {
+          CollectMinor(op_stack, stack_pos);
+        }
         // Retry bump allocation after GC (young_offset reset to 0)
         size_t retry_offset = young_offset.load(std::memory_order_relaxed);
         while(retry_offset + aligned_total <= young_region_size) {
@@ -394,7 +405,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
             mem += EXTRA_BUF_SIZE;
             mem[MARKED_FLAG] = 0;
             std::atomic_thread_fence(std::memory_order_release);
-            allocation_size += size;
+            allocation_size.fetch_add(size, std::memory_order_relaxed);
             return mem;
           }
         }
@@ -1025,27 +1036,32 @@ void* MemoryManager::CollectMemory(void* arg)
     dirty_count.store(0, std::memory_order_release);
   }
 
-  // Adjust GC constraints based on collection effectiveness
-  size_t total_dead = dead_young_size + dead_old_count;
-  if(total_dead == 0) {
-    if(uncollected_count < UNCOLLECTED_COUNT) {
-      uncollected_count++;
-    }
-    else {
-      mem_max_size <<= 4;
-      uncollected_count = 0;
-    }
-  }
-  else if(mem_max_size != MEM_START_MAX) {
-    if(collected_count < COLLECTED_COUNT) {
-      collected_count++;
-    }
-    else {
-      mem_max_size >>= 2;
-      if(mem_max_size <= 0) {
-        mem_max_size = MEM_START_MAX;
+  // Adjust GC constraints based on collection effectiveness. Only major GCs drive
+  // this: a minor GC's dead count reflects only dead young objects (it never sweeps
+  // old gen), so letting it grow/shrink mem_max_size would mis-tune the heap and
+  // skew the minor-vs-major trigger.
+  if(!minor_gc_mode.load(std::memory_order_acquire)) {
+    size_t total_dead = dead_young_size + dead_old_count;
+    if(total_dead == 0) {
+      if(uncollected_count < UNCOLLECTED_COUNT) {
+        uncollected_count++;
       }
-      collected_count = 0;
+      else {
+        mem_max_size <<= 4;
+        uncollected_count = 0;
+      }
+    }
+    else if(mem_max_size != MEM_START_MAX) {
+      if(collected_count < COLLECTED_COUNT) {
+        collected_count++;
+      }
+      else {
+        mem_max_size >>= 2;
+        if(mem_max_size <= 0) {
+          mem_max_size = MEM_START_MAX;
+        }
+        collected_count = 0;
+      }
     }
   }
 
@@ -2077,14 +2093,39 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 {
 #ifndef _GC_SERIAL
 #ifdef _WIN32
+  // only one thread at a time can invoke the garbage collector
   if(!TryEnterCriticalSection(&marked_sweep_lock)) {
+    // Another thread is collecting. Park (counted) and wait the collection out
+    // rather than returning while still running: a running thread would stall
+    // the other collector's stop-the-world wait and could mutate mid-collection.
+    BeginBlocking();
+    EnterCriticalSection(&marked_sweep_lock);
+    LeaveCriticalSection(&marked_sweep_lock);
+    EndBlocking();
     return;
   }
 #else
   if(pthread_mutex_trylock(&marked_sweep_lock)) {
+    BeginBlocking();
+    pthread_mutex_lock(&marked_sweep_lock);
+    pthread_mutex_unlock(&marked_sweep_lock);
+    EndBlocking();
     return;
   }
 #endif
+
+  // Stop the world before touching the remembered set, roots, or the nursery. A
+  // minor GC scans old->young refs, promotes young survivors, fixes up references
+  // and resets young_offset; if any other mutator keeps running it can hold a live
+  // young ref only in its registers / op-stack (never scanned -> freed -> dangling)
+  // or bump-allocate into the nursery being recycled. Mirrors CollectAllMemory.
+  MUTEX_LOCK(&stw_lock);
+  stw_active.store(true, std::memory_order_release);
+  while(parked_count.load(std::memory_order_acquire) <
+        mutator_count.load(std::memory_order_acquire) - 1) {
+    SLEEP_CONDITION(&stw_cv, &stw_lock);
+  }
+  MUTEX_UNLOCK(&stw_lock);
 #endif
 
 #ifdef _DEBUG_GC
@@ -2120,6 +2161,12 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
   CollectMemory(info);
 
 #ifndef _GC_SERIAL
+  // Resume the world.
+  MUTEX_LOCK(&stw_lock);
+  stw_active.store(false, std::memory_order_release);
+  WAKE_ALL_CONDITION(&stw_cv);
+  MUTEX_UNLOCK(&stw_lock);
+
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
@@ -2135,6 +2182,15 @@ void MemoryManager::CollectMajor(size_t* op_stack, size_t stack_pos)
 {
   minor_gc_mode.store(false, std::memory_order_release);
   CollectAllMemory(op_stack, stack_pos);
+}
+
+// Slow-path target for JIT-emitted write barriers (see JitArm64/JitAmd64
+// EmitWriteBarrier). The JIT already tested GC_OLD_BIT/GC_RSET_BIT inline; the
+// shared WriteBarrier re-tests (idempotent) so this stays correct if reached
+// directly. Kept non-inline so codegen can take a stable function address.
+void MemoryManager::JitWriteBarrier(size_t* target_obj)
+{
+  WriteBarrier(target_obj);
 }
 
 // ---- End Generational GC ----

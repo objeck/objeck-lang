@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "String interpolation, generics, multithreaded GC, and a major debugger upgrade",
+	"title": "Generational minor GC and closure ergonomics",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,14 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.6.3",
+			"items": [
+				"VM: generational minor garbage collection is now enabled — nursery-full collections scan only the remembered set plus roots and recycle the nursery without sweeping old gen, with a major-GC fallback under old-gen pressure; JIT and interpreter reference stores emit the write barrier on AMD64 and ARM64",
+				"Language: closure ergonomics — call a FuncRef directly with v(), bare lambdas with an inferred return type (\\() => x) that auto-wrap into FuncRef<R> in assignments, returns, method arguments, and collection elements, and lambda block bodies",
+				"Fixes: multi-capture closure heap corruption (closure-local capture ids); ARM64 negative-offset JIT load/stores (signed LDUR/STUR)"
+			]
+		},
 		{
 			"version": "v2026.6.2",
 			"items": [
