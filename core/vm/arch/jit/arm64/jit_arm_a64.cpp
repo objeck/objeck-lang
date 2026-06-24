@@ -1342,10 +1342,23 @@ void JitArm64::ProcessStoreCharElement(StackInstr* instr) {
 }
 
 void JitArm64::ProcessStoreIntElement(StackInstr* instr) {
+  // Capture the array base for the write barrier before ArrayIndex rewrites the base
+  // register into the element address. An Int[] element store can deposit a young
+  // object reference into an (always old-gen) array; a minor GC must see it via the
+  // remembered set.
+  RegInstr* arr = working_stack.front();
+  RegisterHolder* base_holder = GetRegister();
+  if(arr->GetType() == MEM_INT) {
+    move_mem_reg((long)arr->GetOperand(), SP, base_holder->GetRegister());
+  }
+  else {  // REG_INT (IMM_INT is rejected by ArrayIndex)
+    move_reg_reg(arr->GetRegister()->GetRegister(), base_holder->GetRegister());
+  }
+
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
-  
+
   switch(left->GetType()) {
   case IMM_INT:
     move_imm_mem((long)left->GetOperand(), 0, elem_holder->GetRegister());
@@ -1370,7 +1383,10 @@ void JitArm64::ProcessStoreIntElement(StackInstr* instr) {
     break;
   }
   ReleaseRegister(elem_holder);
-  
+
+  EmitWriteBarrier(base_holder->GetRegister());
+  ReleaseRegister(base_holder);
+
   delete left;
   left = nullptr;
 }
@@ -1467,6 +1483,63 @@ void JitArm64::ProcessIntToFloat(StackInstr* instr) {
 
   delete left;
   left = nullptr;
+}
+
+// Inline generational write barrier for a reference store into 'holder'. The fast
+// path (holder young, or old but already in the remembered set) is LDUR + AND + SUB
+// + CBNZ and never calls out. Only the first young-ref store into a given old object
+// reaches the slow path. ARM64 has no push_reg, so the slow path mirrors the existing
+// hidden-call discipline: FlushLocalCache (write-through, just drops the cache) and
+// spill in-flight working-stack int temps to TMP_X1..TMP_X5, save the destination
+// object (ProcessCopy stores through it after the call), call JitWriteBarrier(holder),
+// then restore. Emit while 'holder' still holds the destination object. Inert unless
+// minor GC runs (the remembered set is cleared each major cycle). Mirror of
+// JitAmd64::EmitWriteBarrier.
+void JitArm64::EmitWriteBarrier(Register holder) {
+  RegisterHolder* flags_holder = GetRegister();
+  Register flags = flags_holder->GetRegister();
+
+  // flags = holder[MARKED_FLAG]   (MARKED_FLAG == -1 word -> LDUR with -8 offset)
+  move_mem_reg(MARKED_FLAG * (long)sizeof(size_t), holder, flags);
+  // barrier needed iff (flags & (OLD|RSET)) == OLD; (flags & 6) - 2 == 0 selects it
+  and_imm_reg(GC_OLD_BIT | GC_RSET_BIT, flags);
+  sub_imm_reg(GC_OLD_BIT, flags);
+  const long cbnz_index = code_index;
+  cbnz_reg(flags);                       // if nonzero -> skip (patched below)
+  ReleaseRegister(flags_holder);
+
+  // --- slow path: record holder in the remembered set ---
+  FlushLocalCache();                     // drop cached locals (write-through; reload later)
+
+  // Preserve in-flight working-stack int temps across the call (TMP_X1..TMP_X5).
+  // Barrier sites carry an empty working stack (STOR / array element) or a single
+  // pending value (COPY), so this never overflows.
+  std::vector<std::pair<Register, long> > spilled_ws;
+  long ws_off = TMP_X1;
+  for(RegInstr* pending : working_stack) {
+    if(pending->GetType() == REG_INT && ws_off <= TMP_X5) {
+      const Register r = pending->GetRegister()->GetRegister();
+      move_reg_mem(r, ws_off, SP);
+      spilled_ws.push_back(std::make_pair(r, ws_off));
+      ws_off += sizeof(size_t);
+    }
+  }
+
+  move_reg_mem(holder, TMP_X0, SP);      // save destination object across the call
+  if(holder != X0) {
+    move_reg_reg(holder, X0);            // arg0 = holder (AAPCS64)
+  }
+  move_imm_reg((size_t)MemoryManager::JitWriteBarrier, X10);
+  call_reg(X10);
+  move_mem_reg(TMP_X0, SP, holder);      // restore destination object
+  for(size_t i = 0; i < spilled_ws.size(); ++i) {
+    move_mem_reg(spilled_ws[i].second, SP, spilled_ws[i].first);
+  }
+
+  // skip:
+  const long skip_index = code_index;
+  const int32_t imm19 = (int32_t)(skip_index - cbnz_index);
+  code[(size_t)cbnz_index] |= ((uint32_t)(imm19 & 0x7FFFF)) << 5;
 }
 
 void JitArm64::ProcessStore(StackInstr* instr) {
@@ -1639,6 +1712,11 @@ void JitArm64::ProcessStore(StackInstr* instr) {
   }
 
   if(addr_holder) {
+    // Generational write barrier on instance-field reference stores (not static
+    // class memory, which has no GC header).
+    if(instr->GetOperand2() != CLS) {
+      EmitWriteBarrier(dest);
+    }
     ReleaseRegister(addr_holder);
   }
 
@@ -1672,12 +1750,17 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
     move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
     CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
+    // Generational write barrier on instance-field reference stores (not static
+    // class memory). Emitted while 'holder' still pins the destination object.
+    if(instr->GetOperand2() != CLS) {
+      EmitWriteBarrier(dest);
+    }
     ReleaseRegister(holder);
-    
+
     delete left;
     left = nullptr;
   }
-  
+
   RegInstr* left = working_stack.front();
   switch(left->GetType()) {
   case IMM_INT: {
@@ -4881,12 +4964,15 @@ static bool CanJitInstruction(InstructionType type) {
   case LOAD_CLS_INST_INT_VAR:
   case LOAD_FLOAT_VAR:
   case LOAD_FUNC_VAR:
-    // stores (STOR_CLS_INST_INT_VAR rejected — no write barrier)
+    // stores (instance-field ref stores now emit the JIT write barrier, so they
+    // are safe under minor GC; see JitArm64::EmitWriteBarrier)
   case STOR_LOCL_INT_VAR:
+  case STOR_CLS_INST_INT_VAR:
   case STOR_FLOAT_VAR:
   case STOR_FUNC_VAR:
-    // copies (COPY_CLS_INST_INT_VAR rejected — no write barrier)
+    // copies
   case COPY_LOCL_INT_VAR:
+  case COPY_CLS_INST_INT_VAR:
   case COPY_FLOAT_VAR:
     // int math
   case AND_INT:
