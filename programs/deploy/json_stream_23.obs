@@ -1,0 +1,46 @@
+#~
+# compile: obc -src json_stream_23.obs -lib json_stream
+# run:     obr json_stream_23.obe   (from the examples/ directory)
+#
+# Streaming JSON. Data.JSON.Stream.StreamParser is a forward-only cursor that
+# never builds an in-memory tree -- ideal for large documents where only a few
+# fields are needed. It reads data/weather.json, pulls named scalars with
+# FindElement, and streams the forecast array collecting each day's high.
+~#
+
+use System.IO.Filesystem;
+use Data.JSON.Stream;
+
+class JsonStream {
+	function : Main(args : String[]) ~ Nil {
+		file := "data/weather.json";
+
+		# Seek to named scalars without parsing the whole document.
+		stream := FileReader->New(file);
+		if(<>stream->IsOpen()) {
+			">>> cannot open: {$file} <<<"->ErrorLine();
+			return;
+		};
+		parser := StreamParser->New(stream);
+		if(parser->FindElement("location")) {
+			parser->Next();
+			"location:  {$parser->GetTypeValue()}"->PrintLine();
+		};
+		if(parser->FindElement("condition")) {
+			parser->Next();
+			"condition: {$parser->GetTypeValue()}"->PrintLine();
+		};
+		stream->Close();
+
+		# Stream the forecast array, collecting each "high" as it goes by.
+		stream2 := FileReader->New(file);
+		parser2 := StreamParser->New(stream2);
+		"highs:     "->Print();
+		while(parser2->FindElement("high")) {
+			parser2->Next();
+			"{$parser2->GetTypeValue()} "->Print();
+		};
+		""->PrintLine();
+		stream2->Close();
+	}
+}

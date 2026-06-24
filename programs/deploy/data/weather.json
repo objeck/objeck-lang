@@ -1,0 +1,9 @@
+{
+  "location": "Tokyo",
+  "current": { "temp_c": 21.5, "condition": "Sunny", "humidity": 58 },
+  "forecast": [
+    { "day": "Mon", "high": 24, "low": 17 },
+    { "day": "Tue", "high": 22, "low": 16 },
+    { "day": "Wed", "high": 26, "low": 18 }
+  ]
+}

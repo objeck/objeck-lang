@@ -1,0 +1,50 @@
+use System.IO.Filesystem;
+use Data.JSON.Stream;
+
+#~
+Streaming JSON example (Data.JSON.Stream.StreamParser).
+
+StreamParser is a forward-only cursor over a JSON document -- it never builds an
+in-memory tree, so it suits large inputs where only a few fields are needed.
+
+  compile: obc -src stream_example.obs -lib json_stream
+  run:     obr stream_example sample.json
+~#
+class StreamExample {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() <> 1) {
+      ">>> usage: stream_example <file.json> <<<"->ErrorLine();
+      return;
+    };
+    file := args[0];
+
+    # 1) Walk every token in document order. Next() advances one token and returns
+    #    false at end-of-stream; each token has a kind, a string value and a depth.
+    stream := FileReader->New(file);
+    if(<>stream->IsOpen()) {
+      ">>> cannot open: {$file} <<<"->ErrorLine();
+      return;
+    };
+    parser := StreamParser->New(stream);
+    "--- tokens (level: kind => value) ---"->PrintLine();
+    while(parser->Next()) {
+      "{$parser->GetLevel()}: {$parser->GetTypeName()} => {$parser->GetTypeValue()}"->PrintLine();
+    };
+    if(parser->HasError()) {
+      ">>> malformed JSON <<<"->ErrorLine();
+    };
+    stream->Close();
+
+    # 2) Seek directly to a named value without walking the whole tree:
+    #    FindElement(name) lands on the label, one more Next() moves to its value.
+    #    A parser is single-pass, so re-open the stream.
+    stream2 := FileReader->New(file);
+    parser2 := StreamParser->New(stream2);
+    "\n--- selected fields ---"->PrintLine();
+    if(parser2->FindElement("name")) {
+      parser2->Next();
+      "name = {$parser2->GetTypeValue()}"->PrintLine();
+    };
+    stream2->Close();
+  }
+}
