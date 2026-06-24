@@ -1,9 +1,9 @@
 {
 	"version": {
-		"string": "2026.6.2",
+		"string": "2026.6.3",
 		"year": 2026
 	},
-	"title": "String interpolation, generics, multithreaded GC, and a major debugger upgrade",
+	"title": "Generational minor GC and closure ergonomics",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -12,9 +12,16 @@
 	},
 	"features": [
 		{
+			"version": "v2026.6.3",
+			"items": [
+				"VM: generational minor garbage collection is now enabled — nursery-full collections scan only the remembered set plus roots and recycle the nursery without sweeping old gen, with a major-GC fallback under old-gen pressure; JIT and interpreter reference stores emit the write barrier on AMD64 and ARM64",
+				"Language: closure ergonomics — call a FuncRef directly with v(), bare lambdas with an inferred return type (\\() => x) that auto-wrap into FuncRef<R> in assignments, returns, method arguments, and collection elements, and lambda block bodies",
+				"Fixes: multi-capture closure heap corruption (closure-local capture ids); ARM64 negative-offset JIT load/stores (signed LDUR/STUR)"
+			]
+		},
+		{
 			"version": "v2026.6.2",
 			"items": [
-				"VM: fixed an ARM64 JIT SIGSEGV when invoking a JIT-compiled closure captured in a collection — the backend's memory encoders couldn't represent a negative offset and read the wrong stack slot; all ARM64 load/stores now route through a signed-offset helper (x64 was never affected)",
 				"Documentation: API reference code examples now render as formatted, syntax-highlighted blocks — the ONNX library examples previously appeared as run-on inline text",
 				"Tooling: the release-process skills (version bump, release, docs, playground deploy) are now versioned in the repo"
 			]
