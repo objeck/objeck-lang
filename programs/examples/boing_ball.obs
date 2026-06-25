@@ -1,41 +1,63 @@
 use Game.SDL2;
 use Game.Framework;
+use System.IO.Filesystem;
 
 #~
-The Amiga "Boing Ball" (1984) -- recreated in Objeck with SDL2.
+The Amiga "Boing Ball" (1984), recreated in Objeck with SDL2 -- with an Objeck twist:
+a red/white checkered sphere that spins about a *tilted* axis and bounces with real
+physics over a "Matrix" rain of falling green glyphs, under a glowing 80s-neon OBJECK
+wordmark, with a bass "boing" on every bounce (synthesized to a WAV at startup -- no
+audio asset needed) and a live FPS readout.
 
-A red/white checkered sphere spins as it bounces on a purple grid, with a drop
-shadow, just like the demo Dale Luck & RJ Mical hacked together overnight for CES.
+Everything is drawn through SDL2_gfx filled boxes (the verified render path); the
+per-frame draw budget is kept inside the 60 FPS window (~16 ms) so the motion stays
+smooth and continuous. A nice GC/JIT workout, too.
 
-Objeck twist: the grid carries a faint "OBJECK" wordmark, and the sphere is
-rendered live each frame from its 3D normals (no pre-baked frames) -- Objeck's
-JIT does the per-pixel sphere math in real time.
-
-  compile: obc -src boing_ball.obs -lib sdl2,sdl_game
+  compile: obc -src boing_ball.obs -lib sdl2,sdl_game,json,gen_collect
   run:     obr boing_ball
+  note:    every SDL draw call allocates in the binding, so this is also a GC/JIT
+           workout. For a larger heap (fewer, larger collections) run e.g.:
+             obr --gc-threshold=64M boing_ball
 ~#
 class BoingBall {
   @framework : GameFramework;
+  @frame : Int;
 
-  # precomputed sphere (flat DIAM x DIAM grids over the ball's bounding box)
-  @lat_idx : Int[];     # latitude checker index (constant per pixel)
-  @lon0 : Float[];      # base longitude (spin is added each frame)
-  @band : Int[];        # depth shade band 0..2, or -1 outside the disc
-  @inv_cell : Float;    # checker cells per radian
-
-  # ball palette: [0..2] red full/mid/dark, [3..5] white full/mid/dark
-  @br : Int[]; @bg : Int[]; @bb : Int[];
-
-  # colors that the gfx primitives take as objects
-  @shadow_col : Color;
-  @mark_col : Color;
+  # sphere: Amiga-style static geometry (each pixel's checker cell precomputed once
+  # with a fixed tilt); only the spin offset scrolls the colors through the cells per
+  # frame -- no per-frame geometry work, so the CPU stays free and the frame is cheap.
+  @lat_idx : Int[];   # n latitude-band indices
+  @lon0 : Float[];    # n base longitudes
+  @band : Int[];      # n view-depth shading bands
+  @cx0 : Int[]; @cx1 : Int[];   # per-row circle x-range (skip corner pixels)
+  @inv_cell : Float;
+  @br : Int[]; @bg : Int[]; @bb : Int[];   # 4 shades: red hi/lo, white hi/lo
+  @ball_cols : Color[];                    # the 4 shades as gfx-path Color objects
 
   # physics
   @bx : Float; @by : Float; @vx : Float; @vy : Float;
-  @spin : Float; @spin_dir : Int;
+  @spin : Float; @spin_dir : Int; @spin_speed : Float;
 
-  # 7x5 bitmaps (row-major) for the OBJECK wordmark
-  @glyphs : String[];
+  # matrix rain
+  @rcols : Int; @rcw : Int; @rch : Int; @rps : Int; @rrows : Int;
+  @rhead : Float[]; @rspd : Float[]; @rlen : Int[];
+  @green : Color[];   # trail shades, [0] = bright head
+  @rg : Int[];        # 8 glyphs x 5 rows, 3-bit rows
+
+  # OBJECK neon wordmark
+  @word : Int[];      # 6 letters x 7 rows, 5-bit rows
+  @neon : Color[]; @neon_glow : Color[];   # per-row cyan->magenta gradient + halo
+
+  # perf HUD (FPS + live VM/GC/CPU stats via System.Runtime)
+  @hud_font : Int[]; @hud_chars : String; @hud_col : Color; @hud_bg : Color;
+  @fps_val : Int; @fps_t0 : Int; @fps_count : Int;
+  @stat_mem_mb : Int; @stat_heap_kb : Int;
+  @stat_gc_minor : Int; @stat_gc_major : Int;
+  @stat_cpu_pct : Int; @cpu_prev_time : Int; @cpu_prev_wall : Int;
+
+  # sound
+  @boing : MixChunk;
+  @sound_ok : Bool;
 
   function : Main(args : String[]) ~ Nil {
     BoingBall->New()->Run();
@@ -43,26 +65,49 @@ class BoingBall {
 
   New() {
     @framework := GameFramework->New(C->W, C->H, "Boing Ball - Objeck edition");
-    @framework->SetClearColor(Color->New(116, 0, 116));   # purple backdrop
-    @shadow_col := Color->New(64, 0, 70);
-    @mark_col := Color->New(150, 24, 150);
+    @framework->SetClearColor(Color->New(6, 9, 12));
     Setup();
   }
 
   method : Setup() ~ Nil {
-    # ball shades
-    @br := Int->New[6];  @bg := Int->New[6];  @bb := Int->New[6];
-    @br[0] := 224; @bg[0] := 44;  @bb[0] := 44;    # red full
-    @br[1] := 184; @bg[1] := 34;  @bb[1] := 34;    # red mid
-    @br[2] := 142; @bg[2] := 26;  @bb[2] := 26;    # red dark
-    @br[3] := 240; @bg[3] := 240; @bb[3] := 244;   # white full
-    @br[4] := 202; @bg[4] := 202; @bb[4] := 208;   # white mid
-    @br[5] := 160; @bg[5] := 160; @bb[5] := 168;   # white dark
+    SetupSphere();
+    SetupRain();
+    SetupWordmark();
+    SetupHud();
+    SetupSound();
 
-    r := C->R;
-    diam := C->DIAM;
-    rad := r->As(Float);
-    @inv_cell := 8.0 / Float->Pi();   # 8 checker cells across pi radians
+    @bx := C->W->As(Float) / 2.0;
+    @by := 150.0;
+    @vx := 1.5;
+    @vy := 0.0;
+    @spin := 0.0;
+    @spin_dir := 1;
+    @spin_speed := 0.05;
+    @frame := 0;
+    PollStats();
+  }
+
+  method : SetupSphere() ~ Nil {
+    @br := Int->New[4];  @bg := Int->New[4];  @bb := Int->New[4];
+    @br[0] := 226; @bg[0] := 46;  @bb[0] := 46;    # red hi
+    @br[1] := 150; @bg[1] := 30;  @bb[1] := 30;    # red lo
+    @br[2] := 240; @bg[2] := 240; @bb[2] := 244;   # white hi
+    @br[3] := 165; @bg[3] := 165; @bb[3] := 172;   # white lo
+
+    @ball_cols := Color->New[4];
+    for(i := 0; i < 4; i += 1;) {
+      @ball_cols[i] := Color->New(@br[i], @bg[i], @bb[i]);
+    };
+
+    radius := 90;
+    diam := 180;
+    rad := 90.0;
+    @inv_cell := 6.0 / Float->Pi();
+
+    # fixed back-tilt (over-the-top look) baked in; the side-lean is applied at render
+    # time as a cheap in-plane rotation, so this stays a single small table.
+    phi := 0.42;
+    cphi := phi->Cos(); sphi := phi->Sin();
 
     n := diam * diam;
     @lat_idx := Int->New[n];
@@ -70,18 +115,21 @@ class BoingBall {
     @band := Int->New[n];
 
     for(py := 0; py < diam; py += 1;) {
-      ny := ((py - r)->As(Float) + 0.5) / rad;
+      ny := ((py - radius)->As(Float) + 0.5) / rad;
       for(px := 0; px < diam; px += 1;) {
-        nx := ((px - r)->As(Float) + 0.5) / rad;
+        nx := ((px - radius)->As(Float) + 0.5) / rad;
         d2 := nx * nx + ny * ny;
         idx := py * diam + px;
         if(d2 <= 1.0) {
           nz := (1.0 - d2)->Sqrt();
-          lat := Float->ArcSin(ny);
-          lon := Float->ArcTan2(nx, nz);
-          @lat_idx[idx] := (lat * @inv_cell + 1000.0)->As(Int);
-          @lon0[idx] := lon;
-          @band[idx] := nz >= 0.66 ? 0 : (nz >= 0.34 ? 1 : 2);
+          ay := ny * cphi - nz * sphi;   # back-tilt about x
+          az := ny * sphi + nz * cphi;
+          ty := ay;
+          if(ty > 1.0)  { ty := 1.0; };
+          if(ty < -1.0) { ty := -1.0; };
+          @lat_idx[idx] := (Float->ArcSin(ty) * @inv_cell + 1000.0)->As(Int);
+          @lon0[idx] := Float->ArcTan2(nx, az);
+          @band[idx] := nz >= 0.5 ? 0 : 1;   # view-depth shading
         }
         else {
           @band[idx] := -1;
@@ -89,20 +137,195 @@ class BoingBall {
       };
     };
 
-    @bx := C->W->As(Float) / 2.0;
-    @by := 150.0;
-    @vx := 3.4;
-    @vy := 0.0;
-    @spin := 0.0;
-    @spin_dir := 1;
+    # per-row x-range of the circle, so DrawSphere skips the corner pixels
+    @cx0 := Int->New[diam];
+    @cx1 := Int->New[diam];
+    for(py := 0; py < diam; py += 1;) {
+      dy := py - radius;
+      rr := radius * radius - dy * dy;
+      if(rr < 0) {
+        @cx0[py] := 1; @cx1[py] := 0;   # empty row
+      }
+      else {
+        rf := rr->As(Float);
+        hw := rf->Sqrt()->As(Int);
+        x0 := radius - hw;  x1 := radius + hw;
+        if(x0 < 0) { x0 := 0; };
+        if(x1 > diam - 1) { x1 := diam - 1; };
+        @cx0[py] := x0; @cx1[py] := x1;
+      };
+    };
+  }
 
-    @glyphs := String->New[6];
-    @glyphs[0] := "0111010001100011000110001100010111";  # O
-    @glyphs[1] := "1111010001100011111010001100011111";  # B
-    @glyphs[2] := "0011100010000100001010010100100110";  # J
-    @glyphs[3] := "1111110000100001111010000100001111";  # E
-    @glyphs[4] := "0111010001100001000010000100010111";  # C
-    @glyphs[5] := "1000110010101001100010100100101000";  # K
+  method : SetupRain() ~ Nil {
+    @rcols := 22; @rcw := 29; @rps := 4; @rch := 24; @rrows := 22;
+
+    @rhead := Float->New[@rcols];
+    @rspd  := Float->New[@rcols];
+    @rlen  := Int->New[@rcols];
+    for(c := 0; c < @rcols; c += 1;) {
+      @rhead[c] := 0.0 - Int->Random(0, @rrows)->As(Float);
+      @rspd[c]  := Int->Random(18, 65)->As(Float) / 100.0;
+      @rlen[c]  := Int->Random(3, 8);
+    };
+
+    # 12 trail shades: bright white-green head fading to deep green
+    @green := Color->New[12];
+    @green[0] := Color->New(205, 255, 205);
+    for(k := 1; k < 12; k += 1;) {
+      t := k->As(Float) / 12.0;
+      g := (255.0 * (1.0 - t * 0.82))->As(Int);
+      side := (34.0 * (1.0 - t))->As(Int);
+      @green[k] := Color->New(side, g, side);
+    };
+
+    # 8 chunky 3x5 glyphs (rows top->bottom, bit2=left .. bit0=right)
+    @rg := Int->New[40];
+    SetGlyph(0,  7, 2, 2, 2, 7);   # I
+    SetGlyph(1,  5, 5, 7, 5, 5);   # H
+    SetGlyph(2,  7, 1, 2, 4, 7);   # Z
+    SetGlyph(3,  2, 7, 2, 7, 2);   # cross
+    SetGlyph(4,  7, 5, 5, 5, 7);   # box
+    SetGlyph(5,  4, 4, 4, 4, 7);   # L
+    SetGlyph(6,  7, 4, 7, 4, 7);   # E
+    SetGlyph(7,  2, 5, 7, 5, 5);   # A
+  }
+
+  method : SetGlyph(gi : Int, r0 : Int, r1 : Int, r2 : Int, r3 : Int, r4 : Int) ~ Nil {
+    b := gi * 5;
+    @rg[b] := r0; @rg[b+1] := r1; @rg[b+2] := r2; @rg[b+3] := r3; @rg[b+4] := r4;
+  }
+
+  method : SetupWordmark() ~ Nil {
+    # 80s neon: per-row gradient from cyan (top) to hot magenta (bottom) + dim halo
+    @neon := Color->New[7];
+    @neon_glow := Color->New[7];
+    for(i := 0; i < 7; i += 1;) {
+      t := i->As(Float) / 6.0;
+      rr := (40.0 + 215.0 * t)->As(Int);
+      gg := (235.0 - 150.0 * t)->As(Int);
+      @neon[i]      := Color->New(rr, gg, 255);
+      @neon_glow[i] := Color->New(rr / 4 + 8, gg / 4 + 8, 95);
+    };
+
+    # OBJECK -- 6 letters, 5x7 each (rows top->bottom, bit4=left .. bit0=right)
+    @word := Int->New[42];
+    SetLetter(0, 14, 17, 17, 17, 17, 17, 14);   # O
+    SetLetter(1, 30, 17, 17, 30, 17, 17, 30);   # B
+    SetLetter(2,  7,  2,  2,  2, 18, 18, 12);   # J
+    SetLetter(3, 31, 16, 16, 30, 16, 16, 31);   # E
+    SetLetter(4, 14, 17, 16, 16, 16, 17, 14);   # C
+    SetLetter(5, 17, 18, 20, 24, 20, 18, 17);   # K
+  }
+
+  method : SetLetter(li : Int, r0 : Int, r1 : Int, r2 : Int, r3 : Int, r4 : Int, r5 : Int, r6 : Int) ~ Nil {
+    b := li * 7;
+    @word[b] := r0; @word[b+1] := r1; @word[b+2] := r2; @word[b+3] := r3;
+    @word[b+4] := r4; @word[b+5] := r5; @word[b+6] := r6;
+  }
+
+  method : SetupHud() ~ Nil {
+    @hud_col := Color->New(150, 255, 190);    # bright mint on a dark panel
+    @hud_bg := Color->New(10, 16, 22);        # HUD backdrop panel
+    # 3x5 font; glyph index = position of the char in @hud_chars
+    @hud_chars := "0123456789FPSMEHAGCUK/%";
+    @hud_font := Int->New[@hud_chars->Size() * 5];
+    SetGlyphH(0,  7, 5, 5, 5, 7);   # 0
+    SetGlyphH(1,  2, 6, 2, 2, 7);   # 1
+    SetGlyphH(2,  7, 1, 7, 4, 7);   # 2
+    SetGlyphH(3,  7, 1, 7, 1, 7);   # 3
+    SetGlyphH(4,  5, 5, 7, 1, 1);   # 4
+    SetGlyphH(5,  7, 4, 7, 1, 7);   # 5
+    SetGlyphH(6,  7, 4, 7, 5, 7);   # 6
+    SetGlyphH(7,  7, 1, 2, 2, 2);   # 7
+    SetGlyphH(8,  7, 5, 7, 5, 7);   # 8
+    SetGlyphH(9,  7, 5, 7, 1, 7);   # 9
+    SetGlyphH(10, 7, 4, 7, 4, 4);   # F
+    SetGlyphH(11, 7, 5, 7, 4, 4);   # P
+    SetGlyphH(12, 7, 4, 7, 1, 7);   # S
+    SetGlyphH(13, 5, 7, 7, 5, 5);   # M
+    SetGlyphH(14, 7, 4, 7, 4, 7);   # E
+    SetGlyphH(15, 5, 5, 7, 5, 5);   # H
+    SetGlyphH(16, 2, 5, 7, 5, 5);   # A
+    SetGlyphH(17, 7, 4, 5, 5, 7);   # G
+    SetGlyphH(18, 7, 4, 4, 4, 7);   # C
+    SetGlyphH(19, 5, 5, 5, 5, 7);   # U
+    SetGlyphH(20, 5, 6, 4, 6, 5);   # K
+    SetGlyphH(21, 1, 1, 2, 4, 4);   # /
+    SetGlyphH(22, 5, 1, 2, 4, 5);   # %
+
+    @cpu_prev_time := System.Runtime->GetProperty("runtime.cpu.time")->ToInt();
+    @cpu_prev_wall := Timer->GetTicks();
+    @stat_cpu_pct := 0;
+  }
+
+  method : SetGlyphH(gi : Int, r0 : Int, r1 : Int, r2 : Int, r3 : Int, r4 : Int) ~ Nil {
+    b := gi * 5;
+    @hud_font[b] := r0; @hud_font[b+1] := r1; @hud_font[b+2] := r2;
+    @hud_font[b+3] := r3; @hud_font[b+4] := r4;
+  }
+
+  method : SetupSound() ~ Nil {
+    @sound_ok := false;
+    Mixer->OpenAudio(22050, 0x8010, 2, 1024);
+    GenBoingWav("boing_sfx.wav");
+    @boing := MixChunk->New("boing_sfx.wav");
+    if(@boing <> Nil & <>@boing->IsNull()) {
+      @sound_ok := true;
+    };
+  }
+
+  method : GenBoingWav(file : String) ~ Nil {
+    sr := 22050;
+    n := 4600;
+    data_size := n * 2;
+    fw := FileWriter->New(file);
+    if(<>fw->IsOpen()) { return; };
+
+    fw->WriteByte(82); fw->WriteByte(73); fw->WriteByte(70); fw->WriteByte(70);
+    WriteU32(fw, 36 + data_size);
+    fw->WriteByte(87); fw->WriteByte(65); fw->WriteByte(86); fw->WriteByte(69);
+    fw->WriteByte(102); fw->WriteByte(109); fw->WriteByte(116); fw->WriteByte(32);
+    WriteU32(fw, 16);
+    WriteU16(fw, 1);
+    WriteU16(fw, 1);
+    WriteU32(fw, sr);
+    WriteU32(fw, sr * 2);
+    WriteU16(fw, 2);
+    WriteU16(fw, 16);
+    fw->WriteByte(100); fw->WriteByte(97); fw->WriteByte(116); fw->WriteByte(97);
+    WriteU32(fw, data_size);
+
+    phase := 0.0;
+    f0 := 215.0; f1 := 62.0;
+    twopi := 2.0 * Float->Pi();
+    srf := sr->As(Float);
+    nf := n->As(Float);
+    for(i := 0; i < n; i += 1;) {
+      t := i->As(Float) / nf;
+      freq := f0 + (f1 - f0) * t;
+      phase += twopi * freq / srf;
+      env := (1.0 - t) * (1.0 - t);
+      if(t < 0.015) { env := env * (t / 0.015); };
+      val := env * (0.82 * phase->Sin() + 0.18 * (phase + phase)->Sin());
+      sv := (val * 27000.0)->As(Int);
+      if(sv > 32767) { sv := 32767; };
+      if(sv < -32768) { sv := -32768; };
+      u := sv;
+      if(u < 0) { u := u + 65536; };
+      fw->WriteByte(u % 256);
+      fw->WriteByte((u / 256) % 256);
+    };
+    fw->Close();
+  }
+
+  method : WriteU32(fw : FileWriter, v : Int) ~ Nil {
+    fw->WriteByte(v % 256); fw->WriteByte((v / 256) % 256);
+    fw->WriteByte((v / 65536) % 256); fw->WriteByte((v / 16777216) % 256);
+  }
+
+  method : WriteU16(fw : FileWriter, v : Int) ~ Nil {
+    fw->WriteByte(v % 256); fw->WriteByte((v / 256) % 256);
   }
 
   method : Run() ~ Nil {
@@ -110,6 +333,10 @@ class BoingBall {
       "--- Error initializing SDL ---"->ErrorLine();
       return;
     };
+
+    @fps_t0 := Timer->GetTicks();
+    @fps_count := 0;
+    @fps_val := 0;
 
     e := @framework->GetEvent();
     quit := false;
@@ -124,14 +351,29 @@ class BoingBall {
       };
 
       Update();
-      r := @framework->GetRenderer();
-      DrawGrid(r);
-      DrawWordmark(r);
-      DrawShadow(r);
-      DrawBall(r);
+      UpdateRain();
+
+      rend := @framework->GetRenderer();
+      DrawRain(rend);
+      DrawWordmark(rend);
+      DrawSphere(rend);
+      DrawHud(rend);
 
       @framework->Show();
       @framework->FrameEnd();
+
+      @frame += 1;
+      @fps_count += 1;
+      now := Timer->GetTicks();
+      dt := now - @fps_t0;
+      if(dt >= 500) {
+        @fps_val := (@fps_count * 1000) / dt;
+        @fps_count := 0;
+        @fps_t0 := now;
+      };
+      if(@frame % 20 = 0) {
+        PollStats();
+      };
     };
 
     leaving {
@@ -141,104 +383,235 @@ class BoingBall {
 
   method : Update() ~ Nil {
     rad := C->R->As(Float);
-    @vy += 0.55;            # gravity
+    @vy += 0.12;
     @bx += @vx;
     @by += @vy;
 
+    bounced := false;
     if(@by + rad >= C->FLOOR->As(Float)) {
       @by := C->FLOOR->As(Float) - rad;
-      @vy := @vy * -1.0;    # perfect bounce -> perpetual
+      @vy := @vy * -0.985;
+      if(0.0 - @vy < 4.4) { @vy := -4.4; };
+      bounced := true;
     };
     if(@bx - rad <= C->WALL_L->As(Float)) {
       @bx := C->WALL_L->As(Float) + rad;
       @vx := @vx * -1.0;
       @spin_dir := @spin_dir * -1;
+      @spin_speed := 0.035 + Int->Random(0, 50)->As(Float) / 1000.0;   # vary spin on corner
+      bounced := true;
     }
     else if(@bx + rad >= C->WALL_R->As(Float)) {
       @bx := C->WALL_R->As(Float) - rad;
       @vx := @vx * -1.0;
       @spin_dir := @spin_dir * -1;
+      @spin_speed := 0.035 + Int->Random(0, 50)->As(Float) / 1000.0;
+      bounced := true;
     };
 
-    @spin += 0.05 * @spin_dir->As(Float);
+    if(bounced & @sound_ok) {
+      @boing->PlayChannel(-1, 0);
+    };
+
+    @spin += @spin_speed * @spin_dir->As(Float);
   }
 
-  # Live per-pixel sphere: for each scanline, emit horizontal runs of constant
-  # color (checker parity x depth band) as single DrawLine calls.
-  method : DrawBall(r : Renderer) ~ Nil {
-    diam := C->DIAM;
-    lx := @bx->As(Int) - C->R;
-    ty := @by->As(Int) - C->R;
+  method : UpdateRain() ~ Nil {
+    rrowsf := @rrows->As(Float);
+    for(c := 0; c < @rcols; c += 1;) {
+      @rhead[c] += @rspd[c];
+      if(@rhead[c] - @rlen[c]->As(Float) > rrowsf) {
+        @rhead[c] := 0.0 - Int->Random(0, 12)->As(Float);
+        @rspd[c]  := Int->Random(18, 65)->As(Float) / 100.0;
+        @rlen[c]  := Int->Random(4, 11);
+      };
+    };
+  }
 
-    for(py := 0; py < diam; py += 1;) {
-      base := py * diam;
-      sy := ty + py;
-      run := -1;
-      start := 0;
-      for(px := 0; px < diam; px += 1;) {
-        idx := base + px;
-        ci := -1;
-        b := @band[idx];
-        if(b >= 0) {
-          li := ((@lon0[idx] + @spin) * @inv_cell + 1000.0)->As(Int);
-          parity := (li + @lat_idx[idx]) % 2;
-          ci := parity * 3 + b;
+  # ----- drawing -----------------------------------------------------------
+
+  method : DrawRain(r : Renderer) ~ Nil {
+    for(c := 0; c < @rcols; c += 1;) {
+      head := @rhead[c]->As(Int);
+      len := @rlen[c];
+      gx := c * @rcw + 1;
+      for(k := 0; k < len; k += 1;) {
+        row := head - k;
+        if(row >= 0 & row < @rrows) {
+          gi := (c * 7 + row * 13 + @frame / 3) % 8;
+          shade := k;
+          if(shade > 11) { shade := 11; };
+          DrawGlyph(r, gx, row * @rch, gi, @green[shade]);
         };
-        if(ci <> run) {
-          if(run >= 0) {
-            r->SetDrawColor(@br[run], @bg[run], @bb[run], 255);
-            r->DrawLine(lx + start, sy, lx + px - 1, sy);
+      };
+    };
+  }
+
+  method : DrawGlyph(r : Renderer, gx : Int, gy : Int, gi : Int, col : Color) ~ Nil {
+    base := gi * 5;
+    ps := @rps;
+    for(row := 0; row < 5; row += 1;) {
+      bits := @rg[base + row];
+      py := gy + row * ps;
+      div := 4;
+      runstart := -1;
+      for(j := 0; j < 3; j += 1;) {
+        if((bits / div) % 2 = 1) {
+          if(runstart < 0) { runstart := j; };
+        }
+        else {
+          if(runstart >= 0) {
+            r->BoxColor(gx + runstart * ps, py, gx + j * ps - 1, py + ps - 1, col);
+            runstart := -1;
           };
-          run := ci;
-          start := px;
         };
+        div := div / 2;
       };
-      if(run >= 0) {
-        r->SetDrawColor(@br[run], @bg[run], @bb[run], 255);
-        r->DrawLine(lx + start, sy, lx + diam - 1, sy);
+      if(runstart >= 0) {
+        r->BoxColor(gx + runstart * ps, py, gx + 3 * ps - 1, py + ps - 1, col);
       };
-    };
-  }
-
-  method : DrawShadow(r : Renderer) ~ Nil {
-    sx := @bx->As(Int) + 34;
-    sy := @by->As(Int) + 30;
-    r->FilledEllipseColor(sx, sy, C->R, (C->R * 6) / 10, @shadow_col);
-  }
-
-  method : DrawGrid(r : Renderer) ~ Nil {
-    r->SetDrawColor(168, 36, 168, 255);
-    g := C->GRID;
-    gx := 0;
-    while(gx <= C->W) {
-      r->DrawLine(gx, 0, gx, C->H);
-      gx += g;
-    };
-    gy := 0;
-    while(gy <= C->H) {
-      r->DrawLine(0, gy, C->W, gy);
-      gy += g;
     };
   }
 
   method : DrawWordmark(r : Renderer) ~ Nil {
-    cell := 13;
-    cols := 5;
-    rows := 7;
-    letter_w := cols * cell + cell;             # 5 cells + 1 cell gap
-    total := 6 * letter_w - cell;
-    x0 := (C->W - total) / 2;
-    y0 := (C->H - rows * cell) / 2;
-
-    for(gi := 0; gi < 6; gi += 1;) {
-      glyph := @glyphs[gi];
-      for(row := 0; row < rows; row += 1;) {
-        for(col := 0; col < cols; col += 1;) {
-          if(glyph->Get(row * cols + col) = '1') {
-            cx := x0 + gi * letter_w + col * cell;
-            cy := y0 + row * cell;
-            r->BoxColor(cx, cy, cx + cell - 3, cy + cell - 3, @mark_col);
+    wps := 7;
+    lw := 5 * wps;
+    gap := wps + 3;
+    total := 6 * lw + 5 * gap;
+    ox := (C->W - total) / 2;
+    oy := 52;
+    for(li := 0; li < 6; li += 1;) {
+      lbase := li * 7;
+      lx := ox + li * (lw + gap);
+      for(row := 0; row < 7; row += 1;) {
+        bits := @word[lbase + row];
+        py := oy + row * wps;
+        div := 16;
+        runstart := -1;
+        for(j := 0; j < 5; j += 1;) {
+          if((bits / div) % 2 = 1) {
+            if(runstart < 0) { runstart := j; };
+          }
+          else {
+            if(runstart >= 0) {
+              DrawNeonRun(r, lx + runstart * wps, py, (j - runstart) * wps, wps, row);
+              runstart := -1;
+            };
           };
+          div := div / 2;
+        };
+        if(runstart >= 0) {
+          DrawNeonRun(r, lx + runstart * wps, py, (5 - runstart) * wps, wps, row);
+        };
+      };
+    };
+  }
+
+  method : DrawNeonRun(r : Renderer, x : Int, y : Int, w : Int, h : Int, row : Int) ~ Nil {
+    r->BoxColor(x - 2, y - 2, x + w + 1, y + h + 1, @neon_glow[row]);   # halo
+    r->BoxColor(x, y, x + w - 1, y + h - 1, @neon[row]);               # tube
+  }
+
+  # poll the live VM stats exposed by the new System.Runtime "runtime.*" keys
+  method : PollStats() ~ Nil {
+    @stat_mem_mb   := System.Runtime->GetProperty("runtime.memory.used")->ToInt() / 1048576;
+    @stat_heap_kb  := System.Runtime->GetProperty("runtime.memory.allocated")->ToInt() / 1024;
+    @stat_gc_minor := System.Runtime->GetProperty("runtime.gc.minor")->ToInt();
+    @stat_gc_major := System.Runtime->GetProperty("runtime.gc.major")->ToInt();
+
+    # CPU usage % of one core = process CPU-time delta / wall-time delta
+    cpu_now := System.Runtime->GetProperty("runtime.cpu.time")->ToInt();
+    wall_now := Timer->GetTicks();
+    dwall := wall_now - @cpu_prev_wall;
+    if(dwall > 0) {
+      @stat_cpu_pct := (100 * (cpu_now - @cpu_prev_time)) / dwall;
+    };
+    @cpu_prev_time := cpu_now;
+    @cpu_prev_wall := wall_now;
+  }
+
+  method : DrawHud(r : Renderer) ~ Nil {
+    ps := 2;
+    x := 8;
+    r->BoxColor(4, 2, 96, 72, @hud_bg);   # one dark panel behind the readout
+    DrawHudText(r, x, 6,  ps, "FPS " + @fps_val->ToString());
+    DrawHudText(r, x, 19, ps, "MEM " + @stat_mem_mb->ToString() + "M");
+    DrawHudText(r, x, 32, ps, "HEAP " + @stat_heap_kb->ToString() + "K");
+    DrawHudText(r, x, 45, ps, "GC " + @stat_gc_minor->ToString() + "/" + @stat_gc_major->ToString());
+    DrawHudText(r, x, 58, ps, "CPU " + @stat_cpu_pct->ToString() + "%");
+  }
+
+  method : DrawHudText(r : Renderer, x : Int, y : Int, ps : Int, text : String) ~ Nil {
+    chars := text->ToCharArray();
+    for(i := 0; i < chars->Size(); i += 1;) {
+      gi := @hud_chars->Find(chars[i]);
+      if(gi >= 0) {
+        DrawHudGlyphAt(r, x, y, gi, ps);
+      };
+      x += 4 * ps;   # 3-wide glyph + 1-cell gap
+    };
+  }
+
+  method : DrawHudGlyphAt(r : Renderer, x : Int, y : Int, gi : Int, ps : Int) ~ Nil {
+    base := gi * 5;
+    for(row := 0; row < 5; row += 1;) {
+      bits := @hud_font[base + row];
+      py := y + row * ps;
+      div := 4;
+      runstart := -1;
+      for(j := 0; j < 3; j += 1;) {
+        if((bits / div) % 2 = 1) {
+          if(runstart < 0) { runstart := j; };
+        }
+        else {
+          if(runstart >= 0) {
+            EmitHudRun(r, x + runstart * ps, py, x + j * ps - 1, py + ps - 1);
+            runstart := -1;
+          };
+        };
+        div := div / 2;
+      };
+      if(runstart >= 0) {
+        EmitHudRun(r, x + runstart * ps, py, x + 3 * ps - 1, py + ps - 1);
+      };
+    };
+  }
+
+  method : EmitHudRun(r : Renderer, x1 : Int, y1 : Int, x2 : Int, y2 : Int) ~ Nil {
+    r->BoxColor(x1, y1, x2, y2, @hud_col);
+  }
+
+  # live checker sphere (tilted spin), emitted as horizontal run-length filled boxes
+  method : DrawSphere(r : Renderer) ~ Nil {
+    lx := @bx->As(Int) - 90;       # literals: 'local := C->CONST' can read back 0
+    ty0 := @by->As(Int) - 90;
+    for(py := 0; py < 180; py += 1;) {
+      x0 := @cx0[py];
+      x1 := @cx1[py];
+      if(x0 <= x1) {
+        sy := ty0 + py;
+        base := py * 180;
+        run := -1;
+        start := x0;
+        for(px := x0; px <= x1; px += 1;) {
+          idx := base + px;
+          ci := -1;
+          b := @band[idx];
+          if(b >= 0) {
+            # static cell index; @spin only scrolls the colors through it (color cycling)
+            li := ((@lon0[idx] + @spin) * @inv_cell + 1000.0)->As(Int);
+            ci := ((li + @lat_idx[idx]) % 2) * 2 + b;
+          };
+          if(ci <> run) {
+            if(run >= 0) {
+              r->BoxColor(lx + start, sy, lx + px - 1, sy, @ball_cols[run]);
+            };
+            run := ci;
+            start := px;
+          };
+        };
+        if(run >= 0) {
+          r->BoxColor(lx + start, sy, lx + x1, sy, @ball_cols[run]);
         };
       };
     };
@@ -250,7 +623,6 @@ consts C {
   H := 512,
   R := 90,
   DIAM := 180,
-  GRID := 32,
   FLOOR := 470,
   WALL_L := 40,
   WALL_R := 600
