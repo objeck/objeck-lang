@@ -5,6 +5,23 @@ A two-track effort: (A) a **structured-concurrency** facility (`TaskScope`/nurse
 from a fan-out investigation of the Thread model, the GC/stop-the-world lifecycle, the
 monitor surface, and a runtime-metrics catalog.
 
+## Status — ALL PHASES SHIPPED
+
+- **Phase 0** — MUST-have monitor keys (threads/STW/nursery/overhead). `feat(vm): Phase 0`.
+- **Phase 1/2** — `TaskScope` validated + self-checking regression (`programs/regression/task_scope.obs`). `test(concurrency)`.
+- **Phase 3** — NICE metrics (pause/promotion/alloc-rate/contention/uptime). `feat(vm): Phase 3`.
+  Plus a table-driven `GetRuntimeStat` refactor.
+- **Phase 1 (lib)** — `System.Concurrency.{Task,TaskScope,Monitor}` shipped as a new
+  self-contained `concurrent.obl` (no `lang.obl`/`gen_collect.obl` change; wired into
+  `update_version{,_arm}.sh` + `ci-build.yml`). `feat(lib)`.
+- **Phase 4** — `programs/examples/boing_ball_mt.obs`, the multitasking tuning console.
+  `feat(examples): Boing Ball MT`.
+
+Outcome matched the feasibility verdict: **zero VM change required for concurrency**; the
+only C++ was the additive monitors. Deferred: typed `Runtime` accessors *in lang.obs* (the
+`Monitor` class covers this from the new lib without a `lang.obl` rebuild); mid-work
+(non-boundary) cancellation; a bounded worker pool.
+
 ## Feasibility verdict
 
 **Structured concurrency needs ZERO VM changes.** It is 100% `lib_src`. The existing
