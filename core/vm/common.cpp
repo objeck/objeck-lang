@@ -4122,6 +4122,33 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     const size_t alloc = MemoryManager::GetHeapAllocatedSize();
     val = rss > alloc ? rss - alloc : 0;
   }
+  else if(key == L"runtime.gc.pause.last_us") {
+    val = (size_t)MemoryManager::GetPauseLastUs();
+  }
+  else if(key == L"runtime.gc.pause.max_us") {
+    val = (size_t)MemoryManager::GetPauseMaxUs();
+  }
+  else if(key == L"runtime.gc.pause.avg_us") {
+    val = (size_t)MemoryManager::GetPauseAvgUs();
+  }
+  else if(key == L"runtime.gc.promoted.last") {
+    val = MemoryManager::GetPromotedLast();
+  }
+  else if(key == L"runtime.gc.promoted.total") {
+    val = MemoryManager::GetPromotedTotal();
+  }
+  else if(key == L"runtime.gc.old.bytes") {
+    val = MemoryManager::GetOldGenBytes();
+  }
+  else if(key == L"runtime.gc.contention") {
+    val = (size_t)MemoryManager::GetGcContention();
+  }
+  else if(key == L"runtime.alloc.since_gc") {
+    val = MemoryManager::GetAllocSinceGc();
+  }
+  else if(key == L"runtime.uptime_ms") {
+    val = (size_t)MemoryManager::GetUptimeMs();
+  }
   else {
     return false;
   }

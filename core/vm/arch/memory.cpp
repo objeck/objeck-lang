@@ -31,6 +31,7 @@
 
 #include "memory.h"
 #include <iomanip>
+#include <chrono>
 
 StackProgram* MemoryManager::prgm;
 
@@ -48,6 +49,20 @@ size_t MemoryManager::uncollected_count;
 size_t MemoryManager::collected_count;
 std::atomic<long> MemoryManager::minor_gc_count(0);
 std::atomic<long> MemoryManager::major_gc_count(0);
+std::atomic<long> MemoryManager::gc_pause_last_us(0);
+std::atomic<long> MemoryManager::gc_pause_max_us(0);
+std::atomic<long long> MemoryManager::gc_pause_total_us(0);
+std::atomic<size_t> MemoryManager::gc_promoted_last(0);
+std::atomic<size_t> MemoryManager::gc_promoted_total(0);
+std::atomic<size_t> MemoryManager::gc_alloc_at_last(0);
+std::atomic<long> MemoryManager::gc_contention(0);
+// Process start, for runtime.uptime_ms and the alloc-rate derivation.
+static std::chrono::steady_clock::time_point g_mm_start_time = std::chrono::steady_clock::now();
+
+long MemoryManager::GetUptimeMs() {
+  return (long)std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::steady_clock::now() - g_mm_start_time).count();
+}
 
 // Young generation bump allocator
 uint8_t* MemoryManager::young_region;
@@ -692,6 +707,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
 #ifdef _WIN32
   // only one thread at a time can invoke the gargabe collector
   if(!TryEnterCriticalSection(&marked_sweep_lock)) {
+    gc_contention.fetch_add(1, std::memory_order_relaxed);
     // Another thread is collecting. Count as parked (this thread's VM roots are
     // stable while it blocks here) and wait the collection out, rather than
     // mutating concurrently. A one-shot SafePoint would race the collector
@@ -704,6 +720,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   }
 #else
   if(pthread_mutex_trylock(&marked_sweep_lock)) {
+    gc_contention.fetch_add(1, std::memory_order_relaxed);
     BeginBlocking();
     pthread_mutex_lock(&marked_sweep_lock);
     pthread_mutex_unlock(&marked_sweep_lock);
@@ -772,6 +789,10 @@ void* MemoryManager::CollectMemory(void* arg)
   else {
     major_gc_count.fetch_add(1, std::memory_order_relaxed);
   }
+
+  // Phase 3: time this collection (≈ the stop-the-world pause; the world is parked
+  // before CollectMemory runs). Recorded just before the single return below.
+  const std::chrono::steady_clock::time_point pause_start = std::chrono::steady_clock::now();
 
 
 #ifdef _DEBUG_GC
@@ -1103,6 +1124,20 @@ void* MemoryManager::CollectMemory(void* arg)
   end = clock();
   std::wcout << std::dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
+
+  // Phase 3 metrics: pause time, promotion, and the alloc-since-GC snapshot.
+  {
+    const long pause_us = (long)std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::steady_clock::now() - pause_start).count();
+    gc_pause_last_us.store(pause_us, std::memory_order_relaxed);
+    if(pause_us > gc_pause_max_us.load(std::memory_order_relaxed)) {
+      gc_pause_max_us.store(pause_us, std::memory_order_relaxed);
+    }
+    gc_pause_total_us.fetch_add(pause_us, std::memory_order_relaxed);
+    gc_promoted_last.store(promoted_count, std::memory_order_relaxed);
+    gc_promoted_total.fetch_add(promoted_count, std::memory_order_relaxed);
+    gc_alloc_at_last.store(allocation_size.load(std::memory_order_relaxed), std::memory_order_relaxed);
+  }
 
   return 0;
 }
@@ -2107,6 +2142,7 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 #ifdef _WIN32
   // only one thread at a time can invoke the garbage collector
   if(!TryEnterCriticalSection(&marked_sweep_lock)) {
+    gc_contention.fetch_add(1, std::memory_order_relaxed);
     // Another thread is collecting. Park (counted) and wait the collection out
     // rather than returning while still running: a running thread would stall
     // the other collector's stop-the-world wait and could mutate mid-collection.
@@ -2118,6 +2154,7 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
   }
 #else
   if(pthread_mutex_trylock(&marked_sweep_lock)) {
+    gc_contention.fetch_add(1, std::memory_order_relaxed);
     BeginBlocking();
     pthread_mutex_lock(&marked_sweep_lock);
     pthread_mutex_unlock(&marked_sweep_lock);

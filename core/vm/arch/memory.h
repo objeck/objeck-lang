@@ -181,6 +181,16 @@ class MemoryManager {
   static std::atomic<long> minor_gc_count;
   static std::atomic<long> major_gc_count;
 
+  // Phase 3 NICE metrics: collection pause (us), promotion, alloc-at-last-GC snapshot,
+  // and lock contention. All written only by a collecting thread; read lock-free.
+  static std::atomic<long> gc_pause_last_us;
+  static std::atomic<long> gc_pause_max_us;
+  static std::atomic<long long> gc_pause_total_us;
+  static std::atomic<size_t> gc_promoted_last;
+  static std::atomic<size_t> gc_promoted_total;
+  static std::atomic<size_t> gc_alloc_at_last;
+  static std::atomic<long> gc_contention;
+
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(size_t* mem);
 
@@ -350,6 +360,25 @@ class MemoryManager {
   static size_t GetNurseryUsed()       { return young_offset.load(std::memory_order_relaxed); }
   static size_t GetNurseryCapacity()   { return young_region_size; }
   static size_t GetRememberedCount()   { return dirty_count.load(std::memory_order_relaxed); }
+
+  // Phase 3 NICE metric getters (lock-free reads).
+  static long   GetPauseLastUs()       { return gc_pause_last_us.load(std::memory_order_relaxed); }
+  static long   GetPauseMaxUs()        { return gc_pause_max_us.load(std::memory_order_relaxed); }
+  static long   GetPauseAvgUs() {
+    const long long n = (long long)minor_gc_count.load(std::memory_order_relaxed) +
+                        (long long)major_gc_count.load(std::memory_order_relaxed);
+    return n ? (long)(gc_pause_total_us.load(std::memory_order_relaxed) / n) : 0;
+  }
+  static size_t GetPromotedLast()      { return gc_promoted_last.load(std::memory_order_relaxed); }
+  static size_t GetPromotedTotal()     { return gc_promoted_total.load(std::memory_order_relaxed); }
+  static size_t GetAllocSinceGc() {
+    const size_t now = allocation_size.load(std::memory_order_relaxed);
+    const size_t at = gc_alloc_at_last.load(std::memory_order_relaxed);
+    return now > at ? now - at : 0;
+  }
+  static long   GetGcContention()      { return gc_contention.load(std::memory_order_relaxed); }
+  static size_t GetOldGenBytes()       { return old_allocation_size; }  // single-word benign read
+  static long   GetUptimeMs();         // defined in memory.cpp (steady_clock)
 
   static bool IsInitialized() {
     return initialized;
