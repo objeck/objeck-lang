@@ -4068,93 +4068,51 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     return false;
   }
 
-  size_t val = 0;
-  if(key == L"runtime.memory.used") {
-    val = GetProcessResidentBytes();
-  }
-  else if(key == L"runtime.memory.allocated") {
-    val = MemoryManager::GetHeapAllocatedSize();
-  }
-  else if(key == L"runtime.memory.max") {
-    val = MemoryManager::GetHeapMaxSize();
-  }
-  else if(key == L"runtime.gc.minor") {
-    val = (size_t)MemoryManager::GetMinorGcCount();
-  }
-  else if(key == L"runtime.gc.major") {
-    val = (size_t)MemoryManager::GetMajorGcCount();
-  }
-  else if(key == L"runtime.gc.total") {
-    val = (size_t)(MemoryManager::GetMinorGcCount() + MemoryManager::GetMajorGcCount());
-  }
-  else if(key == L"runtime.cpu.count") {
-    val = (size_t)std::thread::hardware_concurrency();
-  }
-  else if(key == L"runtime.cpu.time") {
-    val = GetProcessCpuTimeMs();
-  }
-  else if(key == L"runtime.threads.active") {
-    val = (size_t)MemoryManager::GetMutatorCount();
-  }
-  else if(key == L"runtime.threads.parked") {
-    val = (size_t)MemoryManager::GetParkedCount();
-  }
-  else if(key == L"runtime.threads.running") {
-    const long a = MemoryManager::GetMutatorCount();
-    const long p = MemoryManager::GetParkedCount();
-    val = (size_t)(a > p ? a - p : 0);
-  }
-  else if(key == L"runtime.gc.stw") {
-    val = MemoryManager::IsStwActive() ? 1 : 0;
-  }
-  else if(key == L"runtime.gc.nursery.used") {
-    val = MemoryManager::GetNurseryUsed();
-  }
-  else if(key == L"runtime.gc.nursery.occupancy_permille") {
-    const size_t cap = MemoryManager::GetNurseryCapacity();
-    val = cap ? (MemoryManager::GetNurseryUsed() * 1000 / cap) : 0;
-  }
-  else if(key == L"runtime.gc.remembered") {
-    val = MemoryManager::GetRememberedCount();
-  }
-  else if(key == L"runtime.memory.overhead") {
-    const size_t rss = GetProcessResidentBytes();
-    const size_t alloc = MemoryManager::GetHeapAllocatedSize();
-    val = rss > alloc ? rss - alloc : 0;
-  }
-  else if(key == L"runtime.gc.pause.last_us") {
-    val = (size_t)MemoryManager::GetPauseLastUs();
-  }
-  else if(key == L"runtime.gc.pause.max_us") {
-    val = (size_t)MemoryManager::GetPauseMaxUs();
-  }
-  else if(key == L"runtime.gc.pause.avg_us") {
-    val = (size_t)MemoryManager::GetPauseAvgUs();
-  }
-  else if(key == L"runtime.gc.promoted.last") {
-    val = MemoryManager::GetPromotedLast();
-  }
-  else if(key == L"runtime.gc.promoted.total") {
-    val = MemoryManager::GetPromotedTotal();
-  }
-  else if(key == L"runtime.gc.old.bytes") {
-    val = MemoryManager::GetOldGenBytes();
-  }
-  else if(key == L"runtime.gc.contention") {
-    val = (size_t)MemoryManager::GetGcContention();
-  }
-  else if(key == L"runtime.alloc.since_gc") {
-    val = MemoryManager::GetAllocSinceGc();
-  }
-  else if(key == L"runtime.uptime_ms") {
-    val = (size_t)MemoryManager::GetUptimeMs();
-  }
-  else {
-    return false;
-  }
+  // Table-driven dispatch: one row per key, each a non-capturing lambda (a plain
+  // function pointer). std::wstring can't be switch()ed, and this keeps the
+  // val=…/to_wstring boilerplate in one place and adding a metric to one row.
+  static const struct { const wchar_t* key; size_t (*fn)(); } kStats[] = {
+    { L"runtime.memory.used",      []() -> size_t { return GetProcessResidentBytes(); } },
+    { L"runtime.memory.allocated", []() -> size_t { return MemoryManager::GetHeapAllocatedSize(); } },
+    { L"runtime.memory.max",       []() -> size_t { return MemoryManager::GetHeapMaxSize(); } },
+    { L"runtime.memory.overhead",  []() -> size_t { const size_t r = GetProcessResidentBytes(),
+                                                                 a = MemoryManager::GetHeapAllocatedSize();
+                                                    return r > a ? r - a : 0; } },
+    { L"runtime.gc.minor",         []() -> size_t { return (size_t)MemoryManager::GetMinorGcCount(); } },
+    { L"runtime.gc.major",         []() -> size_t { return (size_t)MemoryManager::GetMajorGcCount(); } },
+    { L"runtime.gc.total",         []() -> size_t { return (size_t)(MemoryManager::GetMinorGcCount() +
+                                                                    MemoryManager::GetMajorGcCount()); } },
+    { L"runtime.gc.stw",           []() -> size_t { return MemoryManager::IsStwActive() ? 1 : 0; } },
+    { L"runtime.gc.nursery.used",  []() -> size_t { return MemoryManager::GetNurseryUsed(); } },
+    { L"runtime.gc.nursery.occupancy_permille", []() -> size_t {
+                                                    const size_t cap = MemoryManager::GetNurseryCapacity();
+                                                    return cap ? (MemoryManager::GetNurseryUsed() * 1000 / cap) : 0; } },
+    { L"runtime.gc.remembered",    []() -> size_t { return MemoryManager::GetRememberedCount(); } },
+    { L"runtime.gc.pause.last_us", []() -> size_t { return (size_t)MemoryManager::GetPauseLastUs(); } },
+    { L"runtime.gc.pause.max_us",  []() -> size_t { return (size_t)MemoryManager::GetPauseMaxUs(); } },
+    { L"runtime.gc.pause.avg_us",  []() -> size_t { return (size_t)MemoryManager::GetPauseAvgUs(); } },
+    { L"runtime.gc.promoted.last", []() -> size_t { return MemoryManager::GetPromotedLast(); } },
+    { L"runtime.gc.promoted.total",[]() -> size_t { return MemoryManager::GetPromotedTotal(); } },
+    { L"runtime.gc.old.bytes",     []() -> size_t { return MemoryManager::GetOldGenBytes(); } },
+    { L"runtime.gc.contention",    []() -> size_t { return (size_t)MemoryManager::GetGcContention(); } },
+    { L"runtime.threads.active",   []() -> size_t { return (size_t)MemoryManager::GetMutatorCount(); } },
+    { L"runtime.threads.parked",   []() -> size_t { return (size_t)MemoryManager::GetParkedCount(); } },
+    { L"runtime.threads.running",  []() -> size_t { const long a = MemoryManager::GetMutatorCount(),
+                                                               p = MemoryManager::GetParkedCount();
+                                                    return (size_t)(a > p ? a - p : 0); } },
+    { L"runtime.alloc.since_gc",   []() -> size_t { return MemoryManager::GetAllocSinceGc(); } },
+    { L"runtime.cpu.count",        []() -> size_t { return (size_t)std::thread::hardware_concurrency(); } },
+    { L"runtime.cpu.time",         []() -> size_t { return GetProcessCpuTimeMs(); } },
+    { L"runtime.uptime_ms",        []() -> size_t { return (size_t)MemoryManager::GetUptimeMs(); } },
+  };
 
-  out = std::to_wstring(val);
-  return true;
+  for(const auto& e : kStats) {
+    if(key == e.key) {
+      out = std::to_wstring(e.fn());
+      return true;
+    }
+  }
+  return false;
 }
 
 bool TrapProcessor::GetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
