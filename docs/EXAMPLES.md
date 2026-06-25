@@ -11,6 +11,7 @@ Collection of practical code examples demonstrating Objeck's capabilities.
   - [OpenAI: Realtime, Moderation, Batch, Image Recognition](#ai-integration)
   - [Gemini: Generate, Grounding, Batch Embeddings, Files, Caching](#ai-integration)
 - [Computer Vision](#computer-vision)
+- [Graphics & GC Visualization](#graphics)
 - [More Examples](#more-examples)
 
 ---
@@ -312,6 +313,35 @@ edges->Save("edges.jpg");
 ```
 
 ---
+
+<a name="graphics"></a>
+## Graphics & GC Visualization
+
+### Boing Ball — live GC/CPU visualizer
+
+The Amiga 1984 Boing Ball recreated with SDL2 (`programs/examples/boing_ball.obs`): an
+Amiga-style color-cycled checker sphere with real bounce physics, a Matrix-rain backdrop, a
+neon OBJECK wordmark, and a HUD reading the VM's live `runtime.*` monitors (FPS / memory /
+heap / GC / CPU). Asset-free (it synthesizes its own "boing" WAV) — and a hands-on way to
+*watch* the garbage collector work.
+
+```
+compile: obc -src boing_ball.obs -lib sdl2,sdl_game,json,gen_collect
+run:     obr boing_ball        # or: obr --gc-threshold=64M boing_ball
+```
+
+### Boing Ball MT — multitasking tuning console
+
+`boing_ball_mt.obs` adds structured concurrency: the ball animates on the main thread while
+**SPACE / W** spawn background worker tasks (`System.Concurrency.TaskScope`) that churn the
+heap, competing for the cooperative stop-the-world. The HUD shows live thread count, GC
+pauses, collection counts, and contention; on quit, `leaving { scope->JoinAll(); }` joins
+every worker cleanly. A nod to the Amiga demo that ran a terminal *while the ball bounced*.
+
+```
+compile: obc -src boing_ball_mt.obs -lib sdl2,sdl_game,json,gen_collect,concurrent
+run:     obr boing_ball_mt
+```
 
 <a name="more-examples"></a>
 ## More Examples

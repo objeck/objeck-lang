@@ -335,6 +335,61 @@ class CalculateThread from Thread {
 }
 ```
 
+### Structured Concurrency
+
+A `TaskScope` (nursery) spawns closures as worker `Thread`s. Wrapped in a
+`leaving { scope->JoinAll(); }` block it can never exit until every child has joined —
+the structured-concurrency invariant (no task outlives its scope), on any exit path
+(normal, early return, or unwind). Library: `System.Concurrency` (link
+`-lib gen_collect,concurrent`).
+
+```ruby
+use System.Concurrency;
+
+scope := TaskScope->New();
+leaving { scope->JoinAll(); }              # joins all children on every exit path
+a := scope->Spawn(FuncRef->New(\() ~ System.Base : () => { return Work(1); })<System.Base>);
+b := scope->Spawn(FuncRef->New(\() ~ System.Base : () => { return Work(2); })<System.Base>);
+# after the block: a->GetResult(), b->GetResult(); scope->Cancel() for boundary cancel
+```
+
+`TaskScope`: `Spawn(FuncRef<System.Base>)~Task`, `JoinAll()`, `Cancel()`, `IsCancelled()`,
+`Size()`. `Task`: `GetResult()~System.Base`, `IsDone()~Bool`, `DidRun()~Bool`. Each `Task`
+is a real `Thread`, so mutator register/unregister and the GC stop-the-world contract are
+handled for free. Cancellation is cooperative and **boundary-only** — a lambda body can
+call static functions but not instance methods, so it can't poll the scope; `Task.Run`
+checks cancellation before invoking the body.
+
+### Runtime Diagnostics
+
+`System.Concurrency.Monitor` gives typed access to live VM/GC/thread statistics (thin
+wrappers over `System.Runtime->GetProperty("runtime.*")`); all are lock-free reads that do
+not affect GC behavior.
+
+```ruby
+use System.Concurrency;
+
+Monitor->MajorCollections()->PrintLine();   # GC count
+Monitor->LastPauseMicros()->PrintLine();    # last stop-the-world pause (us)
+Monitor->ActiveThreads()->PrintLine();      # registered mutator threads
+Monitor->MemoryOverhead()->PrintLine();     # RSS - live heap (fragmentation gauge)
+```
+
+Or read keys directly: `System.Runtime->GetProperty(key)->ToInt()`.
+
+| key | meaning |
+|---|---|
+| `runtime.memory.used` / `.allocated` / `.max` / `.overhead` | process RSS / live heap / GC threshold / RSS−heap |
+| `runtime.gc.minor` / `.major` / `.total` | collection counts |
+| `runtime.gc.pause.last_us` / `.max_us` / `.avg_us` | stop-the-world pause times (µs) |
+| `runtime.gc.nursery.used` / `.occupancy_permille` | young-generation fill |
+| `runtime.gc.promoted.last` / `.total` / `runtime.gc.old.bytes` | promotion rate / old-gen size |
+| `runtime.gc.remembered` / `.contention` | cross-gen writes since minor GC / collector-lock contention |
+| `runtime.alloc.since_gc` | bytes allocated since the last collection |
+| `runtime.threads.active` / `.parked` / `.running` | mutator threads (`.parked` includes STW/blocked) |
+| `runtime.gc.stw` | 1 while a collection is stopping the world |
+| `runtime.cpu.count` / `.time` / `runtime.uptime_ms` | logical cores / process CPU ms / uptime |
+
 ### Date/Time Handling
 ```ruby
 yesterday := System.Time.Date->New();
