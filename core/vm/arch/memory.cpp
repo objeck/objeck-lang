@@ -46,6 +46,8 @@ std::atomic<size_t> MemoryManager::allocation_size;
 size_t MemoryManager::mem_max_size;
 size_t MemoryManager::uncollected_count;
 size_t MemoryManager::collected_count;
+std::atomic<long> MemoryManager::minor_gc_count(0);
+std::atomic<long> MemoryManager::major_gc_count(0);
 
 // Young generation bump allocator
 uint8_t* MemoryManager::young_region;
@@ -760,6 +762,16 @@ void* MemoryManager::CollectMemory(void* arg)
 
   CollectionInfo* info = (CollectionInfo*)arg;
   const size_t saved_stack_pos = info->stack_pos;  // Save before CheckStack modifies it
+
+  // always-on collection statistics (independent of _MEM_LOGGING / _DEBUG_GC).
+  // This is the single choke point for both minor and major collections; the
+  // minor_gc_mode flag distinguishes which is running.
+  if(minor_gc_mode.load(std::memory_order_acquire)) {
+    minor_gc_count.fetch_add(1, std::memory_order_relaxed);
+  }
+  else {
+    major_gc_count.fetch_add(1, std::memory_order_relaxed);
+  }
 
 
 #ifdef _DEBUG_GC

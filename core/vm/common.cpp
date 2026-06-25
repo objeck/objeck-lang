@@ -43,10 +43,23 @@
 #ifdef _WIN32
 #include "arch/win32/win32.h"
 #include "arch/memory.h"
+#include <psapi.h>
 #pragma comment(lib, "bcrypt.lib")
+#pragma comment(lib, "psapi.lib")
 #else
 #include "arch/memory.h"
 #include "arch/posix/posix.h"
+#endif
+
+// Process/system stats for Runtime->GetProperty("runtime.*") diagnostics
+#include <thread>
+#if defined(__APPLE__)
+#include <mach/mach.h>
+#include <sys/resource.h>
+#elif !defined(_WIN32)
+#include <unistd.h>
+#include <cstdio>
+#include <sys/resource.h>
 #endif
 
 #ifdef _WIN32
@@ -3991,14 +4004,118 @@ bool TrapProcessor::GetVersion(StackProgram* program, size_t* inst, size_t* &op_
   return true;
 }
 
+// Resident set size (physical memory) of this process, in bytes; 0 if unavailable.
+static size_t GetProcessResidentBytes()
+{
+#ifdef _WIN32
+  PROCESS_MEMORY_COUNTERS pmc;
+  pmc.cb = sizeof(pmc);
+  if(K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+    return (size_t)pmc.WorkingSetSize;
+  }
+  return 0;
+#elif defined(__APPLE__)
+  mach_task_basic_info_data_t info;
+  mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+  if(task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &count) == KERN_SUCCESS) {
+    return (size_t)info.resident_size;
+  }
+  return 0;
+#else
+  size_t rss = 0;
+  FILE* fp = fopen("/proc/self/statm", "r");
+  if(fp) {
+    long pages = 0;
+    if(fscanf(fp, "%*s %ld", &pages) == 1) {
+      rss = (size_t)pages * (size_t)sysconf(_SC_PAGESIZE);
+    }
+    fclose(fp);
+  }
+  return rss;
+#endif
+}
+
+// Total CPU time (user + kernel) consumed by this process, in milliseconds; the
+// caller samples it over an interval to derive a CPU-usage percentage.
+static size_t GetProcessCpuTimeMs()
+{
+#ifdef _WIN32
+  FILETIME ftCreate, ftExit, ftKernel, ftUser;
+  if(GetProcessTimes(GetCurrentProcess(), &ftCreate, &ftExit, &ftKernel, &ftUser)) {
+    ULARGE_INTEGER k, u;
+    k.LowPart = ftKernel.dwLowDateTime; k.HighPart = ftKernel.dwHighDateTime;
+    u.LowPart = ftUser.dwLowDateTime;   u.HighPart = ftUser.dwHighDateTime;
+    return (size_t)((k.QuadPart + u.QuadPart) / 10000ULL);  // 100-ns units -> ms
+  }
+  return 0;
+#else
+  struct rusage ru;
+  if(getrusage(RUSAGE_SELF, &ru) == 0) {
+    return (size_t)ru.ru_utime.tv_sec * 1000 + (size_t)ru.ru_utime.tv_usec / 1000 +
+           (size_t)ru.ru_stime.tv_sec * 1000 + (size_t)ru.ru_stime.tv_usec / 1000;
+  }
+  return 0;
+#endif
+}
+
+// Live runtime/GC/CPU stats, surfaced through the 'runtime.*' property namespace so
+// Objeck code can read them via Runtime->GetProperty(...) with no new bytecode trap.
+// Returns false (and leaves 'out' untouched) for keys it doesn't handle, so the
+// caller falls back to the normal program property store.
+static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
+{
+  if(key.rfind(L"runtime.", 0) != 0) {
+    return false;
+  }
+
+  size_t val = 0;
+  if(key == L"runtime.memory.used") {
+    val = GetProcessResidentBytes();
+  }
+  else if(key == L"runtime.memory.allocated") {
+    val = MemoryManager::GetHeapAllocatedSize();
+  }
+  else if(key == L"runtime.memory.max") {
+    val = MemoryManager::GetHeapMaxSize();
+  }
+  else if(key == L"runtime.gc.minor") {
+    val = (size_t)MemoryManager::GetMinorGcCount();
+  }
+  else if(key == L"runtime.gc.major") {
+    val = (size_t)MemoryManager::GetMajorGcCount();
+  }
+  else if(key == L"runtime.gc.total") {
+    val = (size_t)(MemoryManager::GetMinorGcCount() + MemoryManager::GetMajorGcCount());
+  }
+  else if(key == L"runtime.cpu.count") {
+    val = (size_t)std::thread::hardware_concurrency();
+  }
+  else if(key == L"runtime.cpu.time") {
+    val = GetProcessCpuTimeMs();
+  }
+  else {
+    return false;
+  }
+
+  out = std::to_wstring(val);
+  return true;
+}
+
 bool TrapProcessor::GetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* key_array = (size_t*)PopInt(op_stack, stack_pos);
   if(key_array) {
     key_array = (size_t*)key_array[0];
     const wchar_t* key = (wchar_t*)(key_array + 3);
-    size_t* value = CreateStringObject(program->GetProperty(key), program, op_stack, stack_pos);
-    PushInt((size_t)value, op_stack, stack_pos);
+    std::wstring stat;
+    if(GetRuntimeStat(key, stat)) {
+      size_t* value = CreateStringObject(stat, program, op_stack, stack_pos);
+      PushInt((size_t)value, op_stack, stack_pos);
+    }
+    else {
+      size_t* value = CreateStringObject(program->GetProperty(key), program, op_stack, stack_pos);
+      PushInt((size_t)value, op_stack, stack_pos);
+    }
   }
   else {
     size_t* value = CreateStringObject(L"", program, op_stack, stack_pos);

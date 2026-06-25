@@ -176,6 +176,11 @@ class MemoryManager {
   static size_t uncollected_count;
   static size_t collected_count;
 
+  // always-on GC cycle counters (exposed via Get*GcCount for runtime diagnostics).
+  // Unlike mem_cycle these exist in every build, not just under _MEM_LOGGING.
+  static std::atomic<long> minor_gc_count;
+  static std::atomic<long> major_gc_count;
+
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(size_t* mem);
 
@@ -329,7 +334,15 @@ class MemoryManager {
   static void EndBlocking();
 
   static FLOAT_VALUE GetRandomValue();
-  
+
+  // Runtime statistics, surfaced to Objeck via Runtime->GetProperty("runtime.*").
+  // allocation_size is the live tracked heap (sawtooth: climbs with allocation,
+  // drops on collection); the GC counts are monotonic since process start.
+  static size_t GetHeapAllocatedSize() { return allocation_size.load(std::memory_order_relaxed); }
+  static size_t GetHeapMaxSize()       { return mem_max_size; }
+  static long   GetMinorGcCount()      { return minor_gc_count.load(std::memory_order_relaxed); }
+  static long   GetMajorGcCount()      { return major_gc_count.load(std::memory_order_relaxed); }
+
   static bool IsInitialized() {
     return initialized;
   }
