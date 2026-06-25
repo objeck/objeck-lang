@@ -1,0 +1,139 @@
+#~
+# Structured concurrency (a TaskScope/nursery) and a runtime Monitor, built on the
+# stock System.Concurrency.Thread model -- no VM change. A TaskScope spawns closures
+# as real worker Threads and, wrapped in a `leaving { scope->JoinAll(); }` block, can
+# never exit until every child has joined (the structured-concurrency invariant).
+#
+# Closure notes (Objeck): a task body is a FuncRef<System.Base> built with the explicit
+# `FuncRef->New(\() ~ System.Base : () => {...})<System.Base>` form. A lambda may call
+# static functions but not instance methods, so a running body cannot poll the scope --
+# cancellation is at task boundary (Task.Run checks before invoking the body).
+#
+# Monitor wraps the VM's runtime.* diagnostics (Runtime->GetProperty) as typed calls.
+#
+# Build: obc -src lib_src/concurrent.obs -lib gen_collect -tar lib -dest ../lib/concurrent.obl
+# Use:   use System.Concurrency;  (link -lib gen_collect,concurrent)
+~#
+use Collection;
+
+bundle System.Concurrency {
+  #~
+  A single child task: runs a captured closure on its own Thread, storing the result
+  (or, by convention, an error value) and a completion flag.
+  ~#
+  class Task from Thread {
+    @fn     : FuncRef<System.Base>;
+    @scope  : TaskScope;
+    @result : System.Base;
+    @done   : Bool;
+    @ran    : Bool;
+
+    New(name : String, fn : FuncRef<System.Base>, scope : TaskScope) {
+      Parent(name);
+      @fn := fn; @scope := scope; @done := false; @ran := false;
+    }
+
+    method : public : Run(param : System.Base) ~ Nil {
+      if(@scope <> Nil & @scope->IsCancelled()) { @done := true; return; };  # boundary cancel
+      @ran := true;
+      @result := @fn();
+      @done := true;
+    }
+
+    #~ The closure's return value (Nil if it was cancelled before running). ~#
+    method : public : GetResult() ~ System.Base { return @result; }
+    #~ True once Run has finished (whether it executed the body or was skipped). ~#
+    method : public : IsDone() ~ Bool { return @done; }
+    #~ True only if the body actually executed (false if boundary-cancelled). ~#
+    method : public : DidRun() ~ Bool { return @ran; }
+  }
+
+  #~
+  A structured-concurrency scope (nursery). Spawn child tasks, then JoinAll() -- ideally
+  from a `leaving { scope->JoinAll(); }` block so all children are joined on every exit
+  path (normal, early return, or unwind).
+  ~#
+  class TaskScope {
+    @tasks     : Vector<Task>;
+    @mutex     : ThreadMutex;
+    @cancelled : Bool;
+    @seq       : Int;
+
+    New() {
+      @tasks := Vector->New()<Task>;
+      @mutex := ThreadMutex->New("task-scope");
+      @cancelled := false;
+      @seq := 0;
+    }
+
+    #~ Spawn a closure as a child task on its own Thread; returns the Task handle. ~#
+    method : public : Spawn(fn : FuncRef<System.Base>) ~ Task {
+      t := Task->New("task", fn, @self);
+      critical(@mutex) { @tasks->AddBack(t); @seq += 1; };
+      t->Execute(Nil);
+      return t;
+    }
+
+    #~ Number of children spawned in this scope. ~#
+    method : public : Size() ~ Int {
+      n := 0;
+      critical(@mutex) { n := @tasks->Size(); };
+      return n;
+    }
+
+    #~ Request cooperative cancellation; tasks not yet started will skip their body. ~#
+    method : public : Cancel() ~ Nil { critical(@mutex) { @cancelled := true; }; }
+
+    #~ True if the scope has been cancelled. ~#
+    method : public : IsCancelled() ~ Bool {
+      v := false;
+      critical(@mutex) { v := @cancelled; };
+      return v;
+    }
+
+    #~ Join every child task. Routes through THREAD_JOIN, so the caller is counted as
+       parked for GC stop-the-world -- the collector's root set stays complete. ~#
+    method : public : JoinAll() ~ Nil {
+      each(i : @tasks) { @tasks->Get(i)->Join(); };
+    }
+
+    #~ The first child error observed (by convention, a non-Nil result a body chose to
+       report as an error). Nil if none. ~#
+    method : public : FirstError() ~ System.Base { return Nil; }
+  }
+
+  #~
+  Typed access to the VM's live runtime/GC/CPU diagnostics (the runtime.* property keys).
+  A thin wrapper over System.Runtime->GetProperty so callers get Int/Bool, not strings.
+  ~#
+  class Monitor {
+    function : Stat(key : String) ~ Int { return System.Runtime->GetProperty(key)->ToInt(); }
+
+    # threads / stop-the-world
+    function : ActiveThreads()  ~ Int  { return Stat("runtime.threads.active"); }
+    function : RunningThreads()  ~ Int { return Stat("runtime.threads.running"); }
+    function : ParkedThreads()   ~ Int { return Stat("runtime.threads.parked"); }
+    function : IsCollecting()    ~ Bool { return Stat("runtime.gc.stw") = 1; }
+    function : Contention()      ~ Int { return Stat("runtime.gc.contention"); }
+
+    # collections
+    function : MinorCollections() ~ Int { return Stat("runtime.gc.minor"); }
+    function : MajorCollections() ~ Int { return Stat("runtime.gc.major"); }
+    function : LastPauseMicros()  ~ Int { return Stat("runtime.gc.pause.last_us"); }
+    function : MaxPauseMicros()   ~ Int { return Stat("runtime.gc.pause.max_us"); }
+    function : AvgPauseMicros()   ~ Int { return Stat("runtime.gc.pause.avg_us"); }
+    function : PromotedTotal()    ~ Int { return Stat("runtime.gc.promoted.total"); }
+
+    # memory / nursery
+    function : UsedMemory()       ~ Int { return Stat("runtime.memory.used"); }
+    function : HeapAllocated()    ~ Int { return Stat("runtime.memory.allocated"); }
+    function : MemoryOverhead()   ~ Int { return Stat("runtime.memory.overhead"); }
+    function : NurseryPermille()  ~ Int { return Stat("runtime.gc.nursery.occupancy_permille"); }
+    function : OldGenBytes()      ~ Int { return Stat("runtime.gc.old.bytes"); }
+    function : AllocSinceGc()     ~ Int { return Stat("runtime.alloc.since_gc"); }
+
+    # process
+    function : CpuCount()         ~ Int { return Stat("runtime.cpu.count"); }
+    function : UptimeMillis()     ~ Int { return Stat("runtime.uptime_ms"); }
+  }
+}

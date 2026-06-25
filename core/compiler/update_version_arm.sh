@@ -8,6 +8,7 @@ make -f make/Makefile.arm64 clean
 make -f make/Makefile.arm64
 
 ./obc -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib/gen_collect.obl -strict
+./obc -src lib_src/concurrent.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/concurrent.obl
 ./obc -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
 ./obc -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
 ./obc -src lib_src/json.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json.obl
