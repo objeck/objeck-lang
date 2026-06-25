@@ -39,6 +39,7 @@ class BoingBall {
   # physics
   @bx : Float; @by : Float; @vx : Float; @vy : Float;
   @spin : Float; @spin_dir : Int; @spin_speed : Float;
+  @lean : Float; @lean_target : Float;   # dynamic spin-axis angle; re-aimed on each corner
 
   # matrix rain
   @rcols : Int; @rcw : Int; @rch : Int; @rps : Int; @rrows : Int;
@@ -46,9 +47,10 @@ class BoingBall {
   @green : Color[];   # trail shades, [0] = bright head
   @rg : Int[];        # 8 glyphs x 5 rows, 3-bit rows
 
-  # OBJECK neon wordmark
+  # OBJECK wordmark -- an 80s/90s LED light show
   @word : Int[];      # 6 letters x 7 rows, 5-bit rows
-  @neon : Color[]; @neon_glow : Color[];   # per-row cyan->magenta gradient + halo
+  @wm_palette : Color[]; @wm_glow : Color[];   # light-show palette + dim halo
+  @wm_mode : Int; @wm_phase : Int; @wm_step_at : Int; @wm_mode_at : Int;
 
   # perf HUD (FPS + live VM/GC/CPU stats via System.Concurrency.Monitor)
   @hud_font : Int[]; @hud_chars : String; @hud_col : Color; @hud_bg : Color;
@@ -89,6 +91,7 @@ class BoingBall {
     @spin := 0.0;
     @spin_dir := 1;
     @spin_speed := 0.05;
+    @lean := 0.0; @lean_target := 0.0;
     @frame := 0;
 
     @scope := TaskScope->New();
@@ -207,16 +210,19 @@ class BoingBall {
   }
 
   method : SetupWordmark() ~ Nil {
-    # 80s neon: per-row gradient from cyan (top) to hot magenta (bottom) + dim halo
-    @neon := Color->New[7];
-    @neon_glow := Color->New[7];
-    for(i := 0; i < 7; i += 1;) {
-      t := i->As(Float) / 6.0;
-      rr := (40.0 + 215.0 * t)->As(Int);
-      gg := (235.0 - 150.0 * t)->As(Int);
-      @neon[i]      := Color->New(rr, gg, 255);
-      @neon_glow[i] := Color->New(rr / 4 + 8, gg / 4 + 8, 95);
-    };
+    # 80s/90s LED light-show palette + dim halo; DrawWordmark sweeps it across the
+    # letters (vertically, then horizontally) at slow, semi-random intervals.
+    @wm_palette := Color->New[8];
+    @wm_glow := Color->New[8];
+    SetPal(0, 255, 45, 150);   # hot pink
+    SetPal(1, 50, 220, 255);   # cyan
+    SetPal(2, 255, 225, 40);   # yellow
+    SetPal(3, 70, 255, 120);   # green
+    SetPal(4, 255, 120, 30);   # orange
+    SetPal(5, 180, 70, 255);   # purple
+    SetPal(6, 255, 60, 70);    # red
+    SetPal(7, 60, 130, 255);   # blue
+    @wm_mode := 0; @wm_phase := 0; @wm_step_at := 0; @wm_mode_at := 200;
 
     # OBJECK -- 6 letters, 5x7 each (rows top->bottom, bit4=left .. bit0=right)
     @word := Int->New[42];
@@ -378,6 +384,7 @@ class BoingBall {
 
       Update();
       UpdateRain();
+      UpdateWordmark();
 
       rend := @framework->GetRenderer();
       DrawRain(rend);
@@ -437,6 +444,7 @@ class BoingBall {
       @vx := @vx * -1.0;
       @spin_dir := @spin_dir * -1;
       @spin_speed := 0.035 + Int->Random(0, 50)->As(Float) / 1000.0;   # vary spin on corner
+      @lean_target := 0.0 - (0.18 + Int->Random(0, 22)->As(Float) / 100.0);   # tilt axis into the bounce
       bounced := true;
     }
     else if(@bx + rad >= C->WALL_R->As(Float)) {
@@ -444,6 +452,7 @@ class BoingBall {
       @vx := @vx * -1.0;
       @spin_dir := @spin_dir * -1;
       @spin_speed := 0.035 + Int->Random(0, 50)->As(Float) / 1000.0;
+      @lean_target := 0.18 + Int->Random(0, 22)->As(Float) / 100.0;
       bounced := true;
     };
 
@@ -451,6 +460,7 @@ class BoingBall {
       @boing->PlayChannel(-1, 0);
     };
 
+    @lean += (@lean_target - @lean) * 0.05;   # ease the spin axis toward its new angle
     @spin += @spin_speed * @spin_dir->As(Float);
   }
 
@@ -511,6 +521,8 @@ class BoingBall {
     };
   }
 
+  # per-cell so each lit pixel takes its own light-show color (the sweep can run across
+  # columns, which a per-row run-length couldn't express)
   method : DrawWordmark(r : Renderer) ~ Nil {
     wps := 7;
     lw := 5 * wps;
@@ -525,29 +537,45 @@ class BoingBall {
         bits := @word[lbase + row];
         py := oy + row * wps;
         div := 16;
-        runstart := -1;
         for(j := 0; j < 5; j += 1;) {
           if((bits / div) % 2 = 1) {
-            if(runstart < 0) { runstart := j; };
-          }
-          else {
-            if(runstart >= 0) {
-              DrawNeonRun(r, lx + runstart * wps, py, (j - runstart) * wps, wps, row);
-              runstart := -1;
-            };
+            gcol := li * 5 + j;                              # column across the whole wordmark
+            # mode 0: colors phase in LEFT->RIGHT (by column); mode 1: TOP->DOWN (by row)
+            pos := (@wm_mode = 0) ? gcol : row;
+            ci := PosMod(pos - @wm_phase, 8);               # '- phase' makes the wave travel forward
+            px := lx + j * wps;
+            r->BoxColor(px + 2, py + 2, px + wps + 1, py + wps + 1, @wm_glow[ci]);   # halo
+            r->BoxColor(px, py, px + wps - 1, py + wps - 1, @wm_palette[ci]);        # tube
           };
           div := div / 2;
-        };
-        if(runstart >= 0) {
-          DrawNeonRun(r, lx + runstart * wps, py, (5 - runstart) * wps, wps, row);
         };
       };
     };
   }
 
-  method : DrawNeonRun(r : Renderer, x : Int, y : Int, w : Int, h : Int, row : Int) ~ Nil {
-    r->BoxColor(x - 2, y - 2, x + w + 1, y + h + 1, @neon_glow[row]);   # halo
-    r->BoxColor(x, y, x + w - 1, y + h - 1, @neon[row]);               # tube
+  method : SetPal(i : Int, rr : Int, gg : Int, bb : Int) ~ Nil {
+    @wm_palette[i] := Color->New(rr, gg, bb);
+    @wm_glow[i] := Color->New(rr / 4 + 8, gg / 4 + 8, bb / 4 + 8);
+  }
+
+  # advance the LED light show: step the color sweep at a slow, semi-random cadence,
+  # and flip the sweep direction (vertical <-> horizontal) at longer random intervals.
+  method : UpdateWordmark() ~ Nil {
+    if(@frame >= @wm_step_at) {
+      @wm_phase += 1;                                  # steady chase: 1 color-cell every 17 frames
+      @wm_step_at := @frame + 17;
+    };
+    if(@frame >= @wm_mode_at) {
+      @wm_mode := (@wm_mode + 1) % 2;                  # alternate L->R sweep and T->D sweep
+      @wm_phase := 0;                                  # restart the wave cleanly each direction
+      @wm_mode_at := @frame + Int->Random(170, 280);   # ~3-4.5s per direction
+    };
+  }
+
+  method : PosMod(x : Int, m : Int) ~ Int {
+    v := x % m;
+    if(v < 0) { v += m; };
+    return v;
   }
 
   # poll the live VM stats via the typed System.Concurrency.Monitor (runtime.* keys)
@@ -622,37 +650,53 @@ class BoingBall {
     r->BoxColor(x1, y1, x2, y2, @hud_col);
   }
 
-  # live checker sphere (tilted spin), emitted as horizontal run-length filled boxes
+  # live checker sphere: @spin scrolls the checker (color cycling) AND @lean tilts the
+  # whole ball as a cheap in-plane rotation (fixed-point sampling, corner-skipped) so the
+  # spin axis visibly leans to a new angle after each corner bounce.
   method : DrawSphere(r : Renderer) ~ Nil {
-    lx := @bx->As(Int) - 90;       # literals: 'local := C->CONST' can read back 0
-    ty0 := @by->As(Int) - 90;
+    ri := 90;        # literals: 'local := C->CONST' can read back 0
+    radf := 90.0;
+    clean := @lean->Cos();
+    slean := @lean->Sin();
+    cfp := (clean * 1024.0)->As(Int);
+    sfp := (slean * 1024.0)->As(Int);
+    lx := @bx->As(Int) - ri;
+    ty0 := @by->As(Int) - ri;
     for(py := 0; py < 180; py += 1;) {
       x0 := @cx0[py];
       x1 := @cx1[py];
       if(x0 <= x1) {
-        sy := ty0 + py;
-        base := py * 180;
+        sy_out := ty0 + py;
+        fy := (py - ri)->As(Float);
+        fxs := (x0 - ri)->As(Float);
+        sx_fp := ((fxs * clean + fy * slean + radf) * 1024.0)->As(Int);
+        sy_fp := ((fy * clean - fxs * slean + radf) * 1024.0)->As(Int);
         run := -1;
         start := x0;
         for(px := x0; px <= x1; px += 1;) {
-          idx := base + px;
+          sx := sx_fp / 1024;
+          sy := sy_fp / 1024;
+          if(sx < 0) { sx := 0; } else if(sx > 179) { sx := 179; };
+          if(sy < 0) { sy := 0; } else if(sy > 179) { sy := 179; };
+          sidx := sy * 180 + sx;
           ci := -1;
-          b := @band[idx];
+          b := @band[sidx];
           if(b >= 0) {
-            # static cell index; @spin only scrolls the colors through it (color cycling)
-            li := ((@lon0[idx] + @spin) * @inv_cell + 1000.0)->As(Int);
-            ci := ((li + @lat_idx[idx]) % 2) * 2 + b;
+            li := ((@lon0[sidx] + @spin) * @inv_cell + 1000.0)->As(Int);
+            ci := ((li + @lat_idx[sidx]) % 2) * 2 + b;
           };
           if(ci <> run) {
             if(run >= 0) {
-              r->BoxColor(lx + start, sy, lx + px - 1, sy, @ball_cols[run]);
+              r->BoxColor(lx + start, sy_out, lx + px - 1, sy_out, @ball_cols[run]);
             };
             run := ci;
             start := px;
           };
+          sx_fp += cfp;
+          sy_fp -= sfp;
         };
         if(run >= 0) {
-          r->BoxColor(lx + start, sy, lx + x1, sy, @ball_cols[run]);
+          r->BoxColor(lx + start, sy_out, lx + x1, sy_out, @ball_cols[run]);
         };
       };
     };
