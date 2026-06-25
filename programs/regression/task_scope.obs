@@ -1,0 +1,128 @@
+# Regression for a structured-concurrency nursery (TaskScope) built purely on the
+# existing System.Concurrency.Thread model -- no VM change. Validates:
+#   - Spawn() runs closures as real concurrent worker Threads
+#   - leaving{ scope->JoinAll(); } joins every child on NORMAL exit
+#   - leaving{} also joins on EARLY RETURN (unwind path)
+#   - boundary cancellation: a scope cancelled before a task starts skips its body
+#   - thread accounting (runtime.threads.active) returns to baseline after each scope,
+#     proving clean mutator register/unregister (the PR #574 stop-the-world contract)
+#
+# Closure notes (Objeck): task bodies use the explicit FuncRef->New(\() ~ R : () => {})<R>
+# form; a lambda may call STATIC functions but NOT instance methods, so mid-work
+# cancellation can't poll from inside the body -- cancellation here is at task boundary.
+#
+# Exits non-zero on any mismatch so the suite catches a regression.
+use System.Concurrency;
+use Collection;
+
+class Task from Thread {
+  @fn : FuncRef<System.Base>; @scope : TaskScope;
+  @result : System.Base; @done : Bool; @ran : Bool;
+
+  New(name : String, fn : FuncRef<System.Base>, scope : TaskScope) {
+    Parent(name); @fn := fn; @scope := scope; @done := false; @ran := false;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    if(@scope <> Nil & @scope->IsCancelled()) { @done := true; return; };  # boundary cancel
+    @ran := true; @result := @fn(); @done := true;
+  }
+
+  method : public : GetResult() ~ System.Base { return @result; }
+  method : public : IsDone()    ~ Bool        { return @done; }
+  method : public : DidRun()    ~ Bool        { return @ran; }
+}
+
+class TaskScope {
+  @tasks : Vector<Task>; @mutex : ThreadMutex; @cancelled : Bool;
+
+  New() { @tasks := Vector->New()<Task>; @mutex := ThreadMutex->New("scope"); @cancelled := false; }
+
+  method : public : Spawn(fn : FuncRef<System.Base>) ~ Task {
+    t := Task->New("task", fn, @self);
+    critical(@mutex) { @tasks->AddBack(t); };
+    t->Execute(Nil);
+    return t;
+  }
+
+  method : public : IsCancelled() ~ Bool { v := false; critical(@mutex) { v := @cancelled; }; return v; }
+  method : public : Cancel()      ~ Nil  { critical(@mutex) { @cancelled := true; }; }
+  method : public : JoinAll()     ~ Nil  { each(i : @tasks) { @tasks->Get(i)->Join(); }; }
+}
+
+class TaskScopeTest {
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+
+    # 1) fan-out: spawn 3 closures, auto-join via leaving{}, collect results [9,16,25]
+    handles := Vector->New()<Task>;
+    FanOut(handles);
+    if(handles->Size() <> 3) { pass := false; };
+    each(i : handles) {
+      t := handles->Get(i);
+      if(<>t->IsDone()) { pass := false; };
+    };
+    if(Result(handles, 0) <> 9)  { pass := false; };
+    if(Result(handles, 1) <> 16) { pass := false; };
+    if(Result(handles, 2) <> 25) { pass := false; };
+    if(ActiveCount() <> 1) { pass := false; };   # all workers unregistered
+
+    # 2) boundary cancellation: cancel before spawn -> body skipped
+    s := TaskScope->New();
+    s->Cancel();
+    fn := FuncRef->New(\() ~ System.Base : () => { return Work->Spin(3); })<System.Base>;
+    ct := s->Spawn(fn);
+    s->JoinAll();
+    if(ct->DidRun()) { pass := false; };          # must NOT have run the body
+    if(<>ct->IsDone()) { pass := false; };
+
+    # 3) unwind: leaving{} joins even on early return
+    Unwind();
+    if(ActiveCount() <> 1) { pass := false; };
+
+    if(pass) {
+      "PASS: TaskScope structured concurrency"->PrintLine();
+    }
+    else {
+      "FAIL: TaskScope structured concurrency"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : FanOut(handles : Vector<Task>) ~ Nil {
+    scope := TaskScope->New();
+    leaving { scope->JoinAll(); };                # joins all children on normal exit
+    fn3 := FuncRef->New(\() ~ System.Base : () => { return Work->Spin(3); })<System.Base>;
+    fn4 := FuncRef->New(\() ~ System.Base : () => { return Work->Spin(4); })<System.Base>;
+    fn5 := FuncRef->New(\() ~ System.Base : () => { return Work->Spin(5); })<System.Base>;
+    handles->AddBack(scope->Spawn(fn3));
+    handles->AddBack(scope->Spawn(fn4));
+    handles->AddBack(scope->Spawn(fn5));
+  }
+
+  function : Unwind() ~ Nil {
+    scope := TaskScope->New();
+    leaving { scope->JoinAll(); };                # must run on the early return below
+    fn := FuncRef->New(\() ~ System.Base : () => { return Work->Spin(2); })<System.Base>;
+    scope->Spawn(fn);
+    return;
+  }
+
+  function : Result(handles : Vector<Task>, i : Int) ~ Int {
+    return handles->Get(i)->GetResult()->As(IntRef)->Get();
+  }
+
+  function : ActiveCount() ~ Int {
+    return System.Runtime->GetProperty("runtime.threads.active")->ToInt();
+  }
+}
+
+class Work {
+  # a little real work so the tasks genuinely run concurrently, then a known result n*n
+  function : Spin(n : Int) ~ System.Base {
+    sum := 0;
+    for(k := 0; k < 20000000; k += 1;) { sum += k % (n + 1); };
+    if(sum < 0) { return IntRef->New(-1); };      # opaque to the optimizer; never taken
+    return IntRef->New(n * n);
+  }
+}

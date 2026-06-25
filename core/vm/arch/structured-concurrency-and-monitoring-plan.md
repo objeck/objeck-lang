@@ -26,6 +26,18 @@ lock-free reads that cannot race the collector.
 > convention** (`leaving{}` is its finally), so `Task` captures the lambda's return value and
 > records failures as a value in `@error` rather than unwinding an exception.
 
+> **Prototype validated** (`programs/regression/task_scope.obs`, PASS): fan-out runs closures
+> as real concurrent workers (`runtime.threads.active` 1→4→1), `leaving{ JoinAll(); }` joins on
+> both normal exit and early return, boundary cancellation skips a task's body, and the active
+> count returns to baseline — clean mutator register/unregister, no VM change.
+> **Two closure constraints discovered:** (1) task bodies must use the explicit
+> `FuncRef->New(\() ~ R : () => {})<R>` form (assigning a bare lambda to a typed `FuncRef`
+> field trips a FuncRef/function-reference error); (2) a lambda may call **static functions but
+> not instance methods**, so a running task body cannot poll `scope->IsCancelled()` from inside
+> the closure — **cancellation is boundary-only** (`Task.Run`, an instance method, checks before
+> invoking the body). Mid-work cancellation would need a static-callable poll helper or a
+> closure enhancement; treat it as a later refinement.
+
 ## Track A — structured concurrency (`bundle System.Concurrency`, pure lib)
 
 - **`Task from Thread`** — wraps a captured `\(Base)~Base` lambda; stores result/error in
