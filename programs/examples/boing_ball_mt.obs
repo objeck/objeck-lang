@@ -1,0 +1,695 @@
+use Game.SDL2;
+use Game.Framework;
+use System.IO.Filesystem;
+use System.Concurrency;
+use Collection;
+
+#~
+The Boing Ball -- MULTITASKING edition: a live GC/concurrency tuning console, and a nod
+to the 1984 Amiga demo that famously ran a *terminal while the ball bounced*. The ball
+animates on the main thread; press SPACE / W to spawn background worker tasks (via a
+System.Concurrency.TaskScope) that compute and churn the heap. The HUD reads the VM's
+live runtime.* monitors via System.Concurrency.Monitor: thread count, GC pause,
+collections, contention, CPU.
+
+Add workers and watch the cost rise in real time -- more mutators means the cooperative
+stop-the-world parks more threads, GC pauses lengthen, and the ball's FPS drops. On quit,
+the TaskScope's `leaving { JoinAll(); }` cleanly joins every worker (no leaked threads):
+the structured-concurrency invariant, honored end to end.
+
+  keys:    SPACE / W = add a worker;  ESC / close = quit
+  compile: obc -src boing_ball_mt.obs -lib sdl2,sdl_game,json,gen_collect,concurrent
+  run:     obr boing_ball_mt   (or: obr --gc-threshold=64M boing_ball_mt)
+~#
+class BoingBall {
+  @framework : GameFramework;
+  @frame : Int;
+
+  # sphere: Amiga-style static geometry (each pixel's checker cell precomputed once
+  # with a fixed tilt); only the spin offset scrolls the colors through the cells per
+  # frame -- no per-frame geometry work, so the CPU stays free and the frame is cheap.
+  @lat_idx : Int[];   # n latitude-band indices
+  @lon0 : Float[];    # n base longitudes
+  @band : Int[];      # n view-depth shading bands
+  @cx0 : Int[]; @cx1 : Int[];   # per-row circle x-range (skip corner pixels)
+  @inv_cell : Float;
+  @br : Int[]; @bg : Int[]; @bb : Int[];   # 4 shades: red hi/lo, white hi/lo
+  @ball_cols : Color[];                    # the 4 shades as gfx-path Color objects
+
+  # physics
+  @bx : Float; @by : Float; @vx : Float; @vy : Float;
+  @spin : Float; @spin_dir : Int; @spin_speed : Float;
+
+  # matrix rain
+  @rcols : Int; @rcw : Int; @rch : Int; @rps : Int; @rrows : Int;
+  @rhead : Float[]; @rspd : Float[]; @rlen : Int[];
+  @green : Color[];   # trail shades, [0] = bright head
+  @rg : Int[];        # 8 glyphs x 5 rows, 3-bit rows
+
+  # OBJECK neon wordmark
+  @word : Int[];      # 6 letters x 7 rows, 5-bit rows
+  @neon : Color[]; @neon_glow : Color[];   # per-row cyan->magenta gradient + halo
+
+  # perf HUD (FPS + live VM/GC/CPU stats via System.Concurrency.Monitor)
+  @hud_font : Int[]; @hud_chars : String; @hud_col : Color; @hud_bg : Color;
+  @fps_val : Int; @fps_t0 : Int; @fps_count : Int;
+  @stat_gc_minor : Int; @stat_gc_major : Int;
+  @stat_cpu_pct : Int; @cpu_prev_time : Int; @cpu_prev_wall : Int;
+  @stat_threads : Int; @stat_pause_ms : Int; @stat_cont : Int;
+
+  # multitasking: a TaskScope owns the background workers (joined on quit via leaving{})
+  @scope : TaskScope;
+  @workers : Int;
+
+  # sound
+  @boing : MixChunk;
+  @sound_ok : Bool;
+
+  function : Main(args : String[]) ~ Nil {
+    BoingBall->New()->Run();
+  }
+
+  New() {
+    @framework := GameFramework->New(C->W, C->H, "Boing Ball MT - SPACE/W adds a worker");
+    @framework->SetClearColor(Color->New(6, 9, 12));
+    Setup();
+  }
+
+  method : Setup() ~ Nil {
+    SetupSphere();
+    SetupRain();
+    SetupWordmark();
+    SetupHud();
+    SetupSound();
+
+    @bx := C->W->As(Float) / 2.0;
+    @by := 150.0;
+    @vx := 1.5;
+    @vy := 0.0;
+    @spin := 0.0;
+    @spin_dir := 1;
+    @spin_speed := 0.05;
+    @frame := 0;
+
+    @scope := TaskScope->New();
+    WorkerCtl->Start();
+    @workers := 0;
+    PollStats();
+  }
+
+  method : SetupSphere() ~ Nil {
+    @br := Int->New[4];  @bg := Int->New[4];  @bb := Int->New[4];
+    @br[0] := 226; @bg[0] := 46;  @bb[0] := 46;    # red hi
+    @br[1] := 150; @bg[1] := 30;  @bb[1] := 30;    # red lo
+    @br[2] := 240; @bg[2] := 240; @bb[2] := 244;   # white hi
+    @br[3] := 165; @bg[3] := 165; @bb[3] := 172;   # white lo
+
+    @ball_cols := Color->New[4];
+    for(i := 0; i < 4; i += 1;) {
+      @ball_cols[i] := Color->New(@br[i], @bg[i], @bb[i]);
+    };
+
+    radius := 90;
+    diam := 180;
+    rad := 90.0;
+    @inv_cell := 6.0 / Float->Pi();
+
+    # fixed back-tilt (over-the-top look) baked in; the side-lean is applied at render
+    # time as a cheap in-plane rotation, so this stays a single small table.
+    phi := 0.42;
+    cphi := phi->Cos(); sphi := phi->Sin();
+
+    n := diam * diam;
+    @lat_idx := Int->New[n];
+    @lon0 := Float->New[n];
+    @band := Int->New[n];
+
+    for(py := 0; py < diam; py += 1;) {
+      ny := ((py - radius)->As(Float) + 0.5) / rad;
+      for(px := 0; px < diam; px += 1;) {
+        nx := ((px - radius)->As(Float) + 0.5) / rad;
+        d2 := nx * nx + ny * ny;
+        idx := py * diam + px;
+        if(d2 <= 1.0) {
+          nz := (1.0 - d2)->Sqrt();
+          ay := ny * cphi - nz * sphi;   # back-tilt about x
+          az := ny * sphi + nz * cphi;
+          ty := ay;
+          if(ty > 1.0)  { ty := 1.0; };
+          if(ty < -1.0) { ty := -1.0; };
+          @lat_idx[idx] := (Float->ArcSin(ty) * @inv_cell + 1000.0)->As(Int);
+          @lon0[idx] := Float->ArcTan2(nx, az);
+          @band[idx] := nz >= 0.5 ? 0 : 1;   # view-depth shading
+        }
+        else {
+          @band[idx] := -1;
+        };
+      };
+    };
+
+    # per-row x-range of the circle, so DrawSphere skips the corner pixels
+    @cx0 := Int->New[diam];
+    @cx1 := Int->New[diam];
+    for(py := 0; py < diam; py += 1;) {
+      dy := py - radius;
+      rr := radius * radius - dy * dy;
+      if(rr < 0) {
+        @cx0[py] := 1; @cx1[py] := 0;   # empty row
+      }
+      else {
+        rf := rr->As(Float);
+        hw := rf->Sqrt()->As(Int);
+        x0 := radius - hw;  x1 := radius + hw;
+        if(x0 < 0) { x0 := 0; };
+        if(x1 > diam - 1) { x1 := diam - 1; };
+        @cx0[py] := x0; @cx1[py] := x1;
+      };
+    };
+  }
+
+  method : SetupRain() ~ Nil {
+    @rcols := 22; @rcw := 29; @rps := 4; @rch := 24; @rrows := 22;
+
+    @rhead := Float->New[@rcols];
+    @rspd  := Float->New[@rcols];
+    @rlen  := Int->New[@rcols];
+    for(c := 0; c < @rcols; c += 1;) {
+      @rhead[c] := 0.0 - Int->Random(0, @rrows)->As(Float);
+      @rspd[c]  := Int->Random(18, 65)->As(Float) / 100.0;
+      @rlen[c]  := Int->Random(3, 8);
+    };
+
+    # 12 trail shades: bright white-green head fading to deep green
+    @green := Color->New[12];
+    @green[0] := Color->New(205, 255, 205);
+    for(k := 1; k < 12; k += 1;) {
+      t := k->As(Float) / 12.0;
+      g := (255.0 * (1.0 - t * 0.82))->As(Int);
+      side := (34.0 * (1.0 - t))->As(Int);
+      @green[k] := Color->New(side, g, side);
+    };
+
+    # 8 chunky 3x5 glyphs (rows top->bottom, bit2=left .. bit0=right)
+    @rg := Int->New[40];
+    SetGlyph(0,  7, 2, 2, 2, 7);   # I
+    SetGlyph(1,  5, 5, 7, 5, 5);   # H
+    SetGlyph(2,  7, 1, 2, 4, 7);   # Z
+    SetGlyph(3,  2, 7, 2, 7, 2);   # cross
+    SetGlyph(4,  7, 5, 5, 5, 7);   # box
+    SetGlyph(5,  4, 4, 4, 4, 7);   # L
+    SetGlyph(6,  7, 4, 7, 4, 7);   # E
+    SetGlyph(7,  2, 5, 7, 5, 5);   # A
+  }
+
+  method : SetGlyph(gi : Int, r0 : Int, r1 : Int, r2 : Int, r3 : Int, r4 : Int) ~ Nil {
+    b := gi * 5;
+    @rg[b] := r0; @rg[b+1] := r1; @rg[b+2] := r2; @rg[b+3] := r3; @rg[b+4] := r4;
+  }
+
+  method : SetupWordmark() ~ Nil {
+    # 80s neon: per-row gradient from cyan (top) to hot magenta (bottom) + dim halo
+    @neon := Color->New[7];
+    @neon_glow := Color->New[7];
+    for(i := 0; i < 7; i += 1;) {
+      t := i->As(Float) / 6.0;
+      rr := (40.0 + 215.0 * t)->As(Int);
+      gg := (235.0 - 150.0 * t)->As(Int);
+      @neon[i]      := Color->New(rr, gg, 255);
+      @neon_glow[i] := Color->New(rr / 4 + 8, gg / 4 + 8, 95);
+    };
+
+    # OBJECK -- 6 letters, 5x7 each (rows top->bottom, bit4=left .. bit0=right)
+    @word := Int->New[42];
+    SetLetter(0, 14, 17, 17, 17, 17, 17, 14);   # O
+    SetLetter(1, 30, 17, 17, 30, 17, 17, 30);   # B
+    SetLetter(2,  7,  2,  2,  2, 18, 18, 12);   # J
+    SetLetter(3, 31, 16, 16, 30, 16, 16, 31);   # E
+    SetLetter(4, 14, 17, 16, 16, 16, 17, 14);   # C
+    SetLetter(5, 17, 18, 20, 24, 20, 18, 17);   # K
+  }
+
+  method : SetLetter(li : Int, r0 : Int, r1 : Int, r2 : Int, r3 : Int, r4 : Int, r5 : Int, r6 : Int) ~ Nil {
+    b := li * 7;
+    @word[b] := r0; @word[b+1] := r1; @word[b+2] := r2; @word[b+3] := r3;
+    @word[b+4] := r4; @word[b+5] := r5; @word[b+6] := r6;
+  }
+
+  method : SetupHud() ~ Nil {
+    @hud_col := Color->New(150, 255, 190);    # bright mint on a dark panel
+    @hud_bg := Color->New(10, 16, 22);        # HUD backdrop panel
+    # 3x5 font; glyph index = position of the char in @hud_chars
+    @hud_chars := "0123456789FPSMEHAGCUK/%TRDWON";
+    @hud_font := Int->New[@hud_chars->Size() * 5];
+    SetGlyphH(0,  7, 5, 5, 5, 7);   # 0
+    SetGlyphH(1,  2, 6, 2, 2, 7);   # 1
+    SetGlyphH(2,  7, 1, 7, 4, 7);   # 2
+    SetGlyphH(3,  7, 1, 7, 1, 7);   # 3
+    SetGlyphH(4,  5, 5, 7, 1, 1);   # 4
+    SetGlyphH(5,  7, 4, 7, 1, 7);   # 5
+    SetGlyphH(6,  7, 4, 7, 5, 7);   # 6
+    SetGlyphH(7,  7, 1, 2, 2, 2);   # 7
+    SetGlyphH(8,  7, 5, 7, 5, 7);   # 8
+    SetGlyphH(9,  7, 5, 7, 1, 7);   # 9
+    SetGlyphH(10, 7, 4, 7, 4, 4);   # F
+    SetGlyphH(11, 7, 5, 7, 4, 4);   # P
+    SetGlyphH(12, 7, 4, 7, 1, 7);   # S
+    SetGlyphH(13, 5, 7, 7, 5, 5);   # M
+    SetGlyphH(14, 7, 4, 7, 4, 7);   # E
+    SetGlyphH(15, 5, 5, 7, 5, 5);   # H
+    SetGlyphH(16, 2, 5, 7, 5, 5);   # A
+    SetGlyphH(17, 7, 4, 5, 5, 7);   # G
+    SetGlyphH(18, 7, 4, 4, 4, 7);   # C
+    SetGlyphH(19, 5, 5, 5, 5, 7);   # U
+    SetGlyphH(20, 5, 6, 4, 6, 5);   # K
+    SetGlyphH(21, 1, 1, 2, 4, 4);   # /
+    SetGlyphH(22, 5, 1, 2, 4, 5);   # %
+    SetGlyphH(23, 7, 2, 2, 2, 2);   # T
+    SetGlyphH(24, 7, 5, 7, 6, 5);   # R
+    SetGlyphH(25, 6, 5, 5, 5, 6);   # D
+    SetGlyphH(26, 5, 5, 7, 7, 5);   # W
+    SetGlyphH(27, 7, 5, 5, 5, 7);   # O
+    SetGlyphH(28, 5, 7, 7, 7, 5);   # N
+
+    @cpu_prev_time := System.Runtime->GetProperty("runtime.cpu.time")->ToInt();
+    @cpu_prev_wall := Timer->GetTicks();
+    @stat_cpu_pct := 0;
+  }
+
+  method : SetGlyphH(gi : Int, r0 : Int, r1 : Int, r2 : Int, r3 : Int, r4 : Int) ~ Nil {
+    b := gi * 5;
+    @hud_font[b] := r0; @hud_font[b+1] := r1; @hud_font[b+2] := r2;
+    @hud_font[b+3] := r3; @hud_font[b+4] := r4;
+  }
+
+  method : SetupSound() ~ Nil {
+    @sound_ok := false;
+    Mixer->OpenAudio(22050, 0x8010, 2, 1024);
+    GenBoingWav("boing_sfx.wav");
+    @boing := MixChunk->New("boing_sfx.wav");
+    if(@boing <> Nil & <>@boing->IsNull()) {
+      @sound_ok := true;
+    };
+  }
+
+  method : GenBoingWav(file : String) ~ Nil {
+    sr := 22050;
+    n := 4600;
+    data_size := n * 2;
+    fw := FileWriter->New(file);
+    if(<>fw->IsOpen()) { return; };
+
+    fw->WriteByte(82); fw->WriteByte(73); fw->WriteByte(70); fw->WriteByte(70);
+    WriteU32(fw, 36 + data_size);
+    fw->WriteByte(87); fw->WriteByte(65); fw->WriteByte(86); fw->WriteByte(69);
+    fw->WriteByte(102); fw->WriteByte(109); fw->WriteByte(116); fw->WriteByte(32);
+    WriteU32(fw, 16);
+    WriteU16(fw, 1);
+    WriteU16(fw, 1);
+    WriteU32(fw, sr);
+    WriteU32(fw, sr * 2);
+    WriteU16(fw, 2);
+    WriteU16(fw, 16);
+    fw->WriteByte(100); fw->WriteByte(97); fw->WriteByte(116); fw->WriteByte(97);
+    WriteU32(fw, data_size);
+
+    phase := 0.0;
+    f0 := 215.0; f1 := 62.0;
+    twopi := 2.0 * Float->Pi();
+    srf := sr->As(Float);
+    nf := n->As(Float);
+    for(i := 0; i < n; i += 1;) {
+      t := i->As(Float) / nf;
+      freq := f0 + (f1 - f0) * t;
+      phase += twopi * freq / srf;
+      env := (1.0 - t) * (1.0 - t);
+      if(t < 0.015) { env := env * (t / 0.015); };
+      val := env * (0.82 * phase->Sin() + 0.18 * (phase + phase)->Sin());
+      sv := (val * 27000.0)->As(Int);
+      if(sv > 32767) { sv := 32767; };
+      if(sv < -32768) { sv := -32768; };
+      u := sv;
+      if(u < 0) { u := u + 65536; };
+      fw->WriteByte(u % 256);
+      fw->WriteByte((u / 256) % 256);
+    };
+    fw->Close();
+  }
+
+  method : WriteU32(fw : FileWriter, v : Int) ~ Nil {
+    fw->WriteByte(v % 256); fw->WriteByte((v / 256) % 256);
+    fw->WriteByte((v / 65536) % 256); fw->WriteByte((v / 16777216) % 256);
+  }
+
+  method : WriteU16(fw : FileWriter, v : Int) ~ Nil {
+    fw->WriteByte(v % 256); fw->WriteByte((v / 256) % 256);
+  }
+
+  method : Run() ~ Nil {
+    if(<>@framework->IsOk()) {
+      "--- Error initializing SDL ---"->ErrorLine();
+      return;
+    };
+
+    @fps_t0 := Timer->GetTicks();
+    @fps_count := 0;
+    @fps_val := 0;
+
+    e := @framework->GetEvent();
+    quit := false;
+    while(<>quit) {
+      @framework->FrameStart();
+      @framework->Clear();
+
+      while(e->Poll() <> 0) {
+        type := e->GetType();
+        if(type = EventType->SDL_QUIT) {
+          quit := true;
+        }
+        else if(type = EventType->SDL_KEYDOWN) {
+          code := e->GetKey()->GetKeysym()->GetScancode();
+          if(code = Scancode->SDL_SCANCODE_SPACE | code = Scancode->SDL_SCANCODE_W | code = Scancode->SDL_SCANCODE_UP) {
+            SpawnWorker();
+          }
+          else if(code = Scancode->SDL_SCANCODE_ESCAPE) {
+            quit := true;
+          };
+        };
+      };
+
+      Update();
+      UpdateRain();
+
+      rend := @framework->GetRenderer();
+      DrawRain(rend);
+      DrawWordmark(rend);
+      DrawSphere(rend);
+      DrawHud(rend);
+
+      @framework->Show();
+      @framework->FrameEnd();
+
+      @frame += 1;
+      @fps_count += 1;
+      now := Timer->GetTicks();
+      dt := now - @fps_t0;
+      if(dt >= 500) {
+        @fps_val := (@fps_count * 1000) / dt;
+        @fps_count := 0;
+        @fps_t0 := now;
+      };
+      if(@frame % 20 = 0) {
+        PollStats();
+      };
+    };
+
+    leaving {
+      WorkerCtl->Stop();   # signal background workers to finish their loop
+      @scope->JoinAll();    # structured: join every worker before exit (no leaks)
+      @framework->Quit();
+    };
+  }
+
+  # spawn one background worker task (a closure) into the scope; capped so the demo
+  # stays interactive. Each worker computes + churns the heap until WorkerCtl stops.
+  method : SpawnWorker() ~ Nil {
+    if(@workers < 24) {
+      fn := FuncRef->New(\() ~ System.Base : () => { return Churn->Run(); })<System.Base>;
+      @scope->Spawn(fn);
+      @workers += 1;
+    };
+  }
+
+  method : Update() ~ Nil {
+    rad := C->R->As(Float);
+    @vy += 0.12;
+    @bx += @vx;
+    @by += @vy;
+
+    bounced := false;
+    if(@by + rad >= C->FLOOR->As(Float)) {
+      @by := C->FLOOR->As(Float) - rad;
+      @vy := @vy * -0.985;
+      if(0.0 - @vy < 4.4) { @vy := -4.4; };
+      bounced := true;
+    };
+    if(@bx - rad <= C->WALL_L->As(Float)) {
+      @bx := C->WALL_L->As(Float) + rad;
+      @vx := @vx * -1.0;
+      @spin_dir := @spin_dir * -1;
+      @spin_speed := 0.035 + Int->Random(0, 50)->As(Float) / 1000.0;   # vary spin on corner
+      bounced := true;
+    }
+    else if(@bx + rad >= C->WALL_R->As(Float)) {
+      @bx := C->WALL_R->As(Float) - rad;
+      @vx := @vx * -1.0;
+      @spin_dir := @spin_dir * -1;
+      @spin_speed := 0.035 + Int->Random(0, 50)->As(Float) / 1000.0;
+      bounced := true;
+    };
+
+    if(bounced & @sound_ok) {
+      @boing->PlayChannel(-1, 0);
+    };
+
+    @spin += @spin_speed * @spin_dir->As(Float);
+  }
+
+  method : UpdateRain() ~ Nil {
+    rrowsf := @rrows->As(Float);
+    for(c := 0; c < @rcols; c += 1;) {
+      @rhead[c] += @rspd[c];
+      if(@rhead[c] - @rlen[c]->As(Float) > rrowsf) {
+        @rhead[c] := 0.0 - Int->Random(0, 12)->As(Float);
+        @rspd[c]  := Int->Random(18, 65)->As(Float) / 100.0;
+        @rlen[c]  := Int->Random(4, 11);
+      };
+    };
+  }
+
+  # ----- drawing -----------------------------------------------------------
+
+  method : DrawRain(r : Renderer) ~ Nil {
+    for(c := 0; c < @rcols; c += 1;) {
+      head := @rhead[c]->As(Int);
+      len := @rlen[c];
+      gx := c * @rcw + 1;
+      for(k := 0; k < len; k += 1;) {
+        row := head - k;
+        if(row >= 0 & row < @rrows) {
+          gi := (c * 7 + row * 13 + @frame / 3) % 8;
+          shade := k;
+          if(shade > 11) { shade := 11; };
+          DrawGlyph(r, gx, row * @rch, gi, @green[shade]);
+        };
+      };
+    };
+  }
+
+  method : DrawGlyph(r : Renderer, gx : Int, gy : Int, gi : Int, col : Color) ~ Nil {
+    base := gi * 5;
+    ps := @rps;
+    for(row := 0; row < 5; row += 1;) {
+      bits := @rg[base + row];
+      py := gy + row * ps;
+      div := 4;
+      runstart := -1;
+      for(j := 0; j < 3; j += 1;) {
+        if((bits / div) % 2 = 1) {
+          if(runstart < 0) { runstart := j; };
+        }
+        else {
+          if(runstart >= 0) {
+            r->BoxColor(gx + runstart * ps, py, gx + j * ps - 1, py + ps - 1, col);
+            runstart := -1;
+          };
+        };
+        div := div / 2;
+      };
+      if(runstart >= 0) {
+        r->BoxColor(gx + runstart * ps, py, gx + 3 * ps - 1, py + ps - 1, col);
+      };
+    };
+  }
+
+  method : DrawWordmark(r : Renderer) ~ Nil {
+    wps := 7;
+    lw := 5 * wps;
+    gap := wps + 3;
+    total := 6 * lw + 5 * gap;
+    ox := (C->W - total) / 2;
+    oy := 52;
+    for(li := 0; li < 6; li += 1;) {
+      lbase := li * 7;
+      lx := ox + li * (lw + gap);
+      for(row := 0; row < 7; row += 1;) {
+        bits := @word[lbase + row];
+        py := oy + row * wps;
+        div := 16;
+        runstart := -1;
+        for(j := 0; j < 5; j += 1;) {
+          if((bits / div) % 2 = 1) {
+            if(runstart < 0) { runstart := j; };
+          }
+          else {
+            if(runstart >= 0) {
+              DrawNeonRun(r, lx + runstart * wps, py, (j - runstart) * wps, wps, row);
+              runstart := -1;
+            };
+          };
+          div := div / 2;
+        };
+        if(runstart >= 0) {
+          DrawNeonRun(r, lx + runstart * wps, py, (5 - runstart) * wps, wps, row);
+        };
+      };
+    };
+  }
+
+  method : DrawNeonRun(r : Renderer, x : Int, y : Int, w : Int, h : Int, row : Int) ~ Nil {
+    r->BoxColor(x - 2, y - 2, x + w + 1, y + h + 1, @neon_glow[row]);   # halo
+    r->BoxColor(x, y, x + w - 1, y + h - 1, @neon[row]);               # tube
+  }
+
+  # poll the live VM stats via the typed System.Concurrency.Monitor (runtime.* keys)
+  method : PollStats() ~ Nil {
+    @stat_gc_minor := Monitor->MinorCollections();
+    @stat_gc_major := Monitor->MajorCollections();
+    @stat_threads  := Monitor->ActiveThreads();
+    @stat_pause_ms := Monitor->LastPauseMicros() / 1000;
+    @stat_cont     := Monitor->Contention();
+
+    # CPU usage % of one core = process CPU-time delta / wall-time delta
+    cpu_now := Monitor->Stat("runtime.cpu.time");
+    wall_now := Timer->GetTicks();
+    dwall := wall_now - @cpu_prev_wall;
+    if(dwall > 0) {
+      @stat_cpu_pct := (100 * (cpu_now - @cpu_prev_time)) / dwall;
+    };
+    @cpu_prev_time := cpu_now;
+    @cpu_prev_wall := wall_now;
+  }
+
+  method : DrawHud(r : Renderer) ~ Nil {
+    ps := 2;
+    x := 8;
+    r->BoxColor(4, 2, 98, 98, @hud_bg);   # taller panel for the multitasking readout
+    DrawHudText(r, x, 6,  ps, "FPS " + @fps_val->ToString());
+    DrawHudText(r, x, 19, ps, "THRD " + @stat_threads->ToString());
+    DrawHudText(r, x, 32, ps, "WORK " + @workers->ToString());
+    DrawHudText(r, x, 45, ps, "GC " + @stat_gc_minor->ToString() + "/" + @stat_gc_major->ToString());
+    DrawHudText(r, x, 58, ps, "PAUSE " + @stat_pause_ms->ToString());
+    DrawHudText(r, x, 71, ps, "CONT " + @stat_cont->ToString());
+    DrawHudText(r, x, 84, ps, "CPU " + @stat_cpu_pct->ToString() + "%");
+  }
+
+  method : DrawHudText(r : Renderer, x : Int, y : Int, ps : Int, text : String) ~ Nil {
+    chars := text->ToCharArray();
+    for(i := 0; i < chars->Size(); i += 1;) {
+      gi := @hud_chars->Find(chars[i]);
+      if(gi >= 0) {
+        DrawHudGlyphAt(r, x, y, gi, ps);
+      };
+      x += 4 * ps;   # 3-wide glyph + 1-cell gap
+    };
+  }
+
+  method : DrawHudGlyphAt(r : Renderer, x : Int, y : Int, gi : Int, ps : Int) ~ Nil {
+    base := gi * 5;
+    for(row := 0; row < 5; row += 1;) {
+      bits := @hud_font[base + row];
+      py := y + row * ps;
+      div := 4;
+      runstart := -1;
+      for(j := 0; j < 3; j += 1;) {
+        if((bits / div) % 2 = 1) {
+          if(runstart < 0) { runstart := j; };
+        }
+        else {
+          if(runstart >= 0) {
+            EmitHudRun(r, x + runstart * ps, py, x + j * ps - 1, py + ps - 1);
+            runstart := -1;
+          };
+        };
+        div := div / 2;
+      };
+      if(runstart >= 0) {
+        EmitHudRun(r, x + runstart * ps, py, x + 3 * ps - 1, py + ps - 1);
+      };
+    };
+  }
+
+  method : EmitHudRun(r : Renderer, x1 : Int, y1 : Int, x2 : Int, y2 : Int) ~ Nil {
+    r->BoxColor(x1, y1, x2, y2, @hud_col);
+  }
+
+  # live checker sphere (tilted spin), emitted as horizontal run-length filled boxes
+  method : DrawSphere(r : Renderer) ~ Nil {
+    lx := @bx->As(Int) - 90;       # literals: 'local := C->CONST' can read back 0
+    ty0 := @by->As(Int) - 90;
+    for(py := 0; py < 180; py += 1;) {
+      x0 := @cx0[py];
+      x1 := @cx1[py];
+      if(x0 <= x1) {
+        sy := ty0 + py;
+        base := py * 180;
+        run := -1;
+        start := x0;
+        for(px := x0; px <= x1; px += 1;) {
+          idx := base + px;
+          ci := -1;
+          b := @band[idx];
+          if(b >= 0) {
+            # static cell index; @spin only scrolls the colors through it (color cycling)
+            li := ((@lon0[idx] + @spin) * @inv_cell + 1000.0)->As(Int);
+            ci := ((li + @lat_idx[idx]) % 2) * 2 + b;
+          };
+          if(ci <> run) {
+            if(run >= 0) {
+              r->BoxColor(lx + start, sy, lx + px - 1, sy, @ball_cols[run]);
+            };
+            run := ci;
+            start := px;
+          };
+        };
+        if(run >= 0) {
+          r->BoxColor(lx + start, sy, lx + x1, sy, @ball_cols[run]);
+        };
+      };
+    };
+  }
+}
+
+# Shared run flag for the background workers. A lambda body may call static functions
+# (but not instance methods), so the worker polls this static getter to stop.
+class WorkerCtl {
+  @running : static : Bool;
+  function : Start() ~ Nil { @running := true; }
+  function : Stop() ~ Nil  { @running := false; }
+  function : IsRunning() ~ Bool { return @running; }
+}
+
+# Background worker body: compute (CPU load) + churn old-gen arrays (GC pressure),
+# competing with the render thread for the cooperative stop-the-world, until stopped.
+class Churn {
+  function : Run() ~ System.Base {
+    n := 0;
+    while(WorkerCtl->IsRunning()) {
+      sum := 0;
+      for(k := 0; k < 4000; k += 1;) { sum += k % 7; };   # CPU work
+      junk := Int->New[48];                                # heap churn (old-gen array)
+      junk[0] := sum;
+      n += 1;
+    };
+    return IntRef->New(n);
+  }
+}
+
+consts C {
+  W := 640,
+  H := 512,
+  R := 90,
+  DIAM := 180,
+  FLOOR := 470,
+  WALL_L := 40,
+  WALL_R := 600
+}
