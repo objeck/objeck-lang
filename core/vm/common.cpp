@@ -4093,6 +4093,35 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
   else if(key == L"runtime.cpu.time") {
     val = GetProcessCpuTimeMs();
   }
+  else if(key == L"runtime.threads.active") {
+    val = (size_t)MemoryManager::GetMutatorCount();
+  }
+  else if(key == L"runtime.threads.parked") {
+    val = (size_t)MemoryManager::GetParkedCount();
+  }
+  else if(key == L"runtime.threads.running") {
+    const long a = MemoryManager::GetMutatorCount();
+    const long p = MemoryManager::GetParkedCount();
+    val = (size_t)(a > p ? a - p : 0);
+  }
+  else if(key == L"runtime.gc.stw") {
+    val = MemoryManager::IsStwActive() ? 1 : 0;
+  }
+  else if(key == L"runtime.gc.nursery.used") {
+    val = MemoryManager::GetNurseryUsed();
+  }
+  else if(key == L"runtime.gc.nursery.occupancy_permille") {
+    const size_t cap = MemoryManager::GetNurseryCapacity();
+    val = cap ? (MemoryManager::GetNurseryUsed() * 1000 / cap) : 0;
+  }
+  else if(key == L"runtime.gc.remembered") {
+    val = MemoryManager::GetRememberedCount();
+  }
+  else if(key == L"runtime.memory.overhead") {
+    const size_t rss = GetProcessResidentBytes();
+    const size_t alloc = MemoryManager::GetHeapAllocatedSize();
+    val = rss > alloc ? rss - alloc : 0;
+  }
   else {
     return false;
   }

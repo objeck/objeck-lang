@@ -343,6 +343,14 @@ class MemoryManager {
   static long   GetMinorGcCount()      { return minor_gc_count.load(std::memory_order_relaxed); }
   static long   GetMajorGcCount()      { return major_gc_count.load(std::memory_order_relaxed); }
 
+  // Concurrency / nursery monitors (lock-free; safe to poll while the world runs).
+  static long   GetMutatorCount()      { return mutator_count.load(std::memory_order_relaxed); }
+  static long   GetParkedCount()       { return parked_count.load(std::memory_order_relaxed); }
+  static bool   IsStwActive()          { return stw_active.load(std::memory_order_acquire); }
+  static size_t GetNurseryUsed()       { return young_offset.load(std::memory_order_relaxed); }
+  static size_t GetNurseryCapacity()   { return young_region_size; }
+  static size_t GetRememberedCount()   { return dirty_count.load(std::memory_order_relaxed); }
+
   static bool IsInitialized() {
     return initialized;
   }
