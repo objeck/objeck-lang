@@ -62,7 +62,6 @@ obr doc_json.obe templates "%VERSION%" ^
 	%LIB_SRC%\json_rpc.obs ^
 	%LIB_SRC%\lame.obs ^
 	%LIB_SRC%\math.obs ^
-	%LIB_SRC%\gtk3.obs ^
 	%LIB_SRC%\web_server.obs
 if %ERRORLEVEL% NEQ 0 (
 	echo Failed: doc_json generation
