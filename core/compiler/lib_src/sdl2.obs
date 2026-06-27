@@ -5942,9 +5942,48 @@ bundle Game.SDL2 {
 	~#
 	class Renderer {
 		@renderer : Int;
+		# Pooled boxing buffer for the hot color-draw primitives. The native call ABI
+		# wants a Base[] of IntRef holders, so naively every draw call allocated a
+		# fresh Base[] (old gen) + one IntRef per int arg (young gen) -- hundreds of
+		# allocations per frame, which fills the heap and triggers stop-the-world GC
+		# mid-frame (the classic SDL-on-a-GC stutter). Instead we build one buffer per
+		# Renderer and mutate it in place (IntRef->Set) on every call, so a draw costs
+		# zero GC allocation. SDL rendering is single-threaded (a renderer is not
+		# thread-safe), so one shared buffer per Renderer is safe; native draw calls
+		# are leaf calls that never re-enter Objeck, so there is no re-entrancy hazard.
+		@ca : Base[];     # 8 slots: covers up to 7 int holders + 1 Color
+		@cr : IntRef[];   # 7 reusable int holders (indices 0..6)
+		# A String literal allocates a fresh String every time it is evaluated, so the
+		# old `CallFunction("sdl_...", ...)` form allocated a name string (a char array
+		# -> old gen) on every draw call -- the dominant per-call churn, larger than the
+		# boxing itself. Cache the proxy and each function name once, set in EnsureArgs.
+		@proxy : DllProxy;
+		@fn_pixel : String; @fn_hline : String; @fn_vline : String;
+		@fn_rect : String;  @fn_rrect : String;
+		@fn_box : String;   @fn_rbox : String;  @fn_line : String;
 
 		New(renderer : Int) {
 			@renderer := renderer;
+		}
+
+		# Lazily build the pooled boxing buffer + cached call names (see fields above).
+		method : EnsureArgs() ~ Nil {
+			if(@ca = Nil) {
+				@ca := Base->New[8];
+				@cr := IntRef->New[7];
+				for(i := 0; i < 7; i += 1;) {
+					@cr[i] := IntRef->New();
+				};
+				@proxy := Proxy->GetDllProxy();
+				@fn_pixel := "sdl_renderer_pixel_color";
+				@fn_hline := "sdl_renderer_hline_color";
+				@fn_vline := "sdl_renderer_vline_color";
+				@fn_rect  := "sdl_renderer_rectangle_color";
+				@fn_rrect := "sdl_renderer_rounded_rectangle_color";
+				@fn_box   := "sdl_renderer_box_color";
+				@fn_rbox  := "sdl_renderer_rounded_box_color";
+				@fn_line  := "sdl_renderer_line_color";
+			};
 		}
 
 		#~
@@ -6444,17 +6483,14 @@ bundle Game.SDL2 {
 		@return 0 on success, -1 on failure
 		~#
 		method : public : PixelColor(x : Int, y : Int, color : Color) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@renderer);
-			array_args[2] := IntRef->New(x);
-			array_args[3] := IntRef->New(y);
-			array_args[4] := color;
+			EnsureArgs();
+			cr := @cr; a := @ca;
+			cr[0]->Set(0); cr[1]->Set(@renderer); cr[2]->Set(x); cr[3]->Set(y);
+			a[0] := cr[0]; a[1] := cr[1]; a[2] := cr[2]; a[3] := cr[3]; a[4] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_pixel_color", array_args);
+			@proxy->CallFunction(@fn_pixel, a);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return cr[0]->Get();
 		}
 
 		#~
@@ -6466,18 +6502,15 @@ bundle Game.SDL2 {
 		@return 0 on success, -1 on failure
 		~#
 		method : public : HLineColor(x1 : Int, x2 : Int, y : Int, color : Color) ~ Int {
-			array_args := Base->New[6];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@renderer);
-			array_args[2] := IntRef->New(x1);
-			array_args[3] := IntRef->New(x2);
-			array_args[4] := IntRef->New(y);
-			array_args[5] := color;
+			EnsureArgs();
+			cr := @cr; a := @ca;
+			cr[0]->Set(0); cr[1]->Set(@renderer);
+			cr[2]->Set(x1); cr[3]->Set(x2); cr[4]->Set(y);
+			a[0] := cr[0]; a[1] := cr[1]; a[2] := cr[2]; a[3] := cr[3]; a[4] := cr[4]; a[5] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_hline_color", array_args);
+			@proxy->CallFunction(@fn_hline, a);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return cr[0]->Get();
 		}
 
 		#~
@@ -6489,18 +6522,15 @@ bundle Game.SDL2 {
 		@return 0 on success, -1 on failure
 		~#
 		method : public : VlineColor(x : Int, y1 : Int, y2 : Int, color : Color) ~ Int {
-			array_args := Base->New[6];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@renderer);
-			array_args[2] := IntRef->New(x);
-			array_args[3] := IntRef->New(y1);
-			array_args[4] := IntRef->New(y2);
-			array_args[5] := color;
+			EnsureArgs();
+			cr := @cr; a := @ca;
+			cr[0]->Set(0); cr[1]->Set(@renderer);
+			cr[2]->Set(x); cr[3]->Set(y1); cr[4]->Set(y2);
+			a[0] := cr[0]; a[1] := cr[1]; a[2] := cr[2]; a[3] := cr[3]; a[4] := cr[4]; a[5] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_vline_color", array_args);
+			@proxy->CallFunction(@fn_vline, a);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return cr[0]->Get();
 		}
 
 		#~
@@ -6513,19 +6543,16 @@ bundle Game.SDL2 {
 		@return 0 on success, -1 on failure
 		~#
 		method : public : RectangleColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
-			array_args := Base->New[7];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@renderer);
-			array_args[2] := IntRef->New(x1);
-			array_args[3] := IntRef->New(y1);
-			array_args[4] := IntRef->New(x2);
-			array_args[5] := IntRef->New(y2);
-			array_args[6] := color;
+			EnsureArgs();
+			cr := @cr; a := @ca;
+			cr[0]->Set(0); cr[1]->Set(@renderer);
+			cr[2]->Set(x1); cr[3]->Set(y1); cr[4]->Set(x2); cr[5]->Set(y2);
+			a[0] := cr[0]; a[1] := cr[1]; a[2] := cr[2]; a[3] := cr[3];
+			a[4] := cr[4]; a[5] := cr[5]; a[6] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_rectangle_color", array_args);
+			@proxy->CallFunction(@fn_rect, a);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return cr[0]->Get();
 		}
 
 		#~
@@ -6539,20 +6566,16 @@ bundle Game.SDL2 {
 		@return 0 on success, -1 on failure
 		~#
 		method : public : RoundedRectangleColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, rad : Int, color : Color) ~ Int {
-			array_args := Base->New[8];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@renderer);
-			array_args[2] := IntRef->New(x1);
-			array_args[3] := IntRef->New(y1);
-			array_args[4] := IntRef->New(x2);
-			array_args[5] := IntRef->New(y2);
-			array_args[6] := IntRef->New(rad);
-			array_args[7] := color;
+			EnsureArgs();
+			cr := @cr; a := @ca;
+			cr[0]->Set(0); cr[1]->Set(@renderer);
+			cr[2]->Set(x1); cr[3]->Set(y1); cr[4]->Set(x2); cr[5]->Set(y2); cr[6]->Set(rad);
+			a[0] := cr[0]; a[1] := cr[1]; a[2] := cr[2]; a[3] := cr[3];
+			a[4] := cr[4]; a[5] := cr[5]; a[6] := cr[6]; a[7] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_rounded_rectangle_color", array_args);
+			@proxy->CallFunction(@fn_rrect, a);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return cr[0]->Get();
 		}
 
 		#~
@@ -6565,19 +6588,16 @@ bundle Game.SDL2 {
 		@return 0 on success, -1 on failure
 		~#
 		method : public : BoxColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
-			array_args := Base->New[7];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@renderer);
-			array_args[2] := IntRef->New(x1);
-			array_args[3] := IntRef->New(y1);
-			array_args[4] := IntRef->New(x2);
-			array_args[5] := IntRef->New(y2);
-			array_args[6] := color;
+			EnsureArgs();
+			cr := @cr; a := @ca;
+			cr[0]->Set(0); cr[1]->Set(@renderer);
+			cr[2]->Set(x1); cr[3]->Set(y1); cr[4]->Set(x2); cr[5]->Set(y2);
+			a[0] := cr[0]; a[1] := cr[1]; a[2] := cr[2]; a[3] := cr[3];
+			a[4] := cr[4]; a[5] := cr[5]; a[6] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_box_color", array_args);
+			@proxy->CallFunction(@fn_box, a);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return cr[0]->Get();
 		}
 
 		#~
@@ -6591,20 +6611,16 @@ bundle Game.SDL2 {
 		@return 0 on success, -1 on failure
 		~#
 		method : public : RoundedBoxColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, rad : Int, color : Color) ~ Int {
-			array_args := Base->New[8];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@renderer);
-			array_args[2] := IntRef->New(x1);
-			array_args[3] := IntRef->New(y1);
-			array_args[4] := IntRef->New(x2);
-			array_args[5] := IntRef->New(y2);
-			array_args[6] := IntRef->New(rad);
-			array_args[7] := color;
+			EnsureArgs();
+			cr := @cr; a := @ca;
+			cr[0]->Set(0); cr[1]->Set(@renderer);
+			cr[2]->Set(x1); cr[3]->Set(y1); cr[4]->Set(x2); cr[5]->Set(y2); cr[6]->Set(rad);
+			a[0] := cr[0]; a[1] := cr[1]; a[2] := cr[2]; a[3] := cr[3];
+			a[4] := cr[4]; a[5] := cr[5]; a[6] := cr[6]; a[7] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_rounded_box_color", array_args);
+			@proxy->CallFunction(@fn_rbox, a);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return cr[0]->Get();
 		}
 
 		#~
@@ -6617,19 +6633,16 @@ bundle Game.SDL2 {
 		@return 0 on success, -1 on failure
 		~#
 		method : public : LineColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
-			array_args := Base->New[7];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@renderer);
-			array_args[2] := IntRef->New(x1);
-			array_args[3] := IntRef->New(y1);
-			array_args[4] := IntRef->New(x2);
-			array_args[5] := IntRef->New(y2);
-			array_args[6] := color;
+			EnsureArgs();
+			cr := @cr; a := @ca;
+			cr[0]->Set(0); cr[1]->Set(@renderer);
+			cr[2]->Set(x1); cr[3]->Set(y1); cr[4]->Set(x2); cr[5]->Set(y2);
+			a[0] := cr[0]; a[1] := cr[1]; a[2] := cr[2]; a[3] := cr[3];
+			a[4] := cr[4]; a[5] := cr[5]; a[6] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_line_color", array_args);
+			@proxy->CallFunction(@fn_line, a);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return cr[0]->Get();
 		}
 
 		#~
