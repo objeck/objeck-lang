@@ -810,11 +810,16 @@ jobs:
             ../../../compiler/lib_src/query.obs \
             ../../../compiler/lib_src/sdl2.obs \
             ../../../compiler/lib_src/sdl_game.obs \
+            ../../../compiler/lib_src/gtk3.obs \
             ../../../compiler/lib_src/gen_collect.obs \
+            ../../../compiler/lib_src/concurrent.obs \
             ../../../compiler/lib_src/net_common.obs \
             ../../../compiler/lib_src/net.obs \
             ../../../compiler/lib_src/net_secure.obs \
             ../../../compiler/lib_src/net_server.obs \
+            ../../../compiler/lib_src/net_h2.obs \
+            ../../../compiler/lib_src/net_quic.obs \
+            ../../../compiler/lib_src/web_server.obs \
             ../../../compiler/lib_src/rss.obs \
             ../../../compiler/lib_src/misc.obs \
             ../../../compiler/lib_src/diags.obs \
