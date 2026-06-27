@@ -384,9 +384,16 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
           mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
           mem += EXTRA_BUF_SIZE;
           // Young object: no GC_OLD_BIT, no hash set insert, no mutex.
-          // Explicitly clear the GC flag word — do NOT rely on the region being
-          // pre-zeroed (the post-GC reset memset only covers the prior high-water mark).
+          // Explicitly clear the GC flag word.
           mem[MARKED_FLAG] = 0;
+          // Zero the object's field words here (zero-on-alloc) instead of relying on a
+          // post-collection memset of the whole nursery. The old design zeroed the
+          // entire used nursery inside the stop-the-world pause (up to nursery-size of
+          // memset on every GC -> a big latency spike for allocation-heavy code). The
+          // total zeroing work is the same, but moving it to the allocator takes it out
+          // of the pause and gives better cache locality (we are about to write the
+          // object anyway). Field bytes = alloc_size - the EXTRA_BUF header words.
+          memset(mem, 0, (size_t)alloc_size - sizeof(size_t) * EXTRA_BUF_SIZE);
           // release fence: header stores must be visible before this object can be
           // observed as young (pairs with the acquire load of young_offset in IsYoung).
           std::atomic_thread_fence(std::memory_order_release);
@@ -421,6 +428,8 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
             mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
             mem += EXTRA_BUF_SIZE;
             mem[MARKED_FLAG] = 0;
+            // Zero-on-alloc (see the initial bump path above for the rationale).
+            memset(mem, 0, (size_t)alloc_size - sizeof(size_t) * EXTRA_BUF_SIZE);
             std::atomic_thread_fence(std::memory_order_release);
             allocation_size.fetch_add(size, std::memory_order_relaxed);
             return mem;
@@ -1038,9 +1047,10 @@ void* MemoryManager::CollectMemory(void* arg)
       }
     }
 
-    // Reset young region
+    // Reset young region. The nursery is NO LONGER memset here: objects are zeroed at
+    // allocation time (zero-on-alloc, see AllocateObject / the JIT inline allocator),
+    // which moves this potentially nursery-sized memset out of the stop-the-world pause.
     young_offset.store(0, std::memory_order_relaxed);
-    memset(young_region, 0, young_used);
   }
 
   // --- Clear dirty list and RSET bits ---

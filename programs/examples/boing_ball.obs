@@ -53,6 +53,7 @@ class BoingBall {
   @fps_val : Int; @fps_t0 : Int; @fps_count : Int;
   @stat_mem_mb : Int; @stat_heap_kb : Int;
   @stat_gc_minor : Int; @stat_gc_major : Int;
+  @stat_pause_us : Int;   # last GC stop-the-world pause (us) — see runtime.gc.pause.last_us
   @stat_cpu_pct : Int; @cpu_prev_time : Int; @cpu_prev_wall : Int;
 
   # sound
@@ -518,6 +519,7 @@ class BoingBall {
     @stat_heap_kb  := System.Runtime->GetProperty("runtime.memory.allocated")->ToInt() / 1024;
     @stat_gc_minor := System.Runtime->GetProperty("runtime.gc.minor")->ToInt();
     @stat_gc_major := System.Runtime->GetProperty("runtime.gc.major")->ToInt();
+    @stat_pause_us := System.Runtime->GetProperty("runtime.gc.pause.last_us")->ToInt();
 
     # CPU usage % of one core = process CPU-time delta / wall-time delta
     cpu_now := System.Runtime->GetProperty("runtime.cpu.time")->ToInt();
@@ -533,12 +535,13 @@ class BoingBall {
   method : DrawHud(r : Renderer) ~ Nil {
     ps := 2;
     x := 8;
-    r->BoxColor(4, 2, 96, 72, @hud_bg);   # one dark panel behind the readout
+    r->BoxColor(4, 2, 96, 85, @hud_bg);   # one dark panel behind the readout
     DrawHudText(r, x, 6,  ps, "FPS " + @fps_val->ToString());
     DrawHudText(r, x, 19, ps, "MEM " + @stat_mem_mb->ToString() + "M");
     DrawHudText(r, x, 32, ps, "HEAP " + @stat_heap_kb->ToString() + "K");
     DrawHudText(r, x, 45, ps, "GC " + @stat_gc_minor->ToString() + "/" + @stat_gc_major->ToString());
-    DrawHudText(r, x, 58, ps, "CPU " + @stat_cpu_pct->ToString() + "%");
+    DrawHudText(r, x, 58, ps, "PAU " + @stat_pause_us->ToString() + "U");
+    DrawHudText(r, x, 71, ps, "CPU " + @stat_cpu_pct->ToString() + "%");
   }
 
   method : DrawHudText(r : Renderer, x : Int, y : Int, ps : Int, text : String) ~ Nil {

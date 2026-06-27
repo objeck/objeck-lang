@@ -1200,6 +1200,16 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   const size_t aligned_total = (total_size + sizeof(size_t) - 1) & ~((size_t)(sizeof(size_t) - 1));
   const int64_t nil_type = instructions::MemoryType::NIL_TYPE;
 
+  // Zero-on-alloc: the nursery is no longer memset during GC, so this fast path must
+  // clear raw_mem[3..] (MARKED_FLAG + the object's field words) itself. We emit that as
+  // an unrolled store sequence; for large objects the unroll would bloat the code, so
+  // bail to the slow path (MemoryManager::AllocateObject zeroes there) by returning -1.
+  const size_t zero_words = aligned_total / sizeof(size_t);
+  const size_t ZERO_UNROLL_MAX = 24;   // max field+flag words to zero inline
+  if(zero_words > (size_t)(1 + EXTRA_BUF_SIZE - 1) + ZERO_UNROLL_MAX) {
+    return -1;
+  }
+
   FlushLocalCache();
   move_reg_mem(RAX, TMP_REG_0, RBP);
   move_reg_mem(RBX, TMP_REG_1, RBP);
@@ -1226,6 +1236,13 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   move_imm_reg((int64_t)MemoryManager::YoungRegionAddr(), RDX);
   move_mem_reg(0, RDX, RDX);                          // RDX = young_region base
   add_reg_reg(RAX, RDX);                              // RDX = raw_mem = base + offset
+  // zero-on-alloc: clear raw_mem[3] (MARKED_FLAG) + field words raw_mem[4..]. raw_mem[0..2]
+  // (size word, TYPE, SIZE_OR_CLS) are written explicitly just below, so skip them. Uses
+  // only RAX (=0) and RDX (base), both already spilled to TMP_REG_* at entry.
+  move_imm_reg(0, RAX);
+  for(size_t w = (size_t)(1 + EXTRA_BUF_SIZE - 1); w < zero_words; ++w) {
+    move_reg_mem(RAX, (long)(w * sizeof(size_t)), RDX);   // raw_mem[w] = 0
+  }
   move_imm_reg((int64_t)alloc_size, RAX); move_reg_mem(RAX, 0, RDX);
   move_imm_reg(nil_type, RAX);            move_reg_mem(RAX, (long)sizeof(size_t), RDX);
   move_imm_reg((int64_t)(size_t)cls, RAX); move_reg_mem(RAX, (long)(sizeof(size_t) * 2), RDX);
