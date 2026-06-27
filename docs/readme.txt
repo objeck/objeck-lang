@@ -1,3 +1,15 @@
+v2026.6.3 (June 27, 2026)
+===
+Generational minor garbage collection, closure ergonomics (direct FuncRef calls, bare lambdas, lambda block bodies), and a new System.Concurrency library.
+
+v2026.6.3
+- VM: generational minor (nursery) garbage collection is now enabled -- a nursery-full collection scans only the remembered set plus roots and recycles the young generation without sweeping old gen, with a major-GC fallback under old-gen pressure; JIT and interpreter reference stores emit the write barrier on AMD64 and ARM64, and the nursery is zeroed at allocation time instead of inside the stop-the-world pause
+- Language: closure ergonomics -- call a FuncRef directly with v() (no ->Call()), bare lambdas with an inferred return type (\(x) => x * 2) that auto-wrap into FuncRef<R> in assignments, returns, method arguments, and collection elements, and lambda block bodies
+- Library: new System.Concurrency (concurrent.obl) -- structured concurrency with TaskScope, Task, and Monitor, plus runtime.* process/GC/CPU diagnostics (GC pause, promotion, allocation rate, lock contention, thread/STW/nursery counters) read through Runtime->GetProperty
+- Fixed multi-capture closure heap corruption (captures now use closure-local ids), plus re-analyzed/repeated FuncRef direct calls and a spurious unreferenced-variable warning for closure-captured variables
+- Performance: SDL2 Renderer 2D draws pool the boxing buffer and cache proxy/method names
+- Removed the unused Gtk3 binding
+
 v2026.6.2 (June 19, 2026)
 ===
 Major JIT and garbage-collection performance work (a near-free GC safepoint poll, auto-JIT for closure/function-reference calls, inline nursery allocation), a sweep of JIT float-codegen correctness fixes, and locale-independent UTF-8 I/O.

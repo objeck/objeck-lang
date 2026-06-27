@@ -36,8 +36,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.6.0/objeck-linux-x64_2026.6.0.tgz
-tar xzf objeck-linux-x64_2026.6.0.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.6.3/objeck-linux-x64_2026.6.3.tgz
+tar xzf objeck-linux-x64_2026.6.3.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -57,7 +57,12 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.6.2 ✅
+### v2026.6.3 ✅
+  * **Generational minor garbage collection** — minor (nursery) collection is now enabled: a nursery-full collection scans only the remembered set plus roots and recycles the young generation without sweeping the old generation, falling back to a full major GC under old-gen pressure. JIT and interpreter reference stores emit the write barrier on AMD64 and ARM64, and the nursery is now zeroed at allocation time instead of inside the stop-the-world pause. See [performance →](docs/performance.md)
+  * **Closure ergonomics** — three quality-of-life additions for function references: call a `FuncRef` directly with `v()` (no explicit `->Call()`); write bare lambdas with an inferred return type — `\(x) => x * 2` — that auto-wrap into `FuncRef<R>` when assigned, returned, passed as a method argument, or stored as a collection element; and give a lambda a block body (`\(x) => { ... }`). A multi-capture closure heap-corruption bug is fixed — captures now use closure-local ids
+  * **New `System.Concurrency` library** — structured concurrency with `TaskScope`, `Task`, and `Monitor`, plus `runtime.*` process/GC/CPU diagnostics (GC pause, promotion, allocation rate, lock contention, thread/STW/nursery counters) read through `Runtime->GetProperty("runtime.…")`
+
+### v2026.6.2
   * **Major JIT & GC performance work** — the cooperative stop-the-world GC safepoint poll (new in v2026.6.1) is now nearly free in JIT'd code: an inline flag test that only calls the collector when a collection is active, reading `&stw_active` from a register cached at the prologue (R12/X19) and emitted only at loop back-edges. `fannkuchredux` roughly halved (~59s → ~31s), recovering the full regression on AMD64 and ARM64. Closure / function-reference calls (`DYN_MTHD_CALL`) now **auto-JIT** on both architectures — `spectralnorm` reaches `native`-level speed once warm (43s interpreted → 0.46s at n=2000, matching the hand-`native` kernel). Nursery allocation for `NEW_OBJ_INST` is inlined on AMD64, and the interpreter gains a float fast-path. See [performance →](docs/performance.md)
   * **JIT correctness hardening** — a sweep of float-codegen and tail-call bugs surfaced by forcing JIT (`OBJECK_JIT_THRESHOLD=1`): AMD64 `Floor`/`Ceil`/`ArcTan` codegen and two latent `DYN_MTHD_CALL` miscompiles; ARM64 transcendental/round cached-local operands, dropped libc float result/argument, working-stack registers clobbered across inlined float calls, and an `imm19` backpatch SIGILL (`ml_gbt`); and a TCO deferred-load corruption (e.g. `return Gcd(b, a%b)`) on both architectures; and an ARM64 negative-offset load bug that crashed when a JIT-compiled closure captured in a collection (`Vector<FuncRef>`) was invoked — its memory encoders couldn't represent a negative displacement and read the wrong stack slot, now routed through a signed-offset `LDUR`/`STUR` helper (x64 was never affected). The full ARM64 suite is now green at `OBJECK_JIT_THRESHOLD=1`
   * **UTF-8 in any locale** — `obc` reading UTF-8 source and `obr` loading/printing UTF-8 strings no longer break under a `C`/non-UTF-8 process locale; `sys.h` now uses systemic locale-independent UTF-8 codecs instead of `mbstowcs`/`wcstombs`
@@ -79,22 +84,12 @@ obc hello && obr hello
   * **macOS launcher** — portable app bundles now resolve their own location instead of trusting the working directory, so they launch correctly from Finder or any directory
   * **Reproducible builds** — compiling unchanged library source now produces byte-identical `.obl` files (deterministic anonymous-class naming), and Windows/ARM64 build warnings and a `NativeCode` ODR violation were cleared
 
-### v2026.6.0
-  * **New `System.AI` library** (`-lib ai` or `@ai`) — classic AI in the standard library: graph search (`Dijkstra`, `AStar`, `BreadthFirst`, `DepthFirst`), adversarial game search (`Minimax` with alpha-beta, `MonteCarloTreeSearch`), metaheuristics (`GeneticAlgorithm`, `SimulatedAnnealing`, `HillClimbing`) and tabular RL (`QLearning`, `Sarsa`, `MarkovDecisionProcess` value iteration); all stochastic algorithms seeded for reproducible runs
-  * **`System.ML` overhaul** — 13 new estimators (`RidgeRegression`/`LassoRegression`/`ElasticNet`, `Perceptron`, `SVM`, `PCA`, `GaussianNaiveBayes`, `AdaBoost`, `DBSCAN`, `GaussianMixture`, `KDTree`, `RegressionTree`, `GradientBoostedTrees`); real recursive `DecisionTree` and voting `RandomForest`; k-means++ `KMeans`; `NeuralNetwork` hidden/output bias (clean XOR convergence); seedable `System.ML.Random`; uniform `Fit`/`Predict`/`Score`/`IsFitted`/`Store`/`Load` API across every estimator. *Breaking:* `RandomForest->Train` is now `Fit`; stored `NeuralNetwork` model files must be regenerated
-  * **`record` types** — `record Point { @x : Int; @y : Int; }` generates the constructor and accessors; `record : readonly :` omits setters and the compiler rejects field assignment outside constructors; supports generics, inheritance and user-defined member overrides
-  * **VM/JIT fix** — traps reading interpreter locals (`Serializer->Write`, `Date->New`, file-time queries) crashed once a method crossed the auto-JIT threshold; such methods now stay interpreted on AMD64 and ARM64
-  * **Compiler fixes** — bool array literals after the first in a program no longer receive the first literal's data (broken literal-pool comparator); literal dedup now works for all array types; array dimensions capped at 8 with a proper diagnostic
-  * **XML library improvements** — truncated/malformed documents are now rejected instead of parsing as success; `&apos;` decoding fixed; new `EncodeText`, `SetEncodedContent`, `GetDecodedContent` and `GetDecodedValue` conveniences
-  * **Library aliases documented** — `-lib @std`/`@ml`/`@game` and the new `@ai` group, user-editable via `lib/configobjk.ini`; AI/ML developer guide gains `System.ML` and `System.AI` sections with runnable examples
-  * **CI hardening** — vcpkg installs retry on transient CDN failures; `mcp_server_test` validates JSON-RPC bodies before accepting
-
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 
 ## Downloads
 
-**Latest Release:** [v2026.6.2](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.6.3](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

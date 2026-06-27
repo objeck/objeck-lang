@@ -4,6 +4,24 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+## [v2026.6.3] - 2026-06-27
+
+### New Features
+- **Generational minor garbage collection**: minor (nursery) collection is now enabled. A nursery-full collection scans only the remembered set plus roots and recycles the young generation without sweeping the old generation, falling back to a full major GC under old-generation pressure. JIT and interpreter reference stores emit the generational write barrier on both AMD64 and ARM64 (`allocation_size` is now updated atomically), and the nursery is zeroed at allocation time rather than inside the stop-the-world pause. The young-generation allocator stops the world during `CollectMinor` to fix a multithreaded young-gen corruption.
+- **Closure ergonomics**: function references gain three usability improvements — call a `FuncRef` directly with `v()` instead of an explicit `->Call()`; write bare lambdas with an inferred return type (`\(x) => x * 2`) that auto-wrap into `FuncRef<R>` when assigned, returned, passed as a method argument, or stored as a collection element; and give a lambda a block body (`\(x) => { ... }`).
+- **`System.Concurrency` library** (`concurrent.obl`): structured concurrency primitives — `TaskScope`, `Task`, and `Monitor` — plus `runtime.*` process/GC/CPU diagnostics (GC pause, promotion, allocation rate, lock contention, and thread/STW/nursery counters) read through `Runtime->GetProperty("runtime.…")`. Now included in API-doc generation.
+
+### Bug Fixes
+- **Multi-lambda closure heap corruption**: closures sharing a scope corrupted each other's captured state because captures were keyed by outer-scope ids; captures now use closure-local ids.
+- **Compiler**: re-analyzed and repeated `FuncRef` direct calls, and functional-call result chaining in expression context, are now handled correctly. Closure-captured variables no longer raise a spurious "unreferenced variable" warning.
+
+### Performance
+- **SDL2 2D rendering**: `Renderer` draws pool the boxing buffer and cache the proxy/method names, reducing per-call overhead.
+
+### Libraries / Infrastructure
+- Removed the unused Gtk3 binding (`gtk3.obs`).
+- Synced the Linux/Windows standard-library lists and rebuilt all `.obl` libraries against the new toolchain version (VER_NUM 202663).
+
 ## [v2026.6.2] - 2026-06-19
 
 ### Performance
