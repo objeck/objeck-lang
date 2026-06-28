@@ -974,6 +974,20 @@ void* MemoryManager::CollectMemory(void* arg)
     scan_ptr += total;
   }
 
+  // [GC-DIAG] Promote walk must land EXACTLY on the end of the used nursery. If it
+  // overshoots/undershoots, a bad size header (raw_mem[0]) desynced the linear walk,
+  // which silently skips the objects after the desync point — they stay marked but
+  // unforwarded, and FixupRoots' "fix up self" then writes their bare GC_MARK_BIT (1)
+  // into a root slot -> later wild deref in LoadClsInstIntVar. Prints only on anomaly,
+  // so zero overhead on the healthy path (no Heisenbug masking). See gc-minor-stress-flake.
+  if(scan_ptr != young_region + young_used) {
+    std::wcerr << L"[GC-DIAG] promote-walk DESYNC: scan_ptr off by "
+               << (long long)((uint8_t*)scan_ptr - (young_region + young_used))
+               << L" bytes; young_used=" << young_used
+               << L"; promoted=" << promoted_count
+               << L"; minor=" << minor_gc_mode.load(std::memory_order_acquire) << std::endl;
+  }
+
 
   // --- Sweep old generation (major GC only) ---
   size_t dead_old_count = 0;
@@ -1929,6 +1943,27 @@ void MemoryManager::FixupObject(size_t* mem)
   }
 }
 
+// [GC-DIAG] Detects the marked-but-not-forwarded young root behind the intermittent
+// windows-x64 LoadClsInstIntVar AV (gc-minor-stress-flake). A healthy young root that
+// survived the promote phase carries a forwarding pointer to a real old-gen object;
+// a non-zero MARKED_FLAG that is NOT an old-gen member is a bare GC bit (e.g. 0x1) left
+// by a skipped promotion. Prints ONLY on that bad path (rate-limited), so it adds no
+// per-object overhead and does not perturb the race timing on the healthy path.
+// REMOVE once the forwarding gap is fixed.
+void MemoryManager::DiagNotForwarded(size_t* self, size_t fwd, const wchar_t* site)
+{
+  if(old_generation.count((size_t*)fwd)) {
+    return;  // genuine forwarded old-gen address — healthy
+  }
+  static std::atomic<int> diag_count{0};
+  if(diag_count.fetch_add(1, std::memory_order_relaxed) < 50) {
+    std::wcerr << L"[GC-DIAG] marked-but-not-forwarded young root @" << site
+               << L": self=" << self << L" fwd=0x" << std::hex << fwd
+               << L" markbits=0x" << (self[MARKED_FLAG] & 0x7ULL) << std::dec
+               << L" minor=" << minor_gc_mode.load(std::memory_order_acquire) << std::endl;
+  }
+}
+
 void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 {
   // Fix up GC-triggering thread's operand stack. Conservative scan of untyped words:
@@ -1982,7 +2017,10 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
           size_t* self = (size_t*)(*mem);
           if(self && IsYoung(self)) {
             size_t fwd = self[MARKED_FLAG];
-            if(fwd) *mem = fwd;
+            if(fwd) {
+              *mem = fwd;
+              DiagNotForwarded(self, fwd, L"pda_frames");  // [GC-DIAG] log-only, no behavior change
+            }
           }
         }
 
@@ -2024,7 +2062,10 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
             size_t* self = (size_t*)(*mem);
             if(self && IsYoung(self)) {
               size_t fwd = self[MARKED_FLAG];
-              if(fwd) *mem = fwd;
+              if(fwd) {
+                *mem = fwd;
+                DiagNotForwarded(self, fwd, L"cur_frame");  // [GC-DIAG] log-only
+              }
             }
           }
           size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
@@ -2047,7 +2088,10 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
               size_t* self = (size_t*)(*mem);
               if(self && IsYoung(self)) {
                 size_t fwd = self[MARKED_FLAG];
-                if(fwd) *mem = fwd;
+                if(fwd) {
+                  *mem = fwd;
+                  DiagNotForwarded(self, fwd, L"call_stack");  // [GC-DIAG] log-only
+                }
               }
             }
             size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
@@ -2073,7 +2117,10 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
         size_t* self = (size_t*)frame->mem[0];
         if(self && IsYoung(self)) {
           size_t fwd = self[MARKED_FLAG];
-          if(fwd) frame->mem[0] = fwd;
+          if(fwd) {
+            frame->mem[0] = fwd;
+            DiagNotForwarded(self, fwd, L"jit_self");  // [GC-DIAG] log-only
+          }
         }
       }
 
