@@ -157,19 +157,47 @@ bytes->Size()->PrintLine();
 ## Functional Programming
 
 ### Closures and Lambda Expressions
-```ruby
-funcs := Vector->New()<FuncRef<IntRef>>;
-each(i : 10) {
-  funcs->AddBack(FuncRef->New(\() ~ IntRef : ()
-    => i->Factorial() * funcs->Size())<IntRef>);
-};
 
+Write a lambda as `\(params) => body`. When the surrounding context expects a
+`FuncRef<R>` — an assignment target, a `return`, a method argument, or a
+collection element — the return type is inferred and the lambda **auto-wraps**
+into a `FuncRef<R>` (no explicit `FuncRef->New(...)<R>` or `~ R :` annotation).
+Call a `FuncRef` **directly** with `v()` — no `->Get()`/`->Call()` step — and
+chain on the result (`v()->Get()`).
+
+```ruby
+# bare lambda; return type inferred from the FuncRef<IntRef> target, called directly
+f : FuncRef<IntRef> := \() => IntRef->New(5);
+f()->Get()->PrintLine();          # 5
+
+# block body: an arbitrary statement list (inferred locals, loops) with a return
+sum := \() => {
+  acc := IntRef->New(0);
+  for(k := 0; k < 5; k += 1;) { acc->Set(acc->Get() + k); };
+  return acc;
+};
+sum()->Get()->PrintLine();        # 0+1+2+3+4 = 10
+
+# auto-wraps when stored in a generic collection, then called directly
+funcs := Vector->New()<FuncRef<IntRef>>;
+each(i : 5) { funcs->AddBack(\() => IntRef->New(i * 7)); };
 each(i : funcs) {
-  value := funcs->Get(i)<FuncRef>;
-  func := value->Get();
-  func()->Get()->PrintLine();
+  f := funcs->Get(i);
+  f()->Get()->PrintLine();
 };
 ```
+
+A bare lambda also auto-wraps when returned or passed as an argument:
+
+```ruby
+function : Mk(n : Int) ~ FuncRef<IntRef> {
+  x := IntRef->New(n);
+  return \() => x;                # auto-wraps to FuncRef<IntRef>
+}
+```
+
+The verbose form with an explicit annotation is still supported and equivalent:
+`FuncRef->New(\() ~ IntRef : () => x)<IntRef>`.
 
 ### First-Class Functions
 ```ruby

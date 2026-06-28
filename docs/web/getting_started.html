@@ -1764,6 +1764,28 @@ each(i : funcs) {
 };
 </code></pre>
          <p>
+          As of v2026.6.3, lambdas have a simplified form. A bare lambda <code>\(...) =&gt; body</code> infers its return type from context and auto-wraps into a <code>FuncRef&lt;R&gt;</code> when it is assigned, returned, passed as an argument, or stored in a collection &mdash; no explicit <code>FuncRef-&gt;New(...)&lt;R&gt;</code> wrapper or <code>~ R :</code> annotation is needed. A <code>FuncRef</code> can be called <em>directly</em> with <code>v()</code> (no <code>-&gt;Get()</code>/<code>-&gt;Call()</code> step), and the body may be a single expression or a <code>{ ... }</code> block of statements ending in a <code>return</code>.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp"># bare lambda; return type inferred from the FuncRef&lt;IntRef&gt; target, called directly
+f : FuncRef&lt;IntRef&gt; := \() =&gt; IntRef-&gt;New(5);
+f()-&gt;Get()-&gt;PrintLine();          # 5
+
+# block body: arbitrary statements with a return; auto-wrapped into the collection
+funcs := Vector-&gt;New()&lt;FuncRef&lt;IntRef&gt; &gt;;
+each(i : 5) {
+  funcs-&gt;AddBack(\() =&gt; {
+    acc := IntRef-&gt;New(0);
+    for(k := 0; k &lt; i; k += 1;) { acc-&gt;Set(acc-&gt;Get() + k); };
+    return acc;
+  });
+};
+# call each FuncRef directly
+each(i : funcs) {
+  f := funcs-&gt;Get(i);
+  f()-&gt;Get()-&gt;PrintLine();
+};
+</code></pre>
+         <p>
           Lambda parameters types can also be inferred using the modified syntax below.
          </p>
          <pre class="line-numbers"><code class="language-cpp">map := Map-&gt;New()&gt;IntRef, String&gt;;
