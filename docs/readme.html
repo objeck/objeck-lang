@@ -63,9 +63,14 @@
   </header>
 
   <main style="text-align: left;">
-   <p>Generational minor garbage collection, closure ergonomics &mdash; direct <code>FuncRef</code> calls, bare lambdas, and lambda block bodies &mdash; and a new <code>System.Concurrency</code> library.</p>
+   <p>Stability fix for an intermittent multithreaded crash in the generational minor garbage collector during thread startup.</p>
 
-   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.3" style="color: inherit; text-decoration: none;">v2026.6.3</a></u></h3>
+   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.4" style="color: inherit; text-decoration: none;">v2026.6.4</a></u></h3>
+    <ul>
+        <li><strong>Multithreaded GC stability fix</strong> &mdash; fixed an intermittent crash (<code>0xC0000005</code>) in the generational minor garbage collector during thread startup: a thread being spawned held its <code>self</code> and argument as untracked raw pointers, so a moving collection during the spawn handoff could relocate the object and leave the new thread a stale reference. These are now tracked and relocated across collection. Surfaced only under heavy multithreaded churn</li>
+    </ul>
+
+   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.3" style="color: inherit; text-decoration: none;">v2026.6.3</a></h3>
     <ul>
         <li><strong>Generational minor garbage collection</strong> &mdash; minor (nursery) collection is now enabled: a nursery-full collection scans only the remembered set plus roots and recycles the young generation without sweeping the old generation, falling back to a full major GC under old-gen pressure. JIT and interpreter reference stores emit the write barrier on AMD64 and ARM64, and the nursery is zeroed at allocation time instead of inside the stop-the-world pause</li>
         <li><strong>Closure ergonomics</strong> &mdash; call a <code>FuncRef</code> directly with <code>v()</code> (no explicit <code>-&gt;Call()</code>); write bare lambdas with an inferred return type (<code>\(x) =&gt; x * 2</code>) that auto-wrap into <code>FuncRef&lt;R&gt;</code> when assigned, returned, passed as a method argument, or stored as a collection element; and give a lambda a block body (<code>\(x) =&gt; { ... }</code>). A multi-capture closure heap-corruption bug is fixed (captures now use closure-local ids)</li>

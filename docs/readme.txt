@@ -1,3 +1,10 @@
+v2026.6.4 (June 28, 2026)
+===
+Stability fix for an intermittent multithreaded crash in the generational minor garbage collector during thread startup.
+
+v2026.6.4
+- VM: fixed an intermittent crash (0xC0000005) in the generational minor garbage collector during thread startup -- a thread being spawned held its self and argument as untracked raw pointers, so a moving collection during the spawn handoff could relocate the still-live object (kept reachable via another root) without updating the holder, leaving the new thread a stale reference; these are now tracked and relocated across collection (pending_thread_roots, marked and fixed up on both Win32 and POSIX thread paths). Surfaced only under heavy multithreaded churn
+
 v2026.6.3 (June 27, 2026)
 ===
 Generational minor garbage collection, closure ergonomics (direct FuncRef calls, bare lambdas, lambda block bodies), and a new System.Concurrency library.

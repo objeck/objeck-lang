@@ -4,6 +4,11 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+## [v2026.6.4] - 2026-06-28
+
+### Bug Fixes
+- **Multithreaded minor-GC crash during thread spawn**: a spawning thread's `self` and method argument were held as raw pointers in a heap `ThreadHolder` that the moving collector neither marked nor relocated. A minor GC during the spawn handoff could promote/relocate the still-live object (kept reachable via another root, e.g. the parent's array) without updating the holder, so the new thread started with a stale young pointer — after the nursery reset that slot was reused, and the stale `self` was later dereferenced as a non-object (`0xC0000005`) in `StackInterpreter::LoadClsInstIntVar`. Fixed by tracking the holder's self/param slots in a `pending_thread_roots` registry that the collector marks (`CheckPendingThreadRoots`) and relocates (`FixupPendingThreadRoots`) across every collection during the spawn handoff, registered in `ProcessAsyncMethodCall` and removed at child teardown, on both the Win32 and POSIX thread paths. Intermittent; surfaced only under heavy multithreaded churn.
+
 ## [v2026.6.3] - 2026-06-27
 
 ### New Features
