@@ -37,6 +37,7 @@ StackProgram* MemoryManager::prgm;
 
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
 std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
+std::unordered_set<size_t**> MemoryManager::pending_thread_roots;
 std::vector<StackFrame*> MemoryManager::jit_frames;
 
 size_t* MemoryManager::free_buckets[MemoryManager::FREE_POOL_COUNT];
@@ -99,6 +100,7 @@ long MemoryManager::mem_cycle = 0L;
 CRITICAL_SECTION MemoryManager::jit_frame_lock;
 CRITICAL_SECTION MemoryManager::pda_frame_lock;
 CRITICAL_SECTION MemoryManager::pda_monitor_lock;
+CRITICAL_SECTION MemoryManager::pending_thread_root_lock;
 CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
 CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
@@ -106,6 +108,7 @@ CRITICAL_SECTION MemoryManager::free_memory_cache_lock;
 pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::jit_frame_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::pending_thread_root_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -161,6 +164,7 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   InitializeCriticalSection(&jit_frame_lock);
   InitializeCriticalSection(&pda_frame_lock);
   InitializeCriticalSection(&pda_monitor_lock);
+  InitializeCriticalSection(&pending_thread_root_lock);
   InitializeCriticalSection(&allocated_lock);
   InitializeCriticalSection(&marked_sweep_lock);
   InitializeCriticalSection(&free_memory_cache_lock);
@@ -341,6 +345,82 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
   pda_monitors.erase(monitor);
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&pda_monitor_lock);
+#endif
+}
+
+// --- Pending thread roots: a spawning thread's self/param (raw pointers in a heap
+// ThreadHolder) tracked so the moving collector marks AND relocates them across any
+// collection during the spawn handoff. See pending_thread_roots in memory.h. ---
+
+void MemoryManager::AddPendingThreadRoot(size_t** root)
+{
+  if(!root) {
+    return;
+  }
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pending_thread_root_lock);
+#endif
+  pending_thread_roots.insert(root);
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pending_thread_root_lock);
+#endif
+}
+
+void MemoryManager::RemovePendingThreadRoot(size_t** root)
+{
+  if(!initialized || !root) {
+    return;
+  }
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pending_thread_root_lock);
+#endif
+  pending_thread_roots.erase(root);
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pending_thread_root_lock);
+#endif
+}
+
+// Mark phase: keep each pending self/param alive. Holds pending_thread_root_lock for
+// the whole walk so a concurrently tearing-down child's RemovePendingThreadRoot can't
+// mutate the set mid-iteration. *root may be null (e.g. a Nil param) — skipped.
+void MemoryManager::CheckPendingThreadRoots()
+{
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pending_thread_root_lock);
+#endif
+  for(auto iter = pending_thread_roots.begin(); iter != pending_thread_roots.end(); ++iter) {
+    size_t* obj = **iter;
+    if(obj) {
+#ifndef _GC_SERIAL
+      MUTEX_LOCK(&allocated_lock);
+#endif
+      const bool found = IsAllocated(obj);
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
+      if(found) {
+        CheckObject(obj, false, 1);
+      }
+    }
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pending_thread_root_lock);
+#endif
+}
+
+// Fixup phase: relocate each pending self/param if its young object was promoted.
+// FixupSlot validates the forwarding target, so a non-pointer/aliasing value is left
+// untouched. Lock held to pair with RemovePendingThreadRoot (see CheckPendingThreadRoots).
+void MemoryManager::FixupPendingThreadRoots()
+{
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pending_thread_root_lock);
+#endif
+  for(auto iter = pending_thread_roots.begin(); iter != pending_thread_roots.end(); ++iter) {
+    FixupSlot((size_t*)*iter);
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pending_thread_root_lock);
 #endif
 }
 
@@ -1165,7 +1245,11 @@ void* MemoryManager::CheckStatic([[maybe_unused]] void* arg)
     StackClass* cls = clss[i];
     CheckMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), cls->GetNumberClassDeclarations(), 0);
   }
-  
+
+  // Mark self/param of threads still mid-spawn (raw pointers a child has not yet
+  // installed into its own scannable roots). Piggybacks on this mark thread.
+  CheckPendingThreadRoots();
+
   return 0;
 }
 
@@ -1951,6 +2035,10 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       }
     }
   }
+
+  // Relocate self/param of threads still mid-spawn, so a child reads the promoted
+  // address instead of a stale nursery pointer (mirrors the mark side).
+  FixupPendingThreadRoots();
 
   // Fix up static class memory
   StackClass** clss = prgm->GetClasses();

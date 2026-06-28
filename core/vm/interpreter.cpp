@@ -1974,6 +1974,17 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   holder->param = param;
   holder->self = instance;
 
+  // self/param are raw object pointers living in this heap holder until the child
+  // installs them into its own scannable roots inside Execute. Register them so the
+  // moving collector marks AND relocates them across any collection during the spawn
+  // handoff; otherwise a promotion between here and the child reading them leaves the
+  // child a stale (interior) pointer that a later minor GC marks-but-cannot-forward,
+  // writing a bare GC mark bit into the self slot -> access violation. Unregistered in
+  // AsyncMethodCall at teardown. No collection can run between these stores and the
+  // registration (no allocation/safepoint), so the values cannot move in the gap.
+  MemoryManager::AddPendingThreadRoot(&holder->self);
+  MemoryManager::AddPendingThreadRoot(&holder->param);
+
 #ifdef _WIN32
   HANDLE vm_thread = (HANDLE)_beginthreadex(nullptr, 0, AsyncMethodCall, holder, 0, nullptr);
   if(!vm_thread) {
@@ -2017,20 +2028,24 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   size_t* thread_op_stack = new size_t[OP_STACK_SIZE];
   size_t* thread_stack_pos = new size_t;
   (*thread_stack_pos) = 0;
-  
-  // set parameter
-  thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
 
 #ifdef _DEBUG
   HANDLE vm_thread;
   DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
   std::wcout << L"# Starting thread=" << vm_thread << L" #" << std::endl;
-#endif  
+#endif
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
   AddThread(intpr);
   MemoryManager::RegisterMutator();
   MemoryManager::SafePoint();   // park immediately if a collection is already underway
+  // Read self/param from the GC-tracked holder at the last GC-safe moment. The
+  // pending-thread-root registration (ProcessAsyncMethodCall) kept them relocated
+  // across every collection during the spawn handoff, so these reads see the current
+  // (post-promotion) addresses rather than stale nursery pointers. Execute's prologue
+  // wires op_stack/cur_frame before any allocation or safepoint, so the param placed
+  // here becomes GC-scannable before this thread can park -> it cannot go stale.
+  thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
   intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
   MemoryManager::UnregisterMutator();
 
@@ -2056,6 +2071,10 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   delete thread_stack_pos;
   thread_stack_pos = nullptr;
 
+  // The child's own frame/op_stack covered self/param for the whole run; drop the
+  // spawn-handoff roots before freeing the holder they point into.
+  MemoryManager::RemovePendingThreadRoot(&holder->self);
+  MemoryManager::RemovePendingThreadRoot(&holder->param);
   delete holder;
   holder = nullptr;
 
@@ -2074,17 +2093,21 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   size_t* thread_stack_pos = new size_t;
   (*thread_stack_pos) = 0;
 
-  // set parameter
-  thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
-
 #ifdef _DEBUG
   std::wcout << L"# Starting thread=" << pthread_self() << L" #" << std::endl;
-#endif  
+#endif
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
   AddThread(intpr);
   MemoryManager::RegisterMutator();
   MemoryManager::SafePoint();   // park immediately if a collection is already underway
+  // Read self/param from the GC-tracked holder at the last GC-safe moment. The
+  // pending-thread-root registration (ProcessAsyncMethodCall) kept them relocated
+  // across every collection during the spawn handoff, so these reads see the current
+  // (post-promotion) addresses rather than stale nursery pointers. Execute's prologue
+  // wires op_stack/cur_frame before any allocation or safepoint, so the param placed
+  // here becomes GC-scannable before this thread can park -> it cannot go stale.
+  thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
   intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
   MemoryManager::UnregisterMutator();
 
@@ -2110,6 +2133,10 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   delete thread_stack_pos;
   thread_stack_pos = nullptr;
 
+  // The child's own frame/op_stack covered self/param for the whole run; drop the
+  // spawn-handoff roots before freeing the holder they point into.
+  MemoryManager::RemovePendingThreadRoot(&holder->self);
+  MemoryManager::RemovePendingThreadRoot(&holder->param);
   delete holder;
   holder = nullptr;
 

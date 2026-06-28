@@ -99,6 +99,13 @@ class MemoryManager {
   static StackProgram* prgm;
   static std::unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static std::unordered_set<StackFrame**> pda_frames;
+  // A spawning thread's self/param live as raw pointers in a heap ThreadHolder until
+  // the child wires its own scannable roots in Execute. Each entry is the address of
+  // such a slot (&holder->self / &holder->param). The moving collector marks AND
+  // relocates these across any collection during the spawn handoff; without it a
+  // promotion mid-spawn leaves the child a stale self/param that a later minor GC
+  // marks-but-cannot-forward -> a bare GC mark bit written into a root -> AV.
+  static std::unordered_set<size_t**> pending_thread_roots;
   static std::vector<StackFrame*> jit_frames; // deleted elsewhere
   // Free-list cache: intrusive singly-linked lists bucketed by power-of-two pool
   // size (bucket index = log2(pool)). Each cached block stores its actual size in
@@ -155,6 +162,7 @@ class MemoryManager {
   static CRITICAL_SECTION jit_frame_lock;
   static CRITICAL_SECTION pda_frame_lock;
   static CRITICAL_SECTION pda_monitor_lock;
+  static CRITICAL_SECTION pending_thread_root_lock;
   static CRITICAL_SECTION allocated_lock;
   static CRITICAL_SECTION marked_sweep_lock;
   static CRITICAL_SECTION free_memory_cache_lock;
@@ -162,6 +170,7 @@ class MemoryManager {
   static pthread_mutex_t pda_monitor_lock;
   static pthread_mutex_t pda_frame_lock;
   static pthread_mutex_t jit_frame_lock;
+  static pthread_mutex_t pending_thread_root_lock;
   static pthread_mutex_t allocated_lock;
   static pthread_mutex_t marked_sweep_lock;
   static pthread_mutex_t free_memory_cache_lock;
@@ -420,6 +429,7 @@ class MemoryManager {
 #ifdef _WIN32
     DeleteCriticalSection(&jit_frame_lock);
     DeleteCriticalSection(&pda_monitor_lock);
+    DeleteCriticalSection(&pending_thread_root_lock);
     DeleteCriticalSection(&allocated_lock);
     DeleteCriticalSection(&marked_sweep_lock);
     DeleteCriticalSection(&free_memory_cache_lock);
@@ -431,8 +441,14 @@ class MemoryManager {
   // add and remove pda roots
   static void AddPdaMethodRoot(StackFrame** frame);
   static void RemovePdaMethodRoot(StackFrame** frame);
-  static void AddPdaMethodRoot(StackFrameMonitor* monitor);  
+  static void AddPdaMethodRoot(StackFrameMonitor* monitor);
   static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
+
+  // Track/relocate a spawning thread's self/param slots (see pending_thread_roots).
+  static void AddPendingThreadRoot(size_t** root);
+  static void RemovePendingThreadRoot(size_t** root);
+  static void CheckPendingThreadRoots();   // mark phase
+  static void FixupPendingThreadRoots();   // fixup phase
   
   static void CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, const long depth);
   static void CheckObject(size_t* mem, bool is_obj, const long depth);
