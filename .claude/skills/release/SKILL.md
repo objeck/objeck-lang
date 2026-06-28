@@ -103,9 +103,18 @@ git ls-remote --tags origin "refs/tags/v$VERSION"  # must be empty
 gh run list --workflow=ci-build.yml --branch=master --limit=1 \
   --json conclusion,status --jq '.[0] | .status + "/" + .conclusion'
 # must return "completed/success"
+
+# Committed docs/api.zip is complete (NOT a stale/broken 3-file zip). release-build.yml's
+# "Generate API Docs" job unzips this committed api.zip as the doc base; a broken one
+# (generated against stale .obl during the bump — see bump-version step 4) yields 0 HTML
+# and fails release-build on every non-windows-x64 target AFTER the tag is pushed. This
+# broke v2026.6.4. Catch it here, before tagging:
+unzip -l docs/api.zip | grep -c '\.html$'   # must be >= 50 (healthy ~435)
+unzip -l docs/api.zip | head                # paths must be 'api/...', not 'api\...'
 ```
 
 If any gate fails, print the specific failure and stop immediately. Do not propose workarounds.
+If `docs/api.zip` is broken, regenerate it (bump-version step 4 note), commit, and restart.
 
 ### 1b. Derive the release summary
 

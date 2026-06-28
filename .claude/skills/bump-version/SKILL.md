@@ -86,6 +86,25 @@ cd core/release && cmd.exe //c "deploy_windows.cmd x64"
 
 This rebuilds the entire MSVC solution (compiler, VM, debugger, REPL, launcher), all native libraries (crypto, lame, diags, ODBC, ONNX, OpenCV), generates API docs, and creates the deploy directory.
 
+> **CRITICAL — `docs/api.zip` must be generated AFTER the `.obl` libraries are at the
+> new version.** `deploy_windows.cmd` regenerates `docs/api.zip` by running `code_doc`
+> against the `.obl` already in `deploy-x64/lib` — it does **NOT** rebuild the `.obl`
+> itself. If those libs are still the *previous* version (e.g. the bump is split — Windows
+> binaries bumped here but the `.obl` rebuilt later/on Linux per steps 5–6, or on another
+> machine), `code_doc` hits *"compiled with a different version of the tool chain"*,
+> writes **zero HTML**, and produces a **broken `docs/api.zip` containing only the 3 style
+> files**. A broken api.zip is silent locally but **fails the release** — the cloud
+> `release-build.yml` *"Generate API Docs"* step unzips the committed `docs/api.zip` as the
+> doc base (it relies on it; the Linux path does not copy fresh `code_doc` output into
+> `docs/api`), so 0 HTML → *"API docs incomplete: only 0 HTML files (expected 50+)"* →
+> cascading `Verify required binaries` failures on every non-windows-x64 target. This
+> broke v2026.6.4. **So: if the `.obl` are rebuilt separately/after, REGENERATE `docs/api.zip`
+> once the new `.obl` are in `deploy-x64/lib`** (re-run `deploy_windows.cmd`, or run the
+> `code_doc` doc-gen + `7z a -tzip api.zip api/*` from `deploy-x64/doc`). Build the zip with
+> `7z`/`zip` (forward-slash paths), **not** PowerShell `Compress-Archive` (writes backslash
+> entries that Linux `unzip` mangles). **Always verify before committing** (see step 8):
+> `unzip -l docs/api.zip | grep -c '\.html$'` must be ≥ 50.
+
 **If `deploy_windows.cmd` cannot run** (no VS environment), fall back to rebuilding just compiler and VM:
 ```bash
 cd core/compiler/vs && MSBuild compiler.vcxproj -p:Configuration=Release -p:Platform=x64 -t:Rebuild
@@ -134,6 +153,11 @@ The `core_opencv` test may fail on WSL (missing native .so) — that's expected.
 - Read `core/shared/version.h` and confirm `VER_NUM` and `VERSION_STRING` match
 - Check regression test results: all should pass (except opencv on WSL)
 - Check `update_version.ps1` variables match the new version
+- **Verify `docs/api.zip` is complete** (a broken one silently fails the release — see step 4):
+  `unzip -l docs/api.zip | grep -c '\.html$'` must be **≥ 50** (a healthy build is ~435).
+  If it's ~0–3, the api.zip was generated against stale `.obl`; rebuild it after the new
+  `.obl` are in `deploy-x64/lib` and re-verify. Also confirm forward-slash paths
+  (`unzip -l docs/api.zip | head` shows `api/...`, not `api\...`).
 
 ### 9. Report
 
