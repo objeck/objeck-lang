@@ -601,6 +601,27 @@ jobs:
     # Regression Tests
     # ============================================
 
+    - name: Enable WER crash dumps for obr.exe (Windows x64)
+      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      shell: pwsh
+      run: |
+        # Capture a full user-mode minidump if obr.exe faults during the tests below
+        # (target: the intermittent core_thread_gc_stress 0xC0000005 that reproduces
+        # only on this Intel runner, never on local AMD). obr.exe installs no default
+        # SIGSEGV handler unless an Objeck program registers one, so the access
+        # violation propagates to Windows Error Reporting and a dump is written.
+        $dumpDir = Join-Path $env:GITHUB_WORKSPACE 'crashdumps'
+        New-Item -ItemType Directory -Force -Path $dumpDir | Out-Null
+        $base = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting'
+        $key  = Join-Path $base 'LocalDumps\obr.exe'
+        New-Item -Path $key -Force | Out-Null
+        New-ItemProperty -Path $key -Name 'DumpFolder' -Value $dumpDir -PropertyType ExpandString -Force | Out-Null
+        New-ItemProperty -Path $key -Name 'DumpType'   -Value 2        -PropertyType DWord       -Force | Out-Null
+        New-ItemProperty -Path $key -Name 'DumpCount'  -Value 10       -PropertyType DWord       -Force | Out-Null
+        # Suppress the "app has stopped working" dialog so a crash can't hang the runner.
+        New-ItemProperty -Path $base -Name 'DontShowUI' -Value 1 -PropertyType DWord -Force | Out-Null
+        Write-Host "WER LocalDumps enabled for obr.exe (full dump) -> $dumpDir"
+
     - name: Run regression tests (POSIX)
       if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
@@ -657,6 +678,23 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_dap_tests.py "%BIN%"
+
+    - name: Upload obr.exe crash dump on failure (Windows x64)
+      # Runs whenever an earlier step in this job failed. The dump only exists if
+      # obr.exe actually faulted; if-no-files-found:warn keeps this non-fatal when a
+      # failure was unrelated (e.g. a compile error rather than a crash). The matching
+      # obr.exe (and obr.pdb if the build emitted one) is bundled so the dump can be
+      # symbolized against the exact binary that crashed.
+      if: failure() && runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      uses: actions/upload-artifact@v6
+      with:
+        name: obr-crashdump-${{ matrix.platform }}
+        path: |
+          crashdumps/*.dmp
+          core/release/deploy-${{ matrix.arch }}/bin/obr.exe
+          core/release/deploy-${{ matrix.arch }}/bin/obr.pdb
+        if-no-files-found: warn
+        retention-days: 14
 
     # ============================================
     # Network Tests (quarantined / non-gating)
