@@ -776,6 +776,11 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
 #endif
 }
 
+// [GC-DIAG] young_used snapshot taken at the start of the promote walk, so
+// DiagNotForwarded can tell whether the offending self was inside the range the walk
+// covered. Set in the promote loop below. Temporary; remove with the diag.
+static size_t g_diag_promote_young_used = 0;
+
 #ifdef _WIN32
 unsigned int MemoryManager::CollectMemory(void* arg)
 #else
@@ -927,6 +932,7 @@ void* MemoryManager::CollectMemory(void* arg)
   size_t young_used = young_offset.load(std::memory_order_relaxed);
   size_t dead_young_size = 0;
   size_t promoted_count = 0;
+  g_diag_promote_young_used = young_used;  // [GC-DIAG] snapshot for DiagNotForwarded
 
   // Linear walk through young region
   uint8_t* scan_ptr = young_region;
@@ -1947,8 +1953,17 @@ void MemoryManager::FixupObject(size_t* mem)
 // windows-x64 LoadClsInstIntVar AV (gc-minor-stress-flake). A healthy young root that
 // survived the promote phase carries a forwarding pointer to a real old-gen object;
 // a non-zero MARKED_FLAG that is NOT an old-gen member is a bare GC bit (e.g. 0x1) left
-// by a skipped promotion. Prints ONLY on that bad path (rate-limited), so it adds no
-// per-object overhead and does not perturb the race timing on the healthy path.
+// by a skipped promotion. The extra fields distinguish the remaining hypotheses:
+//   self_off  = (self - young_region): position of self in the nursery
+//   promo_used= young_used the promote walk covered [0, promo_used)
+//   now_off   = young_offset at fixup time (== promo_used under correct STW)
+//   in_range  = self_off < promo_used (the walk SHOULD have visited+promoted it)
+//   type/cls  = is self a real object boundary (valid TYPE / class), or junk/interior?
+// If in_range==1 and type looks valid -> self was unmarked when the walk passed it but
+// marked afterwards => a mark/sweep ORDERING or STW race. If in_range==0 -> a
+// young_offset snapshot race (self beyond the walked range). If type is junk -> self is
+// not a real object start (interior/garbage self pointer).
+// Prints ONLY on the bad path (rate-limited): no per-object overhead, no timing perturb.
 // REMOVE once the forwarding gap is fixed.
 void MemoryManager::DiagNotForwarded(size_t* self, size_t fwd, const wchar_t* site)
 {
@@ -1957,9 +1972,19 @@ void MemoryManager::DiagNotForwarded(size_t* self, size_t fwd, const wchar_t* si
   }
   static std::atomic<int> diag_count{0};
   if(diag_count.fetch_add(1, std::memory_order_relaxed) < 50) {
+    const long long self_off = (long long)((uint8_t*)self - young_region);
+    const size_t now_off = young_offset.load(std::memory_order_acquire);
+    const int in_range = (self_off >= 0 && (size_t)self_off < g_diag_promote_young_used) ? 1 : 0;
+    StackClass* cls = (self[TYPE] == NIL_TYPE) ? (StackClass*)self[SIZE_OR_CLS] : nullptr;
     std::wcerr << L"[GC-DIAG] marked-but-not-forwarded young root @" << site
                << L": self=" << self << L" fwd=0x" << std::hex << fwd
                << L" markbits=0x" << (self[MARKED_FLAG] & 0x7ULL) << std::dec
+               << L" self_off=" << self_off
+               << L" promo_used=" << g_diag_promote_young_used
+               << L" now_off=" << now_off
+               << L" in_range=" << in_range
+               << L" type=" << self[TYPE]
+               << L" cls=" << (cls ? cls->GetName() : L"<n/a>")
                << L" minor=" << minor_gc_mode.load(std::memory_order_acquire) << std::endl;
   }
 }
