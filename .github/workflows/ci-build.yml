@@ -624,6 +624,42 @@ jobs:
         OBJECK_DIAG_GENERICS: "1"
       run: run_regression.cmd ${{ matrix.arch }}
 
+    - name: VERIFY gc-thread-start fix via ProcDump (Windows x64, throwaway)
+      # TEMPORARY verification only (do NOT merge): loop core_thread_gc_stress under
+      # ProcDump, which enables the NT debug-heap poison that made the pre-fix
+      # marked-but-not-forwarded self fault deterministically (~1 in <30 iters every
+      # run before the fix). With d30c27e3e (pending-thread-roots) it should report
+      # "No crash captured". continue-on-error so it never gates the build.
+      if: always() && runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      continue-on-error: true
+      working-directory: ./programs/regression
+      shell: pwsh
+      run: |
+        $dumpDir = Join-Path $env:GITHUB_WORKSPACE 'crashdumps'
+        New-Item -ItemType Directory -Force -Path $dumpDir | Out-Null
+        for($i=1; $i -le 3; $i++){
+          try { Invoke-WebRequest -Uri 'https://download.sysinternals.com/files/Procdump.zip' -OutFile procdump.zip; break }
+          catch { if($i -eq 3){ throw }; Start-Sleep 10 }
+        }
+        Expand-Archive procdump.zip -DestinationPath procdump -Force
+        $pd  = Join-Path (Resolve-Path procdump) 'procdump64.exe'
+        $bin = Resolve-Path "..\..\core\release\deploy-x64\bin"
+        $obr = Join-Path $bin 'obr.exe'
+        $env:OBJECK_LIB_PATH = (Resolve-Path "$bin\..\lib").Path
+        if(-not (Test-Path 'core_thread_gc_stress.obe')){
+          & "$bin\obc.exe" -src core_thread_gc_stress.obs -opt s3 -dest core_thread_gc_stress.obe
+        }
+        $obe = (Resolve-Path 'core_thread_gc_stress.obe').Path
+        $before = @(Get-ChildItem $dumpDir -Filter *.dmp -ErrorAction SilentlyContinue).Count
+        $caught = $false
+        for($i=1; $i -le 30; $i++){
+          Write-Host "=== gc_stress attempt $i/30 under ProcDump ==="
+          & $pd -accepteula -ma -e -x $dumpDir $obr $obe
+          $now = @(Get-ChildItem $dumpDir -Filter *.dmp -ErrorAction SilentlyContinue).Count
+          if($now -gt $before){ Write-Host "CRASH dump captured on attempt $i — FIX FAILED"; $caught=$true; break }
+        }
+        if(-not $caught){ Write-Host "VERIFY PASS: No crash captured in 30 attempts under ProcDump." }
+
     - name: Run debugger tests (POSIX)
       if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
