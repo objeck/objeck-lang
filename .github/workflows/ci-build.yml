@@ -601,27 +601,6 @@ jobs:
     # Regression Tests
     # ============================================
 
-    - name: Enable WER crash dumps for obr.exe (Windows x64)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
-      shell: pwsh
-      run: |
-        # Capture a full user-mode minidump if obr.exe faults during the tests below
-        # (target: the intermittent core_thread_gc_stress 0xC0000005 that reproduces
-        # only on this Intel runner, never on local AMD). obr.exe installs no default
-        # SIGSEGV handler unless an Objeck program registers one, so the access
-        # violation propagates to Windows Error Reporting and a dump is written.
-        $dumpDir = Join-Path $env:GITHUB_WORKSPACE 'crashdumps'
-        New-Item -ItemType Directory -Force -Path $dumpDir | Out-Null
-        $base = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting'
-        $key  = Join-Path $base 'LocalDumps\obr.exe'
-        New-Item -Path $key -Force | Out-Null
-        New-ItemProperty -Path $key -Name 'DumpFolder' -Value $dumpDir -PropertyType ExpandString -Force | Out-Null
-        New-ItemProperty -Path $key -Name 'DumpType'   -Value 2        -PropertyType DWord       -Force | Out-Null
-        New-ItemProperty -Path $key -Name 'DumpCount'  -Value 10       -PropertyType DWord       -Force | Out-Null
-        # Suppress the "app has stopped working" dialog so a crash can't hang the runner.
-        New-ItemProperty -Path $base -Name 'DontShowUI' -Value 1 -PropertyType DWord -Force | Out-Null
-        Write-Host "WER LocalDumps enabled for obr.exe (full dump) -> $dumpDir"
-
     - name: Run regression tests (POSIX)
       if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
@@ -644,6 +623,45 @@ jobs:
       env:
         OBJECK_DIAG_GENERICS: "1"
       run: run_regression.cmd ${{ matrix.arch }}
+
+    - name: Capture GC-stress crash dump (ProcDump, Windows x64)
+      # Diagnostic (temporary): core_thread_gc_stress segfaults intermittently
+      # (~1 in 3 runs) only on this Intel runner. WER LocalDumps did NOT write a dump
+      # on the crash here (WER pipeline appears disabled on hosted runners), so run the
+      # test in a loop under ProcDump, which captures the full dump itself on the access
+      # violation. continue-on-error keeps this off the job's pass/fail; the regression
+      # step above stays the gate. Detect a capture by a new *.dmp appearing, not exit code.
+      if: always() && runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      continue-on-error: true
+      working-directory: ./programs/regression
+      shell: pwsh
+      run: |
+        $dumpDir = Join-Path $env:GITHUB_WORKSPACE 'crashdumps'
+        New-Item -ItemType Directory -Force -Path $dumpDir | Out-Null
+        $max = 3
+        for($i=1; $i -le $max; $i++){
+          try { Invoke-WebRequest -Uri 'https://download.sysinternals.com/files/Procdump.zip' -OutFile procdump.zip; break }
+          catch { if($i -eq $max){ throw }; Start-Sleep 10 }
+        }
+        Expand-Archive procdump.zip -DestinationPath procdump -Force
+        $pd  = Join-Path (Resolve-Path procdump) 'procdump64.exe'
+        $bin = Resolve-Path "..\..\core\release\deploy-x64\bin"
+        $obr = Join-Path $bin 'obr.exe'
+        $env:OBJECK_LIB_PATH = (Resolve-Path "$bin\..\lib").Path
+        if(-not (Test-Path 'core_thread_gc_stress.obe')){
+          & "$bin\obc.exe" -src core_thread_gc_stress.obs -opt s3 -dest core_thread_gc_stress.obe
+        }
+        $obe = (Resolve-Path 'core_thread_gc_stress.obe').Path
+        $before = @(Get-ChildItem $dumpDir -Filter *.dmp -ErrorAction SilentlyContinue).Count
+        $caught = $false
+        for($i=1; $i -le 30; $i++){
+          Write-Host "=== gc_stress attempt $i/30 under ProcDump ==="
+          & $pd -accepteula -ma -e -x $dumpDir $obr $obe
+          $now = @(Get-ChildItem $dumpDir -Filter *.dmp -ErrorAction SilentlyContinue).Count
+          if($now -gt $before){ Write-Host "CRASH dump captured on attempt $i"; $caught=$true; break }
+        }
+        Write-Host "Dumps in ${dumpDir}:"; Get-ChildItem $dumpDir -ErrorAction SilentlyContinue | Format-Table Name,Length -AutoSize
+        if(-not $caught){ Write-Host "No crash captured in 30 attempts (test is intermittent)." }
 
     - name: Run debugger tests (POSIX)
       if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
@@ -679,13 +697,13 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_dap_tests.py "%BIN%"
 
-    - name: Upload obr.exe crash dump on failure (Windows x64)
-      # Runs whenever an earlier step in this job failed. The dump only exists if
-      # obr.exe actually faulted; if-no-files-found:warn keeps this non-fatal when a
-      # failure was unrelated (e.g. a compile error rather than a crash). The matching
-      # obr.exe (and obr.pdb if the build emitted one) is bundled so the dump can be
-      # symbolized against the exact binary that crashed.
-      if: failure() && runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+    - name: Upload obr.exe crash dump (Windows x64)
+      # always() so the dump uploads whether the gate failed or the ProcDump step
+      # caught the crash on a run where the gate happened to pass. The dump only exists
+      # if obr.exe actually faulted; if-no-files-found:warn keeps this non-fatal. The
+      # matching obr.exe (and obr.pdb if the build emitted one) is bundled so the dump
+      # can be symbolized against the exact binary that crashed.
+      if: always() && runner.os == 'Windows' && matrix.platform != 'windows-arm64'
       uses: actions/upload-artifact@v6
       with:
         name: obr-crashdump-${{ matrix.platform }}
