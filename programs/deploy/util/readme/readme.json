@@ -1,9 +1,9 @@
 {
 	"version": {
-		"string": "2026.6.3",
+		"string": "2026.6.4",
 		"year": 2026
 	},
-	"title": "Generational minor GC and closure ergonomics",
+	"title": "Multithreaded minor-GC stability fix",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,12 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.6.4",
+			"items": [
+				"VM: fixed an intermittent multithreaded crash in the generational minor garbage collector — a thread being spawned held its self/param as untracked pointers, so a moving collection during the spawn handoff could leave the new thread a stale reference; these are now tracked and relocated across collection"
+			]
+		},
 		{
 			"version": "v2026.6.3",
 			"items": [
