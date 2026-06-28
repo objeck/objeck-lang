@@ -255,7 +255,7 @@ class MemoryManager {
   static void FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_size);
   static void FixupRoots(size_t* op_stack, size_t stack_pos);
   // [GC-DIAG] temporary diagnostic for the windows-x64 minor-GC forwarding gap; remove after fix.
-  static void DiagNotForwarded(size_t* self, size_t fwd, const wchar_t* site);
+  static void DiagNotForwarded(size_t* self, size_t fwd, const wchar_t* site, StackMethod* method);
 
 #ifdef _MEM_LOGGING
   static ofstream mem_logger;

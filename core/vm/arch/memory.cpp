@@ -1965,7 +1965,7 @@ void MemoryManager::FixupObject(size_t* mem)
 // not a real object start (interior/garbage self pointer).
 // Prints ONLY on the bad path (rate-limited): no per-object overhead, no timing perturb.
 // REMOVE once the forwarding gap is fixed.
-void MemoryManager::DiagNotForwarded(size_t* self, size_t fwd, const wchar_t* site)
+void MemoryManager::DiagNotForwarded(size_t* self, size_t fwd, const wchar_t* site, StackMethod* method)
 {
   if(old_generation.count((size_t*)fwd)) {
     return;  // genuine forwarded old-gen address — healthy
@@ -1985,6 +1985,8 @@ void MemoryManager::DiagNotForwarded(size_t* self, size_t fwd, const wchar_t* si
                << L" in_range=" << in_range
                << L" type=" << self[TYPE]
                << L" cls=" << (cls ? cls->GetName() : L"<n/a>")
+               << L" method=" << (method ? method->GetName() : L"<null>")
+               << L" lambda=" << (method ? (int)method->IsLambda() : -1)
                << L" minor=" << minor_gc_mode.load(std::memory_order_acquire) << std::endl;
   }
 }
@@ -2044,7 +2046,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
             size_t fwd = self[MARKED_FLAG];
             if(fwd) {
               *mem = fwd;
-              DiagNotForwarded(self, fwd, L"pda_frames");  // [GC-DIAG] log-only, no behavior change
+              DiagNotForwarded(self, fwd, L"pda_frames", method);  // [GC-DIAG] log-only, no behavior change
             }
           }
         }
@@ -2089,7 +2091,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
               size_t fwd = self[MARKED_FLAG];
               if(fwd) {
                 *mem = fwd;
-                DiagNotForwarded(self, fwd, L"cur_frame");  // [GC-DIAG] log-only
+                DiagNotForwarded(self, fwd, L"cur_frame", method);  // [GC-DIAG] log-only
               }
             }
           }
@@ -2115,7 +2117,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
                 size_t fwd = self[MARKED_FLAG];
                 if(fwd) {
                   *mem = fwd;
-                  DiagNotForwarded(self, fwd, L"call_stack");  // [GC-DIAG] log-only
+                  DiagNotForwarded(self, fwd, L"call_stack", method);  // [GC-DIAG] log-only
                 }
               }
             }
@@ -2144,7 +2146,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
           size_t fwd = self[MARKED_FLAG];
           if(fwd) {
             frame->mem[0] = fwd;
-            DiagNotForwarded(self, fwd, L"jit_self");  // [GC-DIAG] log-only
+            DiagNotForwarded(self, fwd, L"jit_self", method);  // [GC-DIAG] log-only
           }
         }
       }
