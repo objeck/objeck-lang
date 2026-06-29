@@ -1,6 +1,6 @@
 {
 	"version": {
-		"string": "2026.6.4",
+		"string": "2026.7.0",
 		"year": 2026
 	},
 	"title": "Multithreaded minor-GC stability fix",
