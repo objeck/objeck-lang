@@ -120,8 +120,10 @@ if [%1] == [arm64] (
 	REM WindowsSdkVerBinPath has trailing backslash, e.g., "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\"
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
-	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
-	copy "%VCToolsRedistDir%\arm64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
+	for /d %%d in ("%VCToolsRedistDir%\arm64\Microsoft.VC*.CRT") do (
+		copy "%%d\vcruntime140.dll" %TARGET%\bin
+		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+	)
 )
 if errorlevel 1 (
 	echo.
@@ -139,8 +141,10 @@ if [%1] == [x64] (
 	REM Embed manifests AFTER copying binaries
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
-	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140.dll" %TARGET%\bin
-	copy "%VCToolsRedistDir%\x64\Microsoft.VC143.CRT\vcruntime140_1.dll" %TARGET%\bin
+	for /d %%d in ("%VCToolsRedistDir%\x64\Microsoft.VC*.CRT") do (
+		copy "%%d\vcruntime140.dll" %TARGET%\bin
+		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+	)
 )
 if errorlevel 1 (
 	echo.

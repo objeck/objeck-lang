@@ -62,7 +62,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
 	fi
 fi
 
-$CXX -O3 -std=c++17 -Wall -fPIC $EP_DEFINE $ORT_INCLUDE $EXTRA_INCLUDE \
+$CXX -O3 -std=c++20 -Wall -fPIC $EP_DEFINE $ORT_INCLUDE $EXTRA_INCLUDE \
 	-c `pkg-config --cflags opencv4` onnx.cpp \
 	-Wno-unused-function -Wno-deprecated-declarations
 
