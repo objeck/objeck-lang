@@ -38,13 +38,31 @@
 
 using namespace frontend;
 
-// SEH guard: prevents access violations from crashing the LSP server process
+// Serializes ALL diagnostics work across the LSP server's per-connection worker
+// threads (server.obs spawns a LintService/LspWorker thread per connection).
+// Parsing and analysis run on process-global singletons (TreeFactory/TypeFactory
+// and the analyzer cache below); concurrent requests corrupt those and segfault.
+// The LSP is latency-tolerant and correctness-sensitive, so a single coarse lock
+// around every entry point is the right trade-off. Recursive so a future entry
+// that calls another cannot self-deadlock.
+static std::recursive_mutex s_diag_global_mutex;
+
+// SEH guard: prevents access violations from crashing the LSP server process.
+// Kept in its own function because MSVC forbids __try in a function that also
+// needs C++ object unwinding (the lock_guard lives in the caller).
 #ifdef _WIN32
-static void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) {
+static void SafeCallDiagGuarded(void (*fn)(VMContext&), VMContext& ctx) {
   __try { fn(ctx); } __except(EXCEPTION_EXECUTE_HANDLER) { }
 }
+static void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) {
+  std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
+  SafeCallDiagGuarded(fn, ctx);
+}
 #else
-static inline void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) { fn(ctx); }
+static inline void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) {
+  std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
+  fn(ctx);
+}
 #endif
 
 // Cached ContextAnalyzer per parsed program.
@@ -133,6 +151,7 @@ extern "C" {
 #endif
   void diag_tree_release(VMContext& context)
   {
+    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
     if(program) {
       InvalidateAnalyzerCache(program);
@@ -149,6 +168,7 @@ extern "C" {
 #endif
   void diag_parse_file(VMContext& context)
   {
+    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     const std::wstring src_file(APITools_GetStringValue(context, 2));
 
     std::vector<std::pair<std::wstring, std::wstring> > programs;
@@ -171,6 +191,7 @@ extern "C" {
 #endif
   void diag_parse_text(VMContext& context)
   {
+    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     size_t* names_array = APITools_GetArrayAddress(APITools_GetObjectValue(context, 2));
     const size_t names_array_size = APITools_GetArraySize(names_array);
 
@@ -764,6 +785,7 @@ extern "C" {
 #endif
   void diag_signature_help(VMContext& context)
   {
+    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
@@ -867,6 +889,7 @@ extern "C" {
 #endif
   void diag_code_rename(VMContext& context)
   {
+    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
