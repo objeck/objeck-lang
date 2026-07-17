@@ -170,6 +170,15 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       // Pop instance from op_stack (same as ProcessMethodCall)
       size_t* callee_inst = (size_t*)op_stack[--(*stack_pos)];
 
+      // Bounds-check the call stack before writing the slot. This direct path
+      // bypasses PushFrame, which is the only place the interpreter enforces the
+      // CALL_STACK_SIZE limit -- without this, recursion deeper than 256 frames
+      // through JIT-compiled methods overruns the fixed call_stack[] buffer.
+      if((*call_stack_pos) >= CALL_STACK_SIZE) {
+        std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+        exit(1);
+      }
+
       // Get a stack frame for the callee and register it on the call stack
       // so the GC can find and fixup pointers during young-gen promotion.
       // Uses same convention as PushFrame: store at pos, fence, then increment.

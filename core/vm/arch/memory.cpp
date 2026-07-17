@@ -239,9 +239,13 @@ void MemoryManager::EndBlocking()
 }
 
 FLOAT_VALUE MemoryManager::GetRandomValue() {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<FLOAT_VALUE> dis(0.0, 1.0);
+  // Seed a Mersenne Twister once per thread. Re-constructing and re-seeding a
+  // fresh mt19937 (624-word state) from std::random_device on every call -- as
+  // this did -- is a per-draw syscall plus full state init, pathological in any
+  // RNG loop, and it also degrades quality (each draw is the first output of a
+  // freshly seeded generator).
+  static thread_local std::mt19937 gen(std::random_device{}());
+  static thread_local std::uniform_real_distribution<FLOAT_VALUE> dis(0.0, 1.0);
 
   return dis(gen);
 }
@@ -437,7 +441,17 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
 
   size_t* mem = nullptr;
   if(cls) {
-    const long size = cls->GetInstanceMemorySize();
+    const long inst_size = cls->GetInstanceMemorySize();
+    // Instance size comes from class metadata (loader-supplied, unvalidated). A
+    // negative or huge value would wrap the size math (on LLP64 `long` is 32-bit,
+    // so `size * 2` also wraps before widening to size_t), under-allocating the
+    // object while field stores use the class's declared offsets -> nursery heap
+    // overflow. Fail closed, mirroring the AllocateArray overflow guard.
+    if(inst_size < 0 || (size_t)inst_size > (~(size_t)0 - sizeof(size_t) * EXTRA_BUF_SIZE) / 2) {
+      std::wcerr << L">>> Object allocation size overflow <<<" << std::endl;
+      exit(1);
+    }
+    const size_t size = (size_t)inst_size;
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
 
     // Total size including the size header for free cache

@@ -88,10 +88,10 @@ void Loader::Load()
   //
   // read float strings
   //
-  num_float_strings = static_cast<int>(ReadInt());
+  num_float_strings = ReadCount();
   FLOAT_VALUE** float_strings = new FLOAT_VALUE*[num_float_strings];
   for(i = 0; i < num_float_strings; ++i) {
-    const int float_string_length = static_cast<int>(ReadInt());
+    const int float_string_length = ReadCount();
     FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -113,10 +113,10 @@ void Loader::Load()
   //
   // read boolean strings
   //
-  num_bool_strings = static_cast<int>(ReadInt());
+  num_bool_strings = ReadCount();
   bool** bool_strings = new bool* [num_bool_strings];
   for(i = 0; i < num_bool_strings; ++i) {
-    const int bool_string_length = static_cast<int>(ReadInt());
+    const int bool_string_length = ReadCount();
     bool* bool_string = new bool[bool_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -139,10 +139,10 @@ void Loader::Load()
   //
   // read byte strings
   //
-  num_byte_strings = static_cast<int>(ReadInt());
+  num_byte_strings = ReadCount();
   char** byte_strings = new char*[num_byte_strings];
   for(i = 0; i < num_byte_strings; ++i) {
-    const int byte_string_length = static_cast<int>(ReadInt());
+    const int byte_string_length = ReadCount();
     char* byte_string = new char[byte_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -164,10 +164,10 @@ void Loader::Load()
   //
   // read int strings
   //
-  num_int_strings = static_cast<int>(ReadInt());
+  num_int_strings = ReadCount();
   INT64_VALUE** int_strings = new INT64_VALUE *[num_int_strings];
   for(i = 0; i < num_int_strings; ++i) {
-    const int int_string_length = static_cast<int>(ReadInt());
+    const int int_string_length = ReadCount();
     INT64_VALUE* int_string = new INT64_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
@@ -189,7 +189,7 @@ void Loader::Load()
   //
   // read char strings
   //
-  num_char_strings = static_cast<int>(ReadInt());
+  num_char_strings = ReadCount();
   wchar_t** char_strings = new wchar_t*[num_char_strings + arguments.size()];
   for(i = 0; i < num_char_strings; ++i) {
     const std::wstring value = ReadString();
@@ -292,6 +292,10 @@ char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 
     free(buffer);
     buffer = nullptr;
+    // Report the DECOMPRESSED length to the caller so every subsequent Read* can
+    // be bounds-checked. Previously buffer_size kept the (smaller) compressed
+    // size, which made bounds checking impossible.
+    buffer_size = (size_t)dest_len;
     return out;
   }
   else {
@@ -357,20 +361,20 @@ void Loader::LoadClasses()
     const int inst_space = static_cast<int>(ReadInt());
 
     // read class declarations
-    const int cls_num_dclrs = static_cast<int>(ReadInt());
+    const int cls_num_dclrs = ReadCount();
     StackDclr** cls_dclrs = LoadDeclarations(cls_num_dclrs, is_debug);
 
     // read instance declarations
-    const int inst_num_dclrs = static_cast<int>(ReadInt());
+    const int inst_num_dclrs = ReadCount();
     StackDclr** inst_dclrs = LoadDeclarations(inst_num_dclrs, is_debug);
     
     // read closure declarations
     std::map<int, std::pair<int, StackDclr**> > closure_dclr_map;
-    const int num_closure_dclrs = static_cast<int>(ReadInt());
+    const int num_closure_dclrs = ReadCount();
     for(int i = 0; i < num_closure_dclrs; ++i) {
       const int closure_mthd_id = static_cast<int>(ReadInt());
       // read closure declarations
-      const int closure_num_dclrs = static_cast<int>(ReadInt());
+      const int closure_num_dclrs = ReadCount();
       StackDclr** closure_dclrs = LoadDeclarations(closure_num_dclrs, is_debug);
       // add declarations to map
       closure_dclr_map[closure_mthd_id] = std::pair<int, StackDclr**>(closure_num_dclrs, closure_dclrs);
@@ -455,7 +459,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // space
     const int mem_size = static_cast<int>(ReadInt());
     // read type parameters
-    const int num_dclrs = static_cast<int>(ReadInt());
+    const int num_dclrs = ReadCount();
 
     StackDclr** dclrs = new StackDclr*[num_dclrs];
     for(int j = 0; j < num_dclrs; ++j) {
@@ -563,6 +567,12 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
   int line_num = -1;
   const unsigned long num_instrs = ReadUnsigned();
+  // Each instruction is at least one byte (opcode) in the stream, so a count
+  // exceeding the bytes remaining is corrupt -- reject before the allocation.
+  if(buffer_end && num_instrs > (size_t)(buffer_end - buffer)) {
+    std::wcerr << L">>> Corrupt bytecode: invalid instruction count <<<" << std::endl;
+    exit(1);
+  }
   StackInstr* mthd_instrs = new StackInstr[num_instrs];
 
   for(unsigned long i = 0; i < num_instrs; ++i) {

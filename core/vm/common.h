@@ -517,17 +517,23 @@ class NativeCode {
 #endif
 
   ~NativeCode() {
-#ifdef _ARM64
-    free(ints);
+#if defined(_ARM64) || defined(_M_ARM64)
+    // ARM64 allocates both constant pools with new[] (JitArm64::Compile), so they
+    // must be released with delete[]. The old code used free() on ints and, on
+    // Windows ARM64 (_ARM64 && _WIN64), VirtualFree() on a new[] buffer -- a hard
+    // allocator mismatch (UB / heap corruption) that ran for every method at teardown.
+    delete[] ints;
     ints = nullptr;
-#endif
-    
-#ifdef _WIN64
-    VirtualFree(floats, 0, MEM_RELEASE);
-#else
-    free(floats);
-#endif
+    delete[] floats;
     floats = nullptr;
+#else
+  #ifdef _WIN64
+    VirtualFree(floats, 0, MEM_RELEASE);
+  #else
+    free(floats);
+  #endif
+    floats = nullptr;
+#endif
   }
 
 #if defined(_ARM64) || defined(_M_ARM64)
