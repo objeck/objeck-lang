@@ -144,7 +144,7 @@ jobs:
         # annotations) even though the build is fine. Skip present packages and
         # install the rest, so genuine install failures still surface.
         for pkg in \
-          opencv \
+          opencv@4 \
           onnxruntime \
           mbedtls \
           nghttp2 \
@@ -171,6 +171,17 @@ jobs:
         # Add Homebrew bin to PATH (immediate + persistent)
         export PATH="/opt/homebrew/bin:$PATH"
         echo "/opt/homebrew/bin" >> $GITHUB_PATH
+
+        # Homebrew's default `opencv` is now OpenCV 5.0, which moved several
+        # functions out of the cv:: namespace (contourArea, boundingRect,
+        # getRotationMatrix2D, approxPolyDP, estimateAffinePartial2D, LMEDS) and
+        # relocated headers -> the opencv/onnx native libs no longer compile.
+        # The other platforms stay on OpenCV 4.x, so pin macOS to opencv@4 too.
+        # opencv@4 is keg-only (not symlinked into /opt/homebrew), so expose its
+        # pkg-config dir to every later step (onnx build.sh detects opencv4).
+        if [ -d /opt/homebrew/opt/opencv@4/lib/pkgconfig ]; then
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig:${PKG_CONFIG_PATH}" >> $GITHUB_ENV
+        fi
 
     - name: Build ngtcp2 with GnuTLS backend (macOS)
       if: runner.os == 'macOS'

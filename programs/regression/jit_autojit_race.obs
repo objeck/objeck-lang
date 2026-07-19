@@ -1,0 +1,56 @@
+#~
+# Auto-JIT concurrency guard. Many threads call the same hot method, crossing the
+# auto-JIT threshold simultaneously. Before the fix, jit_call_count/native_code/
+# call-site patching were non-atomic: threads double-compiled a method and one
+# could observe a patched *_JIT opcode before native_code was published. Now the
+# compile is elected via an atomic CAS (compile-once) and native_code is published
+# release/acquire, with a safe interpret fallback. A regression surfaces as a
+# wrong per-thread sum (-> non-zero exit / FAIL) or a crash/hang.
+#
+# IMPORTANT: must run with JIT ENABLED. Do NOT add a '# JIT_DISABLE' marker.
+# EXTRA_LIBS: gen_collect
+~#
+
+use System.Concurrency;
+
+class Worker from Thread {
+  @sum : Int;
+  New() { Parent("w"); @sum := 0; }
+  method : public : Sum() ~ Int { return @sum; }
+
+  method : public : Hot(x : Int) ~ Int {
+    return (x * 3) + 7 - (x / 2);
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    s := 0;
+    for(i := 0; i < 100000; i += 1;) {
+      s += Hot(i);
+    };
+    @sum := s;
+  }
+}
+
+class JitAutoJitRace {
+  function : Main(args : String[]) ~ Nil {
+    expected := 0;
+    for(i := 0; i < 100000; i += 1;) {
+      expected += (i * 3) + 7 - (i / 2);
+    };
+
+    workers := Worker->New[8];
+    for(t := 0; t < 8; t += 1;) { workers[t] := Worker->New(); };
+    for(t := 0; t < 8; t += 1;) { workers[t]->Execute(Nil); };
+    for(t := 0; t < 8; t += 1;) { workers[t]->Join(); };
+
+    ok := true;
+    for(t := 0; t < 8; t += 1;) {
+      if(workers[t]->Sum() <> expected) {
+        "FAIL: thread {$t} sum mismatch"->PrintLine();
+        ok := false;
+      };
+    };
+    if(ok) { "PASS: auto-JIT race - all threads correct"->PrintLine(); }
+    else { Runtime->Exit(1); };
+  }
+}

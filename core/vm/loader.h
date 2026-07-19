@@ -48,6 +48,7 @@ class Loader {
   std::wstring filename;
   char* buffer;
   char* alloc_buffer;
+  char* buffer_end;
   size_t buffer_size;
   size_t buffer_pos;
   int start_class_id;
@@ -55,25 +56,55 @@ class Loader {
   std::map<const std::wstring, const int> params;
   bool from_mem;
   
+  // Bounds guard for the raw deserialization cursor. Bytecode (.obe/.obl) is
+  // untrusted input; a truncated or crafted file must never drive a read past the
+  // decompressed buffer. buffer_end is null only for the trusted in-memory
+  // (bundled-executable) path, where no size is available -- there the check is
+  // skipped, preserving prior behavior.
+  inline void EnsureBytes(size_t needed) {
+    if(buffer_end && (buffer > buffer_end || needed > (size_t)(buffer_end - buffer))) {
+      std::wcerr << L">>> Corrupt bytecode: read past end of buffer <<<" << std::endl;
+      exit(1);
+    }
+  }
+
   inline long ReadInt() {
+    EnsureBytes(sizeof(int32_t));
     int32_t value = *((int32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
+  // Reads a count/length that will drive a new[] allocation. Rejects negatives
+  // and any value larger than the bytes remaining in the buffer: every element
+  // consumes at least one more byte, so a count exceeding the remainder is
+  // necessarily corrupt. Prevents a crafted count from forcing a multi-GB
+  // allocation (bad_alloc/abort) before the element reads would fail.
+  inline int ReadCount() {
+    const long value = ReadInt();
+    if(value < 0 || (buffer_end && (size_t)value > (size_t)(buffer_end - buffer))) {
+      std::wcerr << L">>> Corrupt bytecode: invalid element count/length <<<" << std::endl;
+      exit(1);
+    }
+    return static_cast<int>(value);
+  }
+
   inline INT64_VALUE ReadInt64() {
+    EnsureBytes(sizeof(INT64_VALUE));
     INT64_VALUE value = *((INT64_VALUE*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline unsigned long ReadUnsigned() {
+    EnsureBytes(sizeof(uint32_t));
     uint32_t value = *((uint32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
-  
+
   inline int ReadByte() {
+    EnsureBytes(sizeof(uint8_t));
     uint8_t value = *((uint8_t*)buffer);
     buffer += sizeof(value);
     return value;
@@ -81,23 +112,33 @@ class Loader {
 
   inline std::wstring ReadString() {
     const int size = static_cast<int>(ReadInt());
+    if(size < 0) {
+      std::wcerr << L">>> Corrupt bytecode: negative string length <<<" << std::endl;
+      exit(1);
+    }
+    EnsureBytes((size_t)size);
     std::string in(buffer, size);
-    buffer += size;    
-    
+    buffer += size;
+
     std::wstring out;
     if(!BytesToUnicode(in, out)) {
       std::wcerr << L">>> Unable to read unicode std::string <<<" << std::endl;
       exit(1);
     }
-    
+
     return out;
   }
 
   inline wchar_t ReadChar() {
     wchar_t out;
-    
+
     const int size = static_cast<int>(ReadInt());
+    if(size < 0) {
+      std::wcerr << L">>> Corrupt bytecode: negative character length <<<" << std::endl;
+      exit(1);
+    }
     if(size) {
+      EnsureBytes((size_t)size);
       std::string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
@@ -108,11 +149,12 @@ class Loader {
     else {
       out = L'\0';
     }
-    
+
     return out;
   }
 
   inline FLOAT_VALUE ReadDouble() {
+    EnsureBytes(sizeof(FLOAT_VALUE));
     FLOAT_VALUE value = *((FLOAT_VALUE*)buffer);
     buffer += sizeof(value);
     return value;
@@ -124,6 +166,8 @@ class Loader {
   void ReadFile() {
     buffer_pos = 0;
     alloc_buffer = buffer = LoadFileBuffer(filename, buffer_size);
+    // LoadFileBuffer sets buffer_size to the DECOMPRESSED length; bound all reads.
+    buffer_end = alloc_buffer ? alloc_buffer + buffer_size : nullptr;
   }
 
   // loading functions
@@ -143,6 +187,9 @@ public:
     string_cls_id = -1;
     buffer_pos = 0;
     alloc_buffer = buffer = b;
+    // Trusted in-memory (bundled-executable) path: no length is supplied, so the
+    // per-read bounds check is disabled (null buffer_end).
+    buffer_end = nullptr;
     program = new StackProgram;
   }
 
