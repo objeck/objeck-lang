@@ -43,6 +43,14 @@ esac
 
 CXX=${CXX:-g++}
 
+# macOS: Homebrew's default `opencv` is now 5.0 (moved functions out of cv::), so
+# the build pins to the keg-only opencv@4. Expose its pkg-config dir so the
+# detection below resolves `opencv4` to that keg. (CI also sets PKG_CONFIG_PATH.)
+if [ "$(uname -s)" = "Darwin" ] && [ -d /opt/homebrew/opt/opencv@4/lib/pkgconfig ]; then
+	PKG_CONFIG_PATH="/opt/homebrew/opt/opencv@4/lib/pkgconfig:${PKG_CONFIG_PATH}"
+	export PKG_CONFIG_PATH
+fi
+
 # OpenCV renamed its pkg-config module across major versions (opencv -> opencv4
 # -> opencv5) and relocated headers (include/opencv4 -> include/opencv5). Detect
 # whichever module is installed so the build survives a Homebrew/apt OpenCV major
