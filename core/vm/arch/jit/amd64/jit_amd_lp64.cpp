@@ -31,6 +31,7 @@
 
 #include "jit_amd_lp64.h"
 #include <string>
+#include <mutex>
 
 using namespace Runtime;
 
@@ -6563,6 +6564,15 @@ PageManager::~PageManager()
 
 unsigned char* PageManager::GetPage(unsigned char* code, int32_t size)
 {
+  // page_manager is a process-global singleton, but several mutator threads can
+  // JIT-compile DIFFERENT methods concurrently (the compile-once election only
+  // serializes a single method). Without this lock, concurrent GetPage calls race
+  // the shared `holders` vector (push_back -> realloc/UAF) and a holder's bump
+  // index (two methods handed overlapping code regions -> corrupt machine code ->
+  // SIGILL/SIGSEGV with garbage values). Serialize code-page allocation.
+  static std::mutex page_mutex;
+  std::lock_guard<std::mutex> lock(page_mutex);
+
   bool placed = false;
 
   unsigned char* temp = nullptr;

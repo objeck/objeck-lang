@@ -30,6 +30,7 @@
  */
 
 #include "jit_arm_a64.h"
+#include <mutex>
 
 #include <bitset>
 #include <cstddef>
@@ -5431,6 +5432,13 @@ PageManager::~PageManager()
 
 uint32_t* PageManager::GetPage(uint32_t* code, int32_t size)
 {
+  // Serialize concurrent JIT code-page allocation across mutator threads: the
+  // page_manager singleton's `holders` vector and per-holder bump index are
+  // shared, so unsynchronized GetPage calls (several threads compiling different
+  // methods at once) corrupt the code pages. See the AMD64 GetPage for detail.
+  static std::mutex page_mutex;
+  std::lock_guard<std::mutex> lock(page_mutex);
+
   bool placed = false;
 
   uint32_t* temp = nullptr;
