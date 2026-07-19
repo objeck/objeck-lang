@@ -269,6 +269,7 @@
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
 				HEADER_SEARCH_PATHS = (
+					/opt/homebrew/include/opencv5,
 					/opt/homebrew/include/opencv4,
 					"$(SRCROOT)/../../openssl/macos/include",
 				);
@@ -287,6 +288,7 @@
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
 				HEADER_SEARCH_PATHS = (
+					/opt/homebrew/include/opencv5,
 					/opt/homebrew/include/opencv4,
 					"$(SRCROOT)/../../openssl/macos/include",
 				);

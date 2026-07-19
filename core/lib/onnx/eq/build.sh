@@ -43,6 +43,22 @@ esac
 
 CXX=${CXX:-g++}
 
+# OpenCV renamed its pkg-config module across major versions (opencv -> opencv4
+# -> opencv5) and relocated headers (include/opencv4 -> include/opencv5). Detect
+# whichever module is installed so the build survives a Homebrew/apt OpenCV major
+# bump instead of failing with "opencv2/opencv.hpp file not found".
+OPENCV_PC=""
+for m in opencv4 opencv5 opencv; do
+	if pkg-config --exists "$m" 2>/dev/null; then
+		OPENCV_PC="$m"
+		break
+	fi
+done
+if [ -z "$OPENCV_PC" ]; then
+	echo "ERROR: no OpenCV pkg-config module found (tried opencv4, opencv5, opencv)" >&2
+	exit 1
+fi
+
 # On macOS, vm/common.h pulls in v3-API mbedtls headers. Use the in-tree v3
 # headers (same set the diags/matrix/opencv xcodeproj builds link against)
 # instead of homebrew's mbedtls — brew now ships v4, which removed entropy.h.
@@ -63,21 +79,21 @@ if [ "$(uname -s)" = "Darwin" ]; then
 fi
 
 $CXX -O3 -std=c++17 -Wall -fPIC $EP_DEFINE $ORT_INCLUDE $EXTRA_INCLUDE \
-	-c `pkg-config --cflags opencv4` onnx.cpp \
+	-c `pkg-config --cflags $OPENCV_PC` onnx.cpp \
 	-Wno-unused-function -Wno-deprecated-declarations
 
 OS=$(uname -s)
 case "$OS" in
 	Darwin)
 		$CXX -O3 -shared -o libobjk_onnx.dylib *.o \
-			`pkg-config --libs opencv4` $EXTRA_LIB $ORT_LIB
+			`pkg-config --libs $OPENCV_PC` $EXTRA_LIB $ORT_LIB
 		;;
 	MSYS*|MINGW*)
 		$CXX -O3 -shared -o libobjk_onnx.dll *.o \
-			`pkg-config --libs opencv4` $ORT_LIB
+			`pkg-config --libs $OPENCV_PC` $ORT_LIB
 		;;
 	*)
 		$CXX -O3 -shared -Wl,-soname,libobjk_onnx.so.1 -o libobjk_onnx.so *.o \
-			`pkg-config --libs opencv4` $ORT_LIB
+			`pkg-config --libs $OPENCV_PC` $ORT_LIB
 		;;
 esac
