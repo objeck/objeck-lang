@@ -10,11 +10,24 @@ The ternary cases are scanner guards, not feature tests. '?' now needs
 lookahead, so a ternary whose true-branch starts with '-' or '.' must still
 parse as a ternary: 'flag ?-1 : 2' is the one that matters, since '?->'
 requires BOTH '-' and '>'.
+
+Two limitations are inherited from the intrinsics rather than introduced by the
+operators, and both are verified to behave identically when written by hand:
+
+  1. A '??' chain whose operands are ALL Nil except the last yields Nil, not
+     the last default -- pinned below so a future fix is noticed.
+  2. '?->' on an indexed receiver ('arr[i]?->m()') does not compile, because
+     'arr[i]->Try()->m()' does not either. It cannot be exercised here since a
+     compile error would take the whole file down.
 ~#
 
 class NilSafeOps {
 	@calls : static : Int;
 	@recv_calls : static : Int;
+	@field : String;
+
+	New() {
+	}
 
 	function : Main(args : String[]) ~ Nil {
 		passed := 0;
@@ -110,6 +123,37 @@ class NilSafeOps {
 		r := real_str->ToUpper();
 		if(r->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: plain -> regressed"->PrintLine(); };
 
+		# --- a second '?->' in the same chain is harmless: the first Try()
+		# already guards the remainder, so the later one is just an accessor ---
+		s := nil_str?->ToUpper()?->ToLower();
+		if(s = Nil) { passed += 1; } else { failed += 1; "FAIL: double ?-> on nil"->PrintLine(); };
+
+		t := real_str?->ToUpper()?->ToLower();
+		if(t <> Nil & t->Equals("actual")) { passed += 1; } else { failed += 1; "FAIL: double ?-> on non-nil"->PrintLine(); };
+
+		# --- '?->' works inside string interpolation, which parses its
+		# expressions on a separate path ---
+		u := "[{$real_str?->ToUpper()}]";
+		if(u->Equals("[ACTUAL]")) { passed += 1; } else { failed += 1; "FAIL: ?-> in interpolation"->PrintLine(); };
+
+		# --- '??' chains left to right ---
+		v := nil_str ?? "second" ?? "third";
+		if(v <> Nil & v->Equals("second")) { passed += 1; } else { failed += 1; "FAIL: ?? chain"->PrintLine(); };
+
+		# --- KNOWN LIMITATION, pinned so a future fix is noticed.
+		# When EVERY operand before the last is Nil, a '??' chain yields Nil
+		# rather than the final default: Otherwise() does not re-test the
+		# result of a preceding Otherwise(). This is inherited from the
+		# intrinsic, not introduced by the operator -- the hand-written
+		# 'n->Otherwise(n)->Otherwise("third")' behaves identically. If this
+		# assertion starts failing, the intrinsic was fixed; assert "third".
+		w := nil_str ?? nil_str ?? "third";
+		if(w = Nil) { passed += 1; } else { failed += 1; "FAIL: ?? all-nil chain changed behavior -- update this test"->PrintLine(); };
+
+		# --- instance-variable receiver ---
+		inst := NilSafeOps->New();
+		if(inst->InstanceVarCase()) { passed += 1; } else { failed += 1; "FAIL: ?-> on instance variable"->PrintLine(); };
+
 		"Results: {$passed} passed, {$failed} failed"->PrintLine();
 		if(failed > 0) {
 			"FAIL"->PrintLine();
@@ -134,5 +178,21 @@ class NilSafeOps {
 	function : Receiver() ~ String {
 		@recv_calls += 1;
 		return "recv";
+	}
+
+	#~
+	'?->' on an instance variable, which reaches the parser through a different
+	receiver form than a local.
+	~#
+	method : InstanceVarCase() ~ Bool {
+		before := @field?->ToUpper();
+		if(before <> Nil) {
+			return false;
+		};
+
+		@field := "set";
+		after := @field?->ToUpper();
+
+		return after <> Nil & after->Equals("SET");
 	}
 }
