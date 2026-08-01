@@ -435,7 +435,9 @@ main {
   text-align: center;
   padding: 24px 20px;
   font-size: 0.85rem;
-  color: #545b68;
+  /* #545b68 measured 2.15:1 on the page background, well under the 4.5:1 AA
+     minimum, and this footer is on every page. */
+  color: #9ca3af;
   border-top: 1px solid #2d3a4d;
   margin-top: 50px;
 }
@@ -509,7 +511,8 @@ main {
   content: counter(toc-counter) "." counter(toc-sub-counter) " ";
   position: absolute;
   left: 0;
-  color: #5c7fad;
+  /* was #5c7fad, 3.77:1 on the TOC background */
+  color: #a3cefd;
   font-weight: 400;
 }
 
