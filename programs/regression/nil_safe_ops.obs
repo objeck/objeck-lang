@@ -11,14 +11,11 @@ lookahead, so a ternary whose true-branch starts with '-' or '.' must still
 parse as a ternary: 'flag ?-1 : 2' is the one that matters, since '?->'
 requires BOTH '-' and '>'.
 
-Two limitations are inherited from the intrinsics rather than introduced by the
-operators, and both are verified to behave identically when written by hand:
-
-  1. A '??' chain whose operands are ALL Nil except the last yields Nil, not
-     the last default -- pinned below so a future fix is noticed.
-  2. '?->' on an indexed receiver ('arr[i]?->m()') does not compile, because
-     'arr[i]->Try()->m()' does not either. It cannot be exercised here since a
-     compile error would take the whole file down.
+One limitation remains, inherited from the intrinsics rather than introduced by
+the operators, and verified to behave identically when written by hand:
+'?->' on an indexed receiver ('arr[i]?->m()') does not compile, because
+'arr[i]->Try()->m()' does not either. It cannot be exercised here, since a
+compile error would take the whole file down.
 ~#
 
 class NilSafeOps {
@@ -140,15 +137,20 @@ class NilSafeOps {
 		v := nil_str ?? "second" ?? "third";
 		if(v <> Nil & v->Equals("second")) { passed += 1; } else { failed += 1; "FAIL: ?? chain"->PrintLine(); };
 
-		# --- KNOWN LIMITATION, pinned so a future fix is noticed.
-		# When EVERY operand before the last is Nil, a '??' chain yields Nil
-		# rather than the final default: Otherwise() does not re-test the
-		# result of a preceding Otherwise(). This is inherited from the
-		# intrinsic, not introduced by the operator -- the hand-written
-		# 'n->Otherwise(n)->Otherwise("third")' behaves identically. If this
-		# assertion starts failing, the intrinsic was fixed; assert "third".
+		# --- a '??' chain falls through every Nil operand to the last default.
+		# This used to yield Nil: EmitOtherwiseIntrinsic did not emit the rest
+		# of the chain, and its callers break immediately after it, so a second
+		# Otherwise() was dropped. ---
 		w := nil_str ?? nil_str ?? "third";
-		if(w = Nil) { passed += 1; } else { failed += 1; "FAIL: ?? all-nil chain changed behavior -- update this test"->PrintLine(); };
+		if(w <> Nil & w->Equals("third")) { passed += 1; } else { failed += 1; "FAIL: ?? all-nil chain"->PrintLine(); };
+
+		# --- and anything chained after '??' actually runs. Same root cause:
+		# 'x->Otherwise("abc")->ToUpper()' silently returned "abc" ---
+		x := (nil_str ?? "abc")->ToUpper();
+		if(x <> Nil & x->Equals("ABC")) { passed += 1; } else { failed += 1; "FAIL: call chained after ??"->PrintLine(); };
+
+		y := (real_str ?? "abc")->ToUpper();
+		if(y <> Nil & y->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: call chained after ?? (non-nil)"->PrintLine(); };
 
 		# --- instance-variable receiver ---
 		inst := NilSafeOps->New();
