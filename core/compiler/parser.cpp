@@ -6193,6 +6193,47 @@ Expression* Parser::ParseExpression(int depth)
   else {
     expression = ParseLogic(depth + 1);
     //
+    // parses '??', the nil-coalesce operator
+    //
+    // Desugars to the existing Otherwise() intrinsic, which the context
+    // analyzer recognizes by method name and arity and which already emits its
+    // default inside the nil branch -- so short-circuiting comes for free and
+    // no new opcode is needed. Handled before the ternary below, so
+    // 'a ?? b ? c : d' groups as '(a ?? b) ? c : d'.
+    //
+    while(Match(TOKEN_QUESTION_QUESTION)) {
+#ifdef _DEBUG
+      Debug(L"Nil coalesce", depth);
+#endif
+      NextToken();
+      Expression* default_expression = ParseLogic(depth + 1);
+
+      ExpressionList* otherwise_args = TreeFactory::Instance()->MakeExpressionList();
+      otherwise_args->AddExpression(default_expression);
+
+      // A bare variable receiver takes the Variable* form, the same node
+      // 'a->Otherwise(b)' produces; anything else is appended to the end of the
+      // existing call chain.
+      if(expression->GetExpressionType() == VAR_EXPR && !expression->GetMethodCall()) {
+        expression = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                             line_num, line_pos,
+                                                             GetLineNumber(), GetLinePosition(),
+                                                             static_cast<Variable*>(expression),
+                                                             L"Otherwise", otherwise_args);
+      }
+      else {
+        Expression* tail = expression;
+        while(tail->GetMethodCall()) {
+          tail = tail->GetMethodCall();
+        }
+        tail->SetMethodCall(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                                    -1, -1,
+                                                                    GetLineNumber(), GetLinePosition(),
+                                                                    L"", L"Otherwise", otherwise_args));
+      }
+    }
+
+    //
     // parses a ternary conditional
     //
     if(Match(TOKEN_QUESTION)) {
@@ -6874,7 +6915,12 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
 #endif
 
   MethodCall* method_call = nullptr;
+  // '?->' -- capture before NextToken() consumes the accessor. The call itself
+  // is built exactly as before; it is wrapped in Try() at the return, so every
+  // branch below (generics, casts, further chaining) is untouched.
+  bool nil_safe = false;
   if(Match(TOKEN_ASSESSOR)) {
+    nil_safe = scanner->GetToken()->IsNilSafe();
     NextToken();
 
     // method call
@@ -7037,6 +7083,20 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     ParseCastTypeOf(method_call, depth + 1);
   }
 
+  // 'a?->b()' becomes 'a->Try()->b()'. Try() guards the whole remainder of the
+  // chain, so wrapping the head is enough -- a later '?->' in the same chain is
+  // already covered and behaves as a plain accessor. The receiver is named
+  // once, so it is evaluated once.
+  if(nil_safe && method_call) {
+    MethodCall* try_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                                   line_num, line_pos,
+                                                                   GetLineNumber(), GetLinePosition(),
+                                                                   ident, L"Try",
+                                                                   TreeFactory::Instance()->MakeExpressionList());
+    try_call->SetMethodCall(method_call);
+    return try_call;
+  }
+
   return method_call;
 }
 
@@ -7098,26 +7158,52 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
 
+  // '?->' -- capture before NextToken() consumes the accessor
+  const bool nil_safe = scanner->GetToken()->IsNilSafe();
+
   NextToken();
   const std::wstring &method_ident = scanner->GetToken()->GetIdentifier();
-  
+
   NextToken();
   const int mid_line_num = GetLineNumber();
   const int mid_line_pos = GetLinePosition();
   const std::wstring mid_ident = variable->GetName();
   IdentifierContext ident_context(mid_ident, mid_line_num, mid_line_pos);
-  
+
   int end_pos = 0;
   ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
 
-  MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, mid_line_num, mid_line_pos,
-                                                             GetLineNumber(), end_pos, variable, method_ident, exprs);
+  // 'a?->b()' desugars to 'a->Try()->b()'. Try() guards the whole remainder of
+  // the chain, so only the first '?->' introduces one; a later '?->' in the same
+  // chain is already covered and parses as a plain accessor. The receiver is
+  // evaluated once, by Try().
+  MethodCall* call;
+  MethodCall* result;
+  if(nil_safe) {
+    MethodCall* try_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                                   mid_line_num, mid_line_pos,
+                                                                   GetLineNumber(), end_pos, variable, L"Try",
+                                                                   TreeFactory::Instance()->MakeExpressionList());
+    // The guarded call hangs off Try() as a chained call, built exactly the way
+    // ParseMethodCall(IdentifierContext) builds one: the receiver slot carries
+    // the VARIABLE's name, not the enclosing class name.
+    call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                   mid_line_num, mid_line_pos,
+                                                   GetLineNumber(), end_pos, mid_ident, method_ident, exprs);
+    try_call->SetMethodCall(call);
+    result = try_call;
+  }
+  else {
+    call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, mid_line_num, mid_line_pos,
+                                                   GetLineNumber(), end_pos, variable, method_ident, exprs);
+    result = call;
+  }
 
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
     call->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
   }
 
-  return call;
+  return result;
 }
 
 /****************************
