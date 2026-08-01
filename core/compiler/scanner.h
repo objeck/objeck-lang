@@ -81,6 +81,11 @@ enum ScannerTokenType {
   TOKEN_AND,
   TOKEN_OR,
   TOKEN_QUESTION,
+  // Nil-safe operators. Deliberately placed here, outside the ordered token
+  // ranges the parser scans as spans (TOKEN_LES..TOKEN_NEQL just below, and
+  // TOKEN_MUL..TOKEN_XOR_ID further down) -- inserting inside either would
+  // silently change what those range checks accept.
+  TOKEN_QUESTION_QUESTION,   // ?? nil-coalesce
   TOKEN_NOT,
   // --- start logic ---
   TOKEN_LES,

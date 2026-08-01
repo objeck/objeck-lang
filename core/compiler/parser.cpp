@@ -6193,6 +6193,47 @@ Expression* Parser::ParseExpression(int depth)
   else {
     expression = ParseLogic(depth + 1);
     //
+    // parses '??', the nil-coalesce operator
+    //
+    // Desugars to the existing Otherwise() intrinsic, which the context
+    // analyzer recognizes by method name and arity and which already emits its
+    // default inside the nil branch -- so short-circuiting comes for free and
+    // no new opcode is needed. Handled before the ternary below, so
+    // 'a ?? b ? c : d' groups as '(a ?? b) ? c : d'.
+    //
+    while(Match(TOKEN_QUESTION_QUESTION)) {
+#ifdef _DEBUG
+      Debug(L"Nil coalesce", depth);
+#endif
+      NextToken();
+      Expression* default_expression = ParseLogic(depth + 1);
+
+      ExpressionList* otherwise_args = TreeFactory::Instance()->MakeExpressionList();
+      otherwise_args->AddExpression(default_expression);
+
+      // A bare variable receiver takes the Variable* form, the same node
+      // 'a->Otherwise(b)' produces; anything else is appended to the end of the
+      // existing call chain.
+      if(expression->GetExpressionType() == VAR_EXPR && !expression->GetMethodCall()) {
+        expression = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                             line_num, line_pos,
+                                                             GetLineNumber(), GetLinePosition(),
+                                                             static_cast<Variable*>(expression),
+                                                             L"Otherwise", otherwise_args);
+      }
+      else {
+        Expression* tail = expression;
+        while(tail->GetMethodCall()) {
+          tail = tail->GetMethodCall();
+        }
+        tail->SetMethodCall(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                                    -1, -1,
+                                                                    GetLineNumber(), GetLinePosition(),
+                                                                    L"", L"Otherwise", otherwise_args));
+      }
+    }
+
+    //
     // parses a ternary conditional
     //
     if(Match(TOKEN_QUESTION)) {

@@ -1535,8 +1535,15 @@ void Scanner::ParseToken(int index)
       break;
 
     case L'?':
-      tokens[index]->SetType(TOKEN_QUESTION);
-      NextChar();
+      if(nxt_char == L'?') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_QUESTION_QUESTION);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_QUESTION);
+        NextChar();
+      }
       break;
 
     case L'=':
