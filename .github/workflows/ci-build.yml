@@ -881,6 +881,18 @@ jobs:
           cp core/lib/*.ini "$DEPLOY/lib"/ 2>/dev/null || true
           "$DEPLOY/bin/obc" -version | head -1 || true
 
+      - name: Build native diagnostics library
+        run: |
+          # The language server reaches its analyzer through
+          # DllProxy->New("libobjk_diags"). Without the native library the
+          # server still answers initialize and advertises capabilities, but
+          # every analysis-backed handler returns null and no diagnostics are
+          # ever published -- which is exactly how this job first failed.
+          cd core/lib/diags
+          bash build_linux.sh diags
+          mkdir -p ../../release/deploy-x64/lib/native
+          cp diags.so ../../release/deploy-x64/lib/native/libobjk_diags.so
+
       - name: Formatter regression
         run: bash tools/lsp/server/format_code/run_regression.sh
 
