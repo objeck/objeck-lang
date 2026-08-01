@@ -12,7 +12,7 @@
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.8.0-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.6.4-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -57,6 +57,14 @@ obc hello && obr hello
 
 ## What's New
 
+### v2026.8.0 (in development)
+  * **Nil-safe operators** — `a?->b()` calls `b` only when `a` is non-`Nil`, yielding `Nil` instead of faulting, and `a ?? b` supplies `b` when `a` is `Nil` (evaluating `b` only when needed). A single `?->` guards the whole rest of a chain — `maybe?->Trim()->ToUpper()` — and the two combine: `maybe?->ToUpper()->Size() ?? -1`. Both desugar onto the existing `Try()`/`Otherwise()` intrinsics, so no new bytecode is emitted and the JIT backends and VM are unchanged. Spelled `?->` rather than `?.` because Objeck's member accessor is `->`
+  * **Language server crash fixes** — five requests took the server process down rather than returning an error: go-to-implementation, semantic tokens, inlay hints, and both call-hierarchy directions. Each returned a `Result[]` through the local argument array and failed its cast
+  * **Language server resolved the wrong method** — a method's line range was converted to 0-based numbering at its start but not its end, so every method overran onto the next declaration and any cursor past the first method of a class resolved to the first method. This affected go-to-definition, find-references, hover, rename and call hierarchy
+  * **`Otherwise()` dropped its chain** — anything written after it was silently discarded, so `x->Otherwise("abc")->ToUpper()` returned `"abc"`. `Try()`/`Otherwise()` also now resolve on an indexed receiver, so `arr[i]?->m()` compiles
+  * **Formatter no longer breaks source** — it scanned `?` one character at a time, so formatting a file using `??` emitted `? ?`, producing code that would not compile
+  * **Editor tooling is tested in CI** — the formatter, language server and VS Code extension run on every push. Two of those suites had never executed: the formatter's runner pointed outside the repository, and the tooling scripts appended the build tree to `PATH` so a system-wide install shadowed it
+
 ### v2026.6.4 ✅
   * **Multithreaded GC stability fix** — fixed an intermittent crash (`0xC0000005`) in the generational minor garbage collector during thread startup: a thread being spawned held its `self` and argument as untracked raw pointers, so a moving collection during the spawn handoff could relocate the object and leave the new thread a stale reference. These are now tracked and relocated across collection. Surfaced only under heavy multithreaded churn
 
@@ -64,15 +72,6 @@ obc hello && obr hello
   * **Generational minor garbage collection** — minor (nursery) collection is now enabled: a nursery-full collection scans only the remembered set plus roots and recycles the young generation without sweeping the old generation, falling back to a full major GC under old-gen pressure. JIT and interpreter reference stores emit the write barrier on AMD64 and ARM64, and the nursery is now zeroed at allocation time instead of inside the stop-the-world pause. See [performance →](docs/performance.md)
   * **Closure ergonomics** — three quality-of-life additions for function references: call a `FuncRef` directly with `v()` (no explicit `->Call()`); write bare lambdas with an inferred return type — `\(x) => x * 2` — that auto-wrap into `FuncRef<R>` when assigned, returned, passed as a method argument, or stored as a collection element; and give a lambda a block body (`\(x) => { ... }`). A multi-capture closure heap-corruption bug is fixed — captures now use closure-local ids
   * **New `System.Concurrency` library** — structured concurrency with `TaskScope`, `Task`, and `Monitor`, plus `runtime.*` process/GC/CPU diagnostics (GC pause, promotion, allocation rate, lock contention, thread/STW/nursery counters) read through `Runtime->GetProperty("runtime.…")`
-
-### v2026.6.2
-  * **Major JIT & GC performance work** — the cooperative stop-the-world GC safepoint poll (new in v2026.6.1) is now nearly free in JIT'd code: an inline flag test that only calls the collector when a collection is active, reading `&stw_active` from a register cached at the prologue (R12/X19) and emitted only at loop back-edges. `fannkuchredux` roughly halved (~59s → ~31s), recovering the full regression on AMD64 and ARM64. Closure / function-reference calls (`DYN_MTHD_CALL`) now **auto-JIT** on both architectures — `spectralnorm` reaches `native`-level speed once warm (43s interpreted → 0.46s at n=2000, matching the hand-`native` kernel). Nursery allocation for `NEW_OBJ_INST` is inlined on AMD64, and the interpreter gains a float fast-path. See [performance →](docs/performance.md)
-  * **JIT correctness hardening** — a sweep of float-codegen and tail-call bugs surfaced by forcing JIT (`OBJECK_JIT_THRESHOLD=1`): AMD64 `Floor`/`Ceil`/`ArcTan` codegen and two latent `DYN_MTHD_CALL` miscompiles; ARM64 transcendental/round cached-local operands, dropped libc float result/argument, working-stack registers clobbered across inlined float calls, and an `imm19` backpatch SIGILL (`ml_gbt`); and a TCO deferred-load corruption (e.g. `return Gcd(b, a%b)`) on both architectures; and an ARM64 negative-offset load bug that crashed when a JIT-compiled closure captured in a collection (`Vector<FuncRef>`) was invoked — its memory encoders couldn't represent a negative displacement and read the wrong stack slot, now routed through a signed-offset `LDUR`/`STUR` helper (x64 was never affected). The full ARM64 suite is now green at `OBJECK_JIT_THRESHOLD=1`
-  * **UTF-8 in any locale** — `obc` reading UTF-8 source and `obr` loading/printing UTF-8 strings no longer break under a `C`/non-UTF-8 process locale; `sys.h` now uses systemic locale-independent UTF-8 codecs instead of `mbstowcs`/`wcstombs`
-  * **VM shutdown race fixed** — worker threads are quiesced before program teardown, removing a JIT-shutdown thread race
-  * **`Int->MinSize()`** now returns `INT64_MIN` (was `INT64_MAX` — the float `2->Pow(63)` path saturated on conversion)
-  * **Native cross-language perf gate (CI)** — a non-Docker harness measures Objeck against Python/Ruby/LuaJIT/Java with committed baseline ratios, so performance regressions are caught automatically
-
 
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
 

@@ -45,7 +45,7 @@ Runs automatically on every:
 - Push to master
 - Pull request to master
 
-See `.github/workflows/c-cpp.yml` for configuration.
+See `.github/workflows/ci-build.yml` for configuration.
 
 ### Documentation
 
@@ -164,7 +164,7 @@ The following 17 programs run on every CI build:
 
 ## 4. GitHub Actions CI/CD
 
-**Workflow:** `.github/workflows/c-cpp.yml`
+**Workflow:** `.github/workflows/ci-build.yml`
 **Platform:** Ubuntu (x64)
 **Trigger:** Push to master, Pull requests
 
