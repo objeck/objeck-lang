@@ -2644,6 +2644,47 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
     }
     
+    // Try()/Otherwise() are resolved here, before any class lookup. Neither
+    // intrinsic needs one -- both work off the receiver's type -- and the
+    // lookup does not resolve for an indexed receiver, so the checks that used
+    // to live inside the program/library branches below were never reached for
+    // 'arr[i]->Try()->m()'. It fell through to the variable path and reported
+    // "Invalid class type or assignment", even though 'arr[i]->m()' resolves.
+    if(method_call->GetCallType() == METHOD_CALL) {
+      const std::wstring intrinsic_name = method_call->GetMethodName();
+      const bool has_params = method_call->GetCallingParameters() != nullptr;
+      const size_t param_count = has_params ? method_call->GetCallingParameters()->GetExpressions().size() : 0;
+      const bool is_try = intrinsic_name == L"Try" && has_params && param_count == 0;
+      const bool is_otherwise = intrinsic_name == L"Otherwise" && has_params && param_count == 1;
+
+      if(is_try || is_otherwise) {
+        if(entry && entry->GetType()) {
+          Variable* recv_variable = method_call->GetVariable();
+          if(recv_variable && recv_variable->GetIndices()) {
+            // an indexed receiver is one element, so the chain has to resolve
+            // against the element type rather than the array type
+            Type* element_type = TypeFactory::Instance()->MakeType(entry->GetType());
+            element_type->SetDimension(0);
+            method_call->SetEvalType(element_type, false);
+          }
+          else {
+            method_call->SetEvalType(entry->GetType(), false);
+          }
+        }
+
+        if(is_try) {
+          AnalyzeTryIntrinsic(method_call, static_cast<Expression*>(method_call), depth);
+        }
+        else {
+          AnalyzeOtherwiseIntrinsic(method_call, static_cast<Expression*>(method_call), depth);
+        }
+
+        --nested_call_depth;
+        RogueReturn(method_call);
+        return;
+      }
+    }
+
     // local call
     std::wstring encoding;
     Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
