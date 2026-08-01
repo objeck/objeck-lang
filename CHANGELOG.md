@@ -4,6 +4,17 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+### New Features
+- **Nil-safe operators `?->` and `??`**: `a?->b()` calls `b` only when `a` is non-`Nil`, yielding `Nil` instead of faulting, and `a ?? b` supplies `b` when `a` is `Nil` (evaluating `b` only when needed). A single `?->` guards the whole remainder of a chain, so `maybe?->Trim()->ToUpper()` is safe throughout. Both desugar in the parser onto the existing `Try()`/`Otherwise()` intrinsics — `a?->b()` is `a->Try()->b()` and `a ?? b` is `a->Otherwise(b)` — so no new opcode is emitted and the bytecode reader, both JIT backends, and the VM are unchanged. A chain ending in a value type needs `??` to supply the result, since an `Int` cannot itself be `Nil`: `maybe?->ToUpper()->Size() ?? -1`. Note that `Try()` guards against any runtime error in the chain, not only a `Nil` dereference. The spelling is `?->` rather than `?.` because Objeck's member accessor is `->`; it also avoids the float-literal ambiguity `?.` would introduce, since `.` followed by a digit starts a number.
+
+### Bug Fixes
+- **Formatter split `??` into `? ?`**: the LSP formatter's scanner tokenized `?` one character at a time, so formatting a file that used `??` emitted `? ?` and produced source that no longer compiled. `??` now scans as a single token.
+- **Language server crashed on five requests**: `textDocument/implementation`, `semanticTokens/full`, `inlayHint`, and both call-hierarchy directions returned a `Result[]` through the local argument array and cast it on the way out, which fails at runtime and killed the server process (`Invalid object cast: '?' to 'System.Diagnostics.Result'`). Each now writes into an `Analysis` instance slot, the pattern `FindReferences`/`GetSymbols` already used.
+- **Requests resolved to the wrong method**: `FindMethodOrClass` converted a method's start line to the editor's 0-based numbering but not its end line, and the end line records the token *after* the closing brace — so every method's range overran onto the next declaration and any cursor past the first method of a class resolved to the first method. This affected definition, references, hover, rename and call hierarchy.
+
+### Tooling
+- **Editor tooling is now tested in CI**: a `tools` job runs the formatter regression suite, a new LSP regression harness (`tools/lsp/tests/run_lsp_tests.py`, 25 assertions over the capability set and handler behavior), and the VS Code extension's TypeScript build and lint. The formatter suite had never run in this repository layout — its `OBJECK_ROOT` resolved outside the repo — and the tooling scripts appended the build tree to `PATH`, so a system-wide Objeck install shadowed it.
+
 ## [v2026.6.4] - 2026-06-28
 
 ### Bug Fixes

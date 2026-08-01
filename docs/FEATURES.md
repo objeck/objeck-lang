@@ -45,6 +45,49 @@ value := "Hello World!";
 value->Size()->PrintLine();
 ```
 
+### Nil Safety
+`?->` calls a method only when the receiver is non-`Nil`, yielding `Nil` instead
+of faulting. `??` supplies a value when the left side is `Nil`.
+
+```ruby
+# without them
+city := Nil;
+if(person <> Nil) {
+  address := person->GetAddress();
+  if(address <> Nil) {
+    city := address->GetCity();
+  };
+};
+
+# with them
+city := person?->GetAddress()?->GetCity();
+
+# '??' supplies a default; the right side is evaluated only when needed
+name := lookup ?? "(unknown)";
+port := config_port ?? ExpensiveDefault();
+```
+
+A single `?->` guards the **whole rest of the chain**, so you do not need one at
+every step:
+
+```ruby
+# both calls are guarded by the one '?->'
+text := maybe?->Trim()->ToUpper();
+```
+
+A chain that ends in a value type needs `??` to supply the result, since an
+`Int` cannot itself be `Nil`:
+
+```ruby
+size := maybe?->ToUpper()->Size() ?? -1;
+```
+
+Both build on the `Try()`/`Otherwise()` intrinsics, so `a?->b()` is exactly
+`a->Try()->b()` and `a ?? b` is `a->Otherwise(b)`. One consequence worth
+knowing: `Try()` guards against *any* runtime error in the chain, not only a
+`Nil` dereference — `a?->Get(999)` yields `Nil` on an out-of-range index rather
+than faulting.
+
 ### Anonymous Classes
 ```ruby
 interface Greetings {

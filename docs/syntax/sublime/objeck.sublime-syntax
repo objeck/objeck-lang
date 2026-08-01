@@ -68,6 +68,11 @@ contexts:
     - match: \+\=|-\=|\*\=|/\=|(:=)
       scope: keyword.operator.assignment.objeck-obs
 
+    # nil-safe operators, matched before the arithmetic rules so '?->' is not
+    # split into '?' and '-'
+    - match: (\?->)|(\?\?)
+      scope: keyword.operator.objeck-obs
+
     - match: \||&|(<>)|<|>|<|>|(>=)|(<=)|=
       scope: keyword.operator.logical.objeck-obs
 

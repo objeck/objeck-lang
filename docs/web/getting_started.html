@@ -1203,6 +1203,26 @@ for(i := 0; i &lt; end; i += 3;) {
   r-&gt;Append( lut[0x3F and (a &gt;&gt; 6)] );
   r-&gt;Append( lut[0x3F and a] );
 };</code></pre>
+         <h4 id="nil_safety">
+          Nil-safe operators
+         </h4>
+         <p>
+          <code>?-&gt;</code> calls a method only when the receiver is non-<code>Nil</code>, yielding <code>Nil</code> rather than faulting. <code>??</code> supplies a value when its left side is <code>Nil</code>, and evaluates the right side only when it has to.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp"># guarded call: Nil instead of a fault if person or the address is Nil
+city := person?-&gt;GetAddress()?-&gt;GetCity();
+
+# default when the left side is Nil
+name := lookup ?? "(unknown)";
+
+# a single '?-&gt;' guards the whole rest of the chain
+text := maybe?-&gt;Trim()-&gt;ToUpper();
+
+# a chain ending in a value type needs '??', since an Int cannot be Nil
+size := maybe?-&gt;ToUpper()-&gt;Size() ?? -1;</code></pre>
+         <p>
+          Both build on the <code>Try()</code>/<code>Otherwise()</code> methods: <code>a?-&gt;b()</code> is <code>a-&gt;Try()-&gt;b()</code> and <code>a ?? b</code> is <code>a-&gt;Otherwise(b)</code>. One consequence worth knowing is that <code>Try()</code> guards against any runtime error in the chain, not only a <code>Nil</code> dereference — so <code>a?-&gt;Get(999)</code> yields <code>Nil</code> on an out-of-range index instead of faulting.
+         </p>
          <p>
           The language has support for dynamically allocated arrays, Unicode strings and various containers.
          </p>

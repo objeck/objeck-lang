@@ -31,6 +31,7 @@ class FormatterRegressionTest {
 		TestTrimTrailing();
 		TestKeywordFormatting();
 		TestOperatorSpacing();
+		TestNilSafeOperators();
 		TestNestedBlocks();
 
 		p := @passed;
@@ -189,6 +190,34 @@ class FormatterRegressionTest {
 		Check("Operators: assignment ':=' present", result->Find(":=") > -1);
 		Check("Operators: '+' present", result->Find("+") > -1);
 		Check("Operators: '*' present", result->Find("*") > -1);
+	}
+
+	function : TestNilSafeOperators() ~ Nil {
+		"\n>> Nil-safe operators..."->PrintLine();
+
+		# '??' has to survive as one token. Scanning it as two QUESTIONs made the
+		# formatter emit '? ?', which does not compile -- formatting a file would
+		# silently break it.
+		src := "class Foo{New(){@a:=@s??\"d\";@b:=@s?->ToUpper();@c:=@s?->ToUpper()??\"d\";}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("Nil-safe: result not nil", result <> Nil);
+		Check("Nil-safe: '??' not split into '? ?'", result->Find("? ?") = -1);
+		Check("Nil-safe: '??' present", result->Find("??") > -1);
+		Check("Nil-safe: '?->' present", result->Find("?->") > -1);
+
+		# a plain ternary must still format, and '?-' must not be mistaken for
+		# the start of '?->'
+		ternary_src := "class Bar{New(){@a:=true?1:2;@b:=true?-1:2;}}";
+		ternary := CodeFormatter->New(options)->Format(ternary_src);
+
+		Check("Nil-safe: ternary still formats", ternary <> Nil);
+		Check("Nil-safe: ternary '?' preserved", ternary->Find("?") > -1);
 	}
 
 	function : TestNestedBlocks() ~ Nil {
