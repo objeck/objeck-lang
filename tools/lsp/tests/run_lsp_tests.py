@@ -15,12 +15,11 @@ tools/lsp/server/build_server.sh).
 
 Exit code 0 = all passed, 1 = at least one failed.
 
-Transport: TCP. The server also offers a stdio mode, but it currently reads only
-the first character of a message body -- Framework's reader takes the header via
-Console->ReadLine() (std::wcin, wide-oriented) and then the body via
-StdInCharAryLen -> fread(stdin) (byte-oriented) in core/vm/common.cpp:3363. Byte
-I/O on a wide-oriented stream is undefined behavior. TCP exercises the same
-request handlers over a transport that works.
+Transport: TCP, so the harness needs no environment setup. The server's stdio
+mode works too, but only with OBJECK_STDIO=binary set -- which every shipped
+editor client does. Without it the VM reads the header through std::wcin and
+the body through fread(stdin) (core/vm/common.cpp), and that wide/byte mix
+yields one character per body. TCP drives the same request handlers.
 
 Handler assertions run against lsp_probe.obs, a single self-contained fixture,
 so a red test means a handler regressed rather than that project configuration
