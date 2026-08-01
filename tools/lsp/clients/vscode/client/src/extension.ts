@@ -98,7 +98,24 @@ function startExternalServer(context: ExtensionContext, objkInstallDir) {
     // path to plugin install directory
     const pluginDir = context.extensionPath;
 
-    serverProcess = child_process.spawn(serverScript, [`"${objkInstallDir}"`, `"${pluginDir}"`], { shell: true });
+    // Pass the directories through the environment rather than as command line
+    // arguments. The Windows launcher is a .cmd file, so it has to be started
+    // through a shell, and user configured paths interpolated into a shell
+    // command line could be parsed as shell metacharacters.
+    const serverEnv = {
+        ...process.env,
+        OBJECK_INSTALL_DIR: objkInstallDir ? String(objkInstallDir) : '',
+        OBJECK_PLUGIN_DIR: pluginDir
+    };
+
+    serverProcess = child_process.spawn(serverScript, [], {
+        shell: process.platform === 'win32',
+        env: serverEnv
+    });
+
+    serverProcess.on('error', (err) => {
+        console.error(`Failed to start Objeck LSP server: ${err.message}`);
+    });
 
     serverProcess.stdout.on('data', (data) => {
         console.log(`Server stdout: ${data}`);
