@@ -1134,7 +1134,10 @@ extern "C" {
           refs_array_ptr[i] = (size_t)ref_obj;
         }
 
-        APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+        // @impl_results (slot 9). Handing a Result[] back through the local
+        // argument array fails its cast at runtime and kills the process, so
+        // write into the Analysis instance -- same as @supertypes_results.
+        prgm_obj[9] = (size_t)refs_array;
       }
     }
   }
@@ -1370,7 +1373,8 @@ extern "C" {
             refs_array_ptr[i] = (size_t)ref_obj;
           }
 
-          APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+          // @incoming_results (slot 10) -- see the note on slot 9 above.
+          prgm_obj[10] = (size_t)refs_array;
         }
       }
     }
@@ -1453,7 +1457,8 @@ extern "C" {
             refs_array_ptr[i] = (size_t)ref_obj;
           }
 
-          APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+          // @outgoing_results (slot 11) -- see the note on slot 9 above.
+          prgm_obj[11] = (size_t)refs_array;
         }
       }
     }
@@ -1564,7 +1569,8 @@ extern "C" {
         refs_array_ptr[i] = (size_t)hint_obj;
       }
 
-      APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+      // @inlay_results (slot 12) -- see the note on slot 9 above.
+      prgm_obj[12] = (size_t)refs_array;
     }
   }
 
@@ -1747,7 +1753,8 @@ extern "C" {
         refs_array_ptr[i] = (size_t)tok_obj;
       }
 
-      APITools_SetObjectValue(context, 0, (size_t*)refs_array);
+      // @semantic_results (slot 13) -- see the note on slot 9 above.
+      prgm_obj[13] = (size_t)refs_array;
     }
   }
 

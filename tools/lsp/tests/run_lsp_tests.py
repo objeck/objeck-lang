@@ -74,9 +74,9 @@ KNOWN = 0
 # gate everything else; when one is fixed the harness says so and asks for the
 # entry to be removed.
 KNOWN_BROKEN = {
-    "textDocument/implementation": "crashes server (Result[] cast)",
-    "textDocument/semanticTokens/full": "crashes server (Result[] cast)",
-    "textDocument/inlayHint": "crashes server (Result[] cast)",
+    "callHierarchy/incomingCalls":
+        "returns empty -- caller search finds nothing (separate from the "
+        "Result[] crash class, which is fixed)",
 }
 
 
@@ -377,6 +377,8 @@ def main():
                    non_empty(c.request("textDocument/hover", circle_decl)))
         log_result("textDocument/documentHighlight",
                    non_empty(c.request("textDocument/documentHighlight", circle_decl)))
+        log_result("textDocument/implementation", non_empty(c.request(
+            "textDocument/implementation", at("interface Drawable", 1, 10))))
 
         # --- symbols ---------------------------------------------------------
         syms = result_of(c.request("textDocument/documentSymbol",
@@ -403,46 +405,28 @@ def main():
             "textDocument/selectionRange",
             {"textDocument": {"uri": probe_uri},
              "positions": [circle_decl["position"]]})))
+        log_result("textDocument/inlayHint", non_empty(c.request(
+            "textDocument/inlayHint",
+            {"textDocument": {"uri": probe_uri},
+             "range": {"start": {"line": 0, "character": 0},
+                       "end": {"line": probe_text.count("\n"), "character": 0}}})))
+        log_result("textDocument/semanticTokens/full", non_empty(c.request(
+            "textDocument/semanticTokens/full", {"textDocument": {"uri": probe_uri}})))
 
         # --- hierarchies -----------------------------------------------------
-        log_result("textDocument/prepareCallHierarchy", non_empty(c.request(
-            "textDocument/prepareCallHierarchy", describe_call)))
+        item = result_of(c.request("textDocument/prepareCallHierarchy",
+                                   describe_call))
+        log_result("textDocument/prepareCallHierarchy", bool(item))
+        if item:
+            # Both return Result[] and shared the crash above, but are only
+            # reachable via a prepare result.
+            ch_item = item[0] if isinstance(item, list) else item
+            log_known("callHierarchy/incomingCalls", non_empty(c.request(
+                "callHierarchy/incomingCalls", {"item": ch_item})))
+            log_result("callHierarchy/outgoingCalls", non_empty(c.request(
+                "callHierarchy/outgoingCalls", {"item": ch_item})))
     finally:
         c.close()
-
-    # --- known-broken handlers ----------------------------------------------
-    # Each gets its own session because these take the server down with them.
-    print()
-    broken_params = {
-        "textDocument/implementation":
-            lambda: position_in(probe_text, probe_uri, "interface Drawable", 1, 10),
-        "textDocument/semanticTokens/full":
-            lambda: {"textDocument": {"uri": probe_uri}},
-        "textDocument/inlayHint":
-            lambda: {"textDocument": {"uri": probe_uri},
-                     "range": {"start": {"line": 0, "character": 0},
-                               "end": {"line": probe_text.count("\n"),
-                                       "character": 0}}},
-    }
-    for method in KNOWN_BROKEN:
-        ok = False
-        try:
-            k = LspClient(obr, server_obe, apis_json, bin_dir)
-        except RuntimeError:
-            log_known(method, False)
-            continue
-        try:
-            k.request("initialize", {"processId": os.getpid(), "rootUri": None,
-                                     "capabilities": {}}, timeout=90)
-            k.notify("initialized", {})
-            k.notify("textDocument/didOpen", {"textDocument": {
-                "uri": probe_uri, "languageId": "objeck", "version": 1,
-                "text": probe_text}})
-            k.diagnostics_for(probe_uri, timeout=90)
-            ok = non_empty(k.request(method, broken_params[method](), timeout=25))
-        finally:
-            k.close()
-        log_known(method, ok)
 
     # --- workspace mode ------------------------------------------------------
     # Separate session: build.json handling is independent of the handlers above.
