@@ -4,6 +4,8 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+## [v2026.8.0] - 2026-08-01
+
 ### New Features
 - **Nil-safe operators `?->` and `??`**: `a?->b()` calls `b` only when `a` is non-`Nil`, yielding `Nil` instead of faulting, and `a ?? b` supplies `b` when `a` is `Nil` (evaluating `b` only when needed). A single `?->` guards the whole remainder of a chain, so `maybe?->Trim()->ToUpper()` is safe throughout. Both desugar in the parser onto the existing `Try()`/`Otherwise()` intrinsics — `a?->b()` is `a->Try()->b()` and `a ?? b` is `a->Otherwise(b)` — so no new opcode is emitted and the bytecode reader, both JIT backends, and the VM are unchanged. A chain ending in a value type needs `??` to supply the result, since an `Int` cannot itself be `Nil`: `maybe?->ToUpper()->Size() ?? -1`. Note that `Try()` guards against any runtime error in the chain, not only a `Nil` dereference. The spelling is `?->` rather than `?.` because Objeck's member accessor is `->`; it also avoids the float-literal ambiguity `?.` would introduce, since `.` followed by a digit starts a number.
 
