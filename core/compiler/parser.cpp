@@ -6915,7 +6915,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
 #endif
 
   MethodCall* method_call = nullptr;
-  // '?.' -- capture before NextToken() consumes the accessor. The call itself
+  // '?->' -- capture before NextToken() consumes the accessor. The call itself
   // is built exactly as before; it is wrapped in Try() at the return, so every
   // branch below (generics, casts, further chaining) is untouched.
   bool nil_safe = false;
@@ -7083,8 +7083,8 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     ParseCastTypeOf(method_call, depth + 1);
   }
 
-  // 'a?.b()' becomes 'a->Try()->b()'. Try() guards the whole remainder of the
-  // chain, so wrapping the head is enough -- a later '?.' in the same chain is
+  // 'a?->b()' becomes 'a->Try()->b()'. Try() guards the whole remainder of the
+  // chain, so wrapping the head is enough -- a later '?->' in the same chain is
   // already covered and behaves as a plain accessor. The receiver is named
   // once, so it is evaluated once.
   if(nil_safe && method_call) {
@@ -7158,7 +7158,7 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
 
-  // '?.' -- capture before NextToken() consumes the accessor
+  // '?->' -- capture before NextToken() consumes the accessor
   const bool nil_safe = scanner->GetToken()->IsNilSafe();
 
   NextToken();
@@ -7173,8 +7173,8 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   int end_pos = 0;
   ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
 
-  // 'a?.b()' desugars to 'a->Try()->b()'. Try() guards the whole remainder of
-  // the chain, so only the first '?.' introduces one; a later '?.' in the same
+  // 'a?->b()' desugars to 'a->Try()->b()'. Try() guards the whole remainder of
+  // the chain, so only the first '?->' introduces one; a later '?->' in the same
   // chain is already covered and parses as a plain accessor. The receiver is
   // evaluated once, by Try().
   MethodCall* call;

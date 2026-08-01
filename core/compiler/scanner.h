@@ -496,7 +496,7 @@ class Token {
   int line_pos;
   std::wstring filename;
   std::wstring ident;
-  // '?.' scans as TOKEN_ASSESSOR carrying this flag rather than as its own
+  // '?->' scans as TOKEN_ASSESSOR carrying this flag rather than as its own
   // token type, so the parser's many Match(TOKEN_ASSESSOR) sites keep working
   // unchanged and only the place that builds the call consults it.
   bool nil_safe = false;
@@ -604,7 +604,7 @@ class Token {
   inline void SetType(ScannerTokenType t) {
     token_type = t;
     // Tokens are reused as the scanner advances, so clear the nil-safe flag
-    // here; the '?.' case sets it immediately after calling SetType.
+    // here; the '?->' case sets it immediately after calling SetType.
     nil_safe = false;
   }
 };

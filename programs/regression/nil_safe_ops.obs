@@ -1,14 +1,15 @@
 #~
-Nil-safe operators: '??' (nil-coalesce) and '?.' (nil-safe call).
+Nil-safe operators: '??' (nil-coalesce) and '?->' (nil-safe call).
 
-Both desugar onto existing intrinsics -- '??' onto Otherwise(), '?.' onto
+Both desugar onto existing intrinsics -- '??' onto Otherwise(), '?->' onto
 Try() -- so these tests also guard that the desugaring preserves the
 intrinsics' behavior: the '??' default is evaluated only when the left side is
-Nil, and a '?.' receiver is evaluated exactly once.
+Nil, and a '?->' receiver is evaluated exactly once.
 
-The ternary cases at the end are scanner guards, not feature tests. '?' now
-needs lookahead to tell '?.' from a ternary followed by a float literal, so
-'flag ?.5 : 1.5' must keep parsing as a ternary.
+The ternary cases are scanner guards, not feature tests. '?' now needs
+lookahead, so a ternary whose true-branch starts with '-' or '.' must still
+parse as a ternary: 'flag ?-1 : 2' is the one that matters, since '?->'
+requires BOTH '-' and '>'.
 ~#
 
 class NilSafeOps {
@@ -62,39 +63,48 @@ class NilSafeOps {
 		j := flag ? (flag ? "aa" : "ab") : "b";
 		if(j->Equals("aa")) { passed += 1; } else { failed += 1; "FAIL: nested ternary"->PrintLine(); };
 
-		# --- '?.5' with no space is still a ternary, not a nil-safe call ---
+		# --- '?.5' with no space is still a ternary ---
 		k := flag ?.5 : 1.5;
 		if(k = 0.5) { passed += 1; } else { failed += 1; "FAIL: '?.5' must stay a ternary"->PrintLine(); };
 
-		# --- '?.' on a nil receiver yields Nil instead of faulting ---
-		l := nil_str?.ToUpper();
-		if(l = Nil) { passed += 1; } else { failed += 1; "FAIL: ?. on nil"->PrintLine(); };
+		# --- '?-' with no space is still a ternary. This is the case '?->'
+		# has to be careful about: a negative true-branch starts with '-', and
+		# only a following '>' makes it a nil-safe accessor.
+		k2 := flag ?-1 : 2;
+		if(k2 = -1) { passed += 1; } else { failed += 1; "FAIL: '?-1' must stay a ternary"->PrintLine(); };
 
-		# --- '?.' on a non-nil receiver calls through ---
-		m := real_str?.ToUpper();
-		if(m <> Nil & m->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: ?. on non-nil"->PrintLine(); };
+		k3 := flag ?-1.5 : 2.5;
+		if(k3 = -1.5) { passed += 1; } else { failed += 1; "FAIL: '?-1.5' must stay a ternary"->PrintLine(); };
+
+		# --- '?->' on a nil receiver yields Nil instead of faulting ---
+		l := nil_str?->ToUpper();
+		if(l = Nil) { passed += 1; } else { failed += 1; "FAIL: ?-> on nil"->PrintLine(); };
+
+		# --- '?->' on a non-nil receiver calls through ---
+		m := real_str?->ToUpper();
+		if(m <> Nil & m->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: ?-> on non-nil"->PrintLine(); };
 
 		# --- a longer chain on a nil receiver is guarded end to end. A chain
 		# ending in a value type needs '??' to supply the result, since an Int
 		# cannot itself be Nil.
-		n := nil_str?.ToUpper()->Size() ?? -1;
-		if(n = -1) { passed += 1; } else { failed += 1; "FAIL: ?. chain on nil"->PrintLine(); };
+		n := nil_str?->ToUpper()->Size() ?? -1;
+		if(n = -1) { passed += 1; } else { failed += 1; "FAIL: ?-> chain on nil"->PrintLine(); };
 
-		n2 := real_str?.ToUpper()->Size() ?? -1;
-		if(n2 = 6) { passed += 1; } else { failed += 1; "FAIL: ?. chain on non-nil"->PrintLine(); };
+		n2 := real_str?->ToUpper()->Size() ?? -1;
+		if(n2 = 6) { passed += 1; } else { failed += 1; "FAIL: ?-> chain on non-nil"->PrintLine(); };
 
-		# --- '?.' fused with '??' supplies the default ---
-		o := nil_str?.ToUpper() ?? "fused";
-		if(o->Equals("fused")) { passed += 1; } else { failed += 1; "FAIL: ?. fused with ??"->PrintLine(); };
+		# --- '?->' fused with '??' supplies the default ---
+		o := nil_str?->ToUpper() ?? "fused";
+		if(o->Equals("fused")) { passed += 1; } else { failed += 1; "FAIL: ?-> fused with ??"->PrintLine(); };
 
-		p := real_str?.ToUpper() ?? "fused";
-		if(p->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: ?. ?? on non-nil"->PrintLine(); };
+		p := real_str?->ToUpper() ?? "fused";
+		if(p->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: ?-> ?? on non-nil"->PrintLine(); };
 
 		# --- the receiver is evaluated exactly once ---
 		@recv_calls := 0;
-		q := Receiver()?.ToUpper();
+		q := Receiver()?->ToUpper();
 		if(q <> Nil & q->Equals("RECV") & @recv_calls = 1) { passed += 1; }
-		else { failed += 1; "FAIL: ?. evaluated receiver {$@recv_calls} times"->PrintLine(); };
+		else { failed += 1; "FAIL: ?-> evaluated receiver {$@recv_calls} times"->PrintLine(); };
 
 		# --- plain '->' is unaffected ---
 		r := real_str->ToUpper();
