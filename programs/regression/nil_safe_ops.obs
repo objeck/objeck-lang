@@ -11,14 +11,9 @@ lookahead, so a ternary whose true-branch starts with '-' or '.' must still
 parse as a ternary: 'flag ?-1 : 2' is the one that matters, since '?->'
 requires BOTH '-' and '>'.
 
-Two limitations are inherited from the intrinsics rather than introduced by the
-operators, and both are verified to behave identically when written by hand:
-
-  1. A '??' chain whose operands are ALL Nil except the last yields Nil, not
-     the last default -- pinned below so a future fix is noticed.
-  2. '?->' on an indexed receiver ('arr[i]?->m()') does not compile, because
-     'arr[i]->Try()->m()' does not either. It cannot be exercised here since a
-     compile error would take the whole file down.
+Receivers are covered in every form the parser produces them: a local, an
+instance variable, a method-call result, and an indexed array element. The last
+two are the ones that previously went untested and each turned up a defect.
 ~#
 
 class NilSafeOps {
@@ -140,15 +135,45 @@ class NilSafeOps {
 		v := nil_str ?? "second" ?? "third";
 		if(v <> Nil & v->Equals("second")) { passed += 1; } else { failed += 1; "FAIL: ?? chain"->PrintLine(); };
 
-		# --- KNOWN LIMITATION, pinned so a future fix is noticed.
-		# When EVERY operand before the last is Nil, a '??' chain yields Nil
-		# rather than the final default: Otherwise() does not re-test the
-		# result of a preceding Otherwise(). This is inherited from the
-		# intrinsic, not introduced by the operator -- the hand-written
-		# 'n->Otherwise(n)->Otherwise("third")' behaves identically. If this
-		# assertion starts failing, the intrinsic was fixed; assert "third".
+		# --- a '??' chain falls through every Nil operand to the last default.
+		# This used to yield Nil: EmitOtherwiseIntrinsic did not emit the rest
+		# of the chain, and its callers break immediately after it, so a second
+		# Otherwise() was dropped. ---
 		w := nil_str ?? nil_str ?? "third";
-		if(w = Nil) { passed += 1; } else { failed += 1; "FAIL: ?? all-nil chain changed behavior -- update this test"->PrintLine(); };
+		if(w <> Nil & w->Equals("third")) { passed += 1; } else { failed += 1; "FAIL: ?? all-nil chain"->PrintLine(); };
+
+		# --- and anything chained after '??' actually runs. Same root cause:
+		# 'x->Otherwise("abc")->ToUpper()' silently returned "abc" ---
+		x := (nil_str ?? "abc")->ToUpper();
+		if(x <> Nil & x->Equals("ABC")) { passed += 1; } else { failed += 1; "FAIL: call chained after ??"->PrintLine(); };
+
+		y := (real_str ?? "abc")->ToUpper();
+		if(y <> Nil & y->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: call chained after ?? (non-nil)"->PrintLine(); };
+
+		# --- indexed receiver. 'arr[i]?->m()' used to fail to compile: the
+		# Try()/Otherwise() check sat inside the program/library class branches,
+		# which do not resolve for an indexed receiver, so it fell through to
+		# the variable path and reported "Invalid class type or assignment" ---
+		arr := String->New[3];
+		arr[1] := "elem";
+
+		z := arr[0]?->ToUpper();
+		if(z = Nil) { passed += 1; } else { failed += 1; "FAIL: ?-> on nil array element"->PrintLine(); };
+
+		z2 := arr[1]?->ToUpper();
+		if(z2 <> Nil & z2->Equals("ELEM")) { passed += 1; } else { failed += 1; "FAIL: ?-> on set array element"->PrintLine(); };
+
+		z3 := arr[0]?->ToUpper() ?? "dflt";
+		if(z3->Equals("dflt")) { passed += 1; } else { failed += 1; "FAIL: ?-> array element fused with ??"->PrintLine(); };
+
+		# a computed index must resolve the same way as a literal one
+		idx := 1;
+		z4 := arr[idx]?->ToUpper() ?? "dflt";
+		if(z4->Equals("ELEM")) { passed += 1; } else { failed += 1; "FAIL: ?-> with computed index"->PrintLine(); };
+
+		# and the hand-written form the operator desugars to
+		z5 := arr[1]->Try()->ToUpper();
+		if(z5 <> Nil & z5->Equals("ELEM")) { passed += 1; } else { failed += 1; "FAIL: Try() on array element"->PrintLine(); };
 
 		# --- instance-variable receiver ---
 		inst := NilSafeOps->New();

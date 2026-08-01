@@ -4722,6 +4722,64 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, skip_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+
+  // Emit the rest of the chain, the way EmitTryIntrinsic does. Both callers
+  // break out of their chain loop right after calling this, so without it
+  // anything written after Otherwise() is dropped -- silently, producing a
+  // wrong value rather than an error: 'x->Otherwise("abc")->ToUpper()' yielded
+  // "abc", and a second Otherwise (which is what 'a ?? b ?? c' desugars to)
+  // never ran at all.
+  //
+  // The result is on the stack, so chained calls are nested. A chained
+  // Otherwise() recurses here and re-consumes that value as its receiver.
+  MethodCall* tail_call = method_call->GetMethodCall();
+  bool is_nested = true;
+  while(tail_call) {
+    if(tail_call->IsTryIntrinsic()) {
+      EmitTryIntrinsic(tail_call, expression, is_nested);
+      return;
+    }
+
+    if(tail_call->IsOtherwiseIntrinsic()) {
+      EmitOtherwiseIntrinsic(tail_call, expression);
+      return;
+    }
+
+    EmitMethodCall(tail_call, is_nested);
+    EmitCast(tail_call);
+    if(!tail_call->GetVariable()) {
+      EmitClassCast(tail_call);
+    }
+
+    // update is_nested
+    if(tail_call->GetMethod()) {
+      Method* method = tail_call->GetMethod();
+      if(method->GetReturn()->GetType() == CLASS_TYPE) {
+        const bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetLibUses()) ||
+          SearchProgramEnums(method->GetReturn()->GetName());
+        is_nested = !is_enum;
+      }
+      else {
+        is_nested = false;
+      }
+    }
+    else if(tail_call->GetLibraryMethod()) {
+      LibraryMethod* lib_method = tail_call->GetLibraryMethod();
+      if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
+        const bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetLibUses()) ||
+          SearchProgramEnums(lib_method->GetReturn()->GetName());
+        is_nested = !is_enum;
+      }
+      else {
+        is_nested = false;
+      }
+    }
+    else {
+      is_nested = false;
+    }
+
+    tail_call = tail_call->GetMethodCall();
+  }
 }
 
 /****************************
