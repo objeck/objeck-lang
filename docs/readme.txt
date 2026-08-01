@@ -1,3 +1,15 @@
+v2026.8.0 (in development -- not yet released)
+===
+Nil-safe operators, language-server crash and resolution fixes, and CI coverage for the editor tooling.
+
+v2026.8.0
+- Language: nil-safe operators -- a?->b() calls b only when a is non-Nil and yields Nil instead of faulting; a ?? b supplies b when a is Nil, evaluating b only when needed. A single ?-> guards the whole rest of a chain, and the two combine: maybe?->ToUpper()->Size() ?? -1. Both desugar onto the existing Try()/Otherwise() intrinsics, so no new bytecode is emitted and the JIT backends and VM are unchanged. Spelled ?-> rather than ?. because Objeck's member accessor is ->
+- Language server: fixed five requests that crashed the server process -- go-to-implementation, semantic tokens, inlay hints, and both call-hierarchy directions -- each returned a Result[] through the local argument array and failed its cast
+- Language server: fixed a line-range bug that made any cursor past the first method of a class resolve to the first method, affecting definition, references, hover, rename and call hierarchy
+- Compiler: anything chained after Otherwise() was silently dropped, so x->Otherwise("abc")->ToUpper() returned "abc"; Try()/Otherwise() now also resolve on an indexed receiver, so arr[i]?->m() compiles
+- Formatter: '??' scanned as two tokens, so formatting a file that used it emitted '? ?' and produced source that would not compile
+- Tooling: the formatter, language server and VS Code extension are now covered by CI on every push
+
 v2026.6.4 (June 28, 2026)
 ===
 Stability fix for an intermittent multithreaded crash in the generational minor garbage collector during thread startup.
@@ -16,20 +28,6 @@ v2026.6.3
 - Fixed multi-capture closure heap corruption (captures now use closure-local ids), plus re-analyzed/repeated FuncRef direct calls and a spurious unreferenced-variable warning for closure-captured variables
 - Performance: SDL2 Renderer 2D draws pool the boxing buffer and cache proxy/method names
 - Removed the unused Gtk3 binding
-
-v2026.6.2 (June 19, 2026)
-===
-Major JIT and garbage-collection performance work (a near-free GC safepoint poll, auto-JIT for closure/function-reference calls, inline nursery allocation), a sweep of JIT float-codegen correctness fixes, and locale-independent UTF-8 I/O.
-
-v2026.6.2
-- Performance: the cooperative stop-the-world GC safepoint poll is now nearly free in JIT'd code -- an inline flag test that calls the collector only when a collection is active, reading &stw_active from a register cached at the prologue (R12 on AMD64, X19 on ARM64), emitted only at loop back-edges. fannkuchredux roughly halved (~59s -> ~31s), recovering the full v2026.6.1 regression on both AMD64 and ARM64
-- Performance: auto-JIT for DYN_MTHD_CALL (closure / function-reference calls) on AMD64 and ARM64 -- spectralnorm reaches native-level speed once warm (43s interpreted -> 0.46s at n=2000, matching the hand-native kernel)
-- Performance: inline young-generation bump allocation for NEW_OBJ_INST (AMD64); interpreter float fast-path; ARM64 JIT whitelist parity with AMD64
-- Fixed JIT float-codegen and tail-call bugs surfaced by forcing JIT (OBJECK_JIT_THRESHOLD=1): AMD64 Floor/Ceil/ArcTan and two latent DYN_MTHD_CALL miscompiles; ARM64 transcendental/round cached-local operands, dropped libc float result/argument, working-stack registers across inlined float calls, imm19 backpatch SIGILL (ml_gbt); TCO deferred-load corruption (return Gcd(b, a%b)) on both architectures; an ARM64 negative-offset load crash invoking a JIT-compiled closure captured in a collection (Vector<FuncRef>) -- the memory encoders couldn't represent a negative displacement and read the wrong stack slot, now routed through a signed-offset LDUR/STUR helper (x64 unaffected). Full ARM64 suite green at OBJECK_JIT_THRESHOLD=1
-- Fixed UTF-8 breaking under a C/non-UTF-8 process locale: obc reading UTF-8 source and obr loading/printing UTF-8 strings; sys.h now uses systemic locale-independent UTF-8 codecs instead of mbstowcs/wcstombs
-- Fixed a VM shutdown thread race by quiescing worker threads before program teardown
-- Int->MinSize() now returns INT64_MIN instead of INT64_MAX
-- CI: native (non-Docker) cross-language perf gate measures Objeck against Python/Ruby/LuaJIT/Java with committed baseline ratios; refreshed performance docs and speedup roadmap
 
 v2026.6.1 (June 14, 2026)
 ===

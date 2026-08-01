@@ -847,7 +847,7 @@ mindmap
 | **Total** | **10-14 min** | **4-6 min** | **~60% faster** |
 
 **Source Files:**
-- `.github/workflows/c-cpp.yml` - CI/CD pipeline
+- `.github/workflows/ci-build.yml` - CI/CD pipeline
 - `programs/regression/run_regression.sh` - Regression runner (Unix)
 - `programs/regression/run_regression.cmd` - Regression runner (Windows)
 - `programs/regression/*.obs` - 10 regression test files

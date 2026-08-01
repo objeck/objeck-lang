@@ -603,14 +603,14 @@ GC: Mark-and-sweep with generational collection
 - ⚡ [JIT Architecture](vm/arch/jit/README.md)
 - 🧪 [Regression Tests](../programs/regression/README.md)
 - 🌐 [Official Website](https://www.objeck.org)
-- 📊 [CI/CD Pipeline](../.github/workflows/c-cpp.yml)
+- 📊 [CI/CD Pipeline](../.github/workflows/ci-build.yml)
 
 ---
 
 ## Version Info
 
-**Current:** v2026.6.2
-**Released:** June 2026
+**In development:** v2026.8.0
+**Latest release:** v2026.6.4 (June 2026)
 **License:** BSD 3-Clause
 
 **Recent improvements:**
