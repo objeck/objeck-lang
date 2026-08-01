@@ -1540,6 +1540,16 @@ void Scanner::ParseToken(int index)
         tokens[index]->SetType(TOKEN_QUESTION_QUESTION);
         NextChar();
       }
+      // '?.' is the nil-safe accessor, but '.' followed by a digit starts a
+      // float literal, so 'a ?.5 : 1.0' must stay a ternary with a .5 operand.
+      // It scans as a plain accessor carrying a flag, so every existing
+      // Match(TOKEN_ASSESSOR) site keeps working untouched.
+      else if(nxt_char == L'.' && !iswdigit(nxt_nxt_char)) {
+        NextChar();
+        tokens[index]->SetType(TOKEN_ASSESSOR);
+        tokens[index]->SetNilSafe(true);
+        NextChar();
+      }
       else {
         tokens[index]->SetType(TOKEN_QUESTION);
         NextChar();

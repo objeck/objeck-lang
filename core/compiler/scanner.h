@@ -496,6 +496,10 @@ class Token {
   int line_pos;
   std::wstring filename;
   std::wstring ident;
+  // '?.' scans as TOKEN_ASSESSOR carrying this flag rather than as its own
+  // token type, so the parser's many Match(TOKEN_ASSESSOR) sites keep working
+  // unchanged and only the place that builds the call consults it.
+  bool nil_safe = false;
 
   union {
     INT64_VALUE int64_lit;
@@ -518,6 +522,15 @@ class Token {
     ident = token->ident;
     token_type = token->token_type;
     filename = token->filename;
+    nil_safe = token->nil_safe;
+  }
+
+  inline bool IsNilSafe() {
+    return nil_safe;
+  }
+
+  inline void SetNilSafe(bool n) {
+    nil_safe = n;
   }
 
   inline std::wstring GetFileName() {
@@ -590,6 +603,9 @@ class Token {
 
   inline void SetType(ScannerTokenType t) {
     token_type = t;
+    // Tokens are reused as the scanner advances, so clear the nil-safe flag
+    // here; the '?.' case sets it immediately after calling SetType.
+    nil_safe = false;
   }
 };
 

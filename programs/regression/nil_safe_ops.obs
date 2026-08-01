@@ -1,13 +1,19 @@
 #~
-Nil-safe operators: '??' (nil-coalesce).
+Nil-safe operators: '??' (nil-coalesce) and '?.' (nil-safe call).
 
-'a ?? b' desugars to the existing Otherwise() intrinsic, so this also guards
-that the desugaring keeps Otherwise's short-circuit behavior: the default is
-only evaluated when the left side is Nil.
+Both desugar onto existing intrinsics -- '??' onto Otherwise(), '?.' onto
+Try() -- so these tests also guard that the desugaring preserves the
+intrinsics' behavior: the '??' default is evaluated only when the left side is
+Nil, and a '?.' receiver is evaluated exactly once.
+
+The ternary cases at the end are scanner guards, not feature tests. '?' now
+needs lookahead to tell '?.' from a ternary followed by a float literal, so
+'flag ?.5 : 1.5' must keep parsing as a ternary.
 ~#
 
 class NilSafeOps {
 	@calls : static : Int;
+	@recv_calls : static : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		passed := 0;
@@ -56,6 +62,44 @@ class NilSafeOps {
 		j := flag ? (flag ? "aa" : "ab") : "b";
 		if(j->Equals("aa")) { passed += 1; } else { failed += 1; "FAIL: nested ternary"->PrintLine(); };
 
+		# --- '?.5' with no space is still a ternary, not a nil-safe call ---
+		k := flag ?.5 : 1.5;
+		if(k = 0.5) { passed += 1; } else { failed += 1; "FAIL: '?.5' must stay a ternary"->PrintLine(); };
+
+		# --- '?.' on a nil receiver yields Nil instead of faulting ---
+		l := nil_str?.ToUpper();
+		if(l = Nil) { passed += 1; } else { failed += 1; "FAIL: ?. on nil"->PrintLine(); };
+
+		# --- '?.' on a non-nil receiver calls through ---
+		m := real_str?.ToUpper();
+		if(m <> Nil & m->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: ?. on non-nil"->PrintLine(); };
+
+		# --- a longer chain on a nil receiver is guarded end to end. A chain
+		# ending in a value type needs '??' to supply the result, since an Int
+		# cannot itself be Nil.
+		n := nil_str?.ToUpper()->Size() ?? -1;
+		if(n = -1) { passed += 1; } else { failed += 1; "FAIL: ?. chain on nil"->PrintLine(); };
+
+		n2 := real_str?.ToUpper()->Size() ?? -1;
+		if(n2 = 6) { passed += 1; } else { failed += 1; "FAIL: ?. chain on non-nil"->PrintLine(); };
+
+		# --- '?.' fused with '??' supplies the default ---
+		o := nil_str?.ToUpper() ?? "fused";
+		if(o->Equals("fused")) { passed += 1; } else { failed += 1; "FAIL: ?. fused with ??"->PrintLine(); };
+
+		p := real_str?.ToUpper() ?? "fused";
+		if(p->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: ?. ?? on non-nil"->PrintLine(); };
+
+		# --- the receiver is evaluated exactly once ---
+		@recv_calls := 0;
+		q := Receiver()?.ToUpper();
+		if(q <> Nil & q->Equals("RECV") & @recv_calls = 1) { passed += 1; }
+		else { failed += 1; "FAIL: ?. evaluated receiver {$@recv_calls} times"->PrintLine(); };
+
+		# --- plain '->' is unaffected ---
+		r := real_str->ToUpper();
+		if(r->Equals("ACTUAL")) { passed += 1; } else { failed += 1; "FAIL: plain -> regressed"->PrintLine(); };
+
 		"Results: {$passed} passed, {$failed} failed"->PrintLine();
 		if(failed > 0) {
 			"FAIL"->PrintLine();
@@ -75,5 +119,10 @@ class NilSafeOps {
 	function : Counted() ~ String {
 		@calls += 1;
 		return "counted";
+	}
+
+	function : Receiver() ~ String {
+		@recv_calls += 1;
+		return "recv";
 	}
 }
