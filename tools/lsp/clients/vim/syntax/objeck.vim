@@ -54,6 +54,9 @@ syn match objeckOperator '+='
 syn match objeckOperator '-='
 syn match objeckOperator '\*='
 syn match objeckOperator '/='
+" nil-safe operators before '->' so '?->' highlights as one unit
+syn match objeckOperator '?->'
+syn match objeckOperator '??'
 syn match objeckOperator '->'
 syn keyword objeckOperator and or not xor
 
