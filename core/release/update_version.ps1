@@ -1,6 +1,6 @@
 # strings
 $year_end = "2026"
-$month_end = "7"
+$month_end = "8"
 $version = "0"
 
 $version = "$year_end.$month_end.$version"
