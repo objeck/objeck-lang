@@ -2,41 +2,64 @@
 SETLOCAL
 
 SET PORT=%1
-IF "%OBJECK_ROOT%"=="" SET OBJECK_ROOT=..\..\..
-
 
 cd /d %~dp0
 
-SET PATH=%PATH%;%OBJECK_ROOT%\core\release\deploy-x64\bin
-SET OBJECK_LIB_PATH=%OBJECK_ROOT%\core\release\deploy-x64\lib
+REM server -> lsp -> tools -> repo root
+IF "%OBJECK_ROOT%"=="" SET OBJECK_ROOT=..\..\..
+
+REM The release tree is named deploy-x64/deploy-arm64 on some platforms and
+REM plain deploy on others, so probe instead of hardcoding one of them.
+SET DEPLOY_NAME=
+FOR %%C IN (deploy-x64 deploy-arm64 deploy) DO (
+	IF NOT DEFINED DEPLOY_NAME (
+		IF EXIST "%OBJECK_ROOT%\core\release\%%C\bin" SET DEPLOY_NAME=%%C
+	)
+)
+
+IF NOT DEFINED DEPLOY_NAME (
+	echo Build failed: no deploy tree under %OBJECK_ROOT%\core\release
+	echo   ^(looked for deploy-x64, deploy-arm64, deploy^)
+	EXIT /B 1
+)
+
+REM Resolve to an absolute path outside the loop, where %CD% expands correctly.
+pushd "%OBJECK_ROOT%\core\release\%DEPLOY_NAME%"
+SET DEPLOY_DIR=%CD%
+popd
+
+REM Call the toolchain by absolute path. Relying on PATH picks up a system-wide
+REM Objeck install ahead of the build tree, which then fails against these
+REM libraries with a tool chain version mismatch.
+SET OBC=%DEPLOY_DIR%\bin\obc.exe
+SET OBR=%DEPLOY_DIR%\bin\obr.exe
+SET OBJECK_LIB_PATH=%DEPLOY_DIR%\lib
+IF EXIST "%DEPLOY_DIR%\lib\native" SET PATH=%DEPLOY_DIR%\lib\native;%PATH%
 
 del /q *.obe 2>nul
 del /q %TEMP%\objk-* 2>nul
 
 echo ---
 
-obc -src %OBJECK_ROOT%\core\compiler\lib_src\diags.obs -lib gen_collect -tar lib -opt s3 -dest %OBJECK_ROOT%\core\lib\diags.obl
+"%OBC%" -src %OBJECK_ROOT%\core\compiler\lib_src\diags.obs -lib gen_collect -tar lib -opt s3 -dest %OBJECK_ROOT%\core\lib\diags.obl
 if %ERRORLEVEL% NEQ 0 (
 	echo Build failed: diags.obl
-	goto end
+	EXIT /B 1
 )
-copy /y %OBJECK_ROOT%\core\lib\diags.obl %OBJECK_ROOT%\core\release\deploy-x64\lib\diags.obl
+copy /y %OBJECK_ROOT%\core\lib\diags.obl "%DEPLOY_DIR%\lib\diags.obl"
 
 echo ---
 
-obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
+"%OBC%" -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
 if %ERRORLEVEL% NEQ 0 (
 	echo Build failed: objeck_lsp.obe
-	goto end
+	EXIT /B 1
 )
 copy /y objeck_lsp.obe ..\clients\vscode\server
 
 echo ---
 echo Build successful
 
-if "%PORT%" == "" goto end
+if "%PORT%" == "" EXIT /B 0
 	echo Running on: %PORT%...
-	obr objeck_lsp.obe objk_apis.json pipe debug
-REM	obr objeck_lsp.obe objk_apis.json %PORT% debug
-REM	obr objeck_lsp.obe objk_apis.json stdio debug
-:end
+	"%OBR%" objeck_lsp.obe objk_apis.json pipe debug

@@ -826,28 +826,106 @@ jobs:
         retention-days: 7
 
   # ============================================
+  # Editor tooling: formatter, LSP server, VS Code extension
+  # ============================================
+
+  # No `needs:` — this runs alongside the platform matrix and finishes long
+  # before it, so tooling breakage surfaces early. It builds only core/vm and
+  # core/compiler (the perf-gate.yml dependency set: no OpenCV/SDL/ODBC) and
+  # pairs them with the .obl libraries committed under core/lib.
+  tools:
+    name: Tools (formatter, LSP, VS Code extension)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libmbedtls-dev libnghttp2-dev libngtcp2-dev \
+            libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev \
+            zlib1g-dev libreadline-dev ccache
+
+      - name: Cache ccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-tools-ccache-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-tools-ccache-
+
+      - name: Setup ccache
+        run: ccache --max-size=500M && ccache --set-config=compression=true
+
+      - name: Build Objeck (obc + obr)
+        working-directory: core/vm
+        env: { CC: ccache gcc, CXX: ccache g++ }
+        run: |
+          cp make/Makefile.amd64 Makefile
+          make -j$(nproc)
+          cd ../compiler
+          cp make/Makefile.amd64 Makefile
+          make -j$(nproc) OBJECK_LIB_PATH=///".///"
+
+      - name: Assemble deploy tree
+        run: |
+          # The tooling scripts probe core/release/deploy-x64 then deploy,
+          # so materialize that layout rather than teaching each script a
+          # bin-dir argument.
+          DEPLOY=core/release/deploy-x64
+          mkdir -p "$DEPLOY/bin" "$DEPLOY/lib"
+          cp core/compiler/obc core/vm/obr "$DEPLOY/bin"/
+          chmod +x "$DEPLOY/bin/obc" "$DEPLOY/bin/obr"
+          cp core/lib/*.obl "$DEPLOY/lib"/
+          cp core/lib/*.ini "$DEPLOY/lib"/ 2>/dev/null || true
+          "$DEPLOY/bin/obc" -version | head -1 || true
+
+      - name: Formatter regression
+        run: bash tools/lsp/server/format_code/run_regression.sh
+
+      - name: Build LSP server
+        run: bash tools/lsp/server/build_server.sh
+
+      - name: LSP regression
+        run: python3 tools/lsp/tests/run_lsp_tests.py core/release/deploy-x64/bin
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: VS Code extension — install, compile, lint
+        working-directory: tools/lsp/clients/vscode
+        run: |
+          npm ci
+          npm run compile
+          npm run lint
+
+  # ============================================
   # Build Status Summary
   # ============================================
 
   status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, tools]
     if: always()
     steps:
       - name: Report build status
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ needs.build.result }}" = "success" ]; then
-            echo "✅ All platform builds succeeded"
-            echo "### ✅ CI — all platform builds succeeded" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ needs.build.result }}" = "success" ] \
+             && [ "${{ needs.tools.result }}" = "success" ]; then
+            echo "✅ All platform builds and tooling checks succeeded"
+            echo "### ✅ CI — all platform builds and tooling checks succeeded" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          echo "❌ Build result: ${{ needs.build.result }}"
+          echo "❌ Build result: ${{ needs.build.result }}, tools result: ${{ needs.tools.result }}"
           {
-            echo "### ❌ CI — build ${{ needs.build.result }}"
+            echo "### ❌ CI — build ${{ needs.build.result }}, tools ${{ needs.tools.result }}"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 

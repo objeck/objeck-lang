@@ -146,3 +146,7 @@ core/lib/onnx/eq/*.dylib
 *.mp4
 *.pptx
 *.ppt
+
+# Python bytecode (test harnesses under programs/regression and tools/lsp/tests)
+__pycache__/
+*.pyc

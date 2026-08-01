@@ -46,10 +46,10 @@ export function activate(context: ExtensionContext) {
 
             function tryConnect() {
                 attempts++;
-                let pipe = net.connect(connectionInfo);
+                const pipe = net.connect(connectionInfo);
 
                 pipe.on('connect', () => {
-                    let result: StreamInfo = {
+                    const result: StreamInfo = {
                         writer: pipe,
                         reader: pipe
                     };
