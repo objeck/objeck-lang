@@ -72,11 +72,7 @@ KNOWN = 0
 # never were. They are reported but not counted as failures so the suite can
 # gate everything else; when one is fixed the harness says so and asks for the
 # entry to be removed.
-KNOWN_BROKEN = {
-    "callHierarchy/incomingCalls":
-        "returns empty -- caller search finds nothing (separate from the "
-        "Result[] crash class, which is fixed)",
-}
+KNOWN_BROKEN = {}
 
 
 def log_result(name, ok, detail=""):
@@ -413,17 +409,31 @@ def main():
             "textDocument/semanticTokens/full", {"textDocument": {"uri": probe_uri}})))
 
         # --- hierarchies -----------------------------------------------------
+        # Ask on Describe's declaration, which is the SECOND method of its
+        # class on purpose: method ranges used to overrun onto the next
+        # declaration, so any position past the first method resolved to the
+        # first one. Asserting the name, not just non-empty, is what catches it.
         item = result_of(c.request("textDocument/prepareCallHierarchy",
-                                   describe_call))
-        log_result("textDocument/prepareCallHierarchy", bool(item))
-        if item:
-            # Both return Result[] and shared the crash above, but are only
-            # reachable via a prepare result.
-            ch_item = item[0] if isinstance(item, list) else item
-            log_known("callHierarchy/incomingCalls", non_empty(c.request(
-                "callHierarchy/incomingCalls", {"item": ch_item})))
-            log_result("callHierarchy/outgoingCalls", non_empty(c.request(
-                "callHierarchy/outgoingCalls", {"item": ch_item})))
+                                   position_in(probe_text, probe_uri,
+                                               "function : Describe", 1, 12)))
+        ch_item = (item[0] if isinstance(item, list) else item) if item else None
+        log_result("prepareCallHierarchy resolves the method under the cursor",
+                   bool(ch_item) and ch_item.get("name") == "Describe",
+                   f"got: {ch_item.get('name') if ch_item else None}")
+
+        if ch_item:
+            inc = result_of(c.request("callHierarchy/incomingCalls",
+                                      {"item": ch_item}))
+            callers = [i.get("from", {}).get("name") for i in inc] if inc else []
+            log_result("callHierarchy/incomingCalls finds the caller",
+                       "Main" in callers, f"got: {callers}")
+
+            out = result_of(c.request("callHierarchy/outgoingCalls",
+                                      {"item": ch_item}))
+            callees = [o.get("to", {}).get("name") for o in out] if out else []
+            log_result("callHierarchy/outgoingCalls finds the callees",
+                       {"GetName", "GetArea", "Draw"} <= set(callees),
+                       f"got: {callees}")
     finally:
         c.close()
 

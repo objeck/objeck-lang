@@ -1103,8 +1103,13 @@ bool ParsedProgram::FindMethodOrClass(const std::wstring uri, const int line_num
         std::vector<Method*> methods = klass->GetMethods();
         for(size_t k = 0; k < methods.size(); ++k) {
           Method* method = methods[k];
+          // Both ends convert from the parser's 1-based lines to the 0-based
+          // lines the editor sends. Converting only the start let every method
+          // overrun onto the next declaration, because SetEndLineNumber records
+          // the line of the token *after* the closing brace -- so a request
+          // positioned on the second method of a class resolved to the first.
           const int start_line = method->GetLineNumber() - 1;
-          const int end_line = method->GetEndLineNumber();
+          const int end_line = method->GetEndLineNumber() - 1;
 
           if(start_line <= line_num && end_line > line_num) {
             table = bundle->GetSymbolTableManager()->GetSymbolTable(method->GetParsedName());
