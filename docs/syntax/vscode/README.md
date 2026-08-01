@@ -11,7 +11,7 @@ Syntax highlighting, code folding, and build support for the Objeck programming 
 
 ## Full IDE Experience
 
-For LSP (autocomplete, diagnostics, go-to-definition) and DAP debugging (breakpoints, stepping, variable inspection), install the full extension from the [objeck-lsp](https://github.com/objeck/objeck-lsp) repository.
+For LSP (autocomplete, diagnostics, go-to-definition) and DAP debugging (breakpoints, stepping, variable inspection), install the full extension from the [Objeck releases](https://github.com/objeck/objeck-lang/releases).
 
 See [docs/editors.md](../../editors.md) for complete setup instructions.
 

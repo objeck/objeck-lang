@@ -115,6 +115,16 @@ bundle System.Diagnostics {
 		@table_handle : Int;
 		@has_uses : Bool;
 		@supertypes_results : Result[];
+		# Result[] cannot be handed back through the local argument array -- the
+		# cast fails at runtime and takes the process down. These slots mirror
+		# @supertypes_results so the native side can write the array straight
+		# into the instance. Their declaration order is the slot order the
+		# native code writes to (see core/lib/diags/diags.cpp); do not reorder.
+		@impl_results : Result[];
+		@incoming_results : Result[];
+		@outgoing_results : Result[];
+		@inlay_results : Result[];
+		@semantic_results : Result[];
 
 		New(progam_handle : Int, table_handle : Int, is_parsed : Bool, has_uses : Bool) {
 			Parent();
@@ -606,7 +616,9 @@ bundle System.Diagnostics {
 		@return implementation locations, Nil if not found
 		~#
 		method : public : FindImplementation(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
-			@impl_results : Result[];
+			# Reset so a call that finds nothing doesn't return the prior result.
+			@impl_results := Nil;
+
 			array_args := Base->New[6];
 			array_args[0] := Nil;
 			array_args[1] := @self;
@@ -616,7 +628,7 @@ bundle System.Diagnostics {
 			array_args[5] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_find_implementation", array_args);
 
-			return array_args[0]->As(Result[]);
+			return @impl_results;
 		}
 
 		#~
@@ -649,6 +661,9 @@ bundle System.Diagnostics {
 		@return incoming call locations, Nil if not found
 		~#
 		method : public : IncomingCalls(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			# Reset so a call that finds nothing doesn't return the prior symbol.
+			@incoming_results := Nil;
+
 			array_args := Base->New[6];
 			array_args[0] := Nil;
 			array_args[1] := @self;
@@ -658,7 +673,7 @@ bundle System.Diagnostics {
 			array_args[5] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_incoming_calls", array_args);
 
-			return array_args[0]->As(Result[]);
+			return @incoming_results;
 		}
 
 		#~
@@ -670,6 +685,9 @@ bundle System.Diagnostics {
 		@return outgoing call locations, Nil if not found
 		~#
 		method : public : OutgoingCalls(uri : String, line : Int, pos : Int, sys_path : String) ~ Result[] {
+			# Reset so a call that finds nothing doesn't return the prior symbol.
+			@outgoing_results := Nil;
+
 			array_args := Base->New[6];
 			array_args[0] := Nil;
 			array_args[1] := @self;
@@ -679,7 +697,7 @@ bundle System.Diagnostics {
 			array_args[5] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_outgoing_calls", array_args);
 
-			return array_args[0]->As(Result[]);
+			return @outgoing_results;
 		}
 
 		#~
@@ -691,6 +709,9 @@ bundle System.Diagnostics {
 		@return inlay hints, Nil if none found
 		~#
 		method : public : InlayHints(uri : String, start_line : Int, end_line : Int, sys_path : String) ~ Result[] {
+			# Reset so a call that finds nothing doesn't return the prior range.
+			@inlay_results := Nil;
+
 			array_args := Base->New[6];
 			array_args[0] := Nil;
 			array_args[1] := @self;
@@ -700,7 +721,7 @@ bundle System.Diagnostics {
 			array_args[5] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_inlay_hints", array_args);
 
-			return array_args[0]->As(Result[]);
+			return @inlay_results;
 		}
 
 		#~
@@ -710,6 +731,9 @@ bundle System.Diagnostics {
 		@return semantic tokens, Nil if none found
 		~#
 		method : public : SemanticTokens(uri : String, sys_path : String) ~ Result[] {
+			# Reset so a call that finds nothing doesn't return the prior file.
+			@semantic_results := Nil;
+
 			array_args := Base->New[4];
 			array_args[0] := Nil;
 			array_args[1] := @self;
@@ -717,7 +741,7 @@ bundle System.Diagnostics {
 			array_args[3] := sys_path;
 			Proxy->GetDllProxy()->CallFunction("diag_semantic_tokens", array_args);
 
-			return array_args[0]->As(Result[]);
+			return @semantic_results;
 		}
 
 		#~
