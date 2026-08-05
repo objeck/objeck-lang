@@ -2155,19 +2155,30 @@ __declspec(noinline) void StackInterpreter::CheckAutoJit(StackMethod* called, St
 void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* called, StackInstr* instr)
 #endif
 {
-  if(called->GetJitCallCount() < JIT_AUTO_THRESHOLD) {
-    called->IncrementJitCallCount();
-    if(called->GetJitCallCount() == JIT_AUTO_THRESHOLD) {
-      if(!JitCompiler::TryAutoJitCompile(called)) {
-        // JIT failed: mark this call site so we skip auto-JIT on future calls
-        instr->SetOperand3(-1);
-      }
-      // success: PatchCallSites already set operand3=1 on all call sites
-    }
+  // Already compiled elsewhere: nothing to count (the *_JIT opcode / operand3
+  // patch drives dispatch from here on).
+  if(called->GetNativeCode()) {
+    return;
   }
-  else if(called->GetJitCallCount() > JIT_AUTO_THRESHOLD) {
-    // already attempted and failed on another call site -- mark this one too
-    instr->SetOperand3(-1);
+
+  // Once the threshold is reached we stop bumping the counter (no unbounded
+  // growth / overflow) and just consult the shared compile state.
+  if(called->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
+    if(!JitCompiler::TryAutoJitCompile(called)) {
+      instr->SetOperand3(-1);   // definitively failed: interpret this site
+    }
+    return;
+  }
+
+  // fetch_add returns the previous value, so exactly one thread observes the
+  // increment that crosses the threshold and triggers the (compile-once) compile.
+  const long prev = called->IncrementJitCallCount();
+  if(prev + 1 == JIT_AUTO_THRESHOLD) {
+    if(!JitCompiler::TryAutoJitCompile(called)) {
+      // JIT failed: mark this call site so we skip auto-JIT on future calls
+      instr->SetOperand3(-1);
+    }
+    // success: PatchCallSites already set operand3=1 on all call sites
   }
 }
 #endif
@@ -2368,25 +2379,21 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
 #if defined(_DEBUGGER) || defined(_NO_JIT)
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
-  // compile, if needed
-  if(!called->GetNativeCode()) {   
-#if defined(_M_ARM64)
-    JitArm64 jit_compiler;
-#elif defined(_WIN64) || defined(_X64)
-    JitAmd64 jit_compiler;
-#else
-    JitArm64 jit_compiler;
-#endif
-
-    if(!jit_compiler.Compile(called)) {
+  // Compile if needed, via the shared compile-once path (claims the method so two
+  // threads never compile/patch it concurrently). If it is still not available --
+  // a definitive failure, or another thread is mid-compile / patched a call site
+  // before publishing native_code -- safely fall back to interpreting this call.
+  if(!called->GetNativeCode()) {
+    JitCompiler::TryAutoJitCompile(called);
+    if(!called->GetNativeCode()) {
       ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #ifdef _DEBUG
-      std::wcerr << L"### Unable to compile: " << called->GetName() << L" ###" << std::endl;
+      std::wcerr << L"### Interpreting (native code unavailable): " << called->GetName() << L" ###" << std::endl;
 #endif
       return;
     }
   }
-  
+
   // execute
   (*stack_frame) = GetStackFrame(called, instance);
   JitRuntime jit_executor;

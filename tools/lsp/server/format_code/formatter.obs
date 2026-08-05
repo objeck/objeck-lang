@@ -305,6 +305,10 @@ class CodeFormatter {
 						AppendBuffer('?');
 					}
 
+					label Token->Type->QUESTION_QUESTION {
+						AppendBuffer("??");
+					}
+
 					label Token->Type->IDENT {
 						if(@prev_token->GetType() = Token->Type->ASSESSOR | 
 								@prev_token->GetType() = Token->Type->ADD_ADD | 

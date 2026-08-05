@@ -239,9 +239,13 @@ void MemoryManager::EndBlocking()
 }
 
 FLOAT_VALUE MemoryManager::GetRandomValue() {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<FLOAT_VALUE> dis(0.0, 1.0);
+  // Seed a Mersenne Twister once per thread. Re-constructing and re-seeding a
+  // fresh mt19937 (624-word state) from std::random_device on every call -- as
+  // this did -- is a per-draw syscall plus full state init, pathological in any
+  // RNG loop, and it also degrades quality (each draw is the first output of a
+  // freshly seeded generator).
+  static thread_local std::mt19937 gen(std::random_device{}());
+  static thread_local std::uniform_real_distribution<FLOAT_VALUE> dis(0.0, 1.0);
 
   return dis(gen);
 }
@@ -437,7 +441,17 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
 
   size_t* mem = nullptr;
   if(cls) {
-    const long size = cls->GetInstanceMemorySize();
+    const long inst_size = cls->GetInstanceMemorySize();
+    // Instance size comes from class metadata (loader-supplied, unvalidated). A
+    // negative or huge value would wrap the size math (on LLP64 `long` is 32-bit,
+    // so `size * 2` also wraps before widening to size_t), under-allocating the
+    // object while field stores use the class's declared offsets -> nursery heap
+    // overflow. Fail closed, mirroring the AllocateArray overflow guard.
+    if(inst_size < 0 || (size_t)inst_size > (~(size_t)0 - sizeof(size_t) * EXTRA_BUF_SIZE) / 2) {
+      std::wcerr << L">>> Object allocation size overflow <<<" << std::endl;
+      exit(1);
+    }
+    const size_t size = (size_t)inst_size;
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
 
     // Total size including the size header for free cache
@@ -829,6 +843,12 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   }
   MUTEX_UNLOCK(&stw_lock);
 #endif
+
+  // Major collection mode. Set HERE, under marked_sweep_lock, not in the
+  // CollectMajor caller: an unlocked store there could land mid-CollectMinor (which
+  // set it true under the lock), flipping that minor sweep to major-mode and
+  // freeing live old-gen objects (UAF). Mirrors CollectMinor's locked store.
+  minor_gc_mode.store(false, std::memory_order_release);
 
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack;
@@ -2022,8 +2042,14 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
     FixupSlot(&op_stack[i]);
   }
 
-  // Fix up other threads' operand stacks via monitors
-  // (pda_monitor_lock is already held by the caller's CheckPdaRoots path)
+  // Fix up other threads' operand stacks via monitors.
+  // Must hold pda_monitor_lock: the caller (CollectMemory) does NOT hold it (the
+  // second monitor loop below re-acquires it, which would self-deadlock otherwise),
+  // and a thread tearing down (UnregisterMutator + ~StackInterpreter) can erase from
+  // pda_monitors and free the op_stack concurrently -> iterator invalidation / UAF.
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&pda_monitor_lock);
+#endif
   for(auto pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     StackFrameMonitor* monitor = *pda_iter;
     size_t* other_op_stack = monitor->op_stack;
@@ -2035,6 +2061,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       }
     }
   }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&pda_monitor_lock);
+#endif
 
   // Relocate self/param of threads still mid-spawn, so a child reads the promoted
   // address instead of a stale nursery pointer (mirrors the mark side).
@@ -2327,7 +2356,9 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 
 void MemoryManager::CollectMajor(size_t* op_stack, size_t stack_pos)
 {
-  minor_gc_mode.store(false, std::memory_order_release);
+  // NOTE: minor_gc_mode is set to false INSIDE CollectAllMemory (under
+  // marked_sweep_lock), not here. Setting it here (unlocked) raced an in-progress
+  // CollectMinor and could free live old-gen objects. See CollectAllMemory.
   CollectAllMemory(op_stack, stack_pos);
 }
 

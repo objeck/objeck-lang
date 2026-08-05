@@ -1,25 +1,49 @@
 #!/bin/bash
 
-OBJECK_ROOT=${OBJECK_ROOT:-../../..}
+cd "$(dirname "$0")"
 
-export PATH=$PATH:$OBJECK_ROOT/core/release/deploy/bin
-export OBJECK_LIB_PATH=$OBJECK_ROOT/core/release/deploy/lib
+# server -> lsp -> tools -> repo root
+OBJECK_ROOT="${OBJECK_ROOT:-../../..}"
+
+# The release tree is named deploy-x64/deploy-arm64 on some platforms and plain
+# deploy on others, so probe instead of hardcoding one of them.
+DEPLOY_DIR=""
+for candidate in deploy-x64 deploy-arm64 deploy; do
+	if [ -d "$OBJECK_ROOT/core/release/$candidate/bin" ]; then
+		DEPLOY_DIR="$(cd "$OBJECK_ROOT/core/release/$candidate" && pwd)"
+		break
+	fi
+done
+
+if [ -z "$DEPLOY_DIR" ]; then
+	echo "Build failed: no deploy tree under $OBJECK_ROOT/core/release"
+	echo "  (looked for deploy-x64, deploy-arm64, deploy)"
+	exit 1
+fi
+
+# Call the toolchain by absolute path. Relying on PATH picks up a system-wide
+# Objeck install ahead of the build tree, which then fails against these
+# libraries with a tool chain version mismatch.
+OBC="$DEPLOY_DIR/bin/obc"
+OBR="$DEPLOY_DIR/bin/obr"
+export OBJECK_LIB_PATH="$DEPLOY_DIR/lib"
+export PATH="$DEPLOY_DIR/lib/native:$PATH"
 
 rm -f *.obe
 rm -f /tmp/objk-*
 
 echo ---
 
-obc -src $OBJECK_ROOT/core/compiler/lib_src/diags.obs -lib gen_collect -tar lib -opt s3 -dest $OBJECK_ROOT/core/lib/diags.obl
+"$OBC" -src $OBJECK_ROOT/core/compiler/lib_src/diags.obs -lib gen_collect -tar lib -opt s3 -dest $OBJECK_ROOT/core/lib/diags.obl
 if [ $? -ne 0 ]; then
 	echo "Build failed: diags.obl"
 	exit 1
 fi
-cp $OBJECK_ROOT/core/lib/diags.obl $OBJECK_ROOT/core/release/deploy/lib/diags.obl
+cp $OBJECK_ROOT/core/lib/diags.obl "$DEPLOY_DIR/lib/diags.obl"
 
 echo ---
 
-obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
+"$OBC" -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code/formatter.obs -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
 if [ $? -ne 0 ]; then
 	echo "Build failed: objeck_lsp.obe"
 	exit 1
@@ -31,6 +55,5 @@ echo "Build successful"
 
 if [ "$1" = "brun" ]; then
 	echo Running...
-	obr objeck_lsp.obe objk_apis.json pipe debug
-#	obr objeck_lsp.obe objk_apis.json 6013 debug
+	"$OBR" objeck_lsp.obe objk_apis.json pipe debug
 fi

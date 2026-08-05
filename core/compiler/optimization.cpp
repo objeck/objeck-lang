@@ -2234,8 +2234,13 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::TailCallOpt(std::vector<In
       if(instr->GetType() == MTHD_CALL &&
          instr->GetOperand() == self_class_id &&
          instr->GetOperand2() == self_method_id &&
+         i > 0 &&
+         instrs[i - 1]->GetType() == LOAD_INST_MEM &&
          i + 1 < instrs.size() &&
          instrs[i + 1]->GetType() == RTRN) {
+        // self tail call: the receiver (pushed last, so directly before the call) must be
+        // @self -- a bare LOAD_INST_MEM. A call to a *different* instance of the same class
+        // loads its receiver via LOAD_INT_VAR/etc., so it must NOT reuse the current frame.
         // tail call: pop the instance (top of stack), re-store args to locals, jump to body
         out_block->AddInstruction(
           IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));

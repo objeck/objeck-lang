@@ -10,10 +10,13 @@ Full IDE experience with syntax highlighting, LSP autocomplete, and DAP debuggin
 
 ### 1. Install the Extension
 
-Download the latest `.vsix` from the [objeck-lsp releases](https://github.com/objeck/objeck-lsp/releases), then (same command on all three platforms):
+Download `objeck-lsp_<version>.zip` from the
+[Objeck releases](https://github.com/objeck/objeck-lang/releases) and unzip it;
+it contains `objeck-lsp.vsix` along with the other editor clients. Then (same
+command on all three platforms):
 
 ```
-code --install-extension objeck-lsp-*.vsix
+code --install-extension objeck-lsp.vsix
 ```
 
 Or in VS Code: **Extensions** (Ctrl+Shift+X on Windows/Linux, Cmd+Shift+X on macOS) > **...** menu > **Install from VSIX...**
@@ -69,13 +72,31 @@ Press **F5** to start debugging. Features:
 
 ### 4. LSP Features
 
-The extension provides:
+The language server implements the following, and every editor below gets all
+of them — the list is not VS Code specific:
 
-- Syntax highlighting
-- Code completion
-- Go to definition
+**Navigation**
+
+- Go to definition, declaration, type definition, and implementation
+- Find references
+- Document symbols and workspace symbols
+- Call hierarchy and type hierarchy
+
+**Reading**
+
 - Hover information
-- Diagnostics (compile errors)
+- Inlay hints (parameter names at call sites)
+- Semantic tokens (highlighting that knows classes from interfaces from enums)
+- Document highlight (every occurrence of the symbol at the cursor)
+- Folding ranges and expand-selection
+
+**Editing**
+
+- Code completion with signature help
+- Rename
+- Code actions (quick fixes)
+- Document and range formatting
+- Diagnostics (compile errors and warnings) as you type
 
 ---
 
@@ -85,7 +106,7 @@ Tested on Windows, Linux, and macOS with Sublime Text 4.
 
 ### Automated Setup (Recommended)
 
-Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run the install script for your platform:
+Download the [Objeck release](https://github.com/objeck/objeck-lang/releases) and run the install script for your platform:
 
 ```cmd
 :: Windows (Command Prompt)
@@ -130,7 +151,7 @@ To enable debugging:
 
 5. Open the project, then **Debugger > Start** (or via the command palette: "Debugger: Start"). Set breakpoints by clicking the gutter; step with the Debugger panel buttons; inspect locals in the **Variables** view.
 
-The adapter spawns `obd --dap` over stdio with `OBJECK_LIB_PATH` set per `Objeck.sublime-settings`. The full example lives at `clients/sublime/dap/objeck.sublime-project.example` in the objeck-lsp release.
+The adapter spawns `obd --dap` over stdio with `OBJECK_LIB_PATH` set per `Objeck.sublime-settings`. The full example lives at `clients/sublime/dap/objeck.sublime-project.example` in the Objeck release.
 
 ### Manual Setup
 
@@ -175,7 +196,7 @@ Tested on Windows (gvim "Huge" build), Linux, and macOS (MacVim).
 
 ### Automated Setup (Recommended)
 
-Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run the installer for your platform:
+Download the [Objeck release](https://github.com/objeck/objeck-lang/releases) and run the installer for your platform:
 
 ```cmd
 :: Windows (Command Prompt)
@@ -330,7 +351,7 @@ Use `:make` to compile and `:copen` to see errors. `obc` must be on your `PATH`.
 
 ### Automated Setup (Recommended)
 
-Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run:
+Download the [Objeck release](https://github.com/objeck/objeck-lang/releases) and run:
 
 ```bash
 # Linux / macOS
@@ -341,7 +362,7 @@ This installs syntax highlighting, ftdetect, and the LSP client config to your N
 
 ### Manual Setup
 
-Copy from the [objeck-lsp](https://github.com/objeck/objeck-lsp) repo's `clients/neovim/`:
+Copy from the [objeck-lang](https://github.com/objeck/objeck-lang) repo's `clients/neovim/`:
 
 ```bash
 cp clients/neovim/objeck.lua ~/.config/nvim/lsp/
@@ -362,7 +383,7 @@ cp docs/syntax/vim/ftdetect/objeck.vim ~/.config/nvim/ftdetect/
 
 ### Automated Setup with LSP (Recommended)
 
-Download the [objeck-lsp release](https://github.com/objeck/objeck-lsp/releases) and run:
+Download the [Objeck release](https://github.com/objeck/objeck-lang/releases) and run:
 
 ```bash
 ./scripts/install.sh /usr/local/objeck emacs
@@ -405,7 +426,7 @@ Copy `docs/syntax/kate/objeck.xml` to:
 | **Linux** | `~/.local/share/katepart5/syntax/` |
 | **macOS** | `~/Library/Application Support/katepart5/syntax/` |
 
-LSP support available via Kate's built-in LSP client — see [objeck-lsp](https://github.com/objeck/objeck-lsp) for configuration.
+LSP support available via Kate's built-in LSP client — see [objeck-lang](https://github.com/objeck/objeck-lang) for configuration.
 
 ---
 

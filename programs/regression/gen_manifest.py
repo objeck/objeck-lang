@@ -44,6 +44,7 @@ CATS = [
     ('arm64_', 'ARM64 JIT'), ('jit_', 'AMD64/JIT'),
     ('core_generic', 'Generics'), ('bad_generic', 'Generics (neg)'),
     ('core_thread', 'Concurrency/GC'), ('core_', 'Core Language'),
+    ('nil_safe', 'Core Language'),
     ('bad_', 'Negative'), ('fix', 'Bug Fix'), ('collect_', 'Collections'),
     ('ml_', 'System.ML'), ('ml', 'System.ML'), ('ai_', 'System.AI'),
     ('math', 'Math'), ('func_', 'Functional'), ('string', 'Strings'),

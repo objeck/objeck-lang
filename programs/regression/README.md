@@ -91,7 +91,7 @@ This test suite runs automatically in GitHub Actions on:
 - Push to master
 - Pull requests to master
 
-See `.github/workflows/c-cpp.yml` for CI configuration.
+See `.github/workflows/ci-build.yml` for CI configuration.
 
 ## Expected Output
 
@@ -132,7 +132,7 @@ mv results results_arm64
 ## Related Documentation
 
 - [Main Testing Documentation](../../core/compiler/regress.sh)
-- [GitHub Actions Workflow](../../.github/workflows/c-cpp.yml)
+- [GitHub Actions Workflow](../../.github/workflows/ci-build.yml)
 - [ARM64 Build Fix](../../core/lib/crypto/WINDOWS_ARM64_BUILD_FIX.md)
 
 ## Maintenance

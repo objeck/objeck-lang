@@ -1,9 +1,9 @@
 {
 	"version": {
-		"string": "2026.7.0",
+		"string": "2026.8.0",
 		"year": 2026
 	},
-	"title": "Multithreaded minor-GC stability fix",
+	"title": "Nil-safe operators and editor tooling coverage",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,15 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.8.0",
+			"items": [
+				"Language: nil-safe operators — 'a?->b()' calls b only when a is non-Nil and yields Nil instead of faulting, and 'a ?? b' supplies b when a is Nil; a single '?->' guards the whole rest of a chain, and both desugar onto the existing Try()/Otherwise() intrinsics so no new bytecode is emitted",
+				"Language server: fixed five requests that crashed the server outright — go-to-implementation, semantic tokens, inlay hints, and both call-hierarchy directions — plus a line-range bug that made any cursor past the first method of a class resolve to the first method, affecting definition, references, hover and rename",
+				"Formatter: '??' is no longer split into '? ?', which had produced source that would not compile",
+				"Tooling: the formatter, language server and VS Code extension are now covered by CI"
+			]
+		},
 		{
 			"version": "v2026.6.4",
 			"items": [

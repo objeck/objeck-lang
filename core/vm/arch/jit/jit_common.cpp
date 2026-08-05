@@ -65,8 +65,25 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     return true;
   }
 
-  // P2: DYN_MTHD_CALL auto-JIT enabled (function-reference/closure calls).
+  // Fast path on the shared compile state (avoids re-claiming after the outcome
+  // is settled). A method must be compiled by exactly ONE thread: concurrent
+  // mutators previously raced here, double-compiling (leaked NativeCode) and
+  // double-patching call sites.
+  const int state = callee->GetJitState();
+  if(state == StackMethod::JIT_DONE) {
+    return true;
+  }
+  if(state == StackMethod::JIT_FAILED) {
+    return false;
+  }
+  if(!callee->ClaimJitCompile()) {
+    // Another thread owns (or just settled) the compile. Re-read the outcome:
+    // treat anything but a definitive failure as "will be available" so the
+    // caller does not mark this call site as failed while a compile is in flight.
+    return callee->GetJitState() != StackMethod::JIT_FAILED;
+  }
 
+  // We own the compile. P2: DYN_MTHD_CALL auto-JIT enabled (func-ref/closure calls).
 #if defined(_M_ARM64)
   Runtime::JitArm64 jit_compiler;
 #elif defined(_WIN64) || defined(_X64)
@@ -76,13 +93,16 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
 #endif
 
   if(jit_compiler.Compile(callee)) {
-    // patch all MTHD_CALL instructions that reference this callee
-    // so the interpreter's GetOperand3() fast path catches them
+    // Compile() published native_code (release). Patch all call sites AFTER that
+    // so any thread observing a *_JIT opcode / operand3>0 also sees native_code;
+    // the interpreter's JIT paths additionally re-check GetNativeCode() and fall
+    // back to interpreting if a patch is observed before the pointer is visible.
     PatchCallSites(callee, 1);
+    callee->SetJitDone();
     return true;
   }
 
-  // mark as permanently failed (operand3 stays 0, count at LONG_MAX stops further attempts)
+  // Definitive failure: mark so every call site can switch to interpret-only.
   callee->SetJitAttempted();
   return false;
 }
@@ -169,6 +189,15 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       if(instr_id == DYN_MTHD_CALL) { --(*stack_pos); }   // discard func-ref word; instance below
       // Pop instance from op_stack (same as ProcessMethodCall)
       size_t* callee_inst = (size_t*)op_stack[--(*stack_pos)];
+
+      // Bounds-check the call stack before writing the slot. This direct path
+      // bypasses PushFrame, which is the only place the interpreter enforces the
+      // CALL_STACK_SIZE limit -- without this, recursion deeper than 256 frames
+      // through JIT-compiled methods overruns the fixed call_stack[] buffer.
+      if((*call_stack_pos) >= CALL_STACK_SIZE) {
+        std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+        exit(1);
+      }
 
       // Get a stack frame for the callee and register it on the call stack
       // so the GC can find and fixup pointers during young-gen promotion.

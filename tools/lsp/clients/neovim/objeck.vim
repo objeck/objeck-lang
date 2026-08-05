@@ -45,6 +45,9 @@ syn keyword objeckBuiltin New Parent Try Otherwise
 " Operators
 syn keyword objeckOperator As TypeOf and or xor not
 syn match objeckOperator ":="
+" nil-safe operators before '->' so '?->' highlights as one unit
+syn match objeckOperator "?->"
+syn match objeckOperator "??"
 syn match objeckOperator "->"
 syn match objeckOperator "[+\-*/%=<>]"
 syn match objeckOperator "<>"

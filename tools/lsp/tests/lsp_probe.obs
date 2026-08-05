@@ -1,0 +1,97 @@
+#~
+Self-contained fixture for run_lsp_tests.py.
+
+Everything the harness asks about lives in this one file on purpose: an
+interface with two implementors, a class hierarchy, an enum, instance
+variables, and a function that calls several methods. That keeps the LSP
+assertions independent of workspace/build.json resolution, so a failure means
+a handler regressed rather than that project configuration drifted.
+
+Keep this file free of compiler warnings -- the harness asserts that a clean
+fixture produces no diagnostics at all.
+~#
+
+class Shape {
+	@name : String;
+
+	New(name : String) {
+		@name := name;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+
+	method : virtual : public : GetArea() ~ Float;
+}
+
+interface Drawable {
+	method : virtual : public : Draw() ~ String;
+}
+
+class Circle from Shape implements Drawable {
+	@radius : Float;
+
+	New(name : String, radius : Float) {
+		Parent(name);
+		@radius := radius;
+	}
+
+	method : public : GetRadius() ~ Float {
+		return @radius;
+	}
+
+	method : public : GetArea() ~ Float {
+		return 3.14159 * @radius * @radius;
+	}
+
+	method : public : Draw() ~ String {
+		return "circle";
+	}
+}
+
+class Square from Shape implements Drawable {
+	@side : Float;
+
+	New(name : String, side : Float) {
+		Parent(name);
+		@side := side;
+	}
+
+	method : public : GetArea() ~ Float {
+		return @side * @side;
+	}
+
+	method : public : Draw() ~ String {
+		return "square";
+	}
+}
+
+class Probe {
+	enum Kind {
+		ROUND,
+		ANGULAR
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		circle := Circle->New("c", 5.0);
+		square := Square->New("s", 4.0);
+
+		Describe(circle);
+		Describe(square);
+
+		total := circle->GetArea() + square->GetArea();
+		total->PrintLine();
+	}
+
+	function : Describe(shape : Shape) ~ Nil {
+		name := shape->GetName();
+		area := shape->GetArea();
+
+		drawable := shape->As(Drawable);
+		if(drawable <> Nil) {
+			kind := drawable->Draw();
+			"{$name} {$kind} {$area}"->PrintLine();
+		};
+	}
+}

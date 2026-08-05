@@ -1,0 +1,61 @@
+#~
+# Concurrency guard for the JIT code-page allocator (PageManager::GetPage).
+# Several threads JIT-compile DIFFERENT methods at once (heavy allocation of many
+# small objects + collection library churn forces Box/Vector/String methods to
+# cross the auto-JIT threshold concurrently). The page_manager singleton's holders
+# vector and per-holder bump index are shared; before the fix, unsynchronized
+# GetPage calls handed overlapping code regions to different methods -> corrupt
+# machine code -> SIGILL/SIGSEGV with garbage values (~20% of runs, JIT-only, not
+# GC-related, no floats). GetPage now serializes allocation. A regression surfaces
+# as a crash/hang or a wrong per-thread sum.
+#
+# IMPORTANT: must run with JIT ENABLED. Do NOT add a '# JIT_DISABLE' marker.
+# EXTRA_LIBS: gen_collect
+~#
+
+use System.Concurrency;
+use Collection;
+
+class Box {
+  @n : Int;
+  @s : String;
+  New(n : Int) { @n := n; @s := "box-{$n}"; }
+  method : public : N() ~ Int { return @n; }
+}
+
+class Worker from Thread {
+  @sum : Int;
+  New() { Parent("w"); @sum := 0; }
+  method : public : Sum() ~ Int { return @sum; }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    total := 0;
+    v := Vector->New()<Box>;
+    for(i := 0; i < 5000; i += 1;) {
+      b := Box->New(i);
+      v->AddBack(b);
+      total += b->N();
+      if(i % 100 = 0) { v := Vector->New()<Box>; };
+    };
+    @sum := total;
+  }
+}
+
+class JitConcurrentCompile {
+  function : Main(args : String[]) ~ Nil {
+    expected := 0;
+    for(i := 0; i < 5000; i += 1;) { expected += i; };
+
+    workers := Worker->New[8];
+    for(t := 0; t < 8; t += 1;) { workers[t] := Worker->New(); };
+    for(t := 0; t < 8; t += 1;) { workers[t]->Execute(Nil); };
+    for(t := 0; t < 8; t += 1;) { workers[t]->Join(); };
+
+    ok := true;
+    for(t := 0; t < 8; t += 1;) {
+      if(workers[t]->Sum() <> expected) { ok := false; };
+    };
+    if(ok) { "PASS: concurrent JIT compile - all threads correct"->PrintLine(); }
+    else { "FAIL: wrong sum"->PrintLine(); Runtime->Exit(1); };
+  }
+}

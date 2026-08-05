@@ -385,7 +385,17 @@ class Scanner {
 					}
 
 					label '?' {
-						@tokens->AddBack(Token->New(@line_num, Token->Type->QUESTION, "question"));
+						# '??' must scan as one token; emitting two QUESTIONs makes
+						# the formatter write '? ?', which no longer compiles.
+						# '?->' needs nothing here: it scans as QUESTION followed by
+						# ASSESSOR, and neither adds a space between them.
+						if(@next_char = '?') {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->QUESTION_QUESTION, "question_question"));
+							NextChar();
+						}
+						else {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->QUESTION, "question"));
+						};
 						NextChar();
 					}
 
@@ -518,6 +528,7 @@ class Token {
 		AND,
 		OR,
 		QUESTION,
+		QUESTION_QUESTION,
 		DIV,
 		MOD,
 		MUL,

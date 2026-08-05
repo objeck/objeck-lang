@@ -1535,8 +1535,28 @@ void Scanner::ParseToken(int index)
       break;
 
     case L'?':
-      tokens[index]->SetType(TOKEN_QUESTION);
-      NextChar();
+      if(nxt_char == L'?') {
+        NextChar();
+        tokens[index]->SetType(TOKEN_QUESTION_QUESTION);
+        NextChar();
+      }
+      // '?->' is the nil-safe accessor: the language's own '->' with a guard
+      // prefix. It scans as a plain accessor carrying a flag, so every existing
+      // Match(TOKEN_ASSESSOR) site keeps working untouched.
+      //
+      // Requiring both '-' and '>' keeps a negative ternary branch intact:
+      // 'a ?-b : c' has nxt_nxt_char == 'b', so it stays a ternary.
+      else if(nxt_char == L'-' && nxt_nxt_char == L'>') {
+        NextChar();
+        NextChar();
+        tokens[index]->SetType(TOKEN_ASSESSOR);
+        tokens[index]->SetNilSafe(true);
+        NextChar();
+      }
+      else {
+        tokens[index]->SetType(TOKEN_QUESTION);
+        NextChar();
+      }
       break;
 
     case L'=':

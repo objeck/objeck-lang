@@ -112,7 +112,7 @@
 					"name": "keyword.operator.objeck"
 				},
 				{
-					"match": "(->|<=|>=|<>|<|>)",
+					"match": "(\\?->|\\?\\?|->|<=|>=|<>|<|>)",
 					"name": "keyword.operator.objeck"
 				},
 				{

@@ -7,8 +7,8 @@
   <meta name="description" content="Get started with Objeck: installation, language basics, collections, AI/ML, web programming, and more."/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon" />
   <link href="style/styles.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/twilight.min.css" rel="stylesheet" integrity="sha512-r2ZvyWx6iCZ80UPMo4oQbrRdV1hEaAp+x5eLmp+dYirS177GcReNy3h1UEBBh12uJ7EBj0KuWTD68kaiY8GqhA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
    hljs.highlightAll();
   </script>
@@ -57,7 +57,7 @@
     </div>
   </header>
   
-  <main role="main" style="text-align: left;">
+  <main id="main" role="main" style="text-align: left;">
    <div class="container">
     <p>
      Before you get started, checkout Objeck's
@@ -1203,6 +1203,26 @@ for(i := 0; i &lt; end; i += 3;) {
   r-&gt;Append( lut[0x3F and (a &gt;&gt; 6)] );
   r-&gt;Append( lut[0x3F and a] );
 };</code></pre>
+         <h4 id="nil_safety">
+          Nil-safe operators
+         </h4>
+         <p>
+          <code>?-&gt;</code> calls a method only when the receiver is non-<code>Nil</code>, yielding <code>Nil</code> rather than faulting. <code>??</code> supplies a value when its left side is <code>Nil</code>, and evaluates the right side only when it has to.
+         </p>
+         <pre class="line-numbers"><code class="language-cpp"># guarded call: Nil instead of a fault if person or the address is Nil
+city := person?-&gt;GetAddress()?-&gt;GetCity();
+
+# default when the left side is Nil
+name := lookup ?? "(unknown)";
+
+# a single '?-&gt;' guards the whole rest of the chain
+text := maybe?-&gt;Trim()-&gt;ToUpper();
+
+# a chain ending in a value type needs '??', since an Int cannot be Nil
+size := maybe?-&gt;ToUpper()-&gt;Size() ?? -1;</code></pre>
+         <p>
+          Both build on the <code>Try()</code>/<code>Otherwise()</code> methods: <code>a?-&gt;b()</code> is <code>a-&gt;Try()-&gt;b()</code> and <code>a ?? b</code> is <code>a-&gt;Otherwise(b)</code>. One consequence worth knowing is that <code>Try()</code> guards against any runtime error in the chain, not only a <code>Nil</code> dereference — so <code>a?-&gt;Get(999)</code> yields <code>Nil</code> on an out-of-range index instead of faulting.
+         </p>
          <p>
           The language has support for dynamically allocated arrays, Unicode strings and various containers.
          </p>

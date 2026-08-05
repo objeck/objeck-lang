@@ -53,6 +53,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
+#include <atomic>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -517,17 +518,23 @@ class NativeCode {
 #endif
 
   ~NativeCode() {
-#ifdef _ARM64
-    free(ints);
+#if defined(_ARM64) || defined(_M_ARM64)
+    // ARM64 allocates both constant pools with new[] (JitArm64::Compile), so they
+    // must be released with delete[]. The old code used free() on ints and, on
+    // Windows ARM64 (_ARM64 && _WIN64), VirtualFree() on a new[] buffer -- a hard
+    // allocator mismatch (UB / heap corruption) that ran for every method at teardown.
+    delete[] ints;
     ints = nullptr;
-#endif
-    
-#ifdef _WIN64
-    VirtualFree(floats, 0, MEM_RELEASE);
-#else
-    free(floats);
-#endif
+    delete[] floats;
     floats = nullptr;
+#else
+  #ifdef _WIN64
+    VirtualFree(floats, 0, MEM_RELEASE);
+  #else
+    free(floats);
+  #endif
+    floats = nullptr;
+#endif
   }
 
 #if defined(_ARM64) || defined(_M_ARM64)
@@ -566,8 +573,14 @@ class StackMethod {
   int instr_count;
   long param_count;
   long mem_size;
-  NativeCode* native_code;
-  long jit_call_count;
+  // Auto-JIT state shared across mutator threads. native_code is the ready signal
+  // (release on publish / acquire on read so a non-null pointer implies the fully
+  // built NativeCode is visible). jit_call_count is a plain hot counter (relaxed).
+  // jit_state elects exactly one compiler thread (0=none,1=compiling,2=done,3=failed)
+  // so a method is never compiled twice or patched concurrently by two threads.
+  std::atomic<NativeCode*> native_code;
+  std::atomic<long> jit_call_count;
+  std::atomic<int> jit_state;
   MemoryType rtrn_type;
   StackDclr** dclrs;
   long num_dclrs;
@@ -582,8 +595,9 @@ class StackMethod {
     is_virtual = v;
     has_and_or = h;
     is_lambda = l;
-    native_code = nullptr;
-    jit_call_count = 0;
+    native_code.store(nullptr, std::memory_order_relaxed);
+    jit_call_count.store(0, std::memory_order_relaxed);
+    jit_state.store(JIT_NONE, std::memory_order_relaxed);
     dclrs = d;
     num_dclrs = nd;
     param_count = p;
@@ -606,10 +620,11 @@ class StackMethod {
       dclrs = nullptr;
     }
 
-    // clean up
-    if(native_code) {
-      delete native_code;
-      native_code = nullptr;
+    // clean up (single-threaded teardown; relaxed is fine)
+    NativeCode* nc = native_code.load(std::memory_order_relaxed);
+    if(nc) {
+      delete nc;
+      native_code.store(nullptr, std::memory_order_relaxed);
     }
 
     // contiguous array - single deallocation
@@ -674,24 +689,46 @@ class StackMethod {
     return num_dclrs;
   }
 
+  // Auto-JIT compile states (jit_state).
+  enum { JIT_NONE = 0, JIT_COMPILING = 1, JIT_DONE = 2, JIT_FAILED = 3 };
+
   void SetNativeCode(NativeCode* c) {
-    native_code = c;
+    // release: publish the fully constructed NativeCode before the pointer is
+    // observable, pairing with the acquire load in GetNativeCode.
+    native_code.store(c, std::memory_order_release);
   }
 
   inline NativeCode* GetNativeCode() const {
-    return native_code;
+    return native_code.load(std::memory_order_acquire);
   }
 
   inline long GetJitCallCount() const {
-    return jit_call_count;
+    return jit_call_count.load(std::memory_order_relaxed);
   }
 
-  inline void IncrementJitCallCount() {
-    ++jit_call_count;
+  // Returns the PREVIOUS value (fetch_add semantics) so a caller can detect the
+  // unique thread that crossed the auto-JIT threshold.
+  inline long IncrementJitCallCount() {
+    return jit_call_count.fetch_add(1, std::memory_order_relaxed);
+  }
+
+  inline int GetJitState() const {
+    return jit_state.load(std::memory_order_acquire);
+  }
+
+  // Elect a single compiler thread: exactly one CAS from JIT_NONE succeeds.
+  inline bool ClaimJitCompile() {
+    int expected = JIT_NONE;
+    return jit_state.compare_exchange_strong(expected, JIT_COMPILING,
+                                             std::memory_order_acq_rel);
+  }
+
+  inline void SetJitDone() {
+    jit_state.store(JIT_DONE, std::memory_order_release);
   }
 
   inline void SetJitAttempted() {
-    jit_call_count = LONG_MAX;
+    jit_state.store(JIT_FAILED, std::memory_order_release);
   }
 
   MemoryType GetReturn() const {

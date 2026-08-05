@@ -1,0 +1,49 @@
+#~
+# Concurrency guard for the diagnostics/LSP analysis path. The LSP server spawns a
+# worker thread per connection (server.obs), so requests run System.Diagnostics
+# analysis concurrently. Parsing/analysis use process-global singletons
+# (TreeFactory/TypeFactory + the analyzer cache); before the fix, concurrent
+# Analyzer->ParseText from multiple threads segfaulted (JIT-independent). diags.cpp
+# now serializes every entry point under one recursive mutex. A regression surfaces
+# as a segfault/hang (hard FAIL) or a null analysis (non-zero exit).
+#
+# EXTRA_LIBS: diags,gen_collect
+~#
+
+use System.Diagnostics;
+use System.Concurrency;
+use Collection;
+
+class AnalyzeWorker from Thread {
+  @ok : Bool;
+  New() { Parent("aw"); @ok := true; }
+  method : public : Ok() ~ Bool { return @ok; }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    src := "class Counter {\r\n@count : Int;\r\nNew() { @count := 0; }\r\n";
+    src += "method : public : Increment() ~ Nil { @count += 1; }\r\n";
+    src += "method : public : GetCount() ~ Int { return @count; }\r\n}\r\n";
+    lib_path := "";
+    for(i := 0; i < 40; i += 1;) {
+      texts := String->New[1, 2];
+      texts[0, 0] := "file:///mt.obs";
+      texts[0, 1] := src;
+      analysis := Analyzer->ParseText(texts);
+      if(analysis = Nil) { @ok := false; return; };
+      analysis->GetSymbols("file:///mt.obs", lib_path);
+    };
+  }
+}
+
+class DiagConcurrentAnalysis {
+  function : Main(args : String[]) ~ Nil {
+    workers := AnalyzeWorker->New[8];
+    for(t := 0; t < 8; t += 1;) { workers[t] := AnalyzeWorker->New(); };
+    for(t := 0; t < 8; t += 1;) { workers[t]->Execute(Nil); };
+    for(t := 0; t < 8; t += 1;) { workers[t]->Join(); };
+    ok := true;
+    for(t := 0; t < 8; t += 1;) { if(<>workers[t]->Ok()) { ok := false; }; };
+    if(ok) { "PASS: concurrent diagnostics analysis - no crash"->PrintLine(); }
+    else { "FAIL: null analysis in a worker"->PrintLine(); Runtime->Exit(1); };
+  }
+}

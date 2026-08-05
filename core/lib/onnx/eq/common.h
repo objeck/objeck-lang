@@ -633,19 +633,45 @@ static inline Ort::Value make_tensor_match_input_type(const std::vector<float>& 
 
 // Read OpenCV image from raw data
 static cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
+   if(!image_obj) {
+      return cv::Mat();
+   }
+
    const int type = (int)image_obj[0];
    const int rows = (int)image_obj[2];
    const int cols = (int)image_obj[1];
    size_t* data_array = (size_t*)image_obj[3];
+   if(!data_array) {
+      return cv::Mat();
+   }
+
+   // reject non-positive dimensions before constructing the Mat
+   if(rows <= 0 || cols <= 0) {
+      return cv::Mat();
+   }
 
    // get parameters
    const size_t data_size = APITools_GetArraySize(data_array);
    const unsigned char* data = (unsigned char*)APITools_GetArray(data_array);
+   if(!data) {
+      return cv::Mat();
+   }
 
-   cv::Mat image(rows, cols, type);
-   memcpy(image.data, data, data_size);
+   // The dimensions and type are program-controlled; an attached byte array whose
+   // size does not match the Mat's footprint would overrun image.data on memcpy.
+   // A bogus 'type' can also make the Mat constructor throw across the C ABI.
+   try {
+      cv::Mat image(rows, cols, type);
+      if(image.data && data_size == image.total() * image.elemSize()) {
+         memcpy(image.data, data, data_size);
+         return image;
+      }
+   }
+   catch(const cv::Exception&) {
+      // fall through to empty Mat
+   }
 
-   return image;
+   return cv::Mat();
 }
 
 // Write OpenCV image to raw data

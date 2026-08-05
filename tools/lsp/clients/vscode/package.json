@@ -7,7 +7,8 @@
 	"version": "2026.5.3",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/objeck/objeck-lsp"
+		"url": "https://github.com/objeck/objeck-lang",
+		"directory": "tools/lsp/clients/vscode"
 	},
 	"publisher": "objeck-lsp",
 	"categories": [
@@ -107,18 +108,13 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ..",
-		"test": "sh ./scripts/e2e.sh"
+		"lint": "eslint client/src --ext .ts"
 	},
 	"devDependencies": {
-		"@types/mocha": "^10.0.0",
 		"@types/node": "^20.0.0",
 		"@typescript-eslint/eslint-plugin": "^7.0.0",
 		"@typescript-eslint/parser": "^7.0.0",
 		"eslint": "^8.56.0",
-		"mocha": "^10.7.0",
 		"typescript": "^5.4.0"
-	},
-	"overrides": {
-		"serialize-javascript": ">=7.0.5"
 	}
 }
