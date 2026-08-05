@@ -1,0 +1,21 @@
+class NilSafe {
+	function : Main(args : String[]) ~ Nil {
+		b := "Dog";
+		c := b?->SubString(2) ?? "<NIL>";
+		c->PrintLine();
+
+		d := b ?? "Cat";
+		d->PrintLine();
+
+		w := Wrap->New()->Get();
+		w->PrintLine();
+	}
+}
+
+class Wrap {
+	New() {}
+
+	method : public : Get() ~ String {
+		return "wrapped";
+	}
+}

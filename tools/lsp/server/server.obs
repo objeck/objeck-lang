@@ -521,25 +521,37 @@ bundle LSP {
 		}
 
 		method : CallbackInitialize(id : Int, params : JsonElement) ~ Nil {
-			workspace := params->FindElements("capabilities/workspace");
-			if(workspace <> Nil) {
-				configuration := params->FindElements("capabilities/workspace/configuration");
-				if(configuration <> Nil & configuration->GetValue()->Equals("true")) {
-					workspace_folders := params->FindElements("workspaceFolders");
-					each(i : workspace_folders) {
-						workspace_folder := workspace_folders->Get(i);
-						
-						folder_name_obj := workspace_folder->Get("name");
-						folder_uri_obj := workspace_folder->Get("uri");
-						if(folder_name_obj <> Nil & folder_uri_obj <> Nil) {
-							folder_name := folder_name_obj->GetValue();
-							folder_uri := folder_uri_obj->GetValue();
+			# Process workspace folders whenever the client sends them. Gating on
+			# capabilities/workspace/configuration broke Sublime, which supports
+			# folders without advertising the (unrelated) configuration capability.
+			workspace_folders := params->FindElements("workspaceFolders");
+			if(workspace_folders <> Nil) {
+				each(i : workspace_folders) {
+					workspace_folder := workspace_folders->Get(i);
 
-							if(@is_debug) {
-								System.IO.Filesystem.Logger->Instance()->Info("\n--- Added workspace:  folder_uri='{$folder_uri}', folder_name='{$folder_name}' ---\n");
-							};
-							ProcessConfiguration(folder_name, folder_uri);
+					folder_name_obj := workspace_folder->Get("name");
+					folder_uri_obj := workspace_folder->Get("uri");
+					if(folder_name_obj <> Nil & folder_uri_obj <> Nil) {
+						folder_name := folder_name_obj->GetValue();
+						folder_uri := folder_uri_obj->GetValue();
+
+						if(@is_debug) {
+							System.IO.Filesystem.Logger->Instance()->Info("\n--- Added workspace:  folder_uri='{$folder_uri}', folder_name='{$folder_name}' ---\n");
 						};
+						ProcessConfiguration(folder_name, folder_uri);
+					};
+				};
+			}
+			else {
+				# single-folder clients that only send rootUri
+				root_uri_obj := params->Get("rootUri");
+				if(root_uri_obj <> Nil) {
+					root_uri := root_uri_obj->GetValue();
+					if(root_uri <> Nil & <>root_uri->Equals("null")) {
+						if(@is_debug) {
+							System.IO.Filesystem.Logger->Instance()->Info("\n--- Added workspace from rootUri: '{$root_uri}' ---\n");
+						};
+						ProcessConfiguration("root", root_uri);
 					};
 				};
 			};
@@ -649,6 +661,13 @@ bundle LSP {
 		}
 
 		method : LoadConfigurationFile() ~ Nil {
+			# no workspace folder was configured at initialize; interpolating a
+			# Nil @build_json_file below would crash the server
+			if(@build_json_file = Nil) {
+				System.IO.Filesystem.Logger->Instance()->Error("--- No workspace configured, skipping build.json load ---");
+				return;
+			};
+
 			text := System.IO.Filesystem.FileReader->ReadFile(@build_json_file);
 			if(text <> Nil) {
 				json :=JsonParser->New(text);

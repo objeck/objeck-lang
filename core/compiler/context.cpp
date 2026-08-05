@@ -10467,7 +10467,7 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
     if(expression->GetLineNumber() == line_num + 1) {
       int start_pos = expression->GetLinePosition() - 1;
       int end_pos = start_pos;
-      
+
       int alt_start_pos = -1;
       int alt_end_pos = -1;
 
@@ -10522,6 +10522,24 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
         break;
       }
 
+      // '?->' and '??' desugar to synthesized Try()/Otherwise() calls that have
+      // no method-name token in the source: their mid position aliases the
+      // receiver variable (or is unset). Suppress the alt range so the receiver
+      // token resolves to the variable instead of a phantom method; when the
+      // synthesized call has no receiver token of its own either (empty
+      // variable slot / '@self'), suppress its primary range too so the real
+      // receiver Variable node and chained calls get to match instead.
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+        MethodCall* head_call = static_cast<MethodCall*>(expression);
+        const int mid_pos = head_call->GetMidLinePosition();
+        if(mid_pos <= 0 || mid_pos == expression->GetLinePosition()) {
+          alt_start_pos = alt_end_pos = -1;
+          if(head_call->GetVariableName().empty() || found_name == L"@self") {
+            start_pos = end_pos = -1;
+          }
+        }
+      }
+
       if((start_pos <= line_pos && end_pos >= line_pos) || (alt_start_pos <= line_pos && alt_end_pos >= line_pos)) {
         if((alt_start_pos <= line_pos && alt_end_pos >= line_pos) || found_name == L"@self") {
           found_name = alt_found_name;
@@ -10533,6 +10551,30 @@ bool ContextAnalyzer::LocateExpression(Method* method, const int line_num, const
 
         found_expression = expression;
         return true;
+      }
+
+      // not on the head token: check chained calls (a->b()->c(), and the real
+      // call behind a synthesized Try()/Otherwise() from '?->'/'??'). The
+      // method-name position is the mid when recorded; chains built by the
+      // identifier-context parser path leave mid at -1 and carry the method
+      // token's position as their own line position instead.
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+        for(MethodCall* chained = expression->GetMethodCall(); chained; chained = chained->GetMethodCall()) {
+          const int chained_mid = chained->GetMidLinePosition() > 0
+            ? chained->GetMidLinePosition()
+            : static_cast<Expression*>(chained)->GetLinePosition();
+          if(chained_mid > 0 && !chained->GetMethodName().empty() &&
+             static_cast<Expression*>(chained)->GetLineNumber() == line_num + 1) {
+            const int chained_start = chained_mid - 1;
+            const int chained_end = chained_start + (int)chained->GetMethodName().size();
+            if(chained_start <= line_pos && chained_end >= line_pos) {
+              found_name = chained->GetMethodName();
+              is_alt = true;
+              found_expression = chained;
+              return true;
+            }
+          }
+        }
       }
     }
   }

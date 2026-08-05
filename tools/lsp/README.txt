@@ -57,6 +57,16 @@ The install scripts create a self-contained deployment at ~/.objeck-lsp/ with
 the Objeck runtime and LSP server. Environment variables and paths are configured
 automatically. No admin rights required for user installs.
 
+Linux/macOS prerequisite: the Objeck runtime dynamically links mbedTLS plus
+nghttp2/ngtcp2/nghttp3 (HTTP/2 and HTTP/3). Install these system packages
+first; install.sh checks for them and stops with the same hint if missing.
+Windows releases bundle their DLLs.
+
+  Debian/Ubuntu: sudo apt-get install libmbedtls-dev libnghttp2-dev \
+                     libngtcp2-dev libngtcp2-crypto-gnutls-dev \
+                     libnghttp3-dev libgnutls28-dev
+  macOS:         brew install mbedtls nghttp2 ngtcp2 nghttp3 gnutls
+
 VS Code
 --
 Automated: scripts/install.cmd <objeck_install_dir> vscode  (Windows)

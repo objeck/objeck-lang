@@ -49,6 +49,9 @@ REM update runtime
 echo [1/3] Updating runtime from %OBJECK_DIR%...
 copy /y "%OBJECK_DIR%\bin\obr.exe" "%LSP_HOME%\bin\" >nul
 copy /y "%OBJECK_DIR%\bin\obd.exe" "%LSP_HOME%\bin\" >nul 2>nul
+REM Support DLLs (vcruntime, nghttp2, onnxruntime, opencv, lame, ...) --
+REM the native libs in lib\native resolve these via the bin directory on PATH.
+copy /y "%OBJECK_DIR%\bin\*.dll" "%LSP_HOME%\bin\" >nul 2>nul
 xcopy /y /q "%OBJECK_DIR%\lib\*.*" "%LSP_HOME%\lib\" >nul
 echo    Done.
 

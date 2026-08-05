@@ -127,6 +127,14 @@
 <h2 id="prerequisites">Prerequisites</h2>
 <ol>
   <li><strong>Install Objeck</strong> &mdash; download the latest release from <a href="https://github.com/objeck/objeck-lang">github.com/objeck/objeck-lang</a>.</li>
+  <li><strong>Install system libraries (Linux/macOS only)</strong> &mdash; the Objeck runtime dynamically links mbedTLS (crypto/TLS) plus nghttp2, ngtcp2, and nghttp3 (HTTP/2 and HTTP/3). Windows releases bundle their DLLs. The <code>install.sh</code> script checks for these and stops with the same hint if any are missing.
+    <pre><code># Debian / Ubuntu
+sudo apt-get install libmbedtls-dev libnghttp2-dev libngtcp2-dev \
+    libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
+
+# macOS
+brew install mbedtls nghttp2 ngtcp2 nghttp3 gnutls</code></pre>
+  </li>
   <li><strong>Set environment variables</strong> (required for all editors except VS&nbsp;Code, which sets them internally):
     <table>
       <tr><th>Variable</th><th>Value</th><th>Notes</th></tr>

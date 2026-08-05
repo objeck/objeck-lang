@@ -42,6 +42,31 @@ if [ ! -f "$OBJECK_DIR/bin/obr" ]; then
     exit 1
 fi
 
+# validate system runtime libraries -- obr dynamically links mbedTLS plus
+# nghttp2/ngtcp2/nghttp3 (+ GnuTLS crypto), and the native libs in lib/native
+# need the same mbedTLS runtime. A fresh OS install won't have these, so probe
+# the dynamic loader before deploying anything.
+LOADER_ERR=$("$OBJECK_DIR/bin/obr" 2>&1 >/dev/null | grep -E 'error while loading shared libraries|Library not loaded|image not found' || true)
+if [ -n "$LOADER_ERR" ]; then
+    echo "ERROR: the Objeck runtime cannot start -- missing system libraries:"
+    echo ""
+    echo "  $LOADER_ERR"
+    if [ "$(uname)" = "Darwin" ]; then
+        echo ""
+        echo "Install the runtime dependencies with Homebrew:"
+        echo "  brew install mbedtls nghttp2 ngtcp2 nghttp3 gnutls"
+    else
+        { command -v ldd >/dev/null 2>&1 && ldd "$OBJECK_DIR/bin/obr" 2>/dev/null | grep 'not found' | sed 's/^/  /'; } || true
+        echo ""
+        echo "Install the runtime dependencies on Debian/Ubuntu with:"
+        echo "  sudo apt-get install libmbedtls-dev libnghttp2-dev libngtcp2-dev \\"
+        echo "      libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev"
+    fi
+    echo ""
+    echo "then re-run this script."
+    exit 1
+fi
+
 # validate release directory
 if [ ! -f "$RELEASE_DIR/server/objeck_lsp.obe" ]; then
     echo "ERROR: Cannot find server/objeck_lsp.obe in release directory."

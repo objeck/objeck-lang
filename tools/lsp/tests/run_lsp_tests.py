@@ -106,9 +106,11 @@ def make_env(bin_dir):
         env["DYLD_LIBRARY_PATH"] = native + os.pathsep + env.get("DYLD_LIBRARY_PATH", "")
     elif os.name != "nt":
         env["LD_LIBRARY_PATH"] = native + os.pathsep + env.get("LD_LIBRARY_PATH", "")
-    # The server crashes after a handful of requests once the JIT kicks in, so
-    # editor clients pin the threshold. Do the same here or long runs are flaky.
-    env["OBJECK_JIT_THRESHOLD"] = "999999999"
+    # No JIT pin: the "crashes after a handful of requests" flake was the TRAP
+    # *_ARY_LEN operand over-count, fixed in the VM (ProcessReturn clamp) and
+    # compiler (TRAP 5->4). Running at the default threshold keeps that fix
+    # covered; if this suite starts dying mid-run again, suspect a JIT
+    # regression before suspecting the server.
     return env
 
 
@@ -434,6 +436,150 @@ def main():
             log_result("callHierarchy/outgoingCalls finds the callees",
                        {"GetName", "GetArea", "Draw"} <= set(callees),
                        f"got: {callees}")
+
+        # --- rename ----------------------------------------------------------
+        ren = result_of(c.request("textDocument/rename",
+                                  dict(at("circle := Circle"), newName="disc")))
+        ren_edits = (ren or {}).get("documentChanges", [{}])[0].get("edits", [])
+        log_result("textDocument/rename edits every occurrence",
+                   len(ren_edits) >= 2, f"got {len(ren_edits)} edits")
+
+        # --- nil-safe operators ('?->' / '??') --------------------------------
+        # They desugar to synthesized Try()/Otherwise() calls whose method-name
+        # position aliases the receiver variable; LocateExpression used to
+        # resolve the receiver to the phantom method, so rename / declaration /
+        # references at the use site all returned null.
+        ns_obs = os.path.join(TESTS_DIR, "test_nil_safe.obs")
+        with open(ns_obs, encoding="utf-8") as f:
+            ns_text = f.read()
+        ns_uri = path_to_uri(ns_obs)
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": ns_uri, "languageId": "objeck", "version": 1,
+            "text": ns_text}})
+        c.diagnostics_for(ns_uri, timeout=60)
+
+        ns_use = position_in(ns_text, ns_uri, "b?->", 1, 0)
+        ren = result_of(c.request("textDocument/rename",
+                                  dict(ns_use, newName="dog")))
+        ren_edits = (ren or {}).get("documentChanges", [{}])[0].get("edits", [])
+        log_result("rename at a '?->' use edits declaration and uses",
+                   len(ren_edits) == 3, f"got: {ren}")
+
+        decl = result_of(c.request("textDocument/declaration", ns_use))
+        decl_line = (decl or {}).get("range", {}).get("start", {}).get("line", -1)
+        b_decl_line, _ = find_pos(ns_text, "b := ")
+        log_result("declaration at a '?->' use jumps to the declaration",
+                   decl_line == b_decl_line, f"got: {decl}")
+
+        log_result("references at a '?->' use finds all three",
+                   len(result_of(c.request("textDocument/references", dict(
+                       ns_use, context={"includeDeclaration": True}))) or []) == 3)
+
+        # bare '??' (no '?->') takes a different parser branch: the receiver
+        # variable itself becomes the synthesized Otherwise() call's receiver
+        bare_use = position_in(ns_text, ns_uri, "b ?? ", 1, 0)
+        ren = result_of(c.request("textDocument/rename",
+                                  dict(bare_use, newName="dog")))
+        ren_edits = (ren or {}).get("documentChanges", [{}])[0].get("edits", [])
+        log_result("rename at a bare '??' use edits all occurrences",
+                   len(ren_edits) >= 2, f"got: {ren}")
+        decl = result_of(c.request("textDocument/declaration", bare_use))
+        decl_line = (decl or {}).get("range", {}).get("start", {}).get("line", -1)
+        log_result("declaration at a bare '??' use jumps to the declaration",
+                   decl_line == b_decl_line, f"got: {decl}")
+
+        # chained user-defined call: LocateExpression's chain descent must
+        # resolve the SECOND call's method name (plain chains, not just nil-safe)
+        chain_pos = position_in(ns_text, ns_uri, "Get();", 1, 1)
+        decl = result_of(c.request("textDocument/declaration", chain_pos))
+        get_line, _ = find_pos(ns_text, "method : public : Get()")
+        decl_line = (decl or {}).get("range", {}).get("start", {}).get("line", -1)
+        log_result("declaration on a chained call resolves the chained method",
+                   decl_line == get_line, f"got: {decl}")
+    finally:
+        c.close()
+
+    # --- rootUri-only session (Kate/ecode-style clients) -----------------------
+    # No workspaceFolders at all: the rootUri fallback must configure the
+    # workspace and the watched-files handler must stay alive.
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        resp = c.request("initialize", {
+            "processId": os.getpid(), "rootUri": path_to_uri(TESTS_DIR),
+            "capabilities": {},
+        }, timeout=90)
+        log_result("initialize with rootUri only (no workspaceFolders)",
+                   bool((result_of(resp) or {}).get("capabilities")))
+        c.notify("initialized", {})
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": probe_uri, "languageId": "objeck", "version": 1,
+            "text": probe_text}})
+        c.diagnostics_for(probe_uri, timeout=60)
+        c.notify("workspace/didChangeWatchedFiles", {"changes": [
+            {"uri": path_to_uri(TESTS_DIR) + "/build.json", "type": 2}]})
+        alive = non_empty(c.request("textDocument/hover",
+                                    position_in(probe_text, probe_uri,
+                                                "circle := Circle", 1, 1)))
+        log_result("rootUri-only session survives didChangeWatchedFiles",
+                   alive and c.proc.poll() is None)
+    finally:
+        c.close()
+
+    # --- no-workspace session ---------------------------------------------------
+    # rootUri null and no folders: nothing configures build.json, so the
+    # watched-files handler must hit the Nil guard instead of dying on
+    # String->Append(Nil) while logging the (unset) config path.
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        resp = c.request("initialize", {
+            "processId": os.getpid(), "rootUri": None, "capabilities": {},
+        }, timeout=90)
+        log_result("initialize with no workspace at all",
+                   bool((result_of(resp) or {}).get("capabilities")))
+        c.notify("initialized", {})
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": probe_uri, "languageId": "objeck", "version": 1,
+            "text": probe_text}})
+        c.diagnostics_for(probe_uri, timeout=60)
+        c.notify("workspace/didChangeWatchedFiles", {"changes": [
+            {"uri": path_to_uri(TESTS_DIR) + "/build.json", "type": 1}]})
+        alive = non_empty(c.request("textDocument/hover",
+                                    position_in(probe_text, probe_uri,
+                                                "circle := Circle", 1, 1)))
+        log_result("no-workspace session survives didChangeWatchedFiles (Nil guard)",
+                   alive and c.proc.poll() is None)
+    finally:
+        c.close()
+
+    # --- Sublime-style session -------------------------------------------------
+    # Sublime passes workspaceFolders WITHOUT the workspace.configuration
+    # capability and later fires workspace/didChangeWatchedFiles (e.g. after an
+    # external compile). The server used to skip ProcessConfiguration for such
+    # clients, leaving the build.json path Nil, and the watched-files handler
+    # then died interpolating it (String->Append(Nil)).
+    sublime_ws = path_to_uri(TESTS_DIR)
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        resp = c.request("initialize", {
+            "processId": os.getpid(), "rootUri": sublime_ws,
+            "capabilities": {},   # no workspace.configuration, like Sublime
+            "workspaceFolders": [{"uri": sublime_ws, "name": "tests"}],
+        }, timeout=90)
+        log_result("initialize without workspace.configuration capability",
+                   bool((result_of(resp) or {}).get("capabilities")))
+        c.notify("initialized", {})
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": probe_uri, "languageId": "objeck", "version": 1,
+            "text": probe_text}})
+        c.diagnostics_for(probe_uri, timeout=60)
+        # the notification that used to kill the server
+        c.notify("workspace/didChangeWatchedFiles", {"changes": [
+            {"uri": sublime_ws + "/whatever.obe", "type": 1}]})
+        alive = non_empty(c.request("textDocument/hover",
+                                    position_in(probe_text, probe_uri,
+                                                "circle := Circle", 1, 1)))
+        log_result("server survives didChangeWatchedFiles (Sublime scenario)",
+                   alive and c.proc.poll() is None)
     finally:
         c.close()
 
@@ -447,8 +593,9 @@ def main():
 
     c = LspClient(obr, server_obe, apis_json, bin_dir)
     try:
-        # ProcessConfiguration (which loads build.json) only runs when the
-        # client declares workspace.configuration and passes folders.
+        # ProcessConfiguration (which loads build.json) runs whenever the
+        # client passes workspace folders (or a rootUri); the old
+        # workspace.configuration gate broke Sublime and is gone.
         resp = c.request("initialize", {
             "processId": os.getpid(), "rootUri": ws_uri,
             "capabilities": {"workspace": {"configuration": True}},

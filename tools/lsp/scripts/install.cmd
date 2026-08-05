@@ -50,6 +50,9 @@ mkdir "%LSP_HOME%\bin" 2>nul
 mkdir "%LSP_HOME%\lib" 2>nul
 copy /y "%OBJECK_DIR%\bin\obr.exe" "%LSP_HOME%\bin\" >nul
 if exist "%OBJECK_DIR%\bin\obd.exe" copy /y "%OBJECK_DIR%\bin\obd.exe" "%LSP_HOME%\bin\" >nul
+REM Support DLLs (vcruntime, nghttp2, onnxruntime, opencv, lame, ...) --
+REM the native libs in lib\native resolve these via the bin directory on PATH.
+copy /y "%OBJECK_DIR%\bin\*.dll" "%LSP_HOME%\bin\" >nul 2>nul
 xcopy /y /q /s "%OBJECK_DIR%\lib\*" "%LSP_HOME%\lib\" >nul
 copy /y "%RELEASE_DIR%\server\objeck_lsp.obe" "%LSP_HOME%\" >nul
 copy /y "%RELEASE_DIR%\server\objk_apis.json" "%LSP_HOME%\" >nul
@@ -140,6 +143,17 @@ if exist "%RELEASE_DIR%\clients\sublime\objeck.sublime-syntax" (
 )
 if exist "%RELEASE_DIR%\clients\sublime\.python-version" (
     copy /y "%RELEASE_DIR%\clients\sublime\.python-version" "!SUBLIME_OBJECK!\" >nul
+)
+
+REM install the LSP client package if not present (provides Tools > LSP)
+if not exist "!SUBLIME_PKG!\LSP" (
+    where git >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo    Cloning LSP package...
+        git clone --depth 1 https://github.com/sublimelsp/LSP "!SUBLIME_PKG!\LSP" >nul 2>&1
+    ) else (
+        echo    NOTE: Install the "LSP" package via Package Control.
+    )
 )
 
 REM write LSP settings
@@ -395,6 +409,16 @@ if exist "%RELEASE_DIR%\clients\sublime\objeck.sublime-syntax" (
 )
 if exist "%RELEASE_DIR%\clients\sublime\.python-version" (
     copy /y "%RELEASE_DIR%\clients\sublime\.python-version" "!SUBLIME_OBJECK!\" >nul
+)
+REM install the LSP client package if not present (provides Tools > LSP)
+if not exist "!SUBLIME_PKG!\LSP" (
+    where git >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo    Cloning LSP package...
+        git clone --depth 1 https://github.com/sublimelsp/LSP "!SUBLIME_PKG!\LSP" >nul 2>&1
+    ) else (
+        echo    NOTE: Install the "LSP" package via Package Control.
+    )
 )
 SET LSP_SETTINGS=!SUBLIME_PKG!\User\LSP.sublime-settings
 SET LSP_PATH=%LSP_HOME:\=/%
