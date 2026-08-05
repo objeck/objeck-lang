@@ -2195,6 +2195,15 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
 }
 
 void JitAmd64::ProcessReturn(long params) {
+  // A params count above the modeled working stack means the instruction's
+  // operand over-counts (the TRAP *_ARY_LEN emissions stamped 5 for 4 pushed
+  // values; .obl files built before that fix still carry the bad operand).
+  // The cleanup loop below would then front()/pop_front() an empty deque --
+  // a compile-time crash. Values beyond the model never existed, so flushing
+  // exactly what the model holds is the correct marshalling: clamp.
+  if(params > (long)working_stack.size()) {
+    params = (long)working_stack.size();
+  }
   if(!working_stack.empty()) {
     RegisterHolder* op_stack_holder = GetRegister();
     move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
