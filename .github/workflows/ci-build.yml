@@ -23,10 +23,13 @@ jobs:
       matrix:
         include:
           # Windows builds
-          # Pinned to windows-2025-vs2026 (VS2026 / toolset v145). VS2026 ships
-          # only v145 (no v143), so all .vcxproj files are retargeted to v145 to
-          # match. Explicit label rather than windows-latest/windows-2025 to
-          # avoid future silent image migrations.
+          # Pinned to windows-2025-vs2026, which ships VS2026 (toolset v145).
+          # The .vcxproj files select $(DefaultPlatformToolset) rather than a
+          # hard-coded toolset, so they resolve to v145 here and to v143 on a
+          # VS2022 developer box; VS2026 ships only v145 (no v143), so pinning
+          # either version in the projects breaks one environment or the other.
+          # Explicit label rather than windows-latest/windows-2025 to avoid
+          # future silent image migrations.
           - platform: windows-x64
             os: windows-2025-vs2026
             arch: x64
