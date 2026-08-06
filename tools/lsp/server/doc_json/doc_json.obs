@@ -46,6 +46,7 @@ class JsonMaker {
 		classes_bundle := Vector->New()<Foo>;
 
 		buffer := "{\n\t\"class-details\": {\n\t";
+		emitted_bundle := false;
 		each(i : bundle_pairs) {
 			bundle_pair := bundle_pairs->Get(i);
 			bundle_name := bundle_pair->GetFirst();
@@ -54,6 +55,14 @@ class JsonMaker {
 			# classes
 			classes := bundle_pair->GetSecond()->GetClasses();
 			if(<>classes->IsEmpty()) {
+				# Separate from the previous non-empty bundle. Deciding this from the
+				# loop index appended a comma whenever any later bundle was empty --
+				# with nothing following it, the whole file became invalid JSON.
+				if(emitted_bundle) {
+					buffer += ",\n\t";
+				};
+				emitted_bundle := true;
+
 				class_key_values := classes->GetKeyValues()<Pair<String, ClassSnippet>>;
 				each(j : class_key_values) {
 					class_key_value := class_key_values->Get(j);
@@ -69,11 +78,7 @@ class JsonMaker {
 						buffer += ",\n\t";
 					};
 				};
-
-				if(i + 1 < bundle_pairs->Size()) {
-					buffer += ",\n\t";
-				};
-			};			
+			};
 		};
 		buffer += "\n\t},\n\t\"class-bundle-names\": {\n\t";
 
@@ -106,40 +111,63 @@ class JsonMaker {
 		buffer += "\t\t\t\"functions\": {\n";
 
 		function_names := snippet->GetFunctionNames()<String>;
+
+		# Render first, emit second. A function whose overloads are all @hidden
+		# produces no entry at all, and skipping one mid-loop would strand a comma.
+		entries := Vector->New()<String>;
 		each(i : function_names) {
 			function_name := function_names->Get(i);
 
-			buffer += "\t\t\t\t\"{$function_name}\": {\n";
-			buffer += "\t\t\t\t\t\"descriptions\": [";
-
+			descriptions := Vector->New()<String>;
 			functions := snippet->GetFunctions(function_name)<FuncSnippet>;
 			each(j : functions) {
 				func := functions->Get(j);
-				description := JsonElement->Encode(func->GetDesc());
-				signature := func->GetSignature();
+				if(<>func->IsHidden()) {
+					description := JsonElement->Encode(func->GetDesc());
+					signature := func->GetSignature();
 
-				params_buffer := "";
-				params := func->GetParams();
-				each(k : params) {
-					param := params->Get(k);
-					name := param->GetName();
-					type_name := param->GetTypeName();
-					params_buffer += "\\n\\n{$name}: {$type_name}";
-				};
+					params_buffer := "";
+					params := func->GetParams();
+					each(k : params) {
+						param := params->Get(k);
+						name := param->GetName();
+						type_name := param->GetTypeName();
+						params_buffer += "\\n\\n{$name}: {$type_name}";
+					};
 
-				if(func->GetReturnType() <> Nil) {
-					return_str := func->GetReturnType()->GetTypeName();
-					params_buffer += "\\n\\nreturn: {$return_str}";
-				};
+					if(func->GetReturnType() <> Nil) {
+						return_str := func->GetReturnType()->GetTypeName();
+						params_buffer += "\\n\\nreturn: {$return_str}";
+					};
 
-				buffer += "\"**{$description}**\\n\\n```{$signature}```\\n\\n{$params_buffer}\"";
-				if(j + 1 < functions->Size()) {
-					buffer += ", ";
+					code_buffer := "";
+					code := func->GetCode();
+					if(code <> Nil & code->Size() > 0) {
+						code_str := JsonElement->Encode(code);
+						code_buffer += "\\n\\n```\\n{$code_str}\\n```";
+					};
+
+					descriptions->AddBack("\"**{$description}**\\n\\n```{$signature}```\\n\\n{$params_buffer}{$code_buffer}\"");
 				};
 			};
-			buffer += "]\n\t\t\t\t}";
 
-			if(i + 1 < function_names->Size()) {
+			if(descriptions->Size() > 0) {
+				entry := "\t\t\t\t\"{$function_name}\": {\n";
+				entry += "\t\t\t\t\t\"descriptions\": [";
+				each(j : descriptions) {
+					entry += descriptions->Get(j);
+					if(j + 1 < descriptions->Size()) {
+						entry += ", ";
+					};
+				};
+				entry += "]\n\t\t\t\t}";
+				entries->AddBack(entry);
+			};
+		};
+
+		each(i : entries) {
+			buffer += entries->Get(i);
+			if(i + 1 < entries->Size()) {
 				buffer += ",\n";
 			};
 		};

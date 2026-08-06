@@ -1500,7 +1500,29 @@ obj->ToString()->PrintLine();
 		}
 
 		#~
-		General encoding for JSON strings		
+		Appends a single '\uXXXX' escape.
+
+		Int->ToHexString returns a '0x'-prefixed, unpadded value, so appending it
+		directly produced escapes carrying the prefix, and short ones were never
+		padded. JSON requires exactly four hex digits with no prefix.
+		@param code code point to escape
+		@param buffer buffer to append to
+		~#
+		function : AppendHexEscape(code : Int, buffer : String) ~ Nil {
+			str_hex := code->ToHexString();
+			if(str_hex->StartsWith("0x")) {
+				str_hex := str_hex->SubString(2, str_hex->Size() - 2);
+			};
+
+			buffer->Append("\\u");
+			for(i := str_hex->Size(); i < 4; i += 1;) {
+				buffer->Append('0');
+			};
+			buffer->Append(str_hex);
+		}
+
+		#~
+		General encoding for JSON strings
 		@param str decoded string
 		@return encoding string
 		~#
@@ -1511,8 +1533,16 @@ obj->ToString()->PrintLine();
 				c := str->Get(i);
 
 				if(c > 127) {
-					str_hex := c->As(Int)->ToHexString();
-					buffer->Append("\\u{$str_hex}");
+					code := c->As(Int);
+					if(code > 0xFFFF) {
+						# outside the BMP: JSON escapes need a UTF-16 surrogate pair
+						code -= 0x10000;
+						AppendHexEscape(0xD800 + (code / 0x400), buffer);
+						AppendHexEscape(0xDC00 + (code % 0x400), buffer);
+					}
+					else {
+						AppendHexEscape(code, buffer);
+					};
 				}
 				else {
 					select(c) {

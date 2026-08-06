@@ -127,7 +127,15 @@ class SnippetParser {
 
 	method : public : native : ParseUse(block : String) ~ Nil {
 		block := " use ";
-		while(@cur_char <> '\0' & @cur_char <> '#') {
+		# Stop at the end of the statement. Scanning to the next '#' swallowed
+		# everything in between -- including a following 'bundle' declaration,
+		# which then never registered and left every class in the file filed
+		# under the 'Default' bundle.
+		while(@cur_char <> '\0' & @cur_char <> ';' & @cur_char <> '#') {
+			block->Append(@cur_char);
+			NextChar();
+		};
+		if(@cur_char = ';') {
 			block->Append(@cur_char);
 			NextChar();
 		};
@@ -482,9 +490,41 @@ class Snippet {
 		return ident;
 	}
 	
+	#~
+	Parses an optional ``` fenced example. Returns "" when no fence is present and
+	Nil when one opens but never closes, so a caller can tell "nothing to read"
+	from "malformed". The text is returned raw -- callers JSON-encode at output.
+	~#
+	method : ParseCodeBlock() ~ String {
+		if(<>(@cur_char = '`' & @nxt_char = '`')) {
+			return "";
+		};
+
+		NextChar();	NextChar();
+		if(@cur_char <> '`') {
+			return Nil;
+		};
+		NextChar();
+
+		buffer := "";
+		while(@cur_char <> '\0' & <>(@cur_char = '`' & @nxt_char = '`')) {
+			if(@cur_char <> '\t') {
+				buffer->Append(@cur_char);
+			};
+			NextChar();
+		};
+
+		if(@cur_char <> '`') {
+			return Nil;
+		};
+		NextChar();	NextChar();	NextChar();
+
+		return buffer->Trim();
+	}
+
 	method : ParseDesc() ~ String {
 		ParseWhiteSpace();
-		
+
 		ident := "";
 		done := false;
 		while(<>done) {
@@ -496,11 +536,36 @@ class Snippet {
 					ParseWhiteSpace();
 					ident->Append(' ');
 				}
-				label '~':
-				label '`':
 				label '@':
 				label '\0': {
 					done := true;
+				}
+
+				label '~': {
+					# Only '~#' closes the comment. A bare tilde is prose -- e.g.
+					# "(typically ~1.4)" -- and ending the description there left the
+					# tag loop staring at a number, failing the whole doc block.
+					if(@nxt_char = '#') {
+						done := true;
+					}
+					else {
+						ident->Append(@cur_char);
+						NextChar();
+					};
+				}
+
+				label '`': {
+					# Only a ``` fence ends the description. A lone backtick is an
+					# inline code span in the prose; treating it as a terminator left
+					# the caller expecting a fence, so the whole class/bundle failed
+					# to parse and was dropped from the index without an error.
+					if(@nxt_char = '`') {
+						done := true;
+					}
+					else {
+						ident->Append(@cur_char);
+						NextChar();
+					};
 				}
 
 				other: {
@@ -1012,6 +1077,7 @@ class FuncSnippet from Snippet {
 	@name : String;
 	@signature : String;
 	@desc : String;
+	@code : String;
 	@tags : Map<String, SnippetTag>;
 	@return_type : SnippetType;
 	@return_tag : SnippetTag;
@@ -1023,6 +1089,7 @@ class FuncSnippet from Snippet {
 	@is_new : Bool;
 	@types : static : Map<String, IntRef>;
 	@ignore_params : Bool;
+	@is_hidden : Bool;
 	
 	New(buffer : String) {
 		Parent(buffer);
@@ -1030,6 +1097,8 @@ class FuncSnippet from Snippet {
 		
 		@name := "";
 		@desc := "";
+		@code := "";
+		@is_hidden := false;
 		@tags := Map->New()<String, SnippetTag>;
 		@func_types := Vector->New()<SnippetType>;
 		@is_private := true;
@@ -1053,6 +1122,14 @@ class FuncSnippet from Snippet {
 
 	method : public : GetName() ~ String {
 		return @name;
+	}
+
+	method : public : GetCode() ~ String {
+		return @code;
+	}
+
+	method : public : IsHidden() ~ Bool {
+		return @is_hidden;
 	}
 
 	method : public : GetSignature() ~ String {
@@ -1150,7 +1227,18 @@ class FuncSnippet from Snippet {
 		};
 		@desc := ParseDesc();
 
-		# parse tags		
+		# A ``` example may sit either side of the tags, so read one before and one
+		# after. Without this the tag loop stopped on the backtick and MatchCommentEnd
+		# failed, which dropped the whole method's documentation.
+		code := ParseCodeBlock();
+		if(code = Nil) {
+			return false;
+		};
+		if(code->Size() > 0) {
+			@code := code;
+		};
+
+		# parse tags
 		are_tags := true;
 		while(@cur_char <> '\0' & are_tags) {
 			type := ParseIdent();
@@ -1179,6 +1267,11 @@ class FuncSnippet from Snippet {
 				else if(type->Equals("@ignore-params")) {
 					@ignore_params := true;
 				}
+				else if(type->Equals("@hidden")) {
+					# Author opt-out: parse it, then drop the function at output time.
+					# Previously an unknown tag failed the block outright.
+					@is_hidden := true;
+				}
 				else if(type->Equals("@return")) {
 					tag_desc := ParseDesc();
 					if(tag_desc->Size() = 0) {
@@ -1195,10 +1288,18 @@ class FuncSnippet from Snippet {
 			};
 		};
 
+		code := ParseCodeBlock();
+		if(code = Nil) {
+			return false;
+		};
+		if(code->Size() > 0) {
+			@code := code;
+		};
+
 		if(<>MatchCommentEnd()) {
 			return false;
 		};
-		
+
 		# parse function
 		func_type := ParseIdent();
 		if(func_type->Size() > 0) {

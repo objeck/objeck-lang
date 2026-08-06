@@ -8891,7 +8891,7 @@ bundle System.IO {
 		}
 
 		function : Instance() ~ ConsoleIO {
-			if(@console <> Nil) {
+			if(@console = Nil) {
 				@console := ConsoleIO->New();
 			};
 

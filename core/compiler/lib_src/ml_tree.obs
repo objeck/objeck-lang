@@ -1307,6 +1307,20 @@ acheived := DecisionTree->Matches(2, result)->As(Float);
 		method : public : SetRight(n : TreeNode) ~ Nil { @right := n; }
 	}
 
+	#~
+	Binary decision tree classifier over boolean features.
+
+	Train with Fit on a matrix whose last column holds the class label, then
+	classify single rows with Predict or whole matrices with PredictAll. Score
+	reports accuracy against a labelled matrix, and a fitted tree can be written
+	out with Store and read back with Load.
+
+```
+tree := DecisionTree->New(4, 1);
+tree->Fit(training);
+label := tree->Predict(row);
+```
+	~#
 	class DecisionTree {
 		@root : TreeNode;
 		@max_depth : Int;

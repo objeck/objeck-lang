@@ -94,8 +94,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Pinned to windows-2025-vs2026 (VS2026 / toolset v145). VS2026 ships
-          # only v145; all .vcxproj files are retargeted to v145 to match.
+          # Pinned to windows-2025-vs2026, which ships VS2026 (toolset v145).
+          # The .vcxproj files select $(DefaultPlatformToolset), so they resolve
+          # to v145 here and to v143 on a VS2022 developer box.
           # Windows x64
           - platform: windows-x64
             os: windows-2025-vs2026

@@ -102,7 +102,8 @@ jobs:
     name: Prepare Release Assets
     needs: check-trigger
     if: needs.check-trigger.outputs.should_publish == 'true'
-    # windows-2025-vs2026 (VS2026 / toolset v145); projects are retargeted to v145.
+    # windows-2025-vs2026 (VS2026); projects select $(DefaultPlatformToolset),
+    # which resolves to v145 here and v143 on a VS2022 developer box.
     runs-on: windows-2025-vs2026
 
     outputs:
