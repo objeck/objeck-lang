@@ -66,6 +66,21 @@ cd "$REGRESSION_DIR"
 echo "  Compiled successfully."
 echo ""
 
+# Drill-down fixture: needs gen_collect for Vector/Map/Hash
+DRILL_SRC="dap_drilldown_test.obs"
+DRILL_BIN="${REGRESSION_DIR}/dap_drilldown_test.obe"
+
+echo "Compiling DAP drill-down test program..."
+cd "${DEPLOY_DIR}/bin"
+"$ABS_COMPILER" -src "${REGRESSION_DIR}/${DRILL_SRC}" -lib gen_collect -dest "$DRILL_BIN" -debug 2>&1 | tee "${REGRESSION_DIR}/${RESULTS_DIR}/dap_drilldown_compile.log" > /dev/null
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    echo "  [FAIL] Compilation error"
+    exit 1
+fi
+cd "$REGRESSION_DIR"
+echo "  Compiled successfully."
+echo ""
+
 # ============================================
 # Helper: send a DAP message to stdin
 # ============================================
@@ -236,7 +251,10 @@ PYTHON_BIN=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || 
 if [ -n "$PYTHON_BIN" ]; then
     export DAP_TEST_PLATFORM="$PLATFORM"
 
-    for py_test in dap_print_test.py dap_stepin_test.py; do
+    # NOTE: dap_instance_var_test.py is deliberately not listed -- its
+    # breakpoint inside Counter::Increment() verifies but never fires, which
+    # predates the drill-down work. Add it back once that is fixed.
+    for py_test in dap_print_test.py dap_stepin_test.py dap_stepout_types_test.py dap_drilldown_test.py dap_protocol_test.py; do
         if [ -f "$REGRESSION_DIR/$py_test" ]; then
             echo -n "Running: ${py_test%.py}..."
             if "$PYTHON_BIN" "$REGRESSION_DIR/$py_test" > "${RESULTS_DIR}/${py_test%.py}.log" 2>&1; then

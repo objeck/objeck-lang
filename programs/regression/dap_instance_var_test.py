@@ -185,10 +185,10 @@ check("initialized event", wait_event("initialized") is not None)
 send("launch", {"program": PROG, "sourceDir": SRC_DIR})
 check("launch", wait_response("launch") is not None)
 
-# Breakpoint on line 11: @count += 1 inside Counter::Increment()
+# Breakpoint on line 9: @count += 1 inside Counter::Increment()
 send("setBreakpoints", {
     "source": {"path": SRC_FILE},
-    "breakpoints": [{"line": 11}],
+    "breakpoints": [{"line": 9}],
 })
 check("setBreakpoints", wait_response("setBreakpoints") is not None)
 
@@ -199,7 +199,7 @@ check("configurationDone", wait_response("configurationDone") is not None)
 # Test 1: First stop in Increment — instance vars
 # ============================================
 m = wait_event("stopped", timeout=5.0)
-check("stopped at line 11 (1st Increment)", m is not None)
+check("stopped at line 9 (1st Increment)", m is not None)
 
 frame_id, frame_name = get_top_frame()
 check("frame is Increment", frame_name is not None and "Increment" in frame_name, f"got: {frame_name}")

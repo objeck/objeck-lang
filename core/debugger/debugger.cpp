@@ -3111,6 +3111,67 @@ static std::wstring FormatObjectForDap(StackClass* klass, size_t* instance)
   return wss.str();
 }
 
+std::vector<std::wstring> Runtime::Debugger::GetLoadedSourceFiles()
+{
+  std::vector<std::wstring> files;
+
+  StackProgram* prog = DbgProgram(cur_program, loader);
+  if(!prog) {
+    return files;
+  }
+
+  StackClass** classes = prog->GetClasses();
+  const long class_num = prog->GetClassNumber();
+  for(long i = 0; i < class_num; ++i) {
+    StackClass* klass = classes[i];
+    // Only debug-compiled classes carry a usable file name.
+    if(!klass || !klass->IsDebug()) {
+      continue;
+    }
+
+    const std::wstring file_name = klass->GetFileName();
+    if(file_name.empty()) {
+      continue;
+    }
+
+    if(std::find(files.begin(), files.end(), file_name) == files.end()) {
+      files.push_back(file_name);
+    }
+  }
+
+  return files;
+}
+
+bool Runtime::Debugger::EvaluateForDapRaw(const std::wstring& expr_str, ParamType& out_type, size_t& out_value)
+{
+  out_type = OBJ_PARM;
+  out_value = 0;
+
+  if(!cur_frame) {
+    return false;
+  }
+
+  Parser parser;
+  Command* command = parser.Parse(L"?p " + expr_str);
+  if(!command || command->GetCommandType() != PRINT_COMMAND) {
+    return false;
+  }
+
+  Print* print = static_cast<Print*>(command);
+  Expression* expression = print->GetExpression();
+  is_error = false;
+  EvaluateExpression(expression);
+  if(is_error) {
+    return false;
+  }
+
+  const StackDclr& dclr = static_cast<Reference*>(expression)->GetDeclaration();
+  out_type = dclr.type;
+  out_value = (size_t)expression->GetIntValue();
+
+  return true;
+}
+
 std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
 {
   if(!cur_frame) {

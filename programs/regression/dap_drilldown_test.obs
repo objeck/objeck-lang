@@ -1,0 +1,87 @@
+use Collection;
+
+#~
+Fixture for dap_drilldown_test.py. Builds one of each structure the DAP
+adapter can expand -- plain object, arrays, Vector, Map and Hash -- then
+stops so the test can walk them through variablesReference.
+~#
+class Point {
+	@x : Int;
+	@y : Int;
+	@tag : String;
+
+	New(x : Int, y : Int, tag : String) {
+		@x := x;
+		@y := y;
+		@tag := tag;
+	}
+}
+
+class Box {
+	@name : String;
+	@point : Point;
+
+	New(name : String, point : Point) {
+		@name := name;
+		@point := point;
+	}
+}
+
+class DrillDown {
+	function : Main(args : String[]) ~ Nil {
+		# plain object and a nested one
+		point := Point->New(3, 4, "origin");
+		box := Box->New("outer", Point->New(7, 8, "inner"));
+
+		# arrays
+		numbers := Int->New[4];
+		numbers[0] := 10;
+		numbers[1] := 20;
+		numbers[2] := 30;
+		numbers[3] := 40;
+
+		reals := Float->New[3];
+		reals[0] := 1.5;
+		reals[1] := 2.5;
+		reals[2] := 3.5;
+
+		points := Point->New[2];
+		points[0] := Point->New(1, 1, "a");
+		points[1] := Point->New(2, 2, "b");
+
+		# Vector
+		vector := Vector->New()<IntRef>;
+		vector->AddBack(101);
+		vector->AddBack(202);
+		vector->AddBack(303);
+
+		# Map (in-order by key)
+		map := Map->New()<IntRef, String>;
+		map->Insert(1, "One");
+		map->Insert(3, "Three");
+		map->Insert(5, "Five");
+
+		# Hash
+		hash := Hash->New()<String, IntRef>;
+		hash->Insert("alpha", IntRef->New(11));
+		hash->Insert("beta", IntRef->New(22));
+
+		# empty collection
+		empty := Vector->New()<IntRef>;
+
+		# assignable scalar for setVariable / setExpression coverage
+		counter := 7;
+
+		# BREAKPOINT LINE — everything above is populated
+		done := true;
+		done->PrintLine();
+
+		numbers->Size()->PrintLine();
+		reals->Size()->PrintLine();
+		points->Size()->PrintLine();
+		vector->Size()->PrintLine();
+		map->Size()->PrintLine();
+		hash->Size()->PrintLine();
+		empty->Size()->PrintLine();
+	}
+}

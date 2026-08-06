@@ -371,6 +371,14 @@ namespace Runtime {
     // evaluate an expression and return result as string (for DAP evaluate)
     std::wstring EvaluateForDap(const std::wstring& expr_str);
 
+    // Same evaluation, but reports the raw value and its type so the DAP
+    // adapter can hand back an expandable reference for watch/hover results.
+    bool EvaluateForDapRaw(const std::wstring& expr_str, ParamType& out_type, size_t& out_value);
+
+    // Distinct source files carried by the loaded program, for DAP's
+    // loadedSources. Empty until a program is loaded.
+    std::vector<std::wstring> GetLoadedSourceFiles();
+
     // set a variable's value in a given frame (for DAP setVariable); returns the
     // new value formatted, or L"<error>" on failure
     std::wstring SetVariableForDap(int frame_index, const std::wstring& name, const std::wstring& value_str);
