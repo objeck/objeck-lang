@@ -559,6 +559,13 @@ bundle LSP {
 			# build response
 			response := JsonElement->New(JsonElement->JsonType->OBJECT);
 
+			# Clients surface this (Sublime's Troubleshoot Server, VS Code's
+			# output channel); without it a stale server is invisible.
+			serverInfo := response->AddChild("serverInfo");
+			serverInfo->Insert("name", "Objeck Language Server");
+			# NOTE: bump alongside core/shared/version.h on a release.
+			serverInfo->Insert("version", "2026.8.0");
+
 			capabilities := response->AddChild("capabilities");
 			completionProvider := capabilities->AddChild("completionProvider");
 			completionProvider->Insert("resolveProvider", false);
@@ -573,6 +580,11 @@ bundle LSP {
 			triggerCharacters->Add("(");
 			triggerCharacters->Add(",");
 			signatureHelpProvider->Insert("triggerCharacters", triggerCharacters);
+			# keeps the signature popup alive while arguments are edited
+			retriggerCharacters := JsonElement->New(JsonElement->JsonType->ARRAY);
+			retriggerCharacters->Add(",");
+			retriggerCharacters->Add(")");
+			signatureHelpProvider->Insert("retriggerCharacters", retriggerCharacters);
 
 			workspace := capabilities->AddChild("workspace");
 			workspace_folders := workspace->AddChild("workspaceFolders");
@@ -587,7 +599,14 @@ bundle LSP {
 			
 			capabilities->Insert("workspace", workspace);
 			capabilities->Insert("documentSymbolProvider", true);
-			capabilities->Insert("codeActionProvider", true);
+
+			# Declaring the kinds lets clients filter, bind keys, and route
+			# "Organize Imports" here instead of showing an unlabelled list.
+			codeActionProvider := capabilities->AddChild("codeActionProvider");
+			codeActionKinds := JsonElement->New(JsonElement->JsonType->ARRAY);
+			codeActionKinds->Add("quickfix");
+			codeActionKinds->Add("source.organizeImports");
+			codeActionProvider->Insert("codeActionKinds", codeActionKinds);
 			capabilities->Insert("referencesProvider", true);
 			capabilities->Insert("declarationProvider", true);
 			capabilities->Insert("definitionProvider", true);
