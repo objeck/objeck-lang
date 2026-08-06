@@ -1,0 +1,38 @@
+// Example Packages/User/Debugger.sublime-settings for debugging Objeck
+// programs without a .sublime-project.
+//
+// The Sublime "Debugger" package normally requires a project and reports
+// "Debugger requires a sublime project". A non-empty
+// global_debugger_configurations lifts that requirement and makes these
+// configurations available in every window.
+//
+// Requires:
+//  - The Sublime "Debugger" package installed via Package Control
+//  - clients/sublime/dap/objeck_dap_adapter.py installed in Packages/Objeck/
+//    (the install.sh / install.cmd script does this)
+//  - Packages/User/Objeck.sublime-settings pointing at your obd binary
+//  - Sources compiled with debug symbols:
+//      obc -src myprog.obs --debug -dest myprog.obe
+{
+    "global_debugger_configurations": [
+        {
+            // Debugs whichever .obs file is open, provided the matching .obe
+            // sits beside it with the same base name. ${file_path} works
+            // without a project; ${folder} would not.
+            "name": "Objeck: debug current file",
+            "type": "objeck",
+            "request": "launch",
+            "program": "${file_path}/${file_base_name}.obe",
+            "sourceDir": "${file_path}"
+        },
+        {
+            // A fixed program, for when the .obe lives elsewhere.
+            "name": "Objeck: myprog",
+            "type": "objeck",
+            "request": "launch",
+            "program": "/path/to/myprog.obe",
+            "sourceDir": "/path/to",
+            "args": ""
+        }
+    ]
+}

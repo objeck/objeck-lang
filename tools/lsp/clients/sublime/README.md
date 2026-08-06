@@ -67,8 +67,49 @@ Sublime debugging uses the [Debugger](https://packagecontrol.io/packages/Debugge
        "objeck_lib_path": "C:\\Program Files\\Objeck\\lib"
    }
    ```
-3. Compile your source with debug symbols: `obc -src myprog.obs -debug`.
-4. Add a launch configuration to your `.sublime-project` — see `dap/objeck.sublime-project.example`.
-5. Open the project, then **Debugger > Start**.
+3. Compile your source with debug symbols: `obc -src myprog.obs --debug -dest myprog.obe`.
+   Skipping this is the most common mistake — the session starts but no breakpoint ever binds.
+4. Add a debug configuration, either per project or globally (below).
+5. **Debugger > Start**, pick the configuration, and click the gutter to set breakpoints.
 
 The adapter is registered on Sublime startup and runs `obd --dap` over stdio with `OBJECK_LIB_PATH` set per `Objeck.sublime-settings`.
+
+### Creating a debug configuration
+
+**Per project** — put a `debugger_configurations` block in a `.sublime-project` and open it
+with *Project > Open Project*. Configurations are only read from an open project, not from a
+plain folder. See [`dap/objeck.sublime-project.example`](dap/objeck.sublime-project.example).
+
+**Globally, without a project** — the Debugger package normally insists on a sublime project
+and shows *"Debugger requires a sublime project"*. A non-empty `global_debugger_configurations`
+in `Packages/User/Debugger.sublime-settings` lifts that requirement and makes the configuration
+available in every window. See [`dap/Debugger.sublime-settings.example`](dap/Debugger.sublime-settings.example):
+
+```json
+{
+    "global_debugger_configurations": [
+        {
+            "name": "Objeck: debug current file",
+            "type": "objeck",
+            "request": "launch",
+            "program": "${file_path}/${file_base_name}.obe",
+            "sourceDir": "${file_path}"
+        }
+    ]
+}
+```
+
+`${file_path}` and `${file_base_name}` are expanded per window, so this one entry debugs whichever
+`.obs` file is open — provided the matching `.obe` sits beside it. Use `${folder}` instead only
+inside a project, since it has no meaning without one.
+
+### Troubleshooting
+
+- **"Add or select a configuration to begin debugging"** — the Debugger package found no
+  configurations. Either no `.sublime-project` is open, or it has no `debugger_configurations`
+  block. Add a global configuration as above to sidestep projects entirely.
+- **Breakpoints never hit** — the `.obe` was built without `--debug`, or it is stale relative to
+  the source. Recompile after every edit; the debugger runs the bytecode, not the `.obs`.
+- **`objeck` missing from the adapter list** — the adapter registers at startup, so restart
+  Sublime after installing it. `View > Show Console` logs `[objeck-dap] registered adapter types:`
+  and warns explicitly if registration failed.

@@ -1,8 +1,14 @@
 v2026.8.0 (in development -- not yet released)
 ===
-Nil-safe operators, language-server crash and resolution fixes, and CI coverage for the editor tooling.
+Nil-safe operators, structured variable inspection in the debugger, language-server crash and resolution fixes, and CI coverage for the editor tooling.
 
 v2026.8.0
+- Debugger: structured variable inspection -- objects expand into their fields, arrays into indexed elements, and Vector/Map/Hash into their contents (Map in key order, Hash as key -> value), each child expanding recursively. Previously every variable was a dead end and a Map displayed only as Collection.Map@0x1f4a2c0. Strings and boxed scalars render as their value rather than expanding into backing storage. Expansion handles are discarded on every resume, since the collector moves objects
+- Debugger: watch and hover expressions now expand the same way, and the adapter supports 16 DAP capabilities (up from 8) -- terminate, breakpointLocations (so editors stop offering breakpoints that cannot bind), exceptionInfo, setExpression, completions, modules, loadedSources, and variable paging
+- Language server: reports serverInfo (name and version), declares its code-action kinds so clients can filter them and route "Organize Imports", and declares signature-help retrigger characters
+- JSON: JsonElement->Encode produced invalid escapes for every non-ASCII character (U+2019 encoded as \u0x2019), because Int->ToHexString returns a 0x-prefixed, unpadded value; escapes are now four zero-padded hex digits, with surrogate pairs above the BMP
+- Runtime: System.IO.ConsoleIO->Instance() had an inverted null check, so it returned Nil on the first call and a fresh instance on every call thereafter
+- Build: Windows projects select $(DefaultPlatformToolset) instead of pinning v145, so the tree builds on VS2022 and VS2026 alike
 - Language: nil-safe operators -- a?->b() calls b only when a is non-Nil and yields Nil instead of faulting; a ?? b supplies b when a is Nil, evaluating b only when needed. A single ?-> guards the whole rest of a chain, and the two combine: maybe?->ToUpper()->Size() ?? -1. Both desugar onto the existing Try()/Otherwise() intrinsics, so no new bytecode is emitted and the JIT backends and VM are unchanged. Spelled ?-> rather than ?. because Objeck's member accessor is ->
 - Language server: fixed five requests that crashed the server process -- go-to-implementation, semantic tokens, inlay hints, and both call-hierarchy directions -- each returned a Result[] through the local argument array and failed its cast
 - Language server: fixed a line-range bug that made any cursor past the first method of a class resolve to the first method, affecting definition, references, hover, rename and call hierarchy

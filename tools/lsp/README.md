@@ -60,6 +60,17 @@ export OBJECK_STDIO=binary
 
 Open the folder in your editor and the LSP server handles the rest.
 
+**5. To debug** &mdash; compile with debug symbols first, or no breakpoint will bind:
+```sh
+obc -src myprog.obs --debug -dest myprog.obe
+```
+Then add a launch configuration. In **VS Code** the extension contributes an `objeck` debug type,
+so `Run > Add Configuration...` writes a `launch.json` entry for you. In **Sublime** put a
+`debugger_configurations` block in a `.sublime-project`, or a `global_debugger_configurations`
+block in `Packages/User/Debugger.sublime-settings` to debug without a project at all &mdash; see
+[`clients/sublime/README.md`](clients/sublime/README.md) for both routes and their example files.
+The `.obe` is what runs, so recompile after every edit.
+
 ## Supported Editors
 
 | Editor | Transport | Setup |
@@ -87,6 +98,20 @@ Install scripts (`scripts/install.cmd` and `scripts/install.sh`) automate setup 
 - **Code Actions** &mdash; Quick fixes (add `use` statements, qualify references)
 - **Formatting** &mdash; Document and range formatting
 - **Multi-root Workspaces** &mdash; JSON-configured project support via `build.json`
+
+## Debugging Features
+
+The debug adapter (`obd --dap`) is shared by every editor that speaks DAP.
+
+- **Structured variable inspection** &mdash; objects expand into their instance fields, arrays into indexed elements, and `Vector`, `Map` and `Hash` into their contents. A `Map` shows `key → value` in key order rather than an address, and each child expands recursively
+- **Readable values** &mdash; strings show their text, boxed scalars (`IntRef`, `FloatRef`, …) show their value, and collections show `Vector(size=3)`. These are deliberately terminal: drilling into them would only expose backing storage
+- **Watch and hover** &mdash; expressions resolving to an object or collection expand exactly like the Variables pane
+- **Variable paging** &mdash; large arrays and collections report `indexedVariables` and honour `start`/`count`, so a client can page instead of pulling everything
+- **Breakpoint validation** &mdash; `breakpointLocations` reports only lines that carry an instruction, so editors stop offering breakpoints that cannot bind
+- **Debug console completion** &mdash; `completions` suggests the variables visible in the selected frame
+- **Also supported** &mdash; conditional breakpoints, function breakpoints, logpoints, exception breakpoints with `exceptionInfo`, `setVariable`/`setExpression`, `restart`, `terminate`, `modules` and `loadedSources`
+
+Not supported: stepping backwards, data breakpoints, and `goto`/`restartFrame` &mdash; the last two would need the VM's interpreter loop to expose its program counter, which it currently passes to the debugger by value.
 
 ## Architecture
 
