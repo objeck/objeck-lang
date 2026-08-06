@@ -8,14 +8,35 @@ VERSION=${1:-0.0.0}
 OBJECK_ROOT=../../../..
 LIB_SRC=$OBJECK_ROOT/core/compiler/lib_src
 
-export PATH=$PATH:$OBJECK_ROOT/core/release/deploy/bin
-export OBJECK_LIB_PATH=$OBJECK_ROOT/core/release/deploy/lib
+# The release tree is named deploy-x64/deploy-arm64 on some platforms and
+# plain deploy on others, so probe instead of hardcoding one of them.
+DEPLOY_DIR=
+for candidate in deploy deploy-x64 deploy-arm64; do
+	if [ -d "$OBJECK_ROOT/core/release/$candidate/bin" ]; then
+		DEPLOY_DIR=$(cd "$OBJECK_ROOT/core/release/$candidate" && pwd)
+		break
+	fi
+done
+
+if [ -z "$DEPLOY_DIR" ]; then
+	echo "Failed: no deploy tree under $OBJECK_ROOT/core/release" >&2
+	echo "  (looked for deploy, deploy-x64, deploy-arm64)" >&2
+	exit 1
+fi
+
+# Call the toolchain by absolute path. Relying on PATH picks up a system-wide
+# Objeck install ahead of the build tree, which then fails against these
+# libraries with a tool chain version mismatch.
+OBC=$DEPLOY_DIR/bin/obc
+OBR=$DEPLOY_DIR/bin/obr
+export OBJECK_LIB_PATH=$DEPLOY_DIR/lib
+[ -d "$DEPLOY_DIR/lib/native" ] && export LD_LIBRARY_PATH=$DEPLOY_DIR/lib/native:${LD_LIBRARY_PATH:-}
 
 rm -f *.obe
 
-obc -src doc_json.obs,doc_parser.obs -lib gen_collect,xml,json,cipher -dest doc_json.obe
+"$OBC" -src doc_json.obs,doc_parser.obs -lib gen_collect,xml,json,cipher -dest doc_json.obe
 
-obr doc_json.obe templates "$VERSION" \
+"$OBR" doc_json.obe templates "$VERSION" \
 	$LIB_SRC/lang.obs \
 	$LIB_SRC/regex.obs \
 	$LIB_SRC/json_stream.obs \
@@ -28,6 +49,7 @@ obr doc_json.obe templates "$VERSION" \
 	$LIB_SRC/sdl2.obs \
 	$LIB_SRC/sdl_game.obs \
 	$LIB_SRC/gen_collect.obs \
+	$LIB_SRC/concurrent.obs \
 	$LIB_SRC/net_common.obs \
 	$LIB_SRC/net.obs \
 	$LIB_SRC/net_secure.obs \
@@ -56,7 +78,6 @@ obr doc_json.obe templates "$VERSION" \
 	$LIB_SRC/onnx.obs \
 	$LIB_SRC/json_rpc.obs \
 	$LIB_SRC/lame.obs \
-	$LIB_SRC/math.obs \
 	$LIB_SRC/web_server.obs
 
 mv out.json ../objk_apis.json

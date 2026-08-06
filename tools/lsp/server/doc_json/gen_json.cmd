@@ -9,18 +9,43 @@ IF "%VERSION%"=="" SET VERSION=0.0.0
 SET OBJECK_ROOT=..\..\..\..
 SET LIB_SRC=%OBJECK_ROOT%\core\compiler\lib_src
 
-SET PATH=%PATH%;%OBJECK_ROOT%\core\release\deploy-x64\bin
-SET OBJECK_LIB_PATH=%OBJECK_ROOT%\core\release\deploy-x64\lib
+REM The release tree is named deploy-x64/deploy-arm64 on some platforms and
+REM plain deploy on others, so probe instead of hardcoding one of them.
+SET DEPLOY_NAME=
+FOR %%C IN (deploy-x64 deploy-arm64 deploy) DO (
+	IF NOT DEFINED DEPLOY_NAME (
+		IF EXIST "%OBJECK_ROOT%\core\release\%%C\bin" SET DEPLOY_NAME=%%C
+	)
+)
+
+IF NOT DEFINED DEPLOY_NAME (
+	echo Failed: no deploy tree under %OBJECK_ROOT%\core\release
+	echo   ^(looked for deploy-x64, deploy-arm64, deploy^)
+	EXIT /B 1
+)
+
+REM Resolve to an absolute path outside the loop, where %CD% expands correctly.
+pushd "%OBJECK_ROOT%\core\release\%DEPLOY_NAME%"
+SET DEPLOY_DIR=%CD%
+popd
+
+REM Call the toolchain by absolute path. Relying on PATH picks up a system-wide
+REM Objeck install ahead of the build tree, which then fails against these
+REM libraries with a tool chain version mismatch.
+SET OBC=%DEPLOY_DIR%\bin\obc.exe
+SET OBR=%DEPLOY_DIR%\bin\obr.exe
+SET OBJECK_LIB_PATH=%DEPLOY_DIR%\lib
+IF EXIST "%DEPLOY_DIR%\lib\native" SET PATH=%DEPLOY_DIR%\lib\native;%PATH%
 
 del /q *.obe 2>nul
 
-obc -src doc_json.obs,doc_parser.obs -lib gen_collect,xml,json,cipher -dest doc_json.obe
+"%OBC%" -src doc_json.obs,doc_parser.obs -lib gen_collect,xml,json,cipher -dest doc_json.obe
 if %ERRORLEVEL% NEQ 0 (
 	echo Failed: doc_json.obe
 	exit /b 1
 )
 
-obr doc_json.obe templates "%VERSION%" ^
+"%OBR%" doc_json.obe templates "%VERSION%" ^
 	%LIB_SRC%\lang.obs ^
 	%LIB_SRC%\regex.obs ^
 	%LIB_SRC%\json_stream.obs ^
@@ -33,6 +58,7 @@ obr doc_json.obe templates "%VERSION%" ^
 	%LIB_SRC%\sdl2.obs ^
 	%LIB_SRC%\sdl_game.obs ^
 	%LIB_SRC%\gen_collect.obs ^
+	%LIB_SRC%\concurrent.obs ^
 	%LIB_SRC%\net_common.obs ^
 	%LIB_SRC%\net.obs ^
 	%LIB_SRC%\net_secure.obs ^
@@ -61,7 +87,6 @@ obr doc_json.obe templates "%VERSION%" ^
 	%LIB_SRC%\onnx.obs ^
 	%LIB_SRC%\json_rpc.obs ^
 	%LIB_SRC%\lame.obs ^
-	%LIB_SRC%\math.obs ^
 	%LIB_SRC%\web_server.obs
 if %ERRORLEVEL% NEQ 0 (
 	echo Failed: doc_json generation

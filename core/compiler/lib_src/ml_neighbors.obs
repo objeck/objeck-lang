@@ -203,6 +203,18 @@ nearest := tree->Nearest(3, [57.0, 170.0]);   # row indexes, closest first
 		}
 	}
 
+	#~
+	k-nearest-neighbors classifier over a matrix of numeric feature rows.
+
+	Each row of the matrix carries the label at the same index in the labels
+	array. Query returns the k closest rows, and Classify reduces them to the
+	majority label.
+
+```
+knn := KNearestNeighbors->New(matrix, labels);
+label := knn->Classify(3, query);
+```
+	~#
 	class KNearestNeighbors {
 		@matrix : Float[,];
 		@labels : String[];

@@ -697,6 +697,12 @@ bundle Web.HTTP {
 		}
 	}
 
+	#~
+	Worker thread that fetches a single URL.
+
+	One Downloader is started per URL by WebDownloader's parallel fetch; the
+	content is available from GetContent once the thread has been joined.
+	~#
 	class Downloader from System.Concurrency.Thread {
 		@url : Url;
 		@content : Byte[];
