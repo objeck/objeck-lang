@@ -265,6 +265,9 @@ run_dap_test "conditional_breakpoint" \
 PYTHON_BIN=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "")
 if [ -n "$PYTHON_BIN" ]; then
     export DAP_TEST_PLATFORM="$PLATFORM"
+    # hand the tests the tree we were pointed at, rather than letting each
+    # one probe for it -- probing is what makes them fail as "obd not found"
+    export DAP_TEST_DEPLOY_DIR="$DEPLOY_DIR"
 
     # NOTE: dap_instance_var_test.py is deliberately not listed -- its
     # breakpoint inside Counter::Increment() verifies but never fires, which

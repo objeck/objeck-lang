@@ -123,14 +123,16 @@ class DapClient:
             return "TIMEOUT"
 
 
-def compile_test(obc, src, dest, bin_dir):
+def compile_test(obc, src, dest, bin_dir, libs=None):
     log = os.path.join(REG_DIR, "results",
                        os.path.basename(dest) + "_compile.log")
     os.makedirs(os.path.join(REG_DIR, "results"), exist_ok=True)
+    args = [obc, "-src", src, "-dest", dest, "-debug"]
+    if libs:
+        args += ["-lib", libs]
     # run from bin_dir (with lib env) so obc resolves its ../lib path
     with open(log, "wb") as f:
-        rc = subprocess.run([obc, "-src", src, "-dest", dest, "-debug"],
-                            stdout=f, stderr=subprocess.STDOUT,
+        rc = subprocess.run(args, stdout=f, stderr=subprocess.STDOUT,
                             cwd=bin_dir, env=make_env(bin_dir)).returncode
     return rc == 0 and os.path.exists(dest)
 
@@ -262,6 +264,59 @@ def run_exception_breakpoint(obd, obe, source_dir, bin_dir):
     c.close()
 
 
+def run_standalone_tests(bin_dir):
+    """Run the self-contained dap_*_test.py suites.
+
+    These live outside this file because they need stateful event handling and
+    assertions on program output. They were only ever driven by
+    run_dap_tests.sh, which POSIX CI does not use -- so everything they cover
+    (drill-down, the newer protocol requests, data breakpoints) went untested
+    on Linux and macOS. The deploy tree is handed down rather than probed for,
+    since this runner already knows which one it was pointed at.
+    """
+    deploy_dir = os.path.dirname(os.path.abspath(bin_dir))
+    env = dict(os.environ, DAP_TEST_DEPLOY_DIR=deploy_dir)
+
+    # Each suite opens an already-compiled .obe next to its source. The shell
+    # runner builds these up front, so they have to be built here too --
+    # otherwise the tests run against whatever stale binary is lying around and
+    # every breakpoint reports "never stopped".
+    exe = ".exe" if os.name == "nt" else ""
+    obc = os.path.join(bin_dir, "obc" + exe)
+    for src_name, libs in (("debugger_test.obs", None),
+                           ("dap_drilldown_test.obs", "gen_collect"),
+                           ("dap_databreak_test.obs", None)):
+        src = os.path.join(REG_DIR, src_name)
+        if not os.path.exists(src):
+            continue
+        dest = os.path.splitext(src)[0] + ".obe"
+        if not compile_test(obc, src, dest, bin_dir, libs):
+            log_result("compile " + src_name, False)
+
+    # dap_instance_var_test.py is deliberately absent: its breakpoint inside
+    # Counter::Increment() verifies but never fires. Same omission as the
+    # shell runner -- add it back once that is fixed.
+    for name in ("dap_print_test.py", "dap_stepin_test.py",
+                 "dap_stepout_types_test.py", "dap_drilldown_test.py",
+                 "dap_protocol_test.py", "dap_databreak_test.py"):
+        path = os.path.join(REG_DIR, name)
+        if not os.path.exists(path):
+            continue
+        out = ""
+        try:
+            proc = subprocess.run([sys.executable, path], env=env,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT, timeout=300)
+            ok = proc.returncode == 0
+            out = proc.stdout.decode("utf-8", "replace")
+        except subprocess.TimeoutExpired:
+            ok, out = False, "timed out after 300s"
+        log_result(name[:-3], ok)
+        if not ok:
+            for line in out.splitlines():
+                print("    " + line)
+
+
 def main():
     if len(sys.argv) < 2:
         print("usage: run_dap_tests.py <bin_dir>")
@@ -297,6 +352,9 @@ def main():
     run_function_breakpoint(obd, core_obe, REG_DIR, bin_dir)
     print("\nException breakpoints:")
     run_exception_breakpoint(obd, exc_obe, REG_DIR, bin_dir)
+    print("")
+    print("Standalone suites (drill-down, protocol, data breakpoints):")
+    run_standalone_tests(bin_dir)
 
     for f in (core_obe, exc_obe):
         try:
