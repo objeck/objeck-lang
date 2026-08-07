@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <thread>
 #include <sstream>
+#include <vector>
 
 #ifdef _WIN32
 #include <fcntl.h>
@@ -35,6 +36,31 @@ namespace Runtime {
   static const int VAR_HANDLE_BASE = 2000;
   static const int INST_SCOPE_HANDLE_BASE = 3000;
   static const int CLS_SCOPE_HANDLE_BASE = 4000;
+
+  // Dynamic handles for drilling into objects, arrays and collections.
+  // Allocated on demand while stopped and discarded on every resume: they hold
+  // raw object pointers and the collector moves objects, so a handle must never
+  // outlive the stop that produced it.
+  static const int DYN_HANDLE_BASE = 100000;
+  static const int MAX_EXPANSION_DEPTH = 12;
+  static const int MAX_CHILDREN = 256;
+  static const size_t MAX_VAR_HANDLES = 20000;
+
+  enum VarHandleKind {
+    VAR_OBJECT = 0,
+    VAR_ARRAY,
+    VAR_VECTOR,
+    VAR_MAP,
+    VAR_HASH
+  };
+
+  struct VarHandle {
+    int kind;
+    size_t* ptr;
+    StackClass* klass;
+    int elem_type;
+    int depth;
+  };
 
   class DapAdapter {
     // Debugger integration
@@ -57,6 +83,10 @@ namespace Runtime {
     bool disconnect_requested;
     bool restart_requested;
     bool break_on_exception;
+
+    // Declared by the client on the initialize request.
+    bool client_supports_variable_paging;
+    bool client_supports_variable_type;
 
     // Captured state at breakpoint
     int stopped_line;
@@ -128,6 +158,13 @@ namespace Runtime {
     void HandleSetFunctionBreakpoints(int seq, const json& args);
     void HandleSetExceptionBreakpoints(int seq, const json& args);
     void HandleRestart(int seq, const json& args);
+    void HandleTerminate(int seq, const json& args);
+    void HandleBreakpointLocations(int seq, const json& args);
+    void HandleExceptionInfo(int seq, const json& args);
+    void HandleSetExpression(int seq, const json& args);
+    void HandleCompletions(int seq, const json& args);
+    void HandleModules(int seq, const json& args);
+    void HandleLoadedSources(int seq, const json& args);
 
     // Source path resolution
     std::string ResolveSourcePath(const std::wstring& file_name);
@@ -139,6 +176,30 @@ namespace Runtime {
     std::string FormatVariableValue(StackDclr& dclr, StackFrame* frame, int var_index);
     std::string FormatVariableValue(StackDclr& dclr, size_t* mem, int var_index);
     std::string FormatVariableType(StackDclr& dclr);
+
+    // Variable drill-down. Handles live only for the duration of one stop.
+    std::vector<VarHandle> var_handles;
+
+    void ClearVarHandles();
+    int AllocVarHandle(int kind, size_t* ptr, StackClass* klass, int elem_type, int depth);
+    int MakeChildRef(ParamType type, size_t raw_value, int depth);
+    bool FindInstanceField(StackClass* klass, const std::wstring& short_name, StackDclr*& out_dclr, int& out_index);
+    bool FieldIndex(StackClass* klass, const std::wstring& short_name, int fallback_index, int& out_index);
+    std::string DescribeObject(size_t* obj, StackClass* klass);
+    bool IsLeafObject(StackClass* klass);
+    std::string ShortDeclarationName(const std::wstring& full_name);
+    int CollectionKind(StackClass* klass);
+    std::string CollectionSummary(StackClass* klass, size_t* obj);
+    json MakeChildVariable(const std::string& name, ParamType type, size_t* mem, int index, int depth);
+    int IndexedChildCount(ParamType type, size_t raw_value);
+    void AnnotateChildCount(json& var, ParamType type, size_t raw_value);
+    void ExpandHandle(const VarHandle& handle, json& variables);
+    void ExpandObjectFields(size_t* obj_mem, StackClass* klass, int depth, json& variables);
+    void ExpandArrayElements(size_t* array, int elem_type, int depth, json& variables);
+    void ExpandVector(size_t* obj, StackClass* klass, int depth, json& variables);
+    void ExpandMap(size_t* obj, StackClass* klass, int depth, json& variables);
+    void ExpandHash(size_t* obj, StackClass* klass, int depth, json& variables);
+    void WalkTreeNode(size_t* node, int depth, json& variables, int& count);
 
   public:
     DapAdapter();

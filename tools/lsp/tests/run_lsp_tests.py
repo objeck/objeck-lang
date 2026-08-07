@@ -337,6 +337,26 @@ def main():
         log_result("semantic tokens legend present",
                    bool(legend.get("tokenTypes")) and bool(legend.get("tokenModifiers")))
 
+        # serverInfo: clients display this, and it is how a stale deployed
+        # server gets noticed instead of silently answering old results.
+        info = (result_of(resp) or {}).get("serverInfo") or {}
+        log_result("reports serverInfo name and version",
+                   bool(info.get("name")) and bool(info.get("version")),
+                   f"got: {info}")
+
+        # codeActionProvider must name its kinds, otherwise clients cannot
+        # filter them or route "Organize Imports" to the server.
+        kinds = caps.get("codeActionProvider")
+        kinds = kinds.get("codeActionKinds") if isinstance(kinds, dict) else None
+        log_result("codeActionProvider declares codeActionKinds",
+                   isinstance(kinds, list) and "quickfix" in kinds,
+                   f"got: {kinds}")
+
+        retrigger = caps.get("signatureHelpProvider", {}).get("retriggerCharacters")
+        log_result("signatureHelp declares retriggerCharacters",
+                   isinstance(retrigger, list) and len(retrigger) > 0,
+                   f"got: {retrigger}")
+
         c.notify("initialized", {})
 
         # --- didOpen + diagnostics ------------------------------------------

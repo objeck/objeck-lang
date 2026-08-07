@@ -1,3 +1,14 @@
+v2026.8.0
+* Debugger: structured variable inspection -- objects, arrays and Vector/Map/Hash
+  expand to their contents (Map shows key -> value in key order); strings and
+  boxed scalars render as values; watch and hover expand the same way
+* Debugger: 16 DAP capabilities (up from 8) -- terminate, breakpointLocations,
+  exceptionInfo, setExpression, completions, modules, loadedSources, paging
+* LSP: reports serverInfo, declares code-action kinds and signature-help
+  retrigger characters
+* Bumped to support Objeck v2026.8.0
+---
+
 v2026.6.1
 * Cooperative stop-the-world GC, VM serialization/deserialization hardening, TLS cert verification, compiler/debugger fixes
 * Bumped to support Objeck v2026.6.1
@@ -258,6 +269,83 @@ Workspaces enable the LSP server to compile and examine all files in a project w
 	"flags": ""
 }
 3. To enable the project file, Close all open files and open the directory that contains the "build.json" file in either VS Code or Sublime
+
+[Debugger Projects]
+===
+Debugging is configured with JSON as well, but the file belongs to the editor
+rather than to the workspace. In every case the program under test must first
+be compiled with debug symbols, or the session starts and no breakpoint binds:
+
+  obc -src myprog.obs --debug -dest myprog.obe
+
+The .obe is what runs, so recompile after every edit; a stale binary leaves
+breakpoints sitting on the wrong lines.
+
+VS Code
+-------
+The extension contributes an "objeck" debug type, so Run > Add Configuration...
+writes the entry into .vscode/launch.json:
+
+{
+	"configurations": [
+		{
+			"name": "Debug Objeck program",
+			"type": "objeck",
+			"request": "launch",
+			"program": "${workspaceFolder}/myprog.obe",
+			"sourceDir": "${workspaceFolder}"
+		}
+	]
+}
+
+Sublime Text
+------------
+Requires the "Debugger" package from Package Control. Either put the
+configuration in a .sublime-project and open it with Project > Open Project:
+
+{
+	"folders": [{ "path": "." }],
+	"debugger_configurations": [
+		{
+			"name": "Debug current Objeck file",
+			"type": "objeck",
+			"request": "launch",
+			"program": "${folder}/${file_base_name}.obe",
+			"sourceDir": "${folder}"
+		}
+	]
+}
+
+...or, to debug without a project at all, put a global configuration in
+Packages/User/Debugger.sublime-settings. The Debugger package otherwise
+insists on a project and reports "Debugger requires a sublime project":
+
+{
+	"global_debugger_configurations": [
+		{
+			"name": "Objeck: debug current file",
+			"type": "objeck",
+			"request": "launch",
+			"program": "${file_path}/${file_base_name}.obe",
+			"sourceDir": "${file_path}"
+		}
+	]
+}
+
+${file_path} works without a project, so this one entry debugs whichever .obs
+file is open provided the matching .obe sits beside it. ${folder} resolves only
+inside a project.
+
+Sublime also needs Packages/User/Objeck.sublime-settings pointing at the
+debugger binary:
+
+{
+	"obd_path": "C:/Program Files/Objeck/bin/obd.exe",
+	"objeck_lib_path": "C:/Program Files/Objeck/lib"
+}
+
+See clients/sublime/README.md for troubleshooting, and the example files in
+clients/sublime/dap/.
 
 [Updating the LSP Server]
 ===
