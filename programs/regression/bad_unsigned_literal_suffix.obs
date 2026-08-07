@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR
+#~
+The 'u' suffix reads a literal across the unsigned range, so a value past
+2^64-1 has no representation and must be rejected rather than wrapped.
+~#
+
+class BadUnsignedLiteralSuffix {
+	function : Main(args : String[]) ~ Nil {
+		value := 18446744073709551616u;
+		value->PrintLine();
+	}
+}

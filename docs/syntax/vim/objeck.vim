@@ -19,9 +19,9 @@ syn match objeckChar "'\\x[0-9a-fA-F]\{2\}'"
 syn match objeckChar "'\\u[0-9a-fA-F]\{1,4\}'"
 
 " Numbers
-syn match objeckNumber '\<\d\+\>'
-syn match objeckNumber '\<0[xX][0-9a-fA-F]\+\>'
-syn match objeckNumber '\<0[bB][01]\+\>'
+syn match objeckNumber '\<\d\+[uU]\=\>'
+syn match objeckNumber '\<0[xX][0-9a-fA-F]\+[uU]\=\>'
+syn match objeckNumber '\<0[bB][01]\+[uU]\=\>'
 syn match objeckFloat '\<\d\+\.\d*\([eE][+-]\?\d\+\)\?\>'
 syn match objeckFloat '\<\.\d\+\([eE][+-]\?\d\+\)\?\>'
 

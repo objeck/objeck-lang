@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR
+#~
+The unsigned suffix is meaningless on a floating-point literal and must not
+be accepted silently.
+~#
+
+class BadUnsignedSuffixOnFloat {
+	function : Main(args : String[]) ~ Nil {
+		value := 1.5u;
+		value->PrintLine();
+	}
+}

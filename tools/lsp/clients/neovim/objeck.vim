@@ -16,9 +16,9 @@ syn match objeckChar "b\?'[^'\\]'"
 syn match objeckChar "b\?'\\[^']*'"
 
 " Numbers
-syn match objeckNumber "\<0[xX][0-9a-fA-F]\+\>"
-syn match objeckNumber "\<0[bB][01]\+\>"
-syn match objeckNumber "\<[0-9]\+\(\.[0-9]*\)\?\([eE][+-]\?[0-9]\+\)\?\>"
+syn match objeckNumber "\<0[xX][0-9a-fA-F]\+[uU]\=\>"
+syn match objeckNumber "\<0[bB][01]\+[uU]\=\>"
+syn match objeckNumber "\<[0-9]\+\(\.[0-9]*\)\?\([eE][+-]\?[0-9]\+\)\?[uU]\=\>"
 
 " Constants
 syn keyword objeckBoolean true false
