@@ -81,6 +81,21 @@ cd "$REGRESSION_DIR"
 echo "  Compiled successfully."
 echo ""
 
+# Data-breakpoint fixture: mutates locals in a loop so a watch can fire
+DATABREAK_SRC="dap_databreak_test.obs"
+DATABREAK_BIN="${REGRESSION_DIR}/dap_databreak_test.obe"
+
+echo "Compiling DAP data-breakpoint test program..."
+cd "${DEPLOY_DIR}/bin"
+"$ABS_COMPILER" -src "${REGRESSION_DIR}/${DATABREAK_SRC}" -dest "$DATABREAK_BIN" -debug 2>&1 | tee "${REGRESSION_DIR}/${RESULTS_DIR}/dap_databreak_compile.log" > /dev/null
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    echo "  [FAIL] Compilation error"
+    exit 1
+fi
+cd "$REGRESSION_DIR"
+echo "  Compiled successfully."
+echo ""
+
 # ============================================
 # Helper: send a DAP message to stdin
 # ============================================
@@ -254,7 +269,7 @@ if [ -n "$PYTHON_BIN" ]; then
     # NOTE: dap_instance_var_test.py is deliberately not listed -- its
     # breakpoint inside Counter::Increment() verifies but never fires, which
     # predates the drill-down work. Add it back once that is fixed.
-    for py_test in dap_print_test.py dap_stepin_test.py dap_stepout_types_test.py dap_drilldown_test.py dap_protocol_test.py; do
+    for py_test in dap_print_test.py dap_stepin_test.py dap_stepout_types_test.py dap_drilldown_test.py dap_protocol_test.py dap_databreak_test.py; do
         if [ -f "$REGRESSION_DIR/$py_test" ]; then
             echo -n "Running: ${py_test%.py}..."
             if "$PYTHON_BIN" "$REGRESSION_DIR/$py_test" > "${RESULTS_DIR}/${py_test%.py}.log" 2>&1; then

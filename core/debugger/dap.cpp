@@ -406,6 +406,12 @@ void DapAdapter::Run()
     else if(command == "loadedSources") {
       HandleLoadedSources(request_seq, args);
     }
+    else if(command == "dataBreakpointInfo") {
+      HandleDataBreakpointInfo(request_seq, args);
+    }
+    else if(command == "setDataBreakpoints") {
+      HandleSetDataBreakpoints(request_seq, args);
+    }
     else {
       // Unknown command — respond with success to avoid VS Code errors
       SendResponse(request_seq, command);
@@ -461,6 +467,7 @@ void DapAdapter::HandleInitialize(int request_seq, const json& args)
   capabilities["supportsSetExpression"] = true;
   capabilities["supportsModulesRequest"] = true;
   capabilities["supportsLoadedSourcesRequest"] = true;
+  capabilities["supportsDataBreakpoints"] = true;
   capabilities["supportsCompletionsRequest"] = true;
 
   // Offer completions as soon as a word or an instance-variable sigil starts.
@@ -1833,6 +1840,65 @@ void DapAdapter::HandleLoadedSources(int request_seq, const json& args)
   SendResponse(request_seq, "loadedSources", body);
 }
 
+// Mints the dataId a client needs before it can set a data breakpoint. The
+// id is just the expression to watch, so "Break on Value Change" on a variable
+// in the Variables pane becomes a watch on that name.
+void DapAdapter::HandleDataBreakpointInfo(int request_seq, const json& args)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+
+  const std::string name = args.value("name", "");
+
+  json body;
+  if(!is_stopped || name.empty()) {
+    // A null dataId tells the client this variable cannot be watched.
+    body["dataId"] = nullptr;
+    body["description"] = name.empty() ? "no variable selected" : "not stopped";
+    SendResponse(request_seq, "dataBreakpointInfo", body);
+    return;
+  }
+
+  body["dataId"] = name;
+  body["description"] = name + " (breaks when the value changes)";
+  // Reads are not tracked: the watch is a value comparison after each
+  // instruction, which cannot see a read that leaves the value alone.
+  body["accessTypes"] = json::array({"write"});
+  body["canPersist"] = false;
+
+  SendResponse(request_seq, "dataBreakpointInfo", body);
+}
+
+void DapAdapter::HandleSetDataBreakpoints(int request_seq, const json& args)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+
+  json breakpoints = json::array();
+
+  if(debugger) {
+    // The request carries the complete set, so replace rather than append.
+    debugger->ClearDataWatches();
+
+    const json requested = args.value("breakpoints", json::array());
+    for(const auto& bp : requested) {
+      const std::string data_id = bp.value("dataId", "");
+
+      json verified;
+      if(data_id.empty() || debugger->AddDataWatch(BytesToUnicode(data_id)) == 0) {
+        verified["verified"] = false;
+        verified["message"] = "cannot watch this expression";
+      }
+      else {
+        verified["verified"] = true;
+      }
+      breakpoints.push_back(verified);
+    }
+  }
+
+  json body;
+  body["breakpoints"] = breakpoints;
+  SendResponse(request_seq, "setDataBreakpoints", body);
+}
+
 void DapAdapter::HandleTerminate(int request_seq, const json& args)
 {
   SendResponse(request_seq, "terminate");
@@ -2100,6 +2166,17 @@ void DapAdapter::OnStopped(const std::string& reason, int line, const std::wstri
   body["reason"] = reason;
   body["threadId"] = 1;
   body["allThreadsStopped"] = true;
+
+  // Name the watch that fired and what it changed from, otherwise the client
+  // just says "paused" with no indication of which value moved.
+  if(reason == "data breakpoint" && debugger) {
+    const std::string text = UnicodeToBytes(debugger->GetLastWatchText());
+    const std::string old_value = UnicodeToBytes(debugger->GetLastWatchOld());
+    const std::string new_value = UnicodeToBytes(debugger->GetLastWatchNew());
+    body["description"] = text + " changed";
+    body["text"] = text + ": " + old_value + " -> " + new_value;
+  }
+
   SendEvent("stopped", body);
 
   // Block the VM thread until DAP sends continue/step

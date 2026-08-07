@@ -165,6 +165,8 @@ namespace Runtime {
     void HandleCompletions(int seq, const json& args);
     void HandleModules(int seq, const json& args);
     void HandleLoadedSources(int seq, const json& args);
+    void HandleDataBreakpointInfo(int seq, const json& args);
+    void HandleSetDataBreakpoints(int seq, const json& args);
 
     // Source path resolution
     std::string ResolveSourcePath(const std::wstring& file_name);
