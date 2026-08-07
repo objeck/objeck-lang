@@ -86,6 +86,7 @@ enum ScannerTokenType {
   // TOKEN_MUL..TOKEN_XOR_ID further down) -- inserting inside either would
   // silently change what those range checks accept.
   TOKEN_QUESTION_QUESTION,   // ?? nil-coalesce
+  TOKEN_SHR_UNSIGNED,        // >>> logical shift, desugars to a call
   TOKEN_NOT,
   // --- start logic ---
   TOKEN_LES,

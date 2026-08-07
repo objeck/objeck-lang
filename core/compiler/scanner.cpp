@@ -1646,8 +1646,16 @@ void Scanner::ParseToken(int index)
       }
       else if(nxt_char == L'>') {
         NextChar();
-        tokens[index]->SetType(TOKEN_SHR);
-        NextChar();
+        // '>>>' is the logical (unsigned) shift; '>>' keeps the sign bit
+        if(nxt_char == L'>') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_SHR_UNSIGNED);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_SHR);
+          NextChar();
+        }
       }
       else {
         tokens[index]->SetType(TOKEN_GTR);

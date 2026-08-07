@@ -58,6 +58,10 @@ syn match objeckOperator '/='
 syn match objeckOperator '?->'
 syn match objeckOperator '??'
 syn match objeckOperator '->'
+" the unsigned shift, before '>>' so it is not split in two
+syn match objeckOperator '>>>'
+syn match objeckOperator '>>'
+syn match objeckOperator '<<'
 syn keyword objeckOperator and or not xor
 
 " Highlight links

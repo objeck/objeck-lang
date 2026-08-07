@@ -94,7 +94,8 @@ class Parser {
   std::multimap<int, std::wstring> errors;
   std::wstring src_path;
   std::vector<std::pair<std::wstring, std::wstring> > programs;
-  bool expand_generic_def;
+  // '>' still owed by a '>>' or '>>>' that closed several generics at once
+  int pending_generic_closes;
   bool is_semi_colon;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
@@ -112,6 +113,13 @@ class Parser {
   }
   // return true if basic type, false otherwise
   bool IsBasicType(ScannerTokenType type);
+
+  // True for the operators ParseFactor chains together. '>>>' is checked
+  // separately because it sits outside the ordered TOKEN_MUL..TOKEN_XOR_ID span
+  // on purpose -- see the note in scanner.h.
+  inline bool IsFactorOperator() {
+    return (GetToken() >= TOKEN_MUL && GetToken() <= TOKEN_XOR_ID) || Match(TOKEN_SHR_UNSIGNED);
+  }
   // get token by index
   inline ScannerTokenType GetToken(int index = 0) {
     return scanner->GetToken(index)->GetType();
@@ -228,7 +236,8 @@ class Parser {
     LoadErrorCodes();
     current_class = nullptr;
     current_method = prev_method = nullptr;
-    expand_generic_def = is_semi_colon  = false;
+    pending_generic_closes = 0;
+    is_semi_colon = false;
   }
 
   ~Parser() {
