@@ -5348,6 +5348,12 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(right));
     if(right->GetMethodCall()) {
+      // The attached call is emitted here rather than by EmitExpression, so its
+      // arguments have to be emitted too -- EmitMethodCall only emits the call.
+      // Without this the call consumes whatever happens to be on the stack
+      // beneath the receiver, which for a comparison operand is the other side
+      // of the comparison.
+      EmitMethodCallParameters(right->GetMethodCall());
       EmitMethodCall(right->GetMethodCall(), false);
       EmitCast(right->GetMethodCall());
     }
@@ -5378,6 +5384,12 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
   case BIT_XOR_EXPR:
     EmitCalculation(static_cast<CalculatedExpression*>(left));
     if(left->GetMethodCall()) {
+      // The attached call is emitted here rather than by EmitExpression, so its
+      // arguments have to be emitted too -- EmitMethodCall only emits the call.
+      // Without this the call consumes whatever happens to be on the stack
+      // beneath the receiver, which for a comparison operand is the other side
+      // of the comparison.
+      EmitMethodCallParameters(left->GetMethodCall());
       EmitMethodCall(left->GetMethodCall(), false);
       EmitCast(left->GetMethodCall());
     }

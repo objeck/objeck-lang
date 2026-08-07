@@ -1,0 +1,81 @@
+#~
+A method call attached to a calculated expression, used inside another
+calculated expression.
+
+`(1 + 1)->Pow(10)` calls a static function on the hidden `$Int` class with the
+receiver as its first argument and 10 as its second. When that call sat inside
+another calculated expression -- most commonly a comparison -- the emitter
+dropped the written arguments entirely.
+
+`EmitCalculation` emits each operand, and for an operand that is itself a
+calculated expression it called `EmitMethodCall` directly. That emits the call
+but not its parameters, unlike the `EmitExpression` path which emits
+`GetCallingParameters()` first. So `if((1 + 1)->Pow(10) = 1024)` compiled to:
+
+    LOAD_INT_LIT 1024      <- the comparison's other operand
+    LOAD_INT_LIT 2         <- the receiver
+    MTHD_CALL $Int:Pow:i,i,
+
+with no `LOAD_INT_LIT 10`. `Pow` then consumed 1024 and 2 as its arguments and
+the comparison was left with an empty stack, which showed up as heap
+corruption rather than a wrong answer.
+
+Assigning the call to a variable first was unaffected, because that path goes
+through `EmitExpression`. A receiver that is a plain literal or variable was
+also unaffected, since neither is a calculated expression. That combination is
+why this survived: the obvious spellings all worked.
+
+Zero-argument calls could not expose it -- there were no arguments to drop --
+so `Abs()` is included below to keep that path covered too.
+~#
+
+class CalculatedReceiverCall {
+	function : Main(args : String[]) ~ Nil {
+		passed := 0;
+		failed := 0;
+
+		# --- the original repro: comparison operand ---
+		if((1 + 1)->Pow(10) = 1024) { passed += 1; } else { failed += 1; "FAIL: foldable receiver in a comparison"->PrintLine(); };
+
+		# a receiver the optimizer cannot fold takes the same path
+		n := 1;
+		if((n + 1)->Pow(10) = 1024) { passed += 1; } else { failed += 1; "FAIL: non-foldable receiver in a comparison"->PrintLine(); };
+
+		# --- both sides of a comparison ---
+		if((1 + 1)->Pow(10) = (1000 + 24)) { passed += 1; } else { failed += 1; "FAIL: calculated receiver on the left"->PrintLine(); };
+		if(1024 = (1 + 1)->Pow(10)) { passed += 1; } else { failed += 1; "FAIL: calculated receiver on the right"->PrintLine(); };
+
+		# --- other calculated contexts, not just comparisons ---
+		if(((3 + 4)->Pow(2) + 1) = 50) { passed += 1; } else { failed += 1; "FAIL: calculated receiver inside arithmetic"->PrintLine(); };
+		if(((1 + 1)->Pow(3) * 2) = 16) { passed += 1; } else { failed += 1; "FAIL: calculated receiver times a value"->PrintLine(); };
+
+		# --- more than one argument ---
+		if((4 + 1)->Clamp(1, 3) = Int->Clamp(5, 1, 3)) { passed += 1; } else { failed += 1; "FAIL: two-argument call on a calculated receiver"->PrintLine(); };
+
+		# --- ordered functions, where a dropped or swapped argument shows up ---
+		if((1 + 1)->Min(5) = 2) { passed += 1; } else { failed += 1; "FAIL: Min on a calculated receiver"->PrintLine(); };
+		if((7 + 0)->Compare(3) = 1) { passed += 1; } else { failed += 1; "FAIL: Compare on a calculated receiver"->PrintLine(); };
+
+		# --- zero-argument calls, which never had arguments to lose ---
+		if((0 - 2)->Abs() = 2) { passed += 1; } else { failed += 1; "FAIL: zero-argument call on a calculated receiver"->PrintLine(); };
+
+		# --- Float ---
+		if((2.0 + 0.0)->Pow(3.0) = 8.0) { passed += 1; } else { failed += 1; "FAIL: Float calculated receiver"->PrintLine(); };
+		if((7.0 + 0.0)->Mod(4.0) = 3.0) { passed += 1; } else { failed += 1; "FAIL: Float Mod on a calculated receiver"->PrintLine(); };
+
+		# --- the spellings that always worked, to keep them working ---
+		direct := (1 + 1)->Pow(10);
+		if(direct = 1024) { passed += 1; } else { failed += 1; "FAIL: call assigned before comparing"->PrintLine(); };
+		if(2->Pow(10) = 1024) { passed += 1; } else { failed += 1; "FAIL: literal receiver"->PrintLine(); };
+		v := 2;
+		if(v->Pow(10) = 1024) { passed += 1; } else { failed += 1; "FAIL: variable receiver"->PrintLine(); };
+
+		if(failed > 0) {
+			"---"->PrintLine();
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"{$passed} passed, 0 failed"->PrintLine();
+	}
+}
