@@ -67,11 +67,26 @@ if !COMPILE_RESULT! neq 0 (
 echo   Compiled successfully.
 echo.
 
+REM Collection-printing fixture (needs gen_collect)
+echo Compiling collection test program...
+pushd "%ABS_BIN_DIR%"
+"%ABS_COMPILER%" -src "%REGRESSION_DIR%\debugger_coll_test.obs" -lib gen_collect -dest "%REGRESSION_DIR%\debugger_coll_test.obe" -debug > nul 2>&1
+set COLL_COMPILE_RESULT=!errorlevel!
+popd
+
+if !COLL_COMPILE_RESULT! neq 0 (
+    echo   FAIL ^(collection test compilation error^)
+    exit /b 1
+)
+echo   Compiled successfully.
+echo.
+
 REM Run debugger tests via PowerShell
-powershell.exe -ExecutionPolicy Bypass -File "%REGRESSION_DIR%\run_debugger_tests_win.ps1" -Debugger "%ABS_DEBUGGER%" -TestBin "%REGRESSION_DIR%\debugger_test.obe" -SrcDir "%REGRESSION_DIR%" -ResultsDir "%REGRESSION_DIR%\%RESULTS_DIR%"
+powershell.exe -ExecutionPolicy Bypass -File "%REGRESSION_DIR%\run_debugger_tests_win.ps1" -Debugger "%ABS_DEBUGGER%" -TestBin "%REGRESSION_DIR%\debugger_test.obe" -CollBin "%REGRESSION_DIR%\debugger_coll_test.obe" -SrcDir "%REGRESSION_DIR%" -ResultsDir "%REGRESSION_DIR%\%RESULTS_DIR%"
 set TEST_RESULT=!errorlevel!
 
 REM Clean up
 del /q "%REGRESSION_DIR%\debugger_test.obe" 2>nul
+del /q "%REGRESSION_DIR%\debugger_coll_test.obe" 2>nul
 
 exit /b !TEST_RESULT!

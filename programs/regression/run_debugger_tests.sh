@@ -74,11 +74,27 @@ cd "$REGRESSION_DIR"
 echo "  Compiled successfully."
 echo ""
 
+# Collection-printing fixture (needs gen_collect)
+COLL_SRC="debugger_coll_test.obs"
+COLL_BIN="${REGRESSION_DIR}/debugger_coll_test.obe"
+
+echo "Compiling collection test program..."
+cd "${DEPLOY_DIR}/bin"
+"$ABS_COMPILER" -src "${REGRESSION_DIR}/${COLL_SRC}" -lib gen_collect -dest "$COLL_BIN" -debug > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "  [FAIL] Collection test compilation error"
+    exit 1
+fi
+cd "$REGRESSION_DIR"
+echo "  Compiled successfully."
+echo ""
+
 # Helper function to run an expect test
 run_test() {
     local TEST_NAME="$1"
     local EXPECT_SCRIPT="$2"
     local EXPECTED_PATTERNS="$3"
+    local BIN="${4:-$TEST_BIN}"
 
     echo -n "Running: ${TEST_NAME}..."
 
@@ -86,7 +102,7 @@ run_test() {
     OUTPUT=$(expect -c "
         log_user 1
         set timeout 10
-        spawn $ABS_DEBUGGER -b $TEST_BIN -src $REGRESSION_DIR
+        spawn $ABS_DEBUGGER -b $BIN -src $REGRESSION_DIR
         $EXPECT_SCRIPT
     " 2>&1)
 
@@ -551,6 +567,33 @@ run_test "watchpoint" '
     send "q\r"
     expect eof
 ' "added watchpoint|watch #1 changed"
+
+# ========================================
+# Collection sizes. `print` reached through slot 0 into the backing array or
+# root node, so a Vector always reported 1, a Map reported a child pointer, and
+# printing a List dereferenced its @size as a pointer and crashed. The counts
+# below are all different so a header value cannot pass by coincidence.
+# ========================================
+run_test "print_collections" '
+    expect ">"
+    send "b debugger_coll_test.obs:35"
+    expect ">"
+    send "r"
+    expect "break:"
+    expect ">"
+    send "p vec"
+    expect ">"
+    send "p map"
+    expect ">"
+    send "p hash"
+    expect ">"
+    send "p list"
+    expect ">"
+    send "c"
+    expect ">"
+    send "q"
+    expect eof
+' "type=Collection.Vector, size=5|type=Collection.Map, size=4|type=Collection.Hash, size=3|type=Collection.List, size=6" "$COLL_BIN"
 
 echo ""
 echo "========================================"

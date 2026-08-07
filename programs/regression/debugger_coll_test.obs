@@ -1,0 +1,38 @@
+use Collection;
+
+#~
+Fixture for the CLI debugger's collection printing.
+
+Each collection holds a DIFFERENT number of entries, and none of those counts
+matches a value in the object's header or backing array -- that is the point.
+`print` used to reach through slot 0 into whatever it found there, which for a
+Vector was the backing array (so it reported the array's dimension count, 1),
+for a Map was the root node (reporting a child pointer), and for a Hash was the
+bucket array (whose dimension count and length happened to look like a
+plausible size and capacity). Equal counts would let those coincidences pass.
+
+List is the one that crashed: its slot 0 is @size, an Int, which the old code
+cast to a pointer and dereferenced.
+~#
+
+class CollPrint {
+	function : Main(args : String[]) ~ Nil {
+		vec := Vector->New()<IntRef>;
+		each(i : 5) { vec->AddBack(i); };
+
+		map := Map->New()<IntRef, String>;
+		each(i : 4) { map->Insert(i, "v"); };
+
+		hash := Hash->New()<String, IntRef>;
+		hash->Insert("a", IntRef->New(1));
+		hash->Insert("b", IntRef->New(2));
+		hash->Insert("c", IntRef->New(3));
+
+		list := List->New()<IntRef>;
+		each(i : 6) { list->AddBack(i); };
+
+		# BREAKPOINT LINE — every collection is populated
+		done := true;
+		done->PrintLine();
+	}
+}
