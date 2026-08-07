@@ -1,0 +1,46 @@
+use Collection;
+
+#~
+Rename fixture for method-call receivers on a generic collection.
+
+Reported case (programs/tests/prgm99.obs): renaming `map` -> `test` on the
+declaration updated the declaration and the `Each` call but left the three
+`Insert` calls pointing at the old name, producing source that no longer
+compiles.
+
+The two classes below differ in ONE respect: `boxed` is keyed by IntRef, so
+`Insert(1, ...)` forces the analyzer to box the int literal, while `plain` is
+keyed by String and needs no boxing. If only the boxed case loses edits, the
+boxing path is corrupting the diagnostic expression list; if both lose them,
+the receiver enumeration is at fault. Keep both — the pair is the diagnosis.
+
+`Each` takes a lambda and boxes nothing, which is why it survived in the
+original report; it is retained here as the control occurrence.
+~#
+
+class BoxedMap {
+	function : Run() ~ Nil {
+		boxed := Map->New()<IntRef, String>;
+		boxed->Insert(1, "One");
+		boxed->Insert(3, "Three");
+		boxed->Insert(5, "Five");
+		boxed->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
+	}
+}
+
+class PlainMap {
+	function : Run() ~ Nil {
+		plain := Map->New()<String, String>;
+		plain->Insert("a", "One");
+		plain->Insert("b", "Three");
+		plain->Insert("c", "Five");
+		plain->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		BoxedMap->Run();
+		PlainMap->Run();
+	}
+}
