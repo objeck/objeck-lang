@@ -112,6 +112,10 @@
 					"name": "keyword.operator.objeck"
 				},
 				{
+					"match": "(>>>|<<|>>)",
+					"name": "keyword.operator.objeck"
+				},
+				{
 					"match": "(\\?->|\\?\\?|->|<=|>=|<>|<|>)",
 					"name": "keyword.operator.objeck"
 				},

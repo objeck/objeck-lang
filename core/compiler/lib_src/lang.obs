@@ -1785,6 +1785,117 @@ bundle System {
 			return out;
 		}
 		
+		#~
+		Shifts a value right, treating it as an unsigned 64-bit quantity. Unlike '>>',
+		zeros are shifted into the high bits rather than copies of the sign bit. This
+		is what the '>>>' operator compiles to.
+		@param v value to shift
+		@param count number of bits to shift by; 0 returns the value unchanged and a
+		count of 64 or more shifts every bit out, yielding 0
+		@return shifted value
+		~#
+		function : native : ShiftRightUnsigned(v : Int, count : Int) ~ Int {
+			if(count = 0) {
+				return v;
+			};
+
+			if(count < 0 | count > 63) {
+				return 0;
+			};
+
+			# shifting by one and clearing the sign bit gives a true logical shift; the
+			# remaining count-1 bits then shift a non-negative value, where '>>' agrees
+			return ((v >> 1) and 0x7FFFFFFFFFFFFFFF) >> (count - 1);
+		}
+
+		#~
+		Compares two values as unsigned 64-bit quantities
+		@param a first value
+		@param b second value
+		@return -1 if a is less than b, 0 if they are equal, 1 if a is greater
+		~#
+		function : native : CompareUnsigned(a : Int, b : Int) ~ Int {
+			if(a = b) {
+				return 0;
+			};
+
+			# a negative value has its high bit set, so it is the larger unsigned number
+			if(a < 0 & b >= 0) {
+				return 1;
+			};
+
+			if(a >= 0 & b < 0) {
+				return -1;
+			};
+
+			# same side of the sign boundary, so the signed order matches the unsigned one
+			return a < b ? -1 : 1;
+		}
+
+		#~
+		Divides two values, treating both as unsigned 64-bit quantities
+		@param a dividend
+		@param b divisor
+		@return unsigned quotient
+		~#
+		function : native : DivideUnsigned(a : Int, b : Int) ~ Int {
+			# a divisor with its high bit set is more than half the unsigned range, so
+			# the quotient can only be 0 or 1
+			if(b < 0) {
+				return CompareUnsigned(a, b) < 0 ? 0 : 1;
+			};
+
+			# both fit in the non-negative range, where signed division already agrees
+			if(a >= 0) {
+				return a / b;
+			};
+
+			# halve the dividend so it fits, divide, then correct the lost low bit
+			quotient := (ShiftRightUnsigned(a, 1) / b) << 1;
+			if(CompareUnsigned(a - quotient * b, b) >= 0) {
+				quotient += 1;
+			};
+
+			return quotient;
+		}
+
+		#~
+		Returns the remainder of dividing two values, treating both as unsigned
+		64-bit quantities
+		@param a dividend
+		@param b divisor
+		@return unsigned remainder
+		~#
+		function : native : ModUnsigned(a : Int, b : Int) ~ Int {
+			return a - DivideUnsigned(a, b) * b;
+		}
+
+		#~
+		Returns the value formatted as an unsigned 64-bit decimal string. Negative
+		values print as the large positive number their bits represent, so -1 becomes
+		"18446744073709551615" rather than "-1".
+		@param v value to format
+		@return unsigned decimal string
+		~#
+		function : native : ToUnsignedString(v : Int) ~ String {
+			if(v >= 0) {
+				return v->ToString();
+			};
+
+			# (v >>> 1) / 5 is the unsigned v / 10 without overflowing the signed range
+			quotient := ShiftRightUnsigned(v, 1) / 5;
+			remainder := v - quotient * 10;
+			if(remainder >= 10) {
+				quotient += 1;
+				remainder -= 10;
+			};
+
+			out := quotient->ToString();
+			out->Append(remainder);
+
+			return out;
+		}
+
 		function : native :  Sort(v : Int[]) ~ Int[] {
 			size := v->Size();
 			if(size <= 1) {

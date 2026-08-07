@@ -640,6 +640,25 @@ mask := 0x00000000FFFFFFFFu; # a full-width mask
         A literal that does not fit is rejected at compile time rather than silently clamped.
        </p>
        <p>
+        Because every integer occupies a signed 64-bit slot, <code>&gt;&gt;</code> copies the sign
+        bit into the high end. When a value is being used as a bit pattern rather than as a
+        number, <code>&gt;&gt;&gt;</code> shifts a zero in instead. It sits at the same precedence
+        as <code>&gt;&gt;</code> and is left-associative.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">(-8 &gt;&gt; 3)-&gt;PrintLine();  # -1: the sign bit is copied down
+(-8 &gt;&gt;&gt; 3)-&gt;PrintLine(); # 2305843009213693951: zeros shift in
+(-1 &gt;&gt;&gt; 64)-&gt;PrintLine(); # 0: a count of 64 or more shifts every bit out
+</code></pre>
+       <p>
+        <code>Int</code> also carries operations that read both operands as unsigned 64-bit
+        quantities, for the cases where the signed reading of the same bits is the wrong one.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">Int-&gt;ToUnsignedString(-1)-&gt;PrintLine(); # 18446744073709551615
+Int-&gt;DivideUnsigned(-1, 3)-&gt;PrintLine(); # 6148914691236517205
+Int-&gt;ModUnsigned(-1, 10)-&gt;PrintLine();  # 5
+Int-&gt;CompareUnsigned(-1, 1)-&gt;PrintLine(); # 1: -1 is the largest unsigned value
+</code></pre>
+       <p>
         Here are a few examples of variable declarations and assignments. Variable types can be explicitly defined or implicitly inferred through assignments or casts. If a variable's type is inferred it cannot be redefined later in the program however it can be cast.
        </p>
        <pre class="line-numbers"><code class="language-cpp">a : Int;

@@ -53,6 +53,11 @@ syn match objeckOperator "[+\-*/%=<>]"
 syn match objeckOperator "<>"
 syn match objeckOperator "<="
 syn match objeckOperator ">="
+" shifts after the single-character rule so the longer match wins
+syn match objeckOperator "<<"
+syn match objeckOperator ">>"
+" the unsigned shift, last so it beats '>>'
+syn match objeckOperator ">>>"
 
 " Modifiers
 syn keyword objeckModifier public private static native

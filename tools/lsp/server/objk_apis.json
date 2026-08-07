@@ -7016,6 +7016,12 @@
 				"Compare": {
 					"descriptions": ["**Compares two values**\n\n```function : native : Compare(l:Int, r:Int) ~ Int```\n\n\n\nl: Int\n\nr: Int\n\nreturn: Int"]
 				},
+				"CompareUnsigned": {
+					"descriptions": ["**Compares two values as unsigned 64-bit quantities**\n\n```function : native : CompareUnsigned(a:Int, b:Int) ~ Int```\n\n\n\na: Int\n\nb: Int\n\nreturn: Int"]
+				},
+				"DivideUnsigned": {
+					"descriptions": ["**Divides two values, treating both as unsigned 64-bit quantities**\n\n```function : native : DivideUnsigned(a:Int, b:Int) ~ Int```\n\n\n\na: Int\n\nb: Int\n\nreturn: Int"]
+				},
 				"DoubleFactorial": {
 					"descriptions": ["**Calculates the double factorial of the value**\n\n```function : native : DoubleFactorial(n:Int) ~ Int```\n\n\n\nn: Int\n\nreturn: Int"]
 				},
@@ -7046,6 +7052,9 @@
 				"MinSize": {
 					"descriptions": ["**Returns the minimum size of an integer**\n\n```function : MinSize() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"ModUnsigned": {
+					"descriptions": ["**Returns the remainder of dividing two values, treating both as unsigned 64-bit quantities**\n\n```function : native : ModUnsigned(a:Int, b:Int) ~ Int```\n\n\n\na: Int\n\nb: Int\n\nreturn: Int"]
+				},
 				"NaN": {
 					"descriptions": ["**Returns a NaN value**\n\n```function : NaN() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -7063,6 +7072,9 @@
 				},
 				"Random": {
 					"descriptions": ["**Returns a pseudo random value between 0 and 1, inclusive**\n\n```function : Random(range_start:Int, range_end:Int) ~ Int```\n\n\n\nrange_start: Int\n\nrange_end: Int\n\nreturn: Int\n\n```\ntemp := Int->Random(-10, 40);\r\n\"Temp: {$temp}\u00b0C\"->PrintLine();\n```", "**Returns a random number between 0 and max value, inclusive**\n\n```function : Random(max:Int) ~ Int```\n\n\n\nmax: Int\n\nreturn: Int\n\n```\ndice := Int->Random(6) + 1;\r\n\"Rolled: {$dice}\"->PrintLine();\n```"]
+				},
+				"ShiftRightUnsigned": {
+					"descriptions": ["**Shifts a value right, treating it as an unsigned 64-bit quantity. Unlike '>>', zeros are shifted into the high bits rather than copies of the sign bit. This is what the '>>>' operator compiles to.**\n\n```function : native : ShiftRightUnsigned(v:Int, count:Int) ~ Int```\n\n\n\nv: Int\n\ncount: Int\n\nreturn: Int"]
 				},
 				"Sign": {
 					"descriptions": ["**Returns the sign of a number**\n\n```function : Sign() ~ Int```\n\n\n\nreturn: Int"]
@@ -7090,6 +7102,9 @@
 				},
 				"ToString": {
 					"descriptions": ["**Returns the string value**\n\n```function : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ns := Int->ToString(255);\r\ns->PrintLine();  # 255\n```", "**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String", "**Returns a string representation of the int array**\n\n```function : ToString(v:Int[,]) ~ String```\n\n\n\nv: Int[,]\n\nreturn: String"]
+				},
+				"ToUnsignedString": {
+					"descriptions": ["**Returns the value formatted as an unsigned 64-bit decimal string. Negative values print as the large positive number their bits represent, so -1 becomes \"18446744073709551615\" rather than \"-1\".**\n\n```function : native : ToUnsignedString(v:Int) ~ String```\n\n\n\nv: Int\n\nreturn: String"]
 				}
 			}
 		},

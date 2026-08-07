@@ -5741,8 +5741,8 @@ std::vector<Type*> Parser::ParseGenericTypes(int depth)
         else {
           generic_types.push_back(type);
 
-          if(expand_generic_def) {
-            expand_generic_def = false;
+          if(pending_generic_closes > 0) {
+            pending_generic_closes--;
             return generic_types;
           }
         }
@@ -5755,15 +5755,20 @@ std::vector<Type*> Parser::ParseGenericTypes(int depth)
         NextToken();
       }
       else if(!Match(TOKEN_GTR)) {
-        if(expand_generic_def) {
-          expand_generic_def = false;
+        if(pending_generic_closes > 0) {
+          pending_generic_closes--;
         }
         else if(Match(TOKEN_SHR)) {
-          expand_generic_def = true;
+          pending_generic_closes = 1;
+          NextToken();
+        }
+        else if(Match(TOKEN_SHR_UNSIGNED)) {
+          // three generics closed by one token, so two '>' remain owed
+          pending_generic_closes = 2;
           NextToken();
         }
         else {
-          expand_generic_def = false;
+          pending_generic_closes = 0;
           ProcessError(L"Expected ',' or '>'");
         }
 
@@ -5858,8 +5863,8 @@ std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name,
         // consumed the shift-right token and the second '>' closes THIS generic
         // parameter list. Terminate here — the closer is already consumed, so we
         // must not fall through to the trailing NextToken below.
-        if(expand_generic_def) {
-          expand_generic_def = false;
+        if(pending_generic_closes > 0) {
+          pending_generic_closes--;
           klass->SetEndLineNumber(GetLineNumber());
           klass->SetEndLinePosition(GetLinePosition());
           return generic_classes;
@@ -5875,15 +5880,20 @@ std::vector<Class*> Parser::ParseGenericClasses(const std::wstring &bundle_name,
         NextToken();
       }
       else if(!Match(TOKEN_GTR)) {
-        if(expand_generic_def) {
-          expand_generic_def = false;
+        if(pending_generic_closes > 0) {
+          pending_generic_closes--;
         }
         else if(Match(TOKEN_SHR)) {
-          expand_generic_def = true;
+          pending_generic_closes = 1;
+          NextToken();
+        }
+        else if(Match(TOKEN_SHR_UNSIGNED)) {
+          // three generics closed by one token, so two '>' remain owed
+          pending_generic_closes = 2;
           NextToken();
         }
         else {
-          expand_generic_def = false;
+          pending_generic_closes = 0;
           ProcessError(L"Expected ',' or '>'");
         }
       }
@@ -6450,106 +6460,79 @@ Expression* Parser::ParseFactor(int depth)
 #endif
 
   Expression* left = ParseSimpleExpression(depth + 1);
-  if(!(GetToken() >= TOKEN_MUL && GetToken() <= TOKEN_XOR_ID) && !Match(TOKEN_XOR_ID)) {
+  if(!IsFactorOperator()) {
     return left;
   }
-  
-  CalculatedExpression* expression = nullptr;
-  while(GetToken() >= TOKEN_MUL && GetToken() <= TOKEN_XOR_ID) {
-    if(expression) {
-      CalculatedExpression* right;
-      switch(GetToken()) {
-      case TOKEN_MUL:
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR);
-        break;
 
-      case TOKEN_MOD:
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MOD_EXPR);
-        break;
-
-      case TOKEN_SHL:
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SHL_EXPR);
-        break;
-
-      case TOKEN_SHR:
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SHR_EXPR);
-        break;
-
-      case TOKEN_AND_ID:
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_AND_EXPR);
-        break;
-
-      case TOKEN_OR_ID:
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_OR_EXPR);
-        break;
-
-      case TOKEN_XOR_ID:
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_XOR_EXPR);
-        break;
-
-      case TOKEN_DIV:
-        right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, DIV_EXPR);
-        break;
-
-      default:
-        right = nullptr;
-        break;
-      }
+  // Every operator at this level is left-associative and shares one precedence,
+  // so '>>>' -- which is sugar for a call rather than an opcode -- folds into
+  // the same chain as the calculated ones instead of binding tighter or looser.
+  Expression* expression = left;
+  while(IsFactorOperator()) {
+    if(Match(TOKEN_SHR_UNSIGNED)) {
       NextToken();
+      ExpressionList* shift_args = TreeFactory::Instance()->MakeExpressionList();
+      shift_args->AddExpression(expression);
+      shift_args->AddExpression(ParseSimpleExpression(depth + 1));
 
-      Expression* temp = ParseSimpleExpression(depth + 1);
-      if(right) {
-        right->SetRight(temp);
-        right->SetLeft(expression);
-        expression = right;
-      }
+      // emitted as the static call 'Int->ShiftRightUnsigned(value, count)' rather
+      // than as a call on the value. A method call whose receiver is a plain
+      // variable passes that receiver as the LAST argument, while one whose
+      // receiver is any other expression passes it first, so a receiver-shaped
+      // desugaring would swap the operands for 'v >>> n' but not for '-1 >>> n'.
+      expression = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
+                                                           line_num, line_pos,
+                                                           GetLineNumber(), GetLinePosition(),
+                                                           INT_CLASS_ID, L"ShiftRightUnsigned",
+                                                           shift_args);
+      continue;
     }
-    // first time in loop
-    else {
-      switch(GetToken()) {
-      case TOKEN_MUL:
-        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR);
-        break;
 
-      case TOKEN_MOD:
-        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MOD_EXPR);
-        break;
+    CalculatedExpression* calculated;
+    switch(GetToken()) {
+    case TOKEN_MUL:
+      calculated = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR);
+      break;
 
-      case TOKEN_SHL:
-        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SHL_EXPR);
-        break;
+    case TOKEN_DIV:
+      calculated = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, DIV_EXPR);
+      break;
 
-      case TOKEN_SHR:
-        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SHR_EXPR);
-        break;
+    case TOKEN_MOD:
+      calculated = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MOD_EXPR);
+      break;
 
-      case TOKEN_AND_ID:
-        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_AND_EXPR);
-        break;
+    case TOKEN_SHL:
+      calculated = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SHL_EXPR);
+      break;
 
-      case TOKEN_OR_ID:
-        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_OR_EXPR);
-        break;
+    case TOKEN_SHR:
+      calculated = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, SHR_EXPR);
+      break;
 
-      case TOKEN_XOR_ID:
-        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_XOR_EXPR);
-        break;
+    case TOKEN_AND_ID:
+      calculated = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_AND_EXPR);
+      break;
 
-      case TOKEN_DIV:
-        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, DIV_EXPR);
-        break;
+    case TOKEN_OR_ID:
+      calculated = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_OR_EXPR);
+      break;
 
-      default:
-        expression = nullptr;
-        break;
-      }
-      NextToken();
+    case TOKEN_XOR_ID:
+      calculated = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_XOR_EXPR);
+      break;
 
-      Expression* temp = ParseSimpleExpression(depth + 1);
-      if(expression) {
-        expression->SetRight(temp);
-        expression->SetLeft(left);
-      }
+    default:
+      calculated = nullptr;
+      break;
+    }
+    NextToken();
+
+    Expression* temp = ParseSimpleExpression(depth + 1);
+    if(calculated) {
+      calculated->SetLeft(expression);
+      calculated->SetRight(temp);
+      expression = calculated;
     }
   }
 

@@ -1,0 +1,152 @@
+#~
+The '>>>' operator and the unsigned helpers on Int.
+
+Objeck stores every integer in a signed 64-bit slot, so '>>' copies the sign bit
+into the high end. '>>>' shifts a zero in instead, which is what you want when a
+value is being used as a bit pattern rather than as a number. It is sugar for
+Int->ShiftRightUnsigned, in the same way '??' is sugar for Otherwise, so there is
+no new opcode behind it.
+
+The rest of the helpers -- DivideUnsigned, ModUnsigned, CompareUnsigned and
+ToUnsignedString -- reinterpret both operands as unsigned 64-bit quantities. The
+interesting cases are all on the negative side, since that is where the signed
+and unsigned readings of the same bits diverge: -1 is 18446744073709551615.
+
+Precedence is checked here too. '>>>' sits at the same level as '>>' and '*',
+left-associative, so '2 * 4 >>> 1' is '(2 * 4) >>> 1'. Three-deep generics are
+checked because '>>>' now scans as a single token, and 'Vector<Vector<Vector<X>>>'
+closes three type arguments with it.
+~#
+
+use Collection;
+
+class UnsignedOps {
+	function : Main(args : String[]) ~ Nil {
+		passed := 0;
+		failed := 0;
+
+		# --- '>>>' against '>>' ---
+		# -8 is ...11111000; shifting three zeros in leaves (2^64-8)/8
+		if((-8 >>> 3) = 2305843009213693951) { passed += 1; } else { failed += 1; "FAIL: -8 >>> 3"->PrintLine(); };
+
+		# '>>' keeps the sign, so the same expression stays -1
+		if((-8 >> 3) = -1) { passed += 1; } else { failed += 1; "FAIL: -8 >> 3 (signed shift unchanged)"->PrintLine(); };
+
+		# every bit set, shifted once, is the signed maximum
+		if((-1 >>> 1) = 9223372036854775807) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 1"->PrintLine(); };
+
+		# on a non-negative value the two shifts agree
+		if((256 >>> 4) = 16) { passed += 1; } else { failed += 1; "FAIL: 256 >>> 4"->PrintLine(); };
+		if((256 >>> 4) = (256 >> 4)) { passed += 1; } else { failed += 1; "FAIL: shifts agree when positive"->PrintLine(); };
+
+		# --- shift-count edges ---
+		# zero is a no-op, including for negative values
+		if((5 >>> 0) = 5) { passed += 1; } else { failed += 1; "FAIL: 5 >>> 0"->PrintLine(); };
+		if((-5 >>> 0) = -5) { passed += 1; } else { failed += 1; "FAIL: -5 >>> 0"->PrintLine(); };
+
+		# 63 leaves only the former sign bit
+		if((-1 >>> 63) = 1) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 63"->PrintLine(); };
+
+		# 64 or more shifts every bit out; a negative count is meaningless
+		if((-1 >>> 64) = 0) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 64"->PrintLine(); };
+		if((-1 >>> 100) = 0) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 100"->PrintLine(); };
+		if((-1 >>> -1) = 0) { passed += 1; } else { failed += 1; "FAIL: -1 >>> -1"->PrintLine(); };
+
+		# a variable count works the same as a literal one
+		count := 3;
+		if((-8 >>> count) = 2305843009213693951) { passed += 1; } else { failed += 1; "FAIL: variable shift count"->PrintLine(); };
+
+		# --- precedence and associativity ---
+		# same level as '*', left to right: (2 * 4) >>> 1
+		if((2 * 4 >>> 1) = 4) { passed += 1; } else { failed += 1; "FAIL: '*' then '>>>'"->PrintLine(); };
+
+		# left-associative: (-1 >>> 1) >>> 62, not -1 >>> (1 >>> 62)
+		if((-1 >>> 1 >>> 62) = 1) { passed += 1; } else { failed += 1; "FAIL: '>>>' is left-associative"->PrintLine(); };
+
+		# folds into a surrounding expression
+		if(((-8 >>> 3) + 1) = 2305843009213693952) { passed += 1; } else { failed += 1; "FAIL: '>>>' inside an expression"->PrintLine(); };
+
+		# mixes with the other bitwise operators
+		if(((-1 >>> 56) and 0xFF) = 255) { passed += 1; } else { failed += 1; "FAIL: '>>>' with 'and'"->PrintLine(); };
+
+		# the operator and the method it desugars to are the same thing
+		if((-8 >>> 3) = Int->ShiftRightUnsigned(-8, 3)) { passed += 1; } else { failed += 1; "FAIL: operator matches ShiftRightUnsigned"->PrintLine(); };
+
+		# --- '>>>' has not eaten three-deep generics ---
+		nested := Vector->New()<Vector<Vector<IntRef>>>;
+		inner := Vector->New()<Vector<IntRef>>;
+		inner->AddBack(Vector->New()<IntRef>);
+		nested->AddBack(inner);
+		if(nested->Size() = 1 & nested->Get(0)->Size() = 1) { passed += 1; } else { failed += 1; "FAIL: three-deep generics"->PrintLine(); };
+
+		# --- CompareUnsigned ---
+		# -1 is the largest unsigned value, so it outranks everything
+		if(Int->CompareUnsigned(-1, 1) = 1) { passed += 1; } else { failed += 1; "FAIL: CompareUnsigned(-1, 1)"->PrintLine(); };
+		if(Int->CompareUnsigned(1, -1) = -1) { passed += 1; } else { failed += 1; "FAIL: CompareUnsigned(1, -1)"->PrintLine(); };
+		if(Int->CompareUnsigned(-1, -1) = 0) { passed += 1; } else { failed += 1; "FAIL: CompareUnsigned(-1, -1)"->PrintLine(); };
+		if(Int->CompareUnsigned(0, 0) = 0) { passed += 1; } else { failed += 1; "FAIL: CompareUnsigned(0, 0)"->PrintLine(); };
+
+		# both negative: the signed order still holds, since both sit above 2^63
+		if(Int->CompareUnsigned(-2, -1) = -1) { passed += 1; } else { failed += 1; "FAIL: CompareUnsigned(-2, -1)"->PrintLine(); };
+
+		# 0 is the smallest, unlike the signed reading where -1 would be
+		if(Int->CompareUnsigned(0, -1) = -1) { passed += 1; } else { failed += 1; "FAIL: CompareUnsigned(0, -1)"->PrintLine(); };
+
+		# --- DivideUnsigned ---
+		# (2^64-1)/3
+		if(Int->DivideUnsigned(-1, 3) = 6148914691236517205) { passed += 1; } else { failed += 1; "FAIL: DivideUnsigned(-1, 3)"->PrintLine(); };
+
+		# both operands non-negative, so it matches ordinary division
+		if(Int->DivideUnsigned(100, 7) = 14) { passed += 1; } else { failed += 1; "FAIL: DivideUnsigned(100, 7)"->PrintLine(); };
+
+		# a divisor past 2^63 can only give 0 or 1
+		if(Int->DivideUnsigned(-1, -2) = 1) { passed += 1; } else { failed += 1; "FAIL: DivideUnsigned(-1, -2)"->PrintLine(); };
+		if(Int->DivideUnsigned(-2, -1) = 0) { passed += 1; } else { failed += 1; "FAIL: DivideUnsigned(-2, -1)"->PrintLine(); };
+		if(Int->DivideUnsigned(1, -1) = 0) { passed += 1; } else { failed += 1; "FAIL: DivideUnsigned(1, -1)"->PrintLine(); };
+
+		# dividing the full-range value by 1 returns its bits unchanged
+		if(Int->DivideUnsigned(-1, 1) = -1) { passed += 1; } else { failed += 1; "FAIL: DivideUnsigned(-1, 1)"->PrintLine(); };
+
+		# 2^63 divided by 2 is 2^62
+		if(Int->DivideUnsigned(-9223372036854775807 - 1, 2) = 4611686018427387904) { passed += 1; } else { failed += 1; "FAIL: DivideUnsigned(2^63, 2)"->PrintLine(); };
+
+		# --- ModUnsigned ---
+		# 18446744073709551615 mod 10
+		if(Int->ModUnsigned(-1, 10) = 5) { passed += 1; } else { failed += 1; "FAIL: ModUnsigned(-1, 10)"->PrintLine(); };
+		if(Int->ModUnsigned(100, 7) = 2) { passed += 1; } else { failed += 1; "FAIL: ModUnsigned(100, 7)"->PrintLine(); };
+		if(Int->ModUnsigned(-1, 1) = 0) { passed += 1; } else { failed += 1; "FAIL: ModUnsigned(-1, 1)"->PrintLine(); };
+
+		# a divisor past 2^63 leaves the whole dividend when it is the smaller value
+		if(Int->ModUnsigned(1, -1) = 1) { passed += 1; } else { failed += 1; "FAIL: ModUnsigned(1, -1)"->PrintLine(); };
+
+		# quotient and remainder reconstruct the dividend
+		if((Int->DivideUnsigned(-1, 7) * 7 + Int->ModUnsigned(-1, 7)) = -1) { passed += 1; } else { failed += 1; "FAIL: quotient and remainder round-trip"->PrintLine(); };
+
+		# --- ToUnsignedString ---
+		if(Int->ToUnsignedString(-1)->Equals("18446744073709551615")) { passed += 1; } else { failed += 1; "FAIL: ToUnsignedString(-1)"->PrintLine(); };
+		if(Int->ToUnsignedString(0)->Equals("0")) { passed += 1; } else { failed += 1; "FAIL: ToUnsignedString(0)"->PrintLine(); };
+		if(Int->ToUnsignedString(42)->Equals("42")) { passed += 1; } else { failed += 1; "FAIL: ToUnsignedString(42)"->PrintLine(); };
+
+		# 2^63, the first value the signed reading gets wrong
+		if(Int->ToUnsignedString(-9223372036854775807 - 1)->Equals("9223372036854775808")) { passed += 1; } else { failed += 1; "FAIL: ToUnsignedString(2^63)"->PrintLine(); };
+
+		# the signed maximum is below the boundary and prints unchanged
+		if(Int->ToUnsignedString(9223372036854775807)->Equals("9223372036854775807")) { passed += 1; } else { failed += 1; "FAIL: ToUnsignedString(signed maximum)"->PrintLine(); };
+
+		# -2 exercises the digit correction, since its last digit is not 5
+		if(Int->ToUnsignedString(-2)->Equals("18446744073709551614")) { passed += 1; } else { failed += 1; "FAIL: ToUnsignedString(-2)"->PrintLine(); };
+
+		# --- the helpers agree with the literals that produce the same bits ---
+		all_bits := 0xFFFFFFFFFFFFFFFFu;
+		if(Int->ToUnsignedString(all_bits)->Equals("18446744073709551615")) { passed += 1; } else { failed += 1; "FAIL: unsigned literal round-trip"->PrintLine(); };
+		if((all_bits >>> 32) = 4294967295) { passed += 1; } else { failed += 1; "FAIL: '>>>' on an unsigned literal"->PrintLine(); };
+
+		if(failed > 0) {
+			"---"->PrintLine();
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"{$passed} passed, 0 failed"->PrintLine();
+	}
+}

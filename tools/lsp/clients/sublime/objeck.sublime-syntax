@@ -73,6 +73,10 @@ contexts:
     - match: (\?->)|(\?\?)
       scope: keyword.operator.objeck-obs
 
+    # shifts before the comparison rule, so '>>>' is not split into '>' tokens
+    - match: (>>>)|(<<)|(>>)
+      scope: keyword.operator.bitwise.objeck-obs
+
     - match: \||&|(<>)|<|>|<|>|(>=)|(<=)|=
       scope: keyword.operator.logical.objeck-obs
 
