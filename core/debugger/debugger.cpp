@@ -335,7 +335,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
         if(mode == DebugMode::DAP && dap_adapter) {
           // DAP mode: notify adapter and block until resume
-          std::string reason = found_break ? "breakpoint" : "step";
+          std::string reason = found_break ? "breakpoint" : (watch_hit ? "data breakpoint" : "step");
           dap_adapter->OnStopped(reason, line_num, file_name, frame, call_stack, call_stack_pos);
 
           // After resume, check what stepping mode was requested
@@ -2424,6 +2424,26 @@ bool Runtime::Debugger::CheckWatches(StackFrame* frame, StackFrame** call_stack,
       changed = wp->has_value && (new_int != wp->last_int);
     }
 
+    // Record the change for whoever reports the stop. This used to happen only
+    // on the CLI print path below, so a DAP client had no way to say which
+    // watch fired or what it changed from.
+    if(changed) {
+      std::wostringstream old_val;
+      std::wostringstream new_val;
+      if(is_float) {
+        old_val << wp->last_float;
+        new_val << new_float;
+      }
+      else {
+        old_val << (long)wp->last_int;
+        new_val << (long)new_int;
+      }
+
+      last_watch_text = wp->text;
+      last_watch_old = old_val.str();
+      last_watch_new = new_val.str();
+    }
+
     if(changed && mode == DebugMode::CLI) {
       std::wcout << C(CLR_YELLOW) << L"watch #" << wp->id << L" changed: ";
       if(is_float) {
@@ -3109,6 +3129,51 @@ static std::wstring FormatObjectForDap(StackClass* klass, size_t* instance)
   }
   wss << L"}";
   return wss.str();
+}
+
+// Adds a watch from an expression string. The CLI builds these from a parsed
+// `watch` command; DAP has only the text, so parse it the same way the
+// expression evaluator does and keep the resulting Expression.
+int Runtime::Debugger::AddDataWatch(const std::wstring& expr_str)
+{
+  if(expr_str.empty()) {
+    return 0;
+  }
+
+  Parser parser;
+  Command* command = parser.Parse(L"?p " + expr_str);
+  if(!command || command->GetCommandType() != PRINT_COMMAND) {
+    return 0;
+  }
+
+  Expression* expression = static_cast<Print*>(command)->GetExpression();
+  if(!expression) {
+    return 0;
+  }
+
+  WatchPoint* wp = new WatchPoint;
+  wp->id = next_watch_id++;
+  wp->expression = expression;
+  wp->text = expr_str;
+  wp->has_value = false;
+  wp->is_float = false;
+  wp->last_int = 0;
+  wp->last_float = 0.0;
+  watches.push_back(wp);
+
+  return wp->id;
+}
+
+void Runtime::Debugger::ClearDataWatches()
+{
+  for(std::list<WatchPoint*>::iterator iter = watches.begin(); iter != watches.end(); ++iter) {
+    delete *iter;
+  }
+  watches.clear();
+
+  last_watch_text.clear();
+  last_watch_old.clear();
+  last_watch_new.clear();
 }
 
 std::vector<std::wstring> Runtime::Debugger::GetLoadedSourceFiles()

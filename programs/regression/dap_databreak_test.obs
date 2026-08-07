@@ -1,0 +1,24 @@
+#~
+Fixture for dap_databreak_test.py. Stops once with everything initialized,
+then mutates two locals in a loop so a data breakpoint has something to fire
+on.
+~#
+class DataBreak {
+	function : Main(args : String[]) ~ Nil {
+		counter := 0;
+		total := 0;
+		steady := 99;
+
+		# BREAKPOINT LINE — nothing has changed yet
+		"start"->PrintLine();
+
+		for(i := 0; i < 5; i += 1;) {
+			counter := i + 1;
+			total += counter;
+		};
+
+		counter->PrintLine();
+		total->PrintLine();
+		steady->PrintLine();
+	}
+}

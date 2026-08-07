@@ -160,6 +160,9 @@ namespace Runtime {
     int next_break_id;
     int next_watch_id;
     std::list<WatchPoint*> watches;
+    std::wstring last_watch_text;
+    std::wstring last_watch_old;
+    std::wstring last_watch_new;
     // run-to-line (until); -1 when inactive
     int until_line;
     std::wstring until_file;
@@ -378,6 +381,18 @@ namespace Runtime {
     // Distinct source files carried by the loaded program, for DAP's
     // loadedSources. Empty until a program is loaded.
     std::vector<std::wstring> GetLoadedSourceFiles();
+
+    // Data breakpoints. The CLI `watch` command and DAP data breakpoints are
+    // the same mechanism: an expression re-evaluated after every instruction,
+    // stopping when its value changes.
+    int AddDataWatch(const std::wstring& expr_str);
+    void ClearDataWatches();
+    bool HasDataWatches() const { return !watches.empty(); }
+
+    // Details of the watch that fired most recently, for the DAP stop event.
+    const std::wstring& GetLastWatchText() const { return last_watch_text; }
+    const std::wstring& GetLastWatchOld() const { return last_watch_old; }
+    const std::wstring& GetLastWatchNew() const { return last_watch_new; }
 
     // set a variable's value in a given frame (for DAP setVariable); returns the
     // new value formatted, or L"<error>" on failure
