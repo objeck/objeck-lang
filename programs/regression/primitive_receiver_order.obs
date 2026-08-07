@@ -1,0 +1,126 @@
+#~
+Argument order for instance-style calls on primitives.
+
+Writing `v->Pow(10)` on a primitive does not call a method on an object. It
+resolves to a static function on the hidden `$Int` / `$Float` / `$Char` /
+`$Byte` class, and the receiver becomes that function's FIRST argument -- the
+resolver builds the lookup name by prepending the receiver's type encoding to
+the written arguments'. So `v->Pow(10)` must mean `Int->Pow(v, 10)`.
+
+The emitter used to contradict that. It pushed the receiver onto the stack
+AFTER the written arguments whenever the receiver was a variable, an instance
+variable, or an array element -- but BEFORE them for a literal or any other
+expression. The two spellings of the same call therefore disagreed:
+
+    2->Pow(10)          gave 1024   (correct)
+    v := 2; v->Pow(10)  gave  100   (2 and 10 swapped)
+
+Single-argument functions hid this completely, since order cannot matter for
+them, and every existing test used either a literal receiver or the static
+spelling `Int->Pow(2, 10)`. Nothing covered the variable-receiver path, which
+is why the defect survived.
+
+Every receiver shape is checked below against the same call written statically.
+The functions are deliberately NON-commutative -- `Max`/`Min` would pass even
+with the arguments reversed, which is why `Pow` and `Compare` carry most of the
+weight here.
+~#
+
+class PrimitiveReceiverOrder {
+	function : Main(args : String[]) ~ Nil {
+		passed := 0;
+		failed := 0;
+
+		# --- Int: local variable receiver ---
+		v := 2;
+		if(v->Pow(10) = 1024) { passed += 1; } else { failed += 1; "FAIL: local Int receiver, Pow"->PrintLine(); };
+
+		# the two spellings of one call must agree
+		if(v->Pow(10) = Int->Pow(2, 10)) { passed += 1; } else { failed += 1; "FAIL: local receiver disagrees with static spelling"->PrintLine(); };
+
+		# Compare is ordered, so a swap flips the sign rather than hiding
+		a := 3;
+		if(a->Compare(7) = -1) { passed += 1; } else { failed += 1; "FAIL: local Int receiver, Compare"->PrintLine(); };
+		if(a->Compare(7) = Int->Compare(3, 7)) { passed += 1; } else { failed += 1; "FAIL: Compare disagrees with static spelling"->PrintLine(); };
+
+		# --- Int: literal and expression receivers (always worked, must stay working) ---
+		if(2->Pow(10) = 1024) { passed += 1; } else { failed += 1; "FAIL: literal Int receiver"->PrintLine(); };
+
+		# The result goes through a temporary on purpose. Comparing a
+		# calculated-expression receiver's result directly -- `if((1 + 1)->Pow(10) = 1024)`
+		# -- corrupts the heap. That is a separate, pre-existing defect (it
+		# reproduces on the released compiler) and not what this file is testing,
+		# so the receiver path is exercised without tripping over it.
+		expr_receiver := (1 + 1)->Pow(10);
+		if(expr_receiver = 1024) { passed += 1; } else { failed += 1; "FAIL: expression Int receiver"->PrintLine(); };
+		if(13->Min(3) = 3) { passed += 1; } else { failed += 1; "FAIL: literal receiver, Min"->PrintLine(); };
+
+		# --- Int: array element receiver ---
+		nums := Int->New[2];
+		nums[0] := 2;
+		nums[1] := 3;
+		if(nums[0]->Pow(10) = 1024) { passed += 1; } else { failed += 1; "FAIL: array element Int receiver"->PrintLine(); };
+		if(nums[1]->Compare(9) = -1) { passed += 1; } else { failed += 1; "FAIL: array element receiver, Compare"->PrintLine(); };
+
+		# --- Float: every receiver shape ---
+		f := 2.0;
+		if(f->Pow(3.0) = 8.0) { passed += 1; } else { failed += 1; "FAIL: local Float receiver"->PrintLine(); };
+		if(f->Pow(3.0) = Float->Pow(2.0, 3.0)) { passed += 1; } else { failed += 1; "FAIL: Float receiver disagrees with static spelling"->PrintLine(); };
+		if(2.0->Pow(3.0) = 8.0) { passed += 1; } else { failed += 1; "FAIL: literal Float receiver"->PrintLine(); };
+
+		reals := Float->New[1];
+		reals[0] := 2.0;
+		if(reals[0]->Pow(3.0) = 8.0) { passed += 1; } else { failed += 1; "FAIL: array element Float receiver"->PrintLine(); };
+
+		# Mod is ordered: 7 mod 4 is 3, whereas 4 mod 7 would be 4
+		m := 7.0;
+		if(m->Mod(4.0) = 3.0) { passed += 1; } else { failed += 1; "FAIL: local Float receiver, Mod"->PrintLine(); };
+
+		# --- three parameters, so a swap cannot be masked by symmetry ---
+		# Clamp(min, value, max): receiver is 'min'
+		lo := 5;
+		if(lo->Clamp(1, 3) = Int->Clamp(5, 1, 3)) { passed += 1; } else { failed += 1; "FAIL: three-parameter receiver ordering"->PrintLine(); };
+
+		# --- instance and static variable receivers ---
+		holder := Holder->New();
+		if(holder->CheckInstance()) { passed += 1; } else { failed += 1; "FAIL: instance variable receiver"->PrintLine(); };
+		if(Holder->CheckStatic()) { passed += 1; } else { failed += 1; "FAIL: static variable receiver"->PrintLine(); };
+
+		# --- a receiver that is itself a call result ---
+		if(4->Abs()->Pow(2) = 16) { passed += 1; } else { failed += 1; "FAIL: call-result receiver"->PrintLine(); };
+
+		# --- the unsigned helpers, reachable both ways ---
+		u := -8;
+		if(u->ShiftRightUnsigned(3) = Int->ShiftRightUnsigned(-8, 3)) { passed += 1; } else { failed += 1; "FAIL: ShiftRightUnsigned receiver ordering"->PrintLine(); };
+		if((u >>> 3) = u->ShiftRightUnsigned(3)) { passed += 1; } else { failed += 1; "FAIL: '>>>' disagrees with the receiver spelling"->PrintLine(); };
+
+		if(failed > 0) {
+			"---"->PrintLine();
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"{$passed} passed, 0 failed"->PrintLine();
+	}
+}
+
+class Holder {
+	@base : Int;
+	@real : Float;
+	@scale : static : Int;
+
+	New() {
+		@base := 2;
+		@real := 2.0;
+	}
+
+	# an instance variable used as the receiver takes the same path a local does
+	method : public : CheckInstance() ~ Bool {
+		return @base->Pow(10) = 1024 & @real->Pow(3.0) = 8.0 & @base->Compare(7) = -1;
+	}
+
+	function : public : CheckStatic() ~ Bool {
+		@scale := 2;
+		return @scale->Pow(10) = 1024;
+	}
+}
