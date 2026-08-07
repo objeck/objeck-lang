@@ -621,8 +621,24 @@
 0xCB0-&gt;PrintLine(); # hex
 -0b1101-&gt;PrintLine(); # bin
 052-&gt;PrintLine(); # oct
+1_000_000-&gt;PrintLine(); # underscores are ignored
 "Hello World"-&gt;Size()-&gt;PrintLine();
 </code></pre>
+       <p>
+        A <code>u</code> (or <code>U</code>) suffix reads an integer literal across the whole
+        unsigned range and keeps its bit pattern, which is how values above the signed maximum
+        are written. The suffix only changes how the number is read &mdash; the value is an
+        ordinary <code>Int</code>, so there is no separate unsigned type. Hexadecimal and binary
+        literals are read the same way, since they already denote bit patterns.
+       </p>
+       <pre class="line-numbers"><code class="language-cpp">0xFFFFFFFFFFFFFFFF-&gt;PrintLine(); # -1: every bit set
+0xFFFFFFFFFFFFFFFFu-&gt;PrintLine(); # the same value, written explicitly
+18446744073709551615u-&gt;PrintLine(); # 2^64-1 in decimal, also -1
+mask := 0x00000000FFFFFFFFu; # a full-width mask
+</code></pre>
+       <p>
+        A literal that does not fit is rejected at compile time rather than silently clamped.
+       </p>
        <p>
         Here are a few examples of variable declarations and assignments. Variable types can be explicitly defined or implicitly inferred through assignments or casts. If a variable's type is inferred it cannot be redefined later in the program however it can be cast.
        </p>
