@@ -112,6 +112,12 @@ class IntermediateEmitter {
   void EmitAssignment(Assignment* assignment);
   void EmitStringConcat(OperationAssignment* assignment);
   void EmitDeclaration(Declaration* declaration);
+  // True when a call's receiver is a primitive, meaning it resolves to a static
+  // function on the hidden '$' class ($Int, $Float, ...) that takes the
+  // receiver as its FIRST parameter.
+  bool ReceiverIsFirstParameter(MethodCall* method_call);
+  // Set while the deferred arguments of such a call are being emitted.
+  bool emitting_deferred_params = false;
   void EmitMethodCallParameters(MethodCall* method_call);
   void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false, bool is_closure = false);
   void EmitMethodCall(MethodCall* method_call, bool is_nested);

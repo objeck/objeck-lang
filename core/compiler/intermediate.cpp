@@ -5596,14 +5596,40 @@ void IntermediateEmitter::EmitCast(Expression* expression)
 void IntermediateEmitter::EmitVariable(Variable* variable)
 {
   cur_line_num = variable->GetLineNumber();
-  
-  // emit subsequent method call parameters
+
+  // A call attached to a primitive receiver compiles into a static function on
+  // the hidden '$' class ($Int, $Float, ...) whose FIRST parameter is the
+  // receiver -- that is how the resolver encodes it, prepending the receiver's
+  // encoding to the written arguments. So the receiver's value has to reach the
+  // stack before those arguments. An object receiver is passed as the instance
+  // instead, and its arguments still go first.
+  bool receiver_is_first_param = false;
   if(variable->GetMethodCall()) {
+    switch(variable->GetBaseType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+    case frontend::BYTE_TYPE:
+    case frontend::CHAR_TYPE:
+    case frontend::INT_TYPE:
+    case frontend::FLOAT_TYPE:
+    case frontend::FUNC_TYPE:
+      receiver_is_first_param = true;
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  auto emit_attached_call_parameters = [this, variable]() {
+    if(!variable->GetMethodCall()) {
+      return;
+    }
+
     MethodCall* tail = variable->GetMethodCall();
     while(tail->GetMethodCall()) {
       tail = tail->GetMethodCall();
     }
-    
+
     // emit parameters for nested call (skip intrinsics)
     MethodCall* temp = tail;
     while(temp && temp != variable->GetMethodCall()) {
@@ -5618,7 +5644,11 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     if(!variable->GetMethodCall()->IsTryIntrinsic() && !variable->GetMethodCall()->IsOtherwiseIntrinsic()) {
       EmitMethodCallParameters(variable->GetMethodCall());
     }
- 
+  };
+
+  // emit subsequent method call parameters
+  if(!receiver_is_first_param) {
+    emit_attached_call_parameters();
   }
   
   // self
@@ -5722,7 +5752,12 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   }
 
   EmitCast(variable);
-  
+
+  // the receiver is now on the stack, so a primitive's arguments follow it
+  if(receiver_is_first_param) {
+    emit_attached_call_parameters();
+  }
+
   // emit subsequent method calls
   if(variable->GetMethodCall()) {
     switch(variable->GetBaseType()->GetType()) {
@@ -6135,8 +6170,77 @@ void IntermediateEmitter::EmitDeclaration(Declaration* declaration)
  * Translates a method call
  * parameters
  ****************************/
+bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
+{
+  // A call written as 'v->Name(args)' on a primitive resolves to a static
+  // function on the hidden '$' class, and the resolver binds the receiver to
+  // parameter 0 -- it builds the lookup name by prepending the receiver's
+  // encoding to the arguments'. The receiver's value therefore has to reach the
+  // stack before those arguments. Object receivers are passed as the instance
+  // instead, so their arguments are still emitted first.
+  //
+  if(!method_call) {
+    return false;
+  }
+
+  // A Variable receiver reaches this point for shapes like 'arr[i]->Pow(n)',
+  // where the value is one element of an array. The array itself is a different
+  // receiver, so it is excluded -- only a scalar primitive is parameter 0.
+  Variable* variable = method_call->GetVariable();
+  if(variable) {
+    if(method_call->GetCallType() != METHOD_CALL || !variable->GetBaseType()) {
+      return false;
+    }
+
+    SymbolEntry* var_entry = variable->GetEntry();
+    if(!variable->GetIndices() && var_entry && var_entry->GetType()->GetDimension() > 0) {
+      return false;
+    }
+
+    switch(variable->GetBaseType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+    case frontend::BYTE_TYPE:
+    case frontend::CHAR_TYPE:
+    case frontend::INT_TYPE:
+    case frontend::FLOAT_TYPE:
+      return true;
+
+    default:
+      return false;
+    }
+  }
+
+  if(!method_call->GetEntry()) {
+    return false;
+  }
+
+  SymbolEntry* entry = method_call->GetEntry();
+  if(entry->IsSelf() || entry->GetType()->GetDimension() > 0) {
+    return false;
+  }
+
+  switch(entry->GetType()->GetType()) {
+  case frontend::BOOLEAN_TYPE:
+  case frontend::BYTE_TYPE:
+  case frontend::CHAR_TYPE:
+  case frontend::INT_TYPE:
+  case frontend::FLOAT_TYPE:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
 void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
 {
+  // Callers emit a call's arguments before the call itself, which would put
+  // them underneath a primitive receiver. Those arguments are emitted later
+  // instead, by EmitMethodCall, once the receiver is on the stack.
+  if(!emitting_deferred_params && ReceiverIsFirstParameter(method_call)) {
+    return;
+  }
+
   cur_line_num = static_cast<Statement*>(method_call)->GetLineNumber();
 
   // new array
@@ -6410,7 +6514,14 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
       }
     }
-    
+
+    // the receiver is on the stack now, so its arguments follow it
+    if(ReceiverIsFirstParameter(method_call)) {
+      emitting_deferred_params = true;
+      EmitMethodCallParameters(method_call);
+      emitting_deferred_params = false;
+    }
+
     // program method call
     if(method_call->GetMethod()) {
       Method* method = method_call->GetMethod();
