@@ -865,8 +865,11 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && (ref_klass->GetName() == L"Collection.Vector" || ref_klass->GetName() == L"Collection.CompareVector")) {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
-              size_t* vector_instance = (size_t*)instance[0];
-              const long vector_size = (long)vector_instance[1];
+              // Vector: @values at slot 0, @size at slot 1. This used to read
+              // slot 0 and then index into it -- that is the backing array, so
+              // it reported the array's dimension count and every Vector
+              // printed size=1.
+              const long vector_size = (long)instance[1];
               std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << vector_size << std::endl;
             }
             else {
@@ -876,8 +879,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && (ref_klass->GetName() == L"Collection.List" || ref_klass->GetName() == L"Collection.CompareList")) {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
-              size_t* list_instance = (size_t*)instance[0];
-              const long list_size = (long)list_instance[1];
+              // List: @size at slot 0. Slot 0 holds the count itself, so the
+              // old code cast that integer to a pointer and dereferenced it --
+              // printing a list crashed the debugger.
+              const long list_size = (long)instance[0];
               std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << list_size << std::endl;
             }
             else {
@@ -887,9 +892,12 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"Collection.Hash") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
-              size_t* hash_instance = (size_t*)instance[0];
-              const long hash_size = (long)hash_instance[1];
-              const long hash_capacity = (long)hash_instance[2];
+              // Hash: @buckets at slot 0, @size at 1, @capacity at 2. Reading
+              // through the bucket array happened to yield plausible numbers --
+              // its dimension count and bucket count -- so this looked right
+              // while never reflecting the entry count.
+              const long hash_size = (long)instance[1];
+              const long hash_capacity = (long)instance[2];
               std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << hash_size << L", capacity=" << hash_capacity << std::endl;
             }
             else {
@@ -899,8 +907,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"Collection.Map") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
-              size_t* map_instance = (size_t*)instance[0];
-              const long map_size = (long)map_instance[2];
+              // Map: @root at slot 0, @last at 1, @size at 2. Indexing through
+              // the root node read TreeNode::@left, i.e. a pointer printed as a
+              // count.
+              const long map_size = (long)instance[2];
               std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << map_size << std::endl;
             }
             else {

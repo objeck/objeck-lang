@@ -1,6 +1,7 @@
 param(
     [string]$Debugger,
     [string]$TestBin,
+    [string]$CollBin,
     [string]$SrcDir,
     [string]$ResultsDir
 )
@@ -12,7 +13,8 @@ function Run-DebuggerTest {
     param(
         [string]$TestName,
         [string[]]$Commands,
-        [string[]]$ExpectedPatterns
+        [string[]]$ExpectedPatterns,
+        [string]$Bin = $TestBin
     )
 
     Write-Host -NoNewline "Running: ${TestName}..."
@@ -28,7 +30,7 @@ function Run-DebuggerTest {
     # Build a temp batch file that uses native cmd I/O redirection.
     # This avoids the Start-Process stdout-pipe race condition on CI runners.
     $batch = "@echo off`r`n"
-    $batch += "`"$Debugger`" -b `"$TestBin`" -src `"$SrcDir`" < `"$inputFile`" > `"$outputFile`" 2> `"$errFile`"`r`n"
+    $batch += "`"$Debugger`" -b `"$Bin`" -src `"$SrcDir`" < `"$inputFile`" > `"$outputFile`" 2> `"$errFile`"`r`n"
     [System.IO.File]::WriteAllText($batchFile, $batch, [System.Text.Encoding]::ASCII)
 
     # cmd /c runs the batch synchronously; output files are fully written on return
@@ -112,6 +114,24 @@ Run-DebuggerTest "print_vars" @(
     "p counter",
     "c"
 ) @("print: type=Int/Byte/Bool, value=100", "print: type=Int[], value=", "print: type=Counter")
+
+# Test 4b: Collection sizes. `print` reached through slot 0 into the backing
+# array or root node, so a Vector always reported 1, a Map reported a child
+# pointer, and printing a List dereferenced its @size as a pointer and crashed.
+Run-DebuggerTest "print_collections" @(
+    "b debugger_coll_test.obs:35",
+    "r",
+    "p vec",
+    "p map",
+    "p hash",
+    "p list",
+    "c"
+) @(
+    "print: type=Collection.Vector, size=5",
+    "print: type=Collection.Map, size=4",
+    "print: type=Collection.Hash, size=3",
+    "print: type=Collection.List, size=6"
+) -Bin $CollBin
 
 # Test 5: Step into method
 Run-DebuggerTest "step_into" @(
