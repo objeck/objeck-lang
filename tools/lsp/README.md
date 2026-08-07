@@ -108,10 +108,11 @@ The debug adapter (`obd --dap`) is shared by every editor that speaks DAP.
 - **Watch and hover** &mdash; expressions resolving to an object or collection expand exactly like the Variables pane
 - **Variable paging** &mdash; large arrays and collections report `indexedVariables` and honour `start`/`count`, so a client can page instead of pulling everything
 - **Breakpoint validation** &mdash; `breakpointLocations` reports only lines that carry an instruction, so editors stop offering breakpoints that cannot bind
+- **Data breakpoints** &mdash; break when a value *changes* rather than when a line is reached, which is how you find the one write among many that corrupts a field. Right-click a variable and choose "Break on Value Change"; the stop names the watch and reports the old &rarr; new transition. Write/change only: the watch compares values after each instruction, so a read that leaves the value alone cannot be seen
 - **Debug console completion** &mdash; `completions` suggests the variables visible in the selected frame
 - **Also supported** &mdash; conditional breakpoints, function breakpoints, logpoints, exception breakpoints with `exceptionInfo`, `setVariable`/`setExpression`, `restart`, `terminate`, `modules` and `loadedSources`
 
-Not supported: stepping backwards, data breakpoints, and `goto`/`restartFrame` &mdash; the last two would need the VM's interpreter loop to expose its program counter, which it currently passes to the debugger by value.
+Not supported: stepping backwards, and `goto`/`restartFrame` &mdash; the last two would need the VM's interpreter loop to expose its program counter, which it currently passes to the debugger by value.
 
 ## Architecture
 
