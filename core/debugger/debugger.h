@@ -40,6 +40,7 @@
 #include "parser.h"
 #include "color.h"
 #include <iomanip>
+#include <set>
 #ifdef _WIN32
 #include "windows.h"
 #include <fcntl.h>
@@ -239,6 +240,9 @@ namespace Runtime {
     bool CheckWatches(StackFrame* frame, StackFrame** call_stack, long call_stack_pos);
     // breakpoint helpers
     bool LineHasInstruction(const std::wstring& file_name, int line_num);
+
+    // Every line in a file that carries an instruction, collected in one pass.
+    std::set<int> GetExecutableLines(const std::wstring& file_name);
     int NearestExecutableLine(const std::wstring& file_name, int line_num);
     bool MethodEntryLocation(const std::wstring& cls_name, const std::wstring& mthd_name, std::wstring& out_file, int& out_line);
     void ClearBreaks();
@@ -387,7 +391,6 @@ namespace Runtime {
     // stopping when its value changes.
     int AddDataWatch(const std::wstring& expr_str);
     void ClearDataWatches();
-    bool HasDataWatches() const { return !watches.empty(); }
 
     // Details of the watch that fired most recently, for the DAP stop event.
     const std::wstring& GetLastWatchText() const { return last_watch_text; }

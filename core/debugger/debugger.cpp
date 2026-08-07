@@ -2024,6 +2024,40 @@ static StackProgram* DbgProgram(StackProgram* cur_program, Loader* loader) {
   return loader ? loader->GetProgram() : nullptr;
 }
 
+std::set<int> Runtime::Debugger::GetExecutableLines(const std::wstring& file_name) {
+  std::set<int> lines;
+
+  StackProgram* prog = DbgProgram(cur_program, loader);
+  if(!prog) {
+    return lines;
+  }
+
+  const std::wstring want = DbgBaseName(file_name);
+  StackClass** classes = prog->GetClasses();
+  const long class_num = prog->GetClassNumber();
+  for(long i = 0; i < class_num; ++i) {
+    StackClass* klass = classes[i];
+    if(!klass->IsDebug() || DbgBaseName(klass->GetFileName()) != want) {
+      continue;
+    }
+
+    StackMethod** methods = klass->GetMethods();
+    const int mthd_num = klass->GetMethodCount();
+    for(int m = 0; m < mthd_num; ++m) {
+      StackMethod* method = methods[m];
+      const long instr_num = method->GetInstructionCount();
+      for(long k = 0; k < instr_num; ++k) {
+        const int line_num = method->GetInstruction(k)->GetLineNumber();
+        if(line_num > 0) {
+          lines.insert(line_num);
+        }
+      }
+    }
+  }
+
+  return lines;
+}
+
 bool Runtime::Debugger::LineHasInstruction(const std::wstring& file_name, int line_num) {
   StackProgram* prog = DbgProgram(cur_program, loader);
   if(!prog) {
@@ -2427,7 +2461,7 @@ bool Runtime::Debugger::CheckWatches(StackFrame* frame, StackFrame** call_stack,
     // Record the change for whoever reports the stop. This used to happen only
     // on the CLI print path below, so a DAP client had no way to say which
     // watch fired or what it changed from.
-    if(changed) {
+    if(changed && mode == DebugMode::DAP) {
       std::wostringstream old_val;
       std::wostringstream new_val;
       if(is_float) {
@@ -3140,13 +3174,7 @@ int Runtime::Debugger::AddDataWatch(const std::wstring& expr_str)
     return 0;
   }
 
-  Parser parser;
-  Command* command = parser.Parse(L"?p " + expr_str);
-  if(!command || command->GetCommandType() != PRINT_COMMAND) {
-    return 0;
-  }
-
-  Expression* expression = static_cast<Print*>(command)->GetExpression();
+  Expression* expression = ParseCondition(expr_str);
   if(!expression) {
     return 0;
   }
@@ -3216,14 +3244,11 @@ bool Runtime::Debugger::EvaluateForDapRaw(const std::wstring& expr_str, ParamTyp
     return false;
   }
 
-  Parser parser;
-  Command* command = parser.Parse(L"?p " + expr_str);
-  if(!command || command->GetCommandType() != PRINT_COMMAND) {
+  Expression* expression = ParseCondition(expr_str);
+  if(!expression) {
     return false;
   }
 
-  Print* print = static_cast<Print*>(command);
-  Expression* expression = print->GetExpression();
   is_error = false;
   EvaluateExpression(expression);
   if(is_error) {
