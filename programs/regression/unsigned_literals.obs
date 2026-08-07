@@ -1,0 +1,91 @@
+#~
+Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit
+patterns.
+
+The suffix changes only how a number is scanned -- it reads the literal across
+the whole unsigned range and keeps its bit pattern. The value's type is
+unchanged, so these all produce an ordinary Int.
+
+The hex cases are the ones that used to be wrong: literals past the signed
+maximum were parsed with a signed conversion that saturates, so
+0xFFFFFFFFFFFFFFFF compiled as 9223372036854775807 instead of every bit set,
+and an out-of-range decimal was silently clamped rather than rejected. The
+boundary values below (2^63, 2^64-1) are where that saturation showed up.
+
+Rejection of out-of-range and malformed literals is covered separately by
+bad_int_literal_overflow.obs and bad_unsigned_literal_suffix.obs, since those
+must fail to compile.
+~#
+
+class UnsignedLiterals {
+	function : Main(args : String[]) ~ Nil {
+		passed := 0;
+		failed := 0;
+
+		# --- the suffix on ordinary values ---
+		a := 100u;
+		if(a = 100) { passed += 1; } else { failed += 1; "FAIL: 100u"->PrintLine(); };
+
+		b := 100U;
+		if(b = 100) { passed += 1; } else { failed += 1; "FAIL: 100U (uppercase)"->PrintLine(); };
+
+		c := 0u;
+		if(c = 0) { passed += 1; } else { failed += 1; "FAIL: 0u"->PrintLine(); };
+
+		# underscores are stripped before parsing, suffix and all
+		d := 1_000_000u;
+		if(d = 1000000) { passed += 1; } else { failed += 1; "FAIL: 1_000_000u"->PrintLine(); };
+
+		# --- full-width bit patterns ---
+		# every bit set: as a signed value that is -1
+		e := 0xFFFFFFFFFFFFFFFF;
+		if(e = -1) { passed += 1; } else { failed += 1; "FAIL: 0xFFFFFFFFFFFFFFFF"->PrintLine(); };
+
+		f := 0xFFFFFFFFFFFFFFFFu;
+		if(f = -1) { passed += 1; } else { failed += 1; "FAIL: 0xFFFFFFFFFFFFFFFFu"->PrintLine(); };
+
+		# 2^64-1 in decimal is the same pattern
+		g := 18446744073709551615u;
+		if(g = -1) { passed += 1; } else { failed += 1; "FAIL: 18446744073709551615u"->PrintLine(); };
+
+		# 2^63 exactly: one past the signed maximum, so the sign bit and nothing else
+		h := 9223372036854775808u;
+		if(h = -9223372036854775807 - 1) { passed += 1; } else { failed += 1; "FAIL: 9223372036854775808u"->PrintLine(); };
+
+		# --- signed behavior is unchanged ---
+		i := 9223372036854775807;
+		if(i = 9223372036854775807) { passed += 1; } else { failed += 1; "FAIL: signed maximum"->PrintLine(); };
+
+		j := 0x7FFFFFFFFFFFFFFF;
+		if(j = 9223372036854775807) { passed += 1; } else { failed += 1; "FAIL: 0x7FFFFFFFFFFFFFFF"->PrintLine(); };
+
+		k := -42;
+		if(k = -42) { passed += 1; } else { failed += 1; "FAIL: negative literal"->PrintLine(); };
+
+		# --- binary ---
+		l := 0b1010u;
+		if(l = 10) { passed += 1; } else { failed += 1; "FAIL: 0b1010u"->PrintLine(); };
+
+		m := 0b1010;
+		if(m = 10) { passed += 1; } else { failed += 1; "FAIL: 0b1010"->PrintLine(); };
+
+		# --- the patterns behave as masks ---
+		all_bits := 0xFFFFFFFFFFFFFFFFu;
+		if((all_bits and 0xFF) = 255) { passed += 1; } else { failed += 1; "FAIL: mask low byte"->PrintLine(); };
+
+		low_half := 0x00000000FFFFFFFFu;
+		if((all_bits and low_half) = low_half) { passed += 1; } else { failed += 1; "FAIL: mask low half"->PrintLine(); };
+
+		# a suffixed literal is an ordinary Int, usable in arithmetic
+		n := 100u + 1;
+		if(n = 101) { passed += 1; } else { failed += 1; "FAIL: arithmetic on a suffixed literal"->PrintLine(); };
+
+		if(failed > 0) {
+			"---"->PrintLine();
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"{$passed} passed, 0 failed"->PrintLine();
+	}
+}

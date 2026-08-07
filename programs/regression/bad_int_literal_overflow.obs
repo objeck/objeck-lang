@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR
+#~
+An integer literal past the signed range must be rejected. It used to be
+parsed with a saturating signed conversion whose range error was never
+checked, so this compiled silently as 9223372036854775807.
+~#
+
+class BadIntLiteralOverflow {
+	function : Main(args : String[]) ~ Nil {
+		value := 99999999999999999999;
+		value->PrintLine();
+	}
+}

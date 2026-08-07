@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "scanner.h"
+#include <cerrno>
 #include <random>
 #include <stdexcept>
 
@@ -838,7 +839,16 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   const size_t length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
 
-  if(ident.back() == L'_') {
+  // A 'u' suffix reads the literal across the whole unsigned range and keeps
+  // its bit pattern. The value's type is unchanged -- the suffix affects how
+  // the number is scanned, not what it is.
+  bool is_unsigned = false;
+  if(!ident.empty() && (ident.back() == L'u' || ident.back() == L'U')) {
+    is_unsigned = true;
+    ident.pop_back();
+  }
+
+  if(ident.empty() || ident.back() == L'_') {
     tokens[index]->SetType(TOKEN_UNKNOWN);
   }
   else {
@@ -846,15 +856,23 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
 
     // parse and check for errors
     wchar_t* ending = nullptr;
-    if(base == 2) {
-      tokens[index]->SetInt64Lit(wcstoll(ident.c_str() + 2, &ending, 2));
+    errno = 0;
+
+    // Hex and binary are bit-pattern notation, so they are read as unsigned:
+    // 0xFFFFFFFFFFFFFFFF is every bit set, not a saturated maximum.
+    if(is_unsigned || base == 16 || base == 2) {
+      const unsigned long long value = (base == 2)
+        ? wcstoull(ident.c_str() + 2, &ending, 2)
+        : wcstoull(ident.c_str(), &ending, base);
+      tokens[index]->SetInt64Lit((INT64_VALUE)value);
     }
     else {
       tokens[index]->SetInt64Lit(wcstoll(ident.c_str(), &ending, base));
     }
 
-    // set token
-    if(wcslen(ending)) {
+    // set token. A literal too large for its range used to saturate silently,
+    // so 99999999999999999999 compiled as the signed maximum.
+    if(errno == ERANGE || wcslen(ending)) {
       tokens[index]->SetType(TOKEN_UNKNOWN);
     }
     else {
@@ -1312,11 +1330,23 @@ void Scanner::ParseToken(int index)
           // hex/bin format
           cur_char == L'x' || cur_char == L'X' || (cur_char >= L'a' && cur_char <= L'f') ||
           (cur_char >= L'A' && cur_char <= L'F') ||
+          // unsigned suffix
+          cur_char == L'u' || cur_char == L'U' ||
           // scientific format
-          cur_char == L'e' || cur_char == L'E' || 
+          cur_char == L'e' || cur_char == L'E' ||
           (double_state == 2 && (cur_char == L'+' || cur_char == L'-') && iswdigit(nxt_char)))  {
+      // unsigned suffix: terminates the literal, and is meaningless on a double
+      if(cur_char == L'u' || cur_char == L'U') {
+        if(double_state) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          NextChar();
+          break;
+        }
+        NextChar();
+        break;
+      }
       // decimal double
-      if(cur_char == L'.') {
+      else if(cur_char == L'.') {
         // error
         if(double_state || hex_state || bin_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
