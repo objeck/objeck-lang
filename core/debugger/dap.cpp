@@ -59,7 +59,6 @@ DapAdapter::DapAdapter()
   restart_requested = false;
   break_on_exception = false;
   client_supports_variable_paging = false;
-  client_supports_variable_type = false;
   stopped_frame = nullptr;
   stopped_call_stack = nullptr;
   stopped_call_stack_pos = 0;
@@ -450,7 +449,6 @@ void DapAdapter::HandleInitialize(int request_seq, const json& args)
   // Client capabilities travel on the initialize request; remember the ones
   // that change what we may send back.
   client_supports_variable_paging = args.value("supportsVariablePaging", false);
-  client_supports_variable_type = args.value("supportsVariableType", false);
 
   json capabilities;
   capabilities["supportsConditionalBreakpoints"] = true;
@@ -855,8 +853,7 @@ int DapAdapter::MakeChildRef(ParamType type, size_t raw_value, int depth)
 // a layout change degrades to generic expansion instead of reading garbage.
 bool DapAdapter::FieldIndex(StackClass* klass, const std::wstring& short_name, int fallback_index, int& out_index)
 {
-  StackDclr* dclr;
-  if(FindInstanceField(klass, short_name, dclr, out_index)) {
+  if(FindInstanceField(klass, short_name, out_index)) {
     return true;
   }
 
@@ -869,9 +866,8 @@ bool DapAdapter::FieldIndex(StackClass* klass, const std::wstring& short_name, i
   return false;
 }
 
-bool DapAdapter::FindInstanceField(StackClass* klass, const std::wstring& short_name, StackDclr*& out_dclr, int& out_index)
+bool DapAdapter::FindInstanceField(StackClass* klass, const std::wstring& short_name, int& out_index)
 {
-  out_dclr = nullptr;
   out_index = 0;
 
   if(!klass || short_name.empty()) {
@@ -891,12 +887,12 @@ bool DapAdapter::FindInstanceField(StackClass* klass, const std::wstring& short_
       continue;
     }
 
-    const std::wstring full_name = dclr->name;
+    // Compare against the trailing name without copying it.
+    const std::wstring& full_name = dclr->name;
     const size_t name_index = full_name.find_last_of(L':');
-    const std::wstring leaf = (name_index == std::wstring::npos) ? full_name : full_name.substr(name_index + 1);
+    const size_t leaf_pos = (name_index == std::wstring::npos) ? 0 : name_index + 1;
 
-    if(leaf == short_name) {
-      out_dclr = dclr;
+    if(full_name.compare(leaf_pos, std::wstring::npos, short_name) == 0) {
       out_index = mem_index;
       return true;
     }
@@ -910,6 +906,21 @@ bool DapAdapter::FindInstanceField(StackClass* klass, const std::wstring& short_
   return false;
 }
 
+// Strips the namespace and any generic arguments: "Collection.Vector<...>"
+// becomes "Vector".
+std::wstring DapAdapter::ClassLeafName(StackClass* klass)
+{
+  if(!klass) {
+    return L"";
+  }
+
+  const std::wstring& name = klass->GetName();
+  const std::wstring base = name.substr(0, name.find(L'<'));
+  const size_t dot_index = base.find_last_of(L'.');
+
+  return (dot_index == std::wstring::npos) ? base : base.substr(dot_index + 1);
+}
+
 // Recognizes the standard collections so they can be presented as their
 // contents rather than their internals. Both the class name and the expected
 // fields must match, so a user class called "Map" is not misread.
@@ -919,11 +930,7 @@ int DapAdapter::CollectionKind(StackClass* klass)
     return VAR_OBJECT;
   }
 
-  // Generic classes may be named "Collection.Vector<...>"; compare the base.
-  const std::wstring name = klass->GetName();
-  const std::wstring base = name.substr(0, name.find(L'<'));
-  const size_t dot_index = base.find_last_of(L'.');
-  const std::wstring leaf = (dot_index == std::wstring::npos) ? base : base.substr(dot_index + 1);
+  const std::wstring leaf = ClassLeafName(klass);
 
   // Library classes carry no declaration names, so the class name plus a
   // plausible field count is all there is to match on.
@@ -942,28 +949,37 @@ int DapAdapter::CollectionKind(StackClass* klass)
   return VAR_OBJECT;
 }
 
+// Element count of a recognized collection. @size sits at slot 1 in Vector and
+// Hash, slot 2 in Map -- the one place that mapping is written down.
+bool DapAdapter::CollectionSize(StackClass* klass, size_t* obj, long& out_size)
+{
+  out_size = 0;
+
+  const int kind = CollectionKind(klass);
+  if(kind == VAR_OBJECT || !obj) {
+    return false;
+  }
+
+  int size_index;
+  if(!FieldIndex(klass, L"@size", kind == VAR_MAP ? 2 : 1, size_index)) {
+    return false;
+  }
+
+  out_size = (long)obj[size_index];
+  return true;
+}
+
 // "Vector(size=3)" instead of "Collection.Vector@0x1f4a2c0". Empty when the
 // class is not a recognized collection.
 std::string DapAdapter::CollectionSummary(StackClass* klass, size_t* obj)
 {
-  const int kind = CollectionKind(klass);
-  if(kind == VAR_OBJECT || !obj) {
+  long size;
+  if(!CollectionSize(klass, obj, size)) {
     return "";
   }
-
-  // @size sits at slot 1 in Vector and Hash, slot 2 in Map.
-  int size_index;
-  if(!FieldIndex(klass, L"@size", kind == VAR_MAP ? 2 : 1, size_index)) {
-    return "";
-  }
-
-  const std::wstring name = klass->GetName();
-  const std::wstring base = name.substr(0, name.find(L'<'));
-  const size_t dot_index = base.find_last_of(L'.');
-  const std::wstring leaf = (dot_index == std::wstring::npos) ? base : base.substr(dot_index + 1);
 
   std::ostringstream oss;
-  oss << UnicodeToBytes(leaf) << "(size=" << (long)obj[size_index] << ')';
+  oss << UnicodeToBytes(ClassLeafName(klass)) << "(size=" << size << ')';
   return oss.str();
 }
 
@@ -975,7 +991,7 @@ bool DapAdapter::IsLeafObject(StackClass* klass)
     return false;
   }
 
-  const std::wstring name = klass->GetName();
+  const std::wstring& name = klass->GetName();
   return name == L"System.String" || name == L"System.IntRef" || name == L"System.BoolRef" ||
          name == L"System.CharRef" || name == L"System.ByteRef" || name == L"System.FloatRef";
 }
@@ -989,7 +1005,7 @@ std::string DapAdapter::DescribeObject(size_t* obj, StackClass* klass)
     return "";
   }
 
-  const std::wstring class_name = klass->GetName();
+  const std::wstring& class_name = klass->GetName();
 
   // A String keeps its Char[] in the first slot; the array stores its length
   // at [2] with the characters packed from [3].
@@ -1062,15 +1078,10 @@ int DapAdapter::IndexedChildCount(ParamType type, size_t raw_value)
     if(!klass || IsLeafObject(klass)) {
       return 0;
     }
-    const int kind = CollectionKind(klass);
-    if(kind == VAR_OBJECT) {
+    long size;
+    if(!CollectionSize(klass, (size_t*)raw_value, size)) {
       return 0;
     }
-    int size_index;
-    if(!FieldIndex(klass, L"@size", kind == VAR_MAP ? 2 : 1, size_index)) {
-      return 0;
-    }
-    const long size = (long)((size_t*)raw_value)[size_index];
     return size > 0 ? (int)size : 0;
   }
 
@@ -1091,6 +1102,18 @@ void DapAdapter::AnnotateChildCount(json& var, ParamType type, size_t raw_value)
   }
 }
 
+// Formats a raw slot of a known type. FormatVariableValue is declaration-driven,
+// so the synthetic declaration lives here rather than at each call site.
+std::string DapAdapter::FormatSlot(ParamType type, size_t* mem, int index)
+{
+  StackDclr dclr;
+  dclr.name = L"";
+  dclr.type = type;
+  dclr.id = 0;
+
+  return FormatVariableValue(dclr, mem, index);
+}
+
 // Builds one child entry, giving it its own handle when it is expandable.
 json DapAdapter::MakeChildVariable(const std::string& name, ParamType type, size_t* mem, int index, int depth)
 {
@@ -1107,6 +1130,36 @@ json DapAdapter::MakeChildVariable(const std::string& name, ParamType type, size
   AnnotateChildCount(var, type, mem[index]);
 
   return var;
+}
+
+// Decodes an array header: [0] is the element count, [1] the dimension count,
+// then one size per dimension, then the elements.
+bool DapAdapter::ArrayBody(size_t* array, long& out_count, size_t*& out_data)
+{
+  out_count = 0;
+  out_data = nullptr;
+
+  if(!array) {
+    return false;
+  }
+
+  const long size = (long)array[0];
+  const long dim = (long)array[1];
+  if(size < 0 || dim < 1 || dim > 8) {
+    return false;
+  }
+
+  out_count = size;
+  out_data = array + 2 + dim;
+
+  return true;
+}
+
+// "[7]" -- building an ostringstream per element was the bulk of the cost of
+// rendering a large array.
+std::string DapAdapter::ElementName(long index)
+{
+  return "[" + std::to_string(index) + "]";
 }
 
 void DapAdapter::ExpandObjectFields(size_t* obj_mem, StackClass* klass, int depth, json& variables)
@@ -1148,15 +1201,9 @@ void DapAdapter::ExpandObjectFields(size_t* obj_mem, StackClass* klass, int dept
 
 void DapAdapter::ExpandArrayElements(size_t* array, int elem_type, int depth, json& variables)
 {
-  if(!array) {
-    return;
-  }
-
-  // Layout: [0]=total size, [1]=dimension count, [2..]=per-dimension sizes,
-  // elements start after the header.
-  const long size = (long)array[0];
-  const long dim = (long)array[1];
-  if(size < 0 || dim < 1 || dim > 8) {
+  long size;
+  size_t* data;
+  if(!ArrayBody(array, size, data)) {
     return;
   }
 
@@ -1178,13 +1225,10 @@ void DapAdapter::ExpandArrayElements(size_t* array, int elem_type, int depth, js
     return;
   }
 
-  size_t* data = array + 2 + dim;
   const long shown = size < MAX_CHILDREN ? size : MAX_CHILDREN;
 
   for(long i = 0; i < shown; ++i) {
-    std::ostringstream name;
-    name << '[' << i << ']';
-    variables.push_back(MakeChildVariable(name.str(), element_type, data, (int)i, depth));
+    variables.push_back(MakeChildVariable(ElementName(i), element_type, data, (int)i, depth));
   }
 
   if(size > shown) {
@@ -1218,22 +1262,19 @@ void DapAdapter::ExpandVector(size_t* obj, StackClass* klass, int depth, json& v
 
   // The backing array is usually larger than the vector; only report the
   // elements actually in use.
-  const long capacity = (long)values[0];
-  const long dim = (long)values[1];
-  if(dim < 1 || dim > 8) {
+  long capacity;
+  size_t* data;
+  if(!ArrayBody(values, capacity, data)) {
     return;
   }
 
-  size_t* data = values + 2 + dim;
   long shown = size < capacity ? size : capacity;
   if(shown > MAX_CHILDREN) {
     shown = MAX_CHILDREN;
   }
 
   for(long i = 0; i < shown; ++i) {
-    std::ostringstream name;
-    name << '[' << i << ']';
-    variables.push_back(MakeChildVariable(name.str(), OBJ_PARM, data, (int)i, depth));
+    variables.push_back(MakeChildVariable(ElementName(i), OBJ_PARM, data, (int)i, depth));
   }
 }
 
@@ -1266,13 +1307,7 @@ void DapAdapter::WalkTreeNode(size_t* node, int depth, json& variables, int& cou
   WalkTreeNode((size_t*)node[left_index], depth + 1, variables, count);
 
   if(count < MAX_CHILDREN) {
-    StackDclr key_type;
-    key_type.name = L"";
-    key_type.type = OBJ_PARM;
-    key_type.id = 0;
-
-    json var = MakeChildVariable(FormatVariableValue(key_type, node, key_index), OBJ_PARM, node, value_index, depth);
-    variables.push_back(var);
+    variables.push_back(MakeChildVariable(FormatSlot(OBJ_PARM, node, key_index), OBJ_PARM, node, value_index, depth));
     count++;
   }
 
@@ -1308,13 +1343,11 @@ void DapAdapter::ExpandHash(size_t* obj, StackClass* klass, int depth, json& var
     return;
   }
 
-  const long bucket_count = (long)buckets[0];
-  const long dim = (long)buckets[1];
-  if(bucket_count <= 0 || dim < 1 || dim > 8) {
+  long bucket_count;
+  size_t* bucket_data;
+  if(!ArrayBody(buckets, bucket_count, bucket_data)) {
     return;
   }
-
-  size_t* bucket_data = buckets + 2 + dim;
 
   // Each occupied bucket holds a CompareList whose nodes carry a HashPair.
   for(long i = 0; i < bucket_count && (int)variables.size() < MAX_CHILDREN; ++i) {
@@ -1352,12 +1385,7 @@ void DapAdapter::ExpandHash(size_t* obj, StackClass* klass, int depth, json& var
         if(pair_class &&
            FieldIndex(pair_class, L"@key", 0, pair_key_index) &&
            FieldIndex(pair_class, L"@value", 1, pair_value_index)) {
-          StackDclr key_type;
-          key_type.name = L"";
-          key_type.type = OBJ_PARM;
-          key_type.id = 0;
-
-          variables.push_back(MakeChildVariable(FormatVariableValue(key_type, pair, pair_key_index),
+          variables.push_back(MakeChildVariable(FormatSlot(OBJ_PARM, pair, pair_key_index),
                                                 OBJ_PARM, pair, pair_value_index, depth));
         }
       }
@@ -1574,68 +1602,46 @@ void DapAdapter::HandleVariables(int request_seq, const json& args)
   SendResponse(request_seq, "variables", body);
 }
 
+// Every resume clears the expansion handles: they hold raw object pointers and
+// the collector moves objects, so none may outlive the stop that produced them.
+void DapAdapter::Resume(bool into, bool over, bool out)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  step_into_requested = into;
+  step_over_requested = over;
+  step_out_requested = out;
+  resume_requested = true;
+  is_stopped = false;
+  ClearVarHandles();
+  cv.notify_all();
+}
+
 void DapAdapter::HandleContinue(int request_seq, const json& args)
 {
   SendResponse(request_seq, "continue", {{"allThreadsContinued", true}});
 
-  std::lock_guard<std::mutex> lock(mtx);
-  step_into_requested = false;
-  step_over_requested = false;
-  step_out_requested = false;
-  resume_requested = true;
-  is_stopped = false;
-  // Expansion handles hold raw object pointers and the collector moves
-  // objects, so none may survive the resume that invalidates them.
-  ClearVarHandles();
-  cv.notify_all();
+  Resume(false, false, false);
 }
 
 void DapAdapter::HandleNext(int request_seq, const json& args)
 {
   SendResponse(request_seq, "next");
 
-  std::lock_guard<std::mutex> lock(mtx);
-  step_into_requested = false;
-  step_over_requested = true;
-  step_out_requested = false;
-  resume_requested = true;
-  is_stopped = false;
-  // Expansion handles hold raw object pointers and the collector moves
-  // objects, so none may survive the resume that invalidates them.
-  ClearVarHandles();
-  cv.notify_all();
+  Resume(false, true, false);
 }
 
 void DapAdapter::HandleStepIn(int request_seq, const json& args)
 {
   SendResponse(request_seq, "stepIn");
 
-  std::lock_guard<std::mutex> lock(mtx);
-  step_into_requested = true;
-  step_over_requested = false;
-  step_out_requested = false;
-  resume_requested = true;
-  is_stopped = false;
-  // Expansion handles hold raw object pointers and the collector moves
-  // objects, so none may survive the resume that invalidates them.
-  ClearVarHandles();
-  cv.notify_all();
+  Resume(true, false, false);
 }
 
 void DapAdapter::HandleStepOut(int request_seq, const json& args)
 {
   SendResponse(request_seq, "stepOut");
 
-  std::lock_guard<std::mutex> lock(mtx);
-  step_into_requested = false;
-  step_over_requested = false;
-  step_out_requested = true;
-  resume_requested = true;
-  is_stopped = false;
-  // Expansion handles hold raw object pointers and the collector moves
-  // objects, so none may survive the resume that invalidates them.
-  ClearVarHandles();
-  cv.notify_all();
+  Resume(false, false, true);
 }
 
 void DapAdapter::HandlePause(int request_seq, const json& args)
@@ -1672,6 +1678,7 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
 
   // Use the debugger's expression evaluator
   std::wstring wexpr = BytesToUnicode(expression);
+  std::wstring resolved = wexpr;
   std::wstring result = debugger->EvaluateForDap(wexpr);
 
   // For hover: if lookup failed and name doesn't start with '@',
@@ -1681,17 +1688,22 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
     std::wstring retry_result = debugger->EvaluateForDap(retry);
     if(retry_result != L"<error>") {
       result = retry_result;
+      resolved = retry;
     }
   }
 
   // Hand back an expandable reference when the expression resolves to an
   // object or array, so watch and hover results drill down like the
-  // Variables pane rather than dead-ending on a summary line.
+  // Variables pane rather than dead-ending on a summary line. Skip it when the
+  // value could not be read at all, and resolve the same text that produced
+  // the result above -- the '@' retry may have been the one that worked.
   int child_ref = 0;
-  ParamType raw_type;
-  size_t raw_value;
-  if(debugger->EvaluateForDapRaw(wexpr, raw_type, raw_value)) {
-    child_ref = MakeChildRef(raw_type, raw_value, 0);
+  if(result != L"<error>") {
+    ParamType raw_type;
+    size_t raw_value;
+    if(debugger->EvaluateForDapRaw(resolved, raw_type, raw_value)) {
+      child_ref = MakeChildRef(raw_type, raw_value, 0);
+    }
   }
 
   json body;
@@ -1938,10 +1950,18 @@ void DapAdapter::HandleBreakpointLocations(int request_seq, const json& args)
     // itself does not exist before launch -- so stay permissive rather than
     // tell the editor that none of the file is breakpointable.
     const bool can_validate = is_launched && debugger;
+
+    // One pass over the file's instructions; asking per line walked every
+    // class and method in the program again for each of up to 1000 lines.
+    std::set<int> executable;
+    if(can_validate) {
+      executable = debugger->GetExecutableLines(wfile_name);
+    }
+
     for(int line = start_line; line <= end_line && line - start_line < 1000; ++line) {
       // Otherwise report only lines that actually carry an instruction, so
       // the client never offers a breakpoint that could not bind.
-      if(!can_validate || debugger->LineHasInstruction(wfile_name, line)) {
+      if(!can_validate || executable.count(line)) {
         json location;
         location["line"] = line;
         locations.push_back(location);

@@ -86,7 +86,6 @@ namespace Runtime {
 
     // Declared by the client on the initialize request.
     bool client_supports_variable_paging;
-    bool client_supports_variable_type;
 
     // Captured state at breakpoint
     int stopped_line;
@@ -147,6 +146,7 @@ namespace Runtime {
     void HandleStackTrace(int seq, const json& args);
     void HandleScopes(int seq, const json& args);
     void HandleVariables(int seq, const json& args);
+    void Resume(bool into, bool over, bool out);
     void HandleContinue(int seq, const json& args);
     void HandleNext(int seq, const json& args);
     void HandleStepIn(int seq, const json& args);
@@ -185,12 +185,17 @@ namespace Runtime {
     void ClearVarHandles();
     int AllocVarHandle(int kind, size_t* ptr, StackClass* klass, int elem_type, int depth);
     int MakeChildRef(ParamType type, size_t raw_value, int depth);
-    bool FindInstanceField(StackClass* klass, const std::wstring& short_name, StackDclr*& out_dclr, int& out_index);
+    bool FindInstanceField(StackClass* klass, const std::wstring& short_name, int& out_index);
     bool FieldIndex(StackClass* klass, const std::wstring& short_name, int fallback_index, int& out_index);
     std::string DescribeObject(size_t* obj, StackClass* klass);
     bool IsLeafObject(StackClass* klass);
     std::string ShortDeclarationName(const std::wstring& full_name);
+    std::wstring ClassLeafName(StackClass* klass);
     int CollectionKind(StackClass* klass);
+    bool CollectionSize(StackClass* klass, size_t* obj, long& out_size);
+    bool ArrayBody(size_t* array, long& out_count, size_t*& out_data);
+    std::string ElementName(long index);
+    std::string FormatSlot(ParamType type, size_t* mem, int index);
     std::string CollectionSummary(StackClass* klass, size_t* obj);
     json MakeChildVariable(const std::string& name, ParamType type, size_t* mem, int index, int depth);
     int IndexedChildCount(ParamType type, size_t raw_value);

@@ -508,6 +508,55 @@ def main():
         log_result("declaration at a bare '??' use jumps to the declaration",
                    decl_line == b_decl_line, f"got: {decl}")
 
+        # rename a receiver used by method-call STATEMENTS on a generic
+        # collection. Reported against programs/tests/prgm99.obs: renaming the
+        # declaration updated the declaration and the trailing Each() call but
+        # left the three Insert() statements on the old name, so the rename
+        # produced source that no longer compiles.
+        #
+        # Both classes in the fixture are identical apart from boxing: the
+        # IntRef-keyed map boxes its int literal arguments, the String-keyed one
+        # does not. Asserting them separately says WHICH layer is wrong rather
+        # than just that something is.
+        gm_obs = os.path.join(TESTS_DIR, "test_generic_map.obs")
+        with open(gm_obs, encoding="utf-8") as f:
+            gm_text = f.read()
+        gm_uri = path_to_uri(gm_obs)
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": gm_uri, "languageId": "objeck", "version": 1,
+            "text": gm_text}})
+        c.diagnostics_for(gm_uri, timeout=60)
+
+        # 5 occurrences each: declaration + 3 Insert receivers + 1 Each receiver
+        for var, needle, note in (("boxed", "boxed := Map", "boxed (IntRef keys)"),
+                                  ("plain", "plain := Map", "plain (String keys)")):
+            decl_pos = position_in(gm_text, gm_uri, needle)
+            ren = result_of(c.request("textDocument/rename",
+                                      dict(decl_pos, newName="renamed")))
+            edits = (ren or {}).get("documentChanges", [{}])[0].get("edits", [])
+            lines = sorted({e["range"]["start"]["line"] for e in edits})
+            log_result(f"rename edits every receiver — {note}",
+                       len(edits) == 5,
+                       f"got {len(edits)} edits on lines {lines}; "
+                       f"missing Insert receivers leaves uncompilable source")
+
+        # renaming from a USE (an Insert receiver) must reach the declaration
+        # and the siblings too, not just the line under the cursor
+        use_pos = position_in(gm_text, gm_uri, "boxed->Insert(3")
+        ren = result_of(c.request("textDocument/rename",
+                                  dict(use_pos, newName="renamed")))
+        edits = (ren or {}).get("documentChanges", [{}])[0].get("edits", [])
+        log_result("rename from an Insert receiver edits all 5 occurrences",
+                   len(edits) == 5, f"got {len(edits)} edits")
+
+        # references must agree with rename — they share GetExpressionsCalls(),
+        # so a miss in one is a miss in the other
+        refs = result_of(c.request("textDocument/references", dict(
+            position_in(gm_text, gm_uri, "boxed := Map"),
+            context={"includeDeclaration": True}))) or []
+        log_result("references finds the same 5 occurrences rename does",
+                   len(refs) == 5, f"got {len(refs)}")
+
         # chained user-defined call: LocateExpression's chain descent must
         # resolve the SECOND call's method name (plain chains, not just nil-safe)
         chain_pos = position_in(ns_text, ns_uri, "Get();", 1, 1)

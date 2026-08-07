@@ -843,12 +843,12 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   // its bit pattern. The value's type is unchanged -- the suffix affects how
   // the number is scanned, not what it is.
   bool is_unsigned = false;
-  if(!ident.empty() && (ident.back() == L'u' || ident.back() == L'U')) {
+  if(ident.back() == L'u' || ident.back() == L'U') {
     is_unsigned = true;
     ident.pop_back();
   }
 
-  if(ident.empty() || ident.back() == L'_') {
+  if(ident.back() == L'_') {
     tokens[index]->SetType(TOKEN_UNKNOWN);
   }
   else {
@@ -872,7 +872,7 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
 
     // set token. A literal too large for its range used to saturate silently,
     // so 99999999999999999999 compiled as the signed maximum.
-    if(errno == ERANGE || wcslen(ending)) {
+    if(errno == ERANGE || *ending) {
       tokens[index]->SetType(TOKEN_UNKNOWN);
     }
     else {
@@ -1339,8 +1339,6 @@ void Scanner::ParseToken(int index)
       if(cur_char == L'u' || cur_char == L'U') {
         if(double_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
-          NextChar();
-          break;
         }
         NextChar();
         break;

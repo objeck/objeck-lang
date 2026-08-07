@@ -1396,7 +1396,21 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     capture_method = current_method;
     capture_table = current_table;
 
+#ifdef _DIAG_LIB
+    // AnalyzeMethod clears diagnostic_expressions on entry and hands the list
+    // to whichever method it is analyzing. Analyzing a lambda body re-enters
+    // it, so without this the enclosing method loses every expression recorded
+    // before the lambda -- go-to-definition, references and rename then miss
+    // those statements. current_method is already saved and restored here; the
+    // expression list needs the same treatment.
+    std::vector<Expression*> capture_expressions = diagnostic_expressions;
+#endif
+
     AnalyzeMethod(method, depth + 1);
+
+#ifdef _DIAG_LIB
+    diagnostic_expressions = capture_expressions;
+#endif
 
     current_table = capture_table;
     capture_table = nullptr;
