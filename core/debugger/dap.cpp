@@ -1007,15 +1007,24 @@ std::string DapAdapter::DescribeObject(size_t* obj, StackClass* klass)
 
   const std::wstring& class_name = klass->GetName();
 
-  // A String keeps its Char[] in the first slot; the array stores its length
-  // at [2] with the characters packed from [3].
+  // A String keeps its Char[] in the first slot, with the characters packed
+  // from [3]. That array is a capacity buffer -- String allocates 8 cells up
+  // front and grows -- so its dimension size at [2] counts allocated cells,
+  // not characters. The text length lives on the String itself, in @pos.
+  // Reading the array's size instead yields the text followed by the unused
+  // cells as NULs, which is invisible wherever the value is printed as a
+  // NUL-terminated string but not where it is read with an explicit length.
   if(class_name == L"System.String") {
     size_t* char_array = (size_t*)obj[0];
     if(!char_array) {
       return "\"\"";
     }
 
-    const size_t len = char_array[2];
+    const size_t capacity = char_array[2];
+    size_t len = obj[2];
+    if(len > capacity) {
+      len = capacity;
+    }
     const wchar_t* chars = (const wchar_t*)(char_array + 3);
     std::wstring text(chars, len < 256 ? len : 256);
 

@@ -27,8 +27,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 PLATFORM = os.environ.get("DAP_TEST_PLATFORM", "x64")
 
+# A runner that already knows the deploy tree passes it down rather than
+# letting each test guess; the probe below is the fallback for a direct run.
 DEPLOY_DIR = None
 for candidate in [
+    os.path.abspath(p) for p in [os.environ.get("DAP_TEST_DEPLOY_DIR")] if p
+] + [
     os.path.join(REPO_ROOT, "core", "release", f"deploy-{PLATFORM}"),
     os.path.join(REPO_ROOT, "core", "release", "deploy"),
 ]:
