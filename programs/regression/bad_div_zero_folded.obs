@@ -1,0 +1,23 @@
+# EXPECT_RUNTIME_ERROR
+#~
+A constant division by zero must still trap at runtime, at every optimization
+level.
+
+The constant folder's zero-divisor guard kept the DIV instruction but emitted
+it BEFORE flushing its literal operands out of the fold's working stack, so at
+default optimization the division executed against an empty stack: exit 127
+with no output instead of the clean ">>> Divide by zero <<<" trap that -opt s0
+produced. Silent behavior difference between optimization levels.
+
+The harness passes this only on a non-zero exit WITH output -- which is
+precisely the trap-versus-silent-crash distinction.
+~#
+
+class DivZeroFolded {
+	function : Main(args : String[]) ~ Nil {
+		# folds to constants; the nested form exercises operand ordering when
+		# the guard bails out with literals still pending on the fold stack
+		x := 1 + 6 / 0;
+		x->PrintLine();
+	}
+}

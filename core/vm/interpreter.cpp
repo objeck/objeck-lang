@@ -977,6 +977,21 @@ void StackInterpreter::ModInt(size_t* &op_stack, size_t* &stack_pos)
   const size_t sp = *stack_pos;  // Cache stack position locally
   const INT64_VALUE left = static_cast<INT64_VALUE>(op_stack[sp - 1]);
   const INT64_VALUE right = static_cast<INT64_VALUE>(op_stack[sp - 2]);
+  // modulus by zero raises the same hardware fault division does; without
+  // this guard it died silently instead of trapping like DivInt
+  if(right == 0) [[unlikely]] {
+    if(TryErrorRecovery(stack_pos)) {
+      return;
+    }
+    std::wcerr << L">>> Divide by zero <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    exit(1);
+#endif
+  }
   op_stack[sp - 2] = left % right;
   *stack_pos = sp - 1;
 }
