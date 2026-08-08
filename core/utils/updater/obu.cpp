@@ -50,6 +50,9 @@
 #define OBU_PCLOSE _pclose
 #include <windows.h>
 #else
+#include <cerrno>
+#include <fcntl.h>
+#include <sys/file.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #define OBU_POPEN popen
@@ -513,40 +516,122 @@ static fs::path ExecutableDir()
 // as ordinary configuration.
 static fs::path InstallRoot()
 {
+#ifdef OBU_TEST_HOOKS
   if(const char* override_root = std::getenv("OBU_INSTALL_ROOT")) {
     return fs::path(override_root);
   }
+#endif
   const fs::path bin = ExecutableDir();
   return bin.empty() ? fs::path() : bin.parent_path();
 }
 
+#if OBU_UPDATE_SUPPORTED
 /****************************
-* Runs a command, returning its exit code (127 if it could not be launched).
-* Used only for curl, tar and the post-install obr/obc smoke test; every path
-* argument is a std::filesystem path we constructed, quoted here.
+* Runs a program with an explicit argument vector -- NO shell. Nothing in
+* args is ever interpreted, so an asset name or install path carrying shell
+* metacharacters (`$(...)`, backticks, quotes) is inert. This is the whole
+* defense against command injection from an attacker-controlled release, and
+* it is why obu never builds a command string for curl/tar/obr.
+* Returns the child exit code, or 127 if it could not be launched.
 ****************************/
-static int RunCommand(const std::string& command)
+static int RunArgv(const std::vector<std::string>& args, bool quiet)
 {
-  const int status = std::system(command.c_str());
-  if(status == -1) {
+  std::vector<char*> argv;
+  argv.reserve(args.size() + 1);
+  for(const std::string& a : args) {
+    argv.push_back(const_cast<char*>(a.c_str()));
+  }
+  argv.push_back(nullptr);
+
+  const pid_t pid = fork();
+  if(pid < 0) {
     return 127;
   }
-#ifdef _WIN32
-  return status;
-#else
+  if(pid == 0) {
+    if(quiet) {
+      const int devnull = open("/dev/null", O_WRONLY);
+      if(devnull >= 0) {
+        dup2(devnull, STDOUT_FILENO);
+        dup2(devnull, STDERR_FILENO);
+        close(devnull);
+      }
+    }
+    execvp(argv[0], argv.data());
+    _exit(127);
+  }
+
+  int status = 0;
+  while(waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+    /* retry */
+  }
   return WIFEXITED(status) ? WEXITSTATUS(status) : 127;
-#endif
 }
 
-static std::string QuotePath(const fs::path& path)
+/****************************
+* Runs a program and captures its stdout (used to list a tarball's members
+* before extracting). No shell. Returns false if it could not be launched.
+****************************/
+static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out)
 {
-  // paths here are ours (under the install root or a temp dir); wrap in quotes
-  // so spaces survive and reject any that contain a double quote outright
-  std::string s = path.string();
-  if(s.find('"') != std::string::npos) {
-    return "";
+  out.clear();
+  int pipe_fds[2];
+  if(pipe(pipe_fds) != 0) {
+    return false;
   }
-  return '"' + s + '"';
+
+  std::vector<char*> argv;
+  argv.reserve(args.size() + 1);
+  for(const std::string& a : args) {
+    argv.push_back(const_cast<char*>(a.c_str()));
+  }
+  argv.push_back(nullptr);
+
+  const pid_t pid = fork();
+  if(pid < 0) {
+    close(pipe_fds[0]);
+    close(pipe_fds[1]);
+    return false;
+  }
+  if(pid == 0) {
+    close(pipe_fds[0]);
+    dup2(pipe_fds[1], STDOUT_FILENO);
+    close(pipe_fds[1]);
+    execvp(argv[0], argv.data());
+    _exit(127);
+  }
+
+  close(pipe_fds[1]);
+  char buffer[4096];
+  ssize_t got;
+  while((got = read(pipe_fds[0], buffer, sizeof(buffer))) > 0) {
+    out.append(buffer, static_cast<size_t>(got));
+  }
+  close(pipe_fds[0]);
+
+  int status = 0;
+  while(waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+    /* retry */
+  }
+  return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+#endif
+
+/****************************
+* A release asset name must be a plain filename over a strict allowlist. This
+* is defense-in-depth on top of the no-shell argv execution: the name is used
+* to match a SHA256SUMS line and in messages, never in a command line.
+****************************/
+static bool IsSafeAssetName(const std::string& name)
+{
+  if(name.empty() || name.size() > 128 || name.front() == '.') {
+    return false;
+  }
+  for(const char c : name) {
+    if(!std::isalnum(static_cast<unsigned char>(c)) && c != '.' && c != '_' && c != '-') {
+      return false;
+    }
+  }
+  return name.find("..") == std::string::npos;
 }
 
 /****************************
@@ -555,6 +640,7 @@ static std::string QuotePath(const fs::path& path)
 ****************************/
 static bool FetchReleaseJson(const std::string& channel, bool is_quiet, std::string& json, std::string& error)
 {
+#ifdef OBU_TEST_HOOKS
   if(const char* json_file = std::getenv("OBU_RELEASE_JSON_FILE")) {
     std::ifstream in(json_file, std::ios::binary);
     if(!in) {
@@ -564,6 +650,7 @@ static bool FetchReleaseJson(const std::string& channel, bool is_quiet, std::str
     json.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     return true;
   }
+#endif
 
   std::string url = RELEASES_API_BASE;
   if(channel.empty()) {
@@ -651,6 +738,7 @@ static bool ExtractAssetUrl(const std::string& json, const std::string& prefix,
 static bool DownloadAsset(const std::string& url, const std::string& name,
                           const fs::path& dest, bool is_quiet, std::string& error)
 {
+#ifdef OBU_TEST_HOOKS
   if(const char* asset_dir = std::getenv("OBU_ASSET_DIR")) {
     std::error_code ec;
     fs::copy_file(fs::path(asset_dir) / name, dest, fs::copy_options::overwrite_existing, ec);
@@ -660,21 +748,21 @@ static bool DownloadAsset(const std::string& url, const std::string& name,
     }
     return true;
   }
+#endif
+  (void)name;   // used only by the offline copy path above
 
-  const std::string qdest = QuotePath(dest);
-  if(qdest.empty()) {
-    error = "Refusing an unsafe download path";
-    return false;
-  }
-  std::string command = "curl -fsSL --max-time 300 -o " + qdest + " \"" + url + '"';
-  if(is_quiet) {
-    command += " 2>/dev/null";
-  }
-  if(RunCommand(command) != 0) {
+#if OBU_UPDATE_SUPPORTED
+  // argv, not a command string: the url and dest are passed literally to curl
+  if(RunArgv({"curl", "-fsSL", "--max-time", "300", "-o", dest.string(), url}, is_quiet) != 0) {
     error = "Download failed: " + url;
     return false;
   }
   return true;
+#else
+  (void)url; (void)dest; (void)is_quiet;
+  error = "Download is not supported on this platform";
+  return false;
+#endif
 }
 
 /****************************
@@ -687,9 +775,10 @@ static bool ExpectedHash(const std::string& sums, const std::string& name, std::
   while(pos < sums.size()) {
     size_t eol = sums.find('\n', pos);
     if(eol == std::string::npos) { eol = sums.size(); }
-    const std::string line = sums.substr(pos, eol - pos);
+    std::string line = sums.substr(pos, eol - pos);
     pos = eol + 1;
 
+    if(!line.empty() && line.back() == '\r') { line.pop_back(); }   // tolerate CRLF
     const size_t sp = line.find(' ');
     if(sp == std::string::npos || sp != 64) { continue; }
     const std::string file = line.substr(line.find_last_of(' ') + 1);
@@ -716,19 +805,46 @@ static bool IsObuWorkDir(const std::string& name)
 static bool MoveTreeEntries(const fs::path& from, const fs::path& to, std::string& error)
 {
   std::error_code ec;
+  // snapshot the entries first: renaming out of a directory while iterating it
+  // is unspecified, and the throwing operator++ could otherwise abort mid-swap
+  std::vector<fs::path> entries;
+  for(fs::directory_iterator it(from, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
+    entries.push_back(it->path());
+  }
+  if(ec) {
+    error = "Unable to read '" + from.string() + "': " + ec.message();
+    return false;
+  }
+
   fs::create_directories(to, ec);
-  for(const auto& entry : fs::directory_iterator(from, ec)) {
-    const std::string name = entry.path().filename().string();
+  for(const fs::path& path : entries) {
+    const std::string name = path.filename().string();
     if(IsObuWorkDir(name)) {
       continue;
     }
-    fs::rename(entry.path(), to / name, ec);
+    fs::rename(path, to / name, ec);
     if(ec) {
       error = "Unable to move '" + name + "': " + ec.message();
       return false;
     }
   }
-  return !ec;
+  return true;
+}
+
+// Removes every managed entry directly (used to clear partial content during
+// an unwind). Snapshots first, ignores per-entry errors -- best effort.
+static void RemoveManagedEntries(const fs::path& root)
+{
+  std::error_code ec;
+  std::vector<fs::path> entries;
+  for(fs::directory_iterator it(root, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
+    entries.push_back(it->path());
+  }
+  for(const fs::path& path : entries) {
+    if(!IsObuWorkDir(path.filename().string())) {
+      fs::remove_all(path, ec);
+    }
+  }
 }
 
 /****************************
@@ -743,9 +859,9 @@ static fs::path DetectPayloadRoot(const fs::path& staging)
   }
   fs::path only;
   int dirs = 0;
-  for(const auto& entry : fs::directory_iterator(staging, ec)) {
-    if(entry.is_directory()) {
-      only = entry.path();
+  for(fs::directory_iterator it(staging, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
+    if(it->is_directory(ec)) {
+      only = it->path();
       ++dirs;
     }
   }
@@ -754,6 +870,49 @@ static fs::path DetectPayloadRoot(const fs::path& staging)
   }
   return fs::path();
 }
+
+#if OBU_UPDATE_SUPPORTED
+/****************************
+* An exclusive lock held for the whole of update/rollback, so two obu
+* processes cannot corrupt each other's staging and backup directories.
+* Returns the held fd (>= 0) or -1 if another obu holds it.
+****************************/
+static int AcquireLock(const fs::path& root)
+{
+  const std::string lock_path = (root / ".obu.lock").string();
+  const int fd = open(lock_path.c_str(), O_CREAT | O_RDWR, 0600);
+  if(fd < 0) {
+    return -1;
+  }
+  if(flock(fd, LOCK_EX | LOCK_NB) != 0) {
+    close(fd);
+    return -1;
+  }
+  return fd;
+}
+
+/****************************
+* If a previous run died mid-swap -- current tree archived to .previous but the
+* new payload not yet installed -- root is left without bin/. Detect that and
+* complete the interrupted rollback so the install is never left unusable.
+****************************/
+static bool RecoverInterruptedSwap(const fs::path& root, bool is_quiet)
+{
+  std::error_code ec;
+  const fs::path previous = root / ".previous";
+  if(fs::exists(root / "bin", ec) || !fs::exists(previous / "bin", ec)) {
+    return false;
+  }
+  if(!is_quiet) {
+    std::cout << "A previous update was interrupted; restoring the last version." << std::endl;
+  }
+  std::string error;
+  MoveTreeEntries(previous, root, error);
+  fs::remove_all(previous, ec);
+  fs::remove_all(root / ".obu-work", ec);
+  return true;
+}
+#endif
 
 /****************************
 * 'update' command
@@ -768,10 +927,32 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
 #else
   const fs::path root = InstallRoot();
   std::error_code ec;
-  if(root.empty() || !fs::exists(root / "bin", ec)) {
-    std::cerr << "Could not locate the Objeck install root (expected a bin/ beside obu)." << std::endl;
+  if(root.empty()) {
+    std::cerr << "Could not locate the Objeck install directory." << std::endl;
     return EXIT_CHECK_ERROR;
   }
+
+  const int lock_fd = AcquireLock(root);
+  if(lock_fd < 0) {
+    std::cerr << "Another obu operation is in progress (or the install root is not writable)." << std::endl;
+    return EXIT_CHECK_ERROR;
+  }
+  RecoverInterruptedSwap(root, is_quiet);
+  if(!fs::exists(root / "bin", ec)) {
+    std::cerr << "Could not locate the Objeck install root (expected a bin/ beside obu)." << std::endl;
+    close(lock_fd);
+    return EXIT_CHECK_ERROR;
+  }
+
+  const fs::path work = root / ".obu-work";
+  const fs::path previous = root / ".previous";
+  const fs::path staging = work / "staging";
+
+  // A single cleanup+unlock path so no early return leaks staging or the lock.
+  struct Guard {
+    const fs::path& work; int fd; bool armed = true;
+    ~Guard() { if(armed) { std::error_code e; fs::remove_all(work, e); } if(fd >= 0) { close(fd); } }
+  } guard{work, lock_fd};
 
   // resolve the target release
   std::string json, error;
@@ -785,13 +966,25 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
     return EXIT_CHECK_ERROR;
   }
 
+  // A release tag that will not parse is an error, never a silent proceed.
   std::vector<long> installed_parts, release_parts;
-  if(ParseVersion(InstalledVersion(), installed_parts) && ParseVersion(release_tag, release_parts)) {
-    if(!force && CompareVersions(installed_parts, release_parts) >= 0) {
+  if(!ParseVersion(release_tag, release_parts)) {
+    std::cerr << "Release tag '" << release_tag << "' is not a version obu can compare." << std::endl;
+    return EXIT_CHECK_ERROR;
+  }
+  if(ParseVersion(InstalledVersion(), installed_parts) && !force) {
+    const int cmp = CompareVersions(installed_parts, release_parts);
+    if(cmp == 0) {
       if(!is_quiet) {
-        std::cout << "Objeck is already at " << InstalledVersion()
-                  << " (release " << release_tag << "); nothing to do." << std::endl;
+        std::cout << "Objeck is already at " << release_tag << "; nothing to do." << std::endl;
       }
+      return EXIT_UP_TO_DATE;
+    }
+    if(cmp > 0) {
+      // an explicit older --channel is a downgrade; require --force so it is a
+      // deliberate act, and say so rather than claiming "already at"
+      std::cerr << "Release " << release_tag << " is older than the installed "
+                << InstalledVersion() << "; pass --force to downgrade." << std::endl;
       return EXIT_UP_TO_DATE;
     }
   }
@@ -803,13 +996,16 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
                  "(a macOS notarization gap does this -- try again once it publishes)." << std::endl;
     return EXIT_CHECK_ERROR;
   }
+  if(!IsSafeAssetName(asset_name)) {
+    std::cerr << "Refusing an asset with an unexpected name: '" << asset_name << "'." << std::endl;
+    return EXIT_CHECK_ERROR;
+  }
   if(!ExtractAssetUrl(json, "SHA256SUMS", "", sums_url, sums_name)) {
     std::cerr << "Release " << release_tag << " has no SHA256SUMS asset; refusing to update "
                  "without an integrity manifest." << std::endl;
     return EXIT_CHECK_ERROR;
   }
 
-  const fs::path work = root / ".obu-work";
   fs::remove_all(work, ec);
   fs::create_directories(work, ec);
   if(ec) {
@@ -817,94 +1013,103 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
     return EXIT_CHECK_ERROR;
   }
 
-  const fs::path asset_path = work / asset_name;
+  // Download to FIXED local names -- the remote asset name is never used as a
+  // path, only to look up its line in SHA256SUMS.
+  const fs::path asset_path = work / "asset.tgz";
   const fs::path sums_path = work / "SHA256SUMS";
   if(!DownloadAsset(asset_url, asset_name, asset_path, is_quiet, error) ||
      !DownloadAsset(sums_url, sums_name, sums_path, is_quiet, error)) {
     std::cerr << error << std::endl;
-    fs::remove_all(work, ec);
     return EXIT_CHECK_ERROR;
   }
 
-  // VERIFY BEFORE ANYTHING IS TOUCHED
+  // VERIFY BEFORE ANYTHING IS TOUCHED. This gate proves the download was not
+  // corrupted in transit; it does NOT prove the release was published by a
+  // trusted party (SHA256SUMS ships on the same channel as the asset). The
+  // anti-substitution layer -- Authenticode/notarization checks -- is a
+  // separate control tracked in UPDATER_DESIGN.md, not yet enforced here.
   std::ifstream sums_in(sums_path, std::ios::binary);
   std::string sums((std::istreambuf_iterator<char>(sums_in)), std::istreambuf_iterator<char>());
   std::string expected;
   if(!ExpectedHash(sums, asset_name, expected)) {
     std::cerr << "SHA256SUMS does not list " << asset_name << "; refusing to update." << std::endl;
-    fs::remove_all(work, ec);
     return EXIT_CHECK_ERROR;
   }
   const std::string actual = Sha256File(asset_path);
   if(actual.empty() || actual != expected) {
     std::cerr << "Integrity check FAILED for " << asset_name << " (expected " << expected
               << ", got " << actual << "). Nothing was changed." << std::endl;
-    fs::remove_all(work, ec);
     return EXIT_CHECK_ERROR;
   }
   if(!is_quiet) {
     std::cout << "Verified " << asset_name << " against SHA256SUMS." << std::endl;
   }
 
+  // reject a tarball with an absolute or traversing member before extracting
+  std::string listing;
+  if(!RunArgvCapture({"tar", "-tzf", asset_path.string()}, listing)) {
+    std::cerr << "Unable to read the archive " << asset_name << "." << std::endl;
+    return EXIT_CHECK_ERROR;
+  }
+  for(size_t p = 0; p < listing.size();) {
+    size_t eol = listing.find('\n', p);
+    if(eol == std::string::npos) { eol = listing.size(); }
+    const std::string member = listing.substr(p, eol - p);
+    p = eol + 1;
+    if(!member.empty() && (member.front() == '/' || member.compare(0, 3, "../") == 0 ||
+                           member.find("/../") != std::string::npos)) {
+      std::cerr << "Archive contains an unsafe path ('" << member << "'); refusing." << std::endl;
+      return EXIT_CHECK_ERROR;
+    }
+  }
+
   // extract into a fresh staging dir (never into the live tree)
-  const fs::path staging = work / "staging";
   fs::create_directories(staging, ec);
-  const std::string qasset = QuotePath(asset_path);
-  const std::string qstaging = QuotePath(staging);
-  if(qasset.empty() || qstaging.empty() ||
-     RunCommand("tar -xzf " + qasset + " -C " + qstaging + (is_quiet ? " 2>/dev/null" : "")) != 0) {
+  if(RunArgv({"tar", "--no-same-owner", "-xzf", asset_path.string(), "-C", staging.string()}, is_quiet) != 0) {
     std::cerr << "Unable to unpack " << asset_name << "." << std::endl;
-    fs::remove_all(work, ec);
     return EXIT_CHECK_ERROR;
   }
   const fs::path payload = DetectPayloadRoot(staging);
   if(payload.empty()) {
     std::cerr << "The downloaded archive did not contain an Objeck tree (no bin/)." << std::endl;
-    fs::remove_all(work, ec);
     return EXIT_CHECK_ERROR;
   }
 
   // all-or-nothing swap: current tree -> .previous, staging payload -> root
-  const fs::path previous = root / ".previous";
   fs::remove_all(previous, ec);
   if(!MoveTreeEntries(root, previous, error)) {
     std::cerr << "Swap failed while archiving the current version: " << error
               << ". Attempting to restore." << std::endl;
-    MoveTreeEntries(previous, root, error);
-    fs::remove_all(work, ec);
+    if(!MoveTreeEntries(previous, root, error)) {
+      std::cerr << "RESTORE ALSO FAILED. Your install is split between the root and "
+                << previous << "; move the contents of that directory back by hand." << std::endl;
+      guard.armed = false;   // leave staging in place for diagnosis
+      return EXIT_CHECK_ERROR;
+    }
+    fs::remove_all(previous, ec);
     return EXIT_CHECK_ERROR;
   }
   if(!MoveTreeEntries(payload, root, error)) {
-    std::cerr << "Swap failed while installing the new version: " << error
-              << ". Rolling back." << std::endl;
-    // remove whatever partial new content landed, then restore the previous
-    for(const auto& entry : fs::directory_iterator(root, ec)) {
-      if(!IsObuWorkDir(entry.path().filename().string())) {
-        fs::remove_all(entry.path(), ec);
-      }
-    }
+    std::cerr << "Swap failed while installing the new version: " << error << ". Rolling back." << std::endl;
+    RemoveManagedEntries(root);
     MoveTreeEntries(previous, root, error);
-    fs::remove_all(work, ec);
+    fs::remove_all(previous, ec);
     return EXIT_CHECK_ERROR;
   }
 
-  // POST-CHECK: run the new obr; on failure, roll back automatically
-  const fs::path new_obr = root / "bin" / "obr";
-  const std::string qobr = QuotePath(new_obr);
-  const bool healthy = !qobr.empty() && RunCommand(qobr + " --version" + (is_quiet ? " >/dev/null 2>&1" : "")) == 0;
-  if(!healthy) {
+  // POST-CHECK: the design names 'obc -v' as authoritative for what is
+  // installed. On failure, roll back automatically. ('obr' has no version
+  // flag, so it must not be used here.)
+  const int health = RunArgv({(root / "bin" / "obc").string(), "-v"}, is_quiet);
+  if(health != 0) {
     std::cerr << "The updated Objeck failed its post-install check; rolling back." << std::endl;
-    for(const auto& entry : fs::directory_iterator(root, ec)) {
-      if(!IsObuWorkDir(entry.path().filename().string())) {
-        fs::remove_all(entry.path(), ec);
-      }
-    }
+    RemoveManagedEntries(root);
     MoveTreeEntries(previous, root, error);
-    fs::remove_all(work, ec);
+    fs::remove_all(previous, ec);
     return EXIT_CHECK_ERROR;
   }
 
-  fs::remove_all(work, ec);   // keep .previous for 'obu rollback'
+  // success: staging is cleaned by the guard; .previous is kept for rollback
   if(!is_quiet) {
     std::cout << "Updated to " << release_tag << ". The previous version is kept for 'obu rollback'." << std::endl;
   }
@@ -924,9 +1129,24 @@ static int DoRollback(bool is_quiet)
 #else
   const fs::path root = InstallRoot();
   std::error_code ec;
+  if(root.empty()) {
+    std::cerr << "Could not locate the Objeck install directory." << std::endl;
+    return EXIT_CHECK_ERROR;
+  }
+
+  const int lock_fd = AcquireLock(root);
+  if(lock_fd < 0) {
+    std::cerr << "Another obu operation is in progress (or the install root is not writable)." << std::endl;
+    return EXIT_CHECK_ERROR;
+  }
+  RecoverInterruptedSwap(root, is_quiet);
+
   const fs::path previous = root / ".previous";
-  if(root.empty() || !fs::exists(previous, ec)) {
+  // require a REAL saved tree, not merely a leftover directory -- otherwise a
+  // rollback would move the live install aside and restore nothing
+  if(!fs::exists(previous / "bin", ec)) {
     std::cerr << "There is no previous version to roll back to." << std::endl;
+    close(lock_fd);
     return EXIT_CHECK_ERROR;
   }
 
@@ -937,19 +1157,24 @@ static int DoRollback(bool is_quiet)
   if(!MoveTreeEntries(root, holding, error)) {
     std::cerr << "Rollback failed while setting aside the current version: " << error << std::endl;
     MoveTreeEntries(holding, root, error);
+    close(lock_fd);
     return EXIT_CHECK_ERROR;
   }
   if(!MoveTreeEntries(previous, root, error)) {
     std::cerr << "Rollback failed while restoring: " << error << ". Attempting to undo." << std::endl;
+    RemoveManagedEntries(root);
     MoveTreeEntries(holding, root, error);
+    close(lock_fd);
     return EXIT_CHECK_ERROR;
   }
   fs::remove_all(holding, ec);   // the version we rolled back FROM is discarded
   fs::remove_all(previous, ec);
 
-  const std::string qobr = QuotePath(root / "bin" / "obr");
-  if(!qobr.empty()) {
-    RunCommand(qobr + " --version" + (is_quiet ? " >/dev/null 2>&1" : ""));
+  const int health = RunArgv({(root / "bin" / "obc").string(), "-v"}, is_quiet);
+  close(lock_fd);
+  if(health != 0) {
+    std::cerr << "Warning: the restored version did not pass its health check." << std::endl;
+    return EXIT_CHECK_ERROR;
   }
   if(!is_quiet) {
     std::cout << "Rolled back to the previous version." << std::endl;
