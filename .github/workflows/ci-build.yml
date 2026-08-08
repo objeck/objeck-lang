@@ -671,6 +671,15 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_dap_tests.py "%BIN%"
 
+    # obu update/rollback: offline end-to-end against fake releases (no network).
+    # The script builds obu with the test hooks, exercises verify/swap/rollback
+    # and the command-injection PoC, and exits non-zero on any failure. Its
+    # fixtures are linux-x64; it self-skips elsewhere, so it runs on that leg.
+    - name: Run updater tests (POSIX)
+      if: matrix.platform == 'linux-x64'
+      shell: bash
+      run: CXX=g++ sh core/utils/updater/test_update.sh
+
     # ============================================
     # Network Tests (quarantined / non-gating)
     #
