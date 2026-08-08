@@ -851,9 +851,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           if(ref_klass && ref_klass->GetName() == L"System.String") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              size_t* string_instance = (size_t*)instance[0];
-              const wchar_t* char_string = (wchar_t*)(string_instance + 3);
-              std::wcout << L"print: type=" << ref_klass->GetName() << L", value=\"" << char_string << L"\"" << std::endl;
+              // DescribeObject reads the text length from the String's @pos;
+              // the Char[] is a capacity buffer, so reading it NUL-terminated
+              // truncates at an embedded NUL. The description arrives quoted.
+              std::wcout << L"print: type=" << ref_klass->GetName() << L", value=" << BytesToUnicode(DescribeObject(instance, ref_klass)) << std::endl;
             }
             else {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
@@ -865,11 +866,11 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && (ref_klass->GetName() == L"Collection.Vector" || ref_klass->GetName() == L"Collection.CompareVector")) {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
-              // Vector: @values at slot 0, @size at slot 1. This used to read
-              // slot 0 and then index into it -- that is the backing array, so
-              // it reported the array's dimension count and every Vector
-              // printed size=1.
-              const long vector_size = (long)instance[1];
+              // obj_layout.h owns the slot mapping; reading slots here is how
+              // every Vector came to print size=1 (the backing array's
+              // dimension count).
+              long vector_size = 0;
+              CollectionSize(ref_klass, instance, vector_size);
               std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << vector_size << std::endl;
             }
             else {
@@ -892,12 +893,14 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"Collection.Hash") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
-              // Hash: @buckets at slot 0, @size at 1, @capacity at 2. Reading
-              // through the bucket array happened to yield plausible numbers --
-              // its dimension count and bucket count -- so this looked right
-              // while never reflecting the entry count.
-              const long hash_size = (long)instance[1];
-              const long hash_capacity = (long)instance[2];
+              // size comes from the shared layout; @capacity has no shared
+              // accessor yet, so it is resolved by field name with the known
+              // slot as the fallback
+              long hash_size = 0;
+              CollectionSize(ref_klass, instance, hash_size);
+              int capacity_index;
+              FieldIndex(ref_klass, L"@capacity", 2, capacity_index);
+              const long hash_capacity = (long)instance[capacity_index];
               std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << hash_size << L", capacity=" << hash_capacity << std::endl;
             }
             else {
@@ -907,10 +910,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           else if(ref_klass && ref_klass->GetName() == L"Collection.Map") {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
-              // Map: @root at slot 0, @last at 1, @size at 2. Indexing through
-              // the root node read TreeNode::@left, i.e. a pointer printed as a
-              // count.
-              const long map_size = (long)instance[2];
+              // obj_layout.h knows @size sits at slot 2 on a Map
+              long map_size = 0;
+              CollectionSize(ref_klass, instance, map_size);
               std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << map_size << std::endl;
             }
             else {
@@ -978,9 +980,8 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               size_t* instance = (size_t*)reference->GetIntValue();
               if(instance) {
                 if(klass->GetName() == L"System.String") {
-                  size_t* value_instance = (size_t*)instance[0];
-                  const wchar_t* char_string = (wchar_t*)(value_instance + 3);
-                  std::wcout << L"print: type=" << klass->GetName() << L", value=\"" << char_string << L"\"" << std::endl;
+                  // length-aware read via the shared layout; arrives quoted
+                  std::wcout << L"print: type=" << klass->GetName() << L", value=" << BytesToUnicode(DescribeObject(instance, klass)) << std::endl;
                 }
                 else if(klass->GetName() == L"System.IntRef") {
                   std::wcout << L"print: type=System.IntHolder, value=" << (long)instance[0] << std::endl;
