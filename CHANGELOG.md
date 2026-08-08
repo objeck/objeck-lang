@@ -4,6 +4,20 @@ All notable changes to Objeck will be documented in this file.
 
 ## [Unreleased]
 
+### New Features
+- **Full-screen editor in `obi`** (`/e`): raw-mode terminal editing over the REPL buffer with damage-diffed rendering, CJK/tab-correct widths and a protected read-only shell. **F5 compiles and runs in-process** with output captured into a pane and **F8 jumping the cursor through compile errors**; undo/redo with coalesced typing runs, Shift-selection, an internal clipboard, and an opt-in **vi profile** (F2: hjkl, i/a/o, dd/yy/gg, visual mode). `/et` opens a terminal capability test. Header-only implementation; no build-system changes on any platform.
+- **`obu` updater, phase 1**: `obu check` compares the installed version against the latest GitHub release (or a pinned `--channel <tag>`), exit 0/1/2 with `--quiet` for scripting, using the system curl with no new dependencies. Every future release now ships a **`SHA256SUMS`** asset generated over the exact released file set, and a weekly workflow snapshots per-asset download counts into a committed CSV. Design in `docs/UPDATER_DESIGN.md`.
+- **Unsigned shift `>>>` and unsigned `Int` operations** shipped in v2026.8.0 development and are documented there.
+
+### Bug Fixes
+- **Primitive receiver operand order**: `v->Pow(10)` computed `Pow(10, v)` -- 100 instead of 1024 -- whenever the receiver was a variable, instance variable or array element; literals were correct, so the two spellings of one call disagreed. All 29 multi-argument primitive functions were affected. The emitter now passes the receiver as the first argument for every receiver shape.
+- **Calculated-expression receivers in expressions**: `if((1 + 1)->Pow(10) = 1024)` corrupted the heap -- the emitter dropped the call arguments, so the call consumed the comparison operand and the comparison ran on an empty stack.
+- **Divide by zero at default optimization**: the constant folder kept a zero-divisor division for its runtime trap but emitted it before its operands, turning the clean trap into a silent crash. **Modulus by zero never trapped at all** -- the interpreter had no zero check on `%` -- and now traps exactly as division does.
+- **Debugger String rendering**: the DAP formatter read a String's backing-array capacity instead of its length, returning NUL-padded values on POSIX platforms; both debugger front ends now read the length from the String itself via a shared layout header (`obj_layout.h`), which also ends the CLI/DAP drift that produced wrong collection sizes.
+
+### Tooling
+- The six standalone DAP test suites (~78 assertions: drill-down, protocol, data breakpoints) now run in POSIX CI -- previously they ran only on Windows, and their first Linux/macOS run immediately caught the String bug above. The tail-call receiver gate from PR #578 is pinned by a regression test, as are all the fixes above.
+
 ## [v2026.8.0] - 2026-08-01
 
 ### New Features
