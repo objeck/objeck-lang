@@ -12,6 +12,7 @@
 
 #include "json.hpp"
 #include "debugger.h"
+#include "obj_layout.h"
 #include <mutex>
 #include <condition_variable>
 #include <thread>
@@ -45,14 +46,6 @@ namespace Runtime {
   static const int MAX_EXPANSION_DEPTH = 12;
   static const int MAX_CHILDREN = 256;
   static const size_t MAX_VAR_HANDLES = 20000;
-
-  enum VarHandleKind {
-    VAR_OBJECT = 0,
-    VAR_ARRAY,
-    VAR_VECTOR,
-    VAR_MAP,
-    VAR_HASH
-  };
 
   struct VarHandle {
     int kind;
@@ -175,8 +168,6 @@ namespace Runtime {
     StackFrame* GetFrameByIndex(int frame_index);
 
     // Variable formatting helpers
-    std::string FormatVariableValue(StackDclr& dclr, StackFrame* frame, int var_index);
-    std::string FormatVariableValue(StackDclr& dclr, size_t* mem, int var_index);
     std::string FormatVariableType(StackDclr& dclr);
 
     // Variable drill-down. Handles live only for the duration of one stop.
@@ -185,18 +176,7 @@ namespace Runtime {
     void ClearVarHandles();
     int AllocVarHandle(int kind, size_t* ptr, StackClass* klass, int elem_type, int depth);
     int MakeChildRef(ParamType type, size_t raw_value, int depth);
-    bool FindInstanceField(StackClass* klass, const std::wstring& short_name, int& out_index);
-    bool FieldIndex(StackClass* klass, const std::wstring& short_name, int fallback_index, int& out_index);
-    std::string DescribeObject(size_t* obj, StackClass* klass);
-    bool IsLeafObject(StackClass* klass);
     std::string ShortDeclarationName(const std::wstring& full_name);
-    std::wstring ClassLeafName(StackClass* klass);
-    int CollectionKind(StackClass* klass);
-    bool CollectionSize(StackClass* klass, size_t* obj, long& out_size);
-    bool ArrayBody(size_t* array, long& out_count, size_t*& out_data);
-    std::string ElementName(long index);
-    std::string FormatSlot(ParamType type, size_t* mem, int index);
-    std::string CollectionSummary(StackClass* klass, size_t* obj);
     json MakeChildVariable(const std::string& name, ParamType type, size_t* mem, int index, int depth);
     int IndexedChildCount(ParamType type, size_t raw_value);
     void AnnotateChildCount(json& var, ParamType type, size_t raw_value);
