@@ -54,6 +54,33 @@ namespace Tui {
     std::vector<size_t> error_lines;   // 1-based document lines from diagnostics
     size_t error_index;
 
+    // Undo: every mutation goes through a line-granular operation so it can be
+    // played backward. A group is one user action (a split is two ops); plain
+    // typing coalesces into the previous group so undo takes back a run of
+    // characters, not one keystroke at a time.
+    struct EditOp {
+      int kind;   // 0 = line replaced, 1 = line inserted, 2 = line deleted
+      size_t row;
+      std::wstring before;
+      std::wstring after;
+    };
+    struct EditGroup {
+      std::vector<EditOp> ops;
+      size_t row_before, col_before;
+      size_t row_after, col_after;
+    };
+    std::vector<EditGroup> undo_stack;
+    std::vector<EditGroup> redo_stack;
+    bool typing_run;   // the last committed group was coalescable typing
+
+    // selection: an anchor plus the live cursor; cleared by any plain movement
+    bool sel_active;
+    size_t sel_row, sel_col;
+
+    // internal clipboard; linewise means whole lines (no OS clipboard yet)
+    std::vector<std::wstring> clip;
+    bool clip_linewise;
+
     static const int TAB_STOP = 3;
 
     // display column of character index `col`, honoring tabs and wide chars
@@ -179,16 +206,19 @@ namespace Tui {
             width = CharWidth(line[i]);
           }
 
+          const unsigned char cell_attr =
+            InSelection(row, i) ? (unsigned char)(text_attr | ATTR_REVERSE) : text_attr;
+
           if(x + width > left_x) {
             const int screen_x = gutter + (x - left_x);
             if(line[i] == L'\t' || x < left_x) {
               // tabs, and wide characters cut by the left edge, pad as spaces
               for(int k = (x < left_x) ? left_x : x; k < x + width && k < left_x + TextCols(); ++k) {
-                screen.Put(1 + screen_row, gutter + (k - left_x), L" ", text_attr);
+                screen.Put(1 + screen_row, gutter + (k - left_x), L" ", cell_attr);
               }
             }
             else if(x - left_x + width <= TextCols()) {
-              screen.Put(1 + screen_row, screen_x, std::wstring(1, line[i]), text_attr);
+              screen.Put(1 + screen_row, screen_x, std::wstring(1, line[i]), cell_attr);
             }
           }
           x += width;
@@ -217,7 +247,7 @@ namespace Tui {
         screen.Put(rows - 1, 0, L" " + status, ATTR_REVERSE | ATTR_BOLD);
       }
       else {
-        screen.Put(rows - 1, 0, L" Ctrl+S save   Ctrl+Q quit   F5 run   Ctrl+K delete line", ATTR_REVERSE);
+        screen.Put(rows - 1, 0, L" ^S save  ^Q quit  ^Z undo  ^Y redo  ^C/^X/^V clipboard  F5 run", ATTR_REVERSE);
       }
       screen.Put(rows - 1, cols - (int)pos.size(), pos, ATTR_REVERSE);
 
@@ -279,48 +309,359 @@ namespace Tui {
       }
     }
 
+    // ----- undo plumbing: mutations funnel through these -----
+
+    EditGroup Begin() {
+      EditGroup group;
+      group.row_before = cur_row;
+      group.col_before = cur_col;
+      group.row_after = group.col_after = 0;
+      return group;
+    }
+
+    void OpSet(EditGroup& group, size_t row, const std::wstring& after) {
+      EditOp op;
+      op.kind = 0;
+      op.row = row;
+      op.before = doc.GetLine(row);
+      op.after = after;
+      doc.SetLine(row, after);
+      group.ops.push_back(op);
+    }
+
+    void OpIns(EditGroup& group, size_t row, const std::wstring& text) {
+      EditOp op;
+      op.kind = 1;
+      op.row = row;
+      op.after = text;
+      doc.InsertLine(row, text);
+      group.ops.push_back(op);
+    }
+
+    void OpDel(EditGroup& group, size_t row) {
+      EditOp op;
+      op.kind = 2;
+      op.row = row;
+      op.before = doc.GetLine(row);
+      doc.DeleteLine(row);
+      group.ops.push_back(op);
+    }
+
+    void Commit(EditGroup& group, bool coalesce = false) {
+      if(group.ops.empty()) {
+        return;
+      }
+      group.row_after = cur_row;
+      group.col_after = cur_col;
+      dirty = true;
+      redo_stack.clear();
+
+      if(coalesce && typing_run && !undo_stack.empty()) {
+        EditGroup& last = undo_stack.back();
+        if(last.ops.size() == 1 && group.ops.size() == 1 &&
+           last.ops[0].kind == 0 && group.ops[0].kind == 0 &&
+           last.ops[0].row == group.ops[0].row) {
+          last.ops[0].after = group.ops[0].after;
+          last.row_after = cur_row;
+          last.col_after = cur_col;
+          return;
+        }
+      }
+
+      undo_stack.push_back(group);
+      typing_run = coalesce;
+      if(undo_stack.size() > 512) {
+        undo_stack.erase(undo_stack.begin());
+      }
+    }
+
+    void DoUndo() {
+      if(undo_stack.empty()) {
+        status = L"nothing to undo";
+        return;
+      }
+      EditGroup group = undo_stack.back();
+      undo_stack.pop_back();
+      for(auto op = group.ops.rbegin(); op != group.ops.rend(); ++op) {
+        if(op->kind == 0) {
+          doc.SetLine(op->row, op->before);
+        }
+        else if(op->kind == 1) {
+          doc.DeleteLine(op->row);
+        }
+        else {
+          doc.InsertLine(op->row, op->before);
+        }
+      }
+      cur_row = group.row_before;
+      cur_col = group.col_before;
+      ClampCursor();
+      redo_stack.push_back(group);
+      typing_run = false;
+      dirty = true;
+    }
+
+    void DoRedo() {
+      if(redo_stack.empty()) {
+        status = L"nothing to redo";
+        return;
+      }
+      EditGroup group = redo_stack.back();
+      redo_stack.pop_back();
+      for(auto op = group.ops.begin(); op != group.ops.end(); ++op) {
+        if(op->kind == 0) {
+          doc.SetLine(op->row, op->after);
+        }
+        else if(op->kind == 1) {
+          doc.InsertLine(op->row, op->after);
+        }
+        else {
+          doc.DeleteLine(op->row);
+        }
+      }
+      cur_row = group.row_after;
+      cur_col = group.col_after;
+      ClampCursor();
+      undo_stack.push_back(group);
+      typing_run = false;
+      dirty = true;
+    }
+
+    // ----- selection -----
+
+    void SelAnchor() {
+      if(!sel_active) {
+        sel_active = true;
+        sel_row = cur_row;
+        sel_col = cur_col;
+      }
+    }
+
+    void SelBounds(size_t& r1, size_t& c1, size_t& r2, size_t& c2) {
+      if(sel_row < cur_row || (sel_row == cur_row && sel_col <= cur_col)) {
+        r1 = sel_row; c1 = sel_col; r2 = cur_row; c2 = cur_col;
+      }
+      else {
+        r1 = cur_row; c1 = cur_col; r2 = sel_row; c2 = sel_col;
+      }
+    }
+
+    bool InSelection(size_t row, size_t col) {
+      if(!sel_active) {
+        return false;
+      }
+      size_t r1, c1, r2, c2;
+      SelBounds(r1, c1, r2, c2);
+      if(row < r1 || row > r2) {
+        return false;
+      }
+      if(r1 == r2) {
+        return col >= c1 && col < c2;
+      }
+      if(row == r1) {
+        return col >= c1;
+      }
+      if(row == r2) {
+        return col < c2;
+      }
+      return true;
+    }
+
+    std::vector<std::wstring> SelectionText() {
+      std::vector<std::wstring> text;
+      size_t r1, c1, r2, c2;
+      SelBounds(r1, c1, r2, c2);
+      if(r1 == r2) {
+        const std::wstring line = doc.GetLine(r1);
+        text.push_back(line.substr(c1, c2 - c1));
+      }
+      else {
+        text.push_back(doc.GetLine(r1).substr(c1));
+        for(size_t row = r1 + 1; row < r2; ++row) {
+          text.push_back(doc.GetLine(row));
+        }
+        text.push_back(doc.GetLine(r2).substr(0, c2));
+      }
+      return text;
+    }
+
+    // removes the selected span through the op layer; refuses if any line in
+    // the span is read-only, since a partial removal would be worse
+    bool DeleteSelectionOps(EditGroup& group) {
+      size_t r1, c1, r2, c2;
+      SelBounds(r1, c1, r2, c2);
+      for(size_t row = r1; row <= r2; ++row) {
+        if(IsReadOnly(row)) {
+          status = L"selection crosses a read-only line";
+          return false;
+        }
+      }
+
+      if(r1 == r2) {
+        std::wstring line = doc.GetLine(r1);
+        line.erase(c1, c2 - c1);
+        OpSet(group, r1, line);
+      }
+      else {
+        const std::wstring joined = doc.GetLine(r1).substr(0, c1) + doc.GetLine(r2).substr(c2);
+        OpSet(group, r1, joined);
+        for(size_t row = r2; row > r1; --row) {
+          OpDel(group, r1 + 1);
+        }
+      }
+      cur_row = r1;
+      cur_col = c1;
+      sel_active = false;
+      return true;
+    }
+
+    void DoCopy() {
+      if(sel_active) {
+        clip = SelectionText();
+        clip_linewise = false;
+        const size_t chars = clip.size();
+        status = L"copied " + std::to_wstring(chars) + L" segment(s)";
+        sel_active = false;
+      }
+      else {
+        clip.clear();
+        clip.push_back(doc.GetLine(cur_row));
+        clip_linewise = true;
+        status = L"copied line";
+      }
+    }
+
+    void DoCut() {
+      if(!sel_active) {
+        if(IsReadOnly(cur_row)) {
+          status = L"read-only shell line";
+          return;
+        }
+        clip.clear();
+        clip.push_back(doc.GetLine(cur_row));
+        clip_linewise = true;
+        EditGroup group = Begin();
+        OpDel(group, cur_row);
+        ClampCursor();
+        cur_col = 0;
+        Commit(group);
+        status = L"cut line";
+        return;
+      }
+
+      clip = SelectionText();
+      clip_linewise = false;
+      EditGroup group = Begin();
+      if(DeleteSelectionOps(group)) {
+        Commit(group);
+        status = L"cut selection";
+      }
+    }
+
+    void DoPaste() {
+      if(clip.empty()) {
+        status = L"clipboard is empty";
+        return;
+      }
+
+      EditGroup group = Begin();
+      if(sel_active && !DeleteSelectionOps(group)) {
+        return;
+      }
+
+      if(clip_linewise) {
+        // whole lines land above the cursor's line, cursor staying put
+        for(size_t i = 0; i < clip.size(); ++i) {
+          OpIns(group, cur_row + i, clip[i]);
+        }
+        cur_row += clip.size();
+        Commit(group);
+        return;
+      }
+
+      if(IsReadOnly(cur_row)) {
+        status = L"read-only shell line";
+        return;
+      }
+      const std::wstring line = doc.GetLine(cur_row);
+      const std::wstring left = line.substr(0, cur_col);
+      const std::wstring right = line.substr(cur_col);
+      if(clip.size() == 1) {
+        OpSet(group, cur_row, left + clip[0] + right);
+        cur_col += clip[0].size();
+      }
+      else {
+        OpSet(group, cur_row, left + clip[0]);
+        for(size_t i = 1; i + 1 < clip.size(); ++i) {
+          OpIns(group, cur_row + i, clip[i]);
+        }
+        OpIns(group, cur_row + clip.size() - 1, clip.back() + right);
+        cur_row += clip.size() - 1;
+        cur_col = clip.back().size();
+      }
+      Commit(group);
+    }
+
     void InsertChar(wchar_t ch) {
+      EditGroup group = Begin();
+      if(sel_active && !DeleteSelectionOps(group)) {
+        return;
+      }
       if(IsReadOnly(cur_row)) {
         status = L"read-only shell line";
         return;
       }
       std::wstring line = doc.GetLine(cur_row);
       line.insert(cur_col, 1, ch);
-      doc.SetLine(cur_row, line);
+      OpSet(group, cur_row, line);
       ++cur_col;
-      dirty = true;
+      // a fresh group after a selection delete; plain typing coalesces
+      Commit(group, group.ops.size() == 1);
     }
 
     void DoNewline() {
+      EditGroup group = Begin();
+      if(sel_active && !DeleteSelectionOps(group)) {
+        return;
+      }
+
       if(IsReadOnly(cur_row)) {
         // a new line above the read-only line: on the closing brace this is
         // "insert inside the function", the placement the user meant
-        if(doc.InsertLine(cur_row, L"")) {
-          cur_col = 0;
-          dirty = true;
-        }
+        OpIns(group, cur_row, L"");
+        cur_col = 0;
+        Commit(group);
         return;
       }
 
       const std::wstring line = doc.GetLine(cur_row);
-      doc.SetLine(cur_row, line.substr(0, cur_col));
-      doc.InsertLine(cur_row + 1, line.substr(cur_col));
+      OpSet(group, cur_row, line.substr(0, cur_col));
+      OpIns(group, cur_row + 1, line.substr(cur_col));
       ++cur_row;
       cur_col = 0;
-      dirty = true;
+      Commit(group);
     }
 
     void DoBackspace() {
+      if(sel_active) {
+        EditGroup group = Begin();
+        if(DeleteSelectionOps(group)) {
+          Commit(group);
+        }
+        return;
+      }
+
       if(cur_col > 0) {
         if(IsReadOnly(cur_row)) {
           status = L"read-only shell line";
           return;
         }
+        EditGroup group = Begin();
         std::wstring line = doc.GetLine(cur_row);
         line.erase(cur_col - 1, 1);
-        doc.SetLine(cur_row, line);
+        OpSet(group, cur_row, line);
         --cur_col;
-        dirty = true;
+        Commit(group);
         return;
       }
 
@@ -328,26 +669,36 @@ namespace Tui {
       if(cur_row == 0 || IsReadOnly(cur_row) || IsReadOnly(cur_row - 1)) {
         return;
       }
+      EditGroup group = Begin();
       const std::wstring prev = doc.GetLine(cur_row - 1);
       const std::wstring line = doc.GetLine(cur_row);
-      doc.SetLine(cur_row - 1, prev + line);
-      doc.DeleteLine(cur_row);
+      OpSet(group, cur_row - 1, prev + line);
+      OpDel(group, cur_row);
       --cur_row;
       cur_col = prev.size();
-      dirty = true;
+      Commit(group);
     }
 
     void DoDelete() {
+      if(sel_active) {
+        EditGroup group = Begin();
+        if(DeleteSelectionOps(group)) {
+          Commit(group);
+        }
+        return;
+      }
+
       const std::wstring line = doc.GetLine(cur_row);
       if(cur_col < line.size()) {
         if(IsReadOnly(cur_row)) {
           status = L"read-only shell line";
           return;
         }
+        EditGroup group = Begin();
         std::wstring edited = line;
         edited.erase(cur_col, 1);
-        doc.SetLine(cur_row, edited);
-        dirty = true;
+        OpSet(group, cur_row, edited);
+        Commit(group);
         return;
       }
 
@@ -355,9 +706,10 @@ namespace Tui {
       if(cur_row + 1 >= doc.Size() || IsReadOnly(cur_row) || IsReadOnly(cur_row + 1)) {
         return;
       }
-      doc.SetLine(cur_row, line + doc.GetLine(cur_row + 1));
-      doc.DeleteLine(cur_row + 1);
-      dirty = true;
+      EditGroup group = Begin();
+      OpSet(group, cur_row, line + doc.GetLine(cur_row + 1));
+      OpDel(group, cur_row + 1);
+      Commit(group);
     }
 
     // strip ANSI color sequences the REPL's own error printing embeds
@@ -442,13 +794,15 @@ namespace Tui {
     }
 
     void DoDeleteLine() {
-      if(!doc.DeleteLine(cur_row)) {   // refuses read-only lines itself
+      if(IsReadOnly(cur_row)) {
         status = L"read-only shell line";
         return;
       }
-      dirty = true;
+      EditGroup group = Begin();
+      OpDel(group, cur_row);
       ClampCursor();
       cur_col = 0;
+      Commit(group);
     }
 
   public:
@@ -465,6 +819,10 @@ namespace Tui {
       pane_top = 0;
       pane_visible = false;
       error_index = 0;
+      typing_run = false;
+      sel_active = false;
+      sel_row = sel_col = 0;
+      clip_linewise = false;
     }
 
     // returns the cursor's document line, so the REPL can keep its own
@@ -500,7 +858,23 @@ namespace Tui {
           quit_armed = false;
         }
 
+        // plain movement drops the selection; shifted movement extends it
         switch(action) {
+        case ACT_LEFT: case ACT_RIGHT: case ACT_UP: case ACT_DOWN:
+        case ACT_LINE_START: case ACT_LINE_END: case ACT_PAGE_UP:
+        case ACT_PAGE_DOWN: case ACT_DOC_START: case ACT_DOC_END:
+          sel_active = false;
+          break;
+        case ACT_SEL_LEFT: case ACT_SEL_RIGHT: case ACT_SEL_UP:
+        case ACT_SEL_DOWN: case ACT_SEL_HOME: case ACT_SEL_END:
+          SelAnchor();
+          break;
+        default:
+          break;
+        }
+
+        switch(action) {
+        case ACT_SEL_LEFT:
         case ACT_LEFT:
           if(cur_col > 0) {
             --cur_col;
@@ -512,6 +886,7 @@ namespace Tui {
           want_col = cur_col;
           break;
 
+        case ACT_SEL_RIGHT:
         case ACT_RIGHT:
           if(cur_col < doc.GetLine(cur_row).size()) {
             ++cur_col;
@@ -523,6 +898,7 @@ namespace Tui {
           want_col = cur_col;
           break;
 
+        case ACT_SEL_UP:
         case ACT_UP:
           if(cur_row > 0) {
             --cur_row;
@@ -531,6 +907,7 @@ namespace Tui {
           }
           break;
 
+        case ACT_SEL_DOWN:
         case ACT_DOWN:
           if(cur_row + 1 < doc.Size()) {
             ++cur_row;
@@ -539,10 +916,12 @@ namespace Tui {
           }
           break;
 
+        case ACT_SEL_HOME:
         case ACT_LINE_START:
           cur_col = want_col = 0;
           break;
 
+        case ACT_SEL_END:
         case ACT_LINE_END:
           cur_col = want_col = doc.GetLine(cur_row).size();
           break;
@@ -625,6 +1004,30 @@ namespace Tui {
           if(pane_top + 1 < pane.size()) {
             ++pane_top;
           }
+          break;
+
+        case ACT_UNDO:
+          DoUndo();
+          want_col = cur_col;
+          break;
+
+        case ACT_REDO:
+          DoRedo();
+          want_col = cur_col;
+          break;
+
+        case ACT_COPY:
+          DoCopy();
+          break;
+
+        case ACT_CUT:
+          DoCut();
+          want_col = cur_col;
+          break;
+
+        case ACT_PASTE:
+          DoPaste();
+          want_col = cur_col;
           break;
 
         case ACT_QUIT:
