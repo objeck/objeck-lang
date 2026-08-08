@@ -1,0 +1,77 @@
+#~
+Tail-call optimization must respect the receiver.
+
+TCO used to fire on matching class-id and method-id alone, ignoring WHO the
+call targets: `@other->Run(n - 1)` in tail position was rewritten into a
+self-loop, silently discarding the new receiver. Two Runners that ping-pong
+printed A A A A at default optimization while s0 printed A B A B -- silent
+wrong output, the worst failure mode a compiler has. Fixed in #578 by gating
+TCO on a provable self receiver (LOAD_INST_MEM).
+
+Both sides are pinned here: the cross-receiver chain must alternate, and
+genuine self-recursion must still be optimized -- 50,000 frames deep only
+completes if the tail call reuses the frame.
+~#
+
+class Runner {
+	@name : String;
+	@other : Runner;
+	@trace : static : String;
+
+	New(name : String) {
+		@name := name;
+	}
+
+	method : public : SetOther(o : Runner) ~ Nil {
+		@other := o;
+	}
+
+	method : public : Run(count : Int) ~ Nil {
+		if(count = 0) { return; };
+		@trace->Append(@name);
+		@other->Run(count - 1);
+	}
+
+	function : Trace() ~ String {
+		return @trace;
+	}
+
+	function : Start() ~ Nil {
+		@trace := "";
+		a := Runner->New("A");
+		b := Runner->New("B");
+		a->SetOther(b);
+		b->SetOther(a);
+		a->Run(6);
+	}
+}
+
+class Deep {
+	New() {}
+
+	method : public : Down(n : Int) ~ Nil {
+		if(n = 0) { return; };
+		Down(n - 1);
+	}
+}
+
+class TcoReceiver {
+	function : Main(args : String[]) ~ Nil {
+		passed := 0;
+		failed := 0;
+
+		# cross-receiver tail calls must alternate, not self-loop
+		Runner->Start();
+		if(Runner->Trace()->Equals("ABABAB")) { passed += 1; } else { failed += 1; "FAIL: cross-receiver tail call collapsed to a self-loop: "->Print(); Runner->Trace()->PrintLine(); };
+
+		# self-recursion must still be frame-reusing at depth
+		Deep->New()->Down(50000);
+		passed += 1;   # reaching this line at all is the assertion
+
+		if(failed > 0) {
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"{$passed} passed, 0 failed"->PrintLine();
+	}
+}
