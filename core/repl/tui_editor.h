@@ -81,6 +81,9 @@ namespace Tui {
     std::vector<std::wstring> clip;
     bool clip_linewise;
 
+    // binding profile and vi mode; simple/insert unless the user opts in
+    KeymapState keys;
+
     static const int TAB_STOP = 3;
 
     // display column of character index `col`, honoring tabs and wide chars
@@ -242,7 +245,11 @@ namespace Tui {
 
       // hint bar; a transient status message takes its place until a key
       screen.Fill(rows - 1, 0, cols, L' ', ATTR_REVERSE);
-      const std::wstring pos = L" Ln " + std::to_wstring(cur_row + 1) + L", Col " + std::to_wstring(cur_col + 1) + L" ";
+      std::wstring pos = L" Ln " + std::to_wstring(cur_row + 1) + L", Col " + std::to_wstring(cur_col + 1) + L" ";
+      if(keys.profile == PROFILE_VI) {
+        pos = (keys.mode == MODE_NORMAL ? L" NORMAL ·" :
+               keys.mode == MODE_VISUAL ? L" VISUAL ·" : L" INSERT ·") + pos;
+      }
       if(!status.empty()) {
         screen.Put(rows - 1, 0, L" " + status, ATTR_REVERSE | ATTR_BOLD);
       }
@@ -853,17 +860,23 @@ namespace Tui {
           continue;
         }
 
-        const Action action = Resolve(key);
+        const Action action = Resolve(key, keys);
         if(action != ACT_QUIT) {
           quit_armed = false;
         }
 
-        // plain movement drops the selection; shifted movement extends it
+        // plain movement drops the selection and shifted movement extends it,
+        // except in vi visual mode, where every movement extends
         switch(action) {
         case ACT_LEFT: case ACT_RIGHT: case ACT_UP: case ACT_DOWN:
         case ACT_LINE_START: case ACT_LINE_END: case ACT_PAGE_UP:
         case ACT_PAGE_DOWN: case ACT_DOC_START: case ACT_DOC_END:
-          sel_active = false;
+          if(keys.mode == MODE_VISUAL) {
+            SelAnchor();
+          }
+          else {
+            sel_active = false;
+          }
           break;
         case ACT_SEL_LEFT: case ACT_SEL_RIGHT: case ACT_SEL_UP:
         case ACT_SEL_DOWN: case ACT_SEL_HOME: case ACT_SEL_END:
@@ -1018,16 +1031,71 @@ namespace Tui {
 
         case ACT_COPY:
           DoCopy();
+          if(keys.mode == MODE_VISUAL) {
+            keys.mode = MODE_NORMAL;
+          }
           break;
 
         case ACT_CUT:
           DoCut();
           want_col = cur_col;
+          if(keys.mode == MODE_VISUAL) {
+            keys.mode = MODE_NORMAL;
+          }
           break;
 
         case ACT_PASTE:
           DoPaste();
           want_col = cur_col;
+          break;
+
+        case ACT_MODE_INSERT:
+          keys.mode = MODE_INSERT;
+          sel_active = false;
+          break;
+
+        case ACT_MODE_APPEND:
+          keys.mode = MODE_INSERT;
+          sel_active = false;
+          if(cur_col < doc.GetLine(cur_row).size()) {
+            ++cur_col;
+          }
+          want_col = cur_col;
+          break;
+
+        case ACT_OPEN_BELOW: {
+          EditGroup group = Begin();
+          OpIns(group, cur_row + 1, L"");
+          ++cur_row;
+          cur_col = want_col = 0;
+          Commit(group);
+          keys.mode = MODE_INSERT;
+          sel_active = false;
+          break;
+        }
+
+        case ACT_MODE_NORMAL:
+          keys.mode = MODE_NORMAL;
+          sel_active = false;
+          break;
+
+        case ACT_MODE_VISUAL:
+          keys.mode = MODE_VISUAL;
+          SelAnchor();
+          break;
+
+        case ACT_TOGGLE_PROFILE:
+          if(keys.profile == PROFILE_SIMPLE) {
+            keys.profile = PROFILE_VI;
+            keys.mode = MODE_NORMAL;
+            status = L"vi bindings · i inserts · F2 returns to simple";
+          }
+          else {
+            keys.profile = PROFILE_SIMPLE;
+            keys.mode = MODE_INSERT;
+            status = L"simple bindings";
+          }
+          sel_active = false;
           break;
 
         case ACT_QUIT:
