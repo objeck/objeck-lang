@@ -40,7 +40,19 @@ namespace Tui {
     ACT_TOGGLE_PANE,
     ACT_NEXT_ERROR,
     ACT_PANE_UP,
-    ACT_PANE_DOWN
+    ACT_PANE_DOWN,
+    ACT_UNDO,
+    ACT_REDO,
+    // selection: the movement it wraps, with the anchor held
+    ACT_SEL_LEFT,
+    ACT_SEL_RIGHT,
+    ACT_SEL_UP,
+    ACT_SEL_DOWN,
+    ACT_SEL_HOME,
+    ACT_SEL_END,
+    ACT_COPY,
+    ACT_CUT,
+    ACT_PASTE
   };
 
   struct Binding {
@@ -48,34 +60,46 @@ namespace Tui {
     wchar_t ch;      // significant only for KEY_CHAR entries
     bool ctrl;
     bool alt;
+    bool shift;
     Action action;
   };
 
   // the notepad-style default profile; discoverable, matches the hint bar
   inline const Binding* SimpleProfile(size_t& count) {
     static const Binding bindings[] = {
-      { KEY_LEFT, 0, false, false, ACT_LEFT },
-      { KEY_RIGHT, 0, false, false, ACT_RIGHT },
-      { KEY_UP, 0, false, false, ACT_UP },
-      { KEY_DOWN, 0, false, false, ACT_DOWN },
-      { KEY_UP, 0, false, true, ACT_PANE_UP },
-      { KEY_DOWN, 0, false, true, ACT_PANE_DOWN },
-      { KEY_HOME, 0, false, false, ACT_LINE_START },
-      { KEY_END, 0, false, false, ACT_LINE_END },
-      { KEY_HOME, 0, true, false, ACT_DOC_START },
-      { KEY_END, 0, true, false, ACT_DOC_END },
-      { KEY_PGUP, 0, false, false, ACT_PAGE_UP },
-      { KEY_PGDN, 0, false, false, ACT_PAGE_DOWN },
-      { KEY_ENTER, 0, false, false, ACT_NEWLINE },
-      { KEY_BACKSPACE, 0, false, false, ACT_BACKSPACE },
-      { KEY_DELETE, 0, false, false, ACT_DELETE },
-      { KEY_TAB, 0, false, false, ACT_TAB },
-      { KEY_F5, 0, false, false, ACT_RUN },
-      { KEY_F6, 0, false, false, ACT_TOGGLE_PANE },
-      { KEY_F8, 0, false, false, ACT_NEXT_ERROR },
-      { KEY_CHAR, L's', true, false, ACT_SAVE },
-      { KEY_CHAR, L'q', true, false, ACT_QUIT },
-      { KEY_CHAR, L'k', true, false, ACT_DELETE_LINE },
+      { KEY_LEFT, 0, false, false, false, ACT_LEFT },
+      { KEY_RIGHT, 0, false, false, false, ACT_RIGHT },
+      { KEY_UP, 0, false, false, false, ACT_UP },
+      { KEY_DOWN, 0, false, false, false, ACT_DOWN },
+      { KEY_LEFT, 0, false, false, true, ACT_SEL_LEFT },
+      { KEY_RIGHT, 0, false, false, true, ACT_SEL_RIGHT },
+      { KEY_UP, 0, false, false, true, ACT_SEL_UP },
+      { KEY_DOWN, 0, false, false, true, ACT_SEL_DOWN },
+      { KEY_HOME, 0, false, false, true, ACT_SEL_HOME },
+      { KEY_END, 0, false, false, true, ACT_SEL_END },
+      { KEY_UP, 0, false, true, false, ACT_PANE_UP },
+      { KEY_DOWN, 0, false, true, false, ACT_PANE_DOWN },
+      { KEY_HOME, 0, false, false, false, ACT_LINE_START },
+      { KEY_END, 0, false, false, false, ACT_LINE_END },
+      { KEY_HOME, 0, true, false, false, ACT_DOC_START },
+      { KEY_END, 0, true, false, false, ACT_DOC_END },
+      { KEY_PGUP, 0, false, false, false, ACT_PAGE_UP },
+      { KEY_PGDN, 0, false, false, false, ACT_PAGE_DOWN },
+      { KEY_ENTER, 0, false, false, false, ACT_NEWLINE },
+      { KEY_BACKSPACE, 0, false, false, false, ACT_BACKSPACE },
+      { KEY_DELETE, 0, false, false, false, ACT_DELETE },
+      { KEY_TAB, 0, false, false, false, ACT_TAB },
+      { KEY_F5, 0, false, false, false, ACT_RUN },
+      { KEY_F6, 0, false, false, false, ACT_TOGGLE_PANE },
+      { KEY_F8, 0, false, false, false, ACT_NEXT_ERROR },
+      { KEY_CHAR, L's', true, false, false, ACT_SAVE },
+      { KEY_CHAR, L'q', true, false, false, ACT_QUIT },
+      { KEY_CHAR, L'k', true, false, false, ACT_DELETE_LINE },
+      { KEY_CHAR, L'z', true, false, false, ACT_UNDO },
+      { KEY_CHAR, L'y', true, false, false, ACT_REDO },
+      { KEY_CHAR, L'c', true, false, false, ACT_COPY },
+      { KEY_CHAR, L'x', true, false, false, ACT_CUT },
+      { KEY_CHAR, L'v', true, false, false, ACT_PASTE },
     };
     count = sizeof(bindings) / sizeof(bindings[0]);
     return bindings;
@@ -86,7 +110,8 @@ namespace Tui {
     const Binding* bindings = SimpleProfile(count);
     for(size_t i = 0; i < count; ++i) {
       const Binding& binding = bindings[i];
-      if(binding.code != key.code || binding.ctrl != key.ctrl || binding.alt != key.alt) {
+      if(binding.code != key.code || binding.ctrl != key.ctrl ||
+         binding.alt != key.alt || binding.shift != key.shift) {
         continue;
       }
       if(binding.code == KEY_CHAR && binding.ch != key.ch) {
