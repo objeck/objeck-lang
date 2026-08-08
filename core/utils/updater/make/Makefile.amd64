@@ -1,0 +1,13 @@
+ARGS=-O3 -Wall -Wno-unused-function -std=c++17 -mavx2
+
+SRC=obu.o
+EXE=obu
+
+$(EXE): $(SRC)
+	$(CXX) -m64 -o $(EXE) $(SRC)
+
+%.o: %.cpp
+	$(CXX) -m64 $(ARGS) -c $<
+
+clean:
+	rm -f $(EXE) *.o *~
