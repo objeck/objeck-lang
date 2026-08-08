@@ -1599,8 +1599,17 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
 
     case DIV_INT: {
       if(right->GetOperand7() == 0) {
+        // the operation must survive to trap at runtime, and its operands must
+        // land in the output BEFORE it -- emitting the instruction here and
+        // leaving the literals on the working stack appended them after it,
+        // so the division executed against an empty stack and the clean
+        // "Divide by zero" trap became a silent crash at default optimization
         working_stack.push_front(right);
         working_stack.push_front(left);
+        while(!working_stack.empty()) {
+          outputs->AddInstruction(working_stack.back());
+          working_stack.pop_back();
+        }
         outputs->AddInstruction(instr);
         return;
       }
@@ -1611,8 +1620,17 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
 
     case MOD_INT: {
       if(right->GetOperand7() == 0) {
+        // the operation must survive to trap at runtime, and its operands must
+        // land in the output BEFORE it -- emitting the instruction here and
+        // leaving the literals on the working stack appended them after it,
+        // so the division executed against an empty stack and the clean
+        // "Divide by zero" trap became a silent crash at default optimization
         working_stack.push_front(right);
         working_stack.push_front(left);
+        while(!working_stack.empty()) {
+          outputs->AddInstruction(working_stack.back());
+          working_stack.pop_back();
+        }
         outputs->AddInstruction(instr);
         return;
       }

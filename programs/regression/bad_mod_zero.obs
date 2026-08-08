@@ -1,0 +1,21 @@
+# EXPECT_RUNTIME_ERROR
+#~
+Modulus by zero must trap like division by zero does.
+
+The interpreter's ModInt had no zero check at all -- `left % right` with a
+zero divisor raised the hardware fault directly, dying silently (exit 127, no
+output) at every optimization level, while DivInt printed the clean
+">>> Divide by zero <<<" trap and unwound. The guard now mirrors DivInt's.
+
+The harness passes this only on a non-zero exit WITH output, which separates
+the trap from the silent crash.
+~#
+
+class ModZero {
+	function : Main(args : String[]) ~ Nil {
+		# a variable divisor, so no fold path is involved: this pins the VM trap
+		n := 7;
+		z := 0;
+		(n % z)->PrintLine();
+	}
+}
