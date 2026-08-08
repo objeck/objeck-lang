@@ -40,6 +40,7 @@
 #include "term.h"
 #include "screen.h"
 #include "tui_editor.h"
+#include "io_capture.h"
 #include <deque>
 
 //
@@ -568,7 +569,21 @@ void Editor::DoEdit()
     return;
   }
 
-  Tui::EditorView view(doc, term);
+  // F5 compiles and runs the buffer in-process; the capture keeps the
+  // program's output (and the VM's) off the raw-mode screen and hands it to
+  // the pane instead
+  auto run_program = [this](std::wstring& output) -> bool {
+    Tui::IoCapture capture;
+    if(!capture.Start()) {
+      output = L"unable to capture program output";
+      return false;
+    }
+    const bool ok = DoExecute();
+    capture.Finish(output);
+    return ok;
+  };
+
+  Tui::EditorView view(doc, term, run_program);
   const size_t left_at = view.Run(cur_pos);
 
   term.Clear();

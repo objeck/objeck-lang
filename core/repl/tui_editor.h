@@ -12,6 +12,9 @@
 #include "term.h"
 #include "screen.h"
 #include "keymap.h"
+#include <functional>
+#include <vector>
+#include <cwctype>
 
 // A viewport over Document -- the same buffer the line commands edit, so
 // '/l', '/s' and friends keep working on whatever this editor produced. The
@@ -43,6 +46,14 @@ namespace Tui {
     bool quit_armed;     // set by a first Ctrl+Q with unsaved changes
     std::wstring status; // transient message; cleared by the next key
 
+    // run pane: compile-and-execute output, shown below the text area
+    std::function<bool(std::wstring&)> runner;
+    std::vector<std::wstring> pane;
+    size_t pane_top;
+    bool pane_visible;
+    std::vector<size_t> error_lines;   // 1-based document lines from diagnostics
+    size_t error_index;
+
     static const int TAB_STOP = 3;
 
     // display column of character index `col`, honoring tabs and wide chars
@@ -63,8 +74,20 @@ namespace Tui {
       return doc.GetLineType(row) != Line::Type::RW_LINE;
     }
 
+    // pane height: a third of the terminal, never starving the text area
+    int PaneRows() const {
+      if(!pane_visible || rows < 10) {
+        return 0;
+      }
+      int height = rows / 3;
+      if(height < 4) {
+        height = 4;
+      }
+      return height;
+    }
+
     int TextRows() const {
-      return rows - 2;   // title bar and hint bar
+      return rows - 2 - PaneRows();   // title bar, hint bar, pane
     }
 
     int GutterWidth() {
@@ -172,6 +195,21 @@ namespace Tui {
         }
       }
 
+      // run pane: a labeled rule, then output with error lines highlighted
+      if(PaneRows() > 0) {
+        const int pane_start = 1 + TextRows();
+        screen.Fill(pane_start, 0, cols, L'-', ATTR_GRAY);
+        screen.Put(pane_start, 1, L" output · F6 hide · Alt+Up/Down scroll ", ATTR_GRAY | ATTR_BOLD);
+        for(int i = 0; i < PaneRows() - 1; ++i) {
+          const size_t index = pane_top + i;
+          if(index >= pane.size()) {
+            break;
+          }
+          const bool is_error = pane[index].find(L":(") != std::wstring::npos;
+          screen.Put(pane_start + 1 + i, 1, pane[index], is_error ? ATTR_RED : ATTR_DEFAULT);
+        }
+      }
+
       // hint bar; a transient status message takes its place until a key
       screen.Fill(rows - 1, 0, cols, L' ', ATTR_REVERSE);
       const std::wstring pos = L" Ln " + std::to_wstring(cur_row + 1) + L", Col " + std::to_wstring(cur_col + 1) + L" ";
@@ -179,7 +217,7 @@ namespace Tui {
         screen.Put(rows - 1, 0, L" " + status, ATTR_REVERSE | ATTR_BOLD);
       }
       else {
-        screen.Put(rows - 1, 0, L" Ctrl+S save   Ctrl+Q quit   Ctrl+K delete line", ATTR_REVERSE);
+        screen.Put(rows - 1, 0, L" Ctrl+S save   Ctrl+Q quit   F5 run   Ctrl+K delete line", ATTR_REVERSE);
       }
       screen.Put(rows - 1, cols - (int)pos.size(), pos, ATTR_REVERSE);
 
@@ -322,6 +360,87 @@ namespace Tui {
       dirty = true;
     }
 
+    // strip ANSI color sequences the REPL's own error printing embeds
+    static std::wstring StripAnsi(const std::wstring& text) {
+      std::wstring out;
+      out.reserve(text.size());
+      for(size_t i = 0; i < text.size(); ++i) {
+        if(text[i] == L'\x1b' && i + 1 < text.size() && text[i + 1] == L'[') {
+          i += 2;
+          while(i < text.size() && !iswalpha(text[i])) {
+            ++i;
+          }
+          continue;
+        }
+        out += text[i];
+      }
+      return out;
+    }
+
+    void DoRun() {
+      if(!runner) {
+        status = L"running is not available here";
+        return;
+      }
+
+      std::wstring output;
+      const bool ok = runner(output);
+
+      // split into pane lines; diagnostics look like 'name:(line,col): text'
+      pane.clear();
+      error_lines.clear();
+      std::wstring line;
+      for(const wchar_t ch : StripAnsi(output) + L"\n") {
+        if(ch == L'\n') {
+          if(!line.empty() && line.back() == L'\r') {
+            line.pop_back();
+          }
+          const size_t mark = line.find(L":(");
+          if(mark != std::wstring::npos) {
+            const long parsed = wcstol(line.c_str() + mark + 2, nullptr, 10);
+            if(parsed > 0) {
+              error_lines.push_back((size_t)parsed);
+            }
+          }
+          pane.push_back(line);
+          line.clear();
+        }
+        else {
+          line += ch;
+        }
+      }
+      while(!pane.empty() && pane.back().empty()) {
+        pane.pop_back();
+      }
+
+      pane_visible = true;
+      pane_top = 0;
+      error_index = 0;
+      if(ok) {
+        status = L"program finished · " + std::to_wstring(pane.size()) + L" line(s) of output";
+      }
+      else {
+        status = std::to_wstring(error_lines.size()) + L" error(s) · F8 jumps to the next one";
+        if(!error_lines.empty()) {
+          cur_row = error_lines[0] > 0 ? error_lines[0] - 1 : 0;
+          ClampCursor();
+          cur_col = 0;
+        }
+      }
+    }
+
+    void DoNextError() {
+      if(error_lines.empty()) {
+        status = L"no errors to visit";
+        return;
+      }
+      error_index = (error_index + 1) % error_lines.size();
+      cur_row = error_lines[error_index] > 0 ? error_lines[error_index] - 1 : 0;
+      ClampCursor();
+      cur_col = 0;
+      status = L"error " + std::to_wstring(error_index + 1) + L" of " + std::to_wstring(error_lines.size());
+    }
+
     void DoDeleteLine() {
       if(!doc.DeleteLine(cur_row)) {   // refuses read-only lines itself
         status = L"read-only shell line";
@@ -333,8 +452,9 @@ namespace Tui {
     }
 
   public:
-    EditorView(Document& document, Term& terminal)
-      : doc(document), term(terminal) {
+    EditorView(Document& document, Term& terminal,
+               std::function<bool(std::wstring&)> run_program = nullptr)
+      : doc(document), term(terminal), runner(run_program) {
       rows = 24;
       cols = 80;
       top = 0;
@@ -342,6 +462,9 @@ namespace Tui {
       cur_row = cur_col = want_col = 0;
       dirty = false;
       quit_armed = false;
+      pane_top = 0;
+      pane_visible = false;
+      error_index = 0;
     }
 
     // returns the cursor's document line, so the REPL can keep its own
@@ -477,6 +600,31 @@ namespace Tui {
 
         case ACT_SAVE:
           DoSave();
+          break;
+
+        case ACT_RUN:
+          DoRun();
+          break;
+
+        case ACT_TOGGLE_PANE:
+          pane_visible = !pane_visible && !pane.empty();
+          ClampCursor();
+          break;
+
+        case ACT_NEXT_ERROR:
+          DoNextError();
+          break;
+
+        case ACT_PANE_UP:
+          if(pane_top > 0) {
+            --pane_top;
+          }
+          break;
+
+        case ACT_PANE_DOWN:
+          if(pane_top + 1 < pane.size()) {
+            ++pane_top;
+          }
           break;
 
         case ACT_QUIT:
