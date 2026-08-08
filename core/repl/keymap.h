@@ -35,36 +35,47 @@ namespace Tui {
     ACT_DELETE_LINE,
     ACT_TAB,
     ACT_SAVE,
-    ACT_QUIT
+    ACT_QUIT,
+    ACT_RUN,          // compile and execute; output lands in the pane
+    ACT_TOGGLE_PANE,
+    ACT_NEXT_ERROR,
+    ACT_PANE_UP,
+    ACT_PANE_DOWN
   };
 
   struct Binding {
     KeyCode code;
     wchar_t ch;      // significant only for KEY_CHAR entries
     bool ctrl;
+    bool alt;
     Action action;
   };
 
   // the notepad-style default profile; discoverable, matches the hint bar
   inline const Binding* SimpleProfile(size_t& count) {
     static const Binding bindings[] = {
-      { KEY_LEFT, 0, false, ACT_LEFT },
-      { KEY_RIGHT, 0, false, ACT_RIGHT },
-      { KEY_UP, 0, false, ACT_UP },
-      { KEY_DOWN, 0, false, ACT_DOWN },
-      { KEY_HOME, 0, false, ACT_LINE_START },
-      { KEY_END, 0, false, ACT_LINE_END },
-      { KEY_HOME, 0, true, ACT_DOC_START },
-      { KEY_END, 0, true, ACT_DOC_END },
-      { KEY_PGUP, 0, false, ACT_PAGE_UP },
-      { KEY_PGDN, 0, false, ACT_PAGE_DOWN },
-      { KEY_ENTER, 0, false, ACT_NEWLINE },
-      { KEY_BACKSPACE, 0, false, ACT_BACKSPACE },
-      { KEY_DELETE, 0, false, ACT_DELETE },
-      { KEY_TAB, 0, false, ACT_TAB },
-      { KEY_CHAR, L's', true, ACT_SAVE },
-      { KEY_CHAR, L'q', true, ACT_QUIT },
-      { KEY_CHAR, L'k', true, ACT_DELETE_LINE },
+      { KEY_LEFT, 0, false, false, ACT_LEFT },
+      { KEY_RIGHT, 0, false, false, ACT_RIGHT },
+      { KEY_UP, 0, false, false, ACT_UP },
+      { KEY_DOWN, 0, false, false, ACT_DOWN },
+      { KEY_UP, 0, false, true, ACT_PANE_UP },
+      { KEY_DOWN, 0, false, true, ACT_PANE_DOWN },
+      { KEY_HOME, 0, false, false, ACT_LINE_START },
+      { KEY_END, 0, false, false, ACT_LINE_END },
+      { KEY_HOME, 0, true, false, ACT_DOC_START },
+      { KEY_END, 0, true, false, ACT_DOC_END },
+      { KEY_PGUP, 0, false, false, ACT_PAGE_UP },
+      { KEY_PGDN, 0, false, false, ACT_PAGE_DOWN },
+      { KEY_ENTER, 0, false, false, ACT_NEWLINE },
+      { KEY_BACKSPACE, 0, false, false, ACT_BACKSPACE },
+      { KEY_DELETE, 0, false, false, ACT_DELETE },
+      { KEY_TAB, 0, false, false, ACT_TAB },
+      { KEY_F5, 0, false, false, ACT_RUN },
+      { KEY_F6, 0, false, false, ACT_TOGGLE_PANE },
+      { KEY_F8, 0, false, false, ACT_NEXT_ERROR },
+      { KEY_CHAR, L's', true, false, ACT_SAVE },
+      { KEY_CHAR, L'q', true, false, ACT_QUIT },
+      { KEY_CHAR, L'k', true, false, ACT_DELETE_LINE },
     };
     count = sizeof(bindings) / sizeof(bindings[0]);
     return bindings;
@@ -75,7 +86,7 @@ namespace Tui {
     const Binding* bindings = SimpleProfile(count);
     for(size_t i = 0; i < count; ++i) {
       const Binding& binding = bindings[i];
-      if(binding.code != key.code || binding.ctrl != key.ctrl) {
+      if(binding.code != key.code || binding.ctrl != key.ctrl || binding.alt != key.alt) {
         continue;
       }
       if(binding.code == KEY_CHAR && binding.ch != key.ch) {
