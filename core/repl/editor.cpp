@@ -39,6 +39,7 @@
 #include "../debugger/color.h"
 #include "term.h"
 #include "screen.h"
+#include "tui_editor.h"
 #include <deque>
 
 //
@@ -194,6 +195,39 @@ bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type t
     return true;
   }
 
+  return false;
+}
+
+std::wstring Document::GetLine(size_t line_num)
+{
+  if(line_num < lines.size()) {
+    std::list<Line>::iterator iter = lines.begin();
+    std::advance(iter, line_num);
+    return iter->ToString();
+  }
+  return L"";
+}
+
+Line::Type Document::GetLineType(size_t line_num)
+{
+  if(line_num < lines.size()) {
+    std::list<Line>::iterator iter = lines.begin();
+    std::advance(iter, line_num);
+    return iter->GetType();
+  }
+  return Line::Type::RO_LINE;
+}
+
+bool Document::SetLine(size_t line_num, const std::wstring& text)
+{
+  if(line_num < lines.size()) {
+    std::list<Line>::iterator iter = lines.begin();
+    std::advance(iter, line_num);
+    if(iter->GetType() == Line::Type::RW_LINE) {
+      iter->SetText(text);
+      return true;
+    }
+  }
   return false;
 }
 
@@ -422,9 +456,12 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
         DoTutorial(in);
         break;
 
-        // full-screen editor (phase 1: terminal capability test)
+        // full-screen editor; '/et' runs the terminal capability test
       case L'e':
         if(in.size() == 2) {
+          DoEdit();
+        }
+        else if(in.size() == 3 && in.at(2) == L't') {
           DoTermTest();
         }
         else {
@@ -511,6 +548,35 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
   while(!done);
 
   std::wcout << "Goodbye." << std::endl;
+}
+
+/****************************
+ * Opens the full-screen editor over the REPL buffer. Everything the line
+ * commands can see, the editor edits in place, so '/l' and '/s' keep
+ * working on the result. The REPL's current position follows the cursor.
+ ****************************/
+void Editor::DoEdit()
+{
+  if(!Tui::Term::IsTty()) {
+    std::wcout << L"The editor needs an interactive terminal; input or output is redirected." << std::endl;
+    return;
+  }
+
+  Tui::Term term;
+  if(!term.EnterRaw()) {
+    std::wcout << L"Unable to put the terminal into raw mode." << std::endl;
+    return;
+  }
+
+  Tui::EditorView view(doc, term);
+  const size_t left_at = view.Run(cur_pos);
+
+  term.Clear();
+  term.ShowCursor();
+  term.ExitRaw();
+
+  cur_pos = left_at;
+  doc.List(cur_pos, false);
 }
 
 /****************************
@@ -671,7 +737,7 @@ void Editor::DoHelp()
   std::wcout << "  " << cmd << "/r" << rst << ": replace line         " << cmd << "/d" << rst << ": delete line (or range, e.g. '2-4')" << std::endl;
   std::wcout << "  " << cmd << "/u" << rst << ": set library uses     " << cmd << "/p" << rst << ": set compiler optimization" << std::endl;
   std::wcout << "  " << cmd << "/o" << rst << ": open file by name    " << cmd << "/s" << rst << ": save buffer to <name>.obs" << std::endl;
-  std::wcout << "  " << cmd << "/e" << rst << ": full-screen editor (preview: terminal capability test)" << std::endl;
+  std::wcout << "  " << cmd << "/e" << rst << ": full-screen editor      " << cmd << "/et" << rst << ": terminal capability test" << std::endl;
   std::wcout << "---" << std::endl;
   std::wcout << "User guide: https://objeck.org/getting_started.html" << std::endl;
 }

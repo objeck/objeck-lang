@@ -87,6 +87,10 @@ public:
   const Line::Type GetType() {
     return type;
   }
+
+  void SetText(const std::wstring& l) {
+    line = l;
+  }
 };
 
 //
@@ -127,6 +131,10 @@ class Document {
    bool InsertLine(size_t line_num, const std::wstring line, Line::Type = Line::Type::RW_LINE);
    bool DeleteLine(size_t line_num);
    std::wstring GetLine(size_t line_num);
+   // the full-screen editor renders read-only shell lines differently and
+   // refuses to edit them, so it needs the type and an in-place replace
+   Line::Type GetLineType(size_t line_num);
+   bool SetLine(size_t line_num, const std::wstring& text);
 #ifdef _DEBUG
    void Debug(size_t cur_pos);
 #endif
@@ -162,6 +170,7 @@ public:
   void DoClear();
   void DoTutorial(std::wstring& in);
   void DoTermTest();
+  void DoEdit();
   void DoInsertBelow();
   void DoUseLibraries(std::wstring &in);
   void DoOptLevel(std::wstring& in);
