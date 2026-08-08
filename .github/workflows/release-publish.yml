@@ -264,6 +264,15 @@ jobs:
           name: release-final
           path: release-final/
 
+      - name: Generate SHA256SUMS
+        run: |
+          # Bare filenames (no paths) so `sha256sum -c SHA256SUMS` works after download.
+          # Written into release-final/ so the existing release-final/* upload includes it.
+          cd release-final
+          sha256sum * > SHA256SUMS
+          echo "✅ SHA256SUMS generated:"
+          cat SHA256SUMS
+
       - name: Generate release notes
         id: release-notes
         run: |

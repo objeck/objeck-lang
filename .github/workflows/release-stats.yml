@@ -1,0 +1,35 @@
+name: Release Stats
+
+on:
+  schedule:
+    # Weekly, Monday 05:17 UTC (off-peak, avoids the on-the-hour GitHub cron rush)
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    name: Snapshot Download Counts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: master
+
+      - name: Snapshot release download counts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/release-stats/snapshot_downloads.py --token "$GH_TOKEN"
+
+      - name: Commit updated CSV
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tools/release-stats/downloads.csv
+          git diff --cached --quiet && echo "downloads.csv unchanged" || \
+            git commit -m "chore: weekly release download-stats snapshot [skip ci]"
+          git push origin master || echo "Push skipped (no changes)"
