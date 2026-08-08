@@ -1,3 +1,4 @@
+
 /***************************************************************************
  * REPL editor
  *
@@ -36,6 +37,9 @@
 #include "../vm/vm.h"
 #include "../shared/version.h"
 #include "../debugger/color.h"
+#include "term.h"
+#include "screen.h"
+#include <deque>
 
 //
 // Document
@@ -418,6 +422,16 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
         DoTutorial(in);
         break;
 
+        // full-screen editor (phase 1: terminal capability test)
+      case L'e':
+        if(in.size() == 2) {
+          DoTermTest();
+        }
+        else {
+          std::wcout << SYNTAX_ERROR << std::endl;
+        }
+        break;
+
         // delete line
       case L'd':
         if(DoDeleteLine(in)) {
@@ -499,6 +513,144 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
   std::wcout << "Goodbye." << std::endl;
 }
 
+/****************************
+ * Phase 1 of the full-screen editor: a scratch screen that proves the
+ * terminal plumbing -- raw mode, key decoding, damage-diffed repaints,
+ * resize events and display-width handling -- before any editing logic
+ * exists on top of it. '/e' grows into the editor itself.
+ ****************************/
+static std::wstring DescribeKey(const Tui::Key& key)
+{
+  std::wstring name;
+  if(key.ctrl) {
+    name += L"Ctrl+";
+  }
+  if(key.alt) {
+    name += L"Alt+";
+  }
+  if(key.shift) {
+    name += L"Shift+";
+  }
+
+  switch(key.code) {
+  case Tui::KEY_CHAR:
+    if(key.ch >= 32) {
+      name += L"'";
+      name += key.ch;
+      name += L"'";
+    }
+    else {
+      name += L"char";
+    }
+    break;
+  case Tui::KEY_ENTER: name += L"Enter"; break;
+  case Tui::KEY_TAB: name += L"Tab"; break;
+  case Tui::KEY_BACKSPACE: name += L"Backspace"; break;
+  case Tui::KEY_ESC: name += L"Esc"; break;
+  case Tui::KEY_UP: name += L"Up"; break;
+  case Tui::KEY_DOWN: name += L"Down"; break;
+  case Tui::KEY_LEFT: name += L"Left"; break;
+  case Tui::KEY_RIGHT: name += L"Right"; break;
+  case Tui::KEY_HOME: name += L"Home"; break;
+  case Tui::KEY_END: name += L"End"; break;
+  case Tui::KEY_PGUP: name += L"PgUp"; break;
+  case Tui::KEY_PGDN: name += L"PgDn"; break;
+  case Tui::KEY_INSERT: name += L"Insert"; break;
+  case Tui::KEY_DELETE: name += L"Delete"; break;
+  default:
+    if(key.code >= Tui::KEY_F1 && key.code <= Tui::KEY_F12) {
+      name += L"F" + std::to_wstring(1 + (int)(key.code - Tui::KEY_F1));
+    }
+    else {
+      name += L"?";
+    }
+    break;
+  }
+  return name;
+}
+
+void Editor::DoTermTest()
+{
+  if(!Tui::Term::IsTty()) {
+    // scripted sessions ('obi --file', piped stdin) must never flip the
+    // terminal into raw mode
+    std::wcout << L"The editor needs an interactive terminal; input or output is redirected." << std::endl;
+    return;
+  }
+
+  Tui::Term term;
+  if(!term.EnterRaw()) {
+    std::wcout << L"Unable to put the terminal into raw mode." << std::endl;
+    return;
+  }
+
+  int rows = 24, cols = 80;
+  term.Size(rows, cols);
+  term.HideCursor();
+
+  Tui::Screen screen;
+  screen.Resize(rows, cols);
+
+  std::deque<std::wstring> history;
+  bool done = false;
+  while(!done) {
+    // draw the frame
+    screen.Clear();
+    const std::wstring title = L" Objeck editor · terminal test ";
+    const std::wstring dims = std::to_wstring(cols) + L"x" + std::to_wstring(rows) + L" ";
+    screen.Fill(0, 0, cols, L' ', Tui::ATTR_REVERSE);
+    screen.Put(0, 0, title, Tui::ATTR_REVERSE | Tui::ATTR_BOLD);
+    screen.Put(0, cols - (int)dims.size(), dims, Tui::ATTR_REVERSE);
+
+    screen.Put(2, 2, L"Every key press is decoded and listed below; resize the window to", Tui::ATTR_DEFAULT);
+    screen.Put(3, 2, L"generate a resize event.", Tui::ATTR_DEFAULT);
+    screen.Put(5, 2, L"width sample:  ascii  漢字  ＯＢＪ  |", Tui::ATTR_CYAN);
+    screen.Put(6, 2, L"aligned ruler: 123456789012345678901  |", Tui::ATTR_GRAY);
+
+    int line = 8;
+    for(const std::wstring& entry : history) {
+      if(line >= rows - 2) {
+        break;
+      }
+      screen.Put(line++, 4, entry, Tui::ATTR_DEFAULT);
+    }
+
+    screen.Fill(rows - 1, 0, cols, L' ', Tui::ATTR_REVERSE);
+    screen.Put(rows - 1, 0, L" Ctrl+Q returns to the REPL ", Tui::ATTR_REVERSE);
+    screen.Flush(term);
+
+    // wait for something worth redrawing
+    for(;;) {
+      const Tui::Key key = term.ReadKey();
+      if(key.code == Tui::KEY_NONE) {
+        continue;
+      }
+
+      if(key.code == Tui::KEY_RESIZE) {
+        term.Size(rows, cols);
+        screen.Resize(rows, cols);
+        history.push_front(L"[resized to " + std::to_wstring(cols) + L"x" + std::to_wstring(rows) + L"]");
+      }
+      else if(key.ctrl && key.code == Tui::KEY_CHAR && key.ch == L'q') {
+        done = true;
+      }
+      else {
+        history.push_front(DescribeKey(key));
+      }
+
+      if(history.size() > 32) {
+        history.pop_back();
+      }
+      break;
+    }
+  }
+
+  term.Clear();
+  term.ShowCursor();
+  term.ExitRaw();
+  std::wcout << L"Terminal test finished." << std::endl;
+}
+
 void Editor::DoHelp()
 {
   const wchar_t* hdr = Runtime::C(Runtime::CLR_BOLD);
@@ -519,6 +671,7 @@ void Editor::DoHelp()
   std::wcout << "  " << cmd << "/r" << rst << ": replace line         " << cmd << "/d" << rst << ": delete line (or range, e.g. '2-4')" << std::endl;
   std::wcout << "  " << cmd << "/u" << rst << ": set library uses     " << cmd << "/p" << rst << ": set compiler optimization" << std::endl;
   std::wcout << "  " << cmd << "/o" << rst << ": open file by name    " << cmd << "/s" << rst << ": save buffer to <name>.obs" << std::endl;
+  std::wcout << "  " << cmd << "/e" << rst << ": full-screen editor (preview: terminal capability test)" << std::endl;
   std::wcout << "---" << std::endl;
   std::wcout << "User guide: https://objeck.org/getting_started.html" << std::endl;
 }

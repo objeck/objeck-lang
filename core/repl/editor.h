@@ -161,6 +161,7 @@ public:
   void DoVars();
   void DoClear();
   void DoTutorial(std::wstring& in);
+  void DoTermTest();
   void DoInsertBelow();
   void DoUseLibraries(std::wstring &in);
   void DoOptLevel(std::wstring& in);
