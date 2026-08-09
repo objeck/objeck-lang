@@ -53,11 +53,54 @@ extern "C" {
       try {
          std::unordered_map<std::string, std::string> provider_options;
 
-         // apply user-provided key/value options
+         // Pull "ep" out BEFORE building provider_options. It is a selector for
+         // this layer, not an ORT provider option -- forwarding it to
+         // AppendExecutionProvider makes ORT reject the whole option set, and the
+         // catch below then returns without setting slot 0, so the caller gets a
+         // silently null session. Shipped demos pass ep=cpu and ep=dml today.
+         std::string requested_ep;
          if(!keys.empty() && keys.size() == values.size()) {
             for(size_t i = 0; i < keys.size(); ++i) {
-               provider_options[UnicodeToBytes(keys[i])] = UnicodeToBytes(values[i]);
+               const std::string key = UnicodeToBytes(keys[i]);
+               std::string value = UnicodeToBytes(values[i]);
+               if(key == "ep") {
+                  for(size_t c = 0; c < value.size(); ++c) {
+                     value[c] = (char)tolower((unsigned char)value[c]);
+                  }
+                  requested_ep = value;
+               }
+               else {
+                  provider_options[key] = value;
+               }
             }
+         }
+
+         // The provider is fixed when this library is compiled, so "ep" can only
+         // mean: fall back to CPU, or name the provider that is already built in.
+         // Naming any other one is refused rather than silently ignored -- a
+         // request for a provider you are not getting must never look like success.
+#if defined(ONNX_EP_DML)
+         const std::string compiled_ep = "dml";
+#elif defined(ONNX_EP_CUDA)
+         const std::string compiled_ep = "cuda";
+#elif defined(ONNX_EP_QNN)
+         const std::string compiled_ep = "qnn";
+#elif defined(ONNX_EP_VITIS)
+         const std::string compiled_ep = "vitisai";
+#elif defined(ONNX_EP_COREML)
+         const std::string compiled_ep = "coreml";
+#else
+         const std::string compiled_ep = "cpu";
+#endif
+
+         const bool use_cpu = (requested_ep == "cpu");
+         if(!requested_ep.empty() && !use_cpu && requested_ep != compiled_ep) {
+            std::wcerr << L">>> ONNX: execution provider '" << BytesToUnicode(requested_ep)
+                       << L"' was requested, but this build provides '"
+                       << BytesToUnicode(compiled_ep)
+                       << L"'. Use ep=" << BytesToUnicode(compiled_ep)
+                       << L" or ep=cpu. <<<" << std::endl;
+            return;
          }
 
          Ort::SessionOptions session_options;
@@ -66,7 +109,7 @@ extern "C" {
          if(provider_options.find("device_id") == provider_options.end()) {
             provider_options["device_id"] = "0";
          }
-         session_options.AppendExecutionProvider("DML", provider_options);
+         if(!use_cpu) session_options.AppendExecutionProvider("DML", provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
          session_options.DisableMemPattern();
          session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
@@ -75,7 +118,7 @@ extern "C" {
          if(provider_options.find("device_id") == provider_options.end()) {
             provider_options["device_id"] = "0";
          }
-         session_options.AppendExecutionProvider("CUDA", provider_options);
+         if(!use_cpu) session_options.AppendExecutionProvider("CUDA", provider_options);
          session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
          session_options.DisableMemPattern();
@@ -92,11 +135,11 @@ extern "C" {
             provider_options["ep.context_file_pat"] = "./qnn_cache/model_ctx.onnx";
             provider_options["ep.context_embed_mode"] = "1";
          }
-         session_options.AppendExecutionProvider("QNN", provider_options);
+         if(!use_cpu) session_options.AppendExecutionProvider("QNN", provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
 #elif defined(ONNX_EP_VITIS)
-         session_options.AppendExecutionProvider("VitisAI", provider_options);
+         if(!use_cpu) session_options.AppendExecutionProvider("VitisAI", provider_options);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
 
 #elif defined(ONNX_EP_COREML)
@@ -141,7 +184,7 @@ extern "C" {
          // (CoreML EP has issues with models using external data files)
          const Ort::Session* session = nullptr;
          try {
-            session_options.AppendExecutionProvider("CoreML", provider_options);
+            if(!use_cpu) session_options.AppendExecutionProvider("CoreML", provider_options);
             session = new Ort::Session(*env, model_path.c_str(), session_options);
          }
          catch(const std::exception& e) {
