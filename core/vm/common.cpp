@@ -32,6 +32,7 @@
 #ifdef _WIN32
 #define NOMINMAX
 #include <winsock2.h>
+#include "win_http3.h"
 #include <ws2tcpip.h>
 #endif
 
@@ -4100,7 +4101,7 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     // whether HTTP/3 is actually built. These are the only reliable way for a
     // program (or a test) to tell an unsupported build from a network failure.
     { L"runtime.feature.http3",    []() -> size_t {
-#ifdef OBJECK_HAS_NGTCP2
+#if defined(OBJECK_HAS_NGTCP2) || defined(OBJECK_HAS_WINHTTP_H3)
                                                     return 1;
 #else
                                                     return 0;
@@ -7353,9 +7354,20 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   }
 
   instance[0] = (size_t)ctx;
+#elif defined(OBJECK_HAS_WINHTTP_H3)
+  if(!host_array || !instance) { if(instance) { instance[0] = 0; } return true; }
+
+  host_array = (size_t*)host_array[0];
+  const std::string host = UnicodeToBytes((wchar_t*)(host_array + 3));
+
+  // h3win_connect fails closed when this Windows build has no HTTP/3, rather
+  // than connecting and silently delivering HTTP/2 on the first request.
+  Http3WinCtx* wctx = h3win_connect(host, port);
+  instance[0] = (size_t)wctx;   // nullptr on failure -- same contract as POSIX
 #else
   if(instance) instance[0] = 0;
-  std::wcerr << L">>> HTTP/3 not available: build with OBJECK_HAS_NGTCP2 <<<" << std::endl;
+  std::wcerr << L">>> HTTP/3 not available: this VM was built without an HTTP/3 engine "
+                L"(ngtcp2 on Linux/macOS, WinHTTP on Windows 11+) <<<" << std::endl;
 #endif
   return true;
 }
@@ -7483,6 +7495,57 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
   instance[6] = (size_t)CreateStringObject(BytesToUnicode(ct), program, op_stack, stack_pos);
 
   PushInt(1, op_stack, stack_pos);
+#elif defined(OBJECK_HAS_WINHTTP_H3)
+  Http3WinCtx* ctx = instance ? (Http3WinCtx*)instance[0] : nullptr;
+  if(!ctx || !method_array || !path_array) {
+    PushInt(0, op_stack, stack_pos); return true;
+  }
+
+  method_array = (size_t*)method_array[0];
+  const std::string method = UnicodeToBytes((wchar_t*)(method_array + 3));
+  path_array   = (size_t*)path_array[0];
+  const std::string path   = UnicodeToBytes((wchar_t*)(path_array + 3));
+
+  // Content-type only travels with a body, matching the POSIX path.
+  std::vector<uint8_t> body_data;
+  std::string ctype;
+  if(body_array) {
+    const size_t blen = body_array[2];
+    uint8_t* bptr = (uint8_t*)(body_array + 3);
+    body_data.assign(bptr, bptr + blen);
+    if(ctype_array) {
+      ctype_array = (size_t*)ctype_array[0];
+      ctype = UnicodeToBytes((wchar_t*)(ctype_array + 3));
+    }
+  }
+
+  // Returns false if the exchange was not actually HTTP/3 -- see win_http3.h.
+  if(!h3win_request(ctx, method, path, ctype,
+                    body_data.empty() ? nullptr : body_data.data(),
+                    body_data.size())) {
+    PushInt(0, op_stack, stack_pos); return true;
+  }
+
+  // Same instance slots as the POSIX path: [4]=status, [5]=body, [6]=content-type
+  const std::string resp_ct = ctx->response_headers.count("content-type")
+                               ? ctx->response_headers["content-type"] : "";
+  instance[4] = (size_t)ctx->response_status;
+
+  const size_t body_size = ctx->response_body.size();
+  const size_t body_dim  = 1;
+  size_t* body_obj = MemoryManager::AllocateArray(
+      body_size + 1 + ((body_dim + 2) * sizeof(size_t)),
+      instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  body_obj[0] = body_size + 1;
+  body_obj[1] = body_dim;
+  body_obj[2] = body_size;
+  if(body_size > 0) {
+    memcpy((uint8_t*)(body_obj + 3), ctx->response_body.data(), body_size);
+  }
+  instance[5] = (size_t)body_obj;
+  instance[6] = (size_t)CreateStringObject(BytesToUnicode(resp_ct), program, op_stack, stack_pos);
+
+  PushInt(1, op_stack, stack_pos);
 #else
   PushInt(0, op_stack, stack_pos);
 #endif
@@ -7493,7 +7556,11 @@ bool TrapProcessor::Http3Close(StackProgram* program, size_t* inst, size_t*& op_
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
+#if defined(OBJECK_HAS_WINHTTP_H3) && !defined(OBJECK_HAS_NGTCP2)
+    Http3WinCtx* ctx = (Http3WinCtx*)instance[0];
+#else
     Http3SessionCtx* ctx = (Http3SessionCtx*)instance[0];
+#endif
     instance[0] = 0;
     delete ctx;
   }
