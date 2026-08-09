@@ -4,27 +4,21 @@
 # IMPORTANT: must run with JIT ENABLED. Do NOT add a '# JIT_DISABLE' marker --
 # this test only has value once the methods below are natively compiled.
 #
-# Guards the ARM64 move_freg_freg bug: it emitted
-#     fmov d10, x{src}   /   fmov x{dest}, d10
-# which addressed the GENERAL register file rather than the FP file, because
-# the Register enum restarts float numbering at D0 = 0. Every call therefore
-# did two wrong things -- the float move never happened, AND general-purpose
-# register X{dest} was overwritten with unrelated bits. When X{dest} held a
-# live pointer, the next use of it followed a float bit pattern as an address,
-# which is the "memory corruption of free block" / PC = 0x3F947AE147AE147B
-# crash signature.
+# Guards the ARM64 JIT float divide-by-zero divisor clobber. Every JIT float
+# division emits a divide-by-zero guard (div_freg_freg -> CheckFloatDivideByZero
+# -> cmp_imm_freg -> cmp_mem_freg) that compares the divisor against 0.0. That
+# helper used to append a move_freg_freg copying the 0.0 constant back INTO the
+# divisor register. With the old move_freg_freg encoding that copy was an inert
+# no-op on the FP file (but stray-clobbered general reg X{divisor} -> the
+# "memory corruption of free block" crash when it held a live pointer); once
+# move_freg_freg was corrected to a real `fmov Dd,Dn`, the copy started zeroing
+# the divisor, so every JIT float division computed x / 0.0 (-> inf/wrong).
 #
-# move_freg_freg is reached from the *_mem_freg emitters -- float ops where one
-# operand lives in memory (an instance variable or an array element) rather
-# than in a register. So this exercises exactly that shape: compare, add, sub,
-# mul and div with a memory operand, in a hot loop that crosses the auto-JIT
-# threshold.
-#
-# A regression surfaces as a WRONG VALUE (the move silently not happening),
-# not necessarily as a crash -- which is the point. The original bug hid for
-# weeks precisely because it usually corrupted something unrelated instead of
-# producing a visible wrong answer. Asserting exact values catches it on the
-# first iteration.
+# So: DIVISION is the primary trigger (via the guard), and the divisor must
+# survive the guard. Non-commutative div/sub also catch any operand-order
+# reversal. All values are exact in binary so `<>` equality is safe. Runs in a
+# hot loop that crosses the auto-JIT threshold; asserts exact values so a
+# regression is caught on the first compiled iteration.
 ~#
 use System;
 
@@ -52,6 +46,13 @@ class JitFloatMemOps {
 	method : CmpMem(x : Float) ~ Bool  { return x < @arr[1]; }
 	method : CmpMem2(x : Float) ~ Bool { return x > @fb; }
 
+	# Division is the primary trigger: the JIT emits a divide-by-zero guard that
+	# must not clobber the divisor. Test literal and non-commutative forms with
+	# binary-exact values so equality is reliable.
+	method : DivLit(x : Float) ~ Float { return x / 2.0; }        # 9.0/2.0 = 4.5
+	method : DivVar(x : Float, y : Float) ~ Float { return x / y; }  # divisor in a reg; guard must preserve it
+	method : SubLit(x : Float) ~ Float { return x - 2.0; }        # 9.0-2.0 = 7.0 (order-sensitive)
+
 	# Interleaves float memory ops with an object reference that stays live
 	# ACROSS them. Under the bug a clobbered general register could land on
 	# this reference; dereferencing it afterwards is the crash path.
@@ -75,6 +76,10 @@ class JitFloatMemOps {
 			if(t->SubMem(4.0) <> 1.5)      { pass := false; };
 			if(t->MulMem(4.0) <> 5.0)      { pass := false; };
 			if(t->DivMem(2.0) <> 4.0)      { pass := false; };
+			if(t->DivLit(9.0) <> 4.5)      { pass := false; };   # divisor clobber -> inf/wrong
+			if(t->DivVar(9.0, 2.0) <> 4.5) { pass := false; };   # divisor in reg must survive guard
+			if(t->DivVar(2.0, 8.0) <> 0.25){ pass := false; };   # non-commutative: reversal -> 4.0
+			if(t->SubLit(9.0) <> 7.0)      { pass := false; };   # non-commutative: reversal -> -7.0
 			if(t->CmpMem(1.0) = false)     { pass := false; };   # 1.0 < 4.0
 			if(t->CmpMem(9.0))             { pass := false; };   # 9.0 < 4.0 is false
 			if(t->CmpMem2(1.0) = false)    { pass := false; };   # 1.0 > 0.02
