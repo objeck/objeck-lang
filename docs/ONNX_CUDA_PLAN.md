@@ -187,3 +187,67 @@ source.
 3. Objeck-side probe with an explicit, reportable fallback chain.
 4. Deploy wiring, with the version-pinning rule from question 5.
 5. CI decision per question 3.
+
+## Recommended design: name the provider at runtime (added after review of the existing plumbing)
+
+The plumbing is already ~90% present. `core/lib/onnx/eq/dml/onnx_dml.cpp:55`
+already accepts an `ep` key from Objeck config:
+
+```cpp
+if(key == "ep" && value == "cpu") { use_cpu = true; }
+else { provider_options[key] = value; }
+```
+
+Config already flows Objeck -> native. It is just a hardcoded **binary** switch
+(CPU vs DML) instead of a provider **name**.
+
+### The change
+
+1. **Treat `ep` as a provider name** — `"cuda"`, `"dml"`, `"cpu"`, `"coreml"`.
+   The Objeck API, the key and the pass-through already exist; only the `if`
+   changes.
+2. **Validate against `Ort::GetAvailableProviders()`.** This is the crux, and
+   it is why a config file does not help: a given `onnxruntime.dll` contains
+   only certain providers (the DirectML build has DML+CPU, the GPU build has
+   CUDA+CPU). No config file changes what is linked in; ORT reports the truth
+   at runtime, and `OnnxRuntime->GetProviders()` already surfaces it.
+3. **Fail loudly if the requested provider is absent**, listing what is
+   available. A request for `cuda` that silently runs on CPU is
+   Http3Client-on-Windows again.
+4. **Explicit opt-in fallback only** — e.g. `"ep_fallback"->"cuda,dml,cpu"`.
+   Never implicit.
+
+### Why not a config file
+
+It adds a file to locate, parse, ship and version; it cannot override what is
+compiled into ORT; and per-session beats per-process, since different models
+may want different providers. For a global default, an env var
+(`OBJECK_ONNX_EP`) costs one line and no new format.
+
+### The larger payoff
+
+This makes the per-EP variant sources **largely unnecessary**.
+`onnx_dml.cpp` / `onnx_cuda.cpp` / `onnx_qnn.cpp` differ almost only in one
+hardcoded string — which is precisely how `onnx_cuda.cpp` came to append
+`"DML"` without anyone noticing. One source that appends whatever the caller
+names, validated against what is actually available, removes that whole class
+of copy-paste bug. Choosing an ORT package per vendor becomes a *packaging*
+decision rather than a *code* fork.
+
+### Renaming
+
+Yes, but **last**. Once the source is provider-agnostic, `eq/dml/` is a worse
+lie than the filename — a directory named for one provider holding code for
+all of them. Suggested end state: one `eq/onnx_provider.cpp` (or keep
+`eq/onnx.cpp`) and retire `eq/{dml,cuda,qnn,vitis}` as sources, keeping only
+whatever per-vendor packaging is genuinely needed.
+
+Sequence it so a rename and a semantic change never land in the same commit:
+
+1. make the provider runtime-selectable and validated, in place;
+2. prove `GetProviders()` reports the requested EP and that an absent one
+   errors rather than downgrades;
+3. collapse the variants;
+4. rename, updating `vs.vcxproj`, the `.sln`, `build_linux.sh` and the
+   `Release-DML` configuration name that `deploy_windows.cmd` copies from.
+
