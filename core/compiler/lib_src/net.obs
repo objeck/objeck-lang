@@ -896,6 +896,12 @@ response->GetStatusCode()->PrintLine();
 						oper->Append(':');
 						oper->Append(port);
 					};
+					# Caller-supplied. A CR/LF here would inject a header line into the
+					# request -- and it lands before Content-Length, which is the
+					# smuggling-relevant position. Fail closed rather than send it.
+					if(Web.HTTP.HeaderCheck->IsValidValue(content_type) = false) {
+						return Nil;
+					};
 					oper->Append("\r\nContent-Type: ");
 					oper->Append(content_type);
 					oper->Append("\r\nContent-Length: ");
