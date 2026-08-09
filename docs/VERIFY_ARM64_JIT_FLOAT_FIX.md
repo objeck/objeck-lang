@@ -1,87 +1,72 @@
-# Verifying the ARM64 JIT float-move fix on Apple Silicon
+# ARM64 JIT float register bug — resolution record
 
-The fix in `core/vm/arch/jit/arm64/jit_arm_a64.cpp` (`move_freg_freg`) is
-verified by disassembly and compiles on every CI leg, but the **crash it is
-believed to cause has never been reproduced in CI**. Closing the
-`investigate/jit-malloc-corruption` investigation needs one run on ARM64
-hardware.
+> **RESOLVED and on master** (`a60371477`). This was written as a verification
+> procedure; it is kept as the record of what the bug actually was, because the
+> answer is more interesting than the fix and the same shape can recur.
 
-CI cannot do this, for three specific reasons:
+Very likely the cause of the long-open *"BUG IN CLIENT OF LIBMALLOC: memory
+corruption of free block"* investigation
+(`docs/jit-malloc-corruption-investigation.md` on
+`investigate/jit-malloc-corruption`).
 
-1. the repro requires a **source edit** (`YOUNG_REGION_SIZE`), which CI never makes;
-2. `programs/deploy/2d_game_13.obs` is **never run** by any CI job;
-3. it is **probabilistic** — a few failures per ~10 runs — so a single green
-   CI run proves nothing.
+## One line, two different bugs
 
-## Step 1 — the cheap check first (2 minutes, no source edits)
+`cmp_mem_freg` ended with a `move_freg_freg(holder, dest)` that should never
+have been there — a compare produces flags, not a value, and `dest` still holds
+the live left-hand operand. AMD64 always agreed: `cmp_mem_xreg` is a bare
+`ucomisd` that never writes `dest`.
 
-Before the stress repro, confirm the new deterministic guard passes natively:
+That one line presented completely differently before and after the encoding
+was corrected:
 
-```sh
-cd programs/regression
-./run_regression.sh arm64          # or just: the suite runs jit_float_mem_ops
-```
+| | `move_freg_freg` encoding | effect of the trailing move |
+| --- | --- | --- |
+| **before** | `fmov d10, x{src}` + `fmov x{dest}, d10` — addressed the **general** register file, because the `Register` enum restarts float numbering at `D0 = 0` | inert on the FP file, but **stray-clobbered general register `X{dest}`** on every call. When that register held a live pointer, the next use followed a float bit pattern as an address → heap corruption |
+| **after** | `fmov d{dest}, d{src}` (correct) | the copy became **real** — and since this path is reached from *every JIT float division* via the divide-by-zero guard (`div_freg_freg` → `CheckFloatDivideByZero` → `cmp_imm_freg` → `cmp_mem_freg`), it copied the `0.0` constant back into the **divisor**. Every division computed `x / 0.0` |
 
-`jit_float_mem_ops.obs` exercises float arithmetic and comparison against
-**memory operands** — the exact shape that routes through `move_freg_freg` —
-in a loop hot enough to be JIT-compiled, asserting exact values.
+So the corruption and the regression were the same line seen from two sides.
+Removing it fixed both. `move_freg_freg` now has no live callers.
 
-**This is the interesting one.** Under the bug the float move silently did not
-happen, so this test should have produced a **wrong value**, not a crash. If it
-passes on ARM64 before the fix, my analysis is incomplete and the real trigger
-is narrower than I think — that is worth knowing either way.
+The fix also corrected the compare's **operand order** to
+`cmp_freg_freg(holder, dest)` — the `dest ? mem` sense used by `cond_jmp`/`cmov`
+and by AMD64 — and removed the dead, divergent `math_imm_freg` duplicate that
+had been hiding the divergence.
 
-## Step 2 — the original stress repro
+## Why it hid for so long
 
-From the investigation handoff:
+The investigation had already, correctly, ruled out the GC, the write barrier,
+moving collection, stack overflow, and wild store bases, converging on *"a valid
+base and a valid in-bounds offset — what is wrong is the **VALUE**"*, with a
+crash PC of `0x3F947AE147AE147B` (the IEEE-754 bits of the double `0.02`). That
+description fits a clobbered general register exactly.
 
-1. `core/vm/arch/memory.h`: set `#define YOUNG_REGION_SIZE (32 * 1024)`
-   (normally 128 MB). This makes GC and allocation churn constant, which is
-   what makes the corruption detectable.
-2. Build the ARM64 VM (macOS uses the Xcode project,
-   `core/vm/xcode/VM.xcodeproj` — **not** `Makefile.arm64`).
-3. Run, forcing every method through the JIT:
+It stayed hidden because the damage was **collateral**: the wrong register was
+usually dead, so nothing visibly misbehaved. It only surfaced as corruption when
+`X{dest}` happened to hold a live pointer — which is why the repro needed a
+32 KB young generation and `OBJECK_JIT_THRESHOLD=1` to raise allocation density
+until the odds caught up.
 
-```sh
-cd programs/deploy
-for i in $(seq 1 30); do
-  OBJECK_JIT_THRESHOLD=1 ../release/deploy/bin/obr 2d_game_13.obe > /dev/null 2>&1
-  echo "run $i -> exit $?"
-done
-```
+## The lesson worth keeping
 
-4. **Restore `YOUNG_REGION_SIZE` to 128 MB afterwards.**
+**A wrong instruction that is also inert produces no symptom until something
+else makes it live.** Correcting the encoding was right, and it immediately
+broke `ml_phase1_test` on both ARM64 legs — which looked like a regression but
+was the latent bug finally becoming observable. The CI gate refusing to merge
+on that failure is what forced the second, real fix.
 
-### Reading the result
+Also: AMD64 was correct throughout (`movsd xmm,xmm`, bare `ucomisd`). When one
+backend diverges from the other on something this basic, the divergence itself
+is the signal.
 
-- **Before the fix:** several runs abort with exit 133/134/138/139 —
-  `BUG IN CLIENT OF LIBMALLOC: memory corruption of free block`, or
-  `EXC_BAD_ACCESS`/SIGBUS with `PC = 0x3F947AE147AE147B` (the IEEE-754 bits of
-  the double `0.02`, i.e. a float being followed as a code pointer).
-- **After the fix:** all 30 runs should exit 0.
-- `OBJECK_JIT_DISABLE=1` was always clean and still should be — that is the
-  control, and it is what established the bug was JIT codegen rather than the
-  GC.
+## Guard
 
-30 runs matters. The original was "a few of ~10", so a clean 10 is weak
-evidence and a clean 30 is reasonable.
+`programs/regression/jit_float_mem_ops.obs` — gating, runs on `linux-arm64` and
+`macos-arm64`. Division is the primary trigger, so it asserts `DivLit`,
+`DivVar` (divisor in a register, must survive the guard) and non-commutative
+`SubLit`/`DivVar` forms that would catch an operand-order reversal. All values
+are binary-exact so equality comparison is reliable.
 
-## If it still crashes
-
-The fix is correct on its own merits — the old encoding provably addressed the
-wrong register file (capstone: `fmov d10, x3` / `fmov x5, d10` for a requested
-`D3 → D5` move) — so keep it regardless. But a remaining crash means there is
-a second source, and the handoff doc lists the other leads: any path where an
-`IMM_FLOAT`/`REG_FLOAT`/`MEM_FLOAT` working-stack entry is consumed by an
-integer or reference store without a conversion.
-
-The doc's instrumentation gotchas are worth re-reading before writing another
-validator — several traps there have already been hit once.
-
-## Related
-
-- Fix: `core/vm/arch/jit/arm64/jit_arm_a64.cpp`, `move_freg_freg`
-- Investigation: `docs/jit-malloc-corruption-investigation.md` on
-  `investigate/jit-malloc-corruption`
-- Guard: `programs/regression/jit_float_mem_ops.obs` (gating, runs on
-  linux-arm64 and macos-arm64)
+The first version of this guard was **not** sufficient: it exercised
+compare-against-memory but never re-read the register afterwards, so it passed
+while the bug was live. A guard that cannot fail is decoration — the division
+cases are what give it teeth.
