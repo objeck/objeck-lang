@@ -35,11 +35,14 @@ class RuntimeFeatureTest {
 			"  FAIL: runtime.feature.http2 not 0/1"->PrintLine();
 		};
 
-		# --- HTTP/2 must never silently vanish from a shipped build --------
-		# Every VM build config defines OBJECK_HAS_NGHTTP2 (both Makefiles,
+		# --- HTTP/2 must never silently vanish from a shipped VM -----------
+		# Every *VM* build config defines OBJECK_HAS_NGHTTP2 (both Makefiles,
 		# both msys2 Makefiles, vm.vcxproj, the Xcode project), so a 0 here
-		# means a build lost nghttp2 -- exactly the kind of silent capability
-		# regression that hid the HTTP/3 gap.
+		# means a build lost nghttp2 -- the kind of silent capability
+		# regression that hid the HTTP/3 gap. Note this is true of the VM and
+		# NOT of debugger.vcxproj / module.vcxproj, which compile the same
+		# common.cpp with no protocol macros; running this under obd would
+		# report 0 legitimately.
 		if(http2 <> Nil & http2->Equals("0")) {
 			pass := false;
 			"  FAIL: HTTP/2 not compiled in -- build lost nghttp2"->PrintLine();
@@ -54,9 +57,9 @@ class RuntimeFeatureTest {
 			"  FAIL: unknown feature key returned '{$bogus}'"->PrintLine();
 		};
 
-		# HTTP/3 is POSIX-only today (no ngtcp2/GnuTLS on Windows), so its
-		# value is platform-dependent and NOT asserted -- reported for the
-		# record so a CI log shows the real per-platform matrix.
+		# http3 is platform-dependent -- ngtcp2 on Linux/macOS, WinHTTP on
+		# Windows 11+, and no engine at all on the msys2 builds -- so it is
+		# reported for the record rather than asserted.
 		"  info: http2={$http2} http3={$http3}"->PrintLine();
 
 		if(pass) {
@@ -64,6 +67,9 @@ class RuntimeFeatureTest {
 		}
 		else {
 			"FAIL: runtime feature tests"->PrintLine();
+			# run_regression.sh/.cmd decide PASS/FAIL from the EXIT CODE alone --
+			# they never grep output -- so printing FAIL is not enough to fail.
+			Runtime->Exit(1);
 		};
 	}
 }

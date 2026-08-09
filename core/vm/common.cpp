@@ -32,12 +32,21 @@
 #ifdef _WIN32
 #define NOMINMAX
 #include <winsock2.h>
-#include "win_http3.h"
 #include <ws2tcpip.h>
 #endif
 
 #include "common.h"
 #include "loader.h"
+
+// Which HTTP/3 backend owns instance[0]. Derived ONCE so Connect, Request and
+// Close cannot disagree -- picking the wrong type in Close is a wrong-type
+// delete (heap corruption), not a compile error.
+#if defined(OBJECK_HAS_NGTCP2)
+#  define OBJECK_H3_NGTCP2 1
+#elif defined(OBJECK_HAS_WINHTTP_H3)
+#  define OBJECK_H3_WINHTTP 1
+#  include "win_http3.h"
+#endif
 #include "interpreter.h"
 #include "../shared/version.h"
 
@@ -7556,7 +7565,7 @@ bool TrapProcessor::Http3Close(StackProgram* program, size_t* inst, size_t*& op_
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
-#if defined(OBJECK_HAS_WINHTTP_H3) && !defined(OBJECK_HAS_NGTCP2)
+#ifdef OBJECK_H3_WINHTTP
     Http3WinCtx* ctx = (Http3WinCtx*)instance[0];
 #else
     Http3SessionCtx* ctx = (Http3SessionCtx*)instance[0];

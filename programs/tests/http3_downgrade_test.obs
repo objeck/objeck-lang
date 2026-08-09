@@ -1,0 +1,89 @@
+#~
+HTTP/3 downgrade test -- the assertion the other HTTP/3 tests do not make.
+
+Lives in programs/tests/ and runs from the NON-GATING network step, not the
+gating regression suite. Two reasons, both learned the hard way:
+
+  * The gating runners (run_regression.sh/.cmd) decide PASS/FAIL from the
+    process EXIT CODE and never grep output, so a printed "FAIL" there is
+    inert. The network step DOES grep for FAIL, so the assertion below
+    actually bites.
+  * The negative case deliberately points at a host that will never speak
+    HTTP/3. On the ngtcp2 backend that means h3_run_loop burns its full
+    30-second cap, and the gating runner's per-test timeout is 60s -- two
+    such waits would kill the test and redden the build for a network
+    condition. Exactly what this test must never do.
+
+What it asserts: a host that does NOT speak HTTP/3 must FAIL rather than
+quietly succeed over HTTP/2 or HTTP/1.1. That is a real bug on any platform
+and cannot be caused by network conditions. It matters most on Windows, where
+WinHTTP treats HTTP/3 as a *preference* and falls back transparently -- so the
+backend asserts WINHTTP_OPTION_HTTP_PROTOCOL_USED. An Http3Client that quietly
+spoke HTTP/2 would be the same false promise this feature was fixing.
+
+Gating on runtime.feature.http3 is why that property exists: the trap handlers
+compile unconditionally, so without it this test could not tell "this build has
+no HTTP/3 engine" from "the request failed".
+~#
+use Web.HTTP;
+use System;
+
+class Http3DowngradeTest {
+	function : Main(args : String[]) ~ Nil {
+		if(System.Runtime->GetProperty("runtime.feature.http3")->Equals("0")) {
+			"SKIP: HTTP/3 not compiled into this build"->PrintLine();
+			return;
+		};
+
+		pass := true;
+
+		# --- positive: a real HTTP/3 host round-trips ----------------------
+		# Never fatal: an outage or a blocked UDP 443 must not fail the build.
+		client := Http3Client->New("cloudflare-quic.com");
+		if(client->IsConnected() = false) {
+			"  SKIP: could not establish an HTTP/3 connection (network?)"->PrintLine();
+		}
+		else {
+			resp := client->Get("/");
+			if(resp = Nil) {
+				"  SKIP: HTTP/3 GET failed (network?)"->PrintLine();
+			}
+			else {
+				code := resp->GetCode();
+				body := resp->GetContent();
+				size := 0;
+				if(body <> Nil) { size := body->Size(); };
+				"  info: GET status={$code} bytes={$size}"->PrintLine();
+			};
+		};
+		client->Close();
+
+		# --- negative: no silent downgrade (the real assertion) ------------
+		# example.com serves HTTP/1.1 only. Reaching it and reporting success
+		# means the client accepted a non-HTTP/3 connection -- a genuine bug,
+		# not a network condition, so this one IS fatal.
+		plain := Http3Client->New("example.com");
+		if(plain->IsConnected()) {
+			down := plain->Get("/");
+			if(down <> Nil) {
+				dc := down->GetCode();
+				pass := false;
+				"  FAIL: non-HTTP/3 host silently succeeded (status={$dc})"->PrintLine();
+			}
+			else {
+				"  info: non-HTTP/3 host correctly refused"->PrintLine();
+			};
+		}
+		else {
+			"  info: non-HTTP/3 host refused at connect"->PrintLine();
+		};
+		plain->Close();
+
+		if(pass) {
+			"PASS: HTTP/3 downgrade test"->PrintLine();
+		}
+		else {
+			"FAIL: HTTP/3 downgrade test"->PrintLine();
+		};
+	}
+}

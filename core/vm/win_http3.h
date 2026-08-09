@@ -29,6 +29,11 @@
 #include <vector>
 #include <map>
 
+// UTF-8 <-> wide conversion: use the shared, locale-independent codecs in
+// sys.h rather than hand-rolling MultiByteToWideChar here. common.cpp includes
+// this header AFTER common.h so they are in scope.
+#include "../shared/sys.h"
+
 // These arrived in newer Windows SDKs. Defining the fallbacks keeps the build
 // working against an older SDK -- the values are ABI, so a binary built this
 // way still negotiates HTTP/3 at runtime on a Windows that supports it.
@@ -51,16 +56,22 @@
 //
 struct Http3WinCtx {
   HINTERNET   session;
-  HINTERNET   connect;
-  std::string host;
-  int         port;
+  HINTERNET   connect;   // host/port live in this handle; no need to keep copies
 
   int          response_status;
   std::map<std::string, std::string> response_headers;
   std::vector<uint8_t>               response_body;
+
+  // Always empty today, and deliberately kept. Http3Client->AddHeader() stores
+  // headers on the Objeck side, but the Http3Request trap signature is
+  // (body, content_type, path, method, instance) -- there is no headers
+  // argument, so they never reach the VM. That gap is pre-existing and affects
+  // the ngtcp2 backend identically (see Http3SessionCtx::request_headers).
+  // Kept so that whenever the trap learns to pass headers, both backends send
+  // them; dropping it would leave Windows silently worse than POSIX.
   std::map<std::string, std::string> request_headers;
 
-  Http3WinCtx() : session(nullptr), connect(nullptr), port(0), response_status(0) {}
+  Http3WinCtx() : session(nullptr), connect(nullptr), response_status(0) {}
 
   ~Http3WinCtx() {
     if(connect) { WinHttpCloseHandle(connect); }
@@ -68,34 +79,12 @@ struct Http3WinCtx {
   }
 };
 
-static std::wstring h3win_widen(const std::string& in) {
-  if(in.empty()) { return std::wstring(); }
-  const int need = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), (int)in.size(), nullptr, 0);
-  if(need <= 0) { return std::wstring(); }
-  std::wstring out((size_t)need, L'\0');
-  MultiByteToWideChar(CP_UTF8, 0, in.c_str(), (int)in.size(), &out[0], need);
-  return out;
-}
-
-static std::string h3win_narrow(const std::wstring& in) {
-  if(in.empty()) { return std::string(); }
-  const int need = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), (int)in.size(),
-                                       nullptr, 0, nullptr, nullptr);
-  if(need <= 0) { return std::string(); }
-  std::string out((size_t)need, '\0');
-  WideCharToMultiByte(CP_UTF8, 0, in.c_str(), (int)in.size(), &out[0], need, nullptr, nullptr);
-  return out;
-}
-
 //
 // Open a session pinned to HTTP/3 and connect to the host.
 // Returns nullptr on failure; the caller stores the result in instance[0].
 //
 static Http3WinCtx* h3win_connect(const std::string& host, int port) {
   Http3WinCtx* ctx = new Http3WinCtx();
-  ctx->host = host;
-  ctx->port = port;
-
   ctx->session = WinHttpOpen(L"objeck-http3/1.0",
                              WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
                              WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
@@ -112,7 +101,7 @@ static Http3WinCtx* h3win_connect(const std::string& host, int port) {
     return nullptr;
   }
 
-  ctx->connect = WinHttpConnect(ctx->session, h3win_widen(host).c_str(),
+  ctx->connect = WinHttpConnect(ctx->session, BytesToUnicode(host).c_str(),
                                 (INTERNET_PORT)port, 0);
   if(!ctx->connect) { delete ctx; return nullptr; }
 
@@ -125,6 +114,15 @@ static Http3WinCtx* h3win_connect(const std::string& host, int port) {
 // Note TLS verification is left at WinHTTP's default (full verification) --
 // nothing here may weaken it.
 //
+// Closes the per-request handle on every exit path, so the early returns below
+// cannot leak it.
+struct H3RequestHandle {
+  HINTERNET h;
+  explicit H3RequestHandle(HINTERNET handle) : h(handle) {}
+  ~H3RequestHandle() { if(h) { WinHttpCloseHandle(h); } }
+  operator HINTERNET() const { return h; }
+};
+
 static bool h3win_request(Http3WinCtx* ctx,
                           const std::string& method,
                           const std::string& path,
@@ -136,21 +134,21 @@ static bool h3win_request(Http3WinCtx* ctx,
   ctx->response_body.clear();
   ctx->response_headers.clear();
 
-  HINTERNET request = WinHttpOpenRequest(ctx->connect,
-                                         h3win_widen(method).c_str(),
-                                         h3win_widen(path).c_str(),
+  H3RequestHandle request(WinHttpOpenRequest(ctx->connect,
+                                         BytesToUnicode(method).c_str(),
+                                         BytesToUnicode(path).c_str(),
                                          nullptr, WINHTTP_NO_REFERER,
                                          WINHTTP_DEFAULT_ACCEPT_TYPES,
-                                         WINHTTP_FLAG_SECURE);
+                                         WINHTTP_FLAG_SECURE));
   if(!request) { return false; }
 
   std::wstring headers;
   if(!content_type.empty()) {
-    headers += L"Content-Type: " + h3win_widen(content_type) + L"\r\n";
+    headers += L"Content-Type: " + BytesToUnicode(content_type) + L"\r\n";
   }
   for(std::map<std::string, std::string>::const_iterator it = ctx->request_headers.begin();
       it != ctx->request_headers.end(); ++it) {
-    headers += h3win_widen(it->first) + L": " + h3win_widen(it->second) + L"\r\n";
+    headers += BytesToUnicode(it->first) + L": " + BytesToUnicode(it->second) + L"\r\n";
   }
   if(!headers.empty()) {
     WinHttpAddRequestHeaders(request, headers.c_str(), (DWORD)-1,
@@ -161,7 +159,6 @@ static bool h3win_request(Http3WinCtx* ctx,
                                        (LPVOID)(body_len ? (LPVOID)body : WINHTTP_NO_REQUEST_DATA),
                                        (DWORD)body_len, (DWORD)body_len, 0);
   if(!sent || !WinHttpReceiveResponse(request, nullptr)) {
-    WinHttpCloseHandle(request);
     return false;
   }
 
@@ -171,7 +168,6 @@ static bool h3win_request(Http3WinCtx* ctx,
   DWORD used = 0, used_len = sizeof(used);
   if(!WinHttpQueryOption(request, WINHTTP_OPTION_HTTP_PROTOCOL_USED, &used, &used_len) ||
      (used & WINHTTP_PROTOCOL_FLAG_HTTP3) == 0) {
-    WinHttpCloseHandle(request);
     return false;
   }
 
@@ -180,7 +176,6 @@ static bool h3win_request(Http3WinCtx* ctx,
                           WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
                           WINHTTP_HEADER_NAME_BY_INDEX, &status, &status_len,
                           WINHTTP_NO_HEADER_INDEX)) {
-    WinHttpCloseHandle(request);
     return false;
   }
   ctx->response_status = (int)status;
@@ -196,7 +191,7 @@ static bool h3win_request(Http3WinCtx* ctx,
                            WINHTTP_HEADER_NAME_BY_INDEX, &ct[0], &ct_len,
                            WINHTTP_NO_HEADER_INDEX)) {
       ct.resize(wcslen(ct.c_str()));
-      ctx->response_headers["content-type"] = h3win_narrow(ct);
+      ctx->response_headers["content-type"] = UnicodeToBytes(ct);
     }
   }
 
@@ -204,7 +199,6 @@ static bool h3win_request(Http3WinCtx* ctx,
   for(;;) {
     DWORD avail = 0;
     if(!WinHttpQueryDataAvailable(request, &avail)) {
-      WinHttpCloseHandle(request);
       return false;
     }
     if(avail == 0) { break; }
@@ -213,7 +207,6 @@ static bool h3win_request(Http3WinCtx* ctx,
     ctx->response_body.resize(offset + avail);
     DWORD read = 0;
     if(!WinHttpReadData(request, &ctx->response_body[offset], avail, &read)) {
-      WinHttpCloseHandle(request);
       return false;
     }
     // A short read is normal; shrink to what actually arrived.
@@ -221,7 +214,6 @@ static bool h3win_request(Http3WinCtx* ctx,
     if(read == 0) { break; }
   }
 
-  WinHttpCloseHandle(request);
   return true;
 }
 
