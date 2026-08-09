@@ -680,6 +680,15 @@ jobs:
       shell: bash
       run: CXX=g++ sh core/utils/updater/test_update.sh
 
+    # Pure-logic unit test for the phi3 token sampler (no ONNX Runtime/model).
+    - name: Run ONNX sampling unit test (POSIX)
+      if: matrix.platform == 'linux-x64'
+      shell: bash
+      run: |
+        g++ -std=c++17 -Wall -Wextra -O2 \
+          core/lib/onnx/eq/test/test_phi3_sampling.cpp -o /tmp/test_phi3_sampling
+        /tmp/test_phi3_sampling
+
     # ============================================
     # Network Tests (quarantined / non-gating)
     #

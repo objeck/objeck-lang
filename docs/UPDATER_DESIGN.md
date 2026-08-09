@@ -1,5 +1,14 @@
 # Auto-updater for Objeck — design
 
+> **Status (2026-08-08):** Phase 1 (`obu check`, `SHA256SUMS` release asset,
+> weekly download-stats) and Phase 2 (`obu update`/`rollback` on Linux/macOS,
+> verify-before-touch, all-or-nothing staged swap, offline CI test) are
+> **built and on master**. Remaining: Phase 3 (Windows in-place swap via the
+> re-exec dance) and the signature-verification layer (Authenticode/
+> notarization) that the SHA-256 check deliberately does not provide. The
+> design below is the full plan; the phasing section at the end tracks it.
+
+
 Upgrading Objeck today means downloading an installer and re-running it.
 This note designs an in-place upgrade path — check, download, verify, swap —
 plus download tracking, without adding server infrastructure.

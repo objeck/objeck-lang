@@ -1739,41 +1739,9 @@ static SLMModelInfo discover_slm_model(Ort::Session* session) {
    return info;
 }
 
-// Sample next token from logits
-static int64_t sample_token(const float* logits, int vocab_size, double temperature) {
-   if(!logits || vocab_size < 1) {
-      return 0;   // nothing to sample from; do not read an empty range
-   }
-
-   if(temperature < 1e-6) {
-      // Greedy
-      return (int64_t)std::distance(logits,
-         std::max_element(logits, logits + vocab_size));
-   }
-
-   // Temperature sampling
-   std::vector<float> probs(vocab_size);
-   float max_logit = *std::max_element(logits, logits + vocab_size);
-   float sum = 0.f;
-   for(int j = 0; j < vocab_size; ++j) {
-      probs[j] = std::exp((logits[j] - max_logit) / (float)temperature);
-      sum += probs[j];
-   }
-   if(sum <= 0.f || !std::isfinite(sum)) {
-      // degenerate distribution (all -inf, or overflow); fall back to greedy
-      return (int64_t)std::distance(logits, std::max_element(logits, logits + vocab_size));
-   }
-   for(int j = 0; j < vocab_size; ++j) {
-      probs[j] /= sum;
-   }
-
-   // Seed once per thread rather than re-seeding a Mersenne Twister from
-   // random_device on every token (slow, and random_device is deterministic
-   // on some toolchains) -- the same fix the VM applied to RAND_FLOAT.
-   static thread_local std::mt19937 gen(std::random_device{}());
-   std::discrete_distribution<int> dist(probs.begin(), probs.end());
-   return (int64_t)dist(gen);
-}
+// sample_token lives in phi3_sampling.h -- a dependency-free header so its
+// numeric logic can be unit tested without ONNX Runtime or a model.
+#include "phi3_sampling.h"
 
 // Extract float logits from tensor (handles FP32 and FP16)
 static std::vector<float> extract_last_logits(Ort::Value& logits_tensor, int& vocab_size) {
