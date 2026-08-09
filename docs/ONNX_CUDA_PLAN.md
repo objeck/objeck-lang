@@ -22,6 +22,31 @@
 > Net effect: the case for CUDA is **weaker and cheaper** than written — less
 > to build, and a narrower correctness argument. Re-scope before acting.
 
+> **CORRECTION 2 — how the EP is actually chosen, and why CUDA does not exist.**
+>
+> There are TWO selection mechanisms and they do not agree:
+>
+> - `core/lib/onnx/eq/onnx.cpp` uses the compile-time
+>   `#if ONNX_EP_DML / #elif ONNX_EP_CUDA / ...` chain. `vs/vs.vcxproj` defines
+>   all four, so DML wins by ordering.
+> - The **per-EP variant files** — `eq/dml/onnx_dml.cpp`, `eq/cuda/onnx_cuda.cpp`,
+>   `eq/qnn`, `eq/vitis` — do **not** use those macros at all. Each hardcodes
+>   its provider with a literal `AppendExecutionProvider("...")`.
+>
+> **The shipped DLL comes from the variant, not the macro chain**:
+> `deploy_windows.cmd` copies `x64\Release-DML\libobjk_onnx.dll`. So the EP is
+> chosen by *which source file you build*.
+>
+> And the decisive part: **`eq/cuda/onnx_cuda.cpp:64` appends `"DML"`**, under a
+> comment reading *"Create session options with DML execution provider"*. It is
+> an unconverted copy of the DML variant. **CUDA is not implemented anywhere in
+> the tree** — correction 1 above was itself too generous.
+>
+> Consequence for scope: shipping CUDA/cuDNN DLLs now would ship a dependency
+> for a provider that does not exist — the same "documented but dead" pattern
+> as Http3Client-on-Windows. **Implement and verify the provider first; ship
+> its DLLs only once `OnnxRuntime->GetProviders()` actually reports CUDA.**
+
 ## Why
 
 GPU inference already works — via **DirectML**, verified at runtime:
