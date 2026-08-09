@@ -1,0 +1,75 @@
+# JIT_DISABLE
+#~
+Regression tests for the "runtime.feature.*" properties, which report which
+optional protocol engines are actually compiled into this VM.
+
+These exist because the trap handlers are compiled unconditionally -- an
+unsupported build still has an Http3Connect, it just fails -- so the presence
+of the API proves nothing about whether the engine is there. Http3Client was
+documented and shipped on Windows for a long time with no engine behind it,
+and nothing could tell that apart from a network failure. These keys are what
+makes that detectable, so a caller (or a network test) can skip cleanly
+instead of reporting a bogus connection error.
+
+Deliberately offline: this asserts what was COMPILED IN, never what the
+network does.
+~#
+use System;
+
+class RuntimeFeatureTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- well-formed: each key is exactly "0" or "1" -------------------
+		# A missing key returns "" (see the unknown-key case below), so this
+		# also proves the rows are actually wired into the dispatch table.
+		http3 := System.Runtime->GetProperty("runtime.feature.http3");
+		http2 := System.Runtime->GetProperty("runtime.feature.http2");
+
+		if(http3 = Nil | (<>http3->Equals("0") & <>http3->Equals("1"))) {
+			pass := false;
+			"  FAIL: runtime.feature.http3 not 0/1"->PrintLine();
+		};
+		if(http2 = Nil | (<>http2->Equals("0") & <>http2->Equals("1"))) {
+			pass := false;
+			"  FAIL: runtime.feature.http2 not 0/1"->PrintLine();
+		};
+
+		# --- HTTP/2 must never silently vanish from a shipped VM -----------
+		# Every *VM* build config defines OBJECK_HAS_NGHTTP2 (both Makefiles,
+		# both msys2 Makefiles, vm.vcxproj, the Xcode project), so a 0 here
+		# means a build lost nghttp2 -- the kind of silent capability
+		# regression that hid the HTTP/3 gap. Note this is true of the VM and
+		# NOT of debugger.vcxproj / module.vcxproj, which compile the same
+		# common.cpp with no protocol macros; running this under obd would
+		# report 0 legitimately.
+		if(http2 <> Nil & http2->Equals("0")) {
+			pass := false;
+			"  FAIL: HTTP/2 not compiled in -- build lost nghttp2"->PrintLine();
+		};
+
+		# --- unknown keys are not blanket-matched -------------------------
+		# The dispatch only handles the "runtime." prefix; an unrecognized key
+		# under it must come back empty rather than inventing a value.
+		bogus := System.Runtime->GetProperty("runtime.feature.no_such_engine");
+		if(bogus <> Nil & <>bogus->Equals("")) {
+			pass := false;
+			"  FAIL: unknown feature key returned '{$bogus}'"->PrintLine();
+		};
+
+		# http3 is platform-dependent -- ngtcp2 on Linux/macOS, WinHTTP on
+		# Windows 11+, and no engine at all on the msys2 builds -- so it is
+		# reported for the record rather than asserted.
+		"  info: http2={$http2} http3={$http3}"->PrintLine();
+
+		if(pass) {
+			"PASS: runtime feature tests"->PrintLine();
+		}
+		else {
+			"FAIL: runtime feature tests"->PrintLine();
+			# run_regression.sh/.cmd decide PASS/FAIL from the EXIT CODE alone --
+			# they never grep output -- so printing FAIL is not enough to fail.
+			Runtime->Exit(1);
+		};
+	}
+}

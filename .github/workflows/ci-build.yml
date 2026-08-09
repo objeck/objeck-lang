@@ -566,6 +566,7 @@ jobs:
           $OBC -lib cipher,net,odbc,rss,regex,misc,xml,json -src ../../../../programs/deploy/threads_6.obs || exit 1
           $OBC -lib cipher,net,gen_collect,net_h2 -src ../../../../programs/tests/prgm_http2.obs || exit 1
           $OBC -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/prgm_http3.obs || exit 1
+          $OBC -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/http3_downgrade_test.obs || exit 1
           echo "Extended tests compiled successfully"
         fi
 
@@ -700,16 +701,26 @@ jobs:
     # ============================================
 
     - name: Run network tests (non-gating)
-      if: matrix.platform == 'linux-x64'
+      if: matrix.platform == 'linux-x64' || matrix.platform == 'windows-x64'
       continue-on-error: true
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
-        OBR="./obr"
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          OBR="./obr.exe"
+          # These .obe are pre-built only on linux-x64 (see "Compile tests").
+          # Build them here rather than in the gating step so a missing library
+          # cannot redden the build -- this step is continue-on-error.
+          ./obc.exe -lib cipher,net,gen_collect,net_h2 -src ../../../../programs/tests/prgm_http2.obs || true
+          ./obc.exe -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/prgm_http3.obs || true
+          ./obc.exe -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/http3_downgrade_test.obs || true
+        else
+          OBR="./obr"
+        fi
         status=0
 
         {
-          echo "### Network tests (non-gating) — linux-x64"
+          echo "### Network tests (non-gating) — ${{ matrix.platform }}"
           echo ""
           echo "| Result | Test | Note |"
           echo "| :----: | :--- | :--- |"
@@ -718,6 +729,10 @@ jobs:
         run_net() {
           local name="$1" obe="$2" out
           echo "=== $name ==="
+          if [ ! -f "$obe" ]; then
+            echo "| ⏭️ | $name | not built on this platform |" >> "$GITHUB_STEP_SUMMARY"
+            return
+          fi
           if ! out=$("$OBR" "$obe" 2>&1); then
             echo "$out"
             echo "| ⚠️ | $name | VM exited non-zero (upstream/network?) |" >> "$GITHUB_STEP_SUMMARY"
@@ -728,13 +743,19 @@ jobs:
           if echo "$out" | grep -q "FAIL"; then
             echo "| ❌ | $name | reported FAIL |" >> "$GITHUB_STEP_SUMMARY"
             status=1
+          elif echo "$out" | grep -q "SKIP"; then
+            # Not a pass. The test ran but never exercised the protocol -- no
+            # engine compiled in, or no route to the host. Surfaced so absent
+            # coverage cannot masquerade as green.
+            echo "| ⏭️ | $name | SKIPPED - protocol not exercised |" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "| ✅ | $name | passed / skipped |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ✅ | $name | passed |" >> "$GITHUB_STEP_SUMMARY"
           fi
         }
 
         run_net "HTTP/2" ../../../../programs/tests/prgm_http2.obe
         run_net "HTTP/3" ../../../../programs/tests/prgm_http3.obe
+        run_net "HTTP/3 downgrade" ../../../../programs/tests/http3_downgrade_test.obe
         echo "" >> "$GITHUB_STEP_SUMMARY"
 
         if [ $status -ne 0 ]; then

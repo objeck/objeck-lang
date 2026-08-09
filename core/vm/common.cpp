@@ -37,6 +37,16 @@
 
 #include "common.h"
 #include "loader.h"
+
+// Which HTTP/3 backend owns instance[0]. Derived ONCE so Connect, Request and
+// Close cannot disagree -- picking the wrong type in Close is a wrong-type
+// delete (heap corruption), not a compile error.
+#if defined(OBJECK_HAS_NGTCP2)
+#  define OBJECK_H3_NGTCP2 1
+#elif defined(OBJECK_HAS_WINHTTP_H3)
+#  define OBJECK_H3_WINHTTP 1
+#  include "win_http3.h"
+#endif
 #include "interpreter.h"
 #include "../shared/version.h"
 
@@ -4095,6 +4105,24 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.gc.promoted.total",[]() -> size_t { return MemoryManager::GetPromotedTotal(); } },
     { L"runtime.gc.old.bytes",     []() -> size_t { return MemoryManager::GetOldGenBytes(); } },
     { L"runtime.gc.contention",    []() -> size_t { return (size_t)MemoryManager::GetGcContention(); } },
+    // Compiled-in protocol support. Http3Connect is compiled unconditionally --
+    // its #else branch just fails -- so "the trap exists" proves nothing about
+    // whether HTTP/3 is actually built. These are the only reliable way for a
+    // program (or a test) to tell an unsupported build from a network failure.
+    { L"runtime.feature.http3",    []() -> size_t {
+#if defined(OBJECK_HAS_NGTCP2) || defined(OBJECK_HAS_WINHTTP_H3)
+                                                    return 1;
+#else
+                                                    return 0;
+#endif
+                                                  } },
+    { L"runtime.feature.http2",    []() -> size_t {
+#ifdef OBJECK_HAS_NGHTTP2
+                                                    return 1;
+#else
+                                                    return 0;
+#endif
+                                                  } },
     { L"runtime.threads.active",   []() -> size_t { return (size_t)MemoryManager::GetMutatorCount(); } },
     { L"runtime.threads.parked",   []() -> size_t { return (size_t)MemoryManager::GetParkedCount(); } },
     { L"runtime.threads.running",  []() -> size_t { const long a = MemoryManager::GetMutatorCount(),
@@ -6896,15 +6924,29 @@ static ngtcp2_conn* h3_get_conn(ngtcp2_crypto_conn_ref* ref) {
   return ((Http3SessionCtx*)ref->user_data)->conn;
 }
 
+// Connection IDs and the stateless reset token are secrets that go out in
+// cleartext QUIC headers. gnutls_rnd leaves the buffer UNTOUCHED when it fails,
+// so an unchecked call publishes whatever was on the stack -- a memory
+// disclosure and a predictable CID. GNUTLS_RND_KEY is the long-lived-secret
+// level. Every call site checks, and a failure fails the operation.
+static bool h3_random_bytes(void* dest, size_t destlen) {
+  return gnutls_rnd(GNUTLS_RND_KEY, dest, destlen) == 0;
+}
+
 static void h3_rand_cb(uint8_t* dest, size_t destlen, const ngtcp2_rand_ctx*) {
-  gnutls_rnd(GNUTLS_RND_RANDOM, dest, destlen);
+  if(!h3_random_bytes(dest, destlen)) {
+    // this callback cannot signal failure; zero rather than leak stack bytes
+    memset(dest, 0, destlen);
+  }
 }
 
 static int h3_get_new_connection_id_cb(ngtcp2_conn*, ngtcp2_cid* cid,
                                         uint8_t* token, size_t cidlen, void*) {
-  gnutls_rnd(GNUTLS_RND_RANDOM, cid->data, cidlen);
+  if(!h3_random_bytes(cid->data, cidlen) ||
+     !h3_random_bytes(token, NGTCP2_STATELESS_RESET_TOKENLEN)) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
   cid->datalen = cidlen;
-  gnutls_rnd(GNUTLS_RND_RANDOM, token, NGTCP2_STATELESS_RESET_TOKENLEN);
   return 0;
 }
 
@@ -7256,11 +7298,15 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   ngtcp2_crypto_gnutls_configure_client_session(ctx->tls_session);
 
   // Generate random QUIC connection IDs
-  ngtcp2_cid dcid, scid;
+  // zero-initialised so a CSPRNG failure can never transmit stack contents
+  ngtcp2_cid dcid = {}, scid = {};
   dcid.datalen = 20;
   scid.datalen = 8;
-  gnutls_rnd(GNUTLS_RND_RANDOM, dcid.data, dcid.datalen);
-  gnutls_rnd(GNUTLS_RND_RANDOM, scid.data, scid.datalen);
+  if(!h3_random_bytes(dcid.data, dcid.datalen) ||
+     !h3_random_bytes(scid.data, scid.datalen)) {
+    std::wcerr << L">>> Unable to generate QUIC connection IDs <<<" << std::endl;
+    delete ctx; instance[0] = 0; return true;
+  }
 
   // Build the QUIC path
   ngtcp2_path path;
@@ -7317,9 +7363,20 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   }
 
   instance[0] = (size_t)ctx;
+#elif defined(OBJECK_HAS_WINHTTP_H3)
+  if(!host_array || !instance) { if(instance) { instance[0] = 0; } return true; }
+
+  host_array = (size_t*)host_array[0];
+  const std::string host = UnicodeToBytes((wchar_t*)(host_array + 3));
+
+  // h3win_connect fails closed when this Windows build has no HTTP/3, rather
+  // than connecting and silently delivering HTTP/2 on the first request.
+  Http3WinCtx* wctx = h3win_connect(host, port);
+  instance[0] = (size_t)wctx;   // nullptr on failure -- same contract as POSIX
 #else
   if(instance) instance[0] = 0;
-  std::wcerr << L">>> HTTP/3 not available: build with OBJECK_HAS_NGTCP2 <<<" << std::endl;
+  std::wcerr << L">>> HTTP/3 not available: this VM was built without an HTTP/3 engine "
+                L"(ngtcp2 on Linux/macOS, WinHTTP on Windows 11+) <<<" << std::endl;
 #endif
   return true;
 }
@@ -7447,6 +7504,57 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
   instance[6] = (size_t)CreateStringObject(BytesToUnicode(ct), program, op_stack, stack_pos);
 
   PushInt(1, op_stack, stack_pos);
+#elif defined(OBJECK_HAS_WINHTTP_H3)
+  Http3WinCtx* ctx = instance ? (Http3WinCtx*)instance[0] : nullptr;
+  if(!ctx || !method_array || !path_array) {
+    PushInt(0, op_stack, stack_pos); return true;
+  }
+
+  method_array = (size_t*)method_array[0];
+  const std::string method = UnicodeToBytes((wchar_t*)(method_array + 3));
+  path_array   = (size_t*)path_array[0];
+  const std::string path   = UnicodeToBytes((wchar_t*)(path_array + 3));
+
+  // Content-type only travels with a body, matching the POSIX path.
+  std::vector<uint8_t> body_data;
+  std::string ctype;
+  if(body_array) {
+    const size_t blen = body_array[2];
+    uint8_t* bptr = (uint8_t*)(body_array + 3);
+    body_data.assign(bptr, bptr + blen);
+    if(ctype_array) {
+      ctype_array = (size_t*)ctype_array[0];
+      ctype = UnicodeToBytes((wchar_t*)(ctype_array + 3));
+    }
+  }
+
+  // Returns false if the exchange was not actually HTTP/3 -- see win_http3.h.
+  if(!h3win_request(ctx, method, path, ctype,
+                    body_data.empty() ? nullptr : body_data.data(),
+                    body_data.size())) {
+    PushInt(0, op_stack, stack_pos); return true;
+  }
+
+  // Same instance slots as the POSIX path: [4]=status, [5]=body, [6]=content-type
+  const std::string resp_ct = ctx->response_headers.count("content-type")
+                               ? ctx->response_headers["content-type"] : "";
+  instance[4] = (size_t)ctx->response_status;
+
+  const size_t body_size = ctx->response_body.size();
+  const size_t body_dim  = 1;
+  size_t* body_obj = MemoryManager::AllocateArray(
+      body_size + 1 + ((body_dim + 2) * sizeof(size_t)),
+      instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  body_obj[0] = body_size + 1;
+  body_obj[1] = body_dim;
+  body_obj[2] = body_size;
+  if(body_size > 0) {
+    memcpy((uint8_t*)(body_obj + 3), ctx->response_body.data(), body_size);
+  }
+  instance[5] = (size_t)body_obj;
+  instance[6] = (size_t)CreateStringObject(BytesToUnicode(resp_ct), program, op_stack, stack_pos);
+
+  PushInt(1, op_stack, stack_pos);
 #else
   PushInt(0, op_stack, stack_pos);
 #endif
@@ -7457,7 +7565,11 @@ bool TrapProcessor::Http3Close(StackProgram* program, size_t* inst, size_t*& op_
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
+#ifdef OBJECK_H3_WINHTTP
+    Http3WinCtx* ctx = (Http3WinCtx*)instance[0];
+#else
     Http3SessionCtx* ctx = (Http3SessionCtx*)instance[0];
+#endif
     instance[0] = 0;
     delete ctx;
   }

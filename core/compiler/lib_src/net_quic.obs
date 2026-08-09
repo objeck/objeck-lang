@@ -6,6 +6,8 @@ use System.IO.Net, Collection, Web.HTTP;
 
 #~
 HTTP/3 (QUIC) client for ultra-low-latency requests over UDP. Http3Client API mirrors HttpClient; ideal for mobile and high-packet-loss networks. Compile with -lib net_quic.
+
+PLATFORM SUPPORT: HTTP/3 needs an engine compiled into the VM -- ngtcp2 on Linux (x64 and ARM64) and macOS, WinHTTP over MsQuic on Windows 11 / Server 2022 and later. The msys2 Windows builds have no engine and every request fails there. Check at runtime with Runtime->GetProperty("runtime.feature.http3"), which returns "1" only when an engine is actually present; a request that cannot be made over HTTP/3 fails rather than silently downgrading to HTTP/2, so success always means HTTP/3.
 ~#
 bundle Web.HTTP {
 	#~
