@@ -1,5 +1,9 @@
 #~
-HTTP/3 downgrade test -- the assertion the other HTTP/3 tests do not make.
+HTTP/3 "must refuse" tests -- the assertions the other HTTP/3 tests do not make.
+
+Two things the client must REFUSE rather than quietly accept:
+  1. a connection that is not actually HTTP/3 (silent downgrade)
+  2. a caller-supplied content type carrying CR/LF (header injection)
 
 Lives in programs/tests/ and runs from the NON-GATING network step, not the
 gating regression suite. Two reasons, both learned the hard way:
@@ -78,6 +82,31 @@ class Http3DowngradeTest {
 			"  info: non-HTTP/3 host refused at connect"->PrintLine();
 		};
 		plain->Close();
+
+		# --- header injection: CR/LF in a caller-supplied content type ----
+		# WinHttpAddRequestHeaders takes a CRLF-SEPARATED BLOCK, so a CR/LF in
+		# a value is the API's own separator -- it appends a header line rather
+		# than failing to parse. This was accepted (status 200) until the
+		# validator landed. The ngtcp2 path transmits the raw octets, which a
+		# downstream h3->HTTP/1.1 gateway can re-emit as a split.
+		inj := Http3Client->New("cloudflare-quic.com");
+		if(inj->IsConnected()) {
+			payload := "x"->ToByteArray();
+			evil := inj->Post("/", payload, "text/plain
+X-Injected: pwned");
+			if(evil <> Nil) {
+				ec := evil->GetCode();
+				pass := false;
+				"  FAIL: CR/LF content type accepted (status={$ec}) -- header injection"->PrintLine();
+			}
+			else {
+				"  info: CR/LF content type correctly refused"->PrintLine();
+			};
+		}
+		else {
+			"  SKIP: no HTTP/3 connection for the injection check"->PrintLine();
+		};
+		inj->Close();
 
 		if(pass) {
 			"PASS: HTTP/3 downgrade test"->PrintLine();
