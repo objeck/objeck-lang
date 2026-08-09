@@ -3951,20 +3951,22 @@ void JitArm64::math_mem_reg(long offset, Register reg, InstructionType type) {
 void JitArm64::move_freg_freg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(X10)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(src) << L"]" << std::endl;
-#endif
-    uint32_t op_code = 0x9E67000A;
-    op_code |= src << 5;
-    AddMachineCode(op_code);
-    
-#ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(X19) << L"]" << std::endl;
+        << L", " << GetRegisterName(src) << L"]" << std::endl;
 #endif
-    op_code = 0x9E660140;
-    op_code |= dest;
-    AddMachineCode(op_code);
+    // fmov D{dest}, D{src}
+    //
+    // This previously bridged through a GP register pair:
+    //   fmov D10, X{src}   (0x9E67000A -- FMOV Dd,Xn, reads the GENERAL file)
+    //   fmov X{dest}, D10  (0x9E660140 -- FMOV Xd,Dn, writes the GENERAL file)
+    // Because the Register enum restarts float numbering at D0 = 0, those
+    // encodings addressed X{src}/X{dest} rather than D{src}/D{dest}. Floats
+    // genuinely live in the FP file here (move_mem_freg emits LDR Dt,
+    // cmp_freg_freg emits FCMP Dn,Dm), so the move both failed to happen AND
+    // clobbered general-purpose register X{dest} with unrelated bits. When
+    // X{dest} held a live pointer, the next use of that field followed a
+    // float bit pattern as an address.
+    AddMachineCode(0x1E604000 | ((uint32_t)src << 5) | (uint32_t)dest);
   }
 }
 
