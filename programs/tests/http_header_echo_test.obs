@@ -1,0 +1,73 @@
+#~
+Live request-header echo -- proves AddHeader actually reaches the server.
+
+Runs from the NON-GATING network step. The gating half is
+programs/regression/http_header_flatten_test.obs, which asserts the flattened
+String[] offline; this half asserts the other end of the wire.
+
+Why this test exists: Http2Client->AddHeader and Http3Client->AddHeader stored
+headers on the Objeck side and then dropped them. The trap signature was
+(body, content_type, path, method, instance) -- no headers argument -- so they
+never reached the VM at all. A status code proves nothing here; only the
+echoed value does.
+
+httpbin.org/headers returns the request headers it received as JSON, over
+HTTP/2. There is no equivalent HTTP/3 echo endpoint, so the HTTP/3 path is
+covered by http3_downgrade_test.obs plus manual verification.
+~#
+use Web.HTTP;
+
+class HttpHeaderEchoTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		client := Http2Client->New("httpbin.org");
+		if(client->IsConnected() = false) {
+			"SKIP: no HTTP/2 connection (network?)"->PrintLine();
+			return;
+		};
+
+		client->AddHeader("x-objeck-probe", "header-plumbing-works");
+
+		resp := client->Get("/headers");
+		if(resp = Nil) {
+			"SKIP: request failed (network?)"->PrintLine();
+			client->Close();
+			return;
+		};
+
+		code := resp->GetCode();
+		if(code <> 200) {
+			"SKIP: upstream status={$code}"->PrintLine();
+			client->Close();
+			return;
+		};
+
+		body := resp->GetContent();
+		if(body = Nil) {
+			pass := false;
+			"  FAIL: 200 with no body"->PrintLine();
+		}
+		else {
+			text := String->New(body);
+			# The assertion is the echoed VALUE. Anything weaker would pass
+			# just as happily with the headers dropped, which is the bug.
+			if(text->Find("header-plumbing-works") < 0) {
+				pass := false;
+				"  FAIL: custom header never reached the server"->PrintLine();
+				text->PrintLine();
+			}
+			else {
+				"  info: server echoed the custom header"->PrintLine();
+			};
+		};
+		client->Close();
+
+		if(pass) {
+			"PASS: HTTP header echo"->PrintLine();
+		}
+		else {
+			"FAIL: HTTP header echo"->PrintLine();
+		};
+	}
+}
