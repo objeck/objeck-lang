@@ -56,6 +56,12 @@ bundle Web.HTTP {
 		@param key header name (lower-case recommended)
 		@param value header value
 
+		Rejected silently if the name or value is malformed: names must be
+		lower-case token characters and may not begin with ":" (HTTP/2 and
+		HTTP/3 build the pseudo-headers themselves), and values may not contain
+		CR, LF, NUL or other control characters, which would otherwise inject an
+		extra header line. See Web.HTTP.HeaderCheck.
+
 		```
 		client := Web.HTTP.Http2Client->New("api.example.com");
 		client->AddHeader("authorization", "Bearer mytoken");
@@ -425,7 +431,10 @@ bundle Web.HTTP {
 				return Nil;
 			};
 
-			if(@session->Request(verb, path, body, content_type)) {
+			# Flatten to the alternating key/value array the trap consumes.
+			# HTTP/1.1 needs no equivalent: it serializes headers in Objeck.
+			if(@session->Request(verb, path, body, content_type,
+					Web.HTTP.HeaderCheck->Flatten(@request_headers))) {
 				return Response->New(@session->GetResponseBody(), @session->GetResponseStatus(), @session->GetResponseContentType());
 			};
 

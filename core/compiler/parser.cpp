@@ -3322,6 +3322,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case HTTP2_REQUEST_HDRS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HTTP2_REQUEST_HDRS);
+      NextToken();
+      break;
+
     case HTTP2_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP2_CLOSE);
@@ -3337,6 +3343,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case HTTP3_REQUEST:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP3_REQUEST);
+      NextToken();
+      break;
+
+    case HTTP3_REQUEST_HDRS:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::HTTP3_REQUEST_HDRS);
       NextToken();
       break;
 
@@ -5430,6 +5442,12 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
      NextToken();
      break;
 
+  case HTTP2_REQUEST_HDRS:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HTTP2_REQUEST_HDRS);
+     NextToken();
+     break;
+
   case HTTP2_CLOSE:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::HTTP2_CLOSE);
@@ -5445,6 +5463,12 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case HTTP3_REQUEST:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::HTTP3_REQUEST);
+     NextToken();
+     break;
+
+  case HTTP3_REQUEST_HDRS:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::HTTP3_REQUEST_HDRS);
      NextToken();
      break;
 

@@ -1,0 +1,107 @@
+# EXTRA_LIBS: net,cipher,gen_collect
+# JIT_DISABLE
+#~
+Request-header flattening (Web.HTTP.HeaderCheck->Flatten).
+
+HTTP/2 and HTTP/3 hand the request to a native trap, so their headers have to
+cross into the VM as a String[] of alternating key/value. This asserts the
+flattened array directly -- offline, deterministic, no socket -- so it runs in
+the GATING suite and can actually fail.
+
+That matters: the HTTP/2 and HTTP/3 network tests run only on linux-x64 under
+continue-on-error, so an end-to-end header test there could never redden the
+build. This is the half that can.
+
+The flattening lives in HeaderCheck (net.obs) rather than in each client
+because net_h2.obs and net_quic.obs both need it, and because lang.obs -- which
+declares the trap-facing method -- compiles with -strict and no libraries, so
+it cannot name Hash<K,V> at all.
+~#
+use Web.HTTP;
+use Collection;
+use System;
+
+class HttpHeaderFlattenTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- empty / Nil produce a usable zero-length array ---------------
+		# The trap must never receive a dangling or unexpected shape.
+		empty := Hash->New()<String, String>;
+		fe := HeaderCheck->Flatten(empty);
+		if(fe = Nil) {
+			pass := false;
+			"  FAIL: Flatten(empty) returned Nil"->PrintLine();
+		}
+		else if(fe->Size() <> 0) {
+			s := fe->Size();
+			pass := false;
+			"  FAIL: Flatten(empty) size {$s}, expected 0"->PrintLine();
+		};
+
+		fn := HeaderCheck->Flatten(Nil);
+		if(fn = Nil | fn->Size() <> 0) {
+			pass := false;
+			"  FAIL: Flatten(Nil) must be a zero-length array"->PrintLine();
+		};
+
+		# --- one pair -----------------------------------------------------
+		one := Hash->New()<String, String>;
+		one->Insert("x-legit", "hello");
+		f1 := HeaderCheck->Flatten(one);
+		if(f1 = Nil | f1->Size() <> 2) {
+			pass := false;
+			"  FAIL: one header should flatten to 2 elements"->PrintLine();
+		}
+		else {
+			if(f1[0]->Equals("x-legit") = false | f1[1]->Equals("hello") = false) {
+				a := f1[0]; b := f1[1];
+				pass := false;
+				"  FAIL: expected [x-legit, hello], got [{$a}, {$b}]"->PrintLine();
+			};
+		};
+
+		# --- alternating key/value, and always an even length -------------
+		# An odd length would make the native walker read one element past
+		# the last pair.
+		many := Hash->New()<String, String>;
+		many->Insert("a", "1");
+		many->Insert("b", "2");
+		many->Insert("c", "3");
+		fm := HeaderCheck->Flatten(many);
+		if(fm = Nil) {
+			pass := false;
+			"  FAIL: Flatten(many) returned Nil"->PrintLine();
+		}
+		else {
+			if(fm->Size() <> 6) {
+				s := fm->Size();
+				pass := false;
+				"  FAIL: 3 headers should flatten to 6 elements, got {$s}"->PrintLine();
+			};
+			if(fm->Size() % 2 <> 0) {
+				pass := false;
+				"  FAIL: flattened length must be even"->PrintLine();
+			};
+			# every even index is a key that must survive validation
+			i := 0;
+			while(i < fm->Size()) {
+				k := fm[i];
+				if(k = Nil | HeaderCheck->IsValidName(k) = false) {
+					pass := false;
+					"  FAIL: flattened key at {$i} is not a valid header name"->PrintLine();
+				};
+				i += 2;
+			};
+		};
+
+		if(pass) {
+			"PASS: HTTP header flattening"->PrintLine();
+		}
+		else {
+			"FAIL: HTTP header flattening"->PrintLine();
+			# The runners grade on EXIT CODE, never on output text.
+			Runtime->Exit(1);
+		};
+	}
+}

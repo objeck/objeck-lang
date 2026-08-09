@@ -1,5 +1,19 @@
 # Making `AddHeader()` send headers on HTTP/2 and HTTP/3 — plan A′
 
+> **DELIVERED.** Both phases are implemented and verified:
+> `HeaderCheck->Flatten` plus the `HTTP2_REQUEST_HDRS` / `HTTP3_REQUEST_HDRS`
+> traps and the 5-argument `Request` overload. httpbin.org echoed
+> `"X-Objeck-Probe": "header-plumbing-works"`; HTTP/3 returns 200 with custom
+> headers; full Windows regression 188/0. `lang.obl` and the 11 transitively
+> changed libraries shipped in the same commit.
+>
+> One bug worth remembering: the first native walker applied the
+> *String*-object `[0]` indirection to the *array* object. Correct for a
+> String, wrong for an array — it read garbage and crashed the VM on the
+> first live call. `SysCmdOut`'s `env_array` walker is the precedent.
+>
+> Kept as the record of why A′ was chosen over widening the existing trap.
+
 > **Revision 2.** Rewritten after three review passes and after reading how
 > HTTP/1.1 already does this. Revision 1 proposed changing the existing trap's
 > arity; that is now rejected — see "Why not plain Option A".

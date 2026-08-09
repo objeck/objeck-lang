@@ -51,6 +51,49 @@ bundle Web.HTTP {
 			};
 			return true;
 		}
+
+		#~
+		Flattens request headers into a String[] of alternating key/value, the
+		shape the HTTP/2 and HTTP/3 traps consume.
+
+		Lives here rather than in each client because both need it, and because
+		lang.obs -- which declares the trap-facing method -- compiles with
+		-strict and no libraries, so it cannot name Hash<K,V> at all.
+
+		Invalid pairs are dropped rather than emitted, and the array is sized to
+		the surviving pairs so there are no trailing Nil holes: the native walker
+		reads exactly Size() elements and must never meet one. AddHeader already
+		refuses these, so this is defence in depth against any other insertion
+		path. The result length is therefore always even.
+		@param headers header map, may be Nil
+		@return alternating key/value array, never Nil
+		~#
+		function : Flatten(headers : Hash<String, String>) ~ String[] {
+			if(headers = Nil) { return String->New[0]; };
+
+			keys := headers->GetKeys()<String>;
+
+			count := 0;
+			each(i : keys) {
+				k := keys->Get(i);
+				v := headers->Find(k);
+				if(IsValidName(k) & IsValidValue(v)) { count += 1; };
+			};
+
+			out := String->New[count * 2];
+			n := 0;
+			each(i : keys) {
+				k := keys->Get(i);
+				v := headers->Find(k);
+				if(IsValidName(k) & IsValidValue(v)) {
+					out[n] := k;
+					out[n + 1] := v;
+					n += 2;
+				};
+			};
+
+			return out;
+		}
 	}
 
 	#~

@@ -2432,6 +2432,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case HTTP2_REQUEST:
     return Http2Request(program, inst, op_stack, stack_pos, frame);
+  case HTTP2_REQUEST_HDRS:
+    return Http2RequestHdrs(program, inst, op_stack, stack_pos, frame);
 
   case HTTP2_CLOSE:
     return Http2Close(program, inst, op_stack, stack_pos, frame);
@@ -2441,6 +2443,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case HTTP3_REQUEST:
     return Http3Request(program, inst, op_stack, stack_pos, frame);
+  case HTTP3_REQUEST_HDRS:
+    return Http3RequestHdrs(program, inst, op_stack, stack_pos, frame);
 
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
@@ -6825,7 +6829,76 @@ bool TrapProcessor::Http2Connect(StackProgram* program, size_t* inst, size_t*& o
   return true;
 }
 
-bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+
+// Reads a String[] of alternating key/value into a header map.
+//
+// The array has already been popped off the op stack, so it is no longer a GC
+// root -- every string is copied into std::string immediately, before any
+// allocation can move the young generation.
+//
+// Deliberately does not follow lib_api.h's String[] walker, which bounds-checks
+// against [0] while iterating to [2] and dereferences elements with no null
+// check. Anything malformed or invalid is skipped rather than trusted.
+static void h3_read_header_array(size_t* hdr_array,
+                                 std::map<std::string, std::string>& out)
+{
+  if(!hdr_array) {
+    return;
+  }
+  // NOTE: no [0] indirection here. That step belongs to a String *object*
+  // (which holds its char array at [0]); an array object is indexed directly,
+  // as SysCmdOut does with env_array[i + 3]. Applying it here read garbage and
+  // crashed the VM.
+  if(hdr_array[1] != 1) {   // dim: the +2 offset below assumes one dimension
+    return;
+  }
+
+  size_t count = hdr_array[2];
+  if(count > 128) {         // bound caller-controlled work
+    count = 128;
+  }
+  count &= ~(size_t)1;      // odd length would read past the last pair
+
+  size_t* elems = hdr_array + hdr_array[1] + 2;
+  for(size_t i = 0; i + 1 < count; i += 2) {
+    size_t* key_obj = (size_t*)elems[i];
+    size_t* val_obj = (size_t*)elems[i + 1];
+    if(!key_obj || !val_obj) {
+      continue;
+    }
+    size_t* key_chars = (size_t*)key_obj[0];
+    size_t* val_chars = (size_t*)val_obj[0];
+    if(!key_chars || !val_chars) {
+      continue;
+    }
+    const std::string key = UnicodeToBytes((wchar_t*)(key_chars + 3));
+    const std::string val = UnicodeToBytes((wchar_t*)(val_chars + 3));
+    // Objeck-side AddHeader already refuses these; re-checked here because the
+    // native side must never trust a caller-supplied array.
+    if(h3_valid_header_name(key) && h3_valid_header_value(val)) {
+      out[key] = val;
+    }
+  }
+}
+
+bool TrapProcessor::Http2RequestHdrs(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  // headers were pushed LAST, so they pop FIRST; the remaining five are
+  // exactly what Http2Request expects to find.
+  std::map<std::string, std::string> hdrs;
+  h3_read_header_array((size_t*)PopInt(op_stack, stack_pos), hdrs);
+  return Http2Request(program, inst, op_stack, stack_pos, frame, &hdrs);
+}
+
+bool TrapProcessor::Http3RequestHdrs(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  std::map<std::string, std::string> hdrs;
+  h3_read_header_array((size_t*)PopInt(op_stack, stack_pos), hdrs);
+  return Http3Request(program, inst, op_stack, stack_pos, frame, &hdrs);
+}
+
+bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame,
+                                 const std::map<std::string, std::string>* extra_headers)
 {
   // Stack: body(Byte[]), content_type(String), path(String), method(String), instance
   // On success: sets instance[4]=status, instance[5]=body(Byte[]), instance[6]=content_type(String)
@@ -6838,6 +6911,13 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
 
 #ifdef OBJECK_HAS_NGHTTP2
   Http2SessionCtx* ctx = instance ? (Http2SessionCtx*)instance[0] : nullptr;
+  // Caller headers, when the _HDRS trap supplied them. Set before the
+  // request is built so both backends pick them up from the map they
+  // already consume.
+  if(ctx && extra_headers) {
+    ctx->request_headers = *extra_headers;
+  }
+
   if(!ctx || !ctx->session) {
     PushInt(0, op_stack, stack_pos);
     return true;
@@ -7448,7 +7528,8 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   return true;
 }
 
-bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame,
+                                 const std::map<std::string, std::string>* extra_headers)
 {
   // Stack: body(Byte[]), content_type(String), path(String), method(String), instance
   // Result stored in instance[4]=status, instance[5]=body, instance[6]=content_type
@@ -7461,6 +7542,13 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
 
 #ifdef OBJECK_HAS_NGTCP2
   Http3SessionCtx* ctx = instance ? (Http3SessionCtx*)instance[0] : nullptr;
+  // Caller headers, when the _HDRS trap supplied them. Set before the
+  // request is built so both backends pick them up from the map they
+  // already consume.
+  if(ctx && extra_headers) {
+    ctx->request_headers = *extra_headers;
+  }
+
   if(!ctx || !ctx->conn || !ctx->h3conn) {
     PushInt(0, op_stack, stack_pos); return true;
   }
@@ -7580,6 +7668,13 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
   PushInt(1, op_stack, stack_pos);
 #elif defined(OBJECK_HAS_WINHTTP_H3)
   Http3WinCtx* ctx = instance ? (Http3WinCtx*)instance[0] : nullptr;
+  // Caller headers, when the _HDRS trap supplied them. Set before the
+  // request is built so both backends pick them up from the map they
+  // already consume.
+  if(ctx && extra_headers) {
+    ctx->request_headers = *extra_headers;
+  }
+
   if(!ctx || !method_array || !path_array) {
     PushInt(0, op_stack, stack_pos); return true;
   }

@@ -1116,6 +1116,9 @@ graph LR
     subgraph "Networking"
         A4[Socket] -->|POSIX| D1[socket/bind/listen]
         A4 -->|Win32| D2[WSASocket/bind/listen]
+        A6[HTTP/2] --> D3[nghttp2 + mbedTLS/OpenSSL]
+        A7[HTTP/3] -->|POSIX| D4[ngtcp2 + nghttp3 + GnuTLS]
+        A7 -->|Win32| D5[WinHTTP over MsQuic]
     end
 
     subgraph "Dynamic Loading"
@@ -1126,8 +1129,51 @@ graph LR
     style A1 fill:#fff4e1
     style A2 fill:#fff4e1
     style A4 fill:#fff4e1
+    style A6 fill:#fff4e1
+    style A7 fill:#fff4e1
     style A5 fill:#fff4e1
 ```
+
+### HTTP Protocol Stack
+
+Three protocols, and they do **not** share a serialization path — which is the
+single most important thing to know before touching this code.
+
+| Protocol | Where the request is built | Engine |
+| --- | --- | --- |
+| HTTP/1.1, HTTPS | **Objeck** (`net.obs`, `net_secure.obs`) — assembled as text | sockets + mbedTLS/OpenSSL |
+| HTTP/2 | **Native** (`common.cpp`) | nghttp2, all platforms |
+| HTTP/3 | **Native** (`common.cpp`) | ngtcp2 + nghttp3 + GnuTLS on POSIX; **WinHTTP over MsQuic** on Windows 11 / Server 2022+ |
+
+Consequences that have each produced a real bug:
+
+- **Request headers.** HTTP/1.1 serializes headers in Objeck, so `AddHeader`
+  worked there from the start. HTTP/2 and HTTP/3 hand off to a trap, and for a
+  long time that trap had no headers argument — so `AddHeader` stored values
+  that were silently dropped. They now travel as a `String[]` of alternating
+  key/value through `HTTP2_REQUEST_HDRS` / `HTTP3_REQUEST_HDRS`.
+
+- **Header validation lives in Objeck** (`Web.HTTP.HeaderCheck`), not in the
+  trap, precisely because HTTP/1.1 never reaches native code. A trap-side check
+  could not have covered the line-oriented protocol where injection is worst.
+  The native validators are defence in depth for the two protocols that do
+  cross into C++.
+
+- **HTTP/3 on Windows must assert the negotiated protocol.** WinHTTP treats
+  HTTP/3 as a *preference* and falls back to HTTP/2 or HTTP/1.1 transparently,
+  so a 200 proves nothing. Every request checks
+  `WINHTTP_OPTION_HTTP_PROTOCOL_USED` and fails unless HTTP/3 was really used.
+  (Also non-obvious: `WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL` must be set on the
+  **session** handle before the request is created; setting it later is
+  accepted and silently ignored.)
+
+- **Capability is reportable.** The traps compile unconditionally, so the
+  presence of `Http3Client` proves nothing about whether an engine is behind
+  it. `Runtime->GetProperty("runtime.feature.http3")` (and `.http2`) returns
+  `"1"` only when one is compiled in — which is how a caller, or a test, tells
+  *unsupported* apart from *the network failed*. The msys2 Windows builds have
+  no HTTP/3 engine and correctly report `"0"`.
+
 
 ### Threading Model
 

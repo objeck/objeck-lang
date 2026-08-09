@@ -12182,6 +12182,21 @@ bundle System.IO.Net {
 		}
 
 		#~
+		As Request, but also sends caller-supplied request headers.
+
+		A separate overload and a separate trap, rather than an extra
+		parameter on the one above: the trap operand encodes the argument
+		count and only the JIT reads it, so a stale lang.obl paired with a
+		newer VM would desync the operand stack and do so silently, and only
+		once the JIT threshold trips. Keeping the old arity intact means a
+		stale artifact degrades to "headers are not sent" instead.
+		@param headers alternating key/value, even length, no Nil elements
+		~#
+		method : public : Request(verb : String, path : String, body : Byte[], content_type : String, headers : String[]) ~ Bool {
+			HTTP2_REQUEST_HDRS;
+		}
+
+		#~
 		Returns the HTTP response status code from the last request
 		~#
 		method : public : GetResponseStatus() ~ Int {
@@ -12252,6 +12267,21 @@ bundle System.IO.Net {
 		~#
 		method : public : Request(verb : String, path : String, body : Byte[], content_type : String) ~ Bool {
 			HTTP3_REQUEST;
+		}
+
+		#~
+		As Request, but also sends caller-supplied request headers.
+
+		A separate overload and a separate trap, rather than an extra
+		parameter on the one above: the trap operand encodes the argument
+		count and only the JIT reads it, so a stale lang.obl paired with a
+		newer VM would desync the operand stack and do so silently, and only
+		once the JIT threshold trips. Keeping the old arity intact means a
+		stale artifact degrades to "headers are not sent" instead.
+		@param headers alternating key/value, even length, no Nil elements
+		~#
+		method : public : Request(verb : String, path : String, body : Byte[], content_type : String, headers : String[]) ~ Bool {
+			HTTP3_REQUEST_HDRS;
 		}
 
 		#~

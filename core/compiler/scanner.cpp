@@ -419,9 +419,11 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_SSL_GET_FINGERPRINT"] = SOCK_TCP_SSL_GET_FINGERPRINT;
   ident_map[L"HTTP2_CONNECT"] = HTTP2_CONNECT;
   ident_map[L"HTTP2_REQUEST"] = HTTP2_REQUEST;
+  ident_map[L"HTTP2_REQUEST_HDRS"] = HTTP2_REQUEST_HDRS;
   ident_map[L"HTTP2_CLOSE"] = HTTP2_CLOSE;
   ident_map[L"HTTP3_CONNECT"] = HTTP3_CONNECT;
   ident_map[L"HTTP3_REQUEST"] = HTTP3_REQUEST;
+  ident_map[L"HTTP3_REQUEST_HDRS"] = HTTP3_REQUEST_HDRS;
   ident_map[L"HTTP3_CLOSE"] = HTTP3_CLOSE;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
@@ -769,9 +771,11 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_TCP_SSL_GET_FINGERPRINT:
     case HTTP2_CONNECT:
     case HTTP2_REQUEST:
+    case HTTP2_REQUEST_HDRS:
     case HTTP2_CLOSE:
     case HTTP3_CONNECT:
     case HTTP3_REQUEST:
+    case HTTP3_REQUEST_HDRS:
     case HTTP3_CLOSE:
     case SERL_INT:
     case SERL_FLOAT:

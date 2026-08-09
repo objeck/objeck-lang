@@ -567,6 +567,7 @@ jobs:
           $OBC -lib cipher,net,gen_collect,net_h2 -src ../../../../programs/tests/prgm_http2.obs || exit 1
           $OBC -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/prgm_http3.obs || exit 1
           $OBC -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/http3_downgrade_test.obs || exit 1
+          $OBC -lib cipher,net,gen_collect,net_h2 -src ../../../../programs/tests/http_header_echo_test.obs || exit 1
           echo "Extended tests compiled successfully"
         fi
 
@@ -714,6 +715,7 @@ jobs:
           ./obc.exe -lib cipher,net,gen_collect,net_h2 -src ../../../../programs/tests/prgm_http2.obs || true
           ./obc.exe -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/prgm_http3.obs || true
           ./obc.exe -lib cipher,net,gen_collect,net_quic -src ../../../../programs/tests/http3_downgrade_test.obs || true
+          ./obc.exe -lib cipher,net,gen_collect,net_h2 -src ../../../../programs/tests/http_header_echo_test.obs || true
         else
           OBR="./obr"
         fi
@@ -756,6 +758,7 @@ jobs:
         run_net "HTTP/2" ../../../../programs/tests/prgm_http2.obe
         run_net "HTTP/3" ../../../../programs/tests/prgm_http3.obe
         run_net "HTTP/3 downgrade" ../../../../programs/tests/http3_downgrade_test.obe
+        run_net "Header echo" ../../../../programs/tests/http_header_echo_test.obe
         echo "" >> "$GITHUB_STEP_SUMMARY"
 
         if [ $status -ne 0 ]; then

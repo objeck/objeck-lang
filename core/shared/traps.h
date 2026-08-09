@@ -290,6 +290,11 @@ namespace instructions {
     SYS_CMD_OUT,
     ASSERT_TRUE,
     // end
-    EXIT
+    EXIT,
+    // Appended AFTER EXIT deliberately: this enum is unnumbered, so the
+    // ordinal IS the wire id -- inserting anywhere else silently
+    // renumbers every trap below it.
+    HTTP2_REQUEST_HDRS,
+    HTTP3_REQUEST_HDRS
   };
 }
