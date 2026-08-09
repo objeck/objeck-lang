@@ -9,6 +9,51 @@ HTTP/1.1 client library. HttpClient supports GET, POST, PUT, PATCH, DELETE with 
 ~#
 bundle Web.HTTP {
 	#~
+	Validates an HTTP request header name/value pair.
+
+	Header content reaches the wire verbatim: HTTP/1.1 and HTTPS serialize the
+	whole request as text here in Objeck ("name: value" + CRLF), so a CR or LF
+	in a value ends the field and starts a new one -- request splitting, not a
+	parse error. HTTP/2 and HTTP/3 hand off to native code that performs no
+	validation of its own on submit.
+
+	Octets per RFC 9110 5.1/5.5, tightened by RFC 9113 8.2.1. Rejects CR, LF,
+	NUL, DEL and every other C0 control (SP and HTAB are legal), leading or
+	trailing whitespace, an empty name, and any name beginning with ':' --
+	HTTP/2 and HTTP/3 build the pseudo-headers themselves and a duplicate is
+	malformed (RFC 9114 4.3.1), the classic request-smuggling primitive.
+	~#
+	class HeaderCheck {
+		function : IsValidValue(v : String) ~ Bool {
+			if(v = Nil) { return false; };
+			each(i : v) {
+				c := v->Get(i)->As(Int);
+				if(c = 127 | (c < 32 & c <> 9)) { return false; };
+			};
+			if(v->Size() > 0) {
+				f := v->Get(0)->As(Int);
+				b := v->Get(v->Size() - 1)->As(Int);
+				if(f = 32 | f = 9 | b = 32 | b = 9) { return false; };
+			};
+			return true;
+		}
+
+		function : IsValidName(n : String) ~ Bool {
+			if(n = Nil | n->Size() = 0) { return false; };
+			if(n->Get(0) = ':') { return false; };
+			each(i : n) {
+				c := n->Get(i);
+				ok := (c >= 'a' & c <= 'z') | (c >= '0' & c <= '9') |
+					c = '!' | c = '#' | c = '$' | c = '%' | c = '&' |
+					c = '*' | c = '+' | c = '-' | c = '.' |
+					c = '^' | c = '_' | c = '`' | c = '|' | c = '~';
+				if(ok = false) { return false; };
+			};
+			return true;
+		}
+	}
+
+	#~
 	HTTP client
 ```
 html := HttpClient->QuickGet(Url->New("http://worldtimeapi.org/api/ip"))->ToString();
@@ -83,6 +128,13 @@ if(response <> Nil) {
 ```
 		~#
 		method : public : AddHeader(name : String, value : String) ~ Nil {
+			# Refuse anything that could inject a header line of its own.
+			# A CR/LF here would split the request (HTTP/1.1) or reach the
+			# wire unvalidated (HTTP/2, HTTP/3). Never legitimate content.
+			if(Web.HTTP.HeaderCheck->IsValidName(name->ToLower()) = false |
+				Web.HTTP.HeaderCheck->IsValidValue(value) = false) {
+				return;
+			};
 			@request_headers->Insert(name->ToLower(), value);
 		}
 
@@ -1807,6 +1859,13 @@ ws->Connect();
 ```
 		~#
 		method : public : AddHeader(name : String, value : String) ~  Nil {
+			# Refuse anything that could inject a header line of its own.
+			# A CR/LF here would split the request (HTTP/1.1) or reach the
+			# wire unvalidated (HTTP/2, HTTP/3). Never legitimate content.
+			if(Web.HTTP.HeaderCheck->IsValidName(name->ToLower()) = false |
+				Web.HTTP.HeaderCheck->IsValidValue(value) = false) {
+				return;
+			};
 			@request_headers->Insert(name->ToLower(), value);
 		}
 

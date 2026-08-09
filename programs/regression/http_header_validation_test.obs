@@ -1,0 +1,82 @@
+# EXTRA_LIBS: net,cipher,gen_collect
+# JIT_DISABLE
+#~
+Request-header validation (Web.HTTP.HeaderCheck).
+
+HttpClient->AddHeader was injectable: HTTP/1.1 and HTTPS serialize the whole
+request as text in Objeck ("name: value" + CRLF), so a CR or LF in a value
+ended the field and began a new one. Demonstrated against a local listener,
+which received the attacker's line as its own header:
+
+    client->AddHeader("x-test", "1\r\nX-Injected: yes")
+    ...
+    RECV| x-test: 1
+    RECV| X-Injected: yes      <-- attacker-controlled header line
+
+Offline and deterministic by design: it exercises the validator directly
+rather than standing up a socket, so it can run in the gating suite. The
+end-to-end proof is manual.
+~#
+use Web.HTTP;
+use System;
+
+class HttpHeaderValidationTest {
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+
+		# --- values that must be REFUSED --------------------------------
+		# CR and LF are the injection vector; NUL truncates the block on the
+		# WinHTTP path; leading/trailing whitespace is malformed per RFC 9113.
+		bad_values := ["a\r\nX-Injected: 1", "a\rb", "a\nb", "a\ab",
+		               " leading", "trailing ", "\ttab-lead"];
+		each(v := bad_values) {
+			if(HeaderCheck->IsValidValue(v)) {
+				pass := false;
+				"  FAIL: value accepted that must be refused"->PrintLine();
+			};
+		};
+
+		# --- values that must be ALLOWED --------------------------------
+		# Rejecting these would silently break every legitimate caller.
+		good_values := ["hello-world", "Bearer abc123", "text/plain",
+		                "a b", "a\tb", "application/json; charset=utf-8", ""];
+		each(v := good_values) {
+			if(HeaderCheck->IsValidValue(v) = false) {
+				pass := false;
+				"  FAIL: value '{$v}' refused but is legal"->PrintLine();
+			};
+		};
+
+		# --- names that must be REFUSED ---------------------------------
+		# Pseudo-headers are built by the HTTP/2 and HTTP/3 backends
+		# themselves; a caller-supplied duplicate is malformed (RFC 9114
+		# 4.3.1) and is the classic request-smuggling primitive.
+		bad_names := [":path", ":authority", ":method", "", "Bad Name",
+		              "has space", "UPPER", "co:lon"];
+		each(n := bad_names) {
+			if(HeaderCheck->IsValidName(n)) {
+				pass := false;
+				"  FAIL: name '{$n}' accepted but must be refused"->PrintLine();
+			};
+		};
+
+		# --- names that must be ALLOWED ---------------------------------
+		good_names := ["x-legit", "authorization", "content-type",
+		               "x-custom-1", "a", "x_y", "x.y"];
+		each(n := good_names) {
+			if(HeaderCheck->IsValidName(n) = false) {
+				pass := false;
+				"  FAIL: name '{$n}' refused but is legal"->PrintLine();
+			};
+		};
+
+		if(pass) {
+			"PASS: HTTP header validation"->PrintLine();
+		}
+		else {
+			"FAIL: HTTP header validation"->PrintLine();
+			# The runners grade on EXIT CODE, never on output text.
+			Runtime->Exit(1);
+		};
+	}
+}

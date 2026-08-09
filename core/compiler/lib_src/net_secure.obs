@@ -127,6 +127,13 @@ if(html <> Nil) {
 		```
 		~#
 		method : public : AddHeader(name : String, value : String) ~  Nil {
+			# Refuse anything that could inject a header line of its own.
+			# A CR/LF here would split the request (HTTP/1.1) or reach the
+			# wire unvalidated (HTTP/2, HTTP/3). Never legitimate content.
+			if(Web.HTTP.HeaderCheck->IsValidName(name->ToLower()) = false |
+				Web.HTTP.HeaderCheck->IsValidValue(value) = false) {
+				return;
+			};
 			@request_headers->Insert(name->ToLower(), value);
 		}
 
@@ -1921,6 +1928,13 @@ if(client->Connect()) {
 		@param value header value
 		~#
 		method : public : AddHeader(name : String, value : String) ~  Nil {
+			# Refuse anything that could inject a header line of its own.
+			# A CR/LF here would split the request (HTTP/1.1) or reach the
+			# wire unvalidated (HTTP/2, HTTP/3). Never legitimate content.
+			if(Web.HTTP.HeaderCheck->IsValidName(name->ToLower()) = false |
+				Web.HTTP.HeaderCheck->IsValidValue(value) = false) {
+				return;
+			};
 			@request_headers->Insert(name->ToLower(), value);
 		}
 
