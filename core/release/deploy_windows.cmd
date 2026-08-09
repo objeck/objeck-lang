@@ -620,8 +620,22 @@ if [%1] == [x64] (
 	) else (
 		echo Warning: OnnxRuntime.DirectML nuget packages not found - ONNX runtime unavailable
 	)
-	if exist packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll (
-		copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
+	REM DirectML.dll is an OS component on Windows 10 1903+, and Windows ships a
+	REM NEWER build than the vendored package (OS 1.15.5 vs package 1.15.4 as of
+	REM 2026-08). Windows loads an app-local DLL ahead of System32, so copying the
+	REM package unconditionally DOWNGRADES a working install -- the likely cause of
+	REM GPU inference failing at a Gather node. Ship the redistributable only when
+	REM the OS does not provide one.
+	if exist "%SystemRoot%\System32\DirectML.dll" (
+		echo Using the OS DirectML.dll ^(System32^) - not shipping the older redistributable
+		if exist ..\..\release\%TARGET%\bin\DirectML.dll del /q ..\..\release\%TARGET%\bin\DirectML.dll
+	) else (
+		if exist packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll (
+			echo No OS DirectML.dll - shipping the vendored redistributable
+			copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
+		) else (
+			echo Warning: no OS DirectML.dll and no vendored package - GPU inference unavailable
+		)
 	)
 )
 cd ..\..\release
