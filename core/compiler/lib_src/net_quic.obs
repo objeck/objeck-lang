@@ -6,6 +6,8 @@ use System.IO.Net, Collection, Web.HTTP;
 
 #~
 HTTP/3 (QUIC) client for ultra-low-latency requests over UDP. Http3Client API mirrors HttpClient; ideal for mobile and high-packet-loss networks. Compile with -lib net_quic.
+
+PLATFORM SUPPORT: HTTP/3 requires a VM built with ngtcp2 -- currently Linux (x64 and ARM64) and macOS. On Windows the engine is not compiled in and every request fails; use Web.HTTP.HttpClient (HTTP/2) there. Check at runtime with Runtime->GetProperty("runtime.feature.http3") once that property lands, or expect Connect to fail.
 ~#
 bundle Web.HTTP {
 	#~

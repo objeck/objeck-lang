@@ -6896,15 +6896,29 @@ static ngtcp2_conn* h3_get_conn(ngtcp2_crypto_conn_ref* ref) {
   return ((Http3SessionCtx*)ref->user_data)->conn;
 }
 
+// Connection IDs and the stateless reset token are secrets that go out in
+// cleartext QUIC headers. gnutls_rnd leaves the buffer UNTOUCHED when it fails,
+// so an unchecked call publishes whatever was on the stack -- a memory
+// disclosure and a predictable CID. GNUTLS_RND_KEY is the long-lived-secret
+// level. Every call site checks, and a failure fails the operation.
+static bool h3_random_bytes(void* dest, size_t destlen) {
+  return gnutls_rnd(GNUTLS_RND_KEY, dest, destlen) == 0;
+}
+
 static void h3_rand_cb(uint8_t* dest, size_t destlen, const ngtcp2_rand_ctx*) {
-  gnutls_rnd(GNUTLS_RND_RANDOM, dest, destlen);
+  if(!h3_random_bytes(dest, destlen)) {
+    // this callback cannot signal failure; zero rather than leak stack bytes
+    memset(dest, 0, destlen);
+  }
 }
 
 static int h3_get_new_connection_id_cb(ngtcp2_conn*, ngtcp2_cid* cid,
                                         uint8_t* token, size_t cidlen, void*) {
-  gnutls_rnd(GNUTLS_RND_RANDOM, cid->data, cidlen);
+  if(!h3_random_bytes(cid->data, cidlen) ||
+     !h3_random_bytes(token, NGTCP2_STATELESS_RESET_TOKENLEN)) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
   cid->datalen = cidlen;
-  gnutls_rnd(GNUTLS_RND_RANDOM, token, NGTCP2_STATELESS_RESET_TOKENLEN);
   return 0;
 }
 
@@ -7256,11 +7270,15 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   ngtcp2_crypto_gnutls_configure_client_session(ctx->tls_session);
 
   // Generate random QUIC connection IDs
-  ngtcp2_cid dcid, scid;
+  // zero-initialised so a CSPRNG failure can never transmit stack contents
+  ngtcp2_cid dcid = {}, scid = {};
   dcid.datalen = 20;
   scid.datalen = 8;
-  gnutls_rnd(GNUTLS_RND_RANDOM, dcid.data, dcid.datalen);
-  gnutls_rnd(GNUTLS_RND_RANDOM, scid.data, scid.datalen);
+  if(!h3_random_bytes(dcid.data, dcid.datalen) ||
+     !h3_random_bytes(scid.data, scid.datalen)) {
+    std::wcerr << L">>> Unable to generate QUIC connection IDs <<<" << std::endl;
+    delete ctx; instance[0] = 0; return true;
+  }
 
   // Build the QUIC path
   ngtcp2_path path;
