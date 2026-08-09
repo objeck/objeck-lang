@@ -4095,6 +4095,24 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.gc.promoted.total",[]() -> size_t { return MemoryManager::GetPromotedTotal(); } },
     { L"runtime.gc.old.bytes",     []() -> size_t { return MemoryManager::GetOldGenBytes(); } },
     { L"runtime.gc.contention",    []() -> size_t { return (size_t)MemoryManager::GetGcContention(); } },
+    // Compiled-in protocol support. Http3Connect is compiled unconditionally --
+    // its #else branch just fails -- so "the trap exists" proves nothing about
+    // whether HTTP/3 is actually built. These are the only reliable way for a
+    // program (or a test) to tell an unsupported build from a network failure.
+    { L"runtime.feature.http3",    []() -> size_t {
+#ifdef OBJECK_HAS_NGTCP2
+                                                    return 1;
+#else
+                                                    return 0;
+#endif
+                                                  } },
+    { L"runtime.feature.http2",    []() -> size_t {
+#ifdef OBJECK_HAS_NGHTTP2
+                                                    return 1;
+#else
+                                                    return 0;
+#endif
+                                                  } },
     { L"runtime.threads.active",   []() -> size_t { return (size_t)MemoryManager::GetMutatorCount(); } },
     { L"runtime.threads.parked",   []() -> size_t { return (size_t)MemoryManager::GetParkedCount(); } },
     { L"runtime.threads.running",  []() -> size_t { const long a = MemoryManager::GetMutatorCount(),
