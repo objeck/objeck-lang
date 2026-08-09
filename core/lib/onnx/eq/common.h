@@ -1649,6 +1649,21 @@ struct SLMModelInfo {
    int num_kv_heads = 0;
    int head_dim = 0;
    ONNXTensorElementDataType kv_type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+
+   // The generation loop indexes the past/present key and value name arrays in
+   // parallel up to num_layers. A model that exports a different count of .key
+   // vs .value tensors would otherwise be read out of bounds; these gate the
+   // KV paths on all four arrays actually having num_layers entries.
+   bool past_kv_consistent() const {
+      return num_layers > 0 &&
+             (int)past_key_names.size() == num_layers &&
+             (int)past_value_names.size() == num_layers;
+   }
+   bool present_kv_consistent() const {
+      return num_layers > 0 &&
+             (int)present_key_names.size() == num_layers &&
+             (int)present_value_names.size() == num_layers;
+   }
 };
 
 static SLMModelInfo discover_slm_model(Ort::Session* session) {
@@ -1724,31 +1739,9 @@ static SLMModelInfo discover_slm_model(Ort::Session* session) {
    return info;
 }
 
-// Sample next token from logits
-static int64_t sample_token(const float* logits, int vocab_size, double temperature) {
-   if(temperature < 1e-6) {
-      // Greedy
-      return (int64_t)std::distance(logits,
-         std::max_element(logits, logits + vocab_size));
-   }
-
-   // Temperature sampling
-   std::vector<float> probs(vocab_size);
-   float max_logit = *std::max_element(logits, logits + vocab_size);
-   float sum = 0.f;
-   for(int j = 0; j < vocab_size; ++j) {
-      probs[j] = std::exp((logits[j] - max_logit) / (float)temperature);
-      sum += probs[j];
-   }
-   for(int j = 0; j < vocab_size; ++j) {
-      probs[j] /= sum;
-   }
-
-   std::random_device rd;
-   std::mt19937 gen(rd());
-   std::discrete_distribution<int> dist(probs.begin(), probs.end());
-   return (int64_t)dist(gen);
-}
+// sample_token lives in phi3_sampling.h -- a dependency-free header so its
+// numeric logic can be unit tested without ONNX Runtime or a model.
+#include "phi3_sampling.h"
 
 // Extract float logits from tensor (handles FP32 and FP16)
 static std::vector<float> extract_last_logits(Ort::Value& logits_tensor, int& vocab_size) {
@@ -1756,9 +1749,19 @@ static std::vector<float> extract_last_logits(Ort::Value& logits_tensor, int& vo
    auto shape = shape_info.GetShape();
    auto elem_type = shape_info.GetElementType();
 
-   // logits shape: [1, seq_len, vocab_size]
-   int seq_len = (int)shape[1];
-   vocab_size = (int)shape[2];
+   // logits shape: [1, seq_len, vocab_size]. Guard the dimension access and the
+   // last-row offset so an unexpected shape yields an empty result rather than
+   // an out-of-bounds vector read or a negative pointer offset.
+   vocab_size = 0;
+   if(shape.size() < 3) {
+      return {};
+   }
+   const int seq_len = (int)shape[1];
+   const int vocab = (int)shape[2];
+   if(seq_len < 1 || vocab < 1) {
+      return {};
+   }
+   vocab_size = vocab;
 
    std::vector<float> last_logits(vocab_size);
 
@@ -1773,6 +1776,13 @@ static std::vector<float> extract_last_logits(Ort::Value& logits_tensor, int& vo
       for(int j = 0; j < vocab_size; ++j) {
          last_logits[j] = half_to_float_u16(last[j]);
       }
+   }
+   else {
+      // an unhandled logits dtype would otherwise sample silently from zeros
+      // (always token 0); surface it instead
+      std::wcerr << L"Unsupported logits tensor element type: " << (int)elem_type << std::endl;
+      vocab_size = 0;
+      return {};
    }
 
    return last_logits;
@@ -1822,8 +1832,8 @@ static void phi3_text_inf(VMContext& context) {
          return;
       }
 
-      const bool has_kv = (model_info.num_layers > 0);
-      const bool use_kv_cache = has_kv && !model_info.present_key_names.empty();
+      const bool has_kv = model_info.past_kv_consistent();
+      const bool use_kv_cache = has_kv && model_info.present_kv_consistent();
 
       std::wcout << L"=> SLM model: " << model_info.num_layers << L" layers, "
                  << model_info.num_kv_heads << L" kv_heads, head_dim=" << model_info.head_dim
@@ -2399,7 +2409,7 @@ static void phi3_vision_inf(VMContext& context) {
       }
 
       // Step 7: Build decoder input/output names
-      bool has_kv = (decoder_info.num_layers > 0);
+      bool has_kv = decoder_info.past_kv_consistent();
       bool use_kv_cache = false; // DML GQA decode bug produces garbage with KV cache; use full recompute
 
       std::vector<std::string> dec_out_strs;

@@ -706,6 +706,19 @@ graph LR
 - **File Loading:** Execute entire files
 - **Inline/File Modes:** Switch between modes
 
+### Full-Screen Editor (`/e`)
+
+A terminal editor over the REPL buffer, header-only (`core/repl/{term,screen,keymap,tui_editor,io_capture}.h`) so it adds no build-system changes on any platform. Raw-mode input and damage-diffed rendering work identically on Windows (VT console) and POSIX (termios), with display-width handling for CJK/wide characters.
+
+- **Editing:** movement, selection (Shift+arrows), undo/redo with coalesced typing, an internal clipboard (Ctrl+C/X/V)
+- **Run pane (F5):** compiles and runs the buffer in-process, capturing output at the file-descriptor level; **F8** jumps the cursor through compile errors
+- **Binding profiles:** a notepad-style default and an opt-in `vi` profile (F2) — a second binding table plus a mode field over the same actions, not a second editor
+- **Read-only shell:** the REPL's class/function frame is dimmed and protected at both the view and model level
+
+### Software Updater (`obu`)
+
+`core/utils/updater/obu.cpp` — in-place version upgrades without reinstalling. `obu check` compares the installed version against GitHub releases; `obu update`/`rollback` (POSIX) download the platform archive, **verify a SHA-256 digest against the release's `SHA256SUMS` before touching disk**, then perform an all-or-nothing staged swap with an `obc -v` post-install check and automatic rollback. No shell is used for the download/extract/swap — curl/tar/obc run via `fork`/`execvp` argument vectors — and the flow is covered by an offline CI test (`test_update.sh`). Windows in-place swap and signature verification are later phases (`docs/UPDATER_DESIGN.md`).
+
 ### Debugger Features
 
 - **Breakpoints:** Set/remove at any line
@@ -717,9 +730,12 @@ graph LR
 
 **Source Files:**
 - `core/repl/repl.h/cpp` - REPL implementation
-- `core/repl/editor.h/cpp` - Integrated editor
+- `core/repl/editor.h/cpp` - Integrated line editor
+- `core/repl/{term,screen,keymap,tui_editor,io_capture}.h` - full-screen editor
 - `core/debugger/debugger.h/cpp` - Debugger core
+- `core/debugger/obj_layout.h` - shared object/collection layout (CLI + DAP)
 - `core/debugger/parser.h/cpp` - Debug command parser
+- `core/utils/updater/obu.cpp` - software updater
 
 ---
 
