@@ -151,8 +151,13 @@ static bool h3win_request(Http3WinCtx* ctx,
     headers += BytesToUnicode(it->first) + L": " + BytesToUnicode(it->second) + L"\r\n";
   }
   if(!headers.empty()) {
-    WinHttpAddRequestHeaders(request, headers.c_str(), (DWORD)-1,
-                             WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
+    // Fail the request if the block is rejected. Discarding this made a
+    // rejected header block indistinguishable from a sent one -- the same
+    // silently-does-nothing failure this backend exists to eliminate.
+    if(!WinHttpAddRequestHeaders(request, headers.c_str(), (DWORD)-1,
+                                 WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE)) {
+      return false;
+    }
   }
 
   const BOOL sent = WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0,

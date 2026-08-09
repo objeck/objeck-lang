@@ -38,6 +38,66 @@
 #include "common.h"
 #include "loader.h"
 
+// --- HTTP header field validation -------------------------------------------
+//
+// Caller-supplied header content must never be able to add a header line of
+// its own. On Windows this is a live request-splitting vector: WinHTTP's
+// AddRequestHeaders takes a CRLF-SEPARATED BLOCK, so a CR/LF inside a value is
+// the API's own separator, not a parse error. On the ngtcp2 path the framing
+// is length-prefixed so it does not split there, but nghttp3 performs no
+// validation on submit (the check_header_* helpers exist precisely because it
+// is the caller's job), and an h3->h1.1 gateway downstream will happily turn a
+// CR/LF-bearing value into a split at the origin.
+//
+// Octets per RFC 9110 5.1/5.5 as tightened by RFC 9113 8.2.1 (adopted by
+// RFC 9114 4.3). Validated on the UTF-8 bytes, since that is what goes on the
+// wire.
+static bool h3_valid_header_value(const std::string& v)
+{
+  for(size_t i = 0; i < v.size(); ++i) {
+    const unsigned char c = (unsigned char)v[i];
+    // reject CR, LF, NUL, DEL and every other C0 control; SP and HTAB are ok
+    if(c == 0x7F || (c < 0x20 && c != 0x09)) {
+      return false;
+    }
+  }
+  // leading/trailing whitespace makes the field malformed
+  if(!v.empty()) {
+    const unsigned char f = (unsigned char)v.front(), b = (unsigned char)v.back();
+    if(f == 0x20 || f == 0x09 || b == 0x20 || b == 0x09) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool h3_valid_header_name(const std::string& n)
+{
+  if(n.empty()) {
+    return false;
+  }
+  // A caller must never supply a pseudo-header: both backends build :method,
+  // :path, :scheme and :authority themselves, and a duplicate is malformed
+  // (RFC 9114 4.3.1) -- the classic smuggling / cache-poisoning primitive.
+  if(n[0] == ':') {
+    return false;
+  }
+  for(size_t i = 0; i < n.size(); ++i) {
+    const unsigned char c = (unsigned char)n[i];
+    const bool tchar = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                       c == '!' || c == '#' || c == '$' || c == '%' || c == '&' ||
+                       c == 0x27 /* apostrophe */ || c == '*' || c == '+' ||
+                       c == '-' || c == '.' ||
+                       c == '^' || c == '_' || c == '`' || c == '|' || c == '~';
+    // uppercase is rejected rather than folded: HTTP/2/3 require lowercase and
+    // nghttp3 does not lower-case for us
+    if(!tchar) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Which HTTP/3 backend owns instance[0]. Derived ONCE so Connect, Request and
 // Close cannot disagree -- picking the wrong type in Close is a wrong-type
 // delete (heap corruption), not a compile error.
@@ -6818,8 +6878,15 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
 
     if(ctype_array) {
       ctype_array = (size_t*)ctype_array[0];
+      const std::string ctype_val = UnicodeToBytes((wchar_t*)(ctype_array + 3));
+      // Caller-supplied: refuse anything that could add a header line of its
+      // own, or that a downstream h2/h3 -> HTTP/1.1 gateway would re-emit as
+      // one. Both libraries validate nothing on submit.
+      if(!h3_valid_header_value(ctype_val)) {
+        PushInt(0, op_stack, stack_pos); return true;
+      }
       hdr_keys.push_back("content-type");
-      hdr_vals.push_back(UnicodeToBytes((wchar_t*)(ctype_array + 3)));
+      hdr_vals.push_back(ctype_val);
     }
 
     struct BodyCtx { const uint8_t* data; size_t len; size_t pos; };
@@ -7425,8 +7492,15 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
     body_data.assign(bptr, bptr + blen);
     if(ctype_array) {
       ctype_array = (size_t*)ctype_array[0];
+      const std::string ctype_val = UnicodeToBytes((wchar_t*)(ctype_array + 3));
+      // Caller-supplied: refuse anything that could add a header line of its
+      // own, or that a downstream h2/h3 -> HTTP/1.1 gateway would re-emit as
+      // one. Both libraries validate nothing on submit.
+      if(!h3_valid_header_value(ctype_val)) {
+        PushInt(0, op_stack, stack_pos); return true;
+      }
       hdr_keys.push_back("content-type");
-      hdr_vals.push_back(UnicodeToBytes((wchar_t*)(ctype_array + 3)));
+      hdr_vals.push_back(ctype_val);
     }
   }
 
@@ -7525,6 +7599,11 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
     if(ctype_array) {
       ctype_array = (size_t*)ctype_array[0];
       ctype = UnicodeToBytes((wchar_t*)(ctype_array + 3));
+      // WinHttpAddRequestHeaders takes a CRLF-SEPARATED BLOCK, so a CR/LF here
+      // is the API's own separator -- request splitting, not a parse error.
+      if(!h3_valid_header_value(ctype)) {
+        PushInt(0, op_stack, stack_pos); return true;
+      }
     }
   }
 
