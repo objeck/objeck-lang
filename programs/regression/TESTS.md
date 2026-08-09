@@ -13,7 +13,7 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 188** (plus 14 debugger tests, see below).
+**Total runtime tests: 189** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
@@ -22,7 +22,7 @@ python gen_manifest.py
 |----------|-------|
 | Core Language | 38 |
 | Negative | 21 |
-| AMD64/JIT | 19 |
+| AMD64/JIT | 20 |
 | Other | 15 |
 | Bug Fix | 13 |
 | System.ML | 13 |
@@ -184,64 +184,65 @@ python gen_manifest.py
 | 128 | `jit_dispatch_native.obs` | AMD64/JIT | jit dispatch native | ✅ |
 | 129 | `jit_float_equality.obs` | AMD64/JIT | Regression test for float equality compares on array elements (2026-06). The front-end chose EQL_... | ✅ |
 | 130 | `jit_float_intensive.obs` | AMD64/JIT | jit float intensive | ✅ |
-| 131 | `jit_float_round_trig.obs` | AMD64/JIT | Exercises two JIT float-codegen bugs that only surface once a method using them is auto-JIT'd (de... | ✅ |
-| 132 | `jit_frame_trap_test.obs` | AMD64/JIT | Regression test for the JIT frame-dependent trap crash (2026-06). Traps such as SERL_INT/SERL_FLO... | ✅ |
-| 133 | `jit_func_ref_hot.obs` | AMD64/JIT | jit func ref hot | ✅ |
-| 134 | `jit_gc_stress.obs` | AMD64/JIT | JIT + GC interaction stress (2026-06). One CI run on linux-x64 failed with a JIT-to-JIT runtime e... | ✅ |
-| 135 | `jit_loop_native.obs` | AMD64/JIT | jit loop native | ✅ |
-| 136 | `jit_native_cls_fields.obs` | AMD64/JIT | JIT Native Class Fields Test Tests object reference storage in class instance fields with GC pres... | ✅ |
-| 137 | `jit_native_float_array.obs` | AMD64/JIT | JIT Native Float Array Test Tests native function with float array creation and math operations R... | ✅ |
-| 138 | `jit_native_func_ref.obs` | AMD64/JIT | JIT Native Function Reference Test Tests native functions with function reference storage in clas... | ✅ |
-| 139 | `jit_native_math.obs` | AMD64/JIT | JIT Native Math Builtins Test Tests native math functions: Factorial, Sinh/Cosh/Tanh/Log2/Cbrt, P... | ✅ |
-| 140 | `jit_string_ops.obs` | AMD64/JIT | jit string ops | ✅ |
-| 141 | `jit_tco_bare_local.obs` | AMD64/JIT | Regression for the TCO deferred-local-load miscompile (both arches). A self-recursive tail call t... | ✅ |
-| 142 | `json_build_ops.obs` | JSON | json build ops | ✅ |
-| 143 | `json_parse_ops.obs` | JSON | json parse ops | ✅ |
-| 144 | `lsp_features.obs` | LSP | lsp features | ✅ |
-| 145 | `math_float_ops.obs` | Math | math float ops | ✅ |
-| 146 | `math_log_exp.obs` | Math | math log exp | ✅ |
-| 147 | `math_random_ops.obs` | Math | math random ops | ✅ |
-| 148 | `math_rounding.obs` | Math | math rounding | ✅ |
-| 149 | `math_sqrt_ops.obs` | Math | math sqrt ops | ✅ |
-| 150 | `math_trig_funcs.obs` | Math | math trig funcs | ✅ |
-| 151 | `mcp_debug_test.obs` | MCP Server | DEBUG VERSION of mcp_server_test.obs Identical to programs/regression/mcp_server_test.obs except:... | ✅ |
-| 152 | `mcp_server_test.obs` | MCP Server | mcp server test | ✅ |
-| 153 | `minor_gc_stress.obs` | Other | Regression for generational MINOR GC: old objects holding young references. 'keep' is an object a... | ✅ |
-| 154 | `ml_adaboost_test.obs` | System.ML | Regression tests for System.ML AdaBoost (overhaul phase 3): boosting over boolean decision stumps... | ✅ |
-| 155 | `ml_api_test.obs` | System.ML | Regression tests for the System.ML estimator API consistency sweep (item 11): RandomForest Fit (r... | ✅ |
-| 156 | `ml_dbscan_test.obs` | System.ML | Regression tests for System.ML DBSCAN (overhaul phase 3): two dense blobs plus far-away outliers... | ✅ |
-| 157 | `ml_gbt_test.obs` | System.ML | Regression tests for System.ML gradient boosting (overhaul phase 3 leftover): a RegressionTree le... | ✅ |
-| 158 | `ml_gmm_test.obs` | System.ML | Regression tests for System.ML GaussianMixture (overhaul phase 3): EM on two well-separated blobs... | ✅ |
-| 159 | `ml_kdtree_test.obs` | System.ML | Regression tests for System.ML KDTree (overhaul phase 3): for several queries and k values over a... | ✅ |
-| 160 | `ml_library_test.obs` | System.ML | ml library test | ✅ |
-| 161 | `ml_linearclf_test.obs` | System.ML | Regression tests for the System.ML linear classifiers (overhaul phase 2): Perceptron (mistake-dri... | ✅ |
-| 162 | `ml_nn_test.obs` | System.ML | Regression tests for the System.ML NeuralNetwork with hidden/output bias vectors (ML overhaul ite... | ✅ |
-| 163 | `ml_pca_gnb_test.obs` | System.ML | Regression tests for System.ML PCA (power-iteration decomposition: dominant diagonal direction re... | ✅ |
-| 164 | `ml_phase1_test.obs` | System.ML | Regression tests for the System.ML correctness fixes (phase 1): seedable PRNG, DotSigmoid dimensi... | ✅ |
-| 165 | `ml_regularized_test.obs` | System.ML | Regression tests for the System.ML regularized linear models (overhaul phase 2): RidgeRegression... | ✅ |
-| 166 | `ml_trees_test.obs` | System.ML | Regression tests for the System.ML tree models: the real recursive DecisionTree (left/right child... | ✅ |
-| 167 | `nil_safe_ops.obs` | Core Language | Nil-safe operators: '??' (nil-coalesce) and '?->' (nil-safe call). Both desugar onto existing int... | ✅ |
-| 168 | `oauth_test.obs` | Networking | oauth test | ✅ |
-| 169 | `odbc_sqlite_test.obs` | ODBC | ODBC SQLite Integration Test Tests live database operations against an in-memory SQLite database.... | ✅ |
-| 170 | `primitive_receiver_order.obs` | Other | Argument order for instance-style calls on primitives. Writing `v->Pow(10)` on a primitive does n... | ✅ |
-| 171 | `regex_bench.obs` | Regex | regex bench | ✅ |
-| 172 | `regex_dfa_test.obs` | Regex | regex dfa test | ✅ |
-| 173 | `runtime_feature_test.obs` | Other | Regression tests for the "runtime.feature.*" properties, which report which optional protocol eng... | ✅ |
-| 174 | `select_dispatch_test.obs` | Control Flow | Single-case, linear (2-5 cases), jump-table (dense >=6), and binary-tree (sparse) paths | ✅ |
-| 175 | `string_find_ops.obs` | Strings | string find ops | ✅ |
-| 176 | `string_format_ops.obs` | Strings | Verifies String->Format() positional substitution. | ✅ |
-| 177 | `string_number_conv.obs` | Strings | string number conv | ✅ |
-| 178 | `string_replace_ops.obs` | Strings | string replace ops | ✅ |
-| 179 | `string_split_ops.obs` | Strings | string split ops | ✅ |
-| 180 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
-| 181 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
-| 182 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
-| 183 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
-| 184 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
-| 185 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 186 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 187 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 188 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 131 | `jit_float_mem_ops.obs` | AMD64/JIT | Float arithmetic and comparison against MEMORY operands, under the JIT. IMPORTANT: must run with... | ✅ |
+| 132 | `jit_float_round_trig.obs` | AMD64/JIT | Exercises two JIT float-codegen bugs that only surface once a method using them is auto-JIT'd (de... | ✅ |
+| 133 | `jit_frame_trap_test.obs` | AMD64/JIT | Regression test for the JIT frame-dependent trap crash (2026-06). Traps such as SERL_INT/SERL_FLO... | ✅ |
+| 134 | `jit_func_ref_hot.obs` | AMD64/JIT | jit func ref hot | ✅ |
+| 135 | `jit_gc_stress.obs` | AMD64/JIT | JIT + GC interaction stress (2026-06). One CI run on linux-x64 failed with a JIT-to-JIT runtime e... | ✅ |
+| 136 | `jit_loop_native.obs` | AMD64/JIT | jit loop native | ✅ |
+| 137 | `jit_native_cls_fields.obs` | AMD64/JIT | JIT Native Class Fields Test Tests object reference storage in class instance fields with GC pres... | ✅ |
+| 138 | `jit_native_float_array.obs` | AMD64/JIT | JIT Native Float Array Test Tests native function with float array creation and math operations R... | ✅ |
+| 139 | `jit_native_func_ref.obs` | AMD64/JIT | JIT Native Function Reference Test Tests native functions with function reference storage in clas... | ✅ |
+| 140 | `jit_native_math.obs` | AMD64/JIT | JIT Native Math Builtins Test Tests native math functions: Factorial, Sinh/Cosh/Tanh/Log2/Cbrt, P... | ✅ |
+| 141 | `jit_string_ops.obs` | AMD64/JIT | jit string ops | ✅ |
+| 142 | `jit_tco_bare_local.obs` | AMD64/JIT | Regression for the TCO deferred-local-load miscompile (both arches). A self-recursive tail call t... | ✅ |
+| 143 | `json_build_ops.obs` | JSON | json build ops | ✅ |
+| 144 | `json_parse_ops.obs` | JSON | json parse ops | ✅ |
+| 145 | `lsp_features.obs` | LSP | lsp features | ✅ |
+| 146 | `math_float_ops.obs` | Math | math float ops | ✅ |
+| 147 | `math_log_exp.obs` | Math | math log exp | ✅ |
+| 148 | `math_random_ops.obs` | Math | math random ops | ✅ |
+| 149 | `math_rounding.obs` | Math | math rounding | ✅ |
+| 150 | `math_sqrt_ops.obs` | Math | math sqrt ops | ✅ |
+| 151 | `math_trig_funcs.obs` | Math | math trig funcs | ✅ |
+| 152 | `mcp_debug_test.obs` | MCP Server | DEBUG VERSION of mcp_server_test.obs Identical to programs/regression/mcp_server_test.obs except:... | ✅ |
+| 153 | `mcp_server_test.obs` | MCP Server | mcp server test | ✅ |
+| 154 | `minor_gc_stress.obs` | Other | Regression for generational MINOR GC: old objects holding young references. 'keep' is an object a... | ✅ |
+| 155 | `ml_adaboost_test.obs` | System.ML | Regression tests for System.ML AdaBoost (overhaul phase 3): boosting over boolean decision stumps... | ✅ |
+| 156 | `ml_api_test.obs` | System.ML | Regression tests for the System.ML estimator API consistency sweep (item 11): RandomForest Fit (r... | ✅ |
+| 157 | `ml_dbscan_test.obs` | System.ML | Regression tests for System.ML DBSCAN (overhaul phase 3): two dense blobs plus far-away outliers... | ✅ |
+| 158 | `ml_gbt_test.obs` | System.ML | Regression tests for System.ML gradient boosting (overhaul phase 3 leftover): a RegressionTree le... | ✅ |
+| 159 | `ml_gmm_test.obs` | System.ML | Regression tests for System.ML GaussianMixture (overhaul phase 3): EM on two well-separated blobs... | ✅ |
+| 160 | `ml_kdtree_test.obs` | System.ML | Regression tests for System.ML KDTree (overhaul phase 3): for several queries and k values over a... | ✅ |
+| 161 | `ml_library_test.obs` | System.ML | ml library test | ✅ |
+| 162 | `ml_linearclf_test.obs` | System.ML | Regression tests for the System.ML linear classifiers (overhaul phase 2): Perceptron (mistake-dri... | ✅ |
+| 163 | `ml_nn_test.obs` | System.ML | Regression tests for the System.ML NeuralNetwork with hidden/output bias vectors (ML overhaul ite... | ✅ |
+| 164 | `ml_pca_gnb_test.obs` | System.ML | Regression tests for System.ML PCA (power-iteration decomposition: dominant diagonal direction re... | ✅ |
+| 165 | `ml_phase1_test.obs` | System.ML | Regression tests for the System.ML correctness fixes (phase 1): seedable PRNG, DotSigmoid dimensi... | ✅ |
+| 166 | `ml_regularized_test.obs` | System.ML | Regression tests for the System.ML regularized linear models (overhaul phase 2): RidgeRegression... | ✅ |
+| 167 | `ml_trees_test.obs` | System.ML | Regression tests for the System.ML tree models: the real recursive DecisionTree (left/right child... | ✅ |
+| 168 | `nil_safe_ops.obs` | Core Language | Nil-safe operators: '??' (nil-coalesce) and '?->' (nil-safe call). Both desugar onto existing int... | ✅ |
+| 169 | `oauth_test.obs` | Networking | oauth test | ✅ |
+| 170 | `odbc_sqlite_test.obs` | ODBC | ODBC SQLite Integration Test Tests live database operations against an in-memory SQLite database.... | ✅ |
+| 171 | `primitive_receiver_order.obs` | Other | Argument order for instance-style calls on primitives. Writing `v->Pow(10)` on a primitive does n... | ✅ |
+| 172 | `regex_bench.obs` | Regex | regex bench | ✅ |
+| 173 | `regex_dfa_test.obs` | Regex | regex dfa test | ✅ |
+| 174 | `runtime_feature_test.obs` | Other | Regression tests for the "runtime.feature.*" properties, which report which optional protocol eng... | ✅ |
+| 175 | `select_dispatch_test.obs` | Control Flow | Single-case, linear (2-5 cases), jump-table (dense >=6), and binary-tree (sparse) paths | ✅ |
+| 176 | `string_find_ops.obs` | Strings | string find ops | ✅ |
+| 177 | `string_format_ops.obs` | Strings | Verifies String->Format() positional substitution. | ✅ |
+| 178 | `string_number_conv.obs` | Strings | string number conv | ✅ |
+| 179 | `string_replace_ops.obs` | Strings | string replace ops | ✅ |
+| 180 | `string_split_ops.obs` | Strings | string split ops | ✅ |
+| 181 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
+| 182 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
+| 183 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
+| 184 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
+| 185 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
+| 186 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 187 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 188 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 189 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 

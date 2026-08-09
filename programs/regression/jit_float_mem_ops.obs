@@ -1,0 +1,98 @@
+#~
+# Float arithmetic and comparison against MEMORY operands, under the JIT.
+#
+# IMPORTANT: must run with JIT ENABLED. Do NOT add a '# JIT_DISABLE' marker --
+# this test only has value once the methods below are natively compiled.
+#
+# Guards the ARM64 move_freg_freg bug: it emitted
+#     fmov d10, x{src}   /   fmov x{dest}, d10
+# which addressed the GENERAL register file rather than the FP file, because
+# the Register enum restarts float numbering at D0 = 0. Every call therefore
+# did two wrong things -- the float move never happened, AND general-purpose
+# register X{dest} was overwritten with unrelated bits. When X{dest} held a
+# live pointer, the next use of it followed a float bit pattern as an address,
+# which is the "memory corruption of free block" / PC = 0x3F947AE147AE147B
+# crash signature.
+#
+# move_freg_freg is reached from the *_mem_freg emitters -- float ops where one
+# operand lives in memory (an instance variable or an array element) rather
+# than in a register. So this exercises exactly that shape: compare, add, sub,
+# mul and div with a memory operand, in a hot loop that crosses the auto-JIT
+# threshold.
+#
+# A regression surfaces as a WRONG VALUE (the move silently not happening),
+# not necessarily as a crash -- which is the point. The original bug hid for
+# weeks precisely because it usually corrupted something unrelated instead of
+# producing a visible wrong answer. Asserting exact values catches it on the
+# first iteration.
+~#
+use System;
+
+class JitFloatMemOps {
+	@fa : Float;
+	@fb : Float;
+	@arr : Float[];
+
+	New() {
+		@fa := 2.5;
+		@fb := 0.02;      # the literal from the original crash PC
+		@arr := Float->New[4];
+		@arr[0] := 1.25;
+		@arr[1] := 4.0;
+		@arr[2] := 0.5;
+		@arr[3] := 10.0;
+	}
+
+	# Each of these mixes a REGISTER float with a MEMORY float (instance var or
+	# array element), which is what routes through the *_mem_freg emitters.
+	method : AddMem(x : Float) ~ Float { return x + @fa; }
+	method : SubMem(x : Float) ~ Float { return x - @fa; }
+	method : MulMem(x : Float) ~ Float { return x * @arr[0]; }
+	method : DivMem(x : Float) ~ Float { return x / @arr[2]; }
+	method : CmpMem(x : Float) ~ Bool  { return x < @arr[1]; }
+	method : CmpMem2(x : Float) ~ Bool { return x > @fb; }
+
+	# Interleaves float memory ops with an object reference that stays live
+	# ACROSS them. Under the bug a clobbered general register could land on
+	# this reference; dereferencing it afterwards is the crash path.
+	method : LiveRefAcross(x : Float) ~ Int {
+		holder := @arr;
+		v := x + @fa;
+		v := v * @arr[0];
+		if(v > @fb) { v := v - @fa; };
+		return holder->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := JitFloatMemOps->New();
+		pass := true;
+
+		# Hot loop: cross the auto-JIT threshold, then keep asserting so a
+		# post-compile regression is caught, not just the interpreted path.
+		i := 0;
+		while(i < 50000) {
+			if(t->AddMem(1.5) <> 4.0)      { pass := false; };
+			if(t->SubMem(4.0) <> 1.5)      { pass := false; };
+			if(t->MulMem(4.0) <> 5.0)      { pass := false; };
+			if(t->DivMem(2.0) <> 4.0)      { pass := false; };
+			if(t->CmpMem(1.0) = false)     { pass := false; };   # 1.0 < 4.0
+			if(t->CmpMem(9.0))             { pass := false; };   # 9.0 < 4.0 is false
+			if(t->CmpMem2(1.0) = false)    { pass := false; };   # 1.0 > 0.02
+			if(t->LiveRefAcross(1.5) <> 4) { pass := false; };
+			if(pass = false) {
+				"  FAIL: wrong result at iteration {$i}"->PrintLine();
+				i := 50000;
+			};
+			i += 1;
+		};
+
+		if(pass) {
+			"PASS: JIT float memory ops"->PrintLine();
+		}
+		else {
+			"FAIL: JIT float memory ops"->PrintLine();
+			# The runners grade on EXIT CODE, never on output text.
+			Runtime->Exit(1);
+		};
+	}
+}
