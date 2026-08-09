@@ -3703,7 +3703,14 @@ void JitArm64::cmp_mem_freg(long offset, Register src, Register dest) {
   RegisterHolder* holder = GetFpRegister();
   move_mem_freg(offset, src, holder->GetRegister());
   cmp_freg_freg(dest, holder->GetRegister());
-  move_freg_freg(holder->GetRegister(), dest);
+  // No move back: a compare yields flags, not a value, and dest still
+  // holds the live left-hand operand. AMD64 agrees -- cmp_mem_xreg is a
+  // bare ucomisd that never writes dest.
+  //
+  // There WAS a move_freg_freg(holder, dest) here. It was inert only
+  // because move_freg_freg addressed the general register file; once that
+  // was corrected the move became real and clobbered dest with the memory
+  // operand after every float compare-against-memory.
   ReleaseFpRegister(holder);
 }
 
