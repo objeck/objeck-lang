@@ -555,6 +555,13 @@ if(html <> Nil) {
 			@response_headers->Empty();
 
 			oper := "POST ";
+			# location and address land verbatim in the request line, so a CR, LF
+			# or space here splits the request itself. Url->New does not
+			# sanitize, and a Url is the input most likely to be untrusted.
+			if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+					Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+				return Nil;
+			};
 			oper->Append(location);
 			oper->Append(" HTTP/1.1\r\nHost: ");
 			oper->Append(address);
@@ -723,6 +730,13 @@ if(html <> Nil) {
 						oper := "PUT ";
 					};
 
+					# location and address land verbatim in the request line, so a CR, LF
+					# or space here splits the request itself. Url->New does not
+					# sanitize, and a Url is the input most likely to be untrusted.
+					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+						return Nil;
+					};
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
@@ -1131,6 +1145,13 @@ if(html <> Nil) {
 						oper := "DELETE ";
 					};
 
+					# location and address land verbatim in the request line, so a CR, LF
+					# or space here splits the request itself. Url->New does not
+					# sanitize, and a Url is the input most likely to be untrusted.
+					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+						return Nil;
+					};
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
@@ -1350,6 +1371,13 @@ if(client->Connect()) {
 
 					oper := "GET ";
 					
+					# location and address land verbatim in the request line, so a CR, LF
+					# or space here splits the request itself. Url->New does not
+					# sanitize, and a Url is the input most likely to be untrusted.
+					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+						return false;
+					};
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);

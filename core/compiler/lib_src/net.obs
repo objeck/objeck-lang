@@ -68,6 +68,29 @@ bundle Web.HTTP {
 		@param headers header map, may be Nil
 		@return alternating key/value array, never Nil
 		~#
+		#~
+		Validates a request target (path) or authority (host) for the HTTP/1.1
+		request line.
+
+		These are appended verbatim into the request line, so a CR, LF or space
+		splits the request itself -- a strictly worse version of header
+		injection, and reachable from a Url, which is the input most likely to
+		come from untrusted data. Url->New does not sanitize.
+
+		Rejects every control character (RFC 9110 forbids CTL in a request
+		target) plus space, which would terminate the target early.
+		@param s path or host
+		@return true when safe to place in a request line
+		~#
+		function : IsValidRequestTarget(s : String) ~ Bool {
+			if(s = Nil) { return false; };
+			each(i : s) {
+				c := s->Get(i)->As(Int);
+				if(c < 33 | c = 127) { return false; };
+			};
+			return true;
+		}
+
 		function : Flatten(headers : Hash<String, String>) ~ String[] {
 			if(headers = Nil) { return String->New[0]; };
 
@@ -889,6 +912,13 @@ response->GetStatusCode()->PrintLine();
 						oper := "PUT ";
 					};
 
+					# location and address land verbatim in the request line, so a CR, LF
+					# or space here splits the request itself. Url->New does not
+					# sanitize, and a Url is the input most likely to be untrusted.
+					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+						return Nil;
+					};
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
@@ -1068,6 +1098,13 @@ response->GetStatusCode()->PrintLine();
 						oper := "DELETE ";
 					};
 
+					# location and address land verbatim in the request line, so a CR, LF
+					# or space here splits the request itself. Url->New does not
+					# sanitize, and a Url is the input most likely to be untrusted.
+					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+						return Nil;
+					};
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
@@ -1286,6 +1323,13 @@ if(ws->Connect()) {
 
 					oper := "GET ";
 					
+					# location and address land verbatim in the request line, so a CR, LF
+					# or space here splits the request itself. Url->New does not
+					# sanitize, and a Url is the input most likely to be untrusted.
+					if(Web.HTTP.HeaderCheck->IsValidRequestTarget(location) = false |
+							Web.HTTP.HeaderCheck->IsValidRequestTarget(address) = false) {
+						return false;
+					};
 					oper->Append(location);
 					oper->Append(" HTTP/1.1\r\nHost: ");
 					oper->Append(address);
