@@ -1,5 +1,35 @@
 # Enabling HTTP/3 on Windows — implementation plan
 
+> **OUTCOME (2026-08-08): shipped, but NOT by the plan below.**
+>
+> HTTP/3 now works on Windows via **WinHTTP over MsQuic** (Windows 11 /
+> Server 2022+) — see `core/vm/win_http3.h`, guarded by
+> `OBJECK_HAS_WINHTTP_H3`. The POSIX ngtcp2 path was left untouched; the three
+> traps gained `#elif` arms. No vendored QUIC library, no second TLS backend,
+> no new DLL to deploy (`winhttp.lib` ships with Windows).
+>
+> **The plan below proposed vendoring ngtcp2 + GnuTLS through vcpkg. Three
+> review passes rejected it before any code was written** — that rejection,
+> and the reasoning in the review sections at the end, is why this document is
+> worth keeping. The replacement was proven in a single throwaway probe:
+> `status=200 protocol=HTTP/3`, zero new dependencies.
+>
+> Two facts found the hard way, not in any doc at the time:
+> - `WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL` must be set on the **session**
+>   handle *before* the request is created. Setting it later is accepted and
+>   silently ignored.
+> - WinHTTP treats HTTP/3 as a **preference** and downgrades transparently, so
+>   a 200 proves nothing. Every request must assert
+>   `WINHTTP_OPTION_HTTP_PROTOCOL_USED` or it will silently speak HTTP/2 —
+>   which would have re-created the exact false promise being fixed.
+>
+> Still open: the msys2 Windows builds have no engine (they correctly report
+> `runtime.feature.http3 == 0`), and `debugger.vcxproj` / `module.vcxproj`
+> compile `common.cpp` with no protocol macros at all, so `obd` ships with
+> HTTP/2 and HTTP/3 dead — the same class of gap, one level up.
+>
+> Read what follows as the historical plan and its review, not as work to do.
+
 ## The problem
 
 `Web.HTTP.Http3Client` is documented and shipped in `net_quic.obl`, but on
