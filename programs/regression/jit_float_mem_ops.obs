@@ -1,0 +1,103 @@
+#~
+# Float arithmetic and comparison against MEMORY operands, under the JIT.
+#
+# IMPORTANT: must run with JIT ENABLED. Do NOT add a '# JIT_DISABLE' marker --
+# this test only has value once the methods below are natively compiled.
+#
+# Guards the ARM64 JIT float divide-by-zero divisor clobber. Every JIT float
+# division emits a divide-by-zero guard (div_freg_freg -> CheckFloatDivideByZero
+# -> cmp_imm_freg -> cmp_mem_freg) that compares the divisor against 0.0. That
+# helper used to append a move_freg_freg copying the 0.0 constant back INTO the
+# divisor register. With the old move_freg_freg encoding that copy was an inert
+# no-op on the FP file (but stray-clobbered general reg X{divisor} -> the
+# "memory corruption of free block" crash when it held a live pointer); once
+# move_freg_freg was corrected to a real `fmov Dd,Dn`, the copy started zeroing
+# the divisor, so every JIT float division computed x / 0.0 (-> inf/wrong).
+#
+# So: DIVISION is the primary trigger (via the guard), and the divisor must
+# survive the guard. Non-commutative div/sub also catch any operand-order
+# reversal. All values are exact in binary so `<>` equality is safe. Runs in a
+# hot loop that crosses the auto-JIT threshold; asserts exact values so a
+# regression is caught on the first compiled iteration.
+~#
+use System;
+
+class JitFloatMemOps {
+	@fa : Float;
+	@fb : Float;
+	@arr : Float[];
+
+	New() {
+		@fa := 2.5;
+		@fb := 0.02;      # the literal from the original crash PC
+		@arr := Float->New[4];
+		@arr[0] := 1.25;
+		@arr[1] := 4.0;
+		@arr[2] := 0.5;
+		@arr[3] := 10.0;
+	}
+
+	# Each of these mixes a REGISTER float with a MEMORY float (instance var or
+	# array element), which is what routes through the *_mem_freg emitters.
+	method : AddMem(x : Float) ~ Float { return x + @fa; }
+	method : SubMem(x : Float) ~ Float { return x - @fa; }
+	method : MulMem(x : Float) ~ Float { return x * @arr[0]; }
+	method : DivMem(x : Float) ~ Float { return x / @arr[2]; }
+	method : CmpMem(x : Float) ~ Bool  { return x < @arr[1]; }
+	method : CmpMem2(x : Float) ~ Bool { return x > @fb; }
+
+	# Division is the primary trigger: the JIT emits a divide-by-zero guard that
+	# must not clobber the divisor. Test literal and non-commutative forms with
+	# binary-exact values so equality is reliable.
+	method : DivLit(x : Float) ~ Float { return x / 2.0; }        # 9.0/2.0 = 4.5
+	method : DivVar(x : Float, y : Float) ~ Float { return x / y; }  # divisor in a reg; guard must preserve it
+	method : SubLit(x : Float) ~ Float { return x - 2.0; }        # 9.0-2.0 = 7.0 (order-sensitive)
+
+	# Interleaves float memory ops with an object reference that stays live
+	# ACROSS them. Under the bug a clobbered general register could land on
+	# this reference; dereferencing it afterwards is the crash path.
+	method : LiveRefAcross(x : Float) ~ Int {
+		holder := @arr;
+		v := x + @fa;
+		v := v * @arr[0];
+		if(v > @fb) { v := v - @fa; };
+		return holder->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := JitFloatMemOps->New();
+		pass := true;
+
+		# Hot loop: cross the auto-JIT threshold, then keep asserting so a
+		# post-compile regression is caught, not just the interpreted path.
+		i := 0;
+		while(i < 50000) {
+			if(t->AddMem(1.5) <> 4.0)      { pass := false; };
+			if(t->SubMem(4.0) <> 1.5)      { pass := false; };
+			if(t->MulMem(4.0) <> 5.0)      { pass := false; };
+			if(t->DivMem(2.0) <> 4.0)      { pass := false; };
+			if(t->DivLit(9.0) <> 4.5)      { pass := false; };   # divisor clobber -> inf/wrong
+			if(t->DivVar(9.0, 2.0) <> 4.5) { pass := false; };   # divisor in reg must survive guard
+			if(t->DivVar(2.0, 8.0) <> 0.25){ pass := false; };   # non-commutative: reversal -> 4.0
+			if(t->SubLit(9.0) <> 7.0)      { pass := false; };   # non-commutative: reversal -> -7.0
+			if(t->CmpMem(1.0) = false)     { pass := false; };   # 1.0 < 4.0
+			if(t->CmpMem(9.0))             { pass := false; };   # 9.0 < 4.0 is false
+			if(t->CmpMem2(1.0) = false)    { pass := false; };   # 1.0 > 0.02
+			if(t->LiveRefAcross(1.5) <> 4) { pass := false; };
+			if(pass = false) {
+				"  FAIL: wrong result at iteration {$i}"->PrintLine();
+				i := 50000;
+			};
+			i += 1;
+		};
+
+		if(pass) {
+			"PASS: JIT float memory ops"->PrintLine();
+		}
+		else {
+			"FAIL: JIT float memory ops"->PrintLine();
+			# The runners grade on EXIT CODE, never on output text.
+			Runtime->Exit(1);
+		};
+	}
+}

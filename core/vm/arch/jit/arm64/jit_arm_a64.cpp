@@ -3586,74 +3586,12 @@ void JitArm64::move_imm_mem32(int32_t imm, long offset, Register dest) {
   ReleaseRegister(imm_holder);
 }
 
-void JitArm64::add_imm_freg(RegInstr* instr, Register reg) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  add_mem_freg(0, imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
-}
-
-void JitArm64::sub_imm_freg(RegInstr* instr, Register reg) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  sub_mem_freg(0, imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
-}
-
-void JitArm64::div_imm_freg(RegInstr* instr, Register reg) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  div_mem_freg(0, imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
-}
-
-void JitArm64::mul_imm_freg(RegInstr* instr, Register reg) {
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-  mul_mem_freg(0, imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
-}
-
-void JitArm64::math_imm_freg(RegInstr *instr, RegisterHolder *&reg, InstructionType type) {
-  switch(type) {
-  case ADD_FLOAT:
-    add_imm_freg(instr, reg->GetRegister());
-    break;
-
-  case SUB_FLOAT:
-    sub_imm_freg(instr, reg->GetRegister());
-    break;
-
-  case MUL_FLOAT:
-    mul_imm_freg(instr, reg->GetRegister());
-    break;
-
-  case DIV_FLOAT:
-    div_imm_freg(instr, reg->GetRegister());
-    break;
-    
-  case LES_FLOAT:
-  case LES_EQL_FLOAT:
-  case GTR_FLOAT:
-  case EQL_FLOAT:
-  case NEQL_FLOAT:
-  case GTR_EQL_FLOAT:
-    cmp_imm_freg(instr->GetOperand(), reg->GetRegister());
-    if(!cond_jmp(type)) {
-      ReleaseFpRegister(reg);
-      reg = GetRegister();
-      cmov_reg(reg->GetRegister(), type);
-    }
-    break;
-    
-  default:
-    break;
-  }
-}
+// Removed: math_imm_freg and its add/sub/mul/div_imm_freg + add/sub/mul/div_mem_freg
+// helpers. They were unreachable (math_imm_freg had no callers) and were a divergent
+// duplicate of the canonical math_freg_freg/math_mem_freg path -- with reversed
+// operands for sub/div/cmp and a trailing move_freg_freg that clobbered the result.
+// Float arithmetic goes through ProcessFloatCalculation -> math_freg_freg/math_mem_freg.
+// cmp_imm_freg + cmp_mem_freg remain: they are the JIT divide-by-zero guard.
 
 void JitArm64::math_mem_freg(long offset, RegisterHolder* &dest, InstructionType type) {
   RegisterHolder* holder = GetFpRegister();
@@ -3662,6 +3600,11 @@ void JitArm64::math_mem_freg(long offset, RegisterHolder* &dest, InstructionType
   ReleaseFpRegister(holder);
 }
 
+// Canonical float binary-op path. The primitives (add/sub/mul/div/cmp_freg_freg)
+// all compute `dest = dest OP src` (result left IN dest); cmp emits FCMP dest, src.
+// So callers must NOT append a move_freg_freg to shuffle a result back -- the result
+// is already in dest. (A parallel *_mem_freg family that did exactly that is what
+// let the divide-by-zero divisor-clobber bug hide; see cmp_mem_freg.)
 void JitArm64::math_freg_freg(Register src, RegisterHolder *&dest, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
@@ -3700,42 +3643,20 @@ void JitArm64::math_freg_freg(Register src, RegisterHolder *&dest, InstructionTy
 }
 
 void JitArm64::cmp_mem_freg(long offset, Register src, Register dest) {
+  // Mirror math_freg_freg: compare `dest` against the memory operand in place and
+  // leave `dest` untouched. cmp_freg_freg(holder, dest) emits FCMP dest, holder
+  // (the `dest ? mem` sense used by cond_jmp/cmov and by AMD64's ucomisd).
+  //
+  // Do NOT append a move_freg_freg(holder, dest) here: FCMP produces flags only,
+  // the result must stay in `dest`. The old trailing move copied the memory value
+  // (e.g. the 0.0 constant from CheckFloatDivideByZero) back into `dest` -- i.e. it
+  // clobbered the divisor. With the pre-2026.8 move_freg_freg encoding that copy was
+  // an inert no-op on the FP file (but stray-clobbered general reg X{dest}); once
+  // move_freg_freg was corrected to a real `fmov Dd,Dn` the copy started zeroing the
+  // divisor, making every JIT float division compute x / 0.0.
   RegisterHolder* holder = GetFpRegister();
   move_mem_freg(offset, src, holder->GetRegister());
-  cmp_freg_freg(dest, holder->GetRegister());
-  move_freg_freg(holder->GetRegister(), dest);
-  ReleaseFpRegister(holder);
-}
-
-void JitArm64::add_mem_freg(long offset, Register src, Register dest) {
-  RegisterHolder* holder = GetFpRegister();
-  move_mem_freg(offset, src, holder->GetRegister());
-  add_freg_freg(dest, holder->GetRegister());
-  move_freg_freg(holder->GetRegister(), dest);
-  ReleaseFpRegister(holder);
-}
-
-void JitArm64::mul_mem_freg(long offset, Register src, Register dest) {
-  RegisterHolder* holder = GetFpRegister();
-  move_mem_freg(offset, src, holder->GetRegister());
-  mul_freg_freg(dest, holder->GetRegister());
-  move_freg_freg(holder->GetRegister(), dest);
-  ReleaseFpRegister(holder);
-}
-
-void JitArm64::sub_mem_freg(long offset, Register src, Register dest) {
-  RegisterHolder* holder = GetFpRegister();
-  move_mem_freg(offset, src, holder->GetRegister());
-  sub_freg_freg(dest, holder->GetRegister());
-  move_freg_freg(holder->GetRegister(), dest);
-  ReleaseFpRegister(holder);
-}
-
-void JitArm64::div_mem_freg(long offset, Register src, Register dest) {
-  RegisterHolder* holder = GetFpRegister();
-  move_mem_freg(offset, src, holder->GetRegister());
-  div_freg_freg(dest, holder->GetRegister());
-  move_freg_freg(holder->GetRegister(), dest);
+  cmp_freg_freg(holder->GetRegister(), dest);
   ReleaseFpRegister(holder);
 }
 
@@ -3951,20 +3872,22 @@ void JitArm64::math_mem_reg(long offset, Register reg, InstructionType type) {
 void JitArm64::move_freg_freg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(X10)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(src) << L"]" << std::endl;
-#endif
-    uint32_t op_code = 0x9E67000A;
-    op_code |= src << 5;
-    AddMachineCode(op_code);
-    
-#ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(dest)
-        << L", " << GetRegisterName(src) << L", " << GetRegisterName(X19) << L"]" << std::endl;
+        << L", " << GetRegisterName(src) << L"]" << std::endl;
 #endif
-    op_code = 0x9E660140;
-    op_code |= dest;
-    AddMachineCode(op_code);
+    // fmov D{dest}, D{src}
+    //
+    // This previously bridged through a GP register pair:
+    //   fmov D10, X{src}   (0x9E67000A -- FMOV Dd,Xn, reads the GENERAL file)
+    //   fmov X{dest}, D10  (0x9E660140 -- FMOV Xd,Dn, writes the GENERAL file)
+    // Because the Register enum restarts float numbering at D0 = 0, those
+    // encodings addressed X{src}/X{dest} rather than D{src}/D{dest}. Floats
+    // genuinely live in the FP file here (move_mem_freg emits LDR Dt,
+    // cmp_freg_freg emits FCMP Dn,Dm), so the move both failed to happen AND
+    // clobbered general-purpose register X{dest} with unrelated bits. When
+    // X{dest} held a live pointer, the next use of that field followed a
+    // float bit pattern as an address.
+    AddMachineCode(0x1E604000 | ((uint32_t)src << 5) | (uint32_t)dest);
   }
 }
 

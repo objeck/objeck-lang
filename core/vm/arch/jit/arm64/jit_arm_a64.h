@@ -706,7 +706,6 @@ namespace Runtime {
     void math_imm_reg(long imm, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
     void math_mem_reg(long offset, Register reg, InstructionType type);
-    void math_imm_freg(RegInstr *instr, RegisterHolder *&reg, InstructionType type);
     void math_mem_freg(long offset, RegisterHolder *&reg, InstructionType type);
     void math_freg_freg(Register src, RegisterHolder *&dest, InstructionType type);
     
@@ -725,33 +724,25 @@ namespace Runtime {
     // add instructions
     void add_imm_mem(long imm, long offset, Register dest);
     void add_imm_reg(long imm, Register reg);
-    void add_imm_freg(RegInstr* instr, Register reg);
     void add_freg_freg(Register src, Register dest);
     void add_mem_reg(long offset, Register src, Register dest);
-    void add_mem_freg(long offset, Register src, Register dest);
     void add_reg_reg(Register src, Register dest);
 
     // sub instructions
-    void sub_imm_freg(RegInstr* instr, Register reg);
     void sub_freg_freg(Register src, Register dest);
-    void sub_mem_freg(long offset, Register src, Register dest);
     void sub_imm_reg(long imm, Register reg);
     void sub_imm_mem(long imm, long offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
     void sub_mem_reg(long offset, Register src, Register dest);
 
     // mul instructions
-    void mul_imm_freg(RegInstr* instr, Register reg);
     void mul_freg_freg(Register src, Register dest);
-    void mul_mem_freg(long offset, Register src, Register dest);
     void mul_imm_reg(long imm, Register reg);
     void mul_reg_reg(Register src, Register dest);
     void mul_mem_reg(long offset, Register src, Register dest);
 
     // div instructions
-    void div_imm_freg(RegInstr* instr, Register reg);
     void div_freg_freg(Register src, Register dest);
-    void div_mem_freg(long offset, Register src, Register dest);
     void div_imm_reg(long imm, Register reg, bool is_mod = false);
     void div_reg_reg(Register src, Register dest, bool is_mod = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
