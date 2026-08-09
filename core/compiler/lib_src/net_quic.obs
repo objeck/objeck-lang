@@ -68,6 +68,13 @@ bundle Web.HTTP {
 		```
 		~#
 		method : public : AddHeader(key : String, value : String) ~ Nil {
+			# Refuse anything that could inject a header line of its own.
+			# A CR/LF here would split the request (HTTP/1.1) or reach the
+			# wire unvalidated (HTTP/2, HTTP/3). Never legitimate content.
+			if(Web.HTTP.HeaderCheck->IsValidName(key->ToLower()) = false |
+				Web.HTTP.HeaderCheck->IsValidValue(value) = false) {
+				return;
+			};
 			@request_headers->Insert(key->ToLower(), value);
 		}
 
