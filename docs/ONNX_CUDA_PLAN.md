@@ -4,6 +4,24 @@
 > pattern that made the HTTP/3-on-Windows work cheap: three reviewers rejected
 > the expensive route before it cost anything.
 
+> **CORRECTION (same day, before review).** Two premises below were wrong and
+> are struck through in place. Verify claims against the tree, not against
+> this doc:
+>
+> 1. **`core/lib/onnx/eq/cuda` ALREADY EXISTS** — `onnx_cuda.cpp` plus a
+>    `build_linux.sh`. What is missing is only a **Windows project**; the
+>    variant itself does not need creating. CUDA is therefore buildable on
+>    Linux today and the Windows gap is far smaller than stated below.
+> 2. **KV cache is NOT globally disabled on DML.** `common.h:1836` computes
+>    `use_kv_cache = has_kv && present_kv_consistent()` for the text path —
+>    cache is ON. The hardcoded `use_kv_cache = false` with the GQA comment is
+>    at `common.h:2413`, inside the **Phi-3-V vision decoder** path only.
+>    So the "capability the DML path cannot have" argument applies to
+>    multimodal decode, not to Phi-3 text inference.
+>
+> Net effect: the case for CUDA is **weaker and cheaper** than written — less
+> to build, and a narrower correctness argument. Re-scope before acting.
+
 ## Why
 
 GPU inference already works — via **DirectML**, verified at runtime:
