@@ -58,6 +58,12 @@ bundle Web.HTTP {
 		@param key header name (lower-case recommended)
 		@param value header value
 
+		Rejected silently if the name or value is malformed: names must be
+		lower-case token characters and may not begin with ":" (HTTP/2 and
+		HTTP/3 build the pseudo-headers themselves), and values may not contain
+		CR, LF, NUL or other control characters, which would otherwise inject an
+		extra header line. See Web.HTTP.HeaderCheck.
+
 		```
 		client := Web.HTTP.Http3Client->New("api.example.com");
 		client->AddHeader("authorization", "Bearer mytoken");
