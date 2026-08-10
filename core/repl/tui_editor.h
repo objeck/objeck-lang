@@ -13,6 +13,9 @@
 #include "screen.h"
 #include "keymap.h"
 #include <functional>
+#include <thread>
+#include <atomic>
+#include <memory>
 #include <vector>
 #include <cwctype>
 
@@ -45,6 +48,10 @@ namespace Tui {
     bool dirty;
     bool quit_armed;     // set by a first Ctrl+Q with unsaved changes
     std::wstring status; // transient message; cleared by the next key
+    // Set once a run has been abandoned. The worker cannot be killed mid-VM,
+    // only detached, and it still holds the process-wide fd redirect -- so a
+    // second run would corrupt both the screen and the captured output.
+    bool run_abandoned = false;
 
     // run pane: compile-and-execute output, shown below the text area
     std::function<bool(std::wstring&)> runner;
@@ -741,9 +748,55 @@ namespace Tui {
         status = L"running is not available here";
         return;
       }
+      if(run_abandoned) {
+        status = L"an abandoned run is still going -- restart obi to run again";
+        return;
+      }
 
-      std::wstring output;
-      const bool ok = runner(output);
+      // The capture inside `runner` redirects fd 1 and 2 PROCESS-WIDE, so the
+      // screen must not be painted while it is active: a repaint would land in
+      // the capture file, and the captured output would fill with escape
+      // sequences. Paint the notice first, then stay quiet until it finishes.
+      status = L"running...  Esc abandons";
+      Draw();
+
+      // Shared state is heap-allocated on purpose. If the user abandons the
+      // run we detach the worker, and a detached thread writing into this
+      // frame's locals would be a use-after-scope.
+      struct RunState {
+        std::wstring output;
+        bool ok = false;
+        std::atomic<bool> finished{false};
+      };
+      auto state = std::make_shared<RunState>();
+      auto fn = runner;
+      std::thread worker([state, fn]() {
+        state->ok = fn(state->output);
+        state->finished.store(true, std::memory_order_release);
+      });
+
+      // ReadKey already returns a KEY_NONE tick on a ~100 ms timeout on both
+      // platforms (Windows WaitForSingleObject; POSIX VMIN=0/VTIME=1), so this
+      // stays responsive without any terminal-layer change.
+      bool abandoned = false;
+      while(!state->finished.load(std::memory_order_acquire)) {
+        const Key key = term.ReadKey();
+        if(key.code == KEY_ESC) {
+          abandoned = true;
+          break;
+        }
+      }
+
+      if(abandoned) {
+        worker.detach();
+        run_abandoned = true;
+        status = L"run abandoned; it continues in the background";
+        return;
+      }
+
+      worker.join();
+      std::wstring& output = state->output;
+      const bool ok = state->ok;
 
       // split into pane lines; diagnostics look like 'name:(line,col): text'
       pane.clear();
