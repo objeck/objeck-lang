@@ -94,11 +94,15 @@ namespace Tui {
         seq += L";7";
       }
       switch(attr & ATTR_COLOR_MASK) {
-      case ATTR_RED: seq += L";31"; break;
-      case ATTR_GREEN: seq += L";32"; break;
-      case ATTR_YELLOW: seq += L";33"; break;
-      case ATTR_BLUE: seq += L";34"; break;
-      case ATTR_CYAN: seq += L";36"; break;
+      // BRIGHT codes (91-96), not the dim 31-36 set. The basic colours render
+      // as muddy low-contrast tones over a dark background -- syntax painted
+      // with them reads as faded rather than as structure. Gray stays 90: it
+      // marks the read-only frame and SHOULD recede.
+      case ATTR_RED: seq += L";91"; break;
+      case ATTR_GREEN: seq += L";92"; break;
+      case ATTR_YELLOW: seq += L";93"; break;
+      case ATTR_BLUE: seq += L";94"; break;
+      case ATTR_CYAN: seq += L";96"; break;
       case ATTR_GRAY: seq += L";90"; break;
       }
       return seq + L"m";
