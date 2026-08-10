@@ -1,0 +1,130 @@
+# F5 freezes obi — design for a responsive run
+
+> **Status: PLAN, pending ground-truth verification.** Written before code, on
+> the pattern that has caught several expensive mistakes in this repo. A
+> verification agent is checking the claims below against the tree; anything it
+> refutes must be corrected here before implementation.
+
+## The bug
+
+Pressing **F5** in `/e` edit mode freezes obi. The terminal becomes
+unresponsive and no output appears.
+
+`DoRun()` in `core/repl/tui_editor.h` calls the `runner` callback
+**synchronously on the UI thread**. Nothing polls for input until the user's
+program finishes, so obi cannot process keys — there is no way to interrupt,
+and a program that loops takes the editor with it permanently.
+
+## Why the obvious fix is wrong
+
+The tempting change is "run it on a `std::thread`". That trades one bug for two.
+
+`core/repl/io_capture.h` redirects **fd 1 and fd 2 process-wide** (`dup2` on
+POSIX, `_dup2` on Windows). Those descriptors are a process-level resource, not
+a per-thread one. So with the run on a background thread and the UI still
+painting:
+
+- the UI's own repaints go **into the capture file** instead of the screen; and
+- the captured "program output" is polluted with escape sequences and screen
+  redraws.
+
+**Process-global fd redirection and a live UI cannot coexist.** That is the
+real reason the in-process design was doomed, and any fix has to address it
+rather than work around it.
+
+## Verified facts (checked against the tree)
+
+- **The timed key read already exists.** `core/repl/term.h:287` uses
+  `WaitForSingleObject(in_handle, 100)`, and `KEY_NONE` at `term.h:38` is
+  documented as *"timeout tick; poll again"*. The open dependency below is
+  therefore **already satisfied** — a responsive `running… Esc to cancel` loop
+  needs no change to the terminal layer.
+- **No process spawning exists anywhere in the REPL.** `CreateProcess`,
+  `popen`/`_popen`, `execvp` and `system` are all absent from `core/repl/`.
+  So option B has to introduce process handling from scratch on **both**
+  Windows and POSIX — this is the bulk of the work, not the UI loop.
+
+That pairing is the whole cost picture: the responsive loop is cheap because
+`ReadKey` already polls; the subprocess plumbing is not, because none exists.
+
+## Options
+
+### A — background thread, painting suspended during the run
+
+Paint `running… Esc to abandon` *before* starting the capture, run on a
+`std::thread`, then poll for keys **without repainting** until it completes.
+
+*For:* small; keeps the existing `DoExecute()` path; obi survives.
+*Against:* the screen is frozen for the duration, so it still *looks* hung. And
+a runaway program cannot truly be cancelled — a thread mid-VM cannot be safely
+killed, only detached, so it keeps burning CPU (and holding the redirected fds)
+after the user "abandons" it. That last point is disqualifying: abandoning
+leaves the process in a worse state than before.
+
+### B — run the program in a subprocess (recommended)
+
+Compile the buffer to a temp `.obe`, then spawn `obr` on it and read its
+stdout/stderr through pipes.
+
+*For:*
+- fd redirection becomes the **child's** problem, so the UI paints freely
+- output can stream into the pane live instead of appearing all at once
+- cancellation is a real **kill**, not a detach
+- a crashing or looping user program can no longer take obi with it
+
+*Against:* needs process spawning plus non-blocking pipe reads on both Windows
+(`CreateProcess` + `CreatePipe`, or `_popen`) and POSIX (`fork`/`execvp` +
+`pipe`). More code, and platform-specific.
+
+### C — keep in-process, add a watchdog
+
+Rejected. There is no safe way to interrupt the VM mid-execution from another
+thread, so the watchdog could only kill the whole process — losing the user's
+unsaved buffer.
+
+**Recommendation: B.** It is the design F5 should have had. A is a patch that
+leaves obi hostage to user code, which is the actual complaint.
+
+## Implementation shape
+
+1. `core/repl/editor.cpp` — replace the `run_program` lambda's in-process
+   `DoExecute()` with: compile to a temp `.obe`, spawn `obr`, return a handle.
+   **If the REPL already shells out to `obc`/`obr` anywhere, reuse that path**
+   rather than writing a second one.
+2. `core/repl/tui_editor.h` — `DoRun()` becomes non-blocking: start the child,
+   then loop `{ timed key read; drain available pipe output into the pane;
+   repaint }` until exit or **Esc**, which kills the child.
+3. Drop `IoCapture` from the F5 path entirely. It stays valid for any
+   genuinely in-process capture, but the whole point of B is that it is no
+   longer needed here.
+
+**Open dependency:** a responsive loop requires a **timed** key read. If
+`core/repl/term.h` only offers a blocking read, that must be added first —
+otherwise the loop blocks on input and we are back to a frozen UI. This is the
+one thing that could change the shape of the fix, which is why it is being
+verified before implementation.
+
+## What must not happen
+
+- The user's buffer being lost because a runaway program forced a process kill.
+- Captured output containing screen escape sequences (the symptom of pointing
+  a global redirect at a live UI).
+- A "cancel" that only detaches, leaving the program running and the fds held.
+- Shipping this without interactive testing. F5 cannot be exercised from a
+  non-interactive shell, so it needs a human at a terminal — an automated green
+  build proves nothing here.
+
+## Testing
+
+Automated coverage is not really available: `/e` is an interactive full-screen
+mode. The honest plan is a manual matrix, run by a person:
+
+| case | expectation |
+| --- | --- |
+| `"hi"->PrintLine();` | output in the pane, editor still responsive |
+| a compile error | diagnostics in the pane, F8 jumps to the line |
+| `while(true) {};` | **Esc cancels**, obi survives, buffer intact |
+| a program printing a lot | pane scrolls, no truncation, no escape-sequence garbage |
+| run twice in a row | second run works; no leaked handles or stale output |
+
+The third row is the actual bug being fixed and must be tested explicitly.
