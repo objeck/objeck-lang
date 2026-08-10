@@ -82,6 +82,39 @@ extern "C" {
 #if defined(ONNX_EP_DML)
          const std::string compiled_ep = "dml";
 #elif defined(ONNX_EP_CUDA)
+         const std::string compiled_ep = "cuda";
+#elif defined(ONNX_EP_QNN)
+         const std::string compiled_ep = "qnn";
+#elif defined(ONNX_EP_VITIS)
+         const std::string compiled_ep = "vitisai";
+#elif defined(ONNX_EP_COREML)
+         const std::string compiled_ep = "coreml";
+#else
+         const std::string compiled_ep = "cpu";
+#endif
+
+         const bool use_cpu = (requested_ep == "cpu");
+         if(!requested_ep.empty() && !use_cpu && requested_ep != compiled_ep) {
+            std::wcerr << L">>> ONNX: execution provider '" << BytesToUnicode(requested_ep)
+                       << L"' was requested, but this build provides '"
+                       << BytesToUnicode(compiled_ep)
+                       << L"'. Use ep=" << BytesToUnicode(compiled_ep)
+                       << L" or ep=cpu. <<<" << std::endl;
+            return;
+         }
+
+         Ort::SessionOptions session_options;
+
+#if defined(ONNX_EP_DML)
+         if(provider_options.find("device_id") == provider_options.end()) {
+            provider_options["device_id"] = "0";
+         }
+         if(!use_cpu) session_options.AppendExecutionProvider("DML", provider_options);
+         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         session_options.DisableMemPattern();
+         session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+
+#elif defined(ONNX_EP_CUDA)
          if(!use_cpu) {
             // Two separate traps here, both verified against the vendored
             // runtime on Linux:
@@ -125,46 +158,6 @@ extern "C" {
             cuda_options.device_id = atoi(provider_options["device_id"].c_str());
             session_options.AppendExecutionProvider_CUDA(cuda_options);
          }
-         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-         session_options.DisableMemPattern();
-
-#elif defined(ONNX_EP_QNN)
-         const std::string compiled_ep = "qnn";
-#elif defined(ONNX_EP_VITIS)
-         const std::string compiled_ep = "vitisai";
-#elif defined(ONNX_EP_COREML)
-         const std::string compiled_ep = "coreml";
-#else
-         const std::string compiled_ep = "cpu";
-#endif
-
-         const bool use_cpu = (requested_ep == "cpu");
-         if(!requested_ep.empty() && !use_cpu && requested_ep != compiled_ep) {
-            std::wcerr << L">>> ONNX: execution provider '" << BytesToUnicode(requested_ep)
-                       << L"' was requested, but this build provides '"
-                       << BytesToUnicode(compiled_ep)
-                       << L"'. Use ep=" << BytesToUnicode(compiled_ep)
-                       << L" or ep=cpu. <<<" << std::endl;
-            return;
-         }
-
-         Ort::SessionOptions session_options;
-
-#if defined(ONNX_EP_DML)
-         if(provider_options.find("device_id") == provider_options.end()) {
-            provider_options["device_id"] = "0";
-         }
-         if(!use_cpu) session_options.AppendExecutionProvider("DML", provider_options);
-         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-         session_options.DisableMemPattern();
-         session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
-
-#elif defined(ONNX_EP_CUDA)
-         if(provider_options.find("device_id") == provider_options.end()) {
-            provider_options["device_id"] = "0";
-         }
-         if(!use_cpu) session_options.AppendExecutionProvider("CUDA", provider_options);
          session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
          session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
          session_options.DisableMemPattern();
