@@ -12,8 +12,12 @@
 #include "term.h"
 #include "screen.h"
 #include "keymap.h"
+#include "child_run.h"
+#include "highlight.h"
 #include <functional>
 #include <vector>
+#include <string>
+#include <utility>
 #include <cwctype>
 
 // A viewport over Document -- the same buffer the line commands edit, so
@@ -29,6 +33,21 @@
 // fullwidth text stay aligned.
 
 namespace Tui {
+
+  // Everything F5 needs to compile and run the buffer as child processes. The
+  // editor view owns the responsive drain/cancel loop; the REPL owns the
+  // knowledge of where obc/obr live, which libraries and optimization level to
+  // pass, and the command-line arguments -- so it hands back a fully-built plan
+  // rather than a callback the view would have to parameterize. A failed save
+  // or a missing bin directory comes back as ok=false plus a message.
+  struct RunPlan {
+    bool ok = false;
+    std::wstring error;
+    std::vector<std::wstring> compile_argv;   // obc -src ... -dest ...
+    std::vector<std::wstring> run_argv;       // obr <obe> <args...>
+    std::vector<std::pair<std::wstring, std::wstring>> env;   // OBJECK_LIB_PATH
+  };
+  using RunProvider = std::function<RunPlan()>;
 
   class EditorView {
     Document& doc;
@@ -47,7 +66,7 @@ namespace Tui {
     std::wstring status; // transient message; cleared by the next key
 
     // run pane: compile-and-execute output, shown below the text area
-    std::function<bool(std::wstring&)> runner;
+    RunProvider runner;
     std::vector<std::wstring> pane;
     size_t pane_top;
     bool pane_visible;
@@ -84,7 +103,28 @@ namespace Tui {
     // binding profile and vi mode; simple/insert unless the user opts in
     KeymapState keys;
 
+    // syntax highlighting cache: one attribute per character per line, rebuilt
+    // only when the document actually changes. content_version bumps on every
+    // mutation; hl_version records what the cache was last built for.
+    size_t content_version;
+    size_t hl_version;
+    Highlighter highlighter;
+    std::vector<std::vector<unsigned char>> hl_attr;
+
     static const int TAB_STOP = 3;
+
+    // every document mutation goes through the Op* helpers (and undo/redo), so
+    // bumping here is enough to invalidate the highlight cache
+    void TouchDoc() {
+      ++content_version;
+    }
+
+    void EnsureHighlight() {
+      if(content_version != hl_version) {
+        hl_attr = highlighter.Scan(doc);
+        hl_version = content_version;
+      }
+    }
 
     // display column of character index `col`, honoring tabs and wide chars
     static int DisplayX(const std::wstring& line, size_t col) {
@@ -98,6 +138,29 @@ namespace Tui {
         }
       }
       return x;
+    }
+
+    // Inverse of DisplayX: the character index in `line` whose display column
+    // is at (or just left of) target_x. want_col is a *display* column, so
+    // Up/Down land under the same on-screen x even across tabs and wide chars
+    // -- a plain character index would drift on lines that contain them.
+    static size_t ColForDisplayX(const std::wstring& line, int target_x) {
+      int x = 0;
+      size_t col = 0;
+      while(col < line.size()) {
+        const int width = (line[col] == L'\t') ? (TAB_STOP - (x % TAB_STOP)) : CharWidth(line[col]);
+        if(x + width > target_x) {
+          break;
+        }
+        x += width;
+        ++col;
+      }
+      return col;
+    }
+
+    // remember the cursor's display column for the next vertical move
+    void SyncWantCol() {
+      want_col = (size_t)DisplayX(doc.GetLine(cur_row), cur_col);
     }
 
     bool IsReadOnly(size_t row) {
@@ -165,6 +228,7 @@ namespace Tui {
     }
 
     void Draw() {
+      EnsureHighlight();
       screen.Clear();
 
       // title bar: name, modified marker, dimensions
@@ -209,8 +273,16 @@ namespace Tui {
             width = CharWidth(line[i]);
           }
 
+          // syntax color sits UNDER selection: an editable cell takes its
+          // highlighter attribute when it has one, then selection reverses on
+          // top so a highlighted-and-selected span still reads as selected
+          unsigned char base_attr = text_attr;
+          if(!read_only && row < hl_attr.size() && i < hl_attr[row].size() &&
+             hl_attr[row][i] != HL_NONE) {
+            base_attr = hl_attr[row][i];
+          }
           const unsigned char cell_attr =
-            InSelection(row, i) ? (unsigned char)(text_attr | ATTR_REVERSE) : text_attr;
+            InSelection(row, i) ? (unsigned char)(base_attr | ATTR_REVERSE) : base_attr;
 
           if(x + width > left_x) {
             const int screen_x = gutter + (x - left_x);
@@ -279,6 +351,13 @@ namespace Tui {
         if(key.code == KEY_NONE) {
           continue;
         }
+        if(key.code == KEY_RESIZE) {
+          // a resize mid-prompt must re-query the terminal and rebuild the back
+          // buffer, or the next Flush indexes a grid of the old dimensions
+          term.Size(rows, cols);
+          screen.Resize(rows, cols);
+          continue;
+        }
         if(key.code == KEY_ENTER) {
           return input;
         }
@@ -303,6 +382,12 @@ namespace Tui {
         if(name.empty()) {
           status = L"save cancelled";
           return;
+        }
+        // The buffer is Objeck source, so a new save carries the .obs extension
+        // even if the user left it off -- aligning with line-mode '/s', which
+        // only accepts a '.obs' name.
+        if(name.size() < 4 || name.compare(name.size() - 4, 4, L".obs") != 0) {
+          name += L".obs";
         }
       }
 
@@ -333,6 +418,7 @@ namespace Tui {
       op.before = doc.GetLine(row);
       op.after = after;
       doc.SetLine(row, after);
+      TouchDoc();
       group.ops.push_back(op);
     }
 
@@ -342,6 +428,7 @@ namespace Tui {
       op.row = row;
       op.after = text;
       doc.InsertLine(row, text);
+      TouchDoc();
       group.ops.push_back(op);
     }
 
@@ -351,6 +438,7 @@ namespace Tui {
       op.row = row;
       op.before = doc.GetLine(row);
       doc.DeleteLine(row);
+      TouchDoc();
       group.ops.push_back(op);
     }
 
@@ -406,6 +494,7 @@ namespace Tui {
       redo_stack.push_back(group);
       typing_run = false;
       dirty = true;
+      TouchDoc();
     }
 
     void DoRedo() {
@@ -432,6 +521,7 @@ namespace Tui {
       undo_stack.push_back(group);
       typing_run = false;
       dirty = true;
+      TouchDoc();
     }
 
     // ----- selection -----
@@ -577,6 +667,13 @@ namespace Tui {
       }
 
       if(clip_linewise) {
+        // Same read-only guard the charwise branch has below: without it a
+        // linewise paste would inject editable lines straight into the
+        // class/function frame the buffer is meant to keep intact.
+        if(IsReadOnly(cur_row)) {
+          status = L"read-only shell line";
+          return;
+        }
         // whole lines land above the cursor's line, cursor staying put
         for(size_t i = 0; i < clip.size(); ++i) {
           OpIns(group, cur_row + i, clip[i]);
@@ -642,10 +739,31 @@ namespace Tui {
       }
 
       const std::wstring line = doc.GetLine(cur_row);
-      OpSet(group, cur_row, line.substr(0, cur_col));
-      OpIns(group, cur_row + 1, line.substr(cur_col));
+      const std::wstring head = line.substr(0, cur_col);
+
+      // Smart return: the new line starts under the previous line's indent, one
+      // TAB_STOP deeper when that line opens a block with '{'. This mirrors the
+      // brace-depth indentation Document::Save emits, so editing and saving
+      // agree instead of the cursor snapping back to column zero every time.
+      std::wstring indent;
+      for(const wchar_t ch : head) {
+        if(ch == L' ' || ch == L'\t') {
+          indent += ch;
+        }
+        else {
+          break;
+        }
+      }
+      std::wstring trimmed = head;
+      Editor::RightTrim(trimmed);
+      if(!trimmed.empty() && trimmed.back() == L'{') {
+        indent += L'\t';   // the Tab key inserts '\t' too, so this stays uniform
+      }
+
+      OpSet(group, cur_row, head);
+      OpIns(group, cur_row + 1, indent + line.substr(cur_col));
       ++cur_row;
-      cur_col = 0;
+      cur_col = indent.size();
       Commit(group);
     }
 
@@ -736,31 +854,41 @@ namespace Tui {
       return out;
     }
 
-    void DoRun() {
-      if(!runner) {
-        status = L"running is not available here";
-        return;
+    // decode UTF-8 bytes by hand -- the locale must not get a say (this repo
+    // has been bitten by locale-dependent conversions before). Called on the
+    // whole accumulated buffer each drain, so a multi-byte sequence split
+    // across a read boundary is simply left for the next pass.
+    static std::wstring DecodeUtf8(const std::string& bytes) {
+      std::wstring out;
+      out.reserve(bytes.size());
+      for(size_t i = 0; i < bytes.size();) {
+        const unsigned char lead = (unsigned char)bytes[i];
+        unsigned int cp;
+        int extra;
+        if(lead < 0x80) { cp = lead; extra = 0; }
+        else if(lead >= 0xF0) { cp = lead & 0x07; extra = 3; }
+        else if(lead >= 0xE0) { cp = lead & 0x0F; extra = 2; }
+        else if(lead >= 0xC0) { cp = lead & 0x1F; extra = 1; }
+        else { ++i; continue; }   // stray continuation byte
+        if(i + (size_t)extra >= bytes.size()) {
+          break;   // sequence continues past what has been drained so far
+        }
+        bool valid = true;
+        for(int k = 1; k <= extra; ++k) {
+          const unsigned char cont = (unsigned char)bytes[i + k];
+          if((cont & 0xC0) != 0x80) { valid = false; break; }
+          cp = (cp << 6) | (cont & 0x3F);
+        }
+        if(!valid) { ++i; continue; }
+        i += (size_t)extra + 1;
+        out += (wchar_t)cp;
       }
+      return out;
+    }
 
-      // Reverted to a synchronous call. Moving the run to a worker thread
-      // deadlocked even a trivial program: the in-process VM has main-thread
-      // affinity (process-global Loader/MemoryManager/StackInterpreter state
-      // plus its own GC threads), so it cannot be driven off the UI thread.
-      // A looping program still freezes obi here -- the real fix is running
-      // the program as a SUBPROCESS (docs/OBI_EDITOR_RUN_PLAN.md). What IS
-      // kept: the console-capture fix in io_capture.h (so output reaches the
-      // pane on Windows) and the screen invalidation below (so the editor
-      // repaints instead of appearing frozen after a run).
-      std::wstring output;
-      const bool ok = runner(output);
-
-      // The program may have written to the terminal behind the diff's back;
-      // forget the front buffer and repaint everything.
-      term.Clear();
-      screen.Invalidate();
-
-
-      // split into pane lines; diagnostics look like 'name:(line,col): text'
+    // split program/compiler output into pane lines; diagnostics look like
+    // 'name:(line,col): text', and their line number drives F8 error jumping
+    void SetPaneFromOutput(const std::wstring& output) {
       pane.clear();
       error_lines.clear();
       std::wstring line;
@@ -786,20 +914,122 @@ namespace Tui {
       while(!pane.empty() && pane.back().empty()) {
         pane.pop_back();
       }
+    }
 
+    // park the pane on its last lines so streaming output stays in view
+    void ScrollPaneToBottom() {
+      const int visible = PaneRows() - 1;   // minus the label rule
+      pane_top = (visible > 0 && (int)pane.size() > visible) ? pane.size() - visible : 0;
+    }
+
+    // Streams a child's output into the pane while staying responsive: ReadKey
+    // already ticks ~100ms (WaitForSingleObject / VMIN=0,VTIME=1), so the loop
+    // drains, repaints and watches for Esc without a second thread. Returns
+    // true if the user cancelled the run.
+    bool PumpChild(Child& child, std::string& raw) {
+      for(;;) {
+        child.Drain(raw);
+        SetPaneFromOutput(DecodeUtf8(raw));
+        ScrollPaneToBottom();
+        term.HideCursor();
+        Draw();
+
+        const Key key = term.ReadKey();
+        if(key.code == KEY_ESC) {
+          child.Kill();
+          child.Drain(raw);
+          return true;
+        }
+        if(key.code == KEY_RESIZE) {
+          term.Size(rows, cols);
+          screen.Resize(rows, cols);
+        }
+        if(!child.IsRunning()) {
+          child.Drain(raw);   // flush whatever was buffered as the child exited
+          return false;
+        }
+      }
+    }
+
+    void DoRun() {
+      if(!runner) {
+        status = L"running is not available here";
+        return;
+      }
+
+      // The REPL builds the plan: it saves the buffer to a temp .obs and hands
+      // back the obc/obr argument vectors and the library-path env. Running the
+      // program as a child process (rather than the in-process, main-thread-
+      // affine, _NO_JIT VM) is what makes F5 both correct and cancellable.
+      const RunPlan plan = runner();
+      if(!plan.ok) {
+        status = plan.error.empty() ? L"unable to prepare the run" : plan.error;
+        return;
+      }
+
+      pane.clear();
+      error_lines.clear();
       pane_visible = true;
       pane_top = 0;
       error_index = 0;
-      if(ok) {
+      status = L"running... Esc cancels";
+
+      std::string raw;
+      bool cancelled = false;
+      int compile_exit = 0;
+      int run_exit = 0;
+
+      // phase 1: compile with obc -- its diagnostics (on stdout) fill the pane
+      {
+        Child compile;
+        if(!compile.Start(plan.compile_argv, plan.env)) {
+          status = L"unable to launch the compiler";
+          return;
+        }
+        cancelled = PumpChild(compile, raw);
+        compile_exit = compile.ExitCode();
+      }
+
+      // phase 2: run with obr, only if the compile produced a .obe
+      if(!cancelled && compile_exit == 0 && !plan.run_argv.empty()) {
+        Child run;
+        if(!run.Start(plan.run_argv, plan.env)) {
+          status = L"unable to launch the program";
+          return;
+        }
+        cancelled = PumpChild(run, raw);
+        run_exit = run.ExitCode();
+      }
+
+      // The child had its own pipes, so nothing wrote to the terminal behind
+      // the diff's back this time; a full invalidate still keeps the same
+      // clean-repaint guarantee and costs a single frame.
+      term.Clear();
+      screen.Invalidate();
+
+      SetPaneFromOutput(DecodeUtf8(raw));
+      pane_visible = true;
+      error_index = 0;
+
+      const bool ok = (compile_exit == 0 && run_exit == 0);
+      if(cancelled) {
+        status = L"run cancelled · editor intact";
+        ScrollPaneToBottom();
+      }
+      else if(ok) {
         status = L"program finished · " + std::to_wstring(pane.size()) + L" line(s) of output";
+        ScrollPaneToBottom();
+      }
+      else if(!error_lines.empty()) {
+        status = std::to_wstring(error_lines.size()) + L" error(s) · F8 jumps to the next one";
+        pane_top = 0;   // the first diagnostics are the interesting ones
+        cur_row = error_lines[0] > 0 ? error_lines[0] - 1 : 0;
+        ClampCursor();
+        cur_col = 0;
       }
       else {
-        status = std::to_wstring(error_lines.size()) + L" error(s) · F8 jumps to the next one";
-        if(!error_lines.empty()) {
-          cur_row = error_lines[0] > 0 ? error_lines[0] - 1 : 0;
-          ClampCursor();
-          cur_col = 0;
-        }
+        status = L"program reported errors · see the output pane";
+        pane_top = 0;
       }
     }
 
@@ -827,9 +1057,128 @@ namespace Tui {
       Commit(group);
     }
 
+    // ----- vi word motions and line edits (a modest round-out, not full vi) --
+
+    // three classes vi's 'w'/'b' care about: whitespace, word characters, and
+    // runs of punctuation. This is the plain 'w' notion, not 'W'.
+    static int WordClass(wchar_t c) {
+      if(c == L' ' || c == L'\t') {
+        return 0;
+      }
+      if((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') ||
+         (c >= L'0' && c <= L'9') || c == L'_') {
+        return 1;
+      }
+      return 2;
+    }
+
+    // 'w': to the start of the next word, crossing line ends
+    void DoWordNext() {
+      size_t row = cur_row, col = cur_col;
+      std::wstring line = doc.GetLine(row);
+      if(col < line.size()) {
+        const int cls = WordClass(line[col]);
+        if(cls != 0) {
+          while(col < line.size() && WordClass(line[col]) == cls) {
+            ++col;
+          }
+        }
+      }
+      for(;;) {
+        line = doc.GetLine(row);
+        while(col < line.size() && WordClass(line[col]) == 0) {
+          ++col;
+        }
+        if(col < line.size()) {
+          break;   // landed on the next word
+        }
+        if(row + 1 >= doc.Size()) {
+          col = line.size();
+          break;   // end of buffer
+        }
+        ++row;
+        col = 0;
+      }
+      cur_row = row;
+      cur_col = col;
+    }
+
+    // 'b': back to the start of the current or previous word
+    void DoWordPrev() {
+      size_t row = cur_row, col = cur_col;
+      for(;;) {
+        if(col == 0) {
+          if(row == 0) {
+            break;
+          }
+          --row;
+          col = doc.GetLine(row).size();
+          continue;   // step onto the previous line, then re-test
+        }
+        --col;
+        const std::wstring line = doc.GetLine(row);
+        if(col >= line.size() || WordClass(line[col]) == 0) {
+          continue;   // still in trailing space / past an empty line
+        }
+        const int cls = WordClass(line[col]);
+        while(col > 0 && WordClass(line[col - 1]) == cls) {
+          --col;
+        }
+        break;
+      }
+      cur_row = row;
+      cur_col = col;
+    }
+
+    // 'A': jump to end of line and start inserting
+    void DoAppendEol() {
+      cur_col = doc.GetLine(cur_row).size();
+      keys.mode = MODE_INSERT;
+      sel_active = false;
+    }
+
+    // 'I': jump to the first non-blank character and start inserting
+    void DoInsertBol() {
+      const std::wstring line = doc.GetLine(cur_row);
+      size_t col = 0;
+      while(col < line.size() && (line[col] == L' ' || line[col] == L'\t')) {
+        ++col;
+      }
+      cur_col = col;
+      keys.mode = MODE_INSERT;
+      sel_active = false;
+    }
+
+    // 'O': open a fresh line above the cursor and start inserting. Inserting at
+    // cur_row pushes the current line (read-only or not) down, so this also
+    // works against the class/function frame the way DoNewline does.
+    void DoOpenAbove() {
+      EditGroup group = Begin();
+      OpIns(group, cur_row, L"");
+      cur_col = 0;
+      Commit(group);
+      keys.mode = MODE_INSERT;
+      sel_active = false;
+    }
+
+    // 'D': delete from the cursor to the end of the line
+    void DoDeleteEol() {
+      if(IsReadOnly(cur_row)) {
+        status = L"read-only shell line";
+        return;
+      }
+      const std::wstring line = doc.GetLine(cur_row);
+      if(cur_col >= line.size()) {
+        return;
+      }
+      EditGroup group = Begin();
+      OpSet(group, cur_row, line.substr(0, cur_col));
+      Commit(group);
+    }
+
   public:
     EditorView(Document& document, Term& terminal,
-               std::function<bool(std::wstring&)> run_program = nullptr)
+               RunProvider run_program = nullptr)
       : doc(document), term(terminal), runner(run_program) {
       rows = 24;
       cols = 80;
@@ -845,6 +1194,8 @@ namespace Tui {
       sel_active = false;
       sel_row = sel_col = 0;
       clip_linewise = false;
+      content_version = 1;   // ahead of hl_version, so the first Draw scans once
+      hl_version = 0;
     }
 
     // returns the cursor's document line, so the REPL can keep its own
@@ -856,7 +1207,7 @@ namespace Tui {
       cur_row = start_row;
       ClampCursor();
       cur_col = doc.GetLine(cur_row).size();
-      want_col = cur_col;
+      SyncWantCol();
 
       for(;;) {
         ScrollToCursor();
@@ -886,6 +1237,7 @@ namespace Tui {
         case ACT_LEFT: case ACT_RIGHT: case ACT_UP: case ACT_DOWN:
         case ACT_LINE_START: case ACT_LINE_END: case ACT_PAGE_UP:
         case ACT_PAGE_DOWN: case ACT_DOC_START: case ACT_DOC_END:
+        case ACT_WORD_NEXT: case ACT_WORD_PREV:
           if(keys.mode == MODE_VISUAL) {
             SelAnchor();
           }
@@ -911,7 +1263,7 @@ namespace Tui {
             --cur_row;
             cur_col = doc.GetLine(cur_row).size();
           }
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_SEL_RIGHT:
@@ -923,14 +1275,14 @@ namespace Tui {
             ++cur_row;
             cur_col = 0;
           }
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_SEL_UP:
         case ACT_UP:
           if(cur_row > 0) {
             --cur_row;
-            cur_col = want_col;
+            cur_col = ColForDisplayX(doc.GetLine(cur_row), (int)want_col);
             ClampCursor();
           }
           break;
@@ -939,7 +1291,7 @@ namespace Tui {
         case ACT_DOWN:
           if(cur_row + 1 < doc.Size()) {
             ++cur_row;
-            cur_col = want_col;
+            cur_col = ColForDisplayX(doc.GetLine(cur_row), (int)want_col);
             ClampCursor();
           }
           break;
@@ -951,18 +1303,19 @@ namespace Tui {
 
         case ACT_SEL_END:
         case ACT_LINE_END:
-          cur_col = want_col = doc.GetLine(cur_row).size();
+          cur_col = doc.GetLine(cur_row).size();
+          SyncWantCol();
           break;
 
         case ACT_PAGE_UP:
           cur_row = (cur_row > (size_t)TextRows()) ? cur_row - TextRows() : 0;
-          cur_col = want_col;
+          cur_col = ColForDisplayX(doc.GetLine(cur_row), (int)want_col);
           ClampCursor();
           break;
 
         case ACT_PAGE_DOWN:
           cur_row += TextRows();
-          cur_col = want_col;
+          cur_col = ColForDisplayX(doc.GetLine(cur_row), (int)want_col);
           ClampCursor();
           break;
 
@@ -973,17 +1326,18 @@ namespace Tui {
 
         case ACT_DOC_END:
           cur_row = doc.Size() ? doc.Size() - 1 : 0;
-          cur_col = want_col = doc.GetLine(cur_row).size();
+          cur_col = doc.GetLine(cur_row).size();
+          SyncWantCol();
           break;
 
         case ACT_NEWLINE:
           DoNewline();
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_BACKSPACE:
           DoBackspace();
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_DELETE:
@@ -992,17 +1346,17 @@ namespace Tui {
 
         case ACT_DELETE_LINE:
           DoDeleteLine();
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_TAB:
           InsertChar(L'\t');
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_INSERT_CHAR:
           InsertChar(key.ch);
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_SAVE:
@@ -1036,12 +1390,12 @@ namespace Tui {
 
         case ACT_UNDO:
           DoUndo();
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_REDO:
           DoRedo();
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_COPY:
@@ -1053,7 +1407,7 @@ namespace Tui {
 
         case ACT_CUT:
           DoCut();
-          want_col = cur_col;
+          SyncWantCol();
           if(keys.mode == MODE_VISUAL) {
             keys.mode = MODE_NORMAL;
           }
@@ -1061,7 +1415,7 @@ namespace Tui {
 
         case ACT_PASTE:
           DoPaste();
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_MODE_INSERT:
@@ -1075,7 +1429,7 @@ namespace Tui {
           if(cur_col < doc.GetLine(cur_row).size()) {
             ++cur_col;
           }
-          want_col = cur_col;
+          SyncWantCol();
           break;
 
         case ACT_OPEN_BELOW: {
@@ -1088,6 +1442,36 @@ namespace Tui {
           sel_active = false;
           break;
         }
+
+        case ACT_WORD_NEXT:
+          DoWordNext();
+          SyncWantCol();
+          break;
+
+        case ACT_WORD_PREV:
+          DoWordPrev();
+          SyncWantCol();
+          break;
+
+        case ACT_APPEND_EOL:
+          DoAppendEol();
+          SyncWantCol();
+          break;
+
+        case ACT_INSERT_BOL:
+          DoInsertBol();
+          SyncWantCol();
+          break;
+
+        case ACT_OPEN_ABOVE:
+          DoOpenAbove();
+          SyncWantCol();
+          break;
+
+        case ACT_DELETE_EOL:
+          DoDeleteEol();
+          SyncWantCol();
+          break;
 
         case ACT_MODE_NORMAL:
           keys.mode = MODE_NORMAL;

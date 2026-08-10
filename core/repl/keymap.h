@@ -59,7 +59,13 @@ namespace Tui {
     ACT_OPEN_BELOW,       // 'o': new line below, insert mode
     ACT_MODE_NORMAL,      // Esc
     ACT_MODE_VISUAL,      // 'v'
-    ACT_TOGGLE_PROFILE    // F2 flips simple <-> vi
+    ACT_TOGGLE_PROFILE,   // F2 flips simple <-> vi
+    ACT_WORD_NEXT,        // 'w': start of the next word
+    ACT_WORD_PREV,        // 'b': start of the previous word
+    ACT_APPEND_EOL,       // 'A': insert at end of line
+    ACT_INSERT_BOL,       // 'I': insert at first non-blank
+    ACT_OPEN_ABOVE,       // 'O': new line above, insert mode
+    ACT_DELETE_EOL        // 'D': delete to end of line
   };
 
   enum Profile {
@@ -179,6 +185,18 @@ namespace Tui {
       { KEY_CHAR, L'i', false, false, false, ACT_MODE_INSERT },
       { KEY_CHAR, L'a', false, false, false, ACT_MODE_APPEND },
       { KEY_CHAR, L'o', false, false, false, ACT_OPEN_BELOW },
+      { KEY_CHAR, L'w', false, false, false, ACT_WORD_NEXT },
+      { KEY_CHAR, L'b', false, false, false, ACT_WORD_PREV },
+      // capitals arrive with shift set on Windows but not on POSIX, so -- as
+      // with 'G' and '$' above -- both variants are bound
+      { KEY_CHAR, L'A', false, false, true, ACT_APPEND_EOL },
+      { KEY_CHAR, L'A', false, false, false, ACT_APPEND_EOL },
+      { KEY_CHAR, L'I', false, false, true, ACT_INSERT_BOL },
+      { KEY_CHAR, L'I', false, false, false, ACT_INSERT_BOL },
+      { KEY_CHAR, L'O', false, false, true, ACT_OPEN_ABOVE },
+      { KEY_CHAR, L'O', false, false, false, ACT_OPEN_ABOVE },
+      { KEY_CHAR, L'D', false, false, true, ACT_DELETE_EOL },
+      { KEY_CHAR, L'D', false, false, false, ACT_DELETE_EOL },
       { KEY_CHAR, L'v', false, false, false, ACT_MODE_VISUAL },
       { KEY_ESC, 0, false, false, false, ACT_MODE_NORMAL },
       { KEY_PGUP, 0, false, false, false, ACT_PAGE_UP },

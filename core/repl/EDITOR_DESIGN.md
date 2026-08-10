@@ -1,5 +1,34 @@
 # Full-screen editor for `obi` — design
 
+> **STATUS (branch `feat/obi-editor-subprocess-and-quality`).** Phases 1–4 are
+> implemented. Two design points below are now superseded:
+>
+> - **Run is a subprocess, not in-process.** F5 saves the buffer to a temp
+>   `.obs`, compiles it with `obc`, then runs the `.obe` with `obr` — each a
+>   child process whose merged stdout/stderr the pane drains without blocking
+>   (`child_run.h`, `tui_editor.h::DoRun`). The in-process VM has main-thread
+>   affinity and would deadlock if driven off the UI thread, so "a run pane does
+>   not need a subprocess" (below) no longer holds. `io_capture.h` is retired
+>   from the F5 path (kept in tree for any other in-process capture).
+> - **Syntax highlighting is live.** The compiler's own `Scanner` (already
+>   linked) colors the buffer — keywords cyan, numbers yellow, strings green —
+>   cached per document version (`highlight.h`).
+>
+> Also landed: smart auto-indent on Enter; a modest vi round-out (`w b A I O D`
+> on top of the existing `hjkl 0 $ G gg x dd yy p u Ctrl-r i a o v`); and fixes
+> for the linewise-paste read-only bypass, `want_col` display-column tracking,
+> `Prompt` resize handling, and a `.obs` extension on editor saves.
+>
+> **Deferred, on purpose (not built):** OS clipboard integration; incremental
+> highlight caching (currently a full rescan per edit — fine for REPL-sized
+> buffers); full vi (`d{motion}` composition, `:` ex commands, `/` search,
+> counts, registers); multi-line-string and comment coloring (the scanner
+> reports a multi-line string at its closing quote and never emits comment
+> tokens, so both are left uncolored rather than guessed); char-literal coloring
+> (unreliable token position); find / goto-line; mouse.
+>
+> CI cannot exercise `/e` (no TTY); the gate is a manual terminal matrix.
+
 `obi` today edits by line. `Document`/`Line` hold the buffer and `DoInsertLine`,
 `DoDeleteLine`, `DoReplaceLine`, `DoGotoLine`, `DoList` operate on it through an
 `ed`-style command loop that reads whole lines from `std::wcin`. This note

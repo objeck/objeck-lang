@@ -1,5 +1,19 @@
 # F5 freezes obi — design for a responsive run
 
+> **IMPLEMENTED — branch `feat/obi-editor-subprocess-and-quality`.** Option B
+> (subprocess) below is the design that shipped. The worker-thread attempt that
+> the two banners under this one debate was reverted (it deadlocked even a
+> trivial program: the in-process VM has main-thread affinity). F5 now compiles
+> the buffer with `obc` and runs the `.obe` with `obr` as child processes,
+> draining their merged output into the pane while `ReadKey`'s ~100 ms tick
+> keeps Esc live; Esc kills the child (`core/repl/child_run.h`,
+> `core/repl/tui_editor.h::DoRun`, plan built in `core/repl/editor.cpp`).
+> `IoCapture` is dropped from the F5 path. Built clean via `core/repl/repl.sln`;
+> **NOT interactively verified** — `/e` needs a real TTY, so the manual matrix at
+> the end of this note is still the gate before this is trusted.
+
+# F5 freezes obi — design for a responsive run
+
 > **UPDATE — branch `fix/obi-f5-blocks-ui-thread` now addresses ALL THREE**
 > **defects on the in-process path; the earlier "do not merge" is resolved.**
 >
