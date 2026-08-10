@@ -795,6 +795,17 @@ namespace Tui {
       }
 
       worker.join();
+
+      // The program may have written straight to the terminal behind the
+      // diff's back -- on Windows the VM prints via
+      // WinWriteWide(GetStdHandle(STD_OUTPUT_HANDLE), ...) (common.cpp:3381),
+      // which a CRT fd redirect cannot intercept. `front` then still describes
+      // an editor that is no longer on screen and the next Flush emits almost
+      // nothing, which reads as a frozen UI. Forget the front buffer and
+      // repaint everything.
+      term.Clear();
+      screen.Invalidate();
+
       std::wstring& output = state->output;
       const bool ok = state->ok;
 

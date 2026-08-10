@@ -116,6 +116,15 @@ namespace Tui {
       return cols;
     }
 
+    // Forget what is believed to be on screen, so the next Flush repaints
+    // every cell. Needed after anything else writes to the terminal behind
+    // the diff's back -- a run whose program printed straight to the console
+    // leaves `front` describing an editor that is no longer there, and the
+    // diff then emits almost nothing, which reads as a frozen UI.
+    void Invalidate() {
+      front.assign((size_t)rows * cols, Cell());   // same sentinel as Resize
+    }
+
     void Resize(int new_rows, int new_cols) {
       rows = new_rows;
       cols = new_cols;
