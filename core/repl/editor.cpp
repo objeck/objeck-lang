@@ -40,8 +40,13 @@
 #include "term.h"
 #include "screen.h"
 #include "tui_editor.h"
-#include "io_capture.h"
+#include "child_run.h"
 #include <deque>
+#include <filesystem>
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 
 //
 // Document
@@ -551,6 +556,43 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
   std::wcout << "Goodbye." << std::endl;
 }
 
+namespace {
+  namespace fs = std::filesystem;
+
+  /****************************
+   * Directory of the running obi executable. obc/obr are its siblings in the
+   * same bin/ dir, so F5 finds them here rather than trusting PATH or argv[0]
+   * -- resolved from the OS so a PATH-launched obi still finds its own tools.
+   ****************************/
+  fs::path ExecutableDir()
+  {
+#if defined(_WIN32)
+    wchar_t buffer[MAX_PATH];
+    const DWORD len = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+    if(len == 0 || len == MAX_PATH) {
+      return fs::path();
+    }
+    return fs::path(std::wstring(buffer, len)).parent_path();
+#elif defined(__APPLE__)
+    char buffer[4096];
+    uint32_t size = sizeof(buffer);
+    if(_NSGetExecutablePath(buffer, &size) != 0) {
+      return fs::path();
+    }
+    std::error_code ec;
+    const fs::path resolved = fs::canonical(fs::path(buffer), ec);
+    return (ec ? fs::path(buffer) : resolved).parent_path();
+#else
+    std::error_code ec;
+    const fs::path self = fs::read_symlink("/proc/self/exe", ec);
+    if(ec) {
+      return fs::path();
+    }
+    return self.parent_path();
+#endif
+  }
+}
+
 /****************************
  * Opens the full-screen editor over the REPL buffer. Everything the line
  * commands can see, the editor edits in place, so '/l' and '/s' keep
@@ -569,18 +611,75 @@ void Editor::DoEdit()
     return;
   }
 
-  // F5 compiles and runs the buffer in-process; the capture keeps the
-  // program's output (and the VM's) off the raw-mode screen and hands it to
-  // the pane instead
-  auto run_program = [this](std::wstring& output) -> bool {
-    Tui::IoCapture capture;
-    if(!capture.Start()) {
-      output = L"unable to capture program output";
-      return false;
+  // F5 compiles the buffer with obc and runs the .obe with obr, each a child
+  // process. The in-process VM has main-thread affinity (it would deadlock if
+  // driven off the UI thread), and a child brings its own console plus the JIT
+  // this _NO_JIT build lacks. The editor view owns the responsive drain/cancel
+  // loop; here we only assemble the plan it runs.
+  auto run_program = [this]() -> Tui::RunPlan {
+    Tui::RunPlan plan;
+
+    const fs::path bin = ExecutableDir();
+    if(bin.empty()) {
+      plan.error = L"cannot locate obi's own directory";
+      return plan;
     }
-    const bool ok = DoExecute();
-    capture.Finish(output);
-    return ok;
+#ifdef _WIN32
+    const std::wstring exe = L".exe";
+#else
+    const std::wstring exe = L"";
+#endif
+    const std::wstring obc = (bin / (L"obc" + exe)).wstring();
+    const std::wstring obr = (bin / (L"obr" + exe)).wstring();
+
+    // a per-process temp pair, overwritten on each run rather than accumulating
+    std::error_code ec;
+    const fs::path temp_dir = fs::temp_directory_path(ec);
+    if(ec) {
+      plan.error = L"cannot find a temp directory for the run";
+      return plan;
+    }
+#ifdef _WIN32
+    const std::wstring tag = std::to_wstring(GetCurrentProcessId());
+#else
+    const std::wstring tag = std::to_wstring((long)getpid());
+#endif
+    const std::wstring temp_obs = (temp_dir / (L"obi-run-" + tag + L".obs")).wstring();
+    const std::wstring temp_obe = (temp_dir / (L"obi-run-" + tag + L".obe")).wstring();
+
+    if(!doc.Save(temp_obs)) {
+      plan.error = L"unable to write the temporary source file";
+      return plan;
+    }
+
+    // compile: obc -src <obs> -dest <obe> [-lib <libs>] [-opt <level>]. lang/
+    // collect are NOT prepended -- the compiler filters them out and supplies
+    // them from the system path itself; -lib/-opt are omitted when unset.
+    plan.compile_argv = { obc, L"-src", temp_obs, L"-dest", temp_obe };
+    if(!compiler_libs.empty()) {
+      plan.compile_argv.push_back(L"-lib");
+      plan.compile_argv.push_back(compiler_libs);
+    }
+    if(!compiler_opt_level.empty()) {
+      plan.compile_argv.push_back(L"-opt");
+      plan.compile_argv.push_back(compiler_opt_level);
+    }
+
+    // run: obr <obe> <cmd_args...>, split on whitespace (arguments with embedded
+    // spaces are not supported here, matching how the REPL stores cmd_args)
+    plan.run_argv = { obr, temp_obe };
+    std::wstringstream args(cmd_args);
+    std::wstring arg;
+    while(args >> arg) {
+      plan.run_argv.push_back(arg);
+    }
+
+    // the child needs the same library path obi would resolve in-process, or
+    // obc finds a stale system lang.obl and the run fails with a version error
+    plan.env.push_back({ L"OBJECK_LIB_PATH", GetLibraryPath() });
+
+    plan.ok = true;
+    return plan;
   };
 
   Tui::EditorView view(doc, term, run_program);
