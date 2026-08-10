@@ -108,7 +108,9 @@ namespace Tui {
 
     static unsigned char AttrFor(ScannerTokenType t) {
       if(IsKeyword(t)) {
-        return ATTR_CYAN;
+        // Bold as well as bright: keywords are the structure a dev scans for,
+        // so they should be the strongest thing on the line.
+        return (unsigned char)(ATTR_CYAN | ATTR_BOLD);
       }
       switch(t) {
       case TOKEN_INT_LIT:
@@ -157,14 +159,28 @@ namespace Tui {
       }
 
       if(type == TOKEN_CHAR_STRING_LIT || type == TOKEN_BAD_CHAR_STRING_LIT) {
-        // Only paint a string whose opening quote actually sits where the token
-        // claims. A multi-line string is reported at its CLOSING line with a
-        // length-derived column that is meaningless once it spans lines, so it
-        // fails this check and is left uncolored rather than mis-painted.
-        if(line[start] != L'"') {
+        // Anchor on the opening quote. The scanner derives a string's column as
+        // line_pos - length - 2 (identifiers use - length - 1), and that
+        // arithmetic lands a cell or two off in practice, so demanding the quote
+        // exactly at the reported column silently skipped every string.
+        //
+        // Search a SMALL window instead of trusting the number outright. A
+        // multi-line string is reported at its closing line with a meaningless
+        // column and still finds no quote nearby, so it stays uncolored rather
+        // than mis-painted -- the property that guard was protecting.
+        size_t quote = std::wstring::npos;
+        const size_t lo = (start > 2) ? start - 2 : 0;
+        const size_t hi = (start + 2 < line.size()) ? start + 2 : line.size() - 1;
+        for(size_t i = lo; i <= hi; ++i) {
+          if(line[i] == L'"') {
+            quote = i;
+            break;
+          }
+        }
+        if(quote == std::wstring::npos) {
           return;
         }
-        PaintString(line, attrs[li], start, attr);
+        PaintString(line, attrs[li], quote, attr);
       }
       else {
         // keyword or number: a run on this one line. Verify the anchor so a
