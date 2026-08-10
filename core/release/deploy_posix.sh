@@ -81,7 +81,13 @@ cd ../opencv
 cp opencv.so ../../release/deploy/lib/native/libobjk_opencv.so
 
 cd ../onnx/eq
-./build.sh cuda
+# The vendored libonnxruntime here is a CPU-ONLY build -- it reports only
+# CPUExecutionProvider despite living under eq/cuda/lib. Building with
+# ONNX_EP_CUDA therefore made every session creation fail, and because the
+# catch returned without setting the session handle it surfaced as a silently
+# null session rather than an error. Link a CUDA-enabled onnxruntime before
+# switching this back to cuda.
+./build.sh cpu
 cp libobjk_onnx.so ../../../release/deploy/lib/native/libobjk_onnx.so
 
 # copy ONNX Runtime shared libraries

@@ -33,7 +33,12 @@ case "$PROVIDER" in
 	cpu)
 		EP_DEFINE=""
 		ORT_INCLUDE="-I./cuda/lib/include"
-		ORT_LIB="-lonnxruntime"
+		# Use the VENDORED runtime, same as the cuda case. This previously said
+		# just -lonnxruntime, which requires a system-installed onnxruntime and
+		# fails to link on a machine that has none -- even though a usable
+		# runtime is sitting in cuda/lib/x64/lib. That runtime is CPU-only, so
+		# it is exactly the right one for this mode.
+		ORT_LIB="-L./cuda/lib/x64/lib -lonnxruntime"
 		;;
 	*)
 		echo "Unknown provider: $PROVIDER"
