@@ -104,6 +104,33 @@ otherwise the loop blocks on input and we are back to a frozen UI. This is the
 one thing that could change the shape of the fix, which is why it is being
 verified before implementation.
 
+## Cross-platform status
+
+**The responsive loop is free on both platforms.** Windows polls with
+`WaitForSingleObject(in_handle, 100)` (`term.h:287`); POSIX gets the same
+100 ms tick from `raw.c_cc[VMIN] = 0; raw.c_cc[VTIME] = 1` (`term.h:168-169`),
+so `read()` returns empty instead of blocking. **No terminal-layer change is
+needed on either platform.**
+
+**The subprocess half must be written twice**, behind one `#ifdef _WIN32` —
+the same shape `io_capture.h` already uses for redirection:
+
+| | Windows | POSIX |
+| --- | --- | --- |
+| spawn | `CreateProcess` | `fork` + `execvp` |
+| pipes | `CreatePipe` | `pipe` |
+| non-blocking drain | `PeekNamedPipe` | `O_NONBLOCK` + `read` |
+| cancel | `TerminateProcess` | `kill` |
+
+**Reuse the existing POSIX precedent:** `core/utils/updater/obu.cpp` already
+runs argv vectors via `fork`/`execvp` with no shell (a deliberate injection
+defence). Follow that shape rather than inventing a second pattern — and keep
+the no-shell property here too, since the path being executed comes from a
+user buffer.
+
+Only the Windows half can be tested on the current box; the POSIX half needs a
+Linux or macOS terminal.
+
 ## What must not happen
 
 - The user's buffer being lost because a runaway program forced a process kill.
