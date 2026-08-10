@@ -1,5 +1,40 @@
 # F5 freezes obi — design for a responsive run
 
+> **STOP — ground truth invalidated the threading fix. Do NOT merge branch**
+> **`fix/obi-f5-blocks-ui-thread`.** Verified against the tree:
+>
+> 1. **On Windows the program output never reaches the capture at all.** The VM
+>    writes via `WinWriteWide(GetStdHandle(STD_OUTPUT_HANDLE), ...)`
+>    (`core/vm/common.cpp:3381`), and `_dup2` on CRT fd 1 does not change
+>    `GetStdHandle`. Output goes straight to the console, paints over the
+>    raw-mode editor, and the pane receives nothing. **That is the "no output"
+>    half of the bug, and threading does not touch it.**
+> 2. **The editor also paints via the console handle on Windows**
+>    (`core/repl/term.h:223` `WriteConsoleW(out_handle, ...)`), so repaints are
+>    NOT captured there — my "do not paint during capture" reasoning was right
+>    for POSIX (`write(STDOUT_FILENO)`, `term.h:251`) and wrong for Windows.
+> 3. **The damage-diff repaint cannot recover.** After the child scribbles on
+>    the console, `front` still believes the editor is on screen, so the next
+>    `Screen::Flush` emits almost nothing (`core/repl/screen.h:179-215`). The
+>    editor IS still reading keys -- it simply cannot redraw. There is no
+>    `ForceRepaint`; only `Screen::Resize` invalidates.
+> 4. **Threading the in-process VM races process-global state** --
+>    `Loader::GetProgram()`, `MemoryManager::Clear()`,
+>    `StackInterpreter::Clear()` (`core/module/lang.cpp:129-159`).
+>
+> So the threading change fixes only the freeze, leaves "no output" untouched,
+> and adds a data race. The subprocess design fixes all three at once -- and
+> for a reason I had not seen: handing the child PIPE handles makes
+> `GetConsoleMode` fail in it, so `WinWriteWide` falls back to `wcout`
+> (`common.cpp:141-147`) and the output becomes capturable. **The bypass is
+> fixed for free by the subprocess, and only by it.**
+>
+> Two further findings worth keeping: obi's in-process VM is built `_NO_JIT`
+> and without the HTTP/2-3 macros, so F5-via-`obr` would also be faster and
+> more capable; and `Screen` needs an invalidation hook regardless of design,
+> or the UI cannot recover from a scribbled console.
+
+
 > **Status: PLAN, pending ground-truth verification.** Written before code, on
 > the pattern that has caught several expensive mistakes in this repo. A
 > verification agent is checking the claims below against the tree; anything it
