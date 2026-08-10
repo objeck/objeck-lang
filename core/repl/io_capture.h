@@ -37,6 +37,16 @@ namespace Tui {
     int saved_out;
     int saved_err;
     int saved_in;
+#ifdef _WIN32
+    // The VM prints via WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), ...)
+    // when that handle is a console (common.cpp WinWriteWide), which a CRT fd
+    // _dup2 cannot intercept -- so output would bypass the sink and land on
+    // the screen. Point the Win32 std handles at the sink file too: a file
+    // handle fails GetConsoleMode, so the VM falls back to wcout, which the
+    // fd redirect above captures.
+    HANDLE saved_out_h = INVALID_HANDLE_VALUE;
+    HANDLE saved_err_h = INVALID_HANDLE_VALUE;
+#endif
     std::string path;
     FILE* sink;
 
@@ -86,6 +96,13 @@ namespace Tui {
       if(null_in) {
         _dup2(_fileno(null_in), 0);
         fclose(null_in);
+      }
+      const HANDLE sink_h = (HANDLE)_get_osfhandle(_fileno(sink));
+      if(sink_h != INVALID_HANDLE_VALUE) {
+        saved_out_h = GetStdHandle(STD_OUTPUT_HANDLE);
+        saved_err_h = GetStdHandle(STD_ERROR_HANDLE);
+        SetStdHandle(STD_OUTPUT_HANDLE, sink_h);
+        SetStdHandle(STD_ERROR_HANDLE, sink_h);
       }
 #else
       char temp_name[] = "/tmp/obi-run-XXXXXX";
@@ -197,7 +214,9 @@ namespace Tui {
   private:
     void Restore() {
 #ifdef _WIN32
-      if(saved_out >= 0) { _dup2(saved_out, 1); _close(saved_out); saved_out = -1; }
+      if(saved_out_h != INVALID_HANDLE_VALUE) { SetStdHandle(STD_OUTPUT_HANDLE, saved_out_h); saved_out_h = INVALID_HANDLE_VALUE; }
+      if(saved_err_h != INVALID_HANDLE_VALUE) { SetStdHandle(STD_ERROR_HANDLE, saved_err_h); saved_err_h = INVALID_HANDLE_VALUE; }
+            if(saved_out >= 0) { _dup2(saved_out, 1); _close(saved_out); saved_out = -1; }
       if(saved_err >= 0) { _dup2(saved_err, 2); _close(saved_err); saved_err = -1; }
       if(saved_in >= 0) { _dup2(saved_in, 0); _close(saved_in); saved_in = -1; }
 #else
