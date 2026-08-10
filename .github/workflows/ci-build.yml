@@ -616,6 +616,34 @@ jobs:
     # Regression Tests
     # ============================================
 
+    - name: Build native ONNX library (Linux x64)
+      if: matrix.platform == 'linux-x64'
+      working-directory: ./core/lib/onnx/eq
+      shell: bash
+      run: |
+        # The C++ that actually talks to ONNX Runtime was built by NO job on any
+        # platform -- CI only compiled onnx.obs -> onnx.obl. That blind spot is how
+        # ONNX came to be completely broken on Linux and MSYS2 (the CUDA arm called
+        # AppendExecutionProvider("CUDA", ...), which ORT rejects, and the catch
+        # returned without setting the session handle, so it surfaced as a silently
+        # null session rather than an error).
+        #
+        # Both arms are built deliberately: they are separate #elif branches, so a
+        # build of one proves nothing about the other. A broken CUDA branch once
+        # passed a clean Windows build for exactly that reason -- Windows compiles
+        # only the DML arm.
+        chmod +x build.sh
+        for mode in cpu cuda; do
+          echo "=== build.sh $mode ==="
+          rm -f libobjk_onnx.so
+          ./build.sh "$mode"
+          if [ ! -f libobjk_onnx.so ]; then
+            echo "::error::native ONNX build ($mode) produced no library"
+            exit 1
+          fi
+          echo "  libobjk_onnx.so: $(stat -c%s libobjk_onnx.so) bytes"
+        done
+
     - name: Run regression tests (POSIX)
       if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
       working-directory: ./programs/regression
