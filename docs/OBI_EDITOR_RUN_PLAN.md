@@ -1,5 +1,22 @@
 # F5 freezes obi — design for a responsive run
 
+> **UPDATE — branch `fix/obi-f5-blocks-ui-thread` now addresses ALL THREE**
+> **defects on the in-process path; the earlier "do not merge" is resolved.**
+>
+> 1. freeze -> run on a worker thread, UI polls Esc (ReadKey already ticks);
+> 2. "frozen" appearance -> `Screen::Invalidate()` + `term.Clear()` after a run;
+> 3. "no output" on Windows -> `IoCapture` now also `SetStdHandle`s the std
+>    handles to the sink, so the VM's `WinWriteWide`/`GetStdHandle` path fails
+>    `GetConsoleMode` and falls back to `wcout`, which the fd redirect
+>    captures. Same mechanism the subprocess would use, done in-process.
+>
+> Built clean; NOT interactively tested (`/e` needs a TTY). The subprocess
+> design below remains the stronger target -- true kill on cancel, live pane
+> streaming, and the JIT that obi's `_NO_JIT` VM lacks -- but is no longer
+> required to fix the reported bug.
+
+# F5 freezes obi — design for a responsive run
+
 > **STOP — ground truth invalidated the threading fix. Do NOT merge branch**
 > **`fix/obi-f5-blocks-ui-thread`.** Verified against the tree:
 >
