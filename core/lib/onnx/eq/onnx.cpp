@@ -82,7 +82,53 @@ extern "C" {
 #if defined(ONNX_EP_DML)
          const std::string compiled_ep = "dml";
 #elif defined(ONNX_EP_CUDA)
-         const std::string compiled_ep = "cuda";
+         if(!use_cpu) {
+            // Two separate traps here, both verified against the vendored
+            // runtime on Linux:
+            //
+            //  1. The GENERIC string form does not accept "CUDA". ORT only
+            //     recognises OPENVINO/SNPE/XNNPACK/QNN/WEBNN/AZURE there, so
+            //     AppendExecutionProvider("CUDA", ...) always threw -- and its
+            //     message does not even mention CUDA, which is why this went
+            //     unnoticed. CUDA requires the typed entry point.
+            //  2. The provider may not be compiled into the linked runtime at
+            //     all. The vendored libonnxruntime.so.1.19.0 reports only
+            //     CPUExecutionProvider despite living under cuda/lib.
+            //
+            // Check availability first so the error names the real problem, and
+            // fail rather than fall back: a session that quietly ran on CPU
+            // when CUDA was asked for is indistinguishable from success.
+            bool cuda_available = false;
+            std::string available_list;
+            const std::vector<std::string> avail = Ort::GetAvailableProviders();
+            for(size_t i = 0; i < avail.size(); ++i) {
+               if(avail[i] == "CUDAExecutionProvider") {
+                  cuda_available = true;
+               }
+               if(!available_list.empty()) {
+                  available_list += ", ";
+               }
+               available_list += avail[i];
+            }
+
+            if(!cuda_available) {
+               std::wcerr << L">>> ONNX: this build requests the CUDA execution provider, but the "
+                          << L"linked onnxruntime does not provide it. Available: "
+                          << BytesToUnicode(available_list)
+                          << L". Rebuild the native library with './build.sh cpu', or link a "
+                          << L"CUDA-enabled onnxruntime. <<<" << std::endl;
+               return;
+            }
+
+            OrtCUDAProviderOptions cuda_options;
+            memset(&cuda_options, 0, sizeof(cuda_options));
+            cuda_options.device_id = atoi(provider_options["device_id"].c_str());
+            session_options.AppendExecutionProvider_CUDA(cuda_options);
+         }
+         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+         session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+         session_options.DisableMemPattern();
+
 #elif defined(ONNX_EP_QNN)
          const std::string compiled_ep = "qnn";
 #elif defined(ONNX_EP_VITIS)
