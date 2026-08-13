@@ -79,7 +79,7 @@ obc hello && obr hello
   * **Closure ergonomics** — three quality-of-life additions for function references: call a `FuncRef` directly with `v()` (no explicit `->Call()`); write bare lambdas with an inferred return type — `\(x) => x * 2` — that auto-wrap into `FuncRef<R>` when assigned, returned, passed as a method argument, or stored as a collection element; and give a lambda a block body (`\(x) => { ... }`). A multi-capture closure heap-corruption bug is fixed — captures now use closure-local ids
   * **New `System.Concurrency` library** — structured concurrency with `TaskScope`, `Task`, and `Monitor`, plus `runtime.*` process/GC/CPU diagnostics (GC pause, promotion, allocation rate, lock contention, thread/STW/nursery counters) read through `Runtime->GetProperty("runtime.…")`
 
-[📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](ROADMAP.md) • [📝 Editor & IDE setup](docs/editors.md)
+[📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](docs/performance.md#speedup-roadmap) • [📝 Editor & IDE setup](docs/editors.md)
 
 ## Downloads
 
