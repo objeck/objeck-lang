@@ -3,7 +3,7 @@
 		"string": "2026.8.0",
 		"year": 2026
 	},
-	"title": "Nil-safe operators and editor tooling coverage",
+	"title": "Full-screen editor in obi, HTTP/3 on Windows, and the obu updater",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -14,6 +14,12 @@
 		{
 			"version": "v2026.8.0",
 			"items": [
+				"Editor: obi gains a full-screen editor ('/e') — raw-mode terminal editing over the REPL buffer with syntax coloring from the compiler's own scanner, damage-diffed rendering, CJK/tab-correct widths, undo/redo, Shift-selection and an opt-in vi profile; F5 compiles and runs the buffer as a cancellable subprocess and F8 walks the cursor through compile errors",
+				"Network: HTTP/3 now works on Windows 11 / Server 2022 and later over WinHTTP/MsQuic — it had shipped documented-and-dead, with the API present and every request failing; requests assert the protocol actually used rather than silently downgrading",
+				"Security: five HTTP request-injection fixes — a CR/LF in a URL path could split the request line itself, and caller-supplied header values and content types were injectable across HTTP/1.1, HTTPS, HTTP/2 and HTTP/3; HTTP/3 connection IDs could also be uninitialised stack memory when the CSPRNG failed",
+				"Tooling: the obu updater — 'obu check' compares against the latest release, and 'obu update'/'obu rollback' (Linux/macOS) verify a SHA-256 digest before touching disk, then stage an all-or-nothing swap with automatic rollback",
+				"JIT: the ARM64 backend clobbered a general register on every float compare against memory, and zeroed the divisor of every JIT float division — the long-open \"memory corruption of free block\" crash",
+				"Compiler: 'v->Pow(10)' computed Pow(10, v) whenever the receiver was a variable, instance variable or array element, affecting all 29 multi-argument primitive functions; divide and modulus by zero now trap cleanly at every optimization level",
 				"Language: nil-safe operators — 'a?->b()' calls b only when a is non-Nil and yields Nil instead of faulting, and 'a ?? b' supplies b when a is Nil; a single '?->' guards the whole rest of a chain, and both desugar onto the existing Try()/Otherwise() intrinsics so no new bytecode is emitted",
 				"Language server: fixed five requests that crashed the server outright — go-to-implementation, semantic tokens, inlay hints, and both call-hierarchy directions — plus a line-range bug that made any cursor past the first method of a class resolve to the first method, affecting definition, references, hover and rename",
 				"Formatter: '??' is no longer split into '? ?', which had produced source that would not compile",
