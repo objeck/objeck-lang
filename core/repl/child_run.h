@@ -9,6 +9,7 @@
 #ifndef __TUI_CHILD_RUN_H__
 #define __TUI_CHILD_RUN_H__
 
+#include "../shared/sys.h"   // UnicodeToBytes: the locale-independent UTF-8 encoder
 #include <string>
 #include <vector>
 #include <utility>
@@ -38,34 +39,9 @@
 
 namespace Tui {
 
-  // narrow a wide string to UTF-8 by hand -- the C locale must not get a say
-  // (this repo has been bitten by locale-dependent conversions before)
-  inline std::string ChildToUtf8(const std::wstring& text) {
-    std::string bytes;
-    bytes.reserve(text.size() * 2);
-    for(const wchar_t wc : text) {
-      const unsigned int cp = (unsigned int)wc;
-      if(cp < 0x80) {
-        bytes += (char)cp;
-      }
-      else if(cp < 0x800) {
-        bytes += (char)(0xC0 | (cp >> 6));
-        bytes += (char)(0x80 | (cp & 0x3F));
-      }
-      else if(cp < 0x10000) {
-        bytes += (char)(0xE0 | (cp >> 12));
-        bytes += (char)(0x80 | ((cp >> 6) & 0x3F));
-        bytes += (char)(0x80 | (cp & 0x3F));
-      }
-      else {
-        bytes += (char)(0xF0 | (cp >> 18));
-        bytes += (char)(0x80 | ((cp >> 12) & 0x3F));
-        bytes += (char)(0x80 | ((cp >> 6) & 0x3F));
-        bytes += (char)(0x80 | (cp & 0x3F));
-      }
-    }
-    return bytes;
-  }
+  // The C locale must not get a say when narrowing argv/env for exec -- and
+  // shared/sys.h::UnicodeToBytes is exactly the locale-independent encoder
+  // added for that reason, so it is used rather than re-derived here.
 
   class Child {
     bool running;
@@ -353,7 +329,7 @@ namespace Tui {
       std::vector<std::string> narrow;
       narrow.reserve(argv.size());
       for(const std::wstring& a : argv) {
-        narrow.push_back(ChildToUtf8(a));
+        narrow.push_back(UnicodeToBytes(a));
       }
       std::vector<char*> c_argv;
       c_argv.reserve(narrow.size() + 1);
@@ -365,7 +341,7 @@ namespace Tui {
       std::vector<std::pair<std::string, std::string>> narrow_env;
       narrow_env.reserve(env.size());
       for(const auto& e : env) {
-        narrow_env.push_back({ ChildToUtf8(e.first), ChildToUtf8(e.second) });
+        narrow_env.push_back({ UnicodeToBytes(e.first), UnicodeToBytes(e.second) });
       }
 
       pid = fork();

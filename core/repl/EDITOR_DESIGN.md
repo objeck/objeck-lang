@@ -1,15 +1,17 @@
 # Full-screen editor for `obi` — design
 
-> **STATUS (branch `feat/obi-editor-subprocess-and-quality`).** Phases 1–4 are
-> implemented. Two design points below are now superseded:
+> **STATUS (shipped in v2026.8.0).** Phases 1–4 are implemented. Two design
+> points below are now superseded:
 >
 > - **Run is a subprocess, not in-process.** F5 saves the buffer to a temp
 >   `.obs`, compiles it with `obc`, then runs the `.obe` with `obr` — each a
 >   child process whose merged stdout/stderr the pane drains without blocking
 >   (`child_run.h`, `tui_editor.h::DoRun`). The in-process VM has main-thread
 >   affinity and would deadlock if driven off the UI thread, so "a run pane does
->   not need a subprocess" (below) no longer holds. `io_capture.h` is retired
->   from the F5 path (kept in tree for any other in-process capture).
+>   not need a subprocess" (below) no longer holds. `io_capture.h`, which
+>   existed only for the in-process path, has been deleted — handing the child
+>   its own pipes achieves the same isolation structurally, and git has the file
+>   if in-process capture is ever wanted again.
 > - **Syntax highlighting is live.** The compiler's own `Scanner` (already
 >   linked) colors the buffer — keywords cyan, numbers yellow, strings green —
 >   cached per document version (`highlight.h`).

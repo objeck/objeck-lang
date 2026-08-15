@@ -33,6 +33,7 @@
 ***************************************************************************/
 
 #include "../../shared/version.h"
+#include "../../shared/exe_path.h"
 
 #include <cctype>
 #include <cstdint>
@@ -57,9 +58,6 @@
 #include <unistd.h>
 #define OBU_POPEN popen
 #define OBU_PCLOSE pclose
-#endif
-#if defined(__APPLE__)
-#include <mach-o/dyld.h>
 #endif
 
 namespace fs = std::filesystem;
@@ -478,38 +476,9 @@ static std::string Sha256File(const fs::path& path)
   return sha256::Final(c);
 }
 
-/****************************
-* Directory of the running obu executable -- the install root is its parent.
-* Resolved from the OS rather than argv[0] so a PATH-launched obu still finds
-* the tree it belongs to, and never operates on an attacker-chosen directory.
-****************************/
-static fs::path ExecutableDir()
-{
-#if defined(_WIN32)
-  wchar_t buffer[MAX_PATH];
-  const DWORD len = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
-  if(len == 0 || len == MAX_PATH) {
-    return fs::path();
-  }
-  return fs::path(std::wstring(buffer, len)).parent_path();
-#elif defined(__APPLE__)
-  char buffer[4096];
-  uint32_t size = sizeof(buffer);
-  if(_NSGetExecutablePath(buffer, &size) != 0) {
-    return fs::path();
-  }
-  std::error_code ec;
-  const fs::path resolved = fs::canonical(fs::path(buffer), ec);
-  return (ec ? fs::path(buffer) : resolved).parent_path();
-#else
-  std::error_code ec;
-  const fs::path self = fs::read_symlink("/proc/self/exe", ec);
-  if(ec) {
-    return fs::path();
-  }
-  return self.parent_path();
-#endif
-}
+// ExecutableDir() comes from shared/exe_path.h -- obi's F5 needs the same
+// resolution to find obc/obr, and two copies of the MAX_PATH/dyld/proc
+// handling was one too many.
 
 // obu lives in <root>/bin; the install root is one level up. An override is
 // honored only for the offline test harness (see the fake-release test), never

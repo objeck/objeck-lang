@@ -100,11 +100,17 @@ class Document {
   std::wstring name;
   std::list<Line> lines;
   size_t shell_count;
+  // Bumped by every content mutator below. Caches keyed on the buffer (the
+  // full-screen editor's syntax colors) compare this instead of trusting that
+  // all writes went through them -- the line commands ('/i', '/d', '/r',
+  // '/o') edit the same Document, so invalidation has to follow the data.
+  size_t version;
 
  public:
    Document(std::wstring n) {
      name = n;
      shell_count = 0;
+     version = 0;
    }
 
    ~Document() {
@@ -112,6 +118,10 @@ class Document {
 
    size_t Size() {
      return lines.size();
+   }
+
+   size_t Version() const {
+     return version;
    }
 
    std::wstring GetName() {

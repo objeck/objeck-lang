@@ -35,30 +35,38 @@ namespace Tui {
   // optimization noted in EDITOR_DESIGN.md.
   class Highlighter {
   public:
-    // Returns one attribute per character per line (HL_NONE where uncolored).
-    std::vector<std::vector<unsigned char>> Scan(Document& doc) {
-      const size_t line_count = doc.Size();
+    // Fills `attrs` with one attribute per character per line (HL_NONE where
+    // uncolored). The caller's vector is reused rather than returned fresh:
+    // this runs on every keystroke, and reassigning the rows keeps their
+    // capacity instead of freeing and reallocating one vector per line.
+    void Scan(Document& doc, std::vector<std::vector<unsigned char>>& attrs) {
+      // ToString() is the document's own '\n'-joined form and walks the line
+      // list exactly once -- GetLine() per index is an std::advance from
+      // begin() each time, which is quadratic on the buffer.
+      const std::wstring source = doc.ToString();
 
+      // Split it straight back apart, so token line/column map into `lines`
+      // without touching the list again (the scanner counts newlines exactly
+      // as the document joined on).
       std::vector<std::wstring> lines;
-      lines.reserve(line_count);
-      for(size_t i = 0; i < line_count; ++i) {
-        lines.push_back(doc.GetLine(i));
+      lines.reserve(doc.Size());
+      size_t start = 0;
+      for(size_t i = 0; i < source.size(); ++i) {
+        if(source[i] == L'\n') {
+          lines.push_back(source.substr(start, i - start));
+          start = i + 1;
+        }
+      }
+      if(start < source.size()) {
+        lines.push_back(source.substr(start));
       }
 
-      std::vector<std::vector<unsigned char>> attrs(line_count);
-      for(size_t i = 0; i < line_count; ++i) {
+      attrs.resize(lines.size());
+      for(size_t i = 0; i < lines.size(); ++i) {
         attrs[i].assign(lines[i].size(), HL_NONE);
       }
-      if(line_count == 0) {
-        return attrs;
-      }
-
-      // rejoin with '\n' so each token's line/column maps straight back into
-      // `lines` (the scanner counts newlines exactly as the document splits on)
-      std::wstring source;
-      for(size_t i = 0; i < line_count; ++i) {
-        source += lines[i];
-        source += L'\n';
+      if(lines.empty()) {
+        return;
       }
 
       try {
@@ -84,8 +92,6 @@ namespace Tui {
         // a half-typed buffer must never take the editor down; whatever was
         // painted before the throw is fine to keep
       }
-
-      return attrs;
     }
 
   private:

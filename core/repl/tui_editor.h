@@ -39,9 +39,10 @@ namespace Tui {
   // knowledge of where obc/obr live, which libraries and optimization level to
   // pass, and the command-line arguments -- so it hands back a fully-built plan
   // rather than a callback the view would have to parameterize. A failed save
-  // or a missing bin directory comes back as ok=false plus a message.
+  // or a missing bin directory comes back as a non-empty `error`, which is the
+  // single source of truth -- a separate ok flag was one more thing every
+  // early return had to remember to keep in step with the message.
   struct RunPlan {
-    bool ok = false;
     std::wstring error;
     std::vector<std::wstring> compile_argv;   // obc -src ... -dest ...
     std::vector<std::wstring> run_argv;       // obr <obe> <args...>
@@ -72,6 +73,11 @@ namespace Tui {
     bool pane_visible;
     std::vector<size_t> error_lines;   // 1-based document lines from diagnostics
     size_t error_index;
+    size_t out_consumed;         // bytes of the child's output already folded in
+    std::wstring out_partial;    // trailing line not yet terminated by '\n'
+
+    // the pane keeps only a bounded tail of a long-running program's output
+    static const size_t PANE_LIMIT = 5000;
 
     // Undo: every mutation goes through a line-granular operation so it can be
     // played backward. A group is one user action (a split is two ops); plain
@@ -104,25 +110,20 @@ namespace Tui {
     KeymapState keys;
 
     // syntax highlighting cache: one attribute per character per line, rebuilt
-    // only when the document actually changes. content_version bumps on every
-    // mutation; hl_version records what the cache was last built for.
-    size_t content_version;
+    // only when the document actually changes. Document::Version() bumps in
+    // the buffer's own mutators, so a line-mode command editing the same
+    // Document invalidates this cache too -- there is no "went through the
+    // Op* helpers" convention left to forget.
     size_t hl_version;
     Highlighter highlighter;
     std::vector<std::vector<unsigned char>> hl_attr;
 
     static const int TAB_STOP = 3;
 
-    // every document mutation goes through the Op* helpers (and undo/redo), so
-    // bumping here is enough to invalidate the highlight cache
-    void TouchDoc() {
-      ++content_version;
-    }
-
     void EnsureHighlight() {
-      if(content_version != hl_version) {
-        hl_attr = highlighter.Scan(doc);
-        hl_version = content_version;
+      if(doc.Version() != hl_version) {
+        highlighter.Scan(doc, hl_attr);
+        hl_version = doc.Version();
       }
     }
 
@@ -338,6 +339,22 @@ namespace Tui {
       term.ShowCursor();
     }
 
+    // The single input point for every loop in this view. A resize is absorbed
+    // here -- re-query the terminal, rebuild the back buffer -- and reported as
+    // KEY_NONE so the caller simply redraws. Each loop used to call ReadKey()
+    // and remember to do this itself; the modal prompt forgot, and the next
+    // modal loop (find, goto-line) would have forgotten too. Now there is
+    // nothing left to forget.
+    Key NextEvent() {
+      Key key = term.ReadKey();
+      if(key.code == KEY_RESIZE) {
+        term.Size(rows, cols);
+        screen.Resize(rows, cols);
+        key.code = KEY_NONE;
+      }
+      return key;
+    }
+
     // a one-line modal prompt on the hint bar; empty result means cancelled
     std::wstring Prompt(const std::wstring& label) {
       std::wstring input;
@@ -347,15 +364,8 @@ namespace Tui {
         screen.Flush(term);
         term.MoveTo(rows, 2 + (int)(label.size() + input.size()));
 
-        const Key key = term.ReadKey();
+        const Key key = NextEvent();
         if(key.code == KEY_NONE) {
-          continue;
-        }
-        if(key.code == KEY_RESIZE) {
-          // a resize mid-prompt must re-query the terminal and rebuild the back
-          // buffer, or the next Flush indexes a grid of the old dimensions
-          term.Size(rows, cols);
-          screen.Resize(rows, cols);
           continue;
         }
         if(key.code == KEY_ENTER) {
@@ -418,7 +428,6 @@ namespace Tui {
       op.before = doc.GetLine(row);
       op.after = after;
       doc.SetLine(row, after);
-      TouchDoc();
       group.ops.push_back(op);
     }
 
@@ -428,7 +437,6 @@ namespace Tui {
       op.row = row;
       op.after = text;
       doc.InsertLine(row, text);
-      TouchDoc();
       group.ops.push_back(op);
     }
 
@@ -438,7 +446,6 @@ namespace Tui {
       op.row = row;
       op.before = doc.GetLine(row);
       doc.DeleteLine(row);
-      TouchDoc();
       group.ops.push_back(op);
     }
 
@@ -494,7 +501,6 @@ namespace Tui {
       redo_stack.push_back(group);
       typing_run = false;
       dirty = true;
-      TouchDoc();
     }
 
     void DoRedo() {
@@ -521,7 +527,6 @@ namespace Tui {
       undo_stack.push_back(group);
       typing_run = false;
       dirty = true;
-      TouchDoc();
     }
 
     // ----- selection -----
@@ -742,9 +747,10 @@ namespace Tui {
       const std::wstring head = line.substr(0, cur_col);
 
       // Smart return: the new line starts under the previous line's indent, one
-      // TAB_STOP deeper when that line opens a block with '{'. This mirrors the
-      // brace-depth indentation Document::Save emits, so editing and saving
-      // agree instead of the cursor snapping back to column zero every time.
+      // level deeper when that line opens a block. Depth comes from
+      // Editor::BraceDelta -- the REPL's own brace counter, which ignores '{'
+      // inside string and char literals and inside a '#' comment, and nets a
+      // same-line '}' back out so `if(x) { y; }` correctly does not indent.
       std::wstring indent;
       for(const wchar_t ch : head) {
         if(ch == L' ' || ch == L'\t') {
@@ -754,9 +760,7 @@ namespace Tui {
           break;
         }
       }
-      std::wstring trimmed = head;
-      Editor::RightTrim(trimmed);
-      if(!trimmed.empty() && trimmed.back() == L'{') {
+      if(Editor::BraceDelta(head) > 0) {
         indent += L'\t';   // the Tab key inserts '\t' too, so this stays uniform
       }
 
@@ -854,14 +858,20 @@ namespace Tui {
       return out;
     }
 
-    // decode UTF-8 bytes by hand -- the locale must not get a say (this repo
-    // has been bitten by locale-dependent conversions before). Called on the
-    // whole accumulated buffer each drain, so a multi-byte sequence split
-    // across a read boundary is simply left for the next pass.
-    static std::wstring DecodeUtf8(const std::string& bytes) {
+    // Decode UTF-8 from `offset` onward, leaving `offset` on the first byte of
+    // a sequence that has not fully arrived yet, so the next drain resumes
+    // there instead of re-reading what was already decoded.
+    //
+    // Hand-rolled rather than shared/sys.h's BytesToUnicode on purpose: this
+    // is arbitrary program output, which may not be valid UTF-8 at all, and
+    // the shared codec is deliberately strict (it rejects the whole string).
+    // A run pane must show whatever the program actually printed, so bad bytes
+    // are skipped one at a time here instead of blanking the pane.
+    static std::wstring DecodeUtf8(const std::string& bytes, size_t& offset) {
       std::wstring out;
-      out.reserve(bytes.size());
-      for(size_t i = 0; i < bytes.size();) {
+      out.reserve(bytes.size() - offset);
+      size_t i = offset;
+      for(; i < bytes.size();) {
         const unsigned char lead = (unsigned char)bytes[i];
         unsigned int cp;
         int extra;
@@ -883,33 +893,62 @@ namespace Tui {
         i += (size_t)extra + 1;
         out += (wchar_t)cp;
       }
+      offset = i;
       return out;
     }
 
-    // split program/compiler output into pane lines; diagnostics look like
-    // 'name:(line,col): text', and their line number drives F8 error jumping
-    void SetPaneFromOutput(const std::wstring& output) {
-      pane.clear();
-      error_lines.clear();
-      std::wstring line;
-      for(const wchar_t ch : StripAnsi(output) + L"\n") {
-        if(ch == L'\n') {
-          if(!line.empty() && line.back() == L'\r') {
-            line.pop_back();
-          }
-          const size_t mark = line.find(L":(");
-          if(mark != std::wstring::npos) {
-            const long parsed = wcstol(line.c_str() + mark + 2, nullptr, 10);
-            if(parsed > 0) {
-              error_lines.push_back((size_t)parsed);
-            }
-          }
-          pane.push_back(line);
-          line.clear();
+    // Appends one finished line to the pane. Diagnostics look like
+    // 'name:(line,col): text', and their line number drives F8 error jumping.
+    void PushPaneLine(std::wstring line) {
+      if(!line.empty() && line.back() == L'\r') {
+        line.pop_back();
+      }
+      // ANSI is stripped per line rather than over the whole buffer: an escape
+      // sequence never spans a newline, so a line is always a safe boundary to
+      // cut on, and a sequence split across two pipe reads stays intact in
+      // out_partial until the rest of it arrives.
+      line = StripAnsi(line);
+
+      const size_t mark = line.find(L":(");
+      if(mark != std::wstring::npos) {
+        const long parsed = wcstol(line.c_str() + mark + 2, nullptr, 10);
+        if(parsed > 0) {
+          error_lines.push_back((size_t)parsed);
         }
-        else {
-          line += ch;
+      }
+      pane.push_back(std::move(line));
+
+      // A runaway loop must not grow the pane without bound before Esc is
+      // pressed; only the last screenful is ever displayed anyway.
+      if(pane.size() > PANE_LIMIT) {
+        const size_t drop = pane.size() - PANE_LIMIT;
+        pane.erase(pane.begin(), pane.begin() + (long)drop);
+      }
+    }
+
+    // Folds whatever has arrived since the last call into the pane. Only the
+    // NEW bytes are decoded and split -- re-parsing the whole accumulated
+    // buffer on every 100ms tick is quadratic in total output, which a program
+    // printing a few megabytes turns into hundreds of megabytes of work to
+    // paint seven visible rows.
+    void AbsorbOutput(const std::string& raw) {
+      out_partial += DecodeUtf8(raw, out_consumed);
+      size_t start = 0;
+      for(size_t i = 0; i < out_partial.size(); ++i) {
+        if(out_partial[i] == L'\n') {
+          PushPaneLine(out_partial.substr(start, i - start));
+          start = i + 1;
         }
+      }
+      out_partial.erase(0, start);
+    }
+
+    // End of the run: emit the last line if it had no trailing newline, then
+    // drop the blank tail a final '\n' leaves behind.
+    void FinishOutput() {
+      if(!out_partial.empty()) {
+        PushPaneLine(out_partial);
+        out_partial.clear();
       }
       while(!pane.empty() && pane.back().empty()) {
         pane.pop_back();
@@ -929,26 +968,46 @@ namespace Tui {
     bool PumpChild(Child& child, std::string& raw) {
       for(;;) {
         child.Drain(raw);
-        SetPaneFromOutput(DecodeUtf8(raw));
+        AbsorbOutput(raw);
         ScrollPaneToBottom();
+
+        // Checked BEFORE the blocking read, not after: a compile that finishes
+        // in 40ms would otherwise still hold the pane for a full 100ms tick,
+        // and F5 pays that twice (obc then obr) on every run.
+        if(!child.IsRunning()) {
+          child.Drain(raw);   // flush whatever was buffered as the child exited
+          AbsorbOutput(raw);
+          return false;
+        }
+
         term.HideCursor();
         Draw();
 
-        const Key key = term.ReadKey();
+        const Key key = NextEvent();
         if(key.code == KEY_ESC) {
           child.Kill();
           child.Drain(raw);
+          AbsorbOutput(raw);
           return true;
         }
-        if(key.code == KEY_RESIZE) {
-          term.Size(rows, cols);
-          screen.Resize(rows, cols);
-        }
-        if(!child.IsRunning()) {
-          child.Drain(raw);   // flush whatever was buffered as the child exited
-          return false;
-        }
       }
+    }
+
+    enum PhaseResult { PHASE_DONE, PHASE_CANCELLED, PHASE_LAUNCH_FAILED };
+
+    // Runs one child to completion, streaming into the pane. `launch_error` is
+    // the status shown when the process cannot be started at all. Compile and
+    // run differ only in their argv and this message, so they share one body.
+    PhaseResult RunPhase(const std::vector<std::wstring>& argv, const RunPlan& plan,
+                         std::string& raw, int& exit_code, const wchar_t* launch_error) {
+      Child child;
+      if(!child.Start(argv, plan.env)) {
+        status = launch_error;
+        return PHASE_LAUNCH_FAILED;
+      }
+      const bool cancelled = PumpChild(child, raw);
+      exit_code = child.ExitCode();
+      return cancelled ? PHASE_CANCELLED : PHASE_DONE;
     }
 
     void DoRun() {
@@ -962,54 +1021,47 @@ namespace Tui {
       // program as a child process (rather than the in-process, main-thread-
       // affine, _NO_JIT VM) is what makes F5 both correct and cancellable.
       const RunPlan plan = runner();
-      if(!plan.ok) {
-        status = plan.error.empty() ? L"unable to prepare the run" : plan.error;
+      if(!plan.error.empty()) {
+        status = plan.error;
         return;
       }
 
       pane.clear();
       error_lines.clear();
+      out_consumed = 0;
+      out_partial.clear();
       pane_visible = true;
       pane_top = 0;
       error_index = 0;
       status = L"running... Esc cancels";
 
       std::string raw;
-      bool cancelled = false;
       int compile_exit = 0;
       int run_exit = 0;
 
       // phase 1: compile with obc -- its diagnostics (on stdout) fill the pane
-      {
-        Child compile;
-        if(!compile.Start(plan.compile_argv, plan.env)) {
-          status = L"unable to launch the compiler";
-          return;
-        }
-        cancelled = PumpChild(compile, raw);
-        compile_exit = compile.ExitCode();
+      PhaseResult phase = RunPhase(plan.compile_argv, plan, raw, compile_exit,
+                                   L"unable to launch the compiler");
+      if(phase == PHASE_LAUNCH_FAILED) {
+        return;
       }
 
       // phase 2: run with obr, only if the compile produced a .obe
-      if(!cancelled && compile_exit == 0 && !plan.run_argv.empty()) {
-        Child run;
-        if(!run.Start(plan.run_argv, plan.env)) {
-          status = L"unable to launch the program";
+      if(phase == PHASE_DONE && compile_exit == 0 && !plan.run_argv.empty()) {
+        phase = RunPhase(plan.run_argv, plan, raw, run_exit, L"unable to launch the program");
+        if(phase == PHASE_LAUNCH_FAILED) {
           return;
         }
-        cancelled = PumpChild(run, raw);
-        run_exit = run.ExitCode();
       }
+      const bool cancelled = (phase == PHASE_CANCELLED);
 
-      // The child had its own pipes, so nothing wrote to the terminal behind
-      // the diff's back this time; a full invalidate still keeps the same
-      // clean-repaint guarantee and costs a single frame.
-      term.Clear();
+      // The child wrote to its own pipe, so nothing touched the terminal
+      // behind the diff's back. Repainting every cell is still worth one frame
+      // as a clean-slate guarantee -- but without a term.Clear() first, which
+      // only added a full-screen wipe the eye reads as a flash.
       screen.Invalidate();
 
-      SetPaneFromOutput(DecodeUtf8(raw));
-      pane_visible = true;
-      error_index = 0;
+      FinishOutput();
 
       const bool ok = (compile_exit == 0 && run_exit == 0);
       if(cancelled) {
@@ -1194,8 +1246,8 @@ namespace Tui {
       sel_active = false;
       sel_row = sel_col = 0;
       clip_linewise = false;
-      content_version = 1;   // ahead of hl_version, so the first Draw scans once
-      hl_version = 0;
+      // any value the document cannot currently hold forces the first scan
+      hl_version = doc.Version() - 1;
     }
 
     // returns the cursor's document line, so the REPL can keep its own
@@ -1214,17 +1266,11 @@ namespace Tui {
         term.HideCursor();
         Draw();
 
-        const Key key = term.ReadKey();
+        const Key key = NextEvent();
         if(key.code == KEY_NONE) {
           continue;
         }
         status.clear();
-
-        if(key.code == KEY_RESIZE) {
-          term.Size(rows, cols);
-          screen.Resize(rows, cols);
-          continue;
-        }
 
         const Action action = Resolve(key, keys);
         if(action != ACT_QUIT) {

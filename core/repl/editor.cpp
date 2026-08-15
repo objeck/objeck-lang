@@ -36,23 +36,20 @@
 #include "../compiler/compiler.h"
 #include "../vm/vm.h"
 #include "../shared/version.h"
+#include "../shared/exe_path.h"
 #include "../debugger/color.h"
 #include "term.h"
 #include "screen.h"
 #include "tui_editor.h"
-#include "child_run.h"
 #include <deque>
 #include <filesystem>
-
-#if defined(__APPLE__)
-#include <mach-o/dyld.h>
-#endif
 
 //
 // Document
 //
 size_t Document::Reset()
 {
+  ++version;
   lines.clear();
 
   lines.push_back(Line(L"use class System.IO.Console;", Line::Type::RW_LINE));
@@ -69,6 +66,7 @@ size_t Document::Reset()
 
 bool Document::LoadFile(const std::wstring& file)
 {
+  ++version;
   lines.clear();
 
   std::ifstream read_file(UnicodeToBytes(file));
@@ -194,10 +192,12 @@ bool Document::InsertLine(size_t line_num, const std::wstring line, Line::Type t
     }
 
     lines.insert(iter, Line(line, type));
+    ++version;
     return true;
   }
   else if(line_num == lines.size()) {
     lines.push_back(Line(line, type));
+    ++version;
     return true;
   }
 
@@ -231,6 +231,7 @@ bool Document::SetLine(size_t line_num, const std::wstring& text)
     std::advance(iter, line_num);
     if(iter->GetType() == Line::Type::RW_LINE) {
       iter->SetText(text);
+      ++version;
       return true;
     }
   }
@@ -249,6 +250,7 @@ bool Document::DeleteLine(size_t line_num)
 
     if(iter->GetType() == Line::Type::RW_LINE) {
       lines.erase(iter);
+      ++version;
       return true;
     }
   }
@@ -558,39 +560,6 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
 
 namespace {
   namespace fs = std::filesystem;
-
-  /****************************
-   * Directory of the running obi executable. obc/obr are its siblings in the
-   * same bin/ dir, so F5 finds them here rather than trusting PATH or argv[0]
-   * -- resolved from the OS so a PATH-launched obi still finds its own tools.
-   ****************************/
-  fs::path ExecutableDir()
-  {
-#if defined(_WIN32)
-    wchar_t buffer[MAX_PATH];
-    const DWORD len = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
-    if(len == 0 || len == MAX_PATH) {
-      return fs::path();
-    }
-    return fs::path(std::wstring(buffer, len)).parent_path();
-#elif defined(__APPLE__)
-    char buffer[4096];
-    uint32_t size = sizeof(buffer);
-    if(_NSGetExecutablePath(buffer, &size) != 0) {
-      return fs::path();
-    }
-    std::error_code ec;
-    const fs::path resolved = fs::canonical(fs::path(buffer), ec);
-    return (ec ? fs::path(buffer) : resolved).parent_path();
-#else
-    std::error_code ec;
-    const fs::path self = fs::read_symlink("/proc/self/exe", ec);
-    if(ec) {
-      return fs::path();
-    }
-    return self.parent_path();
-#endif
-  }
 }
 
 /****************************
@@ -678,7 +647,6 @@ void Editor::DoEdit()
     // obc finds a stale system lang.obl and the run fails with a version error
     plan.env.push_back({ L"OBJECK_LIB_PATH", GetLibraryPath() });
 
-    plan.ok = true;
     return plan;
   };
 

@@ -102,11 +102,20 @@ namespace Tui {
   inline Action Lookup(const Binding* bindings, size_t count, const Key& key) {
     for(size_t i = 0; i < count; ++i) {
       const Binding& binding = bindings[i];
-      if(binding.code != key.code || binding.ctrl != key.ctrl ||
-         binding.alt != key.alt || binding.shift != key.shift) {
+      if(binding.code != key.code || binding.ctrl != key.ctrl || binding.alt != key.alt) {
         continue;
       }
-      if(binding.code == KEY_CHAR && binding.ch != key.ch) {
+      if(binding.code == KEY_CHAR) {
+        // Shift is not part of a character's identity -- the character itself
+        // already carries its case, and Windows reports shift on a capital
+        // while POSIX does not. Comparing it would force every capital to be
+        // bound twice (and a half-added binding would then work on one OS
+        // only), so char bindings match on `ch` alone.
+        if(binding.ch != key.ch) {
+          continue;
+        }
+      }
+      else if(binding.shift != key.shift) {
         continue;
       }
       return binding.action;
@@ -174,9 +183,7 @@ namespace Tui {
       { KEY_UP, 0, false, false, false, ACT_UP },
       { KEY_DOWN, 0, false, false, false, ACT_DOWN },
       { KEY_CHAR, L'0', false, false, false, ACT_LINE_START },
-      { KEY_CHAR, L'$', false, false, true, ACT_LINE_END },
       { KEY_CHAR, L'$', false, false, false, ACT_LINE_END },
-      { KEY_CHAR, L'G', false, false, true, ACT_DOC_END },
       { KEY_CHAR, L'G', false, false, false, ACT_DOC_END },
       { KEY_CHAR, L'x', false, false, false, ACT_DELETE },
       { KEY_CHAR, L'u', false, false, false, ACT_UNDO },
@@ -187,15 +194,9 @@ namespace Tui {
       { KEY_CHAR, L'o', false, false, false, ACT_OPEN_BELOW },
       { KEY_CHAR, L'w', false, false, false, ACT_WORD_NEXT },
       { KEY_CHAR, L'b', false, false, false, ACT_WORD_PREV },
-      // capitals arrive with shift set on Windows but not on POSIX, so -- as
-      // with 'G' and '$' above -- both variants are bound
-      { KEY_CHAR, L'A', false, false, true, ACT_APPEND_EOL },
       { KEY_CHAR, L'A', false, false, false, ACT_APPEND_EOL },
-      { KEY_CHAR, L'I', false, false, true, ACT_INSERT_BOL },
       { KEY_CHAR, L'I', false, false, false, ACT_INSERT_BOL },
-      { KEY_CHAR, L'O', false, false, true, ACT_OPEN_ABOVE },
       { KEY_CHAR, L'O', false, false, false, ACT_OPEN_ABOVE },
-      { KEY_CHAR, L'D', false, false, true, ACT_DELETE_EOL },
       { KEY_CHAR, L'D', false, false, false, ACT_DELETE_EOL },
       { KEY_CHAR, L'v', false, false, false, ACT_MODE_VISUAL },
       { KEY_ESC, 0, false, false, false, ACT_MODE_NORMAL },

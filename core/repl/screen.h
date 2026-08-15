@@ -132,7 +132,7 @@ namespace Tui {
     void Resize(int new_rows, int new_cols) {
       rows = new_rows;
       cols = new_cols;
-      front.assign((size_t)rows * cols, Cell());   // sentinel: repaint all
+      Invalidate();                                // sentinel: repaint all
       back.assign((size_t)rows * cols, Cell());
       Clear();
     }
