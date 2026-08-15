@@ -144,62 +144,62 @@ If the commit log between tags is empty (nothing merged since last release), abo
 
 Store the derived summary as `$SUMMARY` for use in steps 3, 5, 10, and 12. **Show the summary to the user once it's derived**, so they can see what's going out — but do not pause for confirmation (if they wanted to override it, they would have started from `update-docs` manually).
 
-### 2. LSP repo update (`../objeck-lsp`)
+### 2. LSP pre-flight (in-repo — nothing is built locally)
 
-The LSP repo is a sibling directory: `C:\Users\objec\Documents\Code\objeck-lsp` on this machine. It must be rebuilt against the just-bumped Objeck runtime so the LSP and compiler stay version-compatible. If the sibling directory is missing, abort with instructions to clone it.
+The LSP lives in this repository at `tools/lsp`. The standalone `objeck-lsp`
+sibling repo is **DEPRECATED** — do not build, commit or push it. A stale clone
+may still exist on the release machine; ignore it.
 
-**IMPORTANT — LSP repo uses `main` branch, not `master`.** Every git push to the LSP repo must target `main`:
-```bash
-git push origin HEAD   # or: git push origin main
-```
-Never `git push origin master` in the LSP repo — it will push to a different (or nonexistent) branch.
+`release-build.yml` builds the whole LSP in the cloud from `tools/lsp`: it runs
+`build_server.sh`, `npm install`, packages the `.vsix`, and **sets the extension
+version from the tag** (`jq '.version = $v' package.json`). So there is no local
+rebuild, no version edit, and no second repo to push.
 
-**2a. Sync version** — edit `clients/vscode/package.json` so the `"version"` field matches `<VERSION>`. Also grep for any other hardcoded version strings in `server/` and `clients/` and update to match. Check `README.txt` and `docs/install_guide.html` as well.
+Only one thing needs a human before tagging, because the release ships it as
+committed and never regenerates it:
 
-**2b. Rebuild LSP server + VSIX**:
+**2a. Is `objk_apis.json` current?** It backs LSP hover and completion. Two
+copies are committed and BOTH must be regenerated together:
 
-```bash
-cd /c/Users/objec/Documents/Code/objeck-lsp
-bash deploy_lsp.sh deploy
-```
+- `tools/lsp/server/objk_apis.json`
+- `tools/lsp/clients/vscode/server/objk_apis.json` — the one packaged into the
+  `.vsix`, so this is what users actually get
 
-This runs `build_server.sh`, regenerates `server/objk_apis.json`, and packages the VS Code extension. The script calls `zip` to create `objeck-lsp-<VERSION>.zip`. On Windows, `zip` may not be available in Bash — if `deploy_lsp.sh` fails at the packaging step, create the zip with PowerShell instead:
-
-```powershell
-Compress-Archive -Path "C:\Users\objec\Documents\Code\objeck-lsp\*" `
-  -DestinationPath "C:\Users\objec\Documents\Code\objeck-lsp\objeck-lsp-<VERSION>.zip" `
-  -Force
-```
-
-Verify `objeck-lsp-<VERSION>.zip` exists before proceeding.
-
-**2c. Run LSP tests** — On Windows, `.obe` files are Windows PE executables and cannot run in POSIX Bash. Run tests via PowerShell using `obr.exe`:
-
-```powershell
-$obr = "C:\Users\objec\Documents\Code\objeck-lang\core\release\deploy-x64\bin\obr.exe"
-$lsp_server = "C:\Users\objec\Documents\Code\objeck-lsp\server\objeck_lsp.obe"
-$apis_json  = "C:\Users\objec\Documents\Code\objeck-lsp\server\objk_apis.json"
-
-Get-ChildItem "C:\Users\objec\Documents\Code\objeck-lsp\tests" -Filter "test_*.obs" | ForEach-Object {
-  $result = & $obr $lsp_server $apis_json diag $_.FullName 2>&1
-  if ($LASTEXITCODE -ne 0) { Write-Error "LSP test FAILED: $($_.Name)"; exit 1 }
-}
-```
-
-If the repo has a dedicated test script (check `scripts/run_tests.*` or `tests/run.*`), prefer that. Abort if any test fails.
-
-**2d. Commit LSP repo**:
+Check staleness by comparing against the library sources it documents:
 
 ```bash
-cd /c/Users/objec/Documents/Code/objeck-lsp
-git add -A
-git commit -m "Release v<VERSION> — rebuild against objeck-lang v<VERSION>
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
-git push origin HEAD   # LSP repo uses 'main', not 'master'
+git log -1 --format='%h %ci' -- tools/lsp/server/objk_apis.json
+git log -1 --format='%h %ci' -- core/compiler/lib_src/
+diff -q tools/lsp/server/objk_apis.json tools/lsp/clients/vscode/server/objk_apis.json
 ```
 
-Do not tag the LSP repo — the main `objeck-lang` tag push handles that via GitHub Actions.
+If `lib_src` is newer, or the two copies differ, regenerate and commit both:
+
+```bash
+cd tools/lsp/server/doc_json && ./gen_json.sh "$VERSION"     # gen_json.cmd on Windows
+```
+
+Both failure modes have shipped before: a new public class missing entirely
+(`Web.HTTP.HeaderCheck`), and the two copies drifting so the `.vsix` shipped an
+older index than the server (the unsigned `Int` methods were absent from the
+VS Code copy while present in the server copy). Neither breaks a build — the
+docs are just silently wrong for the release's own new APIs.
+
+**2b. Sanity-check the generator's source list.** `gen_json.cmd`/`gen_json.sh`
+hard-code the `lib_src` files they document, so a newly added library is
+invisible until listed. Confirm the counts match:
+
+```bash
+ls core/compiler/lib_src/*.obs | wc -l    # must equal the count in gen_json.cmd
+```
+
+**2c. Run the LSP tests** (they also gate in the `tools` CI job):
+
+```bash
+python tools/lsp/tests/run_lsp_tests.py
+```
+
+Abort if any test fails.
 
 ### 3. Delegate to `update-docs`
 
@@ -410,7 +410,7 @@ Print a single consolidated summary:
 - **Release publish**: run #<PUB_ID>, duration, conclusion
 - **Signed installers verified**: Windows x64 MSI ✓, Windows ARM64 MSI ✓, macOS ARM64 .pkg ✓
 - **VM binary verified**: `obr` present in Linux x64 archive ✓
-- **LSP repo**: commit SHA pushed to objeck-lsp `main`
+- **LSP**: built in-cloud from `tools/lsp`; `.vsix` version set from the tag; `objk_apis.json` current ✓
 - **Playground**: deployed to $PLAYGROUND_HOST, health=OK, version=v<VERSION>
 - **Sourceforge upload**: status from release-publish.yml
 - **API docs**: deployed to objeck.org/api/latest
