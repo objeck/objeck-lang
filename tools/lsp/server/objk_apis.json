@@ -8442,7 +8442,7 @@
 					"descriptions": ["**Opens an HTTP\/2 connection to host:port over TLS.**\n\n```New(host:String, port:Int)```\n\n\n\nhost: String\n\nport: Int"]
 				},
 				"Request": {
-					"descriptions": ["**Performs a single HTTP\/2 request. On success the response fields are populated and the method returns true.**\n\n```method : public : Request(verb:String, path:String, body:Byte[], content_type:String) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nreturn: Bool"]
+					"descriptions": ["**Performs a single HTTP\/2 request. On success the response fields are populated and the method returns true.**\n\n```method : public : Request(verb:String, path:String, body:Byte[], content_type:String) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nreturn: Bool", "**As Request, but also sends caller-supplied request headers. A separate overload and a separate trap, rather than an extra parameter on the one above: the trap operand encodes the argument count and only the JIT reads it, so a stale lang.obl paired with a newer VM would desync the operand stack and do so silently, and only once the JIT threshold trips. Keeping the old arity intact means a stale artifact degrades to \"headers are not sent\" instead.**\n\n```method : public : Request(headers:String[]) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nheaders: String[]\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -8468,7 +8468,7 @@
 					"descriptions": ["**Opens an HTTP\/3 QUIC connection to host:port.**\n\n```New(host:String, port:Int)```\n\n\n\nhost: String\n\nport: Int"]
 				},
 				"Request": {
-					"descriptions": ["**Performs a single HTTP\/3 request.**\n\n```method : public : Request(verb:String, path:String, body:Byte[], content_type:String) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nreturn: Bool"]
+					"descriptions": ["**Performs a single HTTP\/3 request.**\n\n```method : public : Request(verb:String, path:String, body:Byte[], content_type:String) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nreturn: Bool", "**As Request, but also sends caller-supplied request headers. A separate overload and a separate trap, rather than an extra parameter on the one above: the trap operand encodes the argument count and only the JIT reads it, so a stale lang.obl paired with a newer VM would desync the operand stack and do so silently, and only once the JIT threshold trips. Keeping the old arity intact means a stale artifact degrades to \"headers are not sent\" instead.**\n\n```method : public : Request(headers:String[]) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nheaders: String[]\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -10174,6 +10174,14 @@
 			"description": "Worker thread that fetches a single URL. One Downloader is started per URL by WebDownloader's parallel fetch; the content is available from GetContent once the thread has been joined.",
 			"functions": {
 
+			}
+		},
+		"Web.HTTP.HeaderCheck": {
+			"description": "Validates an HTTP request header name\/value pair. Header content reaches the wire verbatim: HTTP\/1.1 and HTTPS serialize the whole request as text here in Objeck (\"name: value\" + CRLF), so a CR or LF in a value ends the field and starts a new one -- request splitting, not a parse error. HTTP\/2 and HTTP\/3 hand off to native code that performs no validation of its own on submit. Octets per RFC 9110 5.1\/5.5, tightened by RFC 9113 8.2.1. Rejects CR, LF, NUL, DEL and every other C0 control (SP and HTAB are legal), leading or trailing whitespace, an empty name, and any name beginning with ':' -- HTTP\/2 and HTTP\/3 build the pseudo-headers themselves and a duplicate is malformed (RFC 9114 4.3.1), the classic request-smuggling primitive.",
+			"functions": {
+				"IsValidRequestTarget": {
+					"descriptions": ["**Validates a request target (path) or authority (host) for the HTTP\/1.1 request line. These are appended verbatim into the request line, so a CR, LF or space splits the request itself -- a strictly worse version of header injection, and reachable from a Url, which is the input most likely to come from untrusted data. Url->New does not sanitize. Rejects every control character (RFC 9110 forbids CTL in a request target) plus space, which would terminate the target early.**\n\n```function : IsValidRequestTarget(s:String) ~ Bool```\n\n\n\ns: String\n\nreturn: Bool"]
+				}
 			}
 		},
 		"Web.HTTP.Http2Client": {
@@ -12752,6 +12760,10 @@
 ,			"file": "net_common.obl"
  		},
 		"Downloader": {
+			"bundle": "Web.HTTP"
+,			"file": "net_common.obl"
+ 		},
+		"HeaderCheck": {
 			"bundle": "Web.HTTP"
 ,			"file": "net_common.obl"
  		},

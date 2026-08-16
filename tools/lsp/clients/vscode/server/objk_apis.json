@@ -7016,6 +7016,12 @@
 				"Compare": {
 					"descriptions": ["**Compares two values**\n\n```function : native : Compare(l:Int, r:Int) ~ Int```\n\n\n\nl: Int\n\nr: Int\n\nreturn: Int"]
 				},
+				"CompareUnsigned": {
+					"descriptions": ["**Compares two values as unsigned 64-bit quantities**\n\n```function : native : CompareUnsigned(a:Int, b:Int) ~ Int```\n\n\n\na: Int\n\nb: Int\n\nreturn: Int"]
+				},
+				"DivideUnsigned": {
+					"descriptions": ["**Divides two values, treating both as unsigned 64-bit quantities**\n\n```function : native : DivideUnsigned(a:Int, b:Int) ~ Int```\n\n\n\na: Int\n\nb: Int\n\nreturn: Int"]
+				},
 				"DoubleFactorial": {
 					"descriptions": ["**Calculates the double factorial of the value**\n\n```function : native : DoubleFactorial(n:Int) ~ Int```\n\n\n\nn: Int\n\nreturn: Int"]
 				},
@@ -7046,6 +7052,9 @@
 				"MinSize": {
 					"descriptions": ["**Returns the minimum size of an integer**\n\n```function : MinSize() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"ModUnsigned": {
+					"descriptions": ["**Returns the remainder of dividing two values, treating both as unsigned 64-bit quantities**\n\n```function : native : ModUnsigned(a:Int, b:Int) ~ Int```\n\n\n\na: Int\n\nb: Int\n\nreturn: Int"]
+				},
 				"NaN": {
 					"descriptions": ["**Returns a NaN value**\n\n```function : NaN() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -7063,6 +7072,9 @@
 				},
 				"Random": {
 					"descriptions": ["**Returns a pseudo random value between 0 and 1, inclusive**\n\n```function : Random(range_start:Int, range_end:Int) ~ Int```\n\n\n\nrange_start: Int\n\nrange_end: Int\n\nreturn: Int\n\n```\ntemp := Int->Random(-10, 40);\r\n\"Temp: {$temp}\u00b0C\"->PrintLine();\n```", "**Returns a random number between 0 and max value, inclusive**\n\n```function : Random(max:Int) ~ Int```\n\n\n\nmax: Int\n\nreturn: Int\n\n```\ndice := Int->Random(6) + 1;\r\n\"Rolled: {$dice}\"->PrintLine();\n```"]
+				},
+				"ShiftRightUnsigned": {
+					"descriptions": ["**Shifts a value right, treating it as an unsigned 64-bit quantity. Unlike '>>', zeros are shifted into the high bits rather than copies of the sign bit. This is what the '>>>' operator compiles to.**\n\n```function : native : ShiftRightUnsigned(v:Int, count:Int) ~ Int```\n\n\n\nv: Int\n\ncount: Int\n\nreturn: Int"]
 				},
 				"Sign": {
 					"descriptions": ["**Returns the sign of a number**\n\n```function : Sign() ~ Int```\n\n\n\nreturn: Int"]
@@ -7090,6 +7102,9 @@
 				},
 				"ToString": {
 					"descriptions": ["**Returns the string value**\n\n```function : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ns := Int->ToString(255);\r\ns->PrintLine();  # 255\n```", "**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String", "**Returns a string representation of the int array**\n\n```function : ToString(v:Int[,]) ~ String```\n\n\n\nv: Int[,]\n\nreturn: String"]
+				},
+				"ToUnsignedString": {
+					"descriptions": ["**Returns the value formatted as an unsigned 64-bit decimal string. Negative values print as the large positive number their bits represent, so -1 becomes \"18446744073709551615\" rather than \"-1\".**\n\n```function : native : ToUnsignedString(v:Int) ~ String```\n\n\n\nv: Int\n\nreturn: String"]
 				}
 			}
 		},
@@ -8427,7 +8442,7 @@
 					"descriptions": ["**Opens an HTTP\/2 connection to host:port over TLS.**\n\n```New(host:String, port:Int)```\n\n\n\nhost: String\n\nport: Int"]
 				},
 				"Request": {
-					"descriptions": ["**Performs a single HTTP\/2 request. On success the response fields are populated and the method returns true.**\n\n```method : public : Request(verb:String, path:String, body:Byte[], content_type:String) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nreturn: Bool"]
+					"descriptions": ["**Performs a single HTTP\/2 request. On success the response fields are populated and the method returns true.**\n\n```method : public : Request(verb:String, path:String, body:Byte[], content_type:String) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nreturn: Bool", "**As Request, but also sends caller-supplied request headers. A separate overload and a separate trap, rather than an extra parameter on the one above: the trap operand encodes the argument count and only the JIT reads it, so a stale lang.obl paired with a newer VM would desync the operand stack and do so silently, and only once the JIT threshold trips. Keeping the old arity intact means a stale artifact degrades to \"headers are not sent\" instead.**\n\n```method : public : Request(headers:String[]) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nheaders: String[]\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -8453,7 +8468,7 @@
 					"descriptions": ["**Opens an HTTP\/3 QUIC connection to host:port.**\n\n```New(host:String, port:Int)```\n\n\n\nhost: String\n\nport: Int"]
 				},
 				"Request": {
-					"descriptions": ["**Performs a single HTTP\/3 request.**\n\n```method : public : Request(verb:String, path:String, body:Byte[], content_type:String) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nreturn: Bool"]
+					"descriptions": ["**Performs a single HTTP\/3 request.**\n\n```method : public : Request(verb:String, path:String, body:Byte[], content_type:String) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nreturn: Bool", "**As Request, but also sends caller-supplied request headers. A separate overload and a separate trap, rather than an extra parameter on the one above: the trap operand encodes the argument count and only the JIT reads it, so a stale lang.obl paired with a newer VM would desync the operand stack and do so silently, and only once the JIT threshold trips. Keeping the old arity intact means a stale artifact degrades to \"headers are not sent\" instead.**\n\n```method : public : Request(headers:String[]) ~ Bool```\n\n\n\nverb: String\n\npath: String\n\nbody: Byte[]\n\ncontent_type: String\n\nheaders: String[]\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -10159,6 +10174,14 @@
 			"description": "Worker thread that fetches a single URL. One Downloader is started per URL by WebDownloader's parallel fetch; the content is available from GetContent once the thread has been joined.",
 			"functions": {
 
+			}
+		},
+		"Web.HTTP.HeaderCheck": {
+			"description": "Validates an HTTP request header name\/value pair. Header content reaches the wire verbatim: HTTP\/1.1 and HTTPS serialize the whole request as text here in Objeck (\"name: value\" + CRLF), so a CR or LF in a value ends the field and starts a new one -- request splitting, not a parse error. HTTP\/2 and HTTP\/3 hand off to native code that performs no validation of its own on submit. Octets per RFC 9110 5.1\/5.5, tightened by RFC 9113 8.2.1. Rejects CR, LF, NUL, DEL and every other C0 control (SP and HTAB are legal), leading or trailing whitespace, an empty name, and any name beginning with ':' -- HTTP\/2 and HTTP\/3 build the pseudo-headers themselves and a duplicate is malformed (RFC 9114 4.3.1), the classic request-smuggling primitive.",
+			"functions": {
+				"IsValidRequestTarget": {
+					"descriptions": ["**Validates a request target (path) or authority (host) for the HTTP\/1.1 request line. These are appended verbatim into the request line, so a CR, LF or space splits the request itself -- a strictly worse version of header injection, and reachable from a Url, which is the input most likely to come from untrusted data. Url->New does not sanitize. Rejects every control character (RFC 9110 forbids CTL in a request target) plus space, which would terminate the target early.**\n\n```function : IsValidRequestTarget(s:String) ~ Bool```\n\n\n\ns: String\n\nreturn: Bool"]
+				}
 			}
 		},
 		"Web.HTTP.Http2Client": {
@@ -12737,6 +12760,10 @@
 ,			"file": "net_common.obl"
  		},
 		"Downloader": {
+			"bundle": "Web.HTTP"
+,			"file": "net_common.obl"
+ 		},
+		"HeaderCheck": {
 			"bundle": "Web.HTTP"
 ,			"file": "net_common.obl"
  		},
