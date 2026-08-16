@@ -431,9 +431,12 @@ jobs:
       # library set from another fails on EVERY program -- silently, at the user's
       # machine rather than in CI.
       #
-      # Cross-compiled targets are skipped: their binaries cannot execute here.
+      # Only genuinely cross-compiled targets are skipped, since their binaries
+      # cannot execute on the builder. That is Windows ARM64 alone: it is built on
+      # an x64 runner, whereas linux-arm64 uses ubuntu-24.04-arm and macos-arm64
+      # uses macos-15, both native.
       - name: Smoke test the shipped toolchain (POSIX)
-        if: runner.os != 'Windows' && matrix.platform != 'linux-arm64'
+        if: runner.os != 'Windows'
         run: |
           set -e
           DEPLOY_DIR="$(pwd)/core/release/deploy"
