@@ -18,6 +18,8 @@
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
 
+#include "scrfd_decode.h"
+
 std::unique_ptr<Ort::Env> env = nullptr;;
 
 //
@@ -2743,11 +2745,8 @@ static void phi3_vision_inf(VMContext& context) {
 // Face recognition — SCRFD detector + ArcFace recognizer (InsightFace buffalo_l)
 //
 
-struct FaceDet {
-   float x1, y1, x2, y2;
-   float score;
-   float kps[10];   // 5 landmarks: x0,y0,x1,y1,...x4,y4
-};
+// FaceDet and the anchor decode live in scrfd_decode.h, free of ONNX Runtime
+// and OpenCV so they can be unit tested against synthetic tensors.
 
 // ArcFace standard 112x112 alignment template (left-eye, right-eye, nose, left-mouth, right-mouth)
 static const float ARCFACE_DST[5][2] = {
@@ -2831,80 +2830,27 @@ static std::vector<FaceDet> scrfd_decode(
    float conf_threshold,
    const PreprocInfo& pp)
 {
-   struct TensorGroup { const float* score; const float* bbox; const float* kps; int n; int stride; };
-   std::vector<TensorGroup> groups;
-
-   // Categorise by last dim: 1=score, 4=bbox, 10=kps; sort each by size desc (stride asc)
-   struct T { const float* ptr; int64_t n; int64_t cols; };
-   std::vector<T> sc_list, bb_list, kp_list;
-
+   // Unwrap the Ort tensors into plain [rows, cols] descriptors; the anchor
+   // decode itself lives in scrfd_decode.h so it can be unit tested.
+   std::vector<ScrfdTensor> tensors;
+   tensors.reserve(outs.size());
    for(size_t i = 0; i < outs.size(); ++i) {
       auto shape = outs[i].GetTensorTypeAndShapeInfo().GetShape();
       if(shape.size() < 2) continue;
-      int64_t n    = shape[shape.size() - 2];
-      int64_t cols = shape[shape.size() - 1];
-      const float* ptr = outs[i].GetTensorData<float>();
-      if(cols == 1)       sc_list.push_back({ptr, n, cols});
-      else if(cols == 4)  bb_list.push_back({ptr, n, cols});
-      else if(cols == 10) kp_list.push_back({ptr, n, cols});
+      ScrfdTensor t;
+      t.data = outs[i].GetTensorData<float>();
+      t.rows = (long)shape[shape.size() - 2];
+      t.cols = (long)shape[shape.size() - 1];
+      tensors.push_back(t);
    }
 
-   auto by_n_desc = [](const T& a, const T& b) { return a.n > b.n; };
-   std::sort(sc_list.begin(), sc_list.end(), by_n_desc);
-   std::sort(bb_list.begin(), bb_list.end(), by_n_desc);
-   std::sort(kp_list.begin(), kp_list.end(), by_n_desc);
+   ScrfdPreproc geom;
+   geom.scale = pp.scale;
+   geom.pad_x = pp.pad_x;
+   geom.pad_y = pp.pad_y;
 
-   const int strides[3] = {8, 16, 32};
-   const int nsc = (int)std::min({sc_list.size(), bb_list.size(), kp_list.size(), (size_t)3});
-
-   std::vector<FaceDet> candidates;
-
-   for(int si = 0; si < nsc; ++si) {
-      const int stride  = strides[si];
-      const int grid_h  = input_h / stride;
-      const int grid_w  = input_w / stride;
-      const int anchors = 2;
-
-      // Every tensor is [N, cols], and n is the ROW count -- so all three are
-      // compared against 'expected' directly. Scaling by cols (expected * 4 for
-      // bbox, * 10 for kps) made the guard true for every stride, skipping all
-      // of them and returning zero faces at any threshold while inference ran
-      // normally.
-      const int64_t expected = (int64_t)grid_h * grid_w * anchors;
-      if(sc_list[si].n < expected || bb_list[si].n < expected || kp_list[si].n < expected) continue;
-
-      const float* sc = sc_list[si].ptr;
-      const float* bb = bb_list[si].ptr;
-      const float* kp = kp_list[si].ptr;
-
-      int idx = 0;
-      for(int y = 0; y < grid_h; ++y) {
-         for(int x = 0; x < grid_w; ++x) {
-            for(int a = 0; a < anchors; ++a, ++idx) {
-               float score = sc[idx];
-               if(score < conf_threshold) continue;
-
-               float cx = (float)(x * stride);
-               float cy = (float)(y * stride);
-
-               // distance2bbox: (cx ± distance*stride) mapped back through letterbox
-               float bx1 = (cx - bb[idx*4+0] * stride - pp.pad_x) / pp.scale;
-               float by1 = (cy - bb[idx*4+1] * stride - pp.pad_y) / pp.scale;
-               float bx2 = (cx + bb[idx*4+2] * stride - pp.pad_x) / pp.scale;
-               float by2 = (cy + bb[idx*4+3] * stride - pp.pad_y) / pp.scale;
-
-               FaceDet det;
-               det.x1 = bx1; det.y1 = by1; det.x2 = bx2; det.y2 = by2;
-               det.score = score;
-               for(int k = 0; k < 5; ++k) {
-                  det.kps[k*2+0] = (cx + kp[idx*10 + k*2+0] * stride - pp.pad_x) / pp.scale;
-                  det.kps[k*2+1] = (cy + kp[idx*10 + k*2+1] * stride - pp.pad_y) / pp.scale;
-               }
-               candidates.push_back(det);
-            }
-         }
-      }
-   }
+   std::vector<FaceDet> candidates =
+      scrfd_decode_candidates(tensors, input_w, input_h, conf_threshold, geom);
 
    // NMS
    std::vector<cv::Rect> boxes;

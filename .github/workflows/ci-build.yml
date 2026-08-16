@@ -719,6 +719,20 @@ jobs:
           core/lib/onnx/eq/test/test_phi3_sampling.cpp -o /tmp/test_phi3_sampling
         /tmp/test_phi3_sampling
 
+    # Pure-logic unit test for the SCRFD anchor decode (no ONNX Runtime/model).
+    # Face detection returned zero results for every image at every threshold
+    # from v2026.5.3 through v2026.8.1 -- the stride guard compared a row count
+    # against an element count -- and nothing could catch it: no ONNX demo runs
+    # in CI, and the InsightFace models are excluded by .gitignore. This test
+    # needs neither, and fails on that exact defect.
+    - name: Run ONNX SCRFD decode unit test (POSIX)
+      if: matrix.platform == 'linux-x64'
+      shell: bash
+      run: |
+        g++ -std=c++17 -Wall -Wextra -O2 \
+          core/lib/onnx/eq/test/test_scrfd_decode.cpp -o /tmp/test_scrfd_decode
+        /tmp/test_scrfd_decode
+
     # ============================================
     # Network Tests (quarantined / non-gating)
     #
