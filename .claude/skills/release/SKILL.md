@@ -36,6 +36,19 @@ VERSION=$(grep VERSION_STRING core/shared/version.h | sed 's/.*"\([0-9.]*\)".*/\
 
 **Sanity check** — parse `$VERSION` as `YEAR.MONTH.RELEASE`. If parsing fails or any segment is missing/non-numeric, abort. Also verify `VER_NUM` is consistent (e.g. `VERSION_STRING="2026.4.3"` ⇒ `VER_NUM=202643`). If they disagree, abort.
 
+**`update_version.ps1` must agree with `version.h`** — `deploy_windows.cmd` re-runs `update_version.ps1`, which REGENERATES `version.h` from its own hardcoded version. If the two disagree, Windows silently builds a different version from Linux and macOS, and its binaries then reject the committed `.obl` set on `VER_NUM` — every program fails, on the user's machine rather than in CI:
+
+```bash
+# sed, not 'grep -P': the release machine's Git Bash reports
+# "grep: -P supports only unibyte and UTF-8 locales" and yields empty strings,
+# which would make this gate silently compare "" against "" and pass.
+PS1=core/release/update_version.ps1
+PS1_VER="$(sed -n 's/^\$year_end = "\([0-9]*\)".*/\1/p' $PS1).$(sed -n 's/^\$month_end = "\([0-9]*\)".*/\1/p' $PS1).$(sed -n 's/^\$version = "\([0-9]*\)".*/\1/p' $PS1)"
+[ "$PS1_VER" = "$VERSION" ] || { echo "update_version.ps1 says $PS1_VER, version.h says $VERSION"; exit 1; }
+```
+
+`release-build.yml` also rewrites the `.ps1` from the tag as a second line of defence, but fix it here so the repository is not left inconsistent.
+
 **Tag collision check** — if `git tag -l "v$VERSION"` is non-empty, the version in `version.h` is already released. Auto-increment the release counter until a free tag is found:
 
 ```bash

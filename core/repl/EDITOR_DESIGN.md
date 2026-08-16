@@ -1,6 +1,6 @@
 # Full-screen editor for `obi` — design
 
-> **STATUS (shipped in v2026.8.0).** Phases 1–4 are implemented. Two design
+> **STATUS (shipped in v2026.8.2).** Phases 1–4 are implemented. Two design
 > points below are now superseded:
 >
 > - **Run is a subprocess, not in-process.** F5 saves the buffer to a temp

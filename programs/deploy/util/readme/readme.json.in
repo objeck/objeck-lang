@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Ships obu, which v2026.8.0 advertised but omitted, and documents the HeaderCheck validators",
+	"title": "Full-screen editor in obi, HTTP/3 on Windows, the obu updater, five HTTP request-injection fixes, and working face detection",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -12,16 +12,13 @@
 	},
 	"features": [
 		{
-			"version": "v2026.8.1",
+			"version": "v2026.8.2",
 			"items": [
+				"Language: subscript the result of a method call -- 'GetItems()[0]->GetName()' now works. It had never been implemented and the grammar swallowed the attempt, so 'GetArr()[0]->Size()' silently returned 1. Behaviour change: code that compiled and returned the wrong value now returns the correct one",
+				"Release: the release build now compiles and runs a real program from the shipped tree and asserts its version matches the tag; every earlier gate only checked that files existed",
 				"ONNX: face detection never returned a single face -- FaceSession->Detect and ->Recognize produced zero results for every image at every threshold, on every platform shipping the ONNX native library, since v2026.5.3, while inference itself ran normally. scrfd_decode compared a row count against an element count, so every stride group was skipped. Verified with the InsightFace buffalo_l models: 2 faces in the sample group photo, 512-dimensional embeddings, same-person similarity 0.767 and different-person -0.023. YOLO and ResNet were unaffected",
 				"Packaging: obu was missing from every v2026.8.0 archive. The release advertised the updater as a headline feature and delivered no binary -- the build never referenced obu and none of the three deploy scripts copied it, so bin/ held obb, obc, obd, obi and obr on every platform. CI missed it because the updater's own test builds a separate copy with test hooks, so obu was tested continuously while never being shipped. It is now installed to bin/ by all three deploy scripts, and both binary-verification gates list it",
-				"Documentation: Web.HTTP.HeaderCheck shipped with only IsValidRequestTarget documented. IsValidName and IsValidValue -- the validators behind every AddHeader call -- had no doc comment, and the API index records only documented members, so hover and completion showed nothing for them. Flatten's doc block was also attached to the wrong function. All four are now documented"
-			]
-		},
-		{
-			"version": "v2026.8.0",
-			"items": [
+				"Documentation: Web.HTTP.HeaderCheck shipped with only IsValidRequestTarget documented. IsValidName and IsValidValue -- the validators behind every AddHeader call -- had no doc comment, and the API index records only documented members, so hover and completion showed nothing for them. Flatten's doc block was also attached to the wrong function. All four are now documented",
 				"Editor: obi gains a full-screen editor ('/e') — raw-mode terminal editing over the REPL buffer with syntax coloring from the compiler's own scanner, damage-diffed rendering, CJK/tab-correct widths, undo/redo, Shift-selection and an opt-in vi profile; F5 compiles and runs the buffer as a cancellable subprocess and F8 walks the cursor through compile errors",
 				"Network: HTTP/3 now works on Windows 11 / Server 2022 and later over WinHTTP/MsQuic — it had shipped documented-and-dead, with the API present and every request failing; requests assert the protocol actually used rather than silently downgrading",
 				"Security: five HTTP request-injection fixes — a CR/LF in a URL path could split the request line itself, and caller-supplied header values and content types were injectable across HTTP/1.1, HTTPS, HTTP/2 and HTTP/3; HTTP/3 connection IDs could also be uninitialised stack memory when the CSPRNG failed",

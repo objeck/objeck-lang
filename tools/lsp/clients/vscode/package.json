@@ -4,7 +4,7 @@
 	"icon": "images/gear_wheel_128.png",
 	"author": "Randy Hollines",
 	"license": "New BSD",
-	"version": "2026.8.1",
+	"version": "2026.8.2",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/objeck/objeck-lang",

@@ -1,4 +1,4 @@
-v2026.8.0
+v2026.8.2
 * Debugger: structured variable inspection -- objects, arrays and Vector/Map/Hash
   expand to their contents (Map shows key -> value in key order); strings and
   boxed scalars render as values; watch and hover expand the same way
@@ -6,7 +6,7 @@ v2026.8.0
   exceptionInfo, setExpression, completions, modules, loadedSources, paging
 * LSP: reports serverInfo, declares code-action kinds and signature-help
   retrigger characters
-* Bumped to support Objeck v2026.8.0
+* Bumped to support Objeck v2026.8.2
 ---
 
 v2026.6.1

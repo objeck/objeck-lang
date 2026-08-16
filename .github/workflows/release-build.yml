@@ -74,11 +74,33 @@ jobs:
 
           echo "✅ Updated version.h with version $VERSION"
 
+          # deploy_windows.cmd re-runs update_version.ps1, which REGENERATES
+          # version.h from its own hardcoded version -- overwriting the tag-derived
+          # one written above. If the .ps1 has not been bumped, Windows silently
+          # builds a different version from Linux and macOS, and its binaries then
+          # disagree with the committed .obl set on VER_NUM, which fails at runtime
+          # for every program. Rewrite the .ps1 from the tag so the two cannot drift.
+          PS1=core/release/update_version.ps1
+          MAJOR=$(echo "$VERSION" | cut -d'.' -f1)
+          MINOR=$(echo "$VERSION" | cut -d'.' -f2)
+          PATCH=$(echo "$VERSION" | cut -d'.' -f3)
+          sed -i "s/^\$year_end = .*/\$year_end = \"$MAJOR\"/;
+                  s/^\$month_end = .*/\$month_end = \"$MINOR\"/;
+                  s/^\$version = \"[0-9]*\"/\$version = \"$PATCH\"/" "$PS1"
+
+          if ! grep -q "^\$version = \"$PATCH\"" "$PS1"; then
+            echo "❌ Could not set the version in $PS1 -- Windows would build the wrong version"
+            exit 1
+          fi
+          echo "✅ Synced $PS1 to $MAJOR.$MINOR.$PATCH"
+
       - name: Upload version metadata
         uses: actions/upload-artifact@v6
         with:
           name: version-metadata
-          path: core/shared/version.h
+          path: |
+            core/shared/version.h
+            core/release/update_version.ps1
           retention-days: 1
 
   # ============================================
@@ -145,11 +167,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      # The artifact carries core/shared/version.h and core/release/update_version.ps1,
+      # so its root is 'core/' -- unpack there, not into core/shared/.
       - name: Download version metadata
         uses: actions/download-artifact@v4
         with:
           name: version-metadata
-          path: core/shared/
+          path: core/
 
       # ============================================
       # Install Dependencies (Same as CI)
@@ -397,6 +421,101 @@ jobs:
           fi
           echo "✅ API docs complete: $HTML_COUNT HTML files"
 
+      # Smoke test: the SHIPPED tree must actually work, not merely exist.
+      #
+      # Every check above only asserts that files are present. Nothing until now
+      # ran the toolchain that is about to be published, so a release could ship
+      # binaries that cannot compile or run anything and still go out green. The
+      # sharpest case is VER_NUM: .obl files embed it and both the linker and the
+      # VM reject a mismatch, so a compiler built from one version against a
+      # library set from another fails on EVERY program -- silently, at the user's
+      # machine rather than in CI.
+      #
+      # Cross-compiled targets are skipped: their binaries cannot execute here.
+      - name: Smoke test the shipped toolchain (POSIX)
+        if: runner.os != 'Windows' && matrix.platform != 'linux-arm64'
+        run: |
+          set -e
+          DEPLOY_DIR="$(pwd)/core/release/deploy"
+          export OBJECK_LIB_PATH="$DEPLOY_DIR/lib"
+          export LD_LIBRARY_PATH="$DEPLOY_DIR/lib/native:${LD_LIBRARY_PATH:-}"
+          export DYLD_LIBRARY_PATH="$DEPLOY_DIR/lib/native:${DYLD_LIBRARY_PATH:-}"
+
+          cat > /tmp/smoke.obs <<'OBJECK'
+          use Collection;
+          class Smoke {
+            function : Main(args : String[]) ~ Nil {
+              m := Map->New()<String, String>;
+              m->Insert("k", "v");
+              v := m->Find("k");
+              if(v <> Nil & v->Equals("v") & m->Size() = 1) {
+                "SMOKE_OK"->PrintLine();
+              };
+            }
+          }
+          OBJECK
+
+          "$DEPLOY_DIR/bin/obc" -src /tmp/smoke.obs -lib gen_collect -dest /tmp/smoke.obe
+          OUT=$("$DEPLOY_DIR/bin/obr" /tmp/smoke.obe)
+          echo "$OUT"
+          if [ "$OUT" != "SMOKE_OK" ]; then
+            echo "❌ The shipped toolchain did not run a trivial program correctly"
+            exit 1
+          fi
+
+          # The reported version must be the tag's. A mismatch means some step
+          # rebuilt version.h from a stale source, which also desyncs VER_NUM.
+          VERSION="${{ needs.prepare.outputs.version }}"
+          REPORTED=$("$DEPLOY_DIR/bin/obc" -version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+          if [ -n "$REPORTED" ] && [ "$REPORTED" != "$VERSION" ]; then
+            echo "❌ Shipped obc reports $REPORTED but the tag is $VERSION"
+            exit 1
+          fi
+          echo "✅ Shipped toolchain compiles, runs and reports ${REPORTED:-$VERSION}"
+
+      - name: Smoke test the shipped toolchain (Windows)
+        if: runner.os == 'Windows' && matrix.arch != 'ARM64'
+        shell: pwsh
+        run: |
+          $target = "deploy-x64"
+          $deploy = Join-Path (Get-Location) "core\release\$target"
+          $env:OBJECK_LIB_PATH = "$deploy\lib"
+          $env:PATH = "$deploy\lib\native;$deploy\bin;$env:PATH"
+
+          @'
+          use Collection;
+          class Smoke {
+            function : Main(args : String[]) ~ Nil {
+              m := Map->New()<String, String>;
+              m->Insert("k", "v");
+              v := m->Find("k");
+              if(v <> Nil & v->Equals("v") & m->Size() = 1) {
+                "SMOKE_OK"->PrintLine();
+              };
+            }
+          }
+          '@ | Set-Content -Encoding utf8 "$env:TEMP\smoke.obs"
+
+          & "$deploy\bin\obc.exe" -src "$env:TEMP\smoke.obs" -lib gen_collect -dest "$env:TEMP\smoke.obe"
+          if($LASTEXITCODE -ne 0) { Write-Error "shipped obc failed to compile a trivial program"; exit 1 }
+
+          $out = & "$deploy\bin\obr.exe" "$env:TEMP\smoke.obe"
+          Write-Output $out
+          if($out -notmatch "SMOKE_OK") {
+            Write-Error "The shipped toolchain did not run a trivial program correctly"
+            exit 1
+          }
+
+          # Windows regenerates version.h via update_version.ps1 during deploy, so
+          # this is where a drift between the .ps1 and the tag would surface.
+          $version = "${{ needs.prepare.outputs.version }}"
+          $reported = (& "$deploy\bin\obc.exe" -version 2>&1 | Select-String -Pattern '\d+\.\d+\.\d+' | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 1)
+          if($reported -and $reported -ne $version) {
+            Write-Error "Shipped obc reports $reported but the tag is $version"
+            exit 1
+          }
+          Write-Output "✅ Shipped toolchain compiles, runs and reports $(if($reported){$reported}else{$version})"
+
       # ============================================
       # Code Signing (Windows)
       # ============================================
@@ -613,11 +732,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      # The artifact carries core/shared/version.h and core/release/update_version.ps1,
+      # so its root is 'core/' -- unpack there, not into core/shared/.
       - name: Download version metadata
         uses: actions/download-artifact@v4
         with:
           name: version-metadata
-          path: core/shared/
+          path: core/
 
       # Cache a USER-OWNED archive dir; restoring root-owned /var/cache/apt/archives
       # as the unprivileged runner fails with "tar: ...deb: Permission denied".
@@ -742,11 +863,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      # The artifact carries core/shared/version.h and core/release/update_version.ps1,
+      # so its root is 'core/' -- unpack there, not into core/shared/.
       - name: Download version metadata
         uses: actions/download-artifact@v4
         with:
           name: version-metadata
-          path: core/shared/
+          path: core/
 
       - name: Install dependencies
         run: |

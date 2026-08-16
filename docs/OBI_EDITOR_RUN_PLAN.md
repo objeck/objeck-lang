@@ -1,6 +1,6 @@
 # F5 freezes obi — design for a responsive run
 
-> **IMPLEMENTED — shipped in v2026.8.0.** Option B
+> **IMPLEMENTED — shipped in v2026.8.2.** Option B
 > (subprocess) below is the design that shipped. The worker-thread attempt that
 > the two banners under this one debate was reverted (it deadlocked even a
 > trivial program: the in-process VM has main-thread affinity). F5 now compiles
