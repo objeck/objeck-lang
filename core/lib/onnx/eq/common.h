@@ -2865,8 +2865,13 @@ static std::vector<FaceDet> scrfd_decode(
       const int grid_w  = input_w / stride;
       const int anchors = 2;
 
+      // Every tensor is [N, cols], and n is the ROW count -- so all three are
+      // compared against 'expected' directly. Scaling by cols (expected * 4 for
+      // bbox, * 10 for kps) made the guard true for every stride, skipping all
+      // of them and returning zero faces at any threshold while inference ran
+      // normally.
       const int64_t expected = (int64_t)grid_h * grid_w * anchors;
-      if(sc_list[si].n < expected || bb_list[si].n < expected * 4 || kp_list[si].n < expected * 10) continue;
+      if(sc_list[si].n < expected || bb_list[si].n < expected || kp_list[si].n < expected) continue;
 
       const float* sc = sc_list[si].ptr;
       const float* bb = bb_list[si].ptr;
