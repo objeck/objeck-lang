@@ -733,6 +733,67 @@ jobs:
           core/lib/onnx/eq/test/test_scrfd_decode.cpp -o /tmp/test_scrfd_decode
         /tmp/test_scrfd_decode
 
+    # Cache the SCRFD detector so the integration check below does not refetch
+    # ~17 MB on every run. Keyed by release tag: the asset is immutable.
+    - name: Cache InsightFace SCRFD model (linux-x64)
+      if: matrix.platform == 'linux-x64'
+      uses: actions/cache@v4
+      with:
+        path: /tmp/face-assets
+        key: insightface-scrfd-det10g-v0.7
+
+    # Integration check for the ONNX face pipeline (quarantined / non-gating).
+    #
+    # The unit test above covers the decode in isolation. It cannot see the seam
+    # where the real defect lived: whether the MODEL's actual output tensors
+    # still match what the decoder expects. Face detection returned zero results
+    # for every image from v2026.5.3 through v2026.8.1 at exactly that seam.
+    #
+    # The InsightFace models (191 MB) and test photographs are excluded from the
+    # repository by .gitignore, so this step fetches what it needs. It is
+    # continue-on-error for the same reason the network tests are: an upstream
+    # outage must not redden the whole matrix, while the step's own badge and
+    # the run summary still surface a real regression.
+    - name: Run ONNX face detection integration test (non-gating)
+      if: matrix.platform == 'linux-x64'
+      continue-on-error: true
+      shell: bash
+      run: |
+        set -o pipefail
+        ASSETS=/tmp/face-assets
+        mkdir -p "$ASSETS"
+
+        # SCRFD detector only -- the 167 MB ArcFace recognizer is not needed to
+        # prove the detect path decodes real model output.
+        if [ ! -f "$ASSETS/det_10g.onnx" ]; then
+          echo "Fetching buffalo_l (SCRFD detector)..."
+          curl -fsSL --retry 3 --retry-delay 5 -o "$ASSETS/buffalo_l.zip" \
+            https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip || {
+              echo "SKIP: could not download buffalo_l.zip (upstream unavailable)"; exit 0; }
+          unzip -o -j "$ASSETS/buffalo_l.zip" '*det_10g.onnx' -d "$ASSETS" >/dev/null || {
+              echo "SKIP: buffalo_l.zip did not contain det_10g.onnx"; exit 0; }
+          rm -f "$ASSETS/buffalo_l.zip"
+        fi
+
+        # A face photograph. Public domain (US federal government work).
+        if [ ! -f "$ASSETS/face.jpg" ]; then
+          curl -fsSL --retry 3 --retry-delay 5 -o "$ASSETS/face.jpg" \
+            https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg || {
+              echo "SKIP: could not download the test photograph"; exit 0; }
+        fi
+
+        DEPLOY="$(pwd)/core/release/${{ steps.deploy-dir.outputs.dir }}"
+        export OBJECK_LIB_PATH="$DEPLOY/lib"
+        export LD_LIBRARY_PATH="$DEPLOY/lib/native:${LD_LIBRARY_PATH:-}"
+
+        cd programs/frameworks/opencv_onnx
+        "$DEPLOY/bin/obc" -src test_face_detect.obs \
+          -lib opencv,onnx,cipher,json -dest /tmp/test_face_detect.obe
+
+        # Exit non-zero on a real failure so the step badge reflects reality;
+        # continue-on-error keeps it from reddening the matrix.
+        "$DEPLOY/bin/obr" /tmp/test_face_detect.obe "$ASSETS/det_10g.onnx" "$ASSETS/face.jpg" 1
+
     # ============================================
     # Network Tests (quarantined / non-gating)
     #

@@ -1,0 +1,79 @@
+#~~
+# Integration check for the ONNX face pipeline: model load -> preprocess ->
+# tensor extraction -> SCRFD decode -> NMS.
+#
+# The decode logic itself is unit tested in core/lib/onnx/eq/test, with no model
+# required. This covers the seam that unit test cannot reach -- that the model's
+# real output tensors still match what the decoder expects. Face detection
+# returned zero results from v2026.5.3 through v2026.8.1 precisely there.
+#
+# Asserts rather than prints, so CI can gate on the exit code.
+#
+#   obr test_face_detect.obe <det_model.onnx> <image> [min_faces]
+#
+# Exit: 0 = at least min_faces detected, 1 = failure.
+~~#
+
+use System.IO.Filesystem, API.OpenCV, API.Onnx;
+
+class TestFaceDetect {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 2) {
+			"usage: test_face_detect <det_model.onnx> <image> [min_faces]"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		model := args[0];
+		image_path := args[1];
+		min_faces := 1;
+		if(args->Size() > 2) {
+			min_faces := args[2]->ToInt();
+		};
+
+		if(File->Exists(model) = false) {
+			"FAIL: model not found: {$model}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		image := Image->Load(image_path);
+		if(image = Nil | image->IsEmpty()) {
+			"FAIL: cannot load image: {$image_path}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		bytes := image->Convert(Image->Format->JPEG);
+		if(bytes = Nil | bytes->Size() = 0) {
+			"FAIL: image conversion produced no bytes"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		session := FaceSession->New(model);
+		if(session = Nil) {
+			"FAIL: could not create FaceSession"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		result := session->Detect(bytes, 0.5);
+		session->Close();
+
+		if(result = Nil) {
+			"FAIL: Detect returned Nil (model failed to load?)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		found := result->GetSize();
+		if(found < min_faces) {
+			"FAIL: detected {$found} face(s), expected at least {$min_faces}"->PrintLine();
+			"      the SCRFD decode is returning nothing -- see core/lib/onnx/eq/scrfd_decode.h"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		dets := result->GetDetections();
+		for(i := 0; i < found; i += 1;) {
+			info := dets[i]->ToString();
+			"  [{$i}] {$info}"->PrintLine();
+		};
+
+		"PASS: detected {$found} face(s), expected at least {$min_faces}"->PrintLine();
+	}
+}
