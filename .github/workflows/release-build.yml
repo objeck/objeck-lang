@@ -523,53 +523,68 @@ jobs:
       # Code Signing (Windows)
       # ============================================
 
+      # Signing is REQUIRED once a certificate is configured. This step used to warn
+      # and exit 0 on failure, so every Windows MSI from at least v2026.6.4 through
+      # v2026.8.2 shipped unsigned while signtool was running and failing, and the
+      # release notes claimed the installers were signed. A release either is signed
+      # or it is not; a green build must not mean "probably unsigned".
+      #
+      # windows-arm64 is included: it is cross-compiled on an x64 runner, but signing
+      # an installer does not require executing it.
       - name: Sign release artifacts (Windows)
-        if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+        if: runner.os == 'Windows'
         shell: pwsh
         env:
           CODESIGN_CERT_BASE64: ${{ secrets.CODESIGN_CERT_BASE64 }}
           CODESIGN_PASSWORD: ${{ secrets.CODESIGN_PASSWORD }}
         run: |
           if (-not $env:CODESIGN_CERT_BASE64 -or -not $env:CODESIGN_PASSWORD) {
-            Write-Output "Code signing secrets not configured - skipping"
+            Write-Output "Code signing secrets not configured - skipping (artifacts will be unsigned)"
             exit 0
           }
 
-          # Decode certificate
-          $certPath = "$env:RUNNER_TEMP\codesign.pfx"
+          $certPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
           [System.IO.File]::WriteAllBytes($certPath, [System.Convert]::FromBase64String($env:CODESIGN_CERT_BASE64))
 
-          # Find MSI files to sign
-          $buildDir = "$env:GITHUB_WORKSPACE\Objeck-Build"
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "Objeck-Build"
+          $failed = @()
+
+          function Invoke-Sign($file) {
+            & signtool sign /f $certPath /p $env:CODESIGN_PASSWORD /tr http://timestamp.sectigo.com /td sha256 /fd sha256 $file.FullName
+            if ($LASTEXITCODE -ne 0) { return "$($file.Name): signtool sign failed" }
+            # Prove the signature landed rather than trusting the exit code alone.
+            & signtool verify /pa $file.FullName 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { return "$($file.Name): signed but verification failed" }
+            Write-Output "Signed and verified: $($file.Name)"
+            return $null
+          }
+
           $msiFiles = Get-ChildItem -Path $buildDir -Recurse -Filter "*.msi" -ErrorAction SilentlyContinue
-
+          if (-not $msiFiles) {
+            Write-Output "::error::No MSI found to sign under $buildDir"
+            exit 1
+          }
           foreach ($msi in $msiFiles) {
-            Write-Output "Signing: $($msi.FullName)"
-            & signtool sign /f $certPath /p $env:CODESIGN_PASSWORD /tr http://timestamp.sectigo.com /td sha256 /fd sha256 $msi.FullName
-            if ($LASTEXITCODE -ne 0) {
-              Write-Warning "Signing failed for $($msi.Name) - continuing without signature"
-            } else {
-              Write-Output "Signed: $($msi.Name)"
-            }
+            $err = Invoke-Sign $msi
+            if ($err) { $failed += $err }
           }
 
-          # Sign EXE files in deploy directories
           $exeFiles = Get-ChildItem -Path $buildDir -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue |
-            Where-Object { $_.DirectoryName -like "*\bin" }
-
+            Where-Object { $_.DirectoryName.EndsWith("bin") }
           foreach ($exe in $exeFiles) {
-            Write-Output "Signing: $($exe.FullName)"
-            & signtool sign /f $certPath /p $env:CODESIGN_PASSWORD /tr http://timestamp.sectigo.com /td sha256 /fd sha256 $exe.FullName
-            if ($LASTEXITCODE -ne 0) {
-              Write-Warning "Signing failed for $($exe.Name) - continuing"
-            }
+            $err = Invoke-Sign $exe
+            if ($err) { $failed += $err }
           }
 
-          # Clean up certificate
           Remove-Item $certPath -Force
 
-          # Don't fail the build if signing fails
-          exit 0
+          if ($failed.Count -gt 0) {
+            Write-Output "::error::Code signing failed; the release would ship unsigned installers"
+            $failed | ForEach-Object { Write-Output "  - $_" }
+            exit 1
+          }
+          Write-Output "All Windows artifacts signed and verified"
+
 
       # ============================================
       # macOS .pkg Installer + Signing + Notarization
