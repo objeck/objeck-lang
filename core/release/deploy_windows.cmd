@@ -199,6 +199,26 @@ if [%1] == [arm64] (
 	copy ARM64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
 	copy ARM64\Release\obb.exe ..\..\release\%TARGET%\bin
 	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
+	REM build updater. There is no .sln for this single project, so drive msbuild
+	REM directly -- it is on PATH in a VS Developer Command Prompt and in CI via
+	REM setup-msbuild. obu.vcxproj selects $(DefaultPlatformToolset), so it needs
+	REM no toolset override on either VS2022 or VS2026.
+	msbuild ..\updater\vs\obu.vcxproj /p:Configuration=Release /p:Platform=ARM64 /t:Rebuild /v:minimal /nologo
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: obu.vcxproj build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "..\updater\vs\ARM64\Release\obu.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: obu.vcxproj build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
+	copy ..\updater\vs\ARM64\Release\obu.exe ..\..\release\%TARGET%\bin
 	cd ..\..\release
 )
 
@@ -222,6 +242,23 @@ if [%1] == [x64] (
 	copy x64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
 	copy x64\Release\obb.exe ..\..\release\%TARGET%\bin
 	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
+	REM build updater -- see the ARM64 branch above for why this uses msbuild.
+	msbuild ..\updater\vs\obu.vcxproj /p:Configuration=Release /p:Platform=x64 /t:Rebuild /v:minimal /nologo
+	if errorlevel 1 (
+		echo.
+		echo ============================================================
+		echo  ERROR: obu.vcxproj build failed - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+	if not exist "..\updater\vs\x64\Release\obu.exe" (
+		echo.
+		echo ============================================================
+		echo  ERROR: obu.vcxproj build incomplete - was the build interrupted?
+		echo ============================================================
+		exit /b 1
+	)
+	copy ..\updater\vs\x64\Release\obu.exe ..\..\release\%TARGET%\bin
 	cd ..\..\release
 )
 

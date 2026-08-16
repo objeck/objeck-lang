@@ -68,6 +68,16 @@ xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obn clean build $S
 cp xcode/build/Release/obn ../../release/deploy/lib/native/misc
 cp ../../vm/misc/config.prop ../../release/deploy/lib/native/misc
 
+# build updater
+# obu has no Xcode project, so it builds from its portable arm64 makefile. That
+# leaves it signed exactly as the Xcode-built binaries are here: in CI the
+# keychain holds Developer ID, not "Mac Development", so deploy falls back to
+# ad-hoc signing for all of them. The .pkg is signed as a whole by productsign.
+cd ../updater
+make -f make/Makefile.arm64 clean; make -f make/Makefile.arm64 -j3
+cp obu ../../release/deploy/bin
+cd ../launcher
+
 # build libraries
 cd ../../lib/crypto
 xcodebuild -project macos/xcode/objk_crypto.xcodeproj clean build $SIGN_FLAGS

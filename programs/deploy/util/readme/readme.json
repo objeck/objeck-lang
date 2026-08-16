@@ -1,9 +1,9 @@
 {
 	"version": {
-		"string": "2026.8.0",
+		"string": "2026.8.1",
 		"year": 2026
 	},
-	"title": "Full-screen editor in obi, HTTP/3 on Windows, and the obu updater",
+	"title": "Ships obu, which v2026.8.0 advertised but omitted, and documents the HeaderCheck validators",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,13 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.8.1",
+			"items": [
+				"Packaging: obu was missing from every v2026.8.0 archive. The release advertised the updater as a headline feature and delivered no binary -- the build never referenced obu and none of the three deploy scripts copied it, so bin/ held obb, obc, obd, obi and obr on every platform. CI missed it because the updater's own test builds a separate copy with test hooks, so obu was tested continuously while never being shipped. It is now installed to bin/ by all three deploy scripts, and both binary-verification gates list it",
+				"Documentation: Web.HTTP.HeaderCheck shipped with only IsValidRequestTarget documented. IsValidName and IsValidValue -- the validators behind every AddHeader call -- had no doc comment, and the API index records only documented members, so hover and completion showed nothing for them. Flatten's doc block was also attached to the wrong function. All four are now documented"
+			]
+		},
 		{
 			"version": "v2026.8.0",
 			"items": [

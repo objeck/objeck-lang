@@ -322,15 +322,37 @@ gh release view "v$VERSION" --json assets --jq '.assets[].name'
 If Windows MSIs are missing, the workflow secret `WINDOWS_CERT_BASE64`/`WINDOWS_CERT_PASSWORD` is not set — tell the user and abort.
 If macOS `.pkg` is missing, the Apple signing secrets are not set — tell the user and abort.
 
-**VM binary sanity** — prior releases (v2026.5.0, v2026.5.1) shipped without the `obr` VM executable because a CI dependency was missing. Spot-check the Linux x64 archive to confirm `obr` is present:
+**Shipped binary sanity** — check the archives for the FULL expected binary set, not just one.
+Two separate releases were shipped broken by this check being too narrow:
+
+- v2026.5.0 / v2026.5.1 shipped with no `obr` VM executable (a missing CI dependency).
+- v2026.8.0 shipped with no `obu` at all, on every platform, while the release notes
+  advertised `obu check` / `update` / `rollback` as a headline feature. This step only ever
+  grepped for `obr`, so nothing turned red.
+
+Assert every binary, on every POSIX archive — a gap can be platform-specific:
 
 ```bash
-gh release download "v$VERSION" --pattern "objeck-linux-x64_*.tgz" -D /tmp/check
-tar -tzf /tmp/check/objeck-linux-x64_*.tgz | grep '/bin/obr$'
-# must print a match; if empty, the VM is missing — abort and investigate CI
+gh release download "v$VERSION" --pattern "objeck-*.tgz" -D /tmp/check
+for tgz in /tmp/check/objeck-*.tgz; do
+  echo "== $tgz"
+  for bin in obc obr obd obi obb obu; do
+    tar -tzf "$tgz" | grep -q "/bin/$bin\$" || echo "  MISSING: $bin"
+  done
+done
+# any MISSING line = the release is broken
 ```
 
-If `obr` is absent from the archive, the release is broken. Tell the user; do not publish. The correct fix is to identify the missing CI dependency, add it to `release-build.yml` on master, delete the tag, and re-release.
+Keep this list in sync with `release-build.yml`'s "Verify required binaries" steps (`REQUIRED=`
+for POSIX, `$required` for Windows). Those run pre-tag against `deploy/bin` and are the real
+gate; this step is the post-hoc confirmation that what was staged actually reached the archive.
+
+If any binary is absent, the release is broken. Tell the user; do not publish. The correct fix is
+to add the missing build/copy to the deploy script (`deploy_posix.sh`, `deploy_macos_arm64.sh`,
+`deploy_windows.cmd`) and its name to both verify lists on master, then delete the tag and
+re-release. **A tool being built and tested in CI does not mean it is packaged** — `obu` was
+covered by its own CI test the whole time it was missing from every archive, because that test
+builds its own copy.
 
 ### 10. Update the GitHub release body
 
@@ -409,7 +431,7 @@ Print a single consolidated summary:
 - **Release build**: run #<RUN_ID>, duration, conclusion
 - **Release publish**: run #<PUB_ID>, duration, conclusion
 - **Signed installers verified**: Windows x64 MSI ✓, Windows ARM64 MSI ✓, macOS ARM64 .pkg ✓
-- **VM binary verified**: `obr` present in Linux x64 archive ✓
+- **Shipped binaries verified**: `obc obr obd obi obb obu` present in every POSIX archive ✓
 - **LSP**: built in-cloud from `tools/lsp`; `.vsix` version set from the tag; `objk_apis.json` current ✓
 - **Playground**: deployed to $PLAYGROUND_HOST, health=OK, version=v<VERSION>
 - **Sourceforge upload**: status from release-publish.yml

@@ -358,7 +358,7 @@ jobs:
         run: |
           $target = if ("${{ matrix.arch }}" -eq "ARM64") { "deploy-arm64" } else { "deploy-x64" }
           $binDir = "core\release\$target\bin"
-          $required = @("obr.exe", "obc.exe", "obd.exe", "obi.exe", "obb.exe")
+          $required = @("obr.exe", "obc.exe", "obd.exe", "obi.exe", "obb.exe", "obu.exe")
           $missing = @()
           foreach ($bin in $required) {
             if (-not (Test-Path "$binDir\$bin")) { $missing += $bin }
@@ -380,7 +380,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           DEPLOY_DIR="core/release/deploy"
-          REQUIRED="obr obc obd obi obb"
+          REQUIRED="obr obc obd obi obb obu"
           MISSING=""
           for bin in $REQUIRED; do
             [ -f "$DEPLOY_DIR/bin/$bin" ] || MISSING="$MISSING $bin"

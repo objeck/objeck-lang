@@ -10179,8 +10179,17 @@
 		"Web.HTTP.HeaderCheck": {
 			"description": "Validates an HTTP request header name\/value pair. Header content reaches the wire verbatim: HTTP\/1.1 and HTTPS serialize the whole request as text here in Objeck (\"name: value\" + CRLF), so a CR or LF in a value ends the field and starts a new one -- request splitting, not a parse error. HTTP\/2 and HTTP\/3 hand off to native code that performs no validation of its own on submit. Octets per RFC 9110 5.1\/5.5, tightened by RFC 9113 8.2.1. Rejects CR, LF, NUL, DEL and every other C0 control (SP and HTAB are legal), leading or trailing whitespace, an empty name, and any name beginning with ':' -- HTTP\/2 and HTTP\/3 build the pseudo-headers themselves and a duplicate is malformed (RFC 9114 4.3.1), the classic request-smuggling primitive.",
 			"functions": {
+				"Flatten": {
+					"descriptions": ["**Flattens request headers into a String[] of alternating key\/value, the shape the HTTP\/2 and HTTP\/3 traps consume. Lives here rather than in each client because both need it, and because lang.obs -- which declares the trap-facing method -- compiles with -strict and no libraries, so it cannot name Hash<K,V> at all. Invalid pairs are dropped rather than emitted, and the array is sized to the surviving pairs so there are no trailing Nil holes: the native walker reads exactly Size() elements and must never meet one. AddHeader already refuses these, so this is defence in depth against any other insertion path. The result length is therefore always even.**\n\n```function : Flatten(headers:Hash&lt;String,String&gt;) ~ String[]```\n\n\n\nheaders: Hash&lt;String,String&gt;\n\nreturn: String[]"]
+				},
+				"IsValidName": {
+					"descriptions": ["**Validates an HTTP header name. Accepts the RFC 9110 5.1 token characters, lower-case only -- callers pass name->ToLower(), because HTTP\/2 and HTTP\/3 require lower-case field names (RFC 9113 8.2.1) and an upper-case letter here is malformed. A name beginning with ':' is refused: HTTP\/2 and HTTP\/3 build the pseudo-headers themselves, and a caller-supplied duplicate is the classic request-smuggling primitive (RFC 9114 4.3.1).**\n\n```function : IsValidName(n:String) ~ Bool```\n\n\n\nn: String\n\nreturn: Bool"]
+				},
 				"IsValidRequestTarget": {
 					"descriptions": ["**Validates a request target (path) or authority (host) for the HTTP\/1.1 request line. These are appended verbatim into the request line, so a CR, LF or space splits the request itself -- a strictly worse version of header injection, and reachable from a Url, which is the input most likely to come from untrusted data. Url->New does not sanitize. Rejects every control character (RFC 9110 forbids CTL in a request target) plus space, which would terminate the target early.**\n\n```function : IsValidRequestTarget(s:String) ~ Bool```\n\n\n\ns: String\n\nreturn: Bool"]
+				},
+				"IsValidValue": {
+					"descriptions": ["**Validates an HTTP header value. Rejects DEL and every C0 control except HTAB -- so CR, LF and NUL are refused, which is the request-splitting primitive: a CR or LF in a value ends the field and starts a new one. SP and HTAB are legal per RFC 9110 5.5, but not leading or trailing, since a recipient strips them and two values differing only in surrounding whitespace would compare equal.**\n\n```function : IsValidValue(v:String) ~ Bool```\n\n\n\nv: String\n\nreturn: Bool"]
 				}
 			}
 		},

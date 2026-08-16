@@ -1,3 +1,11 @@
+v2026.8.1 (August 16, 2026)
+===
+Ships obu, which v2026.8.0 advertised but omitted from every archive, and documents the HeaderCheck validators.
+
+v2026.8.1
+- Packaging: obu was missing from every v2026.8.0 archive. The release advertised the updater as a headline feature and delivered no binary -- release-build.yml never referenced obu, and none of the three deploy scripts built or copied it, so bin/ held obb, obc, obd, obi and obr on Windows, Linux x64/ARM64 and macOS alike. The source, its POSIX makefiles and its .vcxproj had existed the whole time; only the packaging was absent. CI missed it because ci-build.yml exercises obu only through test_update.sh, which builds its own copy with test hooks -- so the updater was tested continuously while never being shipped. obu is now built and installed to bin/ by all three deploy scripts, and both "Verify required binaries" gates list it, so a future omission fails the build before a tag is pushed
+- Documentation: Web.HTTP.HeaderCheck shipped in v2026.8.0 with only IsValidRequestTarget documented. IsValidName and IsValidValue -- the two functions guarding every AddHeader call -- had no doc comment, and the API index records only documented members, so LSP hover and completion showed nothing for the security fix's primary entry points. Flatten's doc block also sat above IsValidRequestTarget rather than above Flatten, documenting the wrong function. All four are now documented and correctly bound
+
 v2026.8.0 (August 15, 2026)
 ===
 Full-screen editor in obi, HTTP/3 on Windows, the obu updater, five HTTP request-injection fixes, nil-safe operators, and structured variable inspection in the debugger.

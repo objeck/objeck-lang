@@ -12,7 +12,7 @@
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.8.0-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.8.1-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -36,8 +36,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.8.0/objeck-linux-x64_2026.8.0.tgz
-tar xzf objeck-linux-x64_2026.8.0.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.8.1/objeck-linux-x64_2026.8.1.tgz
+tar xzf objeck-linux-x64_2026.8.1.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -57,7 +57,11 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.8.0 ✅
+### v2026.8.1 ✅
+  * **`obu` now actually ships** — v2026.8.0 advertised the updater as a headline feature and shipped no binary on any platform. The build never packaged it, and CI missed it because the updater's own test builds a separate copy with test hooks — so it was tested continuously while never being delivered. All three deploy scripts now install it to `bin/`, and the release build's binary-verification gates list it, so a future omission fails before a tag is pushed
+  * **`HeaderCheck` is documented** — the validators behind every `AddHeader` call (`IsValidName`, `IsValidValue`) had no doc comments, so editor hover and completion showed nothing for the security fix's main entry points; `Flatten`'s doc block was also attached to the wrong function
+
+### v2026.8.0
   * **Full-screen editor in `obi`** — `/e` opens raw-mode terminal editing over the REPL buffer: syntax coloring driven by the compiler's own scanner, damage-diffed rendering, CJK/tab-correct widths, undo/redo with coalesced typing, Shift-selection and a clipboard, plus an opt-in vi profile (F2). **F5 compiles and runs the buffer as a subprocess**, streaming its output into a pane that stays cancellable with Esc, and **F8 walks the cursor through compile errors**. Header-only — no build-system changes on any platform
   * **HTTP/3 on Windows** — `Http3Client` now works on Windows 11 / Server 2022 and later, backed by WinHTTP over MsQuic. It had shipped documented-and-dead: the trap handlers compile unconditionally, so the API was present and every request simply failed. WinHTTP treats HTTP/3 as a *preference*, so every request asserts the protocol actually used and **fails rather than silently downgrading**. No vendored QUIC library, no second TLS backend, no new DLL to deploy
   * **Five HTTP request-injection fixes** — the most severe needs only a URL: `Url->New` does not sanitize, and the path and host were appended verbatim into the HTTP/1.1 request line, so a CR/LF split the request line itself. Caller-supplied header values and content types were injectable the same way across HTTP/1.1, HTTPS, HTTP/2 and HTTP/3. A new `Web.HTTP.HeaderCheck` validates names, values and request targets per RFC 9110/9113 at every serialization site. Separately, HTTP/3 connection IDs could be **uninitialised stack memory** when the CSPRNG failed, since the `gnutls_rnd` return value was ignored — a memory disclosure in the cleartext QUIC Initial header
@@ -92,7 +96,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.8.0](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.8.1](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

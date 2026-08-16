@@ -24,6 +24,17 @@ bundle Web.HTTP {
 	malformed (RFC 9114 4.3.1), the classic request-smuggling primitive.
 	~#
 	class HeaderCheck {
+		#~
+		Validates an HTTP header value.
+
+		Rejects DEL and every C0 control except HTAB -- so CR, LF and NUL are
+		refused, which is the request-splitting primitive: a CR or LF in a value
+		ends the field and starts a new one. SP and HTAB are legal per RFC 9110
+		5.5, but not leading or trailing, since a recipient strips them and two
+		values differing only in surrounding whitespace would compare equal.
+		@param v header value, may be Nil
+		@return true when safe to serialize into a header field
+		~#
 		function : IsValidValue(v : String) ~ Bool {
 			if(v = Nil) { return false; };
 			each(i : v) {
@@ -38,6 +49,18 @@ bundle Web.HTTP {
 			return true;
 		}
 
+		#~
+		Validates an HTTP header name.
+
+		Accepts the RFC 9110 5.1 token characters, lower-case only -- callers
+		pass name->ToLower(), because HTTP/2 and HTTP/3 require lower-case field
+		names (RFC 9113 8.2.1) and an upper-case letter here is malformed. A name
+		beginning with ':' is refused: HTTP/2 and HTTP/3 build the pseudo-headers
+		themselves, and a caller-supplied duplicate is the classic
+		request-smuggling primitive (RFC 9114 4.3.1).
+		@param n header name, may be Nil
+		@return true when safe to serialize as a field name
+		~#
 		function : IsValidName(n : String) ~ Bool {
 			if(n = Nil | n->Size() = 0) { return false; };
 			if(n->Get(0) = ':') { return false; };
@@ -52,22 +75,6 @@ bundle Web.HTTP {
 			return true;
 		}
 
-		#~
-		Flattens request headers into a String[] of alternating key/value, the
-		shape the HTTP/2 and HTTP/3 traps consume.
-
-		Lives here rather than in each client because both need it, and because
-		lang.obs -- which declares the trap-facing method -- compiles with
-		-strict and no libraries, so it cannot name Hash<K,V> at all.
-
-		Invalid pairs are dropped rather than emitted, and the array is sized to
-		the surviving pairs so there are no trailing Nil holes: the native walker
-		reads exactly Size() elements and must never meet one. AddHeader already
-		refuses these, so this is defence in depth against any other insertion
-		path. The result length is therefore always even.
-		@param headers header map, may be Nil
-		@return alternating key/value array, never Nil
-		~#
 		#~
 		Validates a request target (path) or authority (host) for the HTTP/1.1
 		request line.
@@ -91,6 +98,22 @@ bundle Web.HTTP {
 			return true;
 		}
 
+		#~
+		Flattens request headers into a String[] of alternating key/value, the
+		shape the HTTP/2 and HTTP/3 traps consume.
+
+		Lives here rather than in each client because both need it, and because
+		lang.obs -- which declares the trap-facing method -- compiles with
+		-strict and no libraries, so it cannot name Hash<K,V> at all.
+
+		Invalid pairs are dropped rather than emitted, and the array is sized to
+		the surviving pairs so there are no trailing Nil holes: the native walker
+		reads exactly Size() elements and must never meet one. AddHeader already
+		refuses these, so this is defence in depth against any other insertion
+		path. The result length is therefore always even.
+		@param headers header map, may be Nil
+		@return alternating key/value array, never Nil
+		~#
 		function : Flatten(headers : Hash<String, String>) ~ String[] {
 			if(headers = Nil) { return String->New[0]; };
 

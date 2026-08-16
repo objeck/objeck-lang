@@ -123,6 +123,18 @@ fi
 cp obn ../../release/deploy/lib/native/misc/
 
 cp ../../vm/misc/config.prop ../../release/deploy/lib/native/misc
+
+# build updater
+# obu ships in bin/ like every other user-facing tool; without this the release
+# advertises 'obu check/update/rollback' and delivers no binary.
+cd ../updater
+if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
+	make -f make/Makefile.arm64 clean; make -f make/Makefile.arm64 -j3
+else
+	make -f make/Makefile.amd64 clean; make -f make/Makefile.amd64 -j3
+fi
+cp obu ../../release/deploy/bin
+
 cd ../../release
 
 # copy docs

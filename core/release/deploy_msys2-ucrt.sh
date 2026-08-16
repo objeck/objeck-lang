@@ -90,6 +90,15 @@ make -f make/Makefile.obn.msys2-ucrt.amd64 clean; make -f make/Makefile.obn.msys
 cp obn.exe ../../release/deploy-msys2-ucrt/lib/native/misc
 
 cp ../../vm/misc/config.prop ../../release/deploy-msys2-ucrt/lib/native/misc
+
+# build updater
+# obu needs no msys2-specific makefile: it links no zlib and carries no windres
+# resource, which is all the msys2 obb/obn variants add. MinGW appends .exe to
+# the makefile's EXE=obu on its own, exactly as it does for obb.
+cd ../updater
+make -f make/Makefile.amd64 clean; make -f make/Makefile.amd64 -j3
+cp obu.exe ../../release/deploy-msys2-ucrt/bin
+
 cd ../../release
 
 # copy docs

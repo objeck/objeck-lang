@@ -2,6 +2,12 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.8.1] - 2026-08-16
+
+### Bug Fixes
+- **`obu` was missing from every release archive**: v2026.8.0 shipped the updater as a headline feature and delivered no binary. `release-build.yml` never referenced `obu`, and none of the three deploy scripts built or copied it, so `bin/` held `obb obc obd obi obr` on Windows, Linux x64/ARM64 and macOS alike. The source, its POSIX makefiles and its `.vcxproj` had existed the whole time &mdash; only the packaging was absent. CI did not catch it because `ci-build.yml` exercises `obu` solely through `core/utils/updater/test_update.sh`, which **builds its own copy with test hooks**: the updater was tested continuously while never being shipped. `obu` is now built and installed to `bin/` by `deploy_posix.sh`, `deploy_macos_arm64.sh` and `deploy_windows.cmd` (x64 and ARM64), and both "Verify required binaries" gates in `release-build.yml` now list it, so a future omission fails the build before a tag is ever pushed.
+- **`Web.HTTP.HeaderCheck` documentation was largely invisible**: the class landed in v2026.8.0 with only `IsValidRequestTarget` documented. `IsValidName` and `IsValidValue` &mdash; the two functions guarding every `AddHeader` call &mdash; carried no doc comment at all, and the API index only records documented members, so LSP hover and completion showed nothing for the security fix's primary entry points. Separately, `Flatten`'s doc block sat above `IsValidRequestTarget` rather than above `Flatten`, so it documented the wrong function and left `Flatten` undocumented. All four functions are now documented and correctly bound; the index goes from 1 to 4 entries for the class.
+
 ## [v2026.8.0] - 2026-08-15
 
 ### New Features
