@@ -1,5 +1,13 @@
 #!/bin/sh
 
+# A CLANG64 shell has no g++ at all -- only clang++ and c++. Every makefile here
+# builds through a bare $(CXX), which make defaults to g++, so without this the
+# compiler, VM, debugger and repl all die with 'g++: No such file or directory'
+# (Error 127). It must be EXPORTED: core/lib/onnx/eq/build.sh runs as a child
+# process and reads CXX=${CXX:-g++}, so a plain assignment would leave it on g++.
+# The library build_msys2-clang.sh scripts hardcode clang++ and are unaffected.
+export CXX=clang++
+
 # setup directories
 rm -rf deploy-msys2-clang
 mkdir deploy-msys2-clang
@@ -73,7 +81,7 @@ cd ../diags
 cp diags.dll ../../release/deploy-msys2-clang/lib/native/libobjk_diags.dll
 
 cd ../onnx/eq
-CXX=clang++ # The vendored libonnxruntime here is a CPU-ONLY build -- it reports only
+# The vendored libonnxruntime here is a CPU-ONLY build -- it reports only
 # CPUExecutionProvider despite living under eq/cuda/lib. Building with
 # ONNX_EP_CUDA therefore made every session creation fail, and because the
 # catch returned without setting the session handle it surfaced as a silently
