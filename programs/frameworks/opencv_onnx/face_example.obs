@@ -1,0 +1,53 @@
+use System.IO.Filesystem, API.OpenCV, API.Onnx;
+
+class FaceExample {
+	function : Main(args : String[]) ~ Nil {
+		det_model := "./data/models/det_10g.onnx";     # SCRFD detector
+		rec_model := "./data/models/w600k_r50.onnx";   # ArcFace recognizer
+
+		# --- 1. detect faces in an image -------------------------------
+		session := FaceSession->New(det_model, rec_model);
+
+		image := Image->Load("./data/faces/group.jpg");
+		bytes := image->Convert(Image->Format->JPEG);
+
+		found := session->Detect(bytes, 0.5);          # 0.5 = confidence threshold
+		count := found->GetSize();
+		"Detected {$count} face(s)"->PrintLine();
+
+		faces := found->GetDetections();
+		for(i := 0; i < count; i += 1;) {
+			score := faces[i]->GetScore();
+			"  face {$i}: score={$score}"->PrintLine();
+		};
+
+		# --- 2. recognise: turn a face into a 512-d embedding ----------
+		a1 := Embed(session, "./data/faces/person_a_1.jpg");
+		a2 := Embed(session, "./data/faces/person_a_2.jpg");
+		b1 := Embed(session, "./data/faces/person_b_1.jpg");
+
+		if(a1 <> Nil & a2 <> Nil & b1 <> Nil) {
+			dim := a1->Size();
+			"\nEmbedding dimension: {$dim}"->PrintLine();
+
+			# cosine similarity: ~1.0 = same person, ~0.0 = different
+			same := FaceSession->Compare(a1, a2);
+			diff := FaceSession->Compare(a1, b1);
+			"same person      : {$same}"->PrintLine();
+			"different people : {$diff}"->PrintLine();
+		};
+
+		session->Close();
+	}
+
+	# Returns the 512-d embedding of the first face found, or Nil.
+	function : Embed(session : FaceSession, path : String) ~ Float[] {
+		image := Image->Load(path);
+		if(image = Nil | image->IsEmpty()) { return Nil; };
+
+		result := session->Recognize(image->Convert(Image->Format->JPEG), 0.5);
+		if(result = Nil | result->GetSize() = 0) { return Nil; };
+
+		return result->GetResults()[0]->GetEmbedding();
+	}
+}
