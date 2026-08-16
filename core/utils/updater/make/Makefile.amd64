@@ -1,9 +1,23 @@
-# ci-build.yml exports CXX as an EMPTY string on every non-Linux runner (it only
-# sets 'ccache g++' for Linux). An empty-but-defined variable defeats both make's
-# built-in default and '?=', so the recipe would start with '-O3'; make then reads
-# that leading '-' as the ignore-errors prefix, strips it, tries to exec 'O3', and
-# SILENTLY ignores the failure -- yielding no binary. Fall back explicitly.
+# Use CXX only when it names a compiler that actually exists; otherwise fall back
+# to c++. Two real failures make this necessary, and '?=' fixes neither:
+#
+#   - ci-build.yml exports CXX as an EMPTY string on every non-Linux runner (it
+#     sets 'ccache g++' for Linux alone). Empty-but-defined beats make's built-in
+#     default, so the recipe began with '-O3'; make read that leading '-' as its
+#     ignore-errors prefix, stripped it, tried to exec 'O3' and SILENTLY swallowed
+#     the failure -- yielding no binary. This broke the macOS release build.
+#   - In an MSYS2 CLANG64 shell there is no g++ at all, only clang++/c++. CXX is
+#     non-empty there (make defaults it to g++), so an emptiness test passes and
+#     the build then dies with 'g++: No such file or directory'.
+#
+# Both tests are required. Emptiness must be checked FIRST and separately: with no
+# operand 'command -v' exits 0 in dash, so the existence test alone reports success
+# for an empty CXX and silently reintroduces the macOS failure.
+# firstword keeps a compound value like 'ccache g++' working: it tests ccache.
 ifeq ($(strip $(CXX)),)
+CXX := c++
+endif
+ifeq ($(shell command -v $(firstword $(CXX)) >/dev/null 2>&1 && echo ok),)
 CXX := c++
 endif
 
