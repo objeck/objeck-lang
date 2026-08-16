@@ -740,7 +740,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /tmp/face-assets
-        key: insightface-scrfd-det10g-v0.7
+        # Word-like on purpose: a token such as "det10g" mixes letters and
+        # digits enough for gitleaks' generic-api-key rule to score it as a
+        # secret and fail the Secret Scan on a plain cache key.
+        key: insightface-scrfd-detector-v0.7
 
     # Integration check for the ONNX face pipeline (quarantined / non-gating).
     #
