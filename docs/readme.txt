@@ -1,4 +1,4 @@
-v2026.8.0 (in development -- not yet released)
+v2026.8.0 (August 15, 2026)
 ===
 Full-screen editor in obi, HTTP/3 on Windows, the obu updater, five HTTP request-injection fixes, nil-safe operators, and structured variable inspection in the debugger.
 

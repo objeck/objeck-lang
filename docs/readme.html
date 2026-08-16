@@ -61,7 +61,7 @@
   <main style="text-align: left;">
    <p>Full-screen editor in <code>obi</code>, HTTP/3 on Windows, the <code>obu</code> updater, five HTTP request-injection fixes, nil-safe operators, and structured variable inspection in the debugger.</p>
 
-   <h3>v2026.8.0 <span style="font-size: 0.75em; font-weight: normal; color: #9ca3af;">(in development &mdash; not yet released)</span></h3>
+   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.8.0" style="color: inherit; text-decoration: none;">v2026.8.0</a></u></h3>
    <ul>
         <li><strong>Full-screen editor in <code>obi</code></strong> &mdash; <code>/e</code> opens raw-mode terminal editing over the REPL buffer: syntax coloring driven by the compiler's own scanner, damage-diffed rendering, CJK/tab-correct widths, undo/redo with coalesced typing, Shift-selection and a clipboard, plus an opt-in vi profile (F2). <strong>F5 compiles and runs the buffer as a subprocess</strong>, streaming its output into a pane that Esc can cancel, and <strong>F8 walks the cursor through compile errors</strong>. Header-only, with no build-system changes on any platform</li>
         <li><strong>HTTP/3 on Windows</strong> &mdash; <code>Http3Client</code> now works on Windows 11 / Server 2022 and later, backed by WinHTTP over MsQuic. It had shipped documented-and-dead: the trap handlers compile unconditionally, so the API was present and every request simply failed. WinHTTP treats HTTP/3 as a <em>preference</em>, so every request asserts the protocol actually used and <strong>fails rather than silently downgrading</strong>. No vendored QUIC library, no second TLS backend, no new DLL to deploy</li>
@@ -90,7 +90,7 @@
        <li><strong>Editor tooling is tested in CI</strong> &mdash; the formatter, language server and VS Code extension now run on every push</li>
    </ul>
 
-   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.4" style="color: inherit; text-decoration: none;">v2026.6.4</a></u></h3>
+   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.6.4" style="color: inherit; text-decoration: none;">v2026.6.4</a></h3>
     <ul>
         <li><strong>Multithreaded GC stability fix</strong> &mdash; fixed an intermittent crash (<code>0xC0000005</code>) in the generational minor garbage collector during thread startup: a thread being spawned held its <code>self</code> and argument as untracked raw pointers, so a moving collection during the spawn handoff could relocate the object and leave the new thread a stale reference. These are now tracked and relocated across collection. Surfaced only under heavy multithreaded churn</li>
     </ul>

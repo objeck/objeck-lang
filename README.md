@@ -12,7 +12,7 @@
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/codeql.yml/badge.svg" alt="GitHub CodeQL"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.6.4-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.8.0-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -36,8 +36,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.6.4/objeck-linux-x64_2026.6.4.tgz
-tar xzf objeck-linux-x64_2026.6.4.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.8.0/objeck-linux-x64_2026.8.0.tgz
+tar xzf objeck-linux-x64_2026.8.0.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -57,7 +57,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.8.0 (in development)
+### v2026.8.0 ✅
   * **Full-screen editor in `obi`** — `/e` opens raw-mode terminal editing over the REPL buffer: syntax coloring driven by the compiler's own scanner, damage-diffed rendering, CJK/tab-correct widths, undo/redo with coalesced typing, Shift-selection and a clipboard, plus an opt-in vi profile (F2). **F5 compiles and runs the buffer as a subprocess**, streaming its output into a pane that stays cancellable with Esc, and **F8 walks the cursor through compile errors**. Header-only — no build-system changes on any platform
   * **HTTP/3 on Windows** — `Http3Client` now works on Windows 11 / Server 2022 and later, backed by WinHTTP over MsQuic. It had shipped documented-and-dead: the trap handlers compile unconditionally, so the API was present and every request simply failed. WinHTTP treats HTTP/3 as a *preference*, so every request asserts the protocol actually used and **fails rather than silently downgrading**. No vendored QUIC library, no second TLS backend, no new DLL to deploy
   * **Five HTTP request-injection fixes** — the most severe needs only a URL: `Url->New` does not sanitize, and the path and host were appended verbatim into the HTTP/1.1 request line, so a CR/LF split the request line itself. Caller-supplied header values and content types were injectable the same way across HTTP/1.1, HTTPS, HTTP/2 and HTTP/3. A new `Web.HTTP.HeaderCheck` validates names, values and request targets per RFC 9110/9113 at every serialization site. Separately, HTTP/3 connection IDs could be **uninitialised stack memory** when the CSPRNG failed, since the `gnutls_rnd` return value was ignored — a memory disclosure in the cleartext QUIC Initial header
@@ -80,7 +80,7 @@ obc hello && obr hello
   * **`runtime.feature.http2` / `runtime.feature.http3`** — report which protocol engines were actually compiled in, so a caller can tell *not supported* from *the network failed*. Because the traps compile unconditionally, "the API exists" proved nothing — which is how the Windows HTTP/3 gap went unnoticed. Relatedly, `obd` had shipped with HTTP/2 and HTTP/3 compiled out, and HTTP/3 was silently unavailable on Linux ARM64
   * **Editor tooling is tested in CI** — the formatter, language server and VS Code extension run on every push, and the six standalone DAP suites (~78 assertions) now run on POSIX rather than Windows only; their first Linux/macOS run immediately caught a debugger String-rendering bug. Two suites had never executed at all: the formatter's runner pointed outside the repository, and the tooling scripts appended the build tree to `PATH` so a system-wide install shadowed it
 
-### v2026.6.4 ✅
+### v2026.6.4
   * **Multithreaded GC stability fix** — fixed an intermittent crash (`0xC0000005`) in the generational minor garbage collector during thread startup: a thread being spawned held its `self` and argument as untracked raw pointers, so a moving collection during the spawn handoff could relocate the object and leave the new thread a stale reference. These are now tracked and relocated across collection. Surfaced only under heavy multithreaded churn
 
 ### v2026.6.3
@@ -92,7 +92,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.6.4](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.8.0](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
