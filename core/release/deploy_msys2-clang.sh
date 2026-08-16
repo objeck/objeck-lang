@@ -98,6 +98,12 @@ cp ../../vm/misc/config.prop ../../release/deploy-msys2-clang/lib/native/misc
 cd ../updater
 make -f make/Makefile.amd64 clean; make -f make/Makefile.amd64 -j3
 cp obu.exe ../../release/deploy-msys2-clang/bin
+# No 'set -e' here, so a failed make or cp would silently yield a tree with no
+# obu -- how v2026.8.0 shipped without it. Fail loudly instead.
+if [ ! -f ../../release/deploy-msys2-clang/bin/obu.exe ]; then
+	echo "ERROR: obu was not built or copied - aborting deploy"
+	exit 1
+fi
 
 cd ../../release
 

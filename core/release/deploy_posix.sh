@@ -134,6 +134,13 @@ else
 	make -f make/Makefile.amd64 clean; make -f make/Makefile.amd64 -j3
 fi
 cp obu ../../release/deploy/bin
+# This script does not use 'set -e', so a failed make or cp would otherwise be
+# ignored and produce a tree with no obu -- which is exactly how v2026.8.0
+# shipped without it. Fail loudly instead.
+if [ ! -f ../../release/deploy/bin/obu ]; then
+	echo "ERROR: obu was not built or copied - aborting deploy"
+	exit 1
+fi
 
 cd ../../release
 
