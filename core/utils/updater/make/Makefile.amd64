@@ -1,3 +1,12 @@
+# ci-build.yml exports CXX as an EMPTY string on every non-Linux runner (it only
+# sets 'ccache g++' for Linux). An empty-but-defined variable defeats both make's
+# built-in default and '?=', so the recipe would start with '-O3'; make then reads
+# that leading '-' as the ignore-errors prefix, strips it, tries to exec 'O3', and
+# SILENTLY ignores the failure -- yielding no binary. Fall back explicitly.
+ifeq ($(strip $(CXX)),)
+CXX := c++
+endif
+
 ARGS=-O3 -Wall -Wno-unused-function -std=c++17 -mavx2
 
 SRC=obu.o
