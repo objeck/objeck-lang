@@ -1,0 +1,121 @@
+#~~
+# Subscripting the result of a method call: 'GetItems()[0]->Name()'.
+#
+# This was never implemented, and the grammar swallowed the attempt: '[0]' after
+# a call parsed as a fresh static-array literal, so the call was evaluated and
+# DISCARDED. 'GetArr()[0]->Size()' silently returned 1 -- the size of the
+# literal [0] -- and 'GetArr()[0]->PrintLine()' printed "[0]". With an
+# object-typed array the same root cause surfaced instead as a compile error,
+# "Undefined function/method call".
+#
+# The silent-wrong-answer half is why this is a regression test rather than a
+# compile check: a wrong value is far harder to notice than a build failure.
+~~#
+
+class Item {
+	@name : String;
+	New(name : String) { @name := name; }
+	method : public : GetName() ~ String { return @name; }
+}
+
+class Holder {
+	@items : Item[];
+	New() {
+		@items := Item->New[2];
+		@items[0] := Item->New("first");
+		@items[1] := Item->New("second");
+	}
+	method : public : GetItems() ~ Item[] { return @items; }
+}
+
+class IndexedCallResult {
+	@pass : Int;
+	@fail : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := IndexedCallResult->New();
+		t->Run();
+	}
+
+	New() { @pass := 0; @fail := 0; }
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			@pass += 1;
+			"  [PASS] {$what}"->PrintLine();
+		}
+		else {
+			@fail += 1;
+			"  [FAIL] {$what}: got '{$got}', want '{$want}'"->PrintLine();
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		Check(what, got->ToString(), want->ToString());
+	}
+
+	method : Run() ~ Nil {
+		"=== Indexed call result ==="->PrintLine();
+
+		# string array: element method, not the array's own method
+		CheckInt("String[] element Size()", GetStrs()[0]->Size(), 5);
+		CheckInt("String[] second element", GetStrs()[1]->Size(), 4);
+		Check("String[] element value", GetStrs()[0], "alpha");
+
+		# the array's own Size() must still be reachable when NOT indexed
+		CheckInt("un-indexed call keeps array Size()", GetStrs()->Size(), 2);
+
+		# object array: this shape used to fail to compile outright
+		h := Holder->New();
+		Check("object element via instance call", h->GetItems()[0]->GetName(), "first");
+		Check("object element, second", h->GetItems()[1]->GetName(), "second");
+		Check("object element via static call", MakeItems()[0]->GetName(), "first");
+
+		# primitive element types take different load instructions
+		CheckInt("Int[] element", GetInts()[2], 30);
+		Check("Float[] element", GetFloats()[1]->ToString(), 2.5->ToString());
+		CheckInt("Byte[] element", GetBytes()[1]->ToInt(), 20);
+
+		# computed and variable indices must be evaluated, not ignored
+		i := 1;
+		Check("variable index", GetStrs()[i], "beta");
+		Check("computed index", GetStrs()[i - 1], "alpha");
+
+		# chaining continues past the subscript
+		Check("double chain", GetStrs()[0]->ToUpper(), "ALPHA");
+
+		# usable as an ordinary operand
+        CheckInt("element in arithmetic", GetInts()[0] + GetInts()[1], 30);
+
+		# a static array literal must still parse as a literal
+		lit := [7, 8, 9];
+		CheckInt("array literal still works", lit[1], 8);
+		CheckInt("array literal Size()", lit->Size(), 3);
+
+		"\n  Results: {$@pass} passed, {$@fail} failed"->PrintLine();
+		if(@fail = 0) {
+			"PASSED"->PrintLine();
+		}
+		else {
+			"FAILED"->PrintLine();
+		};
+	}
+
+	function : GetStrs() ~ String[] { return ["alpha", "beta"]; }
+	function : GetInts() ~ Int[] { return [10, 20, 30]; }
+	function : GetFloats() ~ Float[] { return [1.5, 2.5]; }
+	function : GetBytes() ~ Byte[] {
+		bytes := Byte->New[3];
+		bytes[0] := 10;
+		bytes[1] := 20;
+		bytes[2] := 30;
+		return bytes;
+	}
+
+	function : MakeItems() ~ Item[] {
+		items := Item->New[2];
+		items[0] := Item->New("first");
+		items[1] := Item->New("second");
+		return items;
+	}
+}

@@ -1431,6 +1431,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     method_call = method_call->GetMethodCall();
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
+      // subscript on the call result: GetItems()[0]
+      EmitCallIndices(method_call);
       EmitCast(method_call);
       
       // pop return value if not used
@@ -1510,6 +1512,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     bool is_nested = false;
     do {
       EmitMethodCall(method_call, is_nested);
+      // subscript on the call result: GetItems()[0]
+      EmitCallIndices(method_call);
       EmitCast(method_call);
       
       // pop return value if not used
@@ -3976,6 +3980,8 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
       // emit call
       EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
+      // subscript on the call result: GetItems()[0]
+      EmitCallIndices(method_call);
 
       // pop return value if not used
       if(!method_call->GetMethodCall()) {
@@ -4199,6 +4205,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     method_call = method_call->GetMethodCall();
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
+      // subscript on the call result: GetItems()[0]
+      EmitCallIndices(method_call);
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
         EmitClassCast(method_call);
@@ -4317,6 +4325,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       }
 
       EmitMethodCall(method_call, is_nested);
+      // subscript on the call result: GetItems()[0]
+      EmitCallIndices(method_call);
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
         EmitClassCast(method_call);
@@ -6366,6 +6376,57 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
 /****************************
  * Translates a method call
  ****************************/
+/****************************
+ * Emits the subscript applied to a call's RESULT, as in 'GetItems()[0]'.
+ *
+ * The call has already left the array reference on top of the stack, but
+ * LOAD_*_ARY_ELM pops the array FIRST and reads its indices from beneath it.
+ * So the index is emitted and then swapped under the array reference.
+ *
+ * Only a single dimension is supported; the context analyzer rejects anything
+ * else, so reaching here with more is a compiler bug rather than user error.
+ ****************************/
+void IntermediateEmitter::EmitCallIndices(MethodCall* method_call)
+{
+  ExpressionList* indices = method_call->GetCallIndices();
+  if(!indices) {
+    return;
+  }
+
+  std::vector<Expression*> index_exprs = indices->GetExpressions();
+  if(index_exprs.size() != 1) {
+    return;
+  }
+
+  EmitExpression(index_exprs[0]);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, SWAP_INT));
+
+  Type* type = static_cast<Expression*>(method_call)->GetEvalType();
+  const frontend::EntryType base = type ? type->GetType() : frontend::INT_TYPE;
+
+  instructions::InstructionType instr;
+  switch(base) {
+  case frontend::BYTE_TYPE:
+    instr = LOAD_BYTE_ARY_ELM;
+    break;
+
+  case frontend::CHAR_TYPE:
+    instr = LOAD_CHAR_ARY_ELM;
+    break;
+
+  case frontend::FLOAT_TYPE:
+    instr = LOAD_FLOAT_ARY_ELM;
+    break;
+
+  // object, string and boolean elements are all reference/int width
+  default:
+    instr = LOAD_INT_ARY_ELM;
+    break;
+  }
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, instr, 1, LOCL));
+}
+
 void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested)
 {
   cur_line_num = static_cast<Statement*>(method_call)->GetLineNumber();

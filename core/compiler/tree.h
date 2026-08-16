@@ -2879,6 +2879,10 @@ namespace frontend {
     int mid_line_pos;
     bool is_try_intrinsic;
     bool is_otherwise_intrinsic;
+    // Subscript applied to the RESULT of this call, as in 'GetItems()[0]'.
+    // Distinct from Variable::indices, which subscripts a named variable.
+    // Defaulted in-class so the five constructors need not each set it.
+    ExpressionList* call_indices = nullptr;
 
     MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num,
                const int end_line_pos, MethodCallType t, const std::wstring &v, ExpressionList* e);
@@ -2990,6 +2994,10 @@ namespace frontend {
   public:
     bool IsTryIntrinsic() const { return is_try_intrinsic; }
     void SetTryIntrinsic(bool v) { is_try_intrinsic = v; }
+
+    // Subscript applied to this call's result: 'GetItems()[0]'
+    ExpressionList* GetCallIndices() { return call_indices; }
+    void SetCallIndices(ExpressionList* i) { call_indices = i; }
     bool IsOtherwiseIntrinsic() const { return is_otherwise_intrinsic; }
     void SetOtherwiseIntrinsic(bool v) { is_otherwise_intrinsic = v; }
 

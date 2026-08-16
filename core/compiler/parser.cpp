@@ -7080,6 +7080,12 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     }
   }
 
+  // subscript on the call's result: 'GetItems()[0]'. Consumed here so it is not
+  // re-read as a fresh static-array literal, which silently discarded the call.
+  if(Match(TOKEN_OPEN_BRACKET) && method_call) {
+    method_call->SetCallIndices(ParseIndices(depth + 1));
+  }
+
   // subsequent method calls
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
      !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
@@ -7141,6 +7147,10 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
       tail = tail->GetMethodCall();
     }
     tail->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
+    // subscript on the call's result: 'a->GetItems()[0]->Name()'
+    if(Match(TOKEN_OPEN_BRACKET) && tail->GetMethodCall()) {
+      tail->GetMethodCall()->SetCallIndices(ParseIndices(depth + 1));
+    }
     // subsequent method calls
     if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
        !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
@@ -7204,6 +7214,13 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
     call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, mid_line_num, mid_line_pos,
                                                    GetLineNumber(), end_pos, variable, method_ident, exprs);
     result = call;
+  }
+
+  // Subscript on the call's RESULT: 'GetItems()[0]'. Consumed here so it is not
+  // re-read as a fresh static-array literal, which silently discarded the call
+  // and evaluated '[0]' as a one-element Int[] instead.
+  if(Match(TOKEN_OPEN_BRACKET)) {
+    call->SetCallIndices(ParseIndices(depth + 1));
   }
 
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {

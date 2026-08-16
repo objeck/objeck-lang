@@ -2607,6 +2607,29 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   Debug(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
 #endif
 
+  // A subscript on this call's result, 'GetItems()[i]'. The index expressions
+  // are ordinary expressions and must be analyzed, or they reach the emitter
+  // with no resolved entry -- which segfaults rather than diagnosing, and marks
+  // any variable used only as an index as unreferenced.
+  ExpressionList* call_indices = method_call->GetCallIndices();
+  if(call_indices) {
+    std::vector<Expression*> index_exprs = call_indices->GetExpressions();
+    if(index_exprs.size() != 1) {
+      ProcessError(static_cast<Expression*>(method_call),
+                   L"Only a single dimension may be indexed on a method call result");
+    }
+
+    for(size_t i = 0; i < index_exprs.size(); ++i) {
+      AnalyzeExpression(index_exprs[i], depth + 1);
+
+      Type* index_type = GetExpressionType(index_exprs[i], depth + 1);
+      if(index_type && index_type->GetType() != INT_TYPE && index_type->GetType() != BYTE_TYPE &&
+         index_type->GetType() != CHAR_TYPE) {
+        ProcessError(static_cast<Expression*>(method_call), L"Expected an integer index");
+      }
+    }
+  }
+
   //
   // new array call
   //
@@ -7800,6 +7823,11 @@ bool ContextAnalyzer::IsScalar(Expression* expression, bool check_last /*= true*
     ExpressionList* indices = nullptr;
     if(expression->GetExpressionType() == VAR_EXPR) {
       indices = static_cast<Variable*>(expression)->GetIndices();
+    }
+    else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      // 'GetItems()[0]' subscripts the call's result, so the expression is
+      // scalar exactly when the call carries indices.
+      indices = static_cast<MethodCall*>(expression)->GetCallIndices();
     }
     else {
       return false;
