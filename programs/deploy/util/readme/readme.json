@@ -14,6 +14,7 @@
 		{
 			"version": "v2026.8.1",
 			"items": [
+				"ONNX: face detection never returned a single face -- FaceSession->Detect and ->Recognize produced zero results for every image at every threshold, on every platform shipping the ONNX native library, since v2026.5.3, while inference itself ran normally. scrfd_decode compared a row count against an element count, so every stride group was skipped. Verified with the InsightFace buffalo_l models: 2 faces in the sample group photo, 512-dimensional embeddings, same-person similarity 0.767 and different-person -0.023. YOLO and ResNet were unaffected",
 				"Packaging: obu was missing from every v2026.8.0 archive. The release advertised the updater as a headline feature and delivered no binary -- the build never referenced obu and none of the three deploy scripts copied it, so bin/ held obb, obc, obd, obi and obr on every platform. CI missed it because the updater's own test builds a separate copy with test hooks, so obu was tested continuously while never being shipped. It is now installed to bin/ by all three deploy scripts, and both binary-verification gates list it",
 				"Documentation: Web.HTTP.HeaderCheck shipped with only IsValidRequestTarget documented. IsValidName and IsValidValue -- the validators behind every AddHeader call -- had no doc comment, and the API index records only documented members, so hover and completion showed nothing for them. Flatten's doc block was also attached to the wrong function. All four are now documented"
 			]
