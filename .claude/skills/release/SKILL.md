@@ -327,13 +327,33 @@ List the release assets and confirm all expected files are present:
 gh release view "v$VERSION" --json assets --jq '.assets[].name'
 ```
 
-**Signed installers** (required — release is blocked without these):
+**Installers** (required — release is blocked without these):
 - `objeck-windows-x64_<VERSION>.msi`
 - `objeck-windows-arm64_<VERSION>.msi`
 - `objeck-macos-arm64_<VERSION>.pkg`
 
 If Windows MSIs are missing, the workflow secret `WINDOWS_CERT_BASE64`/`WINDOWS_CERT_PASSWORD` is not set — tell the user and abort.
 If macOS `.pkg` is missing, the Apple signing secrets are not set — tell the user and abort.
+
+**Signatures — check the SIGNATURE, not the file's existence.** Presence proves nothing:
+`release-build.yml` warns and continues when `signtool` fails, and `release-publish.yml`
+tolerates an unsigned MSI, so an unsigned installer reaches users through a fully green
+pipeline. Every Windows MSI from at least v2026.6.4 through v2026.8.2 shipped **unsigned**
+while signing was configured and attempted, and reporting them as "signed installers
+verified" on the strength of the file being present is how that went unnoticed for months.
+
+```powershell
+# per MSI — Status must be 'Valid'
+Get-AuthenticodeSignature <file>.msi | Select-Object Status, SignerCertificate
+```
+
+```bash
+# macOS .pkg
+pkgutil --check-signature <file>.pkg
+```
+
+Report the actual status. If an installer is unsigned, say so plainly rather than counting
+it as verified, and do not describe the release as signed anywhere in its notes.
 
 **Shipped binary sanity** — check the archives for the FULL expected binary set, not just one.
 Two separate releases were shipped broken by this check being too narrow:
@@ -443,7 +463,7 @@ Print a single consolidated summary:
 - **GitHub release**: https://github.com/objeck/objeck-lang/releases/tag/v<VERSION>
 - **Release build**: run #<RUN_ID>, duration, conclusion
 - **Release publish**: run #<PUB_ID>, duration, conclusion
-- **Signed installers verified**: Windows x64 MSI ✓, Windows ARM64 MSI ✓, macOS ARM64 .pkg ✓
+- **Installer signatures**: report the real `Get-AuthenticodeSignature` / `pkgutil` status per installer — never "verified" on the basis of the file existing
 - **Shipped binaries verified**: `obc obr obd obi obb obu` present in every POSIX archive ✓
 - **LSP**: built in-cloud from `tools/lsp`; `.vsix` version set from the tag; `objk_apis.json` current ✓
 - **Playground**: deployed to $PLAYGROUND_HOST, health=OK, version=v<VERSION>

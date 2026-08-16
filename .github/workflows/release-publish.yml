@@ -312,7 +312,12 @@ jobs:
 
           ## 🔐 Verification
 
-          All Windows MSI installers are digitally signed for security.
+          Verify any download against the `SHA256SUMS` asset published with this release.
+
+          Code signing is not currently guaranteed: the build attempts to sign the Windows
+          installers but continues when signing fails, so an installer may be unsigned and
+          Windows may warn about an unknown publisher. Check before trusting a download:
+          `Get-AuthenticodeSignature <file>.msi` reports `Valid` only when it really is signed.
 
           ## 🐛 Issues
 
