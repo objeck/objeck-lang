@@ -1,0 +1,23 @@
+# gitleaks config for the HEAD-only scan of credential-handling release scripts.
+#
+# Why a second config: .gitleaks.toml path-allowlists core/release/cov_scan.{in,sh}
+# so that the full-history scan does not re-report the Coverity token that lived in
+# that file from 2019-08-11 until 2026-08. That exemption is necessary for a
+# --log-opts/full-history scan, but it also means a NEW secret pasted into
+# cov_scan.sh at HEAD would go unreported (verified: a planted token is silently
+# missed under .gitleaks.toml and caught under this config).
+#
+# This config grants no cov_scan exemption. It is used only against the working
+# tree, never against history, so the historical findings cannot cause noise.
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+Framework examples read credentials from local *_api_key.dat files; those are
+gitignored and any keys that landed in them have been rotated. No cov_scan
+exemption here -- that is the whole point of this config.
+"""
+paths = [
+  '''.*_api_key\.dat$''',
+]
