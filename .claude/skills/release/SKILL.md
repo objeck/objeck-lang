@@ -464,6 +464,28 @@ curl -fsS https://playground.objeck.org/api/health | jq -r '.version'
 
 If `playground.objeck.org` is unreachable, try `https://$PLAYGROUND_HOST/api/health` as a fallback.
 
+### 11b. Signing check — ALWAYS run this
+
+Signing cannot happen in CI (the key is on a physical eToken), so a freshly published release
+is unsigned until a human signs it. That is easy to forget: every Windows installer from
+v2026.4.0 through v2026.8.2 shipped unsigned because nobody noticed for four months.
+
+```powershell
+powershell -File tools\cicd\check_release_signatures.ps1 <VERSION>
+```
+
+It reports the REAL `Get-AuthenticodeSignature` status per MSI and, when any is unsigned,
+beeps, raises a desktop notification, pushes to ntfy when `NTFY_TOPIC` is set, prints the exact
+command, and exits 1.
+
+If it reports unsigned, tell the user plainly in the final report — "Windows installers are
+UNSIGNED; run `tools\cicd\sign_release.cmd <VERSION>` with the eToken plugged in" — and never
+describe the release as signed. Do not treat it as a failure of the release: publishing and
+signing are deliberately decoupled so a missing token cannot block shipping.
+
+After the user signs, signing rewrites the MSIs, so `SHA256SUMS` must be regenerated over the
+new files and re-uploaded with `gh release upload <tag> SHA256SUMS --clobber`.
+
 ### 12. Final report
 
 Print a single consolidated summary:
