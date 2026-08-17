@@ -7357,7 +7357,12 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
     default_new->SetReturn(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName(), file_name, line_num, line_pos));
     symbol_table->PreviousParseScope(default_new->GetParsedName());
     
-    klass->AddMethod(default_new);
+    // guarded by !HasDefaultNew() above, so a collision should be unreachable --
+    // checked anyway to match the other AddMethod call sites, and so that a future
+    // change to that guard cannot lose the synthesized New silently
+    if(!klass->AddMethod(default_new)) {
+      ProcessError(L"Method/function already defined or overloaded '" + method_name + L"'", default_new);
+    }
   }
 
   symbol_table->PreviousParseScope(current_class->GetName());

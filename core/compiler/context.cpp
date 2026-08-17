@@ -1387,7 +1387,13 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
       declarations[i]->GetEntry()->SetType(types[i]);
     }
 
-    current_class->AddMethod(method);
+    // AddMethod returns false when the signature collides. Ignoring it meant the
+    // lambda was silently not registered while the code below went on to encode
+    // and associate it, so a duplicate produced no diagnostic at all.
+    if(!current_class->AddMethod(method)) {
+      ProcessError(lambda, L"Method/function already defined or overloaded '" + method->GetName() + L"'");
+      return;
+    }
     method->EncodeSignature(current_class, program, linker);
     current_class->AssociateMethod(method);
 

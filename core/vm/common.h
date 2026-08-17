@@ -168,7 +168,10 @@ struct DtlsSocketCtx {
   mbedtls_x509_crt cacert;
   mbedtls_entropy_context entropy;
   mbedtls_ctr_drbg_context ctr_drbg;
-  mbedtls_timing_delay_context timer;
+  // zero-initialized: mbedtls has no init function for this type, and it is handed
+  // to mbedtls_ssl_set_timer_cb as opaque data. The normal DTLS flow calls
+  // set_delay before get_delay, so this is defensive rather than a live fault.
+  mbedtls_timing_delay_context timer{};
   int last_error;
 
   DtlsSocketCtx() : last_error(0) {

@@ -750,6 +750,10 @@ MethodCall::MethodCall(const std::wstring& file_name, const int line_num, const 
   expressions = e;
   entry = dyn_func_entry = nullptr;
   method = nullptr;
+  // the other four MethodCall constructors null this; omitting it here left an
+  // indeterminate pointer that IntermediateEmitter tests with if(func_ref_unwrap)
+  // and then emits through, so non-null garbage meant emitting a bogus call
+  func_ref_unwrap = nullptr;
   array_type = nullptr;
   variable = nullptr;
   enum_item = nullptr;
