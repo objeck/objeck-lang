@@ -68,7 +68,13 @@ SOCKET IPSocket::Open(const char* address, const int port) {
   // Set default receive timeout (30 seconds)
   if(sock != INVALID_SOCKET) {
     DWORD timeout_ms = 30000;
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms));
+    // Best-effort default, left non-fatal: the connection is otherwise usable. The
+    // consequence is worth knowing though -- without it a recv here can block
+    // indefinitely, so a caller needing the guarantee should use
+    // SetReceiveTimeout, which reports failure.
+    if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
+      WSASetLastError(0);
+    }
   }
 
 	return sock == INVALID_SOCKET ? -1 : sock;
@@ -120,13 +126,23 @@ SOCKET IPSocket::OpenWithTimeout(const char* address, int port, int timeout_ms) 
 
     // set non-blocking
     u_long mode = 1;
-    ioctlsocket(sock, FIONBIO, &mode);
+    if(ioctlsocket(sock, FIONBIO, &mode) == SOCKET_ERROR) {
+      closesocket(sock);
+      sock = INVALID_SOCKET;
+      continue;
+    }
 
     int ret = connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen);
     if(ret == 0) {
-      // connected immediately
+      // connected immediately. A failed restore leaves the socket non-blocking, so
+      // a caller expecting a blocking read gets spurious WSAEWOULDBLOCK instead of
+      // data -- fail the attempt rather than hand back that socket.
       mode = 0;
-      ioctlsocket(sock, FIONBIO, &mode);
+      if(ioctlsocket(sock, FIONBIO, &mode) == SOCKET_ERROR) {
+        closesocket(sock);
+        sock = INVALID_SOCKET;
+        continue;
+      }
       break;
     }
     if(WSAGetLastError() != WSAEWOULDBLOCK) {
@@ -149,26 +165,33 @@ SOCKET IPSocket::OpenWithTimeout(const char* address, int port, int timeout_ms) 
       continue;
     }
 
-    // check SO_ERROR
+    // check SO_ERROR. Unchecked, a failing getsockopt leaves err at 0 and the
+    // pending connect would be treated as successful.
     int err = 0;
     int len = sizeof(err);
-    getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&err, &len);
-    if(err != 0) {
+    if(getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&err, &len) == SOCKET_ERROR || err != 0) {
       closesocket(sock);
       sock = INVALID_SOCKET;
       continue;
     }
 
-    // restore blocking
+    // restore blocking -- same reasoning as the immediate-connect path above
     mode = 0;
-    ioctlsocket(sock, FIONBIO, &mode);
+    if(ioctlsocket(sock, FIONBIO, &mode) == SOCKET_ERROR) {
+      closesocket(sock);
+      sock = INVALID_SOCKET;
+      continue;
+    }
     break;
   }
   freeaddrinfo(result);
 
   if(sock != INVALID_SOCKET) {
     DWORD timeout = 30000;
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+    // Best-effort default; see the note in Open() above.
+    if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) == SOCKET_ERROR) {
+      WSASetLastError(0);
+    }
   }
 
   return sock == INVALID_SOCKET ? -1 : sock;

@@ -506,7 +506,14 @@ class IPSocket {
     }
 
     int reuse = 1;
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse));
+    // Deliberately non-fatal: the only consequence of SO_REUSEADDR not applying is
+    // that a restart inside the TIME_WAIT window fails at the bind() below, which
+    // is checked and reported. Tearing down an otherwise usable socket here would
+    // be worse. The WSA error is cleared so a later WSAGetLastError() is not
+    // misled by it.
+    if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+      WSASetLastError(0);
+    }
 
     struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
