@@ -25,6 +25,20 @@ set SIGNTOOL="C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signto
 set GH="C:\Program Files\GitHub CLI\gh.exe"
 set TIMESTAMP=http://timestamp.sectigo.com
 
+REM Select the certificate by thumbprint, NOT with /a.
+REM
+REM /a picks the "best" VALID certificate, and this machine's store holds three
+REM valid code-signing certs with private keys -- CN=Randy Hollines (the Sectigo
+REM token cert), plus self-signed CN=LVS Dev and CN=localhost. /a worked when the
+REM token was the only candidate; now it could pick a self-signed cert and produce
+REM installers that carry a signature yet fail every trust check, which is worse
+REM than shipping them unsigned.
+REM
+REM CN=Randy Hollines, issued by Sectigo Public Code Signing CA R36, expires
+REM 2028-05-25. On renewal, get the new value with the token plugged in:
+REM   powershell -c "Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Format-List Subject,Thumbprint,NotAfter"
+set THUMBPRINT=6DEAD3A9C58C82DD3CE979DBDFAF64CC964C0A46
+
 echo.
 echo ============================================
 echo  Signing Release v%VERSION%
@@ -55,7 +69,7 @@ for %%f in (%STAGING%\*.msi) do (
     echo Signing %%~nxf...
     echo Please enter your SafeNet token password when prompted.
     echo.
-    %SIGNTOOL% sign /tr %TIMESTAMP% /td SHA256 /fd SHA256 /a "%%f"
+    %SIGNTOOL% sign /tr %TIMESTAMP% /td SHA256 /fd SHA256 /sha1 %THUMBPRINT% "%%f"
     if errorlevel 1 (
         echo.
         echo ERROR: Failed to sign %%~nxf
