@@ -316,104 +316,115 @@ void DapAdapter::Run()
     }
 
     json msg;
+    std::string command;
+    int request_seq = 0;
     try {
       msg = json::parse(msg_str);
+      command = msg.value("command", "");
+      request_seq = msg.value("seq", 0);
+      json args = msg.value("arguments", json::object());
+
+
+      if(command == "initialize") {
+        HandleInitialize(request_seq, args);
+      }
+      else if(command == "launch") {
+        HandleLaunch(request_seq, args);
+      }
+      else if(command == "setBreakpoints") {
+        HandleSetBreakpoints(request_seq, args);
+      }
+      else if(command == "configurationDone") {
+        HandleConfigurationDone(request_seq, args);
+      }
+      else if(command == "threads") {
+        HandleThreads(request_seq);
+      }
+      else if(command == "stackTrace") {
+        HandleStackTrace(request_seq, args);
+      }
+      else if(command == "scopes") {
+        HandleScopes(request_seq, args);
+      }
+      else if(command == "variables") {
+        HandleVariables(request_seq, args);
+      }
+      else if(command == "continue") {
+        HandleContinue(request_seq, args);
+      }
+      else if(command == "next") {
+        HandleNext(request_seq, args);
+      }
+      else if(command == "stepIn") {
+        HandleStepIn(request_seq, args);
+      }
+      else if(command == "stepOut") {
+        HandleStepOut(request_seq, args);
+      }
+      else if(command == "pause") {
+        HandlePause(request_seq, args);
+      }
+      else if(command == "disconnect") {
+        HandleDisconnect(request_seq, args);
+      }
+      else if(command == "evaluate") {
+        HandleEvaluate(request_seq, args);
+      }
+      else if(command == "setVariable") {
+        HandleSetVariable(request_seq, args);
+      }
+      else if(command == "setFunctionBreakpoints") {
+        HandleSetFunctionBreakpoints(request_seq, args);
+      }
+      else if(command == "setExceptionBreakpoints") {
+        HandleSetExceptionBreakpoints(request_seq, args);
+      }
+      else if(command == "restart") {
+        HandleRestart(request_seq, args);
+      }
+      else if(command == "terminate") {
+        HandleTerminate(request_seq, args);
+      }
+      else if(command == "breakpointLocations") {
+        HandleBreakpointLocations(request_seq, args);
+      }
+      else if(command == "exceptionInfo") {
+        HandleExceptionInfo(request_seq, args);
+      }
+      else if(command == "setExpression") {
+        HandleSetExpression(request_seq, args);
+      }
+      else if(command == "completions") {
+        HandleCompletions(request_seq, args);
+      }
+      else if(command == "modules") {
+        HandleModules(request_seq, args);
+      }
+      else if(command == "loadedSources") {
+        HandleLoadedSources(request_seq, args);
+      }
+      else if(command == "dataBreakpointInfo") {
+        HandleDataBreakpointInfo(request_seq, args);
+      }
+      else if(command == "setDataBreakpoints") {
+        HandleSetDataBreakpoints(request_seq, args);
+      }
+      else {
+        // Unknown command — respond with success to avoid VS Code errors
+        SendResponse(request_seq, command);
+      }
     }
-    catch(...) {
+    catch(const json::parse_error&) {
+      // garbled bytes: there is no seq to answer, so drop the message as before
       continue;
     }
-
-    std::string command = msg.value("command", "");
-    int request_seq = msg.value("seq", 0);
-    json args = msg.value("arguments", json::object());
-
-    if(command == "initialize") {
-      HandleInitialize(request_seq, args);
-    }
-    else if(command == "launch") {
-      HandleLaunch(request_seq, args);
-    }
-    else if(command == "setBreakpoints") {
-      HandleSetBreakpoints(request_seq, args);
-    }
-    else if(command == "configurationDone") {
-      HandleConfigurationDone(request_seq, args);
-    }
-    else if(command == "threads") {
-      HandleThreads(request_seq);
-    }
-    else if(command == "stackTrace") {
-      HandleStackTrace(request_seq, args);
-    }
-    else if(command == "scopes") {
-      HandleScopes(request_seq, args);
-    }
-    else if(command == "variables") {
-      HandleVariables(request_seq, args);
-    }
-    else if(command == "continue") {
-      HandleContinue(request_seq, args);
-    }
-    else if(command == "next") {
-      HandleNext(request_seq, args);
-    }
-    else if(command == "stepIn") {
-      HandleStepIn(request_seq, args);
-    }
-    else if(command == "stepOut") {
-      HandleStepOut(request_seq, args);
-    }
-    else if(command == "pause") {
-      HandlePause(request_seq, args);
-    }
-    else if(command == "disconnect") {
-      HandleDisconnect(request_seq, args);
-    }
-    else if(command == "evaluate") {
-      HandleEvaluate(request_seq, args);
-    }
-    else if(command == "setVariable") {
-      HandleSetVariable(request_seq, args);
-    }
-    else if(command == "setFunctionBreakpoints") {
-      HandleSetFunctionBreakpoints(request_seq, args);
-    }
-    else if(command == "setExceptionBreakpoints") {
-      HandleSetExceptionBreakpoints(request_seq, args);
-    }
-    else if(command == "restart") {
-      HandleRestart(request_seq, args);
-    }
-    else if(command == "terminate") {
-      HandleTerminate(request_seq, args);
-    }
-    else if(command == "breakpointLocations") {
-      HandleBreakpointLocations(request_seq, args);
-    }
-    else if(command == "exceptionInfo") {
-      HandleExceptionInfo(request_seq, args);
-    }
-    else if(command == "setExpression") {
-      HandleSetExpression(request_seq, args);
-    }
-    else if(command == "completions") {
-      HandleCompletions(request_seq, args);
-    }
-    else if(command == "modules") {
-      HandleModules(request_seq, args);
-    }
-    else if(command == "loadedSources") {
-      HandleLoadedSources(request_seq, args);
-    }
-    else if(command == "dataBreakpointInfo") {
-      HandleDataBreakpointInfo(request_seq, args);
-    }
-    else if(command == "setDataBreakpoints") {
-      HandleSetDataBreakpoints(request_seq, args);
-    }
-    else {
-      // Unknown command — respond with success to avoid VS Code errors
-      SendResponse(request_seq, command);
+    catch(const json::exception& e) {
+      // A message that parses but carries unexpected types reaches the handlers
+      // and throws from inside nlohmann (type_error, invalid_iterator,
+      // other_error). Unwinding out of Run() reaches main(), which has no
+      // handler, so the process terminates and the whole debug session dies over
+      // one malformed request. Answer with a DAP error and keep serving.
+      SendResponse(request_seq, command, json::object(), false, e.what());
     }
   }
 

@@ -94,7 +94,17 @@ int main(int argc, const char* argv[])
     }
 #endif
     Runtime::DapAdapter adapter;
-    adapter.Run();
+    // Backstop only: Run() now answers json errors per message, but anything that
+    // still escapes would reach the terminate handler and abort with no
+    // diagnostic. Note stdout/stderr are redirected to capture pipes by then, so
+    // this may not reach a terminal -- the point is the clean exit code.
+    try {
+      adapter.Run();
+    }
+    catch(const std::exception& e) {
+      std::cerr << "fatal: unhandled exception in DAP adapter: " << e.what() << std::endl;
+      return 1;
+    }
 #ifdef _WIN32
     WSACleanup();
 #endif

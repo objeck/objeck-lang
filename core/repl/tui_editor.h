@@ -1242,6 +1242,10 @@ namespace Tui {
       pane_top = 0;
       pane_visible = false;
       error_index = 0;
+      // DoRun() resets this before any output arrives, but DecodeUtf8 takes it as
+      // an in/out offset into the child's buffer -- an indeterminate value here
+      // would index out of bounds rather than merely misbehave
+      out_consumed = 0;
       typing_run = false;
       sel_active = false;
       sel_row = sel_col = 0;

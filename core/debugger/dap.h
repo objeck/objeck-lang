@@ -13,6 +13,7 @@
 #include "json.hpp"
 #include "debugger.h"
 #include "obj_layout.h"
+#include <atomic>
 #include <mutex>
 #include <condition_variable>
 #include <thread>
@@ -68,14 +69,28 @@ namespace Runtime {
     // Threading synchronization
     std::mutex mtx;
     std::condition_variable cv;
-    bool is_stopped;
-    bool resume_requested;
-    bool step_into_requested;
-    bool step_over_requested;
-    bool step_out_requested;
-    bool disconnect_requested;
-    bool restart_requested;
-    bool break_on_exception;
+    // Written on the DAP main thread under mtx, but read on the VM execution
+    // thread without it -- Debugger::ProcessInstruction polls the Is* accessors at
+    // every instruction, and several handlers read is_stopped directly. As plain
+    // bools that was a data race, and the practical failure is worse than tearing:
+    // nothing stopped this -O3 -flto build from hoisting the load out of the
+    // dispatch loop, so a disconnect or step request could go unseen indefinitely.
+    // Atomics are seq_cst by default, which is all these flags need. The existing
+    // mtx usage is unchanged and still guards multi-field transitions and the cv
+    // predicates -- atomics fix the race on each flag, not check-then-act ordering.
+    std::atomic<bool> is_stopped;
+    std::atomic<bool> resume_requested;
+    std::atomic<bool> step_into_requested;
+    std::atomic<bool> step_over_requested;
+    std::atomic<bool> step_out_requested;
+    std::atomic<bool> disconnect_requested;
+    std::atomic<bool> restart_requested;
+    // Same cross-thread pattern as the flags above -- written by
+    // HandleSetExceptionBreakpoints on the DAP thread, read by the VM thread via
+    // BreaksOnException(). Coverity does not report this one because its writes
+    // never hold mtx, so the "written under lock elsewhere" heuristic never fires;
+    // it is nonetheless the least protected of the set.
+    std::atomic<bool> break_on_exception;
 
     // Declared by the client on the initialize request.
     bool client_supports_variable_paging;

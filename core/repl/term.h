@@ -92,7 +92,10 @@ namespace Tui {
     // UTF-16 events
     wchar_t pending_low;
 #else
-    struct termios saved_termios;
+    // zero-initialized so the field is never indeterminate: ExitRaw() only reads
+    // it under raw_active, which implies a successful tcgetattr, but the checker
+    // cannot see that correlation and an unguarded read added later would be UB
+    struct termios saved_termios{};
     void (*saved_winch)(int);
 #endif
 
@@ -468,6 +471,14 @@ namespace Tui {
         if(b >= 0x40 && b <= 0x7E) {
           final_byte = b;
           break;
+        }
+        // ECMA-48 permits only intermediate (0x20-0x2F) and parameter (0x30-0x3F)
+        // bytes before the final byte. Anything else is a garbled stream, and
+        // appending a byte >= 0x80 would store a negative char -- so reject it the
+        // same way a short read is rejected, rather than feeding it to atoi below.
+        if(b < 0x20 || b > 0x3F) {
+          key.code = KEY_ESC;
+          return key;
         }
         params += (char)b;
       }

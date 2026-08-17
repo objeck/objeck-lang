@@ -369,8 +369,22 @@ namespace Tui {
 
       close(pipe_fds[1]);
       read_fd = pipe_fds[0];
+      // a read_fd left blocking would stall the poll loop inside read() on a child
+      // that has not written yet, hanging the editor instead of returning an error.
+      // F_GETFL needs checking as well: -1 | O_NONBLOCK is still -1, which would
+      // hand F_SETFL every flag bit rather than the one intended.
       const int flags = fcntl(read_fd, F_GETFL, 0);
-      fcntl(read_fd, F_SETFL, flags | O_NONBLOCK);
+      if(flags < 0 || fcntl(read_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        // the child is already forked and possibly exec'd, so it has to be reaped
+        // here or it outlives us as a zombie writing into a closed pipe
+        close(read_fd);
+        read_fd = -1;
+        kill(pid, SIGKILL);
+        int status = 0;
+        waitpid(pid, &status, 0);
+        pid = -1;
+        return false;
+      }
       running = true;
       return true;
 #endif

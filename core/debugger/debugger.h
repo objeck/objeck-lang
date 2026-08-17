@@ -288,6 +288,8 @@ namespace Runtime {
     }
 
     void ReadLine(std::wstring &output) {
+      // callers reuse their buffer across calls, and the POSIX path below appends
+      output.clear();
 #ifdef _WIN32
       // Flush any type-ahead input to prevent interleaving with output
       FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
@@ -300,7 +302,12 @@ namespace Runtime {
       if(input) {
         if(strlen(input) > 0) {
           add_history(input);
-          BytesToUnicode(input, output);
+          // BytesToUnicode appends rather than assigns, and leaves the prior
+          // contents in place when the decode fails -- so an undecodable line
+          // would hand back the PREVIOUS command and silently re-execute it.
+          if(!BytesToUnicode(input, output)) {
+            output.clear();
+          }
         }
         free(input);
         input = nullptr;

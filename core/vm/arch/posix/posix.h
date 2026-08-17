@@ -389,7 +389,14 @@ public:
       struct timeval tv;
       tv.tv_sec = 30;
       tv.tv_usec = 0;
-      setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+      // Best-effort default, left non-fatal: SO_RCVTIMEO is not honored on every
+      // platform and the connection is otherwise usable. The consequence is worth
+      // knowing though -- without it a recv here can block indefinitely, so a
+      // caller that needs the guarantee should use SetReceiveTimeout, which
+      // reports failure.
+      if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        errno = 0;
+      }
     }
 
     return sock;
@@ -402,7 +409,13 @@ public:
     }
 
     int reuse = 1;
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    // Deliberately non-fatal: the only consequence of SO_REUSEADDR not applying is
+    // that a restart inside the TIME_WAIT window fails at the bind() below, which
+    // is checked and reported. Tearing down an otherwise usable socket here would
+    // be worse. errno is cleared so a later strerror() is not misled by it.
+    if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+      errno = 0;
+    }
 
     struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
@@ -532,14 +545,27 @@ public:
       sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
       if(sock < 0) continue;
 
-      // set non-blocking
-      int flags = fcntl(sock, F_GETFL, 0);
-      fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+      // set non-blocking. F_GETFL has to be checked as well: -1 | O_NONBLOCK is
+      // still -1, which would request every flag bit here and then be "restored"
+      // onto the socket after connect, leaving it in a state neither this function
+      // nor the caller intended.
+      const int flags = fcntl(sock, F_GETFL, 0);
+      if(flags < 0 || fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) {
+        close(sock);
+        sock = -1;
+        continue;
+      }
 
       int ret = connect(sock, ptr->ai_addr, (int)ptr->ai_addrlen);
       if(ret == 0) {
-        // connected immediately
-        fcntl(sock, F_SETFL, flags);
+        // connected immediately. A failed restore leaves the socket non-blocking,
+        // so a caller expecting a blocking read gets spurious EAGAIN instead of
+        // data -- fail the attempt rather than hand back that socket.
+        if(fcntl(sock, F_SETFL, flags) < 0) {
+          close(sock);
+          sock = -1;
+          continue;
+        }
         break;
       }
       if(errno != EINPROGRESS) {
@@ -563,18 +589,22 @@ public:
         continue;
       }
 
-      // check SO_ERROR
+      // check SO_ERROR. This call was unchecked too, which mattered: on failure
+      // err stays 0 and a connect that never completed reads as successful.
       int err = 0;
       socklen_t len = sizeof(err);
-      getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len);
-      if(err != 0) {
+      if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len) < 0 || err != 0) {
         close(sock);
         sock = -1;
         continue;
       }
 
-      // restore blocking
-      fcntl(sock, F_SETFL, flags);
+      // restore blocking -- same reasoning as the immediate-connect path above
+      if(fcntl(sock, F_SETFL, flags) < 0) {
+        close(sock);
+        sock = -1;
+        continue;
+      }
       break;
     }
     freeaddrinfo(result);
@@ -583,7 +613,14 @@ public:
       struct timeval tv;
       tv.tv_sec = 30;
       tv.tv_usec = 0;
-      setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+      // Best-effort default, left non-fatal: SO_RCVTIMEO is not honored on every
+      // platform and the connection is otherwise usable. The consequence is worth
+      // knowing though -- without it a recv here can block indefinitely, so a
+      // caller that needs the guarantee should use SetReceiveTimeout, which
+      // reports failure.
+      if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        errno = 0;
+      }
     }
 
     return sock;
