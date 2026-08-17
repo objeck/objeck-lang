@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Full-screen editor in obi, HTTP/3 on Windows, the obu updater, five HTTP request-injection fixes, and working face detection",
+	"title": "Debug sessions survive malformed requests, sockets report failed connects, and the REPL editor stops hanging",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,17 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.8.3",
+			"items": [
+				"Debugger: one malformed DAP request could end the whole session. Only JSON parse errors were guarded, so a message that parsed but carried an unexpected type threw from inside the handler, unwound out of Run() to a main() with no handler, and terminated the process -- losing every breakpoint and the running program over a single bad request. Dispatch now answers with a DAP error response instead",
+				"Debugger: seven flags shared between the DAP thread and the VM thread were written under a mutex but read without one, at every instruction. Beyond torn reads, nothing stopped an -O3 -flto build hoisting those loads out of the dispatch loop, so a disconnect or step request could go unseen indefinitely. All seven are atomics now",
+				"Debugger: an undecodable console line silently re-ran the PREVIOUS command. ReadLine appended rather than assigned and left the prior contents in place when decoding failed, so the stale buffer was handed back and executed again",
+				"Network: a connect that never completed could be reported as successful, and both the POSIX and Windows connect-with-timeout paths could hand back a socket still in non-blocking mode -- a caller expecting a blocking read got a spurious EAGAIN/WSAEWOULDBLOCK instead of data. The unchecked F_GETFL behind the POSIX case also restored garbage flags onto the socket",
+				"REPL: the full-screen editor could hang instead of returning an error, stalling inside read() on a child process that had not written yet; the failure path now also reaps the child rather than leaving a zombie writing into a closed pipe",
+				"REPL: a garbled terminal escape sequence could store bytes outside the ECMA-48 parameter ranges as negative characters before being fed to atoi; malformed sequences are now rejected the same way a short read already was"
+			]
+		},
 		{
 			"version": "v2026.8.2",
 			"items": [
