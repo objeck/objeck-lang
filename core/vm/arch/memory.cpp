@@ -41,7 +41,7 @@ std::unordered_set<size_t**> MemoryManager::pending_thread_roots;
 std::vector<StackFrame*> MemoryManager::jit_frames;
 
 size_t* MemoryManager::free_buckets[MemoryManager::FREE_POOL_COUNT];
-size_t MemoryManager::free_memory_cache_size;
+std::atomic<size_t> MemoryManager::free_memory_cache_size;
 
 bool MemoryManager::initialized;
 std::atomic<size_t> MemoryManager::allocation_size;
@@ -125,7 +125,7 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   }
   allocation_size = 0;
   uncollected_count = 0;
-  free_memory_cache_size = 0;
+  free_memory_cache_size.store(0, std::memory_order_relaxed);
   memset(free_buckets, 0, sizeof(free_buckets));
 
   // Young generation bump allocator
@@ -676,7 +676,7 @@ void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
-  free_memory_cache_size += raw_mem[0];
+  free_memory_cache_size.fetch_add(raw_mem[0], std::memory_order_relaxed);
 
   // Push onto the bucket's intrusive list: word [0] holds the block's actual
   // size (kept), word [1] becomes the next-free link. No node allocation.
@@ -711,7 +711,7 @@ size_t* MemoryManager::GetFreeMemory(size_t size) {
       else {
         free_buckets[idx] = next;
       }
-      free_memory_cache_size -= check_mem[0];
+      free_memory_cache_size.fetch_sub(check_mem[0], std::memory_order_relaxed);
       memset(check_mem + 1, 0, check_mem[0]);   // also clears the next link
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&free_memory_cache_lock);
@@ -749,7 +749,7 @@ void MemoryManager::ClearFreeMemory() {
     size_t* raw_mem = free_buckets[i];
     while(raw_mem) {
       size_t* next = (size_t*)raw_mem[1];
-      free_memory_cache_size -= raw_mem[0];
+      free_memory_cache_size.fetch_sub(raw_mem[0], std::memory_order_relaxed);
       free(raw_mem);
       raw_mem = next;
     }
@@ -1012,6 +1012,20 @@ void* MemoryManager::CollectMemory(void* arg)
   // Sweep phase: mark threads have already joined, so only allocated_lock
   // is needed (protects old_generation set from concurrent allocations).
   // marked_lock is no longer needed here since MarkMemory uses lock-free CAS.
+  //
+  // LOCK ORDER: allocated_lock is taken BEFORE pda_monitor_lock here -- the
+  // FixupRoots call below acquires the latter while this is held.
+  // CheckPdaRoots takes the two in the opposite order, which is safe ONLY
+  // because it cannot run concurrently with this sweep:
+  //   - it is a mark thread, joined above before this lock is taken, as is
+  //     the JIT thread it spawns (joined inside it, before it returns);
+  //   - marked_sweep_lock (CollectAllMemory / CollectMinor) admits one
+  //     collector at a time, so no other collection's mark phase overlaps
+  //     this sweep either.
+  // Break either invariant -- overlap sweep with marking, or call
+  // CheckPdaRoots from outside CollectMemory -- and the two orders become a
+  // live ABBA deadlock that hangs the VM. Coverity reports it as CID 1677214;
+  // it is a false positive today only by virtue of the above.
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&allocated_lock);
 #endif
@@ -1208,8 +1222,10 @@ void* MemoryManager::CollectMemory(void* arg)
     }
   }
 
-  // clear free memory cache if oversized
-  if(free_memory_cache_size > mem_max_size) {
+  // clear free memory cache if oversized. Read unlocked on purpose -- see the
+  // declaration in memory.h; it is a heuristic threshold, and ClearFreeMemory
+  // takes free_memory_cache_lock itself.
+  if(free_memory_cache_size.load(std::memory_order_relaxed) > mem_max_size) {
     ClearFreeMemory();
   }
 
@@ -1582,6 +1598,11 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
 #endif 
   
   // ------
+  // LOCK ORDER: this holds pda_monitor_lock and takes allocated_lock inside the
+  // IsAllocated loop below -- the REVERSE of the collector's sweep, which holds
+  // allocated_lock across its FixupRoots call. That is safe only because this
+  // runs in the mark phase, joined before the sweep begins; see the lock-order
+  // note at the sweep's allocated_lock in CollectMemory before changing either.
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&pda_monitor_lock);
 #endif

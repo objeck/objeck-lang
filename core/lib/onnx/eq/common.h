@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <numeric>
 #include <iomanip>
+#include <sstream>
 
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
@@ -21,6 +22,21 @@
 #include "scrfd_decode.h"
 
 std::unique_ptr<Ort::Env> env = nullptr;;
+
+//
+// Reporting utilities
+//
+
+// Formats a tokens/second rate. Kept in a local stream because std::fixed and
+// std::setprecision are sticky: applied to std::wcout they would outlive this
+// call and leave every float the VM prints afterwards in fixed notation at one
+// decimal. Nothing on the Objeck side clears that -- StdOutFloatPer sets the
+// stream's precision but never its floatfield.
+static inline std::wstring format_rate(double value) {
+   std::wostringstream buffer;
+   buffer << std::fixed << std::setprecision(1) << value;
+   return buffer.str();
+}
 
 //
 // FP16 conversion utilities
@@ -57,11 +73,15 @@ static inline float half_to_float_u16(uint16_t h) {
          f = sign; // zero
       }
       else {
-         // subnormal
-         exp = 1;
-         while((mant & 0x0400u) == 0) { mant <<= 1; exp--; }
+         // Subnormal: shift the mantissa up until the implicit bit appears,
+         // dropping the exponent once per shift. Signed because the smallest
+         // half (mant == 1) needs ten shifts and lands at -9; the unsigned
+         // wraparound this replaces reached the same bits modulo 2^32, but
+         // only by relying on that wrap.
+         int32_t sub_exp = 1;
+         while((mant & 0x0400u) == 0) { mant <<= 1; sub_exp--; }
          mant &= 0x03FFu;
-         uint32_t exp_f = (exp + (127 - 15)) << 23;
+         uint32_t exp_f = (uint32_t)(sub_exp + (127 - 15)) << 23;
          uint32_t mant_f = mant << 13;
          f = sign | exp_f | mant_f;
       }
@@ -2045,7 +2065,7 @@ static void phi3_text_inf(VMContext& context) {
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       double tps = (duration_ms > 0) ? (generated_tokens.size() * 1000.0 / duration_ms) : 0;
       std::wcout << L"=> SLM generation: " << generated_tokens.size() << L" tokens in "
-                 << duration_ms << L" ms (" << std::fixed << std::setprecision(1) << tps << L" tok/s)" << std::endl;
+                 << duration_ms << L" ms (" << format_rate(tps) << L" tok/s)" << std::endl;
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -2734,7 +2754,7 @@ static void phi3_vision_inf(VMContext& context) {
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       double tps = (duration_ms > 0) ? (generated_tokens.size() * 1000.0 / duration_ms) : 0;
       std::wcout << L"=> Vision generation: " << generated_tokens.size() << L" tokens in "
-                 << duration_ms << L" ms (" << std::fixed << std::setprecision(1) << tps << L" tok/s)" << std::endl;
+                 << duration_ms << L" ms (" << format_rate(tps) << L" tok/s)" << std::endl;
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error (vision): " << e.what() << std::endl;

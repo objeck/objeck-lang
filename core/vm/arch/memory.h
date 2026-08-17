@@ -124,7 +124,13 @@ class MemoryManager {
   static_assert(EXTRA_BUF_SIZE >= 1,
                 "free-list link lives in block word [1]; blocks need >= 2 words");
   static size_t* free_buckets[FREE_POOL_COUNT];
-  static size_t free_memory_cache_size;
+  // Mutated only under 'free_memory_cache_lock', but read without it by the sweep
+  // (CollectMemory, under 'allocated_lock') to decide whether the cache is oversized.
+  // Atomic so that read is not a data race; relaxed everywhere, since the lock still
+  // orders the mutations and the sweep's use is a heuristic threshold that tolerates
+  // a value one cycle stale. Not taking the lock for that read also keeps it from
+  // having to be released again for the ClearFreeMemory call it guards.
+  static std::atomic<size_t> free_memory_cache_size;
 
   // Young generation: contiguous bump-allocated region
   static uint8_t* young_region;
