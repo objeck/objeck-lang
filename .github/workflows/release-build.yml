@@ -523,67 +523,24 @@ jobs:
       # Code Signing (Windows)
       # ============================================
 
-      # Signing is REQUIRED once a certificate is configured. This step used to warn
-      # and exit 0 on failure, so every Windows MSI from at least v2026.6.4 through
-      # v2026.8.2 shipped unsigned while signtool was running and failing, and the
-      # release notes claimed the installers were signed. A release either is signed
-      # or it is not; a green build must not mean "probably unsigned".
+      # No code signing here, deliberately.
       #
-      # windows-arm64 is included: it is cross-compiled on an x64 runner, but signing
-      # an installer does not require executing it.
-      - name: Sign release artifacts (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          CODESIGN_CERT_BASE64: ${{ secrets.CODESIGN_CERT_BASE64 }}
-          CODESIGN_PASSWORD: ${{ secrets.CODESIGN_PASSWORD }}
-        run: |
-          if (-not $env:CODESIGN_CERT_BASE64 -or -not $env:CODESIGN_PASSWORD) {
-            Write-Output "Code signing secrets not configured - skipping (artifacts will be unsigned)"
-            exit 0
-          }
-
-          $certPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
-          [System.IO.File]::WriteAllBytes($certPath, [System.Convert]::FromBase64String($env:CODESIGN_CERT_BASE64))
-
-          $buildDir = Join-Path $env:GITHUB_WORKSPACE "Objeck-Build"
-          $failed = @()
-
-          function Invoke-Sign($file) {
-            & signtool sign /f $certPath /p $env:CODESIGN_PASSWORD /tr http://timestamp.sectigo.com /td sha256 /fd sha256 $file.FullName
-            if ($LASTEXITCODE -ne 0) { return "$($file.Name): signtool sign failed" }
-            # Prove the signature landed rather than trusting the exit code alone.
-            & signtool verify /pa $file.FullName 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { return "$($file.Name): signed but verification failed" }
-            Write-Output "Signed and verified: $($file.Name)"
-            return $null
-          }
-
-          $msiFiles = Get-ChildItem -Path $buildDir -Recurse -Filter "*.msi" -ErrorAction SilentlyContinue
-          if (-not $msiFiles) {
-            Write-Output "::error::No MSI found to sign under $buildDir"
-            exit 1
-          }
-          foreach ($msi in $msiFiles) {
-            $err = Invoke-Sign $msi
-            if ($err) { $failed += $err }
-          }
-
-          $exeFiles = Get-ChildItem -Path $buildDir -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue |
-            Where-Object { $_.DirectoryName.EndsWith("bin") }
-          foreach ($exe in $exeFiles) {
-            $err = Invoke-Sign $exe
-            if ($err) { $failed += $err }
-          }
-
-          Remove-Item $certPath -Force
-
-          if ($failed.Count -gt 0) {
-            Write-Output "::error::Code signing failed; the release would ship unsigned installers"
-            $failed | ForEach-Object { Write-Output "  - $_" }
-            exit 1
-          }
-          Write-Output "All Windows artifacts signed and verified"
+      # The signing certificate lives on a SafeNet eToken (see the SAC client and
+      # OV instructions in the signing-keys archive), so its private key is
+      # non-exportable and no PFX+password can reproduce it. A GitHub-hosted
+      # runner has no USB token, so CI cannot sign at all.
+      #
+      # This step used to run `signtool sign /f <pfx> /p <password>`, which is the
+      # wrong mechanism for a token and failed on every artifact while warning and
+      # continuing -- so every Windows installer from v2026.4.0 through v2026.8.2
+      # shipped unsigned while the notes claimed otherwise. deploy_windows.cmd
+      # separately attempts `signtool ... /a`, which is the RIGHT mechanism and
+      # works locally with the token plugged in, but also cannot work on a runner.
+      #
+      # Signing is a post-publish step run by a human:
+      #     tools\cicd\sign_release.cmd <version>
+      # which downloads the published MSIs, signs them with the token, verifies
+      # with `signtool verify /pa`, and re-uploads with --clobber.
 
 
       # ============================================

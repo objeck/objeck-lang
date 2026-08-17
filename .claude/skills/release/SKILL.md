@@ -9,16 +9,16 @@ Fully automate an Objeck release end-to-end. This skill is an **orchestrator**: 
 
 ## Overview
 
-Objeck releases are triggered by pushing a git tag `v<YYYY.M.R>`. GitHub Actions does parallel builds for Windows x64/ARM64 (MSI + ZIP), Linux x64/ARM64 (TGZ), macOS ARM64 (.pkg, signed + notarized), plus the LSP package. `release-publish.yml` auto-runs on success and handles Windows MSI signing, GitHub Release creation + upload, Sourceforge upload, and API docs deployment to objeck.org.
+Objeck releases are triggered by pushing a git tag `v<YYYY.M.R>`. GitHub Actions does parallel builds for Windows x64/ARM64 (MSI + ZIP), Linux x64/ARM64 (TGZ), macOS ARM64 (.pkg, signed + notarized), plus the LSP package. `release-publish.yml` auto-runs on success and handles GitHub Release creation + upload, Sourceforge upload, and API docs deployment to objeck.org. It does NOT sign: the certificate is on a SafeNet eToken, so signing is a local post-publish step (`tools\cicd\sign_release.cmd`).
 
-This skill's job is pure **orchestration** — it runs on any machine (Windows, macOS, Linux) with git, `gh`, and SSH. It does zero compiling, zero signing, zero platform-specific work. All builds, API doc generation, signing, and artifact packaging happen in the cloud via GitHub Actions.
+This skill's job is pure **orchestration** — it runs on any machine (Windows, macOS, Linux) with git, `gh`, and SSH. It does zero compiling and zero platform-specific work. Builds, API doc generation and artifact packaging happen in the cloud; SIGNING does not — it needs the physical token and is run afterwards.
 
 **Invocation**: `/release` takes no arguments. It reads the version from `core/shared/version.h` and checks whether that version's tag already exists:
 
 - **Tag doesn't exist** (user pre-bumped) → use version.h as-is, skip straight to pre-flight gates. No local builds.
 - **Tag already exists** (user forgot to bump, or wants a hands-off release) → auto-increment the release counter (e.g. `2026.4.2` → `2026.4.3`), invoke `bump-version` to update all files + rebuild + run regression, commit + push the bump, wait for CI green, then proceed.
 
-Either way, the release summary + changelog bullets are auto-derived from `git log` since the previous tag (step 1b). All release binaries, signing, and artifact packaging happen in GitHub Actions — never locally.
+Either way, the release summary + changelog bullets are auto-derived from `git log` since the previous tag (step 1b). Release binaries and artifact packaging happen in GitHub Actions; signing is the one step that must happen locally.
 
 **Refuse to run if**: working tree is dirty, not on `master`, tag already exists, or latest master CI is red. These gates are non-negotiable — **do not offer to skip them**.
 
@@ -335,25 +335,35 @@ gh release view "v$VERSION" --json assets --jq '.assets[].name'
 If Windows MSIs are missing, the workflow secret `WINDOWS_CERT_BASE64`/`WINDOWS_CERT_PASSWORD` is not set — tell the user and abort.
 If macOS `.pkg` is missing, the Apple signing secrets are not set — tell the user and abort.
 
-**Signatures — check the SIGNATURE, not the file's existence.** Presence proves nothing:
-`release-build.yml` warns and continues when `signtool` fails, and `release-publish.yml`
-tolerates an unsigned MSI, so an unsigned installer reaches users through a fully green
-pipeline. Every Windows MSI from at least v2026.6.4 through v2026.8.2 shipped **unsigned**
-while signing was configured and attempted, and reporting them as "signed installers
-verified" on the strength of the file being present is how that went unnoticed for months.
+**Signatures — signing happens LOCALLY, after publication.** The certificate lives on a
+SafeNet eToken, so its private key is non-exportable and CI cannot sign: a GitHub runner has
+no USB token. `release-build.yml` therefore does not attempt it, and a freshly published
+release is EXPECTED to carry unsigned MSIs for a short while.
+
+Signing is a required human step, not optional polish:
+
+```cmd
+tools\cicd\sign_release.cmd <VERSION>
+```
+
+with the eToken plugged in. It downloads the published MSIs, signs each with
+`signtool ... /a` (the token's cert; no PFX, no password), verifies with `signtool verify /pa`,
+and re-uploads with `--clobber`.
+
+**Then verify the SIGNATURE, not the file's existence.** Presence proves nothing, and reporting
+"signed installers verified" because the MSI was present is how every Windows installer from
+v2026.4.0 through v2026.8.2 shipped unsigned without anyone noticing:
 
 ```powershell
-# per MSI — Status must be 'Valid'
-Get-AuthenticodeSignature <file>.msi | Select-Object Status, SignerCertificate
+Get-AuthenticodeSignature <file>.msi | Select-Object Status, SignerCertificate   # want Valid
 ```
 
 ```bash
-# macOS .pkg
-pkgutil --check-signature <file>.pkg
+pkgutil --check-signature <file>.pkg      # macOS
 ```
 
-Report the actual status. If an installer is unsigned, say so plainly rather than counting
-it as verified, and do not describe the release as signed anywhere in its notes.
+If the signing step has not been run yet, say so plainly in the report — "unsigned, pending
+`sign_release.cmd`" — rather than counting it as verified or silently omitting it.
 
 **Shipped binary sanity** — check the archives for the FULL expected binary set, not just one.
 Two separate releases were shipped broken by this check being too narrow:
