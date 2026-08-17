@@ -246,11 +246,11 @@ vector := tfidf->Transform("cats and dogs");  # [0.47, 0.0, 0.47, ...]
 - 🤖 **Claude Code** for pair programming, debugging, and refactoring
 - 🔄 **CI/CD**: Fully automated build, test, sign, and release pipeline (GitHub Actions)
   - ✅ Every push triggers multi-platform builds (Windows, Linux, macOS)
-  - ✅ Automated code signing for Windows installers
+  - ✅ macOS installers signed and notarized in CI (Windows signing is a local step — hardware token)
   - ✅ One-tag releases: `git tag v2026.2.1` → automated distribution in 60 minutes
   - ✅ Parallel builds across 6 platforms (x64/ARM64)
   - 📖 [Release Process Documentation](docs/release_process.md) • [CI/CD Architecture](docs/CI_CD.md) • [System Architecture](docs/architecture.md)
-- 🔍 **Quality**: Coverity static analysis + CodeQL security scanning
+- 🔍 **Quality**: CodeQL security scanning + gitleaks secret scanning
 - 🧪 **Testing**: 350+ tests across 3 suites (regression, comprehensive, deploy)
   - **Regression suite**: 10 focused tests for critical functionality
   - **Comprehensive suite**: 323+ tests for full language validation

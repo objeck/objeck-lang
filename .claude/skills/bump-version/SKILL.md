@@ -45,7 +45,6 @@ cd core/release && powershell -ExecutionPolicy Bypass -File update_version.ps1
 This generates from `.in` templates:
 - `core/shared/version.h` (from `version.in`)
 - `core/release/code_doc64.cmd` (from `code_doc64.in`)
-- `core/release/cov_scan.sh` (from `cov_scan.in`)
 - `programs/deploy/util/readme/readme.json` (from `readme.json.in`)
 - Windows `.rc` resource files for compiler, VM, debugger, REPL, launcher
 

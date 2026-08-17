@@ -68,7 +68,7 @@ After `bump-version` completes, commit and push the bump:
 
 ```bash
 git add core/shared/version.h core/release/update_version.ps1 \
-        core/release/code_doc64.cmd core/release/cov_scan.sh \
+        core/release/code_doc64.cmd \
         programs/deploy/util/readme/readme.json \
         programs/web-playground/backend/app/config.py \
         README.md \

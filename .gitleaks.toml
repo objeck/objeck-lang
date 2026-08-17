@@ -13,4 +13,12 @@ are still reported.
 """
 paths = [
   '''.*_api_key\.dat$''',
+  # core/release/cov_scan.{in,sh} carried a hardcoded Coverity Scan upload token
+  # from 2019-08-11 until it was removed in 2026-08. Both files are now DELETED
+  # and Coverity is no longer used, so this entry can only ever match the ~345
+  # historical commits that regenerated the script on each version bump -- there
+  # is no such file at HEAD for a future secret to hide in. The token itself is
+  # to be revoked at scan.coverity.com; removing it from the tree does not
+  # un-publish seven years of history.
+  '''^core/release/cov_scan\.(in|sh)$''',
 ]
