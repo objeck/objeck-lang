@@ -127,6 +127,15 @@ static int objeck_main(const int argc, const char* argv[])
 #else    
     Execute(argc - vm_param_count, argv + vm_param_count, gc_threshold);
 #endif    
+
+    // The POSIX branch above deliberately discards Execute's result, so this
+    // path used to fall off the end of main -- legal there (implicit return 0)
+    // but undefined behaviour now that the body lives in an ordinary function.
+    // At -O3 no return instruction is emitted and control runs into garbage,
+    // which segfaulted obr on every POSIX target while Windows was unaffected
+    // because it takes the returning branch above. Returning 0 preserves the
+    // original exit status exactly.
+    return 0;
   }
   else {
     wstring usage;
