@@ -150,3 +150,12 @@ core/lib/onnx/eq/*.dylib
 # Python bytecode (test harnesses under programs/regression and tools/lsp/tests)
 __pycache__/
 *.pyc
+
+# Coverity Scan working files. cov_scan.cmd stages under %TEMP%, but cov_scan.sh
+# writes objeck-int.tgz into core/release, and a stray cov-int/ from a hand-run
+# cov-build lands wherever it was invoked. Never commit a token file either --
+# both scripts read the token from OUTSIDE the repo for exactly that reason.
+cov-int/
+objeck-int.tgz
+cov_token.dat
+coverity_config.xml
