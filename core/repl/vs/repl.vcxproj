@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM64">
@@ -183,8 +183,8 @@
     <ClInclude Include="..\editor.h" />
     <ClInclude Include="..\repl.h" />
     <ClInclude Include="resource.h" />
-    <ClCompile Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
-    <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.h" Condition="'$(Platform)'=='ARM64'" />
+    <ClInclude Include="..\..\vm\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
+    <ClInclude Include="..\..\vm\arch\jit\arm64\jit_arm_a64.h" Condition="'$(Platform)'=='ARM64'" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="objeck.rc" />
