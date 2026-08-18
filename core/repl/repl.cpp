@@ -33,6 +33,7 @@
 #include <codecvt>
 #include <exception>
 #include <new>
+#include <utility>
 
 /****************************
 * Program start
@@ -76,7 +77,7 @@ static int objeck_main(int argc, const char* argv[])
     // Check for file input (support --file, -file, -f)
     std::wstring file_value = GetCommandLineArgumentWithAliases(arguments, {L"file", L"f"});
     if(!file_value.empty()) {
-      input = file_value;
+      input = std::move(file_value);
       mode = 1;
       arguments.erase(L"file");
       arguments.erase(L"f");
@@ -85,7 +86,7 @@ static int objeck_main(int argc, const char* argv[])
     // Check for inline code (support --inline, -inline, -i)
     std::wstring inline_value = GetCommandLineArgumentWithAliases(arguments, {L"inline", L"i"});
     if(!inline_value.empty()) {
-      input = inline_value;
+      input = std::move(inline_value);
       mode = 2;
       arguments.erase(L"inline");
       arguments.erase(L"i");
@@ -101,7 +102,7 @@ static int objeck_main(int argc, const char* argv[])
     // Check for libraries (support --library, -lib, -l)
     std::wstring lib_value = GetCommandLineArgumentWithAliases(arguments, {L"library", L"lib", L"l"});
     if(!lib_value.empty()) {
-      libs = lib_value;
+      libs = std::move(lib_value);
       arguments.erase(L"library");
       arguments.erase(L"lib");
       arguments.erase(L"l");
@@ -110,7 +111,7 @@ static int objeck_main(int argc, const char* argv[])
     // Check for optimization level (support --optimize, -opt, -o)
     std::wstring opt_value = GetCommandLineArgumentWithAliases(arguments, {L"optimize", L"opt", L"o"});
     if(!opt_value.empty()) {
-      opt = opt_value;
+      opt = std::move(opt_value);
       arguments.erase(L"optimize");
       arguments.erase(L"opt");
       arguments.erase(L"o");
@@ -123,7 +124,9 @@ static int objeck_main(int argc, const char* argv[])
     // Start REPL loop
     else {
       Editor editor;
-      editor.Edit(input, libs, opt, mode, is_exit);
+      // moved: line 126 is the last use of all three, and Edit takes each
+      // std::wstring by value
+      editor.Edit(std::move(input), std::move(libs), std::move(opt), mode, is_exit);
     }
   }
 
