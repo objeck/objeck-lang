@@ -2290,9 +2290,15 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::TailCallOpt(std::vector<In
   {
     std::vector<IntermediateInstruction*> existing = tco_outputs[0]->GetInstructions();
     IntermediateBlock* new_first = new IntermediateBlock;
-    // copy prologue STORs
+    // copy prologue STORs. Index `prologue`, not `existing`: the loop bound comes
+    // from prologue, and taking the elements from a different container only
+    // happens to work because existing[0..prologue.size()) are the very same
+    // instruction pointers -- prologue is the leading unbroken STOR run of
+    // inputs[0], and the first pass copies anything before a tail call verbatim.
+    // That is a real invariant, but an implicit one, and reading it out of the
+    // other vector is an out-of-bounds read the moment it stops holding.
     for(size_t i = 0; i < prologue.size(); ++i) {
-      new_first->AddInstruction(existing[i]);
+      new_first->AddInstruction(prologue[i]);
     }
     // insert the body label (TCO loops jump here)
     new_first->AddInstruction(

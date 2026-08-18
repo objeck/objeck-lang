@@ -3615,9 +3615,15 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
   const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
   const std::wstring precision = program->GetProperty(L"precision");
   if(precision.size() > 0) {
-    std::ios_base::fmtflags flags(std::wcout.flags());
-    std::streamsize ss = std::wcout.precision();
-    
+    // Save, modify and restore the SAME stream. This used to read the saved
+    // state from std::wcout, modify std::wcerr, and then restore onto std::cout
+    // -- three different objects. The effect was that wcerr kept the fixed/
+    // scientific/precision setting permanently, so every later float written to
+    // stderr came out in whatever format the last call happened to set, while
+    // narrow std::cout had its flags overwritten with wcout's.
+    const std::ios_base::fmtflags flags(std::wcerr.flags());
+    const std::streamsize ss = std::wcerr.precision();
+
     if(precision == L"fixed") {
       std::wcerr << std::fixed;
     }
@@ -3627,10 +3633,10 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
     else {
       std::wcerr << std::setprecision(static_cast<int>(stoll(precision)));
     }
-    
+
     std::wcerr << value;
-    std::cout.precision (ss);
-    std::cout.flags(flags);
+    std::wcerr.precision(ss);
+    std::wcerr.flags(flags);
   }
   else {
     std::wcerr << std::setprecision(6) << value;

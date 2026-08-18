@@ -1135,8 +1135,19 @@ namespace backend {
     }
 
     ~FileEmitter() {
+      // CloseLogger() closes a wofstream, and close() sets failbit on an I/O
+      // error. A destructor is implicitly noexcept, so if that ever became a
+      // throw it would call terminate() rather than report. Nothing sets an
+      // iostream exception mask today, so this cannot fire as written -- the
+      // guard is here so that enabling one later cannot turn a failed log close
+      // into an abort of the whole compiler.
       if(show_asm) {
-        CloseLogger();
+        try {
+          CloseLogger();
+        }
+        catch(...) {
+          // a failed close of the .obm log must not take the process down
+        }
       }
 
       delete program;

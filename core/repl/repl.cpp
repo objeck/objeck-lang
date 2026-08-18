@@ -31,11 +31,17 @@
 
 #include "repl.h"
 #include <codecvt>
+#include <exception>
+#include <new>
 
 /****************************
 * Program start
 ****************************/
-int main(int argc, const char* argv[])
+// Renamed from main so the whole body sits inside the backstop below. main had
+// no try/catch at all, so anything thrown from here -- the codecvt/locale
+// construction, command-line parsing, or a bad_alloc from the wstring work --
+// escaped and called terminate() instead of reporting.
+static int objeck_main(int argc, const char* argv[])
 {
 #ifndef _MSYS2_CLANG
   SetEnv();
@@ -124,6 +130,28 @@ int main(int argc, const char* argv[])
 #ifdef _DEBUG
   CloseLogger();
 #endif
+
+  // main may fall off the end (implicit return 0); a plain function may not
+  return 0;
+}
+
+int main(int argc, const char* argv[])
+{
+  try {
+    return objeck_main(argc, argv);
+  }
+  catch(const std::bad_alloc&) {
+    std::wcerr << L">>> repl: out of memory <<<" << std::endl;
+  }
+  catch(const std::exception& e) {
+    const std::string msg(e.what());
+    std::wcerr << L">>> repl: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+  }
+  catch(...) {
+    std::wcerr << L">>> repl: unexpected error <<<" << std::endl;
+  }
+
+  return 1;
 }
 
 void Usage()

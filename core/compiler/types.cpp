@@ -120,11 +120,24 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
       type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
     }
       break;
+
+    default:
+      // no recognised tag -- type stays null; the index++ at the bottom of the
+      // loop still advances, so a malformed string terminates rather than spins
+      break;
     }
 
-    // set generics
+    // set generics. The switch has no tag for every possible character, so type
+    // can be null here -- the 'if(type)' guard further down says as much, but
+    // this dereference was left unguarded, and linker.cpp calls this on type
+    // strings read out of .obl files. ParseGenerics is still called when type is
+    // null so that index advances past the generic block exactly as before;
+    // only the assignment is skipped.
     if(index < param_str.size() && param_str[index] == L'<') {
-      type->SetGenerics(ParseGenerics(index, param_str));
+      const std::vector<frontend::Type*> generics = ParseGenerics(index, param_str);
+      if(type) {
+        type->SetGenerics(generics);
+      }
     }
 
     // set dimension
@@ -245,6 +258,23 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
     }
     type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, type_name.substr(2, index - 2));
     break;
+
+  default:
+    // no recognised tag -- leaves type null, handled by the guard below
+    break;
+  }
+
+  // The switch had no default, so a type string starting with anything other
+  // than l/b/i/f/c/n/m/o left type null and fell straight into the two
+  // dereferences below. An EMPTY string reaches here too: operator[](0) on an
+  // empty wstring yields L'\0', which matches no case.
+  //
+  // This is reachable from outside the compiler, not just from its own output --
+  // linker.cpp and linker.h call this on type strings read out of .obl library
+  // files, so a corrupt or hand-crafted library crashed the compiler here.
+  // Return null instead of faulting; the string is unparseable.
+  if(!type) {
+    return nullptr;
   }
 
   // set generics

@@ -356,8 +356,18 @@ namespace Runtime {
     }
 
     ~Debugger() {
-      ClearProgram();
-      ClearBreaks();
+      // Same reasoning as ~FileEmitter in the compiler: a destructor is
+      // implicitly noexcept, and these do stream I/O whose failure paths set
+      // failbit. No iostream exception mask is set anywhere today, so this
+      // cannot fire as written; the guard keeps a future mask from turning
+      // teardown into terminate() and losing the debug session on exit.
+      try {
+        ClearProgram();
+        ClearBreaks();
+      }
+      catch(...) {
+        // teardown failures must not abort the process
+      }
     }
 
     // start debugger (CLI mode)
