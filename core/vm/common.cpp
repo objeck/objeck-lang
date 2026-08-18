@@ -4106,8 +4106,14 @@ static size_t GetProcessResidentBytes()
   FILE* fp = fopen("/proc/self/statm", "r");
   if(fp) {
     long pages = 0;
-    if(fscanf(fp, "%*s %ld", &pages) == 1) {
-      rss = (size_t)pages * (size_t)sysconf(_SC_PAGESIZE);
+    if(fscanf(fp, "%*s %ld", &pages) == 1 && pages > 0) {
+      // /proc is parsed input, so the page count is not trusted to be sane: a value
+      // large enough to wrap the multiply would report a nonsense RSS rather than
+      // fail. sysconf() returns -1 on error, which would cast to SIZE_MAX.
+      const long page_size = sysconf(_SC_PAGESIZE);
+      if(page_size > 0 && (size_t)pages <= SIZE_MAX / (size_t)page_size) {
+        rss = (size_t)pages * (size_t)page_size;
+      }
     }
     fclose(fp);
   }
@@ -8277,7 +8283,11 @@ bool TrapProcessor::SockDtlsOutByteAry(StackProgram* program, size_t* inst, size
   if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     char* buffer = (char*)(array + 3);
-    PushInt(IPDtlsSocket::WriteBytes(buffer + offset, static_cast<int>(num), sctx), op_stack, stack_pos);
+    // WriteBytes reports failure as -1 and leaves the mbedtls/OpenSSL code in the
+    // socket context, so fold any error onto the same -1 the guarded path pushes
+    // rather than converting a negative int into PushInt's size_t.
+    const int sent = IPDtlsSocket::WriteBytes(buffer + offset, static_cast<int>(num), sctx);
+    PushInt(sent < 0 ? -1 : sent, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -8300,7 +8310,8 @@ bool TrapProcessor::SockDtlsOutCharAry(StackProgram* program, size_t* inst, size
     const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
-    PushInt(IPDtlsSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sctx), op_stack, stack_pos);
+    const int sent = IPDtlsSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sctx);
+    PushInt(sent < 0 ? -1 : sent, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
