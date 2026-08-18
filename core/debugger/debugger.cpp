@@ -38,7 +38,11 @@
  /********************************
   * Debugger main
   ********************************/
-int main(int argc, const char* argv[])
+// Renamed from main so the backstop below covers the ENTIRE body. The existing
+// try/catch inside started well after the opening brace, leaving the whole
+// prologue -- argument parsing and the wstring/usage construction that can
+// throw bad_alloc -- outside any handler, where a throw calls terminate().
+static int objeck_main(int argc, const char* argv[])
 {
   std::wstring usage;
   usage += L"Usage: obd [options]\n\n";
@@ -198,6 +202,25 @@ int main(int argc, const char* argv[])
 #endif
     std::wcerr << usage << std::endl;
     return 1;
+  }
+
+  return 1;
+}
+
+int main(int argc, const char* argv[])
+{
+  try {
+    return objeck_main(argc, argv);
+  }
+  catch(const std::bad_alloc&) {
+    std::wcerr << L"fatal: out of memory" << std::endl;
+  }
+  catch(const std::exception& e) {
+    const std::string msg(e.what());
+    std::wcerr << L"fatal: " << std::wstring(msg.begin(), msg.end()) << L"" << std::endl;
+  }
+  catch(...) {
+    std::wcerr << L"fatal: unexpected error" << std::endl;
   }
 
   return 1;

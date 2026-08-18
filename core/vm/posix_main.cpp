@@ -33,10 +33,16 @@
 #include "../shared/version.h"
 #include <iostream>
 #include <string>
+#include <exception>
+#include <new>
 
 using namespace std;
 
-int main(const int argc, const char* argv[])
+// Renamed from main so the backstop below covers the whole body. main had no
+// try/catch, so anything thrown during argument parsing or setup escaped and
+// called terminate() instead of reporting. Mirrors win_main.cpp, which already
+// reports on these same failures.
+static int objeck_main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     //
@@ -162,4 +168,23 @@ int main(const int argc, const char* argv[])
 
     return 1;
   }
+}
+
+int main(const int argc, const char* argv[])
+{
+  try {
+    return objeck_main(argc, argv);
+  }
+  catch(const std::bad_alloc&) {
+    std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
+  }
+  catch(const std::exception& e) {
+    const std::string msg(e.what());
+    std::wcerr << L">>> virtual machine: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+  }
+  catch(...) {
+    std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
+  }
+
+  return 1;
 }

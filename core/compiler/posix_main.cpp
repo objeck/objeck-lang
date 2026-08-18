@@ -37,6 +37,8 @@
 #include "../shared/version.h"
 #include <iostream>
 #include <string>
+#include <exception>
+#include <new>
 #include <list>
 #include <map>
 
@@ -44,7 +46,11 @@
 * Program start. Parses command
 * line parameters.
 ****************************/
-int main(int argc, const char* argv[])
+// Renamed from main so the backstop below covers the ENTIRE body. The existing
+// try/catch inside started well after the opening brace, leaving the whole
+// prologue -- argument parsing and the wstring/usage construction that can
+// throw bad_alloc -- outside any handler, where a throw calls terminate().
+static int objeck_main(int argc, const char* argv[])
 {
   std::wstring usage;
   usage += L"Usage: obc [options] <source files>\n\n";
@@ -147,4 +153,23 @@ int main(int argc, const char* argv[])
   }
 
   return status;
+}
+
+int main(int argc, const char* argv[])
+{
+  try {
+    return objeck_main(argc, argv);
+  }
+  catch(const std::bad_alloc&) {
+    std::wcerr << L"internal error: out of memory" << std::endl;
+  }
+  catch(const std::exception& e) {
+    const std::string msg(e.what());
+    std::wcerr << L"internal error: " << std::wstring(msg.begin(), msg.end()) << L"" << std::endl;
+  }
+  catch(...) {
+    std::wcerr << L"internal error: unexpected error" << std::endl;
+  }
+
+  return 1;
 }

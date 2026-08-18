@@ -96,7 +96,13 @@ bool Document::Save(std::wstring filename)
       Editor::Trim(line_str);
 
       if(!line_str.empty() && line_str.front() == L'}') {
-        ident_count--;
+        // guard the decrement: ident_count is size_t, so a line starting with
+        // '}' when the count is already 0 wrapped it to SIZE_MAX and the indent
+        // loop below then ran ~1.8e19 times, hanging the REPL on any buffer with
+        // an unmatched closing brace
+        if(ident_count > 0) {
+          ident_count--;
+        }
       }
 
       for(size_t j = 0; j < ident_count; ++j) {
@@ -164,7 +170,13 @@ void Document::List(size_t cur_pos, bool all)
       Editor::Trim(line_str);
 
       if(!line_str.empty() && line_str.front() == L'}') {
-        ident_count--;
+        // guard the decrement: ident_count is size_t, so a line starting with
+        // '}' when the count is already 0 wrapped it to SIZE_MAX and the indent
+        // loop below then ran ~1.8e19 times, hanging the REPL on any buffer with
+        // an unmatched closing brace
+        if(ident_count > 0) {
+          ident_count--;
+        }
       }
 
       for(size_t j = 0; j < ident_count; ++j) {
