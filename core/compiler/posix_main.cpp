@@ -39,6 +39,7 @@
 #include <string>
 #include <exception>
 #include <new>
+#include <utility>
 #include <list>
 #include <map>
 
@@ -127,7 +128,9 @@ static int objeck_main(int argc, const char* argv[])
 
     // compile source with options
     try {
-      status = OptionsCompile(cmd_options, argument_optionals, usage);
+      // moved: the other use of 'usage' is in the else branch below, which is
+      // mutually exclusive with this one -- verified before moving
+      status = OptionsCompile(cmd_options, argument_optionals, std::move(usage));
     }
     catch(const std::bad_alloc&) {
       std::wcerr << L"internal error: out of memory" << std::endl;
