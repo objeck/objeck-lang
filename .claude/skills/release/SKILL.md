@@ -451,6 +451,24 @@ Keep this list in sync with `release-build.yml`'s "Verify required binaries" ste
 for POSIX, `$required` for Windows). Those run pre-tag against `deploy/bin` and are the real
 gate; this step is the post-hoc confirmation that what was staged actually reached the archive.
 
+**Confirm those gates actually RAN, not merely that the job is green.** Both steps are
+platform-guarded (`if: runner.os == 'Windows'` / `!=`), so each build job executes exactly
+one and skips the other. A *skipped* step and a *deleted* step look identical from the job's
+conclusion, because **skipped is not failed** — tighten that `if:` by mistake (say to
+`runner.os == 'Linux'`) and the Windows job skips BOTH verifications, ships unverified, and
+still reports green. That is the same shape as the signing defect: a configured step that ran,
+failed, and let the pipeline pass anyway. Assert one success per job:
+
+```bash
+gh run view "$RUN_ID" --json jobs --jq '.jobs[]
+  | select(.name|startswith("Build "))
+  | .name as $j
+  | [.steps[] | select(.name|startswith("Verify required binaries")) | .conclusion]
+  | $j + " -> " + (map(select(. == "success")) | length | tostring) + " success"'
+# every "Build <platform>" job must report exactly 1 success -- 0 means the release
+# was never verified on that platform, however green the run looks
+```
+
 If any binary is absent, the release is broken. Tell the user; do not publish. The correct fix is
 to add the missing build/copy to the deploy script (`deploy_posix.sh`, `deploy_macos_arm64.sh`,
 `deploy_windows.cmd`) and its name to both verify lists on master, then delete the tag and
