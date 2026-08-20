@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.8.2/objeck-linux-x64_2026.8.2.tgz
-tar xzf objeck-linux-x64_2026.8.2.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.8.3/objeck-linux-x64_2026.8.3.tgz
+tar xzf objeck-linux-x64_2026.8.3.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -104,7 +104,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.8.2](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.8.3](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
@@ -117,7 +117,7 @@ obc hello && obr hello
 
 📦 **Alternative:** [Sourceforge](https://sourceforge.net/projects/objeck/files/) • 📚 **API Docs:** [objeck.org/api/latest](https://www.objeck.org/api/latest/)
 
-> **Note:** All Windows installers are digitally signed. Releases are fully automated via CI/CD and built on GitHub Actions runners.
+> **Note:** Windows installers are signed and timestamped (`CN=Randy Hollines`, Sectigo); the macOS `.pkg` is signed and notarized. Signing uses a hardware token and therefore happens locally after publication, so verify rather than assume — `Get-AuthenticodeSignature <file>.msi` reports `Valid` only when it really is signed. Check any download against the release's `SHA256SUMS`, which is regenerated after signing. Builds are automated on GitHub Actions runners.
 
 ## See It In Action
 

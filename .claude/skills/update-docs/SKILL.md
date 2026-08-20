@@ -52,6 +52,45 @@ Read the `## What's New` section in `README.md`.
   * Bug fix or minor item description
 ```
 
+### 2b. Update README.md's **Quick Start** and **Downloads** (not just What's New)
+
+Step 2 only touches the "What's New" list. Three other places in `README.md` carry a hardcoded
+version and go stale silently -- none of them is a changelog, so nothing about editing the
+changelog surfaces them:
+
+- **Quick Start** -- a copy-pasteable install block with the release URL *and* the tarball
+  name in it. If it is stale the very first command a new user runs downloads the previous
+  release; if the old tag is ever deleted it 404s. At v2026.8.3 it still pointed at v2026.8.2.
+- **Downloads** -- the `**Latest Release:** [vX.Y.Z](...)` line. The table below it uses
+  `/releases/latest`, which needs no edit; this one line does.
+- The static release **badge** near the top (`img.shields.io/badge/release-vX.Y.Z-blue`).
+  It never calls the API, so it shows the previous version until edited by hand.
+
+```bash
+# Every hardcoded version left in README.md. Historical changelog entries are
+# expected to name old versions; anything OUTSIDE "## What's New" is a bug.
+grep -n "2026\.[0-9]*\.[0-9]*" README.md
+```
+
+**Then prove the install block works, rather than eyeballing the version number.** A URL that
+looks right and 404s is the same failure as a link that renders and goes nowhere:
+
+```bash
+for u in $(grep -oE 'https://github.com/objeck/objeck-lang/releases/download/[^ )]*' README.md | sort -u); do
+  curl -s -o /dev/null -w "%{http_code}  $u
+" -L "$u"      # must be 200
+done
+```
+
+Leave the extract paths alone unless the archive layout changed -- the tarball's single
+top-level directory is `objeck-lang/`, so `./objeck-lang/bin` and `./objeck-lang/lib` are
+correct. Confirm with `tar --force-local -tzf <archive>.tgz | cut -d/ -f1 | sort -u`
+(**`--force-local` is required on Windows**, or GNU tar reads `C:/...` as a remote host).
+
+**Do not restate a blanket signing promise.** README carried "All Windows installers are
+digitally signed" throughout the four months every Windows MSI shipped unsigned. Say what is
+verifiable and how to check it, not what is supposed to be true.
+
 ### 3. Update docs/readme.html
 
 Read `docs/readme.html`.
@@ -117,6 +156,20 @@ Read `CHANGELOG.md`.
 
 - **Cross-check all four files against `CHANGELOG.md` for the version.** They must tell a consistent story — every flagship feature in the changelog should appear in README.md, `docs/readme.html`, and `docs/readme.txt` (each at its own altitude). A version is often partially pre-authored (e.g. `CHANGELOG` + `README` done, `readme.html`/`readme.txt` not, or a draft `readme.txt` written before later features landed); finish the laggards rather than assuming one file represents all.
 - **Give flagship features prominence.** A headline feature (e.g. a debugger overhaul, a new language feature) belongs near the top as its own bullet, not buried as a one-line "fix". Lead with what users will care about most.
-- Confirm each file has the new version at the top and no stale current-version strings remain (`grep` for the previous version's number / "Download v<OLD>").
+- Confirm each file has the new version at the top and no stale current-version strings remain.
+  Grep for the PREVIOUS version across every doc surface at once -- outside a historical
+  changelog entry, every hit is a bug:
+
+  ```bash
+  PREV=2026.8.2   # the version being superseded
+  grep -rn "$PREV" README.md docs/readme.html docs/readme.txt docs/web/        programs/deploy/util/readme/readme.json.in 2>/dev/null
+  ```
+
+  Known repeat offenders, each of which shipped stale at least once: README's **Quick Start**
+  install URL and tarball name, README's **Downloads → Latest Release** line, README's static
+  release **badge**, and `docs/web/readme.html`'s hardcoded **`Download v<OLD>`** button (which
+  sat two releases behind, on v2026.8.1, through the whole of v2026.8.2).
+- **Verify links resolve; do not just read them.** Every download URL in README must return
+  HTTP 200. A stale-but-plausible URL and a dead link are indistinguishable by eye.
 - Show the user the changes made to each file (brief summary, not full diffs)
 - Do NOT commit automatically — let the user decide when to commit
