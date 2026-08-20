@@ -89,6 +89,10 @@ namespace fs = std::filesystem;
 #define OBU_UPDATE_SUPPORTED 0
 #endif
 
+#if OBU_UPDATE_SUPPORTED
+static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out, bool quiet = false);
+#endif
+
 /****************************
 * Usage
 ****************************/
@@ -151,42 +155,19 @@ static bool IsSafeTag(const std::string& tag)
 ****************************/
 static bool FetchUrl(const std::string& url, bool is_quiet, std::string& response, std::string& error)
 {
-  std::string command = "curl -fsSL --max-time 20 \"" + url + '"';
-  if(is_quiet) {
-#ifdef _WIN32
-    command += " 2>nul";
-#else
-    command += " 2>/dev/null";
-#endif
-  }
-
-  FILE* pipe = OBU_POPEN(command.c_str(), "r");
-  if(!pipe) {
-    error = "Unable to run 'curl'; please ensure it is installed and on the path.";
+#if OBU_UPDATE_SUPPORTED
+  if(!RunArgvCapture({"curl", "-fsSL", "--max-time", "20", url}, response, is_quiet)) {
+    error = "Request failed: " + url + " ('curl' failed; is curl installed and the network reachable?)";
     return false;
   }
-
-  response.clear();
-  char buffer[4096];
-  size_t read;
-  while((read = fread(buffer, 1, sizeof(buffer), pipe)) > 0) {
-    response.append(buffer, read);
-  }
-
-  const int status = OBU_PCLOSE(pipe);
-#ifdef _WIN32
-  const int exit_code = status;
-#else
-  const int exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-#endif
-
-  if(status == -1 || exit_code != 0) {
-    error = "Request failed: " + url + " ('curl' exited with code " +
-      std::to_string(exit_code) + "; is curl installed and the network reachable?)";
-    return false;
-  }
-
   return true;
+#else
+  (void)url;
+  (void)is_quiet;
+  response.clear();
+  error = "Updater is not supported on this platform.";
+  return false;
+#endif
 }
 
 /****************************
@@ -540,7 +521,7 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
 * Runs a program and captures its stdout (used to list a tarball's members
 * before extracting). No shell. Returns false if it could not be launched.
 ****************************/
-static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out)
+static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out, bool quiet)
 {
   out.clear();
   int pipe_fds[2];
@@ -565,6 +546,13 @@ static bool RunArgvCapture(const std::vector<std::string>& args, std::string& ou
     close(pipe_fds[0]);
     dup2(pipe_fds[1], STDOUT_FILENO);
     close(pipe_fds[1]);
+    if(quiet) {
+      const int devnull = open("/dev/null", O_WRONLY);
+      if(devnull >= 0) {
+        dup2(devnull, STDERR_FILENO);
+        close(devnull);
+      }
+    }
     execvp(argv[0], argv.data());
     _exit(127);
   }
