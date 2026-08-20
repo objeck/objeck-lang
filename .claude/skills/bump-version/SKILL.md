@@ -105,7 +105,15 @@ This rebuilds the entire MSVC solution (compiler, VM, debugger, REPL, launcher),
 > cascading `Verify required binaries` failures on every non-windows-x64 target. This
 > broke v2026.6.4. **So: if the `.obl` are rebuilt separately/after, REGENERATE `docs/api.zip`
 > once the new `.obl` are in `deploy-x64/lib`** (re-run `deploy_windows.cmd`, or run the
-> `code_doc` doc-gen + `7z a -tzip api.zip api/*` from `deploy-x64/doc`). Build the zip with
+> `code_doc` doc-gen + **`rm -f api.zip` first**, then `7z a -tzip api.zip api/*`, from `deploy-x64/doc`).
+> **DELETE THE ARCHIVE BEFORE BUILDING IT.** `7z a` and `zip -r` both UPDATE an existing archive
+> in place, and `docs/api.zip` is tracked, so one is always present. If the generated tree is
+> empty or partial, the old entries survive and every structural check still passes against them.
+> This is not hypothetical: CI did exactly this for three releases -- its log reads `updating:
+> api/ (stored 0%)` followed by `✅ API documentation packaged: 439 HTML files`, where those 439
+> were the STALE entries already inside the zip. v2026.8.0's docs shipped inside v2026.8.1 and
+> v2026.8.2 that way. Fixed in release-build.yml 2026-08-19; the same trap applies locally.
+> Build the zip with
 > `7z`/`zip` (forward-slash paths), **not** PowerShell `Compress-Archive` (writes backslash
 > entries that Linux `unzip` mangles). **Always verify before committing** (see step 8):
 > `unzip -l docs/api.zip | grep -c '\.html$'` must be ≥ 50.

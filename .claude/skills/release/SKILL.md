@@ -413,7 +413,25 @@ Expected: build ~45-70 min (the arm64 leg dominates; vcpkg rebuilds
 `chore: update api.zip for v<VERSION> [skip ci]`, so any push you make during or after
 the build is rejected as non-fast-forward. Rebase onto it; the tag is unaffected.
 
-### 9-11b. Post-publish: ONE command
+### 9. Write the release body
+
+`release-publish.yml` sets a generic body with no changelog. Replace it. Combine the
+curated bullets for this version from `docs/readme.txt` with the `release-drafter` draft:
+
+```bash
+DRAFTER_BODY=$(gh api repos/:owner/:repo/releases --jq   '.[] | select(.draft == true and .tag_name == "v'"$VERSION"'") | .body')
+```
+
+Structure: `## What's New in v<VERSION>` + summary + curated bullets, then the merged-PR
+list, then Installation / Verification / Downloads. Pass the file to `post_release.sh
+--body`, which publishes it and then gates it (gate 5). Do not hand-run `gh release edit`
+and skip the gate.
+
+State the signature status only from gate 3's output. Reporting "signed installers
+verified" on the strength of the MSI existing is exactly how three consecutive release
+reports were wrong.
+
+### 10-11b. Post-publish: ONE command
 
 Everything after `release-publish.yml` goes green is a single pipeline, and it runs as
 one script. It used to be four prose sections here, which meant the commands were
@@ -437,7 +455,7 @@ Exit 0 only when all six gates pass. Read-only unless you pass the flags.
 `--sign` needs the SafeNet eToken plugged in and prompts for its password (once per MSI
 unless single-logon is on). Signing cannot happen in CI -- the key is non-exportable and a
 hosted runner has no USB port -- so this is a required human step, not optional polish.
-Write the body to a file first (step 10 below) and pass it with `--body`.
+Write the body to a file first (step 9 above) and pass it with `--body`.
 
 **If the script reports a failure, read it before believing it.** Three of today's
 "failures" were the harness, not the release: a watcher calling a slow build FAILED after
@@ -446,24 +464,6 @@ declaring every binary missing, and an empty-href grep written across two lines 
 matched `)` in ordinary prose. Each is now fixed *in the script* with a comment naming the
 incident. A gate whose failure mode is indistinguishable from the defect it hunts is worse
 than no gate.
-
-### 10. Write the release body
-
-`release-publish.yml` sets a generic body with no changelog. Replace it. Combine the
-curated bullets for this version from `docs/readme.txt` with the `release-drafter` draft:
-
-```bash
-DRAFTER_BODY=$(gh api repos/:owner/:repo/releases --jq   '.[] | select(.draft == true and .tag_name == "v'"$VERSION"'") | .body')
-```
-
-Structure: `## What's New in v<VERSION>` + summary + curated bullets, then the merged-PR
-list, then Installation / Verification / Downloads. Pass the file to `post_release.sh
---body`, which publishes it and then gates it (gate 5). Do not hand-run `gh release edit`
-and skip the gate.
-
-State the signature status only from gate 3's output. Reporting "signed installers
-verified" on the strength of the MSI existing is exactly how three consecutive release
-reports were wrong.
 
 ### 12. Final report
 
@@ -493,15 +493,26 @@ At every stage, **fail fast** and report exactly which step failed with the raw 
 - If `git push origin v<VERSION>` fails, the local tag exists but is not pushed. Tell the user; do not auto-delete the local tag.
 - If `release-build.yml` fails, the tag is already pushed. Tell the user the options: (a) fix on master, delete the tag, re-push; (b) re-run via `gh run rerun`. Do **not** attempt to patch CI mid-release.
 - If `release-publish.yml` fails, build artifacts still exist. Suggest `gh workflow run release-publish.yml -f version=<VERSION> -f run_id=<RUN_ID>`. Do not act automatically.
-- If the VM binary check fails (step 9), the release is broken. Tell the user to fix the CI dependency, delete the tag, and re-release. Do not mark the release as complete.
+- If the binary check fails (`post_release.sh` gate 2), the release is broken. Tell the user to fix the CI dependency, delete the tag, and re-release. Do not mark the release as complete.
 - If the playground SSH deploy fails, the GitHub release is already live. Tell the user the release is public but playground is stale; suggest re-running the SSH step manually.
 
 ## Things this skill deliberately does NOT do
 
 - **Auto-bumps only when needed.** If `version.h` points at an already-released tag, the skill auto-increments and invokes `bump-version`. If `version.h` is already at an unreleased version (user pre-bumped), no bump happens.
 - **Does not compile, link, or build anything.** No `MSBuild`, no `make`, no `deploy_windows.cmd`, no `update_version.sh`, no `obc`, no `obr`. All builds happen in GitHub Actions.
-- **Does not sign anything locally.** All signing happens in GitHub Actions using repo secrets.
-- **Does not generate API docs locally.** GitHub Actions generates `api.zip` and deploys to objeck.org.
+- **Signs locally, and ONLY locally.** This previously read "does not sign anything locally; all
+  signing happens in GitHub Actions using repo secrets" — flatly contradicting the Overview, and
+  wrong. The certificate lives on a SafeNet eToken: the private key is non-exportable and a hosted
+  runner has no USB port, so CI signing is **impossible, not merely unconfigured**. Believing
+  otherwise is exactly why every Windows MSI from v2026.4.0 through v2026.8.1 shipped unsigned
+  while `signtool` ran and failed on every artifact. `post_release.sh --sign` is a required human
+  step. Do not add signing to any workflow.
+- **Does not generate API docs locally** — but the committed `docs/api.zip` is an INPUT, not only
+  an output. Only `windows-x64` regenerates its own docs; `deploy_posix.sh`,
+  `deploy_macos_arm64.sh` and `deploy_windows.cmd`'s ARM64 branch all unzip the committed file
+  straight into the shipped `doc/` tree. A stale one therefore ships to four of five platforms,
+  which is how v2026.8.0's docs went out inside v2026.8.1 and v2026.8.2. Hence the stamp gate in
+  step 1.
 - **Does not use `git add -A`.** Explicit file lists only.
 - **Does not amend commits or force-push.** Every commit is new.
 - **Does not delete tags.** If recovery requires tag deletion, the user drives that step.
