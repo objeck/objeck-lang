@@ -87,14 +87,19 @@ template: |
 
   Choose the appropriate build for your platform:
 
-  | Platform | Architecture | Download |
-  |----------|--------------|----------|
-  | **Linux** | x64 | [objeck-linux-x64_$RESOLVED_VERSION.tar.gz]() |
-  | **Linux** | ARM64 | [objeck-linux-arm64_$RESOLVED_VERSION.tar.gz]() |
-  | **macOS** | Intel (x64) | [objeck-macos-x64_$RESOLVED_VERSION.tar.gz]() |
-  | **macOS** | Apple Silicon | [objeck-macos-arm64_$RESOLVED_VERSION.tar.gz]() |
-  | **Windows** | x64 | [objeck-windows-x64_$RESOLVED_VERSION.zip]() |
-  | **Windows** | ARM64 | [objeck-windows-arm64_$RESOLVED_VERSION.zip]() |
+  Every file below is in the **Assets** section at the bottom of this release.
+
+  | Platform | Architecture | Installer | Archive |
+  |----------|--------------|-----------|---------|
+  | **Windows** | x64 | `objeck-windows-x64_$RESOLVED_VERSION.msi` | `objeck-windows-x64_$RESOLVED_VERSION.zip` |
+  | **Windows** | ARM64 | `objeck-windows-arm64_$RESOLVED_VERSION.msi` | `objeck-windows-arm64_$RESOLVED_VERSION.zip` |
+  | **macOS** | Apple Silicon | `objeck-macos-arm64_$RESOLVED_VERSION.pkg` | `objeck-macos-arm64_$RESOLVED_VERSION.tgz` |
+  | **Linux** | x64 | — | `objeck-linux-x64_$RESOLVED_VERSION.tgz` |
+  | **Linux** | ARM64 | — | `objeck-linux-arm64_$RESOLVED_VERSION.tgz` |
+
+  Also published: `objeck-lsp_$RESOLVED_VERSION.zip` (language server) and `SHA256SUMS`.
+
+  Verify a download against `SHA256SUMS` before installing.
 
   ## 🔗 Links
 
@@ -108,7 +113,7 @@ template: |
   ### Linux / macOS
   ```bash
   # Extract archive
-  tar xzf objeck-*.tar.gz
+  tar xzf objeck-*.tgz
   cd objeck-lang
 
   # Add to PATH
