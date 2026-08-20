@@ -203,10 +203,13 @@ The `core_opencv` test may fail on WSL (missing native .so) — that's expected.
   **v2026.8.0** while serving as the docs for v2026.8.1 and v2026.8.2 — 439 HTML files
   with `api/` paths throughout, so nothing ever went red:
   ```bash
-  unzip -p docs/api.zip api/api.system.html | grep -o 'v2026\.[0-9]*\.[0-9]*' | head -1
+  # Pick the page by LISTING the zip. Naming a file that is not in it (there is no
+  # api/api.system.html) makes unzip -p print nothing and the check pass on any version.
+  PAGE=$(unzip -l docs/api.zip | awk '/\.html$/{print $4; exit}')
+  unzip -p docs/api.zip "$PAGE" | grep -o 'class="version">v[0-9.]*' | head -1
   ```
-  must equal the new version. If it doesn't, regenerate against the new `.obl` before
-  committing.
+  must report the new version, and an EMPTY result is a failure, not a pass. If it
+  disagrees, regenerate against the new `.obl` before committing.
 
 ### 9. Report
 

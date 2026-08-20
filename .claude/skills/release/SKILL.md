@@ -130,9 +130,17 @@ unzip -l docs/api.zip | head                # paths must be 'api/...', not 'api\
 # well-formed zip built against the WRONG version -- which is how the committed
 # api.zip stamped v2026.8.0 while shipping as the docs for v2026.8.1 AND v2026.8.2.
 # Nobody noticed for three releases because 439 HTML files with 'api/' paths is
-# exactly what a healthy zip looks like. Assert the stamp:
-unzip -p docs/api.zip api/api.system.html | grep -o 'v2026\.[0-9]*\.[0-9]*' | head -1
-# must equal v$VERSION
+# exactly what a healthy zip looks like.
+#
+# Pick the page by LISTING the zip, never by guessing a filename. There is no
+# api/api.system.html: naming a file that is not there makes unzip -p print
+# nothing, grep match nothing, and an empty-vs-empty comparison PASS on any
+# version -- the same silent-pass this gate exists to catch.
+PAGE=$(unzip -l docs/api.zip | awk '/\.html$/{print $4; exit}')
+STAMP=$(unzip -p docs/api.zip "$PAGE" | grep -o 'class="version">v[0-9.]*' | head -1 | sed 's/.*>//')
+[ -n "$STAMP" ] || { echo "api.zip: NO version stamp found in $PAGE -- treat as FAILED"; exit 1; }
+[ "$STAMP" = "v$VERSION" ] || { echo "api.zip stamps $STAMP, expected v$VERSION"; exit 1; }
+echo "api.zip stamp OK: $STAMP"
 ```
 
 If any gate fails, print the specific failure and stop immediately. Do not propose workarounds.
