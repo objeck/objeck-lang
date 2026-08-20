@@ -378,69 +378,40 @@ git push origin "v$VERSION"
 
 This is the point of no return — the tag push triggers `release-build.yml` on GitHub Actions.
 
-### 7. Monitor `release-build.yml`
+### 7-8. Monitor build and publish: ONE command
 
 ```bash
-# Grab the triggered run ID (wait up to 30 seconds for it to appear)
-for i in 1 2 3 4 5 6; do
-  RUN_ID=$(gh run list --workflow=release-build.yml --branch="v$VERSION" \
-           --limit=1 --json databaseId --jq '.[0].databaseId')
-  [ -n "$RUN_ID" ] && break
-  sleep 5
-done
-[ -z "$RUN_ID" ] && { echo "No release-build.yml run triggered — aborting"; exit 1; }
-
-# Stream progress
-gh run watch "$RUN_ID" --exit-status
+tools/cicd/watch_release.sh <VERSION>
 ```
 
-`--exit-status` makes `gh run watch` return non-zero if the workflow fails. Abort on failure — do **not** re-trigger without the user's explicit direction (deleting and re-pushing a tag is destructive and risks confusing the Sourceforge uploader).
+Watches `release-build.yml` through `release-publish.yml`, then confirms the
+per-platform binary gates actually RAN (skipped is not failed -- both are guarded by
+`if: runner.os ...`, so each platform job runs one and skips the other; matching only
+the matrix jobs keeps it quiet on a healthy run).
 
-Expected duration: ~45 minutes. Report milestones as they complete.
+**Read its exit code, do not eyeball the text:**
 
-**Confirm the per-platform binary gates actually RAN, not just that the run is green.**
-`release-build.yml` guards them with `if: runner.os == 'Windows'` / `!=`, so each platform
-job executes one and skips the other. A *skipped* step and a *deleted* step are
-indistinguishable from the job's conclusion, because **skipped is not failed** -- tighten
-that condition by mistake and a platform ships unverified while the run still reports
-green. That is the same shape as the signing defect: a step that was configured, ran,
-failed, and let the pipeline pass anyway for four months.
+| exit | meaning |
+|---|---|
+| 0 | finished green |
+| 1 | genuinely failed -- a conclusion other than success |
+| 2 | **still running when the budget ran out. NOT a failure.** |
 
-```bash
-# Match the PLATFORM matrix jobs only. 'startswith("Build ")' also catches
-# "Build LSP Package" and "Build Summary", which legitimately verify nothing --
-# so a healthy release reports two zeros and the gate cries wolf. A gate that is
-# noisy on a good run gets ignored, which defeats it.
-gh run view "$RUN_ID" --json jobs --jq '.jobs[]
-  | select(.name|test("^Build (windows|linux|macos)-"))
-  | .name as $j
-  | [.steps[] | select(.name|startswith("Verify required binaries")) | .conclusion]
-  | $j + " -> " + (map(select(. == "success")) | length | tostring) + " success"'
-# every platform job must report exactly 1 success; 0 means that platform was
-# never verified, however green the run looks
-```
+That distinction is the whole point. During v2026.8.3 an ad-hoc watcher printed
+`RELEASE-BUILD FAILED` for a completely healthy run because its 65-minute poll budget
+expired while the `windows-arm64` leg took its normal ~70 minutes. A false red invites
+exactly the panic response this process forbids -- deleting a pushed tag or patching CI
+mid-release, which is what broke v2026.5.0 and v2026.5.1.
+
+Note it polls `status` explicitly rather than using `gh run watch`, which exits 0 on a
+network error. An empty query result is a failed query, not a finished run.
+
+Expected: build ~45-70 min (the arm64 leg dominates; vcpkg rebuilds
+`opencv4:arm64-windows` from source on a cache miss), publish ~15 min.
 
 **CI pushes to master while this runs.** The "Generate API Docs" job commits
-`chore: update api.zip for v<VERSION> [skip ci]` to master mid-build, so any push you
-make during or after the build will be rejected as non-fast-forward. Rebase onto it
-(`git pull --rebase origin master`) rather than forcing; the tag is unaffected, since it
-already points at the pre-build commit.
-
-### 8. Monitor `release-publish.yml`
-
-`release-publish.yml` auto-triggers on `release-build.yml` success. Find its run and watch it the same way:
-
-```bash
-for i in 1 2 3 4 5 6; do
-  PUB_ID=$(gh run list --workflow=release-publish.yml --limit=1 \
-           --json databaseId,createdAt --jq '.[0].databaseId')
-  [ -n "$PUB_ID" ] && break
-  sleep 10
-done
-gh run watch "$PUB_ID" --exit-status
-```
-
-Expected duration: ~15 minutes.
+`chore: update api.zip for v<VERSION> [skip ci]`, so any push you make during or after
+the build is rejected as non-fast-forward. Rebase onto it; the tag is unaffected.
 
 ### 9-11b. Post-publish: ONE command
 
