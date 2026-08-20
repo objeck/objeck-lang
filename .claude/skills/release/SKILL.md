@@ -117,11 +117,25 @@ gh run list --workflow=ci-build.yml --branch=master --limit=1 \
   --json conclusion,status --jq '.[0] | .status + "/" + .conclusion'
 # must return "completed/success"
 
-# Committed docs/api.zip is complete (NOT a stale/broken 3-file zip). release-build.yml's
-# "Generate API Docs" job unzips this committed api.zip as the doc base; a broken one
-# (generated against stale .obl during the bump — see bump-version step 4) yields 0 HTML
-# and fails release-build on every non-windows-x64 target AFTER the tag is pushed. This
-# broke v2026.6.4. Catch it here, before tagging:
+# Committed docs/api.zip is complete (NOT a stale/broken 3-file zip). A broken one
+# (generated against stale .obl during the bump — see bump-version step 4) fails
+# release-build on every non-windows-x64 target AFTER the tag is pushed. This broke
+# v2026.6.4. Catch it here, before tagging.
+#
+# WHERE it actually breaks (verified 2026-08-19 — the "Generate API Docs" job is NOT
+# the consumer; it contains no unzip and builds docs/api fresh with mkdir -p, since
+# docs/api is untracked). The committed zip is consumed by the DEPLOY SCRIPTS:
+#   deploy_posix.sh:154         -> linux-x64, linux-arm64
+#   deploy_macos_arm64.sh:141   -> macos-arm64
+#   deploy_windows.cmd:774      -> windows-ARM64 only (cross-compiled, cannot run
+#                                  ARM64 code_doc on an x64 host)
+# windows-x64 alone regenerates its own docs via code_doc64.cmd. That is precisely
+# why a bad committed zip takes out "every non-windows-x64 target" — look in the
+# BUILD jobs, not the doc job.
+#
+# It also means the API docs shipped INSIDE every archive except windows-x64 are the
+# committed zip, so a wrong version stamp is visible in the user's install, not just
+# in the repo.
 unzip -l docs/api.zip | grep -c '\.html$'   # must be >= 50 (healthy ~435)
 unzip -l docs/api.zip | head                # paths must be 'api/...', not 'api\...'
 
@@ -150,11 +164,23 @@ If `docs/api.zip` is broken **or stamped with the wrong version**, regenerate it
 already at the new version, then zip with `7z`/`zip` (forward-slash paths), never
 PowerShell `Compress-Archive`.
 
-Note the cloud build *does* generate its docs with the tag's version and commits the
+Note the cloud build *does* pass the release version to `code_doc` and commits the
 result back as `chore: update api.zip for v<VERSION> [skip ci]` -- so a wrong stamp in
-the committed file is not simply "CI never refreshes it". The mechanism that let 8.0's
-stamp survive two releases has **not** been root-caused; until it is, verify the stamp
-here rather than assuming the cloud fixed it.
+the committed file is not simply "CI never refreshes it".
+
+**Unresolved, with the evidence recorded so it is not rediscovered.** Three consecutive
+CI commits each committed a zip stamped **v2026.8.0**:
+
+```
+a757830453  "chore: update api.zip for v2026.8.2"  -> zip stamps v2026.8.0
+930dd19836  "chore: update api.zip for v2026.8.1"  -> zip stamps v2026.8.0
+7dba61d324  "chore: update api.zip for v2026.8.1"  -> zip stamps v2026.8.0
+```
+
+So either the version handed to `code_doc` was wrong on those runs, or the commit step
+(which stashes the built zip to `/tmp` and copies it back around a git operation)
+restored a stale file. Not diagnosed. Until it is, **verify the stamp every release**
+rather than assuming the cloud produced a correct one.
 
 ### 1b. Derive the release summary
 
@@ -372,6 +398,34 @@ gh run watch "$RUN_ID" --exit-status
 
 Expected duration: ~45 minutes. Report milestones as they complete.
 
+**Confirm the per-platform binary gates actually RAN, not just that the run is green.**
+`release-build.yml` guards them with `if: runner.os == 'Windows'` / `!=`, so each platform
+job executes one and skips the other. A *skipped* step and a *deleted* step are
+indistinguishable from the job's conclusion, because **skipped is not failed** -- tighten
+that condition by mistake and a platform ships unverified while the run still reports
+green. That is the same shape as the signing defect: a step that was configured, ran,
+failed, and let the pipeline pass anyway for four months.
+
+```bash
+# Match the PLATFORM matrix jobs only. 'startswith("Build ")' also catches
+# "Build LSP Package" and "Build Summary", which legitimately verify nothing --
+# so a healthy release reports two zeros and the gate cries wolf. A gate that is
+# noisy on a good run gets ignored, which defeats it.
+gh run view "$RUN_ID" --json jobs --jq '.jobs[]
+  | select(.name|test("^Build (windows|linux|macos)-"))
+  | .name as $j
+  | [.steps[] | select(.name|startswith("Verify required binaries")) | .conclusion]
+  | $j + " -> " + (map(select(. == "success")) | length | tostring) + " success"'
+# every platform job must report exactly 1 success; 0 means that platform was
+# never verified, however green the run looks
+```
+
+**CI pushes to master while this runs.** The "Generate API Docs" job commits
+`chore: update api.zip for v<VERSION> [skip ci]` to master mid-build, so any push you
+make during or after the build will be rejected as non-fast-forward. Rebase onto it
+(`git pull --rebase origin master`) rather than forcing; the tag is unaffected, since it
+already points at the pre-build commit.
+
 ### 8. Monitor `release-publish.yml`
 
 `release-publish.yml` auto-triggers on `release-build.yml` success. Find its run and watch it the same way:
@@ -388,190 +442,57 @@ gh run watch "$PUB_ID" --exit-status
 
 Expected duration: ~15 minutes.
 
-### 9. Verify published artifacts
+### 9-11b. Post-publish: ONE command
 
-List the release assets and confirm all expected files are present:
-
-```bash
-gh release view "v$VERSION" --json assets --jq '.assets[].name'
-```
-
-**Installers** (required — release is blocked without these):
-- `objeck-windows-x64_<VERSION>.msi`
-- `objeck-windows-arm64_<VERSION>.msi`
-- `objeck-macos-arm64_<VERSION>.pkg`
-
-If Windows MSIs are missing, the workflow secret `WINDOWS_CERT_BASE64`/`WINDOWS_CERT_PASSWORD` is not set — tell the user and abort.
-If macOS `.pkg` is missing, the Apple signing secrets are not set — tell the user and abort.
-
-**Signatures — signing happens LOCALLY, after publication.** The certificate lives on a
-SafeNet eToken, so its private key is non-exportable and CI cannot sign: a GitHub runner has
-no USB token. `release-build.yml` therefore does not attempt it, and a freshly published
-release is EXPECTED to carry unsigned MSIs for a short while.
-
-Signing is a required human step, not optional polish:
-
-```cmd
-tools\cicd\sign_release.cmd <VERSION>
-```
-
-with the eToken plugged in. It downloads the published MSIs, signs each with
-`signtool ... /a` (the token's cert; no PFX, no password), verifies with `signtool verify /pa`,
-and re-uploads with `--clobber`.
-
-**Then verify the SIGNATURE, not the file's existence.** Presence proves nothing, and reporting
-"signed installers verified" because the MSI was present is how every Windows installer from
-v2026.4.0 through v2026.8.2 shipped unsigned without anyone noticing:
-
-```powershell
-Get-AuthenticodeSignature <file>.msi | Select-Object Status, SignerCertificate   # want Valid
-```
+Everything after `release-publish.yml` goes green is a single pipeline, and it runs as
+one script. It used to be four prose sections here, which meant the commands were
+retyped by hand every release -- and re-broken the same ways every release.
 
 ```bash
-pkgutil --check-signature <file>.pkg      # macOS
+tools/cicd/post_release.sh <VERSION> --sign --body /tmp/release_body.md --playground
 ```
 
-If the signing step has not been run yet, say so plainly in the report — "unsigned, pending
-`sign_release.cmd`" — rather than counting it as verified or silently omitting it.
+Exit 0 only when all six gates pass. Read-only unless you pass the flags.
 
-**Shipped binary sanity** — check the archives for the FULL expected binary set, not just one.
-Two separate releases were shipped broken by this check being too narrow:
+| Gate | What it proves | Why it exists |
+|---|---|---|
+| 1 assets | not a draft; both MSIs, the `.pkg` and `SHA256SUMS` present | — |
+| 2 binaries | `obc obr obd obi obb obu` in **every** POSIX archive | v2026.5.0/5.1 shipped with no `obr`; v2026.8.0 shipped with no `obu` on any platform while the notes made it the headline feature |
+| 3 signatures | real `Get-AuthenticodeSignature` on the **published** files | v2026.4.0-v2026.8.2 all shipped unsigned while the notes claimed otherwise |
+| 4 `SHA256SUMS` | manifest matches the published bytes; regenerates + re-proves if signing invalidated it | signing rewrites the MSIs, so v2026.8.3's manifest described pre-signing bytes and every user's verification would have FAILED |
+| 5 body | every advertised filename is a real asset; no `$VARS`, no `compare/v...`, no `[x]()` | the published body named `objeck-lsp-X.zip` (hyphen) when the asset is `objeck-lsp_X.zip`, and linked `compare/v...vX` |
+| 6 playground | `/api/health` reports the tag | the version is a tracked constant the deploy does not auto-bump |
 
-- v2026.5.0 / v2026.5.1 shipped with no `obr` VM executable (a missing CI dependency).
-- v2026.8.0 shipped with no `obu` at all, on every platform, while the release notes
-  advertised `obu check` / `update` / `rollback` as a headline feature. This step only ever
-  grepped for `obr`, so nothing turned red.
+`--sign` needs the SafeNet eToken plugged in and prompts for its password (once per MSI
+unless single-logon is on). Signing cannot happen in CI -- the key is non-exportable and a
+hosted runner has no USB port -- so this is a required human step, not optional polish.
+Write the body to a file first (step 10 below) and pass it with `--body`.
 
-Assert every binary, on every POSIX archive — a gap can be platform-specific:
+**If the script reports a failure, read it before believing it.** Three of today's
+"failures" were the harness, not the release: a watcher calling a slow build FAILED after
+exhausting its poll budget, `tar` reading a Windows `C:/...` path as a remote host and
+declaring every binary missing, and an empty-href grep written across two lines so it
+matched `)` in ordinary prose. Each is now fixed *in the script* with a comment naming the
+incident. A gate whose failure mode is indistinguishable from the defect it hunts is worse
+than no gate.
+
+### 10. Write the release body
+
+`release-publish.yml` sets a generic body with no changelog. Replace it. Combine the
+curated bullets for this version from `docs/readme.txt` with the `release-drafter` draft:
 
 ```bash
-gh release download "v$VERSION" --pattern "objeck-*.tgz" -D /tmp/check
-for tgz in /tmp/check/objeck-*.tgz; do
-  echo "== $tgz"
-  for bin in obc obr obd obi obb obu; do
-    tar -tzf "$tgz" | grep -q "/bin/$bin\$" || echo "  MISSING: $bin"
-  done
-done
-# any MISSING line = the release is broken
+DRAFTER_BODY=$(gh api repos/:owner/:repo/releases --jq   '.[] | select(.draft == true and .tag_name == "v'"$VERSION"'") | .body')
 ```
 
-Keep this list in sync with `release-build.yml`'s "Verify required binaries" steps (`REQUIRED=`
-for POSIX, `$required` for Windows). Those run pre-tag against `deploy/bin` and are the real
-gate; this step is the post-hoc confirmation that what was staged actually reached the archive.
+Structure: `## What's New in v<VERSION>` + summary + curated bullets, then the merged-PR
+list, then Installation / Verification / Downloads. Pass the file to `post_release.sh
+--body`, which publishes it and then gates it (gate 5). Do not hand-run `gh release edit`
+and skip the gate.
 
-**Confirm those gates actually RAN, not merely that the job is green.** Both steps are
-platform-guarded (`if: runner.os == 'Windows'` / `!=`), so each build job executes exactly
-one and skips the other. A *skipped* step and a *deleted* step look identical from the job's
-conclusion, because **skipped is not failed** — tighten that `if:` by mistake (say to
-`runner.os == 'Linux'`) and the Windows job skips BOTH verifications, ships unverified, and
-still reports green. That is the same shape as the signing defect: a configured step that ran,
-failed, and let the pipeline pass anyway. Assert one success per job:
-
-```bash
-gh run view "$RUN_ID" --json jobs --jq '.jobs[]
-  | select(.name|startswith("Build "))
-  | .name as $j
-  | [.steps[] | select(.name|startswith("Verify required binaries")) | .conclusion]
-  | $j + " -> " + (map(select(. == "success")) | length | tostring) + " success"'
-# every "Build <platform>" job must report exactly 1 success -- 0 means the release
-# was never verified on that platform, however green the run looks
-```
-
-If any binary is absent, the release is broken. Tell the user; do not publish. The correct fix is
-to add the missing build/copy to the deploy script (`deploy_posix.sh`, `deploy_macos_arm64.sh`,
-`deploy_windows.cmd`) and its name to both verify lists on master, then delete the tag and
-re-release. **A tool being built and tested in CI does not mean it is packaged** — `obu` was
-covered by its own CI test the whole time it was missing from every archive, because that test
-builds its own copy.
-
-### 10. Update the GitHub release body
-
-The `release-drafter.yml` workflow accumulates PR-title based changelog entries as PRs merge into master. Combine that draft with the curated bullets from `docs/readme.txt` for this version:
-
-```bash
-# Pull the release-drafter draft body
-DRAFTER_BODY=$(gh api repos/:owner/:repo/releases --jq \
-  '.[] | select(.draft == true and .tag_name == "v'"$VERSION"'") | .body')
-
-# Extract the curated section for v<VERSION> from docs/readme.txt
-# (lines from "v<VERSION>" header up to the next "v..." header)
-
-# Construct final body:
-#   ## What's New in v<VERSION>
-#   <summary paragraph>
-#
-#   <curated bullets from docs/readme.txt>
-#
-#   ## Changes (auto-generated from PRs)
-#   <release-drafter body>
-#
-#   ## Downloads
-#   See the Assets section below for installers and archives.
-
-gh release edit "v$VERSION" --notes-file /tmp/release_body.md --draft=false
-```
-
-If no draft exists yet (release-publish already published), use `gh release edit` to replace the body. Do not delete the assets attached by release-publish.
-
-### 11. Deploy the DigitalOcean playground
-
-> `$PLAYGROUND_HOST` is the playground deploy target — held out-of-band (not
-> committed). Export it before running, e.g. `export PLAYGROUND_HOST=playground.objeck.org`
-> (or the VPS IP if DNS is down). Deploy uses root SSH and assumes your key is
-> already authorized on the host.
-
-SSH to the playground VPS and run its update script:
-
-```bash
-ssh -o StrictHostKeyChecking=accept-new root@$PLAYGROUND_HOST \
-  'bash /opt/playground/repo/programs/web-playground/deploy/update.sh'
-```
-
-The script does: `git pull origin master`, update Python venv, rebuild the sandbox Docker image, restart the systemd `playground` service, and run a `curl -sf http://localhost:8000/api/health` check.
-
-**Known playground git issues** — the server can accumulate local modifications (`.obl` files regenerated in-place, `config.py` touched) and untracked files (Windows DLLs or other artifacts that were later committed to master). If `git pull` fails, recover with:
-
-```bash
-ssh root@$PLAYGROUND_HOST 'cd /opt/playground/repo && \
-  chmod -R u+w . && \
-  git stash && \
-  git clean -fd && \
-  git pull origin master && \
-  git stash pop'
-```
-
-Then re-run `update.sh`. If it still fails, report the SSH output verbatim and stop.
-
-**Version sanity check** — after the remote update, confirm the version string matches:
-
-```bash
-curl -fsS https://playground.objeck.org/api/health | jq -r '.version'
-# must equal v<VERSION>  (note: health endpoint returns "v<VERSION>" with the 'v' prefix)
-```
-
-If `playground.objeck.org` is unreachable, try `https://$PLAYGROUND_HOST/api/health` as a fallback.
-
-### 11b. Signing check — ALWAYS run this
-
-Signing cannot happen in CI (the key is on a physical eToken), so a freshly published release
-is unsigned until a human signs it. That is easy to forget: every Windows installer from
-v2026.4.0 through v2026.8.2 shipped unsigned because nobody noticed for four months.
-
-```powershell
-powershell -File tools\cicd\check_release_signatures.ps1 <VERSION>
-```
-
-It reports the REAL `Get-AuthenticodeSignature` status per MSI and, when any is unsigned,
-beeps, raises a desktop notification, pushes to ntfy when `NTFY_TOPIC` is set, prints the exact
-command, and exits 1.
-
-If it reports unsigned, tell the user plainly in the final report — "Windows installers are
-UNSIGNED; run `tools\cicd\sign_release.cmd <VERSION>` with the eToken plugged in" — and never
-describe the release as signed. Do not treat it as a failure of the release: publishing and
-signing are deliberately decoupled so a missing token cannot block shipping.
-
-After the user signs, signing rewrites the MSIs, so `SHA256SUMS` must be regenerated over the
-new files and re-uploaded with `gh release upload <tag> SHA256SUMS --clobber`.
+State the signature status only from gate 3's output. Reporting "signed installers
+verified" on the strength of the MSI existing is exactly how three consecutive release
+reports were wrong.
 
 ### 12. Final report
 

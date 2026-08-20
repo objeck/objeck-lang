@@ -111,6 +111,12 @@ jobs:
     name: Build ${{ matrix.platform }}
     needs: prepare
     runs-on: ${{ matrix.os }}
+    # Backstop so a hung step can never tie up a runner for the 6-hour default.
+    # ci-build.yml has carried this since it was added; the release build -- the
+    # longer and more expensive of the two -- had none. Sized off real data: the
+    # windows-arm64 leg legitimately takes ~70 min (vcpkg builds opencv4:arm64
+    # from source on a cache miss), so 150 leaves ample headroom.
+    timeout-minutes: 150
 
     strategy:
       fail-fast: false

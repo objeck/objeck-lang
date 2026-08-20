@@ -257,6 +257,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          # Tags are REQUIRED here: "Generate release notes" derives PREV_VERSION
+          # from `git tag`. The default shallow checkout fetches no tags, so
+          # PREV_VERSION came out empty and every release shipped a dead
+          # "Full Changelog" link -- compare/v...v2026.8.3 on v2026.8.3.
+          fetch-depth: 0
 
       - name: Download final artifacts
         uses: actions/download-artifact@v4
@@ -282,6 +288,16 @@ jobs:
           PREV_VERSION=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "v$VERSION" | head -n 1)
           PREV_VERSION="${PREV_VERSION#v}"
 
+          # Fail loudly rather than emitting a dead link. An empty PREV_VERSION
+          # silently produced "compare/v...v$VERSION" on every release until
+          # 2026-08-19, because a link that renders is indistinguishable from a
+          # link that works.
+          if [ -z "$PREV_VERSION" ]; then
+            echo "::error::PREV_VERSION is empty -- no prior tag found. Is the checkout shallow (needs fetch-depth: 0)?"
+            exit 1
+          fi
+          echo "Previous release tag: v$PREV_VERSION"
+
           cat > release-notes.md << 'EOF'
           # Objeck Language v$VERSION
 
@@ -303,7 +319,7 @@ jobs:
           - **ARM64 (M1/M2/M3) Archive**: `tar -xzf objeck-macos-arm64_$VERSION.tgz`
 
           ### LSP (Language Server Protocol)
-          - Download `objeck-lsp-$VERSION.zip` for IDE integration
+          - Download `objeck-lsp_$VERSION.zip` for IDE integration
 
           ## 📚 Documentation
 
