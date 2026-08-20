@@ -15,6 +15,15 @@ This skill updates the four documentation files that track version history:
 - `docs/readme.html` (website changelog)
 - `docs/readme.txt` (plain text release notes)
 
+**Two further notes surfaces this skill does NOT own** — if you are running it standalone,
+they will be left stale and nothing downstream will complain:
+- `docs/web/` (`readme.html`, `index.html`) — the objeck.org copy, plus its hardcoded
+  `Download v<VERSION>` button. Owned by the `release` skill, step 4.
+- `programs/deploy/util/readme/readme.json` and its `readme.json.in` template — the README
+  that ships **inside** the release archive. Written by `bump-version` and re-checked by
+  `release` step 2d; only `@VERSION@`/`@YEAR@` are templated, so the feature list is
+  hand-maintained and goes stale silently.
+
 ## Arguments
 
 - `$ARGUMENTS` may contain a version number and optional summary

@@ -124,10 +124,29 @@ gh run list --workflow=ci-build.yml --branch=master --limit=1 \
 # broke v2026.6.4. Catch it here, before tagging:
 unzip -l docs/api.zip | grep -c '\.html$'   # must be >= 50 (healthy ~435)
 unzip -l docs/api.zip | head                # paths must be 'api/...', not 'api\...'
+
+# CONTENT, not just structure: every generated page stamps the version it was built
+# for in its footer. The two checks above are structural and pass on a perfectly
+# well-formed zip built against the WRONG version -- which is how the committed
+# api.zip stamped v2026.8.0 while shipping as the docs for v2026.8.1 AND v2026.8.2.
+# Nobody noticed for three releases because 439 HTML files with 'api/' paths is
+# exactly what a healthy zip looks like. Assert the stamp:
+unzip -p docs/api.zip api/api.system.html | grep -o 'v2026\.[0-9]*\.[0-9]*' | head -1
+# must equal v$VERSION
 ```
 
 If any gate fails, print the specific failure and stop immediately. Do not propose workarounds.
-If `docs/api.zip` is broken, regenerate it (bump-version step 4 note), commit, and restart.
+If `docs/api.zip` is broken **or stamped with the wrong version**, regenerate it
+(bump-version step 4 note), commit, and restart. Regenerating locally is
+`code_doc64.cmd x64 deploy` from `core/release` against a deploy tree whose `.obl` are
+already at the new version, then zip with `7z`/`zip` (forward-slash paths), never
+PowerShell `Compress-Archive`.
+
+Note the cloud build *does* generate its docs with the tag's version and commits the
+result back as `chore: update api.zip for v<VERSION> [skip ci]` -- so a wrong stamp in
+the committed file is not simply "CI never refreshes it". The mechanism that let 8.0's
+stamp survive two releases has **not** been root-caused; until it is, verify the stamp
+here rather than assuming the cloud fixed it.
 
 ### 1b. Derive the release summary
 
@@ -214,6 +233,34 @@ python tools/lsp/tests/run_lsp_tests.py
 
 Abort if any test fails.
 
+### 2d. Re-check `readme.json.in` against everything that landed after the bump
+
+`readme.json.in` carries the release notes that ship **inside** the archive, and its
+`title` + `features` block is hand-written. `bump-version` writes that block, so it
+describes the tree **as of the bump commit** -- every fix merged between the bump and
+the tag is silently missing from it. `update_version.ps1` only substitutes
+`@VERSION@`/`@YEAR@`, so nothing downstream notices.
+
+This is not hypothetical: at v2026.8.3 the bump landed mid-release and six later
+commits (two compiler null dereferences, the REPL brace hang, two stream-format leaks,
+the wrapped entry points, the GC atomic) were absent from the shipped README while
+present in every other notes file.
+
+```bash
+BUMP=$(git log --format='%H' -1 --grep="Bump version to $VERSION")
+[ -n "$BUMP" ] && git log --no-merges --oneline "$BUMP..HEAD"   # must all be represented
+```
+
+If anything is missing, add it to the `v<VERSION>` block in `readme.json.in`, refresh
+`title` if the release's headline changed, then **regenerate `readme.json`** (the two
+must never drift) and validate it parses:
+
+```bash
+python -c "import io,json; src=io.open('programs/deploy/util/readme/readme.json.in',encoding='utf-8',newline='').read(); out=src.replace('@VERSION@','$VERSION').replace('@YEAR@','${VERSION%%.*}'); io.open('programs/deploy/util/readme/readme.json','w',encoding='utf-8',newline='').write(out); json.loads(out)"
+```
+
+Both files are committed in step 5.
+
 ### 3. Delegate to `update-docs`
 
 Invoke the `update-docs` skill with the `$VERSION` from step 1a and the `$SUMMARY` derived in step 1b:
@@ -234,10 +281,22 @@ The `docs/web/` directory contains the website content served from objeck.org. I
 **`update-docs` does NOT touch `docs/web/`** — this step is the release skill's responsibility.
 
 **4a. Sync `docs/web/readme.html`** — copy the `<main>` changelog body from the freshly updated `docs/readme.html` into `docs/web/readme.html`, preserving `docs/web/readme.html`'s own `<head>`, `<nav>`, and absolute `objeck.org` URLs. Specifically:
-  - Replace the `<p>` summary at the top of `<main>` with the new summary.
+  - **Do NOT replace the first `<p>` in `<main>`.** Unlike `docs/readme.html`, that
+    paragraph in `docs/web/readme.html` is the site's standing intro line ("AI,
+    networking, and vision — built in…"), not a per-release summary. Overwriting it
+    with the release summary silently destroys site copy. This file gets the changelog
+    block and the download button only.
   - Insert the new `<h3><u>v<VERSION></u></h3>` changelog block.
   - Strip `<u>` from the previously-latest entry.
-  - Update the `Download v<VERSION>` button — `docs/web/readme.html` has a hardcoded `<a class="btn btn-primary" ...>Download v<OLD></a>`; bump its text to the new version.
+  - Update the `Download v<VERSION>` button — `docs/web/readme.html` has a hardcoded
+    `<a class="btn btn-primary" ...>Download v<OLD></a>`; bump its text to the new version.
+    **This is a gate, not a nicety** — it had been left on `v2026.8.1` through the whole of
+    v2026.8.2 and was still wrong when v2026.8.3 started, so the site's own download button
+    named a superseded release. Verify with a grep that must come back empty:
+
+    ```bash
+    grep -o 'Download v2026\.[0-9]*\.[0-9]*' docs/web/readme.html | grep -v "Download v$VERSION"
+    ```
   - Keep `docs/web/readme.html`'s existing nav bar (`<a href="index.html">Home</a>` etc.).
 
 **4b. Update `docs/web/index.html`** — grep for any hardcoded `v202x.x.x` version strings (not `/releases/latest` or `/api/latest/` links). Update only those hits. Also update the Download button text if it contains a version number. Most releases need minimal changes here.
@@ -266,7 +325,9 @@ Then stage and commit — enumerate paths explicitly, never `git add -A`:
 
 ```bash
 git add README.md CHANGELOG.md docs/readme.html docs/readme.txt \
-        docs/web/readme.html docs/web/index.html
+        docs/web/readme.html docs/web/index.html \
+        programs/deploy/util/readme/readme.json programs/deploy/util/readme/readme.json.in \
+        docs/api.zip
 git status    # verify what's staged; omit unchanged files
 git commit -m "Release v<VERSION> — <SUMMARY>
 

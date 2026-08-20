@@ -55,6 +55,12 @@ This generates from `.in` templates:
 > this, the generated `readme.json` ships the new version number over the
 > previous release's feature list (a visible glitch in the deploy README).
 >
+> **The block you write here describes the tree AS OF THIS COMMIT.** If any fix lands
+> between this bump and the release tag, it will be missing from the shipped README while
+> appearing in every other notes file — nothing downstream re-checks it. At v2026.8.3 six
+> later commits were lost this way. The release skill re-checks it at step 2d; if you are
+> bumping well ahead of the tag, say so in the report so that check is not skipped.
+>
 > Likewise, if a library was added/removed, sync the obc list in `code_doc64.in`
 > (and the lib-build lists in `update_version.sh` / `update_version_arm.sh` and
 > the CI `Rebuild libraries (Windows)` step) so docs and builds stay in step.
@@ -104,11 +110,45 @@ This rebuilds the entire MSVC solution (compiler, VM, debugger, REPL, launcher),
 > entries that Linux `unzip` mangles). **Always verify before committing** (see step 8):
 > `unzip -l docs/api.zip | grep -c '\.html$'` must be ≥ 50.
 
-**If `deploy_windows.cmd` cannot run** (no VS environment), fall back to rebuilding just compiler and VM:
+> **`deploy_windows.cmd` DELETES `deploy-x64` before it checks for a VS environment.**
+> The `rmdir /s /q %TARGET%` runs near the top, ahead of the `VCINSTALLDIR` guard, so
+> running it without the VS environment (or having it fail partway) leaves the deploy tree
+> gutted — `bin/` gone, `lib/native/*.dll` gone, `app/` emptied — with only `lib/*.obl`
+> surviving. Never invoke it "just to see if it works".
+
+**If `deploy_windows.cmd` cannot run** (no VS Developer Command Prompt — it drives every
+build with `devenv`, which ships only with the full IDE, not Build Tools), rebuild the
+whole toolchain with MSBuild instead. Rebuilding "just compiler and VM" is **not enough**:
+it leaves `obd`, `obi`, `obb`, `obu` and all eight native libraries at the previous
+version, and `libobjk_diags.dll` carries `VER_NUM`, so a stale one fails the LSP suite in
+a way that reads as an unrelated regression.
+
+Build the **solution**, not the individual `.vcxproj` — `repl.vcxproj` links `objeck.lib`
+from the solution-level output dir and fails with LNK1181 standalone:
+
 ```bash
-cd core/compiler/vs && MSBuild compiler.vcxproj -p:Configuration=Release -p:Platform=x64 -t:Rebuild
-cd core/vm/vs && MSBuild vm.vcxproj -p:Configuration=Release -p:Platform=x64 -t:Rebuild
+MSBuild.exe core/release/objeck.sln -p:Configuration=Release -p:Platform=x64 -m
 ```
+
+The projects set `<PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>`, so this
+resolves to v145 on a VS2026 box and v143 on VS2022 with no override needed. Then the
+eleven native projects (`Release|x64`, except onnx which is **`Release-DML|x64`**):
+`core/utils/launcher/native_launcher.sln`, `core/utils/updater/vs/obu.vcxproj`,
+`core/lib/crypto/crypto.sln`, `core/lib/lame/lame.sln`,
+`core/utils/WindowsApp/AppLauncher.sln`, `core/lib/diags/diag.sln`,
+`core/lib/odbc/odbc.sln`, `core/lib/matrix/matrix.sln`, `core/lib/opencv/opencv.sln`,
+`core/lib/onnx/onnx.sln`, `core/lib/sdl/sdl/sdl.sln`.
+
+MSBuild does **not** embed the manifests the deploy script does, so after copying:
+
+```bash
+mt.exe -manifest core/vm/vs/manifest.xml -outputresource:<deploy>/bin/obr.exe;1   # and obi.exe
+```
+
+Then hand-copy what the script would have copied (`obn`+`config.prop` → `lib/native/misc`,
+`obb`/`obu` → `bin`, each `libobjk_*.dll` → `lib/native`, `ObLauncher.exe` → `app`, plus the
+lame/nghttp2/opencv/onnxruntime runtime DLLs → `bin`). Verified end to end on 2026-08-19:
+all twelve projects clean, regression 190/190, DAP 20/20, LSP 45/45.
 
 ### 5. Full Linux build via `update_version.sh`
 
@@ -157,6 +197,16 @@ The `core_opencv` test may fail on WSL (missing native .so) — that's expected.
   If it's ~0–3, the api.zip was generated against stale `.obl`; rebuild it after the new
   `.obl` are in `deploy-x64/lib` and re-verify. Also confirm forward-slash paths
   (`unzip -l docs/api.zip | head` shows `api/...`, not `api\...`).
+- **Verify the api.zip's VERSION STAMP, not just its shape.** Every generated page prints
+  the version it was built for in its footer, and the two checks above pass happily on a
+  well-formed zip built against the *wrong* one. The committed api.zip stamped
+  **v2026.8.0** while serving as the docs for v2026.8.1 and v2026.8.2 — 439 HTML files
+  with `api/` paths throughout, so nothing ever went red:
+  ```bash
+  unzip -p docs/api.zip api/api.system.html | grep -o 'v2026\.[0-9]*\.[0-9]*' | head -1
+  ```
+  must equal the new version. If it doesn't, regenerate against the new `.obl` before
+  committing.
 
 ### 9. Report
 
