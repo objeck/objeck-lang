@@ -701,14 +701,25 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_dap_tests.py "%BIN%"
 
-    # obu update/rollback: offline end-to-end against fake releases (no network).
-    # The script builds obu with the test hooks, exercises verify/swap/rollback
-    # and the command-injection PoC, and exits non-zero on any failure. Its
-    # fixtures are linux-x64; it self-skips elsewhere, so it runs on that leg.
-    - name: Run updater tests (POSIX)
-      if: matrix.platform == 'linux-x64'
+    # obu updater: offline end-to-end against fake releases (no network). Builds
+    # obu with the test hooks, then exercises 'check' -- which runs everywhere,
+    # Windows included -- plus the update/rollback swap and the command-injection
+    # PoC wherever obu implements the in-place swap.
+    #
+    # Windows had NO updater coverage before this: 'check' is the only command
+    # supported there, and it used to bypass the OBU_RELEASE_JSON_FILE hook
+    # entirely, so there was nothing offline to test. On Windows the update
+    # suite reports PENDING and asserts the not-supported contract instead, so
+    # this step fails loudly if that message changes without the suite being
+    # switched on.
+    - name: Run updater tests
+      if: matrix.platform == 'linux-x64' || matrix.platform == 'windows-x64'
       shell: bash
-      run: CXX=g++ sh core/utils/updater/test_update.sh
+      run: |
+        if [ "${{ runner.os }}" != "Windows" ]; then export CXX=g++; fi
+        PY=python3
+        command -v python3 >/dev/null 2>&1 || PY=python
+        "$PY" core/utils/updater/test_update.py
 
     # Pure-logic unit test for the phi3 token sampler (no ONNX Runtime/model).
     - name: Run ONNX sampling unit test (POSIX)

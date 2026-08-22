@@ -1,12 +1,32 @@
 # Auto-updater for Objeck — design
 
-> **Status (2026-08-08):** Phase 1 (`obu check`, `SHA256SUMS` release asset,
+> **Status (2026-08-22):** Phase 1 (`obu check`, `SHA256SUMS` release asset,
 > weekly download-stats) and Phase 2 (`obu update`/`rollback` on Linux/macOS,
 > verify-before-touch, all-or-nothing staged swap, offline CI test) are
-> **built and on master**. Remaining: Phase 3 (Windows in-place swap via the
-> re-exec dance) and the signature-verification layer (Authenticode/
-> notarization) that the SHA-256 check deliberately does not provide. The
-> design below is the full plan; the phasing section at the end tracks it.
+> **built and on master**. Phase 3's **swap now works on Windows too**, and the
+> offline test suite runs there.
+>
+> **The re-exec dance described below turned out to be unnecessary.** Windows
+> forbids *deleting* a running image but permits *renaming* one, and the swap
+> was already built on `fs::rename` rather than delete — so the running
+> `obu.exe` travels into `.previous` and keeps executing. No self-copy, no
+> waiting on the parent to exit. This is verified by a test that installs `obu`
+> into the tree it then replaces (`suite_selfswap` in `test_update.py`).
+>
+> Still outstanding on Windows, and the reason phase 3 is not closed:
+> - **MSI-managed installs are not reconciled.** The marker-detection and
+>   registry/Start-menu rework described under "Windows" below is not
+>   implemented, so updating an `.msi` install swaps the files while leaving
+>   Add/Remove Programs reporting the old version. Portable/zip installs are
+>   unaffected.
+> - **Elevation is untested.** An install under `Program Files` needs admin.
+>   `AcquireLock` creates `.obu.lock` in the install root before anything is
+>   touched, so a non-writable root fails early and changes nothing — but that
+>   path has not been exercised against a real `Program Files` tree.
+>
+> The signature-verification layer (Authenticode/notarization) that the SHA-256
+> check deliberately does not provide is also still outstanding. The design
+> below is the full plan; the phasing section at the end tracks it.
 
 
 Upgrading Objeck today means downloading an installer and re-running it.
@@ -70,15 +90,22 @@ their own.
    - **POSIX:** unpack to `<root>/.staging-<ver>`, move current content to
      `<root>/.previous`, move staging into place. Running processes keep
      their open inodes, so a live `obr` is unaffected.
-   - **Windows:** files in use cannot be replaced, and `obu.exe` itself lives
-     in `bin/`. Standard two-step: `obu` copies itself to `%TEMP%`, re-execs
-     the copy (elevating via UAC if the install root needs it — Program
-     Files does), which waits for the parent to exit, performs the same
-     staged swap, and reports. The `.msi` is *not* run — the payload for
-     Windows is the same file set the `.msi` carries, which the release
-     workflow already produces as a plain archive for the portable zip; the
-     MSI's registry/Start-menu work is redone by `obu` only when it detects
-     an MSI-managed install (marker: the registry uninstall key).
+   - **Windows:** as implemented, the same move-based swap. Files in use
+     cannot be *deleted*, but they can be *renamed*, so moving the current
+     tree to `.previous` works even though `obu.exe` lives in `bin/` and is
+     running: it is renamed along with everything else and carries on. The
+     only visible consequence is that the discarded tree cannot be deleted
+     while obu runs from it, so `rollback` reports that it will be cleaned on
+     the next run. (The re-exec-a-temp-copy design this section originally
+     described was never needed; kept here only to record why.)
+
+     The `.msi` is *not* run — the payload for Windows is the same file set
+     the `.msi` carries, which the release workflow already produces as a
+     plain archive for the portable zip. The MSI's registry/Start-menu work
+     was to be redone by `obu` when it detects an MSI-managed install
+     (marker: the registry uninstall key). **That part is not implemented**,
+     so an `.msi` install updated this way keeps its old Add/Remove Programs
+     entry; see the status note at the top.
    - `.previous` is kept until the next successful update — that is what
      `obu rollback` restores.
 5. **Post-check.** Run `<new>/bin/obr --version` (and compile a one-liner
@@ -113,8 +140,9 @@ Two tiers, both optional to operate:
 - Leave a tree that mixes versions (the staged swap plus post-check + auto
   rollback exists for exactly this).
 - Update the running VM's libraries out from under a long-running `obr`
-  (POSIX inode semantics make this safe; on Windows the swap only proceeds
-  when `bin` binaries are not in use, else it schedules and reports).
+  (POSIX inode semantics make this safe; on Windows the rename-based swap
+  is equally safe, since a running image keeps executing from its renamed
+  file rather than being replaced underneath it).
 - Auto-update silently. `obu` acts only when invoked; surfacing "an update
   exists" in the REPL is as far as unprompted behavior goes.
 
@@ -124,15 +152,20 @@ Two tiers, both optional to operate:
    script. Small, independently shippable, immediately useful.
 2. `obu update`/`rollback` for the tarball platforms (POSIX first: the swap
    is simple and testable in CI with a fake release).
-3. Windows swap with the re-exec dance and MSI-marker handling.
+3. Windows swap — **done** (move-based, no re-exec needed). MSI-marker
+   handling and elevation against a real `Program Files` tree remain.
 4. Tier-2 tracking endpoint, only if the CSV proves insufficient.
 
 ## Risks, in order
 
-- **Windows file locking and elevation.** The re-exec + wait pattern is
-  well-trodden but has the most edge cases (install in use by an IDE's LSP
-  server — `~/.objeck-lsp` is separate, but a PATH-resolved `obr` may be
-  running). Detect-and-defer, never force.
+- **Windows file locking and elevation.** Renaming sidesteps the locking
+  problem entirely (a running image renames fine), so the remaining risk is
+  elevation: an install under `Program Files` needs admin. `.obu.lock` is
+  created in the install root before anything is touched, which makes a
+  non-writable root fail early and change nothing — but this has not been
+  tested against a real `Program Files` install. An install in use by an
+  IDE's LSP server is fine (`~/.objeck-lsp` is a separate tree), and a
+  PATH-resolved `obr` keeps running from its renamed image.
 - **Trust chain.** SHA256SUMS published by the same channel as the assets
   protects against corruption, not compromise; the platform-signature checks
   are what protect against substitution. Documenting that honestly matters
