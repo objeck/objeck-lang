@@ -1,9 +1,9 @@
 {
 	"version": {
-		"string": "2026.8.3",
+		"string": "2026.8.4",
 		"year": 2026
 	},
-	"title": "A full static-analysis pass: crash, hang and stream-format fixes across the compiler, VM, debugger, REPL and sockets",
+	"title": "The updater now installs in place on Windows, a critical command-injection fix in obu, and a release pipeline that stopped shipping stale API docs",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,18 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.8.4",
+			"items": [
+				"Updater: 'obu update' and 'obu rollback' now work on Windows. The in-place swap needed no copy-self-and-re-exec dance after all -- Windows forbids DELETING a running executable but permits RENAMING one, and the swap already moved the current tree aside rather than deleting it, so the running obu.exe travels into .previous and keeps executing. Verified by a test that installs obu into the very tree it then replaces. Not yet covered: an MSI-installed tree keeps its old Add/Remove Programs entry, since reconciling the installer's registry entries is not implemented, and elevation against a real Program Files install is untested",
+				"Security: obu built a shell command line to fetch release metadata, so a URL carrying shell metacharacters was a command-injection vector (CWE-78, reported as a critical CodeQL finding). The tag allowlist meant the '--channel' route was not exploitable, but the guard sat far from the sink and said nothing about URLs read out of a release's own JSON. curl now runs through an argument vector on every platform and no shell is involved anywhere in obu",
+				"Updater: 'obu check' had no offline test coverage on ANY platform -- it built its own request URL instead of going through the one function that honors the offline test hook, so it always hit the live network. On Windows, where 'check' is the only supported command, that left the test hooks with nothing to attach to at all. Both commands now share one path, the release-tag guard runs before the hook rather than after it, and the updater's offline suite runs on Windows as well as Linux",
+				"Documentation: the API reference shipped inside v2026.8.1 and v2026.8.2 was v2026.8.0's. The packaging step added into the existing tracked archive instead of replacing it, so on the runs where doc generation emitted nothing the previous release's 439 pages survived untouched -- and every structural check passed against those stale entries, reporting success. The archive is now deleted before it is rebuilt, and the packaged pages are verified against the version they were generated for rather than merely counted",
+				"Release notes: the Downloads table in every drafted release body offered a macOS Intel (x64) build that is not produced and never has been -- the build matrix has a single macOS leg. It also named .tar.gz archives where the published files are .tgz, so the extract command printed directly beneath the table matched no shipped file, omitted the MSI and PKG installers most users want, and wrapped every entry in an empty link that rendered as a link and went nowhere. The table now lists the real published set and points at the Assets section",
+				"Documentation: the README's Quick Start install block still downloaded the previous release -- the first command a new user copies, silently installing the wrong version. The standing claim that all Windows installers are digitally signed has been replaced with what is checkable: it sat in the README unchanged through the four months in which every Windows MSI shipped unsigned",
+				"Release tooling: release monitoring and the post-publish steps are now two tested scripts rather than prose instructions, and the checks that guard a release fail when a verification step did not run instead of when a job merely reports green"
+			]
+		},
 		{
 			"version": "v2026.8.3",
 			"items": [

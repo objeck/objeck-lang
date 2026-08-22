@@ -1,8 +1,10 @@
 /***************************************************************************
 * Objeck updater ("obu")
 *
-* Phase 1: 'obu check' compares the installed version against a GitHub
-* release tag. Exit codes: 0 = update available, 1 = up to date, 2 = error.
+* 'obu check' compares the installed version against a GitHub release tag.
+* 'obu update' verifies and installs it in place; 'obu rollback' restores the
+* version the last update set aside. Exit codes: 0 = action taken / update
+* available, 1 = up to date, 2 = error.
 *
 * Copyright (c) 2026, Randy Hollines
 * All rights reserved.
@@ -48,6 +50,10 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <fcntl.h>      // _O_CREAT / _O_RDWR for the install lock
+#include <io.h>         // _sopen_s / _close
+#include <share.h>      // _SH_DENYRW
+#include <sys/stat.h>   // _S_IREAD / _S_IWRITE
 #else
 #include <cerrno>
 #include <fcntl.h>
@@ -64,14 +70,29 @@ namespace fs = std::filesystem;
 
 #define RELEASES_API_BASE "https://api.github.com/repos/objeck/objeck-lang/releases"
 
-// The release asset for this platform (see release-build.yml). Windows update
-// is intentionally not implemented in this phase -- its in-place swap needs the
-// copy-self-and-re-exec dance (phase 3), so obu reports rather than pretends.
+// The release asset for this platform (see release-build.yml), the archive
+// format it ships in -- POSIX publishes .tgz, Windows .zip -- and the suffix
+// the platform puts on an executable.
+//
+// Windows performs the in-place swap like every other platform. It needs no
+// copy-self-and-re-exec dance: Windows permits RENAMING a running image (it
+// only forbids deleting one), and the swap moves the current tree aside with
+// fs::rename rather than deleting it, so the running obu.exe travels into
+// .previous and keeps executing. The one consequence is that a tree still
+// holding a running obu cannot be deleted; see StaleTreeResidue.
 #if defined(_WIN32)
-#define OBU_ASSET_PREFIX ""
-#define OBU_UPDATE_SUPPORTED 0
+#if defined(_M_ARM64)
+#define OBU_ASSET_PREFIX "objeck-windows-arm64"
+#else
+#define OBU_ASSET_PREFIX "objeck-windows-x64"
+#endif
+#define OBU_ASSET_SUFFIX ".zip"
+#define OBU_EXE_SUFFIX ".exe"
+#define OBU_UPDATE_SUPPORTED 1
 #elif defined(__APPLE__)
 #define OBU_ASSET_PREFIX "objeck-macos-arm64"
+#define OBU_ASSET_SUFFIX ".tgz"
+#define OBU_EXE_SUFFIX ""
 #define OBU_UPDATE_SUPPORTED 1
 #elif defined(__linux__)
 #if defined(__aarch64__)
@@ -79,9 +100,13 @@ namespace fs = std::filesystem;
 #else
 #define OBU_ASSET_PREFIX "objeck-linux-x64"
 #endif
+#define OBU_ASSET_SUFFIX ".tgz"
+#define OBU_EXE_SUFFIX ""
 #define OBU_UPDATE_SUPPORTED 1
 #else
 #define OBU_ASSET_PREFIX ""
+#define OBU_ASSET_SUFFIX ".tgz"
+#define OBU_EXE_SUFFIX ""
 #define OBU_UPDATE_SUPPORTED 0
 #endif
 
@@ -447,28 +472,58 @@ static int CompareVersions(const std::vector<long>& left, const std::vector<long
 }
 
 /****************************
+* Fetches a release JSON document, honoring OBU_RELEASE_JSON_FILE for the
+* offline test harness so the whole flow runs in CI without the network.
+* 'source', when supplied, receives what the document was actually read from
+* -- the hook's file or the request URL -- so a diagnostic can name it without
+* claiming a network fetch that never happened.
+*
+* Both 'check' and 'update' come through here. They used to build this URL
+* separately, which meant the hook covered 'update' only: 'check' always hit
+* the live network, so on Windows -- where 'check' is the only supported
+* command -- the test hooks had nothing to attach to at all.
+****************************/
+static bool FetchReleaseJson(const std::string& channel, bool is_quiet, std::string& json,
+                             std::string& error, std::string* source = nullptr)
+{
+  // Validate the caller-supplied tag first, ahead of the hook below. The guard
+  // is on user input, so it must not depend on where the document ends up
+  // being read from -- and in particular the test hook must not be able to
+  // skip it, which is what kept the guard from being exercised offline.
+  if(!channel.empty() && !IsSafeTag(channel)) {
+    error = "Invalid channel tag: '" + channel + '\'';
+    return false;
+  }
+
+#ifdef OBU_TEST_HOOKS
+  if(const char* json_file = std::getenv("OBU_RELEASE_JSON_FILE")) {
+    std::ifstream in(json_file, std::ios::binary);
+    if(!in) {
+      error = std::string("Unable to read OBU_RELEASE_JSON_FILE: ") + json_file;
+      return false;
+    }
+    json.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    if(source) { *source = json_file; }
+    return true;
+  }
+#endif
+
+  std::string url = RELEASES_API_BASE;
+  url += channel.empty() ? "/latest" : "/tags/" + channel;
+  if(source) { *source = url; }
+
+  return FetchUrl(url, is_quiet, json, error);
+}
+
+/****************************
 * 'check' command
 ****************************/
 static int DoCheck(bool is_quiet, const std::string& channel)
 {
   const std::string installed = InstalledVersion();
 
-  std::string url = RELEASES_API_BASE;
-  if(channel.empty()) {
-    url += "/latest";
-  }
-  else {
-    if(!IsSafeTag(channel)) {
-      if(!is_quiet) {
-        std::cerr << "Invalid channel tag: '" << channel << '\'' << std::endl;
-      }
-      return EXIT_CHECK_ERROR;
-    }
-    url += "/tags/" + channel;
-  }
-
-  std::string response, error;
-  if(!FetchUrl(url, is_quiet, response, error)) {
+  std::string response, error, source;
+  if(!FetchReleaseJson(channel, is_quiet, response, error, &source)) {
     if(!is_quiet) {
       std::cerr << error << std::endl;
     }
@@ -478,7 +533,7 @@ static int DoCheck(bool is_quiet, const std::string& channel)
   std::string release_tag;
   if(!ExtractTagName(response, release_tag)) {
     if(!is_quiet) {
-      std::cerr << "Unable to find \"tag_name\" in the release response from " << url << std::endl;
+      std::cerr << "Unable to find \"tag_name\" in the release response from " << source << std::endl;
     }
     return EXIT_CHECK_ERROR;
   }
@@ -670,8 +725,66 @@ static fs::path InstallRoot()
 * metacharacters (`$(...)`, backticks, quotes) is inert. This is the whole
 * defense against command injection from an attacker-controlled release, and
 * it is why obu never builds a command string for curl/tar/obr.
-* Returns the child exit code, or 127 if it could not be launched.
+* Returns the child exit code, or OBU_SPAWN_FAILED if it could not be launched.
 ****************************/
+#ifdef _WIN32
+static int RunArgv(const std::vector<std::string>& args, bool quiet)
+{
+  if(args.empty()) {
+    return OBU_SPAWN_FAILED;
+  }
+
+  std::string command_line;
+  for(size_t i = 0; i < args.size(); ++i) {
+    if(i > 0) { command_line += ' '; }
+    command_line += QuoteWindowsArg(args[i]);
+  }
+  std::vector<char> writable(command_line.begin(), command_line.end());
+  writable.push_back('\0');
+
+  SECURITY_ATTRIBUTES attrs;
+  attrs.nLength = sizeof(attrs);
+  attrs.lpSecurityDescriptor = nullptr;
+  attrs.bInheritHandle = TRUE;
+
+  HANDLE null_out = INVALID_HANDLE_VALUE;
+  if(quiet) {
+    null_out = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
+                           &attrs, OPEN_EXISTING, 0, nullptr);
+  }
+
+  STARTUPINFOA start;
+  ZeroMemory(&start, sizeof(start));
+  start.cb = sizeof(start);
+  if(null_out != INVALID_HANDLE_VALUE) {
+    start.dwFlags = STARTF_USESTDHANDLES;
+    start.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    start.hStdOutput = null_out;
+    start.hStdError = null_out;
+  }
+
+  PROCESS_INFORMATION proc;
+  ZeroMemory(&proc, sizeof(proc));
+
+  // lpApplicationName is null so PATH is searched, but no shell is spawned
+  const BOOL launched = CreateProcessA(nullptr, writable.data(), nullptr, nullptr,
+                                       TRUE, 0, nullptr, nullptr, &start, &proc);
+  if(null_out != INVALID_HANDLE_VALUE) { CloseHandle(null_out); }
+  if(!launched) {
+    return OBU_SPAWN_FAILED;
+  }
+
+  WaitForSingleObject(proc.hProcess, INFINITE);
+  DWORD status = 0;
+  if(!GetExitCodeProcess(proc.hProcess, &status)) {
+    status = static_cast<DWORD>(OBU_SPAWN_FAILED);
+  }
+  CloseHandle(proc.hProcess);
+  CloseHandle(proc.hThread);
+
+  return static_cast<int>(status);
+}
+#else
 static int RunArgv(const std::vector<std::string>& args, bool quiet)
 {
   std::vector<char*> argv;
@@ -695,7 +808,7 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
       }
     }
     execvp(argv[0], argv.data());
-    _exit(127);
+    _exit(OBU_SPAWN_FAILED);
   }
 
   int status = 0;
@@ -704,7 +817,74 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
   }
   return WIFEXITED(status) ? WEXITSTATUS(status) : OBU_SPAWN_FAILED;
 }
+#endif  // _WIN32
+
+/****************************
+* bsdtar ships in System32 on Windows 10 1803+ and reads .zip as well as .tgz.
+* Resolve it by absolute path rather than trusting PATH, where an MSYS/GNU tar
+* -- which cannot read a zip at all -- may shadow it.
+****************************/
+static std::string ArchiveTool()
+{
+#ifdef _WIN32
+  char system_dir[MAX_PATH];
+  const UINT length = GetSystemDirectoryA(system_dir, MAX_PATH);
+  if(length > 0 && length < MAX_PATH) {
+    std::error_code ec;
+    const fs::path candidate = fs::path(system_dir) / "tar.exe";
+    if(fs::exists(candidate, ec)) {
+      return candidate.string();
+    }
+  }
 #endif
+  return "tar";
+}
+
+/****************************
+* An archive member must be a relative path that stays inside the staging dir.
+* Rejects absolute paths, drive-qualified paths and any '..' component, in both
+* separator conventions -- a zip may legitimately carry backslashes, so the
+* Windows form has to be rejected too (zip-slip).
+****************************/
+static bool IsUnsafeArchiveMember(const std::string& member)
+{
+  if(member.empty()) {
+    return false;
+  }
+  if(member.front() == '/' || member.front() == '\\') {
+    return true;
+  }
+  if(member.size() >= 2 && member[1] == ':') {   // C:\... or C:/...
+    return true;
+  }
+
+  // compare whole components, so a filename that merely contains dots ("a..b")
+  // is not mistaken for a traversal
+  size_t start = 0;
+  while(start <= member.size()) {
+    size_t end = member.find_first_of("/\\", start);
+    if(end == std::string::npos) { end = member.size(); }
+    if(member.compare(start, end - start, "..") == 0) {
+      return true;
+    }
+    start = end + 1;
+  }
+  return false;
+}
+
+/****************************
+* Best-effort removal of a tree that may still hold a running image. Windows
+* lets a running .exe be renamed but never deleted, so the tree obu itself was
+* launched from survives this call; the next run clears it, once nothing is
+* executing out of it. Returns true if anything was left behind.
+****************************/
+static bool StaleTreeResidue(const fs::path& tree)
+{
+  std::error_code ec;
+  fs::remove_all(tree, ec);
+  return fs::exists(tree, ec);
+}
+#endif  // OBU_UPDATE_SUPPORTED
 
 /****************************
 * A release asset name must be a plain filename over a strict allowlist. This
@@ -722,38 +902,6 @@ static bool IsSafeAssetName(const std::string& name)
     }
   }
   return name.find("..") == std::string::npos;
-}
-
-/****************************
-* Fetches a release JSON document, honoring OBU_RELEASE_JSON_FILE for the
-* offline test harness so the whole flow runs in CI without the network.
-****************************/
-static bool FetchReleaseJson(const std::string& channel, bool is_quiet, std::string& json, std::string& error)
-{
-#ifdef OBU_TEST_HOOKS
-  if(const char* json_file = std::getenv("OBU_RELEASE_JSON_FILE")) {
-    std::ifstream in(json_file, std::ios::binary);
-    if(!in) {
-      error = std::string("Unable to read OBU_RELEASE_JSON_FILE: ") + json_file;
-      return false;
-    }
-    json.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    return true;
-  }
-#endif
-
-  std::string url = RELEASES_API_BASE;
-  if(channel.empty()) {
-    url += "/latest";
-  }
-  else {
-    if(!IsSafeTag(channel)) {
-      error = "Invalid channel tag: '" + channel + '\'';
-      return false;
-    }
-    url += "/tags/" + channel;
-  }
-  return FetchUrl(url, is_quiet, json, error);
 }
 
 /****************************
@@ -803,7 +951,10 @@ static bool ExtractAssetUrl(const std::string& json, const std::string& prefix,
     if(url_end == std::string::npos) { continue; }
     const std::string url = json.substr(u, url_end - u);
 
-    // only accept an https URL on a github host; the download goes to a shell
+    // Only accept an https URL on a GitHub host. The download itself no longer
+    // goes through a shell (see FetchUrl/DownloadAsset), so this is not the
+    // injection defense it once was -- it now keeps a tampered release from
+    // pointing the download at an arbitrary host.
     if(url.compare(0, 8, "https://") != 0) { continue; }
     if(url.find("://github.com/") == std::string::npos &&
        url.find(".githubusercontent.com/") == std::string::npos) {
@@ -881,11 +1032,18 @@ static bool ExpectedHash(const std::string& sums, const std::string& name, std::
   return false;
 }
 
-// Top-level install entries obu manages; dot-directories obu creates are never
-// touched by the swap.
-static bool IsObuWorkDir(const std::string& name)
+// obu's own scratch entries at the top of the install root. The swap never
+// moves or deletes these.
+//
+// .obu.lock belongs in this list: obu holds it open for the whole operation,
+// and Windows refuses to rename a file that is open (a running .exe can be
+// renamed, an open handle without FILE_SHARE_DELETE cannot), so the swap died
+// on it. It was wrong on POSIX too -- harmlessly, but the lock ended up buried
+// inside .previous instead of staying in the root.
+static bool IsObuScratchEntry(const std::string& name)
 {
-  return name == ".obu-work" || name == ".previous" || name == ".obu-rollback";
+  return name == ".obu-work" || name == ".previous" ||
+         name == ".obu-rollback" || name == ".obu.lock";
 }
 
 /****************************
@@ -909,7 +1067,7 @@ static bool MoveTreeEntries(const fs::path& from, const fs::path& to, std::strin
   fs::create_directories(to, ec);
   for(const fs::path& path : entries) {
     const std::string name = path.filename().string();
-    if(IsObuWorkDir(name)) {
+    if(IsObuScratchEntry(name)) {
       continue;
     }
     fs::rename(path, to / name, ec);
@@ -931,7 +1089,7 @@ static void RemoveManagedEntries(const fs::path& root)
     entries.push_back(it->path());
   }
   for(const fs::path& path : entries) {
-    if(!IsObuWorkDir(path.filename().string())) {
+    if(!IsObuScratchEntry(path.filename().string())) {
       fs::remove_all(path, ec);
     }
   }
@@ -970,6 +1128,17 @@ static fs::path DetectPayloadRoot(const fs::path& staging)
 static int AcquireLock(const fs::path& root)
 {
   const std::string lock_path = (root / ".obu.lock").string();
+#ifdef _WIN32
+  // _SH_DENYRW gives the same semantics flock(LOCK_EX | LOCK_NB) does below:
+  // a second obu fails to open it at all rather than waiting. Windows has no
+  // flock, and _locking() would need the region locked separately.
+  int fd = -1;
+  if(_sopen_s(&fd, lock_path.c_str(), _O_CREAT | _O_RDWR, _SH_DENYRW,
+              _S_IREAD | _S_IWRITE) != 0) {
+    return -1;
+  }
+  return fd;
+#else
   const int fd = open(lock_path.c_str(), O_CREAT | O_RDWR, 0600);
   if(fd < 0) {
     return -1;
@@ -979,6 +1148,21 @@ static int AcquireLock(const fs::path& root)
     return -1;
   }
   return fd;
+#endif
+}
+
+// close() for the lock fd. MSVC spells it _close and only exposes the
+// unprefixed name as a deprecated alias.
+static void ReleaseLock(int fd)
+{
+  if(fd < 0) {
+    return;
+  }
+#ifdef _WIN32
+  _close(fd);
+#else
+  close(fd);
+#endif
 }
 
 /****************************
@@ -989,6 +1173,11 @@ static int AcquireLock(const fs::path& root)
 static bool RecoverInterruptedSwap(const fs::path& root, bool is_quiet)
 {
   std::error_code ec;
+  // A prior rollback may have been unable to delete the tree it set aside,
+  // because obu was running out of it at the time (Windows forbids deleting a
+  // running image). Nothing is executing there now, so clear it first.
+  fs::remove_all(root / ".obu-rollback", ec);
+
   const fs::path previous = root / ".previous";
   if(fs::exists(root / "bin", ec) || !fs::exists(previous / "bin", ec)) {
     return false;
@@ -1030,7 +1219,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   RecoverInterruptedSwap(root, is_quiet);
   if(!fs::exists(root / "bin", ec)) {
     std::cerr << "Could not locate the Objeck install root (expected a bin/ beside obu)." << std::endl;
-    close(lock_fd);
+    ReleaseLock(lock_fd);
     return EXIT_CHECK_ERROR;
   }
 
@@ -1041,7 +1230,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   // A single cleanup+unlock path so no early return leaks staging or the lock.
   struct Guard {
     const fs::path& work; int fd; bool armed = true;
-    ~Guard() { if(armed) { std::error_code e; fs::remove_all(work, e); } if(fd >= 0) { close(fd); } }
+    ~Guard() { if(armed) { std::error_code e; fs::remove_all(work, e); } ReleaseLock(fd); }
   } guard{work, lock_fd};
 
   // resolve the target release
@@ -1081,7 +1270,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
 
   // locate the platform asset and its checksums
   std::string asset_url, asset_name, sums_url, sums_name;
-  if(!ExtractAssetUrl(json, OBU_ASSET_PREFIX, ".tgz", asset_url, asset_name)) {
+  if(!ExtractAssetUrl(json, OBU_ASSET_PREFIX, OBU_ASSET_SUFFIX, asset_url, asset_name)) {
     std::cerr << "Release " << release_tag << " has no " OBU_ASSET_PREFIX " asset "
                  "(a macOS notarization gap does this -- try again once it publishes)." << std::endl;
     return EXIT_CHECK_ERROR;
@@ -1105,7 +1294,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
 
   // Download to FIXED local names -- the remote asset name is never used as a
   // path, only to look up its line in SHA256SUMS.
-  const fs::path asset_path = work / "asset.tgz";
+  const fs::path asset_path = work / ("asset" OBU_ASSET_SUFFIX);
   const fs::path sums_path = work / "SHA256SUMS";
   if(!DownloadAsset(asset_url, asset_name, asset_path, is_quiet, error) ||
      !DownloadAsset(sums_url, sums_name, sums_path, is_quiet, error)) {
@@ -1135,19 +1324,34 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
     std::cout << "Verified " << asset_name << " against SHA256SUMS." << std::endl;
   }
 
-  // reject a tarball with an absolute or traversing member before extracting
+  // reject an archive with an absolute or traversing member before extracting.
+  // Windows ships .zip, so the flags differ: bsdtar infers zip without -z, and
+  // --no-same-owner is a POSIX ownership concern that does not apply.
+  const std::string tar = ArchiveTool();
+#ifdef _WIN32
+  const std::vector<std::string> list_args = {tar, "-tf", asset_path.string()};
+  const std::vector<std::string> extract_args = {tar, "-xf", asset_path.string(),
+                                                 "-C", staging.string()};
+#else
+  const std::vector<std::string> list_args = {tar, "-tzf", asset_path.string()};
+  const std::vector<std::string> extract_args = {tar, "--no-same-owner", "-xzf",
+                                                 asset_path.string(), "-C", staging.string()};
+#endif
+
   std::string listing;
-  if(!RunArgvCapture({"tar", "-tzf", asset_path.string()}, listing)) {
+  if(!RunArgvCapture(list_args, listing)) {
     std::cerr << "Unable to read the archive " << asset_name << "." << std::endl;
     return EXIT_CHECK_ERROR;
   }
   for(size_t p = 0; p < listing.size();) {
     size_t eol = listing.find('\n', p);
     if(eol == std::string::npos) { eol = listing.size(); }
-    const std::string member = listing.substr(p, eol - p);
+    std::string member = listing.substr(p, eol - p);
     p = eol + 1;
-    if(!member.empty() && (member.front() == '/' || member.compare(0, 3, "../") == 0 ||
-                           member.find("/../") != std::string::npos)) {
+    if(!member.empty() && member.back() == '\r') {   // bsdtar on Windows
+      member.pop_back();
+    }
+    if(IsUnsafeArchiveMember(member)) {
       std::cerr << "Archive contains an unsafe path ('" << member << "'); refusing." << std::endl;
       return EXIT_CHECK_ERROR;
     }
@@ -1155,7 +1359,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
 
   // extract into a fresh staging dir (never into the live tree)
   fs::create_directories(staging, ec);
-  if(RunArgv({"tar", "--no-same-owner", "-xzf", asset_path.string(), "-C", staging.string()}, is_quiet) != 0) {
+  if(RunArgv(extract_args, is_quiet) != 0) {
     std::cerr << "Unable to unpack " << asset_name << "." << std::endl;
     return EXIT_CHECK_ERROR;
   }
@@ -1190,7 +1394,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   // POST-CHECK: the design names 'obc -v' as authoritative for what is
   // installed. On failure, roll back automatically. ('obr' has no version
   // flag, so it must not be used here.)
-  const int health = RunArgv({(root / "bin" / "obc").string(), "-v"}, is_quiet);
+  const int health = RunArgv({(root / "bin" / ("obc" OBU_EXE_SUFFIX)).string(), "-v"}, is_quiet);
   if(health != 0) {
     std::cerr << "The updated Objeck failed its post-install check; rolling back." << std::endl;
     RemoveManagedEntries(root);
@@ -1236,7 +1440,7 @@ static int DoRollback(bool is_quiet)
   // rollback would move the live install aside and restore nothing
   if(!fs::exists(previous / "bin", ec)) {
     std::cerr << "There is no previous version to roll back to." << std::endl;
-    close(lock_fd);
+    ReleaseLock(lock_fd);
     return EXIT_CHECK_ERROR;
   }
 
@@ -1247,21 +1451,29 @@ static int DoRollback(bool is_quiet)
   if(!MoveTreeEntries(root, holding, error)) {
     std::cerr << "Rollback failed while setting aside the current version: " << error << std::endl;
     MoveTreeEntries(holding, root, error);
-    close(lock_fd);
+    ReleaseLock(lock_fd);
     return EXIT_CHECK_ERROR;
   }
   if(!MoveTreeEntries(previous, root, error)) {
     std::cerr << "Rollback failed while restoring: " << error << ". Attempting to undo." << std::endl;
     RemoveManagedEntries(root);
     MoveTreeEntries(holding, root, error);
-    close(lock_fd);
+    ReleaseLock(lock_fd);
     return EXIT_CHECK_ERROR;
   }
-  fs::remove_all(holding, ec);   // the version we rolled back FROM is discarded
+  // The version we rolled back FROM is discarded. On Windows the running
+  // obu.exe now lives in there -- it was renamed aside, which Windows allows --
+  // and a running image cannot be deleted, so this can legitimately leave the
+  // tree behind. RecoverInterruptedSwap clears it on the next run, by which
+  // point nothing is executing out of it.
+  if(StaleTreeResidue(holding) && !is_quiet) {
+    std::cout << "Note: the replaced version could not be fully removed while obu is "
+                 "running from it; it will be cleaned up on the next run." << std::endl;
+  }
   fs::remove_all(previous, ec);
 
-  const int health = RunArgv({(root / "bin" / "obc").string(), "-v"}, is_quiet);
-  close(lock_fd);
+  const int health = RunArgv({(root / "bin" / ("obc" OBU_EXE_SUFFIX)).string(), "-v"}, is_quiet);
+  ReleaseLock(lock_fd);
   if(health != 0) {
     std::cerr << "Warning: the restored version did not pass its health check." << std::endl;
     return EXIT_CHECK_ERROR;
