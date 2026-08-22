@@ -47,8 +47,6 @@
 #include <vector>
 
 #ifdef _WIN32
-#define OBU_POPEN _popen
-#define OBU_PCLOSE _pclose
 #include <windows.h>
 #else
 #include <cerrno>
@@ -56,8 +54,6 @@
 #include <sys/file.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#define OBU_POPEN popen
-#define OBU_PCLOSE pclose
 #endif
 
 namespace fs = std::filesystem;
@@ -126,8 +122,9 @@ static std::string InstalledVersion()
 }
 
 /****************************
-* Ensures a tag is safe to place
-* in a shell command line
+* Restricts a release tag to an allowlist before it is spliced into a request
+* URL. No shell is involved any more (see FetchUrl), so this is now about
+* keeping '--channel' from reshaping the URL path rather than a command line.
 ****************************/
 static bool IsSafeTag(const std::string& tag)
 {
@@ -145,44 +142,216 @@ static bool IsSafeTag(const std::string& tag)
   return true;
 }
 
-/****************************
-* Fetches a URL by shelling out
-* to the system 'curl' binary
-****************************/
-static bool FetchUrl(const std::string& url, bool is_quiet, std::string& response, std::string& error)
-{
-  std::string command = "curl -fsSL --max-time 20 \"" + url + '"';
-  if(is_quiet) {
+// Reported when the child could not be launched at all, as opposed to running
+// and failing -- the caller needs to tell "curl is not installed" from "curl
+// answered 404". 127 is the shell convention for it, and is what a failed
+// execvp already yields here; curl's own codes stop at 99, so there is no
+// collision in practice.
+#define OBU_SPAWN_FAILED 127
+
 #ifdef _WIN32
-    command += " 2>nul";
-#else
-    command += " 2>/dev/null";
-#endif
+/****************************
+* Quotes one argument per the CommandLineToArgvW rules. CreateProcess takes a
+* single string rather than a vector, but no shell parses it -- cmd.exe is
+* never involved -- so metacharacters are inert regardless. This only keeps an
+* argument from being split on whitespace or losing its quotes in transit.
+****************************/
+static std::string QuoteWindowsArg(const std::string& arg)
+{
+  if(!arg.empty() && arg.find_first_of(" \t\n\v\"") == std::string::npos) {
+    return arg;
   }
 
-  FILE* pipe = OBU_POPEN(command.c_str(), "r");
-  if(!pipe) {
-    error = "Unable to run 'curl'; please ensure it is installed and on the path.";
+  std::string quoted = "\"";
+  for(size_t i = 0; ; ++i) {
+    size_t slashes = 0;
+    while(i < arg.size() && arg[i] == '\\') {
+      ++i;
+      ++slashes;
+    }
+
+    if(i == arg.size()) {
+      // double the trailing run so it cannot escape the closing quote
+      quoted.append(slashes * 2, '\\');
+      break;
+    }
+
+    // a run of backslashes is only special immediately before a quote
+    quoted.append(arg[i] == '"' ? slashes * 2 + 1 : slashes, '\\');
+    quoted += arg[i];
+  }
+
+  return quoted + '"';
+}
+
+/****************************
+* Runs a program with an explicit argument vector and captures its stdout.
+* CreateProcess with a null lpApplicationName searches PATH but never spawns a
+* shell, so nothing in args is interpreted. Returns true only if the child
+* launched and exited 0; *exit_code gets the status, or OBU_SPAWN_FAILED.
+****************************/
+static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out,
+                           bool quiet = false, int* exit_code = nullptr)
+{
+  out.clear();
+  if(exit_code) { *exit_code = OBU_SPAWN_FAILED; }
+  if(args.empty()) {
     return false;
   }
 
-  response.clear();
-  char buffer[4096];
-  size_t read;
-  while((read = fread(buffer, 1, sizeof(buffer), pipe)) > 0) {
-    response.append(buffer, read);
+  SECURITY_ATTRIBUTES attrs;
+  attrs.nLength = sizeof(attrs);
+  attrs.lpSecurityDescriptor = nullptr;
+  attrs.bInheritHandle = TRUE;
+
+  HANDLE read_end = nullptr, write_end = nullptr;
+  if(!CreatePipe(&read_end, &write_end, &attrs, 0)) {
+    return false;
+  }
+  // the child must not inherit our read end or the read below never sees EOF
+  SetHandleInformation(read_end, HANDLE_FLAG_INHERIT, 0);
+
+  HANDLE null_out = INVALID_HANDLE_VALUE;
+  if(quiet) {
+    null_out = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
+                           &attrs, OPEN_EXISTING, 0, nullptr);
   }
 
-  const int status = OBU_PCLOSE(pipe);
-#ifdef _WIN32
-  const int exit_code = status;
+  std::string command_line;
+  for(size_t i = 0; i < args.size(); ++i) {
+    if(i > 0) { command_line += ' '; }
+    command_line += QuoteWindowsArg(args[i]);
+  }
+  std::vector<char> writable(command_line.begin(), command_line.end());
+  writable.push_back('\0');
+
+  STARTUPINFOA start;
+  ZeroMemory(&start, sizeof(start));
+  start.cb = sizeof(start);
+  start.dwFlags = STARTF_USESTDHANDLES;
+  start.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+  start.hStdOutput = write_end;
+  start.hStdError = null_out != INVALID_HANDLE_VALUE ? null_out : GetStdHandle(STD_ERROR_HANDLE);
+
+  PROCESS_INFORMATION proc;
+  ZeroMemory(&proc, sizeof(proc));
+
+  const BOOL launched = CreateProcessA(nullptr, writable.data(), nullptr, nullptr,
+                                       TRUE, 0, nullptr, nullptr, &start, &proc);
+  // drop our copies of the child's ends so the pipe can reach EOF
+  CloseHandle(write_end);
+  if(null_out != INVALID_HANDLE_VALUE) { CloseHandle(null_out); }
+
+  if(!launched) {
+    CloseHandle(read_end);
+    return false;
+  }
+
+  char buffer[4096];
+  DWORD got = 0;
+  while(ReadFile(read_end, buffer, sizeof(buffer), &got, nullptr) && got > 0) {
+    out.append(buffer, got);
+  }
+  CloseHandle(read_end);
+
+  WaitForSingleObject(proc.hProcess, INFINITE);
+  DWORD status = 0;
+  if(!GetExitCodeProcess(proc.hProcess, &status)) {
+    status = static_cast<DWORD>(OBU_SPAWN_FAILED);
+  }
+  CloseHandle(proc.hProcess);
+  CloseHandle(proc.hThread);
+
+  if(exit_code) { *exit_code = static_cast<int>(status); }
+
+  return status == 0;
+}
 #else
-  const int exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+/****************************
+* Runs a program with an explicit argument vector and captures its stdout.
+* execvp takes the vector directly, so no shell exists to interpret anything
+* in it. Returns true only if the child launched and exited 0; *exit_code gets
+* the status, or OBU_SPAWN_FAILED.
+****************************/
+static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out,
+                           bool quiet = false, int* exit_code = nullptr)
+{
+  out.clear();
+  if(exit_code) { *exit_code = OBU_SPAWN_FAILED; }
+  if(args.empty()) {
+    return false;
+  }
+
+  int pipe_fds[2];
+  if(pipe(pipe_fds) != 0) {
+    return false;
+  }
+
+  std::vector<char*> argv;
+  argv.reserve(args.size() + 1);
+  for(const std::string& a : args) {
+    argv.push_back(const_cast<char*>(a.c_str()));
+  }
+  argv.push_back(nullptr);
+
+  const pid_t pid = fork();
+  if(pid < 0) {
+    close(pipe_fds[0]);
+    close(pipe_fds[1]);
+    return false;
+  }
+  if(pid == 0) {
+    close(pipe_fds[0]);
+    dup2(pipe_fds[1], STDOUT_FILENO);
+    close(pipe_fds[1]);
+    if(quiet) {
+      const int devnull = open("/dev/null", O_WRONLY);
+      if(devnull >= 0) {
+        dup2(devnull, STDERR_FILENO);
+        close(devnull);
+      }
+    }
+    execvp(argv[0], argv.data());
+    _exit(OBU_SPAWN_FAILED);
+  }
+
+  close(pipe_fds[1]);
+  char buffer[4096];
+  ssize_t got;
+  while((got = read(pipe_fds[0], buffer, sizeof(buffer))) > 0) {
+    out.append(buffer, static_cast<size_t>(got));
+  }
+  close(pipe_fds[0]);
+
+  int status = 0;
+  while(waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+    /* retry */
+  }
+  const int code = WIFEXITED(status) ? WEXITSTATUS(status) : OBU_SPAWN_FAILED;
+  if(exit_code) { *exit_code = code; }
+
+  return code == 0;
+}
 #endif
 
-  if(status == -1 || exit_code != 0) {
-    error = "Request failed: " + url + " ('curl' exited with code " +
-      std::to_string(exit_code) + "; is curl installed and the network reachable?)";
+/****************************
+* Fetches a URL by running the system 'curl' binary directly -- argv form, so
+* the URL is passed as an argument and no shell ever sees it. It used to be
+* interpolated into a popen() command string, which made a URL carrying shell
+* metacharacters a command-injection vector (CWE-78) reachable from the
+* '--channel' argument and from a release's own asset URLs.
+****************************/
+static bool FetchUrl(const std::string& url, bool is_quiet, std::string& response, std::string& error)
+{
+  int exit_code = 0;
+  if(!RunArgvCapture({"curl", "-fsSL", "--max-time", "20", url}, response, is_quiet, &exit_code)) {
+    if(exit_code == OBU_SPAWN_FAILED) {
+      error = "Unable to run 'curl'; please ensure it is installed and on the path.";
+    }
+    else {
+      error = "Request failed: " + url + " ('curl' exited with code " +
+        std::to_string(exit_code) + "; is curl installed and the network reachable?)";
+    }
     return false;
   }
 
@@ -533,55 +702,7 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
   while(waitpid(pid, &status, 0) < 0 && errno == EINTR) {
     /* retry */
   }
-  return WIFEXITED(status) ? WEXITSTATUS(status) : 127;
-}
-
-/****************************
-* Runs a program and captures its stdout (used to list a tarball's members
-* before extracting). No shell. Returns false if it could not be launched.
-****************************/
-static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out)
-{
-  out.clear();
-  int pipe_fds[2];
-  if(pipe(pipe_fds) != 0) {
-    return false;
-  }
-
-  std::vector<char*> argv;
-  argv.reserve(args.size() + 1);
-  for(const std::string& a : args) {
-    argv.push_back(const_cast<char*>(a.c_str()));
-  }
-  argv.push_back(nullptr);
-
-  const pid_t pid = fork();
-  if(pid < 0) {
-    close(pipe_fds[0]);
-    close(pipe_fds[1]);
-    return false;
-  }
-  if(pid == 0) {
-    close(pipe_fds[0]);
-    dup2(pipe_fds[1], STDOUT_FILENO);
-    close(pipe_fds[1]);
-    execvp(argv[0], argv.data());
-    _exit(127);
-  }
-
-  close(pipe_fds[1]);
-  char buffer[4096];
-  ssize_t got;
-  while((got = read(pipe_fds[0], buffer, sizeof(buffer))) > 0) {
-    out.append(buffer, static_cast<size_t>(got));
-  }
-  close(pipe_fds[0]);
-
-  int status = 0;
-  while(waitpid(pid, &status, 0) < 0 && errno == EINTR) {
-    /* retry */
-  }
-  return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+  return WIFEXITED(status) ? WEXITSTATUS(status) : OBU_SPAWN_FAILED;
 }
 #endif
 
