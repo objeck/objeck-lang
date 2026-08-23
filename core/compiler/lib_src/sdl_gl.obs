@@ -21,7 +21,9 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * GLWindow    -- a window and a 3.3 core context, opened and paced for you.
 * GL          -- static state operations. Thin, but never per-vertex.
 * Shader      -- a linked program from vertex + fragment source.
-* Mesh        -- geometry uploaded once into buffer objects, drawn many times.
+* Mesh        -- geometry uploaded once into buffer objects, drawn many times,
+                with Cube/Plane/Quad/Sphere built in.
+* Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
 * Box, Scene  -- a world of boxes: draws itself, and answers collision.
 
 ## Why the API is shaped this way
@@ -74,6 +76,29 @@ bundle Game.OpenGL {
 		GL_INVALID_OPERATION := 0x0502,
 		GL_OUT_OF_MEMORY := 0x0505,
 		GL_INVALID_FRAMEBUFFER_OPERATION := 0x0506
+	}
+
+	#~
+	How a texture is sampled when it is drawn larger or smaller than its pixels.
+	~#
+	consts TextureFilter {
+		# blocky, and exactly right for pixel art or a colour lookup
+		GL_NEAREST := 0x2600,
+		# smooth; the sensible default for photographs and generated patterns
+		GL_LINEAR := 0x2601
+	}
+
+	#~
+	What happens to texture coordinates outside 0..1.
+	~#
+	consts TextureWrap {
+		# tile. What a wall or floor with a repeating pattern needs, and what
+		# Mesh->Plane's tiles parameter is for.
+		GL_REPEAT := 0x2901,
+		# tile, flipping alternate copies so the seams line up
+		GL_MIRRORED_REPEAT := 0x8370,
+		# stretch the edge pixel outwards; avoids a seam bleeding across a quad
+		GL_CLAMP_TO_EDGE := 0x812F
 	}
 
 	#~
@@ -1032,6 +1057,214 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		A cube spanning -1..1 on every axis, ready for Scene and Box.
+
+		Not a "unit" cube: it is 2x2x2, because Box multiplies it by a HALF-extent.
+		A cube built to -0.5..0.5 would draw every box at half the size it claims
+		while collision kept using the full extents. See the note on Box.
+
+		Culling-safe: every face is wound counter-clockwise seen from outside, so
+		GL_CULL_FACE can be enabled without anything vanishing.
+		@return the mesh; check IsOk()
+		~#
+		function : Cube() ~ Mesh {
+			return Cube(1.0);
+		}
+
+		#~
+		A cube of an arbitrary half-extent.
+		@param half distance from the centre to each face
+		@return the mesh; check IsOk()
+		~#
+		function : Cube(half : Float) ~ Mesh {
+			# Per face: the outward normal, then four corners counter-clockwise seen
+			# from outside. Fifteen floats each. Written as a literal table rather
+			# than computed because a wrong sign here is a face that culls away, and
+			# a table can be read against the axis it names.
+			faces := [
+				# +Z front
+				 0.0,  0.0,  1.0,   -1.0, -1.0,  1.0,    1.0, -1.0,  1.0,    1.0,  1.0,  1.0,   -1.0,  1.0,  1.0,
+				# -Z back
+				 0.0,  0.0, -1.0,    1.0, -1.0, -1.0,   -1.0, -1.0, -1.0,   -1.0,  1.0, -1.0,    1.0,  1.0, -1.0,
+				# -X left
+				-1.0,  0.0,  0.0,   -1.0, -1.0, -1.0,   -1.0, -1.0,  1.0,   -1.0,  1.0,  1.0,   -1.0,  1.0, -1.0,
+				# +X right
+				 1.0,  0.0,  0.0,    1.0, -1.0,  1.0,    1.0, -1.0, -1.0,    1.0,  1.0, -1.0,    1.0,  1.0,  1.0,
+				# +Y top
+				 0.0,  1.0,  0.0,   -1.0,  1.0,  1.0,    1.0,  1.0,  1.0,    1.0,  1.0, -1.0,   -1.0,  1.0, -1.0,
+				# -Y bottom
+				 0.0, -1.0,  0.0,   -1.0, -1.0, -1.0,    1.0, -1.0, -1.0,    1.0, -1.0,  1.0,   -1.0, -1.0,  1.0];
+
+			# the same four texture coordinates on every face
+			corner_u := [0.0, 1.0, 1.0, 0.0];
+			corner_v := [0.0, 0.0, 1.0, 1.0];
+
+			vertices := Float->New[24 * 8];
+			indices := Int->New[36];
+
+			for(face := 0; face < 6; face += 1;) {
+				base := face * 15;
+				nx := faces[base + 0];
+				ny := faces[base + 1];
+				nz := faces[base + 2];
+
+				for(corner := 0; corner < 4; corner += 1;) {
+					src := base + 3 + corner * 3;
+					out := (face * 4 + corner) * 8;
+					vertices[out + 0] := faces[src + 0] * half;
+					vertices[out + 1] := faces[src + 1] * half;
+					vertices[out + 2] := faces[src + 2] * half;
+					vertices[out + 3] := nx;
+					vertices[out + 4] := ny;
+					vertices[out + 5] := nz;
+					vertices[out + 6] := corner_u[corner];
+					vertices[out + 7] := corner_v[corner];
+				};
+
+				vertex_base := face * 4;
+				index_base := face * 6;
+				indices[index_base + 0] := vertex_base + 0;
+				indices[index_base + 1] := vertex_base + 1;
+				indices[index_base + 2] := vertex_base + 2;
+				indices[index_base + 3] := vertex_base + 2;
+				indices[index_base + 4] := vertex_base + 3;
+				indices[index_base + 5] := vertex_base + 0;
+			};
+
+			return Mesh->New(vertices, indices, PositionNormalTexcoord());
+		}
+
+		#~
+		A flat square on the XZ plane at y = 0, normal pointing up. Floors and
+		ground planes.
+		@param half distance from the centre to each edge
+		@param tiles how many times the texture repeats across the square; needs a
+		texture built with TextureWrap->GL_REPEAT to be visible
+		@return the mesh; check IsOk()
+		~#
+		function : Plane(half : Float, tiles : Float) ~ Mesh {
+			# counter-clockwise seen from above, so the +Y normal is the front face
+			vertices := Float->New[4 * 8];
+			Corner(vertices, 0, half * -1.0, 0.0, half,        0.0, 1.0, 0.0,   0.0, 0.0);
+			Corner(vertices, 1, half,        0.0, half,        0.0, 1.0, 0.0,   tiles, 0.0);
+			Corner(vertices, 2, half,        0.0, half * -1.0, 0.0, 1.0, 0.0,   tiles, tiles);
+			Corner(vertices, 3, half * -1.0, 0.0, half * -1.0, 0.0, 1.0, 0.0,   0.0, tiles);
+
+			return Mesh->New(vertices, [0, 1, 2, 2, 3, 0], PositionNormalTexcoord());
+		}
+
+		#~
+		A flat square on the XY plane at z = 0, normal pointing at the viewer.
+
+		At half = 1.0 this exactly covers clip space, which is what a full-screen
+		pass wants -- a post-process or a background drawn with an identity matrix.
+		@param half distance from the centre to each edge
+		@return the mesh; check IsOk()
+		~#
+		function : Quad(half : Float) ~ Mesh {
+			vertices := Float->New[4 * 8];
+			Corner(vertices, 0, half * -1.0, half * -1.0, 0.0,   0.0, 0.0, 1.0,   0.0, 0.0);
+			Corner(vertices, 1, half,        half * -1.0, 0.0,   0.0, 0.0, 1.0,   1.0, 0.0);
+			Corner(vertices, 2, half,        half,        0.0,   0.0, 0.0, 1.0,   1.0, 1.0);
+			Corner(vertices, 3, half * -1.0, half,        0.0,   0.0, 0.0, 1.0,   0.0, 1.0);
+
+			return Mesh->New(vertices, [0, 1, 2, 2, 3, 0], PositionNormalTexcoord());
+		}
+
+		#~
+		A UV sphere of radius 1, centred on the origin.
+
+		Normals are the vertex positions, which is exact for a unit sphere and is
+		why this reads as round under lighting rather than faceted.
+		@param segments divisions around the equator; 24 or more looks smooth
+		@param rings divisions from pole to pole; usually about half the segments
+		@return the mesh; check IsOk()
+		~#
+		function : Sphere(segments : Int, rings : Int) ~ Mesh {
+			if(segments < 3) {
+				segments := 3;
+			};
+			if(rings < 2) {
+				rings := 2;
+			};
+
+			# The seam and the poles get duplicated vertices: the seam because u must
+			# reach 1.0 as well as 0.0 at the same position, and the poles because
+			# each triangle there needs its own u. Hence the +1 on both counts.
+			across := segments + 1;
+			down := rings + 1;
+			vertices := Float->New[across * down * 8];
+			indices := Int->New[segments * rings * 6];
+
+			pi := Float->Pi();
+			for(ring := 0; ring < down; ring += 1;) {
+				# 0 at the north pole, pi at the south
+				phi := pi * ring->As(Float) / rings->As(Float);
+				y := phi->Cos();
+				r := phi->Sin();
+
+				for(seg := 0; seg < across; seg += 1;) {
+					theta := 2.0 * pi * seg->As(Float) / segments->As(Float);
+					x := r * theta->Cos();
+					z := r * theta->Sin();
+
+					# radius 1, so the position IS the normal
+					u := seg->As(Float) / segments->As(Float);
+					v := 1.0 - ring->As(Float) / rings->As(Float);
+					Corner(vertices, ring * across + seg, x, y, z, x, y, z, u, v);
+				};
+			};
+
+			out := 0;
+			for(ring := 0; ring < rings; ring += 1;) {
+				for(seg := 0; seg < segments; seg += 1;) {
+					top := ring * across + seg;
+					bottom := top + across;
+
+					# counter-clockwise from outside, so culling keeps the near side
+					indices[out + 0] := top;
+					indices[out + 1] := bottom;
+					indices[out + 2] := top + 1;
+					indices[out + 3] := top + 1;
+					indices[out + 4] := bottom;
+					indices[out + 5] := bottom + 1;
+					out += 6;
+				};
+			};
+
+			return Mesh->New(vertices, indices, PositionNormalTexcoord());
+		}
+
+		#~
+		The layout every primitive above is built to: three floats of position,
+		three of normal, two of texture coordinate, bound to shader locations 0, 1
+		and 2 in that order.
+
+		Named rather than written as [3, 3, 2] at each site so a shader and the
+		geometry it reads cannot drift apart silently -- a mismatch there binds the
+		normal to the texcoord slot and produces a plausible-looking wrong picture.
+		@return the component counts
+		~#
+		function : PositionNormalTexcoord() ~ Int[] {
+			return [3, 3, 2];
+		}
+
+		#~
+		Write one interleaved position/normal/texcoord vertex.
+		~#
+		function : Corner(into : Float[], index : Int, x : Float, y : Float, z : Float, nx : Float, ny : Float, nz : Float, u : Float, v : Float) ~ Nil {
+			out := index * 8;
+			into[out + 0] := x;
+			into[out + 1] := y;
+			into[out + 2] := z;
+			into[out + 3] := nx;
+			into[out + 4] := ny;
+			into[out + 5] := nz;
+			into[out + 6] := u;
+			into[out + 7] := v;
+		}
+
+		#~
 		Release the buffers.
 
 		Call it while the GL context is still current -- see the shutdown order on
@@ -1063,25 +1296,197 @@ bundle Game.OpenGL {
 		@texture : Int;
 
 		#~
-		Upload a surface's pixels as a texture. The surface is converted to 32-bit
-		RGBA internally, so any format Image->Load produces works.
+		Upload a surface's pixels as a texture, smoothed and clamped.
+
+		The surface is converted to 32-bit RGBA internally, so any format
+		Image->Load produces works. The PIXELS ARE COPIED, so the surface can be
+		freed immediately afterwards -- and should be. Every example in this repo
+		used to hold its surfaces alive until shutdown for no reason.
 		@param surface the source surface; still owned by the caller
 		~#
 		New(surface : Surface) {
+			Upload(surface, TextureFilter->GL_LINEAR, TextureWrap->GL_CLAMP_TO_EDGE, false);
+		}
+
+		#~
+		Upload with explicit sampling.
+		@param surface the source surface; still owned by the caller
+		@param filter TextureFilter->GL_LINEAR or GL_NEAREST
+		@param wrap a TextureWrap; GL_REPEAT to tile
+		@param mipmap true to build a mipmap chain, which is what stops a tiled
+		floor from shimmering into noise in the distance
+		~#
+		New(surface : Surface, filter : Int, wrap : Int, mipmap : Bool) {
+			Upload(surface, filter, wrap, mipmap);
+		}
+
+		method : Upload(surface : Surface, filter : Int, wrap : Int, mipmap : Bool) ~ Nil {
 			@texture := 0;
 
 			if(surface = Nil | surface->IsNull()) {
 				return;
 			};
 
-			array_args := Base->New[2];
+			mip := 0;
+			if(mipmap) {
+				mip := 1;
+			};
+
+			array_args := Base->New[5];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(surface->GetSurface());
+			array_args[2] := IntRef->New(filter);
+			array_args[3] := IntRef->New(wrap);
+			array_args[4] := IntRef->New(mip);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_from_surface", array_args);
 
 			value := array_args[0]->As(IntRef);
 			@texture := value->Get();
+		}
+
+		#~
+		A single-colour texture, one pixel.
+
+		For an untextured surface that still goes through a textured shader, which
+		is cheaper than maintaining a second shader that does not sample.
+		@param argb packed 0xAARRGGBB
+		@return the texture; check IsOk()
+		~#
+		function : Solid(argb : Int) ~ Texture2D {
+			surface := NewSurface(1, 1);
+			if(surface = Nil) {
+				return Texture2D->New(Nil);
+			};
+
+			surface->FillRect(Rect->New(0, 0, 1, 1), argb);
+			texture := Texture2D->New(surface);
+			surface->Free();
+
+			return texture;
+		}
+
+		#~
+		A checkerboard, generated rather than loaded, so a program needs no asset
+		file to have something recognisable on a surface.
+
+		```
+		floor := Texture2D->Checker(64, 8, 0xFFE8E8F0, 0xFF465A82);
+		```
+		@param size the texture's width and height in pixels
+		@param squares squares per side
+		@param light packed 0xAARRGGBB for one colour
+		@param dark packed 0xAARRGGBB for the other
+		@return the texture; check IsOk()
+		~#
+		function : Checker(size : Int, squares : Int, light : Int, dark : Int) ~ Texture2D {
+			return Checker(size, squares, light, dark, TextureWrap->GL_CLAMP_TO_EDGE);
+		}
+
+		#~
+		A checkerboard with an explicit wrap mode -- pass TextureWrap->GL_REPEAT to
+		tile it across a Mesh->Plane.
+		@param size the texture's width and height in pixels
+		@param squares squares per side
+		@param light packed 0xAARRGGBB for one colour
+		@param dark packed 0xAARRGGBB for the other
+		@param wrap a TextureWrap
+		@return the texture; check IsOk()
+		~#
+		function : Checker(size : Int, squares : Int, light : Int, dark : Int, wrap : Int) ~ Texture2D {
+			surface := NewSurface(size, size);
+			if(surface = Nil) {
+				return Texture2D->New(Nil);
+			};
+
+			step := size / squares;
+			if(step < 1) {
+				step := 1;
+			};
+
+			for(row := 0; row < squares; row += 1;) {
+				for(col := 0; col < squares; col += 1;) {
+					color := (row + col) % 2 = 0 ? light : dark;
+					surface->FillRect(Rect->New(col * step, row * step, step, step), color);
+				};
+			};
+
+			texture := Texture2D->New(surface, TextureFilter->GL_LINEAR, wrap, true);
+			surface->Free();
+
+			return texture;
+		}
+
+		#~
+		Load an image file and upload it, freeing the intermediate surface.
+
+		Decoding is SDL's job -- Game.SDL2's Image->Load already reads PNG and
+		JPEG, so this adds no dependency. Rows are flipped on upload, so the
+		texture is the same way up as the file.
+		@param file the image path
+		@return the texture; IsOk() is false when the file could not be read
+		~#
+		function : FromFile(file : String) ~ Texture2D {
+			surface := Image->Load(file);
+			if(surface = Nil | surface->IsNull()) {
+				return Texture2D->New(Nil);
+			};
+
+			texture := Texture2D->New(surface);
+			surface->Free();
+
+			return texture;
+		}
+
+		#~
+		Load an image file with explicit sampling.
+		@param file the image path
+		@param filter a TextureFilter
+		@param wrap a TextureWrap
+		@param mipmap true to build a mipmap chain
+		@return the texture; IsOk() is false when the file could not be read
+		~#
+		function : FromFile(file : String, filter : Int, wrap : Int, mipmap : Bool) ~ Texture2D {
+			surface := Image->Load(file);
+			if(surface = Nil | surface->IsNull()) {
+				return Texture2D->New(Nil);
+			};
+
+			texture := Texture2D->New(surface, filter, wrap, mipmap);
+			surface->Free();
+
+			return texture;
+		}
+
+		#~
+		A blank 32-bit surface with the ARGB channel layout FillRect's packed Int
+		assumes: 0xAARRGGBB.
+
+		The four masks are the thing worth having in one place. They appeared
+		verbatim in three separate files, each next to its own hand-written
+		bit-shifting helper that had to agree with them.
+		@param width in pixels
+		@param height in pixels
+		@return the surface, or Nil when SDL could not make one
+		~#
+		function : NewSurface(width : Int, height : Int) ~ Surface {
+			surface := Surface->New(0, width, height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+			if(surface->IsNull()) {
+				return Nil;
+			};
+
+			return surface;
+		}
+
+		#~
+		Pack 8-bit components into the 0xAARRGGBB layout NewSurface declares.
+		@param r red, 0-255
+		@param g green, 0-255
+		@param b blue, 0-255
+		@return the packed colour, fully opaque
+		~#
+		function : Rgb(r : Int, g : Int, b : Int) ~ Int {
+			return 0xFF000000 or (r * 0x10000) or (g * 0x100) or b;
 		}
 
 		#~

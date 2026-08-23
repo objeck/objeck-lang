@@ -38,8 +38,6 @@ class Walkthrough {
 	@cube : Mesh;
 	@wall_texture : Texture2D;
 	@box_texture : Texture2D;
-	@wall_surface : Surface;
-	@box_surface : Surface;
 	@camera : Camera;
 	@projection : Float[];
 
@@ -251,16 +249,14 @@ class Walkthrough {
 			return false;
 		};
 
-		@cube := Mesh->New(CubeVertices(), CubeIndices(), [3, 2]);
+		@cube := Mesh->Cube();
 		if(<>@cube->IsOk()) {
 			"Could not upload the cube mesh"->ErrorLine();
 			return false;
 		};
 
-		@wall_surface := Checker(64, 8, 210, 205, 195, 120, 115, 110);
-		@box_surface := Checker(64, 4, 190, 120, 70, 120, 70, 40);
-		@wall_texture := Texture2D->New(@wall_surface);
-		@box_texture := Texture2D->New(@box_surface);
+		@wall_texture := Texture2D->Checker(64, 8, Texture2D->Rgb(210, 205, 195), Texture2D->Rgb(120, 115, 110));
+		@box_texture := Texture2D->Checker(64, 4, Texture2D->Rgb(190, 120, 70), Texture2D->Rgb(120, 70, 40));
 		if(<>@wall_texture->IsOk() | <>@box_texture->IsOk()) {
 			"Could not upload textures"->ErrorLine();
 			return false;
@@ -271,88 +267,11 @@ class Walkthrough {
 		return true;
 	}
 
-	method : Checker(size : Int, squares : Int, r1 : Int, g1 : Int, b1 : Int,
-			r2 : Int, g2 : Int, b2 : Int) ~ Surface {
-		surface := Surface->New(0, size, size, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
-		if(surface->IsNull()) {
-			return Nil;
-		};
-
-		light := Packed(r1, g1, b1);
-		dark := Packed(r2, g2, b2);
-		step := size / squares;
-
-		for(row := 0; row < squares; row += 1;) {
-			for(col := 0; col < squares; col += 1;) {
-				color := (row + col) % 2 = 0 ? light : dark;
-				surface->FillRect(Rect->New(col * step, row * step, step, step), color);
-			};
-		};
-
-		return surface;
-	}
-
-	method : Packed(r : Int, g : Int, b : Int) ~ Int {
-		return 0xFF000000 or (r * 0x10000) or (g * 0x100) or b;
-	}
-
-	#~
-	A unit cube centred on the origin, position(3) + texcoord(2), wound
-	counter-clockwise seen from outside so backface culling keeps the outsides.
-	~#
-	method : CubeVertices() ~ Float[] {
-		return [
-			-1.0, -1.0,  1.0,  0.0, 0.0,
-			 1.0, -1.0,  1.0,  1.0, 0.0,
-			 1.0,  1.0,  1.0,  1.0, 1.0,
-			-1.0,  1.0,  1.0,  0.0, 1.0,
-
-			 1.0, -1.0, -1.0,  0.0, 0.0,
-			-1.0, -1.0, -1.0,  1.0, 0.0,
-			-1.0,  1.0, -1.0,  1.0, 1.0,
-			 1.0,  1.0, -1.0,  0.0, 1.0,
-
-			-1.0, -1.0, -1.0,  0.0, 0.0,
-			-1.0, -1.0,  1.0,  1.0, 0.0,
-			-1.0,  1.0,  1.0,  1.0, 1.0,
-			-1.0,  1.0, -1.0,  0.0, 1.0,
-
-			 1.0, -1.0,  1.0,  0.0, 0.0,
-			 1.0, -1.0, -1.0,  1.0, 0.0,
-			 1.0,  1.0, -1.0,  1.0, 1.0,
-			 1.0,  1.0,  1.0,  0.0, 1.0,
-
-			-1.0,  1.0,  1.0,  0.0, 0.0,
-			 1.0,  1.0,  1.0,  1.0, 0.0,
-			 1.0,  1.0, -1.0,  1.0, 1.0,
-			-1.0,  1.0, -1.0,  0.0, 1.0,
-
-			-1.0, -1.0, -1.0,  0.0, 0.0,
-			 1.0, -1.0, -1.0,  1.0, 0.0,
-			 1.0, -1.0,  1.0,  1.0, 1.0,
-			-1.0, -1.0,  1.0,  0.0, 1.0];
-	}
-
-	method : CubeIndices() ~ Int[] {
-		indices := Int->New[36];
-		for(face := 0; face < 6; face += 1;) {
-			base := face * 4;
-			out := face * 6;
-			indices[out + 0] := base + 0;
-			indices[out + 1] := base + 1;
-			indices[out + 2] := base + 2;
-			indices[out + 3] := base + 2;
-			indices[out + 4] := base + 3;
-			indices[out + 5] := base + 0;
-		};
-
-		return indices;
-	}
-
 	method : VertexSource() ~ String {
 		source := "#version 330 core\n";
 		source += "layout (location = 0) in vec3 in_position;\n";
-		source += "layout (location = 1) in vec2 in_texcoord;\n";
+		# location 1 is the normal, which this shader does not use yet
+		source += "layout (location = 2) in vec2 in_texcoord;\n";
 		source += "uniform mat4 mvp;\n";
 		source += "out vec2 texcoord;\n";
 		source += "out float depth;\n";
@@ -393,8 +312,6 @@ class Walkthrough {
 		if(@box_texture <> Nil) { @box_texture->Free(); };
 		if(@cube <> Nil) { @cube->Free(); };
 		if(@shader <> Nil) { @shader->Free(); };
-		if(@wall_surface <> Nil & <>@wall_surface->IsNull()) { @wall_surface->Free(); };
-		if(@box_surface <> Nil & <>@box_surface->IsNull()) { @box_surface->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
 	}

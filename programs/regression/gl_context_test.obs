@@ -78,6 +78,8 @@ class GlContextTest {
 		CheckLoader();
 		CheckShaderAndDraw();
 		CheckProjection();
+		CheckPrimitives();
+		CheckTextures();
 		CheckTextureOrientation();
 		CheckFrameLoop();
 
@@ -265,6 +267,172 @@ class GlContextTest {
 	}
 
 	#~
+	The generated textures are the colour they claim, and GL_REPEAT really tiles.
+
+	The tiling half of this needs care, because the obvious fixture cannot tell
+	the two outcomes apart. A checkerboard sampled beyond u = 1 looks plausible
+	whether the coordinates wrapped or clamped -- clamping just stretches the edge
+	cell, and on a symmetric pattern the result is another plausible checkerboard.
+	That is the same trap that let every texture render upside down for the whole
+	life of this library.
+
+	So the fixture is a TWO PIXEL WIDE texture, red then blue, drawn across a quad
+	whose u spans 0..2, sampled at four points. Wrapping gives red, blue, red,
+	blue. Clamping gives red, blue, blue, blue -- the third sample is the one that
+	can only be red if GL_REPEAT took effect. Two pixels wide and one tall also
+	means v is irrelevant, so the row flip cannot quietly confuse the result.
+	~#
+	method : CheckTextures() ~ Nil {
+		red := 0xFFFF0000;
+		blue := 0xFF0000FF;
+
+		# Solid is exact by construction: one pixel, one colour, no filtering to
+		# average it with a neighbour.
+		solid := Texture2D->Solid(red);
+		if(<>Check("Texture2D->Solid uploads", solid->IsOk())) {
+			return;
+		};
+
+		checker := Texture2D->Checker(64, 8, 0xFFE8E8F0, 0xFF465A82);
+		Check("Texture2D->Checker uploads (mipmapped)", checker->IsOk());
+
+		missing := Texture2D->FromFile("no_such_file_here.png");
+		Check("FromFile on a missing file reports, not crashes", <>missing->IsOk());
+
+		# two pixels: column 0 red, column 1 blue. One row, so v cannot matter.
+		surface := Texture2D->NewSurface(2, 1);
+		if(<>Check("a 2x1 surface can be created", surface <> Nil)) {
+			solid->Free();
+			checker->Free();
+			return;
+		};
+		surface->FillRect(Rect->New(0, 0, 1, 1), red);
+		surface->FillRect(Rect->New(1, 0, 1, 1), blue);
+
+		# NEAREST, so each sample is one texel rather than a blend of two, and no
+		# mipmaps, so minification cannot pick a level that has averaged them.
+		tiled := Texture2D->New(surface, TextureFilter->GL_NEAREST, TextureWrap->GL_REPEAT, false);
+		surface->Free();
+		if(<>Check("a repeating texture uploads", tiled->IsOk())) {
+			solid->Free();
+			checker->Free();
+			return;
+		};
+
+		vertex := "#version 330 core\n";
+		vertex += "layout (location = 0) in vec3 in_position;\n";
+		vertex += "layout (location = 1) in vec2 in_texcoord;\n";
+		vertex += "out vec2 texcoord;\n";
+		vertex += "void main() { texcoord = in_texcoord; gl_Position = vec4(in_position, 1.0); }\n";
+
+		fragment := "#version 330 core\n";
+		fragment += "in vec2 texcoord;\n";
+		fragment += "uniform sampler2D tex;\n";
+		fragment += "out vec4 frag_color;\n";
+		fragment += "void main() { frag_color = texture(tex, texcoord); }\n";
+
+		shader := Shader->New(vertex, fragment);
+		if(<>Check("tiling shader compiles", shader->IsOk())) {
+			tiled->Free();
+			solid->Free();
+			checker->Free();
+			return;
+		};
+
+		# full-screen quad, u running 0 -> 2 so the right half is past the edge
+		vertices := [-1.0, -1.0, 0.0, 0.0, 0.0,  1.0, -1.0, 0.0, 2.0, 0.0,
+		              1.0,  1.0, 0.0, 2.0, 1.0, -1.0,  1.0, 0.0, 0.0, 1.0];
+		mesh := Mesh->New(vertices, [0, 1, 2, 2, 3, 0], [3, 2]);
+		if(<>Check("tiling mesh uploads", mesh->IsOk())) {
+			shader->Free();
+			tiled->Free();
+			solid->Free();
+			checker->Free();
+			return;
+		};
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		tiled->Bind(0);
+		mesh->Draw();
+
+		mid_y := @pixel_h / 2;
+		first := GL->ReadPixel((@pixel_w * 125) / 1000, mid_y);
+		second := GL->ReadPixel((@pixel_w * 375) / 1000, mid_y);
+		third := GL->ReadPixel((@pixel_w * 625) / 1000, mid_y);
+		fourth := GL->ReadPixel((@pixel_w * 875) / 1000, mid_y);
+		"  tiling: 0x{$first} 0x{$second} 0x{$third} 0x{$fourth}"->PrintLine();
+
+		Check("the first copy samples red then blue", first = red & second = blue);
+		# THE assertion: under GL_CLAMP_TO_EDGE this sample is blue, because
+		# everything past u = 1 clamps to the last texel.
+		Check("GL_REPEAT wraps rather than clamping", third = red);
+		Check("and keeps alternating", fourth = blue);
+
+		# Solid, through the same path.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		solid->Bind(0);
+		mesh->Draw();
+		flat := GL->ReadPixel(@pixel_w / 2, mid_y);
+		"  solid: 0x{$flat}"->PrintLine();
+		Check("Texture2D->Solid is exactly the colour asked for", flat = red);
+
+		# --------------------------------------------------------------------
+		# The primitives put texcoords at LOCATION 2, because location 1 is the
+		# normal. A shader that reads location 1 instead does not fail -- it
+		# samples the texture using the normal as a coordinate, which for a flat
+		# face is a constant, so the face comes back a single flat colour that
+		# looks entirely plausible. Only a texture that VARIES across the face can
+		# tell the two apart, which is what the two-pixel texture is for.
+		cube_vertex := "#version 330 core
+";
+		cube_vertex += "layout (location = 0) in vec3 in_position;
+";
+		cube_vertex += "layout (location = 2) in vec2 in_texcoord;
+";
+		cube_vertex += "uniform mat4 mvp;
+";
+		cube_vertex += "out vec2 texcoord;
+";
+		cube_vertex += "void main() { texcoord = in_texcoord; gl_Position = mvp * vec4(in_position, 1.0); }
+";
+
+		cube_shader := Shader->New(cube_vertex, fragment);
+		cube := Mesh->Cube();
+		if(Check("cube-with-texture shader and mesh", cube_shader->IsOk() & cube->IsOk())) {
+			camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+			projection := Matrix4->Perspective(Float->Pi() / 3.0, @gl->GetAspect(), 0.1, 100.0);
+			mvp := Matrix4->Multiply(projection, camera->GetViewMatrix());
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			cube_shader->Use();
+			cube_shader->SetInt("tex", 0);
+			cube_shader->SetMatrix4("mvp", mvp);
+			tiled->Bind(0);
+			cube->Draw();
+
+			# the front face spans about +/-0.43 in NDC, so these sit inside it
+			left := GL->ReadPixel((@pixel_w * 40) / 100, mid_y);
+			right := GL->ReadPixel((@pixel_w * 60) / 100, mid_y);
+			"  cube texcoords: left=0x{$left} right=0x{$right}"->PrintLine();
+
+			Check("Mesh->Cube's texcoords reach shader location 2", left = red & right = blue);
+		};
+
+		Check("no GL errors from the textures", GL->DrainErrors()->Size() = 0);
+
+		cube->Free();
+		cube_shader->Free();
+		mesh->Free();
+		shader->Free();
+		tiled->Free();
+		checker->Free();
+		solid->Free();
+	}
+
+	#~
 	A texture must render the same way up as the image file.
 
 	This exists because it once did not, and nothing caught it: an SDL surface
@@ -444,6 +612,127 @@ class GlContextTest {
 		};
 
 		mesh->Free();
+		shader->Free();
+	}
+
+	#~
+	The built-in primitives render, are wound for culling, and carry normals.
+
+	Three separate things could be wrong and only one of them is visible without
+	an assertion:
+
+	1. WINDING. Every primitive claims to be counter-clockwise seen from outside.
+	   Get it backwards and the object is not wrong, it is INVISIBLE once
+	   GL_CULL_FACE is on -- so culling is enabled here deliberately. A test with
+	   culling off would pass on geometry that vanishes in the demos.
+	2. NORMALS IN THE RIGHT SLOT. The layout is [3, 3, 2], so a shader reading
+	   location 1 gets the normal and location 2 the texcoord. Swap them and you
+	   get a plausible-looking wrong picture, never an error. This draws the normal
+	   AS colour, so the face pointing at the camera must come back exactly blue.
+	3. SIZE. Mesh->Cube spans -1..1, not -0.5..0.5, because Box multiplies it by a
+	   half-extent. The two look identical at the centre of the screen, so the
+	   assertion samples a point that falls inside one and outside the other.
+	~#
+	method : CheckPrimitives() ~ Nil {
+		vertex := "#version 330 core\n";
+		vertex += "layout (location = 0) in vec3 in_position;\n";
+		vertex += "layout (location = 1) in vec3 in_normal;\n";
+		vertex += "uniform mat4 mvp;\n";
+		vertex += "out vec3 normal;\n";
+		vertex += "void main() { normal = in_normal; gl_Position = mvp * vec4(in_position, 1.0); }\n";
+
+		fragment := "#version 330 core\n";
+		fragment += "in vec3 normal;\n";
+		fragment += "out vec4 frag_color;\n";
+		# the normal as colour, so a face pointing at +Z is exactly blue
+		fragment += "void main() { frag_color = vec4(abs(normal), 1.0); }\n";
+
+		shader := Shader->New(vertex, fragment);
+		if(<>Check("normal-as-colour shader compiles", shader->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		cube := Mesh->Cube();
+		sphere := Mesh->Sphere(24, 12);
+		quad := Mesh->Quad(1.0);
+		plane := Mesh->Plane(1.0, 1.0);
+		Check("Mesh->Cube uploads", cube->IsOk());
+		Check("Mesh->Sphere uploads", sphere->IsOk());
+		Check("Mesh->Quad uploads", quad->IsOk());
+		Check("Mesh->Plane uploads", plane->IsOk());
+		if(<>cube->IsOk() | <>sphere->IsOk()) {
+			shader->Free();
+			return;
+		};
+
+		# Culling ON: this is the assertion, not a detail. Backwards winding shows
+		# up here as nothing being drawn at all.
+		GL->Enable(Capability->GL_CULL_FACE);
+
+		aspect := @gl->GetAspect();
+		projection := Matrix4->Perspective(Float->Pi() / 3.0, aspect, 0.1, 100.0);
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+
+		blue := 0xFF0000FF;
+		black := 0xFF000000;
+		mid_y := @pixel_h / 2;
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetMatrix4("mvp", view_projection);
+		cube->Draw();
+
+		# The cube's front face is at z = 1, so four units from the eye, where a
+		# 60-degree frustum is 2.309 units tall. A -1..1 cube therefore spans about
+		# +/-0.43 in NDC and a -0.5..0.5 one only about +/-0.19. Sampling at 0.3
+		# separates them; 0.8 is outside both.
+		centre := GL->ReadPixel(@pixel_w / 2, mid_y);
+		inside := GL->ReadPixel((@pixel_w * 65) / 100, mid_y);
+		outside := GL->ReadPixel((@pixel_w * 90) / 100, mid_y);
+		"  cube: centre=0x{$centre} at-0.3ndc=0x{$inside} at-0.8ndc=0x{$outside}"->PrintLine();
+
+		# Two separate failures, so two separate assertions: nothing drawn at all
+		# means the winding is inverted, and something drawn in the wrong colour
+		# means the normal is not where the layout says it is.
+		Check("the cube renders with culling on (winding is outward)", centre <> black);
+		Check("its front face normal is +Z, read from layout slot 1", centre = blue);
+		Check("it spans -1..1, not -0.5..0.5", inside = blue);
+		Check("and stops where it should", outside = black);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sphere->Draw();
+		sphere_centre := GL->ReadPixel(@pixel_w / 2, mid_y);
+		sphere_corner := GL->ReadPixel(2, 2);
+		"  sphere: centre=0x{$sphere_centre} corner=0x{$sphere_corner}"->PrintLine();
+
+		# The point of a sphere facing the camera has normal (0, 0, 1) -- but only
+		# approximately at any given pixel, because the surface is curved and the
+		# fragment interpolates between vertices that each point slightly aside.
+		# So this asserts "overwhelmingly blue" rather than exactly blue. Exact
+		# equality is right for the cube's flat face and wrong here.
+		r := (sphere_centre and 0x00FF0000) / 0x10000;
+		g := (sphere_centre and 0x0000FF00) / 0x100;
+		b := sphere_centre and 0x000000FF;
+		"  sphere normal at centre: r={$r} g={$g} b={$b}"->PrintLine();
+
+		Check("the sphere renders with culling on", sphere_centre <> black);
+		Check("its normal at the centre points at the camera", b > 200 & r < 60 & g < 60);
+		Check("the sphere does not fill the frame", sphere_corner = black);
+
+		# Off again: the checks after this one draw full-screen quads, and leaving
+		# culling on would make them depend on a winding they never declared.
+		GL->Disable(Capability->GL_CULL_FACE);
+
+		Check("no GL errors from the primitives", GL->DrainErrors()->Size() = 0);
+
+		plane->Free();
+		quad->Free();
+		sphere->Free();
+		cube->Free();
 		shader->Free();
 	}
 

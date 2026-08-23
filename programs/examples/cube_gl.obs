@@ -11,8 +11,12 @@ per frame, with the GPU doing the transform. That difference is the whole reason
 the API is shaped the way it is -- the native call boundary is expensive enough
 that per-primitive calls dominate everything else.
 
-No texture file is needed: the checkerboard is generated into a Surface at
-startup, so this runs from a clean checkout.
+No texture file is needed: Texture2D->Checker generates one, so this runs from
+a clean checkout.
+
+The cube's geometry is Mesh->Cube() -- it used to be ninety lines of hand-written
+vertex and index arrays in this file, byte for byte identical to the copy in
+gl_walkthrough.obs.
 
 Opening the window is one line, because GLWindow does it -- see gl_clear.obs for
 the smallest version of that. What is left in this file is the cube: its
@@ -27,7 +31,6 @@ class SpinningCube {
 	@shader : Shader;
 	@mesh : Mesh;
 	@texture : Texture2D;
-	@surface : Surface;
 	@angle : Float;
 
 	function : Main(args : String[]) ~ Nil {
@@ -94,19 +97,16 @@ class SpinningCube {
 			return false;
 		};
 
-		@mesh := Mesh->New(CubeVertices(), CubeIndices(), [3, 2]);
+		@mesh := Mesh->Cube();
 		if(<>@mesh->IsOk()) {
 			"Could not upload the cube mesh"->ErrorLine();
 			return false;
 		};
 
-		@surface := Checkerboard(64, 8);
-		if(@surface = Nil | @surface->IsNull()) {
-			"Could not build the texture surface"->ErrorLine();
-			return false;
-		};
-
-		@texture := Texture2D->New(@surface);
+		# Generated, so this runs from a clean checkout with no asset file. Checker
+		# builds the surface, uploads it and frees it -- there is no intermediate
+		# object for this program to hold on to.
+		@texture := Texture2D->Checker(64, 8, Texture2D->Rgb(235, 235, 240), Texture2D->Rgb(70, 90, 130));
 		if(<>@texture->IsOk()) {
 			"Could not upload the texture"->ErrorLine();
 			return false;
@@ -115,102 +115,11 @@ class SpinningCube {
 		return true;
 	}
 
-	#~
-	A checkerboard drawn into a surface, so the example needs no asset file.
-
-	The surface is created with explicit ARGB masks, so a pixel value is
-	A<<24 | R<<16 | G<<8 | B. FillRect takes that packed Int rather than a Color,
-	and one call per square beats one per pixel.
-	~#
-	method : Checkerboard(size : Int, squares : Int) ~ Surface {
-		surface := Surface->New(0, size, size, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
-		if(surface->IsNull()) {
-			return Nil;
-		};
-
-		light := Packed(235, 235, 240);
-		dark := Packed(70, 90, 130);
-
-		step := size / squares;
-		for(row := 0; row < squares; row += 1;) {
-			for(col := 0; col < squares; col += 1;) {
-				color := (row + col) % 2 = 0 ? light : dark;
-				surface->FillRect(Rect->New(col * step, row * step, step, step), color);
-			};
-		};
-
-		return surface;
-	}
-
-	#~
-	Pack 8-bit components into the ARGB layout the surface above declares.
-	~#
-	method : Packed(r : Int, g : Int, b : Int) ~ Int {
-		return 0xFF000000 or (r * 0x10000) or (g * 0x100) or b;
-	}
-
-	#~
-	Cube corners as position(3) + texcoord(2). Each face gets its own four
-	vertices because the texture coordinates differ per face even where the
-	positions coincide.
-	~#
-	method : CubeVertices() ~ Float[] {
-		return [
-			# front
-			-1.0, -1.0,  1.0,  0.0, 0.0,
-			 1.0, -1.0,  1.0,  1.0, 0.0,
-			 1.0,  1.0,  1.0,  1.0, 1.0,
-			-1.0,  1.0,  1.0,  0.0, 1.0,
-			# back
-			 1.0, -1.0, -1.0,  0.0, 0.0,
-			-1.0, -1.0, -1.0,  1.0, 0.0,
-			-1.0,  1.0, -1.0,  1.0, 1.0,
-			 1.0,  1.0, -1.0,  0.0, 1.0,
-			# left
-			-1.0, -1.0, -1.0,  0.0, 0.0,
-			-1.0, -1.0,  1.0,  1.0, 0.0,
-			-1.0,  1.0,  1.0,  1.0, 1.0,
-			-1.0,  1.0, -1.0,  0.0, 1.0,
-			# right
-			 1.0, -1.0,  1.0,  0.0, 0.0,
-			 1.0, -1.0, -1.0,  1.0, 0.0,
-			 1.0,  1.0, -1.0,  1.0, 1.0,
-			 1.0,  1.0,  1.0,  0.0, 1.0,
-			# top
-			-1.0,  1.0,  1.0,  0.0, 0.0,
-			 1.0,  1.0,  1.0,  1.0, 0.0,
-			 1.0,  1.0, -1.0,  1.0, 1.0,
-			-1.0,  1.0, -1.0,  0.0, 1.0,
-			# bottom
-			-1.0, -1.0, -1.0,  0.0, 0.0,
-			 1.0, -1.0, -1.0,  1.0, 0.0,
-			 1.0, -1.0,  1.0,  1.0, 1.0,
-			-1.0, -1.0,  1.0,  0.0, 1.0];
-	}
-
-	#~
-	Two triangles per face, counter-clockwise when seen from outside.
-	~#
-	method : CubeIndices() ~ Int[] {
-		indices := Int->New[36];
-		for(face := 0; face < 6; face += 1;) {
-			base := face * 4;
-			out := face * 6;
-			indices[out + 0] := base + 0;
-			indices[out + 1] := base + 1;
-			indices[out + 2] := base + 2;
-			indices[out + 3] := base + 2;
-			indices[out + 4] := base + 3;
-			indices[out + 5] := base + 0;
-		};
-
-		return indices;
-	}
-
 	method : VertexSource() ~ String {
 		source := "#version 330 core\n";
 		source += "layout (location = 0) in vec3 in_position;\n";
-		source += "layout (location = 1) in vec2 in_texcoord;\n";
+		# location 1 is the normal, which this shader does not use yet
+		source += "layout (location = 2) in vec2 in_texcoord;\n";
 		source += "uniform mat4 mvp;\n";
 		source += "out vec2 texcoord;\n";
 		source += "void main() {\n";
@@ -244,7 +153,6 @@ class SpinningCube {
 		if(@texture <> Nil) { @texture->Free(); };
 		if(@mesh <> Nil) { @mesh->Free(); };
 		if(@shader <> Nil) { @shader->Free(); };
-		if(@surface <> Nil & <>@surface->IsNull()) { @surface->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
 	}

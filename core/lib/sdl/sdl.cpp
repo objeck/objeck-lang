@@ -4957,6 +4957,7 @@ GL_FN(UNIFORM1I) GL_FN(GENVERTEXARRAYS) GL_FN(BINDVERTEXARRAY)
 GL_FN(DELETEVERTEXARRAYS) GL_FN(GENBUFFERS) GL_FN(BINDBUFFER)
 GL_FN(BUFFERDATA) GL_FN(DELETEBUFFERS) GL_FN(VERTEXATTRIBPOINTER)
 GL_FN(ENABLEVERTEXATTRIBARRAY) GL_FN(ACTIVETEXTURE)
+GL_FN(GENERATEMIPMAP)
 #undef GL_FN
 
 static bool objk_gl_loaded = false;
@@ -5023,6 +5024,10 @@ static std::string objk_gl_load_functions() {
   OBJK_GL_LOAD("glVertexAttribPointer", VERTEXATTRIBPOINTER)
   OBJK_GL_LOAD("glEnableVertexAttribArray", ENABLEVERTEXATTRIBARRAY)
   OBJK_GL_LOAD("glActiveTexture", ACTIVETEXTURE)
+  // GL 3.0. Required, not optional: a 3.3 core context that cannot resolve this
+  // is broken in a way worth failing loudly on rather than silently declining
+  // mipmaps.
+  OBJK_GL_LOAD("glGenerateMipmap", GENERATEMIPMAP)
 #undef OBJK_GL_LOAD
 
   objk_gl_loaded = missing.empty();
@@ -5394,6 +5399,9 @@ extern "C" {
   // dependency. The surface is converted to a known 32-bit RGBA layout first
   // rather than trusting whatever format the file happened to produce.
   //
+  // slot 0 = texture handle (0 on failure), 1 = SDL_Surface*, 2 = magnification
+  // filter, 3 = wrap mode for both S and T, 4 = non-zero to build mipmaps.
+  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -5406,8 +5414,16 @@ extern "C" {
 
     SDL_Surface* source = (SDL_Surface*)APITools_GetIntValue(context, 1);
     if(!source) {
+      objk_gl_fail("Texture2D->New: the surface is null");
       return;
     }
+
+    // Filter, wrap and mipmapping arrive from Objeck rather than being fixed
+    // here. GL_REPEAT in particular was unreachable, which is what a wall or a
+    // floor with a tiled texture actually needs.
+    const GLint mag_filter = (GLint)APITools_GetIntValue(context, 2);
+    const GLint wrap = (GLint)APITools_GetIntValue(context, 3);
+    const bool mipmap = APITools_GetIntValue(context, 4) != 0;
 
     SDL_Surface* rgba = SDL_ConvertSurfaceFormat(source, SDL_PIXELFORMAT_ABGR8888, 0);
     if(!rgba) {
@@ -5438,13 +5454,22 @@ extern "C" {
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgba->w, rgba->h, 0,
                  GL_RGBA, GL_UNSIGNED_BYTE, flipped.data());
-    // GL_LINEAR rather than mipmaps: glGenerateMipmap is a 3.0 entry point and
-    // this keeps the loaded function set smaller. Callers wanting mipmaps can
-    // add it following the recipe at the top of this section.
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // The MINIFICATION filter is the one that has to change for mipmapping:
+    // GL_LINEAR samples the base level only, so a mipmapped texture asked to
+    // minify with it would build the chain and then never read it. Magnification
+    // has no mip levels to choose between, so it takes the caller's filter as-is.
+    GLint min_filter = mag_filter;
+    if(mipmap) {
+      objk_glGENERATEMIPMAP(GL_TEXTURE_2D);
+      min_filter = (mag_filter == GL_NEAREST) ? GL_NEAREST_MIPMAP_NEAREST
+                                              : GL_LINEAR_MIPMAP_LINEAR;
+    }
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     SDL_FreeSurface(rgba);
