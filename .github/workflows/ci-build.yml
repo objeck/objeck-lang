@@ -394,6 +394,65 @@ jobs:
         CXX: ${{ runner.os == 'Linux' && 'ccache g++' || '' }}
       run: ${{ matrix.deploy_script }}
 
+    # Prove the macOS distribution is self-contained.
+    #
+    # The deploy bundles SDL2 into lib/sdl and rewrites install names to @rpath,
+    # replacing the old instructions that told users to untar a tarball into
+    # /usr/local. The deploy script already fails if an absolute SDL2 path
+    # survives, but "no absolute paths" and "actually loads from our tree" are
+    # different claims -- this runner has Homebrew SDL2 at /opt/homebrew, so a
+    # broken @rpath could still be masked by a lucky fallback.
+    #
+    # DYLD_PRINT_LIBRARIES makes dyld name every library it loads, so we can
+    # assert WHICH libSDL2 was used. That is as close as CI can get to the thing
+    # we cannot test here: unpacking a release on a Mac with no Homebrew.
+    - name: Verify macOS SDL2 bundling
+      if: matrix.platform == 'macos-arm64'
+      working-directory: ./core/release/deploy
+      run: |
+        echo "--- libobjk_sdl.dylib dependencies ---"
+        otool -L lib/native/libobjk_sdl.dylib | sed 's/^/  /'
+
+        if otool -L lib/native/libobjk_sdl.dylib | grep -q "/usr/local/lib/libSDL2"; then
+          echo "FAIL: still references /usr/local/lib for SDL2"
+          exit 1
+        fi
+
+        echo "--- bundled dylibs ---"
+        ls -1 lib/sdl/*.dylib | sed 's/^/  /'
+
+        # Every @rpath dependency must exist in lib/sdl
+        for dep in $(otool -L lib/native/libobjk_sdl.dylib | awk '/@rpath\/libSDL2/ {print $1}'); do
+          base=$(basename "$dep")
+          if [ ! -f "lib/sdl/$base" ]; then
+            echo "FAIL: $base is needed via @rpath but is not in lib/sdl"
+            exit 1
+          fi
+        done
+
+        # Which libSDL2 does dyld actually pick? Run the GL test and look.
+        echo "--- runtime resolution ---"
+        cd bin
+        # Compile it here: this step runs before the suite's own compile step,
+        # so the .obe does not exist yet.
+        ./obc -src ../../../../programs/regression/gl_context_test.obs \
+              -lib cipher,collect,xml,json,sdl2,sdl_gl -dest /tmp/glt.obe
+        DYLD_PRINT_LIBRARIES=1 OBJECK_GL_REQUIRED=1 ./obr /tmp/glt.obe 2>&1 \
+          | grep -i "libSDL2" | head -5 | sed 's/^/  /' > /tmp/sdl_loaded.txt || true
+        cat /tmp/sdl_loaded.txt
+
+        if grep -q "/opt/homebrew" /tmp/sdl_loaded.txt; then
+          echo "FAIL: loaded SDL2 from Homebrew, not from the distribution."
+          echo "      The @rpath bundling is not doing its job; an end user"
+          echo "      without Homebrew would get a load failure."
+          exit 1
+        fi
+        if [ ! -s /tmp/sdl_loaded.txt ]; then
+          echo "NOTE: dyld printed no libSDL2 line; cannot confirm the source."
+        else
+          echo "OK: SDL2 resolved from inside the distribution"
+        fi
+
     # ============================================
     # Rebuild Libraries (non-bootstrap platforms)
     # ============================================

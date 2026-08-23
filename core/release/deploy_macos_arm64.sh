@@ -149,7 +149,24 @@ if otool -L "$OBJK_SDL" | grep -q "/usr/local/lib/libSDL2"; then
 	echo "       the distribution would need a manual SDL2 install."
 	exit 1
 fi
-echo "SDL2 bundled into lib/sdl with @rpath install names"
+
+# The absence of absolute paths is not the same as the libraries being present.
+# Check that every @rpath dependency actually resolves inside the tree, or the
+# distribution still fails at load time on a machine without Homebrew SDL2 --
+# which is exactly the machine we cannot test on here.
+MISSING=""
+for dep in $(otool -L "$OBJK_SDL" | awk '/@rpath\/libSDL2/ {print $1}'); do
+	base=$(basename "$dep")
+	if [ ! -f "$SDL_DEPLOY/$base" ]; then
+		MISSING="$MISSING $base"
+	fi
+done
+if [ -n "$MISSING" ]; then
+	echo "ERROR: libobjk_sdl.dylib needs these via @rpath but they are not in"
+	echo "       lib/sdl:$MISSING"
+	exit 1
+fi
+echo "SDL2 bundled into lib/sdl with @rpath install names, all deps resolve in-tree"
 
 cd ../odbc
 xcodebuild -project macos/xcode/ODBC.xcodeproj clean build $SIGN_FLAGS
