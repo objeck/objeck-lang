@@ -289,7 +289,6 @@ class GlContextTest {
 	~#
 	method : CheckShaderPresets() ~ Nil {
 		red := 0xFFFF0000;
-		black := 0xFF000000;
 
 		flat_a := Shader->Flat();
 		flat_b := Shader->Flat();
@@ -895,6 +894,62 @@ class GlContextTest {
 		outside := (GL->ReadPixel((@pixel_w * 90) / 100, mid_y) and 0x0000FF00) / 0x100;
 		"  outside the covered area: {$outside}"->PrintLine();
 		Check("beyond the map's coverage is lit, not shadowed", outside > 200);
+
+		# --- the variants and helpers that would otherwise ship untested ---
+		flat_shadowed := Shader->LitShadowed();
+		Check("Shader->LitShadowed compiles", flat_shadowed->IsOk());
+		flat_shadowed->Free();
+
+		# OrthographicBox is the square case of Orthographic, so it must agree with
+		# spelling it out.
+		box_tolerance := 0.000000001;
+		Check("OrthographicBox matches Orthographic",
+			Same(Matrix4->OrthographicBox(7.0, 1.0, 50.0), Matrix4->Orthographic(-7.0, 7.0, -7.0, 7.0, 1.0, 50.0), box_tolerance));
+
+		# An orthographic projection has no perspective, so a quad of half-extent h
+		# under a projection of extent e covers exactly h/e of the half-screen --
+		# which is a number that can be checked rather than eyeballed. Half the
+		# extent means the quad's edge lands at half-way out from the centre.
+		ortho := Matrix4->OrthographicBox(4.0, -10.0, 10.0);
+		ortho_quad := Mesh->Quad(2.0);
+		flat := Shader->Flat();
+		if(Check("an orthographic quad and shader", ortho_quad->IsOk() & flat->IsOk())) {
+			GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			flat->Use();
+			flat->SetMatrix4("mvp", ortho);
+			flat->SetVec3("color", 0.0, 1.0, 0.0);
+			ortho_quad->Draw();
+
+			# half 2 under extent 4 is half of the half-width, so NDC +/-0.5:
+			# inside at 60% across, outside at 90%.
+			ortho_in := (GL->ReadPixel((@pixel_w * 60) / 100, mid_y) and 0x0000FF00) / 0x100;
+			ortho_out := (GL->ReadPixel((@pixel_w * 90) / 100, mid_y) and 0x0000FF00) / 0x100;
+			"  orthographic: at-60%={$ortho_in} at-90%={$ortho_out}"->PrintLine();
+			Check("an orthographic quad covers the extent it should", ortho_in > 200 & ortho_out < 40);
+		};
+		ortho_quad->Free();
+		flat->Free();
+
+		# DrawCasterMatrix is DrawCaster for callers without a Transform, so it has
+		# to put the same thing in the map.
+		shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 12.0);
+		shadows->Begin();
+		shadows->DrawCasterMatrix(caster_mesh, caster->GetMatrix());
+		shadows->End(@gl);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shadowed->Use();
+		light->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+		shadowed->SetMatrix4("mvp", floor_mvp);
+		shadowed->SetMatrix4("model", floor->GetMatrix());
+		floor_mesh->Draw();
+		by_matrix := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  via DrawCasterMatrix: {$by_matrix}"->PrintLine();
+		Check("DrawCasterMatrix casts the same shadow as DrawCaster", by_matrix < 120);
 
 		Check("no GL errors from the shadow pass", GL->DrainErrors()->Size() = 0);
 
