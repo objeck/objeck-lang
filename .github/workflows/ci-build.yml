@@ -110,6 +110,9 @@ jobs:
           libsdl2-image-dev \
           libsdl2-ttf-dev \
           libsdl2-mixer-dev \
+          libegl1 \
+          libegl-mesa0 \
+          libgl1-mesa-dri \
           libreadline-dev \
           libeigen3-dev \
           libmp3lame-dev \
@@ -652,6 +655,13 @@ jobs:
       # bad_generic_arg_mismatch miss (prints [generic-diag] lines during compile).
       env:
         OBJECK_DIAG_GENERICS: "1"
+        # Turns gl_context_test.obs from "skip when no GL" into "fail when
+        # no GL". These three legs do reach a 3.3 core context -- Linux via
+        # Mesa offscreen/EGL, macOS via cocoa -- so losing it is a
+        # regression, not an environment quirk. Windows runs the .cmd step
+        # below and keeps skipping: its stock GL is 1.1, so a 3.3 core
+        # request cannot succeed without Mesa being installed there.
+        OBJECK_GL_REQUIRED: "1"
       run: |
         chmod +x run_regression.sh
         ARCH="${{ matrix.arch }}"

@@ -1,0 +1,259 @@
+# EXTRA_LIBS: sdl2,sdl_gl
+#~
+Regression test for OpenGL 3.3 core support: proves a real context can be
+created AND that something drawn through it lands in the framebuffer.
+
+Why this exists: CI compiles the SDL native library on five platforms and, until
+this test, never executed a single line of it. A GL context that failed to
+initialize, an unresolved gl* entry point, or a missing runtime library would all
+have shipped green. Compiling is not running.
+
+It asserts by READING PIXELS BACK, not by completing without crashing. A wrong
+projection, an inverted camera basis or a silently-ignored draw all produce a
+program that exits 0 while rendering nothing.
+
+## Headless
+
+Tries the platform's default video driver first, then falls back to
+SDL_VIDEODRIVER=offscreen, which reaches desktop GL through EGL and Mesa's
+software rasterizer with no X server, no Wayland and no Xvfb. That covers both a
+developer's desktop and a bare CI runner without platform sniffing.
+
+Note the dummy driver is NOT a headless option: it implements no GL entry points
+at all, so SDL_CreateWindow itself refuses a SDL_WINDOW_OPENGL request with
+"OpenGL support is either not configured in SDL or not available in current SDL
+video driver (dummy) or platform".
+
+## Skipping vs failing
+
+With no GL available this prints SKIP and exits 0, so the suite stays green on
+runners that have no software GL -- Windows ships only a GL 1.1 generic
+implementation, so a 3.3 core request cannot succeed there without Mesa's
+opengl32.dll being installed.
+
+When OBJECK_GL_REQUIRED is set, a missing context is a hard FAILURE instead. CI
+sets it on the POSIX regression step, which is exactly the linux-x64,
+linux-arm64 and macos-arm64 legs -- so those three cannot silently lose GL
+support, while Windows skips until Mesa is added there.
+~#
+use System;
+use Game.SDL2;
+use Game.OpenGL;
+
+class GlContextTest {
+	@window : Window;
+	@context : GLContext;
+	@required : Bool;
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		GlContextTest->New()->Run();
+	}
+
+	New() {
+		@required := Runtime->HasEnvironmentVariable("OBJECK_GL_REQUIRED");
+		@failures := 0;
+	}
+
+	method : Run() ~ Nil {
+		if(<>OpenContext()) {
+			# no GL here at all
+			if(@required) {
+				"FAIL: OBJECK_GL_REQUIRED is set but no GL 3.3 core context could be created"->PrintLine();
+				Cleanup();
+				Runtime->Exit(1);
+			};
+
+			"SKIP: no OpenGL 3.3 core context available on this platform"->PrintLine();
+			Cleanup();
+			return;
+		};
+
+		CheckVersion();
+		CheckLoader();
+		CheckShaderAndDraw();
+
+		Cleanup();
+
+		if(@failures > 0) {
+			count := @failures;
+			"FAIL: {$count} OpenGL check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: OpenGL 3.3 core context, shader and framebuffer readback"->PrintLine();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAILED: {$name}"->PrintLine();
+		};
+	}
+
+	#~
+	Requests a 3.3 core context, retrying once under the offscreen driver so this
+	works headless. Returns false when no context is obtainable.
+	~#
+	method : OpenContext() ~ Bool {
+		if(TryOpen()) {
+			return true;
+		};
+
+		# Retry headless. SDL reads SDL_VIDEODRIVER during init, so the subsystem
+		# has to come down first.
+		Cleanup();
+		Core->Quit();
+
+		Runtime->SetEnvironmentVariable("SDL_VIDEODRIVER", "offscreen");
+		"  (retrying with SDL_VIDEODRIVER=offscreen)"->PrintLine();
+
+		return TryOpen();
+	}
+
+	method : TryOpen() ~ Bool {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+			return false;
+		};
+
+		# Attributes select a pixel format, so they must precede window creation.
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK,
+			GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
+		# required alongside a core profile on macOS
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS,
+			GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+		Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
+
+		# HIDDEN so a CI runner never gets a window flashed at it
+		@window := Window->New("objeck gl test", WindowFlags->SDL_WINDOWPOS_UNDEFINED,
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 64, 64,
+			WindowFlags->SDL_WINDOW_HIDDEN or WindowFlags->SDL_WINDOW_OPENGL);
+		if(@window->IsNull()) {
+			error := Core->GetError();
+			"  (no GL window: {$error})"->PrintLine();
+			return false;
+		};
+
+		@context := @window->GLCreateContext();
+		if(@context->IsNull()) {
+			error := Core->GetError();
+			"  (no GL context: {$error})"->PrintLine();
+			return false;
+		};
+
+		return true;
+	}
+
+	method : CheckVersion() ~ Nil {
+		version := Core->GLGetVersionString();
+		Check("GL_VERSION is reported", version <> Nil & version->Size() > 0);
+		if(version <> Nil & version->Size() > 0) {
+			"  version: {$version}"->PrintLine();
+		};
+
+		major := IntRef->New();
+		minor := IntRef->New();
+		Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, major);
+		Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, minor);
+		got_major := major->Get();
+		got_minor := minor->Get();
+		"  context: {$got_major}.{$got_minor}"->PrintLine();
+
+		# macOS silently hands back a legacy 2.1 context when the core profile is
+		# not requested correctly, so assert the version rather than trusting it
+		at_least_33 := got_major > 3 | (got_major = 3 & got_minor >= 3);
+		Check("context is 3.3 or better", at_least_33);
+
+		profile := IntRef->New();
+		Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK, profile);
+		Check("context is a core profile",
+			profile->Get() = GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
+	}
+
+	method : CheckLoader() ~ Nil {
+		missing := GL->LoadFunctions();
+		ok := missing <> Nil & missing->Size() = 0;
+		Check("all GL 2.0+ entry points resolve", ok);
+		if(<>ok) {
+			"  unresolved: {$missing}"->PrintLine();
+		};
+	}
+
+	#~
+	The part that proves rendering rather than mere survival: compile a shader,
+	upload a quad, draw it over a known clear colour, and read the framebuffer.
+	~#
+	method : CheckShaderAndDraw() ~ Nil {
+		vertex := "#version 330 core\n";
+		vertex += "layout (location = 0) in vec3 in_position;\n";
+		vertex += "void main() { gl_Position = vec4(in_position, 1.0); }\n";
+
+		fragment := "#version 330 core\n";
+		fragment += "out vec4 frag_color;\n";
+		fragment += "void main() { frag_color = vec4(0.0, 1.0, 0.0, 1.0); }\n";
+
+		shader := Shader->New(vertex, fragment);
+		Check("shader compiles and links", shader->IsOk());
+		if(<>shader->IsOk()) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		# a quad covering the middle of clip space, leaving the border clear
+		vertices := [-0.5, -0.5, 0.0,  0.5, -0.5, 0.0,  0.5, 0.5, 0.0, -0.5, 0.5, 0.0];
+		indices := [0, 1, 2, 2, 3, 0];
+		mesh := Mesh->New(vertices, indices, [3]);
+		Check("mesh uploads", mesh->IsOk());
+		if(<>mesh->IsOk()) {
+			shader->Free();
+			return;
+		};
+
+		GL->Viewport(0, 0, 64, 64);
+		GL->ClearColor(0.0, 0.0, 1.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT);
+
+		shader->Use();
+		mesh->Draw();
+
+		# read BEFORE any swap; a swap may discard the back buffer
+		center := GL->ReadPixel(32, 32);
+		corner := GL->ReadPixel(1, 1);
+		"  center=0x{$center} corner=0x{$corner}"->PrintLine();
+
+		# green where the quad drew, the blue clear colour outside it. Exact values
+		# are safe here because the fragment shader writes a constant.
+		Check("the quad rendered (centre is green)", center = 0xFF00FF00);
+		Check("outside the quad is the clear colour", corner = 0xFF0000FF);
+
+		errors := GL->DrainErrors();
+		error_count := errors->Size();
+		Check("no GL errors were raised", error_count = 0);
+		if(error_count > 0) {
+			first := errors[0];
+			"  first error: 0x{$first}"->PrintLine();
+		};
+
+		mesh->Free();
+		shader->Free();
+	}
+
+	method : Cleanup() ~ Nil {
+		if(@context <> Nil & <>@context->IsNull()) {
+			@context->Delete();
+		};
+		if(@window <> Nil & <>@window->IsNull()) {
+			@window->Destroy();
+		};
+		@context := Nil;
+		@window := Nil;
+
+		Core->Quit();
+	}
+}
