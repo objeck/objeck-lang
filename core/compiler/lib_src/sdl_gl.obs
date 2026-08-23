@@ -797,18 +797,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Scale to unit length in place. A zero vector is left alone.
-		~#
-		method : public : Normalize() ~ Nil {
-			length := Length();
-			if(length <> 0.0) {
-				@x /= length;
-				@y /= length;
-				@z /= length;
-			};
-		}
-
-		#~
 		@return a new unit-length copy; a zero vector comes back unchanged
 		~#
 		method : public : Normalized() ~ Vector3 {
@@ -818,20 +806,6 @@ bundle Game.OpenGL {
 			};
 
 			return Vector3->New(@x / length, @y / length, @z / length);
-		}
-
-		#~
-		@return the vector as a flat array, e.g. for a vec3 uniform
-		~#
-		method : public : ToArray() ~ Float[] {
-			# built element-wise on purpose: an array literal in this language takes
-			# literals, so [@x, @y, @z] does not parse
-			values := Float->New[3];
-			values[0] := @x;
-			values[1] := @y;
-			values[2] := @z;
-
-			return values;
 		}
 
 		#~

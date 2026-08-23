@@ -5344,11 +5344,30 @@ extern "C" {
       return;
     }
 
+    // FLIP THE ROWS. An SDL surface stores row 0 at the TOP of the image, while
+    // GL treats t=0 as the BOTTOM of the texture -- upload as-is and every image
+    // renders upside down. A symmetric test pattern hides this completely, which
+    // is exactly how it survived until someone loaded a real picture.
+    //
+    // Flipping here rather than asking callers to invert their texture
+    // coordinates: an image should look like the file, and a caller mixing
+    // hand-written geometry with loaded images should not have to remember which
+    // convention each one follows.
+    const int row_bytes = rgba->w * 4;
+    std::vector<unsigned char> flipped((size_t)row_bytes * (size_t)rgba->h);
+    const unsigned char* src = (const unsigned char*)rgba->pixels;
+    for(int y = 0; y < rgba->h; ++y) {
+      // rgba->pitch may exceed w*4 (row padding), so step by pitch, copy w*4
+      const unsigned char* src_row = src + (size_t)y * (size_t)rgba->pitch;
+      unsigned char* dest_row = flipped.data() + (size_t)(rgba->h - 1 - y) * (size_t)row_bytes;
+      memcpy(dest_row, src_row, (size_t)row_bytes);
+    }
+
     GLuint texture = 0;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgba->w, rgba->h, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, rgba->pixels);
+                 GL_RGBA, GL_UNSIGNED_BYTE, flipped.data());
     // GL_LINEAR rather than mipmaps: glGenerateMipmap is a 3.0 entry point and
     // this keeps the loaded function set smaller. Callers wanting mipmaps can
     // add it following the recipe at the top of this section.

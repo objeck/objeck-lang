@@ -72,6 +72,7 @@ class GlContextTest {
 		CheckVersion();
 		CheckLoader();
 		CheckShaderAndDraw();
+		CheckTextureOrientation();
 
 		Cleanup();
 
@@ -93,7 +94,7 @@ class GlContextTest {
 		"PASS: OpenGL 3.3 core context, shader and framebuffer readback"->PrintLine();
 	}
 
-	method : Check(name : String, ok : Bool) ~ Nil {
+	method : Check(name : String, ok : Bool) ~ Bool {
 		if(ok) {
 			"  ok: {$name}"->PrintLine();
 		}
@@ -101,6 +102,8 @@ class GlContextTest {
 			@failures += 1;
 			"  FAILED: {$name}"->PrintLine();
 		};
+
+		return ok;
 	}
 
 	#~
@@ -251,6 +254,79 @@ class GlContextTest {
 
 		mesh->Free();
 		shader->Free();
+	}
+
+	#~
+	A texture must render the same way up as the image file.
+
+	This exists because it once did not, and nothing caught it: an SDL surface
+	stores row 0 at the TOP while GL treats t=0 as the BOTTOM, so an unflipped
+	upload renders every image upside down. Every texture in the test suite and
+	the demos was a symmetric checkerboard, which hides the bug perfectly -- it
+	only showed up when someone loaded a real picture.
+
+	So: a two-tone texture, deliberately NOT symmetric, drawn on a full-screen
+	quad and sampled top and bottom.
+	~#
+	method : CheckTextureOrientation() ~ Nil {
+		vertex := "#version 330 core\n";
+		vertex += "layout (location = 0) in vec3 in_position;\n";
+		vertex += "layout (location = 1) in vec2 in_texcoord;\n";
+		vertex += "out vec2 texcoord;\n";
+		vertex += "void main() { texcoord = in_texcoord; gl_Position = vec4(in_position, 1.0); }\n";
+
+		fragment := "#version 330 core\n";
+		fragment += "in vec2 texcoord;\n";
+		fragment += "uniform sampler2D tex;\n";
+		fragment += "out vec4 frag_color;\n";
+		fragment += "void main() { frag_color = texture(tex, texcoord); }\n";
+
+		shader := Shader->New(vertex, fragment);
+		if(<>Check("orientation shader compiles", shader->IsOk())) {
+			return;
+		};
+
+		# full-screen quad, texcoord (0,0) at the bottom-left
+		vertices := [-1.0, -1.0, 0.0, 0.0, 0.0,  1.0, -1.0, 0.0, 1.0, 0.0,
+		              1.0,  1.0, 0.0, 1.0, 1.0, -1.0,  1.0, 0.0, 0.0, 1.0];
+		indices := [0, 1, 2, 2, 3, 0];
+		mesh := Mesh->New(vertices, indices, [3, 2]);
+		if(<>Check("orientation mesh uploads", mesh->IsOk())) {
+			shader->Free();
+			return;
+		};
+
+		# 4x4 with the TOP half red and the BOTTOM half blue
+		surface := Surface->New(0, 4, 4, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+		surface->FillRect(Rect->New(0, 0, 4, 2), 0xFFFF0000);
+		surface->FillRect(Rect->New(0, 2, 4, 2), 0xFF0000FF);
+		texture := Texture2D->New(surface);
+		if(<>Check("orientation texture uploads", texture->IsOk())) {
+			mesh->Free();
+			shader->Free();
+			surface->Free();
+			return;
+		};
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		texture->Bind(0);
+		mesh->Draw();
+
+		# ReadPixel's y counts up from the bottom of the drawable
+		bottom := GL->ReadPixel(32, 4);
+		top := GL->ReadPixel(32, 60);
+		"  orientation: screen top=0x{$top} bottom=0x{$bottom}"->PrintLine();
+
+		Check("image top renders at screen top (texture not flipped)",
+			top = 0xFFFF0000 & bottom = 0xFF0000FF);
+
+		texture->Free();
+		mesh->Free();
+		shader->Free();
+		surface->Free();
 	}
 
 	method : Cleanup() ~ Nil {
