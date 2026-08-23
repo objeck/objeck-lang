@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++20 -mavx2 -D_NO_HALT -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function
+ARGS=-O3 -Wall -std=c++20 -mavx2 -D_NO_HALT -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -MMD -MP
 SRC=editor.o repl.o
 OBJ_LIBS=../module/module.a
 MODULE_PATH=../module
@@ -13,6 +13,11 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 ../module/module.a:
 	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.amd64
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
 	cd $(MODULE_PATH); $(MAKE) -f make/Makefile.amd64 clean
-	rm -f $(EXE) *.a *.o *~
+	rm -f $(EXE) *.a *.o *.d *~

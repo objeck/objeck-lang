@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++20 -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast
+ARGS=-O3 -Wall -std=c++20 -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -MMD -MP
 
 SRC=common.o dispatch.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_arm_a64.a memory.a
@@ -23,7 +23,12 @@ jit_arm_a64.a:
 %.o: %.cpp
 	$(CXX) $(ARGS) -c $< 
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
 	cd $(MEM_PATH); $(MAKE) clean -f make/Makefile.arm64
 	cd $(JIT_PATH); $(MAKE) clean -f make/Makefile.arm64
-	rm -f $(LIB) *.o *~
+	rm -f $(LIB) *.o *.d *~

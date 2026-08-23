@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -D_X64 -D_MSYS2 -std=c++20 -mavx2 -Wno-unused-command-line-argument -Wno-unused-function 
+ARGS=-O3 -Wall -D_X64 -D_MSYS2 -std=c++20 -mavx2 -Wno-unused-command-line-argument -Wno-unused-function -MMD -MP
 
 AR=ar
 SRC=memory.o 
@@ -10,5 +10,10 @@ $(LIB): $(SRC)
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
-	rm -f *.o *~ $(LIB)
+	rm -f *.o *.d *~ $(LIB)

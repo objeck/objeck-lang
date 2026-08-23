@@ -1,4 +1,4 @@
-ARGS=-O3 -flto=auto -D_X64 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-deprecated-declarations -Wunused-variable -fno-sanitize-recover
+ARGS=-O3 -flto=auto -D_X64 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-deprecated-declarations -Wunused-variable -fno-sanitize-recover -MMD -MP
 
 AR=gcc-ar
 COMMON_LIBS=jit_common.a
@@ -15,6 +15,11 @@ jit_common.a:
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.amd64 clean
-	rm -f *.o *~ $(LIB)
+	rm -f *.o *.d *~ $(LIB)

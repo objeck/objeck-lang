@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++20 -mavx2 -Wno-strict-overflow -pthread -D_X64 -D_MSYS2 -D_MSYS2_CLANG -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast
+ARGS=-O3 -Wall -std=c++20 -mavx2 -Wno-strict-overflow -pthread -D_X64 -D_MSYS2 -D_MSYS2_CLANG -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -MMD -MP
 
 SRC=tree.o scanner.o parser.o debugger.o dap.o
 OBJ_LIBS=../vm/vm.a ../vm/jit_amd_lp64.a ../vm/memory.a ../vm/win32.a objeck.res
@@ -29,9 +29,14 @@ objeck.res:
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
 	cd $(WIN32_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64 clean
 	cd $(JIT_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64 clean
 	cd $(MEM_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64 clean
 	cd $(VM_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.obd clean
-	rm -f $(EXE) $(EXE).exe *.o *~ *.res
+	rm -f $(EXE) $(EXE).exe *.o *.d *~ *.res
