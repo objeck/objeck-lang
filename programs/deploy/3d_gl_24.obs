@@ -1,0 +1,210 @@
+#~
+# Objeck 3D - a lit, shadowed, spinning scene in OpenGL 3.3 core
+#
+# Three shapes on a tiled floor, lit by one directional light and casting
+# shadows, with an orbiting camera. Nothing is loaded from disk: the textures are
+# generated and the geometry is built in.
+#
+# This is the whole program. Game.OpenGL owns the parts that are the same in
+# every GL program - opening a window with a core profile, resolving the entry
+# points, the viewport, frame pacing, the shaders, and shutting down in the order
+# that works - so what is left here is the scene.
+#
+# compiler: obc -src 3d_gl_24.obs -lib sdl2,sdl_gl
+# run: obr 3d_gl_24.obe
+#
+# escape or the close button to quit
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class Scene3D {
+	@window : GLWindow;
+	@shader : Shader;
+	@light : Light;
+	@shadows : ShadowMap;
+	@camera : Camera;
+
+	@floor : Mesh;
+	@floor_texture : Texture2D;
+	@floor_at : Transform;
+
+	@shapes : Mesh[];
+	@shape_texture : Texture2D;
+	@shape_at : Transform[];
+
+	@spin : Float;
+	@orbit : Float;
+	@projection : Float[];
+	@view_projection : Float[];
+	@scratch : Float[];
+	@mvp : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		Scene3D->New()->Run();
+	}
+
+	New() {
+		@spin := 0.0;
+		@orbit := 0.0;
+		@projection := Float->New[16];
+		@view_projection := Float->New[16];
+		@scratch := Float->New[16];
+		@mvp := Float->New[16];
+		@camera := Camera->New(Vector3->New(0.0, 3.0, 8.0));
+	}
+
+	method : Run() ~ Nil {
+		@window := GLWindow->New("Objeck 3D", 900, 600);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
+		leaving {
+			Close();
+		};
+
+		if(<>Build()) {
+			return;
+		};
+
+		version := @window->GetVersion();
+		"GL {$version}"->PrintLine();
+		"Escape to quit."->PrintLine();
+
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
+			delta := @window->GetDelta();
+
+			@spin += 0.7 * delta;
+			@orbit += 0.3 * delta;
+
+			each(i : @shape_at) {
+				# each shape turns at its own rate, so they do not look welded together
+				@shape_at[i]->SetRotation(@spin * (1.0 + i->As(Float) * 0.4), 0.0, 0.0);
+			};
+
+			# the camera circles the scene, always looking at the middle of it
+			eye_x := @orbit->Sin() * 8.0;
+			eye_z := @orbit->Cos() * 8.0;
+			@camera->PlaceLookingAt(Vector3->New(eye_x, 3.4, eye_z), Vector3->New(0.0, 0.8, 0.0));
+
+			# pass one: the scene from the light, into a depth map
+			@shadows->Begin();
+			each(i : @shapes) {
+				@shadows->DrawCaster(@shapes[i], @shape_at[i]);
+			};
+			@shadows->DrawCaster(@floor, @floor_at);
+			@shadows->End(@window);
+
+			# pass two: the scene from the camera, reading that depth map
+			@camera->GetViewProjectionInto(@view_projection, @projection, @scratch);
+			@shader->Use();
+			@light->ApplyTo(@shader);
+			@shadows->ApplyTo(@shader);
+			@shader->SetInt("tex", 0);
+
+			Draw(@floor, @floor_texture, @floor_at);
+			each(i : @shapes) {
+				Draw(@shapes[i], @shape_texture, @shape_at[i]);
+			};
+
+			@window->EndFrame();
+		};
+
+		GL->ReportErrors("the run");
+	}
+
+	method : Draw(mesh : Mesh, texture : Texture2D, at : Transform) ~ Nil {
+		texture->Bind(0);
+		at->MvpInto(@mvp, @view_projection);
+		@shader->SetMatrix4("mvp", @mvp);
+		@shader->SetMatrix4("model", at->GetMatrix());
+		mesh->Draw();
+	}
+
+	method : Build() ~ Bool {
+		Matrix4->PerspectiveInto(@projection, Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
+		GL->Enable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.07, 0.08, 0.12, 1.0);
+
+		@shader := Shader->LitTexturedShadowed();
+		if(<>@shader->IsOk()) {
+			@shader->GetLog()->ErrorLine();
+			return false;
+		};
+		@shader->SetFloat("fog_distance", 45.0);
+
+		# A floor with the texture repeated across it, which is what GL_REPEAT and
+		# Plane's tile count are for.
+		@floor := Mesh->Plane(7.0, 7.0);
+		@floor_texture := Texture2D->Checker(64, 2, Texture2D->Rgb(72, 78, 98), Texture2D->Rgb(52, 57, 74), TextureWrap->GL_REPEAT);
+		@floor_at := Transform->New();
+
+		# A cube, a sphere and a smaller sphere, spread out along x.
+		@shapes := Mesh->New[3];
+		@shapes[0] := Mesh->Cube(0.9);
+		@shapes[1] := Mesh->Sphere(28, 14);
+		@shapes[2] := Mesh->Sphere(20, 10);
+		@shape_texture := Texture2D->Checker(64, 4, Texture2D->Rgb(226, 108, 78), Texture2D->Rgb(240, 232, 210));
+
+		@shape_at := Transform->New[3];
+		positions := [-3.0, 1.0, 0.0,   0.0, 1.2, 0.0,   3.0, 0.7, 0.0];
+		scales := [1.0, 1.2, 0.7];
+		for(i := 0; i < 3; i += 1;) {
+			@shape_at[i] := Transform->New();
+			@shape_at[i]->SetPosition(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+			@shape_at[i]->SetScale(scales[i]);
+		};
+
+		each(i : @shapes) {
+			if(<>@shapes[i]->IsOk()) {
+				"Could not upload the geometry"->ErrorLine();
+				return false;
+			};
+		};
+		if(<>@floor->IsOk() | <>@floor_texture->IsOk() | <>@shape_texture->IsOk()) {
+			"Could not upload the floor or textures"->ErrorLine();
+			return false;
+		};
+
+		@light := Light->New();
+		@light->SetDirection(-0.4, 1.0, 0.5);
+		@light->SetColor(1.0, 0.97, 0.9);
+		@light->SetAmbient(0.22, 0.24, 0.3);
+
+		# SetLight rather than repeating the direction: a shadow map aimed somewhere
+		# other than the light puts every shadow on the wrong side of everything.
+		@shadows := ShadowMap->New(1024);
+		if(<>@shadows->IsOk()) {
+			@shadows->GetError()->ErrorLine();
+			return false;
+		};
+		@shadows->SetLight(@light);
+		@shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 10.0);
+
+		return true;
+	}
+
+	#~
+	GL objects first, while the context is still current - every Free bottoms out
+	in a glDelete*, which needs one. The window takes the context and SDL down
+	after them, in the right order.
+	~#
+	method : Close() ~ Nil {
+		if(@shape_texture <> Nil) { @shape_texture->Free(); };
+		if(@floor_texture <> Nil) { @floor_texture->Free(); };
+		if(@shapes <> Nil) {
+			each(i : @shapes) {
+				if(@shapes[i] <> Nil) { @shapes[i]->Free(); };
+			};
+		};
+		if(@floor <> Nil) { @floor->Free(); };
+		if(@shadows <> Nil) { @shadows->Free(); };
+		if(@shader <> Nil) { @shader->Free(); };
+
+		if(@window <> Nil) { @window->Free(); };
+	}
+}
