@@ -49,6 +49,13 @@
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
 
+// OpenGL. Must come AFTER lib_api.h on Windows: lib_api.h pulls in
+// core/vm/common.h, which includes <windows.h> and relies on it dragging in
+// winsock for fd_set / FD_ISSET, while SDL_opengl.h defines WIN32_LEAN_AND_MEAN
+// before including <windows.h> itself -- and that macro suppresses winsock, so
+// putting this first breaks common.h with "FD_ISSET: identifier not found".
+#include <SDL_opengl.h>
+
 #define POLY_MAX 1024
 
 extern "C" {
@@ -4735,5 +4742,69 @@ __declspec(dllexport)
 
     const int return_value = stringRGBA(renderer, x, y, s.c_str(), color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
+  }
+
+  // ==========================================================================
+  // OpenGL ("Game.OpenGL", core/compiler/lib_src/sdl_gl.obs)
+  // ==========================================================================
+  //
+  // This lives in sdl.cpp rather than its own gl_sdl.cpp because lib_api.h
+  // defines its helpers as NON-INLINE free functions in the header, so a second
+  // translation unit that includes it fails to link with LNK2005 on every
+  // APITools_* symbol. That is why all eight native libraries in this repo are
+  // exactly one .cpp file each. Splitting the GL layer out would mean either
+  // making lib_api.h inline (it is shared by all eight) or shipping a separate
+  // libobjk_gl with its own seven per-platform build definitions.
+  //
+  // --------------------------------------------------------------------------
+  // ADDING A GL CALL -- the whole recipe
+  // --------------------------------------------------------------------------
+  // 1. Add one `void name(VMContext&)` below, with the #ifdef _WIN32
+  //    __declspec(dllexport) prologue every function in this file has.
+  // 2. Add one method in sdl_gl.obs that calls it by that exact string through
+  //    Proxy->GetDllProxy()->CallFunction.
+  //
+  // Two rules, both load-bearing:
+  //
+  // SLOT INDICES ARE POSITIONAL. Slot 0 is the return value ONLY if the Objeck
+  // method returns something; otherwise the first argument sits at slot 0. Both
+  // conventions already exist above -- sdl_window_gl_swap reads its window from
+  // slot 0, sdl_window_get_display_index reads its window from slot 1 -- so
+  // match the two sides deliberately rather than by habit.
+  //
+  // MAKE EACH CALL DO REAL WORK. StackInterpreter::SharedLibraryCall resolves
+  // the symbol by string on EVERY call (GetProcAddress/dlsym, see
+  // core/vm/interpreter.cpp:2981) and each call allocates a Base[] plus a boxed
+  // holder per argument. A 1:1 wrapper over GL would be thousands of dlsym
+  // calls per frame. So "compile a program from two shader sources" is ONE
+  // function here, not the five GL calls it decomposes into.
+  //
+  // Only GL 1.1 entry points are linked directly (opengl32.lib / -lGL /
+  // -framework OpenGL). Everything from GL 2.0 on is resolved through
+  // SDL_GL_GetProcAddress into a function table, which is why this needs no
+  // GLEW/GLAD dependency and why macOS shipping only a legacy 2.1 GL header
+  // does not matter.
+  //
+
+  //
+  // Reports the GL version string of the CURRENT context, or "" when there is
+  // no current context. glGetString is GL 1.1, so it is linked rather than
+  // loaded -- which makes this double as the proof that each platform's build
+  // definition really does link a GL library.
+  //
+  // Until a context exists this correctly returns "". Once one does, this is
+  // the assertion macOS needs: macOS hands back a legacy 2.1 context unless a
+  // core + forward-compatible profile was requested, and offers no 3.3
+  // compatibility profile at all, so silently getting 2.1 is the failure mode
+  // to catch here rather than at first shader compile.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_version_string(VMContext& context) {
+    const GLubyte* version = glGetString(GL_VERSION);
+    const std::string return_value = version ? reinterpret_cast<const char*>(version) : "";
+    const std::wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
   }
 }

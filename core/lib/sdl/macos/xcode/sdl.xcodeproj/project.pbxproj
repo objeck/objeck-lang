@@ -286,6 +286,8 @@
 					"-Wl,../arm64/lib/libSDL2_mixer.dylib",
 					"-Wl,../arm64/lib/libSDL2_ttf.dylib",
 					"-Wl,../arm64/lib/libSDL2_image.dylib",
+					"-framework",
+					OpenGL,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -312,6 +314,8 @@
 					"-Wl,../arm64/lib/libSDL2_mixer.dylib",
 					"-Wl,../arm64/lib/libSDL2_ttf.dylib",
 					"-Wl,../arm64/lib/libSDL2_image.dylib",
+					"-framework",
+					OpenGL,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
