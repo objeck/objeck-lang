@@ -1,0 +1,303 @@
+#~
+Textured spinning cube in OpenGL 3.3 core.
+
+  compile: obc -src cube_gl.obs -lib sdl2,sdl_gl
+  run:     obr cube_gl
+
+The GL counterpart to cube.obs, which draws a wireframe cube by transforming
+eight points on the CPU and calling DrawLine twelve times per frame. Worth
+comparing the two: this one uploads the geometry once and then does one draw call
+per frame, with the GPU doing the transform. That difference is the whole reason
+the API is shaped the way it is -- the native call boundary is expensive enough
+that per-primitive calls dominate everything else.
+
+No texture file is needed: the checkerboard is generated into a Surface at
+startup, so this runs from a clean checkout.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class SpinningCube {
+	@window : Window;
+	@context : GLContext;
+	@shader : Shader;
+	@mesh : Mesh;
+	@texture : Texture2D;
+	@surface : Surface;
+	@angle : Float;
+	@aspect : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		SpinningCube->New()->Run();
+	}
+
+	New() {
+		@angle := 0.0;
+		@aspect := 1.0;
+	}
+
+	method : Run() ~ Nil {
+		leaving {
+			Close();
+		};
+
+		if(<>Init()) {
+			"--- Error initializing OpenGL ---"->ErrorLine();
+			return;
+		};
+
+		GL->Enable(Capability->GL_DEPTH_TEST);
+		GL->ClearColor(0.09, 0.11, 0.15, 1.0);
+
+		# Uploaded once, drawn every frame.
+		projection := Matrix4->Perspective(Float->Pi() / 4.0, @aspect, 0.1, 100.0);
+		view := Matrix4->LookAtOrigin(4.0);
+		view_projection := Matrix4->Multiply(projection, view);
+
+		@shader->Use();
+		@shader->SetInt("tex", 0);
+		@texture->Bind(0);
+
+		e := Event->New();
+		quit := false;
+		while(<>quit) {
+			while(e->Poll() <> 0) {
+				if(e->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				};
+			};
+
+			@angle += 0.01;
+			model := Matrix4->Multiply(Matrix4->RotationY(@angle),
+				Matrix4->RotationX(@angle * 0.6));
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+			@shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
+			@mesh->Draw();
+
+			@window->GLSwap();
+		};
+		e->Free();
+
+		errors := GL->DrainErrors();
+		count := errors->Size();
+		if(count > 0) {
+			first := errors[0];
+			"Warning: {$count} GL error(s), first was 0x{$first}"->ErrorLine();
+		};
+	}
+
+	method : Init() ~ Bool {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+			"SDL could not initialize: "->Print();
+			Core->GetError()->ErrorLine();
+			return false;
+		};
+
+		# Attributes select a pixel format, so they must precede Window->New.
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK,
+			GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS,
+			GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+		Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
+		Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
+
+		@window := Window->New("Objeck OpenGL Cube", WindowFlags->SDL_WINDOWPOS_UNDEFINED,
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 720, 540,
+			WindowFlags->SDL_WINDOW_SHOWN or WindowFlags->SDL_WINDOW_OPENGL);
+		if(@window->IsNull()) {
+			"Cannot create window: "->Print();
+			Core->GetError()->ErrorLine();
+			return false;
+		};
+
+		@context := @window->GLCreateContext();
+		if(@context->IsNull()) {
+			"Cannot create a GL 3.3 core context: "->Print();
+			Core->GetError()->ErrorLine();
+			return false;
+		};
+
+		version := Core->GLGetVersionString();
+		"GL version: {$version}"->PrintLine();
+
+		# Everything above GL 1.1 is resolved at runtime; do it once, here.
+		missing := GL->LoadFunctions();
+		if(missing->Size() > 0) {
+			"Could not resolve GL functions: {$missing}"->ErrorLine();
+			return false;
+		};
+
+		w := IntRef->New();
+		h := IntRef->New();
+		@window->GLGetDrawableSize(w, h);
+		pixel_w := w->Get();
+		pixel_h := h->Get();
+		GL->Viewport(0, 0, pixel_w, pixel_h);
+		@aspect := pixel_w->As(Float) / pixel_h->As(Float);
+
+		Core->GLSetSwapInterval(1);
+
+		@shader := Shader->New(VertexSource(), FragmentSource());
+		if(<>@shader->IsOk()) {
+			"Shader failed:"->ErrorLine();
+			@shader->GetLog()->ErrorLine();
+			return false;
+		};
+
+		@mesh := Mesh->New(CubeVertices(), CubeIndices(), [3, 2]);
+		if(<>@mesh->IsOk()) {
+			"Could not upload the cube mesh"->ErrorLine();
+			return false;
+		};
+
+		@surface := Checkerboard(64, 8);
+		if(@surface = Nil | @surface->IsNull()) {
+			"Could not build the texture surface"->ErrorLine();
+			return false;
+		};
+
+		@texture := Texture2D->New(@surface);
+		if(<>@texture->IsOk()) {
+			"Could not upload the texture"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+
+	#~
+	A checkerboard drawn into a surface, so the example needs no asset file.
+
+	The surface is created with explicit ARGB masks, so a pixel value is
+	A<<24 | R<<16 | G<<8 | B. FillRect takes that packed Int rather than a Color,
+	and one call per square beats one per pixel.
+	~#
+	method : Checkerboard(size : Int, squares : Int) ~ Surface {
+		surface := Surface->New(0, size, size, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+		if(surface->IsNull()) {
+			return Nil;
+		};
+
+		light := Packed(235, 235, 240);
+		dark := Packed(70, 90, 130);
+
+		step := size / squares;
+		for(row := 0; row < squares; row += 1;) {
+			for(col := 0; col < squares; col += 1;) {
+				color := (row + col) % 2 = 0 ? light : dark;
+				surface->FillRect(Rect->New(col * step, row * step, step, step), color);
+			};
+		};
+
+		return surface;
+	}
+
+	#~
+	Pack 8-bit components into the ARGB layout the surface above declares.
+	~#
+	method : Packed(r : Int, g : Int, b : Int) ~ Int {
+		return 0xFF000000 or (r * 0x10000) or (g * 0x100) or b;
+	}
+
+	#~
+	Cube corners as position(3) + texcoord(2). Each face gets its own four
+	vertices because the texture coordinates differ per face even where the
+	positions coincide.
+	~#
+	method : CubeVertices() ~ Float[] {
+		return [
+			# front
+			-1.0, -1.0,  1.0,  0.0, 0.0,
+			 1.0, -1.0,  1.0,  1.0, 0.0,
+			 1.0,  1.0,  1.0,  1.0, 1.0,
+			-1.0,  1.0,  1.0,  0.0, 1.0,
+			# back
+			 1.0, -1.0, -1.0,  0.0, 0.0,
+			-1.0, -1.0, -1.0,  1.0, 0.0,
+			-1.0,  1.0, -1.0,  1.0, 1.0,
+			 1.0,  1.0, -1.0,  0.0, 1.0,
+			# left
+			-1.0, -1.0, -1.0,  0.0, 0.0,
+			-1.0, -1.0,  1.0,  1.0, 0.0,
+			-1.0,  1.0,  1.0,  1.0, 1.0,
+			-1.0,  1.0, -1.0,  0.0, 1.0,
+			# right
+			 1.0, -1.0,  1.0,  0.0, 0.0,
+			 1.0, -1.0, -1.0,  1.0, 0.0,
+			 1.0,  1.0, -1.0,  1.0, 1.0,
+			 1.0,  1.0,  1.0,  0.0, 1.0,
+			# top
+			-1.0,  1.0,  1.0,  0.0, 0.0,
+			 1.0,  1.0,  1.0,  1.0, 0.0,
+			 1.0,  1.0, -1.0,  1.0, 1.0,
+			-1.0,  1.0, -1.0,  0.0, 1.0,
+			# bottom
+			-1.0, -1.0, -1.0,  0.0, 0.0,
+			 1.0, -1.0, -1.0,  1.0, 0.0,
+			 1.0, -1.0,  1.0,  1.0, 1.0,
+			-1.0, -1.0,  1.0,  0.0, 1.0];
+	}
+
+	#~
+	Two triangles per face, counter-clockwise when seen from outside.
+	~#
+	method : CubeIndices() ~ Int[] {
+		indices := Int->New[36];
+		for(face := 0; face < 6; face += 1;) {
+			base := face * 4;
+			out := face * 6;
+			indices[out + 0] := base + 0;
+			indices[out + 1] := base + 1;
+			indices[out + 2] := base + 2;
+			indices[out + 3] := base + 2;
+			indices[out + 4] := base + 3;
+			indices[out + 5] := base + 0;
+		};
+
+		return indices;
+	}
+
+	method : VertexSource() ~ String {
+		source := "#version 330 core\n";
+		source += "layout (location = 0) in vec3 in_position;\n";
+		source += "layout (location = 1) in vec2 in_texcoord;\n";
+		source += "uniform mat4 mvp;\n";
+		source += "out vec2 texcoord;\n";
+		source += "void main() {\n";
+		source += "  texcoord = in_texcoord;\n";
+		source += "  gl_Position = mvp * vec4(in_position, 1.0);\n";
+		source += "}\n";
+
+		return source;
+	}
+
+	method : FragmentSource() ~ String {
+		source := "#version 330 core\n";
+		source += "in vec2 texcoord;\n";
+		source += "uniform sampler2D tex;\n";
+		source += "out vec4 frag_color;\n";
+		source += "void main() {\n";
+		# a touch of depth shading so the faces read as a solid
+		source += "  float shade = 0.65 + 0.35 * gl_FragCoord.w;\n";
+		source += "  frag_color = texture(tex, texcoord) * vec4(vec3(shade), 1.0);\n";
+		source += "}\n";
+
+		return source;
+	}
+
+	method : Close() ~ Nil {
+		if(@texture <> Nil) { @texture->Free(); };
+		if(@mesh <> Nil) { @mesh->Free(); };
+		if(@shader <> Nil) { @shader->Free(); };
+		if(@surface <> Nil & <>@surface->IsNull()) { @surface->Free(); };
+		if(@context <> Nil) { @context->Delete(); };
+		if(@window <> Nil & <>@window->IsNull()) { @window->Destroy(); };
+
+		Core->Quit();
+	}
+}

@@ -55,6 +55,8 @@
 // before including <windows.h> itself -- and that macro suppresses winsock, so
 // putting this first breaks common.h with "FD_ISSET: identifier not found".
 #include <SDL_opengl.h>
+#include <SDL_opengl_glext.h>   // PFNGL*PROC typedefs for the GL 2.0+ loader
+#include <vector>
 
 #define POLY_MAX 1024
 
@@ -4894,5 +4896,502 @@ __declspec(dllexport)
 #endif
   void sdl_gl_get_error(VMContext& context) {
     APITools_SetIntValue(context, 0, glGetError());
+  }
+}
+
+// ==========================================================================
+// GL 2.0+ entry points
+// ==========================================================================
+//
+// Resolved once through SDL_GL_GetProcAddress and cached here. Objeck never
+// sees a proc address, so there is no GLEW/GLAD dependency and no reliance on
+// the platform shipping a modern GL header -- which matters because on macOS
+// SDL_opengl.h resolves to the legacy 2.1 <OpenGL/gl.h>.
+//
+// Deliberately NOT inside extern "C": these are C++ statics, not exports.
+
+#define GL_FN(name) static PFNGL##name##PROC objk_gl##name = nullptr;
+GL_FN(CREATESHADER) GL_FN(SHADERSOURCE) GL_FN(COMPILESHADER)
+GL_FN(GETSHADERIV) GL_FN(GETSHADERINFOLOG) GL_FN(DELETESHADER)
+GL_FN(CREATEPROGRAM) GL_FN(ATTACHSHADER) GL_FN(LINKPROGRAM)
+GL_FN(GETPROGRAMIV) GL_FN(GETPROGRAMINFOLOG) GL_FN(USEPROGRAM)
+GL_FN(DELETEPROGRAM) GL_FN(GETUNIFORMLOCATION) GL_FN(UNIFORMMATRIX4FV)
+GL_FN(UNIFORM1I) GL_FN(GENVERTEXARRAYS) GL_FN(BINDVERTEXARRAY)
+GL_FN(DELETEVERTEXARRAYS) GL_FN(GENBUFFERS) GL_FN(BINDBUFFER)
+GL_FN(BUFFERDATA) GL_FN(DELETEBUFFERS) GL_FN(VERTEXATTRIBPOINTER)
+GL_FN(ENABLEVERTEXATTRIBARRAY) GL_FN(ACTIVETEXTURE)
+#undef GL_FN
+
+static bool objk_gl_loaded = false;
+
+// Every entry point is resolved and checked up front, so a driver missing one
+// is reported once by name instead of crashing on first use.
+static std::string objk_gl_load_functions() {
+  std::string missing;
+
+#define OBJK_GL_LOAD(lower, NAME)                                                   \
+  objk_gl##NAME = (PFNGL##NAME##PROC)SDL_GL_GetProcAddress(lower);             \
+  if(!objk_gl##NAME) { missing += missing.empty() ? "" : ", "; missing += lower; }
+
+  OBJK_GL_LOAD("glCreateShader", CREATESHADER)
+  OBJK_GL_LOAD("glShaderSource", SHADERSOURCE)
+  OBJK_GL_LOAD("glCompileShader", COMPILESHADER)
+  OBJK_GL_LOAD("glGetShaderiv", GETSHADERIV)
+  OBJK_GL_LOAD("glGetShaderInfoLog", GETSHADERINFOLOG)
+  OBJK_GL_LOAD("glDeleteShader", DELETESHADER)
+  OBJK_GL_LOAD("glCreateProgram", CREATEPROGRAM)
+  OBJK_GL_LOAD("glAttachShader", ATTACHSHADER)
+  OBJK_GL_LOAD("glLinkProgram", LINKPROGRAM)
+  OBJK_GL_LOAD("glGetProgramiv", GETPROGRAMIV)
+  OBJK_GL_LOAD("glGetProgramInfoLog", GETPROGRAMINFOLOG)
+  OBJK_GL_LOAD("glUseProgram", USEPROGRAM)
+  OBJK_GL_LOAD("glDeleteProgram", DELETEPROGRAM)
+  OBJK_GL_LOAD("glGetUniformLocation", GETUNIFORMLOCATION)
+  OBJK_GL_LOAD("glUniformMatrix4fv", UNIFORMMATRIX4FV)
+  OBJK_GL_LOAD("glUniform1i", UNIFORM1I)
+  OBJK_GL_LOAD("glGenVertexArrays", GENVERTEXARRAYS)
+  OBJK_GL_LOAD("glBindVertexArray", BINDVERTEXARRAY)
+  OBJK_GL_LOAD("glDeleteVertexArrays", DELETEVERTEXARRAYS)
+  OBJK_GL_LOAD("glGenBuffers", GENBUFFERS)
+  OBJK_GL_LOAD("glBindBuffer", BINDBUFFER)
+  OBJK_GL_LOAD("glBufferData", BUFFERDATA)
+  OBJK_GL_LOAD("glDeleteBuffers", DELETEBUFFERS)
+  OBJK_GL_LOAD("glVertexAttribPointer", VERTEXATTRIBPOINTER)
+  OBJK_GL_LOAD("glEnableVertexAttribArray", ENABLEVERTEXATTRIBARRAY)
+  OBJK_GL_LOAD("glActiveTexture", ACTIVETEXTURE)
+#undef OBJK_GL_LOAD
+
+  objk_gl_loaded = missing.empty();
+  return missing;
+}
+
+// A mesh is four values (VAO, VBO, EBO, index count), so the native side owns a
+// small record and hands back its pointer -- the same convention every SDL
+// handle in this file uses.
+struct ObjkMesh {
+  GLuint vao;
+  GLuint vbo;
+  GLuint ebo;
+  GLsizei index_count;
+};
+
+// Objeck arrays arrive as a holder object whose field 0 is the array; the
+// elements start ARRAY_HEADER_OFFSET words in. Returns nullptr when absent.
+static size_t* objk_array_from_holder(size_t* holder, size_t& count) {
+  count = 0;
+  if(!holder || !holder[0]) {
+    return nullptr;
+  }
+  size_t* array = (size_t*)holder[0];
+  count = array[0];
+  return array + ARRAY_HEADER_OFFSET;
+}
+
+// Compiles one stage and returns 0 plus a log on failure.
+static GLuint objk_gl_compile_stage(GLenum type, const std::string& source, std::string& log) {
+  const GLuint shader = objk_glCREATESHADER(type);
+  if(!shader) {
+    log = "glCreateShader returned 0";
+    return 0;
+  }
+
+  const char* text = source.c_str();
+  objk_glSHADERSOURCE(shader, 1, &text, nullptr);
+  objk_glCOMPILESHADER(shader);
+
+  GLint ok = GL_FALSE;
+  objk_glGETSHADERIV(shader, GL_COMPILE_STATUS, &ok);
+  if(ok != GL_TRUE) {
+    GLint length = 0;
+    objk_glGETSHADERIV(shader, GL_INFO_LOG_LENGTH, &length);
+    if(length > 0) {
+      std::string buffer((size_t)length, '\0');
+      objk_glGETSHADERINFOLOG(shader, length, nullptr, &buffer[0]);
+      log = buffer;
+    }
+    else {
+      log = "shader compilation failed with no log";
+    }
+    objk_glDELETESHADER(shader);
+    return 0;
+  }
+
+  return shader;
+}
+
+extern "C" {
+  //
+  // Resolves the GL 2.0+ entry points. Call once after the context is current.
+  // Returns "" on success, or a comma-separated list of the functions that could
+  // not be resolved -- which is what a too-old context looks like.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_load_functions(VMContext& context) {
+    const std::string missing = objk_gl_load_functions();
+    APITools_SetStringValue(context, 0, BytesToUnicode(missing));
+  }
+
+  //
+  // Compiles a vertex + fragment shader and links them into a program: five GL
+  // calls per stage plus the link, collapsed into ONE native call, because the
+  // VM resolves the symbol by string on every call.
+  //
+  // slot 0 = program id (0 on failure), 1 = vertex source, 2 = fragment source,
+  // slot 3 receives the compile/link log.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_program_create(VMContext& context) {
+    if(!objk_gl_loaded) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 3, BytesToUnicode("GL functions not loaded; call GL->LoadFunctions first"));
+      return;
+    }
+
+    const std::string vertex_source = UnicodeToBytes(APITools_GetStringValue(context, 1));
+    const std::string fragment_source = UnicodeToBytes(APITools_GetStringValue(context, 2));
+
+    std::string log;
+    const GLuint vertex = objk_gl_compile_stage(GL_VERTEX_SHADER, vertex_source, log);
+    if(!vertex) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 3, BytesToUnicode("vertex shader: " + log));
+      return;
+    }
+
+    const GLuint fragment = objk_gl_compile_stage(GL_FRAGMENT_SHADER, fragment_source, log);
+    if(!fragment) {
+      objk_glDELETESHADER(vertex);
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 3, BytesToUnicode("fragment shader: " + log));
+      return;
+    }
+
+    const GLuint program = objk_glCREATEPROGRAM();
+    objk_glATTACHSHADER(program, vertex);
+    objk_glATTACHSHADER(program, fragment);
+    objk_glLINKPROGRAM(program);
+
+    // the stages are linked into the program now; the objects themselves are no
+    // longer needed whether or not the link succeeded
+    objk_glDELETESHADER(vertex);
+    objk_glDELETESHADER(fragment);
+
+    GLint linked = GL_FALSE;
+    objk_glGETPROGRAMIV(program, GL_LINK_STATUS, &linked);
+    if(linked != GL_TRUE) {
+      GLint length = 0;
+      objk_glGETPROGRAMIV(program, GL_INFO_LOG_LENGTH, &length);
+      std::string buffer;
+      if(length > 0) {
+        buffer.assign((size_t)length, '\0');
+        objk_glGETPROGRAMINFOLOG(program, length, nullptr, &buffer[0]);
+      }
+      else {
+        buffer = "program link failed with no log";
+      }
+      objk_glDELETEPROGRAM(program);
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 3, BytesToUnicode("link: " + buffer));
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, program);
+    APITools_SetStringValue(context, 3, BytesToUnicode(""));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_program_use(VMContext& context) {
+    if(objk_gl_loaded) {
+      objk_glUSEPROGRAM((GLuint)APITools_GetIntValue(context, 0));
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_program_delete(VMContext& context) {
+    if(objk_gl_loaded) {
+      const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+      if(program) {
+        objk_glDELETEPROGRAM(program);
+      }
+    }
+  }
+
+  //
+  // Uploads a 4x4 matrix. Objeck Float is a 64-bit double and GL wants 32-bit
+  // floats, so the 16 elements are narrowed here -- the conversion every buffer
+  // upload in this file has to do.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_matrix4(VMContext& context) {
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+    size_t count = 0;
+    size_t* values = objk_array_from_holder(APITools_GetObjectValue(context, 2), count);
+    if(!values || count < 16) {
+      return;
+    }
+
+    const double* source = (double*)values;
+    GLfloat matrix[16];
+    for(int i = 0; i < 16; ++i) {
+      matrix[i] = (GLfloat)source[i];
+    }
+
+    const GLint location = objk_glGETUNIFORMLOCATION(program, name.c_str());
+    if(location >= 0) {
+      objk_glUNIFORMMATRIX4FV(location, 1, GL_FALSE, matrix);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_int(VMContext& context) {
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+    const GLint value = (GLint)APITools_GetIntValue(context, 2);
+
+    const GLint location = objk_glGETUNIFORMLOCATION(program, name.c_str());
+    if(location >= 0) {
+      objk_glUNIFORM1I(location, value);
+    }
+  }
+
+  //
+  // Uploads geometry once into a VAO/VBO/EBO and returns a handle to draw it
+  // many times. This is the shape that keeps the native boundary cheap: the
+  // per-frame cost is one draw call, not one call per vertex.
+  //
+  // slot 0 = mesh handle (0 on failure), 1 = Float[] interleaved vertices,
+  // 2 = Int[] indices, 3 = Int[] attribute component counts (e.g. [3,2] for
+  // position + texcoord).
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_mesh_create(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    size_t vertex_count = 0, index_count = 0, layout_count = 0;
+    size_t* vertices = objk_array_from_holder(APITools_GetObjectValue(context, 1), vertex_count);
+    size_t* indices = objk_array_from_holder(APITools_GetObjectValue(context, 2), index_count);
+    size_t* layout = objk_array_from_holder(APITools_GetObjectValue(context, 3), layout_count);
+
+    if(!vertices || !indices || !layout || !vertex_count || !index_count || !layout_count) {
+      return;
+    }
+
+    // double -> GLfloat, and Objeck's 64-bit Int -> GLuint
+    const double* vertex_source = (double*)vertices;
+    std::vector<GLfloat> vertex_data(vertex_count);
+    for(size_t i = 0; i < vertex_count; ++i) {
+      vertex_data[i] = (GLfloat)vertex_source[i];
+    }
+
+    std::vector<GLuint> index_data(index_count);
+    for(size_t i = 0; i < index_count; ++i) {
+      index_data[i] = (GLuint)indices[i];
+    }
+
+    GLsizei stride = 0;
+    for(size_t i = 0; i < layout_count; ++i) {
+      stride += (GLsizei)layout[i];
+    }
+    if(stride <= 0) {
+      return;
+    }
+
+    ObjkMesh* mesh = new ObjkMesh();
+    mesh->vao = mesh->vbo = mesh->ebo = 0;
+    mesh->index_count = (GLsizei)index_count;
+
+    objk_glGENVERTEXARRAYS(1, &mesh->vao);
+    objk_glBINDVERTEXARRAY(mesh->vao);
+
+    objk_glGENBUFFERS(1, &mesh->vbo);
+    objk_glBINDBUFFER(GL_ARRAY_BUFFER, mesh->vbo);
+    objk_glBUFFERDATA(GL_ARRAY_BUFFER,
+                      (GLsizeiptr)(vertex_data.size() * sizeof(GLfloat)),
+                      vertex_data.data(), GL_STATIC_DRAW);
+
+    objk_glGENBUFFERS(1, &mesh->ebo);
+    objk_glBINDBUFFER(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+    objk_glBUFFERDATA(GL_ELEMENT_ARRAY_BUFFER,
+                      (GLsizeiptr)(index_data.size() * sizeof(GLuint)),
+                      index_data.data(), GL_STATIC_DRAW);
+
+    size_t offset = 0;
+    for(size_t i = 0; i < layout_count; ++i) {
+      const GLint components = (GLint)layout[i];
+      objk_glVERTEXATTRIBPOINTER((GLuint)i, components, GL_FLOAT, GL_FALSE,
+                                 stride * (GLsizei)sizeof(GLfloat),
+                                 (const void*)(offset * sizeof(GLfloat)));
+      objk_glENABLEVERTEXATTRIBARRAY((GLuint)i);
+      offset += (size_t)components;
+    }
+
+    // unbind the VAO so later state changes cannot accidentally mutate it
+    objk_glBINDVERTEXARRAY(0);
+
+    APITools_SetIntValue(context, 0, (size_t)mesh);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_mesh_draw(VMContext& context) {
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
+    if(mesh && mesh->vao) {
+      objk_glBINDVERTEXARRAY(mesh->vao);
+      glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT, nullptr);
+      objk_glBINDVERTEXARRAY(0);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_mesh_delete(VMContext& context) {
+    ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
+    if(mesh) {
+      if(objk_gl_loaded) {
+        if(mesh->ebo) { objk_glDELETEBUFFERS(1, &mesh->ebo); }
+        if(mesh->vbo) { objk_glDELETEBUFFERS(1, &mesh->vbo); }
+        if(mesh->vao) { objk_glDELETEVERTEXARRAYS(1, &mesh->vao); }
+      }
+      delete mesh;
+    }
+  }
+
+  //
+  // Builds a GL texture from an SDL_Surface, so image loading stays SDL's job
+  // (Image->Load already handles PNG/JPEG) and this adds no decoding
+  // dependency. The surface is converted to a known 32-bit RGBA layout first
+  // rather than trusting whatever format the file happened to produce.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_texture_from_surface(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    SDL_Surface* source = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    if(!source) {
+      return;
+    }
+
+    SDL_Surface* rgba = SDL_ConvertSurfaceFormat(source, SDL_PIXELFORMAT_ABGR8888, 0);
+    if(!rgba) {
+      return;
+    }
+
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgba->w, rgba->h, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, rgba->pixels);
+    // GL_LINEAR rather than mipmaps: glGenerateMipmap is a 3.0 entry point and
+    // this keeps the loaded function set smaller. Callers wanting mipmaps can
+    // add it following the recipe at the top of this section.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    SDL_FreeSurface(rgba);
+    APITools_SetIntValue(context, 0, texture);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_texture_bind(VMContext& context) {
+    if(objk_gl_loaded) {
+      const GLuint texture = (GLuint)APITools_GetIntValue(context, 0);
+      const GLint unit = (GLint)APITools_GetIntValue(context, 1);
+      objk_glACTIVETEXTURE(GL_TEXTURE0 + unit);
+      glBindTexture(GL_TEXTURE_2D, texture);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_texture_delete(VMContext& context) {
+    const GLuint texture = (GLuint)APITools_GetIntValue(context, 0);
+    if(texture) {
+      glDeleteTextures(1, &texture);
+    }
+  }
+
+  //
+  // glEnable/glDisable are GL 1.1, so they need no loaded pointer.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_enable(VMContext& context) {
+    glEnable((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_disable(VMContext& context) {
+    glDisable((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+  //
+  // Reads one pixel out of the current framebuffer as packed 0xAARRGGBB.
+  //
+  // This is what lets a test assert that something was actually DRAWN rather
+  // than merely that the program ran without crashing -- the distinction that
+  // matters for a headless CI check. glReadPixels is GL 1.1.
+  //
+  // Note GL's origin is bottom-left, so y counts up from the bottom.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_read_pixel(VMContext& context) {
+    const GLint x = (GLint)APITools_GetIntValue(context, 1);
+    const GLint y = (GLint)APITools_GetIntValue(context, 2);
+
+    GLubyte rgba[4] = {0, 0, 0, 0};
+    glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+
+    const size_t packed = ((size_t)rgba[3] << 24) | ((size_t)rgba[0] << 16) |
+                          ((size_t)rgba[1] << 8) | (size_t)rgba[2];
+    APITools_SetIntValue(context, 0, packed);
   }
 }

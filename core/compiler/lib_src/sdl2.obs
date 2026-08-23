@@ -5218,6 +5218,16 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		The raw surface handle. Needed by other bundles that hand a surface to
+		native code -- Game.OpenGL's Texture2D uploads one as a GL texture -- and
+		not useful otherwise.
+		@return native surface pointer as an Int
+		~#
+		method : public : GetSurface() ~ Int {
+			return @surface;
+		}
+
+		#~
 		Frees the event
 		~#
 		method : public : Free() ~ Nil {

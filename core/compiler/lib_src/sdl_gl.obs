@@ -74,6 +74,16 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	Capabilities for GL->Enable / GL->Disable.
+	~#
+	consts Capability {
+		GL_CULL_FACE := 0x0B44,
+		GL_DEPTH_TEST := 0x0B71,
+		GL_BLEND := 0x0BE2,
+		GL_SCISSOR_TEST := 0x0C11
+	}
+
+	#~
 	OpenGL state operations.
 
 	Every method needs a current context (Window->GLCreateContext), and GL state
@@ -81,6 +91,46 @@ bundle Game.OpenGL {
 	thread.
 	~#
 	class GL {
+		#~
+		Resolve the OpenGL 2.0+ entry points. Call once, after the context is
+		current and before creating any Shader, Mesh or Texture2D.
+
+		Everything above GL 1.1 has to be looked up at runtime; that happens in
+		native code and is cached, so this is a one-off cost rather than per call.
+		@return an empty string on success, or a comma-separated list of the
+		functions that could not be resolved -- which is what a context older than
+		3.3 looks like from here
+		~#
+		function : LoadFunctions() ~ String {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_load_functions", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		#~
+		Enable a capability, e.g. Capability->GL_DEPTH_TEST.
+		@param capability the capability to enable
+		~#
+		function : Enable(capability : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(capability);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_enable", array_args);
+		}
+
+		#~
+		Disable a capability.
+		@param capability the capability to disable
+		~#
+		function : Disable(capability : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(capability);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_disable", array_args);
+		}
 		#~
 		Set the color the next Clear fills the color buffer with. Components are
 		clamped to 0.0-1.0.
@@ -139,6 +189,30 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Read one pixel from the current framebuffer.
+
+		The point of this is assertion: it lets a program (or a test) check that
+		something was actually DRAWN, rather than only that nothing crashed. Read
+		before swapping buffers, since the swap may discard the back buffer.
+
+		GL's origin is bottom-left, so y counts up from the bottom of the drawable.
+		@param x pixel column
+		@param y pixel row, counted from the bottom
+		@return the pixel packed as 0xAARRGGBB
+		~#
+		function : ReadPixel(x : Int, y : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(x);
+			array_args[2] := IntRef->New(y);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_read_pixel", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
 		Take one error off the GL error queue.
 
 		GL queues errors and each call removes only one, so a single check can hide
@@ -183,6 +257,424 @@ bundle Game.OpenGL {
 			};
 
 			return result;
+		}
+	}
+
+	#~
+	A linked shader program, built from vertex and fragment source.
+
+	One native call does the whole compile-and-link, so a failure comes back as a
+	log rather than as five separate error checks. Check IsOk() before drawing;
+	GetLog() carries the compiler's message when it is false.
+
+	```
+	shader := Shader->New(vertex_source, fragment_source);
+	if(<>shader->IsOk()) {
+		shader->GetLog()->ErrorLine();
+		return;
+	};
+	shader->Use();
+	```
+	~#
+	class Shader {
+		@program : Int;
+		@log : String;
+
+		#~
+		Compile and link a program.
+		@param vertex_source GLSL vertex shader source, starting with "#version 330 core"
+		@param fragment_source GLSL fragment shader source
+		~#
+		New(vertex_source : String, fragment_source : String) {
+			@program := 0;
+			@log := "";
+
+			if(vertex_source = Nil | fragment_source = Nil) {
+				@log := "shader source was Nil";
+				return;
+			};
+
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := vertex_source;
+			array_args[2] := fragment_source;
+			array_args[3] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_program_create", array_args);
+
+			value := array_args[0]->As(IntRef);
+			@program := value->Get();
+			@log := array_args[3]->As(String);
+		}
+
+		#~
+		@return true when the program compiled and linked
+		~#
+		method : public : IsOk() ~ Bool {
+			return @program <> 0;
+		}
+
+		#~
+		@return the compile/link log; empty when IsOk() is true
+		~#
+		method : public : GetLog() ~ String {
+			return @log;
+		}
+
+		#~
+		Make this program current for subsequent draws.
+		~#
+		method : public : Use() ~ Nil {
+			if(@program <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@program);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_program_use", array_args);
+			};
+		}
+
+		#~
+		Set a mat4 uniform.
+		@param name the uniform's name in the shader
+		@param matrix 16 floats in column-major order, as Matrix4 produces
+		~#
+		method : public : SetMatrix4(name : String, matrix : Float[]) ~ Nil {
+			if(@program <> 0 & name <> Nil & matrix <> Nil & matrix->Size() >= 16) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@program);
+				array_args[1] := name;
+				array_args[2] := FloatArrayRef->New(matrix);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_matrix4", array_args);
+			};
+		}
+
+		#~
+		Set an int uniform. Also how a sampler is pointed at a texture unit.
+		@param name the uniform's name in the shader
+		@param value the value
+		~#
+		method : public : SetInt(name : String, value : Int) ~ Nil {
+			if(@program <> 0 & name <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@program);
+				array_args[1] := name;
+				array_args[2] := IntRef->New(value);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_int", array_args);
+			};
+		}
+
+		#~
+		Release the program. GL objects are invisible to the collector.
+		~#
+		method : public : Free() ~ Nil {
+			if(@program <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@program);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_program_delete", array_args);
+				@program := 0;
+			};
+		}
+	}
+
+	#~
+	Geometry uploaded to the GPU once and drawn many times.
+
+	Vertices are interleaved and described by a layout: [3, 2] means each vertex
+	is three floats of position followed by two of texture coordinate, bound to
+	shader locations 0 and 1 in that order. Indices select vertices, so shared
+	corners are stored once.
+
+	Upload cost is paid at construction; Draw() is a single native call regardless
+	of how many triangles it draws. That is deliberate -- per-vertex calls across
+	the native boundary would be orders of magnitude slower.
+
+	```
+	# a unit quad: position(3) + texcoord(2)
+	vertices := [-0.5, -0.5, 0.0, 0.0, 0.0,
+	              0.5, -0.5, 0.0, 1.0, 0.0,
+	              0.5,  0.5, 0.0, 1.0, 1.0,
+	             -0.5,  0.5, 0.0, 0.0, 1.0];
+	indices := [0, 1, 2, 2, 3, 0];
+	mesh := Mesh->New(vertices, indices, [3, 2]);
+	```
+	~#
+	class Mesh {
+		@mesh : Int;
+
+		#~
+		Upload geometry.
+		@param vertices interleaved vertex data
+		@param indices triangle indices into the vertex list
+		@param layout component count per attribute, in shader location order
+		~#
+		New(vertices : Float[], indices : Int[], layout : Int[]) {
+			@mesh := 0;
+
+			if(vertices = Nil | indices = Nil | layout = Nil) {
+				return;
+			};
+
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := FloatArrayRef->New(vertices);
+			array_args[2] := IntArrayRef->New(indices);
+			array_args[3] := IntArrayRef->New(layout);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_create", array_args);
+
+			value := array_args[0]->As(IntRef);
+			@mesh := value->Get();
+		}
+
+		#~
+		@return true when the geometry uploaded
+		~#
+		method : public : IsOk() ~ Bool {
+			return @mesh <> 0;
+		}
+
+		#~
+		Draw the whole mesh. Bind a Shader first.
+		~#
+		method : public : Draw() ~ Nil {
+			if(@mesh <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@mesh);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_draw", array_args);
+			};
+		}
+
+		#~
+		Release the buffers.
+		~#
+		method : public : Free() ~ Nil {
+			if(@mesh <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@mesh);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_delete", array_args);
+				@mesh := 0;
+			};
+		}
+	}
+
+	#~
+	A 2D texture.
+
+	Built from an SDL Surface, so image decoding stays SDL's job -- Game.SDL2's
+	Image->Load already reads PNG and JPEG, and this adds no new dependency.
+
+	```
+	surface := Image->Load("crate.png");
+	texture := Texture2D->New(surface);
+	surface->Free();          # the pixels are on the GPU now
+	```
+	~#
+	class Texture2D {
+		@texture : Int;
+
+		#~
+		Upload a surface's pixels as a texture. The surface is converted to 32-bit
+		RGBA internally, so any format Image->Load produces works.
+		@param surface the source surface; still owned by the caller
+		~#
+		New(surface : Surface) {
+			@texture := 0;
+
+			if(surface = Nil | surface->IsNull()) {
+				return;
+			};
+
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(surface->GetSurface());
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_from_surface", array_args);
+
+			value := array_args[0]->As(IntRef);
+			@texture := value->Get();
+		}
+
+		#~
+		@return true when the texture uploaded
+		~#
+		method : public : IsOk() ~ Bool {
+			return @texture <> 0;
+		}
+
+		#~
+		Bind to a texture unit, to be read by a sampler uniform set to the same
+		unit number.
+		@param unit the texture unit, 0 for the first
+		~#
+		method : public : Bind(unit : Int) ~ Nil {
+			if(@texture <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntRef->New(@texture);
+				array_args[1] := IntRef->New(unit);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_bind", array_args);
+			};
+		}
+
+		#~
+		Release the texture.
+		~#
+		method : public : Free() ~ Nil {
+			if(@texture <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@texture);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_delete", array_args);
+				@texture := 0;
+			};
+		}
+	}
+
+	#~
+	4x4 matrices for the usual transform stack, as flat Float[16] in
+	COLUMN-MAJOR order -- the layout GL expects, so no transpose happens on
+	upload.
+
+	Static functions returning new arrays, following Vector2's style in
+	Game.Framework. Multiply is 'apply rhs, then lhs', so a model-view-projection
+	is Multiply(projection, Multiply(view, model)).
+	~#
+	class Matrix4 {
+		#~
+		@return a new identity matrix
+		~#
+		function : Identity() ~ Float[] {
+			m := Float->New[16];
+			m[0] := 1.0; m[5] := 1.0; m[10] := 1.0; m[15] := 1.0;
+
+			return m;
+		}
+
+		#~
+		Matrix product.
+		@param lhs applied second
+		@param rhs applied first
+		@return lhs * rhs
+		~#
+		function : Multiply(lhs : Float[], rhs : Float[]) ~ Float[] {
+			out := Float->New[16];
+
+			for(col := 0; col < 4; col += 1;) {
+				for(row := 0; row < 4; row += 1;) {
+					sum := 0.0;
+					for(i := 0; i < 4; i += 1;) {
+						# column-major: element (row, i) is lhs[i * 4 + row]
+						sum += lhs[i * 4 + row] * rhs[col * 4 + i];
+					};
+					out[col * 4 + row] := sum;
+				};
+			};
+
+			return out;
+		}
+
+		#~
+		Translation matrix.
+		@param x x offset
+		@param y y offset
+		@param z z offset
+		@return the matrix
+		~#
+		function : Translation(x : Float, y : Float, z : Float) ~ Float[] {
+			m := Identity();
+			m[12] := x; m[13] := y; m[14] := z;
+
+			return m;
+		}
+
+		#~
+		Uniform scale matrix.
+		@param s scale factor
+		@return the matrix
+		~#
+		function : Scale(s : Float) ~ Float[] {
+			m := Float->New[16];
+			m[0] := s; m[5] := s; m[10] := s; m[15] := 1.0;
+
+			return m;
+		}
+
+		#~
+		Rotation about the X axis.
+		@param radians angle in radians
+		@return the matrix
+		~#
+		function : RotationX(radians : Float) ~ Float[] {
+			c := radians->Cos();
+			s := radians->Sin();
+
+			m := Identity();
+			m[5] := c;  m[6] := s;
+			m[9] := s * -1.0; m[10] := c;
+
+			return m;
+		}
+
+		#~
+		Rotation about the Y axis.
+		@param radians angle in radians
+		@return the matrix
+		~#
+		function : RotationY(radians : Float) ~ Float[] {
+			c := radians->Cos();
+			s := radians->Sin();
+
+			m := Identity();
+			m[0] := c; m[2] := s * -1.0;
+			m[8] := s; m[10] := c;
+
+			return m;
+		}
+
+		#~
+		Rotation about the Z axis.
+		@param radians angle in radians
+		@return the matrix
+		~#
+		function : RotationZ(radians : Float) ~ Float[] {
+			c := radians->Cos();
+			s := radians->Sin();
+
+			m := Identity();
+			m[0] := c;  m[1] := s;
+			m[4] := s * -1.0; m[5] := c;
+
+			return m;
+		}
+
+		#~
+		Right-handed perspective projection, mapping to GL's -1..1 depth range.
+		@param fov_radians vertical field of view
+		@param aspect width divided by height
+		@param near near clip distance; must be greater than 0
+		@param far far clip distance
+		@return the matrix
+		~#
+		function : Perspective(fov_radians : Float, aspect : Float, near : Float, far : Float) ~ Float[] {
+			m := Float->New[16];
+
+			f := 1.0 / (fov_radians / 2.0)->Tan();
+			m[0] := f / aspect;
+			m[5] := f;
+			m[10] := (far + near) / (near - far);
+			m[11] := -1.0;
+			m[14] := (2.0 * far * near) / (near - far);
+
+			return m;
+		}
+
+		#~
+		A view matrix that steps back along +Z and looks at the origin. The
+		smallest useful camera; a full LookAt belongs with Vector3.
+		@param distance how far back to stand
+		@return the matrix
+		~#
+		function : LookAtOrigin(distance : Float) ~ Float[] {
+			return Translation(0.0, 0.0, distance * -1.0);
 		}
 	}
 }
