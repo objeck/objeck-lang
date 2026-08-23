@@ -681,6 +681,47 @@ class GlContextTest {
 			shader->Free();
 		};
 
+		# --- Mesh->Quad's texcoords must span 0..1 across the whole screen ---
+		# Every post-process pass depends on this and the round-trip check above
+		# cannot see it: the captured texture is a flat colour, so it looks
+		# identical whether the quad samples 0..1, 0..0.5, or the same texel
+		# everywhere. A texture that VARIES across its width is the only fixture
+		# that separates them.
+		strip_surface := Texture2D->NewSurface(2, 1);
+		if(Check("a two-pixel strip for the quad", strip_surface <> Nil)) {
+			strip_surface->FillRect(Rect->New(0, 0, 1, 1), red);
+			strip_surface->FillRect(Rect->New(1, 0, 1, 1), blue);
+			strip := Texture2D->New(strip_surface, TextureFilter->GL_NEAREST, TextureWrap->GL_CLAMP_TO_EDGE, false);
+			strip_surface->Free();
+
+			screen := Mesh->Quad(1.0);
+			flat_shader := Shader->Textured();
+			if(Check("a screen quad and shader", strip->IsOk() & screen->IsOk() & flat_shader->IsOk())) {
+				GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+				GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+				flat_shader->Use();
+				flat_shader->SetMatrix4("mvp", Matrix4->Identity());
+				flat_shader->SetInt("tex", 0);
+				strip->Bind(0);
+				screen->Draw();
+
+				far_left := GL->ReadPixel(2, @pixel_h / 2);
+				far_right := GL->ReadPixel(@pixel_w - 3, @pixel_h / 2);
+				top_edge := GL->ReadPixel(@pixel_w / 4, @pixel_h - 3);
+				bottom_edge := GL->ReadPixel(@pixel_w / 4, 2);
+				"  screen quad: left=0x{$far_left} right=0x{$far_right}"->PrintLine();
+
+				Check("Mesh->Quad(1.0) reaches both screen edges", far_left = red & far_right = blue);
+				# And vertically: an identity matrix must put the quad against the top
+				# and bottom too, or a post pass loses rows.
+				Check("and both top and bottom", top_edge = red & bottom_edge = red);
+			};
+
+			screen->Free();
+			flat_shader->Free();
+			strip->Free();
+		};
+
 		# --- a target the driver cannot make must report, not pretend ---
 		absurd := RenderTarget->New(1000000, 1000000);
 		Check("an impossible size is refused", <>absurd->IsOk());

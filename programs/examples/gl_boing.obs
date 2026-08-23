@@ -20,12 +20,23 @@ other reason it exists:
   Transform            the ball's position, spin and scale, matrix cached
   Light                one directional light; the shading is what makes it a ball
   Camera->PlaceLookingAt  the orbit
+  RenderTarget         the whole scene drawn into a texture, then to the screen
 
 ## What to look at
 
 The ball is lit, so its shading moves as it spins and its underside darkens as it
 rises. That is the difference lighting makes: the same sphere unlit is a flat
 circle of checks with no sense of volume at all.
+
+The picture also goes through a second pass -- scanlines and a vignette, which
+this being an Amiga homage seemed like the right excuse for. Mechanically that is
+render-to-texture: the scene is drawn into a RenderTarget and then that texture
+is drawn onto one full-screen quad. It is the same machinery a bloom, a blur or a
+colour grade would use.
+
+Its shader is the one piece of GLSL in any of these examples, written through
+ShaderSource. That is deliberate: the built-in Shader presets cover what every
+program needs, and something specific to one program belongs in that program.
 ~#
 
 use Game.SDL2;
@@ -48,6 +59,12 @@ class BoingBall {
 	@room : Transform;
 	@light : Light;
 	@camera : Camera;
+
+	# the second pass
+	@target : RenderTarget;
+	@post : Shader;
+	@screen : Mesh;
+	@elapsed : Float;
 
 	# ball state: position, velocity and spin
 	@x : Float;
@@ -74,6 +91,7 @@ class BoingBall {
 		@vx := 3.2;  @vy := 0.0; @vz := 2.1;
 		@spin := 0.0;
 		@orbit := 0.0;
+		@elapsed := 0.0;
 
 		@projection := Float->New[16];
 		@view_projection := Float->New[16];
@@ -106,6 +124,7 @@ class BoingBall {
 			@window->BeginFrame();
 			delta := @window->GetDelta();
 
+			@elapsed += delta;
 			Advance(delta);
 			Draw();
 
@@ -165,6 +184,13 @@ class BoingBall {
 	method : Draw() ~ Nil {
 		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
 
+		# --- pass one: the scene, into a texture ---
+		# Bind switches the viewport to the target's size as well. BeginFrame
+		# already cleared the WINDOW, which is a different buffer, so the target
+		# needs its own clear.
+		@target->Bind();
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
 		@lit->Use();
 		@light->ApplyTo(@lit);
 		@lit->SetInt("tex", 0);
@@ -172,6 +198,20 @@ class BoingBall {
 		DrawPiece(@room_mesh, @room_texture, @room);
 		DrawPiece(@floor_mesh, @floor_texture, @floor);
 		DrawPiece(@ball_mesh, @ball_texture, @ball);
+
+		# --- pass two: that texture, onto the screen ---
+		@target->Unbind(@window);
+
+		# Depth testing off: a full-screen quad at z = 0 competes with whatever
+		# depth values are already in the window's buffer, and would sometimes lose.
+		@window->SetDepthTest(false);
+		@post->Use();
+		@post->SetInt("tex", 0);
+		@post->SetFloat("time", @elapsed);
+		@post->SetFloat("scan_height", @target->GetHeight()->As(Float));
+		@target->GetTexture()->Bind(0);
+		@screen->Draw();
+		@window->SetDepthTest(true);
 	}
 
 	#~
@@ -240,7 +280,61 @@ class BoingBall {
 		@light->SetColor(1.0, 0.97, 0.9);
 		@light->SetAmbient(0.2, 0.21, 0.28);
 
-		return true;
+		return BuildPostPass();
+	}
+
+	#~
+	The second pass: a target the size of the drawable, a full-screen quad, and a
+	shader that reads one and writes the other.
+
+	The target is the drawable's size in PIXELS, not the window's size in points,
+	because that is what the window's own framebuffer is and anything else
+	resamples the picture for no reason.
+	~#
+	method : BuildPostPass() ~ Bool {
+		@target := RenderTarget->New(@window->GetWidth(), @window->GetHeight());
+		if(<>@target->IsOk()) {
+			"Render target failed: "->Print();
+			@target->GetError()->ErrorLine();
+			return false;
+		};
+
+		# Mesh->Quad(1.0) covers exactly clip space, which is what a full-screen
+		# pass wants -- so no matrix is needed at all.
+		@screen := Mesh->Quad(1.0);
+
+		vertex := ShaderSource->New();
+		vertex->Add("layout (location = 0) in vec3 in_position;");
+		vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+		vertex->Add("out vec2 texcoord;");
+		vertex->Add("void main() {");
+		vertex->Add("  texcoord = in_texcoord;");
+		vertex->Add("  gl_Position = vec4(in_position, 1.0);");
+		vertex->Add("}");
+
+		fragment := ShaderSource->New();
+		fragment->Add("in vec2 texcoord;");
+		fragment->Add("uniform sampler2D tex;");
+		fragment->Add("uniform float time;");
+		fragment->Add("uniform float scan_height;");
+		fragment->Add("out vec4 frag_color;");
+		fragment->Add("void main() {");
+		fragment->Add("  vec3 color = texture(tex, texcoord).rgb;");
+		fragment->Add("  float line = 0.92 + 0.08 * sin(texcoord.y * scan_height * 3.14159);");
+		fragment->Add("  vec2 offset = texcoord - vec2(0.5);");
+		fragment->Add("  float vignette = 1.0 - 0.75 * dot(offset, offset);");
+		fragment->Add("  float flicker = 0.985 + 0.015 * sin(time * 8.0);");
+		fragment->Add("  frag_color = vec4(color * line * vignette * flicker, 1.0);");
+		fragment->Add("}");
+
+		@post := Shader->New(vertex->Build(), fragment->Build());
+		if(<>@post->IsOk()) {
+			"Post shader failed:"->ErrorLine();
+			@post->GetLog()->ErrorLine();
+			return false;
+		};
+
+		return @screen->IsOk();
 	}
 
 	#~
@@ -255,6 +349,11 @@ class BoingBall {
 		if(@floor_mesh <> Nil) { @floor_mesh->Free(); };
 		if(@room_mesh <> Nil) { @room_mesh->Free(); };
 		if(@lit <> Nil) { @lit->Free(); };
+		if(@post <> Nil) { @post->Free(); };
+		if(@screen <> Nil) { @screen->Free(); };
+		# The target owns its colour texture -- GetTexture hands back a wrapper that
+		# must NOT be freed separately.
+		if(@target <> Nil) { @target->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
 	}
