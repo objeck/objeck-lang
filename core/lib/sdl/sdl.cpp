@@ -2816,7 +2816,27 @@ extern "C" {
     const SDL_bool enabled = (SDL_bool)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_CaptureMouse(enabled));
   }
-  
+
+  //
+  // Relative mouse mode: hides the cursor, locks it to the window, and reports
+  // motion as unbounded deltas. This is what mouse-look needs -- without it the
+  // pointer stops at the screen edge and the view stops turning with it.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_set_relative_mouse_mode(VMContext& context) {
+    const SDL_bool enabled = (SDL_bool)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_SetRelativeMouseMode(enabled));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_get_relative_mouse_mode(VMContext& context) {
+    APITools_SetIntValue(context, 0, SDL_GetRelativeMouseMode() == SDL_TRUE ? 1 : 0);
+  }
+
   //
   // Clipboard
   //

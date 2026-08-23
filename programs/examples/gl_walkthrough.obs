@@ -4,6 +4,7 @@ Walk around a 3D room with obstacles -- first-person, with collision.
   compile: obc -src gl_walkthrough.obs -lib sdl2,sdl_gl
   run:     obr gl_walkthrough
 
+  mouse        look around
   W / S        walk forward, back
   A / D        strafe left, right
   left / right turn
@@ -52,6 +53,11 @@ class Walkthrough {
 
 	# the player is a circle in plan view, not a point
 	@radius : Float;
+	@mouse_look : Bool;
+	# radians of view rotation per pixel of mouse movement. A field rather than
+	# a consts entry because a consts block only accepts integer and character
+	# literals.
+	@sensitivity : Float;
 
 	function : Main(args : String[]) ~ Nil {
 		Walkthrough->New()->Run();
@@ -59,6 +65,7 @@ class Walkthrough {
 
 	New() {
 		@radius := 0.35;
+		@sensitivity := 0.0025;
 		BuildScene();
 		@camera := Camera->New(Vector3->New(0.0, 1.7, 6.0));
 	}
@@ -93,6 +100,15 @@ class Walkthrough {
 				type := e->GetType();
 				if(type = EventType->SDL_QUIT) {
 					quit := true;
+				}
+				else if(type = EventType->SDL_MOUSEMOTION & @mouse_look) {
+					# Deltas, not absolute position: in relative mode the cursor is
+					# locked, so GetRelX/GetRelY keep reporting past the screen edge.
+					motion := e->GetMouseMotion();
+					if(motion <> Nil) {
+						@camera->Turn(motion->GetRelX()->As(Float) * @sensitivity * -1.0);
+						@camera->Look(motion->GetRelY()->As(Float) * @sensitivity * -1.0);
+					};
 				};
 			};
 
@@ -342,6 +358,13 @@ class Walkthrough {
 		GL->ClearColor(0.05, 0.06, 0.09, 1.0);
 		Core->GLSetSwapInterval(1);
 
+		# Mouse-look. Not every platform supports relative mode, so fall back to
+		# arrow-key turning rather than leaving the player unable to look around.
+		@mouse_look := Cursor->SetRelativeMouseMode(true) = 0;
+		if(<>@mouse_look) {
+			"Note: relative mouse mode unavailable; use the arrow keys to look"->PrintLine();
+		};
+
 		@shader := Shader->New(VertexSource(), FragmentSource());
 		if(<>@shader->IsOk()) {
 			"Shader failed:"->ErrorLine();
@@ -477,6 +500,12 @@ class Walkthrough {
 	}
 
 	method : Close() ~ Nil {
+		# Release the cursor first: leaving relative mode on after the window
+		# closes strands the pointer.
+		if(@mouse_look) {
+			Cursor->SetRelativeMouseMode(false);
+		};
+
 		if(@wall_texture <> Nil) { @wall_texture->Free(); };
 		if(@box_texture <> Nil) { @box_texture->Free(); };
 		if(@cube <> Nil) { @cube->Free(); };
