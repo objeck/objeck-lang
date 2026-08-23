@@ -79,6 +79,7 @@ class GlContextTest {
 		CheckShaderAndDraw();
 		CheckProjection();
 		CheckPrimitives();
+		CheckShaderPresets();
 		CheckTextures();
 		CheckTextureOrientation();
 		CheckFrameLoop();
@@ -264,6 +265,120 @@ class GlContextTest {
 
 		mesh->Free();
 		shader->Free();
+	}
+
+	#~
+	The built-in shaders draw, their uniform setters work, and -- the one that is
+	a real bug fix -- a uniform set on one program does not land on another.
+
+	glUniform* writes to whatever program is CURRENT, not to the program whose
+	uniform location was just looked up. Nothing used to make the target program
+	current, so with two shaders alive, setting a uniform on the second wrote it
+	into the first. Every demo got away with it by never calling Use twice.
+
+	The assertion has to be arranged so the old behaviour FAILS. Two flat shaders:
+	bind the first, then set a colour on the second WITHOUT binding it, then bind
+	the second and draw. Correct: red. Old behaviour: the colour went into the
+	first shader, the second still has its default of zero, and the quad is black.
+	~#
+	method : CheckShaderPresets() ~ Nil {
+		red := 0xFFFF0000;
+		black := 0xFF000000;
+
+		flat_a := Shader->Flat();
+		flat_b := Shader->Flat();
+		textured := Shader->Textured();
+		fog := Shader->TexturedFog();
+
+		Check("Shader->Flat compiles", flat_a->IsOk() & flat_b->IsOk());
+		Check("Shader->Textured compiles", textured->IsOk());
+		Check("Shader->TexturedFog compiles", fog->IsOk());
+		if(<>flat_a->IsOk() | <>flat_b->IsOk() | <>fog->IsOk()) {
+			log := flat_a->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		quad := Mesh->Quad(1.0);
+		if(<>Check("a full-screen quad uploads", quad->IsOk())) {
+			return;
+		};
+
+		identity := Matrix4->Identity();
+
+		# --- SetVec3 through Flat ---
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		flat_a->Use();
+		flat_a->SetMatrix4("mvp", identity);
+		flat_a->SetVec3("color", 1.0, 0.0, 0.0);
+		quad->Draw();
+		flat_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		"  flat: 0x{$flat_pixel}"->PrintLine();
+		Check("Shader->SetVec3 reaches the shader", flat_pixel = red);
+
+		# --- the cross-contamination case ---
+		# A is bound. B is NOT. Setting on B must reach B.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		flat_a->Use();
+		# The colour FIRST, as the very first thing touched on B. Order matters to
+		# the assertion: any other setter called on B beforehand would itself bind
+		# B and mask the thing being tested. This caught a flaw in an earlier
+		# version of this check, which put SetMatrix4 first and therefore passed
+		# even with the fix removed.
+		flat_b->SetVec3("color", 1.0, 0.0, 0.0);
+		flat_b->SetMatrix4("mvp", identity);
+		flat_b->Use();
+		quad->Draw();
+		crossed := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		"  after setting on an unbound shader: 0x{$crossed}"->PrintLine();
+		Check("a uniform set on one shader does not land on another", crossed = red);
+
+		# --- SetFloat, measured rather than assumed ---
+		# The same textured-fog draw at two fog distances. Near fog clamps the
+		# geometry to its darkest, far fog leaves it bright. If SetFloat did
+		# nothing both would be identical.
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(Check("a white texture uploads", white->IsOk())) {
+			# push the quad back so it has some depth for the fog to act on
+			back := Matrix4->Translation(0.0, 0.0, -20.0);
+			projection := Matrix4->Perspective(Float->Pi() / 3.0, @gl->GetAspect(), 0.1, 100.0);
+			mvp := Matrix4->Multiply(projection, back);
+
+			fog->Use();
+			fog->SetInt("tex", 0);
+			fog->SetMatrix4("mvp", mvp);
+			white->Bind(0);
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			fog->SetFloat("fog_distance", 1000.0);
+			quad->Draw();
+			bright := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x000000FF;
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			fog->SetFloat("fog_distance", 5.0);
+			quad->Draw();
+			dim := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x000000FF;
+
+			"  fog: far={$bright} near={$dim}"->PrintLine();
+			Check("Shader->SetFloat changes what is drawn", bright > dim);
+
+			white->Free();
+		};
+
+		# A misspelling on the new setters reports, like the others.
+		GL->GetLastError();
+		flat_a->SetVec3("colour", 1.0, 0.0, 0.0);
+		spelled := GL->GetLastError();
+		Check("SetVec3 reports an unknown uniform", spelled->Size() > 0);
+
+		Check("no GL errors from the presets", GL->DrainErrors()->Size() = 0);
+
+		quad->Free();
+		fog->Free();
+		textured->Free();
+		flat_b->Free();
+		flat_a->Free();
 	}
 
 	#~
@@ -634,21 +749,12 @@ class GlContextTest {
 	   assertion samples a point that falls inside one and outside the other.
 	~#
 	method : CheckPrimitives() ~ Nil {
-		vertex := "#version 330 core\n";
-		vertex += "layout (location = 0) in vec3 in_position;\n";
-		vertex += "layout (location = 1) in vec3 in_normal;\n";
-		vertex += "uniform mat4 mvp;\n";
-		vertex += "out vec3 normal;\n";
-		vertex += "void main() { normal = in_normal; gl_Position = mvp * vec4(in_position, 1.0); }\n";
-
-		fragment := "#version 330 core\n";
-		fragment += "in vec3 normal;\n";
-		fragment += "out vec4 frag_color;\n";
-		# the normal as colour, so a face pointing at +Z is exactly blue
-		fragment += "void main() { frag_color = vec4(abs(normal), 1.0); }\n";
-
-		shader := Shader->New(vertex, fragment);
-		if(<>Check("normal-as-colour shader compiles", shader->IsOk())) {
+		# The built-in, which is the same shader this used to spell out: the normal
+		# as colour, so a face pointing at +Z comes back exactly blue. Going through
+		# it means the assertions below also cover Shader->Normals rather than a
+		# lookalike that only exists here.
+		shader := Shader->Normals();
+		if(<>Check("Shader->Normals compiles", shader->IsOk())) {
 			log := shader->GetLog();
 			"  log: {$log}"->PrintLine();
 			return;

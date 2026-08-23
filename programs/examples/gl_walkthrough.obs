@@ -242,12 +242,16 @@ class Walkthrough {
 			"Note: relative mouse mode unavailable; use the arrow keys to look"->PrintLine();
 		};
 
-		@shader := Shader->New(VertexSource(), FragmentSource());
+		# Built in, and exactly what this program hand-rolled: a textured pass that
+		# darkens with distance, which is what gives a scene with no lighting any
+		# sense of depth at all.
+		@shader := Shader->TexturedFog();
 		if(<>@shader->IsOk()) {
 			"Shader failed:"->ErrorLine();
 			@shader->GetLog()->ErrorLine();
 			return false;
 		};
+		@shader->SetFloat("fog_distance", 40.0);
 
 		@cube := Mesh->Cube();
 		if(<>@cube->IsOk()) {
@@ -265,38 +269,6 @@ class Walkthrough {
 		BuildScene();
 
 		return true;
-	}
-
-	method : VertexSource() ~ String {
-		source := "#version 330 core\n";
-		source += "layout (location = 0) in vec3 in_position;\n";
-		# location 1 is the normal, which this shader does not use yet
-		source += "layout (location = 2) in vec2 in_texcoord;\n";
-		source += "uniform mat4 mvp;\n";
-		source += "out vec2 texcoord;\n";
-		source += "out float depth;\n";
-		source += "void main() {\n";
-		source += "  texcoord = in_texcoord;\n";
-		source += "  gl_Position = mvp * vec4(in_position, 1.0);\n";
-		source += "  depth = gl_Position.z;\n";
-		source += "}\n";
-
-		return source;
-	}
-
-	method : FragmentSource() ~ String {
-		source := "#version 330 core\n";
-		source += "in vec2 texcoord;\n";
-		source += "in float depth;\n";
-		source += "uniform sampler2D tex;\n";
-		source += "out vec4 frag_color;\n";
-		source += "void main() {\n";
-		# distance fog, which also gives the room a sense of depth without lighting
-		source += "  float fog = clamp(1.0 - depth / 40.0, 0.25, 1.0);\n";
-		source += "  frag_color = texture(tex, texcoord) * vec4(vec3(fog), 1.0);\n";
-		source += "}\n";
-
-		return source;
 	}
 
 	#~

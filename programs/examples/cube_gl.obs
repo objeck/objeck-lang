@@ -90,12 +90,17 @@ class SpinningCube {
 	GLWindow, so what is left here is only this program's own content.
 	~#
 	method : BuildResources() ~ Bool {
-		@shader := Shader->New(VertexSource(), FragmentSource());
+		# Built in. This program's own shaders were a textured pass with a little
+		# depth shading, which is what TexturedFog is -- at eight units the far
+		# faces darken enough for the cube to read as a solid rather than a
+		# flat-shaded silhouette.
+		@shader := Shader->TexturedFog();
 		if(<>@shader->IsOk()) {
 			"Shader failed:"->ErrorLine();
 			@shader->GetLog()->ErrorLine();
 			return false;
 		};
+		@shader->SetFloat("fog_distance", 8.0);
 
 		@mesh := Mesh->Cube();
 		if(<>@mesh->IsOk()) {
@@ -113,35 +118,6 @@ class SpinningCube {
 		};
 
 		return true;
-	}
-
-	method : VertexSource() ~ String {
-		source := "#version 330 core\n";
-		source += "layout (location = 0) in vec3 in_position;\n";
-		# location 1 is the normal, which this shader does not use yet
-		source += "layout (location = 2) in vec2 in_texcoord;\n";
-		source += "uniform mat4 mvp;\n";
-		source += "out vec2 texcoord;\n";
-		source += "void main() {\n";
-		source += "  texcoord = in_texcoord;\n";
-		source += "  gl_Position = mvp * vec4(in_position, 1.0);\n";
-		source += "}\n";
-
-		return source;
-	}
-
-	method : FragmentSource() ~ String {
-		source := "#version 330 core\n";
-		source += "in vec2 texcoord;\n";
-		source += "uniform sampler2D tex;\n";
-		source += "out vec4 frag_color;\n";
-		source += "void main() {\n";
-		# a touch of depth shading so the faces read as a solid
-		source += "  float shade = 0.65 + 0.35 * gl_FragCoord.w;\n";
-		source += "  frag_color = texture(tex, texcoord) * vec4(vec3(shade), 1.0);\n";
-		source += "}\n";
-
-		return source;
 	}
 
 	#~

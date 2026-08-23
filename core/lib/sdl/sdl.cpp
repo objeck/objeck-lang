@@ -56,6 +56,8 @@
 // putting this first breaks common.h with "FD_ISSET: identifier not found".
 #include <SDL_opengl.h>
 #include <SDL_opengl_glext.h>   // PFNGL*PROC typedefs for the GL 2.0+ loader
+#include <map>
+#include <string>
 #include <vector>
 
 #define POLY_MAX 1024
@@ -4957,7 +4959,7 @@ GL_FN(UNIFORM1I) GL_FN(GENVERTEXARRAYS) GL_FN(BINDVERTEXARRAY)
 GL_FN(DELETEVERTEXARRAYS) GL_FN(GENBUFFERS) GL_FN(BINDBUFFER)
 GL_FN(BUFFERDATA) GL_FN(DELETEBUFFERS) GL_FN(VERTEXATTRIBPOINTER)
 GL_FN(ENABLEVERTEXATTRIBARRAY) GL_FN(ACTIVETEXTURE)
-GL_FN(GENERATEMIPMAP)
+GL_FN(GENERATEMIPMAP) GL_FN(UNIFORM1F) GL_FN(UNIFORM3FV)
 #undef GL_FN
 
 static bool objk_gl_loaded = false;
@@ -5028,6 +5030,9 @@ static std::string objk_gl_load_functions() {
   // is broken in a way worth failing loudly on rather than silently declining
   // mipmaps.
   OBJK_GL_LOAD("glGenerateMipmap", GENERATEMIPMAP)
+  // GL 2.0, like every other uniform setter here
+  OBJK_GL_LOAD("glUniform1f", UNIFORM1F)
+  OBJK_GL_LOAD("glUniform3fv", UNIFORM3FV)
 #undef OBJK_GL_LOAD
 
   objk_gl_loaded = missing.empty();
@@ -5054,6 +5059,35 @@ static size_t* objk_array_from_holder(size_t* holder, size_t& count) {
   size_t* array = (size_t*)holder[0];
   count = array[0];
   return array + ARRAY_HEADER_OFFSET;
+}
+
+// Uniform locations, cached per program.
+//
+// glGetUniformLocation is a driver call that takes a STRING, and every uniform
+// set was making one -- plus a UnicodeToBytes conversion of the Objeck string --
+// on every single call, in the per-frame path. Scene->Draw sets one matrix per
+// box per frame, so a scene of two hundred boxes was two hundred string lookups
+// a frame for a value that cannot change: a program's uniform locations are
+// fixed once it is linked.
+//
+// The name still crosses the boundary as a string, because that is the readable
+// API and the conversion is not the expensive half. What this removes is the
+// driver call.
+static std::map<GLuint, std::map<std::string, GLint> > objk_gl_uniforms;
+
+// -1 when the program has no such uniform, exactly as glGetUniformLocation
+// reports it -- including that a name GLSL optimised out as unused is
+// indistinguishable from a misspelling.
+static GLint objk_gl_uniform_location(GLuint program, const std::string& name) {
+  std::map<std::string, GLint>& cache = objk_gl_uniforms[program];
+  std::map<std::string, GLint>::const_iterator found = cache.find(name);
+  if(found != cache.end()) {
+    return found->second;
+  }
+
+  const GLint location = objk_glGETUNIFORMLOCATION(program, name.c_str());
+  cache[name] = location;
+  return location;
 }
 
 // Compiles one stage and returns 0 plus a log on failure.
@@ -5206,6 +5240,11 @@ extern "C" {
       const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
       if(program) {
         objk_glDELETEPROGRAM(program);
+        // Drop the cached locations with it. GL reuses names, so a later program
+        // handed this same id would otherwise inherit locations belonging to a
+        // program that no longer exists -- uniforms silently written to the wrong
+        // slot, which is about the worst failure mode available here.
+        objk_gl_uniforms.erase(program);
       }
     }
   }
@@ -5241,7 +5280,14 @@ extern "C" {
       matrix[i] = (GLfloat)source[i];
     }
 
-    const GLint location = objk_glGETUNIFORMLOCATION(program, name.c_str());
+    // glUniform* writes to whatever program is CURRENT, not to the one whose
+    // location was just looked up. Nothing used to make this program current, so
+    // a second shader in the same program silently received the first one's
+    // uniforms -- the demos got away with it only because none of them ever
+    // called Use twice. Binding here makes each setter correct on its own.
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
     if(location >= 0) {
       objk_glUNIFORMMATRIX4FV(location, 1, GL_FALSE, matrix);
     }
@@ -5268,12 +5314,78 @@ extern "C" {
     const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
     const GLint value = (GLint)APITools_GetIntValue(context, 2);
 
-    const GLint location = objk_glGETUNIFORMLOCATION(program, name.c_str());
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
     if(location >= 0) {
       objk_glUNIFORM1I(location, value);
     }
     else {
       objk_gl_fail("Shader->SetInt: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
+  }
+
+  //
+  // A single float uniform. slot 0 = program, 1 = name, 2 = value.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_float(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetFloat: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+    const GLfloat value = (GLfloat)APITools_GetFloatValue(context, 2);
+
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
+    if(location >= 0) {
+      objk_glUNIFORM1F(location, value);
+    }
+    else {
+      objk_gl_fail("Shader->SetFloat: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
+  }
+
+  //
+  // A vec3 uniform: light directions, colours, positions. Three separate floats
+  // rather than an array, because at this size boxing three doubles beats boxing
+  // an array holder, and every caller has three named quantities anyway.
+  //
+  // slot 0 = program, 1 = name, 2..4 = x, y, z.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_vec3(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetVec3: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+    GLfloat value[3];
+    value[0] = (GLfloat)APITools_GetFloatValue(context, 2);
+    value[1] = (GLfloat)APITools_GetFloatValue(context, 3);
+    value[2] = (GLfloat)APITools_GetFloatValue(context, 4);
+
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
+    if(location >= 0) {
+      objk_glUNIFORM3FV(location, 1, value);
+    }
+    else {
+      objk_gl_fail("Shader->SetVec3: no uniform named \"" + name +
                    "\" in this program (misspelled, or optimised out as unused)");
     }
   }

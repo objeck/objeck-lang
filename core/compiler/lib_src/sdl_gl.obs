@@ -20,7 +20,8 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 
 * GLWindow    -- a window and a 3.3 core context, opened and paced for you.
 * GL          -- static state operations. Thin, but never per-vertex.
-* Shader      -- a linked program from vertex + fragment source.
+* Shader      -- a linked program; Flat/Textured/TexturedFog/Normals built in,
+                so the common cases need no GLSL at all.
 * Mesh        -- geometry uploaded once into buffer objects, drawn many times,
                 with Cube/Plane/Quad/Sphere built in.
 * Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
@@ -866,6 +867,55 @@ bundle Game.OpenGL {
 		}
 	}
 
+		#~
+		Assemble GLSL from lines, adding the version directive and the newlines.
+
+		Shader source was being built by appending string literals that each had to
+		end in an explicit \n, an invariant nothing enforced. Drop one and two
+		declarations merge into a line that still compiles; drop one after a //
+		comment and the next statement is silently commented out. Fifty-three lines
+		of that were spread across four programs, each restating "#version 330
+		core" from memory.
+
+		```
+		source := ShaderSource->New();
+		source->Add("layout (location = 0) in vec3 in_position;");
+		source->Add("uniform mat4 mvp;");
+		source->Add("void main() { gl_Position = mvp * vec4(in_position, 1.0); }");
+		vertex := source->Build();
+		```
+		~#
+		class ShaderSource {
+			@lines : String;
+
+			#~
+			Start a GLSL 3.30 core source. The version directive is added for you and
+			must be first, which is the other thing that was being retyped.
+			~#
+			New() {
+				@lines := "#version 330 core\n";
+			}
+
+			#~
+			Append one line, terminated.
+			@param line the line, without a trailing newline
+			@return this, so calls can be chained
+			~#
+			method : public : Add(line : String) ~ ShaderSource {
+				@lines += line;
+				@lines += "\n";
+
+				return @self;
+			}
+
+			#~
+			@return the assembled source, ready for Shader->New
+			~#
+			method : public : Build() ~ String {
+				return @lines;
+			}
+		}
+
 	#~
 	A linked shader program, built from vertex and fragment source.
 
@@ -940,6 +990,14 @@ bundle Game.OpenGL {
 
 		#~
 		Set a mat4 uniform.
+
+		SETTING A UNIFORM MAKES THIS PROGRAM CURRENT, as if Use had been called.
+		That is deliberate rather than incidental: glUniform* writes to whatever
+		program is bound, not to the one the name was looked up in, so a setter
+		that did not bind would silently write another shader's uniforms whenever
+		two were alive. The consequence to know is that setting uniforms across
+		several shaders leaves the last one bound -- so call Use immediately before
+		Draw, not once at startup.
 		@param name the uniform's name in the shader
 		@param matrix 16 floats in column-major order, as Matrix4 produces
 		~#
@@ -956,6 +1014,8 @@ bundle Game.OpenGL {
 
 		#~
 		Set an int uniform. Also how a sampler is pointed at a texture unit.
+
+		Makes this program current -- see SetMatrix4.
 		@param name the uniform's name in the shader
 		@param value the value
 		~#
@@ -968,6 +1028,204 @@ bundle Game.OpenGL {
 
 				Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_int", array_args);
 			};
+		}
+
+		#~
+		Set a float uniform.
+
+		Makes this program current -- see SetMatrix4.
+		@param name the uniform's name in the shader
+		@param value the value
+		~#
+		method : public : SetFloat(name : String, value : Float) ~ Nil {
+			if(@program = 0) {
+				return;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New(@program);
+			array_args[1] := name;
+			array_args[2] := FloatRef->New(value);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_float", array_args);
+		}
+
+		#~
+		Set a vec3 uniform: a colour, a direction, a position.
+
+		Makes this program current -- see SetMatrix4.
+		@param name the uniform's name in the shader
+		@param x first component
+		@param y second component
+		@param z third component
+		~#
+		method : public : SetVec3(name : String, x : Float, y : Float, z : Float) ~ Nil {
+			if(@program = 0) {
+				return;
+			};
+
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New(@program);
+			array_args[1] := name;
+			array_args[2] := FloatRef->New(x);
+			array_args[3] := FloatRef->New(y);
+			array_args[4] := FloatRef->New(z);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_vec3", array_args);
+		}
+
+		#~
+		Set a vec3 uniform from a Vector3.
+		@param name the uniform's name in the shader
+		@param value the vector
+		~#
+		method : public : SetVec3(name : String, value : Vector3) ~ Nil {
+			if(value <> Nil) {
+				SetVec3(name, value->GetX(), value->GetY(), value->GetZ());
+			};
+		}
+
+		#~
+		A shader that fills with one colour, set through the "color" uniform as
+		three floats.
+
+		The uniform every built-in shader here shares is "mvp", a mat4. Set it with
+		SetMatrix4 and nothing else is required.
+		@return the program; check IsOk()
+		~#
+		function : Flat() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("uniform mat4 mvp;");
+			vertex->Add("void main() { gl_Position = mvp * vec4(in_position, 1.0); }");
+
+			fragment := ShaderSource->New();
+			fragment->Add("uniform vec3 color;");
+			fragment->Add("out vec4 frag_color;");
+			fragment->Add("void main() { frag_color = vec4(color, 1.0); }");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
+		#~
+		A shader that samples a texture. Uniforms: "mvp" and the sampler "tex".
+
+		Reads texture coordinates from LOCATION 2, matching every Mesh primitive --
+		location 1 is the normal. Bind a texture to unit 0 and call
+		SetInt("tex", 0).
+		@return the program; check IsOk()
+		~#
+		function : Textured() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+			vertex->Add("uniform mat4 mvp;");
+			vertex->Add("out vec2 texcoord;");
+			vertex->Add("void main() {");
+			vertex->Add("  texcoord = in_texcoord;");
+			vertex->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec2 texcoord;");
+			fragment->Add("uniform sampler2D tex;");
+			fragment->Add("out vec4 frag_color;");
+			fragment->Add("void main() { frag_color = texture(tex, texcoord); }");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
+		#~
+		Textured, darkening with distance.
+
+		Without lighting, a textured 3D scene reads flat -- every surface is the
+		same brightness however far away it is, so the eye cannot tell depth. Fog
+		is the cheapest fix and both 3D examples had hand-rolled their own version
+		of it. Uniforms: "mvp", "tex", and "fog_distance" if the default of 40
+		units is wrong for your scene.
+		@return the program; check IsOk()
+		~#
+		function : TexturedFog() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+			vertex->Add("uniform mat4 mvp;");
+			vertex->Add("out vec2 texcoord;");
+			vertex->Add("out float depth;");
+			vertex->Add("void main() {");
+			vertex->Add("  texcoord = in_texcoord;");
+			vertex->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+			vertex->Add("  depth = gl_Position.z;");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec2 texcoord;");
+			fragment->Add("in float depth;");
+			fragment->Add("uniform sampler2D tex;");
+			fragment->Add("uniform float fog_distance;");
+			fragment->Add("out vec4 frag_color;");
+			fragment->Add("void main() {");
+			# a uniform GL leaves at 0.0 until it is set, so fall back rather than
+			# dividing by zero and fogging the whole scene to nothing
+			fragment->Add("  float far = fog_distance > 0.0 ? fog_distance : 40.0;");
+			fragment->Add("  float fog = clamp(1.0 - depth / far, 0.25, 1.0);");
+			fragment->Add("  frag_color = texture(tex, texcoord) * vec4(vec3(fog), 1.0);");
+			fragment->Add("}");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
+		#~
+		Draws each surface's normal as a colour: +X red, +Y green, +Z blue.
+
+		A diagnostic, and the one worth reaching for first when geometry looks
+		wrong. A face whose normal points the wrong way, a mesh whose attributes
+		landed in the wrong slots, and a transform that has quietly mirrored
+		something are all invisible under a texture and obvious here.
+		@return the program; check IsOk()
+		~#
+		function : Normals() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("layout (location = 1) in vec3 in_normal;");
+			vertex->Add("uniform mat4 mvp;");
+			vertex->Add("out vec3 normal;");
+			vertex->Add("void main() {");
+			vertex->Add("  normal = in_normal;");
+			vertex->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec3 normal;");
+			fragment->Add("out vec4 frag_color;");
+			fragment->Add("void main() { frag_color = vec4(abs(normal), 1.0); }");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
+		#~
+		Compile a program from two files.
+
+		Worth it for anything beyond a few lines: a driver's error log reports GLSL
+		line numbers, and those mean nothing when the source was assembled from
+		string literals scattered through a method.
+		@param vertex_file path to the vertex shader
+		@param fragment_file path to the fragment shader
+		@return the program; IsOk() is false when either file could not be read,
+		and GetLog says which
+		~#
+		function : FromFiles(vertex_file : String, fragment_file : String) ~ Shader {
+			vertex := System.IO.Filesystem.FileReader->ReadFile(vertex_file);
+			if(vertex = Nil) {
+				return Shader->New("", "");
+			};
+
+			fragment := System.IO.Filesystem.FileReader->ReadFile(fragment_file);
+			if(fragment = Nil) {
+				return Shader->New("", "");
+			};
+
+			return Shader->New(vertex, fragment);
 		}
 
 		#~
