@@ -37,3 +37,4 @@ make -f make/Makefile.amd64
 ./obc -src lib_src/ollama.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/ollama.obl
 ./obc -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 ./obc -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
+./obc -src lib_src/sdl_gl.obs -lib sdl2 -tar lib -dest ../lib/sdl_gl.obl

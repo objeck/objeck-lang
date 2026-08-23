@@ -4807,4 +4807,92 @@ __declspec(dllexport)
     const std::wstring w_return_value = BytesToUnicode(return_value);
     APITools_SetStringValue(context, 0, w_return_value);
   }
+
+  //
+  // Creates a GL context for a window and makes it current. SDL_GLContext is a
+  // typedef for void*, so it crosses as an Int exactly like every other SDL
+  // handle here -- invisible to the collector, freed explicitly.
+  //
+  // Returns 0 on failure; the caller reads Core->GetError() for the reason.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_window_gl_create_context(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
+    SDL_GLContext gl_context = window ? SDL_GL_CreateContext(window) : nullptr;
+    APITools_SetIntValue(context, 0, (size_t)gl_context);
+  }
+
+  //
+  // Binds a context to a window on the calling thread. A GL context is current
+  // per-thread, so this must be called on whichever thread issues the GL calls.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_window_gl_make_current(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
+    SDL_GLContext gl_context = (SDL_GLContext)APITools_GetIntValue(context, 2);
+    APITools_SetIntValue(context, 0, SDL_GL_MakeCurrent(window, gl_context));
+  }
+
+  //
+  // Destroys a context. Returns Nil, so the handle is at slot 0 rather than 1.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_delete_context(VMContext& context) {
+    SDL_GLContext gl_context = (SDL_GLContext)APITools_GetIntValue(context, 0);
+    if(gl_context) {
+      SDL_GL_DeleteContext(gl_context);
+    }
+  }
+
+  //
+  // Framebuffer state. glClearColor/glClear/glViewport are all GL 1.1, so they
+  // link directly and need no proc-address lookup. Colors are GLclampf (32-bit)
+  // while Objeck Float is a 64-bit double, hence the narrowing casts -- the same
+  // conversion every buffer upload will need.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_clear_color(VMContext& context) {
+    const GLclampf r = (GLclampf)APITools_GetFloatValue(context, 0);
+    const GLclampf g = (GLclampf)APITools_GetFloatValue(context, 1);
+    const GLclampf b = (GLclampf)APITools_GetFloatValue(context, 2);
+    const GLclampf a = (GLclampf)APITools_GetFloatValue(context, 3);
+    glClearColor(r, g, b, a);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_clear(VMContext& context) {
+    glClear((GLbitfield)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_viewport(VMContext& context) {
+    const GLint x = (GLint)APITools_GetIntValue(context, 0);
+    const GLint y = (GLint)APITools_GetIntValue(context, 1);
+    const GLsizei w = (GLsizei)APITools_GetIntValue(context, 2);
+    const GLsizei h = (GLsizei)APITools_GetIntValue(context, 3);
+    glViewport(x, y, w, h);
+  }
+
+  //
+  // glGetError, drained in a loop by the Objeck side. GL accumulates errors in a
+  // queue and only clears one per call, so a single check can hide others.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_get_error(VMContext& context) {
+    APITools_SetIntValue(context, 0, glGetError());
+  }
 }

@@ -1,0 +1,188 @@
+#~~
+Objeck OpenGL support
+Copyright (c) 2026, Randy Hollines
+~~#
+
+use Game.SDL2;
+use System.API;
+
+#~
+OpenGL 3.3 core rendering on top of SDL2. Builds on sdl2.obl for the window and
+context; this bundle is the GL side. Compile with -lib sdl2.
+
+Targets the **3.3 core profile**, forward-compatible. That is the highest common
+denominator across the platforms Objeck ships: Windows, Linux and macOS desktop
+all reach it, and macOS caps at 4.1 core so nothing above 4.1 is portable there.
+GLES-only hardware (Raspberry Pi and similar) is out of scope by construction.
+
+Layers, from thinnest to friendliest -- all public, so nothing is capped:
+
+* GL          -- static state operations. Thin, but never per-vertex.
+* Shader      -- a linked program from vertex + fragment source.
+* Mesh        -- geometry uploaded once into buffer objects, drawn many times.
+
+## Why the API is shaped this way
+
+The native call boundary is expensive: the VM resolves each native symbol by
+string on EVERY call (GetProcAddress/dlsym) and boxes every argument into a
+fresh holder. A 1:1 mapping of OpenGL onto that would be thousands of lookups
+and allocations per frame.
+
+So each call here does real work -- 'compile a program from two sources' is one
+call, not the five GL calls it decomposes into -- and bulk data crosses as whole
+arrays, never element by element. This happens to be exactly what GL 3.3 core
+wants anyway: upload geometry once, then draw with few calls.
+
+## Adding a call
+
+One `void fn(VMContext&)` in the OpenGL section of core/lib/sdl/sdl.cpp, and one
+method here that names it. See that file's header for the two rules that matter
+(positional slot indices, and keeping each call coarse).
+~#
+bundle Game.OpenGL {
+	class : private : Proxy {
+		@lib_proxy : static : DllProxy;
+
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_sdl");
+			};
+
+			return @lib_proxy;
+		}
+	}
+
+	#~
+	Buffer bits for GL->Clear, combined with 'or'.
+	~#
+	consts ClearBit {
+		GL_DEPTH_BUFFER_BIT := 0x00000100,
+		GL_STENCIL_BUFFER_BIT := 0x00000400,
+		GL_COLOR_BUFFER_BIT := 0x00004000
+	}
+
+	#~
+	Values returned by GL->GetError.
+	~#
+	consts ErrorCode {
+		GL_NO_ERROR := 0,
+		GL_INVALID_ENUM := 0x0500,
+		GL_INVALID_VALUE := 0x0501,
+		GL_INVALID_OPERATION := 0x0502,
+		GL_OUT_OF_MEMORY := 0x0505,
+		GL_INVALID_FRAMEBUFFER_OPERATION := 0x0506
+	}
+
+	#~
+	OpenGL state operations.
+
+	Every method needs a current context (Window->GLCreateContext), and GL state
+	is per-context, so these all act on whichever context is current on this
+	thread.
+	~#
+	class GL {
+		#~
+		Set the color the next Clear fills the color buffer with. Components are
+		clamped to 0.0-1.0.
+		@param r red
+		@param g green
+		@param b blue
+		@param a alpha
+		~#
+		function : ClearColor(r : Float, g : Float, b : Float, a : Float) ~ Nil {
+			array_args := Base->New[4];
+			array_args[0] := FloatRef->New(r);
+			array_args[1] := FloatRef->New(g);
+			array_args[2] := FloatRef->New(b);
+			array_args[3] := FloatRef->New(a);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_clear_color", array_args);
+		}
+
+		#~
+		Clear the given buffers.
+		@param mask ClearBit values combined with 'or'
+		~#
+		function : Clear(mask : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(mask);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_clear", array_args);
+		}
+
+		#~
+		Clear the color buffer only. Convenience for the common 2D case.
+		~#
+		function : ClearColorBuffer() ~ Nil {
+			Clear(ClearBit->GL_COLOR_BUFFER_BIT);
+		}
+
+		#~
+		Set the drawable region, in pixels.
+
+		Use Window->GLGetDrawableSize rather than the size passed to Window->New:
+		on a high-DPI display the drawable is larger than the window, and using the
+		window size renders to a corner.
+		@param x left
+		@param y bottom (GL's origin is bottom-left, not top-left)
+		@param width width in pixels
+		@param height height in pixels
+		~#
+		function : Viewport(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New(x);
+			array_args[1] := IntRef->New(y);
+			array_args[2] := IntRef->New(width);
+			array_args[3] := IntRef->New(height);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_viewport", array_args);
+		}
+
+		#~
+		Take one error off the GL error queue.
+
+		GL queues errors and each call removes only one, so a single check can hide
+		others -- use DrainErrors to empty the queue.
+		@return an ErrorCode; GL_NO_ERROR when the queue is empty
+		~#
+		function : GetError() ~ Int {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_get_error", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Empty the GL error queue, returning everything that was in it.
+		@return the queued error codes, empty when there were none
+		~#
+		function : DrainErrors() ~ Int[] {
+			# GL guarantees the queue drains, but cap the loop anyway: a lost context
+			# can make glGetError report a sticky error forever.
+			found := Int->New[16];
+			count := 0;
+			done := false;
+
+			while(<>done & count < 16) {
+				code := GetError();
+				if(code = ErrorCode->GL_NO_ERROR) {
+					done := true;
+				}
+				else {
+					found[count] := code;
+					count += 1;
+				};
+			};
+
+			result := Int->New[count];
+			for(i := 0; i < count; i += 1;) {
+				result[i] := found[i];
+			};
+
+			return result;
+		}
+	}
+}
