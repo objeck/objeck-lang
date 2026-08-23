@@ -20,6 +20,7 @@ other reason it exists:
   Transform            the ball's position, spin and scale, matrix cached
   Light                one directional light; the shading is what makes it a ball
   Camera->PlaceLookingAt  the orbit
+  ShadowMap            the ball's shadow, tracking it across the floor
   RenderTarget         the whole scene drawn into a texture, then to the screen
 
 ## What to look at
@@ -27,6 +28,11 @@ other reason it exists:
 The ball is lit, so its shading moves as it spins and its underside darkens as it
 rises. That is the difference lighting makes: the same sphere unlit is a flat
 circle of checks with no sense of volume at all.
+
+The shadow is what makes it look like it is IN the room rather than in front of
+it. Watch it shrink and sharpen as the ball falls and spread as it rises -- that
+comes free from the geometry, not from anything the demo computes. Three lines
+per frame: begin the depth pass, draw the casters, end it.
 
 The picture also goes through a second pass -- scanlines and a vignette, which
 this being an Amiga homage seemed like the right excuse for. Mechanically that is
@@ -59,6 +65,8 @@ class BoingBall {
 	@room : Transform;
 	@light : Light;
 	@camera : Camera;
+
+	@shadows : ShadowMap;
 
 	# the second pass
 	@target : RenderTarget;
@@ -184,6 +192,15 @@ class BoingBall {
 	method : Draw() ~ Nil {
 		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
 
+		# --- pass zero: the scene from the light, into a depth map ---
+		# The room is not a caster: it is an inward-facing box around everything, so
+		# from the light's point of view it would be the nearest surface everywhere
+		# and put the whole floor in shadow.
+		@shadows->Begin();
+		@shadows->DrawCaster(@ball_mesh, @ball);
+		@shadows->DrawCaster(@floor_mesh, @floor);
+		@shadows->End(@window);
+
 		# --- pass one: the scene, into a texture ---
 		# Bind switches the viewport to the target's size as well. BeginFrame
 		# already cleared the WINDOW, which is a different buffer, so the target
@@ -193,6 +210,7 @@ class BoingBall {
 
 		@lit->Use();
 		@light->ApplyTo(@lit);
+		@shadows->ApplyTo(@lit);
 		@lit->SetInt("tex", 0);
 
 		DrawPiece(@room_mesh, @room_texture, @room);
@@ -232,7 +250,7 @@ class BoingBall {
 		GL->Enable(Capability->GL_CULL_FACE);
 		GL->ClearColor(0.06, 0.07, 0.11, 1.0);
 
-		@lit := Shader->LitTextured();
+		@lit := Shader->LitTexturedShadowed();
 		if(<>@lit->IsOk()) {
 			"Shader failed:"->ErrorLine();
 			@lit->GetLog()->ErrorLine();
@@ -279,6 +297,20 @@ class BoingBall {
 		@light->SetDirection(-0.4, 1.0, 0.55);
 		@light->SetColor(1.0, 0.97, 0.9);
 		@light->SetAmbient(0.2, 0.21, 0.28);
+
+		# SetLight rather than repeating the direction: a shadow map pointing
+		# somewhere other than the light puts every shadow on the wrong side of
+		# everything, and looks like a bug in the shadows rather than in the two
+		# numbers that were meant to be one.
+		@shadows := ShadowMap->New(1024);
+		if(<>@shadows->IsOk()) {
+			"Shadow map failed: "->Print();
+			@shadows->GetError()->ErrorLine();
+			return false;
+		};
+		@shadows->SetLight(@light);
+		# Just wider than the room, so nothing that should cast falls outside it.
+		@shadows->Cover(Vector3->New(0.0, 2.0, 0.0), 13.0);
 
 		return BuildPostPass();
 	}
@@ -349,6 +381,7 @@ class BoingBall {
 		if(@floor_mesh <> Nil) { @floor_mesh->Free(); };
 		if(@room_mesh <> Nil) { @room_mesh->Free(); };
 		if(@lit <> Nil) { @lit->Free(); };
+		if(@shadows <> Nil) { @shadows->Free(); };
 		if(@post <> Nil) { @post->Free(); };
 		if(@screen <> Nil) { @screen->Free(); };
 		# The target owns its colour texture -- GetTexture hands back a wrapper that

@@ -48,6 +48,7 @@ class Walkthrough {
 
 	@scene : Scene;
 	@light : Light;
+	@shadows : ShadowMap;
 
 	# the player is a circle in plan view, not a point
 	@radius : Float;
@@ -180,6 +181,14 @@ class Walkthrough {
 		@light->SetAmbient(0.22, 0.23, 0.3);
 		@scene->SetLight(@light);
 
+		# The crates cast onto the floor and onto each other, and the walls cast
+		# into the corners. Cover spans the whole room, so nothing that should cast
+		# falls outside the map. Whether it worked is checked by the caller, which
+		# is the method that can report a failure.
+		@shadows := ShadowMap->New(1024);
+		@shadows->SetLight(@light);
+		@shadows->Cover(Vector3->New(0.0, 2.0, 0.0), 16.0);
+
 		half := 10.0;
 		wall_h := 3.0;
 		thick := 0.5;
@@ -208,10 +217,20 @@ class Walkthrough {
 	}
 
 	#~
-	No clear here: GLWindow->BeginFrame cleared colour and depth together.
+	Two passes. The depth one has to come first, and it needs the scene's geometry
+	from the light rather than from the eye -- which is all Capture does.
+
+	No clear for the visible pass: GLWindow->BeginFrame cleared colour and depth
+	together. The shadow pass clears its own depth map, since that is a different
+	buffer.
 	~#
 	method : Draw() ~ Nil {
+		@shadows->Begin();
+		@shadows->Capture(@scene);
+		@shadows->End(@window);
+
 		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
+		@shadows->ApplyTo(@shader);
 		@scene->Draw(@view_projection);
 	}
 
@@ -241,7 +260,7 @@ class Walkthrough {
 		# and every face of every crate get a different brightness according to
 		# which way they face, where before they were all equally bright and the
 		# geometry had to be inferred from the fog alone.
-		@shader := Shader->LitTextured();
+		@shader := Shader->LitTexturedShadowed();
 		if(<>@shader->IsOk()) {
 			"Shader failed:"->ErrorLine();
 			@shader->GetLog()->ErrorLine();
@@ -264,6 +283,12 @@ class Walkthrough {
 
 		BuildScene();
 
+		if(<>@shadows->IsOk()) {
+			"Shadow map failed: "->Print();
+			@shadows->GetError()->ErrorLine();
+			return false;
+		};
+
 		return true;
 	}
 
@@ -280,6 +305,7 @@ class Walkthrough {
 		if(@box_texture <> Nil) { @box_texture->Free(); };
 		if(@cube <> Nil) { @cube->Free(); };
 		if(@shader <> Nil) { @shader->Free(); };
+		if(@shadows <> Nil) { @shadows->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
 	}

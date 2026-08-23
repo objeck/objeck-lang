@@ -27,6 +27,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
 * Light       -- one directional light plus ambient, written into a shader.
 * RenderTarget -- draw into a texture instead of the window, then sample it.
+* ShadowMap   -- shadows from one directional light, depth pass and all.
 * Transform   -- position, rotation and scale, with a cached matrix.
 * Box, Scene  -- a world of boxes: draws itself, and answers collision.
 
@@ -1311,7 +1312,54 @@ bundle Game.OpenGL {
 			return Shader->New(LitVertexSource(), LitFragmentSource(false));
 		}
 
+		#~
+		Textured, lit, and shadowed. Use it with a ShadowMap.
+
+		Adds "light_space", "shadow_map", "shadow_bias" and "shadow_texel" to
+		LitTextured's uniforms, all of which ShadowMap->ApplyTo writes -- so a
+		program sets none of them by hand.
+		@return the program; check IsOk()
+		~#
+		function : LitTexturedShadowed() ~ Shader {
+			return Shader->New(LitVertexSource(true), LitFragmentSource(true, true));
+		}
+
+		#~
+		Lit and shadowed, with a flat colour instead of a texture.
+		@return the program; check IsOk()
+		~#
+		function : LitShadowed() ~ Shader {
+			return Shader->New(LitVertexSource(true), LitFragmentSource(false, true));
+		}
+
+		#~
+		Writes depth and nothing else: the shadow map's own pass.
+
+		No colour output at all, because there is no colour buffer attached to a
+		depth-only target to write one into. Its only uniform is "mvp", which for
+		this pass is the LIGHT's projection times view times the model matrix --
+		ShadowMap->DrawCaster does that arithmetic.
+		@return the program; check IsOk()
+		~#
+		function : DepthOnly() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("uniform mat4 mvp;");
+			vertex->Add("void main() { gl_Position = mvp * vec4(in_position, 1.0); }");
+
+			fragment := ShaderSource->New();
+			# GLSL requires a main; depth is written by the fixed-function stage
+			# whether or not anything is assigned here.
+			fragment->Add("void main() { }");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
 		function : LitVertexSource() ~ String {
+			return LitVertexSource(false);
+		}
+
+		function : LitVertexSource(shadowed : Bool) ~ String {
 			source := ShaderSource->New();
 			source->Add("layout (location = 0) in vec3 in_position;");
 			source->Add("layout (location = 1) in vec3 in_normal;");
@@ -1321,8 +1369,18 @@ bundle Game.OpenGL {
 			source->Add("out vec3 normal;");
 			source->Add("out vec2 texcoord;");
 			source->Add("out float depth;");
+			if(shadowed) {
+				# The shadow lookup needs the fragment in LIGHT space, and the only
+				# way to get there is via world space -- so the world position has to
+				# cross from the vertex stage.
+				source->Add("uniform mat4 light_space;");
+				source->Add("out vec4 light_position;");
+			};
 			source->Add("void main() {");
 			source->Add("  depth = (mvp * vec4(in_position, 1.0)).z;");
+			if(shadowed) {
+				source->Add("  light_position = light_space * model * vec4(in_position, 1.0);");
+			};
 			# the normal matrix, in the one place that can compute it for free
 			source->Add("  normal = normalize(mat3(transpose(inverse(model))) * in_normal);");
 			source->Add("  texcoord = in_texcoord;");
@@ -1333,10 +1391,20 @@ bundle Game.OpenGL {
 		}
 
 		function : LitFragmentSource(textured : Bool) ~ String {
+			return LitFragmentSource(textured, false);
+		}
+
+		function : LitFragmentSource(textured : Bool, shadowed : Bool) ~ String {
 			source := ShaderSource->New();
 			source->Add("in vec3 normal;");
 			source->Add("in vec2 texcoord;");
 			source->Add("in float depth;");
+			if(shadowed) {
+				source->Add("in vec4 light_position;");
+				source->Add("uniform sampler2D shadow_map;");
+				source->Add("uniform float shadow_bias;");
+				source->Add("uniform float shadow_texel;");
+			};
 			if(textured) {
 				source->Add("uniform sampler2D tex;");
 			}
@@ -1348,11 +1416,47 @@ bundle Game.OpenGL {
 			source->Add("uniform vec3 ambient;");
 			source->Add("uniform float fog_distance;");
 			source->Add("out vec4 frag_color;");
+
+			if(shadowed) {
+				source->Add("float shadow_factor() {");
+				# Light space is a projection, so divide through by w to get normalised
+				# device coordinates, then map -1..1 onto the 0..1 the texture uses.
+				source->Add("  vec3 projected = light_position.xyz / light_position.w;");
+				source->Add("  projected = projected * 0.5 + 0.5;");
+				# Anything outside the map is not shadowed. Without this the clamped
+				# edge texel is stretched across the whole world beyond the map, so
+				# everything past its border is either wholly lit or wholly dark.
+				source->Add("  if(projected.x < 0.0 || projected.x > 1.0 ||");
+				source->Add("     projected.y < 0.0 || projected.y > 1.0 ||");
+				source->Add("     projected.z > 1.0) {");
+				source->Add("    return 1.0;");
+				source->Add("  }");
+				# Nine samples in a 3x3, averaged: one sample gives a hard staircase
+				# edge, since the map is a grid and the screen is not.
+                                source->Add("  float total = 0.0;");
+				source->Add("  for(int y = -1; y <= 1; ++y) {");
+				source->Add("    for(int x = -1; x <= 1; ++x) {");
+				source->Add("      vec2 at = projected.xy + vec2(float(x), float(y)) * shadow_texel;");
+				source->Add("      float nearest = texture(shadow_map, at).r;");
+				source->Add("      total += (projected.z - shadow_bias > nearest) ? 0.0 : 1.0;");
+				source->Add("    }");
+				source->Add("  }");
+				source->Add("  return total / 9.0;");
+				source->Add("}");
+			};
+
 			source->Add("void main() {");
 			# A light with no direction set would normalize (0,0,0) to NaN and turn
 			# the whole surface into garbage, so fall back to straight down.
 			source->Add("  vec3 to_light = length(light_direction) > 0.0 ? normalize(light_direction) : vec3(0.0, 1.0, 0.0);");
 			source->Add("  float diffuse = max(dot(normalize(normal), to_light), 0.0);");
+			if(shadowed) {
+				# Only the DIFFUSE term is shadowed. Shadowing the ambient too would
+				# make anything in shadow pure black, which is wrong for the same
+				# reason ambient exists at all: a shadowed surface is still lit by
+				# everything around it.
+				source->Add("  diffuse = diffuse * shadow_factor();");
+			};
 			source->Add("  vec3 lit = ambient + light_color * diffuse;");
 			# Fog folded in here rather than given its own preset. Lit x Textured x
 			# Fogged would be eight programs to maintain and eight to document,
@@ -3122,7 +3226,7 @@ bundle Game.OpenGL {
 		@param height in pixels
 		~#
 		New(width : Int, height : Int) {
-			Create(width, height, TextureFilter->GL_LINEAR);
+			Create(width, height, TextureFilter->GL_LINEAR, false);
 		}
 
 		#~
@@ -3134,22 +3238,50 @@ bundle Game.OpenGL {
 		@param filter a TextureFilter
 		~#
 		New(width : Int, height : Int, filter : Int) {
-			Create(width, height, filter);
+			Create(width, height, filter, false);
 		}
 
-		method : Create(width : Int, height : Int, filter : Int) ~ Nil {
+		#~
+		A DEPTH-ONLY target: no colour buffer at all, and the depth is a texture
+		that can be sampled.
+
+		The reverse of the usual arrangement, and what a shadow map needs -- depth
+		read, colour never. ShadowMap wraps this along with everything else the
+		technique requires; reach for it directly only for something ShadowMap does
+		not cover.
+		@param size the map's width and height; powers of two are conventional
+		@return the target; check IsOk()
+		~#
+		function : Depth(size : Int) ~ RenderTarget {
+			target := RenderTarget->New(0, 0);
+			target->Create(size, size, TextureFilter->GL_NEAREST, true);
+
+			return target;
+		}
+
+		method : Create(width : Int, height : Int, filter : Int, depth_only : Bool) ~ Nil {
 			@target := 0;
 			@width := width;
 			@height := height;
 			@error := "";
 			@texture := Nil;
 
-			array_args := Base->New[5];
+			if(width <= 0 | height <= 0) {
+				return;
+			};
+
+			depth := 0;
+			if(depth_only) {
+				depth := 1;
+			};
+
+			array_args := Base->New[6];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(width);
 			array_args[2] := IntRef->New(height);
 			array_args[3] := IntRef->New(filter);
 			array_args[4] := Nil;
+			array_args[5] := IntRef->New(depth);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_create", array_args);
 
@@ -3261,6 +3393,341 @@ bundle Game.OpenGL {
 				Proxy->GetDllProxy()->CallFunction("sdl_gl_target_delete", array_args);
 				@target := 0;
 				@texture := Nil;
+			};
+		}
+	}
+
+	#~
+	Shadows, from one directional light.
+
+	The technique is standard and the fiddly parts are all here rather than in
+	each program: render the scene from the light's point of view into a depth
+	texture, then when drawing normally, ask that texture whether each fragment is
+	further from the light than whatever the light could see. If it is, something
+	is in the way.
+
+	```
+	shadows := ShadowMap->New(1024);
+	shadows->SetLight(light);
+	shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 14.0);
+
+	# per frame, before drawing anything else
+	shadows->Begin();
+	shadows->DrawCaster(floor_mesh, floor);
+	shadows->DrawCaster(ball_mesh, ball);
+	shadows->End(window);
+
+	# then the normal pass
+	shadowed->Use();
+	shadows->ApplyTo(shadowed);
+	# ... draw as usual ...
+	```
+
+	Use it with Shader->LitShadowed or LitTexturedShadowed, which declare the
+	uniforms ApplyTo writes.
+
+	## What Cover is for, and why it is not automatic
+
+	A directional light has no position, so its view of the scene has no natural
+	extent -- something has to say how much world the map covers. Too little and
+	shadows stop at an invisible line; too much and the map's resolution is spread
+	so thin that shadow edges turn to staircases. There is no good default,
+	because the right answer is the size of the thing being lit, so it is a
+	parameter rather than a guess.
+
+	## Bias, and why there is any
+
+	A depth map is a grid of samples, so a surface's own recorded depth is almost
+	never exactly its depth when looked up again. Without a margin, half of every
+	lit surface reads as being behind itself and the result is a fine dark stipple
+	over everything -- "shadow acne". The bias is that margin. Too small brings the
+	acne back; too large and shadows detach from what casts them, which is why the
+	default is small and adjustable rather than generous.
+	~#
+	class ShadowMap {
+		@target : RenderTarget;
+		@depth_shader : Shader;
+		@size : Int;
+		@extent : Float;
+		@near : Float;
+		@far : Float;
+		@bias : Float;
+		@unit : Int;
+		@error : String;
+
+		@center : Vector3;
+		@direction : Vector3;
+
+		# light-space matrix and its scratch, rebuilt only when something moves
+		@light_space : Float[];
+		@projection : Float[];
+		@view : Float[];
+		@mvp : Float[];
+		@dirty : Bool;
+
+		#~
+		A square shadow map.
+		@param size the map's width and height in pixels; 1024 is a reasonable
+		start, 2048 for sharper edges over a large area
+		~#
+		New(size : Int) {
+			@size := size;
+			@extent := 20.0;
+			@near := 1.0;
+			@far := 60.0;
+			@bias := 0.0025;
+			# Unit 1, because unit 0 is where every shader in this bundle expects its
+			# ordinary texture. A shadow map on unit 0 would silently replace it.
+			@unit := 1;
+			@error := "";
+			@center := Vector3->New(0.0, 0.0, 0.0);
+			@direction := Vector3->New(-0.3, 1.0, 0.4);
+
+			@light_space := Float->New[16];
+			@projection := Float->New[16];
+			@view := Float->New[16];
+			@mvp := Float->New[16];
+			@dirty := true;
+
+			@target := RenderTarget->Depth(size);
+			if(<>@target->IsOk()) {
+				@error := @target->GetError();
+			};
+
+			@depth_shader := Shader->DepthOnly();
+			if(@error->Size() = 0 & <>@depth_shader->IsOk()) {
+				@error := @depth_shader->GetLog();
+			};
+		}
+
+		#~
+		@return true when the depth target and its shader are both usable
+		~#
+		method : public : IsOk() ~ Bool {
+			return @target <> Nil & @target->IsOk() & @depth_shader <> Nil & @depth_shader->IsOk();
+		}
+
+		#~
+		Why it could not be set up.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Take the direction from a Light, so the shadows and the shading agree.
+
+		Worth doing rather than setting the direction twice: a shadow map pointing
+		somewhere other than the light produces shadows on the wrong side of
+		everything, which looks like a bug in the shadows and is really two numbers
+		that were meant to be one.
+		@param light the light casting them
+		~#
+		method : public : SetLight(light : Light) ~ Nil {
+			if(light <> Nil) {
+				SetDirection(light->GetDirection());
+			};
+		}
+
+		#~
+		@param direction toward the light, matching Light's convention
+		~#
+		method : public : SetDirection(direction : Vector3) ~ Nil {
+			if(direction <> Nil) {
+				@direction := direction;
+				@dirty := true;
+			};
+		}
+
+		#~
+		What area of the world the map covers.
+		@param center the middle of the shadowed area
+		@param extent half its width, in world units
+		~#
+		method : public : Cover(center : Vector3, extent : Float) ~ Nil {
+			if(center <> Nil) {
+				@center := center;
+			};
+			if(extent > 0.0) {
+				@extent := extent;
+			};
+			@dirty := true;
+		}
+
+		#~
+		The depth margin that keeps a lit surface from shadowing itself. Default
+		0.0025.
+		@param bias the margin in light-space depth
+		~#
+		method : public : SetBias(bias : Float) ~ Nil {
+			@bias := bias;
+		}
+
+		#~
+		Which texture unit the map is bound to. Default 1, because unit 0 is where
+		the ordinary texture goes.
+		@param unit the texture unit
+		~#
+		method : public : SetTextureUnit(unit : Int) ~ Nil {
+			@unit := unit;
+		}
+
+		#~
+		The light's projection times its view -- what a caster's position has to be
+		multiplied by to find where it lands in the map.
+		@return the matrix, 16 floats column-major
+		~#
+		method : public : GetLightSpaceMatrix() ~ Float[] {
+			if(@dirty) {
+				Rebuild();
+				@dirty := false;
+			};
+
+			return @light_space;
+		}
+
+		method : Rebuild() ~ Nil {
+			Matrix4->OrthographicInto(@projection, @extent * -1.0, @extent, @extent * -1.0, @extent, @near, @far);
+
+			# The light has no position, so put an eye along its direction, far
+			# enough back that the whole covered area is in front of it.
+			distance := @far * 0.5;
+			eye := Vector3->New(@center->GetX() + @direction->GetX() * distance, @center->GetY() + @direction->GetY() * distance, @center->GetZ() + @direction->GetZ() * distance);
+
+			# A light shining straight down leaves world-up parallel to the view
+			# direction, and there is no basis in that -- LookAt would hand back an
+			# identity matrix and the shadows would be nonsense. Overhead lights are
+			# the normal case, not an edge case, so pick another up vector for them.
+			up := Vector3->New(0.0, 1.0, 0.0);
+			normalized := @direction->Normalized();
+			if(normalized->GetY()->Abs() > 0.999) {
+				up := Vector3->New(0.0, 0.0, 1.0);
+			};
+
+			Matrix4->LookAtInto(@view, eye, @center, up);
+			Matrix4->MultiplyInto(@light_space, @projection, @view);
+		}
+
+		#~
+		Start the depth pass: draw into the map, from the light.
+
+		Clears it, points the viewport at it, and makes the depth shader current.
+		Everything drawn until End goes into the map.
+
+		Culling is left exactly as the caller set it. Reversing it for this pass --
+		recording each object's far side rather than its near side -- is a known way
+		to reduce self-shadowing without a large bias, but it only works for closed
+		solids: a flat floor has no far side and would stop casting altogether.
+		Since a floor is usually the first thing anyone wants to cast onto AND from,
+		the bias is the safer lever, and SetBias is there for it.
+		~#
+		method : public : Begin() ~ Nil {
+			if(<>IsOk()) {
+				return;
+			};
+
+			@target->Bind();
+			GL->Clear(ClearBit->GL_DEPTH_BUFFER_BIT);
+			@depth_shader->Use();
+		}
+
+		#~
+		Draw one caster into the map.
+		@param mesh its geometry
+		@param transform where it is
+		~#
+		method : public : DrawCaster(mesh : Mesh, transform : Transform) ~ Nil {
+			if(<>IsOk() | mesh = Nil | transform = Nil) {
+				return;
+			};
+
+			Matrix4->MultiplyInto(@mvp, GetLightSpaceMatrix(), transform->GetMatrix());
+			@depth_shader->SetMatrix4("mvp", @mvp);
+			mesh->Draw();
+		}
+
+		#~
+		Draw one caster with a model matrix rather than a Transform.
+		@param mesh its geometry
+		@param model its model matrix
+		~#
+		method : public : DrawCasterMatrix(mesh : Mesh, model : Float[]) ~ Nil {
+			if(<>IsOk() | mesh = Nil | model = Nil) {
+				return;
+			};
+
+			Matrix4->MultiplyInto(@mvp, GetLightSpaceMatrix(), model);
+			@depth_shader->SetMatrix4("mvp", @mvp);
+			mesh->Draw();
+		}
+
+		#~
+		Draw every box in a Scene into the map.
+		@param scene the scene whose boxes cast shadows
+		~#
+		method : public : Capture(scene : Scene) ~ Nil {
+			if(<>IsOk() | scene = Nil) {
+				return;
+			};
+
+			scene->DrawInto(@depth_shader, GetLightSpaceMatrix());
+		}
+
+		#~
+		End the depth pass and go back to drawing at the window.
+		@param window the window to return to
+		~#
+		method : public : End(window : GLWindow) ~ Nil {
+			if(@target <> Nil) {
+				@target->Unbind(window);
+			};
+		}
+
+		#~
+		Bind the map and tell a shader how to read it.
+
+		Writes "light_space", "shadow_map", "shadow_bias" and "shadow_texel" --
+		skipping any the shader does not declare, so this can be handed an
+		unshadowed program without filing a diagnostic.
+		@param shader the program about to draw
+		~#
+		method : public : ApplyTo(shader : Shader) ~ Nil {
+			if(<>IsOk() | shader = Nil | <>shader->IsOk()) {
+				return;
+			};
+
+			if(shader->HasUniform("light_space")) {
+				shader->SetMatrix4("light_space", GetLightSpaceMatrix());
+			};
+			if(shader->HasUniform("shadow_bias")) {
+				shader->SetFloat("shadow_bias", @bias);
+			};
+			# One texel's width, so the shader can average a few neighbours and turn
+			# a staircase edge into a soft one without knowing the map's size.
+			if(shader->HasUniform("shadow_texel")) {
+				shader->SetFloat("shadow_texel", 1.0 / @size->As(Float));
+			};
+			if(shader->HasUniform("shadow_map")) {
+				shader->SetInt("shadow_map", @unit);
+				@target->GetTexture()->Bind(@unit);
+			};
+		}
+
+		#~
+		Release the depth target and the depth shader.
+
+		Call it while the GL context is still current -- see the shutdown order on
+		the GL class.
+		~#
+		method : public : Free() ~ Nil {
+			if(@depth_shader <> Nil) {
+				@depth_shader->Free();
+				@depth_shader := Nil;
+			};
+			if(@target <> Nil) {
+				@target->Free();
+				@target := Nil;
 			};
 		}
 	}
@@ -3849,6 +4316,40 @@ bundle Game.OpenGL {
 				@shader->SetMatrix4("mvp", @mvp);
 				if(@wants_model = 1) {
 					@shader->SetMatrix4("model", model);
+				};
+				@mesh->Draw();
+			};
+		}
+
+		#~
+		Draw every box through a DIFFERENT shader, with a different matrix.
+
+		For a pass that is not the normal one: a shadow map's depth pass wants this
+		scene's geometry rendered from the light with a depth-only program, and
+		nothing else about the scene changes.
+
+		Deliberately minimal -- no light, no sampler, no per-object model matrix
+		unless the shader asks for one -- because an auxiliary pass generally wants
+		positions and nothing else, and setting uniforms a depth shader does not
+		declare would file a diagnostic per box per frame.
+		@param shader the program to draw with
+		@param view_projection the matrix to combine with each box's model matrix
+		~#
+		method : public : DrawInto(shader : Shader, view_projection : Float[]) ~ Nil {
+			if(@mesh = Nil | shader = Nil | <>shader->IsOk() | view_projection = Nil) {
+				return;
+			};
+
+			shader->Use();
+			wants_model := shader->HasUniform("model");
+
+			each(i : @boxes) {
+				box := @boxes->Get(i);
+				model := box->GetModelMatrix();
+				Matrix4->MultiplyInto(@mvp, view_projection, model);
+				shader->SetMatrix4("mvp", @mvp);
+				if(wants_model) {
+					shader->SetMatrix4("model", model);
 				};
 				@mesh->Draw();
 			};

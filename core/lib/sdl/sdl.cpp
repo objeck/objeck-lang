@@ -5110,6 +5110,11 @@ struct ObjkRenderTarget {
   GLuint depth;
   GLsizei width;
   GLsizei height;
+  // Depth-only: 'texture' is the DEPTH texture and there is no colour attachment
+  // at all. A shadow map wants exactly the reverse of the usual arrangement --
+  // depth sampled, colour never read -- so it gets the texture and the colour
+  // buffer is not created.
+  bool depth_only;
 };
 
 // Objeck arrays arrive as a holder object whose field 0 is the array; the
@@ -5816,7 +5821,7 @@ extern "C" {
   // optional and its result comes back rather than being assumed.
   //
   // slot 0 = handle (0 on failure), 1 = width, 2 = height, 3 = filter,
-  // 4 receives a message when it failed.
+  // 4 receives a message when it failed, 5 = non-zero for depth-only.
   //
 #ifdef _WIN32
   __declspec(dllexport)
@@ -5833,6 +5838,7 @@ extern "C" {
     const GLsizei width = (GLsizei)APITools_GetIntValue(context, 1);
     const GLsizei height = (GLsizei)APITools_GetIntValue(context, 2);
     const GLint filter = (GLint)APITools_GetIntValue(context, 3);
+    const bool depth_only = APITools_GetIntValue(context, 5) != 0;
 
     if(width <= 0 || height <= 0) {
       APITools_SetStringValue(context, 4, BytesToUnicode("a render target needs a positive width and height"));
@@ -5856,34 +5862,67 @@ extern "C" {
     target->depth = 0;
     target->width = width;
     target->height = height;
+    target->depth_only = depth_only;
 
     glGenTextures(1, &target->texture);
     glBindTexture(GL_TEXTURE_2D, target->texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    if(depth_only) {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0,
+                   GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    }
+    else {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
     // CLAMP_TO_EDGE, not REPEAT: a post-process sampling slightly outside the
-    // target would otherwise wrap and pull in the opposite edge.
+    // target would otherwise wrap and pull in the opposite edge. For a shadow
+    // map it matters more -- wrapping would shadow one side of the scene with
+    // depths from the other.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    objk_glGENRENDERBUFFERS(1, &target->depth);
-    objk_glBINDRENDERBUFFER(GL_RENDERBUFFER, target->depth);
-    objk_glRENDERBUFFERSTORAGE(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
-    objk_glBINDRENDERBUFFER(GL_RENDERBUFFER, 0);
-
     objk_glGENFRAMEBUFFERS(1, &target->framebuffer);
     objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
-    objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target->texture, 0);
-    objk_glFRAMEBUFFERRENDERBUFFER(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, target->depth);
+
+    if(depth_only) {
+      objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, target->texture, 0);
+      // A framebuffer with no colour attachment is only complete once it is told
+      // it has no colour buffer to draw to. Without this it comes back
+      // GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT on some drivers and works by
+      // luck on others, which is the worst of both.
+      glDrawBuffer(GL_NONE);
+      glReadBuffer(GL_NONE);
+    }
+    else {
+      objk_glGENRENDERBUFFERS(1, &target->depth);
+      objk_glBINDRENDERBUFFER(GL_RENDERBUFFER, target->depth);
+      objk_glRENDERBUFFERSTORAGE(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+      objk_glBINDRENDERBUFFER(GL_RENDERBUFFER, 0);
+
+      objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target->texture, 0);
+      objk_glFRAMEBUFFERRENDERBUFFER(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, target->depth);
+    }
 
     const GLenum status = objk_glCHECKFRAMEBUFFERSTATUS(GL_FRAMEBUFFER);
     objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, 0);
+    if(depth_only) {
+      // Put the default framebuffer's draw buffer back, or every subsequent draw
+      // to the window goes nowhere. Binding framebuffer 0 does NOT restore this:
+      // glDrawBuffer state belongs to whichever framebuffer was bound when it was
+      // set, and for the depth-only path that was ours -- but the default
+      // framebuffer's own state is separate and untouched, so this is about
+      // leaving nothing surprising behind rather than repairing damage.
+      glDrawBuffer(GL_BACK);
+      glReadBuffer(GL_BACK);
+    }
 
     if(status != GL_FRAMEBUFFER_COMPLETE) {
       objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
-      objk_glDELETERENDERBUFFERS(1, &target->depth);
+      if(target->depth) {
+        objk_glDELETERENDERBUFFERS(1, &target->depth);
+      }
       glDeleteTextures(1, &target->texture);
       delete target;
       APITools_SetStringValue(context, 4, BytesToUnicode(
@@ -5943,7 +5982,9 @@ extern "C" {
     if(target) {
       if(objk_gl_loaded) {
         objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
-        objk_glDELETERENDERBUFFERS(1, &target->depth);
+        if(target->depth) {
+          objk_glDELETERENDERBUFFERS(1, &target->depth);
+        }
         glDeleteTextures(1, &target->texture);
       }
       delete target;

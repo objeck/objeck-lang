@@ -82,6 +82,7 @@ class GlContextTest {
 		CheckPrimitives();
 		CheckShaderPresets();
 		CheckLighting();
+		CheckShadows();
 		CheckMeshValidation();
 		CheckExtensions();
 		CheckRenderTarget();
@@ -738,6 +739,172 @@ class GlContextTest {
 		# Freeing twice must not double-delete.
 		target->Free();
 		Check("RenderTarget->Free is idempotent", true);
+	}
+
+	#~
+	A shadow map darkens the floor under a caster and leaves the rest of it lit.
+
+	Shadow mapping has more silent failure modes than anything else here, and a
+	careless fixture passes on most of them. The one that matters: a scene where
+	EVERYTHING ends up shadowed looks, at a single sample point, exactly like a
+	scene where the shadow landed correctly. Equally, a scene where nothing is
+	shadowed looks like one where the sample happened to miss.
+
+	So this reads TWO points on the same floor -- one under the caster and one well
+	away from it -- and requires them to differ in the right direction. Nothing
+	uniform can satisfy that: not an all-shadow bug, not a no-shadow bug, not a
+	map that is entirely empty, and not one where the light-space matrix is wrong
+	enough to put the shadow somewhere else.
+
+	The geometry is deliberately lopsided too. A caster over the middle of a
+	symmetric floor casts a shadow that a mirrored or transposed light-space matrix
+	would put in the same place, so the caster sits off to one side.
+	~#
+	method : CheckShadows() ~ Nil {
+		shadows := ShadowMap->New(512);
+		if(<>Check("a shadow map is created", shadows->IsOk())) {
+			error := shadows->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		shadowed := Shader->LitTexturedShadowed();
+		if(<>Check("Shader->LitTexturedShadowed compiles", shadowed->IsOk())) {
+			log := shadowed->GetLog();
+			"  log: {$log}"->PrintLine();
+			shadows->Free();
+			return;
+		};
+
+		depth_only := Shader->DepthOnly();
+		Check("Shader->DepthOnly compiles", depth_only->IsOk());
+		depth_only->Free();
+
+		floor_mesh := Mesh->Plane(10.0, 1.0);
+		caster_mesh := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("floor, caster and texture", floor_mesh->IsOk() & caster_mesh->IsOk() & white->IsOk())) {
+			shadowed->Free();
+			shadows->Free();
+			return;
+		};
+
+		floor := Transform->New();
+		# The caster is OFF CENTRE, so a mirrored light-space matrix cannot put its
+		# shadow in the right place by accident.
+		caster := Transform->New();
+		caster->SetPosition(-3.5, 2.0, 0.0);
+		caster->SetScale(1.5);
+
+		# Light straight down, which is also the case that would break a naive
+		# LookAt: world-up is parallel to the view direction there, so the basis is
+		# degenerate unless something notices.
+		light := Light->New();
+		light->SetDirection(0.0, 1.0, 0.0);
+		light->SetColor(1.0, 1.0, 1.0);
+		light->SetAmbient(0.15, 0.15, 0.15);
+
+		shadows->SetLight(light);
+		shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 12.0);
+
+		# --- the depth pass ---
+		shadows->Begin();
+		shadows->DrawCaster(caster_mesh, caster);
+		shadows->DrawCaster(floor_mesh, floor);
+		shadows->End(@gl);
+
+		# --- the lit pass, looking straight down at the floor ---
+		# Straight down so the floor fills the frame and the two sample points are
+		# unambiguously on it rather than on the caster or past the edge.
+		eye := Camera->New(Vector3->New(0.0, 14.0, 0.1));
+		eye->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), eye->GetViewMatrix());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shadowed->Use();
+		light->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+
+		floor_mvp := Matrix4->Multiply(view_projection, floor->GetMatrix());
+		shadowed->SetMatrix4("mvp", floor_mvp);
+		shadowed->SetMatrix4("model", floor->GetMatrix());
+		floor_mesh->Draw();
+
+		# Sampled on the floor: the caster is at x = -3.5, so looking straight down
+		# its shadow is left of centre. The right side of the frame is clear floor.
+		mid_y := @pixel_h / 2;
+		under := GL->ReadPixel((@pixel_w * 30) / 100, mid_y);
+		clear_floor := GL->ReadPixel((@pixel_w * 72) / 100, mid_y);
+		shadow_level := (under and 0x0000FF00) / 0x100;
+		lit_level := (clear_floor and 0x0000FF00) / 0x100;
+		"  floor: under the caster={$shadow_level} away from it={$lit_level}"->PrintLine();
+
+		Check("the floor is lit where nothing blocks the light", lit_level > 200);
+		Check("and darker under the caster", shadow_level < 120);
+		# The claim the two-point fixture exists to make: not all-shadowed, not
+		# un-shadowed, and the difference is large enough to be a shadow rather
+		# than shading noise.
+		Check("the difference is a shadow, not a gradient", lit_level - shadow_level > 90);
+		# Ambient still reaches it -- a fully black shadow means the ambient term
+		# was shadowed too, which is wrong.
+		Check("ambient still reaches the shadow", shadow_level > 10);
+
+		# --- an empty map must not shadow anything ---
+		# If the depth pass is skipped, the map holds its cleared value of 1.0,
+		# which is further than any geometry -- so nothing should be in shadow. A
+		# shader with its comparison inverted would shadow EVERYTHING here.
+		shadows->Begin();
+		shadows->End(@gl);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shadowed->Use();
+		light->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+		shadowed->SetMatrix4("mvp", floor_mvp);
+		shadowed->SetMatrix4("model", floor->GetMatrix());
+		floor_mesh->Draw();
+
+		empty_under := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  with an empty map, the same point reads {$empty_under}"->PrintLine();
+		Check("an empty shadow map shadows nothing", empty_under > 200);
+
+		# --- outside the covered area must be lit, not shadowed ---
+		# Cover a tiny region and the rest of the floor falls outside the map. The
+		# clamped edge texel would otherwise stretch across the whole world.
+		shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 1.0);
+		shadows->Begin();
+		shadows->DrawCaster(caster_mesh, caster);
+		shadows->End(@gl);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shadowed->Use();
+		light->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+		shadowed->SetMatrix4("mvp", floor_mvp);
+		shadowed->SetMatrix4("model", floor->GetMatrix());
+		floor_mesh->Draw();
+
+		outside := (GL->ReadPixel((@pixel_w * 90) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  outside the covered area: {$outside}"->PrintLine();
+		Check("beyond the map's coverage is lit, not shadowed", outside > 200);
+
+		Check("no GL errors from the shadow pass", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		caster_mesh->Free();
+		floor_mesh->Free();
+		shadowed->Free();
+		shadows->Free();
+		shadows->Free();
+		Check("ShadowMap->Free is idempotent", true);
 	}
 
 	#~
