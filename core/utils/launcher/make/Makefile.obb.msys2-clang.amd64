@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -std=c++20 -mavx2 -Wno-unused-function
+ARGS=-O3 -Wall -std=c++20 -mavx2 -Wno-unused-function -MMD -MP
 
 SRC=builder.o
 OBJ_LIBS=objeck.res
@@ -13,5 +13,10 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 objeck.res:
 	windres vs/builder/objeck.rc -O coff -o objeck.res
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
-	rm -f $(EXE) *.o *~ *.res
+	rm -f $(EXE) *.o *.d *~ *.res

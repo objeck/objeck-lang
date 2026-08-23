@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -D_MODULE  -D_MSYS2 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -std=c++20 -mavx2 -Wno-uninitialized -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas -Wno-unused-but-set-variable -Wno-dangling-pointer 
+ARGS=-O3 -Wall -D_MODULE  -D_MSYS2 -D_X64 -D_OBJECK_NATIVE_LIB_PATH -std=c++20 -mavx2 -Wno-uninitialized -Wno-unused-function -Wno-unused-variable -Wno-int-to-pointer-cast -Wno-unknown-pragmas -Wno-unused-but-set-variable -Wno-dangling-pointer -MMD -MP
 
 SRC=common.o dispatch.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=win32.a jit_amd_lp64.a memory.a
@@ -27,8 +27,13 @@ win32.a:
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
 	cd $(MEM_PATH); $(MAKE) clean -f make/Makefile.msys2-ucrt.amd64
 	cd $(JIT_PATH); $(MAKE) clean -f make/Makefile.msys2-ucrt.amd64
 	cd $(WIN32_PATH); $(MAKE) clean -f make/Makefile.msys2-ucrt.amd64
-	rm -f $(LIB) *.o *~
+	rm -f $(LIB) *.o *.d *~

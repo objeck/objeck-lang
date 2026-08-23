@@ -1,6 +1,6 @@
 # -D_ARM64 must match the other VM TUs: NativeCode's layout in common.h
 # depends on it, and a mismatch is an ODR violation under LTO (-Wodr).
-ARGS=-O3 -flto=auto -mcpu=native -Wall -D_ARM64 -Wno-unused-function -std=c++20 -Wno-unused-variable
+ARGS=-O3 -flto=auto -mcpu=native -Wall -D_ARM64 -Wno-unused-function -std=c++20 -Wno-unused-variable -MMD -MP
 
 AR=gcc-ar
 SRC=jit_common.o
@@ -12,5 +12,10 @@ $(LIB): $(SRC)
 %.o: %.cpp
 	$(CXX) $(ARGS) -c $< 
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
-	rm -f *.o *~ $(LIB)
+	rm -f *.o *.d *~ $(LIB)

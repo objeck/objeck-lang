@@ -1,6 +1,8 @@
 # Objeck build outputs
 *.o
 *.a
+# gcc/clang -MMD -MP depfiles: how the POSIX makefiles learn header deps
+*.d
 *.obe
 *.obm
 

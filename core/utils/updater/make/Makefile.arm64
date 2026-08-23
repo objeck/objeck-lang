@@ -21,7 +21,7 @@ ifeq ($(shell command -v $(firstword $(CXX)) >/dev/null 2>&1 && echo ok),)
 CXX := c++
 endif
 
-ARGS=-O3 -Wall -Wno-unused-function -std=c++17
+ARGS=-O3 -Wall -Wno-unused-function -std=c++17 -MMD -MP
 
 SRC=obu.o
 EXE=obu
@@ -32,5 +32,10 @@ $(EXE): $(SRC)
 %.o: %.cpp
 	$(CXX) $(ARGS) -c $<
 
+# Auto-generated header dependencies (see -MMD -MP in ARGS). Without these make
+# never learned that the objects include ../shared/version.h and friends, so a
+# header edit silently relinked stale .o files -- 'make clean' was mandatory.
+-include $(wildcard *.d)
+
 clean:
-	rm -f $(EXE) *.o *~
+	rm -f $(EXE) *.o *.d *~
