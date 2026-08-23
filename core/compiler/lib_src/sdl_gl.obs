@@ -599,6 +599,22 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Non-uniform scale. This is what lets one unit-cube mesh become every box in
+		a scene -- walls, floors and obstacles -- instead of uploading a separate
+		mesh per shape.
+		@param x scale along x
+		@param y scale along y
+		@param z scale along z
+		@return the matrix
+		~#
+		function : ScaleXYZ(x : Float, y : Float, z : Float) ~ Float[] {
+			m := Float->New[16];
+			m[0] := x; m[5] := y; m[10] := z; m[15] := 1.0;
+
+			return m;
+		}
+
+		#~
 		Rotation about the X axis.
 		@param radians angle in radians
 		@return the matrix
@@ -669,12 +685,318 @@ bundle Game.OpenGL {
 
 		#~
 		A view matrix that steps back along +Z and looks at the origin. The
-		smallest useful camera; a full LookAt belongs with Vector3.
+		smallest useful camera; use LookAt for one that can move.
 		@param distance how far back to stand
 		@return the matrix
 		~#
 		function : LookAtOrigin(distance : Float) ~ Float[] {
 			return Translation(0.0, 0.0, distance * -1.0);
 		}
+
+		#~
+		A right-handed view matrix for a camera anywhere, looking anywhere.
+
+		This is what lets a camera orbit or track a subject rather than sit on the
+		+Z axis. Degenerate input -- eye equal to target, or an up vector parallel
+		to the view direction -- yields identity rather than NaNs.
+		@param eye where the camera is
+		@param target what it looks at
+		@param up which way is up, usually (0, 1, 0)
+		@return the view matrix
+		~#
+		function : LookAt(eye : Vector3, target : Vector3, up : Vector3) ~ Float[] {
+			if(eye = Nil | target = Nil | up = Nil) {
+				return Identity();
+			};
+
+			# forward points FROM the target TO the eye in a right-handed system
+			forward := Vector3->Subtract(eye, target);
+			if(forward->Length() = 0.0) {
+				return Identity();
+			};
+			forward := forward->Normalized();
+
+			side := Vector3->Cross(up, forward);
+			if(side->Length() = 0.0) {
+				# up was parallel to the view direction; no valid basis exists
+				return Identity();
+			};
+			side := side->Normalized();
+
+			# recomputed so the basis is orthonormal even if 'up' was not square on
+			true_up := Vector3->Cross(forward, side);
+
+			m := Float->New[16];
+			m[0] := side->GetX();    m[4] := side->GetY();    m[8]  := side->GetZ();
+			m[1] := true_up->GetX(); m[5] := true_up->GetY(); m[9]  := true_up->GetZ();
+			m[2] := forward->GetX(); m[6] := forward->GetY(); m[10] := forward->GetZ();
+
+			m[12] := Vector3->Dot(side, eye) * -1.0;
+			m[13] := Vector3->Dot(true_up, eye) * -1.0;
+			m[14] := Vector3->Dot(forward, eye) * -1.0;
+			m[15] := 1.0;
+
+			return m;
+		}
 	}
+
+	#~
+	A 3D vector, for camera and scene math.
+
+	Mirrors Game.Framework's Vector2: mutating methods on an instance, plus
+	static functions that return new values. Immutable-style helpers are named
+	with a past participle (Normalized) to distinguish them from the in-place
+	form (Normalize).
+	~#
+	class Vector3 {
+		@x : Float;
+		@y : Float;
+		@z : Float;
+
+		New(x : Float, y : Float, z : Float) {
+			@x := x;
+			@y := y;
+			@z := z;
+		}
+
+		method : public : GetX() ~ Float { return @x; }
+		method : public : GetY() ~ Float { return @y; }
+		method : public : GetZ() ~ Float { return @z; }
+
+		method : public : Set(x : Float, y : Float, z : Float) ~ Nil {
+			@x := x;
+			@y := y;
+			@z := z;
+		}
+
+		#~
+		@return the vector's length
+		~#
+		method : public : Length() ~ Float {
+			return (@x * @x + @y * @y + @z * @z)->Sqrt();
+		}
+
+		#~
+		Scale to unit length in place. A zero vector is left alone.
+		~#
+		method : public : Normalize() ~ Nil {
+			length := Length();
+			if(length <> 0.0) {
+				@x /= length;
+				@y /= length;
+				@z /= length;
+			};
+		}
+
+		#~
+		@return a new unit-length copy; a zero vector comes back unchanged
+		~#
+		method : public : Normalized() ~ Vector3 {
+			length := Length();
+			if(length = 0.0) {
+				return Vector3->New(@x, @y, @z);
+			};
+
+			return Vector3->New(@x / length, @y / length, @z / length);
+		}
+
+		#~
+		@return the vector as a flat array, e.g. for a vec3 uniform
+		~#
+		method : public : ToArray() ~ Float[] {
+			# built element-wise on purpose: an array literal in this language takes
+			# literals, so [@x, @y, @z] does not parse
+			values := Float->New[3];
+			values[0] := @x;
+			values[1] := @y;
+			values[2] := @z;
+
+			return values;
+		}
+
+		#~
+		@param lhs first vector
+		@param rhs second vector
+		@return lhs + rhs
+		~#
+		function : Add(lhs : Vector3, rhs : Vector3) ~ Vector3 {
+			return Vector3->New(lhs->GetX() + rhs->GetX(), lhs->GetY() + rhs->GetY(), lhs->GetZ() + rhs->GetZ());
+		}
+
+		#~
+		@param lhs first vector
+		@param rhs second vector
+		@return lhs - rhs
+		~#
+		function : Subtract(lhs : Vector3, rhs : Vector3) ~ Vector3 {
+			return Vector3->New(lhs->GetX() - rhs->GetX(), lhs->GetY() - rhs->GetY(), lhs->GetZ() - rhs->GetZ());
+		}
+
+		#~
+		@param v the vector
+		@param scale the factor
+		@return v * scale
+		~#
+		function : Scale(v : Vector3, scale : Float) ~ Vector3 {
+			return Vector3->New(v->GetX() * scale, v->GetY() * scale, v->GetZ() * scale);
+		}
+
+		#~
+		@param lhs first vector
+		@param rhs second vector
+		@return the dot product
+		~#
+		function : Dot(lhs : Vector3, rhs : Vector3) ~ Float {
+			return lhs->GetX() * rhs->GetX() + lhs->GetY() * rhs->GetY() + lhs->GetZ() * rhs->GetZ();
+		}
+
+		#~
+		@param lhs first vector
+		@param rhs second vector
+		@return the cross product, lhs x rhs
+		~#
+		function : Cross(lhs : Vector3, rhs : Vector3) ~ Vector3 {
+			cx := lhs->GetY() * rhs->GetZ() - lhs->GetZ() * rhs->GetY();
+			cy := lhs->GetZ() * rhs->GetX() - lhs->GetX() * rhs->GetZ();
+			cz := lhs->GetX() * rhs->GetY() - lhs->GetY() * rhs->GetX();
+
+			return Vector3->New(cx, cy, cz);
+		}
+	}
+
+	#~
+	A first-person camera: a position plus a yaw/pitch heading, producing the view
+	matrix each frame.
+
+	Yaw and pitch are held instead of a look-at target because that is what input
+	drives -- turning is a change in yaw, not a new target point. Pitch is clamped
+	just short of straight up/down, since at exactly vertical the view direction
+	becomes parallel to 'up' and no camera basis exists.
+
+	Movement is horizontal: MoveForward walks along the heading with the pitch
+	ignored, so looking down does not sink you into the floor. That is what a
+	walking character wants; a flying one would use ForwardVector directly.
+
+	```
+	camera := Camera->New(Vector3->New(0.0, 1.7, 5.0));   # eye height
+	camera->Turn(0.03);
+	camera->MoveForward(0.1);
+	shader->SetMatrix4("view", camera->GetViewMatrix());
+	```
+	~#
+	class Camera {
+		@position : Vector3;
+		@yaw : Float;
+		@pitch : Float;
+
+		#~
+		@param position where the eye starts
+		~#
+		New(position : Vector3) {
+			@position := position;
+			@yaw := 0.0;
+			@pitch := 0.0;
+		}
+
+		method : public : GetPosition() ~ Vector3 {
+			return @position;
+		}
+
+		method : public : GetYaw() ~ Float {
+			return @yaw;
+		}
+
+		method : public : GetPitch() ~ Float {
+			return @pitch;
+		}
+
+		#~
+		Place the eye directly.
+		@param position the new position
+		~#
+		method : public : SetPosition(position : Vector3) ~ Nil {
+			@position := position;
+		}
+
+		#~
+		Turn left or right.
+		@param radians positive turns one way, negative the other
+		~#
+		method : public : Turn(radians : Float) ~ Nil {
+			@yaw += radians;
+		}
+
+		#~
+		Look up or down. Clamped to just under +/- 90 degrees, because at exactly
+		vertical the view direction is parallel to 'up' and the camera basis
+		collapses.
+		@param radians positive looks up
+		~#
+		method : public : Look(radians : Float) ~ Nil {
+			limit := Float->Pi() / 2.0 - 0.01;
+			@pitch += radians;
+			if(@pitch > limit) {
+				@pitch := limit;
+			};
+			if(@pitch < limit * -1.0) {
+				@pitch := limit * -1.0;
+			};
+		}
+
+		#~
+		The direction the camera is looking, including pitch.
+		@return a unit vector
+		~#
+		method : public : ForwardVector() ~ Vector3 {
+			cos_pitch := @pitch->Cos();
+
+			return Vector3->New(@yaw->Sin() * cos_pitch, @pitch->Sin(), @yaw->Cos() * cos_pitch * -1.0);
+		}
+
+		#~
+		The heading on the ground plane, pitch ignored.
+		@return a unit vector with no vertical component
+		~#
+		method : public : GroundForward() ~ Vector3 {
+			return Vector3->New(@yaw->Sin(), 0.0, @yaw->Cos() * -1.0);
+		}
+
+		#~
+		The camera's right-hand direction on the ground plane.
+		@return a unit vector with no vertical component
+		~#
+		method : public : GroundRight() ~ Vector3 {
+			return Vector3->New(@yaw->Cos(), 0.0, @yaw->Sin());
+		}
+
+		#~
+		Walk along the heading. Vertical component ignored, so looking down does not
+		push the eye through the floor.
+		@param distance how far; negative walks backwards
+		~#
+		method : public : MoveForward(distance : Float) ~ Nil {
+			step := Vector3->Scale(GroundForward(), distance);
+			@position := Vector3->Add(@position, step);
+		}
+
+		#~
+		Strafe sideways.
+		@param distance how far; negative goes left
+		~#
+		method : public : MoveRight(distance : Float) ~ Nil {
+			step := Vector3->Scale(GroundRight(), distance);
+			@position := Vector3->Add(@position, step);
+		}
+
+		#~
+		The view matrix for this frame.
+		@return a 4x4 view matrix, column-major
+		~#
+		method : public : GetViewMatrix() ~ Float[] {
+			target := Vector3->Add(@position, ForwardVector());
+
+			return Matrix4->LookAt(@position, target, Vector3->New(0.0, 1.0, 0.0));
+		}
+	}
+
 }

@@ -2886,10 +2886,20 @@ __declspec(dllexport)
     Uint8* byte_array = (Uint8*)(array + 3);
     memcpy(byte_array, states, numkeys);
 
-    // create 'ByteArrayHolder' holder
-    size_t* byte_obj= APITools_CreateObject(context, L"System.ByteArrayHolder");
+    // 'ByteArrayRef', not 'ByteArrayHolder'. The class was renamed in 8131ebb7f1
+    // ("changing 'Holder' names to 'Ref'") and this string was missed, so
+    // APITools_CreateObject returned null and the next line dereferenced it --
+    // Keyboard->GetState() segfaulted on every platform from that commit until
+    // now. Nothing caught it: no SDL test runs in CI and no shipped example
+    // called GetState.
+    size_t* byte_obj = APITools_CreateObject(context, L"System.ByteArrayRef");
+    if(!byte_obj) {
+      // fail loudly rather than crash if this name ever drifts again
+      std::wcerr << L"Objeck SDL: cannot create System.ByteArrayRef" << std::endl;
+      return;
+    }
     byte_obj[0] = (size_t)array;
-    
+
     APITools_SetObjectValue(context, 0, byte_obj);
   }
 

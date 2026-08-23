@@ -1,0 +1,491 @@
+#~
+Walk around a 3D room with obstacles -- first-person, with collision.
+
+  compile: obc -src gl_walkthrough.obs -lib sdl2,sdl_gl
+  run:     obr gl_walkthrough
+
+  W / S        walk forward, back
+  A / D        strafe left, right
+  left / right turn
+  up / down    look up, down
+  shift        run
+  escape       quit
+
+The milestone this framework was built for: everything a 3D program needs, in
+one place. Camera driven by input, a scene of many objects, per-object
+transforms, depth buffering, backface culling, textures, and collision that
+stops you walking through walls.
+
+Two things worth noticing in the code:
+
+ONE MESH, MANY OBJECTS. The room and every obstacle are the same unit cube,
+drawn repeatedly with a different model matrix -- Translation * ScaleXYZ. The
+geometry is uploaded once at startup and never touched again, so a frame costs
+one draw call per box rather than any per-vertex work crossing into native code.
+
+COLLISION SLIDES. Movement is attempted on X and Z independently, so walking
+into a wall at an angle slides along it instead of stopping dead. Testing the
+combined move in one go is the usual first attempt and it feels terrible.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class Walkthrough {
+	@window : Window;
+	@context : GLContext;
+	@shader : Shader;
+	@cube : Mesh;
+	@wall_texture : Texture2D;
+	@box_texture : Texture2D;
+	@wall_surface : Surface;
+	@box_surface : Surface;
+	@camera : Camera;
+	@view_projection : Float[];
+
+	# Six floats per box: center x,y,z then half-extents x,y,z. Kept as a flat
+	# array rather than objects so a frame allocates nothing.
+	@boxes : Float[];
+	@box_count : Int;
+	# how many of the leading boxes are room shell (drawn with the wall texture)
+	@shell_count : Int;
+
+	# the player is a circle in plan view, not a point
+	@radius : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		Walkthrough->New()->Run();
+	}
+
+	New() {
+		@radius := 0.35;
+		BuildScene();
+		@camera := Camera->New(Vector3->New(0.0, 1.7, 6.0));
+	}
+
+	method : Run() ~ Nil {
+		leaving {
+			Close();
+		};
+
+		if(<>Init()) {
+			"--- Error initializing OpenGL ---"->ErrorLine();
+			return;
+		};
+
+		"Walk with WASD, turn with the arrow keys, escape to quit."->PrintLine();
+
+		e := Event->New();
+		quit := false;
+		last_ticks := Timer->GetTicks();
+
+		while(<>quit) {
+			# real elapsed time, so movement speed does not depend on frame rate
+			now := Timer->GetTicks();
+			delta := (now - last_ticks)->As(Float) / 1000.0;
+			last_ticks := now;
+			if(delta > 0.1) {
+				# a long stall (window drag, breakpoint) would otherwise teleport you
+				delta := 0.1;
+			};
+
+			while(e->Poll() <> 0) {
+				type := e->GetType();
+				if(type = EventType->SDL_QUIT) {
+					quit := true;
+				};
+			};
+
+			keys := Keyboard->GetState();
+			if(IsDown(keys, Scancode->SDL_SCANCODE_ESCAPE)) {
+				quit := true;
+			};
+
+			Update(keys, delta);
+			Draw();
+
+			@window->GLSwap();
+		};
+		e->Free();
+
+		errors := GL->DrainErrors();
+		count := errors->Size();
+		if(count > 0) {
+			"Warning: {$count} GL error(s)"->ErrorLine();
+		};
+	}
+
+	method : IsDown(keys : Byte[], scancode : Int) ~ Bool {
+		if(keys = Nil | scancode < 0 | scancode >= keys->Size()) {
+			return false;
+		};
+
+		return keys[scancode] <> 0;
+	}
+
+	method : Update(keys : Byte[], delta : Float) ~ Nil {
+		turn_rate := 2.0 * delta;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_LEFT)) {
+			@camera->Turn(turn_rate);
+		};
+		if(IsDown(keys, Scancode->SDL_SCANCODE_RIGHT)) {
+			@camera->Turn(turn_rate * -1.0);
+		};
+		if(IsDown(keys, Scancode->SDL_SCANCODE_UP)) {
+			@camera->Look(turn_rate);
+		};
+		if(IsDown(keys, Scancode->SDL_SCANCODE_DOWN)) {
+			@camera->Look(turn_rate * -1.0);
+		};
+
+		speed := 3.0;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_LSHIFT) |
+				IsDown(keys, Scancode->SDL_SCANCODE_RSHIFT)) {
+			speed := 6.0;
+		};
+		step := speed * delta;
+
+		forward := 0.0;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_W)) { forward += step; };
+		if(IsDown(keys, Scancode->SDL_SCANCODE_S)) { forward -= step; };
+
+		strafe := 0.0;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_D)) { strafe += step; };
+		if(IsDown(keys, Scancode->SDL_SCANCODE_A)) { strafe -= step; };
+
+		if(forward <> 0.0 | strafe <> 0.0) {
+			MoveWithCollision(forward, strafe);
+		};
+	}
+
+	#~
+	Apply the movement one axis at a time. Doing X and Z separately is what makes
+	a glancing hit slide along the wall; testing the combined vector just stops
+	you.
+	~#
+	method : MoveWithCollision(forward : Float, strafe : Float) ~ Nil {
+		ground := @camera->GroundForward();
+		right := @camera->GroundRight();
+
+		dx := ground->GetX() * forward + right->GetX() * strafe;
+		dz := ground->GetZ() * forward + right->GetZ() * strafe;
+
+		position := @camera->GetPosition();
+		x := position->GetX();
+		y := position->GetY();
+		z := position->GetZ();
+
+		if(<>Blocked(x + dx, z)) {
+			x += dx;
+		};
+		if(<>Blocked(x, z + dz)) {
+			z += dz;
+		};
+
+		@camera->SetPosition(Vector3->New(x, y, z));
+	}
+
+	#~
+	Circle-versus-box overlap in plan view, against every box in the scene. The
+	vertical extent is ignored on purpose: this is a walking character on a flat
+	floor, so a box overhead should not block it -- but the floor slab itself is
+	one of the boxes, so it is skipped by testing only boxes that rise above the
+	floor.
+	~#
+	method : Blocked(x : Float, z : Float) ~ Bool {
+		for(i := 0; i < @box_count; i += 1;) {
+			base := i * 6;
+			cy := @boxes[base + 1];
+			hy := @boxes[base + 4];
+
+			# skip anything that does not stand up into the player's body
+			if(cy + hy > 0.3) {
+				cx := @boxes[base + 0];
+				cz := @boxes[base + 2];
+				hx := @boxes[base + 3];
+				hz := @boxes[base + 5];
+
+				# distance from the circle centre to the box, per axis
+				gap_x := (x - cx)->Abs() - hx;
+				gap_z := (z - cz)->Abs() - hz;
+
+				if(gap_x < @radius & gap_z < @radius) {
+					# inside on both axes: overlapping (corner case is conservative,
+					# which is the right way to be wrong for a wall)
+					return true;
+				};
+			};
+		};
+
+		return false;
+	}
+
+	#~
+	The room shell first, then the obstacles. Shell boxes get the wall texture.
+	~#
+	method : BuildScene() ~ Nil {
+		# Written out as plain numbers rather than expressions over half/wall_h:
+		# an array literal in this language accepts only literals, so `half * -1.0`
+		# inside the brackets does not parse. Room is 20x20 by 3 high.
+		shell := [
+			#  cx     cy     cz      hx    hy    hz
+			  0.0,  -0.25,   0.0,   10.0,  0.25, 10.0,   # floor
+			  0.0,   3.0,    0.0,   10.0,  0.25, 10.0,   # ceiling
+			  0.0,   1.5,  -10.0,   10.0,  1.5,   0.5,   # north wall
+			  0.0,   1.5,   10.0,   10.0,  1.5,   0.5,   # south wall
+			-10.0,   1.5,    0.0,    0.5,  1.5,  10.0,   # west wall
+			 10.0,   1.5,    0.0,    0.5,  1.5,  10.0];  # east wall
+
+		obstacles := [
+			 -4.0, 0.75,  -3.0,   0.75, 0.75, 0.75,
+			  3.5, 1.25,   1.5,   1.0,  1.25, 1.0,
+			  0.0, 0.5,   -6.5,   2.5,  0.5,  0.5,
+			 -6.0, 1.0,    4.0,   0.5,  1.0,  2.5,
+			  5.5, 0.4,   -5.5,   1.2,  0.4,  1.2,
+			 -1.5, 1.75,   2.0,   0.4,  1.75, 0.4];
+
+		shell_size := shell->Size();
+		obstacle_size := obstacles->Size();
+
+		@shell_count := shell_size / 6;
+		@box_count := (shell_size + obstacle_size) / 6;
+
+		@boxes := Float->New[shell_size + obstacle_size];
+		for(i := 0; i < shell_size; i += 1;) {
+			@boxes[i] := shell[i];
+		};
+		for(i := 0; i < obstacle_size; i += 1;) {
+			@boxes[shell_size + i] := obstacles[i];
+		};
+	}
+
+	method : Draw() ~ Nil {
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		view_projection := Matrix4->Multiply(@view_projection, @camera->GetViewMatrix());
+
+		@shader->Use();
+		@shader->SetInt("tex", 0);
+
+		for(i := 0; i < @box_count; i += 1;) {
+			base := i * 6;
+
+			if(i = 0) {
+				@wall_texture->Bind(0);
+			};
+			if(i = @shell_count) {
+				@box_texture->Bind(0);
+			};
+
+			model := Matrix4->Multiply(
+				Matrix4->Translation(@boxes[base + 0], @boxes[base + 1], @boxes[base + 2]),
+				Matrix4->ScaleXYZ(@boxes[base + 3], @boxes[base + 4], @boxes[base + 5]));
+
+			@shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
+			@cube->Draw();
+		};
+	}
+
+	method : Init() ~ Bool {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+			"SDL could not initialize: "->Print();
+			Core->GetError()->ErrorLine();
+			return false;
+		};
+
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK,
+			GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
+		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS,
+			GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+		Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
+		Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
+
+		@window := Window->New("Objeck 3D Walkthrough", WindowFlags->SDL_WINDOWPOS_UNDEFINED,
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 960, 640,
+			WindowFlags->SDL_WINDOW_SHOWN or WindowFlags->SDL_WINDOW_OPENGL);
+		if(@window->IsNull()) {
+			"Cannot create window: "->Print();
+			Core->GetError()->ErrorLine();
+			return false;
+		};
+
+		@context := @window->GLCreateContext();
+		if(@context->IsNull()) {
+			"Cannot create a GL 3.3 core context: "->Print();
+			Core->GetError()->ErrorLine();
+			return false;
+		};
+
+		version := Core->GLGetVersionString();
+		"GL version: {$version}"->PrintLine();
+
+		missing := GL->LoadFunctions();
+		if(missing->Size() > 0) {
+			"Could not resolve GL functions: {$missing}"->ErrorLine();
+			return false;
+		};
+
+		w := IntRef->New();
+		h := IntRef->New();
+		@window->GLGetDrawableSize(w, h);
+		pixel_w := w->Get();
+		pixel_h := h->Get();
+		GL->Viewport(0, 0, pixel_w, pixel_h);
+
+		aspect := pixel_w->As(Float) / pixel_h->As(Float);
+		@view_projection := Matrix4->Perspective(Float->Pi() / 3.0, aspect, 0.1, 100.0);
+
+		GL->Enable(Capability->GL_DEPTH_TEST);
+		GL->Enable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.05, 0.06, 0.09, 1.0);
+		Core->GLSetSwapInterval(1);
+
+		@shader := Shader->New(VertexSource(), FragmentSource());
+		if(<>@shader->IsOk()) {
+			"Shader failed:"->ErrorLine();
+			@shader->GetLog()->ErrorLine();
+			return false;
+		};
+
+		@cube := Mesh->New(CubeVertices(), CubeIndices(), [3, 2]);
+		if(<>@cube->IsOk()) {
+			"Could not upload the cube mesh"->ErrorLine();
+			return false;
+		};
+
+		@wall_surface := Checker(64, 8, 210, 205, 195, 120, 115, 110);
+		@box_surface := Checker(64, 4, 190, 120, 70, 120, 70, 40);
+		@wall_texture := Texture2D->New(@wall_surface);
+		@box_texture := Texture2D->New(@box_surface);
+		if(<>@wall_texture->IsOk() | <>@box_texture->IsOk()) {
+			"Could not upload textures"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+
+	method : Checker(size : Int, squares : Int, r1 : Int, g1 : Int, b1 : Int,
+			r2 : Int, g2 : Int, b2 : Int) ~ Surface {
+		surface := Surface->New(0, size, size, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+		if(surface->IsNull()) {
+			return Nil;
+		};
+
+		light := Packed(r1, g1, b1);
+		dark := Packed(r2, g2, b2);
+		step := size / squares;
+
+		for(row := 0; row < squares; row += 1;) {
+			for(col := 0; col < squares; col += 1;) {
+				color := (row + col) % 2 = 0 ? light : dark;
+				surface->FillRect(Rect->New(col * step, row * step, step, step), color);
+			};
+		};
+
+		return surface;
+	}
+
+	method : Packed(r : Int, g : Int, b : Int) ~ Int {
+		return 0xFF000000 or (r * 0x10000) or (g * 0x100) or b;
+	}
+
+	#~
+	A unit cube centred on the origin, position(3) + texcoord(2), wound
+	counter-clockwise seen from outside so backface culling keeps the outsides.
+	~#
+	method : CubeVertices() ~ Float[] {
+		return [
+			-1.0, -1.0,  1.0,  0.0, 0.0,
+			 1.0, -1.0,  1.0,  1.0, 0.0,
+			 1.0,  1.0,  1.0,  1.0, 1.0,
+			-1.0,  1.0,  1.0,  0.0, 1.0,
+
+			 1.0, -1.0, -1.0,  0.0, 0.0,
+			-1.0, -1.0, -1.0,  1.0, 0.0,
+			-1.0,  1.0, -1.0,  1.0, 1.0,
+			 1.0,  1.0, -1.0,  0.0, 1.0,
+
+			-1.0, -1.0, -1.0,  0.0, 0.0,
+			-1.0, -1.0,  1.0,  1.0, 0.0,
+			-1.0,  1.0,  1.0,  1.0, 1.0,
+			-1.0,  1.0, -1.0,  0.0, 1.0,
+
+			 1.0, -1.0,  1.0,  0.0, 0.0,
+			 1.0, -1.0, -1.0,  1.0, 0.0,
+			 1.0,  1.0, -1.0,  1.0, 1.0,
+			 1.0,  1.0,  1.0,  0.0, 1.0,
+
+			-1.0,  1.0,  1.0,  0.0, 0.0,
+			 1.0,  1.0,  1.0,  1.0, 0.0,
+			 1.0,  1.0, -1.0,  1.0, 1.0,
+			-1.0,  1.0, -1.0,  0.0, 1.0,
+
+			-1.0, -1.0, -1.0,  0.0, 0.0,
+			 1.0, -1.0, -1.0,  1.0, 0.0,
+			 1.0, -1.0,  1.0,  1.0, 1.0,
+			-1.0, -1.0,  1.0,  0.0, 1.0];
+	}
+
+	method : CubeIndices() ~ Int[] {
+		indices := Int->New[36];
+		for(face := 0; face < 6; face += 1;) {
+			base := face * 4;
+			out := face * 6;
+			indices[out + 0] := base + 0;
+			indices[out + 1] := base + 1;
+			indices[out + 2] := base + 2;
+			indices[out + 3] := base + 2;
+			indices[out + 4] := base + 3;
+			indices[out + 5] := base + 0;
+		};
+
+		return indices;
+	}
+
+	method : VertexSource() ~ String {
+		source := "#version 330 core\n";
+		source += "layout (location = 0) in vec3 in_position;\n";
+		source += "layout (location = 1) in vec2 in_texcoord;\n";
+		source += "uniform mat4 mvp;\n";
+		source += "out vec2 texcoord;\n";
+		source += "out float depth;\n";
+		source += "void main() {\n";
+		source += "  texcoord = in_texcoord;\n";
+		source += "  gl_Position = mvp * vec4(in_position, 1.0);\n";
+		source += "  depth = gl_Position.z;\n";
+		source += "}\n";
+
+		return source;
+	}
+
+	method : FragmentSource() ~ String {
+		source := "#version 330 core\n";
+		source += "in vec2 texcoord;\n";
+		source += "in float depth;\n";
+		source += "uniform sampler2D tex;\n";
+		source += "out vec4 frag_color;\n";
+		source += "void main() {\n";
+		# distance fog, which also gives the room a sense of depth without lighting
+		source += "  float fog = clamp(1.0 - depth / 40.0, 0.25, 1.0);\n";
+		source += "  frag_color = texture(tex, texcoord) * vec4(vec3(fog), 1.0);\n";
+		source += "}\n";
+
+		return source;
+	}
+
+	method : Close() ~ Nil {
+		if(@wall_texture <> Nil) { @wall_texture->Free(); };
+		if(@box_texture <> Nil) { @box_texture->Free(); };
+		if(@cube <> Nil) { @cube->Free(); };
+		if(@shader <> Nil) { @shader->Free(); };
+		if(@wall_surface <> Nil & <>@wall_surface->IsNull()) { @wall_surface->Free(); };
+		if(@box_surface <> Nil & <>@box_surface->IsNull()) { @box_surface->Free(); };
+		if(@context <> Nil) { @context->Delete(); };
+		if(@window <> Nil & <>@window->IsNull()) { @window->Destroy(); };
+
+		Core->Quit();
+	}
+}
