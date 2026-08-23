@@ -455,6 +455,10 @@ bundle Game.OpenGL {
 		The three calls that go together, because getting one of the three wrong is
 		what makes transparency look broken rather than absent. Call
 		EndTransparency when the transparent pass is done.
+
+		CLEAR THE FRAME BEFORE CALLING THIS. Turning depth writing off also disables
+		clearing the depth buffer -- see SetDepthWrite -- so a clear afterwards
+		leaves stale depth behind.
 		~#
 		function : BeginTransparency() ~ Nil {
 			Enable(Capability->GL_BLEND);
@@ -476,6 +480,14 @@ bundle Game.OpenGL {
 		Off for a transparent pass: those fragments should be hidden BY opaque
 		geometry but should not hide each other, and the only way to have both is
 		to test depth without writing it.
+
+		**Clearing the depth buffer while this is off does nothing.** glClear of the
+		depth buffer is subject to the same mask, so a frame that turns depth
+		writing off and then clears keeps the previous frame's depth values -- and
+		everything at the same distance as something drawn last time silently fails
+		the test. Clear first, then turn writing off. This is not hypothetical: it
+		is how the check for this in the regression suite first came out reading
+		zero instead of a blend.
 		@param enabled false to stop writing depth
 		~#
 		function : SetDepthWrite(enabled : Bool) ~ Nil {

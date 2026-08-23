@@ -85,6 +85,7 @@ class GlContextTest {
 		CheckShadows();
 		CheckOverlay();
 		CheckInstancing();
+		CheckDrawModesAndBlending();
 		CheckMeshValidation();
 		CheckExtensions();
 		CheckRenderTarget();
@@ -1202,6 +1203,155 @@ class GlContextTest {
 
 		white->Free();
 		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	Lines really draw as lines, and blending really blends.
+
+	Both were added as capabilities with nothing exercising them, which is the
+	same gap as an unused one -- it stays green whatever it does.
+
+	Lines are the interesting half to assert. Drawn as GL_LINES, a quad's four
+	corner vertices become two segments along its edges, so the interior stays
+	empty. Drawn as GL_TRIANGLES the same vertices fill it. That difference is the
+	assertion: a draw mode that was ignored would fill the interior either way.
+
+	Blending is asserted arithmetically. Half-transparent white over black gives a
+	mid grey, and the number is predictable rather than a matter of taste -- so a
+	blend that silently did not happen (GL's default factors are ONE and ZERO,
+	which is "replace") comes back as full white instead of half.
+	~#
+	method : CheckDrawModesAndBlending() ~ Nil {
+		shader := Shader->Flat();
+		if(<>Check("a flat shader for draw modes", shader->IsOk())) {
+			return;
+		};
+
+		# A quad as four corners with LINE indices: a closed loop round the edge.
+		# Deliberately not the triangle index list, because that read as lines gives
+		# (0,1), (2,2), (3,0) -- an outline plus a degenerate segment -- which is the
+		# trap the docs on Draw(mode) warn about.
+		corners := [-0.7, -0.7, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0,
+		             0.7, -0.7, 0.0,  0.0, 0.0, 1.0,  1.0, 0.0,
+		             0.7,  0.7, 0.0,  0.0, 0.0, 1.0,  1.0, 1.0,
+		            -0.7,  0.7, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0];
+		outline := Mesh->New(corners, [0, 1, 1, 2, 2, 3, 3, 0], Mesh->PositionNormalTexcoord());
+		filled := Mesh->New(corners, [0, 1, 2, 2, 3, 0], Mesh->PositionNormalTexcoord());
+		if(<>Check("outline and filled meshes upload", outline->IsOk() & filled->IsOk())) {
+			shader->Free();
+			return;
+		};
+
+		black := 0xFF000000;
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetMatrix4("mvp", Matrix4->Identity());
+		shader->SetVec3("color", 0.0, 1.0, 0.0);
+		filled->Draw();
+		filled_centre := GL->ReadPixel(mid_x, mid_y);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		outline->Draw(DrawMode->GL_LINES);
+		lines_centre := GL->ReadPixel(mid_x, mid_y);
+		# On the left edge of the quad, which at -0.7 NDC is 15% across.
+		lines_edge := GL->ReadPixel((@pixel_w * 15) / 100, mid_y);
+		"  draw modes: filled centre=0x{$filled_centre} lines centre=0x{$lines_centre} lines edge=0x{$lines_edge}"->PrintLine();
+
+		Check("triangles fill the quad", filled_centre <> black);
+		Check("lines leave the middle empty", lines_centre = black);
+		Check("but draw the edge", lines_edge <> black);
+
+		# --- blending, by arithmetic ---
+		# Half-alpha white over black must land mid grey. Straight replace gives
+		# full white, which is what an unconfigured GL_BLEND does.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		blend_shader := Shader->Textured();
+		half_white := Texture2D->Solid(0x80FFFFFF);
+		screen := Mesh->Quad(1.0);
+		if(Check("a half-transparent texture and quad", blend_shader->IsOk() & half_white->IsOk() & screen->IsOk())) {
+			blend_shader->Use();
+			blend_shader->SetMatrix4("mvp", Matrix4->Identity());
+			blend_shader->SetInt("tex", 0);
+			half_white->Bind(0);
+
+			# without blending
+			GL->Disable(Capability->GL_BLEND);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			screen->Draw();
+			opaque := GL->ReadPixel(mid_x, mid_y) and 0x000000FF;
+
+			# With it. The clear comes FIRST, and the order is load-bearing:
+			# BeginTransparency turns depth writing off, and glClear of the depth
+			# buffer is subject to the depth mask -- so clearing after it leaves the
+			# previous draw's depth values in place, the quad at the same z fails the
+			# test, and nothing is drawn at all. That is what the first version of
+			# this check did, and it read 0 rather than the expected mid grey.
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			GL->BeginTransparency();
+			screen->Draw();
+			blended := GL->ReadPixel(mid_x, mid_y) and 0x000000FF;
+			GL->EndTransparency();
+
+			"  blending: unblended={$opaque} blended={$blended}"->PrintLine();
+			Check("without blending a half-alpha texture writes full white", opaque > 200);
+			Check("with it, half white over black is mid grey", blended > 100 & blended < 160);
+		};
+
+		# --- the overlay's high-DPI scale ---
+		# 1.0 on an ordinary screen, 2.0 on a Retina one -- either is fine, but it
+		# must be a positive number rather than a division by a zero window size.
+		overlay := Overlay->New(@gl);
+		if(overlay->IsOk()) {
+			scale := overlay->GetScale();
+			"  overlay scale: {$scale}"->PrintLine();
+			Check("the overlay reports a sane high-DPI scale", scale >= 1.0 & scale <= 4.0);
+		};
+		overlay->Free();
+
+		# --- cull mode ---
+		# A single QUAD, not a cube. A closed cube in a constant colour looks
+		# identical whichever side is culled: cull the front and you simply see the
+		# far face's interior, which the flat shader paints the same green. That was
+		# the first version of this check and it could not fail. A quad has no far
+		# face, so culling its front makes it vanish.
+		one_face := Mesh->Quad(0.8);
+		if(Check("a quad for cull-mode", one_face->IsOk())) {
+			shader->Use();
+			shader->SetMatrix4("mvp", Matrix4->Identity());
+			shader->SetVec3("color", 0.0, 1.0, 0.0);
+
+			GL->Enable(Capability->GL_CULL_FACE);
+			GL->SetCullMode(CullMode->GL_BACK);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			one_face->Draw();
+			back_culled := GL->ReadPixel(mid_x, mid_y);
+
+			GL->SetCullMode(CullMode->GL_FRONT);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			one_face->Draw();
+			front_culled := GL->ReadPixel(mid_x, mid_y);
+
+			"  cull: back-culled=0x{$back_culled} front-culled=0x{$front_culled}"->PrintLine();
+			Check("the default cull mode keeps a front-facing quad", back_culled <> black);
+			Check("SetCullMode(GL_FRONT) discards it", front_culled = black);
+
+			GL->SetCullMode(CullMode->GL_BACK);
+			GL->Disable(Capability->GL_CULL_FACE);
+		};
+
+		Check("no GL errors from draw modes and blending", GL->DrainErrors()->Size() = 0);
+
+		one_face->Free();
+		screen->Free();
+		half_white->Free();
+		blend_shader->Free();
+		filled->Free();
+		outline->Free();
 		shader->Free();
 	}
 
