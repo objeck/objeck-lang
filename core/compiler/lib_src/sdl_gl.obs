@@ -26,6 +26,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
                 with Cube/Plane/Quad/Sphere built in.
 * Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
 * Light       -- one directional light plus ambient, written into a shader.
+* RenderTarget -- draw into a texture instead of the window, then sample it.
 * Transform   -- position, rotation and scale, with a cached matrix.
 * Box, Scene  -- a world of boxes: draws itself, and answers collision.
 
@@ -308,6 +309,72 @@ bundle Game.OpenGL {
 			};
 
 			return result;
+		}
+
+		#~
+		Every extension this context reports.
+
+		Needed because a non-null proc address does NOT mean a feature is usable.
+		SDL falls back to GetProcAddress on opengl32.dll on Windows, and on macOS
+		the lookup goes into OpenGL.framework regardless of what the current
+		context actually supports -- so a pointer can come back for something the
+		driver will refuse. The extension string is the authority.
+
+		In a core profile this is the only way to ask: glGetString(GL_EXTENSIONS)
+		returns nothing and raises GL_INVALID_ENUM there.
+		@return the extension names, empty when there is no context
+		~#
+		function : GetExtensions() ~ String[] {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_extensions", array_args);
+
+			all := array_args[0]->As(String);
+			if(all = Nil | all->Size() = 0) {
+				return String->New[0];
+			};
+
+			return all->Split("\n");
+		}
+
+		#~
+		Whether this context reports an extension.
+		@param name the full name, e.g. "GL_EXT_texture_filter_anisotropic"
+		@return true when it is present
+		~#
+		function : HasExtension(name : String) ~ Bool {
+			if(name = Nil | name->Size() = 0) {
+				return false;
+			};
+
+			extensions := GetExtensions();
+			each(i : extensions) {
+				if(extensions[i]->Equals(name)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Optional entry points that could not be resolved.
+
+		Separate from LoadFunctions, which reports the ones that are REQUIRED: a
+		missing required function disables the whole layer, because nothing here
+		can work without it. A missing optional one disables only itself. Keeping
+		the two apart is what stops one absent extension from taking the renderer
+		down with it.
+		@return a comma-separated list, empty when everything resolved
+		~#
+		function : GetOptionalMissing() ~ String {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_optional_missing", array_args);
+
+			return array_args[0]->As(String);
 		}
 
 		#~
@@ -1735,6 +1802,27 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Wrap a GL texture name this object does not own.
+
+		For a texture created elsewhere -- a RenderTarget's colour attachment -- so
+		it can be bound and sampled through the usual Texture2D API. Free() on the
+		result would delete a texture something else is still using, so whatever
+		created it is responsible for releasing it.
+		@param handle a GL texture name
+		@return a Texture2D over it
+		~#
+		function : Wrapping(handle : Int) ~ Texture2D {
+			texture := Texture2D->New(Nil);
+			texture->Adopt(handle);
+
+			return texture;
+		}
+
+		method : Adopt(handle : Int) ~ Nil {
+			@texture := handle;
+		}
+
+		#~
 		A single-colour texture, one pixel.
 
 		For an untextured surface that still goes through a textured shader, which
@@ -2776,6 +2864,198 @@ bundle Game.OpenGL {
 		}
 	}
 
+
+	#~
+	A framebuffer you draw into instead of the window, and then sample.
+
+	Render-to-texture, which is the door to most of what comes after simple
+	forward rendering: a post-process pass, a shadow map, a reflection, a mirror,
+	a minimap.
+
+	```
+	target := RenderTarget->New(512, 512);
+
+	target->Bind();                      # draw into the texture
+	GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+	scene->Draw(view_projection);
+
+	target->Unbind(window);              # back to the window
+	post->Use();
+	post->SetInt("tex", 0);
+	target->GetTexture()->Bind(0);
+	quad->Draw();
+	```
+
+	## The viewport goes with the target
+
+	Bind sets the viewport to the target's size and Unbind restores the window's,
+	because getting that wrong is the classic render-to-texture bug: a 512x512
+	target still rendering through a 1280x720 viewport draws a quarter of the
+	scene into one corner, with no GL error anywhere. Unbind needs the window in
+	order to know what to restore to -- which is why it takes one.
+
+	## Colour is a texture, depth is not
+
+	Colour goes to a texture because sampling the result is the entire point.
+	Depth goes to a renderbuffer, which is the cheaper option for a buffer that is
+	written and never read. A shadow map wants the reverse, and will need its own
+	constructor for that.
+	~#
+	class RenderTarget {
+		@target : Int;
+		@width : Int;
+		@height : Int;
+		@error : String;
+		@texture : Texture2D;
+
+		#~
+		A target of the given size, smoothly sampled.
+		@param width in pixels
+		@param height in pixels
+		~#
+		New(width : Int, height : Int) {
+			Create(width, height, TextureFilter->GL_LINEAR);
+		}
+
+		#~
+		A target with an explicit sampling filter. Use GL_NEAREST when the result
+		is read exactly rather than scaled -- a deliberately low-resolution pass,
+		or data rather than a picture.
+		@param width in pixels
+		@param height in pixels
+		@param filter a TextureFilter
+		~#
+		New(width : Int, height : Int, filter : Int) {
+			Create(width, height, filter);
+		}
+
+		method : Create(width : Int, height : Int, filter : Int) ~ Nil {
+			@target := 0;
+			@width := width;
+			@height := height;
+			@error := "";
+			@texture := Nil;
+
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(width);
+			array_args[2] := IntRef->New(height);
+			array_args[3] := IntRef->New(filter);
+			array_args[4] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_create", array_args);
+
+			value := array_args[0]->As(IntRef);
+			@target := value->Get();
+			@error := array_args[4]->As(String);
+		}
+
+		#~
+		@return true when the framebuffer was created AND reported complete
+		~#
+		method : public : IsOk() ~ Bool {
+			return @target <> 0;
+		}
+
+		#~
+		Why creation failed -- an incomplete framebuffer, a size the driver
+		refuses, or the entry points not being loaded.
+		@return the reason, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : public : GetWidth() ~ Int { return @width; }
+		method : public : GetHeight() ~ Int { return @height; }
+
+		#~
+		@return width over height, for a projection matched to this target
+		~#
+		method : public : GetAspect() ~ Float {
+			if(@height = 0) {
+				return 1.0;
+			};
+
+			return @width->As(Float) / @height->As(Float);
+		}
+
+		#~
+		Draw into this target from here on. Sets the viewport to match.
+		~#
+		method : public : Bind() ~ Nil {
+			if(@target = 0) {
+				return;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New(@target);
+			array_args[1] := IntRef->New(0);
+			array_args[2] := IntRef->New(0);
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_bind", array_args);
+		}
+
+		#~
+		Draw into the window again, restoring its viewport.
+		@param window the window to go back to
+		~#
+		method : public : Unbind(window : GLWindow) ~ Nil {
+			width := 0;
+			height := 0;
+			if(window <> Nil) {
+				width := window->GetWidth();
+				height := window->GetHeight();
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New(0);
+			array_args[1] := IntRef->New(width);
+			array_args[2] := IntRef->New(height);
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_bind", array_args);
+		}
+
+		#~
+		What was drawn, as a texture to bind and sample.
+
+		The same object every call, and it does NOT own the underlying texture --
+		this target does. Freeing the returned Texture2D would delete a texture the
+		framebuffer is still attached to, so do not; free the target instead.
+		@return the colour texture, or Nil when this target is not ok
+		~#
+		method : public : GetTexture() ~ Texture2D {
+			if(@target = 0) {
+				return Nil;
+			};
+
+			if(@texture = Nil) {
+				array_args := Base->New[2];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@target);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_target_texture", array_args);
+
+				value := array_args[0]->As(IntRef);
+				@texture := Texture2D->Wrapping(value->Get());
+			};
+
+			return @texture;
+		}
+
+		#~
+		Release the framebuffer, its colour texture and its depth buffer.
+
+		Call it while the GL context is still current -- see the shutdown order on
+		the GL class.
+		~#
+		method : public : Free() ~ Nil {
+			if(@target <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@target);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_target_delete", array_args);
+				@target := 0;
+				@texture := Nil;
+			};
+		}
+	}
 
 	#~
 	One directional light, plus the ambient level everything gets.

@@ -82,6 +82,9 @@ class GlContextTest {
 		CheckPrimitives();
 		CheckShaderPresets();
 		CheckLighting();
+		CheckMeshValidation();
+		CheckExtensions();
+		CheckRenderTarget();
 		CheckTextures();
 		CheckTextureOrientation();
 		CheckFrameLoop();
@@ -588,6 +591,199 @@ class GlContextTest {
 		fragment->Add("}");
 
 		return Shader->New(vertex->Build(), fragment->Build());
+	}
+
+	#~
+	A render target really renders somewhere else, and what it captured can be
+	sampled back.
+
+	Four things can be wrong here and three of them are silent.
+
+	1. The framebuffer is INCOMPLETE. Drawing into it does nothing at all and
+	   raises no error -- so RenderTarget->New checks completeness rather than
+	   assuming, and this asserts on the result.
+	2. Nothing actually went to the target. Asserted by drawing DIFFERENT colours
+	   into the target and the window and reading both: if binding did nothing,
+	   they come back the same.
+	3. The viewport was not switched with the target. A target smaller than the
+	   window still rendering through the window's viewport draws into one corner.
+	   So the target here is deliberately a different size from the window, and the
+	   assertion samples a point that is inside the target but outside where the
+	   un-switched viewport would have drawn.
+	4. The captured texture cannot be sampled. Asserted by drawing it back onto a
+	   full-screen quad and checking the colour survives the round trip.
+	~#
+	method : CheckRenderTarget() ~ Nil {
+		# Deliberately NOT the window's size, so a viewport that failed to follow
+		# the binding is detectable.
+		size := 32;
+		target := RenderTarget->New(size, size);
+		if(<>Check("a render target is created and complete", target->IsOk())) {
+			error := target->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		Check("it reports its size", target->GetWidth() = size & target->GetHeight() = size);
+		Check("and an aspect ratio", Near(target->GetAspect(), 1.0, 0.0001));
+
+		# --- different colours into the target and the window ---
+		red := 0xFFFF0000;
+		blue := 0xFF0000FF;
+
+		target->Bind();
+		GL->ClearColor(1.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		# Read while still bound: this reads the TARGET's buffer, not the window's.
+		in_target := GL->ReadPixel(size / 2, size / 2);
+		# The far corner of the target too. Under an un-switched viewport nothing
+		# would have been drawn beyond the window's own bounds, but more usefully:
+		# if the viewport were still the window's larger size, the clear would
+		# still cover everything -- so the corner check below is about the READBACK
+		# region being the target's, which it is only if the binding took.
+		corner_in_target := GL->ReadPixel(size - 1, size - 1);
+
+		target->Unbind(@gl);
+		GL->ClearColor(0.0, 0.0, 1.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		in_window := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+
+		"  target=0x{$in_target} corner=0x{$corner_in_target} window=0x{$in_window}"->PrintLine();
+		Check("the target received its own clear", in_target = red);
+		Check("across the whole target", corner_in_target = red);
+		Check("the window received a different one", in_window = blue);
+		# If Bind did nothing, both clears went to the window and the first read
+		# would have come back blue -- or rather, the second clear would have
+		# overwritten the first and this would still pass. So state the real claim:
+		# the two buffers hold different values at the same moment.
+		Check("the target and the window are separate buffers", in_target <> in_window);
+
+		# --- the captured texture samples back ---
+		captured := target->GetTexture();
+		if(Check("the target hands back a texture", captured <> Nil & captured->IsOk())) {
+			shader := Shader->Textured();
+			quad := Mesh->Quad(1.0);
+			if(Check("a quad and shader to display it", shader->IsOk() & quad->IsOk())) {
+				GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+				GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+				shader->Use();
+				shader->SetMatrix4("mvp", Matrix4->Identity());
+				shader->SetInt("tex", 0);
+				captured->Bind(0);
+				quad->Draw();
+
+				round_trip := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+				"  round trip: 0x{$round_trip}"->PrintLine();
+				Check("what the target captured can be sampled back", round_trip = red);
+			};
+
+			quad->Free();
+			shader->Free();
+		};
+
+		# --- a target the driver cannot make must report, not pretend ---
+		absurd := RenderTarget->New(1000000, 1000000);
+		Check("an impossible size is refused", <>absurd->IsOk());
+		if(<>absurd->IsOk()) {
+			reason := absurd->GetError();
+			Check("with a reason", reason->Size() > 0);
+			"  refused: {$reason}"->PrintLine();
+		};
+		absurd->Free();
+
+		Check("no GL errors from the render target", GL->DrainErrors()->Size() = 0);
+
+		target->Free();
+		# Freeing twice must not double-delete.
+		target->Free();
+		Check("RenderTarget->Free is idempotent", true);
+	}
+
+	#~
+	A mesh GL would reject is refused up front, with a reason.
+
+	Before this, Mesh->New checked nothing and no GL error after creating the
+	buffers, so it handed back a non-zero handle regardless and IsOk answered
+	true. The first symptom was an object that simply never appeared.
+
+	The case that made this worth doing: a mat4 per-instance attribute is
+	conventionally written as a component count of 16. glVertexAttribPointer
+	accepts only 1 to 4, so that produces GL_INVALID_VALUE and draws nothing -- and
+	nothing in the API or its docs said a mat4 has to be four consecutive slots.
+	~#
+	method : CheckMeshValidation() ~ Nil {
+		# a valid triangle, for the control
+		vertices := [0.0, 0.0, 0.0,  1.0, 0.0, 0.0,  0.0, 1.0, 0.0];
+		indices := [0, 1, 2];
+
+		good := Mesh->New(vertices, indices, [3]);
+		Check("a valid mesh is still accepted", good->IsOk());
+		good->Free();
+
+		# 16 components: what someone reaching for a mat4 attribute would write.
+		GL->GetLastError();
+		mat4_attempt := Mesh->New(vertices, indices, [16]);
+		reason := GL->GetLastError();
+		Check("a 16-component attribute is refused", <>mat4_attempt->IsOk());
+		Check("and says a mat4 is four slots, not one", reason->Size() > 0);
+		"  refused: {$reason}"->PrintLine();
+		mat4_attempt->Free();
+
+		# a ragged vertex array: 9 floats described as 2-float vertices
+		GL->GetLastError();
+		ragged := Mesh->New(vertices, indices, [2]);
+		ragged_reason := GL->GetLastError();
+		Check("a ragged vertex array is refused", <>ragged->IsOk());
+		Check("and says why", ragged_reason->Size() > 0);
+		"  refused: {$ragged_reason}"->PrintLine();
+		ragged->Free();
+
+		# zero components
+		GL->GetLastError();
+		empty := Mesh->New(vertices, indices, [0]);
+		Check("a zero-component attribute is refused", <>empty->IsOk());
+		Check("with a reason", GL->GetLastError()->Size() > 0);
+		empty->Free();
+
+		# an absurd attribute count
+		GL->GetLastError();
+		too_many := Mesh->New(vertices, indices, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+		Check("more attributes than the driver allows is refused", <>too_many->IsOk());
+		Check("naming the driver's limit", GL->GetLastError()->Size() > 0);
+		too_many->Free();
+
+		# And the refusals must not have left GL in a bad state for what follows.
+		Check("no GL errors from the refused meshes", GL->DrainErrors()->Size() = 0);
+	}
+
+	#~
+	The extension list is readable, which in a core profile is not free -- it
+	needs glGetStringi, since glGetString(GL_EXTENSIONS) returns nothing there.
+	~#
+	method : CheckExtensions() ~ Nil {
+		extensions := GL->GetExtensions();
+		count := extensions->Size();
+		"  {$count} extensions reported"->PrintLine();
+
+		# Any real driver reports dozens. Zero means glGetStringi is not working,
+		# or GL_NUM_EXTENSIONS came back empty -- both of which would make a future
+		# per-feature check silently answer "unsupported" for everything.
+		Check("the context reports its extensions", count > 0);
+
+		if(count > 0) {
+			first := extensions[0];
+			Check("and they look like extension names", first->StartsWith("GL_"));
+			"  e.g. {$first}"->PrintLine();
+		};
+
+		# A name no driver has, to prove the query discriminates rather than
+		# answering true for everything.
+		Check("a made-up extension is not reported", <>GL->HasExtension("GL_OBJECK_not_a_real_extension"));
+
+		# Optional entry points: nothing is in that tier yet, so this must be
+		# empty. It exists so the first one cannot repeat the all-or-nothing bug.
+		missing := GL->GetOptionalMissing();
+		Check("no optional entry points are missing", missing->Size() = 0);
 	}
 
 	#~

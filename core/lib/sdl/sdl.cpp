@@ -4960,9 +4960,27 @@ GL_FN(DELETEVERTEXARRAYS) GL_FN(GENBUFFERS) GL_FN(BINDBUFFER)
 GL_FN(BUFFERDATA) GL_FN(DELETEBUFFERS) GL_FN(VERTEXATTRIBPOINTER)
 GL_FN(ENABLEVERTEXATTRIBARRAY) GL_FN(ACTIVETEXTURE)
 GL_FN(GENERATEMIPMAP) GL_FN(UNIFORM1F) GL_FN(UNIFORM3FV)
+GL_FN(GENFRAMEBUFFERS) GL_FN(BINDFRAMEBUFFER) GL_FN(DELETEFRAMEBUFFERS)
+GL_FN(FRAMEBUFFERTEXTURE2D) GL_FN(CHECKFRAMEBUFFERSTATUS)
+GL_FN(GENRENDERBUFFERS) GL_FN(BINDRENDERBUFFER) GL_FN(DELETERENDERBUFFERS)
+GL_FN(RENDERBUFFERSTORAGE) GL_FN(FRAMEBUFFERRENDERBUFFER)
+GL_FN(GETSTRINGI)
 #undef GL_FN
 
 static bool objk_gl_loaded = false;
+
+// Entry points that were asked for and not found, but that nothing depends on.
+//
+// The loader used to be all-or-nothing: one unresolved function set
+// objk_gl_loaded to false and EVERY GL call in this file then did nothing --
+// Shader->New returning 0, Mesh->New returning 0, the whole layer dark. That is
+// correct for the GL 3.3 core set, which a 3.3 core context guarantees: if
+// glCreateShader is missing, nothing here can work and saying so once is right.
+//
+// It is badly wrong for anything optional. An extension that some drivers have
+// and some do not must not be able to take the renderer down with it, so those
+// load into this list instead and callers ask before using them.
+static std::string objk_gl_optional_missing;
 
 // Why the last GL call did nothing.
 //
@@ -5033,7 +5051,37 @@ static std::string objk_gl_load_functions() {
   // GL 2.0, like every other uniform setter here
   OBJK_GL_LOAD("glUniform1f", UNIFORM1F)
   OBJK_GL_LOAD("glUniform3fv", UNIFORM3FV)
+
+  // Framebuffer objects, all GL 3.0 -- so guaranteed by any 3.3 core context,
+  // including macOS's, which is why they are required rather than optional.
+  OBJK_GL_LOAD("glGenFramebuffers", GENFRAMEBUFFERS)
+  OBJK_GL_LOAD("glBindFramebuffer", BINDFRAMEBUFFER)
+  OBJK_GL_LOAD("glDeleteFramebuffers", DELETEFRAMEBUFFERS)
+  OBJK_GL_LOAD("glFramebufferTexture2D", FRAMEBUFFERTEXTURE2D)
+  OBJK_GL_LOAD("glCheckFramebufferStatus", CHECKFRAMEBUFFERSTATUS)
+  OBJK_GL_LOAD("glGenRenderbuffers", GENRENDERBUFFERS)
+  OBJK_GL_LOAD("glBindRenderbuffer", BINDRENDERBUFFER)
+  OBJK_GL_LOAD("glDeleteRenderbuffers", DELETERENDERBUFFERS)
+  OBJK_GL_LOAD("glRenderbufferStorage", RENDERBUFFERSTORAGE)
+  OBJK_GL_LOAD("glFramebufferRenderbuffer", FRAMEBUFFERRENDERBUFFER)
+
+  // GL 3.0, and the ONLY way to enumerate extensions in a core profile:
+  // glGetString(GL_EXTENSIONS) returns null with GL_INVALID_ENUM there, so the
+  // indexed form plus GL_NUM_EXTENSIONS is not a convenience.
+  OBJK_GL_LOAD("glGetStringi", GETSTRINGI)
 #undef OBJK_GL_LOAD
+
+  // Anything that lands here is asked for, allowed to be absent, and reported
+  // separately. Nothing uses this tier yet -- it exists so that the first
+  // optional entry point cannot repeat the all-or-nothing mistake.
+  objk_gl_optional_missing.clear();
+#define OBJK_GL_LOAD_OPTIONAL(lower, NAME)                                     \
+  objk_gl##NAME = (PFNGL##NAME##PROC)SDL_GL_GetProcAddress(lower);             \
+  if(!objk_gl##NAME) {                                                         \
+    objk_gl_optional_missing += objk_gl_optional_missing.empty() ? "" : ", ";   \
+    objk_gl_optional_missing += lower;                                         \
+  }
+#undef OBJK_GL_LOAD_OPTIONAL
 
   objk_gl_loaded = missing.empty();
   return missing;
@@ -5047,6 +5095,21 @@ struct ObjkMesh {
   GLuint vbo;
   GLuint ebo;
   GLsizei index_count;
+};
+
+// A render target is a framebuffer plus the colour texture it draws into and a
+// depth renderbuffer, so it travels as one record like ObjkMesh does.
+//
+// Colour goes to a TEXTURE because the whole point is to sample the result
+// afterwards. Depth goes to a RENDERBUFFER because nothing here reads it back --
+// a renderbuffer is the cheaper choice when a buffer is written and never
+// sampled. A shadow map, when it arrives, will want the opposite.
+struct ObjkRenderTarget {
+  GLuint framebuffer;
+  GLuint texture;
+  GLuint depth;
+  GLsizei width;
+  GLsizei height;
 };
 
 // Objeck arrays arrive as a holder object whose field 0 is the array; the
@@ -5442,7 +5505,34 @@ extern "C" {
     size_t* layout = objk_array_from_holder(APITools_GetObjectValue(context, 3), layout_count);
 
     if(!vertices || !indices || !layout || !vertex_count || !index_count || !layout_count) {
+      objk_gl_fail("Mesh->New: vertices, indices and layout must all be non-empty");
       return;
+    }
+
+    // Validation, because none of what follows fails loudly on its own.
+    //
+    // glVertexAttribPointer takes a component count of 1, 2, 3 or 4 and nothing
+    // else. The natural thing to want next is a mat4 per-instance attribute,
+    // which is conventionally written as 16 -- that produces GL_INVALID_VALUE,
+    // draws nothing, and (before this) still handed back a non-zero handle, so
+    // Mesh->IsOk answered true for a mesh that could never render. A mat4 has to
+    // be declared as four consecutive slots, and nothing said so.
+    GLint max_attributes = 0;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_attributes);
+    if(max_attributes > 0 && (GLint)layout_count > max_attributes) {
+      objk_gl_fail("Mesh->New: " + std::to_string(layout_count) +
+                   " attributes, but this driver allows " + std::to_string(max_attributes));
+      return;
+    }
+
+    for(size_t i = 0; i < layout_count; ++i) {
+      const size_t components = layout[i];
+      if(components < 1 || components > 4) {
+        objk_gl_fail("Mesh->New: attribute " + std::to_string(i) + " asks for " +
+                     std::to_string(components) + " components; GL allows 1 to 4 " +
+                     "(a mat4 is four separate slots of 4, not one of 16)");
+        return;
+      }
     }
 
     // double -> GLfloat, and Objeck's 64-bit Int -> GLuint
@@ -5462,7 +5552,23 @@ extern "C" {
       stride += (GLsizei)layout[i];
     }
     if(stride <= 0) {
+      objk_gl_fail("Mesh->New: the layout describes a zero-length vertex");
       return;
+    }
+
+    // A vertex array that is not a whole number of vertices means the last one is
+    // short, and the driver reads past the end of the buffer for it. Silent, and
+    // the kind of silent that reads uninitialised memory.
+    if(vertex_count % (size_t)stride != 0) {
+      objk_gl_fail("Mesh->New: " + std::to_string(vertex_count) +
+                   " floats is not a whole number of " + std::to_string(stride) +
+                   "-float vertices");
+      return;
+    }
+
+    // Drain anything already queued, so the check after creation is about THIS
+    // mesh rather than about whatever happened before it.
+    while(glGetError() != GL_NO_ERROR) {
     }
 
     ObjkMesh* mesh = new ObjkMesh();
@@ -5496,6 +5602,19 @@ extern "C" {
 
     // unbind the VAO so later state changes cannot accidentally mutate it
     objk_glBINDVERTEXARRAY(0);
+
+        // Whether GL accepted any of that. Without this the handle comes back
+    // non-zero regardless, IsOk answers true, and the first symptom is an object
+    // that never appears.
+    const GLenum error = glGetError();
+    if(error != GL_NO_ERROR) {
+      objk_gl_fail("Mesh->New: GL rejected the mesh (error 0x" + std::to_string(error) + ")");
+      objk_glDELETEVERTEXARRAYS(1, &mesh->vao);
+      objk_glDELETEBUFFERS(1, &mesh->vbo);
+      objk_glDELETEBUFFERS(1, &mesh->ebo);
+      delete mesh;
+      return;
+    }
 
     APITools_SetIntValue(context, 0, (size_t)mesh);
   }
@@ -5637,6 +5756,197 @@ extern "C" {
     const GLuint texture = (GLuint)APITools_GetIntValue(context, 0);
     if(texture) {
       glDeleteTextures(1, &texture);
+    }
+  }
+
+  //
+  // Every extension this context reports, newline-separated.
+  //
+  // One call returning the whole list rather than one per index: the coarse-call
+  // rule, and there are typically two to three hundred of them.
+  //
+  // glGetString(GL_EXTENSIONS) is not an option in a core profile -- it returns
+  // null and raises GL_INVALID_ENUM -- so this is the indexed form, which is why
+  // glGetStringi had to be loaded.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_extensions(VMContext& context) {
+    APITools_SetStringValue(context, 0, L"");
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("GL->GetExtensions: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    GLint count = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+
+    std::string all;
+    for(GLint i = 0; i < count; ++i) {
+      const GLubyte* name = objk_glGETSTRINGI(GL_EXTENSIONS, (GLuint)i);
+      if(name) {
+        if(!all.empty()) {
+          all += "\n";
+        }
+        all += reinterpret_cast<const char*>(name);
+      }
+    }
+
+    APITools_SetStringValue(context, 0, BytesToUnicode(all));
+  }
+
+  //
+  // Optional entry points that could not be resolved. Empty is the normal answer.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_optional_missing(VMContext& context) {
+    APITools_SetStringValue(context, 0, BytesToUnicode(objk_gl_optional_missing));
+  }
+
+  //
+  // Creates a framebuffer with a colour texture and a depth buffer, and reports
+  // whether GL considers it complete.
+  //
+  // One call for six GL calls, following the same rule as mesh creation. A
+  // framebuffer that is INCOMPLETE is worse than one that failed to allocate:
+  // drawing into it silently does nothing, so the completeness check is not
+  // optional and its result comes back rather than being assumed.
+  //
+  // slot 0 = handle (0 on failure), 1 = width, 2 = height, 3 = filter,
+  // 4 receives a message when it failed.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_create(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetStringValue(context, 4, L"");
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("RenderTarget->New: ") + OBJK_GL_NOT_LOADED);
+      APITools_SetStringValue(context, 4, BytesToUnicode(OBJK_GL_NOT_LOADED));
+      return;
+    }
+
+    const GLsizei width = (GLsizei)APITools_GetIntValue(context, 1);
+    const GLsizei height = (GLsizei)APITools_GetIntValue(context, 2);
+    const GLint filter = (GLint)APITools_GetIntValue(context, 3);
+
+    if(width <= 0 || height <= 0) {
+      APITools_SetStringValue(context, 4, BytesToUnicode("a render target needs a positive width and height"));
+      return;
+    }
+
+    // Bigger than the driver allows fails at glTexImage2D with an unhelpful
+    // error, so ask first.
+    GLint max_size = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
+    if(max_size > 0 && (width > max_size || height > max_size)) {
+      APITools_SetStringValue(context, 4, BytesToUnicode(
+        std::to_string(width) + "x" + std::to_string(height) +
+        " exceeds this driver's maximum texture size of " + std::to_string(max_size)));
+      return;
+    }
+
+    ObjkRenderTarget* target = new ObjkRenderTarget();
+    target->framebuffer = 0;
+    target->texture = 0;
+    target->depth = 0;
+    target->width = width;
+    target->height = height;
+
+    glGenTextures(1, &target->texture);
+    glBindTexture(GL_TEXTURE_2D, target->texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    // CLAMP_TO_EDGE, not REPEAT: a post-process sampling slightly outside the
+    // target would otherwise wrap and pull in the opposite edge.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    objk_glGENRENDERBUFFERS(1, &target->depth);
+    objk_glBINDRENDERBUFFER(GL_RENDERBUFFER, target->depth);
+    objk_glRENDERBUFFERSTORAGE(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+    objk_glBINDRENDERBUFFER(GL_RENDERBUFFER, 0);
+
+    objk_glGENFRAMEBUFFERS(1, &target->framebuffer);
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
+    objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target->texture, 0);
+    objk_glFRAMEBUFFERRENDERBUFFER(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, target->depth);
+
+    const GLenum status = objk_glCHECKFRAMEBUFFERSTATUS(GL_FRAMEBUFFER);
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, 0);
+
+    if(status != GL_FRAMEBUFFER_COMPLETE) {
+      objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
+      objk_glDELETERENDERBUFFERS(1, &target->depth);
+      glDeleteTextures(1, &target->texture);
+      delete target;
+      APITools_SetStringValue(context, 4, BytesToUnicode(
+        "the framebuffer is incomplete (status 0x" + std::to_string(status) + ")"));
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, (size_t)target);
+  }
+
+  //
+  // Directs drawing at a target, or at the window when the handle is 0.
+  //
+  // The viewport goes with it. Forgetting that is the classic render-to-texture
+  // bug: a 512x512 target still rendering through the window's 1280x720 viewport
+  // draws a quarter of the scene into a corner, with no error anywhere.
+  //
+  // slot 0 = target handle, or 0 for the window; 1, 2 = the window's width and
+  // height, used only when unbinding.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_bind(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("RenderTarget->Bind: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 0);
+    if(target) {
+      objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
+      glViewport(0, 0, target->width, target->height);
+    }
+    else {
+      objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, 0);
+      glViewport(0, 0, (GLsizei)APITools_GetIntValue(context, 1), (GLsizei)APITools_GetIntValue(context, 2));
+    }
+  }
+
+  //
+  // The colour texture, so it can be bound and sampled like any other.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_texture(VMContext& context) {
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, target ? target->texture : 0);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_delete(VMContext& context) {
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 0);
+    if(target) {
+      if(objk_gl_loaded) {
+        objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
+        objk_glDELETERENDERBUFFERS(1, &target->depth);
+        glDeleteTextures(1, &target->texture);
+      }
+      delete target;
     }
   }
 
