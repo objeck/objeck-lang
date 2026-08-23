@@ -23,7 +23,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * Shader      -- a linked program; Flat/Textured/TexturedFog/Normals built in,
                 so the common cases need no GLSL at all.
 * Mesh        -- geometry uploaded once into buffer objects, drawn many times,
-                with Cube/Plane/Quad/Sphere built in.
+                with Cube/Plane/Quad/Sphere built in, and instancing.
 * Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
 * Light       -- one directional light plus ambient, written into a shader.
 * RenderTarget -- draw into a texture instead of the window, then sample it.
@@ -1473,6 +1473,38 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Textured and lit, taking its model matrix per INSTANCE rather than from a
+		uniform. Use with Mesh->SetInstanceMatrices and DrawInstanced.
+
+		Reads the matrix from attribute locations 3 to 6, and has no "model"
+		uniform at all -- so Scene, which sets one, cannot drive this. That is the
+		trade instancing makes: the placement stops being something the CPU sends
+		per object and becomes part of the vertex stream.
+		@return the program; check IsOk()
+		~#
+		function : LitTexturedInstanced() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("layout (location = 1) in vec3 in_normal;");
+			vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+			# four consecutive vec4 slots, which is how a mat4 attribute is declared
+			vertex->Add("layout (location = 3) in mat4 in_model;");
+			vertex->Add("uniform mat4 view_projection;");
+			vertex->Add("out vec3 normal;");
+			vertex->Add("out vec2 texcoord;");
+			vertex->Add("out float depth;");
+			vertex->Add("void main() {");
+			vertex->Add("  normal = normalize(mat3(transpose(inverse(in_model))) * in_normal);");
+			vertex->Add("  texcoord = in_texcoord;");
+			vertex->Add("  vec4 clip = view_projection * in_model * vec4(in_position, 1.0);");
+			vertex->Add("  depth = clip.z;");
+			vertex->Add("  gl_Position = clip;");
+			vertex->Add("}");
+
+			return Shader->New(vertex->Build(), LitFragmentSource(true, false));
+		}
+
+		#~
 		Writes depth and nothing else: the shadow map's own pass.
 
 		No colour output at all, because there is no colour buffer attached to a
@@ -1753,6 +1785,100 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Give this mesh a model matrix per instance, so many copies draw in one call.
+
+		Each instance takes 16 floats, a column-major matrix, exactly as Matrix4
+		produces -- so an array of N*16 floats is N instances. Bound to attribute
+		locations 3, 4, 5 and 6, because the primitives here use 0, 1 and 2 for
+		position, normal and texture coordinate.
+
+		```
+		grid := Float->New[count * 16];
+		for(i := 0; i < count; i += 1;) {
+			# write a matrix at i * 16
+			Matrix4->TranslationScaleInto(slot, x, y, z, s, s, s);
+		};
+		mesh->SetInstanceMatrices(grid);
+		# ... then, once per frame ...
+		mesh->DrawInstanced(count);
+		```
+
+		Draw it with Shader->LitTexturedInstanced or an equivalent that declares the
+		four mat4 slots. A shader expecting a "model" UNIFORM will not see these:
+		instance data is per-vertex-stage input, not a uniform, which is the whole
+		reason it does not cost a call per object.
+
+		## What this is for
+
+		One draw call instead of one per object. A thousand boxes drawn the ordinary
+		way is a thousand draw calls plus a thousand uniform uploads, and every
+		native call here resolves its symbol by string -- so that cost lands twice.
+		A grid, a particle system, a point cloud, a forest: anything where the same
+		geometry appears many times with different placements.
+
+		Below a few dozen objects it is not worth the bother. The break-even is
+		lower here than in C, because of that per-call cost, but it is not zero.
+		@param matrices N * 16 floats, column-major
+		@return true when the upload succeeded; GL->GetLastError says why not
+		~#
+		method : public : SetInstanceMatrices(matrices : Float[]) ~ Bool {
+			# A mat4 attribute is FOUR slots of four components, not one of sixteen.
+			# glVertexAttribPointer takes 1 to 4 and nothing else, so a single slot of
+			# 16 is GL_INVALID_VALUE and draws nothing.
+			return SetInstances(matrices, [4, 4, 4, 4], 3);
+		}
+
+		#~
+		Per-instance data with an explicit layout, for anything that is not a model
+		matrix -- a colour per instance, a scalar, a texture index.
+		@param data N * stride floats, where stride is the sum of the layout
+		@param layout component counts per attribute, each 1 to 4
+		@param base_location the first attribute location to use; 3 is the first
+		free one after the primitives' position, normal and texture coordinate
+		@return true when the upload succeeded
+		~#
+		method : public : SetInstances(data : Float[], layout : Int[], base_location : Int) ~ Bool {
+			if(@mesh = 0 | data = Nil | layout = Nil) {
+				return false;
+			};
+
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@mesh);
+			array_args[2] := FloatArrayRef->New(data);
+			array_args[3] := IntArrayRef->New(layout);
+			array_args[4] := IntRef->New(base_location);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_instances", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() <> 0;
+		}
+
+		#~
+		Draw many copies in one call, using the data from SetInstanceMatrices.
+		@param count how many instances; 1 or fewer draws once, normally
+		~#
+		method : public : DrawInstanced(count : Int) ~ Nil {
+			DrawInstanced(count, DrawMode->GL_TRIANGLES);
+		}
+
+		#~
+		Draw many copies with a given topology.
+		@param count how many instances
+		@param mode a DrawMode
+		~#
+		method : public : DrawInstanced(count : Int, mode : Int) ~ Nil {
+			if(@mesh <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@mesh);
+				array_args[1] := IntRef->New(mode);
+				array_args[2] := IntRef->New(count);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_draw", array_args);
+			};
+		}
+
+		#~
 		Draw with a different topology.
 
 		The same vertices and indices read as lines instead of triangles, which is
@@ -1767,9 +1893,10 @@ bundle Game.OpenGL {
 		~#
 		method : public : Draw(mode : Int) ~ Nil {
 			if(@mesh <> 0) {
-				array_args := Base->New[2];
+				array_args := Base->New[3];
 				array_args[0] := IntRef->New(@mesh);
 				array_args[1] := IntRef->New(mode);
+				array_args[2] := IntRef->New(1);
 				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_draw", array_args);
 			};
 		}

@@ -5003,6 +5003,7 @@ GL_FN(FRAMEBUFFERTEXTURE2D) GL_FN(CHECKFRAMEBUFFERSTATUS)
 GL_FN(GENRENDERBUFFERS) GL_FN(BINDRENDERBUFFER) GL_FN(DELETERENDERBUFFERS)
 GL_FN(RENDERBUFFERSTORAGE) GL_FN(FRAMEBUFFERRENDERBUFFER)
 GL_FN(GETSTRINGI)
+GL_FN(DRAWELEMENTSINSTANCED) GL_FN(VERTEXATTRIBDIVISOR)
 #undef GL_FN
 
 static bool objk_gl_loaded = false;
@@ -5107,6 +5108,12 @@ static std::string objk_gl_load_functions() {
   // glGetString(GL_EXTENSIONS) returns null with GL_INVALID_ENUM there, so the
   // indexed form plus GL_NUM_EXTENSIONS is not a convenience.
   OBJK_GL_LOAD("glGetStringi", GETSTRINGI)
+
+  // Instancing: glDrawElementsInstanced is GL 3.1 and glVertexAttribDivisor is
+  // 3.3, so both are guaranteed by the context this bundle requires -- required
+  // rather than optional, same reasoning as the framebuffer calls.
+  OBJK_GL_LOAD("glDrawElementsInstanced", DRAWELEMENTSINSTANCED)
+  OBJK_GL_LOAD("glVertexAttribDivisor", VERTEXATTRIBDIVISOR)
 #undef OBJK_GL_LOAD
 
   // Anything that lands here is asked for, allowed to be absent, and reported
@@ -5133,6 +5140,13 @@ struct ObjkMesh {
   GLuint vbo;
   GLuint ebo;
   GLsizei index_count;
+  // A second vertex buffer whose attributes advance once per INSTANCE rather
+  // than once per vertex. Zero until SetInstances is called; a mesh without one
+  // draws normally.
+  GLuint instance_vbo;
+  // How many attribute slots the instance data occupies, so the divisor can be
+  // set on each of them.
+  GLint instance_attributes;
 };
 
 // A render target is a framebuffer plus the colour texture it draws into and a
@@ -5615,7 +5629,8 @@ extern "C" {
     }
 
     ObjkMesh* mesh = new ObjkMesh();
-    mesh->vao = mesh->vbo = mesh->ebo = 0;
+    mesh->vao = mesh->vbo = mesh->ebo = mesh->instance_vbo = 0;
+    mesh->instance_attributes = 0;
     mesh->index_count = (GLsizei)index_count;
 
     objk_glGENVERTEXARRAYS(1, &mesh->vao);
@@ -5662,6 +5677,122 @@ extern "C" {
     APITools_SetIntValue(context, 0, (size_t)mesh);
   }
 
+  //
+  // Uploads per-instance data into a second buffer whose attributes advance once
+  // per instance instead of once per vertex.
+  //
+  // The point of instancing is one draw call for many objects. Without it, a
+  // thousand boxes are a thousand draw calls plus a thousand uniform uploads --
+  // and since every native call here resolves its symbol by string, that cost
+  // lands twice.
+  //
+  // The layout describes ONE instance and is bound at attribute locations
+  // starting from base_location, which must clear the per-vertex attributes: the
+  // primitives here use 0, 1 and 2, so 3 is the first free slot. A mat4 has to be
+  // declared as FOUR slots of 4 rather than one of 16, which is the same
+  // constraint Mesh->New now reports, and the reason the layout is a list.
+  //
+  // slot 0 = 1 on success, 1 = mesh handle, 2 = Float[] instance data,
+  // 3 = Int[] component counts per attribute, 4 = base attribute location.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_mesh_instances(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Mesh->SetInstances: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 1);
+    if(!mesh || !mesh->vao) {
+      objk_gl_fail("Mesh->SetInstances: the mesh is not usable");
+      return;
+    }
+
+    size_t data_count = 0, layout_count = 0;
+    size_t* data = objk_array_from_holder(APITools_GetObjectValue(context, 2), data_count);
+    size_t* layout = objk_array_from_holder(APITools_GetObjectValue(context, 3), layout_count);
+    const GLuint base = (GLuint)APITools_GetIntValue(context, 4);
+
+    if(!data || !layout || !data_count || !layout_count) {
+      objk_gl_fail("Mesh->SetInstances: the data and layout must both be non-empty");
+      return;
+    }
+
+    GLsizei stride = 0;
+    for(size_t i = 0; i < layout_count; ++i) {
+      const size_t components = layout[i];
+      if(components < 1 || components > 4) {
+        objk_gl_fail("Mesh->SetInstances: attribute " + std::to_string(i) + " asks for " +
+                     std::to_string(components) + " components; GL allows 1 to 4 " +
+                     "(a mat4 is four separate slots of 4, not one of 16)");
+        return;
+      }
+      stride += (GLsizei)components;
+    }
+
+    GLint max_attributes = 0;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_attributes);
+    if(max_attributes > 0 && (GLint)(base + layout_count) > max_attributes) {
+      objk_gl_fail("Mesh->SetInstances: attributes " + std::to_string(base) + ".." +
+                   std::to_string(base + layout_count - 1) + " exceed this driver's limit of " +
+                   std::to_string(max_attributes));
+      return;
+    }
+
+    if(data_count % (size_t)stride != 0) {
+      objk_gl_fail("Mesh->SetInstances: " + std::to_string(data_count) +
+                   " floats is not a whole number of " + std::to_string(stride) +
+                   "-float instances");
+      return;
+    }
+
+    const double* source = (double*)data;
+    std::vector<GLfloat> values(data_count);
+    for(size_t i = 0; i < data_count; ++i) {
+      values[i] = (GLfloat)source[i];
+    }
+
+    while(glGetError() != GL_NO_ERROR) {
+    }
+
+    objk_glBINDVERTEXARRAY(mesh->vao);
+    if(!mesh->instance_vbo) {
+      objk_glGENBUFFERS(1, &mesh->instance_vbo);
+    }
+    objk_glBINDBUFFER(GL_ARRAY_BUFFER, mesh->instance_vbo);
+    objk_glBUFFERDATA(GL_ARRAY_BUFFER, (GLsizeiptr)(values.size() * sizeof(GLfloat)),
+                      values.data(), GL_DYNAMIC_DRAW);
+
+    size_t offset = 0;
+    for(size_t i = 0; i < layout_count; ++i) {
+      const GLuint location = base + (GLuint)i;
+      const GLint components = (GLint)layout[i];
+      objk_glVERTEXATTRIBPOINTER(location, components, GL_FLOAT, GL_FALSE,
+                                 stride * (GLsizei)sizeof(GLfloat),
+                                 (const void*)(offset * sizeof(GLfloat)));
+      objk_glENABLEVERTEXATTRIBARRAY(location);
+      // 1 means "advance once per instance". This single call is the whole
+      // difference between an instance attribute and a vertex attribute, and
+      // forgetting it gives every instance the first one's data.
+      objk_glVERTEXATTRIBDIVISOR(location, 1);
+      offset += (size_t)components;
+    }
+    objk_glBINDVERTEXARRAY(0);
+
+    const GLenum error = glGetError();
+    if(error != GL_NO_ERROR) {
+      objk_gl_fail("Mesh->SetInstances: GL rejected the instance data (error 0x" +
+                   std::to_string(error) + ")");
+      return;
+    }
+
+    mesh->instance_attributes = (GLint)layout_count;
+    APITools_SetIntValue(context, 0, 1);
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -5680,10 +5811,18 @@ extern "C" {
       mode = GL_TRIANGLES;
     }
 
+    // Slot 2 is the instance count: 0 or 1 means an ordinary draw.
+    const GLsizei instances = (GLsizei)APITools_GetIntValue(context, 2);
+
     ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
     if(mesh && mesh->vao) {
       objk_glBINDVERTEXARRAY(mesh->vao);
-      glDrawElements(mode, mesh->index_count, GL_UNSIGNED_INT, nullptr);
+      if(instances > 1) {
+        objk_glDRAWELEMENTSINSTANCED(mode, mesh->index_count, GL_UNSIGNED_INT, nullptr, instances);
+      }
+      else {
+        glDrawElements(mode, mesh->index_count, GL_UNSIGNED_INT, nullptr);
+      }
       objk_glBINDVERTEXARRAY(0);
     }
   }
@@ -5695,7 +5834,10 @@ extern "C" {
     ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
     if(mesh) {
       if(objk_gl_loaded) {
-        if(mesh->ebo) { objk_glDELETEBUFFERS(1, &mesh->ebo); }
+        if(mesh->ebo) { objk_glDELETEBUFFERS(1, &mesh->ebo);
+        if(mesh->instance_vbo) {
+          objk_glDELETEBUFFERS(1, &mesh->instance_vbo);
+        } }
         if(mesh->vbo) { objk_glDELETEBUFFERS(1, &mesh->vbo); }
         if(mesh->vao) { objk_glDELETEVERTEXARRAYS(1, &mesh->vao); }
       }

@@ -84,6 +84,7 @@ class GlContextTest {
 		CheckLighting();
 		CheckShadows();
 		CheckOverlay();
+		CheckInstancing();
 		CheckMeshValidation();
 		CheckExtensions();
 		CheckRenderTarget();
@@ -1088,6 +1089,120 @@ class GlContextTest {
 		overlay->Free();
 		overlay->Free();
 		Check("Overlay->Free is idempotent", true);
+	}
+
+	#~
+	Instanced drawing puts each instance where its own matrix says.
+
+	The failure this is built to catch is glVertexAttribDivisor being wrong or
+	missing. Without it the instance attributes advance per VERTEX instead of per
+	instance, and the result is not an error -- every instance gets the first
+	one's matrix, so they all land in the same place and you see one object where
+	you asked for several. Which, if the fixture draws instances that overlap, or
+	reads one point, looks exactly like success.
+
+	So three instances go at three separated positions and all three points are
+	read, plus a fourth point between them that must stay empty. One matrix
+	applied to all three cannot satisfy that.
+	~#
+	method : CheckInstancing() ~ Nil {
+		shader := Shader->LitTexturedInstanced();
+		if(<>Check("Shader->LitTexturedInstanced compiles", shader->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		cube := Mesh->Cube(0.6);
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a cube and texture for instancing", cube->IsOk() & white->IsOk())) {
+			shader->Free();
+			return;
+		};
+
+		# Three instances spread across x. Deliberately far enough apart that their
+		# screen positions cannot overlap.
+		count := 3;
+		spread := [-2.5, 0.0, 2.5];
+		matrices := Float->New[count * 16];
+		scratch := Float->New[16];
+		for(i := 0; i < count; i += 1;) {
+			Matrix4->TranslationScaleInto(scratch, spread[i], 0.0, 0.0, 1.0, 1.0, 1.0);
+			for(j := 0; j < 16; j += 1;) {
+				matrices[i * 16 + j] := scratch[j];
+			};
+		};
+
+		uploaded := cube->SetInstanceMatrices(matrices);
+		if(<>Check("instance matrices upload", uploaded)) {
+			reason := GL->GetLastError();
+			"  reason: {$reason}"->PrintLine();
+			cube->Free();
+			white->Free();
+			shader->Free();
+			return;
+		};
+
+		light := Light->New();
+		light->SetDirection(0.0, 0.0, 1.0);
+		light->SetColor(1.0, 1.0, 1.0);
+		light->SetAmbient(0.2, 0.2, 0.2);
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 8.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), camera->GetViewMatrix());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shader->Use();
+		# view_projection, NOT mvp: the model matrix comes from the vertex stream.
+		shader->SetMatrix4("view_projection", view_projection);
+		shader->SetInt("tex", 0);
+		light->ApplyTo(shader);
+		white->Bind(0);
+		cube->DrawInstanced(count);
+
+		mid_y := @pixel_h / 2;
+		black := 0xFF000000;
+		# At distance 8 with a 60-degree fov the frustum is about 9.2 wide at the
+		# centre, so x = -2.5, 0 and 2.5 land near 23%, 50% and 77% across.
+		left := GL->ReadPixel((@pixel_w * 23) / 100, mid_y);
+		middle := GL->ReadPixel(@pixel_w / 2, mid_y);
+		right := GL->ReadPixel((@pixel_w * 77) / 100, mid_y);
+		# between the left and middle instances, where nothing should be
+		gap := GL->ReadPixel((@pixel_w * 36) / 100, mid_y);
+		"  instances: left=0x{$left} middle=0x{$middle} right=0x{$right} gap=0x{$gap}"->PrintLine();
+
+		Check("the middle instance drew", middle <> black);
+		# THE assertion. Without a working divisor all three share the first
+		# matrix, so only one position is occupied.
+		Check("the left instance drew at its own matrix", left <> black);
+		Check("and the right one at its own", right <> black);
+		Check("with nothing between them", gap = black);
+
+		# An ordinary Draw on the same mesh must still work -- an instance buffer
+		# attached to a VAO stays attached, and its attributes are still enabled.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		Check("no GL errors from the instanced draw", GL->DrainErrors()->Size() = 0);
+
+		# A 16-component instance attribute is the mistake to make here, and it has
+		# to be refused rather than silently drawing nothing.
+		GL->GetLastError();
+		bad := cube->SetInstances(matrices, [16], 3);
+		Check("a 16-component instance attribute is refused", <>bad);
+		refusal := GL->GetLastError();
+		Check("with a reason naming the four-slot rule", refusal->Size() > 0);
+		"  refused: {$refusal}"->PrintLine();
+
+		# And instance data that is not a whole number of instances.
+		GL->GetLastError();
+		ragged := cube->SetInstances([1.0, 2.0, 3.0], [4, 4, 4, 4], 3);
+		Check("ragged instance data is refused", <>ragged);
+		Check("with a reason", GL->GetLastError()->Size() > 0);
+
+		white->Free();
+		cube->Free();
+		shader->Free();
 	}
 
 	#~
