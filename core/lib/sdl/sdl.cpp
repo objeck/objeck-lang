@@ -4814,8 +4814,10 @@ __declspec(dllexport)
   // Only GL 1.1 entry points are linked directly (opengl32.lib / -lGL /
   // -framework OpenGL). Everything from GL 2.0 on is resolved through
   // SDL_GL_GetProcAddress into a function table, which is why this needs no
-  // GLEW/GLAD dependency and why macOS shipping only a legacy 2.1 GL header
-  // does not matter.
+  // GLEW/GLAD dependency and why no platform's GL headers constrain us at all:
+  // SDL_opengl.h embeds a verbatim copy of Mesa's gl.h and never includes
+  // <OpenGL/gl.h> or any other system GL header, on any platform. The only GL
+  // declarations we ever see are that GL 1.1 set plus our own typedefs below.
   //
 
   //
@@ -4935,8 +4937,13 @@ __declspec(dllexport)
 //
 // Resolved once through SDL_GL_GetProcAddress and cached here. Objeck never
 // sees a proc address, so there is no GLEW/GLAD dependency and no reliance on
-// the platform shipping a modern GL header -- which matters because on macOS
-// SDL_opengl.h resolves to the legacy 2.1 <OpenGL/gl.h>.
+// the platform shipping a modern GL header -- SDL_opengl.h carries its own
+// embedded copy of Mesa's gl.h and has no per-platform conditionals, so every
+// platform compiles against exactly the typedefs below.
+//
+// Which is why macOS capping OpenGL at 4.1 is a RUNTIME limit here and not a
+// compile-time one: the declaration is always present, and an entry point Apple
+// does not implement simply comes back null from SDL_GL_GetProcAddress.
 //
 // Deliberately NOT inside extern "C": these are C++ statics, not exports.
 
@@ -4953,6 +4960,33 @@ GL_FN(ENABLEVERTEXATTRIBARRAY) GL_FN(ACTIVETEXTURE)
 #undef GL_FN
 
 static bool objk_gl_loaded = false;
+
+// Why the last GL call did nothing.
+//
+// Most functions below can only fail by doing nothing: the entry points are not
+// loaded, a handle is null, a uniform name does not exist in the program. None
+// of those raise a GL error, so glGetError stays clean and the program renders a
+// black window while exiting 0. That is the single most confusing failure this
+// binding has, so every silent bail records its reason here and GL->GetLastError
+// reports it.
+//
+// One shared slot rather than a return value per function: it needs no signature
+// changes, it works for the failures that have nowhere to return to (Bind, Draw),
+// and a black screen is diagnosed by one question rather than six.
+static std::string objk_gl_last_error;
+
+// Records why a call bailed. Keeps the FIRST reason until it is read: the first
+// one is the cause and the rest are usually its consequences.
+static void objk_gl_fail(const std::string& reason) {
+  if(objk_gl_last_error.empty()) {
+    objk_gl_last_error = reason;
+  }
+}
+
+// The reason every function below gives when nothing is loaded. Named once so
+// the six call sites cannot drift apart.
+static const char OBJK_GL_NOT_LOADED[] =
+  "GL functions are not loaded -- call GL->LoadFunctions() after the context is current";
 
 // Every entry point is resolved and checked up front, so a driver missing one
 // is reported once by name instead of crashing on first use.
@@ -5064,6 +5098,22 @@ extern "C" {
   }
 
   //
+  // Reports and clears the reason the last GL call silently did nothing. See the
+  // objk_gl_last_error comment: these are the failures that raise no GL error, so
+  // glGetError cannot find them and only this can.
+  //
+  // Reading CLEARS it, so a caller can check a sequence of calls and know the
+  // report belongs to the one it just made rather than to something earlier.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_last_error(VMContext& context) {
+    APITools_SetStringValue(context, 0, BytesToUnicode(objk_gl_last_error));
+    objk_gl_last_error.clear();
+  }
+
+  //
   // Compiles a vertex + fragment shader and links them into a program: five GL
   // calls per stage plus the link, collapsed into ONE native call, because the
   // VM resolves the symbol by string on every call.
@@ -5076,8 +5126,9 @@ extern "C" {
 #endif
   void sdl_gl_program_create(VMContext& context) {
     if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->New: ") + OBJK_GL_NOT_LOADED);
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetStringValue(context, 3, BytesToUnicode("GL functions not loaded; call GL->LoadFunctions first"));
+      APITools_SetStringValue(context, 3, BytesToUnicode(OBJK_GL_NOT_LOADED));
       return;
     }
 
@@ -5164,6 +5215,7 @@ extern "C" {
 #endif
   void sdl_gl_uniform_matrix4(VMContext& context) {
     if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetMatrix4: ") + OBJK_GL_NOT_LOADED);
       return;
     }
 
@@ -5173,6 +5225,8 @@ extern "C" {
     size_t count = 0;
     size_t* values = objk_array_from_holder(APITools_GetObjectValue(context, 2), count);
     if(!values || count < 16) {
+      objk_gl_fail("Shader->SetMatrix4(\"" + name + "\"): a mat4 needs 16 floats, got " +
+                   std::to_string(count));
       return;
     }
 
@@ -5186,6 +5240,14 @@ extern "C" {
     if(location >= 0) {
       objk_glUNIFORMMATRIX4FV(location, 1, GL_FALSE, matrix);
     }
+    else {
+      // A name the linked program has no location for. GL raises no error for
+      // this, so without the report it is a black screen from correct-looking
+      // code. Note GLSL strips uniforms it can prove are unused, so a spelling
+      // mistake and a genuinely-unused uniform look identical from here.
+      objk_gl_fail("Shader->SetMatrix4: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
   }
 
 #ifdef _WIN32
@@ -5193,6 +5255,7 @@ extern "C" {
 #endif
   void sdl_gl_uniform_int(VMContext& context) {
     if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetInt: ") + OBJK_GL_NOT_LOADED);
       return;
     }
 
@@ -5203,6 +5266,10 @@ extern "C" {
     const GLint location = objk_glGETUNIFORMLOCATION(program, name.c_str());
     if(location >= 0) {
       objk_glUNIFORM1I(location, value);
+    }
+    else {
+      objk_gl_fail("Shader->SetInt: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
     }
   }
 
@@ -5221,6 +5288,7 @@ extern "C" {
   void sdl_gl_mesh_create(VMContext& context) {
     APITools_SetIntValue(context, 0, 0);
     if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Mesh->New: ") + OBJK_GL_NOT_LOADED);
       return;
     }
 
@@ -5293,6 +5361,7 @@ extern "C" {
 #endif
   void sdl_gl_mesh_draw(VMContext& context) {
     if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Mesh->Draw: ") + OBJK_GL_NOT_LOADED);
       return;
     }
 
@@ -5331,6 +5400,7 @@ extern "C" {
   void sdl_gl_texture_from_surface(VMContext& context) {
     APITools_SetIntValue(context, 0, 0);
     if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Texture2D->New: ") + OBJK_GL_NOT_LOADED);
       return;
     }
 
@@ -5385,12 +5455,15 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_gl_texture_bind(VMContext& context) {
-    if(objk_gl_loaded) {
-      const GLuint texture = (GLuint)APITools_GetIntValue(context, 0);
-      const GLint unit = (GLint)APITools_GetIntValue(context, 1);
-      objk_glACTIVETEXTURE(GL_TEXTURE0 + unit);
-      glBindTexture(GL_TEXTURE_2D, texture);
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Texture2D->Bind: ") + OBJK_GL_NOT_LOADED);
+      return;
     }
+
+    const GLuint texture = (GLuint)APITools_GetIntValue(context, 0);
+    const GLint unit = (GLint)APITools_GetIntValue(context, 1);
+    objk_glACTIVETEXTURE(GL_TEXTURE0 + unit);
+    glBindTexture(GL_TEXTURE_2D, texture);
   }
 
 #ifdef _WIN32

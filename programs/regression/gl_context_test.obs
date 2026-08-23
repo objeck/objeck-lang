@@ -45,6 +45,10 @@ class GlContextTest {
 	@context : GLContext;
 	@required : Bool;
 	@failures : Int;
+	# the drawable's size in PIXELS, which is not the window's size in points on a
+	# high-DPI display. Every readback below is positioned from these.
+	@pixel_w : Int;
+	@pixel_h : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		GlContextTest->New()->Run();
@@ -53,6 +57,8 @@ class GlContextTest {
 	New() {
 		@required := Runtime->HasEnvironmentVariable("OBJECK_GL_REQUIRED");
 		@failures := 0;
+		@pixel_w := 0;
+		@pixel_h := 0;
 	}
 
 	method : Run() ~ Nil {
@@ -72,6 +78,7 @@ class GlContextTest {
 		CheckVersion();
 		CheckLoader();
 		CheckShaderAndDraw();
+		CheckProjection();
 		CheckTextureOrientation();
 
 		Cleanup();
@@ -91,7 +98,7 @@ class GlContextTest {
 			return;
 		};
 
-		"PASS: OpenGL 3.3 core context, shader and framebuffer readback"->PrintLine();
+		"PASS: OpenGL 3.3 core context, shader, projection and framebuffer readback"->PrintLine();
 	}
 
 	method : Check(name : String, ok : Bool) ~ Bool {
@@ -155,6 +162,21 @@ class GlContextTest {
 		if(@context->IsNull()) {
 			error := Core->GetError();
 			"  (no GL context: {$error})"->PrintLine();
+			return false;
+		};
+
+		# The window was asked for 64x64 POINTS. On a high-DPI display the drawable
+		# is larger -- 128x128 at 2x -- and GL works in pixels, so assuming 64
+		# would set a quarter-sized viewport and then read pixels from outside the
+		# rendered region. Ask for the real size; this is the rule stated on
+		# GL->Viewport, and this test used to be the thing violating it.
+		w := IntRef->New();
+		h := IntRef->New();
+		@window->GLGetDrawableSize(w, h);
+		@pixel_w := w->Get();
+		@pixel_h := h->Get();
+		if(@pixel_w <= 0 | @pixel_h <= 0) {
+			"  (drawable size came back as {$@pixel_w}x{$@pixel_h})"->PrintLine();
 			return false;
 		};
 
@@ -227,7 +249,7 @@ class GlContextTest {
 			return;
 		};
 
-		GL->Viewport(0, 0, 64, 64);
+		GL->Viewport(0, 0, @pixel_w, @pixel_h);
 		GL->ClearColor(0.0, 0.0, 1.0, 1.0);
 		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT);
 
@@ -235,7 +257,7 @@ class GlContextTest {
 		mesh->Draw();
 
 		# read BEFORE any swap; a swap may discard the back buffer
-		center := GL->ReadPixel(32, 32);
+		center := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
 		corner := GL->ReadPixel(1, 1);
 		"  center=0x{$center} corner=0x{$corner}"->PrintLine();
 
@@ -316,8 +338,8 @@ class GlContextTest {
 		mesh->Draw();
 
 		# ReadPixel's y counts up from the bottom of the drawable
-		bottom := GL->ReadPixel(32, 4);
-		top := GL->ReadPixel(32, 60);
+		bottom := GL->ReadPixel(@pixel_w / 2, @pixel_h / 8);
+		top := GL->ReadPixel(@pixel_w / 2, @pixel_h - (@pixel_h / 8));
 		"  orientation: screen top=0x{$top} bottom=0x{$bottom}"->PrintLine();
 
 		Check("image top renders at screen top (texture not flipped)",
@@ -327,6 +349,116 @@ class GlContextTest {
 		mesh->Free();
 		shader->Free();
 		surface->Free();
+	}
+
+	#~
+	A projected, off-centre quad lands where the camera says it should.
+
+	This exists because nothing else in this file touches Matrix4 or Camera at
+	all. Every other check draws in raw clip space, so the header's claim that a
+	wrong projection or an inverted camera basis would be caught here was simply
+	not true -- Perspective, LookAt and Multiply were never executed.
+
+	The fixture is deliberately OFF-CENTRE. A quad at the origin renders in the
+	middle of the screen under a correct projection and under a surprising number
+	of broken ones: an identity matrix, a transposed one, or a Multiply with its
+	arguments the wrong way round. Offsetting it in +x means only the right answer
+	puts it right of centre, and the check reads three points to say so -- left,
+	centre and right must not all agree.
+	~#
+	method : CheckProjection() ~ Nil {
+		vertex := "#version 330 core
+";
+		vertex += "layout (location = 0) in vec3 in_position;
+";
+		vertex += "uniform mat4 mvp;
+";
+		vertex += "void main() { gl_Position = mvp * vec4(in_position, 1.0); }
+";
+
+		fragment := "#version 330 core
+";
+		fragment += "out vec4 frag_color;
+";
+		fragment += "void main() { frag_color = vec4(1.0, 0.0, 1.0, 1.0); }
+";
+
+		shader := Shader->New(vertex, fragment);
+		if(<>Check("projection shader compiles", shader->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		# a 1x1 quad on the z=0 plane, centred on the model origin
+		vertices := [-0.5, -0.5, 0.0,  0.5, -0.5, 0.0,  0.5, 0.5, 0.0, -0.5, 0.5, 0.0];
+		indices := [0, 1, 2, 2, 3, 0];
+		mesh := Mesh->New(vertices, indices, [3]);
+		if(<>Check("projection mesh uploads", mesh->IsOk())) {
+			shader->Free();
+			return;
+		};
+
+		# Camera five units back on +z, looking down -z at the plane the quad is
+		# on. Yaw and pitch of zero make ForwardVector exactly (0, 0, -1), so this
+		# also pins down the camera basis rather than just the projection.
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		aspect := @pixel_w->As(Float) / @pixel_h->As(Float);
+		projection := Matrix4->Perspective(Float->Pi() / 3.0, aspect, 0.1, 100.0);
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+
+		# +1.5 on x. With a 60-degree vertical fov at distance 5 the frustum is
+		# about 2.89 units tall, so the quad spans roughly x = 0.35..0.69 in NDC --
+		# comfortably inside the right-hand quarter and nowhere near the centre.
+		model := Matrix4->Translation(1.5, 0.0, 0.0);
+		mvp := Matrix4->Multiply(view_projection, model);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT);
+		shader->Use();
+		shader->SetMatrix4("mvp", mvp);
+		mesh->Draw();
+
+		mid_y := @pixel_h / 2;
+		left := GL->ReadPixel(@pixel_w / 4, mid_y);
+		middle := GL->ReadPixel(@pixel_w / 2, mid_y);
+		right := GL->ReadPixel((@pixel_w * 3) / 4, mid_y);
+		"  projection: left=0x{$left} middle=0x{$middle} right=0x{$right}"->PrintLine();
+
+		magenta := 0xFFFF00FF;
+		black := 0xFF000000;
+		Check("the projected quad lands right of centre", right = magenta);
+		Check("it is not at the centre", middle = black);
+		Check("it is not on the left", left = black);
+
+		# Multiply's arithmetic, checked against a property rather than against
+		# itself: translations compose by addition, so T(1,2,3) * T(10,20,30) must
+		# be T(11,22,33). Comparing Multiply to MultiplyInto would prove nothing --
+		# Multiply is implemented BY MultiplyInto -- whereas this fails if the
+		# column-major indexing is wrong, which is the mistake actually available
+		# to make here.
+		composed := Matrix4->Multiply(Matrix4->Translation(1.0, 2.0, 3.0), Matrix4->Translation(10.0, 20.0, 30.0));
+		Check("Multiply composes translations additively",
+			composed[12] = 11.0 & composed[13] = 22.0 & composed[14] = 33.0);
+
+		# And MultiplyInto must land in the caller's buffer, since every hot path
+		# is about to be routed through it.
+		scratch := Float->New[16];
+		Matrix4->MultiplyInto(scratch, Matrix4->Translation(1.0, 2.0, 3.0), Matrix4->Translation(10.0, 20.0, 30.0));
+		Check("MultiplyInto writes the same product into a caller buffer",
+			scratch[12] = 11.0 & scratch[13] = 22.0 & scratch[14] = 33.0);
+
+		# A uniform this program does not have. GL raises no error for it, so
+		# without GL->GetLastError this is a black screen and nothing else.
+		shader->SetMatrix4("no_such_uniform", mvp);
+		reported := GL->GetLastError();
+		Check("a misspelled uniform is reported", reported->Size() > 0);
+		if(reported->Size() > 0) {
+			"  reported: {$reported}"->PrintLine();
+		};
+
+		mesh->Free();
+		shader->Free();
 	}
 
 	method : Cleanup() ~ Nil {

@@ -42,7 +42,7 @@ class Walkthrough {
 	@wall_surface : Surface;
 	@box_surface : Surface;
 	@camera : Camera;
-	@view_projection : Float[];
+	@projection : Float[];
 
 	@scene : Scene;
 
@@ -241,7 +241,7 @@ class Walkthrough {
 	method : Draw() ~ Nil {
 		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
 
-		view_projection := Matrix4->Multiply(@view_projection, @camera->GetViewMatrix());
+		view_projection := Matrix4->Multiply(@projection, @camera->GetViewMatrix());
 		@scene->Draw(view_projection);
 	}
 
@@ -294,7 +294,7 @@ class Walkthrough {
 		GL->Viewport(0, 0, pixel_w, pixel_h);
 
 		aspect := pixel_w->As(Float) / pixel_h->As(Float);
-		@view_projection := Matrix4->Perspective(Float->Pi() / 3.0, aspect, 0.1, 100.0);
+		@projection := Matrix4->Perspective(Float->Pi() / 3.0, aspect, 0.1, 100.0);
 
 		GL->Enable(Capability->GL_DEPTH_TEST);
 		GL->Enable(Capability->GL_CULL_FACE);

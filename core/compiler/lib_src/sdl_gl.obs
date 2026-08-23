@@ -91,6 +91,26 @@ bundle Game.OpenGL {
 	Every method needs a current context (Window->GLCreateContext), and GL state
 	is per-context, so these all act on whichever context is current on this
 	thread.
+
+	## Shutting down, in this order
+
+	1. Cursor->SetRelativeMouseMode(false), if it was ever set -- while the
+	   window still exists.
+	2. **Every Shader, Mesh and Texture2D, while the context is still current.**
+	   Their Free methods issue glDeleteProgram/glDeleteBuffers/glDeleteTextures,
+	   and those need a current context; after the context is gone they are a
+	   no-op at best and a driver crash at worst.
+	3. Any Surface. Order-independent -- Texture2D->New copies the pixels, so a
+	   surface can in fact be freed as soon as the texture is built.
+	4. GLContext->Delete()
+	5. Window->Destroy()
+	6. Core->Quit()
+
+	Getting step 2 wrong leaks GPU memory silently, and process exit reclaims it,
+	so a program that frees nothing at all looks and behaves identically to a
+	correct one. It only becomes a bug in something long-running that rebuilds
+	meshes -- at which point it is an unbounded VRAM leak with no symptom
+	pointing back here.
 	~#
 	class GL {
 		#~
@@ -260,6 +280,36 @@ bundle Game.OpenGL {
 
 			return result;
 		}
+
+		#~
+		Why the last call silently did nothing.
+
+		GetError only reports what GL itself considers an error, and the most
+		confusing failures in this library are not GL errors at all: the entry
+		points were never loaded, a mat4 was the wrong length, a uniform name does
+		not exist in the program. Each of those leaves the error queue clean and
+		renders a black window, so DrainErrors finds nothing and this is the only
+		thing that can tell you why.
+
+		Reading clears it, so the answer belongs to the call you just made.
+
+		```
+		shader->SetMatrix4("mpv", mvp);   # typo
+		reason := GL->GetLastError();
+		if(reason->Size() > 0) {
+			reason->ErrorLine();          # 'no uniform named "mpv" ...'
+		};
+		```
+		@return the reason, or an empty string when nothing has silently failed
+		~#
+		function : GetLastError() ~ String {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_last_error", array_args);
+
+			return array_args[0]->As(String);
+		}
 	}
 
 	#~
@@ -367,7 +417,12 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Release the program. GL objects are invisible to the collector.
+		Release the program. GL objects are invisible to the collector, so this is
+		not optional.
+
+		Call it while the GL context is still current -- see the shutdown order on
+		the GL class. After GLContext->Delete there is no context for the
+		underlying glDeleteProgram to act on.
 		~#
 		method : public : Free() ~ Nil {
 			if(@program <> 0) {
@@ -449,6 +504,9 @@ bundle Game.OpenGL {
 
 		#~
 		Release the buffers.
+
+		Call it while the GL context is still current -- see the shutdown order on
+		the GL class.
 		~#
 		method : public : Free() ~ Nil {
 			if(@mesh <> 0) {
@@ -520,6 +578,9 @@ bundle Game.OpenGL {
 
 		#~
 		Release the texture.
+
+		Call it while the GL context is still current -- see the shutdown order on
+		the GL class.
 		~#
 		method : public : Free() ~ Nil {
 			if(@texture <> 0) {
@@ -998,8 +1059,15 @@ bundle Game.OpenGL {
 	An axis-aligned box in the world: where it is, how big it is, what it looks
 	like, and whether you can walk through it.
 
-	The unit cube mesh is shared by every Box; the box only supplies a transform.
-	That is what keeps a scene of hundreds of boxes down to one uploaded mesh.
+	One cube mesh is shared by every Box; the box only supplies a transform. That
+	is what keeps a scene of hundreds of boxes down to one uploaded mesh.
+
+	**That shared mesh must span -1..1 on every axis**, because the model matrix
+	scales it by `half` directly and `half` is a half-extent. Hand Scene a mesh
+	built to -0.5..0.5 instead -- the "unit quad" in Mesh's own example is built
+	that way -- and every box renders at half the size it claims, while OverlapsXZ
+	goes on using the full half-extents. Geometry and collision then disagree with
+	no error anywhere: you walk into walls that are not where they are drawn.
 
 	The model matrix is computed once and cached, because a static prop's
 	transform does not change between frames. Moving the box invalidates it.
@@ -1013,7 +1081,8 @@ bundle Game.OpenGL {
 
 		#~
 		@param center the box's centre
-		@param half half-extents on each axis, so a 2x2x2 cube has half 1,1,1
+		@param half half-extents on each axis, so a 2x2x2 cube has half 1,1,1 --
+		which is also why the shared mesh has to span -1..1; see the class note
 		@param texture the texture to draw it with; may be Nil
 		~#
 		New(center : Vector3, half : Vector3, texture : Texture2D) {
@@ -1117,7 +1186,8 @@ bundle Game.OpenGL {
 		@mvp : Float[];
 
 		#~
-		@param mesh the shared unit-cube mesh every box is drawn with
+		@param mesh the cube mesh every box is drawn with; it must span -1..1 on
+		each axis, or geometry and collision will silently disagree (see Box)
 		@param shader the program to draw with; Draw sets its "mvp" mat4 uniform
 		~#
 		New(mesh : Mesh, shader : Shader) {
