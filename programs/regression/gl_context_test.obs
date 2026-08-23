@@ -1084,12 +1084,20 @@ class GlContextTest {
 	}
 
 	#~
-	The frame loop runs and reports a plausible delta.
+	The frame loop measures elapsed time and clamps it.
 
 	Worth asserting because frame pacing is easy to get silently wrong in a way no
-	other check would notice: a delta of zero makes everything that moves stand
-	still, and a delta computed from an uninitialised start time makes the first
-	frame jump by however long the process had been alive.
+	other check would notice: a delta stuck at zero makes everything that moves
+	stand still, and a delta computed from an uninitialised start time makes the
+	first frame jump by however long the process had been alive.
+
+	The delay below is not padding. An earlier version of this ran four frames and
+	asserted the delta had become positive -- which passed here and failed on all
+	three POSIX runners, because a headless software renderer draws four empty
+	frames in under a millisecond and Timer->GetTicks only counts milliseconds. So
+	the delta was correctly 0.0 and the assertion was measuring how fast the
+	renderer is, not whether the code works. Sleeping a known interval makes the
+	clock definitely advance, which turns it back into a question about the code.
 	~#
 	method : CheckFrameLoop() ~ Nil {
 		# The first frame has no previous frame to measure against, so it must
@@ -1098,24 +1106,35 @@ class GlContextTest {
 		Check("the first frame reports a zero delta", @gl->GetDelta() = 0.0);
 		@gl->EndFrame();
 
-		# Then a few real frames. Without vsync EndFrame paces with a timer, so a
-		# handful of frames at 60 has to take some measurable time.
+		# A frame of known duration. Ten milliseconds is comfortably above the
+		# timer's resolution on every platform this runs on.
 		@gl->SetTargetFps(60);
-		started := Timer->GetTicks();
-		frames := 0;
-		while(frames < 4) {
-			@gl->BeginFrame();
-			@gl->EndFrame();
-			frames += 1;
-		};
-		took := Timer->GetTicks() - started;
+		@gl->BeginFrame();
+		Timer->Delay(10);
+		@gl->EndFrame();
 
+		@gl->BeginFrame();
 		delta := @gl->GetDelta();
+		fps := @gl->GetFps();
 		vsync := @gl->HasVsync();
-		"  4 frames in {$took}ms, last delta {$delta}s, vsync {$vsync}"->PrintLine();
+		"  after a 10ms frame: delta={$delta}s fps={$fps} vsync={$vsync}"->PrintLine();
 
-		Check("a later frame reports a positive delta", delta > 0.0);
-		Check("the delta stays inside its clamp", delta <= 0.1);
+		# At least the delay, less than double it, and inside the clamp.
+		Check("a measured frame reports its elapsed time", delta >= 0.008);
+		Check("and does not invent time it did not take", delta < 0.1);
+		Check("GetFps is the reciprocal of the delta", Near(fps, 1.0 / delta, 0.001));
+		@gl->EndFrame();
+
+		# The clamp: a stall must not be reported in full, or everything that moves
+		# teleports. Half a second of sleep has to come back as the 0.1 ceiling.
+		@gl->BeginFrame();
+		Timer->Delay(500);
+		@gl->EndFrame();
+		@gl->BeginFrame();
+		stalled := @gl->GetDelta();
+		"  after a 500ms stall: delta={$stalled}s"->PrintLine();
+		Check("a long stall is clamped, not reported in full", Near(stalled, 0.1, 0.0001));
+		@gl->EndFrame();
 
 		# GLWindow->Free is documented as safe twice, and the offscreen retry path
 		# depends on it -- Cleanup runs on every failed open as well as at the end.
