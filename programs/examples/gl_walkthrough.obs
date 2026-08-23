@@ -76,7 +76,8 @@ class Walkthrough {
 			return;
 		};
 
-		"Walk with WASD, turn with the arrow keys, escape to quit."->PrintLine();
+		"Mouse to look, WASD to walk, shift to run, escape to quit."->PrintLine();
+		"Arrow keys also turn and look, if you prefer them."->PrintLine();
 
 		e := Event->New();
 		quit := false;
