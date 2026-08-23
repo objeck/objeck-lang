@@ -5327,6 +5327,33 @@ extern "C" {
   }
 
   //
+  // Whether a linked program has a uniform of this name, without recording a
+  // failure when it does not.
+  //
+  // Scene sets a "model" matrix for lit shaders and must not set it for unlit
+  // ones -- and since a missing uniform is now REPORTED, blindly setting it
+  // would file a diagnostic every frame for every object. So this is the
+  // question to ask first. It reads the same cache the setters use, so asking is
+  // free after the first time.
+  //
+  // slot 0 = 1 or 0, 1 = program, 2 = name.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_exists(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 1);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 2));
+
+    APITools_SetIntValue(context, 0, objk_gl_uniform_location(program, name) >= 0 ? 1 : 0);
+  }
+
+  //
   // A single float uniform. slot 0 = program, 1 = name, 2 = value.
   //
 #ifdef _WIN32

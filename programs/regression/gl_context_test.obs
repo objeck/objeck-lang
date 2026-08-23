@@ -81,6 +81,7 @@ class GlContextTest {
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
+		CheckLighting();
 		CheckTextures();
 		CheckTextureOrientation();
 		CheckFrameLoop();
@@ -380,6 +381,213 @@ class GlContextTest {
 		textured->Free();
 		flat_b->Free();
 		flat_a->Free();
+	}
+
+	#~
+	Lighting responds to the light, and the normal matrix is really computed.
+
+	The light here points at ONE side deliberately. A light from the camera's
+	direction, or an ambient-heavy setup, lights everything roughly evenly -- and
+	then a shader that ignored the normal entirely would pass. Same shape of
+	mistake as the symmetric checkerboard that hid the row flip for eleven
+	releases: the fixture has to be asymmetric in the dimension the feature can
+	get wrong, which for lighting is orientation.
+
+	The last check is the interesting one. Under non-uniform scale a normal must be
+	transformed by the INVERSE TRANSPOSE of the model matrix; using the model
+	matrix directly tilts it off the surface and shades the object subtly wrong.
+	Subtly wrong is unassertable against a number I would have to derive myself --
+	so instead it is asserted DIFFERENTIALLY, against a deliberately naive shader
+	built for the purpose. If the two agree, the built-in is not computing a normal
+	matrix at all.
+	~#
+	method : CheckLighting() ~ Nil {
+		lit := Shader->Lit();
+		if(<>Check("Shader->Lit compiles", lit->IsOk())) {
+			log := lit->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		textured := Shader->LitTextured();
+		Check("Shader->LitTextured compiles", textured->IsOk());
+
+		cube := Mesh->Cube();
+		if(<>Check("a cube for lighting uploads", cube->IsOk())) {
+			lit->Free();
+			textured->Free();
+			return;
+		};
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		projection := Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect());
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+		identity := Matrix4->Identity();
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+
+		light := Light->New();
+		# no ambient at all, so the diffuse term is the whole signal
+		light->SetAmbient(0.0, 0.0, 0.0);
+		light->SetColor(1.0, 1.0, 1.0);
+
+		# --- the front face lit head-on ---
+		# Facing the camera, the front face's normal is (0, 0, 1). A light from
+		# (0, 0, 1) is straight onto it: full brightness.
+		light->SetDirection(0.0, 0.0, 1.0);
+		facing := DrawLitCube(lit, cube, view_projection, identity, light, mid_x, mid_y);
+
+		# --- the same face with the light along +X ---
+		# dot((0,0,1), (1,0,0)) is zero, so with no ambient this face gets nothing.
+		light->SetDirection(1.0, 0.0, 0.0);
+		edge_on := DrawLitCube(lit, cube, view_projection, identity, light, mid_x, mid_y);
+
+		# --- and lit from behind ---
+		light->SetDirection(0.0, 0.0, -1.0);
+		behind := DrawLitCube(lit, cube, view_projection, identity, light, mid_x, mid_y);
+
+		"  lit face: head-on={$facing} edge-on={$edge_on} from-behind={$behind}"->PrintLine();
+
+		Check("a face lit head-on is bright", facing > 200);
+		Check("a face edge-on to the light is dark", edge_on < 20);
+		Check("a face lit from behind is dark", behind < 20);
+		# The one that catches a shader ignoring the normal: those three would all
+		# be identical.
+		Check("brightness depends on the light direction", facing - edge_on > 150);
+
+		# --- ambient is added regardless of facing ---
+		light->SetDirection(0.0, 0.0, -1.0);
+		light->SetAmbient(0.5, 0.5, 0.5);
+		ambient_only := DrawLitCube(lit, cube, view_projection, identity, light, mid_x, mid_y);
+		"  unlit face with 0.5 ambient: {$ambient_only}"->PrintLine();
+		Check("ambient reaches a face the light does not", ambient_only > 100 & ambient_only < 160);
+		light->SetAmbient(0.0, 0.0, 0.0);
+
+		# --- the normal matrix, differentially ---
+		# A sphere so the normals are not axis-aligned, non-uniform scale so the
+		# inverse transpose differs from the model matrix, and a light off to the
+		# side so the difference lands somewhere visible.
+		naive := NaiveNormalShader();
+		sphere := Mesh->Sphere(32, 16);
+		if(Check("a sphere and a naive-normal shader for comparison", naive->IsOk() & sphere->IsOk())) {
+			model := Matrix4->Multiply(Matrix4->ScaleXYZ(1.0, 3.0, 1.0), Matrix4->RotationZ(0.6));
+			squashed_vp := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), Matrix4->LookAtOrigin(6.0));
+			light->SetDirection(0.8, 0.5, 0.4);
+
+			correct := DrawLitCube(lit, sphere, squashed_vp, model, light, (@pixel_w * 60) / 100, (@pixel_h * 65) / 100);
+			wrong := DrawLitCube(naive, sphere, squashed_vp, model, light, (@pixel_w * 60) / 100, (@pixel_h * 65) / 100);
+			"  normal matrix: inverse-transpose={$correct} model-matrix={$wrong}"->PrintLine();
+
+			# If the built-in were using the model matrix directly these would be
+			# equal. They must not be.
+			difference := correct - wrong;
+			if(difference < 0) {
+				difference := difference * -1;
+			};
+			Check("the lit shader really computes a normal matrix", difference > 8);
+
+			sphere->Free();
+			naive->Free();
+		};
+
+		# --- through Scene, which is how a program actually uses this ---
+		# Scene has to do three things a bare draw does not: write the light's
+		# uniforms once, hand each box its own model matrix (a lit shader needs it
+		# for the normals), and set the sampler unit. Miss the model matrix and
+		# every box is lit as though it were at the origin, unrotated -- which for
+		# a scene of axis-aligned boxes at the origin looks completely fine, so a
+		# one-box fixture would not catch it.
+		#
+		# Hence two boxes at different positions, and a light moved between two
+		# draws: the same pixel must change.
+		scene := Scene->New(cube, lit);
+		scene->AddBox(Vector3->New(-1.6, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), Nil);
+		scene->AddBox(Vector3->New(1.6, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), Nil);
+		scene->SetLight(light);
+		lit->SetVec3("color", 1.0, 1.0, 1.0);
+
+		wide := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), Matrix4->LookAtOrigin(9.0));
+
+		light->SetAmbient(0.0, 0.0, 0.0);
+		light->SetDirection(0.0, 0.0, 1.0);
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(wide);
+		front_lit := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+
+		light->SetDirection(1.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(wide);
+		side_lit := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+
+		"  through Scene: light-at-camera={$front_lit} light-from-side={$side_lit}"->PrintLine();
+		Check("Scene draws something at all", front_lit > 200);
+		Check("Scene applies its light", front_lit - side_lit > 150);
+
+		# And that a box away from the origin is lit correctly, which only holds if
+		# Scene handed the shader that box's own model matrix.
+		Check("Scene has a model matrix to give a lit shader", lit->HasUniform("model"));
+		Check("an unlit shader does not, and is not given one", <>Shader->Textured()->HasUniform("model"));
+
+		scene->Clear();
+
+		Check("no GL errors from lighting", GL->DrainErrors()->Size() = 0);
+
+		cube->Free();
+		textured->Free();
+		lit->Free();
+	}
+
+	#~
+	Draw one lit mesh and return the green channel at a pixel. Green because the
+	light and the surface are both white here, so all three channels carry the
+	same value and one of them is enough.
+	~#
+	method : DrawLitCube(shader : Shader, mesh : Mesh, view_projection : Float[], model : Float[], light : Light, x : Int, y : Int) ~ Int {
+		mvp := Matrix4->Multiply(view_projection, model);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shader->Use();
+		shader->SetMatrix4("mvp", mvp);
+		shader->SetMatrix4("model", model);
+		shader->SetVec3("color", 1.0, 1.0, 1.0);
+		light->ApplyTo(shader);
+		mesh->Draw();
+
+		return (GL->ReadPixel(x, y) and 0x0000FF00) / 0x100;
+	}
+
+	#~
+	The wrong way to transform a normal: by the model matrix itself. Exists only
+	so the correct one can be asserted against something.
+	~#
+	method : NaiveNormalShader() ~ Shader {
+		vertex := ShaderSource->New();
+		vertex->Add("layout (location = 0) in vec3 in_position;");
+		vertex->Add("layout (location = 1) in vec3 in_normal;");
+		vertex->Add("uniform mat4 mvp;");
+		vertex->Add("uniform mat4 model;");
+		vertex->Add("out vec3 normal;");
+		vertex->Add("void main() {");
+		vertex->Add("  normal = normalize(mat3(model) * in_normal);");
+		vertex->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+		vertex->Add("}");
+
+		fragment := ShaderSource->New();
+		fragment->Add("in vec3 normal;");
+		fragment->Add("uniform vec3 color;");
+		fragment->Add("uniform vec3 light_direction;");
+		fragment->Add("uniform vec3 light_color;");
+		fragment->Add("uniform vec3 ambient;");
+		fragment->Add("out vec4 frag_color;");
+		fragment->Add("void main() {");
+		fragment->Add("  float diffuse = max(dot(normalize(normal), normalize(light_direction)), 0.0);");
+		fragment->Add("  frag_color = vec4(color * (ambient + light_color * diffuse), 1.0);");
+		fragment->Add("}");
+
+		return Shader->New(vertex->Build(), fragment->Build());
 	}
 
 	#~

@@ -25,6 +25,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * Mesh        -- geometry uploaded once into buffer objects, drawn many times,
                 with Cube/Plane/Quad/Sphere built in.
 * Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
+* Light       -- one directional light plus ambient, written into a shader.
 * Transform   -- position, rotation and scale, with a cached matrix.
 * Box, Scene  -- a world of boxes: draws itself, and answers collision.
 
@@ -1032,6 +1033,37 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Whether this program declares a uniform of this name.
+
+		Ask before setting one that may not be there. A missing uniform is
+		reported through GL->GetLastError, which is right for a typo and wrong for
+		a deliberate "set it only if the shader wants it" -- Scene uses this to
+		hand a model matrix to lit shaders without filing a diagnostic every frame
+		for the unlit ones.
+
+		Note GLSL removes uniforms it can prove are unused, so a declared but
+		unreferenced uniform answers false. That is not a bug: there is nothing to
+		set.
+		@param name the uniform's name
+		@return true when it can be set
+		~#
+		method : public : HasUniform(name : String) ~ Bool {
+			if(@program = 0) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@program);
+			array_args[2] := name;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_exists", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() <> 0;
+		}
+
+		#~
 		Set a float uniform.
 
 		Makes this program current -- see SetMatrix4.
@@ -1174,6 +1206,104 @@ bundle Game.OpenGL {
 			fragment->Add("}");
 
 			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
+		#~
+		Textured and lit by one directional light.
+
+		Uniforms: "mvp" and "model" (Scene sets both), the sampler "tex", and the
+		three a Light writes -- "light_direction", "light_color" and "ambient".
+		Optionally "fog_distance": set it to darken with distance, leave it alone
+		for no fog. That is here rather than in a separate preset because Lit times
+		Textured times Fogged would be eight programs for the sake of one multiply.
+
+		## The normal matrix, and why there is no Matrix3 here
+
+		A surface normal cannot be transformed by the model matrix. Under
+		non-uniform scale that tilts it off the surface, and the shading goes
+		subtly wrong in a way that reads as a modelling mistake. The correct
+		transform is the inverse transpose of the model matrix.
+
+		Computing that would normally mean a Matrix3 type, a glUniformMatrix3fv
+		binding and a per-object CPU inverse. GLSL has had `inverse` and
+		`transpose` since 1.40, and this targets 3.30, so the shader does it
+		instead -- one line, no new API, and nothing for a caller to forget.
+		@return the program; check IsOk()
+		~#
+		function : LitTextured() ~ Shader {
+			return Shader->New(LitVertexSource(), LitFragmentSource(true));
+		}
+
+		#~
+		Lit by one directional light, with a flat colour instead of a texture.
+
+		Same uniforms as LitTextured, but "color" (a vec3) in place of "tex".
+		@return the program; check IsOk()
+		~#
+		function : Lit() ~ Shader {
+			return Shader->New(LitVertexSource(), LitFragmentSource(false));
+		}
+
+		function : LitVertexSource() ~ String {
+			source := ShaderSource->New();
+			source->Add("layout (location = 0) in vec3 in_position;");
+			source->Add("layout (location = 1) in vec3 in_normal;");
+			source->Add("layout (location = 2) in vec2 in_texcoord;");
+			source->Add("uniform mat4 mvp;");
+			source->Add("uniform mat4 model;");
+			source->Add("out vec3 normal;");
+			source->Add("out vec2 texcoord;");
+			source->Add("out float depth;");
+			source->Add("void main() {");
+			source->Add("  depth = (mvp * vec4(in_position, 1.0)).z;");
+			# the normal matrix, in the one place that can compute it for free
+			source->Add("  normal = normalize(mat3(transpose(inverse(model))) * in_normal);");
+			source->Add("  texcoord = in_texcoord;");
+			source->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+			source->Add("}");
+
+			return source->Build();
+		}
+
+		function : LitFragmentSource(textured : Bool) ~ String {
+			source := ShaderSource->New();
+			source->Add("in vec3 normal;");
+			source->Add("in vec2 texcoord;");
+			source->Add("in float depth;");
+			if(textured) {
+				source->Add("uniform sampler2D tex;");
+			}
+			else {
+				source->Add("uniform vec3 color;");
+			};
+			source->Add("uniform vec3 light_direction;");
+			source->Add("uniform vec3 light_color;");
+			source->Add("uniform vec3 ambient;");
+			source->Add("uniform float fog_distance;");
+			source->Add("out vec4 frag_color;");
+			source->Add("void main() {");
+			# A light with no direction set would normalize (0,0,0) to NaN and turn
+			# the whole surface into garbage, so fall back to straight down.
+			source->Add("  vec3 to_light = length(light_direction) > 0.0 ? normalize(light_direction) : vec3(0.0, 1.0, 0.0);");
+			source->Add("  float diffuse = max(dot(normalize(normal), to_light), 0.0);");
+			source->Add("  vec3 lit = ambient + light_color * diffuse;");
+			# Fog folded in here rather than given its own preset. Lit x Textured x
+			# Fogged would be eight programs to maintain and eight to document,
+			# where the difference is one multiply gated on a uniform. A
+			# fog_distance of zero -- which is what GL leaves it at until it is set
+			# -- means no fog at all, so this costs nothing to ignore.
+			source->Add("  if(fog_distance > 0.0) {");
+			source->Add("    lit = lit * clamp(1.0 - depth / fog_distance, 0.15, 1.0);");
+			source->Add("  }");
+			if(textured) {
+				source->Add("  frag_color = texture(tex, texcoord) * vec4(lit, 1.0);");
+			}
+			else {
+				source->Add("  frag_color = vec4(color * lit, 1.0);");
+			};
+			source->Add("}");
+
+			return source->Build();
 		}
 
 		#~
@@ -2648,6 +2778,110 @@ bundle Game.OpenGL {
 
 
 	#~
+	One directional light, plus the ambient level everything gets.
+
+	Directional rather than positional: the light is infinitely far away, so every
+	surface with the same orientation is lit the same. That is the sun, and it is
+	what a scene wants before it wants anything more complicated -- no falloff to
+	tune, no per-object distance, and one set of uniforms for the whole frame.
+
+	```
+	light := Light->New();
+	light->SetDirection(-0.4, 1.0, 0.3);
+	scene->SetLight(light);
+	```
+
+	## Which way the direction points
+
+	Toward the light, not the way the light travels. A direction of (0, 1, 0) is a
+	light directly overhead, so upward-facing surfaces are brightest. This is the
+	convention that makes the shader's dot product read naturally, and it is the
+	one people get backwards -- a scene lit from underneath is the symptom.
+	~#
+	class Light {
+		@dx : Float; @dy : Float; @dz : Float;
+		@r : Float; @g : Float; @b : Float;
+		@ar : Float; @ag : Float; @ab : Float;
+
+		#~
+		A white light from above, with enough ambient that unlit faces are visible
+		rather than black.
+		~#
+		New() {
+			@dx := -0.3; @dy := 1.0; @dz := 0.4;
+			@r := 0.85; @g := 0.85; @b := 0.8;
+			@ar := 0.25; @ag := 0.25; @ab := 0.3;
+		}
+
+		#~
+		@param x direction toward the light, x
+		@param y direction toward the light, y
+		@param z direction toward the light, z
+		~#
+		method : public : SetDirection(x : Float, y : Float, z : Float) ~ Nil {
+			@dx := x; @dy := y; @dz := z;
+		}
+
+		#~
+		@param direction toward the light; need not be unit length
+		~#
+		method : public : SetDirection(direction : Vector3) ~ Nil {
+			if(direction <> Nil) {
+				SetDirection(direction->GetX(), direction->GetY(), direction->GetZ());
+			};
+		}
+
+		#~
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		~#
+		method : public : SetColor(r : Float, g : Float, b : Float) ~ Nil {
+			@r := r; @g := g; @b := b;
+		}
+
+		#~
+		The light every surface gets regardless of which way it faces.
+
+		Without it, a face turned away from the light is pure black -- correct for
+		one light in a vacuum, and wrong-looking for anything else, because real
+		surfaces are lit by everything around them.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		~#
+		method : public : SetAmbient(r : Float, g : Float, b : Float) ~ Nil {
+			@ar := r; @ag := g; @ab := b;
+		}
+
+		method : public : GetDirection() ~ Vector3 { return Vector3->New(@dx, @dy, @dz); }
+
+		#~
+		Write this light into a shader's uniforms.
+
+		Once a frame, not once per object: a directional light does not change
+		between objects. Skips any uniform the shader does not declare, so this can
+		be handed an unlit shader without filing a diagnostic.
+		@param shader the program to write into
+		~#
+		method : public : ApplyTo(shader : Shader) ~ Nil {
+			if(shader = Nil | <>shader->IsOk()) {
+				return;
+			};
+
+			if(shader->HasUniform("light_direction")) {
+				shader->SetVec3("light_direction", @dx, @dy, @dz);
+			};
+			if(shader->HasUniform("light_color")) {
+				shader->SetVec3("light_color", @r, @g, @b);
+			};
+			if(shader->HasUniform("ambient")) {
+				shader->SetVec3("ambient", @ar, @ag, @ab);
+			};
+		}
+	}
+
+	#~
 	Where something is, how it is turned, and how big it is -- with its matrix
 	built on demand and cached.
 
@@ -2979,6 +3213,11 @@ bundle Game.OpenGL {
 		@shader : Shader;
 		# scratch for the per-box model-view-projection, reused every draw
 		@mvp : Float[];
+		@light : Light;
+		# Whether the shader wants a per-object model matrix and a sampler, asked
+		# once rather than per box per frame. -1 means not yet asked.
+		@wants_model : Int;
+		@wants_sampler : Int;
 
 		#~
 		@param mesh the cube mesh every box is drawn with; it must span -1..1 on
@@ -2990,6 +3229,41 @@ bundle Game.OpenGL {
 			@shader := shader;
 			@boxes := Vector->New()<Box>;
 			@mvp := Float->New[16];
+			@light := Nil;
+			@wants_model := -1;
+			@wants_sampler := -1;
+		}
+
+		#~
+		Draw with a different program from here on.
+
+		Resets what was learned about the old shader's uniforms -- a Scene that
+		cached "this shader has no model matrix" and then had a lit shader
+		substituted would silently stop transforming normals.
+		@param shader the program to draw with
+		~#
+		method : public : SetShader(shader : Shader) ~ Nil {
+			@shader := shader;
+			@wants_model := -1;
+			@wants_sampler := -1;
+		}
+
+		#~
+		Light the scene. Pass Nil to go back to an unlit shader's own behaviour.
+
+		The light's uniforms are written once per Draw, not per object, since a
+		directional light is the same for everything in the frame.
+		@param light the light, or Nil
+		~#
+		method : public : SetLight(light : Light) ~ Nil {
+			@light := light;
+		}
+
+		#~
+		@return the light, or Nil
+		~#
+		method : public : GetLight() ~ Light {
+			return @light;
 		}
 
 		#~
@@ -3049,6 +3323,27 @@ bundle Game.OpenGL {
 
 			@shader->Use();
 
+			# Asked once and remembered. A lit shader needs the model matrix per
+			# object to transform its normals; an unlit one has no such uniform, and
+			# setting a uniform that does not exist is now REPORTED -- so blindly
+			# setting it would file a diagnostic per box per frame.
+			if(@wants_model = -1) {
+				@wants_model := @shader->HasUniform("model") ? 1 : 0;
+				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
+			};
+
+			# The sampler unit, which Scene used to leave unset -- so a shader had to
+			# rely on GLSL defaulting sampler bindings to 0. That worked, and meant
+			# gl_walkthrough had no SetInt call anywhere while cube_gl did, for no
+			# stated reason.
+			if(@wants_sampler = 1) {
+				@shader->SetInt("tex", 0);
+			};
+
+			if(@light <> Nil) {
+				@light->ApplyTo(@shader);
+			};
+
 			# Nil on its own infers as Nil, not as Texture2D, so the comparison below
 			# will not type-check without the cast.
 			last_texture := Nil->As(Texture2D);
@@ -3061,8 +3356,12 @@ bundle Game.OpenGL {
 					last_texture := texture;
 				};
 
-				Matrix4->MultiplyInto(@mvp, view_projection, box->GetModelMatrix());
+				model := box->GetModelMatrix();
+				Matrix4->MultiplyInto(@mvp, view_projection, model);
 				@shader->SetMatrix4("mvp", @mvp);
+				if(@wants_model = 1) {
+					@shader->SetMatrix4("model", model);
+				};
 				@mesh->Draw();
 			};
 		}

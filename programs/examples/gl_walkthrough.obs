@@ -47,6 +47,7 @@ class Walkthrough {
 	@view_scratch : Float[];
 
 	@scene : Scene;
+	@light : Light;
 
 	# the player is a circle in plan view, not a point
 	@radius : Float;
@@ -170,6 +171,15 @@ class Walkthrough {
 	method : BuildScene() ~ Nil {
 		@scene := Scene->New(@cube, @shader);
 
+		# Slightly off-axis and slightly warm, because a light straight down the
+		# camera's axis flattens everything back out again -- it lights every
+		# visible face equally, which is the look lighting was added to escape.
+		@light := Light->New();
+		@light->SetDirection(-0.35, 1.0, 0.45);
+		@light->SetColor(1.0, 0.96, 0.88);
+		@light->SetAmbient(0.22, 0.23, 0.3);
+		@scene->SetLight(@light);
+
 		half := 10.0;
 		wall_h := 3.0;
 		thick := 0.5;
@@ -226,10 +236,12 @@ class Walkthrough {
 			"Note: relative mouse mode unavailable; use the arrow keys to look"->PrintLine();
 		};
 
-		# Built in, and exactly what this program hand-rolled: a textured pass that
-		# darkens with distance, which is what gives a scene with no lighting any
-		# sense of depth at all.
-		@shader := Shader->TexturedFog();
+		# Lit and textured, with distance fog still on. Lighting is what makes the
+		# room read as a room: with a directional light the four walls, the floor
+		# and every face of every crate get a different brightness according to
+		# which way they face, where before they were all equally bright and the
+		# geometry had to be inferred from the fog alone.
+		@shader := Shader->LitTextured();
 		if(<>@shader->IsOk()) {
 			"Shader failed:"->ErrorLine();
 			@shader->GetLog()->ErrorLine();
