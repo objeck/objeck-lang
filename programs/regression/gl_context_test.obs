@@ -1474,6 +1474,41 @@ class GlContextTest {
 		Check("its normal at the centre points at the camera", b > 200 & r < 60 & g < 60);
 		Check("the sphere does not fill the frame", sphere_corner = black);
 
+		# --- CubeInterior is the exact inverse, and the pair is the assertion ---
+		# From inside, with culling on, an interior cube must be VISIBLE and a
+		# normal cube must not. Testing either one alone proves nothing: a mesh
+		# that renders from everywhere would pass the first, and one that renders
+		# from nowhere would pass the second.
+		interior := Mesh->CubeInterior(5.0);
+		if(Check("Mesh->CubeInterior uploads", interior->IsOk())) {
+			# not 'inside': that name is already an Int from the cube's readback
+			# above, and reusing it silently retyped the variable rather than
+			# shadowing it.
+			centre_camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+			inside_vp := Matrix4->Multiply(projection, centre_camera->GetViewMatrix());
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			shader->SetMatrix4("mvp", inside_vp);
+			interior->Draw();
+			from_inside := GL->ReadPixel(@pixel_w / 2, mid_y);
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			outward := Mesh->Cube(5.0);
+			outward->Draw();
+			normal_cube_from_inside := GL->ReadPixel(@pixel_w / 2, mid_y);
+			outward->Free();
+
+			"  from inside: interior=0x{$from_inside} normal-cube=0x{$normal_cube_from_inside}"->PrintLine();
+			Check("an interior cube is visible from inside", from_inside <> black);
+			Check("and a normal cube is not, which is why the interior one exists", normal_cube_from_inside = black);
+
+			# Its normals point inward too, or every wall would be lit from behind.
+			# Drawn as colour, the wall the camera faces along -Z has normal +Z.
+			Check("its normals face inward", from_inside = blue);
+
+			interior->Free();
+		};
+
 		# Off again: the checks after this one draw full-screen quads, and leaving
 		# culling on would make them depend on a winding they never declared.
 		GL->Disable(Capability->GL_CULL_FACE);

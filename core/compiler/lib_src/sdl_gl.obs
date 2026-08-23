@@ -1533,6 +1533,29 @@ bundle Game.OpenGL {
 		@return the mesh; check IsOk()
 		~#
 		function : Cube(half : Float) ~ Mesh {
+			return BuildCube(half, false);
+		}
+
+		#~
+		A cube seen from the INSIDE: a room, or a skybox.
+
+		Mesh->Cube is wound counter-clockwise from outside, which is right for a
+		solid object and useless for an enclosure -- put the camera inside one and
+		every wall is back-facing, so GL_CULL_FACE removes the whole room and you
+		are left looking through it. This is the same cube with its winding
+		reversed and its normals turned inward, so it is both visible and lit from
+		within.
+
+		None of that is discoverable from the outside: building a room out of Cube
+		and wondering where it went is the failure this exists to prevent.
+		@param half distance from the centre to each wall
+		@return the mesh; check IsOk()
+		~#
+		function : CubeInterior(half : Float) ~ Mesh {
+			return BuildCube(half, true);
+		}
+
+		function : BuildCube(half : Float, inward : Bool) ~ Mesh {
 			# Per face: the outward normal, then four corners counter-clockwise seen
 			# from outside. Fifteen floats each. Written as a literal table rather
 			# than computed because a wrong sign here is a face that culls away, and
@@ -1563,6 +1586,13 @@ bundle Game.OpenGL {
 				nx := faces[base + 0];
 				ny := faces[base + 1];
 				nz := faces[base + 2];
+				if(inward) {
+					# Turned to face the room's interior, or every wall would be lit
+					# from behind and come back black.
+					nx := nx * -1.0;
+					ny := ny * -1.0;
+					nz := nz * -1.0;
+				};
 
 				for(corner := 0; corner < 4; corner += 1;) {
 					src := base + 3 + corner * 3;
@@ -1579,12 +1609,24 @@ bundle Game.OpenGL {
 
 				vertex_base := face * 4;
 				index_base := face * 6;
-				indices[index_base + 0] := vertex_base + 0;
-				indices[index_base + 1] := vertex_base + 1;
-				indices[index_base + 2] := vertex_base + 2;
-				indices[index_base + 3] := vertex_base + 2;
-				indices[index_base + 4] := vertex_base + 3;
-				indices[index_base + 5] := vertex_base + 0;
+				if(inward) {
+					# Reversed, so what was the back of each face is now the front and
+					# GL_CULL_FACE keeps it rather than removing it.
+					indices[index_base + 0] := vertex_base + 2;
+					indices[index_base + 1] := vertex_base + 1;
+					indices[index_base + 2] := vertex_base + 0;
+					indices[index_base + 3] := vertex_base + 0;
+					indices[index_base + 4] := vertex_base + 3;
+					indices[index_base + 5] := vertex_base + 2;
+				}
+				else {
+					indices[index_base + 0] := vertex_base + 0;
+					indices[index_base + 1] := vertex_base + 1;
+					indices[index_base + 2] := vertex_base + 2;
+					indices[index_base + 3] := vertex_base + 2;
+					indices[index_base + 4] := vertex_base + 3;
+					indices[index_base + 5] := vertex_base + 0;
+				};
 			};
 
 			return Mesh->New(vertices, indices, PositionNormalTexcoord());
@@ -2365,15 +2407,63 @@ bundle Game.OpenGL {
 		~#
 		function : Perspective(fov_radians : Float, aspect : Float, near : Float, far : Float) ~ Float[] {
 			m := Float->New[16];
-
-			f := 1.0 / (fov_radians / 2.0)->Tan();
-			m[0] := f / aspect;
-			m[5] := f;
-			m[10] := (far + near) / (near - far);
-			m[11] := -1.0;
-			m[14] := (2.0 * far * near) / (near - far);
+			PerspectiveInto(m, fov_radians, aspect, near, far);
 
 			return m;
+		}
+
+		#~
+		Perspective into a caller's buffer. See IdentityInto.
+
+		Note this zeroes the destination first, so unlike the other Into forms it
+		must NOT be handed a buffer that already holds something wanted -- a
+		projection matrix is mostly zeroes, and leaving a previous matrix's values
+		in the untouched slots would produce nonsense rather than a projection.
+		@param out destination, at least 16 elements
+		@param fov_radians vertical field of view
+		@param aspect width divided by height
+		@param near near clip distance; must be greater than 0
+		@param far far clip distance
+		~#
+		function : PerspectiveInto(out : Float[], fov_radians : Float, aspect : Float, near : Float, far : Float) ~ Nil {
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			each(i : out) {
+				out[i] := 0.0;
+			};
+
+			if(aspect = 0.0 | near = far) {
+				return;
+			};
+
+			f := 1.0 / (fov_radians / 2.0)->Tan();
+			out[0] := f / aspect;
+			out[5] := f;
+			out[10] := (far + near) / (near - far);
+			out[11] := -1.0;
+			out[14] := (2.0 * far * near) / (near - far);
+		}
+
+		#~
+		LookAt into a caller's buffer, for a camera that is not a Camera -- a light
+		looking at a scene, say. Camera->GetViewMatrixInto is the cheaper route
+		when there is a Camera.
+		@param out destination, at least 16 elements
+		@param eye where the viewer is
+		@param target what it looks at
+		@param up which way is up
+		~#
+		function : LookAtInto(out : Float[], eye : Vector3, target : Vector3, up : Vector3) ~ Nil {
+			built := LookAt(eye, target, up);
+			if(out = Nil | out->Size() < 16 | built = Nil) {
+				return;
+			};
+
+			for(i := 0; i < 16; i += 1;) {
+				out[i] := built[i];
+			};
 		}
 
 		#~
@@ -2401,6 +2491,75 @@ bundle Game.OpenGL {
 		~#
 		function : PerspectiveDegrees(fov_degrees : Float, aspect : Float, near : Float, far : Float) ~ Float[] {
 			return Perspective(fov_degrees * Float->Pi() / 180.0, aspect, near, far);
+		}
+
+		#~
+		Orthographic projection: no perspective, so distance does not shrink
+		anything.
+
+		Two uses. A 2D overlay -- a HUD, a minimap -- drawn in pixel coordinates.
+		And, less obviously, a directional light's view of a scene: a light
+		infinitely far away casts parallel rays, so the projection that matches it
+		is parallel too. A shadow map rendered through a perspective projection is
+		wrong in a way that looks like the shadows are being cast by a nearby lamp.
+		@param left the left clip plane
+		@param right the right clip plane
+		@param bottom the bottom clip plane
+		@param top the top clip plane
+		@param near the near clip plane; may be negative, unlike Perspective
+		@param far the far clip plane
+		@return the matrix
+		~#
+		function : Orthographic(left : Float, right : Float, bottom : Float, top : Float, near : Float, far : Float) ~ Float[] {
+			m := Float->New[16];
+			OrthographicInto(m, left, right, bottom, top, near, far);
+
+			return m;
+		}
+
+		#~
+		Orthographic projection into a caller's buffer.
+		@param out destination, at least 16 elements
+		@param left the left clip plane
+		@param right the right clip plane
+		@param bottom the bottom clip plane
+		@param top the top clip plane
+		@param near the near clip plane
+		@param far the far clip plane
+		~#
+		function : OrthographicInto(out : Float[], left : Float, right : Float, bottom : Float, top : Float, near : Float, far : Float) ~ Nil {
+			IdentityInto(out);
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			width := right - left;
+			height := top - bottom;
+			depth := far - near;
+			if(width = 0.0 | height = 0.0 | depth = 0.0) {
+				return;
+			};
+
+			out[0] := 2.0 / width;
+			out[5] := 2.0 / height;
+			# negative, because GL's clip space has +z going away from the viewer
+			# while the view space this maps from has -z going away
+			out[10] := -2.0 / depth;
+			out[12] := (right + left) / width * -1.0;
+			out[13] := (top + bottom) / height * -1.0;
+			out[14] := (far + near) / depth * -1.0;
+		}
+
+		#~
+		A square orthographic box centred on the origin -- the usual shape for a
+		directional light's view of a scene.
+		@param extent half the width and height covered
+		@param near the near clip plane
+		@param far the far clip plane
+		@return the matrix
+		~#
+		function : OrthographicBox(extent : Float, near : Float, far : Float) ~ Float[] {
+			return Orthographic(extent * -1.0, extent, extent * -1.0, extent, near, far);
 		}
 
 		#~
@@ -2777,6 +2936,55 @@ bundle Game.OpenGL {
 		method : public : MoveRight(distance : Float) ~ Nil {
 			step := Vector3->Scale(GroundRight(), distance);
 			@position := Vector3->Add(@position, step);
+		}
+
+		#~
+		Turn to face a point, without moving.
+
+		Camera is a yaw-and-pitch camera, which is right for a first-person view
+		and awkward for anything that watches something: an orbiting or tracking
+		shot knows where it wants to look, not what angles that is. This converts.
+
+		Leaves roll alone, because there isn't any -- the up vector stays world-up,
+		which is what keeps a scene from feeling tilted.
+		@param target the point to face
+		~#
+		method : public : LookAtPoint(target : Vector3) ~ Nil {
+			if(target = Nil) {
+				return;
+			};
+
+			dx := target->GetX() - @position->GetX();
+			dy := target->GetY() - @position->GetY();
+			dz := target->GetZ() - @position->GetZ();
+
+			length := (dx * dx + dy * dy + dz * dz)->Sqrt();
+			if(length = 0.0) {
+				# already there; any direction would do, so change nothing
+				return;
+			};
+
+			dx := dx / length;
+			dy := dy / length;
+			dz := dz / length;
+
+			# Inverting ForwardVector, which is
+			#   (sin(yaw) * cos(pitch), sin(pitch), -cos(yaw) * cos(pitch))
+			@pitch := Float->ArcSin(dy);
+			@yaw := Float->ArcTan2(dx, dz * -1.0);
+		}
+
+		#~
+		Place the eye and face a point in one call -- an orbiting or tracking shot.
+		@param position where the eye goes
+		@param target what it looks at
+		~#
+		method : public : PlaceLookingAt(position : Vector3, target : Vector3) ~ Nil {
+			if(position <> Nil) {
+				@position := position;
+			};
+
+			LookAtPoint(target);
 		}
 
 		#~

@@ -1,0 +1,261 @@
+#~
+The Amiga boing ball, in OpenGL 3.3 core.
+
+  compile: obc -src gl_boing.obs -lib sdl2,sdl_gl
+  run:     obr gl_boing
+
+  escape or the close button to quit
+
+A red-and-white checkered sphere spinning as it bounces around a room, with the
+camera slowly orbiting. Objeck had this in 2D through Game.SDL2; this is the same
+scene with a real sphere, real lighting and a real camera.
+
+It is also the demo that exercises the most of Game.OpenGL at once, which is the
+other reason it exists:
+
+  Mesh->Sphere         the ball, with normals so it reads as round
+  Mesh->Plane          the floor, one texture tiled across it
+  Mesh->CubeInterior   the room, wound so it is visible from inside
+  Texture2D->Checker   both patterns, generated -- no asset files
+  Transform            the ball's position, spin and scale, matrix cached
+  Light                one directional light; the shading is what makes it a ball
+  Camera->PlaceLookingAt  the orbit
+
+## What to look at
+
+The ball is lit, so its shading moves as it spins and its underside darkens as it
+rises. That is the difference lighting makes: the same sphere unlit is a flat
+circle of checks with no sense of volume at all.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class BoingBall {
+	@window : GLWindow;
+	@lit : Shader;
+
+	@ball_mesh : Mesh;
+	@ball_texture : Texture2D;
+	@ball : Transform;
+
+	@floor_mesh : Mesh;
+	@floor_texture : Texture2D;
+	@floor : Transform;
+
+	@room_mesh : Mesh;
+	@room_texture : Texture2D;
+	@room : Transform;
+	@light : Light;
+	@camera : Camera;
+
+	# ball state: position, velocity and spin
+	@x : Float;
+	@y : Float;
+	@z : Float;
+	@vx : Float;
+	@vy : Float;
+	@vz : Float;
+	@spin : Float;
+	@orbit : Float;
+
+	# per-frame scratch, so the loop allocates nothing
+	@projection : Float[];
+	@view_projection : Float[];
+	@view_scratch : Float[];
+	@mvp : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		BoingBall->New()->Run();
+	}
+
+	New() {
+		@x := 0.0;   @y := 2.0;  @z := 0.0;
+		@vx := 3.2;  @vy := 0.0; @vz := 2.1;
+		@spin := 0.0;
+		@orbit := 0.0;
+
+		@projection := Float->New[16];
+		@view_projection := Float->New[16];
+		@view_scratch := Float->New[16];
+		@mvp := Float->New[16];
+
+		# INSIDE the room. An orbit outside it would spend most of its time behind
+		# a wall.
+		@camera := Camera->New(Vector3->New(0.0, 3.0, 6.0));
+	}
+
+	method : Run() ~ Nil {
+		@window := GLWindow->New("Objeck Boing", 960, 640);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
+		leaving {
+			Close();
+		};
+
+		if(<>Build()) {
+			return;
+		};
+
+		"Escape to quit."->PrintLine();
+
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
+			delta := @window->GetDelta();
+
+			Advance(delta);
+			Draw();
+
+			@window->EndFrame();
+		};
+
+		GL->ReportErrors("the run");
+	}
+
+	#~
+	Move the ball, spin it, and swing the camera round.
+	~#
+	method : Advance(delta : Float) ~ Nil {
+		radius := 1.5;
+		# the room's inside face, less the ball's radius
+		limit := 9.0 - radius;
+
+		@vy -= 14.0 * delta;
+
+		@x += @vx * delta;
+		@y += @vy * delta;
+		@z += @vz * delta;
+
+		# Bounce off each wall, and clamp back inside rather than only reversing:
+		# a ball that arrives past the wall on a long frame would otherwise flip
+		# its velocity again next frame and buzz there forever.
+		if(@x < limit * -1.0) { @x := limit * -1.0; @vx := @vx->Abs(); };
+		if(@x > limit) { @x := limit; @vx := @vx->Abs() * -1.0; };
+		if(@z < limit * -1.0) { @z := limit * -1.0; @vz := @vz->Abs(); };
+		if(@z > limit) { @z := limit; @vz := @vz->Abs() * -1.0; };
+
+		if(@y < radius) {
+			@y := radius;
+			# Keep 88% of the speed per bounce, and top it back up when it gets too
+			# slow to be interesting -- a real coefficient of restitution settles
+			# the ball on the floor and the demo stops.
+			@vy := @vy->Abs() * 0.88;
+			if(@vy < 6.0) {
+				@vy := 8.5;
+			};
+		};
+
+		@spin += 1.4 * delta;
+
+		@ball->SetPosition(@x, @y, @z);
+		# Tilted on its axis, like the original, and turning about it.
+		@ball->SetRotation(@spin, 0.0, 0.35);
+
+		# The camera circles at walking pace and always looks at the ball, so the
+		# room is seen from every side. PlaceLookingAt does the angles.
+		@orbit += 0.25 * delta;
+		eye_x := @orbit->Sin() * 7.0;
+		eye_z := @orbit->Cos() * 7.0;
+		@camera->PlaceLookingAt(Vector3->New(eye_x, 3.4, eye_z), Vector3->New(@x * 0.3, 2.2, @z * 0.3));
+	}
+
+	method : Draw() ~ Nil {
+		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
+
+		@lit->Use();
+		@light->ApplyTo(@lit);
+		@lit->SetInt("tex", 0);
+
+		DrawPiece(@room_mesh, @room_texture, @room);
+		DrawPiece(@floor_mesh, @floor_texture, @floor);
+		DrawPiece(@ball_mesh, @ball_texture, @ball);
+	}
+
+	#~
+	One textured, lit, transformed thing. Three lines each instead of six,
+	repeated three times.
+	~#
+	method : DrawPiece(mesh : Mesh, texture : Texture2D, transform : Transform) ~ Nil {
+		texture->Bind(0);
+		transform->MvpInto(@mvp, @view_projection);
+		@lit->SetMatrix4("mvp", @mvp);
+		@lit->SetMatrix4("model", transform->GetMatrix());
+		mesh->Draw();
+	}
+
+	method : Build() ~ Bool {
+		Matrix4->PerspectiveInto(@projection, Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
+
+		GL->Enable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.06, 0.07, 0.11, 1.0);
+
+		@lit := Shader->LitTextured();
+		if(<>@lit->IsOk()) {
+			"Shader failed:"->ErrorLine();
+			@lit->GetLog()->ErrorLine();
+			return false;
+		};
+		@lit->SetFloat("fog_distance", 55.0);
+
+		# The ball: red and white, four squares round, which is close to the
+		# original's proportions. GL_NEAREST keeps the checks crisp instead of
+		# blurring the boundaries as the sphere turns away.
+		@ball_mesh := Mesh->Sphere(32, 16);
+		@ball_texture := Texture2D->Checker(64, 4, Texture2D->Rgb(226, 32, 44), Texture2D->Rgb(245, 245, 250));
+		@ball := Transform->New();
+		@ball->SetScale(1.5);
+
+		# The floor: one texture repeated, which is what GL_REPEAT and Plane's
+		# tiles parameter are for. Mipmapped, or the checks turn to noise where
+		# the floor recedes.
+		@floor_mesh := Mesh->Plane(9.0, 9.0);
+		@floor_texture := Texture2D->Checker(64, 2, Texture2D->Rgb(70, 76, 96), Texture2D->Rgb(50, 55, 72), TextureWrap->GL_REPEAT);
+		@floor := Transform->New();
+		@floor->SetPosition(0.0, 0.0, 0.0);
+
+		# The room is ONE inward-facing cube. Built out of Mesh->Cube it would be
+		# invisible from inside: that winding is counter-clockwise seen from
+		# OUTSIDE, so with culling on every wall of an enclosure is back-facing and
+		# gets removed. CubeInterior is the same cube turned inside out.
+		@room_mesh := Mesh->CubeInterior(1.0);
+		@room_texture := Texture2D->Checker(128, 8, Texture2D->Rgb(150, 152, 168), Texture2D->Rgb(120, 124, 142));
+		@room := Transform->New();
+		@room->SetScale(9.0, 5.0, 9.0);
+		@room->SetPosition(0.0, 5.0, 0.0);
+
+		if(<>@ball_mesh->IsOk() | <>@floor_mesh->IsOk() | <>@room_mesh->IsOk()) {
+			"Could not upload the geometry"->ErrorLine();
+			return false;
+		};
+		if(<>@ball_texture->IsOk() | <>@floor_texture->IsOk() | <>@room_texture->IsOk()) {
+			"Could not upload the textures"->ErrorLine();
+			return false;
+		};
+
+		@light := Light->New();
+		@light->SetDirection(-0.4, 1.0, 0.55);
+		@light->SetColor(1.0, 0.97, 0.9);
+		@light->SetAmbient(0.2, 0.21, 0.28);
+
+		return true;
+	}
+
+	#~
+	GL objects first, while the context is still current. The window takes the
+	context and SDL down after them, in the right order.
+	~#
+	method : Close() ~ Nil {
+		if(@ball_texture <> Nil) { @ball_texture->Free(); };
+		if(@floor_texture <> Nil) { @floor_texture->Free(); };
+		if(@room_texture <> Nil) { @room_texture->Free(); };
+		if(@ball_mesh <> Nil) { @ball_mesh->Free(); };
+		if(@floor_mesh <> Nil) { @floor_mesh->Free(); };
+		if(@room_mesh <> Nil) { @room_mesh->Free(); };
+		if(@lit <> Nil) { @lit->Free(); };
+
+		if(@window <> Nil) { @window->Free(); };
+	}
+}
