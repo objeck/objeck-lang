@@ -33,8 +33,7 @@ use Game.SDL2;
 use Game.OpenGL;
 
 class Walkthrough {
-	@window : Window;
-	@context : GLContext;
+	@window : GLWindow;
 	@shader : Shader;
 	@cube : Mesh;
 	@wall_texture : Texture2D;
@@ -67,65 +66,43 @@ class Walkthrough {
 	}
 
 	method : Run() ~ Nil {
+		@window := GLWindow->New("Objeck 3D Walkthrough", 960, 640);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
 		leaving {
 			Close();
 		};
 
-		if(<>Init()) {
-			"--- Error initializing OpenGL ---"->ErrorLine();
+		if(<>BuildWorld()) {
 			return;
 		};
 
 		"Mouse to look, WASD to walk, shift to run, escape to quit."->PrintLine();
 		"Arrow keys also turn and look, if you prefer them."->PrintLine();
 
-		e := Event->New();
-		quit := false;
-		last_ticks := Timer->GetTicks();
+		# PollEvents handles the close button, Escape, and accumulating the frame's
+		# mouse movement. Held keys are not events, so WASD still comes from
+		# Keyboard->GetState, which this does not disturb.
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
 
-		while(<>quit) {
-			# real elapsed time, so movement speed does not depend on frame rate
-			now := Timer->GetTicks();
-			delta := (now - last_ticks)->As(Float) / 1000.0;
-			last_ticks := now;
-			if(delta > 0.1) {
-				# a long stall (window drag, breakpoint) would otherwise teleport you
-				delta := 0.1;
+			if(@mouse_look) {
+				# Deltas, not absolute position: in relative mode the cursor is locked
+				# and keeps reporting movement past the screen edge.
+				@camera->Turn(@window->GetMouseDeltaX() * @sensitivity * -1.0);
+				@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
 			};
 
-			while(e->Poll() <> 0) {
-				type := e->GetType();
-				if(type = EventType->SDL_QUIT) {
-					quit := true;
-				}
-				else if(type = EventType->SDL_MOUSEMOTION & @mouse_look) {
-					# Deltas, not absolute position: in relative mode the cursor is
-					# locked, so GetRelX/GetRelY keep reporting past the screen edge.
-					motion := e->GetMouseMotion();
-					if(motion <> Nil) {
-						@camera->Turn(motion->GetRelX()->As(Float) * @sensitivity * -1.0);
-						@camera->Look(motion->GetRelY()->As(Float) * @sensitivity * -1.0);
-					};
-				};
-			};
-
-			keys := Keyboard->GetState();
-			if(IsDown(keys, Scancode->SDL_SCANCODE_ESCAPE)) {
-				quit := true;
-			};
-
-			Update(keys, delta);
+			Update(Keyboard->GetState(), @window->GetDelta());
 			Draw();
 
-			@window->GLSwap();
+			@window->EndFrame();
 		};
-		e->Free();
 
-		errors := GL->DrainErrors();
-		count := errors->Size();
-		if(count > 0) {
-			"Warning: {$count} GL error(s)"->ErrorLine();
-		};
+		GL->ReportErrors("the walkthrough");
 	}
 
 	method : IsDown(keys : Byte[], scancode : Int) ~ Bool {
@@ -238,68 +215,27 @@ class Walkthrough {
 		@scene->AddBox(Vector3->New(-1.5, 1.75, 2.0), Vector3->New(0.4, 1.75, 0.4), @box_texture);
 	}
 
+	#~
+	No clear here: GLWindow->BeginFrame cleared colour and depth together.
+	~#
 	method : Draw() ~ Nil {
-		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
-
 		view_projection := Matrix4->Multiply(@projection, @camera->GetViewMatrix());
 		@scene->Draw(view_projection);
 	}
 
-	method : Init() ~ Bool {
-		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
-			"SDL could not initialize: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
-		};
+	#~
+	The world: shaders, geometry, textures and the scene. Opening the window and
+	the context is GLWindow's job now, so what is left is this program's content.
+	~#
+	method : BuildWorld() ~ Bool {
+		@projection := Matrix4->Perspective(Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
 
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, 3);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK,
-			GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS,
-			GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-		Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
-		Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
-
-		@window := Window->New("Objeck 3D Walkthrough", WindowFlags->SDL_WINDOWPOS_UNDEFINED,
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 960, 640,
-			WindowFlags->SDL_WINDOW_SHOWN or WindowFlags->SDL_WINDOW_OPENGL);
-		if(@window->IsNull()) {
-			"Cannot create window: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
-		};
-
-		@context := @window->GLCreateContext();
-		if(@context->IsNull()) {
-			"Cannot create a GL 3.3 core context: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
-		};
-
-		version := Core->GLGetVersionString();
-		"GL version: {$version}"->PrintLine();
-
-		missing := GL->LoadFunctions();
-		if(missing->Size() > 0) {
-			"Could not resolve GL functions: {$missing}"->ErrorLine();
-			return false;
-		};
-
-		w := IntRef->New();
-		h := IntRef->New();
-		@window->GLGetDrawableSize(w, h);
-		pixel_w := w->Get();
-		pixel_h := h->Get();
-		GL->Viewport(0, 0, pixel_w, pixel_h);
-
-		aspect := pixel_w->As(Float) / pixel_h->As(Float);
-		@projection := Matrix4->Perspective(Float->Pi() / 3.0, aspect, 0.1, 100.0);
-
-		GL->Enable(Capability->GL_DEPTH_TEST);
+		# Depth testing is already on. Culling is not, because it imposes a winding
+		# requirement on index data -- counter-clockwise seen from outside -- and
+		# getting that wrong makes objects invisible rather than wrong, so it is the
+		# program's choice rather than a default.
 		GL->Enable(Capability->GL_CULL_FACE);
 		GL->ClearColor(0.05, 0.06, 0.09, 1.0);
-		Core->GLSetSwapInterval(1);
 
 		# Mouse-look. Not every platform supports relative mode, so fall back to
 		# arrow-key turning rather than leaving the player unable to look around.
@@ -444,22 +380,22 @@ class Walkthrough {
 		return source;
 	}
 
-	method : Close() ~ Nil {
-		# Release the cursor first: leaving relative mode on after the window
-		# closes strands the pointer.
-		if(@mouse_look) {
-			Cursor->SetRelativeMouseMode(false);
-		};
+	#~
+	GL objects first, while the context is still current. GLWindow->Free then
+	releases the cursor, the context, the window and SDL in that order -- so this
+	no longer has to know it.
 
+	The Scene is deliberately not freed: it does not own the boxes, mesh, shader
+	or textures it was handed, which is why they are freed here instead.
+	~#
+	method : Close() ~ Nil {
 		if(@wall_texture <> Nil) { @wall_texture->Free(); };
 		if(@box_texture <> Nil) { @box_texture->Free(); };
 		if(@cube <> Nil) { @cube->Free(); };
 		if(@shader <> Nil) { @shader->Free(); };
 		if(@wall_surface <> Nil & <>@wall_surface->IsNull()) { @wall_surface->Free(); };
 		if(@box_surface <> Nil & <>@box_surface->IsNull()) { @box_surface->Free(); };
-		if(@context <> Nil) { @context->Delete(); };
-		if(@window <> Nil & <>@window->IsNull()) { @window->Destroy(); };
 
-		Core->Quit();
+		if(@window <> Nil) { @window->Free(); };
 	}
 }

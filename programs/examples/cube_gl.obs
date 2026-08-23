@@ -13,20 +13,22 @@ that per-primitive calls dominate everything else.
 
 No texture file is needed: the checkerboard is generated into a Surface at
 startup, so this runs from a clean checkout.
+
+Opening the window is one line, because GLWindow does it -- see gl_clear.obs for
+the smallest version of that. What is left in this file is the cube: its
+geometry, its shaders, its texture and its spin.
 ~#
 
 use Game.SDL2;
 use Game.OpenGL;
 
 class SpinningCube {
-	@window : Window;
-	@context : GLContext;
+	@window : GLWindow;
 	@shader : Shader;
 	@mesh : Mesh;
 	@texture : Texture2D;
 	@surface : Surface;
 	@angle : Float;
-	@aspect : Float;
 
 	function : Main(args : String[]) ~ Nil {
 		SpinningCube->New()->Run();
@@ -34,114 +36,57 @@ class SpinningCube {
 
 	New() {
 		@angle := 0.0;
-		@aspect := 1.0;
 	}
 
 	method : Run() ~ Nil {
+		@window := GLWindow->New("Objeck OpenGL Cube", 720, 540);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
 		leaving {
 			Close();
 		};
 
-		if(<>Init()) {
-			"--- Error initializing OpenGL ---"->ErrorLine();
+		if(<>BuildResources()) {
 			return;
 		};
 
-		GL->Enable(Capability->GL_DEPTH_TEST);
 		GL->ClearColor(0.09, 0.11, 0.15, 1.0);
 
-		# Uploaded once, drawn every frame.
-		projection := Matrix4->Perspective(Float->Pi() / 4.0, @aspect, 0.1, 100.0);
-		view := Matrix4->LookAtOrigin(4.0);
-		view_projection := Matrix4->Multiply(projection, view);
+		# Computed once. The camera never moves, so neither does this.
+		projection := Matrix4->Perspective(Float->Pi() / 4.0, @window->GetAspect(), 0.1, 100.0);
+		view_projection := Matrix4->Multiply(projection, Matrix4->LookAtOrigin(4.0));
 
 		@shader->Use();
 		@shader->SetInt("tex", 0);
 		@texture->Bind(0);
 
-		e := Event->New();
-		quit := false;
-		while(<>quit) {
-			while(e->Poll() <> 0) {
-				if(e->GetType() = EventType->SDL_QUIT) {
-					quit := true;
-				};
-			};
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
 
-			@angle += 0.01;
-			model := Matrix4->Multiply(Matrix4->RotationY(@angle),
-				Matrix4->RotationX(@angle * 0.6));
-
-			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			# RADIANS PER SECOND, scaled by the frame time. This used to advance a
+			# fixed step per FRAME, which means the cube spun at whatever rate the
+			# display happened to refresh at -- twice as fast on a 120Hz panel, and
+			# faster still with vsync unavailable.
+			@angle += 0.6 * @window->GetDelta();
+			model := Matrix4->Multiply(Matrix4->RotationY(@angle), Matrix4->RotationX(@angle * 0.6));
 
 			@shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
 			@mesh->Draw();
 
-			@window->GLSwap();
+			@window->EndFrame();
 		};
-		e->Free();
 
-		errors := GL->DrainErrors();
-		count := errors->Size();
-		if(count > 0) {
-			first := errors[0];
-			"Warning: {$count} GL error(s), first was 0x{$first}"->ErrorLine();
-		};
+		GL->ReportErrors("the run");
 	}
 
-	method : Init() ~ Bool {
-		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
-			"SDL could not initialize: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
-		};
-
-		# Attributes select a pixel format, so they must precede Window->New.
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, 3);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK,
-			GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS,
-			GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-		Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
-		Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
-
-		@window := Window->New("Objeck OpenGL Cube", WindowFlags->SDL_WINDOWPOS_UNDEFINED,
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 720, 540,
-			WindowFlags->SDL_WINDOW_SHOWN or WindowFlags->SDL_WINDOW_OPENGL);
-		if(@window->IsNull()) {
-			"Cannot create window: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
-		};
-
-		@context := @window->GLCreateContext();
-		if(@context->IsNull()) {
-			"Cannot create a GL 3.3 core context: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
-		};
-
-		version := Core->GLGetVersionString();
-		"GL version: {$version}"->PrintLine();
-
-		# Everything above GL 1.1 is resolved at runtime; do it once, here.
-		missing := GL->LoadFunctions();
-		if(missing->Size() > 0) {
-			"Could not resolve GL functions: {$missing}"->ErrorLine();
-			return false;
-		};
-
-		w := IntRef->New();
-		h := IntRef->New();
-		@window->GLGetDrawableSize(w, h);
-		pixel_w := w->Get();
-		pixel_h := h->Get();
-		GL->Viewport(0, 0, pixel_w, pixel_h);
-		@aspect := pixel_w->As(Float) / pixel_h->As(Float);
-
-		Core->GLSetSwapInterval(1);
-
+	#~
+	The GL objects. Everything about opening a window and a context moved to
+	GLWindow, so what is left here is only this program's own content.
+	~#
+	method : BuildResources() ~ Bool {
 		@shader := Shader->New(VertexSource(), FragmentSource());
 		if(<>@shader->IsOk()) {
 			"Shader failed:"->ErrorLine();
@@ -290,14 +235,17 @@ class SpinningCube {
 		return source;
 	}
 
+	#~
+	GL objects first, while the context is still current -- every Free bottoms out
+	in a glDelete*, which needs one. Then the window, which takes the context and
+	SDL down in the right order itself.
+	~#
 	method : Close() ~ Nil {
 		if(@texture <> Nil) { @texture->Free(); };
 		if(@mesh <> Nil) { @mesh->Free(); };
 		if(@shader <> Nil) { @shader->Free(); };
 		if(@surface <> Nil & <>@surface->IsNull()) { @surface->Free(); };
-		if(@context <> Nil) { @context->Delete(); };
-		if(@window <> Nil & <>@window->IsNull()) { @window->Destroy(); };
 
-		Core->Quit();
+		if(@window <> Nil) { @window->Free(); };
 	}
 }

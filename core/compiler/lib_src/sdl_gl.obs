@@ -18,6 +18,7 @@ GLES-only hardware (Raspberry Pi and similar) is out of scope by construction.
 
 Layers, from thinnest to friendliest -- all public, so nothing is capped:
 
+* GLWindow    -- a window and a 3.3 core context, opened and paced for you.
 * GL          -- static state operations. Thin, but never per-vertex.
 * Shader      -- a linked program from vertex + fragment source.
 * Mesh        -- geometry uploaded once into buffer objects, drawn many times.
@@ -282,6 +283,30 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Drain the error queue and print whatever was in it.
+
+		Exists because every program was writing the same four lines: drain, count,
+		test the count, print. Errors are worth checking at least once per run --
+		they are queued, so one raised in frame 2 is still there at exit.
+		@param during what was happening, included in the message
+		@return how many errors there were, so a caller can also act on it
+		~#
+		function : ReportErrors(during : String) ~ Int {
+			errors := DrainErrors();
+			count := errors->Size();
+
+			if(count > 0) {
+				"{$count} GL error(s) during {$during}:"->ErrorLine();
+				each(i : errors) {
+					code := errors[i];
+					"  0x{$code}"->ErrorLine();
+				};
+			};
+
+			return count;
+		}
+
+		#~
 		Why the last call silently did nothing.
 
 		GetError only reports what GL itself considers an error, and the most
@@ -309,6 +334,510 @@ bundle Game.OpenGL {
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_last_error", array_args);
 
 			return array_args[0]->As(String);
+		}
+	}
+
+	#~
+	A window with a GL 3.3 core context, ready to draw into.
+
+	This exists because opening one by hand takes about thirty lines that are the
+	same in every program: initialise SDL, set six context attributes in the right
+	order and before the window, create the window with the GL flag, create the
+	context, check you actually got 3.3 core, resolve the entry points, and set the
+	viewport from the DRAWABLE size rather than the window size. Across the four
+	programs in this repo that block was 105 lines, and the only things that varied
+	were the title, the size, one flag and the wording of an error message.
+
+	```
+	window := GLWindow->New("Cube", 720, 540);
+	if(<>window->IsOk()) {
+		window->GetError()->ErrorLine();
+		return;
+	};
+
+	while(<>window->PollEvents()) {
+		window->BeginFrame();
+		# ... draw ...
+		window->EndFrame();
+	};
+
+	window->Free();
+	```
+
+	## What it decides for you
+
+	A depth buffer is always requested and GL_DEPTH_TEST is enabled, because the
+	two are separate calls sixty lines apart and forgetting the attribute makes the
+	enable silently do nothing. BeginFrame clears colour and depth together for the
+	same reason.
+
+	Vsync is requested, and whether it was actually granted is remembered -- so
+	EndFrame adds a delay only when it was not. Sleeping on top of a vsynced swap
+	is a double wait, which is why frame pacing is worth owning rather than leaving
+	to each program to hand-roll differently.
+
+	## What it does not take away
+
+	Nothing is capped. GetEvent hands back the SDL Event if you would rather drive
+	the queue yourself, Keyboard->GetState is unaffected by any of this, and every
+	GL, Shader, Mesh and Texture2D call remains available exactly as before.
+	~#
+	class GLWindow {
+		@window : Window;
+		@context : GLContext;
+		@event : Event;
+		@error : String;
+		@version : String;
+		@ok : Bool;
+
+		# the DRAWABLE size in pixels, which is what GL works in. Not the window
+		# size in points -- those differ on a high-DPI display.
+		@pixel_w : Int;
+		@pixel_h : Int;
+
+		@vsync : Bool;
+		@target_fps : Int;
+		@frame_start : Int;
+		@delta : Float;
+
+		@mouse_dx : Float;
+		@mouse_dy : Float;
+		@quit : Bool;
+
+		#~
+		Open a visible window and a GL 3.3 core context.
+		@param title the window title
+		@param width width in points
+		@param height height in points
+		~#
+		New(title : String, width : Int, height : Int) {
+			Open(title, width, height, true);
+		}
+
+		#~
+		Open a window that may be hidden.
+
+		A hidden window still has a real context and still renders, so this is how a
+		test or a headless tool draws and reads pixels back without a window being
+		flashed at anyone.
+		@param title the window title
+		@param width width in points
+		@param height height in points
+		@param visible false to keep the window off screen
+		~#
+		New(title : String, width : Int, height : Int, visible : Bool) {
+			Open(title, width, height, visible);
+		}
+
+		method : Open(title : String, width : Int, height : Int, visible : Bool) ~ Nil {
+			@ok := false;
+			@error := "";
+			@version := "";
+			@pixel_w := 0;
+			@pixel_h := 0;
+			@vsync := false;
+			@target_fps := 60;
+			@frame_start := 0;
+			@delta := 0.0;
+			@mouse_dx := 0.0;
+			@mouse_dy := 0.0;
+			@quit := false;
+
+			if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+				@error := "SDL could not initialise: {$Core->GetError()}";
+				return;
+			};
+
+			# Attributes select a pixel format, so every one of these must precede
+			# window creation. Setting them afterwards is silently ignored.
+			Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+			Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, 3);
+			Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK, GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
+			# required alongside a core profile on macOS
+			Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS, GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+			Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
+			Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
+
+			visibility := WindowFlags->SDL_WINDOW_HIDDEN;
+			if(visible) {
+				visibility := WindowFlags->SDL_WINDOW_SHOWN;
+			};
+
+			flags := visibility or WindowFlags->SDL_WINDOW_OPENGL;
+			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, width, height, flags);
+			if(@window->IsNull()) {
+				@error := "cannot create a GL window: {$Core->GetError()}";
+				return;
+			};
+
+			@context := @window->GLCreateContext();
+			if(@context->IsNull()) {
+				@error := "cannot create a GL 3.3 core context: {$Core->GetError()}";
+				return;
+			};
+
+			# macOS hands back a legacy 2.1 context rather than failing when a core
+			# profile was not requested properly, and offers no 3.3 compatibility
+			# profile at all. Catch that here rather than at the first shader compile,
+			# where it reads as a broken shader instead of a missing context.
+			if(<>CheckVersion()) {
+				return;
+			};
+
+			missing := GL->LoadFunctions();
+			if(missing->Size() > 0) {
+				@error := "could not resolve GL entry points: {$missing}";
+				return;
+			};
+
+			if(<>MeasureDrawable()) {
+				return;
+			};
+
+			# Requested, not assumed. A swap interval GL refused would otherwise mean
+			# EndFrame sleeps on top of a blocking swap.
+			@vsync := Core->GLSetSwapInterval(1) = 0;
+
+			GL->Viewport(0, 0, @pixel_w, @pixel_h);
+			GL->Enable(Capability->GL_DEPTH_TEST);
+
+			@event := Event->New();
+			@ok := true;
+		}
+
+		method : CheckVersion() ~ Bool {
+			version := Core->GLGetVersionString();
+			if(version = Nil | version->Size() = 0) {
+				@error := "no current GL context after creation";
+				return false;
+			};
+			@version := version;
+
+			major := IntRef->New();
+			minor := IntRef->New();
+			Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, major);
+			Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, minor);
+			got_major := major->Get();
+			got_minor := minor->Get();
+
+			if(got_major < 3 | (got_major = 3 & got_minor < 3)) {
+				@error := "got GL {$got_major}.{$got_minor} ({$version}), need 3.3 or better";
+				return false;
+			};
+
+			return true;
+		}
+
+		method : MeasureDrawable() ~ Bool {
+			w := IntRef->New();
+			h := IntRef->New();
+			@window->GLGetDrawableSize(w, h);
+			@pixel_w := w->Get();
+			@pixel_h := h->Get();
+
+			if(@pixel_w <= 0 | @pixel_h <= 0) {
+				@error := "drawable size came back as {$@pixel_w}x{$@pixel_h}";
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		@return true when the window and context are usable
+		~#
+		method : public : IsOk() ~ Bool {
+			return @ok;
+		}
+
+		#~
+		The driver's version string for this context, e.g.
+		"3.3.0 Core Profile Context 26.7.1". Read while opening, so this costs
+		nothing to ask for.
+		@return the version string, or empty when the context never opened
+		~#
+		method : public : GetVersion() ~ String {
+			return @version;
+		}
+
+		#~
+		Why opening failed.
+		@return the reason, or an empty string when IsOk is true
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The drawable width in PIXELS -- what GL->Viewport and GL->ReadPixel work in,
+		which on a high-DPI display is larger than the width that was asked for.
+		@return the width in pixels
+		~#
+		method : public : GetWidth() ~ Int {
+			return @pixel_w;
+		}
+
+		#~
+		The drawable height in pixels.
+		@return the height in pixels
+		~#
+		method : public : GetHeight() ~ Int {
+			return @pixel_h;
+		}
+
+		#~
+		@return width divided by height, for Matrix4->Perspective
+		~#
+		method : public : GetAspect() ~ Float {
+			if(@pixel_h = 0) {
+				return 1.0;
+			};
+
+			return @pixel_w->As(Float) / @pixel_h->As(Float);
+		}
+
+		#~
+		@return whether the swap interval was actually granted
+		~#
+		method : public : HasVsync() ~ Bool {
+			return @vsync;
+		}
+
+		#~
+		Turn depth testing on or off. On by default.
+
+		On is the right default for 3D -- without it, whatever was drawn last is in
+		front, regardless of where it is -- and the depth buffer is always requested,
+		so enabling it can never silently do nothing the way it can when the
+		SDL_GL_DEPTH_SIZE attribute was forgotten.
+
+		The cost of that default: a frame cleared with GL_COLOR_BUFFER_BIT alone
+		leaves stale depth values, and geometry then fails the test for no visible
+		reason. BeginFrame clears both. Turn this off for a purely 2D pass rather
+		than clearing colour alone.
+		@param enabled false to draw in submission order
+		~#
+		method : public : SetDepthTest(enabled : Bool) ~ Nil {
+			if(enabled) {
+				GL->Enable(Capability->GL_DEPTH_TEST);
+			}
+			else {
+				GL->Disable(Capability->GL_DEPTH_TEST);
+			};
+		}
+
+		#~
+		The frame rate EndFrame paces to when there is no vsync. Ignored while
+		vsync is on, since the swap does the waiting.
+		@param fps frames per second; values below 1 are ignored
+		~#
+		method : public : SetTargetFps(fps : Int) ~ Nil {
+			if(fps > 0) {
+				@target_fps := fps;
+			};
+		}
+
+		#~
+		The SDL window, for anything this class does not wrap.
+		@return the window
+		~#
+		method : public : GetWindow() ~ Window {
+			return @window;
+		}
+
+		#~
+		The GL context.
+		@return the context
+		~#
+		method : public : GetContext() ~ GLContext {
+			return @context;
+		}
+
+		#~
+		The event this window polls with.
+
+		Here so a program with its own event needs can drive the queue directly
+		instead of calling PollEvents -- do one or the other, not both, since
+		whichever drains the queue first is the only one that sees each event.
+		@return the event
+		~#
+		method : public : GetEvent() ~ Event {
+			return @event;
+		}
+
+		#~
+		Drain the event queue.
+
+		Handles what nearly every program handles the same way: the window close
+		button and Escape both mean quit, a resize updates the viewport and the
+		cached size, and relative mouse motion accumulates into this frame's delta.
+		Held keys are not events -- keep using Keyboard->GetState for those, which
+		this does not disturb.
+		@return true when the program should quit
+		~#
+		method : public : PollEvents() ~ Bool {
+			@mouse_dx := 0.0;
+			@mouse_dy := 0.0;
+
+			while(@event->Poll() <> 0) {
+				type := @event->GetType();
+
+				if(type = EventType->SDL_QUIT) {
+					@quit := true;
+				}
+				else if(type = EventType->SDL_KEYDOWN) {
+					if(@event->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_ESCAPE) {
+						@quit := true;
+					};
+				}
+				else if(type = EventType->SDL_MOUSEMOTION) {
+					motion := @event->GetMouseMotion();
+					if(motion <> Nil) {
+						@mouse_dx += motion->GetRelX()->As(Float);
+						@mouse_dy += motion->GetRelY()->As(Float);
+					};
+				}
+				else if(type = EventType->SDL_WINDOWEVENT) {
+					# The drawable can change size under us -- a resize, or a window
+					# dragged to a display with a different scale factor. Re-measuring
+					# keeps the viewport and the aspect ratio honest.
+					if(MeasureDrawable()) {
+						GL->Viewport(0, 0, @pixel_w, @pixel_h);
+					};
+				};
+			};
+
+			return @quit;
+		}
+
+		#~
+		Ask PollEvents to report a quit on the next call, e.g. from a menu.
+		~#
+		method : public : RequestQuit() ~ Nil {
+			@quit := true;
+		}
+
+		#~
+		Mouse movement accumulated by the last PollEvents, in pixels.
+		@return horizontal movement this frame
+		~#
+		method : public : GetMouseDeltaX() ~ Float {
+			return @mouse_dx;
+		}
+
+		#~
+		@return vertical movement this frame, positive downward as SDL reports it
+		~#
+		method : public : GetMouseDeltaY() ~ Float {
+			return @mouse_dy;
+		}
+
+		#~
+		Start a frame: measure elapsed time, then clear colour and depth.
+
+		Depth is cleared as well as colour because a depth buffer is always
+		requested and depth testing is always on -- clearing only colour leaves last
+		frame's depth values in place, and the second frame then renders with
+		everything mysteriously behind everything else.
+		~#
+		method : public : BeginFrame() ~ Nil {
+			now := Timer->GetTicks();
+			if(@frame_start <> 0) {
+				elapsed := now - @frame_start;
+				@delta := elapsed->As(Float) / 1000.0;
+				# A frame that took longer than a tenth of a second means the program
+				# was stalled -- paused in a debugger, or the window was dragged. Using
+				# the real elapsed time then teleports everything that moves.
+				if(@delta > 0.1) {
+					@delta := 0.1;
+				};
+			};
+			@frame_start := now;
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		}
+
+		#~
+		Seconds since the previous BeginFrame, clamped to 0.1.
+
+		Multiply movement by this and the program behaves the same at 30 and at 240
+		frames a second. The first frame reports 0.0, so nothing jumps on startup.
+		@return the frame time in seconds
+		~#
+		method : public : GetDelta() ~ Float {
+			return @delta;
+		}
+
+		#~
+		Frames per second as actually measured, not the target.
+		@return the rate, or 0.0 before the second frame
+		~#
+		method : public : GetFps() ~ Float {
+			if(@delta <= 0.0) {
+				return 0.0;
+			};
+
+			return 1.0 / @delta;
+		}
+
+		#~
+		Present the frame.
+
+		Read any pixels BEFORE calling this -- GL->ReadPixel reads the back buffer,
+		and a swap is allowed to discard it.
+
+		Sleeps only when vsync was refused. With vsync on, the swap already blocks
+		until the display is ready and a second wait would halve the frame rate.
+		~#
+		method : public : EndFrame() ~ Nil {
+			@window->GLSwap();
+
+			if(<>@vsync) {
+				frame_ms := 1000 / @target_fps;
+				spent := Timer->GetTicks() - @frame_start;
+				if(spent < frame_ms) {
+					Timer->Delay(frame_ms - spent);
+				};
+			};
+		}
+
+		#~
+		Close everything, in the order that works.
+
+		Relative mouse mode first while the window still exists, then the context,
+		then the window, then SDL. GL objects you created -- Shader, Mesh, Texture2D
+		-- are yours to free, and must be freed BEFORE this, while the context is
+		still current. See the shutdown order on the GL class.
+
+		Safe to call twice.
+		~#
+		method : public : Free() ~ Nil {
+			# Only if a window ever existed: this can be reached after a failed open,
+			# where touching the mouse state would be asking a video subsystem that
+			# may not have come up.
+			if(@window <> Nil & <>@window->IsNull()) {
+				if(Cursor->GetRelativeMouseMode()) {
+					Cursor->SetRelativeMouseMode(false);
+				};
+			};
+
+			if(@event <> Nil) {
+				@event->Free();
+				@event := Nil;
+			};
+
+			if(@context <> Nil) {
+				@context->Delete();
+				@context := Nil;
+			};
+
+			if(@window <> Nil & <>@window->IsNull()) {
+				@window->Destroy();
+				@window := Nil;
+			};
+
+			@ok := false;
+			Core->Quit();
 		}
 	}
 

@@ -1,155 +1,50 @@
 #~
-Minimal OpenGL 3.3 core example: open a GL window, clear it, present.
+Minimal OpenGL 3.3 core example: open a window, clear it, present.
 
   compile: obc -src gl_clear.obs -lib sdl2,sdl_gl
   run:     obr gl_clear
 
-Smallest complete GL program there is, and the one worth reading first: it shows
-the ordering rules that are easy to get wrong.
+This is the whole program. Everything that used to make it long lives in
+GLWindow now: six context attributes set in the right order and before the
+window, the version assertion macOS needs, resolving the GL entry points, taking
+the viewport from the drawable size rather than the size that was asked for, and
+shutting five things down in the order that works.
 
-1. GLSetAttribute BEFORE Window->New. The attributes pick a pixel format, so
-   setting them after the window exists has no effect at all.
-2. The window needs WindowFlags->SDL_WINDOW_OPENGL.
-3. Check the version you actually GOT. macOS hands back a legacy 2.1 context
-   unless a core + forward-compatible profile was requested, and offers no 3.3
-   compatibility profile -- so a silent 2.1 is the failure to catch here, not at
-   the first shader compile.
-4. Viewport comes from GLGetDrawableSize, not from the size you asked for: on a
-   high-DPI display the drawable is bigger and using the window size renders to
-   a corner.
+Those rules still exist and still matter -- they are written up on GLWindow, and
+worth reading once. What changed is that a program no longer has to restate them
+to draw anything.
 ~#
 
 use Game.SDL2;
 use Game.OpenGL;
 
 class GLClear {
-	@window : Window;
-	@context : GLContext;
-
 	function : Main(args : String[]) ~ Nil {
-		GLClear->New()->Run();
-	}
-
-	New() {
-	}
-
-	method : Run() ~ Nil {
-		leaving {
-			Close();
-		};
-
-		if(<>Init()) {
-			"--- Error initializing OpenGL ---"->ErrorLine();
+		window := GLWindow->New("Objeck OpenGL", 640, 480);
+		if(<>window->IsOk()) {
+			window->GetError()->ErrorLine();
 			return;
 		};
 
-		# GL's origin is bottom-left, and the drawable can exceed the window on
-		# high-DPI displays, so ask SDL what the real pixel size is.
-		w := IntRef->New();
-		h := IntRef->New();
-		@window->GLGetDrawableSize(w, h);
-		pixel_w := w->Get();
-		pixel_h := h->Get();
-		GL->Viewport(0, 0, pixel_w, pixel_h);
-		"Drawable: {$pixel_w}x{$pixel_h} pixels"->PrintLine();
+		leaving {
+			window->Free();
+		};
+
+		version := window->GetVersion();
+		w := window->GetWidth();
+		h := window->GetHeight();
+		"GL {$version}"->PrintLine();
+		"Drawable: {$w}x{$h} pixels"->PrintLine();
 
 		GL->ClearColor(0.15, 0.35, 0.6, 1.0);
 
-		e := Event->New();
-		quit := false;
-		while(<>quit) {
-			while(e->Poll() <> 0) {
-				if(e->GetType() = EventType->SDL_QUIT) {
-					quit := true;
-				};
-			};
-
-			GL->ClearColorBuffer();
-			@window->GLSwap();
-
-			Timer->Delay(16);
-		};
-		e->Free();
-
-		errors := GL->DrainErrors();
-		error_count := errors->Size();
-		if(error_count > 0) {
-			"Warning: {$error_count} GL error(s) during the run"->ErrorLine();
-		};
-	}
-
-	method : Init() ~ Bool {
-		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
-			"SDL could not initialize: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
+		# BeginFrame clears, EndFrame presents, and PollEvents reports the close
+		# button or Escape -- so a program that only clears has nothing in between.
+		while(<>window->PollEvents()) {
+			window->BeginFrame();
+			window->EndFrame();
 		};
 
-		# BEFORE the window: these select a pixel format.
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, 3);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK,
-			GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
-		# Required alongside a core profile on macOS.
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS,
-			GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-		Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
-		Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
-
-		@window := Window->New("Objeck OpenGL", WindowFlags->SDL_WINDOWPOS_UNDEFINED,
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 640, 480,
-			WindowFlags->SDL_WINDOW_SHOWN or WindowFlags->SDL_WINDOW_OPENGL);
-		if(@window->IsNull()) {
-			"Cannot create window: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
-		};
-
-		@context := @window->GLCreateContext();
-		if(@context->IsNull()) {
-			"Cannot create a GL 3.3 core context: "->Print();
-			Core->GetError()->ErrorLine();
-			return false;
-		};
-
-		# Assert what we GOT, not what we asked for.
-		version := Core->GLGetVersionString();
-		if(version = Nil | version->Size() = 0) {
-			"No current GL context after creation"->ErrorLine();
-			return false;
-		};
-		"GL version: {$version}"->PrintLine();
-
-		major := IntRef->New();
-		minor := IntRef->New();
-		Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, major);
-		Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, minor);
-		got_major := major->Get();
-		got_minor := minor->Get();
-		"GL context: {$got_major}.{$got_minor} core"->PrintLine();
-
-		if(got_major < 3 | (got_major = 3 & got_minor < 3)) {
-			"Got GL {$got_major}.{$got_minor}, need 3.3 or better"->ErrorLine();
-			return false;
-		};
-
-		# vsync; -1 would be adaptive, which not every driver offers
-		if(Core->GLSetSwapInterval(1) < 0) {
-			"Note: vsync unavailable, falling back to a timer"->PrintLine();
-		};
-
-		return true;
-	}
-
-	method : Close() ~ Nil {
-		if(@context <> Nil) {
-			@context->Delete();
-		};
-
-		if(@window <> Nil & <>@window->IsNull()) {
-			@window->Destroy();
-		};
-
-		Core->Quit();
+		GL->ReportErrors("the run");
 	}
 }

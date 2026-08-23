@@ -41,8 +41,7 @@ use Game.SDL2;
 use Game.OpenGL;
 
 class GlContextTest {
-	@window : Window;
-	@context : GLContext;
+	@gl : GLWindow;
 	@required : Bool;
 	@failures : Int;
 	# the drawable's size in PIXELS, which is not the window's size in points on a
@@ -80,6 +79,7 @@ class GlContextTest {
 		CheckShaderAndDraw();
 		CheckProjection();
 		CheckTextureOrientation();
+		CheckFrameLoop();
 
 		Cleanup();
 
@@ -133,62 +133,44 @@ class GlContextTest {
 		return TryOpen();
 	}
 
+	#~
+	Opens through GLWindow -- which is the point, not a convenience. Everything
+	this method used to do by hand (six attributes in order, the window flag, the
+	context, the 3.3 assertion, the loader, and the viewport from the DRAWABLE
+	size) is what GLWindow does, so going through it means CI executes that path
+	on all five platforms rather than a copy of it that only lives here.
+
+	HIDDEN so a CI runner never gets a window flashed at it. A hidden window still
+	has a real context and still renders.
+	~#
 	method : TryOpen() ~ Bool {
-		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+		@gl := GLWindow->New("objeck gl test", 64, 64, false);
+		if(<>@gl->IsOk()) {
+			error := @gl->GetError();
+			"  (no GL: {$error})"->PrintLine();
 			return false;
 		};
 
-		# Attributes select a pixel format, so they must precede window creation.
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, 3);
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK,
-			GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
-		# required alongside a core profile on macOS
-		Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS,
-			GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-		Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
-
-		# HIDDEN so a CI runner never gets a window flashed at it
-		@window := Window->New("objeck gl test", WindowFlags->SDL_WINDOWPOS_UNDEFINED,
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 64, 64,
-			WindowFlags->SDL_WINDOW_HIDDEN or WindowFlags->SDL_WINDOW_OPENGL);
-		if(@window->IsNull()) {
-			error := Core->GetError();
-			"  (no GL window: {$error})"->PrintLine();
-			return false;
-		};
-
-		@context := @window->GLCreateContext();
-		if(@context->IsNull()) {
-			error := Core->GetError();
-			"  (no GL context: {$error})"->PrintLine();
-			return false;
-		};
-
-		# The window was asked for 64x64 POINTS. On a high-DPI display the drawable
-		# is larger -- 128x128 at 2x -- and GL works in pixels, so assuming 64
-		# would set a quarter-sized viewport and then read pixels from outside the
-		# rendered region. Ask for the real size; this is the rule stated on
-		# GL->Viewport, and this test used to be the thing violating it.
-		w := IntRef->New();
-		h := IntRef->New();
-		@window->GLGetDrawableSize(w, h);
-		@pixel_w := w->Get();
-		@pixel_h := h->Get();
-		if(@pixel_w <= 0 | @pixel_h <= 0) {
-			"  (drawable size came back as {$@pixel_w}x{$@pixel_h})"->PrintLine();
-			return false;
-		};
+		@pixel_w := @gl->GetWidth();
+		@pixel_h := @gl->GetHeight();
 
 		return true;
 	}
 
 	method : CheckVersion() ~ Nil {
-		version := Core->GLGetVersionString();
+		# Through GLWindow, which read this while opening -- so this also asserts
+		# that GetVersion reports what the driver said rather than an empty string.
+		version := @gl->GetVersion();
 		Check("GL_VERSION is reported", version <> Nil & version->Size() > 0);
 		if(version <> Nil & version->Size() > 0) {
 			"  version: {$version}"->PrintLine();
 		};
+
+		# GLWindow promises a drawable size and an aspect ratio derived from it.
+		aspect := @gl->GetAspect();
+		"  drawable: {$@pixel_w}x{$@pixel_h}, aspect {$aspect}"->PrintLine();
+		Check("GLWindow reports a usable drawable size", @pixel_w > 0 & @pixel_h > 0);
+		Check("GLWindow reports a sane aspect ratio", aspect > 0.0);
 
 		major := IntRef->New();
 		minor := IntRef->New();
@@ -251,7 +233,11 @@ class GlContextTest {
 
 		GL->Viewport(0, 0, @pixel_w, @pixel_h);
 		GL->ClearColor(0.0, 0.0, 1.0, 1.0);
-		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT);
+		# COLOUR AND DEPTH. GLWindow enables depth testing, so clearing only colour
+		# leaves an uninitialised depth buffer and the geometry fails against it --
+		# a black frame with no GL error. GLWindow->BeginFrame clears both; these
+		# checks clear by hand because they draw more than once per frame.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
 
 		shader->Use();
 		mesh->Draw();
@@ -331,7 +317,7 @@ class GlContextTest {
 		};
 
 		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
-		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
 		shader->Use();
 		shader->SetInt("tex", 0);
 		texture->Bind(0);
@@ -414,7 +400,7 @@ class GlContextTest {
 		mvp := Matrix4->Multiply(view_projection, model);
 
 		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
-		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
 		shader->Use();
 		shader->SetMatrix4("mvp", mvp);
 		mesh->Draw();
@@ -461,16 +447,62 @@ class GlContextTest {
 		shader->Free();
 	}
 
-	method : Cleanup() ~ Nil {
-		if(@context <> Nil & <>@context->IsNull()) {
-			@context->Delete();
-		};
-		if(@window <> Nil & <>@window->IsNull()) {
-			@window->Destroy();
-		};
-		@context := Nil;
-		@window := Nil;
+	#~
+	The frame loop runs and reports a plausible delta.
 
-		Core->Quit();
+	Worth asserting because frame pacing is easy to get silently wrong in a way no
+	other check would notice: a delta of zero makes everything that moves stand
+	still, and a delta computed from an uninitialised start time makes the first
+	frame jump by however long the process had been alive.
+	~#
+	method : CheckFrameLoop() ~ Nil {
+		# The first frame has no previous frame to measure against, so it must
+		# report exactly zero rather than a garbage interval.
+		@gl->BeginFrame();
+		Check("the first frame reports a zero delta", @gl->GetDelta() = 0.0);
+		@gl->EndFrame();
+
+		# Then a few real frames. Without vsync EndFrame paces with a timer, so a
+		# handful of frames at 60 has to take some measurable time.
+		@gl->SetTargetFps(60);
+		started := Timer->GetTicks();
+		frames := 0;
+		while(frames < 4) {
+			@gl->BeginFrame();
+			@gl->EndFrame();
+			frames += 1;
+		};
+		took := Timer->GetTicks() - started;
+
+		delta := @gl->GetDelta();
+		vsync := @gl->HasVsync();
+		"  4 frames in {$took}ms, last delta {$delta}s, vsync {$vsync}"->PrintLine();
+
+		Check("a later frame reports a positive delta", delta > 0.0);
+		Check("the delta stays inside its clamp", delta <= 0.1);
+
+		# GLWindow->Free is documented as safe twice, and the offscreen retry path
+		# depends on it -- Cleanup runs on every failed open as well as at the end.
+		@gl->Free();
+		@gl->Free();
+		Check("Free is idempotent", true);
+		@gl := Nil;
+	}
+
+	#~
+	Idempotent, and called up to three times: once per failed open attempt and
+	once at the end. GLWindow->Free is safe to call twice, and tears the video
+	subsystem down, which is what lets the offscreen retry re-init.
+	~#
+	method : Cleanup() ~ Nil {
+		if(@gl <> Nil) {
+			@gl->Free();
+			@gl := Nil;
+		}
+		else {
+			# Nothing was opened -- still put SDL back, since Core->Init may have
+			# succeeded before whatever failed after it.
+			Core->Quit();
+		};
 	}
 }
