@@ -32,6 +32,11 @@ class SpinningCube {
 	@mesh : Mesh;
 	@texture : Texture2D;
 	@angle : Float;
+	# Reused every frame rather than reallocated. See Matrix4->IdentityInto for
+	# why: this loop used to make six Float[16] per frame for one cube, which at
+	# 60fps is 360 arrays a second.
+	@model : Float[];
+	@mvp : Float[];
 
 	function : Main(args : String[]) ~ Nil {
 		SpinningCube->New()->Run();
@@ -39,6 +44,8 @@ class SpinningCube {
 
 	New() {
 		@angle := 0.0;
+		@model := Float->New[16];
+		@mvp := Float->New[16];
 	}
 
 	method : Run() ~ Nil {
@@ -59,7 +66,7 @@ class SpinningCube {
 		GL->ClearColor(0.09, 0.11, 0.15, 1.0);
 
 		# Computed once. The camera never moves, so neither does this.
-		projection := Matrix4->Perspective(Float->Pi() / 4.0, @window->GetAspect(), 0.1, 100.0);
+		projection := Matrix4->PerspectiveDegrees(45.0, @window->GetAspect());
 		view_projection := Matrix4->Multiply(projection, Matrix4->LookAtOrigin(4.0));
 
 		@shader->Use();
@@ -74,9 +81,14 @@ class SpinningCube {
 			# display happened to refresh at -- twice as fast on a 120Hz panel, and
 			# faster still with vsync unavailable.
 			@angle += 0.6 * @window->GetDelta();
-			model := Matrix4->Multiply(Matrix4->RotationY(@angle), Matrix4->RotationX(@angle * 0.6));
 
-			@shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
+			# Two calls into buffers this object owns, and the frame allocates
+			# nothing. RotationYXZ is one step where composing RotationY with
+			# RotationX cost two matrix products and six arrays.
+			Matrix4->RotationYXZInto(@model, @angle, @angle * 0.6, 0.0);
+			Matrix4->MultiplyInto(@mvp, view_projection, @model);
+
+			@shader->SetMatrix4("mvp", @mvp);
 			@mesh->Draw();
 
 			@window->EndFrame();

@@ -40,6 +40,11 @@ class Walkthrough {
 	@box_texture : Texture2D;
 	@camera : Camera;
 	@projection : Float[];
+	# Per-frame scratch, so Draw allocates nothing. Camera->GetViewMatrix makes
+	# three Vector3 and a Float[16] every call, and the multiply after it made
+	# another.
+	@view_projection : Float[];
+	@view_scratch : Float[];
 
 	@scene : Scene;
 
@@ -58,6 +63,8 @@ class Walkthrough {
 	New() {
 		@radius := 0.35;
 		@sensitivity := 0.0025;
+		@view_projection := Float->New[16];
+		@view_scratch := Float->New[16];
 		# The scene is built in Init(), not here: boxes carry their texture, and
 		# textures need a live GL context.
 		@camera := Camera->New(Vector3->New(0.0, 1.7, 6.0));
@@ -142,35 +149,12 @@ class Walkthrough {
 		if(IsDown(keys, Scancode->SDL_SCANCODE_A)) { strafe -= step; };
 
 		if(forward <> 0.0 | strafe <> 0.0) {
-			MoveWithCollision(forward, strafe);
+			# One call, and the scene owns the sliding: each axis is applied
+			# separately so a glancing hit slides along the wall instead of stopping
+			# dead. This was twenty lines here, re-deriving the camera's ground basis
+			# because Camera->MoveForward commits before collision can object.
+			@scene->SlideMove(@camera, forward, strafe, @radius);
 		};
-	}
-
-	#~
-	Apply the movement one axis at a time. Doing X and Z separately is what makes
-	a glancing hit slide along the wall; testing the combined vector just stops
-	you.
-	~#
-	method : MoveWithCollision(forward : Float, strafe : Float) ~ Nil {
-		ground := @camera->GroundForward();
-		right := @camera->GroundRight();
-
-		dx := ground->GetX() * forward + right->GetX() * strafe;
-		dz := ground->GetZ() * forward + right->GetZ() * strafe;
-
-		position := @camera->GetPosition();
-		x := position->GetX();
-		y := position->GetY();
-		z := position->GetZ();
-
-		if(<>@scene->Blocked(x + dx, z, @radius)) {
-			x += dx;
-		};
-		if(<>@scene->Blocked(x, z + dz, @radius)) {
-			z += dz;
-		};
-
-		@camera->SetPosition(Vector3->New(x, y, z));
 	}
 
 
@@ -217,8 +201,8 @@ class Walkthrough {
 	No clear here: GLWindow->BeginFrame cleared colour and depth together.
 	~#
 	method : Draw() ~ Nil {
-		view_projection := Matrix4->Multiply(@projection, @camera->GetViewMatrix());
-		@scene->Draw(view_projection);
+		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
+		@scene->Draw(@view_projection);
 	}
 
 	#~
@@ -226,7 +210,7 @@ class Walkthrough {
 	the context is GLWindow's job now, so what is left is this program's content.
 	~#
 	method : BuildWorld() ~ Bool {
-		@projection := Matrix4->Perspective(Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
+		@projection := Matrix4->PerspectiveDegrees(60.0, @window->GetAspect());
 
 		# Depth testing is already on. Culling is not, because it imposes a winding
 		# requirement on index data -- counter-clockwise seen from outside -- and

@@ -25,6 +25,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * Mesh        -- geometry uploaded once into buffer objects, drawn many times,
                 with Cube/Plane/Quad/Sphere built in.
 * Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
+* Transform   -- position, rotation and scale, with a cached matrix.
 * Box, Scene  -- a world of boxes: draws itself, and answers collision.
 
 ## Why the API is shaped this way
@@ -1799,9 +1800,39 @@ bundle Game.OpenGL {
 		~#
 		function : Identity() ~ Float[] {
 			m := Float->New[16];
-			m[0] := 1.0; m[5] := 1.0; m[10] := 1.0; m[15] := 1.0;
+			IdentityInto(m);
 
 			return m;
+		}
+
+		#~
+		Identity, written into a buffer the caller owns.
+
+		## Why every builder here has an Into twin
+
+		A matrix is a Float[16], and the returning forms allocate one per call. At
+		one or two matrices per object per frame that is hundreds of arrays a
+		second, which is enough to trigger a collection mid-frame -- the classic
+		stutter. Objeck's 2D SDL renderer had to be rewritten once for exactly
+		this.
+
+		Four of these builders were worse than one allocation: Translation,
+		RotationX, RotationY and RotationZ each called Identity() and then
+		overwrote it, so they allocated twice. Now the returning form is the thin
+		one, wrapping the Into form.
+
+		Reuse one buffer per thing you draw, filled fresh each frame.
+		@param out destination, at least 16 elements
+		~#
+		function : IdentityInto(out : Float[]) ~ Nil {
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			each(i : out) {
+				out[i] := 0.0;
+			};
+			out[0] := 1.0; out[5] := 1.0; out[10] := 1.0; out[15] := 1.0;
 		}
 
 		#~
@@ -1853,10 +1884,26 @@ bundle Game.OpenGL {
 		@return the matrix
 		~#
 		function : Translation(x : Float, y : Float, z : Float) ~ Float[] {
-			m := Identity();
-			m[12] := x; m[13] := y; m[14] := z;
+			m := Float->New[16];
+			TranslationInto(m, x, y, z);
 
 			return m;
+		}
+
+		#~
+		Translation, into a caller's buffer. See IdentityInto.
+		@param out destination, at least 16 elements
+		@param x x offset
+		@param y y offset
+		@param z z offset
+		~#
+		function : TranslationInto(out : Float[], x : Float, y : Float, z : Float) ~ Nil {
+			IdentityInto(out);
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			out[12] := x; out[13] := y; out[14] := z;
 		}
 
 		#~
@@ -1866,7 +1913,7 @@ bundle Game.OpenGL {
 		~#
 		function : Scale(s : Float) ~ Float[] {
 			m := Float->New[16];
-			m[0] := s; m[5] := s; m[10] := s; m[15] := 1.0;
+			ScaleXYZInto(m, s, s, s);
 
 			return m;
 		}
@@ -1882,7 +1929,66 @@ bundle Game.OpenGL {
 		~#
 		function : ScaleXYZ(x : Float, y : Float, z : Float) ~ Float[] {
 			m := Float->New[16];
-			m[0] := x; m[5] := y; m[10] := z; m[15] := 1.0;
+			ScaleXYZInto(m, x, y, z);
+
+			return m;
+		}
+
+		#~
+		Non-uniform scale, into a caller's buffer. See IdentityInto.
+		@param out destination, at least 16 elements
+		@param x scale along x
+		@param y scale along y
+		@param z scale along z
+		~#
+		function : ScaleXYZInto(out : Float[], x : Float, y : Float, z : Float) ~ Nil {
+			IdentityInto(out);
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			out[0] := x; out[5] := y; out[10] := z;
+		}
+
+		#~
+		Translate and scale in one step, with no multiply at all.
+
+		This is the whole of a Box's transform -- position plus half-extents -- and
+		it is the single most common model matrix there is. Composing it as
+		Multiply(Translation(...), ScaleXYZ(...)) costs two allocations and sixty-four
+		multiply-adds to produce a matrix whose scale is its diagonal and whose
+		translation is its last column. So write those directly.
+		@param out destination, at least 16 elements
+		@param x x offset
+		@param y y offset
+		@param z z offset
+		@param sx scale along x
+		@param sy scale along y
+		@param sz scale along z
+		~#
+		function : TranslationScaleInto(out : Float[], x : Float, y : Float, z : Float, sx : Float, sy : Float, sz : Float) ~ Nil {
+			IdentityInto(out);
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			out[0] := sx; out[5] := sy; out[10] := sz;
+			out[12] := x; out[13] := y; out[14] := z;
+		}
+
+		#~
+		Translate and scale, allocating.
+		@param x x offset
+		@param y y offset
+		@param z z offset
+		@param sx scale along x
+		@param sy scale along y
+		@param sz scale along z
+		@return the matrix
+		~#
+		function : TranslationScale(x : Float, y : Float, z : Float, sx : Float, sy : Float, sz : Float) ~ Float[] {
+			m := Float->New[16];
+			TranslationScaleInto(m, x, y, z, sx, sy, sz);
 
 			return m;
 		}
@@ -1893,14 +1999,27 @@ bundle Game.OpenGL {
 		@return the matrix
 		~#
 		function : RotationX(radians : Float) ~ Float[] {
-			c := radians->Cos();
-			s := radians->Sin();
-
-			m := Identity();
-			m[5] := c;  m[6] := s;
-			m[9] := s * -1.0; m[10] := c;
+			m := Float->New[16];
+			RotationXInto(m, radians);
 
 			return m;
+		}
+
+		#~
+		Rotation about X, into a caller's buffer. See IdentityInto.
+		@param out destination, at least 16 elements
+		@param radians angle in radians
+		~#
+		function : RotationXInto(out : Float[], radians : Float) ~ Nil {
+			IdentityInto(out);
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			c := radians->Cos();
+			s := radians->Sin();
+			out[5] := c;  out[6] := s;
+			out[9] := s * -1.0; out[10] := c;
 		}
 
 		#~
@@ -1909,14 +2028,27 @@ bundle Game.OpenGL {
 		@return the matrix
 		~#
 		function : RotationY(radians : Float) ~ Float[] {
-			c := radians->Cos();
-			s := radians->Sin();
-
-			m := Identity();
-			m[0] := c; m[2] := s * -1.0;
-			m[8] := s; m[10] := c;
+			m := Float->New[16];
+			RotationYInto(m, radians);
 
 			return m;
+		}
+
+		#~
+		Rotation about Y, into a caller's buffer. See IdentityInto.
+		@param out destination, at least 16 elements
+		@param radians angle in radians
+		~#
+		function : RotationYInto(out : Float[], radians : Float) ~ Nil {
+			IdentityInto(out);
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			c := radians->Cos();
+			s := radians->Sin();
+			out[0] := c; out[2] := s * -1.0;
+			out[8] := s; out[10] := c;
 		}
 
 		#~
@@ -1925,12 +2057,82 @@ bundle Game.OpenGL {
 		@return the matrix
 		~#
 		function : RotationZ(radians : Float) ~ Float[] {
+			m := Float->New[16];
+			RotationZInto(m, radians);
+
+			return m;
+		}
+
+		#~
+		Rotation about Z, into a caller's buffer. See IdentityInto.
+		@param out destination, at least 16 elements
+		@param radians angle in radians
+		~#
+		function : RotationZInto(out : Float[], radians : Float) ~ Nil {
+			IdentityInto(out);
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
 			c := radians->Cos();
 			s := radians->Sin();
+			out[0] := c;  out[1] := s;
+			out[4] := s * -1.0; out[5] := c;
+		}
 
-			m := Identity();
-			m[0] := c;  m[1] := s;
-			m[4] := s * -1.0; m[5] := c;
+		#~
+		Yaw, then pitch, then roll -- the same result as
+		RotationY * RotationX * RotationZ, computed directly.
+
+		Spelling that composition out costs six allocations (three builders, each
+		of which allocated twice) plus two matrix products, per object per frame.
+		This is nine multiplies and no allocation.
+
+		The derivation is verified against the composition in the regression suite,
+		because a transposed or sign-flipped term here produces a rotation that
+		looks plausible until something is mirrored.
+		@param out destination, at least 16 elements
+		@param yaw rotation about Y, applied first
+		@param pitch rotation about X
+		@param roll rotation about Z, applied last
+		~#
+		function : RotationYXZInto(out : Float[], yaw : Float, pitch : Float, roll : Float) ~ Nil {
+			IdentityInto(out);
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			cy := yaw->Cos();
+			sy := yaw->Sin();
+			cx := pitch->Cos();
+			sx := pitch->Sin();
+			cz := roll->Cos();
+			sz := roll->Sin();
+
+			# column-major: out[col * 4 + row]
+			out[0] := cy * cz + sy * sx * sz;
+			out[1] := cx * sz;
+			out[2] := (sy * cz * -1.0) + cy * sx * sz;
+
+			out[4] := (cy * sz * -1.0) + sy * sx * cz;
+			out[5] := cx * cz;
+			out[6] := sy * sz + cy * sx * cz;
+
+			out[8] := sy * cx;
+			out[9] := sx * -1.0;
+			out[10] := cy * cx;
+		}
+
+		#~
+		Yaw, pitch and roll, allocating.
+		@param yaw rotation about Y, applied first
+		@param pitch rotation about X
+		@param roll rotation about Z, applied last
+		@return the matrix
+		~#
+		function : RotationYXZ(yaw : Float, pitch : Float, roll : Float) ~ Float[] {
+			m := Float->New[16];
+			RotationYXZInto(m, yaw, pitch, roll);
 
 			return m;
 		}
@@ -1954,6 +2156,130 @@ bundle Game.OpenGL {
 			m[14] := (2.0 * far * near) / (near - far);
 
 			return m;
+		}
+
+		#~
+		Perspective with the field of view in DEGREES, and sensible clip planes.
+
+		Both call sites spelled the fov as a bare expression -- Float->Pi() / 4.0
+		and Float->Pi() / 3.0 -- and repeated the same 0.1 and 100.0 clip distances
+		verbatim. Degrees are how field of view is actually discussed; 60 is a
+		normal first-person view, 45 a slightly telephoto one.
+		@param fov_degrees vertical field of view in degrees
+		@param aspect width divided by height, as GLWindow->GetAspect reports
+		@return the matrix
+		~#
+		function : PerspectiveDegrees(fov_degrees : Float, aspect : Float) ~ Float[] {
+			return PerspectiveDegrees(fov_degrees, aspect, 0.1, 100.0);
+		}
+
+		#~
+		Perspective in degrees with explicit clip planes.
+		@param fov_degrees vertical field of view in degrees
+		@param aspect width divided by height
+		@param near near clip distance; must be greater than 0
+		@param far far clip distance
+		@return the matrix
+		~#
+		function : PerspectiveDegrees(fov_degrees : Float, aspect : Float, near : Float, far : Float) ~ Float[] {
+			return Perspective(fov_degrees * Float->Pi() / 180.0, aspect, near, far);
+		}
+
+		#~
+		Transpose: rows become columns.
+		@param m the matrix
+		@return the transpose
+		~#
+		function : Transpose(m : Float[]) ~ Float[] {
+			out := Float->New[16];
+			TransposeInto(out, m);
+
+			return out;
+		}
+
+		#~
+		Transpose into a caller's buffer.
+		@param out destination, at least 16 elements; must not be m
+		@param m the matrix to transpose
+		~#
+		function : TransposeInto(out : Float[], m : Float[]) ~ Nil {
+			if(out = Nil | m = Nil | out->Size() < 16 | m->Size() < 16) {
+				return;
+			};
+
+			for(col := 0; col < 4; col += 1;) {
+				for(row := 0; row < 4; row += 1;) {
+					out[col * 4 + row] := m[row * 4 + col];
+				};
+			};
+		}
+
+		#~
+		Inverse of a 4x4 matrix, by cofactor expansion.
+
+		Needed for lighting -- the normal matrix is the transposed inverse of the
+		model matrix, and anything but a uniform scale makes the difference visible
+		-- and for turning a view matrix back into a camera position.
+
+		Returns the identity when the matrix is singular, which is the same choice
+		LookAt makes for a degenerate basis: a wrong-but-usable matrix rather than
+		a crash or a buffer full of infinities.
+		@param m the matrix
+		@return the inverse, or the identity when there is none
+		~#
+		function : Inverse(m : Float[]) ~ Float[] {
+			out := Float->New[16];
+			InverseInto(out, m);
+
+			return out;
+		}
+
+		#~
+		Inverse into a caller's buffer.
+		@param out destination, at least 16 elements; must not be m
+		@param m the matrix to invert
+		@return true when m was invertible; out is the identity when false
+		~#
+		function : InverseInto(out : Float[], m : Float[]) ~ Bool {
+			if(out = Nil | m = Nil | out->Size() < 16 | m->Size() < 16) {
+				return false;
+			};
+
+			# The adjugate, one cofactor per element. Written out rather than looped
+			# because the loop version needs a 3x3 minor extraction that is longer
+			# than this and harder to check against a reference.
+			out[0]  :=  m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10];
+			out[4]  := m[4]*m[10]*m[15]*-1.0 + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10];
+			out[8]  :=  m[4]*m[9]*m[15] - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[9];
+			out[12] := m[4]*m[9]*m[14]*-1.0 + m[4]*m[10]*m[13] + m[8]*m[5]*m[14] - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[9];
+
+			out[1]  := m[1]*m[10]*m[15]*-1.0 + m[1]*m[11]*m[14] + m[9]*m[2]*m[15] - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10];
+			out[5]  :=  m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15] + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10];
+			out[9]  := m[0]*m[9]*m[15]*-1.0 + m[0]*m[11]*m[13] + m[8]*m[1]*m[15] - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[9];
+			out[13] :=  m[0]*m[9]*m[14] - m[0]*m[10]*m[13] - m[8]*m[1]*m[14] + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[9];
+
+			out[2]  :=  m[1]*m[6]*m[15] - m[1]*m[7]*m[14] - m[5]*m[2]*m[15] + m[5]*m[3]*m[14] + m[13]*m[2]*m[7] - m[13]*m[3]*m[6];
+			out[6]  := m[0]*m[6]*m[15]*-1.0 + m[0]*m[7]*m[14] + m[4]*m[2]*m[15] - m[4]*m[3]*m[14] - m[12]*m[2]*m[7] + m[12]*m[3]*m[6];
+			out[10] :=  m[0]*m[5]*m[15] - m[0]*m[7]*m[13] - m[4]*m[1]*m[15] + m[4]*m[3]*m[13] + m[12]*m[1]*m[7] - m[12]*m[3]*m[5];
+			out[14] := m[0]*m[5]*m[14]*-1.0 + m[0]*m[6]*m[13] + m[4]*m[1]*m[14] - m[4]*m[2]*m[13] - m[12]*m[1]*m[6] + m[12]*m[2]*m[5];
+
+			out[3]  := m[1]*m[6]*m[11]*-1.0 + m[1]*m[7]*m[10] + m[5]*m[2]*m[11] - m[5]*m[3]*m[10] - m[9]*m[2]*m[7] + m[9]*m[3]*m[6];
+			out[7]  :=  m[0]*m[6]*m[11] - m[0]*m[7]*m[10] - m[4]*m[2]*m[11] + m[4]*m[3]*m[10] + m[8]*m[2]*m[7] - m[8]*m[3]*m[6];
+			out[11] := m[0]*m[5]*m[11]*-1.0 + m[0]*m[7]*m[9] + m[4]*m[1]*m[11] - m[4]*m[3]*m[9] - m[8]*m[1]*m[7] + m[8]*m[3]*m[5];
+			out[15] :=  m[0]*m[5]*m[10] - m[0]*m[6]*m[9] - m[4]*m[1]*m[10] + m[4]*m[2]*m[9] + m[8]*m[1]*m[6] - m[8]*m[2]*m[5];
+
+			det := m[0]*out[0] + m[1]*out[4] + m[2]*out[8] + m[3]*out[12];
+			if(det = 0.0) {
+				IdentityInto(out);
+				return false;
+			};
+
+			inv_det := 1.0 / det;
+			each(i : out) {
+				out[i] := out[i] * inv_det;
+			};
+
+			return true;
 		}
 
 		#~
@@ -2240,12 +2566,286 @@ bundle Game.OpenGL {
 		@return a 4x4 view matrix, column-major
 		~#
 		method : public : GetViewMatrix() ~ Float[] {
-			target := Vector3->Add(@position, ForwardVector());
+			out := Float->New[16];
+			GetViewMatrixInto(out);
 
-			return Matrix4->LookAt(@position, target, Vector3->New(0.0, 1.0, 0.0));
+			return out;
+		}
+
+		#~
+		The view matrix, into a buffer the caller owns.
+
+		The allocating form makes four objects every call -- three Vector3 and the
+		Float[16] -- and a draw loop calls it every frame. This makes none: the
+		basis is computed straight into the destination.
+		@param out destination, at least 16 elements
+		~#
+		method : public : GetViewMatrixInto(out : Float[]) ~ Nil {
+			if(out = Nil | out->Size() < 16) {
+				return;
+			};
+
+			# LookAt's basis, inlined. 'forward' points FROM the target TO the eye in
+			# a right-handed system, which is the opposite of the direction of view.
+			cos_pitch := @pitch->Cos();
+			fx := @yaw->Sin() * cos_pitch;
+			fy := @pitch->Sin();
+			fz := @yaw->Cos() * cos_pitch * -1.0;
+
+			# negated view direction, already unit length
+			bz_x := fx * -1.0;
+			bz_y := fy * -1.0;
+			bz_z := fz * -1.0;
+
+			# side = normalize(cross(up, back)) with up = (0, 1, 0), which reduces to
+			# (back.z, 0, -back.x) before normalising
+			sx := bz_z;
+			sz := bz_x * -1.0;
+			length := (sx * sx + sz * sz)->Sqrt();
+			if(length = 0.0) {
+				# looking straight up or down: no valid basis from a +Y up vector
+				Matrix4->IdentityInto(out);
+				return;
+			};
+			sx := sx / length;
+			sz := sz / length;
+
+			# true_up = cross(back, side). With side.y = 0 the general cross product
+			#   (a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x)
+			# reduces to what follows. Getting these two signs backwards is what the
+			# first version of this did, and it produced a view that looked correct
+			# until it was compared against LookAt -- the scene renders, and is
+			# vertically mirrored.
+			ux := bz_y * sz;
+			uy := bz_z * sx - bz_x * sz;
+			uz := bz_y * sx * -1.0;
+
+			ex := @position->GetX();
+			ey := @position->GetY();
+			ez := @position->GetZ();
+
+			out[0] := sx;   out[4] := 0.0;  out[8]  := sz;   out[12] := (sx * ex + sz * ez) * -1.0;
+			out[1] := ux;   out[5] := uy;   out[9]  := uz;   out[13] := (ux * ex + uy * ey + uz * ez) * -1.0;
+			out[2] := bz_x; out[6] := bz_y; out[10] := bz_z; out[14] := (bz_x * ex + bz_y * ey + bz_z * ez) * -1.0;
+			out[3] := 0.0;  out[7] := 0.0;  out[11] := 0.0;  out[15] := 1.0;
+		}
+
+		#~
+		Projection times view, ready to hand to Scene->Draw.
+
+		The two-step version -- build a projection, then multiply it by the view --
+		is what both 3D examples did, and it is the last per-frame allocation in a
+		draw loop that is otherwise clean.
+		@param out destination, at least 16 elements
+		@param projection a projection matrix, built once and kept
+		@param scratch a second 16-element buffer this may use; must not be out
+		~#
+		method : public : GetViewProjectionInto(out : Float[], projection : Float[], scratch : Float[]) ~ Nil {
+			GetViewMatrixInto(scratch);
+			Matrix4->MultiplyInto(out, projection, scratch);
 		}
 	}
 
+
+	#~
+	Where something is, how it is turned, and how big it is -- with its matrix
+	built on demand and cached.
+
+	This is what an object that MOVES wants, as opposed to Box, which is a static
+	prop and caches a translate-and-scale. A program animating something otherwise
+	has to keep its own scratch buffers and remember the order the three parts
+	compose in.
+
+	```
+	ball := Transform->New();
+	ball->SetScale(0.5);
+
+	# per frame
+	ball->SetPosition(x, height, z);
+	ball->Rotate(0.0, spin * delta, 0.0);
+	ball->MvpInto(mvp, view_projection);
+	shader->SetMatrix4("mvp", mvp);
+	mesh->Draw();
+	```
+
+	## No allocation after construction
+
+	The matrix is one buffer owned by the Transform, rebuilt only when something
+	actually changed. Setting the same position twice costs nothing, and a static
+	object costs nothing per frame at all.
+
+	Translation, rotation and scale compose as T * R * S -- scale first, then
+	rotate, then move -- which is the order that behaves the way people expect:
+	scaling does not drag the object away from its position, and rotation happens
+	about its own centre. Composing them in any other order is a common and
+	confusing bug, so the order is not a choice here.
+	~#
+	class Transform {
+		@x : Float; @y : Float; @z : Float;
+		@yaw : Float; @pitch : Float; @roll : Float;
+		@sx : Float; @sy : Float; @sz : Float;
+		@matrix : Float[];
+		@dirty : Bool;
+
+		#~
+		At the origin, unrotated, unscaled.
+		~#
+		New() {
+			@x := 0.0; @y := 0.0; @z := 0.0;
+			@yaw := 0.0; @pitch := 0.0; @roll := 0.0;
+			@sx := 1.0; @sy := 1.0; @sz := 1.0;
+			@matrix := Float->New[16];
+			@dirty := true;
+		}
+
+		#~
+		@param x x position
+		@param y y position
+		@param z z position
+		~#
+		method : public : SetPosition(x : Float, y : Float, z : Float) ~ Nil {
+			# Only mark dirty on a real change: a program setting the same position
+			# every frame should not rebuild the matrix every frame.
+			if(x <> @x | y <> @y | z <> @z) {
+				@x := x; @y := y; @z := z;
+				@dirty := true;
+			};
+		}
+
+		#~
+		@param position the position
+		~#
+		method : public : SetPosition(position : Vector3) ~ Nil {
+			if(position <> Nil) {
+				SetPosition(position->GetX(), position->GetY(), position->GetZ());
+			};
+		}
+
+		#~
+		Shift by an offset.
+		@param dx x offset
+		@param dy y offset
+		@param dz z offset
+		~#
+		method : public : Move(dx : Float, dy : Float, dz : Float) ~ Nil {
+			SetPosition(@x + dx, @y + dy, @z + dz);
+		}
+
+		#~
+		@param yaw rotation about Y, applied first
+		@param pitch rotation about X
+		@param roll rotation about Z, applied last
+		~#
+		method : public : SetRotation(yaw : Float, pitch : Float, roll : Float) ~ Nil {
+			if(yaw <> @yaw | pitch <> @pitch | roll <> @roll) {
+				@yaw := yaw; @pitch := pitch; @roll := roll;
+				@dirty := true;
+			};
+		}
+
+		#~
+		Turn by an offset -- the per-frame form, multiplied by a delta.
+		@param dyaw change in yaw
+		@param dpitch change in pitch
+		@param droll change in roll
+		~#
+		method : public : Rotate(dyaw : Float, dpitch : Float, droll : Float) ~ Nil {
+			SetRotation(@yaw + dyaw, @pitch + dpitch, @roll + droll);
+		}
+
+		#~
+		@param s uniform scale
+		~#
+		method : public : SetScale(s : Float) ~ Nil {
+			SetScale(s, s, s);
+		}
+
+		#~
+		@param x scale along x
+		@param y scale along y
+		@param z scale along z
+		~#
+		method : public : SetScale(x : Float, y : Float, z : Float) ~ Nil {
+			if(x <> @sx | y <> @sy | z <> @sz) {
+				@sx := x; @sy := y; @sz := z;
+				@dirty := true;
+			};
+		}
+
+		#~
+		@return the position as a new Vector3
+		~#
+		method : public : GetPosition() ~ Vector3 {
+			return Vector3->New(@x, @y, @z);
+		}
+
+		method : public : GetX() ~ Float { return @x; }
+		method : public : GetY() ~ Float { return @y; }
+		method : public : GetZ() ~ Float { return @z; }
+		method : public : GetYaw() ~ Float { return @yaw; }
+		method : public : GetPitch() ~ Float { return @pitch; }
+		method : public : GetRoll() ~ Float { return @roll; }
+
+		#~
+		The model matrix, T * R * S.
+
+		Rebuilt only when something changed, into a buffer this object owns -- so
+		the returned array is NOT a copy. Do not hold on to it across a change, and
+		do not write to it.
+		@return the model matrix, 16 floats column-major
+		~#
+		method : public : GetMatrix() ~ Float[] {
+			if(@dirty) {
+				Rebuild();
+				@dirty := false;
+			};
+
+			return @matrix;
+		}
+
+		#~
+		Model-view-projection, into a buffer the caller owns. The per-frame call.
+		@param out destination, at least 16 elements
+		@param view_projection the camera's projection times view
+		~#
+		method : public : MvpInto(out : Float[], view_projection : Float[]) ~ Nil {
+			Matrix4->MultiplyInto(out, view_projection, GetMatrix());
+		}
+
+		#~
+		T * R * S without a single matrix product.
+
+		Two identities make this cheap. Scaling by a diagonal matrix on the RIGHT
+		scales each COLUMN of the rotation, and translating on the LEFT only writes
+		the last column -- so the whole composition is the rotation with its columns
+		scaled and a translation dropped in. Spelling it as
+		Multiply(Multiply(T, R), S) would allocate four matrices and do 128
+		multiply-adds to reach the same sixteen numbers.
+
+		Checked against that composition in the regression suite, because this is
+		the kind of shortcut that is wrong in a way that still looks like a
+		transform.
+		~#
+		method : Rebuild() ~ Nil {
+			Matrix4->RotationYXZInto(@matrix, @yaw, @pitch, @roll);
+
+			# R * S: column 0 by sx, column 1 by sy, column 2 by sz
+			@matrix[0] := @matrix[0] * @sx;
+			@matrix[1] := @matrix[1] * @sx;
+			@matrix[2] := @matrix[2] * @sx;
+			@matrix[4] := @matrix[4] * @sy;
+			@matrix[5] := @matrix[5] * @sy;
+			@matrix[6] := @matrix[6] * @sy;
+			@matrix[8] := @matrix[8] * @sz;
+			@matrix[9] := @matrix[9] * @sz;
+			@matrix[10] := @matrix[10] * @sz;
+
+			# T on the left is just the last column
+			@matrix[12] := @x;
+			@matrix[13] := @y;
+			@matrix[14] := @z;
+		}
+	}
 
 	#~
 	An axis-aligned box in the world: where it is, how big it is, what it looks
@@ -2316,9 +2916,12 @@ bundle Game.OpenGL {
 		~#
 		method : public : GetModelMatrix() ~ Float[] {
 			if(@model = Nil) {
-				translation := Matrix4->Translation(@center->GetX(), @center->GetY(), @center->GetZ());
-				scale := Matrix4->ScaleXYZ(@half->GetX(), @half->GetY(), @half->GetZ());
-				@model := Matrix4->Multiply(translation, scale);
+				@model := Float->New[16];
+				# One call, no multiply: a translate-and-scale matrix is its scale on
+				# the diagonal and its translation in the last column. The old version
+				# built two matrices and multiplied them to reach the same sixteen
+				# numbers.
+				Matrix4->TranslationScaleInto(@model, @center->GetX(), @center->GetY(), @center->GetZ(), @half->GetX(), @half->GetY(), @half->GetZ());
 			};
 
 			return @model;
@@ -2480,6 +3083,60 @@ bundle Game.OpenGL {
 			};
 
 			return false;
+		}
+
+		#~
+		Move a camera through the scene, sliding along whatever it hits.
+
+		The only program with collision could not use Camera->MoveForward or
+		MoveRight, because collision has to test a candidate position BEFORE
+		committing to it -- so it re-derived the ground basis, did the dot products
+		by hand and called SetPosition, twenty lines that belong here.
+
+		Each axis is applied separately, and that is the whole trick: testing the
+		combined vector stops you dead against a wall you hit at an angle, while
+		testing X and Z in turn lets the blocked component drop and the other one
+		through, which is what sliding along a wall is.
+		@param camera the camera to move
+		@param forward distance along the camera's ground heading
+		@param strafe distance to the camera's right
+		@param radius the mover's radius in plan view
+		@return true when either axis was blocked
+		~#
+		method : public : SlideMove(camera : Camera, forward : Float, strafe : Float, radius : Float) ~ Bool {
+			if(camera = Nil) {
+				return false;
+			};
+
+			ground := camera->GroundForward();
+			right := camera->GroundRight();
+
+			dx := ground->GetX() * forward + right->GetX() * strafe;
+			dz := ground->GetZ() * forward + right->GetZ() * strafe;
+
+			position := camera->GetPosition();
+			x := position->GetX();
+			y := position->GetY();
+			z := position->GetZ();
+			stopped := false;
+
+			if(Blocked(x + dx, z, radius)) {
+				stopped := true;
+			}
+			else {
+				x += dx;
+			};
+
+			if(Blocked(x, z + dz, radius)) {
+				stopped := true;
+			}
+			else {
+				z += dz;
+			};
+
+			camera->SetPosition(Vector3->New(x, y, z));
+
+			return stopped;
 		}
 
 		#~

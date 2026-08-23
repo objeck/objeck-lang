@@ -78,6 +78,7 @@ class GlContextTest {
 		CheckLoader();
 		CheckShaderAndDraw();
 		CheckProjection();
+		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
 		CheckTextures();
@@ -728,6 +729,246 @@ class GlContextTest {
 
 		mesh->Free();
 		shader->Free();
+	}
+
+	#~
+	The hand-derived matrix routines agree with the compositions they replace.
+
+	Three of the additions in this layer are transcriptions of algebra done by
+	hand -- RotationYXZ instead of three matrix products, Camera's view matrix
+	inlined instead of built through LookAt, and a cofactor inverse. Every one of
+	them can be wrong in a way that still looks like a rotation: a transposed
+	term, a flipped sign, an axis swapped. Those produce a scene that renders
+	perfectly and is quietly mirrored.
+
+	So none of them is asserted against a hardcoded expectation. Each is asserted
+	against the slower, obviously-correct thing it replaced, which is the only
+	check that catches a plausible-looking error.
+	~#
+	method : CheckMatrixMath() ~ Nil {
+		tolerance := 0.000000001;
+
+		# --- RotationYXZ against Ry * Rx * Rz ---
+		# Three angles that are all different, none a multiple of a quarter turn,
+		# and none equal to each other: symmetric angles hide transposed terms the
+		# same way a symmetric texture hid the row flip.
+		yaw := 0.7;
+		pitch := -0.4;
+		roll := 1.1;
+
+		composed := Matrix4->Multiply(Matrix4->Multiply(Matrix4->RotationY(yaw), Matrix4->RotationX(pitch)), Matrix4->RotationZ(roll));
+		direct := Matrix4->RotationYXZ(yaw, pitch, roll);
+		Check("RotationYXZ matches RotationY * RotationX * RotationZ", Same(direct, composed, tolerance));
+		if(<>Same(direct, composed, tolerance)) {
+			Dump("  composed", composed);
+			Dump("  direct  ", direct);
+		};
+
+		# --- TranslationScale against Translation * ScaleXYZ ---
+		ts_composed := Matrix4->Multiply(Matrix4->Translation(3.0, -2.0, 5.0), Matrix4->ScaleXYZ(2.0, 0.5, 4.0));
+		ts_direct := Matrix4->TranslationScale(3.0, -2.0, 5.0, 2.0, 0.5, 4.0);
+		Check("TranslationScale matches Translation * ScaleXYZ", Same(ts_direct, ts_composed, tolerance));
+
+		# --- the inlined camera view matrix against the one built through LookAt ---
+		# Several orientations, including one looking level and one pitched, because
+		# the inlined version special-cases the up vector.
+		angles := [0.0, 0.0, 0.9, 0.0, 0.0, 0.6, 2.5, -0.8, -1.3, 0.35];
+		view_ok := true;
+		for(i := 0; i < 5; i += 1;) {
+			camera := Camera->New(Vector3->New(1.5, 2.0, -3.0));
+			camera->Turn(angles[i * 2]);
+			camera->Look(angles[i * 2 + 1]);
+
+			reference := Matrix4->LookAt(camera->GetPosition(), Vector3->Add(camera->GetPosition(), camera->ForwardVector()), Vector3->New(0.0, 1.0, 0.0));
+			inlined := Float->New[16];
+			camera->GetViewMatrixInto(inlined);
+
+			if(<>Same(inlined, reference, tolerance)) {
+				view_ok := false;
+				y := angles[i * 2];
+				pt := angles[i * 2 + 1];
+				"  mismatch at yaw={$y} pitch={$pt}"->PrintLine();
+				Dump("  LookAt ", reference);
+				Dump("  inlined", inlined);
+			};
+		};
+		Check("GetViewMatrixInto matches LookAt at five orientations", view_ok);
+
+		# --- inverse: m * inverse(m) must be the identity ---
+		# A matrix with rotation, non-uniform scale AND translation, so nothing is
+		# accidentally symmetric.
+		m := Matrix4->Multiply(Matrix4->TranslationScale(2.0, -1.0, 4.0, 3.0, 0.5, 2.0), Matrix4->RotationYXZ(0.6, 0.3, -0.2));
+		inverse := Matrix4->Inverse(m);
+		round_trip := Matrix4->Multiply(m, inverse);
+		# looser: an inverse goes through a division, so it loses more precision
+		Check("m * Inverse(m) is the identity", Same(round_trip, Matrix4->Identity(), 0.000001));
+
+		# A projection matrix is not affine, so invert one of those too.
+		projection := Matrix4->Perspective(Float->Pi() / 3.0, 1.5, 0.1, 100.0);
+		Check("a projection matrix inverts too", Same(Matrix4->Multiply(projection, Matrix4->Inverse(projection)), Matrix4->Identity(), 0.000001));
+
+		# A singular matrix reports rather than producing infinities.
+		singular := Matrix4->ScaleXYZ(1.0, 0.0, 1.0);
+		out := Float->New[16];
+		Check("a singular matrix is reported, not inverted", <>Matrix4->InverseInto(out, singular));
+		Check("and leaves the identity behind", Same(out, Matrix4->Identity(), tolerance));
+
+		# --- transpose round-trips ---
+		Check("Transpose twice is the original", Same(Matrix4->Transpose(Matrix4->Transpose(m)), m, tolerance));
+
+		# --- degrees agree with radians ---
+		by_degrees := Matrix4->PerspectiveDegrees(60.0, 1.5);
+		by_radians := Matrix4->Perspective(Float->Pi() / 3.0, 1.5, 0.1, 100.0);
+		Check("PerspectiveDegrees(60) matches Perspective(pi/3)", Same(by_degrees, by_radians, tolerance));
+
+		# --- the Into forms agree with the allocating ones ---
+		into_ok := true;
+		scratch := Float->New[16];
+		Matrix4->RotationXInto(scratch, 0.8);
+		if(<>Same(scratch, Matrix4->RotationX(0.8), tolerance)) { into_ok := false; };
+		Matrix4->RotationYInto(scratch, 0.8);
+		if(<>Same(scratch, Matrix4->RotationY(0.8), tolerance)) { into_ok := false; };
+		Matrix4->RotationZInto(scratch, 0.8);
+		if(<>Same(scratch, Matrix4->RotationZ(0.8), tolerance)) { into_ok := false; };
+		Matrix4->TranslationInto(scratch, 1.0, 2.0, 3.0);
+		if(<>Same(scratch, Matrix4->Translation(1.0, 2.0, 3.0), tolerance)) { into_ok := false; };
+		Matrix4->ScaleXYZInto(scratch, 1.0, 2.0, 3.0);
+		if(<>Same(scratch, Matrix4->ScaleXYZ(1.0, 2.0, 3.0), tolerance)) { into_ok := false; };
+		Matrix4->IdentityInto(scratch);
+		if(<>Same(scratch, Matrix4->Identity(), tolerance)) { into_ok := false; };
+		Check("every Into form matches its allocating twin", into_ok);
+
+		# An Into form must not leave anything behind from a previous use: they all
+		# start from IdentityInto, and a version that skipped the zeroing would
+		# work perfectly until a buffer was reused.
+		dirty := Float->New[16];
+		each(i : dirty) {
+			dirty[i] := 99.0;
+		};
+		Matrix4->RotationYInto(dirty, 0.8);
+		Check("an Into form fully overwrites a reused buffer", Same(dirty, Matrix4->RotationY(0.8), tolerance));
+
+		# --- Transform's T * R * S shortcut against the actual composition ---
+		# Non-uniform scale and all three angles non-zero, since a uniform scale
+		# commutes with rotation and would hide a column/row mix-up entirely.
+		transform := Transform->New();
+		transform->SetPosition(4.0, -1.0, 2.5);
+		transform->SetRotation(0.6, 0.3, -0.2);
+		transform->SetScale(2.0, 0.5, 3.0);
+
+		reference := Matrix4->Multiply(Matrix4->Multiply(Matrix4->Translation(4.0, -1.0, 2.5), Matrix4->RotationYXZ(0.6, 0.3, -0.2)), Matrix4->ScaleXYZ(2.0, 0.5, 3.0));
+		Check("Transform composes as Translation * Rotation * Scale", Same(transform->GetMatrix(), reference, tolerance));
+		if(<>Same(transform->GetMatrix(), reference, tolerance)) {
+			Dump("  reference", reference);
+			Dump("  transform", transform->GetMatrix());
+		};
+
+		# Move and Rotate are the setters plus a delta.
+		transform->Move(1.0, 0.0, 0.0);
+		transform->Rotate(0.1, 0.0, 0.0);
+		moved := Matrix4->Multiply(Matrix4->Multiply(Matrix4->Translation(5.0, -1.0, 2.5), Matrix4->RotationYXZ(0.7, 0.3, -0.2)), Matrix4->ScaleXYZ(2.0, 0.5, 3.0));
+		Check("Transform->Move and Rotate accumulate", Same(transform->GetMatrix(), moved, tolerance));
+
+		# The cache must be invalidated by a change and reused when there is none.
+		# Setting the same values again must not alter the matrix.
+		before := Matrix4->Multiply(Matrix4->Identity(), transform->GetMatrix());
+		transform->SetPosition(5.0, -1.0, 2.5);
+		Check("setting an unchanged position leaves the matrix alone", Same(transform->GetMatrix(), before, tolerance));
+		transform->SetPosition(0.0, 0.0, 0.0);
+		Check("and a real change rebuilds it", <>Same(transform->GetMatrix(), before, tolerance));
+
+		# MvpInto is the per-frame call.
+		vp := Matrix4->PerspectiveDegrees(60.0, 1.0);
+		mvp := Float->New[16];
+		transform->MvpInto(mvp, vp);
+		Check("MvpInto matches the multiply it replaces", Same(mvp, Matrix4->Multiply(vp, transform->GetMatrix()), tolerance));
+
+		CheckSlideMove(tolerance);
+	}
+
+	#~
+	Scene->SlideMove slides along a wall rather than stopping against it.
+
+	This is the behaviour the whole per-axis arrangement exists for, and the one
+	that is easy to lose: applying the movement as a single vector produces code
+	that looks right and stops you dead whenever you brush a wall at an angle. So
+	the fixture moves DIAGONALLY into a box, with one axis blocked and the other
+	clear -- a head-on test would pass either way.
+	~#
+	method : CheckSlideMove(tolerance : Float) ~ Nil {
+		# No mesh or shader: this only asks about collision, never draws.
+		scene := Scene->New(Nil, Nil);
+		# occupies x in 1..3, z in -1..1
+		scene->AddBox(Vector3->New(2.0, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), Nil);
+
+		# yaw 0 means ground-forward is (0, 0, -1) and ground-right is (1, 0, 0),
+		# so forward = -2 moves toward +z and strafe = +2 moves toward +x.
+		camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+		blocked := scene->SlideMove(camera, -2.0, 2.0, 0.35);
+		after := camera->GetPosition();
+		x := after->GetX();
+		z := after->GetZ();
+		"  slide: x={$x} z={$z} blocked={$blocked}"->PrintLine();
+
+		# x was blocked by the box; z was not, and got through. That is the slide.
+		Check("SlideMove reports the collision", blocked);
+		Check("the blocked axis does not move", Near(x, 0.0, tolerance));
+		Check("the clear axis still does", Near(z, 2.0, tolerance));
+
+		# The control: with nothing in the way, both axes move and nothing is
+		# reported. Without this, a SlideMove that simply refused to move at all
+		# would pass the three checks above.
+		empty := Scene->New(Nil, Nil);
+		free_camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+		stopped := empty->SlideMove(free_camera, -2.0, 2.0, 0.35);
+		clear_at := free_camera->GetPosition();
+		Check("an empty scene blocks nothing", <>stopped);
+		Check("and both axes move", Near(clear_at->GetX(), 2.0, tolerance) & Near(clear_at->GetZ(), 2.0, tolerance));
+
+		scene->Clear();
+		empty->Clear();
+	}
+
+	method : Near(a : Float, b : Float, tolerance : Float) ~ Bool {
+		difference := a - b;
+		if(difference < 0.0) {
+			difference := difference * -1.0;
+		};
+
+		return difference <= tolerance;
+	}
+
+	#~
+	Element-wise comparison within a tolerance. Matrix code cannot be compared
+	exactly: the same value reached by a different order of operations differs in
+	the last bits.
+	~#
+	method : Same(a : Float[], b : Float[], tolerance : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() < 16 | b->Size() < 16) {
+			return false;
+		};
+
+		for(i := 0; i < 16; i += 1;) {
+			difference := a[i] - b[i];
+			if(difference < 0.0) {
+				difference := difference * -1.0;
+			};
+			if(difference > tolerance) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	method : Dump(name : String, m : Float[]) ~ Nil {
+		line := name;
+		line += ":";
+		for(i := 0; i < 16; i += 1;) {
+			value := m[i];
+			line += " {$value}";
+		};
+		line->PrintLine();
 	}
 
 	#~
