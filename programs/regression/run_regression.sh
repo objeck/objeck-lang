@@ -23,7 +23,9 @@ mkdir -p "$RESULTS_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 FAILED_TESTS=()
+SKIPPED_TESTS=()
 
 # Record a failure: print it, remember the test name + reason for the final
 # summary, and bump the counter. Keeps the end-of-run report from forcing the
@@ -32,6 +34,14 @@ record_fail() {
     echo "  [FAIL] $1"
     FAILED_TESTS+=("${NAME} — $1")
     ((FAIL_COUNT++))
+    # Show what the test actually said. Without this a CI failure gives only a
+    # test name, and the captured output sits unread in results/ on a runner that
+    # is then discarded -- so diagnosing anything needs another full round trip.
+    if [ -s "${RESULTS_DIR}/${NAME}_output.txt" ]; then
+        echo "  --- output ---"
+        sed 's/^/  /' "${RESULTS_DIR}/${NAME}_output.txt"
+        echo "  --------------"
+    fi
 }
 
 # Per-test wall-clock cap so a hung/infinite-loop test fails fast instead of
@@ -150,11 +160,19 @@ for test in *.obs; do
             record_fail "VM produced no output — possible crash"
         fi
     elif [ $RUN_EXIT -eq 0 ]; then
-        echo "  [PASS] (${ELAPSED}s)"
-        ((PASS_COUNT++))
+        # A test that exits 0 after printing "SKIP:" did not run its checks.
+        # Counting that as a pass overstates coverage -- the failure mode
+        # where a whole platform is silently untested while CI stays green.
+        if grep -q "^SKIP:" "$RESULTS_DIR/${NAME}_output.txt" 2>/dev/null; then
+            echo "  [SKIP] $(grep -m1 "^SKIP:" "$RESULTS_DIR/${NAME}_output.txt")"
+            SKIPPED_TESTS+=("${NAME}")
+            ((SKIP_COUNT++))
+        else
+            echo "  [PASS] (${ELAPSED}s)"
+            ((PASS_COUNT++))
+        fi
     else
         record_fail "runtime error (exit ${RUN_EXIT})"
-        cat "$RESULTS_DIR/${NAME}_output.txt" 2>/dev/null | head -200
     fi
 done
 
@@ -163,10 +181,17 @@ cd "$REGRESSION_DIR"
 
 echo ""
 echo "========================================"
-echo "  Results: $PASS_COUNT passed, $FAIL_COUNT failed"
+echo "  Results: $PASS_COUNT passed, $SKIP_COUNT skipped, $FAIL_COUNT failed"
 echo "========================================"
 
 # List exactly what failed so the reader never has to scroll the full log.
+if [ $SKIP_COUNT -gt 0 ]; then
+    echo "  Skipped (checks did not run):"
+    for t in "${SKIPPED_TESTS[@]}"; do
+        echo "    - $t"
+    done
+fi
+
 if [ $FAIL_COUNT -gt 0 ]; then
     echo ""
     echo "Failed tests:"
@@ -180,7 +205,7 @@ fi
 # page without opening the raw job log.
 if [ -n "$GITHUB_STEP_SUMMARY" ]; then
     {
-        echo "### Regression — ${PLATFORM}: ${PASS_COUNT} passed, ${FAIL_COUNT} failed"
+        echo "### Regression — ${PLATFORM}: ${PASS_COUNT} passed, ${SKIP_COUNT} skipped, ${FAIL_COUNT} failed"
         if [ $FAIL_COUNT -gt 0 ]; then
             echo ""
             echo "| Result | Test — reason |"

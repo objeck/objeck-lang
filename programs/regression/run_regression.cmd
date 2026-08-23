@@ -35,11 +35,18 @@ set OBJECK_LIB_PATH=%CD%
 popd
 set NATIVE_LIB_DIR=%DEPLOY_DIR%\lib\native
 if exist "%NATIVE_LIB_DIR%" set PATH=%NATIVE_LIB_DIR%;%PATH%
+REM The SDL2 runtime DLLs live in lib\sdl, not lib\native (see
+REM deploy_windows.cmd), and libobjk_sdl.dll imports them. Without this, any
+REM test that touches SDL fails with a misleading
+REM "Runtime error loading shared library: ..\lib\native\libobjk_sdl.dll".
+set SDL_LIB_DIR=%DEPLOY_DIR%\lib\sdl
+if exist "%SDL_LIB_DIR%" set PATH=%SDL_LIB_DIR%;%PATH%
 
 if not exist "%RESULTS_DIR%" mkdir "%RESULTS_DIR%"
 
 set PASS_COUNT=0
 set FAIL_COUNT=0
+set SKIP_COUNT=0
 
 REM Accumulate failed test names+reasons in a file (robust string handling in
 REM batch); consumed for the end-of-run failed list and the CI step summary.
@@ -128,10 +135,25 @@ for %%f in (*.obs) do (
                 if !RUN_RESULT! neq 0 (
                     echo   FAIL ^(runtime error^)
                     >>"%FAILED_FILE%" echo %%~nf - runtime error ^(exit !RUN_RESULT!^)
+                    REM Show what the test actually said. Without this a CI
+                    REM failure gives only a test name, and the captured output
+                    REM sits unread in results\ on a runner that is then thrown
+                    REM away -- so diagnosing needs another full CI round trip.
+                    echo   --- output ---
+                    type "%RESULTS_DIR%\%%~nf_output.txt" 2>nul
+                    echo   --------------
                     set /a FAIL_COUNT+=1
                 ) else (
-                    echo   PASS
-                    set /a PASS_COUNT+=1
+                    REM Exit 0 after printing "SKIP:" means the checks never
+                    REM ran. Counting it as a pass overstates coverage.
+                    findstr /b /c:"SKIP:" "%RESULTS_DIR%\%%~nf_output.txt" >nul 2>&1
+                    if !errorlevel! equ 0 (
+                        echo   SKIP
+                        set /a SKIP_COUNT+=1
+                    ) else (
+                        echo   PASS
+                        set /a PASS_COUNT+=1
+                    )
                 )
             )
         )
@@ -140,7 +162,7 @@ for %%f in (*.obs) do (
 
 echo.
 echo ========================================
-echo   Results: !PASS_COUNT! passed, !FAIL_COUNT! failed
+echo   Results: !PASS_COUNT! passed, !SKIP_COUNT! skipped, !FAIL_COUNT! failed
 echo ========================================
 
 REM List exactly what failed so the reader never has to scroll the full log.
