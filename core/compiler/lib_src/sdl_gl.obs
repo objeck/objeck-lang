@@ -5,6 +5,7 @@ Copyright (c) 2026, Randy Hollines
 
 use Game.SDL2;
 use System.API;
+use Collection;
 
 #~
 OpenGL 3.3 core rendering on top of SDL2. Builds on sdl2.obl for the window and
@@ -20,6 +21,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * GL          -- static state operations. Thin, but never per-vertex.
 * Shader      -- a linked program from vertex + fragment source.
 * Mesh        -- geometry uploaded once into buffer objects, drawn many times.
+* Box, Scene  -- a world of boxes: draws itself, and answers collision.
 
 ## Why the API is shaped this way
 
@@ -557,6 +559,26 @@ bundle Game.OpenGL {
 		~#
 		function : Multiply(lhs : Float[], rhs : Float[]) ~ Float[] {
 			out := Float->New[16];
+			MultiplyInto(out, lhs, rhs);
+
+			return out;
+		}
+
+		#~
+		Matrix product written into a buffer the caller owns.
+
+		Exists so a draw loop can avoid allocating. Multiply returns a fresh
+		Float[16] every call, which at one or two matrices per object per frame is
+		hundreds of arrays a second -- enough to trigger a collection mid-frame,
+		the classic stutter. Scene uses this with a scratch buffer it keeps.
+		@param out destination, at least 16 elements; may not alias lhs or rhs
+		@param lhs applied second
+		@param rhs applied first
+		~#
+		function : MultiplyInto(out : Float[], lhs : Float[], rhs : Float[]) ~ Nil {
+			if(out = Nil | lhs = Nil | rhs = Nil) {
+				return;
+			};
 
 			for(col := 0; col < 4; col += 1;) {
 				for(row := 0; row < 4; row += 1;) {
@@ -568,8 +590,6 @@ bundle Game.OpenGL {
 					out[col * 4 + row] := sum;
 				};
 			};
-
-			return out;
 		}
 
 		#~
@@ -996,6 +1016,242 @@ bundle Game.OpenGL {
 			target := Vector3->Add(@position, ForwardVector());
 
 			return Matrix4->LookAt(@position, target, Vector3->New(0.0, 1.0, 0.0));
+		}
+	}
+
+
+	#~
+	An axis-aligned box in the world: where it is, how big it is, what it looks
+	like, and whether you can walk through it.
+
+	The unit cube mesh is shared by every Box; the box only supplies a transform.
+	That is what keeps a scene of hundreds of boxes down to one uploaded mesh.
+
+	The model matrix is computed once and cached, because a static prop's
+	transform does not change between frames. Moving the box invalidates it.
+	~#
+	class Box {
+		@center : Vector3;
+		@half : Vector3;
+		@texture : Texture2D;
+		@solid : Bool;
+		@model : Float[];
+
+		#~
+		@param center the box's centre
+		@param half half-extents on each axis, so a 2x2x2 cube has half 1,1,1
+		@param texture the texture to draw it with; may be Nil
+		~#
+		New(center : Vector3, half : Vector3, texture : Texture2D) {
+			@center := center;
+			@half := half;
+			@texture := texture;
+			@solid := true;
+			@model := Nil;
+		}
+
+		method : public : GetCenter() ~ Vector3 { return @center; }
+		method : public : GetHalf() ~ Vector3 { return @half; }
+		method : public : GetTexture() ~ Texture2D { return @texture; }
+
+		#~
+		Whether this box blocks movement. Floors and ceilings are usually set
+		non-solid: they are drawn but should not stop a walking character.
+		@return true when the box blocks
+		~#
+		method : public : IsSolid() ~ Bool { return @solid; }
+
+		#~
+		@param solid false to make the box scenery that does not block
+		~#
+		method : public : SetSolid(solid : Bool) ~ Nil { @solid := solid; }
+
+		#~
+		Move the box, discarding the cached transform.
+		@param center the new centre
+		~#
+		method : public : SetCenter(center : Vector3) ~ Nil {
+			@center := center;
+			@model := Nil;
+		}
+
+		#~
+		The box's model matrix: translate then scale, cached after the first call.
+		@return a 4x4 model matrix, column-major
+		~#
+		method : public : GetModelMatrix() ~ Float[] {
+			if(@model = Nil) {
+				translation := Matrix4->Translation(@center->GetX(), @center->GetY(), @center->GetZ());
+				scale := Matrix4->ScaleXYZ(@half->GetX(), @half->GetY(), @half->GetZ());
+				@model := Matrix4->Multiply(translation, scale);
+			};
+
+			return @model;
+		}
+
+		#~
+		Whether a circle in plan view overlaps this box.
+
+		Deliberately 2D: a walking character should not be blocked by something
+		overhead, and testing the full 3D box would do exactly that. Corners are
+		treated conservatively -- a near-miss at a corner counts as a hit, which is
+		the right way to be wrong about a wall.
+		@param x circle centre x
+		@param z circle centre z
+		@param radius circle radius
+		@return true when they overlap
+		~#
+		method : public : OverlapsXZ(x : Float, z : Float, radius : Float) ~ Bool {
+			gap_x := (x - @center->GetX())->Abs() - @half->GetX();
+			gap_z := (z - @center->GetZ())->Abs() - @half->GetZ();
+
+			return gap_x < radius & gap_z < radius;
+		}
+	}
+
+	#~
+	A world of boxes that draws itself and answers collision queries.
+
+	This is the layer that keeps a 3D program from hand-rolling parallel arrays
+	and index arithmetic. Add boxes, then call Draw once per frame and Blocked
+	whenever something wants to move.
+
+	```
+	scene := Scene->New(cube_mesh, shader);
+	scene->AddBox(Vector3->New(0.0, 1.0, -4.0), Vector3->New(1.0, 1.0, 1.0), crate);
+	...
+	scene->Draw(view_projection);
+	if(<>scene->Blocked(new_x, new_z, 0.35)) { ... };
+	```
+
+	## Two things it does that a naive loop would not
+
+	It only rebinds a texture when the next box uses a different one, so a scene
+	grouped by texture costs a handful of binds rather than one per box.
+
+	It draws through Matrix4->MultiplyInto with a scratch buffer it owns, so a
+	frame allocates nothing. The obvious version -- Multiply per box per frame --
+	returns a fresh Float[16] each time, which is hundreds of arrays a second and
+	enough to collect mid-frame. Objeck's SDL renderer already had to be rewritten
+	once for exactly this reason.
+	~#
+	class Scene {
+		@boxes : Vector<Box>;
+		@mesh : Mesh;
+		@shader : Shader;
+		# scratch for the per-box model-view-projection, reused every draw
+		@mvp : Float[];
+
+		#~
+		@param mesh the shared unit-cube mesh every box is drawn with
+		@param shader the program to draw with; Draw sets its "mvp" mat4 uniform
+		~#
+		New(mesh : Mesh, shader : Shader) {
+			@mesh := mesh;
+			@shader := shader;
+			@boxes := Vector->New()<Box>;
+			@mvp := Float->New[16];
+		}
+
+		#~
+		@return how many boxes are in the scene
+		~#
+		method : public : GetCount() ~ Int {
+			return @boxes->Size();
+		}
+
+		#~
+		@param index which box
+		@return the box, or Nil when out of range
+		~#
+		method : public : Get(index : Int) ~ Box {
+			if(index < 0 | index >= @boxes->Size()) {
+				return Nil;
+			};
+
+			return @boxes->Get(index);
+		}
+
+		#~
+		Add an existing box.
+		@param box the box
+		@return the same box, for chaining
+		~#
+		method : public : Add(box : Box) ~ Box {
+			if(box <> Nil) {
+				@boxes->AddBack(box);
+			};
+
+			return box;
+		}
+
+		#~
+		Build and add a box.
+		@param center the box's centre
+		@param half half-extents on each axis
+		@param texture the texture to draw it with
+		@return the new box, so it can be made non-solid or moved later
+		~#
+		method : public : AddBox(center : Vector3, half : Vector3, texture : Texture2D) ~ Box {
+			return Add(Box->New(center, half, texture));
+		}
+
+		#~
+		Draw every box.
+
+		Binds the shader, then for each box sets the "mvp" uniform and draws the
+		shared mesh. Rebinds a texture only when it changes from the previous box.
+		@param view_projection the combined view and projection matrix for this frame
+		~#
+		method : public : Draw(view_projection : Float[]) ~ Nil {
+			if(@mesh = Nil | @shader = Nil | view_projection = Nil) {
+				return;
+			};
+
+			@shader->Use();
+
+			# Nil on its own infers as Nil, not as Texture2D, so the comparison below
+			# will not type-check without the cast.
+			last_texture := Nil->As(Texture2D);
+			each(i : @boxes) {
+				box := @boxes->Get(i);
+
+				texture := box->GetTexture();
+				if(texture <> Nil & texture <> last_texture) {
+					texture->Bind(0);
+					last_texture := texture;
+				};
+
+				Matrix4->MultiplyInto(@mvp, view_projection, box->GetModelMatrix());
+				@shader->SetMatrix4("mvp", @mvp);
+				@mesh->Draw();
+			};
+		}
+
+		#~
+		Whether a circle in plan view hits any SOLID box.
+		@param x circle centre x
+		@param z circle centre z
+		@param radius circle radius
+		@return true when the position is blocked
+		~#
+		method : public : Blocked(x : Float, z : Float, radius : Float) ~ Bool {
+			each(i : @boxes) {
+				box := @boxes->Get(i);
+				if(box->IsSolid() & box->OverlapsXZ(x, z, radius)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Drop every box. Does NOT free the shared mesh, shader or textures -- those
+		were passed in and belong to the caller.
+		~#
+		method : public : Clear() ~ Nil {
+			@boxes->Empty();
 		}
 	}
 
