@@ -83,6 +83,7 @@ class GlContextTest {
 		CheckShaderPresets();
 		CheckLighting();
 		CheckShadows();
+		CheckOverlay();
 		CheckMeshValidation();
 		CheckExtensions();
 		CheckRenderTarget();
@@ -960,6 +961,133 @@ class GlContextTest {
 		shadows->Free();
 		shadows->Free();
 		Check("ShadowMap->Free is idempotent", true);
+	}
+
+	#~
+	The overlay draws where it says it does, from the TOP-LEFT.
+
+	That is the assertion worth having. Overlay positions things in pixels from the
+	top-left because that is how every 2D API reads and where everyone puts a HUD,
+	while GL's own origin is the bottom-left -- so there is a flip inside, and a
+	missing or doubled flip produces an overlay that works perfectly and is upside
+	down. At a glance, and in a screenshot of a symmetric HUD, the two are
+	indistinguishable.
+
+	So a rectangle goes in ONE corner and both corners are read. Nothing that has
+	the flip wrong can satisfy that.
+
+	Text needs a font file, which is shipped in the deploy tree but is not
+	something this test should fail over if a tree was assembled by hand -- so the
+	text half reports and skips, while the geometry half always runs.
+	~#
+	method : CheckOverlay() ~ Nil {
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay is created", overlay->IsOk())) {
+			error := overlay->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		black := 0xFF000000;
+
+		# --- a rectangle in the top-left corner ---
+		# Rect needs no font: it uses the overlay's own one-pixel white texture.
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		overlay->Begin();
+		box := @pixel_h / 4;
+		overlay->Rect(0, 0, box, box);
+		overlay->End();
+
+		# ReadPixel counts y up from the BOTTOM, so the top of the screen is the
+		# high y. A rect asked for at (0, 0) must land there.
+		top_left := GL->ReadPixel(box / 2, @pixel_h - (box / 2));
+		bottom_left := GL->ReadPixel(box / 2, box / 2);
+		far_side := GL->ReadPixel(@pixel_w - 4, @pixel_h / 2);
+		"  rect at 0,0: top-left=0x{$top_left} bottom-left=0x{$bottom_left}"->PrintLine();
+
+		Check("a rect at 0,0 lands in the TOP-left", top_left <> black);
+		Check("and not in the bottom-left", bottom_left = black);
+		Check("and nowhere else", far_side = black);
+
+		# --- and one in the bottom-right, to pin both axes ---
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		overlay->Begin();
+		overlay->Rect(@pixel_w - box, @pixel_h - box, box, box);
+		overlay->End();
+
+		br_screen := GL->ReadPixel(@pixel_w - (box / 2), box / 2);
+		tl_screen := GL->ReadPixel(box / 2, @pixel_h - (box / 2));
+		"  rect at bottom-right: there=0x{$br_screen} opposite=0x{$tl_screen}"->PrintLine();
+		Check("a rect at the far corner lands in the bottom-right", br_screen <> black);
+		Check("and not back in the top-left", tl_screen = black);
+
+		# --- text ---
+		# TTF has to be initialised before a font will open, which is easy to miss:
+		# without it Font->New simply returns a null font.
+		Font->Init();
+		font := Font->New("../lib/sdl/fonts/lazy.ttf", 24);
+		if(font = Nil | font->IsNull()) {
+			"  SKIP: no font file, so the text half is not exercised"->PrintLine();
+		}
+		else {
+			overlay->SetFont(font);
+			overlay->SetColor(255, 255, 255);
+
+			width := overlay->MeasureWidth("MMMM");
+			narrow := overlay->MeasureWidth("i");
+			"  measured: MMMM={$width} i={$narrow}"->PrintLine();
+			Check("text has a measurable width", width > 0);
+			# Proportional, so four Ms must be wider than one i. A stub returning a
+			# constant would pass the check above and fail this one.
+			Check("and the width depends on the text", width > narrow);
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			overlay->Begin();
+			overlay->Text("MMMMMMMM", 4, 4);
+			overlay->End();
+
+			# Somewhere in the top-left band there must be white glyph pixels, and
+			# the bottom of the screen must be untouched.
+			found := 0;
+			for(py := @pixel_h - 40; py < @pixel_h - 2; py += 2;) {
+				for(px := 4; px < 200; px += 2;) {
+					if(px < @pixel_w & py < @pixel_h) {
+						if((GL->ReadPixel(px, py) and 0x00FFFFFF) <> 0) {
+							found += 1;
+						};
+					};
+				};
+			};
+			bottom_band := 0;
+			for(px := 4; px < 200; px += 2;) {
+				if(px < @pixel_w) {
+					if((GL->ReadPixel(px, 4) and 0x00FFFFFF) <> 0) {
+						bottom_band += 1;
+					};
+				};
+			};
+			"  glyph pixels near the top={$found} near the bottom={$bottom_band}"->PrintLine();
+			Check("text draws pixels", found > 0);
+			Check("near the TOP, where it was asked for", bottom_band = 0);
+
+			# The cache must return the same texture for the same string, or a
+			# per-frame counter re-rasterises every frame.
+			first := overlay->MeasureWidth("cache me");
+			second := overlay->MeasureWidth("cache me");
+			Check("measuring the same string twice agrees", first = second & first > 0);
+		};
+
+		# Note Game.SDL2's Font has no Free or Close method at all, so a loaded font
+		# cannot be released -- worth knowing, and not this bundle's to fix.
+		Font->Quit();
+
+		Check("no GL errors from the overlay", GL->DrainErrors()->Size() = 0);
+
+		overlay->Free();
+		overlay->Free();
+		Check("Overlay->Free is idempotent", true);
 	}
 
 	#~

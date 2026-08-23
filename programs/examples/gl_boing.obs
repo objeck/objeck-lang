@@ -22,6 +22,7 @@ other reason it exists:
   Camera->PlaceLookingAt  the orbit
   ShadowMap            the ball's shadow, tracking it across the floor
   RenderTarget         the whole scene drawn into a texture, then to the screen
+  Overlay              the frame rate and a caption, in pixels over the lot
 
 ## What to look at
 
@@ -68,6 +69,11 @@ class BoingBall {
 
 	@shadows : ShadowMap;
 
+	@overlay : Overlay;
+	@font : Font;
+	@fps_text : String;
+	@fps_timer : Float;
+
 	# the second pass
 	@target : RenderTarget;
 	@post : Shader;
@@ -100,6 +106,8 @@ class BoingBall {
 		@spin := 0.0;
 		@orbit := 0.0;
 		@elapsed := 0.0;
+		@fps_text := "";
+		@fps_timer := 0.0;
 
 		@projection := Float->New[16];
 		@view_projection := Float->New[16];
@@ -135,6 +143,7 @@ class BoingBall {
 			@elapsed += delta;
 			Advance(delta);
 			Draw();
+			DrawOverlay(delta);
 
 			@window->EndFrame();
 		};
@@ -312,7 +321,53 @@ class BoingBall {
 		# Just wider than the room, so nothing that should cast falls outside it.
 		@shadows->Cover(Vector3->New(0.0, 2.0, 0.0), 13.0);
 
-		return BuildPostPass();
+		if(<>BuildPostPass()) {
+			return false;
+		};
+
+		# The overlay is optional: a tree assembled by hand might not have the
+		# fonts, and a missing frame counter is not a reason to refuse to run.
+		Font->Init();
+		@font := Font->New("../lib/sdl/fonts/lazy.ttf", 20);
+		@overlay := Overlay->New(@window);
+		if(@overlay->IsOk() & @font <> Nil & <>@font->IsNull()) {
+			@overlay->SetFont(@font);
+			@overlay->SetColor(235, 240, 250);
+		}
+		else {
+			"Note: no font found, so the frame counter is off"->PrintLine();
+			@overlay := Nil;
+		};
+
+		return true;
+	}
+
+	#~
+	The frame counter and a caption, drawn last so the post-process pass does not
+	run its scanlines over the text.
+
+	The rate is averaged over a quarter second rather than shown per frame: a
+	number recomputed every frame is unreadable, and it would also defeat the
+	overlay's text cache, which keys on the string.
+	~#
+	method : DrawOverlay(delta : Float) ~ Nil {
+		if(@overlay = Nil) {
+			return;
+		};
+
+		@fps_timer += delta;
+		if(@fps_timer > 0.25) {
+			@fps_timer := 0.0;
+			rate := @window->GetFps()->As(Int);
+			@fps_text := "{$rate} fps";
+		};
+
+		@overlay->Begin();
+		# A panel behind the text, so it stays readable over a bright wall.
+		@overlay->Rect(8, 8, 190, 54);
+		@overlay->Text(@fps_text, 16, 12);
+		@overlay->Text("escape to quit", 16, 34);
+		@overlay->End();
 	}
 
 	#~
@@ -387,6 +442,7 @@ class BoingBall {
 		# The target owns its colour texture -- GetTexture hands back a wrapper that
 		# must NOT be freed separately.
 		if(@target <> Nil) { @target->Free(); };
+		if(@overlay <> Nil) { @overlay->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
 	}

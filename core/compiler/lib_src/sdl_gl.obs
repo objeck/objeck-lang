@@ -28,6 +28,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * Light       -- one directional light plus ambient, written into a shader.
 * RenderTarget -- draw into a texture instead of the window, then sample it.
 * ShadowMap   -- shadows from one directional light, depth pass and all.
+* Overlay     -- text and rectangles over the scene, positioned in pixels.
 * Transform   -- position, rotation and scale, with a cached matrix.
 * Box, Scene  -- a world of boxes: draws itself, and answers collision.
 
@@ -81,6 +82,45 @@ bundle Game.OpenGL {
 		GL_INVALID_OPERATION := 0x0502,
 		GL_OUT_OF_MEMORY := 0x0505,
 		GL_INVALID_FRAMEBUFFER_OPERATION := 0x0506
+	}
+
+	#~
+	What a mesh's indices describe. Mesh->Draw takes one of these.
+	~#
+	consts DrawMode {
+		GL_POINTS := 0x0000,
+		GL_LINES := 0x0001,
+		GL_LINE_LOOP := 0x0002,
+		GL_LINE_STRIP := 0x0003,
+		GL_TRIANGLES := 0x0004,
+		GL_TRIANGLE_STRIP := 0x0005,
+		GL_TRIANGLE_FAN := 0x0006
+	}
+
+	#~
+	Blend factors for GL->SetBlend. See its doc for the combinations worth
+	knowing.
+	~#
+	consts BlendFactor {
+		GL_ZERO := 0,
+		GL_ONE := 1,
+		GL_SRC_COLOR := 0x0300,
+		GL_ONE_MINUS_SRC_COLOR := 0x0301,
+		GL_SRC_ALPHA := 0x0302,
+		GL_ONE_MINUS_SRC_ALPHA := 0x0303,
+		GL_DST_ALPHA := 0x0304,
+		GL_ONE_MINUS_DST_ALPHA := 0x0305,
+		GL_DST_COLOR := 0x0306,
+		GL_ONE_MINUS_DST_COLOR := 0x0307
+	}
+
+	#~
+	Which side of a triangle is discarded when GL_CULL_FACE is on.
+	~#
+	consts CullMode {
+		GL_FRONT := 0x0404,
+		GL_BACK := 0x0405,
+		GL_FRONT_AND_BACK := 0x0408
 	}
 
 	#~
@@ -379,6 +419,90 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		How a fragment's colour combines with what is already in the buffer.
+
+		Enabling Capability->GL_BLEND is not enough on its own, and that is the
+		trap: GL's default factors are ONE and ZERO, which means "replace", so
+		blending appears to be on and nothing changes. This is the other half.
+
+		The two worth knowing:
+
+		* **Straight alpha** -- SRC_ALPHA, ONE_MINUS_SRC_ALPHA. Ordinary
+		  transparency: glass, foliage, a fade. Needs the transparent things drawn
+		  AFTER the opaque ones and back-to-front among themselves, because a
+		  fragment can only blend with what is already there.
+		* **Additive** -- ONE, ONE. Light: sparks, glows, fire. Order-independent,
+		  since addition commutes, which is why particle systems reach for it.
+
+		With straight alpha, also turn depth WRITING off for the transparent pass
+		while leaving the test on -- see SetDepthWrite. A transparent surface that
+		writes depth hides whatever transparent thing is behind it.
+		@param source how much of the incoming fragment to use
+		@param destination how much of what is already there to keep
+		~#
+		function : SetBlend(source : Int, destination : Int) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New(source);
+			array_args[1] := IntRef->New(destination);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_blend_func", array_args);
+		}
+
+		#~
+		Enable ordinary alpha transparency: blending on, factors set, depth writing
+		off.
+
+		The three calls that go together, because getting one of the three wrong is
+		what makes transparency look broken rather than absent. Call
+		EndTransparency when the transparent pass is done.
+		~#
+		function : BeginTransparency() ~ Nil {
+			Enable(Capability->GL_BLEND);
+			SetBlend(BlendFactor->GL_SRC_ALPHA, BlendFactor->GL_ONE_MINUS_SRC_ALPHA);
+			SetDepthWrite(false);
+		}
+
+		#~
+		Undo BeginTransparency.
+		~#
+		function : EndTransparency() ~ Nil {
+			SetDepthWrite(true);
+			Disable(Capability->GL_BLEND);
+		}
+
+		#~
+		Whether drawing writes depth. The test is unaffected.
+
+		Off for a transparent pass: those fragments should be hidden BY opaque
+		geometry but should not hide each other, and the only way to have both is
+		to test depth without writing it.
+		@param enabled false to stop writing depth
+		~#
+		function : SetDepthWrite(enabled : Bool) ~ Nil {
+			value := 0;
+			if(enabled) {
+				value := 1;
+			};
+
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(value);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_depth_mask", array_args);
+		}
+
+		#~
+		Which side of a triangle GL_CULL_FACE discards. GL_BACK by default, which
+		is what every mesh in this bundle is wound for.
+		@param mode a CullMode
+		~#
+		function : SetCullMode(mode : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(mode);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_cull_face", array_args);
+		}
+
+		#~
 		Drain the error queue and print whatever was in it.
 
 		Exists because every program was writing the same four lines: drain, count,
@@ -559,7 +683,19 @@ bundle Game.OpenGL {
 				visibility := WindowFlags->SDL_WINDOW_SHOWN;
 			};
 
-			flags := visibility or WindowFlags->SDL_WINDOW_OPENGL;
+			# ALLOW_HIGHDPI matters on macOS and almost nowhere else, which is exactly
+			# why it was missing. Without it SDL gives a Retina display a 1x backing
+			# store and the compositor scales it up, so everything is soft -- and
+			# GLGetDrawableSize then returns the same numbers as the window size, so
+			# all the careful drawable-versus-window handling in this file has
+			# nothing to do. The machinery was built for high-DPI and high-DPI was
+			# never asked for.
+			#
+			# On Windows and X11 it is a no-op or close to it. The cost where it does
+			# apply is four times the fragments, which for these scenes is nothing
+			# next to looking blurry on the platform most likely to be used to look
+			# at them.
+			flags := visibility or WindowFlags->SDL_WINDOW_OPENGL or WindowFlags->SDL_WINDOW_ALLOW_HIGHDPI;
 			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, width, height, flags);
 			if(@window->IsNull()) {
 				@error := "cannot create a GL window: {$Core->GetError()}";
@@ -665,8 +801,12 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		The drawable width in PIXELS -- what GL->Viewport and GL->ReadPixel work in,
-		which on a high-DPI display is larger than the width that was asked for.
+		The drawable width in PIXELS -- what GL->Viewport and GL->ReadPixel work in.
+
+		On a high-DPI display this is LARGER than the width that was asked for,
+		typically double, because the window is requested in points and GL works in
+		pixels. That is not hypothetical: high-DPI is requested, so on a Retina Mac
+		a 960-point window reports 1920 here.
 		@return the width in pixels
 		~#
 		method : public : GetWidth() ~ Int {
@@ -1609,9 +1749,27 @@ bundle Game.OpenGL {
 		Draw the whole mesh. Bind a Shader first.
 		~#
 		method : public : Draw() ~ Nil {
+			Draw(DrawMode->GL_TRIANGLES);
+		}
+
+		#~
+		Draw with a different topology.
+
+		The same vertices and indices read as lines instead of triangles, which is
+		how a wireframe, a debug ray, a grid or a plotted curve gets drawn -- and
+		all of that was unreachable while the draw call hardcoded triangles.
+
+		Note the indices have to suit the mode: an index list built as triangles
+		(0,1,2, 2,3,0) drawn as GL_LINES pairs them up as (0,1), (2,2), (3,0),
+		which is a mesh's outline plus some degenerate segments rather than a tidy
+		wireframe. Build indices for the mode you mean.
+		@param mode a DrawMode
+		~#
+		method : public : Draw(mode : Int) ~ Nil {
 			if(@mesh <> 0) {
-				array_args := Base->New[1];
+				array_args := Base->New[2];
 				array_args[0] := IntRef->New(@mesh);
+				array_args[1] := IntRef->New(mode);
 				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_draw", array_args);
 			};
 		}
@@ -3395,6 +3553,387 @@ bundle Game.OpenGL {
 				@texture := Nil;
 			};
 		}
+	}
+
+	#~
+	Text and flat rectangles drawn on top of a 3D scene, positioned in pixels.
+
+	The gap this fills is not subtle: there was no way to draw text at all. A
+	frame-rate counter, a label on an object, a score, a "press escape to quit" --
+	none of it was reachable, in a 3D framework, from a language whose SDL2
+	bindings have had TrueType support all along.
+
+	```
+	overlay := Overlay->New(window);
+	font := Font->New("lazy.ttf", 18);
+	overlay->SetFont(font);
+
+	# per frame, after the scene
+	overlay->Begin();
+	overlay->Text("Hello", 12, 12);
+	overlay->End();
+	```
+
+	## Pixels, from the top-left
+
+	Positions are in DRAWABLE pixels with the origin at the TOP-LEFT, because that
+	is where everyone puts a HUD and it is how every 2D API in the world reads. GL
+	has its origin at the bottom-left, so the flip happens here rather than in
+	every caller's arithmetic.
+
+	On a high-DPI display the drawable is bigger than the window, so a HUD placed
+	at a fixed pixel offset sits closer to the corner than on a 1x screen. Use
+	GetScale to size text and margins if that matters.
+
+	## Why the text cache exists
+
+	Turning a string into a texture means rasterising glyphs with TTF, allocating
+	a surface, and uploading it to the GPU. Doing that per frame for a counter that
+	says "60 fps" is enough work to be visible in a profile, and the string only
+	changes when the number does. So a texture is kept per string and reused; a
+	frame that draws the same text as the last one uploads nothing.
+
+	The cache is bounded, because a caller drawing a timestamp every frame would
+	otherwise grow it without limit. When it fills, it is cleared rather than
+	evicted one entry at a time -- overlay text is a handful of strings in practice,
+	and a clear is one line rather than an LRU.
+	~#
+	class Overlay {
+		@window : GLWindow;
+		@font : Font;
+		@shader : Shader;
+		@quad : Mesh;
+		@projection : Float[];
+		@model : Float[];
+		@mvp : Float[];
+		@white : Texture2D;
+		@error : String;
+
+		# cached string -> texture, and its size in pixels
+		@cache : Hash<String, Texture2D>;
+		@sizes : Hash<String, IntHolder>;
+		@limit : Int;
+
+		@color : Color;
+
+		#~
+		An overlay sized to a window's drawable.
+		@param window the window it draws over
+		~#
+		New(window : GLWindow) {
+			@window := window;
+			@font := Nil;
+			@error := "";
+			@limit := 64;
+			@projection := Float->New[16];
+			@model := Float->New[16];
+			@mvp := Float->New[16];
+			@cache := Hash->New()<String, Texture2D>;
+			@sizes := Hash->New()<String, IntHolder>;
+			@color := Color->New(255, 255, 255, 255);
+
+			# Texture coordinates run 0..1 over a quad whose corners are 0..1 as
+			# well, so a model matrix that scales and translates in pixels lands it
+			# exactly where asked. Mesh->Quad is centred on the origin, which would
+			# put half of every label outside its box, so this one is built corner-up.
+			vertices := [0.0, 0.0, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0,
+			             1.0, 0.0, 0.0,  0.0, 0.0, 1.0,  1.0, 0.0,
+			             1.0, 1.0, 0.0,  0.0, 0.0, 1.0,  1.0, 1.0,
+			             0.0, 1.0, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0];
+			@quad := Mesh->New(vertices, [0, 1, 2, 2, 3, 0], Mesh->PositionNormalTexcoord());
+
+			@shader := Shader->Textured();
+			if(<>@shader->IsOk()) {
+				@error := @shader->GetLog();
+			};
+
+			@white := Texture2D->Solid(0xFFFFFFFF);
+
+			Resize();
+		}
+
+		#~
+		@return true when the overlay can draw
+		~#
+		method : public : IsOk() ~ Bool {
+			return @shader <> Nil & @shader->IsOk() & @quad <> Nil & @quad->IsOk();
+		}
+
+		#~
+		@return why it cannot draw, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Recompute the pixel projection. Call after the window's drawable changes
+		size; Begin does it anyway, so this is rarely needed directly.
+		~#
+		method : public : Resize() ~ Nil {
+			width := 1.0;
+			height := 1.0;
+			if(@window <> Nil) {
+				width := @window->GetWidth()->As(Float);
+				height := @window->GetHeight()->As(Float);
+			};
+
+			# Top-left origin: y runs from height down to 0 rather than 0 up to
+			# height, which is the whole of the flip.
+			Matrix4->OrthographicInto(@projection, 0.0, width, height, 0.0, -1.0, 1.0);
+		}
+
+		#~
+		The font used by Text. Not owned -- the caller loads it and frees it.
+		@param font a loaded Font
+		~#
+		method : public : SetFont(font : Font) ~ Nil {
+			if(font <> @font) {
+				# Cached textures were rasterised with the old font and would keep
+				# being reused at the old size.
+				ClearCache();
+				@font := font;
+			};
+		}
+
+		#~
+		The colour text is drawn in. Changing it invalidates the cache, since the
+		colour is baked into each rasterised texture.
+		@param r red, 0-255
+		@param g green, 0-255
+		@param b blue, 0-255
+		~#
+		method : public : SetColor(r : Int, g : Int, b : Int) ~ Nil {
+			ClearCache();
+			@color := Color->New(r, g, b, 255);
+		}
+
+		#~
+		Start drawing overlay content.
+
+		Turns depth testing off and alpha blending on, because a HUD belongs on top
+		of everything regardless of where it is in space, and glyph edges are
+		antialiased into their alpha channel. End puts both back.
+		~#
+		method : public : Begin() ~ Nil {
+			Resize();
+
+			if(@window <> Nil) {
+				@window->SetDepthTest(false);
+			};
+			GL->Enable(Capability->GL_BLEND);
+			GL->SetBlend(BlendFactor->GL_SRC_ALPHA, BlendFactor->GL_ONE_MINUS_SRC_ALPHA);
+			# Culling off: this quad is wound for the XY plane and a scene that
+			# enabled culling for its own geometry would otherwise drop it.
+			GL->Disable(Capability->GL_CULL_FACE);
+
+			@shader->Use();
+			@shader->SetInt("tex", 0);
+		}
+
+		#~
+		Finish drawing overlay content and restore the 3D state.
+		~#
+		method : public : End() ~ Nil {
+			GL->Disable(Capability->GL_BLEND);
+			if(@window <> Nil) {
+				@window->SetDepthTest(true);
+			};
+		}
+
+		#~
+		Draw a string with its top-left corner at (x, y) in pixels.
+		@param text what to draw
+		@param x pixels from the left
+		@param y pixels from the top
+		@return the width the text occupied, so the next one can follow it
+		~#
+		method : public : Text(text : String, x : Int, y : Int) ~ Int {
+			if(<>IsOk() | @font = Nil | text = Nil | text->Size() = 0) {
+				return 0;
+			};
+
+			texture := Rasterize(text);
+			if(texture = Nil) {
+				return 0;
+			};
+
+			size := @sizes->Find(text);
+			if(size = Nil) {
+				return 0;
+			};
+
+			width := size->GetWidth();
+			height := size->GetHeight();
+			DrawTextured(texture, x, y, width, height);
+
+			return width;
+		}
+
+		#~
+		How wide and tall a string would be, without drawing it. For centring or
+		right-aligning.
+		@param text the string to measure
+		@return its width in pixels, or 0 when there is no font
+		~#
+		method : public : MeasureWidth(text : String) ~ Int {
+			if(<>IsOk() | @font = Nil | text = Nil | text->Size() = 0) {
+				return 0;
+			};
+
+			if(Rasterize(text) = Nil) {
+				return 0;
+			};
+
+			size := @sizes->Find(text);
+			if(size = Nil) {
+				return 0;
+			};
+
+			return size->GetWidth();
+		}
+
+		#~
+		A filled rectangle -- a panel behind text, a health bar, a crosshair.
+
+		Uses the overlay's own one-pixel white texture, tinted by the shader, so it
+		costs no extra state change between this and a Text call.
+		@param x pixels from the left
+		@param y pixels from the top
+		@param width in pixels
+		@param height in pixels
+		~#
+		method : public : Rect(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+			if(<>IsOk() | @white = Nil | <>@white->IsOk()) {
+				return;
+			};
+
+			DrawTextured(@white, x, y, width, height);
+		}
+
+		method : DrawTextured(texture : Texture2D, x : Int, y : Int, width : Int, height : Int) ~ Nil {
+			# The quad's corners are 0..1, so scaling by the pixel size and
+			# translating to the pixel position is the whole transform -- and it is a
+			# translate-and-scale, so it needs no multiply.
+			Matrix4->TranslationScaleInto(@model, x->As(Float), y->As(Float), 0.0, width->As(Float), height->As(Float), 1.0);
+			Matrix4->MultiplyInto(@mvp, @projection, @model);
+
+			@shader->SetMatrix4("mvp", @mvp);
+			texture->Bind(0);
+			@quad->Draw();
+		}
+
+		#~
+		The string's texture, rasterising it only if it is not already cached.
+		~#
+		method : Rasterize(text : String) ~ Texture2D {
+			found := @cache->Find(text);
+			if(found <> Nil) {
+				return found;
+			};
+
+			if(@cache->Size() >= @limit) {
+				ClearCache();
+			};
+
+			# Blended rather than Solid: Solid gives hard-edged glyphs with no alpha
+			# ramp, which over a 3D scene looks like a screenshot of a different
+			# program.
+			surface := @font->RenderTextBlended(text, @color);
+			if(surface = Nil | surface->IsNull()) {
+				return Nil;
+			};
+
+			width := surface->GetW();
+			height := surface->GetH();
+			# NEAREST and no mipmaps: a HUD is drawn at exactly its own size, so
+			# filtering would only soften glyphs that are already antialiased.
+			texture := Texture2D->New(surface, TextureFilter->GL_NEAREST, TextureWrap->GL_CLAMP_TO_EDGE, false);
+			surface->Free();
+
+			if(<>texture->IsOk()) {
+				return Nil;
+			};
+
+			@cache->Insert(text, texture);
+			@sizes->Insert(text, IntHolder->New(width, height));
+
+			return texture;
+		}
+
+		#~
+		How much bigger the drawable is than the window, for sizing a HUD on a
+		high-DPI display.
+		@return 1.0 on an ordinary screen, 2.0 on a typical Retina one
+		~#
+		method : public : GetScale() ~ Float {
+			if(@window = Nil) {
+				return 1.0;
+			};
+
+			points := @window->GetWindow();
+			if(points = Nil | points->IsNull()) {
+				return 1.0;
+			};
+
+			w := IntRef->New();
+			h := IntRef->New();
+			points->GetSize(w, h);
+			if(w->Get() <= 0) {
+				return 1.0;
+			};
+
+			return @window->GetWidth()->As(Float) / w->Get()->As(Float);
+		}
+
+		#~
+		Drop every cached string texture.
+		~#
+		method : public : ClearCache() ~ Nil {
+			if(@cache <> Nil) {
+				keys := @cache->GetKeys()<String>;
+				each(i : keys) {
+					texture := @cache->Find(keys->Get(i));
+					if(texture <> Nil) {
+						texture->Free();
+					};
+				};
+				@cache->Empty();
+				@sizes->Empty();
+			};
+		}
+
+		#~
+		Release the overlay's own GL objects. Does NOT free the font -- that was
+		passed in and belongs to the caller.
+
+		Call it while the GL context is still current -- see the shutdown order on
+		the GL class.
+		~#
+		method : public : Free() ~ Nil {
+			ClearCache();
+
+			if(@white <> Nil) { @white->Free(); @white := Nil; };
+			if(@quad <> Nil) { @quad->Free(); @quad := Nil; };
+			if(@shader <> Nil) { @shader->Free(); @shader := Nil; };
+		}
+	}
+
+	#~
+	A width and a height, so the overlay's size cache can hold both against one
+	key. Objeck's Hash needs a class rather than a pair.
+	~#
+	class IntHolder {
+		@width : Int;
+		@height : Int;
+
+		New(width : Int, height : Int) {
+			@width := width;
+			@height := height;
+		}
+
+		method : public : GetWidth() ~ Int { return @width; }
+		method : public : GetHeight() ~ Int { return @height; }
 	}
 
 	#~

@@ -4922,6 +4922,44 @@ __declspec(dllexport)
   }
 
   //
+  // How a fragment's colour is combined with what is already there. GL 1.1, so
+  // linked rather than loaded.
+  //
+  // GL_BLEND on its own does nothing useful: the default factors are ONE and
+  // ZERO, which is exactly "replace", so enabling blending without setting these
+  // looks like it worked and changes nothing. That was the state of this
+  // binding -- GL_BLEND was in the Capability list with no way to configure it.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_blend_func(VMContext& context) {
+    glBlendFunc((GLenum)APITools_GetIntValue(context, 0), (GLenum)APITools_GetIntValue(context, 1));
+  }
+
+  //
+  // Which faces to cull, for a pass that wants the opposite of the usual.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_cull_face(VMContext& context) {
+    glCullFace((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+  //
+  // Whether depth is written. Turning it off while leaving the test on is how
+  // transparent geometry is drawn without occluding the transparent things
+  // behind it.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_depth_mask(VMContext& context) {
+    glDepthMask(APITools_GetIntValue(context, 0) != 0 ? GL_TRUE : GL_FALSE);
+  }
+
+  //
   // glGetError, drained in a loop by the Objeck side. GL accumulates errors in a
   // queue and only clears one per call, so a single check can hide others.
   //
@@ -5633,10 +5671,19 @@ extern "C" {
       return;
     }
 
+    // The topology was hardcoded to GL_TRIANGLES, which made lines, points and
+    // strips unreachable -- so a wireframe, a debug ray or a grid needed a
+    // separate path that did not exist. Slot 1 carries it; 0 means triangles, so
+    // an older caller passing nothing still gets what it used to.
+    GLenum mode = (GLenum)APITools_GetIntValue(context, 1);
+    if(mode == 0) {
+      mode = GL_TRIANGLES;
+    }
+
     ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
     if(mesh && mesh->vao) {
       objk_glBINDVERTEXARRAY(mesh->vao);
-      glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT, nullptr);
+      glDrawElements(mode, mesh->index_count, GL_UNSIGNED_INT, nullptr);
       objk_glBINDVERTEXARRAY(0);
     }
   }
