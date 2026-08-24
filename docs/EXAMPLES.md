@@ -317,6 +317,30 @@ edges->Save("edges.jpg");
 <a name="graphics"></a>
 ## Graphics & GC Visualization
 
+### 3D — walk through a lit, shadowed scene
+
+`gl_walkthrough.obs` is a first-person walk around a room built from boxes, with mouse look,
+sliding collision, one directional light and a shadow map. It uses `Game.OpenGL`, the 3D
+framework: OpenGL 3.3 core over SDL2, on Windows, Linux and macOS.
+
+```
+compile: obc -src gl_walkthrough.obs -lib sdl2,sdl_gl
+run:     obr gl_walkthrough        # WASD to move, mouse to look, escape to quit
+```
+
+Or let the runner pick the deploy tree, check it is not stale, and pass each demo the assets
+it needs:
+
+```
+./run_gl.sh gl_walkthrough        # Linux, macOS
+.\run_gl.cmd gl_walkthrough       # Windows
+```
+
+The other GL examples are `gl_clear` (the smallest thing that opens a window — 25 lines),
+`cube_gl` (one textured spinning cube), `gl_boing` (the Boing Ball in 3D, in a room, with a
+post-process pass) and `gl_model` (loads `gl_crystal.obj` and fits it to frame whatever scale
+it was authored at). `programs/deploy/3d_gl_24.obs` ships in the distribution.
+
 ### Boing Ball — live GC/CPU visualizer
 
 The Amiga 1984 Boing Ball recreated with SDL2 (`programs/examples/boing_ball.obs`): an
