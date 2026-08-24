@@ -5168,6 +5168,11 @@ struct ObjkRenderTarget {
   // depth sampled, colour never read -- so it gets the texture and the colour
   // buffer is not created.
   bool depth_only;
+  // A CUBE depth map: six square faces sharing one texture name, which is what a
+  // point light needs. A point light shines in every direction, so one flat map
+  // cannot hold its shadows -- the scene has to be rendered six times, once down
+  // each axis, and sampled by DIRECTION rather than by a projected coordinate.
+  bool cube;
 };
 
 // Objeck arrays arrive as a holder object whose field 0 is the array; the
@@ -6089,6 +6094,7 @@ extern "C" {
     target->width = width;
     target->height = height;
     target->depth_only = depth_only;
+    target->cube = false;
 
     glGenTextures(1, &target->texture);
     glBindTexture(GL_TEXTURE_2D, target->texture);
@@ -6157,6 +6163,160 @@ extern "C" {
     }
 
     APITools_SetIntValue(context, 0, (size_t)target);
+  }
+
+  //
+  // Creates a CUBE depth target: six square depth faces under one texture name.
+  //
+  // No new entry points -- glTexImage2D takes a cube face as its target and
+  // glFramebufferTexture2D takes one as its attachment, and both are already
+  // here. What it does need is the face enums, and GL_TEXTURE_WRAP_R, since a
+  // cube map is addressed in three dimensions.
+  //
+  // slot 0 = handle (0 on failure), 1 = face size, 2 receives a message on
+  // failure.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_create_cube(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetStringValue(context, 2, L"");
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("PointShadow: ") + OBJK_GL_NOT_LOADED);
+      APITools_SetStringValue(context, 2, BytesToUnicode(OBJK_GL_NOT_LOADED));
+      return;
+    }
+
+    const GLsizei size = (GLsizei)APITools_GetIntValue(context, 1);
+    if(size <= 0) {
+      APITools_SetStringValue(context, 2, BytesToUnicode("a cube shadow map needs a positive size"));
+      return;
+    }
+
+    GLint max_cube = 0;
+    glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &max_cube);
+    if(max_cube > 0 && size > max_cube) {
+      APITools_SetStringValue(context, 2, BytesToUnicode(
+        std::to_string(size) + " exceeds this driver's maximum cube map size of " +
+        std::to_string(max_cube)));
+      return;
+    }
+
+    while(glGetError() != GL_NO_ERROR) {
+    }
+
+    ObjkRenderTarget* target = new ObjkRenderTarget();
+    target->framebuffer = 0;
+    target->texture = 0;
+    target->depth = 0;
+    target->width = size;
+    target->height = size;
+    target->depth_only = true;
+    target->cube = true;
+
+    glGenTextures(1, &target->texture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, target->texture);
+    for(int face = 0; face < 6; ++face) {
+      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT24,
+                   size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // All three axes clamp. R as well as S and T, because a cube map is sampled
+    // with a direction and a lookup can land fractionally past a face edge --
+    // wrapping there samples the wrong face and puts a seam of wrong shadow along
+    // every cube edge.
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+    objk_glGENFRAMEBUFFERS(1, &target->framebuffer);
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
+    // Attach face 0 just to check completeness; each pass reattaches its own.
+    objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_X, target->texture, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+
+    const GLenum status = objk_glCHECKFRAMEBUFFERSTATUS(GL_FRAMEBUFFER);
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, 0);
+    glDrawBuffer(GL_BACK);
+    glReadBuffer(GL_BACK);
+
+    if(status != GL_FRAMEBUFFER_COMPLETE) {
+      objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
+      glDeleteTextures(1, &target->texture);
+      delete target;
+      APITools_SetStringValue(context, 2, BytesToUnicode(
+        "the cube framebuffer is incomplete (status 0x" + std::to_string(status) + ")"));
+      return;
+    }
+
+    const GLenum error = glGetError();
+    if(error != GL_NO_ERROR) {
+      objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
+      glDeleteTextures(1, &target->texture);
+      delete target;
+      APITools_SetStringValue(context, 2, BytesToUnicode(
+        "GL rejected the cube shadow map (error 0x" + std::to_string(error) + ")"));
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, (size_t)target);
+  }
+
+  //
+  // Points drawing at ONE face of a cube target. slot 0 = handle, 1 = face 0..5
+  // in GL's order: +X, -X, +Y, -Y, +Z, -Z.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_bind_face(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("PointShadow->BeginFace: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 0);
+    const int face = (int)APITools_GetIntValue(context, 1);
+    if(!target || !target->cube || face < 0 || face > 5) {
+      objk_gl_fail("PointShadow->BeginFace: not a cube target, or the face is out of range");
+      return;
+    }
+
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
+    objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, target->texture, 0);
+    glViewport(0, 0, target->width, target->height);
+  }
+
+  //
+  // Binds a cube target's texture for sampling. Separate from the 2D bind because
+  // the target enum differs and binding a cube map as GL_TEXTURE_2D leaves the
+  // sampler reading nothing.
+  //
+  // slot 0 = handle, 1 = texture unit.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_bind_cube(VMContext& context) {
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 0);
+    const GLint unit = (GLint)APITools_GetIntValue(context, 1);
+    if(!target || !target->cube) {
+      objk_gl_fail("PointShadow: not a cube target");
+      return;
+    }
+
+    objk_glACTIVETEXTURE(GL_TEXTURE0 + unit);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, target->texture);
   }
 
   //

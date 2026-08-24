@@ -29,7 +29,8 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * RenderTarget -- draw into a texture instead of the window, then sample it.
 * Material    -- a surface: its texture, tint and shininess.
 * Frustum     -- the six planes of a view, for skipping what is off screen.
-* ShadowMap   -- shadows from one directional light, depth pass and all.
+* ShadowMap   -- shadows from a directional or spot light, depth pass and all.
+* PointShadow -- shadows from a point light, in every direction, via a cube map.
 * Overlay     -- text and rectangles over the scene, positioned in pixels.
 * Transform   -- position, rotation and scale, with a cached matrix.
 * Box, Scene  -- a world of boxes: draws itself, and answers collision.
@@ -1546,6 +1547,66 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		The depth pass for a point light: writes DISTANCE from the light, in world
+		units, rather than the usual projected depth.
+
+		This is the whole trick that makes cube shadows tractable. A cube map is
+		sampled by direction, and the six faces do not share a projection -- so a
+		comparison in projected depth would need to know which face a lookup landed
+		on and undo that face's projection. Writing `length(world - light) / range`
+		instead makes every face agree on what a stored value means, and the
+		comparison becomes a distance against a distance.
+
+		It also disposes of the bias problem that spot shadows have. Projected depth
+		is non-linear, so a constant bias means different things at different
+		distances; a world-unit distance is linear everywhere, so one bias in world
+		units is correct across the whole range.
+
+		Uniforms: "mvp", "model", "light_position" and "light_range".
+		@return the program; check IsOk()
+		~#
+		function : DepthCube() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("uniform mat4 mvp;");
+			vertex->Add("uniform mat4 model;");
+			vertex->Add("out vec3 world_position;");
+			vertex->Add("void main() {");
+			vertex->Add("  world_position = (model * vec4(in_position, 1.0)).xyz;");
+			vertex->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec3 world_position;");
+			fragment->Add("uniform vec3 light_position;");
+			fragment->Add("uniform float light_range;");
+			fragment->Add("void main() {");
+			# Normalised to 0..1 because that is what a depth buffer stores. The
+			# receiving shader multiplies by the same range to get back.
+			fragment->Add("  float range = max(light_range, 0.0001);");
+			fragment->Add("  gl_FragDepth = clamp(length(world_position - light_position) / range, 0.0, 1.0);");
+			fragment->Add("}");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
+		#~
+		Textured and lit, with shadows from a POINT light's cube map.
+
+		Adds "shadow_cube", "point_light_position", "point_light_range" and
+		"point_bias" to LitTextured's uniforms, all written by PointShadow->ApplyTo.
+
+		Note this is a separate program from LitTexturedShadowed rather than an
+		option on it: a samplerCube and a sampler2D are different types, and a
+		shader carrying both would pay for a cube map lookup in scenes that have no
+		point light. Pick the one the scene needs.
+		@return the program; check IsOk()
+		~#
+		function : LitTexturedPointShadowed() ~ Shader {
+			return Shader->New(LitVertexSource(false), LitFragmentSource(true, false, true));
+		}
+
+		#~
 		Writes depth and nothing else: the shadow map's own pass.
 
 		No colour output at all, because there is no colour buffer attached to a
@@ -1628,10 +1689,14 @@ bundle Game.OpenGL {
 		}
 
 		function : LitFragmentSource(textured : Bool) ~ String {
-			return LitFragmentSource(textured, false);
+			return LitFragmentSource(textured, false, false);
 		}
 
 		function : LitFragmentSource(textured : Bool, shadowed : Bool) ~ String {
+			return LitFragmentSource(textured, shadowed, false);
+		}
+
+		function : LitFragmentSource(textured : Bool, shadowed : Bool, point_shadowed : Bool) ~ String {
 			source := ShaderSource->New();
 			source->Add("in vec3 normal;");
 			source->Add("in vec2 texcoord;");
@@ -1642,6 +1707,12 @@ bundle Game.OpenGL {
 				source->Add("uniform sampler2D shadow_map;");
 				source->Add("uniform float shadow_bias;");
 				source->Add("uniform float shadow_texel;");
+			};
+			if(point_shadowed) {
+				source->Add("uniform samplerCube shadow_cube;");
+				source->Add("uniform vec3 point_light_position;");
+				source->Add("uniform float point_light_range;");
+				source->Add("uniform float point_bias;");
 			};
 			if(textured) {
 				source->Add("uniform sampler2D tex;");
@@ -1684,6 +1755,24 @@ bundle Game.OpenGL {
 			source->Add("uniform float shininess;");
 			source->Add("uniform float specular_strength;");
 			source->Add("out vec4 frag_color;");
+
+			if(point_shadowed) {
+				source->Add("float point_shadow_factor() {");
+				# Sampled by DIRECTION, which is what a cube map takes. No projection,
+				# no divide by w, no bounds test -- a direction always hits exactly one
+				# face, so the whole out-of-map problem a flat shadow map has simply
+				# does not arise.
+				source->Add("  vec3 to_fragment = world_position - point_light_position;");
+				source->Add("  float to_distance = length(to_fragment);");
+				source->Add("  float range = max(point_light_range, 0.0001);");
+				# Past the light's range nothing is lit, so nothing needs shadowing.
+				source->Add("  if(to_distance > range) { return 1.0; }");
+				source->Add("  float nearest = texture(shadow_cube, to_fragment).r * range;");
+				# Both sides are world-unit distances, so the bias is in world units
+				# too and means the same thing everywhere.
+				source->Add("  return (to_distance - point_bias > nearest) ? 0.0 : 1.0;");
+				source->Add("}");
+			};
 
 			if(shadowed) {
 				source->Add("float shadow_factor() {");
@@ -1730,13 +1819,13 @@ bundle Game.OpenGL {
 			# Point and spot: light_vector is a POSITION, so the direction and the
 			# distance both come from the fragment.
 			source->Add("      vec3 offset = light_vector[i] - world_position;");
-			source->Add("      float distance = length(offset);");
-			source->Add("      to_light = distance > 0.0 ? offset / distance : vec3(0.0, 1.0, 0.0);");
+			source->Add("      float lit_distance = length(offset);");
+			source->Add("      to_light = lit_distance > 0.0 ? offset / lit_distance : vec3(0.0, 1.0, 0.0);");
 			source->Add("      float range = max(light_shape[i].y, 0.0001);");
 			# Smooth to zero AT the range rather than an inverse-square that never
 			# quite reaches it: a light with a stated range should stop there, or
 			# every light in the scene contributes to every fragment forever.
-			source->Add("      fade = clamp(1.0 - (distance * distance) / (range * range), 0.0, 1.0);");
+			source->Add("      fade = clamp(1.0 - (lit_distance * lit_distance) / (range * range), 0.0, 1.0);");
 			source->Add("      fade = fade * fade;");
 			source->Add("      if(kind > 1.5) {");
 			# Spot: fall off between the inner and outer cone angles. Comparing
@@ -1755,6 +1844,14 @@ bundle Game.OpenGL {
 				# Only light 0 casts, because there is one shadow map. Shadowing every
 				# light with one map would put light 0's shadows under all of them.
 				source->Add("    if(i == 0) { diffuse = diffuse * shadow_factor(); }");
+			};
+			if(point_shadowed) {
+				# The point light's own shadow applies to whichever light sits at the
+				# position the cube was rendered from. Comparing positions rather than
+				# indices means the caster does not have to be light 0.
+				source->Add("    if(kind > 0.5 && length(light_vector[i] - point_light_position) < 0.001) {");
+				source->Add("      diffuse = diffuse * point_shadow_factor();");
+				source->Add("    }");
 			};
 			# Blinn-Phong: the half-vector is cheaper than a reflect() and behaves
 			# better at grazing angles.
@@ -4119,6 +4216,7 @@ bundle Game.OpenGL {
 		@height : Int;
 		@error : String;
 		@texture : Texture2D;
+		@cube : Bool;
 
 		#~
 		A target of the given size, smoothly sampled.
@@ -4139,6 +4237,90 @@ bundle Game.OpenGL {
 		~#
 		New(width : Int, height : Int, filter : Int) {
 			Create(width, height, filter, false);
+		}
+
+		#~
+		A CUBE depth target: six square depth faces under one texture name.
+
+		What a point light needs. A point light shines in every direction, so no
+		single flat map can hold its shadows -- the scene is rendered six times, once
+		down each axis, and sampled by DIRECTION rather than by a projected
+		coordinate. PointShadow wraps all of that; reach for this directly only for
+		something PointShadow does not cover.
+		@param size the width and height of each face
+		@return the target; check IsOk()
+		~#
+		function : DepthCube(size : Int) ~ RenderTarget {
+			target := RenderTarget->New(0, 0);
+			target->CreateCube(size);
+
+			return target;
+		}
+
+		method : CreateCube(size : Int) ~ Nil {
+			@target := 0;
+			@width := size;
+			@height := size;
+			@error := "";
+			@texture := Nil;
+			@cube := true;
+
+			if(size <= 0) {
+				@error := "a cube shadow map needs a positive size";
+				return;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(size);
+			array_args[2] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_create_cube", array_args);
+
+			value := array_args[0]->As(IntRef);
+			@target := value->Get();
+			@error := array_args[2]->As(String);
+		}
+
+		#~
+		@return true when this target is a cube map rather than a flat one
+		~#
+		method : public : IsCube() ~ Bool {
+			return @cube;
+		}
+
+		#~
+		Draw into ONE face of a cube target, and set the viewport to match.
+		@param face 0..5, in GL's order: +X, -X, +Y, -Y, +Z, -Z
+		~#
+		method : public : BindFace(face : Int) ~ Nil {
+			if(@target = 0 | <>@cube) {
+				return;
+			};
+
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New(@target);
+			array_args[1] := IntRef->New(face);
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_bind_face", array_args);
+		}
+
+		#~
+		Bind a cube target's texture for sampling.
+
+		Separate from Texture2D->Bind because the target enum differs: a cube map
+		bound as GL_TEXTURE_2D leaves the sampler reading nothing at all, with no
+		error.
+		@param unit the texture unit
+		~#
+		method : public : BindAsCube(unit : Int) ~ Nil {
+			if(@target = 0 | <>@cube) {
+				return;
+			};
+
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New(@target);
+			array_args[1] := IntRef->New(unit);
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_bind_cube", array_args);
 		}
 
 		#~
@@ -4165,6 +4347,7 @@ bundle Game.OpenGL {
 			@height := height;
 			@error := "";
 			@texture := Nil;
+			@cube := false;
 
 			if(width <= 0 | height <= 0) {
 				return;
@@ -4982,6 +5165,340 @@ bundle Game.OpenGL {
 			};
 
 			return true;
+		}
+	}
+
+	#~
+	Shadows from a point light, in every direction at once.
+
+	A point light shines everywhere, so no single flat map can hold its shadows.
+	The scene is rendered SIX times, once down each axis, into the six faces of a
+	cube map -- and then sampled by direction rather than by a projected
+	coordinate.
+
+	```
+	shadows := PointShadow->New(512);
+	shadows->SetLight(lamp);
+
+	# once a frame
+	shadows->Capture(scene);
+
+	# then the visible pass
+	lit->Use();
+	rig->ApplyTo(lit);
+	shadows->ApplyTo(lit);
+	```
+
+	Use it with Shader->LitTexturedPointShadowed.
+
+	## What it costs
+
+	Six passes over the casters, against one for a directional or spot light. That
+	is the price of omnidirectional shadows and there is no way around it at this
+	level -- the cheaper techniques (rendering all six faces in one pass with a
+	geometry shader, or dual-paraboloid maps) are a different design rather than an
+	optimisation of this one.
+
+	So: use a spot where a spot will do. A lamp in a room a viewer only sees one
+	side of does not need six faces.
+
+	## Distance, not depth
+
+	The faces store the DISTANCE from the light in world units, scaled by the
+	light's range -- not the usual projected depth. That is the trick that makes
+	this tractable: the six faces do not share a projection, so a comparison in
+	projected depth would have to know which face a lookup landed on and undo that
+	face's projection. A distance means the same thing on every face.
+
+	It also disposes of the bias problem spot shadows have. Projected depth is
+	non-linear so a constant bias means different things at different distances; a
+	world-unit distance is linear, so one bias is right everywhere.
+	~#
+	class PointShadow {
+		@target : RenderTarget;
+		@depth_shader : Shader;
+		@size : Int;
+		@position : Vector3;
+		@range : Float;
+		@bias : Float;
+		@unit : Int;
+		@error : String;
+
+		@projection : Float[];
+		@view : Float[];
+		@view_projection : Float[];
+		@mvp : Float[];
+
+		#~
+		A cube shadow map.
+		@param size the width and height of EACH of the six faces; 512 is a
+		reasonable start, and remember there are six of them
+		~#
+		New(size : Int) {
+			@size := size;
+			@position := Vector3->New(0.0, 0.0, 0.0);
+			@range := 20.0;
+			# In world units, because that is what the faces store. Unlike the
+			# projected-depth maps, this number means the same thing everywhere.
+			@bias := 0.06;
+			# Unit 2: unit 0 is the ordinary texture and unit 1 is where ShadowMap
+			# puts its flat map, so a scene with both kinds of shadow does not have
+			# them fighting over a unit.
+			@unit := 2;
+			@error := "";
+
+			@projection := Float->New[16];
+			@view := Float->New[16];
+			@view_projection := Float->New[16];
+			@mvp := Float->New[16];
+
+			@target := RenderTarget->DepthCube(size);
+			if(<>@target->IsOk()) {
+				@error := @target->GetError();
+			};
+
+			@depth_shader := Shader->DepthCube();
+			if(@error->Size() = 0 & <>@depth_shader->IsOk()) {
+				@error := @depth_shader->GetLog();
+			};
+		}
+
+		#~
+		@return true when the cube map and its shader are both usable
+		~#
+		method : public : IsOk() ~ Bool {
+			return @target <> Nil & @target->IsOk() & @depth_shader <> Nil & @depth_shader->IsOk();
+		}
+
+		#~
+		@return why it could not be set up, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Take the position and range from a point light.
+
+		Worth doing rather than setting them twice: a cube rendered from somewhere
+		other than the light puts every shadow in the wrong place, and the receiving
+		shader matches the cube to a light BY POSITION, so a mismatch means the
+		shadow is silently applied to no light at all.
+		@param light a point light
+		~#
+		method : public : SetLight(light : Light) ~ Nil {
+			if(light = Nil) {
+				return;
+			};
+
+			@position := light->GetPosition();
+			@range := light->GetRange();
+		}
+
+		#~
+		@param position where the light is
+		@param range how far it reaches
+		~#
+		method : public : SetLightAt(position : Vector3, range : Float) ~ Nil {
+			if(position <> Nil) {
+				@position := position;
+			};
+			if(range > 0.0) {
+				@range := range;
+			};
+		}
+
+		#~
+		The depth margin, in WORLD UNITS -- unlike ShadowMap's, which is in
+		projected depth. Default 0.06.
+		@param bias the margin
+		~#
+		method : public : SetBias(bias : Float) ~ Nil {
+			@bias := bias;
+		}
+
+		#~
+		Which texture unit the cube is bound to. Default 2, leaving 0 for the
+		ordinary texture and 1 for a flat ShadowMap.
+		@param unit the texture unit
+		~#
+		method : public : SetTextureUnit(unit : Int) ~ Nil {
+			@unit := unit;
+		}
+
+		#~
+		Start drawing into ONE face.
+
+		Faces run 0..5 in GL's order: +X, -X, +Y, -Y, +Z, -Z. Everything drawn
+		until the next BeginFace or End goes into that face.
+
+		Call Capture instead unless the casters are not in a Scene.
+		@param face 0..5
+		~#
+		method : public : BeginFace(face : Int) ~ Nil {
+			if(<>IsOk() | face < 0 | face > 5) {
+				return;
+			};
+
+			@target->BindFace(face);
+			GL->Clear(ClearBit->GL_DEPTH_BUFFER_BIT);
+
+			BuildFace(face);
+			@depth_shader->Use();
+			@depth_shader->SetVec3("light_position", @position);
+			@depth_shader->SetFloat("light_range", @range);
+		}
+
+		#~
+		Draw one caster into the face that BeginFace selected.
+		@param mesh its geometry
+		@param transform where it is
+		~#
+		method : public : DrawCaster(mesh : Mesh, transform : Transform) ~ Nil {
+			if(<>IsOk() | mesh = Nil | transform = Nil) {
+				return;
+			};
+
+			model := transform->GetMatrix();
+			Matrix4->MultiplyInto(@mvp, @view_projection, model);
+			@depth_shader->SetMatrix4("mvp", @mvp);
+			@depth_shader->SetMatrix4("model", model);
+			mesh->Draw();
+		}
+
+		#~
+		Draw a caster with a model matrix rather than a Transform.
+		@param mesh its geometry
+		@param model its model matrix
+		~#
+		method : public : DrawCasterMatrix(mesh : Mesh, model : Float[]) ~ Nil {
+			if(<>IsOk() | mesh = Nil | model = Nil) {
+				return;
+			};
+
+			Matrix4->MultiplyInto(@mvp, @view_projection, model);
+			@depth_shader->SetMatrix4("mvp", @mvp);
+			@depth_shader->SetMatrix4("model", model);
+			mesh->Draw();
+		}
+
+		#~
+		Render a whole Scene into all six faces, then go back to the window.
+
+		The one call that does the entire depth stage.
+		@param scene the casters
+		@param window the window to return to
+		~#
+		method : public : Capture(scene : Scene, window : GLWindow) ~ Nil {
+			if(<>IsOk() | scene = Nil) {
+				return;
+			};
+
+			for(face := 0; face < 6; face += 1;) {
+				BeginFace(face);
+				scene->DrawInto(@depth_shader, @view_projection);
+			};
+
+			End(window);
+		}
+
+		#~
+		Finish the depth stage and go back to drawing at the window.
+		@param window the window to return to
+		~#
+		method : public : End(window : GLWindow) ~ Nil {
+			if(@target <> Nil) {
+				@target->Unbind(window);
+			};
+		}
+
+		#~
+		Bind the cube and tell a shader how to read it.
+
+		Writes "point_light_position", "point_light_range", "point_bias" and
+		"shadow_cube", skipping any the shader does not declare.
+		@param shader the program about to draw
+		~#
+		method : public : ApplyTo(shader : Shader) ~ Nil {
+			if(<>IsOk() | shader = Nil | <>shader->IsOk()) {
+				return;
+			};
+
+			if(shader->HasUniform("point_light_position")) {
+				shader->SetVec3("point_light_position", @position);
+			};
+			if(shader->HasUniform("point_light_range")) {
+				shader->SetFloat("point_light_range", @range);
+			};
+			if(shader->HasUniform("point_bias")) {
+				shader->SetFloat("point_bias", @bias);
+			};
+			if(shader->HasUniform("shadow_cube")) {
+				shader->SetInt("shadow_cube", @unit);
+				@target->BindAsCube(@unit);
+			};
+		}
+
+		#~
+		Bind the cube for sampling on a chosen unit, without touching a shader.
+
+		For inspecting what the six faces hold -- which is the only way to tell a
+		rotated face from a correct one, since a symmetric scene looks the same
+		either way on screen.
+		@param unit the texture unit
+		~#
+		method : public : BindCubeTo(unit : Int) ~ Nil {
+			if(@target <> Nil) {
+				@target->BindAsCube(unit);
+			};
+		}
+
+		#~
+		The six views from the light, one per face.
+
+		The up vectors are not a free choice: GL specifies how each cube face is
+		oriented, and a face rendered with a different up is stored rotated. The
+		lookup would then read the right face and the wrong part of it -- shadows
+		that are present, plausible, and in the wrong place on two faces out of six.
+		~#
+		method : BuildFace(face : Int) ~ Nil {
+			# +X, -X, +Y, -Y, +Z, -Z, and the up vector GL expects for each.
+			looks := [1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  0.0, 1.0, 0.0,
+			          0.0, -1.0, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0, -1.0];
+			ups := [0.0, -1.0, 0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 1.0,
+			        0.0, 0.0, -1.0,  0.0, -1.0, 0.0,  0.0, -1.0, 0.0];
+
+			at := face * 3;
+			target := Vector3->New(@position->GetX() + looks[at], @position->GetY() + looks[at + 1], @position->GetZ() + looks[at + 2]);
+			up := Vector3->New(ups[at], ups[at + 1], ups[at + 2]);
+
+			# Exactly 90 degrees, and exactly square: six of those tile the whole
+			# sphere of directions with no gap and no overlap. Any other angle leaves
+			# seams or wastes resolution.
+			near := @range * 0.01;
+			if(near < 0.05) {
+				near := 0.05;
+			};
+			Matrix4->PerspectiveInto(@projection, Float->Pi() / 2.0, 1.0, near, @range);
+			Matrix4->LookAtInto(@view, @position, target, up);
+			Matrix4->MultiplyInto(@view_projection, @projection, @view);
+		}
+
+		#~
+		Release the cube map and its shader.
+
+		Call it while the GL context is still current -- see the shutdown order on
+		the GL class.
+		~#
+		method : public : Free() ~ Nil {
+			if(@depth_shader <> Nil) {
+				@depth_shader->Free();
+				@depth_shader := Nil;
+			};
+			if(@target <> Nil) {
+				@target->Free();
+				@target := Nil;
+			};
 		}
 	}
 

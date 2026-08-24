@@ -87,6 +87,7 @@ class GlContextTest {
 		CheckMaterials();
 		CheckShadows();
 		CheckSpotShadows();
+		CheckPointShadows();
 		CheckOverlay();
 		CheckInstancing();
 		CheckObjLoading();
@@ -1715,6 +1716,242 @@ class GlContextTest {
 		floor_mesh->Free();
 		shadowed->Free();
 		shadows->Free();
+	}
+
+	#~
+	A point light casts shadows in EVERY direction.
+
+	That is the whole claim, and it is the one a careless fixture misses. A cube
+	map has six faces rendered by six separate view matrices, and getting one of
+	them wrong -- a swapped axis, an up vector that does not match GL's ordering --
+	produces shadows that are perfectly correct in the directions you happened to
+	look and absent or misplaced in the others. Checking one direction proves
+	almost nothing.
+
+	So: a light at the origin, six walls around it, and a caster between the light
+	and each wall in turn. Every wall must show a dark patch where its caster
+	blocks the light, and a lit region beside it. Six directions, six pairs of
+	readings.
+
+	The walls are drawn one at a time facing the camera, rather than building a
+	room and flying around it -- the point is to exercise the six CUBE faces, not
+	the camera, and moving the caster is enough to do that.
+	~#
+	method : CheckPointShadows() ~ Nil {
+		shadows := PointShadow->New(256);
+		if(<>Check("a cube shadow map is created", shadows->IsOk())) {
+			error := shadows->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		lit := Shader->LitTexturedPointShadowed();
+		if(<>Check("Shader->LitTexturedPointShadowed compiles", lit->IsOk())) {
+			log := lit->GetLog();
+			"  log: {$log}"->PrintLine();
+			shadows->Free();
+			return;
+		};
+
+		depth_only := Shader->DepthCube();
+		Check("Shader->DepthCube compiles", depth_only->IsOk());
+		depth_only->Free();
+
+		wall := Mesh->Cube();
+		caster := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("geometry for the cube shadow", wall->IsOk() & caster->IsOk() & white->IsOk())) {
+			lit->Free();
+			shadows->Free();
+			return;
+		};
+
+		lamp := Light->Point(Vector3->New(0.0, 0.0, 0.0), 30.0);
+		# Deliberately DIM. At full brightness a wall four units from the light
+		# reads 255 whether or not it is shadowed, and both samples come back
+		# saturated and identical -- which is how the first version of this failed.
+		lamp->SetColor(0.5, 0.5, 0.5);
+		shadows->SetLight(lamp);
+
+		rig := LightRig->New();
+		rig->SetAmbient(0.05, 0.05, 0.05);
+		rig->Add(lamp);
+
+		# The six axes, and for each one a sideways offset to place the caster off
+		# to one side -- so the wall has both a shadowed part and a lit part.
+		axes := [1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  0.0, 1.0, 0.0,
+		         0.0, -1.0, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0, -1.0];
+		names := ["+X", "-X", "+Y", "-Y", "+Z", "-Z"];
+
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+		all_shadowed := true;
+		all_lit := true;
+
+		for(axis := 0; axis < 6; axis += 1;) {
+			at := axis * 3;
+			ax := axes[at]; ay := axes[at + 1]; az := axes[at + 2];
+
+			# A big cube 10 units out, so its near face sits at 4 and acts as a wall.
+			# At 8 with the same scale it spanned 2..14 and SWALLOWED the caster,
+			# which is why nothing was shadowed the first time this ran.
+			wall_at := Transform->New();
+			wall_at->SetPosition(ax * 10.0, ay * 10.0, az * 10.0);
+			wall_at->SetScale(6.0, 6.0, 6.0);
+
+			# The caster between the light and that face, small enough that its
+			# shadow covers the middle of the wall and leaves the sides lit.
+			caster_at := Transform->New();
+			caster_at->SetPosition(ax * 2.0, ay * 2.0, az * 2.0);
+			caster_at->SetScale(0.5);
+
+			# --- the six-face depth pass ---
+			for(face := 0; face < 6; face += 1;) {
+				shadows->BeginFace(face);
+				shadows->DrawCaster(caster, caster_at);
+				shadows->DrawCaster(wall, wall_at);
+			};
+			shadows->End(@gl);
+
+			# --- look down this axis at the wall ---
+			# The eye sits between the light and the wall, off to one side so both
+			# the shadow and lit floor are in frame.
+			eye_position := Vector3->New(ax * 0.5, ay * 0.5, az * 0.5);
+			eye := Camera->New(eye_position);
+			eye->LookAtPoint(Vector3->New(ax * 10.0, ay * 10.0, az * 10.0));
+			view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(70.0, @gl->GetAspect()), eye->GetViewMatrix());
+
+			GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			lit->Use();
+			rig->ApplyTo(lit);
+			shadows->ApplyTo(lit);
+			lit->SetInt("tex", 0);
+			white->Bind(0);
+			lit->SetMatrix4("mvp", Matrix4->Multiply(view_projection, wall_at->GetMatrix()));
+			lit->SetMatrix4("model", wall_at->GetMatrix());
+			wall->Draw();
+
+			# Straight ahead is behind the caster; well off to the side is not.
+			behind := (GL->ReadPixel(mid_x, mid_y) and 0x0000FF00) / 0x100;
+			beside := (GL->ReadPixel((@pixel_w * 88) / 100, mid_y) and 0x0000FF00) / 0x100;
+			name := names[axis];
+			"  face {$name}: behind the caster={$behind} beside it={$beside}"->PrintLine();
+
+			if(beside < 40) {
+				all_lit := false;
+			};
+			if(behind > beside - 25) {
+				all_shadowed := false;
+			};
+		};
+
+		Check("the point light reaches all six directions", all_lit);
+		# One direction working proves nothing about a cube map: five of the six
+		# faces could be wrong and a single-direction check would pass.
+		Check("and casts a shadow in all six", all_shadowed);
+
+		# --- and the faces are ORIENTED correctly, which the above cannot see ---
+		# The check above uses a caster centred on each axis, so its shadow is
+		# symmetric about that axis -- and a face stored rotated 180 degrees maps a
+		# symmetric shadow onto itself. Verified by flipping one face's up vector and
+		# watching all six readings stay identical.
+		#
+		# So this reads the cube's CONTENTS by direction instead of reading the
+		# screen. One caster placed OFF the axis: a direction pointing at it must
+		# come back near, and the mirrored direction must come back at the cleared
+		# distance. A rotated face swaps those two.
+		CheckCubeOrientation(shadows, caster, white);
+
+		Check("no GL errors from the cube shadow", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		caster->Free();
+		wall->Free();
+		lit->Free();
+		shadows->Free();
+		shadows->Free();
+		Check("PointShadow->Free is idempotent", true);
+	}
+
+	#~
+	The six cube faces are stored the way up GL specifies.
+
+	Reads the cube map's contents by DIRECTION rather than looking at the screen,
+	because the screen test cannot see a rotated face: its caster sits on the axis
+	so the shadow is symmetric, and a 180-degree rotation maps a symmetric shadow
+	onto itself. Confirmed by flipping one face's up vector -- all six screen
+	readings stayed identical.
+
+	One caster, placed OFF the axis. A direction pointing at it must report a near
+	distance; the mirrored direction must report the cleared value of 1.0. A face
+	stored rotated swaps those two, which is exactly the failure GL's face
+	orientation rules exist to prevent.
+	~#
+	method : CheckCubeOrientation(shadows : PointShadow, caster : Mesh, white : Texture2D) ~ Nil {
+		# A shader that samples the cube along a direction the caller sets, and
+		# writes what it found. No geometry involvement at all beyond a quad.
+		vertex := ShaderSource->New();
+		vertex->Add("layout (location = 0) in vec3 in_position;");
+		vertex->Add("void main() { gl_Position = vec4(in_position, 1.0); }");
+
+		fragment := ShaderSource->New();
+		fragment->Add("uniform samplerCube shadow_cube;");
+		fragment->Add("uniform vec3 probe;");
+		fragment->Add("out vec4 frag_color;");
+		fragment->Add("void main() {");
+		fragment->Add("  float d = texture(shadow_cube, probe).r;");
+		fragment->Add("  frag_color = vec4(d, d, d, 1.0);");
+		fragment->Add("}");
+
+		reader := Shader->New(vertex->Build(), fragment->Build());
+		screen := Mesh->Quad(1.0);
+		if(<>Check("a cube reader for the orientation check", reader->IsOk() & screen->IsOk())) {
+			return;
+		};
+
+		# Off the +Y axis, displaced in +Z. Nothing else in the map, so everywhere
+		# the caster is not reads the cleared 1.0.
+		off_axis := Transform->New();
+		off_axis->SetPosition(0.0, 3.0, 1.2);
+		off_axis->SetScale(0.6);
+
+		for(face := 0; face < 6; face += 1;) {
+			shadows->BeginFace(face);
+			shadows->DrawCaster(caster, off_axis);
+		};
+		shadows->End(@gl);
+
+		toward := Probe(reader, screen, shadows, 0.0, 1.0, 0.4);
+		mirrored := Probe(reader, screen, shadows, 0.0, 1.0, -0.4);
+		sideways := Probe(reader, screen, shadows, 1.0, 0.0, 0.0);
+		"  cube by direction: toward the caster={$toward} mirrored={$mirrored} sideways={$sideways}"->PrintLine();
+
+		# The caster is about 3 units away and the range is 30, so a hit reads
+		# roughly 2.5/30 = 0.08 -> about 21 of 255. Empty reads 255.
+		Check("a direction at the caster finds it", toward < 120);
+		# THE assertion: a face rotated 180 degrees puts the caster here instead.
+		Check("the mirrored direction is empty, so the face is not rotated", mirrored > 200);
+		Check("and a direction with nothing in it is empty too", sideways > 200);
+
+		screen->Free();
+		reader->Free();
+	}
+
+	#~
+	Sample the cube along one direction and return the stored value, 0..255.
+	~#
+	method : Probe(reader : Shader, screen : Mesh, shadows : PointShadow, x : Float, y : Float, z : Float) ~ Int {
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		reader->Use();
+		reader->SetVec3("probe", x, y, z);
+		reader->SetInt("shadow_cube", 4);
+		shadows->BindCubeTo(4);
+		screen->Draw();
+
+		return GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x000000FF;
 	}
 
 	#~
