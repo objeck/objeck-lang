@@ -40,6 +40,31 @@ echo "Install path: $INSTALL_PREFIX"
 # Stage files into the install hierarchy
 # ============================================
 
+# Sign the tree BEFORE staging. Apple will not notarize a package whose
+# executables are ad-hoc signed, lack hardened runtime, or lack a secure
+# timestamp -- which is why every release so far came back Invalid while the log
+# claimed success. Nothing else in the pipeline signs these binaries: the
+# workflow imports a Developer ID Application certificate and never calls
+# codesign with it, and deploy_macos_arm64.sh falls back to ad-hoc because the
+# Xcode projects ask for a "Mac Development" identity the CI keychain has no
+# reason to hold.
+SIGN_TREE="$(cd "$(dirname "$0")/../.." && pwd)/tools/cicd/sign_macos_tree.sh"
+if [ -x "$SIGN_TREE" ]; then
+  if [ -n "$SIGN_IDENTITY" ]; then
+    # A real signed release: an unsignable tree must stop the build, not sail on
+    # to produce a package that cannot be notarized.
+    "$SIGN_TREE" "$DEPLOY_DIR" || {
+      echo "Error: could not sign the deploy tree; the .pkg could not be notarized." >&2
+      exit 1
+    }
+  else
+    # Local unsigned build -- no Developer ID anywhere, and that is fine.
+    SKIP_OK=1 "$SIGN_TREE" "$DEPLOY_DIR" || true
+  fi
+else
+  echo "Warning: $SIGN_TREE not found - binaries will not be signed"
+fi
+
 echo "Staging files..."
 mkdir -p "$STAGING_DIR$INSTALL_PREFIX"
 cp -R "$DEPLOY_DIR"/* "$STAGING_DIR$INSTALL_PREFIX/"
@@ -191,15 +216,48 @@ fi
 
 if [ "$NOTARIZE" = "notarize" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_APP_PASSWORD" ]; then
   echo "Submitting for notarization..."
-  xcrun notarytool submit "$OUTPUT_DIR/$PKG_NAME" \
+  # `notarytool submit --wait` exits 0 even when the verdict is Invalid, so the
+  # exit code cannot be trusted and `set -e` never fires on a rejection. Read the
+  # verdict itself. v2026.8.3 shipped unnotarized precisely because this was not
+  # checked: status was Invalid, stapler then failed with "Record not found"
+  # (there is no ticket for a rejected submission), the || branch blamed Apple
+  # for needing more time, and the script printed "Notarization complete."
+  NOTARY_OUT=$(xcrun notarytool submit "$OUTPUT_DIR/$PKG_NAME" \
     --apple-id "$APPLE_ID" \
     --team-id "$APPLE_TEAM_ID" \
     --password "$APPLE_APP_PASSWORD" \
-    --wait
+    --wait 2>&1) || true
+  echo "$NOTARY_OUT"
 
-  echo "Stapling notarization ticket..."
-  xcrun stapler staple "$OUTPUT_DIR/$PKG_NAME" || echo "Warning: Staple failed (Apple may need more time) - .pkg is still signed and notarized"
-  echo "Notarization complete."
+  NOTARY_STATUS=$(printf '%s\n' "$NOTARY_OUT" | awk -F': *' '/^ *status:/ {print $2; exit}')
+  NOTARY_ID=$(printf '%s\n' "$NOTARY_OUT" | awk -F': *' '/^ *id:/ {print $2; exit}')
+
+  if [ "$NOTARY_STATUS" != "Accepted" ]; then
+    echo ""
+    echo "ERROR: notarization returned '${NOTARY_STATUS:-no status}' for submission ${NOTARY_ID:-unknown}." >&2
+    if [ -n "$NOTARY_ID" ]; then
+      echo "Rejection detail:" >&2
+      xcrun notarytool log "$NOTARY_ID" \
+        --apple-id "$APPLE_ID" \
+        --team-id "$APPLE_TEAM_ID" \
+        --password "$APPLE_APP_PASSWORD" 2>&1 | head -60 >&2 || true
+    fi
+    echo "" >&2
+    echo "The .pkg is signed but NOT notarized. macOS will warn users who open it." >&2
+    echo "Set ALLOW_UNNOTARIZED=1 to ship anyway (it will still be unnotarized)." >&2
+    [ "${ALLOW_UNNOTARIZED:-0}" = "1" ] || exit 1
+  else
+    echo "Notarization accepted (submission $NOTARY_ID)."
+    echo "Stapling notarization ticket..."
+    # A staple failure after a genuine Accept is usually ticket propagation and
+    # is survivable -- the package is notarized either way, Gatekeeper just has
+    # to check online instead of offline.
+    if xcrun stapler staple "$OUTPUT_DIR/$PKG_NAME"; then
+      echo "Notarized and stapled."
+    else
+      echo "Warning: notarized, but stapling failed - Gatekeeper will verify online."
+    fi
+  fi
 elif [ "$NOTARIZE" = "notarize" ]; then
   echo "Warning: Notarization requested but APPLE_ID/APPLE_TEAM_ID/APPLE_APP_PASSWORD not set - skipping"
 fi

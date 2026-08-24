@@ -239,6 +239,16 @@ cd core/release
 
 # deploy
 if [ ! -z "$1" ] && [ "$1" = "deploy" ]; then
+	# Sign before archiving. The .tgz is built HERE, and until now the .pkg was
+	# the only artifact anything ever signed -- so tarball users got a tree of
+	# ad-hoc binaries that macOS quarantines and then refuses to run, silently.
+	# A no-op when no Developer ID is present, so local builds are unaffected.
+	SIGN_TREE="$(cd ../.. && pwd)/tools/cicd/sign_macos_tree.sh"
+	if [ -x "$SIGN_TREE" ]; then
+		SKIP_OK=1 "$SIGN_TREE" deploy || \
+			echo "warning: deploy tree is not fully signed; the .tgz may be blocked by Gatekeeper"
+	fi
+
 	mkdir -p ~/Desktop
 	rm -rf ~/Desktop/objeck-lang
 	cp -rf deploy ~/Desktop/objeck-lang

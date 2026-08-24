@@ -378,6 +378,51 @@ jobs:
       # Note: Bootstrap is skipped because version.h is already updated by prepare job
       # ============================================
 
+      # Certificates are installed BEFORE the build, not after it. The build step
+      # runs deploy_macos_arm64.sh, which both assembles the tree AND tars it into
+      # the .tgz artifact -- so an identity that arrives afterwards can only ever
+      # reach the .pkg. That is why tarball users received ad-hoc binaries that
+      # macOS quarantines and silently refuses to run.
+      - name: Install Apple signing certificate (macOS)
+        if: matrix.platform == 'macos-arm64'
+        env:
+          APPLE_INSTALLER_CERT_BASE64: ${{ secrets.APPLE_INSTALLER_CERT_BASE64 }}
+          APPLE_INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERT_PASSWORD }}
+          APPLE_APP_CERT_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_APP_CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -z "$APPLE_INSTALLER_CERT_BASE64" ]; then
+            echo "Apple installer certificate not configured - .pkg will be unsigned"
+            exit 0
+          fi
+
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import Developer ID Installer certificate
+          CERT_PATH=$RUNNER_TEMP/installer_cert.p12
+          echo -n "$APPLE_INSTALLER_CERT_BASE64" | base64 --decode -o "$CERT_PATH"
+          security import "$CERT_PATH" -P "$APPLE_INSTALLER_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          rm "$CERT_PATH"
+
+          # Import Developer ID Application certificate (for binary signing)
+          if [ -n "$APPLE_APP_CERT_BASE64" ]; then
+            APP_CERT_PATH=$RUNNER_TEMP/app_cert.p12
+            echo -n "$APPLE_APP_CERT_BASE64" | base64 --decode -o "$APP_CERT_PATH"
+            security import "$APP_CERT_PATH" -P "$APPLE_APP_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            rm "$APP_CERT_PATH"
+          fi
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "Certificates installed."
+
       - name: Build release
         working-directory: ./core/release
         run: ${{ matrix.deploy_script }}
@@ -552,46 +597,6 @@ jobs:
       # ============================================
       # macOS .pkg Installer + Signing + Notarization
       # ============================================
-
-      - name: Install Apple signing certificate (macOS)
-        if: matrix.platform == 'macos-arm64'
-        env:
-          APPLE_INSTALLER_CERT_BASE64: ${{ secrets.APPLE_INSTALLER_CERT_BASE64 }}
-          APPLE_INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERT_PASSWORD }}
-          APPLE_APP_CERT_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          APPLE_APP_CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          if [ -z "$APPLE_INSTALLER_CERT_BASE64" ]; then
-            echo "Apple installer certificate not configured - .pkg will be unsigned"
-            exit 0
-          fi
-
-          # Create temporary keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Import Developer ID Installer certificate
-          CERT_PATH=$RUNNER_TEMP/installer_cert.p12
-          echo -n "$APPLE_INSTALLER_CERT_BASE64" | base64 --decode -o "$CERT_PATH"
-          security import "$CERT_PATH" -P "$APPLE_INSTALLER_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          rm "$CERT_PATH"
-
-          # Import Developer ID Application certificate (for binary signing)
-          if [ -n "$APPLE_APP_CERT_BASE64" ]; then
-            APP_CERT_PATH=$RUNNER_TEMP/app_cert.p12
-            echo -n "$APPLE_APP_CERT_BASE64" | base64 --decode -o "$APP_CERT_PATH"
-            security import "$APP_CERT_PATH" -P "$APPLE_APP_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-            rm "$APP_CERT_PATH"
-          fi
-
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          echo "SIGNING_KEYCHAIN=$KEYCHAIN_PATH" >> $GITHUB_ENV
-          echo "Certificates installed."
 
       - name: Create macOS .pkg installer
         if: matrix.platform == 'macos-arm64'
