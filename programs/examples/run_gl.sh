@@ -133,8 +133,20 @@ if [ ! -f "$SRC" ]; then
 	exit 1
 fi
 
+# Assets a demo needs. We run from the deploy tree's bin directory, because the
+# demos reach for fonts at ../lib/sdl/fonts -- so a demo that also loads a file
+# from its own source directory cannot find it by a relative path, and has to be
+# told where it is. gl_model was silently failing this way.
+DEMO_ARGS=""
+case "$DEMO" in
+	gl_model) DEMO_ARGS="$HERE/gl_crystal.obj" ;;
+esac
+
 echo "Building $DEMO..."
 "$OBC" -src "$SRC" -lib sdl2,sdl_gl -dest "/tmp/objeck_$DEMO.obe" > /dev/null
 echo "Running $DEMO -- escape to quit."
 echo ""
+if [ -n "$DEMO_ARGS" ]; then
+	exec "$OBR" "/tmp/objeck_$DEMO.obe" "$DEMO_ARGS"
+fi
 exec "$OBR" "/tmp/objeck_$DEMO.obe"
