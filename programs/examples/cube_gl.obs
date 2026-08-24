@@ -1,0 +1,147 @@
+#~
+Textured spinning cube in OpenGL 3.3 core.
+
+  compile: obc -src cube_gl.obs -lib sdl2,sdl_gl
+  run:     obr cube_gl
+
+The GL counterpart to cube.obs, which draws a wireframe cube by transforming
+eight points on the CPU and calling DrawLine twelve times per frame. Worth
+comparing the two: this one uploads the geometry once and then does one draw call
+per frame, with the GPU doing the transform. That difference is the whole reason
+the API is shaped the way it is -- the native call boundary is expensive enough
+that per-primitive calls dominate everything else.
+
+No texture file is needed: Texture2D->Checker generates one, so this runs from
+a clean checkout.
+
+The cube's geometry is Mesh->Cube() -- it used to be ninety lines of hand-written
+vertex and index arrays in this file, byte for byte identical to the copy in
+gl_walkthrough.obs.
+
+Opening the window is one line, because GLWindow does it -- see gl_clear.obs for
+the smallest version of that. What is left in this file is the cube: its
+geometry, its shaders, its texture and its spin.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class SpinningCube {
+	@window : GLWindow;
+	@shader : Shader;
+	@mesh : Mesh;
+	@texture : Texture2D;
+	@angle : Float;
+	# Reused every frame rather than reallocated. See Matrix4->IdentityInto for
+	# why: this loop used to make six Float[16] per frame for one cube, which at
+	# 60fps is 360 arrays a second.
+	@model : Float[];
+	@mvp : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		SpinningCube->New()->Run();
+	}
+
+	New() {
+		@angle := 0.0;
+		@model := Float->New[16];
+		@mvp := Float->New[16];
+	}
+
+	method : Run() ~ Nil {
+		@window := GLWindow->New("Objeck OpenGL Cube", 720, 540);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
+		leaving {
+			Close();
+		};
+
+		if(<>BuildResources()) {
+			return;
+		};
+
+		GL->ClearColor(0.09, 0.11, 0.15, 1.0);
+
+		# Computed once. The camera never moves, so neither does this.
+		projection := Matrix4->PerspectiveDegrees(45.0, @window->GetAspect());
+		view_projection := Matrix4->Multiply(projection, Matrix4->LookAtOrigin(4.0));
+
+		@shader->Use();
+		@shader->SetInt("tex", 0);
+		@texture->Bind(0);
+
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
+
+			# RADIANS PER SECOND, scaled by the frame time. This used to advance a
+			# fixed step per FRAME, which means the cube spun at whatever rate the
+			# display happened to refresh at -- twice as fast on a 120Hz panel, and
+			# faster still with vsync unavailable.
+			@angle += 0.6 * @window->GetDelta();
+
+			# Two calls into buffers this object owns, and the frame allocates
+			# nothing. RotationYXZ is one step where composing RotationY with
+			# RotationX cost two matrix products and six arrays.
+			Matrix4->RotationYXZInto(@model, @angle, @angle * 0.6, 0.0);
+			Matrix4->MultiplyInto(@mvp, view_projection, @model);
+
+			@shader->SetMatrix4("mvp", @mvp);
+			@mesh->Draw();
+
+			@window->EndFrame();
+		};
+
+		GL->ReportErrors("the run");
+	}
+
+	#~
+	The GL objects. Everything about opening a window and a context moved to
+	GLWindow, so what is left here is only this program's own content.
+	~#
+	method : BuildResources() ~ Bool {
+		# Built in. This program's own shaders were a textured pass with a little
+		# depth shading, which is what TexturedFog is -- at eight units the far
+		# faces darken enough for the cube to read as a solid rather than a
+		# flat-shaded silhouette.
+		@shader := Shader->TexturedFog();
+		if(<>@shader->IsOk()) {
+			"Shader failed:"->ErrorLine();
+			@shader->GetLog()->ErrorLine();
+			return false;
+		};
+		@shader->SetFloat("fog_distance", 8.0);
+
+		@mesh := Mesh->Cube();
+		if(<>@mesh->IsOk()) {
+			"Could not upload the cube mesh"->ErrorLine();
+			return false;
+		};
+
+		# Generated, so this runs from a clean checkout with no asset file. Checker
+		# builds the surface, uploads it and frees it -- there is no intermediate
+		# object for this program to hold on to.
+		@texture := Texture2D->Checker(64, 8, Texture2D->Rgb(235, 235, 240), Texture2D->Rgb(70, 90, 130));
+		if(<>@texture->IsOk()) {
+			"Could not upload the texture"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+
+	#~
+	GL objects first, while the context is still current -- every Free bottoms out
+	in a glDelete*, which needs one. Then the window, which takes the context and
+	SDL down in the right order itself.
+	~#
+	method : Close() ~ Nil {
+		if(@texture <> Nil) { @texture->Free(); };
+		if(@mesh <> Nil) { @mesh->Free(); };
+		if(@shader <> Nil) { @shader->Free(); };
+
+		if(@window <> Nil) { @window->Free(); };
+	}
+}

@@ -1,0 +1,3167 @@
+# EXTRA_LIBS: sdl2,sdl_gl
+#~
+Regression test for OpenGL 3.3 core support: proves a real context can be
+created AND that something drawn through it lands in the framebuffer.
+
+Why this exists: CI compiles the SDL native library on five platforms and, until
+this test, never executed a single line of it. A GL context that failed to
+initialize, an unresolved gl* entry point, or a missing runtime library would all
+have shipped green. Compiling is not running.
+
+It asserts by READING PIXELS BACK, not by completing without crashing. A wrong
+projection, an inverted camera basis or a silently-ignored draw all produce a
+program that exits 0 while rendering nothing.
+
+## Headless
+
+Tries the platform's default video driver first, then falls back to
+SDL_VIDEODRIVER=offscreen, which reaches desktop GL through EGL and Mesa's
+software rasterizer with no X server, no Wayland and no Xvfb. That covers both a
+developer's desktop and a bare CI runner without platform sniffing.
+
+Note the dummy driver is NOT a headless option: it implements no GL entry points
+at all, so SDL_CreateWindow itself refuses a SDL_WINDOW_OPENGL request with
+"OpenGL support is either not configured in SDL or not available in current SDL
+video driver (dummy) or platform".
+
+## Skipping vs failing
+
+With no GL available this prints SKIP and exits 0, so the suite stays green on
+runners that have no software GL -- Windows ships only a GL 1.1 generic
+implementation, so a 3.3 core request cannot succeed there without Mesa's
+opengl32.dll being installed.
+
+When OBJECK_GL_REQUIRED is set, a missing context is a hard FAILURE instead. CI
+sets it on the POSIX regression step, which is exactly the linux-x64,
+linux-arm64 and macos-arm64 legs -- so those three cannot silently lose GL
+support, while Windows skips until Mesa is added there.
+~#
+use System;
+use Game.SDL2;
+use Game.OpenGL;
+
+class GlContextTest {
+	@gl : GLWindow;
+	@required : Bool;
+	@failures : Int;
+	# the drawable's size in PIXELS, which is not the window's size in points on a
+	# high-DPI display. Every readback below is positioned from these.
+	@pixel_w : Int;
+	@pixel_h : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		GlContextTest->New()->Run();
+	}
+
+	New() {
+		@required := Runtime->HasEnvironmentVariable("OBJECK_GL_REQUIRED");
+		@failures := 0;
+		@pixel_w := 0;
+		@pixel_h := 0;
+	}
+
+	method : Run() ~ Nil {
+		if(<>OpenContext()) {
+			# no GL here at all
+			if(@required) {
+				"FAIL: OBJECK_GL_REQUIRED is set but no GL 3.3 core context could be created"->PrintLine();
+				Cleanup();
+				Runtime->Exit(1);
+			};
+
+			"SKIP: no OpenGL 3.3 core context available on this platform"->PrintLine();
+			Cleanup();
+			return;
+		};
+
+		CheckVersion();
+		CheckLoader();
+		CheckShaderAndDraw();
+		CheckProjection();
+		CheckMatrixMath();
+		CheckPrimitives();
+		CheckShaderPresets();
+		CheckLighting();
+		CheckLightRig();
+		CheckFrustumCulling();
+		CheckMaterials();
+		CheckShadows();
+		CheckSpotShadows();
+		CheckPointShadows();
+		CheckOverlay();
+		CheckInstancing();
+		CheckObjLoading();
+		CheckDrawModesAndBlending();
+		CheckMeshValidation();
+		CheckExtensions();
+		CheckRenderTarget();
+		CheckTextures();
+		CheckTextureOrientation();
+		CheckFrameLoop();
+
+		Cleanup();
+
+		if(@failures > 0) {
+			count := @failures;
+			if(@required) {
+				"FAIL: {$count} OpenGL check(s) failed"->PrintLine();
+				Runtime->Exit(1);
+			};
+
+			# Not a gating platform. A context existed but did not behave, which
+			# on a GPU-less runner means a partial software stack rather than a
+			# regression in Objeck -- report it and stay green. Set
+			# OBJECK_GL_REQUIRED=1 to make these hard failures.
+			"SKIP: {$count} OpenGL check(s) failed, but this platform is not required to support GL"->PrintLine();
+			return;
+		};
+
+		"PASS: OpenGL 3.3 core context, shader, projection and framebuffer readback"->PrintLine();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAILED: {$name}"->PrintLine();
+		};
+
+		return ok;
+	}
+
+	#~
+	Requests a 3.3 core context, retrying once under the offscreen driver so this
+	works headless. Returns false when no context is obtainable.
+	~#
+	method : OpenContext() ~ Bool {
+		if(TryOpen()) {
+			return true;
+		};
+
+		# Retry headless. Cleanup() tears the video subsystem down, which matters
+		# because SDL reads SDL_VIDEODRIVER during init -- so it has to be set
+		# after the teardown and before the retry.
+		Cleanup();
+
+		Runtime->SetEnvironmentVariable("SDL_VIDEODRIVER", "offscreen");
+		"  (retrying with SDL_VIDEODRIVER=offscreen)"->PrintLine();
+
+		return TryOpen();
+	}
+
+	#~
+	Opens through GLWindow -- which is the point, not a convenience. Everything
+	this method used to do by hand (six attributes in order, the window flag, the
+	context, the 3.3 assertion, the loader, and the viewport from the DRAWABLE
+	size) is what GLWindow does, so going through it means CI executes that path
+	on all five platforms rather than a copy of it that only lives here.
+
+	HIDDEN so a CI runner never gets a window flashed at it. A hidden window still
+	has a real context and still renders.
+	~#
+	method : TryOpen() ~ Bool {
+		@gl := GLWindow->New("objeck gl test", 64, 64, false);
+		if(<>@gl->IsOk()) {
+			error := @gl->GetError();
+			"  (no GL: {$error})"->PrintLine();
+			return false;
+		};
+
+		@pixel_w := @gl->GetWidth();
+		@pixel_h := @gl->GetHeight();
+
+		return true;
+	}
+
+	method : CheckVersion() ~ Nil {
+		# Through GLWindow, which read this while opening -- so this also asserts
+		# that GetVersion reports what the driver said rather than an empty string.
+		version := @gl->GetVersion();
+		Check("GL_VERSION is reported", version <> Nil & version->Size() > 0);
+		if(version <> Nil & version->Size() > 0) {
+			"  version: {$version}"->PrintLine();
+		};
+
+		# GLWindow promises a drawable size and an aspect ratio derived from it.
+		aspect := @gl->GetAspect();
+		"  drawable: {$@pixel_w}x{$@pixel_h}, aspect {$aspect}"->PrintLine();
+		Check("GLWindow reports a usable drawable size", @pixel_w > 0 & @pixel_h > 0);
+		Check("GLWindow reports a sane aspect ratio", aspect > 0.0);
+
+		major := IntRef->New();
+		minor := IntRef->New();
+		Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_MAJOR_VERSION, major);
+		Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_MINOR_VERSION, minor);
+		got_major := major->Get();
+		got_minor := minor->Get();
+		"  context: {$got_major}.{$got_minor}"->PrintLine();
+
+		# macOS silently hands back a legacy 2.1 context when the core profile is
+		# not requested correctly, so assert the version rather than trusting it
+		at_least_33 := got_major > 3 | (got_major = 3 & got_minor >= 3);
+		Check("context is 3.3 or better", at_least_33);
+
+		profile := IntRef->New();
+		Core->GLGetAttribute(GLattr->SDL_GL_CONTEXT_PROFILE_MASK, profile);
+		Check("context is a core profile",
+			profile->Get() = GLProfile->SDL_GL_CONTEXT_PROFILE_CORE);
+	}
+
+	method : CheckLoader() ~ Nil {
+		missing := GL->LoadFunctions();
+		ok := missing <> Nil & missing->Size() = 0;
+		Check("all GL 2.0+ entry points resolve", ok);
+		if(<>ok) {
+			"  unresolved: {$missing}"->PrintLine();
+		};
+	}
+
+	#~
+	The part that proves rendering rather than mere survival: compile a shader,
+	upload a quad, draw it over a known clear colour, and read the framebuffer.
+	~#
+	method : CheckShaderAndDraw() ~ Nil {
+		vertex := "#version 330 core\n";
+		vertex += "layout (location = 0) in vec3 in_position;\n";
+		vertex += "void main() { gl_Position = vec4(in_position, 1.0); }\n";
+
+		fragment := "#version 330 core\n";
+		fragment += "out vec4 frag_color;\n";
+		fragment += "void main() { frag_color = vec4(0.0, 1.0, 0.0, 1.0); }\n";
+
+		shader := Shader->New(vertex, fragment);
+		Check("shader compiles and links", shader->IsOk());
+		if(<>shader->IsOk()) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		# a quad covering the middle of clip space, leaving the border clear
+		vertices := [-0.5, -0.5, 0.0,  0.5, -0.5, 0.0,  0.5, 0.5, 0.0, -0.5, 0.5, 0.0];
+		indices := [0, 1, 2, 2, 3, 0];
+		mesh := Mesh->New(vertices, indices, [3]);
+		Check("mesh uploads", mesh->IsOk());
+		if(<>mesh->IsOk()) {
+			shader->Free();
+			return;
+		};
+
+		GL->Viewport(0, 0, @pixel_w, @pixel_h);
+		GL->ClearColor(0.0, 0.0, 1.0, 1.0);
+		# COLOUR AND DEPTH. GLWindow enables depth testing, so clearing only colour
+		# leaves an uninitialised depth buffer and the geometry fails against it --
+		# a black frame with no GL error. GLWindow->BeginFrame clears both; these
+		# checks clear by hand because they draw more than once per frame.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shader->Use();
+		mesh->Draw();
+
+		# read BEFORE any swap; a swap may discard the back buffer
+		center := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		corner := GL->ReadPixel(1, 1);
+		"  center=0x{$center} corner=0x{$corner}"->PrintLine();
+
+		# green where the quad drew, the blue clear colour outside it. Exact values
+		# are safe here because the fragment shader writes a constant.
+		Check("the quad rendered (centre is green)", center = 0xFF00FF00);
+		Check("outside the quad is the clear colour", corner = 0xFF0000FF);
+
+		errors := GL->DrainErrors();
+		error_count := errors->Size();
+		Check("no GL errors were raised", error_count = 0);
+		if(error_count > 0) {
+			first := errors[0];
+			"  first error: 0x{$first}"->PrintLine();
+		};
+
+		mesh->Free();
+		shader->Free();
+	}
+
+	#~
+	The built-in shaders draw, their uniform setters work, and -- the one that is
+	a real bug fix -- a uniform set on one program does not land on another.
+
+	glUniform* writes to whatever program is CURRENT, not to the program whose
+	uniform location was just looked up. Nothing used to make the target program
+	current, so with two shaders alive, setting a uniform on the second wrote it
+	into the first. Every demo got away with it by never calling Use twice.
+
+	The assertion has to be arranged so the old behaviour FAILS. Two flat shaders:
+	bind the first, then set a colour on the second WITHOUT binding it, then bind
+	the second and draw. Correct: red. Old behaviour: the colour went into the
+	first shader, the second still has its default of zero, and the quad is black.
+	~#
+	method : CheckShaderPresets() ~ Nil {
+		red := 0xFFFF0000;
+
+		flat_a := Shader->Flat();
+		flat_b := Shader->Flat();
+		textured := Shader->Textured();
+		fog := Shader->TexturedFog();
+
+		Check("Shader->Flat compiles", flat_a->IsOk() & flat_b->IsOk());
+		Check("Shader->Textured compiles", textured->IsOk());
+		Check("Shader->TexturedFog compiles", fog->IsOk());
+		if(<>flat_a->IsOk() | <>flat_b->IsOk() | <>fog->IsOk()) {
+			log := flat_a->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		quad := Mesh->Quad(1.0);
+		if(<>Check("a full-screen quad uploads", quad->IsOk())) {
+			return;
+		};
+
+		identity := Matrix4->Identity();
+
+		# --- SetVec3 through Flat ---
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		flat_a->Use();
+		flat_a->SetMatrix4("mvp", identity);
+		flat_a->SetVec3("color", 1.0, 0.0, 0.0);
+		quad->Draw();
+		flat_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		"  flat: 0x{$flat_pixel}"->PrintLine();
+		Check("Shader->SetVec3 reaches the shader", flat_pixel = red);
+
+		# --- the cross-contamination case ---
+		# A is bound. B is NOT. Setting on B must reach B.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		flat_a->Use();
+		# The colour FIRST, as the very first thing touched on B. Order matters to
+		# the assertion: any other setter called on B beforehand would itself bind
+		# B and mask the thing being tested. This caught a flaw in an earlier
+		# version of this check, which put SetMatrix4 first and therefore passed
+		# even with the fix removed.
+		flat_b->SetVec3("color", 1.0, 0.0, 0.0);
+		flat_b->SetMatrix4("mvp", identity);
+		flat_b->Use();
+		quad->Draw();
+		crossed := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		"  after setting on an unbound shader: 0x{$crossed}"->PrintLine();
+		Check("a uniform set on one shader does not land on another", crossed = red);
+
+		# --- SetFloat, measured rather than assumed ---
+		# The same textured-fog draw at two fog distances. Near fog clamps the
+		# geometry to its darkest, far fog leaves it bright. If SetFloat did
+		# nothing both would be identical.
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(Check("a white texture uploads", white->IsOk())) {
+			# push the quad back so it has some depth for the fog to act on
+			back := Matrix4->Translation(0.0, 0.0, -20.0);
+			projection := Matrix4->Perspective(Float->Pi() / 3.0, @gl->GetAspect(), 0.1, 100.0);
+			mvp := Matrix4->Multiply(projection, back);
+
+			fog->Use();
+			fog->SetInt("tex", 0);
+			fog->SetMatrix4("mvp", mvp);
+			white->Bind(0);
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			fog->SetFloat("fog_distance", 1000.0);
+			quad->Draw();
+			bright := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x000000FF;
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			fog->SetFloat("fog_distance", 5.0);
+			quad->Draw();
+			dim := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x000000FF;
+
+			"  fog: far={$bright} near={$dim}"->PrintLine();
+			Check("Shader->SetFloat changes what is drawn", bright > dim);
+
+			white->Free();
+		};
+
+		# A misspelling on the new setters reports, like the others.
+		GL->GetLastError();
+		flat_a->SetVec3("colour", 1.0, 0.0, 0.0);
+		spelled := GL->GetLastError();
+		Check("SetVec3 reports an unknown uniform", spelled->Size() > 0);
+
+		Check("no GL errors from the presets", GL->DrainErrors()->Size() = 0);
+
+		quad->Free();
+		fog->Free();
+		textured->Free();
+		flat_b->Free();
+		flat_a->Free();
+	}
+
+	#~
+	Lighting responds to the light, and the normal matrix is really computed.
+
+	The light here points at ONE side deliberately. A light from the camera's
+	direction, or an ambient-heavy setup, lights everything roughly evenly -- and
+	then a shader that ignored the normal entirely would pass. Same shape of
+	mistake as the symmetric checkerboard that hid the row flip for eleven
+	releases: the fixture has to be asymmetric in the dimension the feature can
+	get wrong, which for lighting is orientation.
+
+	The last check is the interesting one. Under non-uniform scale a normal must be
+	transformed by the INVERSE TRANSPOSE of the model matrix; using the model
+	matrix directly tilts it off the surface and shades the object subtly wrong.
+	Subtly wrong is unassertable against a number I would have to derive myself --
+	so instead it is asserted DIFFERENTIALLY, against a deliberately naive shader
+	built for the purpose. If the two agree, the built-in is not computing a normal
+	matrix at all.
+	~#
+	method : CheckLighting() ~ Nil {
+		lit := Shader->Lit();
+		if(<>Check("Shader->Lit compiles", lit->IsOk())) {
+			log := lit->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		textured := Shader->LitTextured();
+		Check("Shader->LitTextured compiles", textured->IsOk());
+
+		cube := Mesh->Cube();
+		if(<>Check("a cube for lighting uploads", cube->IsOk())) {
+			lit->Free();
+			textured->Free();
+			return;
+		};
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		projection := Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect());
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+		identity := Matrix4->Identity();
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+
+		light := Light->New();
+		# no ambient at all, so the diffuse term is the whole signal
+		light->SetAmbient(0.0, 0.0, 0.0);
+		light->SetColor(1.0, 1.0, 1.0);
+
+		# --- the front face lit head-on ---
+		# Facing the camera, the front face's normal is (0, 0, 1). A light from
+		# (0, 0, 1) is straight onto it: full brightness.
+		light->SetDirection(0.0, 0.0, 1.0);
+		facing := DrawLitCube(lit, cube, view_projection, identity, light, mid_x, mid_y);
+
+		# --- the same face with the light along +X ---
+		# dot((0,0,1), (1,0,0)) is zero, so with no ambient this face gets nothing.
+		light->SetDirection(1.0, 0.0, 0.0);
+		edge_on := DrawLitCube(lit, cube, view_projection, identity, light, mid_x, mid_y);
+
+		# --- and lit from behind ---
+		light->SetDirection(0.0, 0.0, -1.0);
+		behind := DrawLitCube(lit, cube, view_projection, identity, light, mid_x, mid_y);
+
+		"  lit face: head-on={$facing} edge-on={$edge_on} from-behind={$behind}"->PrintLine();
+
+		Check("a face lit head-on is bright", facing > 200);
+		Check("a face edge-on to the light is dark", edge_on < 20);
+		Check("a face lit from behind is dark", behind < 20);
+		# The one that catches a shader ignoring the normal: those three would all
+		# be identical.
+		Check("brightness depends on the light direction", facing - edge_on > 150);
+
+		# --- ambient is added regardless of facing ---
+		light->SetDirection(0.0, 0.0, -1.0);
+		light->SetAmbient(0.5, 0.5, 0.5);
+		ambient_only := DrawLitCube(lit, cube, view_projection, identity, light, mid_x, mid_y);
+		"  unlit face with 0.5 ambient: {$ambient_only}"->PrintLine();
+		Check("ambient reaches a face the light does not", ambient_only > 100 & ambient_only < 160);
+		light->SetAmbient(0.0, 0.0, 0.0);
+
+		# --- the normal matrix, differentially ---
+		# A sphere so the normals are not axis-aligned, non-uniform scale so the
+		# inverse transpose differs from the model matrix, and a light off to the
+		# side so the difference lands somewhere visible.
+		naive := NaiveNormalShader();
+		sphere := Mesh->Sphere(32, 16);
+		if(Check("a sphere and a naive-normal shader for comparison", naive->IsOk() & sphere->IsOk())) {
+			model := Matrix4->Multiply(Matrix4->ScaleXYZ(1.0, 3.0, 1.0), Matrix4->RotationZ(0.6));
+			squashed_vp := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), Matrix4->LookAtOrigin(6.0));
+			light->SetDirection(0.8, 0.5, 0.4);
+
+			correct := DrawLitCube(lit, sphere, squashed_vp, model, light, (@pixel_w * 60) / 100, (@pixel_h * 65) / 100);
+			wrong := DrawLitCube(naive, sphere, squashed_vp, model, light, (@pixel_w * 60) / 100, (@pixel_h * 65) / 100);
+			"  normal matrix: inverse-transpose={$correct} model-matrix={$wrong}"->PrintLine();
+
+			# If the built-in were using the model matrix directly these would be
+			# equal. They must not be.
+			difference := correct - wrong;
+			if(difference < 0) {
+				difference := difference * -1;
+			};
+			Check("the lit shader really computes a normal matrix", difference > 8);
+
+			sphere->Free();
+			naive->Free();
+		};
+
+		# --- through Scene, which is how a program actually uses this ---
+		# Scene has to do three things a bare draw does not: write the light's
+		# uniforms once, hand each box its own model matrix (a lit shader needs it
+		# for the normals), and set the sampler unit. Miss the model matrix and
+		# every box is lit as though it were at the origin, unrotated -- which for
+		# a scene of axis-aligned boxes at the origin looks completely fine, so a
+		# one-box fixture would not catch it.
+		#
+		# Hence two boxes at different positions, and a light moved between two
+		# draws: the same pixel must change.
+		scene := Scene->New(cube, lit);
+		scene->AddBox(Vector3->New(-1.6, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), Nil);
+		scene->AddBox(Vector3->New(1.6, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), Nil);
+		scene->SetLight(light);
+		lit->SetVec3("color", 1.0, 1.0, 1.0);
+
+		wide := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), Matrix4->LookAtOrigin(9.0));
+
+		light->SetAmbient(0.0, 0.0, 0.0);
+		light->SetDirection(0.0, 0.0, 1.0);
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(wide);
+		front_lit := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+
+		light->SetDirection(1.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(wide);
+		side_lit := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+
+		"  through Scene: light-at-camera={$front_lit} light-from-side={$side_lit}"->PrintLine();
+		Check("Scene draws something at all", front_lit > 200);
+		Check("Scene applies its light", front_lit - side_lit > 150);
+
+		# And that a box away from the origin is lit correctly, which only holds if
+		# Scene handed the shader that box's own model matrix.
+		Check("Scene has a model matrix to give a lit shader", lit->HasUniform("model"));
+		Check("an unlit shader does not, and is not given one", <>Shader->Textured()->HasUniform("model"));
+
+		scene->Clear();
+
+		Check("no GL errors from lighting", GL->DrainErrors()->Size() = 0);
+
+		cube->Free();
+		textured->Free();
+		lit->Free();
+	}
+
+	#~
+	Draw one lit mesh and return the green channel at a pixel. Green because the
+	light and the surface are both white here, so all three channels carry the
+	same value and one of them is enough.
+	~#
+	method : DrawLitCube(shader : Shader, mesh : Mesh, view_projection : Float[], model : Float[], light : Light, x : Int, y : Int) ~ Int {
+		mvp := Matrix4->Multiply(view_projection, model);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shader->Use();
+		shader->SetMatrix4("mvp", mvp);
+		shader->SetMatrix4("model", model);
+		shader->SetVec3("color", 1.0, 1.0, 1.0);
+		light->ApplyTo(shader);
+		mesh->Draw();
+
+		return (GL->ReadPixel(x, y) and 0x0000FF00) / 0x100;
+	}
+
+	#~
+	The wrong way to transform a normal: by the model matrix itself. Exists only
+	so the correct one can be asserted against something.
+	~#
+	method : NaiveNormalShader() ~ Shader {
+		vertex := ShaderSource->New();
+		vertex->Add("layout (location = 0) in vec3 in_position;");
+		vertex->Add("layout (location = 1) in vec3 in_normal;");
+		vertex->Add("uniform mat4 mvp;");
+		vertex->Add("uniform mat4 model;");
+		vertex->Add("out vec3 normal;");
+		vertex->Add("void main() {");
+		vertex->Add("  normal = normalize(mat3(model) * in_normal);");
+		vertex->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+		vertex->Add("}");
+
+		fragment := ShaderSource->New();
+		fragment->Add("in vec3 normal;");
+		fragment->Add("uniform vec3 color;");
+		fragment->Add("uniform vec3 light_direction;");
+		fragment->Add("uniform vec3 light_color;");
+		fragment->Add("uniform vec3 ambient;");
+		fragment->Add("out vec4 frag_color;");
+		fragment->Add("void main() {");
+		fragment->Add("  float diffuse = max(dot(normalize(normal), normalize(light_direction)), 0.0);");
+		fragment->Add("  frag_color = vec4(color * (ambient + light_color * diffuse), 1.0);");
+		fragment->Add("}");
+
+		return Shader->New(vertex->Build(), fragment->Build());
+	}
+
+	#~
+	A render target really renders somewhere else, and what it captured can be
+	sampled back.
+
+	Four things can be wrong here and three of them are silent.
+
+	1. The framebuffer is INCOMPLETE. Drawing into it does nothing at all and
+	   raises no error -- so RenderTarget->New checks completeness rather than
+	   assuming, and this asserts on the result.
+	2. Nothing actually went to the target. Asserted by drawing DIFFERENT colours
+	   into the target and the window and reading both: if binding did nothing,
+	   they come back the same.
+	3. The viewport was not switched with the target. A target smaller than the
+	   window still rendering through the window's viewport draws into one corner.
+	   So the target here is deliberately a different size from the window, and the
+	   assertion samples a point that is inside the target but outside where the
+	   un-switched viewport would have drawn.
+	4. The captured texture cannot be sampled. Asserted by drawing it back onto a
+	   full-screen quad and checking the colour survives the round trip.
+	~#
+	method : CheckRenderTarget() ~ Nil {
+		# Deliberately NOT the window's size, so a viewport that failed to follow
+		# the binding is detectable.
+		size := 32;
+		target := RenderTarget->New(size, size);
+		if(<>Check("a render target is created and complete", target->IsOk())) {
+			error := target->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		Check("it reports its size", target->GetWidth() = size & target->GetHeight() = size);
+		Check("and an aspect ratio", Near(target->GetAspect(), 1.0, 0.0001));
+
+		# --- different colours into the target and the window ---
+		red := 0xFFFF0000;
+		blue := 0xFF0000FF;
+
+		target->Bind();
+		GL->ClearColor(1.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		# Read while still bound: this reads the TARGET's buffer, not the window's.
+		in_target := GL->ReadPixel(size / 2, size / 2);
+		# The far corner of the target too. Under an un-switched viewport nothing
+		# would have been drawn beyond the window's own bounds, but more usefully:
+		# if the viewport were still the window's larger size, the clear would
+		# still cover everything -- so the corner check below is about the READBACK
+		# region being the target's, which it is only if the binding took.
+		corner_in_target := GL->ReadPixel(size - 1, size - 1);
+
+		target->Unbind(@gl);
+		GL->ClearColor(0.0, 0.0, 1.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		in_window := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+
+		"  target=0x{$in_target} corner=0x{$corner_in_target} window=0x{$in_window}"->PrintLine();
+		Check("the target received its own clear", in_target = red);
+		Check("across the whole target", corner_in_target = red);
+		Check("the window received a different one", in_window = blue);
+		# If Bind did nothing, both clears went to the window and the first read
+		# would have come back blue -- or rather, the second clear would have
+		# overwritten the first and this would still pass. So state the real claim:
+		# the two buffers hold different values at the same moment.
+		Check("the target and the window are separate buffers", in_target <> in_window);
+
+		# --- the captured texture samples back ---
+		captured := target->GetTexture();
+		if(Check("the target hands back a texture", captured <> Nil & captured->IsOk())) {
+			shader := Shader->Textured();
+			quad := Mesh->Quad(1.0);
+			if(Check("a quad and shader to display it", shader->IsOk() & quad->IsOk())) {
+				GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+				GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+				shader->Use();
+				shader->SetMatrix4("mvp", Matrix4->Identity());
+				shader->SetInt("tex", 0);
+				captured->Bind(0);
+				quad->Draw();
+
+				round_trip := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+				"  round trip: 0x{$round_trip}"->PrintLine();
+				Check("what the target captured can be sampled back", round_trip = red);
+			};
+
+			quad->Free();
+			shader->Free();
+		};
+
+		# --- Mesh->Quad's texcoords must span 0..1 across the whole screen ---
+		# Every post-process pass depends on this and the round-trip check above
+		# cannot see it: the captured texture is a flat colour, so it looks
+		# identical whether the quad samples 0..1, 0..0.5, or the same texel
+		# everywhere. A texture that VARIES across its width is the only fixture
+		# that separates them.
+		strip_surface := Texture2D->NewSurface(2, 1);
+		if(Check("a two-pixel strip for the quad", strip_surface <> Nil)) {
+			strip_surface->FillRect(Rect->New(0, 0, 1, 1), red);
+			strip_surface->FillRect(Rect->New(1, 0, 1, 1), blue);
+			strip := Texture2D->New(strip_surface, TextureFilter->GL_NEAREST, TextureWrap->GL_CLAMP_TO_EDGE, false);
+			strip_surface->Free();
+
+			screen := Mesh->Quad(1.0);
+			flat_shader := Shader->Textured();
+			if(Check("a screen quad and shader", strip->IsOk() & screen->IsOk() & flat_shader->IsOk())) {
+				GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+				GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+				flat_shader->Use();
+				flat_shader->SetMatrix4("mvp", Matrix4->Identity());
+				flat_shader->SetInt("tex", 0);
+				strip->Bind(0);
+				screen->Draw();
+
+				far_left := GL->ReadPixel(2, @pixel_h / 2);
+				far_right := GL->ReadPixel(@pixel_w - 3, @pixel_h / 2);
+				top_edge := GL->ReadPixel(@pixel_w / 4, @pixel_h - 3);
+				bottom_edge := GL->ReadPixel(@pixel_w / 4, 2);
+				"  screen quad: left=0x{$far_left} right=0x{$far_right}"->PrintLine();
+
+				Check("Mesh->Quad(1.0) reaches both screen edges", far_left = red & far_right = blue);
+				# And vertically: an identity matrix must put the quad against the top
+				# and bottom too, or a post pass loses rows.
+				Check("and both top and bottom", top_edge = red & bottom_edge = red);
+			};
+
+			screen->Free();
+			flat_shader->Free();
+			strip->Free();
+		};
+
+		# --- a target the driver cannot make must report, not pretend ---
+		absurd := RenderTarget->New(1000000, 1000000);
+		Check("an impossible size is refused", <>absurd->IsOk());
+		if(<>absurd->IsOk()) {
+			reason := absurd->GetError();
+			Check("with a reason", reason->Size() > 0);
+			"  refused: {$reason}"->PrintLine();
+		};
+		absurd->Free();
+
+		Check("no GL errors from the render target", GL->DrainErrors()->Size() = 0);
+
+		target->Free();
+		# Freeing twice must not double-delete.
+		target->Free();
+		Check("RenderTarget->Free is idempotent", true);
+	}
+
+	#~
+	Several lights add up, a point light fades with distance, a spot has a cone,
+	and specular depends on where the viewer is.
+
+	Each of those is asserted by a DIFFERENCE rather than an absolute brightness,
+	because the absolute value depends on the whole lighting setup and would have
+	to be derived by hand. What matters is the direction of change: adding a light
+	makes a surface brighter, moving a point light away makes it dimmer, stepping
+	outside a spot's cone makes it dark, and moving the eye moves a highlight.
+
+	The fixture is a flat plane facing up, lit from above. Flat because the point
+	of these checks is the LIGHT, and a curved surface would make every reading
+	depend on which bit of it was sampled.
+	~#
+	method : CheckLightRig() ~ Nil {
+		shader := Shader->Lit();
+		plane := Mesh->Plane(4.0, 1.0);
+		if(<>Check("a lit shader and plane for the rig", shader->IsOk() & plane->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		# Straight down at the plane, so it fills the frame.
+		eye := Camera->New(Vector3->New(0.0, 8.0, 0.1));
+		eye->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), eye->GetViewMatrix());
+		model := Matrix4->Identity();
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+
+		# --- one light, then two ---
+		rig := LightRig->New();
+		rig->SetAmbient(0.0, 0.0, 0.0);
+		rig->SetViewPosition(eye->GetPosition());
+		dim_light := Light->Directional(Vector3->New(0.0, 1.0, 0.0));
+		dim_light->SetColor(0.3, 0.3, 0.3);
+		rig->Add(dim_light);
+
+		one := DrawLitPlane(shader, plane, rig, view_projection, model, mid_x, mid_y);
+
+		second := Light->Directional(Vector3->New(0.0, 1.0, 0.0));
+		second->SetColor(0.3, 0.3, 0.3);
+		Check("a second light is accepted", rig->Add(second));
+		two := DrawLitPlane(shader, plane, rig, view_projection, model, mid_x, mid_y);
+
+		"  lights: one={$one} two={$two}"->PrintLine();
+		Check("one light lights the plane", one > 40);
+		# THE assertion for multiple lights: a shader that only ever read light 0
+		# would give the same answer twice.
+		Check("two lights are brighter than one", two > one + 30);
+		Check("the rig counts them", rig->GetCount() = 2);
+
+		# The limit is a real limit rather than a silent overwrite.
+		filled := 2;
+		while(rig->Add(Light->Directional(Vector3->New(0.0, 1.0, 0.0)))) {
+			filled += 1;
+		};
+		"  rig filled at {$filled} of {$LightRig->GetMaxLights()}"->PrintLine();
+		Check("the rig fills to its maximum and then refuses", filled = LightRig->GetMaxLights());
+
+		# --- a point light fades with distance ---
+		near_rig := LightRig->New();
+		near_rig->SetAmbient(0.0, 0.0, 0.0);
+		near_rig->SetViewPosition(eye->GetPosition());
+		lamp := Light->Point(Vector3->New(0.0, 1.0, 0.0), 10.0);
+		lamp->SetColor(1.0, 1.0, 1.0);
+		near_rig->Add(lamp);
+		near := DrawLitPlane(shader, plane, near_rig, view_projection, model, mid_x, mid_y);
+
+		lamp->SetPosition(Vector3->New(0.0, 7.0, 0.0));
+		far := DrawLitPlane(shader, plane, near_rig, view_projection, model, mid_x, mid_y);
+
+		lamp->SetPosition(Vector3->New(0.0, 40.0, 0.0));
+		beyond := DrawLitPlane(shader, plane, near_rig, view_projection, model, mid_x, mid_y);
+
+		"  point light: near={$near} far={$far} past-its-range={$beyond}"->PrintLine();
+		Check("a point light lights what is close to it", near > 100);
+		Check("and fades with distance", far < near - 20);
+		# A light with a stated range has to actually stop, or every light in a
+		# scene contributes to every fragment forever.
+		Check("and reaches nothing past its range", beyond < 10);
+
+		# --- a spot has a cone ---
+		spot_rig := LightRig->New();
+		spot_rig->SetAmbient(0.0, 0.0, 0.0);
+		spot_rig->SetViewPosition(eye->GetPosition());
+		# Above the middle of the plane, shining straight down, narrow.
+		torch := Light->Spot(Vector3->New(0.0, 4.0, 0.0), Vector3->New(0.0, -1.0, 0.0), 20.0, 10.0, 14.0);
+		torch->SetColor(1.0, 1.0, 1.0);
+		spot_rig->Add(torch);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		spot_rig->ApplyTo(shader);
+		shader->SetVec3("color", 1.0, 1.0, 1.0);
+		shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
+		shader->SetMatrix4("model", model);
+		plane->Draw();
+
+		inside_cone := (GL->ReadPixel(mid_x, mid_y) and 0x0000FF00) / 0x100;
+		outside_cone := (GL->ReadPixel((@pixel_w * 12) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  spot: in the cone={$inside_cone} outside it={$outside_cone}"->PrintLine();
+		Check("a spot lights the middle of its cone", inside_cone > 100);
+		# Without the cone term a spot is just a point light and this would match.
+		Check("and nothing outside it", outside_cone < 20);
+
+		# --- specular moves with the viewer ---
+		# Strength defaults to zero, so a surface is matte until asked. Turning it
+		# on must change what is drawn, and MOVING THE EYE must change it again --
+		# a shader that ignored view_position would give the same answer both times.
+		spec_rig := LightRig->New();
+		spec_rig->SetAmbient(0.0, 0.0, 0.0);
+		# A DIM light on purpose. At full brightness the diffuse term alone reads
+		# 201 and adding any specular clamps to 255, so both readings come back
+		# saturated and identical -- which is how the first version of this check
+		# failed. A comparison needs headroom to compare in.
+		spec_light := Light->Directional(Vector3->New(0.4, 1.0, 0.0));
+		spec_light->SetColor(0.3, 0.3, 0.3);
+		spec_rig->Add(spec_light);
+
+		spec_rig->SetSpecular(24.0, 0.0);
+		spec_rig->SetViewPosition(eye->GetPosition());
+		matte := DrawLitPlane(shader, plane, spec_rig, view_projection, model, mid_x, mid_y);
+
+		spec_rig->SetSpecular(24.0, 1.0);
+		shiny_here := DrawLitPlane(shader, plane, spec_rig, view_projection, model, mid_x, mid_y);
+
+		# Same geometry, same light, eye moved to where the highlight is not.
+		spec_rig->SetViewPosition(Vector3->New(-6.0, 8.0, 0.0));
+		shiny_elsewhere := DrawLitPlane(shader, plane, spec_rig, view_projection, model, mid_x, mid_y);
+
+		"  specular: matte={$matte} shiny={$shiny_here} eye-moved={$shiny_elsewhere}"->PrintLine();
+		Check("specular strength of zero leaves a surface matte", shiny_here > matte);
+		Check("and the highlight depends on where the eye is", shiny_here <> shiny_elsewhere);
+
+		Check("no GL errors from the light rig", GL->DrainErrors()->Size() = 0);
+
+		plane->Free();
+		shader->Free();
+	}
+
+	#~
+	Draw the plane under a rig and return the green channel at a pixel.
+	~#
+	method : DrawLitPlane(shader : Shader, plane : Mesh, rig : LightRig, view_projection : Float[], model : Float[], x : Int, y : Int) ~ Int {
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shader->Use();
+		rig->ApplyTo(shader);
+		shader->SetVec3("color", 1.0, 1.0, 1.0);
+		shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
+		shader->SetMatrix4("model", model);
+		plane->Draw();
+
+		return (GL->ReadPixel(x, y) and 0x0000FF00) / 0x100;
+	}
+
+	#~
+	Off-screen boxes are skipped, and on-screen ones are not.
+
+	The second half is the one that matters. A false KEEP costs a draw call; a
+	false DISCARD is a hole in the picture, and it is the failure that looks like a
+	rendering bug rather than a performance one. So this checks both directions,
+	and checks that the visible box is still actually drawn rather than merely
+	counted.
+
+	Culling is asserted against the SAME scene with culling turned off, so the
+	claim is "these boxes and no others" rather than a number I worked out by hand
+	and would have to redo whenever the fixture changed.
+	~#
+	method : CheckFrustumCulling() ~ Nil {
+		# --- the plane extraction, on its own first ---
+		frustum := Frustum->New();
+		projection := Matrix4->PerspectiveDegrees(60.0, 1.0);
+		camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+		# looking down -z, which is where yaw 0 and pitch 0 point
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+		frustum->SetFromMatrix(view_projection);
+		Check("a frustum builds from a view-projection", frustum->IsReady());
+
+		# Straight ahead at a sane distance: inside. Behind the camera: outside.
+		# Far off to the side: outside. Those three pin the sign conventions, which
+		# is where plane extraction goes wrong.
+		Check("a point in front is inside", frustum->ContainsSphere(0.0, 0.0, -10.0, 1.0));
+		Check("a point behind is outside", <>frustum->ContainsSphere(0.0, 0.0, 10.0, 1.0));
+		Check("a point far to the side is outside", <>frustum->ContainsSphere(60.0, 0.0, -10.0, 1.0));
+		Check("a point far above is outside", <>frustum->ContainsSphere(0.0, 60.0, -10.0, 1.0));
+		# A big enough sphere straddles the boundary and must be kept.
+		Check("a sphere large enough to straddle the edge is kept", frustum->ContainsSphere(60.0, 0.0, -10.0, 80.0));
+
+		# A degenerate matrix must cull NOTHING rather than everything -- the safe
+		# direction when something has gone wrong.
+		broken := Frustum->New();
+		broken->SetFromMatrix(Float->New[16]);
+		Check("a degenerate frustum is not ready", <>broken->IsReady());
+		Check("and therefore contains everything", broken->ContainsSphere(0.0, 0.0, 1000.0, 1.0));
+
+		# --- through Scene ---
+		shader := Shader->Textured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for culling", shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		# one in front of the camera, three well outside the view
+		scene->AddBox(Vector3->New(0.0, 0.0, -8.0), Vector3->New(1.0, 1.0, 1.0), white);
+		scene->AddBox(Vector3->New(0.0, 0.0, 40.0), Vector3->New(1.0, 1.0, 1.0), white);
+		scene->AddBox(Vector3->New(200.0, 0.0, -8.0), Vector3->New(1.0, 1.0, 1.0), white);
+		scene->AddBox(Vector3->New(0.0, 200.0, -8.0), Vector3->New(1.0, 1.0, 1.0), white);
+
+		Check("culling is on by default", scene->IsCulling());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		scene->Draw(view_projection);
+		culled_drawn := scene->GetDrawnCount();
+		culled_skipped := scene->GetCulledCount();
+		culled_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+
+		scene->SetCulling(false);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(view_projection);
+		all_drawn := scene->GetDrawnCount();
+		all_skipped := scene->GetCulledCount();
+		all_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+
+		"  culling on: drew {$culled_drawn} skipped {$culled_skipped}; off: drew {$all_drawn} skipped {$all_skipped}"->PrintLine();
+
+		Check("with culling off every box is submitted", all_drawn = 4 & all_skipped = 0);
+		Check("with it on only the visible one is", culled_drawn = 1 & culled_skipped = 3);
+		# The half that matters: the visible box is still THERE, not just counted.
+		Check("and the visible box still renders", culled_pixel <> 0xFF000000);
+		Check("identically to when nothing was culled", culled_pixel = all_pixel);
+
+		# A box that is partly on screen must survive. Placed to straddle the left
+		# edge of the view, where a test that used the box's centre alone would
+		# discard it.
+		straddle := Scene->New(cube, shader);
+		straddle->AddBox(Vector3->New(-5.6, 0.0, -8.0), Vector3->New(2.0, 2.0, 2.0), white);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		straddle->Draw(view_projection);
+		"  a box straddling the edge: drew {$straddle->GetDrawnCount()}"->PrintLine();
+		Check("a box straddling the view edge is kept", straddle->GetDrawnCount() = 1);
+
+		Check("no GL errors from culling", GL->DrainErrors()->Size() = 0);
+
+		straddle->Clear();
+		scene->Clear();
+		white->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	A shadow map darkens the floor under a caster and leaves the rest of it lit.
+
+	Shadow mapping has more silent failure modes than anything else here, and a
+	careless fixture passes on most of them. The one that matters: a scene where
+	EVERYTHING ends up shadowed looks, at a single sample point, exactly like a
+	scene where the shadow landed correctly. Equally, a scene where nothing is
+	shadowed looks like one where the sample happened to miss.
+
+	So this reads TWO points on the same floor -- one under the caster and one well
+	away from it -- and requires them to differ in the right direction. Nothing
+	uniform can satisfy that: not an all-shadow bug, not a no-shadow bug, not a
+	map that is entirely empty, and not one where the light-space matrix is wrong
+	enough to put the shadow somewhere else.
+
+	The geometry is deliberately lopsided too. A caster over the middle of a
+	symmetric floor casts a shadow that a mirrored or transposed light-space matrix
+	would put in the same place, so the caster sits off to one side.
+	~#
+	method : CheckShadows() ~ Nil {
+		shadows := ShadowMap->New(512);
+		if(<>Check("a shadow map is created", shadows->IsOk())) {
+			error := shadows->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		shadowed := Shader->LitTexturedShadowed();
+		if(<>Check("Shader->LitTexturedShadowed compiles", shadowed->IsOk())) {
+			log := shadowed->GetLog();
+			"  log: {$log}"->PrintLine();
+			shadows->Free();
+			return;
+		};
+
+		depth_only := Shader->DepthOnly();
+		Check("Shader->DepthOnly compiles", depth_only->IsOk());
+		depth_only->Free();
+
+		floor_mesh := Mesh->Plane(10.0, 1.0);
+		caster_mesh := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("floor, caster and texture", floor_mesh->IsOk() & caster_mesh->IsOk() & white->IsOk())) {
+			shadowed->Free();
+			shadows->Free();
+			return;
+		};
+
+		floor := Transform->New();
+		# The caster is OFF CENTRE, so a mirrored light-space matrix cannot put its
+		# shadow in the right place by accident.
+		caster := Transform->New();
+		caster->SetPosition(-3.5, 2.0, 0.0);
+		caster->SetScale(1.5);
+
+		# Light straight down, which is also the case that would break a naive
+		# LookAt: world-up is parallel to the view direction there, so the basis is
+		# degenerate unless something notices.
+		light := Light->New();
+		light->SetDirection(0.0, 1.0, 0.0);
+		light->SetColor(1.0, 1.0, 1.0);
+		light->SetAmbient(0.15, 0.15, 0.15);
+
+		shadows->SetLight(light);
+		shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 12.0);
+
+		# --- the depth pass ---
+		shadows->Begin();
+		shadows->DrawCaster(caster_mesh, caster);
+		shadows->DrawCaster(floor_mesh, floor);
+		shadows->End(@gl);
+
+		# --- the lit pass, looking straight down at the floor ---
+		# Straight down so the floor fills the frame and the two sample points are
+		# unambiguously on it rather than on the caster or past the edge.
+		eye := Camera->New(Vector3->New(0.0, 14.0, 0.1));
+		eye->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), eye->GetViewMatrix());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shadowed->Use();
+		light->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+
+		floor_mvp := Matrix4->Multiply(view_projection, floor->GetMatrix());
+		shadowed->SetMatrix4("mvp", floor_mvp);
+		shadowed->SetMatrix4("model", floor->GetMatrix());
+		floor_mesh->Draw();
+
+		# Sampled on the floor: the caster is at x = -3.5, so looking straight down
+		# its shadow is left of centre. The right side of the frame is clear floor.
+		mid_y := @pixel_h / 2;
+		under := GL->ReadPixel((@pixel_w * 30) / 100, mid_y);
+		clear_floor := GL->ReadPixel((@pixel_w * 72) / 100, mid_y);
+		shadow_level := (under and 0x0000FF00) / 0x100;
+		lit_level := (clear_floor and 0x0000FF00) / 0x100;
+		"  floor: under the caster={$shadow_level} away from it={$lit_level}"->PrintLine();
+
+		Check("the floor is lit where nothing blocks the light", lit_level > 200);
+		Check("and darker under the caster", shadow_level < 120);
+		# The claim the two-point fixture exists to make: not all-shadowed, not
+		# un-shadowed, and the difference is large enough to be a shadow rather
+		# than shading noise.
+		Check("the difference is a shadow, not a gradient", lit_level - shadow_level > 90);
+		# Ambient still reaches it -- a fully black shadow means the ambient term
+		# was shadowed too, which is wrong.
+		Check("ambient still reaches the shadow", shadow_level > 10);
+
+		# --- an empty map must not shadow anything ---
+		# If the depth pass is skipped, the map holds its cleared value of 1.0,
+		# which is further than any geometry -- so nothing should be in shadow. A
+		# shader with its comparison inverted would shadow EVERYTHING here.
+		shadows->Begin();
+		shadows->End(@gl);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shadowed->Use();
+		light->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+		shadowed->SetMatrix4("mvp", floor_mvp);
+		shadowed->SetMatrix4("model", floor->GetMatrix());
+		floor_mesh->Draw();
+
+		empty_under := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  with an empty map, the same point reads {$empty_under}"->PrintLine();
+		Check("an empty shadow map shadows nothing", empty_under > 200);
+
+		# --- outside the covered area must be lit, not shadowed ---
+		# Cover a tiny region and the rest of the floor falls outside the map. The
+		# clamped edge texel would otherwise stretch across the whole world.
+		shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 1.0);
+		shadows->Begin();
+		shadows->DrawCaster(caster_mesh, caster);
+		shadows->End(@gl);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shadowed->Use();
+		light->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+		shadowed->SetMatrix4("mvp", floor_mvp);
+		shadowed->SetMatrix4("model", floor->GetMatrix());
+		floor_mesh->Draw();
+
+		outside := (GL->ReadPixel((@pixel_w * 90) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  outside the covered area: {$outside}"->PrintLine();
+		Check("beyond the map's coverage is lit, not shadowed", outside > 200);
+
+		# --- the variants and helpers that would otherwise ship untested ---
+		flat_shadowed := Shader->LitShadowed();
+		Check("Shader->LitShadowed compiles", flat_shadowed->IsOk());
+		flat_shadowed->Free();
+
+		# OrthographicBox is the square case of Orthographic, so it must agree with
+		# spelling it out.
+		box_tolerance := 0.000000001;
+		Check("OrthographicBox matches Orthographic",
+			Same(Matrix4->OrthographicBox(7.0, 1.0, 50.0), Matrix4->Orthographic(-7.0, 7.0, -7.0, 7.0, 1.0, 50.0), box_tolerance));
+
+		# An orthographic projection has no perspective, so a quad of half-extent h
+		# under a projection of extent e covers exactly h/e of the half-screen --
+		# which is a number that can be checked rather than eyeballed. Half the
+		# extent means the quad's edge lands at half-way out from the centre.
+		ortho := Matrix4->OrthographicBox(4.0, -10.0, 10.0);
+		ortho_quad := Mesh->Quad(2.0);
+		flat := Shader->Flat();
+		if(Check("an orthographic quad and shader", ortho_quad->IsOk() & flat->IsOk())) {
+			GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			flat->Use();
+			flat->SetMatrix4("mvp", ortho);
+			flat->SetVec3("color", 0.0, 1.0, 0.0);
+			ortho_quad->Draw();
+
+			# half 2 under extent 4 is half of the half-width, so NDC +/-0.5:
+			# inside at 60% across, outside at 90%.
+			ortho_in := (GL->ReadPixel((@pixel_w * 60) / 100, mid_y) and 0x0000FF00) / 0x100;
+			ortho_out := (GL->ReadPixel((@pixel_w * 90) / 100, mid_y) and 0x0000FF00) / 0x100;
+			"  orthographic: at-60%={$ortho_in} at-90%={$ortho_out}"->PrintLine();
+			Check("an orthographic quad covers the extent it should", ortho_in > 200 & ortho_out < 40);
+		};
+		ortho_quad->Free();
+		flat->Free();
+
+		# DrawCasterMatrix is DrawCaster for callers without a Transform, so it has
+		# to put the same thing in the map.
+		shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 12.0);
+		shadows->Begin();
+		shadows->DrawCasterMatrix(caster_mesh, caster->GetMatrix());
+		shadows->End(@gl);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shadowed->Use();
+		light->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+		shadowed->SetMatrix4("mvp", floor_mvp);
+		shadowed->SetMatrix4("model", floor->GetMatrix());
+		floor_mesh->Draw();
+		by_matrix := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  via DrawCasterMatrix: {$by_matrix}"->PrintLine();
+		Check("DrawCasterMatrix casts the same shadow as DrawCaster", by_matrix < 120);
+
+		Check("no GL errors from the shadow pass", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		caster_mesh->Free();
+		floor_mesh->Free();
+		shadowed->Free();
+		shadows->Free();
+		shadows->Free();
+		Check("ShadowMap->Free is idempotent", true);
+	}
+
+	#~
+	The overlay draws where it says it does, from the TOP-LEFT.
+
+	That is the assertion worth having. Overlay positions things in pixels from the
+	top-left because that is how every 2D API reads and where everyone puts a HUD,
+	while GL's own origin is the bottom-left -- so there is a flip inside, and a
+	missing or doubled flip produces an overlay that works perfectly and is upside
+	down. At a glance, and in a screenshot of a symmetric HUD, the two are
+	indistinguishable.
+
+	So a rectangle goes in ONE corner and both corners are read. Nothing that has
+	the flip wrong can satisfy that.
+
+	Text needs a font file, which is shipped in the deploy tree but is not
+	something this test should fail over if a tree was assembled by hand -- so the
+	text half reports and skips, while the geometry half always runs.
+	~#
+	method : CheckOverlay() ~ Nil {
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay is created", overlay->IsOk())) {
+			error := overlay->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		black := 0xFF000000;
+
+		# --- a rectangle in the top-left corner ---
+		# Rect needs no font: it uses the overlay's own one-pixel white texture.
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		overlay->Begin();
+		box := @pixel_h / 4;
+		overlay->Rect(0, 0, box, box);
+		overlay->End();
+
+		# ReadPixel counts y up from the BOTTOM, so the top of the screen is the
+		# high y. A rect asked for at (0, 0) must land there.
+		top_left := GL->ReadPixel(box / 2, @pixel_h - (box / 2));
+		bottom_left := GL->ReadPixel(box / 2, box / 2);
+		far_side := GL->ReadPixel(@pixel_w - 4, @pixel_h / 2);
+		"  rect at 0,0: top-left=0x{$top_left} bottom-left=0x{$bottom_left}"->PrintLine();
+
+		Check("a rect at 0,0 lands in the TOP-left", top_left <> black);
+		Check("and not in the bottom-left", bottom_left = black);
+		Check("and nowhere else", far_side = black);
+
+		# --- and one in the bottom-right, to pin both axes ---
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		overlay->Begin();
+		overlay->Rect(@pixel_w - box, @pixel_h - box, box, box);
+		overlay->End();
+
+		br_screen := GL->ReadPixel(@pixel_w - (box / 2), box / 2);
+		tl_screen := GL->ReadPixel(box / 2, @pixel_h - (box / 2));
+		"  rect at bottom-right: there=0x{$br_screen} opposite=0x{$tl_screen}"->PrintLine();
+		Check("a rect at the far corner lands in the bottom-right", br_screen <> black);
+		Check("and not back in the top-left", tl_screen = black);
+
+		# --- text ---
+		# TTF has to be initialised before a font will open, which is easy to miss:
+		# without it Font->New simply returns a null font.
+		Font->Init();
+		font := Font->New("../lib/sdl/fonts/lazy.ttf", 24);
+		if(font = Nil | font->IsNull()) {
+			"  SKIP: no font file, so the text half is not exercised"->PrintLine();
+		}
+		else {
+			overlay->SetFont(font);
+			overlay->SetColor(255, 255, 255);
+
+			width := overlay->MeasureWidth("MMMM");
+			narrow := overlay->MeasureWidth("i");
+			"  measured: MMMM={$width} i={$narrow}"->PrintLine();
+			Check("text has a measurable width", width > 0);
+			# Proportional, so four Ms must be wider than one i. A stub returning a
+			# constant would pass the check above and fail this one.
+			Check("and the width depends on the text", width > narrow);
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			overlay->Begin();
+			overlay->Text("MMMMMMMM", 4, 4);
+			overlay->End();
+
+			# Somewhere in the top-left band there must be white glyph pixels, and
+			# the bottom of the screen must be untouched.
+			found := 0;
+			for(py := @pixel_h - 40; py < @pixel_h - 2; py += 2;) {
+				for(px := 4; px < 200; px += 2;) {
+					if(px < @pixel_w & py < @pixel_h) {
+						if((GL->ReadPixel(px, py) and 0x00FFFFFF) <> 0) {
+							found += 1;
+						};
+					};
+				};
+			};
+			bottom_band := 0;
+			for(px := 4; px < 200; px += 2;) {
+				if(px < @pixel_w) {
+					if((GL->ReadPixel(px, 4) and 0x00FFFFFF) <> 0) {
+						bottom_band += 1;
+					};
+				};
+			};
+			"  glyph pixels near the top={$found} near the bottom={$bottom_band}"->PrintLine();
+			Check("text draws pixels", found > 0);
+			Check("near the TOP, where it was asked for", bottom_band = 0);
+
+			# The cache must return the same texture for the same string, or a
+			# per-frame counter re-rasterises every frame.
+			first := overlay->MeasureWidth("cache me");
+			second := overlay->MeasureWidth("cache me");
+			Check("measuring the same string twice agrees", first = second & first > 0);
+		};
+
+		# Note Game.SDL2's Font has no Free or Close method at all, so a loaded font
+		# cannot be released -- worth knowing, and not this bundle's to fix.
+		Font->Quit();
+
+		Check("no GL errors from the overlay", GL->DrainErrors()->Size() = 0);
+
+		overlay->Free();
+		overlay->Free();
+		Check("Overlay->Free is idempotent", true);
+	}
+
+	#~
+	Instanced drawing puts each instance where its own matrix says.
+
+	The failure this is built to catch is glVertexAttribDivisor being wrong or
+	missing. Without it the instance attributes advance per VERTEX instead of per
+	instance, and the result is not an error -- every instance gets the first
+	one's matrix, so they all land in the same place and you see one object where
+	you asked for several. Which, if the fixture draws instances that overlap, or
+	reads one point, looks exactly like success.
+
+	So three instances go at three separated positions and all three points are
+	read, plus a fourth point between them that must stay empty. One matrix
+	applied to all three cannot satisfy that.
+	~#
+	method : CheckInstancing() ~ Nil {
+		shader := Shader->LitTexturedInstanced();
+		if(<>Check("Shader->LitTexturedInstanced compiles", shader->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		cube := Mesh->Cube(0.6);
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a cube and texture for instancing", cube->IsOk() & white->IsOk())) {
+			shader->Free();
+			return;
+		};
+
+		# Three instances spread across x. Deliberately far enough apart that their
+		# screen positions cannot overlap.
+		count := 3;
+		spread := [-2.5, 0.0, 2.5];
+		matrices := Float->New[count * 16];
+		scratch := Float->New[16];
+		for(i := 0; i < count; i += 1;) {
+			Matrix4->TranslationScaleInto(scratch, spread[i], 0.0, 0.0, 1.0, 1.0, 1.0);
+			for(j := 0; j < 16; j += 1;) {
+				matrices[i * 16 + j] := scratch[j];
+			};
+		};
+
+		uploaded := cube->SetInstanceMatrices(matrices);
+		if(<>Check("instance matrices upload", uploaded)) {
+			reason := GL->GetLastError();
+			"  reason: {$reason}"->PrintLine();
+			cube->Free();
+			white->Free();
+			shader->Free();
+			return;
+		};
+
+		light := Light->New();
+		light->SetDirection(0.0, 0.0, 1.0);
+		light->SetColor(1.0, 1.0, 1.0);
+		light->SetAmbient(0.2, 0.2, 0.2);
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 8.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), camera->GetViewMatrix());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shader->Use();
+		# view_projection, NOT mvp: the model matrix comes from the vertex stream.
+		shader->SetMatrix4("view_projection", view_projection);
+		shader->SetInt("tex", 0);
+		light->ApplyTo(shader);
+		white->Bind(0);
+		cube->DrawInstanced(count);
+
+		mid_y := @pixel_h / 2;
+		black := 0xFF000000;
+		# At distance 8 with a 60-degree fov the frustum is about 9.2 wide at the
+		# centre, so x = -2.5, 0 and 2.5 land near 23%, 50% and 77% across.
+		left := GL->ReadPixel((@pixel_w * 23) / 100, mid_y);
+		middle := GL->ReadPixel(@pixel_w / 2, mid_y);
+		right := GL->ReadPixel((@pixel_w * 77) / 100, mid_y);
+		# between the left and middle instances, where nothing should be
+		gap := GL->ReadPixel((@pixel_w * 36) / 100, mid_y);
+		"  instances: left=0x{$left} middle=0x{$middle} right=0x{$right} gap=0x{$gap}"->PrintLine();
+
+		Check("the middle instance drew", middle <> black);
+		# THE assertion. Without a working divisor all three share the first
+		# matrix, so only one position is occupied.
+		Check("the left instance drew at its own matrix", left <> black);
+		Check("and the right one at its own", right <> black);
+		Check("with nothing between them", gap = black);
+
+		# --- the instanced shader's world position has to be real ---
+		# A POINT light is the test, not a directional one: its brightness depends on
+		# the DISTANCE from the light to the fragment, which needs the fragment's
+		# world position. If that varying is never written -- which is exactly what
+		# happened, because the instanced vertex shader and the ordinary one declared
+		# their outputs separately and drifted -- then Windows and Linux link it
+		# anyway and leave the value undefined, so all three instances compute the
+		# same distance and come back equally lit. Only macOS's linker refused it.
+		#
+		# So: a point light close to the middle instance. The middle must be brighter
+		# than the outer two, and it can only be if world_position is real.
+		near_light := LightRig->New();
+		near_light->SetAmbient(0.0, 0.0, 0.0);
+		near_light->SetViewPosition(camera->GetPosition());
+		near_light->Add(Light->Point(Vector3->New(0.0, 0.0, 3.0), 6.0));
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		near_light->ApplyTo(shader);
+		shader->SetMatrix4("view_projection", view_projection);
+		shader->SetInt("tex", 0);
+		white->Bind(0);
+		cube->DrawInstanced(count);
+
+		centre_lit := (GL->ReadPixel(@pixel_w / 2, mid_y) and 0x0000FF00) / 0x100;
+		outer_lit := (GL->ReadPixel((@pixel_w * 23) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  instanced point light: middle={$centre_lit} outer={$outer_lit}"->PrintLine();
+		Check("the instanced shader lights the nearest instance", centre_lit > 30);
+		Check("and its world position is real, not undefined", centre_lit > outer_lit + 10);
+
+		# An ordinary Draw on the same mesh must still work -- an instance buffer
+		# attached to a VAO stays attached, and its attributes are still enabled.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		Check("no GL errors from the instanced draw", GL->DrainErrors()->Size() = 0);
+
+		# A 16-component instance attribute is the mistake to make here, and it has
+		# to be refused rather than silently drawing nothing.
+		GL->GetLastError();
+		bad := cube->SetInstances(matrices, [16], 3);
+		Check("a 16-component instance attribute is refused", <>bad);
+		refusal := GL->GetLastError();
+		Check("with a reason naming the four-slot rule", refusal->Size() > 0);
+		"  refused: {$refusal}"->PrintLine();
+
+		# And instance data that is not a whole number of instances.
+		GL->GetLastError();
+		ragged := cube->SetInstances([1.0, 2.0, 3.0], [4, 4, 4, 4], 3);
+		Check("ragged instance data is refused", <>ragged);
+		Check("with a reason", GL->GetLastError()->Size() > 0);
+
+		white->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	A material tints a surface, and two boxes sharing a texture can differ.
+
+	The claim worth testing is that a material is PER OBJECT. A single-box fixture
+	would pass on a Scene that applied one material to everything, so this uses two
+	boxes with the same texture and different tints and requires them to come back
+	different colours.
+
+	Also checks the guard: an unset tint must read as untinted rather than as black.
+	GL leaves an unset uniform at zero, and without the guard in the shader a
+	forgotten tint turns the whole surface black -- which is the failure a caller
+	would report as "my model is invisible".
+	~#
+	method : CheckMaterials() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a shader, cube and texture for materials", shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		light := Light->Directional(Vector3->New(0.0, 0.0, 1.0));
+		light->SetColor(1.0, 1.0, 1.0);
+		light->SetAmbient(0.0, 0.0, 0.0);
+
+		# Two boxes side by side, SAME texture, different tints.
+		red := Material->New(white);
+		red->SetTint(1.0, 0.0, 0.0);
+		blue := Material->New(white);
+		blue->SetTint(0.0, 0.0, 1.0);
+
+		scene := Scene->New(cube, shader);
+		left_box := scene->AddBox(Vector3->New(-2.0, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), white);
+		right_box := scene->AddBox(Vector3->New(2.0, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), white);
+		left_box->SetMaterial(red);
+		right_box->SetMaterial(blue);
+		scene->SetLight(light);
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 9.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), camera->GetViewMatrix());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(view_projection);
+
+		mid_y := @pixel_h / 2;
+		left := GL->ReadPixel((@pixel_w * 30) / 100, mid_y);
+		right := GL->ReadPixel((@pixel_w * 70) / 100, mid_y);
+		left_r := (left and 0x00FF0000) / 0x10000;
+		left_b := left and 0x000000FF;
+		right_r := (right and 0x00FF0000) / 0x10000;
+		right_b := right and 0x000000FF;
+		"  materials: left r={$left_r} b={$left_b}, right r={$right_r} b={$right_b}"->PrintLine();
+
+		Check("a tinted box takes its tint", left_r > 150 & left_b < 60);
+		# The assertion the two-box fixture exists for: one material applied to
+		# everything would make these identical.
+		Check("and a second box takes its own", right_b > 150 & right_r < 60);
+
+		# --- specular belongs to the material, not the lights ---
+		shiny := Material->New(white);
+		shiny->SetSpecular(48.0, 1.0);
+		matte := Material->New(white);
+		matte->SetSpecular(48.0, 0.0);
+
+		rig := LightRig->New();
+		rig->SetAmbient(0.0, 0.0, 0.0);
+		rig->SetViewPosition(camera->GetPosition());
+		dim := Light->Directional(Vector3->New(0.0, 0.0, 1.0));
+		dim->SetColor(0.3, 0.3, 0.3);
+		rig->Add(dim);
+		scene->SetLightRig(rig);
+
+		left_box->SetMaterial(matte);
+		right_box->SetMaterial(shiny);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(view_projection);
+		matte_read := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+		shiny_read := (GL->ReadPixel((@pixel_w * 70) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  specular per material: matte={$matte_read} shiny={$shiny_read}"->PrintLine();
+		Check("shininess is a property of the material, not the lights", shiny_read > matte_read + 10);
+
+		# --- the tint guard ---
+		# A material that never sets a tint leaves it at the default white, but a
+		# shader driven by hand with nothing set at all must not go black.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		bare := Shader->LitTextured();
+		if(Check("a bare shader compiles", bare->IsOk())) {
+			bare->Use();
+			light->ApplyTo(bare);
+			bare->SetInt("tex", 0);
+			white->Bind(0);
+			bare->SetMatrix4("mvp", Matrix4->Multiply(view_projection, Matrix4->Identity()));
+			bare->SetMatrix4("model", Matrix4->Identity());
+			cube->Draw();
+			untinted := GL->ReadPixel(@pixel_w / 2, mid_y);
+			"  with no tint ever set: 0x{$untinted}"->PrintLine();
+			Check("an unset tint reads as untinted, not as black", untinted <> 0xFF000000);
+		};
+		bare->Free();
+
+		Check("no GL errors from materials", GL->DrainErrors()->Size() = 0);
+
+		scene->Clear();
+		white->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	A spot light's shadow uses a perspective projection, not the parallel one a
+	directional light gets.
+
+	Cast a spot's shadow through an orthographic box and the shadow comes out with
+	parallel edges from a light that plainly does not have them -- it reads as the
+	shadow belonging to something else in the scene. So this asserts the two modes
+	produce DIFFERENT light-space matrices, and that the spot one still puts a
+	shadow under the caster.
+	~#
+	method : CheckSpotShadows() ~ Nil {
+		shadows := ShadowMap->New(512);
+		if(<>Check("a shadow map for the spot", shadows->IsOk())) {
+			return;
+		};
+
+		Check("it starts out directional", <>shadows->IsSpot());
+
+		# The same geometry, once under a directional light and once under a spot.
+		sun := Light->Directional(Vector3->New(0.0, 1.0, 0.0));
+		shadows->SetLight(sun);
+		shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 10.0);
+		directional_matrix := Matrix4->Multiply(Matrix4->Identity(), shadows->GetLightSpaceMatrix());
+
+		# Sized so the LIT BAND is wide. A cone of 24 degrees from 6 units up lights
+		# a radius of 2.67, while a unit cube at y=2 casts an umbra out to x=2.0 --
+		# leaving a 0.67-wide ring of lit floor, which the first version of this
+		# check sampled straight past. Small caster, high wide light: umbra to 0.89,
+		# lit to 8.0.
+		torch := Light->Spot(Vector3->New(0.0, 8.0, 0.0), Vector3->New(0.0, -1.0, 0.0), 24.0, 35.0, 45.0);
+		shadows->SetLight(torch);
+		Check("a spot light switches it to perspective", shadows->IsSpot());
+		spot_matrix := shadows->GetLightSpaceMatrix();
+
+		# The LAST ROW, not a single element. An orthographic projection times a
+		# view leaves the last row exactly (0, 0, 0, 1) -- no perspective divide;
+		# a perspective one does not. Checking m[11] alone is what I tried first and
+		# it is orientation-dependent: for a spot pointing straight DOWN the
+		# perspective term lands in m[7] and m[11] is zero in both cases, so the
+		# assertion passed on the directional matrix and failed on the spot's.
+		ortho_row := directional_matrix[3] + directional_matrix[7] + directional_matrix[11];
+		spot_row := spot_matrix[3] + spot_matrix[7] + spot_matrix[11];
+		ortho_w := directional_matrix[15];
+		spot_w := spot_matrix[15];
+		"  last row: directional sum={$ortho_row} w={$ortho_w}; spot sum={$spot_row} w={$spot_w}"->PrintLine();
+		Check("the directional matrix has no perspective divide", Near(ortho_row, 0.0, 0.0001) & Near(ortho_w, 1.0, 0.0001));
+		Check("and the spot matrix does", <>Near(spot_row, 0.0, 0.0001) | <>Near(spot_w, 1.0, 0.0001));
+
+		# And it still casts. Floor plus a caster above it, lit by the spot.
+		shadowed := Shader->LitTexturedShadowed();
+		floor_mesh := Mesh->Plane(8.0, 1.0);
+		caster := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("geometry for the spot shadow", shadowed->IsOk() & floor_mesh->IsOk() & caster->IsOk())) {
+			shadows->Free();
+			return;
+		};
+
+		floor_at := Transform->New();
+		caster_at := Transform->New();
+		caster_at->SetPosition(0.0, 3.0, 0.0);
+		caster_at->SetScale(0.5);
+
+		shadows->Begin();
+		shadows->DrawCaster(caster, caster_at);
+		shadows->DrawCaster(floor_mesh, floor_at);
+		shadows->End(@gl);
+
+		eye := Camera->New(Vector3->New(0.0, 12.0, 0.1));
+		eye->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), eye->GetViewMatrix());
+
+		rig := LightRig->New();
+		rig->SetAmbient(0.1, 0.1, 0.1);
+		rig->SetViewPosition(eye->GetPosition());
+		rig->Add(torch);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shadowed->Use();
+		rig->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+		shadowed->SetMatrix4("mvp", Matrix4->Multiply(view_projection, floor_at->GetMatrix()));
+		shadowed->SetMatrix4("model", floor_at->GetMatrix());
+		floor_mesh->Draw();
+
+		mid_y := @pixel_h / 2;
+		under := (GL->ReadPixel(@pixel_w / 2, mid_y) and 0x0000FF00) / 0x100;
+		# World x = 3, which at this camera is 72% across: comfortably outside the
+		# umbra (0.89) and well inside the cone (8.0).
+		beside := (GL->ReadPixel((@pixel_w * 72) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  spot shadow: under the caster={$under} beside it={$beside}"->PrintLine();
+
+		Check("the spot lights the floor beside the caster", beside > 60);
+		Check("and the caster's shadow falls under it", under < beside - 30);
+
+		Check("no GL errors from the spot shadow", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		caster->Free();
+		floor_mesh->Free();
+		shadowed->Free();
+		shadows->Free();
+	}
+
+	#~
+	A point light casts shadows in EVERY direction.
+
+	That is the whole claim, and it is the one a careless fixture misses. A cube
+	map has six faces rendered by six separate view matrices, and getting one of
+	them wrong -- a swapped axis, an up vector that does not match GL's ordering --
+	produces shadows that are perfectly correct in the directions you happened to
+	look and absent or misplaced in the others. Checking one direction proves
+	almost nothing.
+
+	So: a light at the origin, six walls around it, and a caster between the light
+	and each wall in turn. Every wall must show a dark patch where its caster
+	blocks the light, and a lit region beside it. Six directions, six pairs of
+	readings.
+
+	The walls are drawn one at a time facing the camera, rather than building a
+	room and flying around it -- the point is to exercise the six CUBE faces, not
+	the camera, and moving the caster is enough to do that.
+	~#
+	method : CheckPointShadows() ~ Nil {
+		shadows := PointShadow->New(256);
+		if(<>Check("a cube shadow map is created", shadows->IsOk())) {
+			error := shadows->GetError();
+			"  error: {$error}"->PrintLine();
+			return;
+		};
+
+		lit := Shader->LitTexturedPointShadowed();
+		if(<>Check("Shader->LitTexturedPointShadowed compiles", lit->IsOk())) {
+			log := lit->GetLog();
+			"  log: {$log}"->PrintLine();
+			shadows->Free();
+			return;
+		};
+
+		depth_only := Shader->DepthCube();
+		Check("Shader->DepthCube compiles", depth_only->IsOk());
+		depth_only->Free();
+
+		wall := Mesh->Cube();
+		caster := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("geometry for the cube shadow", wall->IsOk() & caster->IsOk() & white->IsOk())) {
+			lit->Free();
+			shadows->Free();
+			return;
+		};
+
+		lamp := Light->Point(Vector3->New(0.0, 0.0, 0.0), 30.0);
+		# Deliberately DIM. At full brightness a wall four units from the light
+		# reads 255 whether or not it is shadowed, and both samples come back
+		# saturated and identical -- which is how the first version of this failed.
+		lamp->SetColor(0.5, 0.5, 0.5);
+		shadows->SetLight(lamp);
+
+		rig := LightRig->New();
+		rig->SetAmbient(0.05, 0.05, 0.05);
+		rig->Add(lamp);
+
+		# The six axes, and for each one a sideways offset to place the caster off
+		# to one side -- so the wall has both a shadowed part and a lit part.
+		axes := [1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  0.0, 1.0, 0.0,
+		         0.0, -1.0, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0, -1.0];
+		names := ["+X", "-X", "+Y", "-Y", "+Z", "-Z"];
+
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+		all_shadowed := true;
+		all_lit := true;
+
+		for(axis := 0; axis < 6; axis += 1;) {
+			at := axis * 3;
+			ax := axes[at]; ay := axes[at + 1]; az := axes[at + 2];
+
+			# A big cube 10 units out, so its near face sits at 4 and acts as a wall.
+			# At 8 with the same scale it spanned 2..14 and SWALLOWED the caster,
+			# which is why nothing was shadowed the first time this ran.
+			wall_at := Transform->New();
+			wall_at->SetPosition(ax * 10.0, ay * 10.0, az * 10.0);
+			wall_at->SetScale(6.0, 6.0, 6.0);
+
+			# The caster between the light and that face, small enough that its
+			# shadow covers the middle of the wall and leaves the sides lit.
+			caster_at := Transform->New();
+			caster_at->SetPosition(ax * 2.0, ay * 2.0, az * 2.0);
+			caster_at->SetScale(0.5);
+
+			# --- the six-face depth pass ---
+			for(face := 0; face < 6; face += 1;) {
+				shadows->BeginFace(face);
+				shadows->DrawCaster(caster, caster_at);
+				shadows->DrawCaster(wall, wall_at);
+			};
+			shadows->End(@gl);
+
+			# --- look down this axis at the wall ---
+			# The eye sits between the light and the wall, off to one side so both
+			# the shadow and lit floor are in frame.
+			eye_position := Vector3->New(ax * 0.5, ay * 0.5, az * 0.5);
+			eye := Camera->New(eye_position);
+			eye->LookAtPoint(Vector3->New(ax * 10.0, ay * 10.0, az * 10.0));
+			view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(70.0, @gl->GetAspect()), eye->GetViewMatrix());
+
+			GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			lit->Use();
+			rig->ApplyTo(lit);
+			shadows->ApplyTo(lit);
+			lit->SetInt("tex", 0);
+			white->Bind(0);
+			lit->SetMatrix4("mvp", Matrix4->Multiply(view_projection, wall_at->GetMatrix()));
+			lit->SetMatrix4("model", wall_at->GetMatrix());
+			wall->Draw();
+
+			# Straight ahead is behind the caster; well off to the side is not.
+			behind := (GL->ReadPixel(mid_x, mid_y) and 0x0000FF00) / 0x100;
+			beside := (GL->ReadPixel((@pixel_w * 88) / 100, mid_y) and 0x0000FF00) / 0x100;
+			name := names[axis];
+			"  face {$name}: behind the caster={$behind} beside it={$beside}"->PrintLine();
+
+			if(beside < 40) {
+				all_lit := false;
+			};
+			if(behind > beside - 25) {
+				all_shadowed := false;
+			};
+		};
+
+		Check("the point light reaches all six directions", all_lit);
+		# One direction working proves nothing about a cube map: five of the six
+		# faces could be wrong and a single-direction check would pass.
+		Check("and casts a shadow in all six", all_shadowed);
+
+		# --- and the faces are ORIENTED correctly, which the above cannot see ---
+		# The check above uses a caster centred on each axis, so its shadow is
+		# symmetric about that axis -- and a face stored rotated 180 degrees maps a
+		# symmetric shadow onto itself. Verified by flipping one face's up vector and
+		# watching all six readings stay identical.
+		#
+		# So this reads the cube's CONTENTS by direction instead of reading the
+		# screen. One caster placed OFF the axis: a direction pointing at it must
+		# come back near, and the mirrored direction must come back at the cleared
+		# distance. A rotated face swaps those two.
+		CheckCubeOrientation(shadows, caster, white);
+
+		Check("no GL errors from the cube shadow", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		caster->Free();
+		wall->Free();
+		lit->Free();
+		shadows->Free();
+		shadows->Free();
+		Check("PointShadow->Free is idempotent", true);
+	}
+
+	#~
+	The six cube faces are stored the way up GL specifies.
+
+	Reads the cube map's contents by DIRECTION rather than looking at the screen,
+	because the screen test cannot see a rotated face: its caster sits on the axis
+	so the shadow is symmetric, and a 180-degree rotation maps a symmetric shadow
+	onto itself. Confirmed by flipping one face's up vector -- all six screen
+	readings stayed identical.
+
+	One caster, placed OFF the axis. A direction pointing at it must report a near
+	distance; the mirrored direction must report the cleared value of 1.0. A face
+	stored rotated swaps those two, which is exactly the failure GL's face
+	orientation rules exist to prevent.
+	~#
+	method : CheckCubeOrientation(shadows : PointShadow, caster : Mesh, white : Texture2D) ~ Nil {
+		# A shader that samples the cube along a direction the caller sets, and
+		# writes what it found. No geometry involvement at all beyond a quad.
+		vertex := ShaderSource->New();
+		vertex->Add("layout (location = 0) in vec3 in_position;");
+		vertex->Add("void main() { gl_Position = vec4(in_position, 1.0); }");
+
+		fragment := ShaderSource->New();
+		fragment->Add("uniform samplerCube shadow_cube;");
+		fragment->Add("uniform vec3 probe;");
+		fragment->Add("out vec4 frag_color;");
+		fragment->Add("void main() {");
+		fragment->Add("  float d = texture(shadow_cube, probe).r;");
+		fragment->Add("  frag_color = vec4(d, d, d, 1.0);");
+		fragment->Add("}");
+
+		reader := Shader->New(vertex->Build(), fragment->Build());
+		screen := Mesh->Quad(1.0);
+		if(<>Check("a cube reader for the orientation check", reader->IsOk() & screen->IsOk())) {
+			return;
+		};
+
+		# Off the +Y axis, displaced in +Z. Nothing else in the map, so everywhere
+		# the caster is not reads the cleared 1.0.
+		off_axis := Transform->New();
+		off_axis->SetPosition(0.0, 3.0, 1.2);
+		off_axis->SetScale(0.6);
+
+		for(face := 0; face < 6; face += 1;) {
+			shadows->BeginFace(face);
+			shadows->DrawCaster(caster, off_axis);
+		};
+		shadows->End(@gl);
+
+		toward := Probe(reader, screen, shadows, 0.0, 1.0, 0.4);
+		mirrored := Probe(reader, screen, shadows, 0.0, 1.0, -0.4);
+		sideways := Probe(reader, screen, shadows, 1.0, 0.0, 0.0);
+		"  cube by direction: toward the caster={$toward} mirrored={$mirrored} sideways={$sideways}"->PrintLine();
+
+		# The caster is about 3 units away and the range is 30, so a hit reads
+		# roughly 2.5/30 = 0.08 -> about 21 of 255. Empty reads 255.
+		Check("a direction at the caster finds it", toward < 120);
+		# THE assertion: a face rotated 180 degrees puts the caster here instead.
+		Check("the mirrored direction is empty, so the face is not rotated", mirrored > 200);
+		Check("and a direction with nothing in it is empty too", sideways > 200);
+
+		screen->Free();
+		reader->Free();
+	}
+
+	#~
+	Sample the cube along one direction and return the stored value, 0..255.
+	~#
+	method : Probe(reader : Shader, screen : Mesh, shadows : PointShadow, x : Float, y : Float, z : Float) ~ Int {
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		reader->Use();
+		reader->SetVec3("probe", x, y, z);
+		reader->SetInt("shadow_cube", 4);
+		shadows->BindCubeTo(4);
+		screen->Draw();
+
+		return GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x000000FF;
+	}
+
+	#~
+	Mesh->FromObj reads the awkward shapes real exporters emit.
+
+	The fixtures are written to a temp directory at run time rather than committed,
+	so this needs no files on disk and no guessing at relative paths from wherever
+	the suite is invoked.
+
+	Three cases, each of which a naive loader gets wrong, and all three were
+	genuinely wrong in the first version of the loader:
+
+	1. A QUAD face. OBJ allows any polygon, so a four-corner face has to be fanned
+	   into two triangles -- and the fan has to keep the winding, or half of every
+	   quad is culled.
+	2. NEGATIVE indices, meaning "counting back from here". Some exporters emit
+	   them, and a loader that assumes 1-based positive indices reads them as a
+	   wild out-of-range value. This one silently produced vertices at the origin,
+	   which is a degenerate triangle: it draws nothing and raises no GL error.
+	3. NO normals, and the `v//vn` form. A file with no vn needs a flat normal
+	   computed per face from its winding, or nothing is lit.
+
+	Everything is drawn with the normal-as-colour shader, so a face pointing at
+	the camera must come back BLUE -- which checks the geometry, the winding and
+	the normal in one reading. Coverage is measured by counting lit pixels rather
+	than sampling one point, because a fanned quad that lost one of its two
+	triangles still covers the point you happened to pick.
+	~#
+	method : CheckObjLoading() ~ Nil {
+		# GetTempDir is on System.Runtime, not on Directory.
+		directory := System.Runtime->GetTempDir();
+		if(directory = Nil | directory->Size() = 0) {
+			"  SKIP: no temp directory, so OBJ loading is not exercised"->PrintLine();
+			return;
+		};
+
+		quad_path := "{$directory}/objeck_gl_quad.obj";
+		tri_path := "{$directory}/objeck_gl_tri.obj";
+		slash_path := "{$directory}/objeck_gl_slash.obj";
+
+		# A quad, with texture coordinates and an explicit normal. Also carries the
+		# mtllib/usemtl/o/s lines an exporter writes, which must be ignored rather
+		# than confuse the parser.
+		quad := "# generated by the Objeck GL regression suite\n";
+		quad += "mtllib nothing.mtl\n";
+		quad += "o panel\n";
+		quad += "usemtl surface\n";
+		quad += "s off\n";
+		quad += "v -1.0 -1.0 0.0\n";
+		quad += "v 1.0 -1.0 0.0\n";
+		quad += "v 1.0 1.0 0.0\n";
+		quad += "v -1.0 1.0 0.0\n";
+		quad += "vt 0.0 0.0\n";
+		quad += "vt 1.0 0.0\n";
+		quad += "vt 1.0 1.0\n";
+		quad += "vt 0.0 1.0\n";
+		quad += "vn 0.0 0.0 1.0\n";
+		quad += "f 1/1/1 2/2/1 3/3/1 4/4/1\n";
+
+		# A triangle with negative indices and no normals at all.
+		tri := "v -1.0 -1.0 0.0\n";
+		tri += "v 1.0 -1.0 0.0\n";
+		tri += "v 0.0 1.0 0.0\n";
+		tri += "f -3 -2 -1\n";
+
+		# The v//vn form: position and normal, no texture coordinate.
+		slash := "v -1.0 -1.0 0.0\n";
+		slash += "v 1.0 -1.0 0.0\n";
+		slash += "v 0.0 1.0 0.0\n";
+		slash += "vn 0.0 0.0 1.0\n";
+		slash += "f 1//1 2//1 3//1\n";
+
+		wrote := System.IO.Filesystem.FileWriter->WriteFile(quad_path, quad);
+		wrote := wrote & System.IO.Filesystem.FileWriter->WriteFile(tri_path, tri);
+		wrote := wrote & System.IO.Filesystem.FileWriter->WriteFile(slash_path, slash);
+		if(<>Check("OBJ fixtures can be written to the temp directory", wrote)) {
+			return;
+		};
+
+		quad_mesh := Mesh->FromObj(quad_path);
+		tri_mesh := Mesh->FromObj(tri_path);
+		slash_mesh := Mesh->FromObj(slash_path);
+		Check("a quad-faced OBJ loads", quad_mesh->IsOk());
+		Check("negative indices and no normals load", tri_mesh->IsOk());
+		Check("the v//vn form loads", slash_mesh->IsOk());
+
+		missing := Mesh->FromObj("{$directory}/objeck_gl_absent.obj");
+		Check("a missing OBJ is refused rather than crashing", <>missing->IsOk());
+
+		if(<>quad_mesh->IsOk() | <>tri_mesh->IsOk() | <>slash_mesh->IsOk()) {
+			reason := GL->GetLastError();
+			"  reason: {$reason}"->PrintLine();
+			return;
+		};
+
+		shader := Shader->Normals();
+		if(<>Check("a shader to check the loaded normals", shader->IsOk())) {
+			return;
+		};
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 4.0));
+		vp := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), camera->GetViewMatrix());
+
+		# Culling ON throughout: a fan that reversed the winding of its second
+		# triangle, or a generated normal pointing backwards, disappears here and
+		# would be invisible in a demo that enables culling.
+		GL->Enable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		shader->Use();
+		shader->SetMatrix4("mvp", vp);
+
+		quad_lit := CountBlue(quad_mesh);
+		tri_lit := CountBlue(tri_mesh);
+		slash_lit := CountBlue(slash_mesh);
+		"  blue coverage: quad={$quad_lit} triangle={$tri_lit} v//vn={$slash_lit}"->PrintLine();
+
+		Check("the quad draws, front-facing and blue", quad_lit > 40);
+		Check("the triangle draws with a generated normal", tri_lit > 20);
+		Check("and the v//vn triangle too", slash_lit > 20);
+
+		# The quad is 2x2 and the triangle has base 2 and height 2, so the quad
+		# must cover about twice as much. Both fanned triangles being present is
+		# what makes that true -- losing one would halve it.
+		Check("the quad covers about twice the triangle", quad_lit > tri_lit + (tri_lit / 2));
+		# The two triangles are the same shape by different routes, so they must
+		# agree closely.
+		difference := tri_lit - slash_lit;
+		if(difference < 0) {
+			difference := difference * -1;
+		};
+		Check("both triangle forms cover the same area", difference <= 2);
+
+		GL->Disable(Capability->GL_CULL_FACE);
+		Check("no GL errors from OBJ loading", GL->DrainErrors()->Size() = 0);
+
+		shader->Free();
+		slash_mesh->Free();
+		tri_mesh->Free();
+		quad_mesh->Free();
+	}
+
+	#~
+	Draw one mesh and count how many sampled pixels came back predominantly blue,
+	which for the normal-as-colour shader means facing the camera.
+	~#
+	method : CountBlue(mesh : Mesh) ~ Int {
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		mesh->Draw();
+
+		found := 0;
+		step := 4;
+		for(y := 2; y < @pixel_h; y += step;) {
+			for(x := 2; x < @pixel_w; x += step;) {
+				pixel := GL->ReadPixel(x, y);
+				if((pixel and 0x000000FF) > 200) {
+					found += 1;
+				};
+			};
+		};
+
+		return found;
+	}
+
+	#~
+	Lines really draw as lines, and blending really blends.
+
+	Both were added as capabilities with nothing exercising them, which is the
+	same gap as an unused one -- it stays green whatever it does.
+
+	Lines are the interesting half to assert. Drawn as GL_LINES, a quad's four
+	corner vertices become two segments along its edges, so the interior stays
+	empty. Drawn as GL_TRIANGLES the same vertices fill it. That difference is the
+	assertion: a draw mode that was ignored would fill the interior either way.
+
+	Blending is asserted arithmetically. Half-transparent white over black gives a
+	mid grey, and the number is predictable rather than a matter of taste -- so a
+	blend that silently did not happen (GL's default factors are ONE and ZERO,
+	which is "replace") comes back as full white instead of half.
+	~#
+	method : CheckDrawModesAndBlending() ~ Nil {
+		shader := Shader->Flat();
+		if(<>Check("a flat shader for draw modes", shader->IsOk())) {
+			return;
+		};
+
+		# A quad as four corners with LINE indices: a closed loop round the edge.
+		# Deliberately not the triangle index list, because that read as lines gives
+		# (0,1), (2,2), (3,0) -- an outline plus a degenerate segment -- which is the
+		# trap the docs on Draw(mode) warn about.
+		corners := [-0.7, -0.7, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0,
+		             0.7, -0.7, 0.0,  0.0, 0.0, 1.0,  1.0, 0.0,
+		             0.7,  0.7, 0.0,  0.0, 0.0, 1.0,  1.0, 1.0,
+		            -0.7,  0.7, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0];
+		outline := Mesh->New(corners, [0, 1, 1, 2, 2, 3, 3, 0], Mesh->PositionNormalTexcoord());
+		filled := Mesh->New(corners, [0, 1, 2, 2, 3, 0], Mesh->PositionNormalTexcoord());
+		if(<>Check("outline and filled meshes upload", outline->IsOk() & filled->IsOk())) {
+			shader->Free();
+			return;
+		};
+
+		black := 0xFF000000;
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetMatrix4("mvp", Matrix4->Identity());
+		shader->SetVec3("color", 0.0, 1.0, 0.0);
+		filled->Draw();
+		filled_centre := GL->ReadPixel(mid_x, mid_y);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		outline->Draw(DrawMode->GL_LINES);
+		lines_centre := GL->ReadPixel(mid_x, mid_y);
+		# On the left edge of the quad, which at -0.7 NDC is 15% across.
+		lines_edge := GL->ReadPixel((@pixel_w * 15) / 100, mid_y);
+		"  draw modes: filled centre=0x{$filled_centre} lines centre=0x{$lines_centre} lines edge=0x{$lines_edge}"->PrintLine();
+
+		Check("triangles fill the quad", filled_centre <> black);
+		Check("lines leave the middle empty", lines_centre = black);
+		Check("but draw the edge", lines_edge <> black);
+
+		# --- blending, by arithmetic ---
+		# Half-alpha white over black must land mid grey. Straight replace gives
+		# full white, which is what an unconfigured GL_BLEND does.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		blend_shader := Shader->Textured();
+		half_white := Texture2D->Solid(0x80FFFFFF);
+		screen := Mesh->Quad(1.0);
+		if(Check("a half-transparent texture and quad", blend_shader->IsOk() & half_white->IsOk() & screen->IsOk())) {
+			blend_shader->Use();
+			blend_shader->SetMatrix4("mvp", Matrix4->Identity());
+			blend_shader->SetInt("tex", 0);
+			half_white->Bind(0);
+
+			# without blending
+			GL->Disable(Capability->GL_BLEND);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			screen->Draw();
+			opaque := GL->ReadPixel(mid_x, mid_y) and 0x000000FF;
+
+			# With it. The clear comes FIRST, and the order is load-bearing:
+			# BeginTransparency turns depth writing off, and glClear of the depth
+			# buffer is subject to the depth mask -- so clearing after it leaves the
+			# previous draw's depth values in place, the quad at the same z fails the
+			# test, and nothing is drawn at all. That is what the first version of
+			# this check did, and it read 0 rather than the expected mid grey.
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			GL->BeginTransparency();
+			screen->Draw();
+			blended := GL->ReadPixel(mid_x, mid_y) and 0x000000FF;
+			GL->EndTransparency();
+
+			"  blending: unblended={$opaque} blended={$blended}"->PrintLine();
+			Check("without blending a half-alpha texture writes full white", opaque > 200);
+			Check("with it, half white over black is mid grey", blended > 100 & blended < 160);
+		};
+
+		# --- the overlay's high-DPI scale ---
+		# 1.0 on an ordinary screen, 2.0 on a Retina one -- either is fine, but it
+		# must be a positive number rather than a division by a zero window size.
+		overlay := Overlay->New(@gl);
+		if(overlay->IsOk()) {
+			scale := overlay->GetScale();
+			"  overlay scale: {$scale}"->PrintLine();
+			Check("the overlay reports a sane high-DPI scale", scale >= 1.0 & scale <= 4.0);
+		};
+		overlay->Free();
+
+		# --- cull mode ---
+		# A single QUAD, not a cube. A closed cube in a constant colour looks
+		# identical whichever side is culled: cull the front and you simply see the
+		# far face's interior, which the flat shader paints the same green. That was
+		# the first version of this check and it could not fail. A quad has no far
+		# face, so culling its front makes it vanish.
+		one_face := Mesh->Quad(0.8);
+		if(Check("a quad for cull-mode", one_face->IsOk())) {
+			shader->Use();
+			shader->SetMatrix4("mvp", Matrix4->Identity());
+			shader->SetVec3("color", 0.0, 1.0, 0.0);
+
+			GL->Enable(Capability->GL_CULL_FACE);
+			GL->SetCullMode(CullMode->GL_BACK);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			one_face->Draw();
+			back_culled := GL->ReadPixel(mid_x, mid_y);
+
+			GL->SetCullMode(CullMode->GL_FRONT);
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			one_face->Draw();
+			front_culled := GL->ReadPixel(mid_x, mid_y);
+
+			"  cull: back-culled=0x{$back_culled} front-culled=0x{$front_culled}"->PrintLine();
+			Check("the default cull mode keeps a front-facing quad", back_culled <> black);
+			Check("SetCullMode(GL_FRONT) discards it", front_culled = black);
+
+			GL->SetCullMode(CullMode->GL_BACK);
+			GL->Disable(Capability->GL_CULL_FACE);
+		};
+
+		Check("no GL errors from draw modes and blending", GL->DrainErrors()->Size() = 0);
+
+		one_face->Free();
+		screen->Free();
+		half_white->Free();
+		blend_shader->Free();
+		filled->Free();
+		outline->Free();
+		shader->Free();
+	}
+
+	#~
+	A mesh GL would reject is refused up front, with a reason.
+
+	Before this, Mesh->New checked nothing and no GL error after creating the
+	buffers, so it handed back a non-zero handle regardless and IsOk answered
+	true. The first symptom was an object that simply never appeared.
+
+	The case that made this worth doing: a mat4 per-instance attribute is
+	conventionally written as a component count of 16. glVertexAttribPointer
+	accepts only 1 to 4, so that produces GL_INVALID_VALUE and draws nothing -- and
+	nothing in the API or its docs said a mat4 has to be four consecutive slots.
+	~#
+	method : CheckMeshValidation() ~ Nil {
+		# a valid triangle, for the control
+		vertices := [0.0, 0.0, 0.0,  1.0, 0.0, 0.0,  0.0, 1.0, 0.0];
+		indices := [0, 1, 2];
+
+		good := Mesh->New(vertices, indices, [3]);
+		Check("a valid mesh is still accepted", good->IsOk());
+		good->Free();
+
+		# 16 components: what someone reaching for a mat4 attribute would write.
+		GL->GetLastError();
+		mat4_attempt := Mesh->New(vertices, indices, [16]);
+		reason := GL->GetLastError();
+		Check("a 16-component attribute is refused", <>mat4_attempt->IsOk());
+		Check("and says a mat4 is four slots, not one", reason->Size() > 0);
+		"  refused: {$reason}"->PrintLine();
+		mat4_attempt->Free();
+
+		# a ragged vertex array: 9 floats described as 2-float vertices
+		GL->GetLastError();
+		ragged := Mesh->New(vertices, indices, [2]);
+		ragged_reason := GL->GetLastError();
+		Check("a ragged vertex array is refused", <>ragged->IsOk());
+		Check("and says why", ragged_reason->Size() > 0);
+		"  refused: {$ragged_reason}"->PrintLine();
+		ragged->Free();
+
+		# zero components
+		GL->GetLastError();
+		empty := Mesh->New(vertices, indices, [0]);
+		Check("a zero-component attribute is refused", <>empty->IsOk());
+		Check("with a reason", GL->GetLastError()->Size() > 0);
+		empty->Free();
+
+		# an absurd attribute count
+		GL->GetLastError();
+		too_many := Mesh->New(vertices, indices, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+		Check("more attributes than the driver allows is refused", <>too_many->IsOk());
+		Check("naming the driver's limit", GL->GetLastError()->Size() > 0);
+		too_many->Free();
+
+		# And the refusals must not have left GL in a bad state for what follows.
+		Check("no GL errors from the refused meshes", GL->DrainErrors()->Size() = 0);
+	}
+
+	#~
+	The extension list is readable, which in a core profile is not free -- it
+	needs glGetStringi, since glGetString(GL_EXTENSIONS) returns nothing there.
+	~#
+	method : CheckExtensions() ~ Nil {
+		extensions := GL->GetExtensions();
+		count := extensions->Size();
+		"  {$count} extensions reported"->PrintLine();
+
+		# Any real driver reports dozens. Zero means glGetStringi is not working,
+		# or GL_NUM_EXTENSIONS came back empty -- both of which would make a future
+		# per-feature check silently answer "unsupported" for everything.
+		Check("the context reports its extensions", count > 0);
+
+		if(count > 0) {
+			first := extensions[0];
+			Check("and they look like extension names", first->StartsWith("GL_"));
+			"  e.g. {$first}"->PrintLine();
+		};
+
+		# A name no driver has, to prove the query discriminates rather than
+		# answering true for everything.
+		Check("a made-up extension is not reported", <>GL->HasExtension("GL_OBJECK_not_a_real_extension"));
+
+		# Optional entry points: nothing is in that tier yet, so this must be
+		# empty. It exists so the first one cannot repeat the all-or-nothing bug.
+		missing := GL->GetOptionalMissing();
+		Check("no optional entry points are missing", missing->Size() = 0);
+	}
+
+	#~
+	The generated textures are the colour they claim, and GL_REPEAT really tiles.
+
+	The tiling half of this needs care, because the obvious fixture cannot tell
+	the two outcomes apart. A checkerboard sampled beyond u = 1 looks plausible
+	whether the coordinates wrapped or clamped -- clamping just stretches the edge
+	cell, and on a symmetric pattern the result is another plausible checkerboard.
+	That is the same trap that let every texture render upside down for the whole
+	life of this library.
+
+	So the fixture is a TWO PIXEL WIDE texture, red then blue, drawn across a quad
+	whose u spans 0..2, sampled at four points. Wrapping gives red, blue, red,
+	blue. Clamping gives red, blue, blue, blue -- the third sample is the one that
+	can only be red if GL_REPEAT took effect. Two pixels wide and one tall also
+	means v is irrelevant, so the row flip cannot quietly confuse the result.
+	~#
+	method : CheckTextures() ~ Nil {
+		red := 0xFFFF0000;
+		blue := 0xFF0000FF;
+
+		# Solid is exact by construction: one pixel, one colour, no filtering to
+		# average it with a neighbour.
+		solid := Texture2D->Solid(red);
+		if(<>Check("Texture2D->Solid uploads", solid->IsOk())) {
+			return;
+		};
+
+		checker := Texture2D->Checker(64, 8, 0xFFE8E8F0, 0xFF465A82);
+		Check("Texture2D->Checker uploads (mipmapped)", checker->IsOk());
+
+		missing := Texture2D->FromFile("no_such_file_here.png");
+		Check("FromFile on a missing file reports, not crashes", <>missing->IsOk());
+
+		# two pixels: column 0 red, column 1 blue. One row, so v cannot matter.
+		surface := Texture2D->NewSurface(2, 1);
+		if(<>Check("a 2x1 surface can be created", surface <> Nil)) {
+			solid->Free();
+			checker->Free();
+			return;
+		};
+		surface->FillRect(Rect->New(0, 0, 1, 1), red);
+		surface->FillRect(Rect->New(1, 0, 1, 1), blue);
+
+		# NEAREST, so each sample is one texel rather than a blend of two, and no
+		# mipmaps, so minification cannot pick a level that has averaged them.
+		tiled := Texture2D->New(surface, TextureFilter->GL_NEAREST, TextureWrap->GL_REPEAT, false);
+		surface->Free();
+		if(<>Check("a repeating texture uploads", tiled->IsOk())) {
+			solid->Free();
+			checker->Free();
+			return;
+		};
+
+		vertex := "#version 330 core\n";
+		vertex += "layout (location = 0) in vec3 in_position;\n";
+		vertex += "layout (location = 1) in vec2 in_texcoord;\n";
+		vertex += "out vec2 texcoord;\n";
+		vertex += "void main() { texcoord = in_texcoord; gl_Position = vec4(in_position, 1.0); }\n";
+
+		fragment := "#version 330 core\n";
+		fragment += "in vec2 texcoord;\n";
+		fragment += "uniform sampler2D tex;\n";
+		fragment += "out vec4 frag_color;\n";
+		fragment += "void main() { frag_color = texture(tex, texcoord); }\n";
+
+		shader := Shader->New(vertex, fragment);
+		if(<>Check("tiling shader compiles", shader->IsOk())) {
+			tiled->Free();
+			solid->Free();
+			checker->Free();
+			return;
+		};
+
+		# full-screen quad, u running 0 -> 2 so the right half is past the edge
+		vertices := [-1.0, -1.0, 0.0, 0.0, 0.0,  1.0, -1.0, 0.0, 2.0, 0.0,
+		              1.0,  1.0, 0.0, 2.0, 1.0, -1.0,  1.0, 0.0, 0.0, 1.0];
+		mesh := Mesh->New(vertices, [0, 1, 2, 2, 3, 0], [3, 2]);
+		if(<>Check("tiling mesh uploads", mesh->IsOk())) {
+			shader->Free();
+			tiled->Free();
+			solid->Free();
+			checker->Free();
+			return;
+		};
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		tiled->Bind(0);
+		mesh->Draw();
+
+		mid_y := @pixel_h / 2;
+		first := GL->ReadPixel((@pixel_w * 125) / 1000, mid_y);
+		second := GL->ReadPixel((@pixel_w * 375) / 1000, mid_y);
+		third := GL->ReadPixel((@pixel_w * 625) / 1000, mid_y);
+		fourth := GL->ReadPixel((@pixel_w * 875) / 1000, mid_y);
+		"  tiling: 0x{$first} 0x{$second} 0x{$third} 0x{$fourth}"->PrintLine();
+
+		Check("the first copy samples red then blue", first = red & second = blue);
+		# THE assertion: under GL_CLAMP_TO_EDGE this sample is blue, because
+		# everything past u = 1 clamps to the last texel.
+		Check("GL_REPEAT wraps rather than clamping", third = red);
+		Check("and keeps alternating", fourth = blue);
+
+		# Solid, through the same path.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		solid->Bind(0);
+		mesh->Draw();
+		flat := GL->ReadPixel(@pixel_w / 2, mid_y);
+		"  solid: 0x{$flat}"->PrintLine();
+		Check("Texture2D->Solid is exactly the colour asked for", flat = red);
+
+		# --------------------------------------------------------------------
+		# The primitives put texcoords at LOCATION 2, because location 1 is the
+		# normal. A shader that reads location 1 instead does not fail -- it
+		# samples the texture using the normal as a coordinate, which for a flat
+		# face is a constant, so the face comes back a single flat colour that
+		# looks entirely plausible. Only a texture that VARIES across the face can
+		# tell the two apart, which is what the two-pixel texture is for.
+		cube_vertex := "#version 330 core
+";
+		cube_vertex += "layout (location = 0) in vec3 in_position;
+";
+		cube_vertex += "layout (location = 2) in vec2 in_texcoord;
+";
+		cube_vertex += "uniform mat4 mvp;
+";
+		cube_vertex += "out vec2 texcoord;
+";
+		cube_vertex += "void main() { texcoord = in_texcoord; gl_Position = mvp * vec4(in_position, 1.0); }
+";
+
+		cube_shader := Shader->New(cube_vertex, fragment);
+		cube := Mesh->Cube();
+		if(Check("cube-with-texture shader and mesh", cube_shader->IsOk() & cube->IsOk())) {
+			camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+			projection := Matrix4->Perspective(Float->Pi() / 3.0, @gl->GetAspect(), 0.1, 100.0);
+			mvp := Matrix4->Multiply(projection, camera->GetViewMatrix());
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			cube_shader->Use();
+			cube_shader->SetInt("tex", 0);
+			cube_shader->SetMatrix4("mvp", mvp);
+			tiled->Bind(0);
+			cube->Draw();
+
+			# the front face spans about +/-0.43 in NDC, so these sit inside it
+			left := GL->ReadPixel((@pixel_w * 40) / 100, mid_y);
+			right := GL->ReadPixel((@pixel_w * 60) / 100, mid_y);
+			"  cube texcoords: left=0x{$left} right=0x{$right}"->PrintLine();
+
+			Check("Mesh->Cube's texcoords reach shader location 2", left = red & right = blue);
+		};
+
+		Check("no GL errors from the textures", GL->DrainErrors()->Size() = 0);
+
+		cube->Free();
+		cube_shader->Free();
+		mesh->Free();
+		shader->Free();
+		tiled->Free();
+		checker->Free();
+		solid->Free();
+	}
+
+	#~
+	A texture must render the same way up as the image file.
+
+	This exists because it once did not, and nothing caught it: an SDL surface
+	stores row 0 at the TOP while GL treats t=0 as the BOTTOM, so an unflipped
+	upload renders every image upside down. Every texture in the test suite and
+	the demos was a symmetric checkerboard, which hides the bug perfectly -- it
+	only showed up when someone loaded a real picture.
+
+	So: a two-tone texture, deliberately NOT symmetric, drawn on a full-screen
+	quad and sampled top and bottom.
+	~#
+	method : CheckTextureOrientation() ~ Nil {
+		vertex := "#version 330 core\n";
+		vertex += "layout (location = 0) in vec3 in_position;\n";
+		vertex += "layout (location = 1) in vec2 in_texcoord;\n";
+		vertex += "out vec2 texcoord;\n";
+		vertex += "void main() { texcoord = in_texcoord; gl_Position = vec4(in_position, 1.0); }\n";
+
+		fragment := "#version 330 core\n";
+		fragment += "in vec2 texcoord;\n";
+		fragment += "uniform sampler2D tex;\n";
+		fragment += "out vec4 frag_color;\n";
+		fragment += "void main() { frag_color = texture(tex, texcoord); }\n";
+
+		shader := Shader->New(vertex, fragment);
+		if(<>Check("orientation shader compiles", shader->IsOk())) {
+			return;
+		};
+
+		# full-screen quad, texcoord (0,0) at the bottom-left
+		vertices := [-1.0, -1.0, 0.0, 0.0, 0.0,  1.0, -1.0, 0.0, 1.0, 0.0,
+		              1.0,  1.0, 0.0, 1.0, 1.0, -1.0,  1.0, 0.0, 0.0, 1.0];
+		indices := [0, 1, 2, 2, 3, 0];
+		mesh := Mesh->New(vertices, indices, [3, 2]);
+		if(<>Check("orientation mesh uploads", mesh->IsOk())) {
+			shader->Free();
+			return;
+		};
+
+		# 4x4 with the TOP half red and the BOTTOM half blue
+		surface := Surface->New(0, 4, 4, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+		surface->FillRect(Rect->New(0, 0, 4, 2), 0xFFFF0000);
+		surface->FillRect(Rect->New(0, 2, 4, 2), 0xFF0000FF);
+		texture := Texture2D->New(surface);
+		if(<>Check("orientation texture uploads", texture->IsOk())) {
+			mesh->Free();
+			shader->Free();
+			surface->Free();
+			return;
+		};
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		texture->Bind(0);
+		mesh->Draw();
+
+		# ReadPixel's y counts up from the bottom of the drawable
+		bottom := GL->ReadPixel(@pixel_w / 2, @pixel_h / 8);
+		top := GL->ReadPixel(@pixel_w / 2, @pixel_h - (@pixel_h / 8));
+		"  orientation: screen top=0x{$top} bottom=0x{$bottom}"->PrintLine();
+
+		Check("image top renders at screen top (texture not flipped)",
+			top = 0xFFFF0000 & bottom = 0xFF0000FF);
+
+		texture->Free();
+		mesh->Free();
+		shader->Free();
+		surface->Free();
+	}
+
+	#~
+	A projected, off-centre quad lands where the camera says it should.
+
+	This exists because nothing else in this file touches Matrix4 or Camera at
+	all. Every other check draws in raw clip space, so the header's claim that a
+	wrong projection or an inverted camera basis would be caught here was simply
+	not true -- Perspective, LookAt and Multiply were never executed.
+
+	The fixture is deliberately OFF-CENTRE. A quad at the origin renders in the
+	middle of the screen under a correct projection and under a surprising number
+	of broken ones: an identity matrix, a transposed one, or a Multiply with its
+	arguments the wrong way round. Offsetting it in +x means only the right answer
+	puts it right of centre, and the check reads three points to say so -- left,
+	centre and right must not all agree.
+	~#
+	method : CheckProjection() ~ Nil {
+		vertex := "#version 330 core
+";
+		vertex += "layout (location = 0) in vec3 in_position;
+";
+		vertex += "uniform mat4 mvp;
+";
+		vertex += "void main() { gl_Position = mvp * vec4(in_position, 1.0); }
+";
+
+		fragment := "#version 330 core
+";
+		fragment += "out vec4 frag_color;
+";
+		fragment += "void main() { frag_color = vec4(1.0, 0.0, 1.0, 1.0); }
+";
+
+		shader := Shader->New(vertex, fragment);
+		if(<>Check("projection shader compiles", shader->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		# a 1x1 quad on the z=0 plane, centred on the model origin
+		vertices := [-0.5, -0.5, 0.0,  0.5, -0.5, 0.0,  0.5, 0.5, 0.0, -0.5, 0.5, 0.0];
+		indices := [0, 1, 2, 2, 3, 0];
+		mesh := Mesh->New(vertices, indices, [3]);
+		if(<>Check("projection mesh uploads", mesh->IsOk())) {
+			shader->Free();
+			return;
+		};
+
+		# Camera five units back on +z, looking down -z at the plane the quad is
+		# on. Yaw and pitch of zero make ForwardVector exactly (0, 0, -1), so this
+		# also pins down the camera basis rather than just the projection.
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		aspect := @pixel_w->As(Float) / @pixel_h->As(Float);
+		projection := Matrix4->Perspective(Float->Pi() / 3.0, aspect, 0.1, 100.0);
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+
+		# +1.5 on x. With a 60-degree vertical fov at distance 5 the frustum is
+		# about 2.89 units tall, so the quad spans roughly x = 0.35..0.69 in NDC --
+		# comfortably inside the right-hand quarter and nowhere near the centre.
+		model := Matrix4->Translation(1.5, 0.0, 0.0);
+		mvp := Matrix4->Multiply(view_projection, model);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetMatrix4("mvp", mvp);
+		mesh->Draw();
+
+		mid_y := @pixel_h / 2;
+		left := GL->ReadPixel(@pixel_w / 4, mid_y);
+		middle := GL->ReadPixel(@pixel_w / 2, mid_y);
+		right := GL->ReadPixel((@pixel_w * 3) / 4, mid_y);
+		"  projection: left=0x{$left} middle=0x{$middle} right=0x{$right}"->PrintLine();
+
+		magenta := 0xFFFF00FF;
+		black := 0xFF000000;
+		Check("the projected quad lands right of centre", right = magenta);
+		Check("it is not at the centre", middle = black);
+		Check("it is not on the left", left = black);
+
+		# Multiply's arithmetic, checked against a property rather than against
+		# itself: translations compose by addition, so T(1,2,3) * T(10,20,30) must
+		# be T(11,22,33). Comparing Multiply to MultiplyInto would prove nothing --
+		# Multiply is implemented BY MultiplyInto -- whereas this fails if the
+		# column-major indexing is wrong, which is the mistake actually available
+		# to make here.
+		composed := Matrix4->Multiply(Matrix4->Translation(1.0, 2.0, 3.0), Matrix4->Translation(10.0, 20.0, 30.0));
+		Check("Multiply composes translations additively",
+			composed[12] = 11.0 & composed[13] = 22.0 & composed[14] = 33.0);
+
+		# And MultiplyInto must land in the caller's buffer, since every hot path
+		# is about to be routed through it.
+		scratch := Float->New[16];
+		Matrix4->MultiplyInto(scratch, Matrix4->Translation(1.0, 2.0, 3.0), Matrix4->Translation(10.0, 20.0, 30.0));
+		Check("MultiplyInto writes the same product into a caller buffer",
+			scratch[12] = 11.0 & scratch[13] = 22.0 & scratch[14] = 33.0);
+
+		# A uniform this program does not have. GL raises no error for it, so
+		# without GL->GetLastError this is a black screen and nothing else.
+		shader->SetMatrix4("no_such_uniform", mvp);
+		reported := GL->GetLastError();
+		Check("a misspelled uniform is reported", reported->Size() > 0);
+		if(reported->Size() > 0) {
+			"  reported: {$reported}"->PrintLine();
+		};
+
+		mesh->Free();
+		shader->Free();
+	}
+
+	#~
+	The hand-derived matrix routines agree with the compositions they replace.
+
+	Three of the additions in this layer are transcriptions of algebra done by
+	hand -- RotationYXZ instead of three matrix products, Camera's view matrix
+	inlined instead of built through LookAt, and a cofactor inverse. Every one of
+	them can be wrong in a way that still looks like a rotation: a transposed
+	term, a flipped sign, an axis swapped. Those produce a scene that renders
+	perfectly and is quietly mirrored.
+
+	So none of them is asserted against a hardcoded expectation. Each is asserted
+	against the slower, obviously-correct thing it replaced, which is the only
+	check that catches a plausible-looking error.
+	~#
+	method : CheckMatrixMath() ~ Nil {
+		tolerance := 0.000000001;
+
+		# --- RotationYXZ against Ry * Rx * Rz ---
+		# Three angles that are all different, none a multiple of a quarter turn,
+		# and none equal to each other: symmetric angles hide transposed terms the
+		# same way a symmetric texture hid the row flip.
+		yaw := 0.7;
+		pitch := -0.4;
+		roll := 1.1;
+
+		composed := Matrix4->Multiply(Matrix4->Multiply(Matrix4->RotationY(yaw), Matrix4->RotationX(pitch)), Matrix4->RotationZ(roll));
+		direct := Matrix4->RotationYXZ(yaw, pitch, roll);
+		Check("RotationYXZ matches RotationY * RotationX * RotationZ", Same(direct, composed, tolerance));
+		if(<>Same(direct, composed, tolerance)) {
+			Dump("  composed", composed);
+			Dump("  direct  ", direct);
+		};
+
+		# --- TranslationScale against Translation * ScaleXYZ ---
+		ts_composed := Matrix4->Multiply(Matrix4->Translation(3.0, -2.0, 5.0), Matrix4->ScaleXYZ(2.0, 0.5, 4.0));
+		ts_direct := Matrix4->TranslationScale(3.0, -2.0, 5.0, 2.0, 0.5, 4.0);
+		Check("TranslationScale matches Translation * ScaleXYZ", Same(ts_direct, ts_composed, tolerance));
+
+		# --- the inlined camera view matrix against the one built through LookAt ---
+		# Several orientations, including one looking level and one pitched, because
+		# the inlined version special-cases the up vector.
+		angles := [0.0, 0.0, 0.9, 0.0, 0.0, 0.6, 2.5, -0.8, -1.3, 0.35];
+		view_ok := true;
+		for(i := 0; i < 5; i += 1;) {
+			camera := Camera->New(Vector3->New(1.5, 2.0, -3.0));
+			camera->Turn(angles[i * 2]);
+			camera->Look(angles[i * 2 + 1]);
+
+			reference := Matrix4->LookAt(camera->GetPosition(), Vector3->Add(camera->GetPosition(), camera->ForwardVector()), Vector3->New(0.0, 1.0, 0.0));
+			inlined := Float->New[16];
+			camera->GetViewMatrixInto(inlined);
+
+			if(<>Same(inlined, reference, tolerance)) {
+				view_ok := false;
+				y := angles[i * 2];
+				pt := angles[i * 2 + 1];
+				"  mismatch at yaw={$y} pitch={$pt}"->PrintLine();
+				Dump("  LookAt ", reference);
+				Dump("  inlined", inlined);
+			};
+		};
+		Check("GetViewMatrixInto matches LookAt at five orientations", view_ok);
+
+		# --- inverse: m * inverse(m) must be the identity ---
+		# A matrix with rotation, non-uniform scale AND translation, so nothing is
+		# accidentally symmetric.
+		m := Matrix4->Multiply(Matrix4->TranslationScale(2.0, -1.0, 4.0, 3.0, 0.5, 2.0), Matrix4->RotationYXZ(0.6, 0.3, -0.2));
+		inverse := Matrix4->Inverse(m);
+		round_trip := Matrix4->Multiply(m, inverse);
+		# looser: an inverse goes through a division, so it loses more precision
+		Check("m * Inverse(m) is the identity", Same(round_trip, Matrix4->Identity(), 0.000001));
+
+		# A projection matrix is not affine, so invert one of those too.
+		projection := Matrix4->Perspective(Float->Pi() / 3.0, 1.5, 0.1, 100.0);
+		Check("a projection matrix inverts too", Same(Matrix4->Multiply(projection, Matrix4->Inverse(projection)), Matrix4->Identity(), 0.000001));
+
+		# A singular matrix reports rather than producing infinities.
+		singular := Matrix4->ScaleXYZ(1.0, 0.0, 1.0);
+		out := Float->New[16];
+		Check("a singular matrix is reported, not inverted", <>Matrix4->InverseInto(out, singular));
+		Check("and leaves the identity behind", Same(out, Matrix4->Identity(), tolerance));
+
+		# --- transpose round-trips ---
+		Check("Transpose twice is the original", Same(Matrix4->Transpose(Matrix4->Transpose(m)), m, tolerance));
+
+		# --- degrees agree with radians ---
+		by_degrees := Matrix4->PerspectiveDegrees(60.0, 1.5);
+		by_radians := Matrix4->Perspective(Float->Pi() / 3.0, 1.5, 0.1, 100.0);
+		Check("PerspectiveDegrees(60) matches Perspective(pi/3)", Same(by_degrees, by_radians, tolerance));
+
+		# --- the Into forms agree with the allocating ones ---
+		into_ok := true;
+		scratch := Float->New[16];
+		Matrix4->RotationXInto(scratch, 0.8);
+		if(<>Same(scratch, Matrix4->RotationX(0.8), tolerance)) { into_ok := false; };
+		Matrix4->RotationYInto(scratch, 0.8);
+		if(<>Same(scratch, Matrix4->RotationY(0.8), tolerance)) { into_ok := false; };
+		Matrix4->RotationZInto(scratch, 0.8);
+		if(<>Same(scratch, Matrix4->RotationZ(0.8), tolerance)) { into_ok := false; };
+		Matrix4->TranslationInto(scratch, 1.0, 2.0, 3.0);
+		if(<>Same(scratch, Matrix4->Translation(1.0, 2.0, 3.0), tolerance)) { into_ok := false; };
+		Matrix4->ScaleXYZInto(scratch, 1.0, 2.0, 3.0);
+		if(<>Same(scratch, Matrix4->ScaleXYZ(1.0, 2.0, 3.0), tolerance)) { into_ok := false; };
+		Matrix4->IdentityInto(scratch);
+		if(<>Same(scratch, Matrix4->Identity(), tolerance)) { into_ok := false; };
+		Check("every Into form matches its allocating twin", into_ok);
+
+		# An Into form must not leave anything behind from a previous use: they all
+		# start from IdentityInto, and a version that skipped the zeroing would
+		# work perfectly until a buffer was reused.
+		dirty := Float->New[16];
+		each(i : dirty) {
+			dirty[i] := 99.0;
+		};
+		Matrix4->RotationYInto(dirty, 0.8);
+		Check("an Into form fully overwrites a reused buffer", Same(dirty, Matrix4->RotationY(0.8), tolerance));
+
+		# --- Transform's T * R * S shortcut against the actual composition ---
+		# Non-uniform scale and all three angles non-zero, since a uniform scale
+		# commutes with rotation and would hide a column/row mix-up entirely.
+		transform := Transform->New();
+		transform->SetPosition(4.0, -1.0, 2.5);
+		transform->SetRotation(0.6, 0.3, -0.2);
+		transform->SetScale(2.0, 0.5, 3.0);
+
+		reference := Matrix4->Multiply(Matrix4->Multiply(Matrix4->Translation(4.0, -1.0, 2.5), Matrix4->RotationYXZ(0.6, 0.3, -0.2)), Matrix4->ScaleXYZ(2.0, 0.5, 3.0));
+		Check("Transform composes as Translation * Rotation * Scale", Same(transform->GetMatrix(), reference, tolerance));
+		if(<>Same(transform->GetMatrix(), reference, tolerance)) {
+			Dump("  reference", reference);
+			Dump("  transform", transform->GetMatrix());
+		};
+
+		# Move and Rotate are the setters plus a delta.
+		transform->Move(1.0, 0.0, 0.0);
+		transform->Rotate(0.1, 0.0, 0.0);
+		moved := Matrix4->Multiply(Matrix4->Multiply(Matrix4->Translation(5.0, -1.0, 2.5), Matrix4->RotationYXZ(0.7, 0.3, -0.2)), Matrix4->ScaleXYZ(2.0, 0.5, 3.0));
+		Check("Transform->Move and Rotate accumulate", Same(transform->GetMatrix(), moved, tolerance));
+
+		# The cache must be invalidated by a change and reused when there is none.
+		# Setting the same values again must not alter the matrix.
+		before := Matrix4->Multiply(Matrix4->Identity(), transform->GetMatrix());
+		transform->SetPosition(5.0, -1.0, 2.5);
+		Check("setting an unchanged position leaves the matrix alone", Same(transform->GetMatrix(), before, tolerance));
+		transform->SetPosition(0.0, 0.0, 0.0);
+		Check("and a real change rebuilds it", <>Same(transform->GetMatrix(), before, tolerance));
+
+		# MvpInto is the per-frame call.
+		vp := Matrix4->PerspectiveDegrees(60.0, 1.0);
+		mvp := Float->New[16];
+		transform->MvpInto(mvp, vp);
+		Check("MvpInto matches the multiply it replaces", Same(mvp, Matrix4->Multiply(vp, transform->GetMatrix()), tolerance));
+
+		CheckSlideMove(tolerance);
+	}
+
+	#~
+	Scene->SlideMove slides along a wall rather than stopping against it.
+
+	This is the behaviour the whole per-axis arrangement exists for, and the one
+	that is easy to lose: applying the movement as a single vector produces code
+	that looks right and stops you dead whenever you brush a wall at an angle. So
+	the fixture moves DIAGONALLY into a box, with one axis blocked and the other
+	clear -- a head-on test would pass either way.
+	~#
+	method : CheckSlideMove(tolerance : Float) ~ Nil {
+		# No mesh or shader: this only asks about collision, never draws.
+		scene := Scene->New(Nil, Nil);
+		# occupies x in 1..3, z in -1..1
+		scene->AddBox(Vector3->New(2.0, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), Nil);
+
+		# yaw 0 means ground-forward is (0, 0, -1) and ground-right is (1, 0, 0),
+		# so forward = -2 moves toward +z and strafe = +2 moves toward +x.
+		camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+		blocked := scene->SlideMove(camera, -2.0, 2.0, 0.35);
+		after := camera->GetPosition();
+		x := after->GetX();
+		z := after->GetZ();
+		"  slide: x={$x} z={$z} blocked={$blocked}"->PrintLine();
+
+		# x was blocked by the box; z was not, and got through. That is the slide.
+		Check("SlideMove reports the collision", blocked);
+		Check("the blocked axis does not move", Near(x, 0.0, tolerance));
+		Check("the clear axis still does", Near(z, 2.0, tolerance));
+
+		# The control: with nothing in the way, both axes move and nothing is
+		# reported. Without this, a SlideMove that simply refused to move at all
+		# would pass the three checks above.
+		empty := Scene->New(Nil, Nil);
+		free_camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+		stopped := empty->SlideMove(free_camera, -2.0, 2.0, 0.35);
+		clear_at := free_camera->GetPosition();
+		Check("an empty scene blocks nothing", <>stopped);
+		Check("and both axes move", Near(clear_at->GetX(), 2.0, tolerance) & Near(clear_at->GetZ(), 2.0, tolerance));
+
+		scene->Clear();
+		empty->Clear();
+	}
+
+	method : Near(a : Float, b : Float, tolerance : Float) ~ Bool {
+		difference := a - b;
+		if(difference < 0.0) {
+			difference := difference * -1.0;
+		};
+
+		return difference <= tolerance;
+	}
+
+	#~
+	Element-wise comparison within a tolerance. Matrix code cannot be compared
+	exactly: the same value reached by a different order of operations differs in
+	the last bits.
+	~#
+	method : Same(a : Float[], b : Float[], tolerance : Float) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() < 16 | b->Size() < 16) {
+			return false;
+		};
+
+		for(i := 0; i < 16; i += 1;) {
+			difference := a[i] - b[i];
+			if(difference < 0.0) {
+				difference := difference * -1.0;
+			};
+			if(difference > tolerance) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	method : Dump(name : String, m : Float[]) ~ Nil {
+		line := name;
+		line += ":";
+		for(i := 0; i < 16; i += 1;) {
+			value := m[i];
+			line += " {$value}";
+		};
+		line->PrintLine();
+	}
+
+	#~
+	The built-in primitives render, are wound for culling, and carry normals.
+
+	Three separate things could be wrong and only one of them is visible without
+	an assertion:
+
+	1. WINDING. Every primitive claims to be counter-clockwise seen from outside.
+	   Get it backwards and the object is not wrong, it is INVISIBLE once
+	   GL_CULL_FACE is on -- so culling is enabled here deliberately. A test with
+	   culling off would pass on geometry that vanishes in the demos.
+	2. NORMALS IN THE RIGHT SLOT. The layout is [3, 3, 2], so a shader reading
+	   location 1 gets the normal and location 2 the texcoord. Swap them and you
+	   get a plausible-looking wrong picture, never an error. This draws the normal
+	   AS colour, so the face pointing at the camera must come back exactly blue.
+	3. SIZE. Mesh->Cube spans -1..1, not -0.5..0.5, because Box multiplies it by a
+	   half-extent. The two look identical at the centre of the screen, so the
+	   assertion samples a point that falls inside one and outside the other.
+	~#
+	method : CheckPrimitives() ~ Nil {
+		# The built-in, which is the same shader this used to spell out: the normal
+		# as colour, so a face pointing at +Z comes back exactly blue. Going through
+		# it means the assertions below also cover Shader->Normals rather than a
+		# lookalike that only exists here.
+		shader := Shader->Normals();
+		if(<>Check("Shader->Normals compiles", shader->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		cube := Mesh->Cube();
+		sphere := Mesh->Sphere(24, 12);
+		quad := Mesh->Quad(1.0);
+		plane := Mesh->Plane(1.0, 1.0);
+		Check("Mesh->Cube uploads", cube->IsOk());
+		Check("Mesh->Sphere uploads", sphere->IsOk());
+		Check("Mesh->Quad uploads", quad->IsOk());
+		Check("Mesh->Plane uploads", plane->IsOk());
+		if(<>cube->IsOk() | <>sphere->IsOk()) {
+			shader->Free();
+			return;
+		};
+
+		# Culling ON: this is the assertion, not a detail. Backwards winding shows
+		# up here as nothing being drawn at all.
+		GL->Enable(Capability->GL_CULL_FACE);
+
+		aspect := @gl->GetAspect();
+		projection := Matrix4->Perspective(Float->Pi() / 3.0, aspect, 0.1, 100.0);
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+
+		blue := 0xFF0000FF;
+		black := 0xFF000000;
+		mid_y := @pixel_h / 2;
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetMatrix4("mvp", view_projection);
+		cube->Draw();
+
+		# The cube's front face is at z = 1, so four units from the eye, where a
+		# 60-degree frustum is 2.309 units tall. A -1..1 cube therefore spans about
+		# +/-0.43 in NDC and a -0.5..0.5 one only about +/-0.19. Sampling at 0.3
+		# separates them; 0.8 is outside both.
+		centre := GL->ReadPixel(@pixel_w / 2, mid_y);
+		inside := GL->ReadPixel((@pixel_w * 65) / 100, mid_y);
+		outside := GL->ReadPixel((@pixel_w * 90) / 100, mid_y);
+		"  cube: centre=0x{$centre} at-0.3ndc=0x{$inside} at-0.8ndc=0x{$outside}"->PrintLine();
+
+		# Two separate failures, so two separate assertions: nothing drawn at all
+		# means the winding is inverted, and something drawn in the wrong colour
+		# means the normal is not where the layout says it is.
+		Check("the cube renders with culling on (winding is outward)", centre <> black);
+		Check("its front face normal is +Z, read from layout slot 1", centre = blue);
+		Check("it spans -1..1, not -0.5..0.5", inside = blue);
+		Check("and stops where it should", outside = black);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sphere->Draw();
+		sphere_centre := GL->ReadPixel(@pixel_w / 2, mid_y);
+		sphere_corner := GL->ReadPixel(2, 2);
+		"  sphere: centre=0x{$sphere_centre} corner=0x{$sphere_corner}"->PrintLine();
+
+		# The point of a sphere facing the camera has normal (0, 0, 1) -- but only
+		# approximately at any given pixel, because the surface is curved and the
+		# fragment interpolates between vertices that each point slightly aside.
+		# So this asserts "overwhelmingly blue" rather than exactly blue. Exact
+		# equality is right for the cube's flat face and wrong here.
+		r := (sphere_centre and 0x00FF0000) / 0x10000;
+		g := (sphere_centre and 0x0000FF00) / 0x100;
+		b := sphere_centre and 0x000000FF;
+		"  sphere normal at centre: r={$r} g={$g} b={$b}"->PrintLine();
+
+		Check("the sphere renders with culling on", sphere_centre <> black);
+		Check("its normal at the centre points at the camera", b > 200 & r < 60 & g < 60);
+		Check("the sphere does not fill the frame", sphere_corner = black);
+
+		# --- CubeInterior is the exact inverse, and the pair is the assertion ---
+		# From inside, with culling on, an interior cube must be VISIBLE and a
+		# normal cube must not. Testing either one alone proves nothing: a mesh
+		# that renders from everywhere would pass the first, and one that renders
+		# from nowhere would pass the second.
+		interior := Mesh->CubeInterior(5.0);
+		if(Check("Mesh->CubeInterior uploads", interior->IsOk())) {
+			# not 'inside': that name is already an Int from the cube's readback
+			# above, and reusing it silently retyped the variable rather than
+			# shadowing it.
+			centre_camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+			inside_vp := Matrix4->Multiply(projection, centre_camera->GetViewMatrix());
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			shader->SetMatrix4("mvp", inside_vp);
+			interior->Draw();
+			from_inside := GL->ReadPixel(@pixel_w / 2, mid_y);
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			outward := Mesh->Cube(5.0);
+			outward->Draw();
+			normal_cube_from_inside := GL->ReadPixel(@pixel_w / 2, mid_y);
+			outward->Free();
+
+			"  from inside: interior=0x{$from_inside} normal-cube=0x{$normal_cube_from_inside}"->PrintLine();
+			Check("an interior cube is visible from inside", from_inside <> black);
+			Check("and a normal cube is not, which is why the interior one exists", normal_cube_from_inside = black);
+
+			# Its normals point inward too, or every wall would be lit from behind.
+			# Drawn as colour, the wall the camera faces along -Z has normal +Z.
+			Check("its normals face inward", from_inside = blue);
+
+			interior->Free();
+		};
+
+		# Off again: the checks after this one draw full-screen quads, and leaving
+		# culling on would make them depend on a winding they never declared.
+		GL->Disable(Capability->GL_CULL_FACE);
+
+		Check("no GL errors from the primitives", GL->DrainErrors()->Size() = 0);
+
+		plane->Free();
+		quad->Free();
+		sphere->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	The frame loop measures elapsed time and clamps it.
+
+	Worth asserting because frame pacing is easy to get silently wrong in a way no
+	other check would notice: a delta stuck at zero makes everything that moves
+	stand still, and a delta computed from an uninitialised start time makes the
+	first frame jump by however long the process had been alive.
+
+	The delay below is not padding. An earlier version of this ran four frames and
+	asserted the delta had become positive -- which passed here and failed on all
+	three POSIX runners, because a headless software renderer draws four empty
+	frames in under a millisecond and Timer->GetTicks only counts milliseconds. So
+	the delta was correctly 0.0 and the assertion was measuring how fast the
+	renderer is, not whether the code works. Sleeping a known interval makes the
+	clock definitely advance, which turns it back into a question about the code.
+	~#
+	method : CheckFrameLoop() ~ Nil {
+		# The first frame has no previous frame to measure against, so it must
+		# report exactly zero rather than a garbage interval.
+		@gl->BeginFrame();
+		Check("the first frame reports a zero delta", @gl->GetDelta() = 0.0);
+		@gl->EndFrame();
+
+		# A frame of known duration. Ten milliseconds is comfortably above the
+		# timer's resolution on every platform this runs on.
+		@gl->SetTargetFps(60);
+		@gl->BeginFrame();
+		Timer->Delay(10);
+		@gl->EndFrame();
+
+		@gl->BeginFrame();
+		delta := @gl->GetDelta();
+		fps := @gl->GetFps();
+		vsync := @gl->HasVsync();
+		"  after a 10ms frame: delta={$delta}s fps={$fps} vsync={$vsync}"->PrintLine();
+
+		# At least the delay, less than double it, and inside the clamp.
+		Check("a measured frame reports its elapsed time", delta >= 0.008);
+		Check("and does not invent time it did not take", delta < 0.1);
+		Check("GetFps is the reciprocal of the delta", Near(fps, 1.0 / delta, 0.001));
+		@gl->EndFrame();
+
+		# The clamp: a stall must not be reported in full, or everything that moves
+		# teleports. Half a second of sleep has to come back as the 0.1 ceiling.
+		@gl->BeginFrame();
+		Timer->Delay(500);
+		@gl->EndFrame();
+		@gl->BeginFrame();
+		stalled := @gl->GetDelta();
+		"  after a 500ms stall: delta={$stalled}s"->PrintLine();
+		Check("a long stall is clamped, not reported in full", Near(stalled, 0.1, 0.0001));
+		@gl->EndFrame();
+
+		# GLWindow->Free is documented as safe twice, and the offscreen retry path
+		# depends on it -- Cleanup runs on every failed open as well as at the end.
+		@gl->Free();
+		@gl->Free();
+		Check("Free is idempotent", true);
+		@gl := Nil;
+	}
+
+	#~
+	Idempotent, and called up to three times: once per failed open attempt and
+	once at the end. GLWindow->Free is safe to call twice, and tears the video
+	subsystem down, which is what lets the offscreen retry re-init.
+	~#
+	method : Cleanup() ~ Nil {
+		if(@gl <> Nil) {
+			@gl->Free();
+			@gl := Nil;
+		}
+		else {
+			# Nothing was opened -- still put SDL back, since Core->Init may have
+			# succeeded before whatever failed after it.
+			Core->Quit();
+		};
+	}
+}

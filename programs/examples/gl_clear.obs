@@ -1,0 +1,50 @@
+#~
+Minimal OpenGL 3.3 core example: open a window, clear it, present.
+
+  compile: obc -src gl_clear.obs -lib sdl2,sdl_gl
+  run:     obr gl_clear
+
+This is the whole program. Everything that used to make it long lives in
+GLWindow now: six context attributes set in the right order and before the
+window, the version assertion macOS needs, resolving the GL entry points, taking
+the viewport from the drawable size rather than the size that was asked for, and
+shutting five things down in the order that works.
+
+Those rules still exist and still matter -- they are written up on GLWindow, and
+worth reading once. What changed is that a program no longer has to restate them
+to draw anything.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class GLClear {
+	function : Main(args : String[]) ~ Nil {
+		window := GLWindow->New("Objeck OpenGL", 640, 480);
+		if(<>window->IsOk()) {
+			window->GetError()->ErrorLine();
+			return;
+		};
+
+		leaving {
+			window->Free();
+		};
+
+		version := window->GetVersion();
+		w := window->GetWidth();
+		h := window->GetHeight();
+		"GL {$version}"->PrintLine();
+		"Drawable: {$w}x{$h} pixels"->PrintLine();
+
+		GL->ClearColor(0.15, 0.35, 0.6, 1.0);
+
+		# BeginFrame clears, EndFrame presents, and PollEvents reports the close
+		# button or Escape -- so a program that only clears has nothing in between.
+		while(<>window->PollEvents()) {
+			window->BeginFrame();
+			window->EndFrame();
+		};
+
+		GL->ReportErrors("the run");
+	}
+}

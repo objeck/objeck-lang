@@ -1,0 +1,194 @@
+#~
+Loading a model from a file.
+
+  compile: obc -src gl_model.obs -lib sdl2,sdl_gl
+  run:     obr gl_model
+
+  escape or the close button to quit
+
+The shortest useful GL program that draws something a modelling tool produced
+rather than something the program computed. Everything up to now in these
+examples was a built-in primitive or an array of numbers written by hand; this
+loads gl_crystal.obj.
+
+  Mesh->FromObj        the geometry
+  Mesh->GetRadius      how big it turned out, so it can be framed
+  Transform            spin it
+  Light                shade it
+  Overlay              name it
+
+## The interesting line
+
+  transform->SetScale(1.4 / model->GetRadius());
+
+A file has whatever scale its author used -- centimetres, inches, arbitrary
+units -- and a program that hardcodes a scale works for exactly one model. Asking
+the mesh how big it is and dividing makes any model fit the same frame, which is
+what turns "load a file" into something you can actually use.
+
+gl_crystal.obj deliberately carries no vertex normals, because plenty of real
+files do not. The loader computes a flat normal per face from its winding, which
+is why the facets read as facets here rather than as a smooth blob.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class ModelViewer {
+	@window : GLWindow;
+	@shader : Shader;
+	@model : Mesh;
+	@texture : Texture2D;
+	@transform : Transform;
+	@light : Light;
+	@camera : Camera;
+	@overlay : Overlay;
+	@font : Font;
+
+	@spin : Float;
+	@projection : Float[];
+	@view_projection : Float[];
+	@scratch : Float[];
+	@mvp : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		ModelViewer->New()->Run(args);
+	}
+
+	New() {
+		@spin := 0.0;
+		@projection := Float->New[16];
+		@view_projection := Float->New[16];
+		@scratch := Float->New[16];
+		@mvp := Float->New[16];
+		@camera := Camera->New(Vector3->New(0.0, 0.6, 4.2));
+	}
+
+	method : Run(args : String[]) ~ Nil {
+		# Any .obj on the command line, or the crystal that ships beside this file.
+		path := "gl_crystal.obj";
+		if(args <> Nil & args->Size() > 0) {
+			path := args[0];
+		};
+
+		@window := GLWindow->New("Objeck Model", 900, 600);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
+		leaving {
+			Close();
+		};
+
+		if(<>Build(path)) {
+			return;
+		};
+
+		radius := @model->GetRadius();
+		"Loaded {$path} -- radius {$radius}. Escape to quit."->PrintLine();
+
+		@camera->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
+
+			@spin += 0.6 * @window->GetDelta();
+			@transform->SetRotation(@spin, 0.0, 0.0);
+
+			@camera->GetViewProjectionInto(@view_projection, @projection, @scratch);
+
+			@shader->Use();
+			@light->ApplyTo(@shader);
+			@shader->SetInt("tex", 0);
+			@texture->Bind(0);
+			@transform->MvpInto(@mvp, @view_projection);
+			@shader->SetMatrix4("mvp", @mvp);
+			@shader->SetMatrix4("model", @transform->GetMatrix());
+			@model->Draw();
+
+			DrawCaption(path);
+
+			@window->EndFrame();
+		};
+
+		GL->ReportErrors("the run");
+	}
+
+	method : DrawCaption(path : String) ~ Nil {
+		if(@overlay = Nil) {
+			return;
+		};
+
+		@overlay->Begin();
+		@overlay->Rect(8, 8, 320, 30);
+		@overlay->Text(path, 16, 12);
+		@overlay->End();
+	}
+
+	method : Build(path : String) ~ Bool {
+		Matrix4->PerspectiveInto(@projection, Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
+
+		GL->Enable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.07, 0.08, 0.12, 1.0);
+
+		@model := Mesh->FromObj(path);
+		if(<>@model->IsOk()) {
+			"Could not load {$path}"->ErrorLine();
+			reason := GL->GetLastError();
+			if(reason->Size() > 0) {
+				reason->ErrorLine();
+			};
+			"Run this from the directory holding the .obj, or pass a path."->ErrorLine();
+			return false;
+		};
+
+		@shader := Shader->LitTextured();
+		if(<>@shader->IsOk()) {
+			@shader->GetLog()->ErrorLine();
+			return false;
+		};
+
+		@texture := Texture2D->Checker(64, 4, Texture2D->Rgb(120, 200, 235), Texture2D->Rgb(60, 110, 170));
+		if(<>@texture->IsOk()) {
+			"Could not build the texture"->ErrorLine();
+			return false;
+		};
+
+		# Fit whatever was loaded into the same frame. GetRadius is the distance
+		# from the mesh's centre to its furthest vertex, so this works for a model
+		# authored in any units.
+		@transform := Transform->New();
+		radius := @model->GetRadius();
+		if(radius > 0.0) {
+			@transform->SetScale(1.4 / radius);
+		};
+
+		@light := Light->New();
+		@light->SetDirection(-0.45, 1.0, 0.6);
+		@light->SetColor(1.0, 0.98, 0.94);
+		@light->SetAmbient(0.24, 0.26, 0.32);
+
+		Font->Init();
+		@font := Font->New("../lib/sdl/fonts/lazy.ttf", 18);
+		@overlay := Overlay->New(@window);
+		if(@overlay->IsOk() & @font <> Nil & <>@font->IsNull()) {
+			@overlay->SetFont(@font);
+			@overlay->SetColor(228, 236, 248);
+		}
+		else {
+			@overlay := Nil;
+		};
+
+		return true;
+	}
+
+	method : Close() ~ Nil {
+		if(@texture <> Nil) { @texture->Free(); };
+		if(@model <> Nil) { @model->Free(); };
+		if(@shader <> Nil) { @shader->Free(); };
+		if(@overlay <> Nil) { @overlay->Free(); };
+
+		if(@window <> Nil) { @window->Free(); };
+	}
+}

@@ -1,0 +1,449 @@
+#~
+The Amiga boing ball, in OpenGL 3.3 core.
+
+  compile: obc -src gl_boing.obs -lib sdl2,sdl_gl
+  run:     obr gl_boing
+
+  escape or the close button to quit
+
+A red-and-white checkered sphere spinning as it bounces around a room, with the
+camera slowly orbiting. Objeck had this in 2D through Game.SDL2; this is the same
+scene with a real sphere, real lighting and a real camera.
+
+It is also the demo that exercises the most of Game.OpenGL at once, which is the
+other reason it exists:
+
+  Mesh->Sphere         the ball, with normals so it reads as round
+  Mesh->Plane          the floor, one texture tiled across it
+  Mesh->CubeInterior   the room, wound so it is visible from inside
+  Texture2D->Checker   both patterns, generated -- no asset files
+  Transform            the ball's position, spin and scale, matrix cached
+  Light                one directional light; the shading is what makes it a ball
+  Camera->PlaceLookingAt  the orbit
+  ShadowMap            the ball's shadow, tracking it across the floor
+  RenderTarget         the whole scene drawn into a texture, then to the screen
+  Overlay              the frame rate and a caption, in pixels over the lot
+
+## What to look at
+
+The ball is lit, so its shading moves as it spins and its underside darkens as it
+rises. That is the difference lighting makes: the same sphere unlit is a flat
+circle of checks with no sense of volume at all.
+
+The shadow is what makes it look like it is IN the room rather than in front of
+it. Watch it shrink and sharpen as the ball falls and spread as it rises -- that
+comes free from the geometry, not from anything the demo computes. Three lines
+per frame: begin the depth pass, draw the casters, end it.
+
+The picture also goes through a second pass -- scanlines and a vignette, which
+this being an Amiga homage seemed like the right excuse for. Mechanically that is
+render-to-texture: the scene is drawn into a RenderTarget and then that texture
+is drawn onto one full-screen quad. It is the same machinery a bloom, a blur or a
+colour grade would use.
+
+Its shader is the one piece of GLSL in any of these examples, written through
+ShaderSource. That is deliberate: the built-in Shader presets cover what every
+program needs, and something specific to one program belongs in that program.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class BoingBall {
+	@window : GLWindow;
+	@lit : Shader;
+
+	@ball_mesh : Mesh;
+	@ball_texture : Texture2D;
+	@ball : Transform;
+
+	@floor_mesh : Mesh;
+	@floor_texture : Texture2D;
+	@floor : Transform;
+
+	@room_mesh : Mesh;
+	@room_texture : Texture2D;
+	@room : Transform;
+	@light : Light;
+	@camera : Camera;
+
+	@shadows : ShadowMap;
+
+	@overlay : Overlay;
+	@font : Font;
+	@fps_text : String;
+	@fps_timer : Float;
+
+	# the second pass
+	@target : RenderTarget;
+	@post : Shader;
+	@screen : Mesh;
+	@elapsed : Float;
+
+	# ball state: position, velocity and spin
+	@x : Float;
+	@y : Float;
+	@z : Float;
+	@vx : Float;
+	@vy : Float;
+	@vz : Float;
+	@spin : Float;
+	@orbit : Float;
+
+	# per-frame scratch, so the loop allocates nothing
+	@projection : Float[];
+	@view_projection : Float[];
+	@view_scratch : Float[];
+	@mvp : Float[];
+
+	function : Main(args : String[]) ~ Nil {
+		BoingBall->New()->Run();
+	}
+
+	New() {
+		@x := 0.0;   @y := 2.0;  @z := 0.0;
+		@vx := 3.2;  @vy := 0.0; @vz := 2.1;
+		@spin := 0.0;
+		@orbit := 0.0;
+		@elapsed := 0.0;
+		@fps_text := "";
+		@fps_timer := 0.0;
+
+		@projection := Float->New[16];
+		@view_projection := Float->New[16];
+		@view_scratch := Float->New[16];
+		@mvp := Float->New[16];
+
+		# INSIDE the room. An orbit outside it would spend most of its time behind
+		# a wall.
+		@camera := Camera->New(Vector3->New(0.0, 3.0, 6.0));
+	}
+
+	method : Run() ~ Nil {
+		@window := GLWindow->New("Objeck Boing", 960, 640);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
+		leaving {
+			Close();
+		};
+
+		if(<>Build()) {
+			return;
+		};
+
+		"Escape to quit."->PrintLine();
+
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
+			delta := @window->GetDelta();
+
+			@elapsed += delta;
+			Advance(delta);
+			Draw();
+			DrawOverlay(delta);
+
+			@window->EndFrame();
+		};
+
+		GL->ReportErrors("the run");
+	}
+
+	#~
+	Move the ball, spin it, and swing the camera round.
+	~#
+	method : Advance(delta : Float) ~ Nil {
+		radius := 1.5;
+		# the room's inside face, less the ball's radius
+		limit := 9.0 - radius;
+
+		@vy -= 14.0 * delta;
+
+		@x += @vx * delta;
+		@y += @vy * delta;
+		@z += @vz * delta;
+
+		# Bounce off each wall, and clamp back inside rather than only reversing:
+		# a ball that arrives past the wall on a long frame would otherwise flip
+		# its velocity again next frame and buzz there forever.
+		if(@x < limit * -1.0) { @x := limit * -1.0; @vx := @vx->Abs(); };
+		if(@x > limit) { @x := limit; @vx := @vx->Abs() * -1.0; };
+		if(@z < limit * -1.0) { @z := limit * -1.0; @vz := @vz->Abs(); };
+		if(@z > limit) { @z := limit; @vz := @vz->Abs() * -1.0; };
+
+		if(@y < radius) {
+			@y := radius;
+			# Keep 88% of the speed per bounce, and top it back up when it gets too
+			# slow to be interesting -- a real coefficient of restitution settles
+			# the ball on the floor and the demo stops.
+			@vy := @vy->Abs() * 0.88;
+			if(@vy < 6.0) {
+				@vy := 8.5;
+			};
+		};
+
+		@spin += 1.4 * delta;
+
+		@ball->SetPosition(@x, @y, @z);
+		# Tilted on its axis, like the original, and turning about it.
+		@ball->SetRotation(@spin, 0.0, 0.35);
+
+		# The camera circles at walking pace and always looks at the ball, so the
+		# room is seen from every side. PlaceLookingAt does the angles.
+		@orbit += 0.25 * delta;
+		eye_x := @orbit->Sin() * 7.0;
+		eye_z := @orbit->Cos() * 7.0;
+		@camera->PlaceLookingAt(Vector3->New(eye_x, 3.4, eye_z), Vector3->New(@x * 0.3, 2.2, @z * 0.3));
+	}
+
+	method : Draw() ~ Nil {
+		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
+
+		# --- pass zero: the scene from the light, into a depth map ---
+		# The room is not a caster: it is an inward-facing box around everything, so
+		# from the light's point of view it would be the nearest surface everywhere
+		# and put the whole floor in shadow.
+		@shadows->Begin();
+		@shadows->DrawCaster(@ball_mesh, @ball);
+		@shadows->DrawCaster(@floor_mesh, @floor);
+		@shadows->End(@window);
+
+		# --- pass one: the scene, into a texture ---
+		# Bind switches the viewport to the target's size as well. BeginFrame
+		# already cleared the WINDOW, which is a different buffer, so the target
+		# needs its own clear.
+		@target->Bind();
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		@lit->Use();
+		@light->ApplyTo(@lit);
+		@shadows->ApplyTo(@lit);
+		@lit->SetInt("tex", 0);
+
+		DrawPiece(@room_mesh, @room_texture, @room);
+		DrawPiece(@floor_mesh, @floor_texture, @floor);
+		DrawPiece(@ball_mesh, @ball_texture, @ball);
+
+		# --- pass two: that texture, onto the screen ---
+		@target->Unbind(@window);
+
+		# Depth testing off: a full-screen quad at z = 0 competes with whatever
+		# depth values are already in the window's buffer, and would sometimes lose.
+		@window->SetDepthTest(false);
+		@post->Use();
+		@post->SetInt("tex", 0);
+		@post->SetFloat("time", @elapsed);
+		@post->SetFloat("scan_height", @target->GetHeight()->As(Float));
+		@target->GetTexture()->Bind(0);
+		@screen->Draw();
+		@window->SetDepthTest(true);
+	}
+
+	#~
+	One textured, lit, transformed thing. Three lines each instead of six,
+	repeated three times.
+	~#
+	method : DrawPiece(mesh : Mesh, texture : Texture2D, transform : Transform) ~ Nil {
+		texture->Bind(0);
+		transform->MvpInto(@mvp, @view_projection);
+		@lit->SetMatrix4("mvp", @mvp);
+		@lit->SetMatrix4("model", transform->GetMatrix());
+		mesh->Draw();
+	}
+
+	method : Build() ~ Bool {
+		Matrix4->PerspectiveInto(@projection, Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
+
+		GL->Enable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.06, 0.07, 0.11, 1.0);
+
+		@lit := Shader->LitTexturedShadowed();
+		if(<>@lit->IsOk()) {
+			"Shader failed:"->ErrorLine();
+			@lit->GetLog()->ErrorLine();
+			return false;
+		};
+		@lit->SetFloat("fog_distance", 55.0);
+
+		# The ball: red and white, four squares round, which is close to the
+		# original's proportions. GL_NEAREST keeps the checks crisp instead of
+		# blurring the boundaries as the sphere turns away.
+		@ball_mesh := Mesh->Sphere(32, 16);
+		@ball_texture := Texture2D->Checker(64, 4, Texture2D->Rgb(226, 32, 44), Texture2D->Rgb(245, 245, 250));
+		@ball := Transform->New();
+		@ball->SetScale(1.5);
+
+		# The floor: one texture repeated, which is what GL_REPEAT and Plane's
+		# tiles parameter are for. Mipmapped, or the checks turn to noise where
+		# the floor recedes.
+		@floor_mesh := Mesh->Plane(9.0, 9.0);
+		@floor_texture := Texture2D->Checker(64, 2, Texture2D->Rgb(70, 76, 96), Texture2D->Rgb(50, 55, 72), TextureWrap->GL_REPEAT);
+		@floor := Transform->New();
+		@floor->SetPosition(0.0, 0.0, 0.0);
+
+		# The room is ONE inward-facing cube. Built out of Mesh->Cube it would be
+		# invisible from inside: that winding is counter-clockwise seen from
+		# OUTSIDE, so with culling on every wall of an enclosure is back-facing and
+		# gets removed. CubeInterior is the same cube turned inside out.
+		@room_mesh := Mesh->CubeInterior(1.0);
+		@room_texture := Texture2D->Checker(128, 8, Texture2D->Rgb(150, 152, 168), Texture2D->Rgb(120, 124, 142));
+		@room := Transform->New();
+		@room->SetScale(9.0, 5.0, 9.0);
+		@room->SetPosition(0.0, 5.0, 0.0);
+
+		if(<>@ball_mesh->IsOk() | <>@floor_mesh->IsOk() | <>@room_mesh->IsOk()) {
+			"Could not upload the geometry"->ErrorLine();
+			return false;
+		};
+		if(<>@ball_texture->IsOk() | <>@floor_texture->IsOk() | <>@room_texture->IsOk()) {
+			"Could not upload the textures"->ErrorLine();
+			return false;
+		};
+
+		@light := Light->New();
+		@light->SetDirection(-0.4, 1.0, 0.55);
+		@light->SetColor(1.0, 0.97, 0.9);
+		@light->SetAmbient(0.2, 0.21, 0.28);
+
+		# SetLight rather than repeating the direction: a shadow map pointing
+		# somewhere other than the light puts every shadow on the wrong side of
+		# everything, and looks like a bug in the shadows rather than in the two
+		# numbers that were meant to be one.
+		@shadows := ShadowMap->New(1024);
+		if(<>@shadows->IsOk()) {
+			"Shadow map failed: "->Print();
+			@shadows->GetError()->ErrorLine();
+			return false;
+		};
+		@shadows->SetLight(@light);
+		# Just wider than the room, so nothing that should cast falls outside it.
+		@shadows->Cover(Vector3->New(0.0, 2.0, 0.0), 13.0);
+
+		if(<>BuildPostPass()) {
+			return false;
+		};
+
+		# The overlay is optional: a tree assembled by hand might not have the
+		# fonts, and a missing frame counter is not a reason to refuse to run.
+		Font->Init();
+		@font := Font->New("../lib/sdl/fonts/lazy.ttf", 20);
+		@overlay := Overlay->New(@window);
+		if(@overlay->IsOk() & @font <> Nil & <>@font->IsNull()) {
+			@overlay->SetFont(@font);
+			@overlay->SetColor(235, 240, 250);
+		}
+		else {
+			"Note: no font found, so the frame counter is off"->PrintLine();
+			@overlay := Nil;
+		};
+
+		return true;
+	}
+
+	#~
+	The frame counter and a caption, drawn last so the post-process pass does not
+	run its scanlines over the text.
+
+	The rate is averaged over a quarter second rather than shown per frame: a
+	number recomputed every frame is unreadable, and it would also defeat the
+	overlay's text cache, which keys on the string.
+	~#
+	method : DrawOverlay(delta : Float) ~ Nil {
+		if(@overlay = Nil) {
+			return;
+		};
+
+		@fps_timer += delta;
+		if(@fps_timer > 0.25) {
+			@fps_timer := 0.0;
+			rate := @window->GetFps()->As(Int);
+			@fps_text := "{$rate} fps";
+		};
+
+		@overlay->Begin();
+		# A panel behind the text, so it stays readable over a bright wall.
+		@overlay->Rect(8, 8, 190, 54);
+		@overlay->Text(@fps_text, 16, 12);
+		@overlay->Text("escape to quit", 16, 34);
+		@overlay->End();
+	}
+
+	#~
+	The second pass: a target the size of the drawable, a full-screen quad, and a
+	shader that reads one and writes the other.
+
+	The target is the drawable's size in PIXELS, not the window's size in points,
+	because that is what the window's own framebuffer is and anything else
+	resamples the picture for no reason.
+	~#
+	method : BuildPostPass() ~ Bool {
+		@target := RenderTarget->New(@window->GetWidth(), @window->GetHeight());
+		if(<>@target->IsOk()) {
+			"Render target failed: "->Print();
+			@target->GetError()->ErrorLine();
+			return false;
+		};
+
+		# Mesh->Quad(1.0) covers exactly clip space, which is what a full-screen
+		# pass wants -- so no matrix is needed at all.
+		@screen := Mesh->Quad(1.0);
+
+		vertex := ShaderSource->New();
+		vertex->Add("layout (location = 0) in vec3 in_position;");
+		vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+		vertex->Add("out vec2 texcoord;");
+		vertex->Add("void main() {");
+		vertex->Add("  texcoord = in_texcoord;");
+		vertex->Add("  gl_Position = vec4(in_position, 1.0);");
+		vertex->Add("}");
+
+		fragment := ShaderSource->New();
+		fragment->Add("in vec2 texcoord;");
+		fragment->Add("uniform sampler2D tex;");
+		fragment->Add("uniform float time;");
+		fragment->Add("uniform float scan_height;");
+		fragment->Add("out vec4 frag_color;");
+		fragment->Add("void main() {");
+		fragment->Add("  vec3 color = texture(tex, texcoord).rgb;");
+		fragment->Add("  float line = 0.92 + 0.08 * sin(texcoord.y * scan_height * 3.14159);");
+		fragment->Add("  vec2 offset = texcoord - vec2(0.5);");
+		fragment->Add("  float vignette = 1.0 - 0.75 * dot(offset, offset);");
+		fragment->Add("  float flicker = 0.985 + 0.015 * sin(time * 8.0);");
+		fragment->Add("  frag_color = vec4(color * line * vignette * flicker, 1.0);");
+		fragment->Add("}");
+
+		@post := Shader->New(vertex->Build(), fragment->Build());
+		if(<>@post->IsOk()) {
+			"Post shader failed:"->ErrorLine();
+			@post->GetLog()->ErrorLine();
+			return false;
+		};
+
+		return @screen->IsOk();
+	}
+
+	#~
+	GL objects first, while the context is still current. The window takes the
+	context and SDL down after them, in the right order.
+	~#
+	method : Close() ~ Nil {
+		if(@ball_texture <> Nil) { @ball_texture->Free(); };
+		if(@floor_texture <> Nil) { @floor_texture->Free(); };
+		if(@room_texture <> Nil) { @room_texture->Free(); };
+		if(@ball_mesh <> Nil) { @ball_mesh->Free(); };
+		if(@floor_mesh <> Nil) { @floor_mesh->Free(); };
+		if(@room_mesh <> Nil) { @room_mesh->Free(); };
+		if(@lit <> Nil) { @lit->Free(); };
+		if(@shadows <> Nil) { @shadows->Free(); };
+		if(@post <> Nil) { @post->Free(); };
+		if(@screen <> Nil) { @screen->Free(); };
+		# The target owns its colour texture -- GetTexture hands back a wrapper that
+		# must NOT be freed separately.
+		if(@target <> Nil) { @target->Free(); };
+		if(@overlay <> Nil) { @overlay->Free(); };
+
+		if(@window <> Nil) { @window->Free(); };
+	}
+}

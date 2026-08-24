@@ -1,0 +1,312 @@
+#~
+Walk around a 3D room with obstacles -- first-person, with collision.
+
+  compile: obc -src gl_walkthrough.obs -lib sdl2,sdl_gl
+  run:     obr gl_walkthrough
+
+  mouse        look around
+  W / S        walk forward, back
+  A / D        strafe left, right
+  left / right turn
+  up / down    look up, down
+  shift        run
+  escape       quit
+
+The milestone this framework was built for: everything a 3D program needs, in
+one place. Camera driven by input, a scene of many objects, per-object
+transforms, depth buffering, backface culling, textures, and collision that
+stops you walking through walls.
+
+Two things worth noticing in the code:
+
+ONE MESH, MANY OBJECTS. The room and every obstacle are the same unit cube,
+drawn with a different model matrix. The geometry is uploaded once at startup, so
+a frame costs one draw call per box and no per-vertex work crosses into native
+code. Scene handles this, including rebinding a texture only when it changes.
+
+COLLISION SLIDES. Movement is attempted on X and Z independently, so walking
+into a wall at an angle slides along it instead of stopping dead. Testing the
+combined move in one go is the usual first attempt and it feels terrible.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class Walkthrough {
+	@window : GLWindow;
+	@shader : Shader;
+	@cube : Mesh;
+	@wall_texture : Texture2D;
+	@box_texture : Texture2D;
+	@camera : Camera;
+	@projection : Float[];
+	# Per-frame scratch, so Draw allocates nothing. Camera->GetViewMatrix makes
+	# three Vector3 and a Float[16] every call, and the multiply after it made
+	# another.
+	@view_projection : Float[];
+	@view_scratch : Float[];
+
+	@scene : Scene;
+	@light : Light;
+	@shadows : ShadowMap;
+
+	# the player is a circle in plan view, not a point
+	@radius : Float;
+	@mouse_look : Bool;
+	# radians of view rotation per pixel of mouse movement. A field rather than
+	# a consts entry because a consts block only accepts integer and character
+	# literals.
+	@sensitivity : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		Walkthrough->New()->Run();
+	}
+
+	New() {
+		@radius := 0.35;
+		@sensitivity := 0.0025;
+		@view_projection := Float->New[16];
+		@view_scratch := Float->New[16];
+		# The scene is built in Init(), not here: boxes carry their texture, and
+		# textures need a live GL context.
+		@camera := Camera->New(Vector3->New(0.0, 1.7, 6.0));
+	}
+
+	method : Run() ~ Nil {
+		@window := GLWindow->New("Objeck 3D Walkthrough", 960, 640);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
+		leaving {
+			Close();
+		};
+
+		if(<>BuildWorld()) {
+			return;
+		};
+
+		"Mouse to look, WASD to walk, shift to run, escape to quit."->PrintLine();
+		"Arrow keys also turn and look, if you prefer them."->PrintLine();
+
+		# PollEvents handles the close button, Escape, and accumulating the frame's
+		# mouse movement. Held keys are not events, so WASD still comes from
+		# Keyboard->GetState, which this does not disturb.
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
+
+			if(@mouse_look) {
+				# Deltas, not absolute position: in relative mode the cursor is locked
+				# and keeps reporting movement past the screen edge.
+				@camera->Turn(@window->GetMouseDeltaX() * @sensitivity * -1.0);
+				@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
+			};
+
+			Update(Keyboard->GetState(), @window->GetDelta());
+			Draw();
+
+			@window->EndFrame();
+		};
+
+		GL->ReportErrors("the walkthrough");
+	}
+
+	method : IsDown(keys : Byte[], scancode : Int) ~ Bool {
+		if(keys = Nil | scancode < 0 | scancode >= keys->Size()) {
+			return false;
+		};
+
+		return keys[scancode] <> 0;
+	}
+
+	method : Update(keys : Byte[], delta : Float) ~ Nil {
+		turn_rate := 2.0 * delta;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_LEFT)) {
+			@camera->Turn(turn_rate);
+		};
+		if(IsDown(keys, Scancode->SDL_SCANCODE_RIGHT)) {
+			@camera->Turn(turn_rate * -1.0);
+		};
+		if(IsDown(keys, Scancode->SDL_SCANCODE_UP)) {
+			@camera->Look(turn_rate);
+		};
+		if(IsDown(keys, Scancode->SDL_SCANCODE_DOWN)) {
+			@camera->Look(turn_rate * -1.0);
+		};
+
+		speed := 3.0;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_LSHIFT) |
+				IsDown(keys, Scancode->SDL_SCANCODE_RSHIFT)) {
+			speed := 6.0;
+		};
+		step := speed * delta;
+
+		forward := 0.0;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_W)) { forward += step; };
+		if(IsDown(keys, Scancode->SDL_SCANCODE_S)) { forward -= step; };
+
+		strafe := 0.0;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_D)) { strafe += step; };
+		if(IsDown(keys, Scancode->SDL_SCANCODE_A)) { strafe -= step; };
+
+		if(forward <> 0.0 | strafe <> 0.0) {
+			# One call, and the scene owns the sliding: each axis is applied
+			# separately so a glancing hit slides along the wall instead of stopping
+			# dead. This was twenty lines here, re-deriving the camera's ground basis
+			# because Camera->MoveForward commits before collision can object.
+			@scene->SlideMove(@camera, forward, strafe, @radius);
+		};
+	}
+
+
+	#~
+	Describe the room. Each box carries its own texture, so Scene can group the
+	binds; the floor and ceiling are marked non-solid so they are drawn but do not
+	block a walking character.
+
+	Compare this against the previous version, which held the same data as a flat
+	Float[] of six-floats-per-box plus a count and a "how many are shell" index,
+	and indexed it as @boxes[base + 3].
+	~#
+	method : BuildScene() ~ Nil {
+		@scene := Scene->New(@cube, @shader);
+
+		# Slightly off-axis and slightly warm, because a light straight down the
+		# camera's axis flattens everything back out again -- it lights every
+		# visible face equally, which is the look lighting was added to escape.
+		@light := Light->New();
+		@light->SetDirection(-0.35, 1.0, 0.45);
+		@light->SetColor(1.0, 0.96, 0.88);
+		@light->SetAmbient(0.22, 0.23, 0.3);
+		@scene->SetLight(@light);
+
+		# The crates cast onto the floor and onto each other, and the walls cast
+		# into the corners. Cover spans the whole room, so nothing that should cast
+		# falls outside the map. Whether it worked is checked by the caller, which
+		# is the method that can report a failure.
+		@shadows := ShadowMap->New(1024);
+		@shadows->SetLight(@light);
+		@shadows->Cover(Vector3->New(0.0, 2.0, 0.0), 16.0);
+
+		half := 10.0;
+		wall_h := 3.0;
+		thick := 0.5;
+
+		floor := @scene->AddBox(Vector3->New(0.0, -0.25, 0.0),
+			Vector3->New(half, 0.25, half), @wall_texture);
+		floor->SetSolid(false);
+
+		ceiling := @scene->AddBox(Vector3->New(0.0, wall_h, 0.0),
+			Vector3->New(half, 0.25, half), @wall_texture);
+		ceiling->SetSolid(false);
+
+		mid := wall_h / 2.0;
+		@scene->AddBox(Vector3->New(0.0, mid, half * -1.0), Vector3->New(half, mid, thick), @wall_texture);
+		@scene->AddBox(Vector3->New(0.0, mid, half), Vector3->New(half, mid, thick), @wall_texture);
+		@scene->AddBox(Vector3->New(half * -1.0, mid, 0.0), Vector3->New(thick, mid, half), @wall_texture);
+		@scene->AddBox(Vector3->New(half, mid, 0.0), Vector3->New(thick, mid, half), @wall_texture);
+
+		# obstacles
+		@scene->AddBox(Vector3->New(-4.0, 0.75, -3.0), Vector3->New(0.75, 0.75, 0.75), @box_texture);
+		@scene->AddBox(Vector3->New(3.5, 1.25, 1.5), Vector3->New(1.0, 1.25, 1.0), @box_texture);
+		@scene->AddBox(Vector3->New(0.0, 0.5, -6.5), Vector3->New(2.5, 0.5, 0.5), @box_texture);
+		@scene->AddBox(Vector3->New(-6.0, 1.0, 4.0), Vector3->New(0.5, 1.0, 2.5), @box_texture);
+		@scene->AddBox(Vector3->New(5.5, 0.4, -5.5), Vector3->New(1.2, 0.4, 1.2), @box_texture);
+		@scene->AddBox(Vector3->New(-1.5, 1.75, 2.0), Vector3->New(0.4, 1.75, 0.4), @box_texture);
+	}
+
+	#~
+	Two passes. The depth one has to come first, and it needs the scene's geometry
+	from the light rather than from the eye -- which is all Capture does.
+
+	No clear for the visible pass: GLWindow->BeginFrame cleared colour and depth
+	together. The shadow pass clears its own depth map, since that is a different
+	buffer.
+	~#
+	method : Draw() ~ Nil {
+		@shadows->Begin();
+		@shadows->Capture(@scene);
+		@shadows->End(@window);
+
+		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
+		@shadows->ApplyTo(@shader);
+		@scene->Draw(@view_projection);
+	}
+
+	#~
+	The world: shaders, geometry, textures and the scene. Opening the window and
+	the context is GLWindow's job now, so what is left is this program's content.
+	~#
+	method : BuildWorld() ~ Bool {
+		@projection := Matrix4->PerspectiveDegrees(60.0, @window->GetAspect());
+
+		# Depth testing is already on. Culling is not, because it imposes a winding
+		# requirement on index data -- counter-clockwise seen from outside -- and
+		# getting that wrong makes objects invisible rather than wrong, so it is the
+		# program's choice rather than a default.
+		GL->Enable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.05, 0.06, 0.09, 1.0);
+
+		# Mouse-look. Not every platform supports relative mode, so fall back to
+		# arrow-key turning rather than leaving the player unable to look around.
+		@mouse_look := Cursor->SetRelativeMouseMode(true) = 0;
+		if(<>@mouse_look) {
+			"Note: relative mouse mode unavailable; use the arrow keys to look"->PrintLine();
+		};
+
+		# Lit and textured, with distance fog still on. Lighting is what makes the
+		# room read as a room: with a directional light the four walls, the floor
+		# and every face of every crate get a different brightness according to
+		# which way they face, where before they were all equally bright and the
+		# geometry had to be inferred from the fog alone.
+		@shader := Shader->LitTexturedShadowed();
+		if(<>@shader->IsOk()) {
+			"Shader failed:"->ErrorLine();
+			@shader->GetLog()->ErrorLine();
+			return false;
+		};
+		@shader->SetFloat("fog_distance", 40.0);
+
+		@cube := Mesh->Cube();
+		if(<>@cube->IsOk()) {
+			"Could not upload the cube mesh"->ErrorLine();
+			return false;
+		};
+
+		@wall_texture := Texture2D->Checker(64, 8, Texture2D->Rgb(210, 205, 195), Texture2D->Rgb(120, 115, 110));
+		@box_texture := Texture2D->Checker(64, 4, Texture2D->Rgb(190, 120, 70), Texture2D->Rgb(120, 70, 40));
+		if(<>@wall_texture->IsOk() | <>@box_texture->IsOk()) {
+			"Could not upload textures"->ErrorLine();
+			return false;
+		};
+
+		BuildScene();
+
+		if(<>@shadows->IsOk()) {
+			"Shadow map failed: "->Print();
+			@shadows->GetError()->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+
+	#~
+	GL objects first, while the context is still current. GLWindow->Free then
+	releases the cursor, the context, the window and SDL in that order -- so this
+	no longer has to know it.
+
+	The Scene is deliberately not freed: it does not own the boxes, mesh, shader
+	or textures it was handed, which is why they are freed here instead.
+	~#
+	method : Close() ~ Nil {
+		if(@wall_texture <> Nil) { @wall_texture->Free(); };
+		if(@box_texture <> Nil) { @box_texture->Free(); };
+		if(@cube <> Nil) { @cube->Free(); };
+		if(@shader <> Nil) { @shader->Free(); };
+		if(@shadows <> Nil) { @shadows->Free(); };
+
+		if(@window <> Nil) { @window->Free(); };
+	}
+}

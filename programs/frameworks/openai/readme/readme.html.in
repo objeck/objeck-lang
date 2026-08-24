@@ -102,12 +102,10 @@
         </p>
 
         <h4>For macOS</h4>
-        <ol>
-            <li>Apple Silicon (arm64)</li>
-            <li>Go to the <code>/lib/native</code> directory an untar the <code>sdl2_arm64.tgz</code> file</li>
-            <li>Copy the include and lib files to <code>/usr/local/include</code> and 
-            <code>/usr/local/lib</code></li>
-        </ol>
+        <p>
+            Nothing to install. On Apple Silicon (arm64) the required SDL2 libraries ship inside the
+            distribution under <code>lib/sdl</code> and are loaded from there.
+        </p>
 
         <h3>Secure Web Server Support</h3>
         <p>The following to generate a self-signed SSL certificate for the

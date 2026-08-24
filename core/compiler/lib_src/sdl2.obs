@@ -107,6 +107,33 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	Values for GLattr->SDL_GL_CONTEXT_PROFILE_MASK. Request a profile BEFORE
+	creating the window, with Core->GLSetAttribute.
+
+	Ask for CORE to get a modern (3.2+) context. On macOS this is mandatory, not
+	a preference: without it you are handed a legacy 2.1 context, and macOS
+	offers no 3.3 compatibility profile at all.
+	~#
+	consts GLProfile {
+		SDL_GL_CONTEXT_PROFILE_CORE := 0x0001,
+		SDL_GL_CONTEXT_PROFILE_COMPATIBILITY := 0x0002,
+		SDL_GL_CONTEXT_PROFILE_ES := 0x0004
+	}
+
+	#~
+	Values for GLattr->SDL_GL_CONTEXT_FLAGS, combined with 'or'.
+
+	FORWARD_COMPATIBLE removes the deprecated fixed-function pipeline and is
+	required alongside a core profile on macOS.
+	~#
+	consts GLContextFlag {
+		SDL_GL_CONTEXT_DEBUG_FLAG := 0x0001,
+		SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG := 0x0002,
+		SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG := 0x0004,
+		SDL_GL_CONTEXT_RESET_ISOLATION_FLAG := 0x0008
+	}
+
+	#~
 	State of the system's power supply
 	~#
 	enum PowererState {
@@ -985,6 +1012,49 @@ bundle Game.SDL2 {
 	}
 	
 	#~
+	An OpenGL context, created from a Window with GLCreateContext.
+
+	Like every SDL handle in this bundle this wraps a raw native pointer, so the
+	collector cannot see it -- call Delete() when you are done. Deleting a context
+	while it is current is allowed; SDL unbinds it first.
+	~#
+	class GLContext {
+		@context : Int;
+
+		New(context : Int) {
+			@context := context;
+		}
+
+		#~
+		Determines if the underlying SDL context is NULL
+		@return true if NULL, false otherwise
+		~#
+		method : public : IsNull() ~ Bool {
+			return @context = 0;
+		}
+
+		#~
+		The raw context handle. Needed by Window->GLMakeCurrent; not useful otherwise.
+		@return native context pointer as an Int
+		~#
+		method : public : GetContext() ~ Int {
+			return @context;
+		}
+
+		#~
+		Destroy this context. Safe to call more than once.
+		~#
+		method : public : Delete() ~ Nil {
+			if(@context <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@context);
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_delete_context", array_args);
+				@context := 0;
+			};
+		}
+	}
+
+	#~
 	SDL Window
 	~#
 	class Window {
@@ -1087,6 +1157,55 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New(@window);
 				Proxy->GetDllProxy()->CallFunction("sdl_window_gl_swap", array_args);
 			};
+		}
+
+		#~
+		Create an OpenGL context for this window and make it current.
+
+		The window must have been created with WindowFlags->SDL_WINDOW_OPENGL, and
+		any Core->GLSetAttribute calls that describe the context you want (version,
+		profile, depth buffer) must happen BEFORE the window is created -- they
+		select a pixel format, so setting them afterwards has no effect.
+		@return the new context; IsNull() is true on failure, and Core->GetError() says why
+		~#
+		method : public : GLCreateContext() ~ GLContext {
+			if(@window = 0) {
+				return GLContext->New(0);
+			};
+
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@window);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_window_gl_create_context", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return GLContext->New(value->Get());
+		}
+
+		#~
+		Bind an OpenGL context to this window on the calling thread.
+
+		A context is current per-thread, so this must run on whichever thread issues
+		the GL calls. GLCreateContext already makes its context current, so this is
+		only needed when switching windows or threads.
+		@param context the context to make current
+		@return 0 on success, or a negative error code
+		~#
+		method : public : GLMakeCurrent(context : GLContext) ~ Int {
+			if(@window = 0 | context = Nil) {
+				return -1;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@window);
+			array_args[2] := IntRef->New(context->GetContext());
+
+			Proxy->GetDllProxy()->CallFunction("sdl_window_gl_make_current", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
 		}
 		
 		#~
@@ -4107,6 +4226,26 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		The GL_VERSION string of the current OpenGL context, e.g. "3.3.0 NVIDIA 560.94".
+
+		Returns an empty string when no context is current. Worth checking right
+		after GLCreateContext rather than trusting the attributes you asked for:
+		a driver may hand back a different version than requested, and on macOS you
+		silently get a legacy 2.1 context unless a core + forward-compatible profile
+		was set before the window was created. Finding that out here is far cheaper
+		than finding out at the first shader compile.
+		@return the GL version string, or "" if no context is current
+		~#
+		function : GLGetVersionString() ~ String {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_version_string", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		#~
 		Retrieve a message about the last error that occurred
 		@return message with information about the specific error that occurred
 		~#
@@ -5076,6 +5215,16 @@ bundle Game.SDL2 {
 		~#
 		method : public : IsNull() ~ Bool {
 			return @surface = 0;
+		}
+
+		#~
+		The raw surface handle. Needed by other bundles that hand a surface to
+		native code -- Game.OpenGL's Texture2D uploads one as a GL texture -- and
+		not useful otherwise.
+		@return native surface pointer as an Int
+		~#
+		method : public : GetSurface() ~ Int {
+			return @surface;
 		}
 
 		#~
@@ -7799,6 +7948,43 @@ bundle Game.SDL2 {
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
+		}
+
+		#~
+		Turn relative mouse mode on or off.
+
+		This is what mouse-look needs. It hides the cursor, locks it to the window,
+		and makes motion events report unbounded deltas -- read them with
+		MouseMotionEvent->GetRelX/GetRelY. Without it the pointer stops at the
+		screen edge and the view stops turning with it.
+
+		Turn it off before showing a menu, or the user cannot click anything.
+		@param enabled true to capture the mouse for look control
+		@return 0 on success, or -1 if the platform does not support it
+		~#
+		function : SetRelativeMouseMode(enabled : Bool) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(enabled ? 1 : 0);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_cursor_set_relative_mouse_mode", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Whether relative mouse mode is currently on.
+		@return true when the mouse is captured for relative motion
+		~#
+		function : GetRelativeMouseMode() ~ Bool {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_relative_mouse_mode", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0 ? false : true;
 		}
 
 		#~

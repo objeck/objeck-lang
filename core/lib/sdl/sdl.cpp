@@ -49,6 +49,17 @@
 #include "../../vm/lib_api.h"
 #include "../../shared/sys.h"
 
+// OpenGL. Must come AFTER lib_api.h on Windows: lib_api.h pulls in
+// core/vm/common.h, which includes <windows.h> and relies on it dragging in
+// winsock for fd_set / FD_ISSET, while SDL_opengl.h defines WIN32_LEAN_AND_MEAN
+// before including <windows.h> itself -- and that macro suppresses winsock, so
+// putting this first breaks common.h with "FD_ISSET: identifier not found".
+#include <SDL_opengl.h>
+#include <SDL_opengl_glext.h>   // PFNGL*PROC typedefs for the GL 2.0+ loader
+#include <map>
+#include <string>
+#include <vector>
+
 #define POLY_MAX 1024
 
 extern "C" {
@@ -2807,7 +2818,27 @@ extern "C" {
     const SDL_bool enabled = (SDL_bool)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_CaptureMouse(enabled));
   }
-  
+
+  //
+  // Relative mouse mode: hides the cursor, locks it to the window, and reports
+  // motion as unbounded deltas. This is what mouse-look needs -- without it the
+  // pointer stops at the screen edge and the view stops turning with it.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_set_relative_mouse_mode(VMContext& context) {
+    const SDL_bool enabled = (SDL_bool)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_SetRelativeMouseMode(enabled));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_get_relative_mouse_mode(VMContext& context) {
+    APITools_SetIntValue(context, 0, SDL_GetRelativeMouseMode() == SDL_TRUE ? 1 : 0);
+  }
+
   //
   // Clipboard
   //
@@ -2877,10 +2908,20 @@ __declspec(dllexport)
     Uint8* byte_array = (Uint8*)(array + 3);
     memcpy(byte_array, states, numkeys);
 
-    // create 'ByteArrayHolder' holder
-    size_t* byte_obj= APITools_CreateObject(context, L"System.ByteArrayHolder");
+    // 'ByteArrayRef', not 'ByteArrayHolder'. The class was renamed in 8131ebb7f1
+    // ("changing 'Holder' names to 'Ref'") and this string was missed, so
+    // APITools_CreateObject returned null and the next line dereferenced it --
+    // Keyboard->GetState() segfaulted on every platform from that commit until
+    // now. Nothing caught it: no SDL test runs in CI and no shipped example
+    // called GetState.
+    size_t* byte_obj = APITools_CreateObject(context, L"System.ByteArrayRef");
+    if(!byte_obj) {
+      // fail loudly rather than crash if this name ever drifts again
+      std::wcerr << L"Objeck SDL: cannot create System.ByteArrayRef" << std::endl;
+      return;
+    }
     byte_obj[0] = (size_t)array;
-    
+
     APITools_SetObjectValue(context, 0, byte_obj);
   }
 
@@ -4735,5 +4776,1645 @@ __declspec(dllexport)
 
     const int return_value = stringRGBA(renderer, x, y, s.c_str(), color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
+  }
+
+  // ==========================================================================
+  // OpenGL ("Game.OpenGL", core/compiler/lib_src/sdl_gl.obs)
+  // ==========================================================================
+  //
+  // This lives in sdl.cpp rather than its own gl_sdl.cpp because lib_api.h
+  // defines its helpers as NON-INLINE free functions in the header, so a second
+  // translation unit that includes it fails to link with LNK2005 on every
+  // APITools_* symbol. That is why all eight native libraries in this repo are
+  // exactly one .cpp file each. Splitting the GL layer out would mean either
+  // making lib_api.h inline (it is shared by all eight) or shipping a separate
+  // libobjk_gl with its own seven per-platform build definitions.
+  //
+  // --------------------------------------------------------------------------
+  // ADDING A GL CALL -- the whole recipe
+  // --------------------------------------------------------------------------
+  // 1. Add one `void name(VMContext&)` below, with the #ifdef _WIN32
+  //    __declspec(dllexport) prologue every function in this file has.
+  // 2. Add one method in sdl_gl.obs that calls it by that exact string through
+  //    Proxy->GetDllProxy()->CallFunction.
+  //
+  // Two rules, both load-bearing:
+  //
+  // SLOT INDICES ARE POSITIONAL. Slot 0 is the return value ONLY if the Objeck
+  // method returns something; otherwise the first argument sits at slot 0. Both
+  // conventions already exist above -- sdl_window_gl_swap reads its window from
+  // slot 0, sdl_window_get_display_index reads its window from slot 1 -- so
+  // match the two sides deliberately rather than by habit.
+  //
+  // MAKE EACH CALL DO REAL WORK. StackInterpreter::SharedLibraryCall resolves
+  // the symbol by string on EVERY call (GetProcAddress/dlsym, see
+  // core/vm/interpreter.cpp:2981) and each call allocates a Base[] plus a boxed
+  // holder per argument. A 1:1 wrapper over GL would be thousands of dlsym
+  // calls per frame. So "compile a program from two shader sources" is ONE
+  // function here, not the five GL calls it decomposes into.
+  //
+  // Only GL 1.1 entry points are linked directly (opengl32.lib / -lGL /
+  // -framework OpenGL). Everything from GL 2.0 on is resolved through
+  // SDL_GL_GetProcAddress into a function table, which is why this needs no
+  // GLEW/GLAD dependency and why no platform's GL headers constrain us at all:
+  // SDL_opengl.h embeds a verbatim copy of Mesa's gl.h and never includes
+  // <OpenGL/gl.h> or any other system GL header, on any platform. The only GL
+  // declarations we ever see are that GL 1.1 set plus our own typedefs below.
+  //
+
+  //
+  // Reports the GL version string of the CURRENT context, or "" when there is
+  // no current context. glGetString is GL 1.1, so it is linked rather than
+  // loaded -- which makes this double as the proof that each platform's build
+  // definition really does link a GL library.
+  //
+  // Until a context exists this correctly returns "". Once one does, this is
+  // the assertion macOS needs: macOS hands back a legacy 2.1 context unless a
+  // core + forward-compatible profile was requested, and offers no 3.3
+  // compatibility profile at all, so silently getting 2.1 is the failure mode
+  // to catch here rather than at first shader compile.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_version_string(VMContext& context) {
+    const GLubyte* version = glGetString(GL_VERSION);
+    const std::string return_value = version ? reinterpret_cast<const char*>(version) : "";
+    const std::wstring w_return_value = BytesToUnicode(return_value);
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+  //
+  // Creates a GL context for a window and makes it current. SDL_GLContext is a
+  // typedef for void*, so it crosses as an Int exactly like every other SDL
+  // handle here -- invisible to the collector, freed explicitly.
+  //
+  // Returns 0 on failure; the caller reads Core->GetError() for the reason.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_window_gl_create_context(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
+    SDL_GLContext gl_context = window ? SDL_GL_CreateContext(window) : nullptr;
+    APITools_SetIntValue(context, 0, (size_t)gl_context);
+  }
+
+  //
+  // Binds a context to a window on the calling thread. A GL context is current
+  // per-thread, so this must be called on whichever thread issues the GL calls.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_window_gl_make_current(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
+    SDL_GLContext gl_context = (SDL_GLContext)APITools_GetIntValue(context, 2);
+    APITools_SetIntValue(context, 0, SDL_GL_MakeCurrent(window, gl_context));
+  }
+
+  //
+  // Destroys a context. Returns Nil, so the handle is at slot 0 rather than 1.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_delete_context(VMContext& context) {
+    SDL_GLContext gl_context = (SDL_GLContext)APITools_GetIntValue(context, 0);
+    if(gl_context) {
+      SDL_GL_DeleteContext(gl_context);
+    }
+  }
+
+  //
+  // Framebuffer state. glClearColor/glClear/glViewport are all GL 1.1, so they
+  // link directly and need no proc-address lookup. Colors are GLclampf (32-bit)
+  // while Objeck Float is a 64-bit double, hence the narrowing casts -- the same
+  // conversion every buffer upload will need.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_clear_color(VMContext& context) {
+    const GLclampf r = (GLclampf)APITools_GetFloatValue(context, 0);
+    const GLclampf g = (GLclampf)APITools_GetFloatValue(context, 1);
+    const GLclampf b = (GLclampf)APITools_GetFloatValue(context, 2);
+    const GLclampf a = (GLclampf)APITools_GetFloatValue(context, 3);
+    glClearColor(r, g, b, a);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_clear(VMContext& context) {
+    glClear((GLbitfield)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_viewport(VMContext& context) {
+    const GLint x = (GLint)APITools_GetIntValue(context, 0);
+    const GLint y = (GLint)APITools_GetIntValue(context, 1);
+    const GLsizei w = (GLsizei)APITools_GetIntValue(context, 2);
+    const GLsizei h = (GLsizei)APITools_GetIntValue(context, 3);
+    glViewport(x, y, w, h);
+  }
+
+  //
+  // How a fragment's colour is combined with what is already there. GL 1.1, so
+  // linked rather than loaded.
+  //
+  // GL_BLEND on its own does nothing useful: the default factors are ONE and
+  // ZERO, which is exactly "replace", so enabling blending without setting these
+  // looks like it worked and changes nothing. That was the state of this
+  // binding -- GL_BLEND was in the Capability list with no way to configure it.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_blend_func(VMContext& context) {
+    glBlendFunc((GLenum)APITools_GetIntValue(context, 0), (GLenum)APITools_GetIntValue(context, 1));
+  }
+
+  //
+  // Which faces to cull, for a pass that wants the opposite of the usual.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_cull_face(VMContext& context) {
+    glCullFace((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+  //
+  // Whether depth is written. Turning it off while leaving the test on is how
+  // transparent geometry is drawn without occluding the transparent things
+  // behind it.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_depth_mask(VMContext& context) {
+    glDepthMask(APITools_GetIntValue(context, 0) != 0 ? GL_TRUE : GL_FALSE);
+  }
+
+  //
+  // glGetError, drained in a loop by the Objeck side. GL accumulates errors in a
+  // queue and only clears one per call, so a single check can hide others.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_get_error(VMContext& context) {
+    APITools_SetIntValue(context, 0, glGetError());
+  }
+}
+
+// ==========================================================================
+// GL 2.0+ entry points
+// ==========================================================================
+//
+// Resolved once through SDL_GL_GetProcAddress and cached here. Objeck never
+// sees a proc address, so there is no GLEW/GLAD dependency and no reliance on
+// the platform shipping a modern GL header -- SDL_opengl.h carries its own
+// embedded copy of Mesa's gl.h and has no per-platform conditionals, so every
+// platform compiles against exactly the typedefs below.
+//
+// Which is why macOS capping OpenGL at 4.1 is a RUNTIME limit here and not a
+// compile-time one: the declaration is always present, and an entry point Apple
+// does not implement simply comes back null from SDL_GL_GetProcAddress.
+//
+// Deliberately NOT inside extern "C": these are C++ statics, not exports.
+
+#define GL_FN(name) static PFNGL##name##PROC objk_gl##name = nullptr;
+GL_FN(CREATESHADER) GL_FN(SHADERSOURCE) GL_FN(COMPILESHADER)
+GL_FN(GETSHADERIV) GL_FN(GETSHADERINFOLOG) GL_FN(DELETESHADER)
+GL_FN(CREATEPROGRAM) GL_FN(ATTACHSHADER) GL_FN(LINKPROGRAM)
+GL_FN(GETPROGRAMIV) GL_FN(GETPROGRAMINFOLOG) GL_FN(USEPROGRAM)
+GL_FN(DELETEPROGRAM) GL_FN(GETUNIFORMLOCATION) GL_FN(UNIFORMMATRIX4FV)
+GL_FN(UNIFORM1I) GL_FN(GENVERTEXARRAYS) GL_FN(BINDVERTEXARRAY)
+GL_FN(DELETEVERTEXARRAYS) GL_FN(GENBUFFERS) GL_FN(BINDBUFFER)
+GL_FN(BUFFERDATA) GL_FN(DELETEBUFFERS) GL_FN(VERTEXATTRIBPOINTER)
+GL_FN(ENABLEVERTEXATTRIBARRAY) GL_FN(ACTIVETEXTURE)
+GL_FN(GENERATEMIPMAP) GL_FN(UNIFORM1F) GL_FN(UNIFORM3FV) GL_FN(UNIFORM4FV)
+GL_FN(GENFRAMEBUFFERS) GL_FN(BINDFRAMEBUFFER) GL_FN(DELETEFRAMEBUFFERS)
+GL_FN(FRAMEBUFFERTEXTURE2D) GL_FN(CHECKFRAMEBUFFERSTATUS)
+GL_FN(GENRENDERBUFFERS) GL_FN(BINDRENDERBUFFER) GL_FN(DELETERENDERBUFFERS)
+GL_FN(RENDERBUFFERSTORAGE) GL_FN(FRAMEBUFFERRENDERBUFFER)
+GL_FN(GETSTRINGI)
+GL_FN(DRAWELEMENTSINSTANCED) GL_FN(VERTEXATTRIBDIVISOR)
+#undef GL_FN
+
+static bool objk_gl_loaded = false;
+
+// Entry points that were asked for and not found, but that nothing depends on.
+//
+// The loader used to be all-or-nothing: one unresolved function set
+// objk_gl_loaded to false and EVERY GL call in this file then did nothing --
+// Shader->New returning 0, Mesh->New returning 0, the whole layer dark. That is
+// correct for the GL 3.3 core set, which a 3.3 core context guarantees: if
+// glCreateShader is missing, nothing here can work and saying so once is right.
+//
+// It is badly wrong for anything optional. An extension that some drivers have
+// and some do not must not be able to take the renderer down with it, so those
+// load into this list instead and callers ask before using them.
+static std::string objk_gl_optional_missing;
+
+// Why the last GL call did nothing.
+//
+// Most functions below can only fail by doing nothing: the entry points are not
+// loaded, a handle is null, a uniform name does not exist in the program. None
+// of those raise a GL error, so glGetError stays clean and the program renders a
+// black window while exiting 0. That is the single most confusing failure this
+// binding has, so every silent bail records its reason here and GL->GetLastError
+// reports it.
+//
+// One shared slot rather than a return value per function: it needs no signature
+// changes, it works for the failures that have nowhere to return to (Bind, Draw),
+// and a black screen is diagnosed by one question rather than six.
+static std::string objk_gl_last_error;
+
+// Records why a call bailed. Keeps the FIRST reason until it is read: the first
+// one is the cause and the rest are usually its consequences.
+static void objk_gl_fail(const std::string& reason) {
+  if(objk_gl_last_error.empty()) {
+    objk_gl_last_error = reason;
+  }
+}
+
+// The reason every function below gives when nothing is loaded. Named once so
+// the six call sites cannot drift apart.
+static const char OBJK_GL_NOT_LOADED[] =
+  "GL functions are not loaded -- call GL->LoadFunctions() after the context is current";
+
+// Every entry point is resolved and checked up front, so a driver missing one
+// is reported once by name instead of crashing on first use.
+static std::string objk_gl_load_functions() {
+  std::string missing;
+
+#define OBJK_GL_LOAD(lower, NAME)                                                   \
+  objk_gl##NAME = (PFNGL##NAME##PROC)SDL_GL_GetProcAddress(lower);             \
+  if(!objk_gl##NAME) { missing += missing.empty() ? "" : ", "; missing += lower; }
+
+  OBJK_GL_LOAD("glCreateShader", CREATESHADER)
+  OBJK_GL_LOAD("glShaderSource", SHADERSOURCE)
+  OBJK_GL_LOAD("glCompileShader", COMPILESHADER)
+  OBJK_GL_LOAD("glGetShaderiv", GETSHADERIV)
+  OBJK_GL_LOAD("glGetShaderInfoLog", GETSHADERINFOLOG)
+  OBJK_GL_LOAD("glDeleteShader", DELETESHADER)
+  OBJK_GL_LOAD("glCreateProgram", CREATEPROGRAM)
+  OBJK_GL_LOAD("glAttachShader", ATTACHSHADER)
+  OBJK_GL_LOAD("glLinkProgram", LINKPROGRAM)
+  OBJK_GL_LOAD("glGetProgramiv", GETPROGRAMIV)
+  OBJK_GL_LOAD("glGetProgramInfoLog", GETPROGRAMINFOLOG)
+  OBJK_GL_LOAD("glUseProgram", USEPROGRAM)
+  OBJK_GL_LOAD("glDeleteProgram", DELETEPROGRAM)
+  OBJK_GL_LOAD("glGetUniformLocation", GETUNIFORMLOCATION)
+  OBJK_GL_LOAD("glUniformMatrix4fv", UNIFORMMATRIX4FV)
+  OBJK_GL_LOAD("glUniform1i", UNIFORM1I)
+  OBJK_GL_LOAD("glGenVertexArrays", GENVERTEXARRAYS)
+  OBJK_GL_LOAD("glBindVertexArray", BINDVERTEXARRAY)
+  OBJK_GL_LOAD("glDeleteVertexArrays", DELETEVERTEXARRAYS)
+  OBJK_GL_LOAD("glGenBuffers", GENBUFFERS)
+  OBJK_GL_LOAD("glBindBuffer", BINDBUFFER)
+  OBJK_GL_LOAD("glBufferData", BUFFERDATA)
+  OBJK_GL_LOAD("glDeleteBuffers", DELETEBUFFERS)
+  OBJK_GL_LOAD("glVertexAttribPointer", VERTEXATTRIBPOINTER)
+  OBJK_GL_LOAD("glEnableVertexAttribArray", ENABLEVERTEXATTRIBARRAY)
+  OBJK_GL_LOAD("glActiveTexture", ACTIVETEXTURE)
+  // GL 3.0. Required, not optional: a 3.3 core context that cannot resolve this
+  // is broken in a way worth failing loudly on rather than silently declining
+  // mipmaps.
+  OBJK_GL_LOAD("glGenerateMipmap", GENERATEMIPMAP)
+  // GL 2.0, like every other uniform setter here
+  OBJK_GL_LOAD("glUniform1f", UNIFORM1F)
+  OBJK_GL_LOAD("glUniform3fv", UNIFORM3FV)
+  OBJK_GL_LOAD("glUniform4fv", UNIFORM4FV)
+
+  // Framebuffer objects, all GL 3.0 -- so guaranteed by any 3.3 core context,
+  // including macOS's, which is why they are required rather than optional.
+  OBJK_GL_LOAD("glGenFramebuffers", GENFRAMEBUFFERS)
+  OBJK_GL_LOAD("glBindFramebuffer", BINDFRAMEBUFFER)
+  OBJK_GL_LOAD("glDeleteFramebuffers", DELETEFRAMEBUFFERS)
+  OBJK_GL_LOAD("glFramebufferTexture2D", FRAMEBUFFERTEXTURE2D)
+  OBJK_GL_LOAD("glCheckFramebufferStatus", CHECKFRAMEBUFFERSTATUS)
+  OBJK_GL_LOAD("glGenRenderbuffers", GENRENDERBUFFERS)
+  OBJK_GL_LOAD("glBindRenderbuffer", BINDRENDERBUFFER)
+  OBJK_GL_LOAD("glDeleteRenderbuffers", DELETERENDERBUFFERS)
+  OBJK_GL_LOAD("glRenderbufferStorage", RENDERBUFFERSTORAGE)
+  OBJK_GL_LOAD("glFramebufferRenderbuffer", FRAMEBUFFERRENDERBUFFER)
+
+  // GL 3.0, and the ONLY way to enumerate extensions in a core profile:
+  // glGetString(GL_EXTENSIONS) returns null with GL_INVALID_ENUM there, so the
+  // indexed form plus GL_NUM_EXTENSIONS is not a convenience.
+  OBJK_GL_LOAD("glGetStringi", GETSTRINGI)
+
+  // Instancing: glDrawElementsInstanced is GL 3.1 and glVertexAttribDivisor is
+  // 3.3, so both are guaranteed by the context this bundle requires -- required
+  // rather than optional, same reasoning as the framebuffer calls.
+  OBJK_GL_LOAD("glDrawElementsInstanced", DRAWELEMENTSINSTANCED)
+  OBJK_GL_LOAD("glVertexAttribDivisor", VERTEXATTRIBDIVISOR)
+#undef OBJK_GL_LOAD
+
+  // Anything that lands here is asked for, allowed to be absent, and reported
+  // separately. Nothing uses this tier yet -- it exists so that the first
+  // optional entry point cannot repeat the all-or-nothing mistake.
+  objk_gl_optional_missing.clear();
+#define OBJK_GL_LOAD_OPTIONAL(lower, NAME)                                     \
+  objk_gl##NAME = (PFNGL##NAME##PROC)SDL_GL_GetProcAddress(lower);             \
+  if(!objk_gl##NAME) {                                                         \
+    objk_gl_optional_missing += objk_gl_optional_missing.empty() ? "" : ", ";   \
+    objk_gl_optional_missing += lower;                                         \
+  }
+#undef OBJK_GL_LOAD_OPTIONAL
+
+  objk_gl_loaded = missing.empty();
+  return missing;
+}
+
+// A mesh is four values (VAO, VBO, EBO, index count), so the native side owns a
+// small record and hands back its pointer -- the same convention every SDL
+// handle in this file uses.
+struct ObjkMesh {
+  GLuint vao;
+  GLuint vbo;
+  GLuint ebo;
+  GLsizei index_count;
+  // A second vertex buffer whose attributes advance once per INSTANCE rather
+  // than once per vertex. Zero until SetInstances is called; a mesh without one
+  // draws normally.
+  GLuint instance_vbo;
+  // How many attribute slots the instance data occupies, so the divisor can be
+  // set on each of them.
+  GLint instance_attributes;
+};
+
+// A render target is a framebuffer plus the colour texture it draws into and a
+// depth renderbuffer, so it travels as one record like ObjkMesh does.
+//
+// Colour goes to a TEXTURE because the whole point is to sample the result
+// afterwards. Depth goes to a RENDERBUFFER because nothing here reads it back --
+// a renderbuffer is the cheaper choice when a buffer is written and never
+// sampled. A shadow map, when it arrives, will want the opposite.
+struct ObjkRenderTarget {
+  GLuint framebuffer;
+  GLuint texture;
+  GLuint depth;
+  GLsizei width;
+  GLsizei height;
+  // Depth-only: 'texture' is the DEPTH texture and there is no colour attachment
+  // at all. A shadow map wants exactly the reverse of the usual arrangement --
+  // depth sampled, colour never read -- so it gets the texture and the colour
+  // buffer is not created.
+  bool depth_only;
+  // A CUBE depth map: six square faces sharing one texture name, which is what a
+  // point light needs. A point light shines in every direction, so one flat map
+  // cannot hold its shadows -- the scene has to be rendered six times, once down
+  // each axis, and sampled by DIRECTION rather than by a projected coordinate.
+  bool cube;
+};
+
+// Objeck arrays arrive as a holder object whose field 0 is the array; the
+// elements start ARRAY_HEADER_OFFSET words in. Returns nullptr when absent.
+static size_t* objk_array_from_holder(size_t* holder, size_t& count) {
+  count = 0;
+  if(!holder || !holder[0]) {
+    return nullptr;
+  }
+  size_t* array = (size_t*)holder[0];
+  count = array[0];
+  return array + ARRAY_HEADER_OFFSET;
+}
+
+// Uniform locations, cached per program.
+//
+// glGetUniformLocation is a driver call that takes a STRING, and every uniform
+// set was making one -- plus a UnicodeToBytes conversion of the Objeck string --
+// on every single call, in the per-frame path. Scene->Draw sets one matrix per
+// box per frame, so a scene of two hundred boxes was two hundred string lookups
+// a frame for a value that cannot change: a program's uniform locations are
+// fixed once it is linked.
+//
+// The name still crosses the boundary as a string, because that is the readable
+// API and the conversion is not the expensive half. What this removes is the
+// driver call.
+static std::map<GLuint, std::map<std::string, GLint> > objk_gl_uniforms;
+
+// -1 when the program has no such uniform, exactly as glGetUniformLocation
+// reports it -- including that a name GLSL optimised out as unused is
+// indistinguishable from a misspelling.
+static GLint objk_gl_uniform_location(GLuint program, const std::string& name) {
+  std::map<std::string, GLint>& cache = objk_gl_uniforms[program];
+  std::map<std::string, GLint>::const_iterator found = cache.find(name);
+  if(found != cache.end()) {
+    return found->second;
+  }
+
+  const GLint location = objk_glGETUNIFORMLOCATION(program, name.c_str());
+  cache[name] = location;
+  return location;
+}
+
+// Compiles one stage and returns 0 plus a log on failure.
+static GLuint objk_gl_compile_stage(GLenum type, const std::string& source, std::string& log) {
+  const GLuint shader = objk_glCREATESHADER(type);
+  if(!shader) {
+    log = "glCreateShader returned 0";
+    return 0;
+  }
+
+  const char* text = source.c_str();
+  objk_glSHADERSOURCE(shader, 1, &text, nullptr);
+  objk_glCOMPILESHADER(shader);
+
+  GLint ok = GL_FALSE;
+  objk_glGETSHADERIV(shader, GL_COMPILE_STATUS, &ok);
+  if(ok != GL_TRUE) {
+    GLint length = 0;
+    objk_glGETSHADERIV(shader, GL_INFO_LOG_LENGTH, &length);
+    if(length > 0) {
+      std::string buffer((size_t)length, '\0');
+      objk_glGETSHADERINFOLOG(shader, length, nullptr, &buffer[0]);
+      log = buffer;
+    }
+    else {
+      log = "shader compilation failed with no log";
+    }
+    objk_glDELETESHADER(shader);
+    return 0;
+  }
+
+  return shader;
+}
+
+extern "C" {
+  //
+  // Resolves the GL 2.0+ entry points. Call once after the context is current.
+  // Returns "" on success, or a comma-separated list of the functions that could
+  // not be resolved -- which is what a too-old context looks like.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_load_functions(VMContext& context) {
+    const std::string missing = objk_gl_load_functions();
+    APITools_SetStringValue(context, 0, BytesToUnicode(missing));
+  }
+
+  //
+  // Reports and clears the reason the last GL call silently did nothing. See the
+  // objk_gl_last_error comment: these are the failures that raise no GL error, so
+  // glGetError cannot find them and only this can.
+  //
+  // Reading CLEARS it, so a caller can check a sequence of calls and know the
+  // report belongs to the one it just made rather than to something earlier.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_last_error(VMContext& context) {
+    APITools_SetStringValue(context, 0, BytesToUnicode(objk_gl_last_error));
+    objk_gl_last_error.clear();
+  }
+
+  //
+  // Compiles a vertex + fragment shader and links them into a program: five GL
+  // calls per stage plus the link, collapsed into ONE native call, because the
+  // VM resolves the symbol by string on every call.
+  //
+  // slot 0 = program id (0 on failure), 1 = vertex source, 2 = fragment source,
+  // slot 3 receives the compile/link log.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_program_create(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->New: ") + OBJK_GL_NOT_LOADED);
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 3, BytesToUnicode(OBJK_GL_NOT_LOADED));
+      return;
+    }
+
+    const std::string vertex_source = UnicodeToBytes(APITools_GetStringValue(context, 1));
+    const std::string fragment_source = UnicodeToBytes(APITools_GetStringValue(context, 2));
+
+    std::string log;
+    const GLuint vertex = objk_gl_compile_stage(GL_VERTEX_SHADER, vertex_source, log);
+    if(!vertex) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 3, BytesToUnicode("vertex shader: " + log));
+      return;
+    }
+
+    const GLuint fragment = objk_gl_compile_stage(GL_FRAGMENT_SHADER, fragment_source, log);
+    if(!fragment) {
+      objk_glDELETESHADER(vertex);
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 3, BytesToUnicode("fragment shader: " + log));
+      return;
+    }
+
+    const GLuint program = objk_glCREATEPROGRAM();
+    objk_glATTACHSHADER(program, vertex);
+    objk_glATTACHSHADER(program, fragment);
+    objk_glLINKPROGRAM(program);
+
+    // the stages are linked into the program now; the objects themselves are no
+    // longer needed whether or not the link succeeded
+    objk_glDELETESHADER(vertex);
+    objk_glDELETESHADER(fragment);
+
+    GLint linked = GL_FALSE;
+    objk_glGETPROGRAMIV(program, GL_LINK_STATUS, &linked);
+    if(linked != GL_TRUE) {
+      GLint length = 0;
+      objk_glGETPROGRAMIV(program, GL_INFO_LOG_LENGTH, &length);
+      std::string buffer;
+      if(length > 0) {
+        buffer.assign((size_t)length, '\0');
+        objk_glGETPROGRAMINFOLOG(program, length, nullptr, &buffer[0]);
+      }
+      else {
+        buffer = "program link failed with no log";
+      }
+      objk_glDELETEPROGRAM(program);
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 3, BytesToUnicode("link: " + buffer));
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, program);
+    APITools_SetStringValue(context, 3, BytesToUnicode(""));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_program_use(VMContext& context) {
+    if(objk_gl_loaded) {
+      objk_glUSEPROGRAM((GLuint)APITools_GetIntValue(context, 0));
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_program_delete(VMContext& context) {
+    if(objk_gl_loaded) {
+      const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+      if(program) {
+        objk_glDELETEPROGRAM(program);
+        // Drop the cached locations with it. GL reuses names, so a later program
+        // handed this same id would otherwise inherit locations belonging to a
+        // program that no longer exists -- uniforms silently written to the wrong
+        // slot, which is about the worst failure mode available here.
+        objk_gl_uniforms.erase(program);
+      }
+    }
+  }
+
+  //
+  // Uploads a 4x4 matrix. Objeck Float is a 64-bit double and GL wants 32-bit
+  // floats, so the 16 elements are narrowed here -- the conversion every buffer
+  // upload in this file has to do.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_matrix4(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetMatrix4: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+    size_t count = 0;
+    size_t* values = objk_array_from_holder(APITools_GetObjectValue(context, 2), count);
+    if(!values || count < 16) {
+      objk_gl_fail("Shader->SetMatrix4(\"" + name + "\"): a mat4 needs 16 floats, got " +
+                   std::to_string(count));
+      return;
+    }
+
+    const double* source = (double*)values;
+    GLfloat matrix[16];
+    for(int i = 0; i < 16; ++i) {
+      matrix[i] = (GLfloat)source[i];
+    }
+
+    // glUniform* writes to whatever program is CURRENT, not to the one whose
+    // location was just looked up. Nothing used to make this program current, so
+    // a second shader in the same program silently received the first one's
+    // uniforms -- the demos got away with it only because none of them ever
+    // called Use twice. Binding here makes each setter correct on its own.
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
+    if(location >= 0) {
+      objk_glUNIFORMMATRIX4FV(location, 1, GL_FALSE, matrix);
+    }
+    else {
+      // A name the linked program has no location for. GL raises no error for
+      // this, so without the report it is a black screen from correct-looking
+      // code. Note GLSL strips uniforms it can prove are unused, so a spelling
+      // mistake and a genuinely-unused uniform look identical from here.
+      objk_gl_fail("Shader->SetMatrix4: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_int(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetInt: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+    const GLint value = (GLint)APITools_GetIntValue(context, 2);
+
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
+    if(location >= 0) {
+      objk_glUNIFORM1I(location, value);
+    }
+    else {
+      objk_gl_fail("Shader->SetInt: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
+  }
+
+  //
+  // Whether a linked program has a uniform of this name, without recording a
+  // failure when it does not.
+  //
+  // Scene sets a "model" matrix for lit shaders and must not set it for unlit
+  // ones -- and since a missing uniform is now REPORTED, blindly setting it
+  // would file a diagnostic every frame for every object. So this is the
+  // question to ask first. It reads the same cache the setters use, so asking is
+  // free after the first time.
+  //
+  // slot 0 = 1 or 0, 1 = program, 2 = name.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_exists(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 1);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 2));
+
+    APITools_SetIntValue(context, 0, objk_gl_uniform_location(program, name) >= 0 ? 1 : 0);
+  }
+
+  //
+  // A single float uniform. slot 0 = program, 1 = name, 2 = value.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_float(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetFloat: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+    const GLfloat value = (GLfloat)APITools_GetFloatValue(context, 2);
+
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
+    if(location >= 0) {
+      objk_glUNIFORM1F(location, value);
+    }
+    else {
+      objk_gl_fail("Shader->SetFloat: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
+  }
+
+  //
+  // A vec4 uniform. Used to pack a light's kind and cone into one value rather
+  // than spending three more uniform arrays on them.
+  //
+  // slot 0 = program, 1 = name, 2..5 = x, y, z, w.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_vec4(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetVec4: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+    GLfloat value[4];
+    value[0] = (GLfloat)APITools_GetFloatValue(context, 2);
+    value[1] = (GLfloat)APITools_GetFloatValue(context, 3);
+    value[2] = (GLfloat)APITools_GetFloatValue(context, 4);
+    value[3] = (GLfloat)APITools_GetFloatValue(context, 5);
+
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
+    if(location >= 0) {
+      objk_glUNIFORM4FV(location, 1, value);
+    }
+    else {
+      objk_gl_fail("Shader->SetVec4: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
+  }
+
+  //
+  // A vec3 uniform: light directions, colours, positions. Three separate floats
+  // rather than an array, because at this size boxing three doubles beats boxing
+  // an array holder, and every caller has three named quantities anyway.
+  //
+  // slot 0 = program, 1 = name, 2..4 = x, y, z.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_vec3(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetVec3: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+    GLfloat value[3];
+    value[0] = (GLfloat)APITools_GetFloatValue(context, 2);
+    value[1] = (GLfloat)APITools_GetFloatValue(context, 3);
+    value[2] = (GLfloat)APITools_GetFloatValue(context, 4);
+
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
+    if(location >= 0) {
+      objk_glUNIFORM3FV(location, 1, value);
+    }
+    else {
+      objk_gl_fail("Shader->SetVec3: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
+  }
+
+  //
+  // Uploads geometry once into a VAO/VBO/EBO and returns a handle to draw it
+  // many times. This is the shape that keeps the native boundary cheap: the
+  // per-frame cost is one draw call, not one call per vertex.
+  //
+  // slot 0 = mesh handle (0 on failure), 1 = Float[] interleaved vertices,
+  // 2 = Int[] indices, 3 = Int[] attribute component counts (e.g. [3,2] for
+  // position + texcoord).
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_mesh_create(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Mesh->New: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    size_t vertex_count = 0, index_count = 0, layout_count = 0;
+    size_t* vertices = objk_array_from_holder(APITools_GetObjectValue(context, 1), vertex_count);
+    size_t* indices = objk_array_from_holder(APITools_GetObjectValue(context, 2), index_count);
+    size_t* layout = objk_array_from_holder(APITools_GetObjectValue(context, 3), layout_count);
+
+    if(!vertices || !indices || !layout || !vertex_count || !index_count || !layout_count) {
+      objk_gl_fail("Mesh->New: vertices, indices and layout must all be non-empty");
+      return;
+    }
+
+    // Validation, because none of what follows fails loudly on its own.
+    //
+    // glVertexAttribPointer takes a component count of 1, 2, 3 or 4 and nothing
+    // else. The natural thing to want next is a mat4 per-instance attribute,
+    // which is conventionally written as 16 -- that produces GL_INVALID_VALUE,
+    // draws nothing, and (before this) still handed back a non-zero handle, so
+    // Mesh->IsOk answered true for a mesh that could never render. A mat4 has to
+    // be declared as four consecutive slots, and nothing said so.
+    GLint max_attributes = 0;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_attributes);
+    if(max_attributes > 0 && (GLint)layout_count > max_attributes) {
+      objk_gl_fail("Mesh->New: " + std::to_string(layout_count) +
+                   " attributes, but this driver allows " + std::to_string(max_attributes));
+      return;
+    }
+
+    for(size_t i = 0; i < layout_count; ++i) {
+      const size_t components = layout[i];
+      if(components < 1 || components > 4) {
+        objk_gl_fail("Mesh->New: attribute " + std::to_string(i) + " asks for " +
+                     std::to_string(components) + " components; GL allows 1 to 4 " +
+                     "(a mat4 is four separate slots of 4, not one of 16)");
+        return;
+      }
+    }
+
+    // double -> GLfloat, and Objeck's 64-bit Int -> GLuint
+    const double* vertex_source = (double*)vertices;
+    std::vector<GLfloat> vertex_data(vertex_count);
+    for(size_t i = 0; i < vertex_count; ++i) {
+      vertex_data[i] = (GLfloat)vertex_source[i];
+    }
+
+    std::vector<GLuint> index_data(index_count);
+    for(size_t i = 0; i < index_count; ++i) {
+      index_data[i] = (GLuint)indices[i];
+    }
+
+    GLsizei stride = 0;
+    for(size_t i = 0; i < layout_count; ++i) {
+      stride += (GLsizei)layout[i];
+    }
+    if(stride <= 0) {
+      objk_gl_fail("Mesh->New: the layout describes a zero-length vertex");
+      return;
+    }
+
+    // A vertex array that is not a whole number of vertices means the last one is
+    // short, and the driver reads past the end of the buffer for it. Silent, and
+    // the kind of silent that reads uninitialised memory.
+    if(vertex_count % (size_t)stride != 0) {
+      objk_gl_fail("Mesh->New: " + std::to_string(vertex_count) +
+                   " floats is not a whole number of " + std::to_string(stride) +
+                   "-float vertices");
+      return;
+    }
+
+    // Drain anything already queued, so the check after creation is about THIS
+    // mesh rather than about whatever happened before it.
+    while(glGetError() != GL_NO_ERROR) {
+    }
+
+    ObjkMesh* mesh = new ObjkMesh();
+    mesh->vao = mesh->vbo = mesh->ebo = mesh->instance_vbo = 0;
+    mesh->instance_attributes = 0;
+    mesh->index_count = (GLsizei)index_count;
+
+    objk_glGENVERTEXARRAYS(1, &mesh->vao);
+    objk_glBINDVERTEXARRAY(mesh->vao);
+
+    objk_glGENBUFFERS(1, &mesh->vbo);
+    objk_glBINDBUFFER(GL_ARRAY_BUFFER, mesh->vbo);
+    objk_glBUFFERDATA(GL_ARRAY_BUFFER,
+                      (GLsizeiptr)(vertex_data.size() * sizeof(GLfloat)),
+                      vertex_data.data(), GL_STATIC_DRAW);
+
+    objk_glGENBUFFERS(1, &mesh->ebo);
+    objk_glBINDBUFFER(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+    objk_glBUFFERDATA(GL_ELEMENT_ARRAY_BUFFER,
+                      (GLsizeiptr)(index_data.size() * sizeof(GLuint)),
+                      index_data.data(), GL_STATIC_DRAW);
+
+    size_t offset = 0;
+    for(size_t i = 0; i < layout_count; ++i) {
+      const GLint components = (GLint)layout[i];
+      objk_glVERTEXATTRIBPOINTER((GLuint)i, components, GL_FLOAT, GL_FALSE,
+                                 stride * (GLsizei)sizeof(GLfloat),
+                                 (const void*)(offset * sizeof(GLfloat)));
+      objk_glENABLEVERTEXATTRIBARRAY((GLuint)i);
+      offset += (size_t)components;
+    }
+
+    // unbind the VAO so later state changes cannot accidentally mutate it
+    objk_glBINDVERTEXARRAY(0);
+
+        // Whether GL accepted any of that. Without this the handle comes back
+    // non-zero regardless, IsOk answers true, and the first symptom is an object
+    // that never appears.
+    const GLenum error = glGetError();
+    if(error != GL_NO_ERROR) {
+      objk_gl_fail("Mesh->New: GL rejected the mesh (error 0x" + std::to_string(error) + ")");
+      objk_glDELETEVERTEXARRAYS(1, &mesh->vao);
+      objk_glDELETEBUFFERS(1, &mesh->vbo);
+      objk_glDELETEBUFFERS(1, &mesh->ebo);
+      delete mesh;
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, (size_t)mesh);
+  }
+
+  //
+  // Uploads per-instance data into a second buffer whose attributes advance once
+  // per instance instead of once per vertex.
+  //
+  // The point of instancing is one draw call for many objects. Without it, a
+  // thousand boxes are a thousand draw calls plus a thousand uniform uploads --
+  // and since every native call here resolves its symbol by string, that cost
+  // lands twice.
+  //
+  // The layout describes ONE instance and is bound at attribute locations
+  // starting from base_location, which must clear the per-vertex attributes: the
+  // primitives here use 0, 1 and 2, so 3 is the first free slot. A mat4 has to be
+  // declared as FOUR slots of 4 rather than one of 16, which is the same
+  // constraint Mesh->New now reports, and the reason the layout is a list.
+  //
+  // slot 0 = 1 on success, 1 = mesh handle, 2 = Float[] instance data,
+  // 3 = Int[] component counts per attribute, 4 = base attribute location.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_mesh_instances(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Mesh->SetInstances: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 1);
+    if(!mesh || !mesh->vao) {
+      objk_gl_fail("Mesh->SetInstances: the mesh is not usable");
+      return;
+    }
+
+    size_t data_count = 0, layout_count = 0;
+    size_t* data = objk_array_from_holder(APITools_GetObjectValue(context, 2), data_count);
+    size_t* layout = objk_array_from_holder(APITools_GetObjectValue(context, 3), layout_count);
+    const GLuint base = (GLuint)APITools_GetIntValue(context, 4);
+
+    if(!data || !layout || !data_count || !layout_count) {
+      objk_gl_fail("Mesh->SetInstances: the data and layout must both be non-empty");
+      return;
+    }
+
+    GLsizei stride = 0;
+    for(size_t i = 0; i < layout_count; ++i) {
+      const size_t components = layout[i];
+      if(components < 1 || components > 4) {
+        objk_gl_fail("Mesh->SetInstances: attribute " + std::to_string(i) + " asks for " +
+                     std::to_string(components) + " components; GL allows 1 to 4 " +
+                     "(a mat4 is four separate slots of 4, not one of 16)");
+        return;
+      }
+      stride += (GLsizei)components;
+    }
+
+    GLint max_attributes = 0;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_attributes);
+    if(max_attributes > 0 && (GLint)(base + layout_count) > max_attributes) {
+      objk_gl_fail("Mesh->SetInstances: attributes " + std::to_string(base) + ".." +
+                   std::to_string(base + layout_count - 1) + " exceed this driver's limit of " +
+                   std::to_string(max_attributes));
+      return;
+    }
+
+    if(data_count % (size_t)stride != 0) {
+      objk_gl_fail("Mesh->SetInstances: " + std::to_string(data_count) +
+                   " floats is not a whole number of " + std::to_string(stride) +
+                   "-float instances");
+      return;
+    }
+
+    const double* source = (double*)data;
+    std::vector<GLfloat> values(data_count);
+    for(size_t i = 0; i < data_count; ++i) {
+      values[i] = (GLfloat)source[i];
+    }
+
+    while(glGetError() != GL_NO_ERROR) {
+    }
+
+    objk_glBINDVERTEXARRAY(mesh->vao);
+    if(!mesh->instance_vbo) {
+      objk_glGENBUFFERS(1, &mesh->instance_vbo);
+    }
+    objk_glBINDBUFFER(GL_ARRAY_BUFFER, mesh->instance_vbo);
+    objk_glBUFFERDATA(GL_ARRAY_BUFFER, (GLsizeiptr)(values.size() * sizeof(GLfloat)),
+                      values.data(), GL_DYNAMIC_DRAW);
+
+    size_t offset = 0;
+    for(size_t i = 0; i < layout_count; ++i) {
+      const GLuint location = base + (GLuint)i;
+      const GLint components = (GLint)layout[i];
+      objk_glVERTEXATTRIBPOINTER(location, components, GL_FLOAT, GL_FALSE,
+                                 stride * (GLsizei)sizeof(GLfloat),
+                                 (const void*)(offset * sizeof(GLfloat)));
+      objk_glENABLEVERTEXATTRIBARRAY(location);
+      // 1 means "advance once per instance". This single call is the whole
+      // difference between an instance attribute and a vertex attribute, and
+      // forgetting it gives every instance the first one's data.
+      objk_glVERTEXATTRIBDIVISOR(location, 1);
+      offset += (size_t)components;
+    }
+    objk_glBINDVERTEXARRAY(0);
+
+    const GLenum error = glGetError();
+    if(error != GL_NO_ERROR) {
+      objk_gl_fail("Mesh->SetInstances: GL rejected the instance data (error 0x" +
+                   std::to_string(error) + ")");
+      return;
+    }
+
+    mesh->instance_attributes = (GLint)layout_count;
+    APITools_SetIntValue(context, 0, 1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_mesh_draw(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Mesh->Draw: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    // The topology was hardcoded to GL_TRIANGLES, which made lines, points and
+    // strips unreachable -- so a wireframe, a debug ray or a grid needed a
+    // separate path that did not exist. Slot 1 carries it; 0 means triangles, so
+    // an older caller passing nothing still gets what it used to.
+    GLenum mode = (GLenum)APITools_GetIntValue(context, 1);
+    if(mode == 0) {
+      mode = GL_TRIANGLES;
+    }
+
+    // Slot 2 is the instance count: 0 or 1 means an ordinary draw.
+    const GLsizei instances = (GLsizei)APITools_GetIntValue(context, 2);
+
+    ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
+    if(mesh && mesh->vao) {
+      objk_glBINDVERTEXARRAY(mesh->vao);
+      if(instances > 1) {
+        objk_glDRAWELEMENTSINSTANCED(mode, mesh->index_count, GL_UNSIGNED_INT, nullptr, instances);
+      }
+      else {
+        glDrawElements(mode, mesh->index_count, GL_UNSIGNED_INT, nullptr);
+      }
+      objk_glBINDVERTEXARRAY(0);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_mesh_delete(VMContext& context) {
+    ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
+    if(mesh) {
+      if(objk_gl_loaded) {
+        if(mesh->ebo) { objk_glDELETEBUFFERS(1, &mesh->ebo);
+        if(mesh->instance_vbo) {
+          objk_glDELETEBUFFERS(1, &mesh->instance_vbo);
+        } }
+        if(mesh->vbo) { objk_glDELETEBUFFERS(1, &mesh->vbo); }
+        if(mesh->vao) { objk_glDELETEVERTEXARRAYS(1, &mesh->vao); }
+      }
+      delete mesh;
+    }
+  }
+
+  //
+  // Builds a GL texture from an SDL_Surface, so image loading stays SDL's job
+  // (Image->Load already handles PNG/JPEG) and this adds no decoding
+  // dependency. The surface is converted to a known 32-bit RGBA layout first
+  // rather than trusting whatever format the file happened to produce.
+  //
+  // slot 0 = texture handle (0 on failure), 1 = SDL_Surface*, 2 = magnification
+  // filter, 3 = wrap mode for both S and T, 4 = non-zero to build mipmaps.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_texture_from_surface(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Texture2D->New: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    SDL_Surface* source = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    if(!source) {
+      objk_gl_fail("Texture2D->New: the surface is null");
+      return;
+    }
+
+    // Filter, wrap and mipmapping arrive from Objeck rather than being fixed
+    // here. GL_REPEAT in particular was unreachable, which is what a wall or a
+    // floor with a tiled texture actually needs.
+    const GLint mag_filter = (GLint)APITools_GetIntValue(context, 2);
+    const GLint wrap = (GLint)APITools_GetIntValue(context, 3);
+    const bool mipmap = APITools_GetIntValue(context, 4) != 0;
+
+    SDL_Surface* rgba = SDL_ConvertSurfaceFormat(source, SDL_PIXELFORMAT_ABGR8888, 0);
+    if(!rgba) {
+      return;
+    }
+
+    // FLIP THE ROWS. An SDL surface stores row 0 at the TOP of the image, while
+    // GL treats t=0 as the BOTTOM of the texture -- upload as-is and every image
+    // renders upside down. A symmetric test pattern hides this completely, which
+    // is exactly how it survived until someone loaded a real picture.
+    //
+    // Flipping here rather than asking callers to invert their texture
+    // coordinates: an image should look like the file, and a caller mixing
+    // hand-written geometry with loaded images should not have to remember which
+    // convention each one follows.
+    const int row_bytes = rgba->w * 4;
+    std::vector<unsigned char> flipped((size_t)row_bytes * (size_t)rgba->h);
+    const unsigned char* src = (const unsigned char*)rgba->pixels;
+    for(int y = 0; y < rgba->h; ++y) {
+      // rgba->pitch may exceed w*4 (row padding), so step by pitch, copy w*4
+      const unsigned char* src_row = src + (size_t)y * (size_t)rgba->pitch;
+      unsigned char* dest_row = flipped.data() + (size_t)(rgba->h - 1 - y) * (size_t)row_bytes;
+      memcpy(dest_row, src_row, (size_t)row_bytes);
+    }
+
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgba->w, rgba->h, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, flipped.data());
+
+    // The MINIFICATION filter is the one that has to change for mipmapping:
+    // GL_LINEAR samples the base level only, so a mipmapped texture asked to
+    // minify with it would build the chain and then never read it. Magnification
+    // has no mip levels to choose between, so it takes the caller's filter as-is.
+    GLint min_filter = mag_filter;
+    if(mipmap) {
+      objk_glGENERATEMIPMAP(GL_TEXTURE_2D);
+      min_filter = (mag_filter == GL_NEAREST) ? GL_NEAREST_MIPMAP_NEAREST
+                                              : GL_LINEAR_MIPMAP_LINEAR;
+    }
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    SDL_FreeSurface(rgba);
+    APITools_SetIntValue(context, 0, texture);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_texture_bind(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Texture2D->Bind: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint texture = (GLuint)APITools_GetIntValue(context, 0);
+    const GLint unit = (GLint)APITools_GetIntValue(context, 1);
+    objk_glACTIVETEXTURE(GL_TEXTURE0 + unit);
+    glBindTexture(GL_TEXTURE_2D, texture);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_texture_delete(VMContext& context) {
+    const GLuint texture = (GLuint)APITools_GetIntValue(context, 0);
+    if(texture) {
+      glDeleteTextures(1, &texture);
+    }
+  }
+
+  //
+  // Every extension this context reports, newline-separated.
+  //
+  // One call returning the whole list rather than one per index: the coarse-call
+  // rule, and there are typically two to three hundred of them.
+  //
+  // glGetString(GL_EXTENSIONS) is not an option in a core profile -- it returns
+  // null and raises GL_INVALID_ENUM -- so this is the indexed form, which is why
+  // glGetStringi had to be loaded.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_extensions(VMContext& context) {
+    APITools_SetStringValue(context, 0, L"");
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("GL->GetExtensions: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    GLint count = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+
+    std::string all;
+    for(GLint i = 0; i < count; ++i) {
+      const GLubyte* name = objk_glGETSTRINGI(GL_EXTENSIONS, (GLuint)i);
+      if(name) {
+        if(!all.empty()) {
+          all += "\n";
+        }
+        all += reinterpret_cast<const char*>(name);
+      }
+    }
+
+    APITools_SetStringValue(context, 0, BytesToUnicode(all));
+  }
+
+  //
+  // Optional entry points that could not be resolved. Empty is the normal answer.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_optional_missing(VMContext& context) {
+    APITools_SetStringValue(context, 0, BytesToUnicode(objk_gl_optional_missing));
+  }
+
+  //
+  // Creates a framebuffer with a colour texture and a depth buffer, and reports
+  // whether GL considers it complete.
+  //
+  // One call for six GL calls, following the same rule as mesh creation. A
+  // framebuffer that is INCOMPLETE is worse than one that failed to allocate:
+  // drawing into it silently does nothing, so the completeness check is not
+  // optional and its result comes back rather than being assumed.
+  //
+  // slot 0 = handle (0 on failure), 1 = width, 2 = height, 3 = filter,
+  // 4 receives a message when it failed, 5 = non-zero for depth-only.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_create(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetStringValue(context, 4, L"");
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("RenderTarget->New: ") + OBJK_GL_NOT_LOADED);
+      APITools_SetStringValue(context, 4, BytesToUnicode(OBJK_GL_NOT_LOADED));
+      return;
+    }
+
+    const GLsizei width = (GLsizei)APITools_GetIntValue(context, 1);
+    const GLsizei height = (GLsizei)APITools_GetIntValue(context, 2);
+    const GLint filter = (GLint)APITools_GetIntValue(context, 3);
+    const bool depth_only = APITools_GetIntValue(context, 5) != 0;
+
+    if(width <= 0 || height <= 0) {
+      APITools_SetStringValue(context, 4, BytesToUnicode("a render target needs a positive width and height"));
+      return;
+    }
+
+    // Bigger than the driver allows fails at glTexImage2D with an unhelpful
+    // error, so ask first.
+    GLint max_size = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
+    if(max_size > 0 && (width > max_size || height > max_size)) {
+      APITools_SetStringValue(context, 4, BytesToUnicode(
+        std::to_string(width) + "x" + std::to_string(height) +
+        " exceeds this driver's maximum texture size of " + std::to_string(max_size)));
+      return;
+    }
+
+    ObjkRenderTarget* target = new ObjkRenderTarget();
+    target->framebuffer = 0;
+    target->texture = 0;
+    target->depth = 0;
+    target->width = width;
+    target->height = height;
+    target->depth_only = depth_only;
+    target->cube = false;
+
+    glGenTextures(1, &target->texture);
+    glBindTexture(GL_TEXTURE_2D, target->texture);
+    if(depth_only) {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0,
+                   GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    }
+    else {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    // CLAMP_TO_EDGE, not REPEAT: a post-process sampling slightly outside the
+    // target would otherwise wrap and pull in the opposite edge. For a shadow
+    // map it matters more -- wrapping would shadow one side of the scene with
+    // depths from the other.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    objk_glGENFRAMEBUFFERS(1, &target->framebuffer);
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
+
+    if(depth_only) {
+      objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, target->texture, 0);
+      // A framebuffer with no colour attachment is only complete once it is told
+      // it has no colour buffer to draw to. Without this it comes back
+      // GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT on some drivers and works by
+      // luck on others, which is the worst of both.
+      glDrawBuffer(GL_NONE);
+      glReadBuffer(GL_NONE);
+    }
+    else {
+      objk_glGENRENDERBUFFERS(1, &target->depth);
+      objk_glBINDRENDERBUFFER(GL_RENDERBUFFER, target->depth);
+      objk_glRENDERBUFFERSTORAGE(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+      objk_glBINDRENDERBUFFER(GL_RENDERBUFFER, 0);
+
+      objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target->texture, 0);
+      objk_glFRAMEBUFFERRENDERBUFFER(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, target->depth);
+    }
+
+    const GLenum status = objk_glCHECKFRAMEBUFFERSTATUS(GL_FRAMEBUFFER);
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, 0);
+    if(depth_only) {
+      // Put the default framebuffer's draw buffer back, or every subsequent draw
+      // to the window goes nowhere. Binding framebuffer 0 does NOT restore this:
+      // glDrawBuffer state belongs to whichever framebuffer was bound when it was
+      // set, and for the depth-only path that was ours -- but the default
+      // framebuffer's own state is separate and untouched, so this is about
+      // leaving nothing surprising behind rather than repairing damage.
+      glDrawBuffer(GL_BACK);
+      glReadBuffer(GL_BACK);
+    }
+
+    if(status != GL_FRAMEBUFFER_COMPLETE) {
+      objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
+      if(target->depth) {
+        objk_glDELETERENDERBUFFERS(1, &target->depth);
+      }
+      glDeleteTextures(1, &target->texture);
+      delete target;
+      APITools_SetStringValue(context, 4, BytesToUnicode(
+        "the framebuffer is incomplete (status 0x" + std::to_string(status) + ")"));
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, (size_t)target);
+  }
+
+  //
+  // Creates a CUBE depth target: six square depth faces under one texture name.
+  //
+  // No new entry points -- glTexImage2D takes a cube face as its target and
+  // glFramebufferTexture2D takes one as its attachment, and both are already
+  // here. What it does need is the face enums, and GL_TEXTURE_WRAP_R, since a
+  // cube map is addressed in three dimensions.
+  //
+  // slot 0 = handle (0 on failure), 1 = face size, 2 receives a message on
+  // failure.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_create_cube(VMContext& context) {
+    APITools_SetIntValue(context, 0, 0);
+    APITools_SetStringValue(context, 2, L"");
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("PointShadow: ") + OBJK_GL_NOT_LOADED);
+      APITools_SetStringValue(context, 2, BytesToUnicode(OBJK_GL_NOT_LOADED));
+      return;
+    }
+
+    const GLsizei size = (GLsizei)APITools_GetIntValue(context, 1);
+    if(size <= 0) {
+      APITools_SetStringValue(context, 2, BytesToUnicode("a cube shadow map needs a positive size"));
+      return;
+    }
+
+    GLint max_cube = 0;
+    glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &max_cube);
+    if(max_cube > 0 && size > max_cube) {
+      APITools_SetStringValue(context, 2, BytesToUnicode(
+        std::to_string(size) + " exceeds this driver's maximum cube map size of " +
+        std::to_string(max_cube)));
+      return;
+    }
+
+    while(glGetError() != GL_NO_ERROR) {
+    }
+
+    ObjkRenderTarget* target = new ObjkRenderTarget();
+    target->framebuffer = 0;
+    target->texture = 0;
+    target->depth = 0;
+    target->width = size;
+    target->height = size;
+    target->depth_only = true;
+    target->cube = true;
+
+    glGenTextures(1, &target->texture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, target->texture);
+    for(int face = 0; face < 6; ++face) {
+      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT24,
+                   size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // All three axes clamp. R as well as S and T, because a cube map is sampled
+    // with a direction and a lookup can land fractionally past a face edge --
+    // wrapping there samples the wrong face and puts a seam of wrong shadow along
+    // every cube edge.
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+    objk_glGENFRAMEBUFFERS(1, &target->framebuffer);
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
+    // Attach face 0 just to check completeness; each pass reattaches its own.
+    objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_X, target->texture, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+
+    const GLenum status = objk_glCHECKFRAMEBUFFERSTATUS(GL_FRAMEBUFFER);
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, 0);
+    glDrawBuffer(GL_BACK);
+    glReadBuffer(GL_BACK);
+
+    if(status != GL_FRAMEBUFFER_COMPLETE) {
+      objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
+      glDeleteTextures(1, &target->texture);
+      delete target;
+      APITools_SetStringValue(context, 2, BytesToUnicode(
+        "the cube framebuffer is incomplete (status 0x" + std::to_string(status) + ")"));
+      return;
+    }
+
+    const GLenum error = glGetError();
+    if(error != GL_NO_ERROR) {
+      objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
+      glDeleteTextures(1, &target->texture);
+      delete target;
+      APITools_SetStringValue(context, 2, BytesToUnicode(
+        "GL rejected the cube shadow map (error 0x" + std::to_string(error) + ")"));
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, (size_t)target);
+  }
+
+  //
+  // Points drawing at ONE face of a cube target. slot 0 = handle, 1 = face 0..5
+  // in GL's order: +X, -X, +Y, -Y, +Z, -Z.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_bind_face(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("PointShadow->BeginFace: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 0);
+    const int face = (int)APITools_GetIntValue(context, 1);
+    if(!target || !target->cube || face < 0 || face > 5) {
+      objk_gl_fail("PointShadow->BeginFace: not a cube target, or the face is out of range");
+      return;
+    }
+
+    objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
+    objk_glFRAMEBUFFERTEXTURE2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, target->texture, 0);
+    glViewport(0, 0, target->width, target->height);
+  }
+
+  //
+  // Binds a cube target's texture for sampling. Separate from the 2D bind because
+  // the target enum differs and binding a cube map as GL_TEXTURE_2D leaves the
+  // sampler reading nothing.
+  //
+  // slot 0 = handle, 1 = texture unit.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_bind_cube(VMContext& context) {
+    if(!objk_gl_loaded) {
+      return;
+    }
+
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 0);
+    const GLint unit = (GLint)APITools_GetIntValue(context, 1);
+    if(!target || !target->cube) {
+      objk_gl_fail("PointShadow: not a cube target");
+      return;
+    }
+
+    objk_glACTIVETEXTURE(GL_TEXTURE0 + unit);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, target->texture);
+  }
+
+  //
+  // Directs drawing at a target, or at the window when the handle is 0.
+  //
+  // The viewport goes with it. Forgetting that is the classic render-to-texture
+  // bug: a 512x512 target still rendering through the window's 1280x720 viewport
+  // draws a quarter of the scene into a corner, with no error anywhere.
+  //
+  // slot 0 = target handle, or 0 for the window; 1, 2 = the window's width and
+  // height, used only when unbinding.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_bind(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("RenderTarget->Bind: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 0);
+    if(target) {
+      objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, target->framebuffer);
+      glViewport(0, 0, target->width, target->height);
+    }
+    else {
+      objk_glBINDFRAMEBUFFER(GL_FRAMEBUFFER, 0);
+      glViewport(0, 0, (GLsizei)APITools_GetIntValue(context, 1), (GLsizei)APITools_GetIntValue(context, 2));
+    }
+  }
+
+  //
+  // The colour texture, so it can be bound and sampled like any other.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_texture(VMContext& context) {
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, target ? target->texture : 0);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_target_delete(VMContext& context) {
+    ObjkRenderTarget* target = (ObjkRenderTarget*)APITools_GetIntValue(context, 0);
+    if(target) {
+      if(objk_gl_loaded) {
+        objk_glDELETEFRAMEBUFFERS(1, &target->framebuffer);
+        if(target->depth) {
+          objk_glDELETERENDERBUFFERS(1, &target->depth);
+        }
+        glDeleteTextures(1, &target->texture);
+      }
+      delete target;
+    }
+  }
+
+  //
+  // glEnable/glDisable are GL 1.1, so they need no loaded pointer.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_enable(VMContext& context) {
+    glEnable((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_disable(VMContext& context) {
+    glDisable((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+  //
+  // Reads one pixel out of the current framebuffer as packed 0xAARRGGBB.
+  //
+  // This is what lets a test assert that something was actually DRAWN rather
+  // than merely that the program ran without crashing -- the distinction that
+  // matters for a headless CI check. glReadPixels is GL 1.1.
+  //
+  // Note GL's origin is bottom-left, so y counts up from the bottom.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_read_pixel(VMContext& context) {
+    const GLint x = (GLint)APITools_GetIntValue(context, 1);
+    const GLint y = (GLint)APITools_GetIntValue(context, 2);
+
+    GLubyte rgba[4] = {0, 0, 0, 0};
+    glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+
+    const size_t packed = ((size_t)rgba[3] << 24) | ((size_t)rgba[0] << 16) |
+                          ((size_t)rgba[1] << 8) | (size_t)rgba[2];
+    APITools_SetIntValue(context, 0, packed);
   }
 }

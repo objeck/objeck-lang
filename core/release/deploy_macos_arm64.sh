@@ -92,8 +92,81 @@ cp macos/xcode/build/Release/libobjk_crypto.dylib ../../release/deploy/lib/nativ
 cd ../sdl
 xcodebuild -project macos/xcode/sdl.xcodeproj build $SIGN_FLAGS
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
-cp macos/sdl2_arm64.tgz ../../release/deploy/lib/native
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
+
+# Ship SDL2 INSIDE the distribution, the way Windows ships its DLLs in lib/sdl,
+# instead of handing the user a tarball to install by hand.
+#
+# Why this dance is needed: the vendored dylibs were built with an absolute
+# install name (LC_ID_DYLIB = /usr/local/lib/libSDL2-2.0.0.dylib), so anything
+# linking them records that absolute path and dyld looks nowhere else. That is
+# the only reason the old README told macOS users to untar sdl2_arm64.tgz and
+# copy SDL2 into /usr/local/lib -- a sudo-level system install that also
+# collides with a Homebrew SDL2. Rewriting the install names to @rpath and
+# giving libobjk_sdl.dylib an rpath into the distro removes the step entirely.
+cp macos/arm64/lib/libSDL2*.dylib ../../release/deploy/lib/sdl
+
+SDL_DEPLOY="../../release/deploy/lib/sdl"
+OBJK_SDL="../../release/deploy/lib/native/libobjk_sdl.dylib"
+
+# install_name_tool invalidates the code signature, and on Apple Silicon dyld
+# refuses to load a Mach-O whose signature does not match. Re-sign ad-hoc after
+# every rewrite; that is sufficient for a locally distributed dylib, and the
+# release build re-signs properly afterwards when an identity is available.
+resign() {
+	codesign --force --sign - "$1" 2>/dev/null || \
+		echo "  warning: could not re-sign $1"
+}
+
+for dylib in "$SDL_DEPLOY"/libSDL2*.dylib; do
+	[ -f "$dylib" ] || continue
+	# skip the version symlinks; only real Mach-O files need rewriting
+	if [ -L "$dylib" ]; then
+		continue
+	fi
+	base=$(basename "$dylib")
+	install_name_tool -id "@rpath/$base" "$dylib" 2>/dev/null
+
+	# the satellite libraries (image/mixer/ttf) link libSDL2 by that same
+	# absolute path, so repoint those too
+	for dep in $(otool -L "$dylib" | awk '/\/usr\/local\/lib\/libSDL2/ {print $1}'); do
+		install_name_tool -change "$dep" "@rpath/$(basename "$dep")" "$dylib" 2>/dev/null
+	done
+	resign "$dylib"
+done
+
+# libobjk_sdl.dylib lives in lib/native, so lib/sdl is one directory across
+for dep in $(otool -L "$OBJK_SDL" | awk '/\/usr\/local\/lib\/libSDL2/ {print $1}'); do
+	install_name_tool -change "$dep" "@rpath/$(basename "$dep")" "$OBJK_SDL" 2>/dev/null
+done
+install_name_tool -add_rpath "@loader_path/../sdl" "$OBJK_SDL" 2>/dev/null
+resign "$OBJK_SDL"
+
+# Fail loudly rather than shipping a tree that cannot load SDL. Any remaining
+# /usr/local/lib reference means the user would still need a manual install.
+if otool -L "$OBJK_SDL" | grep -q "/usr/local/lib/libSDL2"; then
+	echo "ERROR: libobjk_sdl.dylib still references /usr/local/lib for SDL2;"
+	echo "       the distribution would need a manual SDL2 install."
+	exit 1
+fi
+
+# The absence of absolute paths is not the same as the libraries being present.
+# Check that every @rpath dependency actually resolves inside the tree, or the
+# distribution still fails at load time on a machine without Homebrew SDL2 --
+# which is exactly the machine we cannot test on here.
+MISSING=""
+for dep in $(otool -L "$OBJK_SDL" | awk '/@rpath\/libSDL2/ {print $1}'); do
+	base=$(basename "$dep")
+	if [ ! -f "$SDL_DEPLOY/$base" ]; then
+		MISSING="$MISSING $base"
+	fi
+done
+if [ -n "$MISSING" ]; then
+	echo "ERROR: libobjk_sdl.dylib needs these via @rpath but they are not in"
+	echo "       lib/sdl:$MISSING"
+	exit 1
+fi
+echo "SDL2 bundled into lib/sdl with @rpath install names, all deps resolve in-tree"
 
 cd ../odbc
 xcodebuild -project macos/xcode/ODBC.xcodeproj clean build $SIGN_FLAGS

@@ -280,12 +280,14 @@
 					../arm64/include/SDL2,
 					../../../openssl/macos/include,
 				);
-				LIBRARY_SEARCH_PATHS = "/Users/randyhollines/Documents/Code/objeck-lang/core/lib/sdl/macos/arm64/lib";
+				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/../arm64/lib";
 				OTHER_LDFLAGS = (
 					"-Wl,../arm64/lib/libSDL2.dylib",
 					"-Wl,../arm64/lib/libSDL2_mixer.dylib",
 					"-Wl,../arm64/lib/libSDL2_ttf.dylib",
 					"-Wl,../arm64/lib/libSDL2_image.dylib",
+					"-framework",
+					OpenGL,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -305,13 +307,15 @@
 					../arm64/include/SDL2,
 					../../../openssl/macos/include,
 				);
-				LIBRARY_SEARCH_PATHS = "/Users/randyhollines/Documents/Code/objeck-lang/core/lib/sdl/macos/arm64/lib";
+				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/../arm64/lib";
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = (
 					"-Wl,../arm64/lib/libSDL2.dylib",
 					"-Wl,../arm64/lib/libSDL2_mixer.dylib",
 					"-Wl,../arm64/lib/libSDL2_ttf.dylib",
 					"-Wl,../arm64/lib/libSDL2_image.dylib",
+					"-framework",
+					OpenGL,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
