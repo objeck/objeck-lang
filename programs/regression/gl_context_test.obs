@@ -83,6 +83,7 @@ class GlContextTest {
 		CheckShaderPresets();
 		CheckLighting();
 		CheckLightRig();
+		CheckFrustumCulling();
 		CheckShadows();
 		CheckOverlay();
 		CheckInstancing();
@@ -903,6 +904,106 @@ class GlContextTest {
 		plane->Draw();
 
 		return (GL->ReadPixel(x, y) and 0x0000FF00) / 0x100;
+	}
+
+	#~
+	Off-screen boxes are skipped, and on-screen ones are not.
+
+	The second half is the one that matters. A false KEEP costs a draw call; a
+	false DISCARD is a hole in the picture, and it is the failure that looks like a
+	rendering bug rather than a performance one. So this checks both directions,
+	and checks that the visible box is still actually drawn rather than merely
+	counted.
+
+	Culling is asserted against the SAME scene with culling turned off, so the
+	claim is "these boxes and no others" rather than a number I worked out by hand
+	and would have to redo whenever the fixture changed.
+	~#
+	method : CheckFrustumCulling() ~ Nil {
+		# --- the plane extraction, on its own first ---
+		frustum := Frustum->New();
+		projection := Matrix4->PerspectiveDegrees(60.0, 1.0);
+		camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+		# looking down -z, which is where yaw 0 and pitch 0 point
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+		frustum->SetFromMatrix(view_projection);
+		Check("a frustum builds from a view-projection", frustum->IsReady());
+
+		# Straight ahead at a sane distance: inside. Behind the camera: outside.
+		# Far off to the side: outside. Those three pin the sign conventions, which
+		# is where plane extraction goes wrong.
+		Check("a point in front is inside", frustum->ContainsSphere(0.0, 0.0, -10.0, 1.0));
+		Check("a point behind is outside", <>frustum->ContainsSphere(0.0, 0.0, 10.0, 1.0));
+		Check("a point far to the side is outside", <>frustum->ContainsSphere(60.0, 0.0, -10.0, 1.0));
+		Check("a point far above is outside", <>frustum->ContainsSphere(0.0, 60.0, -10.0, 1.0));
+		# A big enough sphere straddles the boundary and must be kept.
+		Check("a sphere large enough to straddle the edge is kept", frustum->ContainsSphere(60.0, 0.0, -10.0, 80.0));
+
+		# A degenerate matrix must cull NOTHING rather than everything -- the safe
+		# direction when something has gone wrong.
+		broken := Frustum->New();
+		broken->SetFromMatrix(Float->New[16]);
+		Check("a degenerate frustum is not ready", <>broken->IsReady());
+		Check("and therefore contains everything", broken->ContainsSphere(0.0, 0.0, 1000.0, 1.0));
+
+		# --- through Scene ---
+		shader := Shader->Textured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for culling", shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		# one in front of the camera, three well outside the view
+		scene->AddBox(Vector3->New(0.0, 0.0, -8.0), Vector3->New(1.0, 1.0, 1.0), white);
+		scene->AddBox(Vector3->New(0.0, 0.0, 40.0), Vector3->New(1.0, 1.0, 1.0), white);
+		scene->AddBox(Vector3->New(200.0, 0.0, -8.0), Vector3->New(1.0, 1.0, 1.0), white);
+		scene->AddBox(Vector3->New(0.0, 200.0, -8.0), Vector3->New(1.0, 1.0, 1.0), white);
+
+		Check("culling is on by default", scene->IsCulling());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		scene->Draw(view_projection);
+		culled_drawn := scene->GetDrawnCount();
+		culled_skipped := scene->GetCulledCount();
+		culled_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+
+		scene->SetCulling(false);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(view_projection);
+		all_drawn := scene->GetDrawnCount();
+		all_skipped := scene->GetCulledCount();
+		all_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+
+		"  culling on: drew {$culled_drawn} skipped {$culled_skipped}; off: drew {$all_drawn} skipped {$all_skipped}"->PrintLine();
+
+		Check("with culling off every box is submitted", all_drawn = 4 & all_skipped = 0);
+		Check("with it on only the visible one is", culled_drawn = 1 & culled_skipped = 3);
+		# The half that matters: the visible box is still THERE, not just counted.
+		Check("and the visible box still renders", culled_pixel <> 0xFF000000);
+		Check("identically to when nothing was culled", culled_pixel = all_pixel);
+
+		# A box that is partly on screen must survive. Placed to straddle the left
+		# edge of the view, where a test that used the box's centre alone would
+		# discard it.
+		straddle := Scene->New(cube, shader);
+		straddle->AddBox(Vector3->New(-5.6, 0.0, -8.0), Vector3->New(2.0, 2.0, 2.0), white);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		straddle->Draw(view_projection);
+		"  a box straddling the edge: drew {$straddle->GetDrawnCount()}"->PrintLine();
+		Check("a box straddling the view edge is kept", straddle->GetDrawnCount() = 1);
+
+		Check("no GL errors from culling", GL->DrainErrors()->Size() = 0);
+
+		straddle->Clear();
+		scene->Clear();
+		white->Free();
+		cube->Free();
+		shader->Free();
 	}
 
 	#~

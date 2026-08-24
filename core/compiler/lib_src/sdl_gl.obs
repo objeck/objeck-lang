@@ -27,6 +27,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
 * Light       -- one directional light plus ambient, written into a shader.
 * RenderTarget -- draw into a texture instead of the window, then sample it.
+* Frustum     -- the six planes of a view, for skipping what is off screen.
 * ShadowMap   -- shadows from one directional light, depth pass and all.
 * Overlay     -- text and rectangles over the scene, positioned in pixels.
 * Transform   -- position, rotation and scale, with a cached matrix.
@@ -4651,6 +4652,187 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	The six planes bounding what a camera can see, for skipping what it cannot.
+
+	A Scene submits every box it holds, every frame, whether or not the box is on
+	screen -- so a large world costs the same to draw as a small one, and all of
+	it is spent on geometry the viewer will never see. Testing a box against six
+	planes first is a few dozen arithmetic operations against a draw call plus a
+	matrix multiply plus two uniform uploads.
+
+	Scene does this for you and has it on by default. Reach for Frustum directly
+	only for content Scene does not hold.
+
+	```
+	frustum := Frustum->New();
+	frustum->SetFromMatrix(view_projection);
+	if(frustum->ContainsBox(centre, half)) {
+		# ... draw it ...
+	};
+	```
+
+	## Where the planes come from
+
+	Straight out of the view-projection matrix. Clip space is the region where
+	every coordinate lies between -w and +w, and each of those six inequalities is
+	a plane in world space once written in terms of the matrix's rows -- so no
+	separate description of the camera is needed, and a frustum built this way
+	automatically matches whatever projection is in use, perspective or
+	orthographic.
+
+	The planes are normalised, so a plane test yields an actual distance. That
+	costs six square roots per rebuild and makes the box test exact rather than
+	scaled by whatever magnitude the matrix happened to have.
+
+	## Conservative, on purpose
+
+	The box test can keep a box that is fully outside -- a large box near a corner
+	can be outside the view while remaining on the inner side of all six planes
+	individually. It never DISCARDS one that is partly visible, which is the
+	direction that matters: a false keep costs a draw call, a false discard is a
+	hole in the picture.
+	~#
+	class Frustum {
+		# six planes, four components each: a, b, c, d with a*x + b*y + c*z + d
+		@planes : Float[];
+		@ready : Bool;
+
+		New() {
+			@planes := Float->New[24];
+			@ready := false;
+		}
+
+		#~
+		Rebuild from a view-projection matrix. Call once per frame, after the camera
+		has moved.
+		@param view_projection projection times view, column-major
+		~#
+		method : public : SetFromMatrix(view_projection : Float[]) ~ Nil {
+			@ready := false;
+			if(view_projection = Nil | view_projection->Size() < 16) {
+				return;
+			};
+
+			m := view_projection;
+			# Column-major, so row r is (m[r], m[4+r], m[8+r], m[12+r]). The six
+			# planes are the sum and difference of row 3 with rows 0, 1 and 2, which
+			# is exactly the -w <= coordinate <= +w test rearranged.
+			for(axis := 0; axis < 3; axis += 1;) {
+				for(sign := 0; sign < 2; sign += 1;) {
+					at := (axis * 2 + sign) * 4;
+					for(component := 0; component < 4; component += 1;) {
+						w := m[component * 4 + 3];
+						row := m[component * 4 + axis];
+						if(sign = 0) {
+							@planes[at + component] := w + row;
+						}
+						else {
+							@planes[at + component] := w - row;
+						};
+					};
+				};
+			};
+
+			# Normalise, so a plane test gives a real distance rather than one scaled
+			# by the matrix's magnitude -- which is what lets the box test compare
+			# against a half-extent.
+			for(plane := 0; plane < 6; plane += 1;) {
+				at := plane * 4;
+				a := @planes[at + 0];
+				b := @planes[at + 1];
+				c := @planes[at + 2];
+				length := (a * a + b * b + c * c)->Sqrt();
+				if(length = 0.0) {
+					# A degenerate projection -- a zero aspect ratio, or near equal to
+					# far. Better to cull nothing than to cull everything.
+					return;
+				};
+
+				@planes[at + 0] := a / length;
+				@planes[at + 1] := b / length;
+				@planes[at + 2] := c / length;
+				@planes[at + 3] := @planes[at + 3] / length;
+			};
+
+			@ready := true;
+		}
+
+		#~
+		@return true once SetFromMatrix has succeeded; a frustum that is not ready
+		contains everything, so nothing is wrongly culled
+		~#
+		method : public : IsReady() ~ Bool {
+			return @ready;
+		}
+
+		#~
+		Whether a sphere is at least partly inside.
+		@param x centre x
+		@param y centre y
+		@param z centre z
+		@param radius the radius
+		@return true when any part of it could be visible
+		~#
+		method : public : ContainsSphere(x : Float, y : Float, z : Float, radius : Float) ~ Bool {
+			if(<>@ready) {
+				return true;
+			};
+
+			for(plane := 0; plane < 6; plane += 1;) {
+				at := plane * 4;
+				distance := @planes[at + 0] * x + @planes[at + 1] * y + @planes[at + 2] * z + @planes[at + 3];
+				if(distance < radius * -1.0) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Whether an axis-aligned box is at least partly inside.
+
+		Projects the box's half-extents onto each plane's normal, which is the
+		tightest test available without checking corners individually -- and unlike
+		wrapping the box in a sphere it does not inflate a long thin box into
+		something far larger than it is.
+		@param center the box's centre
+		@param half its half-extents on each axis
+		@return true when any part of it could be visible
+		~#
+		method : public : ContainsBox(center : Vector3, half : Vector3) ~ Bool {
+			if(<>@ready) {
+				return true;
+			};
+			if(center = Nil | half = Nil) {
+				return true;
+			};
+
+			cx := center->GetX(); cy := center->GetY(); cz := center->GetZ();
+			hx := half->GetX(); hy := half->GetY(); hz := half->GetZ();
+
+			for(plane := 0; plane < 6; plane += 1;) {
+				at := plane * 4;
+				a := @planes[at + 0];
+				b := @planes[at + 1];
+				c := @planes[at + 2];
+
+				distance := a * cx + b * cy + c * cz + @planes[at + 3];
+				# How far the box reaches toward this plane: the half-extents
+				# projected onto its normal, which for an axis-aligned box is just
+				# the absolute values summed.
+				reach := a->Abs() * hx + b->Abs() * hy + c->Abs() * hz;
+
+				if(distance < reach * -1.0) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+	}
+
+	#~
 	Shadows, from one directional light.
 
 	The technique is standard and the fiddly parts are all here rather than in
@@ -5762,10 +5944,15 @@ bundle Game.OpenGL {
 		# scratch for the per-box model-view-projection, reused every draw
 		@mvp : Float[];
 		@light : Light;
+		@rig : LightRig;
 		# Whether the shader wants a per-object model matrix and a sampler, asked
 		# once rather than per box per frame. -1 means not yet asked.
 		@wants_model : Int;
 		@wants_sampler : Int;
+		@frustum : Frustum;
+		@culling : Bool;
+		@drawn : Int;
+		@culled : Int;
 
 		#~
 		@param mesh the cube mesh every box is drawn with; it must span -1..1 on
@@ -5778,8 +5965,71 @@ bundle Game.OpenGL {
 			@boxes := Vector->New()<Box>;
 			@mvp := Float->New[16];
 			@light := Nil;
+			@rig := Nil;
 			@wants_model := -1;
 			@wants_sampler := -1;
+			@frustum := Frustum->New();
+			@culling := true;
+			@drawn := 0;
+			@culled := 0;
+		}
+
+		#~
+		Whether to skip boxes that fall outside the view. On by default.
+
+		The test is a few dozen arithmetic operations per box against a draw call
+		plus a matrix multiply plus two uniform uploads, so it pays for itself
+		almost immediately and costs almost nothing when it does not.
+
+		Turn it off to measure what it is saving, or if a custom vertex shader moves
+		geometry away from where its box says it is -- the test uses the box, and a
+		shader that displaces vertices makes that a lie.
+		@param enabled false to submit every box
+		~#
+		method : public : SetCulling(enabled : Bool) ~ Nil {
+			@culling := enabled;
+		}
+
+		#~
+		@return whether off-screen boxes are being skipped
+		~#
+		method : public : IsCulling() ~ Bool {
+			return @culling;
+		}
+
+		#~
+		How many boxes the last Draw actually submitted.
+		@return the count
+		~#
+		method : public : GetDrawnCount() ~ Int {
+			return @drawn;
+		}
+
+		#~
+		How many boxes the last Draw skipped as off-screen.
+		@return the count, always 0 when culling is off
+		~#
+		method : public : GetCulledCount() ~ Int {
+			return @culled;
+		}
+
+		#~
+		Light the scene with several lights rather than one.
+
+		Takes precedence over SetLight. A rig with a point light or two is what a
+		scene with a lamp in it wants; SetLight remains the shorter way to say "one
+		directional light".
+		@param rig the lights, or Nil to go back to SetLight
+		~#
+		method : public : SetLightRig(rig : LightRig) ~ Nil {
+			@rig := rig;
+		}
+
+		#~
+		@return the rig, or Nil when none was set
+		~#
+		method : public : GetLightRig() ~ LightRig {
+			return @rig;
 		}
 
 		#~
@@ -5888,9 +6138,19 @@ bundle Game.OpenGL {
 				@shader->SetInt("tex", 0);
 			};
 
-			if(@light <> Nil) {
+			# A rig wins over a single light: a caller that set both meant the rig.
+			if(@rig <> Nil) {
+				@rig->ApplyTo(@shader);
+			}
+			else if(@light <> Nil) {
 				@light->ApplyTo(@shader);
 			};
+
+			if(@culling) {
+				@frustum->SetFromMatrix(view_projection);
+			};
+			@drawn := 0;
+			@culled := 0;
 
 			# Nil on its own infers as Nil, not as Texture2D, so the comparison below
 			# will not type-check without the cast.
@@ -5898,19 +6158,30 @@ bundle Game.OpenGL {
 			each(i : @boxes) {
 				box := @boxes->Get(i);
 
-				texture := box->GetTexture();
-				if(texture <> Nil & texture <> last_texture) {
-					texture->Bind(0);
-					last_texture := texture;
+				visible := true;
+				if(@culling) {
+					visible := @frustum->ContainsBox(box->GetCenter(), box->GetHalf());
 				};
 
-				model := box->GetModelMatrix();
-				Matrix4->MultiplyInto(@mvp, view_projection, model);
-				@shader->SetMatrix4("mvp", @mvp);
-				if(@wants_model = 1) {
-					@shader->SetMatrix4("model", model);
+				if(visible) {
+					texture := box->GetTexture();
+					if(texture <> Nil & texture <> last_texture) {
+						texture->Bind(0);
+						last_texture := texture;
+					};
+
+					model := box->GetModelMatrix();
+					Matrix4->MultiplyInto(@mvp, view_projection, model);
+					@shader->SetMatrix4("mvp", @mvp);
+					if(@wants_model = 1) {
+						@shader->SetMatrix4("model", model);
+					};
+					@mesh->Draw();
+					@drawn += 1;
+				}
+				else {
+					@culled += 1;
 				};
-				@mesh->Draw();
 			};
 		}
 
@@ -5936,15 +6207,33 @@ bundle Game.OpenGL {
 			shader->Use();
 			wants_model := shader->HasUniform("model");
 
+			# Culled against the matrix THIS pass was given, which for a shadow pass
+			# is the light's rather than the camera's. Culling a shadow pass against
+			# the camera would drop casters that are off screen but whose shadows
+			# fall inside it -- a shadow appearing from nowhere as you turn around,
+			# which is a far more confusing artefact than a slow frame.
+			cull_here := @culling;
+			if(cull_here) {
+				@frustum->SetFromMatrix(view_projection);
+			};
+
 			each(i : @boxes) {
 				box := @boxes->Get(i);
-				model := box->GetModelMatrix();
-				Matrix4->MultiplyInto(@mvp, view_projection, model);
-				shader->SetMatrix4("mvp", @mvp);
-				if(wants_model) {
-					shader->SetMatrix4("model", model);
+
+				visible := true;
+				if(cull_here) {
+					visible := @frustum->ContainsBox(box->GetCenter(), box->GetHalf());
 				};
-				@mesh->Draw();
+
+				if(visible) {
+					model := box->GetModelMatrix();
+					Matrix4->MultiplyInto(@mvp, view_projection, model);
+					shader->SetMatrix4("mvp", @mvp);
+					if(wants_model) {
+						shader->SetMatrix4("model", model);
+					};
+					@mesh->Draw();
+				};
 			};
 		}
 
