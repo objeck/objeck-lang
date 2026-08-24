@@ -316,7 +316,13 @@ jobs:
 
           ### macOS
           - **ARM64 (M1/M2/M3) Installer**: Download `objeck-macos-arm64_$VERSION.pkg` and run
-          - **ARM64 (M1/M2/M3) Archive**: `tar -xzf objeck-macos-arm64_$VERSION.tgz`
+          - **ARM64 (M1/M2/M3) Archive**: `unzip objeck-macos-arm64_$VERSION.zip`
+
+            The `.zip` is notarized by Apple; the `.pkg` and it are the two supported
+            downloads. A `.tgz` is also published for one release so that older copies
+            of `obu` can still self-update, but it cannot be notarized — macOS
+            quarantines it and silently refuses to run the tools. If you use it, clear
+            the flag with `xattr -dr com.apple.quarantine objeck-lang`.
 
           ### LSP (Language Server Protocol)
           - Download `objeck-lsp_$VERSION.zip` for IDE integration

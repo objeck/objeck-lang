@@ -47,7 +47,7 @@ for %%a in (
     objeck-windows-x64_%VERSION%.zip
     objeck-windows-arm64_%VERSION%.zip
     objeck-linux-x64_%VERSION%.tgz
-    objeck-macos-arm64_%VERSION%.tgz
+    objeck-macos-arm64_%VERSION%.zip
     objeck-lsp_%VERSION%.zip
 ) do (
     %GH% release view v%VERSION% --json assets --jq ".assets[].name" 2>nul | findstr /i "%%a" >nul 2>&1

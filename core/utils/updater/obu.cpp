@@ -71,8 +71,14 @@ namespace fs = std::filesystem;
 #define RELEASES_API_BASE "https://api.github.com/repos/objeck/objeck-lang/releases"
 
 // The release asset for this platform (see release-build.yml), the archive
-// format it ships in -- POSIX publishes .tgz, Windows .zip -- and the suffix
-// the platform puts on an executable.
+// format it ships in -- Linux publishes .tgz, Windows and macOS .zip -- and the
+// suffix the platform puts on an executable.
+//
+// macOS ships .zip rather than .tgz because only an archive Apple recognises
+// (.zip, .pkg, .dmg) can be submitted to the notary service. An un-notarized
+// download is quarantined, and a quarantined Objeck tree does not fail politely:
+// obr is killed outright, with nothing on stdout or stderr. bsdtar reads a zip,
+// so ArchiveTool() needs no change.
 //
 // Windows performs the in-place swap like every other platform. It needs no
 // copy-self-and-re-exec dance: Windows permits RENAMING a running image (it
@@ -91,7 +97,7 @@ namespace fs = std::filesystem;
 #define OBU_UPDATE_SUPPORTED 1
 #elif defined(__APPLE__)
 #define OBU_ASSET_PREFIX "objeck-macos-arm64"
-#define OBU_ASSET_SUFFIX ".tgz"
+#define OBU_ASSET_SUFFIX ".zip"
 #define OBU_EXE_SUFFIX ""
 #define OBU_UPDATE_SUPPORTED 1
 #elif defined(__linux__)

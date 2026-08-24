@@ -454,15 +454,19 @@
     &mdash; that is no longer necessary, and nothing is written outside the Objeck directory.
    </p>
    <p>
-    <b>If you downloaded the .tgz archive</b>, macOS marks everything it contains as quarantined
-    and refuses to run it. The failure is silent: the tools are killed with no error message.
-    Clear it once, on the directory you unpacked:
+    <b>Take the .pkg installer or the .zip archive</b> &mdash; both are notarized by Apple and
+    run as downloaded.
+   </p>
+   <p>
+    A <pre class="cmd">.tgz</pre> is still published for one release so that older copies of
+    <pre class="cmd">obu</pre> can self-update. It cannot be notarized, because Apple's notary
+    service only accepts .zip, .pkg and .dmg, so macOS quarantines it and refuses to run it
+    &mdash; silently: the tools are killed with no error message at all. If you use it, clear
+    the flag on the directory you unpacked:
     <pre class="cmd">xattr -dr com.apple.quarantine objeck-lang</pre>
     Or run
     <pre class="cmd">./install_deps.sh</pre>
-    from the distribution root, which detects this and offers to clear it for you. The
-    <pre class="cmd">.pkg</pre>
-    installer is not affected.
+    from the distribution root, which detects this and offers to clear it for you.
    </p>
    <h3>
     Secure Web Server Support

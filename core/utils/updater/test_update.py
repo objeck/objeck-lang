@@ -28,7 +28,8 @@ Two suites:
 
 Fixtures are built with hashlib/tarfile/zipfile rather than sha256sum/tar/zip
 so the harness needs no external tools of its own. The archive format follows
-what the platform actually publishes -- .zip on Windows, .tgz elsewhere -- so
+what the platform actually publishes -- .zip on Windows and macOS, .tgz on
+Linux -- so
 a format mismatch in obu shows up here rather than at release time.
 """
 import hashlib
@@ -48,8 +49,9 @@ IS_WINDOWS = sys.platform == "win32"
 # probed from the binary on purpose: probing would mean running a real 'update'.
 UPDATE_SUPPORTED = True
 
-# Mirrors OBU_ASSET_SUFFIX: releases ship .zip on Windows, .tgz elsewhere.
-ASSET_SUFFIX = ".zip" if IS_WINDOWS else ".tgz"
+# Mirrors OBU_ASSET_SUFFIX: releases ship .zip on Windows and macOS (only an
+# archive Apple recognises can be notarized), .tgz on Linux.
+ASSET_SUFFIX = ".zip" if (IS_WINDOWS or sys.platform == "darwin") else ".tgz"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 
 # Set by build() on Windows: a compiled stub used as the fake bin/obc.exe. The

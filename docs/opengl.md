@@ -16,7 +16,7 @@ against the system SDL2 and OpenGL runtime.
 
 | Platform | What you need to do |
 |---|---|
-| **macOS** | Nothing — prefer the `.pkg`. SDL2 ships in `lib/sdl`; OpenGL is a system framework. (`.tgz` users: see quarantine, below.) |
+| **macOS** | Nothing. Take the `.pkg` or `.zip` (both notarized). SDL2 ships in `lib/sdl`; OpenGL is a system framework. |
 | **Windows** | Nothing. The SDL2 DLLs ship in `lib/sdl`. |
 | **Linux** | One command: `./install_deps.sh`, shipped at the root of the distribution |
 
@@ -165,20 +165,22 @@ it, or point `run_gl.sh --tree` at a current one.
 **A `dlopen` failure that never mentions SDL2 (Linux)** — the system SDL2 or
 libGL is missing. `tools/install_deps.sh --check` will name it.
 
-**The tools die instantly with no message at all (macOS, `.tgz`)** — macOS
-stamps `com.apple.quarantine` on everything unpacked from a downloaded archive,
-and Gatekeeper then kills the toolchain outright: `obr` exits 137 (SIGKILL) with
-nothing on stdout or stderr. A quarantined library is marginally louder
-(`library load disallowed by system policy`), but neither symptom says the word
-"quarantine". Clear it once on the unpacked directory:
+**The tools die instantly with no message at all (macOS, legacy `.tgz`)** —
+take the `.pkg` or the `.zip`; both are notarized and run as downloaded. The
+`.tgz` that ships for one more release cannot be notarized, because Apple's
+notary service only accepts `.zip`, `.pkg` and `.dmg`. macOS stamps
+`com.apple.quarantine` on everything unpacked from it and Gatekeeper kills the
+toolchain outright: `obr` exits 137 (SIGKILL) with nothing on stdout or stderr.
+A quarantined library is marginally louder (`library load disallowed by system
+policy`), but neither symptom says the word "quarantine". Clear it once on the
+unpacked directory:
 
 ```bash
 xattr -dr com.apple.quarantine objeck-lang
 ```
 
-`./install_deps.sh` detects this and offers to clear it. The `.pkg` installer is
-unaffected — files it lays down are never quarantined — which is why it is the
-recommended way in.
+`./install_deps.sh` detects this and offers to clear it. Neither the `.pkg` nor
+the notarized `.zip` needs any of this.
 
 **No GL context on a headless machine** — the self-test skips when there is no
 display. Set `OBJECK_GL_REQUIRED=1` to make that a failure instead, which is

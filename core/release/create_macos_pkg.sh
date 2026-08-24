@@ -215,48 +215,13 @@ fi
 # ============================================
 
 if [ "$NOTARIZE" = "notarize" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_APP_PASSWORD" ]; then
-  echo "Submitting for notarization..."
-  # `notarytool submit --wait` exits 0 even when the verdict is Invalid, so the
-  # exit code cannot be trusted and `set -e` never fires on a rejection. Read the
-  # verdict itself. v2026.8.3 shipped unnotarized precisely because this was not
-  # checked: status was Invalid, stapler then failed with "Record not found"
-  # (there is no ticket for a rejected submission), the || branch blamed Apple
-  # for needing more time, and the script printed "Notarization complete."
-  NOTARY_OUT=$(xcrun notarytool submit "$OUTPUT_DIR/$PKG_NAME" \
-    --apple-id "$APPLE_ID" \
-    --team-id "$APPLE_TEAM_ID" \
-    --password "$APPLE_APP_PASSWORD" \
-    --wait 2>&1) || true
-  echo "$NOTARY_OUT"
-
-  NOTARY_STATUS=$(printf '%s\n' "$NOTARY_OUT" | awk -F': *' '/^ *status:/ {print $2; exit}')
-  NOTARY_ID=$(printf '%s\n' "$NOTARY_OUT" | awk -F': *' '/^ *id:/ {print $2; exit}')
-
-  if [ "$NOTARY_STATUS" != "Accepted" ]; then
-    echo ""
-    echo "ERROR: notarization returned '${NOTARY_STATUS:-no status}' for submission ${NOTARY_ID:-unknown}." >&2
-    if [ -n "$NOTARY_ID" ]; then
-      echo "Rejection detail:" >&2
-      xcrun notarytool log "$NOTARY_ID" \
-        --apple-id "$APPLE_ID" \
-        --team-id "$APPLE_TEAM_ID" \
-        --password "$APPLE_APP_PASSWORD" 2>&1 | head -60 >&2 || true
-    fi
-    echo "" >&2
-    echo "The .pkg is signed but NOT notarized. macOS will warn users who open it." >&2
-    echo "Set ALLOW_UNNOTARIZED=1 to ship anyway (it will still be unnotarized)." >&2
-    [ "${ALLOW_UNNOTARIZED:-0}" = "1" ] || exit 1
+  NOTARIZE_SH="$(cd "$(dirname "$0")/../.." && pwd)/tools/cicd/notarize.sh"
+  if [ -x "$NOTARIZE_SH" ]; then
+    APPLE_ID="$APPLE_ID" APPLE_TEAM_ID="$APPLE_TEAM_ID" APPLE_APP_PASSWORD="$APPLE_APP_PASSWORD" \
+      "$NOTARIZE_SH" "$OUTPUT_DIR/$PKG_NAME" || exit 1
   else
-    echo "Notarization accepted (submission $NOTARY_ID)."
-    echo "Stapling notarization ticket..."
-    # A staple failure after a genuine Accept is usually ticket propagation and
-    # is survivable -- the package is notarized either way, Gatekeeper just has
-    # to check online instead of offline.
-    if xcrun stapler staple "$OUTPUT_DIR/$PKG_NAME"; then
-      echo "Notarized and stapled."
-    else
-      echo "Warning: notarized, but stapling failed - Gatekeeper will verify online."
-    fi
+    echo "Error: $NOTARIZE_SH not found" >&2
+    exit 1
   fi
 elif [ "$NOTARIZE" = "notarize" ]; then
   echo "Warning: Notarization requested but APPLE_ID/APPLE_TEAM_ID/APPLE_APP_PASSWORD not set - skipping"

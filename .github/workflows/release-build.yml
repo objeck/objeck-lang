@@ -163,7 +163,7 @@ jobs:
             arch: arm64
             deploy_script: ./deploy_macos_arm64.sh deploy
             shell: bash
-            artifact_pattern: "objeck-macos-arm64_0.0.0.tgz"
+            artifact_pattern: "objeck-macos-arm64_0.0.0.zip"
 
     defaults:
       run:
@@ -632,6 +632,29 @@ jobs:
           echo "macOS .pkg created:"
           ls -lh ~/Desktop/objeck-macos-arm64_*.pkg || true
 
+      - name: Notarize macOS archive
+        if: matrix.platform == 'macos-arm64'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          # The .zip exists because a .tgz cannot be submitted to the notary
+          # service, so tarball users could never receive anything macOS would
+          # run without clearing quarantine by hand.
+          ZIP=$(find ~/Desktop -name "objeck-macos-arm64_*.zip" -type f | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "No macOS .zip found to notarize"
+            exit 1
+          fi
+
+          if [ -z "$APPLE_ID" ] || [ -z "$APPLE_TEAM_ID" ] || [ -z "$APPLE_APP_PASSWORD" ]; then
+            echo "No notarization credentials configured - skipping"
+            exit 0
+          fi
+
+          "$GITHUB_WORKSPACE/tools/cicd/notarize.sh" "$ZIP"
+
       - name: Clean up macOS keychain
         if: matrix.platform == 'macos-arm64' && always()
         run: |
@@ -689,7 +712,15 @@ jobs:
             PKG=$(find ~/Desktop -name "objeck-macos-arm64_*.pkg" -type f | head -n 1)
             if [ -n "$PKG" ]; then
               echo "✅ Found .pkg: $PKG"
-              ALL_PATHS="$ARTIFACT"$'\n'"$PKG"
+              ALL_PATHS="$ALL_PATHS"$'\n'"$PKG"
+            fi
+            # Deprecated, one release only: macOS copies of obu built before the
+            # switch ask for a .tgz asset by name and would find nothing without
+            # it. Drop this once a release has shipped with obu asking for .zip.
+            TGZ=$(find ~/Desktop -name "objeck-macos-arm64_*.tgz" -type f | head -n 1)
+            if [ -n "$TGZ" ]; then
+              echo "✅ Found legacy .tgz: $TGZ"
+              ALL_PATHS="$ALL_PATHS"$'\n'"$TGZ"
             fi
           fi
 

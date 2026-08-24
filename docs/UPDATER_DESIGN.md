@@ -37,8 +37,10 @@ plus download tracking, without adding server infrastructure.
 
 - Releases are GitHub Releases produced by `release-build.yml`. Assets are
   named `objeck-<platform>_<version>.<ext>`: `.msi` (windows-x64/arm64),
-  `.pkg` (macos-arm64, notarized), `.tgz` (linux-x64/arm64), plus the LSP
-  zip. Versions are tags like `v2026.8.0`.
+  `.pkg` and `.zip` (macos-arm64, both notarized), `.tgz` (linux-x64/arm64),
+  plus the LSP zip. macOS publishes a `.zip` rather than a `.tgz` because only
+  an archive Apple recognises can be notarized, and obu asks for the format its
+  own platform publishes (`OBU_ASSET_SUFFIX`). Versions are tags like `v2026.8.0`.
 - An install is a self-contained directory (`bin`, `lib`, `app`, `doc`,
   `examples`) — on Windows under `Program Files\Objeck`, on POSIX wherever
   the tarball was unpacked. Nothing outside that directory except PATH and,

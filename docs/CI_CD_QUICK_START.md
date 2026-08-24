@@ -129,7 +129,7 @@ The release build produces 8 assets:
 | `objeck-windows-arm64_*.zip` | Build windows-arm64 |
 | `objeck-linux-x64_*.tgz` | Build linux-x64 |
 | `objeck-linux-arm64_*.tgz` | Build linux-arm64 |
-| `objeck-macos-arm64_*.tgz` | Build macos-arm64 |
+| `objeck-macos-arm64_*.zip` | Build macos-arm64 |
 | `objeck-lsp_*.zip` | Build LSP Package |
 
 API docs are deployed separately to `objeck.org/api/v{VERSION}/` with a `latest` symlink.

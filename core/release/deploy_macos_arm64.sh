@@ -254,6 +254,21 @@ if [ ! -z "$1" ] && [ "$1" = "deploy" ]; then
 	cp -rf deploy ~/Desktop/objeck-lang
 	cd ~/Desktop
 
+	# The .zip is the artifact macOS users should get: notarytool accepts an
+	# archive Apple recognises (.zip, .pkg, .dmg) and a .tgz is not submittable,
+	# so a tarball can never be notarized and its contents stay quarantined --
+	# which on macOS means the tools are killed outright, with no message.
+	#
+	# ditto, not zip: it preserves the code signatures, symlinks and extended
+	# attributes that a plain `zip` mangles, and a mangled signature fails
+	# notarization for a reason that reads as though the binary was tampered with.
+	rm -f objeck-macos-arm64_0.0.0.zip
+	ditto -c -k --keepParent --sequesterRsrc objeck-lang objeck-macos-arm64_0.0.0.zip
+
+	# The .tgz stays for one release only, so that macOS copies of obu built
+	# before this change -- which look for OBU_ASSET_SUFFIX ".tgz" and would
+	# otherwise fail to find any asset -- can still self-update. Once a release
+	# has shipped with obu asking for .zip, delete these four lines.
 	rm -f objeck.tar objeck.tgz
 	tar cf objeck.tar objeck-lang
 	gzip objeck.tar
