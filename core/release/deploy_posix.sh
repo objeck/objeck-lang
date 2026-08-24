@@ -151,6 +151,13 @@ cp docs/readme.html core/release/deploy
 cp docs/style/readme.css core/release/deploy/doc
 
 cp LICENSE core/release/deploy
+
+# Ship the dependency installer INSIDE the distribution. Linux links
+# libobjk_sdl.so against the system SDL2 and libGL and ships neither, so the
+# person who needs this script is precisely the person who downloaded a tarball
+# and never cloned the repo.
+cp tools/install_deps.sh core/release/deploy
+chmod +x core/release/deploy/install_deps.sh
 unzip docs/api.zip -d core/release/deploy/doc
 
 # copy examples

@@ -135,6 +135,14 @@ for dylib in "$SDL_DEPLOY"/libSDL2*.dylib; do
 	resign "$dylib"
 done
 
+# The Xcode target still produces "libxcode.dylib", so the copy we ship carries
+# an install name of /usr/local/lib/libxcode.dylib -- a path that does not exist
+# and never will. Nothing resolves through it today (the VM dlopens this library
+# by absolute path, which ignores LC_ID_DYLIB), but it makes otool output read
+# as though the tree still depends on /usr/local/lib. Correct it so the only
+# absolute paths left in the distribution are real system ones.
+install_name_tool -id "@rpath/libobjk_sdl.dylib" "$OBJK_SDL" 2>/dev/null
+
 # libobjk_sdl.dylib lives in lib/native, so lib/sdl is one directory across
 for dep in $(otool -L "$OBJK_SDL" | awk '/\/usr\/local\/lib\/libSDL2/ {print $1}'); do
 	install_name_tool -change "$dep" "@rpath/$(basename "$dep")" "$OBJK_SDL" 2>/dev/null
@@ -211,6 +219,13 @@ cp -R docs/syntax core/release/deploy/doc/syntax
 cp docs/readme.html core/release/deploy
 cp docs/style/readme.css core/release/deploy/doc
 cp LICENSE core/release/deploy
+
+# Ship the dependency installer INSIDE the distribution. Linux links
+# libobjk_sdl.so against the system SDL2 and libGL and ships neither, so the
+# person who needs this script is precisely the person who downloaded a tarball
+# and never cloned the repo.
+cp tools/install_deps.sh core/release/deploy
+chmod +x core/release/deploy/install_deps.sh
 unzip docs/api.zip -d core/release/deploy/doc
 
 # copy examples
@@ -224,11 +239,36 @@ cd core/release
 
 # deploy
 if [ ! -z "$1" ] && [ "$1" = "deploy" ]; then
+	# Sign before archiving. The .tgz is built HERE, and until now the .pkg was
+	# the only artifact anything ever signed -- so tarball users got a tree of
+	# ad-hoc binaries that macOS quarantines and then refuses to run, silently.
+	# A no-op when no Developer ID is present, so local builds are unaffected.
+	SIGN_TREE="$(cd ../.. && pwd)/tools/cicd/sign_macos_tree.sh"
+	if [ -x "$SIGN_TREE" ]; then
+		SKIP_OK=1 "$SIGN_TREE" deploy || \
+			echo "warning: deploy tree is not fully signed; the .tgz may be blocked by Gatekeeper"
+	fi
+
 	mkdir -p ~/Desktop
 	rm -rf ~/Desktop/objeck-lang
 	cp -rf deploy ~/Desktop/objeck-lang
 	cd ~/Desktop
 
+	# The .zip is the artifact macOS users should get: notarytool accepts an
+	# archive Apple recognises (.zip, .pkg, .dmg) and a .tgz is not submittable,
+	# so a tarball can never be notarized and its contents stay quarantined --
+	# which on macOS means the tools are killed outright, with no message.
+	#
+	# ditto, not zip: it preserves the code signatures, symlinks and extended
+	# attributes that a plain `zip` mangles, and a mangled signature fails
+	# notarization for a reason that reads as though the binary was tampered with.
+	rm -f objeck-macos-arm64_0.0.0.zip
+	ditto -c -k --keepParent --sequesterRsrc objeck-lang objeck-macos-arm64_0.0.0.zip
+
+	# The .tgz stays for one release only, so that macOS copies of obu built
+	# before this change -- which look for OBU_ASSET_SUFFIX ".tgz" and would
+	# otherwise fail to find any asset -- can still self-update. Once a release
+	# has shipped with obu asking for .zip, delete these four lines.
 	rm -f objeck.tar objeck.tgz
 	tar cf objeck.tar objeck-lang
 	gzip objeck.tar

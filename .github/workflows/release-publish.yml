@@ -22,6 +22,11 @@ on:
         required: false
         type: boolean
         default: false
+      skip_playground:
+        description: 'Skip playground deploy'
+        required: false
+        type: boolean
+        default: false
       skip_docs_deploy:
         description: 'Skip API docs deployment'
         required: false
@@ -316,7 +321,13 @@ jobs:
 
           ### macOS
           - **ARM64 (M1/M2/M3) Installer**: Download `objeck-macos-arm64_$VERSION.pkg` and run
-          - **ARM64 (M1/M2/M3) Archive**: `tar -xzf objeck-macos-arm64_$VERSION.tgz`
+          - **ARM64 (M1/M2/M3) Archive**: `unzip objeck-macos-arm64_$VERSION.zip`
+
+            The `.zip` is notarized by Apple; the `.pkg` and it are the two supported
+            downloads. A `.tgz` is also published for one release so that older copies
+            of `obu` can still self-update, but it cannot be notarized — macOS
+            quarantines it and silently refuses to run the tools. If you use it, clear
+            the flag with `xattr -dr com.apple.quarantine objeck-lang`.
 
           ### LSP (Language Server Protocol)
           - Download `objeck-lsp_$VERSION.zip` for IDE integration
@@ -425,6 +436,99 @@ jobs:
         run: |
           echo "⚠️  Sourceforge SSH key not configured. Skipping upload."
           echo "To enable: Add SOURCEFORGE_SSH_KEY and SOURCEFORGE_USERNAME secrets"
+
+  # ============================================
+  # Deploy the web playground
+  # ============================================
+
+  deploy-playground:
+    name: Deploy playground
+    needs: [check-trigger, prepare, github-release]
+    runs-on: ubuntu-latest
+    if: |
+      needs.check-trigger.outputs.should_publish == 'true' &&
+      (github.event_name == 'workflow_run' || github.event.inputs.skip_playground != 'true')
+    env:
+      PLAYGROUND_HOST: ${{ secrets.PLAYGROUND_HOST }}
+      PLAYGROUND_SSH_KEY: ${{ secrets.PLAYGROUND_SSH_KEY }}
+
+    steps:
+      - name: Setup SSH key
+        if: env.PLAYGROUND_SSH_KEY != '' && env.PLAYGROUND_HOST != ''
+        run: |
+          mkdir -p ~/.ssh
+          # The key never leaves this runner and is removed below. It is written
+          # with a trailing newline because ssh rejects a key file without one.
+          printf '%s\n' "${{ secrets.PLAYGROUND_SSH_KEY }}" > ~/.ssh/playground_key
+          chmod 600 ~/.ssh/playground_key
+          ssh-keyscan -H "${{ secrets.PLAYGROUND_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy
+        if: env.PLAYGROUND_SSH_KEY != '' && env.PLAYGROUND_HOST != ''
+        timeout-minutes: 20
+        run: |
+          # update.sh pulls master, refreshes the venv, rebuilds the sandbox
+          # Docker image and restarts the service. The image rebuild is why this
+          # gets 20 minutes rather than the default.
+          ssh -i ~/.ssh/playground_key \
+              -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=30 \
+              "root@${{ secrets.PLAYGROUND_HOST }}" \
+              'bash /opt/playground/repo/programs/web-playground/deploy/update.sh'
+
+      - name: Health check
+        if: env.PLAYGROUND_SSH_KEY != '' && env.PLAYGROUND_HOST != ''
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          # The public hostname, not $PLAYGROUND_HOST: the deploy target may be a
+          # bare IP, which would fail TLS verification, and it is a secret.
+          HEALTH="https://playground.objeck.org/api/health"
+
+          # The service restarts as update.sh finishes, so the first probe can
+          # legitimately arrive before it is listening again.
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            BODY=$(curl -fsS --max-time 15 "$HEALTH" 2>/dev/null) && break
+            echo "attempt $attempt: not responding yet"
+            sleep 10
+          done
+
+          if [ -z "${BODY:-}" ]; then
+            echo "❌ playground did not become healthy"
+            exit 1
+          fi
+          echo "health: $BODY"
+
+          STATUS=$(printf '%s' "$BODY" | sed -n 's/.*"status" *: *"\([^"]*\)".*/\1/p')
+          REPORTED=$(printf '%s' "$BODY" | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p')
+
+          [ "$STATUS" = "ok" ] || { echo "❌ status is '$STATUS', expected 'ok'"; exit 1; }
+
+          # A deploy that silently failed to pull still answers 'ok' on the OLD
+          # build, so healthy is not the same as updated. The reported string is
+          # the tracked constant in web-playground/backend/app/config.py, which
+          # the version bump updates -- so a mismatch means the box is not
+          # actually running this release.
+          if [ "$REPORTED" != "v$VERSION" ]; then
+            echo "❌ playground reports $REPORTED, expected v$VERSION"
+            echo "   the deploy did not pick up this release"
+            exit 1
+          fi
+
+          echo "✅ playground is live on v$VERSION"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/playground_key
+
+      - name: Skip notice
+        if: env.PLAYGROUND_SSH_KEY == '' || env.PLAYGROUND_HOST == ''
+        run: |
+          echo "⚠️  Playground deploy not configured. Skipping."
+          echo "To enable: add PLAYGROUND_HOST and PLAYGROUND_SSH_KEY secrets."
+          echo "The key should be a deploy key restricted on the VPS to:"
+          echo "  command=\"bash /opt/playground/repo/programs/web-playground/deploy/update.sh\",no-pty,no-port-forwarding"
 
   # ============================================
   # Deploy API Documentation
@@ -549,7 +653,7 @@ jobs:
 
   summary:
     name: Release Summary
-    needs: [check-trigger, prepare, github-release, sourceforge-upload, deploy-docs, publish-vscode]
+    needs: [check-trigger, prepare, github-release, sourceforge-upload, deploy-docs, publish-vscode, deploy-playground]
     runs-on: ubuntu-latest
     if: always() && needs.check-trigger.outputs.should_publish == 'true'
 
@@ -565,6 +669,7 @@ jobs:
           echo "- Sourceforge: ${{ needs.sourceforge-upload.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- API Docs: ${{ needs.deploy-docs.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- VS Code Marketplace: ${{ needs.publish-vscode.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Playground: ${{ needs.deploy-playground.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.github-release.result }}" = "success" ]; then

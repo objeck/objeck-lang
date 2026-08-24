@@ -163,7 +163,7 @@ jobs:
             arch: arm64
             deploy_script: ./deploy_macos_arm64.sh deploy
             shell: bash
-            artifact_pattern: "objeck-macos-arm64_0.0.0.tgz"
+            artifact_pattern: "objeck-macos-arm64_0.0.0.zip"
 
     defaults:
       run:
@@ -378,6 +378,51 @@ jobs:
       # Note: Bootstrap is skipped because version.h is already updated by prepare job
       # ============================================
 
+      # Certificates are installed BEFORE the build, not after it. The build step
+      # runs deploy_macos_arm64.sh, which both assembles the tree AND tars it into
+      # the .tgz artifact -- so an identity that arrives afterwards can only ever
+      # reach the .pkg. That is why tarball users received ad-hoc binaries that
+      # macOS quarantines and silently refuses to run.
+      - name: Install Apple signing certificate (macOS)
+        if: matrix.platform == 'macos-arm64'
+        env:
+          APPLE_INSTALLER_CERT_BASE64: ${{ secrets.APPLE_INSTALLER_CERT_BASE64 }}
+          APPLE_INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERT_PASSWORD }}
+          APPLE_APP_CERT_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_APP_CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -z "$APPLE_INSTALLER_CERT_BASE64" ]; then
+            echo "Apple installer certificate not configured - .pkg will be unsigned"
+            exit 0
+          fi
+
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import Developer ID Installer certificate
+          CERT_PATH=$RUNNER_TEMP/installer_cert.p12
+          echo -n "$APPLE_INSTALLER_CERT_BASE64" | base64 --decode -o "$CERT_PATH"
+          security import "$CERT_PATH" -P "$APPLE_INSTALLER_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          rm "$CERT_PATH"
+
+          # Import Developer ID Application certificate (for binary signing)
+          if [ -n "$APPLE_APP_CERT_BASE64" ]; then
+            APP_CERT_PATH=$RUNNER_TEMP/app_cert.p12
+            echo -n "$APPLE_APP_CERT_BASE64" | base64 --decode -o "$APP_CERT_PATH"
+            security import "$APP_CERT_PATH" -P "$APPLE_APP_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            rm "$APP_CERT_PATH"
+          fi
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "Certificates installed."
+
       - name: Build release
         working-directory: ./core/release
         run: ${{ matrix.deploy_script }}
@@ -553,46 +598,6 @@ jobs:
       # macOS .pkg Installer + Signing + Notarization
       # ============================================
 
-      - name: Install Apple signing certificate (macOS)
-        if: matrix.platform == 'macos-arm64'
-        env:
-          APPLE_INSTALLER_CERT_BASE64: ${{ secrets.APPLE_INSTALLER_CERT_BASE64 }}
-          APPLE_INSTALLER_CERT_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERT_PASSWORD }}
-          APPLE_APP_CERT_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          APPLE_APP_CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          if [ -z "$APPLE_INSTALLER_CERT_BASE64" ]; then
-            echo "Apple installer certificate not configured - .pkg will be unsigned"
-            exit 0
-          fi
-
-          # Create temporary keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Import Developer ID Installer certificate
-          CERT_PATH=$RUNNER_TEMP/installer_cert.p12
-          echo -n "$APPLE_INSTALLER_CERT_BASE64" | base64 --decode -o "$CERT_PATH"
-          security import "$CERT_PATH" -P "$APPLE_INSTALLER_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          rm "$CERT_PATH"
-
-          # Import Developer ID Application certificate (for binary signing)
-          if [ -n "$APPLE_APP_CERT_BASE64" ]; then
-            APP_CERT_PATH=$RUNNER_TEMP/app_cert.p12
-            echo -n "$APPLE_APP_CERT_BASE64" | base64 --decode -o "$APP_CERT_PATH"
-            security import "$APP_CERT_PATH" -P "$APPLE_APP_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-            rm "$APP_CERT_PATH"
-          fi
-
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          echo "SIGNING_KEYCHAIN=$KEYCHAIN_PATH" >> $GITHUB_ENV
-          echo "Certificates installed."
-
       - name: Create macOS .pkg installer
         if: matrix.platform == 'macos-arm64'
         working-directory: ./core/release
@@ -626,6 +631,29 @@ jobs:
 
           echo "macOS .pkg created:"
           ls -lh ~/Desktop/objeck-macos-arm64_*.pkg || true
+
+      - name: Notarize macOS archive
+        if: matrix.platform == 'macos-arm64'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          # The .zip exists because a .tgz cannot be submitted to the notary
+          # service, so tarball users could never receive anything macOS would
+          # run without clearing quarantine by hand.
+          ZIP=$(find ~/Desktop -name "objeck-macos-arm64_*.zip" -type f | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "No macOS .zip found to notarize"
+            exit 1
+          fi
+
+          if [ -z "$APPLE_ID" ] || [ -z "$APPLE_TEAM_ID" ] || [ -z "$APPLE_APP_PASSWORD" ]; then
+            echo "No notarization credentials configured - skipping"
+            exit 0
+          fi
+
+          "$GITHUB_WORKSPACE/tools/cicd/notarize.sh" "$ZIP"
 
       - name: Clean up macOS keychain
         if: matrix.platform == 'macos-arm64' && always()
@@ -684,7 +712,15 @@ jobs:
             PKG=$(find ~/Desktop -name "objeck-macos-arm64_*.pkg" -type f | head -n 1)
             if [ -n "$PKG" ]; then
               echo "✅ Found .pkg: $PKG"
-              ALL_PATHS="$ARTIFACT"$'\n'"$PKG"
+              ALL_PATHS="$ALL_PATHS"$'\n'"$PKG"
+            fi
+            # Deprecated, one release only: macOS copies of obu built before the
+            # switch ask for a .tgz asset by name and would find nothing without
+            # it. Drop this once a release has shipped with obu asking for .zip.
+            TGZ=$(find ~/Desktop -name "objeck-macos-arm64_*.tgz" -type f | head -n 1)
+            if [ -n "$TGZ" ]; then
+              echo "✅ Found legacy .tgz: $TGZ"
+              ALL_PATHS="$ALL_PATHS"$'\n'"$TGZ"
             fi
           fi
 

@@ -93,7 +93,7 @@ template: |
   |----------|--------------|-----------|---------|
   | **Windows** | x64 | `objeck-windows-x64_$RESOLVED_VERSION.msi` | `objeck-windows-x64_$RESOLVED_VERSION.zip` |
   | **Windows** | ARM64 | `objeck-windows-arm64_$RESOLVED_VERSION.msi` | `objeck-windows-arm64_$RESOLVED_VERSION.zip` |
-  | **macOS** | Apple Silicon | `objeck-macos-arm64_$RESOLVED_VERSION.pkg` | `objeck-macos-arm64_$RESOLVED_VERSION.tgz` |
+  | **macOS** | Apple Silicon | `objeck-macos-arm64_$RESOLVED_VERSION.pkg` | `objeck-macos-arm64_$RESOLVED_VERSION.zip` |
   | **Linux** | x64 | — | `objeck-linux-x64_$RESOLVED_VERSION.tgz` |
   | **Linux** | ARM64 | — | `objeck-linux-arm64_$RESOLVED_VERSION.tgz` |
 

@@ -118,11 +118,12 @@
         <h4>For Linux</h4>
         <p>
             <code>
-                sudo apt install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc libsdl-image1.2 
-                libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg libsdl-mixer1.2-dev 
-                libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev 
-                libsdl-ttf2.0-0 libsdl-ttf2.0-dev
+                ./install_deps.sh
             </code>
+            It detects your package manager (apt, dnf/yum, pacman, zypper, apk) and installs SDL2
+            plus the OpenGL runtime. Use <code>--check</code> to see what is missing without
+            installing anything, or <code>--dev</code> if you are building the native libraries
+            from source.
         </p>
 
         <h4>For macOS</h4>
@@ -132,6 +133,14 @@
             build loads its SDL DLLs. Earlier releases asked you to untar <code>sdl2_arm64.tgz</code> and
             copy SDL2 into <code>/usr/local</code>; that is no longer necessary, and nothing is written
             outside the Objeck directory.
+        </p>
+        <p>
+            <b>If you downloaded the .tgz archive</b>, macOS marks its contents as quarantined and
+            refuses to run them, silently &mdash; the tools are killed with no error message at all.
+            Clear it once on the unpacked directory with
+            <code>xattr -dr com.apple.quarantine objeck-lang</code>, or run
+            <code>./install_deps.sh</code>, which detects it and offers to clear it. The
+            <code>.pkg</code> installer is not affected.
         </p>
 
         <h3>Secure Web Server Support</h3>

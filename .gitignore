@@ -105,6 +105,9 @@ core/compiler/obc
 core/compiler/sys_obc
 core/vm/obr
 core/release/obr
+# obu has no Xcode/VS output dir on POSIX -- its makefile builds in place, so the
+# binary lands next to obu.cpp exactly the way obc and obr do above.
+core/utils/updater/obu
 
 # Build output directories (ONNX)
 core/lib/onnx/vs/x64/
