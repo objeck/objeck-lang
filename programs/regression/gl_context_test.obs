@@ -82,6 +82,7 @@ class GlContextTest {
 		CheckPrimitives();
 		CheckShaderPresets();
 		CheckLighting();
+		CheckLightRig();
 		CheckShadows();
 		CheckOverlay();
 		CheckInstancing();
@@ -742,6 +743,166 @@ class GlContextTest {
 		# Freeing twice must not double-delete.
 		target->Free();
 		Check("RenderTarget->Free is idempotent", true);
+	}
+
+	#~
+	Several lights add up, a point light fades with distance, a spot has a cone,
+	and specular depends on where the viewer is.
+
+	Each of those is asserted by a DIFFERENCE rather than an absolute brightness,
+	because the absolute value depends on the whole lighting setup and would have
+	to be derived by hand. What matters is the direction of change: adding a light
+	makes a surface brighter, moving a point light away makes it dimmer, stepping
+	outside a spot's cone makes it dark, and moving the eye moves a highlight.
+
+	The fixture is a flat plane facing up, lit from above. Flat because the point
+	of these checks is the LIGHT, and a curved surface would make every reading
+	depend on which bit of it was sampled.
+	~#
+	method : CheckLightRig() ~ Nil {
+		shader := Shader->Lit();
+		plane := Mesh->Plane(4.0, 1.0);
+		if(<>Check("a lit shader and plane for the rig", shader->IsOk() & plane->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		# Straight down at the plane, so it fills the frame.
+		eye := Camera->New(Vector3->New(0.0, 8.0, 0.1));
+		eye->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), eye->GetViewMatrix());
+		model := Matrix4->Identity();
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+
+		# --- one light, then two ---
+		rig := LightRig->New();
+		rig->SetAmbient(0.0, 0.0, 0.0);
+		rig->SetViewPosition(eye->GetPosition());
+		dim_light := Light->Directional(Vector3->New(0.0, 1.0, 0.0));
+		dim_light->SetColor(0.3, 0.3, 0.3);
+		rig->Add(dim_light);
+
+		one := DrawLitPlane(shader, plane, rig, view_projection, model, mid_x, mid_y);
+
+		second := Light->Directional(Vector3->New(0.0, 1.0, 0.0));
+		second->SetColor(0.3, 0.3, 0.3);
+		Check("a second light is accepted", rig->Add(second));
+		two := DrawLitPlane(shader, plane, rig, view_projection, model, mid_x, mid_y);
+
+		"  lights: one={$one} two={$two}"->PrintLine();
+		Check("one light lights the plane", one > 40);
+		# THE assertion for multiple lights: a shader that only ever read light 0
+		# would give the same answer twice.
+		Check("two lights are brighter than one", two > one + 30);
+		Check("the rig counts them", rig->GetCount() = 2);
+
+		# The limit is a real limit rather than a silent overwrite.
+		filled := 2;
+		while(rig->Add(Light->Directional(Vector3->New(0.0, 1.0, 0.0)))) {
+			filled += 1;
+		};
+		"  rig filled at {$filled} of {$LightRig->GetMaxLights()}"->PrintLine();
+		Check("the rig fills to its maximum and then refuses", filled = LightRig->GetMaxLights());
+
+		# --- a point light fades with distance ---
+		near_rig := LightRig->New();
+		near_rig->SetAmbient(0.0, 0.0, 0.0);
+		near_rig->SetViewPosition(eye->GetPosition());
+		lamp := Light->Point(Vector3->New(0.0, 1.0, 0.0), 10.0);
+		lamp->SetColor(1.0, 1.0, 1.0);
+		near_rig->Add(lamp);
+		near := DrawLitPlane(shader, plane, near_rig, view_projection, model, mid_x, mid_y);
+
+		lamp->SetPosition(Vector3->New(0.0, 7.0, 0.0));
+		far := DrawLitPlane(shader, plane, near_rig, view_projection, model, mid_x, mid_y);
+
+		lamp->SetPosition(Vector3->New(0.0, 40.0, 0.0));
+		beyond := DrawLitPlane(shader, plane, near_rig, view_projection, model, mid_x, mid_y);
+
+		"  point light: near={$near} far={$far} past-its-range={$beyond}"->PrintLine();
+		Check("a point light lights what is close to it", near > 100);
+		Check("and fades with distance", far < near - 20);
+		# A light with a stated range has to actually stop, or every light in a
+		# scene contributes to every fragment forever.
+		Check("and reaches nothing past its range", beyond < 10);
+
+		# --- a spot has a cone ---
+		spot_rig := LightRig->New();
+		spot_rig->SetAmbient(0.0, 0.0, 0.0);
+		spot_rig->SetViewPosition(eye->GetPosition());
+		# Above the middle of the plane, shining straight down, narrow.
+		torch := Light->Spot(Vector3->New(0.0, 4.0, 0.0), Vector3->New(0.0, -1.0, 0.0), 20.0, 10.0, 14.0);
+		torch->SetColor(1.0, 1.0, 1.0);
+		spot_rig->Add(torch);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		spot_rig->ApplyTo(shader);
+		shader->SetVec3("color", 1.0, 1.0, 1.0);
+		shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
+		shader->SetMatrix4("model", model);
+		plane->Draw();
+
+		inside_cone := (GL->ReadPixel(mid_x, mid_y) and 0x0000FF00) / 0x100;
+		outside_cone := (GL->ReadPixel((@pixel_w * 12) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  spot: in the cone={$inside_cone} outside it={$outside_cone}"->PrintLine();
+		Check("a spot lights the middle of its cone", inside_cone > 100);
+		# Without the cone term a spot is just a point light and this would match.
+		Check("and nothing outside it", outside_cone < 20);
+
+		# --- specular moves with the viewer ---
+		# Strength defaults to zero, so a surface is matte until asked. Turning it
+		# on must change what is drawn, and MOVING THE EYE must change it again --
+		# a shader that ignored view_position would give the same answer both times.
+		spec_rig := LightRig->New();
+		spec_rig->SetAmbient(0.0, 0.0, 0.0);
+		# A DIM light on purpose. At full brightness the diffuse term alone reads
+		# 201 and adding any specular clamps to 255, so both readings come back
+		# saturated and identical -- which is how the first version of this check
+		# failed. A comparison needs headroom to compare in.
+		spec_light := Light->Directional(Vector3->New(0.4, 1.0, 0.0));
+		spec_light->SetColor(0.3, 0.3, 0.3);
+		spec_rig->Add(spec_light);
+
+		spec_rig->SetSpecular(24.0, 0.0);
+		spec_rig->SetViewPosition(eye->GetPosition());
+		matte := DrawLitPlane(shader, plane, spec_rig, view_projection, model, mid_x, mid_y);
+
+		spec_rig->SetSpecular(24.0, 1.0);
+		shiny_here := DrawLitPlane(shader, plane, spec_rig, view_projection, model, mid_x, mid_y);
+
+		# Same geometry, same light, eye moved to where the highlight is not.
+		spec_rig->SetViewPosition(Vector3->New(-6.0, 8.0, 0.0));
+		shiny_elsewhere := DrawLitPlane(shader, plane, spec_rig, view_projection, model, mid_x, mid_y);
+
+		"  specular: matte={$matte} shiny={$shiny_here} eye-moved={$shiny_elsewhere}"->PrintLine();
+		Check("specular strength of zero leaves a surface matte", shiny_here > matte);
+		Check("and the highlight depends on where the eye is", shiny_here <> shiny_elsewhere);
+
+		Check("no GL errors from the light rig", GL->DrainErrors()->Size() = 0);
+
+		plane->Free();
+		shader->Free();
+	}
+
+	#~
+	Draw the plane under a rig and return the green channel at a pixel.
+	~#
+	method : DrawLitPlane(shader : Shader, plane : Mesh, rig : LightRig, view_projection : Float[], model : Float[], x : Int, y : Int) ~ Int {
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shader->Use();
+		rig->ApplyTo(shader);
+		shader->SetVec3("color", 1.0, 1.0, 1.0);
+		shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
+		shader->SetMatrix4("model", model);
+		plane->Draw();
+
+		return (GL->ReadPixel(x, y) and 0x0000FF00) / 0x100;
 	}
 
 	#~

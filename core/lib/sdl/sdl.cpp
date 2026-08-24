@@ -4997,7 +4997,7 @@ GL_FN(UNIFORM1I) GL_FN(GENVERTEXARRAYS) GL_FN(BINDVERTEXARRAY)
 GL_FN(DELETEVERTEXARRAYS) GL_FN(GENBUFFERS) GL_FN(BINDBUFFER)
 GL_FN(BUFFERDATA) GL_FN(DELETEBUFFERS) GL_FN(VERTEXATTRIBPOINTER)
 GL_FN(ENABLEVERTEXATTRIBARRAY) GL_FN(ACTIVETEXTURE)
-GL_FN(GENERATEMIPMAP) GL_FN(UNIFORM1F) GL_FN(UNIFORM3FV)
+GL_FN(GENERATEMIPMAP) GL_FN(UNIFORM1F) GL_FN(UNIFORM3FV) GL_FN(UNIFORM4FV)
 GL_FN(GENFRAMEBUFFERS) GL_FN(BINDFRAMEBUFFER) GL_FN(DELETEFRAMEBUFFERS)
 GL_FN(FRAMEBUFFERTEXTURE2D) GL_FN(CHECKFRAMEBUFFERSTATUS)
 GL_FN(GENRENDERBUFFERS) GL_FN(BINDRENDERBUFFER) GL_FN(DELETERENDERBUFFERS)
@@ -5090,6 +5090,7 @@ static std::string objk_gl_load_functions() {
   // GL 2.0, like every other uniform setter here
   OBJK_GL_LOAD("glUniform1f", UNIFORM1F)
   OBJK_GL_LOAD("glUniform3fv", UNIFORM3FV)
+  OBJK_GL_LOAD("glUniform4fv", UNIFORM4FV)
 
   // Framebuffer objects, all GL 3.0 -- so guaranteed by any 3.3 core context,
   // including macOS's, which is why they are required rather than optional.
@@ -5497,6 +5498,42 @@ extern "C" {
     }
     else {
       objk_gl_fail("Shader->SetFloat: no uniform named \"" + name +
+                   "\" in this program (misspelled, or optimised out as unused)");
+    }
+  }
+
+  //
+  // A vec4 uniform. Used to pack a light's kind and cone into one value rather
+  // than spending three more uniform arrays on them.
+  //
+  // slot 0 = program, 1 = name, 2..5 = x, y, z, w.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_uniform_vec4(VMContext& context) {
+    if(!objk_gl_loaded) {
+      objk_gl_fail(std::string("Shader->SetVec4: ") + OBJK_GL_NOT_LOADED);
+      return;
+    }
+
+    const GLuint program = (GLuint)APITools_GetIntValue(context, 0);
+    const std::string name = UnicodeToBytes(APITools_GetStringValue(context, 1));
+
+    GLfloat value[4];
+    value[0] = (GLfloat)APITools_GetFloatValue(context, 2);
+    value[1] = (GLfloat)APITools_GetFloatValue(context, 3);
+    value[2] = (GLfloat)APITools_GetFloatValue(context, 4);
+    value[3] = (GLfloat)APITools_GetFloatValue(context, 5);
+
+    objk_glUSEPROGRAM(program);
+
+    const GLint location = objk_gl_uniform_location(program, name);
+    if(location >= 0) {
+      objk_glUNIFORM4FV(location, 1, value);
+    }
+    else {
+      objk_gl_fail("Shader->SetVec4: no uniform named \"" + name +
                    "\" in this program (misspelled, or optimised out as unused)");
     }
   }

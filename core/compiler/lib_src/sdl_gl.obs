@@ -1328,6 +1328,33 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Set a vec4 uniform: four floats packed into one, which is how a light's
+		kind and cone travel without spending three more uniform arrays.
+
+		Makes this program current -- see SetMatrix4.
+		@param name the uniform's name in the shader
+		@param x first component
+		@param y second component
+		@param z third component
+		@param w fourth component
+		~#
+		method : public : SetVec4(name : String, x : Float, y : Float, z : Float, w : Float) ~ Nil {
+			if(@program = 0) {
+				return;
+			};
+
+			array_args := Base->New[6];
+			array_args[0] := IntRef->New(@program);
+			array_args[1] := name;
+			array_args[2] := FloatRef->New(x);
+			array_args[3] := FloatRef->New(y);
+			array_args[4] := FloatRef->New(z);
+			array_args[5] := FloatRef->New(w);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_vec4", array_args);
+		}
+
+		#~
 		Set a vec3 uniform from a Vector3.
 		@param name the uniform's name in the shader
 		@param value the vector
@@ -1553,17 +1580,23 @@ bundle Game.OpenGL {
 			source->Add("out vec3 normal;");
 			source->Add("out vec2 texcoord;");
 			source->Add("out float depth;");
+			# The WORLD position, which a point light needs (to find the direction and
+			# distance to it) and specular needs (to find the direction to the eye).
+			# A purely directional, diffuse-only shader did not need it; everything
+			# past that does.
+			source->Add("out vec3 world_position;");
 			if(shadowed) {
-				# The shadow lookup needs the fragment in LIGHT space, and the only
-				# way to get there is via world space -- so the world position has to
-				# cross from the vertex stage.
+				# The shadow lookup needs the fragment in LIGHT space, reached via
+				# world space -- so this has to cross from the vertex stage too.
 				source->Add("uniform mat4 light_space;");
 				source->Add("out vec4 light_position;");
 			};
 			source->Add("void main() {");
+			source->Add("  vec4 world = model * vec4(in_position, 1.0);");
+			source->Add("  world_position = world.xyz;");
 			source->Add("  depth = (mvp * vec4(in_position, 1.0)).z;");
 			if(shadowed) {
-				source->Add("  light_position = light_space * model * vec4(in_position, 1.0);");
+				source->Add("  light_position = light_space * world;");
 			};
 			# the normal matrix, in the one place that can compute it for free
 			source->Add("  normal = normalize(mat3(transpose(inverse(model))) * in_normal);");
@@ -1583,6 +1616,7 @@ bundle Game.OpenGL {
 			source->Add("in vec3 normal;");
 			source->Add("in vec2 texcoord;");
 			source->Add("in float depth;");
+			source->Add("in vec3 world_position;");
 			if(shadowed) {
 				source->Add("in vec4 light_position;");
 				source->Add("uniform sampler2D shadow_map;");
@@ -1595,10 +1629,33 @@ bundle Game.OpenGL {
 			else {
 				source->Add("uniform vec3 color;");
 			};
-			source->Add("uniform vec3 light_direction;");
-			source->Add("uniform vec3 light_color;");
+
+			# Lights as ARRAYS with a count, which is how forward rendering carries
+			# more than one. The maximum is a compile-time constant because GLSL
+			# needs a fixed array size, and the loop stops at light_count so unused
+			# slots cost nothing.
+			#
+			# Each light packs its kind and its shape into one vec4 rather than
+			# taking three more arrays:
+			#   x = kind, 0 directional / 1 point / 2 spot
+			#   y = range, in world units (point and spot)
+			#   z = cosine of the inner cone angle (spot)
+			#   w = cosine of the outer cone angle (spot)
+			max_lights := LightRig->GetMaxLights();
+			source->Add("const int MAX_LIGHTS = {$max_lights};");
+			source->Add("uniform int light_count;");
+			source->Add("uniform vec3 light_vector[MAX_LIGHTS];");
+			source->Add("uniform vec3 light_color[MAX_LIGHTS];");
+			source->Add("uniform vec4 light_shape[MAX_LIGHTS];");
+			# The direction a spot points. Separate from light_vector, which holds a
+			# spot's POSITION -- a spot needs both and a directional light needs
+			# neither of the two.
+			source->Add("uniform vec3 spot_axis[MAX_LIGHTS];");
 			source->Add("uniform vec3 ambient;");
 			source->Add("uniform float fog_distance;");
+			source->Add("uniform vec3 view_position;");
+			source->Add("uniform float shininess;");
+			source->Add("uniform float specular_strength;");
 			source->Add("out vec4 frag_color;");
 
 			if(shadowed) {
@@ -1630,18 +1687,57 @@ bundle Game.OpenGL {
 			};
 
 			source->Add("void main() {");
-			# A light with no direction set would normalize (0,0,0) to NaN and turn
-			# the whole surface into garbage, so fall back to straight down.
-			source->Add("  vec3 to_light = length(light_direction) > 0.0 ? normalize(light_direction) : vec3(0.0, 1.0, 0.0);");
-			source->Add("  float diffuse = max(dot(normalize(normal), to_light), 0.0);");
+			source->Add("  vec3 n = normalize(normal);");
+			source->Add("  vec3 to_eye = normalize(view_position - world_position);");
+			source->Add("  vec3 lit = ambient;");
+			source->Add("  int count = min(light_count, MAX_LIGHTS);");
+			source->Add("  for(int i = 0; i < count; ++i) {");
+			source->Add("    float kind = light_shape[i].x;");
+			source->Add("    vec3 to_light;");
+			source->Add("    float fade = 1.0;");
+			source->Add("    if(kind < 0.5) {");
+			# Directional: light_vector IS the direction toward the light, and there
+			# is no distance to fall off over.
+			source->Add("      to_light = light_vector[i];");
+			source->Add("    } else {");
+			# Point and spot: light_vector is a POSITION, so the direction and the
+			# distance both come from the fragment.
+			source->Add("      vec3 offset = light_vector[i] - world_position;");
+			source->Add("      float distance = length(offset);");
+			source->Add("      to_light = distance > 0.0 ? offset / distance : vec3(0.0, 1.0, 0.0);");
+			source->Add("      float range = max(light_shape[i].y, 0.0001);");
+			# Smooth to zero AT the range rather than an inverse-square that never
+			# quite reaches it: a light with a stated range should stop there, or
+			# every light in the scene contributes to every fragment forever.
+			source->Add("      fade = clamp(1.0 - (distance * distance) / (range * range), 0.0, 1.0);");
+			source->Add("      fade = fade * fade;");
+			source->Add("      if(kind > 1.5) {");
+			# Spot: fall off between the inner and outer cone angles. Comparing
+			# cosines rather than angles avoids an acos per fragment per light.
+			source->Add("        float inner = light_shape[i].z;");
+			source->Add("        float outer = light_shape[i].w;");
+			source->Add("        float aim = dot(-to_light, normalize(spot_axis[i]));");
+			source->Add("        float span = max(inner - outer, 0.0001);");
+			source->Add("        fade = fade * clamp((aim - outer) / span, 0.0, 1.0);");
+			source->Add("      }");
+			source->Add("    }");
+			source->Add("    if(length(to_light) <= 0.0) { continue; }");
+			source->Add("    to_light = normalize(to_light);");
+			source->Add("    float diffuse = max(dot(n, to_light), 0.0);");
 			if(shadowed) {
-				# Only the DIFFUSE term is shadowed. Shadowing the ambient too would
-				# make anything in shadow pure black, which is wrong for the same
-				# reason ambient exists at all: a shadowed surface is still lit by
-				# everything around it.
-				source->Add("  diffuse = diffuse * shadow_factor();");
+				# Only light 0 casts, because there is one shadow map. Shadowing every
+				# light with one map would put light 0's shadows under all of them.
+				source->Add("    if(i == 0) { diffuse = diffuse * shadow_factor(); }");
 			};
-			source->Add("  vec3 lit = ambient + light_color * diffuse;");
+			# Blinn-Phong: the half-vector is cheaper than a reflect() and behaves
+			# better at grazing angles.
+			source->Add("    float specular = 0.0;");
+			source->Add("    if(diffuse > 0.0 && specular_strength > 0.0) {");
+			source->Add("      vec3 half_vector = normalize(to_light + to_eye);");
+			source->Add("      specular = pow(max(dot(n, half_vector), 0.0), max(shininess, 1.0)) * specular_strength;");
+			source->Add("    }");
+			source->Add("    lit += light_color[i] * (diffuse + specular) * fade;");
+			source->Add("  }");
 			# Fog folded in here rather than given its own preset. Lit x Textured x
 			# Fogged would be eight programs to maintain and eight to document,
 			# where the difference is one multiply gated on a uniform. A
@@ -4890,56 +4986,195 @@ bundle Game.OpenGL {
 	}
 
 	#~
-	One directional light, plus the ambient level everything gets.
+	What kind of light a Light is.
+	~#
+	consts LightKind {
+		# infinitely far away, so every surface facing the same way is lit the same
+		DIRECTIONAL := 0,
+		# a position with a range: a lamp, a fire, a glowing thing
+		POINT := 1,
+		# a position with a range AND a cone: a torch, a spotlight, headlights
+		SPOT := 2
+	}
 
-	Directional rather than positional: the light is infinitely far away, so every
-	surface with the same orientation is lit the same. That is the sun, and it is
-	what a scene wants before it wants anything more complicated -- no falloff to
-	tune, no per-object distance, and one set of uniforms for the whole frame.
+	#~
+	One light. Directional, point or spot.
+
+	Build one with the factory that matches what you want, since each kind needs
+	different things and a single constructor taking all of them would ask for
+	values that do not apply:
 
 	```
-	light := Light->New();
-	light->SetDirection(-0.4, 1.0, 0.3);
-	scene->SetLight(light);
+	sun := Light->Directional(Vector3->New(-0.3, 1.0, 0.4));
+	lamp := Light->Point(Vector3->New(0.0, 3.0, 0.0), 12.0);
+	torch := Light->Spot(position, aim, 15.0, 20.0, 30.0);
 	```
 
-	## Which way the direction points
+	A single Light can be handed straight to a shader with ApplyTo, which is the
+	common case. For more than one, put them in a LightRig.
 
-	Toward the light, not the way the light travels. A direction of (0, 1, 0) is a
-	light directly overhead, so upward-facing surfaces are brightest. This is the
-	convention that makes the shader's dot product read naturally, and it is the
-	one people get backwards -- a scene lit from underneath is the symptom.
+	## Which way a direction points
+
+	TOWARD the light, not the way the light travels. A directional light of
+	(0, 1, 0) is overhead, so upward-facing surfaces are brightest. This is the
+	convention that makes the shader's dot product read naturally and it is the one
+	people get backwards -- a scene lit from underneath is the symptom.
+
+	A SPOT's aim is the opposite: the direction it shines, which is what you would
+	point a torch along.
 	~#
 	class Light {
-		@dx : Float; @dy : Float; @dz : Float;
+		@kind : Int;
+		# direction toward the light for DIRECTIONAL, position for POINT and SPOT
+		@vector : Vector3;
+		# the direction a SPOT shines
+		@axis : Vector3;
 		@r : Float; @g : Float; @b : Float;
+		@range : Float;
+		@inner : Float;
+		@outer : Float;
+		# Ambient belongs to the RIG, not to a light -- but a single Light handed
+		# straight to a shader needs some, and making every one-light program build
+		# a rig to say so would be worse. Kept here for the ApplyTo path only;
+		# ApplyAt does not write it, because in a rig the rig owns it.
 		@ar : Float; @ag : Float; @ab : Float;
 
 		#~
-		A white light from above, with enough ambient that unlit faces are visible
-		rather than black.
+		A white light from above with a little ambient, which is a reasonable
+		starting point for seeing a scene at all.
 		~#
 		New() {
-			@dx := -0.3; @dy := 1.0; @dz := 0.4;
+			@kind := LightKind->DIRECTIONAL;
+			@vector := Vector3->New(-0.3, 1.0, 0.4);
+			@axis := Vector3->New(0.0, -1.0, 0.0);
 			@r := 0.85; @g := 0.85; @b := 0.8;
+			@range := 20.0;
+			@inner := 0.9;
+			@outer := 0.8;
 			@ar := 0.25; @ag := 0.25; @ab := 0.3;
 		}
 
 		#~
-		@param x direction toward the light, x
-		@param y direction toward the light, y
-		@param z direction toward the light, z
+		A light infinitely far away: the sun.
+		@param direction toward the light
+		@return the light
 		~#
-		method : public : SetDirection(x : Float, y : Float, z : Float) ~ Nil {
-			@dx := x; @dy := y; @dz := z;
+		function : Directional(direction : Vector3) ~ Light {
+			light := Light->New();
+			light->SetKind(LightKind->DIRECTIONAL);
+			light->SetDirection(direction);
+
+			return light;
 		}
 
 		#~
-		@param direction toward the light; need not be unit length
+		A light at a position, fading to nothing at its range.
+
+		The falloff reaches ZERO at the range rather than trailing off forever the
+		way an inverse square does. A light that stops where it says it stops is
+		what lets a scene have several without every one of them contributing to
+		every surface.
+		@param position where it is
+		@param range how far its light reaches, in world units
+		@return the light
+		~#
+		function : Point(position : Vector3, range : Float) ~ Light {
+			light := Light->New();
+			light->SetKind(LightKind->POINT);
+			light->SetPosition(position);
+			light->SetRange(range);
+
+			return light;
+		}
+
+		#~
+		A light at a position, shining along an axis within a cone.
+		@param position where it is
+		@param aim the direction it shines -- the opposite sense to a directional
+		light's direction, because this is where you point it
+		@param range how far its light reaches
+		@param inner_degrees the half-angle of the fully lit centre
+		@param outer_degrees the half-angle where it reaches nothing; must be
+		larger than inner_degrees or the edge has no width to fade across
+		@return the light
+		~#
+		function : Spot(position : Vector3, aim : Vector3, range : Float, inner_degrees : Float, outer_degrees : Float) ~ Light {
+			light := Light->New();
+			light->SetKind(LightKind->SPOT);
+			light->SetPosition(position);
+			light->SetAxis(aim);
+			light->SetRange(range);
+			light->SetCone(inner_degrees, outer_degrees);
+
+			return light;
+		}
+
+		method : public : SetKind(kind : Int) ~ Nil { @kind := kind; }
+		method : public : GetKind() ~ Int { return @kind; }
+
+		#~
+		@param direction toward the light, for a directional light
 		~#
 		method : public : SetDirection(direction : Vector3) ~ Nil {
 			if(direction <> Nil) {
-				SetDirection(direction->GetX(), direction->GetY(), direction->GetZ());
+				@vector := direction;
+			};
+		}
+
+		#~
+		@param x toward the light, x
+		@param y toward the light, y
+		@param z toward the light, z
+		~#
+		method : public : SetDirection(x : Float, y : Float, z : Float) ~ Nil {
+			@vector := Vector3->New(x, y, z);
+		}
+
+		#~
+		@param position where a point or spot light is
+		~#
+		method : public : SetPosition(position : Vector3) ~ Nil {
+			if(position <> Nil) {
+				@vector := position;
+			};
+		}
+
+		#~
+		@param aim the direction a spot shines
+		~#
+		method : public : SetAxis(aim : Vector3) ~ Nil {
+			if(aim <> Nil) {
+				@axis := aim;
+			};
+		}
+
+		#~
+		@param range how far a point or spot light reaches
+		~#
+		method : public : SetRange(range : Float) ~ Nil {
+			if(range > 0.0) {
+				@range := range;
+			};
+		}
+
+		#~
+		A spot's cone, in degrees from its axis.
+
+		Stored as cosines, because the shader compares a dot product and converting
+		back would cost an acos per fragment per light.
+		@param inner_degrees half-angle of the fully lit centre
+		@param outer_degrees half-angle where it reaches nothing
+		~#
+		method : public : SetCone(inner_degrees : Float, outer_degrees : Float) ~ Nil {
+			to_radians := Float->Pi() / 180.0;
+			@inner := (inner_degrees * to_radians)->Cos();
+			@outer := (outer_degrees * to_radians)->Cos();
+
+			# A cone whose outer edge is inside its inner edge has no width to fade
+			# across, and the shader would divide by a clamped epsilon and produce a
+			# hard edge. Nudge them apart rather than leaving that to be discovered.
+			if(@outer >= @inner) {
+				@outer := @inner - 0.01;
 			};
 		}
 
@@ -4953,11 +5188,12 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		The light every surface gets regardless of which way it faces.
+		The light every surface gets regardless of which way it faces, used when
+		this light is applied on its own.
 
-		Without it, a face turned away from the light is pure black -- correct for
-		one light in a vacuum, and wrong-looking for anything else, because real
-		surfaces are lit by everything around them.
+		Without it, a face turned away is pure black -- correct for one light in a
+		vacuum and wrong-looking for anything else, since real surfaces are lit by
+		everything around them. In a LightRig the rig's ambient is used instead.
 		@param r red, 0..1
 		@param g green, 0..1
 		@param b blue, 0..1
@@ -4966,32 +5202,232 @@ bundle Game.OpenGL {
 			@ar := r; @ag := g; @ab := b;
 		}
 
-		method : public : GetDirection() ~ Vector3 { return Vector3->New(@dx, @dy, @dz); }
+		#~
+		Scale the colour, for a light that pulses or dims.
+		@param scale multiplied into the colour
+		~#
+		method : public : SetIntensity(scale : Float) ~ Nil {
+			@r := @r * scale; @g := @g * scale; @b := @b * scale;
+		}
+
+		method : public : GetDirection() ~ Vector3 { return @vector; }
+		method : public : GetPosition() ~ Vector3 { return @vector; }
+		method : public : GetAxis() ~ Vector3 { return @axis; }
+		method : public : GetRange() ~ Float { return @range; }
 
 		#~
-		Write this light into a shader's uniforms.
+		Write this light into a shader as its ONLY light, with a default ambient.
 
-		Once a frame, not once per object: a directional light does not change
-		between objects. Skips any uniform the shader does not declare, so this can
-		be handed an unlit shader without filing a diagnostic.
+		The single-light case, and what most scenes want. For more than one, or to
+		set the ambient yourself, use a LightRig.
 		@param shader the program to write into
+		~#
+		method : public : ApplyTo(shader : Shader) ~ Nil {
+			rig := LightRig->New();
+			rig->Add(@self);
+			rig->SetAmbient(@ar, @ag, @ab);
+			rig->ApplyTo(shader);
+		}
+
+		#~
+		Write this light into one slot of a shader's light arrays.
+
+		Used by LightRig; call that rather than this unless you are writing your own
+		rig.
+		@param shader the program
+		@param index which slot
+		~#
+		method : public : ApplyAt(shader : Shader, index : Int) ~ Nil {
+			if(shader = Nil | <>shader->IsOk()) {
+				return;
+			};
+
+			# Indexed uniform names. glGetUniformLocation accepts "light_color[2]"
+			# directly, so an array needs no new native call and the location cache
+			# handles each element like any other name.
+			slot := "[";
+			slot += index;
+			slot += "]";
+
+			shader->SetVec3("light_vector{$slot}", @vector);
+			shader->SetVec3("light_color{$slot}", @r, @g, @b);
+			shader->SetVec4("light_shape{$slot}", @kind->As(Float), @range, @inner, @outer);
+			shader->SetVec3("spot_axis{$slot}", @axis);
+		}
+	}
+
+	#~
+	Several lights at once, plus the ambient they all sit on top of.
+
+	One directional light is enough to see a scene; anything with a lamp, a fire,
+	a torch or a window needs more, and this is how a forward renderer carries
+	them -- as arrays with a count, written once per frame.
+
+	```
+	rig := LightRig->New();
+	rig->Add(Light->Directional(Vector3->New(-0.3, 1.0, 0.4)));
+	rig->Add(Light->Point(Vector3->New(2.0, 1.5, 0.0), 8.0));
+	rig->SetAmbient(0.18, 0.19, 0.24);
+
+	# once a frame, before drawing
+	rig->SetViewPosition(camera->GetPosition());
+	rig->ApplyTo(shader);
+	```
+
+	## The limit is fixed, and low on purpose
+
+	GLSL needs a compile-time array size, so the maximum is a constant rather than
+	whatever you add. Eight, because a forward renderer evaluates EVERY light for
+	EVERY fragment -- the cost is lights times pixels, and this is the point where
+	a deferred renderer would be the answer instead. Lights past the limit are
+	ignored rather than silently replacing others.
+
+	## The eye position
+
+	Specular highlights depend on where the viewer is, so SetViewPosition has to be
+	told each frame if the camera moves. Forget it and the highlights sit still
+	while the camera orbits, which looks like the material is wrong rather than
+	like a missing call.
+	~#
+	class LightRig {
+		@lights : Vector<Light>;
+		@ar : Float; @ag : Float; @ab : Float;
+		@eye : Vector3;
+		@shininess : Float;
+		@specular : Float;
+
+		New() {
+			@lights := Vector->New()<Light>;
+			@ar := 0.2; @ag := 0.2; @ab := 0.25;
+			@eye := Vector3->New(0.0, 0.0, 0.0);
+			@shininess := 32.0;
+			@specular := 0.0;
+		}
+
+		#~
+		How many lights a shader built by this bundle can take.
+		@return the maximum
+		~#
+		function : GetMaxLights() ~ Int {
+			return 8;
+		}
+
+		#~
+		Add a light. Beyond GetMaxLights it is ignored.
+		@param light the light
+		@return true when it was taken
+		~#
+		method : public : Add(light : Light) ~ Bool {
+			if(light = Nil | @lights->Size() >= GetMaxLights()) {
+				return false;
+			};
+
+			@lights->AddBack(light);
+
+			return true;
+		}
+
+		#~
+		@return how many lights are in the rig
+		~#
+		method : public : GetCount() ~ Int {
+			return @lights->Size();
+		}
+
+		#~
+		@param index which light
+		@return the light, or Nil when out of range
+		~#
+		method : public : Get(index : Int) ~ Light {
+			if(index < 0 | index >= @lights->Size()) {
+				return Nil;
+			};
+
+			return @lights->Get(index);
+		}
+
+		#~
+		Remove every light. Ambient and the material settings are kept.
+		~#
+		method : public : Clear() ~ Nil {
+			@lights->Empty();
+		}
+
+		#~
+		The light every surface gets regardless of which way it faces.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		~#
+		method : public : SetAmbient(r : Float, g : Float, b : Float) ~ Nil {
+			@ar := r; @ag := g; @ab := b;
+		}
+
+		#~
+		Where the viewer is, which specular highlights depend on. Set it each frame
+		if the camera moves.
+		@param position the eye position in world space
+		~#
+		method : public : SetViewPosition(position : Vector3) ~ Nil {
+			if(position <> Nil) {
+				@eye := position;
+			};
+		}
+
+		#~
+		How tight specular highlights are and how strong.
+
+		Strength defaults to ZERO, so nothing is shiny until asked -- a diffuse
+		surface is the right default and an unexpected highlight looks like a bug.
+		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
+		@param strength 0 for matte, around 0.5 for plastic, 1.0 for something wet
+		~#
+		method : public : SetSpecular(shininess : Float, strength : Float) ~ Nil {
+			@shininess := shininess;
+			@specular := strength;
+		}
+
+		#~
+		Write the whole rig into a shader.
+
+		Once a frame, not once per object: none of it varies between objects.
+		Uniforms the shader does not declare are skipped, so an unlit program can be
+		handed this without filing a diagnostic.
+		@param shader the program about to draw
 		~#
 		method : public : ApplyTo(shader : Shader) ~ Nil {
 			if(shader = Nil | <>shader->IsOk()) {
 				return;
 			};
 
-			if(shader->HasUniform("light_direction")) {
-				shader->SetVec3("light_direction", @dx, @dy, @dz);
-			};
-			if(shader->HasUniform("light_color")) {
-				shader->SetVec3("light_color", @r, @g, @b);
+			count := @lights->Size();
+			if(shader->HasUniform("light_count")) {
+				shader->SetInt("light_count", count);
 			};
 			if(shader->HasUniform("ambient")) {
 				shader->SetVec3("ambient", @ar, @ag, @ab);
 			};
+			if(shader->HasUniform("view_position")) {
+				shader->SetVec3("view_position", @eye);
+			};
+			if(shader->HasUniform("shininess")) {
+				shader->SetFloat("shininess", @shininess);
+			};
+			if(shader->HasUniform("specular_strength")) {
+				shader->SetFloat("specular_strength", @specular);
+			};
+
+			# Only the slots in use. Writing the unused ones would cost calls for
+			# values the shader's loop never reads.
+			for(i := 0; i < count; i += 1;) {
+				light := @lights->Get(i);
+				if(light <> Nil) {
+					light->ApplyAt(shader, i);
+				};
+			};
 		}
 	}
+
 
 	#~
 	Where something is, how it is turned, and how big it is -- with its matrix
