@@ -422,41 +422,48 @@
     <a href="https://www.libsdl.org/download-2.0.php">
      SDL2
     </a>
-    (&gt;=2.0.9). The Windows distribution contains 
-            the required DLLs. Support for other platforms is below.
+    (&gt;=2.0.9), and the 3D framework adds OpenGL 3.3 core on top of it. The Windows and macOS
+            distributions contain the required libraries; Linux installs them from its package
+            manager. Details per platform are below.
    </p>
    <h3>
     For Linux
    </h3>
    <p>
-    <pre class="cmd">
-sudo apt install libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc libsdl-image1.2 
-libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg libsdl-mixer1.2-dev 
-libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev 
-libsdl-ttf2.0-0 libsdl-ttf2.0-dev
-            </pre>
+    Run the installer that ships at the root of the distribution &mdash; it detects your package
+    manager (apt, dnf/yum, pacman, zypper, apk) and installs SDL2 and the OpenGL runtime:
+    <pre class="cmd">./install_deps.sh</pre>
+    Use
+    <pre class="cmd">./install_deps.sh --check</pre>
+    to see what is missing without installing anything, or
+    <pre class="cmd">./install_deps.sh --dev</pre>
+    if you are building the native libraries from source and need the headers too.
    </p>
    <h3>
     For macOS
    </h3>
-   <ol>
-    <li>
-     Apple Silicon (arm64)
-    </li>
-    <li>
-     Go to the
-     <pre class="cmd">/lib/native</pre>
-     directory and untar the
-     <pre class="cmd">sdl2_arm64.tgz</pre>
-     file
-    </li>
-    <li>
-     Copy the include and lib files to
-     <pre class="cmd">/usr/local/include</pre>
-     and
-     <pre class="cmd">/usr/local/lib</pre>
-    </li>
-   </ol>
+   <p>
+    Nothing to install. On Apple Silicon (arm64) the required SDL2 libraries ship inside the
+    distribution under
+    <pre class="cmd">lib/sdl</pre>
+    and are loaded from there, the same way the Windows build loads its DLLs. Earlier releases
+    asked you to untar
+    <pre class="cmd">sdl2_arm64.tgz</pre>
+    and copy SDL2 into
+    <pre class="cmd">/usr/local</pre>
+    &mdash; that is no longer necessary, and nothing is written outside the Objeck directory.
+   </p>
+   <p>
+    <b>If you downloaded the .tgz archive</b>, macOS marks everything it contains as quarantined
+    and refuses to run it. The failure is silent: the tools are killed with no error message.
+    Clear it once, on the directory you unpacked:
+    <pre class="cmd">xattr -dr com.apple.quarantine objeck-lang</pre>
+    Or run
+    <pre class="cmd">./install_deps.sh</pre>
+    from the distribution root, which detects this and offers to clear it for you. The
+    <pre class="cmd">.pkg</pre>
+    installer is not affected.
+   </p>
    <h3>
     Secure Web Server Support
    </h3>

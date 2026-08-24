@@ -60,6 +60,29 @@ fi
 OBC="$TREE/bin/obc"
 OBR="$TREE/bin/obr"
 
+# Both platforms have a way to fail here that the eventual error never explains.
+#
+#   Linux  libobjk_sdl.so is linked against the SYSTEM SDL2 and libGL, and the
+#          distribution ships neither, so a machine without them dies at dlopen
+#          with a message that never mentions SDL2.
+#   macOS  a tree unpacked from a downloaded .tgz carries com.apple.quarantine,
+#          and Gatekeeper then kills the toolchain outright -- exit 137, with
+#          nothing printed at all.
+#
+# This runs BEFORE the staleness check on purpose. That check asks obc for its
+# version, so on a quarantined tree obc is killed, the version comes back empty,
+# and the script blames a stale build -- sending you off to rebuild something
+# that was never the problem. Diagnose "cannot execute anything" first.
+DEPS="$REPO/tools/install_deps.sh"
+if [ -x "$DEPS" ]; then
+	if ! "$DEPS" --check --tree "$TREE" >/dev/null 2>&1; then
+		"$DEPS" --check --tree "$TREE"
+		echo ""
+		echo "Then re-run this script."
+		exit 1
+	fi
+fi
+
 # A stale tree is the most confusing failure here: obc and the .obl carry a
 # version stamp, and a mismatch surfaces as "This executable appears to be
 # invalid or compiled with an incompatible version of the tool chain" -- which
@@ -87,7 +110,11 @@ if [ ! -f "$TREE/lib/native/$NATIVE" ]; then
 	echo "  cd core/lib/sdl"
 	case "$(uname -s)" in
 		Darwin) echo "  xcodebuild -project macos/xcode/sdl.xcodeproj build" ;;
-		*)      echo "  ./build_linux.sh sdl && cp sdl.so \"$TREE/lib/native/$NATIVE\"" ;;
+		*)
+			echo "  ./build_linux.sh sdl && cp sdl.so \"$TREE/lib/native/$NATIVE\""
+			echo ""
+			echo "Building it needs the SDL2 and OpenGL headers:"
+			echo "  $REPO/tools/install_deps.sh --dev" ;;
 	esac
 	exit 1
 fi
@@ -100,10 +127,10 @@ for obl in sdl2.obl sdl_gl.obl gen_collect.obl; do
 	fi
 done
 
-# On macOS the SDL2 dylibs ship inside the tree and are found via an @rpath
-# baked into libobjk_sdl.dylib, so nothing needs setting. On Linux SDL2 comes
-# from the system. Either way, exporting the tree's lib dir helps the VM find
-# its own natives when run from elsewhere.
+# On macOS the SDL2 dylibs ship inside the tree, reached by the @rpath that
+# deploy_macos_arm64.sh bakes into libobjk_sdl.dylib, so nothing needs setting.
+# Either way, exporting the tree's lib dir helps the VM find its own natives
+# when run from elsewhere.
 export OBJECK_LIB_PATH="$TREE/lib"
 if [ -d "$TREE/lib/native" ]; then
 	export LD_LIBRARY_PATH="$TREE/lib/native:${LD_LIBRARY_PATH}"

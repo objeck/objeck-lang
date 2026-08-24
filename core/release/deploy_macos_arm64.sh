@@ -135,6 +135,14 @@ for dylib in "$SDL_DEPLOY"/libSDL2*.dylib; do
 	resign "$dylib"
 done
 
+# The Xcode target still produces "libxcode.dylib", so the copy we ship carries
+# an install name of /usr/local/lib/libxcode.dylib -- a path that does not exist
+# and never will. Nothing resolves through it today (the VM dlopens this library
+# by absolute path, which ignores LC_ID_DYLIB), but it makes otool output read
+# as though the tree still depends on /usr/local/lib. Correct it so the only
+# absolute paths left in the distribution are real system ones.
+install_name_tool -id "@rpath/libobjk_sdl.dylib" "$OBJK_SDL" 2>/dev/null
+
 # libobjk_sdl.dylib lives in lib/native, so lib/sdl is one directory across
 for dep in $(otool -L "$OBJK_SDL" | awk '/\/usr\/local\/lib\/libSDL2/ {print $1}'); do
 	install_name_tool -change "$dep" "@rpath/$(basename "$dep")" "$OBJK_SDL" 2>/dev/null
@@ -211,6 +219,13 @@ cp -R docs/syntax core/release/deploy/doc/syntax
 cp docs/readme.html core/release/deploy
 cp docs/style/readme.css core/release/deploy/doc
 cp LICENSE core/release/deploy
+
+# Ship the dependency installer INSIDE the distribution. Linux links
+# libobjk_sdl.so against the system SDL2 and libGL and ships neither, so the
+# person who needs this script is precisely the person who downloaded a tarball
+# and never cloned the repo.
+cp tools/install_deps.sh core/release/deploy
+chmod +x core/release/deploy/install_deps.sh
 unzip docs/api.zip -d core/release/deploy/doc
 
 # copy examples
