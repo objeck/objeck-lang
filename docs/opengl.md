@@ -17,7 +17,7 @@ against the system SDL2 and OpenGL runtime.
 | Platform | What you need to do |
 |---|---|
 | **macOS** | Nothing. Take the `.pkg` or `.zip` (both notarized). SDL2 ships in `lib/sdl`; OpenGL is a system framework. |
-| **Windows** | Nothing. The SDL2 DLLs ship in `lib/sdl`. |
+| **Windows** | Nothing. The SDL2 DLLs ship in `bin`, beside `obr.exe`. |
 | **Linux** | One command: `./install_deps.sh`, shipped at the root of the distribution |
 
 ### Linux, in one command

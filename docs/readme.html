@@ -427,6 +427,16 @@
             manager. Details per platform are below.
    </p>
    <h3>
+    For Windows
+   </h3>
+   <p>
+    Nothing to install. SDL2 and the OpenGL loader ship with the distribution, and the DLLs
+    sit in
+    <pre class="cmd">bin</pre>
+    beside the tools that load them. That is the first place Windows looks when it resolves
+    a library's dependencies, so there is no PATH or environment setup to do.
+   </p>
+   <h3>
     For Linux
    </h3>
    <p>
@@ -446,7 +456,8 @@
     Nothing to install. On Apple Silicon (arm64) the required SDL2 libraries ship inside the
     distribution under
     <pre class="cmd">lib/sdl</pre>
-    and are loaded from there, the same way the Windows build loads its DLLs. Earlier releases
+    and are loaded from there through an @rpath baked into the native library. The Windows
+    distribution ships SDL2 inside the tree too, in bin. Earlier releases
     asked you to untar
     <pre class="cmd">sdl2_arm64.tgz</pre>
     and copy SDL2 into

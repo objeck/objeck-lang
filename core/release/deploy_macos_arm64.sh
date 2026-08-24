@@ -94,8 +94,8 @@ xcodebuild -project macos/xcode/sdl.xcodeproj build $SIGN_FLAGS
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
-# Ship SDL2 INSIDE the distribution, the way Windows ships its DLLs in lib/sdl,
-# instead of handing the user a tarball to install by hand.
+# Ship SDL2 INSIDE the distribution, the way Windows ships its DLLs beside the
+# binaries, instead of handing the user a tarball to install by hand.
 #
 # Why this dance is needed: the vendored dylibs were built with an absolute
 # install name (LC_ID_DYLIB = /usr/local/lib/libSDL2-2.0.0.dylib), so anything
