@@ -1446,6 +1446,36 @@ class GlContextTest {
 		Check("and the right one at its own", right <> black);
 		Check("with nothing between them", gap = black);
 
+		# --- the instanced shader's world position has to be real ---
+		# A POINT light is the test, not a directional one: its brightness depends on
+		# the DISTANCE from the light to the fragment, which needs the fragment's
+		# world position. If that varying is never written -- which is exactly what
+		# happened, because the instanced vertex shader and the ordinary one declared
+		# their outputs separately and drifted -- then Windows and Linux link it
+		# anyway and leave the value undefined, so all three instances compute the
+		# same distance and come back equally lit. Only macOS's linker refused it.
+		#
+		# So: a point light close to the middle instance. The middle must be brighter
+		# than the outer two, and it can only be if world_position is real.
+		near_light := LightRig->New();
+		near_light->SetAmbient(0.0, 0.0, 0.0);
+		near_light->SetViewPosition(camera->GetPosition());
+		near_light->Add(Light->Point(Vector3->New(0.0, 0.0, 3.0), 6.0));
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		near_light->ApplyTo(shader);
+		shader->SetMatrix4("view_projection", view_projection);
+		shader->SetInt("tex", 0);
+		white->Bind(0);
+		cube->DrawInstanced(count);
+
+		centre_lit := (GL->ReadPixel(@pixel_w / 2, mid_y) and 0x0000FF00) / 0x100;
+		outer_lit := (GL->ReadPixel((@pixel_w * 23) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  instanced point light: middle={$centre_lit} outer={$outer_lit}"->PrintLine();
+		Check("the instanced shader lights the nearest instance", centre_lit > 30);
+		Check("and its world position is real, not undefined", centre_lit > outer_lit + 10);
+
 		# An ordinary Draw on the same mesh must still work -- an instance buffer
 		# attached to a VAO stays attached, and its attributes are still enabled.
 		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);

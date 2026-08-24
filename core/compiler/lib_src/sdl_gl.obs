@@ -1531,13 +1531,13 @@ bundle Game.OpenGL {
 			# four consecutive vec4 slots, which is how a mat4 attribute is declared
 			vertex->Add("layout (location = 3) in mat4 in_model;");
 			vertex->Add("uniform mat4 view_projection;");
-			vertex->Add("out vec3 normal;");
-			vertex->Add("out vec2 texcoord;");
-			vertex->Add("out float depth;");
+			AddLitVaryings(vertex, false);
 			vertex->Add("void main() {");
+			vertex->Add("  vec4 world = in_model * vec4(in_position, 1.0);");
+			vertex->Add("  world_position = world.xyz;");
 			vertex->Add("  normal = normalize(mat3(transpose(inverse(in_model))) * in_normal);");
 			vertex->Add("  texcoord = in_texcoord;");
-			vertex->Add("  vec4 clip = view_projection * in_model * vec4(in_position, 1.0);");
+			vertex->Add("  vec4 clip = view_projection * world;");
 			vertex->Add("  depth = clip.z;");
 			vertex->Add("  gl_Position = clip;");
 			vertex->Add("}");
@@ -1568,6 +1568,32 @@ bundle Game.OpenGL {
 			return Shader->New(vertex->Build(), fragment->Build());
 		}
 
+		#~
+		The outputs every lit vertex shader must write, declared in ONE place.
+
+		Both lit vertex sources -- the ordinary one and the instanced one -- feed the
+		same fragment shader, so they have to agree about this list exactly. They
+		did not: world_position was added here for point lights and specular and the
+		instanced source was not updated, which macOS's linker rejected outright
+		while Windows and Linux linked it happily and left the value undefined. So
+		point lights and specular on instanced geometry were reading garbage on two
+		platforms out of three and only the strictest one said so.
+
+		Declared once, and asserted by a test that reads a point light through the
+		instanced shader rather than only checking that it compiles.
+		@param source the shader being built
+		@param shadowed whether the shadow varying is needed too
+		~#
+		function : AddLitVaryings(source : ShaderSource, shadowed : Bool) ~ Nil {
+			source->Add("out vec3 normal;");
+			source->Add("out vec2 texcoord;");
+			source->Add("out float depth;");
+			source->Add("out vec3 world_position;");
+			if(shadowed) {
+				source->Add("out vec4 light_position;");
+			};
+		}
+
 		function : LitVertexSource() ~ String {
 			return LitVertexSource(false);
 		}
@@ -1579,20 +1605,12 @@ bundle Game.OpenGL {
 			source->Add("layout (location = 2) in vec2 in_texcoord;");
 			source->Add("uniform mat4 mvp;");
 			source->Add("uniform mat4 model;");
-			source->Add("out vec3 normal;");
-			source->Add("out vec2 texcoord;");
-			source->Add("out float depth;");
-			# The WORLD position, which a point light needs (to find the direction and
-			# distance to it) and specular needs (to find the direction to the eye).
-			# A purely directional, diffuse-only shader did not need it; everything
-			# past that does.
-			source->Add("out vec3 world_position;");
 			if(shadowed) {
 				# The shadow lookup needs the fragment in LIGHT space, reached via
-				# world space -- so this has to cross from the vertex stage too.
+				# world space -- so the world position has to cross from here too.
 				source->Add("uniform mat4 light_space;");
-				source->Add("out vec4 light_position;");
 			};
+			AddLitVaryings(source, shadowed);
 			source->Add("void main() {");
 			source->Add("  vec4 world = model * vec4(in_position, 1.0);");
 			source->Add("  world_position = world.xyz;");
