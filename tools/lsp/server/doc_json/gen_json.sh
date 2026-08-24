@@ -48,6 +48,7 @@ rm -f *.obe
 	$LIB_SRC/query.obs \
 	$LIB_SRC/sdl2.obs \
 	$LIB_SRC/sdl_game.obs \
+	$LIB_SRC/sdl_gl.obs \
 	$LIB_SRC/gen_collect.obs \
 	$LIB_SRC/concurrent.obs \
 	$LIB_SRC/net_common.obs \

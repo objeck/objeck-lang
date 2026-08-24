@@ -990,7 +990,9 @@ jobs:
           ../../../compiler/lib_src/query.obs \
           ../../../compiler/lib_src/sdl2.obs \
           ../../../compiler/lib_src/sdl_game.obs \
+          ../../../compiler/lib_src/sdl_gl.obs \
           ../../../compiler/lib_src/gen_collect.obs \
+          ../../../compiler/lib_src/concurrent.obs \
           ../../../compiler/lib_src/net_common.obs \
           ../../../compiler/lib_src/net.obs \
           ../../../compiler/lib_src/net_secure.obs \
@@ -1019,7 +1021,6 @@ jobs:
           ../../../compiler/lib_src/onnx.obs \
           ../../../compiler/lib_src/nlp.obs \
           ../../../compiler/lib_src/lame.obs \
-          ../../../compiler/lib_src/math.obs \
           ../../../compiler/lib_src/web_server.obs
 
     - name: Package API documentation
@@ -1070,6 +1071,14 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+
+      # First, because it needs nothing built and fails in seconds. Five files
+      # hard-code the list of core/compiler/lib_src/*.obs and nothing keeps them
+      # in step; they had already drifted unnoticed -- one list was missing two
+      # libraries and still named a third that had been deleted, so the counts
+      # matched while the API docs and the editor index were both incomplete.
+      - name: Library lists agree with lib_src
+        run: python3 tools/cicd/check_doc_lists.py
 
       - name: Install build deps
         run: |
