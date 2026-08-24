@@ -84,7 +84,9 @@ class GlContextTest {
 		CheckLighting();
 		CheckLightRig();
 		CheckFrustumCulling();
+		CheckMaterials();
 		CheckShadows();
+		CheckSpotShadows();
 		CheckOverlay();
 		CheckInstancing();
 		CheckObjLoading();
@@ -1467,6 +1469,222 @@ class GlContextTest {
 		white->Free();
 		cube->Free();
 		shader->Free();
+	}
+
+	#~
+	A material tints a surface, and two boxes sharing a texture can differ.
+
+	The claim worth testing is that a material is PER OBJECT. A single-box fixture
+	would pass on a Scene that applied one material to everything, so this uses two
+	boxes with the same texture and different tints and requires them to come back
+	different colours.
+
+	Also checks the guard: an unset tint must read as untinted rather than as black.
+	GL leaves an unset uniform at zero, and without the guard in the shader a
+	forgotten tint turns the whole surface black -- which is the failure a caller
+	would report as "my model is invisible".
+	~#
+	method : CheckMaterials() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a shader, cube and texture for materials", shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		light := Light->Directional(Vector3->New(0.0, 0.0, 1.0));
+		light->SetColor(1.0, 1.0, 1.0);
+		light->SetAmbient(0.0, 0.0, 0.0);
+
+		# Two boxes side by side, SAME texture, different tints.
+		red := Material->New(white);
+		red->SetTint(1.0, 0.0, 0.0);
+		blue := Material->New(white);
+		blue->SetTint(0.0, 0.0, 1.0);
+
+		scene := Scene->New(cube, shader);
+		left_box := scene->AddBox(Vector3->New(-2.0, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), white);
+		right_box := scene->AddBox(Vector3->New(2.0, 0.0, 0.0), Vector3->New(1.0, 1.0, 1.0), white);
+		left_box->SetMaterial(red);
+		right_box->SetMaterial(blue);
+		scene->SetLight(light);
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 9.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), camera->GetViewMatrix());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(view_projection);
+
+		mid_y := @pixel_h / 2;
+		left := GL->ReadPixel((@pixel_w * 30) / 100, mid_y);
+		right := GL->ReadPixel((@pixel_w * 70) / 100, mid_y);
+		left_r := (left and 0x00FF0000) / 0x10000;
+		left_b := left and 0x000000FF;
+		right_r := (right and 0x00FF0000) / 0x10000;
+		right_b := right and 0x000000FF;
+		"  materials: left r={$left_r} b={$left_b}, right r={$right_r} b={$right_b}"->PrintLine();
+
+		Check("a tinted box takes its tint", left_r > 150 & left_b < 60);
+		# The assertion the two-box fixture exists for: one material applied to
+		# everything would make these identical.
+		Check("and a second box takes its own", right_b > 150 & right_r < 60);
+
+		# --- specular belongs to the material, not the lights ---
+		shiny := Material->New(white);
+		shiny->SetSpecular(48.0, 1.0);
+		matte := Material->New(white);
+		matte->SetSpecular(48.0, 0.0);
+
+		rig := LightRig->New();
+		rig->SetAmbient(0.0, 0.0, 0.0);
+		rig->SetViewPosition(camera->GetPosition());
+		dim := Light->Directional(Vector3->New(0.0, 0.0, 1.0));
+		dim->SetColor(0.3, 0.3, 0.3);
+		rig->Add(dim);
+		scene->SetLightRig(rig);
+
+		left_box->SetMaterial(matte);
+		right_box->SetMaterial(shiny);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(view_projection);
+		matte_read := (GL->ReadPixel((@pixel_w * 30) / 100, mid_y) and 0x0000FF00) / 0x100;
+		shiny_read := (GL->ReadPixel((@pixel_w * 70) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  specular per material: matte={$matte_read} shiny={$shiny_read}"->PrintLine();
+		Check("shininess is a property of the material, not the lights", shiny_read > matte_read + 10);
+
+		# --- the tint guard ---
+		# A material that never sets a tint leaves it at the default white, but a
+		# shader driven by hand with nothing set at all must not go black.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		bare := Shader->LitTextured();
+		if(Check("a bare shader compiles", bare->IsOk())) {
+			bare->Use();
+			light->ApplyTo(bare);
+			bare->SetInt("tex", 0);
+			white->Bind(0);
+			bare->SetMatrix4("mvp", Matrix4->Multiply(view_projection, Matrix4->Identity()));
+			bare->SetMatrix4("model", Matrix4->Identity());
+			cube->Draw();
+			untinted := GL->ReadPixel(@pixel_w / 2, mid_y);
+			"  with no tint ever set: 0x{$untinted}"->PrintLine();
+			Check("an unset tint reads as untinted, not as black", untinted <> 0xFF000000);
+		};
+		bare->Free();
+
+		Check("no GL errors from materials", GL->DrainErrors()->Size() = 0);
+
+		scene->Clear();
+		white->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	A spot light's shadow uses a perspective projection, not the parallel one a
+	directional light gets.
+
+	Cast a spot's shadow through an orthographic box and the shadow comes out with
+	parallel edges from a light that plainly does not have them -- it reads as the
+	shadow belonging to something else in the scene. So this asserts the two modes
+	produce DIFFERENT light-space matrices, and that the spot one still puts a
+	shadow under the caster.
+	~#
+	method : CheckSpotShadows() ~ Nil {
+		shadows := ShadowMap->New(512);
+		if(<>Check("a shadow map for the spot", shadows->IsOk())) {
+			return;
+		};
+
+		Check("it starts out directional", <>shadows->IsSpot());
+
+		# The same geometry, once under a directional light and once under a spot.
+		sun := Light->Directional(Vector3->New(0.0, 1.0, 0.0));
+		shadows->SetLight(sun);
+		shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 10.0);
+		directional_matrix := Matrix4->Multiply(Matrix4->Identity(), shadows->GetLightSpaceMatrix());
+
+		# Sized so the LIT BAND is wide. A cone of 24 degrees from 6 units up lights
+		# a radius of 2.67, while a unit cube at y=2 casts an umbra out to x=2.0 --
+		# leaving a 0.67-wide ring of lit floor, which the first version of this
+		# check sampled straight past. Small caster, high wide light: umbra to 0.89,
+		# lit to 8.0.
+		torch := Light->Spot(Vector3->New(0.0, 8.0, 0.0), Vector3->New(0.0, -1.0, 0.0), 24.0, 35.0, 45.0);
+		shadows->SetLight(torch);
+		Check("a spot light switches it to perspective", shadows->IsSpot());
+		spot_matrix := shadows->GetLightSpaceMatrix();
+
+		# The LAST ROW, not a single element. An orthographic projection times a
+		# view leaves the last row exactly (0, 0, 0, 1) -- no perspective divide;
+		# a perspective one does not. Checking m[11] alone is what I tried first and
+		# it is orientation-dependent: for a spot pointing straight DOWN the
+		# perspective term lands in m[7] and m[11] is zero in both cases, so the
+		# assertion passed on the directional matrix and failed on the spot's.
+		ortho_row := directional_matrix[3] + directional_matrix[7] + directional_matrix[11];
+		spot_row := spot_matrix[3] + spot_matrix[7] + spot_matrix[11];
+		ortho_w := directional_matrix[15];
+		spot_w := spot_matrix[15];
+		"  last row: directional sum={$ortho_row} w={$ortho_w}; spot sum={$spot_row} w={$spot_w}"->PrintLine();
+		Check("the directional matrix has no perspective divide", Near(ortho_row, 0.0, 0.0001) & Near(ortho_w, 1.0, 0.0001));
+		Check("and the spot matrix does", <>Near(spot_row, 0.0, 0.0001) | <>Near(spot_w, 1.0, 0.0001));
+
+		# And it still casts. Floor plus a caster above it, lit by the spot.
+		shadowed := Shader->LitTexturedShadowed();
+		floor_mesh := Mesh->Plane(8.0, 1.0);
+		caster := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("geometry for the spot shadow", shadowed->IsOk() & floor_mesh->IsOk() & caster->IsOk())) {
+			shadows->Free();
+			return;
+		};
+
+		floor_at := Transform->New();
+		caster_at := Transform->New();
+		caster_at->SetPosition(0.0, 3.0, 0.0);
+		caster_at->SetScale(0.5);
+
+		shadows->Begin();
+		shadows->DrawCaster(caster, caster_at);
+		shadows->DrawCaster(floor_mesh, floor_at);
+		shadows->End(@gl);
+
+		eye := Camera->New(Vector3->New(0.0, 12.0, 0.1));
+		eye->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+		view_projection := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()), eye->GetViewMatrix());
+
+		rig := LightRig->New();
+		rig->SetAmbient(0.1, 0.1, 0.1);
+		rig->SetViewPosition(eye->GetPosition());
+		rig->Add(torch);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shadowed->Use();
+		rig->ApplyTo(shadowed);
+		shadows->ApplyTo(shadowed);
+		shadowed->SetInt("tex", 0);
+		white->Bind(0);
+		shadowed->SetMatrix4("mvp", Matrix4->Multiply(view_projection, floor_at->GetMatrix()));
+		shadowed->SetMatrix4("model", floor_at->GetMatrix());
+		floor_mesh->Draw();
+
+		mid_y := @pixel_h / 2;
+		under := (GL->ReadPixel(@pixel_w / 2, mid_y) and 0x0000FF00) / 0x100;
+		# World x = 3, which at this camera is 72% across: comfortably outside the
+		# umbra (0.89) and well inside the cone (8.0).
+		beside := (GL->ReadPixel((@pixel_w * 72) / 100, mid_y) and 0x0000FF00) / 0x100;
+		"  spot shadow: under the caster={$under} beside it={$beside}"->PrintLine();
+
+		Check("the spot lights the floor beside the caster", beside > 60);
+		Check("and the caster's shadow falls under it", under < beside - 30);
+
+		Check("no GL errors from the spot shadow", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		caster->Free();
+		floor_mesh->Free();
+		shadowed->Free();
+		shadows->Free();
 	}
 
 	#~

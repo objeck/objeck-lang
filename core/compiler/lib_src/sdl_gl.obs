@@ -27,6 +27,7 @@ Layers, from thinnest to friendliest -- all public, so nothing is capped:
 * Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
 * Light       -- one directional light plus ambient, written into a shader.
 * RenderTarget -- draw into a texture instead of the window, then sample it.
+* Material    -- a surface: its texture, tint and shininess.
 * Frustum     -- the six planes of a view, for skipping what is off screen.
 * ShadowMap   -- shadows from one directional light, depth pass and all.
 * Overlay     -- text and rectangles over the scene, positioned in pixels.
@@ -1630,6 +1631,13 @@ bundle Game.OpenGL {
 			else {
 				source->Add("uniform vec3 color;");
 			};
+			# A per-object multiplier, so one texture can dress many objects in
+			# different colours. Guarded against zero: GL leaves an unset uniform at
+			# zero, and an unguarded tint would multiply every surface to black the
+			# moment a caller forgot to set it. A tint of exactly black is treated as
+			# "untinted" because an object tinted to pure black is indistinguishable
+			# from an invisible one, so nothing useful is given up.
+			source->Add("uniform vec3 tint;");
 
 			# Lights as ARRAYS with a count, which is how forward rendering carries
 			# more than one. The maximum is a compile-time constant because GLSL
@@ -1747,11 +1755,12 @@ bundle Game.OpenGL {
 			source->Add("  if(fog_distance > 0.0) {");
 			source->Add("    lit = lit * clamp(1.0 - depth / fog_distance, 0.15, 1.0);");
 			source->Add("  }");
+			source->Add("  vec3 shade = (tint == vec3(0.0)) ? vec3(1.0) : tint;");
 			if(textured) {
-				source->Add("  frag_color = texture(tex, texcoord) * vec4(lit, 1.0);");
+				source->Add("  frag_color = texture(tex, texcoord) * vec4(lit * shade, 1.0);");
 			}
 			else {
-				source->Add("  frag_color = vec4(color * lit, 1.0);");
+				source->Add("  frag_color = vec4(color * lit * shade, 1.0);");
 			};
 			source->Add("}");
 
@@ -4652,6 +4661,132 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	How a surface looks: its texture, a colour multiplier, and how shiny it is.
+
+	Shininess and specular strength live HERE rather than on the lights, which is
+	where I first put them and was wrong: they describe the SURFACE. A polished
+	ball and a matte floor lit by the same lamp need different values, and a
+	property that cannot differ between objects in one scene is not a property of
+	the object.
+
+	```
+	metal := Material->New(texture);
+	metal->SetSpecular(96.0, 0.9);
+
+	stone := Material->New(texture);
+	stone->SetTint(0.7, 0.68, 0.62);   # same texture, different colour
+
+	box->SetMaterial(metal);
+	```
+
+	## The tint
+
+	Multiplied into the final colour, so one texture can dress many objects. A tint
+	of exactly black counts as "untinted" rather than as black -- see the note in
+	the shader: GL leaves an unset uniform at zero, and without that rule a
+	forgotten tint turns everything black, while an object tinted to pure black is
+	indistinguishable from one that is not drawn.
+
+	## Not owned
+
+	A Material does not own its texture. Several materials sharing one texture is
+	the normal case, so freeing the material does not free the texture -- the same
+	rule Scene follows for the mesh and shader it is handed.
+	~#
+	class Material {
+		@texture : Texture2D;
+		@tr : Float; @tg : Float; @tb : Float;
+		@shininess : Float;
+		@specular : Float;
+
+		#~
+		An untinted, matte material.
+		@param texture the texture to draw with; may be Nil
+		~#
+		New(texture : Texture2D) {
+			@texture := texture;
+			@tr := 1.0; @tg := 1.0; @tb := 1.0;
+			@shininess := 32.0;
+			@specular := 0.0;
+		}
+
+		#~
+		A material with a tint and no texture, for flat-coloured objects drawn
+		through a textured shader.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		@return the material
+		~#
+		function : Colored(r : Float, g : Float, b : Float) ~ Material {
+			material := Material->New(Nil);
+			material->SetTint(r, g, b);
+
+			return material;
+		}
+
+		method : public : GetTexture() ~ Texture2D { return @texture; }
+
+		#~
+		@param texture the texture, or Nil for none
+		~#
+		method : public : SetTexture(texture : Texture2D) ~ Nil {
+			@texture := texture;
+		}
+
+		#~
+		A colour multiplied into the surface.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		~#
+		method : public : SetTint(r : Float, g : Float, b : Float) ~ Nil {
+			@tr := r; @tg := g; @tb := b;
+		}
+
+		#~
+		How tight the highlight is and how strong.
+
+		Strength defaults to zero, so a material is matte until asked -- a diffuse
+		surface is the right default and an unexpected highlight reads as a bug.
+		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
+		@param strength 0 matte, around 0.5 plastic, 1.0 something wet
+		~#
+		method : public : SetSpecular(shininess : Float, strength : Float) ~ Nil {
+			@shininess := shininess;
+			@specular := strength;
+		}
+
+		#~
+		Write this material into a shader and bind its texture.
+
+		Per object, unlike a LightRig -- which is why Scene only does it when the
+		material actually changes between boxes.
+		@param shader the program about to draw
+		@param unit the texture unit to bind to, normally 0
+		~#
+		method : public : ApplyTo(shader : Shader, unit : Int) ~ Nil {
+			if(shader = Nil | <>shader->IsOk()) {
+				return;
+			};
+
+			if(shader->HasUniform("tint")) {
+				shader->SetVec3("tint", @tr, @tg, @tb);
+			};
+			if(shader->HasUniform("shininess")) {
+				shader->SetFloat("shininess", @shininess);
+			};
+			if(shader->HasUniform("specular_strength")) {
+				shader->SetFloat("specular_strength", @specular);
+			};
+
+			if(@texture <> Nil & @texture->IsOk()) {
+				@texture->Bind(unit);
+			};
+		}
+	}
+
+	#~
 	The six planes bounding what a camera can see, for skipping what it cannot.
 
 	A Scene submits every box it holds, every frame, whether or not the box is on
@@ -4887,11 +5022,16 @@ bundle Game.OpenGL {
 		@near : Float;
 		@far : Float;
 		@bias : Float;
+		@bias_chosen : Bool;
 		@unit : Int;
 		@error : String;
 
 		@center : Vector3;
 		@direction : Vector3;
+		# A spot casts from a POSITION through a CONE, so its shadow needs a
+		# perspective projection rather than the parallel one a directional light
+		# gets. Nil means directional.
+		@spot : Light;
 
 		# light-space matrix and its scratch, rebuilt only when something moves
 		@light_space : Float[];
@@ -4911,12 +5051,14 @@ bundle Game.OpenGL {
 			@near := 1.0;
 			@far := 60.0;
 			@bias := 0.0025;
+			@bias_chosen := false;
 			# Unit 1, because unit 0 is where every shader in this bundle expects its
 			# ordinary texture. A shadow map on unit 0 would silently replace it.
 			@unit := 1;
 			@error := "";
 			@center := Vector3->New(0.0, 0.0, 0.0);
 			@direction := Vector3->New(-0.3, 1.0, 0.4);
+			@spot := Nil;
 
 			@light_space := Float->New[16];
 			@projection := Float->New[16];
@@ -4960,9 +5102,55 @@ bundle Game.OpenGL {
 		@param light the light casting them
 		~#
 		method : public : SetLight(light : Light) ~ Nil {
-			if(light <> Nil) {
+			if(light = Nil) {
+				return;
+			};
+
+			if(light->GetKind() = LightKind->SPOT) {
+				# A spot's shadow is a different projection, not a different direction.
+				# Casting one through the orthographic box a directional light uses
+				# gives shadows with parallel edges from a light that plainly does not
+				# have them -- which reads as the shadows belonging to something else
+				# in the scene.
+				@spot := light;
+				@dirty := true;
+				# A PERSPECTIVE depth map needs a larger bias than a parallel one, and
+				# this is not a tuning preference. Orthographic depth is linear in
+				# world distance, so a constant margin means the same thing
+				# everywhere; perspective depth is not, so the same constant is far
+				# too small over most of the range. Left at the directional default,
+				# a spot puts its entire lit area in shadow -- every surface reads as
+				# behind itself -- which is what happened the first time this ran.
+				#
+				# Only when the caller has not chosen one: a deliberate SetBias wins.
+				if(<>@bias_chosen) {
+					@bias := 0.0018;
+				};
+			}
+			else {
+				@spot := Nil;
 				SetDirection(light->GetDirection());
 			};
+		}
+
+		#~
+		Cast from a spot light, using a perspective projection matched to its cone.
+
+		The map covers exactly what the spot lights, so its resolution goes where
+		the light goes -- which is why a spot shadow can look sharp at a size where
+		a directional one covering the same scene would be blocky. Cover is ignored
+		in this mode: the spot's own range and cone say what it reaches.
+		@param light a spot light; anything else is treated as directional
+		~#
+		method : public : SetSpotLight(light : Light) ~ Nil {
+			SetLight(light);
+		}
+
+		#~
+		@return true when casting from a spot rather than a directional light
+		~#
+		method : public : IsSpot() ~ Bool {
+			return @spot <> Nil;
 		}
 
 		#~
@@ -4997,6 +5185,7 @@ bundle Game.OpenGL {
 		~#
 		method : public : SetBias(bias : Float) ~ Nil {
 			@bias := bias;
+			@bias_chosen := true;
 		}
 
 		#~
@@ -5023,6 +5212,11 @@ bundle Game.OpenGL {
 		}
 
 		method : Rebuild() ~ Nil {
+			if(@spot <> Nil) {
+				RebuildSpot();
+				return;
+			};
+
 			Matrix4->OrthographicInto(@projection, @extent * -1.0, @extent, @extent * -1.0, @extent, @near, @far);
 
 			# The light has no position, so put an eye along its direction, far
@@ -5042,6 +5236,80 @@ bundle Game.OpenGL {
 
 			Matrix4->LookAtInto(@view, eye, @center, up);
 			Matrix4->MultiplyInto(@light_space, @projection, @view);
+		}
+
+		#~
+		The light-space matrix for a spot: a perspective projection from where the
+		spot is, along where it points, as wide as its outer cone.
+		~#
+		method : RebuildSpot() ~ Nil {
+			eye := @spot->GetPosition();
+			axis := @spot->GetAxis()->Normalized();
+
+			# Twice the outer half-angle, and a little wider, so the cone's edge is
+			# inside the map rather than exactly on its border where the clamped edge
+			# texel would decide it.
+			half_angle := GetSpotOuterRadians();
+			fov := half_angle * 2.2;
+			# A spot opened past about 170 degrees has no usable perspective
+			# projection -- the far plane goes to infinity. Clamp rather than emit a
+			# matrix full of infinities.
+			limit := Float->Pi() * 0.94;
+			if(fov > limit) {
+				fov := limit;
+			};
+			if(fov < 0.05) {
+				fov := 0.05;
+			};
+
+			far := @spot->GetRange();
+			# The near plane matters more here than anywhere else in this file. A
+			# perspective depth buffer spends most of its precision between near and
+			# a few multiples of near, so 0.1 against a far of 20 -- a 200:1 ratio --
+			# leaves almost no resolution across the region that actually matters.
+			# A twentieth of the range keeps the ratio at 20:1, and a light with
+			# geometry closer to it than that is a light inside a wall.
+			near := far * 0.05;
+			if(near < 0.25) {
+				near := 0.25;
+			};
+			if(far <= near) {
+				far := near + 1.0;
+			};
+
+			Matrix4->PerspectiveInto(@projection, fov, 1.0, near, far);
+
+			# The point it looks at is one unit along its axis. Any distance would do;
+			# LookAt only needs a direction.
+			target := Vector3->New(eye->GetX() + axis->GetX(), eye->GetY() + axis->GetY(), eye->GetZ() + axis->GetZ());
+
+			# A spot pointing straight down leaves world-up parallel to its axis and
+			# there is no basis in that -- the same case a directional light has.
+			up := Vector3->New(0.0, 1.0, 0.0);
+			if(axis->GetY()->Abs() > 0.999) {
+				up := Vector3->New(0.0, 0.0, 1.0);
+			};
+
+			Matrix4->LookAtInto(@view, eye, target, up);
+			Matrix4->MultiplyInto(@light_space, @projection, @view);
+		}
+
+		#~
+		The spot's outer half-angle in radians, recovered from the cosine it is
+		stored as.
+		~#
+		method : GetSpotOuterRadians() ~ Float {
+			# Light keeps cosines so the shader compares dot products; this is the one
+			# place that needs the angle back.
+			cosine := @spot->GetOuterCosine();
+			if(cosine >= 1.0) {
+				return 0.05;
+			};
+			if(cosine <= -1.0) {
+				return Float->Pi() * 0.49;
+			};
+
+			return Float->ArcCos(cosine);
 		}
 
 		#~
@@ -5117,6 +5385,18 @@ bundle Game.OpenGL {
 			if(@target <> Nil) {
 				@target->Unbind(window);
 			};
+		}
+
+		#~
+		The depth map as a texture, for inspecting what is in it.
+		@return the depth texture, or Nil when the map is not usable
+		~#
+		method : public : GetTexture() ~ Texture2D {
+			if(@target = Nil) {
+				return Nil;
+			};
+
+			return @target->GetTexture();
 		}
 
 		#~
@@ -5396,6 +5676,19 @@ bundle Game.OpenGL {
 		method : public : GetPosition() ~ Vector3 { return @vector; }
 		method : public : GetAxis() ~ Vector3 { return @axis; }
 		method : public : GetRange() ~ Float { return @range; }
+
+		#~
+		The cosine of the inner cone half-angle. Cosines rather than angles because
+		that is what the shader compares against a dot product.
+		@return the cosine
+		~#
+		method : public : GetInnerCosine() ~ Float { return @inner; }
+
+		#~
+		The cosine of the outer cone half-angle.
+		@return the cosine
+		~#
+		method : public : GetOuterCosine() ~ Float { return @outer; }
 
 		#~
 		Write this light into a shader as its ONLY light, with a default ambient.
@@ -5832,6 +6125,7 @@ bundle Game.OpenGL {
 		@center : Vector3;
 		@half : Vector3;
 		@texture : Texture2D;
+		@material : Material;
 		@solid : Bool;
 		@model : Float[];
 
@@ -5845,6 +6139,7 @@ bundle Game.OpenGL {
 			@center := center;
 			@half := half;
 			@texture := texture;
+			@material := Nil;
 			@solid := true;
 			@model := Nil;
 		}
@@ -5852,6 +6147,26 @@ bundle Game.OpenGL {
 		method : public : GetCenter() ~ Vector3 { return @center; }
 		method : public : GetHalf() ~ Vector3 { return @half; }
 		method : public : GetTexture() ~ Texture2D { return @texture; }
+
+		#~
+		Give this box a full material rather than a bare texture.
+
+		Takes precedence over the texture it was constructed with -- a box with a
+		material uses the material's texture, its tint and its shininess. Passing
+		Nil goes back to the plain texture, which is what every existing scene uses
+		and still works.
+		@param material the material, or Nil
+		~#
+		method : public : SetMaterial(material : Material) ~ Nil {
+			@material := material;
+		}
+
+		#~
+		@return the material, or Nil when this box only has a texture
+		~#
+		method : public : GetMaterial() ~ Material {
+			return @material;
+		}
 
 		#~
 		Whether this box blocks movement. Floors and ceilings are usually set
@@ -6152,9 +6467,10 @@ bundle Game.OpenGL {
 			@drawn := 0;
 			@culled := 0;
 
-			# Nil on its own infers as Nil, not as Texture2D, so the comparison below
-			# will not type-check without the cast.
+			# Nil on its own infers as Nil, not as Texture2D, so the comparisons below
+			# will not type-check without the casts.
 			last_texture := Nil->As(Texture2D);
+			last_material := Nil->As(Material);
 			each(i : @boxes) {
 				box := @boxes->Get(i);
 
@@ -6164,10 +6480,26 @@ bundle Game.OpenGL {
 				};
 
 				if(visible) {
-					texture := box->GetTexture();
-					if(texture <> Nil & texture <> last_texture) {
-						texture->Bind(0);
-						last_texture := texture;
+					material := box->GetMaterial();
+					if(material <> Nil) {
+						# Only on a change. A material is three uniform writes and a
+						# texture bind, and a scene grouped by material costs a handful
+						# of those rather than one set per box.
+						if(material <> last_material) {
+							material->ApplyTo(@shader, 0);
+							last_material := material;
+							# A material's texture supersedes whatever was bound, so the
+							# plain-texture tracking has to forget what it thought.
+							last_texture := Nil->As(Texture2D);
+						};
+					}
+					else {
+						texture := box->GetTexture();
+						if(texture <> Nil & texture <> last_texture) {
+							texture->Bind(0);
+							last_texture := texture;
+							last_material := Nil->As(Material);
+						};
 					};
 
 					model := box->GetModelMatrix();
