@@ -544,7 +544,10 @@ BOOL InitEnvironment()
   pathText += L"\r\n@echo Copyright(c) 2026, Randy Hollines\r\n@echo =========================================";
   WriteLineToFile(cmdFile, pathText);
 
-  pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin;" + applicationPath + L"\\..\\lib\\sdl";
+  // SDL2 ships its DLLs in bin now, beside the tools that load them, which
+  // is where Windows resolves a loaded library's imports from. lib\sdl holds
+  // only the bundled font, so it no longer belongs on PATH.
+  pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin";
   WriteLineToFile(cmdFile, pathText);
 
   pathText = L"set OBJECK_LIB_PATH=" + applicationPath + L"\\..\\lib";

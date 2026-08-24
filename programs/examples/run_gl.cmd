@@ -41,11 +41,16 @@ goto parse
 
 :usage
 REM Print the header rather than a second copy of it, so the two cannot drift.
-for /f "tokens=1,* delims=:" %%a in ('findstr /n "^REM" "%~f0"') do (
-	if %%a GTR 1 (
-		set LINE=%%b
-		set LINE=!LINE:~3!
-		echo(!LINE!
+REM Stop at the first line that is not a REM, the way run_gl.sh does. Without
+REM that, this also printed every comment further down the file -- the ones
+REM that explain the code rather than the usage.
+set SHOWN=
+for /f "tokens=1,* delims=:" %%a in ('findstr /n "^" "%~f0"') do (
+	if not defined SHOWN (
+		if %%a GTR 1 (
+			set LINE=%%b
+			if /i "!LINE:~0,3!"=="REM" ( echo(!LINE:~4! ) else ( set SHOWN=1 )
+		)
 	)
 )
 exit /b 0
@@ -54,7 +59,11 @@ exit /b 0
 
 REM ---------------------------------------------------------- deploy tree
 if not defined TREE (
-	for %%C in (deploy-x64 deploy-arm64 deploy) do (
+	REM Native arch first. Hardcoding x64 ahead of arm64 picks the emulated
+	REM tree on an ARM64 machine that happens to have both.
+	set CANDIDATES=deploy-x64 deploy-arm64 deploy
+	if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" set CANDIDATES=deploy-arm64 deploy-x64 deploy
+	for %%C in (!CANDIDATES!) do (
 		if not defined TREE (
 			if exist "%REPO%\core\release\%%C\bin\obc.exe" set TREE=%REPO%\core\release\%%C
 		)
@@ -103,9 +112,13 @@ REM ---------------------------------------------------------- prerequisites
 if not exist "%TREE%\lib\native\libobjk_sdl.dll" (
 	echo Missing %TREE%\lib\native\libobjk_sdl.dll
 	echo.
+	REM Match the tree in use, and note the build output sits under the
+	REM SOLUTION directory (core\lib\sdl\sdl), not one level further down.
+	set SDL_ARCH=x64
+	echo %TREE% | findstr /i "arm64" >nul && set SDL_ARCH=ARM64
 	echo Build the SDL native library:
-	echo   msbuild core\lib\sdl\sdl\sdl.sln -p:Configuration=Release -p:Platform=x64
-	echo   copy core\lib\sdl\sdl\sdl\Release\x64\libobjk_sdl.dll "%TREE%\lib\native"
+	echo   msbuild core\lib\sdl\sdl\sdl.sln -p:Configuration=Release -p:Platform=!SDL_ARCH!
+	echo   copy core\lib\sdl\sdl\Release\!SDL_ARCH!\libobjk_sdl.dll "%TREE%\lib\native"
 	exit /b 1
 )
 
