@@ -2037,89 +2037,6 @@
 				}
 			}
 		},
-		"App.Analysis": {
-			"description": "Analysis results",
-			"functions": {
-				"CodeAction": {
-					"descriptions": ["**Get signature definitions**\n\n```method : public : CodeAction(uri:String, start_range_line:Int, start_range_char:Int, var_name:String) ~ Result```\n\n\n\nuri: String\n\nstart_range_line: Int\n\nstart_range_char: Int\n\nvar_name: String\n\nreturn: Result"]
-				},
-				"CodeRename": {
-					"descriptions": ["**Renames a variable or method\/function**\n\n```method : public : CodeRename(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"CollectWorkspaceSymbols": {
-					"descriptions": ["**Depth-first walk over a Result tree emitted by GetSymbols, appending every named, source-located entry whose lower-cased name contains the needle. Helper for WorkspaceSymbols.**\n\n```method : private : CollectWorkspaceSymbols(node:Result, needle:String, out:Vector&lt;Result&gt;) ~ Nil```\n\n\n\nnode: Result\n\nneedle: String\n\nout: Vector&lt;Result&gt;\n\nreturn: Nil"]
-				},
-				"Completion": {
-					"descriptions": ["**Get completion options**\n\n```method : public : Completion(uri:String, line:Int, pos:Int, var_str:String, mthd_str:String, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nvar_str: String\n\nmthd_str: String\n\nsys_path: String\n\nreturn: Result\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nitems := analysis->Completion(\"file:\/\/\/app.obs\", 8, 3, \"conn\", \"\", \"\/usr\/lib\/objeck\");\r\nif(items <> Nil) {\r\n  items->ToString()->PrintLine(); # JSON completion list\r\n};\r\nanalysis->Release();\n```"]
-				},
-				"DocumentHighlight": {
-					"descriptions": ["**Get document highlights for the symbol at the cursor - references scoped to the current file. Backs textDocument\/documentHighlight.**\n\n```method : public : DocumentHighlight(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"FindDeclaration": {
-					"descriptions": ["**Finds symbol deceleration**\n\n```method : public : FindDeclaration(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result"]
-				},
-				"FindDefinition": {
-					"descriptions": ["**Finds symbol definition**\n\n```method : public : FindDefinition(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\ndefn := analysis->FindDefinition(\"file:\/\/\/app.obs\", 15, 8, \"\/usr\/lib\/objeck\");\r\nif(defn <> Nil) {\r\n  defn->GetName()->PrintLine(); # name of the defined symbol\r\n};\r\nanalysis->Release();\n```"]
-				},
-				"FindImplementation": {
-					"descriptions": ["**Finds implementations of an interface or overrides of a virtual method**\n\n```method : public : FindImplementation(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"FindReferences": {
-					"descriptions": ["**Get references specified symbol**\n\n```method : public : FindReferences(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nuri := \"file:\/\/\/app.obs\";\r\nrefs := analysis->FindReferences(uri, 10, 5, \"\/usr\/lib\/objeck\");\r\nif(refs <> Nil) {\r\n  each(i : refs) { refs[i]->ToString()->PrintLine(); };\r\n};\r\nanalysis->Release();\n```"]
-				},
-				"FindTypeDefinition": {
-					"descriptions": ["**Finds type definition (go to the type of a symbol)**\n\n```method : public : FindTypeDefinition(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result"]
-				},
-				"GetDiagnostics": {
-					"descriptions": ["**Get parse and analysis errors**\n\n```method : public : GetDiagnostics(was_analyzed:BoolRef, uri:String, sys_path:String) ~ Result[]```\n\n\n\nwas_analyzed: BoolRef\n\nuri: String\n\nsys_path: String\n\nreturn: Result[]\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nwas_ok := BoolRef->New(false);\r\nerrs := analysis->GetDiagnostics(was_ok, \"file:\/\/\/app.obs\", \"\/usr\/lib\/objeck\");\r\nif(errs <> Nil) {\r\n  each(i : errs) { errs[i]->ToString()->PrintLine(); };\r\n};\r\nanalysis->Release();\n```"]
-				},
-				"GetSymbols": {
-					"descriptions": ["**Get source code analysis symbols**\n\n```method : public : GetSymbols(uri:String, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nsys_path: String\n\nreturn: Result\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nif(analysis->IsParsed()) {\r\n  syms := analysis->GetSymbols(\"file:\/\/\/app.obs\", \"\/usr\/lib\/objeck\");\r\n  syms->ToString()->PrintLine(); # root symbol tree entry\r\n  analysis->Release();\r\n};\n```"]
-				},
-				"HasUses": {
-					"descriptions": ["**Check to see if user 'use' statement are present**\n\n```method : public : HasUses() ~ Bool```\n\n\n\nreturn: Bool"]
-				},
-				"Hover": {
-					"descriptions": ["**Gets hover signatures**\n\n```method : public : Hover(uri:String, line:Int, pos:Int, var_str:String, mthd_str:String, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nvar_str: String\n\nmthd_str: String\n\nsys_path: String\n\nreturn: Result\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nhover := analysis->Hover(\"file:\/\/\/app.obs\", 20, 12, \"conn\", \"Close\", \"\/usr\/lib\/objeck\");\r\nif(hover <> Nil) {\r\n  hover->GetDescription()->PrintLine(); # show signature markdown\r\n};\r\nanalysis->Release();\n```"]
-				},
-				"IncomingCalls": {
-					"descriptions": ["**Finds all methods that call the target method**\n\n```method : public : IncomingCalls(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"InlayHints": {
-					"descriptions": ["**Gets inlay hints for a range of lines**\n\n```method : public : InlayHints(uri:String, start_line:Int, end_line:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nstart_line: Int\n\nend_line: Int\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"IsParsed": {
-					"descriptions": ["**Check to see if source was parsed**\n\n```method : public : IsParsed() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nif(analysis->IsParsed()) {   # true = no syntax errors\r\n  \"OK\"->PrintLine();\r\n} else {\r\n  \"Syntax error\"->PrintLine();\r\n};\r\nanalysis->Release();\n```"]
-				},
-				"OutgoingCalls": {
-					"descriptions": ["**Finds all methods called by the target method**\n\n```method : public : OutgoingCalls(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"PrepareCallHierarchy": {
-					"descriptions": ["**Prepares call hierarchy item at cursor**\n\n```method : public : PrepareCallHierarchy(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result"]
-				},
-				"PrepareTypeHierarchy": {
-					"descriptions": ["**Return the class-level TypeHierarchyItem at the cursor. Backs textDocument\/prepareTypeHierarchy. When the cursor is on a class header, returns that class; when inside a method body, returns the enclosing class. Delegates to FindDefinition since the LSP only needs a \"seed\" Result that supertypes\/subtypes can subsequently operate on.**\n\n```method : public : PrepareTypeHierarchy(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result"]
-				},
-				"Release": {
-					"descriptions": ["**Release native resources, required for clean up.**\n\n```method : public : Release() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\n# ... use analysis ...\r\nanalysis->Release(); # always release to free C-side parse tree\n```"]
-				},
-				"SemanticTokens": {
-					"descriptions": ["**Gets semantic tokens for the file**\n\n```method : public : SemanticTokens(uri:String, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"SignatureHelp": {
-					"descriptions": ["**Get signature definitions**\n\n```method : public : SignatureHelp(uri:String, line:Int, pos:Int, var_str:String, mthd_str:String, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nvar_str: String\n\nmthd_str: String\n\nsys_path: String\n\nreturn: Result"]
-				},
-				"TypeHierarchySubtypes": {
-					"descriptions": ["**Return classes that directly extend the class at the cursor (and any classes implementing it if it is an interface). Backs typeHierarchy\/subtypes. Delegates to FindImplementation, which already walks every bundle for classes whose parent matches the target.**\n\n```method : public : TypeHierarchySubtypes(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"TypeHierarchySupertypes": {
-					"descriptions": ["**Walk the parent chain of the class at the cursor, returning each supertype in order (immediate parent first, then grandparent, ...). Backs typeHierarchy\/supertypes. User-space only - stops at the first parent that resolves to a library class.**\n\n```method : public : TypeHierarchySupertypes(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
-				},
-				"WorkspaceSymbols": {
-					"descriptions": ["**Return every workspace symbol whose name contains the query substring (case-insensitive). Backs workspace\/symbol (Ctrl+T in VS Code). Matches across every parsed class, method, and enum.**\n\n```method : public : WorkspaceSymbols(query:String, sys_path:String) ~ Result[]```\n\n\n\nquery: String\n\nsys_path: String\n\nreturn: Result[]"]
-				}
-			}
-		},
 		"Cipher.Decrypt": {
 			"description": "Decrypts data",
 			"functions": {
@@ -4490,6 +4407,997 @@
 				}
 			}
 		},
+		"Game.OpenGL.Box": {
+			"description": "An axis-aligned box in the world: where it is, how big it is, what it looks like, and whether you can walk through it. One cube mesh is shared by every Box; the box only supplies a transform. That is what keeps a scene of hundreds of boxes down to one uploaded mesh. **That shared mesh must span -1..1 on every axis**, because the model matrix scales it by `half` directly and `half` is a half-extent. Hand Scene a mesh built to -0.5..0.5 instead -- the \"unit quad\" in Mesh's own example is built that way -- and every box renders at half the size it claims, while OverlapsXZ goes on using the full half-extents. Geometry and collision then disagree with no error anywhere: you walk into walls that are not where they are drawn. The model matrix is computed once and cached, because a static prop's transform does not change between frames. Moving the box invalidates it.",
+			"functions": {
+				"GetMaterial": {
+					"descriptions": ["****\n\n```method : public : GetMaterial() ~ Material```\n\n\n\nreturn: Material"]
+				},
+				"GetModelMatrix": {
+					"descriptions": ["**The box's model matrix: translate then scale, cached after the first call.**\n\n```method : public : GetModelMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsSolid": {
+					"descriptions": ["**Whether this box blocks movement. Floors and ceilings are usually set non-solid: they are drawn but should not stop a walking character.**\n\n```method : public : IsSolid() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["****\n\n```New(center:Vector3, half:Vector3, texture:Texture2D)```\n\n\n\ncenter: Vector3\n\nhalf: Vector3\n\ntexture: Texture2D"]
+				},
+				"OverlapsXZ": {
+					"descriptions": ["**Whether a circle in plan view overlaps this box. Deliberately 2D: a walking character should not be blocked by something overhead, and testing the full 3D box would do exactly that. Corners are treated conservatively -- a near-miss at a corner counts as a hit, which is the right way to be wrong about a wall.**\n\n```method : public : OverlapsXZ(x:Float, z:Float, radius:Float) ~ Bool```\n\n\n\nx: Float\n\nz: Float\n\nradius: Float\n\nreturn: Bool"]
+				},
+				"SetCenter": {
+					"descriptions": ["**Move the box, discarding the cached transform.**\n\n```method : public : SetCenter(center:Vector3) ~ Nil```\n\n\n\ncenter: Vector3\n\nreturn: Nil"]
+				},
+				"SetMaterial": {
+					"descriptions": ["**Give this box a full material rather than a bare texture. Takes precedence over the texture it was constructed with -- a box with a material uses the material's texture, its tint and its shininess. Passing Nil goes back to the plain texture, which is what every existing scene uses and still works.**\n\n```method : public : SetMaterial(material:Material) ~ Nil```\n\n\n\nmaterial: Material\n\nreturn: Nil"]
+				},
+				"SetSolid": {
+					"descriptions": ["****\n\n```method : public : SetSolid(solid:Bool) ~ Nil```\n\n\n\nsolid: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Camera": {
+			"description": "A first-person camera: a position plus a yaw\/pitch heading, producing the view matrix each frame. Yaw and pitch are held instead of a look-at target because that is what input drives -- turning is a change in yaw, not a new target point. Pitch is clamped just short of straight up\/down, since at exactly vertical the view direction becomes parallel to 'up' and no camera basis exists. Movement is horizontal: MoveForward walks along the heading with the pitch ignored, so looking down does not sink you into the floor. That is what a walking character wants; a flying one would use ForwardVector directly.",
+			"functions": {
+				"ForwardVector": {
+					"descriptions": ["**The direction the camera is looking, including pitch.**\n\n```method : public : ForwardVector() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"GetViewMatrix": {
+					"descriptions": ["**The view matrix for this frame.**\n\n```method : public : GetViewMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetViewMatrixInto": {
+					"descriptions": ["**The view matrix, into a buffer the caller owns. The allocating form makes four objects every call -- three Vector3 and the Float[16] -- and a draw loop calls it every frame. This makes none: the basis is computed straight into the destination.**\n\n```method : public : GetViewMatrixInto(out:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nreturn: Nil"]
+				},
+				"GetViewProjectionInto": {
+					"descriptions": ["**Projection times view, ready to hand to Scene->Draw. The two-step version -- build a projection, then multiply it by the view -- is what both 3D examples did, and it is the last per-frame allocation in a draw loop that is otherwise clean.**\n\n```method : public : GetViewProjectionInto(out:Float[], projection:Float[], scratch:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nprojection: Float[]\n\nscratch: Float[]\n\nreturn: Nil"]
+				},
+				"GroundForward": {
+					"descriptions": ["**The heading on the ground plane, pitch ignored.**\n\n```method : public : GroundForward() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"GroundRight": {
+					"descriptions": ["**The camera's right-hand direction on the ground plane.**\n\n```method : public : GroundRight() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"Look": {
+					"descriptions": ["**Look up or down. Clamped to just under +\/- 90 degrees, because at exactly vertical the view direction is parallel to 'up' and the camera basis collapses.**\n\n```method : public : Look(radians:Float) ~ Nil```\n\n\n\nradians: Float\n\nreturn: Nil"]
+				},
+				"LookAtPoint": {
+					"descriptions": ["**Turn to face a point, without moving. Camera is a yaw-and-pitch camera, which is right for a first-person view and awkward for anything that watches something: an orbiting or tracking shot knows where it wants to look, not what angles that is. This converts. Leaves roll alone, because there isn't any -- the up vector stays world-up, which is what keeps a scene from feeling tilted.**\n\n```method : public : LookAtPoint(target:Vector3) ~ Nil```\n\n\n\ntarget: Vector3\n\nreturn: Nil"]
+				},
+				"MoveForward": {
+					"descriptions": ["**Walk along the heading. Vertical component ignored, so looking down does not push the eye through the floor.**\n\n```method : public : MoveForward(distance:Float) ~ Nil```\n\n\n\ndistance: Float\n\nreturn: Nil"]
+				},
+				"MoveRight": {
+					"descriptions": ["**Strafe sideways.**\n\n```method : public : MoveRight(distance:Float) ~ Nil```\n\n\n\ndistance: Float\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["****\n\n```New(position:Vector3)```\n\n\n\nposition: Vector3"]
+				},
+				"PlaceLookingAt": {
+					"descriptions": ["**Place the eye and face a point in one call -- an orbiting or tracking shot.**\n\n```method : public : PlaceLookingAt(position:Vector3, target:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\ntarget: Vector3\n\nreturn: Nil"]
+				},
+				"SetPosition": {
+					"descriptions": ["**Place the eye directly.**\n\n```method : public : SetPosition(position:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\nreturn: Nil"]
+				},
+				"Turn": {
+					"descriptions": ["**Turn left or right.**\n\n```method : public : Turn(radians:Float) ~ Nil```\n\n\n\nradians: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Frustum": {
+			"description": "The six planes bounding what a camera can see, for skipping what it cannot. A Scene submits every box it holds, every frame, whether or not the box is on screen -- so a large world costs the same to draw as a small one, and all of it is spent on geometry the viewer will never see. Testing a box against six planes first is a few dozen arithmetic operations against a draw call plus a matrix multiply plus two uniform uploads. Scene does this for you and has it on by default. Reach for Frustum directly only for content Scene does not hold.",
+			"functions": {
+				"ContainsBox": {
+					"descriptions": ["**Whether an axis-aligned box is at least partly inside. Projects the box's half-extents onto each plane's normal, which is the tightest test available without checking corners individually -- and unlike wrapping the box in a sphere it does not inflate a long thin box into something far larger than it is.**\n\n```method : public : ContainsBox(center:Vector3, half:Vector3) ~ Bool```\n\n\n\ncenter: Vector3\n\nhalf: Vector3\n\nreturn: Bool"]
+				},
+				"ContainsSphere": {
+					"descriptions": ["**Whether a sphere is at least partly inside.**\n\n```method : public : ContainsSphere(x:Float, y:Float, z:Float, radius:Float) ~ Bool```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nradius: Float\n\nreturn: Bool"]
+				},
+				"IsReady": {
+					"descriptions": ["****\n\n```method : public : IsReady() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"SetFromMatrix": {
+					"descriptions": ["**Rebuild from a view-projection matrix. Call once per frame, after the camera has moved.**\n\n```method : public : SetFromMatrix(view_projection:Float[]) ~ Nil```\n\n\n\nview_projection: Float[]\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.GL": {
+			"description": "OpenGL state operations. Every method needs a current context (Window->GLCreateContext), and GL state is per-context, so these all act on whichever context is current on this thread. ## Shutting down, in this order 1. Cursor->SetRelativeMouseMode(false), if it was ever set -- while the window still exists. 2. **Every Shader, Mesh and Texture2D, while the context is still current.** Their Free methods issue glDeleteProgram\/glDeleteBuffers\/glDeleteTextures, and those need a current context; after the context is gone they are a no-op at best and a driver crash at worst. 3. Any Surface. Order-independent -- Texture2D->New copies the pixels, so a surface can in fact be freed as soon as the texture is built. 4. GLContext->Delete() 5. Window->Destroy() 6. Core->Quit() Getting step 2 wrong leaks GPU memory silently, and process exit reclaims it, so a program that frees nothing at all looks and behaves identically to a correct one. It only becomes a bug in something long-running that rebuilds meshes -- at which point it is an unbounded VRAM leak with no symptom pointing back here.",
+			"functions": {
+				"BeginTransparency": {
+					"descriptions": ["**Enable ordinary alpha transparency: blending on, factors set, depth writing off. The three calls that go together, because getting one of the three wrong is what makes transparency look broken rather than absent. Call EndTransparency when the transparent pass is done. CLEAR THE FRAME BEFORE CALLING THIS. Turning depth writing off also disables clearing the depth buffer -- see SetDepthWrite -- so a clear afterwards leaves stale depth behind.**\n\n```function : BeginTransparency() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Clear": {
+					"descriptions": ["**Clear the given buffers.**\n\n```function : Clear(mask:Int) ~ Nil```\n\n\n\nmask: Int\n\nreturn: Nil"]
+				},
+				"ClearColor": {
+					"descriptions": ["**Set the color the next Clear fills the color buffer with. Components are clamped to 0.0-1.0.**\n\n```function : ClearColor(r:Float, g:Float, b:Float, a:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\na: Float\n\nreturn: Nil"]
+				},
+				"ClearColorBuffer": {
+					"descriptions": ["**Clear the color buffer only. Convenience for the common 2D case.**\n\n```function : ClearColorBuffer() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Disable": {
+					"descriptions": ["**Disable a capability.**\n\n```function : Disable(capability:Int) ~ Nil```\n\n\n\ncapability: Int\n\nreturn: Nil"]
+				},
+				"DrainErrors": {
+					"descriptions": ["**Empty the GL error queue, returning everything that was in it.**\n\n```function : DrainErrors() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"Enable": {
+					"descriptions": ["**Enable a capability, e.g. Capability->GL_DEPTH_TEST.**\n\n```function : Enable(capability:Int) ~ Nil```\n\n\n\ncapability: Int\n\nreturn: Nil"]
+				},
+				"EndTransparency": {
+					"descriptions": ["**Undo BeginTransparency.**\n\n```function : EndTransparency() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetError": {
+					"descriptions": ["**Take one error off the GL error queue. GL queues errors and each call removes only one, so a single check can hide others -- use DrainErrors to empty the queue.**\n\n```function : GetError() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetExtensions": {
+					"descriptions": ["**Every extension this context reports. Needed because a non-null proc address does NOT mean a feature is usable. SDL falls back to GetProcAddress on opengl32.dll on Windows, and on macOS the lookup goes into OpenGL.framework regardless of what the current context actually supports -- so a pointer can come back for something the driver will refuse. The extension string is the authority. In a core profile this is the only way to ask: glGetString(GL_EXTENSIONS) returns nothing and raises GL_INVALID_ENUM there.**\n\n```function : GetExtensions() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetLastError": {
+					"descriptions": ["**Why the last call silently did nothing. GetError only reports what GL itself considers an error, and the most confusing failures in this library are not GL errors at all: the entry points were never loaded, a mat4 was the wrong length, a uniform name does not exist in the program. Each of those leaves the error queue clean and renders a black window, so DrainErrors finds nothing and this is the only thing that can tell you why. Reading clears it, so the answer belongs to the call you just made.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String\n\n```\nshader->SetMatrix4(\"mpv\", mvp);   # typo\nreason := GL->GetLastError();\nif(reason->Size() > 0) {\nreason->ErrorLine();          # 'no uniform named \"mpv\" ...'\n};\n```"]
+				},
+				"GetOptionalMissing": {
+					"descriptions": ["**Optional entry points that could not be resolved. Separate from LoadFunctions, which reports the ones that are REQUIRED: a missing required function disables the whole layer, because nothing here can work without it. A missing optional one disables only itself. Keeping the two apart is what stops one absent extension from taking the renderer down with it.**\n\n```function : GetOptionalMissing() ~ String```\n\n\n\nreturn: String"]
+				},
+				"HasExtension": {
+					"descriptions": ["**Whether this context reports an extension.**\n\n```function : HasExtension(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"LoadFunctions": {
+					"descriptions": ["**Resolve the OpenGL 2.0+ entry points. Call once, after the context is current and before creating any Shader, Mesh or Texture2D. Everything above GL 1.1 has to be looked up at runtime; that happens in native code and is cached, so this is a one-off cost rather than per call.**\n\n```function : LoadFunctions() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ReadPixel": {
+					"descriptions": ["**Read one pixel from the current framebuffer. The point of this is assertion: it lets a program (or a test) check that something was actually DRAWN, rather than only that nothing crashed. Read before swapping buffers, since the swap may discard the back buffer. GL's origin is bottom-left, so y counts up from the bottom of the drawable.**\n\n```function : ReadPixel(x:Int, y:Int) ~ Int```\n\n\n\nx: Int\n\ny: Int\n\nreturn: Int"]
+				},
+				"ReportErrors": {
+					"descriptions": ["**Drain the error queue and print whatever was in it. Exists because every program was writing the same four lines: drain, count, test the count, print. Errors are worth checking at least once per run -- they are queued, so one raised in frame 2 is still there at exit.**\n\n```function : ReportErrors(during:String) ~ Int```\n\n\n\nduring: String\n\nreturn: Int"]
+				},
+				"SetBlend": {
+					"descriptions": ["**How a fragment's colour combines with what is already in the buffer. Enabling Capability->GL_BLEND is not enough on its own, and that is the trap: GL's default factors are ONE and ZERO, which means \"replace\", so blending appears to be on and nothing changes. This is the other half. The two worth knowing: * **Straight alpha** -- SRC_ALPHA, ONE_MINUS_SRC_ALPHA. Ordinary transparency: glass, foliage, a fade. Needs the transparent things drawn AFTER the opaque ones and back-to-front among themselves, because a fragment can only blend with what is already there. * **Additive** -- ONE, ONE. Light: sparks, glows, fire. Order-independent, since addition commutes, which is why particle systems reach for it. With straight alpha, also turn depth WRITING off for the transparent pass while leaving the test on -- see SetDepthWrite. A transparent surface that writes depth hides whatever transparent thing is behind it.**\n\n```function : SetBlend(source:Int, destination:Int) ~ Nil```\n\n\n\nsource: Int\n\ndestination: Int\n\nreturn: Nil"]
+				},
+				"SetCullMode": {
+					"descriptions": ["**Which side of a triangle GL_CULL_FACE discards. GL_BACK by default, which is what every mesh in this bundle is wound for.**\n\n```function : SetCullMode(mode:Int) ~ Nil```\n\n\n\nmode: Int\n\nreturn: Nil"]
+				},
+				"SetDepthWrite": {
+					"descriptions": ["**Whether drawing writes depth. The test is unaffected. Off for a transparent pass: those fragments should be hidden BY opaque geometry but should not hide each other, and the only way to have both is to test depth without writing it. **Clearing the depth buffer while this is off does nothing.** glClear of the depth buffer is subject to the same mask, so a frame that turns depth writing off and then clears keeps the previous frame's depth values -- and everything at the same distance as something drawn last time silently fails the test. Clear first, then turn writing off. This is not hypothetical: it is how the check for this in the regression suite first came out reading zero instead of a blend.**\n\n```function : SetDepthWrite(enabled:Bool) ~ Nil```\n\n\n\nenabled: Bool\n\nreturn: Nil"]
+				},
+				"Viewport": {
+					"descriptions": ["**Set the drawable region, in pixels. Use Window->GLGetDrawableSize rather than the size passed to Window->New: on a high-DPI display the drawable is larger than the window, and using the window size renders to a corner.**\n\n```function : Viewport(x:Int, y:Int, width:Int, height:Int) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.GLWindow": {
+			"description": "A window with a GL 3.3 core context, ready to draw into. This exists because opening one by hand takes about thirty lines that are the same in every program: initialise SDL, set six context attributes in the right order and before the window, create the window with the GL flag, create the context, check you actually got 3.3 core, resolve the entry points, and set the viewport from the DRAWABLE size rather than the window size. Across the four programs in this repo that block was 105 lines, and the only things that varied were the title, the size, one flag and the wording of an error message.",
+			"functions": {
+				"BeginFrame": {
+					"descriptions": ["**Start a frame: measure elapsed time, then clear colour and depth. Depth is cleared as well as colour because a depth buffer is always requested and depth testing is always on -- clearing only colour leaves last frame's depth values in place, and the second frame then renders with everything mysteriously behind everything else.**\n\n```method : public : BeginFrame() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"EndFrame": {
+					"descriptions": ["**Present the frame. Read any pixels BEFORE calling this -- GL->ReadPixel reads the back buffer, and a swap is allowed to discard it. Sleeps only when vsync was refused. With vsync on, the swap already blocks until the display is ready and a second wait would halve the frame rate.**\n\n```method : public : EndFrame() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Free": {
+					"descriptions": ["**Close everything, in the order that works. Relative mouse mode first while the window still exists, then the context, then the window, then SDL. GL objects you created -- Shader, Mesh, Texture2D -- are yours to free, and must be freed BEFORE this, while the context is still current. See the shutdown order on the GL class. Safe to call twice.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetAspect": {
+					"descriptions": ["****\n\n```method : public : GetAspect() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetContext": {
+					"descriptions": ["**The GL context.**\n\n```method : public : GetContext() ~ GLContext```\n\n\n\nreturn: GLContext"]
+				},
+				"GetDelta": {
+					"descriptions": ["**Seconds since the previous BeginFrame, clamped to 0.1. Multiply movement by this and the program behaves the same at 30 and at 240 frames a second. The first frame reports 0.0, so nothing jumps on startup.**\n\n```method : public : GetDelta() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why opening failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetEvent": {
+					"descriptions": ["**The event this window polls with. Here so a program with its own event needs can drive the queue directly instead of calling PollEvents -- do one or the other, not both, since whichever drains the queue first is the only one that sees each event.**\n\n```method : public : GetEvent() ~ Event```\n\n\n\nreturn: Event"]
+				},
+				"GetFps": {
+					"descriptions": ["**Frames per second as actually measured, not the target.**\n\n```method : public : GetFps() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetHeight": {
+					"descriptions": ["**The drawable height in pixels.**\n\n```method : public : GetHeight() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMouseDeltaX": {
+					"descriptions": ["**Mouse movement accumulated by the last PollEvents, in pixels.**\n\n```method : public : GetMouseDeltaX() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetMouseDeltaY": {
+					"descriptions": ["****\n\n```method : public : GetMouseDeltaY() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetVersion": {
+					"descriptions": ["**The driver's version string for this context, e.g. \"3.3.0 Core Profile Context 26.7.1\". Read while opening, so this costs nothing to ask for.**\n\n```method : public : GetVersion() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetWidth": {
+					"descriptions": ["**The drawable width in PIXELS -- what GL->Viewport and GL->ReadPixel work in. On a high-DPI display this is LARGER than the width that was asked for, typically double, because the window is requested in points and GL works in pixels. That is not hypothetical: high-DPI is requested, so on a Retina Mac a 960-point window reports 1920 here.**\n\n```method : public : GetWidth() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWindow": {
+					"descriptions": ["**The SDL window, for anything this class does not wrap.**\n\n```method : public : GetWindow() ~ Window```\n\n\n\nreturn: Window"]
+				},
+				"HasVsync": {
+					"descriptions": ["****\n\n```method : public : HasVsync() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Open a visible window and a GL 3.3 core context.**\n\n```New(title:String, width:Int, height:Int)```\n\n\n\ntitle: String\n\nwidth: Int\n\nheight: Int", "**Open a window that may be hidden. A hidden window still has a real context and still renders, so this is how a test or a headless tool draws and reads pixels back without a window being flashed at anyone.**\n\n```New(title:String, width:Int, height:Int, visible:Bool)```\n\n\n\ntitle: String\n\nwidth: Int\n\nheight: Int\n\nvisible: Bool"]
+				},
+				"PollEvents": {
+					"descriptions": ["**Drain the event queue. Handles what nearly every program handles the same way: the window close button and Escape both mean quit, a resize updates the viewport and the cached size, and relative mouse motion accumulates into this frame's delta. Held keys are not events -- keep using Keyboard->GetState for those, which this does not disturb.**\n\n```method : public : PollEvents() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"RequestQuit": {
+					"descriptions": ["**Ask PollEvents to report a quit on the next call, e.g. from a menu.**\n\n```method : public : RequestQuit() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetDepthTest": {
+					"descriptions": ["**Turn depth testing on or off. On by default. On is the right default for 3D -- without it, whatever was drawn last is in front, regardless of where it is -- and the depth buffer is always requested, so enabling it can never silently do nothing the way it can when the SDL_GL_DEPTH_SIZE attribute was forgotten. The cost of that default: a frame cleared with GL_COLOR_BUFFER_BIT alone leaves stale depth values, and geometry then fails the test for no visible reason. BeginFrame clears both. Turn this off for a purely 2D pass rather than clearing colour alone.**\n\n```method : public : SetDepthTest(enabled:Bool) ~ Nil```\n\n\n\nenabled: Bool\n\nreturn: Nil"]
+				},
+				"SetTargetFps": {
+					"descriptions": ["**The frame rate EndFrame paces to when there is no vsync. Ignored while vsync is on, since the swap does the waiting.**\n\n```method : public : SetTargetFps(fps:Int) ~ Nil```\n\n\n\nfps: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.IntHolder": {
+			"description": "A width and a height, so the overlay's size cache can hold both against one key. Objeck's Hash needs a class rather than a pair.",
+			"functions": {
+
+			}
+		},
+		"Game.OpenGL.Light": {
+			"description": "One light. Directional, point or spot. Build one with the factory that matches what you want, since each kind needs different things and a single constructor taking all of them would ask for values that do not apply:",
+			"functions": {
+				"ApplyAt": {
+					"descriptions": ["**Write this light into one slot of a shader's light arrays. Used by LightRig; call that rather than this unless you are writing your own rig.**\n\n```method : public : ApplyAt(shader:Shader, index:Int) ~ Nil```\n\n\n\nshader: Shader\n\nindex: Int\n\nreturn: Nil"]
+				},
+				"ApplyTo": {
+					"descriptions": ["**Write this light into a shader as its ONLY light, with a default ambient. The single-light case, and what most scenes want. For more than one, or to set the ambient yourself, use a LightRig.**\n\n```method : public : ApplyTo(shader:Shader) ~ Nil```\n\n\n\nshader: Shader\n\nreturn: Nil"]
+				},
+				"Directional": {
+					"descriptions": ["**A light infinitely far away: the sun.**\n\n```function : Directional(direction:Vector3) ~ Light```\n\n\n\ndirection: Vector3\n\nreturn: Light"]
+				},
+				"GetInnerCosine": {
+					"descriptions": ["**The cosine of the inner cone half-angle. Cosines rather than angles because that is what the shader compares against a dot product.**\n\n```method : public : GetInnerCosine() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetOuterCosine": {
+					"descriptions": ["**The cosine of the outer cone half-angle.**\n\n```method : public : GetOuterCosine() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**A white light from above with a little ambient, which is a reasonable starting point for seeing a scene at all.**\n\n```New()```\n\n"]
+				},
+				"Point": {
+					"descriptions": ["**A light at a position, fading to nothing at its range. The falloff reaches ZERO at the range rather than trailing off forever the way an inverse square does. A light that stops where it says it stops is what lets a scene have several without every one of them contributing to every surface.**\n\n```function : Point(position:Vector3, range:Float) ~ Light```\n\n\n\nposition: Vector3\n\nrange: Float\n\nreturn: Light"]
+				},
+				"SetAmbient": {
+					"descriptions": ["**The light every surface gets regardless of which way it faces, used when this light is applied on its own. Without it, a face turned away is pure black -- correct for one light in a vacuum and wrong-looking for anything else, since real surfaces are lit by everything around them. In a LightRig the rig's ambient is used instead.**\n\n```method : public : SetAmbient(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
+				},
+				"SetAxis": {
+					"descriptions": ["****\n\n```method : public : SetAxis(aim:Vector3) ~ Nil```\n\n\n\naim: Vector3\n\nreturn: Nil"]
+				},
+				"SetColor": {
+					"descriptions": ["****\n\n```method : public : SetColor(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
+				},
+				"SetCone": {
+					"descriptions": ["**A spot's cone, in degrees from its axis. Stored as cosines, because the shader compares a dot product and converting back would cost an acos per fragment per light.**\n\n```method : public : SetCone(inner_degrees:Float, outer_degrees:Float) ~ Nil```\n\n\n\ninner_degrees: Float\n\nouter_degrees: Float\n\nreturn: Nil"]
+				},
+				"SetDirection": {
+					"descriptions": ["****\n\n```method : public : SetDirection(direction:Vector3) ~ Nil```\n\n\n\ndirection: Vector3\n\nreturn: Nil", "****\n\n```method : public : SetDirection(x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil"]
+				},
+				"SetIntensity": {
+					"descriptions": ["**Scale the colour, for a light that pulses or dims.**\n\n```method : public : SetIntensity(scale:Float) ~ Nil```\n\n\n\nscale: Float\n\nreturn: Nil"]
+				},
+				"SetPosition": {
+					"descriptions": ["****\n\n```method : public : SetPosition(position:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\nreturn: Nil"]
+				},
+				"SetRange": {
+					"descriptions": ["****\n\n```method : public : SetRange(range:Float) ~ Nil```\n\n\n\nrange: Float\n\nreturn: Nil"]
+				},
+				"Spot": {
+					"descriptions": ["**A light at a position, shining along an axis within a cone.**\n\n```function : Spot(position:Vector3, aim:Vector3, range:Float, inner_degrees:Float, outer_degrees:Float) ~ Light```\n\n\n\nposition: Vector3\n\naim: Vector3\n\nrange: Float\n\ninner_degrees: Float\n\nouter_degrees: Float\n\nreturn: Light"]
+				}
+			}
+		},
+		"Game.OpenGL.LightRig": {
+			"description": "Several lights at once, plus the ambient they all sit on top of. One directional light is enough to see a scene; anything with a lamp, a fire, a torch or a window needs more, and this is how a forward renderer carries them -- as arrays with a count, written once per frame.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Add a light. Beyond GetMaxLights it is ignored.**\n\n```method : public : Add(light:Light) ~ Bool```\n\n\n\nlight: Light\n\nreturn: Bool"]
+				},
+				"ApplyTo": {
+					"descriptions": ["**Write the whole rig into a shader. Once a frame, not once per object: none of it varies between objects. Uniforms the shader does not declare are skipped, so an unlit program can be handed this without filing a diagnostic.**\n\n```method : public : ApplyTo(shader:Shader) ~ Nil```\n\n\n\nshader: Shader\n\nreturn: Nil"]
+				},
+				"Clear": {
+					"descriptions": ["**Remove every light. Ambient and the material settings are kept.**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Get": {
+					"descriptions": ["****\n\n```method : public : Get(index:Int) ~ Light```\n\n\n\nindex: Int\n\nreturn: Light"]
+				},
+				"GetCount": {
+					"descriptions": ["****\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMaxLights": {
+					"descriptions": ["**How many lights a shader built by this bundle can take.**\n\n```function : GetMaxLights() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"SetAmbient": {
+					"descriptions": ["**The light every surface gets regardless of which way it faces.**\n\n```method : public : SetAmbient(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
+				},
+				"SetSpecular": {
+					"descriptions": ["**How tight specular highlights are and how strong. Strength defaults to ZERO, so nothing is shiny until asked -- a diffuse surface is the right default and an unexpected highlight looks like a bug.**\n\n```method : public : SetSpecular(shininess:Float, strength:Float) ~ Nil```\n\n\n\nshininess: Float\n\nstrength: Float\n\nreturn: Nil"]
+				},
+				"SetViewPosition": {
+					"descriptions": ["**Where the viewer is, which specular highlights depend on. Set it each frame if the camera moves.**\n\n```method : public : SetViewPosition(position:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Material": {
+			"description": "How a surface looks: its texture, a colour multiplier, and how shiny it is. Shininess and specular strength live HERE rather than on the lights, which is where I first put them and was wrong: they describe the SURFACE. A polished ball and a matte floor lit by the same lamp need different values, and a property that cannot differ between objects in one scene is not a property of the object.",
+			"functions": {
+				"ApplyTo": {
+					"descriptions": ["**Write this material into a shader and bind its texture. Per object, unlike a LightRig -- which is why Scene only does it when the material actually changes between boxes.**\n\n```method : public : ApplyTo(shader:Shader, unit:Int) ~ Nil```\n\n\n\nshader: Shader\n\nunit: Int\n\nreturn: Nil"]
+				},
+				"Colored": {
+					"descriptions": ["**A material with a tint and no texture, for flat-coloured objects drawn through a textured shader.**\n\n```function : Colored(r:Float, g:Float, b:Float) ~ Material```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Material"]
+				},
+				"New": {
+					"descriptions": ["**An untinted, matte material.**\n\n```New(texture:Texture2D)```\n\n\n\ntexture: Texture2D"]
+				},
+				"SetSpecular": {
+					"descriptions": ["**How tight the highlight is and how strong. Strength defaults to zero, so a material is matte until asked -- a diffuse surface is the right default and an unexpected highlight reads as a bug.**\n\n```method : public : SetSpecular(shininess:Float, strength:Float) ~ Nil```\n\n\n\nshininess: Float\n\nstrength: Float\n\nreturn: Nil"]
+				},
+				"SetTexture": {
+					"descriptions": ["****\n\n```method : public : SetTexture(texture:Texture2D) ~ Nil```\n\n\n\ntexture: Texture2D\n\nreturn: Nil"]
+				},
+				"SetTint": {
+					"descriptions": ["**A colour multiplied into the surface.**\n\n```method : public : SetTint(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Matrix4": {
+			"description": "4x4 matrices for the usual transform stack, as flat Float[16] in COLUMN-MAJOR order -- the layout GL expects, so no transpose happens on upload. Static functions returning new arrays, following Vector2's style in Game.Framework. Multiply is 'apply rhs, then lhs', so a model-view-projection is Multiply(projection, Multiply(view, model)).",
+			"functions": {
+				"Identity": {
+					"descriptions": ["****\n\n```function : Identity() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IdentityInto": {
+					"descriptions": ["**Identity, written into a buffer the caller owns. ## Why every builder here has an Into twin A matrix is a Float[16], and the returning forms allocate one per call. At one or two matrices per object per frame that is hundreds of arrays a second, which is enough to trigger a collection mid-frame -- the classic stutter. Objeck's 2D SDL renderer had to be rewritten once for exactly this. Four of these builders were worse than one allocation: Translation, RotationX, RotationY and RotationZ each called Identity() and then overwrote it, so they allocated twice. Now the returning form is the thin one, wrapping the Into form. Reuse one buffer per thing you draw, filled fresh each frame.**\n\n```function : IdentityInto(out:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nreturn: Nil"]
+				},
+				"Inverse": {
+					"descriptions": ["**Inverse of a 4x4 matrix, by cofactor expansion. Needed for lighting -- the normal matrix is the transposed inverse of the model matrix, and anything but a uniform scale makes the difference visible -- and for turning a view matrix back into a camera position. Returns the identity when the matrix is singular, which is the same choice LookAt makes for a degenerate basis: a wrong-but-usable matrix rather than a crash or a buffer full of infinities.**\n\n```function : Inverse(m:Float[]) ~ Float[]```\n\n\n\nm: Float[]\n\nreturn: Float[]"]
+				},
+				"InverseInto": {
+					"descriptions": ["**Inverse into a caller's buffer.**\n\n```function : InverseInto(out:Float[], m:Float[]) ~ Bool```\n\n\n\nout: Float[]\n\nm: Float[]\n\nreturn: Bool"]
+				},
+				"LookAt": {
+					"descriptions": ["**A right-handed view matrix for a camera anywhere, looking anywhere. This is what lets a camera orbit or track a subject rather than sit on the +Z axis. Degenerate input -- eye equal to target, or an up vector parallel to the view direction -- yields identity rather than NaNs.**\n\n```function : LookAt(eye:Vector3, target:Vector3, up:Vector3) ~ Float[]```\n\n\n\neye: Vector3\n\ntarget: Vector3\n\nup: Vector3\n\nreturn: Float[]"]
+				},
+				"LookAtInto": {
+					"descriptions": ["**LookAt into a caller's buffer, for a camera that is not a Camera -- a light looking at a scene, say. Camera->GetViewMatrixInto is the cheaper route when there is a Camera.**\n\n```function : LookAtInto(out:Float[], eye:Vector3, target:Vector3, up:Vector3) ~ Nil```\n\n\n\nout: Float[]\n\neye: Vector3\n\ntarget: Vector3\n\nup: Vector3\n\nreturn: Nil"]
+				},
+				"LookAtOrigin": {
+					"descriptions": ["**A view matrix that steps back along +Z and looks at the origin. The smallest useful camera; use LookAt for one that can move.**\n\n```function : LookAtOrigin(distance:Float) ~ Float[]```\n\n\n\ndistance: Float\n\nreturn: Float[]"]
+				},
+				"Multiply": {
+					"descriptions": ["**Matrix product.**\n\n```function : Multiply(lhs:Float[], rhs:Float[]) ~ Float[]```\n\n\n\nlhs: Float[]\n\nrhs: Float[]\n\nreturn: Float[]"]
+				},
+				"MultiplyInto": {
+					"descriptions": ["**Matrix product written into a buffer the caller owns. Exists so a draw loop can avoid allocating. Multiply returns a fresh Float[16] every call, which at one or two matrices per object per frame is hundreds of arrays a second -- enough to trigger a collection mid-frame, the classic stutter. Scene uses this with a scratch buffer it keeps.**\n\n```function : MultiplyInto(out:Float[], lhs:Float[], rhs:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nlhs: Float[]\n\nrhs: Float[]\n\nreturn: Nil"]
+				},
+				"Orthographic": {
+					"descriptions": ["**Orthographic projection: no perspective, so distance does not shrink anything. Two uses. A 2D overlay -- a HUD, a minimap -- drawn in pixel coordinates. And, less obviously, a directional light's view of a scene: a light infinitely far away casts parallel rays, so the projection that matches it is parallel too. A shadow map rendered through a perspective projection is wrong in a way that looks like the shadows are being cast by a nearby lamp.**\n\n```function : Orthographic(left:Float, right:Float, bottom:Float, top:Float, near:Float, far:Float) ~ Float[]```\n\n\n\nleft: Float\n\nright: Float\n\nbottom: Float\n\ntop: Float\n\nnear: Float\n\nfar: Float\n\nreturn: Float[]"]
+				},
+				"OrthographicBox": {
+					"descriptions": ["**A square orthographic box centred on the origin -- the usual shape for a directional light's view of a scene.**\n\n```function : OrthographicBox(extent:Float, near:Float, far:Float) ~ Float[]```\n\n\n\nextent: Float\n\nnear: Float\n\nfar: Float\n\nreturn: Float[]"]
+				},
+				"OrthographicInto": {
+					"descriptions": ["**Orthographic projection into a caller's buffer.**\n\n```function : OrthographicInto(out:Float[], left:Float, right:Float, bottom:Float, top:Float, near:Float, far:Float) ~ Nil```\n\n\n\nout: Float[]\n\nleft: Float\n\nright: Float\n\nbottom: Float\n\ntop: Float\n\nnear: Float\n\nfar: Float\n\nreturn: Nil"]
+				},
+				"Perspective": {
+					"descriptions": ["**Right-handed perspective projection, mapping to GL's -1..1 depth range.**\n\n```function : Perspective(fov_radians:Float, aspect:Float, near:Float, far:Float) ~ Float[]```\n\n\n\nfov_radians: Float\n\naspect: Float\n\nnear: Float\n\nfar: Float\n\nreturn: Float[]"]
+				},
+				"PerspectiveDegrees": {
+					"descriptions": ["**Perspective with the field of view in DEGREES, and sensible clip planes. Both call sites spelled the fov as a bare expression -- Float->Pi() \/ 4.0 and Float->Pi() \/ 3.0 -- and repeated the same 0.1 and 100.0 clip distances verbatim. Degrees are how field of view is actually discussed; 60 is a normal first-person view, 45 a slightly telephoto one.**\n\n```function : PerspectiveDegrees(fov_degrees:Float, aspect:Float) ~ Float[]```\n\n\n\nfov_degrees: Float\n\naspect: Float\n\nreturn: Float[]", "**Perspective in degrees with explicit clip planes.**\n\n```function : PerspectiveDegrees(fov_degrees:Float, aspect:Float, near:Float, far:Float) ~ Float[]```\n\n\n\nfov_degrees: Float\n\naspect: Float\n\nnear: Float\n\nfar: Float\n\nreturn: Float[]"]
+				},
+				"PerspectiveInto": {
+					"descriptions": ["**Perspective into a caller's buffer. See IdentityInto. Note this zeroes the destination first, so unlike the other Into forms it must NOT be handed a buffer that already holds something wanted -- a projection matrix is mostly zeroes, and leaving a previous matrix's values in the untouched slots would produce nonsense rather than a projection.**\n\n```function : PerspectiveInto(out:Float[], fov_radians:Float, aspect:Float, near:Float, far:Float) ~ Nil```\n\n\n\nout: Float[]\n\nfov_radians: Float\n\naspect: Float\n\nnear: Float\n\nfar: Float\n\nreturn: Nil"]
+				},
+				"RotationX": {
+					"descriptions": ["**Rotation about the X axis.**\n\n```function : RotationX(radians:Float) ~ Float[]```\n\n\n\nradians: Float\n\nreturn: Float[]"]
+				},
+				"RotationXInto": {
+					"descriptions": ["**Rotation about X, into a caller's buffer. See IdentityInto.**\n\n```function : RotationXInto(out:Float[], radians:Float) ~ Nil```\n\n\n\nout: Float[]\n\nradians: Float\n\nreturn: Nil"]
+				},
+				"RotationY": {
+					"descriptions": ["**Rotation about the Y axis.**\n\n```function : RotationY(radians:Float) ~ Float[]```\n\n\n\nradians: Float\n\nreturn: Float[]"]
+				},
+				"RotationYInto": {
+					"descriptions": ["**Rotation about Y, into a caller's buffer. See IdentityInto.**\n\n```function : RotationYInto(out:Float[], radians:Float) ~ Nil```\n\n\n\nout: Float[]\n\nradians: Float\n\nreturn: Nil"]
+				},
+				"RotationYXZ": {
+					"descriptions": ["**Yaw, pitch and roll, allocating.**\n\n```function : RotationYXZ(yaw:Float, pitch:Float, roll:Float) ~ Float[]```\n\n\n\nyaw: Float\n\npitch: Float\n\nroll: Float\n\nreturn: Float[]"]
+				},
+				"RotationYXZInto": {
+					"descriptions": ["**Yaw, then pitch, then roll -- the same result as RotationY * RotationX * RotationZ, computed directly. Spelling that composition out costs six allocations (three builders, each of which allocated twice) plus two matrix products, per object per frame. This is nine multiplies and no allocation. The derivation is verified against the composition in the regression suite, because a transposed or sign-flipped term here produces a rotation that looks plausible until something is mirrored.**\n\n```function : RotationYXZInto(out:Float[], yaw:Float, pitch:Float, roll:Float) ~ Nil```\n\n\n\nout: Float[]\n\nyaw: Float\n\npitch: Float\n\nroll: Float\n\nreturn: Nil"]
+				},
+				"RotationZ": {
+					"descriptions": ["**Rotation about the Z axis.**\n\n```function : RotationZ(radians:Float) ~ Float[]```\n\n\n\nradians: Float\n\nreturn: Float[]"]
+				},
+				"RotationZInto": {
+					"descriptions": ["**Rotation about Z, into a caller's buffer. See IdentityInto.**\n\n```function : RotationZInto(out:Float[], radians:Float) ~ Nil```\n\n\n\nout: Float[]\n\nradians: Float\n\nreturn: Nil"]
+				},
+				"Scale": {
+					"descriptions": ["**Uniform scale matrix.**\n\n```function : Scale(s:Float) ~ Float[]```\n\n\n\ns: Float\n\nreturn: Float[]"]
+				},
+				"ScaleXYZ": {
+					"descriptions": ["**Non-uniform scale. This is what lets one unit-cube mesh become every box in a scene -- walls, floors and obstacles -- instead of uploading a separate mesh per shape.**\n\n```function : ScaleXYZ(x:Float, y:Float, z:Float) ~ Float[]```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Float[]"]
+				},
+				"ScaleXYZInto": {
+					"descriptions": ["**Non-uniform scale, into a caller's buffer. See IdentityInto.**\n\n```function : ScaleXYZInto(out:Float[], x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nout: Float[]\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil"]
+				},
+				"Translation": {
+					"descriptions": ["**Translation matrix.**\n\n```function : Translation(x:Float, y:Float, z:Float) ~ Float[]```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Float[]"]
+				},
+				"TranslationInto": {
+					"descriptions": ["**Translation, into a caller's buffer. See IdentityInto.**\n\n```function : TranslationInto(out:Float[], x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nout: Float[]\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil"]
+				},
+				"TranslationScale": {
+					"descriptions": ["**Translate and scale, allocating.**\n\n```function : TranslationScale(x:Float, y:Float, z:Float, sx:Float, sy:Float, sz:Float) ~ Float[]```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nsx: Float\n\nsy: Float\n\nsz: Float\n\nreturn: Float[]"]
+				},
+				"TranslationScaleInto": {
+					"descriptions": ["**Translate and scale in one step, with no multiply at all. This is the whole of a Box's transform -- position plus half-extents -- and it is the single most common model matrix there is. Composing it as Multiply(Translation(...), ScaleXYZ(...)) costs two allocations and sixty-four multiply-adds to produce a matrix whose scale is its diagonal and whose translation is its last column. So write those directly.**\n\n```function : TranslationScaleInto(out:Float[], x:Float, y:Float, z:Float, sx:Float, sy:Float, sz:Float) ~ Nil```\n\n\n\nout: Float[]\n\nx: Float\n\ny: Float\n\nz: Float\n\nsx: Float\n\nsy: Float\n\nsz: Float\n\nreturn: Nil"]
+				},
+				"Transpose": {
+					"descriptions": ["**Transpose: rows become columns.**\n\n```function : Transpose(m:Float[]) ~ Float[]```\n\n\n\nm: Float[]\n\nreturn: Float[]"]
+				},
+				"TransposeInto": {
+					"descriptions": ["**Transpose into a caller's buffer.**\n\n```function : TransposeInto(out:Float[], m:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nm: Float[]\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Mesh": {
+			"description": "Geometry uploaded to the GPU once and drawn many times. Vertices are interleaved and described by a layout: [3, 2] means each vertex is three floats of position followed by two of texture coordinate, bound to shader locations 0 and 1 in that order. Indices select vertices, so shared corners are stored once. Upload cost is paid at construction; Draw() is a single native call regardless of how many triangles it draws. That is deliberate -- per-vertex calls across the native boundary would be orders of magnitude slower.",
+			"functions": {
+				"Corner": {
+					"descriptions": ["**Write one interleaved position\/normal\/texcoord vertex.**\n\n```function : Corner() ~ Nil```\n\n\n\ninto: Float[]\n\nindex: Int\n\nx: Float\n\ny: Float\n\nz: Float\n\nnx: Float\n\nny: Float\n\nnz: Float\n\nu: Float\n\nv: Float\n\nreturn: Nil"]
+				},
+				"Corner3": {
+					"descriptions": ["**Write one face corner from an OBJ \"v\", \"v\/vt\", \"v\/\/vn\" or \"v\/vt\/vn\" token.**\n\n```function : Corner3() ~ Int```\n\n\n\ninto: Float[]\n\nout: Int\n\ntoken: String\n\npositions: Float[]\n\nposition_count: Int\n\ntexcoords: Float[]\n\ntexcoord_count: Int\n\nnormals: Float[]\n\nnormal_count: Int\n\nreturn: Int"]
+				},
+				"Cube": {
+					"descriptions": ["**A cube spanning -1..1 on every axis, ready for Scene and Box. Not a \"unit\" cube: it is 2x2x2, because Box multiplies it by a HALF-extent. A cube built to -0.5..0.5 would draw every box at half the size it claims while collision kept using the full extents. See the note on Box. Culling-safe: every face is wound counter-clockwise seen from outside, so GL_CULL_FACE can be enabled without anything vanishing.**\n\n```function : Cube() ~ Mesh```\n\n\n\nreturn: Mesh", "**A cube of an arbitrary half-extent.**\n\n```function : Cube(half:Float) ~ Mesh```\n\n\n\nhalf: Float\n\nreturn: Mesh"]
+				},
+				"CubeInterior": {
+					"descriptions": ["**A cube seen from the INSIDE: a room, or a skybox. Mesh->Cube is wound counter-clockwise from outside, which is right for a solid object and useless for an enclosure -- put the camera inside one and every wall is back-facing, so GL_CULL_FACE removes the whole room and you are left looking through it. This is the same cube with its winding reversed and its normals turned inward, so it is both visible and lit from within. None of that is discoverable from the outside: building a room out of Cube and wondering where it went is the failure this exists to prevent.**\n\n```function : CubeInterior(half:Float) ~ Mesh```\n\n\n\nhalf: Float\n\nreturn: Mesh"]
+				},
+				"Draw": {
+					"descriptions": ["**Draw the whole mesh. Bind a Shader first.**\n\n```method : public : Draw() ~ Nil```\n\n\n\nreturn: Nil", "**Draw with a different topology. The same vertices and indices read as lines instead of triangles, which is how a wireframe, a debug ray, a grid or a plotted curve gets drawn -- and all of that was unreachable while the draw call hardcoded triangles. Note the indices have to suit the mode: an index list built as triangles (0,1,2, 2,3,0) drawn as GL_LINES pairs them up as (0,1), (2,2), (3,0), which is a mesh's outline plus some degenerate segments rather than a tidy wireframe. Build indices for the mode you mean.**\n\n```method : public : Draw(mode:Int) ~ Nil```\n\n\n\nmode: Int\n\nreturn: Nil"]
+				},
+				"DrawInstanced": {
+					"descriptions": ["**Draw many copies in one call, using the data from SetInstanceMatrices.**\n\n```method : public : DrawInstanced(count:Int) ~ Nil```\n\n\n\ncount: Int\n\nreturn: Nil", "**Draw many copies with a given topology.**\n\n```method : public : DrawInstanced(count:Int, mode:Int) ~ Nil```\n\n\n\ncount: Int\n\nmode: Int\n\nreturn: Nil"]
+				},
+				"FaceField": {
+					"descriptions": ["**One slash-separated field of an OBJ face token: \"12\", \"12\/3\", \"12\/\/4\" or \"12\/3\/4\". Walks the string rather than using String->Split, which is wrong for this in two separate ways -- both found by a triangle that loaded successfully and rendered nothing: * A token containing NO separator splits into ZERO parts, not one. So \"-3\" yielded no fields at all, the position index came back missing, and every vertex of that face was left at the origin. A degenerate triangle draws nothing and raises no error. * Consecutive separators do not produce an empty field. \"1\/\/3\" splits into \"1\" and \"\/3\", so the `v\/\/vn` form -- position and normal with no texture coordinate, which is what an exporter writes for an untextured model -- read \"\/3\" as the texture index and lost the normal.**\n\n```function : FaceField(token:String, index:Int) ~ String```\n\n\n\ntoken: String\n\nindex: Int\n\nreturn: String"]
+				},
+				"FlatNormal": {
+					"descriptions": ["**Give three consecutive vertices the normal of the plane they lie in, for a file that carried none.**\n\n```function : FlatNormal() ~ Nil```\n\n\n\nvertices: Float[]\n\nbase: Int\n\nreturn: Nil"]
+				},
+				"Free": {
+					"descriptions": ["**Release the buffers. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetCenter": {
+					"descriptions": ["**The middle of the bounding box. Rarely the origin for a loaded model -- a file's author had no reason to centre it -- so this is what to translate BY (negated) to bring a model to the origin before rotating it, or it will orbit rather than spin.**\n\n```method : public : GetCenter() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"GetMax": {
+					"descriptions": ["**The high corner of the bounding box.**\n\n```method : public : GetMax() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"GetMin": {
+					"descriptions": ["**The low corner of the bounding box, in model space.**\n\n```method : public : GetMin() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"GetRadius": {
+					"descriptions": ["**Distance from the centre to the furthest corner. The number that makes a loaded model usable: a file has whatever scale its author worked in, and a program that hardcodes a scale fits exactly one model. Dividing a target size by this fits any of them.**\n\n```method : public : GetRadius() ~ Float```\n\n\n\nreturn: Float\n\n```\ntransform->SetScale(2.0 \/ mesh->GetRadius());\n```"]
+				},
+				"GetSize": {
+					"descriptions": ["**The width, height and depth of the bounding box.**\n\n```method : public : GetSize() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Measure": {
+					"descriptions": ["**Work out the bounding box from the vertex data. Assumes the FIRST attribute is the position, which is the convention every primitive here follows and what PositionNormalTexcoord documents. A layout that puts something else first gets bounds of that instead -- there is no way to tell from a list of component counts which one is the position.**\n\n```method : private : Measure() ~ Nil```\n\n\n\nvertices: Float[]\n\nlayout: Int[]\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**Upload geometry.**\n\n```New(vertices:Float[], indices:Int[], layout:Int[])```\n\n\n\nvertices: Float[]\n\nindices: Int[]\n\nlayout: Int[]"]
+				},
+				"NoMesh": {
+					"descriptions": ["**A Mesh that reports IsOk() false, for a load that could not proceed. Empty arrays rather than Nil, because a bare Nil in Objeck infers as Nil rather than as the parameter's array type and will not compile.**\n\n```function : NoMesh() ~ Mesh```\n\n\n\nreturn: Mesh"]
+				},
+				"Plane": {
+					"descriptions": ["**A flat square on the XZ plane at y = 0, normal pointing up. Floors and ground planes.**\n\n```function : Plane(half:Float, tiles:Float) ~ Mesh```\n\n\n\nhalf: Float\n\ntiles: Float\n\nreturn: Mesh"]
+				},
+				"PositionNormalTexcoord": {
+					"descriptions": ["**The layout every primitive above is built to: three floats of position, three of normal, two of texture coordinate, bound to shader locations 0, 1 and 2 in that order. Named rather than written as [3, 3, 2] at each site so a shader and the geometry it reads cannot drift apart silently -- a mismatch there binds the normal to the texcoord slot and produces a plausible-looking wrong picture.**\n\n```function : PositionNormalTexcoord() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"Quad": {
+					"descriptions": ["**A flat square on the XY plane at z = 0, normal pointing at the viewer. At half = 1.0 this exactly covers clip space, which is what a full-screen pass wants -- a post-process or a background drawn with an identity matrix.**\n\n```function : Quad(half:Float) ~ Mesh```\n\n\n\nhalf: Float\n\nreturn: Mesh"]
+				},
+				"Resolve": {
+					"descriptions": ["**OBJ indices are 1-based, and may be NEGATIVE to mean \"counting back from the end\" -- which some exporters emit and a loader that assumes 1-based reads as a wild out-of-range index.**\n\n```function : Resolve() ~ Int```\n\n\n\nfield: String\n\ncount: Int\n\nreturn: Int"]
+				},
+				"SetInstances": {
+					"descriptions": ["**Per-instance data with an explicit layout, for anything that is not a model matrix -- a colour per instance, a scalar, a texture index.**\n\n```method : public : SetInstances(data:Float[], layout:Int[], base_location:Int) ~ Bool```\n\n\n\ndata: Float[]\n\nlayout: Int[]\n\nbase_location: Int\n\nreturn: Bool"]
+				},
+				"Sphere": {
+					"descriptions": ["**A UV sphere of radius 1, centred on the origin. Normals are the vertex positions, which is exact for a unit sphere and is why this reads as round under lighting rather than faceted.**\n\n```function : Sphere(segments:Int, rings:Int) ~ Mesh```\n\n\n\nsegments: Int\n\nrings: Int\n\nreturn: Mesh"]
+				},
+				"Words": {
+					"descriptions": ["**Split on whitespace, dropping the empty pieces a run of spaces produces and stripping a trailing carriage return. Returns Nil for a blank or comment line, so callers can test one thing.**\n\n```function : Words() ~ Vector&lt;String&gt;```\n\n\n\nline: String\n\nreturn: Vector&lt;String&gt;"]
+				}
+			}
+		},
+		"Game.OpenGL.Overlay": {
+			"description": "Text and flat rectangles drawn on top of a 3D scene, positioned in pixels. The gap this fills is not subtle: there was no way to draw text at all. A frame-rate counter, a label on an object, a score, a \"press escape to quit\" -- none of it was reachable, in a 3D framework, from a language whose SDL2 bindings have had TrueType support all along.",
+			"functions": {
+				"Begin": {
+					"descriptions": ["**Start drawing overlay content. Turns depth testing off and alpha blending on, because a HUD belongs on top of everything regardless of where it is in space, and glyph edges are antialiased into their alpha channel. End puts both back.**\n\n```method : public : Begin() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"ClearCache": {
+					"descriptions": ["**Drop every cached string texture.**\n\n```method : public : ClearCache() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"End": {
+					"descriptions": ["**Finish drawing overlay content and restore the 3D state.**\n\n```method : public : End() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Free": {
+					"descriptions": ["**Release the overlay's own GL objects. Does NOT free the font -- that was passed in and belongs to the caller. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetError": {
+					"descriptions": ["****\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetScale": {
+					"descriptions": ["**How much bigger the drawable is than the window, for sizing a HUD on a high-DPI display.**\n\n```method : public : GetScale() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"MeasureWidth": {
+					"descriptions": ["**How wide and tall a string would be, without drawing it. For centring or right-aligning.**\n\n```method : public : MeasureWidth(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**An overlay sized to a window's drawable.**\n\n```New(window:GLWindow)```\n\n\n\nwindow: GLWindow"]
+				},
+				"Rasterize": {
+					"descriptions": ["**The string's texture, rasterising it only if it is not already cached.**\n\n```method : private : Rasterize() ~ Texture2D```\n\n\n\ntext: String\n\nreturn: Texture2D"]
+				},
+				"Rect": {
+					"descriptions": ["**A filled rectangle -- a panel behind text, a health bar, a crosshair. Uses the overlay's own one-pixel white texture, tinted by the shader, so it costs no extra state change between this and a Text call.**\n\n```method : public : Rect(x:Int, y:Int, width:Int, height:Int) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nreturn: Nil"]
+				},
+				"Resize": {
+					"descriptions": ["**Recompute the pixel projection. Call after the window's drawable changes size; Begin does it anyway, so this is rarely needed directly.**\n\n```method : public : Resize() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetColor": {
+					"descriptions": ["**The colour text is drawn in. Changing it invalidates the cache, since the colour is baked into each rasterised texture.**\n\n```method : public : SetColor(r:Int, g:Int, b:Int) ~ Nil```\n\n\n\nr: Int\n\ng: Int\n\nb: Int\n\nreturn: Nil"]
+				},
+				"SetFont": {
+					"descriptions": ["**The font used by Text. Not owned -- the caller loads it and frees it.**\n\n```method : public : SetFont(font:Font) ~ Nil```\n\n\n\nfont: Font\n\nreturn: Nil"]
+				},
+				"Text": {
+					"descriptions": ["**Draw a string with its top-left corner at (x, y) in pixels.**\n\n```method : public : Text(text:String, x:Int, y:Int) ~ Int```\n\n\n\ntext: String\n\nx: Int\n\ny: Int\n\nreturn: Int"]
+				}
+			}
+		},
+		"Game.OpenGL.PointShadow": {
+			"description": "Shadows from a point light, in every direction at once. A point light shines everywhere, so no single flat map can hold its shadows. The scene is rendered SIX times, once down each axis, into the six faces of a cube map -- and then sampled by direction rather than by a projected coordinate.",
+			"functions": {
+				"ApplyTo": {
+					"descriptions": ["**Bind the cube and tell a shader how to read it. Writes \"point_light_position\", \"point_light_range\", \"point_bias\" and \"shadow_cube\", skipping any the shader does not declare.**\n\n```method : public : ApplyTo(shader:Shader) ~ Nil```\n\n\n\nshader: Shader\n\nreturn: Nil"]
+				},
+				"BeginFace": {
+					"descriptions": ["**Start drawing into ONE face. Faces run 0..5 in GL's order: +X, -X, +Y, -Y, +Z, -Z. Everything drawn until the next BeginFace or End goes into that face. Call Capture instead unless the casters are not in a Scene.**\n\n```method : public : BeginFace(face:Int) ~ Nil```\n\n\n\nface: Int\n\nreturn: Nil"]
+				},
+				"BindCubeTo": {
+					"descriptions": ["**Bind the cube for sampling on a chosen unit, without touching a shader. For inspecting what the six faces hold -- which is the only way to tell a rotated face from a correct one, since a symmetric scene looks the same either way on screen.**\n\n```method : public : BindCubeTo(unit:Int) ~ Nil```\n\n\n\nunit: Int\n\nreturn: Nil"]
+				},
+				"BuildFace": {
+					"descriptions": ["**The six views from the light, one per face. The up vectors are not a free choice: GL specifies how each cube face is oriented, and a face rendered with a different up is stored rotated. The lookup would then read the right face and the wrong part of it -- shadows that are present, plausible, and in the wrong place on two faces out of six.**\n\n```method : private : BuildFace() ~ Nil```\n\n\n\nface: Int\n\nreturn: Nil"]
+				},
+				"Capture": {
+					"descriptions": ["**Render a whole Scene into all six faces, then go back to the window. The one call that does the entire depth stage.**\n\n```method : public : Capture(scene:Scene, window:GLWindow) ~ Nil```\n\n\n\nscene: Scene\n\nwindow: GLWindow\n\nreturn: Nil"]
+				},
+				"DrawCaster": {
+					"descriptions": ["**Draw one caster into the face that BeginFace selected.**\n\n```method : public : DrawCaster(mesh:Mesh, transform:Transform) ~ Nil```\n\n\n\nmesh: Mesh\n\ntransform: Transform\n\nreturn: Nil"]
+				},
+				"DrawCasterMatrix": {
+					"descriptions": ["**Draw a caster with a model matrix rather than a Transform.**\n\n```method : public : DrawCasterMatrix(mesh:Mesh, model:Float[]) ~ Nil```\n\n\n\nmesh: Mesh\n\nmodel: Float[]\n\nreturn: Nil"]
+				},
+				"End": {
+					"descriptions": ["**Finish the depth stage and go back to drawing at the window.**\n\n```method : public : End(window:GLWindow) ~ Nil```\n\n\n\nwindow: GLWindow\n\nreturn: Nil"]
+				},
+				"Free": {
+					"descriptions": ["**Release the cube map and its shader. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetError": {
+					"descriptions": ["****\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A cube shadow map.**\n\n```New(size:Int)```\n\n\n\nsize: Int"]
+				},
+				"SetBias": {
+					"descriptions": ["**The depth margin, in WORLD UNITS -- unlike ShadowMap's, which is in projected depth. Default 0.06.**\n\n```method : public : SetBias(bias:Float) ~ Nil```\n\n\n\nbias: Float\n\nreturn: Nil"]
+				},
+				"SetLight": {
+					"descriptions": ["**Take the position and range from a point light. Worth doing rather than setting them twice: a cube rendered from somewhere other than the light puts every shadow in the wrong place, and the receiving shader matches the cube to a light BY POSITION, so a mismatch means the shadow is silently applied to no light at all.**\n\n```method : public : SetLight(light:Light) ~ Nil```\n\n\n\nlight: Light\n\nreturn: Nil"]
+				},
+				"SetLightAt": {
+					"descriptions": ["****\n\n```method : public : SetLightAt(position:Vector3, range:Float) ~ Nil```\n\n\n\nposition: Vector3\n\nrange: Float\n\nreturn: Nil"]
+				},
+				"SetTextureUnit": {
+					"descriptions": ["**Which texture unit the cube is bound to. Default 2, leaving 0 for the ordinary texture and 1 for a flat ShadowMap.**\n\n```method : public : SetTextureUnit(unit:Int) ~ Nil```\n\n\n\nunit: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.RenderTarget": {
+			"description": "A framebuffer you draw into instead of the window, and then sample. Render-to-texture, which is the door to most of what comes after simple forward rendering: a post-process pass, a shadow map, a reflection, a mirror, a minimap.",
+			"functions": {
+				"Bind": {
+					"descriptions": ["**Draw into this target from here on. Sets the viewport to match.**\n\n```method : public : Bind() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"BindAsCube": {
+					"descriptions": ["**Bind a cube target's texture for sampling. Separate from Texture2D->Bind because the target enum differs: a cube map bound as GL_TEXTURE_2D leaves the sampler reading nothing at all, with no error.**\n\n```method : public : BindAsCube(unit:Int) ~ Nil```\n\n\n\nunit: Int\n\nreturn: Nil"]
+				},
+				"BindFace": {
+					"descriptions": ["**Draw into ONE face of a cube target, and set the viewport to match.**\n\n```method : public : BindFace(face:Int) ~ Nil```\n\n\n\nface: Int\n\nreturn: Nil"]
+				},
+				"Depth": {
+					"descriptions": ["**A DEPTH-ONLY target: no colour buffer at all, and the depth is a texture that can be sampled. The reverse of the usual arrangement, and what a shadow map needs -- depth read, colour never. ShadowMap wraps this along with everything else the technique requires; reach for it directly only for something ShadowMap does not cover.**\n\n```function : Depth(size:Int) ~ RenderTarget```\n\n\n\nsize: Int\n\nreturn: RenderTarget"]
+				},
+				"DepthCube": {
+					"descriptions": ["**A CUBE depth target: six square depth faces under one texture name. What a point light needs. A point light shines in every direction, so no single flat map can hold its shadows -- the scene is rendered six times, once down each axis, and sampled by DIRECTION rather than by a projected coordinate. PointShadow wraps all of that; reach for this directly only for something PointShadow does not cover.**\n\n```function : DepthCube(size:Int) ~ RenderTarget```\n\n\n\nsize: Int\n\nreturn: RenderTarget"]
+				},
+				"Free": {
+					"descriptions": ["**Release the framebuffer, its colour texture and its depth buffer. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetAspect": {
+					"descriptions": ["****\n\n```method : public : GetAspect() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetError": {
+					"descriptions": ["**Why creation failed -- an incomplete framebuffer, a size the driver refuses, or the entry points not being loaded.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTexture": {
+					"descriptions": ["**What was drawn, as a texture to bind and sample. The same object every call, and it does NOT own the underlying texture -- this target does. Freeing the returned Texture2D would delete a texture the framebuffer is still attached to, so do not; free the target instead.**\n\n```method : public : GetTexture() ~ Texture2D```\n\n\n\nreturn: Texture2D"]
+				},
+				"IsCube": {
+					"descriptions": ["****\n\n```method : public : IsCube() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A target of the given size, smoothly sampled.**\n\n```New(width:Int, height:Int)```\n\n\n\nwidth: Int\n\nheight: Int", "**A target with an explicit sampling filter. Use GL_NEAREST when the result is read exactly rather than scaled -- a deliberately low-resolution pass, or data rather than a picture.**\n\n```New(width:Int, height:Int, filter:Int)```\n\n\n\nwidth: Int\n\nheight: Int\n\nfilter: Int"]
+				},
+				"Unbind": {
+					"descriptions": ["**Draw into the window again, restoring its viewport.**\n\n```method : public : Unbind(window:GLWindow) ~ Nil```\n\n\n\nwindow: GLWindow\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Scene": {
+			"description": "A world of boxes that draws itself and answers collision queries. This is the layer that keeps a 3D program from hand-rolling parallel arrays and index arithmetic. Add boxes, then call Draw once per frame and Blocked whenever something wants to move.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Add an existing box.**\n\n```method : public : Add(box:Box) ~ Box```\n\n\n\nbox: Box\n\nreturn: Box"]
+				},
+				"AddBox": {
+					"descriptions": ["**Build and add a box.**\n\n```method : public : AddBox(center:Vector3, half:Vector3, texture:Texture2D) ~ Box```\n\n\n\ncenter: Vector3\n\nhalf: Vector3\n\ntexture: Texture2D\n\nreturn: Box"]
+				},
+				"Blocked": {
+					"descriptions": ["**Whether a circle in plan view hits any SOLID box.**\n\n```method : public : Blocked(x:Float, z:Float, radius:Float) ~ Bool```\n\n\n\nx: Float\n\nz: Float\n\nradius: Float\n\nreturn: Bool"]
+				},
+				"Clear": {
+					"descriptions": ["**Drop every box. Does NOT free the shared mesh, shader or textures -- those were passed in and belong to the caller.**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Draw": {
+					"descriptions": ["**Draw every box. Binds the shader, then for each box sets the \"mvp\" uniform and draws the shared mesh. Rebinds a texture only when it changes from the previous box.**\n\n```method : public : Draw(view_projection:Float[]) ~ Nil```\n\n\n\nview_projection: Float[]\n\nreturn: Nil"]
+				},
+				"DrawInto": {
+					"descriptions": ["**Draw every box through a DIFFERENT shader, with a different matrix. For a pass that is not the normal one: a shadow map's depth pass wants this scene's geometry rendered from the light with a depth-only program, and nothing else about the scene changes. Deliberately minimal -- no light, no sampler, no per-object model matrix unless the shader asks for one -- because an auxiliary pass generally wants positions and nothing else, and setting uniforms a depth shader does not declare would file a diagnostic per box per frame.**\n\n```method : public : DrawInto(shader:Shader, view_projection:Float[]) ~ Nil```\n\n\n\nshader: Shader\n\nview_projection: Float[]\n\nreturn: Nil"]
+				},
+				"Get": {
+					"descriptions": ["****\n\n```method : public : Get(index:Int) ~ Box```\n\n\n\nindex: Int\n\nreturn: Box"]
+				},
+				"GetCount": {
+					"descriptions": ["****\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetCulledCount": {
+					"descriptions": ["**How many boxes the last Draw skipped as off-screen.**\n\n```method : public : GetCulledCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDrawnCount": {
+					"descriptions": ["**How many boxes the last Draw actually submitted.**\n\n```method : public : GetDrawnCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLight": {
+					"descriptions": ["****\n\n```method : public : GetLight() ~ Light```\n\n\n\nreturn: Light"]
+				},
+				"GetLightRig": {
+					"descriptions": ["****\n\n```method : public : GetLightRig() ~ LightRig```\n\n\n\nreturn: LightRig"]
+				},
+				"IsCulling": {
+					"descriptions": ["****\n\n```method : public : IsCulling() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["****\n\n```New(mesh:Mesh, shader:Shader)```\n\n\n\nmesh: Mesh\n\nshader: Shader"]
+				},
+				"SetCulling": {
+					"descriptions": ["**Whether to skip boxes that fall outside the view. On by default. The test is a few dozen arithmetic operations per box against a draw call plus a matrix multiply plus two uniform uploads, so it pays for itself almost immediately and costs almost nothing when it does not. Turn it off to measure what it is saving, or if a custom vertex shader moves geometry away from where its box says it is -- the test uses the box, and a shader that displaces vertices makes that a lie.**\n\n```method : public : SetCulling(enabled:Bool) ~ Nil```\n\n\n\nenabled: Bool\n\nreturn: Nil"]
+				},
+				"SetLight": {
+					"descriptions": ["**Light the scene. Pass Nil to go back to an unlit shader's own behaviour. The light's uniforms are written once per Draw, not per object, since a directional light is the same for everything in the frame.**\n\n```method : public : SetLight(light:Light) ~ Nil```\n\n\n\nlight: Light\n\nreturn: Nil"]
+				},
+				"SetLightRig": {
+					"descriptions": ["**Light the scene with several lights rather than one. Takes precedence over SetLight. A rig with a point light or two is what a scene with a lamp in it wants; SetLight remains the shorter way to say \"one directional light\".**\n\n```method : public : SetLightRig(rig:LightRig) ~ Nil```\n\n\n\nrig: LightRig\n\nreturn: Nil"]
+				},
+				"SetShader": {
+					"descriptions": ["**Draw with a different program from here on. Resets what was learned about the old shader's uniforms -- a Scene that cached \"this shader has no model matrix\" and then had a lit shader substituted would silently stop transforming normals.**\n\n```method : public : SetShader(shader:Shader) ~ Nil```\n\n\n\nshader: Shader\n\nreturn: Nil"]
+				},
+				"SlideMove": {
+					"descriptions": ["**Move a camera through the scene, sliding along whatever it hits. The only program with collision could not use Camera->MoveForward or MoveRight, because collision has to test a candidate position BEFORE committing to it -- so it re-derived the ground basis, did the dot products by hand and called SetPosition, twenty lines that belong here. Each axis is applied separately, and that is the whole trick: testing the combined vector stops you dead against a wall you hit at an angle, while testing X and Z in turn lets the blocked component drop and the other one through, which is what sliding along a wall is.**\n\n```method : public : SlideMove(camera:Camera, forward:Float, strafe:Float, radius:Float) ~ Bool```\n\n\n\ncamera: Camera\n\nforward: Float\n\nstrafe: Float\n\nradius: Float\n\nreturn: Bool"]
+				}
+			}
+		},
+		"Game.OpenGL.Shader": {
+			"description": "A linked shader program, built from vertex and fragment source. One native call does the whole compile-and-link, so a failure comes back as a log rather than as five separate error checks. Check IsOk() before drawing; GetLog() carries the compiler's message when it is false.",
+			"functions": {
+				"AddLitVaryings": {
+					"descriptions": ["**The outputs every lit vertex shader must write, declared in ONE place. Both lit vertex sources -- the ordinary one and the instanced one -- feed the same fragment shader, so they have to agree about this list exactly. They did not: world_position was added here for point lights and specular and the instanced source was not updated, which macOS's linker rejected outright while Windows and Linux linked it happily and left the value undefined. So point lights and specular on instanced geometry were reading garbage on two platforms out of three and only the strictest one said so. Declared once, and asserted by a test that reads a point light through the instanced shader rather than only checking that it compiles.**\n\n```function : AddLitVaryings(source:ShaderSource, shadowed:Bool) ~ Nil```\n\n\n\nsource: ShaderSource\n\nshadowed: Bool\n\nreturn: Nil"]
+				},
+				"DepthCube": {
+					"descriptions": ["**The depth pass for a point light: writes DISTANCE from the light, in world units, rather than the usual projected depth. This is the whole trick that makes cube shadows tractable. A cube map is sampled by direction, and the six faces do not share a projection -- so a comparison in projected depth would need to know which face a lookup landed on and undo that face's projection. Writing `length(world - light) \/ range` instead makes every face agree on what a stored value means, and the comparison becomes a distance against a distance. It also disposes of the bias problem that spot shadows have. Projected depth is non-linear, so a constant bias means different things at different distances; a world-unit distance is linear everywhere, so one bias in world units is correct across the whole range. Uniforms: \"mvp\", \"model\", \"light_position\" and \"light_range\".**\n\n```function : DepthCube() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"DepthOnly": {
+					"descriptions": ["**Writes depth and nothing else: the shadow map's own pass. No colour output at all, because there is no colour buffer attached to a depth-only target to write one into. Its only uniform is \"mvp\", which for this pass is the LIGHT's projection times view times the model matrix -- ShadowMap->DrawCaster does that arithmetic.**\n\n```function : DepthOnly() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"Flat": {
+					"descriptions": ["**A shader that fills with one colour, set through the \"color\" uniform as three floats. The uniform every built-in shader here shares is \"mvp\", a mat4. Set it with SetMatrix4 and nothing else is required.**\n\n```function : Flat() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"Free": {
+					"descriptions": ["**Release the program. GL objects are invisible to the collector, so this is not optional. Call it while the GL context is still current -- see the shutdown order on the GL class. After GLContext->Delete there is no context for the underlying glDeleteProgram to act on.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"FromFiles": {
+					"descriptions": ["**Compile a program from two files. Worth it for anything beyond a few lines: a driver's error log reports GLSL line numbers, and those mean nothing when the source was assembled from string literals scattered through a method.**\n\n```function : FromFiles(vertex_file:String, fragment_file:String) ~ Shader```\n\n\n\nvertex_file: String\n\nfragment_file: String\n\nreturn: Shader"]
+				},
+				"GetLog": {
+					"descriptions": ["****\n\n```method : public : GetLog() ~ String```\n\n\n\nreturn: String"]
+				},
+				"HasUniform": {
+					"descriptions": ["**Whether this program declares a uniform of this name. Ask before setting one that may not be there. A missing uniform is reported through GL->GetLastError, which is right for a typo and wrong for a deliberate \"set it only if the shader wants it\" -- Scene uses this to hand a model matrix to lit shaders without filing a diagnostic every frame for the unlit ones. Note GLSL removes uniforms it can prove are unused, so a declared but unreferenced uniform answers false. That is not a bug: there is nothing to set.**\n\n```method : public : HasUniform(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Lit": {
+					"descriptions": ["**Lit by one directional light, with a flat colour instead of a texture. Same uniforms as LitTextured, but \"color\" (a vec3) in place of \"tex\".**\n\n```function : Lit() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitShadowed": {
+					"descriptions": ["**Lit and shadowed, with a flat colour instead of a texture.**\n\n```function : LitShadowed() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitTextured": {
+					"descriptions": ["**Textured and lit by one directional light. Uniforms: \"mvp\" and \"model\" (Scene sets both), the sampler \"tex\", and the three a Light writes -- \"light_direction\", \"light_color\" and \"ambient\". Optionally \"fog_distance\": set it to darken with distance, leave it alone for no fog. That is here rather than in a separate preset because Lit times Textured times Fogged would be eight programs for the sake of one multiply. ## The normal matrix, and why there is no Matrix3 here A surface normal cannot be transformed by the model matrix. Under non-uniform scale that tilts it off the surface, and the shading goes subtly wrong in a way that reads as a modelling mistake. The correct transform is the inverse transpose of the model matrix. Computing that would normally mean a Matrix3 type, a glUniformMatrix3fv binding and a per-object CPU inverse. GLSL has had `inverse` and `transpose` since 1.40, and this targets 3.30, so the shader does it instead -- one line, no new API, and nothing for a caller to forget.**\n\n```function : LitTextured() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitTexturedInstanced": {
+					"descriptions": ["**Textured and lit, taking its model matrix per INSTANCE rather than from a uniform. Use with Mesh->SetInstanceMatrices and DrawInstanced. Reads the matrix from attribute locations 3 to 6, and has no \"model\" uniform at all -- so Scene, which sets one, cannot drive this. That is the trade instancing makes: the placement stops being something the CPU sends per object and becomes part of the vertex stream.**\n\n```function : LitTexturedInstanced() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitTexturedPointShadowed": {
+					"descriptions": ["**Textured and lit, with shadows from a POINT light's cube map. Adds \"shadow_cube\", \"point_light_position\", \"point_light_range\" and \"point_bias\" to LitTextured's uniforms, all written by PointShadow->ApplyTo. Note this is a separate program from LitTexturedShadowed rather than an option on it: a samplerCube and a sampler2D are different types, and a shader carrying both would pay for a cube map lookup in scenes that have no point light. Pick the one the scene needs.**\n\n```function : LitTexturedPointShadowed() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitTexturedShadowed": {
+					"descriptions": ["**Textured, lit, and shadowed. Use it with a ShadowMap. Adds \"light_space\", \"shadow_map\", \"shadow_bias\" and \"shadow_texel\" to LitTextured's uniforms, all of which ShadowMap->ApplyTo writes -- so a program sets none of them by hand.**\n\n```function : LitTexturedShadowed() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"New": {
+					"descriptions": ["**Compile and link a program.**\n\n```New(vertex_source:String, fragment_source:String)```\n\n\n\nvertex_source: String\n\nfragment_source: String"]
+				},
+				"Normals": {
+					"descriptions": ["**Draws each surface's normal as a colour: +X red, +Y green, +Z blue. A diagnostic, and the one worth reaching for first when geometry looks wrong. A face whose normal points the wrong way, a mesh whose attributes landed in the wrong slots, and a transform that has quietly mirrored something are all invisible under a texture and obvious here.**\n\n```function : Normals() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"SetFloat": {
+					"descriptions": ["**Set a float uniform. Makes this program current -- see SetMatrix4.**\n\n```method : public : SetFloat(name:String, value:Float) ~ Nil```\n\n\n\nname: String\n\nvalue: Float\n\nreturn: Nil"]
+				},
+				"SetInt": {
+					"descriptions": ["**Set an int uniform. Also how a sampler is pointed at a texture unit. Makes this program current -- see SetMatrix4.**\n\n```method : public : SetInt(name:String, value:Int) ~ Nil```\n\n\n\nname: String\n\nvalue: Int\n\nreturn: Nil"]
+				},
+				"SetMatrix4": {
+					"descriptions": ["**Set a mat4 uniform. SETTING A UNIFORM MAKES THIS PROGRAM CURRENT, as if Use had been called. That is deliberate rather than incidental: glUniform* writes to whatever program is bound, not to the one the name was looked up in, so a setter that did not bind would silently write another shader's uniforms whenever two were alive. The consequence to know is that setting uniforms across several shaders leaves the last one bound -- so call Use immediately before Draw, not once at startup.**\n\n```method : public : SetMatrix4(name:String, matrix:Float[]) ~ Nil```\n\n\n\nname: String\n\nmatrix: Float[]\n\nreturn: Nil"]
+				},
+				"SetVec3": {
+					"descriptions": ["**Set a vec3 uniform: a colour, a direction, a position. Makes this program current -- see SetMatrix4.**\n\n```method : public : SetVec3(name:String, x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nname: String\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil", "**Set a vec3 uniform from a Vector3.**\n\n```method : public : SetVec3(name:String, value:Vector3) ~ Nil```\n\n\n\nname: String\n\nvalue: Vector3\n\nreturn: Nil"]
+				},
+				"SetVec4": {
+					"descriptions": ["**Set a vec4 uniform: four floats packed into one, which is how a light's kind and cone travel without spending three more uniform arrays. Makes this program current -- see SetMatrix4.**\n\n```method : public : SetVec4(name:String, x:Float, y:Float, z:Float, w:Float) ~ Nil```\n\n\n\nname: String\n\nx: Float\n\ny: Float\n\nz: Float\n\nw: Float\n\nreturn: Nil"]
+				},
+				"Textured": {
+					"descriptions": ["**A shader that samples a texture. Uniforms: \"mvp\" and the sampler \"tex\". Reads texture coordinates from LOCATION 2, matching every Mesh primitive -- location 1 is the normal. Bind a texture to unit 0 and call SetInt(\"tex\", 0).**\n\n```function : Textured() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"TexturedFog": {
+					"descriptions": ["**Textured, darkening with distance. Without lighting, a textured 3D scene reads flat -- every surface is the same brightness however far away it is, so the eye cannot tell depth. Fog is the cheapest fix and both 3D examples had hand-rolled their own version of it. Uniforms: \"mvp\", \"tex\", and \"fog_distance\" if the default of 40 units is wrong for your scene.**\n\n```function : TexturedFog() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"Use": {
+					"descriptions": ["**Make this program current for subsequent draws.**\n\n```method : public : Use() ~ Nil```\n\n\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.ShaderSource": {
+			"description": "Assemble GLSL from lines, adding the version directive and the newlines. Shader source was being built by appending string literals that each had to end in an explicit \\n, an invariant nothing enforced. Drop one and two declarations merge into a line that still compiles; drop one after a \/\/ comment and the next statement is silently commented out. Fifty-three lines of that were spread across four programs, each restating \"#version 330 core\" from memory.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Append one line, terminated.**\n\n```method : public : Add(line:String) ~ ShaderSource```\n\n\n\nline: String\n\nreturn: ShaderSource"]
+				},
+				"Build": {
+					"descriptions": ["****\n\n```method : public : Build() ~ String```\n\n\n\nreturn: String"]
+				},
+				"New": {
+					"descriptions": ["**Start a GLSL 3.30 core source. The version directive is added for you and must be first, which is the other thing that was being retyped.**\n\n```New()```\n\n"]
+				}
+			}
+		},
+		"Game.OpenGL.ShadowMap": {
+			"description": "Shadows, from one directional light. The technique is standard and the fiddly parts are all here rather than in each program: render the scene from the light's point of view into a depth texture, then when drawing normally, ask that texture whether each fragment is further from the light than whatever the light could see. If it is, something is in the way.",
+			"functions": {
+				"ApplyTo": {
+					"descriptions": ["**Bind the map and tell a shader how to read it. Writes \"light_space\", \"shadow_map\", \"shadow_bias\" and \"shadow_texel\" -- skipping any the shader does not declare, so this can be handed an unshadowed program without filing a diagnostic.**\n\n```method : public : ApplyTo(shader:Shader) ~ Nil```\n\n\n\nshader: Shader\n\nreturn: Nil"]
+				},
+				"Begin": {
+					"descriptions": ["**Start the depth pass: draw into the map, from the light. Clears it, points the viewport at it, and makes the depth shader current. Everything drawn until End goes into the map. Culling is left exactly as the caller set it. Reversing it for this pass -- recording each object's far side rather than its near side -- is a known way to reduce self-shadowing without a large bias, but it only works for closed solids: a flat floor has no far side and would stop casting altogether. Since a floor is usually the first thing anyone wants to cast onto AND from, the bias is the safer lever, and SetBias is there for it.**\n\n```method : public : Begin() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Capture": {
+					"descriptions": ["**Draw every box in a Scene into the map.**\n\n```method : public : Capture(scene:Scene) ~ Nil```\n\n\n\nscene: Scene\n\nreturn: Nil"]
+				},
+				"Cover": {
+					"descriptions": ["**What area of the world the map covers.**\n\n```method : public : Cover(center:Vector3, extent:Float) ~ Nil```\n\n\n\ncenter: Vector3\n\nextent: Float\n\nreturn: Nil"]
+				},
+				"DrawCaster": {
+					"descriptions": ["**Draw one caster into the map.**\n\n```method : public : DrawCaster(mesh:Mesh, transform:Transform) ~ Nil```\n\n\n\nmesh: Mesh\n\ntransform: Transform\n\nreturn: Nil"]
+				},
+				"DrawCasterMatrix": {
+					"descriptions": ["**Draw one caster with a model matrix rather than a Transform.**\n\n```method : public : DrawCasterMatrix(mesh:Mesh, model:Float[]) ~ Nil```\n\n\n\nmesh: Mesh\n\nmodel: Float[]\n\nreturn: Nil"]
+				},
+				"End": {
+					"descriptions": ["**End the depth pass and go back to drawing at the window.**\n\n```method : public : End(window:GLWindow) ~ Nil```\n\n\n\nwindow: GLWindow\n\nreturn: Nil"]
+				},
+				"Free": {
+					"descriptions": ["**Release the depth target and the depth shader. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetError": {
+					"descriptions": ["**Why it could not be set up.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLightSpaceMatrix": {
+					"descriptions": ["**The light's projection times its view -- what a caster's position has to be multiplied by to find where it lands in the map.**\n\n```method : public : GetLightSpaceMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetSpotOuterRadians": {
+					"descriptions": ["**The spot's outer half-angle in radians, recovered from the cosine it is stored as.**\n\n```method : private : GetSpotOuterRadians() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTexture": {
+					"descriptions": ["**The depth map as a texture, for inspecting what is in it.**\n\n```method : public : GetTexture() ~ Texture2D```\n\n\n\nreturn: Texture2D"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsSpot": {
+					"descriptions": ["****\n\n```method : public : IsSpot() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A square shadow map.**\n\n```New(size:Int)```\n\n\n\nsize: Int"]
+				},
+				"RebuildSpot": {
+					"descriptions": ["**The light-space matrix for a spot: a perspective projection from where the spot is, along where it points, as wide as its outer cone.**\n\n```method : private : RebuildSpot() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetBias": {
+					"descriptions": ["**The depth margin that keeps a lit surface from shadowing itself. Default 0.0025.**\n\n```method : public : SetBias(bias:Float) ~ Nil```\n\n\n\nbias: Float\n\nreturn: Nil"]
+				},
+				"SetDirection": {
+					"descriptions": ["****\n\n```method : public : SetDirection(direction:Vector3) ~ Nil```\n\n\n\ndirection: Vector3\n\nreturn: Nil"]
+				},
+				"SetLight": {
+					"descriptions": ["**Take the direction from a Light, so the shadows and the shading agree. Worth doing rather than setting the direction twice: a shadow map pointing somewhere other than the light produces shadows on the wrong side of everything, which looks like a bug in the shadows and is really two numbers that were meant to be one.**\n\n```method : public : SetLight(light:Light) ~ Nil```\n\n\n\nlight: Light\n\nreturn: Nil"]
+				},
+				"SetSpotLight": {
+					"descriptions": ["**Cast from a spot light, using a perspective projection matched to its cone. The map covers exactly what the spot lights, so its resolution goes where the light goes -- which is why a spot shadow can look sharp at a size where a directional one covering the same scene would be blocky. Cover is ignored in this mode: the spot's own range and cone say what it reaches.**\n\n```method : public : SetSpotLight(light:Light) ~ Nil```\n\n\n\nlight: Light\n\nreturn: Nil"]
+				},
+				"SetTextureUnit": {
+					"descriptions": ["**Which texture unit the map is bound to. Default 1, because unit 0 is where the ordinary texture goes.**\n\n```method : public : SetTextureUnit(unit:Int) ~ Nil```\n\n\n\nunit: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Texture2D": {
+			"description": "A 2D texture. Built from an SDL Surface, so image decoding stays SDL's job -- Game.SDL2's Image->Load already reads PNG and JPEG, and this adds no new dependency.",
+			"functions": {
+				"Bind": {
+					"descriptions": ["**Bind to a texture unit, to be read by a sampler uniform set to the same unit number.**\n\n```method : public : Bind(unit:Int) ~ Nil```\n\n\n\nunit: Int\n\nreturn: Nil"]
+				},
+				"Checker": {
+					"descriptions": ["**A checkerboard, generated rather than loaded, so a program needs no asset file to have something recognisable on a surface.**\n\n```function : Checker(size:Int, squares:Int, light:Int, dark:Int) ~ Texture2D```\n\n\n\nsize: Int\n\nsquares: Int\n\nlight: Int\n\ndark: Int\n\nreturn: Texture2D\n\n```\nfloor := Texture2D->Checker(64, 8, 0xFFE8E8F0, 0xFF465A82);\n```", "**A checkerboard with an explicit wrap mode -- pass TextureWrap->GL_REPEAT to tile it across a Mesh->Plane.**\n\n```function : Checker(size:Int, squares:Int, light:Int, dark:Int, wrap:Int) ~ Texture2D```\n\n\n\nsize: Int\n\nsquares: Int\n\nlight: Int\n\ndark: Int\n\nwrap: Int\n\nreturn: Texture2D"]
+				},
+				"Free": {
+					"descriptions": ["**Release the texture. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"FromFile": {
+					"descriptions": ["**Load an image file and upload it, freeing the intermediate surface. Decoding is SDL's job -- Game.SDL2's Image->Load already reads PNG and JPEG, so this adds no dependency. Rows are flipped on upload, so the texture is the same way up as the file.**\n\n```function : FromFile(file:String) ~ Texture2D```\n\n\n\nfile: String\n\nreturn: Texture2D", "**Load an image file with explicit sampling.**\n\n```function : FromFile(file:String, filter:Int, wrap:Int, mipmap:Bool) ~ Texture2D```\n\n\n\nfile: String\n\nfilter: Int\n\nwrap: Int\n\nmipmap: Bool\n\nreturn: Texture2D"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Upload a surface's pixels as a texture, smoothed and clamped. The surface is converted to 32-bit RGBA internally, so any format Image->Load produces works. The PIXELS ARE COPIED, so the surface can be freed immediately afterwards -- and should be. Every example in this repo used to hold its surfaces alive until shutdown for no reason.**\n\n```New(surface:Surface)```\n\n\n\nsurface: Surface", "**Upload with explicit sampling.**\n\n```New(surface:Surface, filter:Int, wrap:Int, mipmap:Bool)```\n\n\n\nsurface: Surface\n\nfilter: Int\n\nwrap: Int\n\nmipmap: Bool"]
+				},
+				"NewSurface": {
+					"descriptions": ["**A blank 32-bit surface with the ARGB channel layout FillRect's packed Int assumes: 0xAARRGGBB. The four masks are the thing worth having in one place. They appeared verbatim in three separate files, each next to its own hand-written bit-shifting helper that had to agree with them.**\n\n```function : NewSurface(width:Int, height:Int) ~ Surface```\n\n\n\nwidth: Int\n\nheight: Int\n\nreturn: Surface"]
+				},
+				"Rgb": {
+					"descriptions": ["**Pack 8-bit components into the 0xAARRGGBB layout NewSurface declares.**\n\n```function : Rgb(r:Int, g:Int, b:Int) ~ Int```\n\n\n\nr: Int\n\ng: Int\n\nb: Int\n\nreturn: Int"]
+				},
+				"Solid": {
+					"descriptions": ["**A single-colour texture, one pixel. For an untextured surface that still goes through a textured shader, which is cheaper than maintaining a second shader that does not sample.**\n\n```function : Solid(argb:Int) ~ Texture2D```\n\n\n\nargb: Int\n\nreturn: Texture2D"]
+				},
+				"Wrapping": {
+					"descriptions": ["**Wrap a GL texture name this object does not own. For a texture created elsewhere -- a RenderTarget's colour attachment -- so it can be bound and sampled through the usual Texture2D API. Free() on the result would delete a texture something else is still using, so whatever created it is responsible for releasing it.**\n\n```function : Wrapping(handle:Int) ~ Texture2D```\n\n\n\nhandle: Int\n\nreturn: Texture2D"]
+				}
+			}
+		},
+		"Game.OpenGL.Transform": {
+			"description": "Where something is, how it is turned, and how big it is -- with its matrix built on demand and cached. This is what an object that MOVES wants, as opposed to Box, which is a static prop and caches a translate-and-scale. A program animating something otherwise has to keep its own scratch buffers and remember the order the three parts compose in.",
+			"functions": {
+				"GetMatrix": {
+					"descriptions": ["**The model matrix, T * R * S. Rebuilt only when something changed, into a buffer this object owns -- so the returned array is NOT a copy. Do not hold on to it across a change, and do not write to it.**\n\n```method : public : GetMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetPosition": {
+					"descriptions": ["****\n\n```method : public : GetPosition() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"Move": {
+					"descriptions": ["**Shift by an offset.**\n\n```method : public : Move(dx:Float, dy:Float, dz:Float) ~ Nil```\n\n\n\ndx: Float\n\ndy: Float\n\ndz: Float\n\nreturn: Nil"]
+				},
+				"MvpInto": {
+					"descriptions": ["**Model-view-projection, into a buffer the caller owns. The per-frame call.**\n\n```method : public : MvpInto(out:Float[], view_projection:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nview_projection: Float[]\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**At the origin, unrotated, unscaled.**\n\n```New()```\n\n"]
+				},
+				"Rebuild": {
+					"descriptions": ["**T * R * S without a single matrix product. Two identities make this cheap. Scaling by a diagonal matrix on the RIGHT scales each COLUMN of the rotation, and translating on the LEFT only writes the last column -- so the whole composition is the rotation with its columns scaled and a translation dropped in. Spelling it as Multiply(Multiply(T, R), S) would allocate four matrices and do 128 multiply-adds to reach the same sixteen numbers. Checked against that composition in the regression suite, because this is the kind of shortcut that is wrong in a way that still looks like a transform.**\n\n```method : private : Rebuild() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Rotate": {
+					"descriptions": ["**Turn by an offset -- the per-frame form, multiplied by a delta.**\n\n```method : public : Rotate(dyaw:Float, dpitch:Float, droll:Float) ~ Nil```\n\n\n\ndyaw: Float\n\ndpitch: Float\n\ndroll: Float\n\nreturn: Nil"]
+				},
+				"SetPosition": {
+					"descriptions": ["****\n\n```method : public : SetPosition(x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil", "****\n\n```method : public : SetPosition(position:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\nreturn: Nil"]
+				},
+				"SetRotation": {
+					"descriptions": ["****\n\n```method : public : SetRotation(yaw:Float, pitch:Float, roll:Float) ~ Nil```\n\n\n\nyaw: Float\n\npitch: Float\n\nroll: Float\n\nreturn: Nil"]
+				},
+				"SetScale": {
+					"descriptions": ["****\n\n```method : public : SetScale(s:Float) ~ Nil```\n\n\n\ns: Float\n\nreturn: Nil", "****\n\n```method : public : SetScale(x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Vector3": {
+			"description": "A 3D vector, for camera and scene math. Mirrors Game.Framework's Vector2: mutating methods on an instance, plus static functions that return new values. Immutable-style helpers are named with a past participle (Normalized) to distinguish them from the in-place form (Normalize).",
+			"functions": {
+				"Add": {
+					"descriptions": ["****\n\n```function : Add(lhs:Vector3, rhs:Vector3) ~ Vector3```\n\n\n\nlhs: Vector3\n\nrhs: Vector3\n\nreturn: Vector3"]
+				},
+				"Cross": {
+					"descriptions": ["****\n\n```function : Cross(lhs:Vector3, rhs:Vector3) ~ Vector3```\n\n\n\nlhs: Vector3\n\nrhs: Vector3\n\nreturn: Vector3"]
+				},
+				"Dot": {
+					"descriptions": ["****\n\n```function : Dot(lhs:Vector3, rhs:Vector3) ~ Float```\n\n\n\nlhs: Vector3\n\nrhs: Vector3\n\nreturn: Float"]
+				},
+				"Length": {
+					"descriptions": ["****\n\n```method : public : Length() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Normalized": {
+					"descriptions": ["****\n\n```method : public : Normalized() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"Scale": {
+					"descriptions": ["****\n\n```function : Scale(v:Vector3, scale:Float) ~ Vector3```\n\n\n\nv: Vector3\n\nscale: Float\n\nreturn: Vector3"]
+				},
+				"Subtract": {
+					"descriptions": ["****\n\n```function : Subtract(lhs:Vector3, rhs:Vector3) ~ Vector3```\n\n\n\nlhs: Vector3\n\nrhs: Vector3\n\nreturn: Vector3"]
+				}
+			}
+		},
 		"Game.SDL2.CPU": {
 			"description": "Operations for gathering information about the processor's features",
 			"functions": {
@@ -4601,6 +5509,9 @@
 				"GLGetSwapInterval": {
 					"descriptions": ["**Get the swap interval for the current OpenGL context**\n\n```function : GLGetSwapInterval() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GLGetVersionString": {
+					"descriptions": ["**The GL_VERSION string of the current OpenGL context, e.g. \"3.3.0 NVIDIA 560.94\". Returns an empty string when no context is current. Worth checking right after GLCreateContext rather than trusting the attributes you asked for: a driver may hand back a different version than requested, and on macOS you silently get a legacy 2.1 context unless a core + forward-compatible profile was set before the window was created. Finding that out here is far cheaper than finding out at the first shader compile.**\n\n```function : GLGetVersionString() ~ String```\n\n\n\nreturn: String"]
+				},
 				"GLLoadLibrary": {
 					"descriptions": ["**dynamically load an OpenGL library**\n\n```function : GLLoadLibrary(path:String) ~ Int```\n\n\n\npath: String\n\nreturn: Int"]
 				},
@@ -4647,6 +5558,12 @@
 				},
 				"GetMouseState": {
 					"descriptions": ["**Retrieve the current state of the mouse**\n\n```function : GetMouseState(x:IntRef, y:IntRef) ~ Int```\n\n\n\nx: IntRef\n\ny: IntRef\n\nreturn: Int", "**Retrieve the current state of the mouse**\n\n```function : GetMouseState(p:Point) ~ Int```\n\n\n\np: Point\n\nreturn: Int"]
+				},
+				"GetRelativeMouseMode": {
+					"descriptions": ["**Whether relative mouse mode is currently on.**\n\n```function : GetRelativeMouseMode() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"SetRelativeMouseMode": {
+					"descriptions": ["**Turn relative mouse mode on or off. This is what mouse-look needs. It hides the cursor, locks it to the window, and makes motion events report unbounded deltas -- read them with MouseMotionEvent->GetRelX\/GetRelY. Without it the pointer stops at the screen edge and the view stops turning with it. Turn it off before showing a menu, or the user cannot click anything.**\n\n```function : SetRelativeMouseMode(enabled:Bool) ~ Int```\n\n\n\nenabled: Bool\n\nreturn: Int"]
 				},
 				"WarpMouseGlobal": {
 					"descriptions": ["**Move the mouse to the given position in global screen space**\n\n```function : WarpMouseGlobal(x:Int, y:Int) ~ Int```\n\n\n\nx: Int\n\ny: Int\n\nreturn: Int"]
@@ -4843,6 +5760,20 @@
 				},
 				"RenderUTF8Solid": {
 					"descriptions": ["**Render the UTF8 encoded text blended**\n\n```method : public : RenderUTF8Solid(text:String, fg:Color) ~ Surface```\n\n\n\ntext: String\n\nfg: Color\n\nreturn: Surface"]
+				}
+			}
+		},
+		"Game.SDL2.GLContext": {
+			"description": "An OpenGL context, created from a Window with GLCreateContext. Like every SDL handle in this bundle this wraps a raw native pointer, so the collector cannot see it -- call Delete() when you are done. Deleting a context while it is current is allowed; SDL unbinds it first.",
+			"functions": {
+				"Delete": {
+					"descriptions": ["**Destroy this context. Safe to call more than once.**\n\n```method : public : Delete() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetContext": {
+					"descriptions": ["**The raw context handle. Needed by Window->GLMakeCurrent; not useful otherwise.**\n\n```method : public : GetContext() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsNull": {
+					"descriptions": ["**Determines if the underlying SDL context is NULL**\n\n```method : public : IsNull() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -5784,6 +6715,9 @@
 				"GetPixels": {
 					"descriptions": ["**Get raw pixels**\n\n```method : public : GetPixels() ~ PixelData```\n\n\n\nreturn: PixelData"]
 				},
+				"GetSurface": {
+					"descriptions": ["**The raw surface handle. Needed by other bundles that hand a surface to native code -- Game.OpenGL's Texture2D uploads one as a GL texture -- and not useful otherwise.**\n\n```method : public : GetSurface() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetW": {
 					"descriptions": ["**Get width**\n\n```method : public : GetW() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -5939,8 +6873,14 @@
 				"EnableScreenSaver": {
 					"descriptions": ["**Allow the screen to be blanked by a screen saver**\n\n```function : EnableScreenSaver() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
+				"GLCreateContext": {
+					"descriptions": ["**Create an OpenGL context for this window and make it current. The window must have been created with WindowFlags->SDL_WINDOW_OPENGL, and any Core->GLSetAttribute calls that describe the context you want (version, profile, depth buffer) must happen BEFORE the window is created -- they select a pixel format, so setting them afterwards has no effect.**\n\n```method : public : GLCreateContext() ~ GLContext```\n\n\n\nreturn: GLContext"]
+				},
 				"GLGetDrawableSize": {
 					"descriptions": ["**Get the size of a window's underlying drawable in pixels (for use with glViewport).**\n\n```method : public : GLGetDrawableSize(w:IntRef, h:IntRef) ~ Nil```\n\n\n\nw: IntRef\n\nh: IntRef\n\nreturn: Nil"]
+				},
+				"GLMakeCurrent": {
+					"descriptions": ["**Bind an OpenGL context to this window on the calling thread. A context is current per-thread, so this must run on whichever thread issues the GL calls. GLCreateContext already makes its context current, so this is only needed when switching windows or threads.**\n\n```method : public : GLMakeCurrent(context:GLContext) ~ Int```\n\n\n\ncontext: GLContext\n\nreturn: Int"]
 				},
 				"GLSwap": {
 					"descriptions": ["**Update a window with OpenGL rendering.**\n\n```method : public : GLSwap() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -7879,6 +8819,89 @@
 				}
 			}
 		},
+		"System.Diagnostics.Analysis": {
+			"description": "Analysis results",
+			"functions": {
+				"CodeAction": {
+					"descriptions": ["**Get signature definitions**\n\n```method : public : CodeAction(uri:String, start_range_line:Int, start_range_char:Int, var_name:String) ~ Result```\n\n\n\nuri: String\n\nstart_range_line: Int\n\nstart_range_char: Int\n\nvar_name: String\n\nreturn: Result"]
+				},
+				"CodeRename": {
+					"descriptions": ["**Renames a variable or method\/function**\n\n```method : public : CodeRename(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"CollectWorkspaceSymbols": {
+					"descriptions": ["**Depth-first walk over a Result tree emitted by GetSymbols, appending every named, source-located entry whose lower-cased name contains the needle. Helper for WorkspaceSymbols.**\n\n```method : private : CollectWorkspaceSymbols(node:Result, needle:String, out:Vector&lt;Result&gt;) ~ Nil```\n\n\n\nnode: Result\n\nneedle: String\n\nout: Vector&lt;Result&gt;\n\nreturn: Nil"]
+				},
+				"Completion": {
+					"descriptions": ["**Get completion options**\n\n```method : public : Completion(uri:String, line:Int, pos:Int, var_str:String, mthd_str:String, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nvar_str: String\n\nmthd_str: String\n\nsys_path: String\n\nreturn: Result\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nitems := analysis->Completion(\"file:\/\/\/app.obs\", 8, 3, \"conn\", \"\", \"\/usr\/lib\/objeck\");\r\nif(items <> Nil) {\r\n  items->ToString()->PrintLine(); # JSON completion list\r\n};\r\nanalysis->Release();\n```"]
+				},
+				"DocumentHighlight": {
+					"descriptions": ["**Get document highlights for the symbol at the cursor - references scoped to the current file. Backs textDocument\/documentHighlight.**\n\n```method : public : DocumentHighlight(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"FindDeclaration": {
+					"descriptions": ["**Finds symbol deceleration**\n\n```method : public : FindDeclaration(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result"]
+				},
+				"FindDefinition": {
+					"descriptions": ["**Finds symbol definition**\n\n```method : public : FindDefinition(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\ndefn := analysis->FindDefinition(\"file:\/\/\/app.obs\", 15, 8, \"\/usr\/lib\/objeck\");\r\nif(defn <> Nil) {\r\n  defn->GetName()->PrintLine(); # name of the defined symbol\r\n};\r\nanalysis->Release();\n```"]
+				},
+				"FindImplementation": {
+					"descriptions": ["**Finds implementations of an interface or overrides of a virtual method**\n\n```method : public : FindImplementation(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"FindReferences": {
+					"descriptions": ["**Get references specified symbol**\n\n```method : public : FindReferences(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nuri := \"file:\/\/\/app.obs\";\r\nrefs := analysis->FindReferences(uri, 10, 5, \"\/usr\/lib\/objeck\");\r\nif(refs <> Nil) {\r\n  each(i : refs) { refs[i]->ToString()->PrintLine(); };\r\n};\r\nanalysis->Release();\n```"]
+				},
+				"FindTypeDefinition": {
+					"descriptions": ["**Finds type definition (go to the type of a symbol)**\n\n```method : public : FindTypeDefinition(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result"]
+				},
+				"GetDiagnostics": {
+					"descriptions": ["**Get parse and analysis errors**\n\n```method : public : GetDiagnostics(was_analyzed:BoolRef, uri:String, sys_path:String) ~ Result[]```\n\n\n\nwas_analyzed: BoolRef\n\nuri: String\n\nsys_path: String\n\nreturn: Result[]\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nwas_ok := BoolRef->New(false);\r\nerrs := analysis->GetDiagnostics(was_ok, \"file:\/\/\/app.obs\", \"\/usr\/lib\/objeck\");\r\nif(errs <> Nil) {\r\n  each(i : errs) { errs[i]->ToString()->PrintLine(); };\r\n};\r\nanalysis->Release();\n```"]
+				},
+				"GetSymbols": {
+					"descriptions": ["**Get source code analysis symbols**\n\n```method : public : GetSymbols(uri:String, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nsys_path: String\n\nreturn: Result\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nif(analysis->IsParsed()) {\r\n  syms := analysis->GetSymbols(\"file:\/\/\/app.obs\", \"\/usr\/lib\/objeck\");\r\n  syms->ToString()->PrintLine(); # root symbol tree entry\r\n  analysis->Release();\r\n};\n```"]
+				},
+				"HasUses": {
+					"descriptions": ["**Check to see if user 'use' statement are present**\n\n```method : public : HasUses() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Hover": {
+					"descriptions": ["**Gets hover signatures**\n\n```method : public : Hover(uri:String, line:Int, pos:Int, var_str:String, mthd_str:String, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nvar_str: String\n\nmthd_str: String\n\nsys_path: String\n\nreturn: Result\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nhover := analysis->Hover(\"file:\/\/\/app.obs\", 20, 12, \"conn\", \"Close\", \"\/usr\/lib\/objeck\");\r\nif(hover <> Nil) {\r\n  hover->GetDescription()->PrintLine(); # show signature markdown\r\n};\r\nanalysis->Release();\n```"]
+				},
+				"IncomingCalls": {
+					"descriptions": ["**Finds all methods that call the target method**\n\n```method : public : IncomingCalls(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"InlayHints": {
+					"descriptions": ["**Gets inlay hints for a range of lines**\n\n```method : public : InlayHints(uri:String, start_line:Int, end_line:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nstart_line: Int\n\nend_line: Int\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"IsParsed": {
+					"descriptions": ["**Check to see if source was parsed**\n\n```method : public : IsParsed() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nif(analysis->IsParsed()) {   # true = no syntax errors\r\n  \"OK\"->PrintLine();\r\n} else {\r\n  \"Syntax error\"->PrintLine();\r\n};\r\nanalysis->Release();\n```"]
+				},
+				"OutgoingCalls": {
+					"descriptions": ["**Finds all methods called by the target method**\n\n```method : public : OutgoingCalls(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"PrepareCallHierarchy": {
+					"descriptions": ["**Prepares call hierarchy item at cursor**\n\n```method : public : PrepareCallHierarchy(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result"]
+				},
+				"PrepareTypeHierarchy": {
+					"descriptions": ["**Return the class-level TypeHierarchyItem at the cursor. Backs textDocument\/prepareTypeHierarchy. When the cursor is on a class header, returns that class; when inside a method body, returns the enclosing class. Delegates to FindDefinition since the LSP only needs a \"seed\" Result that supertypes\/subtypes can subsequently operate on.**\n\n```method : public : PrepareTypeHierarchy(uri:String, line:Int, pos:Int, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result"]
+				},
+				"Release": {
+					"descriptions": ["**Release native resources, required for clean up.**\n\n```method : public : Release() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\n# ... use analysis ...\r\nanalysis->Release(); # always release to free C-side parse tree\n```"]
+				},
+				"SemanticTokens": {
+					"descriptions": ["**Gets semantic tokens for the file**\n\n```method : public : SemanticTokens(uri:String, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"SignatureHelp": {
+					"descriptions": ["**Get signature definitions**\n\n```method : public : SignatureHelp(uri:String, line:Int, pos:Int, var_str:String, mthd_str:String, sys_path:String) ~ Result```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nvar_str: String\n\nmthd_str: String\n\nsys_path: String\n\nreturn: Result"]
+				},
+				"TypeHierarchySubtypes": {
+					"descriptions": ["**Return classes that directly extend the class at the cursor (and any classes implementing it if it is an interface). Backs typeHierarchy\/subtypes. Delegates to FindImplementation, which already walks every bundle for classes whose parent matches the target.**\n\n```method : public : TypeHierarchySubtypes(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"TypeHierarchySupertypes": {
+					"descriptions": ["**Walk the parent chain of the class at the cursor, returning each supertype in order (immediate parent first, then grandparent, ...). Backs typeHierarchy\/supertypes. User-space only - stops at the first parent that resolves to a library class.**\n\n```method : public : TypeHierarchySupertypes(uri:String, line:Int, pos:Int, sys_path:String) ~ Result[]```\n\n\n\nuri: String\n\nline: Int\n\npos: Int\n\nsys_path: String\n\nreturn: Result[]"]
+				},
+				"WorkspaceSymbols": {
+					"descriptions": ["**Return every workspace symbol whose name contains the query substring (case-insensitive). Backs workspace\/symbol (Ctrl+T in VS Code). Matches across every parsed class, method, and enum.**\n\n```method : public : WorkspaceSymbols(query:String, sys_path:String) ~ Result[]```\n\n\n\nquery: String\n\nsys_path: String\n\nreturn: Result[]"]
+				}
+			}
+		},
 		"System.Diagnostics.Analyzer": {
 			"description": "Parsers source for analysis",
 			"functions": {
@@ -7887,6 +8910,41 @@
 				},
 				"ParseText": {
 					"descriptions": ["**Parsers text for analysis**\n\n```function : ParseText(src_strs:String[,]) ~ Analysis```\n\n\n\nsrc_strs: String[,]\n\nreturn: Analysis\n\n```\nsrc := String->New[1, 2];\r\nsrc[0, 0] := \"main.obs\";\r\nsrc[0, 1] := \"bundle App { class Main { function : Main(args : String[]) ~ Nil { } } }\";\r\nanalysis := System.Diagnostics.Analyzer->ParseText(src);\r\nif(analysis->IsParsed()) {\r\n  analysis->Release();\r\n};\n```"]
+				}
+			}
+		},
+		"System.Diagnostics.Result": {
+			"description": "Collection analysis result",
+			"functions": {
+				"GetCode": {
+					"descriptions": ["**Gets the code**\n\n```method : public : GetCode() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDescription": {
+					"descriptions": ["**Get result description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetEndLine": {
+					"descriptions": ["**Get end line**\n\n```method : public : GetEndLine() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetEndPosition": {
+					"descriptions": ["**Get end position**\n\n```method : public : GetEndPosition() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetKind": {
+					"descriptions": ["**Get result kind**\n\n```method : public : GetKind() ~ Result-&gt;Kind```\n\n\n\nreturn: Result-&gt;Kind"]
+				},
+				"GetName": {
+					"descriptions": ["**Get result name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nsyms := analysis->GetSymbols(\"file:\/\/\/app.obs\", \"\/usr\/lib\/objeck\");\r\nif(syms <> Nil) {\r\n  syms->GetName()->PrintLine(); # e.g. bundle or class name\r\n};\r\nanalysis->Release();\n```"]
+				},
+				"GetResults": {
+					"descriptions": ["**Get child results**\n\n```method : public : GetResults() ~ Result[]```\n\n\n\nreturn: Result[]"]
+				},
+				"GetStartLine": {
+					"descriptions": ["**Get start line**\n\n```method : public : GetStartLine() ~ Int```\n\n\n\nreturn: Int\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\ndefn := analysis->FindDefinition(\"file:\/\/\/app.obs\", 10, 4, \"\/usr\/lib\/objeck\");\r\nif(defn <> Nil) {\r\n  line := defn->GetStartLine(); # 0-based line of the symbol\r\n  \"line={$line}\"->PrintLine();\r\n};\r\nanalysis->Release();\n```"]
+				},
+				"GetStartPosition": {
+					"descriptions": ["**Get start position**\n\n```method : public : GetStartPosition() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToString": {
+					"descriptions": ["**Result to string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
@@ -11370,41 +12428,6 @@
 					"descriptions": ["**Writes a string response to the message body**\n\n```method : public : WriteBody(data:String) ~ Int```\n\n\n\ndata: String\n\nreturn: Int\n\n```\nresponse->SetContentType(\"text\/html\");\r\nbytes_sent := response->WriteBody(\"<html><body>Hello<\/body><\/html>\");\r\nbytes_sent->PrintLine();  # number of bytes written\n```", "**Writes a byte array response to the message body**\n\n```method : public : WriteBody(data:Byte[]) ~ Int```\n\n\n\ndata: Byte[]\n\nreturn: Int\n\n```\nimg_bytes := System.IO.Filesystem.FileReader->ReadBinaryFile(\"logo.png\");\r\nresponse->SetContentType(\"image\/png\");\r\nresponse->WriteBody(img_bytes);\n```"]
 				}
 			}
-		},
-		"for.Result": {
-			"description": "Collection analysis result",
-			"functions": {
-				"GetCode": {
-					"descriptions": ["**Gets the code**\n\n```method : public : GetCode() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetDescription": {
-					"descriptions": ["**Get result description**\n\n```method : public : GetDescription() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetEndLine": {
-					"descriptions": ["**Get end line**\n\n```method : public : GetEndLine() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetEndPosition": {
-					"descriptions": ["**Get end position**\n\n```method : public : GetEndPosition() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetKind": {
-					"descriptions": ["**Get result kind**\n\n```method : public : GetKind() ~ Result-&gt;Kind```\n\n\n\nreturn: Result-&gt;Kind"]
-				},
-				"GetName": {
-					"descriptions": ["**Get result name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\nsyms := analysis->GetSymbols(\"file:\/\/\/app.obs\", \"\/usr\/lib\/objeck\");\r\nif(syms <> Nil) {\r\n  syms->GetName()->PrintLine(); # e.g. bundle or class name\r\n};\r\nanalysis->Release();\n```"]
-				},
-				"GetResults": {
-					"descriptions": ["**Get child results**\n\n```method : public : GetResults() ~ Result[]```\n\n\n\nreturn: Result[]"]
-				},
-				"GetStartLine": {
-					"descriptions": ["**Get start line**\n\n```method : public : GetStartLine() ~ Int```\n\n\n\nreturn: Int\n\n```\nanalysis := System.Diagnostics.Analyzer->ParseFile(\"app.obs\");\r\ndefn := analysis->FindDefinition(\"file:\/\/\/app.obs\", 10, 4, \"\/usr\/lib\/objeck\");\r\nif(defn <> Nil) {\r\n  line := defn->GetStartLine(); # 0-based line of the symbol\r\n  \"line={$line}\"->PrintLine();\r\n};\r\nanalysis->Release();\n```"]
-				},
-				"GetStartPosition": {
-					"descriptions": ["**Get start position**\n\n```method : public : GetStartPosition() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"ToString": {
-					"descriptions": ["**Result to string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
-				}
-			}
 		}
 	},
 	"class-bundle-names": {
@@ -11776,10 +12799,6 @@
 			"bundle": "API.OpenCV"
 ,			"file": "opencv.obl"
  		},
-		"Analysis": {
-			"bundle": "App"
-,			"file": "diags.obl"
- 		},
 		"Decrypt": {
 			"bundle": "Cipher"
 ,			"file": "cipher.obl"
@@ -12008,6 +13027,90 @@
 			"bundle": "Game.Framework"
 ,			"file": "sdl_game.obl"
  		},
+		"Box": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Camera": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Frustum": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"GL": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"GLWindow": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"IntHolder": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Light": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"LightRig": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Material": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Matrix4": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Mesh": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Overlay": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"PointShadow": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"RenderTarget": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Scene": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Shader": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"ShaderSource": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"ShadowMap": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Texture2D": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Transform": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Vector3": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
 		"CPU": {
 			"bundle": "Game.SDL2"
 ,			"file": "sdl2.obl"
@@ -12045,6 +13148,10 @@
 ,			"file": "sdl2.obl"
  		},
 		"Font": {
+			"bundle": "Game.SDL2"
+,			"file": "sdl2.obl"
+ 		},
+		"GLContext": {
 			"bundle": "Game.SDL2"
 ,			"file": "sdl2.obl"
  		},
@@ -12440,7 +13547,15 @@
 			"bundle": "System.Concurrency"
 ,			"file": "lang.obl"
  		},
+		"Analysis": {
+			"bundle": "System.Diagnostics"
+,			"file": "diags.obl"
+ 		},
 		"Analyzer": {
+			"bundle": "System.Diagnostics"
+,			"file": "diags.obl"
+ 		},
+		"Result": {
 			"bundle": "System.Diagnostics"
 ,			"file": "diags.obl"
  		},
@@ -12923,10 +14038,6 @@
 		"Response": {
 			"bundle": "Web.Server"
 ,			"file": "web_server.obl"
- 		},
-		"Result": {
-			"bundle": "for"
-,			"file": "diags.obl"
  		}
 	}
 }

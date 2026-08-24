@@ -124,6 +124,24 @@ class SnippetParser {
 		};
 	}
 
+	#~
+	Whether the character being looked at is the first on its line.
+
+	Used to tell a real `bundle X {` declaration from the word "bundle" written
+	in a doc comment. Every declaration in the library sources starts at column
+	zero; prose does not.
+	~#
+	method : AtLineStart() ~ Bool {
+		# NextChar leaves @cur_char at @buffer_index - 1
+		prev_index := @buffer_index - 2;
+		if(prev_index < 0) {
+			return true;
+		};
+
+		prev := @buffer->Get(prev_index);
+		return prev = '\n' | prev = '\r';
+	}
+
 	method : ParseIdent() ~ String {
 		ParseWhiteSpace();
 
@@ -371,7 +389,7 @@ class SnippetParser {
 					NextChar();
 				}
 				# uncommented 'bundle' tag
-				else if(@cur_char = 'b' & @nxt_char = 'u') {
+				else if(state <> 1 & AtLineStart() & @cur_char = 'b' & @nxt_char = 'u') {
 					ident := ParseIdent();
 					if(ident->Equals("bundle")) {
 						@bundle_name := ParseIdent();
@@ -429,6 +447,40 @@ class Snippet {
 		while(@buffer_index < @buffer->Size() & (@cur_char = ' ' | @cur_char = '\t' | 
 			@cur_char = '\r' | @cur_char = '\n')) {
 			NextChar();
+		};
+	}
+
+	#~
+	Whitespace, and line comments with it -- for the places that are reading
+	code rather than prose.
+
+	A '#' that is not '#~' runs to the end of the line. ParseIdent stops dead at
+	'#' and returns nothing, so before this existed a single commented member
+	made an entire consts block unparseable.
+
+	This is separate from ParseWhiteSpace on purpose. ParseDesc uses that one to
+	walk a description, and a description may well contain lines starting with
+	'#' -- markdown headings. Skipping them there would silently truncate the
+	documentation at its first heading.
+	~#
+	method : ParseCodeSpace() ~ Nil {
+		done := false;
+		while(<>done) {
+			ParseWhiteSpace();
+
+			if(@cur_char = '#' & @nxt_char <> '~') {
+				while(@cur_char <> '\0' & @cur_char <> '\n') {
+					NextChar();
+				};
+
+				# out of buffer rather than end of line: nothing more to skip
+				if(@cur_char = '\0') {
+					done := true;
+				};
+			}
+			else {
+				done := true;
+			};
 		};
 	}
 
@@ -790,6 +842,7 @@ class EnumConstSnippet from Snippet {
 		};
 
 		# items
+		ParseCodeSpace();
 		while(@cur_char <> '}') {
 			item_name := ParseIdent();
 			if(item_name->Size() = 0) {
@@ -816,6 +869,7 @@ class EnumConstSnippet from Snippet {
 			@items->AddBack(item_name);
 
 			MatchChar(',');
+			ParseCodeSpace();
 		};
 		
 		return true;
@@ -1009,6 +1063,21 @@ class ClassSnippet from Snippet {
 			else {
 				return false;
 			};
+		};
+
+		# ParseDesc gives up at the first '@' or '``' it meets, which on a class
+		# comment is usually neither a tag nor a code fence: Objeck instance
+		# variables are written @name, and prose quotes things in backticks. The
+		# cursor was then left in the middle of the comment, MatchCommentEnd
+		# failed, and the ENTIRE class was reported unparseable -- 11 of
+		# Game.OpenGL's 22, including GLWindow, Light, Transform and Scene.
+		#
+		# Losing the tail of a description is bad; losing the class is worse. Run
+		# on to the comment terminator instead of giving up. When ParseDesc has
+		# already stopped there -- every class that parsed before this -- the loop
+		# does nothing, so nothing that worked can change.
+		while(@cur_char <> '\0' & <>(@cur_char = '~' & @nxt_char = '#')) {
+			NextChar();
 		};
 
 		if(<>MatchCommentEnd()) {
