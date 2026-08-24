@@ -5031,10 +5031,17 @@ bundle Game.OpenGL {
 	class Frustum {
 		# six planes, four components each: a, b, c, d with a*x + b*y + c*z + d
 		@planes : Float[];
+		# |a|, |b|, |c| per plane, three each. Held separately because the box test
+		# needs them for every box and they only change when the matrix does --
+		# Float->Abs is a real method call (lang.obs declares it; there is no
+		# opcode), so taking them in the test cost eighteen calls per box per frame
+		# to re-derive six planes' worth of constants.
+		@abs_planes : Float[];
 		@ready : Bool;
 
 		New() {
 			@planes := Float->New[24];
+			@abs_planes := Float->New[18];
 			@ready := false;
 		}
 
@@ -5084,10 +5091,19 @@ bundle Game.OpenGL {
 					return;
 				};
 
-				@planes[at + 0] := a / length;
-				@planes[at + 1] := b / length;
-				@planes[at + 2] := c / length;
+				na := a / length;
+				nb := b / length;
+				nc := c / length;
+				@planes[at + 0] := na;
+				@planes[at + 1] := nb;
+				@planes[at + 2] := nc;
 				@planes[at + 3] := @planes[at + 3] / length;
+
+				# Once per plane per frame, rather than once per plane per box.
+				abs_at := plane * 3;
+				@abs_planes[abs_at + 0] := na->Abs();
+				@abs_planes[abs_at + 1] := nb->Abs();
+				@abs_planes[abs_at + 2] := nc->Abs();
 			};
 
 			@ready := true;
@@ -5157,7 +5173,9 @@ bundle Game.OpenGL {
 				# How far the box reaches toward this plane: the half-extents
 				# projected onto its normal, which for an axis-aligned box is just
 				# the absolute values summed.
-				reach := a->Abs() * hx + b->Abs() * hy + c->Abs() * hz;
+				abs_at := plane * 3;
+				reach := @abs_planes[abs_at + 0] * hx + @abs_planes[abs_at + 1] * hy +
+					@abs_planes[abs_at + 2] * hz;
 
 				if(distance < reach * -1.0) {
 					return false;
@@ -6849,6 +6867,11 @@ bundle Game.OpenGL {
 
 		#~
 		How many boxes the last Draw actually submitted.
+
+		The last Draw only. DrawInto -- which is what a shadow pass runs, six times
+		over for a point light -- deliberately leaves these alone, so a HUD reading
+		them reports what the camera drew rather than whatever the final shadow face
+		happened to submit.
 		@return the count
 		~#
 		method : public : GetDrawnCount() ~ Int {
