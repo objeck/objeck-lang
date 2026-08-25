@@ -632,6 +632,27 @@ bundle Game.OpenGL {
 		# than a flag, so several things can notice independently -- a flag is
 		# consumed by whoever asks first.
 		@drawable_generation : Int;
+
+		# Edge-triggered input for the frame just polled.
+		#
+		# Fixed arrays with a count rather than a growable list, because this is
+		# per-frame state in a class whose whole point is that a draw loop
+		# allocates nothing. Sixteen is far past what a frame ever holds -- a
+		# human manages perhaps three key transitions in 16ms -- and anything
+		# beyond it is dropped rather than grown.
+		@pressed : Int[];
+		@pressed_count : Int;
+		@released : Int[];
+		@released_count : Int;
+		# Buttons 1-5 as bits, so no allocation and no second array.
+		@mouse_pressed : Int;
+		@mouse_released : Int;
+		@mouse_held : Int;
+		@wheel_x : Int;
+		@wheel_y : Int;
+		@mouse_x : Int;
+		@mouse_y : Int;
+		@quit_on_escape : Bool;
 		@pixel_h : Int;
 
 		@vsync : Bool;
@@ -674,6 +695,20 @@ bundle Game.OpenGL {
 			@version := "";
 			@pixel_w := 0;
 			@drawable_generation := 0;
+			@pressed := Int->New[16];
+			@released := Int->New[16];
+			@pressed_count := 0;
+			@released_count := 0;
+			@mouse_pressed := 0;
+			@mouse_released := 0;
+			@mouse_held := 0;
+			@wheel_x := 0;
+			@wheel_y := 0;
+			@mouse_x := 0;
+			@mouse_y := 0;
+			# Matches what PollEvents did before there was a way to ask for
+			# anything else.
+			@quit_on_escape := true;
 			@pixel_h := 0;
 			@vsync := false;
 			@target_fps := 60;
@@ -966,6 +1001,12 @@ bundle Game.OpenGL {
 		method : public : PollEvents() ~ Bool {
 			@mouse_dx := 0.0;
 			@mouse_dy := 0.0;
+			@pressed_count := 0;
+			@released_count := 0;
+			@mouse_pressed := 0;
+			@mouse_released := 0;
+			@wheel_x := 0;
+			@wheel_y := 0;
 
 			while(@event->Poll() <> 0) {
 				type := @event->GetType();
@@ -974,8 +1015,58 @@ bundle Game.OpenGL {
 					@quit := true;
 				}
 				else if(type = EventType->SDL_KEYDOWN) {
-					if(@event->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_ESCAPE) {
-						@quit := true;
+					key := @event->GetKey();
+					if(key <> Nil) {
+						scancode := key->GetKeysym()->GetScancode();
+						if(@quit_on_escape & scancode = Scancode->SDL_SCANCODE_ESCAPE) {
+							@quit := true;
+						};
+
+						# Auto-repeat is a held key, not a new press. WasPressed
+						# means "went down this frame", and a menu that advanced
+						# once per repeat instead of once per press is the bug
+						# this avoids.
+						if(key->GetRepeat() = 0 & @pressed_count < @pressed->Size()) {
+							@pressed[@pressed_count] := scancode;
+							@pressed_count += 1;
+						};
+					};
+				}
+				else if(type = EventType->SDL_KEYUP) {
+					key := @event->GetKey();
+					if(key <> Nil & @released_count < @released->Size()) {
+						@released[@released_count] := key->GetKeysym()->GetScancode();
+						@released_count += 1;
+					};
+				}
+				else if(type = EventType->SDL_MOUSEBUTTONDOWN) {
+					button := @event->GetMouseButton();
+					if(button <> Nil) {
+						bit := ButtonBit(button->GetButton());
+						@mouse_pressed := @mouse_pressed or bit;
+						@mouse_held := @mouse_held or bit;
+						@mouse_x := button->GetX();
+						@mouse_y := button->GetY();
+					};
+				}
+				else if(type = EventType->SDL_MOUSEBUTTONUP) {
+					button := @event->GetMouseButton();
+					if(button <> Nil) {
+						bit := ButtonBit(button->GetButton());
+						@mouse_released := @mouse_released or bit;
+						# and-not, to clear just this bit
+						if((@mouse_held and bit) <> 0) {
+							@mouse_held -= bit;
+						};
+						@mouse_x := button->GetX();
+						@mouse_y := button->GetY();
+					};
+				}
+				else if(type = EventType->SDL_MOUSEWHEEL) {
+					wheel := @event->GetMouseWheel();
+					if(wheel <> Nil) {
+						@wheel_x += wheel->GetX();
+						@wheel_y += wheel->GetY();
 					};
 				}
 				else if(type = EventType->SDL_MOUSEMOTION) {
@@ -983,6 +1074,8 @@ bundle Game.OpenGL {
 					if(motion <> Nil) {
 						@mouse_dx += motion->GetRelX()->As(Float);
 						@mouse_dy += motion->GetRelY()->As(Float);
+						@mouse_x := motion->GetX();
+						@mouse_y := motion->GetY();
 					};
 				}
 				else if(type = EventType->SDL_WINDOWEVENT) {
@@ -1003,6 +1096,134 @@ bundle Game.OpenGL {
 		~#
 		method : public : RequestQuit() ~ Nil {
 			@quit := true;
+		}
+
+		#~
+		Whether Escape quits.
+
+		On by default, which is what every example wants. Turn it off for a
+		program where Escape should close a menu instead -- until now that meant
+		abandoning PollEvents entirely and re-implementing quit, resize and mouse
+		delta by hand, because Escape-quits was not optional.
+		@param on false to leave Escape to the program
+		~#
+		method : public : SetQuitOnEscape(on : Bool) ~ Nil {
+			@quit_on_escape := on;
+		}
+
+		#~
+		Did this key go down during the last PollEvents?
+
+		An EDGE, not a state: true for exactly one frame per physical press, and
+		auto-repeat does not count. For "is it held right now", read
+		Keyboard->GetState, which this does not disturb.
+		@param scancode a Scancode value
+		@return true if it was pressed this frame
+		~#
+		method : public : WasPressed(scancode : Int) ~ Bool {
+			for(i := 0; i < @pressed_count; i += 1;) {
+				if(@pressed[i] = scancode) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Did this key come up during the last PollEvents?
+		@param scancode a Scancode value
+		@return true if it was released this frame
+		~#
+		method : public : WasReleased(scancode : Int) ~ Bool {
+			for(i := 0; i < @released_count; i += 1;) {
+				if(@released[i] = scancode) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Did this mouse button go down during the last PollEvents?
+		@param button 1 left, 2 middle, 3 right
+		@return true if it was pressed this frame
+		~#
+		method : public : MousePressed(button : Int) ~ Bool {
+			return (@mouse_pressed and ButtonBit(button)) <> 0;
+		}
+
+		#~
+		Did this mouse button come up during the last PollEvents?
+		@param button 1 left, 2 middle, 3 right
+		@return true if it was released this frame
+		~#
+		method : public : MouseReleased(button : Int) ~ Bool {
+			return (@mouse_released and ButtonBit(button)) <> 0;
+		}
+
+		#~
+		Is this mouse button down now?
+
+		A state rather than an edge, tracked across frames from the button events
+		-- so unlike the key case there is no separate query to reach for.
+		@param button 1 left, 2 middle, 3 right
+		@return true while it is held
+		~#
+		method : public : MouseHeld(button : Int) ~ Bool {
+			return (@mouse_held and ButtonBit(button)) <> 0;
+		}
+
+		#~
+		Wheel movement accumulated by the last PollEvents.
+		@return notches, positive away from the user
+		~#
+		method : public : GetWheelY() ~ Int {
+			return @wheel_y;
+		}
+
+		#~
+		Horizontal wheel movement accumulated by the last PollEvents.
+		@return notches, positive to the right
+		~#
+		method : public : GetWheelX() ~ Int {
+			return @wheel_x;
+		}
+
+		#~
+		Where the mouse was, in window coordinates.
+
+		POINTS, not pixels -- SDL reports event coordinates in the window's
+		coordinate space, which on a high-DPI display is not the drawable size
+		GetWidth returns. Multiply by GetScale if you need pixels.
+		@return distance from the left edge
+		~#
+		method : public : GetMouseX() ~ Int {
+			return @mouse_x;
+		}
+
+		#~
+		@return distance from the top edge, in points
+		~#
+		method : public : GetMouseY() ~ Int {
+			return @mouse_y;
+		}
+
+		#~
+		Buttons as a bit, so held state is one Int rather than an array.
+		~#
+		method : ButtonBit(button : Int) ~ Int {
+			if(button < 1 | button > 5) {
+				return 0;
+			};
+
+			bit := 1;
+			for(i := 1; i < button; i += 1;) {
+				bit *= 2;
+			};
+
+			return bit;
 		}
 
 		#~

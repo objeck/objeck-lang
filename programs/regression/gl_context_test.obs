@@ -79,6 +79,7 @@ class GlContextTest {
 		CheckShaderAndDraw();
 		CheckProjection();
 		CheckCameraProjection();
+		CheckInput();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -2820,6 +2821,75 @@ class GlContextTest {
 		};
 
 		return true;
+	}
+
+	#~
+	Input: the edges a program needs, which PollEvents used to throw away.
+
+	Honest about what this can and cannot check without a user. SDL will not
+	synthesise a click for us, so what is asserted is the part that is ours: that
+	the state starts clean, that every query is answerable rather than missing,
+	that nonsense arguments are refused instead of indexing off the end of a
+	bitmask, and that a poll with no input leaves everything false rather than
+	latching. The actual press-to-true path is exercised by gl_lantern, which
+	binds relic pickup to a real mouse click.
+
+	The bounds cases matter more than they look: button numbers come from SDL and
+	a program may well pass one straight through, so ButtonBit has to survive 0,
+	6 and negatives without turning into a shift off the end.
+	~#
+	method : CheckInput() ~ Nil {
+		# Nothing has happened yet, so every edge must be false. A latched bit
+		# here would make every WasPressed in a program fire on frame one.
+		Check("no key is pressed before anything is polled",
+			<>@gl->WasPressed(Scancode->SDL_SCANCODE_W));
+		Check("and none is released",
+			<>@gl->WasReleased(Scancode->SDL_SCANCODE_W));
+		Check("no mouse button is down",
+			<>@gl->MousePressed(1) & <>@gl->MouseHeld(1) & <>@gl->MouseReleased(1));
+		Check("the wheel has not moved", @gl->GetWheelX() = 0 & @gl->GetWheelY() = 0);
+
+		# Every button, so a bitmask bug that only affects the high ones shows.
+		clean := true;
+		for(button := 1; button <= 5; button += 1;) {
+			if(@gl->MousePressed(button) | @gl->MouseHeld(button) |
+					@gl->MouseReleased(button)) {
+				clean := false;
+			};
+		};
+		Check("all five buttons read clean, not just the left one", clean);
+
+		# Out of range, both directions. These reach ButtonBit, which must not
+		# shift off the end of the mask.
+		Check("button 0 is refused rather than aliasing button 1",
+			<>@gl->MousePressed(0) & <>@gl->MouseHeld(0));
+		Check("button 6 is refused", <>@gl->MousePressed(6) & <>@gl->MouseHeld(6));
+		Check("a negative button is refused", <>@gl->MousePressed(-3));
+
+		# Same for scancodes, which a program may compute rather than name.
+		Check("a negative scancode is answered, not crashed on",
+			<>@gl->WasPressed(-1));
+		Check("an absurd scancode is answered", <>@gl->WasPressed(999999));
+
+		# Polling an empty queue must clear the frame's edges, not accumulate.
+		@gl->PollEvents();
+		Check("a poll with no input leaves the key edges clear",
+			<>@gl->WasPressed(Scancode->SDL_SCANCODE_SPACE) &
+			<>@gl->WasReleased(Scancode->SDL_SCANCODE_SPACE));
+		Check("and the wheel back at zero", @gl->GetWheelY() = 0);
+
+		# Escape-quits used to be unconditional, so a program that wanted Escape
+		# for a menu had to abandon PollEvents entirely.
+		@gl->SetQuitOnEscape(false);
+		Check("escape-to-quit can be turned off", <>@gl->PollEvents());
+		@gl->SetQuitOnEscape(true);
+
+		# Position is reported in POINTS. On this drawable it should at least be
+		# inside something sane rather than uninitialised garbage.
+		Check("the mouse position is readable and not negative",
+			@gl->GetMouseX() >= 0 & @gl->GetMouseY() >= 0);
+
+		Check("no GL errors from reading input", GL->DrainErrors()->Size() = 0);
 	}
 
 	method : CheckMatrixMath() ~ Nil {

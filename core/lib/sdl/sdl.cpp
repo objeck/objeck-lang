@@ -1815,6 +1815,30 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_mouse_button(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP) {
+      size_t* button_obj = APITools_GetObjectValue(context, 2);
+      button_obj[0] = event->button.type;
+      button_obj[1] = event->button.timestamp;
+      button_obj[2] = event->button.windowID;
+      button_obj[3] = event->button.which;
+      button_obj[4] = event->button.button;
+      button_obj[5] = event->button.state;
+      button_obj[6] = event->button.clicks;
+      button_obj[7] = event->button.x;
+      button_obj[8] = event->button.y;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_mouse_wheel(VMContext& context) {
     SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
     if(event->type == SDL_MOUSEWHEEL) {

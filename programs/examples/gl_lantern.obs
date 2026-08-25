@@ -7,7 +7,7 @@ Lantern -- find four relics in the dark and carry them to the exit.
   mouse        look around
   W A S D      walk
   shift        run
-  E            take a relic you are standing next to
+  click / E    take a relic you are standing next to
   escape       quit
 
 ## Why this program exists
@@ -34,9 +34,12 @@ and an Overlay HUD that has to be legible over a dark scene.
 Four things this program wants and cannot have. They are marked GAP below, and
 they are the argument for the next round of work rather than complaints:
 
-  GAP 1  A mouse click to pick up a relic. GLWindow->PollEvents handles quit,
-         escape, mouse motion and resize, and DISCARDS every other event -- so
-         there is no mouse button anywhere in the framework. Bound to E instead.
+  GAP 1  CLOSED. Writing this program is what established that PollEvents
+         handled four event types and discarded the rest, so no mouse button
+         existed anywhere in the framework and pickup had to be bound to E.
+         GLWindow now reports key and button edges, the wheel and the pointer,
+         and pickup is a left click -- with E kept, because a one-button game
+         that also works from the keyboard costs one line.
   GAP 2  A coloured HUD. Overlay->Rect draws the overlay's white texture and
          takes no colour, so the fuel bar is white and the "low fuel" state has
          to be spelled out in words instead of turning red.
@@ -239,10 +242,11 @@ class Lantern {
 			@scene->SlideMove(@camera, forward, strafe, @radius);
 		};
 
-		# GAP 1: this wants to be a mouse click. PollEvents discards every event
-		# that is not quit, escape, motion or resize, so there is no button state
-		# to read anywhere in the framework.
-		if(IsDown(keys, Scancode->SDL_SCANCODE_E)) {
+		# An EDGE, not a held state: MousePressed and WasPressed are true for one
+		# frame per press. Reading the key as held instead -- which is all this
+		# could do before -- fired TakeNearbyRelic sixty times a second for as
+		# long as the key was down, and only the already-taken check hid it.
+		if(@window->MousePressed(1) | @window->WasPressed(Scancode->SDL_SCANCODE_E)) {
 			TakeNearbyRelic();
 		};
 
