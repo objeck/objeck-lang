@@ -2294,6 +2294,13 @@ bundle Game.OpenGL {
 		# a context and a context is current on one thread, so the same threading
 		# rule applies.
 		@m4_args : Base[];
+		# Held for the same reason as Mesh's; see the note there.
+		@m4_name : String;
+		@use_name : String;
+		@int_name : String;
+		@float_name : String;
+		@vec3_name : String;
+		@vec4_name : String;
 		@m4_program : IntRef;
 		@m4_matrix : FloatArrayRef;
 		# What the matrix ref is pointed at between calls. A bare Nil will not
@@ -2350,7 +2357,8 @@ bundle Game.OpenGL {
 			if(@program <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@program);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_program_use", array_args);
+				if(@use_name = Nil) { @use_name := "sdl_gl_program_use"; };
+				Proxy->GetDllProxy()->CallFunction(@use_name, array_args);
 			};
 		}
 
@@ -2377,6 +2385,7 @@ bundle Game.OpenGL {
 					@m4_args := Base->New[3];
 					@m4_args[0] := @m4_program;
 					@m4_args[2] := @m4_matrix;
+					@m4_name := "sdl_gl_uniform_matrix4";
 				}
 				else {
 					@m4_program->Set(@program);
@@ -2386,7 +2395,7 @@ bundle Game.OpenGL {
 				# The name is a String the caller owns.
 				@m4_args[1] := name;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_matrix4", @m4_args);
+				Proxy->GetDllProxy()->CallFunction(@m4_name, @m4_args);
 
 				# Let go of what the CALLER owns, the moment the call returns.
 				#
@@ -2415,7 +2424,8 @@ bundle Game.OpenGL {
 				array_args[1] := name;
 				array_args[2] := IntRef->New(value);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_int", array_args);
+				if(@int_name = Nil) { @int_name := "sdl_gl_uniform_int"; };
+				Proxy->GetDllProxy()->CallFunction(@int_name, array_args);
 			};
 		}
 
@@ -2467,7 +2477,8 @@ bundle Game.OpenGL {
 			array_args[1] := name;
 			array_args[2] := FloatRef->New(value);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_float", array_args);
+			if(@float_name = Nil) { @float_name := "sdl_gl_uniform_float"; };
+			Proxy->GetDllProxy()->CallFunction(@float_name, array_args);
 		}
 
 		#~
@@ -2491,7 +2502,8 @@ bundle Game.OpenGL {
 			array_args[3] := FloatRef->New(y);
 			array_args[4] := FloatRef->New(z);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_vec3", array_args);
+			if(@vec3_name = Nil) { @vec3_name := "sdl_gl_uniform_vec3"; };
+			Proxy->GetDllProxy()->CallFunction(@vec3_name, array_args);
 		}
 
 		#~
@@ -2518,7 +2530,8 @@ bundle Game.OpenGL {
 			array_args[4] := FloatRef->New(z);
 			array_args[5] := FloatRef->New(w);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_vec4", array_args);
+			if(@vec4_name = Nil) { @vec4_name := "sdl_gl_uniform_vec4"; };
+			Proxy->GetDllProxy()->CallFunction(@vec4_name, array_args);
 		}
 
 		#~
@@ -3314,6 +3327,14 @@ bundle Game.OpenGL {
 		# matrix and name -- the slot is cleared as soon as the call returns, or
 		# the buffer would pin objects the collector should have taken.
 		@draw_args : Base[];
+		# The function's NAME, held rather than written at the call site.
+		#
+		# A string literal is materialised into a fresh String on every
+		# evaluation, so `CallFunction("sdl_gl_mesh_draw", ...)` allocated and
+		# copied the name once per draw. Measured at 1655ns against 130ns for the
+		# same call with the name hoisted -- 92% of a native call, in code that
+		# reads like a constant.
+		@draw_name : String;
 		@draw_mesh : IntRef;
 		@draw_mode : IntRef;
 		@draw_count : IntRef;
@@ -3511,6 +3532,7 @@ bundle Game.OpenGL {
 					@draw_args[0] := @draw_mesh;
 					@draw_args[1] := @draw_mode;
 					@draw_args[2] := @draw_count;
+					@draw_name := "sdl_gl_mesh_draw";
 				}
 				else {
 					@draw_mesh->Set(@mesh);
@@ -3518,7 +3540,7 @@ bundle Game.OpenGL {
 					@draw_count->Set(count);
 				};
 
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_draw", @draw_args);
+				Proxy->GetDllProxy()->CallFunction(@draw_name, @draw_args);
 			};
 		}
 
@@ -4297,6 +4319,8 @@ bundle Game.OpenGL {
 	~#
 	class Texture2D implements Freeable {
 		@texture : Int;
+		# Held rather than written at the call site; see the note on Mesh.
+		@bind_name : String;
 		# False for a wrapper made by Wrapping/Adopt, which borrows a handle that
 		# something else owns and must not delete it.
 		@owned : Bool;
@@ -4566,7 +4590,8 @@ bundle Game.OpenGL {
 				array_args := Base->New[2];
 				array_args[0] := IntRef->New(@texture);
 				array_args[1] := IntRef->New(unit);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_bind", array_args);
+				if(@bind_name = Nil) { @bind_name := "sdl_gl_texture_bind"; };
+				Proxy->GetDllProxy()->CallFunction(@bind_name, array_args);
 			};
 		}
 
@@ -10571,6 +10596,19 @@ bundle Game.OpenGL {
 		# locals because the opaque and transparent passes share the run.
 		@last_texture : Texture2D;
 		@last_material : Material;
+		# Uniform names, held rather than written at each call site.
+		#
+		# A string literal is materialised into a fresh String every time it is
+		# evaluated. DrawOne sets two matrices and ResetMaterialState four more
+		# uniforms, so a five hundred box scene was allocating three thousand
+		# short-lived strings a frame to name uniforms that never change.
+		@n_mvp : String;
+		@n_model : String;
+		@n_tex : String;
+		@n_tint : String;
+		@n_opacity : String;
+		@n_shininess : String;
+		@n_specular : String;
 		@wants_opacity : Int;
 		@wants_tint : Int;
 		@wants_specular : Int;
@@ -10600,6 +10638,13 @@ bundle Game.OpenGL {
 			@batches := Vector->New()<PropBatch>;
 			@last_texture := Nil;
 			@last_material := Nil;
+			@n_mvp := "mvp";
+			@n_model := "model";
+			@n_tex := "tex";
+			@n_tint := "tint";
+			@n_opacity := "opacity";
+			@n_shininess := "shininess";
+			@n_specular := "specular_strength";
 			@wants_opacity := -1;
 			@wants_tint := -1;
 			@wants_specular := -1;
@@ -10774,7 +10819,7 @@ bundle Game.OpenGL {
 			# gl_walkthrough had no SetInt call anywhere while cube_gl did, for no
 			# stated reason.
 			if(@wants_sampler = 1) {
-				@shader->SetInt("tex", 0);
+				@shader->SetInt(@n_tex, 0);
 			};
 
 			# A rig wins over a single light: a caller that set both meant the rig.
@@ -10920,16 +10965,16 @@ bundle Game.OpenGL {
 		~#
 		method : ResetMaterialState() ~ Nil {
 			if(@wants_opacity = 1) {
-				@shader->SetFloat("opacity", 1.0);
+				@shader->SetFloat(@n_opacity, 1.0);
 			};
 			if(@wants_tint = 1) {
 				# The lit shaders read a zero tint as "no tint", so white and zero
 				# are equivalent here -- white is the honest value.
-				@shader->SetVec3("tint", 1.0, 1.0, 1.0);
+				@shader->SetVec3(@n_tint, 1.0, 1.0, 1.0);
 			};
 			if(@wants_specular = 1 & @rig <> Nil) {
-				@shader->SetFloat("shininess", @rig->GetShininess());
-				@shader->SetFloat("specular_strength", @rig->GetSpecular());
+				@shader->SetFloat(@n_shininess, @rig->GetShininess());
+				@shader->SetFloat(@n_specular, @rig->GetSpecular());
 			};
 		}
 
@@ -10953,9 +10998,9 @@ bundle Game.OpenGL {
 
 			model := prop->GetModelMatrix();
 			Matrix4->MultiplyInto(@mvp, view_projection, model);
-			@shader->SetMatrix4("mvp", @mvp);
+			@shader->SetMatrix4(@n_mvp, @mvp);
 			if(@wants_model = 1) {
-				@shader->SetMatrix4("model", model);
+				@shader->SetMatrix4(@n_model, model);
 			};
 			mesh->Draw();
 		}
@@ -11102,9 +11147,9 @@ bundle Game.OpenGL {
 
 			model := box->GetModelMatrix();
 			Matrix4->MultiplyInto(@mvp, view_projection, model);
-			@shader->SetMatrix4("mvp", @mvp);
+			@shader->SetMatrix4(@n_mvp, @mvp);
 			if(@wants_model = 1) {
-				@shader->SetMatrix4("model", model);
+				@shader->SetMatrix4(@n_model, model);
 			};
 			@mesh->Draw();
 		}
@@ -11152,9 +11197,9 @@ bundle Game.OpenGL {
 				if(visible) {
 					model := box->GetModelMatrix();
 					Matrix4->MultiplyInto(@mvp, view_projection, model);
-					shader->SetMatrix4("mvp", @mvp);
+					shader->SetMatrix4(@n_mvp, @mvp);
 					if(wants_model) {
-						shader->SetMatrix4("model", model);
+						shader->SetMatrix4(@n_model, model);
 					};
 					@mesh->Draw();
 				};
@@ -11185,9 +11230,9 @@ bundle Game.OpenGL {
 				if(visible) {
 					model := prop->GetModelMatrix();
 					Matrix4->MultiplyInto(@mvp, view_projection, model);
-					shader->SetMatrix4("mvp", @mvp);
+					shader->SetMatrix4(@n_mvp, @mvp);
 					if(wants_model) {
-						shader->SetMatrix4("model", model);
+						shader->SetMatrix4(@n_model, model);
 					};
 					mesh->Draw();
 				};
