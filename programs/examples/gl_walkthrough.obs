@@ -39,12 +39,10 @@ class Walkthrough {
 	@wall_texture : Texture2D;
 	@box_texture : Texture2D;
 	@camera : Camera;
-	@projection : Float[];
 	# Per-frame scratch, so Draw allocates nothing. Camera->GetViewMatrix makes
 	# three Vector3 and a Float[16] every call, and the multiply after it made
 	# another.
 	@view_projection : Float[];
-	@view_scratch : Float[];
 
 	@scene : Scene;
 	@light : Light;
@@ -65,8 +63,6 @@ class Walkthrough {
 	New() {
 		@radius := 0.35;
 		@sensitivity := 0.0025;
-		@view_projection := Float->New[16];
-		@view_scratch := Float->New[16];
 		# The scene is built in Init(), not here: boxes carry their texture, and
 		# textures need a live GL context.
 		@camera := Camera->New(Vector3->New(0.0, 1.7, 6.0));
@@ -229,7 +225,11 @@ class Walkthrough {
 		@shadows->Capture(@scene);
 		@shadows->End(@window);
 
-		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
+		# Cheap when nothing changed, and correct when it did: a window can be
+		# resized at any moment, and a projection built once at startup then
+		# stretches the scene while the pixel-space HUD stays right.
+		@camera->SetAspect(@window->GetAspect());
+		@view_projection := @camera->GetViewProjection();
 		@shadows->ApplyTo(@shader);
 		@scene->Draw(@view_projection);
 	}
@@ -239,7 +239,7 @@ class Walkthrough {
 	the context is GLWindow's job now, so what is left is this program's content.
 	~#
 	method : BuildWorld() ~ Bool {
-		@projection := Matrix4->PerspectiveDegrees(60.0, @window->GetAspect());
+		@camera->SetPerspectiveDegrees(60.0, @window->GetAspect());
 
 		# Depth testing is already on. Culling is not, because it imposes a winding
 		# requirement on index data -- counter-clockwise seen from outside -- and

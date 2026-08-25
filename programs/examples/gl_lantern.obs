@@ -1,0 +1,765 @@
+#~
+Lantern -- find four relics in the dark and carry them to the exit.
+
+  compile: obc -src gl_lantern.obs -lib sdl2,sdl_gl
+  run:     obr gl_lantern
+
+  mouse        look around
+  W A S D      walk
+  shift        run
+  click / E    take a relic you are standing next to
+  escape       quit
+
+## Why this program exists
+
+Every other example here demonstrates a feature. This one tries to be a small
+game, which is a different test: it uses the newest parts of the framework
+together, continuously, under a camera the player controls -- rather than one at
+a time in a fixture that was written to make them pass.
+
+The lantern is the point. It is a POINT LIGHT that moves with you, and it casts
+shadows in every direction through a cube map. A fixture can check a cube shadow
+by putting a caster on each axis and reading six pixels; it cannot check that the
+six faces stay consistent with each other while the light moves, because a still
+image has no way to be wrong about that. Walking a lantern down a corridor does:
+if any face is rotated, mirrored, or fed the wrong view matrix, the shadows tear
+or swim as you turn, and you see it immediately.
+
+So the parts under test are: PointShadow with a moving light, Scene collision in
+corridors rather than an open room, frustum culling with enough boxes to matter,
+and an Overlay HUD that has to be legible over a dark scene.
+
+## What it could not use, and why that is the useful part
+
+Four things this program wants and cannot have. They are marked GAP below, and
+they are the argument for the next round of work rather than complaints:
+
+  GAP 1  CLOSED. Writing this program is what established that PollEvents
+         handled four event types and discarded the rest, so no mouse button
+         existed anywhere in the framework and pickup had to be bound to E.
+         GLWindow now reports key and button edges, the wheel and the pointer,
+         and pickup is a left click -- with E kept, because a one-button game
+         that also works from the keyboard costs one line.
+  GAP 2  CLOSED. Rect took no colour at all, so the fuel bar was white and
+         "low fuel" had to be spelled out in words. Overlay now has a tint that
+         multiplies in the shader, so the bar changes colour per frame without
+         re-rasterising anything -- which SetColor could not do, because it bakes
+         the colour into the glyph textures and throws the cache away.
+  GAP 3  CLOSED. Game.OpenGL still has no audio of its own and does not need
+         any -- Game.SDL2's mixer needs no renderer. What was missing was the
+         initialisation: nothing opened the audio device, so a working mixer
+         looked like an absent feature. GLWindow now takes an audio flag, and
+         the pickup chime below is synthesised rather than shipped, so the
+         example stays asset-free.
+  GAP 4  CLOSED. Lit shaders now carry an opacity and pass the texture's own
+         alpha through, Material has SetOpacity, and Scene draws solid geometry
+         first and transparent boxes afterwards sorted back to front. The relics
+         have the glow shell this note asked for.
+
+## The one bit of arithmetic worth reading
+
+  fuel_light := @fuel / @fuel_max;
+  @lamp->SetIntensity(0.35 + fuel_light * 0.9);
+
+The lantern dims as it burns down, which is the whole difficulty curve: the
+shadow map does not change, the light does, and the room closes in around you.
+It costs two lines because Light owns intensity separately from colour.
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+use System.IO.Filesystem;
+
+#~
+A relic: somewhere to stand, and whether it has been taken.
+
+This is a class rather than three parallel arrays because the alternative was
+@relics[i * 4 + 2], which is how the walkthrough's room started out and is worth
+not repeating.
+
+It is NOT a Scene member. Scene holds Box, and a Box is drawn with the scene's
+one shared mesh -- so anything that is a different mesh plus a transform, which
+is what a relic is, has no home in the framework and has to be drawn by hand
+below. That absence is the strongest argument in this program for a Prop type.
+~#
+class Relic {
+	@at : Vector3;
+	@taken : Bool;
+	@spin : Float;
+
+	New(x : Float, y : Float, z : Float) {
+		@at := Vector3->New(x, y, z);
+		@taken := false;
+		@spin := 0.0;
+	}
+
+	method : public : GetAt() ~ Vector3 { return @at; }
+	method : public : IsTaken() ~ Bool { return @taken; }
+	method : public : Take() ~ Nil { @taken := true; }
+	method : public : GetSpin() ~ Float { return @spin; }
+	method : public : Spin(d : Float) ~ Nil { @spin += d; }
+
+	#~
+	Distance from a point, ignoring height -- the player and the relic are both
+	somewhere on the floor, and comparing their eye heights would mean the pickup
+	radius changed when you looked up.
+	~#
+	method : public : GroundDistance(eye : Vector3) ~ Float {
+		dx := @at->GetX() - eye->GetX();
+		dz := @at->GetZ() - eye->GetZ();
+		return (dx * dx + dz * dz)->Sqrt();
+	}
+}
+
+class Lantern {
+	@window : GLWindow;
+	@shader : Shader;
+	@cube : Mesh;
+	@orb : Mesh;
+
+	@wall_texture : Texture2D;
+	@floor_texture : Texture2D;
+	@relic_texture : Texture2D;
+	# Two materials for the same mesh: the solid relic, and the barely-opaque
+	# shell drawn over it.
+	@relic_material : Material;
+	@glow : Material;
+
+	@camera : Camera;
+	@scene : Scene;
+	@rig : LightRig;
+	@lamp : Light;
+	@shadows : PointShadow;
+
+	@relics : Relic[];
+	@relic_at : Transform;
+	# Reused every frame rather than allocated: the lamp moves with the player.
+	@lamp_at : Vector3;
+	@carried : Int;
+	@exit_at : Vector3;
+	@won : Bool;
+
+	@overlay : Overlay;
+	# Synthesised at startup rather than shipped, so this example needs no asset
+	# files. Nil when the machine has no working audio output, which is normal on
+	# a CI runner and is not a reason to refuse to run.
+	@chime : MixChunk;
+
+	@fuel : Float;
+	@fuel_max : Float;
+	@radius : Float;
+	@sensitivity : Float;
+
+	# Per-frame scratch. Every one of these exists so the draw loop allocates
+	# nothing: the framework's *Into forms write into a caller's array, and a
+	# Float->New[16] per object per frame is a few hundred arrays a second.
+	@view_projection : Float[];
+	@mvp : Float[];
+
+	# FPS is turned into a string four times a second rather than sixty. Building
+	# it every frame both allocates and defeats Overlay's glyph cache, since the
+	# text changes every time it is asked to draw it.
+	@hud_timer : Float;
+	@hud_fps : String;
+
+	function : Main(args : String[]) ~ Nil {
+		Lantern->New()->Run();
+	}
+
+	New() {
+		@camera := Camera->New(Vector3->New(0.0, 1.6, 9.0));
+		@mvp := Float->New[16];
+		@relic_at := Transform->New();
+		@lamp_at := Vector3->New(0.0, 0.0, 0.0);
+
+		@carried := 0;
+		@won := false;
+		@fuel_max := 95.0;
+		@fuel := @fuel_max;
+		@radius := 0.35;
+		@sensitivity := 0.0022;
+		@hud_timer := 0.0;
+		@hud_fps := "";
+		@exit_at := Vector3->New(0.0, 0.0, 10.5);
+	}
+
+	method : Run() ~ Nil {
+		# 4x multisampling, and audio. Both are refused gracefully: the window
+		# opens without antialiasing rather than failing, and HasAudio reports
+		# whether the device actually opened.
+		@window := GLWindow->New("Lantern", 1024, 640, 4, true);
+		if(<>@window->IsOk()) {
+			@window->GetError()->ErrorLine();
+			return;
+		};
+
+		leaving {
+			Close();
+		};
+
+		if(<>Build()) {
+			return;
+		};
+
+		"Lantern -- four relics, one lamp, and it is burning down."->PrintLine();
+		"WASD to walk, mouse to look, E to take a relic, escape to quit."->PrintLine();
+
+		# Relative mouse mode locks the cursor and keeps reporting movement past
+		# the screen edge, which is what a look control needs.
+		Cursor->SetRelativeMouseMode(true);
+
+		while(<>@window->PollEvents()) {
+			@window->BeginFrame();
+			delta := @window->GetDelta();
+
+			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity * -1.0);
+			@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
+
+			Update(Keyboard->GetState(), delta);
+			Draw();
+
+			@window->EndFrame();
+		};
+
+		Cursor->SetRelativeMouseMode(false);
+		GL->ReportErrors("the lantern");
+	}
+
+	method : IsDown(keys : Byte[], scancode : Int) ~ Bool {
+		if(keys = Nil | scancode < 0 | scancode >= keys->Size()) {
+			return false;
+		};
+
+		return keys[scancode] <> 0;
+	}
+
+	method : Update(keys : Byte[], delta : Float) ~ Nil {
+		if(@won) {
+			return;
+		};
+
+		speed := 3.1;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_LSHIFT) |
+				IsDown(keys, Scancode->SDL_SCANCODE_RSHIFT)) {
+			speed := 5.6;
+		};
+		step := speed * delta;
+
+		forward := 0.0;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_W)) { forward += step; };
+		if(IsDown(keys, Scancode->SDL_SCANCODE_S)) { forward -= step; };
+
+		strafe := 0.0;
+		if(IsDown(keys, Scancode->SDL_SCANCODE_D)) { strafe += step; };
+		if(IsDown(keys, Scancode->SDL_SCANCODE_A)) { strafe -= step; };
+
+		if(forward <> 0.0 | strafe <> 0.0) {
+			# Each axis applied separately, so a glancing hit on a corridor wall
+			# slides along it instead of stopping dead.
+			@scene->SlideMove(@camera, forward, strafe, @radius);
+		};
+
+		# An EDGE, not a held state: MousePressed and WasPressed are true for one
+		# frame per press. Reading the key as held instead -- which is all this
+		# could do before -- fired TakeNearbyRelic sixty times a second for as
+		# long as the key was down, and only the already-taken check hid it.
+		if(@window->MousePressed(1) | @window->WasPressed(Scancode->SDL_SCANCODE_E)) {
+			TakeNearbyRelic();
+		};
+
+		# The lamp burns whether or not you are moving, which is what makes
+		# wandering expensive and the shortest route worth finding.
+		@fuel -= delta * 1.0;
+		if(@fuel < 0.0) {
+			@fuel := 0.0;
+		};
+
+		each(i : @relics) {
+			@relics[i]->Spin(delta * 1.4);
+		};
+
+		CheckExit();
+	}
+
+	method : TakeNearbyRelic() ~ Nil {
+		here := @camera->GetPosition();
+		each(i : @relics) {
+			relic := @relics[i];
+			if(<>relic->IsTaken() & relic->GroundDistance(here) < 1.3) {
+				relic->Take();
+				@carried += 1;
+				if(@chime <> Nil) {
+					# -1 picks any free channel, so two quick pickups overlap
+					# rather than cutting each other off.
+					@chime->PlayChannel(-1, 0);
+				};
+				left := @relics->Size() - @carried;
+				"Relic taken -- {$left} still out there."->PrintLine();
+				# A relic is worth a little fuel, so collecting is also survival.
+				@fuel += 12.0;
+				if(@fuel > @fuel_max) {
+					@fuel := @fuel_max;
+				};
+			};
+		};
+	}
+
+	method : CheckExit() ~ Nil {
+		if(@carried < @relics->Size()) {
+			return;
+		};
+
+		here := @camera->GetPosition();
+		dx := @exit_at->GetX() - here->GetX();
+		dz := @exit_at->GetZ() - here->GetZ();
+		if((dx * dx + dz * dz)->Sqrt() < 1.6) {
+			@won := true;
+		};
+	}
+
+	method : Draw() ~ Nil {
+		# The lantern is HELD OUT, to the right and a little ahead. That is not
+		# decoration, it is the whole feature working or not.
+		#
+		# A light at the eye casts no visible shadow: every shadow falls directly
+		# behind the thing casting it, exactly where that thing hides it. Measured
+		# on this scene -- a horizontal scan across a wall with a pillar in front
+		# of it read a smooth bright hump, 138 up to 255 and back to 161, with no
+		# dark band anywhere. Moving the lamp 0.6 to one side put a hard notch in
+		# the same scan, 84 down to 3. Same shadow map, same bias; only the offset
+		# changed.
+		eye := @camera->GetPosition();
+		right := @camera->GroundRight();
+		ahead := @camera->GroundForward();
+		@lamp_at->Set(
+			eye->GetX() + right->GetX() * 0.55 + ahead->GetX() * 0.35,
+			eye->GetY() - 0.2,
+			eye->GetZ() + right->GetZ() * 0.55 + ahead->GetZ() * 0.35);
+		@lamp->SetPosition(@lamp_at);
+
+		# Intensity is low and the range is short, because the readings above also
+		# showed the first numbers here saturating every surface to 255 -- at which
+		# point a shadow cannot darken anything and the dungeon is not dark.
+		fuel_light := @fuel / @fuel_max;
+		@lamp->SetIntensity(0.12 + fuel_light * 0.20);
+
+		# Pass one: six faces of depth, from the lamp. This is the expensive part
+		# -- every caster is submitted six times -- and it is why the room is
+		# built from as few boxes as it can be.
+		@shadows->SetLight(@lamp);
+		@shadows->Capture(@scene, @window);
+
+		# Pass two: the scene from the eye, reading that cube.
+		# Cheap when nothing changed, and correct when it did: a window can be
+		# resized at any moment, and a projection built once at startup then
+		# stretches the scene while the pixel-space HUD stays right.
+		@camera->SetAspect(@window->GetAspect());
+		@view_projection := @camera->GetViewProjection();
+
+		@shader->Use();
+		@rig->SetViewPosition(eye);
+		@rig->ApplyTo(@shader);
+		@shadows->ApplyTo(@shader);
+		@shader->SetInt("tex", 0);
+
+		@scene->Draw(@view_projection);
+		DrawRelics();
+		DrawHud();
+	}
+
+	#~
+	Relics are drawn by hand, one at a time.
+
+	Scene cannot hold them: it draws every member with the one mesh it was given,
+	and a relic is a sphere. So this is the five-line bind-transform-upload-draw
+	sequence that appears in three other examples in this directory, written out a
+	fourth time. A Prop type -- mesh, material, transform -- would delete it from
+	all four and give relics frustum culling and instancing for free.
+	~#
+	method : DrawRelics() ~ Nil {
+		@relic_material->ApplyTo(@shader, 0);
+
+		each(i : @relics) {
+			relic := @relics[i];
+			if(<>relic->IsTaken()) {
+				at := relic->GetAt();
+				# Bobbing, so a relic reads as an object in the room rather than a
+				# decal on the floor. The lamp's falloff does the rest.
+				bob := 0.12 * relic->GetSpin()->Sin();
+				@relic_at->SetPosition(at->GetX(), at->GetY() + bob, at->GetZ());
+				@relic_at->SetRotation(relic->GetSpin(), 0.0, 0.0);
+				@relic_at->SetScale(0.28);
+
+				@relic_at->MvpInto(@mvp, @view_projection);
+				@shader->SetMatrix4("mvp", @mvp);
+				@shader->SetMatrix4("model", @relic_at->GetMatrix());
+				@orb->Draw();
+			};
+		};
+
+		# The glow: the same sphere again, larger and barely opaque, blended over
+		# the solid one. Drawn AFTER every solid relic rather than interleaved,
+		# because a shell drawn before the next relic's body would blend against
+		# whatever was behind it instead of against that relic.
+		#
+		# Depth writes off, test on -- the same rule Scene follows for its own
+		# transparent boxes. A glow that wrote depth would punch a hole in the
+		# relic behind it.
+		GL->BeginTransparency();
+		@glow->SetOpacity(0.22);
+		@glow->ApplyTo(@shader, 0);
+
+		each(i : @relics) {
+			relic := @relics[i];
+			if(<>relic->IsTaken()) {
+				at := relic->GetAt();
+				bob := 0.12 * relic->GetSpin()->Sin();
+				@relic_at->SetPosition(at->GetX(), at->GetY() + bob, at->GetZ());
+				@relic_at->SetRotation(relic->GetSpin() * -0.5, 0.0, 0.0);
+				@relic_at->SetScale(0.44);
+
+				@relic_at->MvpInto(@mvp, @view_projection);
+				@shader->SetMatrix4("mvp", @mvp);
+				@shader->SetMatrix4("model", @relic_at->GetMatrix());
+				@orb->Draw();
+			};
+		};
+
+		GL->EndTransparency();
+
+		# Put the solid material back, or the next frame's relics are drawn with
+		# the glow's opacity still bound.
+		@relic_material->ApplyTo(@shader, 0);
+	}
+
+	method : DrawHud() ~ Nil {
+		if(@overlay = Nil) {
+			return;
+		};
+
+		@hud_timer += @window->GetDelta();
+		if(@hud_timer > 0.25) {
+			@hud_timer := 0.0;
+			fps := @window->GetFps()->As(Int);
+			drawn := @scene->GetDrawnCount();
+			culled := @scene->GetCulledCount();
+			@hud_fps := "{$fps} fps   {$drawn} drawn / {$culled} culled";
+		};
+
+		total := @relics->Size();
+		# Interpolation reads locals, not instance variables.
+		carried := @carried;
+
+		@overlay->Begin();
+
+		# The bar carries the reading twice over: its width, and now its colour.
+		# Green through amber to red as the lamp burns down, so the state is
+		# legible without reading anything.
+		fraction := @fuel / @fuel_max;
+		bar := (200.0 * fraction)->As(Int);
+
+		# The trough, so an empty bar is still visibly a bar rather than nothing.
+		@overlay->Rect(16, 44, 200, 10, 38, 34, 30);
+		if(bar > 0) {
+			red := 220;
+			green := 60;
+			if(fraction > 0.25) {
+				# 0.25..1.0 mapped onto amber..green
+				lift := (fraction - 0.25) / 0.75;
+				red := 220 - (140.0 * lift)->As(Int);
+				green := 60 + (150.0 * lift)->As(Int);
+			};
+			@overlay->Rect(16, 44, bar, 10, red, green, 70);
+		};
+
+		@overlay->Text("relics {$carried} / {$total}", 16, 16);
+
+		if(@won) {
+			@overlay->Text("You are out. All four, and the lamp still lit.", 16, 68);
+		}
+		else if(@fuel <= 0.0) {
+			@overlay->Text("The lamp is out. You can still feel your way.", 16, 68);
+		}
+		else if(fraction < 0.25) {
+			@overlay->Text("The lamp is guttering.", 16, 68);
+		}
+		else if(@carried = total) {
+			@overlay->Text("All four. Back to the entrance.", 16, 68);
+		};
+
+		# Dimmer than the rest, because a frame counter is not what you are
+		# playing. One call, no re-rasterising -- SetColor here would throw away
+		# every cached glyph on screen twice a frame.
+		@overlay->SetTintRgb(120, 130, 145);
+		@overlay->Text(@hud_fps, 16, @window->GetHeight() - 30);
+
+		@overlay->End();
+	}
+
+	method : Build() ~ Bool {
+		@camera->SetPerspective(Float->Pi() / 3.0, @window->GetAspect(), 0.1, 60.0);
+		GL->Enable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.015, 0.017, 0.025, 1.0);
+
+		@shader := @window->Own(Shader->LitTexturedPointShadowed())->As(Shader);
+		if(<>@shader->IsOk()) {
+			@shader->GetLog()->ErrorLine();
+			return false;
+		};
+
+		@cube := @window->Own(Mesh->Cube())->As(Mesh);
+		@orb := @window->Own(Mesh->Sphere(18, 10))->As(Mesh);
+		if(<>@cube->IsOk() | <>@orb->IsOk()) {
+			"Could not upload the geometry"->ErrorLine();
+			return false;
+		};
+
+		@wall_texture := @window->Own(Texture2D->Checker(64, 4, Texture2D->Rgb(96, 88, 78),
+			Texture2D->Rgb(66, 60, 54), TextureWrap->GL_REPEAT))->As(Texture2D);
+		@floor_texture := @window->Own(Texture2D->Checker(64, 3, Texture2D->Rgb(58, 54, 50),
+			Texture2D->Rgb(44, 41, 38), TextureWrap->GL_REPEAT))->As(Texture2D);
+		@relic_texture := @window->Own(Texture2D->Solid(0xFFF2C879))->As(Texture2D);
+		@relic_material := Material->New(@relic_texture);
+		@glow := Material->New(@relic_texture);
+		@glow->SetTint(1.0, 0.86, 0.5);
+		if(<>@wall_texture->IsOk() | <>@floor_texture->IsOk() | <>@relic_texture->IsOk()) {
+			"Could not build the textures"->ErrorLine();
+			return false;
+		};
+
+		@shadows := @window->Own(PointShadow->New(512))->As(PointShadow);
+		if(<>@shadows->IsOk()) {
+			@shadows->GetError()->ErrorLine();
+			return false;
+		};
+		# A lamp inside the room is close to what it lights, so the bias that suits
+		# a distant sun is far too large here and detaches every shadow from its
+		# caster.
+		@shadows->SetBias(0.06);
+
+		BuildAudio();
+		BuildLight();
+		BuildDungeon();
+		BuildRelics();
+		BuildOverlay();
+
+		return true;
+	}
+
+	#~
+	A short bell, written to a temporary WAV and loaded back.
+
+	Two sine partials a fifth apart with a fast attack and a long exponential
+	decay -- enough to read as "you picked something up" without shipping an
+	asset. The file goes to the system temp directory rather than beside the
+	program, because the runners start it from the deploy tree's bin and that
+	should not accumulate files.
+	~#
+	method : BuildAudio() ~ Nil {
+		if(<>@window->HasAudio()) {
+			return;
+		};
+
+		path := System.Runtime->GetTempDir() + "/objeck_lantern_chime.wav";
+		if(WriteChime(path)) {
+			@chime := MixChunk->New(path);
+			if(@chime <> Nil & @chime->IsNull()) {
+				@chime := Nil;
+			};
+		};
+	}
+
+	method : WriteChime(file : String) ~ Bool {
+		rate := 22050;
+		count := 5200;
+		data_size := count * 2;
+
+		writer := FileWriter->New(file);
+		if(<>writer->IsOpen()) {
+			return false;
+		};
+
+		# RIFF/WAVE, 16-bit mono. Written by hand because there is no WAV writer
+		# in the standard library and the header is twelve fields.
+		writer->WriteByte(82); writer->WriteByte(73); writer->WriteByte(70); writer->WriteByte(70);
+		WriteU32(writer, 36 + data_size);
+		writer->WriteByte(87); writer->WriteByte(65); writer->WriteByte(86); writer->WriteByte(69);
+		writer->WriteByte(102); writer->WriteByte(109); writer->WriteByte(116); writer->WriteByte(32);
+		WriteU32(writer, 16);
+		WriteU16(writer, 1);
+		WriteU16(writer, 1);
+		WriteU32(writer, rate);
+		WriteU32(writer, rate * 2);
+		WriteU16(writer, 2);
+		WriteU16(writer, 16);
+		writer->WriteByte(100); writer->WriteByte(97); writer->WriteByte(116); writer->WriteByte(97);
+		WriteU32(writer, data_size);
+
+		two_pi := 2.0 * Float->Pi();
+		rate_f := rate->As(Float);
+		count_f := count->As(Float);
+		low := 0.0;
+		high := 0.0;
+
+		for(i := 0; i < count; i += 1;) {
+			t := i->As(Float) / count_f;
+			low += two_pi * 880.0 / rate_f;
+			high += two_pi * 1320.0 / rate_f;
+
+			# Fast attack, long decay. Without the attack ramp the first sample
+			# jumps from silence and the speaker clicks.
+			envelope := (1.0 - t) * (1.0 - t) * (1.0 - t);
+			if(t < 0.01) {
+				envelope := envelope * (t / 0.01);
+			};
+
+			value := envelope * (0.62 * low->Sin() + 0.38 * high->Sin());
+			sample := (value * 20000.0)->As(Int);
+			if(sample > 32767) { sample := 32767; };
+			if(sample < -32768) { sample := -32768; };
+			if(sample < 0) { sample := sample + 65536; };
+
+			writer->WriteByte(sample % 256);
+			writer->WriteByte((sample / 256) % 256);
+		};
+
+		writer->Close();
+
+		return true;
+	}
+
+	method : WriteU32(writer : FileWriter, value : Int) ~ Nil {
+		writer->WriteByte(value % 256);
+		writer->WriteByte((value / 256) % 256);
+		writer->WriteByte((value / 65536) % 256);
+		writer->WriteByte((value / 16777216) % 256);
+	}
+
+	method : WriteU16(writer : FileWriter, value : Int) ~ Nil {
+		writer->WriteByte(value % 256);
+		writer->WriteByte((value / 256) % 256);
+	}
+
+	method : BuildLight() ~ Nil {
+		# Range, not just colour: a point light with no falloff lights the whole
+		# dungeon evenly and there is nothing to carry a lantern for.
+		@lamp := Light->Point(Vector3->New(0.0, 1.4, 9.0), 13.0);
+		@lamp->SetColor(1.0, 0.86, 0.62);
+
+		@rig := LightRig->New();
+		# Barely above black. This is the number that decides whether the game is
+		# about the lantern or merely lit by one.
+		@rig->SetAmbient(0.035, 0.035, 0.045);
+		# Low and broad: dungeon stone is not polished, and a tight lobe on a
+		# carried light turns every surface into a mirror pointed back at you.
+		@rig->SetSpecular(0.08, 12.0);
+		@rig->Add(@lamp);
+	}
+
+	#~
+	The dungeon: a floor, a ceiling, an outer wall, and enough interior to make
+	corridors and corners.
+
+	Corners are the interesting shape here -- for the shadows, because a corner is
+	where a moving light's shadow sweeps fastest and any inconsistency between
+	cube faces shows; and for SlideMove, because an inside corner is where naive
+	collision traps you.
+	~#
+	method : BuildDungeon() ~ Nil {
+		@scene := Scene->New(@cube, @shader);
+		@scene->SetLightRig(@rig);
+		@scene->SetCulling(true);
+
+		# Floor and ceiling: drawn, but walked through rather than into.
+		Slab(0.0, -0.25, 0.0, 13.0, 0.25, 13.0, @floor_texture, false);
+		Slab(0.0, 3.25, 0.0, 13.0, 0.25, 13.0, @wall_texture, false);
+
+		# Outer wall, four slabs, leaving the south side open as the way out.
+		Slab(0.0, 1.5, -13.0, 13.0, 1.5, 0.5, @wall_texture, true);
+		Slab(-13.0, 1.5, 0.0, 0.5, 1.5, 13.0, @wall_texture, true);
+		Slab(13.0, 1.5, 0.0, 0.5, 1.5, 13.0, @wall_texture, true);
+		Slab(-7.5, 1.5, 13.0, 5.5, 1.5, 0.5, @wall_texture, true);
+		Slab(7.5, 1.5, 13.0, 5.5, 1.5, 0.5, @wall_texture, true);
+
+		# Interior: two long spines with gaps, and a knot of pillars in the middle.
+		Slab(-5.0, 1.5, -6.0, 0.5, 1.5, 5.0, @wall_texture, true);
+		Slab(5.0, 1.5, -6.0, 0.5, 1.5, 5.0, @wall_texture, true);
+		Slab(-2.0, 1.5, 1.0, 4.5, 1.5, 0.5, @wall_texture, true);
+		Slab(6.5, 1.5, 1.0, 4.0, 1.5, 0.5, @wall_texture, true);
+		Slab(0.0, 1.5, -11.0, 3.0, 1.5, 0.5, @wall_texture, true);
+		Slab(-9.0, 1.5, 5.0, 0.5, 1.5, 3.5, @wall_texture, true);
+		Slab(9.0, 1.5, 5.0, 0.5, 1.5, 3.5, @wall_texture, true);
+
+		# Pillars. Small, plentiful, and the best shadow casters in the room --
+		# a lantern carried past one sweeps its shadow right around the walls.
+		Pillar(-2.5, -3.0);
+		Pillar(2.5, -3.0);
+		Pillar(-2.5, 5.5);
+		Pillar(2.5, 5.5);
+		Pillar(-7.0, -1.0);
+		Pillar(7.0, -1.0);
+		Pillar(0.0, 8.0);
+	}
+
+	method : Slab(cx : Float, cy : Float, cz : Float, hx : Float, hy : Float,
+			hz : Float, texture : Texture2D, solid : Bool) ~ Nil {
+		box := Box->New(Vector3->New(cx, cy, cz), Vector3->New(hx, hy, hz), texture);
+		box->SetSolid(solid);
+		@scene->Add(box);
+	}
+
+	method : Pillar(x : Float, z : Float) ~ Nil {
+		Slab(x, 1.5, z, 0.4, 1.5, 0.4, @wall_texture, true);
+	}
+
+	method : BuildRelics() ~ Nil {
+		# One per quadrant, each behind something, so none is visible from the
+		# entrance and the lantern has to be carried to it.
+		@relics := Relic->New[4];
+		@relics[0] := Relic->New(-9.5, 1.0, -9.0);
+		@relics[1] := Relic->New(9.5, 1.0, -9.5);
+		@relics[2] := Relic->New(-10.0, 1.0, 8.5);
+		@relics[3] := Relic->New(10.0, 1.0, 9.0);
+	}
+
+	method : BuildOverlay() ~ Nil {
+		# One call. It finds the shipped font whether this is started from a
+		# deploy tree's bin or from the examples directory it ships in -- the
+		# hardcoded relative path this replaced only worked from the first.
+		@overlay := @window->Own(Overlay->WithDefaultFont(@window, 18))->As(Overlay);
+		if(@overlay->IsOk() & @overlay->HasFont()) {
+			@overlay->SetColor(236, 224, 198);
+		}
+		else {
+			# A missing font is not fatal: the game is playable without the HUD,
+			# and DrawHud checks for this.
+			@overlay := Nil;
+		};
+	}
+
+	#~
+	GL objects first, while the context is still current -- every Free bottoms out
+	in a glDelete*, which needs one. The window takes the context and SDL down
+	after them.
+
+	Six objects and a fixed order, written out by hand, in every example in this
+	directory. A GLWindow->Own registry would do it once.
+	~#
+	#~
+	What a teardown looks like once the window owns things.
+
+	This used to be eight lines of `if(x <> Nil) { x->Free(); }` in an order that
+	mattered and was documented nowhere. Every GL object here was handed to
+	window->Own as it was built, so the window releases all of it -- before
+	destroying the context, which is the one rule that actually matters.
+
+	The chime is not a GL object and the window knows nothing about it, so it
+	still goes by hand, and still before the window: GLWindow->Free calls
+	Core->Quit, which takes the audio device with it.
+	~#
+	method : Close() ~ Nil {
+		if(@chime <> Nil) { @chime->Free(); };
+
+		if(@window <> Nil) { @window->Free(); };
+	}
+}

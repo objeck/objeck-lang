@@ -94,8 +94,8 @@ xcodebuild -project macos/xcode/sdl.xcodeproj build $SIGN_FLAGS
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
-# Ship SDL2 INSIDE the distribution, the way Windows ships its DLLs in lib/sdl,
-# instead of handing the user a tarball to install by hand.
+# Ship SDL2 INSIDE the distribution, the way Windows ships its DLLs beside the
+# binaries, instead of handing the user a tarball to install by hand.
 #
 # Why this dance is needed: the vendored dylibs were built with an absolute
 # install name (LC_ID_DYLIB = /usr/local/lib/libSDL2-2.0.0.dylib), so anything
@@ -232,6 +232,12 @@ unzip docs/api.zip -d core/release/deploy/doc
 mkdir core/release/deploy/examples
 mkdir core/release/deploy/examples/media
 cp programs/deploy/*.obs core/release/deploy/examples
+# The OpenGL examples live in programs/examples, which nothing copied, so no
+# distribution ever carried them.
+mkdir -p core/release/deploy/examples/opengl
+cp programs/examples/gl_*.obs core/release/deploy/examples/opengl
+cp programs/examples/cube_gl.obs core/release/deploy/examples/opengl
+cp programs/examples/gl_crystal.obj core/release/deploy/examples/opengl
 cp programs/deploy/media/*.png core/release/deploy/examples/media
 cp programs/deploy/media/*.wav core/release/deploy/examples/media
 

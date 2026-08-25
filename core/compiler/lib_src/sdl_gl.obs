@@ -156,7 +156,11 @@ bundle Game.OpenGL {
 		GL_CULL_FACE := 0x0B44,
 		GL_DEPTH_TEST := 0x0B71,
 		GL_BLEND := 0x0BE2,
-		GL_SCISSOR_TEST := 0x0C11
+		GL_SCISSOR_TEST := 0x0C11,
+		# On by default when the window was created with samples, so this is
+		# only needed to turn multisampling OFF for a pass that should not have
+		# it -- a crisp pixel-art overlay, say.
+		GL_MULTISAMPLE := 0x809D
 	}
 
 	#~
@@ -186,6 +190,22 @@ bundle Game.OpenGL {
 	meshes -- at which point it is an unbounded VRAM leak with no symptom
 	pointing back here.
 	~#
+	#~
+	Something holding a GL object that has to be released.
+
+	Exists so GLWindow->Own can hold a mixed list. Every class here already
+	declared `method : public : Free()` with exactly this shape, so implementing
+	it costs them nothing -- but note Objeck requires the access to match the
+	interface exactly, and does not accept an INHERITED method as satisfying one.
+	~#
+	interface Freeable {
+		#~
+		Release whatever GL objects this holds. Must be idempotent -- everything
+		in this bundle nulls its handle, so a second call does nothing.
+		~#
+		method : public : virtual : Free() ~ Nil;
+	}
+
 	class GL {
 		#~
 		Resolve the OpenGL 2.0+ entry points. Call once, after the context is
@@ -215,6 +235,52 @@ bundle Game.OpenGL {
 			array_args[0] := IntRef->New(capability);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_enable", array_args);
+		}
+
+		#~
+		Restrict drawing to a rectangle.
+
+		Only has an effect while Capability->GL_SCISSOR_TEST is enabled. That
+		constant has been in this bundle since the beginning with nothing to bind
+		it to, so enabling it clipped to whatever rectangle the driver happened to
+		start with -- usually the whole window, which made it look like it worked.
+
+		Pixels, not points, and measured from the BOTTOM-left like the viewport --
+		not the top-left like Overlay. A split-screen viewport or a UI panel that
+		must not be drawn over is what this is for.
+		@param x left edge in pixels from the left
+		@param y bottom edge in pixels from the bottom
+		@param width width in pixels
+		@param height height in pixels
+		~#
+		function : Scissor(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New(x);
+			array_args[1] := IntRef->New(y);
+			array_args[2] := IntRef->New(width);
+			array_args[3] := IntRef->New(height);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_scissor", array_args);
+		}
+
+		#~
+		Is a capability currently on?
+
+		Asked rather than assumed by anything that turns a capability off and has
+		to put it back -- Overlay->Begin/End do exactly this with culling, and a
+		program may legitimately have had it off already.
+		@param capability a Capability value
+		@return true if enabled
+		~#
+		function : IsEnabled(capability : Int) ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(capability);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_is_enabled", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() <> 0;
 		}
 
 		#~
@@ -628,6 +694,38 @@ bundle Game.OpenGL {
 		# the DRAWABLE size in pixels, which is what GL works in. Not the window
 		# size in points -- those differ on a high-DPI display.
 		@pixel_w : Int;
+		# Bumped whenever the drawable actually changes size. A counter rather
+		# than a flag, so several things can notice independently -- a flag is
+		# consumed by whoever asks first.
+		@drawable_generation : Int;
+
+		# Edge-triggered input for the frame just polled.
+		#
+		# Fixed arrays with a count rather than a growable list, because this is
+		# per-frame state in a class whose whole point is that a draw loop
+		# allocates nothing. Sixteen is far past what a frame ever holds -- a
+		# human manages perhaps three key transitions in 16ms -- and anything
+		# beyond it is dropped rather than grown.
+		@pressed : Int[];
+		@pressed_count : Int;
+		@released : Int[];
+		@released_count : Int;
+		# Buttons 1-5 as bits, so no allocation and no second array.
+		@mouse_pressed : Int;
+		@mouse_released : Int;
+		@mouse_held : Int;
+		@wheel_x : Int;
+		@wheel_y : Int;
+		@mouse_x : Int;
+		@mouse_y : Int;
+		@quit_on_escape : Bool;
+		# How many samples the window actually got -- 0 when multisampling was not
+		# asked for, or was asked for and refused.
+		@samples : Int;
+		# Everything this window has been asked to release on the way out.
+		@owned : Vector<Freeable>;
+		@want_audio : Bool;
+		@audio_ok : Bool;
 		@pixel_h : Int;
 
 		@vsync : Bool;
@@ -646,7 +744,69 @@ bundle Game.OpenGL {
 		@param height height in points
 		~#
 		New(title : String, width : Int, height : Int) {
-			Open(title, width, height, true);
+			Open(title, width, height, true, 0);
+		}
+
+		#~
+		Open a window with multisampling.
+
+		Antialiasing at the framebuffer, which costs nothing in the program: it is
+		two pixel-format attributes, and every edge in the scene stops being a
+		staircase. It has to be asked for BEFORE the window exists, which is why it
+		is a constructor argument rather than a setter -- SDL attributes select a
+		pixel format and setting one afterwards is silently ignored.
+
+		Ask for 4. If the driver cannot provide it the window still opens, without
+		it -- so check GetSamples if you care, rather than assuming.
+		@param title the window title
+		@param width width in points
+		@param height height in points
+		@param samples 0 for none, or 2, 4, 8; anything else is clamped
+		~#
+		New(title : String, width : Int, height : Int, samples : Int) {
+			Open(title, width, height, true, samples);
+		}
+
+		#~
+		Open a window with sound.
+
+		Game.OpenGL has no audio of its own and does not need any: Game.SDL2's
+		Mixer, MixChunk and MixMusic need no SDL_Renderer, so a 3D program can use
+		them directly. What was missing was the initialisation -- nothing opened
+		the audio device, and nothing said so, which left a working mixer looking
+		like an absent feature.
+
+		This asks for the audio subsystem alongside video and opens the device.
+		After it, Game.SDL2's mixer is usable as-is:
+
+		  window := GLWindow->New("game", 1024, 640, 4, true);
+		  chime := MixChunk->New("pickup.wav");
+		  chime->PlayChannel(-1, 0);
+
+		Free the chunks before the window: GLWindow->Free calls Core->Quit, which
+		takes the audio device with it.
+		@param title the window title
+		@param width width in points
+		@param height height in points
+		@param samples multisample count, 0 for none
+		@param audio true to open the audio device
+		~#
+		New(title : String, width : Int, height : Int, samples : Int, audio : Bool) {
+			@want_audio := audio;
+			Open(title, width, height, true, samples);
+		}
+
+		#~
+		Did the audio device open?
+
+		False when audio was not asked for, and also when it was asked for and the
+		machine has no working output -- which is common on a CI runner and is not
+		a reason to refuse to run. Sound is the thing to make optional here, not
+		the program.
+		@return true when the mixer is usable
+		~#
+		method : public : HasAudio() ~ Bool {
+			return @audio_ok;
 		}
 
 		#~
@@ -661,14 +821,32 @@ bundle Game.OpenGL {
 		@param visible false to keep the window off screen
 		~#
 		New(title : String, width : Int, height : Int, visible : Bool) {
-			Open(title, width, height, visible);
+			Open(title, width, height, visible, 0);
 		}
 
-		method : Open(title : String, width : Int, height : Int, visible : Bool) ~ Nil {
+		method : Open(title : String, width : Int, height : Int, visible : Bool,
+				samples : Int) ~ Nil {
 			@ok := false;
 			@error := "";
 			@version := "";
+			@audio_ok := false;
 			@pixel_w := 0;
+			@drawable_generation := 0;
+			@owned := Vector->New()<Freeable>;
+			@pressed := Int->New[16];
+			@released := Int->New[16];
+			@pressed_count := 0;
+			@released_count := 0;
+			@mouse_pressed := 0;
+			@mouse_released := 0;
+			@mouse_held := 0;
+			@wheel_x := 0;
+			@wheel_y := 0;
+			@mouse_x := 0;
+			@mouse_y := 0;
+			# Matches what PollEvents did before there was a way to ask for
+			# anything else.
+			@quit_on_escape := true;
 			@pixel_h := 0;
 			@vsync := false;
 			@target_fps := 60;
@@ -678,7 +856,15 @@ bundle Game.OpenGL {
 			@mouse_dy := 0.0;
 			@quit := false;
 
-			if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+			# Audio is initialised alongside video when it was asked for. SDL_Init
+			# takes both in one call and there is no cost to a program that never
+			# plays anything, but asking afterwards means a second init.
+			init_flags := HardwareFlags->SDL_INIT_VIDEO;
+			if(@want_audio) {
+				init_flags := init_flags or HardwareFlags->SDL_INIT_AUDIO;
+			};
+
+			if(Core->Init(init_flags) < 0) {
 				@error := "SDL could not initialise: {$Core->GetError()}";
 				return;
 			};
@@ -692,6 +878,29 @@ bundle Game.OpenGL {
 			Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS, GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 			Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
 			Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
+			# ClearBit->GL_STENCIL_BUFFER_BIT has been in this bundle from the
+			# start and there was never a stencil buffer to clear -- nothing asked
+			# for one, so the bit was a no-op that looked like a feature. 24+8 is
+			# the standard packed format and costs nothing over depth alone.
+			Core->GLSetAttribute(GLattr->SDL_GL_STENCIL_SIZE, 8);
+
+			# Multisampling, if it was asked for. Two attributes, no native code,
+			# and the largest visible quality difference available here.
+			#
+			# Requested, not guaranteed: a driver that cannot honour it fails the
+			# window creation rather than downgrading, so this asks, and falls back
+			# to no multisampling rather than failing to open at all.
+			@samples := 0;
+			if(samples > 1) {
+				want := samples;
+				if(want > 16) {
+					want := 16;
+				};
+
+				Core->GLSetAttribute(GLattr->SDL_GL_MULTISAMPLEBUFFERS, 1);
+				Core->GLSetAttribute(GLattr->SDL_GL_MULTISAMPLESAMPLES, want);
+				@samples := want;
+			};
 
 			visibility := WindowFlags->SDL_WINDOW_HIDDEN;
 			if(visible) {
@@ -712,9 +921,30 @@ bundle Game.OpenGL {
 			# at them.
 			flags := visibility or WindowFlags->SDL_WINDOW_OPENGL or WindowFlags->SDL_WINDOW_ALLOW_HIGHDPI;
 			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, width, height, flags);
+
+			# A driver that cannot give the requested sample count fails window
+			# creation outright rather than handing back fewer samples. Losing
+			# antialiasing is a far better outcome than not opening, so drop it and
+			# try once more -- and record that it did not happen, so GetSamples
+			# does not claim otherwise.
+			if(@window->IsNull() & @samples > 0) {
+				Core->GLSetAttribute(GLattr->SDL_GL_MULTISAMPLEBUFFERS, 0);
+				Core->GLSetAttribute(GLattr->SDL_GL_MULTISAMPLESAMPLES, 0);
+				@samples := 0;
+				@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, width, height, flags);
+			};
+
 			if(@window->IsNull()) {
 				@error := "cannot create a GL window: {$Core->GetError()}";
 				return;
+			};
+
+			if(@want_audio) {
+				# 44100 stereo with a 2048-sample buffer, matching what
+				# Game.Framework opens. A smaller buffer lowers latency and risks
+				# underruns; this is the value that has been working in the 2D
+				# framework.
+				@audio_ok := Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048);
 			};
 
 			@context := @window->GLCreateContext();
@@ -779,15 +1009,124 @@ bundle Game.OpenGL {
 			w := IntRef->New();
 			h := IntRef->New();
 			@window->GLGetDrawableSize(w, h);
+			was_w := @pixel_w;
+			was_h := @pixel_h;
 			@pixel_w := w->Get();
 			@pixel_h := h->Get();
 
 			if(@pixel_w <= 0 | @pixel_h <= 0) {
-				@error := "drawable size came back as {$@pixel_w}x{$@pixel_h}";
+				# A minimised window on Windows reports 0x0. That is not an error
+				# worth recording against a window that is otherwise fine, and
+				# recording one would make GetError misleading for the rest of the
+				# run -- so restore the last good size and report no change.
+				@pixel_w := was_w;
+				@pixel_h := was_h;
 				return false;
 			};
 
+			if(@pixel_w <> was_w | @pixel_h <> was_h) {
+				@drawable_generation += 1;
+			};
+
 			return true;
+		}
+
+		#~
+		A number that changes whenever the drawable changes size.
+
+		PollEvents keeps the viewport right on its own, but a projection matrix is
+		the program's, and a stale one stretches the scene while a HUD drawn in
+		pixels stays correct. Compare this against the last value you saw:
+
+		  if(window->GetDrawableGeneration() <> @seen) {
+		    @seen := window->GetDrawableGeneration();
+		    target->Free(); target := RenderTarget->New(window->GetWidth(), ...);
+		  };
+
+		For the projection specifically there is nothing to compare -- call
+		Camera->SetAspect(window->GetAspect()) every frame and it does nothing
+		unless the value actually changed.
+		@return a counter, not a size; only equality is meaningful
+		~#
+		#~
+		Hand something to the window to release on the way out.
+
+		Every example in this repo hand-writes the same teardown: a chain of
+		`if(x <> Nil) { x->Free(); }` in a fixed order, up to fifteen objects long,
+		ending with the window. It is mechanical, it is easy to get one line wrong,
+		and the one rule that matters -- everything GL before the context goes --
+		is invisible in it.
+
+		Own returns what it was given, so it wraps a constructor:
+
+		  @shader := window->Own(Shader->LitTextured())->As(Shader);
+		  @cube   := window->Own(Mesh->Cube())->As(Mesh);
+
+		and Close() disappears.
+
+		There is no ordering to get right WITHIN the owned set: glDelete* is
+		order-independent and nothing here references another object, so one list
+		is enough. What matters is that all of it happens before the context is
+		destroyed, which is what this guarantees.
+
+		Owning something does NOT stop you freeing it yourself -- every Free in
+		this bundle nulls its handle and is safe to call twice, so Own can be
+		adopted a line at a time.
+
+		Do not Own a borrowed texture from RenderTarget->GetTexture or
+		ShadowMap->GetTexture: those are views of an attachment their target still
+		owns. Freeing one is already a no-op, so this is a waste rather than a
+		hazard, but it says nothing true about ownership.
+		@param thing anything with a Free
+		@return the same thing, so this can wrap a constructor
+		~#
+		method : public : Own(thing : Freeable) ~ Freeable {
+			if(thing <> Nil) {
+				@owned->AddBack(thing);
+			};
+
+			return thing;
+		}
+
+		#~
+		@return how many objects this window will release on the way out
+		~#
+		method : public : GetOwnedCount() ~ Int {
+			return @owned->Size();
+		}
+
+		method : public : GetDrawableGeneration() ~ Int {
+			return @drawable_generation;
+		}
+
+		#~
+		A second GLWindow is not really supported, and this is why.
+
+		Creating a context MAKES IT CURRENT, so opening a second window silently
+		redirects every later GL call to it -- textures, draws and pixel readback
+		alike, with no error anywhere. And Free calls Core->Quit, which takes SDL
+		down for the whole process, so freeing either one kills both.
+
+		If you must open a second window, put the first one's context back
+		afterwards:
+
+		  first->GetWindow()->GLMakeCurrent(first->GetContext());
+
+		and free only at exit. Both facts were found by a test that opened a
+		second window to compare pixel formats: it hung on the first Free, and
+		once that was fixed, three unrelated checks elsewhere in the suite went red
+		because they were sampling the wrong framebuffer.
+
+		How many multisample samples this window actually got.
+
+		Asked for is not granted: a driver that cannot honour the request makes the
+		window fail to create, and rather than not opening at all this drops the
+		request and retries without it. So a program that cares has to ask, not
+		assume.
+		@return the sample count, or 0 for no multisampling
+		~#
+		method : public : GetSamples() ~ Int {
+			return @samples;
 		}
 
 		#~
@@ -929,6 +1268,12 @@ bundle Game.OpenGL {
 		method : public : PollEvents() ~ Bool {
 			@mouse_dx := 0.0;
 			@mouse_dy := 0.0;
+			@pressed_count := 0;
+			@released_count := 0;
+			@mouse_pressed := 0;
+			@mouse_released := 0;
+			@wheel_x := 0;
+			@wheel_y := 0;
 
 			while(@event->Poll() <> 0) {
 				type := @event->GetType();
@@ -937,8 +1282,58 @@ bundle Game.OpenGL {
 					@quit := true;
 				}
 				else if(type = EventType->SDL_KEYDOWN) {
-					if(@event->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_ESCAPE) {
-						@quit := true;
+					key := @event->GetKey();
+					if(key <> Nil) {
+						scancode := key->GetKeysym()->GetScancode();
+						if(@quit_on_escape & scancode = Scancode->SDL_SCANCODE_ESCAPE) {
+							@quit := true;
+						};
+
+						# Auto-repeat is a held key, not a new press. WasPressed
+						# means "went down this frame", and a menu that advanced
+						# once per repeat instead of once per press is the bug
+						# this avoids.
+						if(key->GetRepeat() = 0 & @pressed_count < @pressed->Size()) {
+							@pressed[@pressed_count] := scancode;
+							@pressed_count += 1;
+						};
+					};
+				}
+				else if(type = EventType->SDL_KEYUP) {
+					key := @event->GetKey();
+					if(key <> Nil & @released_count < @released->Size()) {
+						@released[@released_count] := key->GetKeysym()->GetScancode();
+						@released_count += 1;
+					};
+				}
+				else if(type = EventType->SDL_MOUSEBUTTONDOWN) {
+					button := @event->GetMouseButton();
+					if(button <> Nil) {
+						bit := ButtonBit(button->GetButton());
+						@mouse_pressed := @mouse_pressed or bit;
+						@mouse_held := @mouse_held or bit;
+						@mouse_x := button->GetX();
+						@mouse_y := button->GetY();
+					};
+				}
+				else if(type = EventType->SDL_MOUSEBUTTONUP) {
+					button := @event->GetMouseButton();
+					if(button <> Nil) {
+						bit := ButtonBit(button->GetButton());
+						@mouse_released := @mouse_released or bit;
+						# and-not, to clear just this bit
+						if((@mouse_held and bit) <> 0) {
+							@mouse_held -= bit;
+						};
+						@mouse_x := button->GetX();
+						@mouse_y := button->GetY();
+					};
+				}
+				else if(type = EventType->SDL_MOUSEWHEEL) {
+					wheel := @event->GetMouseWheel();
+					if(wheel <> Nil) {
+						@wheel_x += wheel->GetX();
+						@wheel_y += wheel->GetY();
 					};
 				}
 				else if(type = EventType->SDL_MOUSEMOTION) {
@@ -946,6 +1341,8 @@ bundle Game.OpenGL {
 					if(motion <> Nil) {
 						@mouse_dx += motion->GetRelX()->As(Float);
 						@mouse_dy += motion->GetRelY()->As(Float);
+						@mouse_x := motion->GetX();
+						@mouse_y := motion->GetY();
 					};
 				}
 				else if(type = EventType->SDL_WINDOWEVENT) {
@@ -966,6 +1363,134 @@ bundle Game.OpenGL {
 		~#
 		method : public : RequestQuit() ~ Nil {
 			@quit := true;
+		}
+
+		#~
+		Whether Escape quits.
+
+		On by default, which is what every example wants. Turn it off for a
+		program where Escape should close a menu instead -- until now that meant
+		abandoning PollEvents entirely and re-implementing quit, resize and mouse
+		delta by hand, because Escape-quits was not optional.
+		@param on false to leave Escape to the program
+		~#
+		method : public : SetQuitOnEscape(on : Bool) ~ Nil {
+			@quit_on_escape := on;
+		}
+
+		#~
+		Did this key go down during the last PollEvents?
+
+		An EDGE, not a state: true for exactly one frame per physical press, and
+		auto-repeat does not count. For "is it held right now", read
+		Keyboard->GetState, which this does not disturb.
+		@param scancode a Scancode value
+		@return true if it was pressed this frame
+		~#
+		method : public : WasPressed(scancode : Int) ~ Bool {
+			for(i := 0; i < @pressed_count; i += 1;) {
+				if(@pressed[i] = scancode) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Did this key come up during the last PollEvents?
+		@param scancode a Scancode value
+		@return true if it was released this frame
+		~#
+		method : public : WasReleased(scancode : Int) ~ Bool {
+			for(i := 0; i < @released_count; i += 1;) {
+				if(@released[i] = scancode) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Did this mouse button go down during the last PollEvents?
+		@param button 1 left, 2 middle, 3 right
+		@return true if it was pressed this frame
+		~#
+		method : public : MousePressed(button : Int) ~ Bool {
+			return (@mouse_pressed and ButtonBit(button)) <> 0;
+		}
+
+		#~
+		Did this mouse button come up during the last PollEvents?
+		@param button 1 left, 2 middle, 3 right
+		@return true if it was released this frame
+		~#
+		method : public : MouseReleased(button : Int) ~ Bool {
+			return (@mouse_released and ButtonBit(button)) <> 0;
+		}
+
+		#~
+		Is this mouse button down now?
+
+		A state rather than an edge, tracked across frames from the button events
+		-- so unlike the key case there is no separate query to reach for.
+		@param button 1 left, 2 middle, 3 right
+		@return true while it is held
+		~#
+		method : public : MouseHeld(button : Int) ~ Bool {
+			return (@mouse_held and ButtonBit(button)) <> 0;
+		}
+
+		#~
+		Wheel movement accumulated by the last PollEvents.
+		@return notches, positive away from the user
+		~#
+		method : public : GetWheelY() ~ Int {
+			return @wheel_y;
+		}
+
+		#~
+		Horizontal wheel movement accumulated by the last PollEvents.
+		@return notches, positive to the right
+		~#
+		method : public : GetWheelX() ~ Int {
+			return @wheel_x;
+		}
+
+		#~
+		Where the mouse was, in window coordinates.
+
+		POINTS, not pixels -- SDL reports event coordinates in the window's
+		coordinate space, which on a high-DPI display is not the drawable size
+		GetWidth returns. Multiply by GetScale if you need pixels.
+		@return distance from the left edge
+		~#
+		method : public : GetMouseX() ~ Int {
+			return @mouse_x;
+		}
+
+		#~
+		@return distance from the top edge, in points
+		~#
+		method : public : GetMouseY() ~ Int {
+			return @mouse_y;
+		}
+
+		#~
+		Buttons as a bit, so held state is one Int rather than an array.
+		~#
+		method : ButtonBit(button : Int) ~ Int {
+			if(button < 1 | button > 5) {
+				return 0;
+			};
+
+			bit := 1;
+			for(i := 1; i < button; i += 1;) {
+				bit *= 2;
+			};
+
+			return bit;
 		}
 
 		#~
@@ -1072,6 +1597,19 @@ bundle Game.OpenGL {
 				};
 			};
 
+			# Everything handed to Own, while the context is still current -- every
+			# Free here bottoms out in a glDelete*, which needs one. Order within
+			# this list does not matter; order relative to the context does.
+			if(@owned <> Nil) {
+				each(i : @owned) {
+					owned := @owned->Get(i);
+					if(owned <> Nil) {
+						owned->Free();
+					};
+				};
+				@owned->Empty();
+			};
+
 			if(@event <> Nil) {
 				@event->Free();
 				@event := Nil;
@@ -1157,7 +1695,7 @@ bundle Game.OpenGL {
 	shader->Use();
 	```
 	~#
-	class Shader {
+	class Shader implements Freeable {
 		@program : Int;
 		@log : String;
 
@@ -1419,6 +1957,38 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Textured, multiplied by a flat colour.
+
+		What a HUD needs: one white texture drawn as any colour, and glyphs -- whose
+		shape lives in their alpha -- drawn as any colour without re-rasterising
+		them. Uniforms: "mvp", "tex", "overlay_tint" (a vec4, default opaque white).
+		@return the program; check IsOk()
+		~#
+		function : TexturedTinted() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+			vertex->Add("uniform mat4 mvp;");
+			vertex->Add("out vec2 texcoord;");
+			vertex->Add("void main() {");
+			vertex->Add("  texcoord = in_texcoord;");
+			vertex->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec2 texcoord;");
+			fragment->Add("uniform sampler2D tex;");
+			# NOT "tint": every lit shader declares `uniform vec3 tint` and Material
+			# sets it with SetVec3, so sharing the name would let a Material write
+			# three floats into this vec4.
+			fragment->Add("uniform vec4 overlay_tint;");
+			fragment->Add("out vec4 frag_color;");
+			fragment->Add("void main() { frag_color = texture(tex, texcoord) * overlay_tint; }");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
+		#~
 		Textured, darkening with distance.
 
 		Without lighting, a textured 3D scene reads flat -- every surface is the
@@ -1645,7 +2215,7 @@ bundle Game.OpenGL {
 		@param source the shader being built
 		@param shadowed whether the shadow varying is needed too
 		~#
-		function : AddLitVaryings(source : ShaderSource, shadowed : Bool) ~ Nil {
+		function : private : AddLitVaryings(source : ShaderSource, shadowed : Bool) ~ Nil {
 			source->Add("out vec3 normal;");
 			source->Add("out vec2 texcoord;");
 			source->Add("out float depth;");
@@ -1655,11 +2225,11 @@ bundle Game.OpenGL {
 			};
 		}
 
-		function : LitVertexSource() ~ String {
+		function : private : LitVertexSource() ~ String {
 			return LitVertexSource(false);
 		}
 
-		function : LitVertexSource(shadowed : Bool) ~ String {
+		function : private : LitVertexSource(shadowed : Bool) ~ String {
 			source := ShaderSource->New();
 			source->Add("layout (location = 0) in vec3 in_position;");
 			source->Add("layout (location = 1) in vec3 in_normal;");
@@ -1688,15 +2258,15 @@ bundle Game.OpenGL {
 			return source->Build();
 		}
 
-		function : LitFragmentSource(textured : Bool) ~ String {
+		function : private : LitFragmentSource(textured : Bool) ~ String {
 			return LitFragmentSource(textured, false, false);
 		}
 
-		function : LitFragmentSource(textured : Bool, shadowed : Bool) ~ String {
+		function : private : LitFragmentSource(textured : Bool, shadowed : Bool) ~ String {
 			return LitFragmentSource(textured, shadowed, false);
 		}
 
-		function : LitFragmentSource(textured : Bool, shadowed : Bool, point_shadowed : Bool) ~ String {
+		function : private : LitFragmentSource(textured : Bool, shadowed : Bool, point_shadowed : Bool) ~ String {
 			source := ShaderSource->New();
 			source->Add("in vec3 normal;");
 			source->Add("in vec2 texcoord;");
@@ -1727,6 +2297,7 @@ bundle Game.OpenGL {
 			# "untinted" because an object tinted to pure black is indistinguishable
 			# from an invisible one, so nothing useful is given up.
 			source->Add("uniform vec3 tint;");
+			source->Add("uniform float opacity;");
 
 			# Lights as ARRAYS with a count, which is how forward rendering carries
 			# more than one. The maximum is a compile-time constant because GLSL
@@ -1871,11 +2442,18 @@ bundle Game.OpenGL {
 			source->Add("    lit = lit * clamp(1.0 - depth / fog_distance, 0.15, 1.0);");
 			source->Add("  }");
 			source->Add("  vec3 shade = (tint == vec3(0.0)) ? vec3(1.0) : tint;");
+			# Alpha comes from two places: the texture's own channel, which is what
+			# makes a cut-out leaf or a glass panel work, and a per-object opacity.
+			# Every preset sets opacity to 1.0 at creation -- a GLSL uniform starts
+			# at zero, so a shader declaring this and nobody setting it would draw
+			# the entire scene invisible.
+			source->Add("  float alpha = opacity;");
 			if(textured) {
-				source->Add("  frag_color = texture(tex, texcoord) * vec4(lit * shade, 1.0);");
+				source->Add("  vec4 base = texture(tex, texcoord);");
+				source->Add("  frag_color = vec4(base.rgb * lit * shade, base.a * alpha);");
 			}
 			else {
-				source->Add("  frag_color = vec4(color * lit * shade, 1.0);");
+				source->Add("  frag_color = vec4(color * lit * shade, alpha);");
 			};
 			source->Add("}");
 
@@ -1975,7 +2553,7 @@ bundle Game.OpenGL {
 	mesh := Mesh->New(vertices, indices, [3, 2]);
 	```
 	~#
-	class Mesh {
+	class Mesh implements Freeable {
 		@mesh : Int;
 		# The axis-aligned bounds of whatever was uploaded, in model space. Measured
 		# once at construction, because it is the only moment the vertex data is in
@@ -2183,7 +2761,7 @@ bundle Game.OpenGL {
 			return BuildCube(half, true);
 		}
 
-		function : BuildCube(half : Float, inward : Bool) ~ Mesh {
+		function : private : BuildCube(half : Float, inward : Bool) ~ Mesh {
 			# Per face: the outward normal, then four corners counter-clockwise seen
 			# from outside. Fifteen floats each. Written as a literal table rather
 			# than computed because a wrong sign here is a face that culls away, and
@@ -2540,7 +3118,7 @@ bundle Game.OpenGL {
 		Empty arrays rather than Nil, because a bare Nil in Objeck infers as Nil
 		rather than as the parameter's array type and will not compile.
 		~#
-		function : NoMesh() ~ Mesh {
+		function : private : NoMesh() ~ Mesh {
 			return Mesh->New(Float->New[0], Int->New[0], Int->New[0]);
 		}
 
@@ -2549,7 +3127,7 @@ bundle Game.OpenGL {
 		stripping a trailing carriage return. Returns Nil for a blank or comment
 		line, so callers can test one thing.
 		~#
-		function : Words(line : String) ~ Vector<String> {
+		function : private : Words(line : String) ~ Vector<String> {
 			if(line = Nil) {
 				return Nil;
 			};
@@ -2586,7 +3164,7 @@ bundle Game.OpenGL {
 		Write one face corner from an OBJ "v", "v/vt", "v//vn" or "v/vt/vn" token.
 		@return the next write offset
 		~#
-		function : Corner3(into : Float[], out : Int, token : String, positions : Float[], position_count : Int, texcoords : Float[], texcoord_count : Int, normals : Float[], normal_count : Int) ~ Int {
+		function : private : Corner3(into : Float[], out : Int, token : String, positions : Float[], position_count : Int, texcoords : Float[], texcoord_count : Int, normals : Float[], normal_count : Int) ~ Int {
 			position_index := Resolve(FaceField(token, 0), position_count);
 			texcoord_index := Resolve(FaceField(token, 1), texcoord_count);
 			normal_index := Resolve(FaceField(token, 2), normal_count);
@@ -2632,7 +3210,7 @@ bundle Game.OpenGL {
 		@param index which field, 0 for the position
 		@return the field, or an empty string when absent
 		~#
-		function : FaceField(token : String, index : Int) ~ String {
+		function : private : FaceField(token : String, index : Int) ~ String {
 			if(token = Nil) {
 				return "";
 			};
@@ -2670,7 +3248,7 @@ bundle Game.OpenGL {
 		reads as a wild out-of-range index.
 		@return a 0-based index, or -1 when there is none
 		~#
-		function : Resolve(field : String, count : Int) ~ Int {
+		function : private : Resolve(field : String, count : Int) ~ Int {
 			if(field = Nil | field->Size() = 0 | count = 0) {
 				return -1;
 			};
@@ -2697,7 +3275,7 @@ bundle Game.OpenGL {
 		Give three consecutive vertices the normal of the plane they lie in, for a
 		file that carried none.
 		~#
-		function : FlatNormal(vertices : Float[], base : Int) ~ Nil {
+		function : private : FlatNormal(vertices : Float[], base : Int) ~ Nil {
 			if(base < 0 | base + 24 > vertices->Size()) {
 				return;
 			};
@@ -2750,7 +3328,7 @@ bundle Game.OpenGL {
 		#~
 		Write one interleaved position/normal/texcoord vertex.
 		~#
-		function : Corner(into : Float[], index : Int, x : Float, y : Float, z : Float, nx : Float, ny : Float, nz : Float, u : Float, v : Float) ~ Nil {
+		function : private : Corner(into : Float[], index : Int, x : Float, y : Float, z : Float, nx : Float, ny : Float, nz : Float, u : Float, v : Float) ~ Nil {
 			out := index * 8;
 			into[out + 0] := x;
 			into[out + 1] := y;
@@ -2891,8 +3469,11 @@ bundle Game.OpenGL {
 	surface->Free();          # the pixels are on the GPU now
 	```
 	~#
-	class Texture2D {
+	class Texture2D implements Freeable {
 		@texture : Int;
+		# False for a wrapper made by Wrapping/Adopt, which borrows a handle that
+		# something else owns and must not delete it.
+		@owned : Bool;
 
 		#~
 		Upload a surface's pixels as a texture, smoothed and clamped.
@@ -2921,6 +3502,7 @@ bundle Game.OpenGL {
 
 		method : Upload(surface : Surface, filter : Int, wrap : Int, mipmap : Bool) ~ Nil {
 			@texture := 0;
+			@owned := true;
 
 			if(surface = Nil | surface->IsNull()) {
 				return;
@@ -2963,6 +3545,7 @@ bundle Game.OpenGL {
 
 		method : Adopt(handle : Int) ~ Nil {
 			@texture := handle;
+			@owned := false;
 		}
 
 		#~
@@ -3135,9 +3718,14 @@ bundle Game.OpenGL {
 
 		Call it while the GL context is still current -- see the shutdown order on
 		the GL class.
+
+		A texture obtained from RenderTarget->GetTexture or ShadowMap->GetTexture
+		is a BORROWED view of that target's attachment, not a texture of its own,
+		and this does nothing for one. Freeing it used to delete the attachment out
+		from under the target that was still using it.
 		~#
 		method : public : Free() ~ Nil {
-			if(@texture <> 0) {
+			if(@texture <> 0 & @owned) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@texture);
 				Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_delete", array_args);
@@ -3940,6 +4528,18 @@ bundle Game.OpenGL {
 		@yaw : Float;
 		@pitch : Float;
 
+		# Allocated once, reused every frame. The alternative -- and what six
+		# programs used to do -- is three Float[16] per program plus a per-frame
+		# three-argument call to fill them.
+		@projection : Float[];
+		@view_projection : Float[];
+		@scratch : Float[];
+		@fov : Float;
+		@aspect : Float;
+		@near : Float;
+		@far : Float;
+		@has_projection : Bool;
+
 		#~
 		@param position where the eye starts
 		~#
@@ -3947,6 +4547,92 @@ bundle Game.OpenGL {
 			@position := position;
 			@yaw := 0.0;
 			@pitch := 0.0;
+			@projection := Float->New[16];
+			@view_projection := Float->New[16];
+			@scratch := Float->New[16];
+			@has_projection := false;
+			@fov := 0.0;
+			@aspect := 0.0;
+			@near := 0.0;
+			@far := 0.0;
+		}
+
+		#~
+		Give the camera its own projection, so GetViewProjection can build the
+		whole matrix without the caller keeping buffers.
+		@param fov vertical field of view, in RADIANS
+		@param aspect width divided by height -- window->GetAspect()
+		@param near near plane; too small a value wastes depth precision
+		@param far far plane
+		~#
+		method : public : SetPerspective(fov : Float, aspect : Float, near : Float, far : Float) ~ Nil {
+			@fov := fov;
+			@aspect := aspect;
+			@near := near;
+			@far := far;
+			@has_projection := true;
+			Matrix4->PerspectiveInto(@projection, @fov, @aspect, @near, @far);
+		}
+
+		#~
+		Same, in degrees, with the near and far planes most programs want.
+		@param degrees vertical field of view in degrees
+		@param aspect width divided by height
+		~#
+		method : public : SetPerspectiveDegrees(degrees : Float, aspect : Float) ~ Nil {
+			SetPerspective(degrees * Float->Pi() / 180.0, aspect, 0.1, 100.0);
+		}
+
+		#~
+		Update the aspect ratio, rebuilding the projection only if it changed.
+
+		Cheap enough to call unconditionally every frame, which is the point: a
+		window can be resized at any moment and the alternative is tracking a
+		generation counter in every program.
+		@param aspect width divided by height
+		~#
+		method : public : SetAspect(aspect : Float) ~ Nil {
+			if(<>@has_projection | aspect <= 0.0 | aspect = @aspect) {
+				return;
+			};
+
+			@aspect := aspect;
+			Matrix4->PerspectiveInto(@projection, @fov, @aspect, @near, @far);
+		}
+
+		#~
+		@return true once SetPerspective has been called
+		~#
+		method : public : HasProjection() ~ Bool {
+			return @has_projection;
+		}
+
+		#~
+		@return the projection matrix. BORROWED -- do not write to it or keep it
+		across a SetAspect
+		~#
+		method : public : GetProjection() ~ Float[] {
+			return @projection;
+		}
+
+		#~
+		Projection times view, rebuilt from the current eye.
+
+		Returns the camera's own buffer rather than a fresh array, so a draw loop
+		calling this every frame allocates nothing. Do not write to it, and do not
+		hold it across another call.
+		@return a 16-element column-major matrix, or Nil if SetPerspective has not
+		been called
+		~#
+		method : public : GetViewProjection() ~ Float[] {
+			if(<>@has_projection) {
+				return Nil;
+			};
+
+			GetViewMatrixInto(@scratch);
+			Matrix4->MultiplyInto(@view_projection, @projection, @scratch);
+
+			return @view_projection;
 		}
 
 		method : public : GetPosition() ~ Vector3 {
@@ -4210,7 +4896,7 @@ bundle Game.OpenGL {
 	written and never read. A shadow map wants the reverse, and will need its own
 	constructor for that.
 	~#
-	class RenderTarget {
+	class RenderTarget implements Freeable {
 		@target : Int;
 		@width : Int;
 		@height : Int;
@@ -4523,7 +5209,7 @@ bundle Game.OpenGL {
 	evicted one entry at a time -- overlay text is a handful of strings in practice,
 	and a clear is one line rather than an LRU.
 	~#
-	class Overlay {
+	class Overlay implements Freeable {
 		@window : GLWindow;
 		@font : Font;
 		@shader : Shader;
@@ -4540,6 +5226,16 @@ bundle Game.OpenGL {
 		@limit : Int;
 
 		@color : Color;
+		# Set only when this overlay loaded the font itself.
+		@owned_font : Font;
+		# The tint applied to the next Rect/Text/Line, as 0..1 components. Separate
+		# from @color, which is baked into rasterised glyphs and cannot change
+		# without re-rasterising every one of them.
+		@tint_r : Float;
+		@tint_g : Float;
+		@tint_b : Float;
+		@tint_a : Float;
+		@culling_was_on : Bool;
 
 		#~
 		An overlay sized to a window's drawable.
@@ -4556,6 +5252,10 @@ bundle Game.OpenGL {
 			@cache := Hash->New()<String, Texture2D>;
 			@sizes := Hash->New()<String, IntHolder>;
 			@color := Color->New(255, 255, 255, 255);
+			@tint_r := 1.0;
+			@tint_g := 1.0;
+			@tint_b := 1.0;
+			@tint_a := 1.0;
 
 			# Texture coordinates run 0..1 over a quad whose corners are 0..1 as
 			# well, so a model matrix that scales and translates in pixels lands it
@@ -4567,7 +5267,7 @@ bundle Game.OpenGL {
 			             0.0, 1.0, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0];
 			@quad := Mesh->New(vertices, [0, 1, 2, 2, 3, 0], Mesh->PositionNormalTexcoord());
 
-			@shader := Shader->Textured();
+			@shader := Shader->TexturedTinted();
 			if(<>@shader->IsOk()) {
 				@error := @shader->GetLog();
 			};
@@ -4612,6 +5312,71 @@ bundle Game.OpenGL {
 		The font used by Text. Not owned -- the caller loads it and frees it.
 		@param font a loaded Font
 		~#
+		#~
+		An overlay using the font that ships with Objeck.
+
+		Three examples had ten identical lines of this -- Font->Init, a hardcoded
+		"../lib/sdl/fonts/lazy.ttf", an IsOk-and-not-null check, SetFont, SetColor,
+		and a Nil on failure that every draw site then had to test for.
+
+		That path is relative, and it only resolves when the program is started
+		from the deploy tree's bin directory. Run the same program from the
+		examples directory it ships in and the font is silently missing. This tries
+		the places it actually lives, so a program works from either.
+
+		The overlay is returned whether or not a font was found -- Text is a no-op
+		without one, so a missing font costs the HUD rather than the program.
+		@param window the window to draw over
+		@param size point size
+		@return the overlay; check IsOk() for the GL side, HasFont() for the text
+		~#
+		function : WithDefaultFont(window : GLWindow, size : Int) ~ Overlay {
+			overlay := Overlay->New(window);
+			if(<>overlay->IsOk()) {
+				return overlay;
+			};
+
+			Font->Init();
+
+			# In the order they are likely: beside the binaries, from a deploy
+			# tree's bin, from an examples directory one level in, and from a
+			# source checkout.
+			candidates := ["lib/sdl/fonts/lazy.ttf",
+				"../lib/sdl/fonts/lazy.ttf",
+				"../../lib/sdl/fonts/lazy.ttf",
+				"../lib/fonts/lazy.ttf"];
+
+			each(i : candidates) {
+				if(<>overlay->HasFont()) {
+					font := Font->New(candidates[i], size);
+					if(font <> Nil & <>font->IsNull()) {
+						overlay->SetFont(font);
+						overlay->OwnFont(font);
+					};
+				};
+			};
+
+			return overlay;
+		}
+
+		#~
+		@return true when a font is set and text will actually draw
+		~#
+		method : public : HasFont() ~ Bool {
+			return @font <> Nil & <>@font->IsNull();
+		}
+
+		#~
+		Take ownership of a font, so Free closes it.
+
+		SetFont deliberately does NOT own what it is given -- a program may share
+		one font between overlays. WithDefaultFont loaded its own, so it says so.
+		@param font the font this overlay should close
+		~#
+		method : public : OwnFont(font : Font) ~ Nil {
+			@owned_font := font;
+		}
+
 		method : public : SetFont(font : Font) ~ Nil {
 			if(font <> @font) {
 				# Cached textures were rasterised with the old font and would keep
@@ -4643,6 +5408,10 @@ bundle Game.OpenGL {
 		method : public : Begin() ~ Nil {
 			Resize();
 
+			# Remembered so End can put it back. Asking GL rather than assuming,
+			# because a program may legitimately have had it off.
+			@culling_was_on := GL->IsEnabled(Capability->GL_CULL_FACE);
+
 			if(@window <> Nil) {
 				@window->SetDepthTest(false);
 			};
@@ -4664,6 +5433,18 @@ bundle Game.OpenGL {
 			if(@window <> Nil) {
 				@window->SetDepthTest(true);
 			};
+
+			# Begin turns THREE things off and this used to put two back, leaving
+			# culling disabled for every subsequent frame -- including the next
+			# frame's shadow passes. Every example escaped it by drawing the HUD
+			# last, so nothing ever saw the consequence.
+			if(@culling_was_on) {
+				GL->Enable(Capability->GL_CULL_FACE);
+			};
+
+			# The tint does not survive the pass either; a program that set one for
+			# a warning colour would otherwise find it still applied next frame.
+			SetTint(1.0, 1.0, 1.0, 1.0);
 		}
 
 		#~
@@ -4736,6 +5517,87 @@ bundle Game.OpenGL {
 			DrawTextured(@white, x, y, width, height);
 		}
 
+		#~
+		Colour for the next Rect, Line and Text, as 0..1 components.
+
+		This does NOT re-rasterise anything: it multiplies in the shader, so a
+		program can change colour per call at no cost. SetColor is the other one
+		and is not interchangeable -- that bakes a colour into the glyph textures
+		and throws the cache away, so two SetColor calls a frame re-rasterise every
+		string on screen twice a frame.
+
+		Rule of thumb: SetColor once at startup for the text's base colour, SetTint
+		freely for anything that changes.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		@param a alpha, 0..1
+		~#
+		method : public : SetTint(r : Float, g : Float, b : Float, a : Float) ~ Nil {
+			@tint_r := r;
+			@tint_g := g;
+			@tint_b := b;
+			@tint_a := a;
+		}
+
+		#~
+		Opaque tint from 0-255 components, matching SetColor's units.
+		@param r red, 0..255
+		@param g green, 0..255
+		@param b blue, 0..255
+		~#
+		method : public : SetTintRgb(r : Int, g : Int, b : Int) ~ Nil {
+			SetTint(r->As(Float) / 255.0, g->As(Float) / 255.0, b->As(Float) / 255.0, 1.0);
+		}
+
+		#~
+		A filled rectangle in the current tint.
+		@param x left edge in pixels
+		@param y top edge in pixels
+		@param width width in pixels
+		@param height height in pixels
+		@param r red, 0..255
+		@param g green, 0..255
+		@param b blue, 0..255
+		~#
+		method : public : Rect(x : Int, y : Int, width : Int, height : Int,
+				r : Int, g : Int, b : Int) ~ Nil {
+			was_r := @tint_r; was_g := @tint_g; was_b := @tint_b; was_a := @tint_a;
+			SetTintRgb(r, g, b);
+			Rect(x, y, width, height);
+			SetTint(was_r, was_g, was_b, was_a);
+		}
+
+		#~
+		A straight line, one pixel of thickness per unit.
+
+		Horizontal and vertical only -- it is a rectangle underneath. An arbitrary
+		diagonal needs a rotation this class does not carry, and a HUD rule, a
+		divider and a bar chart are all axis-aligned.
+		@param x1 start x
+		@param y1 start y
+		@param x2 end x
+		@param y2 end y
+		@param thickness in pixels, at least 1
+		~#
+		method : public : Line(x1 : Int, y1 : Int, x2 : Int, y2 : Int, thickness : Int) ~ Nil {
+			weight := thickness;
+			if(weight < 1) {
+				weight := 1;
+			};
+
+			if(y1 = y2) {
+				left := x1; right := x2;
+				if(right < left) { left := x2; right := x1; };
+				Rect(left, y1, right - left, weight);
+			}
+			else if(x1 = x2) {
+				top := y1; bottom := y2;
+				if(bottom < top) { top := y2; bottom := y1; };
+				Rect(x1, top, weight, bottom - top);
+			};
+		}
+
 		method : DrawTextured(texture : Texture2D, x : Int, y : Int, width : Int, height : Int) ~ Nil {
 			# The quad's corners are 0..1, so scaling by the pixel size and
 			# translating to the pixel position is the whole transform -- and it is a
@@ -4744,6 +5606,7 @@ bundle Game.OpenGL {
 			Matrix4->MultiplyInto(@mvp, @projection, @model);
 
 			@shader->SetMatrix4("mvp", @mvp);
+			@shader->SetVec4("overlay_tint", @tint_r, @tint_g, @tint_b, @tint_a);
 			texture->Bind(0);
 			@quad->Draw();
 		}
@@ -4839,6 +5702,9 @@ bundle Game.OpenGL {
 			ClearCache();
 
 			if(@white <> Nil) { @white->Free(); @white := Nil; };
+			# Only the one WithDefaultFont loaded. A font handed in by SetFont
+			# belongs to the caller and may be shared with another overlay.
+			if(@owned_font <> Nil) { @owned_font->Free(); @owned_font := Nil; };
 			if(@quad <> Nil) { @quad->Free(); @quad := Nil; };
 			if(@shader <> Nil) { @shader->Free(); @shader := Nil; };
 		}
@@ -4899,6 +5765,7 @@ bundle Game.OpenGL {
 		@tr : Float; @tg : Float; @tb : Float;
 		@shininess : Float;
 		@specular : Float;
+		@opacity : Float;
 
 		#~
 		An untinted, matte material.
@@ -4909,6 +5776,7 @@ bundle Game.OpenGL {
 			@tr := 1.0; @tg := 1.0; @tb := 1.0;
 			@shininess := 32.0;
 			@specular := 0.0;
+			@opacity := 1.0;
 		}
 
 		#~
@@ -4953,6 +5821,37 @@ bundle Game.OpenGL {
 		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
 		@param strength 0 matte, around 0.5 plastic, 1.0 something wet
 		~#
+		#~
+		How opaque this material is.
+
+		1.0 is solid and is the default. Anything less needs blending on and the
+		object drawn after the solid ones -- Scene does both once it knows where
+		the camera is; a program drawing by hand does it with
+		GL->BeginTransparency and GL->EndTransparency.
+
+		This MULTIPLIES the texture's own alpha rather than replacing it, so a
+		cut-out texture stays cut out at 0.5 opacity instead of turning into a
+		uniformly half-visible rectangle.
+		@param opacity 0.0 invisible to 1.0 solid
+		~#
+		method : public : SetOpacity(opacity : Float) ~ Nil {
+			@opacity := opacity;
+		}
+
+		#~
+		@return the opacity, 1.0 for solid
+		~#
+		method : public : GetOpacity() ~ Float {
+			return @opacity;
+		}
+
+		#~
+		@return true when this material needs no sorting
+		~#
+		method : public : IsOpaque() ~ Bool {
+			return @opacity >= 1.0;
+		}
+
 		method : public : SetSpecular(shininess : Float, strength : Float) ~ Nil {
 			@shininess := shininess;
 			@specular := strength;
@@ -4979,6 +5878,9 @@ bundle Game.OpenGL {
 			};
 			if(shader->HasUniform("specular_strength")) {
 				shader->SetFloat("specular_strength", @specular);
+			};
+			if(shader->HasUniform("opacity")) {
+				shader->SetFloat("opacity", @opacity);
 			};
 
 			if(@texture <> Nil & @texture->IsOk()) {
@@ -5031,10 +5933,17 @@ bundle Game.OpenGL {
 	class Frustum {
 		# six planes, four components each: a, b, c, d with a*x + b*y + c*z + d
 		@planes : Float[];
+		# |a|, |b|, |c| per plane, three each. Held separately because the box test
+		# needs them for every box and they only change when the matrix does --
+		# Float->Abs is a real method call (lang.obs declares it; there is no
+		# opcode), so taking them in the test cost eighteen calls per box per frame
+		# to re-derive six planes' worth of constants.
+		@abs_planes : Float[];
 		@ready : Bool;
 
 		New() {
 			@planes := Float->New[24];
+			@abs_planes := Float->New[18];
 			@ready := false;
 		}
 
@@ -5084,10 +5993,19 @@ bundle Game.OpenGL {
 					return;
 				};
 
-				@planes[at + 0] := a / length;
-				@planes[at + 1] := b / length;
-				@planes[at + 2] := c / length;
+				na := a / length;
+				nb := b / length;
+				nc := c / length;
+				@planes[at + 0] := na;
+				@planes[at + 1] := nb;
+				@planes[at + 2] := nc;
 				@planes[at + 3] := @planes[at + 3] / length;
+
+				# Once per plane per frame, rather than once per plane per box.
+				abs_at := plane * 3;
+				@abs_planes[abs_at + 0] := na->Abs();
+				@abs_planes[abs_at + 1] := nb->Abs();
+				@abs_planes[abs_at + 2] := nc->Abs();
 			};
 
 			@ready := true;
@@ -5157,7 +6075,9 @@ bundle Game.OpenGL {
 				# How far the box reaches toward this plane: the half-extents
 				# projected onto its normal, which for an axis-aligned box is just
 				# the absolute values summed.
-				reach := a->Abs() * hx + b->Abs() * hy + c->Abs() * hz;
+				abs_at := plane * 3;
+				reach := @abs_planes[abs_at + 0] * hx + @abs_planes[abs_at + 1] * hy +
+					@abs_planes[abs_at + 2] * hz;
 
 				if(distance < reach * -1.0) {
 					return false;
@@ -5214,7 +6134,7 @@ bundle Game.OpenGL {
 	non-linear so a constant bias means different things at different distances; a
 	world-unit distance is linear, so one bias is right everywhere.
 	~#
-	class PointShadow {
+	class PointShadow implements Freeable {
 		@target : RenderTarget;
 		@depth_shader : Shader;
 		@size : Int;
@@ -5549,7 +6469,7 @@ bundle Game.OpenGL {
 	acne back; too large and shadows detach from what casts them, which is why the
 	default is small and adjustable rather than generous.
 	~#
-	class ShadowMap {
+	class ShadowMap implements Freeable {
 		@target : RenderTarget;
 		@depth_shader : Shader;
 		@size : Int;
@@ -6753,6 +7673,34 @@ bundle Game.OpenGL {
 		@param radius circle radius
 		@return true when they overlap
 		~#
+		#~
+		How opaque this box is.
+
+		A transparent box is drawn after every solid one, furthest first -- which
+		is what Scene->SetEye is for. Without that ordering a pane in front of
+		another writes depth and hides it, and the result looks worse than no
+		transparency at all.
+		@param opacity 0.0 invisible to 1.0 solid
+		~#
+		method : public : SetOpacity(opacity : Float) ~ Nil {
+			if(@material = Nil) {
+				@material := Material->New(@texture);
+			};
+
+			@material->SetOpacity(opacity);
+		}
+
+		#~
+		@return true when nothing about this box needs sorting
+		~#
+		method : public : IsOpaque() ~ Bool {
+			if(@material = Nil) {
+				return true;
+			};
+
+			return @material->IsOpaque();
+		}
+
 		method : public : OverlapsXZ(x : Float, z : Float, radius : Float) ~ Bool {
 			gap_x := (x - @center->GetX())->Abs() - @half->GetX();
 			gap_z := (z - @center->GetZ())->Abs() - @half->GetZ();
@@ -6803,6 +7751,19 @@ bundle Game.OpenGL {
 		@culling : Bool;
 		@drawn : Int;
 		@culled : Int;
+		# Where the camera is, for ordering transparent boxes. Nil until SetEye is
+		# called, in which case they draw in insertion order.
+		@eye : Vector3;
+		# Transparent box indices and their distances, rebuilt each frame into
+		# arrays that grow only when the scene does -- sorting must not allocate
+		# inside a draw loop.
+		@far_order : Int[];
+		@far_distance : Float[];
+		# Which material and texture are currently bound. Fields rather than
+		# locals because the opaque and transparent passes share the run.
+		@last_texture : Texture2D;
+		@last_material : Material;
+		@wants_opacity : Int;
 
 		#~
 		@param mesh the cube mesh every box is drawn with; it must span -1..1 on
@@ -6822,6 +7783,12 @@ bundle Game.OpenGL {
 			@culling := true;
 			@drawn := 0;
 			@culled := 0;
+			@eye := Nil;
+			@far_order := Int->New[0];
+			@far_distance := Float->New[0];
+			@last_texture := Nil;
+			@last_material := Nil;
+			@wants_opacity := -1;
 		}
 
 		#~
@@ -6849,6 +7816,11 @@ bundle Game.OpenGL {
 
 		#~
 		How many boxes the last Draw actually submitted.
+
+		The last Draw only. DrawInto -- which is what a shadow pass runs, six times
+		over for a point light -- deliberately leaves these alone, so a HUD reading
+		them reports what the camera drew rather than whatever the final shadow face
+		happened to submit.
 		@return the count
 		~#
 		method : public : GetDrawnCount() ~ Int {
@@ -6978,6 +7950,7 @@ bundle Game.OpenGL {
 			if(@wants_model = -1) {
 				@wants_model := @shader->HasUniform("model") ? 1 : 0;
 				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
+				@wants_opacity := @shader->HasUniform("opacity") ? 1 : 0;
 			};
 
 			# The sampler unit, which Scene used to leave unset -- so a shader had to
@@ -7004,8 +7977,13 @@ bundle Game.OpenGL {
 
 			# Nil on its own infers as Nil, not as Texture2D, so the comparisons below
 			# will not type-check without the casts.
-			last_texture := Nil->As(Texture2D);
-			last_material := Nil->As(Material);
+			@last_texture := Nil->As(Texture2D);
+			@last_material := Nil->As(Material);
+			# Pass one: everything solid, in insertion order so the material runs
+			# hold. Transparent boxes are collected rather than drawn.
+			ReserveFar(@boxes->Size());
+			far_count := 0;
+
 			each(i : @boxes) {
 				box := @boxes->Get(i);
 
@@ -7015,41 +7993,89 @@ bundle Game.OpenGL {
 				};
 
 				if(visible) {
-					material := box->GetMaterial();
-					if(material <> Nil) {
-						# Only on a change. A material is three uniform writes and a
-						# texture bind, and a scene grouped by material costs a handful
-						# of those rather than one set per box.
-						if(material <> last_material) {
-							material->ApplyTo(@shader, 0);
-							last_material := material;
-							# A material's texture supersedes whatever was bound, so the
-							# plain-texture tracking has to forget what it thought.
-							last_texture := Nil->As(Texture2D);
-						};
+					if(box->IsOpaque()) {
+						DrawOne(box, view_projection);
+						@drawn += 1;
 					}
 					else {
-						texture := box->GetTexture();
-						if(texture <> Nil & texture <> last_texture) {
-							texture->Bind(0);
-							last_texture := texture;
-							last_material := Nil->As(Material);
-						};
+						@far_order[far_count] := i;
+						@far_distance[far_count] := EyeDistance(box);
+						far_count += 1;
 					};
-
-					model := box->GetModelMatrix();
-					Matrix4->MultiplyInto(@mvp, view_projection, model);
-					@shader->SetMatrix4("mvp", @mvp);
-					if(@wants_model = 1) {
-						@shader->SetMatrix4("model", model);
-					};
-					@mesh->Draw();
-					@drawn += 1;
 				}
 				else {
 					@culled += 1;
 				};
 			};
+
+			# Pass two: the transparent ones, furthest first, with blending on and
+			# depth WRITES off.
+			#
+			# Depth writes, not the depth test: a transparent surface must still be
+			# hidden by a wall in front of it, so the test stays on. What it must
+			# not do is write depth, because then the nearest pane occludes the
+			# ones behind it that have not been drawn yet.
+			if(far_count > 0) {
+				SortFar(far_count);
+				GL->BeginTransparency();
+
+				for(k := 0; k < far_count; k += 1;) {
+					DrawOne(@boxes->Get(@far_order[k]), view_projection);
+					@drawn += 1;
+				};
+
+				GL->EndTransparency();
+
+				# The material run tracking is per-pass state and the next frame
+				# starts with whatever this one left bound, so forget it.
+				@last_material := Nil->As(Material);
+				@last_texture := Nil->As(Texture2D);
+			};
+		}
+
+		#~
+		Bind what one box needs and draw it.
+
+		Split out because the two passes are the same work in a different order,
+		and a second copy of it would be a second place for the material-run
+		tracking to go wrong.
+		~#
+		method : DrawOne(box : Box, view_projection : Float[]) ~ Nil {
+			material := box->GetMaterial();
+			if(material <> Nil) {
+				# Only on a change. A material is three uniform writes and a texture
+				# bind, and a scene grouped by material costs a handful of those
+				# rather than one set per box.
+				if(material <> @last_material) {
+					material->ApplyTo(@shader, 0);
+					@last_material := material;
+					# A material's texture supersedes whatever was bound, so the
+					# plain-texture tracking has to forget what it thought.
+					@last_texture := Nil->As(Texture2D);
+				};
+			}
+			else {
+				texture := box->GetTexture();
+				if(texture <> Nil & texture <> @last_texture) {
+					texture->Bind(0);
+					@last_texture := texture;
+					@last_material := Nil->As(Material);
+				};
+
+				# A box with no material carries no opacity either, and the shader's
+				# uniform is whatever the last material left there.
+				if(@wants_opacity = 1) {
+					@shader->SetFloat("opacity", 1.0);
+				};
+			};
+
+			model := box->GetModelMatrix();
+			Matrix4->MultiplyInto(@mvp, view_projection, model);
+			@shader->SetMatrix4("mvp", @mvp);
+			if(@wants_model = 1) {
+				@shader->SetMatrix4("model", model);
+			};
+			@mesh->Draw();
 		}
 
 		#~
@@ -7111,6 +8137,75 @@ bundle Game.OpenGL {
 		@param radius circle radius
 		@return true when the position is blocked
 		~#
+		#~
+		Tell the scene where the camera is, so transparency can be ordered.
+
+		Transparent surfaces must be drawn back to front: a nearer one drawn first
+		writes depth and hides what is behind it. That needs a distance, and a
+		distance needs an eye. Call it every frame:
+
+		  scene->SetEye(camera->GetPosition());
+
+		Without it transparent boxes still draw, in insertion order -- which is
+		correct only by luck.
+		@param eye the camera position
+		~#
+		method : public : SetEye(eye : Vector3) ~ Nil {
+			@eye := eye;
+		}
+
+		#~
+		Order the collected transparent boxes furthest-first.
+
+		An insertion sort, which is the right choice rather than a lazy one: the
+		count is small, and between frames the order barely changes, so a nearly
+		sorted list costs close to one pass. Quicksort's advantage needs a size
+		this will not reach, and a nearly sorted list is its worst case.
+		~#
+		method : SortFar(count : Int) ~ Nil {
+			for(i := 1; i < count; i += 1;) {
+				index := @far_order[i];
+				distance := @far_distance[i];
+
+				j := i - 1;
+				while(j >= 0 & @far_distance[j] < distance) {
+					@far_order[j + 1] := @far_order[j];
+					@far_distance[j + 1] := @far_distance[j];
+					j -= 1;
+				};
+
+				@far_order[j + 1] := index;
+				@far_distance[j + 1] := distance;
+			};
+		}
+
+		#~
+		Squared distance from the eye to a box's centre -- squared because only
+		the ORDER matters, and a square root per box per frame buys nothing.
+		~#
+		method : EyeDistance(box : Box) ~ Float {
+			if(@eye = Nil) {
+				return 0.0;
+			};
+
+			centre := box->GetCenter();
+			dx := centre->GetX() - @eye->GetX();
+			dy := centre->GetY() - @eye->GetY();
+			dz := centre->GetZ() - @eye->GetZ();
+
+			return dx * dx + dy * dy + dz * dz;
+		}
+
+		#~
+		Make room for count transparent boxes, growing only when it is not enough.
+		~#
+		method : ReserveFar(count : Int) ~ Nil {
+			if(@far_order->Size() < count) {
+				@far_order := Int->New[count];
+				@far_distance := Float->New[count];
+			};
+		}
+
 		method : public : Blocked(x : Float, z : Float, radius : Float) ~ Bool {
 			each(i : @boxes) {
 				box := @boxes->Get(i);

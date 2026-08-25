@@ -3362,9 +3362,9 @@ bundle Game.SDL2 {
 		@type : Int;
 	    @timestamp : Int;
 	    @windowID : Int;
-	    @which : MouseButtonValue;
+	    @which : Int;
 	    @button : Int;
-	    @state : KeyState;
+	    @state : Int;
 	    @clicks : Int;
 	    @x : Int;
 	    @y : Int;
@@ -3407,7 +3407,7 @@ bundle Game.SDL2 {
 		Button that changed
 		@return changed button
 		~#
-		method : public : GetButton() ~ MouseButtonValue {
+		method : public : GetButton() ~ Int {
 			return @button;
 		}
 
@@ -3415,7 +3415,7 @@ bundle Game.SDL2 {
 		State of the button
 		@return button state
 		~#
-		method : public : GetState() ~ KeyState {
+		method : public : GetState() ~ Int {
 			return @state;
 		}
 
@@ -3710,6 +3710,37 @@ bundle Game.SDL2 {
 				return @motion;
 			};
 			
+			return Nil;
+		}
+
+		#~
+		Get mouse button event.
+
+		MouseButtonEvent existed but nothing returned one, so a click could not be
+		read anywhere in the tree.
+		@return the button event, or Nil if this is not a button event
+		~#
+		method : public : GetMouseButton() ~ MouseButtonEvent {
+			if(@event <> 0) {
+				if(@mbutton = Nil) {
+					@mbutton := MouseButtonEvent->New();
+				};
+
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@event);
+				array_args[2] := @mbutton;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_mouse_button", array_args);
+
+				value := array_args[0]->As(IntRef);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @mbutton;
+			};
+
 			return Nil;
 		}
 
@@ -7801,6 +7832,30 @@ bundle Game.SDL2 {
 
 	        value := array_args[0]->As(IntRef);
 	        @font := value->Get();        
+		}
+
+		#~
+		Close the font and release it.
+
+		TTF_CloseFont was never bound, so until now a loaded font could not be
+		released at all -- which is why every example that draws text simply
+		leaks one.
+
+		Font->Quit() is NOT this. That is the static TTF_Quit, which shuts down
+		the whole subsystem; calling it once per font, as some code does, is a
+		different thing entirely.
+
+		Safe to call twice -- the handle is cleared. Do not use the font
+		afterwards, and close it before Quit.
+		~#
+		method : public : Free() ~ Nil {
+			if(@font <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@font);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_font_close", array_args);
+				@font := 0;
+			};
 		}
 
 		#~

@@ -16,7 +16,8 @@
 #            told people to untar sdl2_arm64.tgz into /usr/local/lib, a
 #            sudo-level system install that collides with a Homebrew SDL2 and,
 #            on Apple Silicon, put the libraries somewhere Homebrew never looks.
-#   Windows  the DLLs ship in lib/sdl next to the binaries. Nothing to install.
+#   Windows  the DLLs ship in bin, beside the binaries that load them, which is
+#            where Windows looks first. Nothing to install.
 #   Linux    libobjk_sdl.so is linked against the SYSTEM SDL2 and libGL
 #            (see core/lib/sdl/build_linux.sh: -lSDL2 ... -lGL), and
 #            deploy_posix.sh ships neither. So Linux, and only Linux, needs
@@ -275,7 +276,7 @@ case "$UNAME" in
 		;;
 
 	MINGW*|MSYS*|CYGWIN*)
-		say "platform: Windows -- the SDL2 DLLs ship in lib/sdl. Nothing to install."
+		say "platform: Windows -- the SDL2 DLLs ship in bin. Nothing to install."
 		exit 0
 		;;
 

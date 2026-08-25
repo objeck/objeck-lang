@@ -50,7 +50,7 @@
             <li>lib/ – supporting language libraries</li>
             <li>lib/native/ – native OS shared libraries</li>
             <li>lib/native/misc – support files for the portable runtime environment</li>
-            <li>lib/sdl/ – host SDL shared libraries</li>
+            <li>lib/sdl/fonts/ – the bundled TTF font (the SDL DLLs are in bin/)</li>
         </ul>
 
         <h4>Windows launcher</h4>
@@ -129,7 +129,7 @@
         <h4>For macOS</h4>
         <p>
             Nothing to install. On Apple Silicon (arm64) the required SDL2 libraries ship inside the
-            distribution under <code>lib/sdl</code> and are loaded from there, the same way the Windows
+            distribution under <code>lib/sdl</code> and are loaded from there through an @rpath. The Windows
             build loads its SDL DLLs. Earlier releases asked you to untar <code>sdl2_arm64.tgz</code> and
             copy SDL2 into <code>/usr/local</code>; that is no longer necessary, and nothing is written
             outside the Objeck directory.

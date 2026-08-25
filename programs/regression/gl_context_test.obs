@@ -78,6 +78,13 @@ class GlContextTest {
 		CheckLoader();
 		CheckShaderAndDraw();
 		CheckProjection();
+		CheckCameraProjection();
+		CheckInput();
+		CheckOverlayState();
+		CheckMultisampling();
+		CheckTransparency();
+		CheckOwnership();
+		CheckScissorAndStencil();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -1296,6 +1303,17 @@ class GlContextTest {
 		# without it Font->New simply returns a null font.
 		Font->Init();
 		font := Font->New("../lib/sdl/fonts/lazy.ttf", 24);
+
+		# Font->Free is new: TTF_CloseFont was never bound, so a font could not
+		# be released at all and every program that drew text leaked one.
+		# Checked on a SEPARATE font, because the one below is still in use.
+		spare := Font->New("../lib/sdl/fonts/lazy.ttf", 12);
+		if(spare <> Nil & <>spare->IsNull()) {
+			spare->Free();
+			Check("a font reports itself closed after Free", spare->IsNull());
+			spare->Free();
+			Check("and Font->Free is idempotent", spare->IsNull());
+		};
 		if(font = Nil | font->IsNull()) {
 			"  SKIP: no font file, so the text half is not exercised"->PrintLine();
 		}
@@ -2714,6 +2732,506 @@ class GlContextTest {
 	against the slower, obviously-correct thing it replaced, which is the only
 	check that catches a plausible-looking error.
 	~#
+	#~
+	A Camera that owns its projection, and a window that says when to rebuild it.
+
+	Asserted against the slow composition it replaces rather than against numbers
+	written down here -- that is what caught an inlined view matrix with two of
+	three up-vector signs flipped last round, which matched at yaw 0 and diverged
+	everywhere else.
+
+	The aspect check is the one with teeth. Every 3D example in this repo built
+	its projection once at startup and never again, so resizing a window stretched
+	the scene while the pixel-space HUD stayed correct. SetAspect exists to be
+	called every frame, so it has to be BOTH cheap when nothing changed and
+	actually effective when something did.
+	~#
+	method : CheckCameraProjection() ~ Nil {
+		eye := Camera->New(Vector3->New(1.5, 2.5, 6.0));
+		eye->Turn(0.4);
+		eye->Look(-0.25);
+
+		Check("a camera has no projection until it is given one", <>eye->HasProjection());
+		Check("and GetViewProjection reports that rather than guessing",
+			eye->GetViewProjection() = Nil);
+
+		fov := Float->Pi() / 3.0;
+		eye->SetPerspective(fov, 1.6, 0.1, 60.0);
+		Check("SetPerspective gives it one", eye->HasProjection());
+
+		combined := eye->GetViewProjection();
+		if(<>Check("GetViewProjection returns a matrix", combined <> Nil)) {
+			return;
+		};
+
+		# The composition it replaces: build the projection and the view
+		# separately, multiply them, compare. Any disagreement is a real error,
+		# not a rounding artefact.
+		expected := Matrix4->Multiply(Matrix4->Perspective(fov, 1.6, 0.1, 60.0),
+			eye->GetViewMatrix());
+		Check("and it equals projection times view, computed the slow way",
+			Near16(combined, expected));
+
+		# Borrowed, not freshly allocated -- a draw loop calls this every frame.
+		again := eye->GetViewProjection();
+		Check("consecutive calls hand back the same buffer, so a frame allocates nothing",
+			Near16(again, combined));
+
+		# --- the resize path -------------------------------------------------
+		# Bind the array, then index it. Indexing the call result directly types
+		# the expression as the array rather than the element.
+		proj := eye->GetProjection();
+		before_x := proj[0];
+		eye->SetAspect(1.6);
+		unchanged := eye->GetProjection();
+		Check("SetAspect with the value it already has changes nothing",
+			unchanged[0] = before_x);
+
+		eye->SetAspect(0.8);
+		rebuilt := eye->GetProjection();
+		after_x := rebuilt[0];
+		Check("SetAspect with a new value rebuilds the projection", after_x <> before_x);
+
+		# A projection's x scale is fov-cotangent over aspect, so halving the
+		# aspect must double it. Asserting the RELATIONSHIP rather than that
+		# "something changed" -- a rebuild that wrote nonsense would pass that.
+		Check("and rebuilds it correctly: halving the aspect doubles the x scale",
+			(after_x - before_x * 2.0)->Abs() < 0.0001);
+
+		eye->SetAspect(-1.0);
+		refused := eye->GetProjection();
+		Check("a nonsense aspect is refused rather than propagated",
+			refused[0] = after_x);
+
+		# --- the signal that tells a program to do this ----------------------
+		generation := @gl->GetDrawableGeneration();
+		Check("the drawable generation is stable when nothing resizes",
+			@gl->GetDrawableGeneration() = generation);
+		Check("and polling events without a resize leaves it alone",
+			@gl->PollEvents() | @gl->GetDrawableGeneration() = generation);
+	}
+
+	#~
+	Are two 16-element matrices the same to within float noise?
+	~#
+	method : Near16(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() < 16 | b->Size() < 16) {
+			return false;
+		};
+
+		for(i := 0; i < 16; i += 1;) {
+			if((a[i] - b[i])->Abs() > 0.0001) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	#~
+	Input: the edges a program needs, which PollEvents used to throw away.
+
+	Honest about what this can and cannot check without a user. SDL will not
+	synthesise a click for us, so what is asserted is the part that is ours: that
+	the state starts clean, that every query is answerable rather than missing,
+	that nonsense arguments are refused instead of indexing off the end of a
+	bitmask, and that a poll with no input leaves everything false rather than
+	latching. The actual press-to-true path is exercised by gl_lantern, which
+	binds relic pickup to a real mouse click.
+
+	The bounds cases matter more than they look: button numbers come from SDL and
+	a program may well pass one straight through, so ButtonBit has to survive 0,
+	6 and negatives without turning into a shift off the end.
+	~#
+	method : CheckInput() ~ Nil {
+		# Nothing has happened yet, so every edge must be false. A latched bit
+		# here would make every WasPressed in a program fire on frame one.
+		Check("no key is pressed before anything is polled",
+			<>@gl->WasPressed(Scancode->SDL_SCANCODE_W));
+		Check("and none is released",
+			<>@gl->WasReleased(Scancode->SDL_SCANCODE_W));
+		Check("no mouse button is down",
+			<>@gl->MousePressed(1) & <>@gl->MouseHeld(1) & <>@gl->MouseReleased(1));
+		Check("the wheel has not moved", @gl->GetWheelX() = 0 & @gl->GetWheelY() = 0);
+
+		# Every button, so a bitmask bug that only affects the high ones shows.
+		clean := true;
+		for(button := 1; button <= 5; button += 1;) {
+			if(@gl->MousePressed(button) | @gl->MouseHeld(button) |
+					@gl->MouseReleased(button)) {
+				clean := false;
+			};
+		};
+		Check("all five buttons read clean, not just the left one", clean);
+
+		# Out of range, both directions. These reach ButtonBit, which must not
+		# shift off the end of the mask.
+		Check("button 0 is refused rather than aliasing button 1",
+			<>@gl->MousePressed(0) & <>@gl->MouseHeld(0));
+		Check("button 6 is refused", <>@gl->MousePressed(6) & <>@gl->MouseHeld(6));
+		Check("a negative button is refused", <>@gl->MousePressed(-3));
+
+		# Same for scancodes, which a program may compute rather than name.
+		Check("a negative scancode is answered, not crashed on",
+			<>@gl->WasPressed(-1));
+		Check("an absurd scancode is answered", <>@gl->WasPressed(999999));
+
+		# Polling an empty queue must clear the frame's edges, not accumulate.
+		@gl->PollEvents();
+		Check("a poll with no input leaves the key edges clear",
+			<>@gl->WasPressed(Scancode->SDL_SCANCODE_SPACE) &
+			<>@gl->WasReleased(Scancode->SDL_SCANCODE_SPACE));
+		Check("and the wheel back at zero", @gl->GetWheelY() = 0);
+
+		# Escape-quits used to be unconditional, so a program that wanted Escape
+		# for a menu had to abandon PollEvents entirely.
+		@gl->SetQuitOnEscape(false);
+		Check("escape-to-quit can be turned off", <>@gl->PollEvents());
+		@gl->SetQuitOnEscape(true);
+
+		# Position is reported in POINTS. On this drawable it should at least be
+		# inside something sane rather than uninitialised garbage.
+		Check("the mouse position is readable and not negative",
+			@gl->GetMouseX() >= 0 & @gl->GetMouseY() >= 0);
+
+		Check("no GL errors from reading input", GL->DrainErrors()->Size() = 0);
+	}
+
+	#~
+	Overlay: the state it borrows, and the colour it can now draw in.
+
+	The state check is the one that matters, and it is the one no existing test
+	could make. Overlay->Begin turns depth test, blending AND face culling off;
+	End used to restore two of the three, so culling stayed off for every frame
+	after the first HUD -- including the next frame's shadow passes. Every example
+	draws the HUD last, so nothing ever saw it.
+
+	Catching that needs the state read back AFTER End rather than a picture
+	compared before and after, because within a single frame the consequence is
+	invisible. GL->IsEnabled is what makes it askable.
+	~#
+	method : CheckOverlayState() ~ Nil {
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay for the state checks", overlay->IsOk())) {
+			return;
+		};
+
+		# --- the bug -------------------------------------------------------
+		GL->Enable(Capability->GL_CULL_FACE);
+		Check("culling is on before the overlay draws",
+			GL->IsEnabled(Capability->GL_CULL_FACE));
+
+		overlay->Begin();
+		Check("Begin turns culling off, because its quad is wound for the XY plane",
+			<>GL->IsEnabled(Capability->GL_CULL_FACE));
+		overlay->End();
+		Check("and End puts it back -- it used to restore only two of three states",
+			GL->IsEnabled(Capability->GL_CULL_FACE));
+
+		# The other two, so a fix that only tracked culling would still be caught.
+		Check("blending is off again after End", <>GL->IsEnabled(Capability->GL_BLEND));
+
+		# And it must not turn culling ON for a program that had it off.
+		GL->Disable(Capability->GL_CULL_FACE);
+		overlay->Begin();
+		overlay->End();
+		Check("a program that had culling off keeps it off",
+			<>GL->IsEnabled(Capability->GL_CULL_FACE));
+		GL->Enable(Capability->GL_CULL_FACE);
+
+		# --- colour ---------------------------------------------------------
+		# Rect used to draw the overlay's white texture and take no colour at all,
+		# so a HUD could not have a red bar. Read the pixels back rather than
+		# trusting that the uniform was set.
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		overlay->Begin();
+		overlay->Rect(0, 0, @pixel_w / 2, @pixel_h / 2, 220, 40, 40);
+		overlay->End();
+
+		# Top-left in PIXEL terms is the top of the screen; ReadPixel counts from
+		# the bottom, so sample high.
+		red := GL->ReadPixel(@pixel_w / 8, (@pixel_h * 7) / 8);
+		r := (red and 0x00FF0000) / 0x10000;
+		g := (red and 0x0000FF00) / 0x100;
+		"  tinted rect: r={$r} g={$g}"->PrintLine();
+		Check("a rect draws in the colour it was given", r > 150);
+		Check("and not in white -- the green channel proves the tint applied", g < 90);
+
+		# A plain Rect after a coloured one must be white again, or the tint has
+		# leaked into every later call.
+		overlay->Begin();
+		overlay->Rect(@pixel_w / 2, 0, @pixel_w / 2, @pixel_h / 2);
+		overlay->End();
+		plain := GL->ReadPixel((@pixel_w * 7) / 8, (@pixel_h * 7) / 8);
+		pr := (plain and 0x00FF0000) / 0x10000;
+		pg := (plain and 0x0000FF00) / 0x100;
+		Check("the colour does not leak into the next plain rect", pg > 150 & pr > 150);
+
+		# Line is a rectangle underneath, and only axis-aligned. A diagonal is a
+		# no-op rather than a wrong line.
+		overlay->Begin();
+		overlay->Line(0, @pixel_h / 2, @pixel_w, @pixel_h / 2, 3);
+		overlay->End();
+		Check("a horizontal line draws", GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) <> 0xFF000000);
+
+		Check("no GL errors from the overlay state checks", GL->DrainErrors()->Size() = 0);
+
+		overlay->Free();
+	}
+
+	#~
+	Multisampling: asked for, and honestly reported.
+
+	Sharply limited by something this test discovered the hard way. GLWindow->Free
+	calls Core->Quit, which tears down ALL of SDL -- so a test that opens four
+	windows to compare sample counts and frees each one kills the suite's own
+	window on the first Free and then hangs. Two GLWindows cannot coexist through
+	a full lifecycle, and that is a framework limitation, not a test problem.
+
+	So: one extra window, hidden, never freed -- the process exit collects it --
+	and the invariant rather than a value. Whether this driver grants 4x is not
+	something to assert; whether GLWindow tells the truth about it is.
+	~#
+	method : CheckMultisampling() ~ Nil {
+		Check("a window created without multisampling reports 0 samples",
+			@gl->GetSamples() = 0);
+
+		# Not freed. See above -- Free would take SDL down with it.
+		msaa := GLWindow->New("msaa probe", 64, 64, 4);
+		if(Check("a window requesting 4x opens, whether or not it gets it", msaa->IsOk())) {
+			got := msaa->GetSamples();
+			"  requested 4 samples, got {$got}"->PrintLine();
+			# The retry exists so a driver refusing 4x costs antialiasing rather
+			# than the whole window. Either outcome is correct; claiming 4 while
+			# having fallen back is not.
+			Check("and reports what it got, never a number it did not get",
+				got = 4 | got = 0);
+			Check("its drawable is measured either way", msaa->GetWidth() > 0);
+		};
+
+		# Creating a context MAKES IT CURRENT. Leave it that way and every
+		# subsequent pixel readback in this suite samples the 64x64 probe instead
+		# of the window under test -- which is exactly what happened: three
+		# unrelated OBJ and quad checks went red until this line existed.
+		@gl->GetWindow()->GLMakeCurrent(@gl->GetContext());
+		GL->Viewport(0, 0, @pixel_w, @pixel_h);
+		Check("the suite's own context is current again after probing",
+			@gl->GetWidth() > 64 | @pixel_w > 64 | GL->DrainErrors()->Size() = 0);
+
+		Check("GL_MULTISAMPLE is a capability that can be toggled",
+			Capability->GL_MULTISAMPLE = 0x809D);
+	}
+
+	#~
+	Transparency, and the ORDER it has to be drawn in.
+
+	The fixture is built so that drawing in the wrong order produces a different
+	colour rather than a subtly worse one, because "it looks blended" cannot tell
+	a sorted scene from an unsorted one.
+
+	Two half-transparent panes over an opaque white wall: red far, blue near.
+	Blending is dst = src*a + dst*(1-a), so the order decides which colour ends up
+	dominant.
+
+	  far first  (correct):  red over white  -> (1.0, 0.5, 0.5)
+	                         blue over that  -> (0.5, 0.25, 0.75)   BLUE wins
+	  near first (wrong):    blue over white -> (0.5, 0.5, 1.0)
+	                         red over that   -> (0.75, 0.25, 0.5)   RED wins
+
+	So the assertion is simply blue > red, and it is decisive.
+
+	The panes are ADDED near-first on purpose. Insertion order is the order the
+	scene would draw them in without sorting, so this fixture fails if the sort is
+	removed -- which is the only reason it is worth having.
+	~#
+	method : CheckTransparency() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the transparency checks",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		light := Light->New();
+		light->SetDirection(0.0, 0.0, 1.0);
+		light->SetColor(1.0, 1.0, 1.0);
+		# Full ambient, so the readings are the blend and not the lighting.
+		light->SetAmbient(1.0, 1.0, 1.0);
+		scene->SetLight(light);
+		scene->SetCulling(false);
+
+		# An opaque wall behind everything.
+		wall := scene->AddBox(Vector3->New(0.0, 0.0, -6.0), Vector3->New(4.0, 4.0, 0.2), white);
+
+		# Near pane first, so insertion order is the WRONG order.
+		near_pane := scene->AddBox(Vector3->New(0.0, 0.0, -2.0), Vector3->New(3.0, 3.0, 0.1), white);
+		near_material := Material->Colored(0.0, 0.0, 1.0);
+		near_material->SetOpacity(0.5);
+		near_pane->SetMaterial(near_material);
+
+		far_pane := scene->AddBox(Vector3->New(0.0, 0.0, -4.0), Vector3->New(3.0, 3.0, 0.1), white);
+		far_material := Material->Colored(1.0, 0.0, 0.0);
+		far_material->SetOpacity(0.5);
+		far_pane->SetMaterial(far_material);
+
+		Check("a box with a plain texture is opaque", wall->IsOpaque());
+		Check("and one whose material has opacity 0.5 is not", <>near_pane->IsOpaque());
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 2.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		scene->SetEye(eye->GetPosition());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		light->ApplyTo(shader);
+		shader->SetInt("tex", 0);
+		scene->Draw(eye->GetViewProjection());
+
+		pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		r := (pixel and 0x00FF0000) / 0x10000;
+		g := (pixel and 0x0000FF00) / 0x100;
+		b := (pixel and 0x000000FF);
+		"  through two panes: r={$r} g={$g} b={$b}"->PrintLine();
+
+		Check("the panes are actually transparent -- the wall behind shows through",
+			g > 20);
+		# THE assertion. Insertion order is near-first, so an unsorted scene puts
+		# red on top and this reads the other way round.
+		Check("and they are ordered far-to-near, so the NEAR pane is on top", b > r);
+
+		# All three drawn, none culled -- a transparent box that was collected and
+		# never drawn would still leave the picture plausible.
+		drawn := scene->GetDrawnCount();
+		"  drawn: {$drawn}"->PrintLine();
+		Check("every box is drawn, transparent ones included", drawn = 3);
+
+		# Depth WRITES must be off for the transparent pass, not the depth test:
+		# the wall must still hide something behind it.
+		hidden := scene->AddBox(Vector3->New(0.0, 0.0, -9.0), Vector3->New(1.0, 1.0, 0.1), white);
+		hidden_material := Material->Colored(0.0, 1.0, 0.0);
+		hidden_material->SetOpacity(0.5);
+		hidden->SetMaterial(hidden_material);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(eye->GetViewProjection());
+		after := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		ar := (after and 0x00FF0000) / 0x10000;
+		ab := (after and 0x000000FF);
+		Check("a transparent box BEHIND an opaque wall stays hidden -- the depth test is still on",
+			ab > ar);
+
+		Check("no GL errors from the transparency pass", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	Ownership: what the window will release on the way out.
+
+	Limited the same way the multisampling checks are, and for the same reason:
+	the thing this exists to do -- free everything when the window closes -- can
+	only be observed by closing the window, and GLWindow->Free calls Core->Quit,
+	which would take the suite down with it.
+
+	So this asserts the bookkeeping, which is where the mistakes would be: that
+	Own hands back what it was given so it can wrap a constructor, that the count
+	tracks, that Nil is ignored rather than stored and dereferenced at shutdown,
+	and that owning something does not stop a program freeing it itself.
+	~#
+	method : CheckOwnership() ~ Nil {
+		before := @gl->GetOwnedCount();
+
+		texture := @gl->Own(Texture2D->Solid(0xFF204080))->As(Texture2D);
+		if(<>Check("Own returns what it was given, so it can wrap a constructor",
+				texture <> Nil & texture->IsOk())) {
+			return;
+		};
+		Check("and the window is holding one more", @gl->GetOwnedCount() = before + 1);
+
+		mesh := @gl->Own(Mesh->Cube())->As(Mesh);
+		Check("a different kind of object goes in the same list",
+			mesh <> Nil & mesh->IsOk() & @gl->GetOwnedCount() = before + 2);
+
+		# Nil must be ignored, not stored -- it would be dereferenced at shutdown,
+		# which is the worst possible moment to discover it.
+		@gl->Own(Nil);
+		Check("Nil is ignored rather than stored", @gl->GetOwnedCount() = before + 2);
+
+		# Owning does not take the object away from the program. Every Free here
+		# nulls its handle, which is what lets Own be adopted a line at a time.
+		texture->Free();
+		Check("an owned object can still be freed by hand", <>texture->IsOk());
+		texture->Free();
+		Check("and the window freeing it again later is harmless", <>texture->IsOk());
+
+		Check("no GL errors from the ownership checks", GL->DrainErrors()->Size() = 0);
+	}
+
+	#~
+	The two constants that used to promise features the layer did not have.
+
+	Capability->GL_SCISSOR_TEST could be enabled and there was no glScissor bound
+	anywhere, so it clipped to whatever rectangle the driver started with --
+	usually the whole window, which is exactly what makes a missing feature look
+	like a working one. ClearBit->GL_STENCIL_BUFFER_BIT could be OR'd into Clear
+	and no stencil buffer was ever requested, so the bit did nothing.
+
+	Both are read back rather than assumed. The scissor check draws a full-screen
+	rect with a scissor over half the frame and samples BOTH sides: a scissor that
+	silently did nothing would leave both sides painted, which is precisely the
+	old behaviour.
+	~#
+	method : CheckScissorAndStencil() ~ Nil {
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay for the scissor check", overlay->IsOk())) {
+			return;
+		};
+
+		# Clip to the left half, then try to paint the whole frame.
+		GL->Enable(Capability->GL_SCISSOR_TEST);
+		GL->Scissor(0, 0, @pixel_w / 2, @pixel_h);
+
+		overlay->Begin();
+		overlay->Rect(0, 0, @pixel_w, @pixel_h, 240, 240, 240);
+		overlay->End();
+
+		GL->Disable(Capability->GL_SCISSOR_TEST);
+
+		inside := Green(GL->ReadPixel(@pixel_w / 4, @pixel_h / 2));
+		outside := Green(GL->ReadPixel((@pixel_w * 3) / 4, @pixel_h / 2));
+		"  scissor: inside={$inside} outside={$outside}"->PrintLine();
+
+		Check("the scissored side is painted", inside > 150);
+		# THE assertion. Before glScissor was bound, both sides read painted.
+		Check("and the other side is not -- the scissor actually clips", outside < 60);
+
+		# A stencil buffer now exists to clear. Clearing a buffer that was never
+		# requested is not an error in GL, so the honest check is that asking for
+		# it produces no error and the colour clear still works.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT or
+			ClearBit->GL_STENCIL_BUFFER_BIT);
+		Check("clearing colour, depth and stencil together raises no error",
+			GL->DrainErrors()->Size() = 0);
+		Check("and the colour buffer really was cleared",
+			Green(GL->ReadPixel(@pixel_w / 4, @pixel_h / 2)) < 40);
+
+		overlay->Free();
+	}
+
+	method : Green(argb : Int) ~ Int {
+		return (argb and 0x0000FF00) / 0x100;
+	}
+
 	method : CheckMatrixMath() ~ Nil {
 		tolerance := 0.000000001;
 

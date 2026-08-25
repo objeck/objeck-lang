@@ -70,12 +70,14 @@ class BoingBall {
 	@shadows : ShadowMap;
 
 	@overlay : Overlay;
-	@font : Font;
 	@fps_text : String;
 	@fps_timer : Float;
 
 	# the second pass
 	@target : RenderTarget;
+	# Which drawable size @target was built for. A RenderTarget is a fixed-size
+	# framebuffer, so a resize needs a new one.
+	@target_generation : Int;
 	@post : Shader;
 	@screen : Mesh;
 	@elapsed : Float;
@@ -91,9 +93,7 @@ class BoingBall {
 	@orbit : Float;
 
 	# per-frame scratch, so the loop allocates nothing
-	@projection : Float[];
 	@view_projection : Float[];
-	@view_scratch : Float[];
 	@mvp : Float[];
 
 	function : Main(args : String[]) ~ Nil {
@@ -109,9 +109,6 @@ class BoingBall {
 		@fps_text := "";
 		@fps_timer := 0.0;
 
-		@projection := Float->New[16];
-		@view_projection := Float->New[16];
-		@view_scratch := Float->New[16];
 		@mvp := Float->New[16];
 
 		# INSIDE the room. An orbit outside it would spend most of its time behind
@@ -199,7 +196,20 @@ class BoingBall {
 	}
 
 	method : Draw() ~ Nil {
-		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
+		# Cheap when nothing changed, and correct when it did: a window can be
+		# resized at any moment, and a projection built once at startup then
+		# stretches the scene while the pixel-space HUD stays right.
+		@camera->SetAspect(@window->GetAspect());
+
+		# The camera can adapt to a resize by rebuilding a matrix; a framebuffer
+		# cannot, so it is replaced. Freeing first, because the old one holds GPU
+		# memory the size of the old window.
+		if(@target_generation <> @window->GetDrawableGeneration()) {
+			@target_generation := @window->GetDrawableGeneration();
+			@target->Free();
+			@target := RenderTarget->New(@window->GetWidth(), @window->GetHeight());
+		};
+		@view_projection := @camera->GetViewProjection();
 
 		# --- pass zero: the scene from the light, into a depth map ---
 		# The room is not a caster: it is an inward-facing box around everything, so
@@ -254,7 +264,7 @@ class BoingBall {
 	}
 
 	method : Build() ~ Bool {
-		Matrix4->PerspectiveInto(@projection, Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
+		@camera->SetPerspective(Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
 
 		GL->Enable(Capability->GL_CULL_FACE);
 		GL->ClearColor(0.06, 0.07, 0.11, 1.0);
@@ -327,11 +337,11 @@ class BoingBall {
 
 		# The overlay is optional: a tree assembled by hand might not have the
 		# fonts, and a missing frame counter is not a reason to refuse to run.
-		Font->Init();
-		@font := Font->New("../lib/sdl/fonts/lazy.ttf", 20);
-		@overlay := Overlay->New(@window);
-		if(@overlay->IsOk() & @font <> Nil & <>@font->IsNull()) {
-			@overlay->SetFont(@font);
+		# One call instead of ten lines, and it finds the shipped font from a
+		# deploy tree's bin OR from the examples directory -- the hardcoded
+		# relative path only worked from one of them.
+		@overlay := Overlay->WithDefaultFont(@window, 20);
+		if(@overlay->IsOk() & @overlay->HasFont()) {
 			@overlay->SetColor(235, 240, 250);
 		}
 		else {
@@ -379,6 +389,7 @@ class BoingBall {
 	resamples the picture for no reason.
 	~#
 	method : BuildPostPass() ~ Bool {
+		@target_generation := @window->GetDrawableGeneration();
 		@target := RenderTarget->New(@window->GetWidth(), @window->GetHeight());
 		if(<>@target->IsOk()) {
 			"Render target failed: "->Print();

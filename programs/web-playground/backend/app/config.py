@@ -46,7 +46,7 @@ class Settings(BaseSettings):
 
     # Blocked libraries (explicit deny-list)
     blocked_libs: set[str] = {
-        "net", "net_server", "odbc", "sdl2", "sdl_game",
+        "net", "net_server", "odbc", "sdl2", "sdl_game", "sdl_gl",
         "json_rpc", "json_stream", "rss",
         "gemini", "ollama", "openai", "onnx", "opencv", "lame",
     }

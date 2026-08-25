@@ -698,7 +698,15 @@ if [%1] == [arm64] (
 	)
 	copy sdl\Release\arm64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
-	copy lib\arm64\*.dll ..\..\release\%TARGET%\lib\sdl
+	REM SDL2's own runtime DLLs go to bin, NOT next to libobjk_sdl.dll.
+	REM Windows resolves a dynamically-loaded DLL's imports against the
+	REM EXECUTABLE's directory; the directory holding the DLL itself is never
+	REM searched. That is why every other native library's dependencies --
+	REM libmp3lame, nghttp2, opencv_world, onnxruntime -- already live in bin.
+	REM Left in lib\sdl they resolve only when something has put lib\sdl on
+	REM PATH, and nothing shipped to a user does: the MSI puts only bin on
+	REM PATH. lib\sdl\fonts stays where it is -- Overlay loads it by path.
+	copy lib\arm64\*.dll ..\..\release\%TARGET%\bin
 )
 
 if [%1] == [x64] (
@@ -720,7 +728,8 @@ if [%1] == [x64] (
 	)
 	copy sdl\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
 	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
-	copy lib\x64\*.dll ..\..\release\%TARGET%\lib\sdl
+	REM bin, not lib\sdl -- see the note on the arm64 copy above.
+	copy lib\x64\*.dll ..\..\release\%TARGET%\bin
 )
 cd ..\..\release
 
@@ -730,6 +739,13 @@ mkdir %TARGET%\examples\
 mkdir %TARGET%\examples\media\
 del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs %TARGET%\examples\
+REM The OpenGL examples live in programs\examples rather than programs\deploy,
+REM so no distribution ever carried them. They find the bundled font relative to
+REM either bin or here, so they run from where they land.
+mkdir %TARGET%\examples\opengl
+copy ..\..\programs\examples\gl_*.obs %TARGET%\examples\opengl
+copy ..\..\programs\examples\cube_gl.obs %TARGET%\examples\opengl
+copy ..\..\programs\examples\gl_crystal.obj %TARGET%\examples\opengl
 xcopy /e ..\..\programs\deploy\media\*.png %TARGET%\examples\media\
 xcopy /e ..\..\programs\deploy\media\*.wav %TARGET%\examples\media\
 xcopy /e ..\..\programs\deploy\data\* %TARGET%\examples\data\

@@ -57,6 +57,7 @@ Each library typically consists of:
 
 ### Gaming & Multimedia
 - **sdl_game.obs** - 2D game framework (SDL2-based)
+- **sdl_gl.obs** - 3D framework: OpenGL 3.3 core over SDL2 (`Game.OpenGL`)
 - **sdl2.obs** - SDL2 bindings for graphics, audio, input
 - **lame.obs** - MP3 audio encoding (LAME)
 
@@ -117,7 +118,9 @@ To add a new library:
 
 Some libraries require external dependencies:
 - **OpenSSL** - Used by net_secure, cipher
-- **SDL2** - Used by sdl_game, sdl2
+- **SDL2** - Used by sdl_game, sdl_gl, sdl2
+- **OpenGL** - Used by sdl_gl (3.3 core; a system framework on macOS,
+  opengl32 on Windows, the driver's libGL on Linux)
 - **OpenCV** - Used by opencv
 - **ONNX Runtime** - Used by onnx
 - **ODBC** - Platform ODBC drivers

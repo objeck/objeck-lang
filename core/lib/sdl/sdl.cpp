@@ -1815,6 +1815,30 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_mouse_button(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP) {
+      size_t* button_obj = APITools_GetObjectValue(context, 2);
+      button_obj[0] = event->button.type;
+      button_obj[1] = event->button.timestamp;
+      button_obj[2] = event->button.windowID;
+      button_obj[3] = event->button.which;
+      button_obj[4] = event->button.button;
+      button_obj[5] = event->button.state;
+      button_obj[6] = event->button.clicks;
+      button_obj[7] = event->button.x;
+      button_obj[8] = event->button.y;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_mouse_wheel(VMContext& context) {
     SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
     if(event->type == SDL_MOUSEWHEEL) {
@@ -2634,6 +2658,16 @@ extern "C" {
 #endif
   void sdl_font_quit(VMContext& context) {
     TTF_Quit();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_close(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 0);
+    if(font) {
+      TTF_CloseFont(font);
+    }
   }
 
 #ifdef _WIN32
@@ -4816,10 +4850,23 @@ __declspec(dllexport)
   // Only GL 1.1 entry points are linked directly (opengl32.lib / -lGL /
   // -framework OpenGL). Everything from GL 2.0 on is resolved through
   // SDL_GL_GetProcAddress into a function table, which is why this needs no
-  // GLEW/GLAD dependency and why no platform's GL headers constrain us at all:
-  // SDL_opengl.h embeds a verbatim copy of Mesa's gl.h and never includes
-  // <OpenGL/gl.h> or any other system GL header, on any platform. The only GL
-  // declarations we ever see are that GL 1.1 set plus our own typedefs below.
+  // GLEW/GLAD dependency: SDL_opengl.h embeds a verbatim copy of Mesa's gl.h
+  // and never includes <OpenGL/gl.h> or any other system GL header.
+  //
+  // The vendored SDL headers DO constrain us, though, and not equally on every
+  // platform. This file includes <SDL_opengl_glext.h> above, so the enum and
+  // PFNGL*PROC set available at compile time is whatever registry snapshot that
+  // copy of SDL carries -- and they are far apart: Windows vendors SDL 2.31
+  // (GL_GLEXT_VERSION 20220530, blocks up to GL 4.6), while the macOS tree is
+  // SDL 2.0.20 with a 2014 snapshot that stops at GL 4.4. Linux uses whatever
+  // the distro ships.
+  //
+  // Nothing here needs a token newer than 2014, so this costs nothing today.
+  // It is a trap for the next capability added: anything from GL 4.5 or 4.6 --
+  // direct state access, glClipControl, or the unsuffixed
+  // GL_TEXTURE_MAX_ANISOTROPY (use the _EXT spelling, which IS in the old
+  // snapshot) -- compiles on four legs and fails on macos-arm64 alone, with an
+  // undeclared-identifier error that says nothing about a stale vendored header.
   //
 
   //
@@ -5876,10 +5923,14 @@ extern "C" {
     ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
     if(mesh) {
       if(objk_gl_loaded) {
-        if(mesh->ebo) { objk_glDELETEBUFFERS(1, &mesh->ebo);
+        if(mesh->ebo) { objk_glDELETEBUFFERS(1, &mesh->ebo); }
+        // Its own guard: nesting this inside the ebo one leaked the instance
+        // buffer of any mesh that had no index buffer. Harmless today because
+        // every mesh here has an EBO, which is exactly why the misplaced brace
+        // survived.
         if(mesh->instance_vbo) {
           objk_glDELETEBUFFERS(1, &mesh->instance_vbo);
-        } }
+        }
         if(mesh->vbo) { objk_glDELETEBUFFERS(1, &mesh->vbo); }
         if(mesh->vao) { objk_glDELETEVERTEXARRAYS(1, &mesh->vao); }
       }
@@ -6385,6 +6436,22 @@ extern "C" {
 #endif
   void sdl_gl_enable(VMContext& context) {
     glEnable((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_scissor(VMContext& context) {
+    glScissor((GLint)APITools_GetIntValue(context, 0), (GLint)APITools_GetIntValue(context, 1),
+              (GLsizei)APITools_GetIntValue(context, 2), (GLsizei)APITools_GetIntValue(context, 3));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_is_enabled(VMContext& context) {
+    // glIsEnabled is GL 1.1 as well, so no loaded pointer.
+    APITools_SetIntValue(context, 0, glIsEnabled((GLenum)APITools_GetIntValue(context, 1)) ? 1 : 0);
   }
 
 #ifdef _WIN32

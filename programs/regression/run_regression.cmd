@@ -35,12 +35,14 @@ set OBJECK_LIB_PATH=%CD%
 popd
 set NATIVE_LIB_DIR=%DEPLOY_DIR%\lib\native
 if exist "%NATIVE_LIB_DIR%" set PATH=%NATIVE_LIB_DIR%;%PATH%
-REM The SDL2 runtime DLLs live in lib\sdl, not lib\native (see
-REM deploy_windows.cmd), and libobjk_sdl.dll imports them. Without this, any
-REM test that touches SDL fails with a misleading
-REM "Runtime error loading shared library: ..\lib\native\libobjk_sdl.dll".
-set SDL_LIB_DIR=%DEPLOY_DIR%\lib\sdl
-if exist "%SDL_LIB_DIR%" set PATH=%SDL_LIB_DIR%;%PATH%
+REM Nothing extra is needed for SDL. deploy_windows.cmd puts SDL2's runtime
+REM DLLs in bin, beside obr.exe, and the executable's directory is the first
+REM place Windows looks when it resolves a dynamically-loaded DLL's imports.
+REM If an SDL test fails with "Runtime error loading shared library:
+REM ...libobjk_sdl.dll", the deploy tree predates that change -- rebuild it.
+REM Do NOT put lib\sdl on PATH here to make it go away: doing exactly that is
+REM what hid this from everyone who was not running these tests, the MSI
+REM included.
 
 if not exist "%RESULTS_DIR%" mkdir "%RESULTS_DIR%"
 
