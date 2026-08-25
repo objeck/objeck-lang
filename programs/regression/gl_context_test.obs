@@ -88,6 +88,7 @@ class GlContextTest {
 		CheckScissorAndStencil();
 		CheckProps();
 		CheckRaycast();
+		CheckPickingAndRemoval();
 		CheckMaterialLeak();
 		CheckStencilAndPoints();
 		CheckMatrixMath();
@@ -4026,6 +4027,230 @@ class GlContextTest {
 		shader->Free();
 		cube->Free();
 		white->Free();
+	}
+
+	#~
+	The three half-shipped items: Overlay->Image, screen-point picking, and
+	removing one thing from a scene.
+
+	The picking block carries the weight. A ray through the middle of the screen
+	is the one case that works even when the unprojection is wrong -- it is the
+	camera's forward vector, which ScreenRay returns as its FALLBACK when the
+	matrix cannot be inverted. So a centre-screen check passes on an
+	implementation that does nothing at all, and every assertion here is
+	deliberately off-centre.
+	~#
+	method : CheckPickingAndRemoval() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the picking checks",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		scene->SetLightRig(FullBright());
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 10.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+
+		w := @gl->GetWidth();
+		h := @gl->GetHeight();
+
+		# --- ScreenRay ---------------------------------------------------------
+		centre := eye->ScreenRay(w / 2, h / 2, w, h);
+		forward := eye->ForwardVector();
+		Check("a ray through the middle of the screen is the camera's forward",
+			(centre->GetX() - forward->GetX())->Abs() < 0.01 &
+			(centre->GetY() - forward->GetY())->Abs() < 0.01 &
+			(centre->GetZ() - forward->GetZ())->Abs() < 0.01);
+
+		Check("a screen ray is a unit vector",
+			(centre->Length() - 1.0)->Abs() < 0.001);
+
+		# THE assertions: off-centre, where the fallback cannot rescue it.
+		left := eye->ScreenRay(w / 4, h / 2, w, h);
+		right := eye->ScreenRay((w * 3) / 4, h / 2, w, h);
+		"  screen rays: left x={$left->GetX()} right x={$right->GetX()}"->PrintLine();
+
+		# Looking down -z, a point left of centre must aim in -x and one right of
+		# centre in +x. Getting the NDC flip wrong reverses exactly this.
+		Check("a ray left of centre aims left", left->GetX() < -0.05);
+		Check("and one right of centre aims right", right->GetX() > 0.05);
+		Check("both still aim forwards", left->GetZ() < 0.0 & right->GetZ() < 0.0);
+		Check("and they are mirror images",
+			(left->GetX() + right->GetX())->Abs() < 0.001);
+
+		top := eye->ScreenRay(w / 2, h / 4, w, h);
+		bottom := eye->ScreenRay(w / 2, (h * 3) / 4, w, h);
+		# Pixels count DOWN from the top, world y counts UP. A ray through the top
+		# quarter of the window must aim UPWARDS -- this is the y flip, and it is
+		# the single most likely thing to be inverted.
+		Check("a ray through the top of the screen aims up", top->GetY() > 0.05);
+		Check("and one through the bottom aims down", bottom->GetY() < -0.05);
+
+		Check("a zero-sized window does not divide by zero",
+			eye->ScreenRay(0, 0, 0, 0)->Length() > 0.5);
+
+		# A camera with no projection: GetViewProjection returns Nil, which goes
+		# straight into InverseInto. That guards Nil and reports false, so the
+		# fallback catches it -- but nothing proved that until now, and the path
+		# is one Nil check away from a crash in a method whose whole job is to be
+		# called from a mouse handler.
+		bare := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		Check("a camera with no projection has none", <>bare->HasProjection());
+		bare_ray := bare->ScreenRay(w / 4, h / 4, w, h);
+		Check("and a screen ray from it falls back instead of crashing",
+			bare_ray <> Nil & (bare_ray->Length() - 1.0)->Abs() < 0.01);
+
+		# --- picking through the scene ----------------------------------------
+		# Two boxes either side of centre, far enough apart that a ray through one
+		# cannot reach the other.
+		box_left := scene->AddBox(Vector3->New(-2.5, 0.0, 0.0),
+			Vector3->New(0.9, 0.9, 0.9), white);
+		box_right := scene->AddBox(Vector3->New(2.5, 0.0, 0.0),
+			Vector3->New(0.9, 0.9, 0.9), white);
+
+		# At distance 10 with a 60-degree fov the frustum is ~11.5 wide, so those
+		# land near 28% and 72% across.
+		pick_left := scene->RaycastScreen(eye, @gl, (w * 28) / 100, h / 2, 100.0);
+		pick_right := scene->RaycastScreen(eye, @gl, (w * 72) / 100, h / 2, 100.0);
+
+		Check("a pick at the left box hits something", pick_left->IsHit());
+		# THE assertion: it hits the LEFT one. A sign error puts both picks on the
+		# same box and every "did it hit" check still passes.
+		Check("and it is the left box", pick_left->GetBox() = box_left);
+		Check("a pick at the right box hits the right one",
+			pick_right->GetBox() = box_right);
+
+		Check("a pick at empty sky hits nothing",
+			<>scene->RaycastScreen(eye, @gl, w / 2, h / 8, 100.0)->IsHit());
+		Check("a pick with no camera or window is a miss",
+			<>scene->RaycastScreen(Nil, @gl, 10, 10, 10.0)->IsHit() &
+			<>scene->RaycastScreen(eye, Nil, 10, 10, 10.0)->IsHit());
+
+		# --- removal -----------------------------------------------------------
+		# TWO props, and the one removed is NOT the first. A fixture that removes
+		# index 0 cannot tell Remove(i) from Remove(0) -- the count comes out right
+		# either way and the wrong object survives. The first version of this block
+		# did exactly that and passed against a deliberately broken remove.
+		first_prop := scene->AddProp(Prop->New(cube, -1.0, 3.0, 0.0));
+		second_prop := scene->AddProp(Prop->New(cube, 1.0, 3.0, 0.0));
+		Check("the scene holds two boxes and two props",
+			scene->GetCount() = 2 & scene->GetPropCount() = 2);
+
+		Check("RemoveProp reports success", scene->RemoveProp(second_prop));
+		Check("and one prop is gone", scene->GetPropCount() = 1);
+		Check("leaving the prop that was not removed", scene->GetProp(0) = first_prop);
+		Check("removing it twice reports failure", <>scene->RemoveProp(second_prop));
+		Check("removing Nil is false, not a crash", <>scene->RemoveProp(Nil));
+		Check("and the first prop can be removed too", scene->RemoveProp(first_prop));
+		Check("emptying the props", scene->GetPropCount() = 0);
+
+		# Same reasoning: remove the SECOND box, so dropping index 0 leaves the
+		# wrong one behind.
+		Check("RemoveBox reports success", scene->RemoveBox(box_right));
+		Check("and the box is gone", scene->GetCount() = 1);
+		# THE assertion for removal: the one still there is the OTHER one. A
+		# remove that drops the wrong index leaves the count right and the
+		# contents wrong.
+		Check("leaving the box that was not removed", scene->Get(0) = box_left);
+		Check("removing Nil is false", <>scene->RemoveBox(Nil));
+
+		batch := PropBatch->New(cube);
+		batch->Add(0.0, 0.0, 0.0);
+		scene->AddBatch(batch);
+		Check("RemoveBatch reports success", scene->RemoveBatch(batch));
+		Check("and the batch is gone", scene->GetBatchCount() = 0);
+		batch->Free();
+
+		# A removed box really stops drawing, not just stops being counted.
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->SetCulling(false);
+		scene->Draw(eye->GetViewProjection());
+		black := 0xFF000000;
+		Check("the removed box no longer draws",
+			GL->ReadPixel((@pixel_w * 72) / 100, @pixel_h / 2) = black);
+		Check("and the one that stayed still does",
+			GL->ReadPixel((@pixel_w * 28) / 100, @pixel_h / 2) <> black);
+
+		# --- Overlay->Image ----------------------------------------------------
+		overlay := Overlay->New(@gl);
+		if(Check("an overlay for the image check", overlay->IsOk())) {
+			red := Texture2D->Solid(0xFFFF0000);
+
+			# Sized from the framebuffer, not in absolute pixels. This window is
+			# 64x64, so a "small" 60x40 badge covers nearly all of it and the point
+			# meant to be OUTSIDE the image lands inside -- which is how the first
+			# version of this check failed against correct code.
+			iw := @pixel_w / 4;
+			ih := @pixel_h / 4;
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			overlay->Begin();
+			overlay->SetTint(1.0, 1.0, 1.0, 1.0);
+			overlay->Image(red, 2, 2, iw, ih);
+			overlay->End();
+
+			# Overlay y counts DOWN from the top and ReadPixel counts UP from the
+			# bottom, so an overlay row near 2..2+ih is a framebuffer row near the
+			# top of the buffer.
+			inside := GL->ReadPixel(iw / 2, @pixel_h - (ih / 2) - 2);
+			outside := GL->ReadPixel(@pixel_w - 4, (ih / 2));
+			"  image: inside=0x{$inside} outside=0x{$outside}"->PrintLine();
+
+			Check("Image draws the texture", inside <> black);
+			Check("and draws it RED rather than whatever was bound",
+				(inside and 0x00FF0000) > 0x00800000);
+			Check("and only where it was asked to", outside = black);
+
+			# The tint multiplies, exactly as it does for text.
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			overlay->Begin();
+			overlay->SetTint(0.0, 1.0, 0.0, 1.0);
+			overlay->Image(red, 2, 2, iw, ih);
+			overlay->End();
+			tinted := GL->ReadPixel(iw / 2, @pixel_h - (ih / 2) - 2);
+			"  tinted red-by-green: 0x{$tinted}"->PrintLine();
+			# Red times green is black. If the tint were ignored this stays red.
+			Check("the tint multiplies the image",
+				(tinted and 0x00FF0000) < 0x00100000);
+
+			overlay->SetTint(1.0, 1.0, 1.0, 1.0);
+			Check("a Nil image is ignored rather than a crash", NilImage(overlay));
+
+			red->Free();
+			overlay->Free();
+		};
+
+		shader->Free();
+		cube->Free();
+		white->Free();
+	}
+
+	#~
+	Drawing a Nil texture must be a no-op. Split out so the check reads as one
+	expression rather than a statement with a Check bolted after it.
+	~#
+	method : NilImage(overlay : Overlay) ~ Bool {
+		overlay->Begin();
+		overlay->Image(Nil, 0, 0, 10, 10);
+		overlay->End();
+
+		return true;
+	}
+
+	#~
+	A rig that lights everything flatly, so a readback measures geometry rather
+	than shading.
+	~#
+	method : FullBright() ~ LightRig {
+		rig := LightRig->New();
+		rig->SetAmbient(1.0, 1.0, 1.0);
+
+		return rig;
 	}
 
 	#~

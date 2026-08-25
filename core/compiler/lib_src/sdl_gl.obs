@@ -5209,6 +5209,81 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		The ray running through a point on the screen, in world space.
+
+		Scene->Raycast could already answer "what is in front of the camera", but
+		only along the camera's own forward vector -- the middle of the screen. A
+		mouse pick, a click-to-select, a drag onto a tile: all of them start from
+		a PIXEL, and there was no way to turn one into a direction.
+
+		Pass mouse coordinates and the WINDOW size, not the drawable size. Both
+		come from the same space -- GetMouseX against GetWidth -- and mixing points
+		with high-DPI pixels doubles the offset on a Retina display in a way that
+		looks like a calibration error rather than a unit mismatch.
+		@param x pixel across, from the left
+		@param y pixel down, from the TOP
+		@param width the window's width
+		@param height the window's height
+		@return a unit direction; the camera's forward vector if the view cannot
+		be inverted, which keeps callers off a Nil check
+		~#
+		method : public : ScreenRay(x : Int, y : Int, width : Int, height : Int) ~ Vector3 {
+			if(width <= 0 | height <= 0) {
+				return ForwardVector();
+			};
+
+			# Pixels to normalised device coordinates. The y axis flips: pixels
+			# count down from the top of the window, NDC counts up from the bottom.
+			ndc_x := (2.0 * x->As(Float)) / width->As(Float) - 1.0;
+			ndc_y := 1.0 - (2.0 * y->As(Float)) / height->As(Float);
+
+			inverse := Float->New[16];
+			if(<>Matrix4->InverseInto(inverse, GetViewProjection())) {
+				return ForwardVector();
+			};
+
+			# One point on the near plane and one on the far plane. The ray is the
+			# line between them -- which is why this works for an ORTHOGRAPHIC
+			# projection too, where every screen point has a different origin and
+			# the same direction.
+			near := Unproject(inverse, ndc_x, ndc_y, -1.0);
+			far := Unproject(inverse, ndc_x, ndc_y, 1.0);
+			if(near = Nil | far = Nil) {
+				return ForwardVector();
+			};
+
+			direction := Vector3->New(far->GetX() - near->GetX(),
+				far->GetY() - near->GetY(), far->GetZ() - near->GetZ());
+			if(direction->Length() = 0.0) {
+				return ForwardVector();
+			};
+
+			return direction->Normalized();
+		}
+
+		#~
+		Where a point on the near or far plane lands in world space.
+
+		The perspective divide is the part that matters: the inverse of a
+		projection is not an affine transform, so w comes back as something other
+		than 1 and dividing by it is what turns clip space into a world position.
+		~#
+		method : Unproject(inverse : Float[], x : Float, y : Float, z : Float) ~ Vector3 {
+			# Column-major, so element (row r, column c) is inverse[c * 4 + r] --
+			# which is why the strides below are 4 and the offsets are the row.
+			ox := inverse[0] * x + inverse[4] * y + inverse[8] * z + inverse[12];
+			oy := inverse[1] * x + inverse[5] * y + inverse[9] * z + inverse[13];
+			oz := inverse[2] * x + inverse[6] * y + inverse[10] * z + inverse[14];
+			ow := inverse[3] * x + inverse[7] * y + inverse[11] * z + inverse[15];
+
+			if(ow = 0.0) {
+				return Nil;
+			};
+
+			return Vector3->New(ox / ow, oy / ow, oz / ow);
+		}
+
+		#~
 		Projection times view, rebuilt from the current eye.
 
 		Returns the camera's own buffer rather than a fresh array, so a draw loop
@@ -6109,6 +6184,39 @@ bundle Game.OpenGL {
 
 			DrawTextured(@white, x, y, width, height);
 		}
+
+		#~
+		Draw a texture as a rectangle, in pixels.
+
+		The missing verb. This overlay could draw text, filled rectangles and
+		lines, and the one thing an actual HUD is mostly made of -- an icon, a
+		portrait, a minimap, a health bar with a texture rather than a colour --
+		had no route, even though the private DrawTextured that Text and Rect both
+		call has been here since the overlay was written.
+
+		The current tint MULTIPLIES the texture, exactly as it does for text, so
+		SetTint(1.0, 1.0, 1.0, 1.0) draws it untouched and a lower alpha fades it.
+		@param texture what to draw; ignored when Nil or not ok
+		@param x left edge in pixels, measured from the left
+		@param y top edge in pixels, measured from the TOP
+		@param width how wide to draw it
+		@param height how tall to draw it
+
+		There is deliberately no form that omits the size. Texture2D holds a GL
+		handle and an ownership flag and does NOT know its own dimensions -- and
+		for one made by Wrapping or Adopt, around a handle something else created,
+		it cannot. Giving it a size means every construction path recording one and
+		the borrowed case admitting it has none, which is a change of its own.
+		~#
+		method : public : Image(texture : Texture2D, x : Int, y : Int,
+				width : Int, height : Int) ~ Nil {
+			if(texture = Nil | <>texture->IsOk()) {
+				return;
+			};
+
+			DrawTextured(texture, x, y, width, height);
+		}
+
 
 		#~
 		Colour for the next Rect, Line and Text, as 0..1 components.
@@ -10141,6 +10249,110 @@ bundle Game.OpenGL {
 			return RayHit->New(nearest,
 				ox + dx * nearest, oy + dy * nearest, oz + dz * nearest,
 				best_nx, best_ny, best_nz, best_box, best_prop);
+		}
+
+		#~
+		Fire a ray through a point on the screen -- a mouse pick.
+
+		The camera supplies the direction through that pixel and the scene answers
+		what is along it. Pass the window so the ray is built from the same size
+		the mouse coordinates were measured in.
+
+		  hit := scene->RaycastScreen(camera, window,
+		    window->GetMouseX(), window->GetMouseY(), 100.0);
+
+		@param camera the eye
+		@param window the window the mouse coordinates came from
+		@param x pixel across
+		@param y pixel down
+		@param max_distance how far to look
+		@return a RayHit, never Nil
+		~#
+		method : public : RaycastScreen(camera : Camera, window : GLWindow,
+				x : Int, y : Int, max_distance : Float) ~ RayHit {
+			if(camera = Nil | window = Nil) {
+				return RayHit->New();
+			};
+
+			direction := camera->ScreenRay(x, y, window->GetWidth(), window->GetHeight());
+
+			return Raycast(camera->GetPosition(), direction, max_distance);
+		}
+
+		#~
+		Take one prop out of the scene.
+
+		Clear emptied everything and there was no way to remove a single thing, so
+		anything that spawns and despawns -- an enemy, a pickup, a projectile --
+		had to rebuild the whole scene or hide the prop with SetVisible and leak it
+		forever. Both are what this replaces.
+		@param prop the prop to drop; it is NOT freed, since its mesh and material
+		are usually shared
+		@return true when it was in the scene
+		~#
+		method : public : RemoveProp(prop : Prop) ~ Bool {
+			if(prop = Nil) {
+				return false;
+			};
+
+			each(i : @props) {
+				if(@props->Get(i) = prop) {
+					@props->Remove(i);
+
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Take one box out of the scene.
+
+		Note this changes the index of every box after it, so a loop holding
+		indices across a removal is holding the wrong ones.
+		@param box the box to drop
+		@return true when it was in the scene
+		~#
+		method : public : RemoveBox(box : Box) ~ Bool {
+			if(box = Nil) {
+				return false;
+			};
+
+			each(i : @boxes) {
+				if(@boxes->Get(i) = box) {
+					@boxes->Remove(i);
+
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Take one batch out of the scene.
+
+		Here so that the three lists behave the same way. Clear drops all three;
+		leaving two of them removable individually and the third not would be the
+		sort of asymmetry nobody remembers.
+		@param batch the batch to drop; NOT freed
+		@return true when it was in the scene
+		~#
+		method : public : RemoveBatch(batch : PropBatch) ~ Bool {
+			if(batch = Nil) {
+				return false;
+			};
+
+			each(i : @batches) {
+				if(@batches->Get(i) = batch) {
+					@batches->Remove(i);
+
+					return true;
+				};
+			};
+
+			return false;
 		}
 
 		#~
