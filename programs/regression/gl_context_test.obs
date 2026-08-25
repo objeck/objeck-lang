@@ -3616,6 +3616,42 @@ class GlContextTest {
 		Check("the depth function is settable -- GL_LEQUAL is what a skybox needs",
 			GL->DrainErrors()->Size() = 0);
 
+		# --- anisotropic filtering ------------------------------------------
+		# HasExtension has named this extension as its own documentation example
+		# since the beginning, with nothing to set once the answer came back yes.
+		#
+		# Both outcomes are legitimate -- this machine may or may not offer it --
+		# so what is asserted is the INVARIANT: the texture uploads either way,
+		# the reported maximum agrees with whether the extension is there, and an
+		# absurd request is clamped rather than passed to the driver.
+		max_aniso := GL->GetMaxAnisotropy();
+		has_aniso := GL->HasExtension("GL_EXT_texture_filter_anisotropic");
+		"  max anisotropy: {$max_aniso}  extension present: {$has_aniso}"->PrintLine();
+
+		Check("the reported maximum agrees with the extension being present",
+			(has_aniso & max_aniso >= 1.0) | (<>has_aniso & max_aniso = 0.0));
+
+		checker := Texture2D->Checker(64, 4, Texture2D->Rgb(200, 200, 200),
+			Texture2D->Rgb(40, 40, 40), TextureWrap->GL_REPEAT);
+		Check("a mipmapped texture still uploads with anisotropy asked for",
+			checker->IsOk());
+		checker->Free();
+
+		# Absurd, and above any real maximum. Must be clamped, not rejected.
+		silly := Texture2D->New(Texture2D->NewSurface(8, 8), TextureFilter->GL_LINEAR,
+			TextureWrap->GL_REPEAT, true, 4096.0);
+		Check("an anisotropy far above the maximum is clamped, not an error",
+			silly->IsOk() & GL->DrainErrors()->Size() = 0);
+		silly->Free();
+
+		# And a driver without the extension must ignore it rather than fail.
+		none := Texture2D->New(Texture2D->NewSurface(8, 8), TextureFilter->GL_LINEAR,
+			TextureWrap->GL_REPEAT, true, 1.0);
+		Check("anisotropy of 1 is a no-op", none->IsOk());
+		none->Free();
+
+		Check("no GL errors from anisotropy", GL->DrainErrors()->Size() = 0);
+
 		overlay->Free();
 	}
 

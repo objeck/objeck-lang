@@ -396,6 +396,28 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		The largest anisotropy level this driver offers.
+
+		0 when GL_EXT_texture_filter_anisotropic is absent, in which case asking
+		for anisotropy is silently ignored rather than an error. Typically 16 where
+		it is supported.
+
+		This bundle has had HasExtension since the beginning, with this very
+		extension as its documentation example, and nothing to set once the answer
+		came back yes. This is the setter half.
+		@return the maximum, or 0.0 if unsupported
+		~#
+		function : GetMaxAnisotropy() ~ Float {
+			array_args := Base->New[1];
+			array_args[0] := FloatRef->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_max_anisotropy", array_args);
+
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
+		}
+
+		#~
 		Is a capability currently on?
 
 		Asked rather than assumed by anything that turns a capability off and has
@@ -3690,7 +3712,7 @@ bundle Game.OpenGL {
 		@param surface the source surface; still owned by the caller
 		~#
 		New(surface : Surface) {
-			Upload(surface, TextureFilter->GL_LINEAR, TextureWrap->GL_CLAMP_TO_EDGE, false);
+			Upload(surface, TextureFilter->GL_LINEAR, TextureWrap->GL_CLAMP_TO_EDGE, false, 0.0);
 		}
 
 		#~
@@ -3702,10 +3724,35 @@ bundle Game.OpenGL {
 		floor from shimmering into noise in the distance
 		~#
 		New(surface : Surface, filter : Int, wrap : Int, mipmap : Bool) {
-			Upload(surface, filter, wrap, mipmap);
+			Upload(surface, filter, wrap, mipmap, 0.0);
 		}
 
-		method : Upload(surface : Surface, filter : Int, wrap : Int, mipmap : Bool) ~ Nil {
+		#~
+		Upload with anisotropic filtering.
+
+		The fix for a tiled floor that turns to mush in the distance. Anisotropy
+		chooses better mip SAMPLES for a surface seen at a steep angle, which is
+		exactly the case ordinary mipmapping handles worst -- so it needs
+		`mipmap` true to do anything at all, and does nothing visible on a HUD quad
+		seen face-on.
+
+		Extension-gated, and asked for rather than assumed: a driver without
+		GL_EXT_texture_filter_anisotropic ignores it and a level above what the
+		hardware offers is clamped to the maximum. Check GL->GetMaxAnisotropy()
+		first if you care which happened. 4 or 8 is the usual choice; 16 is the
+		common ceiling.
+		@param surface the source surface; still owned by the caller
+		@param filter TextureFilter->GL_LINEAR or GL_NEAREST
+		@param wrap a TextureWrap
+		@param mipmap must be true for anisotropy to have any effect
+		@param anisotropy 1.0 for none, or 2, 4, 8, 16
+		~#
+		New(surface : Surface, filter : Int, wrap : Int, mipmap : Bool, anisotropy : Float) {
+			Upload(surface, filter, wrap, mipmap, anisotropy);
+		}
+
+		method : Upload(surface : Surface, filter : Int, wrap : Int, mipmap : Bool,
+				anisotropy : Float) ~ Nil {
 			@texture := 0;
 			@owned := true;
 
@@ -3718,12 +3765,13 @@ bundle Game.OpenGL {
 				mip := 1;
 			};
 
-			array_args := Base->New[5];
+			array_args := Base->New[6];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(surface->GetSurface());
 			array_args[2] := IntRef->New(filter);
 			array_args[3] := IntRef->New(wrap);
 			array_args[4] := IntRef->New(mip);
+			array_args[5] := FloatRef->New(anisotropy);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_from_surface", array_args);
 
@@ -3819,7 +3867,12 @@ bundle Game.OpenGL {
 				};
 			};
 
-			texture := Texture2D->New(surface, TextureFilter->GL_LINEAR, wrap, true);
+			# Anisotropy 8, because a Checker exists to be a tiled floor and a tiled
+			# floor seen at a grazing angle is exactly the case ordinary mipmapping
+			# handles worst -- the distance turns to mush. Free where the driver
+			# does not offer it: the request is ignored rather than failing, and it
+			# is clamped where the maximum is lower.
+			texture := Texture2D->New(surface, TextureFilter->GL_LINEAR, wrap, true, 8.0);
 			surface->Free();
 
 			return texture;

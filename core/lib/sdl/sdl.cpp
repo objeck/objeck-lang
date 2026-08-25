@@ -6017,10 +6017,45 @@ extern "C" {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+
+    // Anisotropic filtering, if it was asked for and the driver has it. Only
+    // meaningful alongside mipmaps: it is a better choice of mip SAMPLES for a
+    // surface seen at a steep angle, so without a chain to choose from there is
+    // nothing for it to do -- which is why a floor is the case that shows it and
+    // a HUD quad is not.
+    const double anisotropy = APITools_GetFloatValue(context, 5);
+    if(mipmap && anisotropy > 1.0 &&
+       SDL_GL_ExtensionSupported("GL_EXT_texture_filter_anisotropic")) {
+      GLfloat largest = 0.0f;
+      glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest);
+
+      GLfloat want = (GLfloat)anisotropy;
+      if(want > largest) {
+        want = largest;
+      }
+      if(want >= 1.0f) {
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, want);
+      }
+    }
+
     glBindTexture(GL_TEXTURE_2D, 0);
 
     SDL_FreeSurface(rgba);
     APITools_SetIntValue(context, 0, texture);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_max_anisotropy(VMContext& context) {
+    // 0 means the driver does not offer it. Queried rather than assumed: the
+    // cap is 16 on most desktop hardware but the spec does not promise it.
+    GLfloat largest = 0.0f;
+    if(SDL_GL_ExtensionSupported("GL_EXT_texture_filter_anisotropic")) {
+      glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest);
+    }
+
+    APITools_SetFloatValue(context, 0, (double)largest);
   }
 
 #ifdef _WIN32
