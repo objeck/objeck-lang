@@ -87,6 +87,13 @@ class GlContextTest {
 		CheckOwnership();
 		CheckScissorAndStencil();
 		CheckProps();
+		CheckRaycast();
+		CheckPickingAndRemoval();
+		CheckBillboards();
+		CheckCollision();
+		CheckArraysAndOffset();
+		CheckParticles();
+		CheckAnimation();
 		CheckMaterialLeak();
 		CheckStencilAndPoints();
 		CheckMatrixMath();
@@ -3823,6 +3830,1265 @@ class GlContextTest {
 		pane->Free();
 		cube->Free();
 		shader->Free();
+	}
+
+	#~
+	Scene->Raycast: the spatial query a weapon, a pick or a line-of-sight test
+	needs, and the first one here that is not about movement.
+
+	Worth noting this fixture needs no GL at all -- it reads nothing back from the
+	framebuffer and draws nothing. Raycast is pure arithmetic, which is exactly
+	why it can be checked properly: the last block compares it against a
+	brute-force march along the same ray, so the assertion is a PROPERTY rather
+	than a distance I worked out by hand and could have worked out wrongly in the
+	same way twice.
+	~#
+	method : CheckRaycast() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the raycast checks",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+
+		# A 2x2x2 box centred at the origin: faces at +/-1 on every axis.
+		target := scene->AddBox(Vector3->New(0.0, 0.0, 0.0),
+			Vector3->New(1.0, 1.0, 1.0), white);
+
+		origin := Vector3->New(0.0, 0.0, 10.0);
+		forward := Vector3->New(0.0, 0.0, -1.0);
+
+		hit := scene->Raycast(origin, forward, 100.0);
+		Check("a ray down the z axis hits the box", hit->IsHit());
+		# From z=10 to the near face at z=+1 is 9 units. Analytic, not measured.
+		Check("at the near face rather than the far one",
+			(hit->GetDistance() - 9.0)->Abs() < 0.0001);
+		Check("and reports the box it struck", hit->GetBox() = target);
+		Check("with no prop", hit->GetProp() = Nil);
+		Check("the hit point is on the surface",
+			(hit->GetZ() - 1.0)->Abs() < 0.0001);
+		# Facing back along +z, towards the shooter.
+		Check("the normal faces the ray",
+			(hit->GetNormalZ() - 1.0)->Abs() < 0.0001 &
+			hit->GetNormalX() = 0.0 & hit->GetNormalY() = 0.0);
+
+		# --- misses -----------------------------------------------------------
+		away := scene->Raycast(origin, Vector3->New(0.0, 0.0, 1.0), 100.0);
+		Check("a ray pointing away misses", <>away->IsHit());
+		Check("and a miss reports zero distance", away->GetDistance() = 0.0);
+
+		wide := scene->Raycast(origin, Vector3->New(0.0, 1.0, 0.0), 100.0);
+		Check("a ray that never meets the box misses", <>wide->IsHit());
+
+		short := scene->Raycast(origin, forward, 5.0);
+		Check("a box beyond max_distance is a miss", <>short->IsHit());
+
+		# --- nearest wins -----------------------------------------------------
+		nearer := scene->AddBox(Vector3->New(0.0, 0.0, 5.0),
+			Vector3->New(0.5, 0.5, 0.5), white);
+		both := scene->Raycast(origin, forward, 100.0);
+		# THE assertion for ordering: the far box is still there and still hit by
+		# this ray, so a Raycast that returned the FIRST hit rather than the
+		# NEAREST would return the original box and pass everything above.
+		Check("the nearer box wins", both->GetBox() = nearer);
+		Check("at its own near face",
+			(both->GetDistance() - 4.5)->Abs() < 0.0001);
+
+		# --- starting inside ---------------------------------------------------
+		inside := scene->Raycast(Vector3->New(0.0, 0.0, 0.0), forward, 100.0);
+		Check("a ray starting inside a box still reports a hit", inside->IsHit());
+
+		# --- props, via their bounding sphere ---------------------------------
+		scene->Clear();
+		ball := scene->AddProp(Prop->New(cube, 0.0, 0.0, 0.0));
+		prop_hit := scene->Raycast(origin, forward, 100.0);
+		Check("a prop is hit too", prop_hit->IsHit());
+		Check("and reports the prop", prop_hit->GetProp() = ball);
+		Check("with no box", prop_hit->GetBox() = Nil);
+		# The normal on a sphere points away from its centre, so straight back.
+		Check("the sphere normal faces the ray",
+			(prop_hit->GetNormalZ() - 1.0)->Abs() < 0.01);
+
+		ball->SetVisible(false);
+		Check("an invisible prop is not shootable",
+			<>scene->Raycast(origin, forward, 100.0)->IsHit());
+		ball->SetVisible(true);
+
+		# --- the camera convenience -------------------------------------------
+		eye := Camera->New(Vector3->New(0.0, 0.0, 10.0));
+		manual := scene->Raycast(eye->GetPosition(), eye->ForwardVector(), 100.0);
+		via_camera := scene->RaycastFrom(eye, 100.0);
+		Check("RaycastFrom agrees with the manual form",
+			via_camera->IsHit() = manual->IsHit() &
+			(via_camera->GetDistance() - manual->GetDistance())->Abs() < 0.0001);
+
+		# --- degenerate input must not crash ----------------------------------
+		Check("a zero-length direction is a miss, not a crash",
+			<>scene->Raycast(origin, Vector3->New(0.0, 0.0, 0.0), 10.0)->IsHit());
+		Check("a negative distance is a miss",
+			<>scene->Raycast(origin, forward, -1.0)->IsHit());
+		Check("Nil arguments are a miss",
+			<>scene->Raycast(Nil, forward, 10.0)->IsHit() &
+			<>scene->Raycast(origin, Nil, 10.0)->IsHit());
+		Check("RaycastFrom with no camera is a miss",
+			<>scene->RaycastFrom(Nil, 10.0)->IsHit());
+
+		# --- the property test ------------------------------------------------
+		#
+		# March along the ray in small steps and find the first one INSIDE a box.
+		# That is a different algorithm from the slab test -- slow, obvious, and
+		# wrong in different ways if it is wrong at all -- so agreement between
+		# the two is real evidence, in a way that agreement with a number I typed
+		# would not be.
+		#
+		# Angled rays on purpose: an axis-aligned ray exercises one slab and hides
+		# sign errors in the other two, which is precisely the mistake that put
+		# two flipped signs in the camera's up vector earlier in this work.
+		scene->Clear();
+		scene->AddBox(Vector3->New(2.0, 1.0, -3.0), Vector3->New(1.0, 2.0, 0.5), white);
+		scene->AddBox(Vector3->New(-3.0, 0.0, -6.0), Vector3->New(1.5, 1.0, 1.5), white);
+		scene->AddBox(Vector3->New(0.0, -2.0, -9.0), Vector3->New(4.0, 0.5, 1.0), white);
+
+		dirs := Vector3->New[5];
+		dirs[0] := Vector3->New(0.2, 0.1, -1.0);
+		dirs[1] := Vector3->New(-0.3, 0.0, -1.0);
+		dirs[2] := Vector3->New(0.05, -0.2, -1.0);
+		dirs[3] := Vector3->New(-0.15, 0.12, -1.0);
+		dirs[4] := Vector3->New(0.4, -0.05, -1.0);
+
+		from_point := Vector3->New(0.0, 0.0, 2.0);
+		agreed := 0;
+		compared := 0;
+
+		# each() yields the INDEX over an array, exactly as it does over a Vector --
+		# so the element has to be fetched, and binding the loop variable straight
+		# to a Vector3 silently gives an Int and unresolves everything after it.
+		each(k : dirs) {
+			d := dirs[k];
+			ray := scene->Raycast(from_point, d, 20.0);
+
+			# Brute force, same ray, normalised the same way.
+			len := d->Length();
+			dx := d->GetX() / len; dy := d->GetY() / len; dz := d->GetZ() / len;
+			step := 0.02;
+			march := 0.0;
+			found := -1.0;
+
+			while(march < 20.0 & found < 0.0) {
+				px := from_point->GetX() + dx * march;
+				py := from_point->GetY() + dy * march;
+				pz := from_point->GetZ() + dz * march;
+
+				for(b := 0; b < scene->GetCount() & found < 0.0; b += 1;) {
+					box := scene->Get(b);
+					c := box->GetCenter();
+					h := box->GetHalf();
+					if((px - c->GetX())->Abs() <= h->GetX() &
+							(py - c->GetY())->Abs() <= h->GetY() &
+							(pz - c->GetZ())->Abs() <= h->GetZ()) {
+						found := march;
+					};
+				};
+
+				march += step;
+			};
+
+			# Read out before the branches. An expression combining two of this
+			# loop's own locals does not resolve from inside a nested arm, so the
+			# comparison is computed here where it does.
+			struck := ray->IsHit();
+			slab := ray->GetDistance();
+			gap := (slab - found)->Abs();
+
+			compared += 1;
+			ok := false;
+			if(found < 0.0) {
+				# The march found nothing, so the slab test must agree.
+				ok := <>struck;
+			}
+			else {
+				if(struck) {
+					if(gap < 0.06) {
+						ok := true;
+					};
+				};
+			};
+
+			if(ok) {
+				agreed += 1;
+			}
+			else {
+				"  DISAGREEMENT: slab={$slab} march={$found}"->PrintLine();
+			};
+		};
+
+		"  raycast vs brute-force march: {$agreed}/{$compared} agree"->PrintLine();
+		Check("the slab test agrees with a brute-force march on every ray",
+			agreed = compared & compared = 5);
+
+		shader->Free();
+		cube->Free();
+		white->Free();
+	}
+
+	#~
+	The three half-shipped items: Overlay->Image, screen-point picking, and
+	removing one thing from a scene.
+
+	The picking block carries the weight. A ray through the middle of the screen
+	is the one case that works even when the unprojection is wrong -- it is the
+	camera's forward vector, which ScreenRay returns as its FALLBACK when the
+	matrix cannot be inverted. So a centre-screen check passes on an
+	implementation that does nothing at all, and every assertion here is
+	deliberately off-centre.
+	~#
+	method : CheckPickingAndRemoval() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the picking checks",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		scene->SetLightRig(FullBright());
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 10.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+
+		w := @gl->GetWidth();
+		h := @gl->GetHeight();
+
+		# --- ScreenRay ---------------------------------------------------------
+		centre := eye->ScreenRay(w / 2, h / 2, w, h);
+		forward := eye->ForwardVector();
+		Check("a ray through the middle of the screen is the camera's forward",
+			(centre->GetX() - forward->GetX())->Abs() < 0.01 &
+			(centre->GetY() - forward->GetY())->Abs() < 0.01 &
+			(centre->GetZ() - forward->GetZ())->Abs() < 0.01);
+
+		Check("a screen ray is a unit vector",
+			(centre->Length() - 1.0)->Abs() < 0.001);
+
+		# THE assertions: off-centre, where the fallback cannot rescue it.
+		left := eye->ScreenRay(w / 4, h / 2, w, h);
+		right := eye->ScreenRay((w * 3) / 4, h / 2, w, h);
+		"  screen rays: left x={$left->GetX()} right x={$right->GetX()}"->PrintLine();
+
+		# Looking down -z, a point left of centre must aim in -x and one right of
+		# centre in +x. Getting the NDC flip wrong reverses exactly this.
+		Check("a ray left of centre aims left", left->GetX() < -0.05);
+		Check("and one right of centre aims right", right->GetX() > 0.05);
+		Check("both still aim forwards", left->GetZ() < 0.0 & right->GetZ() < 0.0);
+		Check("and they are mirror images",
+			(left->GetX() + right->GetX())->Abs() < 0.001);
+
+		top := eye->ScreenRay(w / 2, h / 4, w, h);
+		bottom := eye->ScreenRay(w / 2, (h * 3) / 4, w, h);
+		# Pixels count DOWN from the top, world y counts UP. A ray through the top
+		# quarter of the window must aim UPWARDS -- this is the y flip, and it is
+		# the single most likely thing to be inverted.
+		Check("a ray through the top of the screen aims up", top->GetY() > 0.05);
+		Check("and one through the bottom aims down", bottom->GetY() < -0.05);
+
+		Check("a zero-sized window does not divide by zero",
+			eye->ScreenRay(0, 0, 0, 0)->Length() > 0.5);
+
+		# A camera with no projection: GetViewProjection returns Nil, which goes
+		# straight into InverseInto. That guards Nil and reports false, so the
+		# fallback catches it -- but nothing proved that until now, and the path
+		# is one Nil check away from a crash in a method whose whole job is to be
+		# called from a mouse handler.
+		bare := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		Check("a camera with no projection has none", <>bare->HasProjection());
+		bare_ray := bare->ScreenRay(w / 4, h / 4, w, h);
+		Check("and a screen ray from it falls back instead of crashing",
+			bare_ray <> Nil & (bare_ray->Length() - 1.0)->Abs() < 0.01);
+
+		# --- picking through the scene ----------------------------------------
+		# Two boxes either side of centre, far enough apart that a ray through one
+		# cannot reach the other.
+		box_left := scene->AddBox(Vector3->New(-2.5, 0.0, 0.0),
+			Vector3->New(0.9, 0.9, 0.9), white);
+		box_right := scene->AddBox(Vector3->New(2.5, 0.0, 0.0),
+			Vector3->New(0.9, 0.9, 0.9), white);
+
+		# At distance 10 with a 60-degree fov the frustum is ~11.5 wide, so those
+		# land near 28% and 72% across.
+		pick_left := scene->RaycastScreen(eye, @gl, (w * 28) / 100, h / 2, 100.0);
+		pick_right := scene->RaycastScreen(eye, @gl, (w * 72) / 100, h / 2, 100.0);
+
+		Check("a pick at the left box hits something", pick_left->IsHit());
+		# THE assertion: it hits the LEFT one. A sign error puts both picks on the
+		# same box and every "did it hit" check still passes.
+		Check("and it is the left box", pick_left->GetBox() = box_left);
+		Check("a pick at the right box hits the right one",
+			pick_right->GetBox() = box_right);
+
+		Check("a pick at empty sky hits nothing",
+			<>scene->RaycastScreen(eye, @gl, w / 2, h / 8, 100.0)->IsHit());
+		Check("a pick with no camera or window is a miss",
+			<>scene->RaycastScreen(Nil, @gl, 10, 10, 10.0)->IsHit() &
+			<>scene->RaycastScreen(eye, Nil, 10, 10, 10.0)->IsHit());
+
+		# --- removal -----------------------------------------------------------
+		# TWO props, and the one removed is NOT the first. A fixture that removes
+		# index 0 cannot tell Remove(i) from Remove(0) -- the count comes out right
+		# either way and the wrong object survives. The first version of this block
+		# did exactly that and passed against a deliberately broken remove.
+		first_prop := scene->AddProp(Prop->New(cube, -1.0, 3.0, 0.0));
+		second_prop := scene->AddProp(Prop->New(cube, 1.0, 3.0, 0.0));
+		Check("the scene holds two boxes and two props",
+			scene->GetCount() = 2 & scene->GetPropCount() = 2);
+
+		Check("RemoveProp reports success", scene->RemoveProp(second_prop));
+		Check("and one prop is gone", scene->GetPropCount() = 1);
+		Check("leaving the prop that was not removed", scene->GetProp(0) = first_prop);
+		Check("removing it twice reports failure", <>scene->RemoveProp(second_prop));
+		Check("removing Nil is false, not a crash", <>scene->RemoveProp(Nil));
+		Check("and the first prop can be removed too", scene->RemoveProp(first_prop));
+		Check("emptying the props", scene->GetPropCount() = 0);
+
+		# Same reasoning: remove the SECOND box, so dropping index 0 leaves the
+		# wrong one behind.
+		Check("RemoveBox reports success", scene->RemoveBox(box_right));
+		Check("and the box is gone", scene->GetCount() = 1);
+		# THE assertion for removal: the one still there is the OTHER one. A
+		# remove that drops the wrong index leaves the count right and the
+		# contents wrong.
+		Check("leaving the box that was not removed", scene->Get(0) = box_left);
+		Check("removing Nil is false", <>scene->RemoveBox(Nil));
+
+		batch := PropBatch->New(cube);
+		batch->Add(0.0, 0.0, 0.0);
+		scene->AddBatch(batch);
+		Check("RemoveBatch reports success", scene->RemoveBatch(batch));
+		Check("and the batch is gone", scene->GetBatchCount() = 0);
+		batch->Free();
+
+		# A removed box really stops drawing, not just stops being counted.
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->SetCulling(false);
+		scene->Draw(eye->GetViewProjection());
+		black := 0xFF000000;
+		Check("the removed box no longer draws",
+			GL->ReadPixel((@pixel_w * 72) / 100, @pixel_h / 2) = black);
+		Check("and the one that stayed still does",
+			GL->ReadPixel((@pixel_w * 28) / 100, @pixel_h / 2) <> black);
+
+		# --- Overlay->Image ----------------------------------------------------
+		overlay := Overlay->New(@gl);
+		if(Check("an overlay for the image check", overlay->IsOk())) {
+			red := Texture2D->Solid(0xFFFF0000);
+
+			# Sized from the framebuffer, not in absolute pixels. This window is
+			# 64x64, so a "small" 60x40 badge covers nearly all of it and the point
+			# meant to be OUTSIDE the image lands inside -- which is how the first
+			# version of this check failed against correct code.
+			iw := @pixel_w / 4;
+			ih := @pixel_h / 4;
+
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			overlay->Begin();
+			overlay->SetTint(1.0, 1.0, 1.0, 1.0);
+			overlay->Image(red, 2, 2, iw, ih);
+			overlay->End();
+
+			# Overlay y counts DOWN from the top and ReadPixel counts UP from the
+			# bottom, so an overlay row near 2..2+ih is a framebuffer row near the
+			# top of the buffer.
+			inside := GL->ReadPixel(iw / 2, @pixel_h - (ih / 2) - 2);
+			outside := GL->ReadPixel(@pixel_w - 4, (ih / 2));
+			"  image: inside=0x{$inside} outside=0x{$outside}"->PrintLine();
+
+			Check("Image draws the texture", inside <> black);
+			Check("and draws it RED rather than whatever was bound",
+				(inside and 0x00FF0000) > 0x00800000);
+			Check("and only where it was asked to", outside = black);
+
+			# The tint multiplies, exactly as it does for text.
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			overlay->Begin();
+			overlay->SetTint(0.0, 1.0, 0.0, 1.0);
+			overlay->Image(red, 2, 2, iw, ih);
+			overlay->End();
+			tinted := GL->ReadPixel(iw / 2, @pixel_h - (ih / 2) - 2);
+			"  tinted red-by-green: 0x{$tinted}"->PrintLine();
+			# Red times green is black. If the tint were ignored this stays red.
+			Check("the tint multiplies the image",
+				(tinted and 0x00FF0000) < 0x00100000);
+
+			overlay->SetTint(1.0, 1.0, 1.0, 1.0);
+			Check("a Nil image is ignored rather than a crash", NilImage(overlay));
+
+			red->Free();
+			overlay->Free();
+		};
+
+		shader->Free();
+		cube->Free();
+		white->Free();
+	}
+
+	#~
+	Drawing a Nil texture must be a no-op. Split out so the check reads as one
+	expression rather than a statement with a Check bolted after it.
+	~#
+	method : NilImage(overlay : Overlay) ~ Bool {
+		overlay->Begin();
+		overlay->Image(Nil, 0, 0, 10, 10);
+		overlay->End();
+
+		return true;
+	}
+
+	#~
+	A rig that lights everything flatly, so a readback measures geometry rather
+	than shading.
+	~#
+	method : FullBright() ~ LightRig {
+		rig := LightRig->New();
+		rig->SetAmbient(1.0, 1.0, 1.0);
+
+		return rig;
+	}
+
+	#~
+	Billboards: quads that turn to face the camera.
+
+	The failure this is built around is the one that looks like success. A quad
+	already faces a camera that is looking straight down -z at it, because that
+	is the orientation Mesh->Quad is authored in -- so a fixture that puts the
+	camera in front of a sprite and reads a pixel passes on a shader that does no
+	billboarding whatsoever.
+
+	So the camera is moved to ONE SIDE and looks back. An ordinary quad seen from
+	90 degrees off is edge-on and covers nothing; a billboard is exactly as wide
+	as it was head-on. That difference is the whole feature, and it is the only
+	thing here worth asserting.
+	~#
+	method : CheckBillboards() ~ Nil {
+		shader := Shader->BillboardInstanced();
+		if(<>Check("Shader->BillboardInstanced compiles", shader->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		quad := Mesh->Quad(0.5);
+		flat := Shader->LitTextured();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a quad and texture for the billboard checks",
+				quad->IsOk() & white->IsOk() & flat->IsOk())) {
+			return;
+		};
+
+		sprites := PropBatch->New(quad, shader);
+		sprites->SetMaterial(Material->New(white));
+		sprites->Add(0.0, 0.0, 0.0)->SetScale(1.4, 1.4, 1.0);
+
+		mid_x := @pixel_w / 2;
+		mid_y := @pixel_h / 2;
+		black := 0xFF000000;
+
+		# --- head on, which proves only that it draws at all -------------------
+		front := Camera->New(Vector3->New(0.0, 0.0, 6.0));
+		front->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		sprites->SetCamera(front);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sprites->Draw(front->GetViewProjection());
+		head_on := GL->ReadPixel(mid_x, mid_y);
+		Check("a billboard draws when the camera is in front of it", head_on <> black);
+
+		# --- THE assertion: from the side ---------------------------------------
+		# Same sprite, camera moved 90 degrees round and looking back at the
+		# origin. A plain quad is edge-on here and covers nothing.
+		side := Camera->New(Vector3->New(6.0, 0.0, 0.0));
+		side->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		side->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+		sprites->SetCamera(side);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sprites->Draw(side->GetViewProjection());
+		from_side := GL->ReadPixel(mid_x, mid_y);
+		"  billboard: head-on=0x{$head_on} from-side=0x{$from_side}"->PrintLine();
+		Check("and still faces the camera from ninety degrees round",
+			from_side <> black);
+
+		# The control: the same quad through an ORDINARY shader, from the same
+		# place. If this also filled the pixel then the check above proves nothing
+		# -- the quad would be visible from the side on its own merits.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		plain_scene := Scene->New(quad, flat);
+		plain_rig := LightRig->New();
+		plain_rig->SetAmbient(1.0, 1.0, 1.0);
+		plain_scene->SetLightRig(plain_rig);
+		plain_scene->SetCulling(false);
+		plain_prop := Prop->New(quad, Material->New(white));
+		plain_prop->GetTransform()->SetScale(1.4, 1.4, 1.0);
+		plain_scene->AddProp(plain_prop);
+		flat->Use();
+		flat->SetInt("tex", 0);
+		plain_scene->Draw(side->GetViewProjection());
+		plain_from_side := GL->ReadPixel(mid_x, mid_y);
+		"  ordinary quad from the same side: 0x{$plain_from_side}"->PrintLine();
+		Check("while an ordinary quad from there is edge-on and covers nothing",
+			plain_from_side = black);
+
+		# --- from above, the other axis ------------------------------------------
+		above := Camera->New(Vector3->New(0.0, 6.0, 0.1));
+		above->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		above->LookAtPoint(Vector3->New(0.0, 0.0, 0.0));
+		sprites->SetCamera(above);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sprites->Draw(above->GetViewProjection());
+		Check("and from directly above", GL->ReadPixel(mid_x, mid_y) <> black);
+
+		# --- forgetting the camera is reported ----------------------------------
+		orphan := PropBatch->New(quad, shader);
+		orphan->SetMaterial(Material->New(white));
+		orphan->Add(0.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		orphan->Draw(front->GetViewProjection());
+		Check("a billboard batch with no camera says so",
+			orphan->GetError()->Size() > 0);
+		orphan->Free();
+
+		# --- additive ------------------------------------------------------------
+		Check("a batch is not additive by default", <>sprites->IsAdditive());
+		sprites->SetAdditive(true);
+		Check("and says so once it is", sprites->IsAdditive());
+
+		# Two sprites stacked at the same place. Additively, two half-lit sprites
+		# are BRIGHTER than one; with ordinary blending the second would replace
+		# the first and the two readings would match.
+		dim := Material->New(white);
+		dim->SetTint(0.35, 0.35, 0.35);
+		sprites->SetMaterial(dim);
+		sprites->SetCamera(front);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene := Scene->New(quad, flat);
+		scene->SetLightRig(plain_rig);
+		scene->SetCulling(false);
+		scene->AddBatch(sprites);
+		scene->Draw(front->GetViewProjection());
+		one_sprite := (GL->ReadPixel(mid_x, mid_y) and 0x00FF0000) / 0x10000;
+
+		sprites->Add(0.0, 0.0, 0.0)->SetScale(1.4, 1.4, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(front->GetViewProjection());
+		two_sprites := (GL->ReadPixel(mid_x, mid_y) and 0x00FF0000) / 0x10000;
+
+		"  additive: one={$one_sprite} two={$two_sprites}"->PrintLine();
+		Check("additive blending accumulates rather than replaces",
+			two_sprites > one_sprite + 20);
+
+		# Depth writes must be back on afterwards, or everything drawn after an
+		# additive batch stops occluding.
+		Check("no GL errors from the billboard pass", GL->GetError() = ErrorCode->GL_NO_ERROR);
+
+		sprites->Free();
+		quad->Free();
+		flat->Free();
+		white->Free();
+		shader->Free();
+	}
+
+	#~
+	Collision: Blocked, SlideMove and the solid flag.
+
+	This exists because a coverage pass found Blocked, SetSolid and OverlapsXZ
+	with ZERO references in this suite, while SlideMove had four -- and the gap
+	had already cost something. The first version of the shipped FPS demo built
+	its arena with a SOLID floor, which renders perfectly and makes the player
+	completely immovable, and nothing here would have said a word.
+
+	Collision is a PLAN-VIEW test: a circle at (x,z) against a rectangle, height
+	ignored entirely. Every check below is written knowing that, because the
+	trap is that the API looks three-dimensional and is not.
+	~#
+	method : CheckCollision() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the collision checks",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+
+		# A pillar at the origin, two units on a side.
+		pillar := scene->AddBox(Vector3->New(0.0, 1.0, 0.0),
+			Vector3->New(1.0, 2.0, 1.0), white);
+
+		Check("a box is solid by default", pillar->IsSolid());
+		Check("a point inside a solid box is blocked", scene->Blocked(0.0, 0.0, 0.1));
+		Check("and a point well outside is not", <>scene->Blocked(8.0, 8.0, 0.1));
+
+		# The radius is the mover's, so it blocks before the centre is inside.
+		Check("a wide mover is blocked before its centre arrives",
+			scene->Blocked(1.6, 0.0, 0.8));
+		Check("while a narrow one at the same place is not",
+			<>scene->Blocked(1.6, 0.0, 0.1));
+
+		Check("OverlapsXZ agrees with Blocked",
+			pillar->OverlapsXZ(0.0, 0.0, 0.1) & <>pillar->OverlapsXZ(8.0, 8.0, 0.1));
+
+		# THE height assertion. A point far ABOVE the box is still blocked,
+		# because the test ignores y entirely. Anyone reading Blocked as a 3D
+		# containment test writes a floor that stops everything, and this is the
+		# check that says so out loud.
+		Check("collision ignores height -- a point above a box is still blocked",
+			scene->Blocked(0.0, 0.0, 0.1));
+
+		# --- the solid flag ----------------------------------------------------
+		pillar->SetSolid(false);
+		Check("a box marked non-solid stops blocking", <>scene->Blocked(0.0, 0.0, 0.1));
+		Check("and says it is not solid", <>pillar->IsSolid());
+		pillar->SetSolid(true);
+		Check("and blocks again once solid", scene->Blocked(0.0, 0.0, 0.1));
+
+		# --- the floor trap, exactly as it bit ---------------------------------
+		# A floor spanning the whole area. Solid, it overlaps every position there
+		# is and nothing can move at all; non-solid, it is drawn and ignored.
+		floor := scene->AddBox(Vector3->New(0.0, -0.5, 0.0),
+			Vector3->New(20.0, 0.5, 20.0), white);
+
+		walker := Camera->New(Vector3->New(6.0, 1.7, 6.0));
+		before_x := walker->GetPosition()->GetX();
+		scene->SlideMove(walker, 0.5, 0.0, 0.4);
+		stuck := (walker->GetPosition()->GetX() - before_x)->Abs() < 0.001;
+		Check("a SOLID floor freezes the player in place", stuck);
+
+		floor->SetSolid(false);
+		before_z := walker->GetPosition()->GetZ();
+		scene->SlideMove(walker, 0.5, 0.0, 0.4);
+		moved := (walker->GetPosition()->GetZ() - before_z)->Abs();
+		"  after marking the floor non-solid the player moved {$moved}"->PrintLine();
+		Check("and a non-solid one lets them walk", moved > 0.1);
+
+		# --- sliding, which is the point of SlideMove --------------------------
+		# Walk diagonally into the pillar. The blocked axis drops and the other
+		# gets through -- a version that tested the combined vector would stop
+		# dead, and both axes would read zero.
+		# Started ADJACENT to the pillar, not four units away. The pillar spans
+		# z -1..1 and the mover's radius is 0.4, so contact begins at z = 1.4 --
+		# from z = 4.0 a half-unit step never touches it and both axes move
+		# freely, which is how the first version of this check passed without
+		# testing anything.
+		slider := Camera->New(Vector3->New(0.0, 1.7, 1.6));
+		slider->LookAtPoint(Vector3->New(0.0, 1.7, 0.0));
+		start_x := slider->GetPosition()->GetX();
+		start_z := slider->GetPosition()->GetZ();
+
+		# Forward is -z here, straight at the pillar; strafing moves along x.
+		scene->SlideMove(slider, 0.5, 0.5, 0.4);
+		slid_x := (slider->GetPosition()->GetX() - start_x)->Abs();
+		slid_z := (slider->GetPosition()->GetZ() - start_z)->Abs();
+		"  diagonal into a pillar: moved x={$slid_x} z={$slid_z}"->PrintLine();
+
+		# THE assertion: the blocked axis drops and the free one gets through.
+		# Testing the combined vector instead stops the mover dead and BOTH read
+		# zero, which is exactly what sliding is not.
+		Check("the axis into the box is blocked", slid_z < 0.01);
+		Check("while the one across it still moves", slid_x > 0.4);
+
+		# --- tunnelling, which is real and documented --------------------------
+		# A step larger than the obstacle is not detected, because SlideMove tests
+		# the destination rather than the path. Asserted rather than hidden: it is
+		# the reason GetDelta clamps and the reason thin walls are a mistake.
+		far_walker := Camera->New(Vector3->New(0.0, 1.7, 4.0));
+		far_walker->LookAtPoint(Vector3->New(0.0, 1.7, 0.0));
+		scene->SlideMove(far_walker, 8.0, 0.0, 0.4);
+		went_through := far_walker->GetPosition()->GetZ() < -1.0;
+		Check("a step far larger than the box passes through it -- known, and why GetDelta clamps",
+			went_through);
+
+		shader->Free();
+		cube->Free();
+		white->Free();
+	}
+
+	#~
+	Non-indexed drawing, and the polygon offset.
+
+	Both have a way of passing while doing nothing, and both are guarded against
+	it here.
+
+	An unindexed mesh drawn through glDrawElements against a stale index buffer
+	would render SOMETHING, so "a triangle appeared" is not the assertion -- the
+	assertion is that a second triangle, reachable only by reading vertices 3, 4
+	and 5 in order, also appeared.
+
+	And a polygon offset that is never applied leaves two coplanar surfaces
+	fighting, which on this machine may resolve either way and look stable. So
+	the check reads the pixel that only the OFFSET surface can own, and the
+	control is the same pair drawn with the offset disabled.
+	~#
+	method : CheckArraysAndOffset() ~ Nil {
+		shader := Shader->Textured();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a shader and texture for the array checks",
+				shader->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		# Two triangles, six vertices, NO index list. Position, normal, texcoord --
+		# the layout the built-in primitives use.
+		#
+		# Left triangle spans x -0.9..-0.1, right spans 0.1..0.9, both around y 0.
+		verts := [
+			-0.9, -0.3, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0,
+			-0.1, -0.3, 0.0,  0.0, 0.0, 1.0,  1.0, 0.0,
+			-0.5,  0.3, 0.0,  0.0, 0.0, 1.0,  0.5, 1.0,
+			 0.1, -0.3, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0,
+			 0.9, -0.3, 0.0,  0.0, 0.0, 1.0,  1.0, 0.0,
+			 0.5,  0.3, 0.0,  0.0, 0.0, 1.0,  0.5, 1.0];
+
+		strip := Mesh->New(verts, [3, 3, 2]);
+		if(<>Check("a mesh with no index list uploads", strip->IsOk())) {
+			reason := GL->GetLastError();
+			"  reason: {$reason}"->PrintLine();
+			return;
+		};
+
+		identity := Float->New[16];
+		Matrix4->IdentityInto(identity);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		GL->Disable(Capability->GL_CULL_FACE);
+		shader->Use();
+		shader->SetMatrix4("mvp", identity);
+		shader->SetInt("tex", 0);
+		white->Bind(0);
+		strip->Draw();
+
+		black := 0xFF000000;
+		left := GL->ReadPixel(@pixel_w / 4, @pixel_h / 2);
+		right := GL->ReadPixel((@pixel_w * 3) / 4, @pixel_h / 2);
+		"  unindexed: left=0x{$left} right=0x{$right}"->PrintLine();
+
+		Check("an unindexed mesh draws", left <> black);
+		# THE assertion. The second triangle exists only if vertices 3, 4 and 5
+		# were read in order -- which is what glDrawArrays does and what a stale
+		# or absent index buffer cannot fake.
+		Check("and draws EVERY vertex, not just the first triangle", right <> black);
+
+		Check("no GL errors from the unindexed draw",
+			GL->GetError() = ErrorCode->GL_NO_ERROR);
+
+		# An unindexed mesh drawn as lines still works: the topology is the
+		# caller's to choose, the index buffer's absence is not a restriction.
+		#
+		# Width 1.0, which is the only one a core profile guarantees. Asking for 3
+		# here is what turned linux-x64 red while this check passed on Windows:
+		# Mesa refuses a wide line with GL_INVALID_VALUE and NVIDIA accepts it, and
+		# the error then belonged to the line width rather than to the draw.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		GL->SetLineWidth(1.0);
+		strip->Draw(DrawMode->GL_LINES);
+		Check("and honours a draw mode", GL->GetError() = ErrorCode->GL_NO_ERROR);
+
+		# A width the context may refuse must not leave a GL error standing for
+		# something else to trip over. Whether it is accepted is the driver's
+		# business; that the next check is unpolluted is this bundle's.
+		GL->SetLineWidth(6.0);
+		Check("a refused line width does not poison the next error check",
+			GL->GetError() = ErrorCode->GL_NO_ERROR);
+		GL->SetLineWidth(1.0);
+
+		# --- the polygon offset -------------------------------------------------
+		#
+		# Two full-screen quads at exactly the same depth. Without an offset the
+		# winner is decided by floating-point noise; with one, the offset surface
+		# owns the pixel.
+		quad := Mesh->Quad(1.0);
+		red := Texture2D->Solid(0xFFFF0000);
+		blue := Texture2D->Solid(0xFF0000FF);
+
+		Check("the offset capability is off to begin with",
+			<>GL->IsEnabled(Capability->GL_POLYGON_OFFSET_FILL));
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		GL->Enable(Capability->GL_DEPTH_TEST);
+		shader->Use();
+		shader->SetMatrix4("mvp", identity);
+		shader->SetInt("tex", 0);
+
+		# The red one first, writing depth.
+		red->Bind(0);
+		quad->Draw();
+
+		# The blue one at the SAME depth, pulled towards the viewer. Depth
+		# defaults to GL_LESS, so without the offset this loses; with it, it wins.
+		GL->Enable(Capability->GL_POLYGON_OFFSET_FILL);
+		GL->SetPolygonOffset(-1.0, -1.0);
+		blue->Bind(0);
+		quad->Draw();
+		GL->Disable(Capability->GL_POLYGON_OFFSET_FILL);
+
+		offset_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		ob := (offset_pixel and 0x000000FF);
+		orr := (offset_pixel and 0x00FF0000) / 0x10000;
+		"  with offset: r={$orr} b={$ob}"->PrintLine();
+
+		# THE assertion: the offset surface won.
+		Check("a negative polygon offset pulls a coplanar surface in front",
+			ob > orr);
+
+		# The control. Same two draws, no offset -- the second must LOSE, which
+		# is what proves the check above measured the offset rather than the
+		# draw order.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		red->Bind(0);
+		quad->Draw();
+		blue->Bind(0);
+		quad->Draw();
+
+		plain := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		pb := (plain and 0x000000FF);
+		pr := (plain and 0x00FF0000) / 0x10000;
+		"  without offset: r={$pr} b={$pb}"->PrintLine();
+		Check("while without one the coplanar surface loses to GL_LESS", pr > pb);
+
+		Check("no GL errors from the offset pass",
+			GL->GetError() = ErrorCode->GL_NO_ERROR);
+
+		GL->Enable(Capability->GL_CULL_FACE);
+
+		strip->Free();
+		quad->Free();
+		red->Free();
+		blue->Free();
+		white->Free();
+		shader->Free();
+	}
+
+	#~
+	Particles.
+
+	Counting alive slots is the easy half and proves almost nothing -- a system
+	that tracks lives correctly and never moves a single particle passes every
+	bookkeeping check there is. So the assertions here are about POSITION: that a
+	velocity actually displaces something, that gravity bends it downwards, that
+	drag shortens the distance travelled, and that a retired particle is somewhere
+	the camera cannot see.
+	~#
+	method : CheckParticles() ~ Nil {
+		system := Particles->New(8);
+		if(<>Check("Particles->New builds a working system", system->IsOk())) {
+			reason := system->GetError();
+			"  reason: {$reason}"->PrintLine();
+			return;
+		};
+
+		Check("a new system has capacity", system->GetCapacity() = 8);
+		Check("and nothing alive", system->GetAlive() = 0);
+
+		system->SetLifetime(1.0);
+		system->SetSize(0.5, 0.1);
+		system->SetGravity(0.0);
+		system->SetDrag(0.0);
+
+		# --- one particle, moving --------------------------------------------
+		system->Emit(0.0, 0.0, 0.0, 2.0, 0.0, 0.0);
+		Check("emitting makes one alive", system->GetAlive() = 1);
+
+		at := system->GetBatch()->Get(0);
+		Check("and it starts where it was emitted",
+			at->GetX()->Abs() < 0.0001 & at->GetY()->Abs() < 0.0001);
+		Check("at the start size",
+			(at->GetScaleX() - 0.5)->Abs() < 0.0001);
+
+		system->Update(0.5);
+		moved := at->GetX();
+		"  after 0.5s at 2 units/s: x={$moved}"->PrintLine();
+		# THE assertion: velocity displaces it. A system that ages particles and
+		# never integrates their motion passes every count-based check above.
+		Check("a velocity actually moves the particle",
+			(moved - 1.0)->Abs() < 0.01);
+		Check("and it shrinks towards the end size", at->GetScaleX() < 0.5);
+		Check("while staying alive mid-life", system->GetAlive() = 1);
+
+		system->Update(0.6);
+		Check("and retires once its life runs out", system->GetAlive() = 0);
+		Check("parked well below the world", at->GetY() < -1000.0);
+		Check("at zero size", at->GetScaleX() = 0.0);
+
+		# --- gravity ------------------------------------------------------------
+		system->Clear();
+		system->SetGravity(-10.0);
+		system->Emit(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+		system->Update(0.5);
+
+		# Find whichever slot is alive rather than assuming an index.
+		lowest := 0.0;
+		gravity_batch := system->GetBatch();
+		for(i := 0; i < gravity_batch->GetCount(); i += 1;) {
+			slot := gravity_batch->Get(i);
+			if(slot->GetY() > -1000.0) {
+				if(slot->GetY() < lowest) {
+					lowest := slot->GetY();
+				};
+			};
+		};
+		"  after 0.5s under gravity: y={$lowest}"->PrintLine();
+		Check("gravity pulls a particle downwards", lowest < -0.5);
+
+		# --- drag ---------------------------------------------------------------
+		system->Clear();
+		system->SetGravity(0.0);
+		system->SetDrag(0.0);
+		system->Emit(0.0, 0.0, 0.0, 4.0, 0.0, 0.0);
+		system->Update(0.5);
+		far := FurthestX(system);
+
+		system->Clear();
+		system->SetDrag(3.0);
+		system->Emit(0.0, 0.0, 0.0, 4.0, 0.0, 0.0);
+		system->Update(0.5);
+		near := FurthestX(system);
+		"  travelled in 0.5s: no drag={$far}  with drag={$near}"->PrintLine();
+		Check("drag shortens the distance travelled", near < far);
+		Check("but does not stop it dead", near > 0.0);
+		system->SetDrag(0.0);
+
+		# --- the pool does not grow ---------------------------------------------
+		system->Clear();
+		before := system->GetBatch()->GetCount();
+		for(i := 0; i < 40; i += 1;) {
+			system->Emit(0.0, 0.0, 0.0);
+		};
+		Check("emitting past capacity never grows the pool",
+			system->GetBatch()->GetCount() = before);
+		Check("and never exceeds it", system->GetAlive() <= 8);
+		Check("while filling it", system->GetAlive() = 8);
+
+		system->Clear();
+		Check("Clear retires everything", system->GetAlive() = 0);
+
+		# --- a burst -------------------------------------------------------------
+		system->Burst(0.0, 0.0, 0.0, 5, 2.0);
+		Check("a burst emits the number asked for", system->GetAlive() = 5);
+
+		# The spray must actually spread: every particle leaving in the SAME
+		# direction is what a broken random gives, and the count would be right.
+		system->Update(0.2);
+		spread := Spread(system);
+		"  burst spread across x: {$spread}"->PrintLine();
+		Check("and they leave in different directions", spread > 0.05);
+
+		# --- it draws -------------------------------------------------------------
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		camera->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		system->SetCamera(camera);
+		system->SetTexture(Texture2D->Solid(0xFFFFFFFF));
+		system->SetSize(1.2, 1.2);
+
+		black := 0xFF000000;
+		system->Clear();
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		system->Draw(camera->GetViewProjection());
+		Check("an empty system draws nothing",
+			GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) = black);
+
+		system->Emit(0.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		system->Draw(camera->GetViewProjection());
+		Check("and a live particle draws",
+			GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) <> black);
+
+		Check("no GL errors from the particle pass",
+			GL->GetError() = ErrorCode->GL_NO_ERROR);
+
+		system->Free();
+		system->Free();
+		Check("Particles->Free is idempotent", true);
+	}
+
+	#~
+	The largest x any live particle has reached.
+	~#
+	method : FurthestX(system : Particles) ~ Float {
+		best := 0.0;
+		batch := system->GetBatch();
+		for(i := 0; i < batch->GetCount(); i += 1;) {
+			at := batch->Get(i);
+			if(at->GetY() > -1000.0) {
+				if(at->GetX() > best) {
+					best := at->GetX();
+				};
+			};
+		};
+
+		return best;
+	}
+
+	#~
+	How far apart the live particles are on the x axis -- zero when they all left
+	in the same direction.
+	~#
+	method : Spread(system : Particles) ~ Float {
+		low := 0.0;
+		high := 0.0;
+		batch := system->GetBatch();
+		for(i := 0; i < batch->GetCount(); i += 1;) {
+			at := batch->Get(i);
+			if(at->GetY() > -1000.0) {
+				if(at->GetX() < low) { low := at->GetX(); };
+				if(at->GetX() > high) { high := at->GetX(); };
+			};
+		};
+
+		return high - low;
+	}
+
+	#~
+	Animation: a transform hierarchy, and keyframed values.
+
+	The hierarchy half has a specific way of half-working. Composing parent times
+	local inside Transform is the easy part; the part that is easy to MISS is that
+	everything which actually draws -- Prop, PropBatch, both shadow casters -- was
+	reading the LOCAL matrix, so parenting could be completely correct and
+	completely invisible. The last block draws a parented prop and reads the
+	pixel, which is the only check here that would have caught that.
+	~#
+	method : CheckAnimation() ~ Nil {
+		# --- a transform on its own -------------------------------------------
+		lone := Transform->New();
+		lone->SetPosition(1.0, 2.0, 3.0);
+		Check("an unparented transform has no parent", <>lone->HasParent());
+		Check("and its world matrix is its local one",
+			WorldX(lone) = 1.0 & WorldY(lone) = 2.0 & WorldZ(lone) = 3.0);
+
+		# --- one level ---------------------------------------------------------
+		parent := Transform->New();
+		parent->SetPosition(5.0, 0.0, 0.0);
+
+		child := Transform->New();
+		child->SetPosition(0.0, 1.0, 0.0);
+		Check("SetParent succeeds", child->SetParent(parent));
+		Check("and the child knows its parent", child->GetParent() = parent);
+
+		# THE composition assertion. A child that ignored its parent would still
+		# be at (0,1,0), which is a perfectly plausible-looking wrong answer.
+		cx := WorldX(child); cy := WorldY(child);
+		"  child under a parent at x=5: world ({$cx}, {$cy})"->PrintLine();
+		Check("the child sits at parent plus local",
+			(cx - 5.0)->Abs() < 0.0001 & (cy - 1.0)->Abs() < 0.0001);
+
+		# Moving the parent moves the child, with nothing notifying anything.
+		parent->SetPosition(-2.0, 0.0, 0.0);
+		Check("moving the parent moves the child",
+			(WorldX(child) + 2.0)->Abs() < 0.0001);
+
+		# Turning the parent swings the child around it. A quarter turn about y
+		# takes a child at +1 on y... nowhere, so the child goes out on z where
+		# the rotation is visible.
+		parent->SetPosition(0.0, 0.0, 0.0);
+		child->SetPosition(0.0, 0.0, 2.0);
+		before_x := WorldX(child);
+		parent->SetRotation(1.5707963, 0.0, 0.0);
+		after_x := WorldX(child);
+		"  child at z=2 after a quarter turn: x {$before_x} -> {$after_x}"->PrintLine();
+		Check("turning the parent swings the child around it",
+			before_x->Abs() < 0.0001 & after_x->Abs() > 1.9);
+
+		# --- three levels, and the change that has to travel --------------------
+		parent->SetRotation(0.0, 0.0, 0.0);
+		parent->SetPosition(0.0, 0.0, 0.0);
+		child->SetPosition(1.0, 0.0, 0.0);
+
+		grandchild := Transform->New();
+		grandchild->SetPosition(1.0, 0.0, 0.0);
+		grandchild->SetParent(child);
+		Check("a grandchild composes the whole chain",
+			(WorldX(grandchild) - 2.0)->Abs() < 0.0001);
+
+		# THE propagation assertion: a change at the TOP must reach the leaf, and
+		# nothing registered as a listener anywhere.
+		parent->SetPosition(10.0, 0.0, 0.0);
+		leaf := WorldX(grandchild);
+		"  after moving the root to x=10, the grandchild is at {$leaf}"->PrintLine();
+		Check("a change three levels up reaches the leaf",
+			(leaf - 12.0)->Abs() < 0.0001);
+
+		# --- cycles are refused --------------------------------------------------
+		Check("a transform cannot be its own parent", <>parent->SetParent(parent));
+		# The one that would recurse until the stack ran out.
+		Check("and cannot be parented to its own descendant",
+			<>parent->SetParent(grandchild));
+		Check("the refusal leaves the existing parent alone",
+			grandchild->GetParent() = child);
+
+		Check("SetParent(Nil) returns it to world space",
+			grandchild->SetParent(Nil) & <>grandchild->HasParent());
+		Check("and it is back at its local position",
+			(WorldX(grandchild) - 1.0)->Abs() < 0.0001);
+
+		# --- scale composes -------------------------------------------------------
+		scaler := Transform->New();
+		scaler->SetScale(2.0, 2.0, 2.0);
+		scaled_child := Transform->New();
+		scaled_child->SetPosition(1.0, 0.0, 0.0);
+		scaled_child->SetParent(scaler);
+		Check("a parent's scale scales the child's offset",
+			(WorldX(scaled_child) - 2.0)->Abs() < 0.0001);
+
+		# --- and it reaches the screen ---------------------------------------------
+		CheckParentedDraw();
+
+		# --- Track ------------------------------------------------------------------
+		empty := Track->New();
+		Check("an empty track samples zero", empty->Sample(1.0) = 0.0);
+		Check("and has no duration", empty->GetDuration() = 0.0);
+
+		single := Track->New();
+		single->Add(2.0, 7.0);
+		Check("a one-key track holds that value everywhere",
+			single->Sample(0.0) = 7.0 & single->Sample(99.0) = 7.0);
+
+		ramp := Track->New(2.0, 0.0, 10.0);
+		Check("the two-argument form builds two keys", ramp->GetCount() = 2);
+		Check("with the duration asked for", ramp->GetDuration() = 2.0);
+		Check("linear halfway is halfway", (ramp->Sample(1.0) - 5.0)->Abs() < 0.0001);
+		Check("before the start holds the first value", ramp->Sample(-5.0) = 0.0);
+		Check("after the end holds the last", ramp->Sample(50.0) = 10.0);
+
+		# Keys out of order, which Add has to sort.
+		jumbled := Track->New();
+		jumbled->Add(2.0, 20.0);
+		jumbled->Add(0.0, 0.0);
+		jumbled->Add(1.0, 10.0);
+		Check("keys added out of order are sorted", jumbled->GetCount() = 3);
+		Check("and read back in time order",
+			jumbled->GetKeyTime(0) = 0.0 & jumbled->GetKeyTime(2) = 2.0);
+		# THE assertion for sorting: sampling BETWEEN the out-of-order keys. A
+		# track that merely appended would interpolate across the wrong pair and
+		# still return something.
+		Check("so a sample between them is right",
+			(jumbled->Sample(0.5) - 5.0)->Abs() < 0.0001 &
+			(jumbled->Sample(1.5) - 15.0)->Abs() < 0.0001);
+
+		jumbled->Add(1.0, 99.0);
+		Check("a key at an existing time replaces rather than duplicating",
+			jumbled->GetCount() = 3 & jumbled->Sample(1.0) = 99.0);
+
+		# --- easing -------------------------------------------------------------------
+		eased := Track->New(1.0, 0.0, 100.0);
+		eased->SetEasing(Easing->EASE_IN_OUT);
+		quarter := eased->Sample(0.25);
+		half := eased->Sample(0.5);
+		"  ease-in-out at 0.25 = {$quarter}, at 0.5 = {$half}"->PrintLine();
+		Check("smoothstep is symmetric about the middle",
+			(half - 50.0)->Abs() < 0.0001);
+		# THE easing assertion: it must actually BEND. A linear track reads 25 at
+		# a quarter, so anything near 25 means the easing did nothing.
+		Check("and moves slower than linear early on", quarter < 20.0);
+
+		eased->SetEasing(Easing->EASE_IN);
+		Check("ease-in starts slower still", eased->Sample(0.25) < quarter);
+
+		eased->SetEasing(Easing->STEP);
+		Check("step holds the earlier key", eased->Sample(0.9) = 0.0);
+		Check("and still lands on the last one at the end", eased->Sample(1.0) = 100.0);
+
+		# --- looping ---------------------------------------------------------------------
+		cycle := Track->New(2.0, 0.0, 20.0);
+		cycle->SetLoop(true);
+		Check("a looping track wraps past its end",
+			(cycle->Sample(3.0) - 10.0)->Abs() < 0.0001);
+		Check("and wraps again further out",
+			(cycle->Sample(5.0) - 10.0)->Abs() < 0.0001);
+		# Negative time is what a track running backwards produces, and the naive
+		# single modulo lands outside the span on the low side.
+		Check("and handles time before zero",
+			(cycle->Sample(-1.0) - 10.0)->Abs() < 0.0001);
+
+		# --- growth past the initial capacity ---------------------------------------------
+		many := Track->New();
+		for(i := 0; i < 20; i += 1;) {
+			many->Add(i->As(Float), i->As(Float) * 2.0);
+		};
+		Check("a track grows past its initial capacity", many->GetCount() = 20);
+		Check("keeping every key", (many->Sample(19.0) - 38.0)->Abs() < 0.0001);
+		Check("and still interpolating between them",
+			(many->Sample(4.5) - 9.0)->Abs() < 0.0001);
+	}
+
+	#~
+	x, y and z of a transform's WORLD matrix. Translation lives at 12, 13 and 14
+	in a column-major matrix.
+	~#
+	method : WorldX(at : Transform) ~ Float { return at->GetWorldMatrix()[12]; }
+	method : WorldY(at : Transform) ~ Float { return at->GetWorldMatrix()[13]; }
+	method : WorldZ(at : Transform) ~ Float { return at->GetWorldMatrix()[14]; }
+
+	#~
+	Does a parented prop DRAW where the hierarchy puts it?
+
+	The check that would have caught the real gap: composing correctly inside
+	Transform while every draw path still read the local matrix. A prop offset
+	from its parent must appear where the parent puts it, not where its own
+	position says.
+	~#
+	method : CheckParentedDraw() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube(0.35);
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the parented-draw check",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		rig := LightRig->New();
+		rig->SetAmbient(1.0, 1.0, 1.0);
+		scene->SetLightRig(rig);
+		scene->SetCulling(false);
+
+		# The prop's OWN position is the origin -- dead centre of the view. Its
+		# parent is off to the left. If the draw path reads the local matrix the
+		# cube appears in the middle; if it reads the world matrix it appears left.
+		hub := Transform->New();
+		hub->SetPosition(-2.2, 0.0, 0.0);
+
+		prop := scene->AddProp(Prop->New(cube, Material->New(white)));
+		prop->GetTransform()->SetPosition(0.0, 0.0, 0.0);
+		prop->GetTransform()->SetParent(hub);
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 6.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		scene->Draw(eye->GetViewProjection());
+
+		black := 0xFF000000;
+		centre := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		left := GL->ReadPixel((@pixel_w * 22) / 100, @pixel_h / 2);
+		"  parented prop: centre=0x{$centre} left=0x{$left}"->PrintLine();
+
+		Check("a parented prop draws where its PARENT puts it", left <> black);
+		Check("and not where its own position says", centre = black);
+
+		shader->Free();
+		cube->Free();
+		white->Free();
 	}
 
 	#~

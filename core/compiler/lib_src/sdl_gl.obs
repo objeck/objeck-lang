@@ -127,6 +127,22 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	How a Track moves between two keys.
+	~#
+	consts Easing {
+		LINEAR := 0,
+		# Starts slow. For something building up speed -- a falling lid, a launch.
+		EASE_IN := 1,
+		# Ends slow. For something arriving -- a door settling, a camera stopping.
+		EASE_OUT := 2,
+		# Slow at both ends, which is what almost all deliberate motion does and
+		# the single most useful one here.
+		EASE_IN_OUT := 3,
+		# No interpolation at all: holds the earlier key until the next arrives.
+		STEP := 4
+	}
+
+	#~
 	Comparison functions, for the stencil test and glDepthFunc.
 	~#
 	consts CompareFunc {
@@ -192,7 +208,11 @@ bundle Game.OpenGL {
 		# The stencil buffer has been requested since the window gained one, and
 		# until now there was no way to TEST against it -- so it could be cleared
 		# and nothing else.
-		GL_STENCIL_TEST := 0x0B90
+		GL_STENCIL_TEST := 0x0B90,
+		# Nudges filled polygons in DEPTH without moving them on screen, which is
+		# how a decal sits on a wall instead of fighting with it. Only takes effect
+		# alongside GL->SetPolygonOffset.
+		GL_POLYGON_OFFSET_FILL := 0x8037
 	}
 
 	#~
@@ -296,6 +316,48 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Shift filled polygons in depth, without moving them on screen.
+
+		The fix for two surfaces at the same depth flickering against each other --
+		a decal on a wall, a shadow on a floor, a highlight over a tile. Both are
+		at the same z, the winner is decided by floating-point noise, and it
+		changes as the camera moves, which is what makes it read as flickering
+		rather than as a mistake.
+
+		Enable Capability->GL_POLYGON_OFFSET_FILL first; this call on its own does
+		nothing.
+
+		  GL->Enable(Capability->GL_POLYGON_OFFSET_FILL);
+		  GL->SetPolygonOffset(-1.0, -1.0);
+		  ... draw the decal ...
+		  GL->Disable(Capability->GL_POLYGON_OFFSET_FILL);
+
+		NEGATIVE values pull towards the viewer, which is what a decal wants.
+		Positive values push away, which is the other use: offsetting shadow
+		casters to trade one artefact for another.
+
+		Both terms matter and they are not interchangeable. `units` is a constant
+		nudge in depth-buffer steps; `factor` scales with how steeply the polygon
+		is sloped, which is the term that fixes a surface seen at a grazing angle
+		where a constant offset is not enough. -1.0, -1.0 is the usual starting
+		point.
+
+		Before this existed the only way to lift a decal off a surface was to move
+		it geometrically along the normal -- which works, and then breaks at
+		distance where the offset is smaller than a depth step, and looks like a
+		floating sticker up close.
+		@param factor scaled by the polygon's depth slope
+		@param units constant offset in depth-buffer units
+		~#
+		function : SetPolygonOffset(factor : Float, units : Float) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := FloatRef->New(factor);
+			array_args[1] := FloatRef->New(units);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_polygon_offset", array_args);
+		}
+
+		#~
 		How large a GL_POINTS vertex draws, in pixels.
 
 		Without this every point is one pixel, which is most of the reason
@@ -312,9 +374,20 @@ bundle Game.OpenGL {
 		#~
 		How thick GL_LINES draws, in pixels.
 
-		Drivers are allowed to support only 1.0 for antialiased lines, and many do
-		exactly that -- so treat anything above 1 as a request.
-		@param width thickness in pixels
+		Treat anything above 1.0 as a REQUEST, not a setting. A core profile is
+		allowed to refuse it outright with GL_INVALID_VALUE, and the two renderers
+		this bundle is tested on disagree: Mesa refuses 3.0, desktop NVIDIA accepts
+		it silently. A program that needs thick lines reliably has to draw them as
+		quads.
+
+		A refusal is REPORTED through GL->GetLastError and the GL error is consumed
+		here rather than left standing. That second part matters more than it
+		looks: GL errors persist until something reads them, so without it a single
+		wide-line request at startup would surface as a failure in the next
+		unrelated GetError call, anywhere in the program. This exact thing turned
+		one CI leg red while the check that failed was three blocks away from the
+		call that caused it.
+		@param width thickness in pixels; only 1.0 is guaranteed
 		~#
 		function : SetLineWidth(width : Float) ~ Nil {
 			array_args := Base->New[1];
@@ -2656,6 +2729,101 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Camera-facing quads, drawn many at a time.
+
+		A billboard is a quad that always turns to face the viewer, and it is what
+		a particle, a spark, a sprite enemy, a distant tree and a floating label
+		all are. None of them had any route here: every shader in this bundle puts
+		geometry where its model matrix says, and a billboard is defined by
+		refusing to.
+
+		Drive it with a PropBatch over Mesh->Quad, which is why this is the
+		instanced form and there is no single-billboard variant -- one sprite is a
+		batch of one, and a thousand are still one draw call.
+
+		  sparks := PropBatch->New(Mesh->Quad(0.5), Shader->BillboardInstanced());
+		  sparks->SetCamera(camera);
+		  sparks->SetAdditive(true);
+		  sparks->SetMaterial(Material->New(spark_texture));
+
+		## How it faces you
+
+		The instance matrix supplies the CENTRE and the SIZE and its rotation is
+		ignored: the quad's corners are rebuilt in world space from the camera's
+		own right and up vectors, which are the first two ROWS of the view
+		matrix's upper 3x3. So SetScale(w, h, 1.0) on an instance's transform sets
+		the sprite's width and height, and turning it does nothing -- deliberately.
+
+		This is why SetCamera exists on PropBatch. The batch is handed a
+		view_projection by Scene and that alone cannot be decomposed back into the
+		camera's basis, so the view matrix comes separately.
+
+		Uniforms: "view_projection", "view", the sampler "tex", "tint" and
+		"opacity" -- the last two being what Material writes, so a material works
+		here exactly as it does on a lit prop.
+
+		Fragments below 2% alpha are DISCARDED rather than blended, so a sprite
+		sheet's transparent border does not write depth and punch holes in whatever
+		is drawn after it.
+		@return the program; check IsOk()
+		~#
+		function : BillboardInstanced() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("layout (location = 1) in vec3 in_normal;");
+			vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+			# four consecutive vec4 slots, which is how a mat4 attribute is declared
+			vertex->Add("layout (location = 3) in mat4 in_model;");
+			vertex->Add("uniform mat4 view_projection;");
+			vertex->Add("uniform mat4 view;");
+			vertex->Add("out vec2 texcoord;");
+			vertex->Add("void main() {");
+			vertex->Add("  vec3 centre = in_model[3].xyz;");
+			# Column lengths are the scale, whatever rotation was also baked in.
+			vertex->Add("  float sx = length(in_model[0].xyz);");
+			vertex->Add("  float sy = length(in_model[1].xyz);");
+			# mat4 indexing in GLSL is by COLUMN, so a row is one component from
+			# each of three columns. These two rows are the camera's right and up
+			# in world space.
+			vertex->Add("  vec3 right = vec3(view[0][0], view[1][0], view[2][0]);");
+			vertex->Add("  vec3 up = vec3(view[0][1], view[1][1], view[2][1]);");
+			vertex->Add("  vec3 world = centre + right * (in_position.x * sx) + up * (in_position.y * sy);");
+			vertex->Add("  texcoord = in_texcoord;");
+			vertex->Add("  gl_Position = view_projection * vec4(world, 1.0);");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec2 texcoord;");
+			fragment->Add("uniform sampler2D tex;");
+			fragment->Add("uniform vec3 tint;");
+			fragment->Add("uniform float opacity;");
+			fragment->Add("out vec4 frag_color;");
+			fragment->Add("void main() {");
+			fragment->Add("  vec4 sampled = texture(tex, texcoord);");
+			fragment->Add("  sampled.rgb *= tint;");
+			fragment->Add("  sampled.a *= opacity;");
+			fragment->Add("  if(sampled.a < 0.02) { discard; }");
+			fragment->Add("  frag_color = sampled;");
+			fragment->Add("}");
+
+			built := Shader->New(vertex->Build(), fragment->Build());
+
+			# Both default to ZERO in GLSL, so a program that never set them would
+			# draw black at alpha 0 -- invisible, with nothing reported. The lit
+			# presets learned this the hard way; the same guard belongs here.
+			if(built->IsOk()) {
+				if(built->HasUniform("tint")) {
+					built->SetVec3("tint", 1.0, 1.0, 1.0);
+				};
+				if(built->HasUniform("opacity")) {
+					built->SetFloat("opacity", 1.0);
+				};
+			};
+
+			return built;
+		}
+
+		#~
 		The depth pass for a point light: writes DISTANCE from the light, in world
 		units, rather than the usual projected depth.
 
@@ -3112,6 +3280,36 @@ bundle Game.OpenGL {
 		@param layout component count per attribute, in shader location order
 		~#
 		New(vertices : Float[], indices : Int[], layout : Int[]) {
+			Build(vertices, indices, layout);
+		}
+
+		#~
+		Upload geometry with NO index buffer.
+
+		The vertices are drawn in the order they are given, which is what a point
+		cloud, a particle buffer, a debug line list and most generated geometry
+		actually want. Building 0, 1, 2, 3, ... by hand purely to satisfy
+		glDrawElements costs a second buffer and a loop to express the default.
+
+		Which draw call is used is decided by the MESH, not by the caller: one
+		built with indices always draws through them and one built without never
+		does, so there is no way to ask for the wrong one.
+
+		The vertex order still has to suit the topology -- six vertices drawn as
+		GL_TRIANGLES are two triangles, and drawn as GL_LINES are three separate
+		segments.
+		@param vertices interleaved vertex data
+		@param layout component count per attribute, in shader location order
+		~#
+		New(vertices : Float[], layout : Int[]) {
+			Build(vertices, Int->New[0], layout);
+		}
+
+		#~
+		What both constructors do. Objeck constructors cannot delegate to one
+		another, so the body lives here rather than being written twice.
+		~#
+		method : Build(vertices : Float[], indices : Int[], layout : Int[]) ~ Nil {
 			@mesh := 0;
 			Measure(vertices, layout);
 
@@ -5209,6 +5407,81 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		The ray running through a point on the screen, in world space.
+
+		Scene->Raycast could already answer "what is in front of the camera", but
+		only along the camera's own forward vector -- the middle of the screen. A
+		mouse pick, a click-to-select, a drag onto a tile: all of them start from
+		a PIXEL, and there was no way to turn one into a direction.
+
+		Pass mouse coordinates and the WINDOW size, not the drawable size. Both
+		come from the same space -- GetMouseX against GetWidth -- and mixing points
+		with high-DPI pixels doubles the offset on a Retina display in a way that
+		looks like a calibration error rather than a unit mismatch.
+		@param x pixel across, from the left
+		@param y pixel down, from the TOP
+		@param width the window's width
+		@param height the window's height
+		@return a unit direction; the camera's forward vector if the view cannot
+		be inverted, which keeps callers off a Nil check
+		~#
+		method : public : ScreenRay(x : Int, y : Int, width : Int, height : Int) ~ Vector3 {
+			if(width <= 0 | height <= 0) {
+				return ForwardVector();
+			};
+
+			# Pixels to normalised device coordinates. The y axis flips: pixels
+			# count down from the top of the window, NDC counts up from the bottom.
+			ndc_x := (2.0 * x->As(Float)) / width->As(Float) - 1.0;
+			ndc_y := 1.0 - (2.0 * y->As(Float)) / height->As(Float);
+
+			inverse := Float->New[16];
+			if(<>Matrix4->InverseInto(inverse, GetViewProjection())) {
+				return ForwardVector();
+			};
+
+			# One point on the near plane and one on the far plane. The ray is the
+			# line between them -- which is why this works for an ORTHOGRAPHIC
+			# projection too, where every screen point has a different origin and
+			# the same direction.
+			near := Unproject(inverse, ndc_x, ndc_y, -1.0);
+			far := Unproject(inverse, ndc_x, ndc_y, 1.0);
+			if(near = Nil | far = Nil) {
+				return ForwardVector();
+			};
+
+			direction := Vector3->New(far->GetX() - near->GetX(),
+				far->GetY() - near->GetY(), far->GetZ() - near->GetZ());
+			if(direction->Length() = 0.0) {
+				return ForwardVector();
+			};
+
+			return direction->Normalized();
+		}
+
+		#~
+		Where a point on the near or far plane lands in world space.
+
+		The perspective divide is the part that matters: the inverse of a
+		projection is not an affine transform, so w comes back as something other
+		than 1 and dividing by it is what turns clip space into a world position.
+		~#
+		method : Unproject(inverse : Float[], x : Float, y : Float, z : Float) ~ Vector3 {
+			# Column-major, so element (row r, column c) is inverse[c * 4 + r] --
+			# which is why the strides below are 4 and the offsets are the row.
+			ox := inverse[0] * x + inverse[4] * y + inverse[8] * z + inverse[12];
+			oy := inverse[1] * x + inverse[5] * y + inverse[9] * z + inverse[13];
+			oz := inverse[2] * x + inverse[6] * y + inverse[10] * z + inverse[14];
+			ow := inverse[3] * x + inverse[7] * y + inverse[11] * z + inverse[15];
+
+			if(ow = 0.0) {
+				return Nil;
+			};
+
+			return Vector3->New(ox / ow, oy / ow, oz / ow);
+		}
+
+		#~
 		Projection times view, rebuilt from the current eye.
 
 		Returns the camera's own buffer rather than a fresh array, so a draw loop
@@ -6111,6 +6384,39 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Draw a texture as a rectangle, in pixels.
+
+		The missing verb. This overlay could draw text, filled rectangles and
+		lines, and the one thing an actual HUD is mostly made of -- an icon, a
+		portrait, a minimap, a health bar with a texture rather than a colour --
+		had no route, even though the private DrawTextured that Text and Rect both
+		call has been here since the overlay was written.
+
+		The current tint MULTIPLIES the texture, exactly as it does for text, so
+		SetTint(1.0, 1.0, 1.0, 1.0) draws it untouched and a lower alpha fades it.
+		@param texture what to draw; ignored when Nil or not ok
+		@param x left edge in pixels, measured from the left
+		@param y top edge in pixels, measured from the TOP
+		@param width how wide to draw it
+		@param height how tall to draw it
+
+		There is deliberately no form that omits the size. Texture2D holds a GL
+		handle and an ownership flag and does NOT know its own dimensions -- and
+		for one made by Wrapping or Adopt, around a handle something else created,
+		it cannot. Giving it a size means every construction path recording one and
+		the borrowed case admitting it has none, which is a change of its own.
+		~#
+		method : public : Image(texture : Texture2D, x : Int, y : Int,
+				width : Int, height : Int) ~ Nil {
+			if(texture = Nil | <>texture->IsOk()) {
+				return;
+			};
+
+			DrawTextured(texture, x, y, width, height);
+		}
+
+
+		#~
 		Colour for the next Rect, Line and Text, as 0..1 components.
 
 		This does NOT re-rasterise anything: it multiplies in the shader, so a
@@ -6885,7 +7191,9 @@ bundle Game.OpenGL {
 				return;
 			};
 
-			model := transform->GetMatrix();
+			# WORLD, not local: a caster hung off a parent must cast its shadow from
+			# where the hierarchy puts it.
+			model := transform->GetWorldMatrix();
 			Matrix4->MultiplyInto(@mvp, @view_projection, model);
 			@depth_shader->SetMatrix4("mvp", @mvp);
 			@depth_shader->SetMatrix4("model", model);
@@ -7406,7 +7714,7 @@ bundle Game.OpenGL {
 				return;
 			};
 
-			Matrix4->MultiplyInto(@mvp, GetLightSpaceMatrix(), transform->GetMatrix());
+			Matrix4->MultiplyInto(@mvp, GetLightSpaceMatrix(), transform->GetWorldMatrix());
 			@depth_shader->SetMatrix4("mvp", @mvp);
 			mesh->Draw();
 		}
@@ -8019,6 +8327,16 @@ bundle Game.OpenGL {
 		@sx : Float; @sy : Float; @sz : Float;
 		@matrix : Float[];
 		@dirty : Bool;
+		# The parent this transform hangs off, or Nil for one in world space.
+		@parent : Transform;
+		# Bumped every time @matrix is rebuilt. A child compares its parent's
+		# number against the one it last saw, which is how a change three levels up
+		# reaches a leaf without anything having to notify anybody.
+		@version : Int;
+		@parent_version : Int;
+		# Composed parent * local, kept apart from @matrix so the LOCAL transform
+		# is still readable after parenting.
+		@world : Float[];
 
 		#~
 		At the origin, unrotated, unscaled.
@@ -8029,6 +8347,10 @@ bundle Game.OpenGL {
 			@sx := 1.0; @sy := 1.0; @sz := 1.0;
 			@matrix := Float->New[16];
 			@dirty := true;
+			@parent := Nil;
+			@version := 1;
+			@parent_version := 0;
+			@world := Float->New[16];
 		}
 
 		#~
@@ -8154,18 +8476,125 @@ bundle Game.OpenGL {
 			if(@dirty) {
 				Rebuild();
 				@dirty := false;
+				# Children compare against this. Bumping it here rather than in
+				# every setter means one place to get right, and it costs nothing
+				# for a transform nobody has parented to.
+				@version += 1;
 			};
 
 			return @matrix;
 		}
 
 		#~
+		Hang this transform off another, so it moves when the parent does.
+
+		This is what makes articulated motion possible at all: a turret on a hull,
+		a hand on an arm, a moon around a planet. Without it every part has to have
+		its world position recomputed by the program each frame, which is the same
+		arithmetic written once per part rather than once.
+
+		Position, rotation and scale become RELATIVE to the parent. A child at
+		(0, 1, 0) under a parent at (5, 0, 0) is at (5, 1, 0) in the world, and
+		turning the parent swings the child around it.
+
+		A cycle is refused rather than accepted and then hung on: attaching a
+		transform to its own descendant would make GetWorldMatrix recurse until the
+		stack ran out, and the crash would name neither of the two transforms
+		involved.
+		@param parent the transform to hang off, or Nil to return to world space
+		@return true when attached; false when it would have made a cycle
+		~#
+		method : public : SetParent(parent : Transform) ~ Bool {
+			if(parent = @self) {
+				return false;
+			};
+
+			# Walk up from the proposed parent. Meeting self means the proposed
+			# parent is already below this transform.
+			walker := parent;
+			while(walker <> Nil) {
+				if(walker = @self) {
+					return false;
+				};
+
+				walker := walker->GetParent();
+			};
+
+			@parent := parent;
+			# Force the next read to compose afresh, whatever it saw before.
+			@parent_version := -1;
+			@dirty := true;
+
+			return true;
+		}
+
+		#~
+		@return the parent, or Nil when this transform is in world space
+		~#
+		method : public : GetParent() ~ Transform {
+			return @parent;
+		}
+
+		#~
+		@return true when this transform hangs off another
+		~#
+		method : public : HasParent() ~ Bool {
+			return @parent <> Nil;
+		}
+
+		#~
+		How many times this transform's matrix has been rebuilt.
+
+		A child reads its parent's number to decide whether its own composed matrix
+		is still good. Exposed because the mechanism is worth being able to see; a
+		program has no reason to call it.
+		@return a counter
+		~#
+		method : public : GetVersion() ~ Int {
+			return @version;
+		}
+
+		#~
+		The matrix that places this transform in the WORLD.
+
+		The same as GetMatrix for an unparented transform, and parent * local for a
+		parented one, composed up the whole chain.
+
+		Recomputed only when something actually changed -- this transform, or any
+		ancestor. That check is a version comparison rather than a notification, so
+		nothing has to register with anything and a parent does not need to know
+		its children exist.
+		@return the world matrix; do not modify it
+		~#
+		method : public : GetWorldMatrix() ~ Float[] {
+			if(@parent = Nil) {
+				return GetMatrix();
+			};
+
+			parent_world := @parent->GetWorldMatrix();
+			parent_now := @parent->GetVersion();
+
+			if(@dirty | parent_now <> @parent_version) {
+				Matrix4->MultiplyInto(@world, parent_world, GetMatrix());
+				@parent_version := parent_now;
+				# Rebuilding the world matrix is a change as far as this
+				# transform's OWN children are concerned, so they see it too.
+				@version += 1;
+			};
+
+			return @world;
+		}
+
+		#~
 		Model-view-projection, into a buffer the caller owns. The per-frame call.
+
+		Uses the WORLD matrix, so a parented transform draws where the hierarchy
+		puts it rather than where its local values say.
 		@param out destination, at least 16 elements
 		@param view_projection the camera's projection times view
 		~#
 		method : public : MvpInto(out : Float[], view_projection : Float[]) ~ Nil {
-			Matrix4->MultiplyInto(out, view_projection, GetMatrix());
+			Matrix4->MultiplyInto(out, view_projection, GetWorldMatrix());
 		}
 
 		#~
@@ -8200,6 +8629,305 @@ bundle Game.OpenGL {
 			@matrix[12] := @x;
 			@matrix[13] := @y;
 			@matrix[14] := @z;
+		}
+	}
+
+	#~
+	How a value changes over time.
+
+	The other half of animation. Transform->SetParent says how parts move
+	TOGETHER; a Track says how anything moves at all -- a lid opening, a platform
+	rising, a light dimming, a door swinging, a camera pushing in.
+
+	It holds keys and reads a value back at any time between them:
+
+	```
+	swing := Track->New();
+	swing->Add(0.0, 0.0);
+	swing->Add(1.5, 90.0);
+	swing->SetEasing(Easing->EASE_IN_OUT);
+	...
+	door->SetYaw(swing->Sample(elapsed)->ToRadians());
+	```
+
+	## Why a track rather than a tween
+
+	A from-to pair with a duration covers the easy case and then stops: an
+	animation that goes out, waits, and comes back is three of them plus the
+	bookkeeping to sequence them. Keys are that for free, and reduce to the easy
+	case when there are two of them.
+
+	## What it does not do
+
+	One FLOAT. Not a vector, not a colour, not a quaternion -- three tracks make a
+	position and four make a colour, and keeping it scalar is what lets it drive
+	anything at all rather than the specific things somebody thought of. It has no
+	clock of its own either: Sample takes a time, so the caller decides whether
+	that is wall time, a paused time, or one running backwards.
+
+	Rotation between two ANGLES here is not the same as rotating between two
+	orientations -- interpolating yaw, pitch and roll separately is fine for a
+	hinge or a turntable and wrong for anything tumbling freely, which needs
+	quaternions this bundle does not have.
+	~#
+	class Track {
+		# Keys, kept sorted by time. Parallel arrays rather than a Vector of pairs:
+		# Sample runs per animated value per frame and this way it touches two
+		# contiguous buffers and allocates nothing.
+		@times : Float[];
+		@values : Float[];
+		@count : Int;
+		@easing : Int;
+		@loop : Bool;
+
+		#~
+		An empty track. Sampling one with no keys returns 0.
+		~#
+		New() {
+			@times := Float->New[8];
+			@values := Float->New[8];
+			@count := 0;
+			@easing := Easing->LINEAR;
+			@loop := false;
+		}
+
+		#~
+		A track that runs from one value to another -- the common case, spelled
+		directly.
+		@param duration how long it takes, in seconds
+		@param from the value at time 0
+		@param to the value at the end
+		~#
+		New(duration : Float, from_value : Float, to_value : Float) {
+			@times := Float->New[8];
+			@values := Float->New[8];
+			@count := 0;
+			@easing := Easing->LINEAR;
+			@loop := false;
+
+			Add(0.0, from_value);
+			Add(duration, to_value);
+		}
+
+		#~
+		Add a key.
+
+		Inserted in time order, so keys can be added in any order. Adding a second
+		key at exactly the same time replaces the first rather than creating a step
+		nothing can land between.
+		@param time when, in seconds from the start
+		@param value what the track reads at that moment
+		~#
+		method : public : Add(time : Float, value : Float) ~ Nil {
+			# Find where it belongs. Linear, because tracks have a handful of keys
+			# and a binary search would be more code than it saves.
+			at := 0;
+			while(at < @count & @times[at] < time) {
+				at += 1;
+			};
+
+			if(at < @count & @times[at] = time) {
+				@values[at] := value;
+				return;
+			};
+
+			if(@count = @times->Size()) {
+				Grow();
+			};
+
+			# Shift the tail up one, from the back so nothing is overwritten before
+			# it is copied.
+			for(i := @count; i > at; i -= 1;) {
+				@times[i] := @times[i - 1];
+				@values[i] := @values[i - 1];
+			};
+
+			@times[at] := time;
+			@values[at] := value;
+			@count += 1;
+		}
+
+		method : Grow() ~ Nil {
+			size := @times->Size() * 2;
+			times := Float->New[size];
+			values := Float->New[size];
+
+			for(i := 0; i < @count; i += 1;) {
+				times[i] := @times[i];
+				values[i] := @values[i];
+			};
+
+			@times := times;
+			@values := values;
+		}
+
+		#~
+		How the value moves BETWEEN keys.
+
+		LINEAR by default. The eased modes are what stop machine-driven motion
+		reading as machine-driven: almost nothing in the world starts and stops at
+		full speed, and EASE_IN_OUT is the difference between a lid opening and a
+		lid teleporting through its arc.
+		@param easing an Easing
+		~#
+		method : public : SetEasing(easing : Int) ~ Nil {
+			@easing := easing;
+		}
+
+		#~
+		@return the current easing mode
+		~#
+		method : public : GetEasing() ~ Int {
+			return @easing;
+		}
+
+		#~
+		Whether time wraps past the last key.
+
+		Off by default, which HOLDS the last value -- right for a door that opens
+		once. On wraps back to the start, for anything cyclic. Note a looping track
+		jumps at the wrap unless its first and last values match.
+		@param loop true to wrap
+		~#
+		method : public : SetLoop(loop : Bool) ~ Nil {
+			@loop := loop;
+		}
+
+		#~
+		@return whether the track loops
+		~#
+		method : public : IsLoop() ~ Bool {
+			return @loop;
+		}
+
+		#~
+		@return how many keys the track holds
+		~#
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		The time of the last key, which is how long the track runs for.
+		@return seconds, or 0 for an empty track
+		~#
+		method : public : GetDuration() ~ Float {
+			if(@count = 0) {
+				return 0.0;
+			};
+
+			return @times[@count - 1];
+		}
+
+		#~
+		@param index 0 to GetCount() - 1
+		@return the time of that key, or 0 if out of range
+		~#
+		method : public : GetKeyTime(index : Int) ~ Float {
+			if(index < 0 | index >= @count) {
+				return 0.0;
+			};
+
+			return @times[index];
+		}
+
+		#~
+		@param index 0 to GetCount() - 1
+		@return the value of that key, or 0 if out of range
+		~#
+		method : public : GetKeyValue(index : Int) ~ Float {
+			if(index < 0 | index >= @count) {
+				return 0.0;
+			};
+
+			return @values[index];
+		}
+
+		#~
+		Read the value at a moment.
+
+		Before the first key returns the first value and after the last returns the
+		last, so a track is safe to sample at any time without the caller clamping
+		-- unless it loops, in which case time wraps.
+		@param time seconds from the start
+		@return the value there
+		~#
+		method : public : Sample(time : Float) ~ Float {
+			if(@count = 0) {
+				return 0.0;
+			};
+			if(@count = 1) {
+				return @values[0];
+			};
+
+			first := @times[0];
+			last := @times[@count - 1];
+			at := time;
+
+			if(@loop) {
+				span := last - first;
+				if(span > 0.0) {
+					# Modulo on Floats, by hand. Two wraps rather than one because a
+					# NEGATIVE time -- a track running backwards, or one started
+					# before the clock's zero -- would otherwise land outside the
+					# span on the low side.
+					at := first + (at - first) - span * ((at - first) / span)->Floor();
+					if(at < first) {
+						at += span;
+					};
+				};
+			};
+
+			if(at <= first) {
+				return @values[0];
+			};
+			if(at >= last) {
+				return @values[@count - 1];
+			};
+
+			# The segment containing `at`. Linear again, for the same reason Add is.
+			index := 0;
+			while(index < @count - 2 & @times[index + 1] < at) {
+				index += 1;
+			};
+
+			start_time := @times[index];
+			end_time := @times[index + 1];
+			span := end_time - start_time;
+			if(span <= 0.0) {
+				return @values[index + 1];
+			};
+
+			t := (at - start_time) / span;
+
+			return @values[index] + (@values[index + 1] - @values[index]) * Shape(t);
+		}
+
+		#~
+		Bend 0..1 according to the easing mode.
+		~#
+		method : Shape(t : Float) ~ Float {
+			if(@easing = Easing->STEP) {
+				# Holds the earlier key until the next one arrives, which is what a
+				# blinking light or a frame-by-frame flip wants.
+				return 0.0;
+			};
+
+			if(@easing = Easing->EASE_IN) {
+				return t * t;
+			};
+
+			if(@easing = Easing->EASE_OUT) {
+				return t * (2.0 - t);
+			};
+
+			if(@easing = Easing->EASE_IN_OUT) {
+				# Smoothstep. Zero slope at both ends, which is what makes it read
+				# as weight rather than as a ramp.
+				return t * t * (3.0 - 2.0 * t);
+			};
+
+			return t;
 		}
 	}
 
@@ -8438,7 +9166,8 @@ bundle Game.OpenGL {
 		@return the model matrix; BORROWED from the transform, do not write to it
 		~#
 		method : public : GetModelMatrix() ~ Float[] {
-			return @transform->GetMatrix();
+			# WORLD, so a prop parented to another draws where the chain puts it.
+			return @transform->GetWorldMatrix();
 		}
 
 		#~
@@ -8553,6 +9282,11 @@ bundle Game.OpenGL {
 		# is reported, so probing per frame would file a diagnostic per frame.
 		@wants_vp : Int;
 		@wants_sampler : Int;
+		# A billboard shader needs the camera's own basis, and a view_projection
+		# cannot be decomposed back into one, so the view matrix comes separately.
+		@wants_view : Int;
+		@camera : Camera;
+		@additive : Bool;
 		# Bounds over every instance, recomputed whenever the matrices are packed.
 		@cx : Float; @cy : Float; @cz : Float;
 		@radius : Float;
@@ -8600,6 +9334,9 @@ bundle Game.OpenGL {
 			@rig := Nil;
 			@wants_vp := -1;
 			@wants_sampler := -1;
+			@wants_view := -1;
+			@camera := Nil;
+			@additive := false;
 			@cx := 0.0; @cy := 0.0; @cz := 0.0;
 			@radius := 0.0;
 			@error := "";
@@ -8848,7 +9585,7 @@ bundle Game.OpenGL {
 
 			each(i : @transforms) {
 				at := @transforms->Get(i);
-				model := at->GetMatrix();
+				model := at->GetWorldMatrix();
 				base := i * 16;
 
 				for(k := 0; k < 16; k += 1;) {
@@ -8925,6 +9662,7 @@ bundle Game.OpenGL {
 			if(@wants_vp = -1) {
 				@wants_vp := @shader->HasUniform("view_projection") ? 1 : 0;
 				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
+				@wants_view := @shader->HasUniform("view") ? 1 : 0;
 
 				# Said once, not once a frame. The overwhelmingly likely cause is a
 				# per-object shader handed to a batch, and the symptom on its own --
@@ -8945,6 +9683,19 @@ bundle Game.OpenGL {
 			@shader->SetMatrix4("view_projection", view_projection);
 			if(@wants_sampler = 1) {
 				@shader->SetInt("tex", 0);
+			};
+
+			# Silent when the shader wants a view and no camera was given: the
+			# billboards then all collapse onto the origin's basis, which looks
+			# wrong immediately rather than subtly, and the error says which of the
+			# two calls was forgotten.
+			if(@wants_view = 1) {
+				if(@camera = Nil) {
+					@error := "this shader needs the camera's basis; call PropBatch->SetCamera";
+				}
+				else {
+					@shader->SetMatrix4("view", @camera->GetViewMatrix());
+				};
 			};
 
 			use_rig := @rig;
@@ -8980,6 +9731,52 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		The camera whose basis a billboard shader needs.
+
+		Only read by a shader that declares a "view" uniform --
+		Shader->BillboardInstanced does; nothing else here does. Harmless
+		otherwise.
+		@param camera the eye, or Nil
+		~#
+		method : public : SetCamera(camera : Camera) ~ Nil {
+			@camera := camera;
+		}
+
+		#~
+		@return the camera, or Nil
+		~#
+		method : public : GetCamera() ~ Camera {
+			return @camera;
+		}
+
+		#~
+		Draw this batch with ADDITIVE blending, and no depth writes.
+
+		For anything that emits light rather than blocks it: sparks, fire, glows,
+		muzzle flashes, magic. Colours accumulate, so bright places get brighter
+		and black contributes nothing -- which is why a sprite sheet for additive
+		work has a black background rather than a transparent one.
+
+		The reason this is the blending mode offered here and ordinary
+		transparency is not: addition COMMUTES, so additive geometry needs no
+		back-to-front sort. Ordinary alpha blending does, and a batch is one draw
+		call over an instance buffer with no per-instance ordering in it -- so
+		offering it would mean offering something that renders wrongly whenever
+		two sprites overlap.
+		@param additive true for additive blending
+		~#
+		method : public : SetAdditive(additive : Bool) ~ Nil {
+			@additive := additive;
+		}
+
+		#~
+		@return whether this batch draws additively
+		~#
+		method : public : IsAdditive() ~ Bool {
+			return @additive;
+		}
+
+		#~
 		Release the shader, if this batch built it.
 
 		The mesh is never freed here: it is the caller's, and is very often shared
@@ -8992,6 +9789,602 @@ bundle Game.OpenGL {
 			@shader := Nil;
 			@owns_shader := false;
 		}
+	}
+
+	#~
+	A pool of short-lived camera-facing sprites.
+
+	Sparks, smoke, dust, embers, muzzle flashes, magic. Everything needed for
+	these already existed -- billboards face the camera, a PropBatch draws
+	thousands in one call, additive blending needs no sorting -- and every
+	program still had to write the same three things by hand: a ring of slots, a
+	life per slot, and somewhere to park the dead ones.
+
+	The FPS demo that ships with Objeck wrote exactly that, which is what this
+	replaces.
+
+	```
+	sparks := Particles->New(64);
+	sparks->SetCamera(camera);
+	sparks->SetTexture(glow);
+	scene->AddBatch(sparks->GetBatch());
+	...
+	sparks->Update(window->GetDelta());
+	sparks->Burst(x, y, z, 12, 2.5);
+	```
+
+	## Fixed capacity, on purpose
+
+	The pool never grows. Emitting into a full one overwrites the OLDEST
+	particle rather than allocating, so a frame costs no allocation however hard
+	it is emitting -- which is the property that matters in a draw loop, and the
+	reason a growable pool would be the wrong shape even though it would look
+	more accommodating.
+
+	Dead particles are parked far below the world rather than hidden, because a
+	batch draws every instance in its buffer: there is no per-instance visibility
+	to switch off, so "invisible" has to mean "nowhere you are looking".
+
+	## What varies per particle, and what does not
+
+	Position, velocity, age and size are per particle. COLOUR is not: a batch has
+	one material, so a system is one colour, set by SetTexture or SetMaterial.
+	Two colours are two systems. Per-particle colour would mean a second instance
+	attribute stream, which PropBatch does not carry.
+
+	Additive by default, which is right for anything that emits light and wrong
+	for smoke -- SetAdditive(false) for that, and then the sprite's own alpha does
+	the work.
+	~#
+	class Particles implements Freeable {
+		@batch : PropBatch;
+		@mesh : Mesh;
+		@shader : Shader;
+		@owns_parts : Bool;
+
+		# Three floats of velocity per particle, flat rather than as objects: this
+		# is walked every frame and a Vector3 each would be an allocation per
+		# particle per emit.
+		@velocity : Float[];
+		@life : Float[];
+		@capacity : Int;
+		@next : Int;
+		@alive : Int;
+
+		@lifetime : Float;
+		@gravity : Float;
+		@drag : Float;
+		@start_size : Float;
+		@end_size : Float;
+		@seed : Int;
+
+		#~
+		A system with its own quad and billboard shader, both owned.
+		@param capacity how many particles can be alive at once
+		~#
+		New(capacity : Int) {
+			Init(capacity, Mesh->Quad(0.5), Shader->BillboardInstanced(), true);
+		}
+
+		#~
+		A system drawing geometry you supply.
+
+		The shader must be an instanced one that reads a "view" uniform, which in
+		practice means Shader->BillboardInstanced or something shaped like it.
+		Neither the mesh nor the shader is owned, so Free leaves both alone.
+		@param capacity how many particles can be alive at once
+		@param mesh the sprite geometry, usually Mesh->Quad
+		@param shader an instanced billboard program
+		~#
+		New(capacity : Int, mesh : Mesh, shader : Shader) {
+			Init(capacity, mesh, shader, false);
+		}
+
+		method : Init(capacity : Int, mesh : Mesh, shader : Shader, owns : Bool) ~ Nil {
+			if(capacity < 1) {
+				capacity := 1;
+			};
+
+			@capacity := capacity;
+			@mesh := mesh;
+			@shader := shader;
+			@owns_parts := owns;
+
+			@batch := PropBatch->New(mesh, shader);
+			@batch->SetAdditive(true);
+
+			@velocity := Float->New[capacity * 3];
+			@life := Float->New[capacity];
+			@next := 0;
+			@alive := 0;
+
+			@lifetime := 0.6;
+			@gravity := 0.0;
+			@drag := 0.0;
+			@start_size := 0.4;
+			@end_size := 0.0;
+			@seed := 1;
+
+			# Every slot exists from the start, parked. The buffer is therefore the
+			# same size on frame one as on frame ten thousand.
+			for(i := 0; i < capacity; i += 1;) {
+				at := @batch->Add(0.0, PARKED(), 0.0);
+				at->SetScale(0.0, 0.0, 1.0);
+				@life[i] := 0.0;
+			};
+		}
+
+		#~
+		Where dead particles wait. Far enough below any plausible world that a
+		camera would have to be looking for them.
+		~#
+		function : PARKED() ~ Float {
+			return -100000.0;
+		}
+
+		#~
+		Is the system usable -- a live mesh, shader and batch.
+		@return true when it can draw
+		~#
+		method : public : IsOk() ~ Bool {
+			return @batch <> Nil & @batch->IsOk();
+		}
+
+		#~
+		What went wrong, if anything.
+		@return the batch's error, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			if(@batch = Nil) {
+				return "";
+			};
+
+			return @batch->GetError();
+		}
+
+		#~
+		The batch this system draws through.
+
+		Hand it to Scene->AddBatch and the scene draws it in the right place, with
+		the additive state handled. Or call Draw directly for a system that is not
+		part of a scene.
+		@return the batch; do NOT free it, the system owns it
+		~#
+		method : public : GetBatch() ~ PropBatch {
+			return @batch;
+		}
+
+		#~
+		The camera a billboard shader needs. Required -- without it the sprites
+		collapse onto the origin's basis.
+		@param camera the eye
+		~#
+		method : public : SetCamera(camera : Camera) ~ Nil {
+			@batch->SetCamera(camera);
+		}
+
+		#~
+		The sprite texture, untinted.
+		@param texture what each particle draws
+		~#
+		method : public : SetTexture(texture : Texture2D) ~ Nil {
+			@batch->SetMaterial(Material->New(texture));
+		}
+
+		#~
+		The material, for a tint or an opacity as well as a texture.
+		@param material how every particle is drawn -- one for the whole system
+		~#
+		method : public : SetMaterial(material : Material) ~ Nil {
+			@batch->SetMaterial(material);
+		}
+
+		#~
+		Additive blending, on by default.
+
+		Right for anything that emits light. Turn it off for smoke or dust, where
+		the sprite should obscure what is behind it rather than brighten it -- and
+		note that non-additive particles are NOT sorted against each other, so
+		overlapping soft-alpha sprites will blend in instance order.
+		@param additive false for ordinary blending
+		~#
+		method : public : SetAdditive(additive : Bool) ~ Nil {
+			@batch->SetAdditive(additive);
+		}
+
+		#~
+		How long a particle lives, in seconds.
+		@param seconds must be above zero
+		~#
+		method : public : SetLifetime(seconds : Float) ~ Nil {
+			if(seconds > 0.0) {
+				@lifetime := seconds;
+			};
+		}
+
+		#~
+		Downward acceleration, in world units per second squared.
+
+		0 by default, which suits sparks and magic. Around -9.8 for anything that
+		should fall; a small positive value makes smoke rise.
+		@param gravity acceleration on the y axis
+		~#
+		method : public : SetGravity(gravity : Float) ~ Nil {
+			@gravity := gravity;
+		}
+
+		#~
+		How quickly a particle loses speed, as a fraction per second.
+
+		0 keeps its velocity forever; 1.0 brings it to a near stop within a
+		second. What makes a spray settle rather than fly off.
+		@param drag 0.0 to about 4.0
+		~#
+		method : public : SetDrag(drag : Float) ~ Nil {
+			if(drag >= 0.0) {
+				@drag := drag;
+			};
+		}
+
+		#~
+		The size a particle starts and ends at, in world units.
+
+		Shrinking to zero is how a particle disappears here, because the alpha is
+		the same for every instance -- see the note on the class.
+		@param start size when emitted
+		@param finish size at the end of its life
+		~#
+		method : public : SetSize(start : Float, finish : Float) ~ Nil {
+			@start_size := start;
+			@end_size := finish;
+		}
+
+		#~
+		Make the spray reproducible.
+
+		Bursts use a generator of their own rather than the system's, so the same
+		seed gives the same spray on every machine and every run -- which is worth
+		more in a demo people compare than novelty is.
+		@param seed any non-zero value
+		~#
+		method : public : SetSeed(seed : Int) ~ Nil {
+			@seed := seed;
+		}
+
+		#~
+		@return how many particles are currently alive
+		~#
+		method : public : GetAlive() ~ Int {
+			return @alive;
+		}
+
+		#~
+		@return how many can be alive at once
+		~#
+		method : public : GetCapacity() ~ Int {
+			return @capacity;
+		}
+
+		#~
+		Emit one particle, motionless.
+		@param x where
+		@param y where
+		@param z where
+		~#
+		method : public : Emit(x : Float, y : Float, z : Float) ~ Nil {
+			Emit(x, y, z, 0.0, 0.0, 0.0);
+		}
+
+		#~
+		Emit one particle with a velocity.
+
+		Overwrites the oldest slot when the pool is full, rather than growing or
+		refusing. A system emitting faster than its capacity allows shows shorter
+		trails, which is a visible and recoverable symptom -- unlike an allocation
+		in a draw loop.
+		@param x where
+		@param y where
+		@param z where
+		@param vx world units per second
+		@param vy world units per second
+		@param vz world units per second
+		~#
+		method : public : Emit(x : Float, y : Float, z : Float,
+				vx : Float, vy : Float, vz : Float) ~ Nil {
+			slot := @next;
+			at := @batch->Get(slot);
+			if(at = Nil) {
+				return;
+			};
+
+			if(@life[slot] <= 0.0) {
+				@alive += 1;
+			};
+
+			at->SetPosition(x, y, z);
+			at->SetScale(@start_size, @start_size, 1.0);
+
+			base := slot * 3;
+			@velocity[base] := vx;
+			@velocity[base + 1] := vy;
+			@velocity[base + 2] := vz;
+			@life[slot] := @lifetime;
+
+			@next += 1;
+			if(@next >= @capacity) {
+				@next := 0;
+			};
+		}
+
+		#~
+		Emit several at once, sprayed outwards.
+
+		The usual shape for an impact: a handful of particles leaving one point in
+		scattered directions.
+		@param x where
+		@param y where
+		@param z where
+		@param count how many
+		@param speed how fast they leave, in world units per second
+		~#
+		method : public : Burst(x : Float, y : Float, z : Float,
+				count : Int, speed : Float) ~ Nil {
+			for(i := 0; i < count; i += 1;) {
+				# A direction on the unit sphere, near enough. Three signed randoms
+				# normalised is biased towards the cube's corners; for a spray that
+				# nobody measures it is the right trade against three trig calls.
+				dx := NextSigned();
+				dy := NextSigned();
+				dz := NextSigned();
+
+				length := (dx * dx + dy * dy + dz * dz)->Sqrt();
+				if(length < 0.0001) {
+					dx := 0.0; dy := 1.0; dz := 0.0; length := 1.0;
+				};
+
+				scale := speed / length;
+				Emit(x, y, z, dx * scale, dy * scale, dz * scale);
+			};
+		}
+
+		#~
+		Move, age and retire every particle.
+
+		Call once per frame with the frame time. Nothing is allocated: the pool,
+		the velocities and the lives are all fixed arrays, and the batch repacks
+		into a buffer it already owns.
+		@param delta seconds since the last frame, e.g. GLWindow->GetDelta
+		~#
+		method : public : Update(delta : Float) ~ Nil {
+			if(delta <= 0.0) {
+				return;
+			};
+
+			# Drag, integrated implicitly rather than linearly.
+			#
+			# The obvious form is `1 - drag * delta`, and it is wrong twice: it goes
+			# NEGATIVE once drag * delta passes 1, which reverses the particle, and
+			# clamping that to zero stops it dead instead -- so a frame-rate hitch
+			# turns a drifting spray into one that freezes in mid-air. This form is
+			# always between 0 and 1, needs no clamp, and behaves the same at 30 fps
+			# as at 240.
+			keep := 1.0 / (1.0 + @drag * delta);
+
+			@alive := 0;
+			each(i : @life) {
+				if(@life[i] > 0.0) {
+					@life[i] -= delta;
+					at := @batch->Get(i);
+					base := i * 3;
+
+					if(@life[i] <= 0.0) {
+						@life[i] := 0.0;
+						at->SetPosition(0.0, PARKED(), 0.0);
+						at->SetScale(0.0, 0.0, 1.0);
+					}
+					else {
+						@alive += 1;
+
+						vx := @velocity[base] * keep;
+						vy := (@velocity[base + 1] + @gravity * delta) * keep;
+						vz := @velocity[base + 2] * keep;
+						@velocity[base] := vx;
+						@velocity[base + 1] := vy;
+						@velocity[base + 2] := vz;
+
+						at->SetPosition(at->GetX() + vx * delta,
+							at->GetY() + vy * delta,
+							at->GetZ() + vz * delta);
+
+						# Linear from start to end over the particle's life.
+						t := @life[i] / @lifetime;
+						size := @end_size + (@start_size - @end_size) * t;
+						at->SetScale(size, size, 1.0);
+					};
+				};
+			};
+		}
+
+		#~
+		Retire every particle at once.
+		~#
+		method : public : Clear() ~ Nil {
+			each(i : @life) {
+				@life[i] := 0.0;
+				at := @batch->Get(i);
+				at->SetPosition(0.0, PARKED(), 0.0);
+				at->SetScale(0.0, 0.0, 1.0);
+			};
+
+			@alive := 0;
+			@next := 0;
+		}
+
+		#~
+		Draw the system on its own, for one that is not part of a Scene.
+
+		A system inside a Scene should NOT be drawn this way as well -- hand its
+		batch to Scene->AddBatch and let the scene do it, so the additive state is
+		set up around the draw.
+		@param view_projection the camera matrix
+		~#
+		method : public : Draw(view_projection : Float[]) ~ Nil {
+			GL->Enable(Capability->GL_BLEND);
+			GL->SetBlend(BlendFactor->GL_SRC_ALPHA, BlendFactor->GL_ONE);
+			GL->SetDepthWrite(false);
+
+			@batch->Draw(view_projection);
+
+			GL->SetDepthWrite(true);
+			GL->Disable(Capability->GL_BLEND);
+		}
+
+		#~
+		A signed random in -1..1, from a generator of this system's own.
+		~#
+		method : NextSigned() ~ Float {
+			# A linear congruential step, masked to 31 bits so it stays positive.
+			@seed := (@seed * 1103515245 + 12345) and 0x7FFFFFFF;
+
+			return (@seed % 20000)->As(Float) / 10000.0 - 1.0;
+		}
+
+		#~
+		Release the batch, and the mesh and shader if this system built them.
+
+		Idempotent. A mesh or shader handed in by the three-argument constructor
+		belongs to the caller and is left alone.
+		~#
+		method : public : Free() ~ Nil {
+			if(@batch <> Nil) {
+				@batch->Free();
+				@batch := Nil;
+			};
+
+			if(@owns_parts) {
+				if(@mesh <> Nil) {
+					@mesh->Free();
+				};
+				if(@shader <> Nil) {
+					@shader->Free();
+				};
+			};
+
+			@mesh := Nil;
+			@shader := Nil;
+			@owns_parts := false;
+		}
+	}
+
+	#~
+	What a ray ran into, and where.
+
+	Returned by Scene->Raycast. Always an object, never Nil -- ask IsHit rather
+	than checking for Nil, so a miss does not need a different code path from a
+	hit.
+
+	The normal is the surface the ray struck, which is what a decal, a ricochet or
+	a spark effect needs to orient itself. For a box it is an axis direction; for
+	a prop it points away from the prop's centre, because a prop is tested against
+	its bounding SPHERE rather than its actual geometry.
+	~#
+	class RayHit {
+		@hit : Bool;
+		@distance : Float;
+		@x : Float; @y : Float; @z : Float;
+		@nx : Float; @ny : Float; @nz : Float;
+		@box : Box;
+		@prop : Prop;
+
+		#~
+		A miss.
+		~#
+		New() {
+			@hit := false;
+			@distance := 0.0;
+			@x := 0.0; @y := 0.0; @z := 0.0;
+			@nx := 0.0; @ny := 0.0; @nz := 0.0;
+			@box := Nil;
+			@prop := Nil;
+		}
+
+		#~
+		A hit. Built by Scene->Raycast; there is no reason to construct one
+		yourself, and no way to change it afterwards -- a result that can be
+		edited after the fact is a result nobody can trust.
+		@param distance how far along the ray
+		@param x where it struck
+		@param y where it struck
+		@param z where it struck
+		@param nx surface normal
+		@param ny surface normal
+		@param nz surface normal
+		@param box the box struck, or Nil
+		@param prop the prop struck, or Nil
+		~#
+		New(distance : Float, x : Float, y : Float, z : Float,
+				nx : Float, ny : Float, nz : Float, box : Box, prop : Prop) {
+			@hit := true;
+			@distance := distance;
+			@x := x; @y := y; @z := z;
+			@nx := nx; @ny := ny; @nz := nz;
+			@box := box;
+			@prop := prop;
+		}
+
+		#~
+		Did the ray hit anything?
+		@return true when it did
+		~#
+		method : public : IsHit() ~ Bool { return @hit; }
+
+		#~
+		How far along the ray the hit was, in world units.
+		@return the distance, or 0 on a miss
+		~#
+		method : public : GetDistance() ~ Float { return @distance; }
+
+		#~
+		@return x of the point struck
+		~#
+		method : public : GetX() ~ Float { return @x; }
+
+		#~
+		@return y of the point struck
+		~#
+		method : public : GetY() ~ Float { return @y; }
+
+		#~
+		@return z of the point struck
+		~#
+		method : public : GetZ() ~ Float { return @z; }
+
+		#~
+		@return x of the surface normal at the hit
+		~#
+		method : public : GetNormalX() ~ Float { return @nx; }
+
+		#~
+		@return y of the surface normal at the hit
+		~#
+		method : public : GetNormalY() ~ Float { return @ny; }
+
+		#~
+		@return z of the surface normal at the hit
+		~#
+		method : public : GetNormalZ() ~ Float { return @nz; }
+
+		#~
+		Which box was struck.
+		@return the box, or Nil when a prop was hit or nothing was
+		~#
+		method : public : GetBox() ~ Box { return @box; }
+
+		#~
+		Which prop was struck.
+		@return the prop, or Nil when a box was hit or nothing was
+		~#
+		method : public : GetProp() ~ Prop { return @prop; }
 	}
 
 	#~
@@ -9482,7 +10875,25 @@ bundle Game.OpenGL {
 				};
 
 				if(visible) {
-					batch->Draw(view_projection, @light, @rig);
+					# An additive batch blends and stops writing depth, then puts
+					# both back. Depth TESTING stays on, so a spark behind a wall is
+					# still hidden by it; what must not happen is the spark writing
+					# depth and occluding the ones behind it, which in an
+					# unsortable instance buffer would be an arbitrary subset.
+					if(batch->IsAdditive()) {
+						GL->Enable(Capability->GL_BLEND);
+						GL->SetBlend(BlendFactor->GL_SRC_ALPHA, BlendFactor->GL_ONE);
+						GL->SetDepthWrite(false);
+
+						batch->Draw(view_projection, @light, @rig);
+
+						GL->SetDepthWrite(true);
+						GL->Disable(Capability->GL_BLEND);
+					}
+					else {
+						batch->Draw(view_projection, @light, @rig);
+					};
+
 					@drawn += 1;
 					touched := true;
 				}
@@ -9817,6 +11228,343 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Fire a ray into the scene and report the nearest thing it hits.
+
+		This is what a hitscan weapon, a "what am I looking at" prompt, a
+		line-of-sight check or a mouse pick is built on -- none of which had any
+		route before, since the only spatial query here was Blocked, which answers
+		a plan-view movement question and nothing else.
+
+		  hit := scene->RaycastFrom(camera, 100.0);
+		  if(hit->IsHit()) {
+		    target := hit->GetProp();
+		    ...
+		  };
+
+		## What it tests against
+
+		Boxes are tested against their actual axis-aligned extent, so the hit point
+		and the normal are exact.
+
+		Props are tested against their BOUNDING SPHERE, not their mesh. A prop is
+		an arbitrary rotated model and this bundle never keeps its triangles after
+		upload -- they live on the GPU -- so there is nothing here to intersect.
+		The sphere is conservative, which means a shot can register slightly wide
+		of a thin model. Put a Box where precision matters, the same way collision
+		already works.
+
+		Batches are NOT tested. A batch exists so that four hundred instances cost
+		one draw call, and walking its transforms per shot would work but RayHit
+		has nowhere to report WHICH instance was struck. Stating that rather than
+		quietly returning a miss.
+
+		Solidity is ignored on purpose: Box->IsSolid means "blocks movement", which
+		is a different question from "stops a bullet". Filter on
+		hit->GetBox()->IsSolid() if you want them to agree. Invisible props ARE
+		skipped, since something you cannot see should not be shootable.
+		@param origin where the ray starts
+		@param direction which way it points; normalised here, so it need not be
+		@param max_distance how far to look; a hit beyond this is a miss
+		@return a RayHit, never Nil -- ask IsHit
+		~#
+		method : public : Raycast(origin : Vector3, direction : Vector3,
+				max_distance : Float) ~ RayHit {
+			if(origin = Nil | direction = Nil | max_distance <= 0.0) {
+				return RayHit->New();
+			};
+
+			length := direction->Length();
+			if(length = 0.0) {
+				return RayHit->New();
+			};
+
+			ox := origin->GetX(); oy := origin->GetY(); oz := origin->GetZ();
+			dx := direction->GetX() / length;
+			dy := direction->GetY() / length;
+			dz := direction->GetZ() / length;
+
+			nearest := max_distance;
+			# The winner so far, kept in locals rather than in a RayHit that gets
+			# overwritten -- so the result object is built once, complete, and
+			# cannot be edited after it is handed back.
+			found := false;
+			best_nx := 0.0; best_ny := 0.0; best_nz := 0.0;
+			best_box := Nil->As(Box);
+			best_prop := Nil->As(Prop);
+
+			each(i : @boxes) {
+				box := @boxes->Get(i);
+				centre := box->GetCenter();
+				half := box->GetHalf();
+
+				# The slab test, one axis at a time: where the ray enters and
+				# leaves each pair of parallel planes. It is inside the box over
+				# the intersection of the three intervals, and misses when that
+				# intersection is empty.
+				t_near := 0.0;
+				t_far := nearest;
+				axis := -1;
+				sign := 1.0;
+				miss := false;
+
+				for(a := 0; a < 3 & <>miss; a += 1;) {
+					o := ox; d := dx; c := centre->GetX(); h := half->GetX();
+					if(a = 1) {
+						o := oy; d := dy; c := centre->GetY(); h := half->GetY();
+					}
+					else if(a = 2) {
+						o := oz; d := dz; c := centre->GetZ(); h := half->GetZ();
+					};
+
+					low := c - h;
+					high := c + h;
+
+					if(d->Abs() < 0.000001) {
+						# Parallel to this pair of planes: either always between
+						# them or never. Dividing would be a division by zero, and
+						# on some hardware an infinity that then compares wrongly.
+						if(o < low | o > high) {
+							miss := true;
+						};
+					}
+					else {
+						t1 := (low - o) / d;
+						t2 := (high - o) / d;
+						face := -1.0;
+						if(t1 > t2) {
+							swap := t1; t1 := t2; t2 := swap;
+							face := 1.0;
+						};
+
+						if(t1 > t_near) {
+							t_near := t1;
+							axis := a;
+							sign := face;
+						};
+						if(t2 < t_far) {
+							t_far := t2;
+						};
+						if(t_near > t_far) {
+							miss := true;
+						};
+					};
+				};
+
+				if(<>miss & t_near < nearest & t_near >= 0.0) {
+					nearest := t_near;
+					found := true;
+					best_nx := (axis = 0) ? sign : 0.0;
+					best_ny := (axis = 1) ? sign : 0.0;
+					best_nz := (axis = 2) ? sign : 0.0;
+					best_box := box;
+					best_prop := Nil->As(Prop);
+				};
+			};
+
+			# Every local here is declared at the loop body's own level and only
+			# ASSIGNED inside the branches below.
+			#
+			# Not a style preference. Declaring a new local inside a nested block
+			# and initialising it from this loop's variables is rejected outright
+			# in some positions and, in this one, compiled to something that
+			# segfaulted the moment a prop was in range. Boxes never hit it because
+			# their loop happens to declare at one level shallower. Assignment into
+			# an already-declared local is fine at any depth.
+			each(i : @props) {
+				prop := @props->Get(i);
+				at := prop->GetTransform();
+				radius := prop->GetBoundsRadius();
+
+				# Ray versus sphere. oc is centre-to-origin; the quadratic in t
+				# reduces to this because the direction is unit length, which is
+				# why it was normalised above.
+				cx := ox - at->GetX();
+				cy := oy - at->GetY();
+				cz := oz - at->GetZ();
+
+				b := cx * dx + cy * dy + cz * dz;
+				c := cx * cx + cy * cy + cz * cz - radius * radius;
+				discriminant := b * b - c;
+
+				# Never divide by it, even on a prop with no bounds at all -- the
+				# guards below drop that prop anyway, but the normal is computed
+				# before them.
+				divisor := radius;
+				if(divisor <= 0.0) {
+					divisor := 1.0;
+				};
+
+				root := 0.0;
+				if(discriminant >= 0.0) {
+					root := discriminant->Sqrt();
+				};
+
+				t := (b * -1.0) - root;
+				if(t < 0.0) {
+					# Origin is inside the sphere; take the far side.
+					t := (b * -1.0) + root;
+				};
+
+				hx := ox + dx * t;
+				hy := oy + dy * t;
+				hz := oz + dz * t;
+
+				usable := prop->IsVisible();
+				if(radius <= 0.0) {
+					usable := false;
+				};
+				if(discriminant < 0.0) {
+					usable := false;
+				};
+				if(t < 0.0) {
+					usable := false;
+				};
+				if(t >= nearest) {
+					usable := false;
+				};
+
+				if(usable) {
+					nearest := t;
+					found := true;
+					best_nx := (hx - at->GetX()) / divisor;
+					best_ny := (hy - at->GetY()) / divisor;
+					best_nz := (hz - at->GetZ()) / divisor;
+					best_box := Nil->As(Box);
+					best_prop := prop;
+				};
+			};
+
+			if(<>found) {
+				return RayHit->New();
+			};
+
+			return RayHit->New(nearest,
+				ox + dx * nearest, oy + dy * nearest, oz + dz * nearest,
+				best_nx, best_ny, best_nz, best_box, best_prop);
+		}
+
+		#~
+		Fire a ray through a point on the screen -- a mouse pick.
+
+		The camera supplies the direction through that pixel and the scene answers
+		what is along it. Pass the window so the ray is built from the same size
+		the mouse coordinates were measured in.
+
+		  hit := scene->RaycastScreen(camera, window,
+		    window->GetMouseX(), window->GetMouseY(), 100.0);
+
+		@param camera the eye
+		@param window the window the mouse coordinates came from
+		@param x pixel across
+		@param y pixel down
+		@param max_distance how far to look
+		@return a RayHit, never Nil
+		~#
+		method : public : RaycastScreen(camera : Camera, window : GLWindow,
+				x : Int, y : Int, max_distance : Float) ~ RayHit {
+			if(camera = Nil | window = Nil) {
+				return RayHit->New();
+			};
+
+			direction := camera->ScreenRay(x, y, window->GetWidth(), window->GetHeight());
+
+			return Raycast(camera->GetPosition(), direction, max_distance);
+		}
+
+		#~
+		Take one prop out of the scene.
+
+		Clear emptied everything and there was no way to remove a single thing, so
+		anything that spawns and despawns -- an enemy, a pickup, a projectile --
+		had to rebuild the whole scene or hide the prop with SetVisible and leak it
+		forever. Both are what this replaces.
+		@param prop the prop to drop; it is NOT freed, since its mesh and material
+		are usually shared
+		@return true when it was in the scene
+		~#
+		method : public : RemoveProp(prop : Prop) ~ Bool {
+			if(prop = Nil) {
+				return false;
+			};
+
+			each(i : @props) {
+				if(@props->Get(i) = prop) {
+					@props->Remove(i);
+
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Take one box out of the scene.
+
+		Note this changes the index of every box after it, so a loop holding
+		indices across a removal is holding the wrong ones.
+		@param box the box to drop
+		@return true when it was in the scene
+		~#
+		method : public : RemoveBox(box : Box) ~ Bool {
+			if(box = Nil) {
+				return false;
+			};
+
+			each(i : @boxes) {
+				if(@boxes->Get(i) = box) {
+					@boxes->Remove(i);
+
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Take one batch out of the scene.
+
+		Here so that the three lists behave the same way. Clear drops all three;
+		leaving two of them removable individually and the third not would be the
+		sort of asymmetry nobody remembers.
+		@param batch the batch to drop; NOT freed
+		@return true when it was in the scene
+		~#
+		method : public : RemoveBatch(batch : PropBatch) ~ Bool {
+			if(batch = Nil) {
+				return false;
+			};
+
+			each(i : @batches) {
+				if(@batches->Get(i) = batch) {
+					@batches->Remove(i);
+
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Fire a ray from where the camera is, along where it is looking.
+
+		The overwhelmingly common case -- a crosshair in the middle of the screen
+		is exactly this ray.
+		@param camera the eye
+		@param max_distance how far to look
+		@return a RayHit, never Nil
+		~#
+		method : public : RaycastFrom(camera : Camera, max_distance : Float) ~ RayHit {
+			if(camera = Nil) {
+				return RayHit->New();
+			};
+
+			return Raycast(camera->GetPosition(), camera->ForwardVector(), max_distance);
+		}
+
+		#~
 		Whether a circle in plan view hits any SOLID box.
 		@param x circle centre x
 		@param z circle centre z
@@ -9846,6 +11594,26 @@ bundle Game.OpenGL {
 		combined vector stops you dead against a wall you hit at an angle, while
 		testing X and Z in turn lets the blocked component drop and the other one
 		through, which is what sliding along a wall is.
+
+		## A step bigger than a wall goes through it
+
+		This tests the DESTINATION, not the path swept to reach it. Ask it to move
+		2 units and the far side of a 1-unit wall is clear, so that is where you
+		land -- no overlap is ever detected because the position that would have
+		overlapped is never tested.
+
+		Two things keep it from biting. GetDelta is clamped to 0.1, so the largest
+		step a frame-rate hitch can produce is `speed * 0.1` rather than however
+		long the machine stalled for. And the rule that follows: keep
+		`speed * 0.1` comfortably under the thickness of your thinnest solid box.
+		At a speed of 6 that is 0.6, so walls a unit thick are safe and paper-thin
+		dividers are not.
+
+		Also note what "solid" means. Blocked and this method both skip boxes
+		marked SetSolid(false), and both ignore height entirely -- the test is a
+		circle against a rectangle in plan view. A floor spans every (x,z) in the
+		room, so a SOLID floor blocks every position in it and nothing can move at
+		all. Mark floors and ceilings non-solid.
 		@param camera the camera to move
 		@param forward distance along the camera's ground heading
 		@param strafe distance to the camera's right
