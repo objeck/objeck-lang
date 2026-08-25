@@ -218,6 +218,26 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Is a capability currently on?
+
+		Asked rather than assumed by anything that turns a capability off and has
+		to put it back -- Overlay->Begin/End do exactly this with culling, and a
+		program may legitimately have had it off already.
+		@param capability a Capability value
+		@return true if enabled
+		~#
+		function : IsEnabled(capability : Int) ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(capability);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_is_enabled", array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() <> 0;
+		}
+
+		#~
 		Disable a capability.
 		@param capability the capability to disable
 		~#
@@ -1672,6 +1692,35 @@ bundle Game.OpenGL {
 			fragment->Add("uniform sampler2D tex;");
 			fragment->Add("out vec4 frag_color;");
 			fragment->Add("void main() { frag_color = texture(tex, texcoord); }");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
+		#~
+		Textured, multiplied by a flat colour.
+
+		What a HUD needs: one white texture drawn as any colour, and glyphs -- whose
+		shape lives in their alpha -- drawn as any colour without re-rasterising
+		them. Uniforms: "mvp", "tex", "tint" (a vec4, default opaque white).
+		@return the program; check IsOk()
+		~#
+		function : TexturedTinted() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+			vertex->Add("uniform mat4 mvp;");
+			vertex->Add("out vec2 texcoord;");
+			vertex->Add("void main() {");
+			vertex->Add("  texcoord = in_texcoord;");
+			vertex->Add("  gl_Position = mvp * vec4(in_position, 1.0);");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec2 texcoord;");
+			fragment->Add("uniform sampler2D tex;");
+			fragment->Add("uniform vec4 tint;");
+			fragment->Add("out vec4 frag_color;");
+			fragment->Add("void main() { frag_color = texture(tex, texcoord) * tint; }");
 
 			return Shader->New(vertex->Build(), fragment->Build());
 		}
@@ -4906,6 +4955,14 @@ bundle Game.OpenGL {
 		@limit : Int;
 
 		@color : Color;
+		# The tint applied to the next Rect/Text/Line, as 0..1 components. Separate
+		# from @color, which is baked into rasterised glyphs and cannot change
+		# without re-rasterising every one of them.
+		@tint_r : Float;
+		@tint_g : Float;
+		@tint_b : Float;
+		@tint_a : Float;
+		@culling_was_on : Bool;
 
 		#~
 		An overlay sized to a window's drawable.
@@ -4922,6 +4979,10 @@ bundle Game.OpenGL {
 			@cache := Hash->New()<String, Texture2D>;
 			@sizes := Hash->New()<String, IntHolder>;
 			@color := Color->New(255, 255, 255, 255);
+			@tint_r := 1.0;
+			@tint_g := 1.0;
+			@tint_b := 1.0;
+			@tint_a := 1.0;
 
 			# Texture coordinates run 0..1 over a quad whose corners are 0..1 as
 			# well, so a model matrix that scales and translates in pixels lands it
@@ -4933,7 +4994,7 @@ bundle Game.OpenGL {
 			             0.0, 1.0, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0];
 			@quad := Mesh->New(vertices, [0, 1, 2, 2, 3, 0], Mesh->PositionNormalTexcoord());
 
-			@shader := Shader->Textured();
+			@shader := Shader->TexturedTinted();
 			if(<>@shader->IsOk()) {
 				@error := @shader->GetLog();
 			};
@@ -5009,6 +5070,10 @@ bundle Game.OpenGL {
 		method : public : Begin() ~ Nil {
 			Resize();
 
+			# Remembered so End can put it back. Asking GL rather than assuming,
+			# because a program may legitimately have had it off.
+			@culling_was_on := GL->IsEnabled(Capability->GL_CULL_FACE);
+
 			if(@window <> Nil) {
 				@window->SetDepthTest(false);
 			};
@@ -5030,6 +5095,18 @@ bundle Game.OpenGL {
 			if(@window <> Nil) {
 				@window->SetDepthTest(true);
 			};
+
+			# Begin turns THREE things off and this used to put two back, leaving
+			# culling disabled for every subsequent frame -- including the next
+			# frame's shadow passes. Every example escaped it by drawing the HUD
+			# last, so nothing ever saw the consequence.
+			if(@culling_was_on) {
+				GL->Enable(Capability->GL_CULL_FACE);
+			};
+
+			# The tint does not survive the pass either; a program that set one for
+			# a warning colour would otherwise find it still applied next frame.
+			SetTint(1.0, 1.0, 1.0, 1.0);
 		}
 
 		#~
@@ -5102,6 +5179,87 @@ bundle Game.OpenGL {
 			DrawTextured(@white, x, y, width, height);
 		}
 
+		#~
+		Colour for the next Rect, Line and Text, as 0..1 components.
+
+		This does NOT re-rasterise anything: it multiplies in the shader, so a
+		program can change colour per call at no cost. SetColor is the other one
+		and is not interchangeable -- that bakes a colour into the glyph textures
+		and throws the cache away, so two SetColor calls a frame re-rasterise every
+		string on screen twice a frame.
+
+		Rule of thumb: SetColor once at startup for the text's base colour, SetTint
+		freely for anything that changes.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		@param a alpha, 0..1
+		~#
+		method : public : SetTint(r : Float, g : Float, b : Float, a : Float) ~ Nil {
+			@tint_r := r;
+			@tint_g := g;
+			@tint_b := b;
+			@tint_a := a;
+		}
+
+		#~
+		Opaque tint from 0-255 components, matching SetColor's units.
+		@param r red, 0..255
+		@param g green, 0..255
+		@param b blue, 0..255
+		~#
+		method : public : SetTintRgb(r : Int, g : Int, b : Int) ~ Nil {
+			SetTint(r->As(Float) / 255.0, g->As(Float) / 255.0, b->As(Float) / 255.0, 1.0);
+		}
+
+		#~
+		A filled rectangle in the current tint.
+		@param x left edge in pixels
+		@param y top edge in pixels
+		@param width width in pixels
+		@param height height in pixels
+		@param r red, 0..255
+		@param g green, 0..255
+		@param b blue, 0..255
+		~#
+		method : public : Rect(x : Int, y : Int, width : Int, height : Int,
+				r : Int, g : Int, b : Int) ~ Nil {
+			was_r := @tint_r; was_g := @tint_g; was_b := @tint_b; was_a := @tint_a;
+			SetTintRgb(r, g, b);
+			Rect(x, y, width, height);
+			SetTint(was_r, was_g, was_b, was_a);
+		}
+
+		#~
+		A straight line, one pixel of thickness per unit.
+
+		Horizontal and vertical only -- it is a rectangle underneath. An arbitrary
+		diagonal needs a rotation this class does not carry, and a HUD rule, a
+		divider and a bar chart are all axis-aligned.
+		@param x1 start x
+		@param y1 start y
+		@param x2 end x
+		@param y2 end y
+		@param thickness in pixels, at least 1
+		~#
+		method : public : Line(x1 : Int, y1 : Int, x2 : Int, y2 : Int, thickness : Int) ~ Nil {
+			weight := thickness;
+			if(weight < 1) {
+				weight := 1;
+			};
+
+			if(y1 = y2) {
+				left := x1; right := x2;
+				if(right < left) { left := x2; right := x1; };
+				Rect(left, y1, right - left, weight);
+			}
+			else if(x1 = x2) {
+				top := y1; bottom := y2;
+				if(bottom < top) { top := y2; bottom := y1; };
+				Rect(x1, top, weight, bottom - top);
+			};
+		}
+
 		method : DrawTextured(texture : Texture2D, x : Int, y : Int, width : Int, height : Int) ~ Nil {
 			# The quad's corners are 0..1, so scaling by the pixel size and
 			# translating to the pixel position is the whole transform -- and it is a
@@ -5110,6 +5268,7 @@ bundle Game.OpenGL {
 			Matrix4->MultiplyInto(@mvp, @projection, @model);
 
 			@shader->SetMatrix4("mvp", @mvp);
+			@shader->SetVec4("tint", @tint_r, @tint_g, @tint_b, @tint_a);
 			texture->Bind(0);
 			@quad->Draw();
 		}

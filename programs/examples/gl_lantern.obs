@@ -40,9 +40,11 @@ they are the argument for the next round of work rather than complaints:
          GLWindow now reports key and button edges, the wheel and the pointer,
          and pickup is a left click -- with E kept, because a one-button game
          that also works from the keyboard costs one line.
-  GAP 2  A coloured HUD. Overlay->Rect draws the overlay's white texture and
-         takes no colour, so the fuel bar is white and the "low fuel" state has
-         to be spelled out in words instead of turning red.
+  GAP 2  CLOSED. Rect took no colour at all, so the fuel bar was white and
+         "low fuel" had to be spelled out in words. Overlay now has a tint that
+         multiplies in the shader, so the bar changes colour per frame without
+         re-rasterising anything -- which SetColor could not do, because it bakes
+         the colour into the glyph textures and throws the cache away.
   GAP 3  Sound. Game.OpenGL has no audio at all. Game.SDL2's mixer would work
          here -- it needs no renderer -- but nothing initialises it and nothing
          says so, so a footstep or a pickup chime is out of reach from here.
@@ -401,13 +403,24 @@ class Lantern {
 
 		@overlay->Begin();
 
-		# GAP 2: Overlay->Rect takes no colour -- it draws the overlay's white
-		# texture -- so this bar cannot go red as the lamp burns down, and the
-		# warning has to be words instead. The bar's WIDTH still carries the
-		# reading, which is why it is worth drawing at all.
-		bar := (200.0 * (@fuel / @fuel_max))->As(Int);
+		# The bar carries the reading twice over: its width, and now its colour.
+		# Green through amber to red as the lamp burns down, so the state is
+		# legible without reading anything.
+		fraction := @fuel / @fuel_max;
+		bar := (200.0 * fraction)->As(Int);
+
+		# The trough, so an empty bar is still visibly a bar rather than nothing.
+		@overlay->Rect(16, 44, 200, 10, 38, 34, 30);
 		if(bar > 0) {
-			@overlay->Rect(16, 44, bar, 10);
+			red := 220;
+			green := 60;
+			if(fraction > 0.25) {
+				# 0.25..1.0 mapped onto amber..green
+				lift := (fraction - 0.25) / 0.75;
+				red := 220 - (140.0 * lift)->As(Int);
+				green := 60 + (150.0 * lift)->As(Int);
+			};
+			@overlay->Rect(16, 44, bar, 10, red, green, 70);
 		};
 
 		@overlay->Text("relics {$carried} / {$total}", 16, 16);
@@ -418,22 +431,20 @@ class Lantern {
 		else if(@fuel <= 0.0) {
 			@overlay->Text("The lamp is out. You can still feel your way.", 16, 68);
 		}
-		else if(@fuel / @fuel_max < 0.25) {
+		else if(fraction < 0.25) {
 			@overlay->Text("The lamp is guttering.", 16, 68);
 		}
 		else if(@carried = total) {
 			@overlay->Text("All four. Back to the entrance.", 16, 68);
 		};
 
+		# Dimmer than the rest, because a frame counter is not what you are
+		# playing. One call, no re-rasterising -- SetColor here would throw away
+		# every cached glyph on screen twice a frame.
+		@overlay->SetTintRgb(120, 130, 145);
 		@overlay->Text(@hud_fps, 16, @window->GetHeight() - 30);
 
 		@overlay->End();
-
-		# Overlay->Begin turns culling OFF and Overlay->End does not turn it back
-		# on -- it restores depth test and blending only. Drawing the HUD last
-		# means the scene never sees it, but the next frame's shadow pass would,
-		# so put it back.
-		GL->Enable(Capability->GL_CULL_FACE);
 	}
 
 	method : Build() ~ Bool {

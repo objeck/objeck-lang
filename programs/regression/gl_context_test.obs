@@ -80,6 +80,7 @@ class GlContextTest {
 		CheckProjection();
 		CheckCameraProjection();
 		CheckInput();
+		CheckOverlayState();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -2890,6 +2891,90 @@ class GlContextTest {
 			@gl->GetMouseX() >= 0 & @gl->GetMouseY() >= 0);
 
 		Check("no GL errors from reading input", GL->DrainErrors()->Size() = 0);
+	}
+
+	#~
+	Overlay: the state it borrows, and the colour it can now draw in.
+
+	The state check is the one that matters, and it is the one no existing test
+	could make. Overlay->Begin turns depth test, blending AND face culling off;
+	End used to restore two of the three, so culling stayed off for every frame
+	after the first HUD -- including the next frame's shadow passes. Every example
+	draws the HUD last, so nothing ever saw it.
+
+	Catching that needs the state read back AFTER End rather than a picture
+	compared before and after, because within a single frame the consequence is
+	invisible. GL->IsEnabled is what makes it askable.
+	~#
+	method : CheckOverlayState() ~ Nil {
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay for the state checks", overlay->IsOk())) {
+			return;
+		};
+
+		# --- the bug -------------------------------------------------------
+		GL->Enable(Capability->GL_CULL_FACE);
+		Check("culling is on before the overlay draws",
+			GL->IsEnabled(Capability->GL_CULL_FACE));
+
+		overlay->Begin();
+		Check("Begin turns culling off, because its quad is wound for the XY plane",
+			<>GL->IsEnabled(Capability->GL_CULL_FACE));
+		overlay->End();
+		Check("and End puts it back -- it used to restore only two of three states",
+			GL->IsEnabled(Capability->GL_CULL_FACE));
+
+		# The other two, so a fix that only tracked culling would still be caught.
+		Check("blending is off again after End", <>GL->IsEnabled(Capability->GL_BLEND));
+
+		# And it must not turn culling ON for a program that had it off.
+		GL->Disable(Capability->GL_CULL_FACE);
+		overlay->Begin();
+		overlay->End();
+		Check("a program that had culling off keeps it off",
+			<>GL->IsEnabled(Capability->GL_CULL_FACE));
+		GL->Enable(Capability->GL_CULL_FACE);
+
+		# --- colour ---------------------------------------------------------
+		# Rect used to draw the overlay's white texture and take no colour at all,
+		# so a HUD could not have a red bar. Read the pixels back rather than
+		# trusting that the uniform was set.
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		overlay->Begin();
+		overlay->Rect(0, 0, @pixel_w / 2, @pixel_h / 2, 220, 40, 40);
+		overlay->End();
+
+		# Top-left in PIXEL terms is the top of the screen; ReadPixel counts from
+		# the bottom, so sample high.
+		red := GL->ReadPixel(@pixel_w / 8, (@pixel_h * 7) / 8);
+		r := (red and 0x00FF0000) / 0x10000;
+		g := (red and 0x0000FF00) / 0x100;
+		"  tinted rect: r={$r} g={$g}"->PrintLine();
+		Check("a rect draws in the colour it was given", r > 150);
+		Check("and not in white -- the green channel proves the tint applied", g < 90);
+
+		# A plain Rect after a coloured one must be white again, or the tint has
+		# leaked into every later call.
+		overlay->Begin();
+		overlay->Rect(@pixel_w / 2, 0, @pixel_w / 2, @pixel_h / 2);
+		overlay->End();
+		plain := GL->ReadPixel((@pixel_w * 7) / 8, (@pixel_h * 7) / 8);
+		pr := (plain and 0x00FF0000) / 0x10000;
+		pg := (plain and 0x0000FF00) / 0x100;
+		Check("the colour does not leak into the next plain rect", pg > 150 & pr > 150);
+
+		# Line is a rectangle underneath, and only axis-aligned. A diagonal is a
+		# no-op rather than a wrong line.
+		overlay->Begin();
+		overlay->Line(0, @pixel_h / 2, @pixel_w, @pixel_h / 2, 3);
+		overlay->End();
+		Check("a horizontal line draws", GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) <> 0xFF000000);
+
+		Check("no GL errors from the overlay state checks", GL->DrainErrors()->Size() = 0);
+
+		overlay->Free();
 	}
 
 	method : CheckMatrixMath() ~ Nil {
