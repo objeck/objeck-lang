@@ -6441,6 +6441,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_gl_scissor(VMContext& context) {
+    glScissor((GLint)APITools_GetIntValue(context, 0), (GLint)APITools_GetIntValue(context, 1),
+              (GLsizei)APITools_GetIntValue(context, 2), (GLsizei)APITools_GetIntValue(context, 3));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_gl_is_enabled(VMContext& context) {
     // glIsEnabled is GL 1.1 as well, so no loaded pointer.
     APITools_SetIntValue(context, 0, glIsEnabled((GLenum)APITools_GetIntValue(context, 1)) ? 1 : 0);

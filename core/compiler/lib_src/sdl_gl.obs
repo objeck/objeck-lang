@@ -238,6 +238,32 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Restrict drawing to a rectangle.
+
+		Only has an effect while Capability->GL_SCISSOR_TEST is enabled. That
+		constant has been in this bundle since the beginning with nothing to bind
+		it to, so enabling it clipped to whatever rectangle the driver happened to
+		start with -- usually the whole window, which made it look like it worked.
+
+		Pixels, not points, and measured from the BOTTOM-left like the viewport --
+		not the top-left like Overlay. A split-screen viewport or a UI panel that
+		must not be drawn over is what this is for.
+		@param x left edge in pixels from the left
+		@param y bottom edge in pixels from the bottom
+		@param width width in pixels
+		@param height height in pixels
+		~#
+		function : Scissor(x : Int, y : Int, width : Int, height : Int) ~ Nil {
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New(x);
+			array_args[1] := IntRef->New(y);
+			array_args[2] := IntRef->New(width);
+			array_args[3] := IntRef->New(height);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_scissor", array_args);
+		}
+
+		#~
 		Is a capability currently on?
 
 		Asked rather than assumed by anything that turns a capability off and has
@@ -852,6 +878,11 @@ bundle Game.OpenGL {
 			Core->GLSetAttribute(GLattr->SDL_GL_CONTEXT_FLAGS, GLContextFlag->SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 			Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
 			Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
+			# ClearBit->GL_STENCIL_BUFFER_BIT has been in this bundle from the
+			# start and there was never a stencil buffer to clear -- nothing asked
+			# for one, so the bit was a no-op that looked like a feature. 24+8 is
+			# the standard packed format and costs nothing over depth alone.
+			Core->GLSetAttribute(GLattr->SDL_GL_STENCIL_SIZE, 8);
 
 			# Multisampling, if it was asked for. Two attributes, no native code,
 			# and the largest visible quality difference available here.

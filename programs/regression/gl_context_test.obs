@@ -84,6 +84,7 @@ class GlContextTest {
 		CheckMultisampling();
 		CheckTransparency();
 		CheckOwnership();
+		CheckScissorAndStencil();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -3171,6 +3172,64 @@ class GlContextTest {
 		Check("and the window freeing it again later is harmless", <>texture->IsOk());
 
 		Check("no GL errors from the ownership checks", GL->DrainErrors()->Size() = 0);
+	}
+
+	#~
+	The two constants that used to promise features the layer did not have.
+
+	Capability->GL_SCISSOR_TEST could be enabled and there was no glScissor bound
+	anywhere, so it clipped to whatever rectangle the driver started with --
+	usually the whole window, which is exactly what makes a missing feature look
+	like a working one. ClearBit->GL_STENCIL_BUFFER_BIT could be OR'd into Clear
+	and no stencil buffer was ever requested, so the bit did nothing.
+
+	Both are read back rather than assumed. The scissor check draws a full-screen
+	rect with a scissor over half the frame and samples BOTH sides: a scissor that
+	silently did nothing would leave both sides painted, which is precisely the
+	old behaviour.
+	~#
+	method : CheckScissorAndStencil() ~ Nil {
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay for the scissor check", overlay->IsOk())) {
+			return;
+		};
+
+		# Clip to the left half, then try to paint the whole frame.
+		GL->Enable(Capability->GL_SCISSOR_TEST);
+		GL->Scissor(0, 0, @pixel_w / 2, @pixel_h);
+
+		overlay->Begin();
+		overlay->Rect(0, 0, @pixel_w, @pixel_h, 240, 240, 240);
+		overlay->End();
+
+		GL->Disable(Capability->GL_SCISSOR_TEST);
+
+		inside := Green(GL->ReadPixel(@pixel_w / 4, @pixel_h / 2));
+		outside := Green(GL->ReadPixel((@pixel_w * 3) / 4, @pixel_h / 2));
+		"  scissor: inside={$inside} outside={$outside}"->PrintLine();
+
+		Check("the scissored side is painted", inside > 150);
+		# THE assertion. Before glScissor was bound, both sides read painted.
+		Check("and the other side is not -- the scissor actually clips", outside < 60);
+
+		# A stencil buffer now exists to clear. Clearing a buffer that was never
+		# requested is not an error in GL, so the honest check is that asking for
+		# it produces no error and the colour clear still works.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT or
+			ClearBit->GL_STENCIL_BUFFER_BIT);
+		Check("clearing colour, depth and stencil together raises no error",
+			GL->DrainErrors()->Size() = 0);
+		Check("and the colour buffer really was cleared",
+			Green(GL->ReadPixel(@pixel_w / 4, @pixel_h / 2)) < 40);
+
+		overlay->Free();
+	}
+
+	method : Green(argb : Int) ~ Int {
+		return (argb and 0x0000FF00) / 0x100;
 	}
 
 	method : CheckMatrixMath() ~ Nil {
