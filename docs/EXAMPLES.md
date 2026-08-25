@@ -339,7 +339,27 @@ it needs:
 The other GL examples are `gl_clear` (the smallest thing that opens a window — 25 lines),
 `cube_gl` (one textured spinning cube), `gl_boing` (the Boing Ball in 3D, in a room, with a
 post-process pass) and `gl_model` (loads `gl_crystal.obj` and fits it to frame whatever scale
-it was authored at). `programs/deploy/3d_gl_24.obs` ships in the distribution.
+it was authored at). `programs/deploy/3d_gl_24.obs` and `programs/deploy/fps_gl.obs` ship in the
+distribution.
+
+### Objeck Range — a first-person shooting gallery
+
+`programs/deploy/fps_gl.obs` is the framework used the way a game would use it: a
+lit, shadowed arena you walk around and shoot targets in, with nothing loaded
+from disk.
+
+It exists to exercise the parts that only show up in combination. `Scene->Raycast`
+is the hitscan — a shot is a ray from the camera along the crosshair, and because
+it reports the *nearest* hit, a target behind a pillar is protected without the
+program knowing pillars exist. `Scene->SlideMove` makes walking into a wall slide
+along it. A `PropBatch` draws every post around the edge in one call. A gamepad
+works if one is plugged in and nothing changes if one is not.
+
+Two traps it ran into, both worth knowing before building anything similar:
+**mark floors and ceilings non-solid** (collision is a plan-view test, so a solid
+floor spans every position in the room and the player cannot move at all), and
+keep `speed * 0.1` under the thickness of your thinnest wall, since `SlideMove`
+tests the destination rather than the path swept to reach it.
 
 ### Boing Ball — live GC/CPU visualizer
 

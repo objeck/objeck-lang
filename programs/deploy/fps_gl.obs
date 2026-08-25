@@ -1,0 +1,539 @@
+#~
+# Objeck ShootingRange - a first-person shooting gallery in OpenGL 3.3 core
+#
+# A lit, shadowed arena you walk around in and shoot targets in. Nothing is
+# loaded from disk: every texture is generated and every piece of geometry is
+# built in, so this file is the whole program.
+#
+# What it shows off, beyond drawing:
+#
+#   Scene->Raycast   the hitscan. A shot is a ray from the camera, and what it
+#                    hits is a Prop with a score attached.
+#   Scene->SlideMove walking into a wall slides along it instead of stopping.
+#   PropBatch        the low posts around the edge are one draw call for all of
+#                    them, however many there are.
+#   GLWindow pad     a controller works if one is plugged in, and nothing
+#                    changes if one is not.
+#   Overlay          the crosshair, the score and the hit marker are drawn in
+#                    pixels over the 3D.
+#
+# compiler: obc -src fps_gl.obs -lib sdl2,sdl_gl
+# run: obr fps_gl.obe
+#
+# move: W A S D, or the left stick
+# look: mouse, or the right stick
+# shoot: left mouse button, space, or A / right trigger
+# quit: escape
+~#
+
+use Game.SDL2;
+use Game.OpenGL;
+
+class ShootingRange {
+	@window : GLWindow;
+	@shader : Shader;
+	@shadows : ShadowMap;
+	@sun : Light;
+	@rig : LightRig;
+	@camera : Camera;
+	@scene : Scene;
+	@overlay : Overlay;
+
+	@cube : Mesh;
+	@ball : Mesh;
+	@floor_texture : Texture2D;
+	@wall_texture : Texture2D;
+	@white : Texture2D;
+
+	@targets : Prop[];
+	@target_life : Float[];
+	@posts : PropBatch;
+
+	@score : Int;
+	@shots : Int;
+	@hits : Int;
+	@hit_flash : Float;
+	@miss_flash : Float;
+	@sensitivity : Float;
+	@seed : Int;
+
+	# The arena is a square room; everything is placed inside these bounds.
+	@extent : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		range := ShootingRange->New();
+		if(range->Start()) {
+			range->Run();
+		};
+		range->Shutdown();
+	}
+
+	New() {
+		@score := 0;
+		@shots := 0;
+		@hits := 0;
+		@hit_flash := 0.0;
+		@miss_flash := 0.0;
+		@sensitivity := 0.0025;
+		@extent := 14.0;
+		# Fixed seed: the arena is the same every run, which matters more for a
+		# demo people compare notes about than novelty does.
+		@seed := 20260825;
+	}
+
+	#~
+	Build everything. Returns false when there is no GL 3.3 core context, which
+	is a normal outcome on a machine without a GPU rather than an error.
+	~#
+	method : Start() ~ Bool {
+		# 4x multisampling: the arena is all straight edges, which is the case
+		# aliasing shows up worst on.
+		@window := GLWindow->New("Objeck ShootingRange", 1024, 640, 4);
+		if(<>@window->IsOk()) {
+			reason := @window->GetError();
+			"Could not open a window: {$reason}"->PrintLine();
+			return false;
+		};
+
+		@shader := Shader->LitTexturedShadowed();
+		if(<>@shader->IsOk()) {
+			log := @shader->GetLog();
+			"Shaders did not build: {$log}"->PrintLine();
+			return false;
+		};
+
+		@shadows := ShadowMap->New(2048);
+		@shadows->SetBias(0.0035);
+
+		@cube := Mesh->Cube();
+		# Sphere takes segments and rings, not a radius -- it is unit sized and the
+		# targets are scaled by their transforms.
+		@ball := Mesh->Sphere(20, 14);
+		@floor_texture := Texture2D->Checker(256, 16, 0xFF3A4048, 0xFF2A2F36);
+		@wall_texture := Texture2D->Checker(128, 8, 0xFF4A4038, 0xFF3C342E);
+		@white := Texture2D->Solid(0xFFFFFFFF);
+
+		@camera := Camera->New(Vector3->New(0.0, 1.7, 10.0));
+		@camera->SetPerspectiveDegrees(70.0, @window->GetAspect());
+
+		@rig := LightRig->New();
+		@rig->SetAmbient(0.30, 0.31, 0.35);
+		@sun := Light->Directional(Vector3->New(-0.4, -1.0, -0.35));
+		@rig->Add(@sun);
+		# Shininess first, then strength -- one call, and getting the order round
+		# the wrong way gives a wide dull sheen instead of a tight highlight.
+		@rig->SetSpecular(28.0, 0.25);
+
+		# The shadow map follows this light, and covers a box centred on the
+		# arena. Cover is a trade: everything outside it casts nothing, and a
+		# larger area spreads the same 2048 texels thinner.
+		@shadows->SetLight(@sun);
+		@shadows->Cover(Vector3->New(0.0, 2.0, 0.0), 20.0);
+
+		@scene := Scene->New(@cube, @shader);
+		@scene->SetLightRig(@rig);
+
+		BuildArena();
+		BuildTargets();
+		BuildPosts();
+
+		@overlay := Overlay->WithDefaultFont(@window, 18);
+
+		# The window owns these, so Free releases them in the right order and
+		# this program does not have to remember to.
+		@window->Own(@shader);
+		@window->Own(@cube);
+		@window->Own(@ball);
+		@window->Own(@floor_texture);
+		@window->Own(@wall_texture);
+		@window->Own(@white);
+		@window->Own(@shadows);
+		@window->Own(@overlay);
+		@window->Own(@posts);
+
+		return true;
+	}
+
+	#~
+	Floor, four walls and some cover to shoot around.
+
+	Boxes rather than props, deliberately: a Box culls against a tight
+	axis-aligned test and is what Scene->Blocked and SlideMove walk, so the
+	things you can bump into are exactly the things that stop you.
+	~#
+	method : BuildArena() ~ Nil {
+		e := @extent;
+
+		# Floor and ceiling, marked NON-SOLID.
+		#
+		# Collision is a plan-view test on a radius -- Blocked and SlideMove ask
+		# whether a circle at (x,z) overlaps a box, and ignore height entirely.
+		# A floor spans the whole arena in x and z, so a solid one overlaps every
+		# position there is and the player cannot take a single step in any
+		# direction. Drawn, shadowed, shot at; just not something to bump into.
+		floor := @scene->AddBox(Vector3->New(0.0, -0.5, 0.0),
+			Vector3->New(e, 0.5, e), @floor_texture);
+		floor->SetSolid(false);
+
+		ceiling := @scene->AddBox(Vector3->New(0.0, 6.5, 0.0),
+			Vector3->New(e, 0.5, e), @wall_texture);
+		ceiling->SetSolid(false);
+
+		# four walls
+		@scene->AddBox(Vector3->New(0.0, 3.0, e * -1.0), Vector3->New(e, 3.5, 0.5), @wall_texture);
+		@scene->AddBox(Vector3->New(0.0, 3.0, e), Vector3->New(e, 3.5, 0.5), @wall_texture);
+		@scene->AddBox(Vector3->New(e * -1.0, 3.0, 0.0), Vector3->New(0.5, 3.5, e), @wall_texture);
+		@scene->AddBox(Vector3->New(e, 3.0, 0.0), Vector3->New(0.5, 3.5, e), @wall_texture);
+
+		# pillars, to shoot around and hide behind
+		@scene->AddBox(Vector3->New(-6.0, 1.6, -5.0), Vector3->New(0.7, 2.1, 0.7), @wall_texture);
+		@scene->AddBox(Vector3->New(6.0, 1.6, -5.0), Vector3->New(0.7, 2.1, 0.7), @wall_texture);
+		@scene->AddBox(Vector3->New(-6.0, 1.6, 5.0), Vector3->New(0.7, 2.1, 0.7), @wall_texture);
+		@scene->AddBox(Vector3->New(6.0, 1.6, 5.0), Vector3->New(0.7, 2.1, 0.7), @wall_texture);
+
+		# a low bench across the middle, so some targets sit behind cover
+		@scene->AddBox(Vector3->New(0.0, 0.5, -2.0), Vector3->New(5.0, 0.5, 0.6), @wall_texture);
+	}
+
+	#~
+	The targets. Props rather than boxes, because a Prop is what Raycast
+	reports back and what carries a mesh of its own.
+	~#
+	method : BuildTargets() ~ Nil {
+		count := 7;
+		@targets := Prop->New[count];
+		@target_life := Float->New[count];
+
+		material := Material->New(@white);
+		material->SetTint(0.95, 0.35, 0.25);
+
+		for(i := 0; i < count; i += 1;) {
+			prop := Prop->New(@ball, material);
+			prop->GetTransform()->SetScale(0.55, 0.55, 0.55);
+			@targets[i] := prop;
+			@target_life[i] := 0.0;
+			@scene->AddProp(prop);
+			PlaceTarget(i);
+		};
+	}
+
+	#~
+	The posts around the edge: one mesh, one material, one draw call for all of
+	them however many there are. They do not move, so the batch is told so and
+	packs its matrices once instead of every frame.
+	~#
+	method : BuildPosts() ~ Nil {
+		@posts := PropBatch->New(@cube);
+		@posts->SetMaterial(Material->New(@wall_texture));
+		@posts->SetLightRig(@rig);
+
+		step := 2.0;
+		x := @extent * -1.0 + 1.0;
+		while(x < @extent - 0.5) {
+			AddPost(x, @extent - 1.2);
+			AddPost(x, @extent * -1.0 + 1.2);
+			x += step;
+		};
+
+		@posts->SetDynamic(false);
+		@scene->AddBatch(@posts);
+	}
+
+	method : AddPost(x : Float, z : Float) ~ Nil {
+		at := @posts->Add(x, 0.35, z);
+		at->SetScale(0.18, 0.35, 0.18);
+	}
+
+	#~
+	Move a target somewhere new.
+
+	Kept away from the very edges and off the player's spawn, and lifted clear
+	of the floor so a shot at one is a shot at a target rather than at the
+	ground behind it.
+	~#
+	method : PlaceTarget(index : Int) ~ Nil {
+		reach := @extent - 3.0;
+
+		x := NextFloat() * reach * 2.0 - reach;
+		z := NextFloat() * reach * 2.0 - reach;
+		y := 0.9 + NextFloat() * 2.6;
+
+		# Not on top of the player.
+		if(x->Abs() < 2.0) {
+			if(z > 6.0) {
+				z := 4.0;
+			};
+		};
+
+		at := @targets[index]->GetTransform();
+		at->SetPosition(x, y, z);
+		@targets[index]->SetVisible(true);
+		@target_life[index] := 0.0;
+	}
+
+	#~
+	A small deterministic generator, so the arena lays out the same way every
+	run and two people comparing scores are shooting at the same thing.
+	@return 0.0 to just under 1.0
+	~#
+	method : NextFloat() ~ Float {
+		# A linear congruential step. Masked to 31 bits so it stays positive.
+		@seed := (@seed * 1103515245 + 12345) and 0x7FFFFFFF;
+
+		return (@seed % 100000)->As(Float) / 100000.0;
+	}
+
+	method : Run() ~ Nil {
+		Cursor->SetRelativeMouseMode(true);
+		@window->SetQuitOnEscape(true);
+
+		while(<>@window->PollEvents()) {
+			delta := @window->GetDelta();
+			Look(delta);
+			Move(delta);
+			Age(delta);
+
+			if(WantsToShoot()) {
+				Shoot();
+			};
+
+			Draw();
+			@window->EndFrame();
+		};
+
+		# Before the window goes, while there is still a window to give the
+		# cursor back to.
+		Cursor->SetRelativeMouseMode(false);
+	}
+
+	#~
+	Mouse or right stick. Both are applied every frame; a machine with no pad
+	contributes nothing from the stick and the mouse alone drives it.
+	~#
+	method : Look(delta : Float) ~ Nil {
+		@camera->Turn(@window->GetMouseDeltaX() * @sensitivity * -1.0);
+		@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
+
+		if(@window->HasPad()) {
+			# Per SECOND for the stick, unlike the mouse, whose delta is already
+			# a distance moved rather than a rate.
+			rate := 2.6 * delta;
+			@camera->Turn(@window->GetPadAxis(GameControllerAxis->SDL_CONTROLLER_AXIS_RIGHTX) * rate * -1.0);
+			@camera->Look(@window->GetPadAxis(GameControllerAxis->SDL_CONTROLLER_AXIS_RIGHTY) * rate * -1.0);
+		};
+	}
+
+	method : Move(delta : Float) ~ Nil {
+		forward := 0.0;
+		strafe := 0.0;
+
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_W)) { forward += 1.0; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_S)) { forward -= 1.0; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_D)) { strafe += 1.0; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_A)) { strafe -= 1.0; };
+
+		if(@window->HasPad()) {
+			forward -= @window->GetPadAxis(GameControllerAxis->SDL_CONTROLLER_AXIS_LEFTY);
+			strafe += @window->GetPadAxis(GameControllerAxis->SDL_CONTROLLER_AXIS_LEFTX);
+		};
+
+		speed := 6.0 * delta;
+		# The radius is the player's, not the camera's: SlideMove keeps this much
+		# clear of every box, so walking into a corner slides along it rather
+		# than stopping dead or pushing through.
+		@scene->SlideMove(@camera, forward * speed, strafe * speed, 0.45);
+	}
+
+	#~
+	Fade the two HUD flashes, and grow the targets back after they are hit.
+	~#
+	method : Age(delta : Float) ~ Nil {
+		@hit_flash -= delta * 3.0;
+		if(@hit_flash < 0.0) { @hit_flash := 0.0; };
+		@miss_flash -= delta * 3.0;
+		if(@miss_flash < 0.0) { @miss_flash := 0.0; };
+
+		each(i : @targets) {
+			if(@target_life[i] > 0.0) {
+				@target_life[i] -= delta;
+				if(@target_life[i] <= 0.0) {
+					PlaceTarget(i);
+				};
+			};
+		};
+	}
+
+	#~
+	One trigger per press, from any of the three inputs.
+
+	Pressed rather than held on purpose: a held mouse button would fire once per
+	FRAME, which is a different weapon on a fast machine than on a slow one.
+	~#
+	method : WantsToShoot() ~ Bool {
+		if(@window->MousePressed(MouseButtonValue->SDL_BUTTON_LEFT)) {
+			return true;
+		};
+		if(@window->WasPressed(Scancode->SDL_SCANCODE_SPACE)) {
+			return true;
+		};
+		if(@window->HasPad()) {
+			if(@window->PadPressed(GameControllerButton->SDL_CONTROLLER_BUTTON_A)) {
+				return true;
+			};
+			# The trigger is an axis, not a button: it rests at -1 and reaches 1.
+			if(@window->GetPadAxisRaw(GameControllerAxis->SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > 0.5) {
+				return true;
+			};
+		};
+
+		return false;
+	}
+
+	#~
+	The shot. A ray from the eye, along where the camera is looking -- exactly
+	the line the crosshair sits on.
+
+	Scene->Raycast reports the NEAREST thing, so a target behind a pillar is
+	protected by it without this program having to know pillars exist.
+	~#
+	method : Shoot() ~ Nil {
+		@shots += 1;
+
+		hit := @scene->RaycastFrom(@camera, 60.0);
+		if(<>hit->IsHit()) {
+			@miss_flash := 1.0;
+			return;
+		};
+
+		prop := hit->GetProp();
+		if(prop = Nil) {
+			# A wall or a pillar. Still a miss, but it stopped the shot, which is
+			# the point of having cover.
+			@miss_flash := 1.0;
+			return;
+		};
+
+		index := IndexOf(prop);
+		if(index < 0) {
+			@miss_flash := 1.0;
+			return;
+		};
+
+		# Nearer targets are easier, so they are worth less.
+		distance := hit->GetDistance();
+		points := 10 + (distance * 2.0)->As(Int);
+
+		@score += points;
+		@hits += 1;
+		@hit_flash := 1.0;
+
+		# Gone for a moment, then somewhere else.
+		@targets[index]->SetVisible(false);
+		@target_life[index] := 0.45;
+	}
+
+	method : IndexOf(prop : Prop) ~ Int {
+		each(i : @targets) {
+			if(@targets[i] = prop) {
+				return i;
+			};
+		};
+
+		return -1;
+	}
+
+	method : Draw() ~ Nil {
+		# Shadow pass first, from the light's point of view. Capture walks the
+		# scene with the depth shader itself, so there is nothing to bind here.
+		@shadows->Begin();
+		@shadows->Capture(@scene);
+		@shadows->End(@window);
+
+		GL->ClearColor(0.09, 0.10, 0.13, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		@shader->Use();
+		@shadows->ApplyTo(@shader);
+		# Specular depends on where the eye is, so the rig has to be told each
+		# frame or highlights sit still while the player walks around them.
+		@rig->SetViewPosition(@camera->GetPosition());
+		@scene->SetEye(@camera->GetPosition());
+		@scene->Draw(@camera->GetViewProjection());
+
+		DrawHud();
+	}
+
+	method : DrawHud() ~ Nil {
+		if(<>@overlay->IsOk()) {
+			return;
+		};
+
+		w := @window->GetWidth();
+		h := @window->GetHeight();
+		cx := w / 2;
+		cy := h / 2;
+
+		@overlay->Begin();
+
+		# Crosshair. Green normally, white on a hit, red on a miss -- so the
+		# feedback is where the eye already is rather than off at the score.
+		if(@hit_flash > 0.0) {
+			@overlay->SetTint(1.0, 1.0, 1.0, 1.0);
+		}
+		else if(@miss_flash > 0.0) {
+			@overlay->SetTint(1.0, 0.35, 0.3, 1.0);
+		}
+		else {
+			@overlay->SetTint(0.55, 0.95, 0.6, 1.0);
+		};
+
+		gap := 5;
+		arm := 11;
+		@overlay->Line(cx - arm - gap, cy, cx - gap, cy, 2);
+		@overlay->Line(cx + gap, cy, cx + arm + gap, cy, 2);
+		@overlay->Line(cx, cy - arm - gap, cx, cy - gap, 2);
+		@overlay->Line(cx, cy + gap, cx, cy + arm + gap, 2);
+
+		# A ring that snaps out on a hit and shrinks back.
+		if(@hit_flash > 0.0) {
+			ring := 16 + (@hit_flash * 10.0)->As(Int);
+			@overlay->Line(cx - ring, cy - ring, cx - ring + 6, cy - ring, 2);
+			@overlay->Line(cx + ring - 6, cy - ring, cx + ring, cy - ring, 2);
+			@overlay->Line(cx - ring, cy + ring, cx - ring + 6, cy + ring, 2);
+			@overlay->Line(cx + ring - 6, cy + ring, cx + ring, cy + ring, 2);
+		};
+
+		@overlay->SetTint(1.0, 1.0, 1.0, 1.0);
+
+		score := @score;
+		@overlay->Text("SCORE {$score}", 18, 16);
+
+		accuracy := 0;
+		if(@shots > 0) {
+			accuracy := (@hits * 100) / @shots;
+		};
+		hits := @hits;
+		shots := @shots;
+		@overlay->Text("HITS {$hits}/{$shots}  ({$accuracy}%)", 18, 40);
+
+		if(@window->HasPad()) {
+			pad := @window->GetPadName();
+			@overlay->Text("PAD {$pad}", 18, h - 34);
+		}
+		else {
+			@overlay->Text("WASD move   mouse look   click or space to shoot   esc to quit",
+				18, h - 34);
+		};
+
+		@overlay->End();
+	}
+
+	method : Shutdown() ~ Nil {
+		if(@window <> Nil) {
+			# Everything built here was handed to the window with Own, so this one
+			# call releases the shaders, meshes, textures, shadow map, overlay and
+			# batch, in an order that works, and then the context and the window.
+			@window->Free();
+		};
+	}
+}

@@ -10190,6 +10190,26 @@ bundle Game.OpenGL {
 		combined vector stops you dead against a wall you hit at an angle, while
 		testing X and Z in turn lets the blocked component drop and the other one
 		through, which is what sliding along a wall is.
+
+		## A step bigger than a wall goes through it
+
+		This tests the DESTINATION, not the path swept to reach it. Ask it to move
+		2 units and the far side of a 1-unit wall is clear, so that is where you
+		land -- no overlap is ever detected because the position that would have
+		overlapped is never tested.
+
+		Two things keep it from biting. GetDelta is clamped to 0.1, so the largest
+		step a frame-rate hitch can produce is `speed * 0.1` rather than however
+		long the machine stalled for. And the rule that follows: keep
+		`speed * 0.1` comfortably under the thickness of your thinnest solid box.
+		At a speed of 6 that is 0.6, so walls a unit thick are safe and paper-thin
+		dividers are not.
+
+		Also note what "solid" means. Blocked and this method both skip boxes
+		marked SetSolid(false), and both ignore height entirely -- the test is a
+		circle against a rectangle in plan view. A floor spans every (x,z) in the
+		room, so a SOLID floor blocks every position in it and nothing can move at
+		all. Mark floors and ceilings non-solid.
 		@param camera the camera to move
 		@param forward distance along the camera's ground heading
 		@param strafe distance to the camera's right
