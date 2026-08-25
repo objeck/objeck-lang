@@ -39,6 +39,15 @@ class Walkthrough {
 	@wall_texture : Texture2D;
 	@box_texture : Texture2D;
 	@camera : Camera;
+
+	# A door on a hinge. The hinge is a Transform with nothing drawn at it; the
+	# leaf is a Prop parented to it, offset so it swings about the edge rather
+	# than about its own middle. That offset IS the hinge -- there is no hinge
+	# type, just a parent in the right place.
+	@hinge : Transform;
+	@door_swing : Track;
+	@door_time : Float;
+	@door_open : Bool;
 	# Per-frame scratch, so Draw allocates nothing. Camera->GetViewMatrix makes
 	# three Vector3 and a Float[16] every call, and the multiply after it made
 	# another.
@@ -108,7 +117,72 @@ class Walkthrough {
 		GL->ReportErrors("the walkthrough");
 	}
 
+	#~
+	The door: a hinge, a leaf hung off it, and a curve for the swing.
+
+	It is here because the framework grew two things -- Transform->SetParent and
+	Track -- and neither had a user. Between them they are what makes something
+	move on its own rather than being placed by the program every frame.
+	~#
+	method : BuildDoor() ~ Nil {
+		@hinge := Transform->New();
+		# In the far wall's gap, hinged on its left edge.
+		@hinge->SetPosition(-1.0, 1.25, -7.4);
+
+		# The shared cube, scaled into a leaf. A second mesh for a door would be a
+		# second upload of the same eight vertices.
+		leaf := Prop->New(@cube, Material->New(@box_texture));
+		# Offset by half its width, so rotating the HINGE swings the leaf through
+		# an arc instead of spinning it about its centre. That offset IS the hinge.
+		leaf->GetTransform()->SetPosition(1.0, 0.0, 0.0);
+		leaf->GetTransform()->SetScale(1.0, 1.25, 0.12);
+		leaf->GetTransform()->SetParent(@hinge);
+		@scene->AddProp(leaf);
+
+		# Shut, swinging wide, hanging there, then closing again. Four keys, which
+		# is the case a from-to tween cannot express without being sequenced by
+		# hand.
+		@door_swing := Track->New();
+		@door_swing->Add(0.0, 0.0);
+		@door_swing->Add(1.2, -1.9);
+		@door_swing->Add(3.4, -1.9);
+		@door_swing->Add(4.6, 0.0);
+		# Slow at both ends, which is the difference between a door and a hinge
+		# being teleported through its arc.
+		@door_swing->SetEasing(Easing->EASE_IN_OUT);
+
+		@door_time := 0.0;
+		@door_open := false;
+	}
+
+	#~
+	Walk near the door and it opens; walk away and it shuts.
+
+	The Track holds the whole shape of the motion, so this is one sample and one
+	SetRotation -- the alternative is an angle, a direction, a target and the
+	clamping to keep them consistent.
+	~#
+	method : UpdateDoor(delta : Float) ~ Nil {
+		eye := @camera->GetPosition();
+		dx := eye->GetX();
+		dz := eye->GetZ() + 7.4;
+		# The square root is bound to a local rather than compared inline. Written
+		# as `close := (dx * dx + dz * dz)->Sqrt() < 4.0;` this SEGFAULTS under the
+		# JIT and runs correctly with OBJECK_JIT_THRESHOLD set high -- a miscompile
+		# of a sqrt feeding straight into a float comparison inside a hot method.
+		# Splitting it costs nothing and reads better anyway.
+		reach := (dx * dx + dz * dz)->Sqrt();
+		if(reach < 4.0) {
+			@door_open := true;
+		};
+
+		@door_time += delta;
+		@hinge->SetRotation(@door_swing->Sample(@door_time), 0.0, 0.0);
+	}
+
 	method : Update(delta : Float) ~ Nil {
+		UpdateDoor(delta);
+
 		turn_rate := 2.0 * delta;
 		if(@window->KeyHeld(Scancode->SDL_SCANCODE_LEFT)) {
 			@camera->Turn(turn_rate);
@@ -202,6 +276,8 @@ class Walkthrough {
 		@scene->AddBox(Vector3->New(-6.0, 1.0, 4.0), Vector3->New(0.5, 1.0, 2.5), @box_texture);
 		@scene->AddBox(Vector3->New(5.5, 0.4, -5.5), Vector3->New(1.2, 0.4, 1.2), @box_texture);
 		@scene->AddBox(Vector3->New(-1.5, 1.75, 2.0), Vector3->New(0.4, 1.75, 0.4), @box_texture);
+
+		BuildDoor();
 	}
 
 	#~
