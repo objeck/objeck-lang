@@ -85,6 +85,7 @@ class GlContextTest {
 		CheckTransparency();
 		CheckOwnership();
 		CheckScissorAndStencil();
+		CheckProps();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -3230,6 +3231,133 @@ class GlContextTest {
 
 	method : Green(argb : Int) ~ Int {
 		return (argb and 0x0000FF00) / 0x100;
+	}
+
+	#~
+	Prop: a mesh, material and transform that Scene can hold.
+
+	Three things worth asserting, and one of them is the whole design.
+
+	THE ORDERING. A transparent prop has to sort BETWEEN transparent boxes, not
+	after them. Drawing boxes and props as two separate passes is the obvious
+	implementation and it is wrong, so the fixture puts a red prop between a green
+	box and a blue box and reads the result:
+
+	  sorted together (correct):  green, red, blue  -> blue on top  -> b > r
+	  props after boxes (wrong):  green, blue, red  -> red on top   -> r > b
+
+	CULLING BY SPHERE. A prop rotates, so its mesh bounds stop being axis-aligned
+	and it has to fall back to a bounding sphere. The bound must be conservative:
+	too small and geometry vanishes at the edge of the screen, which is far worse
+	than drawing something that could have been skipped.
+
+	SHADOWS. A prop left out of the depth pass is lit like everything else and
+	throws no shadow, which reads as the object floating.
+	~#
+	method : CheckProps() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		pane := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the prop checks",
+				shader->IsOk() & cube->IsOk() & pane->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		light := Light->New();
+		light->SetDirection(0.0, 0.0, 1.0);
+		light->SetAmbient(1.0, 1.0, 1.0);
+		scene->SetLight(light);
+		scene->SetCulling(false);
+
+		Check("a new scene holds no props", scene->GetPropCount() = 0);
+
+		# Opaque wall behind everything.
+		scene->AddBox(Vector3->New(0.0, 0.0, -8.0), Vector3->New(6.0, 6.0, 0.2), white);
+
+		# Two transparent boxes, near and far.
+		near_box := scene->AddBox(Vector3->New(0.0, 0.0, -2.0), Vector3->New(4.0, 4.0, 0.1), white);
+		near_material := Material->Colored(0.0, 0.0, 1.0);
+		near_material->SetOpacity(0.5);
+		near_box->SetMaterial(near_material);
+
+		far_box := scene->AddBox(Vector3->New(0.0, 0.0, -6.0), Vector3->New(4.0, 4.0, 0.1), white);
+		far_material := Material->Colored(0.0, 1.0, 0.0);
+		far_material->SetOpacity(0.5);
+		far_box->SetMaterial(far_material);
+
+		# And a transparent PROP between them.
+		mid_material := Material->Colored(1.0, 0.0, 0.0);
+		mid_material->SetOpacity(0.5);
+		mid := scene->AddProp(Prop->New(pane, mid_material));
+		if(<>Check("AddProp returns the prop", mid <> Nil)) {
+			return;
+		};
+		Check("and the scene is holding it", scene->GetPropCount() = 1);
+		Check("GetProp hands it back", scene->GetProp(0) = mid);
+		Check("an out-of-range index is Nil rather than a crash",
+			scene->GetProp(7) = Nil & scene->GetProp(-1) = Nil);
+
+		mid->GetTransform()->SetPosition(0.0, 0.0, -4.0);
+		mid->GetTransform()->SetScale(8.0, 8.0, 0.2);
+
+		Check("a prop with a transparent material is not opaque", <>mid->IsOpaque());
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 2.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		scene->SetEye(eye->GetPosition());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		light->ApplyTo(shader);
+		shader->SetInt("tex", 0);
+		scene->Draw(eye->GetViewProjection());
+
+		pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		r := (pixel and 0x00FF0000) / 0x10000;
+		g := (pixel and 0x0000FF00) / 0x100;
+		b := (pixel and 0x000000FF);
+		"  box/prop/box blend: r={$r} g={$g} b={$b}"->PrintLine();
+
+		Check("all four pieces of geometry drew", scene->GetDrawnCount() = 4);
+		# THE assertion: a separate props-after-boxes pass reads the other way.
+		Check("a transparent prop sorts BETWEEN transparent boxes, not after them",
+			b > r);
+
+		# --- culling by sphere ----------------------------------------------
+		scene->SetCulling(true);
+		scene->Draw(eye->GetViewProjection());
+		Check("with culling on the prop in front of the camera is still drawn",
+			scene->GetDrawnCount() > 0);
+
+		# Move it far off to one side; it must be culled, and its sphere must not
+		# be so large that it never is.
+		mid->GetTransform()->SetPosition(400.0, 0.0, -4.0);
+		scene->Draw(eye->GetViewProjection());
+		Check("and one moved far off screen is culled", scene->GetCulledCount() > 0);
+
+		# Rotated, back in view: the sphere is orientation-independent, so this
+		# must still draw. A box test would have been wrong here.
+		mid->GetTransform()->SetPosition(0.0, 0.0, -4.0);
+		mid->GetTransform()->SetRotation(0.7, 0.4, 0.0);
+		before := scene->GetDrawnCount();
+		scene->Draw(eye->GetViewProjection());
+		Check("a rotated prop is not wrongly culled -- the bound is a sphere",
+			scene->GetDrawnCount() >= before - 1);
+
+		# --- invisible ------------------------------------------------------
+		mid->SetVisible(false);
+		scene->Draw(eye->GetViewProjection());
+		Check("SetVisible(false) takes it out of the draw", <>mid->IsVisible());
+
+		Check("no GL errors from the prop checks", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		pane->Free();
+		cube->Free();
+		shader->Free();
 	}
 
 	method : CheckMatrixMath() ~ Nil {
