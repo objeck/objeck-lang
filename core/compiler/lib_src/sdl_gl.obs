@@ -2290,6 +2290,16 @@ bundle Game.OpenGL {
 	~#
 	class Shader implements Freeable {
 		@program : Int;
+		# Refilled rather than rebuilt; see the note on Mesh. A shader belongs to
+		# a context and a context is current on one thread, so the same threading
+		# rule applies.
+		@m4_args : Base[];
+		@m4_program : IntRef;
+		@m4_matrix : FloatArrayRef;
+		# What the matrix ref is pointed at between calls. A bare Nil will not
+		# infer as Float[] here, and one empty array per shader is cheaper than
+		# leaving the caller's matrix pinned.
+		@m4_idle : Float[];
 		@log : String;
 
 		#~
@@ -2359,12 +2369,35 @@ bundle Game.OpenGL {
 		~#
 		method : public : SetMatrix4(name : String, matrix : Float[]) ~ Nil {
 			if(@program <> 0 & name <> Nil & matrix <> Nil & matrix->Size() >= 16) {
-				array_args := Base->New[3];
-				array_args[0] := IntRef->New(@program);
-				array_args[1] := name;
-				array_args[2] := FloatArrayRef->New(matrix);
+				if(@m4_args = Nil) {
+					@m4_program := IntRef->New(@program);
+					@m4_matrix := FloatArrayRef->New(matrix);
+					@m4_idle := Float->New[0];
 
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_matrix4", array_args);
+					@m4_args := Base->New[3];
+					@m4_args[0] := @m4_program;
+					@m4_args[2] := @m4_matrix;
+				}
+				else {
+					@m4_program->Set(@program);
+					@m4_matrix->Set(matrix);
+				};
+
+				# The name is a String the caller owns.
+				@m4_args[1] := name;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_matrix4", @m4_args);
+
+				# Let go of what the CALLER owns, the moment the call returns.
+				#
+				# A reused buffer keeps whatever it last held reachable, so without
+				# this every Shader would pin the last matrix and the last name it
+				# was given -- objects the caller has finished with and expects the
+				# collector to take. Bounded rather than unbounded, but still
+				# retention nobody asked for, and surprising in a profile.
+				# Nothing native holds them either: the uniform upload copies.
+				@m4_args[1] := Nil;
+				@m4_matrix->Set(@m4_idle);
 			};
 		}
 
@@ -3262,6 +3295,28 @@ bundle Game.OpenGL {
 	~#
 	class Mesh implements Freeable {
 		@mesh : Int;
+		# Argument buffers for the per-frame calls, built once and refilled.
+		#
+		# Every native call used to allocate a Base[] plus a box per argument, and
+		# a draw is four of those -- so a scene of five hundred boxes threw away
+		# two thousand objects a frame purely to describe calls whose shape never
+		# changes. The collector then has to walk all of it.
+		#
+		# The refs are MUTABLE, which is what makes this work: IntRef->Set and
+		# FloatArrayRef->Set exist, so the buffer is filled rather than rebuilt.
+		#
+		# One mesh must not be drawn from two threads at once. That was already
+		# true -- GL state is per-context and a context is current on one thread --
+		# so this trades nothing that was available before.
+		#
+		# These hold only INTS, so nothing of the caller's stays reachable through
+		# them. Where a reused buffer does hold a caller's object -- Shader's
+		# matrix and name -- the slot is cleared as soon as the call returns, or
+		# the buffer would pin objects the collector should have taken.
+		@draw_args : Base[];
+		@draw_mesh : IntRef;
+		@draw_mode : IntRef;
+		@draw_count : IntRef;
 		# The axis-aligned bounds of whatever was uploaded, in model space. Measured
 		# once at construction, because it is the only moment the vertex data is in
 		# hand -- after that it lives on the GPU and there is nothing here to read.
@@ -3447,11 +3502,23 @@ bundle Game.OpenGL {
 		~#
 		method : public : DrawInstanced(count : Int, mode : Int) ~ Nil {
 			if(@mesh <> 0) {
-				array_args := Base->New[3];
-				array_args[0] := IntRef->New(@mesh);
-				array_args[1] := IntRef->New(mode);
-				array_args[2] := IntRef->New(count);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_draw", array_args);
+				if(@draw_args = Nil) {
+					@draw_mesh := IntRef->New(@mesh);
+					@draw_mode := IntRef->New(mode);
+					@draw_count := IntRef->New(count);
+
+					@draw_args := Base->New[3];
+					@draw_args[0] := @draw_mesh;
+					@draw_args[1] := @draw_mode;
+					@draw_args[2] := @draw_count;
+				}
+				else {
+					@draw_mesh->Set(@mesh);
+					@draw_mode->Set(mode);
+					@draw_count->Set(count);
+				};
+
+				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_draw", @draw_args);
 			};
 		}
 
@@ -3469,13 +3536,12 @@ bundle Game.OpenGL {
 		@param mode a DrawMode
 		~#
 		method : public : Draw(mode : Int) ~ Nil {
-			if(@mesh <> 0) {
-				array_args := Base->New[3];
-				array_args[0] := IntRef->New(@mesh);
-				array_args[1] := IntRef->New(mode);
-				array_args[2] := IntRef->New(1);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_draw", array_args);
-			};
+			# One instance IS an ordinary draw: the native side takes the instanced
+			# path only above one, so this is the same call with the same three
+			# slots. Delegating rather than repeating it means both share a single
+			# reused argument buffer -- and this is the per-object path, so it is
+			# the one that mattered.
+			DrawInstanced(1, mode);
 		}
 
 		#~
