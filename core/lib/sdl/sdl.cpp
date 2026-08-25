@@ -5893,12 +5893,14 @@ extern "C" {
 
     // The topology was hardcoded to GL_TRIANGLES, which made lines, points and
     // strips unreachable -- so a wireframe, a debug ray or a grid needed a
-    // separate path that did not exist. Slot 1 carries it; 0 means triangles, so
-    // an older caller passing nothing still gets what it used to.
+    // separate path that did not exist. Slot 1 carries it.
+    //
+    // No sentinel here. This used to read `if(mode == 0) mode = GL_TRIANGLES;`
+    // to protect a caller that passed nothing -- but GL_POINTS *is* 0x0000, so
+    // that quietly turned every point-cloud draw into triangles, and no caller
+    // ever needed the protection: Mesh->Draw() and DrawInstanced(count) both
+    // forward DrawMode->GL_TRIANGLES explicitly.
     GLenum mode = (GLenum)APITools_GetIntValue(context, 1);
-    if(mode == 0) {
-      mode = GL_TRIANGLES;
-    }
 
     // Slot 2 is the instance count: 0 or 1 means an ordinary draw.
     const GLsizei instances = (GLsizei)APITools_GetIntValue(context, 2);
@@ -6436,6 +6438,52 @@ extern "C" {
 #endif
   void sdl_gl_enable(VMContext& context) {
     glEnable((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_point_size(VMContext& context) {
+    glPointSize((GLfloat)APITools_GetFloatValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_line_width(VMContext& context) {
+    glLineWidth((GLfloat)APITools_GetFloatValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_stencil_func(VMContext& context) {
+    glStencilFunc((GLenum)APITools_GetIntValue(context, 0),
+                  (GLint)APITools_GetIntValue(context, 1),
+                  (GLuint)APITools_GetIntValue(context, 2));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_stencil_op(VMContext& context) {
+    glStencilOp((GLenum)APITools_GetIntValue(context, 0),
+                (GLenum)APITools_GetIntValue(context, 1),
+                (GLenum)APITools_GetIntValue(context, 2));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_stencil_mask(VMContext& context) {
+    glStencilMask((GLuint)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_depth_func(VMContext& context) {
+    glDepthFunc((GLenum)APITools_GetIntValue(context, 0));
   }
 
 #ifdef _WIN32

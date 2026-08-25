@@ -87,6 +87,7 @@ class GlContextTest {
 		CheckScissorAndStencil();
 		CheckProps();
 		CheckMaterialLeak();
+		CheckStencilAndPoints();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -3502,6 +3503,120 @@ class GlContextTest {
 		white->Free();
 		cube->Free();
 		shader->Free();
+	}
+
+	#~
+	The half-shipped features, finished.
+
+	Each of these had a constant a program could reach and no implementation
+	behind it, which is the worst shape a gap can take -- using it looked like it
+	worked.
+
+	THE STENCIL TEST is the real one. The window has requested 8 stencil bits
+	since it learned to, and there was no glStencilFunc anywhere, so the buffer
+	could be cleared and nothing else. The check here is the two-pass mask that is
+	the whole point of having one: write a stencil value over half the screen,
+	then draw a full-screen rectangle that is only allowed through where the mask
+	is. If the stencil test does nothing, the second draw covers everything --
+	which is exactly the old behaviour, so this fixture fails against it.
+
+	GL_POINTS drew TRIANGLES, because the constant is 0x0000 and 0 was the
+	sentinel for "unspecified". Asserting that is awkward without a point big
+	enough to sample, which is what SetPointSize is for -- so the two are checked
+	together.
+	~#
+	method : CheckStencilAndPoints() ~ Nil {
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay for the stencil check", overlay->IsOk())) {
+			return;
+		};
+
+		# --- the stencil mask ------------------------------------------------
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT or
+			ClearBit->GL_STENCIL_BUFFER_BIT);
+
+		GL->Enable(Capability->GL_STENCIL_TEST);
+
+		# Pass one: stamp 1 into the stencil over the LEFT half. Colour is written
+		# too, but the clear below removes it -- only the stencil survives.
+		GL->SetStencilFunc(CompareFunc->GL_ALWAYS, 1, 0xFF);
+		GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_REPLACE);
+		GL->SetStencilMask(0xFF);
+
+		overlay->Begin();
+		overlay->Rect(0, 0, @pixel_w / 2, @pixel_h, 10, 10, 10);
+		overlay->End();
+
+		# Wipe the colour, keep the stencil.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		# Pass two: draw everywhere, but only where the stencil is 1.
+		GL->SetStencilFunc(CompareFunc->GL_EQUAL, 1, 0xFF);
+		GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_KEEP);
+		GL->SetStencilMask(0x00);
+
+		overlay->Begin();
+		overlay->Rect(0, 0, @pixel_w, @pixel_h, 240, 240, 240);
+		overlay->End();
+
+		GL->Disable(Capability->GL_STENCIL_TEST);
+		GL->SetStencilMask(0xFF);
+
+		inside := Green(GL->ReadPixel(@pixel_w / 4, @pixel_h / 2));
+		outside := Green(GL->ReadPixel((@pixel_w * 3) / 4, @pixel_h / 2));
+		"  stencil: masked={$inside} unmasked={$outside}"->PrintLine();
+
+		Check("the stencilled half is drawn", inside > 150);
+		# THE assertion. With no stencil test the second rect covers the whole
+		# screen and both halves read the same -- which is what happened before
+		# glStencilFunc was bound at all.
+		Check("and the other half is masked out -- the stencil test works",
+			outside < 60);
+
+		# --- GL_POINTS ------------------------------------------------------
+		# A single point at the centre, made large enough to sample. If the mode
+		# is coerced to triangles, three points cannot form one and nothing is
+		# drawn at the centre.
+		flat := Shader->Flat();
+		if(Check("Shader->Flat compiles for the point check", flat->IsOk())) {
+			verts := [0.0, 0.0, 0.0,   0.0, 0.0, 1.0,   0.5, 0.5];
+			indices := [0];
+			layout := [3, 3, 2];
+			dot := Mesh->New(verts, indices, layout);
+
+			if(Check("a one-vertex mesh uploads", dot->IsOk())) {
+				GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+				flat->Use();
+				flat->SetVec3("color", 1.0, 1.0, 1.0);
+				flat->SetMatrix4("mvp", Matrix4->Identity());
+				GL->SetPointSize(16.0);
+				dot->Draw(DrawMode->GL_POINTS);
+
+				centre := Green(GL->ReadPixel(@pixel_w / 2, @pixel_h / 2));
+				"  point at centre: {$centre}"->PrintLine();
+				# A single index cannot make a triangle, so before the sentinel was
+				# removed this drew nothing at all.
+				Check("GL_POINTS draws a point rather than being coerced to triangles",
+					centre > 150);
+			};
+
+			dot->Free();
+		};
+		flat->Free();
+
+		GL->SetPointSize(1.0);
+		GL->SetLineWidth(1.0);
+		Check("point size and line width are settable without error",
+			GL->DrainErrors()->Size() = 0);
+
+		# --- depth func -----------------------------------------------------
+		GL->SetDepthFunc(CompareFunc->GL_LEQUAL);
+		GL->SetDepthFunc(CompareFunc->GL_LESS);
+		Check("the depth function is settable -- GL_LEQUAL is what a skybox needs",
+			GL->DrainErrors()->Size() = 0);
+
+		overlay->Free();
 	}
 
 	method : CheckMatrixMath() ~ Nil {

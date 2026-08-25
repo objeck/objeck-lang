@@ -127,6 +127,34 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	Comparison functions, for the stencil test and glDepthFunc.
+	~#
+	consts CompareFunc {
+		GL_NEVER := 0x0200,
+		GL_LESS := 0x0201,
+		GL_EQUAL := 0x0202,
+		# The default for depth. GL_LEQUAL is what a skybox and a decal want, so
+		# they can draw at exactly the depth already written.
+		GL_LEQUAL := 0x0203,
+		GL_GREATER := 0x0204,
+		GL_NOTEQUAL := 0x0205,
+		GL_GEQUAL := 0x0206,
+		GL_ALWAYS := 0x0207
+	}
+
+	#~
+	What the stencil buffer does when a test passes or fails.
+	~#
+	consts StencilOp {
+		GL_ZERO := 0x0000,
+		GL_KEEP := 0x1E00,
+		GL_REPLACE := 0x1E01,
+		GL_INCR := 0x1E02,
+		GL_DECR := 0x1E03,
+		GL_INVERT := 0x150A
+	}
+
+	#~
 	How a texture is sampled when it is drawn larger or smaller than its pixels.
 	~#
 	consts TextureFilter {
@@ -160,7 +188,11 @@ bundle Game.OpenGL {
 		# On by default when the window was created with samples, so this is
 		# only needed to turn multisampling OFF for a pass that should not have
 		# it -- a crisp pixel-art overlay, say.
-		GL_MULTISAMPLE := 0x809D
+		GL_MULTISAMPLE := 0x809D,
+		# The stencil buffer has been requested since the window gained one, and
+		# until now there was no way to TEST against it -- so it could be cleared
+		# and nothing else.
+		GL_STENCIL_TEST := 0x0B90
 	}
 
 	#~
@@ -261,6 +293,106 @@ bundle Game.OpenGL {
 			array_args[3] := IntRef->New(height);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_scissor", array_args);
+		}
+
+		#~
+		How large a GL_POINTS vertex draws, in pixels.
+
+		Without this every point is one pixel, which is most of the reason
+		DrawMode->GL_POINTS was not worth reaching even once it drew points at all.
+		@param size diameter in pixels
+		~#
+		function : SetPointSize(size : Float) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := FloatRef->New(size);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_point_size", array_args);
+		}
+
+		#~
+		How thick GL_LINES draws, in pixels.
+
+		Drivers are allowed to support only 1.0 for antialiased lines, and many do
+		exactly that -- so treat anything above 1 as a request.
+		@param width thickness in pixels
+		~#
+		function : SetLineWidth(width : Float) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := FloatRef->New(width);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_line_width", array_args);
+		}
+
+		#~
+		Which stencil values pass the test.
+
+		Only has an effect while Capability->GL_STENCIL_TEST is enabled. The
+		window has requested 8 stencil bits since it learned to; this is the half
+		that was missing, and without it the buffer could be cleared and nothing
+		more -- no portal, mirror, outline or decal mask.
+
+		The usual two-pass shape: write a mask, then draw only where it is.
+
+		  GL->Enable(Capability->GL_STENCIL_TEST);
+		  GL->SetStencilFunc(CompareFunc->GL_ALWAYS, 1, 0xFF);
+		  GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_REPLACE);
+		  ... draw the mask ...
+		  GL->SetStencilFunc(CompareFunc->GL_EQUAL, 1, 0xFF);
+		  GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_KEEP);
+		  ... draw what the mask reveals ...
+
+		@param func a CompareFunc
+		@param reference the value to compare against
+		@param mask ANDed with both values before comparing; 0xFF for all bits
+		~#
+		function : SetStencilFunc(func : Int, reference : Int, mask : Int) ~ Nil {
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New(func);
+			array_args[1] := IntRef->New(reference);
+			array_args[2] := IntRef->New(mask);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_func", array_args);
+		}
+
+		#~
+		What to write to the stencil buffer in each of the three outcomes.
+		@param on_fail when the stencil test fails
+		@param on_depth_fail when stencil passes but depth fails
+		@param on_pass when both pass -- usually GL_REPLACE for a mask
+		~#
+		function : SetStencilOp(on_fail : Int, on_depth_fail : Int, on_pass : Int) ~ Nil {
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New(on_fail);
+			array_args[1] := IntRef->New(on_depth_fail);
+			array_args[2] := IntRef->New(on_pass);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_op", array_args);
+		}
+
+		#~
+		Which stencil bits are writable.
+		@param mask 0xFF for all of them, 0x00 to make the buffer read-only
+		~#
+		function : SetStencilMask(mask : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(mask);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_mask", array_args);
+		}
+
+		#~
+		Which depth comparison counts as passing.
+
+		GL_LESS is the default and is what a normal scene wants. GL_LEQUAL is what
+		lets a skybox draw at the far plane and a decal draw exactly on the surface
+		it decorates -- both need to pass at a depth that is already written.
+		@param func a CompareFunc
+		~#
+		function : SetDepthFunc(func : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(func);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_depth_func", array_args);
 		}
 
 		#~
