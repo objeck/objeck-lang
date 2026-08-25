@@ -192,7 +192,11 @@ bundle Game.OpenGL {
 		# The stencil buffer has been requested since the window gained one, and
 		# until now there was no way to TEST against it -- so it could be cleared
 		# and nothing else.
-		GL_STENCIL_TEST := 0x0B90
+		GL_STENCIL_TEST := 0x0B90,
+		# Nudges filled polygons in DEPTH without moving them on screen, which is
+		# how a decal sits on a wall instead of fighting with it. Only takes effect
+		# alongside GL->SetPolygonOffset.
+		GL_POLYGON_OFFSET_FILL := 0x8037
 	}
 
 	#~
@@ -293,6 +297,48 @@ bundle Game.OpenGL {
 			array_args[3] := IntRef->New(height);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_scissor", array_args);
+		}
+
+		#~
+		Shift filled polygons in depth, without moving them on screen.
+
+		The fix for two surfaces at the same depth flickering against each other --
+		a decal on a wall, a shadow on a floor, a highlight over a tile. Both are
+		at the same z, the winner is decided by floating-point noise, and it
+		changes as the camera moves, which is what makes it read as flickering
+		rather than as a mistake.
+
+		Enable Capability->GL_POLYGON_OFFSET_FILL first; this call on its own does
+		nothing.
+
+		  GL->Enable(Capability->GL_POLYGON_OFFSET_FILL);
+		  GL->SetPolygonOffset(-1.0, -1.0);
+		  ... draw the decal ...
+		  GL->Disable(Capability->GL_POLYGON_OFFSET_FILL);
+
+		NEGATIVE values pull towards the viewer, which is what a decal wants.
+		Positive values push away, which is the other use: offsetting shadow
+		casters to trade one artefact for another.
+
+		Both terms matter and they are not interchangeable. `units` is a constant
+		nudge in depth-buffer steps; `factor` scales with how steeply the polygon
+		is sloped, which is the term that fixes a surface seen at a grazing angle
+		where a constant offset is not enough. -1.0, -1.0 is the usual starting
+		point.
+
+		Before this existed the only way to lift a decal off a surface was to move
+		it geometrically along the normal -- which works, and then breaks at
+		distance where the offset is smaller than a depth step, and looks like a
+		floating sticker up close.
+		@param factor scaled by the polygon's depth slope
+		@param units constant offset in depth-buffer units
+		~#
+		function : SetPolygonOffset(factor : Float, units : Float) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := FloatRef->New(factor);
+			array_args[1] := FloatRef->New(units);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_polygon_offset", array_args);
 		}
 
 		#~
@@ -2656,6 +2702,101 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Camera-facing quads, drawn many at a time.
+
+		A billboard is a quad that always turns to face the viewer, and it is what
+		a particle, a spark, a sprite enemy, a distant tree and a floating label
+		all are. None of them had any route here: every shader in this bundle puts
+		geometry where its model matrix says, and a billboard is defined by
+		refusing to.
+
+		Drive it with a PropBatch over Mesh->Quad, which is why this is the
+		instanced form and there is no single-billboard variant -- one sprite is a
+		batch of one, and a thousand are still one draw call.
+
+		  sparks := PropBatch->New(Mesh->Quad(0.5), Shader->BillboardInstanced());
+		  sparks->SetCamera(camera);
+		  sparks->SetAdditive(true);
+		  sparks->SetMaterial(Material->New(spark_texture));
+
+		## How it faces you
+
+		The instance matrix supplies the CENTRE and the SIZE and its rotation is
+		ignored: the quad's corners are rebuilt in world space from the camera's
+		own right and up vectors, which are the first two ROWS of the view
+		matrix's upper 3x3. So SetScale(w, h, 1.0) on an instance's transform sets
+		the sprite's width and height, and turning it does nothing -- deliberately.
+
+		This is why SetCamera exists on PropBatch. The batch is handed a
+		view_projection by Scene and that alone cannot be decomposed back into the
+		camera's basis, so the view matrix comes separately.
+
+		Uniforms: "view_projection", "view", the sampler "tex", "tint" and
+		"opacity" -- the last two being what Material writes, so a material works
+		here exactly as it does on a lit prop.
+
+		Fragments below 2% alpha are DISCARDED rather than blended, so a sprite
+		sheet's transparent border does not write depth and punch holes in whatever
+		is drawn after it.
+		@return the program; check IsOk()
+		~#
+		function : BillboardInstanced() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("layout (location = 1) in vec3 in_normal;");
+			vertex->Add("layout (location = 2) in vec2 in_texcoord;");
+			# four consecutive vec4 slots, which is how a mat4 attribute is declared
+			vertex->Add("layout (location = 3) in mat4 in_model;");
+			vertex->Add("uniform mat4 view_projection;");
+			vertex->Add("uniform mat4 view;");
+			vertex->Add("out vec2 texcoord;");
+			vertex->Add("void main() {");
+			vertex->Add("  vec3 centre = in_model[3].xyz;");
+			# Column lengths are the scale, whatever rotation was also baked in.
+			vertex->Add("  float sx = length(in_model[0].xyz);");
+			vertex->Add("  float sy = length(in_model[1].xyz);");
+			# mat4 indexing in GLSL is by COLUMN, so a row is one component from
+			# each of three columns. These two rows are the camera's right and up
+			# in world space.
+			vertex->Add("  vec3 right = vec3(view[0][0], view[1][0], view[2][0]);");
+			vertex->Add("  vec3 up = vec3(view[0][1], view[1][1], view[2][1]);");
+			vertex->Add("  vec3 world = centre + right * (in_position.x * sx) + up * (in_position.y * sy);");
+			vertex->Add("  texcoord = in_texcoord;");
+			vertex->Add("  gl_Position = view_projection * vec4(world, 1.0);");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec2 texcoord;");
+			fragment->Add("uniform sampler2D tex;");
+			fragment->Add("uniform vec3 tint;");
+			fragment->Add("uniform float opacity;");
+			fragment->Add("out vec4 frag_color;");
+			fragment->Add("void main() {");
+			fragment->Add("  vec4 sampled = texture(tex, texcoord);");
+			fragment->Add("  sampled.rgb *= tint;");
+			fragment->Add("  sampled.a *= opacity;");
+			fragment->Add("  if(sampled.a < 0.02) { discard; }");
+			fragment->Add("  frag_color = sampled;");
+			fragment->Add("}");
+
+			built := Shader->New(vertex->Build(), fragment->Build());
+
+			# Both default to ZERO in GLSL, so a program that never set them would
+			# draw black at alpha 0 -- invisible, with nothing reported. The lit
+			# presets learned this the hard way; the same guard belongs here.
+			if(built->IsOk()) {
+				if(built->HasUniform("tint")) {
+					built->SetVec3("tint", 1.0, 1.0, 1.0);
+				};
+				if(built->HasUniform("opacity")) {
+					built->SetFloat("opacity", 1.0);
+				};
+			};
+
+			return built;
+		}
+
+		#~
 		The depth pass for a point light: writes DISTANCE from the light, in world
 		units, rather than the usual projected depth.
 
@@ -3112,6 +3253,36 @@ bundle Game.OpenGL {
 		@param layout component count per attribute, in shader location order
 		~#
 		New(vertices : Float[], indices : Int[], layout : Int[]) {
+			Build(vertices, indices, layout);
+		}
+
+		#~
+		Upload geometry with NO index buffer.
+
+		The vertices are drawn in the order they are given, which is what a point
+		cloud, a particle buffer, a debug line list and most generated geometry
+		actually want. Building 0, 1, 2, 3, ... by hand purely to satisfy
+		glDrawElements costs a second buffer and a loop to express the default.
+
+		Which draw call is used is decided by the MESH, not by the caller: one
+		built with indices always draws through them and one built without never
+		does, so there is no way to ask for the wrong one.
+
+		The vertex order still has to suit the topology -- six vertices drawn as
+		GL_TRIANGLES are two triangles, and drawn as GL_LINES are three separate
+		segments.
+		@param vertices interleaved vertex data
+		@param layout component count per attribute, in shader location order
+		~#
+		New(vertices : Float[], layout : Int[]) {
+			Build(vertices, Int->New[0], layout);
+		}
+
+		#~
+		What both constructors do. Objeck constructors cannot delegate to one
+		another, so the body lives here rather than being written twice.
+		~#
+		method : Build(vertices : Float[], indices : Int[], layout : Int[]) ~ Nil {
 			@mesh := 0;
 			Measure(vertices, layout);
 
@@ -8661,6 +8832,11 @@ bundle Game.OpenGL {
 		# is reported, so probing per frame would file a diagnostic per frame.
 		@wants_vp : Int;
 		@wants_sampler : Int;
+		# A billboard shader needs the camera's own basis, and a view_projection
+		# cannot be decomposed back into one, so the view matrix comes separately.
+		@wants_view : Int;
+		@camera : Camera;
+		@additive : Bool;
 		# Bounds over every instance, recomputed whenever the matrices are packed.
 		@cx : Float; @cy : Float; @cz : Float;
 		@radius : Float;
@@ -8708,6 +8884,9 @@ bundle Game.OpenGL {
 			@rig := Nil;
 			@wants_vp := -1;
 			@wants_sampler := -1;
+			@wants_view := -1;
+			@camera := Nil;
+			@additive := false;
 			@cx := 0.0; @cy := 0.0; @cz := 0.0;
 			@radius := 0.0;
 			@error := "";
@@ -9033,6 +9212,7 @@ bundle Game.OpenGL {
 			if(@wants_vp = -1) {
 				@wants_vp := @shader->HasUniform("view_projection") ? 1 : 0;
 				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
+				@wants_view := @shader->HasUniform("view") ? 1 : 0;
 
 				# Said once, not once a frame. The overwhelmingly likely cause is a
 				# per-object shader handed to a batch, and the symptom on its own --
@@ -9053,6 +9233,19 @@ bundle Game.OpenGL {
 			@shader->SetMatrix4("view_projection", view_projection);
 			if(@wants_sampler = 1) {
 				@shader->SetInt("tex", 0);
+			};
+
+			# Silent when the shader wants a view and no camera was given: the
+			# billboards then all collapse onto the origin's basis, which looks
+			# wrong immediately rather than subtly, and the error says which of the
+			# two calls was forgotten.
+			if(@wants_view = 1) {
+				if(@camera = Nil) {
+					@error := "this shader needs the camera's basis; call PropBatch->SetCamera";
+				}
+				else {
+					@shader->SetMatrix4("view", @camera->GetViewMatrix());
+				};
 			};
 
 			use_rig := @rig;
@@ -9085,6 +9278,52 @@ bundle Game.OpenGL {
 			};
 
 			@mesh->DrawInstanced(@count);
+		}
+
+		#~
+		The camera whose basis a billboard shader needs.
+
+		Only read by a shader that declares a "view" uniform --
+		Shader->BillboardInstanced does; nothing else here does. Harmless
+		otherwise.
+		@param camera the eye, or Nil
+		~#
+		method : public : SetCamera(camera : Camera) ~ Nil {
+			@camera := camera;
+		}
+
+		#~
+		@return the camera, or Nil
+		~#
+		method : public : GetCamera() ~ Camera {
+			return @camera;
+		}
+
+		#~
+		Draw this batch with ADDITIVE blending, and no depth writes.
+
+		For anything that emits light rather than blocks it: sparks, fire, glows,
+		muzzle flashes, magic. Colours accumulate, so bright places get brighter
+		and black contributes nothing -- which is why a sprite sheet for additive
+		work has a black background rather than a transparent one.
+
+		The reason this is the blending mode offered here and ordinary
+		transparency is not: addition COMMUTES, so additive geometry needs no
+		back-to-front sort. Ordinary alpha blending does, and a batch is one draw
+		call over an instance buffer with no per-instance ordering in it -- so
+		offering it would mean offering something that renders wrongly whenever
+		two sprites overlap.
+		@param additive true for additive blending
+		~#
+		method : public : SetAdditive(additive : Bool) ~ Nil {
+			@additive := additive;
+		}
+
+		#~
+		@return whether this batch draws additively
+		~#
+		method : public : IsAdditive() ~ Bool {
+			return @additive;
 		}
 
 		#~
@@ -9701,7 +9940,25 @@ bundle Game.OpenGL {
 				};
 
 				if(visible) {
-					batch->Draw(view_projection, @light, @rig);
+					# An additive batch blends and stops writing depth, then puts
+					# both back. Depth TESTING stays on, so a spark behind a wall is
+					# still hidden by it; what must not happen is the spark writing
+					# depth and occluding the ones behind it, which in an
+					# unsortable instance buffer would be an arbitrary subset.
+					if(batch->IsAdditive()) {
+						GL->Enable(Capability->GL_BLEND);
+						GL->SetBlend(BlendFactor->GL_SRC_ALPHA, BlendFactor->GL_ONE);
+						GL->SetDepthWrite(false);
+
+						batch->Draw(view_projection, @light, @rig);
+
+						GL->SetDepthWrite(true);
+						GL->Disable(Capability->GL_BLEND);
+					}
+					else {
+						batch->Draw(view_projection, @light, @rig);
+					};
+
 					@drawn += 1;
 					touched := true;
 				}

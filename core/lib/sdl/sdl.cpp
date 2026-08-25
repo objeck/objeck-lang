@@ -5051,6 +5051,7 @@ GL_FN(GENRENDERBUFFERS) GL_FN(BINDRENDERBUFFER) GL_FN(DELETERENDERBUFFERS)
 GL_FN(RENDERBUFFERSTORAGE) GL_FN(FRAMEBUFFERRENDERBUFFER)
 GL_FN(GETSTRINGI)
 GL_FN(DRAWELEMENTSINSTANCED) GL_FN(VERTEXATTRIBDIVISOR)
+GL_FN(DRAWARRAYSINSTANCED)
 #undef GL_FN
 
 static bool objk_gl_loaded = false;
@@ -5161,6 +5162,7 @@ static std::string objk_gl_load_functions() {
   // 3.3, so both are guaranteed by the context this bundle requires -- required
   // rather than optional, same reasoning as the framebuffer calls.
   OBJK_GL_LOAD("glDrawElementsInstanced", DRAWELEMENTSINSTANCED)
+  OBJK_GL_LOAD("glDrawArraysInstanced", DRAWARRAYSINSTANCED)
   OBJK_GL_LOAD("glVertexAttribDivisor", VERTEXATTRIBDIVISOR)
 #undef OBJK_GL_LOAD
 
@@ -5186,8 +5188,13 @@ static std::string objk_gl_load_functions() {
 struct ObjkMesh {
   GLuint vao;
   GLuint vbo;
+  // Zero when the mesh has no index buffer, which is what selects glDrawArrays
+  // over glDrawElements at draw time.
   GLuint ebo;
   GLsizei index_count;
+  // How many VERTICES the buffer holds, as opposed to how many floats. Only
+  // consulted on the non-indexed path, but recorded either way.
+  GLsizei vertex_count;
   // A second vertex buffer whose attributes advance once per INSTANCE rather
   // than once per vertex. Zero until SetInstances is called; a mesh without one
   // draws normally.
@@ -5650,8 +5657,13 @@ extern "C" {
     size_t* indices = objk_array_from_holder(APITools_GetObjectValue(context, 2), index_count);
     size_t* layout = objk_array_from_holder(APITools_GetObjectValue(context, 3), layout_count);
 
-    if(!vertices || !indices || !layout || !vertex_count || !index_count || !layout_count) {
-      objk_gl_fail("Mesh->New: vertices, indices and layout must all be non-empty");
+    // Indices are OPTIONAL now. An empty index array means "draw the vertices in
+    // the order they are given", which is what a point cloud, a particle buffer,
+    // a debug line list and anything generated procedurally actually wants --
+    // building 0,1,2,3,... by hand just to satisfy glDrawElements is a buffer's
+    // worth of memory and a loop, to express the default.
+    if(!vertices || !layout || !vertex_count || !layout_count) {
+      objk_gl_fail("Mesh->New: vertices and layout must both be non-empty");
       return;
     }
 
@@ -5721,6 +5733,7 @@ extern "C" {
     mesh->vao = mesh->vbo = mesh->ebo = mesh->instance_vbo = 0;
     mesh->instance_attributes = 0;
     mesh->index_count = (GLsizei)index_count;
+    mesh->vertex_count = (GLsizei)(vertex_count / (size_t)stride);
 
     objk_glGENVERTEXARRAYS(1, &mesh->vao);
     objk_glBINDVERTEXARRAY(mesh->vao);
@@ -5731,11 +5744,16 @@ extern "C" {
                       (GLsizeiptr)(vertex_data.size() * sizeof(GLfloat)),
                       vertex_data.data(), GL_STATIC_DRAW);
 
-    objk_glGENBUFFERS(1, &mesh->ebo);
-    objk_glBINDBUFFER(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-    objk_glBUFFERDATA(GL_ELEMENT_ARRAY_BUFFER,
-                      (GLsizeiptr)(index_data.size() * sizeof(GLuint)),
-                      index_data.data(), GL_STATIC_DRAW);
+    // No element buffer at all when there are no indices. Creating an empty one
+    // would also work and would leave ebo non-zero, which is exactly the signal
+    // the draw path reads -- so it has to be skipped rather than emptied.
+    if(index_count > 0) {
+      objk_glGENBUFFERS(1, &mesh->ebo);
+      objk_glBINDBUFFER(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+      objk_glBUFFERDATA(GL_ELEMENT_ARRAY_BUFFER,
+                        (GLsizeiptr)(index_data.size() * sizeof(GLuint)),
+                        index_data.data(), GL_STATIC_DRAW);
+    }
 
     size_t offset = 0;
     for(size_t i = 0; i < layout_count; ++i) {
@@ -5908,12 +5926,26 @@ extern "C" {
     ObjkMesh* mesh = (ObjkMesh*)APITools_GetIntValue(context, 0);
     if(mesh && mesh->vao) {
       objk_glBINDVERTEXARRAY(mesh->vao);
-      if(instances > 1) {
+
+      // No element buffer means the vertices are drawn in order. Note this is
+      // decided by the MESH, not by the caller: a mesh built with indices always
+      // draws through them and one built without never does, so there is no way
+      // to ask for the wrong one.
+      if(mesh->ebo == 0) {
+        if(instances > 1 && objk_glDRAWARRAYSINSTANCED) {
+          objk_glDRAWARRAYSINSTANCED(mode, 0, mesh->vertex_count, instances);
+        }
+        else {
+          glDrawArrays(mode, 0, mesh->vertex_count);
+        }
+      }
+      else if(instances > 1) {
         objk_glDRAWELEMENTSINSTANCED(mode, mesh->index_count, GL_UNSIGNED_INT, nullptr, instances);
       }
       else {
         glDrawElements(mode, mesh->index_count, GL_UNSIGNED_INT, nullptr);
       }
+
       objk_glBINDVERTEXARRAY(0);
     }
   }
@@ -6473,6 +6505,14 @@ extern "C" {
 #endif
   void sdl_gl_enable(VMContext& context) {
     glEnable((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_polygon_offset(VMContext& context) {
+    glPolygonOffset((GLfloat)APITools_GetFloatValue(context, 0),
+                    (GLfloat)APITools_GetFloatValue(context, 1));
   }
 
 #ifdef _WIN32
