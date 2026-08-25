@@ -80,6 +80,7 @@ class GlContextTest {
 		CheckProjection();
 		CheckCameraProjection();
 		CheckInput();
+		CheckGamepad();
 		CheckOverlayState();
 		CheckMultisampling();
 		CheckTransparency();
@@ -3216,6 +3217,111 @@ class GlContextTest {
 			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_A));
 
 		Check("no GL errors from reading input", GL->DrainErrors()->Size() = 0);
+	}
+
+	#~
+	Controller support, as far as it can be checked without a controller.
+
+	Neither CI nor this build machine has a gamepad, and pretending otherwise
+	would produce a fixture that passes because everything returns zero. So this
+	splits into two halves and is honest about which is which.
+
+	The half that IS verified: the dead-zone curve, which is the only part with
+	real logic in it and is a pure function precisely so it can be reached with no
+	hardware. Plus every no-pad path, which is the configuration this machine and
+	CI actually run in, and which must not crash or lie.
+
+	The half that is NOT: whether a real pad's buttons and axes arrive. That needs
+	hardware. What CAN be checked without it is that the controller subsystem
+	coming up does not stop a window opening -- the failure that would take every
+	GL program down with it, and the reason the subsystem is initialised
+	separately from video rather than folded into the same flags.
+	~#
+	method : CheckGamepad() ~ Nil {
+		# --- the invariant that holds with or without hardware ----------------
+		# Asserted as an equivalence rather than as "false", so this stays correct
+		# on a machine that DOES have a pad plugged in. A fixture that asserts
+		# HasPad() = false is a fixture that fails the first time someone runs the
+		# suite at their desk with a controller attached.
+		Check("HasPad agrees with GetPad",
+			@gl->HasPad() = (@gl->GetPad() <> Nil));
+
+		if(@gl->HasPad()) {
+			name := @gl->GetPadName();
+			"  a controller IS attached: {$name}"->PrintLine();
+			Check("an attached pad has a name", name->Size() > 0);
+		}
+		else {
+			"  no controller attached; checking the no-pad paths"->PrintLine();
+			Check("no pad means no name", @gl->GetPadName()->Size() = 0);
+			# Reading a stick with nothing plugged in must be 0, not garbage and
+			# not a crash -- a program should not have to guard every read.
+			Check("a stick with no pad reads zero",
+				@gl->GetPadAxis(GameControllerAxis->SDL_CONTROLLER_AXIS_LEFTX) = 0.0);
+			Check("and so does the raw read",
+				@gl->GetPadAxisRaw(GameControllerAxis->SDL_CONTROLLER_AXIS_LEFTY) = 0.0);
+			Check("and no button is held",
+				<>@gl->PadHeld(GameControllerButton->SDL_CONTROLLER_BUTTON_A) &
+				<>@gl->PadPressed(GameControllerButton->SDL_CONTROLLER_BUTTON_A) &
+				<>@gl->PadReleased(GameControllerButton->SDL_CONTROLLER_BUTTON_A));
+		};
+
+		# The window this suite is running in opened AFTER the controller
+		# subsystem was initialised. That it exists at all is the assertion.
+		Check("initialising the controller subsystem did not stop the window",
+			@gl->IsOk());
+
+		# --- the dead-zone curve, which is the part with logic in it ----------
+		zone := 0.15;
+
+		Check("a stick at rest is zero", GLWindow->ApplyDeadzone(0.0, zone) = 0.0);
+		Check("noise inside the dead zone is zero",
+			GLWindow->ApplyDeadzone(0.10, zone) = 0.0 &
+			GLWindow->ApplyDeadzone(-0.10, zone) = 0.0);
+		Check("full deflection is still full",
+			(GLWindow->ApplyDeadzone(1.0, zone) - 1.0)->Abs() < 0.0001);
+		Check("and full the other way",
+			(GLWindow->ApplyDeadzone(-1.0, zone) + 1.0)->Abs() < 0.0001);
+
+		# THE assertion. A dead zone that merely CLAMPS returns the input
+		# untouched once it clears the threshold, so 0.16 comes back as 0.16 and
+		# the stick jumps from nothing to 16% the instant it registers. Rescaled,
+		# 0.16 is barely off the stop: (0.16-0.15)/0.85 = 0.0118.
+		#
+		# This is what makes slow movement possible, and it is exactly what a
+		# clamp-only implementation gets wrong while passing every other check
+		# here.
+		just_past := GLWindow->ApplyDeadzone(0.16, zone);
+		"  just past the dead zone: {$just_past}"->PrintLine();
+		Check("clearing the dead zone ramps from zero rather than jumping",
+			just_past < 0.05);
+		Check("and is not simply clamped to the input", (just_past - 0.16)->Abs() > 0.1);
+
+		# Monotonic, and symmetric about zero.
+		a := GLWindow->ApplyDeadzone(0.3, zone);
+		b := GLWindow->ApplyDeadzone(0.6, zone);
+		c := GLWindow->ApplyDeadzone(0.9, zone);
+		Check("the curve rises with the input", a < b & b < c);
+		Check("and is symmetric", (GLWindow->ApplyDeadzone(-0.6, zone) + b)->Abs() < 0.0001);
+
+		# A zero dead zone must be the identity, or "turn it off" does not work.
+		Check("a dead zone of zero passes the input through",
+			(GLWindow->ApplyDeadzone(0.42, 0.0) - 0.42)->Abs() < 0.0001);
+
+		# --- clamping the setter ---------------------------------------------
+		before := @gl->GetPadDeadzone();
+
+		@gl->SetPadDeadzone(-1.0);
+		Check("a negative dead zone clamps to zero", @gl->GetPadDeadzone() = 0.0);
+
+		# 1.0 would divide by zero in the rescale, so the ceiling is below it.
+		@gl->SetPadDeadzone(2.0);
+		Check("an absurd dead zone clamps below one", @gl->GetPadDeadzone() < 1.0);
+		Check("and stays usable rather than swallowing everything",
+			GLWindow->ApplyDeadzone(1.0, @gl->GetPadDeadzone()) > 0.0);
+
+		@gl->SetPadDeadzone(before);
+		Check("the dead zone round-trips", @gl->GetPadDeadzone() = before);
 	}
 
 	#~

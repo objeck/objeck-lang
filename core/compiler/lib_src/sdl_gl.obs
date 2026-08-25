@@ -895,6 +895,19 @@ bundle Game.OpenGL {
 		@mouse_dx : Float;
 		@mouse_dy : Float;
 		@quit : Bool;
+		# The first attached controller, or Nil. Game.SDL2 has had a fully featured
+		# GameController class all along -- axes, rumble, LED, touchpads -- and a
+		# Game.OpenGL program could never use ANY of it, because GLWindow
+		# initialised only video and audio and the controller subsystem was
+		# therefore never up.
+		@pad : GameController;
+		@pad_ok : Bool;
+		# Button state as bitmasks, one bit per GameControllerButton ordinal, in
+		# the same shape as the mouse buttons above.
+		@pad_held : Int;
+		@pad_pressed : Int;
+		@pad_released : Int;
+		@pad_deadzone : Float;
 
 		#~
 		Open a visible window and a GL 3.3 core context.
@@ -1028,6 +1041,16 @@ bundle Game.OpenGL {
 				@error := "SDL could not initialise: {$Core->GetError()}";
 				return;
 			};
+
+			# Controllers come up SEPARATELY and are allowed to fail. A headless
+			# runner, a locked-down container or a machine with no input drivers
+			# can refuse this subsystem, and none of that is a reason to refuse the
+			# caller a window -- so it is not folded into the flags above, where a
+			# failure would take video down with it and turn every GL program on
+			# that machine into an error.
+			@pad_deadzone := 0.15;
+			@pad_ok := Core->InitSubSystem(HardwareFlags->SDL_INIT_GAMECONTROLLER) = 0;
+			OpenPad();
 
 			# Attributes select a pixel format, so every one of these must precede
 			# window creation. Setting them afterwards is silently ignored.
@@ -1425,6 +1448,280 @@ bundle Game.OpenGL {
 		this does not disturb.
 		@return true when the program should quit
 		~#
+		#~
+		Adopt the first attached controller, if there is one and we have none.
+
+		Cheap when nothing is plugged in -- one call for the count and then
+		nothing. Called at startup and again whenever SDL reports a device
+		arriving, rather than every frame.
+		~#
+		method : OpenPad() ~ Nil {
+			if(<>@pad_ok | @pad <> Nil) {
+				return;
+			};
+
+			count := Joystick->Number();
+			for(i := 0; i < count; i += 1;) {
+				candidate := GameController->New(i);
+				if(candidate <> Nil & candidate->GetAttached()) {
+					@pad := candidate;
+					return;
+				};
+
+				# Not a controller, or a controller SDL has no mapping for. Either
+				# way it is not ours; close it so the handle does not leak while
+				# the program goes on running.
+				if(candidate <> Nil) {
+					candidate->Close();
+				};
+			};
+		}
+
+		#~
+		Let go of the controller and forget its state.
+		~#
+		method : ClosePad() ~ Nil {
+			if(@pad <> Nil) {
+				@pad->Close();
+				@pad := Nil;
+			};
+
+			# Held state must go too. A pad unplugged mid-press would otherwise
+			# leave that button held forever, and a program driving movement off
+			# PadHeld would walk into a wall until it was plugged back in.
+			@pad_held := 0;
+			@pad_pressed := 0;
+			@pad_released := 0;
+		}
+
+		#~
+		Read the buttons and work out this frame's edges.
+
+		Polled rather than event-driven, which is the same choice the keyboard
+		makes: Event exposes GetJButton for raw joysticks but has no accessor for
+		SDL's CONTROLLER button events, so the payload is unreachable from here.
+		The event TYPE is reachable, which is enough to notice a device arriving or
+		leaving -- so hot-plug is event-driven and state is polled.
+
+		Costs nothing at all when no pad is attached, which is the common case.
+		~#
+		method : PollPad() ~ Nil {
+			@pad_pressed := 0;
+			@pad_released := 0;
+
+			if(@pad = Nil) {
+				return;
+			};
+
+			if(<>@pad->GetAttached()) {
+				ClosePad();
+				return;
+			};
+
+			bit := 1;
+			for(i := 0; i <= 20; i += 1;) {
+				button := i->As(GameControllerButton);
+				now := @pad->GetButton(button) <> 0;
+				was := (@pad_held and bit) <> 0;
+
+				if(now & <>was) {
+					@pad_pressed := @pad_pressed or bit;
+					@pad_held := @pad_held or bit;
+				}
+				else if(<>now & was) {
+					@pad_released := @pad_released or bit;
+					# and-not, to clear just this bit
+					@pad_held -= bit;
+				};
+
+				bit *= 2;
+			};
+		}
+
+		#~
+		Is a controller attached?
+
+		False when none is plugged in AND when the controller subsystem could not
+		start at all -- a program should treat both the same way, since in either
+		case there is nothing to read.
+		@return true when GetPad returns something usable
+		~#
+		method : public : HasPad() ~ Bool {
+			return @pad <> Nil;
+		}
+
+		#~
+		The controller's name, e.g. "Xbox Series Controller".
+		@return the name, or an empty string when there is no pad
+		~#
+		method : public : GetPadName() ~ String {
+			if(@pad = Nil) {
+				return "";
+			};
+
+			return @pad->Name();
+		}
+
+		#~
+		The controller itself, for everything this wrapper does not cover --
+		rumble, the LED, touchpads, the gyro.
+
+		Do NOT close it; the window owns it and closes it on Free.
+		@return the controller, or Nil
+		~#
+		method : public : GetPad() ~ GameController {
+			return @pad;
+		}
+
+		#~
+		Is a controller button down right now?
+		@param button a GameControllerButton
+		@return true while it is held
+		~#
+		method : public : PadHeld(button : GameControllerButton) ~ Bool {
+			return (@pad_held and PadBit(button)) <> 0;
+		}
+
+		#~
+		Did a controller button go down during the last PollEvents?
+
+		The edge, not the level -- a menu that advances once per press wants this,
+		and PadHeld would advance it every frame the button was down.
+		@param button a GameControllerButton
+		@return true on the frame it was pressed
+		~#
+		method : public : PadPressed(button : GameControllerButton) ~ Bool {
+			return (@pad_pressed and PadBit(button)) <> 0;
+		}
+
+		#~
+		Did a controller button come up during the last PollEvents?
+		@param button a GameControllerButton
+		@return true on the frame it was released
+		~#
+		method : public : PadReleased(button : GameControllerButton) ~ Bool {
+			return (@pad_released and PadBit(button)) <> 0;
+		}
+
+		method : PadBit(button : GameControllerButton) ~ Int {
+			ordinal := button->As(Int);
+			if(ordinal < 0 | ordinal > 20) {
+				return 0;
+			};
+
+			bit := 1;
+			for(i := 0; i < ordinal; i += 1;) {
+				bit *= 2;
+			};
+
+			return bit;
+		}
+
+		#~
+		A controller axis as -1..1, with the dead zone taken out.
+
+		Raw SDL axes are -32768..32767 and a stick at rest does not read zero: it
+		wanders by a few hundred, and a camera driven straight off the raw value
+		drifts on its own. Every program that uses a stick has to solve this, so it
+		is solved once here.
+
+		The dead zone is RESCALED rather than clamped. Clamping gives a stick that
+		does nothing and then jumps to 0.15; rescaling ramps from 0 at the edge of
+		the dead zone to 1 at full deflection, so slow movement stays possible.
+		That difference is the whole reason to do it here rather than leave callers
+		an `if` to write.
+
+		Triggers are axes too, and they rest at -1 rather than 0 -- so read a
+		trigger with GetPadAxisRaw if a resting value of -1 matters to you.
+		@param axis a GameControllerAxis
+		@return -1..1, or 0.0 when there is no pad
+		~#
+		method : public : GetPadAxis(axis : GameControllerAxis) ~ Float {
+			return ApplyDeadzone(GetPadAxisRaw(axis), @pad_deadzone);
+		}
+
+		#~
+		The dead-zone curve on its own, as a pure function.
+
+		Split out from GetPadAxis so it can be TESTED. The rest of the controller
+		path needs hardware to exercise and neither CI nor a build machine has any,
+		so the one piece with actual logic in it is the one piece that must be
+		reachable without a pad plugged in. It is public because a program reading
+		a stick through some other route wants the same curve.
+		@param raw -1..1, as GetPadAxisRaw returns
+		@param deadzone fraction of full travel to ignore
+		@return -1..1, rescaled so it ramps from 0 at the edge of the dead zone
+		~#
+		function : ApplyDeadzone(raw : Float, deadzone : Float) ~ Float {
+			magnitude := raw->Abs();
+			if(magnitude <= deadzone) {
+				return 0.0;
+			};
+
+			scaled := (magnitude - deadzone) / (1.0 - deadzone);
+			if(scaled > 1.0) {
+				scaled := 1.0;
+			};
+
+			if(raw < 0.0) {
+				return scaled * -1.0;
+			};
+
+			return scaled;
+		}
+
+		#~
+		A controller axis as -1..1 with NO dead zone applied.
+		@param axis a GameControllerAxis
+		@return -1..1, or 0.0 when there is no pad
+		~#
+		method : public : GetPadAxisRaw(axis : GameControllerAxis) ~ Float {
+			if(@pad = Nil) {
+				return 0.0;
+			};
+
+			# 32767 rather than 32768: the positive end of the range is what the
+			# hardware actually reaches, and dividing by 32768 means a fully
+			# deflected stick reads 0.99997 and never quite 1.0.
+			raw := @pad->GetAxis(axis)->As(Float) / 32767.0;
+			if(raw > 1.0) {
+				return 1.0;
+			};
+			if(raw < -1.0) {
+				return -1.0;
+			};
+
+			return raw;
+		}
+
+		#~
+		How far a stick must move before it counts, as a fraction of full travel.
+
+		0.15 by default. Raise it for a worn pad that drifts; 0 turns it off and
+		makes GetPadAxis the same as GetPadAxisRaw.
+		@param fraction 0.0 to 1.0; values outside are clamped
+		~#
+		method : public : SetPadDeadzone(fraction : Float) ~ Nil {
+			if(fraction < 0.0) {
+				fraction := 0.0;
+			};
+			# Not 1.0: a dead zone of exactly 1 would divide by zero in the rescale
+			# above, and a stick that can never register is not a thing anyone means
+			# to ask for.
+			if(fraction > 0.95) {
+				fraction := 0.95;
+			};
+
+			@pad_deadzone := fraction;
+		}
+
+		#~
+		@return the dead zone as a fraction of full travel
+		~#
+		method : public : GetPadDeadzone() ~ Float {
+			return @pad_deadzone;
+		}
+
 		method : public : PollEvents() ~ Bool {
 			@mouse_dx := 0.0;
 			@mouse_dy := 0.0;
@@ -1505,6 +1802,20 @@ bundle Game.OpenGL {
 						@mouse_y := motion->GetY();
 					};
 				}
+				else if(type = EventType->SDL_CONTROLLERDEVICEADDED) {
+					# Event carries no accessor for the device index, but knowing
+					# THAT something arrived is enough -- OpenPad rescans, and does
+					# nothing if we already have one.
+					OpenPad();
+				}
+				else if(type = EventType->SDL_CONTROLLERDEVICEREMOVED) {
+					# Which one left is equally unreachable, so ask the pad we hold
+					# whether it is still there. PollPad does that anyway; this just
+					# makes it immediate rather than waiting for the button scan.
+					if(@pad <> Nil & <>@pad->GetAttached()) {
+						ClosePad();
+					};
+				}
 				else if(type = EventType->SDL_WINDOWEVENT) {
 					# The drawable can change size under us -- a resize, or a window
 					# dragged to a display with a different scale factor. Re-measuring
@@ -1518,6 +1829,7 @@ bundle Game.OpenGL {
 			# AFTER the queue is drained: SDL_GetKeyboardState reflects the events
 			# that have been pumped, so reading it first would be a frame behind.
 			@keys := Keyboard->GetState();
+			PollPad();
 
 			return @quit;
 		}
