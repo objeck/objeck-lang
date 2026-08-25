@@ -127,6 +127,34 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	Comparison functions, for the stencil test and glDepthFunc.
+	~#
+	consts CompareFunc {
+		GL_NEVER := 0x0200,
+		GL_LESS := 0x0201,
+		GL_EQUAL := 0x0202,
+		# The default for depth. GL_LEQUAL is what a skybox and a decal want, so
+		# they can draw at exactly the depth already written.
+		GL_LEQUAL := 0x0203,
+		GL_GREATER := 0x0204,
+		GL_NOTEQUAL := 0x0205,
+		GL_GEQUAL := 0x0206,
+		GL_ALWAYS := 0x0207
+	}
+
+	#~
+	What the stencil buffer does when a test passes or fails.
+	~#
+	consts StencilOp {
+		GL_ZERO := 0x0000,
+		GL_KEEP := 0x1E00,
+		GL_REPLACE := 0x1E01,
+		GL_INCR := 0x1E02,
+		GL_DECR := 0x1E03,
+		GL_INVERT := 0x150A
+	}
+
+	#~
 	How a texture is sampled when it is drawn larger or smaller than its pixels.
 	~#
 	consts TextureFilter {
@@ -160,7 +188,27 @@ bundle Game.OpenGL {
 		# On by default when the window was created with samples, so this is
 		# only needed to turn multisampling OFF for a pass that should not have
 		# it -- a crisp pixel-art overlay, say.
-		GL_MULTISAMPLE := 0x809D
+		GL_MULTISAMPLE := 0x809D,
+		# The stencil buffer has been requested since the window gained one, and
+		# until now there was no way to TEST against it -- so it could be cleared
+		# and nothing else.
+		GL_STENCIL_TEST := 0x0B90
+	}
+
+	#~
+	Something holding a GL object that has to be released.
+
+	Exists so GLWindow->Own can hold a mixed list. Every class here already
+	declared `method : public : Free()` with exactly this shape, so implementing
+	it costs them nothing -- but note Objeck requires the access to match the
+	interface exactly, and does not accept an INHERITED method as satisfying one.
+	~#
+	interface Freeable {
+		#~
+		Release whatever GL objects this holds. Must be idempotent -- everything
+		in this bundle nulls its handle, so a second call does nothing.
+		~#
+		method : public : virtual : Free() ~ Nil;
 	}
 
 	#~
@@ -190,22 +238,6 @@ bundle Game.OpenGL {
 	meshes -- at which point it is an unbounded VRAM leak with no symptom
 	pointing back here.
 	~#
-	#~
-	Something holding a GL object that has to be released.
-
-	Exists so GLWindow->Own can hold a mixed list. Every class here already
-	declared `method : public : Free()` with exactly this shape, so implementing
-	it costs them nothing -- but note Objeck requires the access to match the
-	interface exactly, and does not accept an INHERITED method as satisfying one.
-	~#
-	interface Freeable {
-		#~
-		Release whatever GL objects this holds. Must be idempotent -- everything
-		in this bundle nulls its handle, so a second call does nothing.
-		~#
-		method : public : virtual : Free() ~ Nil;
-	}
-
 	class GL {
 		#~
 		Resolve the OpenGL 2.0+ entry points. Call once, after the context is
@@ -261,6 +293,128 @@ bundle Game.OpenGL {
 			array_args[3] := IntRef->New(height);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_scissor", array_args);
+		}
+
+		#~
+		How large a GL_POINTS vertex draws, in pixels.
+
+		Without this every point is one pixel, which is most of the reason
+		DrawMode->GL_POINTS was not worth reaching even once it drew points at all.
+		@param size diameter in pixels
+		~#
+		function : SetPointSize(size : Float) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := FloatRef->New(size);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_point_size", array_args);
+		}
+
+		#~
+		How thick GL_LINES draws, in pixels.
+
+		Drivers are allowed to support only 1.0 for antialiased lines, and many do
+		exactly that -- so treat anything above 1 as a request.
+		@param width thickness in pixels
+		~#
+		function : SetLineWidth(width : Float) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := FloatRef->New(width);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_line_width", array_args);
+		}
+
+		#~
+		Which stencil values pass the test.
+
+		Only has an effect while Capability->GL_STENCIL_TEST is enabled. The
+		window has requested 8 stencil bits since it learned to; this is the half
+		that was missing, and without it the buffer could be cleared and nothing
+		more -- no portal, mirror, outline or decal mask.
+
+		The usual two-pass shape: write a mask, then draw only where it is.
+
+		  GL->Enable(Capability->GL_STENCIL_TEST);
+		  GL->SetStencilFunc(CompareFunc->GL_ALWAYS, 1, 0xFF);
+		  GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_REPLACE);
+		  ... draw the mask ...
+		  GL->SetStencilFunc(CompareFunc->GL_EQUAL, 1, 0xFF);
+		  GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_KEEP);
+		  ... draw what the mask reveals ...
+
+		@param func a CompareFunc
+		@param reference the value to compare against
+		@param mask ANDed with both values before comparing; 0xFF for all bits
+		~#
+		function : SetStencilFunc(func : Int, reference : Int, mask : Int) ~ Nil {
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New(func);
+			array_args[1] := IntRef->New(reference);
+			array_args[2] := IntRef->New(mask);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_func", array_args);
+		}
+
+		#~
+		What to write to the stencil buffer in each of the three outcomes.
+		@param on_fail when the stencil test fails
+		@param on_depth_fail when stencil passes but depth fails
+		@param on_pass when both pass -- usually GL_REPLACE for a mask
+		~#
+		function : SetStencilOp(on_fail : Int, on_depth_fail : Int, on_pass : Int) ~ Nil {
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New(on_fail);
+			array_args[1] := IntRef->New(on_depth_fail);
+			array_args[2] := IntRef->New(on_pass);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_op", array_args);
+		}
+
+		#~
+		Which stencil bits are writable.
+		@param mask 0xFF for all of them, 0x00 to make the buffer read-only
+		~#
+		function : SetStencilMask(mask : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(mask);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_mask", array_args);
+		}
+
+		#~
+		Which depth comparison counts as passing.
+
+		GL_LESS is the default and is what a normal scene wants. GL_LEQUAL is what
+		lets a skybox draw at the far plane and a decal draw exactly on the surface
+		it decorates -- both need to pass at a depth that is already written.
+		@param func a CompareFunc
+		~#
+		function : SetDepthFunc(func : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(func);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_depth_func", array_args);
+		}
+
+		#~
+		The largest anisotropy level this driver offers.
+
+		0 when GL_EXT_texture_filter_anisotropic is absent, in which case asking
+		for anisotropy is silently ignored rather than an error. Typically 16 where
+		it is supported.
+
+		This bundle has had HasExtension since the beginning, with this very
+		extension as its documentation example, and nothing to set once the answer
+		came back yes. This is the setter half.
+		@return the maximum, or 0.0 if unsupported
+		~#
+		function : GetMaxAnisotropy() ~ Float {
+			array_args := Base->New[1];
+			array_args[0] := FloatRef->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_gl_max_anisotropy", array_args);
+
+			value := array_args[0]->As(FloatRef);
+			return value->Get();
 		}
 
 		#~
@@ -719,6 +873,11 @@ bundle Game.OpenGL {
 		@mouse_x : Int;
 		@mouse_y : Int;
 		@quit_on_escape : Bool;
+		# The keyboard as of the last PollEvents. Held once per frame rather than
+		# per query: Keyboard->GetState allocates a fresh ~512-byte array, crosses
+		# into native code and memcpys the whole thing on EVERY call, so a WASD
+		# loop asking four times a frame would pay for four of those.
+		@keys : Byte[];
 		# How many samples the window actually got -- 0 when multisampling was not
 		# asked for, or was asked for and refused.
 		@samples : Int;
@@ -736,6 +895,19 @@ bundle Game.OpenGL {
 		@mouse_dx : Float;
 		@mouse_dy : Float;
 		@quit : Bool;
+		# The first attached controller, or Nil. Game.SDL2 has had a fully featured
+		# GameController class all along -- axes, rumble, LED, touchpads -- and a
+		# Game.OpenGL program could never use ANY of it, because GLWindow
+		# initialised only video and audio and the controller subsystem was
+		# therefore never up.
+		@pad : GameController;
+		@pad_ok : Bool;
+		# Button state as bitmasks, one bit per GameControllerButton ordinal, in
+		# the same shape as the mouse buttons above.
+		@pad_held : Int;
+		@pad_pressed : Int;
+		@pad_released : Int;
+		@pad_deadzone : Float;
 
 		#~
 		Open a visible window and a GL 3.3 core context.
@@ -847,6 +1019,7 @@ bundle Game.OpenGL {
 			# Matches what PollEvents did before there was a way to ask for
 			# anything else.
 			@quit_on_escape := true;
+			@keys := Nil;
 			@pixel_h := 0;
 			@vsync := false;
 			@target_fps := 60;
@@ -868,6 +1041,16 @@ bundle Game.OpenGL {
 				@error := "SDL could not initialise: {$Core->GetError()}";
 				return;
 			};
+
+			# Controllers come up SEPARATELY and are allowed to fail. A headless
+			# runner, a locked-down container or a machine with no input drivers
+			# can refuse this subsystem, and none of that is a reason to refuse the
+			# caller a window -- so it is not folded into the flags above, where a
+			# failure would take video down with it and turn every GL program on
+			# that machine into an error.
+			@pad_deadzone := 0.15;
+			@pad_ok := Core->InitSubSystem(HardwareFlags->SDL_INIT_GAMECONTROLLER) = 0;
+			OpenPad();
 
 			# Attributes select a pixel format, so every one of these must precede
 			# window creation. Setting them afterwards is silently ignored.
@@ -1032,23 +1215,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		A number that changes whenever the drawable changes size.
-
-		PollEvents keeps the viewport right on its own, but a projection matrix is
-		the program's, and a stale one stretches the scene while a HUD drawn in
-		pixels stays correct. Compare this against the last value you saw:
-
-		  if(window->GetDrawableGeneration() <> @seen) {
-		    @seen := window->GetDrawableGeneration();
-		    target->Free(); target := RenderTarget->New(window->GetWidth(), ...);
-		  };
-
-		For the projection specifically there is nothing to compare -- call
-		Camera->SetAspect(window->GetAspect()) every frame and it does nothing
-		unless the value actually changed.
-		@return a counter, not a size; only equality is meaningful
-		~#
-		#~
 		Hand something to the window to release on the way out.
 
 		Every example in this repo hand-writes the same teardown: a chain of
@@ -1095,6 +1261,23 @@ bundle Game.OpenGL {
 			return @owned->Size();
 		}
 
+		#~
+		A number that changes whenever the drawable changes size.
+
+		PollEvents keeps the viewport right on its own, but a projection matrix is
+		the program's, and a stale one stretches the scene while a HUD drawn in
+		pixels stays correct. Compare this against the last value you saw:
+
+		  if(window->GetDrawableGeneration() <> @seen) {
+		    @seen := window->GetDrawableGeneration();
+		    target->Free(); target := RenderTarget->New(window->GetWidth(), ...);
+		  };
+
+		For the projection specifically there is nothing to compare -- call
+		Camera->SetAspect(window->GetAspect()) every frame and it does nothing
+		unless the value actually changed.
+		@return a counter, not a size; only equality is meaningful
+		~#
 		method : public : GetDrawableGeneration() ~ Int {
 			return @drawable_generation;
 		}
@@ -1265,6 +1448,280 @@ bundle Game.OpenGL {
 		this does not disturb.
 		@return true when the program should quit
 		~#
+		#~
+		Adopt the first attached controller, if there is one and we have none.
+
+		Cheap when nothing is plugged in -- one call for the count and then
+		nothing. Called at startup and again whenever SDL reports a device
+		arriving, rather than every frame.
+		~#
+		method : OpenPad() ~ Nil {
+			if(<>@pad_ok | @pad <> Nil) {
+				return;
+			};
+
+			count := Joystick->Number();
+			for(i := 0; i < count; i += 1;) {
+				candidate := GameController->New(i);
+				if(candidate <> Nil & candidate->GetAttached()) {
+					@pad := candidate;
+					return;
+				};
+
+				# Not a controller, or a controller SDL has no mapping for. Either
+				# way it is not ours; close it so the handle does not leak while
+				# the program goes on running.
+				if(candidate <> Nil) {
+					candidate->Close();
+				};
+			};
+		}
+
+		#~
+		Let go of the controller and forget its state.
+		~#
+		method : ClosePad() ~ Nil {
+			if(@pad <> Nil) {
+				@pad->Close();
+				@pad := Nil;
+			};
+
+			# Held state must go too. A pad unplugged mid-press would otherwise
+			# leave that button held forever, and a program driving movement off
+			# PadHeld would walk into a wall until it was plugged back in.
+			@pad_held := 0;
+			@pad_pressed := 0;
+			@pad_released := 0;
+		}
+
+		#~
+		Read the buttons and work out this frame's edges.
+
+		Polled rather than event-driven, which is the same choice the keyboard
+		makes: Event exposes GetJButton for raw joysticks but has no accessor for
+		SDL's CONTROLLER button events, so the payload is unreachable from here.
+		The event TYPE is reachable, which is enough to notice a device arriving or
+		leaving -- so hot-plug is event-driven and state is polled.
+
+		Costs nothing at all when no pad is attached, which is the common case.
+		~#
+		method : PollPad() ~ Nil {
+			@pad_pressed := 0;
+			@pad_released := 0;
+
+			if(@pad = Nil) {
+				return;
+			};
+
+			if(<>@pad->GetAttached()) {
+				ClosePad();
+				return;
+			};
+
+			bit := 1;
+			for(i := 0; i <= 20; i += 1;) {
+				button := i->As(GameControllerButton);
+				now := @pad->GetButton(button) <> 0;
+				was := (@pad_held and bit) <> 0;
+
+				if(now & <>was) {
+					@pad_pressed := @pad_pressed or bit;
+					@pad_held := @pad_held or bit;
+				}
+				else if(<>now & was) {
+					@pad_released := @pad_released or bit;
+					# and-not, to clear just this bit
+					@pad_held -= bit;
+				};
+
+				bit *= 2;
+			};
+		}
+
+		#~
+		Is a controller attached?
+
+		False when none is plugged in AND when the controller subsystem could not
+		start at all -- a program should treat both the same way, since in either
+		case there is nothing to read.
+		@return true when GetPad returns something usable
+		~#
+		method : public : HasPad() ~ Bool {
+			return @pad <> Nil;
+		}
+
+		#~
+		The controller's name, e.g. "Xbox Series Controller".
+		@return the name, or an empty string when there is no pad
+		~#
+		method : public : GetPadName() ~ String {
+			if(@pad = Nil) {
+				return "";
+			};
+
+			return @pad->Name();
+		}
+
+		#~
+		The controller itself, for everything this wrapper does not cover --
+		rumble, the LED, touchpads, the gyro.
+
+		Do NOT close it; the window owns it and closes it on Free.
+		@return the controller, or Nil
+		~#
+		method : public : GetPad() ~ GameController {
+			return @pad;
+		}
+
+		#~
+		Is a controller button down right now?
+		@param button a GameControllerButton
+		@return true while it is held
+		~#
+		method : public : PadHeld(button : GameControllerButton) ~ Bool {
+			return (@pad_held and PadBit(button)) <> 0;
+		}
+
+		#~
+		Did a controller button go down during the last PollEvents?
+
+		The edge, not the level -- a menu that advances once per press wants this,
+		and PadHeld would advance it every frame the button was down.
+		@param button a GameControllerButton
+		@return true on the frame it was pressed
+		~#
+		method : public : PadPressed(button : GameControllerButton) ~ Bool {
+			return (@pad_pressed and PadBit(button)) <> 0;
+		}
+
+		#~
+		Did a controller button come up during the last PollEvents?
+		@param button a GameControllerButton
+		@return true on the frame it was released
+		~#
+		method : public : PadReleased(button : GameControllerButton) ~ Bool {
+			return (@pad_released and PadBit(button)) <> 0;
+		}
+
+		method : PadBit(button : GameControllerButton) ~ Int {
+			ordinal := button->As(Int);
+			if(ordinal < 0 | ordinal > 20) {
+				return 0;
+			};
+
+			bit := 1;
+			for(i := 0; i < ordinal; i += 1;) {
+				bit *= 2;
+			};
+
+			return bit;
+		}
+
+		#~
+		A controller axis as -1..1, with the dead zone taken out.
+
+		Raw SDL axes are -32768..32767 and a stick at rest does not read zero: it
+		wanders by a few hundred, and a camera driven straight off the raw value
+		drifts on its own. Every program that uses a stick has to solve this, so it
+		is solved once here.
+
+		The dead zone is RESCALED rather than clamped. Clamping gives a stick that
+		does nothing and then jumps to 0.15; rescaling ramps from 0 at the edge of
+		the dead zone to 1 at full deflection, so slow movement stays possible.
+		That difference is the whole reason to do it here rather than leave callers
+		an `if` to write.
+
+		Triggers are axes too, and they rest at -1 rather than 0 -- so read a
+		trigger with GetPadAxisRaw if a resting value of -1 matters to you.
+		@param axis a GameControllerAxis
+		@return -1..1, or 0.0 when there is no pad
+		~#
+		method : public : GetPadAxis(axis : GameControllerAxis) ~ Float {
+			return ApplyDeadzone(GetPadAxisRaw(axis), @pad_deadzone);
+		}
+
+		#~
+		The dead-zone curve on its own, as a pure function.
+
+		Split out from GetPadAxis so it can be TESTED. The rest of the controller
+		path needs hardware to exercise and neither CI nor a build machine has any,
+		so the one piece with actual logic in it is the one piece that must be
+		reachable without a pad plugged in. It is public because a program reading
+		a stick through some other route wants the same curve.
+		@param raw -1..1, as GetPadAxisRaw returns
+		@param deadzone fraction of full travel to ignore
+		@return -1..1, rescaled so it ramps from 0 at the edge of the dead zone
+		~#
+		function : ApplyDeadzone(raw : Float, deadzone : Float) ~ Float {
+			magnitude := raw->Abs();
+			if(magnitude <= deadzone) {
+				return 0.0;
+			};
+
+			scaled := (magnitude - deadzone) / (1.0 - deadzone);
+			if(scaled > 1.0) {
+				scaled := 1.0;
+			};
+
+			if(raw < 0.0) {
+				return scaled * -1.0;
+			};
+
+			return scaled;
+		}
+
+		#~
+		A controller axis as -1..1 with NO dead zone applied.
+		@param axis a GameControllerAxis
+		@return -1..1, or 0.0 when there is no pad
+		~#
+		method : public : GetPadAxisRaw(axis : GameControllerAxis) ~ Float {
+			if(@pad = Nil) {
+				return 0.0;
+			};
+
+			# 32767 rather than 32768: the positive end of the range is what the
+			# hardware actually reaches, and dividing by 32768 means a fully
+			# deflected stick reads 0.99997 and never quite 1.0.
+			raw := @pad->GetAxis(axis)->As(Float) / 32767.0;
+			if(raw > 1.0) {
+				return 1.0;
+			};
+			if(raw < -1.0) {
+				return -1.0;
+			};
+
+			return raw;
+		}
+
+		#~
+		How far a stick must move before it counts, as a fraction of full travel.
+
+		0.15 by default. Raise it for a worn pad that drifts; 0 turns it off and
+		makes GetPadAxis the same as GetPadAxisRaw.
+		@param fraction 0.0 to 1.0; values outside are clamped
+		~#
+		method : public : SetPadDeadzone(fraction : Float) ~ Nil {
+			if(fraction < 0.0) {
+				fraction := 0.0;
+			};
+			# Not 1.0: a dead zone of exactly 1 would divide by zero in the rescale
+			# above, and a stick that can never register is not a thing anyone means
+			# to ask for.
+			if(fraction > 0.95) {
+				fraction := 0.95;
+			};
+
+			@pad_deadzone := fraction;
+		}
+
+		#~
+		@return the dead zone as a fraction of full travel
+		~#
+		method : public : GetPadDeadzone() ~ Float {
+			return @pad_deadzone;
+		}
+
 		method : public : PollEvents() ~ Bool {
 			@mouse_dx := 0.0;
 			@mouse_dy := 0.0;
@@ -1345,6 +1802,20 @@ bundle Game.OpenGL {
 						@mouse_y := motion->GetY();
 					};
 				}
+				else if(type = EventType->SDL_CONTROLLERDEVICEADDED) {
+					# Event carries no accessor for the device index, but knowing
+					# THAT something arrived is enough -- OpenPad rescans, and does
+					# nothing if we already have one.
+					OpenPad();
+				}
+				else if(type = EventType->SDL_CONTROLLERDEVICEREMOVED) {
+					# Which one left is equally unreachable, so ask the pad we hold
+					# whether it is still there. PollPad does that anyway; this just
+					# makes it immediate rather than waiting for the button scan.
+					if(@pad <> Nil & <>@pad->GetAttached()) {
+						ClosePad();
+					};
+				}
 				else if(type = EventType->SDL_WINDOWEVENT) {
 					# The drawable can change size under us -- a resize, or a window
 					# dragged to a display with a different scale factor. Re-measuring
@@ -1355,6 +1826,11 @@ bundle Game.OpenGL {
 				};
 			};
 
+			# AFTER the queue is drained: SDL_GetKeyboardState reflects the events
+			# that have been pumped, so reading it first would be a frame behind.
+			@keys := Keyboard->GetState();
+			PollPad();
+
 			return @quit;
 		}
 
@@ -1363,6 +1839,50 @@ bundle Game.OpenGL {
 		~#
 		method : public : RequestQuit() ~ Nil {
 			@quit := true;
+		}
+
+		#~
+		Is this key held down right now?
+
+		A STATE, not an edge -- true for as long as the key is down, which is what
+		movement wants. WasPressed is the edge, true for one frame per press.
+
+		The bounds check is the point. Reading Keyboard->GetState directly means
+		writing this every time:
+
+		  if(keys <> Nil & scancode >= 0 & scancode < keys->Size()) { ... }
+
+		and both examples in this repo that take keyboard input had written it,
+		byte for byte identically, because held MOUSE was framework state and held
+		keys were not.
+
+		Reads a snapshot taken once per PollEvents, so asking about eight keys
+		costs eight array reads rather than eight native calls.
+		@param scancode a Scancode value
+		@return true while the key is down; false before the first PollEvents
+		~#
+		method : public : KeyHeld(scancode : Int) ~ Bool {
+			if(@keys = Nil | scancode < 0 | scancode >= @keys->Size()) {
+				return false;
+			};
+
+			return @keys[scancode] <> 0;
+		}
+
+		#~
+		Is either of these keys held?
+
+		For the case that actually recurs: one action on two keys -- left shift or
+		right shift, W or Up. An array would have read better, but an Objeck array
+		literal takes literal expressions only, so `[Scancode->SDL_SCANCODE_W, ...]`
+		does not compile and the caller would have to build and fill an Int[] to
+		ask a one-line question.
+		@param first a Scancode value
+		@param second another
+		@return true if either is down
+		~#
+		method : public : KeyHeld(first : Int, second : Int) ~ Bool {
+			return KeyHeld(first) | KeyHeld(second);
 		}
 
 		#~
@@ -2029,6 +2549,25 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Build a lit program and give its opacity a usable value.
+
+		A GLSL uniform starts at ZERO, and `opacity` is declared and live in every
+		lit fragment shader. So a program using one of these presets WITHOUT a
+		Material or a Scene -- which is what three of the shipped examples do --
+		has alpha 0. It looks right only while blending is off; the moment anything
+		calls GL->BeginTransparency the geometry vanishes, with no GL error to
+		explain it.
+		~#
+		function : private : LitShader(vertex : String, fragment : String) ~ Shader {
+			built := Shader->New(vertex, fragment);
+			if(built->IsOk() & built->HasUniform("opacity")) {
+				built->SetFloat("opacity", 1.0);
+			};
+
+			return built;
+		}
+
+		#~
 		Textured and lit by one directional light.
 
 		Uniforms: "mvp" and "model" (Scene sets both), the sampler "tex", and the
@@ -2051,7 +2590,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : LitTextured() ~ Shader {
-			return Shader->New(LitVertexSource(), LitFragmentSource(true));
+			return LitShader(LitVertexSource(), LitFragmentSource(true));
 		}
 
 		#~
@@ -2061,7 +2600,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : Lit() ~ Shader {
-			return Shader->New(LitVertexSource(), LitFragmentSource(false));
+			return LitShader(LitVertexSource(), LitFragmentSource(false));
 		}
 
 		#~
@@ -2073,7 +2612,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : LitTexturedShadowed() ~ Shader {
-			return Shader->New(LitVertexSource(true), LitFragmentSource(true, true));
+			return LitShader(LitVertexSource(true), LitFragmentSource(true, true));
 		}
 
 		#~
@@ -2081,7 +2620,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : LitShadowed() ~ Shader {
-			return Shader->New(LitVertexSource(true), LitFragmentSource(false, true));
+			return LitShader(LitVertexSource(true), LitFragmentSource(false, true));
 		}
 
 		#~
@@ -2173,7 +2712,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : LitTexturedPointShadowed() ~ Shader {
-			return Shader->New(LitVertexSource(false), LitFragmentSource(true, false, true));
+			return LitShader(LitVertexSource(false), LitFragmentSource(true, false, true));
 		}
 
 		#~
@@ -2560,6 +3099,11 @@ bundle Game.OpenGL {
 		# hand -- after that it lives on the GPU and there is nothing here to read.
 		@min : Vector3;
 		@max : Vector3;
+		# Bumped on every instance upload. The instance buffer belongs to the mesh,
+		# not to whoever filled it, so two PropBatches over one mesh overwrite each
+		# other -- silently, and worst for a batch that has been told it is static
+		# and has stopped repacking. This is how such a batch notices.
+		@instance_generation : Int;
 
 		#~
 		Upload geometry.
@@ -2659,6 +3203,11 @@ bundle Game.OpenGL {
 				return false;
 			};
 
+			# Bumped whether or not the upload succeeds. A failed upload has still
+			# disturbed the buffer as far as anyone else is concerned, and the
+			# conservative answer -- everyone repacks -- is the cheap one.
+			@instance_generation += 1;
+
 			array_args := Base->New[5];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@mesh);
@@ -2670,6 +3219,19 @@ bundle Game.OpenGL {
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() <> 0;
+		}
+
+		#~
+		How many times this mesh's instance data has been replaced.
+
+		The instance buffer belongs to the mesh. Anything holding a copy of what it
+		last uploaded can compare this against the value it saw then, and know its
+		data is still there rather than assuming so -- which is what PropBatch does
+		to make a static batch safe when two batches share one mesh.
+		@return a counter, starting at 0
+		~#
+		method : public : GetInstanceGeneration() ~ Int {
+			return @instance_generation;
 		}
 
 		#~
@@ -3485,7 +4047,7 @@ bundle Game.OpenGL {
 		@param surface the source surface; still owned by the caller
 		~#
 		New(surface : Surface) {
-			Upload(surface, TextureFilter->GL_LINEAR, TextureWrap->GL_CLAMP_TO_EDGE, false);
+			Upload(surface, TextureFilter->GL_LINEAR, TextureWrap->GL_CLAMP_TO_EDGE, false, 0.0);
 		}
 
 		#~
@@ -3497,10 +4059,35 @@ bundle Game.OpenGL {
 		floor from shimmering into noise in the distance
 		~#
 		New(surface : Surface, filter : Int, wrap : Int, mipmap : Bool) {
-			Upload(surface, filter, wrap, mipmap);
+			Upload(surface, filter, wrap, mipmap, 0.0);
 		}
 
-		method : Upload(surface : Surface, filter : Int, wrap : Int, mipmap : Bool) ~ Nil {
+		#~
+		Upload with anisotropic filtering.
+
+		The fix for a tiled floor that turns to mush in the distance. Anisotropy
+		chooses better mip SAMPLES for a surface seen at a steep angle, which is
+		exactly the case ordinary mipmapping handles worst -- so it needs
+		`mipmap` true to do anything at all, and does nothing visible on a HUD quad
+		seen face-on.
+
+		Extension-gated, and asked for rather than assumed: a driver without
+		GL_EXT_texture_filter_anisotropic ignores it and a level above what the
+		hardware offers is clamped to the maximum. Check GL->GetMaxAnisotropy()
+		first if you care which happened. 4 or 8 is the usual choice; 16 is the
+		common ceiling.
+		@param surface the source surface; still owned by the caller
+		@param filter TextureFilter->GL_LINEAR or GL_NEAREST
+		@param wrap a TextureWrap
+		@param mipmap must be true for anisotropy to have any effect
+		@param anisotropy 1.0 for none, or 2, 4, 8, 16
+		~#
+		New(surface : Surface, filter : Int, wrap : Int, mipmap : Bool, anisotropy : Float) {
+			Upload(surface, filter, wrap, mipmap, anisotropy);
+		}
+
+		method : Upload(surface : Surface, filter : Int, wrap : Int, mipmap : Bool,
+				anisotropy : Float) ~ Nil {
 			@texture := 0;
 			@owned := true;
 
@@ -3513,12 +4100,13 @@ bundle Game.OpenGL {
 				mip := 1;
 			};
 
-			array_args := Base->New[5];
+			array_args := Base->New[6];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(surface->GetSurface());
 			array_args[2] := IntRef->New(filter);
 			array_args[3] := IntRef->New(wrap);
 			array_args[4] := IntRef->New(mip);
+			array_args[5] := FloatRef->New(anisotropy);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_from_surface", array_args);
 
@@ -3614,7 +4202,12 @@ bundle Game.OpenGL {
 				};
 			};
 
-			texture := Texture2D->New(surface, TextureFilter->GL_LINEAR, wrap, true);
+			# Anisotropy 8, because a Checker exists to be a tiled floor and a tiled
+			# floor seen at a grazing angle is exactly the case ordinary mipmapping
+			# handles worst -- the distance turns to mush. Free where the driver
+			# does not offer it: the request is ignored rather than failing, and it
+			# is clamped where the maximum is lower.
+			texture := Texture2D->New(surface, TextureFilter->GL_LINEAR, wrap, true, 8.0);
 			surface->Free();
 
 			return texture;
@@ -5309,10 +5902,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		The font used by Text. Not owned -- the caller loads it and frees it.
-		@param font a loaded Font
-		~#
-		#~
 		An overlay using the font that ships with Objeck.
 
 		Three examples had ten identical lines of this -- Font->Init, a hardcoded
@@ -5377,6 +5966,10 @@ bundle Game.OpenGL {
 			@owned_font := font;
 		}
 
+		#~
+		The font used by Text. Not owned -- the caller loads it and frees it.
+		@param font a loaded Font
+		~#
 		method : public : SetFont(font : Font) ~ Nil {
 			if(font <> @font) {
 				# Cached textures were rasterised with the old font and would keep
@@ -5692,8 +6285,9 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Release the overlay's own GL objects. Does NOT free the font -- that was
-		passed in and belongs to the caller.
+		Release the overlay's own GL objects, and a font it loaded ITSELF through
+		WithDefaultFont. A font handed in by SetFont is not freed -- that one
+		belongs to the caller and may be shared with another overlay.
 
 		Call it while the GL context is still current -- see the shutdown order on
 		the GL class.
@@ -5814,14 +6408,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		How tight the highlight is and how strong.
-
-		Strength defaults to zero, so a material is matte until asked -- a diffuse
-		surface is the right default and an unexpected highlight reads as a bug.
-		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
-		@param strength 0 matte, around 0.5 plastic, 1.0 something wet
-		~#
-		#~
 		How opaque this material is.
 
 		1.0 is solid and is the default. Anything less needs blending on and the
@@ -5852,6 +6438,14 @@ bundle Game.OpenGL {
 			return @opacity >= 1.0;
 		}
 
+		#~
+		How tight the highlight is and how strong.
+
+		Strength defaults to zero, so a material is matte until asked -- a diffuse
+		surface is the right default and an unexpected highlight reads as a bug.
+		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
+		@param strength 0 matte, around 0.5 plastic, 1.0 something wet
+		~#
 		method : public : SetSpecular(shininess : Float, strength : Float) ~ Nil {
 			@shininess := shininess;
 			@specular := strength;
@@ -5865,6 +6459,18 @@ bundle Game.OpenGL {
 		@param shader the program about to draw
 		@param unit the texture unit to bind to, normally 0
 		~#
+		#~
+		Whether this material carries a texture of its own.
+
+		A material without one does NOT bind anything, so whatever a previous draw
+		left on the unit is what gets sampled. Scene uses this to fall back to the
+		box's own texture rather than let the result depend on draw order.
+		@return true when ApplyTo will bind a texture
+		~#
+		method : public : HasTexture() ~ Bool {
+			return @texture <> Nil & @texture->IsOk();
+		}
+
 		method : public : ApplyTo(shader : Shader, unit : Int) ~ Nil {
 			if(shader = Nil | <>shader->IsOk()) {
 				return;
@@ -7312,6 +7918,21 @@ bundle Game.OpenGL {
 		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
 		@param strength 0 for matte, around 0.5 for plastic, 1.0 for something wet
 		~#
+		#~
+		@return the scene-wide shininess, so a Material that overrode it can be
+		put back rather than guessed at
+		~#
+		method : public : GetShininess() ~ Float {
+			return @shininess;
+		}
+
+		#~
+		@return the scene-wide specular strength
+		~#
+		method : public : GetSpecular() ~ Float {
+			return @specular;
+		}
+
 		method : public : SetSpecular(shininess : Float, strength : Float) ~ Nil {
 			@shininess := shininess;
 			@specular := strength;
@@ -7497,6 +8118,29 @@ bundle Game.OpenGL {
 		method : public : GetYaw() ~ Float { return @yaw; }
 		method : public : GetPitch() ~ Float { return @pitch; }
 		method : public : GetRoll() ~ Float { return @roll; }
+		method : public : GetScaleX() ~ Float { return @sx; }
+		method : public : GetScaleY() ~ Float { return @sy; }
+		method : public : GetScaleZ() ~ Float { return @sz; }
+
+		#~
+		The largest of the three scale factors.
+
+		What a bounding sphere needs: a sphere has one radius, so a non-uniform
+		scale has to be bounded by its largest component or the bound is wrong in
+		the direction that was scaled most.
+		@return the largest scale component
+		~#
+		method : public : GetMaxScale() ~ Float {
+			# Absolute values: a negative scale is a MIRROR, not a smaller object.
+			# Signed, it gave a NEGATIVE radius -- and a negative radius makes
+			# Frustum->ContainsSphere stricter than a point test, so the object
+			# disappears while still well inside the view, from the shadow pass too.
+			largest := @sx->Abs();
+			if(@sy->Abs() > largest) { largest := @sy->Abs(); };
+			if(@sz->Abs() > largest) { largest := @sz->Abs(); };
+
+			return largest;
+		}
 
 		#~
 		The model matrix, T * R * S.
@@ -7662,18 +8306,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Whether a circle in plan view overlaps this box.
-
-		Deliberately 2D: a walking character should not be blocked by something
-		overhead, and testing the full 3D box would do exactly that. Corners are
-		treated conservatively -- a near-miss at a corner counts as a hit, which is
-		the right way to be wrong about a wall.
-		@param x circle centre x
-		@param z circle centre z
-		@param radius circle radius
-		@return true when they overlap
-		~#
-		#~
 		How opaque this box is.
 
 		A transparent box is drawn after every solid one, furthest first -- which
@@ -7701,11 +8333,664 @@ bundle Game.OpenGL {
 			return @material->IsOpaque();
 		}
 
+		#~
+		Whether a circle in plan view overlaps this box.
+
+		Deliberately 2D: a walking character should not be blocked by something
+		overhead, and testing the full 3D box would do exactly that. Corners are
+		treated conservatively -- a near-miss at a corner counts as a hit, which is
+		the right way to be wrong about a wall.
+		@param x circle centre x
+		@param z circle centre z
+		@param radius circle radius
+		@return true when they overlap
+		~#
 		method : public : OverlapsXZ(x : Float, z : Float, radius : Float) ~ Bool {
 			gap_x := (x - @center->GetX())->Abs() - @half->GetX();
 			gap_z := (z - @center->GetZ())->Abs() - @half->GetZ();
 
 			return gap_x < radius & gap_z < radius;
+		}
+	}
+
+	#~
+	A mesh, a material and a transform -- the thing Scene could not hold.
+
+	Scene draws every Box with the ONE mesh it was given, which is what keeps a
+	room of hundreds of boxes down to a single uploaded mesh. Anything that is a
+	different mesh plus a transform therefore had no home, and every example that
+	wanted one wrote the same five lines by hand: bind the texture, build the MVP,
+	upload two matrices, draw. That sequence appears in gl_boing, 3d_gl_24,
+	gl_model and gl_lantern.
+
+	A Prop is that, as an object Scene can hold.
+
+	## Why this is not Box widened
+
+	Box stays exactly what it was, and Scene keeps two lists. That is deliberate:
+
+	  - A Box is axis-aligned by construction, so it culls against a tight
+	    box test. A Prop has a rotation, so its mesh bounds are model-space and
+	    stop being axis-aligned the moment it turns -- it has to fall back to a
+	    bounding SPHERE, which is looser. Merging the two would have cost every
+	    wall and floor in every existing scene that accuracy.
+	  - Boxes share one mesh and one VAO. Props each bring their own, so a VAO
+	    rebind per prop is unavoidable -- but only for props.
+	  - Collision is a Box concept. OverlapsXZ is a plan-view test on a
+	    half-extent and means nothing for a rotated model, so Prop deliberately
+	    does not have it and Scene->Blocked still walks only the boxes. A prop
+	    that should block movement gets a Box beside it.
+
+	## Concrete, not abstract
+
+	A class carrying a virtual method cannot be instantiated in Objeck, so an
+	abstract Prop would need a subclass before anyone could use one. This is
+	usable directly and can still be subclassed.
+	~#
+	class Prop {
+		@mesh : Mesh;
+		@material : Material;
+		@transform : Transform;
+		@visible : Bool;
+
+		#~
+		@param mesh the geometry; the prop does NOT own it, so a mesh shared
+		between props is freed once
+		@param material how to draw it; may be Nil for the scene's current state
+		~#
+		New(mesh : Mesh, material : Material) {
+			@mesh := mesh;
+			@material := material;
+			@transform := Transform->New();
+			@visible := true;
+		}
+
+		#~
+		A prop at a position, with no material of its own.
+		@param mesh the geometry
+		@param x where to put it
+		@param y where to put it
+		@param z where to put it
+		~#
+		New(mesh : Mesh, x : Float, y : Float, z : Float) {
+			@mesh := mesh;
+			@material := Nil;
+			@transform := Transform->New();
+			@transform->SetPosition(x, y, z);
+			@visible := true;
+		}
+
+		method : public : GetMesh() ~ Mesh { return @mesh; }
+		method : public : GetMaterial() ~ Material { return @material; }
+		method : public : SetMaterial(material : Material) ~ Nil { @material := material; }
+
+		#~
+		The prop's transform, to move, turn or scale it. Returned rather than
+		copied, so changes take effect immediately.
+		@return the transform
+		~#
+		method : public : GetTransform() ~ Transform { return @transform; }
+
+		method : public : IsVisible() ~ Bool { return @visible; }
+		method : public : SetVisible(visible : Bool) ~ Nil { @visible := visible; }
+
+		#~
+		@return the model matrix; BORROWED from the transform, do not write to it
+		~#
+		method : public : GetModelMatrix() ~ Float[] {
+			return @transform->GetMatrix();
+		}
+
+		#~
+		@return true when this prop needs no depth sorting
+		~#
+		method : public : IsOpaque() ~ Bool {
+			if(@material = Nil) {
+				return true;
+			};
+
+			return @material->IsOpaque();
+		}
+
+		#~
+		Radius of a sphere that contains this prop wherever it is turned.
+
+		Conservative on purpose: the mesh's own radius is measured from the mesh's
+		CENTRE, which need not be the origin the transform rotates about, so the
+		offset is added rather than assumed away. A bound that is slightly too
+		large draws something that could have been culled; one that is too small
+		makes geometry vanish at the edge of the screen.
+		@return the radius in world units
+		~#
+		method : public : GetBoundsRadius() ~ Float {
+			if(@mesh = Nil | <>@mesh->IsOk()) {
+				return 0.0;
+			};
+
+			centre := @mesh->GetCenter();
+			offset := (centre->GetX() * centre->GetX() + centre->GetY() * centre->GetY() +
+				centre->GetZ() * centre->GetZ())->Sqrt();
+
+			return (offset + @mesh->GetRadius()) * @transform->GetMaxScale();
+		}
+	}
+
+	#~
+	Many copies of one mesh in a single draw call.
+
+	Instancing has worked at the Mesh level since it landed -- SetInstanceMatrices
+	and DrawInstanced, with Shader->LitTexturedInstanced to read the per-instance
+	matrices. What was missing was any route to it from the object layer: Scene and
+	Prop both set an "mvp" uniform per object, and the instanced shader has no
+	"mvp", so pointing a Scene at it drew nothing at all. This is that route.
+
+	A batch is one mesh, one material, many placements:
+
+	```
+	trees := PropBatch->New(trunk_mesh);
+	trees->SetMaterial(bark);
+	for(i := 0; i < 400; i += 1;) {
+		trees->Add(x, 0.0, z);
+	};
+	trees->SetDynamic(false);
+	...
+	trees->Draw(camera->GetViewProjection());
+	```
+
+	400 trees, one draw call, one uniform upload.
+
+	## One mesh, one material -- not a limitation of this class
+
+	That is what the hardware does. Every instance runs the same program over the
+	same vertices and the only thing that varies is the per-instance matrix, so a
+	batch cannot hold two different meshes or give one tree different bark. Two
+	kinds of tree are two batches. Worth stating plainly, because the obvious
+	expectation of a thing called a batch is a container that accepts anything.
+
+	## Static versus dynamic
+
+	The transforms are objects the caller keeps and can move at any time, and
+	nothing tells the batch when that happens. So by default the matrices are
+	repacked and re-uploaded every frame, which is always correct and still costs
+	exactly one draw call -- the saving that matters most.
+
+	A batch that does not move should say so with SetDynamic(false): it then packs
+	once and never again, and the caller calls MarkMoved() if that ever stops being
+	true. Getting that wrong is visible immediately -- the batch renders at its old
+	placements -- rather than subtly, which is why the fast path is the one you opt
+	into rather than the default.
+
+	## Culling is all or nothing
+
+	GetBoundsRadius covers every instance, so a batch is either wholly submitted or
+	wholly skipped. Per-instance culling would mean repacking and re-uploading the
+	buffer whenever visibility changed, which costs more than the draw calls it
+	saves. Batch things that are near each other; a batch spread across the whole
+	world is never off screen and so never culls.
+	~#
+	class PropBatch implements Freeable {
+		@mesh : Mesh;
+		@shader : Shader;
+		# Whether Free should delete the shader. True only for the one this class
+		# built itself; a shader handed in belongs to the caller and may be shared.
+		@owns_shader : Bool;
+		@material : Material;
+		@transforms : Vector<Transform>;
+		# Packed count * 16 floats. Grown by doubling, so a batch that fills up
+		# gradually does not reallocate on every Add.
+		@matrices : Float[];
+		@count : Int;
+		@dirty : Bool;
+		@dynamic : Bool;
+		# The mesh's instance generation as of this batch's last pack. When the mesh
+		# has moved on, someone else uploaded over this batch's data and it has to
+		# pack again however static it was told it is.
+		@generation : Int;
+		@visible : Bool;
+		@light : Light;
+		@rig : LightRig;
+		# Asked once, the way Scene does it: setting a uniform that does not exist
+		# is reported, so probing per frame would file a diagnostic per frame.
+		@wants_vp : Int;
+		@wants_sampler : Int;
+		# Bounds over every instance, recomputed whenever the matrices are packed.
+		@cx : Float; @cy : Float; @cz : Float;
+		@radius : Float;
+		@error : String;
+
+		#~
+		A batch drawing the given mesh with a built-in instanced shader.
+
+		The shader is created and OWNED here, so Free releases it. Use the
+		two-argument constructor to supply your own, which is then the caller's to
+		free.
+		@param mesh the geometry every instance draws; NOT owned by the batch
+		~#
+		New(mesh : Mesh) {
+			Init(mesh, Shader->LitTexturedInstanced(), true);
+		}
+
+		#~
+		A batch drawing the given mesh with a shader you supply.
+
+		The shader must read the per-instance model matrix from attribute locations
+		3 to 6 and take the camera through a "view_projection" uniform.
+		Shader->LitTexturedInstanced is the built-in one; anything with an "mvp"
+		uniform is the ordinary per-object shape and will not work here.
+		@param mesh the geometry; NOT owned by the batch
+		@param shader an instanced program; NOT owned by the batch
+		~#
+		New(mesh : Mesh, shader : Shader) {
+			Init(mesh, shader, false);
+		}
+
+		method : Init(mesh : Mesh, shader : Shader, owns : Bool) ~ Nil {
+			@mesh := mesh;
+			@shader := shader;
+			@owns_shader := owns;
+			@material := Nil;
+			@transforms := Vector->New()<Transform>;
+			@matrices := Nil;
+			@count := 0;
+			@dirty := true;
+			@dynamic := true;
+			@generation := -1;
+			@visible := true;
+			@light := Nil;
+			@rig := Nil;
+			@wants_vp := -1;
+			@wants_sampler := -1;
+			@cx := 0.0; @cy := 0.0; @cz := 0.0;
+			@radius := 0.0;
+			@error := "";
+		}
+
+		#~
+		Is the batch usable -- a live mesh and a live shader.
+		@return true when it can draw
+		~#
+		method : public : IsOk() ~ Bool {
+			return @mesh <> Nil & @mesh->IsOk() & @shader <> Nil & @shader->IsOk();
+		}
+
+		#~
+		What went wrong, if anything. Empty when nothing has.
+		@return the last error, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Place another instance.
+		@param transform where it goes; held, not copied, so moving it later moves
+		the instance
+		~#
+		method : public : Add(transform : Transform) ~ Nil {
+			if(transform <> Nil) {
+				@transforms->AddBack(transform);
+				@dirty := true;
+			};
+		}
+
+		#~
+		Place another instance at a point, unrotated and unscaled.
+		@param x where to put it
+		@param y where to put it
+		@param z where to put it
+		@return the new transform, to turn or scale it
+		~#
+		method : public : Add(x : Float, y : Float, z : Float) ~ Transform {
+			at := Transform->New();
+			at->SetPosition(x, y, z);
+			@transforms->AddBack(at);
+			@dirty := true;
+
+			return at;
+		}
+
+		#~
+		@param index which instance
+		@return its transform, or Nil if the index is out of range
+		~#
+		method : public : Get(index : Int) ~ Transform {
+			if(index < 0 | index >= @transforms->Size()) {
+				return Nil;
+			};
+
+			return @transforms->Get(index);
+		}
+
+		#~
+		@return how many instances the batch holds
+		~#
+		method : public : GetCount() ~ Int {
+			return @transforms->Size();
+		}
+
+		#~
+		Drop every instance. The mesh, shader and material are untouched.
+		~#
+		method : public : Clear() ~ Nil {
+			@transforms := Vector->New()<Transform>;
+			@count := 0;
+			@dirty := true;
+			@radius := 0.0;
+		}
+
+		#~
+		Whether the matrices are repacked every frame.
+
+		True by default, which is always correct. False packs once and is the right
+		answer for anything that does not move -- scenery, a grid, a crowd that
+		stands still -- but then a transform changed afterwards has no effect until
+		MarkMoved is called.
+		@param dynamic true to repack every frame
+		~#
+		method : public : SetDynamic(dynamic : Bool) ~ Nil {
+			@dynamic := dynamic;
+			if(dynamic) {
+				@dirty := true;
+			};
+		}
+
+		#~
+		@return whether the batch repacks every frame
+		~#
+		method : public : IsDynamic() ~ Bool {
+			return @dynamic;
+		}
+
+		#~
+		A transform changed and the batch is not dynamic; repack on the next draw.
+
+		Harmless on a dynamic batch, which repacks regardless.
+		~#
+		method : public : MarkMoved() ~ Nil {
+			@dirty := true;
+		}
+
+		#~
+		How every instance is drawn. One material for the whole batch -- see the
+		note on the class.
+		@param material the material, or Nil to inherit whatever is bound
+		~#
+		method : public : SetMaterial(material : Material) ~ Nil {
+			@material := material;
+		}
+
+		#~
+		@return the material, or Nil
+		~#
+		method : public : GetMaterial() ~ Material {
+			return @material;
+		}
+
+		#~
+		Light the batch. A batch drawn through a Scene inherits the scene's light
+		when it has none of its own.
+		@param light the light, or Nil
+		~#
+		method : public : SetLight(light : Light) ~ Nil {
+			@light := light;
+		}
+
+		#~
+		Light the batch with a rig, which wins over a single light.
+		@param rig the rig, or Nil
+		~#
+		method : public : SetLightRig(rig : LightRig) ~ Nil {
+			@rig := rig;
+		}
+
+		#~
+		@return the light, or Nil
+		~#
+		method : public : GetLight() ~ Light {
+			return @light;
+		}
+
+		#~
+		@return the rig, or Nil
+		~#
+		method : public : GetLightRig() ~ LightRig {
+			return @rig;
+		}
+
+		#~
+		Draw or skip the whole batch.
+		@param visible false to skip it entirely
+		~#
+		method : public : SetVisible(visible : Bool) ~ Nil {
+			@visible := visible;
+		}
+
+		#~
+		@return whether the batch draws
+		~#
+		method : public : IsVisible() ~ Bool {
+			return @visible;
+		}
+
+		#~
+		@return the program this batch draws with
+		~#
+		method : public : GetShader() ~ Shader {
+			return @shader;
+		}
+
+		#~
+		@return the mesh every instance draws
+		~#
+		method : public : GetMesh() ~ Mesh {
+			return @mesh;
+		}
+
+		#~
+		Centre of a sphere containing every instance, on the x axis.
+
+		Valid once the batch has packed, which happens on its first draw. Zero
+		before then -- which is why Scene tests a batch's visibility only after it
+		has drawn at least once.
+		@return the x coordinate
+		~#
+		method : public : GetBoundsX() ~ Float { return @cx; }
+
+		#~
+		@return the y coordinate of the bounding sphere's centre
+		~#
+		method : public : GetBoundsY() ~ Float { return @cy; }
+
+		#~
+		@return the z coordinate of the bounding sphere's centre
+		~#
+		method : public : GetBoundsZ() ~ Float { return @cz; }
+
+		#~
+		Radius of a sphere containing every instance.
+
+		Covers the instance PLACEMENTS plus the mesh's own extent at the largest
+		scale any instance uses, so it holds however the instances are turned.
+		@return the radius in world units, or 0 if nothing has been packed yet
+		~#
+		method : public : GetBoundsRadius() ~ Float { return @radius; }
+
+		#~
+		Repack the matrices, upload them, and recompute the bounding sphere.
+
+		The bounds are computed here rather than in a method of their own because
+		both walk the same transforms, and walking a thousand of them twice is the
+		sort of thing this class exists to avoid.
+		~#
+		method : Pack() ~ Nil {
+			count := @transforms->Size();
+			if(count = 0) {
+				@count := 0;
+				@radius := 0.0;
+				@dirty := false;
+				return;
+			};
+
+			need := count * 16;
+			if(@matrices = Nil | @matrices->Size() < need) {
+				size := 16;
+				while(size < need) {
+					size *= 2;
+				};
+				@matrices := Float->New[size];
+			};
+
+			first := @transforms->Get(0);
+			min_x := first->GetX(); max_x := min_x;
+			min_y := first->GetY(); max_y := min_y;
+			min_z := first->GetZ(); max_z := min_z;
+			max_scale := 0.0;
+
+			each(i : @transforms) {
+				at := @transforms->Get(i);
+				model := at->GetMatrix();
+				base := i * 16;
+
+				for(k := 0; k < 16; k += 1;) {
+					@matrices[base + k] := model[k];
+				};
+
+				x := at->GetX(); y := at->GetY(); z := at->GetZ();
+				if(x < min_x) { min_x := x; };
+				if(x > max_x) { max_x := x; };
+				if(y < min_y) { min_y := y; };
+				if(y > max_y) { max_y := y; };
+				if(z < min_z) { min_z := z; };
+				if(z > max_z) { max_z := z; };
+
+				scale := at->GetMaxScale();
+				if(scale > max_scale) { max_scale := scale; };
+			};
+
+			@cx := (min_x + max_x) / 2.0;
+			@cy := (min_y + max_y) / 2.0;
+			@cz := (min_z + max_z) / 2.0;
+
+			hx := (max_x - min_x) / 2.0;
+			hy := (max_y - min_y) / 2.0;
+			hz := (max_z - min_z) / 2.0;
+			spread := (hx * hx + hy * hy + hz * hz)->Sqrt();
+
+			mesh_extent := 0.0;
+			if(@mesh <> Nil & @mesh->IsOk()) {
+				centre := @mesh->GetCenter();
+				offset := (centre->GetX() * centre->GetX() + centre->GetY() * centre->GetY() +
+					centre->GetZ() * centre->GetZ())->Sqrt();
+				mesh_extent := (offset + @mesh->GetRadius()) * max_scale;
+			};
+			@radius := spread + mesh_extent;
+
+			@count := count;
+			if(<>@mesh->SetInstanceMatrices(@matrices)) {
+				@error := "instance matrix upload failed";
+			};
+			@generation := @mesh->GetInstanceGeneration();
+
+			@dirty := false;
+		}
+
+		#~
+		Draw every instance, using the batch's own light.
+		@param view_projection the camera matrix
+		~#
+		method : public : Draw(view_projection : Float[]) ~ Nil {
+			Draw(view_projection, @light, @rig);
+		}
+
+		#~
+		Draw every instance under a light supplied by the caller.
+
+		This is what Scene calls, so a batch added to a lit scene does not have to
+		be told about the light twice. A batch with its own light or rig keeps it:
+		the arguments are what to use when the batch has none.
+		@param view_projection the camera matrix
+		@param light a light to fall back on, or Nil
+		@param rig a rig to fall back on, or Nil; wins over the light
+		~#
+		method : public : Draw(view_projection : Float[], light : Light, rig : LightRig) ~ Nil {
+			if(<>@visible | view_projection = Nil | <>IsOk()) {
+				return;
+			};
+			if(@transforms->Size() = 0) {
+				return;
+			};
+
+			@shader->Use();
+
+			if(@wants_vp = -1) {
+				@wants_vp := @shader->HasUniform("view_projection") ? 1 : 0;
+				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
+
+				# Said once, not once a frame. The overwhelmingly likely cause is a
+				# per-object shader handed to a batch, and the symptom on its own --
+				# everything stacked at the origin, or nothing drawn at all -- points
+				# nowhere near the actual mistake.
+				if(@wants_vp = 0) {
+					@error := "shader has no view_projection uniform; an instanced shader needs one, and a shader with an mvp uniform is the per-object kind";
+				};
+			};
+
+			# Nothing good can come of continuing. Packing would upload over the
+			# mesh's instance buffer -- which another batch may be relying on -- and
+			# the draw would stack every instance whereever the last mvp pointed.
+			if(@wants_vp = 0) {
+				return;
+			};
+
+			@shader->SetMatrix4("view_projection", view_projection);
+			if(@wants_sampler = 1) {
+				@shader->SetInt("tex", 0);
+			};
+
+			use_rig := @rig;
+			if(use_rig = Nil) {
+				use_rig := rig;
+			};
+			use_light := @light;
+			if(use_light = Nil) {
+				use_light := light;
+			};
+
+			if(use_rig <> Nil) {
+				use_rig->ApplyTo(@shader);
+			}
+			else if(use_light <> Nil) {
+				use_light->ApplyTo(@shader);
+			};
+
+			if(@material <> Nil) {
+				@material->ApplyTo(@shader, 0);
+			};
+
+			# The third condition is the one that is easy to leave out: a static
+			# batch whose mesh is shared with another batch has had its instance
+			# data overwritten, and nothing about the batch itself changed. Without
+			# it the batch draws its own count out of someone else's buffer, which
+			# renders instances at stale placements or at no placement at all.
+			if(@dirty | @dynamic | @mesh->GetInstanceGeneration() <> @generation) {
+				Pack();
+			};
+
+			@mesh->DrawInstanced(@count);
+		}
+
+		#~
+		Release the shader, if this batch built it.
+
+		The mesh is never freed here: it is the caller's, and is very often shared
+		with a Prop or another batch. Idempotent.
+		~#
+		method : public : Free() ~ Nil {
+			if(@owns_shader & @shader <> Nil) {
+				@shader->Free();
+			};
+			@shader := Nil;
+			@owns_shader := false;
 		}
 	}
 
@@ -7759,11 +9044,22 @@ bundle Game.OpenGL {
 		# inside a draw loop.
 		@far_order : Int[];
 		@far_distance : Float[];
+		# Props are held apart from boxes rather than in one list: see the note on
+		# Prop for why merging them would cost every box its tight cull test and
+		# its shared VAO.
+		@props : Vector<Prop>;
+		# Instanced batches. A third list rather than a third kind of entry in an
+		# existing one, because a batch is drawn by a DIFFERENT shader -- so it
+		# cannot take part in the material runs or the transparent sort that the
+		# boxes and props share.
+		@batches : Vector<PropBatch>;
 		# Which material and texture are currently bound. Fields rather than
 		# locals because the opaque and transparent passes share the run.
 		@last_texture : Texture2D;
 		@last_material : Material;
 		@wants_opacity : Int;
+		@wants_tint : Int;
+		@wants_specular : Int;
 
 		#~
 		@param mesh the cube mesh every box is drawn with; it must span -1..1 on
@@ -7786,9 +9082,13 @@ bundle Game.OpenGL {
 			@eye := Nil;
 			@far_order := Int->New[0];
 			@far_distance := Float->New[0];
+			@props := Vector->New()<Prop>;
+			@batches := Vector->New()<PropBatch>;
 			@last_texture := Nil;
 			@last_material := Nil;
 			@wants_opacity := -1;
+			@wants_tint := -1;
+			@wants_specular := -1;
 		}
 
 		#~
@@ -7951,6 +9251,8 @@ bundle Game.OpenGL {
 				@wants_model := @shader->HasUniform("model") ? 1 : 0;
 				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
 				@wants_opacity := @shader->HasUniform("opacity") ? 1 : 0;
+				@wants_tint := @shader->HasUniform("tint") ? 1 : 0;
+				@wants_specular := @shader->HasUniform("specular_strength") ? 1 : 0;
 			};
 
 			# The sampler unit, which Scene used to leave unset -- so a shader had to
@@ -7980,8 +9282,8 @@ bundle Game.OpenGL {
 			@last_texture := Nil->As(Texture2D);
 			@last_material := Nil->As(Material);
 			# Pass one: everything solid, in insertion order so the material runs
-			# hold. Transparent boxes are collected rather than drawn.
-			ReserveFar(@boxes->Size());
+			# hold. Transparent geometry is collected rather than drawn.
+			ReserveFar(@boxes->Size() + @props->Size());
 			far_count := 0;
 
 			each(i : @boxes) {
@@ -8008,6 +9310,46 @@ bundle Game.OpenGL {
 				};
 			};
 
+			# The props, same two-way split. Culled against a SPHERE rather than a
+			# box: a prop can be rotated, and its mesh bounds are model-space.
+			each(i : @props) {
+				prop := @props->Get(i);
+
+				visible := prop->IsVisible();
+				if(visible & @culling) {
+					at := prop->GetTransform();
+					visible := @frustum->ContainsSphere(at->GetX(), at->GetY(), at->GetZ(),
+						prop->GetBoundsRadius());
+				};
+
+				if(visible) {
+					if(prop->IsOpaque()) {
+						DrawProp(prop, view_projection);
+						@drawn += 1;
+					}
+					else {
+						# Props are encoded as negative indices, so one sorted list
+						# can hold both kinds -- a transparent prop between two
+						# transparent boxes has to sort BETWEEN them, so two
+						# separate passes would be wrong.
+						@far_order[far_count] := (i + 1) * -1;
+						@far_distance[far_count] := PropEyeDistance(prop);
+						far_count += 1;
+					};
+				}
+				else {
+					@culled += 1;
+				};
+			};
+
+			# The batches, in between: after the solid boxes and props, before
+			# anything transparent. That is where opaque geometry belongs -- drawn
+			# after the transparent pass it would paint over surfaces already
+			# blended into the frame, since that pass leaves depth writes off.
+			if(@batches->Size() > 0) {
+				DrawBatches(view_projection);
+			};
+
 			# Pass two: the transparent ones, furthest first, with blending on and
 			# depth WRITES off.
 			#
@@ -8020,7 +9362,13 @@ bundle Game.OpenGL {
 				GL->BeginTransparency();
 
 				for(k := 0; k < far_count; k += 1;) {
-					DrawOne(@boxes->Get(@far_order[k]), view_projection);
+					index := @far_order[k];
+					if(index >= 0) {
+						DrawOne(@boxes->Get(index), view_projection);
+					}
+					else {
+						DrawProp(@props->Get((index * -1) - 1), view_projection);
+					};
 					@drawn += 1;
 				};
 
@@ -8031,6 +9379,139 @@ bundle Game.OpenGL {
 				@last_material := Nil->As(Material);
 				@last_texture := Nil->As(Texture2D);
 			};
+		}
+
+		#~
+		Bind what one prop needs and draw it.
+
+		Unlike a box this rebinds the mesh, because a prop brings its own -- which
+		is the cost of holding them at all, and the reason boxes were not merged
+		into the same list.
+		~#
+		#~
+		Undo whatever the last Material wrote, for geometry that has none.
+
+		Only opacity was being reset, and Material->ApplyTo writes FOUR uniforms:
+		tint, shininess, specular_strength and opacity. So one material'd object
+		tinted every untextured object drawn after it -- in gl_lantern that meant
+		the entire dungeon turned the relics' gold from the second frame onward,
+		because the last material applied each frame was the glow shell.
+
+		Specular goes back to the RIG's values rather than a hardcoded default,
+		because that is what the scene asked for before any material overrode it.
+		~#
+		method : ResetMaterialState() ~ Nil {
+			if(@wants_opacity = 1) {
+				@shader->SetFloat("opacity", 1.0);
+			};
+			if(@wants_tint = 1) {
+				# The lit shaders read a zero tint as "no tint", so white and zero
+				# are equivalent here -- white is the honest value.
+				@shader->SetVec3("tint", 1.0, 1.0, 1.0);
+			};
+			if(@wants_specular = 1 & @rig <> Nil) {
+				@shader->SetFloat("shininess", @rig->GetShininess());
+				@shader->SetFloat("specular_strength", @rig->GetSpecular());
+			};
+		}
+
+		method : DrawProp(prop : Prop, view_projection : Float[]) ~ Nil {
+			mesh := prop->GetMesh();
+			if(mesh = Nil | <>mesh->IsOk()) {
+				return;
+			};
+
+			material := prop->GetMaterial();
+			if(material <> Nil) {
+				if(material <> @last_material) {
+					material->ApplyTo(@shader, 0);
+					@last_material := material;
+					@last_texture := Nil->As(Texture2D);
+				};
+			}
+			else {
+				ResetMaterialState();
+			};
+
+			model := prop->GetModelMatrix();
+			Matrix4->MultiplyInto(@mvp, view_projection, model);
+			@shader->SetMatrix4("mvp", @mvp);
+			if(@wants_model = 1) {
+				@shader->SetMatrix4("model", model);
+			};
+			mesh->Draw();
+		}
+
+		#~
+		Draw the instanced batches, then put back what they disturbed.
+
+		A batch binds its own shader -- it has to, since an instanced program takes
+		the camera as "view_projection" and reads the model matrix from a vertex
+		attribute, which is a different shape from the per-object "mvp" every other
+		shader here uses.
+
+		Rebinding the scene's shader here is DEFENSIVE, not load-bearing, and it is
+		worth being exact about that. Every uniform setter binds its own program
+		before writing -- that was the phase-3 fix for uniforms landing on the wrong
+		shader -- so the transparent pass would bind the right program anyway on its
+		first SetMatrix4. This is here so the bound program matches what the scene
+		believes for any future draw path that does not happen to set a uniform
+		first. Removing it breaks no current test, which is exactly why the comment
+		should not claim otherwise.
+
+		What DID leak was the texture unit, which is global rather than per-program:
+		a batch binds its material's texture, and anything drawn afterwards whose
+		material carries no texture of its own sampled it. That is fixed in DrawOne
+		rather than here, because the real fault was a coloured box never binding
+		its own texture at all.
+		~#
+		method : DrawBatches(view_projection : Float[]) ~ Nil {
+			touched := false;
+
+			each(i : @batches) {
+				batch := @batches->Get(i);
+
+				visible := batch->IsVisible();
+				# Radius is 0 until the batch has packed, which happens on its first
+				# draw -- so a new batch is always submitted once, and can be culled
+				# from the frame after. Culling it on a radius it has not computed
+				# yet would cull it forever.
+				if(visible & @culling & batch->GetBoundsRadius() > 0.0) {
+					visible := @frustum->ContainsSphere(batch->GetBoundsX(),
+						batch->GetBoundsY(), batch->GetBoundsZ(), batch->GetBoundsRadius());
+				};
+
+				if(visible) {
+					batch->Draw(view_projection, @light, @rig);
+					@drawn += 1;
+					touched := true;
+				}
+				else {
+					@culled += 1;
+				};
+			};
+
+			if(touched) {
+				@shader->Use();
+				@last_material := Nil->As(Material);
+				@last_texture := Nil->As(Texture2D);
+			};
+		}
+
+		#~
+		Squared distance from the eye to a prop, for the transparent sort.
+		~#
+		method : PropEyeDistance(prop : Prop) ~ Float {
+			if(@eye = Nil) {
+				return 0.0;
+			};
+
+			at := prop->GetTransform();
+			dx := at->GetX() - @eye->GetX();
+			dy := at->GetY() - @eye->GetY();
+			dz := at->GetZ() - @eye->GetZ();
+
+			return dx * dx + dy * dy + dz * dz;
 		}
 
 		#~
@@ -8053,6 +9534,22 @@ bundle Game.OpenGL {
 					# plain-texture tracking has to forget what it thought.
 					@last_texture := Nil->As(Texture2D);
 				};
+
+				# A material with no texture of its own binds nothing, so the box
+				# sampled whatever the PREVIOUS draw happened to leave on unit 0.
+				# Material->Colored is exactly that shape, which meant a coloured box
+				# had never been self-sufficient: it looked right only because some
+				# earlier box in the same frame had bound a white texture.
+				#
+				# Invisible until something drew in between with a texture of its
+				# own. A PropBatch does precisely that, and turned a blue pane green.
+				if(<>material->HasTexture()) {
+					own := box->GetTexture();
+					if(own <> Nil & own <> @last_texture) {
+						own->Bind(0);
+						@last_texture := own;
+					};
+				};
 			}
 			else {
 				texture := box->GetTexture();
@@ -8062,11 +9559,7 @@ bundle Game.OpenGL {
 					@last_material := Nil->As(Material);
 				};
 
-				# A box with no material carries no opacity either, and the shader's
-				# uniform is whatever the last material left there.
-				if(@wants_opacity = 1) {
-					@shader->SetFloat("opacity", 1.0);
-				};
+				ResetMaterialState();
 			};
 
 			model := box->GetModelMatrix();
@@ -8128,15 +9621,127 @@ bundle Game.OpenGL {
 					@mesh->Draw();
 				};
 			};
+
+			# Props cast shadows too. A prop that were left out of this pass would
+			# be lit like everything else and throw no shadow at all, which reads
+			# as the object floating rather than as a missing feature.
+			#
+			# Transparency is ignored here on purpose: a depth pass records where
+			# geometry IS, and a half-transparent pane still occludes light. Doing
+			# otherwise needs alpha-tested shadows, which is a different feature.
+			each(i : @props) {
+				prop := @props->Get(i);
+				mesh := prop->GetMesh();
+
+				visible := prop->IsVisible() & mesh <> Nil & mesh->IsOk();
+				if(visible & cull_here) {
+					at := prop->GetTransform();
+					visible := @frustum->ContainsSphere(at->GetX(), at->GetY(), at->GetZ(),
+						prop->GetBoundsRadius());
+				};
+
+				if(visible) {
+					model := prop->GetModelMatrix();
+					Matrix4->MultiplyInto(@mvp, view_projection, model);
+					shader->SetMatrix4("mvp", @mvp);
+					if(wants_model) {
+						shader->SetMatrix4("model", model);
+					};
+					mesh->Draw();
+				};
+			};
 		}
 
 		#~
-		Whether a circle in plan view hits any SOLID box.
-		@param x circle centre x
-		@param z circle centre z
-		@param radius circle radius
-		@return true when the position is blocked
+		Add a prop -- a mesh, material and transform of its own.
+
+		Returned so it can be kept and moved:
+
+		  lamp := scene->AddProp(Prop->New(lamp_mesh, brass));
+		  lamp->GetTransform()->SetPosition(2.0, 0.0, -3.0);
+
+		Props are drawn after the boxes in the solid pass, and join the boxes in
+		the sorted pass if they are transparent. They do NOT block movement --
+		Scene->Blocked walks only the boxes, because a plan-view overlap test says
+		nothing about a rotated model.
+		@param prop the prop to add
+		@return the same prop
 		~#
+		method : public : AddProp(prop : Prop) ~ Prop {
+			if(prop <> Nil) {
+				@props->AddBack(prop);
+			};
+
+			return prop;
+		}
+
+		#~
+		@return how many props this scene holds
+		~#
+		method : public : GetPropCount() ~ Int {
+			return @props->Size();
+		}
+
+		#~
+		Add an instanced batch, drawn in one call after the solid geometry.
+
+		A batch brings its own shader, so it is not affected by SetShader and does
+		not take part in the material runs the boxes and props share. It inherits
+		the scene's light when it has none of its own.
+
+		Note it counts as ONE toward GetDrawn, not one per instance -- what that
+		number measures is submissions, and the whole point of a batch is that four
+		hundred trees are a single submission.
+
+		## Batches do not cast shadows
+
+		DrawInto walks the boxes and the props, not the batches. The depth pass runs
+		one shader over everything, and DepthOnly is a per-object program -- an
+		instanced depth shader would be a second one, and Scene would have to switch
+		between them mid-pass. So a batch is lit but casts nothing, which is fine for
+		grass and wrong for pillars. Use props for anything whose shadow matters.
+		@param batch the batch; NOT owned by the scene, so Clear does not free it
+		@return the same batch, for chaining
+		~#
+		method : public : AddBatch(batch : PropBatch) ~ PropBatch {
+			if(batch <> Nil) {
+				@batches->AddBack(batch);
+			};
+
+			return batch;
+		}
+
+		#~
+		@return how many batches the scene holds
+		~#
+		method : public : GetBatchCount() ~ Int {
+			return @batches->Size();
+		}
+
+		#~
+		@param index 0 to GetBatchCount() - 1
+		@return the batch, or Nil if the index is out of range
+		~#
+		method : public : GetBatch(index : Int) ~ PropBatch {
+			if(index < 0 | index >= @batches->Size()) {
+				return Nil;
+			};
+
+			return @batches->Get(index);
+		}
+
+		#~
+		@param index 0 to GetPropCount() - 1
+		@return the prop, or Nil if the index is out of range
+		~#
+		method : public : GetProp(index : Int) ~ Prop {
+			if(index < 0 | index >= @props->Size()) {
+				return Nil;
+			};
+
+			return @props->Get(index);
+		}
+
 		#~
 		Tell the scene where the camera is, so transparency can be ordered.
 
@@ -8201,11 +9806,23 @@ bundle Game.OpenGL {
 		~#
 		method : ReserveFar(count : Int) ~ Nil {
 			if(@far_order->Size() < count) {
-				@far_order := Int->New[count];
-				@far_distance := Float->New[count];
+				# Doubled, not exact. A scene that gains one object per frame --
+				# anything streaming or spawning -- reallocated BOTH arrays every
+				# single frame with exact sizing, from inside the draw loop this
+				# field exists to keep allocation-free.
+				room := count * 2;
+				@far_order := Int->New[room];
+				@far_distance := Float->New[room];
 			};
 		}
 
+		#~
+		Whether a circle in plan view hits any SOLID box.
+		@param x circle centre x
+		@param z circle centre z
+		@param radius circle radius
+		@return true when the position is blocked
+		~#
 		method : public : Blocked(x : Float, z : Float, radius : Float) ~ Bool {
 			each(i : @boxes) {
 				box := @boxes->Get(i);
@@ -8272,11 +9889,15 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Drop every box. Does NOT free the shared mesh, shader or textures -- those
+		Drop every box and every prop. Does NOT free the shared mesh, shader or textures -- those
 		were passed in and belong to the caller.
 		~#
 		method : public : Clear() ~ Nil {
 			@boxes->Empty();
+			# Props too. Leaving them meant a scene that was cleared and rebuilt
+			# accumulated props forever and went on drawing them.
+			@props->Empty();
+			@batches->Empty();
 		}
 	}
 

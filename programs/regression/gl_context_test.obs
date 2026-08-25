@@ -80,11 +80,15 @@ class GlContextTest {
 		CheckProjection();
 		CheckCameraProjection();
 		CheckInput();
+		CheckGamepad();
 		CheckOverlayState();
 		CheckMultisampling();
 		CheckTransparency();
 		CheckOwnership();
 		CheckScissorAndStencil();
+		CheckProps();
+		CheckMaterialLeak();
+		CheckStencilAndPoints();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -97,6 +101,7 @@ class GlContextTest {
 		CheckPointShadows();
 		CheckOverlay();
 		CheckInstancing();
+		CheckPropBatch();
 		CheckObjLoading();
 		CheckDrawModesAndBlending();
 		CheckMeshValidation();
@@ -1365,8 +1370,10 @@ class GlContextTest {
 			Check("measuring the same string twice agrees", first = second & first > 0);
 		};
 
-		# Note Game.SDL2's Font has no Free or Close method at all, so a loaded font
-		# cannot be released -- worth knowing, and not this bundle's to fix.
+		# Font->Free exists now -- TTF_CloseFont was bound -- so close this one
+		# rather than leaking it, and before Quit rather than after. The two
+		# checks above cover Free itself on a separate font.
+		if(font <> Nil & <>font->IsNull()) { font->Free(); };
 		Font->Quit();
 
 		Check("no GL errors from the overlay", GL->DrainErrors()->Size() = 0);
@@ -1970,6 +1977,294 @@ class GlContextTest {
 		screen->Draw();
 
 		return GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x000000FF;
+	}
+
+	#~
+	PropBatch: the object-layer route to instancing.
+
+	CheckInstancing already proves the Mesh-level API works. What this proves is
+	that the wrapper around it does not quietly lose the thing that makes it
+	instancing -- and the specific way it could is that Pack writes every
+	instance's matrix into the same slot, or the wrong slot, which looks exactly
+	like a working batch if the fixture reads one point or draws instances that
+	overlap. So the placements are read separately, with a gap between them that
+	must stay empty.
+
+	The last block is the one that matters most. Every check above it is a batch
+	on its own, and a batch on its own was never the risk: the risk is that a
+	batch binds its own shader mid-frame and the scene carries on as if it had
+	not. That is a composition failure, and composition is exactly what the last
+	round of nine defects were made of -- every single-feature fixture passed.
+	~#
+	method : CheckPropBatch() ~ Nil {
+		cube := Mesh->Cube(0.6);
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a cube and texture for the batch checks", cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		batch := PropBatch->New(cube);
+		if(<>Check("PropBatch->New builds a working instanced shader", batch->IsOk())) {
+			log := batch->GetShader()->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		Check("a new batch holds no instances", batch->GetCount() = 0);
+		Check("and reports no error", batch->GetError()->Size() = 0);
+		Check("and has no bounds to speak of", batch->GetBoundsRadius() = 0.0);
+
+		batch->SetMaterial(Material->New(white));
+
+		# The same three separated positions CheckInstancing uses, for the same
+		# reason: at distance 8 with a 60-degree fov they land near 23%, 50% and
+		# 77% across, far enough apart that one matrix applied to all three cannot
+		# satisfy the readback.
+		left_at := batch->Add(-2.5, 0.0, 0.0);
+		batch->Add(0.0, 0.0, 0.0);
+		batch->Add(2.5, 0.0, 0.0);
+		Check("Add returns a transform to steer the instance", left_at <> Nil);
+		Check("the batch holds all three", batch->GetCount() = 3);
+		Check("Get hands one back", batch->Get(0) = left_at);
+		Check("an out-of-range index is Nil rather than a crash",
+			batch->Get(9) = Nil & batch->Get(-1) = Nil);
+
+		light := LightRig->New();
+		light->SetAmbient(1.0, 1.0, 1.0);
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 8.0));
+		camera->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		batch->SetLightRig(light);
+
+		mid_y := @pixel_h / 2;
+		black := 0xFF000000;
+		left_x := (@pixel_w * 23) / 100;
+		right_x := (@pixel_w * 77) / 100;
+		gap_x := (@pixel_w * 36) / 100;
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+
+		left := GL->ReadPixel(left_x, mid_y);
+		middle := GL->ReadPixel(@pixel_w / 2, mid_y);
+		right := GL->ReadPixel(right_x, mid_y);
+		gap := GL->ReadPixel(gap_x, mid_y);
+		"  batch: left=0x{$left} middle=0x{$middle} right=0x{$right} gap=0x{$gap}"->PrintLine();
+
+		Check("the batch drew its middle instance", middle <> black);
+		# THE assertion: three placements, three occupied points. A Pack that
+		# writes one matrix three times puts everything in one place.
+		Check("and the left one at its own placement", left <> black);
+		Check("and the right one at its own", right <> black);
+		Check("with nothing in between", gap = black);
+		Check("the upload reported no error", batch->GetError()->Size() = 0);
+
+		# --- bounds cover every instance, not just the first -----------------
+		radius := batch->GetBoundsRadius();
+		centre_x := batch->GetBoundsX();
+		"  batch bounds: centre_x={$centre_x} radius={$radius}"->PrintLine();
+		Check("the bounding sphere is centred on the instances", centre_x->Abs() < 0.01);
+		# Must reach the outermost instance (2.5) plus that instance's own extent.
+		# A radius computed from one instance, or from the mesh alone, is smaller.
+		Check("and reaches past the outermost instance", radius > 2.5);
+
+		# --- a per-object shader is refused, loudly --------------------------
+		# The failure being caught: handing a batch an ordinary shader draws
+		# nothing, or everything stacked at the origin, and neither symptom points
+		# anywhere near the mistake.
+		wrong_shader := Shader->LitTextured();
+		wrong_cube := Mesh->Cube(0.6);
+		wrong := PropBatch->New(wrong_cube, wrong_shader);
+		wrong->Add(0.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		wrong->Draw(camera->GetViewProjection());
+		Check("a per-object shader handed to a batch is reported",
+			wrong->GetError()->Size() > 0);
+		wrong->Free();
+		wrong_shader->Free();
+		wrong_cube->Free();
+
+		# --- static batches pack once, and say when that stops being true ----
+		batch->SetDynamic(false);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+		Check("a static batch still draws", GL->ReadPixel(left_x, mid_y) <> black);
+
+		# Move the left instance off screen WITHOUT telling the batch. It must not
+		# move -- that is the whole contract of SetDynamic(false), and a batch that
+		# repacked anyway would make MarkMoved pointless and the flag a lie.
+		left_at->SetPosition(-40.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+		Check("a static batch ignores a move it was not told about",
+			GL->ReadPixel(left_x, mid_y) <> black);
+
+		batch->MarkMoved();
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+		Check("and repacks once MarkMoved says so",
+			GL->ReadPixel(left_x, mid_y) = black);
+		Check("leaving the instances it was not asked to move alone",
+			GL->ReadPixel(right_x, mid_y) <> black);
+
+		left_at->SetPosition(-2.5, 0.0, 0.0);
+		batch->SetDynamic(true);
+
+		# --- two batches over one mesh --------------------------------------
+		#
+		# Instance data belongs to the MESH, not to whatever uploaded it. So a
+		# second batch over the same mesh overwrites the first one's matrices, and
+		# the first has no idea: it goes on drawing its own instance COUNT out of a
+		# buffer that now holds someone else's placements.
+		#
+		# Worst for a static batch, which has been told it need never pack again --
+		# so the corruption is permanent rather than lasting one frame. That is the
+		# case here: both batches are static, and the check is that the first one
+		# still draws where it belongs after the second has uploaded.
+		#
+		# Found by this fixture. The first version shared a mesh by accident, two
+		# unrelated static-batch checks went red, and the cause was three blocks
+		# further up.
+		second := PropBatch->New(cube);
+		second->SetMaterial(Material->New(white));
+		second->SetLightRig(light);
+		second->Add(0.0, -2.0, 0.0);
+		second->SetDynamic(false);
+
+		batch->SetDynamic(false);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		# Establishes this batch's matrices on the shared mesh and leaves it clean,
+		# so the only thing that can dirty it afterwards is the second batch.
+		batch->Draw(camera->GetViewProjection());
+		second->Draw(camera->GetViewProjection());
+
+		# Clear BEFORE the draw under test. Without this the first draw above has
+		# already painted the correct pixels and nothing the third draw does can
+		# take them away -- the check then passes with the fix removed, which is
+		# how the first version of it was worthless.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+
+		shared_left := GL->ReadPixel(left_x, mid_y);
+		shared_right := GL->ReadPixel(right_x, mid_y);
+		"  shared mesh: left=0x{$shared_left} right=0x{$shared_right}"->PrintLine();
+		# THE assertion: without the generation check the second batch's single
+		# origin matrix is what the first one draws from, so its outer instances
+		# land nowhere.
+		Check("a static batch survives another batch uploading over its mesh",
+			shared_left <> black & shared_right <> black);
+
+		second->Free();
+		batch->SetDynamic(true);
+
+		# --- a batch inside a Scene, which is where the composition lives -----
+		#
+		# The trap: a batch binds its OWN shader, because an instanced program is a
+		# different shape from the per-object one every other thing here uses. If
+		# Scene does not rebind its own afterwards, every uniform the transparent
+		# pass sets afterwards lands in the BATCH's program instead -- so the
+		# transparent geometry draws with a stale matrix or not at all.
+		#
+		# A transparent box is the discriminator on purpose: it is the only thing
+		# Scene draws AFTER the batches, so it is the only thing that can see the
+		# damage. An opaque-only scene passes this either way.
+		scene_shader := Shader->LitTextured();
+		wall := Mesh->Cube();
+		scene := Scene->New(wall, scene_shader);
+		scene->SetLightRig(light);
+		scene->SetCulling(false);
+		scene->SetEye(camera->GetPosition());
+
+		Check("a new scene holds no batches", scene->GetBatchCount() = 0);
+		Check("AddBatch hands the batch back", scene->AddBatch(batch) = batch);
+		Check("and the scene is holding it", scene->GetBatchCount() = 1);
+		Check("GetBatch returns it", scene->GetBatch(0) = batch);
+		Check("an out-of-range batch index is Nil",
+			scene->GetBatch(4) = Nil & scene->GetBatch(-1) = Nil);
+
+		# A blue transparent pane across the middle of the view, in FRONT of the
+		# batch, drawn after it.
+		pane := scene->AddBox(Vector3->New(0.0, 0.0, 4.0), Vector3->New(6.0, 6.0, 0.1), white);
+		pane_material := Material->Colored(0.0, 0.0, 1.0);
+		pane_material->SetOpacity(0.5);
+		pane->SetMaterial(pane_material);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene_shader->Use();
+		scene_shader->SetInt("tex", 0);
+		scene->Draw(camera->GetViewProjection());
+
+		blended := GL->ReadPixel(@pixel_w / 2, mid_y);
+		br := (blended and 0x00FF0000) / 0x10000;
+		bb := (blended and 0x000000FF);
+		"  scene+batch blend: r={$br} b={$bb}"->PrintLine();
+
+		# THE assertion. The pane is blue and half-transparent over a white
+		# instance, so blue must dominate red. If the scene's shader was never
+		# rebound, the pane's mvp went into the instanced program and the pane is
+		# not there at all -- leaving the white instance, where r = b.
+		Check("a transparent box still draws correctly after a batch rebinds",
+			bb > br);
+		Check("the batch counts as one submission, not one per instance",
+			scene->GetDrawnCount() = 2);
+
+		# --- a batch must not change what later draws sample ------------------
+		#
+		# The pane's material is a Material->Colored, which carries no texture, so
+		# it samples whatever is bound on unit 0. Give the batch a GREEN texture and
+		# the pane came back green -- its blue tint multiplied by the batch's
+		# texture instead of by its own white one.
+		#
+		# The underlying fault was older and wider than batches: a box with a
+		# material never bound its OWN texture, so a coloured box only ever looked
+		# right because something else in the frame had bound white first. A batch
+		# just made it reliable enough to see.
+		green := Texture2D->Solid(0xFF00FF00);
+		batch->SetMaterial(Material->New(green));
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene_shader->Use();
+		scene_shader->SetInt("tex", 0);
+		scene->Draw(camera->GetViewProjection());
+
+		leaked := GL->ReadPixel(@pixel_w / 2, mid_y);
+		lg := (leaked and 0x0000FF00) / 0x100;
+		lb := (leaked and 0x000000FF);
+		"  texture leak check: g={$lg} b={$lb}"->PrintLine();
+		Check("a batch's texture does not leak into the transparent pass", lb > 100);
+
+		batch->SetMaterial(Material->New(white));
+		green->Free();
+
+		# --- culling the whole batch ------------------------------------------
+		scene->SetCulling(true);
+		scene->Draw(camera->GetViewProjection());
+		Check("with culling on a batch in view is drawn", scene->GetDrawnCount() = 2);
+
+		for(i := 0; i < 3; i += 1;) {
+			batch->Get(i)->SetPosition(600.0, 0.0, 0.0);
+		};
+		batch->MarkMoved();
+		# Two draws: the first repacks and recomputes the bounds, the second is the
+		# one that can act on them. Culling on a radius the batch has not computed
+		# yet would cull a new batch forever, so it is deliberately not done.
+		scene->Draw(camera->GetViewProjection());
+		scene->Draw(camera->GetViewProjection());
+		Check("and one moved far off screen is culled", scene->GetCulledCount() = 1);
+		Check("leaving the pane drawn", scene->GetDrawnCount() = 1);
+
+		scene->Clear();
+		Check("Clear drops the batches too", scene->GetBatchCount() = 0);
+
+		batch->Free();
+		batch->Free();
+		Check("PropBatch->Free is idempotent", true);
+
+		scene_shader->Free();
+		wall->Free();
+		cube->Free();
+		white->Free();
 	}
 
 	#~
@@ -2894,7 +3189,139 @@ class GlContextTest {
 		Check("the mouse position is readable and not negative",
 			@gl->GetMouseX() >= 0 & @gl->GetMouseY() >= 0);
 
+		# --- held keys ------------------------------------------------------
+		# KeyHeld is a STATE, not an edge, and it exists mainly for its bounds
+		# check: reading Keyboard->GetState directly means writing that check every
+		# time, which is why both examples that take keyboard input had the same
+		# eight-line helper, byte for byte.
+		#
+		# No key is down under a test harness, so what is assertable is that every
+		# query is answerable and that the out-of-range cases are refused rather
+		# than indexing off the end of a ~512-byte array.
+		Check("no key reads as held with nothing pressed",
+			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_W) &
+			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_SPACE));
+		Check("a negative scancode is refused, not indexed",
+			<>@gl->KeyHeld(-1) & <>@gl->KeyHeld(-99999));
+		Check("a scancode past the end is refused",
+			<>@gl->KeyHeld(999999) & <>@gl->KeyHeld(512));
+		Check("the two-key form is false when neither is down",
+			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_LSHIFT, Scancode->SDL_SCANCODE_RSHIFT));
+		Check("and refuses out-of-range on both sides", <>@gl->KeyHeld(-1, 999999));
+
+		# The snapshot is taken during PollEvents, so a query before the first one
+		# must answer rather than dereference Nil. @gl has already polled by now,
+		# so this checks the refresh keeps working rather than the Nil path.
+		@gl->PollEvents();
+		Check("still answerable after a poll",
+			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_A));
+
 		Check("no GL errors from reading input", GL->DrainErrors()->Size() = 0);
+	}
+
+	#~
+	Controller support, as far as it can be checked without a controller.
+
+	Neither CI nor this build machine has a gamepad, and pretending otherwise
+	would produce a fixture that passes because everything returns zero. So this
+	splits into two halves and is honest about which is which.
+
+	The half that IS verified: the dead-zone curve, which is the only part with
+	real logic in it and is a pure function precisely so it can be reached with no
+	hardware. Plus every no-pad path, which is the configuration this machine and
+	CI actually run in, and which must not crash or lie.
+
+	The half that is NOT: whether a real pad's buttons and axes arrive. That needs
+	hardware. What CAN be checked without it is that the controller subsystem
+	coming up does not stop a window opening -- the failure that would take every
+	GL program down with it, and the reason the subsystem is initialised
+	separately from video rather than folded into the same flags.
+	~#
+	method : CheckGamepad() ~ Nil {
+		# --- the invariant that holds with or without hardware ----------------
+		# Asserted as an equivalence rather than as "false", so this stays correct
+		# on a machine that DOES have a pad plugged in. A fixture that asserts
+		# HasPad() = false is a fixture that fails the first time someone runs the
+		# suite at their desk with a controller attached.
+		Check("HasPad agrees with GetPad",
+			@gl->HasPad() = (@gl->GetPad() <> Nil));
+
+		if(@gl->HasPad()) {
+			name := @gl->GetPadName();
+			"  a controller IS attached: {$name}"->PrintLine();
+			Check("an attached pad has a name", name->Size() > 0);
+		}
+		else {
+			"  no controller attached; checking the no-pad paths"->PrintLine();
+			Check("no pad means no name", @gl->GetPadName()->Size() = 0);
+			# Reading a stick with nothing plugged in must be 0, not garbage and
+			# not a crash -- a program should not have to guard every read.
+			Check("a stick with no pad reads zero",
+				@gl->GetPadAxis(GameControllerAxis->SDL_CONTROLLER_AXIS_LEFTX) = 0.0);
+			Check("and so does the raw read",
+				@gl->GetPadAxisRaw(GameControllerAxis->SDL_CONTROLLER_AXIS_LEFTY) = 0.0);
+			Check("and no button is held",
+				<>@gl->PadHeld(GameControllerButton->SDL_CONTROLLER_BUTTON_A) &
+				<>@gl->PadPressed(GameControllerButton->SDL_CONTROLLER_BUTTON_A) &
+				<>@gl->PadReleased(GameControllerButton->SDL_CONTROLLER_BUTTON_A));
+		};
+
+		# The window this suite is running in opened AFTER the controller
+		# subsystem was initialised. That it exists at all is the assertion.
+		Check("initialising the controller subsystem did not stop the window",
+			@gl->IsOk());
+
+		# --- the dead-zone curve, which is the part with logic in it ----------
+		zone := 0.15;
+
+		Check("a stick at rest is zero", GLWindow->ApplyDeadzone(0.0, zone) = 0.0);
+		Check("noise inside the dead zone is zero",
+			GLWindow->ApplyDeadzone(0.10, zone) = 0.0 &
+			GLWindow->ApplyDeadzone(-0.10, zone) = 0.0);
+		Check("full deflection is still full",
+			(GLWindow->ApplyDeadzone(1.0, zone) - 1.0)->Abs() < 0.0001);
+		Check("and full the other way",
+			(GLWindow->ApplyDeadzone(-1.0, zone) + 1.0)->Abs() < 0.0001);
+
+		# THE assertion. A dead zone that merely CLAMPS returns the input
+		# untouched once it clears the threshold, so 0.16 comes back as 0.16 and
+		# the stick jumps from nothing to 16% the instant it registers. Rescaled,
+		# 0.16 is barely off the stop: (0.16-0.15)/0.85 = 0.0118.
+		#
+		# This is what makes slow movement possible, and it is exactly what a
+		# clamp-only implementation gets wrong while passing every other check
+		# here.
+		just_past := GLWindow->ApplyDeadzone(0.16, zone);
+		"  just past the dead zone: {$just_past}"->PrintLine();
+		Check("clearing the dead zone ramps from zero rather than jumping",
+			just_past < 0.05);
+		Check("and is not simply clamped to the input", (just_past - 0.16)->Abs() > 0.1);
+
+		# Monotonic, and symmetric about zero.
+		a := GLWindow->ApplyDeadzone(0.3, zone);
+		b := GLWindow->ApplyDeadzone(0.6, zone);
+		c := GLWindow->ApplyDeadzone(0.9, zone);
+		Check("the curve rises with the input", a < b & b < c);
+		Check("and is symmetric", (GLWindow->ApplyDeadzone(-0.6, zone) + b)->Abs() < 0.0001);
+
+		# A zero dead zone must be the identity, or "turn it off" does not work.
+		Check("a dead zone of zero passes the input through",
+			(GLWindow->ApplyDeadzone(0.42, 0.0) - 0.42)->Abs() < 0.0001);
+
+		# --- clamping the setter ---------------------------------------------
+		before := @gl->GetPadDeadzone();
+
+		@gl->SetPadDeadzone(-1.0);
+		Check("a negative dead zone clamps to zero", @gl->GetPadDeadzone() = 0.0);
+
+		# 1.0 would divide by zero in the rescale, so the ceiling is below it.
+		@gl->SetPadDeadzone(2.0);
+		Check("an absurd dead zone clamps below one", @gl->GetPadDeadzone() < 1.0);
+		Check("and stays usable rather than swallowing everything",
+			GLWindow->ApplyDeadzone(1.0, @gl->GetPadDeadzone()) > 0.0);
+
+		@gl->SetPadDeadzone(before);
+		Check("the dead zone round-trips", @gl->GetPadDeadzone() = before);
 	}
 
 	#~
@@ -3020,8 +3447,13 @@ class GlContextTest {
 		Check("the suite's own context is current again after probing",
 			@gl->GetWidth() > 64 | @pixel_w > 64 | GL->DrainErrors()->Size() = 0);
 
-		Check("GL_MULTISAMPLE is a capability that can be toggled",
-			Capability->GL_MULTISAMPLE = 0x809D);
+		# Toggling it must not raise a GL error -- which is the part that can
+		# actually be wrong. Asserting the constant against its own literal, as
+		# this did, tests the test.
+		GL->Enable(Capability->GL_MULTISAMPLE);
+		GL->Disable(Capability->GL_MULTISAMPLE);
+		Check("GL_MULTISAMPLE can be toggled without error",
+			GL->DrainErrors()->Size() = 0);
 	}
 
 	#~
@@ -3230,6 +3662,392 @@ class GlContextTest {
 
 	method : Green(argb : Int) ~ Int {
 		return (argb and 0x0000FF00) / 0x100;
+	}
+
+	#~
+	Prop: a mesh, material and transform that Scene can hold.
+
+	Three things worth asserting, and one of them is the whole design.
+
+	THE ORDERING. A transparent prop has to sort BETWEEN transparent boxes, not
+	after them. Drawing boxes and props as two separate passes is the obvious
+	implementation and it is wrong, so the fixture puts a red prop between a green
+	box and a blue box and reads the result:
+
+	  sorted together (correct):  green, red, blue  -> blue on top  -> b > r
+	  props after boxes (wrong):  green, blue, red  -> red on top   -> r > b
+
+	CULLING BY SPHERE. A prop rotates, so its mesh bounds stop being axis-aligned
+	and it has to fall back to a bounding sphere. The bound must be conservative:
+	too small and geometry vanishes at the edge of the screen, which is far worse
+	than drawing something that could have been skipped.
+
+	SHADOWS. A prop left out of the depth pass is lit like everything else and
+	throws no shadow, which reads as the object floating.
+	~#
+	method : CheckProps() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		pane := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the prop checks",
+				shader->IsOk() & cube->IsOk() & pane->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		light := Light->New();
+		light->SetDirection(0.0, 0.0, 1.0);
+		light->SetAmbient(1.0, 1.0, 1.0);
+		scene->SetLight(light);
+		scene->SetCulling(false);
+
+		Check("a new scene holds no props", scene->GetPropCount() = 0);
+
+		# Opaque wall behind everything.
+		scene->AddBox(Vector3->New(0.0, 0.0, -8.0), Vector3->New(6.0, 6.0, 0.2), white);
+
+		# Two transparent boxes, near and far.
+		near_box := scene->AddBox(Vector3->New(0.0, 0.0, -2.0), Vector3->New(4.0, 4.0, 0.1), white);
+		near_material := Material->Colored(0.0, 0.0, 1.0);
+		near_material->SetOpacity(0.5);
+		near_box->SetMaterial(near_material);
+
+		far_box := scene->AddBox(Vector3->New(0.0, 0.0, -6.0), Vector3->New(4.0, 4.0, 0.1), white);
+		far_material := Material->Colored(0.0, 1.0, 0.0);
+		far_material->SetOpacity(0.5);
+		far_box->SetMaterial(far_material);
+
+		# And a transparent PROP between them.
+		mid_material := Material->Colored(1.0, 0.0, 0.0);
+		mid_material->SetOpacity(0.5);
+		mid := scene->AddProp(Prop->New(pane, mid_material));
+		if(<>Check("AddProp returns the prop", mid <> Nil)) {
+			return;
+		};
+		Check("and the scene is holding it", scene->GetPropCount() = 1);
+		Check("GetProp hands it back", scene->GetProp(0) = mid);
+		Check("an out-of-range index is Nil rather than a crash",
+			scene->GetProp(7) = Nil & scene->GetProp(-1) = Nil);
+
+		mid->GetTransform()->SetPosition(0.0, 0.0, -4.0);
+		mid->GetTransform()->SetScale(8.0, 8.0, 0.2);
+
+		Check("a prop with a transparent material is not opaque", <>mid->IsOpaque());
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 2.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		scene->SetEye(eye->GetPosition());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		light->ApplyTo(shader);
+		shader->SetInt("tex", 0);
+		scene->Draw(eye->GetViewProjection());
+
+		pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		r := (pixel and 0x00FF0000) / 0x10000;
+		g := (pixel and 0x0000FF00) / 0x100;
+		b := (pixel and 0x000000FF);
+		"  box/prop/box blend: r={$r} g={$g} b={$b}"->PrintLine();
+
+		Check("all four pieces of geometry drew", scene->GetDrawnCount() = 4);
+		# THE assertion: a separate props-after-boxes pass reads the other way.
+		Check("a transparent prop sorts BETWEEN transparent boxes, not after them",
+			b > r);
+
+		# --- culling by sphere ----------------------------------------------
+		scene->SetCulling(true);
+		scene->Draw(eye->GetViewProjection());
+		Check("with culling on the prop in front of the camera is still drawn",
+			scene->GetDrawnCount() > 0);
+
+		# Move it far off to one side; it must be culled, and its sphere must not
+		# be so large that it never is.
+		mid->GetTransform()->SetPosition(400.0, 0.0, -4.0);
+		scene->Draw(eye->GetViewProjection());
+		# EXACTLY one -- ">0" would also pass if the prop stayed and a box were
+		# culled instead, which is the opposite of what this is checking.
+		Check("and one moved far off screen is culled", scene->GetCulledCount() = 1);
+		Check("leaving the boxes drawn", scene->GetDrawnCount() = 3);
+
+		# Rotated, back in view: the sphere is orientation-independent, so this
+		# must still draw. A box test would have been wrong here.
+		mid->GetTransform()->SetPosition(0.0, 0.0, -4.0);
+		mid->GetTransform()->SetRotation(0.7, 0.4, 0.0);
+		scene->Draw(eye->GetViewProjection());
+		# All four again. The previous version compared against a count captured
+		# while the prop was off-screen, so it passed whether the rotated prop
+		# drew or not -- it could not detect the failure it was named after.
+		Check("a rotated prop is not wrongly culled -- the bound is a sphere",
+			scene->GetDrawnCount() = 4 & scene->GetCulledCount() = 0);
+
+		# A MIRRORED prop. A negative scale gave a negative radius, which makes
+		# ContainsSphere stricter than a point test, so the prop vanished while
+		# still centred in view.
+		mid->GetTransform()->SetScale(-8.0, 8.0, 0.2);
+		scene->Draw(eye->GetViewProjection());
+		Check("and neither is a mirrored one -- a negative scale is not a small one",
+			scene->GetDrawnCount() = 4 & scene->GetCulledCount() = 0);
+		mid->GetTransform()->SetScale(8.0, 8.0, 0.2);
+
+		# --- Clear ----------------------------------------------------------
+		# Clear emptied only the boxes, so a scene that was cleared and rebuilt
+		# accumulated props forever and kept drawing them. Its own doc said
+		# "drop every box", which is true and is exactly what hid it.
+		Check("the scene holds a prop before Clear", scene->GetPropCount() = 1);
+		scene->Clear();
+		Check("Clear drops the props, not only the boxes", scene->GetPropCount() = 0);
+		Check("and the boxes with them", scene->GetCount() = 0);
+
+		mid := scene->AddProp(mid);
+
+		# --- invisible ------------------------------------------------------
+		mid->SetVisible(false);
+		scene->Draw(eye->GetViewProjection());
+		# Read the COUNTER. The previous version asserted <>IsVisible(), which is
+		# true by construction from the line above and says nothing about drawing.
+		# Clear() emptied the scene above, so the re-added prop is all there is:
+		# hidden, nothing draws.
+		scene->Draw(eye->GetViewProjection());
+		Check("SetVisible(false) takes it out of the draw",
+			scene->GetDrawnCount() = 0);
+		mid->SetVisible(true);
+		scene->Draw(eye->GetViewProjection());
+		Check("and SetVisible(true) puts it back", scene->GetDrawnCount() = 1);
+
+		Check("no GL errors from the prop checks", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		pane->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	A Material must not tint the geometry drawn AFTER it.
+
+	Material->ApplyTo writes four uniforms -- tint, shininess, specular_strength
+	and opacity -- and Scene reset only opacity for geometry with no material of
+	its own. So one tinted object coloured every untextured object that followed
+	it, for the rest of the frame and every frame after.
+
+	It was invisible on frame one, because GLSL leaves a uniform at zero and the
+	lit shaders read a zero tint as "no tint". From frame two the last material of
+	the previous frame was still bound. In gl_lantern that turned the entire
+	dungeon the relics' gold.
+
+	So this draws TWO frames and reads the second. A single-frame fixture cannot
+	see this bug at all.
+	~#
+	method : CheckMaterialLeak() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the material-leak check",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		light := Light->New();
+		light->SetDirection(0.0, 0.0, 1.0);
+		light->SetAmbient(1.0, 1.0, 1.0);
+		scene->SetLight(light);
+		scene->SetCulling(false);
+
+		# A strongly tinted box on the left...
+		tinted := scene->AddBox(Vector3->New(-3.0, 0.0, -6.0), Vector3->New(2.0, 2.0, 0.2), white);
+		red := Material->Colored(1.0, 0.0, 0.0);
+		tinted->SetMaterial(red);
+
+		# ...and a plain one on the right, with NO material. It must stay white.
+		scene->AddBox(Vector3->New(3.0, 0.0, -6.0), Vector3->New(2.0, 2.0, 0.2), white);
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 2.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		scene->SetEye(eye->GetPosition());
+
+		shader->Use();
+		light->ApplyTo(shader);
+		shader->SetInt("tex", 0);
+
+		# TWO frames. The first leaves the material bound; the second is where an
+		# unreset uniform shows.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(eye->GetViewProjection());
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(eye->GetViewProjection());
+
+		left := GL->ReadPixel(@pixel_w / 4, @pixel_h / 2);
+		right := GL->ReadPixel((@pixel_w * 3) / 4, @pixel_h / 2);
+		lg := (left and 0x0000FF00) / 0x100;
+		rr := (right and 0x00FF0000) / 0x10000;
+		rg := (right and 0x0000FF00) / 0x100;
+		rb := (right and 0x000000FF);
+		"  tinted box green={$lg}   plain box r={$rr} g={$rg} b={$rb}"->PrintLine();
+
+		Check("the tinted box is actually tinted", lg < 90);
+		# THE assertion. Before the fix this read as gold on the second frame.
+		Check("and the box after it, which has no material, is not tinted",
+			rg > 150 & rb > 150 & rr > 150);
+
+		Check("no GL errors from the material-leak check", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	The half-shipped features, finished.
+
+	Each of these had a constant a program could reach and no implementation
+	behind it, which is the worst shape a gap can take -- using it looked like it
+	worked.
+
+	THE STENCIL TEST is the real one. The window has requested 8 stencil bits
+	since it learned to, and there was no glStencilFunc anywhere, so the buffer
+	could be cleared and nothing else. The check here is the two-pass mask that is
+	the whole point of having one: write a stencil value over half the screen,
+	then draw a full-screen rectangle that is only allowed through where the mask
+	is. If the stencil test does nothing, the second draw covers everything --
+	which is exactly the old behaviour, so this fixture fails against it.
+
+	GL_POINTS drew TRIANGLES, because the constant is 0x0000 and 0 was the
+	sentinel for "unspecified". Asserting that is awkward without a point big
+	enough to sample, which is what SetPointSize is for -- so the two are checked
+	together.
+	~#
+	method : CheckStencilAndPoints() ~ Nil {
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay for the stencil check", overlay->IsOk())) {
+			return;
+		};
+
+		# --- the stencil mask ------------------------------------------------
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT or
+			ClearBit->GL_STENCIL_BUFFER_BIT);
+
+		GL->Enable(Capability->GL_STENCIL_TEST);
+
+		# Pass one: stamp 1 into the stencil over the LEFT half. Colour is written
+		# too, but the clear below removes it -- only the stencil survives.
+		GL->SetStencilFunc(CompareFunc->GL_ALWAYS, 1, 0xFF);
+		GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_REPLACE);
+		GL->SetStencilMask(0xFF);
+
+		overlay->Begin();
+		overlay->Rect(0, 0, @pixel_w / 2, @pixel_h, 10, 10, 10);
+		overlay->End();
+
+		# Wipe the colour, keep the stencil.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		# Pass two: draw everywhere, but only where the stencil is 1.
+		GL->SetStencilFunc(CompareFunc->GL_EQUAL, 1, 0xFF);
+		GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_KEEP);
+		GL->SetStencilMask(0x00);
+
+		overlay->Begin();
+		overlay->Rect(0, 0, @pixel_w, @pixel_h, 240, 240, 240);
+		overlay->End();
+
+		GL->Disable(Capability->GL_STENCIL_TEST);
+		GL->SetStencilMask(0xFF);
+
+		inside := Green(GL->ReadPixel(@pixel_w / 4, @pixel_h / 2));
+		outside := Green(GL->ReadPixel((@pixel_w * 3) / 4, @pixel_h / 2));
+		"  stencil: masked={$inside} unmasked={$outside}"->PrintLine();
+
+		Check("the stencilled half is drawn", inside > 150);
+		# THE assertion. With no stencil test the second rect covers the whole
+		# screen and both halves read the same -- which is what happened before
+		# glStencilFunc was bound at all.
+		Check("and the other half is masked out -- the stencil test works",
+			outside < 60);
+
+		# --- GL_POINTS ------------------------------------------------------
+		# A single point at the centre, made large enough to sample. If the mode
+		# is coerced to triangles, three points cannot form one and nothing is
+		# drawn at the centre.
+		flat := Shader->Flat();
+		if(Check("Shader->Flat compiles for the point check", flat->IsOk())) {
+			verts := [0.0, 0.0, 0.0,   0.0, 0.0, 1.0,   0.5, 0.5];
+			indices := [0];
+			layout := [3, 3, 2];
+			dot := Mesh->New(verts, indices, layout);
+
+			if(Check("a one-vertex mesh uploads", dot->IsOk())) {
+				GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+				flat->Use();
+				flat->SetVec3("color", 1.0, 1.0, 1.0);
+				flat->SetMatrix4("mvp", Matrix4->Identity());
+				GL->SetPointSize(16.0);
+				dot->Draw(DrawMode->GL_POINTS);
+
+				centre := Green(GL->ReadPixel(@pixel_w / 2, @pixel_h / 2));
+				"  point at centre: {$centre}"->PrintLine();
+				# A single index cannot make a triangle, so before the sentinel was
+				# removed this drew nothing at all.
+				Check("GL_POINTS draws a point rather than being coerced to triangles",
+					centre > 150);
+			};
+
+			dot->Free();
+		};
+		flat->Free();
+
+		GL->SetPointSize(1.0);
+		GL->SetLineWidth(1.0);
+		Check("point size and line width are settable without error",
+			GL->DrainErrors()->Size() = 0);
+
+		# --- depth func -----------------------------------------------------
+		GL->SetDepthFunc(CompareFunc->GL_LEQUAL);
+		GL->SetDepthFunc(CompareFunc->GL_LESS);
+		Check("the depth function is settable -- GL_LEQUAL is what a skybox needs",
+			GL->DrainErrors()->Size() = 0);
+
+		# --- anisotropic filtering ------------------------------------------
+		# HasExtension has named this extension as its own documentation example
+		# since the beginning, with nothing to set once the answer came back yes.
+		#
+		# Both outcomes are legitimate -- this machine may or may not offer it --
+		# so what is asserted is the INVARIANT: the texture uploads either way,
+		# the reported maximum agrees with whether the extension is there, and an
+		# absurd request is clamped rather than passed to the driver.
+		max_aniso := GL->GetMaxAnisotropy();
+		has_aniso := GL->HasExtension("GL_EXT_texture_filter_anisotropic");
+		"  max anisotropy: {$max_aniso}  extension present: {$has_aniso}"->PrintLine();
+
+		Check("the reported maximum agrees with the extension being present",
+			(has_aniso & max_aniso >= 1.0) | (<>has_aniso & max_aniso = 0.0));
+
+		checker := Texture2D->Checker(64, 4, Texture2D->Rgb(200, 200, 200),
+			Texture2D->Rgb(40, 40, 40), TextureWrap->GL_REPEAT);
+		Check("a mipmapped texture still uploads with anisotropy asked for",
+			checker->IsOk());
+		checker->Free();
+
+		# Absurd, and above any real maximum. Must be clamped, not rejected.
+		silly := Texture2D->New(Texture2D->NewSurface(8, 8), TextureFilter->GL_LINEAR,
+			TextureWrap->GL_REPEAT, true, 4096.0);
+		Check("an anisotropy far above the maximum is clamped, not an error",
+			silly->IsOk() & GL->DrainErrors()->Size() = 0);
+		silly->Free();
+
+		# And a driver without the extension must ignore it rather than fail.
+		none := Texture2D->New(Texture2D->NewSurface(8, 8), TextureFilter->GL_LINEAR,
+			TextureWrap->GL_REPEAT, true, 1.0);
+		Check("anisotropy of 1 is a no-op", none->IsOk());
+		none->Free();
+
+		Check("no GL errors from anisotropy", GL->DrainErrors()->Size() = 0);
+
+		overlay->Free();
 	}
 
 	method : CheckMatrixMath() ~ Nil {

@@ -77,15 +77,20 @@ This is a class rather than three parallel arrays because the alternative was
 @relics[i * 4 + 2], which is how the walkthrough's room started out and is worth
 not repeating.
 
-It is NOT a Scene member. Scene holds Box, and a Box is drawn with the scene's
-one shared mesh -- so anything that is a different mesh plus a transform, which
-is what a relic is, has no home in the framework and has to be drawn by hand
-below. That absence is the strongest argument in this program for a Prop type.
+A relic is a different mesh plus a transform, which is what Prop is for. It had
+no home in the framework when this program was written and was drawn by hand;
+that absence is what argued Prop into existence, and each relic is now two of
+them -- a solid body and a translucent shell -- held by the Scene.
 ~#
 class Relic {
 	@at : Vector3;
 	@taken : Bool;
 	@spin : Float;
+	# The solid relic and the translucent shell around it. Both are Props in the
+	# scene, so Scene draws them, culls them, and -- because the shell is
+	# transparent -- sorts it against every other transparent thing in the room.
+	@body : Prop;
+	@glow : Prop;
 
 	New(x : Float, y : Float, z : Float) {
 		@at := Vector3->New(x, y, z);
@@ -93,11 +98,55 @@ class Relic {
 		@spin := 0.0;
 	}
 
+	#~
+	Put this relic in the scene as two props.
+	@param scene the scene to join
+	@param mesh the sphere both props share -- neither owns it
+	@param solid the relic's own material
+	@param shell the translucent glow material
+	~#
+	method : public : AddTo(scene : Scene, mesh : Mesh, solid : Material, shell : Material) ~ Nil {
+		@body := scene->AddProp(Prop->New(mesh, solid));
+		@body->GetTransform()->SetScale(0.28);
+
+		@glow := scene->AddProp(Prop->New(mesh, shell));
+		@glow->GetTransform()->SetScale(0.44);
+	}
+
+	#~
+	Advance the bob and spin, and push them into the props.
+
+	The transform is the prop's own, so writing to it is all that is needed --
+	there is no per-frame upload to arrange and nothing to draw by hand.
+	~#
+	method : public : Animate(delta : Float) ~ Nil {
+		@spin += delta * 1.4;
+
+		if(@body = Nil) {
+			return;
+		};
+
+		# Bobbing, so a relic reads as an object in the room rather than a decal
+		# on the floor. The lamp's falloff does the rest.
+		bob := 0.12 * @spin->Sin();
+		@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY() + bob, @at->GetZ());
+		@body->GetTransform()->SetRotation(@spin, 0.0, 0.0);
+
+		# The shell turns the other way, so the two never look welded together.
+		@glow->GetTransform()->SetPosition(@at->GetX(), @at->GetY() + bob, @at->GetZ());
+		@glow->GetTransform()->SetRotation(@spin * -0.5, 0.0, 0.0);
+	}
+
 	method : public : GetAt() ~ Vector3 { return @at; }
 	method : public : IsTaken() ~ Bool { return @taken; }
-	method : public : Take() ~ Nil { @taken := true; }
-	method : public : GetSpin() ~ Float { return @spin; }
-	method : public : Spin(d : Float) ~ Nil { @spin += d; }
+	method : public : Take() ~ Nil {
+		@taken := true;
+		# One call instead of an if-not-taken test in the draw loop.
+		if(@body <> Nil) {
+			@body->SetVisible(false);
+			@glow->SetVisible(false);
+		};
+	}
 
 	#~
 	Distance from a point, ignoring height -- the player and the relic are both
@@ -132,7 +181,6 @@ class Lantern {
 	@shadows : PointShadow;
 
 	@relics : Relic[];
-	@relic_at : Transform;
 	# Reused every frame rather than allocated: the lamp moves with the player.
 	@lamp_at : Vector3;
 	@carried : Int;
@@ -154,7 +202,6 @@ class Lantern {
 	# nothing: the framework's *Into forms write into a caller's array, and a
 	# Float->New[16] per object per frame is a few hundred arrays a second.
 	@view_projection : Float[];
-	@mvp : Float[];
 
 	# FPS is turned into a string four times a second rather than sixty. Building
 	# it every frame both allocates and defeats Overlay's glyph cache, since the
@@ -168,8 +215,6 @@ class Lantern {
 
 	New() {
 		@camera := Camera->New(Vector3->New(0.0, 1.6, 9.0));
-		@mvp := Float->New[16];
-		@relic_at := Transform->New();
 		@lamp_at := Vector3->New(0.0, 0.0, 0.0);
 
 		@carried := 0;
@@ -215,7 +260,7 @@ class Lantern {
 			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity * -1.0);
 			@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
 
-			Update(Keyboard->GetState(), delta);
+			Update(delta);
 			Draw();
 
 			@window->EndFrame();
@@ -225,33 +270,25 @@ class Lantern {
 		GL->ReportErrors("the lantern");
 	}
 
-	method : IsDown(keys : Byte[], scancode : Int) ~ Bool {
-		if(keys = Nil | scancode < 0 | scancode >= keys->Size()) {
-			return false;
-		};
-
-		return keys[scancode] <> 0;
-	}
-
-	method : Update(keys : Byte[], delta : Float) ~ Nil {
+	method : Update(delta : Float) ~ Nil {
 		if(@won) {
 			return;
 		};
 
 		speed := 3.1;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_LSHIFT) |
-				IsDown(keys, Scancode->SDL_SCANCODE_RSHIFT)) {
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_LSHIFT,
+				Scancode->SDL_SCANCODE_RSHIFT)) {
 			speed := 5.6;
 		};
 		step := speed * delta;
 
 		forward := 0.0;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_W)) { forward += step; };
-		if(IsDown(keys, Scancode->SDL_SCANCODE_S)) { forward -= step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_W)) { forward += step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_S)) { forward -= step; };
 
 		strafe := 0.0;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_D)) { strafe += step; };
-		if(IsDown(keys, Scancode->SDL_SCANCODE_A)) { strafe -= step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_D)) { strafe += step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_A)) { strafe -= step; };
 
 		if(forward <> 0.0 | strafe <> 0.0) {
 			# Each axis applied separately, so a glancing hit on a corridor wall
@@ -275,7 +312,7 @@ class Lantern {
 		};
 
 		each(i : @relics) {
-			@relics[i]->Spin(delta * 1.4);
+			@relics[i]->Animate(delta);
 		};
 
 		CheckExit();
@@ -356,80 +393,20 @@ class Lantern {
 		@camera->SetAspect(@window->GetAspect());
 		@view_projection := @camera->GetViewProjection();
 
-		@shader->Use();
+		# Only what Scene does not do for itself. Scene->Draw already calls Use,
+		# SetInt("tex") and the light rig -- so the specular needs the eye
+		# position, and the shadow map has no setter on Scene and must be
+		# applied here. The other three lines were duplicating the scene.
 		@rig->SetViewPosition(eye);
-		@rig->ApplyTo(@shader);
 		@shadows->ApplyTo(@shader);
-		@shader->SetInt("tex", 0);
 
+		# One call. The relics are props in this scene now, so they are drawn,
+		# culled and depth-sorted with everything else rather than by hand
+		# afterwards -- and their glow shells sort against the room's own
+		# transparent geometry instead of being blended on at the end.
+		@scene->SetEye(eye);
 		@scene->Draw(@view_projection);
-		DrawRelics();
 		DrawHud();
-	}
-
-	#~
-	Relics are drawn by hand, one at a time.
-
-	Scene cannot hold them: it draws every member with the one mesh it was given,
-	and a relic is a sphere. So this is the five-line bind-transform-upload-draw
-	sequence that appears in three other examples in this directory, written out a
-	fourth time. A Prop type -- mesh, material, transform -- would delete it from
-	all four and give relics frustum culling and instancing for free.
-	~#
-	method : DrawRelics() ~ Nil {
-		@relic_material->ApplyTo(@shader, 0);
-
-		each(i : @relics) {
-			relic := @relics[i];
-			if(<>relic->IsTaken()) {
-				at := relic->GetAt();
-				# Bobbing, so a relic reads as an object in the room rather than a
-				# decal on the floor. The lamp's falloff does the rest.
-				bob := 0.12 * relic->GetSpin()->Sin();
-				@relic_at->SetPosition(at->GetX(), at->GetY() + bob, at->GetZ());
-				@relic_at->SetRotation(relic->GetSpin(), 0.0, 0.0);
-				@relic_at->SetScale(0.28);
-
-				@relic_at->MvpInto(@mvp, @view_projection);
-				@shader->SetMatrix4("mvp", @mvp);
-				@shader->SetMatrix4("model", @relic_at->GetMatrix());
-				@orb->Draw();
-			};
-		};
-
-		# The glow: the same sphere again, larger and barely opaque, blended over
-		# the solid one. Drawn AFTER every solid relic rather than interleaved,
-		# because a shell drawn before the next relic's body would blend against
-		# whatever was behind it instead of against that relic.
-		#
-		# Depth writes off, test on -- the same rule Scene follows for its own
-		# transparent boxes. A glow that wrote depth would punch a hole in the
-		# relic behind it.
-		GL->BeginTransparency();
-		@glow->SetOpacity(0.22);
-		@glow->ApplyTo(@shader, 0);
-
-		each(i : @relics) {
-			relic := @relics[i];
-			if(<>relic->IsTaken()) {
-				at := relic->GetAt();
-				bob := 0.12 * relic->GetSpin()->Sin();
-				@relic_at->SetPosition(at->GetX(), at->GetY() + bob, at->GetZ());
-				@relic_at->SetRotation(relic->GetSpin() * -0.5, 0.0, 0.0);
-				@relic_at->SetScale(0.44);
-
-				@relic_at->MvpInto(@mvp, @view_projection);
-				@shader->SetMatrix4("mvp", @mvp);
-				@shader->SetMatrix4("model", @relic_at->GetMatrix());
-				@orb->Draw();
-			};
-		};
-
-		GL->EndTransparency();
-
-		# Put the solid material back, or the next frame's relics are drawn with
-		# the glow's opacity still bound.
-		@relic_material->ApplyTo(@shader, 0);
 	}
 
 	method : DrawHud() ~ Nil {
@@ -522,6 +499,11 @@ class Lantern {
 		@relic_material := Material->New(@relic_texture);
 		@glow := Material->New(@relic_texture);
 		@glow->SetTint(1.0, 0.86, 0.5);
+		# Set ONCE, here. It used to be set per frame in DrawRelics; converting the
+		# relics to Props deleted that method and took this line with it, leaving
+		# an opaque gold shell wrapped around each relic and the whole transparent
+		# pass unreachable.
+		@glow->SetOpacity(0.22);
 		if(<>@wall_texture->IsOk() | <>@floor_texture->IsOk() | <>@relic_texture->IsOk()) {
 			"Could not build the textures"->ErrorLine();
 			return false;
@@ -652,7 +634,7 @@ class Lantern {
 		@rig->SetAmbient(0.035, 0.035, 0.045);
 		# Low and broad: dungeon stone is not polished, and a tight lobe on a
 		# carried light turns every surface into a mirror pointed back at you.
-		@rig->SetSpecular(0.08, 12.0);
+		@rig->SetSpecular(12.0, 0.08);
 		@rig->Add(@lamp);
 	}
 
@@ -720,6 +702,13 @@ class Lantern {
 		@relics[1] := Relic->New(9.5, 1.0, -9.5);
 		@relics[2] := Relic->New(-10.0, 1.0, 8.5);
 		@relics[3] := Relic->New(10.0, 1.0, 9.0);
+
+		# Each relic joins the scene as two props -- the solid body and the glow
+		# shell. The sphere is shared by all eight and owned by none of them; the
+		# window frees it.
+		each(i : @relics) {
+			@relics[i]->AddTo(@scene, @orb, @relic_material, @glow);
+		};
 	}
 
 	method : BuildOverlay() ~ Nil {

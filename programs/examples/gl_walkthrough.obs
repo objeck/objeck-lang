@@ -99,7 +99,7 @@ class Walkthrough {
 				@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
 			};
 
-			Update(Keyboard->GetState(), @window->GetDelta());
+			Update(@window->GetDelta());
 			Draw();
 
 			@window->EndFrame();
@@ -108,43 +108,35 @@ class Walkthrough {
 		GL->ReportErrors("the walkthrough");
 	}
 
-	method : IsDown(keys : Byte[], scancode : Int) ~ Bool {
-		if(keys = Nil | scancode < 0 | scancode >= keys->Size()) {
-			return false;
-		};
-
-		return keys[scancode] <> 0;
-	}
-
-	method : Update(keys : Byte[], delta : Float) ~ Nil {
+	method : Update(delta : Float) ~ Nil {
 		turn_rate := 2.0 * delta;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_LEFT)) {
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_LEFT)) {
 			@camera->Turn(turn_rate);
 		};
-		if(IsDown(keys, Scancode->SDL_SCANCODE_RIGHT)) {
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_RIGHT)) {
 			@camera->Turn(turn_rate * -1.0);
 		};
-		if(IsDown(keys, Scancode->SDL_SCANCODE_UP)) {
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_UP)) {
 			@camera->Look(turn_rate);
 		};
-		if(IsDown(keys, Scancode->SDL_SCANCODE_DOWN)) {
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_DOWN)) {
 			@camera->Look(turn_rate * -1.0);
 		};
 
 		speed := 3.0;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_LSHIFT) |
-				IsDown(keys, Scancode->SDL_SCANCODE_RSHIFT)) {
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_LSHIFT,
+				Scancode->SDL_SCANCODE_RSHIFT)) {
 			speed := 6.0;
 		};
 		step := speed * delta;
 
 		forward := 0.0;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_W)) { forward += step; };
-		if(IsDown(keys, Scancode->SDL_SCANCODE_S)) { forward -= step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_W)) { forward += step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_S)) { forward -= step; };
 
 		strafe := 0.0;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_D)) { strafe += step; };
-		if(IsDown(keys, Scancode->SDL_SCANCODE_A)) { strafe -= step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_D)) { strafe += step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_A)) { strafe -= step; };
 
 		if(forward <> 0.0 | strafe <> 0.0) {
 			# One call, and the scene owns the sliding: each axis is applied

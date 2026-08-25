@@ -5893,12 +5893,14 @@ extern "C" {
 
     // The topology was hardcoded to GL_TRIANGLES, which made lines, points and
     // strips unreachable -- so a wireframe, a debug ray or a grid needed a
-    // separate path that did not exist. Slot 1 carries it; 0 means triangles, so
-    // an older caller passing nothing still gets what it used to.
+    // separate path that did not exist. Slot 1 carries it.
+    //
+    // No sentinel here. This used to read `if(mode == 0) mode = GL_TRIANGLES;`
+    // to protect a caller that passed nothing -- but GL_POINTS *is* 0x0000, so
+    // that quietly turned every point-cloud draw into triangles, and no caller
+    // ever needed the protection: Mesh->Draw() and DrawInstanced(count) both
+    // forward DrawMode->GL_TRIANGLES explicitly.
     GLenum mode = (GLenum)APITools_GetIntValue(context, 1);
-    if(mode == 0) {
-      mode = GL_TRIANGLES;
-    }
 
     // Slot 2 is the instance count: 0 or 1 means an ordinary draw.
     const GLsizei instances = (GLsizei)APITools_GetIntValue(context, 2);
@@ -6015,10 +6017,45 @@ extern "C" {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+
+    // Anisotropic filtering, if it was asked for and the driver has it. Only
+    // meaningful alongside mipmaps: it is a better choice of mip SAMPLES for a
+    // surface seen at a steep angle, so without a chain to choose from there is
+    // nothing for it to do -- which is why a floor is the case that shows it and
+    // a HUD quad is not.
+    const double anisotropy = APITools_GetFloatValue(context, 5);
+    if(mipmap && anisotropy > 1.0 &&
+       SDL_GL_ExtensionSupported("GL_EXT_texture_filter_anisotropic")) {
+      GLfloat largest = 0.0f;
+      glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest);
+
+      GLfloat want = (GLfloat)anisotropy;
+      if(want > largest) {
+        want = largest;
+      }
+      if(want >= 1.0f) {
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, want);
+      }
+    }
+
     glBindTexture(GL_TEXTURE_2D, 0);
 
     SDL_FreeSurface(rgba);
     APITools_SetIntValue(context, 0, texture);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_max_anisotropy(VMContext& context) {
+    // 0 means the driver does not offer it. Queried rather than assumed: the
+    // cap is 16 on most desktop hardware but the spec does not promise it.
+    GLfloat largest = 0.0f;
+    if(SDL_GL_ExtensionSupported("GL_EXT_texture_filter_anisotropic")) {
+      glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest);
+    }
+
+    APITools_SetFloatValue(context, 0, (double)largest);
   }
 
 #ifdef _WIN32
@@ -6436,6 +6473,52 @@ extern "C" {
 #endif
   void sdl_gl_enable(VMContext& context) {
     glEnable((GLenum)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_point_size(VMContext& context) {
+    glPointSize((GLfloat)APITools_GetFloatValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_line_width(VMContext& context) {
+    glLineWidth((GLfloat)APITools_GetFloatValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_stencil_func(VMContext& context) {
+    glStencilFunc((GLenum)APITools_GetIntValue(context, 0),
+                  (GLint)APITools_GetIntValue(context, 1),
+                  (GLuint)APITools_GetIntValue(context, 2));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_stencil_op(VMContext& context) {
+    glStencilOp((GLenum)APITools_GetIntValue(context, 0),
+                (GLenum)APITools_GetIntValue(context, 1),
+                (GLenum)APITools_GetIntValue(context, 2));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_stencil_mask(VMContext& context) {
+    glStencilMask((GLuint)APITools_GetIntValue(context, 0));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gl_depth_func(VMContext& context) {
+    glDepthFunc((GLenum)APITools_GetIntValue(context, 0));
   }
 
 #ifdef _WIN32
