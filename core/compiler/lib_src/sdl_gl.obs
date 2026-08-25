@@ -8995,6 +8995,117 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	What a ray ran into, and where.
+
+	Returned by Scene->Raycast. Always an object, never Nil -- ask IsHit rather
+	than checking for Nil, so a miss does not need a different code path from a
+	hit.
+
+	The normal is the surface the ray struck, which is what a decal, a ricochet or
+	a spark effect needs to orient itself. For a box it is an axis direction; for
+	a prop it points away from the prop's centre, because a prop is tested against
+	its bounding SPHERE rather than its actual geometry.
+	~#
+	class RayHit {
+		@hit : Bool;
+		@distance : Float;
+		@x : Float; @y : Float; @z : Float;
+		@nx : Float; @ny : Float; @nz : Float;
+		@box : Box;
+		@prop : Prop;
+
+		#~
+		A miss.
+		~#
+		New() {
+			@hit := false;
+			@distance := 0.0;
+			@x := 0.0; @y := 0.0; @z := 0.0;
+			@nx := 0.0; @ny := 0.0; @nz := 0.0;
+			@box := Nil;
+			@prop := Nil;
+		}
+
+		#~
+		A hit. Built by Scene->Raycast; there is no reason to construct one
+		yourself, and no way to change it afterwards -- a result that can be
+		edited after the fact is a result nobody can trust.
+		@param distance how far along the ray
+		@param x where it struck
+		@param y where it struck
+		@param z where it struck
+		@param nx surface normal
+		@param ny surface normal
+		@param nz surface normal
+		@param box the box struck, or Nil
+		@param prop the prop struck, or Nil
+		~#
+		New(distance : Float, x : Float, y : Float, z : Float,
+				nx : Float, ny : Float, nz : Float, box : Box, prop : Prop) {
+			@hit := true;
+			@distance := distance;
+			@x := x; @y := y; @z := z;
+			@nx := nx; @ny := ny; @nz := nz;
+			@box := box;
+			@prop := prop;
+		}
+
+		#~
+		Did the ray hit anything?
+		@return true when it did
+		~#
+		method : public : IsHit() ~ Bool { return @hit; }
+
+		#~
+		How far along the ray the hit was, in world units.
+		@return the distance, or 0 on a miss
+		~#
+		method : public : GetDistance() ~ Float { return @distance; }
+
+		#~
+		@return x of the point struck
+		~#
+		method : public : GetX() ~ Float { return @x; }
+
+		#~
+		@return y of the point struck
+		~#
+		method : public : GetY() ~ Float { return @y; }
+
+		#~
+		@return z of the point struck
+		~#
+		method : public : GetZ() ~ Float { return @z; }
+
+		#~
+		@return x of the surface normal at the hit
+		~#
+		method : public : GetNormalX() ~ Float { return @nx; }
+
+		#~
+		@return y of the surface normal at the hit
+		~#
+		method : public : GetNormalY() ~ Float { return @ny; }
+
+		#~
+		@return z of the surface normal at the hit
+		~#
+		method : public : GetNormalZ() ~ Float { return @nz; }
+
+		#~
+		Which box was struck.
+		@return the box, or Nil when a prop was hit or nothing was
+		~#
+		method : public : GetBox() ~ Box { return @box; }
+
+		#~
+		Which prop was struck.
+		@return the prop, or Nil when a box was hit or nothing was
+		~#
+		method : public : GetProp() ~ Prop { return @prop; }
+	}
+
+	#~
 	A world of boxes that draws itself and answers collision queries.
 
 	This is the layer that keeps a 3D program from hand-rolling parallel arrays
@@ -9814,6 +9925,239 @@ bundle Game.OpenGL {
 				@far_order := Int->New[room];
 				@far_distance := Float->New[room];
 			};
+		}
+
+		#~
+		Fire a ray into the scene and report the nearest thing it hits.
+
+		This is what a hitscan weapon, a "what am I looking at" prompt, a
+		line-of-sight check or a mouse pick is built on -- none of which had any
+		route before, since the only spatial query here was Blocked, which answers
+		a plan-view movement question and nothing else.
+
+		  hit := scene->RaycastFrom(camera, 100.0);
+		  if(hit->IsHit()) {
+		    target := hit->GetProp();
+		    ...
+		  };
+
+		## What it tests against
+
+		Boxes are tested against their actual axis-aligned extent, so the hit point
+		and the normal are exact.
+
+		Props are tested against their BOUNDING SPHERE, not their mesh. A prop is
+		an arbitrary rotated model and this bundle never keeps its triangles after
+		upload -- they live on the GPU -- so there is nothing here to intersect.
+		The sphere is conservative, which means a shot can register slightly wide
+		of a thin model. Put a Box where precision matters, the same way collision
+		already works.
+
+		Batches are NOT tested. A batch exists so that four hundred instances cost
+		one draw call, and walking its transforms per shot would work but RayHit
+		has nowhere to report WHICH instance was struck. Stating that rather than
+		quietly returning a miss.
+
+		Solidity is ignored on purpose: Box->IsSolid means "blocks movement", which
+		is a different question from "stops a bullet". Filter on
+		hit->GetBox()->IsSolid() if you want them to agree. Invisible props ARE
+		skipped, since something you cannot see should not be shootable.
+		@param origin where the ray starts
+		@param direction which way it points; normalised here, so it need not be
+		@param max_distance how far to look; a hit beyond this is a miss
+		@return a RayHit, never Nil -- ask IsHit
+		~#
+		method : public : Raycast(origin : Vector3, direction : Vector3,
+				max_distance : Float) ~ RayHit {
+			if(origin = Nil | direction = Nil | max_distance <= 0.0) {
+				return RayHit->New();
+			};
+
+			length := direction->Length();
+			if(length = 0.0) {
+				return RayHit->New();
+			};
+
+			ox := origin->GetX(); oy := origin->GetY(); oz := origin->GetZ();
+			dx := direction->GetX() / length;
+			dy := direction->GetY() / length;
+			dz := direction->GetZ() / length;
+
+			nearest := max_distance;
+			# The winner so far, kept in locals rather than in a RayHit that gets
+			# overwritten -- so the result object is built once, complete, and
+			# cannot be edited after it is handed back.
+			found := false;
+			best_nx := 0.0; best_ny := 0.0; best_nz := 0.0;
+			best_box := Nil->As(Box);
+			best_prop := Nil->As(Prop);
+
+			each(i : @boxes) {
+				box := @boxes->Get(i);
+				centre := box->GetCenter();
+				half := box->GetHalf();
+
+				# The slab test, one axis at a time: where the ray enters and
+				# leaves each pair of parallel planes. It is inside the box over
+				# the intersection of the three intervals, and misses when that
+				# intersection is empty.
+				t_near := 0.0;
+				t_far := nearest;
+				axis := -1;
+				sign := 1.0;
+				miss := false;
+
+				for(a := 0; a < 3 & <>miss; a += 1;) {
+					o := ox; d := dx; c := centre->GetX(); h := half->GetX();
+					if(a = 1) {
+						o := oy; d := dy; c := centre->GetY(); h := half->GetY();
+					}
+					else if(a = 2) {
+						o := oz; d := dz; c := centre->GetZ(); h := half->GetZ();
+					};
+
+					low := c - h;
+					high := c + h;
+
+					if(d->Abs() < 0.000001) {
+						# Parallel to this pair of planes: either always between
+						# them or never. Dividing would be a division by zero, and
+						# on some hardware an infinity that then compares wrongly.
+						if(o < low | o > high) {
+							miss := true;
+						};
+					}
+					else {
+						t1 := (low - o) / d;
+						t2 := (high - o) / d;
+						face := -1.0;
+						if(t1 > t2) {
+							swap := t1; t1 := t2; t2 := swap;
+							face := 1.0;
+						};
+
+						if(t1 > t_near) {
+							t_near := t1;
+							axis := a;
+							sign := face;
+						};
+						if(t2 < t_far) {
+							t_far := t2;
+						};
+						if(t_near > t_far) {
+							miss := true;
+						};
+					};
+				};
+
+				if(<>miss & t_near < nearest & t_near >= 0.0) {
+					nearest := t_near;
+					found := true;
+					best_nx := (axis = 0) ? sign : 0.0;
+					best_ny := (axis = 1) ? sign : 0.0;
+					best_nz := (axis = 2) ? sign : 0.0;
+					best_box := box;
+					best_prop := Nil->As(Prop);
+				};
+			};
+
+			# Every local here is declared at the loop body's own level and only
+			# ASSIGNED inside the branches below.
+			#
+			# Not a style preference. Declaring a new local inside a nested block
+			# and initialising it from this loop's variables is rejected outright
+			# in some positions and, in this one, compiled to something that
+			# segfaulted the moment a prop was in range. Boxes never hit it because
+			# their loop happens to declare at one level shallower. Assignment into
+			# an already-declared local is fine at any depth.
+			each(i : @props) {
+				prop := @props->Get(i);
+				at := prop->GetTransform();
+				radius := prop->GetBoundsRadius();
+
+				# Ray versus sphere. oc is centre-to-origin; the quadratic in t
+				# reduces to this because the direction is unit length, which is
+				# why it was normalised above.
+				cx := ox - at->GetX();
+				cy := oy - at->GetY();
+				cz := oz - at->GetZ();
+
+				b := cx * dx + cy * dy + cz * dz;
+				c := cx * cx + cy * cy + cz * cz - radius * radius;
+				discriminant := b * b - c;
+
+				# Never divide by it, even on a prop with no bounds at all -- the
+				# guards below drop that prop anyway, but the normal is computed
+				# before them.
+				divisor := radius;
+				if(divisor <= 0.0) {
+					divisor := 1.0;
+				};
+
+				root := 0.0;
+				if(discriminant >= 0.0) {
+					root := discriminant->Sqrt();
+				};
+
+				t := (b * -1.0) - root;
+				if(t < 0.0) {
+					# Origin is inside the sphere; take the far side.
+					t := (b * -1.0) + root;
+				};
+
+				hx := ox + dx * t;
+				hy := oy + dy * t;
+				hz := oz + dz * t;
+
+				usable := prop->IsVisible();
+				if(radius <= 0.0) {
+					usable := false;
+				};
+				if(discriminant < 0.0) {
+					usable := false;
+				};
+				if(t < 0.0) {
+					usable := false;
+				};
+				if(t >= nearest) {
+					usable := false;
+				};
+
+				if(usable) {
+					nearest := t;
+					found := true;
+					best_nx := (hx - at->GetX()) / divisor;
+					best_ny := (hy - at->GetY()) / divisor;
+					best_nz := (hz - at->GetZ()) / divisor;
+					best_box := Nil->As(Box);
+					best_prop := prop;
+				};
+			};
+
+			if(<>found) {
+				return RayHit->New();
+			};
+
+			return RayHit->New(nearest,
+				ox + dx * nearest, oy + dy * nearest, oz + dz * nearest,
+				best_nx, best_ny, best_nz, best_box, best_prop);
+		}
+
+		#~
+		Fire a ray from where the camera is, along where it is looking.
+
+		The overwhelmingly common case -- a crosshair in the middle of the screen
+		is exactly this ray.
+		@param camera the eye
+		@param max_distance how far to look
+		@return a RayHit, never Nil
+		~#
+		method : public : RaycastFrom(camera : Camera, max_distance : Float) ~ RayHit {
+			if(camera = Nil) {
+				return RayHit->New();
+			};
+
+			return Raycast(camera->GetPosition(), camera->ForwardVector(), max_distance);
 		}
 
 		#~

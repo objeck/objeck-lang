@@ -87,6 +87,7 @@ class GlContextTest {
 		CheckOwnership();
 		CheckScissorAndStencil();
 		CheckProps();
+		CheckRaycast();
 		CheckMaterialLeak();
 		CheckStencilAndPoints();
 		CheckMatrixMath();
@@ -3823,6 +3824,208 @@ class GlContextTest {
 		pane->Free();
 		cube->Free();
 		shader->Free();
+	}
+
+	#~
+	Scene->Raycast: the spatial query a weapon, a pick or a line-of-sight test
+	needs, and the first one here that is not about movement.
+
+	Worth noting this fixture needs no GL at all -- it reads nothing back from the
+	framebuffer and draws nothing. Raycast is pure arithmetic, which is exactly
+	why it can be checked properly: the last block compares it against a
+	brute-force march along the same ray, so the assertion is a PROPERTY rather
+	than a distance I worked out by hand and could have worked out wrongly in the
+	same way twice.
+	~#
+	method : CheckRaycast() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the raycast checks",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+
+		# A 2x2x2 box centred at the origin: faces at +/-1 on every axis.
+		target := scene->AddBox(Vector3->New(0.0, 0.0, 0.0),
+			Vector3->New(1.0, 1.0, 1.0), white);
+
+		origin := Vector3->New(0.0, 0.0, 10.0);
+		forward := Vector3->New(0.0, 0.0, -1.0);
+
+		hit := scene->Raycast(origin, forward, 100.0);
+		Check("a ray down the z axis hits the box", hit->IsHit());
+		# From z=10 to the near face at z=+1 is 9 units. Analytic, not measured.
+		Check("at the near face rather than the far one",
+			(hit->GetDistance() - 9.0)->Abs() < 0.0001);
+		Check("and reports the box it struck", hit->GetBox() = target);
+		Check("with no prop", hit->GetProp() = Nil);
+		Check("the hit point is on the surface",
+			(hit->GetZ() - 1.0)->Abs() < 0.0001);
+		# Facing back along +z, towards the shooter.
+		Check("the normal faces the ray",
+			(hit->GetNormalZ() - 1.0)->Abs() < 0.0001 &
+			hit->GetNormalX() = 0.0 & hit->GetNormalY() = 0.0);
+
+		# --- misses -----------------------------------------------------------
+		away := scene->Raycast(origin, Vector3->New(0.0, 0.0, 1.0), 100.0);
+		Check("a ray pointing away misses", <>away->IsHit());
+		Check("and a miss reports zero distance", away->GetDistance() = 0.0);
+
+		wide := scene->Raycast(origin, Vector3->New(0.0, 1.0, 0.0), 100.0);
+		Check("a ray that never meets the box misses", <>wide->IsHit());
+
+		short := scene->Raycast(origin, forward, 5.0);
+		Check("a box beyond max_distance is a miss", <>short->IsHit());
+
+		# --- nearest wins -----------------------------------------------------
+		nearer := scene->AddBox(Vector3->New(0.0, 0.0, 5.0),
+			Vector3->New(0.5, 0.5, 0.5), white);
+		both := scene->Raycast(origin, forward, 100.0);
+		# THE assertion for ordering: the far box is still there and still hit by
+		# this ray, so a Raycast that returned the FIRST hit rather than the
+		# NEAREST would return the original box and pass everything above.
+		Check("the nearer box wins", both->GetBox() = nearer);
+		Check("at its own near face",
+			(both->GetDistance() - 4.5)->Abs() < 0.0001);
+
+		# --- starting inside ---------------------------------------------------
+		inside := scene->Raycast(Vector3->New(0.0, 0.0, 0.0), forward, 100.0);
+		Check("a ray starting inside a box still reports a hit", inside->IsHit());
+
+		# --- props, via their bounding sphere ---------------------------------
+		scene->Clear();
+		ball := scene->AddProp(Prop->New(cube, 0.0, 0.0, 0.0));
+		prop_hit := scene->Raycast(origin, forward, 100.0);
+		Check("a prop is hit too", prop_hit->IsHit());
+		Check("and reports the prop", prop_hit->GetProp() = ball);
+		Check("with no box", prop_hit->GetBox() = Nil);
+		# The normal on a sphere points away from its centre, so straight back.
+		Check("the sphere normal faces the ray",
+			(prop_hit->GetNormalZ() - 1.0)->Abs() < 0.01);
+
+		ball->SetVisible(false);
+		Check("an invisible prop is not shootable",
+			<>scene->Raycast(origin, forward, 100.0)->IsHit());
+		ball->SetVisible(true);
+
+		# --- the camera convenience -------------------------------------------
+		eye := Camera->New(Vector3->New(0.0, 0.0, 10.0));
+		manual := scene->Raycast(eye->GetPosition(), eye->ForwardVector(), 100.0);
+		via_camera := scene->RaycastFrom(eye, 100.0);
+		Check("RaycastFrom agrees with the manual form",
+			via_camera->IsHit() = manual->IsHit() &
+			(via_camera->GetDistance() - manual->GetDistance())->Abs() < 0.0001);
+
+		# --- degenerate input must not crash ----------------------------------
+		Check("a zero-length direction is a miss, not a crash",
+			<>scene->Raycast(origin, Vector3->New(0.0, 0.0, 0.0), 10.0)->IsHit());
+		Check("a negative distance is a miss",
+			<>scene->Raycast(origin, forward, -1.0)->IsHit());
+		Check("Nil arguments are a miss",
+			<>scene->Raycast(Nil, forward, 10.0)->IsHit() &
+			<>scene->Raycast(origin, Nil, 10.0)->IsHit());
+		Check("RaycastFrom with no camera is a miss",
+			<>scene->RaycastFrom(Nil, 10.0)->IsHit());
+
+		# --- the property test ------------------------------------------------
+		#
+		# March along the ray in small steps and find the first one INSIDE a box.
+		# That is a different algorithm from the slab test -- slow, obvious, and
+		# wrong in different ways if it is wrong at all -- so agreement between
+		# the two is real evidence, in a way that agreement with a number I typed
+		# would not be.
+		#
+		# Angled rays on purpose: an axis-aligned ray exercises one slab and hides
+		# sign errors in the other two, which is precisely the mistake that put
+		# two flipped signs in the camera's up vector earlier in this work.
+		scene->Clear();
+		scene->AddBox(Vector3->New(2.0, 1.0, -3.0), Vector3->New(1.0, 2.0, 0.5), white);
+		scene->AddBox(Vector3->New(-3.0, 0.0, -6.0), Vector3->New(1.5, 1.0, 1.5), white);
+		scene->AddBox(Vector3->New(0.0, -2.0, -9.0), Vector3->New(4.0, 0.5, 1.0), white);
+
+		dirs := Vector3->New[5];
+		dirs[0] := Vector3->New(0.2, 0.1, -1.0);
+		dirs[1] := Vector3->New(-0.3, 0.0, -1.0);
+		dirs[2] := Vector3->New(0.05, -0.2, -1.0);
+		dirs[3] := Vector3->New(-0.15, 0.12, -1.0);
+		dirs[4] := Vector3->New(0.4, -0.05, -1.0);
+
+		from_point := Vector3->New(0.0, 0.0, 2.0);
+		agreed := 0;
+		compared := 0;
+
+		# each() yields the INDEX over an array, exactly as it does over a Vector --
+		# so the element has to be fetched, and binding the loop variable straight
+		# to a Vector3 silently gives an Int and unresolves everything after it.
+		each(k : dirs) {
+			d := dirs[k];
+			ray := scene->Raycast(from_point, d, 20.0);
+
+			# Brute force, same ray, normalised the same way.
+			len := d->Length();
+			dx := d->GetX() / len; dy := d->GetY() / len; dz := d->GetZ() / len;
+			step := 0.02;
+			march := 0.0;
+			found := -1.0;
+
+			while(march < 20.0 & found < 0.0) {
+				px := from_point->GetX() + dx * march;
+				py := from_point->GetY() + dy * march;
+				pz := from_point->GetZ() + dz * march;
+
+				for(b := 0; b < scene->GetCount() & found < 0.0; b += 1;) {
+					box := scene->Get(b);
+					c := box->GetCenter();
+					h := box->GetHalf();
+					if((px - c->GetX())->Abs() <= h->GetX() &
+							(py - c->GetY())->Abs() <= h->GetY() &
+							(pz - c->GetZ())->Abs() <= h->GetZ()) {
+						found := march;
+					};
+				};
+
+				march += step;
+			};
+
+			# Read out before the branches. An expression combining two of this
+			# loop's own locals does not resolve from inside a nested arm, so the
+			# comparison is computed here where it does.
+			struck := ray->IsHit();
+			slab := ray->GetDistance();
+			gap := (slab - found)->Abs();
+
+			compared += 1;
+			ok := false;
+			if(found < 0.0) {
+				# The march found nothing, so the slab test must agree.
+				ok := <>struck;
+			}
+			else {
+				if(struck) {
+					if(gap < 0.06) {
+						ok := true;
+					};
+				};
+			};
+
+			if(ok) {
+				agreed += 1;
+			}
+			else {
+				"  DISAGREEMENT: slab={$slab} march={$found}"->PrintLine();
+			};
+		};
+
+		"  raycast vs brute-force march: {$agreed}/{$compared} agree"->PrintLine();
+		Check("the slab test agrees with a brute-force march on every ray",
+			agreed = compared & compared = 5);
+
+		shader->Free();
+		cube->Free();
+		white->Free();
 	}
 
 	#~
