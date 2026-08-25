@@ -45,9 +45,12 @@ they are the argument for the next round of work rather than complaints:
          multiplies in the shader, so the bar changes colour per frame without
          re-rasterising anything -- which SetColor could not do, because it bakes
          the colour into the glyph textures and throws the cache away.
-  GAP 3  Sound. Game.OpenGL has no audio at all. Game.SDL2's mixer would work
-         here -- it needs no renderer -- but nothing initialises it and nothing
-         says so, so a footstep or a pickup chime is out of reach from here.
+  GAP 3  CLOSED. Game.OpenGL still has no audio of its own and does not need
+         any -- Game.SDL2's mixer needs no renderer. What was missing was the
+         initialisation: nothing opened the audio device, so a working mixer
+         looked like an absent feature. GLWindow now takes an audio flag, and
+         the pickup chime below is synthesised rather than shipped, so the
+         example stays asset-free.
   GAP 4  Translucency, for the relic glow. Every built-in lit shader writes
          opaque alpha and Scene draws in insertion order with no depth sort, so
          a glowing shell around each relic would be wrong from half the angles.
@@ -64,6 +67,7 @@ It costs two lines because Light owns intensity separately from colour.
 
 use Game.SDL2;
 use Game.OpenGL;
+use System.IO.Filesystem;
 
 #~
 A relic: somewhere to stand, and whether it has been taken.
@@ -132,6 +136,10 @@ class Lantern {
 
 	@overlay : Overlay;
 	@font : Font;
+	# Synthesised at startup rather than shipped, so this example needs no asset
+	# files. Nil when the machine has no working audio output, which is normal on
+	# a CI runner and is not a reason to refuse to run.
+	@chime : MixChunk;
 
 	@fuel : Float;
 	@fuel_max : Float;
@@ -172,7 +180,10 @@ class Lantern {
 	}
 
 	method : Run() ~ Nil {
-		@window := GLWindow->New("Lantern", 1024, 640);
+		# 4x multisampling, and audio. Both are refused gracefully: the window
+		# opens without antialiasing rather than failing, and HasAudio reports
+		# whether the device actually opened.
+		@window := GLWindow->New("Lantern", 1024, 640, 4, true);
 		if(<>@window->IsOk()) {
 			@window->GetError()->ErrorLine();
 			return;
@@ -273,7 +284,11 @@ class Lantern {
 			if(<>relic->IsTaken() & relic->GroundDistance(here) < 1.3) {
 				relic->Take();
 				@carried += 1;
-				# GAP 3: a chime belongs here. Game.OpenGL has no audio.
+				if(@chime <> Nil) {
+					# -1 picks any free channel, so two quick pickups overlap
+					# rather than cutting each other off.
+					@chime->PlayChannel(-1, 0);
+				};
 				left := @relics->Size() - @carried;
 				"Relic taken -- {$left} still out there."->PrintLine();
 				# A relic is worth a little fuel, so collecting is also survival.
@@ -485,12 +500,107 @@ class Lantern {
 		# caster.
 		@shadows->SetBias(0.06);
 
+		BuildAudio();
 		BuildLight();
 		BuildDungeon();
 		BuildRelics();
 		BuildOverlay();
 
 		return true;
+	}
+
+	#~
+	A short bell, written to a temporary WAV and loaded back.
+
+	Two sine partials a fifth apart with a fast attack and a long exponential
+	decay -- enough to read as "you picked something up" without shipping an
+	asset. The file goes to the system temp directory rather than beside the
+	program, because the runners start it from the deploy tree's bin and that
+	should not accumulate files.
+	~#
+	method : BuildAudio() ~ Nil {
+		if(<>@window->HasAudio()) {
+			return;
+		};
+
+		path := System.Runtime->GetTempDir() + "/objeck_lantern_chime.wav";
+		if(WriteChime(path)) {
+			@chime := MixChunk->New(path);
+			if(@chime <> Nil & @chime->IsNull()) {
+				@chime := Nil;
+			};
+		};
+	}
+
+	method : WriteChime(file : String) ~ Bool {
+		rate := 22050;
+		count := 5200;
+		data_size := count * 2;
+
+		writer := FileWriter->New(file);
+		if(<>writer->IsOpen()) {
+			return false;
+		};
+
+		# RIFF/WAVE, 16-bit mono. Written by hand because there is no WAV writer
+		# in the standard library and the header is twelve fields.
+		writer->WriteByte(82); writer->WriteByte(73); writer->WriteByte(70); writer->WriteByte(70);
+		WriteU32(writer, 36 + data_size);
+		writer->WriteByte(87); writer->WriteByte(65); writer->WriteByte(86); writer->WriteByte(69);
+		writer->WriteByte(102); writer->WriteByte(109); writer->WriteByte(116); writer->WriteByte(32);
+		WriteU32(writer, 16);
+		WriteU16(writer, 1);
+		WriteU16(writer, 1);
+		WriteU32(writer, rate);
+		WriteU32(writer, rate * 2);
+		WriteU16(writer, 2);
+		WriteU16(writer, 16);
+		writer->WriteByte(100); writer->WriteByte(97); writer->WriteByte(116); writer->WriteByte(97);
+		WriteU32(writer, data_size);
+
+		two_pi := 2.0 * Float->Pi();
+		rate_f := rate->As(Float);
+		count_f := count->As(Float);
+		low := 0.0;
+		high := 0.0;
+
+		for(i := 0; i < count; i += 1;) {
+			t := i->As(Float) / count_f;
+			low += two_pi * 880.0 / rate_f;
+			high += two_pi * 1320.0 / rate_f;
+
+			# Fast attack, long decay. Without the attack ramp the first sample
+			# jumps from silence and the speaker clicks.
+			envelope := (1.0 - t) * (1.0 - t) * (1.0 - t);
+			if(t < 0.01) {
+				envelope := envelope * (t / 0.01);
+			};
+
+			value := envelope * (0.62 * low->Sin() + 0.38 * high->Sin());
+			sample := (value * 20000.0)->As(Int);
+			if(sample > 32767) { sample := 32767; };
+			if(sample < -32768) { sample := -32768; };
+			if(sample < 0) { sample := sample + 65536; };
+
+			writer->WriteByte(sample % 256);
+			writer->WriteByte((sample / 256) % 256);
+		};
+
+		writer->Close();
+
+		return true;
+	}
+
+	method : WriteU32(writer : FileWriter, value : Int) ~ Nil {
+		writer->WriteByte(value % 256);
+		writer->WriteByte((value / 256) % 256);
+		writer->WriteByte((value / 65536) % 256);
+		writer->WriteByte((value / 16777216) % 256);
+	}
+
+	method : WriteU16(writer : FileWriter, value : Int) ~ Nil {
+		writer->WriteByte(value % 256);
+		writer->WriteByte((value / 256) % 256);
 	}
 
 	method : BuildLight() ~ Nil {
@@ -602,6 +712,10 @@ class Lantern {
 	directory. A GLWindow->Own registry would do it once.
 	~#
 	method : Close() ~ Nil {
+		# Before the window: GLWindow->Free calls Core->Quit, which takes the
+		# audio device down with it.
+		if(@chime <> Nil) { @chime->Free(); };
+
 		if(@relic_texture <> Nil) { @relic_texture->Free(); };
 		if(@floor_texture <> Nil) { @floor_texture->Free(); };
 		if(@wall_texture <> Nil) { @wall_texture->Free(); };

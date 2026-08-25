@@ -680,6 +680,8 @@ bundle Game.OpenGL {
 		# How many samples the window actually got -- 0 when multisampling was not
 		# asked for, or was asked for and refused.
 		@samples : Int;
+		@want_audio : Bool;
+		@audio_ok : Bool;
 		@pixel_h : Int;
 
 		@vsync : Bool;
@@ -722,6 +724,48 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Open a window with sound.
+
+		Game.OpenGL has no audio of its own and does not need any: Game.SDL2's
+		Mixer, MixChunk and MixMusic need no SDL_Renderer, so a 3D program can use
+		them directly. What was missing was the initialisation -- nothing opened
+		the audio device, and nothing said so, which left a working mixer looking
+		like an absent feature.
+
+		This asks for the audio subsystem alongside video and opens the device.
+		After it, Game.SDL2's mixer is usable as-is:
+
+		  window := GLWindow->New("game", 1024, 640, 4, true);
+		  chime := MixChunk->New("pickup.wav");
+		  chime->PlayChannel(-1, 0);
+
+		Free the chunks before the window: GLWindow->Free calls Core->Quit, which
+		takes the audio device with it.
+		@param title the window title
+		@param width width in points
+		@param height height in points
+		@param samples multisample count, 0 for none
+		@param audio true to open the audio device
+		~#
+		New(title : String, width : Int, height : Int, samples : Int, audio : Bool) {
+			@want_audio := audio;
+			Open(title, width, height, true, samples);
+		}
+
+		#~
+		Did the audio device open?
+
+		False when audio was not asked for, and also when it was asked for and the
+		machine has no working output -- which is common on a CI runner and is not
+		a reason to refuse to run. Sound is the thing to make optional here, not
+		the program.
+		@return true when the mixer is usable
+		~#
+		method : public : HasAudio() ~ Bool {
+			return @audio_ok;
+		}
+
+		#~
 		Open a window that may be hidden.
 
 		A hidden window still has a real context and still renders, so this is how a
@@ -741,6 +785,7 @@ bundle Game.OpenGL {
 			@ok := false;
 			@error := "";
 			@version := "";
+			@audio_ok := false;
 			@pixel_w := 0;
 			@drawable_generation := 0;
 			@pressed := Int->New[16];
@@ -766,7 +811,15 @@ bundle Game.OpenGL {
 			@mouse_dy := 0.0;
 			@quit := false;
 
-			if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
+			# Audio is initialised alongside video when it was asked for. SDL_Init
+			# takes both in one call and there is no cost to a program that never
+			# plays anything, but asking afterwards means a second init.
+			init_flags := HardwareFlags->SDL_INIT_VIDEO;
+			if(@want_audio) {
+				init_flags := init_flags or HardwareFlags->SDL_INIT_AUDIO;
+			};
+
+			if(Core->Init(init_flags) < 0) {
 				@error := "SDL could not initialise: {$Core->GetError()}";
 				return;
 			};
@@ -834,6 +887,14 @@ bundle Game.OpenGL {
 			if(@window->IsNull()) {
 				@error := "cannot create a GL window: {$Core->GetError()}";
 				return;
+			};
+
+			if(@want_audio) {
+				# 44100 stereo with a 2048-sample buffer, matching what
+				# Game.Framework opens. A smaller buffer lowers latency and risks
+				# underruns; this is the value that has been working in the 2D
+				# framework.
+				@audio_ok := Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048);
 			};
 
 			@context := @window->GLCreateContext();
