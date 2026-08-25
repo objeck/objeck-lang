@@ -51,9 +51,10 @@ they are the argument for the next round of work rather than complaints:
          looked like an absent feature. GLWindow now takes an audio flag, and
          the pickup chime below is synthesised rather than shipped, so the
          example stays asset-free.
-  GAP 4  Translucency, for the relic glow. Every built-in lit shader writes
-         opaque alpha and Scene draws in insertion order with no depth sort, so
-         a glowing shell around each relic would be wrong from half the angles.
+  GAP 4  CLOSED. Lit shaders now carry an opacity and pass the texture's own
+         alpha through, Material has SetOpacity, and Scene draws solid geometry
+         first and transparent boxes afterwards sorted back to front. The relics
+         have the glow shell this note asked for.
 
 ## The one bit of arithmetic worth reading
 
@@ -119,6 +120,10 @@ class Lantern {
 	@wall_texture : Texture2D;
 	@floor_texture : Texture2D;
 	@relic_texture : Texture2D;
+	# Two materials for the same mesh: the solid relic, and the barely-opaque
+	# shell drawn over it.
+	@relic_material : Material;
+	@glow : Material;
 
 	@camera : Camera;
 	@scene : Scene;
@@ -373,7 +378,7 @@ class Lantern {
 	all four and give relics frustum culling and instancing for free.
 	~#
 	method : DrawRelics() ~ Nil {
-		@relic_texture->Bind(0);
+		@relic_material->ApplyTo(@shader, 0);
 
 		each(i : @relics) {
 			relic := @relics[i];
@@ -393,9 +398,39 @@ class Lantern {
 			};
 		};
 
-		# GAP 4: a translucent glow shell around each relic belongs here. Every
-		# built-in lit shader writes opaque alpha, and Scene draws in insertion
-		# order with no depth sort, so it would be wrong from half the angles.
+		# The glow: the same sphere again, larger and barely opaque, blended over
+		# the solid one. Drawn AFTER every solid relic rather than interleaved,
+		# because a shell drawn before the next relic's body would blend against
+		# whatever was behind it instead of against that relic.
+		#
+		# Depth writes off, test on -- the same rule Scene follows for its own
+		# transparent boxes. A glow that wrote depth would punch a hole in the
+		# relic behind it.
+		GL->BeginTransparency();
+		@glow->SetOpacity(0.22);
+		@glow->ApplyTo(@shader, 0);
+
+		each(i : @relics) {
+			relic := @relics[i];
+			if(<>relic->IsTaken()) {
+				at := relic->GetAt();
+				bob := 0.12 * relic->GetSpin()->Sin();
+				@relic_at->SetPosition(at->GetX(), at->GetY() + bob, at->GetZ());
+				@relic_at->SetRotation(relic->GetSpin() * -0.5, 0.0, 0.0);
+				@relic_at->SetScale(0.44);
+
+				@relic_at->MvpInto(@mvp, @view_projection);
+				@shader->SetMatrix4("mvp", @mvp);
+				@shader->SetMatrix4("model", @relic_at->GetMatrix());
+				@orb->Draw();
+			};
+		};
+
+		GL->EndTransparency();
+
+		# Put the solid material back, or the next frame's relics are drawn with
+		# the glow's opacity still bound.
+		@relic_material->ApplyTo(@shader, 0);
 	}
 
 	method : DrawHud() ~ Nil {
@@ -485,6 +520,9 @@ class Lantern {
 		@floor_texture := Texture2D->Checker(64, 3, Texture2D->Rgb(58, 54, 50),
 			Texture2D->Rgb(44, 41, 38), TextureWrap->GL_REPEAT);
 		@relic_texture := Texture2D->Solid(0xFFF2C879);
+		@relic_material := Material->New(@relic_texture);
+		@glow := Material->New(@relic_texture);
+		@glow->SetTint(1.0, 0.86, 0.5);
 		if(<>@wall_texture->IsOk() | <>@floor_texture->IsOk() | <>@relic_texture->IsOk()) {
 			"Could not build the textures"->ErrorLine();
 			return false;

@@ -1851,7 +1851,7 @@ bundle Game.OpenGL {
 
 		What a HUD needs: one white texture drawn as any colour, and glyphs -- whose
 		shape lives in their alpha -- drawn as any colour without re-rasterising
-		them. Uniforms: "mvp", "tex", "tint" (a vec4, default opaque white).
+		them. Uniforms: "mvp", "tex", "overlay_tint" (a vec4, default opaque white).
 		@return the program; check IsOk()
 		~#
 		function : TexturedTinted() ~ Shader {
@@ -1868,9 +1868,12 @@ bundle Game.OpenGL {
 			fragment := ShaderSource->New();
 			fragment->Add("in vec2 texcoord;");
 			fragment->Add("uniform sampler2D tex;");
-			fragment->Add("uniform vec4 tint;");
+			# NOT "tint": every lit shader declares `uniform vec3 tint` and Material
+			# sets it with SetVec3, so sharing the name would let a Material write
+			# three floats into this vec4.
+			fragment->Add("uniform vec4 overlay_tint;");
 			fragment->Add("out vec4 frag_color;");
-			fragment->Add("void main() { frag_color = texture(tex, texcoord) * tint; }");
+			fragment->Add("void main() { frag_color = texture(tex, texcoord) * overlay_tint; }");
 
 			return Shader->New(vertex->Build(), fragment->Build());
 		}
@@ -2184,6 +2187,7 @@ bundle Game.OpenGL {
 			# "untinted" because an object tinted to pure black is indistinguishable
 			# from an invisible one, so nothing useful is given up.
 			source->Add("uniform vec3 tint;");
+			source->Add("uniform float opacity;");
 
 			# Lights as ARRAYS with a count, which is how forward rendering carries
 			# more than one. The maximum is a compile-time constant because GLSL
@@ -2328,11 +2332,18 @@ bundle Game.OpenGL {
 			source->Add("    lit = lit * clamp(1.0 - depth / fog_distance, 0.15, 1.0);");
 			source->Add("  }");
 			source->Add("  vec3 shade = (tint == vec3(0.0)) ? vec3(1.0) : tint;");
+			# Alpha comes from two places: the texture's own channel, which is what
+			# makes a cut-out leaf or a glass panel work, and a per-object opacity.
+			# Every preset sets opacity to 1.0 at creation -- a GLSL uniform starts
+			# at zero, so a shader declaring this and nobody setting it would draw
+			# the entire scene invisible.
+			source->Add("  float alpha = opacity;");
 			if(textured) {
-				source->Add("  frag_color = texture(tex, texcoord) * vec4(lit * shade, 1.0);");
+				source->Add("  vec4 base = texture(tex, texcoord);");
+				source->Add("  frag_color = vec4(base.rgb * lit * shade, base.a * alpha);");
 			}
 			else {
-				source->Add("  frag_color = vec4(color * lit * shade, 1.0);");
+				source->Add("  frag_color = vec4(color * lit * shade, alpha);");
 			};
 			source->Add("}");
 
@@ -5418,7 +5429,7 @@ bundle Game.OpenGL {
 			Matrix4->MultiplyInto(@mvp, @projection, @model);
 
 			@shader->SetMatrix4("mvp", @mvp);
-			@shader->SetVec4("tint", @tint_r, @tint_g, @tint_b, @tint_a);
+			@shader->SetVec4("overlay_tint", @tint_r, @tint_g, @tint_b, @tint_a);
 			texture->Bind(0);
 			@quad->Draw();
 		}
@@ -5574,6 +5585,7 @@ bundle Game.OpenGL {
 		@tr : Float; @tg : Float; @tb : Float;
 		@shininess : Float;
 		@specular : Float;
+		@opacity : Float;
 
 		#~
 		An untinted, matte material.
@@ -5584,6 +5596,7 @@ bundle Game.OpenGL {
 			@tr := 1.0; @tg := 1.0; @tb := 1.0;
 			@shininess := 32.0;
 			@specular := 0.0;
+			@opacity := 1.0;
 		}
 
 		#~
@@ -5628,6 +5641,37 @@ bundle Game.OpenGL {
 		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
 		@param strength 0 matte, around 0.5 plastic, 1.0 something wet
 		~#
+		#~
+		How opaque this material is.
+
+		1.0 is solid and is the default. Anything less needs blending on and the
+		object drawn after the solid ones -- Scene does both once it knows where
+		the camera is; a program drawing by hand does it with
+		GL->BeginTransparency and GL->EndTransparency.
+
+		This MULTIPLIES the texture's own alpha rather than replacing it, so a
+		cut-out texture stays cut out at 0.5 opacity instead of turning into a
+		uniformly half-visible rectangle.
+		@param opacity 0.0 invisible to 1.0 solid
+		~#
+		method : public : SetOpacity(opacity : Float) ~ Nil {
+			@opacity := opacity;
+		}
+
+		#~
+		@return the opacity, 1.0 for solid
+		~#
+		method : public : GetOpacity() ~ Float {
+			return @opacity;
+		}
+
+		#~
+		@return true when this material needs no sorting
+		~#
+		method : public : IsOpaque() ~ Bool {
+			return @opacity >= 1.0;
+		}
+
 		method : public : SetSpecular(shininess : Float, strength : Float) ~ Nil {
 			@shininess := shininess;
 			@specular := strength;
@@ -5654,6 +5698,9 @@ bundle Game.OpenGL {
 			};
 			if(shader->HasUniform("specular_strength")) {
 				shader->SetFloat("specular_strength", @specular);
+			};
+			if(shader->HasUniform("opacity")) {
+				shader->SetFloat("opacity", @opacity);
 			};
 
 			if(@texture <> Nil & @texture->IsOk()) {
@@ -7446,6 +7493,34 @@ bundle Game.OpenGL {
 		@param radius circle radius
 		@return true when they overlap
 		~#
+		#~
+		How opaque this box is.
+
+		A transparent box is drawn after every solid one, furthest first -- which
+		is what Scene->SetEye is for. Without that ordering a pane in front of
+		another writes depth and hides it, and the result looks worse than no
+		transparency at all.
+		@param opacity 0.0 invisible to 1.0 solid
+		~#
+		method : public : SetOpacity(opacity : Float) ~ Nil {
+			if(@material = Nil) {
+				@material := Material->New(@texture);
+			};
+
+			@material->SetOpacity(opacity);
+		}
+
+		#~
+		@return true when nothing about this box needs sorting
+		~#
+		method : public : IsOpaque() ~ Bool {
+			if(@material = Nil) {
+				return true;
+			};
+
+			return @material->IsOpaque();
+		}
+
 		method : public : OverlapsXZ(x : Float, z : Float, radius : Float) ~ Bool {
 			gap_x := (x - @center->GetX())->Abs() - @half->GetX();
 			gap_z := (z - @center->GetZ())->Abs() - @half->GetZ();
@@ -7496,6 +7571,19 @@ bundle Game.OpenGL {
 		@culling : Bool;
 		@drawn : Int;
 		@culled : Int;
+		# Where the camera is, for ordering transparent boxes. Nil until SetEye is
+		# called, in which case they draw in insertion order.
+		@eye : Vector3;
+		# Transparent box indices and their distances, rebuilt each frame into
+		# arrays that grow only when the scene does -- sorting must not allocate
+		# inside a draw loop.
+		@far_order : Int[];
+		@far_distance : Float[];
+		# Which material and texture are currently bound. Fields rather than
+		# locals because the opaque and transparent passes share the run.
+		@last_texture : Texture2D;
+		@last_material : Material;
+		@wants_opacity : Int;
 
 		#~
 		@param mesh the cube mesh every box is drawn with; it must span -1..1 on
@@ -7515,6 +7603,12 @@ bundle Game.OpenGL {
 			@culling := true;
 			@drawn := 0;
 			@culled := 0;
+			@eye := Nil;
+			@far_order := Int->New[0];
+			@far_distance := Float->New[0];
+			@last_texture := Nil;
+			@last_material := Nil;
+			@wants_opacity := -1;
 		}
 
 		#~
@@ -7676,6 +7770,7 @@ bundle Game.OpenGL {
 			if(@wants_model = -1) {
 				@wants_model := @shader->HasUniform("model") ? 1 : 0;
 				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
+				@wants_opacity := @shader->HasUniform("opacity") ? 1 : 0;
 			};
 
 			# The sampler unit, which Scene used to leave unset -- so a shader had to
@@ -7702,8 +7797,13 @@ bundle Game.OpenGL {
 
 			# Nil on its own infers as Nil, not as Texture2D, so the comparisons below
 			# will not type-check without the casts.
-			last_texture := Nil->As(Texture2D);
-			last_material := Nil->As(Material);
+			@last_texture := Nil->As(Texture2D);
+			@last_material := Nil->As(Material);
+			# Pass one: everything solid, in insertion order so the material runs
+			# hold. Transparent boxes are collected rather than drawn.
+			ReserveFar(@boxes->Size());
+			far_count := 0;
+
 			each(i : @boxes) {
 				box := @boxes->Get(i);
 
@@ -7713,41 +7813,89 @@ bundle Game.OpenGL {
 				};
 
 				if(visible) {
-					material := box->GetMaterial();
-					if(material <> Nil) {
-						# Only on a change. A material is three uniform writes and a
-						# texture bind, and a scene grouped by material costs a handful
-						# of those rather than one set per box.
-						if(material <> last_material) {
-							material->ApplyTo(@shader, 0);
-							last_material := material;
-							# A material's texture supersedes whatever was bound, so the
-							# plain-texture tracking has to forget what it thought.
-							last_texture := Nil->As(Texture2D);
-						};
+					if(box->IsOpaque()) {
+						DrawOne(box, view_projection);
+						@drawn += 1;
 					}
 					else {
-						texture := box->GetTexture();
-						if(texture <> Nil & texture <> last_texture) {
-							texture->Bind(0);
-							last_texture := texture;
-							last_material := Nil->As(Material);
-						};
+						@far_order[far_count] := i;
+						@far_distance[far_count] := EyeDistance(box);
+						far_count += 1;
 					};
-
-					model := box->GetModelMatrix();
-					Matrix4->MultiplyInto(@mvp, view_projection, model);
-					@shader->SetMatrix4("mvp", @mvp);
-					if(@wants_model = 1) {
-						@shader->SetMatrix4("model", model);
-					};
-					@mesh->Draw();
-					@drawn += 1;
 				}
 				else {
 					@culled += 1;
 				};
 			};
+
+			# Pass two: the transparent ones, furthest first, with blending on and
+			# depth WRITES off.
+			#
+			# Depth writes, not the depth test: a transparent surface must still be
+			# hidden by a wall in front of it, so the test stays on. What it must
+			# not do is write depth, because then the nearest pane occludes the
+			# ones behind it that have not been drawn yet.
+			if(far_count > 0) {
+				SortFar(far_count);
+				GL->BeginTransparency();
+
+				for(k := 0; k < far_count; k += 1;) {
+					DrawOne(@boxes->Get(@far_order[k]), view_projection);
+					@drawn += 1;
+				};
+
+				GL->EndTransparency();
+
+				# The material run tracking is per-pass state and the next frame
+				# starts with whatever this one left bound, so forget it.
+				@last_material := Nil->As(Material);
+				@last_texture := Nil->As(Texture2D);
+			};
+		}
+
+		#~
+		Bind what one box needs and draw it.
+
+		Split out because the two passes are the same work in a different order,
+		and a second copy of it would be a second place for the material-run
+		tracking to go wrong.
+		~#
+		method : DrawOne(box : Box, view_projection : Float[]) ~ Nil {
+			material := box->GetMaterial();
+			if(material <> Nil) {
+				# Only on a change. A material is three uniform writes and a texture
+				# bind, and a scene grouped by material costs a handful of those
+				# rather than one set per box.
+				if(material <> @last_material) {
+					material->ApplyTo(@shader, 0);
+					@last_material := material;
+					# A material's texture supersedes whatever was bound, so the
+					# plain-texture tracking has to forget what it thought.
+					@last_texture := Nil->As(Texture2D);
+				};
+			}
+			else {
+				texture := box->GetTexture();
+				if(texture <> Nil & texture <> @last_texture) {
+					texture->Bind(0);
+					@last_texture := texture;
+					@last_material := Nil->As(Material);
+				};
+
+				# A box with no material carries no opacity either, and the shader's
+				# uniform is whatever the last material left there.
+				if(@wants_opacity = 1) {
+					@shader->SetFloat("opacity", 1.0);
+				};
+			};
+
+			model := box->GetModelMatrix();
+			Matrix4->MultiplyInto(@mvp, view_projection, model);
+			@shader->SetMatrix4("mvp", @mvp);
+			if(@wants_model = 1) {
+				@shader->SetMatrix4("model", model);
+			};
+			@mesh->Draw();
 		}
 
 		#~
@@ -7809,6 +7957,75 @@ bundle Game.OpenGL {
 		@param radius circle radius
 		@return true when the position is blocked
 		~#
+		#~
+		Tell the scene where the camera is, so transparency can be ordered.
+
+		Transparent surfaces must be drawn back to front: a nearer one drawn first
+		writes depth and hides what is behind it. That needs a distance, and a
+		distance needs an eye. Call it every frame:
+
+		  scene->SetEye(camera->GetPosition());
+
+		Without it transparent boxes still draw, in insertion order -- which is
+		correct only by luck.
+		@param eye the camera position
+		~#
+		method : public : SetEye(eye : Vector3) ~ Nil {
+			@eye := eye;
+		}
+
+		#~
+		Order the collected transparent boxes furthest-first.
+
+		An insertion sort, which is the right choice rather than a lazy one: the
+		count is small, and between frames the order barely changes, so a nearly
+		sorted list costs close to one pass. Quicksort's advantage needs a size
+		this will not reach, and a nearly sorted list is its worst case.
+		~#
+		method : SortFar(count : Int) ~ Nil {
+			for(i := 1; i < count; i += 1;) {
+				index := @far_order[i];
+				distance := @far_distance[i];
+
+				j := i - 1;
+				while(j >= 0 & @far_distance[j] < distance) {
+					@far_order[j + 1] := @far_order[j];
+					@far_distance[j + 1] := @far_distance[j];
+					j -= 1;
+				};
+
+				@far_order[j + 1] := index;
+				@far_distance[j + 1] := distance;
+			};
+		}
+
+		#~
+		Squared distance from the eye to a box's centre -- squared because only
+		the ORDER matters, and a square root per box per frame buys nothing.
+		~#
+		method : EyeDistance(box : Box) ~ Float {
+			if(@eye = Nil) {
+				return 0.0;
+			};
+
+			centre := box->GetCenter();
+			dx := centre->GetX() - @eye->GetX();
+			dy := centre->GetY() - @eye->GetY();
+			dz := centre->GetZ() - @eye->GetZ();
+
+			return dx * dx + dy * dy + dz * dz;
+		}
+
+		#~
+		Make room for count transparent boxes, growing only when it is not enough.
+		~#
+		method : ReserveFar(count : Int) ~ Nil {
+			if(@far_order->Size() < count) {
+				@far_order := Int->New[count];
+				@far_distance := Float->New[count];
+			};
+		}
+
 		method : public : Blocked(x : Float, z : Float, radius : Float) ~ Bool {
 			each(i : @boxes) {
 				box := @boxes->Get(i);
