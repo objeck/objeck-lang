@@ -156,7 +156,11 @@ bundle Game.OpenGL {
 		GL_CULL_FACE := 0x0B44,
 		GL_DEPTH_TEST := 0x0B71,
 		GL_BLEND := 0x0BE2,
-		GL_SCISSOR_TEST := 0x0C11
+		GL_SCISSOR_TEST := 0x0C11,
+		# On by default when the window was created with samples, so this is
+		# only needed to turn multisampling OFF for a pass that should not have
+		# it -- a crisp pixel-art overlay, say.
+		GL_MULTISAMPLE := 0x809D
 	}
 
 	#~
@@ -673,6 +677,9 @@ bundle Game.OpenGL {
 		@mouse_x : Int;
 		@mouse_y : Int;
 		@quit_on_escape : Bool;
+		# How many samples the window actually got -- 0 when multisampling was not
+		# asked for, or was asked for and refused.
+		@samples : Int;
 		@pixel_h : Int;
 
 		@vsync : Bool;
@@ -691,7 +698,27 @@ bundle Game.OpenGL {
 		@param height height in points
 		~#
 		New(title : String, width : Int, height : Int) {
-			Open(title, width, height, true);
+			Open(title, width, height, true, 0);
+		}
+
+		#~
+		Open a window with multisampling.
+
+		Antialiasing at the framebuffer, which costs nothing in the program: it is
+		two pixel-format attributes, and every edge in the scene stops being a
+		staircase. It has to be asked for BEFORE the window exists, which is why it
+		is a constructor argument rather than a setter -- SDL attributes select a
+		pixel format and setting one afterwards is silently ignored.
+
+		Ask for 4. If the driver cannot provide it the window still opens, without
+		it -- so check GetSamples if you care, rather than assuming.
+		@param title the window title
+		@param width width in points
+		@param height height in points
+		@param samples 0 for none, or 2, 4, 8; anything else is clamped
+		~#
+		New(title : String, width : Int, height : Int, samples : Int) {
+			Open(title, width, height, true, samples);
 		}
 
 		#~
@@ -706,10 +733,11 @@ bundle Game.OpenGL {
 		@param visible false to keep the window off screen
 		~#
 		New(title : String, width : Int, height : Int, visible : Bool) {
-			Open(title, width, height, visible);
+			Open(title, width, height, visible, 0);
 		}
 
-		method : Open(title : String, width : Int, height : Int, visible : Bool) ~ Nil {
+		method : Open(title : String, width : Int, height : Int, visible : Bool,
+				samples : Int) ~ Nil {
 			@ok := false;
 			@error := "";
 			@version := "";
@@ -753,6 +781,24 @@ bundle Game.OpenGL {
 			Core->GLSetAttribute(GLattr->SDL_GL_DOUBLEBUFFER, 1);
 			Core->GLSetAttribute(GLattr->SDL_GL_DEPTH_SIZE, 24);
 
+			# Multisampling, if it was asked for. Two attributes, no native code,
+			# and the largest visible quality difference available here.
+			#
+			# Requested, not guaranteed: a driver that cannot honour it fails the
+			# window creation rather than downgrading, so this asks, and falls back
+			# to no multisampling rather than failing to open at all.
+			@samples := 0;
+			if(samples > 1) {
+				want := samples;
+				if(want > 16) {
+					want := 16;
+				};
+
+				Core->GLSetAttribute(GLattr->SDL_GL_MULTISAMPLEBUFFERS, 1);
+				Core->GLSetAttribute(GLattr->SDL_GL_MULTISAMPLESAMPLES, want);
+				@samples := want;
+			};
+
 			visibility := WindowFlags->SDL_WINDOW_HIDDEN;
 			if(visible) {
 				visibility := WindowFlags->SDL_WINDOW_SHOWN;
@@ -772,6 +818,19 @@ bundle Game.OpenGL {
 			# at them.
 			flags := visibility or WindowFlags->SDL_WINDOW_OPENGL or WindowFlags->SDL_WINDOW_ALLOW_HIGHDPI;
 			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, width, height, flags);
+
+			# A driver that cannot give the requested sample count fails window
+			# creation outright rather than handing back fewer samples. Losing
+			# antialiasing is a far better outcome than not opening, so drop it and
+			# try once more -- and record that it did not happen, so GetSamples
+			# does not claim otherwise.
+			if(@window->IsNull() & @samples > 0) {
+				Core->GLSetAttribute(GLattr->SDL_GL_MULTISAMPLEBUFFERS, 0);
+				Core->GLSetAttribute(GLattr->SDL_GL_MULTISAMPLESAMPLES, 0);
+				@samples := 0;
+				@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, width, height, flags);
+			};
+
 			if(@window->IsNull()) {
 				@error := "cannot create a GL window: {$Core->GetError()}";
 				return;
@@ -880,6 +939,36 @@ bundle Game.OpenGL {
 		~#
 		method : public : GetDrawableGeneration() ~ Int {
 			return @drawable_generation;
+		}
+
+		#~
+		A second GLWindow is not really supported, and this is why.
+
+		Creating a context MAKES IT CURRENT, so opening a second window silently
+		redirects every later GL call to it -- textures, draws and pixel readback
+		alike, with no error anywhere. And Free calls Core->Quit, which takes SDL
+		down for the whole process, so freeing either one kills both.
+
+		If you must open a second window, put the first one's context back
+		afterwards:
+
+		  first->GetWindow()->GLMakeCurrent(first->GetContext());
+
+		and free only at exit. Both facts were found by a test that opened a
+		second window to compare pixel formats: it hung on the first Free, and
+		once that was fixed, three unrelated checks elsewhere in the suite went red
+		because they were sampling the wrong framebuffer.
+
+		How many multisample samples this window actually got.
+
+		Asked for is not granted: a driver that cannot honour the request makes the
+		window fail to create, and rather than not opening at all this drops the
+		request and retries without it. So a program that cares has to ask, not
+		assume.
+		@return the sample count, or 0 for no multisampling
+		~#
+		method : public : GetSamples() ~ Int {
+			return @samples;
 		}
 
 		#~

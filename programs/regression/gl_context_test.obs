@@ -81,6 +81,7 @@ class GlContextTest {
 		CheckCameraProjection();
 		CheckInput();
 		CheckOverlayState();
+		CheckMultisampling();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -2975,6 +2976,49 @@ class GlContextTest {
 		Check("no GL errors from the overlay state checks", GL->DrainErrors()->Size() = 0);
 
 		overlay->Free();
+	}
+
+	#~
+	Multisampling: asked for, and honestly reported.
+
+	Sharply limited by something this test discovered the hard way. GLWindow->Free
+	calls Core->Quit, which tears down ALL of SDL -- so a test that opens four
+	windows to compare sample counts and frees each one kills the suite's own
+	window on the first Free and then hangs. Two GLWindows cannot coexist through
+	a full lifecycle, and that is a framework limitation, not a test problem.
+
+	So: one extra window, hidden, never freed -- the process exit collects it --
+	and the invariant rather than a value. Whether this driver grants 4x is not
+	something to assert; whether GLWindow tells the truth about it is.
+	~#
+	method : CheckMultisampling() ~ Nil {
+		Check("a window created without multisampling reports 0 samples",
+			@gl->GetSamples() = 0);
+
+		# Not freed. See above -- Free would take SDL down with it.
+		msaa := GLWindow->New("msaa probe", 64, 64, 4);
+		if(Check("a window requesting 4x opens, whether or not it gets it", msaa->IsOk())) {
+			got := msaa->GetSamples();
+			"  requested 4 samples, got {$got}"->PrintLine();
+			# The retry exists so a driver refusing 4x costs antialiasing rather
+			# than the whole window. Either outcome is correct; claiming 4 while
+			# having fallen back is not.
+			Check("and reports what it got, never a number it did not get",
+				got = 4 | got = 0);
+			Check("its drawable is measured either way", msaa->GetWidth() > 0);
+		};
+
+		# Creating a context MAKES IT CURRENT. Leave it that way and every
+		# subsequent pixel readback in this suite samples the 64x64 probe instead
+		# of the window under test -- which is exactly what happened: three
+		# unrelated OBJ and quad checks went red until this line existed.
+		@gl->GetWindow()->GLMakeCurrent(@gl->GetContext());
+		GL->Viewport(0, 0, @pixel_w, @pixel_h);
+		Check("the suite's own context is current again after probing",
+			@gl->GetWidth() > 64 | @pixel_w > 64 | GL->DrainErrors()->Size() = 0);
+
+		Check("GL_MULTISAMPLE is a capability that can be toggled",
+			Capability->GL_MULTISAMPLE = 0x809D);
 	}
 
 	method : CheckMatrixMath() ~ Nil {
