@@ -46,9 +46,7 @@ class ModelViewer {
 	@font : Font;
 
 	@spin : Float;
-	@projection : Float[];
 	@view_projection : Float[];
-	@scratch : Float[];
 	@mvp : Float[];
 
 	function : Main(args : String[]) ~ Nil {
@@ -57,9 +55,6 @@ class ModelViewer {
 
 	New() {
 		@spin := 0.0;
-		@projection := Float->New[16];
-		@view_projection := Float->New[16];
-		@scratch := Float->New[16];
 		@mvp := Float->New[16];
 		@camera := Camera->New(Vector3->New(0.0, 0.6, 4.2));
 	}
@@ -96,7 +91,11 @@ class ModelViewer {
 			@spin += 0.6 * @window->GetDelta();
 			@transform->SetRotation(@spin, 0.0, 0.0);
 
-			@camera->GetViewProjectionInto(@view_projection, @projection, @scratch);
+			# Cheap when nothing changed, and correct when it did: a window can be
+			# resized at any moment, and a projection built once at startup then
+			# stretches the scene while the pixel-space HUD stays right.
+			@camera->SetAspect(@window->GetAspect());
+			@view_projection := @camera->GetViewProjection();
 
 			@shader->Use();
 			@light->ApplyTo(@shader);
@@ -127,7 +126,7 @@ class ModelViewer {
 	}
 
 	method : Build(path : String) ~ Bool {
-		Matrix4->PerspectiveInto(@projection, Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
+		@camera->SetPerspective(Float->Pi() / 3.0, @window->GetAspect(), 0.1, 100.0);
 
 		GL->Enable(Capability->GL_CULL_FACE);
 		GL->ClearColor(0.07, 0.08, 0.12, 1.0);

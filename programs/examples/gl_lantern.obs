@@ -136,9 +136,7 @@ class Lantern {
 	# Per-frame scratch. Every one of these exists so the draw loop allocates
 	# nothing: the framework's *Into forms write into a caller's array, and a
 	# Float->New[16] per object per frame is a few hundred arrays a second.
-	@projection : Float[];
 	@view_projection : Float[];
-	@view_scratch : Float[];
 	@mvp : Float[];
 
 	# FPS is turned into a string four times a second rather than sixty. Building
@@ -153,9 +151,6 @@ class Lantern {
 
 	New() {
 		@camera := Camera->New(Vector3->New(0.0, 1.6, 9.0));
-		@projection := Float->New[16];
-		@view_projection := Float->New[16];
-		@view_scratch := Float->New[16];
 		@mvp := Float->New[16];
 		@relic_at := Transform->New();
 		@lamp_at := Vector3->New(0.0, 0.0, 0.0);
@@ -330,7 +325,11 @@ class Lantern {
 		@shadows->Capture(@scene, @window);
 
 		# Pass two: the scene from the eye, reading that cube.
-		@camera->GetViewProjectionInto(@view_projection, @projection, @view_scratch);
+		# Cheap when nothing changed, and correct when it did: a window can be
+		# resized at any moment, and a projection built once at startup then
+		# stretches the scene while the pixel-space HUD stays right.
+		@camera->SetAspect(@window->GetAspect());
+		@view_projection := @camera->GetViewProjection();
 
 		@shader->Use();
 		@rig->SetViewPosition(eye);
@@ -434,7 +433,7 @@ class Lantern {
 	}
 
 	method : Build() ~ Bool {
-		Matrix4->PerspectiveInto(@projection, Float->Pi() / 3.0, @window->GetAspect(), 0.1, 60.0);
+		@camera->SetPerspective(Float->Pi() / 3.0, @window->GetAspect(), 0.1, 60.0);
 		GL->Enable(Capability->GL_CULL_FACE);
 		GL->ClearColor(0.015, 0.017, 0.025, 1.0);
 

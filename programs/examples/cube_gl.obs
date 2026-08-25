@@ -65,9 +65,12 @@ class SpinningCube {
 
 		GL->ClearColor(0.09, 0.11, 0.15, 1.0);
 
-		# Computed once. The camera never moves, so neither does this.
-		projection := Matrix4->PerspectiveDegrees(45.0, @window->GetAspect());
-		view_projection := Matrix4->Multiply(projection, Matrix4->LookAtOrigin(4.0));
+		# The camera never moves, so this only has to be rebuilt when the window
+		# changes shape. GetDrawableGeneration is how the window says that
+		# happened -- without it the projection keeps the aspect ratio it was born
+		# with and the cube goes oval when you drag the corner.
+		view_projection := Float->New[16];
+		seen_generation := -1;
 
 		@shader->Use();
 		@shader->SetInt("tex", 0);
@@ -75,6 +78,12 @@ class SpinningCube {
 
 		while(<>@window->PollEvents()) {
 			@window->BeginFrame();
+
+			if(seen_generation <> @window->GetDrawableGeneration()) {
+				seen_generation := @window->GetDrawableGeneration();
+				projection := Matrix4->PerspectiveDegrees(45.0, @window->GetAspect());
+				Matrix4->MultiplyInto(view_projection, projection, Matrix4->LookAtOrigin(4.0));
+			};
 
 			# RADIANS PER SECOND, scaled by the frame time. This used to advance a
 			# fixed step per FRAME, which means the cube spun at whatever rate the

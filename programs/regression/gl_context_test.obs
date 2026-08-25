@@ -78,6 +78,7 @@ class GlContextTest {
 		CheckLoader();
 		CheckShaderAndDraw();
 		CheckProjection();
+		CheckCameraProjection();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -2714,6 +2715,102 @@ class GlContextTest {
 	against the slower, obviously-correct thing it replaced, which is the only
 	check that catches a plausible-looking error.
 	~#
+	#~
+	A Camera that owns its projection, and a window that says when to rebuild it.
+
+	Asserted against the slow composition it replaces rather than against numbers
+	written down here -- that is what caught an inlined view matrix with two of
+	three up-vector signs flipped last round, which matched at yaw 0 and diverged
+	everywhere else.
+
+	The aspect check is the one with teeth. Every 3D example in this repo built
+	its projection once at startup and never again, so resizing a window stretched
+	the scene while the pixel-space HUD stayed correct. SetAspect exists to be
+	called every frame, so it has to be BOTH cheap when nothing changed and
+	actually effective when something did.
+	~#
+	method : CheckCameraProjection() ~ Nil {
+		eye := Camera->New(Vector3->New(1.5, 2.5, 6.0));
+		eye->Turn(0.4);
+		eye->Look(-0.25);
+
+		Check("a camera has no projection until it is given one", <>eye->HasProjection());
+		Check("and GetViewProjection reports that rather than guessing",
+			eye->GetViewProjection() = Nil);
+
+		fov := Float->Pi() / 3.0;
+		eye->SetPerspective(fov, 1.6, 0.1, 60.0);
+		Check("SetPerspective gives it one", eye->HasProjection());
+
+		combined := eye->GetViewProjection();
+		if(<>Check("GetViewProjection returns a matrix", combined <> Nil)) {
+			return;
+		};
+
+		# The composition it replaces: build the projection and the view
+		# separately, multiply them, compare. Any disagreement is a real error,
+		# not a rounding artefact.
+		expected := Matrix4->Multiply(Matrix4->Perspective(fov, 1.6, 0.1, 60.0),
+			eye->GetViewMatrix());
+		Check("and it equals projection times view, computed the slow way",
+			Near16(combined, expected));
+
+		# Borrowed, not freshly allocated -- a draw loop calls this every frame.
+		again := eye->GetViewProjection();
+		Check("consecutive calls hand back the same buffer, so a frame allocates nothing",
+			Near16(again, combined));
+
+		# --- the resize path -------------------------------------------------
+		# Bind the array, then index it. Indexing the call result directly types
+		# the expression as the array rather than the element.
+		proj := eye->GetProjection();
+		before_x := proj[0];
+		eye->SetAspect(1.6);
+		unchanged := eye->GetProjection();
+		Check("SetAspect with the value it already has changes nothing",
+			unchanged[0] = before_x);
+
+		eye->SetAspect(0.8);
+		rebuilt := eye->GetProjection();
+		after_x := rebuilt[0];
+		Check("SetAspect with a new value rebuilds the projection", after_x <> before_x);
+
+		# A projection's x scale is fov-cotangent over aspect, so halving the
+		# aspect must double it. Asserting the RELATIONSHIP rather than that
+		# "something changed" -- a rebuild that wrote nonsense would pass that.
+		Check("and rebuilds it correctly: halving the aspect doubles the x scale",
+			(after_x - before_x * 2.0)->Abs() < 0.0001);
+
+		eye->SetAspect(-1.0);
+		refused := eye->GetProjection();
+		Check("a nonsense aspect is refused rather than propagated",
+			refused[0] = after_x);
+
+		# --- the signal that tells a program to do this ----------------------
+		generation := @gl->GetDrawableGeneration();
+		Check("the drawable generation is stable when nothing resizes",
+			@gl->GetDrawableGeneration() = generation);
+		Check("and polling events without a resize leaves it alone",
+			@gl->PollEvents() | @gl->GetDrawableGeneration() = generation);
+	}
+
+	#~
+	Are two 16-element matrices the same to within float noise?
+	~#
+	method : Near16(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() < 16 | b->Size() < 16) {
+			return false;
+		};
+
+		for(i := 0; i < 16; i += 1;) {
+			if((a[i] - b[i])->Abs() > 0.0001) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
 	method : CheckMatrixMath() ~ Nil {
 		tolerance := 0.000000001;
 

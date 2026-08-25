@@ -628,6 +628,10 @@ bundle Game.OpenGL {
 		# the DRAWABLE size in pixels, which is what GL works in. Not the window
 		# size in points -- those differ on a high-DPI display.
 		@pixel_w : Int;
+		# Bumped whenever the drawable actually changes size. A counter rather
+		# than a flag, so several things can notice independently -- a flag is
+		# consumed by whoever asks first.
+		@drawable_generation : Int;
 		@pixel_h : Int;
 
 		@vsync : Bool;
@@ -669,6 +673,7 @@ bundle Game.OpenGL {
 			@error := "";
 			@version := "";
 			@pixel_w := 0;
+			@drawable_generation := 0;
 			@pixel_h := 0;
 			@vsync := false;
 			@target_fps := 60;
@@ -779,15 +784,47 @@ bundle Game.OpenGL {
 			w := IntRef->New();
 			h := IntRef->New();
 			@window->GLGetDrawableSize(w, h);
+			was_w := @pixel_w;
+			was_h := @pixel_h;
 			@pixel_w := w->Get();
 			@pixel_h := h->Get();
 
 			if(@pixel_w <= 0 | @pixel_h <= 0) {
-				@error := "drawable size came back as {$@pixel_w}x{$@pixel_h}";
+				# A minimised window on Windows reports 0x0. That is not an error
+				# worth recording against a window that is otherwise fine, and
+				# recording one would make GetError misleading for the rest of the
+				# run -- so restore the last good size and report no change.
+				@pixel_w := was_w;
+				@pixel_h := was_h;
 				return false;
 			};
 
+			if(@pixel_w <> was_w | @pixel_h <> was_h) {
+				@drawable_generation += 1;
+			};
+
 			return true;
+		}
+
+		#~
+		A number that changes whenever the drawable changes size.
+
+		PollEvents keeps the viewport right on its own, but a projection matrix is
+		the program's, and a stale one stretches the scene while a HUD drawn in
+		pixels stays correct. Compare this against the last value you saw:
+
+		  if(window->GetDrawableGeneration() <> @seen) {
+		    @seen := window->GetDrawableGeneration();
+		    target->Free(); target := RenderTarget->New(window->GetWidth(), ...);
+		  };
+
+		For the projection specifically there is nothing to compare -- call
+		Camera->SetAspect(window->GetAspect()) every frame and it does nothing
+		unless the value actually changed.
+		@return a counter, not a size; only equality is meaningful
+		~#
+		method : public : GetDrawableGeneration() ~ Int {
+			return @drawable_generation;
 		}
 
 		#~
@@ -1645,7 +1682,7 @@ bundle Game.OpenGL {
 		@param source the shader being built
 		@param shadowed whether the shadow varying is needed too
 		~#
-		function : AddLitVaryings(source : ShaderSource, shadowed : Bool) ~ Nil {
+		function : private : AddLitVaryings(source : ShaderSource, shadowed : Bool) ~ Nil {
 			source->Add("out vec3 normal;");
 			source->Add("out vec2 texcoord;");
 			source->Add("out float depth;");
@@ -1655,11 +1692,11 @@ bundle Game.OpenGL {
 			};
 		}
 
-		function : LitVertexSource() ~ String {
+		function : private : LitVertexSource() ~ String {
 			return LitVertexSource(false);
 		}
 
-		function : LitVertexSource(shadowed : Bool) ~ String {
+		function : private : LitVertexSource(shadowed : Bool) ~ String {
 			source := ShaderSource->New();
 			source->Add("layout (location = 0) in vec3 in_position;");
 			source->Add("layout (location = 1) in vec3 in_normal;");
@@ -1688,15 +1725,15 @@ bundle Game.OpenGL {
 			return source->Build();
 		}
 
-		function : LitFragmentSource(textured : Bool) ~ String {
+		function : private : LitFragmentSource(textured : Bool) ~ String {
 			return LitFragmentSource(textured, false, false);
 		}
 
-		function : LitFragmentSource(textured : Bool, shadowed : Bool) ~ String {
+		function : private : LitFragmentSource(textured : Bool, shadowed : Bool) ~ String {
 			return LitFragmentSource(textured, shadowed, false);
 		}
 
-		function : LitFragmentSource(textured : Bool, shadowed : Bool, point_shadowed : Bool) ~ String {
+		function : private : LitFragmentSource(textured : Bool, shadowed : Bool, point_shadowed : Bool) ~ String {
 			source := ShaderSource->New();
 			source->Add("in vec3 normal;");
 			source->Add("in vec2 texcoord;");
@@ -2183,7 +2220,7 @@ bundle Game.OpenGL {
 			return BuildCube(half, true);
 		}
 
-		function : BuildCube(half : Float, inward : Bool) ~ Mesh {
+		function : private : BuildCube(half : Float, inward : Bool) ~ Mesh {
 			# Per face: the outward normal, then four corners counter-clockwise seen
 			# from outside. Fifteen floats each. Written as a literal table rather
 			# than computed because a wrong sign here is a face that culls away, and
@@ -2540,7 +2577,7 @@ bundle Game.OpenGL {
 		Empty arrays rather than Nil, because a bare Nil in Objeck infers as Nil
 		rather than as the parameter's array type and will not compile.
 		~#
-		function : NoMesh() ~ Mesh {
+		function : private : NoMesh() ~ Mesh {
 			return Mesh->New(Float->New[0], Int->New[0], Int->New[0]);
 		}
 
@@ -2549,7 +2586,7 @@ bundle Game.OpenGL {
 		stripping a trailing carriage return. Returns Nil for a blank or comment
 		line, so callers can test one thing.
 		~#
-		function : Words(line : String) ~ Vector<String> {
+		function : private : Words(line : String) ~ Vector<String> {
 			if(line = Nil) {
 				return Nil;
 			};
@@ -2586,7 +2623,7 @@ bundle Game.OpenGL {
 		Write one face corner from an OBJ "v", "v/vt", "v//vn" or "v/vt/vn" token.
 		@return the next write offset
 		~#
-		function : Corner3(into : Float[], out : Int, token : String, positions : Float[], position_count : Int, texcoords : Float[], texcoord_count : Int, normals : Float[], normal_count : Int) ~ Int {
+		function : private : Corner3(into : Float[], out : Int, token : String, positions : Float[], position_count : Int, texcoords : Float[], texcoord_count : Int, normals : Float[], normal_count : Int) ~ Int {
 			position_index := Resolve(FaceField(token, 0), position_count);
 			texcoord_index := Resolve(FaceField(token, 1), texcoord_count);
 			normal_index := Resolve(FaceField(token, 2), normal_count);
@@ -2632,7 +2669,7 @@ bundle Game.OpenGL {
 		@param index which field, 0 for the position
 		@return the field, or an empty string when absent
 		~#
-		function : FaceField(token : String, index : Int) ~ String {
+		function : private : FaceField(token : String, index : Int) ~ String {
 			if(token = Nil) {
 				return "";
 			};
@@ -2670,7 +2707,7 @@ bundle Game.OpenGL {
 		reads as a wild out-of-range index.
 		@return a 0-based index, or -1 when there is none
 		~#
-		function : Resolve(field : String, count : Int) ~ Int {
+		function : private : Resolve(field : String, count : Int) ~ Int {
 			if(field = Nil | field->Size() = 0 | count = 0) {
 				return -1;
 			};
@@ -2697,7 +2734,7 @@ bundle Game.OpenGL {
 		Give three consecutive vertices the normal of the plane they lie in, for a
 		file that carried none.
 		~#
-		function : FlatNormal(vertices : Float[], base : Int) ~ Nil {
+		function : private : FlatNormal(vertices : Float[], base : Int) ~ Nil {
 			if(base < 0 | base + 24 > vertices->Size()) {
 				return;
 			};
@@ -2750,7 +2787,7 @@ bundle Game.OpenGL {
 		#~
 		Write one interleaved position/normal/texcoord vertex.
 		~#
-		function : Corner(into : Float[], index : Int, x : Float, y : Float, z : Float, nx : Float, ny : Float, nz : Float, u : Float, v : Float) ~ Nil {
+		function : private : Corner(into : Float[], index : Int, x : Float, y : Float, z : Float, nx : Float, ny : Float, nz : Float, u : Float, v : Float) ~ Nil {
 			out := index * 8;
 			into[out + 0] := x;
 			into[out + 1] := y;
@@ -2893,6 +2930,9 @@ bundle Game.OpenGL {
 	~#
 	class Texture2D {
 		@texture : Int;
+		# False for a wrapper made by Wrapping/Adopt, which borrows a handle that
+		# something else owns and must not delete it.
+		@owned : Bool;
 
 		#~
 		Upload a surface's pixels as a texture, smoothed and clamped.
@@ -2921,6 +2961,7 @@ bundle Game.OpenGL {
 
 		method : Upload(surface : Surface, filter : Int, wrap : Int, mipmap : Bool) ~ Nil {
 			@texture := 0;
+			@owned := true;
 
 			if(surface = Nil | surface->IsNull()) {
 				return;
@@ -2963,6 +3004,7 @@ bundle Game.OpenGL {
 
 		method : Adopt(handle : Int) ~ Nil {
 			@texture := handle;
+			@owned := false;
 		}
 
 		#~
@@ -3135,9 +3177,14 @@ bundle Game.OpenGL {
 
 		Call it while the GL context is still current -- see the shutdown order on
 		the GL class.
+
+		A texture obtained from RenderTarget->GetTexture or ShadowMap->GetTexture
+		is a BORROWED view of that target's attachment, not a texture of its own,
+		and this does nothing for one. Freeing it used to delete the attachment out
+		from under the target that was still using it.
 		~#
 		method : public : Free() ~ Nil {
-			if(@texture <> 0) {
+			if(@texture <> 0 & @owned) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@texture);
 				Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_delete", array_args);
@@ -3940,6 +3987,18 @@ bundle Game.OpenGL {
 		@yaw : Float;
 		@pitch : Float;
 
+		# Allocated once, reused every frame. The alternative -- and what six
+		# programs used to do -- is three Float[16] per program plus a per-frame
+		# three-argument call to fill them.
+		@projection : Float[];
+		@view_projection : Float[];
+		@scratch : Float[];
+		@fov : Float;
+		@aspect : Float;
+		@near : Float;
+		@far : Float;
+		@has_projection : Bool;
+
 		#~
 		@param position where the eye starts
 		~#
@@ -3947,6 +4006,92 @@ bundle Game.OpenGL {
 			@position := position;
 			@yaw := 0.0;
 			@pitch := 0.0;
+			@projection := Float->New[16];
+			@view_projection := Float->New[16];
+			@scratch := Float->New[16];
+			@has_projection := false;
+			@fov := 0.0;
+			@aspect := 0.0;
+			@near := 0.0;
+			@far := 0.0;
+		}
+
+		#~
+		Give the camera its own projection, so GetViewProjection can build the
+		whole matrix without the caller keeping buffers.
+		@param fov vertical field of view, in RADIANS
+		@param aspect width divided by height -- window->GetAspect()
+		@param near near plane; too small a value wastes depth precision
+		@param far far plane
+		~#
+		method : public : SetPerspective(fov : Float, aspect : Float, near : Float, far : Float) ~ Nil {
+			@fov := fov;
+			@aspect := aspect;
+			@near := near;
+			@far := far;
+			@has_projection := true;
+			Matrix4->PerspectiveInto(@projection, @fov, @aspect, @near, @far);
+		}
+
+		#~
+		Same, in degrees, with the near and far planes most programs want.
+		@param degrees vertical field of view in degrees
+		@param aspect width divided by height
+		~#
+		method : public : SetPerspectiveDegrees(degrees : Float, aspect : Float) ~ Nil {
+			SetPerspective(degrees * Float->Pi() / 180.0, aspect, 0.1, 100.0);
+		}
+
+		#~
+		Update the aspect ratio, rebuilding the projection only if it changed.
+
+		Cheap enough to call unconditionally every frame, which is the point: a
+		window can be resized at any moment and the alternative is tracking a
+		generation counter in every program.
+		@param aspect width divided by height
+		~#
+		method : public : SetAspect(aspect : Float) ~ Nil {
+			if(<>@has_projection | aspect <= 0.0 | aspect = @aspect) {
+				return;
+			};
+
+			@aspect := aspect;
+			Matrix4->PerspectiveInto(@projection, @fov, @aspect, @near, @far);
+		}
+
+		#~
+		@return true once SetPerspective has been called
+		~#
+		method : public : HasProjection() ~ Bool {
+			return @has_projection;
+		}
+
+		#~
+		@return the projection matrix. BORROWED -- do not write to it or keep it
+		across a SetAspect
+		~#
+		method : public : GetProjection() ~ Float[] {
+			return @projection;
+		}
+
+		#~
+		Projection times view, rebuilt from the current eye.
+
+		Returns the camera's own buffer rather than a fresh array, so a draw loop
+		calling this every frame allocates nothing. Do not write to it, and do not
+		hold it across another call.
+		@return a 16-element column-major matrix, or Nil if SetPerspective has not
+		been called
+		~#
+		method : public : GetViewProjection() ~ Float[] {
+			if(<>@has_projection) {
+				return Nil;
+			};
+
+			GetViewMatrixInto(@scratch);
+			Matrix4->MultiplyInto(@view_projection, @projection, @scratch);
+
+			return @view_projection;
 		}
 
 		method : public : GetPosition() ~ Vector3 {
