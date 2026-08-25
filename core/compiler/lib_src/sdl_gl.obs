@@ -719,6 +719,11 @@ bundle Game.OpenGL {
 		@mouse_x : Int;
 		@mouse_y : Int;
 		@quit_on_escape : Bool;
+		# The keyboard as of the last PollEvents. Held once per frame rather than
+		# per query: Keyboard->GetState allocates a fresh ~512-byte array, crosses
+		# into native code and memcpys the whole thing on EVERY call, so a WASD
+		# loop asking four times a frame would pay for four of those.
+		@keys : Byte[];
 		# How many samples the window actually got -- 0 when multisampling was not
 		# asked for, or was asked for and refused.
 		@samples : Int;
@@ -847,6 +852,7 @@ bundle Game.OpenGL {
 			# Matches what PollEvents did before there was a way to ask for
 			# anything else.
 			@quit_on_escape := true;
+			@keys := Nil;
 			@pixel_h := 0;
 			@vsync := false;
 			@target_fps := 60;
@@ -1355,6 +1361,10 @@ bundle Game.OpenGL {
 				};
 			};
 
+			# AFTER the queue is drained: SDL_GetKeyboardState reflects the events
+			# that have been pumped, so reading it first would be a frame behind.
+			@keys := Keyboard->GetState();
+
 			return @quit;
 		}
 
@@ -1363,6 +1373,50 @@ bundle Game.OpenGL {
 		~#
 		method : public : RequestQuit() ~ Nil {
 			@quit := true;
+		}
+
+		#~
+		Is this key held down right now?
+
+		A STATE, not an edge -- true for as long as the key is down, which is what
+		movement wants. WasPressed is the edge, true for one frame per press.
+
+		The bounds check is the point. Reading Keyboard->GetState directly means
+		writing this every time:
+
+		  if(keys <> Nil & scancode >= 0 & scancode < keys->Size()) { ... }
+
+		and both examples in this repo that take keyboard input had written it,
+		byte for byte identically, because held MOUSE was framework state and held
+		keys were not.
+
+		Reads a snapshot taken once per PollEvents, so asking about eight keys
+		costs eight array reads rather than eight native calls.
+		@param scancode a Scancode value
+		@return true while the key is down; false before the first PollEvents
+		~#
+		method : public : KeyHeld(scancode : Int) ~ Bool {
+			if(@keys = Nil | scancode < 0 | scancode >= @keys->Size()) {
+				return false;
+			};
+
+			return @keys[scancode] <> 0;
+		}
+
+		#~
+		Is either of these keys held?
+
+		For the case that actually recurs: one action on two keys -- left shift or
+		right shift, W or Up. An array would have read better, but an Objeck array
+		literal takes literal expressions only, so `[Scancode->SDL_SCANCODE_W, ...]`
+		does not compile and the caller would have to build and fill an Int[] to
+		ask a one-line question.
+		@param first a Scancode value
+		@param second another
+		@return true if either is down
+		~#
+		method : public : KeyHeld(first : Int, second : Int) ~ Bool {
+			return KeyHeld(first) | KeyHeld(second);
 		}
 
 		#~

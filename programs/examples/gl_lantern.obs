@@ -260,7 +260,7 @@ class Lantern {
 			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity * -1.0);
 			@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
 
-			Update(Keyboard->GetState(), delta);
+			Update(delta);
 			Draw();
 
 			@window->EndFrame();
@@ -270,33 +270,25 @@ class Lantern {
 		GL->ReportErrors("the lantern");
 	}
 
-	method : IsDown(keys : Byte[], scancode : Int) ~ Bool {
-		if(keys = Nil | scancode < 0 | scancode >= keys->Size()) {
-			return false;
-		};
-
-		return keys[scancode] <> 0;
-	}
-
-	method : Update(keys : Byte[], delta : Float) ~ Nil {
+	method : Update(delta : Float) ~ Nil {
 		if(@won) {
 			return;
 		};
 
 		speed := 3.1;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_LSHIFT) |
-				IsDown(keys, Scancode->SDL_SCANCODE_RSHIFT)) {
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_LSHIFT,
+				Scancode->SDL_SCANCODE_RSHIFT)) {
 			speed := 5.6;
 		};
 		step := speed * delta;
 
 		forward := 0.0;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_W)) { forward += step; };
-		if(IsDown(keys, Scancode->SDL_SCANCODE_S)) { forward -= step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_W)) { forward += step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_S)) { forward -= step; };
 
 		strafe := 0.0;
-		if(IsDown(keys, Scancode->SDL_SCANCODE_D)) { strafe += step; };
-		if(IsDown(keys, Scancode->SDL_SCANCODE_A)) { strafe -= step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_D)) { strafe += step; };
+		if(@window->KeyHeld(Scancode->SDL_SCANCODE_A)) { strafe -= step; };
 
 		if(forward <> 0.0 | strafe <> 0.0) {
 			# Each axis applied separately, so a glancing hit on a corridor wall

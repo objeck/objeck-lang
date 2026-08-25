@@ -2898,6 +2898,33 @@ class GlContextTest {
 		Check("the mouse position is readable and not negative",
 			@gl->GetMouseX() >= 0 & @gl->GetMouseY() >= 0);
 
+		# --- held keys ------------------------------------------------------
+		# KeyHeld is a STATE, not an edge, and it exists mainly for its bounds
+		# check: reading Keyboard->GetState directly means writing that check every
+		# time, which is why both examples that take keyboard input had the same
+		# eight-line helper, byte for byte.
+		#
+		# No key is down under a test harness, so what is assertable is that every
+		# query is answerable and that the out-of-range cases are refused rather
+		# than indexing off the end of a ~512-byte array.
+		Check("no key reads as held with nothing pressed",
+			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_W) &
+			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_SPACE));
+		Check("a negative scancode is refused, not indexed",
+			<>@gl->KeyHeld(-1) & <>@gl->KeyHeld(-99999));
+		Check("a scancode past the end is refused",
+			<>@gl->KeyHeld(999999) & <>@gl->KeyHeld(512));
+		Check("the two-key form is false when neither is down",
+			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_LSHIFT, Scancode->SDL_SCANCODE_RSHIFT));
+		Check("and refuses out-of-range on both sides", <>@gl->KeyHeld(-1, 999999));
+
+		# The snapshot is taken during PollEvents, so a query before the first one
+		# must answer rather than dereference Nil. @gl has already polled by now,
+		# so this checks the refresh keeps working rather than the Nil path.
+		@gl->PollEvents();
+		Check("still answerable after a poll",
+			<>@gl->KeyHeld(Scancode->SDL_SCANCODE_A));
+
 		Check("no GL errors from reading input", GL->DrainErrors()->Size() = 0);
 	}
 
