@@ -7804,6 +7804,30 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		Close the font and release it.
+
+		TTF_CloseFont was never bound, so until now a loaded font could not be
+		released at all -- which is why every example that draws text simply
+		leaks one.
+
+		Font->Quit() is NOT this. That is the static TTF_Quit, which shuts down
+		the whole subsystem; calling it once per font, as some code does, is a
+		different thing entirely.
+
+		Safe to call twice -- the handle is cleared. Do not use the font
+		afterwards, and close it before Quit.
+		~#
+		method : public : Free() ~ Nil {
+			if(@font <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@font);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_font_close", array_args);
+				@font := 0;
+			};
+		}
+
+		#~
 		Determines if the underlying SDL C-struct is NULL
 		@return true if NULL, false otherwise
 		~#

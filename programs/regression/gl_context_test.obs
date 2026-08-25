@@ -1297,6 +1297,17 @@ class GlContextTest {
 		# without it Font->New simply returns a null font.
 		Font->Init();
 		font := Font->New("../lib/sdl/fonts/lazy.ttf", 24);
+
+		# Font->Free is new: TTF_CloseFont was never bound, so a font could not
+		# be released at all and every program that drew text leaked one.
+		# Checked on a SEPARATE font, because the one below is still in use.
+		spare := Font->New("../lib/sdl/fonts/lazy.ttf", 12);
+		if(spare <> Nil & <>spare->IsNull()) {
+			spare->Free();
+			Check("a font reports itself closed after Free", spare->IsNull());
+			spare->Free();
+			Check("and Font->Free is idempotent", spare->IsNull());
+		};
 		if(font = Nil | font->IsNull()) {
 			"  SKIP: no font file, so the text half is not exercised"->PrintLine();
 		}

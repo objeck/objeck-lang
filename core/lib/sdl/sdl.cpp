@@ -2639,6 +2639,16 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_font_close(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 0);
+    if(font) {
+      TTF_CloseFont(font);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_font_open(VMContext& context) {
     const std::wstring wfile = APITools_GetStringValue(context, 1);
     const  std::string file = UnicodeToBytes(wfile);

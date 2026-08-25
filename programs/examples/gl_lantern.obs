@@ -594,6 +594,9 @@ class Lantern {
 		if(@cube <> Nil) { @cube->Free(); };
 		if(@shadows <> Nil) { @shadows->Free(); };
 		if(@overlay <> Nil) { @overlay->Free(); };
+		# The overlay does not own the font -- SetFont says so -- so it has to be
+		# closed here. Until Font->Free existed this simply leaked.
+		if(@font <> Nil & <>@font->IsNull()) { @font->Free(); };
 		if(@shader <> Nil) { @shader->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
