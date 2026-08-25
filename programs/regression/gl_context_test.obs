@@ -92,6 +92,7 @@ class GlContextTest {
 		CheckBillboards();
 		CheckCollision();
 		CheckArraysAndOffset();
+		CheckParticles();
 		CheckMaterialLeak();
 		CheckStencilAndPoints();
 		CheckMatrixMath();
@@ -4588,10 +4589,22 @@ class GlContextTest {
 
 		# An unindexed mesh drawn as lines still works: the topology is the
 		# caller's to choose, the index buffer's absence is not a restriction.
+		#
+		# Width 1.0, which is the only one a core profile guarantees. Asking for 3
+		# here is what turned linux-x64 red while this check passed on Windows:
+		# Mesa refuses a wide line with GL_INVALID_VALUE and NVIDIA accepts it, and
+		# the error then belonged to the line width rather than to the draw.
 		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
-		GL->SetLineWidth(3.0);
+		GL->SetLineWidth(1.0);
 		strip->Draw(DrawMode->GL_LINES);
 		Check("and honours a draw mode", GL->GetError() = ErrorCode->GL_NO_ERROR);
+
+		# A width the context may refuse must not leave a GL error standing for
+		# something else to trip over. Whether it is accepted is the driver's
+		# business; that the next check is unpolluted is this bundle's.
+		GL->SetLineWidth(6.0);
+		Check("a refused line width does not poison the next error check",
+			GL->GetError() = ErrorCode->GL_NO_ERROR);
 		GL->SetLineWidth(1.0);
 
 		# --- the polygon offset -------------------------------------------------
@@ -4659,6 +4672,186 @@ class GlContextTest {
 		blue->Free();
 		white->Free();
 		shader->Free();
+	}
+
+	#~
+	Particles.
+
+	Counting alive slots is the easy half and proves almost nothing -- a system
+	that tracks lives correctly and never moves a single particle passes every
+	bookkeeping check there is. So the assertions here are about POSITION: that a
+	velocity actually displaces something, that gravity bends it downwards, that
+	drag shortens the distance travelled, and that a retired particle is somewhere
+	the camera cannot see.
+	~#
+	method : CheckParticles() ~ Nil {
+		system := Particles->New(8);
+		if(<>Check("Particles->New builds a working system", system->IsOk())) {
+			reason := system->GetError();
+			"  reason: {$reason}"->PrintLine();
+			return;
+		};
+
+		Check("a new system has capacity", system->GetCapacity() = 8);
+		Check("and nothing alive", system->GetAlive() = 0);
+
+		system->SetLifetime(1.0);
+		system->SetSize(0.5, 0.1);
+		system->SetGravity(0.0);
+		system->SetDrag(0.0);
+
+		# --- one particle, moving --------------------------------------------
+		system->Emit(0.0, 0.0, 0.0, 2.0, 0.0, 0.0);
+		Check("emitting makes one alive", system->GetAlive() = 1);
+
+		at := system->GetBatch()->Get(0);
+		Check("and it starts where it was emitted",
+			at->GetX()->Abs() < 0.0001 & at->GetY()->Abs() < 0.0001);
+		Check("at the start size",
+			(at->GetScaleX() - 0.5)->Abs() < 0.0001);
+
+		system->Update(0.5);
+		moved := at->GetX();
+		"  after 0.5s at 2 units/s: x={$moved}"->PrintLine();
+		# THE assertion: velocity displaces it. A system that ages particles and
+		# never integrates their motion passes every count-based check above.
+		Check("a velocity actually moves the particle",
+			(moved - 1.0)->Abs() < 0.01);
+		Check("and it shrinks towards the end size", at->GetScaleX() < 0.5);
+		Check("while staying alive mid-life", system->GetAlive() = 1);
+
+		system->Update(0.6);
+		Check("and retires once its life runs out", system->GetAlive() = 0);
+		Check("parked well below the world", at->GetY() < -1000.0);
+		Check("at zero size", at->GetScaleX() = 0.0);
+
+		# --- gravity ------------------------------------------------------------
+		system->Clear();
+		system->SetGravity(-10.0);
+		system->Emit(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+		system->Update(0.5);
+
+		# Find whichever slot is alive rather than assuming an index.
+		lowest := 0.0;
+		gravity_batch := system->GetBatch();
+		for(i := 0; i < gravity_batch->GetCount(); i += 1;) {
+			slot := gravity_batch->Get(i);
+			if(slot->GetY() > -1000.0) {
+				if(slot->GetY() < lowest) {
+					lowest := slot->GetY();
+				};
+			};
+		};
+		"  after 0.5s under gravity: y={$lowest}"->PrintLine();
+		Check("gravity pulls a particle downwards", lowest < -0.5);
+
+		# --- drag ---------------------------------------------------------------
+		system->Clear();
+		system->SetGravity(0.0);
+		system->SetDrag(0.0);
+		system->Emit(0.0, 0.0, 0.0, 4.0, 0.0, 0.0);
+		system->Update(0.5);
+		far := FurthestX(system);
+
+		system->Clear();
+		system->SetDrag(3.0);
+		system->Emit(0.0, 0.0, 0.0, 4.0, 0.0, 0.0);
+		system->Update(0.5);
+		near := FurthestX(system);
+		"  travelled in 0.5s: no drag={$far}  with drag={$near}"->PrintLine();
+		Check("drag shortens the distance travelled", near < far);
+		Check("but does not stop it dead", near > 0.0);
+		system->SetDrag(0.0);
+
+		# --- the pool does not grow ---------------------------------------------
+		system->Clear();
+		before := system->GetBatch()->GetCount();
+		for(i := 0; i < 40; i += 1;) {
+			system->Emit(0.0, 0.0, 0.0);
+		};
+		Check("emitting past capacity never grows the pool",
+			system->GetBatch()->GetCount() = before);
+		Check("and never exceeds it", system->GetAlive() <= 8);
+		Check("while filling it", system->GetAlive() = 8);
+
+		system->Clear();
+		Check("Clear retires everything", system->GetAlive() = 0);
+
+		# --- a burst -------------------------------------------------------------
+		system->Burst(0.0, 0.0, 0.0, 5, 2.0);
+		Check("a burst emits the number asked for", system->GetAlive() = 5);
+
+		# The spray must actually spread: every particle leaving in the SAME
+		# direction is what a broken random gives, and the count would be right.
+		system->Update(0.2);
+		spread := Spread(system);
+		"  burst spread across x: {$spread}"->PrintLine();
+		Check("and they leave in different directions", spread > 0.05);
+
+		# --- it draws -------------------------------------------------------------
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		camera->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		system->SetCamera(camera);
+		system->SetTexture(Texture2D->Solid(0xFFFFFFFF));
+		system->SetSize(1.2, 1.2);
+
+		black := 0xFF000000;
+		system->Clear();
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		system->Draw(camera->GetViewProjection());
+		Check("an empty system draws nothing",
+			GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) = black);
+
+		system->Emit(0.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		system->Draw(camera->GetViewProjection());
+		Check("and a live particle draws",
+			GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) <> black);
+
+		Check("no GL errors from the particle pass",
+			GL->GetError() = ErrorCode->GL_NO_ERROR);
+
+		system->Free();
+		system->Free();
+		Check("Particles->Free is idempotent", true);
+	}
+
+	#~
+	The largest x any live particle has reached.
+	~#
+	method : FurthestX(system : Particles) ~ Float {
+		best := 0.0;
+		batch := system->GetBatch();
+		for(i := 0; i < batch->GetCount(); i += 1;) {
+			at := batch->Get(i);
+			if(at->GetY() > -1000.0) {
+				if(at->GetX() > best) {
+					best := at->GetX();
+				};
+			};
+		};
+
+		return best;
+	}
+
+	#~
+	How far apart the live particles are on the x axis -- zero when they all left
+	in the same direction.
+	~#
+	method : Spread(system : Particles) ~ Float {
+		low := 0.0;
+		high := 0.0;
+		batch := system->GetBatch();
+		for(i := 0; i < batch->GetCount(); i += 1;) {
+			at := batch->Get(i);
+			if(at->GetY() > -1000.0) {
+				if(at->GetX() < low) { low := at->GetX(); };
+				if(at->GetX() > high) { high := at->GetX(); };
+			};
+		};
+
+		return high - low;
 	}
 
 	#~

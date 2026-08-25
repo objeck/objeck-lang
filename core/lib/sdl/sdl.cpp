@@ -6526,7 +6526,25 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_gl_line_width(VMContext& context) {
-    glLineWidth((GLfloat)APITools_GetFloatValue(context, 0));
+    const GLfloat width = (GLfloat)APITools_GetFloatValue(context, 0);
+    glLineWidth(width);
+
+    // A CORE profile is allowed to reject anything but 1.0 outright with
+    // GL_INVALID_VALUE, and Mesa does exactly that while desktop NVIDIA quietly
+    // accepts 3.0 -- so this is a portability trap that only shows up on the
+    // other renderer.
+    //
+    // The error is consumed here rather than left standing. GL errors persist
+    // until something reads them, so one wide-line request at startup would
+    // otherwise be reported by the NEXT unrelated GetError call, anywhere in the
+    // program. Reported through the bundle's own channel, which is where every
+    // other silent GL failure here goes.
+    const GLenum error = glGetError();
+    if(error == GL_INVALID_VALUE) {
+      objk_gl_fail("GL->SetLineWidth: this context accepts only 1.0 (a core "
+                   "profile may refuse wider lines); asked for " +
+                   std::to_string((double)width));
+    }
   }
 
 #ifdef _WIN32

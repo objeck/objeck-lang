@@ -14,8 +14,8 @@
 #                    them, however many there are.
 #   GLWindow pad     a controller works if one is plugged in, and nothing
 #                    changes if one is not.
-#   Billboards       the impact sparks are camera-facing quads, blended
-#                    additively, all of them in one draw call.
+#   Particles        the impact sparks are a pool of camera-facing sprites,
+#                    blended additively, all of them in one draw call.
 #   Overlay          the crosshair, the score and the hit marker are drawn in
 #                    pixels over the 3D.
 #
@@ -52,9 +52,7 @@ class ShootingRange {
 	@posts : PropBatch;
 	# Impact sparks: camera-facing quads, additively blended, one draw call for
 	# all of them however many are alive.
-	@sparks : PropBatch;
-	@spark_life : Float[];
-	@spark_next : Int;
+	@sparks : Particles;
 
 	@score : Int;
 	@shots : Int;
@@ -145,7 +143,7 @@ class ShootingRange {
 		BuildPosts();
 		BuildSparks();
 		# After BuildSparks so the sparks draw over the scenery rather than under.
-		@scene->AddBatch(@sparks);
+		@scene->AddBatch(@sparks->GetBatch());
 
 		@overlay := Overlay->WithDefaultFont(@window, 18);
 
@@ -251,40 +249,25 @@ class ShootingRange {
 	}
 
 	#~
-	A ring of sparks, parked out of sight until a shot lands.
+	Impact sparks.
 
-	Billboards need the camera, since a quad that faces you is built from the
-	camera's own right and up vectors rather than from its own rotation -- and a
-	view_projection cannot be decomposed back into those.
-
-	Additive, which is what makes them read as light rather than as paper: two
-	overlapping sparks are brighter than one, black contributes nothing, and
-	because addition commutes they need no back-to-front sorting. That last part
-	is why a batch can draw them at all -- one instance buffer has no ordering in
-	it to sort.
+	Everything here used to be written out by hand -- a ring of slots, a life per
+	slot, somewhere to park the dead ones, and the integration that moves them.
+	Particles is that, so what is left is the part that is actually about this
+	game: how big, how long, and which way is down.
 	~#
 	method : BuildSparks() ~ Nil {
-		count := 24;
-
-		@sparks := PropBatch->New(Mesh->Quad(0.5), Shader->BillboardInstanced());
+		@sparks := Particles->New(48);
 		@sparks->SetCamera(@camera);
-		@sparks->SetAdditive(true);
+		@sparks->SetLifetime(0.4);
+		@sparks->SetSize(0.5, 0.0);
+		# Falling, and slowing, so a burst reads as debris rather than fireworks.
+		@sparks->SetGravity(-6.0);
+		@sparks->SetDrag(2.5);
 
 		glow := Material->New(SparkTexture());
 		glow->SetTint(1.0, 0.85, 0.45);
 		@sparks->SetMaterial(glow);
-
-		@spark_life := Float->New[count];
-		@spark_next := 0;
-
-		for(i := 0; i < count; i += 1;) {
-			# Parked far below the floor rather than made invisible: a batch draws
-			# every instance in its buffer, so "not visible" has to mean "not
-			# anywhere you are looking".
-			at := @sparks->Add(0.0, -500.0, 0.0);
-			at->SetScale(0.0, 0.0, 1.0);
-			@spark_life[i] := 0.0;
-		};
 	}
 
 	#~
@@ -332,26 +315,6 @@ class ShootingRange {
 		surface->Free();
 
 		return texture;
-	}
-
-	#~
-	Light a spark at a point, reusing the oldest slot.
-
-	A ring rather than a list: a fixed number of instances, each either alive or
-	parked, so the batch never grows and nothing is allocated during play.
-	~#
-	method : Spark(x : Float, y : Float, z : Float) ~ Nil {
-		at := @sparks->Get(@spark_next);
-		if(at <> Nil) {
-			at->SetPosition(x, y, z);
-			at->SetScale(0.55, 0.55, 1.0);
-			@spark_life[@spark_next] := 0.35;
-		};
-
-		@spark_next += 1;
-		if(@spark_next >= @sparks->GetCount()) {
-			@spark_next := 0;
-		};
 	}
 
 	method : AddPost(x : Float, z : Float) ~ Nil {
@@ -468,22 +431,7 @@ class ShootingRange {
 		@miss_flash -= delta * 3.0;
 		if(@miss_flash < 0.0) { @miss_flash := 0.0; };
 
-		# Sparks shrink out and then park. The batch is dynamic, so moving a
-		# transform is enough -- no MarkMoved needed.
-		each(i : @spark_life) {
-			if(@spark_life[i] > 0.0) {
-				@spark_life[i] -= delta;
-				at := @sparks->Get(i);
-				if(@spark_life[i] <= 0.0) {
-					at->SetPosition(0.0, -500.0, 0.0);
-					at->SetScale(0.0, 0.0, 1.0);
-				}
-				else {
-					size := @spark_life[i] * 1.6;
-					at->SetScale(size, size, 1.0);
-				};
-			};
-		};
+		@sparks->Update(delta);
 
 		each(i : @targets) {
 			if(@target_life[i] > 0.0) {
@@ -537,11 +485,11 @@ class ShootingRange {
 			return;
 		};
 
-		# Where the ray actually struck, nudged along the surface normal so the
-		# quad sits in front of the wall rather than z-fighting with it.
-		Spark(hit->GetX() + hit->GetNormalX() * 0.05,
+		# A spray from where the ray actually struck, thrown back along the surface
+		# normal so it leaves the wall rather than sinking into it.
+		@sparks->Burst(hit->GetX() + hit->GetNormalX() * 0.05,
 			hit->GetY() + hit->GetNormalY() * 0.05,
-			hit->GetZ() + hit->GetNormalZ() * 0.05);
+			hit->GetZ() + hit->GetNormalZ() * 0.05, 8, 2.2);
 
 		prop := hit->GetProp();
 		if(prop = Nil) {

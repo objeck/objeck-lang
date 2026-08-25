@@ -358,9 +358,20 @@ bundle Game.OpenGL {
 		#~
 		How thick GL_LINES draws, in pixels.
 
-		Drivers are allowed to support only 1.0 for antialiased lines, and many do
-		exactly that -- so treat anything above 1 as a request.
-		@param width thickness in pixels
+		Treat anything above 1.0 as a REQUEST, not a setting. A core profile is
+		allowed to refuse it outright with GL_INVALID_VALUE, and the two renderers
+		this bundle is tested on disagree: Mesa refuses 3.0, desktop NVIDIA accepts
+		it silently. A program that needs thick lines reliably has to draw them as
+		quads.
+
+		A refusal is REPORTED through GL->GetLastError and the GL error is consumed
+		here rather than left standing. That second part matters more than it
+		looks: GL errors persist until something reads them, so without it a single
+		wide-line request at startup would surface as a failure in the next
+		unrelated GetError call, anywhere in the program. This exact thing turned
+		one CI leg red while the check that failed was three blocks away from the
+		call that caused it.
+		@param width thickness in pixels; only 1.0 is guaranteed
 		~#
 		function : SetLineWidth(width : Float) ~ Nil {
 			array_args := Base->New[1];
@@ -9338,6 +9349,491 @@ bundle Game.OpenGL {
 			};
 			@shader := Nil;
 			@owns_shader := false;
+		}
+	}
+
+	#~
+	A pool of short-lived camera-facing sprites.
+
+	Sparks, smoke, dust, embers, muzzle flashes, magic. Everything needed for
+	these already existed -- billboards face the camera, a PropBatch draws
+	thousands in one call, additive blending needs no sorting -- and every
+	program still had to write the same three things by hand: a ring of slots, a
+	life per slot, and somewhere to park the dead ones.
+
+	The FPS demo that ships with Objeck wrote exactly that, which is what this
+	replaces.
+
+	```
+	sparks := Particles->New(64);
+	sparks->SetCamera(camera);
+	sparks->SetTexture(glow);
+	scene->AddBatch(sparks->GetBatch());
+	...
+	sparks->Update(window->GetDelta());
+	sparks->Burst(x, y, z, 12, 2.5);
+	```
+
+	## Fixed capacity, on purpose
+
+	The pool never grows. Emitting into a full one overwrites the OLDEST
+	particle rather than allocating, so a frame costs no allocation however hard
+	it is emitting -- which is the property that matters in a draw loop, and the
+	reason a growable pool would be the wrong shape even though it would look
+	more accommodating.
+
+	Dead particles are parked far below the world rather than hidden, because a
+	batch draws every instance in its buffer: there is no per-instance visibility
+	to switch off, so "invisible" has to mean "nowhere you are looking".
+
+	## What varies per particle, and what does not
+
+	Position, velocity, age and size are per particle. COLOUR is not: a batch has
+	one material, so a system is one colour, set by SetTexture or SetMaterial.
+	Two colours are two systems. Per-particle colour would mean a second instance
+	attribute stream, which PropBatch does not carry.
+
+	Additive by default, which is right for anything that emits light and wrong
+	for smoke -- SetAdditive(false) for that, and then the sprite's own alpha does
+	the work.
+	~#
+	class Particles implements Freeable {
+		@batch : PropBatch;
+		@mesh : Mesh;
+		@shader : Shader;
+		@owns_parts : Bool;
+
+		# Three floats of velocity per particle, flat rather than as objects: this
+		# is walked every frame and a Vector3 each would be an allocation per
+		# particle per emit.
+		@velocity : Float[];
+		@life : Float[];
+		@capacity : Int;
+		@next : Int;
+		@alive : Int;
+
+		@lifetime : Float;
+		@gravity : Float;
+		@drag : Float;
+		@start_size : Float;
+		@end_size : Float;
+		@seed : Int;
+
+		#~
+		A system with its own quad and billboard shader, both owned.
+		@param capacity how many particles can be alive at once
+		~#
+		New(capacity : Int) {
+			Init(capacity, Mesh->Quad(0.5), Shader->BillboardInstanced(), true);
+		}
+
+		#~
+		A system drawing geometry you supply.
+
+		The shader must be an instanced one that reads a "view" uniform, which in
+		practice means Shader->BillboardInstanced or something shaped like it.
+		Neither the mesh nor the shader is owned, so Free leaves both alone.
+		@param capacity how many particles can be alive at once
+		@param mesh the sprite geometry, usually Mesh->Quad
+		@param shader an instanced billboard program
+		~#
+		New(capacity : Int, mesh : Mesh, shader : Shader) {
+			Init(capacity, mesh, shader, false);
+		}
+
+		method : Init(capacity : Int, mesh : Mesh, shader : Shader, owns : Bool) ~ Nil {
+			if(capacity < 1) {
+				capacity := 1;
+			};
+
+			@capacity := capacity;
+			@mesh := mesh;
+			@shader := shader;
+			@owns_parts := owns;
+
+			@batch := PropBatch->New(mesh, shader);
+			@batch->SetAdditive(true);
+
+			@velocity := Float->New[capacity * 3];
+			@life := Float->New[capacity];
+			@next := 0;
+			@alive := 0;
+
+			@lifetime := 0.6;
+			@gravity := 0.0;
+			@drag := 0.0;
+			@start_size := 0.4;
+			@end_size := 0.0;
+			@seed := 1;
+
+			# Every slot exists from the start, parked. The buffer is therefore the
+			# same size on frame one as on frame ten thousand.
+			for(i := 0; i < capacity; i += 1;) {
+				at := @batch->Add(0.0, PARKED(), 0.0);
+				at->SetScale(0.0, 0.0, 1.0);
+				@life[i] := 0.0;
+			};
+		}
+
+		#~
+		Where dead particles wait. Far enough below any plausible world that a
+		camera would have to be looking for them.
+		~#
+		function : PARKED() ~ Float {
+			return -100000.0;
+		}
+
+		#~
+		Is the system usable -- a live mesh, shader and batch.
+		@return true when it can draw
+		~#
+		method : public : IsOk() ~ Bool {
+			return @batch <> Nil & @batch->IsOk();
+		}
+
+		#~
+		What went wrong, if anything.
+		@return the batch's error, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			if(@batch = Nil) {
+				return "";
+			};
+
+			return @batch->GetError();
+		}
+
+		#~
+		The batch this system draws through.
+
+		Hand it to Scene->AddBatch and the scene draws it in the right place, with
+		the additive state handled. Or call Draw directly for a system that is not
+		part of a scene.
+		@return the batch; do NOT free it, the system owns it
+		~#
+		method : public : GetBatch() ~ PropBatch {
+			return @batch;
+		}
+
+		#~
+		The camera a billboard shader needs. Required -- without it the sprites
+		collapse onto the origin's basis.
+		@param camera the eye
+		~#
+		method : public : SetCamera(camera : Camera) ~ Nil {
+			@batch->SetCamera(camera);
+		}
+
+		#~
+		The sprite texture, untinted.
+		@param texture what each particle draws
+		~#
+		method : public : SetTexture(texture : Texture2D) ~ Nil {
+			@batch->SetMaterial(Material->New(texture));
+		}
+
+		#~
+		The material, for a tint or an opacity as well as a texture.
+		@param material how every particle is drawn -- one for the whole system
+		~#
+		method : public : SetMaterial(material : Material) ~ Nil {
+			@batch->SetMaterial(material);
+		}
+
+		#~
+		Additive blending, on by default.
+
+		Right for anything that emits light. Turn it off for smoke or dust, where
+		the sprite should obscure what is behind it rather than brighten it -- and
+		note that non-additive particles are NOT sorted against each other, so
+		overlapping soft-alpha sprites will blend in instance order.
+		@param additive false for ordinary blending
+		~#
+		method : public : SetAdditive(additive : Bool) ~ Nil {
+			@batch->SetAdditive(additive);
+		}
+
+		#~
+		How long a particle lives, in seconds.
+		@param seconds must be above zero
+		~#
+		method : public : SetLifetime(seconds : Float) ~ Nil {
+			if(seconds > 0.0) {
+				@lifetime := seconds;
+			};
+		}
+
+		#~
+		Downward acceleration, in world units per second squared.
+
+		0 by default, which suits sparks and magic. Around -9.8 for anything that
+		should fall; a small positive value makes smoke rise.
+		@param gravity acceleration on the y axis
+		~#
+		method : public : SetGravity(gravity : Float) ~ Nil {
+			@gravity := gravity;
+		}
+
+		#~
+		How quickly a particle loses speed, as a fraction per second.
+
+		0 keeps its velocity forever; 1.0 brings it to a near stop within a
+		second. What makes a spray settle rather than fly off.
+		@param drag 0.0 to about 4.0
+		~#
+		method : public : SetDrag(drag : Float) ~ Nil {
+			if(drag >= 0.0) {
+				@drag := drag;
+			};
+		}
+
+		#~
+		The size a particle starts and ends at, in world units.
+
+		Shrinking to zero is how a particle disappears here, because the alpha is
+		the same for every instance -- see the note on the class.
+		@param start size when emitted
+		@param finish size at the end of its life
+		~#
+		method : public : SetSize(start : Float, finish : Float) ~ Nil {
+			@start_size := start;
+			@end_size := finish;
+		}
+
+		#~
+		Make the spray reproducible.
+
+		Bursts use a generator of their own rather than the system's, so the same
+		seed gives the same spray on every machine and every run -- which is worth
+		more in a demo people compare than novelty is.
+		@param seed any non-zero value
+		~#
+		method : public : SetSeed(seed : Int) ~ Nil {
+			@seed := seed;
+		}
+
+		#~
+		@return how many particles are currently alive
+		~#
+		method : public : GetAlive() ~ Int {
+			return @alive;
+		}
+
+		#~
+		@return how many can be alive at once
+		~#
+		method : public : GetCapacity() ~ Int {
+			return @capacity;
+		}
+
+		#~
+		Emit one particle, motionless.
+		@param x where
+		@param y where
+		@param z where
+		~#
+		method : public : Emit(x : Float, y : Float, z : Float) ~ Nil {
+			Emit(x, y, z, 0.0, 0.0, 0.0);
+		}
+
+		#~
+		Emit one particle with a velocity.
+
+		Overwrites the oldest slot when the pool is full, rather than growing or
+		refusing. A system emitting faster than its capacity allows shows shorter
+		trails, which is a visible and recoverable symptom -- unlike an allocation
+		in a draw loop.
+		@param x where
+		@param y where
+		@param z where
+		@param vx world units per second
+		@param vy world units per second
+		@param vz world units per second
+		~#
+		method : public : Emit(x : Float, y : Float, z : Float,
+				vx : Float, vy : Float, vz : Float) ~ Nil {
+			slot := @next;
+			at := @batch->Get(slot);
+			if(at = Nil) {
+				return;
+			};
+
+			if(@life[slot] <= 0.0) {
+				@alive += 1;
+			};
+
+			at->SetPosition(x, y, z);
+			at->SetScale(@start_size, @start_size, 1.0);
+
+			base := slot * 3;
+			@velocity[base] := vx;
+			@velocity[base + 1] := vy;
+			@velocity[base + 2] := vz;
+			@life[slot] := @lifetime;
+
+			@next += 1;
+			if(@next >= @capacity) {
+				@next := 0;
+			};
+		}
+
+		#~
+		Emit several at once, sprayed outwards.
+
+		The usual shape for an impact: a handful of particles leaving one point in
+		scattered directions.
+		@param x where
+		@param y where
+		@param z where
+		@param count how many
+		@param speed how fast they leave, in world units per second
+		~#
+		method : public : Burst(x : Float, y : Float, z : Float,
+				count : Int, speed : Float) ~ Nil {
+			for(i := 0; i < count; i += 1;) {
+				# A direction on the unit sphere, near enough. Three signed randoms
+				# normalised is biased towards the cube's corners; for a spray that
+				# nobody measures it is the right trade against three trig calls.
+				dx := NextSigned();
+				dy := NextSigned();
+				dz := NextSigned();
+
+				length := (dx * dx + dy * dy + dz * dz)->Sqrt();
+				if(length < 0.0001) {
+					dx := 0.0; dy := 1.0; dz := 0.0; length := 1.0;
+				};
+
+				scale := speed / length;
+				Emit(x, y, z, dx * scale, dy * scale, dz * scale);
+			};
+		}
+
+		#~
+		Move, age and retire every particle.
+
+		Call once per frame with the frame time. Nothing is allocated: the pool,
+		the velocities and the lives are all fixed arrays, and the batch repacks
+		into a buffer it already owns.
+		@param delta seconds since the last frame, e.g. GLWindow->GetDelta
+		~#
+		method : public : Update(delta : Float) ~ Nil {
+			if(delta <= 0.0) {
+				return;
+			};
+
+			# Drag, integrated implicitly rather than linearly.
+			#
+			# The obvious form is `1 - drag * delta`, and it is wrong twice: it goes
+			# NEGATIVE once drag * delta passes 1, which reverses the particle, and
+			# clamping that to zero stops it dead instead -- so a frame-rate hitch
+			# turns a drifting spray into one that freezes in mid-air. This form is
+			# always between 0 and 1, needs no clamp, and behaves the same at 30 fps
+			# as at 240.
+			keep := 1.0 / (1.0 + @drag * delta);
+
+			@alive := 0;
+			each(i : @life) {
+				if(@life[i] > 0.0) {
+					@life[i] -= delta;
+					at := @batch->Get(i);
+					base := i * 3;
+
+					if(@life[i] <= 0.0) {
+						@life[i] := 0.0;
+						at->SetPosition(0.0, PARKED(), 0.0);
+						at->SetScale(0.0, 0.0, 1.0);
+					}
+					else {
+						@alive += 1;
+
+						vx := @velocity[base] * keep;
+						vy := (@velocity[base + 1] + @gravity * delta) * keep;
+						vz := @velocity[base + 2] * keep;
+						@velocity[base] := vx;
+						@velocity[base + 1] := vy;
+						@velocity[base + 2] := vz;
+
+						at->SetPosition(at->GetX() + vx * delta,
+							at->GetY() + vy * delta,
+							at->GetZ() + vz * delta);
+
+						# Linear from start to end over the particle's life.
+						t := @life[i] / @lifetime;
+						size := @end_size + (@start_size - @end_size) * t;
+						at->SetScale(size, size, 1.0);
+					};
+				};
+			};
+		}
+
+		#~
+		Retire every particle at once.
+		~#
+		method : public : Clear() ~ Nil {
+			each(i : @life) {
+				@life[i] := 0.0;
+				at := @batch->Get(i);
+				at->SetPosition(0.0, PARKED(), 0.0);
+				at->SetScale(0.0, 0.0, 1.0);
+			};
+
+			@alive := 0;
+			@next := 0;
+		}
+
+		#~
+		Draw the system on its own, for one that is not part of a Scene.
+
+		A system inside a Scene should NOT be drawn this way as well -- hand its
+		batch to Scene->AddBatch and let the scene do it, so the additive state is
+		set up around the draw.
+		@param view_projection the camera matrix
+		~#
+		method : public : Draw(view_projection : Float[]) ~ Nil {
+			GL->Enable(Capability->GL_BLEND);
+			GL->SetBlend(BlendFactor->GL_SRC_ALPHA, BlendFactor->GL_ONE);
+			GL->SetDepthWrite(false);
+
+			@batch->Draw(view_projection);
+
+			GL->SetDepthWrite(true);
+			GL->Disable(Capability->GL_BLEND);
+		}
+
+		#~
+		A signed random in -1..1, from a generator of this system's own.
+		~#
+		method : NextSigned() ~ Float {
+			# A linear congruential step, masked to 31 bits so it stays positive.
+			@seed := (@seed * 1103515245 + 12345) and 0x7FFFFFFF;
+
+			return (@seed % 20000)->As(Float) / 10000.0 - 1.0;
+		}
+
+		#~
+		Release the batch, and the mesh and shader if this system built them.
+
+		Idempotent. A mesh or shader handed in by the three-argument constructor
+		belongs to the caller and is left alone.
+		~#
+		method : public : Free() ~ Nil {
+			if(@batch <> Nil) {
+				@batch->Free();
+				@batch := Nil;
+			};
+
+			if(@owns_parts) {
+				if(@mesh <> Nil) {
+					@mesh->Free();
+				};
+				if(@shader <> Nil) {
+					@shader->Free();
+				};
+			};
+
+			@mesh := Nil;
+			@shader := Nil;
+			@owns_parts := false;
 		}
 	}
 
