@@ -739,6 +739,13 @@ mkdir %TARGET%\examples\
 mkdir %TARGET%\examples\media\
 del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs %TARGET%\examples\
+REM The OpenGL examples live in programs\examples rather than programs\deploy,
+REM so no distribution ever carried them. They find the bundled font relative to
+REM either bin or here, so they run from where they land.
+mkdir %TARGET%\examples\opengl
+copy ..\..\programs\examples\gl_*.obs %TARGET%\examples\opengl
+copy ..\..\programs\examples\cube_gl.obs %TARGET%\examples\opengl
+copy ..\..\programs\examples\gl_crystal.obj %TARGET%\examples\opengl
 xcopy /e ..\..\programs\deploy\media\*.png %TARGET%\examples\media\
 xcopy /e ..\..\programs\deploy\media\*.wav %TARGET%\examples\media\
 xcopy /e ..\..\programs\deploy\data\* %TARGET%\examples\data\

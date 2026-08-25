@@ -5116,6 +5116,8 @@ bundle Game.OpenGL {
 		@limit : Int;
 
 		@color : Color;
+		# Set only when this overlay loaded the font itself.
+		@owned_font : Font;
 		# The tint applied to the next Rect/Text/Line, as 0..1 components. Separate
 		# from @color, which is baked into rasterised glyphs and cannot change
 		# without re-rasterising every one of them.
@@ -5200,6 +5202,71 @@ bundle Game.OpenGL {
 		The font used by Text. Not owned -- the caller loads it and frees it.
 		@param font a loaded Font
 		~#
+		#~
+		An overlay using the font that ships with Objeck.
+
+		Three examples had ten identical lines of this -- Font->Init, a hardcoded
+		"../lib/sdl/fonts/lazy.ttf", an IsOk-and-not-null check, SetFont, SetColor,
+		and a Nil on failure that every draw site then had to test for.
+
+		That path is relative, and it only resolves when the program is started
+		from the deploy tree's bin directory. Run the same program from the
+		examples directory it ships in and the font is silently missing. This tries
+		the places it actually lives, so a program works from either.
+
+		The overlay is returned whether or not a font was found -- Text is a no-op
+		without one, so a missing font costs the HUD rather than the program.
+		@param window the window to draw over
+		@param size point size
+		@return the overlay; check IsOk() for the GL side, HasFont() for the text
+		~#
+		function : WithDefaultFont(window : GLWindow, size : Int) ~ Overlay {
+			overlay := Overlay->New(window);
+			if(<>overlay->IsOk()) {
+				return overlay;
+			};
+
+			Font->Init();
+
+			# In the order they are likely: beside the binaries, from a deploy
+			# tree's bin, from an examples directory one level in, and from a
+			# source checkout.
+			candidates := ["lib/sdl/fonts/lazy.ttf",
+				"../lib/sdl/fonts/lazy.ttf",
+				"../../lib/sdl/fonts/lazy.ttf",
+				"../lib/fonts/lazy.ttf"];
+
+			each(i : candidates) {
+				if(<>overlay->HasFont()) {
+					font := Font->New(candidates[i], size);
+					if(font <> Nil & <>font->IsNull()) {
+						overlay->SetFont(font);
+						overlay->OwnFont(font);
+					};
+				};
+			};
+
+			return overlay;
+		}
+
+		#~
+		@return true when a font is set and text will actually draw
+		~#
+		method : public : HasFont() ~ Bool {
+			return @font <> Nil & <>@font->IsNull();
+		}
+
+		#~
+		Take ownership of a font, so Free closes it.
+
+		SetFont deliberately does NOT own what it is given -- a program may share
+		one font between overlays. WithDefaultFont loaded its own, so it says so.
+		@param font the font this overlay should close
+		~#
+		method : public : OwnFont(font : Font) ~ Nil {
+			@owned_font := font;
+		}
+
 		method : public : SetFont(font : Font) ~ Nil {
 			if(font <> @font) {
 				# Cached textures were rasterised with the old font and would keep
@@ -5525,6 +5592,9 @@ bundle Game.OpenGL {
 			ClearCache();
 
 			if(@white <> Nil) { @white->Free(); @white := Nil; };
+			# Only the one WithDefaultFont loaded. A font handed in by SetFont
+			# belongs to the caller and may be shared with another overlay.
+			if(@owned_font <> Nil) { @owned_font->Free(); @owned_font := Nil; };
 			if(@quad <> Nil) { @quad->Free(); @quad := Nil; };
 			if(@shader <> Nil) { @shader->Free(); @shader := Nil; };
 		}

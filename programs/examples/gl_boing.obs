@@ -70,7 +70,6 @@ class BoingBall {
 	@shadows : ShadowMap;
 
 	@overlay : Overlay;
-	@font : Font;
 	@fps_text : String;
 	@fps_timer : Float;
 
@@ -338,11 +337,11 @@ class BoingBall {
 
 		# The overlay is optional: a tree assembled by hand might not have the
 		# fonts, and a missing frame counter is not a reason to refuse to run.
-		Font->Init();
-		@font := Font->New("../lib/sdl/fonts/lazy.ttf", 20);
-		@overlay := Overlay->New(@window);
-		if(@overlay->IsOk() & @font <> Nil & <>@font->IsNull()) {
-			@overlay->SetFont(@font);
+		# One call instead of ten lines, and it finds the shipped font from a
+		# deploy tree's bin OR from the examples directory -- the hardcoded
+		# relative path only worked from one of them.
+		@overlay := Overlay->WithDefaultFont(@window, 20);
+		if(@overlay->IsOk() & @overlay->HasFont()) {
 			@overlay->SetColor(235, 240, 250);
 		}
 		else {
@@ -455,9 +454,6 @@ class BoingBall {
 		# must NOT be freed separately.
 		if(@target <> Nil) { @target->Free(); };
 		if(@overlay <> Nil) { @overlay->Free(); };
-		# The overlay does not own the font -- SetFont says so -- so it has to be
-		# closed here. Until Font->Free existed this simply leaked.
-		if(@font <> Nil & <>@font->IsNull()) { @font->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
 	}

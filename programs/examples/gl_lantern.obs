@@ -140,7 +140,6 @@ class Lantern {
 	@won : Bool;
 
 	@overlay : Overlay;
-	@font : Font;
 	# Synthesised at startup rather than shipped, so this example needs no asset
 	# files. Nil when the machine has no working audio output, which is normal on
 	# a CI runner and is not a reason to refuse to run.
@@ -724,14 +723,11 @@ class Lantern {
 	}
 
 	method : BuildOverlay() ~ Nil {
-		Font->Init();
-		# The path is relative to the deploy tree's bin directory, which is where
-		# the runners start the program. It is duplicated verbatim in two other
-		# examples -- an Overlay->WithDefaultFont would end that.
-		@font := Font->New("../lib/sdl/fonts/lazy.ttf", 18);
-		@overlay := Overlay->New(@window);
-		if(@overlay->IsOk() & @font <> Nil & <>@font->IsNull()) {
-			@overlay->SetFont(@font);
+		# One call. It finds the shipped font whether this is started from a
+		# deploy tree's bin or from the examples directory it ships in -- the
+		# hardcoded relative path this replaced only worked from the first.
+		@overlay := Overlay->WithDefaultFont(@window, 18);
+		if(@overlay->IsOk() & @overlay->HasFont()) {
 			@overlay->SetColor(236, 224, 198);
 		}
 		else {
@@ -761,9 +757,6 @@ class Lantern {
 		if(@cube <> Nil) { @cube->Free(); };
 		if(@shadows <> Nil) { @shadows->Free(); };
 		if(@overlay <> Nil) { @overlay->Free(); };
-		# The overlay does not own the font -- SetFont says so -- so it has to be
-		# closed here. Until Font->Free existed this simply leaked.
-		if(@font <> Nil & <>@font->IsNull()) { @font->Free(); };
 		if(@shader <> Nil) { @shader->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
