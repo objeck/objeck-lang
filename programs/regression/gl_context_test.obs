@@ -100,6 +100,7 @@ class GlContextTest {
 		CheckPointShadows();
 		CheckOverlay();
 		CheckInstancing();
+		CheckPropBatch();
 		CheckObjLoading();
 		CheckDrawModesAndBlending();
 		CheckMeshValidation();
@@ -1975,6 +1976,294 @@ class GlContextTest {
 		screen->Draw();
 
 		return GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x000000FF;
+	}
+
+	#~
+	PropBatch: the object-layer route to instancing.
+
+	CheckInstancing already proves the Mesh-level API works. What this proves is
+	that the wrapper around it does not quietly lose the thing that makes it
+	instancing -- and the specific way it could is that Pack writes every
+	instance's matrix into the same slot, or the wrong slot, which looks exactly
+	like a working batch if the fixture reads one point or draws instances that
+	overlap. So the placements are read separately, with a gap between them that
+	must stay empty.
+
+	The last block is the one that matters most. Every check above it is a batch
+	on its own, and a batch on its own was never the risk: the risk is that a
+	batch binds its own shader mid-frame and the scene carries on as if it had
+	not. That is a composition failure, and composition is exactly what the last
+	round of nine defects were made of -- every single-feature fixture passed.
+	~#
+	method : CheckPropBatch() ~ Nil {
+		cube := Mesh->Cube(0.6);
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a cube and texture for the batch checks", cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		batch := PropBatch->New(cube);
+		if(<>Check("PropBatch->New builds a working instanced shader", batch->IsOk())) {
+			log := batch->GetShader()->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		Check("a new batch holds no instances", batch->GetCount() = 0);
+		Check("and reports no error", batch->GetError()->Size() = 0);
+		Check("and has no bounds to speak of", batch->GetBoundsRadius() = 0.0);
+
+		batch->SetMaterial(Material->New(white));
+
+		# The same three separated positions CheckInstancing uses, for the same
+		# reason: at distance 8 with a 60-degree fov they land near 23%, 50% and
+		# 77% across, far enough apart that one matrix applied to all three cannot
+		# satisfy the readback.
+		left_at := batch->Add(-2.5, 0.0, 0.0);
+		batch->Add(0.0, 0.0, 0.0);
+		batch->Add(2.5, 0.0, 0.0);
+		Check("Add returns a transform to steer the instance", left_at <> Nil);
+		Check("the batch holds all three", batch->GetCount() = 3);
+		Check("Get hands one back", batch->Get(0) = left_at);
+		Check("an out-of-range index is Nil rather than a crash",
+			batch->Get(9) = Nil & batch->Get(-1) = Nil);
+
+		light := LightRig->New();
+		light->SetAmbient(1.0, 1.0, 1.0);
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 8.0));
+		camera->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		batch->SetLightRig(light);
+
+		mid_y := @pixel_h / 2;
+		black := 0xFF000000;
+		left_x := (@pixel_w * 23) / 100;
+		right_x := (@pixel_w * 77) / 100;
+		gap_x := (@pixel_w * 36) / 100;
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+
+		left := GL->ReadPixel(left_x, mid_y);
+		middle := GL->ReadPixel(@pixel_w / 2, mid_y);
+		right := GL->ReadPixel(right_x, mid_y);
+		gap := GL->ReadPixel(gap_x, mid_y);
+		"  batch: left=0x{$left} middle=0x{$middle} right=0x{$right} gap=0x{$gap}"->PrintLine();
+
+		Check("the batch drew its middle instance", middle <> black);
+		# THE assertion: three placements, three occupied points. A Pack that
+		# writes one matrix three times puts everything in one place.
+		Check("and the left one at its own placement", left <> black);
+		Check("and the right one at its own", right <> black);
+		Check("with nothing in between", gap = black);
+		Check("the upload reported no error", batch->GetError()->Size() = 0);
+
+		# --- bounds cover every instance, not just the first -----------------
+		radius := batch->GetBoundsRadius();
+		centre_x := batch->GetBoundsX();
+		"  batch bounds: centre_x={$centre_x} radius={$radius}"->PrintLine();
+		Check("the bounding sphere is centred on the instances", centre_x->Abs() < 0.01);
+		# Must reach the outermost instance (2.5) plus that instance's own extent.
+		# A radius computed from one instance, or from the mesh alone, is smaller.
+		Check("and reaches past the outermost instance", radius > 2.5);
+
+		# --- a per-object shader is refused, loudly --------------------------
+		# The failure being caught: handing a batch an ordinary shader draws
+		# nothing, or everything stacked at the origin, and neither symptom points
+		# anywhere near the mistake.
+		wrong_shader := Shader->LitTextured();
+		wrong_cube := Mesh->Cube(0.6);
+		wrong := PropBatch->New(wrong_cube, wrong_shader);
+		wrong->Add(0.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		wrong->Draw(camera->GetViewProjection());
+		Check("a per-object shader handed to a batch is reported",
+			wrong->GetError()->Size() > 0);
+		wrong->Free();
+		wrong_shader->Free();
+		wrong_cube->Free();
+
+		# --- static batches pack once, and say when that stops being true ----
+		batch->SetDynamic(false);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+		Check("a static batch still draws", GL->ReadPixel(left_x, mid_y) <> black);
+
+		# Move the left instance off screen WITHOUT telling the batch. It must not
+		# move -- that is the whole contract of SetDynamic(false), and a batch that
+		# repacked anyway would make MarkMoved pointless and the flag a lie.
+		left_at->SetPosition(-40.0, 0.0, 0.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+		Check("a static batch ignores a move it was not told about",
+			GL->ReadPixel(left_x, mid_y) <> black);
+
+		batch->MarkMoved();
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+		Check("and repacks once MarkMoved says so",
+			GL->ReadPixel(left_x, mid_y) = black);
+		Check("leaving the instances it was not asked to move alone",
+			GL->ReadPixel(right_x, mid_y) <> black);
+
+		left_at->SetPosition(-2.5, 0.0, 0.0);
+		batch->SetDynamic(true);
+
+		# --- two batches over one mesh --------------------------------------
+		#
+		# Instance data belongs to the MESH, not to whatever uploaded it. So a
+		# second batch over the same mesh overwrites the first one's matrices, and
+		# the first has no idea: it goes on drawing its own instance COUNT out of a
+		# buffer that now holds someone else's placements.
+		#
+		# Worst for a static batch, which has been told it need never pack again --
+		# so the corruption is permanent rather than lasting one frame. That is the
+		# case here: both batches are static, and the check is that the first one
+		# still draws where it belongs after the second has uploaded.
+		#
+		# Found by this fixture. The first version shared a mesh by accident, two
+		# unrelated static-batch checks went red, and the cause was three blocks
+		# further up.
+		second := PropBatch->New(cube);
+		second->SetMaterial(Material->New(white));
+		second->SetLightRig(light);
+		second->Add(0.0, -2.0, 0.0);
+		second->SetDynamic(false);
+
+		batch->SetDynamic(false);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		# Establishes this batch's matrices on the shared mesh and leaves it clean,
+		# so the only thing that can dirty it afterwards is the second batch.
+		batch->Draw(camera->GetViewProjection());
+		second->Draw(camera->GetViewProjection());
+
+		# Clear BEFORE the draw under test. Without this the first draw above has
+		# already painted the correct pixels and nothing the third draw does can
+		# take them away -- the check then passes with the fix removed, which is
+		# how the first version of it was worthless.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		batch->Draw(camera->GetViewProjection());
+
+		shared_left := GL->ReadPixel(left_x, mid_y);
+		shared_right := GL->ReadPixel(right_x, mid_y);
+		"  shared mesh: left=0x{$shared_left} right=0x{$shared_right}"->PrintLine();
+		# THE assertion: without the generation check the second batch's single
+		# origin matrix is what the first one draws from, so its outer instances
+		# land nowhere.
+		Check("a static batch survives another batch uploading over its mesh",
+			shared_left <> black & shared_right <> black);
+
+		second->Free();
+		batch->SetDynamic(true);
+
+		# --- a batch inside a Scene, which is where the composition lives -----
+		#
+		# The trap: a batch binds its OWN shader, because an instanced program is a
+		# different shape from the per-object one every other thing here uses. If
+		# Scene does not rebind its own afterwards, every uniform the transparent
+		# pass sets afterwards lands in the BATCH's program instead -- so the
+		# transparent geometry draws with a stale matrix or not at all.
+		#
+		# A transparent box is the discriminator on purpose: it is the only thing
+		# Scene draws AFTER the batches, so it is the only thing that can see the
+		# damage. An opaque-only scene passes this either way.
+		scene_shader := Shader->LitTextured();
+		wall := Mesh->Cube();
+		scene := Scene->New(wall, scene_shader);
+		scene->SetLightRig(light);
+		scene->SetCulling(false);
+		scene->SetEye(camera->GetPosition());
+
+		Check("a new scene holds no batches", scene->GetBatchCount() = 0);
+		Check("AddBatch hands the batch back", scene->AddBatch(batch) = batch);
+		Check("and the scene is holding it", scene->GetBatchCount() = 1);
+		Check("GetBatch returns it", scene->GetBatch(0) = batch);
+		Check("an out-of-range batch index is Nil",
+			scene->GetBatch(4) = Nil & scene->GetBatch(-1) = Nil);
+
+		# A blue transparent pane across the middle of the view, in FRONT of the
+		# batch, drawn after it.
+		pane := scene->AddBox(Vector3->New(0.0, 0.0, 4.0), Vector3->New(6.0, 6.0, 0.1), white);
+		pane_material := Material->Colored(0.0, 0.0, 1.0);
+		pane_material->SetOpacity(0.5);
+		pane->SetMaterial(pane_material);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene_shader->Use();
+		scene_shader->SetInt("tex", 0);
+		scene->Draw(camera->GetViewProjection());
+
+		blended := GL->ReadPixel(@pixel_w / 2, mid_y);
+		br := (blended and 0x00FF0000) / 0x10000;
+		bb := (blended and 0x000000FF);
+		"  scene+batch blend: r={$br} b={$bb}"->PrintLine();
+
+		# THE assertion. The pane is blue and half-transparent over a white
+		# instance, so blue must dominate red. If the scene's shader was never
+		# rebound, the pane's mvp went into the instanced program and the pane is
+		# not there at all -- leaving the white instance, where r = b.
+		Check("a transparent box still draws correctly after a batch rebinds",
+			bb > br);
+		Check("the batch counts as one submission, not one per instance",
+			scene->GetDrawnCount() = 2);
+
+		# --- a batch must not change what later draws sample ------------------
+		#
+		# The pane's material is a Material->Colored, which carries no texture, so
+		# it samples whatever is bound on unit 0. Give the batch a GREEN texture and
+		# the pane came back green -- its blue tint multiplied by the batch's
+		# texture instead of by its own white one.
+		#
+		# The underlying fault was older and wider than batches: a box with a
+		# material never bound its OWN texture, so a coloured box only ever looked
+		# right because something else in the frame had bound white first. A batch
+		# just made it reliable enough to see.
+		green := Texture2D->Solid(0xFF00FF00);
+		batch->SetMaterial(Material->New(green));
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene_shader->Use();
+		scene_shader->SetInt("tex", 0);
+		scene->Draw(camera->GetViewProjection());
+
+		leaked := GL->ReadPixel(@pixel_w / 2, mid_y);
+		lg := (leaked and 0x0000FF00) / 0x100;
+		lb := (leaked and 0x000000FF);
+		"  texture leak check: g={$lg} b={$lb}"->PrintLine();
+		Check("a batch's texture does not leak into the transparent pass", lb > 100);
+
+		batch->SetMaterial(Material->New(white));
+		green->Free();
+
+		# --- culling the whole batch ------------------------------------------
+		scene->SetCulling(true);
+		scene->Draw(camera->GetViewProjection());
+		Check("with culling on a batch in view is drawn", scene->GetDrawnCount() = 2);
+
+		for(i := 0; i < 3; i += 1;) {
+			batch->Get(i)->SetPosition(600.0, 0.0, 0.0);
+		};
+		batch->MarkMoved();
+		# Two draws: the first repacks and recomputes the bounds, the second is the
+		# one that can act on them. Culling on a radius the batch has not computed
+		# yet would cull a new batch forever, so it is deliberately not done.
+		scene->Draw(camera->GetViewProjection());
+		scene->Draw(camera->GetViewProjection());
+		Check("and one moved far off screen is culled", scene->GetCulledCount() = 1);
+		Check("leaving the pane drawn", scene->GetDrawnCount() = 1);
+
+		scene->Clear();
+		Check("Clear drops the batches too", scene->GetBatchCount() = 0);
+
+		batch->Free();
+		batch->Free();
+		Check("PropBatch->Free is idempotent", true);
+
+		scene_shader->Free();
+		wall->Free();
+		cube->Free();
+		white->Free();
 	}
 
 	#~

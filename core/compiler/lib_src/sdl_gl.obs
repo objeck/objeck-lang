@@ -2787,6 +2787,11 @@ bundle Game.OpenGL {
 		# hand -- after that it lives on the GPU and there is nothing here to read.
 		@min : Vector3;
 		@max : Vector3;
+		# Bumped on every instance upload. The instance buffer belongs to the mesh,
+		# not to whoever filled it, so two PropBatches over one mesh overwrite each
+		# other -- silently, and worst for a batch that has been told it is static
+		# and has stopped repacking. This is how such a batch notices.
+		@instance_generation : Int;
 
 		#~
 		Upload geometry.
@@ -2886,6 +2891,11 @@ bundle Game.OpenGL {
 				return false;
 			};
 
+			# Bumped whether or not the upload succeeds. A failed upload has still
+			# disturbed the buffer as far as anyone else is concerned, and the
+			# conservative answer -- everyone repacks -- is the cheap one.
+			@instance_generation += 1;
+
 			array_args := Base->New[5];
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@mesh);
@@ -2897,6 +2907,19 @@ bundle Game.OpenGL {
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() <> 0;
+		}
+
+		#~
+		How many times this mesh's instance data has been replaced.
+
+		The instance buffer belongs to the mesh. Anything holding a copy of what it
+		last uploaded can compare this against the value it saw then, and know its
+		data is still there rather than assuming so -- which is what PropBatch does
+		to make a static batch safe when two batches share one mesh.
+		@return a counter, starting at 0
+		~#
+		method : public : GetInstanceGeneration() ~ Int {
+			return @instance_generation;
 		}
 
 		#~
@@ -6124,6 +6147,18 @@ bundle Game.OpenGL {
 		@param shader the program about to draw
 		@param unit the texture unit to bind to, normally 0
 		~#
+		#~
+		Whether this material carries a texture of its own.
+
+		A material without one does NOT bind anything, so whatever a previous draw
+		left on the unit is what gets sampled. Scene uses this to fall back to the
+		box's own texture rather than let the result depend on draw order.
+		@return true when ApplyTo will bind a texture
+		~#
+		method : public : HasTexture() ~ Bool {
+			return @texture <> Nil & @texture->IsOk();
+		}
+
 		method : public : ApplyTo(shader : Shader, unit : Int) ~ Nil {
 			if(shader = Nil | <>shader->IsOk()) {
 				return;
@@ -8129,6 +8164,525 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	Many copies of one mesh in a single draw call.
+
+	Instancing has worked at the Mesh level since it landed -- SetInstanceMatrices
+	and DrawInstanced, with Shader->LitTexturedInstanced to read the per-instance
+	matrices. What was missing was any route to it from the object layer: Scene and
+	Prop both set an "mvp" uniform per object, and the instanced shader has no
+	"mvp", so pointing a Scene at it drew nothing at all. This is that route.
+
+	A batch is one mesh, one material, many placements:
+
+	```
+	trees := PropBatch->New(trunk_mesh);
+	trees->SetMaterial(bark);
+	for(i := 0; i < 400; i += 1;) {
+		trees->Add(x, 0.0, z);
+	};
+	trees->SetDynamic(false);
+	...
+	trees->Draw(camera->GetViewProjection());
+	```
+
+	400 trees, one draw call, one uniform upload.
+
+	## One mesh, one material -- not a limitation of this class
+
+	That is what the hardware does. Every instance runs the same program over the
+	same vertices and the only thing that varies is the per-instance matrix, so a
+	batch cannot hold two different meshes or give one tree different bark. Two
+	kinds of tree are two batches. Worth stating plainly, because the obvious
+	expectation of a thing called a batch is a container that accepts anything.
+
+	## Static versus dynamic
+
+	The transforms are objects the caller keeps and can move at any time, and
+	nothing tells the batch when that happens. So by default the matrices are
+	repacked and re-uploaded every frame, which is always correct and still costs
+	exactly one draw call -- the saving that matters most.
+
+	A batch that does not move should say so with SetDynamic(false): it then packs
+	once and never again, and the caller calls MarkMoved() if that ever stops being
+	true. Getting that wrong is visible immediately -- the batch renders at its old
+	placements -- rather than subtly, which is why the fast path is the one you opt
+	into rather than the default.
+
+	## Culling is all or nothing
+
+	GetBoundsRadius covers every instance, so a batch is either wholly submitted or
+	wholly skipped. Per-instance culling would mean repacking and re-uploading the
+	buffer whenever visibility changed, which costs more than the draw calls it
+	saves. Batch things that are near each other; a batch spread across the whole
+	world is never off screen and so never culls.
+	~#
+	class PropBatch implements Freeable {
+		@mesh : Mesh;
+		@shader : Shader;
+		# Whether Free should delete the shader. True only for the one this class
+		# built itself; a shader handed in belongs to the caller and may be shared.
+		@owns_shader : Bool;
+		@material : Material;
+		@transforms : Vector<Transform>;
+		# Packed count * 16 floats. Grown by doubling, so a batch that fills up
+		# gradually does not reallocate on every Add.
+		@matrices : Float[];
+		@count : Int;
+		@dirty : Bool;
+		@dynamic : Bool;
+		# The mesh's instance generation as of this batch's last pack. When the mesh
+		# has moved on, someone else uploaded over this batch's data and it has to
+		# pack again however static it was told it is.
+		@generation : Int;
+		@visible : Bool;
+		@light : Light;
+		@rig : LightRig;
+		# Asked once, the way Scene does it: setting a uniform that does not exist
+		# is reported, so probing per frame would file a diagnostic per frame.
+		@wants_vp : Int;
+		@wants_sampler : Int;
+		# Bounds over every instance, recomputed whenever the matrices are packed.
+		@cx : Float; @cy : Float; @cz : Float;
+		@radius : Float;
+		@error : String;
+
+		#~
+		A batch drawing the given mesh with a built-in instanced shader.
+
+		The shader is created and OWNED here, so Free releases it. Use the
+		two-argument constructor to supply your own, which is then the caller's to
+		free.
+		@param mesh the geometry every instance draws; NOT owned by the batch
+		~#
+		New(mesh : Mesh) {
+			Init(mesh, Shader->LitTexturedInstanced(), true);
+		}
+
+		#~
+		A batch drawing the given mesh with a shader you supply.
+
+		The shader must read the per-instance model matrix from attribute locations
+		3 to 6 and take the camera through a "view_projection" uniform.
+		Shader->LitTexturedInstanced is the built-in one; anything with an "mvp"
+		uniform is the ordinary per-object shape and will not work here.
+		@param mesh the geometry; NOT owned by the batch
+		@param shader an instanced program; NOT owned by the batch
+		~#
+		New(mesh : Mesh, shader : Shader) {
+			Init(mesh, shader, false);
+		}
+
+		method : Init(mesh : Mesh, shader : Shader, owns : Bool) ~ Nil {
+			@mesh := mesh;
+			@shader := shader;
+			@owns_shader := owns;
+			@material := Nil;
+			@transforms := Vector->New()<Transform>;
+			@matrices := Nil;
+			@count := 0;
+			@dirty := true;
+			@dynamic := true;
+			@generation := -1;
+			@visible := true;
+			@light := Nil;
+			@rig := Nil;
+			@wants_vp := -1;
+			@wants_sampler := -1;
+			@cx := 0.0; @cy := 0.0; @cz := 0.0;
+			@radius := 0.0;
+			@error := "";
+		}
+
+		#~
+		Is the batch usable -- a live mesh and a live shader.
+		@return true when it can draw
+		~#
+		method : public : IsOk() ~ Bool {
+			return @mesh <> Nil & @mesh->IsOk() & @shader <> Nil & @shader->IsOk();
+		}
+
+		#~
+		What went wrong, if anything. Empty when nothing has.
+		@return the last error, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Place another instance.
+		@param transform where it goes; held, not copied, so moving it later moves
+		the instance
+		~#
+		method : public : Add(transform : Transform) ~ Nil {
+			if(transform <> Nil) {
+				@transforms->AddBack(transform);
+				@dirty := true;
+			};
+		}
+
+		#~
+		Place another instance at a point, unrotated and unscaled.
+		@param x where to put it
+		@param y where to put it
+		@param z where to put it
+		@return the new transform, to turn or scale it
+		~#
+		method : public : Add(x : Float, y : Float, z : Float) ~ Transform {
+			at := Transform->New();
+			at->SetPosition(x, y, z);
+			@transforms->AddBack(at);
+			@dirty := true;
+
+			return at;
+		}
+
+		#~
+		@param index which instance
+		@return its transform, or Nil if the index is out of range
+		~#
+		method : public : Get(index : Int) ~ Transform {
+			if(index < 0 | index >= @transforms->Size()) {
+				return Nil;
+			};
+
+			return @transforms->Get(index);
+		}
+
+		#~
+		@return how many instances the batch holds
+		~#
+		method : public : GetCount() ~ Int {
+			return @transforms->Size();
+		}
+
+		#~
+		Drop every instance. The mesh, shader and material are untouched.
+		~#
+		method : public : Clear() ~ Nil {
+			@transforms := Vector->New()<Transform>;
+			@count := 0;
+			@dirty := true;
+			@radius := 0.0;
+		}
+
+		#~
+		Whether the matrices are repacked every frame.
+
+		True by default, which is always correct. False packs once and is the right
+		answer for anything that does not move -- scenery, a grid, a crowd that
+		stands still -- but then a transform changed afterwards has no effect until
+		MarkMoved is called.
+		@param dynamic true to repack every frame
+		~#
+		method : public : SetDynamic(dynamic : Bool) ~ Nil {
+			@dynamic := dynamic;
+			if(dynamic) {
+				@dirty := true;
+			};
+		}
+
+		#~
+		@return whether the batch repacks every frame
+		~#
+		method : public : IsDynamic() ~ Bool {
+			return @dynamic;
+		}
+
+		#~
+		A transform changed and the batch is not dynamic; repack on the next draw.
+
+		Harmless on a dynamic batch, which repacks regardless.
+		~#
+		method : public : MarkMoved() ~ Nil {
+			@dirty := true;
+		}
+
+		#~
+		How every instance is drawn. One material for the whole batch -- see the
+		note on the class.
+		@param material the material, or Nil to inherit whatever is bound
+		~#
+		method : public : SetMaterial(material : Material) ~ Nil {
+			@material := material;
+		}
+
+		#~
+		@return the material, or Nil
+		~#
+		method : public : GetMaterial() ~ Material {
+			return @material;
+		}
+
+		#~
+		Light the batch. A batch drawn through a Scene inherits the scene's light
+		when it has none of its own.
+		@param light the light, or Nil
+		~#
+		method : public : SetLight(light : Light) ~ Nil {
+			@light := light;
+		}
+
+		#~
+		Light the batch with a rig, which wins over a single light.
+		@param rig the rig, or Nil
+		~#
+		method : public : SetLightRig(rig : LightRig) ~ Nil {
+			@rig := rig;
+		}
+
+		#~
+		@return the light, or Nil
+		~#
+		method : public : GetLight() ~ Light {
+			return @light;
+		}
+
+		#~
+		@return the rig, or Nil
+		~#
+		method : public : GetLightRig() ~ LightRig {
+			return @rig;
+		}
+
+		#~
+		Draw or skip the whole batch.
+		@param visible false to skip it entirely
+		~#
+		method : public : SetVisible(visible : Bool) ~ Nil {
+			@visible := visible;
+		}
+
+		#~
+		@return whether the batch draws
+		~#
+		method : public : IsVisible() ~ Bool {
+			return @visible;
+		}
+
+		#~
+		@return the program this batch draws with
+		~#
+		method : public : GetShader() ~ Shader {
+			return @shader;
+		}
+
+		#~
+		@return the mesh every instance draws
+		~#
+		method : public : GetMesh() ~ Mesh {
+			return @mesh;
+		}
+
+		#~
+		Centre of a sphere containing every instance, on the x axis.
+
+		Valid once the batch has packed, which happens on its first draw. Zero
+		before then -- which is why Scene tests a batch's visibility only after it
+		has drawn at least once.
+		@return the x coordinate
+		~#
+		method : public : GetBoundsX() ~ Float { return @cx; }
+
+		#~
+		@return the y coordinate of the bounding sphere's centre
+		~#
+		method : public : GetBoundsY() ~ Float { return @cy; }
+
+		#~
+		@return the z coordinate of the bounding sphere's centre
+		~#
+		method : public : GetBoundsZ() ~ Float { return @cz; }
+
+		#~
+		Radius of a sphere containing every instance.
+
+		Covers the instance PLACEMENTS plus the mesh's own extent at the largest
+		scale any instance uses, so it holds however the instances are turned.
+		@return the radius in world units, or 0 if nothing has been packed yet
+		~#
+		method : public : GetBoundsRadius() ~ Float { return @radius; }
+
+		#~
+		Repack the matrices, upload them, and recompute the bounding sphere.
+
+		The bounds are computed here rather than in a method of their own because
+		both walk the same transforms, and walking a thousand of them twice is the
+		sort of thing this class exists to avoid.
+		~#
+		method : Pack() ~ Nil {
+			count := @transforms->Size();
+			if(count = 0) {
+				@count := 0;
+				@radius := 0.0;
+				@dirty := false;
+				return;
+			};
+
+			need := count * 16;
+			if(@matrices = Nil | @matrices->Size() < need) {
+				size := 16;
+				while(size < need) {
+					size *= 2;
+				};
+				@matrices := Float->New[size];
+			};
+
+			first := @transforms->Get(0);
+			min_x := first->GetX(); max_x := min_x;
+			min_y := first->GetY(); max_y := min_y;
+			min_z := first->GetZ(); max_z := min_z;
+			max_scale := 0.0;
+
+			each(i : @transforms) {
+				at := @transforms->Get(i);
+				model := at->GetMatrix();
+				base := i * 16;
+
+				for(k := 0; k < 16; k += 1;) {
+					@matrices[base + k] := model[k];
+				};
+
+				x := at->GetX(); y := at->GetY(); z := at->GetZ();
+				if(x < min_x) { min_x := x; };
+				if(x > max_x) { max_x := x; };
+				if(y < min_y) { min_y := y; };
+				if(y > max_y) { max_y := y; };
+				if(z < min_z) { min_z := z; };
+				if(z > max_z) { max_z := z; };
+
+				scale := at->GetMaxScale();
+				if(scale > max_scale) { max_scale := scale; };
+			};
+
+			@cx := (min_x + max_x) / 2.0;
+			@cy := (min_y + max_y) / 2.0;
+			@cz := (min_z + max_z) / 2.0;
+
+			hx := (max_x - min_x) / 2.0;
+			hy := (max_y - min_y) / 2.0;
+			hz := (max_z - min_z) / 2.0;
+			spread := (hx * hx + hy * hy + hz * hz)->Sqrt();
+
+			mesh_extent := 0.0;
+			if(@mesh <> Nil & @mesh->IsOk()) {
+				centre := @mesh->GetCenter();
+				offset := (centre->GetX() * centre->GetX() + centre->GetY() * centre->GetY() +
+					centre->GetZ() * centre->GetZ())->Sqrt();
+				mesh_extent := (offset + @mesh->GetRadius()) * max_scale;
+			};
+			@radius := spread + mesh_extent;
+
+			@count := count;
+			if(<>@mesh->SetInstanceMatrices(@matrices)) {
+				@error := "instance matrix upload failed";
+			};
+			@generation := @mesh->GetInstanceGeneration();
+
+			@dirty := false;
+		}
+
+		#~
+		Draw every instance, using the batch's own light.
+		@param view_projection the camera matrix
+		~#
+		method : public : Draw(view_projection : Float[]) ~ Nil {
+			Draw(view_projection, @light, @rig);
+		}
+
+		#~
+		Draw every instance under a light supplied by the caller.
+
+		This is what Scene calls, so a batch added to a lit scene does not have to
+		be told about the light twice. A batch with its own light or rig keeps it:
+		the arguments are what to use when the batch has none.
+		@param view_projection the camera matrix
+		@param light a light to fall back on, or Nil
+		@param rig a rig to fall back on, or Nil; wins over the light
+		~#
+		method : public : Draw(view_projection : Float[], light : Light, rig : LightRig) ~ Nil {
+			if(<>@visible | view_projection = Nil | <>IsOk()) {
+				return;
+			};
+			if(@transforms->Size() = 0) {
+				return;
+			};
+
+			@shader->Use();
+
+			if(@wants_vp = -1) {
+				@wants_vp := @shader->HasUniform("view_projection") ? 1 : 0;
+				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
+
+				# Said once, not once a frame. The overwhelmingly likely cause is a
+				# per-object shader handed to a batch, and the symptom on its own --
+				# everything stacked at the origin, or nothing drawn at all -- points
+				# nowhere near the actual mistake.
+				if(@wants_vp = 0) {
+					@error := "shader has no view_projection uniform; an instanced shader needs one, and a shader with an mvp uniform is the per-object kind";
+				};
+			};
+
+			# Nothing good can come of continuing. Packing would upload over the
+			# mesh's instance buffer -- which another batch may be relying on -- and
+			# the draw would stack every instance whereever the last mvp pointed.
+			if(@wants_vp = 0) {
+				return;
+			};
+
+			@shader->SetMatrix4("view_projection", view_projection);
+			if(@wants_sampler = 1) {
+				@shader->SetInt("tex", 0);
+			};
+
+			use_rig := @rig;
+			if(use_rig = Nil) {
+				use_rig := rig;
+			};
+			use_light := @light;
+			if(use_light = Nil) {
+				use_light := light;
+			};
+
+			if(use_rig <> Nil) {
+				use_rig->ApplyTo(@shader);
+			}
+			else if(use_light <> Nil) {
+				use_light->ApplyTo(@shader);
+			};
+
+			if(@material <> Nil) {
+				@material->ApplyTo(@shader, 0);
+			};
+
+			# The third condition is the one that is easy to leave out: a static
+			# batch whose mesh is shared with another batch has had its instance
+			# data overwritten, and nothing about the batch itself changed. Without
+			# it the batch draws its own count out of someone else's buffer, which
+			# renders instances at stale placements or at no placement at all.
+			if(@dirty | @dynamic | @mesh->GetInstanceGeneration() <> @generation) {
+				Pack();
+			};
+
+			@mesh->DrawInstanced(@count);
+		}
+
+		#~
+		Release the shader, if this batch built it.
+
+		The mesh is never freed here: it is the caller's, and is very often shared
+		with a Prop or another batch. Idempotent.
+		~#
+		method : public : Free() ~ Nil {
+			if(@owns_shader & @shader <> Nil) {
+				@shader->Free();
+			};
+			@shader := Nil;
+			@owns_shader := false;
+		}
+	}
+
+	#~
 	A world of boxes that draws itself and answers collision queries.
 
 	This is the layer that keeps a 3D program from hand-rolling parallel arrays
@@ -8182,6 +8736,11 @@ bundle Game.OpenGL {
 		# Prop for why merging them would cost every box its tight cull test and
 		# its shared VAO.
 		@props : Vector<Prop>;
+		# Instanced batches. A third list rather than a third kind of entry in an
+		# existing one, because a batch is drawn by a DIFFERENT shader -- so it
+		# cannot take part in the material runs or the transparent sort that the
+		# boxes and props share.
+		@batches : Vector<PropBatch>;
 		# Which material and texture are currently bound. Fields rather than
 		# locals because the opaque and transparent passes share the run.
 		@last_texture : Texture2D;
@@ -8212,6 +8771,7 @@ bundle Game.OpenGL {
 			@far_order := Int->New[0];
 			@far_distance := Float->New[0];
 			@props := Vector->New()<Prop>;
+			@batches := Vector->New()<PropBatch>;
 			@last_texture := Nil;
 			@last_material := Nil;
 			@wants_opacity := -1;
@@ -8470,6 +9030,14 @@ bundle Game.OpenGL {
 				};
 			};
 
+			# The batches, in between: after the solid boxes and props, before
+			# anything transparent. That is where opaque geometry belongs -- drawn
+			# after the transparent pass it would paint over surfaces already
+			# blended into the frame, since that pass leaves depth writes off.
+			if(@batches->Size() > 0) {
+				DrawBatches(view_projection);
+			};
+
 			# Pass two: the transparent ones, furthest first, with blending on and
 			# depth WRITES off.
 			#
@@ -8563,6 +9131,62 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Draw the instanced batches, then put back what they disturbed.
+
+		A batch binds its own shader -- it has to, since an instanced program takes
+		the camera as "view_projection" and reads the model matrix from a vertex
+		attribute, which is a different shape from the per-object "mvp" every other
+		shader here uses.
+
+		Rebinding the scene's shader here is DEFENSIVE, not load-bearing, and it is
+		worth being exact about that. Every uniform setter binds its own program
+		before writing -- that was the phase-3 fix for uniforms landing on the wrong
+		shader -- so the transparent pass would bind the right program anyway on its
+		first SetMatrix4. This is here so the bound program matches what the scene
+		believes for any future draw path that does not happen to set a uniform
+		first. Removing it breaks no current test, which is exactly why the comment
+		should not claim otherwise.
+
+		What DID leak was the texture unit, which is global rather than per-program:
+		a batch binds its material's texture, and anything drawn afterwards whose
+		material carries no texture of its own sampled it. That is fixed in DrawOne
+		rather than here, because the real fault was a coloured box never binding
+		its own texture at all.
+		~#
+		method : DrawBatches(view_projection : Float[]) ~ Nil {
+			touched := false;
+
+			each(i : @batches) {
+				batch := @batches->Get(i);
+
+				visible := batch->IsVisible();
+				# Radius is 0 until the batch has packed, which happens on its first
+				# draw -- so a new batch is always submitted once, and can be culled
+				# from the frame after. Culling it on a radius it has not computed
+				# yet would cull it forever.
+				if(visible & @culling & batch->GetBoundsRadius() > 0.0) {
+					visible := @frustum->ContainsSphere(batch->GetBoundsX(),
+						batch->GetBoundsY(), batch->GetBoundsZ(), batch->GetBoundsRadius());
+				};
+
+				if(visible) {
+					batch->Draw(view_projection, @light, @rig);
+					@drawn += 1;
+					touched := true;
+				}
+				else {
+					@culled += 1;
+				};
+			};
+
+			if(touched) {
+				@shader->Use();
+				@last_material := Nil->As(Material);
+				@last_texture := Nil->As(Texture2D);
+			};
+		}
+
+		#~
 		Squared distance from the eye to a prop, for the transparent sort.
 		~#
 		method : PropEyeDistance(prop : Prop) ~ Float {
@@ -8597,6 +9221,22 @@ bundle Game.OpenGL {
 					# A material's texture supersedes whatever was bound, so the
 					# plain-texture tracking has to forget what it thought.
 					@last_texture := Nil->As(Texture2D);
+				};
+
+				# A material with no texture of its own binds nothing, so the box
+				# sampled whatever the PREVIOUS draw happened to leave on unit 0.
+				# Material->Colored is exactly that shape, which meant a coloured box
+				# had never been self-sufficient: it looked right only because some
+				# earlier box in the same frame had bound a white texture.
+				#
+				# Invisible until something drew in between with a texture of its
+				# own. A PropBatch does precisely that, and turned a blue pane green.
+				if(<>material->HasTexture()) {
+					own := box->GetTexture();
+					if(own <> Nil & own <> @last_texture) {
+						own->Bind(0);
+						@last_texture := own;
+					};
 				};
 			}
 			else {
@@ -8728,6 +9368,54 @@ bundle Game.OpenGL {
 		~#
 		method : public : GetPropCount() ~ Int {
 			return @props->Size();
+		}
+
+		#~
+		Add an instanced batch, drawn in one call after the solid geometry.
+
+		A batch brings its own shader, so it is not affected by SetShader and does
+		not take part in the material runs the boxes and props share. It inherits
+		the scene's light when it has none of its own.
+
+		Note it counts as ONE toward GetDrawn, not one per instance -- what that
+		number measures is submissions, and the whole point of a batch is that four
+		hundred trees are a single submission.
+
+		## Batches do not cast shadows
+
+		DrawInto walks the boxes and the props, not the batches. The depth pass runs
+		one shader over everything, and DepthOnly is a per-object program -- an
+		instanced depth shader would be a second one, and Scene would have to switch
+		between them mid-pass. So a batch is lit but casts nothing, which is fine for
+		grass and wrong for pillars. Use props for anything whose shadow matters.
+		@param batch the batch; NOT owned by the scene, so Clear does not free it
+		@return the same batch, for chaining
+		~#
+		method : public : AddBatch(batch : PropBatch) ~ PropBatch {
+			if(batch <> Nil) {
+				@batches->AddBack(batch);
+			};
+
+			return batch;
+		}
+
+		#~
+		@return how many batches the scene holds
+		~#
+		method : public : GetBatchCount() ~ Int {
+			return @batches->Size();
+		}
+
+		#~
+		@param index 0 to GetBatchCount() - 1
+		@return the batch, or Nil if the index is out of range
+		~#
+		method : public : GetBatch(index : Int) ~ PropBatch {
+			if(index < 0 | index >= @batches->Size()) {
+				return Nil;
+			};
+
+			return @batches->Get(index);
 		}
 
 		#~
@@ -8897,6 +9585,7 @@ bundle Game.OpenGL {
 			# Props too. Leaving them meant a scene that was cleared and rebuilt
 			# accumulated props forever and went on drawing them.
 			@props->Empty();
+			@batches->Empty();
 		}
 	}
 
