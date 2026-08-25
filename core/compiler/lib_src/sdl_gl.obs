@@ -8586,6 +8586,55 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Where this transform actually is, after its parents are taken into account.
+
+		GetX and its pair report the LOCAL position -- what SetPosition was given,
+		relative to the parent. These report the world one, which is what a cull
+		test, a distance sort or anything else asking "where is it" wants.
+
+		The two are the same for an unparented transform, and that is exactly why
+		the difference is easy to miss: everything worked until the first parented
+		object, and then it worked everywhere except at the edge of the screen.
+		@return the x coordinate in world space
+		~#
+		method : public : GetWorldX() ~ Float { return GetWorldMatrix()[12]; }
+
+		#~
+		@return the y coordinate in world space
+		~#
+		method : public : GetWorldY() ~ Float { return GetWorldMatrix()[13]; }
+
+		#~
+		@return the z coordinate in world space
+		~#
+		method : public : GetWorldZ() ~ Float { return GetWorldMatrix()[14]; }
+
+		#~
+		The largest scale factor this transform is under, parents included.
+
+		Taken from the world matrix's own columns rather than by multiplying the
+		chain's scale values: a rotation between two scales makes those two things
+		different, and the columns are what the geometry is actually built from.
+
+		Absolute, so a mirrored transform reports a positive size. A negative
+		radius culls an object that is dead centre in view.
+		@return the world scale, at least 0
+		~#
+		method : public : GetWorldMaxScale() ~ Float {
+			world := GetWorldMatrix();
+
+			x := (world[0] * world[0] + world[1] * world[1] + world[2] * world[2])->Sqrt();
+			y := (world[4] * world[4] + world[5] * world[5] + world[6] * world[6])->Sqrt();
+			z := (world[8] * world[8] + world[9] * world[9] + world[10] * world[10])->Sqrt();
+
+			largest := x;
+			if(y > largest) { largest := y; };
+			if(z > largest) { largest := z; };
+
+			return largest;
+		}
+
+		#~
 		Model-view-projection, into a buffer the caller owns. The per-frame call.
 
 		Uses the WORLD matrix, so a parented transform draws where the hierarchy
@@ -9200,7 +9249,10 @@ bundle Game.OpenGL {
 			offset := (centre->GetX() * centre->GetX() + centre->GetY() * centre->GetY() +
 				centre->GetZ() * centre->GetZ())->Sqrt();
 
-			return (offset + @mesh->GetRadius()) * @transform->GetMaxScale();
+			# WORLD scale, not local. A prop under a parent scaled by three is
+			# three times the size, and a radius that ignores that culls it while
+			# part of it is still on screen.
+			return (offset + @mesh->GetRadius()) * @transform->GetWorldMaxScale();
 		}
 	}
 
@@ -9578,9 +9630,9 @@ bundle Game.OpenGL {
 			};
 
 			first := @transforms->Get(0);
-			min_x := first->GetX(); max_x := min_x;
-			min_y := first->GetY(); max_y := min_y;
-			min_z := first->GetZ(); max_z := min_z;
+			min_x := first->GetWorldX(); max_x := min_x;
+			min_y := first->GetWorldY(); max_y := min_y;
+			min_z := first->GetWorldZ(); max_z := min_z;
 			max_scale := 0.0;
 
 			each(i : @transforms) {
@@ -9592,7 +9644,10 @@ bundle Game.OpenGL {
 					@matrices[base + k] := model[k];
 				};
 
-				x := at->GetX(); y := at->GetY(); z := at->GetZ();
+				# World, matching the matrix that was just packed above. Measuring
+				# the bounds in local space while drawing in world space is the same
+				# mismatch the props had.
+				x := at->GetWorldX(); y := at->GetWorldY(); z := at->GetWorldZ();
 				if(x < min_x) { min_x := x; };
 				if(x > max_x) { max_x := x; };
 				if(y < min_y) { min_y := y; };
@@ -9600,7 +9655,7 @@ bundle Game.OpenGL {
 				if(z < min_z) { min_z := z; };
 				if(z > max_z) { max_z := z; };
 
-				scale := at->GetMaxScale();
+				scale := at->GetWorldMaxScale();
 				if(scale > max_scale) { max_scale := scale; };
 			};
 
@@ -10710,9 +10765,13 @@ bundle Game.OpenGL {
 
 				visible := prop->IsVisible();
 				if(visible & @culling) {
+					# WORLD position. Culling on the LOCAL one tests a place the prop
+					# is not, so a parented prop far from its parent disappears at
+					# the edge of the screen while sitting in plain view -- and the
+					# symptom looks like a frustum bug rather than a coordinate one.
 					at := prop->GetTransform();
-					visible := @frustum->ContainsSphere(at->GetX(), at->GetY(), at->GetZ(),
-						prop->GetBoundsRadius());
+					visible := @frustum->ContainsSphere(at->GetWorldX(), at->GetWorldY(),
+						at->GetWorldZ(), prop->GetBoundsRadius());
 				};
 
 				if(visible) {
@@ -10917,10 +10976,12 @@ bundle Game.OpenGL {
 				return 0.0;
 			};
 
+			# World, for the same reason the cull test is: a transparent prop is
+			# sorted by how far from the eye it actually is.
 			at := prop->GetTransform();
-			dx := at->GetX() - @eye->GetX();
-			dy := at->GetY() - @eye->GetY();
-			dz := at->GetZ() - @eye->GetZ();
+			dx := at->GetWorldX() - @eye->GetX();
+			dy := at->GetWorldY() - @eye->GetY();
+			dz := at->GetWorldZ() - @eye->GetZ();
 
 			return dx * dx + dy * dy + dz * dz;
 		}
@@ -11046,9 +11107,13 @@ bundle Game.OpenGL {
 
 				visible := prop->IsVisible() & mesh <> Nil & mesh->IsOk();
 				if(visible & cull_here) {
+					# WORLD position. Culling on the LOCAL one tests a place the prop
+					# is not, so a parented prop far from its parent disappears at
+					# the edge of the screen while sitting in plain view -- and the
+					# symptom looks like a frustum bug rather than a coordinate one.
 					at := prop->GetTransform();
-					visible := @frustum->ContainsSphere(at->GetX(), at->GetY(), at->GetZ(),
-						prop->GetBoundsRadius());
+					visible := @frustum->ContainsSphere(at->GetWorldX(), at->GetWorldY(),
+						at->GetWorldZ(), prop->GetBoundsRadius());
 				};
 
 				if(visible) {
