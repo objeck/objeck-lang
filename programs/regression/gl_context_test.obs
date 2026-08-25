@@ -83,6 +83,7 @@ class GlContextTest {
 		CheckOverlayState();
 		CheckMultisampling();
 		CheckTransparency();
+		CheckOwnership();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -3128,6 +3129,48 @@ class GlContextTest {
 		white->Free();
 		cube->Free();
 		shader->Free();
+	}
+
+	#~
+	Ownership: what the window will release on the way out.
+
+	Limited the same way the multisampling checks are, and for the same reason:
+	the thing this exists to do -- free everything when the window closes -- can
+	only be observed by closing the window, and GLWindow->Free calls Core->Quit,
+	which would take the suite down with it.
+
+	So this asserts the bookkeeping, which is where the mistakes would be: that
+	Own hands back what it was given so it can wrap a constructor, that the count
+	tracks, that Nil is ignored rather than stored and dereferenced at shutdown,
+	and that owning something does not stop a program freeing it itself.
+	~#
+	method : CheckOwnership() ~ Nil {
+		before := @gl->GetOwnedCount();
+
+		texture := @gl->Own(Texture2D->Solid(0xFF204080))->As(Texture2D);
+		if(<>Check("Own returns what it was given, so it can wrap a constructor",
+				texture <> Nil & texture->IsOk())) {
+			return;
+		};
+		Check("and the window is holding one more", @gl->GetOwnedCount() = before + 1);
+
+		mesh := @gl->Own(Mesh->Cube())->As(Mesh);
+		Check("a different kind of object goes in the same list",
+			mesh <> Nil & mesh->IsOk() & @gl->GetOwnedCount() = before + 2);
+
+		# Nil must be ignored, not stored -- it would be dereferenced at shutdown,
+		# which is the worst possible moment to discover it.
+		@gl->Own(Nil);
+		Check("Nil is ignored rather than stored", @gl->GetOwnedCount() = before + 2);
+
+		# Owning does not take the object away from the program. Every Free here
+		# nulls its handle, which is what lets Own be adopted a line at a time.
+		texture->Free();
+		Check("an owned object can still be freed by hand", <>texture->IsOk());
+		texture->Free();
+		Check("and the window freeing it again later is harmless", <>texture->IsOk());
+
+		Check("no GL errors from the ownership checks", GL->DrainErrors()->Size() = 0);
 	}
 
 	method : CheckMatrixMath() ~ Nil {

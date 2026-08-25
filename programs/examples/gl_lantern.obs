@@ -501,24 +501,24 @@ class Lantern {
 		GL->Enable(Capability->GL_CULL_FACE);
 		GL->ClearColor(0.015, 0.017, 0.025, 1.0);
 
-		@shader := Shader->LitTexturedPointShadowed();
+		@shader := @window->Own(Shader->LitTexturedPointShadowed())->As(Shader);
 		if(<>@shader->IsOk()) {
 			@shader->GetLog()->ErrorLine();
 			return false;
 		};
 
-		@cube := Mesh->Cube();
-		@orb := Mesh->Sphere(18, 10);
+		@cube := @window->Own(Mesh->Cube())->As(Mesh);
+		@orb := @window->Own(Mesh->Sphere(18, 10))->As(Mesh);
 		if(<>@cube->IsOk() | <>@orb->IsOk()) {
 			"Could not upload the geometry"->ErrorLine();
 			return false;
 		};
 
-		@wall_texture := Texture2D->Checker(64, 4, Texture2D->Rgb(96, 88, 78),
-			Texture2D->Rgb(66, 60, 54), TextureWrap->GL_REPEAT);
-		@floor_texture := Texture2D->Checker(64, 3, Texture2D->Rgb(58, 54, 50),
-			Texture2D->Rgb(44, 41, 38), TextureWrap->GL_REPEAT);
-		@relic_texture := Texture2D->Solid(0xFFF2C879);
+		@wall_texture := @window->Own(Texture2D->Checker(64, 4, Texture2D->Rgb(96, 88, 78),
+			Texture2D->Rgb(66, 60, 54), TextureWrap->GL_REPEAT))->As(Texture2D);
+		@floor_texture := @window->Own(Texture2D->Checker(64, 3, Texture2D->Rgb(58, 54, 50),
+			Texture2D->Rgb(44, 41, 38), TextureWrap->GL_REPEAT))->As(Texture2D);
+		@relic_texture := @window->Own(Texture2D->Solid(0xFFF2C879))->As(Texture2D);
 		@relic_material := Material->New(@relic_texture);
 		@glow := Material->New(@relic_texture);
 		@glow->SetTint(1.0, 0.86, 0.5);
@@ -527,7 +527,7 @@ class Lantern {
 			return false;
 		};
 
-		@shadows := PointShadow->New(512);
+		@shadows := @window->Own(PointShadow->New(512))->As(PointShadow);
 		if(<>@shadows->IsOk()) {
 			@shadows->GetError()->ErrorLine();
 			return false;
@@ -726,7 +726,7 @@ class Lantern {
 		# One call. It finds the shipped font whether this is started from a
 		# deploy tree's bin or from the examples directory it ships in -- the
 		# hardcoded relative path this replaced only worked from the first.
-		@overlay := Overlay->WithDefaultFont(@window, 18);
+		@overlay := @window->Own(Overlay->WithDefaultFont(@window, 18))->As(Overlay);
 		if(@overlay->IsOk() & @overlay->HasFont()) {
 			@overlay->SetColor(236, 224, 198);
 		}
@@ -745,19 +745,20 @@ class Lantern {
 	Six objects and a fixed order, written out by hand, in every example in this
 	directory. A GLWindow->Own registry would do it once.
 	~#
-	method : Close() ~ Nil {
-		# Before the window: GLWindow->Free calls Core->Quit, which takes the
-		# audio device down with it.
-		if(@chime <> Nil) { @chime->Free(); };
+	#~
+	What a teardown looks like once the window owns things.
 
-		if(@relic_texture <> Nil) { @relic_texture->Free(); };
-		if(@floor_texture <> Nil) { @floor_texture->Free(); };
-		if(@wall_texture <> Nil) { @wall_texture->Free(); };
-		if(@orb <> Nil) { @orb->Free(); };
-		if(@cube <> Nil) { @cube->Free(); };
-		if(@shadows <> Nil) { @shadows->Free(); };
-		if(@overlay <> Nil) { @overlay->Free(); };
-		if(@shader <> Nil) { @shader->Free(); };
+	This used to be eight lines of `if(x <> Nil) { x->Free(); }` in an order that
+	mattered and was documented nowhere. Every GL object here was handed to
+	window->Own as it was built, so the window releases all of it -- before
+	destroying the context, which is the one rule that actually matters.
+
+	The chime is not a GL object and the window knows nothing about it, so it
+	still goes by hand, and still before the window: GLWindow->Free calls
+	Core->Quit, which takes the audio device with it.
+	~#
+	method : Close() ~ Nil {
+		if(@chime <> Nil) { @chime->Free(); };
 
 		if(@window <> Nil) { @window->Free(); };
 	}

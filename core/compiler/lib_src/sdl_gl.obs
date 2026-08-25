@@ -190,6 +190,22 @@ bundle Game.OpenGL {
 	meshes -- at which point it is an unbounded VRAM leak with no symptom
 	pointing back here.
 	~#
+	#~
+	Something holding a GL object that has to be released.
+
+	Exists so GLWindow->Own can hold a mixed list. Every class here already
+	declared `method : public : Free()` with exactly this shape, so implementing
+	it costs them nothing -- but note Objeck requires the access to match the
+	interface exactly, and does not accept an INHERITED method as satisfying one.
+	~#
+	interface Freeable {
+		#~
+		Release whatever GL objects this holds. Must be idempotent -- everything
+		in this bundle nulls its handle, so a second call does nothing.
+		~#
+		method : public : virtual : Free() ~ Nil;
+	}
+
 	class GL {
 		#~
 		Resolve the OpenGL 2.0+ entry points. Call once, after the context is
@@ -680,6 +696,8 @@ bundle Game.OpenGL {
 		# How many samples the window actually got -- 0 when multisampling was not
 		# asked for, or was asked for and refused.
 		@samples : Int;
+		# Everything this window has been asked to release on the way out.
+		@owned : Vector<Freeable>;
 		@want_audio : Bool;
 		@audio_ok : Bool;
 		@pixel_h : Int;
@@ -788,6 +806,7 @@ bundle Game.OpenGL {
 			@audio_ok := false;
 			@pixel_w := 0;
 			@drawable_generation := 0;
+			@owned := Vector->New()<Freeable>;
 			@pressed := Int->New[16];
 			@released := Int->New[16];
 			@pressed_count := 0;
@@ -998,6 +1017,53 @@ bundle Game.OpenGL {
 		unless the value actually changed.
 		@return a counter, not a size; only equality is meaningful
 		~#
+		#~
+		Hand something to the window to release on the way out.
+
+		Every example in this repo hand-writes the same teardown: a chain of
+		`if(x <> Nil) { x->Free(); }` in a fixed order, up to fifteen objects long,
+		ending with the window. It is mechanical, it is easy to get one line wrong,
+		and the one rule that matters -- everything GL before the context goes --
+		is invisible in it.
+
+		Own returns what it was given, so it wraps a constructor:
+
+		  @shader := window->Own(Shader->LitTextured())->As(Shader);
+		  @cube   := window->Own(Mesh->Cube())->As(Mesh);
+
+		and Close() disappears.
+
+		There is no ordering to get right WITHIN the owned set: glDelete* is
+		order-independent and nothing here references another object, so one list
+		is enough. What matters is that all of it happens before the context is
+		destroyed, which is what this guarantees.
+
+		Owning something does NOT stop you freeing it yourself -- every Free in
+		this bundle nulls its handle and is safe to call twice, so Own can be
+		adopted a line at a time.
+
+		Do not Own a borrowed texture from RenderTarget->GetTexture or
+		ShadowMap->GetTexture: those are views of an attachment their target still
+		owns. Freeing one is already a no-op, so this is a waste rather than a
+		hazard, but it says nothing true about ownership.
+		@param thing anything with a Free
+		@return the same thing, so this can wrap a constructor
+		~#
+		method : public : Own(thing : Freeable) ~ Freeable {
+			if(thing <> Nil) {
+				@owned->AddBack(thing);
+			};
+
+			return thing;
+		}
+
+		#~
+		@return how many objects this window will release on the way out
+		~#
+		method : public : GetOwnedCount() ~ Int {
+			return @owned->Size();
+		}
+
 		method : public : GetDrawableGeneration() ~ Int {
 			return @drawable_generation;
 		}
@@ -1500,6 +1566,19 @@ bundle Game.OpenGL {
 				};
 			};
 
+			# Everything handed to Own, while the context is still current -- every
+			# Free here bottoms out in a glDelete*, which needs one. Order within
+			# this list does not matter; order relative to the context does.
+			if(@owned <> Nil) {
+				each(i : @owned) {
+					owned := @owned->Get(i);
+					if(owned <> Nil) {
+						owned->Free();
+					};
+				};
+				@owned->Empty();
+			};
+
 			if(@event <> Nil) {
 				@event->Free();
 				@event := Nil;
@@ -1585,7 +1664,7 @@ bundle Game.OpenGL {
 	shader->Use();
 	```
 	~#
-	class Shader {
+	class Shader implements Freeable {
 		@program : Int;
 		@log : String;
 
@@ -2443,7 +2522,7 @@ bundle Game.OpenGL {
 	mesh := Mesh->New(vertices, indices, [3, 2]);
 	```
 	~#
-	class Mesh {
+	class Mesh implements Freeable {
 		@mesh : Int;
 		# The axis-aligned bounds of whatever was uploaded, in model space. Measured
 		# once at construction, because it is the only moment the vertex data is in
@@ -3359,7 +3438,7 @@ bundle Game.OpenGL {
 	surface->Free();          # the pixels are on the GPU now
 	```
 	~#
-	class Texture2D {
+	class Texture2D implements Freeable {
 		@texture : Int;
 		# False for a wrapper made by Wrapping/Adopt, which borrows a handle that
 		# something else owns and must not delete it.
@@ -4786,7 +4865,7 @@ bundle Game.OpenGL {
 	written and never read. A shadow map wants the reverse, and will need its own
 	constructor for that.
 	~#
-	class RenderTarget {
+	class RenderTarget implements Freeable {
 		@target : Int;
 		@width : Int;
 		@height : Int;
@@ -5099,7 +5178,7 @@ bundle Game.OpenGL {
 	evicted one entry at a time -- overlay text is a handful of strings in practice,
 	and a clear is one line rather than an LRU.
 	~#
-	class Overlay {
+	class Overlay implements Freeable {
 		@window : GLWindow;
 		@font : Font;
 		@shader : Shader;
@@ -6024,7 +6103,7 @@ bundle Game.OpenGL {
 	non-linear so a constant bias means different things at different distances; a
 	world-unit distance is linear, so one bias is right everywhere.
 	~#
-	class PointShadow {
+	class PointShadow implements Freeable {
 		@target : RenderTarget;
 		@depth_shader : Shader;
 		@size : Int;
@@ -6359,7 +6438,7 @@ bundle Game.OpenGL {
 	acne back; too large and shadows detach from what casts them, which is why the
 	default is small and adjustable rather than generous.
 	~#
-	class ShadowMap {
+	class ShadowMap implements Freeable {
 		@target : RenderTarget;
 		@depth_shader : Shader;
 		@size : Int;
