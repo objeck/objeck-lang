@@ -127,6 +127,22 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	How a Track moves between two keys.
+	~#
+	consts Easing {
+		LINEAR := 0,
+		# Starts slow. For something building up speed -- a falling lid, a launch.
+		EASE_IN := 1,
+		# Ends slow. For something arriving -- a door settling, a camera stopping.
+		EASE_OUT := 2,
+		# Slow at both ends, which is what almost all deliberate motion does and
+		# the single most useful one here.
+		EASE_IN_OUT := 3,
+		# No interpolation at all: holds the earlier key until the next arrives.
+		STEP := 4
+	}
+
+	#~
 	Comparison functions, for the stencil test and glDepthFunc.
 	~#
 	consts CompareFunc {
@@ -7175,7 +7191,9 @@ bundle Game.OpenGL {
 				return;
 			};
 
-			model := transform->GetMatrix();
+			# WORLD, not local: a caster hung off a parent must cast its shadow from
+			# where the hierarchy puts it.
+			model := transform->GetWorldMatrix();
 			Matrix4->MultiplyInto(@mvp, @view_projection, model);
 			@depth_shader->SetMatrix4("mvp", @mvp);
 			@depth_shader->SetMatrix4("model", model);
@@ -7696,7 +7714,7 @@ bundle Game.OpenGL {
 				return;
 			};
 
-			Matrix4->MultiplyInto(@mvp, GetLightSpaceMatrix(), transform->GetMatrix());
+			Matrix4->MultiplyInto(@mvp, GetLightSpaceMatrix(), transform->GetWorldMatrix());
 			@depth_shader->SetMatrix4("mvp", @mvp);
 			mesh->Draw();
 		}
@@ -8309,6 +8327,16 @@ bundle Game.OpenGL {
 		@sx : Float; @sy : Float; @sz : Float;
 		@matrix : Float[];
 		@dirty : Bool;
+		# The parent this transform hangs off, or Nil for one in world space.
+		@parent : Transform;
+		# Bumped every time @matrix is rebuilt. A child compares its parent's
+		# number against the one it last saw, which is how a change three levels up
+		# reaches a leaf without anything having to notify anybody.
+		@version : Int;
+		@parent_version : Int;
+		# Composed parent * local, kept apart from @matrix so the LOCAL transform
+		# is still readable after parenting.
+		@world : Float[];
 
 		#~
 		At the origin, unrotated, unscaled.
@@ -8319,6 +8347,10 @@ bundle Game.OpenGL {
 			@sx := 1.0; @sy := 1.0; @sz := 1.0;
 			@matrix := Float->New[16];
 			@dirty := true;
+			@parent := Nil;
+			@version := 1;
+			@parent_version := 0;
+			@world := Float->New[16];
 		}
 
 		#~
@@ -8444,18 +8476,125 @@ bundle Game.OpenGL {
 			if(@dirty) {
 				Rebuild();
 				@dirty := false;
+				# Children compare against this. Bumping it here rather than in
+				# every setter means one place to get right, and it costs nothing
+				# for a transform nobody has parented to.
+				@version += 1;
 			};
 
 			return @matrix;
 		}
 
 		#~
+		Hang this transform off another, so it moves when the parent does.
+
+		This is what makes articulated motion possible at all: a turret on a hull,
+		a hand on an arm, a moon around a planet. Without it every part has to have
+		its world position recomputed by the program each frame, which is the same
+		arithmetic written once per part rather than once.
+
+		Position, rotation and scale become RELATIVE to the parent. A child at
+		(0, 1, 0) under a parent at (5, 0, 0) is at (5, 1, 0) in the world, and
+		turning the parent swings the child around it.
+
+		A cycle is refused rather than accepted and then hung on: attaching a
+		transform to its own descendant would make GetWorldMatrix recurse until the
+		stack ran out, and the crash would name neither of the two transforms
+		involved.
+		@param parent the transform to hang off, or Nil to return to world space
+		@return true when attached; false when it would have made a cycle
+		~#
+		method : public : SetParent(parent : Transform) ~ Bool {
+			if(parent = @self) {
+				return false;
+			};
+
+			# Walk up from the proposed parent. Meeting self means the proposed
+			# parent is already below this transform.
+			walker := parent;
+			while(walker <> Nil) {
+				if(walker = @self) {
+					return false;
+				};
+
+				walker := walker->GetParent();
+			};
+
+			@parent := parent;
+			# Force the next read to compose afresh, whatever it saw before.
+			@parent_version := -1;
+			@dirty := true;
+
+			return true;
+		}
+
+		#~
+		@return the parent, or Nil when this transform is in world space
+		~#
+		method : public : GetParent() ~ Transform {
+			return @parent;
+		}
+
+		#~
+		@return true when this transform hangs off another
+		~#
+		method : public : HasParent() ~ Bool {
+			return @parent <> Nil;
+		}
+
+		#~
+		How many times this transform's matrix has been rebuilt.
+
+		A child reads its parent's number to decide whether its own composed matrix
+		is still good. Exposed because the mechanism is worth being able to see; a
+		program has no reason to call it.
+		@return a counter
+		~#
+		method : public : GetVersion() ~ Int {
+			return @version;
+		}
+
+		#~
+		The matrix that places this transform in the WORLD.
+
+		The same as GetMatrix for an unparented transform, and parent * local for a
+		parented one, composed up the whole chain.
+
+		Recomputed only when something actually changed -- this transform, or any
+		ancestor. That check is a version comparison rather than a notification, so
+		nothing has to register with anything and a parent does not need to know
+		its children exist.
+		@return the world matrix; do not modify it
+		~#
+		method : public : GetWorldMatrix() ~ Float[] {
+			if(@parent = Nil) {
+				return GetMatrix();
+			};
+
+			parent_world := @parent->GetWorldMatrix();
+			parent_now := @parent->GetVersion();
+
+			if(@dirty | parent_now <> @parent_version) {
+				Matrix4->MultiplyInto(@world, parent_world, GetMatrix());
+				@parent_version := parent_now;
+				# Rebuilding the world matrix is a change as far as this
+				# transform's OWN children are concerned, so they see it too.
+				@version += 1;
+			};
+
+			return @world;
+		}
+
+		#~
 		Model-view-projection, into a buffer the caller owns. The per-frame call.
+
+		Uses the WORLD matrix, so a parented transform draws where the hierarchy
+		puts it rather than where its local values say.
 		@param out destination, at least 16 elements
 		@param view_projection the camera's projection times view
 		~#
 		method : public : MvpInto(out : Float[], view_projection : Float[]) ~ Nil {
-			Matrix4->MultiplyInto(out, view_projection, GetMatrix());
+			Matrix4->MultiplyInto(out, view_projection, GetWorldMatrix());
 		}
 
 		#~
@@ -8490,6 +8629,305 @@ bundle Game.OpenGL {
 			@matrix[12] := @x;
 			@matrix[13] := @y;
 			@matrix[14] := @z;
+		}
+	}
+
+	#~
+	How a value changes over time.
+
+	The other half of animation. Transform->SetParent says how parts move
+	TOGETHER; a Track says how anything moves at all -- a lid opening, a platform
+	rising, a light dimming, a door swinging, a camera pushing in.
+
+	It holds keys and reads a value back at any time between them:
+
+	```
+	swing := Track->New();
+	swing->Add(0.0, 0.0);
+	swing->Add(1.5, 90.0);
+	swing->SetEasing(Easing->EASE_IN_OUT);
+	...
+	door->SetYaw(swing->Sample(elapsed)->ToRadians());
+	```
+
+	## Why a track rather than a tween
+
+	A from-to pair with a duration covers the easy case and then stops: an
+	animation that goes out, waits, and comes back is three of them plus the
+	bookkeeping to sequence them. Keys are that for free, and reduce to the easy
+	case when there are two of them.
+
+	## What it does not do
+
+	One FLOAT. Not a vector, not a colour, not a quaternion -- three tracks make a
+	position and four make a colour, and keeping it scalar is what lets it drive
+	anything at all rather than the specific things somebody thought of. It has no
+	clock of its own either: Sample takes a time, so the caller decides whether
+	that is wall time, a paused time, or one running backwards.
+
+	Rotation between two ANGLES here is not the same as rotating between two
+	orientations -- interpolating yaw, pitch and roll separately is fine for a
+	hinge or a turntable and wrong for anything tumbling freely, which needs
+	quaternions this bundle does not have.
+	~#
+	class Track {
+		# Keys, kept sorted by time. Parallel arrays rather than a Vector of pairs:
+		# Sample runs per animated value per frame and this way it touches two
+		# contiguous buffers and allocates nothing.
+		@times : Float[];
+		@values : Float[];
+		@count : Int;
+		@easing : Int;
+		@loop : Bool;
+
+		#~
+		An empty track. Sampling one with no keys returns 0.
+		~#
+		New() {
+			@times := Float->New[8];
+			@values := Float->New[8];
+			@count := 0;
+			@easing := Easing->LINEAR;
+			@loop := false;
+		}
+
+		#~
+		A track that runs from one value to another -- the common case, spelled
+		directly.
+		@param duration how long it takes, in seconds
+		@param from the value at time 0
+		@param to the value at the end
+		~#
+		New(duration : Float, from_value : Float, to_value : Float) {
+			@times := Float->New[8];
+			@values := Float->New[8];
+			@count := 0;
+			@easing := Easing->LINEAR;
+			@loop := false;
+
+			Add(0.0, from_value);
+			Add(duration, to_value);
+		}
+
+		#~
+		Add a key.
+
+		Inserted in time order, so keys can be added in any order. Adding a second
+		key at exactly the same time replaces the first rather than creating a step
+		nothing can land between.
+		@param time when, in seconds from the start
+		@param value what the track reads at that moment
+		~#
+		method : public : Add(time : Float, value : Float) ~ Nil {
+			# Find where it belongs. Linear, because tracks have a handful of keys
+			# and a binary search would be more code than it saves.
+			at := 0;
+			while(at < @count & @times[at] < time) {
+				at += 1;
+			};
+
+			if(at < @count & @times[at] = time) {
+				@values[at] := value;
+				return;
+			};
+
+			if(@count = @times->Size()) {
+				Grow();
+			};
+
+			# Shift the tail up one, from the back so nothing is overwritten before
+			# it is copied.
+			for(i := @count; i > at; i -= 1;) {
+				@times[i] := @times[i - 1];
+				@values[i] := @values[i - 1];
+			};
+
+			@times[at] := time;
+			@values[at] := value;
+			@count += 1;
+		}
+
+		method : Grow() ~ Nil {
+			size := @times->Size() * 2;
+			times := Float->New[size];
+			values := Float->New[size];
+
+			for(i := 0; i < @count; i += 1;) {
+				times[i] := @times[i];
+				values[i] := @values[i];
+			};
+
+			@times := times;
+			@values := values;
+		}
+
+		#~
+		How the value moves BETWEEN keys.
+
+		LINEAR by default. The eased modes are what stop machine-driven motion
+		reading as machine-driven: almost nothing in the world starts and stops at
+		full speed, and EASE_IN_OUT is the difference between a lid opening and a
+		lid teleporting through its arc.
+		@param easing an Easing
+		~#
+		method : public : SetEasing(easing : Int) ~ Nil {
+			@easing := easing;
+		}
+
+		#~
+		@return the current easing mode
+		~#
+		method : public : GetEasing() ~ Int {
+			return @easing;
+		}
+
+		#~
+		Whether time wraps past the last key.
+
+		Off by default, which HOLDS the last value -- right for a door that opens
+		once. On wraps back to the start, for anything cyclic. Note a looping track
+		jumps at the wrap unless its first and last values match.
+		@param loop true to wrap
+		~#
+		method : public : SetLoop(loop : Bool) ~ Nil {
+			@loop := loop;
+		}
+
+		#~
+		@return whether the track loops
+		~#
+		method : public : IsLoop() ~ Bool {
+			return @loop;
+		}
+
+		#~
+		@return how many keys the track holds
+		~#
+		method : public : GetCount() ~ Int {
+			return @count;
+		}
+
+		#~
+		The time of the last key, which is how long the track runs for.
+		@return seconds, or 0 for an empty track
+		~#
+		method : public : GetDuration() ~ Float {
+			if(@count = 0) {
+				return 0.0;
+			};
+
+			return @times[@count - 1];
+		}
+
+		#~
+		@param index 0 to GetCount() - 1
+		@return the time of that key, or 0 if out of range
+		~#
+		method : public : GetKeyTime(index : Int) ~ Float {
+			if(index < 0 | index >= @count) {
+				return 0.0;
+			};
+
+			return @times[index];
+		}
+
+		#~
+		@param index 0 to GetCount() - 1
+		@return the value of that key, or 0 if out of range
+		~#
+		method : public : GetKeyValue(index : Int) ~ Float {
+			if(index < 0 | index >= @count) {
+				return 0.0;
+			};
+
+			return @values[index];
+		}
+
+		#~
+		Read the value at a moment.
+
+		Before the first key returns the first value and after the last returns the
+		last, so a track is safe to sample at any time without the caller clamping
+		-- unless it loops, in which case time wraps.
+		@param time seconds from the start
+		@return the value there
+		~#
+		method : public : Sample(time : Float) ~ Float {
+			if(@count = 0) {
+				return 0.0;
+			};
+			if(@count = 1) {
+				return @values[0];
+			};
+
+			first := @times[0];
+			last := @times[@count - 1];
+			at := time;
+
+			if(@loop) {
+				span := last - first;
+				if(span > 0.0) {
+					# Modulo on Floats, by hand. Two wraps rather than one because a
+					# NEGATIVE time -- a track running backwards, or one started
+					# before the clock's zero -- would otherwise land outside the
+					# span on the low side.
+					at := first + (at - first) - span * ((at - first) / span)->Floor();
+					if(at < first) {
+						at += span;
+					};
+				};
+			};
+
+			if(at <= first) {
+				return @values[0];
+			};
+			if(at >= last) {
+				return @values[@count - 1];
+			};
+
+			# The segment containing `at`. Linear again, for the same reason Add is.
+			index := 0;
+			while(index < @count - 2 & @times[index + 1] < at) {
+				index += 1;
+			};
+
+			start_time := @times[index];
+			end_time := @times[index + 1];
+			span := end_time - start_time;
+			if(span <= 0.0) {
+				return @values[index + 1];
+			};
+
+			t := (at - start_time) / span;
+
+			return @values[index] + (@values[index + 1] - @values[index]) * Shape(t);
+		}
+
+		#~
+		Bend 0..1 according to the easing mode.
+		~#
+		method : Shape(t : Float) ~ Float {
+			if(@easing = Easing->STEP) {
+				# Holds the earlier key until the next one arrives, which is what a
+				# blinking light or a frame-by-frame flip wants.
+				return 0.0;
+			};
+
+			if(@easing = Easing->EASE_IN) {
+				return t * t;
+			};
+
+			if(@easing = Easing->EASE_OUT) {
+				return t * (2.0 - t);
+			};
+
+			if(@easing = Easing->EASE_IN_OUT) {
+				# Smoothstep. Zero slope at both ends, which is what makes it read
+				# as weight rather than as a ramp.
+				return t * t * (3.0 - 2.0 * t);
+			};
+
+			return t;
 		}
 	}
 
@@ -8728,7 +9166,8 @@ bundle Game.OpenGL {
 		@return the model matrix; BORROWED from the transform, do not write to it
 		~#
 		method : public : GetModelMatrix() ~ Float[] {
-			return @transform->GetMatrix();
+			# WORLD, so a prop parented to another draws where the chain puts it.
+			return @transform->GetWorldMatrix();
 		}
 
 		#~
@@ -9146,7 +9585,7 @@ bundle Game.OpenGL {
 
 			each(i : @transforms) {
 				at := @transforms->Get(i);
-				model := at->GetMatrix();
+				model := at->GetWorldMatrix();
 				base := i * 16;
 
 				for(k := 0; k < 16; k += 1;) {

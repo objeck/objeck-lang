@@ -93,6 +93,7 @@ class GlContextTest {
 		CheckCollision();
 		CheckArraysAndOffset();
 		CheckParticles();
+		CheckAnimation();
 		CheckMaterialLeak();
 		CheckStencilAndPoints();
 		CheckMatrixMath();
@@ -4852,6 +4853,242 @@ class GlContextTest {
 		};
 
 		return high - low;
+	}
+
+	#~
+	Animation: a transform hierarchy, and keyframed values.
+
+	The hierarchy half has a specific way of half-working. Composing parent times
+	local inside Transform is the easy part; the part that is easy to MISS is that
+	everything which actually draws -- Prop, PropBatch, both shadow casters -- was
+	reading the LOCAL matrix, so parenting could be completely correct and
+	completely invisible. The last block draws a parented prop and reads the
+	pixel, which is the only check here that would have caught that.
+	~#
+	method : CheckAnimation() ~ Nil {
+		# --- a transform on its own -------------------------------------------
+		lone := Transform->New();
+		lone->SetPosition(1.0, 2.0, 3.0);
+		Check("an unparented transform has no parent", <>lone->HasParent());
+		Check("and its world matrix is its local one",
+			WorldX(lone) = 1.0 & WorldY(lone) = 2.0 & WorldZ(lone) = 3.0);
+
+		# --- one level ---------------------------------------------------------
+		parent := Transform->New();
+		parent->SetPosition(5.0, 0.0, 0.0);
+
+		child := Transform->New();
+		child->SetPosition(0.0, 1.0, 0.0);
+		Check("SetParent succeeds", child->SetParent(parent));
+		Check("and the child knows its parent", child->GetParent() = parent);
+
+		# THE composition assertion. A child that ignored its parent would still
+		# be at (0,1,0), which is a perfectly plausible-looking wrong answer.
+		cx := WorldX(child); cy := WorldY(child);
+		"  child under a parent at x=5: world ({$cx}, {$cy})"->PrintLine();
+		Check("the child sits at parent plus local",
+			(cx - 5.0)->Abs() < 0.0001 & (cy - 1.0)->Abs() < 0.0001);
+
+		# Moving the parent moves the child, with nothing notifying anything.
+		parent->SetPosition(-2.0, 0.0, 0.0);
+		Check("moving the parent moves the child",
+			(WorldX(child) + 2.0)->Abs() < 0.0001);
+
+		# Turning the parent swings the child around it. A quarter turn about y
+		# takes a child at +1 on y... nowhere, so the child goes out on z where
+		# the rotation is visible.
+		parent->SetPosition(0.0, 0.0, 0.0);
+		child->SetPosition(0.0, 0.0, 2.0);
+		before_x := WorldX(child);
+		parent->SetRotation(1.5707963, 0.0, 0.0);
+		after_x := WorldX(child);
+		"  child at z=2 after a quarter turn: x {$before_x} -> {$after_x}"->PrintLine();
+		Check("turning the parent swings the child around it",
+			before_x->Abs() < 0.0001 & after_x->Abs() > 1.9);
+
+		# --- three levels, and the change that has to travel --------------------
+		parent->SetRotation(0.0, 0.0, 0.0);
+		parent->SetPosition(0.0, 0.0, 0.0);
+		child->SetPosition(1.0, 0.0, 0.0);
+
+		grandchild := Transform->New();
+		grandchild->SetPosition(1.0, 0.0, 0.0);
+		grandchild->SetParent(child);
+		Check("a grandchild composes the whole chain",
+			(WorldX(grandchild) - 2.0)->Abs() < 0.0001);
+
+		# THE propagation assertion: a change at the TOP must reach the leaf, and
+		# nothing registered as a listener anywhere.
+		parent->SetPosition(10.0, 0.0, 0.0);
+		leaf := WorldX(grandchild);
+		"  after moving the root to x=10, the grandchild is at {$leaf}"->PrintLine();
+		Check("a change three levels up reaches the leaf",
+			(leaf - 12.0)->Abs() < 0.0001);
+
+		# --- cycles are refused --------------------------------------------------
+		Check("a transform cannot be its own parent", <>parent->SetParent(parent));
+		# The one that would recurse until the stack ran out.
+		Check("and cannot be parented to its own descendant",
+			<>parent->SetParent(grandchild));
+		Check("the refusal leaves the existing parent alone",
+			grandchild->GetParent() = child);
+
+		Check("SetParent(Nil) returns it to world space",
+			grandchild->SetParent(Nil) & <>grandchild->HasParent());
+		Check("and it is back at its local position",
+			(WorldX(grandchild) - 1.0)->Abs() < 0.0001);
+
+		# --- scale composes -------------------------------------------------------
+		scaler := Transform->New();
+		scaler->SetScale(2.0, 2.0, 2.0);
+		scaled_child := Transform->New();
+		scaled_child->SetPosition(1.0, 0.0, 0.0);
+		scaled_child->SetParent(scaler);
+		Check("a parent's scale scales the child's offset",
+			(WorldX(scaled_child) - 2.0)->Abs() < 0.0001);
+
+		# --- and it reaches the screen ---------------------------------------------
+		CheckParentedDraw();
+
+		# --- Track ------------------------------------------------------------------
+		empty := Track->New();
+		Check("an empty track samples zero", empty->Sample(1.0) = 0.0);
+		Check("and has no duration", empty->GetDuration() = 0.0);
+
+		single := Track->New();
+		single->Add(2.0, 7.0);
+		Check("a one-key track holds that value everywhere",
+			single->Sample(0.0) = 7.0 & single->Sample(99.0) = 7.0);
+
+		ramp := Track->New(2.0, 0.0, 10.0);
+		Check("the two-argument form builds two keys", ramp->GetCount() = 2);
+		Check("with the duration asked for", ramp->GetDuration() = 2.0);
+		Check("linear halfway is halfway", (ramp->Sample(1.0) - 5.0)->Abs() < 0.0001);
+		Check("before the start holds the first value", ramp->Sample(-5.0) = 0.0);
+		Check("after the end holds the last", ramp->Sample(50.0) = 10.0);
+
+		# Keys out of order, which Add has to sort.
+		jumbled := Track->New();
+		jumbled->Add(2.0, 20.0);
+		jumbled->Add(0.0, 0.0);
+		jumbled->Add(1.0, 10.0);
+		Check("keys added out of order are sorted", jumbled->GetCount() = 3);
+		Check("and read back in time order",
+			jumbled->GetKeyTime(0) = 0.0 & jumbled->GetKeyTime(2) = 2.0);
+		# THE assertion for sorting: sampling BETWEEN the out-of-order keys. A
+		# track that merely appended would interpolate across the wrong pair and
+		# still return something.
+		Check("so a sample between them is right",
+			(jumbled->Sample(0.5) - 5.0)->Abs() < 0.0001 &
+			(jumbled->Sample(1.5) - 15.0)->Abs() < 0.0001);
+
+		jumbled->Add(1.0, 99.0);
+		Check("a key at an existing time replaces rather than duplicating",
+			jumbled->GetCount() = 3 & jumbled->Sample(1.0) = 99.0);
+
+		# --- easing -------------------------------------------------------------------
+		eased := Track->New(1.0, 0.0, 100.0);
+		eased->SetEasing(Easing->EASE_IN_OUT);
+		quarter := eased->Sample(0.25);
+		half := eased->Sample(0.5);
+		"  ease-in-out at 0.25 = {$quarter}, at 0.5 = {$half}"->PrintLine();
+		Check("smoothstep is symmetric about the middle",
+			(half - 50.0)->Abs() < 0.0001);
+		# THE easing assertion: it must actually BEND. A linear track reads 25 at
+		# a quarter, so anything near 25 means the easing did nothing.
+		Check("and moves slower than linear early on", quarter < 20.0);
+
+		eased->SetEasing(Easing->EASE_IN);
+		Check("ease-in starts slower still", eased->Sample(0.25) < quarter);
+
+		eased->SetEasing(Easing->STEP);
+		Check("step holds the earlier key", eased->Sample(0.9) = 0.0);
+		Check("and still lands on the last one at the end", eased->Sample(1.0) = 100.0);
+
+		# --- looping ---------------------------------------------------------------------
+		cycle := Track->New(2.0, 0.0, 20.0);
+		cycle->SetLoop(true);
+		Check("a looping track wraps past its end",
+			(cycle->Sample(3.0) - 10.0)->Abs() < 0.0001);
+		Check("and wraps again further out",
+			(cycle->Sample(5.0) - 10.0)->Abs() < 0.0001);
+		# Negative time is what a track running backwards produces, and the naive
+		# single modulo lands outside the span on the low side.
+		Check("and handles time before zero",
+			(cycle->Sample(-1.0) - 10.0)->Abs() < 0.0001);
+
+		# --- growth past the initial capacity ---------------------------------------------
+		many := Track->New();
+		for(i := 0; i < 20; i += 1;) {
+			many->Add(i->As(Float), i->As(Float) * 2.0);
+		};
+		Check("a track grows past its initial capacity", many->GetCount() = 20);
+		Check("keeping every key", (many->Sample(19.0) - 38.0)->Abs() < 0.0001);
+		Check("and still interpolating between them",
+			(many->Sample(4.5) - 9.0)->Abs() < 0.0001);
+	}
+
+	#~
+	x, y and z of a transform's WORLD matrix. Translation lives at 12, 13 and 14
+	in a column-major matrix.
+	~#
+	method : WorldX(at : Transform) ~ Float { return at->GetWorldMatrix()[12]; }
+	method : WorldY(at : Transform) ~ Float { return at->GetWorldMatrix()[13]; }
+	method : WorldZ(at : Transform) ~ Float { return at->GetWorldMatrix()[14]; }
+
+	#~
+	Does a parented prop DRAW where the hierarchy puts it?
+
+	The check that would have caught the real gap: composing correctly inside
+	Transform while every draw path still read the local matrix. A prop offset
+	from its parent must appear where the parent puts it, not where its own
+	position says.
+	~#
+	method : CheckParentedDraw() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube(0.35);
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the parented-draw check",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		rig := LightRig->New();
+		rig->SetAmbient(1.0, 1.0, 1.0);
+		scene->SetLightRig(rig);
+		scene->SetCulling(false);
+
+		# The prop's OWN position is the origin -- dead centre of the view. Its
+		# parent is off to the left. If the draw path reads the local matrix the
+		# cube appears in the middle; if it reads the world matrix it appears left.
+		hub := Transform->New();
+		hub->SetPosition(-2.2, 0.0, 0.0);
+
+		prop := scene->AddProp(Prop->New(cube, Material->New(white)));
+		prop->GetTransform()->SetPosition(0.0, 0.0, 0.0);
+		prop->GetTransform()->SetParent(hub);
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 6.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		scene->Draw(eye->GetViewProjection());
+
+		black := 0xFF000000;
+		centre := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		left := GL->ReadPixel((@pixel_w * 22) / 100, @pixel_h / 2);
+		"  parented prop: centre=0x{$centre} left=0x{$left}"->PrintLine();
+
+		Check("a parented prop draws where its PARENT puts it", left <> black);
+		Check("and not where its own position says", centre = black);
+
+		shader->Free();
+		cube->Free();
+		white->Free();
 	}
 
 	#~
