@@ -164,6 +164,22 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	Something holding a GL object that has to be released.
+
+	Exists so GLWindow->Own can hold a mixed list. Every class here already
+	declared `method : public : Free()` with exactly this shape, so implementing
+	it costs them nothing -- but note Objeck requires the access to match the
+	interface exactly, and does not accept an INHERITED method as satisfying one.
+	~#
+	interface Freeable {
+		#~
+		Release whatever GL objects this holds. Must be idempotent -- everything
+		in this bundle nulls its handle, so a second call does nothing.
+		~#
+		method : public : virtual : Free() ~ Nil;
+	}
+
+	#~
 	OpenGL state operations.
 
 	Every method needs a current context (Window->GLCreateContext), and GL state
@@ -190,22 +206,6 @@ bundle Game.OpenGL {
 	meshes -- at which point it is an unbounded VRAM leak with no symptom
 	pointing back here.
 	~#
-	#~
-	Something holding a GL object that has to be released.
-
-	Exists so GLWindow->Own can hold a mixed list. Every class here already
-	declared `method : public : Free()` with exactly this shape, so implementing
-	it costs them nothing -- but note Objeck requires the access to match the
-	interface exactly, and does not accept an INHERITED method as satisfying one.
-	~#
-	interface Freeable {
-		#~
-		Release whatever GL objects this holds. Must be idempotent -- everything
-		in this bundle nulls its handle, so a second call does nothing.
-		~#
-		method : public : virtual : Free() ~ Nil;
-	}
-
 	class GL {
 		#~
 		Resolve the OpenGL 2.0+ entry points. Call once, after the context is
@@ -1032,23 +1032,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		A number that changes whenever the drawable changes size.
-
-		PollEvents keeps the viewport right on its own, but a projection matrix is
-		the program's, and a stale one stretches the scene while a HUD drawn in
-		pixels stays correct. Compare this against the last value you saw:
-
-		  if(window->GetDrawableGeneration() <> @seen) {
-		    @seen := window->GetDrawableGeneration();
-		    target->Free(); target := RenderTarget->New(window->GetWidth(), ...);
-		  };
-
-		For the projection specifically there is nothing to compare -- call
-		Camera->SetAspect(window->GetAspect()) every frame and it does nothing
-		unless the value actually changed.
-		@return a counter, not a size; only equality is meaningful
-		~#
-		#~
 		Hand something to the window to release on the way out.
 
 		Every example in this repo hand-writes the same teardown: a chain of
@@ -1095,6 +1078,23 @@ bundle Game.OpenGL {
 			return @owned->Size();
 		}
 
+		#~
+		A number that changes whenever the drawable changes size.
+
+		PollEvents keeps the viewport right on its own, but a projection matrix is
+		the program's, and a stale one stretches the scene while a HUD drawn in
+		pixels stays correct. Compare this against the last value you saw:
+
+		  if(window->GetDrawableGeneration() <> @seen) {
+		    @seen := window->GetDrawableGeneration();
+		    target->Free(); target := RenderTarget->New(window->GetWidth(), ...);
+		  };
+
+		For the projection specifically there is nothing to compare -- call
+		Camera->SetAspect(window->GetAspect()) every frame and it does nothing
+		unless the value actually changed.
+		@return a counter, not a size; only equality is meaningful
+		~#
 		method : public : GetDrawableGeneration() ~ Int {
 			return @drawable_generation;
 		}
@@ -2029,6 +2029,25 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Build a lit program and give its opacity a usable value.
+
+		A GLSL uniform starts at ZERO, and `opacity` is declared and live in every
+		lit fragment shader. So a program using one of these presets WITHOUT a
+		Material or a Scene -- which is what three of the shipped examples do --
+		has alpha 0. It looks right only while blending is off; the moment anything
+		calls GL->BeginTransparency the geometry vanishes, with no GL error to
+		explain it.
+		~#
+		function : private : LitShader(vertex : String, fragment : String) ~ Shader {
+			built := Shader->New(vertex, fragment);
+			if(built->IsOk() & built->HasUniform("opacity")) {
+				built->SetFloat("opacity", 1.0);
+			};
+
+			return built;
+		}
+
+		#~
 		Textured and lit by one directional light.
 
 		Uniforms: "mvp" and "model" (Scene sets both), the sampler "tex", and the
@@ -2051,7 +2070,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : LitTextured() ~ Shader {
-			return Shader->New(LitVertexSource(), LitFragmentSource(true));
+			return LitShader(LitVertexSource(), LitFragmentSource(true));
 		}
 
 		#~
@@ -2061,7 +2080,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : Lit() ~ Shader {
-			return Shader->New(LitVertexSource(), LitFragmentSource(false));
+			return LitShader(LitVertexSource(), LitFragmentSource(false));
 		}
 
 		#~
@@ -2073,7 +2092,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : LitTexturedShadowed() ~ Shader {
-			return Shader->New(LitVertexSource(true), LitFragmentSource(true, true));
+			return LitShader(LitVertexSource(true), LitFragmentSource(true, true));
 		}
 
 		#~
@@ -2081,7 +2100,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : LitShadowed() ~ Shader {
-			return Shader->New(LitVertexSource(true), LitFragmentSource(false, true));
+			return LitShader(LitVertexSource(true), LitFragmentSource(false, true));
 		}
 
 		#~
@@ -2173,7 +2192,7 @@ bundle Game.OpenGL {
 		@return the program; check IsOk()
 		~#
 		function : LitTexturedPointShadowed() ~ Shader {
-			return Shader->New(LitVertexSource(false), LitFragmentSource(true, false, true));
+			return LitShader(LitVertexSource(false), LitFragmentSource(true, false, true));
 		}
 
 		#~
@@ -5309,10 +5328,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		The font used by Text. Not owned -- the caller loads it and frees it.
-		@param font a loaded Font
-		~#
-		#~
 		An overlay using the font that ships with Objeck.
 
 		Three examples had ten identical lines of this -- Font->Init, a hardcoded
@@ -5377,6 +5392,10 @@ bundle Game.OpenGL {
 			@owned_font := font;
 		}
 
+		#~
+		The font used by Text. Not owned -- the caller loads it and frees it.
+		@param font a loaded Font
+		~#
 		method : public : SetFont(font : Font) ~ Nil {
 			if(font <> @font) {
 				# Cached textures were rasterised with the old font and would keep
@@ -5692,8 +5711,9 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Release the overlay's own GL objects. Does NOT free the font -- that was
-		passed in and belongs to the caller.
+		Release the overlay's own GL objects, and a font it loaded ITSELF through
+		WithDefaultFont. A font handed in by SetFont is not freed -- that one
+		belongs to the caller and may be shared with another overlay.
 
 		Call it while the GL context is still current -- see the shutdown order on
 		the GL class.
@@ -5814,14 +5834,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		How tight the highlight is and how strong.
-
-		Strength defaults to zero, so a material is matte until asked -- a diffuse
-		surface is the right default and an unexpected highlight reads as a bug.
-		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
-		@param strength 0 matte, around 0.5 plastic, 1.0 something wet
-		~#
-		#~
 		How opaque this material is.
 
 		1.0 is solid and is the default. Anything less needs blending on and the
@@ -5852,6 +5864,14 @@ bundle Game.OpenGL {
 			return @opacity >= 1.0;
 		}
 
+		#~
+		How tight the highlight is and how strong.
+
+		Strength defaults to zero, so a material is matte until asked -- a diffuse
+		surface is the right default and an unexpected highlight reads as a bug.
+		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
+		@param strength 0 matte, around 0.5 plastic, 1.0 something wet
+		~#
 		method : public : SetSpecular(shininess : Float, strength : Float) ~ Nil {
 			@shininess := shininess;
 			@specular := strength;
@@ -7312,6 +7332,21 @@ bundle Game.OpenGL {
 		@param shininess the exponent; 8 is a broad sheen, 128 a tight glint
 		@param strength 0 for matte, around 0.5 for plastic, 1.0 for something wet
 		~#
+		#~
+		@return the scene-wide shininess, so a Material that overrode it can be
+		put back rather than guessed at
+		~#
+		method : public : GetShininess() ~ Float {
+			return @shininess;
+		}
+
+		#~
+		@return the scene-wide specular strength
+		~#
+		method : public : GetSpecular() ~ Float {
+			return @specular;
+		}
+
 		method : public : SetSpecular(shininess : Float, strength : Float) ~ Nil {
 			@shininess := shininess;
 			@specular := strength;
@@ -7510,9 +7545,13 @@ bundle Game.OpenGL {
 		@return the largest scale component
 		~#
 		method : public : GetMaxScale() ~ Float {
-			largest := @sx;
-			if(@sy > largest) { largest := @sy; };
-			if(@sz > largest) { largest := @sz; };
+			# Absolute values: a negative scale is a MIRROR, not a smaller object.
+			# Signed, it gave a NEGATIVE radius -- and a negative radius makes
+			# Frustum->ContainsSphere stricter than a point test, so the object
+			# disappears while still well inside the view, from the shadow pass too.
+			largest := @sx->Abs();
+			if(@sy->Abs() > largest) { largest := @sy->Abs(); };
+			if(@sz->Abs() > largest) { largest := @sz->Abs(); };
 
 			return largest;
 		}
@@ -7681,18 +7720,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Whether a circle in plan view overlaps this box.
-
-		Deliberately 2D: a walking character should not be blocked by something
-		overhead, and testing the full 3D box would do exactly that. Corners are
-		treated conservatively -- a near-miss at a corner counts as a hit, which is
-		the right way to be wrong about a wall.
-		@param x circle centre x
-		@param z circle centre z
-		@param radius circle radius
-		@return true when they overlap
-		~#
-		#~
 		How opaque this box is.
 
 		A transparent box is drawn after every solid one, furthest first -- which
@@ -7720,6 +7747,18 @@ bundle Game.OpenGL {
 			return @material->IsOpaque();
 		}
 
+		#~
+		Whether a circle in plan view overlaps this box.
+
+		Deliberately 2D: a walking character should not be blocked by something
+		overhead, and testing the full 3D box would do exactly that. Corners are
+		treated conservatively -- a near-miss at a corner counts as a hit, which is
+		the right way to be wrong about a wall.
+		@param x circle centre x
+		@param z circle centre z
+		@param radius circle radius
+		@return true when they overlap
+		~#
 		method : public : OverlapsXZ(x : Float, z : Float, radius : Float) ~ Bool {
 			gap_x := (x - @center->GetX())->Abs() - @half->GetX();
 			gap_z := (z - @center->GetZ())->Abs() - @half->GetZ();
@@ -7728,32 +7767,6 @@ bundle Game.OpenGL {
 		}
 	}
 
-	#~
-	A world of boxes that draws itself and answers collision queries.
-
-	This is the layer that keeps a 3D program from hand-rolling parallel arrays
-	and index arithmetic. Add boxes, then call Draw once per frame and Blocked
-	whenever something wants to move.
-
-	```
-	scene := Scene->New(cube_mesh, shader);
-	scene->AddBox(Vector3->New(0.0, 1.0, -4.0), Vector3->New(1.0, 1.0, 1.0), crate);
-	...
-	scene->Draw(view_projection);
-	if(<>scene->Blocked(new_x, new_z, 0.35)) { ... };
-	```
-
-	## Two things it does that a naive loop would not
-
-	It only rebinds a texture when the next box uses a different one, so a scene
-	grouped by texture costs a handful of binds rather than one per box.
-
-	It draws through Matrix4->MultiplyInto with a scratch buffer it owns, so a
-	frame allocates nothing. The obvious version -- Multiply per box per frame --
-	returns a fresh Float[16] each time, which is hundreds of arrays a second and
-	enough to collect mid-frame. Objeck's SDL renderer already had to be rewritten
-	once for exactly this reason.
-	~#
 	#~
 	A mesh, a material and a transform -- the thing Scene could not hold.
 
@@ -7876,6 +7889,32 @@ bundle Game.OpenGL {
 		}
 	}
 
+	#~
+	A world of boxes that draws itself and answers collision queries.
+
+	This is the layer that keeps a 3D program from hand-rolling parallel arrays
+	and index arithmetic. Add boxes, then call Draw once per frame and Blocked
+	whenever something wants to move.
+
+	```
+	scene := Scene->New(cube_mesh, shader);
+	scene->AddBox(Vector3->New(0.0, 1.0, -4.0), Vector3->New(1.0, 1.0, 1.0), crate);
+	...
+	scene->Draw(view_projection);
+	if(<>scene->Blocked(new_x, new_z, 0.35)) { ... };
+	```
+
+	## Two things it does that a naive loop would not
+
+	It only rebinds a texture when the next box uses a different one, so a scene
+	grouped by texture costs a handful of binds rather than one per box.
+
+	It draws through Matrix4->MultiplyInto with a scratch buffer it owns, so a
+	frame allocates nothing. The obvious version -- Multiply per box per frame --
+	returns a fresh Float[16] each time, which is hundreds of arrays a second and
+	enough to collect mid-frame. Objeck's SDL renderer already had to be rewritten
+	once for exactly this reason.
+	~#
 	class Scene {
 		@boxes : Vector<Box>;
 		@mesh : Mesh;
@@ -7909,6 +7948,8 @@ bundle Game.OpenGL {
 		@last_texture : Texture2D;
 		@last_material : Material;
 		@wants_opacity : Int;
+		@wants_tint : Int;
+		@wants_specular : Int;
 
 		#~
 		@param mesh the cube mesh every box is drawn with; it must span -1..1 on
@@ -7935,6 +7976,8 @@ bundle Game.OpenGL {
 			@last_texture := Nil;
 			@last_material := Nil;
 			@wants_opacity := -1;
+			@wants_tint := -1;
+			@wants_specular := -1;
 		}
 
 		#~
@@ -8097,6 +8140,8 @@ bundle Game.OpenGL {
 				@wants_model := @shader->HasUniform("model") ? 1 : 0;
 				@wants_sampler := @shader->HasUniform("tex") ? 1 : 0;
 				@wants_opacity := @shader->HasUniform("opacity") ? 1 : 0;
+				@wants_tint := @shader->HasUniform("tint") ? 1 : 0;
+				@wants_specular := @shader->HasUniform("specular_strength") ? 1 : 0;
 			};
 
 			# The sampler unit, which Scene used to leave unset -- so a shader had to
@@ -8218,19 +8263,39 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Bind what one box needs and draw it.
-
-		Split out because the two passes are the same work in a different order,
-		and a second copy of it would be a second place for the material-run
-		tracking to go wrong.
-		~#
-		#~
 		Bind what one prop needs and draw it.
 
 		Unlike a box this rebinds the mesh, because a prop brings its own -- which
 		is the cost of holding them at all, and the reason boxes were not merged
 		into the same list.
 		~#
+		#~
+		Undo whatever the last Material wrote, for geometry that has none.
+
+		Only opacity was being reset, and Material->ApplyTo writes FOUR uniforms:
+		tint, shininess, specular_strength and opacity. So one material'd object
+		tinted every untextured object drawn after it -- in gl_lantern that meant
+		the entire dungeon turned the relics' gold from the second frame onward,
+		because the last material applied each frame was the glow shell.
+
+		Specular goes back to the RIG's values rather than a hardcoded default,
+		because that is what the scene asked for before any material overrode it.
+		~#
+		method : ResetMaterialState() ~ Nil {
+			if(@wants_opacity = 1) {
+				@shader->SetFloat("opacity", 1.0);
+			};
+			if(@wants_tint = 1) {
+				# The lit shaders read a zero tint as "no tint", so white and zero
+				# are equivalent here -- white is the honest value.
+				@shader->SetVec3("tint", 1.0, 1.0, 1.0);
+			};
+			if(@wants_specular = 1 & @rig <> Nil) {
+				@shader->SetFloat("shininess", @rig->GetShininess());
+				@shader->SetFloat("specular_strength", @rig->GetSpecular());
+			};
+		}
+
 		method : DrawProp(prop : Prop, view_projection : Float[]) ~ Nil {
 			mesh := prop->GetMesh();
 			if(mesh = Nil | <>mesh->IsOk()) {
@@ -8245,10 +8310,8 @@ bundle Game.OpenGL {
 					@last_texture := Nil->As(Texture2D);
 				};
 			}
-			else if(@wants_opacity = 1) {
-				# No material means no opacity of its own, and the uniform still
-				# holds whatever the last material left there.
-				@shader->SetFloat("opacity", 1.0);
+			else {
+				ResetMaterialState();
 			};
 
 			model := prop->GetModelMatrix();
@@ -8276,6 +8339,13 @@ bundle Game.OpenGL {
 			return dx * dx + dy * dy + dz * dz;
 		}
 
+		#~
+		Bind what one box needs and draw it.
+
+		Split out because the two passes are the same work in a different order,
+		and a second copy of it would be a second place for the material-run
+		tracking to go wrong.
+		~#
 		method : DrawOne(box : Box, view_projection : Float[]) ~ Nil {
 			material := box->GetMaterial();
 			if(material <> Nil) {
@@ -8298,11 +8368,7 @@ bundle Game.OpenGL {
 					@last_material := Nil->As(Material);
 				};
 
-				# A box with no material carries no opacity either, and the shader's
-				# uniform is whatever the last material left there.
-				if(@wants_opacity = 1) {
-					@shader->SetFloat("opacity", 1.0);
-				};
+				ResetMaterialState();
 			};
 
 			model := box->GetModelMatrix();
@@ -8396,26 +8462,6 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Whether a circle in plan view hits any SOLID box.
-		@param x circle centre x
-		@param z circle centre z
-		@param radius circle radius
-		@return true when the position is blocked
-		~#
-		#~
-		Tell the scene where the camera is, so transparency can be ordered.
-
-		Transparent surfaces must be drawn back to front: a nearer one drawn first
-		writes depth and hides what is behind it. That needs a distance, and a
-		distance needs an eye. Call it every frame:
-
-		  scene->SetEye(camera->GetPosition());
-
-		Without it transparent boxes still draw, in insertion order -- which is
-		correct only by luck.
-		@param eye the camera position
-		~#
-		#~
 		Add a prop -- a mesh, material and transform of its own.
 
 		Returned so it can be kept and moved:
@@ -8457,6 +8503,19 @@ bundle Game.OpenGL {
 			return @props->Get(index);
 		}
 
+		#~
+		Tell the scene where the camera is, so transparency can be ordered.
+
+		Transparent surfaces must be drawn back to front: a nearer one drawn first
+		writes depth and hides what is behind it. That needs a distance, and a
+		distance needs an eye. Call it every frame:
+
+		  scene->SetEye(camera->GetPosition());
+
+		Without it transparent boxes still draw, in insertion order -- which is
+		correct only by luck.
+		@param eye the camera position
+		~#
 		method : public : SetEye(eye : Vector3) ~ Nil {
 			@eye := eye;
 		}
@@ -8508,11 +8567,23 @@ bundle Game.OpenGL {
 		~#
 		method : ReserveFar(count : Int) ~ Nil {
 			if(@far_order->Size() < count) {
-				@far_order := Int->New[count];
-				@far_distance := Float->New[count];
+				# Doubled, not exact. A scene that gains one object per frame --
+				# anything streaming or spawning -- reallocated BOTH arrays every
+				# single frame with exact sizing, from inside the draw loop this
+				# field exists to keep allocation-free.
+				room := count * 2;
+				@far_order := Int->New[room];
+				@far_distance := Float->New[room];
 			};
 		}
 
+		#~
+		Whether a circle in plan view hits any SOLID box.
+		@param x circle centre x
+		@param z circle centre z
+		@param radius circle radius
+		@return true when the position is blocked
+		~#
 		method : public : Blocked(x : Float, z : Float, radius : Float) ~ Bool {
 			each(i : @boxes) {
 				box := @boxes->Get(i);
@@ -8579,11 +8650,14 @@ bundle Game.OpenGL {
 		}
 
 		#~
-		Drop every box. Does NOT free the shared mesh, shader or textures -- those
+		Drop every box and every prop. Does NOT free the shared mesh, shader or textures -- those
 		were passed in and belong to the caller.
 		~#
 		method : public : Clear() ~ Nil {
 			@boxes->Empty();
+			# Props too. Leaving them meant a scene that was cleared and rebuilt
+			# accumulated props forever and went on drawing them.
+			@props->Empty();
 		}
 	}
 

@@ -86,6 +86,7 @@ class GlContextTest {
 		CheckOwnership();
 		CheckScissorAndStencil();
 		CheckProps();
+		CheckMaterialLeak();
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
@@ -1366,8 +1367,10 @@ class GlContextTest {
 			Check("measuring the same string twice agrees", first = second & first > 0);
 		};
 
-		# Note Game.SDL2's Font has no Free or Close method at all, so a loaded font
-		# cannot be released -- worth knowing, and not this bundle's to fix.
+		# Font->Free exists now -- TTF_CloseFont was bound -- so close this one
+		# rather than leaking it, and before Quit rather than after. The two
+		# checks above cover Free itself on a separate font.
+		if(font <> Nil & <>font->IsNull()) { font->Free(); };
 		Font->Quit();
 
 		Check("no GL errors from the overlay", GL->DrainErrors()->Size() = 0);
@@ -3021,8 +3024,13 @@ class GlContextTest {
 		Check("the suite's own context is current again after probing",
 			@gl->GetWidth() > 64 | @pixel_w > 64 | GL->DrainErrors()->Size() = 0);
 
-		Check("GL_MULTISAMPLE is a capability that can be toggled",
-			Capability->GL_MULTISAMPLE = 0x809D);
+		# Toggling it must not raise a GL error -- which is the part that can
+		# actually be wrong. Asserting the constant against its own literal, as
+		# this did, tests the test.
+		GL->Enable(Capability->GL_MULTISAMPLE);
+		GL->Disable(Capability->GL_MULTISAMPLE);
+		Check("GL_MULTISAMPLE can be toggled without error",
+			GL->DrainErrors()->Size() = 0);
 	}
 
 	#~
@@ -3336,26 +3344,135 @@ class GlContextTest {
 		# be so large that it never is.
 		mid->GetTransform()->SetPosition(400.0, 0.0, -4.0);
 		scene->Draw(eye->GetViewProjection());
-		Check("and one moved far off screen is culled", scene->GetCulledCount() > 0);
+		# EXACTLY one -- ">0" would also pass if the prop stayed and a box were
+		# culled instead, which is the opposite of what this is checking.
+		Check("and one moved far off screen is culled", scene->GetCulledCount() = 1);
+		Check("leaving the boxes drawn", scene->GetDrawnCount() = 3);
 
 		# Rotated, back in view: the sphere is orientation-independent, so this
 		# must still draw. A box test would have been wrong here.
 		mid->GetTransform()->SetPosition(0.0, 0.0, -4.0);
 		mid->GetTransform()->SetRotation(0.7, 0.4, 0.0);
-		before := scene->GetDrawnCount();
 		scene->Draw(eye->GetViewProjection());
+		# All four again. The previous version compared against a count captured
+		# while the prop was off-screen, so it passed whether the rotated prop
+		# drew or not -- it could not detect the failure it was named after.
 		Check("a rotated prop is not wrongly culled -- the bound is a sphere",
-			scene->GetDrawnCount() >= before - 1);
+			scene->GetDrawnCount() = 4 & scene->GetCulledCount() = 0);
+
+		# A MIRRORED prop. A negative scale gave a negative radius, which makes
+		# ContainsSphere stricter than a point test, so the prop vanished while
+		# still centred in view.
+		mid->GetTransform()->SetScale(-8.0, 8.0, 0.2);
+		scene->Draw(eye->GetViewProjection());
+		Check("and neither is a mirrored one -- a negative scale is not a small one",
+			scene->GetDrawnCount() = 4 & scene->GetCulledCount() = 0);
+		mid->GetTransform()->SetScale(8.0, 8.0, 0.2);
+
+		# --- Clear ----------------------------------------------------------
+		# Clear emptied only the boxes, so a scene that was cleared and rebuilt
+		# accumulated props forever and kept drawing them. Its own doc said
+		# "drop every box", which is true and is exactly what hid it.
+		Check("the scene holds a prop before Clear", scene->GetPropCount() = 1);
+		scene->Clear();
+		Check("Clear drops the props, not only the boxes", scene->GetPropCount() = 0);
+		Check("and the boxes with them", scene->GetCount() = 0);
+
+		mid := scene->AddProp(mid);
 
 		# --- invisible ------------------------------------------------------
 		mid->SetVisible(false);
 		scene->Draw(eye->GetViewProjection());
-		Check("SetVisible(false) takes it out of the draw", <>mid->IsVisible());
+		# Read the COUNTER. The previous version asserted <>IsVisible(), which is
+		# true by construction from the line above and says nothing about drawing.
+		# Clear() emptied the scene above, so the re-added prop is all there is:
+		# hidden, nothing draws.
+		scene->Draw(eye->GetViewProjection());
+		Check("SetVisible(false) takes it out of the draw",
+			scene->GetDrawnCount() = 0);
+		mid->SetVisible(true);
+		scene->Draw(eye->GetViewProjection());
+		Check("and SetVisible(true) puts it back", scene->GetDrawnCount() = 1);
 
 		Check("no GL errors from the prop checks", GL->DrainErrors()->Size() = 0);
 
 		white->Free();
 		pane->Free();
+		cube->Free();
+		shader->Free();
+	}
+
+	#~
+	A Material must not tint the geometry drawn AFTER it.
+
+	Material->ApplyTo writes four uniforms -- tint, shininess, specular_strength
+	and opacity -- and Scene reset only opacity for geometry with no material of
+	its own. So one tinted object coloured every untextured object that followed
+	it, for the rest of the frame and every frame after.
+
+	It was invisible on frame one, because GLSL leaves a uniform at zero and the
+	lit shaders read a zero tint as "no tint". From frame two the last material of
+	the previous frame was still bound. In gl_lantern that turned the entire
+	dungeon the relics' gold.
+
+	So this draws TWO frames and reads the second. A single-frame fixture cannot
+	see this bug at all.
+	~#
+	method : CheckMaterialLeak() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the material-leak check",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		light := Light->New();
+		light->SetDirection(0.0, 0.0, 1.0);
+		light->SetAmbient(1.0, 1.0, 1.0);
+		scene->SetLight(light);
+		scene->SetCulling(false);
+
+		# A strongly tinted box on the left...
+		tinted := scene->AddBox(Vector3->New(-3.0, 0.0, -6.0), Vector3->New(2.0, 2.0, 0.2), white);
+		red := Material->Colored(1.0, 0.0, 0.0);
+		tinted->SetMaterial(red);
+
+		# ...and a plain one on the right, with NO material. It must stay white.
+		scene->AddBox(Vector3->New(3.0, 0.0, -6.0), Vector3->New(2.0, 2.0, 0.2), white);
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 2.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		scene->SetEye(eye->GetPosition());
+
+		shader->Use();
+		light->ApplyTo(shader);
+		shader->SetInt("tex", 0);
+
+		# TWO frames. The first leaves the material bound; the second is where an
+		# unreset uniform shows.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(eye->GetViewProjection());
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(eye->GetViewProjection());
+
+		left := GL->ReadPixel(@pixel_w / 4, @pixel_h / 2);
+		right := GL->ReadPixel((@pixel_w * 3) / 4, @pixel_h / 2);
+		lg := (left and 0x0000FF00) / 0x100;
+		rr := (right and 0x00FF0000) / 0x10000;
+		rg := (right and 0x0000FF00) / 0x100;
+		rb := (right and 0x000000FF);
+		"  tinted box green={$lg}   plain box r={$rr} g={$rg} b={$rb}"->PrintLine();
+
+		Check("the tinted box is actually tinted", lg < 90);
+		# THE assertion. Before the fix this read as gold on the second frame.
+		Check("and the box after it, which has no material, is not tinted",
+			rg > 150 & rb > 150 & rr > 150);
+
+		Check("no GL errors from the material-leak check", GL->DrainErrors()->Size() = 0);
+
+		white->Free();
 		cube->Free();
 		shader->Free();
 	}

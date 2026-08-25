@@ -77,10 +77,10 @@ This is a class rather than three parallel arrays because the alternative was
 @relics[i * 4 + 2], which is how the walkthrough's room started out and is worth
 not repeating.
 
-It is NOT a Scene member. Scene holds Box, and a Box is drawn with the scene's
-one shared mesh -- so anything that is a different mesh plus a transform, which
-is what a relic is, has no home in the framework and has to be drawn by hand
-below. That absence is the strongest argument in this program for a Prop type.
+A relic is a different mesh plus a transform, which is what Prop is for. It had
+no home in the framework when this program was written and was drawn by hand;
+that absence is what argued Prop into existence, and each relic is now two of
+them -- a solid body and a translucent shell -- held by the Scene.
 ~#
 class Relic {
 	@at : Vector3;
@@ -202,7 +202,6 @@ class Lantern {
 	# nothing: the framework's *Into forms write into a caller's array, and a
 	# Float->New[16] per object per frame is a few hundred arrays a second.
 	@view_projection : Float[];
-	@mvp : Float[];
 
 	# FPS is turned into a string four times a second rather than sixty. Building
 	# it every frame both allocates and defeats Overlay's glyph cache, since the
@@ -216,7 +215,6 @@ class Lantern {
 
 	New() {
 		@camera := Camera->New(Vector3->New(0.0, 1.6, 9.0));
-		@mvp := Float->New[16];
 		@lamp_at := Vector3->New(0.0, 0.0, 0.0);
 
 		@carried := 0;
@@ -403,11 +401,12 @@ class Lantern {
 		@camera->SetAspect(@window->GetAspect());
 		@view_projection := @camera->GetViewProjection();
 
-		@shader->Use();
+		# Only what Scene does not do for itself. Scene->Draw already calls Use,
+		# SetInt("tex") and the light rig -- so the specular needs the eye
+		# position, and the shadow map has no setter on Scene and must be
+		# applied here. The other three lines were duplicating the scene.
 		@rig->SetViewPosition(eye);
-		@rig->ApplyTo(@shader);
 		@shadows->ApplyTo(@shader);
-		@shader->SetInt("tex", 0);
 
 		# One call. The relics are props in this scene now, so they are drawn,
 		# culled and depth-sorted with everything else rather than by hand
@@ -508,6 +507,11 @@ class Lantern {
 		@relic_material := Material->New(@relic_texture);
 		@glow := Material->New(@relic_texture);
 		@glow->SetTint(1.0, 0.86, 0.5);
+		# Set ONCE, here. It used to be set per frame in DrawRelics; converting the
+		# relics to Props deleted that method and took this line with it, leaving
+		# an opaque gold shell wrapped around each relic and the whole transparent
+		# pass unreachable.
+		@glow->SetOpacity(0.22);
 		if(<>@wall_texture->IsOk() | <>@floor_texture->IsOk() | <>@relic_texture->IsOk()) {
 			"Could not build the textures"->ErrorLine();
 			return false;
@@ -638,7 +642,7 @@ class Lantern {
 		@rig->SetAmbient(0.035, 0.035, 0.045);
 		# Low and broad: dungeon stone is not polished, and a tight lobe on a
 		# carried light turns every surface into a mirror pointed back at you.
-		@rig->SetSpecular(0.08, 12.0);
+		@rig->SetSpecular(12.0, 0.08);
 		@rig->Add(@lamp);
 	}
 
