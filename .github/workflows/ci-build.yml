@@ -1103,6 +1103,15 @@ jobs:
       - name: Library lists agree with lib_src
         run: python3 tools/cicd/check_doc_lists.py
 
+      # Same reason, same cost: nothing built, fails in seconds. A native call
+      # whose name is written as a literal at the call site allocates a String
+      # on every call -- 1655ns against 130ns for the same call with the name
+      # held in a field. Holding them is a whole-tree edit that one regenerated
+      # library silently undoes: core/lib/sdl/code_gen emits sdl2.obs, and its
+      # emitter writes the literal form.
+      - name: Native call names are held, not re-allocated
+        run: python3 tools/cicd/hoist_native_names.py --check core/compiler/lib_src/*.obs
+
       - name: Install build deps
         run: |
           sudo apt-get update
