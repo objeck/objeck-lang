@@ -1501,6 +1501,9 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   for(int i = 0; i < type_obj_array_size; i++) {
     type_obj_array_ptr[i] = (size_t)data_type_obj_holder[i];
   }
+  // Write barrier: an old array (AllocateArray never uses the nursery) filled
+  // with young objects. See the note in DirList.
+  MemoryManager::WriteBarrier(type_obj_array);
   // set type array
   mthd_obj[3] = (size_t)type_obj_array;
 
@@ -1530,6 +1533,7 @@ void TrapProcessor::CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* 
     size_t* mthd_obj = CreateMethodObject(cls_obj, methods[i], program, op_stack, stack_pos);
     mthd_obj_array_ptr[i] = (size_t)mthd_obj;
   }
+  MemoryManager::WriteBarrier(mthd_obj_array);
   cls_obj[1] = (size_t)mthd_obj_array;
 }
 
@@ -1850,6 +1854,9 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
           dest_array_ptr[i] = (size_t)deserializer.DeserializeObject();
           inst[1] = dest_pos + deserializer.GetOffset();
         }
+        // Write barrier, as the object-array case above already does: an old
+        // destination array holding freshly deserialized young objects.
+        MemoryManager::WriteBarrier(dest_array);
       }
     }
     else {
@@ -3851,6 +3858,12 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
       str_obj_array_ptr[i] = (size_t)CreateStringObject(line, program, op_stack, stack_pos);
     }
 
+    // Write barrier: the array is old (AllocateArray never uses the nursery) and
+    // the elements are young objects. A minor GC repairs references only in
+    // objects the barrier recorded, so without this the elements are promoted
+    // out from under an array the collector will not look inside.
+    MemoryManager::WriteBarrier(str_obj_array);
+
 
     size_t* command_output_obj = MemoryManager::AllocateObject(program->GetCommandOutputObjectId(), op_stack, *stack_pos, false);
     command_output_obj[0] = (size_t)command_obj;
@@ -4351,6 +4364,12 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size
       const std::wstring waddr(addrs[i].begin(), addrs[i].end());
       str_obj_array_ptr[i] = (size_t)CreateStringObject(waddr, program, op_stack, stack_pos);
     }
+
+    // Write barrier: the array is old (AllocateArray never uses the nursery) and
+    // the elements are young objects. A minor GC repairs references only in
+    // objects the barrier recorded, so without this the elements are promoted
+    // out from under an array the collector will not look inside.
+    MemoryManager::WriteBarrier(str_obj_array);
 
     PushInt((size_t)str_obj_array, op_stack, stack_pos);
   }
@@ -7050,6 +7069,9 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
   }
   instance[5] = (size_t)body_obj;
   instance[6] = (size_t)CreateStringObject(BytesToUnicode(ct), program, op_stack, stack_pos);
+  // Write barrier: `instance` is the caller's response object, which may well be
+  // old by the time a request completes, and the content-type String is young.
+  MemoryManager::WriteBarrier(instance);
 
   PushInt(1, op_stack, stack_pos);
 #else
@@ -7676,6 +7698,9 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
     memcpy((uint8_t*)(body_obj + 3), ctx->response_body.data(), body_size);
   instance[5] = (size_t)body_obj;
   instance[6] = (size_t)CreateStringObject(BytesToUnicode(ct), program, op_stack, stack_pos);
+  // Write barrier: `instance` is the caller's response object, which may well be
+  // old by the time a request completes, and the content-type String is young.
+  MemoryManager::WriteBarrier(instance);
 
   PushInt(1, op_stack, stack_pos);
 #elif defined(OBJECK_HAS_WINHTTP_H3)
@@ -7739,6 +7764,7 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
   }
   instance[5] = (size_t)body_obj;
   instance[6] = (size_t)CreateStringObject(BytesToUnicode(resp_ct), program, op_stack, stack_pos);
+  MemoryManager::WriteBarrier(instance);
 
   PushInt(1, op_stack, stack_pos);
 #else
@@ -8964,6 +8990,12 @@ bool TrapProcessor::DirList(StackProgram* program, [[maybe_unused]] size_t* inst
       const std::wstring wfile = BytesToUnicode(files[i]);
       str_obj_array_ptr[i] = (size_t)CreateStringObject(wfile, program, op_stack, stack_pos);
     }
+
+    // Write barrier: the array is old (AllocateArray never uses the nursery) and
+    // the elements are young objects. A minor GC repairs references only in
+    // objects the barrier recorded, so without this the elements are promoted
+    // out from under an array the collector will not look inside.
+    MemoryManager::WriteBarrier(str_obj_array);
 
     PushInt((size_t)str_obj_array, op_stack, stack_pos);
   }

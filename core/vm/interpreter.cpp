@@ -2864,7 +2864,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   context.call_method_by_id = APITools_MethodCallId;
   context.call_method_by_name = APITools_MethodCall;
   context.alloc_managed_array = MemoryManager::AllocateArray;
-  context.alloc_managed_obj = MemoryManager::AllocateObject;
+  context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
   (*ext_load)(context);
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
@@ -2897,7 +2897,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   context.call_method_by_id = APITools_MethodCallId;
   context.call_method_by_name = APITools_MethodCall;
   context.alloc_managed_array = MemoryManager::AllocateArray;
-  context.alloc_managed_obj = MemoryManager::AllocateObject;
+  context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
   (*ext_load)(context);
 #endif
 }
@@ -2996,7 +2996,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.call_method_by_name = APITools_MethodCall;
     context.call_method_by_id = APITools_MethodCallId;
     context.alloc_managed_array = MemoryManager::AllocateArray;
-    context.alloc_managed_obj = MemoryManager::AllocateObject;
+    context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
     (*ext_func)(context);
   }
 #else
@@ -3022,7 +3022,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.call_method_by_name = APITools_MethodCall;
     context.call_method_by_id = APITools_MethodCallId;
     context.alloc_managed_array = MemoryManager::AllocateArray;
-    context.alloc_managed_obj = MemoryManager::AllocateObject;
+    context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
     (*ext_func)(context);
   }  
 #endif

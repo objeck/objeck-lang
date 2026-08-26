@@ -428,7 +428,7 @@ void MemoryManager::FixupPendingThreadRoots()
 #endif
 }
 
-size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect)
+size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect, bool force_old)
 {
   // Allocation is a safepoint: park here if another thread is collecting. Reached
   // from JITed code too (it calls back to allocate), so allocation-heavy threads
@@ -465,7 +465,11 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     // young_offset > young_region_size. The collector then uses young_offset as the
     // length of its young walk + reset memset, running off the end of the mapping —
     // promoting garbage as objects (corruption) and overrunning memset (crash).
-    if(young_region) {
+    // `force_old` skips the nursery: see AllocateObjectNative. A native library
+    // reaches Objeck only through a plain store into the argument array, which runs
+    // no write barrier, so a young object stored there would not be fixed up when
+    // promotion moves it.
+    if(young_region && !force_old) {
       size_t offset = young_offset.load(std::memory_order_relaxed);
       while(offset + aligned_total <= young_region_size) {
         if(young_offset.compare_exchange_weak(offset, offset + aligned_total,

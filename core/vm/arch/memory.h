@@ -467,8 +467,33 @@ class MemoryManager {
     
     return nullptr;
   }
-  
-  static size_t* AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect = true);
+
+  // Allocator handed to native (C++ shared library) code through VMContext.
+  //
+  // Native libraries return a value by storing it into the caller's argument
+  // array, and lib_api.h does that with a plain store -- APITools_SetObjectValue
+  // has no write barrier and cannot have one, since it is compiled into each
+  // library rather than into the VM. An unbarriered store into an old-generation
+  // object (which every array is: AllocateArray never uses the nursery) leaves a
+  // reference the minor GC's fixup phase does not visit, so a young object stored
+  // that way is moved out from under the reference when it is promoted.
+  //
+  // Allocating in the old generation removes the hazard at the source rather than
+  // relying on every library to be barrier-correct: an old object is never moved,
+  // and a major GC recurses into old objects, so it stays reachable through the
+  // argument array. It also makes the rule for library authors a single sentence
+  // -- everything a native library allocates is old-generation -- which was
+  // already true of arrays and is now true of objects too.
+  static size_t* AllocateObjectNative(const wchar_t* obj_name, size_t* op_stack, size_t stack_pos, bool collect) {
+    StackClass* cls = prgm->GetClass(obj_name);
+    if(cls) {
+      return AllocateObject(cls->GetId(), op_stack, stack_pos, collect, true);
+    }
+
+    return nullptr;
+  }
+
+  static size_t* AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect = true, bool force_old = false);
   static size_t* AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, size_t stack_pos, bool collect = true);
 
   // Generational GC write barrier: lock-free dirty list append. Mutator

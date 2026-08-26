@@ -1,0 +1,167 @@
+#~
+# Objects a native library returns must be RECLAIMED, not merely reachable.
+#
+# native_gc_barrier_test.obs guards the other direction -- that a returned
+# object survives long enough to be read. This one guards the direction that
+# costs a process rather than a value.
+#
+# Native allocations go to the old generation, where only a MAJOR collection
+# reclaims them (see MemoryManager::AllocateObjectNative and
+# docs/native_interface.md). Nothing about a native call triggers a collection
+# on its own: the API allocators pass collect=false, so they neither park at a
+# safepoint nor drive a GC. The question is whether ordinary allocation pressure
+# still produces the major collections that free them.
+#
+# Each iteration allocates one String natively -- Base64 returns one -- and
+# drops it. Nothing is retained.
+#
+# THE ASSERTION IS BOUNDEDNESS, and getting there took three attempts, because
+# the obvious measurements are worse than useless:
+#
+#   1. Comparing a late reading against an early one at 4x. The baseline was
+#      process start-up, so the bound was 81MB and 54MB of genuinely retained
+#      strings would have passed.
+#   2. Comparing the sawtooth FLOOR of consecutive phases, at 1.5x then 1.25x. A
+#      ratio between consecutive phases gets WEAKER as a linear leak
+#      accumulates -- with baseline F and leak L per phase it is (F+2L)/(F+L),
+#      which approaches 1 -- so it required a leak larger than the entire
+#      baseline before reporting anything. The floors also proved to be
+#      position-sensitive: sampled off a post-collection counter they doubled
+#      between phases on a run with no leak at all.
+#   3. Both of the above read `runtime.memory.used`, which is
+#      GetProcessResidentBytes() -- the OS resident set, not the GC heap at all.
+#      It is noisy, it does not fall when the collector frees, and gating CI on
+#      it was simply the wrong number.
+#
+# What this reads instead is `runtime.gc.old.bytes`, the collector's own
+# old-generation accounting, which is exactly what native allocation grows. And
+# rather than comparing phases it asserts the property actually under test: the
+# number stays BOUNDED however long the run goes. Reclamation means bounded,
+# retention means unbounded. That is not a ratio, so accumulation cannot weaken
+# it.
+#
+# Measured when written: across 3,000,000 native String returns old generation
+# oscillated between roughly 1MB and 7MB with 86 major collections, and was
+# indistinguishable from the same run at 400,000. The ceiling below is an order
+# below is three times that peak -- and the peak is set by MEM_START_MAX, a
+# compile-time 8MB, so the headroom is over a constant rather than over noise.
+# A version of this program that retains every returned String reaches 34MB by
+# 150,000 iterations, which is how the ceiling was checked from the failing side
+# too.
+~#
+
+use System.API;
+
+class NativeGcLeakTest {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := NativeGcLeakTest->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : OldBytes() ~ Int {
+		return Runtime->GetProperty("runtime.gc.old.bytes")->ToInt();
+	}
+
+	method : Majors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.major")->ToInt();
+	}
+
+	#~
+	Is the native library actually on disk?
+
+	Checked BEFORE constructing the DllProxy, because a failed load is not
+	recoverable: EXT_LIB_LOAD prints and calls exit(1), so `IsLoaded()` returning
+	false is nearly unreachable and a skip written that way is dead code. An
+	environment without the native libraries would hard-fail rather than skip.
+	~#
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_crypto";
+		dll := "{$base}.dll";
+		so := "{$base}.so";
+		dylib := "{$base}.dylib";
+
+		return System.IO.Filesystem.File->Exists(dll) |
+			System.IO.Filesystem.File->Exists(so) |
+			System.IO.Filesystem.File->Exists(dylib);
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_crypto is not deployed"->PrintLine();
+			return;
+		};
+
+		input := "the quick brown fox jumps over the lazy dog"->ToByteArray();
+		rounds := 500000;
+
+		# Three times the observed 8MB peak, which is itself set by
+		# MEM_START_MAX (a compile-time 8MB), not by anything machine-specific --
+		# so the headroom is over a constant, not over noise.
+		#
+		# Verified in BOTH directions at this value, which the first attempt at
+		# 64MB was not: a version retaining every returned String reaches 34MB by
+		# 150,000 iterations and fails here, while the real test peaks at 8MB and
+		# passes. A ceiling only ever checked against passing runs is a ceiling
+		# nobody knows the height of.
+		ceiling := 25165824;
+
+		start_major := Majors();
+		peak := OldBytes();
+		every := rounds / 40;
+
+		for(i := 0; i < rounds; i += 1;) {
+			s := Cipher.Encrypt->Base64(input);
+			if(s = Nil) {
+				"unreachable"->PrintLine();
+			};
+
+			if(i % every = 0) {
+				now := OldBytes();
+				if(now > peak) {
+					peak := now;
+				};
+			};
+		};
+
+		end_major := Majors();
+		"  {$rounds} native String returns: peak old gen {$peak} bytes, majors {$start_major} to {$end_major}"->PrintLine();
+
+		# Collections must actually be happening. Without this a small heap only
+		# means nothing ran -- the same trap that made an 8-thread stress test
+		# pass identically against a VM that still had the bug.
+		Check("major collections run while native calls allocate",
+			end_major > start_major);
+
+		# The property actually under test: bounded, not merely small.
+		Check("old generation stays bounded ({$peak} < {$ceiling})", peak < ceiling);
+
+		if(@failures = 0) {
+			"All tests passed"->PrintLine();
+		}
+		else {
+			"{$@failures} test(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

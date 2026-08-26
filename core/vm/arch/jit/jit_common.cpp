@@ -770,6 +770,16 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       else {
         memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
       }
+      // Generational GC write barrier, mirroring StackInterpreter::CpyIntAry. An
+      // Int[] can hold object references (an object array IS an int array of
+      // pointers), so a bulk copy can deposit young refs into an old destination
+      // array where a minor GC will neither mark nor fix them up. The interpreter
+      // path has recorded the destination since the barrier was introduced; this
+      // JIT callback performs the same copy and did not.
+      //
+      // Only the Int variant needs this. CPY_BYTE_ARY, CPY_CHAR_ARY and
+      // CPY_FLOAT_ARY move primitives, which are never references.
+      MemoryManager::WriteBarrier(dest_array);
       PushInt(op_stack, stack_pos, 1);
     }
     else {

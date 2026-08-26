@@ -1,0 +1,169 @@
+#~
+# A value returned by a native library must survive a collection.
+#
+# A C++ shared library returns a value by storing it into the caller's `Base[]`
+# argument array, and lib_api.h's APITools_SetObjectValue does that with a plain
+# store. It cannot do otherwise: lib_api.h is compiled INTO each library, not
+# into the VM, so it has no access to the collector's write barrier.
+#
+# Three facts about the collector decide whether that plain store is safe:
+#
+#   * MemoryManager::AllocateArray never uses the nursery, so the argument array
+#     is always an OLD-generation object.
+#   * A minor GC promotes young survivors, which MOVES them, and then repairs
+#     references only in objects the write barrier recorded as dirty.
+#   * A minor GC marks an old object without recursing into it.
+#
+# So an unbarriered store of a YOUNG object into the argument array leaves a
+# reference that the fixup phase never visits. It survives anyway whenever the
+# array is dirty for some other reason -- filling the buffer from Objeck dirties
+# it -- which is why the ordinary "allocate the array, call, read the result"
+# shape never showed this.
+#
+# The ordering below is the one that does not get that protection, and it is the
+# ordering a REUSED argument buffer produces on every call after the first: the
+# buffer was filled during some earlier collection cycle, so by the time the
+# native store lands the array is clean, and nothing repairs the reference when
+# the next collection moves the object.
+#
+# Before the fix this printed a dangling reference -- in practice an
+# "Invalid object cast: '?' to 'System.String'" abort. The fix is VM-side:
+# native allocations go straight to the old generation (AllocateObjectNative),
+# where nothing moves them, so no barrier is needed and every already-compiled
+# library is covered without being rebuilt.
+#
+# Skips rather than fails when libobjk_crypto is not deployed, so an environment
+# without the native libraries does not report a false failure.
+~#
+
+use System.API;
+
+class NativeGcBarrierTest {
+	@proxy : DllProxy;
+	@call_args : Base[];
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := NativeGcBarrierTest->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+
+	#~
+	The number of minor collections so far.
+
+	Every test here works by getting a reference into a container and then
+	provoking a minor collection, so a run in which no minor collection happened
+	proves nothing -- and prints "All tests passed" all the same. That is not
+	hypothetical: an 8-thread stress test written for this fix reported zero
+	damage over 1,140,480 references and was identically clean against a VM that
+	still had the bug, because once old generation passes MEM_START_MAX every
+	collection is major and a major GC traces transitively.
+
+	So each test asserts the collection it depends on actually ran. A future
+	change to YOUNG_REGION_SIZE or the allocation sizes would otherwise turn
+	these into silent no-ops.
+	~#
+	method : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+
+	method : Run() ~ Nil {
+		@proxy := DllProxy->New("libobjk_crypto");
+		if(<>@proxy->IsLoaded()) {
+			"SKIP: libobjk_crypto is not deployed"->PrintLine();
+			return;
+		};
+
+		input := "the quick brown fox jumps over the lazy dog"->ToByteArray();
+
+		# The control, through the library's own wrapper. This one is held in a
+		# local, so it is rooted the ordinary way and must survive regardless.
+		expect := Cipher.Encrypt->Base64(input);
+		Check("the library returns a value at all", expect <> Nil & expect->Size() > 0);
+
+		# 1. Fill the buffer. These stores run the write barrier, so the array is
+		#    dirty right now.
+		@call_args := Base->New[2];
+		@call_args[0] := Nil;
+		@call_args[1] := ByteArrayRef->New(input);
+
+		start_minor := Minors();
+
+		# 2. Collect, which clears the dirty list. The array is now a clean
+		#    old-generation object -- what a reused buffer looks like on every
+		#    call after the first.
+		Churn();
+
+		# 3. The call. The native side stores its result into that clean array.
+		@proxy->CallFunction("crypto_encrypt_base64", @call_args);
+
+		# 4. Collect again WITHOUT reading the slot. Reading it first would put the
+		#    value in a local, which is a root, and the test would pass no matter
+		#    what the collector did.
+		Churn();
+
+		# 5. Only now, look at what the slot holds.
+		end_minor := Minors();
+		"  minor collections {$start_minor} to {$end_minor}"->PrintLine();
+		Check("minor collections actually ran", end_minor > start_minor);
+
+		slot := @call_args[0];
+		Check("the returned value is still there after a collection", slot <> Nil);
+		if(slot = Nil) {
+			Finish();
+			return;
+		};
+
+		# The cast is itself part of the assertion: a reference into recycled
+		# nursery memory does not read back as a String, and this aborts the VM.
+		got := slot->As(String);
+		Check("it is still a String", got <> Nil);
+		if(got <> Nil) {
+			Check("and it still holds what the library stored", got->Equals(expect));
+		};
+
+		Finish();
+	}
+
+	#~
+	Fill the 128MB nursery so a minor collection runs. Objects bump-allocate
+	young; arrays go straight to the old generation and would never trigger one.
+	Each IntRef is dead immediately, so this is pure nursery pressure.
+	~#
+	method : Churn() ~ Nil {
+		sink := 0;
+		for(i := 0; i < 3000000; i += 1;) {
+			r := IntRef->New(i);
+			sink += r->Get();
+		};
+
+		if(sink < 0) {
+			"unreachable"->PrintLine();
+		};
+	}
+
+	method : Finish() ~ Nil {
+		if(@failures = 0) {
+			"All tests passed"->PrintLine();
+		}
+		else {
+			"{$@failures} test(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
