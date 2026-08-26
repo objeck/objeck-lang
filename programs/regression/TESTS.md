@@ -13,7 +13,7 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 196** (plus 14 debugger tests, see below).
+**Total runtime tests: 197** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
@@ -21,7 +21,7 @@ python gen_manifest.py
 | Category | Count |
 |----------|-------|
 | Core Language | 38 |
-| Other | 22 |
+| Other | 23 |
 | Negative | 21 |
 | AMD64/JIT | 20 |
 | Bug Fix | 13 |
@@ -229,27 +229,28 @@ python gen_manifest.py
 | 173 | `nil_safe_ops.obs` | Core Language | Nil-safe operators: '??' (nil-coalesce) and '?->' (nil-safe call). Both desugar onto existing int... | ✅ |
 | 174 | `oauth_test.obs` | Networking | oauth test | ✅ |
 | 175 | `odbc_sqlite_test.obs` | ODBC | ODBC SQLite Integration Test Tests live database operations against an in-memory SQLite database.... | ✅ |
-| 176 | `primitive_receiver_order.obs` | Other | Argument order for instance-style calls on primitives. Writing `v->Pow(10)` on a primitive does n... | ✅ |
-| 177 | `regex_bench.obs` | Regex | regex bench | ✅ |
-| 178 | `regex_dfa_test.obs` | Regex | regex dfa test | ✅ |
-| 179 | `runtime_feature_test.obs` | Other | Regression tests for the "runtime.feature.*" properties, which report which optional protocol eng... | ✅ |
-| 180 | `select_dispatch_test.obs` | Control Flow | Single-case, linear (2-5 cases), jump-table (dense >=6), and binary-tree (sparse) paths | ✅ |
-| 181 | `string_find_ops.obs` | Strings | string find ops | ✅ |
-| 182 | `string_format_ops.obs` | Strings | Verifies String->Format() positional substitution. | ✅ |
-| 183 | `string_number_conv.obs` | Strings | string number conv | ✅ |
-| 184 | `string_replace_ops.obs` | Strings | string replace ops | ✅ |
-| 185 | `string_split_ops.obs` | Strings | string split ops | ✅ |
-| 186 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
-| 187 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
-| 188 | `trap_array_barrier_test.obs` | Other | A String[] returned by a VM trap must survive a collection. Every trap that returns an array of o... | ✅ |
-| 189 | `trap_array_mt_barrier_test.obs` | Other | A trap-returned array must survive ANOTHER THREAD's allocation. trap_array_barrier_test.obs cover... | ✅ |
-| 190 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
-| 191 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
-| 192 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
-| 193 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 194 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 195 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 196 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 176 | `onnx_runtime_test.obs` | Other | API.Onnx.OnnxRuntime->GetProviders() reaches the native ONNX Runtime. EXTRA_LIBS: onnx,opencv,cip... | ✅ |
+| 177 | `primitive_receiver_order.obs` | Other | Argument order for instance-style calls on primitives. Writing `v->Pow(10)` on a primitive does n... | ✅ |
+| 178 | `regex_bench.obs` | Regex | regex bench | ✅ |
+| 179 | `regex_dfa_test.obs` | Regex | regex dfa test | ✅ |
+| 180 | `runtime_feature_test.obs` | Other | Regression tests for the "runtime.feature.*" properties, which report which optional protocol eng... | ✅ |
+| 181 | `select_dispatch_test.obs` | Control Flow | Single-case, linear (2-5 cases), jump-table (dense >=6), and binary-tree (sparse) paths | ✅ |
+| 182 | `string_find_ops.obs` | Strings | string find ops | ✅ |
+| 183 | `string_format_ops.obs` | Strings | Verifies String->Format() positional substitution. | ✅ |
+| 184 | `string_number_conv.obs` | Strings | string number conv | ✅ |
+| 185 | `string_replace_ops.obs` | Strings | string replace ops | ✅ |
+| 186 | `string_split_ops.obs` | Strings | string split ops | ✅ |
+| 187 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
+| 188 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
+| 189 | `trap_array_barrier_test.obs` | Other | A String[] returned by a VM trap must survive a collection. Every trap that returns an array of o... | ✅ |
+| 190 | `trap_array_mt_barrier_test.obs` | Other | A trap-returned array must survive ANOTHER THREAD's allocation. trap_array_barrier_test.obs cover... | ✅ |
+| 191 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
+| 192 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
+| 193 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
+| 194 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 195 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 196 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 197 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 
