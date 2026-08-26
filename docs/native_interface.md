@@ -243,6 +243,29 @@ through primitive holders, which allocate nothing at all.
 down. It fails — with a dangling reference, in practice an "Invalid object cast"
 abort — against a VM that allocates native objects in the nursery.
 
+#### Why this, and not a barrier hook
+
+The principled fix is a write-barrier function pointer on `VMContext`, so
+`lib_api.h` could barrier its own stores the way the rest of the VM does. This
+is not that, and it is worth writing down why, along with when to change your
+mind.
+
+Two reasons for the allocator instead. `lib_api.h` compiles *into each library*,
+so a header-only fix reaches only libraries that are rebuilt — every existing
+binary stays broken. And a barrier the author must remember to call is a bug
+that can be reintroduced by omission; allocating old makes the bug
+unrepresentable rather than merely absent.
+
+Two things wrong with it, equally worth knowing. It costs almost nothing today
+— measured at +11% old-generation bytes with **no** additional collections —
+but only because arrays are *already* old-generation, so all that moved was a
+small object header. **If array nursery allocation is ever enabled, that trade
+flips**, native returns become a real old-generation cost, and the barrier hook
+becomes the better answer. And it leaves two rules for one situation: the VM's
+own traps allocate young and barrier, native code allocates old and does not.
+That asymmetry is exactly the kind of thing that let the trap bug sit unnoticed
+beside a correctly barriered sibling.
+
 ### Arrays are born old, objects are born young
 
 Worth stating separately, because it decides which stores are safe:
