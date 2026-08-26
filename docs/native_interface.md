@@ -243,6 +243,36 @@ through primitive holders, which allocate nothing at all.
 down. It fails — with a dangling reference, in practice an "Invalid object cast"
 abort — against a VM that allocates native objects in the nursery.
 
+### Arrays are born old, objects are born young
+
+Worth stating separately, because it decides which stores are safe:
+
+- `AllocateArray` **never** uses the nursery. Every Objeck array is
+  old-generation from the moment it exists.
+- `AllocateObject` does use it — except through the native path above, which is
+  the whole point of that change.
+
+No collection can run inside your function, because the API's allocators pass
+`collect=false`, so nothing you allocate moves while you are still holding it.
+
+The consequence for you: everything you allocate is old, and the argument array
+is old, so every store you make between them is old-to-old and needs no
+barrier. That is what makes `lib_api.h`'s plain stores correct.
+
+The one thing to avoid is storing an object **the caller gave you** into an
+array. A caller's object may be young, an array is always old, and you have no
+way to run the barrier from library code. If you need to hand a caller's object
+back, put it in the slot it came from rather than into an array you built.
+
+This is not a hypothetical restriction — the VM's own traps had exactly this
+bug. A trap that returned `String[]` allocated the array (old), filled it with
+freshly created Strings (young), and ran no barrier; the next minor collection
+promoted the elements out from under an array the collector does not look
+inside. `Directory->List` followed by enough allocation to fill the nursery
+turned two thirds of a 393-entry listing into unreadable memory, and reading
+one segfaulted the VM. `programs/regression/trap_array_barrier_test.obs` guards
+it now.
+
 ### What you still own
 
 The collector manages what it allocated. It knows nothing about anything else.
