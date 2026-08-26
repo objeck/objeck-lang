@@ -101,6 +101,26 @@ class TrapArrayMtBarrierTest {
 		return bad;
 	}
 
+
+	#~
+	The number of minor collections so far.
+
+	Every test here works by getting a reference into a container and then
+	provoking a minor collection, so a run in which no minor collection happened
+	proves nothing -- and prints "All tests passed" all the same. That is not
+	hypothetical: an 8-thread stress test written for this fix reported zero
+	damage over 1,140,480 references and was identically clean against a VM that
+	still had the bug, because once old generation passes MEM_START_MAX every
+	collection is major and a major GC traces transitively.
+
+	So each test asserts the collection it depends on actually ran. A future
+	change to YOUNG_REGION_SIZE or the allocation sizes would otherwise turn
+	these into silent no-ops.
+	~#
+	method : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+
 	method : Run() ~ Nil {
 		files := System.IO.Filesystem.Directory->List(".");
 		if(files = Nil) {
@@ -114,6 +134,7 @@ class TrapArrayMtBarrierTest {
 			return;
 		};
 
+		start_minor := Minors();
 		before := Damaged(files, count);
 		"  listed {$count} entries, {$before} unreadable before"->PrintLine();
 		Check("the trap returns a readable array", before = 0);
@@ -124,10 +145,12 @@ class TrapArrayMtBarrierTest {
 		churner->Execute(Nil);
 		churner->Join();
 
-		minor := Runtime->GetProperty("runtime.gc.minor");
+		end_minor := Minors();
 		after := Damaged(files, count);
-		"  after another thread allocated (minor={$minor}): {$after} unreadable"->PrintLine();
+		"  after another thread allocated (minor {$start_minor} to {$end_minor}): {$after} unreadable"->PrintLine();
 
+		Check("the other thread's allocation actually caused a minor collection",
+			end_minor > start_minor);
 		Check("another thread's collection does not destroy the array", after = 0);
 
 		# Reading one through a string operation is what actually crashed, so do

@@ -62,6 +62,26 @@ class NativeGcBarrierTest {
 		};
 	}
 
+
+	#~
+	The number of minor collections so far.
+
+	Every test here works by getting a reference into a container and then
+	provoking a minor collection, so a run in which no minor collection happened
+	proves nothing -- and prints "All tests passed" all the same. That is not
+	hypothetical: an 8-thread stress test written for this fix reported zero
+	damage over 1,140,480 references and was identically clean against a VM that
+	still had the bug, because once old generation passes MEM_START_MAX every
+	collection is major and a major GC traces transitively.
+
+	So each test asserts the collection it depends on actually ran. A future
+	change to YOUNG_REGION_SIZE or the allocation sizes would otherwise turn
+	these into silent no-ops.
+	~#
+	method : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+
 	method : Run() ~ Nil {
 		@proxy := DllProxy->New("libobjk_crypto");
 		if(<>@proxy->IsLoaded()) {
@@ -82,6 +102,8 @@ class NativeGcBarrierTest {
 		@call_args[0] := Nil;
 		@call_args[1] := ByteArrayRef->New(input);
 
+		start_minor := Minors();
+
 		# 2. Collect, which clears the dirty list. The array is now a clean
 		#    old-generation object -- what a reused buffer looks like on every
 		#    call after the first.
@@ -96,6 +118,10 @@ class NativeGcBarrierTest {
 		Churn();
 
 		# 5. Only now, look at what the slot holds.
+		end_minor := Minors();
+		"  minor collections {$start_minor} to {$end_minor}"->PrintLine();
+		Check("minor collections actually ran", end_minor > start_minor);
+
 		slot := @call_args[0];
 		Check("the returned value is still there after a collection", slot <> Nil);
 		if(slot = Nil) {
