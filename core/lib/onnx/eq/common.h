@@ -21,7 +21,24 @@
 
 #include "scrfd_decode.h"
 
-std::unique_ptr<Ort::Env> env = nullptr;;
+// ONNX Runtime's global state -- its thread pools, its logging manager, and on
+// macOS the CoreML provider's hooks into the Objective-C runtime -- is owned by
+// Ort::Env. A std::unique_ptr here ran that teardown from a static destructor,
+// i.e. after main returned and while every other image in the process was
+// finalizing too. On macOS that aborts:
+//
+//   libc++abi: terminating due to uncaught exception of type
+//   std::system_error: mutex lock failed: Invalid argument
+//
+// The abort lands after the program has printed its output and returned 0, so
+// it reads as a passing run that nevertheless exits 134 -- which is exactly how
+// onnx_runtime_test failed on macos-arm64 while passing on linux-x64.
+//
+// A raw pointer has no static destructor, so the Env is simply leaked at
+// process exit. The process is being torn down anyway; nothing is reclaimed
+// that the kernel would not reclaim. unload_lib below stays the one place the
+// Env is released, and it runs while the process is still alive.
+Ort::Env* env = nullptr;
 
 //
 // Reporting utilities
@@ -604,7 +621,10 @@ static void close_session(VMContext & context) {
       session = nullptr;
    }
 
-   env.reset();
+   // The Env is global and shared by every session, so closing one session must
+   // not tear it down. Resetting it here left any other live session pointing
+   // at a destroyed Env, and made the next new_session dereference a null one
+   // -- the QNN and Vitis variants have no re-create guard at all.
 }
 
 // Get available execution provider names
