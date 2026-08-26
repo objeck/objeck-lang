@@ -193,8 +193,12 @@ APITools_CallMethod(context, instance, cls_id, mthd_id);
 ```
 
 The qualified-name form wants the full mangled signature, which is why the
-by-id form exists for anything called repeatedly. This is how the SDL bindings
-run Objeck event handlers.
+by-id form exists for anything called repeatedly.
+
+Be aware that **no shipped binding currently uses this**, so it is the least
+exercised part of the interface. It also has a consequence for the memory rules
+below: calling back into Objeck runs a nested interpreter, whose allocations are
+ordinary Objeck allocations and *can* therefore trigger a collection.
 
 ---
 
@@ -275,8 +279,16 @@ Worth stating separately, because it decides which stores are safe:
 - `AllocateObject` does use it — except through the native path above, which is
   the whole point of that change.
 
-No collection can run inside your function, because the API's allocators pass
-`collect=false`, so nothing you allocate moves while you are still holding it.
+No collection can run inside your function *as long as your function only
+allocates* — the API's allocators pass `collect=false`, which neither parks at a
+safepoint nor drives a collection, so nothing you allocate moves while you are
+still holding it.
+
+The exception is calling back into Objeck. `APITools_CallMethod` runs a nested
+interpreter, and allocation inside it is ordinary Objeck allocation with
+`collect=true`. So a collection *can* run in the middle of your function there,
+and a raw `size_t*` you were holding across that call may have moved. Re-fetch
+anything you need after a callback rather than holding it across one.
 
 The consequence for you: everything you allocate is old, and the argument array
 is old, so every store you make between them is old-to-old and needs no
@@ -307,7 +319,9 @@ The collector manages what it allocated. It knows nothing about anything else.
 - The `size_t*` pointers you hold during one call stay valid for that call.
   Native allocations do not trigger a collection and do not park at a safepoint,
   so nothing moves under you between two `APITools_` calls in the same function.
-  Do not hold one past the call — store an Objeck-visible reference instead.
+  Do not hold one past the call — store an Objeck-visible reference instead. The
+  one thing that breaks this inside a single call is `APITools_CallMethod`, which
+  can collect; treat a pointer held across a callback as stale.
 
 ---
 
