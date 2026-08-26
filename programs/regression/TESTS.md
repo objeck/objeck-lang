@@ -13,7 +13,7 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 194** (plus 14 debugger tests, see below).
+**Total runtime tests: 195** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
@@ -22,8 +22,8 @@ python gen_manifest.py
 |----------|-------|
 | Core Language | 38 |
 | Negative | 21 |
+| Other | 21 |
 | AMD64/JIT | 20 |
-| Other | 20 |
 | Bug Fix | 13 |
 | System.ML | 13 |
 | Collections | 10 |
@@ -241,13 +241,14 @@ python gen_manifest.py
 | 185 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
 | 186 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
 | 187 | `trap_array_barrier_test.obs` | Other | A String[] returned by a VM trap must survive a collection. Every trap that returns an array of o... | ✅ |
-| 188 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
-| 189 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
-| 190 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
-| 191 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 192 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 193 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 194 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 188 | `trap_array_mt_barrier_test.obs` | Other | A trap-returned array must survive ANOTHER THREAD's allocation. trap_array_barrier_test.obs cover... | ✅ |
+| 189 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
+| 190 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
+| 191 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
+| 192 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 193 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 194 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 195 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 
