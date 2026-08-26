@@ -21,6 +21,13 @@ bundle System.Diagnostics {
 	Parsers source for analysis
 	~#
 	class Analyzer {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_diag_parse_file : static : String;
+		@fn_diag_parse_text : static : String;
 		#~
 		Parsers source file for analysis
 		@param src_file file to parse
@@ -41,7 +48,8 @@ bundle System.Diagnostics {
 			array_args[2] := src_file;
 			array_args[3] := IntRef->New();
 			array_args[4] := IntRef->New();
-			Proxy->GetDllProxy()->CallFunction("diag_parse_file", array_args);
+			if(@fn_diag_parse_file = Nil) { @fn_diag_parse_file := "diag_parse_file"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_parse_file, array_args);
 			
 			program_handle := array_args[0]->As(IntRef);
 			table_handle := array_args[3]->As(IntRef);
@@ -91,7 +99,8 @@ bundle System.Diagnostics {
 			array_args[3] := StringArrayRef->New(texts);
 			array_args[4] := IntRef->New();
 			array_args[5] := IntRef->New();
-			Proxy->GetDllProxy()->CallFunction("diag_parse_text", array_args);
+			if(@fn_diag_parse_text = Nil) { @fn_diag_parse_text := "diag_parse_text"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_parse_text, array_args);
 			
 			program_handle := array_args[0]->As(IntRef);
 			table_handle := array_args[4]->As(IntRef);
@@ -106,6 +115,30 @@ bundle System.Diagnostics {
 	Analysis results
 	~#
 	class Analysis {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_diag_code_action : static : String;
+		@fn_diag_code_rename : static : String;
+		@fn_diag_completion_help : static : String;
+		@fn_diag_find_declaration : static : String;
+		@fn_diag_find_definition : static : String;
+		@fn_diag_find_implementation : static : String;
+		@fn_diag_find_references : static : String;
+		@fn_diag_find_type_definition : static : String;
+		@fn_diag_get_diagnosis : static : String;
+		@fn_diag_get_symbols : static : String;
+		@fn_diag_hover : static : String;
+		@fn_diag_incoming_calls : static : String;
+		@fn_diag_inlay_hints : static : String;
+		@fn_diag_outgoing_calls : static : String;
+		@fn_diag_prepare_call_hierarchy : static : String;
+		@fn_diag_semantic_tokens : static : String;
+		@fn_diag_signature_help : static : String;
+		@fn_diag_tree_release : static : String;
+		@fn_diag_type_hierarchy_super : static : String;
 		@progam_handle : Int;
 		@is_parsed : Bool;
 		@symbols_result : Result;
@@ -179,7 +212,8 @@ bundle System.Diagnostics {
 				array_args[0] := @self;
 				array_args[1] := uri;
 				array_args[2] := sys_path;
-				Proxy->GetDllProxy()->CallFunction("diag_get_symbols", array_args);
+				if(@fn_diag_get_symbols = Nil) { @fn_diag_get_symbols := "diag_get_symbols"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_diag_get_symbols, array_args);
 			};
 			
 			return @symbols_result;
@@ -208,7 +242,8 @@ bundle System.Diagnostics {
 				array_args[1] := uri;
 				array_args[2] := sys_path;
 				array_args[3] := was_analyzed;
-				Proxy->GetDllProxy()->CallFunction("diag_get_diagnosis", array_args);
+				if(@fn_diag_get_diagnosis = Nil) { @fn_diag_get_diagnosis := "diag_get_diagnosis"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_diag_get_diagnosis, array_args);
 			};
 
 			return @diagnostics_results;
@@ -238,7 +273,8 @@ bundle System.Diagnostics {
 			array_args[2] := IntRef->New(line);
 			array_args[3] := IntRef->New(pos);
 			array_args[4] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_find_references", array_args);
+			if(@fn_diag_find_references = Nil) { @fn_diag_find_references := "diag_find_references"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_references, array_args);
 
 			return @references_results;
 		}
@@ -355,7 +391,8 @@ bundle System.Diagnostics {
 			array_args[2] := IntRef->New(line);
 			array_args[3] := IntRef->New(pos);
 			array_args[4] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_type_hierarchy_super", array_args);
+			if(@fn_diag_type_hierarchy_super = Nil) { @fn_diag_type_hierarchy_super := "diag_type_hierarchy_super"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_type_hierarchy_super, array_args);
 
 			return @supertypes_results;
 		}
@@ -419,7 +456,8 @@ bundle System.Diagnostics {
 			array_args[2] := IntRef->New(line);
 			array_args[3] := IntRef->New(pos);
 			array_args[4] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_code_rename", array_args);
+			if(@fn_diag_code_rename = Nil) { @fn_diag_code_rename := "diag_code_rename"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_code_rename, array_args);
 			
 			return @rename_results;
 		}
@@ -444,7 +482,8 @@ bundle System.Diagnostics {
 			array_args[5] := var_str;
 			array_args[6] := mthd_str;
 			array_args[7] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_signature_help", array_args);
+			if(@fn_diag_signature_help = Nil) { @fn_diag_signature_help := "diag_signature_help"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_signature_help, array_args);
 			
 			return array_args[0]->As(Result);
 		}
@@ -465,7 +504,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(start_range_line);
 			array_args[4] := IntRef->New(start_range_char);
 			array_args[5] := var_name;
-			Proxy->GetDllProxy()->CallFunction("diag_code_action", array_args);
+			if(@fn_diag_code_action = Nil) { @fn_diag_code_action := "diag_code_action"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_code_action, array_args);
 			
 			return array_args[0]->As(Result);
 		}
@@ -498,7 +538,8 @@ bundle System.Diagnostics {
 			array_args[5] := var_str;
 			array_args[6] := mthd_str;
 			array_args[7] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_hover", array_args);
+			if(@fn_diag_hover = Nil) { @fn_diag_hover := "diag_hover"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_hover, array_args);
 			
 			return array_args[0]->As(Result);
 		}
@@ -531,7 +572,8 @@ bundle System.Diagnostics {
 			array_args[5] := var_str;
 			array_args[6] := mthd_str;
 			array_args[7] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_completion_help", array_args);
+			if(@fn_diag_completion_help = Nil) { @fn_diag_completion_help := "diag_completion_help"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_completion_help, array_args);
 			
 			return array_args[0]->As(Result);
 		}
@@ -552,7 +594,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_find_declaration", array_args);
+			if(@fn_diag_find_declaration = Nil) { @fn_diag_find_declaration := "diag_find_declaration"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_declaration, array_args);
 			
 			return array_args[0]->As(Result);
 		}
@@ -581,7 +624,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_find_definition", array_args);
+			if(@fn_diag_find_definition = Nil) { @fn_diag_find_definition := "diag_find_definition"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_definition, array_args);
 			
 			return array_args[0]->As(Result);
 		}
@@ -602,7 +646,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_find_type_definition", array_args);
+			if(@fn_diag_find_type_definition = Nil) { @fn_diag_find_type_definition := "diag_find_type_definition"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_type_definition, array_args);
 
 			return array_args[0]->As(Result);
 		}
@@ -626,7 +671,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_find_implementation", array_args);
+			if(@fn_diag_find_implementation = Nil) { @fn_diag_find_implementation := "diag_find_implementation"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_implementation, array_args);
 
 			return @impl_results;
 		}
@@ -647,7 +693,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_prepare_call_hierarchy", array_args);
+			if(@fn_diag_prepare_call_hierarchy = Nil) { @fn_diag_prepare_call_hierarchy := "diag_prepare_call_hierarchy"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_prepare_call_hierarchy, array_args);
 
 			return array_args[0]->As(Result);
 		}
@@ -671,7 +718,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_incoming_calls", array_args);
+			if(@fn_diag_incoming_calls = Nil) { @fn_diag_incoming_calls := "diag_incoming_calls"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_incoming_calls, array_args);
 
 			return @incoming_results;
 		}
@@ -695,7 +743,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_outgoing_calls", array_args);
+			if(@fn_diag_outgoing_calls = Nil) { @fn_diag_outgoing_calls := "diag_outgoing_calls"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_outgoing_calls, array_args);
 
 			return @outgoing_results;
 		}
@@ -719,7 +768,8 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(start_line);
 			array_args[4] := IntRef->New(end_line);
 			array_args[5] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_inlay_hints", array_args);
+			if(@fn_diag_inlay_hints = Nil) { @fn_diag_inlay_hints := "diag_inlay_hints"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_inlay_hints, array_args);
 
 			return @inlay_results;
 		}
@@ -739,7 +789,8 @@ bundle System.Diagnostics {
 			array_args[1] := @self;
 			array_args[2] := uri;
 			array_args[3] := sys_path;
-			Proxy->GetDllProxy()->CallFunction("diag_semantic_tokens", array_args);
+			if(@fn_diag_semantic_tokens = Nil) { @fn_diag_semantic_tokens := "diag_semantic_tokens"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_semantic_tokens, array_args);
 
 			return @semantic_results;
 		}
@@ -755,7 +806,8 @@ bundle System.Diagnostics {
 		method : public : Release() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@progam_handle);
-			Proxy->GetDllProxy()->CallFunction("diag_tree_release", array_args);
+			if(@fn_diag_tree_release = Nil) { @fn_diag_tree_release := "diag_tree_release"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_diag_tree_release, array_args);
 		}
 	}
 

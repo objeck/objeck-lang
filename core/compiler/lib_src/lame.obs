@@ -25,6 +25,12 @@ bundle Game.SDL2.Aux {
 	Converts a PCM audio stream to MP3 audio stream 
 	~#
 	class Lame {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_lame_pcm_mp3 : static : String;
 		#~
 		Converts a PCM audio stream to an MP3 audio stream
 		@param stream_in raw PCM audio bytes
@@ -35,7 +41,8 @@ bundle Game.SDL2.Aux {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("lame_pcm_mp3", array_args);
+				if(@fn_lame_pcm_mp3 = Nil) { @fn_lame_pcm_mp3 := "lame_pcm_mp3"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_lame_pcm_mp3, array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();

@@ -21,6 +21,23 @@ bundle Database.ODBC {
 	ODBC database connection
 	~#
 	class Connection {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_odbc_commit : static : String;
+		@fn_odbc_connect : static : String;
+		@fn_odbc_connect_string : static : String;
+		@fn_odbc_disconnect : static : String;
+		@fn_odbc_get_columns : static : String;
+		@fn_odbc_get_error : static : String;
+		@fn_odbc_get_tables : static : String;
+		@fn_odbc_prepare_statement : static : String;
+		@fn_odbc_rollback : static : String;
+		@fn_odbc_select_statement : static : String;
+		@fn_odbc_set_autocommit : static : String;
+		@fn_odbc_update_statement : static : String;
 		@native_connection : Int;
 		
 		#~
@@ -46,7 +63,8 @@ bundle Database.ODBC {
 			array_args[2] := username;
 			array_args[3] := password;
 			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("odbc_connect", array_args);
+			if(@fn_odbc_connect = Nil) { @fn_odbc_connect := "odbc_connect"; };
+			@lib_proxy->CallFunction(@fn_odbc_connect, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@native_connection := value->Get();
@@ -70,7 +88,8 @@ bundle Database.ODBC {
 			array_args[0] := IntRef->New();
 			array_args[1] := conn_str;
 			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("odbc_connect_string", array_args);
+			if(@fn_odbc_connect_string = Nil) { @fn_odbc_connect_string := "odbc_connect_string"; };
+			@lib_proxy->CallFunction(@fn_odbc_connect_string, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@native_connection := value->Get();
@@ -99,7 +118,8 @@ bundle Database.ODBC {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_disconnect", array_args);
+				if(@fn_odbc_disconnect = Nil) { @fn_odbc_disconnect := "odbc_disconnect"; };
+				@lib_proxy->CallFunction(@fn_odbc_disconnect, array_args);
 				@native_connection := 0;
 			};
 		}
@@ -124,7 +144,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(@native_connection);
 				array_args[2] := sql;
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_update_statement", array_args);
+				if(@fn_odbc_update_statement = Nil) { @fn_odbc_update_statement := "odbc_update_statement"; };
+				@lib_proxy->CallFunction(@fn_odbc_update_statement, array_args);
 				
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -158,7 +179,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_connection);
 				array_args[4] := sql;
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_select_statement", array_args);
+				if(@fn_odbc_select_statement = Nil) { @fn_odbc_select_statement := "odbc_select_statement"; };
+				@lib_proxy->CallFunction(@fn_odbc_select_statement, array_args);
 				
 				native_stmt := array_args[0]->As(IntRef);
 				native_names := array_args[1]->As(IntRef);
@@ -193,7 +215,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_connection);
 				array_args[4] := sql;
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_prepare_statement", array_args);
+				if(@fn_odbc_prepare_statement = Nil) { @fn_odbc_prepare_statement := "odbc_prepare_statement"; };
+				@lib_proxy->CallFunction(@fn_odbc_prepare_statement, array_args);
 				
 				native_stmt := array_args[0]->As(IntRef);
 				native_names := array_args[1]->As(IntRef);
@@ -222,7 +245,8 @@ bundle Database.ODBC {
 				array_args[0] := IntRef->New(@native_connection);
 				array_args[1] := IntRef->New(enable ? 1 : 0);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_set_autocommit", array_args);
+				if(@fn_odbc_set_autocommit = Nil) { @fn_odbc_set_autocommit := "odbc_set_autocommit"; };
+				@lib_proxy->CallFunction(@fn_odbc_set_autocommit, array_args);
 				result := array_args[0]->As(IntRef);
 				return result->Get() = 1;
 			};
@@ -239,7 +263,8 @@ bundle Database.ODBC {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_commit", array_args);
+				if(@fn_odbc_commit = Nil) { @fn_odbc_commit := "odbc_commit"; };
+				@lib_proxy->CallFunction(@fn_odbc_commit, array_args);
 				result := array_args[0]->As(IntRef);
 				return result->Get() = 1;
 			};
@@ -256,7 +281,8 @@ bundle Database.ODBC {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_rollback", array_args);
+				if(@fn_odbc_rollback = Nil) { @fn_odbc_rollback := "odbc_rollback"; };
+				@lib_proxy->CallFunction(@fn_odbc_rollback, array_args);
 				result := array_args[0]->As(IntRef);
 				return result->Get() = 1;
 			};
@@ -282,7 +308,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(2);
 				array_args[2] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_get_error", array_args);
+				if(@fn_odbc_get_error = Nil) { @fn_odbc_get_error := "odbc_get_error"; };
+				@lib_proxy->CallFunction(@fn_odbc_get_error, array_args);
 				return array_args[0]->As(String);
 			};
 
@@ -307,7 +334,8 @@ bundle Database.ODBC {
 				array_args[0] := Nil;
 				array_args[1] := IntRef->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_get_tables", array_args);
+				if(@fn_odbc_get_tables = Nil) { @fn_odbc_get_tables := "odbc_get_tables"; };
+				@lib_proxy->CallFunction(@fn_odbc_get_tables, array_args);
 
 				result := array_args[0]->As(String);
 				if(result <> Nil & result->Size() > 0) {
@@ -338,7 +366,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(@native_connection);
 				array_args[2] := table;
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_get_columns", array_args);
+				if(@fn_odbc_get_columns = Nil) { @fn_odbc_get_columns := "odbc_get_columns"; };
+				@lib_proxy->CallFunction(@fn_odbc_get_columns, array_args);
 
 				result := array_args[0]->As(String);
 				if(result <> Nil & result->Size() > 0) {
@@ -354,6 +383,36 @@ bundle Database.ODBC {
 	ODBC parametrized statement that supports SQL variables
 	~#
 	class ParameterStatement {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_odbc_get_error : static : String;
+		@fn_odbc_stmt_close : static : String;
+		@fn_odbc_stmt_select_statement : static : String;
+		@fn_odbc_stmt_set_bigint : static : String;
+		@fn_odbc_stmt_set_bigint_null : static : String;
+		@fn_odbc_stmt_set_bit : static : String;
+		@fn_odbc_stmt_set_bit_null : static : String;
+		@fn_odbc_stmt_set_blob : static : String;
+		@fn_odbc_stmt_set_blob_null : static : String;
+		@fn_odbc_stmt_set_bytes : static : String;
+		@fn_odbc_stmt_set_date : static : String;
+		@fn_odbc_stmt_set_date_null : static : String;
+		@fn_odbc_stmt_set_double : static : String;
+		@fn_odbc_stmt_set_double_null : static : String;
+		@fn_odbc_stmt_set_int : static : String;
+		@fn_odbc_stmt_set_int_null : static : String;
+		@fn_odbc_stmt_set_real : static : String;
+		@fn_odbc_stmt_set_real_null : static : String;
+		@fn_odbc_stmt_set_smallint : static : String;
+		@fn_odbc_stmt_set_smallint_null : static : String;
+		@fn_odbc_stmt_set_timestamp : static : String;
+		@fn_odbc_stmt_set_timestamp_null : static : String;
+		@fn_odbc_stmt_set_varchar : static : String;
+		@fn_odbc_stmt_set_varchar_null : static : String;
+		@fn_odbc_stmt_update : static : String;
 		@native_stmt : Int;
 		@native_names : Int;
 		@exec_data : Int;
@@ -378,7 +437,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_bit_null", array_args);
+				if(@fn_odbc_stmt_set_bit_null = Nil) { @fn_odbc_stmt_set_bit_null := "odbc_stmt_set_bit_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_bit_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -404,7 +464,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_bit", array_args);
+				if(@fn_odbc_stmt_set_bit = Nil) { @fn_odbc_stmt_set_bit := "odbc_stmt_set_bit"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_bit, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -425,7 +486,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_smallint_null", array_args);
+				if(@fn_odbc_stmt_set_smallint_null = Nil) { @fn_odbc_stmt_set_smallint_null := "odbc_stmt_set_smallint_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_smallint_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -451,7 +513,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_smallint", array_args);
+				if(@fn_odbc_stmt_set_smallint = Nil) { @fn_odbc_stmt_set_smallint := "odbc_stmt_set_smallint"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_smallint, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -473,7 +536,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_int_null", array_args);
+				if(@fn_odbc_stmt_set_int_null = Nil) { @fn_odbc_stmt_set_int_null := "odbc_stmt_set_int_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_int_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -499,7 +563,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_int", array_args);
+				if(@fn_odbc_stmt_set_int = Nil) { @fn_odbc_stmt_set_int := "odbc_stmt_set_int"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_int, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -520,7 +585,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_bigint_null", array_args);
+				if(@fn_odbc_stmt_set_bigint_null = Nil) { @fn_odbc_stmt_set_bigint_null := "odbc_stmt_set_bigint_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_bigint_null, array_args);
 
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -546,7 +612,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_bigint", array_args);
+				if(@fn_odbc_stmt_set_bigint = Nil) { @fn_odbc_stmt_set_bigint := "odbc_stmt_set_bigint"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_bigint, array_args);
 
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -567,7 +634,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_double_null", array_args);
+				if(@fn_odbc_stmt_set_double_null = Nil) { @fn_odbc_stmt_set_double_null := "odbc_stmt_set_double_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_double_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -593,7 +661,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_double", array_args);
+				if(@fn_odbc_stmt_set_double = Nil) { @fn_odbc_stmt_set_double := "odbc_stmt_set_double"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_double, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -614,7 +683,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_real_null", array_args);
+				if(@fn_odbc_stmt_set_real_null = Nil) { @fn_odbc_stmt_set_real_null := "odbc_stmt_set_real_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_real_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -640,7 +710,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_real", array_args);
+				if(@fn_odbc_stmt_set_real = Nil) { @fn_odbc_stmt_set_real := "odbc_stmt_set_real"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_real, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -661,7 +732,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_varchar_null", array_args);
+				if(@fn_odbc_stmt_set_varchar_null = Nil) { @fn_odbc_stmt_set_varchar_null := "odbc_stmt_set_varchar_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_varchar_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -694,7 +766,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_varchar", array_args);
+				if(@fn_odbc_stmt_set_varchar = Nil) { @fn_odbc_stmt_set_varchar := "odbc_stmt_set_varchar"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_varchar, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -715,7 +788,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_blob_null", array_args);
+				if(@fn_odbc_stmt_set_blob_null = Nil) { @fn_odbc_stmt_set_blob_null := "odbc_stmt_set_blob_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_blob_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -742,7 +816,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_blob", array_args);
+				if(@fn_odbc_stmt_set_blob = Nil) { @fn_odbc_stmt_set_blob := "odbc_stmt_set_blob"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_blob, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -779,7 +854,8 @@ bundle Database.ODBC {
 				array_args[4] := IntRef->New(@native_stmt);
 				array_args[5] := IntRef->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_bytes", array_args);
+				if(@fn_odbc_stmt_set_bytes = Nil) { @fn_odbc_stmt_set_bytes := "odbc_stmt_set_bytes"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_bytes, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -800,7 +876,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_date_null", array_args);
+				if(@fn_odbc_stmt_set_date_null = Nil) { @fn_odbc_stmt_set_date_null := "odbc_stmt_set_date_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_date_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -825,7 +902,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_date", array_args);
+				if(@fn_odbc_stmt_set_date = Nil) { @fn_odbc_stmt_set_date := "odbc_stmt_set_date"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_date, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -846,7 +924,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(pos);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_timestamp_null", array_args);
+				if(@fn_odbc_stmt_set_timestamp_null = Nil) { @fn_odbc_stmt_set_timestamp_null := "odbc_stmt_set_timestamp_null"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_timestamp_null, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -871,7 +950,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(pos);
 				array_args[3] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_set_timestamp", array_args);
+				if(@fn_odbc_stmt_set_timestamp = Nil) { @fn_odbc_stmt_set_timestamp := "odbc_stmt_set_timestamp"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_set_timestamp, array_args);
 				
 				status := array_args[0]->As(IntRef);
 				return status->Get() = 1;
@@ -902,7 +982,8 @@ bundle Database.ODBC {
 				array_args[2] := IntRef->New(@exec_data);
 				array_args[3] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_update", array_args);
+				if(@fn_odbc_stmt_update = Nil) { @fn_odbc_stmt_update := "odbc_stmt_update"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_update, array_args);
 				@params->Empty();
 
 				value := array_args[0]->As(IntRef);
@@ -937,7 +1018,8 @@ bundle Database.ODBC {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_select_statement", array_args);
+				if(@fn_odbc_stmt_select_statement = Nil) { @fn_odbc_stmt_select_statement := "odbc_stmt_select_statement"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_select_statement, array_args);
 				@params->Empty();
 				
 				return ResultSet->New(@native_stmt, @native_names, @exec_data);
@@ -957,7 +1039,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(3);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_get_error", array_args);
+				if(@fn_odbc_get_error = Nil) { @fn_odbc_get_error := "odbc_get_error"; };
+				@lib_proxy->CallFunction(@fn_odbc_get_error, array_args);
 				return array_args[0]->As(String);
 			};
 
@@ -972,7 +1055,8 @@ bundle Database.ODBC {
       			array_args := Base->New[1];
 				array_args[0] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_stmt_close", array_args);
+				if(@fn_odbc_stmt_close = Nil) { @fn_odbc_stmt_close := "odbc_stmt_close"; };
+				@lib_proxy->CallFunction(@fn_odbc_stmt_close, array_args);
 				@params->Empty();
 				@native_stmt := 0;
       		};
@@ -983,6 +1067,35 @@ bundle Database.ODBC {
 	ODBC result set
 	~#
 	class ResultSet {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_odbc_get_error : static : String;
+		@fn_odbc_result_close : static : String;
+		@fn_odbc_result_get_bigint_by_id : static : String;
+		@fn_odbc_result_get_bigint_by_name : static : String;
+		@fn_odbc_result_get_bit_by_id : static : String;
+		@fn_odbc_result_get_bit_by_name : static : String;
+		@fn_odbc_result_get_blob_by_id : static : String;
+		@fn_odbc_result_get_blob_by_name : static : String;
+		@fn_odbc_result_get_date_by_id : static : String;
+		@fn_odbc_result_get_date_by_name : static : String;
+		@fn_odbc_result_get_double_by_id : static : String;
+		@fn_odbc_result_get_double_by_name : static : String;
+		@fn_odbc_result_get_int_by_id : static : String;
+		@fn_odbc_result_get_int_by_name : static : String;
+		@fn_odbc_result_get_real_by_id : static : String;
+		@fn_odbc_result_get_real_by_name : static : String;
+		@fn_odbc_result_get_smallint_by_id : static : String;
+		@fn_odbc_result_get_smallint_by_name : static : String;
+		@fn_odbc_result_get_timestamp_by_id : static : String;
+		@fn_odbc_result_get_timestamp_by_name : static : String;
+		@fn_odbc_result_get_varchar_by_id : static : String;
+		@fn_odbc_result_get_varchar_by_name : static : String;
+		@fn_odbc_result_metadata : static : String;
+		@fn_odbc_result_next : static : String;
 		@native_stmt : Int;
 		@native_names : Int;
 		@exec_data : Int;
@@ -1008,7 +1121,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(@native_stmt);
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_metadata", array_args);
+				if(@fn_odbc_result_metadata = Nil) { @fn_odbc_result_metadata := "odbc_result_metadata"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_metadata, array_args);
 				
 				value := array_args[0]->As(ColumnInfoRef);
 				return value->Get();
@@ -1036,7 +1150,8 @@ bundle Database.ODBC {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_next", array_args);
+				if(@fn_odbc_result_next = Nil) { @fn_odbc_result_next := "odbc_result_next"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_next, array_args);
 				
 				value := array_args[0]->As(IntRef);
 				return value->Get() = 1;
@@ -1078,7 +1193,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_int_by_id", array_args);
+				if(@fn_odbc_result_get_int_by_id = Nil) { @fn_odbc_result_get_int_by_id := "odbc_result_get_int_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_int_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1104,7 +1220,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_int_by_name", array_args);
+				if(@fn_odbc_result_get_int_by_name = Nil) { @fn_odbc_result_get_int_by_name := "odbc_result_get_int_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_int_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1130,7 +1247,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_bigint_by_id", array_args);
+				if(@fn_odbc_result_get_bigint_by_id = Nil) { @fn_odbc_result_get_bigint_by_id := "odbc_result_get_bigint_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_bigint_by_id, array_args);
 
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1156,7 +1274,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_bigint_by_name", array_args);
+				if(@fn_odbc_result_get_bigint_by_name = Nil) { @fn_odbc_result_get_bigint_by_name := "odbc_result_get_bigint_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_bigint_by_name, array_args);
 
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1182,7 +1301,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_smallint_by_id", array_args);
+				if(@fn_odbc_result_get_smallint_by_id = Nil) { @fn_odbc_result_get_smallint_by_id := "odbc_result_get_smallint_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_smallint_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1208,7 +1328,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_smallint_by_name", array_args);
+				if(@fn_odbc_result_get_smallint_by_name = Nil) { @fn_odbc_result_get_smallint_by_name := "odbc_result_get_smallint_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_smallint_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1234,7 +1355,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_bit_by_id", array_args);
+				if(@fn_odbc_result_get_bit_by_id = Nil) { @fn_odbc_result_get_bit_by_id := "odbc_result_get_bit_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_bit_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1260,7 +1382,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_bit_by_name", array_args);
+				if(@fn_odbc_result_get_bit_by_name = Nil) { @fn_odbc_result_get_bit_by_name := "odbc_result_get_bit_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_bit_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1286,7 +1409,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_double_by_id", array_args);
+				if(@fn_odbc_result_get_double_by_id = Nil) { @fn_odbc_result_get_double_by_id := "odbc_result_get_double_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_double_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1312,7 +1436,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_double_by_name", array_args);
+				if(@fn_odbc_result_get_double_by_name = Nil) { @fn_odbc_result_get_double_by_name := "odbc_result_get_double_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_double_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1338,7 +1463,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_real_by_id", array_args);
+				if(@fn_odbc_result_get_real_by_id = Nil) { @fn_odbc_result_get_real_by_id := "odbc_result_get_real_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_real_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1364,7 +1490,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_real_by_name", array_args);
+				if(@fn_odbc_result_get_real_by_name = Nil) { @fn_odbc_result_get_real_by_name := "odbc_result_get_real_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_real_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1400,7 +1527,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_varchar_by_id", array_args);
+				if(@fn_odbc_result_get_varchar_by_id = Nil) { @fn_odbc_result_get_varchar_by_id := "odbc_result_get_varchar_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_varchar_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1428,7 +1556,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_varchar_by_name", array_args);
+				if(@fn_odbc_result_get_varchar_by_name = Nil) { @fn_odbc_result_get_varchar_by_name := "odbc_result_get_varchar_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_varchar_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1456,7 +1585,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_blob_by_id", array_args);
+				if(@fn_odbc_result_get_blob_by_id = Nil) { @fn_odbc_result_get_blob_by_id := "odbc_result_get_blob_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_blob_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1477,7 +1607,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_blob_by_name", array_args);
+				if(@fn_odbc_result_get_blob_by_name = Nil) { @fn_odbc_result_get_blob_by_name := "odbc_result_get_blob_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_blob_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1498,7 +1629,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_date_by_id", array_args);
+				if(@fn_odbc_result_get_date_by_id = Nil) { @fn_odbc_result_get_date_by_id := "odbc_result_get_date_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_date_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1526,7 +1658,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_date_by_name", array_args);
+				if(@fn_odbc_result_get_date_by_name = Nil) { @fn_odbc_result_get_date_by_name := "odbc_result_get_date_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_date_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1554,7 +1687,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_timestamp_by_id", array_args);
+				if(@fn_odbc_result_get_timestamp_by_id = Nil) { @fn_odbc_result_get_timestamp_by_id := "odbc_result_get_timestamp_by_id"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_timestamp_by_id, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1582,7 +1716,8 @@ bundle Database.ODBC {
 				array_args[3] := IntRef->New(@native_stmt);
 				array_args[4] := IntRef->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_get_timestamp_by_name", array_args);
+				if(@fn_odbc_result_get_timestamp_by_name = Nil) { @fn_odbc_result_get_timestamp_by_name := "odbc_result_get_timestamp_by_name"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_get_timestamp_by_name, array_args);
 				
 				is_null := array_args[0]->As(IntRef);
 				@is_null := is_null->Get() = 1;
@@ -1607,7 +1742,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(3);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_get_error", array_args);
+				if(@fn_odbc_get_error = Nil) { @fn_odbc_get_error := "odbc_get_error"; };
+				@lib_proxy->CallFunction(@fn_odbc_get_error, array_args);
 				return array_args[0]->As(String);
 			};
 
@@ -1624,7 +1760,8 @@ bundle Database.ODBC {
 				array_args[1] := IntRef->New(@exec_data);
 				array_args[2] := IntRef->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("odbc_result_close", array_args);
+				if(@fn_odbc_result_close = Nil) { @fn_odbc_result_close := "odbc_result_close"; };
+				@lib_proxy->CallFunction(@fn_odbc_result_close, array_args);
 				@native_names := 0;
 				@exec_data := 0;
 				@native_stmt := 0;

@@ -21,6 +21,17 @@ bundle Web.Server {
 	Web request
 	~#
 	class Request {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_web_request_get_header : static : String;
+		@fn_web_request_get_method : static : String;
+		@fn_web_request_local_address : static : String;
+		@fn_web_request_read_body : static : String;
+		@fn_web_request_remote_address : static : String;
+		@fn_web_request_request_url : static : String;
 		@request : Int;
 		@response : Int;
 
@@ -59,7 +70,8 @@ bundle Web.Server {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@request);
 
-			Proxy->GetDllProxy()->CallFunction("web_request_get_method", array_args);
+			if(@fn_web_request_get_method = Nil) { @fn_web_request_get_method := "web_request_get_method"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_request_get_method, array_args);
 			req_method := array_args[0]->As(String);
 
 			# TODO: faster way put into a hash, Nginx uses a integer value
@@ -107,7 +119,8 @@ bundle Web.Server {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@request);
 
-			Proxy->GetDllProxy()->CallFunction("web_request_request_url", array_args);
+			if(@fn_web_request_request_url = Nil) { @fn_web_request_request_url := "web_request_request_url"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_request_request_url, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -126,7 +139,8 @@ bundle Web.Server {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@request);
 
-			Proxy->GetDllProxy()->CallFunction("web_request_remote_address", array_args);
+			if(@fn_web_request_remote_address = Nil) { @fn_web_request_remote_address := "web_request_remote_address"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_request_remote_address, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -145,7 +159,8 @@ bundle Web.Server {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@request);
 
-			Proxy->GetDllProxy()->CallFunction("web_request_local_address", array_args);
+			if(@fn_web_request_local_address = Nil) { @fn_web_request_local_address := "web_request_local_address"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_request_local_address, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -168,7 +183,8 @@ bundle Web.Server {
 			array_args[1] := IntRef->New(@request);
 			array_args[2] := name;
 
-			Proxy->GetDllProxy()->CallFunction("web_request_get_header", array_args);
+			if(@fn_web_request_get_header = Nil) { @fn_web_request_get_header := "web_request_get_header"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_request_get_header, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -191,7 +207,8 @@ bundle Web.Server {
 			array_args[1] := IntRef->New(@request);
 			array_args[2] := IntRef->New(@response);
 
-			Proxy->GetDllProxy()->CallFunction("web_request_read_body", array_args);
+			if(@fn_web_request_read_body = Nil) { @fn_web_request_read_body := "web_request_read_body"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_request_read_body, array_args);
 
 			value := array_args[0]->As(ByteArrayRef);
 			if(value <> Nil) {
@@ -423,6 +440,18 @@ bundle Web.Server {
 	Web Response 
 	~#
 	class Response {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_web_response_append_bytes : static : String;
+		@fn_web_response_append_string : static : String;
+		@fn_web_response_clear_all : static : String;
+		@fn_web_response_redirect : static : String;
+		@fn_web_response_remove_header : static : String;
+		@fn_web_response_set_content_type : static : String;
+		@fn_web_response_set_header : static : String;
 		@response : Int;
 		
 		#~
@@ -439,7 +468,8 @@ bundle Web.Server {
 			array_args[0] := IntRef->New(@response);
 			array_args[1] := type;
 
-			Proxy->GetDllProxy()->CallFunction("web_response_set_content_type", array_args);
+			if(@fn_web_response_set_content_type = Nil) { @fn_web_response_set_content_type := "web_response_set_content_type"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_response_set_content_type, array_args);
 		}
 
 		#~
@@ -459,7 +489,8 @@ bundle Web.Server {
 			array_args[1] := IntRef->New(@response);
 			array_args[2] := data;
 
-			Proxy->GetDllProxy()->CallFunction("web_response_append_string", array_args);
+			if(@fn_web_response_append_string = Nil) { @fn_web_response_append_string := "web_response_append_string"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_response_append_string, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -482,7 +513,8 @@ bundle Web.Server {
 			array_args[1] := IntRef->New(@response);
 			array_args[2] := ByteArrayRef->New(data);
 
-			Proxy->GetDllProxy()->CallFunction("web_response_append_bytes", array_args);
+			if(@fn_web_response_append_bytes = Nil) { @fn_web_response_append_bytes := "web_response_append_bytes"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_response_append_bytes, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -504,7 +536,8 @@ bundle Web.Server {
 			array_args[1] := IntRef->New(@response);
 			array_args[2] := url;
 
-			Proxy->GetDllProxy()->CallFunction("web_response_redirect", array_args);
+			if(@fn_web_response_redirect = Nil) { @fn_web_response_redirect := "web_response_redirect"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_response_redirect, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -529,7 +562,8 @@ bundle Web.Server {
 			array_args[2] := name;
 			array_args[3] := value;
 
-			Proxy->GetDllProxy()->CallFunction("web_response_set_header", array_args);
+			if(@fn_web_response_set_header = Nil) { @fn_web_response_set_header := "web_response_set_header"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_response_set_header, array_args);
 
 			result := array_args[0]->As(IntRef);
 			return result->Get() = 0 ? false : true;
@@ -552,7 +586,8 @@ bundle Web.Server {
 			array_args[1] := IntRef->New(@response);
 			array_args[2] := name;
 
-			Proxy->GetDllProxy()->CallFunction("web_response_remove_header", array_args);
+			if(@fn_web_response_remove_header = Nil) { @fn_web_response_remove_header := "web_response_remove_header"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_response_remove_header, array_args);
 
 			result := array_args[0]->As(IntRef);
 			return result->Get() = 0 ? false : true;
@@ -570,7 +605,8 @@ bundle Web.Server {
 		method : public : ClearAll() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@response);
-			Proxy->GetDllProxy()->CallFunction("web_response_clear_all", array_args);
+			if(@fn_web_response_clear_all = Nil) { @fn_web_response_clear_all := "web_response_clear_all"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_web_response_clear_all, array_args);
 		}
 	}
 }

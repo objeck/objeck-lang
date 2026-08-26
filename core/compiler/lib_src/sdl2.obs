@@ -782,6 +782,24 @@ bundle Game.SDL2 {
 	Video display 
 	~#
 	class Display {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_display_get_closest_display_mode : static : String;
+		@fn_sdl_display_get_current_display_mode : static : String;
+		@fn_sdl_display_get_current_video_driver : static : String;
+		@fn_sdl_display_get_display_bounds : static : String;
+		@fn_sdl_display_get_display_dpi : static : String;
+		@fn_sdl_display_get_display_mode : static : String;
+		@fn_sdl_display_get_display_name : static : String;
+		@fn_sdl_display_get_num_display_modes : static : String;
+		@fn_sdl_display_get_num_video_displays : static : String;
+		@fn_sdl_display_get_num_video_drivers : static : String;
+		@fn_sdl_display_get_video_driver : static : String;
+		@fn_sdl_display_video_init : static : String;
+		@fn_sdl_display_video_quit : static : String;
 		#~
 		Get the number of video drivers compiled into SDL
 		@return number >= 1 on success or a negative error code on failure
@@ -790,7 +808,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_num_video_drivers", array_args);
+			if(@fn_sdl_display_get_num_video_drivers = Nil) { @fn_sdl_display_get_num_video_drivers := "sdl_display_get_num_video_drivers"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_num_video_drivers, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -806,7 +825,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_video_driver", array_args);
+			if(@fn_sdl_display_get_video_driver = Nil) { @fn_sdl_display_get_video_driver := "sdl_display_get_video_driver"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_video_driver, array_args);
 			return array_args[0]->As(String);
 		}
 
@@ -826,7 +846,8 @@ bundle Game.SDL2 {
 			array_args[3] := hdpi;
 			array_args[4] := vdpi;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_dpi", array_args);
+			if(@fn_sdl_display_get_display_dpi = Nil) { @fn_sdl_display_get_display_dpi := "sdl_display_get_display_dpi"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_display_dpi, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -843,7 +864,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := driver_name;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_display_video_init", array_args);
+				if(@fn_sdl_display_video_init = Nil) { @fn_sdl_display_video_init := "sdl_display_video_init"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_video_init, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -857,7 +879,8 @@ bundle Game.SDL2 {
 		~#
 		function : VideoQuit() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_display_video_quit", array_args);
+			if(@fn_sdl_display_video_quit = Nil) { @fn_sdl_display_video_quit := "sdl_display_video_quit"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_video_quit, array_args);
 		}
 		
 		#~
@@ -868,7 +891,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_current_video_driver", array_args);
+			if(@fn_sdl_display_get_current_video_driver = Nil) { @fn_sdl_display_get_current_video_driver := "sdl_display_get_current_video_driver"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_current_video_driver, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -881,7 +905,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_num_video_displays", array_args);
+			if(@fn_sdl_display_get_num_video_displays = Nil) { @fn_sdl_display_get_num_video_displays := "sdl_display_get_num_video_displays"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_num_video_displays, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -897,7 +922,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(displayIndex);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_name", array_args);
+			if(@fn_sdl_display_get_display_name = Nil) { @fn_sdl_display_get_display_name := "sdl_display_get_display_name"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_display_name, array_args);
 
 			return array_args[0];
 		}
@@ -915,7 +941,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(displayIndex);
 				array_args[2] := rect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_bounds", array_args);
+				if(@fn_sdl_display_get_display_bounds = Nil) { @fn_sdl_display_get_display_bounds := "sdl_display_get_display_bounds"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_display_bounds, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -934,7 +961,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(displayIndex);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_num_display_modes", array_args);
+			if(@fn_sdl_display_get_num_display_modes = Nil) { @fn_sdl_display_get_num_display_modes := "sdl_display_get_num_display_modes"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_num_display_modes, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -955,7 +983,8 @@ bundle Game.SDL2 {
 				array_args[2] := IntRef->New(modeIndex);
 				array_args[3] := mode;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_mode", array_args);
+				if(@fn_sdl_display_get_display_mode = Nil) { @fn_sdl_display_get_display_mode := "sdl_display_get_display_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_display_mode, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -977,7 +1006,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(displayIndex);
 				array_args[2] := mode;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_display_get_current_display_mode", array_args);
+				if(@fn_sdl_display_get_current_display_mode = Nil) { @fn_sdl_display_get_current_display_mode := "sdl_display_get_current_display_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_current_display_mode, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1001,7 +1031,8 @@ bundle Game.SDL2 {
 				array_args[2] := mode;
 				array_args[3] := closest;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_display_get_closest_display_mode", array_args);
+				if(@fn_sdl_display_get_closest_display_mode = Nil) { @fn_sdl_display_get_closest_display_mode := "sdl_display_get_closest_display_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_display_get_closest_display_mode, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get() <> 0;
@@ -1019,6 +1050,12 @@ bundle Game.SDL2 {
 	while it is current is allowed; SDL unbinds it first.
 	~#
 	class GLContext {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_gl_delete_context : static : String;
 		@context : Int;
 
 		New(context : Int) {
@@ -1048,7 +1085,8 @@ bundle Game.SDL2 {
 			if(@context <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@context);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_delete_context", array_args);
+				if(@fn_sdl_gl_delete_context = Nil) { @fn_sdl_gl_delete_context := "sdl_gl_delete_context"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_delete_context, array_args);
 				@context := 0;
 			};
 		}
@@ -1058,6 +1096,54 @@ bundle Game.SDL2 {
 	SDL Window
 	~#
 	class Window {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_window_create : static : String;
+		@fn_sdl_window_destroy : static : String;
+		@fn_sdl_window_disable_screen_saver : static : String;
+		@fn_sdl_window_enable_screen_saver : static : String;
+		@fn_sdl_window_get_brightness : static : String;
+		@fn_sdl_window_get_display_index : static : String;
+		@fn_sdl_window_get_flags : static : String;
+		@fn_sdl_window_get_fromid : static : String;
+		@fn_sdl_window_get_gamma_ramp : static : String;
+		@fn_sdl_window_get_grab : static : String;
+		@fn_sdl_window_get_grabbed_window : static : String;
+		@fn_sdl_window_get_maximum_size : static : String;
+		@fn_sdl_window_get_minimum_size : static : String;
+		@fn_sdl_window_get_pixel_format : static : String;
+		@fn_sdl_window_get_position : static : String;
+		@fn_sdl_window_get_size : static : String;
+		@fn_sdl_window_get_surface : static : String;
+		@fn_sdl_window_getid : static : String;
+		@fn_sdl_window_gl_create_context : static : String;
+		@fn_sdl_window_gl_get_drawable_size : static : String;
+		@fn_sdl_window_gl_make_current : static : String;
+		@fn_sdl_window_gl_swap : static : String;
+		@fn_sdl_window_hide : static : String;
+		@fn_sdl_window_is_screen_saver_enabled : static : String;
+		@fn_sdl_window_maximize : static : String;
+		@fn_sdl_window_minimize : static : String;
+		@fn_sdl_window_raise : static : String;
+		@fn_sdl_window_restore : static : String;
+		@fn_sdl_window_set_bordered : static : String;
+		@fn_sdl_window_set_brightness : static : String;
+		@fn_sdl_window_set_display_mode : static : String;
+		@fn_sdl_window_set_fullscreen : static : String;
+		@fn_sdl_window_set_gamma_ramp : static : String;
+		@fn_sdl_window_set_grab : static : String;
+		@fn_sdl_window_set_icon : static : String;
+		@fn_sdl_window_set_maximum_size : static : String;
+		@fn_sdl_window_set_minimum_size : static : String;
+		@fn_sdl_window_set_position : static : String;
+		@fn_sdl_window_set_size : static : String;
+		@fn_sdl_window_set_title : static : String;
+		@fn_sdl_window_show : static : String;
+		@fn_sdl_window_show_simple_messagebox : static : String;
+		@fn_sdl_window_update_surface : static : String;
 		@window : Int;
 		
 		New(window : Int) {
@@ -1083,7 +1169,8 @@ bundle Game.SDL2 {
 			array_args[5] := IntRef->New(h);
 			array_args[6] := IntRef->New(flags);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_window_create", array_args);
+			if(@fn_sdl_window_create = Nil) { @fn_sdl_window_create := "sdl_window_create"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_create, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@window := value->Get();
@@ -1105,7 +1192,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_window_get_grabbed_window", array_args);
+			if(@fn_sdl_window_get_grabbed_window = Nil) { @fn_sdl_window_get_grabbed_window := "sdl_window_get_grabbed_window"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_grabbed_window, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return Window->New(value->Get());
@@ -1126,7 +1214,8 @@ bundle Game.SDL2 {
 			array_args[2] := message;
 			array_args[3] := window;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_window_show_simple_messagebox", array_args);
+			if(@fn_sdl_window_show_simple_messagebox = Nil) { @fn_sdl_window_show_simple_messagebox := "sdl_window_show_simple_messagebox"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_show_simple_messagebox, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -1144,7 +1233,8 @@ bundle Game.SDL2 {
 				array_args[1] := w;
 				array_args[2] := h;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_drawable_size", array_args);
+				if(@fn_sdl_window_gl_get_drawable_size = Nil) { @fn_sdl_window_gl_get_drawable_size := "sdl_window_gl_get_drawable_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_gl_get_drawable_size, array_args);
 			};
 		}
 		
@@ -1155,7 +1245,8 @@ bundle Game.SDL2 {
 			if(@window <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@window);
-				Proxy->GetDllProxy()->CallFunction("sdl_window_gl_swap", array_args);
+				if(@fn_sdl_window_gl_swap = Nil) { @fn_sdl_window_gl_swap := "sdl_window_gl_swap"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_gl_swap, array_args);
 			};
 		}
 
@@ -1177,7 +1268,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@window);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_window_gl_create_context", array_args);
+			if(@fn_sdl_window_gl_create_context = Nil) { @fn_sdl_window_gl_create_context := "sdl_window_gl_create_context"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_gl_create_context, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return GLContext->New(value->Get());
@@ -1202,7 +1294,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@window);
 			array_args[2] := IntRef->New(context->GetContext());
 
-			Proxy->GetDllProxy()->CallFunction("sdl_window_gl_make_current", array_args);
+			if(@fn_sdl_window_gl_make_current = Nil) { @fn_sdl_window_gl_make_current := "sdl_window_gl_make_current"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_gl_make_current, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -1218,7 +1311,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_index", array_args);
+				if(@fn_sdl_window_get_display_index = Nil) { @fn_sdl_window_get_display_index := "sdl_window_get_display_index"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_display_index, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1238,7 +1332,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@window);
 				array_args[2] := mode;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_display_mode", array_args);
+				if(@fn_sdl_window_set_display_mode = Nil) { @fn_sdl_window_set_display_mode := "sdl_window_set_display_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_display_mode, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1257,7 +1352,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_pixel_format", array_args);
+				if(@fn_sdl_window_get_pixel_format = Nil) { @fn_sdl_window_get_pixel_format := "sdl_window_get_pixel_format"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_pixel_format, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1276,7 +1372,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_getid", array_args);
+				if(@fn_sdl_window_getid = Nil) { @fn_sdl_window_getid := "sdl_window_getid"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_getid, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1296,7 +1393,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(id);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_fromid", array_args);
+				if(@fn_sdl_window_get_fromid = Nil) { @fn_sdl_window_get_fromid := "sdl_window_get_fromid"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_fromid, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Window->New(value->Get());
@@ -1315,7 +1413,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_flags", array_args);
+				if(@fn_sdl_window_get_flags = Nil) { @fn_sdl_window_get_flags := "sdl_window_get_flags"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_flags, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1334,7 +1433,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New(@window);
 				array_args[1] := title;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_title", array_args);
+				if(@fn_sdl_window_set_title = Nil) { @fn_sdl_window_set_title := "sdl_window_set_title"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_title, array_args);
 			};	
 		}
 		
@@ -1348,7 +1448,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New(@window);
 				array_args[1] := icon;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_icon", array_args);
+				if(@fn_sdl_window_set_icon = Nil) { @fn_sdl_window_set_icon := "sdl_window_set_icon"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_icon, array_args);
 			};
 		}
 		
@@ -1364,7 +1465,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(x);
 				array_args[2] := IntRef->New(y);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_position", array_args);
+				if(@fn_sdl_window_set_position = Nil) { @fn_sdl_window_set_position := "sdl_window_set_position"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_position, array_args);
 			};
 		}
 		
@@ -1380,7 +1482,8 @@ bundle Game.SDL2 {
 				array_args[1] := x;
 				array_args[2] := y;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_position", array_args);
+				if(@fn_sdl_window_get_position = Nil) { @fn_sdl_window_get_position := "sdl_window_get_position"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_position, array_args);
 			};
 		}
 		
@@ -1396,7 +1499,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(w);
 				array_args[2] := IntRef->New(h);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_size", array_args);
+				if(@fn_sdl_window_set_size = Nil) { @fn_sdl_window_set_size := "sdl_window_set_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_size, array_args);
 
 			};
 		}
@@ -1413,7 +1517,8 @@ bundle Game.SDL2 {
 				array_args[1] := w;
 				array_args[2] := h;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_size", array_args);
+				if(@fn_sdl_window_get_size = Nil) { @fn_sdl_window_get_size := "sdl_window_get_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_size, array_args);
 			};
 		}
 		
@@ -1429,7 +1534,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(min_w);
 				array_args[2] := IntRef->New(min_h);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_minimum_size", array_args);
+				if(@fn_sdl_window_set_minimum_size = Nil) { @fn_sdl_window_set_minimum_size := "sdl_window_set_minimum_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_minimum_size, array_args);
 			};
 		}
 		
@@ -1445,7 +1551,8 @@ bundle Game.SDL2 {
 				array_args[1] := w;
 				array_args[2] := h;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_minimum_size", array_args);
+				if(@fn_sdl_window_get_minimum_size = Nil) { @fn_sdl_window_get_minimum_size := "sdl_window_get_minimum_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_minimum_size, array_args);
 			};
 		}
 		
@@ -1461,7 +1568,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(max_w);
 				array_args[2] := IntRef->New(max_h);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_maximum_size", array_args);
+				if(@fn_sdl_window_set_maximum_size = Nil) { @fn_sdl_window_set_maximum_size := "sdl_window_set_maximum_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_maximum_size, array_args);
 			};
 		}
 		
@@ -1477,7 +1585,8 @@ bundle Game.SDL2 {
 				array_args[1] := w;
 				array_args[2] := h;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_maximum_size", array_args);
+				if(@fn_sdl_window_get_maximum_size = Nil) { @fn_sdl_window_get_maximum_size := "sdl_window_get_maximum_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_maximum_size, array_args);
 			};
 		}
 		
@@ -1491,7 +1600,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New(@window);
 				array_args[1] := IntRef->New(bordered ? 0 : 1);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_bordered", array_args);
+				if(@fn_sdl_window_set_bordered = Nil) { @fn_sdl_window_set_bordered := "sdl_window_set_bordered"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_bordered, array_args);
 			};
 		}
 		
@@ -1503,7 +1613,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_show", array_args);
+				if(@fn_sdl_window_show = Nil) { @fn_sdl_window_show := "sdl_window_show"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_show, array_args);
 			};
 		}
 		
@@ -1515,7 +1626,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_hide", array_args);
+				if(@fn_sdl_window_hide = Nil) { @fn_sdl_window_hide := "sdl_window_hide"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_hide, array_args);
 			};
 		}
 		
@@ -1527,7 +1639,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_raise", array_args);
+				if(@fn_sdl_window_raise = Nil) { @fn_sdl_window_raise := "sdl_window_raise"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_raise, array_args);
 			};
 		}
 		
@@ -1539,7 +1652,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_maximize", array_args);
+				if(@fn_sdl_window_maximize = Nil) { @fn_sdl_window_maximize := "sdl_window_maximize"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_maximize, array_args);
 			};
 		}
 		
@@ -1551,7 +1665,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_minimize", array_args);
+				if(@fn_sdl_window_minimize = Nil) { @fn_sdl_window_minimize := "sdl_window_minimize"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_minimize, array_args);
 			};
 		}
 		
@@ -1563,7 +1678,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_restore", array_args);
+				if(@fn_sdl_window_restore = Nil) { @fn_sdl_window_restore := "sdl_window_restore"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_restore, array_args);
 
 			};
 		}
@@ -1579,7 +1695,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@window);
 				array_args[2] := IntRef->New(flags);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_fullscreen", array_args);
+				if(@fn_sdl_window_set_fullscreen = Nil) { @fn_sdl_window_set_fullscreen := "sdl_window_set_fullscreen"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_fullscreen, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1598,7 +1715,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_surface", array_args);
+				if(@fn_sdl_window_get_surface = Nil) { @fn_sdl_window_get_surface := "sdl_window_get_surface"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_surface, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
@@ -1616,7 +1734,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_update_surface", array_args);
+				if(@fn_sdl_window_update_surface = Nil) { @fn_sdl_window_update_surface := "sdl_window_update_surface"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_update_surface, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1635,7 +1754,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New(@window);
 				array_args[1] := IntRef->New(grabbed ? 0 : 1);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_grab", array_args);
+				if(@fn_sdl_window_set_grab = Nil) { @fn_sdl_window_set_grab := "sdl_window_set_grab"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_grab, array_args);
 
 			};
 		}
@@ -1650,7 +1770,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_grab", array_args);
+				if(@fn_sdl_window_get_grab = Nil) { @fn_sdl_window_get_grab := "sdl_window_get_grab"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_grab, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get() = 0 ? false : true;
@@ -1671,7 +1792,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@window);
 				array_args[2] := FloatRef->New(brightness);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_brightness", array_args);
+				if(@fn_sdl_window_set_brightness = Nil) { @fn_sdl_window_set_brightness := "sdl_window_set_brightness"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_brightness, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1690,7 +1812,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@window);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_brightness", array_args);
+				if(@fn_sdl_window_get_brightness = Nil) { @fn_sdl_window_get_brightness := "sdl_window_get_brightness"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_brightness, array_args);
 
 				value := array_args[0]->As(FloatRef);
 				return value->Get();
@@ -1715,7 +1838,8 @@ bundle Game.SDL2 {
 				array_args[3] := green;
 				array_args[4] := blue;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_set_gamma_ramp", array_args);
+				if(@fn_sdl_window_set_gamma_ramp = Nil) { @fn_sdl_window_set_gamma_ramp := "sdl_window_set_gamma_ramp"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_set_gamma_ramp, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1740,7 +1864,8 @@ bundle Game.SDL2 {
 				array_args[3] := green;
 				array_args[4] := blue;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_window_get_gamma_ramp", array_args);
+				if(@fn_sdl_window_get_gamma_ramp = Nil) { @fn_sdl_window_get_gamma_ramp := "sdl_window_get_gamma_ramp"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_gamma_ramp, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -1756,7 +1881,8 @@ bundle Game.SDL2 {
 			if(@window <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@window);
-				Proxy->GetDllProxy()->CallFunction("sdl_window_destroy", array_args);
+				if(@fn_sdl_window_destroy = Nil) { @fn_sdl_window_destroy := "sdl_window_destroy"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_destroy, array_args);
 				@window := 0;
 			};
 		}
@@ -1769,7 +1895,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_window_is_screen_saver_enabled", array_args);
+			if(@fn_sdl_window_is_screen_saver_enabled = Nil) { @fn_sdl_window_is_screen_saver_enabled := "sdl_window_is_screen_saver_enabled"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_is_screen_saver_enabled, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -1780,7 +1907,8 @@ bundle Game.SDL2 {
 		~#
 		function : EnableScreenSaver() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_window_enable_screen_saver", array_args);
+			if(@fn_sdl_window_enable_screen_saver = Nil) { @fn_sdl_window_enable_screen_saver := "sdl_window_enable_screen_saver"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_enable_screen_saver, array_args);
 
 		}
 		
@@ -1789,7 +1917,8 @@ bundle Game.SDL2 {
 		~#
 		function : DisableScreenSaver() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_window_disable_screen_saver", array_args);
+			if(@fn_sdl_window_disable_screen_saver = Nil) { @fn_sdl_window_disable_screen_saver := "sdl_window_disable_screen_saver"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_disable_screen_saver, array_args);
 		}
 	}
 
@@ -1897,6 +2026,16 @@ bundle Game.SDL2 {
 	Handles keyboard operations
 	~#
 	class Keyboard {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_keyboard_get_mod_state : static : String;
+		@fn_sdl_keyboard_get_state : static : String;
+		@fn_sdl_keyboard_set_text_input_rect : static : String;
+		@fn_sdl_keyboard_start_text_input : static : String;
+		@fn_sdl_keyboard_stop_text_input : static : String;
 		#~
 		Get a snapshot of the current state of the keyboard
 		@return pointer to an array of key states. A value 
@@ -1907,7 +2046,8 @@ bundle Game.SDL2 {
 		function : GetState() ~ Byte[] {
 	        array_args := Base->New[1];
 	        
-	        Proxy->GetDllProxy()->CallFunction("sdl_keyboard_get_state", array_args);
+	if(@fn_sdl_keyboard_get_state = Nil) { @fn_sdl_keyboard_get_state := "sdl_keyboard_get_state"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_keyboard_get_state, array_args);
 
 	        value := array_args[0]->As(ByteArrayRef);
 	        return value->Get();
@@ -1921,7 +2061,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_keyboard_get_mod_state", array_args);
+			if(@fn_sdl_keyboard_get_mod_state = Nil) { @fn_sdl_keyboard_get_mod_state := "sdl_keyboard_get_mod_state"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_keyboard_get_mod_state, array_args);
 
 			value := array_args[0]->As(IntRef);
 	        return value->Get()->As(Keymod);
@@ -1931,14 +2072,16 @@ bundle Game.SDL2 {
 		Start accepting Unicode text input events
 		~#
 		function : StartTextInput() ~ Nil {
-			Proxy->GetDllProxy()->CallFunction("sdl_keyboard_start_text_input", Nil->As(Base[]));
+			if(@fn_sdl_keyboard_start_text_input = Nil) { @fn_sdl_keyboard_start_text_input := "sdl_keyboard_start_text_input"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_keyboard_start_text_input, Nil->As(Base[]));
 		}
 
 		#~
 		Stop accepting Unicode text input events
 		~#
 		function : StopTextInput() ~ Nil {
-			Proxy->GetDllProxy()->CallFunction("sdl_keyboard_stop_text_input", Nil->As(Base[]));
+			if(@fn_sdl_keyboard_stop_text_input = Nil) { @fn_sdl_keyboard_stop_text_input := "sdl_keyboard_stop_text_input"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_keyboard_stop_text_input, Nil->As(Base[]));
 		}
 
 		#~
@@ -1948,7 +2091,8 @@ bundle Game.SDL2 {
 		function : SetTextInputRect(rect : Rect) ~ Nil {
 			array_args := Base->New[1];
 		    array_args[0] := rect;
-		    Proxy->GetDllProxy()->CallFunction("sdl_keyboard_set_text_input_rect", array_args);
+		if(@fn_sdl_keyboard_set_text_input_rect = Nil) { @fn_sdl_keyboard_set_text_input_rect := "sdl_keyboard_set_text_input_rect"; };
+		    Proxy->GetDllProxy()->CallFunction(@fn_sdl_keyboard_set_text_input_rect, array_args);
 		}
 	}
 
@@ -1956,6 +2100,14 @@ bundle Game.SDL2 {
 	Clipboard handling
 	~#
 	class Clipboard {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_power_get_clipboard_text : static : String;
+		@fn_sdl_power_has_clipboard_text : static : String;
+		@fn_sdl_power_set_clipboard_text : static : String;
 		#~
 		Put UTF-8 text into the clipboard.
 		@param text the text to store in the clipboard
@@ -1966,7 +2118,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := text;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_power_set_clipboard_text", array_args);
+			if(@fn_sdl_power_set_clipboard_text = Nil) { @fn_sdl_power_set_clipboard_text := "sdl_power_set_clipboard_text"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_power_set_clipboard_text, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -1980,7 +2133,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_power_get_clipboard_text", array_args);
+			if(@fn_sdl_power_get_clipboard_text = Nil) { @fn_sdl_power_get_clipboard_text := "sdl_power_get_clipboard_text"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_power_get_clipboard_text, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -1993,7 +2147,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_power_has_clipboard_text", array_args);
+			if(@fn_sdl_power_has_clipboard_text = Nil) { @fn_sdl_power_has_clipboard_text := "sdl_power_has_clipboard_text"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_power_has_clipboard_text, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2004,6 +2159,63 @@ bundle Game.SDL2 {
 	Handles inputs from joysticks
 	~#
 	class GameController {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_gamecontorller_get_axis_from_string : static : String;
+		@fn_sdl_gamecontroller_add_mapping : static : String;
+		@fn_sdl_gamecontroller_close : static : String;
+		@fn_sdl_gamecontroller_event_state : static : String;
+		@fn_sdl_gamecontroller_from_instanceid : static : String;
+		@fn_sdl_gamecontroller_from_player_index : static : String;
+		@fn_sdl_gamecontroller_get_applesf_symbols_name_for_axis : static : String;
+		@fn_sdl_gamecontroller_get_applesf_symbols_name_for_button : static : String;
+		@fn_sdl_gamecontroller_get_attached : static : String;
+		@fn_sdl_gamecontroller_get_axis : static : String;
+		@fn_sdl_gamecontroller_get_bind_for_axis : static : String;
+		@fn_sdl_gamecontroller_get_bind_for_button : static : String;
+		@fn_sdl_gamecontroller_get_button : static : String;
+		@fn_sdl_gamecontroller_get_button_from_string : static : String;
+		@fn_sdl_gamecontroller_get_firmware_version : static : String;
+		@fn_sdl_gamecontroller_get_joystick : static : String;
+		@fn_sdl_gamecontroller_get_num_touchpad_fingers : static : String;
+		@fn_sdl_gamecontroller_get_num_touchpads : static : String;
+		@fn_sdl_gamecontroller_get_player_index : static : String;
+		@fn_sdl_gamecontroller_get_product : static : String;
+		@fn_sdl_gamecontroller_get_product_version : static : String;
+		@fn_sdl_gamecontroller_get_sensor_data : static : String;
+		@fn_sdl_gamecontroller_get_sensor_data_rate : static : String;
+		@fn_sdl_gamecontroller_get_serial : static : String;
+		@fn_sdl_gamecontroller_get_string_for_axis : static : String;
+		@fn_sdl_gamecontroller_get_string_for_button : static : String;
+		@fn_sdl_gamecontroller_get_touchpad_finger : static : String;
+		@fn_sdl_gamecontroller_get_type : static : String;
+		@fn_sdl_gamecontroller_get_vendor : static : String;
+		@fn_sdl_gamecontroller_has_axis : static : String;
+		@fn_sdl_gamecontroller_has_button : static : String;
+		@fn_sdl_gamecontroller_has_rumble : static : String;
+		@fn_sdl_gamecontroller_has_rumble_triggers : static : String;
+		@fn_sdl_gamecontroller_has_sensor : static : String;
+		@fn_sdl_gamecontroller_hasled : static : String;
+		@fn_sdl_gamecontroller_is_sensor_enabled : static : String;
+		@fn_sdl_gamecontroller_mapping : static : String;
+		@fn_sdl_gamecontroller_mapping_for_index : static : String;
+		@fn_sdl_gamecontroller_name : static : String;
+		@fn_sdl_gamecontroller_name_for_index : static : String;
+		@fn_sdl_gamecontroller_num_mappings : static : String;
+		@fn_sdl_gamecontroller_open : static : String;
+		@fn_sdl_gamecontroller_path : static : String;
+		@fn_sdl_gamecontroller_path_for_index : static : String;
+		@fn_sdl_gamecontroller_rumble : static : String;
+		@fn_sdl_gamecontroller_rumble_triggers : static : String;
+		@fn_sdl_gamecontroller_sdl_is_game_controller : static : String;
+		@fn_sdl_gamecontroller_set_player_index : static : String;
+		@fn_sdl_gamecontroller_set_sensor_enabled : static : String;
+		@fn_sdl_gamecontroller_setled : static : String;
+		@fn_sdl_gamecontroller_type_for_index : static : String;
+		@fn_sdl_gamecontroller_update : static : String;
 		@gamecontroller : Int;
 
 		#~
@@ -2015,7 +2227,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(joystick_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_open", array_args);
+			if(@fn_sdl_gamecontroller_open = Nil) { @fn_sdl_gamecontroller_open := "sdl_gamecontroller_open"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_open, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        @gamecontroller := value->Get();
@@ -2031,7 +2244,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := mapping_string;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_add_mapping", array_args);
+			if(@fn_sdl_gamecontroller_add_mapping = Nil) { @fn_sdl_gamecontroller_add_mapping := "sdl_gamecontroller_add_mapping"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_add_mapping, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2045,7 +2259,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_num_mappings", array_args);
+			if(@fn_sdl_gamecontroller_num_mappings = Nil) { @fn_sdl_gamecontroller_num_mappings := "sdl_gamecontroller_num_mappings"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_num_mappings, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2056,7 +2271,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(mapping_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_mapping_for_index", array_args);
+			if(@fn_sdl_gamecontroller_mapping_for_index = Nil) { @fn_sdl_gamecontroller_mapping_for_index := "sdl_gamecontroller_mapping_for_index"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_mapping_for_index, array_args);
 
 			return array_args[0];
 		}
@@ -2070,7 +2286,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_mapping", array_args);
+			if(@fn_sdl_gamecontroller_mapping = Nil) { @fn_sdl_gamecontroller_mapping := "sdl_gamecontroller_mapping"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_mapping, array_args);
 
 			return array_args[0];
 		}
@@ -2085,7 +2302,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(joystick_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_sdl_is_game_controller", array_args);
+			if(@fn_sdl_gamecontroller_sdl_is_game_controller = Nil) { @fn_sdl_gamecontroller_sdl_is_game_controller := "sdl_gamecontroller_sdl_is_game_controller"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_sdl_is_game_controller, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2101,7 +2319,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(joystick_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_name_for_index", array_args);
+			if(@fn_sdl_gamecontroller_name_for_index = Nil) { @fn_sdl_gamecontroller_name_for_index := "sdl_gamecontroller_name_for_index"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_name_for_index, array_args);
 
 			return array_args[0];
 		}
@@ -2116,7 +2335,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(joystick_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path_for_index", array_args);
+			if(@fn_sdl_gamecontroller_path_for_index = Nil) { @fn_sdl_gamecontroller_path_for_index := "sdl_gamecontroller_path_for_index"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_path_for_index, array_args);
 
 			return array_args[0];
 		}
@@ -2130,7 +2350,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(joystick_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_type_for_index", array_args);
+			if(@fn_sdl_gamecontroller_type_for_index = Nil) { @fn_sdl_gamecontroller_type_for_index := "sdl_gamecontroller_type_for_index"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_type_for_index, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get()->As(GameControllerType);
@@ -2147,7 +2368,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(joyid);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_from_instanceid", array_args);
+			if(@fn_sdl_gamecontroller_from_instanceid = Nil) { @fn_sdl_gamecontroller_from_instanceid := "sdl_gamecontroller_from_instanceid"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_from_instanceid, array_args);
 			
 			value := array_args[0]->As(IntRef);
 			return GameController->New(value->Get());
@@ -2163,7 +2385,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(player_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_from_player_index", array_args);
+			if(@fn_sdl_gamecontroller_from_player_index = Nil) { @fn_sdl_gamecontroller_from_player_index := "sdl_gamecontroller_from_player_index"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_from_player_index, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return GameController->New(value->Get());
@@ -2180,7 +2403,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_name", array_args);
+			if(@fn_sdl_gamecontroller_name = Nil) { @fn_sdl_gamecontroller_name := "sdl_gamecontroller_name"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_name, array_args);
 
 			return array_args[0];
 		}
@@ -2195,7 +2419,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path", array_args);
+			if(@fn_sdl_gamecontroller_path = Nil) { @fn_sdl_gamecontroller_path := "sdl_gamecontroller_path"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_path, array_args);
 
 			return array_args[0];
 		}
@@ -2208,7 +2433,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_type", array_args);
+			if(@fn_sdl_gamecontroller_get_type = Nil) { @fn_sdl_gamecontroller_get_type := "sdl_gamecontroller_get_type"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_type, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get()->As(GameControllerType);
@@ -2224,7 +2450,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_player_index", array_args);
+			if(@fn_sdl_gamecontroller_get_player_index = Nil) { @fn_sdl_gamecontroller_get_player_index := "sdl_gamecontroller_get_player_index"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_player_index, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2240,7 +2467,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New(@gamecontroller);
 			array_args[1] := IntRef->New(player_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_set_player_index", array_args);
+			if(@fn_sdl_gamecontroller_set_player_index = Nil) { @fn_sdl_gamecontroller_set_player_index := "sdl_gamecontroller_set_player_index"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_set_player_index, array_args);
 		}
 		~#
 
@@ -2253,7 +2481,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_vendor", array_args);
+			if(@fn_sdl_gamecontroller_get_vendor = Nil) { @fn_sdl_gamecontroller_get_vendor := "sdl_gamecontroller_get_vendor"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_vendor, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2268,7 +2497,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_product", array_args);
+			if(@fn_sdl_gamecontroller_get_product = Nil) { @fn_sdl_gamecontroller_get_product := "sdl_gamecontroller_get_product"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_product, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2284,7 +2514,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_product_version", array_args);
+			if(@fn_sdl_gamecontroller_get_product_version = Nil) { @fn_sdl_gamecontroller_get_product_version := "sdl_gamecontroller_get_product_version"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_product_version, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2299,7 +2530,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_firmware_version", array_args);
+			if(@fn_sdl_gamecontroller_get_firmware_version = Nil) { @fn_sdl_gamecontroller_get_firmware_version := "sdl_gamecontroller_get_firmware_version"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_firmware_version, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2314,7 +2546,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_serial", array_args);
+			if(@fn_sdl_gamecontroller_get_serial = Nil) { @fn_sdl_gamecontroller_get_serial := "sdl_gamecontroller_get_serial"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_serial, array_args);
 
 			return array_args[0];
 		}
@@ -2329,7 +2562,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_attached", array_args);
+			if(@fn_sdl_gamecontroller_get_attached = Nil) { @fn_sdl_gamecontroller_get_attached := "sdl_gamecontroller_get_attached"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_attached, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2344,7 +2578,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_joystick", array_args);
+			if(@fn_sdl_gamecontroller_get_joystick = Nil) { @fn_sdl_gamecontroller_get_joystick := "sdl_gamecontroller_get_joystick"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_joystick, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return Joystick->New(value->Get());
@@ -2361,7 +2596,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(state);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_event_state", array_args);
+			if(@fn_sdl_gamecontroller_event_state = Nil) { @fn_sdl_gamecontroller_event_state := "sdl_gamecontroller_event_state"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_event_state, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2372,7 +2608,8 @@ bundle Game.SDL2 {
 		~#
 		function : Update() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_update", array_args);
+			if(@fn_sdl_gamecontroller_update = Nil) { @fn_sdl_gamecontroller_update := "sdl_gamecontroller_update"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_update, array_args);
 		}
 
 		#~
@@ -2385,7 +2622,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := str;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontorller_get_axis_from_string", array_args);
+			if(@fn_sdl_gamecontorller_get_axis_from_string = Nil) { @fn_sdl_gamecontorller_get_axis_from_string := "sdl_gamecontorller_get_axis_from_string"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontorller_get_axis_from_string, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2401,7 +2639,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(axis);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_string_for_axis", array_args);
+			if(@fn_sdl_gamecontroller_get_string_for_axis = Nil) { @fn_sdl_gamecontroller_get_string_for_axis := "sdl_gamecontroller_get_string_for_axis"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_string_for_axis, array_args);
 
 			return array_args[0];
 		}
@@ -2417,7 +2656,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(axis);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_bind_for_axis", array_args);
+			if(@fn_sdl_gamecontroller_get_bind_for_axis = Nil) { @fn_sdl_gamecontroller_get_bind_for_axis := "sdl_gamecontroller_get_bind_for_axis"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_bind_for_axis, array_args);
 
 			return array_args[0];
 		}
@@ -2433,7 +2673,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(axis);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_axis", array_args);
+			if(@fn_sdl_gamecontroller_has_axis = Nil) { @fn_sdl_gamecontroller_has_axis := "sdl_gamecontroller_has_axis"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_axis, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2451,7 +2692,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(axis);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_axis", array_args);
+			if(@fn_sdl_gamecontroller_get_axis = Nil) { @fn_sdl_gamecontroller_get_axis := "sdl_gamecontroller_get_axis"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_axis, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2467,7 +2709,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := str;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_button_from_string", array_args);
+			if(@fn_sdl_gamecontroller_get_button_from_string = Nil) { @fn_sdl_gamecontroller_get_button_from_string := "sdl_gamecontroller_get_button_from_string"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_button_from_string, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2483,7 +2726,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(button);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_string_for_button", array_args);
+			if(@fn_sdl_gamecontroller_get_string_for_button = Nil) { @fn_sdl_gamecontroller_get_string_for_button := "sdl_gamecontroller_get_string_for_button"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_string_for_button, array_args);
 
 			return array_args[0];
 		}
@@ -2499,7 +2743,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(button);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_bind_for_button", array_args);
+			if(@fn_sdl_gamecontroller_get_bind_for_button = Nil) { @fn_sdl_gamecontroller_get_bind_for_button := "sdl_gamecontroller_get_bind_for_button"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_bind_for_button, array_args);
 
 			return array_args[0];
 		}
@@ -2515,7 +2760,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(button);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_button", array_args);
+			if(@fn_sdl_gamecontroller_has_button = Nil) { @fn_sdl_gamecontroller_has_button := "sdl_gamecontroller_has_button"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_button, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2533,7 +2779,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(button);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_button", array_args);
+			if(@fn_sdl_gamecontroller_get_button = Nil) { @fn_sdl_gamecontroller_get_button := "sdl_gamecontroller_get_button"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_button, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2547,7 +2794,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_num_touchpads", array_args);
+			if(@fn_sdl_gamecontroller_get_num_touchpads = Nil) { @fn_sdl_gamecontroller_get_num_touchpads := "sdl_gamecontroller_get_num_touchpads"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_num_touchpads, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2563,7 +2811,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(touchpad);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_num_touchpad_fingers", array_args);
+			if(@fn_sdl_gamecontroller_get_num_touchpad_fingers = Nil) { @fn_sdl_gamecontroller_get_num_touchpad_fingers := "sdl_gamecontroller_get_num_touchpad_fingers"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_num_touchpad_fingers, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2590,7 +2839,8 @@ bundle Game.SDL2 {
 			array_args[6] := y;
 			array_args[7] := pressure;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_touchpad_finger", array_args);
+			if(@fn_sdl_gamecontroller_get_touchpad_finger = Nil) { @fn_sdl_gamecontroller_get_touchpad_finger := "sdl_gamecontroller_get_touchpad_finger"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_touchpad_finger, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2607,7 +2857,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(type);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_sensor", array_args);
+			if(@fn_sdl_gamecontroller_has_sensor = Nil) { @fn_sdl_gamecontroller_has_sensor := "sdl_gamecontroller_has_sensor"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_sensor, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2626,7 +2877,8 @@ bundle Game.SDL2 {
 			array_args[2] := IntRef->New(type);
 			array_args[3] := IntRef->New(enabled ? 0 : 1);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_set_sensor_enabled", array_args);
+			if(@fn_sdl_gamecontroller_set_sensor_enabled = Nil) { @fn_sdl_gamecontroller_set_sensor_enabled := "sdl_gamecontroller_set_sensor_enabled"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_set_sensor_enabled, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2643,7 +2895,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(type);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_is_sensor_enabled", array_args);
+			if(@fn_sdl_gamecontroller_is_sensor_enabled = Nil) { @fn_sdl_gamecontroller_is_sensor_enabled := "sdl_gamecontroller_is_sensor_enabled"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_is_sensor_enabled, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2660,7 +2913,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(type);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_sensor_data_rate", array_args);
+			if(@fn_sdl_gamecontroller_get_sensor_data_rate = Nil) { @fn_sdl_gamecontroller_get_sensor_data_rate := "sdl_gamecontroller_get_sensor_data_rate"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_sensor_data_rate, array_args);
 
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -2680,7 +2934,8 @@ bundle Game.SDL2 {
 			array_args[3] := data;
 			array_args[4] := IntRef->New(num_values);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_sensor_data", array_args);
+			if(@fn_sdl_gamecontroller_get_sensor_data = Nil) { @fn_sdl_gamecontroller_get_sensor_data := "sdl_gamecontroller_get_sensor_data"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_sensor_data, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2702,7 +2957,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(high_frequency_rumble);
 			array_args[4] := IntRef->New(duration_ms);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_rumble", array_args);
+			if(@fn_sdl_gamecontroller_rumble = Nil) { @fn_sdl_gamecontroller_rumble := "sdl_gamecontroller_rumble"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_rumble, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2723,7 +2979,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(right_rumble);
 			array_args[4] := IntRef->New(duration_ms);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_rumble_triggers", array_args);
+			if(@fn_sdl_gamecontroller_rumble_triggers = Nil) { @fn_sdl_gamecontroller_rumble_triggers := "sdl_gamecontroller_rumble_triggers"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_rumble_triggers, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2739,7 +2996,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_hasled", array_args);
+			if(@fn_sdl_gamecontroller_hasled = Nil) { @fn_sdl_gamecontroller_hasled := "sdl_gamecontroller_hasled"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_hasled, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2753,7 +3011,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_rumble", array_args);
+			if(@fn_sdl_gamecontroller_has_rumble = Nil) { @fn_sdl_gamecontroller_has_rumble := "sdl_gamecontroller_has_rumble"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_rumble, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2768,7 +3027,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_rumble_triggers", array_args);
+			if(@fn_sdl_gamecontroller_has_rumble_triggers = Nil) { @fn_sdl_gamecontroller_has_rumble_triggers := "sdl_gamecontroller_has_rumble_triggers"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_rumble_triggers, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2789,7 +3049,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(green);
 			array_args[4] := IntRef->New(blue);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_setled", array_args);
+			if(@fn_sdl_gamecontroller_setled = Nil) { @fn_sdl_gamecontroller_setled := "sdl_gamecontroller_setled"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_setled, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2802,7 +3063,8 @@ bundle Game.SDL2 {
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@gamecontroller);
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_close", array_args);
+			if(@fn_sdl_gamecontroller_close = Nil) { @fn_sdl_gamecontroller_close := "sdl_gamecontroller_close"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_close, array_args);
 		}
 
 		#~
@@ -2816,7 +3078,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(button);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_applesf_symbols_name_for_button", array_args);
+			if(@fn_sdl_gamecontroller_get_applesf_symbols_name_for_button = Nil) { @fn_sdl_gamecontroller_get_applesf_symbols_name_for_button := "sdl_gamecontroller_get_applesf_symbols_name_for_button"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_applesf_symbols_name_for_button, array_args);
 
 			return array_args[0];
 		}
@@ -2832,7 +3095,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(axis);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_applesf_symbols_name_for_axis", array_args);
+			if(@fn_sdl_gamecontroller_get_applesf_symbols_name_for_axis = Nil) { @fn_sdl_gamecontroller_get_applesf_symbols_name_for_axis := "sdl_gamecontroller_get_applesf_symbols_name_for_axis"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_applesf_symbols_name_for_axis, array_args);
 
 			return array_args[0];
 		}
@@ -2843,6 +3107,27 @@ bundle Game.SDL2 {
 	Handles inputs from joysticks
 	~#
 	class Joystick {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_joystick_close : static : String;
+		@fn_sdl_joystick_current_power_level : static : String;
+		@fn_sdl_joystick_from_instance_id : static : String;
+		@fn_sdl_joystick_name : static : String;
+		@fn_sdl_joystick_nums : static : String;
+		@fn_sdl_joystick_open : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_axis_initial_state : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_device_instanceid : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_device_product : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_device_product_version : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_device_type : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_device_vendor : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_product : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_product_version : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_type : static : String;
+		@fn_sdl_joystick_sdl_joystick_get_vendor : static : String;
 		@joystick : Int;
 
 		#~
@@ -2854,7 +3139,8 @@ bundle Game.SDL2 {
 	        array_args[0] := IntRef->New();
 	        array_args[1] := IntRef->New(device_index);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_joystick_open", array_args);
+	if(@fn_sdl_joystick_open = Nil) { @fn_sdl_joystick_open := "sdl_joystick_open"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_open, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        @joystick := value->Get();
@@ -2869,7 +3155,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@joystick);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_type", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_type = Nil) { @fn_sdl_joystick_sdl_joystick_get_type := "sdl_joystick_sdl_joystick_get_type"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_type, array_args);
 
 			value := array_args[0]->As(IntRef);
 	        return value->Get()->As(JoystickType);
@@ -2884,7 +3171,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@joystick);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_product", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_product = Nil) { @fn_sdl_joystick_sdl_joystick_get_product := "sdl_joystick_sdl_joystick_get_product"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_product, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2899,7 +3187,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@joystick);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_vendor", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_vendor = Nil) { @fn_sdl_joystick_sdl_joystick_get_vendor := "sdl_joystick_sdl_joystick_get_vendor"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_vendor, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2915,7 +3204,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(device_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_type", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_device_type = Nil) { @fn_sdl_joystick_sdl_joystick_get_device_type := "sdl_joystick_sdl_joystick_get_device_type"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_device_type, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get()->As(JoystickType);
@@ -2931,7 +3221,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(device_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_product_version", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_device_product_version = Nil) { @fn_sdl_joystick_sdl_joystick_get_device_product_version := "sdl_joystick_sdl_joystick_get_device_product_version"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_device_product_version, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2947,7 +3238,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(device_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_product", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_device_product = Nil) { @fn_sdl_joystick_sdl_joystick_get_device_product := "sdl_joystick_sdl_joystick_get_device_product"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_device_product, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2963,7 +3255,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(device_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_vendor", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_device_vendor = Nil) { @fn_sdl_joystick_sdl_joystick_get_device_vendor := "sdl_joystick_sdl_joystick_get_device_vendor"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_device_vendor, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2979,7 +3272,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(device_index);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_device_instanceid", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_device_instanceid = Nil) { @fn_sdl_joystick_sdl_joystick_get_device_instanceid := "sdl_joystick_sdl_joystick_get_device_instanceid"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_device_instanceid, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2994,7 +3288,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@joystick);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_product_version", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_product_version = Nil) { @fn_sdl_joystick_sdl_joystick_get_product_version := "sdl_joystick_sdl_joystick_get_product_version"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_product_version, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -3013,7 +3308,8 @@ bundle Game.SDL2 {
 			array_args[2] := IntRef->New(axis);
 			array_args[3] := state;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_joystick_sdl_joystick_get_axis_initial_state", array_args);
+			if(@fn_sdl_joystick_sdl_joystick_get_axis_initial_state = Nil) { @fn_sdl_joystick_sdl_joystick_get_axis_initial_state := "sdl_joystick_sdl_joystick_get_axis_initial_state"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_sdl_joystick_get_axis_initial_state, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -3029,7 +3325,8 @@ bundle Game.SDL2 {
 	        array_args[0] := IntRef->New();
 	        array_args[1] := IntRef->New(instance_id);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_joystick_from_instance_id", array_args);
+	if(@fn_sdl_joystick_from_instance_id = Nil) { @fn_sdl_joystick_from_instance_id := "sdl_joystick_from_instance_id"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_from_instance_id, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Joystick->New(value->Get());
@@ -3045,7 +3342,8 @@ bundle Game.SDL2 {
 		        array_args[0] := IntRef->New();
 		        array_args[1] := IntRef->New(@joystick);
 
-		        Proxy->GetDllProxy()->CallFunction("sdl_joystick_current_power_level", array_args);
+		if(@fn_sdl_joystick_current_power_level = Nil) { @fn_sdl_joystick_current_power_level := "sdl_joystick_current_power_level"; };
+		        Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_current_power_level, array_args);
 
 		        value := array_args[0]->As(IntRef);
 		       	return value->Get();
@@ -3070,7 +3368,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 		        array_args[0] := IntRef->New(@joystick);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_joystick_close", array_args);
+				if(@fn_sdl_joystick_close = Nil) { @fn_sdl_joystick_close := "sdl_joystick_close"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_close, array_args);
 				@joystick := 0;
 			}; 
 	    }
@@ -3083,7 +3382,8 @@ bundle Game.SDL2 {
 	        array_args := Base->New[1];
 	        array_args[0] := IntRef->New();
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_joystick_nums", array_args);
+	if(@fn_sdl_joystick_nums = Nil) { @fn_sdl_joystick_nums := "sdl_joystick_nums"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_nums, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
@@ -3098,7 +3398,8 @@ bundle Game.SDL2 {
 	        array_args[0] := Nil;
 	        array_args[1] := IntRef->New(@joystick);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_joystick_name", array_args);
+	if(@fn_sdl_joystick_name = Nil) { @fn_sdl_joystick_name := "sdl_joystick_name"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_joystick_name, array_args);
 
 	        return array_args[0];
 		}
@@ -3564,6 +3865,33 @@ bundle Game.SDL2 {
 	SDL event
 	~#
 	class Event {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_axis_key : static : String;
+		@fn_sdl_event_flush : static : String;
+		@fn_sdl_event_free : static : String;
+		@fn_sdl_event_has : static : String;
+		@fn_sdl_event_key : static : String;
+		@fn_sdl_event_new : static : String;
+		@fn_sdl_event_peeps : static : String;
+		@fn_sdl_event_poll : static : String;
+		@fn_sdl_event_pump : static : String;
+		@fn_sdl_event_push : static : String;
+		@fn_sdl_event_registers : static : String;
+		@fn_sdl_event_state : static : String;
+		@fn_sdl_event_type : static : String;
+		@fn_sdl_event_wait : static : String;
+		@fn_sdl_event_wait_timeout : static : String;
+		@fn_sdl_hat_key : static : String;
+		@fn_sdl_jbutton_key : static : String;
+		@fn_sdl_mbutton_key : static : String;
+		@fn_sdl_mouse_button : static : String;
+		@fn_sdl_mouse_motion : static : String;
+		@fn_sdl_mouse_wheel : static : String;
+		@fn_sdl_text_key : static : String;
 		@event : Int;
 		@key : KeyboardEvent;
 		@axis : JoyAxisEvent;
@@ -3580,7 +3908,8 @@ bundle Game.SDL2 {
 		New() {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
-			Proxy->GetDllProxy()->CallFunction("sdl_event_new", array_args);
+			if(@fn_sdl_event_new = Nil) { @fn_sdl_event_new := "sdl_event_new"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_new, array_args);
 			value := array_args[0]->As(IntRef);
 			@event := value->Get();
 		}
@@ -3605,7 +3934,8 @@ bundle Game.SDL2 {
 			if(@event <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@event);
-				Proxy->GetDllProxy()->CallFunction("sdl_event_free", array_args);
+				if(@fn_sdl_event_free = Nil) { @fn_sdl_event_free := "sdl_event_free"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_free, array_args);
 				@event := 0;
 			};
 		}
@@ -3620,7 +3950,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_event_type", array_args);
+				if(@fn_sdl_event_type = Nil) { @fn_sdl_event_type := "sdl_event_type"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_type, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get()->As(EventType);
@@ -3644,7 +3975,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @key;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_event_key", array_args);
+				if(@fn_sdl_event_key = Nil) { @fn_sdl_event_key := "sdl_event_key"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_key, array_args);
 
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3672,7 +4004,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @text;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_text_key", array_args);
+				if(@fn_sdl_text_key = Nil) { @fn_sdl_text_key := "sdl_text_key"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_text_key, array_args);
 
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3700,7 +4033,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @motion;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_mouse_motion", array_args);
+				if(@fn_sdl_mouse_motion = Nil) { @fn_sdl_mouse_motion := "sdl_mouse_motion"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mouse_motion, array_args);
 
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3731,7 +4065,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @mbutton;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_mouse_button", array_args);
+				if(@fn_sdl_mouse_button = Nil) { @fn_sdl_mouse_button := "sdl_mouse_button"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mouse_button, array_args);
 
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3759,7 +4094,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @wheel;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_mouse_wheel", array_args);
+				if(@fn_sdl_mouse_wheel = Nil) { @fn_sdl_mouse_wheel := "sdl_mouse_wheel"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mouse_wheel, array_args);
 
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3787,7 +4123,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @axis;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_axis_key", array_args);
+				if(@fn_sdl_axis_key = Nil) { @fn_sdl_axis_key := "sdl_axis_key"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_axis_key, array_args);
 
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3815,7 +4152,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @jbutton;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_jbutton_key", array_args);
+				if(@fn_sdl_jbutton_key = Nil) { @fn_sdl_jbutton_key := "sdl_jbutton_key"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_jbutton_key, array_args);
 
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3843,7 +4181,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @hat;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_hat_key", array_args);
+				if(@fn_sdl_hat_key = Nil) { @fn_sdl_hat_key := "sdl_hat_key"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_hat_key, array_args);
 				
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3871,7 +4210,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := @mbutton;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_mbutton_key", array_args);
+				if(@fn_sdl_mbutton_key = Nil) { @fn_sdl_mbutton_key := "sdl_mbutton_key"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mbutton_key, array_args);
 
 				value := array_args[0]->As(IntRef);
 				if(value->Get() < 0) {
@@ -3888,7 +4228,8 @@ bundle Game.SDL2 {
 		Pump the event loop, gathering events from the input devices
 		~#
 		function : Pump() ~ Nil {
-			Proxy->GetDllProxy()->CallFunction("sdl_event_pump", Nil->As(Base[]));
+			if(@fn_sdl_event_pump = Nil) { @fn_sdl_event_pump := "sdl_event_pump"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_pump, Nil->As(Base[]));
 		}
 		
 		#~
@@ -3910,7 +4251,8 @@ bundle Game.SDL2 {
 				array_args[4] := IntRef->New(minType);
 				array_args[5] := IntRef->New(maxType);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_event_peeps", array_args);
+				if(@fn_sdl_event_peeps = Nil) { @fn_sdl_event_peeps := "sdl_event_peeps"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_peeps, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -3929,7 +4271,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(type);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_event_has", array_args);
+			if(@fn_sdl_event_has = Nil) { @fn_sdl_event_has := "sdl_event_has"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_has, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -3942,7 +4285,8 @@ bundle Game.SDL2 {
 		function : Flush(type : Int) ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(type);
-			Proxy->GetDllProxy()->CallFunction("sdl_event_flush", array_args);
+			if(@fn_sdl_event_flush = Nil) { @fn_sdl_event_flush := "sdl_event_flush"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_flush, array_args);
 		}
 		
 		#~
@@ -3954,7 +4298,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_event_poll", array_args);
+				if(@fn_sdl_event_poll = Nil) { @fn_sdl_event_poll := "sdl_event_poll"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_poll, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -3973,7 +4318,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_event_wait", array_args);
+				if(@fn_sdl_event_wait = Nil) { @fn_sdl_event_wait := "sdl_event_wait"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_wait, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -3994,7 +4340,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@event);
 				array_args[2] := IntRef->New(timeout);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_event_wait_timeout", array_args);
+				if(@fn_sdl_event_wait_timeout = Nil) { @fn_sdl_event_wait_timeout := "sdl_event_wait_timeout"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_wait_timeout, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -4014,7 +4361,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@event);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_event_push", array_args);
+				if(@fn_sdl_event_push = Nil) { @fn_sdl_event_push := "sdl_event_push"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_push, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -4036,7 +4384,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(type);
 			array_args[2] := IntRef->New(state);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_event_state", array_args);
+			if(@fn_sdl_event_state = Nil) { @fn_sdl_event_state := "sdl_event_state"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_state, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -4052,7 +4401,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(numevents);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_event_registers", array_args);
+			if(@fn_sdl_event_registers = Nil) { @fn_sdl_event_registers := "sdl_event_registers"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_registers, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -4063,6 +4413,28 @@ bundle Game.SDL2 {
 	SDL core operations
 	~#
 	class Core {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_core_clear_error : static : String;
+		@fn_sdl_core_get_error : static : String;
+		@fn_sdl_core_gl_extension_supported : static : String;
+		@fn_sdl_core_gl_get_attribute : static : String;
+		@fn_sdl_core_gl_get_current : static : String;
+		@fn_sdl_core_gl_get_swap_interval : static : String;
+		@fn_sdl_core_gl_load_library : static : String;
+		@fn_sdl_core_gl_reset_attributes : static : String;
+		@fn_sdl_core_gl_set_attribute : static : String;
+		@fn_sdl_core_gl_set_swap_interval : static : String;
+		@fn_sdl_core_gl_unload_library : static : String;
+		@fn_sdl_core_init : static : String;
+		@fn_sdl_core_init_sub_system : static : String;
+		@fn_sdl_core_quit : static : String;
+		@fn_sdl_core_quit_sub_system : static : String;
+		@fn_sdl_core_was_init : static : String;
+		@fn_sdl_gl_version_string : static : String;
 		#~
 		Initialize the SDL library. This must be called before using most other SDL functions.
 		@param flags subsystem initialization flags
@@ -4072,7 +4444,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(flags);
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_core_init", array_args);
+			if(@fn_sdl_core_init = Nil) { @fn_sdl_core_init := "sdl_core_init"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_init, array_args);
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
@@ -4086,7 +4459,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(flags);
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_core_init_sub_system", array_args);
+			if(@fn_sdl_core_init_sub_system = Nil) { @fn_sdl_core_init_sub_system := "sdl_core_init_sub_system"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_init_sub_system, array_args);
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
@@ -4099,7 +4473,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(flags);
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_core_quit_sub_system", array_args);
+			if(@fn_sdl_core_quit_sub_system = Nil) { @fn_sdl_core_quit_sub_system := "sdl_core_quit_sub_system"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_quit_sub_system, array_args);
 		}
 		
 		#~
@@ -4111,7 +4486,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(flags);
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_core_was_init", array_args);
+			if(@fn_sdl_core_was_init = Nil) { @fn_sdl_core_was_init := "sdl_core_was_init"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_was_init, array_args);
 			value := array_args[0]->As(IntRef);
 			return value->Get();
 		}
@@ -4121,7 +4497,8 @@ bundle Game.SDL2 {
 		~#
 		function : Quit() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_core_quit", array_args);
+			if(@fn_sdl_core_quit = Nil) { @fn_sdl_core_quit := "sdl_core_quit"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_quit, array_args);
 		}
 		
 		#~
@@ -4134,7 +4511,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := path;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_load_library", array_args);
+			if(@fn_sdl_core_gl_load_library = Nil) { @fn_sdl_core_gl_load_library := "sdl_core_gl_load_library"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_load_library, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -4145,7 +4523,8 @@ bundle Game.SDL2 {
 		~#
 		function : GLUnloadLibrary() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_unload_library", array_args);
+			if(@fn_sdl_core_gl_unload_library = Nil) { @fn_sdl_core_gl_unload_library := "sdl_core_gl_unload_library"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_unload_library, array_args);
 		}
 		
 		#~
@@ -4158,7 +4537,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := extension;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_extension_supported", array_args);
+			if(@fn_sdl_core_gl_extension_supported = Nil) { @fn_sdl_core_gl_extension_supported := "sdl_core_gl_extension_supported"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_extension_supported, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -4169,7 +4549,8 @@ bundle Game.SDL2 {
 		~#
 		function : GLResetAttributes() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_reset_attributes", array_args);
+			if(@fn_sdl_core_gl_reset_attributes = Nil) { @fn_sdl_core_gl_reset_attributes := "sdl_core_gl_reset_attributes"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_reset_attributes, array_args);
 		}
 		
 		#~
@@ -4184,7 +4565,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(attr->As(Int));
 			array_args[2] := IntRef->New(value);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_set_attribute", array_args);
+			if(@fn_sdl_core_gl_set_attribute = Nil) { @fn_sdl_core_gl_set_attribute := "sdl_core_gl_set_attribute"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_set_attribute, array_args);
 
 			rtrn_value := array_args[0]->As(IntRef);
 			return rtrn_value->Get();
@@ -4202,7 +4584,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(attr->As(Int));
 			array_args[2] := value;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_attribute", array_args);
+			if(@fn_sdl_core_gl_get_attribute = Nil) { @fn_sdl_core_gl_get_attribute := "sdl_core_gl_get_attribute"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_get_attribute, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -4216,7 +4599,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_current", array_args);
+			if(@fn_sdl_core_gl_get_current = Nil) { @fn_sdl_core_gl_get_current := "sdl_core_gl_get_current"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_get_current, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return Window->New(value->Get());
@@ -4233,7 +4617,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(interval);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_set_swap_interval", array_args);
+			if(@fn_sdl_core_gl_set_swap_interval = Nil) { @fn_sdl_core_gl_set_swap_interval := "sdl_core_gl_set_swap_interval"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_set_swap_interval, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -4250,7 +4635,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_swap_interval", array_args);
+			if(@fn_sdl_core_gl_get_swap_interval = Nil) { @fn_sdl_core_gl_get_swap_interval := "sdl_core_gl_get_swap_interval"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_gl_get_swap_interval, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -4271,7 +4657,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_version_string", array_args);
+			if(@fn_sdl_gl_version_string = Nil) { @fn_sdl_gl_version_string := "sdl_gl_version_string"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_version_string, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -4284,7 +4671,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_get_error", array_args);
+			if(@fn_sdl_core_get_error = Nil) { @fn_sdl_core_get_error := "sdl_core_get_error"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_get_error, array_args);
 			
 			return array_args[0]->As(String);
 		}
@@ -4293,7 +4681,8 @@ bundle Game.SDL2 {
 		Clear any previous error message
 		~#
 		function : ClearError() ~ Nil {
-			Proxy->GetDllProxy()->CallFunction("sdl_core_clear_error", Nil->As(Base[]));
+			if(@fn_sdl_core_clear_error = Nil) { @fn_sdl_core_clear_error := "sdl_core_clear_error"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_core_clear_error, Nil->As(Base[]));
 		}
 	}
 		
@@ -4301,6 +4690,16 @@ bundle Game.SDL2 {
 	Configuration management 
 	~#
 	class Hints {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_hints_clear : static : String;
+		@fn_sdl_hints_get_hint : static : String;
+		@fn_sdl_hints_get_hint_boolean : static : String;
+		@fn_sdl_hints_set_hint : static : String;
+		@fn_sdl_hints_set_hint_with_priority : static : String;
 		#~
 		Set a hint with a specific priority
 		@param name the hint to set; see the list of hints on CategoryHints for details
@@ -4314,7 +4713,8 @@ bundle Game.SDL2 {
 			array_args[1] := name;
 			array_args[2] := value;
 			array_args[3] := IntRef->New(priority->As(Int));
-			Proxy->GetDllProxy()->CallFunction("sdl_hints_set_hint_with_priority", array_args);
+			if(@fn_sdl_hints_set_hint_with_priority = Nil) { @fn_sdl_hints_set_hint_with_priority := "sdl_hints_set_hint_with_priority"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_set_hint_with_priority, array_args);
 			
 			rvalue := array_args[0]->As(IntRef);
 			return rvalue->Get() = 0 ? false : true;
@@ -4332,7 +4732,8 @@ bundle Game.SDL2 {
 			array_args[1] := name;
 			array_args[2] := value;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_hints_set_hint", array_args);
+			if(@fn_sdl_hints_set_hint = Nil) { @fn_sdl_hints_set_hint := "sdl_hints_set_hint"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_set_hint, array_args);
 
 			rvalue := array_args[0]->As(IntRef);
 			return rvalue->Get() = 0 ? false : true;
@@ -4348,7 +4749,8 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := name;
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_hints_get_hint", array_args);
+			if(@fn_sdl_hints_get_hint = Nil) { @fn_sdl_hints_get_hint := "sdl_hints_get_hint"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_get_hint, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -4365,7 +4767,8 @@ bundle Game.SDL2 {
 			array_args[1] := name;
 			array_args[2] := IntRef->New(value ? 1 : 0);
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_hints_get_hint_boolean", array_args);
+			if(@fn_sdl_hints_get_hint_boolean = Nil) { @fn_sdl_hints_get_hint_boolean := "sdl_hints_get_hint_boolean"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_get_hint_boolean, array_args);
 
 			rvalue := array_args[0]->As(IntRef);
 			return rvalue->Get() = 0 ? false : true;
@@ -4376,7 +4779,8 @@ bundle Game.SDL2 {
 		~#
 		function : Clear() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_hints_clear", array_args);
+			if(@fn_sdl_hints_clear = Nil) { @fn_sdl_hints_clear := "sdl_hints_clear"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_hints_clear, array_args);
 		}
 	}
 		
@@ -4714,6 +5118,16 @@ bundle Game.SDL2 {
 	Definition of a rectangle, with the origin at the upper left.
 	~#
 	class Rect {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_rect_has_intersection : static : String;
+		@fn_sdl_rect_intersect : static : String;
+		@fn_sdl_rect_intersect_and_line : static : String;
+		@fn_sdl_rect_point_in_rect : static : String;
+		@fn_sdl_rect_union : static : String;
 		@x : Int;
 		@y : Int;
 		@w : Int;
@@ -4909,7 +5323,8 @@ bundle Game.SDL2 {
 			array_args[1] := @self;
 			array_args[2] := B;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_has_intersection", array_args);
+			if(@fn_sdl_rect_has_intersection = Nil) { @fn_sdl_rect_has_intersection := "sdl_rect_has_intersection"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_rect_has_intersection, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -4928,7 +5343,8 @@ bundle Game.SDL2 {
 			array_args[2] := B;
 			array_args[3] := result;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect", array_args);
+			if(@fn_sdl_rect_intersect = Nil) { @fn_sdl_rect_intersect := "sdl_rect_intersect"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_rect_intersect, array_args);
 			
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -4946,7 +5362,8 @@ bundle Game.SDL2 {
 			array_args[1] := B;
 			array_args[2] := result;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_union", array_args);
+			if(@fn_sdl_rect_union = Nil) { @fn_sdl_rect_union := "sdl_rect_union"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_rect_union, array_args);
 		}
 		
 		#~
@@ -4966,7 +5383,8 @@ bundle Game.SDL2 {
 			array_args[4] := X2;
 			array_args[5] := Y2;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect_and_line", array_args);
+			if(@fn_sdl_rect_intersect_and_line = Nil) { @fn_sdl_rect_intersect_and_line := "sdl_rect_intersect_and_line"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_rect_intersect_and_line, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -4983,7 +5401,8 @@ bundle Game.SDL2 {
 			array_args[1] := @self;
 			array_args[2] := p;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_point_in_rect", array_args);
+			if(@fn_sdl_rect_point_in_rect = Nil) { @fn_sdl_rect_point_in_rect := "sdl_rect_point_in_rect"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_rect_point_in_rect, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -4994,6 +5413,14 @@ bundle Game.SDL2 {
 	PixelFormat class
 	~#
 	class PixelFormat {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_pixelformat_alloc : static : String;
+		@fn_sdl_pixelformat_maprgb : static : String;
+		@fn_sdl_pixelformat_maprgba : static : String;
 		@format : PixelValue;
 		@palette : Int;
 		@bits_per_pixel : Int;
@@ -5019,7 +5446,8 @@ bundle Game.SDL2 {
 			array_args[0] := @self;
 			array_args[1] := IntRef->New(format);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_pixelformat_alloc", array_args);
+			if(@fn_sdl_pixelformat_alloc = Nil) { @fn_sdl_pixelformat_alloc := "sdl_pixelformat_alloc"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_pixelformat_alloc, array_args);
 		}
 
 		#~
@@ -5037,7 +5465,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(g);
 			array_args[4] := IntRef->New(b);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_pixelformat_maprgb", array_args);
+			if(@fn_sdl_pixelformat_maprgb = Nil) { @fn_sdl_pixelformat_maprgb := "sdl_pixelformat_maprgb"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_pixelformat_maprgb, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5060,7 +5489,8 @@ bundle Game.SDL2 {
 			array_args[4] := IntRef->New(b);
 			array_args[5] := IntRef->New(a);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_pixelformat_maprgba", array_args);
+			if(@fn_sdl_pixelformat_maprgba = Nil) { @fn_sdl_pixelformat_maprgba := "sdl_pixelformat_maprgba"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_pixelformat_maprgba, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5184,6 +5614,51 @@ bundle Game.SDL2 {
 	Core class
 	~#
 	class Surface {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_surface_blit_scaled : static : String;
+		@fn_sdl_surface_convert : static : String;
+		@fn_sdl_surface_convert_format : static : String;
+		@fn_sdl_surface_create_texture : static : String;
+		@fn_sdl_surface_creatergb : static : String;
+		@fn_sdl_surface_creatergb_with_format : static : String;
+		@fn_sdl_surface_duplicate : static : String;
+		@fn_sdl_surface_fill_rect : static : String;
+		@fn_sdl_surface_free : static : String;
+		@fn_sdl_surface_get_alpha_mod : static : String;
+		@fn_sdl_surface_get_blend_mode : static : String;
+		@fn_sdl_surface_get_clip_rect : static : String;
+		@fn_sdl_surface_get_color_key : static : String;
+		@fn_sdl_surface_get_color_mod : static : String;
+		@fn_sdl_surface_get_h : static : String;
+		@fn_sdl_surface_get_pitch : static : String;
+		@fn_sdl_surface_get_pixel_format : static : String;
+		@fn_sdl_surface_get_w : static : String;
+		@fn_sdl_surface_loadbmp : static : String;
+		@fn_sdl_surface_lock : static : String;
+		@fn_sdl_surface_lower_blit : static : String;
+		@fn_sdl_surface_lower_blit_scaled : static : String;
+		@fn_sdl_surface_pixels : static : String;
+		@fn_sdl_surface_rotate_90degrees : static : String;
+		@fn_sdl_surface_rotozoom : static : String;
+		@fn_sdl_surface_rotozoom_size : static : String;
+		@fn_sdl_surface_rotozoom_size_xy : static : String;
+		@fn_sdl_surface_rotozoom_xy : static : String;
+		@fn_sdl_surface_savebmp : static : String;
+		@fn_sdl_surface_set_alpha_mod : static : String;
+		@fn_sdl_surface_set_blend_mode : static : String;
+		@fn_sdl_surface_set_clip_rect : static : String;
+		@fn_sdl_surface_set_color_key : static : String;
+		@fn_sdl_surface_set_color_mod : static : String;
+		@fn_sdl_surface_setrle : static : String;
+		@fn_sdl_surface_shrink : static : String;
+		@fn_sdl_surface_unlock : static : String;
+		@fn_sdl_surface_upper_blit : static : String;
+		@fn_sdl_surface_zoom : static : String;
+		@fn_sdl_surface_zoom_size : static : String;
 		@surface : Int;
 		
 		New(surface : Int) {
@@ -5213,7 +5688,8 @@ bundle Game.SDL2 {
 			array_args[7] := IntRef->New(Bmask);
 			array_args[8] := IntRef->New(Amask);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_creatergb", array_args);
+			if(@fn_sdl_surface_creatergb = Nil) { @fn_sdl_surface_creatergb := "sdl_surface_creatergb"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_creatergb, array_args);
 			value := array_args[0]->As(IntRef);
 			@surface := value->Get();
 		}
@@ -5235,7 +5711,8 @@ bundle Game.SDL2 {
 			array_args[4] := IntRef->New(depth);
 			array_args[5] := IntRef->New(format);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_creatergb_with_format", array_args);
+			if(@fn_sdl_surface_creatergb_with_format = Nil) { @fn_sdl_surface_creatergb_with_format := "sdl_surface_creatergb_with_format"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_creatergb_with_format, array_args);
 			value := array_args[0]->As(IntRef);
 			@surface := value->Get();
 		}
@@ -5266,7 +5743,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@surface);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_free", array_args);
+				if(@fn_sdl_surface_free = Nil) { @fn_sdl_surface_free := "sdl_surface_free"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_free, array_args);
 				@surface := 0;
 			};
 		}
@@ -5281,7 +5759,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@surface);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_duplicate", array_args);
+				if(@fn_sdl_surface_duplicate = Nil) { @fn_sdl_surface_duplicate := "sdl_surface_duplicate"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_duplicate, array_args);
 				
 				value := array_args[0]->As(IntRef);
 				if(value->Get() <> 0) {
@@ -5304,7 +5783,8 @@ bundle Game.SDL2 {
 				array_args[0] := pixel_format;
 				array_args[1] := IntRef->New(@surface);
 		
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pixel_format", array_args);
+				if(@fn_sdl_surface_get_pixel_format = Nil) { @fn_sdl_surface_get_pixel_format := "sdl_surface_get_pixel_format"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_pixel_format, array_args);
 
 				return pixel_format;
 			};
@@ -5322,7 +5802,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@surface);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_w", array_args);
+				if(@fn_sdl_surface_get_w = Nil) { @fn_sdl_surface_get_w := "sdl_surface_get_w"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_w, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5341,7 +5822,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@surface);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_h", array_args);
+				if(@fn_sdl_surface_get_h = Nil) { @fn_sdl_surface_get_h := "sdl_surface_get_h"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_h, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5360,7 +5842,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@surface);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pitch", array_args);
+				if(@fn_sdl_surface_get_pitch = Nil) { @fn_sdl_surface_get_pitch := "sdl_surface_get_pitch"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_pitch, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5379,7 +5862,8 @@ bundle Game.SDL2 {
 				array_args[0] := Nil;
 				array_args[1] := IntRef->New(@surface);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_pixels", array_args);
+				if(@fn_sdl_surface_pixels = Nil) { @fn_sdl_surface_pixels := "sdl_surface_pixels"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_pixels, array_args);
 
 				return array_args[0]->As(PixelData);
 			};
@@ -5396,7 +5880,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@surface);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_lock", array_args);
+				if(@fn_sdl_surface_lock = Nil) { @fn_sdl_surface_lock := "sdl_surface_lock"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_lock, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5412,7 +5897,8 @@ bundle Game.SDL2 {
 			if(@surface <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@surface);
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_unlock", array_args);
+				if(@fn_sdl_surface_unlock = Nil) { @fn_sdl_surface_unlock := "sdl_surface_unlock"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_unlock, array_args);
 			};
 		}
 
@@ -5428,7 +5914,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := renderer;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_create_texture", array_args);
+				if(@fn_sdl_surface_create_texture = Nil) { @fn_sdl_surface_create_texture := "sdl_surface_create_texture"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_create_texture, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Texture->New(value->Get());
@@ -5447,7 +5934,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := file;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_loadbmp", array_args);
+			if(@fn_sdl_surface_loadbmp = Nil) { @fn_sdl_surface_loadbmp := "sdl_surface_loadbmp"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_loadbmp, array_args);
 			value := array_args[0]->As(IntRef);
 			return Surface->New(value->Get());
 		}
@@ -5465,7 +5953,8 @@ bundle Game.SDL2 {
 			array_args[2] := file;
 
 			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_savebmp", array_args);
+			if(@fn_sdl_surface_savebmp = Nil) { @fn_sdl_surface_savebmp := "sdl_surface_savebmp"; };
+			@lib_proxy->CallFunction(@fn_sdl_surface_savebmp, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -5483,7 +5972,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := IntRef->New(flag);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_setrle", array_args);
+				if(@fn_sdl_surface_setrle = Nil) { @fn_sdl_surface_setrle := "sdl_surface_setrle"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_setrle, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5506,7 +5996,8 @@ bundle Game.SDL2 {
 				array_args[2] := IntRef->New(flag ? 1 : 0);
 				array_args[3] := IntRef->New(key);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_color_key", array_args);
+				if(@fn_sdl_surface_set_color_key = Nil) { @fn_sdl_surface_set_color_key := "sdl_surface_set_color_key"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_set_color_key, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5527,7 +6018,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := key;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_color_key", array_args);
+				if(@fn_sdl_surface_get_color_key = Nil) { @fn_sdl_surface_get_color_key := "sdl_surface_get_color_key"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_color_key, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5552,7 +6044,8 @@ bundle Game.SDL2 {
 				array_args[3] := IntRef->New(g);
 				array_args[4] := IntRef->New(b);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_color_mod", array_args);
+				if(@fn_sdl_surface_set_color_mod = Nil) { @fn_sdl_surface_set_color_mod := "sdl_surface_set_color_mod"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_set_color_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5578,7 +6071,8 @@ bundle Game.SDL2 {
 				array_args[4] := b;
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("sdl_surface_get_color_mod", array_args);
+				if(@fn_sdl_surface_get_color_mod = Nil) { @fn_sdl_surface_get_color_mod := "sdl_surface_get_color_mod"; };
+				@lib_proxy->CallFunction(@fn_sdl_surface_get_color_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5599,7 +6093,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := IntRef->New(alpha);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_alpha_mod", array_args);
+				if(@fn_sdl_surface_set_alpha_mod = Nil) { @fn_sdl_surface_set_alpha_mod := "sdl_surface_set_alpha_mod"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_set_alpha_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5620,7 +6115,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := alpha;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_alpha_mod", array_args);
+				if(@fn_sdl_surface_get_alpha_mod = Nil) { @fn_sdl_surface_get_alpha_mod := "sdl_surface_get_alpha_mod"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_alpha_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5641,7 +6137,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := IntRef->New(blendMode->As(Int));
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_blend_mode", array_args);
+				if(@fn_sdl_surface_set_blend_mode = Nil) { @fn_sdl_surface_set_blend_mode := "sdl_surface_set_blend_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_set_blend_mode, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5662,7 +6159,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := blendMode;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_blend_mode", array_args);
+				if(@fn_sdl_surface_get_blend_mode = Nil) { @fn_sdl_surface_get_blend_mode := "sdl_surface_get_blend_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_blend_mode, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5681,7 +6179,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New(@surface);
 				array_args[1] := rect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_clip_rect", array_args);
+				if(@fn_sdl_surface_get_clip_rect = Nil) { @fn_sdl_surface_get_clip_rect := "sdl_surface_get_clip_rect"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_get_clip_rect, array_args);
 			};
 		}
 		
@@ -5699,7 +6198,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := rect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_clip_rect", array_args);
+				if(@fn_sdl_surface_set_clip_rect = Nil) { @fn_sdl_surface_set_clip_rect := "sdl_surface_set_clip_rect"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_set_clip_rect, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get() = 0 ? false : true;
@@ -5723,7 +6223,8 @@ bundle Game.SDL2 {
 				array_args[2] := fmt;
 				array_args[3] := IntRef->New(flags);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_convert", array_args);
+				if(@fn_sdl_surface_convert = Nil) { @fn_sdl_surface_convert := "sdl_surface_convert"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_convert, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
@@ -5746,7 +6247,8 @@ bundle Game.SDL2 {
 				array_args[2] := IntRef->New(format);
 				array_args[3] := IntRef->New(flags);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_convert_format", array_args);
+				if(@fn_sdl_surface_convert_format = Nil) { @fn_sdl_surface_convert_format := "sdl_surface_convert_format"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_convert_format, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
@@ -5770,7 +6272,8 @@ bundle Game.SDL2 {
 				array_args[2] := rect;
 				array_args[3] := IntRef->New(color);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_fill_rect", array_args);
+				if(@fn_sdl_surface_fill_rect = Nil) { @fn_sdl_surface_fill_rect := "sdl_surface_fill_rect"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_fill_rect, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5796,7 +6299,8 @@ bundle Game.SDL2 {
 				array_args[3] := dst;
 				array_args[4] := dstrect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_upper_blit", array_args);
+				if(@fn_sdl_surface_upper_blit = Nil) { @fn_sdl_surface_upper_blit := "sdl_surface_upper_blit"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_upper_blit, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5822,7 +6326,8 @@ bundle Game.SDL2 {
 				array_args[3] := dst;
 				array_args[4] := dstrect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_lower_blit", array_args);
+				if(@fn_sdl_surface_lower_blit = Nil) { @fn_sdl_surface_lower_blit := "sdl_surface_lower_blit"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_lower_blit, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5849,7 +6354,8 @@ bundle Game.SDL2 {
 				array_args[4] := dstrect;
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("sdl_surface_blit_scaled", array_args);
+				if(@fn_sdl_surface_blit_scaled = Nil) { @fn_sdl_surface_blit_scaled := "sdl_surface_blit_scaled"; };
+				@lib_proxy->CallFunction(@fn_sdl_surface_blit_scaled, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5875,7 +6381,8 @@ bundle Game.SDL2 {
 				array_args[3] := dst;
 				array_args[4] := dstrect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_lower_blit_scaled", array_args);
+				if(@fn_sdl_surface_lower_blit_scaled = Nil) { @fn_sdl_surface_lower_blit_scaled := "sdl_surface_lower_blit_scaled"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_lower_blit_scaled, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -5900,7 +6407,8 @@ bundle Game.SDL2 {
 				array_args[3] := FloatRef->New(zoom);
 				array_args[4] := IntRef->New(smooth ? 1 : 0);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom", array_args);
+				if(@fn_sdl_surface_rotozoom = Nil) { @fn_sdl_surface_rotozoom := "sdl_surface_rotozoom"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_rotozoom, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
@@ -5927,7 +6435,8 @@ bundle Game.SDL2 {
 				array_args[4] := FloatRef->New(zoomy);
 				array_args[5] := IntRef->New(smooth ? 1 : 0);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_xy", array_args);
+				if(@fn_sdl_surface_rotozoom_xy = Nil) { @fn_sdl_surface_rotozoom_xy := "sdl_surface_rotozoom_xy"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_rotozoom_xy, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
@@ -5954,7 +6463,8 @@ bundle Game.SDL2 {
 			array_args[4] := dstwidth;
 			array_args[5] := dstheight;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_size", array_args);
+			if(@fn_sdl_surface_rotozoom_size = Nil) { @fn_sdl_surface_rotozoom_size := "sdl_surface_rotozoom_size"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_rotozoom_size, array_args);
 		}
 
 		#~
@@ -5977,7 +6487,8 @@ bundle Game.SDL2 {
 			array_args[5] := dstwidth;
 			array_args[6] := dstheight;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_size_xy", array_args);
+			if(@fn_sdl_surface_rotozoom_size_xy = Nil) { @fn_sdl_surface_rotozoom_size_xy := "sdl_surface_rotozoom_size_xy"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_rotozoom_size_xy, array_args);
 		}
 
 		#~
@@ -5998,7 +6509,8 @@ bundle Game.SDL2 {
 			array_args[4] := dstwidth;
 			array_args[5] := dstheight;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_zoom_size", array_args);
+			if(@fn_sdl_surface_zoom_size = Nil) { @fn_sdl_surface_zoom_size := "sdl_surface_zoom_size"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_zoom_size, array_args);
 		}
 
 
@@ -6019,7 +6531,8 @@ bundle Game.SDL2 {
 				array_args[3] := FloatRef->New(zoomy);
 				array_args[4] := IntRef->New(smooth ? 1 : 0);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_zoom", array_args);
+				if(@fn_sdl_surface_zoom = Nil) { @fn_sdl_surface_zoom := "sdl_surface_zoom"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_zoom, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
@@ -6042,7 +6555,8 @@ bundle Game.SDL2 {
 				array_args[2] := IntRef->New(factorx);
 				array_args[3] := IntRef->New(factory);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_shrink", array_args);
+				if(@fn_sdl_surface_shrink = Nil) { @fn_sdl_surface_shrink := "sdl_surface_shrink"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_shrink, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
@@ -6063,7 +6577,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@surface);
 				array_args[2] := IntRef->New(numClockwiseTurns);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_rotate_90degrees", array_args);
+				if(@fn_sdl_surface_rotate_90degrees = Nil) { @fn_sdl_surface_rotate_90degrees := "sdl_surface_rotate_90degrees"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_surface_rotate_90degrees, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return Surface->New(value->Get());
@@ -6077,6 +6592,14 @@ bundle Game.SDL2 {
 	Image loading operations
 	~#
 	class Image {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_image_init : static : String;
+		@fn_sdl_image_load : static : String;
+		@fn_sdl_image_quit : static : String;
 		#~ 
 		Initialize by loading support as indicated by the flags
 		@param flags OR'd values ImageFlags->IMG_INIT_JPG, ImageFlags->IMG_INIT_PNG and ImageFlags->IMG_INIT_TIF
@@ -6087,7 +6610,8 @@ bundle Game.SDL2 {
 	        array_args[0] := IntRef->New();
 	        array_args[1] := IntRef->New(flags);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_image_init", array_args);
+	if(@fn_sdl_image_init = Nil) { @fn_sdl_image_init := "sdl_image_init"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_image_init, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
@@ -6097,7 +6621,8 @@ bundle Game.SDL2 {
 		Uninitialize image library
 		~#
 		function : Quit() ~ Nil {
-			Proxy->GetDllProxy()->CallFunction("sdl_image_quit", Nil->As(Base[]));
+			if(@fn_sdl_image_quit = Nil) { @fn_sdl_image_quit := "sdl_image_quit"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_image_quit, Nil->As(Base[]));
 		}
 
 		#~ 
@@ -6110,7 +6635,8 @@ bundle Game.SDL2 {
 	        array_args[0] := IntRef->New();
 	        array_args[1] := file;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_image_load", array_args);
+	if(@fn_sdl_image_load = Nil) { @fn_sdl_image_load := "sdl_image_load"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_image_load, array_args);
 
 	        value := array_args[0]->As(IntRef);
 			return Surface->New(value->Get());
@@ -6121,6 +6647,54 @@ bundle Game.SDL2 {
 	Rendering state
 	~#
 	class Renderer {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_renderer_aacircle_color : static : String;
+		@fn_sdl_renderer_aaellipse_color : static : String;
+		@fn_sdl_renderer_aaline_color : static : String;
+		@fn_sdl_renderer_aapolygon_color : static : String;
+		@fn_sdl_renderer_aatrigon_color : static : String;
+		@fn_sdl_renderer_arc_color : static : String;
+		@fn_sdl_renderer_character_color : static : String;
+		@fn_sdl_renderer_circle_color : static : String;
+		@fn_sdl_renderer_create : static : String;
+		@fn_sdl_renderer_create_software : static : String;
+		@fn_sdl_renderer_create_texture : static : String;
+		@fn_sdl_renderer_destroy : static : String;
+		@fn_sdl_renderer_ellipse_color : static : String;
+		@fn_sdl_renderer_filled_circle_color : static : String;
+		@fn_sdl_renderer_filled_ellipse_color : static : String;
+		@fn_sdl_renderer_filled_pie_color : static : String;
+		@fn_sdl_renderer_filled_polygon_color : static : String;
+		@fn_sdl_renderer_filled_trigon_color : static : String;
+		@fn_sdl_renderer_get : static : String;
+		@fn_sdl_renderer_get_info : static : String;
+		@fn_sdl_renderer_get_num_render_drivers : static : String;
+		@fn_sdl_renderer_get_render_draw_color : static : String;
+		@fn_sdl_renderer_get_render_driver_info : static : String;
+		@fn_sdl_renderer_get_target : static : String;
+		@fn_sdl_renderer_is_clip_enabled : static : String;
+		@fn_sdl_renderer_pie_color : static : String;
+		@fn_sdl_renderer_polygon_color : static : String;
+		@fn_sdl_renderer_render_clear : static : String;
+		@fn_sdl_renderer_render_copy : static : String;
+		@fn_sdl_renderer_render_copy_ex : static : String;
+		@fn_sdl_renderer_render_draw_line : static : String;
+		@fn_sdl_renderer_render_draw_point : static : String;
+		@fn_sdl_renderer_render_draw_rect : static : String;
+		@fn_sdl_renderer_render_fill_rect : static : String;
+		@fn_sdl_renderer_render_get_viewport : static : String;
+		@fn_sdl_renderer_render_present : static : String;
+		@fn_sdl_renderer_render_set_viewport : static : String;
+		@fn_sdl_renderer_set_integer_scale : static : String;
+		@fn_sdl_renderer_set_render_draw_color : static : String;
+		@fn_sdl_renderer_set_target : static : String;
+		@fn_sdl_renderer_string_color : static : String;
+		@fn_sdl_renderer_thick_line_color : static : String;
+		@fn_sdl_renderer_trigon_color : static : String;
 		@renderer : Int;
 		# Pooled boxing buffer for the hot color-draw primitives. The native call ABI
 		# wants a Base[] of IntRef holders, so naively every draw call allocated a
@@ -6181,7 +6755,8 @@ bundle Game.SDL2 {
 	        array_args[2] := IntRef->New(index);
 	        array_args[3] := IntRef->New(flags);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_renderer_create", array_args);
+	if(@fn_sdl_renderer_create = Nil) { @fn_sdl_renderer_create := "sdl_renderer_create"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_create, array_args);
 
 	        value := array_args[0]->As(IntRef);
 			@renderer := value->Get();
@@ -6194,7 +6769,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@renderer);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_destroy", array_args);
+			if(@fn_sdl_renderer_destroy = Nil) { @fn_sdl_renderer_destroy := "sdl_renderer_destroy"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_destroy, array_args);
 
 		}
 
@@ -6209,7 +6785,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@renderer);
 			array_args[2] := IntRef->New(enable ? 1 : 0);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_integer_scale", array_args);
+			if(@fn_sdl_renderer_set_integer_scale = Nil) { @fn_sdl_renderer_set_integer_scale := "sdl_renderer_set_integer_scale"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_integer_scale, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6231,7 +6808,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_num_render_drivers", array_args);
+			if(@fn_sdl_renderer_get_num_render_drivers = Nil) { @fn_sdl_renderer_get_num_render_drivers := "sdl_renderer_get_num_render_drivers"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_num_render_drivers, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6249,7 +6827,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@renderer);
 			array_args[2] := texture;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_target", array_args);
+			if(@fn_sdl_renderer_set_target = Nil) { @fn_sdl_renderer_set_target := "sdl_renderer_set_target"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_target, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6264,7 +6843,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@renderer);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_target", array_args);
+			if(@fn_sdl_renderer_get_target = Nil) { @fn_sdl_renderer_get_target := "sdl_renderer_get_target"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_target, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return Texture->New(value->Get());
@@ -6279,7 +6859,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@renderer);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_is_clip_enabled", array_args);
+			if(@fn_sdl_renderer_is_clip_enabled = Nil) { @fn_sdl_renderer_is_clip_enabled := "sdl_renderer_is_clip_enabled"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_is_clip_enabled, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -6298,7 +6879,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@renderer);
 				array_args[2] := rect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_fill_rect", array_args);
+				if(@fn_sdl_renderer_render_fill_rect = Nil) { @fn_sdl_renderer_render_fill_rect := "sdl_renderer_render_fill_rect"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_render_fill_rect, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6319,7 +6901,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(index);
 			array_args[2] := info;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_render_driver_info", array_args);
+			if(@fn_sdl_renderer_get_render_driver_info = Nil) { @fn_sdl_renderer_get_render_driver_info := "sdl_renderer_get_render_driver_info"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_render_driver_info, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6335,7 +6918,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := surface;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_create_software", array_args);
+			if(@fn_sdl_renderer_create_software = Nil) { @fn_sdl_renderer_create_software := "sdl_renderer_create_software"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_create_software, array_args);
 
 			value := array_args[0]->As(IntRef);
 	        return Renderer->New(value->Get());
@@ -6350,7 +6934,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := window;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get", array_args);
+			if(@fn_sdl_renderer_get = Nil) { @fn_sdl_renderer_get := "sdl_renderer_get"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get, array_args);
 
 			value := array_args[0]->As(IntRef);
 	        return Renderer->New(value->Get());
@@ -6374,7 +6959,8 @@ bundle Game.SDL2 {
 		        array_args[4] := IntRef->New(b);
 		        array_args[5] := IntRef->New(a);
 
-		        Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_render_draw_color", array_args);
+		if(@fn_sdl_renderer_set_render_draw_color = Nil) { @fn_sdl_renderer_set_render_draw_color := "sdl_renderer_set_render_draw_color"; };
+		        Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_render_draw_color, array_args);
 
 		        value := array_args[0]->As(IntRef);
 		        return value->Get();
@@ -6401,7 +6987,8 @@ bundle Game.SDL2 {
 		        array_args[4] := IntRef->New(w);
 		        array_args[5] := IntRef->New(h);
 
-		        Proxy->GetDllProxy()->CallFunction("sdl_renderer_create_texture", array_args);
+		if(@fn_sdl_renderer_create_texture = Nil) { @fn_sdl_renderer_create_texture := "sdl_renderer_create_texture"; };
+		        Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_create_texture, array_args);
 
 		        value := array_args[0]->As(IntRef);
 		        return Texture->New(value->Get());
@@ -6427,7 +7014,8 @@ bundle Game.SDL2 {
 			array_args[4] := b;
 			array_args[5] := a;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_render_draw_color", array_args);
+			if(@fn_sdl_renderer_get_render_draw_color = Nil) { @fn_sdl_renderer_get_render_draw_color := "sdl_renderer_get_render_draw_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_render_draw_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6447,7 +7035,8 @@ bundle Game.SDL2 {
 				array_args[2] := IntRef->New(x);
 				array_args[3] := IntRef->New(y);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_draw_point", array_args);
+				if(@fn_sdl_renderer_render_draw_point = Nil) { @fn_sdl_renderer_render_draw_point := "sdl_renderer_render_draw_point"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_render_draw_point, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6474,7 +7063,8 @@ bundle Game.SDL2 {
 				array_args[4] := IntRef->New(x2);
 				array_args[5] := IntRef->New(y2);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_draw_line", array_args);
+				if(@fn_sdl_renderer_render_draw_line = Nil) { @fn_sdl_renderer_render_draw_line := "sdl_renderer_render_draw_line"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_render_draw_line, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6497,7 +7087,8 @@ bundle Game.SDL2 {
 				array_args[2] := rect;
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("sdl_renderer_render_draw_rect", array_args);
+				if(@fn_sdl_renderer_render_draw_rect = Nil) { @fn_sdl_renderer_render_draw_rect := "sdl_renderer_render_draw_rect"; };
+				@lib_proxy->CallFunction(@fn_sdl_renderer_render_draw_rect, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6517,7 +7108,8 @@ bundle Game.SDL2 {
 				array_args[1] := rect;
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("sdl_renderer_render_get_viewport", array_args);
+				if(@fn_sdl_renderer_render_get_viewport = Nil) { @fn_sdl_renderer_render_get_viewport := "sdl_renderer_render_get_viewport"; };
+				@lib_proxy->CallFunction(@fn_sdl_renderer_render_get_viewport, array_args);
 			};
 		}
 
@@ -6535,7 +7127,8 @@ bundle Game.SDL2 {
 				array_args[2] := rect;
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("sdl_renderer_render_set_viewport", array_args);
+				if(@fn_sdl_renderer_render_set_viewport = Nil) { @fn_sdl_renderer_render_set_viewport := "sdl_renderer_render_set_viewport"; };
+				@lib_proxy->CallFunction(@fn_sdl_renderer_render_set_viewport, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6557,7 +7150,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@renderer);
 				array_args[2] := info;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_info", array_args);
+				if(@fn_sdl_renderer_get_info = Nil) { @fn_sdl_renderer_get_info := "sdl_renderer_get_info"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_info, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6575,7 +7169,8 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@renderer);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_clear", array_args);
+				if(@fn_sdl_renderer_render_clear = Nil) { @fn_sdl_renderer_render_clear := "sdl_renderer_render_clear"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_render_clear, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6601,7 +7196,8 @@ bundle Game.SDL2 {
 				array_args[3] := srcrect;
 				array_args[4] := dstrect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_copy", array_args);
+				if(@fn_sdl_renderer_render_copy = Nil) { @fn_sdl_renderer_render_copy := "sdl_renderer_render_copy"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_render_copy, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6636,7 +7232,8 @@ bundle Game.SDL2 {
 				array_args[7] := IntRef->New(flip->As(Int));
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("sdl_renderer_render_copy_ex", array_args);
+				if(@fn_sdl_renderer_render_copy_ex = Nil) { @fn_sdl_renderer_render_copy_ex := "sdl_renderer_render_copy_ex"; };
+				@lib_proxy->CallFunction(@fn_sdl_renderer_render_copy_ex, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6652,7 +7249,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@renderer);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_present", array_args);
+			if(@fn_sdl_renderer_render_present = Nil) { @fn_sdl_renderer_render_present := "sdl_renderer_render_present"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_render_present, array_args);
 		}
 
 		#~
@@ -6844,7 +7442,8 @@ bundle Game.SDL2 {
 			array_args[5] := IntRef->New(y2);
 			array_args[6] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aaline_color", array_args);
+			if(@fn_sdl_renderer_aaline_color = Nil) { @fn_sdl_renderer_aaline_color := "sdl_renderer_aaline_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_aaline_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6871,7 +7470,8 @@ bundle Game.SDL2 {
 			array_args[6] := IntRef->New(width);
 			array_args[7] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_thick_line_color", array_args);
+			if(@fn_sdl_renderer_thick_line_color = Nil) { @fn_sdl_renderer_thick_line_color := "sdl_renderer_thick_line_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_thick_line_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6894,7 +7494,8 @@ bundle Game.SDL2 {
 			array_args[4] := IntRef->New(rad);
 			array_args[5] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_circle_color", array_args);
+			if(@fn_sdl_renderer_circle_color = Nil) { @fn_sdl_renderer_circle_color := "sdl_renderer_circle_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_circle_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6921,7 +7522,8 @@ bundle Game.SDL2 {
 			array_args[6] := IntRef->New(end);
 			array_args[7] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_arc_color", array_args);
+			if(@fn_sdl_renderer_arc_color = Nil) { @fn_sdl_renderer_arc_color := "sdl_renderer_arc_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_arc_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6944,7 +7546,8 @@ bundle Game.SDL2 {
 			array_args[4] := IntRef->New(rad);
 			array_args[5] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aacircle_color", array_args);
+			if(@fn_sdl_renderer_aacircle_color = Nil) { @fn_sdl_renderer_aacircle_color := "sdl_renderer_aacircle_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_aacircle_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6967,7 +7570,8 @@ bundle Game.SDL2 {
 			array_args[4] := IntRef->New(r);
 			array_args[5] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_circle_color", array_args);
+			if(@fn_sdl_renderer_filled_circle_color = Nil) { @fn_sdl_renderer_filled_circle_color := "sdl_renderer_filled_circle_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_filled_circle_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6992,7 +7596,8 @@ bundle Game.SDL2 {
 			array_args[5] := IntRef->New(ry);
 			array_args[6] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_ellipse_color", array_args);
+			if(@fn_sdl_renderer_ellipse_color = Nil) { @fn_sdl_renderer_ellipse_color := "sdl_renderer_ellipse_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_ellipse_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7017,7 +7622,8 @@ bundle Game.SDL2 {
 			array_args[5] := IntRef->New(ry);
 			array_args[6] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aaellipse_color", array_args);
+			if(@fn_sdl_renderer_aaellipse_color = Nil) { @fn_sdl_renderer_aaellipse_color := "sdl_renderer_aaellipse_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_aaellipse_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7042,7 +7648,8 @@ bundle Game.SDL2 {
 			array_args[5] := IntRef->New(ry);
 			array_args[6] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_ellipse_color", array_args);
+			if(@fn_sdl_renderer_filled_ellipse_color = Nil) { @fn_sdl_renderer_filled_ellipse_color := "sdl_renderer_filled_ellipse_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_filled_ellipse_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7069,7 +7676,8 @@ bundle Game.SDL2 {
 			array_args[6] := IntRef->New(end);
 			array_args[7] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_pie_color", array_args);
+			if(@fn_sdl_renderer_pie_color = Nil) { @fn_sdl_renderer_pie_color := "sdl_renderer_pie_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_pie_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7096,7 +7704,8 @@ bundle Game.SDL2 {
 			array_args[6] := IntRef->New(end);
 			array_args[7] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_pie_color", array_args);
+			if(@fn_sdl_renderer_filled_pie_color = Nil) { @fn_sdl_renderer_filled_pie_color := "sdl_renderer_filled_pie_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_filled_pie_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7125,7 +7734,8 @@ bundle Game.SDL2 {
 			array_args[7] := IntRef->New(y3);
 			array_args[8] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_trigon_color", array_args);
+			if(@fn_sdl_renderer_trigon_color = Nil) { @fn_sdl_renderer_trigon_color := "sdl_renderer_trigon_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_trigon_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7155,7 +7765,8 @@ bundle Game.SDL2 {
 			array_args[7] := IntRef->New(y3);
 			array_args[8] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aatrigon_color", array_args);
+			if(@fn_sdl_renderer_aatrigon_color = Nil) { @fn_sdl_renderer_aatrigon_color := "sdl_renderer_aatrigon_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_aatrigon_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7185,7 +7796,8 @@ bundle Game.SDL2 {
 			array_args[7] := IntRef->New(y3);
 			array_args[8] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_trigon_color", array_args);
+			if(@fn_sdl_renderer_filled_trigon_color = Nil) { @fn_sdl_renderer_filled_trigon_color := "sdl_renderer_filled_trigon_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_filled_trigon_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7208,7 +7820,8 @@ bundle Game.SDL2 {
 			array_args[4] := IntRef->New(c);
 			array_args[5] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_character_color", array_args);
+			if(@fn_sdl_renderer_character_color = Nil) { @fn_sdl_renderer_character_color := "sdl_renderer_character_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_character_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7231,7 +7844,8 @@ bundle Game.SDL2 {
 			array_args[4] := s;
 			array_args[5] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_string_color", array_args);
+			if(@fn_sdl_renderer_string_color = Nil) { @fn_sdl_renderer_string_color := "sdl_renderer_string_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_string_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7253,7 +7867,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntArrayRef->New(vy);
 			array_args[4] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_polygon_color", array_args);
+			if(@fn_sdl_renderer_polygon_color = Nil) { @fn_sdl_renderer_polygon_color := "sdl_renderer_polygon_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_polygon_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7275,7 +7890,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntArrayRef->New(vy);
 			array_args[4] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aapolygon_color", array_args);
+			if(@fn_sdl_renderer_aapolygon_color = Nil) { @fn_sdl_renderer_aapolygon_color := "sdl_renderer_aapolygon_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_aapolygon_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7297,7 +7913,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntArrayRef->New(vy);
 			array_args[4] := color;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_polygon_color", array_args);
+			if(@fn_sdl_renderer_filled_polygon_color = Nil) { @fn_sdl_renderer_filled_polygon_color := "sdl_renderer_filled_polygon_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_filled_polygon_color, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7372,6 +7989,14 @@ bundle Game.SDL2 {
 	Raw pixel data for surfaces and textures
 	~#
 	class PixelData {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_pixeldata_copy : static : String;
+		@fn_sdl_pixeldata_get : static : String;
+		@fn_sdl_pixeldata_set : static : String;
 		@data : Int;
 		@pitch : Int;
 		@height : Int;
@@ -7396,7 +8021,8 @@ bundle Game.SDL2 {
 				array_args[1] := @self;
 				array_args[2] := IntRef->New(index);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_pixeldata_get", array_args);
+				if(@fn_sdl_pixeldata_get = Nil) { @fn_sdl_pixeldata_get := "sdl_pixeldata_get"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_pixeldata_get, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7429,7 +8055,8 @@ bundle Game.SDL2 {
 				array_args[2] := IntRef->New(index);
 				array_args[3] := IntRef->New(value);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_pixeldata_set", array_args);
+				if(@fn_sdl_pixeldata_set = Nil) { @fn_sdl_pixeldata_set := "sdl_pixeldata_set"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_pixeldata_set, array_args);
 
 				return_value := array_args[0]->As(IntRef);
 				return return_value->Get() = 0 ? false : true;
@@ -7450,7 +8077,8 @@ bundle Game.SDL2 {
 				array_args[1] := @self;
 				array_args[2] := data;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_pixeldata_copy", array_args);
+				if(@fn_sdl_pixeldata_copy = Nil) { @fn_sdl_pixeldata_copy := "sdl_pixeldata_copy"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_pixeldata_copy, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get() = 0 ? false : true;
@@ -7480,6 +8108,22 @@ bundle Game.SDL2 {
 	Efficient, driver-specific representation of pixel data.
 	~#
 	class Texture {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_texture_create : static : String;
+		@fn_sdl_texture_destroy : static : String;
+		@fn_sdl_texture_get_alpha_mod : static : String;
+		@fn_sdl_texture_get_blend_mode : static : String;
+		@fn_sdl_texture_get_color_mod : static : String;
+		@fn_sdl_texture_lock : static : String;
+		@fn_sdl_texture_query : static : String;
+		@fn_sdl_texture_set_alpha_mod : static : String;
+		@fn_sdl_texture_set_blend_mode : static : String;
+		@fn_sdl_texture_set_color_mod : static : String;
+		@fn_sdl_texture_unlock : static : String;
 		@texture : Int;
 
 		New(texture : Int) {
@@ -7504,7 +8148,8 @@ bundle Game.SDL2 {
 			array_args[4] := IntRef->New(w);
 			array_args[5] := IntRef->New(h);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_texture_create", array_args);
+			if(@fn_sdl_texture_create = Nil) { @fn_sdl_texture_create := "sdl_texture_create"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_create, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@texture := value->Get();
@@ -7517,7 +8162,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@texture);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_texture_destroy", array_args);
+			if(@fn_sdl_texture_destroy = Nil) { @fn_sdl_texture_destroy := "sdl_texture_destroy"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_destroy, array_args);
 		}
 		
 		#~
@@ -7546,7 +8192,8 @@ bundle Game.SDL2 {
 				array_args[4] := w;
 				array_args[5] := h;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_query", array_args);
+				if(@fn_sdl_texture_query = Nil) { @fn_sdl_texture_query := "sdl_texture_query"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_query, array_args);
 			
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7567,7 +8214,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@texture);
 				array_args[2] := rect;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_lock", array_args);
+				if(@fn_sdl_texture_lock = Nil) { @fn_sdl_texture_lock := "sdl_texture_lock"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_lock, array_args);
 
 				return array_args[0]->As(PixelData);
 			};
@@ -7583,7 +8231,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@texture);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_unlock", array_args);
+				if(@fn_sdl_texture_unlock = Nil) { @fn_sdl_texture_unlock := "sdl_texture_unlock"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_unlock, array_args);
 			};
 		}
 
@@ -7603,7 +8252,8 @@ bundle Game.SDL2 {
 				array_args[3] := IntRef->New(g);
 				array_args[4] := IntRef->New(b);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_set_color_mod", array_args);
+				if(@fn_sdl_texture_set_color_mod = Nil) { @fn_sdl_texture_set_color_mod := "sdl_texture_set_color_mod"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_set_color_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7628,7 +8278,8 @@ bundle Game.SDL2 {
 				array_args[3] := g;
 				array_args[4] := b;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_get_color_mod", array_args);
+				if(@fn_sdl_texture_get_color_mod = Nil) { @fn_sdl_texture_get_color_mod := "sdl_texture_get_color_mod"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_get_color_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7649,7 +8300,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@texture);
 				array_args[2] := IntRef->New(alpha);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_set_alpha_mod", array_args);
+				if(@fn_sdl_texture_set_alpha_mod = Nil) { @fn_sdl_texture_set_alpha_mod := "sdl_texture_set_alpha_mod"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_set_alpha_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7670,7 +8322,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@texture);
 				array_args[2] := alpha;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_get_alpha_mod", array_args);
+				if(@fn_sdl_texture_get_alpha_mod = Nil) { @fn_sdl_texture_get_alpha_mod := "sdl_texture_get_alpha_mod"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_get_alpha_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7691,7 +8344,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@texture);
 				array_args[2] := IntRef->New(blendMode->As(Int));
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_set_blend_mode", array_args);
+				if(@fn_sdl_texture_set_blend_mode = Nil) { @fn_sdl_texture_set_blend_mode := "sdl_texture_set_blend_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_set_blend_mode, array_args);
 				
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7712,7 +8366,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@texture);
 				array_args[2] := blendMode;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_get_blend_mode", array_args);
+				if(@fn_sdl_texture_get_blend_mode = Nil) { @fn_sdl_texture_get_blend_mode := "sdl_texture_get_blend_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_get_blend_mode, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7726,6 +8381,14 @@ bundle Game.SDL2 {
 	SDL time management routines
 	~#
 	class Timer {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_ticks_passed : static : String;
+		@fn_sdl_timer_delay : static : String;
+		@fn_sdl_timer_get_ticks : static : String;
 		#~
 		Get the number of milliseconds since the SDL library initialization
 		@return value representing the number of milliseconds since the SDL library initialized
@@ -7734,7 +8397,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_timer_get_ticks", array_args);
+			if(@fn_sdl_timer_get_ticks = Nil) { @fn_sdl_timer_get_ticks := "sdl_timer_get_ticks"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_timer_get_ticks, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -7748,7 +8412,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(ms);
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_timer_delay", array_args);
+			if(@fn_sdl_timer_delay = Nil) { @fn_sdl_timer_delay := "sdl_timer_delay"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_timer_delay, array_args);
 		}
 
 		#~
@@ -7763,7 +8428,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(a);
 			array_args[2] := IntRef->New(b);
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_ticks_passed", array_args);
+			if(@fn_sdl_ticks_passed = Nil) { @fn_sdl_ticks_passed := "sdl_ticks_passed"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_ticks_passed, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -7774,6 +8440,22 @@ bundle Game.SDL2 {
 	TrueType font rendering
 	~#
 	class Font {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_font_close : static : String;
+		@fn_sdl_font_init : static : String;
+		@fn_sdl_font_open : static : String;
+		@fn_sdl_font_open_index : static : String;
+		@fn_sdl_font_quit : static : String;
+		@fn_sdl_font_render_text_blended : static : String;
+		@fn_sdl_font_render_text_shaded : static : String;
+		@fn_sdl_font_render_text_solid : static : String;
+		@fn_sdl_font_render_utf8_blended : static : String;
+		@fn_sdl_font_render_utf8_shaded : static : String;
+		@fn_sdl_font_render_utf8_solid : static : String;
 		@font : Int;
 
 		#~
@@ -7783,7 +8465,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 	        array_args[0] := IntRef->New();
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_init", array_args);
+	if(@fn_sdl_font_init = Nil) { @fn_sdl_font_init := "sdl_font_init"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_init, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
@@ -7794,7 +8477,8 @@ bundle Game.SDL2 {
 		~#
 		function : Quit() ~ Nil {
         	array_args := Base->New[0];
-        	Proxy->GetDllProxy()->CallFunction("sdl_font_quit", array_args);
+if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
+        	Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_quit, array_args);
 		}
 		
 		#~
@@ -7808,7 +8492,8 @@ bundle Game.SDL2 {
 	        array_args[1] := file;
 	        array_args[2] := IntRef->New(ptsize);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_open", array_args);
+	if(@fn_sdl_font_open = Nil) { @fn_sdl_font_open := "sdl_font_open"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_open, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        @font := value->Get();
@@ -7828,7 +8513,8 @@ bundle Game.SDL2 {
 	        array_args[2] := IntRef->New(ptsize);
 	        array_args[3] := IntRef->New(index);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_open_index", array_args);
+	if(@fn_sdl_font_open_index = Nil) { @fn_sdl_font_open_index := "sdl_font_open_index"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_open_index, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        @font := value->Get();        
@@ -7853,7 +8539,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@font);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_font_close", array_args);
+				if(@fn_sdl_font_close = Nil) { @fn_sdl_font_close := "sdl_font_close"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_close, array_args);
 				@font := 0;
 			};
 		}
@@ -7879,7 +8566,8 @@ bundle Game.SDL2 {
 	        array_args[2] := text;
 	        array_args[3] := fg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_solid", array_args);
+	if(@fn_sdl_font_render_text_solid = Nil) { @fn_sdl_font_render_text_solid := "sdl_font_render_text_solid"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_render_text_solid, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
@@ -7898,7 +8586,8 @@ bundle Game.SDL2 {
 	        array_args[2] := text;
 	        array_args[3] := fg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_solid", array_args);
+	if(@fn_sdl_font_render_utf8_solid = Nil) { @fn_sdl_font_render_utf8_solid := "sdl_font_render_utf8_solid"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_render_utf8_solid, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
@@ -7917,7 +8606,8 @@ bundle Game.SDL2 {
 	        array_args[2] := text;
 	        array_args[3] := fg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_blended", array_args);
+	if(@fn_sdl_font_render_text_blended = Nil) { @fn_sdl_font_render_text_blended := "sdl_font_render_text_blended"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_render_text_blended, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
@@ -7936,7 +8626,8 @@ bundle Game.SDL2 {
 	        array_args[2] := text;
 	        array_args[3] := fg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_blended", array_args);
+	if(@fn_sdl_font_render_utf8_blended = Nil) { @fn_sdl_font_render_utf8_blended := "sdl_font_render_utf8_blended"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_render_utf8_blended, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
@@ -7957,7 +8648,8 @@ bundle Game.SDL2 {
 	        array_args[3] := fg;
 	        array_args[4] := bg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_shaded", array_args);
+	if(@fn_sdl_font_render_text_shaded = Nil) { @fn_sdl_font_render_text_shaded := "sdl_font_render_text_shaded"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_render_text_shaded, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
@@ -7978,7 +8670,8 @@ bundle Game.SDL2 {
 	        array_args[3] := fg;
 	        array_args[4] := bg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_shaded", array_args);
+	if(@fn_sdl_font_render_utf8_shaded = Nil) { @fn_sdl_font_render_utf8_shaded := "sdl_font_render_utf8_shaded"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_render_utf8_shaded, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
@@ -7989,6 +8682,19 @@ bundle Game.SDL2 {
 	Mouse cursor operations
 	~#
 	class Cursor {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_cursor_capture_mouse : static : String;
+		@fn_sdl_cursor_get_global_mouse_state : static : String;
+		@fn_sdl_cursor_get_global_mouse_state_pt : static : String;
+		@fn_sdl_cursor_get_mouse_state : static : String;
+		@fn_sdl_cursor_get_mouse_state_pt : static : String;
+		@fn_sdl_cursor_get_relative_mouse_mode : static : String;
+		@fn_sdl_cursor_set_relative_mouse_mode : static : String;
+		@fn_sdl_cursor_warp_mouse_global : static : String;
 		#~
 		Capture the mouse and to track input outside an SDL window
 		@param enabled true to enable capturing, false to disable.
@@ -7999,7 +8705,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(enabled ? 1 : 0);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cursor_capture_mouse", array_args);
+			if(@fn_sdl_cursor_capture_mouse = Nil) { @fn_sdl_cursor_capture_mouse := "sdl_cursor_capture_mouse"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cursor_capture_mouse, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8022,7 +8729,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(enabled ? 1 : 0);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cursor_set_relative_mouse_mode", array_args);
+			if(@fn_sdl_cursor_set_relative_mouse_mode = Nil) { @fn_sdl_cursor_set_relative_mouse_mode := "sdl_cursor_set_relative_mouse_mode"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cursor_set_relative_mouse_mode, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8036,7 +8744,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_relative_mouse_mode", array_args);
+			if(@fn_sdl_cursor_get_relative_mouse_mode = Nil) { @fn_sdl_cursor_get_relative_mouse_mode := "sdl_cursor_get_relative_mouse_mode"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cursor_get_relative_mouse_mode, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8054,7 +8763,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(x);
 			array_args[2] := IntRef->New(y);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cursor_warp_mouse_global", array_args);
+			if(@fn_sdl_cursor_warp_mouse_global = Nil) { @fn_sdl_cursor_warp_mouse_global := "sdl_cursor_warp_mouse_global"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cursor_warp_mouse_global, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8072,7 +8782,8 @@ bundle Game.SDL2 {
 	        array_args[1] := x;
 			array_args[2] := y;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_mouse_state", array_args);
+	if(@fn_sdl_cursor_get_mouse_state = Nil) { @fn_sdl_cursor_get_mouse_state := "sdl_cursor_get_mouse_state"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_cursor_get_mouse_state, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
@@ -8088,7 +8799,8 @@ bundle Game.SDL2 {
 	        array_args[0] := IntRef->New();
 	        array_args[1] := p;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_mouse_state_pt", array_args);
+	if(@fn_sdl_cursor_get_mouse_state_pt = Nil) { @fn_sdl_cursor_get_mouse_state_pt := "sdl_cursor_get_mouse_state_pt"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_cursor_get_mouse_state_pt, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
@@ -8106,7 +8818,8 @@ bundle Game.SDL2 {
 	        array_args[1] := x;
 			array_args[2] := y;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_global_mouse_state", array_args);
+	if(@fn_sdl_cursor_get_global_mouse_state = Nil) { @fn_sdl_cursor_get_global_mouse_state := "sdl_cursor_get_global_mouse_state"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_cursor_get_global_mouse_state, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
@@ -8122,7 +8835,8 @@ bundle Game.SDL2 {
 	        array_args[0] := IntRef->New();
 	        array_args[1] := p;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_global_mouse_state_pt", array_args);
+	if(@fn_sdl_cursor_get_global_mouse_state_pt = Nil) { @fn_sdl_cursor_get_global_mouse_state_pt := "sdl_cursor_get_global_mouse_state_pt"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_cursor_get_global_mouse_state_pt, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
@@ -8133,6 +8847,24 @@ bundle Game.SDL2 {
 	Portable sound mixing library
 	~#
 	class Mixer {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_audio_close : static : String;
+		@fn_sdl_mixer_close : static : String;
+		@fn_sdl_mixer_fade_out_channel : static : String;
+		@fn_sdl_mixer_halt_channel : static : String;
+		@fn_sdl_mixer_init : static : String;
+		@fn_sdl_mixer_open_audio : static : String;
+		@fn_sdl_mixer_play_pcm : static : String;
+		@fn_sdl_mixer_playing : static : String;
+		@fn_sdl_mixer_quit : static : String;
+		@fn_sdl_mixer_record_devs : static : String;
+		@fn_sdl_mixer_record_id_pcm : static : String;
+		@fn_sdl_mixer_record_pcm : static : String;
+		@fn_sdl_mixer_volume : static : String;
 		consts Flags {
 			MIX_DEFAULT_FORMAT := 0x8010,
 			MIX_DEFAULT_CHANNELS := 2,
@@ -8157,7 +8889,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(channels);
 			array_args[4] := IntRef->New(chunksize);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_open_audio", array_args);
+			if(@fn_sdl_mixer_open_audio = Nil) { @fn_sdl_mixer_open_audio := "sdl_mixer_open_audio"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_open_audio, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0;
@@ -8173,7 +8906,8 @@ bundle Game.SDL2 {
 	        array_args[0] := IntRef->New();
 	        array_args[1] := IntRef->New(flags);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_mixer_init", array_args);
+	if(@fn_sdl_mixer_init = Nil) { @fn_sdl_mixer_init := "sdl_mixer_init"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_init, array_args);
 
 	        value := array_args[0]->As(IntRef);
 	        return value->Get();
@@ -8187,7 +8921,8 @@ bundle Game.SDL2 {
 	        array_args := Base->New[1];
 	        array_args[0] := StringArrayRef->New();
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_mixer_record_devs", array_args);
+	if(@fn_sdl_mixer_record_devs = Nil) { @fn_sdl_mixer_record_devs := "sdl_mixer_record_devs"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_record_devs, array_args);
 
 	        value := array_args[0]->As(StringArrayRef);
 	        return value->Get();
@@ -8198,7 +8933,8 @@ bundle Game.SDL2 {
 		~#
 		function : Quit() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_quit", array_args);
+			if(@fn_sdl_mixer_quit = Nil) { @fn_sdl_mixer_quit := "sdl_mixer_quit"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_quit, array_args);
 		}
 
 		#~
@@ -8206,7 +8942,8 @@ bundle Game.SDL2 {
 		~#
 		function : Close() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_close", array_args);
+			if(@fn_sdl_mixer_close = Nil) { @fn_sdl_mixer_close := "sdl_mixer_close"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_close, array_args);
 		}
 
 		#~
@@ -8214,7 +8951,8 @@ bundle Game.SDL2 {
 		~#
 		function : CloseAudio() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_audio_close", array_args);
+			if(@fn_sdl_audio_close = Nil) { @fn_sdl_audio_close := "sdl_audio_close"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_audio_close, array_args);
 		}
 
 		#~
@@ -8229,7 +8967,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(which);
 			array_args[2] := IntRef->New(ms);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_out_channel", array_args);
+			if(@fn_sdl_mixer_fade_out_channel = Nil) { @fn_sdl_mixer_fade_out_channel := "sdl_mixer_fade_out_channel"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_fade_out_channel, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8250,7 +8989,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(audio_format);
 			array_args[4] := IntRef->New(channels);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_play_pcm", array_args);
+			if(@fn_sdl_mixer_play_pcm = Nil) { @fn_sdl_mixer_play_pcm := "sdl_mixer_play_pcm"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_play_pcm, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 1;
@@ -8273,7 +9013,8 @@ bundle Game.SDL2 {
 			array_args[4] := IntRef->New(channels);
 			array_args[5] := IntRef->New(time_secs);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_record_id_pcm", array_args);
+			if(@fn_sdl_mixer_record_id_pcm = Nil) { @fn_sdl_mixer_record_id_pcm := "sdl_mixer_record_id_pcm"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_record_id_pcm, array_args);
 
 			holder := array_args[0]->As(ByteArrayRef);
 			return holder->Get();
@@ -8294,7 +9035,8 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(channels);
 			array_args[4] := IntRef->New(time_secs);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_record_pcm", array_args);
+			if(@fn_sdl_mixer_record_pcm = Nil) { @fn_sdl_mixer_record_pcm := "sdl_mixer_record_pcm"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_record_pcm, array_args);
 
 			holder := array_args[0]->As(ByteArrayRef);
 			return holder->Get();
@@ -8310,7 +9052,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(channel);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_channel", array_args);
+			if(@fn_sdl_mixer_halt_channel = Nil) { @fn_sdl_mixer_halt_channel := "sdl_mixer_halt_channel"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_halt_channel, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8326,7 +9069,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(channel);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_playing", array_args);
+			if(@fn_sdl_mixer_playing = Nil) { @fn_sdl_mixer_playing := "sdl_mixer_playing"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_playing, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() <> 0;
@@ -8353,7 +9097,8 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(channel);
 			array_args[2] := IntRef->New(volume);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_volume", array_args);
+			if(@fn_sdl_mixer_volume = Nil) { @fn_sdl_mixer_volume := "sdl_mixer_volume"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_volume, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8364,6 +9109,15 @@ bundle Game.SDL2 {
 	Format for an audio chunk
 	~#
 	class MixChunk {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_mixer_fade_in_channel_timed : static : String;
+		@fn_sdl_mixer_free_wav : static : String;
+		@fn_sdl_mixer_load_wav : static : String;
+		@fn_sdl_mixer_play_channel_timed : static : String;
 	    @mix_chunk : Int;
 
 	    #~
@@ -8375,7 +9129,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := file;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_load_wav", array_args);
+			if(@fn_sdl_mixer_load_wav = Nil) { @fn_sdl_mixer_load_wav := "sdl_mixer_load_wav"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_load_wav, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@mix_chunk := value->Get();
@@ -8416,7 +9171,8 @@ bundle Game.SDL2 {
 				array_args[3] := IntRef->New(loops);
 				array_args[4] := IntRef->New(ticks);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_mixer_play_channel_timed", array_args);
+				if(@fn_sdl_mixer_play_channel_timed = Nil) { @fn_sdl_mixer_play_channel_timed := "sdl_mixer_play_channel_timed"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_play_channel_timed, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -8458,7 +9214,8 @@ bundle Game.SDL2 {
 				array_args[4] := IntRef->New(ms);
 				array_args[5] := IntRef->New(ticks);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_in_channel_timed", array_args);
+				if(@fn_sdl_mixer_fade_in_channel_timed = Nil) { @fn_sdl_mixer_fade_in_channel_timed := "sdl_mixer_fade_in_channel_timed"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_fade_in_channel_timed, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -8475,7 +9232,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 		        array_args[0] := IntRef->New(@mix_chunk);
 
-		        Proxy->GetDllProxy()->CallFunction("sdl_mixer_free_wav", array_args);
+		if(@fn_sdl_mixer_free_wav = Nil) { @fn_sdl_mixer_free_wav := "sdl_mixer_free_wav"; };
+		        Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_free_wav, array_args);
 		        @mix_chunk := 0;
 		    };
 		}
@@ -8485,6 +9243,22 @@ bundle Game.SDL2 {
 	Music operations
 	~#
 	class MixMusic {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_mixer_fade_in_music : static : String;
+		@fn_sdl_mixer_fade_out_music : static : String;
+		@fn_sdl_mixer_free_mus : static : String;
+		@fn_sdl_mixer_halt_music : static : String;
+		@fn_sdl_mixer_load_mus : static : String;
+		@fn_sdl_mixer_pause_music : static : String;
+		@fn_sdl_mixer_paused_music : static : String;
+		@fn_sdl_mixer_play_music : static : String;
+		@fn_sdl_mixer_playing_music : static : String;
+		@fn_sdl_mixer_resume_music : static : String;
+		@fn_sdl_mixer_volume_music : static : String;
 		@mix_music : Int;
 
 		New(file : String) {
@@ -8492,7 +9266,8 @@ bundle Game.SDL2 {
 	        array_args[0] := IntRef->New();
 	        array_args[1] := file;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_mixer_load_mus", array_args);
+	if(@fn_sdl_mixer_load_mus = Nil) { @fn_sdl_mixer_load_mus := "sdl_mixer_load_mus"; };
+	        Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_load_mus, array_args);
 
 	        value := array_args[0]->As(IntRef);
 			@mix_music := value->Get();
@@ -8514,7 +9289,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_playing_music", array_args);
+			if(@fn_sdl_mixer_playing_music = Nil) { @fn_sdl_mixer_playing_music := "sdl_mixer_playing_music"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_playing_music, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 1;
@@ -8528,7 +9304,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_paused_music", array_args);
+			if(@fn_sdl_mixer_paused_music = Nil) { @fn_sdl_mixer_paused_music := "sdl_mixer_paused_music"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_paused_music, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 1;
@@ -8539,7 +9316,8 @@ bundle Game.SDL2 {
 		~#
 		function : Resume() ~ Nil {
 			array_args := Base->New[0];			
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_resume_music", array_args);
+			if(@fn_sdl_mixer_resume_music = Nil) { @fn_sdl_mixer_resume_music := "sdl_mixer_resume_music"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_resume_music, array_args);
 		}
 
 		#~
@@ -8547,7 +9325,8 @@ bundle Game.SDL2 {
 		~#
 		function : Pause() ~ Nil {
 			array_args := Base->New[0];			
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_pause_music", array_args);
+			if(@fn_sdl_mixer_pause_music = Nil) { @fn_sdl_mixer_pause_music := "sdl_mixer_pause_music"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_pause_music, array_args);
 		}
 
 		#~
@@ -8555,7 +9334,8 @@ bundle Game.SDL2 {
 		~#
 		function : Halt() ~ Nil {
 			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_music", array_args);
+			if(@fn_sdl_mixer_halt_music = Nil) { @fn_sdl_mixer_halt_music := "sdl_mixer_halt_music"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_halt_music, array_args);
 		}
 
 		#~
@@ -8575,7 +9355,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(volume);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_volume_music", array_args);
+			if(@fn_sdl_mixer_volume_music = Nil) { @fn_sdl_mixer_volume_music := "sdl_mixer_volume_music"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_volume_music, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8593,7 +9374,8 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@mix_music);
 				array_args[2] := IntRef->New(loops);
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_mixer_play_music", array_args);
+				if(@fn_sdl_mixer_play_music = Nil) { @fn_sdl_mixer_play_music := "sdl_mixer_play_music"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_play_music, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -8616,7 +9398,8 @@ bundle Game.SDL2 {
 				array_args[2] := IntRef->New(loops);
 				array_args[3] := IntRef->New(ms);
 
-				Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_in_music", array_args);
+				if(@fn_sdl_mixer_fade_in_music = Nil) { @fn_sdl_mixer_fade_in_music := "sdl_mixer_fade_in_music"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_fade_in_music, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -8635,7 +9418,8 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(ms);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_out_music", array_args);
+			if(@fn_sdl_mixer_fade_out_music = Nil) { @fn_sdl_mixer_fade_out_music := "sdl_mixer_fade_out_music"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_fade_out_music, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8649,7 +9433,8 @@ bundle Game.SDL2 {
 				array_args := Base->New[1];
 		        array_args[0] := IntRef->New(@mix_music);
 
-		        Proxy->GetDllProxy()->CallFunction("sdl_mixer_free_mus", array_args);
+		if(@fn_sdl_mixer_free_mus = Nil) { @fn_sdl_mixer_free_mus := "sdl_mixer_free_mus"; };
+		        Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_free_mus, array_args);
 		        @mix_music := 0;
 		    };
 		}
@@ -8659,6 +9444,12 @@ bundle Game.SDL2 {
 	Platform specific queries
 	~#
 	class Platform {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_platform_get : static : String;
 		#~
 		Get the name of the platform
 		@return platform name
@@ -8667,7 +9458,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_platform_get", array_args);
+			if(@fn_sdl_platform_get = Nil) { @fn_sdl_platform_get := "sdl_platform_get"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_platform_get, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -8677,6 +9469,25 @@ bundle Game.SDL2 {
 	Operations for gathering information about the processor's features
 	~#
 	class CPU {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_cpu_get_cache_line_size : static : String;
+		@fn_sdl_cpu_get_count : static : String;
+		@fn_sdl_cpu_get_systemram : static : String;
+		@fn_sdl_cpu_has3d_now : static : String;
+		@fn_sdl_cpu_has_alti_vec : static : String;
+		@fn_sdl_cpu_hasavx : static : String;
+		@fn_sdl_cpu_hasavx2 : static : String;
+		@fn_sdl_cpu_hasmmx : static : String;
+		@fn_sdl_cpu_hasrdtsc : static : String;
+		@fn_sdl_cpu_hassse : static : String;
+		@fn_sdl_cpu_hassse2 : static : String;
+		@fn_sdl_cpu_hassse3 : static : String;
+		@fn_sdl_cpu_hassse41 : static : String;
+		@fn_sdl_cpu_hassse42 : static : String;
 		#~
 		Get the number of CPU cores available
 		@return the total number of logical CPU cores
@@ -8685,7 +9496,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_get_count", array_args);
+			if(@fn_sdl_cpu_get_count = Nil) { @fn_sdl_cpu_get_count := "sdl_cpu_get_count"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_get_count, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8699,7 +9511,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_get_cache_line_size", array_args);
+			if(@fn_sdl_cpu_get_cache_line_size = Nil) { @fn_sdl_cpu_get_cache_line_size := "sdl_cpu_get_cache_line_size"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_get_cache_line_size, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8713,7 +9526,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasrdtsc", array_args);
+			if(@fn_sdl_cpu_hasrdtsc = Nil) { @fn_sdl_cpu_hasrdtsc := "sdl_cpu_hasrdtsc"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hasrdtsc, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8727,7 +9541,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_has_alti_vec", array_args);
+			if(@fn_sdl_cpu_has_alti_vec = Nil) { @fn_sdl_cpu_has_alti_vec := "sdl_cpu_has_alti_vec"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_has_alti_vec, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8741,7 +9556,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasmmx", array_args);
+			if(@fn_sdl_cpu_hasmmx = Nil) { @fn_sdl_cpu_hasmmx := "sdl_cpu_hasmmx"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hasmmx, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8755,7 +9571,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_has3d_now", array_args);
+			if(@fn_sdl_cpu_has3d_now = Nil) { @fn_sdl_cpu_has3d_now := "sdl_cpu_has3d_now"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_has3d_now, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8769,7 +9586,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse", array_args);
+			if(@fn_sdl_cpu_hassse = Nil) { @fn_sdl_cpu_hassse := "sdl_cpu_hassse"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hassse, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8783,7 +9601,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse2", array_args);
+			if(@fn_sdl_cpu_hassse2 = Nil) { @fn_sdl_cpu_hassse2 := "sdl_cpu_hassse2"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hassse2, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8797,7 +9616,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse3", array_args);
+			if(@fn_sdl_cpu_hassse3 = Nil) { @fn_sdl_cpu_hassse3 := "sdl_cpu_hassse3"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hassse3, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8807,7 +9627,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse41", array_args);
+			if(@fn_sdl_cpu_hassse41 = Nil) { @fn_sdl_cpu_hassse41 := "sdl_cpu_hassse41"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hassse41, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8821,7 +9642,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hassse42", array_args);
+			if(@fn_sdl_cpu_hassse42 = Nil) { @fn_sdl_cpu_hassse42 := "sdl_cpu_hassse42"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hassse42, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8835,7 +9657,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasavx", array_args);
+			if(@fn_sdl_cpu_hasavx = Nil) { @fn_sdl_cpu_hasavx := "sdl_cpu_hasavx"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hasavx, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8849,7 +9672,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasavx2", array_args);
+			if(@fn_sdl_cpu_hasavx2 = Nil) { @fn_sdl_cpu_hasavx2 := "sdl_cpu_hasavx2"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_hasavx2, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -8863,7 +9687,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_get_systemram", array_args);
+			if(@fn_sdl_cpu_get_systemram = Nil) { @fn_sdl_cpu_get_systemram := "sdl_cpu_get_systemram"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_cpu_get_systemram, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -8874,6 +9699,13 @@ bundle Game.SDL2 {
 	Filesystem helper functions
 	~#
 	class Filesystem {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_filesystem_get_base_path : static : String;
+		@fn_sdl_filesystem_get_pref_path : static : String;
 		#~
 		Get the directory where the application was run from. This is where the application data directory is.
 		@return an absolute path in UTF-8 encoding to the application data directory
@@ -8882,7 +9714,8 @@ bundle Game.SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_filesystem_get_base_path", array_args);
+			if(@fn_sdl_filesystem_get_base_path = Nil) { @fn_sdl_filesystem_get_base_path := "sdl_filesystem_get_base_path"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_filesystem_get_base_path, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -8901,7 +9734,8 @@ bundle Game.SDL2 {
 			array_args[1] := org;
 			array_args[2] := app;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_filesystem_get_pref_path", array_args);
+			if(@fn_sdl_filesystem_get_pref_path = Nil) { @fn_sdl_filesystem_get_pref_path := "sdl_filesystem_get_pref_path"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_filesystem_get_pref_path, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -8911,6 +9745,12 @@ bundle Game.SDL2 {
 	Power management routines
 	~#
 	class Power {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_power_get_info : static : String;
 		#~
 		Get the current power supply details.
 		@param secs seconds of battery life left
@@ -8923,7 +9763,8 @@ bundle Game.SDL2 {
 			array_args[1] := secs;
 			array_args[2] := pct;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_power_get_info", array_args);
+			if(@fn_sdl_power_get_info = Nil) { @fn_sdl_power_get_info := "sdl_power_get_info"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_power_get_info, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->As(IntRef)->Get();

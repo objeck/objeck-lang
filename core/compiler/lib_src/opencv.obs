@@ -25,6 +25,23 @@ bundle API.OpenCV {
 	OpenCV VideoCapture 
 	~#
 	class VideoCapture {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_opencv_new_video_capture : static : String;
+		@fn_opencv_new_video_capture_id : static : String;
+		@fn_opencv_new_video_capture_prop : static : String;
+		@fn_opencv_new_video_capture_prop_id : static : String;
+		@fn_opencv_open_id : static : String;
+		@fn_opencv_open_id_pref : static : String;
+		@fn_opencv_open_name : static : String;
+		@fn_opencv_release_video_capture : static : String;
+		@fn_opencv_video_get : static : String;
+		@fn_opencv_video_is_open : static : String;
+		@fn_opencv_video_read : static : String;
+		@fn_opencv_video_set : static : String;
 		@capture : Int;
 
 		consts Api {
@@ -123,7 +140,8 @@ bundle API.OpenCV {
 			array_args[1] := filename;
 			array_args[2] := IntRef->New(prop);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture_prop", array_args);
+			if(@fn_opencv_new_video_capture_prop = Nil) { @fn_opencv_new_video_capture_prop := "opencv_new_video_capture_prop"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_new_video_capture_prop, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@capture := value->Get();
@@ -135,7 +153,8 @@ bundle API.OpenCV {
 			array_args[0] := IntRef->New();
 			array_args[1] := filename;
 
-			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture", array_args);
+			if(@fn_opencv_new_video_capture = Nil) { @fn_opencv_new_video_capture := "opencv_new_video_capture"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_new_video_capture, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@capture := value->Get();
@@ -148,7 +167,8 @@ bundle API.OpenCV {
 			array_args[1] := IntRef->New(id);
 			array_args[2] := IntRef->New(prop);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture_prop_id", array_args);
+			if(@fn_opencv_new_video_capture_prop_id = Nil) { @fn_opencv_new_video_capture_prop_id := "opencv_new_video_capture_prop_id"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_new_video_capture_prop_id, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@capture := value->Get();
@@ -160,7 +180,8 @@ bundle API.OpenCV {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(id);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_new_video_capture_id", array_args);
+			if(@fn_opencv_new_video_capture_id = Nil) { @fn_opencv_new_video_capture_id := "opencv_new_video_capture_id"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_new_video_capture_id, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@capture := value->Get();
@@ -186,7 +207,8 @@ if(cap->Open(0)) {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@capture);
 			array_args[2] := IntRef->New(id);
-			Proxy->GetDllProxy()->CallFunction("opencv_open_id", array_args);
+			if(@fn_opencv_open_id = Nil) { @fn_opencv_open_id := "opencv_open_id"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_open_id, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -205,7 +227,8 @@ if(cap->Open(0)) {
 			array_args[1] := IntRef->New(@capture);
 			array_args[2] := IntRef->New(id);
 			array_args[3] := IntRef->New(pref);
-			Proxy->GetDllProxy()->CallFunction("opencv_open_id_pref", array_args);
+			if(@fn_opencv_open_id_pref = Nil) { @fn_opencv_open_id_pref := "opencv_open_id_pref"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_open_id_pref, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -231,7 +254,8 @@ if(cap->Open("video.mp4")) {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@capture);
 			array_args[2] := name;
-			Proxy->GetDllProxy()->CallFunction("opencv_open_name", array_args);
+			if(@fn_opencv_open_name = Nil) { @fn_opencv_open_name := "opencv_open_name"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_open_name, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -242,7 +266,8 @@ if(cap->Open("video.mp4")) {
 
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@capture);
-			Proxy->GetDllProxy()->CallFunction("opencv_video_read", array_args);
+			if(@fn_opencv_video_read = Nil) { @fn_opencv_video_read := "opencv_video_read"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_video_read, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -253,7 +278,8 @@ if(cap->Open("video.mp4")) {
 			array_args[0] := FloatRef->New();
 			array_args[1] := IntRef->New(@capture);
 			array_args[2] := IntRef->New(prop);
-			Proxy->GetDllProxy()->CallFunction("opencv_video_get", array_args);
+			if(@fn_opencv_video_get = Nil) { @fn_opencv_video_get := "opencv_video_get"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_video_get, array_args);
 
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -266,7 +292,8 @@ if(cap->Open("video.mp4")) {
 			array_args[1] := IntRef->New(@capture);
 			array_args[2] := IntRef->New(prop);
 			array_args[3] := FloatRef->New(prop_value);
-			Proxy->GetDllProxy()->CallFunction("opencv_video_set", array_args);
+			if(@fn_opencv_video_set = Nil) { @fn_opencv_video_set := "opencv_video_set"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_video_set, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -277,7 +304,8 @@ if(cap->Open("video.mp4")) {
 
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@capture);
-			Proxy->GetDllProxy()->CallFunction("opencv_video_is_open", array_args);
+			if(@fn_opencv_video_is_open = Nil) { @fn_opencv_video_is_open := "opencv_video_is_open"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_video_is_open, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -287,7 +315,8 @@ if(cap->Open("video.mp4")) {
 			array_args := Base->New[1];
 
 			array_args[0] := IntRef->New(@capture);
-			Proxy->GetDllProxy()->CallFunction("opencv_release_video_capture", array_args);
+			if(@fn_opencv_release_video_capture = Nil) { @fn_opencv_release_video_capture := "opencv_release_video_capture"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_release_video_capture, array_args);
 		}
 	}
 
@@ -295,6 +324,44 @@ if(cap->Open("video.mp4")) {
 	OpenCV image
 	~#
 	class Image {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_opencv_adaptive_threshold : static : String;
+		@fn_opencv_bilateral_filter : static : String;
+		@fn_opencv_bounding_rect : static : String;
+		@fn_opencv_canny : static : String;
+		@fn_opencv_clone : static : String;
+		@fn_opencv_contour_area : static : String;
+		@fn_opencv_convert_image_format : static : String;
+		@fn_opencv_crop : static : String;
+		@fn_opencv_cvt_color : static : String;
+		@fn_opencv_dilate : static : String;
+		@fn_opencv_draw_circle : static : String;
+		@fn_opencv_draw_contours : static : String;
+		@fn_opencv_draw_rect : static : String;
+		@fn_opencv_draw_text : static : String;
+		@fn_opencv_erode : static : String;
+		@fn_opencv_find_contours : static : String;
+		@fn_opencv_flip : static : String;
+		@fn_opencv_gaussian_blur : static : String;
+		@fn_opencv_get_rotation_matrix_2d : static : String;
+		@fn_opencv_is_empty_image : static : String;
+		@fn_opencv_load_image_bytes : static : String;
+		@fn_opencv_load_image_path : static : String;
+		@fn_opencv_median_blur : static : String;
+		@fn_opencv_morphology_ex : static : String;
+		@fn_opencv_normalize : static : String;
+		@fn_opencv_resize_image : static : String;
+		@fn_opencv_save_image : static : String;
+		@fn_opencv_show_image : static : String;
+		@fn_opencv_show_image_ms : static : String;
+		@fn_opencv_sobel : static : String;
+		@fn_opencv_threshold : static : String;
+		@fn_opencv_warp_affine : static : String;
+		@fn_opencv_warp_perspective : static : String;
 		@image_type : Int;
 		@image_cols : Int;
 		@image_rows : Int;
@@ -371,7 +438,8 @@ if(<>image->IsEmpty()) {
 			array_args[0] := Nil;
 			array_args[1] := image_path;
 
-			Proxy->GetDllProxy()->CallFunction("opencv_load_image_path", array_args);
+			if(@fn_opencv_load_image_path = Nil) { @fn_opencv_load_image_path := "opencv_load_image_path"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_load_image_path, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -393,7 +461,8 @@ image := Image->Load(raw);
 			array_args[0] := Nil;
 			array_args[1] := ByteArrayRef->New(image_bytes);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_load_image_bytes", array_args);
+			if(@fn_opencv_load_image_bytes = Nil) { @fn_opencv_load_image_bytes := "opencv_load_image_bytes"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_load_image_bytes, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -407,7 +476,8 @@ image := Image->Load(raw);
 
 			array_args[0] := IntRef->New();
 			array_args[1] := @self;
-			Proxy->GetDllProxy()->CallFunction("opencv_is_empty_image", array_args);
+			if(@fn_opencv_is_empty_image = Nil) { @fn_opencv_is_empty_image := "opencv_is_empty_image"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_is_empty_image, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -438,7 +508,8 @@ image->Show("Preview");
 			array_args[1] := title;
 			array_args[2] := FloatRef->New(scale);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_show_image", array_args);
+			if(@fn_opencv_show_image = Nil) { @fn_opencv_show_image := "opencv_show_image"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_show_image, array_args);
 		}
 
 		#~
@@ -455,7 +526,8 @@ image->Show("Preview");
 			array_args[2] := FloatRef->New(scale);
 			array_args[3] := IntRef->New(ms_wait);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_show_image_ms", array_args);
+			if(@fn_opencv_show_image_ms = Nil) { @fn_opencv_show_image_ms := "opencv_show_image_ms"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_show_image_ms, array_args);
 		}
 
 		#~
@@ -476,7 +548,8 @@ png_bytes := image->Convert(Image->Format->PNG);
 			array_args[1] := @self;
 			array_args[2] := IntRef->New(format->As(Int));
 
-			Proxy->GetDllProxy()->CallFunction("opencv_convert_image_format", array_args);
+			if(@fn_opencv_convert_image_format = Nil) { @fn_opencv_convert_image_format := "opencv_convert_image_format"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_convert_image_format, array_args);
 
 			holder := array_args[0]->As(ByteArrayRef);
 			return holder->Get();
@@ -509,7 +582,8 @@ annotated->Save("annotated.jpg");
 			array_args[4] := IntRef->New(thickness);
 			array_args[5] := IntRef->New(type);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_draw_rect", array_args);
+			if(@fn_opencv_draw_rect = Nil) { @fn_opencv_draw_rect := "opencv_draw_rect"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_draw_rect, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -535,7 +609,8 @@ annotated->Save("annotated.jpg");
 			array_args[5] := IntRef->New(thickness);
 			array_args[6] := IntRef->New(type);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_draw_circle", array_args);
+			if(@fn_opencv_draw_circle = Nil) { @fn_opencv_draw_circle := "opencv_draw_circle"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_draw_circle, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -570,7 +645,8 @@ labeled->Save("labeled.jpg");
 			array_args[7] := IntRef->New(thickness);
 			array_args[8] := IntRef->New(type);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_draw_text", array_args);
+			if(@fn_opencv_draw_text = Nil) { @fn_opencv_draw_text := "opencv_draw_text"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_draw_text, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -600,7 +676,8 @@ resized->Save("thumb.jpg");
 			array_args[4] := FloatRef->New(fy);
 			array_args[5] := IntRef->New(interpolation);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_resize_image", array_args);
+			if(@fn_opencv_resize_image = Nil) { @fn_opencv_resize_image := "opencv_resize_image"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_resize_image, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -622,7 +699,8 @@ resized->Save("thumb.jpg");
 			array_args[4] := FloatRef->New(fy);
 			array_args[5] := IntRef->New(interpolation);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_resize_image", array_args);
+			if(@fn_opencv_resize_image = Nil) { @fn_opencv_resize_image := "opencv_resize_image"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_resize_image, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -642,7 +720,8 @@ resized->Save("thumb.jpg");
 			array_args[4] := FloatRef->New(f);
 			array_args[5] := IntRef->New(interpolation);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_resize_image", array_args);
+			if(@fn_opencv_resize_image = Nil) { @fn_opencv_resize_image := "opencv_resize_image"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_resize_image, array_args);
 
 			return array_args[0]->As(API.OpenCV.Image);
 		}
@@ -665,7 +744,8 @@ gray->Save("gray.png");
 			array_args[1] := @self;
 			array_args[2] := IntRef->New(code);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_cvt_color", array_args);
+			if(@fn_opencv_cvt_color = Nil) { @fn_opencv_cvt_color := "opencv_cvt_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_cvt_color, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -692,7 +772,8 @@ blurred->Save("blurred.jpg");
 			array_args[3] := IntRef->New(ksize_h);
 			array_args[4] := FloatRef->New(sigmaX);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_gaussian_blur", array_args);
+			if(@fn_opencv_gaussian_blur = Nil) { @fn_opencv_gaussian_blur := "opencv_gaussian_blur"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_gaussian_blur, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -715,7 +796,8 @@ denoised->Save("denoised.jpg");
 			array_args[1] := @self;
 			array_args[2] := IntRef->New(ksize);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_median_blur", array_args);
+			if(@fn_opencv_median_blur = Nil) { @fn_opencv_median_blur := "opencv_median_blur"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_median_blur, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -736,7 +818,8 @@ denoised->Save("denoised.jpg");
 			array_args[3] := FloatRef->New(sigmaColor);
 			array_args[4] := FloatRef->New(sigmaSpace);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_bilateral_filter", array_args);
+			if(@fn_opencv_bilateral_filter = Nil) { @fn_opencv_bilateral_filter := "opencv_bilateral_filter"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_bilateral_filter, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -762,7 +845,8 @@ edges->Save("edges.png");
 			array_args[2] := FloatRef->New(threshold1);
 			array_args[3] := FloatRef->New(threshold2);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_canny", array_args);
+			if(@fn_opencv_canny = Nil) { @fn_opencv_canny := "opencv_canny"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_canny, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -783,7 +867,8 @@ edges->Save("edges.png");
 			array_args[3] := IntRef->New(dx);
 			array_args[4] := IntRef->New(dy);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_sobel", array_args);
+			if(@fn_opencv_sobel = Nil) { @fn_opencv_sobel := "opencv_sobel"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_sobel, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -804,7 +889,8 @@ edges->Save("edges.png");
 			array_args[3] := FloatRef->New(maxval);
 			array_args[4] := IntRef->New(type);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_threshold", array_args);
+			if(@fn_opencv_threshold = Nil) { @fn_opencv_threshold := "opencv_threshold"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_threshold, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -830,7 +916,8 @@ edges->Save("edges.png");
 			array_args[5] := IntRef->New(block_size);
 			array_args[6] := FloatRef->New(C);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_adaptive_threshold", array_args);
+			if(@fn_opencv_adaptive_threshold = Nil) { @fn_opencv_adaptive_threshold := "opencv_adaptive_threshold"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_adaptive_threshold, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -851,7 +938,8 @@ edges->Save("edges.png");
 			array_args[3] := IntRef->New(ksize_w);
 			array_args[4] := IntRef->New(ksize_h);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_erode", array_args);
+			if(@fn_opencv_erode = Nil) { @fn_opencv_erode := "opencv_erode"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_erode, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -872,7 +960,8 @@ edges->Save("edges.png");
 			array_args[3] := IntRef->New(ksize_w);
 			array_args[4] := IntRef->New(ksize_h);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_dilate", array_args);
+			if(@fn_opencv_dilate = Nil) { @fn_opencv_dilate := "opencv_dilate"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_dilate, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -895,7 +984,8 @@ edges->Save("edges.png");
 			array_args[4] := IntRef->New(ksize_w);
 			array_args[5] := IntRef->New(ksize_h);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_morphology_ex", array_args);
+			if(@fn_opencv_morphology_ex = Nil) { @fn_opencv_morphology_ex := "opencv_morphology_ex"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_morphology_ex, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -920,7 +1010,8 @@ if(blurred->Save("output.jpg")) {
 			array_args[1] := @self;
 			array_args[2] := path;
 
-			Proxy->GetDllProxy()->CallFunction("opencv_save_image", array_args);
+			if(@fn_opencv_save_image = Nil) { @fn_opencv_save_image := "opencv_save_image"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_save_image, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -944,7 +1035,8 @@ mirrored->Save("mirrored.jpg");
 			array_args[1] := @self;
 			array_args[2] := IntRef->New(flipCode);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_flip", array_args);
+			if(@fn_opencv_flip = Nil) { @fn_opencv_flip := "opencv_flip"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_flip, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -968,7 +1060,8 @@ cropped->Save("cropped.jpg");
 			array_args[1] := @self;
 			array_args[2] := rect;
 
-			Proxy->GetDllProxy()->CallFunction("opencv_crop", array_args);
+			if(@fn_opencv_crop = Nil) { @fn_opencv_crop := "opencv_crop"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_crop, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -983,7 +1076,8 @@ cropped->Save("cropped.jpg");
 			array_args[0] := Nil;
 			array_args[1] := @self;
 
-			Proxy->GetDllProxy()->CallFunction("opencv_clone", array_args);
+			if(@fn_opencv_clone = Nil) { @fn_opencv_clone := "opencv_clone"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_clone, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -1005,7 +1099,8 @@ cropped->Save("cropped.jpg");
 			array_args[2] := IntRef->New(mode);
 			array_args[3] := IntRef->New(approx);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_find_contours", array_args);
+			if(@fn_opencv_find_contours = Nil) { @fn_opencv_find_contours := "opencv_find_contours"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_find_contours, array_args);
 
 			holder := array_args[0]->As(IntArrayRef);
 			return holder->Get();
@@ -1030,7 +1125,8 @@ cropped->Save("cropped.jpg");
 			array_args[4] := color;
 			array_args[5] := IntRef->New(thickness);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_draw_contours", array_args);
+			if(@fn_opencv_draw_contours = Nil) { @fn_opencv_draw_contours := "opencv_draw_contours"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_draw_contours, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -1048,7 +1144,8 @@ cropped->Save("cropped.jpg");
 			array_args[1] := IntArrayRef->New(contours);
 			array_args[2] := IntRef->New(index);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_contour_area", array_args);
+			if(@fn_opencv_contour_area = Nil) { @fn_opencv_contour_area := "opencv_contour_area"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_contour_area, array_args);
 
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -1067,7 +1164,8 @@ cropped->Save("cropped.jpg");
 			array_args[1] := IntArrayRef->New(contours);
 			array_args[2] := IntRef->New(index);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_bounding_rect", array_args);
+			if(@fn_opencv_bounding_rect = Nil) { @fn_opencv_bounding_rect := "opencv_bounding_rect"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_bounding_rect, array_args);
 
 			return array_args[0]->As(Rect);
 		}
@@ -1088,7 +1186,8 @@ cropped->Save("cropped.jpg");
 			array_args[3] := IntRef->New(width);
 			array_args[4] := IntRef->New(height);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_warp_affine", array_args);
+			if(@fn_opencv_warp_affine = Nil) { @fn_opencv_warp_affine := "opencv_warp_affine"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_warp_affine, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -1109,7 +1208,8 @@ cropped->Save("cropped.jpg");
 			array_args[3] := IntRef->New(width);
 			array_args[4] := IntRef->New(height);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_warp_perspective", array_args);
+			if(@fn_opencv_warp_perspective = Nil) { @fn_opencv_warp_perspective := "opencv_warp_perspective"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_warp_perspective, array_args);
 
 			return array_args[0]->As(Image);
 		}
@@ -1131,7 +1231,8 @@ cropped->Save("cropped.jpg");
 			array_args[3] := FloatRef->New(angle);
 			array_args[4] := FloatRef->New(scale);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_get_rotation_matrix_2d", array_args);
+			if(@fn_opencv_get_rotation_matrix_2d = Nil) { @fn_opencv_get_rotation_matrix_2d := "opencv_get_rotation_matrix_2d"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_get_rotation_matrix_2d, array_args);
 
 			holder := array_args[0]->As(FloatArrayRef);
 			return holder->Get();
@@ -1163,7 +1264,8 @@ cropped->Save("cropped.jpg");
 			array_args[6] := FloatRef->New(std_g);
 			array_args[7] := FloatRef->New(std_b);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_normalize", array_args);
+			if(@fn_opencv_normalize = Nil) { @fn_opencv_normalize := "opencv_normalize"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_normalize, array_args);
 
 			holder := array_args[0]->As(FloatArrayRef);
 			return holder->Get();
@@ -1174,6 +1276,16 @@ cropped->Save("cropped.jpg");
 	OpenCV VideoWriter for writing video files
 	~#
 	class VideoWriter {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_opencv_new_video_writer : static : String;
+		@fn_opencv_video_writer_fourcc : static : String;
+		@fn_opencv_video_writer_is_open : static : String;
+		@fn_opencv_video_writer_release : static : String;
+		@fn_opencv_video_writer_write : static : String;
 		@writer : Int;
 
 		#~
@@ -1194,7 +1306,8 @@ cropped->Save("cropped.jpg");
 			array_args[4] := IntRef->New(width);
 			array_args[5] := IntRef->New(height);
 
-			Proxy->GetDllProxy()->CallFunction("opencv_new_video_writer", array_args);
+			if(@fn_opencv_new_video_writer = Nil) { @fn_opencv_new_video_writer := "opencv_new_video_writer"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_new_video_writer, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@writer := value->Get();
@@ -1218,7 +1331,8 @@ cropped->Save("cropped.jpg");
 			array_args[3] := IntRef->New(c3->As(Int));
 			array_args[4] := IntRef->New(c4->As(Int));
 
-			Proxy->GetDllProxy()->CallFunction("opencv_video_writer_fourcc", array_args);
+			if(@fn_opencv_video_writer_fourcc = Nil) { @fn_opencv_video_writer_fourcc := "opencv_video_writer_fourcc"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_video_writer_fourcc, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -1234,7 +1348,8 @@ cropped->Save("cropped.jpg");
 			array_args[0] := IntRef->New(@writer);
 			array_args[1] := image;
 
-			Proxy->GetDllProxy()->CallFunction("opencv_video_writer_write", array_args);
+			if(@fn_opencv_video_writer_write = Nil) { @fn_opencv_video_writer_write := "opencv_video_writer_write"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_video_writer_write, array_args);
 		}
 
 		#~
@@ -1246,7 +1361,8 @@ cropped->Save("cropped.jpg");
 
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@writer);
-			Proxy->GetDllProxy()->CallFunction("opencv_video_writer_is_open", array_args);
+			if(@fn_opencv_video_writer_is_open = Nil) { @fn_opencv_video_writer_is_open := "opencv_video_writer_is_open"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_video_writer_is_open, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -1259,7 +1375,8 @@ cropped->Save("cropped.jpg");
 			array_args := Base->New[1];
 
 			array_args[0] := IntRef->New(@writer);
-			Proxy->GetDllProxy()->CallFunction("opencv_video_writer_release", array_args);
+			if(@fn_opencv_video_writer_release = Nil) { @fn_opencv_video_writer_release := "opencv_video_writer_release"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_opencv_video_writer_release, array_args);
 		}
 	}
 

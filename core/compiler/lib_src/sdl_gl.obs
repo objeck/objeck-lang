@@ -259,6 +259,35 @@ bundle Game.OpenGL {
 	pointing back here.
 	~#
 	class GL {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_gl_blend_func : static : String;
+		@fn_sdl_gl_clear : static : String;
+		@fn_sdl_gl_clear_color : static : String;
+		@fn_sdl_gl_cull_face : static : String;
+		@fn_sdl_gl_depth_func : static : String;
+		@fn_sdl_gl_depth_mask : static : String;
+		@fn_sdl_gl_disable : static : String;
+		@fn_sdl_gl_enable : static : String;
+		@fn_sdl_gl_extensions : static : String;
+		@fn_sdl_gl_get_error : static : String;
+		@fn_sdl_gl_is_enabled : static : String;
+		@fn_sdl_gl_last_error : static : String;
+		@fn_sdl_gl_line_width : static : String;
+		@fn_sdl_gl_load_functions : static : String;
+		@fn_sdl_gl_max_anisotropy : static : String;
+		@fn_sdl_gl_optional_missing : static : String;
+		@fn_sdl_gl_point_size : static : String;
+		@fn_sdl_gl_polygon_offset : static : String;
+		@fn_sdl_gl_read_pixel : static : String;
+		@fn_sdl_gl_scissor : static : String;
+		@fn_sdl_gl_stencil_func : static : String;
+		@fn_sdl_gl_stencil_mask : static : String;
+		@fn_sdl_gl_stencil_op : static : String;
+		@fn_sdl_gl_viewport : static : String;
 		#~
 		Resolve the OpenGL 2.0+ entry points. Call once, after the context is
 		current and before creating any Shader, Mesh or Texture2D.
@@ -273,7 +302,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_load_functions", array_args);
+			if(@fn_sdl_gl_load_functions = Nil) { @fn_sdl_gl_load_functions := "sdl_gl_load_functions"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_load_functions, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -286,7 +316,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(capability);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_enable", array_args);
+			if(@fn_sdl_gl_enable = Nil) { @fn_sdl_gl_enable := "sdl_gl_enable"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_enable, array_args);
 		}
 
 		#~
@@ -312,7 +343,8 @@ bundle Game.OpenGL {
 			array_args[2] := IntRef->New(width);
 			array_args[3] := IntRef->New(height);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_scissor", array_args);
+			if(@fn_sdl_gl_scissor = Nil) { @fn_sdl_gl_scissor := "sdl_gl_scissor"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_scissor, array_args);
 		}
 
 		#~
@@ -354,7 +386,8 @@ bundle Game.OpenGL {
 			array_args[0] := FloatRef->New(factor);
 			array_args[1] := FloatRef->New(units);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_polygon_offset", array_args);
+			if(@fn_sdl_gl_polygon_offset = Nil) { @fn_sdl_gl_polygon_offset := "sdl_gl_polygon_offset"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_polygon_offset, array_args);
 		}
 
 		#~
@@ -368,7 +401,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := FloatRef->New(size);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_point_size", array_args);
+			if(@fn_sdl_gl_point_size = Nil) { @fn_sdl_gl_point_size := "sdl_gl_point_size"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_point_size, array_args);
 		}
 
 		#~
@@ -393,7 +427,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := FloatRef->New(width);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_line_width", array_args);
+			if(@fn_sdl_gl_line_width = Nil) { @fn_sdl_gl_line_width := "sdl_gl_line_width"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_line_width, array_args);
 		}
 
 		#~
@@ -424,7 +459,8 @@ bundle Game.OpenGL {
 			array_args[1] := IntRef->New(reference);
 			array_args[2] := IntRef->New(mask);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_func", array_args);
+			if(@fn_sdl_gl_stencil_func = Nil) { @fn_sdl_gl_stencil_func := "sdl_gl_stencil_func"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_stencil_func, array_args);
 		}
 
 		#~
@@ -439,7 +475,8 @@ bundle Game.OpenGL {
 			array_args[1] := IntRef->New(on_depth_fail);
 			array_args[2] := IntRef->New(on_pass);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_op", array_args);
+			if(@fn_sdl_gl_stencil_op = Nil) { @fn_sdl_gl_stencil_op := "sdl_gl_stencil_op"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_stencil_op, array_args);
 		}
 
 		#~
@@ -450,7 +487,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(mask);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_stencil_mask", array_args);
+			if(@fn_sdl_gl_stencil_mask = Nil) { @fn_sdl_gl_stencil_mask := "sdl_gl_stencil_mask"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_stencil_mask, array_args);
 		}
 
 		#~
@@ -465,7 +503,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(func);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_depth_func", array_args);
+			if(@fn_sdl_gl_depth_func = Nil) { @fn_sdl_gl_depth_func := "sdl_gl_depth_func"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_depth_func, array_args);
 		}
 
 		#~
@@ -484,7 +523,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := FloatRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_max_anisotropy", array_args);
+			if(@fn_sdl_gl_max_anisotropy = Nil) { @fn_sdl_gl_max_anisotropy := "sdl_gl_max_anisotropy"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_max_anisotropy, array_args);
 
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -504,7 +544,8 @@ bundle Game.OpenGL {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(capability);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_is_enabled", array_args);
+			if(@fn_sdl_gl_is_enabled = Nil) { @fn_sdl_gl_is_enabled := "sdl_gl_is_enabled"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_is_enabled, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() <> 0;
@@ -518,7 +559,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(capability);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_disable", array_args);
+			if(@fn_sdl_gl_disable = Nil) { @fn_sdl_gl_disable := "sdl_gl_disable"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_disable, array_args);
 		}
 		#~
 		Set the color the next Clear fills the color buffer with. Components are
@@ -535,7 +577,8 @@ bundle Game.OpenGL {
 			array_args[2] := FloatRef->New(b);
 			array_args[3] := FloatRef->New(a);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_clear_color", array_args);
+			if(@fn_sdl_gl_clear_color = Nil) { @fn_sdl_gl_clear_color := "sdl_gl_clear_color"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_clear_color, array_args);
 		}
 
 		#~
@@ -546,7 +589,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(mask);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_clear", array_args);
+			if(@fn_sdl_gl_clear = Nil) { @fn_sdl_gl_clear := "sdl_gl_clear"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_clear, array_args);
 		}
 
 		#~
@@ -574,7 +618,8 @@ bundle Game.OpenGL {
 			array_args[2] := IntRef->New(width);
 			array_args[3] := IntRef->New(height);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_viewport", array_args);
+			if(@fn_sdl_gl_viewport = Nil) { @fn_sdl_gl_viewport := "sdl_gl_viewport"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_viewport, array_args);
 		}
 
 		#~
@@ -595,7 +640,8 @@ bundle Game.OpenGL {
 			array_args[1] := IntRef->New(x);
 			array_args[2] := IntRef->New(y);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_read_pixel", array_args);
+			if(@fn_sdl_gl_read_pixel = Nil) { @fn_sdl_gl_read_pixel := "sdl_gl_read_pixel"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_read_pixel, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -612,7 +658,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New();
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_get_error", array_args);
+			if(@fn_sdl_gl_get_error = Nil) { @fn_sdl_gl_get_error := "sdl_gl_get_error"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_get_error, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -665,7 +712,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_extensions", array_args);
+			if(@fn_sdl_gl_extensions = Nil) { @fn_sdl_gl_extensions := "sdl_gl_extensions"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_extensions, array_args);
 
 			all := array_args[0]->As(String);
 			if(all = Nil | all->Size() = 0) {
@@ -709,7 +757,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_optional_missing", array_args);
+			if(@fn_sdl_gl_optional_missing = Nil) { @fn_sdl_gl_optional_missing := "sdl_gl_optional_missing"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_optional_missing, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -741,7 +790,8 @@ bundle Game.OpenGL {
 			array_args[0] := IntRef->New(source);
 			array_args[1] := IntRef->New(destination);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_blend_func", array_args);
+			if(@fn_sdl_gl_blend_func = Nil) { @fn_sdl_gl_blend_func := "sdl_gl_blend_func"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_blend_func, array_args);
 		}
 
 		#~
@@ -795,7 +845,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(value);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_depth_mask", array_args);
+			if(@fn_sdl_gl_depth_mask = Nil) { @fn_sdl_gl_depth_mask := "sdl_gl_depth_mask"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_depth_mask, array_args);
 		}
 
 		#~
@@ -807,7 +858,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(mode);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_cull_face", array_args);
+			if(@fn_sdl_gl_cull_face = Nil) { @fn_sdl_gl_cull_face := "sdl_gl_cull_face"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_cull_face, array_args);
 		}
 
 		#~
@@ -859,7 +911,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_last_error", array_args);
+			if(@fn_sdl_gl_last_error = Nil) { @fn_sdl_gl_last_error := "sdl_gl_last_error"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_last_error, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -2289,6 +2342,14 @@ bundle Game.OpenGL {
 	```
 	~#
 	class Shader implements Freeable {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_gl_program_create : static : String;
+		@fn_sdl_gl_program_delete : static : String;
+		@fn_sdl_gl_uniform_exists : static : String;
 		@program : Int;
 		# Refilled rather than rebuilt; see the note on Mesh. A shader belongs to
 		# a context and a context is current on one thread, so the same threading
@@ -2329,7 +2390,8 @@ bundle Game.OpenGL {
 			array_args[2] := fragment_source;
 			array_args[3] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_program_create", array_args);
+			if(@fn_sdl_gl_program_create = Nil) { @fn_sdl_gl_program_create := "sdl_gl_program_create"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_program_create, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@program := value->Get();
@@ -2454,7 +2516,8 @@ bundle Game.OpenGL {
 			array_args[1] := IntRef->New(@program);
 			array_args[2] := name;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_uniform_exists", array_args);
+			if(@fn_sdl_gl_uniform_exists = Nil) { @fn_sdl_gl_uniform_exists := "sdl_gl_uniform_exists"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_uniform_exists, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() <> 0;
@@ -3278,7 +3341,8 @@ bundle Game.OpenGL {
 			if(@program <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@program);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_program_delete", array_args);
+				if(@fn_sdl_gl_program_delete = Nil) { @fn_sdl_gl_program_delete := "sdl_gl_program_delete"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_program_delete, array_args);
 				@program := 0;
 			};
 		}
@@ -3307,6 +3371,15 @@ bundle Game.OpenGL {
 	```
 	~#
 	class Mesh implements Freeable {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_gl_mesh_create : static : String;
+		@fn_sdl_gl_mesh_delete : static : String;
+		@fn_sdl_gl_mesh_draw : static : String;
+		@fn_sdl_gl_mesh_instances : static : String;
 		@mesh : Int;
 		# Argument buffers for the per-frame calls, built once and refilled.
 		#
@@ -3399,7 +3472,8 @@ bundle Game.OpenGL {
 			array_args[2] := IntArrayRef->New(indices);
 			array_args[3] := IntArrayRef->New(layout);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_create", array_args);
+			if(@fn_sdl_gl_mesh_create = Nil) { @fn_sdl_gl_mesh_create := "sdl_gl_mesh_create"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_mesh_create, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@mesh := value->Get();
@@ -3489,7 +3563,8 @@ bundle Game.OpenGL {
 			array_args[3] := IntArrayRef->New(layout);
 			array_args[4] := IntRef->New(base_location);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_instances", array_args);
+			if(@fn_sdl_gl_mesh_instances = Nil) { @fn_sdl_gl_mesh_instances := "sdl_gl_mesh_instances"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_mesh_instances, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() <> 0;
@@ -4299,7 +4374,8 @@ bundle Game.OpenGL {
 			if(@mesh <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@mesh);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_mesh_delete", array_args);
+				if(@fn_sdl_gl_mesh_delete = Nil) { @fn_sdl_gl_mesh_delete := "sdl_gl_mesh_delete"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_mesh_delete, array_args);
 				@mesh := 0;
 			};
 		}
@@ -4318,6 +4394,13 @@ bundle Game.OpenGL {
 	```
 	~#
 	class Texture2D implements Freeable {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_gl_texture_delete : static : String;
+		@fn_sdl_gl_texture_from_surface : static : String;
 		@texture : Int;
 		# Held rather than written at the call site; see the note on Mesh.
 		@bind_name : String;
@@ -4396,7 +4479,8 @@ bundle Game.OpenGL {
 			array_args[4] := IntRef->New(mip);
 			array_args[5] := FloatRef->New(anisotropy);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_from_surface", array_args);
+			if(@fn_sdl_gl_texture_from_surface = Nil) { @fn_sdl_gl_texture_from_surface := "sdl_gl_texture_from_surface"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_texture_from_surface, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@texture := value->Get();
@@ -4610,7 +4694,8 @@ bundle Game.OpenGL {
 			if(@texture <> 0 & @owned) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@texture);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_texture_delete", array_args);
+				if(@fn_sdl_gl_texture_delete = Nil) { @fn_sdl_gl_texture_delete := "sdl_gl_texture_delete"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_texture_delete, array_args);
 				@texture := 0;
 			};
 		}
@@ -5854,6 +5939,18 @@ bundle Game.OpenGL {
 	constructor for that.
 	~#
 	class RenderTarget implements Freeable {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_sdl_gl_target_bind : static : String;
+		@fn_sdl_gl_target_bind_cube : static : String;
+		@fn_sdl_gl_target_bind_face : static : String;
+		@fn_sdl_gl_target_create : static : String;
+		@fn_sdl_gl_target_create_cube : static : String;
+		@fn_sdl_gl_target_delete : static : String;
+		@fn_sdl_gl_target_texture : static : String;
 		@target : Int;
 		@width : Int;
 		@height : Int;
@@ -5918,7 +6015,8 @@ bundle Game.OpenGL {
 			array_args[1] := IntRef->New(size);
 			array_args[2] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_create_cube", array_args);
+			if(@fn_sdl_gl_target_create_cube = Nil) { @fn_sdl_gl_target_create_cube := "sdl_gl_target_create_cube"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_target_create_cube, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@target := value->Get();
@@ -5944,7 +6042,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New(@target);
 			array_args[1] := IntRef->New(face);
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_bind_face", array_args);
+			if(@fn_sdl_gl_target_bind_face = Nil) { @fn_sdl_gl_target_bind_face := "sdl_gl_target_bind_face"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_target_bind_face, array_args);
 		}
 
 		#~
@@ -5963,7 +6062,8 @@ bundle Game.OpenGL {
 			array_args := Base->New[2];
 			array_args[0] := IntRef->New(@target);
 			array_args[1] := IntRef->New(unit);
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_bind_cube", array_args);
+			if(@fn_sdl_gl_target_bind_cube = Nil) { @fn_sdl_gl_target_bind_cube := "sdl_gl_target_bind_cube"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_target_bind_cube, array_args);
 		}
 
 		#~
@@ -6009,7 +6109,8 @@ bundle Game.OpenGL {
 			array_args[4] := Nil;
 			array_args[5] := IntRef->New(depth);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_create", array_args);
+			if(@fn_sdl_gl_target_create = Nil) { @fn_sdl_gl_target_create := "sdl_gl_target_create"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_target_create, array_args);
 
 			value := array_args[0]->As(IntRef);
 			@target := value->Get();
@@ -6058,7 +6159,8 @@ bundle Game.OpenGL {
 			array_args[0] := IntRef->New(@target);
 			array_args[1] := IntRef->New(0);
 			array_args[2] := IntRef->New(0);
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_bind", array_args);
+			if(@fn_sdl_gl_target_bind = Nil) { @fn_sdl_gl_target_bind := "sdl_gl_target_bind"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_target_bind, array_args);
 		}
 
 		#~
@@ -6077,7 +6179,8 @@ bundle Game.OpenGL {
 			array_args[0] := IntRef->New(0);
 			array_args[1] := IntRef->New(width);
 			array_args[2] := IntRef->New(height);
-			Proxy->GetDllProxy()->CallFunction("sdl_gl_target_bind", array_args);
+			if(@fn_sdl_gl_target_bind = Nil) { @fn_sdl_gl_target_bind := "sdl_gl_target_bind"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_target_bind, array_args);
 		}
 
 		#~
@@ -6097,7 +6200,8 @@ bundle Game.OpenGL {
 				array_args := Base->New[2];
 				array_args[0] := IntRef->New();
 				array_args[1] := IntRef->New(@target);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_target_texture", array_args);
+				if(@fn_sdl_gl_target_texture = Nil) { @fn_sdl_gl_target_texture := "sdl_gl_target_texture"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_target_texture, array_args);
 
 				value := array_args[0]->As(IntRef);
 				@texture := Texture2D->Wrapping(value->Get());
@@ -6116,7 +6220,8 @@ bundle Game.OpenGL {
 			if(@target <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@target);
-				Proxy->GetDllProxy()->CallFunction("sdl_gl_target_delete", array_args);
+				if(@fn_sdl_gl_target_delete = Nil) { @fn_sdl_gl_target_delete := "sdl_gl_target_delete"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_target_delete, array_args);
 				@target := 0;
 				@texture := Nil;
 			};
