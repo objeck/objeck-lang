@@ -95,6 +95,7 @@ class GlContextTest {
 		CheckParticles();
 		CheckAnimation();
 		CheckParentedCulling();
+		CheckArgumentReuse();
 		CheckMaterialLeak();
 		CheckStencilAndPoints();
 		CheckMatrixMath();
@@ -5234,6 +5235,126 @@ class GlContextTest {
 		shader->Free();
 		cube->Free();
 		pane->Free();
+		white->Free();
+	}
+
+	#~
+	Reused argument buffers must be REFILLED, not remembered.
+
+	Mesh and Shader now keep their native-call argument buffers and fill them
+	rather than allocating a fresh set per call -- which took 6-8% off a
+	draw-heavy frame, and introduces exactly one new way to be wrong: a buffer
+	that is not refilled sends the PREVIOUS call's values.
+
+	That failure is invisible in most fixtures. Draw the same thing twice and a
+	stale buffer produces the correct picture; draw one object and there is no
+	previous value to be stale. So this draws with two DIFFERENT matrices in
+	succession and checks the second one landed, and does the same for a mesh.
+
+	The other hazard is retention: a buffer holding the caller's matrix and name
+	keeps them reachable after the call. That is released deliberately, and is
+	checked here only in the sense that releasing it must not break the next
+	call -- a buffer cleared too eagerly would send an empty matrix.
+	~#
+	method : CheckArgumentReuse() ~ Nil {
+		shader := Shader->Textured();
+		quad := Mesh->Quad(0.9);
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a shader and mesh for the reuse checks",
+				shader->IsOk() & quad->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		GL->Disable(Capability->GL_CULL_FACE);
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		black := 0xFF000000;
+		mid_y := @pixel_h / 2;
+		left_x := @pixel_w / 4;
+		right_x := (@pixel_w * 3) / 4;
+
+		# Two matrices that put the quad in clearly different places.
+		left := Float->New[16];
+		Matrix4->TranslationScaleInto(left, -0.5, 0.0, 0.0, 0.35, 0.35, 1.0);
+		right := Float->New[16];
+		Matrix4->TranslationScaleInto(right, 0.5, 0.0, 0.0, 0.35, 0.35, 1.0);
+
+		shader->Use();
+		shader->SetInt("tex", 0);
+		white->Bind(0);
+
+		# First call fills the buffer for the first time.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->SetMatrix4("mvp", left);
+		quad->Draw();
+		Check("the first matrix draws where it says", GL->ReadPixel(left_x, mid_y) <> black);
+
+		# THE assertion. Second call, different matrix, on a buffer that already
+		# holds the first one. A reuse that forgets to refill draws on the left
+		# again -- and every "did something draw" check still passes.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->SetMatrix4("mvp", right);
+		quad->Draw();
+		on_right := GL->ReadPixel(right_x, mid_y);
+		on_left := GL->ReadPixel(left_x, mid_y);
+		"  reuse: right=0x{$on_right} left=0x{$on_left}"->PrintLine();
+		Check("a second matrix through a reused buffer is the one that lands",
+			on_right <> black);
+		Check("and the first one is gone", on_left = black);
+
+		# Back again, so a buffer that only ever takes its SECOND value is caught
+		# too.
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->SetMatrix4("mvp", left);
+		quad->Draw();
+		Check("and it goes back when asked", GL->ReadPixel(left_x, mid_y) <> black);
+
+		# --- the parts of a mesh's buffer that actually VARY ---------------------
+		#
+		# The first version of this block drew two different meshes and checked
+		# each used its own buffer. That cannot fail: the buffers are per
+		# instance, so it was asserting a structural fact. Removing the refill
+		# broke nothing.
+		#
+		# What varies per call is the MODE and the instance COUNT. The handle does
+		# not -- it is fixed at construction -- so drawing the same mesh as
+		# triangles and then as lines is the check with something to catch.
+		identity := Float->New[16];
+		Matrix4->IdentityInto(identity);
+		shader->SetMatrix4("mvp", identity);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		quad->Draw();
+		filled := GL->ReadPixel(@pixel_w / 2, mid_y);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		quad->Draw(DrawMode->GL_LINES);
+		as_lines := GL->ReadPixel(@pixel_w / 2, mid_y);
+		"  same mesh: filled=0x{$filled} as lines=0x{$as_lines}"->PrintLine();
+
+		# THE assertion: a mode that is not refilled draws triangles again, and
+		# the middle of a line-drawn quad is empty where a filled one is not.
+		Check("a draw mode reaches a reused buffer",
+			filled <> black & as_lines = black);
+
+		# Repeated calls must not drift -- a buffer refilled wrongly on the third
+		# or fourth pass would show up here and not above.
+		steady := true;
+		for(i := 0; i < 8; i += 1;) {
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			shader->SetMatrix4("mvp", right);
+			quad->Draw();
+			if(GL->ReadPixel(right_x, mid_y) = black) {
+				steady := false;
+			};
+		};
+		Check("and repeated calls stay correct", steady);
+
+		Check("no GL errors from the reuse pass",
+			GL->GetError() = ErrorCode->GL_NO_ERROR);
+
+		GL->Enable(Capability->GL_CULL_FACE);
+		shader->Free();
+		quad->Free();
 		white->Free();
 	}
 
