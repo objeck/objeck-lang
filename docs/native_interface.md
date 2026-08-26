@@ -430,17 +430,30 @@ Proxy->GetDllProxy()->CallFunction(@m4_name, @m4_args);
 Reuse buffers that carry primitives. Be deliberate about buffers that carry
 references.
 
-### What is left
+### What is left, and what is not worth chasing
 
-After both rules a call is ~125ns, and about 90% of that is spent before your
-C++ function is entered — argument-array setup, interpreter dispatch, and the
-fact that `CallFunction` contains `EXT_LIB_FUNC_CALL`, which is in neither JIT
-whitelist, so the method is always interpreted and every native call from
-JIT-compiled code crosses back into the interpreter.
+After both rules a call is ~125ns, nearly all of it spent before your C++
+function is entered: building the argument array and dispatching the call.
+
+It is tempting to blame the JIT for the rest. `CallFunction` contains
+`EXT_LIB_FUNC_CALL`, which is in neither JIT whitelist, so that method is always
+interpreted and every native call from JIT-compiled code crosses into the
+interpreter. That is true, and it costs nothing. Measured by running the same
+loop from a JIT-compiled caller and from an interpreted one — a method
+containing a native call cannot be compiled, which is how you get one of each —
+the compiled caller is **faster by 155-270ns per call**. The crossing is not a
+toll.
+
+Nor is there much to win by making the opcode JIT-able. What that would remove
+is the interpreted method invocation, and that is **~20ns**: about 16% of a
+minimal call and under 2% of a call doing any real work. It would also mean
+restructuring how the opcode reads its operands, since it takes them from
+`frame->mem` and a JIT callback has no frame — the same frame dependency that
+`HasFrameDependentTrap` exists to reject. A 20ns ceiling is not worth that.
 
 The practical consequence: **batch at the boundary.** One call that draws 500
 instances beats 500 calls that draw one, by far more than any tuning of the call
-itself.
+itself — and unlike the call overhead, batching has no ceiling.
 
 ---
 
