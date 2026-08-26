@@ -94,6 +94,7 @@ class GlContextTest {
 		CheckArraysAndOffset();
 		CheckParticles();
 		CheckAnimation();
+		CheckParentedCulling();
 		CheckMaterialLeak();
 		CheckStencilAndPoints();
 		CheckMatrixMath();
@@ -5088,6 +5089,151 @@ class GlContextTest {
 
 		shader->Free();
 		cube->Free();
+		white->Free();
+	}
+
+	#~
+	Culling a parented prop, which has to happen in WORLD space.
+
+	The bug this exists for is invisible in almost every scene. Local and world
+	positions are identical for an unparented transform, so culling on the local
+	one works everywhere until the first parented object -- and then it works
+	there too, unless the object is far enough from its parent for the two
+	positions to fall on opposite sides of the frustum.
+
+	Which is why both checks below put the prop and its parent far apart in
+	OPPOSITE directions: a prop whose local position is off screen and whose world
+	position is dead centre, and one the other way round. Anything closer together
+	passes either way.
+	~#
+	method : CheckParentedCulling() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube(0.4);
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a scene for the parented-culling checks",
+				shader->IsOk() & cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		scene := Scene->New(cube, shader);
+		rig := LightRig->New();
+		rig->SetAmbient(1.0, 1.0, 1.0);
+		scene->SetLightRig(rig);
+		scene->SetCulling(true);
+
+		eye := Camera->New(Vector3->New(0.0, 0.0, 6.0));
+		eye->SetPerspectiveDegrees(60.0, @gl->GetAspect());
+		scene->SetEye(eye->GetPosition());
+
+		# The prop's LOCAL position is far off to the left, well outside the view.
+		# Its parent is an equal distance to the right, so the world position is
+		# the origin -- dead centre.
+		hub := Transform->New();
+		hub->SetPosition(60.0, 0.0, 0.0);
+
+		prop := scene->AddProp(Prop->New(cube, Material->New(white)));
+		prop->GetTransform()->SetPosition(-60.0, 0.0, 0.0);
+		prop->GetTransform()->SetParent(hub);
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		scene->Draw(eye->GetViewProjection());
+
+		black := 0xFF000000;
+		centre := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		drawn := scene->GetDrawnCount();
+		culled := scene->GetCulledCount();
+		"  local off screen, world centred: drawn={$drawn} culled={$culled}"->PrintLine();
+
+		# THE assertion. Culling on the local position throws this away, and the
+		# symptom is an object vanishing while plainly in view -- which reads as a
+		# frustum bug rather than a coordinate one.
+		Check("a prop whose WORLD position is in view is not culled", culled = 0);
+		Check("and it actually draws", centre <> black);
+
+		# The other way round: local position centred, parent carries it off
+		# screen. This one MUST be culled, or the fix is just "never cull props".
+		hub->SetPosition(600.0, 0.0, 0.0);
+		prop->GetTransform()->SetPosition(0.0, 0.0, 0.0);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		scene->Draw(eye->GetViewProjection());
+		away_culled := scene->GetCulledCount();
+		"  local centred, world off screen: culled={$away_culled}"->PrintLine();
+		Check("and one carried out of view by its parent IS culled",
+			away_culled = 1);
+		Check("leaving nothing on screen",
+			GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) = black);
+
+		# --- the bounding radius has to follow the parent's scale ---------------
+		# A prop under a parent scaled up is bigger, and a radius that ignores
+		# that culls it while part of it is still on screen.
+		hub->SetPosition(0.0, 0.0, 0.0);
+		hub->SetScale(1.0, 1.0, 1.0);
+		prop->GetTransform()->SetPosition(0.0, 0.0, 0.0);
+		small := prop->GetBoundsRadius();
+
+		hub->SetScale(4.0, 4.0, 4.0);
+		large := prop->GetBoundsRadius();
+		"  bounds radius: unscaled parent={$small}  parent scaled 4x={$large}"->PrintLine();
+		Check("a parent's scale grows the prop's bounding radius",
+			(large - small * 4.0)->Abs() < 0.001);
+
+		# --- and the transparent sort orders by world distance -------------------
+		# Two translucent props at the same LOCAL position, carried to different
+		# depths by their parents. Sorting on the local position cannot tell them
+		# apart at all.
+		scene->Clear();
+		scene->SetEye(eye->GetPosition());
+		scene->SetCulling(false);
+
+		near_hub := Transform->New();
+		near_hub->SetPosition(0.0, 0.0, 2.0);
+		far_hub := Transform->New();
+		far_hub->SetPosition(0.0, 0.0, -2.0);
+
+		blue := Material->Colored(0.0, 0.0, 1.0);
+		blue->SetOpacity(0.5);
+		red := Material->Colored(1.0, 0.0, 0.0);
+		red->SetOpacity(0.5);
+
+		pane := Mesh->Cube();
+		# Added NEAR first, which is the WRONG order to draw them in -- and that is
+		# the point. Both props sit at the same LOCAL position, so a sort measuring
+		# local distance finds them equidistant, leaves them in insertion order,
+		# and draws the near one first and the far one over the top of it.
+		#
+		# The first version of this block added them far-first, where insertion
+		# order happens to be correct: it passed against a deliberately broken sort
+		# and proved nothing.
+		near_prop := scene->AddProp(Prop->New(pane, blue));
+		near_prop->GetTransform()->SetScale(3.0, 3.0, 0.1);
+		near_prop->GetTransform()->SetParent(near_hub);
+
+		far_prop := scene->AddProp(Prop->New(pane, red));
+		far_prop->GetTransform()->SetScale(3.0, 3.0, 0.1);
+		far_prop->GetTransform()->SetParent(far_hub);
+
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetInt("tex", 0);
+		white->Bind(0);
+		scene->Draw(eye->GetViewProjection());
+
+		blend := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		br := (blend and 0x00FF0000) / 0x10000;
+		bb := (blend and 0x000000FF);
+		"  parented transparency: r={$br} b={$bb}"->PrintLine();
+		# The near pane is blue and drawn last, so blue must dominate.
+		Check("transparent props sort by their WORLD distance from the eye",
+			bb > br);
+
+		scene->SetCulling(true);
+		shader->Free();
+		cube->Free();
+		pane->Free();
 		white->Free();
 	}
 
