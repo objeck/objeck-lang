@@ -13,7 +13,7 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 193** (plus 14 debugger tests, see below).
+**Total runtime tests: 194** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
@@ -23,7 +23,7 @@ python gen_manifest.py
 | Core Language | 38 |
 | Negative | 21 |
 | AMD64/JIT | 20 |
-| Other | 19 |
+| Other | 20 |
 | Bug Fix | 13 |
 | System.ML | 13 |
 | Collections | 10 |
@@ -240,13 +240,14 @@ python gen_manifest.py
 | 184 | `string_split_ops.obs` | Strings | string split ops | ✅ |
 | 185 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
 | 186 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
-| 187 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
-| 188 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
-| 189 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
-| 190 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 191 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 192 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 193 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 187 | `trap_array_barrier_test.obs` | Other | A String[] returned by a VM trap must survive a collection. Every trap that returns an array of o... | ✅ |
+| 188 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
+| 189 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
+| 190 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
+| 191 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 192 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 193 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 194 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 
