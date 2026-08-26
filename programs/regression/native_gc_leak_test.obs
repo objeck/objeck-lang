@@ -1,0 +1,152 @@
+#~
+# Objects a native library returns must be RECLAIMED, not merely reachable.
+#
+# native_gc_barrier_test.obs guards the other direction -- that a returned
+# object survives long enough to be read. This one guards the direction that
+# costs a process rather than a value.
+#
+# Native allocations go to the old generation, where only a MAJOR collection
+# reclaims them (see MemoryManager::AllocateObjectNative and
+# docs/native_interface.md). Nothing about a native call triggers a collection
+# on its own: the API allocators pass collect=false, so they neither park at a
+# safepoint nor drive a GC. The question is whether ordinary allocation
+# pressure still produces the major collections that free them.
+#
+# Each iteration allocates one String natively -- Base64 returns one -- and
+# drops it. Nothing is retained, so a heap that climbs without bound is a leak.
+#
+# MEASURING IT IS THE HARD PART, and the obvious way does not work. The heap
+# sawtooths: it climbs to the collection threshold, drops, climbs again, and
+# the threshold itself adapts at runtime. So any single reading is a coin flip,
+# and comparing one reading against an early one with a generous multiplier is
+# worse than useless -- the first version of this test allowed 4x a baseline
+# that was 20MB of process startup, which would have passed with 54MB of
+# genuinely leaked strings sitting in a list.
+#
+# What actually rises when something leaks is the sawtooth's FLOOR. So this
+# runs two phases of equal length, samples repeatedly within each, and compares
+# the MINIMUM of each -- the closest each phase came to a fully collected heap.
+# With nothing retained the two floors are the same heap twice. With a leak the
+# second floor carries everything the first phase left behind.
+#
+# Measured when written: floors of 15.3MB and 15.6MB across 3,000,000
+# iterations, with 86 major collections, indistinguishable from the same run at
+# 400,000. Retaining the returned strings instead moves the second floor by
+# tens of megabytes, which is what the 1.5x bound below is set to catch.
+~#
+
+use System.API;
+
+class NativeGcLeakTest {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := NativeGcLeakTest->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Used() ~ Int {
+		return Runtime->GetProperty("runtime.memory.used")->ToInt();
+	}
+
+	method : Majors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.major")->ToInt();
+	}
+
+	#~
+	Run one phase and return the lowest heap reading seen during it -- how close
+	the heap came to being fully collected. Sampling often matters more than
+	sampling precisely: a phase that never lands near a trough reports a floor
+	that is really a slope.
+	~#
+	method : Floor(input : Byte[], rounds : Int) ~ Int {
+		low := Used();
+		every := rounds / 20;
+		for(i := 0; i < rounds; i += 1;) {
+			s := Cipher.Encrypt->Base64(input);
+			if(s = Nil) {
+				"unreachable"->PrintLine();
+			};
+
+			if(i % every = 0) {
+				used := Used();
+				if(used < low) {
+					low := used;
+				};
+			};
+		};
+
+		return low;
+	}
+
+	method : Run() ~ Nil {
+		proxy := DllProxy->New("libobjk_crypto");
+		if(<>proxy->IsLoaded()) {
+			"SKIP: libobjk_crypto is not deployed"->PrintLine();
+			return;
+		};
+
+		input := "the quick brown fox jumps over the lazy dog"->ToByteArray();
+		rounds := 250000;
+
+		# Warm up first, and throw the reading away. A floor sampled from process
+		# start is not a floor at all -- it is the heap before it has reached its
+		# working size, and comparing a later phase against it reports growth that
+		# is really just start-up. Measured: 9.5MB against a steady-state 14MB,
+		# which left the check passing by one percent for the wrong reason.
+		Floor(input, rounds);
+
+		base_major := Majors();
+		first := Floor(input, rounds);
+		second := Floor(input, rounds);
+		end_major := Majors();
+
+		"  floor after phase 1: {$first}"->PrintLine();
+		"  floor after phase 2: {$second}"->PrintLine();
+		"  major collections: {$base_major} -> {$end_major}"->PrintLine();
+
+		# Collections must actually be happening. Without this, a small heap
+		# would only mean the run was short.
+		Check("major collections run while native calls allocate",
+			end_major > base_major);
+
+		# The second phase's floor is the first phase's floor plus whatever the
+		# first phase failed to release.
+		#
+		# The margin is a quarter, not something looser, because a ratio between
+		# consecutive phases gets WEAKER as a linear leak accumulates: with a
+		# baseline F and a leak L per phase the ratio is (F+2L)/(F+L), which
+		# approaches 1 while the leak grows without bound. At a quarter the test
+		# catches any phase retaining more than about a third of the baseline
+		# heap; at a half it needed a leak larger than the entire baseline, which
+		# is most of a leak already having happened before anyone is told.
+		#
+		# Measured drift with nothing retained is under 4%, so this is roughly
+		# seven times the noise.
+		limit := (first * 5) / 4;
+		Check("the heap floor does not rise across a second phase ({$second} < {$limit})",
+			second < limit);
+
+		if(@failures = 0) {
+			"All tests passed"->PrintLine();
+		}
+		else {
+			"{$@failures} test(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
