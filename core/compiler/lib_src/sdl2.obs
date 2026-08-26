@@ -2169,52 +2169,28 @@ bundle Game.SDL2 {
 		@fn_sdl_gamecontroller_close : static : String;
 		@fn_sdl_gamecontroller_event_state : static : String;
 		@fn_sdl_gamecontroller_from_instanceid : static : String;
-		@fn_sdl_gamecontroller_from_player_index : static : String;
-		@fn_sdl_gamecontroller_get_applesf_symbols_name_for_axis : static : String;
-		@fn_sdl_gamecontroller_get_applesf_symbols_name_for_button : static : String;
 		@fn_sdl_gamecontroller_get_attached : static : String;
 		@fn_sdl_gamecontroller_get_axis : static : String;
 		@fn_sdl_gamecontroller_get_bind_for_axis : static : String;
 		@fn_sdl_gamecontroller_get_bind_for_button : static : String;
 		@fn_sdl_gamecontroller_get_button : static : String;
 		@fn_sdl_gamecontroller_get_button_from_string : static : String;
-		@fn_sdl_gamecontroller_get_firmware_version : static : String;
 		@fn_sdl_gamecontroller_get_joystick : static : String;
-		@fn_sdl_gamecontroller_get_num_touchpad_fingers : static : String;
 		@fn_sdl_gamecontroller_get_num_touchpads : static : String;
 		@fn_sdl_gamecontroller_get_player_index : static : String;
 		@fn_sdl_gamecontroller_get_product : static : String;
 		@fn_sdl_gamecontroller_get_product_version : static : String;
-		@fn_sdl_gamecontroller_get_sensor_data : static : String;
-		@fn_sdl_gamecontroller_get_sensor_data_rate : static : String;
-		@fn_sdl_gamecontroller_get_serial : static : String;
 		@fn_sdl_gamecontroller_get_string_for_axis : static : String;
 		@fn_sdl_gamecontroller_get_string_for_button : static : String;
-		@fn_sdl_gamecontroller_get_touchpad_finger : static : String;
-		@fn_sdl_gamecontroller_get_type : static : String;
 		@fn_sdl_gamecontroller_get_vendor : static : String;
-		@fn_sdl_gamecontroller_has_axis : static : String;
-		@fn_sdl_gamecontroller_has_button : static : String;
-		@fn_sdl_gamecontroller_has_rumble : static : String;
-		@fn_sdl_gamecontroller_has_rumble_triggers : static : String;
-		@fn_sdl_gamecontroller_has_sensor : static : String;
-		@fn_sdl_gamecontroller_hasled : static : String;
-		@fn_sdl_gamecontroller_is_sensor_enabled : static : String;
 		@fn_sdl_gamecontroller_mapping : static : String;
 		@fn_sdl_gamecontroller_mapping_for_index : static : String;
 		@fn_sdl_gamecontroller_name : static : String;
 		@fn_sdl_gamecontroller_name_for_index : static : String;
 		@fn_sdl_gamecontroller_num_mappings : static : String;
 		@fn_sdl_gamecontroller_open : static : String;
-		@fn_sdl_gamecontroller_path : static : String;
-		@fn_sdl_gamecontroller_path_for_index : static : String;
 		@fn_sdl_gamecontroller_rumble : static : String;
-		@fn_sdl_gamecontroller_rumble_triggers : static : String;
 		@fn_sdl_gamecontroller_sdl_is_game_controller : static : String;
-		@fn_sdl_gamecontroller_set_player_index : static : String;
-		@fn_sdl_gamecontroller_set_sensor_enabled : static : String;
-		@fn_sdl_gamecontroller_setled : static : String;
-		@fn_sdl_gamecontroller_type_for_index : static : String;
 		@fn_sdl_gamecontroller_update : static : String;
 		@gamecontroller : Int;
 
@@ -2335,8 +2311,7 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(joystick_index);
 
-			if(@fn_sdl_gamecontroller_path_for_index = Nil) { @fn_sdl_gamecontroller_path_for_index := "sdl_gamecontroller_path_for_index"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_path_for_index, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path_for_index", array_args);
 
 			return array_args[0];
 		}
@@ -2350,8 +2325,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(joystick_index);
 
-			if(@fn_sdl_gamecontroller_type_for_index = Nil) { @fn_sdl_gamecontroller_type_for_index := "sdl_gamecontroller_type_for_index"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_type_for_index, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_type_for_index", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get()->As(GameControllerType);
@@ -2385,8 +2359,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(player_index);
 
-			if(@fn_sdl_gamecontroller_from_player_index = Nil) { @fn_sdl_gamecontroller_from_player_index := "sdl_gamecontroller_from_player_index"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_from_player_index, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_from_player_index", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return GameController->New(value->Get());
@@ -2419,8 +2392,7 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			if(@fn_sdl_gamecontroller_path = Nil) { @fn_sdl_gamecontroller_path := "sdl_gamecontroller_path"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_path, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_path", array_args);
 
 			return array_args[0];
 		}
@@ -2433,8 +2405,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			if(@fn_sdl_gamecontroller_get_type = Nil) { @fn_sdl_gamecontroller_get_type := "sdl_gamecontroller_get_type"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_type, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_type", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get()->As(GameControllerType);
@@ -2467,8 +2438,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New(@gamecontroller);
 			array_args[1] := IntRef->New(player_index);
 
-			if(@fn_sdl_gamecontroller_set_player_index = Nil) { @fn_sdl_gamecontroller_set_player_index := "sdl_gamecontroller_set_player_index"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_set_player_index, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_set_player_index", array_args);
 		}
 		~#
 
@@ -2530,8 +2500,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			if(@fn_sdl_gamecontroller_get_firmware_version = Nil) { @fn_sdl_gamecontroller_get_firmware_version := "sdl_gamecontroller_get_firmware_version"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_firmware_version, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_firmware_version", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2546,8 +2515,7 @@ bundle Game.SDL2 {
 			array_args[0] := Nil;
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			if(@fn_sdl_gamecontroller_get_serial = Nil) { @fn_sdl_gamecontroller_get_serial := "sdl_gamecontroller_get_serial"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_serial, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_serial", array_args);
 
 			return array_args[0];
 		}
@@ -2673,8 +2641,7 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(axis);
 
-			if(@fn_sdl_gamecontroller_has_axis = Nil) { @fn_sdl_gamecontroller_has_axis := "sdl_gamecontroller_has_axis"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_axis, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_axis", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2760,8 +2727,7 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(button);
 
-			if(@fn_sdl_gamecontroller_has_button = Nil) { @fn_sdl_gamecontroller_has_button := "sdl_gamecontroller_has_button"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_button, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_button", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2811,8 +2777,7 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(touchpad);
 
-			if(@fn_sdl_gamecontroller_get_num_touchpad_fingers = Nil) { @fn_sdl_gamecontroller_get_num_touchpad_fingers := "sdl_gamecontroller_get_num_touchpad_fingers"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_num_touchpad_fingers, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_num_touchpad_fingers", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2839,8 +2804,7 @@ bundle Game.SDL2 {
 			array_args[6] := y;
 			array_args[7] := pressure;
 
-			if(@fn_sdl_gamecontroller_get_touchpad_finger = Nil) { @fn_sdl_gamecontroller_get_touchpad_finger := "sdl_gamecontroller_get_touchpad_finger"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_touchpad_finger, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_touchpad_finger", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2857,8 +2821,7 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(type);
 
-			if(@fn_sdl_gamecontroller_has_sensor = Nil) { @fn_sdl_gamecontroller_has_sensor := "sdl_gamecontroller_has_sensor"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_sensor, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_sensor", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2877,8 +2840,7 @@ bundle Game.SDL2 {
 			array_args[2] := IntRef->New(type);
 			array_args[3] := IntRef->New(enabled ? 0 : 1);
 
-			if(@fn_sdl_gamecontroller_set_sensor_enabled = Nil) { @fn_sdl_gamecontroller_set_sensor_enabled := "sdl_gamecontroller_set_sensor_enabled"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_set_sensor_enabled, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_set_sensor_enabled", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2895,8 +2857,7 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(type);
 
-			if(@fn_sdl_gamecontroller_is_sensor_enabled = Nil) { @fn_sdl_gamecontroller_is_sensor_enabled := "sdl_gamecontroller_is_sensor_enabled"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_is_sensor_enabled, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_is_sensor_enabled", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -2913,8 +2874,7 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(type);
 
-			if(@fn_sdl_gamecontroller_get_sensor_data_rate = Nil) { @fn_sdl_gamecontroller_get_sensor_data_rate := "sdl_gamecontroller_get_sensor_data_rate"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_sensor_data_rate, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_sensor_data_rate", array_args);
 
 			value := array_args[0]->As(FloatRef);
 			return value->Get();
@@ -2934,8 +2894,7 @@ bundle Game.SDL2 {
 			array_args[3] := data;
 			array_args[4] := IntRef->New(num_values);
 
-			if(@fn_sdl_gamecontroller_get_sensor_data = Nil) { @fn_sdl_gamecontroller_get_sensor_data := "sdl_gamecontroller_get_sensor_data"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_sensor_data, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_sensor_data", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2979,8 +2938,7 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(right_rumble);
 			array_args[4] := IntRef->New(duration_ms);
 
-			if(@fn_sdl_gamecontroller_rumble_triggers = Nil) { @fn_sdl_gamecontroller_rumble_triggers := "sdl_gamecontroller_rumble_triggers"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_rumble_triggers, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_rumble_triggers", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -2996,8 +2954,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			if(@fn_sdl_gamecontroller_hasled = Nil) { @fn_sdl_gamecontroller_hasled := "sdl_gamecontroller_hasled"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_hasled, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_hasled", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -3011,8 +2968,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			if(@fn_sdl_gamecontroller_has_rumble = Nil) { @fn_sdl_gamecontroller_has_rumble := "sdl_gamecontroller_has_rumble"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_rumble, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_rumble", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -3027,8 +2983,7 @@ bundle Game.SDL2 {
 			array_args[0] := IntRef->New();
 			array_args[1] := IntRef->New(@gamecontroller);
 
-			if(@fn_sdl_gamecontroller_has_rumble_triggers = Nil) { @fn_sdl_gamecontroller_has_rumble_triggers := "sdl_gamecontroller_has_rumble_triggers"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_has_rumble_triggers, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_has_rumble_triggers", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get() = 0 ? false : true;
@@ -3049,8 +3004,7 @@ bundle Game.SDL2 {
 			array_args[3] := IntRef->New(green);
 			array_args[4] := IntRef->New(blue);
 
-			if(@fn_sdl_gamecontroller_setled = Nil) { @fn_sdl_gamecontroller_setled := "sdl_gamecontroller_setled"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_setled, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_setled", array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -3078,8 +3032,7 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(button);
 
-			if(@fn_sdl_gamecontroller_get_applesf_symbols_name_for_button = Nil) { @fn_sdl_gamecontroller_get_applesf_symbols_name_for_button := "sdl_gamecontroller_get_applesf_symbols_name_for_button"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_applesf_symbols_name_for_button, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_applesf_symbols_name_for_button", array_args);
 
 			return array_args[0];
 		}
@@ -3095,8 +3048,7 @@ bundle Game.SDL2 {
 			array_args[1] := IntRef->New(@gamecontroller);
 			array_args[2] := IntRef->New(axis);
 
-			if(@fn_sdl_gamecontroller_get_applesf_symbols_name_for_axis = Nil) { @fn_sdl_gamecontroller_get_applesf_symbols_name_for_axis := "sdl_gamecontroller_get_applesf_symbols_name_for_axis"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_get_applesf_symbols_name_for_axis, array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_gamecontroller_get_applesf_symbols_name_for_axis", array_args);
 
 			return array_args[0];
 		}

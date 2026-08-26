@@ -3378,7 +3378,6 @@ bundle Game.OpenGL {
 		# static function cannot read an instance field.
 		@fn_sdl_gl_mesh_create : static : String;
 		@fn_sdl_gl_mesh_delete : static : String;
-		@fn_sdl_gl_mesh_draw : static : String;
 		@fn_sdl_gl_mesh_instances : static : String;
 		@mesh : Int;
 		# Argument buffers for the per-frame calls, built once and refilled.
