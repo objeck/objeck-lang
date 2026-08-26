@@ -1,0 +1,147 @@
+#~
+# Audio.Lame->PcmToMp3 encodes PCM to MP3.
+#
+# EXTRA_LIBS: lame
+#
+# This library had no runtime test at all. It was compiled by CI and never run,
+# which is a distinction worth keeping in mind: a library that builds is not a
+# library that works. Its single native entry point (`lame_pcm_mp3`) went
+# unexercised through the whole name-hoisting change, so nothing would have
+# noticed if that call site had been broken.
+#
+# The input is a synthesised sine wave rather than a fixture file, so the test
+# carries no binary asset and cannot fail on a missing one. The assertions are
+# deliberately structural rather than exact: MP3 encoding is lossy, the encoder
+# version and its VBR decisions may change the exact byte count, and asserting a
+# specific length would make this a test of the LAME build rather than of the
+# binding. What must hold is that a real encode happened:
+#
+#   * output is produced at all, and is not the input passed back
+#   * it starts with an MP3 frame header (0xFF 0xEx / 0xFx) or an ID3 tag
+#   * it is materially smaller than the PCM it came from, which is what
+#     compression means and what a stub returning its input would fail
+#
+# Skips rather than fails when the native library is absent, and probes for the
+# file rather than relying on a failed load: EXT_LIB_LOAD calls exit(1), so
+# checking IsLoaded() after the fact is dead code.
+~#
+
+# The LAME binding lives in Game.SDL2.Aux, not in an audio bundle of its own --
+# which is part of why it had no test: it is not where anyone would look for it.
+use Game.SDL2.Aux;
+
+class LameEncodeTest {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := LameEncodeTest->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_lame";
+		dll := "{$base}.dll";
+		so := "{$base}.so";
+		dylib := "{$base}.dylib";
+
+		return System.IO.Filesystem.File->Exists(dll) |
+			System.IO.Filesystem.File->Exists(so) |
+			System.IO.Filesystem.File->Exists(dylib);
+	}
+
+	#~
+	One second of 440Hz at 22050Hz mono, 16-bit little-endian -- the format
+	lame.cpp reads (it treats the input as an array of shorts).
+	~#
+	method : Tone() ~ Byte[] {
+		samples := 22050;
+		pcm := Byte->New[samples * 2];
+		for(i := 0; i < samples; i += 1;) {
+			t := i->As(Float) / 22050.0;
+			v := (8000.0 * (2.0 * 3.14159265 * 440.0 * t)->Sin())->As(Int);
+			if(v < 0) {
+				v += 65536;
+			};
+
+			pcm[i * 2] := (v and 255)->As(Byte);
+			pcm[i * 2 + 1] := ((v / 256) and 255)->As(Byte);
+		};
+
+		return pcm;
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_lame is not deployed"->PrintLine();
+			return;
+		};
+
+		pcm := Tone();
+		pcm_size := pcm->Size();
+		"  encoding {$pcm_size} bytes of PCM"->PrintLine();
+
+		mp3 := Lame->PcmToMp3(pcm);
+		if(mp3 = Nil) {
+			Check("PcmToMp3 returns data", false);
+			Finish();
+			return;
+		};
+
+		mp3_size := mp3->Size();
+		"  got {$mp3_size} bytes of MP3"->PrintLine();
+
+		Check("PcmToMp3 returns data", mp3_size > 0);
+		if(mp3_size = 0) {
+			Finish();
+			return;
+		};
+
+		# A stub that handed the input back would pass a mere "not empty" check.
+		Check("the output is not the input passed through", mp3_size <> pcm_size);
+
+		# Compression is the point: 16-bit PCM at this bitrate compresses several
+		# times over. Half is a very loose bound on "actually encoded".
+		Check("the output is materially smaller than the PCM", mp3_size < pcm_size / 2);
+
+		# An MP3 frame starts 0xFF followed by 0xEx or 0xFx; some encoders emit an
+		# ID3 tag first. Anything else is not an MP3 stream.
+		b0 := (mp3[0]->As(Int)) and 255;
+		b1 := (mp3[1]->As(Int)) and 255;
+		b2 := (mp3[2]->As(Int)) and 255;
+		frame := (b0 = 255) & ((b1 and 224) = 224);
+		id3 := (b0 = 73) & (b1 = 68) & (b2 = 51);
+		"  first bytes: {$b0} {$b1} {$b2}"->PrintLine();
+		Check("the output begins with an MP3 frame header or ID3 tag", frame | id3);
+
+		Finish();
+	}
+
+	method : Finish() ~ Nil {
+		if(@failures = 0) {
+			"All tests passed"->PrintLine();
+		}
+		else {
+			"{$@failures} test(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
