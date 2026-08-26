@@ -446,6 +446,9 @@ namespace Runtime {
     void SharedLibraryLoad(StackInstr* instr);
     void SharedLibraryUnload(StackInstr* instr);
     void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
+    // Drops every thread's cache of resolved native entry points. Called
+    // when a shared library is unloaded, so nothing keeps a pointer into it.
+    static void InvalidateSharedLibraryCache();
 
     // Additional static accessors for dispatch handlers
     static StackProgram* GetProgram() { return program; }
