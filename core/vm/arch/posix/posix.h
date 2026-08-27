@@ -492,6 +492,13 @@ public:
   }
   
   static void Close(SOCKET sock) {
+    // A bare close() straight after send() can drop whatever is still queued in
+    // the kernel send buffer, so the HTTP server's "write the response, close
+    // the socket" sequence delivers nothing and the peer sees a reset with zero
+    // bytes read. shutdown() hands the queued bytes off and sends FIN before the
+    // descriptor goes away. Errors are ignored on purpose: the peer may already
+    // have torn the connection down, and there is nothing useful to do here.
+    shutdown(sock, SHUT_WR);
     close(sock);
   }
 

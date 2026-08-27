@@ -85,27 +85,33 @@ bundle Web.HTTP.Server {
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
-				thread := System.Concurrency.Thread->New() {
-					New() {
-						Parent()
-					}
-
-					method : public : Run(arg : System.Base) ~ Nil {
-						params := arg->As(Collection.Tuple.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
-						callback := params->GetFirst();
-						secure_client := params->GetSecond();
-						server_config := params->GetThird();
-						is_debug := params->GetFourth();
-
-						handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-						handler->SetConfig(server_config, is_debug->Get());
-						handler->Execute(secure_client);
-					}
-				};
-
 				while(<>@stop) {
 					secure_client := @secure_server->Accept();
 					if(<>@stop & secure_client <> Nil & secure_client->IsOpen()) {
+						# A single Thread instance used to be created above this loop and
+						# re-executed for every connection. Execute() overwrites the thread's
+						# argument, so a connection accepted while the previous handler was
+						# still running repointed that handler at a different socket and left
+						# the earlier request answered by nobody -- the client saw its
+						# connection reset. Each accept gets its own thread.
+						thread := System.Concurrency.Thread->New() {
+							New() {
+								Parent()
+							}
+
+							method : public : Run(arg : System.Base) ~ Nil {
+								params := arg->As(Collection.Tuple.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
+								callback := params->GetFirst();
+								secure_client := params->GetSecond();
+								server_config := params->GetThird();
+								is_debug := params->GetFourth();
+
+								handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
+								handler->SetConfig(server_config, is_debug->Get());
+								handler->Execute(secure_client);
+							}
+						};
+
 						params := Collection.Tuple.Quartet->New(callback, secure_client, @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
 						thread->Execute(params);
 					};
@@ -161,27 +167,33 @@ bundle Web.HTTP.Server {
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
-				thread := System.Concurrency.Thread->New() {
-					New() {
-						Parent()
-					}
-
-					method : public : Run(arg : System.Base) ~ Nil {
-						params := arg->As(Collection.Tuple.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
-						callback := params->GetFirst();
-						client := params->GetSecond();
-						server_config := params->GetThird();
-						is_debug := params->GetFourth();
-
-						handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
-						handler->SetConfig(server_config, is_debug->Get());
-						handler->Execute(client);
-					}
-				};
-
 				while(<>@stop) {
 					client := @server->Accept();
 					if(<>@stop & client <> Nil & client->IsOpen()) {
+						# A single Thread instance used to be created above this loop and
+						# re-executed for every connection. Execute() overwrites the thread's
+						# argument, so a connection accepted while the previous handler was
+						# still running repointed that handler at a different socket and left
+						# the earlier request answered by nobody -- the client saw its
+						# connection reset. Each accept gets its own thread.
+						thread := System.Concurrency.Thread->New() {
+							New() {
+								Parent()
+							}
+
+							method : public : Run(arg : System.Base) ~ Nil {
+								params := arg->As(Collection.Tuple.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
+								callback := params->GetFirst();
+								client := params->GetSecond();
+								server_config := params->GetThird();
+								is_debug := params->GetFourth();
+
+								handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
+								handler->SetConfig(server_config, is_debug->Get());
+								handler->Execute(client);
+							}
+						};
+
 						params := Collection.Tuple.Quartet->New(callback, client, @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
 						thread->Execute(params);
 					};

@@ -466,6 +466,14 @@ class IPSocket {
   }
 
   static void Close(SOCKET sock) {
+    // A bare closesocket() straight after send() discards whatever is still
+    // queued in the kernel send buffer, so the HTTP server's "write the
+    // response, close the socket" sequence delivered nothing at all on a good
+    // fraction of connections -- the peer saw a reset with zero bytes read.
+    // shutdown() hands the queued bytes off and sends FIN before the handle
+    // goes away. Errors are ignored on purpose: the socket may already be
+    // torn down by the peer, and there is nothing useful to do about it here.
+    shutdown(sock, 1 /* SD_SEND; winsock2.h is not in this header's include set */);
     closesocket(sock);
   }
 
