@@ -690,7 +690,7 @@ namespace Runtime {
     // represent. Centralizes the sign handling that the old per-encoder abs() broke.
     void emit_ldst_imm(uint32_t scaled_op, long scale, long offset, Register base, Register data);
     void move_imm_memf(RegInstr* instr, long offset, Register dest);
-    void move_imm_mem(long imm, long offset, Register dest);
+    void move_imm_mem(int64_t imm, long offset, Register dest);
 #ifdef _WIN64
     void move_imm_reg(int64_t imm, Register reg);
 #else
@@ -703,47 +703,47 @@ namespace Runtime {
     void move_freg_freg(Register src, Register dest);
 
     // math instructions
-    void math_imm_reg(long imm, Register reg, InstructionType type);
+    void math_imm_reg(int64_t imm, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
     void math_mem_reg(long offset, Register reg, InstructionType type);
     void math_mem_freg(long offset, RegisterHolder *&reg, InstructionType type);
     void math_freg_freg(Register src, RegisterHolder *&dest, InstructionType type);
     
     // logical
-    void and_imm_reg(long imm, Register reg);
+    void and_imm_reg(int64_t imm, Register reg);
     void and_reg_reg(Register src, Register dest);
     void and_mem_reg(long offset, Register src, Register dest);
-    void or_imm_reg(long imm, Register reg);
+    void or_imm_reg(int64_t imm, Register reg);
     void or_reg_reg(Register src, Register dest);
     void or_mem_reg(long offset, Register src, Register dest);
-    void xor_imm_reg(long imm, Register reg);
+    void xor_imm_reg(int64_t imm, Register reg);
     void xor_reg_reg(Register src, Register dest);
     void xor_mem_reg(long offset, Register src, Register dest);
     void not_reg(Register reg);
 
     // add instructions
-    void add_imm_mem(long imm, long offset, Register dest);
-    void add_imm_reg(long imm, Register reg);
+    void add_imm_mem(int64_t imm, long offset, Register dest);
+    void add_imm_reg(int64_t imm, Register reg);
     void add_freg_freg(Register src, Register dest);
     void add_mem_reg(long offset, Register src, Register dest);
     void add_reg_reg(Register src, Register dest);
 
     // sub instructions
     void sub_freg_freg(Register src, Register dest);
-    void sub_imm_reg(long imm, Register reg);
-    void sub_imm_mem(long imm, long offset, Register dest);
+    void sub_imm_reg(int64_t imm, Register reg);
+    void sub_imm_mem(int64_t imm, long offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
     void sub_mem_reg(long offset, Register src, Register dest);
 
     // mul instructions
     void mul_freg_freg(Register src, Register dest);
-    void mul_imm_reg(long imm, Register reg);
+    void mul_imm_reg(int64_t imm, Register reg);
     void mul_reg_reg(Register src, Register dest);
     void mul_mem_reg(long offset, Register src, Register dest);
 
     // div instructions
     void div_freg_freg(Register src, Register dest);
-    void div_imm_reg(long imm, Register reg, bool is_mod = false);
+    void div_imm_reg(int64_t imm, Register reg, bool is_mod = false);
     void div_reg_reg(Register src, Register dest, bool is_mod = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
     
@@ -756,7 +756,7 @@ namespace Runtime {
     // compare instructions
     void cmp_reg_reg(Register src, Register dest);
     void cmp_mem_reg(long offset, Register src, Register dest);
-    void cmp_imm_reg(long imm, Register reg);
+    void cmp_imm_reg(int64_t imm, Register reg);
 
     // CBZ/CBNZ: Compare and Branch if Zero/Non-Zero (optimized for zero comparisons)
     void cbz_reg(Register reg);   // Branch if reg == 0
@@ -776,11 +776,11 @@ namespace Runtime {
     // shift instructions
     void shl_reg_reg(Register src, Register dest);
     void shl_mem_reg(long offset, Register src, Register dest);
-    void shl_imm_reg(long value, Register dest);
+    void shl_imm_reg(int64_t value, Register dest);
 
     void shr_reg_reg(Register src, Register dest);
     void shr_mem_reg(long offset, Register src, Register dest);
-    void shr_imm_reg(long value, Register dest);
+    void shr_imm_reg(int64_t value, Register dest);
 
     // push/pop instructions
     void push_imm(int32_t value);
