@@ -26,6 +26,11 @@ if not "%VCPKG_ROOT%" == "" (
 if "%VCPKG_DIR%" == "" (
 	if exist "C:\vcpkg\installed\%VCPKG_TRIPLET%\include\mbedtls\build_info.h" set VCPKG_DIR=C:\vcpkg
 )
+REM %USERPROFILE%\vcpkg is the default `git clone` location, and where this
+REM repo's ARM64 box keeps it. Kept in step with core\build\vcpkg.props.
+if "%VCPKG_DIR%" == "" (
+	if exist "%USERPROFILE%\vcpkg\installed\%VCPKG_TRIPLET%\include\mbedtls\build_info.h" set VCPKG_DIR=%USERPROFILE%\vcpkg
+)
 
 if "%VCPKG_DIR%" == "" (
 	echo.
@@ -36,9 +41,13 @@ if "%VCPKG_DIR%" == "" (
 	echo Install it with:
 	echo     vcpkg install mbedtls:%VCPKG_TRIPLET% nghttp2:%VCPKG_TRIPLET%
 	echo.
-	echo Set VCPKG_ROOT if your vcpkg is not at C:\vcpkg. Note that Visual
-	echo Studio ships its own vcpkg and points VCPKG_ROOT at it; that copy
-	echo usually has nothing installed.
+	echo Run that from a directory with no vcpkg.json in it. Otherwise vcpkg
+	echo switches to manifest mode, rejects the package arguments outright,
+	echo and installs to a vcpkg_installed\ tree that nothing here reads.
+	echo.
+	echo Probed: %%VCPKG_ROOT%%, C:\vcpkg, %%USERPROFILE%%\vcpkg. Set VCPKG_ROOT
+	echo if yours is elsewhere. Note that Visual Studio ships its own vcpkg and
+	echo points VCPKG_ROOT at it; that copy usually has nothing installed.
 	echo.
 	goto end
 )

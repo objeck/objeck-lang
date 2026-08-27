@@ -27,18 +27,51 @@
       that copy usually has nothing installed while the developer's real tree is
       elsewhere. Preferring VCPKG_ROOT blindly fails on any machine where both
       exist, which is the common case; it failed on the box this was written on.
+
+      %USERPROFILE%\vcpkg is probed too. It is what `git clone` of vcpkg gives
+      you by default, it is where this repo's own ARM64 box keeps it, and a
+      developer who cloned there has no reason to guess that an unset
+      VCPKG_ROOT plus a hard-coded C:\vcpkg is what stands between them and
+      "mbedTLS not found". CI still installs to C:\vcpkg and matches the first
+      two probes, so its behaviour is unchanged.
     -->
     <VcpkgProbe>installed\$(VcpkgTriplet)\include\mbedtls\build_info.h</VcpkgProbe>
     <VcpkgRootDir Condition="'$(VcpkgRootDir)' == '' and '$(VCPKG_ROOT)' != '' and Exists('$(VCPKG_ROOT)\$(VcpkgProbe)')">$(VCPKG_ROOT)</VcpkgRootDir>
     <VcpkgRootDir Condition="'$(VcpkgRootDir)' == '' and Exists('C:\vcpkg\$(VcpkgProbe)')">C:\vcpkg</VcpkgRootDir>
+    <VcpkgRootDir Condition="'$(VcpkgRootDir)' == '' and '$(USERPROFILE)' != '' and Exists('$(USERPROFILE)\vcpkg\$(VcpkgProbe)')">$(USERPROFILE)\vcpkg</VcpkgRootDir>
     <VcpkgRootDir Condition="'$(VcpkgRootDir)' == '' and '$(VCPKG_ROOT)' != ''">$(VCPKG_ROOT)</VcpkgRootDir>
     <VcpkgRootDir Condition="'$(VcpkgRootDir)' == ''">C:\vcpkg</VcpkgRootDir>
 
     <VcpkgInstalledDir>$(VcpkgRootDir)\installed\$(VcpkgTriplet)</VcpkgInstalledDir>
   </PropertyGroup>
 
+  <!--
+    The vendored zlib MUST precede the vcpkg include root.
+
+    $(VcpkgInstalledDir)\include is a shared tree: it holds the headers of every
+    package installed for the triplet, not just the two wanted here. If anything
+    else in it has pulled in zlib (opencv, libpng and protobuf all do), then
+    its zlib.h/zconf.h shadow core\lib\zlib\win, because every project appends
+    its own zlib path AFTER $(IncludePath).
+
+    That is not a harmless duplicate. vcpkg patches the guard in zconf.h from
+    "#ifdef ZLIB_DLL" to "#if 1", so its header declares every zlib entry point
+    __declspec(dllimport) unconditionally, while these projects link the
+    vendored STATIC libz-static.lib. The result is ten unresolved __imp_ symbols
+    (uncompress, inflate, deflate, crc32, ...) at link time in obr.exe and
+    obd.exe, with nothing in the log pointing at an include path.
+
+    Found on a developer box whose vcpkg tree is shared with other projects,
+    but CI is NOT immune. release-build.yml installs opencv4:arm64-windows into
+    C:\vcpkg before the build step, and opencv4 pulls zlib in through libpng,
+    libtiff and protobuf. That step is guarded by a cache hit on a static key
+    (opencv-4.12.0-win-arm64-dlls), so it is skipped almost every run; on a
+    miss (7-day eviction, a purge, a key change) the windows-arm64 release leg
+    would fail to link with those __imp_ errors. ci-build.yml is unaffected: it
+    takes OpenCV from a downloaded release installer, not from vcpkg.
+  -->
   <PropertyGroup>
-    <IncludePath>$(VcpkgInstalledDir)\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(MSBuildThisFileDirectory)..\lib\zlib\win;$(VcpkgInstalledDir)\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(VcpkgInstalledDir)\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
 
@@ -49,6 +82,6 @@
   -->
   <Target Name="VerifyVcpkgDependencies" BeforeTargets="ClCompile">
     <Error Condition="!Exists('$(VcpkgInstalledDir)\include\mbedtls\build_info.h')"
-           Text="mbedTLS not found at $(VcpkgInstalledDir). Install it with:  vcpkg install mbedtls:$(VcpkgTriplet) nghttp2:$(VcpkgTriplet)   (set VCPKG_ROOT if your vcpkg is not at C:\vcpkg)" />
+           Text="mbedTLS not found at $(VcpkgInstalledDir). Install it with:  vcpkg install mbedtls:$(VcpkgTriplet) nghttp2:$(VcpkgTriplet)   -- run that from a directory with no vcpkg.json in it, or vcpkg switches to manifest mode, rejects the package arguments and installs to a vcpkg_installed\ tree nothing here reads. Probed: %VCPKG_ROOT%, C:\vcpkg, %USERPROFILE%\vcpkg; set VCPKG_ROOT if yours is elsewhere." />
   </Target>
 </Project>
