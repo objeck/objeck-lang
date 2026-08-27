@@ -59,35 +59,39 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\build\vcpkg.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\build\vcpkg.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\build\vcpkg.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\build\vcpkg.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\include;$(IncludePath)</IncludePath>
-    <LibraryPath>module\x64\Debug\objeck.lib;..\..\lib\zlib\win\x64\Release;..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\lib\zlib\win;$(IncludePath)</IncludePath>
+    <LibraryPath>module\x64\Debug\objeck.lib;..\..\lib\zlib\win\x64\Release;$(LibraryPath)</LibraryPath>
     <TargetName>objeck</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\include;$(IncludePath)</IncludePath>
-    <LibraryPath>module\arm64\Debug;..\..\lib\zlib\win\arm64\Release;..\..\lib\openssl\win\arm64;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\lib\zlib\win;$(IncludePath)</IncludePath>
+    <LibraryPath>module\arm64\Debug;..\..\lib\zlib\win\arm64\Release;$(LibraryPath)</LibraryPath>
     <TargetName>objeck</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\release\x64\Release;..\..\lib\zlib\win\x64\Release;..\..\lib\openssl\win\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\lib\zlib\win;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\release\x64\Release;..\..\lib\zlib\win\x64\Release;$(LibraryPath)</LibraryPath>
     <TargetName>objeck</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <IncludePath>..\..\lib\zlib\win;..\..\lib\openssl\win\include;$(IncludePath)</IncludePath>
-    <LibraryPath>module\arm64\Release;..\..\lib\zlib\win\arm64\Release;..\..\lib\openssl\win\arm64;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\lib\zlib\win;$(IncludePath)</IncludePath>
+    <LibraryPath>module\arm64\Release;..\..\lib\zlib\win\arm64\Release;$(LibraryPath)</LibraryPath>
     <TargetName>objeck</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">

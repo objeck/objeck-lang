@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Resolves mbedTLS and nghttp2 from vcpkg.
+
+  These used to come from binaries committed to the tree under
+  core/lib/openssl/win/<arch>, which every Windows project listed ahead of
+  $(LibraryPath). CI installed them through vcpkg and exported INCLUDE/LIB, but
+  MSBuild's $(IncludePath) does NOT inherit the environment's INCLUDE; only
+  vm.vcxproj ever named $(INCLUDE) explicitly. So that vcpkg install changed
+  nothing, and the committed blobs were what actually got linked, on both x64
+  and ARM64. The versions had already drifted: the committed headers say
+  mbedTLS 3.6.5, while BUILD_MBEDTLS_ARM64.md and deploy_windows.cmd said the
+  libraries were built from 3.6.3.
+
+  Hence a real MSBuild property rather than an environment variable: it applies
+  whether the build is driven by MSBuild, devenv or the IDE, and it cannot be
+  silently ignored.
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <VcpkgTriplet Condition="'$(VcpkgTriplet)' == '' and '$(Platform)' == 'ARM64'">arm64-windows</VcpkgTriplet>
+    <VcpkgTriplet Condition="'$(VcpkgTriplet)' == ''">x64-windows</VcpkgTriplet>
+
+    <!--
+      Pick the root that actually HAS the package, not merely the first one
+      named. Visual Studio ships its own vcpkg and points VCPKG_ROOT at it, and
+      that copy usually has nothing installed while the developer's real tree is
+      elsewhere. Preferring VCPKG_ROOT blindly fails on any machine where both
+      exist, which is the common case; it failed on the box this was written on.
+    -->
+    <VcpkgProbe>installed\$(VcpkgTriplet)\include\mbedtls\build_info.h</VcpkgProbe>
+    <VcpkgRootDir Condition="'$(VcpkgRootDir)' == '' and '$(VCPKG_ROOT)' != '' and Exists('$(VCPKG_ROOT)\$(VcpkgProbe)')">$(VCPKG_ROOT)</VcpkgRootDir>
+    <VcpkgRootDir Condition="'$(VcpkgRootDir)' == '' and Exists('C:\vcpkg\$(VcpkgProbe)')">C:\vcpkg</VcpkgRootDir>
+    <VcpkgRootDir Condition="'$(VcpkgRootDir)' == '' and '$(VCPKG_ROOT)' != ''">$(VCPKG_ROOT)</VcpkgRootDir>
+    <VcpkgRootDir Condition="'$(VcpkgRootDir)' == ''">C:\vcpkg</VcpkgRootDir>
+
+    <VcpkgInstalledDir>$(VcpkgRootDir)\installed\$(VcpkgTriplet)</VcpkgInstalledDir>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IncludePath>$(VcpkgInstalledDir)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(VcpkgInstalledDir)\lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+
+  <!--
+    A missing vcpkg tree otherwise surfaces as "cannot open include file
+    'mbedtls/md.h'" hundreds of lines into a build log, which is how long it
+    took to work out that the environment variables were being ignored.
+  -->
+  <Target Name="VerifyVcpkgDependencies" BeforeTargets="ClCompile">
+    <Error Condition="!Exists('$(VcpkgInstalledDir)\include\mbedtls\build_info.h')"
+           Text="mbedTLS not found at $(VcpkgInstalledDir). Install it with:  vcpkg install mbedtls:$(VcpkgTriplet) nghttp2:$(VcpkgTriplet)   (set VCPKG_ROOT if your vcpkg is not at C:\vcpkg)" />
+  </Target>
+</Project>
