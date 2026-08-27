@@ -1,0 +1,148 @@
+#~
+# API.Onnx.OnnxRuntime->GetProviders() reaches the native ONNX Runtime.
+#
+# EXTRA_LIBS: onnx,opencv,cipher,json
+#
+# The ONNX binding had no runtime test on any platform. CI's own comment on the
+# native build step says why that matters: "The C++ that actually talks to ONNX
+# Runtime was built by NO job on any platform -- CI only compiled onnx.obs ->
+# onnx.obl. That blind spot is how ONNX came to be completely broken on Linux
+# and MSYS2." CI now builds the native library on linux-x64, but still runs
+# nothing through it.
+#
+# Measured coverage of the binding's eleven native entry points before this
+# test: zero.
+#
+# GetProviders is the one entry point that needs no model file. Every other one
+# (yolo, resnet, deeplab, openpose, face, phi3) requires a session built from a
+# model on disk, which would make this test depend on a multi-megabyte asset and
+# on inference actually being correct. This asks the far narrower question that
+# was nevertheless unanswered: does the native library load, does a call cross
+# into it, and does a String[] come back intact?
+#
+# That is exactly the path that was silently broken before -- a null session
+# surfacing as an empty result rather than an error -- so an empty-versus-absent
+# distinction is the whole point of the assertions below.
+#
+# Skips when the native library is absent, probing for the file rather than
+# checking IsLoaded() after the fact: EXT_LIB_LOAD calls exit(1) on a failed
+# load, so a skip written that way is dead code.
+~#
+
+use API.Onnx;
+
+class OnnxRuntimeTest {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := OnnxRuntimeTest->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		dll := "{$base}.dll";
+		so := "{$base}.so";
+		dylib := "{$base}.dylib";
+
+		return System.IO.Filesystem.File->Exists(dll) |
+			System.IO.Filesystem.File->Exists(so) |
+			System.IO.Filesystem.File->Exists(dylib);
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
+		providers := OnnxRuntime->GetProviders();
+
+		# Nil means the call never produced a result array -- the shape the old
+		# null-session bug took.
+		Check("GetProviders returns an array", providers <> Nil);
+		if(providers = Nil) {
+			Finish();
+			return;
+		};
+
+		count := providers->Size();
+		"  runtime reports {$count} execution provider(s)"->PrintLine();
+
+		# ONNX Runtime always offers at least CPU. Zero providers means the call
+		# crossed into the library and came back with nothing, which is the
+		# failure this test exists to catch.
+		Check("at least one execution provider is reported", count > 0);
+		if(count = 0) {
+			Finish();
+			return;
+		};
+
+		# Read every entry: a String[] whose elements did not survive the call
+		# would pass a size check and fail here.
+		readable := true;
+		names := "";
+		for(i := 0; i < count; i += 1;) {
+			p := providers[i];
+			if(p = Nil) {
+				readable := false;
+			}
+			else {
+				len := p->Size();
+				if(len = 0 | len > 256) {
+					readable := false;
+				}
+				else {
+					names += "{$p} ";
+				};
+			};
+		};
+
+		"  providers: {$names}"->PrintLine();
+		Check("every provider name is a readable string", readable);
+
+		# CPU is guaranteed by ONNX Runtime on every platform and build variant,
+		# so this is a real content assertion rather than a shape one -- it fails
+		# if the array comes back full of something other than provider names.
+		has_cpu := false;
+		for(i := 0; i < count; i += 1;) {
+			p := providers[i];
+			if(p <> Nil & p->Has("CPU")) {
+				has_cpu := true;
+			};
+		};
+
+		Check("the CPU execution provider is among them", has_cpu);
+
+		Finish();
+	}
+
+	method : Finish() ~ Nil {
+		if(@failures = 0) {
+			"All tests passed"->PrintLine();
+		}
+		else {
+			"{$@failures} test(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

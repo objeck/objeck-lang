@@ -14,7 +14,7 @@ extern "C" {
    void load_lib(VMContext& context) {
       cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
       if(!env) {
-         env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "onnx");
+         env = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx");
       }
    }
 
@@ -23,7 +23,10 @@ extern "C" {
    __declspec(dllexport)
 #endif
    void unload_lib() {
-      env.reset(); // destroys Env after all sessions should be gone
+      // Released here, and only here: the VM calls unload_lib from a live
+      // process, unlike the static destructor a smart pointer would have used.
+      delete env;
+      env = nullptr;
    }
 
    // List available ONNX execution providers
@@ -77,7 +80,7 @@ extern "C" {
          }
 
          if(!env) {
-            env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "onnx");
+            env = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "onnx");
          }
          const Ort::Session* session = new Ort::Session(*env, model_path.c_str(), session_options);
 

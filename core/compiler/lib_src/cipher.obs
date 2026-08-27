@@ -25,6 +25,16 @@ bundle Cipher {
 	Support for one-way hashes
 	~#
 	class Hash {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_crypto_hash_md5 : static : String;
+		@fn_crypto_hash_ripemd160 : static : String;
+		@fn_crypto_hash_sha1 : static : String;
+		@fn_crypto_hash_sha256 : static : String;
+		@fn_crypto_hash_sha512 : static : String;
 		#~
 		Hash input using SHA-1
 		@param stream_in bytes to hashed
@@ -40,7 +50,8 @@ bundle Cipher {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("crypto_hash_sha1", array_args);
+				if(@fn_crypto_hash_sha1 = Nil) { @fn_crypto_hash_sha1 := "crypto_hash_sha1"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_sha1, array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -64,7 +75,8 @@ bundle Cipher {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("crypto_hash_sha256", array_args);
+				if(@fn_crypto_hash_sha256 = Nil) { @fn_crypto_hash_sha256 := "crypto_hash_sha256"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_sha256, array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -88,7 +100,8 @@ bundle Cipher {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("crypto_hash_sha512", array_args);
+				if(@fn_crypto_hash_sha512 = Nil) { @fn_crypto_hash_sha512 := "crypto_hash_sha512"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_sha512, array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -112,7 +125,8 @@ bundle Cipher {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);				
-				Proxy->GetDllProxy()->CallFunction("crypto_hash_md5", array_args);
+				if(@fn_crypto_hash_md5 = Nil) { @fn_crypto_hash_md5 := "crypto_hash_md5"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_md5, array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -137,7 +151,8 @@ bundle Cipher {
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 				array_args[1] := ByteArrayRef->New(stream_in);
 
-				Proxy->GetDllProxy()->CallFunction("crypto_hash_ripemd160", array_args);
+				if(@fn_crypto_hash_ripemd160 = Nil) { @fn_crypto_hash_ripemd160 := "crypto_hash_ripemd160"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_crypto_hash_ripemd160, array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -151,6 +166,13 @@ bundle Cipher {
 	Encrypts data
 	~#
 	class Encrypt {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_crypto_encrypt_aes256 : static : String;
+		@fn_crypto_encrypt_base64 : static : String;
 		#~
 		Encrypt input using AES-256
 		@param key encryption key
@@ -170,7 +192,8 @@ bundle Cipher {
 				array_args[1] := ByteArrayRef->New(key);
 				array_args[2] := ByteArrayRef->New(stream_in);
 
-				Proxy->GetDllProxy()->CallFunction("crypto_encrypt_aes256", array_args);
+				if(@fn_crypto_encrypt_aes256 = Nil) { @fn_crypto_encrypt_aes256 := "crypto_encrypt_aes256"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_crypto_encrypt_aes256, array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -194,7 +217,8 @@ bundle Cipher {
 			array_args[0] := Nil;
 			array_args[1] := ByteArrayRef->New(input);
 
-			Proxy->GetDllProxy()->CallFunction("crypto_encrypt_base64", array_args);
+			if(@fn_crypto_encrypt_base64 = Nil) { @fn_crypto_encrypt_base64 := "crypto_encrypt_base64"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_crypto_encrypt_base64, array_args);
 
 			return array_args[0]->As(String);
 		}
@@ -204,6 +228,13 @@ bundle Cipher {
 	Decrypts data
 	~#
 	class Decrypt {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_crypto_decrypt_aes256 : static : String;
+		@fn_crypto_decrypt_base64 : static : String;
 		#~
 		Decrypts input using AES-256
 		@param key encryption key
@@ -224,7 +255,8 @@ bundle Cipher {
 				array_args[1] := ByteArrayRef->New(key);
 				array_args[2] := ByteArrayRef->New(stream_in);	
 
-				Proxy->GetDllProxy()->CallFunction("crypto_decrypt_aes256", array_args);
+				if(@fn_crypto_decrypt_aes256 = Nil) { @fn_crypto_decrypt_aes256 := "crypto_decrypt_aes256"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_crypto_decrypt_aes256, array_args);
 				
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
@@ -248,7 +280,8 @@ bundle Cipher {
 			array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
 			array_args[1] := input;
 
-			Proxy->GetDllProxy()->CallFunction("crypto_decrypt_base64", array_args);
+			if(@fn_crypto_decrypt_base64 = Nil) { @fn_crypto_decrypt_base64 := "crypto_decrypt_base64"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_crypto_decrypt_base64, array_args);
 
 			holder := array_args[0]->As(ByteArrayRef);
 			return holder->Get();

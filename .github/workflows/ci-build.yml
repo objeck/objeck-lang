@@ -955,6 +955,29 @@ jobs:
         # above keeps the overall job green.
         exit $status
 
+    # A crash in a regression test reaches the log as one line -- "runtime error
+    # (exit 134)" -- with no frames. macOS writes a full backtrace for every
+    # SIGABRT/SIGSEGV to DiagnosticReports, so collecting those turns a
+    # macOS-only crash from a guess-and-push-to-CI loop into a single read.
+    # onnx_runtime_test's teardown abort was diagnosed without one; the next
+    # one should not have to be.
+    - name: Collect macOS crash reports (on failure)
+      if: failure() && matrix.platform == 'macos-arm64'
+      continue-on-error: true
+      run: |
+        dest=programs/regression/results/crash-reports
+        mkdir -p "$dest"
+        for d in "$HOME/Library/Logs/DiagnosticReports" /Library/Logs/DiagnosticReports; do
+          [ -d "$d" ] || continue
+          find "$d" -maxdepth 1 -type f -name '*.ips' -exec cp {} "$dest/" \; 2>/dev/null || true
+          find "$d" -maxdepth 1 -type f -name '*.crash' -exec cp {} "$dest/" \; 2>/dev/null || true
+        done
+        count=$(ls -1 "$dest" 2>/dev/null | wc -l | tr -d ' ')
+        echo "collected $count crash report(s)"
+        if [ "$count" = "0" ]; then
+          echo "::warning::No crash reports found; the failure may not have been a crash"
+        fi
+
     - name: Upload regression logs (on failure)
       if: failure() && matrix.platform != 'windows-arm64'
       uses: actions/upload-artifact@v6
@@ -1079,6 +1102,15 @@ jobs:
       # matched while the API docs and the editor index were both incomplete.
       - name: Library lists agree with lib_src
         run: python3 tools/cicd/check_doc_lists.py
+
+      # Same reason, same cost: nothing built, fails in seconds. A native call
+      # whose name is written as a literal at the call site allocates a String
+      # on every call -- 1655ns against 130ns for the same call with the name
+      # held in a field. Holding them is a whole-tree edit that one regenerated
+      # library silently undoes: core/lib/sdl/code_gen emits sdl2.obs, and its
+      # emitter writes the literal form.
+      - name: Native call names are held, not re-allocated
+        run: python3 tools/cicd/hoist_native_names.py --check core/compiler/lib_src/*.obs
 
       - name: Install build deps
         run: |

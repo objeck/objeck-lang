@@ -32,6 +32,12 @@ bundle API.Onnx {
 	```
 	~#
 	class OnnxRuntime {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_onnx_get_provider_names : static : String;
 		#~
 		Gets available ONNX execution providers (e.g., "DML", "CUDA", "CPU")
 		@return array of provider name strings
@@ -40,7 +46,8 @@ bundle API.Onnx {
 			array_args := Base->New[1];
 			array_args[0] := StringArrayRef->New();
 			
-			Proxy->GetDllProxy()->CallFunction("onnx_get_provider_names", array_args);
+			if(@fn_onnx_get_provider_names = Nil) { @fn_onnx_get_provider_names := "onnx_get_provider_names"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_get_provider_names, array_args);
 			
 			holder := array_args[0]->As(StringArrayRef);
 			return holder->Get();
@@ -63,6 +70,14 @@ bundle API.Onnx {
 	```
 	~#
 	class YoloSession {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_onnx_close_session : static : String;
+		@fn_onnx_new_session : static : String;
+		@fn_onnx_yolo_image_inf : static : String;
 		@session : Int;
 
 		#~
@@ -104,7 +119,8 @@ bundle API.Onnx {
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
 						
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
 			@session := value->Get();
 		}
@@ -116,7 +132,8 @@ bundle API.Onnx {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 		}
 
 		#~
@@ -154,7 +171,8 @@ session->Close();
 			array_args[5] := FloatRef->New(conf_threshold);
 			array_args[6] := StringArrayRef->New(labels);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_yolo_image_inf", array_args);
+			if(@fn_onnx_yolo_image_inf = Nil) { @fn_onnx_yolo_image_inf := "onnx_yolo_image_inf"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_yolo_image_inf, array_args);
 			
 			results := array_args[0]->As(API.Onnx.YoloResult);
 			results->Set(image, labels);
@@ -407,6 +425,14 @@ each(cls in result->GetClassifications()) {
 	```
 	~#
 	class ResNetSession {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_onnx_close_session : static : String;
+		@fn_onnx_new_session : static : String;
+		@fn_onnx_resnet_image_inf : static : String;
 		@session : Int;
 
 		#~
@@ -448,7 +474,8 @@ each(cls in result->GetClassifications()) {
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
 						
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
 			@session := value->Get();
 		}
@@ -460,7 +487,8 @@ each(cls in result->GetClassifications()) {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 		}
 
 		#~
@@ -493,7 +521,8 @@ session->Close();
 			array_args[4] := IntRef->New(width);
 			array_args[5] := StringArrayRef->New(labels);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_resnet_image_inf", array_args);
+			if(@fn_onnx_resnet_image_inf = Nil) { @fn_onnx_resnet_image_inf := "onnx_resnet_image_inf"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_resnet_image_inf, array_args);
 			
 			results := array_args[0]->As(API.Onnx.ResNetResult);
 			results->Set(image, labels);
@@ -616,6 +645,14 @@ session->Close();
 	```
 	~#
 	class DeepLabSession {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_onnx_close_session : static : String;
+		@fn_onnx_deeplab_image_inf : static : String;
+		@fn_onnx_new_session : static : String;
 		@session : Int;
 
 		#~
@@ -657,7 +694,8 @@ session->Close();
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
 						
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
 			@session := value->Get();
 		}
@@ -669,7 +707,8 @@ session->Close();
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 		}
 
 		#~
@@ -702,7 +741,8 @@ session->Close();
 			array_args[2] := ByteArrayRef->New(image);
 			array_args[3] := StringArrayRef->New(labels);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_deeplab_image_inf", array_args);
+			if(@fn_onnx_deeplab_image_inf = Nil) { @fn_onnx_deeplab_image_inf := "onnx_deeplab_image_inf"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_deeplab_image_inf, array_args);
 			
 			results := array_args[0]->As(API.Onnx.DeepLabResult);
 
@@ -919,6 +959,14 @@ session->Close();
 	```
 	~#
 	class OpenPoseSession {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_onnx_close_session : static : String;
+		@fn_onnx_new_session : static : String;
+		@fn_onnx_openpose_image_inf : static : String;
 		@session : Int;
 
 		#~
@@ -960,7 +1008,8 @@ session->Close();
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
 						
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
 			@session := value->Get();
 		}
@@ -972,7 +1021,8 @@ session->Close();
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 		}
 
 		#~
@@ -1009,7 +1059,8 @@ session->Close();
 			array_args[2] := ByteArrayRef->New(image);
 			array_args[3] := StringArrayRef->New(labels);
 			
-			Proxy->GetDllProxy()->CallFunction("onnx_openpose_image_inf", array_args);
+			if(@fn_onnx_openpose_image_inf = Nil) { @fn_onnx_openpose_image_inf := "onnx_openpose_image_inf"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_openpose_image_inf, array_args);
 			
 			results := array_args[0]->As(API.Onnx.OpenPoseResult);
 
@@ -1545,6 +1596,14 @@ ids := tokenizer->Encode("What is 2+2?");
 	```
 	~#
 	class Phi3Session {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_onnx_close_session : static : String;
+		@fn_onnx_new_session : static : String;
+		@fn_onnx_phi3_text_inf : static : String;
 		@session : Int;
 
 		#~
@@ -1586,7 +1645,8 @@ ids := tokenizer->Encode("What is 2+2?");
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := model;
 
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
 			@session := value->Get();
 		}
@@ -1598,7 +1658,8 @@ ids := tokenizer->Encode("What is 2+2?");
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 		}
 
 		#~
@@ -1633,7 +1694,8 @@ session->Close();
 			array_args[4] := FloatRef->New(temperature);
 			array_args[5] := IntArrayRef->New(eos_tokens);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_phi3_text_inf", array_args);
+			if(@fn_onnx_phi3_text_inf = Nil) { @fn_onnx_phi3_text_inf := "onnx_phi3_text_inf"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_phi3_text_inf, array_args);
 
 			return array_args[0]->As(API.Onnx.Phi3Result);
 		}
@@ -1706,6 +1768,14 @@ text->PrintLine();
 	```
 	~#
 	class Phi3VisionSession {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_onnx_close_session : static : String;
+		@fn_onnx_new_session : static : String;
+		@fn_onnx_phi3_vision_inf : static : String;
 		@vision_session : Int;
 		@embed_session : Int;
 		@decoder_session : Int;
@@ -1752,7 +1822,8 @@ text->PrintLine();
 			array_args[1] := StringArrayRef->New(keys_array);
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := vision_model;
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
 			@vision_session := value->Get();
 
@@ -1762,7 +1833,8 @@ text->PrintLine();
 			array_args[1] := StringArrayRef->New(keys_array);
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := embed_model;
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
 			@embed_session := value->Get();
 
@@ -1772,7 +1844,8 @@ text->PrintLine();
 			array_args[1] := StringArrayRef->New(keys_array);
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := decoder_model;
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			value := array_args[0]->As(IntRef);
 			@decoder_session := value->Get();
 		}
@@ -1784,13 +1857,16 @@ text->PrintLine();
 			array_args := Base->New[1];
 
 			array_args[0] := IntRef->New(@vision_session);
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 
 			array_args[0] := IntRef->New(@embed_session);
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 
 			array_args[0] := IntRef->New(@decoder_session);
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 		}
 
 		#~
@@ -1822,7 +1898,8 @@ text->PrintLine();
 			array_args[8] := FloatRef->New(temperature);
 			array_args[9] := IntArrayRef->New(eos_tokens);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_phi3_vision_inf", array_args);
+			if(@fn_onnx_phi3_vision_inf = Nil) { @fn_onnx_phi3_vision_inf := "onnx_phi3_vision_inf"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_phi3_vision_inf, array_args);
 
 			return array_args[0]->As(API.Onnx.Phi3Result);
 		}
@@ -2092,6 +2169,15 @@ text->PrintLine();
 	```
 	~#
 	class FaceSession {
+		# Native entry-point names, held rather than written at each call
+		# site: a string literal is materialised into a fresh String every
+		# time it is evaluated, which on a hot path is an allocation and a
+		# copy per call. Static because these are class-wide constants and a
+		# static function cannot read an instance field.
+		@fn_onnx_close_session : static : String;
+		@fn_onnx_face_detect_inf : static : String;
+		@fn_onnx_face_recognize_inf : static : String;
+		@fn_onnx_new_session : static : String;
 		@det_session : Int;
 		@rec_session : Int;
 
@@ -2142,7 +2228,8 @@ text->PrintLine();
 			array_args[1] := StringArrayRef->New(keys_array);
 			array_args[2] := StringArrayRef->New(values_array);
 			array_args[3] := det_model;
-			Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 			@det_session := array_args[0]->As(IntRef)->Get();
 
 			if(rec_model <> Nil) {
@@ -2151,7 +2238,8 @@ text->PrintLine();
 				array_args[1] := StringArrayRef->New(keys_array);
 				array_args[2] := StringArrayRef->New(values_array);
 				array_args[3] := rec_model;
-				Proxy->GetDllProxy()->CallFunction("onnx_new_session", array_args);
+				if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
 				@rec_session := array_args[0]->As(IntRef)->Get();
 			};
 		}
@@ -2163,11 +2251,13 @@ text->PrintLine();
 			array_args := Base->New[1];
 
 			array_args[0] := IntRef->New(@det_session);
-			Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 
 			if(@rec_session <> 0) {
 				array_args[0] := IntRef->New(@rec_session);
-				Proxy->GetDllProxy()->CallFunction("onnx_close_session", array_args);
+				if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
 			};
 		}
 
@@ -2196,7 +2286,8 @@ session->Close();
 			array_args[2] := ByteArrayRef->New(image);
 			array_args[3] := FloatRef->New(conf_threshold);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_face_detect_inf", array_args);
+			if(@fn_onnx_face_detect_inf = Nil) { @fn_onnx_face_detect_inf := "onnx_face_detect_inf"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_face_detect_inf, array_args);
 
 			return array_args[0]->As(FaceDetectionResult);
 		}
@@ -2230,7 +2321,8 @@ session->Close();
 			array_args[3] := ByteArrayRef->New(image);
 			array_args[4] := FloatRef->New(conf_threshold);
 
-			Proxy->GetDllProxy()->CallFunction("onnx_face_recognize_inf", array_args);
+			if(@fn_onnx_face_recognize_inf = Nil) { @fn_onnx_face_recognize_inf := "onnx_face_recognize_inf"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_face_recognize_inf, array_args);
 
 			return array_args[0]->As(FaceRecognitionResult);
 		}
