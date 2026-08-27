@@ -1,0 +1,162 @@
+#~
+# A float comparison whose result is STORED must not clobber a live register.
+#
+# `cmov_reg`'s first act is `move_imm_reg(0, reg)` -- a general-purpose move.
+# The AMD64 float emitters `math_xreg_xreg` and `math_imm_xreg` handed it an
+# XMM register, so it emitted a mov into whatever general-purpose register that
+# XMM's number encodes to: XMM10->R10, XMM11->R11, XMM12->R12, XMM13->R13,
+# XMM14->R14, XMM15->R15. The last four are callee-saved, so JIT-compiled code
+# silently trashed a register the surrounding C++ VM was relying on, and the
+# crash landed inside the VM after control returned to it.
+#
+# Two conditions had to coincide, which is why it survived so long:
+#
+#   1. The compare must NOT be fused with a following conditional jump. Written
+#      `if(a < b)` the JIT emits a branch and never materialises a bool, so the
+#      bad path is skipped. Only a materialised result -- stored to a variable,
+#      returned, or passed as an argument -- reaches it.
+#   2. The clobbered register must be live. The XMM pool hands out XMM10 first,
+#      then XMM11, ... so one or two live floats only ever touch R10/R11, which
+#      are scratch. It takes three or more concurrently live floats to reach
+#      R12+, and only then does anything break.
+#
+# It was originally found as "sqrt feeding a comparison segfaults" in
+# gl_walkthrough.obs. Sqrt was incidental: it just happened to leave its result
+# in a register, which is condition 2. ARM64 was never affected -- its float
+# path already releases the FP register and allocates a general-purpose one
+# before calling cmov_reg.
+#
+# Pinned() below arranges both conditions deterministically, and segfaults on a
+# pre-fix build at the default JIT threshold. Shapes() and Ops() then check that
+# the comparisons still produce the RIGHT answers rather than merely not
+# crashing -- the interpreter agrees with every assertion here.
+~#
+
+class JitFloatCompareStore {
+	@failures : Int;
+	@limit : Float;
+
+	function : Main(args : String[]) ~ Nil {
+		t := JitFloatCompareStore->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+		@limit := 4.0;
+	}
+
+	method : Check(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got <> want) {
+			"FAIL: {$what} (got={$got} want={$want})"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Note(what : String) ~ Nil {
+		"FAIL: {$what}"->PrintLine();
+		@failures += 1;
+	}
+
+	#~
+	The crash shape. Each float local store caches its value in an XMM register,
+	so the five stores pin XMM10..XMM14 and the compare's own operand lands on a
+	high XMM -- i.e. on a callee-saved general-purpose register once encoded.
+	The pinned locals are read afterwards so none of it is dead code.
+	~#
+	method : Pinned(a : Float, b : Float, c : Float, d : Float, e : Float, f : Float) ~ Bool {
+		p := a * 1.5;
+		q := b * 2.5;
+		s := c * 3.5;
+		t := d * 4.5;
+		u := e * 5.5;
+		flag := (f * 6.5) < 100.0;
+		total := p + q + s + t + u;
+		if(total < 0.0) {
+			Note("pinned locals went negative");
+		};
+
+		return flag;
+	}
+
+	#~
+	Every operand shape a float compare can take, with the result stored to a
+	local before it is read.
+	~#
+	method : Shapes(a : Float, b : Float) ~ Nil {
+		r1 : Bool; r2 : Bool; r3 : Bool; r4 : Bool;
+		r5 : Bool; r6 : Bool; r7 : Bool; r8 : Bool;
+
+		r1 := (a * 1.0) < 4.0;         Check("reg<imm", r1, a < 4.0);
+		r2 := 4.0 < (a * 1.0);         Check("imm<reg", r2, 4.0 < a);
+		r3 := (a * 1.0) < b;           Check("reg<mem", r3, a < b);
+		r4 := b < (a * 1.0);           Check("mem<reg", r4, b < a);
+		r5 := a < b;                   Check("mem<mem", r5, a < b);
+		r6 := a < 4.0;                 Check("mem<imm", r6, a < 4.0);
+		r7 := 4.0 < a;                 Check("imm<mem", r7, 4.0 < a);
+		r8 := (a * 1.0) < (b * 1.0);   Check("reg<reg", r8, a < b);
+	}
+
+	#~
+	All six comparison operators, each with a register-resident left operand.
+	~#
+	method : Ops(a : Float, b : Float) ~ Nil {
+		r1 : Bool; r2 : Bool; r3 : Bool;
+		r4 : Bool; r5 : Bool; r6 : Bool;
+
+		r1 := (a * 1.0) <  b;   Check("lt", r1, a <  b);
+		r2 := (a * 1.0) <= b;   Check("le", r2, a <= b);
+		r3 := (a * 1.0) >  b;   Check("gt", r3, a >  b);
+		r4 := (a * 1.0) >= b;   Check("ge", r4, a >= b);
+		r5 := (a * 1.0) =  b;   Check("eq", r5, a =  b);
+		r6 := (a * 1.0) <> b;   Check("ne", r6, a <> b);
+	}
+
+	# The bool crossing a return, which materialises it just as a store does.
+	method : Returned(a : Float) ~ Bool {
+		r := (a * 1.0) < @limit;
+		return r;
+	}
+
+	# The bool as a call argument, the third way to materialise one.
+	method : Sink(flag : Bool, want : Bool) ~ Nil {
+		Check("passed-arg", flag, want);
+	}
+
+	method : Run() ~ Nil {
+		i : Int;
+		a : Float;
+		b : Float;
+		bad : Int;
+
+		bad := 0;
+		# Hot enough that every method above is JIT-compiled at the default
+		# threshold, with inputs that straddle each comparison boundary.
+		for(i := 0; i < 80000; i += 1;) {
+			a := (i % 9)->As(Float);
+			b := ((i + 3) % 7)->As(Float);
+
+			Shapes(a, b);
+			Ops(a, b);
+			Check("returned", Returned(a), a < 4.0);
+			Sink((a * 1.0) < 4.0, a < 4.0);
+
+			got := Pinned(a, a + 1.0, a + 2.0, a + 3.0, a + 4.0, a + 5.0);
+			if(got <> (((a + 5.0) * 6.5) < 100.0)) {
+				bad += 1;
+			};
+		};
+
+		if(bad > 0) {
+			Note("{$bad} wrong results from the register-pinned compare");
+		};
+
+		if(@failures = 0) {
+			"All tests passed"->PrintLine();
+		}
+		else {
+			"{$@failures} test(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
