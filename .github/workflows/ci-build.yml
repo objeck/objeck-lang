@@ -36,8 +36,16 @@ jobs:
             deploy_script: deploy_windows.cmd x64
             shell: cmd
 
+          # windows-11-arm is a NATIVE ARM64 runner. This leg used to build on
+          # the x64 image and cross-compile, which meant it could not execute a
+          # single thing it produced -- the whole test suite, the debugger tests
+          # and the DAP tests were skipped, so an ARM64-only miscompile had
+          # nothing standing in its way. Native build + native execution closes
+          # that. It ships VS2022 (toolset v143) rather than VS2026's v145; the
+          # .vcxproj files select $(DefaultPlatformToolset), so they follow the
+          # image either way.
           - platform: windows-arm64
-            os: windows-2025-vs2026
+            os: windows-11-arm
             arch: ARM64
             deploy_script: deploy_windows.cmd arm64
             shell: cmd
@@ -472,7 +480,7 @@ jobs:
         ./update_version_arm.sh
 
     - name: Rebuild libraries (Windows)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os == 'Windows'
       working-directory: ./core/compiler
       shell: bash
       run: |
@@ -517,7 +525,7 @@ jobs:
         echo "Libraries rebuilt successfully"
 
     - name: Update deploy with rebuilt libraries
-      if: matrix.platform != 'linux-x64' && matrix.platform != 'windows-arm64'
+      if: matrix.platform != 'linux-x64'
       shell: bash
       working-directory: ./core/release
       run: |
@@ -558,20 +566,9 @@ jobs:
 
     # ============================================
     # Test Suite
-    # Note: Windows ARM64 is cross-compiled and cannot run tests on x64 runner
     # ============================================
 
-    - name: Skip tests (cross-compiled platform)
-      if: matrix.platform == 'windows-arm64'
-      shell: bash
-      run: |
-        echo "Tests skipped for Windows ARM64"
-        echo "This platform is cross-compiled on x64 runner"
-        echo "ARM64 binaries cannot execute on x64 hardware"
-        echo "Build verification only - no test execution"
-
     - name: Compile tests
-      if: matrix.platform != 'windows-arm64'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
@@ -635,7 +632,6 @@ jobs:
         fi
 
     - name: Run tests
-      if: matrix.platform != 'windows-arm64'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
@@ -708,7 +704,7 @@ jobs:
         done
 
     - name: Run regression tests (POSIX)
-      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os != 'Windows'
       working-directory: ./programs/regression
       # Temporary: surface generic type-arg state to diagnose the intermittent
       # bad_generic_arg_mismatch miss (prints [generic-diag] lines during compile).
@@ -728,7 +724,7 @@ jobs:
         ./run_regression.sh $ARCH
 
     - name: Run regression tests (Windows)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
       # Temporary: surface generic type-arg state to diagnose the intermittent
@@ -738,7 +734,7 @@ jobs:
       run: run_regression.cmd ${{ matrix.arch }}
 
     - name: Run debugger tests (POSIX)
-      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os != 'Windows'
       working-directory: ./programs/regression
       run: |
         chmod +x run_debugger_tests.sh
@@ -747,13 +743,13 @@ jobs:
         ./run_debugger_tests.sh $ARCH
 
     - name: Run debugger tests (Windows)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
       run: run_debugger_tests.cmd ${{ matrix.arch }}
 
     - name: Run DAP tests (POSIX)
-      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os != 'Windows'
       working-directory: ./programs/regression
       run: |
         ARCH="${{ matrix.arch }}"
@@ -763,7 +759,7 @@ jobs:
         python3 run_dap_tests.py "$BIN"
 
     - name: Run DAP tests (Windows)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
       run: |
@@ -979,7 +975,7 @@ jobs:
         fi
 
     - name: Upload regression logs (on failure)
-      if: failure() && matrix.platform != 'windows-arm64'
+      if: failure()
       uses: actions/upload-artifact@v6
       with:
         name: regression-logs-${{ matrix.platform }}
