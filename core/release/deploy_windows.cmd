@@ -10,38 +10,40 @@ IF "%VCINSTALLDIR%"=="" (
 	goto end
 )
 
-REM Check for mbedTLS ARM64 libraries
-if [%1] == [arm64] (
-	if not exist "..\lib\openssl\win\arm64\mbedtls.lib" (
-		echo.
-		echo ============================================================
-		echo  ERROR: mbedTLS ARM64 libraries not found
-		echo ============================================================
-		echo.
-		echo The ARM64 build requires mbedTLS 3.6.3 libraries.
-		echo.
-		echo Building mbedTLS ARM64 libraries automatically...
-		echo This is a one-time setup that will take 5-10 minutes.
-		echo.
+REM mbedTLS and nghttp2 come from vcpkg, for both x64 and ARM64.
+REM
+REM They used to be binaries committed under lib\openssl\win\<arch>, and this
+REM script hand-built mbedTLS 3.6.3 for ARM64 when they were missing. The
+REM project files now resolve both through core\build\vcpkg.props, so the
+REM committed copies are gone and the hand-build step with them.
+set VCPKG_TRIPLET=x64-windows
+if [%1] == [arm64] set VCPKG_TRIPLET=arm64-windows
 
-		pushd ..\lib\crypto
-		call build_mbedtls_arm64.cmd
-		popd
-
-		if not exist "..\lib\openssl\win\arm64\mbedtls.lib" (
-			echo.
-			echo ERROR: Failed to build mbedTLS ARM64 libraries.
-			echo Please see core\lib\crypto\BUILD_MBEDTLS_ARM64.md for manual instructions.
-			echo.
-			goto end
-		)
-
-		echo.
-		echo mbedTLS ARM64 libraries installed successfully!
-		echo Continuing with build...
-		echo.
-	)
+set VCPKG_DIR=
+if not "%VCPKG_ROOT%" == "" (
+	if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\include\mbedtls\build_info.h" set VCPKG_DIR=%VCPKG_ROOT%
 )
+if "%VCPKG_DIR%" == "" (
+	if exist "C:\vcpkg\installed\%VCPKG_TRIPLET%\include\mbedtls\build_info.h" set VCPKG_DIR=C:\vcpkg
+)
+
+if "%VCPKG_DIR%" == "" (
+	echo.
+	echo ============================================================
+	echo  ERROR: mbedTLS not found in vcpkg for %VCPKG_TRIPLET%
+	echo ============================================================
+	echo.
+	echo Install it with:
+	echo     vcpkg install mbedtls:%VCPKG_TRIPLET% nghttp2:%VCPKG_TRIPLET%
+	echo.
+	echo Set VCPKG_ROOT if your vcpkg is not at C:\vcpkg. Note that Visual
+	echo Studio ships its own vcpkg and points VCPKG_ROOT at it; that copy
+	echo usually has nothing installed.
+	echo.
+	goto end
+)
+
+echo Using vcpkg at %VCPKG_DIR% ^(%VCPKG_TRIPLET%^)
 
 set ZIP_BIN="\Program Files\7-Zip"
 
@@ -163,13 +165,11 @@ if errorlevel 1 (
 	exit /b 1
 )
 
-REM nghttp2 runtime DLL (required by obr for HTTP/2 support)
-if [%1] == [x64] (
-	copy ..\lib\openssl\win\x64\nghttp2.dll %TARGET%\bin
-)
-if [%1] == [arm64] (
-	copy ..\lib\openssl\win\arm64\nghttp2.dll %TARGET%\bin
-)
+REM nghttp2 runtime DLL (required by obr for HTTP/2 support).
+REM Taken from vcpkg so the shipped DLL matches the import library linked
+REM against. The committed copy it replaces was byte-identical to vcpkg's,
+REM having come from there in the first place.
+copy "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\nghttp2.dll" %TARGET%\bin
 if errorlevel 1 (
 	echo.
 	echo ============================================================

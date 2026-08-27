@@ -300,10 +300,36 @@ jobs:
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
         shell: pwsh
+        # mbedTLS and nghttp2 now come from vcpkg, resolved by
+        # core/build/vcpkg.props. They used to be binaries committed under
+        # core/lib/openssl/win/{x64,arm64}, which is why this step did nothing:
+        # the projects listed those directories ahead of $(LibraryPath), so the
+        # committed copies were what got linked, while the committed headers had
+        # already drifted to a different version. This workflow builds the
+        # RELEASE artifacts, so it needs the same install ci-build.yml does.
         run: |
-          # nghttp2 and mbedtls headers/libs are committed to core/lib/openssl/win/{x64,arm64}/
-          # and core/lib/openssl/win/include/ — no vcpkg install needed
-          Write-Output "✅ Windows deps self-contained in repo (no vcpkg required)"
+          function Install-VcpkgPackage([string]$pkg) {
+            $max = 3
+            for ($i = 1; $i -le $max; $i++) {
+              vcpkg install $pkg
+              if ($LASTEXITCODE -eq 0) { return }
+              if ($i -lt $max) {
+                Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in 20s..."
+                Start-Sleep -Seconds 20
+              }
+            }
+            throw "vcpkg install $pkg failed after $max attempts"
+          }
+
+          Install-VcpkgPackage "mbedtls:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "nghttp2:${{ matrix.arch }}-windows"
+
+          # PATH only, for the deploy script's nghttp2.dll copy. The compiler
+          # and linker paths come from vcpkg.props, not the environment.
+          $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
+          echo "$vcpkgRoot\bin" >> $env:GITHUB_PATH
+
+          Write-Output "Installed mbedtls and nghttp2 for ${{ matrix.arch }}"
 
       - name: Cache OpenCV DLLs (Windows x64)
         if: matrix.platform == 'windows-x64'
