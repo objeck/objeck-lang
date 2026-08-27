@@ -2665,7 +2665,7 @@ void JitArm64::add_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitArm64::add_imm_reg(long imm, Register reg) {
+void JitArm64::add_imm_reg(int64_t imm, Register reg) {
   if(imm < 0) {
     sub_imm_reg(abs(imm), reg);
   }
@@ -2707,7 +2707,7 @@ void JitArm64::inc_mem(long offset, Register dest) {
   add_imm_mem(1, offset, dest);
 }
 
-void JitArm64::add_imm_mem(long imm, long offset, Register dest) {
+void JitArm64::add_imm_mem(int64_t imm, long offset, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, dest, mem_holder->GetRegister());
   add_imm_reg(imm, mem_holder->GetRegister());
@@ -2741,7 +2741,7 @@ void JitArm64::sub_mem_reg(long offset, Register src, Register dest) {
   ReleaseRegister(mem_holder);
 }
 
-void JitArm64::sub_imm_reg(long imm, Register reg) {
+void JitArm64::sub_imm_reg(int64_t imm, Register reg) {
   if(imm < 0) {
     add_imm_reg(abs(imm), reg);
   }
@@ -2771,7 +2771,7 @@ void JitArm64::sub_imm_reg(long imm, Register reg) {
   }
 }
 
-void JitArm64::sub_imm_mem(long imm, long offset, Register dest) {
+void JitArm64::sub_imm_mem(int64_t imm, long offset, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, dest, mem_holder->GetRegister());
   sub_imm_reg(imm, mem_holder->GetRegister());
@@ -2787,7 +2787,7 @@ void JitArm64::dec_reg(Register dest) {
   sub_imm_reg(1, dest);
 }
 
-void JitArm64::mul_imm_reg(long imm, Register reg) {
+void JitArm64::mul_imm_reg(int64_t imm, Register reg) {
   // Optimization: Replace multiply by power-of-2 with left shift
   // Example: x * 8 becomes x << 3 (faster, no register allocation needed)
   if(imm > 0 && (imm & (imm - 1)) == 0) {
@@ -2945,7 +2945,7 @@ void JitArm64::mul_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitArm64::div_imm_reg(long imm, Register reg, bool is_mod) {
+void JitArm64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
   RegisterHolder* src_holder = GetRegister();
   move_imm_reg(imm, src_holder->GetRegister());
   div_reg_reg(src_holder->GetRegister(), reg, is_mod);
@@ -2993,7 +2993,7 @@ void JitArm64::div_reg_reg(Register src, Register dest, bool is_mod) {
   }
 }
 
-void JitArm64::shl_imm_reg(long value, Register dest) {
+void JitArm64::shl_imm_reg(int64_t value, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", " << GetRegisterName(dest) << L", #" << value << L"]" << std::endl;
 #endif
@@ -3050,7 +3050,7 @@ void JitArm64::shl_reg_reg(Register src, Register dest)
   AddMachineCode(op_code);
 }
 
-void JitArm64::shr_imm_reg(long value, Register dest) {
+void JitArm64::shr_imm_reg(int64_t value, Register dest) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [asr $" << value << L", %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
@@ -3132,7 +3132,7 @@ void JitArm64::and_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitArm64::and_imm_reg(long imm, Register reg) {
+void JitArm64::and_imm_reg(int64_t imm, Register reg) {
   RegisterHolder* src_holder = GetRegister();
   move_imm_reg(imm, src_holder->GetRegister());
   and_reg_reg(src_holder->GetRegister(), reg);
@@ -3187,7 +3187,7 @@ void JitArm64::or_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitArm64::or_imm_reg(long imm, Register reg) {
+void JitArm64::or_imm_reg(int64_t imm, Register reg) {
   RegisterHolder* src_holder = GetRegister();
   move_imm_reg(imm, src_holder->GetRegister());
   or_reg_reg(src_holder->GetRegister(), reg);
@@ -3221,7 +3221,7 @@ void JitArm64::xor_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitArm64::xor_imm_reg(long imm, Register reg) {
+void JitArm64::xor_imm_reg(int64_t imm, Register reg) {
   RegisterHolder* src_holder = GetRegister();
   move_imm_reg(imm, src_holder->GetRegister());
   xor_reg_reg(src_holder->GetRegister(), reg);
@@ -3235,7 +3235,7 @@ void JitArm64::xor_mem_reg(long offset, Register src, Register dest) {
   ReleaseRegister(src_holder);
 }
 
-void JitArm64::cmp_imm_reg(long imm, Register reg) {
+void JitArm64::cmp_imm_reg(int64_t imm, Register reg) {
   // Track if this is a zero comparison for CBZ/CBNZ optimization
   last_cmp_was_zero = (imm == 0);
   last_cmp_reg = reg;
@@ -3572,7 +3572,7 @@ void JitArm64::move_imm_mem8(int8_t imm, long offset, Register dest) {
   ReleaseRegister(imm_holder);
 }
 
-void JitArm64::move_imm_mem(long imm, long offset, Register dest) {
+void JitArm64::move_imm_mem(int64_t imm, long offset, Register dest) {
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
   move_reg_mem(imm_holder->GetRegister(), offset, dest);
@@ -3668,7 +3668,7 @@ void JitArm64::cmp_imm_freg(size_t addr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitArm64::math_imm_reg(long imm, Register reg, InstructionType type) {
+void JitArm64::math_imm_reg(int64_t imm, Register reg, InstructionType type) {
   switch(type) {
   case AND_INT:
     and_imm_reg(imm, reg);
