@@ -2835,7 +2835,35 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   // Load shared library file
   HINSTANCE dll_handle = LoadLibrary(dll_string.c_str());
   if(!dll_handle) {
-    std::wcerr << L">>> Runtime error loading shared library: " << dll_string.c_str() << L" <<<" << std::endl;
+    // Report WHY. The POSIX branch below has always printed dlerror(); this
+    // one printed only the path, so every Windows load failure looked
+    // identical whether the file was missing, built for another
+    // architecture, or present but missing a dependency of its own. That
+    // last case is the common one and the least guessable -- a native
+    // library sitting right where it belongs, failing because something it
+    // imports is absent (error 126).
+    const DWORD load_error = GetLastError();
+    wchar_t* error_text = nullptr;
+    const DWORD error_len = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                                           FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, load_error,
+                                           MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&error_text, 0, nullptr);
+    std::wstring error_str;
+    if(error_len && error_text) {
+      error_str.assign(error_text, error_len);
+      while(!error_str.empty() && (error_str.back() == L'\r' || error_str.back() == L'\n')) {
+        error_str.pop_back();
+      }
+    }
+    if(error_text) {
+      LocalFree(error_text);
+    }
+
+    std::wcerr << L">>> Runtime error loading shared library: " << dll_string.c_str()
+               << L" (error " << load_error;
+    if(!error_str.empty()) {
+      std::wcerr << L": " << error_str;
+    }
+    std::wcerr << L") <<<" << std::endl;
 #ifdef _NO_HALT
     return;
 #else
