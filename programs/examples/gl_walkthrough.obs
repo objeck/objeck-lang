@@ -167,10 +167,12 @@ class Walkthrough {
 		dx := eye->GetX();
 		dz := eye->GetZ() + 7.4;
 		# The square root is bound to a local rather than compared inline. Written
-		# as `close := (dx * dx + dz * dz)->Sqrt() < 4.0;` this SEGFAULTS under the
-		# JIT and runs correctly with OBJECK_JIT_THRESHOLD set high -- a miscompile
-		# of a sqrt feeding straight into a float comparison inside a hot method.
-		# Splitting it costs nothing and reads better anyway.
+		# as `close := (dx * dx + dz * dz)->Sqrt() < 4.0;` this used to SEGFAULT
+		# under the JIT. The sqrt was incidental: a float comparison whose result
+		# was STORED clobbered a callee-saved register, because the AMD64 emitters
+		# passed an XMM register to cmov_reg, which begins with a general-purpose
+		# move. Fixed; guarded by programs/regression/jit_float_compare_store.obs.
+		# Kept split because it costs nothing and reads better anyway.
 		reach := (dx * dx + dz * dz)->Sqrt();
 		if(reach < 4.0) {
 			@door_open := true;

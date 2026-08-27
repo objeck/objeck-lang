@@ -3735,9 +3735,9 @@ void JitAmd64::math_imm_xreg(RegInstr* instr, Register reg, InstructionType type
 #else
     cmp_imm_xreg(instr->GetOperand(), reg);
 #endif
-    if(!cond_jmp(type)) {
-      cmov_reg(reg, type);
-    }
+    // See the note in math_xreg_xreg: cmov_reg must never be handed an XMM
+    // register. The caller materialises the bool into a general-purpose one.
+    cond_jmp(type);
     break;
     
   default:
@@ -3777,9 +3777,27 @@ void JitAmd64::math_xreg_xreg(Register src, Register dest, InstructionType type)
   case NEQL_FLOAT:
   case GTR_EQL_FLOAT:
     cmp_xreg_xreg(src, dest);
-    if(!cond_jmp(type)) {
-      cmov_reg(dest, type);
-    }
+    // NO cmov_reg here. cmov_reg's first act is move_imm_reg(0, reg) -- a
+    // GENERAL-PURPOSE move -- so handing it an XMM register emitted a mov into
+    // whatever general-purpose register that XMM's number encodes to. The float
+    // pool is XMM10..XMM15, which encode to R10..R15, and R12-R15 are
+    // callee-saved: JIT-compiled code was quietly trashing a register the
+    // surrounding C++ VM still relied on, so the fault landed inside the VM
+    // after control returned to it. The bool is materialised by the LES_FLOAT/
+    // GTR_FLOAT/... case in ProcessInstructions, which pops this meaningless xmm
+    // result ("pop invalid xmm register") and calls cmov_reg on a register from
+    // GetRegister(). ARM64 already does the equivalent -- it releases the FP
+    // register and allocates a general-purpose one before cmov_reg.
+    //
+    // Only reachable when the compare is NOT fused with a following conditional
+    // jump, i.e. when its result is stored or otherwise materialised
+    // (`close := a < b;`) rather than branched on (`if(a < b)`), which is why
+    // this survived: `if` is the common shape, and a clobber only faults when
+    // the encoded register happens to be live.
+    //
+    // cmp_* leaves the flags for the caller; nothing between here and its
+    // cmov_reg emits an instruction, so the flags still stand.
+    cond_jmp(type);
     break;
 
   default:
