@@ -4004,6 +4004,19 @@ void JitAmd64::add_imm_reg(int64_t imm, Register reg) {
   if(imm == 0) { return; }
   if(imm == 1) { inc_reg(reg); return; }
   if(imm == -1) { dec_reg(reg); return; }
+  // x86-64 has no ADD with a 64-bit immediate. The 0x81 group takes an imm32
+  // that is SIGN-EXTENDED to 64 bits, so a wider value silently loses its high
+  // half: 0x7FFFFFFFFFFFFFFF became 0xFFFFFFFF, sign-extended back to -1, and
+  // the operation turned into a no-op. Materialise it and use the register
+  // form. move_imm_reg emits a mov, which leaves FLAGS alone, and the reg-reg
+  // form sets them exactly as the immediate form would.
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    add_reg_reg(imm_holder->GetRegister(), reg);
+    ReleaseRegister(imm_holder);
+    return;
+  }
   if(imm >= INT8_MIN && imm <= INT8_MAX) {
 #ifdef _DEBUG_JIT
     std::wcout << L"  " << (++instr_count) << L": [addq $" << imm << L", %"
@@ -4278,6 +4291,19 @@ void JitAmd64::sub_imm_reg(int64_t imm, Register reg) {
   if(imm == 0) { return; }
   if(imm == 1) { dec_reg(reg); return; }
   if(imm == -1) { inc_reg(reg); return; }
+  // x86-64 has no SUB with a 64-bit immediate. The 0x81 group takes an imm32
+  // that is SIGN-EXTENDED to 64 bits, so a wider value silently loses its high
+  // half: 0x7FFFFFFFFFFFFFFF became 0xFFFFFFFF, sign-extended back to -1, and
+  // the operation turned into a no-op. Materialise it and use the register
+  // form. move_imm_reg emits a mov, which leaves FLAGS alone, and the reg-reg
+  // form sets them exactly as the immediate form would.
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    sub_reg_reg(imm_holder->GetRegister(), reg);
+    ReleaseRegister(imm_holder);
+    return;
+  }
   if(imm >= INT8_MIN && imm <= INT8_MAX) {
 #ifdef _DEBUG_JIT
     std::wcout << L"  " << (++instr_count) << L": [subq $" << imm << L", %"
@@ -5045,6 +5071,19 @@ void JitAmd64::cvt_mem_xreg(long offset, Register src, Register dest) {
 void JitAmd64::and_imm_reg(int64_t imm, Register reg) {
   if(imm == 0) { move_imm_reg(0, reg); return; }
   if(imm == -1) { return; }
+  // x86-64 has no AND with a 64-bit immediate. The 0x81 group takes an imm32
+  // that is SIGN-EXTENDED to 64 bits, so a wider value silently loses its high
+  // half: 0x7FFFFFFFFFFFFFFF became 0xFFFFFFFF, sign-extended back to -1, and
+  // the operation turned into a no-op. Materialise it and use the register
+  // form. move_imm_reg emits a mov, which leaves FLAGS alone, and the reg-reg
+  // form sets them exactly as the immediate form would.
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    and_reg_reg(imm_holder->GetRegister(), reg);
+    ReleaseRegister(imm_holder);
+    return;
+  }
   if(imm >= INT8_MIN && imm <= INT8_MAX) {
 #ifdef _DEBUG_JIT
     std::wcout << L"  " << (++instr_count) << L": [andq $" << imm << L", %"
@@ -5113,6 +5152,19 @@ void JitAmd64::not_reg(Register reg) {
 void JitAmd64::or_imm_reg(int64_t imm, Register reg) {
   if(imm == 0) { return; }
   if(imm == -1) { move_imm_reg(-1, reg); return; }
+  // x86-64 has no OR with a 64-bit immediate. The 0x81 group takes an imm32
+  // that is SIGN-EXTENDED to 64 bits, so a wider value silently loses its high
+  // half: 0x7FFFFFFFFFFFFFFF became 0xFFFFFFFF, sign-extended back to -1, and
+  // the operation turned into a no-op. Materialise it and use the register
+  // form. move_imm_reg emits a mov, which leaves FLAGS alone, and the reg-reg
+  // form sets them exactly as the immediate form would.
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    or_reg_reg(imm_holder->GetRegister(), reg);
+    ReleaseRegister(imm_holder);
+    return;
+  }
   if(imm >= INT8_MIN && imm <= INT8_MAX) {
 #ifdef _DEBUG_JIT
     std::wcout << L"  " << (++instr_count) << L": [orq $" << imm << L", %"
@@ -5170,6 +5222,19 @@ void JitAmd64::or_mem_reg(long offset, Register src, Register dest) {
 void JitAmd64::xor_imm_reg(int64_t imm, Register reg) {
   if(imm == 0) { return; }
   if(imm == -1) { not_reg(reg); return; }
+  // x86-64 has no XOR with a 64-bit immediate. The 0x81 group takes an imm32
+  // that is SIGN-EXTENDED to 64 bits, so a wider value silently loses its high
+  // half: 0x7FFFFFFFFFFFFFFF became 0xFFFFFFFF, sign-extended back to -1, and
+  // the operation turned into a no-op. Materialise it and use the register
+  // form. move_imm_reg emits a mov, which leaves FLAGS alone, and the reg-reg
+  // form sets them exactly as the immediate form would.
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    xor_reg_reg(imm_holder->GetRegister(), reg);
+    ReleaseRegister(imm_holder);
+    return;
+  }
   if(imm >= INT8_MIN && imm <= INT8_MAX) {
 #ifdef _DEBUG_JIT
     std::wcout << L"  " << (++instr_count) << L": [xorq $" << imm << L", %"
