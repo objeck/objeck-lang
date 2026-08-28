@@ -208,6 +208,16 @@ SOCKET IPSocket::Accept(SOCKET server, char* client_address, int& client_port) {
 		return -1;
 	}
 
+	// Same 30s default receive timeout Open() gives a connected socket. An
+	// accepted socket had none, so a read on it blocked forever -- harmless
+	// while a handler served one request and closed, but a server that holds
+	// the connection open for a second request would park its thread on an
+	// idle peer permanently. Best-effort: the connection is usable either way.
+	DWORD timeout_ms = 30000;
+	if(setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
+		WSASetLastError(0);
+	}
+
 	char buffer[INET_ADDRSTRLEN] = { 0 };
 	inet_ntop(AF_INET, &(pin.sin_addr), buffer, INET_ADDRSTRLEN);
 	strncpy_s(client_address, INET_ADDRSTRLEN - 1, buffer, INET_ADDRSTRLEN);
