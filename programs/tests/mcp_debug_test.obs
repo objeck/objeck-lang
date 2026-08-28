@@ -12,21 +12,35 @@
 #   3. PASS/FAIL lines are preserved so the output is still grep-able.
 #
 # Usage (from deploy-x64/bin/):
-#   ./obc -src ../../../programs/tests/mcp_debug_test.obs \
+#   ./obc -src ../../../programs/regression/mcp_debug_test.obs \
 #         -lib net,net_server,cipher -dest /tmp/mcp_debug_test.obe
 #   ./obr /tmp/mcp_debug_test.obe
 #
-# Diagnosing the Linux HTTP-500 failure
-# --------------------------------------
-# ProcessPost falls through to SetCode(204) when one of these is false:
-#   (a) request->HasContent()     -> no ShowPayload output at all
-#   (b) parser->Parse()           -> ShowPayload present, no method_name line
-#   (c) method_name <> Nil        -> ShowPayload present, no method_name line
-#   (d) select label matched      -> method_name line present + "Unknown Message"
+# NOTE: this file is duplicated byte-for-byte at programs/tests/mcp_debug_test.obs.
+# Edit both, or they drift.
 #
-# SetCode(204) is the correct internal value for "nothing matched", but
-# ProcessResponse()'s select has no label 204 and its `other` branch writes
-# "HTTP/1.1 500 Internal Server Error", which is why the client sees 500.
+# What the failing status code means
+# ----------------------------------
+# The status code this test reports on failure never came from the server.
+# net.obs sets a status code before reading the status line and returns that
+# value when no line arrives. That sentinel used to be 500, which is
+# indistinguishable from a real "500 Internal Server Error" -- it misdirected
+# this investigation twice. It is now 0, which is not a valid HTTP status.
+#
+# So a 0 here means the client received no response at all. Do not read it as
+# a server-side result: ProcessPost, ProcessResponse and the 204 fall-through
+# are not implicated, and an earlier version of this comment sent readers down
+# exactly that path.
+#
+# What is actually established (commit 713b6074e2):
+#   curl against the MCP server ................................. 40/40
+#   Objeck client -> MCP server, separate processes .............. 25/25
+#   Objeck client -> raw TCP server, one process ................. 6/6
+#   Objeck client sharing a process with the MCP server .......... FAILS
+#
+# That last shape is the only one that fails, and the only one that spawns a
+# thread per connection. The remaining defect is in the socket/threading path,
+# not in the response codes.
 
 # EXTRA_LIBS: net,net_server,cipher
 use Collection, Data.JSON, System.IO.Net, Web.HTTP, Web.HTTP.Server, Web.HTTP.Server.MCP;
