@@ -138,13 +138,26 @@ if [%1] == [arm64] (
 	REM WindowsSdkVerBinPath has trailing backslash, e.g., "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\"
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+	REM VCToolsRedistDir is EMPTY on the GitHub ARM64 runner, so this matched
+	REM nothing and copied NOTHING -- silently. Both native libraries then failed
+	REM to load with error 126: OpenCV and ONNX are C++ and import msvcp140.dll,
+	REM which was never deployed. x64 hid it because a machine with Visual Studio
+	REM has the redistributable installed system-wide.
+	REM
+	REM Two loops rather than a found/not-found variable on purpose: this script
+	REM has no delayed expansion, so a flag set inside these parentheses could not
+	REM be read back here. A second copy over the first is harmless.
 	for /d %%d in ("%VCToolsRedistDir%\arm64\Microsoft.VC*.CRT") do (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-		REM msvcp140.dll too: the OpenCV and ONNX DLLs are C++ and import it.
-		REM Shipping only the C runtime worked on x64 because the host had the
-		REM redistributable installed anyway; a clean ARM64 machine does not.
 		copy "%%d\msvcp140.dll" %TARGET%\bin
+	)
+	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
+		for /d %%d in ("%%v\arm64\Microsoft.VC*.CRT") do (
+			copy "%%d\vcruntime140.dll" %TARGET%\bin
+			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+			copy "%%d\msvcp140.dll" %TARGET%\bin
+		)
 	)
 )
 if errorlevel 1 (
@@ -163,19 +176,43 @@ if [%1] == [x64] (
 	REM Embed manifests AFTER copying binaries
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+	REM VCToolsRedistDir is EMPTY on the GitHub ARM64 runner, so this matched
+	REM nothing and copied NOTHING -- silently. Both native libraries then failed
+	REM to load with error 126: OpenCV and ONNX are C++ and import msvcp140.dll,
+	REM which was never deployed. x64 hid it because a machine with Visual Studio
+	REM has the redistributable installed system-wide.
+	REM
+	REM Two loops rather than a found/not-found variable on purpose: this script
+	REM has no delayed expansion, so a flag set inside these parentheses could not
+	REM be read back here. A second copy over the first is harmless.
 	for /d %%d in ("%VCToolsRedistDir%\x64\Microsoft.VC*.CRT") do (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-		REM msvcp140.dll too: the OpenCV and ONNX DLLs are C++ and import it.
-		REM Shipping only the C runtime worked on x64 because the host had the
-		REM redistributable installed anyway; a clean ARM64 machine does not.
 		copy "%%d\msvcp140.dll" %TARGET%\bin
+	)
+	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
+		for /d %%d in ("%%v\x64\Microsoft.VC*.CRT") do (
+			copy "%%d\vcruntime140.dll" %TARGET%\bin
+			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+			copy "%%d\msvcp140.dll" %TARGET%\bin
+		)
 	)
 )
 if errorlevel 1 (
 	echo.
 	echo ============================================================
 	echo  ERROR: x64 binary copy/manifest step failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
+
+REM Top level: %TARGET% is set, and this is outside the parentheses above so it
+REM sees what those loops actually produced. Shipping a tree whose native
+REM libraries cannot load, quietly, is exactly how this went unnoticed.
+if not exist %TARGET%\bin\msvcp140.dll (
+	echo.
+	echo ============================================================
+	echo  ERROR: VC++ runtime not deployed to bin - aborting deploy
 	echo ============================================================
 	exit /b 1
 )
