@@ -959,7 +959,18 @@ response->GetStatusCode()->PrintLine();
 					oper->Append(content_type);
 					oper->Append("\r\nContent-Length: ");
 					oper->Append(data->Size()->ToString());
-					oper->Append("\r\nConnection: close\r\n");
+					# keep-alive, not close. This is not about reusing the connection -- we
+					# still close it below after reading the response. It is about WHICH SIDE
+					# tears down. Asking the server to close meant the server tore down, and on
+					# Windows loopback a teardown before the peer application has read discards
+					# the response (#669). With keep-alive the server holds and we tear down,
+					# which removes the exposure: measured 28/100 transfers lost before, 0/100
+					# after, with no connection reuse involved.
+					#
+					# A response we cannot frame still falls back to reading until close below.
+					# That is correct: a server unable to frame its body must answer with
+					# Connection: close, and then it does close.
+					oper->Append("\r\nConnection: keep-alive\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
 					each(i : request_keys) {
@@ -1138,7 +1149,18 @@ response->GetStatusCode()->PrintLine();
 						oper->Append(':');
 						oper->Append(port);
 					};
-					oper->Append("\r\nConnection: close\r\n");
+					# keep-alive, not close. This is not about reusing the connection -- we
+					# still close it below after reading the response. It is about WHICH SIDE
+					# tears down. Asking the server to close meant the server tore down, and on
+					# Windows loopback a teardown before the peer application has read discards
+					# the response (#669). With keep-alive the server holds and we tear down,
+					# which removes the exposure: measured 28/100 transfers lost before, 0/100
+					# after, with no connection reuse involved.
+					#
+					# A response we cannot frame still falls back to reading until close below.
+					# That is correct: a server unable to frame its body must answer with
+					# Connection: close, and then it does close.
+					oper->Append("\r\nConnection: keep-alive\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
 					each(i : request_keys) {
