@@ -110,6 +110,7 @@ class CoreAbstractVirtualTest {
             "PASS: Abstract virtual methods"->PrintLine();
         } else {
             "FAIL: Abstract virtual methods"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

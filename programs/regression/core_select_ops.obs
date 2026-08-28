@@ -86,6 +86,7 @@ class CoreSelectOpsTest {
             "PASS: Select/label/other statements"->PrintLine();
         } else {
             "FAIL: Select/label/other statements"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

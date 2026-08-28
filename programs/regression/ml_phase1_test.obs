@@ -141,6 +141,7 @@ class MlPhase1Test {
 		}
 		else {
 			"FAIL: ML phase1 tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

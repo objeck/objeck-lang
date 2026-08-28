@@ -153,6 +153,7 @@ class AiRlTest {
 		}
 		else {
 			"FAIL: AI reinforcement learning tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

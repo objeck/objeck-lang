@@ -55,6 +55,7 @@ class MlTreesTest {
 		}
 		else {
 			"FAIL: ML trees tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

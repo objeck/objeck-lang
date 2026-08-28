@@ -89,6 +89,7 @@ class FixStringConcatTest {
             "PASS: String concatenation patterns"->PrintLine();
         } else {
             "FAIL: String concatenation patterns"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

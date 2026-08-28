@@ -1,0 +1,76 @@
+#~
+64-bit immediate operands in the ARM64 JIT.
+
+Windows is LLP64, so 'long' is 32 bits there while Linux and macOS are LP64 and
+give it 64. The ARM64 back end used to cast every immediate operand to 'long' on
+its way from the bytecode into the emitters, which silently dropped the high
+half on Windows only. Two consequences, both of which this test pins down:
+
+  - 'v and 0x7FFFFFFFFFFFFFFF' truncated the mask to 0xFFFFFFFF, which
+    sign-extends to -1, turning the AND into a no-op. Everything unsigned is
+    built on that mask, so '>>>' and friends all read wrong.
+  - multiply by a power of two >= 2^31 lost the shift amount and emitted
+    'lsl #0', so 'v * 4294967296' evaluated to 'v'.
+
+Every expected value below is a literal. Recomputing the expectation with the
+same expression under test proves nothing -- both sides would ride the same
+miscompiled path. Inputs arrive as parameters so nothing folds at compile time,
+and each helper is 'native' so it is JIT compiled on its first call rather than
+after the auto-JIT threshold.
+~#
+
+class Arm64Imm64Ops {
+	function : native : AndMask(v : Int) ~ Int {
+		return v and 0x7FFFFFFFFFFFFFFF;
+	}
+
+	function : native : OrHigh(v : Int) ~ Int {
+		return v or 0x7FFF000000000000;
+	}
+
+	function : native : MulPow2(v : Int, which : Int) ~ Int {
+		if(which = 31) { return v * 2147483648; };
+		if(which = 32) { return v * 4294967296; };
+		return v * 1099511627776;
+	}
+
+	function : native : StoreImm(idx : Int) ~ Int {
+		a := Int->New[2];
+		a[0] := 9223372036854775807;
+		a[1] := -4294967296;
+		return a[idx];
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing 64-bit immediates in the ARM64 JIT..."->PrintLine();
+
+		passed := 0;
+		failed := 0;
+
+		# AND with a mask whose high half must survive
+		if(AndMask(-4) = 9223372036854775804) { passed += 1; } else { failed += 1; "FAIL: AndMask(-4)"->PrintLine(); };
+		if(AndMask(-1) = 9223372036854775807) { passed += 1; } else { failed += 1; "FAIL: AndMask(-1)"->PrintLine(); };
+		if(AndMask(42) = 42) { passed += 1; } else { failed += 1; "FAIL: AndMask(42)"->PrintLine(); };
+
+		# OR with a constant living entirely in the high half
+		if(OrHigh(0) = 9223090561878065152) { passed += 1; } else { failed += 1; "FAIL: OrHigh(0)"->PrintLine(); };
+
+		# multiply by powers of two at and above 2^31
+		if(MulPow2(3, 31) = 6442450944) { passed += 1; } else { failed += 1; "FAIL: 3 * 2^31"->PrintLine(); };
+		if(MulPow2(3, 32) = 12884901888) { passed += 1; } else { failed += 1; "FAIL: 3 * 2^32"->PrintLine(); };
+		if(MulPow2(3, 40) = 3298534883328) { passed += 1; } else { failed += 1; "FAIL: 3 * 2^40"->PrintLine(); };
+		if(MulPow2(-3, 32) = -12884901888) { passed += 1; } else { failed += 1; "FAIL: -3 * 2^32"->PrintLine(); };
+		if(MulPow2(3, 3) = 3298534883328) { passed += 1; } else { failed += 1; "FAIL: 3 * 2^40 (default arm)"->PrintLine(); };
+
+		# storing a 64-bit literal straight into memory
+		if(StoreImm(0) = 9223372036854775807) { passed += 1; } else { failed += 1; "FAIL: StoreImm(0)"->PrintLine(); };
+		if(StoreImm(1) = -4294967296) { passed += 1; } else { failed += 1; "FAIL: StoreImm(1)"->PrintLine(); };
+
+		if(failed > 0) {
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"{$passed} passed, 0 failed"->PrintLine();
+	}
+}

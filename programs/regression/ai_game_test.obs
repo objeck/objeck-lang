@@ -182,6 +182,7 @@ class AiGameTest {
 		}
 		else {
 			"FAIL: AI game search tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

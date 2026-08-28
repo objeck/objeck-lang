@@ -117,6 +117,7 @@ class AiSearchTest {
 		}
 		else {
 			"FAIL: AI search tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

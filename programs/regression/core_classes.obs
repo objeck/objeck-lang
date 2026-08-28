@@ -100,6 +100,7 @@ class CoreClassesTest {
             "PASS: Core class operations"->PrintLine();
         } else {
             "FAIL: Core class operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

@@ -131,6 +131,7 @@ class XmlEncodingOpsTest {
 		}
 		else {
 			"FAIL: XML encoding operations"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

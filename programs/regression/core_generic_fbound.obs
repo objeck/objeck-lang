@@ -26,6 +26,7 @@ class CoreGenericFbound {
       "PASS: f-bounds"->PrintLine();
     } else {
       "FAIL: f-bounds"->PrintLine();
+      Runtime->Exit(1);
     };
   }
 }

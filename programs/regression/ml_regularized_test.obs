@@ -166,6 +166,7 @@ class MlRegularizedTest {
 		}
 		else {
 			"FAIL: ML regularized regression tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

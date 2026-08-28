@@ -84,6 +84,7 @@ class CoreArraysSimpleTest {
             "PASS: Core array operations"->PrintLine();
         } else {
             "FAIL: Core array operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

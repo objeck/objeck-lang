@@ -207,6 +207,7 @@ class MlLibraryTest {
 		}
 		else {
 			"FAIL: ML library tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

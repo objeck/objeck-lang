@@ -87,6 +87,7 @@ class JitNativeMathTest {
             "PASS: JIT native math builtins"->PrintLine();
         } else {
             "FAIL: JIT native math builtins"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

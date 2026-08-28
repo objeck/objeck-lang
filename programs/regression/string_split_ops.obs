@@ -67,6 +67,7 @@ class StringSplitOpsTest {
             "PASS: String split operations"->PrintLine();
         } else {
             "FAIL: String split operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

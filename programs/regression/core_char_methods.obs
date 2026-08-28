@@ -109,6 +109,7 @@ class CoreCharMethodsTest {
             "PASS: Char methods"->PrintLine();
         } else {
             "FAIL: Char methods"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

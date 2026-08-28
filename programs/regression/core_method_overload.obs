@@ -90,6 +90,7 @@ class CoreMethodOverloadTest {
             "PASS: Method overloading"->PrintLine();
         } else {
             "FAIL: Method overloading"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

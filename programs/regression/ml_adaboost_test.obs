@@ -113,6 +113,7 @@ class MlAdaBoostTest {
 		}
 		else {
 			"FAIL: ML AdaBoost tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

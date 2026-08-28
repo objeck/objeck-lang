@@ -97,6 +97,7 @@ class CoreBitwiseOpsTest {
             "PASS: Bitwise operations"->PrintLine();
         } else {
             "FAIL: Bitwise operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

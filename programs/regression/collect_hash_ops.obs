@@ -90,6 +90,7 @@ class CollectHashOpsTest {
             "PASS: Hash operations"->PrintLine();
         } else {
             "FAIL: Hash operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

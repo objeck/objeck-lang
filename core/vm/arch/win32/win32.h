@@ -432,12 +432,25 @@ class IPSocket {
   }
 
   static int WriteBytes(const char* values, int len, SOCKET sock) {
-    int status = send(sock, values, len, 0);
-    if(status == SOCKET_ERROR) {
-      return -1;
+    // send() on a blocking socket is only obliged to accept SOME of the buffer.
+    // Once the kernel send buffer fills it returns a short count, and a single
+    // unlooped send() drops the remainder on the floor -- no error, no retry,
+    // and callers here either push that partial count into Objeck or discard it
+    // entirely (SockTcpOutString ignores the return). ReadBytes below has always
+    // looped, and so has the TLS WriteBytes; only plain TCP did not.
+    int total = 0;
+    while(total < len) {
+      const int status = send(sock, values + total, len - total, 0);
+      if(status == SOCKET_ERROR) {
+        return total > 0 ? total : -1;
+      }
+      if(status == 0) {
+        break;
+      }
+      total += status;
     }
-    
-    return status;
+
+    return total;
   }
 
   static char ReadByte(SOCKET sock, int &status) {
@@ -466,6 +479,14 @@ class IPSocket {
   }
 
   static void Close(SOCKET sock) {
+    // A bare closesocket() straight after send() discards whatever is still
+    // queued in the kernel send buffer, so the HTTP server's "write the
+    // response, close the socket" sequence delivered nothing at all on a good
+    // fraction of connections -- the peer saw a reset with zero bytes read.
+    // shutdown() hands the queued bytes off and sends FIN before the handle
+    // goes away. Errors are ignored on purpose: the socket may already be
+    // torn down by the peer, and there is nothing useful to do about it here.
+    shutdown(sock, 1 /* SD_SEND; winsock2.h is not in this header's include set */);
     closesocket(sock);
   }
 

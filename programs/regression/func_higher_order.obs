@@ -65,6 +65,7 @@ class FuncHigherOrderTest {
             "PASS: Higher-order functions"->PrintLine();
         } else {
             "FAIL: Higher-order functions"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

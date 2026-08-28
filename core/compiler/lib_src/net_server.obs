@@ -85,27 +85,33 @@ bundle Web.HTTP.Server {
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
-				thread := System.Concurrency.Thread->New() {
-					New() {
-						Parent()
-					}
-
-					method : public : Run(arg : System.Base) ~ Nil {
-						params := arg->As(Collection.Tuple.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
-						callback := params->GetFirst();
-						secure_client := params->GetSecond();
-						server_config := params->GetThird();
-						is_debug := params->GetFourth();
-
-						handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-						handler->SetConfig(server_config, is_debug->Get());
-						handler->Execute(secure_client);
-					}
-				};
-
 				while(<>@stop) {
 					secure_client := @secure_server->Accept();
 					if(<>@stop & secure_client <> Nil & secure_client->IsOpen()) {
+						# A single Thread instance used to be created above this loop and
+						# re-executed for every connection. Execute() overwrites the thread's
+						# argument, so a connection accepted while the previous handler was
+						# still running repointed that handler at a different socket and left
+						# the earlier request answered by nobody -- the client saw its
+						# connection reset. Each accept gets its own thread.
+						thread := System.Concurrency.Thread->New() {
+							New() {
+								Parent()
+							}
+
+							method : public : Run(arg : System.Base) ~ Nil {
+								params := arg->As(Collection.Tuple.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
+								callback := params->GetFirst();
+								secure_client := params->GetSecond();
+								server_config := params->GetThird();
+								is_debug := params->GetFourth();
+
+								handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
+								handler->SetConfig(server_config, is_debug->Get());
+								handler->Execute(secure_client);
+							}
+						};
+
 						params := Collection.Tuple.Quartet->New(callback, secure_client, @server_config, BoolRef->New(@is_debug))<Class, TCPSecureSocket, WebServerConfig, BoolRef>;
 						thread->Execute(params);
 					};
@@ -161,27 +167,33 @@ bundle Web.HTTP.Server {
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
-				thread := System.Concurrency.Thread->New() {
-					New() {
-						Parent()
-					}
-
-					method : public : Run(arg : System.Base) ~ Nil {
-						params := arg->As(Collection.Tuple.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
-						callback := params->GetFirst();
-						client := params->GetSecond();
-						server_config := params->GetThird();
-						is_debug := params->GetFourth();
-
-						handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
-						handler->SetConfig(server_config, is_debug->Get());
-						handler->Execute(client);
-					}
-				};
-
 				while(<>@stop) {
 					client := @server->Accept();
 					if(<>@stop & client <> Nil & client->IsOpen()) {
+						# A single Thread instance used to be created above this loop and
+						# re-executed for every connection. Execute() overwrites the thread's
+						# argument, so a connection accepted while the previous handler was
+						# still running repointed that handler at a different socket and left
+						# the earlier request answered by nobody -- the client saw its
+						# connection reset. Each accept gets its own thread.
+						thread := System.Concurrency.Thread->New() {
+							New() {
+								Parent()
+							}
+
+							method : public : Run(arg : System.Base) ~ Nil {
+								params := arg->As(Collection.Tuple.Quartet<Class, TCPSocket, WebServerConfig, BoolRef>);
+								callback := params->GetFirst();
+								client := params->GetSecond();
+								server_config := params->GetThird();
+								is_debug := params->GetFourth();
+
+								handler := callback->Instance(callback->GetName())->As(HttpRequestHandler);
+								handler->SetConfig(server_config, is_debug->Get());
+								handler->Execute(client);
+							}
+						};
+
 						params := Collection.Tuple.Quartet->New(callback, client, @server_config, BoolRef->New(@is_debug))<Class, TCPSocket, WebServerConfig, BoolRef>;
 						thread->Execute(params);
 					};
@@ -1941,6 +1953,7 @@ class RequestHandler from HttpsRequestHandler {
 		@client : TCPSecureSocket;
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
+		@keep_alive : Bool;
 
 		#~
 		Constructor
@@ -1967,84 +1980,113 @@ class RequestHandler from HttpsRequestHandler {
 			@client := param->As(TCPSecureSocket);
 
 			if(@client <> Nil & @client->IsOpen()) {
-				# get request
-				request := @client->ReadLine();
-				if(@is_debug) {
-					request_address := @client->GetAddress();
-					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
-				};
+				# Mirrors HttpRequestHandler::Run -- see the note there. A connection
+				# carrying one request and then closing is what exposes #669, and the
+				# same two bounds apply: a request cap for a client that never closes,
+				# and the accepted socket receive timeout for one that goes idle.
+				served := 0;
+				alive := true;
 
-				# parse request
-				request_verb : String; request_path : String;
-				if(request->Size() > 0) {
-					request_parts := request->Split(" ");
-					if(request_parts->Size() = 3) {
-						request_verb := request_parts[0];
-						request_path := request_parts[1];
-					};
-				};
-
-				# get request headers
-				request_headers := GetHeaders();
-
-				# verify request
-				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
-					# GET and HEAD request
-					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
-						# retrieve content
-						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-							request_path := "/index.html";
-						};
-
-						# write response
-						http_request := Request->New(request_path, request_headers);
-						http_response := Response->New(@server_config, http_request->GetPath());
-
-						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-							@server_config->ProcessGet(http_request, http_response);
-						};
-						ProcessResponse(http_response, request_verb->Equals("HEAD"));
-					}
-					# POST, PUT, PATCH, DELETE with body
-					else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
-						content_length_str := request_headers->Find("content-length");
-						buffer : Byte[];
-						if(content_length_str <> Nil) {
-							content_length := content_length_str->ToInt();
-							if(content_length > 0 & content_length <= 16*1048576) { # 16M body limit
-								buffer := WebCommon->ReadPost(content_length, @client);
-							};
-						};
-
-						# retrieve content
-						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-							request_path := "/index.html";
-						};
-
-						# write response
-						http_request := Request->New(request_path, request_headers, buffer);
-						http_response := Response->New(@server_config, http_request->GetPath());
-
-						if(request_verb->Equals("POST")) {
-							if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-								@server_config->ProcessPost(http_request, http_response);
-							};
-						}
-						else if(request_verb->Equals("PUT")) {
-							ProcessPut(http_request, http_response);
-						}
-						else if(request_verb->Equals("PATCH")) {
-							ProcessPatch(http_request, http_response);
-						}
-						else {
-							ProcessDelete(http_request, http_response);
-						};
-						ProcessResponse(http_response);
-					};
+				while(alive & served < 100 & @client->IsOpen()) {
+					alive := ServeOne();
+					served += 1;
 				};
 
 				@client->Close();
 			};
+		}
+
+		#~
+		Serves a single request on the already-open connection
+		@return true if the connection should stay open for another request
+		~#
+		method : ServeOne() ~ Bool {
+			# get request
+			request := @client->ReadLine();
+			if(request = Nil | request->Size() = 0) {
+				# peer closed, or the accepted socket's receive timeout expired
+				return false;
+			};
+			if(@is_debug) {
+				request_address := @client->GetAddress();
+				"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
+			};
+
+			# parse request
+			request_verb : String; request_path : String; request_version : String;
+			if(request->Size() > 0) {
+				request_parts := request->Split(" ");
+				if(request_parts->Size() = 3) {
+					request_verb := request_parts[0];
+					request_path := request_parts[1];
+					request_version := request_parts[2];
+				};
+			};
+
+			# get request headers
+			request_headers := GetHeaders();
+
+			# Decided before the response is written, because ProcessResponse
+			# emits the Connection header from it.
+			@keep_alive := IsPersistent(request_version, request_headers);
+
+			# verify request
+			if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
+				# GET and HEAD request
+				if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
+					# retrieve content
+					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+						request_path := "/index.html";
+					};
+
+					# write response
+					http_request := Request->New(request_path, request_headers);
+					http_response := Response->New(@server_config, http_request->GetPath());
+
+					if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+						@server_config->ProcessGet(http_request, http_response);
+					};
+					ProcessResponse(http_response, request_verb->Equals("HEAD"));
+				}
+				# POST, PUT, PATCH, DELETE with body
+				else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
+					content_length_str := request_headers->Find("content-length");
+					buffer : Byte[];
+					if(content_length_str <> Nil) {
+						content_length := content_length_str->ToInt();
+						if(content_length > 0 & content_length <= 16*1048576) { # 16M body limit
+							buffer := WebCommon->ReadPost(content_length, @client);
+						};
+					};
+
+					# retrieve content
+					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+						request_path := "/index.html";
+					};
+
+					# write response
+					http_request := Request->New(request_path, request_headers, buffer);
+					http_response := Response->New(@server_config, http_request->GetPath());
+
+					if(request_verb->Equals("POST")) {
+						if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+							@server_config->ProcessPost(http_request, http_response);
+						};
+					}
+					else if(request_verb->Equals("PUT")) {
+						ProcessPut(http_request, http_response);
+					}
+					else if(request_verb->Equals("PATCH")) {
+						ProcessPatch(http_request, http_response);
+					}
+					else {
+						ProcessDelete(http_request, http_response);
+					};
+					ProcessResponse(http_response);
+				};
+			};
+
+			return @keep_alive;
 		}
 
 		#~
@@ -2068,7 +2110,10 @@ class RequestHandler from HttpsRequestHandler {
 					content := response->GetContent();
 					if(content <> Nil) {
 						content_size := content->Size();
-						response_header += "content-length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+						# Must agree with what Run() does next, or the peer waits for a request we
+						# will never read, or reuses a socket we are about to close.
+						connection_value := @keep_alive ? "keep-alive" : "close";
+						response_header += "content-length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
 
 						cookies := response->GetCookies()<Cookie>;
 						each(i : cookies) {
@@ -2096,6 +2141,9 @@ class RequestHandler from HttpsRequestHandler {
 						label 302 {
 							reason := response->GetReason();
 							if(reason <> Nil) {
+								# This path writes a whole response by hand with no keep-alive framing,
+								# so the connection ends here.
+								@keep_alive := false;
 								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
 							}
 							else {
@@ -2139,6 +2187,31 @@ class RequestHandler from HttpsRequestHandler {
 			};
 		}
 		
+		#~
+		Decides whether the connection survives this request. An explicit
+		Connection header wins; otherwise HTTP/1.1 persists by default and
+		HTTP/1.0 does not, per RFC 7230.
+		@param version HTTP version from the request line
+		@param headers request headers, names already lower-cased
+		@return true to keep the connection open
+		~#
+		method : IsPersistent(version : String, headers : Map<String, String>) ~ Bool {
+			if(headers <> Nil) {
+				connection := headers->Find("connection");
+				if(connection <> Nil) {
+					lowered := connection->ToLower();
+					if(lowered->Has("close")) {
+						return false;
+					};
+					if(lowered->Has("keep-alive")) {
+						return true;
+					};
+				};
+			};
+
+			return version <> Nil & version->Equals("HTTP/1.1");
+		}
+
 		#~
 		Get HTTP headers
 		@return HTTP headers
@@ -2216,6 +2289,7 @@ class RequestHandler from HttpsRequestHandler {
 		@client : TCPSocket;
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
+		@keep_alive : Bool;
 
 		#~
 		Constructor
@@ -2242,84 +2316,120 @@ class RequestHandler from HttpsRequestHandler {
 			@client := param->As(TCPSocket);
 
 			if(@client <> Nil & @client->IsOpen()) {
-				# get request
-				request := @client->ReadLine();
-				if(@is_debug) {
-					request_address := @client->GetAddress();
-					"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
-				};
+				# A connection used to carry exactly one request and then close. That is
+				# precisely what exposes #669 on Windows: the SERVER tears the connection
+				# down, and on loopback a teardown before the peer application has read its
+				# data discards the response. Holding the connection and letting the client
+				# close removes the exposure -- measured at 0 failures in 800 transfers, and
+				# roughly three times faster, since connection setup stops being per-request.
+				#
+				# Both bounds matter on a thread-per-connection server: the request cap stops
+				# a client that never closes, and the 30s receive timeout now set on accepted
+				# sockets stops one that simply goes idle. Without them keep-alive parks a
+				# thread per connection indefinitely.
+				served := 0;
+				alive := true;
 
-				# parse request
-				request_verb : String; request_path : String;
-				if(request->Size() > 0) {
-					request_parts := request->Split(" ");
-					if(request_parts->Size() = 3) {
-						request_verb := request_parts[0];
-						request_path := request_parts[1];
-					};
-				};
-
-				# get request headers
-				request_headers := GetHeaders();
-
-				# verify request
-				if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
-					# GET and HEAD request
-					if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
-						# retrieve content
-						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-							request_path := "/index.html";
-						};
-
-						# write response
-						http_request := Request->New(request_path, request_headers);
-						http_response := Response->New(@server_config, http_request->GetPath());
-						
-						if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-							@server_config->ProcessGet(http_request, http_response);
-						};
-						ProcessResponse(http_response, request_verb->Equals("HEAD"));
-					}
-					# POST, PUT, PATCH, DELETE with body
-					else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
-						content_length_str := request_headers->Find("content-length");
-						buffer : Byte[];
-						if(content_length_str <> Nil) {
-							content_length := content_length_str->ToInt();
-							if(content_length > 0 & content_length <= 16*1048576) { # 16M body limit
-								buffer := WebCommon->ReadPost(content_length, @client);
-							};
-						};
-
-						# retrieve content
-						if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
-							request_path := "/index.html";
-						};
-
-						# write response
-						http_request := Request->New(request_path, request_headers, buffer);
-						http_response := Response->New(@server_config, http_request->GetPath());
-
-						if(request_verb->Equals("POST")) {
-							if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
-								@server_config->ProcessPost(http_request, http_response);
-							};
-						}
-						else if(request_verb->Equals("PUT")) {
-							ProcessPut(http_request, http_response);
-						}
-						else if(request_verb->Equals("PATCH")) {
-							ProcessPatch(http_request, http_response);
-						}
-						else {
-							ProcessDelete(http_request, http_response);
-						};
-						ProcessResponse(http_response);
-					};
+				while(alive & served < 100 & @client->IsOpen()) {
+					alive := ServeOne();
+					served += 1;
 				};
 
 				@client->Close();
 			};
+		}
+
+		#~
+		Serves a single request on the already-open connection
+		@return true if the connection should stay open for another request
+		~#
+		method : ServeOne() ~ Bool {
+			# get request
+			request := @client->ReadLine();
+			if(request = Nil | request->Size() = 0) {
+				# peer closed, or the accepted socket's receive timeout expired
+				return false;
+			};
+			if(@is_debug) {
+				request_address := @client->GetAddress();
+				"===\nRequest: '{$request}' from '{$request_address}'\n==="->PrintLine();
+			};
+
+			# parse request
+			request_verb : String; request_path : String; request_version : String;
+			if(request->Size() > 0) {
+				request_parts := request->Split(" ");
+				if(request_parts->Size() = 3) {
+					request_verb := request_parts[0];
+					request_path := request_parts[1];
+					request_version := request_parts[2];
+				};
+			};
+
+			# get request headers
+			request_headers := GetHeaders();
+
+			# Decided before the response is written, because ProcessResponse
+			# emits the Connection header from it.
+			@keep_alive := IsPersistent(request_version, request_headers);
+
+			# verify request
+			if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
+				# GET and HEAD request
+				if(request_verb->Equals("GET") | request_verb->Equals("HEAD")) {
+					# retrieve content
+					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+						request_path := "/index.html";
+					};
+
+					# write response
+					http_request := Request->New(request_path, request_headers);
+					http_response := Response->New(@server_config, http_request->GetPath());
+					
+					if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+						@server_config->ProcessGet(http_request, http_response);
+					};
+					ProcessResponse(http_response, request_verb->Equals("HEAD"));
+				}
+				# POST, PUT, PATCH, DELETE with body
+				else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
+					content_length_str := request_headers->Find("content-length");
+					buffer : Byte[];
+					if(content_length_str <> Nil) {
+						content_length := content_length_str->ToInt();
+						if(content_length > 0 & content_length <= 16*1048576) { # 16M body limit
+							buffer := WebCommon->ReadPost(content_length, @client);
+						};
+					};
+
+					# retrieve content
+					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
+						request_path := "/index.html";
+					};
+
+					# write response
+					http_request := Request->New(request_path, request_headers, buffer);
+					http_response := Response->New(@server_config, http_request->GetPath());
+
+					if(request_verb->Equals("POST")) {
+						if(ProcessPost(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
+							@server_config->ProcessPost(http_request, http_response);
+						};
+					}
+					else if(request_verb->Equals("PUT")) {
+						ProcessPut(http_request, http_response);
+					}
+					else if(request_verb->Equals("PATCH")) {
+						ProcessPatch(http_request, http_response);
+					}
+					else {
+						ProcessDelete(http_request, http_response);
+					};
+					ProcessResponse(http_response);
+				};
+			};
+
+			return @keep_alive;
 		}
 
 		#~
@@ -2343,7 +2453,10 @@ class RequestHandler from HttpsRequestHandler {
 					content := response->GetContent();
 					if(content <> Nil) {
 						content_size := content->Size();
-						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: close\r\n";
+						# Must agree with what Run() does next, or the peer waits for a request we
+						# will never read, or reuses a socket we are about to close.
+						connection_value := @keep_alive ? "keep-alive" : "close";
+						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
 
 						cookies := response->GetCookies()<Cookie>;
 						each(i : cookies) {
@@ -2371,6 +2484,9 @@ class RequestHandler from HttpsRequestHandler {
 						label 302 {
 							reason := response->GetReason();
 							if(reason <> Nil) {
+								# This path writes a whole response by hand with no keep-alive framing,
+								# so the connection ends here.
+								@keep_alive := false;
 								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
 							}
 							else {
@@ -2414,6 +2530,31 @@ class RequestHandler from HttpsRequestHandler {
 			};
 		}
 		
+		#~
+		Decides whether the connection survives this request. An explicit
+		Connection header wins; otherwise HTTP/1.1 persists by default and
+		HTTP/1.0 does not, per RFC 7230.
+		@param version HTTP version from the request line
+		@param headers request headers, names already lower-cased
+		@return true to keep the connection open
+		~#
+		method : IsPersistent(version : String, headers : Map<String, String>) ~ Bool {
+			if(headers <> Nil) {
+				connection := headers->Find("connection");
+				if(connection <> Nil) {
+					lowered := connection->ToLower();
+					if(lowered->Has("close")) {
+						return false;
+					};
+					if(lowered->Has("keep-alive")) {
+						return true;
+					};
+				};
+			};
+
+			return version <> Nil & version->Equals("HTTP/1.1");
+		}
+
 		#~
 		Get HTTP headers
 		@return HTTP headers

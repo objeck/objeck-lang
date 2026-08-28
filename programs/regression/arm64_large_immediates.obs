@@ -36,6 +36,7 @@ class ARM64LargeImmediateTest {
             "PASS: ARM64 large immediate arithmetic"->PrintLine();
         } else {
             "FAIL: ARM64 large immediate arithmetic"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

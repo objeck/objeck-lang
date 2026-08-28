@@ -78,6 +78,7 @@ class MathLogExpTest {
             "PASS: Logarithm and exponent functions"->PrintLine();
         } else {
             "FAIL: Logarithm and exponent functions"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

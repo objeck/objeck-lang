@@ -4539,7 +4539,12 @@ bool TrapProcessor::SockTcpClose(StackProgram* program, size_t* inst, size_t* &o
 #ifdef _DEBUG
     std::wcout << L"# socket close: addr=" << sock << L"(" << (long)sock << L") #" << std::endl;
 #endif  
-    instance[0] = 0;
+    // -1, not 0: every socket guard in this file tests `(long)instance[0] > -1`,
+    // and the open path already stores INVALID_SOCKET/-1 on failure. Writing 0
+    // here left a closed socket reading as *open*, so IsConnected() answered
+    // true afterwards and later reads/writes/closes fell through to handle 0 --
+    // harmless on Windows (WSAENOTSOCK), but fd 0 is stdin on POSIX.
+    instance[0] = (size_t)-1;
     IPSocket::Close(sock);
   }
 

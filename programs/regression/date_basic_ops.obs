@@ -86,6 +86,7 @@ class DateBasicOpsTest {
             "PASS: Date/time basic operations"->PrintLine();
         } else {
             "FAIL: Date/time basic operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

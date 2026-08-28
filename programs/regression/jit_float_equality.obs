@@ -91,6 +91,7 @@ class JitFloatEquality {
 		}
 		else {
 			"FAIL: Float equality compares"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }
