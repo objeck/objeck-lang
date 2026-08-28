@@ -425,6 +425,13 @@ jobs:
         if exist deploy-arm64\bin\vcruntime140.dll (echo vcruntime140 PRESENT) else (echo vcruntime140 MISSING)
         if exist deploy-arm64\bin\opencv_core4.dll (echo opencv_core4 PRESENT) else (echo opencv_core4 MISSING)
         if exist deploy-arm64\bin\onnxruntime.dll (echo onnxruntime PRESENT) else (echo onnxruntime MISSING)
+        echo ===== what the opencv DLLs themselves import =====
+        for %%d in (opencv_core4 opencv_imgproc4 opencv_imgcodecs4 opencv_highgui4 opencv_videoio4) do (
+          echo --- %%d ---
+          dumpbin /dependents deploy-arm64\bin\%%d.dll | findstr /i ".dll"
+        )
+        echo ===== onnx wrapper imports vs bin =====
+        dumpbin /dependents deploy-arm64\bin\onnxruntime.dll | findstr /i ".dll"
 
     # Prove the macOS distribution is self-contained.
     #
