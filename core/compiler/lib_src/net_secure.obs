@@ -610,7 +610,7 @@ if(html <> Nil) {
 			socket->WriteBuffer(data);
 
 			# Read status line
-			status_code := 500;
+			status_code := 0;
 			status_line := socket->ReadLine();
 			if(status_line <> Nil & status_line->StartsWith("HTTP/1.")) {
 				status_line := status_line->SubString("HTTP/1."->Size() + 2,
@@ -687,7 +687,7 @@ if(html <> Nil) {
 			};
 
 			content : ByteBuffer;
-			status_code := 500;
+			status_code := 0;
 
 			if(url->GetScheme()->Equals("https")) {
 				address := url->GetHost();
@@ -781,7 +781,10 @@ if(html <> Nil) {
 						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
-					if(status_code <> 500) {
+					# 0 means no status line was parsed -- a dead socket or a reply that
+					# is not HTTP. A genuine 500 must fall through here so its headers
+					# and body are read like any other response.
+					if(status_code <> 0) {
 						do {
 							line := socket->ReadLine();
 							if(line <> Nil & line->Size() > 0) {
@@ -1105,7 +1108,7 @@ if(html <> Nil) {
 			};
 
 			content : ByteBuffer;
-			status_code := 500;
+			status_code := 0;
 
 			if(url->GetScheme()->Equals("https")) {
 				address := url->GetHost();
@@ -1193,7 +1196,10 @@ if(html <> Nil) {
 						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
-					if(status_code <> 500) {
+					# 0 means no status line was parsed -- a dead socket or a reply that
+					# is not HTTP. A genuine 500 must fall through here so its headers
+					# and body are read like any other response.
+					if(status_code <> 0) {
 						do {
 							line := socket->ReadLine();
 							if(line <> Nil & line->Size() > 0) {
