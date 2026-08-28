@@ -891,7 +891,7 @@ response->GetStatusCode()->PrintLine();
 			};
 
 			content : ByteBuffer;
-			status_code := 500;
+			status_code := 0;
 
 			if(url->GetScheme()->Equals("http")) {
 				address := url->GetHost();
@@ -992,7 +992,10 @@ response->GetStatusCode()->PrintLine();
 						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
-					if(status_code <> 500) {
+					# 0 means no status line was parsed -- a dead socket or a reply that
+					# is not HTTP. A genuine 500 must fall through here so its headers
+					# and body are read like any other response.
+					if(status_code <> 0) {
 						do {
 							line := socket->ReadLine();
 							if(line->Size() > 0) {
@@ -1083,7 +1086,7 @@ response->GetStatusCode()->PrintLine();
 			};
 
 			content : ByteBuffer;
-			status_code := 500;
+			status_code := 0;
 
 			if(url->GetScheme()->Equals("http")) {
 				address := url->GetHost();
@@ -1169,7 +1172,10 @@ response->GetStatusCode()->PrintLine();
 						status_code := WebCommon->ParseStatusCode(status_line);
 					};
 
-					if(status_code <> 500) {
+					# 0 means no status line was parsed -- a dead socket or a reply that
+					# is not HTTP. A genuine 500 must fall through here so its headers
+					# and body are read like any other response.
+					if(status_code <> 0) {
 						do {
 							line := socket->ReadLine();
 							if(line->Size() > 0) {

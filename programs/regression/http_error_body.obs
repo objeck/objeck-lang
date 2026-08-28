@@ -1,0 +1,256 @@
+#~
+# HTTP error-response body test
+#
+# A client that reports a status code but no body for a server error is
+# indistinguishable from one that never reached the server at all. Both used to
+# look identical: net.obs initialised its status code to 500 as a "no response"
+# sentinel, and then guarded header and body parsing with `status_code <> 500`.
+# So a genuine "500 Internal Server Error" skipped that block -- its headers were
+# never parsed and its body was thrown away -- while a dead socket reported the
+# same 500 with the same empty content.
+#
+# The sentinel is now 0, which is not a valid HTTP status, and the parse guard
+# tests for 0 instead. A real 500 now reads like any other response.
+#
+# Against the pre-fix net.obl this test fails: /boom returns an empty body and
+# no content-type, and the unreachable POST reports 500 rather than 0.
+#
+# On the retries below: an in-process Objeck client talking to an in-process
+# Objeck server intermittently receives nothing at all (code 0) on Windows.
+# That defect is real and tracked separately -- it is what makes core_http_server
+# print FAIL on most runs. It is NOT what this test is about, so the request is
+# repeated until the transport delivers something and the assertions then run
+# against a response that actually arrived. The unreachable cases are deliberately
+# not retried: there, no response IS the expected result.
+# EXTRA_LIBS: net
+~#
+
+use Collection, System.Concurrency, System.IO.Net, Web.HTTP;
+
+class ErrorBodyServer from Thread {
+	@port : Int;
+
+	New(port : Int) {
+		Parent("error-body-server");
+		@port := port;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		server := TCPSocketServer->New(@port);
+		if(server->Listen(8)) {
+			done := false;
+			while(<>done) {
+				client := server->Accept();
+				if(client <> Nil & client->IsOpen()) {
+					request_line := client->ReadLine();
+
+					# Drain the request head
+					do {
+						header := client->ReadLine();
+					}
+					while(header <> Nil & header->Size() > 0);
+
+					# 500 carrying a body is the case the sentinel used to eat
+					if(request_line <> Nil & request_line->Has("/boom")) {
+						body := "boom-detail-42";
+						size := body->Size();
+						client->WriteString("HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/problem\r\nContent-Length: {$size}\r\nConnection: close\r\n\r\n{$body}");
+					}
+					# a second 5xx, as a control that was never affected
+					else if(request_line <> Nil & request_line->Has("/gateway")) {
+						body := "upstream-died";
+						size := body->Size();
+						client->WriteString("HTTP/1.1 502 Bad Gateway\r\nContent-Length: {$size}\r\nConnection: close\r\n\r\n{$body}");
+					}
+					else if(request_line <> Nil & request_line->Has("/stop")) {
+						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
+						done := true;
+					}
+					else {
+						body := "plain-ok";
+						size := body->Size();
+						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$size}\r\nConnection: close\r\n\r\n{$body}");
+					};
+
+					client->Close();
+				};
+			};
+			server->Close();
+		};
+	}
+}
+
+class HttpErrorBodyTest {
+	#~
+	# Repeats a GET until the transport actually delivers a status line. Returns
+	# the last response either way, so a genuine failure still surfaces.
+	~#
+	function : GetDelivered(client : HttpClient, url : String) ~ Web.HTTP.Response {
+		resp : Web.HTTP.Response;
+		attempt := 0;
+
+		while(attempt < 8) {
+			resp := client->Get(Url->New(url));
+			if(resp <> Nil & resp->GetCode() <> 0) {
+				return resp;
+			};
+			attempt += 1;
+			Thread->Sleep(50);
+		};
+
+		return resp;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"Testing HTTP error-response bodies..."->PrintLine();
+
+		passed := 0;
+		failed := 0;
+		port := 19881;
+		dead_port := 19882;
+
+		# Locals are hoisted: declaring them inside the nested blocks below
+		# compiles and then segfaults.
+		code : Int;
+		body : String;
+		ctype : String;
+		resp : Web.HTTP.Response;
+		client : HttpClient;
+		headers : Hash<String, String>;
+
+		server := ErrorBodyServer->New(port);
+		server->Execute(Nil);
+		Thread->Sleep(500);
+
+		# --- a genuine 500 must deliver its body ---
+		client := HttpClient->New();
+		resp := GetDelivered(client, "http://127.0.0.1:{$port}/boom");
+		if(resp = Nil) {
+			"FAIL: 500 body - no response object"->PrintLine();
+			failed += 1;
+		}
+		else if(resp->GetCode() <> 500) {
+			code := resp->GetCode();
+			"FAIL: 500 body - expected code 500, got {$code}"->PrintLine();
+			failed += 1;
+		}
+		else if(resp->GetContent() = Nil) {
+			"FAIL: 500 body - content was Nil, the body was discarded"->PrintLine();
+			failed += 1;
+		}
+		else {
+			body := resp->GetContent()->ToString();
+			if(<>body->Equals("boom-detail-42")) {
+				"FAIL: 500 body - got '{$body}'"->PrintLine();
+				failed += 1;
+			}
+			else {
+				passed += 1;
+			};
+		};
+
+		# --- and its headers must have been parsed ---
+		headers := client->GetResponseHeaders();
+		ctype := headers->Find("content-type");
+		if(ctype = Nil) {
+			"FAIL: 500 headers - content-type missing, headers were never read"->PrintLine();
+			failed += 1;
+		}
+		else if(<>ctype->Equals("application/problem")) {
+			"FAIL: 500 headers - content-type was '{$ctype}'"->PrintLine();
+			failed += 1;
+		}
+		else {
+			passed += 1;
+		};
+
+		# --- control: a 5xx the sentinel never touched ---
+		client := HttpClient->New();
+		resp := GetDelivered(client, "http://127.0.0.1:{$port}/gateway");
+		if(resp = Nil | resp->GetCode() <> 502 | resp->GetContent() = Nil) {
+			"FAIL: 502 control"->PrintLine();
+			failed += 1;
+		}
+		else {
+			body := resp->GetContent()->ToString();
+			if(<>body->Equals("upstream-died")) {
+				"FAIL: 502 control body - got '{$body}'"->PrintLine();
+				failed += 1;
+			}
+			else {
+				passed += 1;
+			};
+		};
+
+		# --- control: a plain 200 still works ---
+		client := HttpClient->New();
+		resp := GetDelivered(client, "http://127.0.0.1:{$port}/fine");
+		if(resp = Nil) {
+			"FAIL: 200 control - no response object"->PrintLine();
+			failed += 1;
+		}
+		else if(resp->GetCode() <> 200) {
+			code := resp->GetCode();
+			"FAIL: 200 control - expected code 200, got {$code}"->PrintLine();
+			failed += 1;
+		}
+		else if(resp->GetContent() = Nil) {
+			"FAIL: 200 control - content was Nil"->PrintLine();
+			failed += 1;
+		}
+		else {
+			body := resp->GetContent()->ToString();
+			if(<>body->Equals("plain-ok")) {
+				"FAIL: 200 control body - got '{$body}'"->PrintLine();
+				failed += 1;
+			}
+			else {
+				passed += 1;
+			};
+		};
+
+		# --- nothing listening: must not look like a server response ---
+		# The two paths report an unreachable peer differently and always have:
+		# the GET path returns Nil outright, while the push path (POST/PUT/DELETE/
+		# PATCH) falls through and hands back a Response carrying the sentinel.
+		# That sentinel is what used to read 500. Both are unambiguous now, so the
+		# difference is left as it is -- but it is pinned here so it cannot drift.
+		client := HttpClient->New();
+		resp := client->Get(Url->New("http://127.0.0.1:{$dead_port}/nobody-home"));
+		if(resp = Nil) {
+			passed += 1;
+		}
+		else {
+			code := resp->GetCode();
+			"FAIL: unreachable GET - expected Nil, got a response with code {$code}"->PrintLine();
+			failed += 1;
+		};
+
+		client := HttpClient->New();
+		resp := client->Post(Url->New("http://127.0.0.1:{$dead_port}/nobody-home"), "x"->ToByteArray());
+		if(resp = Nil) {
+			"FAIL: unreachable POST - expected a response carrying the sentinel, got Nil"->PrintLine();
+			failed += 1;
+		}
+		else if(resp->GetCode() <> 0) {
+			code := resp->GetCode();
+			"FAIL: unreachable POST - expected code 0, got {$code}"->PrintLine();
+			failed += 1;
+		}
+		else {
+			passed += 1;
+		};
+
+		# Stop the server
+		HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/stop"));
+		server->Join();
+
+		if(failed > 0) {
+			"---"->PrintLine();
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"{$passed} passed, 0 failed"->PrintLine();
+	}
+}
