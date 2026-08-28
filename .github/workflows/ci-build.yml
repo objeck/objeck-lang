@@ -402,6 +402,30 @@ jobs:
         CXX: ${{ runner.os == 'Linux' && 'ccache g++' || '' }}
       run: ${{ matrix.deploy_script }}
 
+    # TEMPORARY DIAGNOSTIC for #661. core_opencv and onnx_runtime_test fail on
+    # windows-arm64 with error 126 -- the wrapper loads, one of its IMPORTS does
+    # not. Three guesses have been wrong so far, all because the deploy log does
+    # not echo per-file copies. This asks the runner directly instead.
+    - name: Diagnose native library imports (windows-arm64)
+      if: matrix.platform == 'windows-arm64'
+      working-directory: ./core/release
+      shell: cmd
+      continue-on-error: true
+      run: |
+        echo ===== deploy-arm64\bin =====
+        dir /b deploy-arm64\bin\*.dll
+        echo ===== deploy-arm64\lib\native =====
+        dir /b deploy-arm64\lib\native\*.dll
+        echo ===== imports of libobjk_opencv.dll =====
+        dumpbin /dependents deploy-arm64\lib\native\libobjk_opencv.dll
+        echo ===== imports of libobjk_onnx.dll =====
+        dumpbin /dependents deploy-arm64\lib\native\libobjk_onnx.dll
+        echo ===== runtime presence =====
+        if exist deploy-arm64\bin\msvcp140.dll (echo msvcp140 PRESENT) else (echo msvcp140 MISSING)
+        if exist deploy-arm64\bin\vcruntime140.dll (echo vcruntime140 PRESENT) else (echo vcruntime140 MISSING)
+        if exist deploy-arm64\bin\opencv_core4.dll (echo opencv_core4 PRESENT) else (echo opencv_core4 MISSING)
+        if exist deploy-arm64\bin\onnxruntime.dll (echo onnxruntime PRESENT) else (echo onnxruntime MISSING)
+
     # Prove the macOS distribution is self-contained.
     #
     # The deploy bundles SDL2 into lib/sdl and rewrites install names to @rpath,
