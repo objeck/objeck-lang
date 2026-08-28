@@ -46,7 +46,12 @@ SOCKET IPSocket::Open(const char* address, const int port) {
 
   std::string port_str = std::to_string(port);
   if(getaddrinfo(address, port_str.c_str(), &hints, &result) != 0) {
-    WSACleanup();
+    // No WSACleanup() here. WSAStartup runs once, in win_main, so a WSACleanup on
+    // this path drops the refcount to zero and shuts Winsock down for the WHOLE
+    // PROCESS -- every open socket on every other thread included, over one failed
+    // name lookup on one connection. OpenWithTimeout below has always just
+    // returned; this matches it. (Dormant in practice: getaddrinfo on a literal
+    // address does not fail, which is why it survived.)
     return -1;
   }
 
@@ -83,9 +88,10 @@ SOCKET IPSocket::Open(const char* address, const int port) {
 std::vector<std::string> IPSocket::Resolve(const char* address) {
  std::vector<std::string> addresses;
 
-	struct addrinfo* result;
+	// getaddrinfo does not assign result unless it succeeds, so freeing it on the
+	// failure path handed freeaddrinfo an uninitialised pointer.
+	struct addrinfo* result = nullptr;
 	if(getaddrinfo(address, nullptr, nullptr, &result)) {
-		freeaddrinfo(result);
 		return std::vector<std::string>();
 	}
 
