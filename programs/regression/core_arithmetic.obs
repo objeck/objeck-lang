@@ -58,6 +58,7 @@ class CoreArithmeticTest {
             "PASS: Core arithmetic operations"->PrintLine();
         } else {
             "FAIL: Core arithmetic operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

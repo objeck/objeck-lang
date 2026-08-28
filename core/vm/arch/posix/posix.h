@@ -450,6 +450,18 @@ public:
       return -1;
     }
     
+    // Same 30s default receive timeout Open() gives a connected socket. An
+    // accepted socket had none, so a read on it blocked forever -- harmless
+    // while a handler served one request and closed, but a server that holds
+    // the connection open for a second request would park its thread on an
+    // idle peer permanently. Best-effort: the connection is usable either way.
+    struct timeval timeout;
+    timeout.tv_sec = 30;
+    timeout.tv_usec = 0;
+    if(setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+      errno = 0;
+    }
+
     char buffer[INET_ADDRSTRLEN] = { 0 };
     inet_ntop(AF_INET, &(pin.sin_addr), buffer, INET_ADDRSTRLEN);
     strncpy(client_address, buffer, INET_ADDRSTRLEN);
@@ -463,7 +475,30 @@ public:
   }
   
   static int WriteBytes(const char* values, int len, SOCKET sock) {
-    return static_cast<int>(send(sock, values, len, 0));
+    // send() on a blocking socket is only obliged to accept SOME of the buffer.
+    // Once the kernel send buffer fills it returns a short count, and a single
+    // unlooped send() drops the remainder on the floor -- no error, no retry,
+    // and callers here either push that partial count into Objeck or discard it
+    // entirely (SockTcpOutString ignores the return). ReadBytes below has always
+    // looped, and so has the TLS WriteBytes; only plain TCP did not.
+    //
+    // The buffer fills exactly when the peer is slow to drain it, which is the
+    // normal case for an Objeck client and an Objeck server sharing a process:
+    // the reader is not scheduled while the writer runs. That is why this showed
+    // up as a large in-process transfer arriving short or not at all.
+    int total = 0;
+    while(total < len) {
+      const int status = static_cast<int>(send(sock, values + total, len - total, 0));
+      if(status < 0) {
+        return total > 0 ? total : -1;
+      }
+      if(status == 0) {
+        break;
+      }
+      total += status;
+    }
+
+    return total;
   }
   
   static char ReadByte(SOCKET sock, int &status) {
@@ -492,6 +527,13 @@ public:
   }
   
   static void Close(SOCKET sock) {
+    // A bare close() straight after send() can drop whatever is still queued in
+    // the kernel send buffer, so the HTTP server's "write the response, close
+    // the socket" sequence delivers nothing and the peer sees a reset with zero
+    // bytes read. shutdown() hands the queued bytes off and sends FIN before the
+    // descriptor goes away. Errors are ignored on purpose: the peer may already
+    // have torn the connection down, and there is nothing useful to do here.
+    shutdown(sock, SHUT_WR);
     close(sock);
   }
 

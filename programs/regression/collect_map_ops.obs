@@ -76,6 +76,7 @@ class CollectMapOpsTest {
             "PASS: Map operations"->PrintLine();
         } else {
             "FAIL: Map operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

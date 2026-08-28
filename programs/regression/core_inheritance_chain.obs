@@ -85,6 +85,7 @@ class CoreInheritanceChainTest {
             "PASS: Inheritance chain"->PrintLine();
         } else {
             "FAIL: Inheritance chain"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

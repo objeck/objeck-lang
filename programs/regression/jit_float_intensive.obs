@@ -42,6 +42,7 @@ class JitFloatIntensiveTest {
             "PASS: JIT float-intensive"->PrintLine();
         } else {
             "FAIL: JIT float-intensive"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

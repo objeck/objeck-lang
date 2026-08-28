@@ -629,6 +629,10 @@ bundle Web.HTTP {
 		}
 
 		# status_line is already stripped of "HTTP/1.X " prefix (e.g. "200 OK" or "200")
+		# An unparseable line yields 0, which is not a valid HTTP status. The clients
+		# in net.obs and net_secure.obs use 0 as their "no response" sentinel, so a
+		# dead transport and a garbage reply land in the same bucket, and neither can
+		# be mistaken for something the server actually returned.
 		function : ParseStatusCode(status_line : String) ~ Int {
 			index := status_line->Find(' ');
 			if(index > 0) {

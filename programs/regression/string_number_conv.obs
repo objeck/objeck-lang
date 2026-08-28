@@ -92,6 +92,7 @@ class StringNumberConvTest {
             "PASS: String/number conversions"->PrintLine();
         } else {
             "FAIL: String/number conversions"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

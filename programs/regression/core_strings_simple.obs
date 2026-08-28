@@ -83,6 +83,7 @@ class CoreStringsSimpleTest {
             "PASS: Core string operations"->PrintLine();
         } else {
             "FAIL: Core string operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

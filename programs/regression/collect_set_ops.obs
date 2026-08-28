@@ -97,6 +97,7 @@ class CollectSetOpsTest {
             "PASS: Set operations"->PrintLine();
         } else {
             "FAIL: Set operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

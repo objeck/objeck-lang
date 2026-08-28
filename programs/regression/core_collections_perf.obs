@@ -134,6 +134,7 @@ class CollectionsTest {
 		else {
 			total := pass + fail;
 			"-- Failed: {$fail}/{$total} --"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 

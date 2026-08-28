@@ -65,6 +65,7 @@ class FixDeepRecursionTest {
             "PASS: Deep recursion"->PrintLine();
         } else {
             "FAIL: Deep recursion"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

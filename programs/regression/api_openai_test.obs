@@ -59,6 +59,7 @@ class ApiOpenaiTest {
 		}
 		else {
 			"FAIL: OpenAI API tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

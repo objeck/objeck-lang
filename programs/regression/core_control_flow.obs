@@ -62,6 +62,7 @@ class CoreControlFlowTest {
             "PASS: Core control flow"->PrintLine();
         } else {
             "FAIL: Core control flow"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

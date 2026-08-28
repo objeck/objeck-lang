@@ -83,6 +83,7 @@ class JitNativeFloatArrayTest {
             "PASS: JIT native float array operations"->PrintLine();
         } else {
             "FAIL: JIT native float array operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

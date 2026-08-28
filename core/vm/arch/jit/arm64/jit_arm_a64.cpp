@@ -1362,7 +1362,7 @@ void JitArm64::ProcessStoreIntElement(StackInstr* instr) {
 
   switch(left->GetType()) {
   case IMM_INT:
-    move_imm_mem((long)left->GetOperand(), 0, elem_holder->GetRegister());
+    move_imm_mem((int64_t)left->GetOperand(), 0, elem_holder->GetRegister());
     break;
 
   case MEM_INT: {
@@ -1615,17 +1615,17 @@ void JitArm64::ProcessStore(StackInstr* instr) {
   switch(left->GetType()) {
   case IMM_INT:
     if(is_func_var) {
-      move_imm_mem((long)left->GetOperand(), instr->GetOperand3(), dest);
+      move_imm_mem((int64_t)left->GetOperand(), instr->GetOperand3(), dest);
 
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_imm_mem((long)left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
+      move_imm_mem((int64_t)left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
       left2 = nullptr;
     }
     else {
-      move_imm_mem((long)left->GetOperand(), instr->GetOperand3(), dest);
+      move_imm_mem((int64_t)left->GetOperand(), instr->GetOperand3(), dest);
     }
     break;
 
@@ -2016,7 +2016,7 @@ void JitArm64::ProcessReturn(long params) {
         move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
         switch(left->GetType()) {
         case IMM_INT:
-          move_imm_mem((long)left->GetOperand(), 0, op_stack_holder->GetRegister());
+          move_imm_mem((int64_t)left->GetOperand(), 0, op_stack_holder->GetRegister());
           inc_mem(0, stack_pos_holder->GetRegister());
           add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
           break;
@@ -2093,7 +2093,7 @@ void JitArm64::ProcessReturn(long params) {
   }
 }
 
-RegInstr* JitArm64::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
+RegInstr* JitArm64::ProcessIntFold(int64_t left_imm, int64_t right_imm, InstructionType type) {
   switch(type) {
   case AND_INT:
     // Bug fix: Use bitwise AND (&), not logical AND (&&)
@@ -2170,7 +2170,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
   case IMM_INT:
     switch(right->GetType()) {
     case IMM_INT: {
-      RegInstr* folded = ProcessIntFold((long)left->GetOperand(), (long)right->GetOperand(), instruction->GetType());
+      RegInstr* folded = ProcessIntFold((int64_t)left->GetOperand(), (int64_t)right->GetOperand(), instruction->GetType());
       if(folded) {
         working_stack.push_front(folded);
       }
@@ -2227,7 +2227,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_INT: {
       RegisterHolder* holder = left->GetRegister();
-      math_imm_reg((long)right->GetOperand(), holder->GetRegister(), instruction->GetType());
+      math_imm_reg((int64_t)right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -2263,7 +2263,7 @@ void JitArm64::ProcessIntCalculation(StackInstr* instruction) {
     case IMM_INT: {
       RegisterHolder* holder = GetRegister();
       move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
-      math_imm_reg((long)right->GetOperand(), holder->GetRegister(), instruction->GetType());
+      math_imm_reg((int64_t)right->GetOperand(), holder->GetRegister(), instruction->GetType());
       working_stack.push_front(new RegInstr(holder));
     }
       break;
@@ -2793,7 +2793,7 @@ void JitArm64::mul_imm_reg(int64_t imm, Register reg) {
   if(imm > 0 && (imm & (imm - 1)) == 0) {
     // imm is a power of 2, calculate shift amount
     int shift = 0;
-    long temp = imm;
+    int64_t temp = imm;
     while(temp > 1) {
       temp >>= 1;
       shift++;
@@ -4736,7 +4736,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
       working_stack.pop_front();
       switch(holder->GetType()) {
       case IMM_INT:
-        add_imm_reg((long)holder->GetOperand(), index_holder->GetRegister());
+        add_imm_reg((int64_t)holder->GetOperand(), index_holder->GetRegister());
         break;
 
       case REG_INT:

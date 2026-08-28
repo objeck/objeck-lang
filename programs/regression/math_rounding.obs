@@ -99,6 +99,7 @@ class MathRoundingTest {
             "PASS: Rounding functions"->PrintLine();
         } else {
             "FAIL: Rounding functions"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

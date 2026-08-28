@@ -77,6 +77,7 @@ class CollectPairOpsTest {
             "PASS: Pair operations"->PrintLine();
         } else {
             "FAIL: Pair operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

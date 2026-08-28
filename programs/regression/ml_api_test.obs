@@ -205,6 +205,7 @@ class MlApiTest {
 		}
 		else {
 			"FAIL: ML API tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

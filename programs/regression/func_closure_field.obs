@@ -106,6 +106,7 @@ class FuncClosureFieldTest {
             "PASS: Function references as class fields"->PrintLine();
         } else {
             "FAIL: Function references as class fields"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

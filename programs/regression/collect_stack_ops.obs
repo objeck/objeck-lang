@@ -99,6 +99,7 @@ class CollectStackOpsTest {
             "PASS: Stack operations"->PrintLine();
         } else {
             "FAIL: Stack operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

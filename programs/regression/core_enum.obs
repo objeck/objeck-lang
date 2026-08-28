@@ -86,6 +86,7 @@ class CoreEnumTest {
             "PASS: Enum types"->PrintLine();
         } else {
             "FAIL: Enum types"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

@@ -77,6 +77,7 @@ class CoreStaticArrayLiterals {
 		}
 		else {
 			"FAIL: Static array literals"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

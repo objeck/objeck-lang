@@ -400,7 +400,7 @@ namespace Runtime {
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
-    RegInstr* ProcessIntFold(long left_imm, long right_imm, InstructionType type);
+    RegInstr* ProcessIntFold(int64_t left_imm, int64_t right_imm, InstructionType type);
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessFloatOperation(StackInstr* instruction);

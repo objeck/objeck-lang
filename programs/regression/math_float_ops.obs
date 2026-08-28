@@ -65,6 +65,7 @@ class MathFloatOpsTest {
             "PASS: Float arithmetic and methods"->PrintLine();
         } else {
             "FAIL: Float arithmetic and methods"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

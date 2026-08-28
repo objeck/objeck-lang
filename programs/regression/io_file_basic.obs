@@ -76,6 +76,7 @@ class IoFileBasicTest {
             "PASS: Basic file I/O"->PrintLine();
         } else {
             "FAIL: Basic file I/O"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

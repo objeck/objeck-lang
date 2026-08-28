@@ -74,6 +74,7 @@ class XmlBuildOpsTest {
             "PASS: XML build operations"->PrintLine();
         } else {
             "FAIL: XML build operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

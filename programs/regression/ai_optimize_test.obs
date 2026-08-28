@@ -129,6 +129,7 @@ class AiOptimizeTest {
 		}
 		else {
 			"FAIL: AI optimization tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

@@ -107,6 +107,7 @@ class JsonParseOpsTest {
             "PASS: JSON parse operations"->PrintLine();
         } else {
             "FAIL: JSON parse operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

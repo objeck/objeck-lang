@@ -75,6 +75,7 @@ class StringFindOpsTest {
             "PASS: String find operations"->PrintLine();
         } else {
             "FAIL: String find operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }
