@@ -54,7 +54,14 @@ if "%VCPKG_DIR%" == "" (
 
 echo Using vcpkg at %VCPKG_DIR% ^(%VCPKG_TRIPLET%^)
 
-set ZIP_BIN="\Program Files\7-Zip"
+REM 7-Zip, used below to unpack the runtime archives that ship compressed.
+REM Probed rather than hard-coded: the ZIP_BIN this replaces pointed at a
+REM drive-relative path and was never referenced by anything, so nothing ever
+REM noticed it was unusable.
+set ZIP_EXE=
+if exist "%ProgramFiles%\7-Zip\7z.exe" set "ZIP_EXE=%ProgramFiles%\7-Zip\7z.exe"
+if not defined ZIP_EXE if exist "%ProgramW6432%\7-Zip\7z.exe" set "ZIP_EXE=%ProgramW6432%\7-Zip\7z.exe"
+if not defined ZIP_EXE where 7z >nul 2>&1 && set "ZIP_EXE=7z"
 
 if [%1] == [arm64] (
 	set TARGET=deploy-arm64
@@ -131,9 +138,26 @@ if [%1] == [arm64] (
 	REM WindowsSdkVerBinPath has trailing backslash, e.g., "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\"
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+	REM VCToolsRedistDir is EMPTY on the GitHub ARM64 runner, so this matched
+	REM nothing and copied NOTHING -- silently. Both native libraries then failed
+	REM to load with error 126: OpenCV and ONNX are C++ and import msvcp140.dll,
+	REM which was never deployed. x64 hid it because a machine with Visual Studio
+	REM has the redistributable installed system-wide.
+	REM
+	REM Two loops rather than a found/not-found variable on purpose: this script
+	REM has no delayed expansion, so a flag set inside these parentheses could not
+	REM be read back here. A second copy over the first is harmless.
 	for /d %%d in ("%VCToolsRedistDir%\arm64\Microsoft.VC*.CRT") do (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+		copy "%%d\msvcp140.dll" %TARGET%\bin
+	)
+	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
+		for /d %%d in ("%%v\arm64\Microsoft.VC*.CRT") do (
+			copy "%%d\vcruntime140.dll" %TARGET%\bin
+			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+			copy "%%d\msvcp140.dll" %TARGET%\bin
+		)
 	)
 )
 if errorlevel 1 (
@@ -152,15 +176,43 @@ if [%1] == [x64] (
 	REM Embed manifests AFTER copying binaries
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
 	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+	REM VCToolsRedistDir is EMPTY on the GitHub ARM64 runner, so this matched
+	REM nothing and copied NOTHING -- silently. Both native libraries then failed
+	REM to load with error 126: OpenCV and ONNX are C++ and import msvcp140.dll,
+	REM which was never deployed. x64 hid it because a machine with Visual Studio
+	REM has the redistributable installed system-wide.
+	REM
+	REM Two loops rather than a found/not-found variable on purpose: this script
+	REM has no delayed expansion, so a flag set inside these parentheses could not
+	REM be read back here. A second copy over the first is harmless.
 	for /d %%d in ("%VCToolsRedistDir%\x64\Microsoft.VC*.CRT") do (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+		copy "%%d\msvcp140.dll" %TARGET%\bin
+	)
+	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
+		for /d %%d in ("%%v\x64\Microsoft.VC*.CRT") do (
+			copy "%%d\vcruntime140.dll" %TARGET%\bin
+			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+			copy "%%d\msvcp140.dll" %TARGET%\bin
+		)
 	)
 )
 if errorlevel 1 (
 	echo.
 	echo ============================================================
 	echo  ERROR: x64 binary copy/manifest step failed - aborting deploy
+	echo ============================================================
+	exit /b 1
+)
+
+REM Top level: %TARGET% is set, and this is outside the parentheses above so it
+REM sees what those loops actually produced. Shipping a tree whose native
+REM libraries cannot load, quietly, is exactly how this went unnoticed.
+if not exist %TARGET%\bin\msvcp140.dll (
+	echo.
+	echo ============================================================
+	echo  ERROR: VC++ runtime not deployed to bin - aborting deploy
 	echo ============================================================
 	exit /b 1
 )
@@ -638,8 +690,44 @@ if [%1] == [arm64] (
 
 	if exist eq\qnn\win\onnx\arm64\bin (
 		copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
+		REM onnxruntime.dll ships COMPRESSED and nothing ever unpacked it, so the
+		REM copy above moved the Qnn and provider DLLs and left the core runtime
+		REM behind. libobjk_onnx.dll imports it, so loading failed with error 126
+		REM on a deploy tree that otherwise looked complete.
+		if exist eq\qnn\win\onnx\arm64\bin\onnxruntime.7z (
+			if not defined ZIP_EXE (
+				echo.
+				echo ============================================================
+				echo  ERROR: 7-Zip not found, cannot unpack onnxruntime.7z - aborting deploy
+				echo ============================================================
+				exit /b 1
+			)
+			"%ZIP_EXE%" x -y -o..\..\release\%TARGET%\bin eq\qnn\win\onnx\arm64\bin\onnxruntime.7z
+			if errorlevel 1 (
+				echo.
+				echo ============================================================
+				echo  ERROR: onnxruntime.7z extraction failed - aborting deploy
+				echo ============================================================
+				exit /b 1
+			)
+		)
+		REM Fail here rather than ship a tree whose ONNX library cannot load. This
+		REM checks the RUNTIME is present, not that any accelerator is: the QNN
+		REM build targets Qualcomm Hexagon, and a machine without one is a valid
+		REM deploy target that simply falls back.
+		if not exist ..\..\release\%TARGET%\bin\onnxruntime.dll (
+			echo.
+			echo ============================================================
+			echo  ERROR: onnxruntime.dll missing from bin - aborting deploy
+			echo ============================================================
+			exit /b 1
+		)
 	) else (
-		echo Warning: ONNX QNN runtime DLLs not found for arm64 - ONNX runtime unavailable
+		echo.
+		echo ============================================================
+		echo  ERROR: ONNX QNN runtime tree not found for arm64 - aborting deploy
+		echo ============================================================
+		exit /b 1
 	)
 )
 
