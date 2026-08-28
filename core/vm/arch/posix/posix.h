@@ -463,7 +463,30 @@ public:
   }
   
   static int WriteBytes(const char* values, int len, SOCKET sock) {
-    return static_cast<int>(send(sock, values, len, 0));
+    // send() on a blocking socket is only obliged to accept SOME of the buffer.
+    // Once the kernel send buffer fills it returns a short count, and a single
+    // unlooped send() drops the remainder on the floor -- no error, no retry,
+    // and callers here either push that partial count into Objeck or discard it
+    // entirely (SockTcpOutString ignores the return). ReadBytes below has always
+    // looped, and so has the TLS WriteBytes; only plain TCP did not.
+    //
+    // The buffer fills exactly when the peer is slow to drain it, which is the
+    // normal case for an Objeck client and an Objeck server sharing a process:
+    // the reader is not scheduled while the writer runs. That is why this showed
+    // up as a large in-process transfer arriving short or not at all.
+    int total = 0;
+    while(total < len) {
+      const int status = static_cast<int>(send(sock, values + total, len - total, 0));
+      if(status < 0) {
+        return total > 0 ? total : -1;
+      }
+      if(status == 0) {
+        break;
+      }
+      total += status;
+    }
+
+    return total;
   }
   
   static char ReadByte(SOCKET sock, int &status) {
