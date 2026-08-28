@@ -54,7 +54,14 @@ if "%VCPKG_DIR%" == "" (
 
 echo Using vcpkg at %VCPKG_DIR% ^(%VCPKG_TRIPLET%^)
 
-set ZIP_BIN="\Program Files\7-Zip"
+REM 7-Zip, used below to unpack the runtime archives that ship compressed.
+REM Probed rather than hard-coded: the ZIP_BIN this replaces pointed at a
+REM drive-relative path and was never referenced by anything, so nothing ever
+REM noticed it was unusable.
+set ZIP_EXE=
+if exist "%ProgramFiles%\7-Zip\7z.exe" set ZIP_EXE="%ProgramFiles%\7-Zip\7z.exe"
+if "%ZIP_EXE%"=="" if exist "%ProgramW6432%\7-Zip\7z.exe" set ZIP_EXE="%ProgramW6432%\7-Zip\7z.exe"
+if "%ZIP_EXE%"=="" where 7z >nul 2>&1 && set ZIP_EXE=7z
 
 if [%1] == [arm64] (
 	set TARGET=deploy-arm64
@@ -134,6 +141,10 @@ if [%1] == [arm64] (
 	for /d %%d in ("%VCToolsRedistDir%\arm64\Microsoft.VC*.CRT") do (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+		REM msvcp140.dll too: the OpenCV and ONNX DLLs are C++ and import it.
+		REM Shipping only the C runtime worked on x64 because the host had the
+		REM redistributable installed anyway; a clean ARM64 machine does not.
+		copy "%%d\msvcp140.dll" %TARGET%\bin
 	)
 )
 if errorlevel 1 (
@@ -155,6 +166,10 @@ if [%1] == [x64] (
 	for /d %%d in ("%VCToolsRedistDir%\x64\Microsoft.VC*.CRT") do (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
+		REM msvcp140.dll too: the OpenCV and ONNX DLLs are C++ and import it.
+		REM Shipping only the C runtime worked on x64 because the host had the
+		REM redistributable installed anyway; a clean ARM64 machine does not.
+		copy "%%d\msvcp140.dll" %TARGET%\bin
 	)
 )
 if errorlevel 1 (
@@ -638,8 +653,44 @@ if [%1] == [arm64] (
 
 	if exist eq\qnn\win\onnx\arm64\bin (
 		copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
+		REM onnxruntime.dll ships COMPRESSED and nothing ever unpacked it, so the
+		REM copy above moved the Qnn and provider DLLs and left the core runtime
+		REM behind. libobjk_onnx.dll imports it, so loading failed with error 126
+		REM on a deploy tree that otherwise looked complete.
+		if exist eq\qnn\win\onnx\arm64\bin\onnxruntime.7z (
+			if "%ZIP_EXE%"=="" (
+				echo.
+				echo ============================================================
+				echo  ERROR: 7-Zip not found, cannot unpack onnxruntime.7z - aborting deploy
+				echo ============================================================
+				exit /b 1
+			)
+			%ZIP_EXE% x -y -o..\..\release\%TARGET%\bin eq\qnn\win\onnx\arm64\bin\onnxruntime.7z
+			if errorlevel 1 (
+				echo.
+				echo ============================================================
+				echo  ERROR: onnxruntime.7z extraction failed - aborting deploy
+				echo ============================================================
+				exit /b 1
+			)
+		)
+		REM Fail here rather than ship a tree whose ONNX library cannot load. This
+		REM checks the RUNTIME is present, not that any accelerator is: the QNN
+		REM build targets Qualcomm Hexagon, and a machine without one is a valid
+		REM deploy target that simply falls back.
+		if not exist ..\..\release\%TARGET%\bin\onnxruntime.dll (
+			echo.
+			echo ============================================================
+			echo  ERROR: onnxruntime.dll missing from bin - aborting deploy
+			echo ============================================================
+			exit /b 1
+		)
 	) else (
-		echo Warning: ONNX QNN runtime DLLs not found for arm64 - ONNX runtime unavailable
+		echo.
+		echo ============================================================
+		echo  ERROR: ONNX QNN runtime tree not found for arm64 - aborting deploy
+		echo ============================================================
+		exit /b 1
 	)
 )
 
