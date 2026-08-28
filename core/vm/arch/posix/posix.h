@@ -332,9 +332,10 @@ public:
   static  std::vector<std::string> Resolve(const char* address) {
     std::vector<std::string> addresses;
 
-    struct addrinfo* result;
+    // getaddrinfo does not assign result unless it succeeds, so freeing it on the
+    // failure path handed freeaddrinfo an uninitialised pointer.
+    struct addrinfo* result = nullptr;
     if(getaddrinfo(address, nullptr, nullptr, &result)) {
-      freeaddrinfo(result);
       return  std::vector<std::string>();
     }
 
