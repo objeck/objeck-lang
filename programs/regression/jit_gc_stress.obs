@@ -31,6 +31,7 @@ class JitGcStress {
 		}
 		else {
 			"FAIL: JIT/GC stress, total {$grand}"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 

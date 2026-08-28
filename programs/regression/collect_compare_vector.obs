@@ -95,6 +95,7 @@ class CollectCompareVectorTest {
             "PASS: CompareVector operations"->PrintLine();
         } else {
             "FAIL: CompareVector operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

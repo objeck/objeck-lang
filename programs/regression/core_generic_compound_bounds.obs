@@ -26,6 +26,7 @@ class CoreGenericCompoundBounds {
       "PASS: compound bounds"->PrintLine();
     } else {
       "FAIL: compound bounds"->PrintLine();
+      Runtime->Exit(1);
     };
   }
 }

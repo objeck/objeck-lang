@@ -89,6 +89,7 @@ class CoreArrayOperationsTest {
             "PASS: Array operations"->PrintLine();
         } else {
             "FAIL: Array operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

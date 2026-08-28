@@ -1103,6 +1103,16 @@ jobs:
       - name: Library lists agree with lib_src
         run: python3 tools/cicd/check_doc_lists.py
 
+      # Same class of guard, same cost: nothing built, fails in seconds. The
+      # regression runners score a test on its exit code alone, so one that
+      # prints "FAIL: ..." and then returns normally from Main is counted as a
+      # PASS. 125 of the 168 asserting tests were in exactly that state, and two
+      # were failing while it went unnoticed -- a run reporting "195 passed,
+      # 3 skipped, 2 failed" was really 193/3/4, and the four real failures were
+      # all one open defect that had looked confined to a single test.
+      - name: Regression tests can report failure
+        run: python3 tools/cicd/check_test_exit_codes.py
+
       # Same reason, same cost: nothing built, fails in seconds. A native call
       # whose name is written as a literal at the call site allocates a String
       # on every call -- 1655ns against 130ns for the same call with the name

@@ -86,6 +86,7 @@ class FixNilChainOpsTest {
             "PASS: Nil chain operations"->PrintLine();
         } else {
             "FAIL: Nil chain operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

@@ -138,6 +138,7 @@ class MlKdTreeTest {
 		}
 		else {
 			"FAIL: ML KDTree tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

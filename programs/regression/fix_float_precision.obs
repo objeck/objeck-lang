@@ -80,6 +80,7 @@ class FixFloatPrecisionTest {
             "PASS: Float precision"->PrintLine();
         } else {
             "FAIL: Float precision"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

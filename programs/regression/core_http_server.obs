@@ -172,6 +172,7 @@ PASS"->PrintLine();
 		else {
 			"...
 FAIL"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

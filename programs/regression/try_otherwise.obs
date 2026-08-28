@@ -61,6 +61,7 @@ class TryOtherwiseTest {
       "PASS: Try()/Otherwise() error handling"->PrintLine();
     } else {
       "FAIL: Try()/Otherwise() error handling"->PrintLine();
+      Runtime->Exit(1);
     };
   }
 }

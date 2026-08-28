@@ -96,6 +96,7 @@ class MlDbscanTest {
 		}
 		else {
 			"FAIL: ML DBSCAN tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

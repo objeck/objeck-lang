@@ -42,6 +42,7 @@ class ARM64CharArrayTest {
             "PASS: ARM64 char array operations"->PrintLine();
         } else {
             "FAIL: ARM64 char array operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

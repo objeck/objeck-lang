@@ -66,6 +66,7 @@ class FuncReduceOpsTest {
             "PASS: Reduce, Any, All operations"->PrintLine();
         } else {
             "FAIL: Reduce, Any, All operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

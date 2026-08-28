@@ -107,6 +107,7 @@ class JitNativeClsFieldsTest {
             "PASS: JIT native class field storage"->PrintLine();
         } else {
             "FAIL: JIT native class field storage"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

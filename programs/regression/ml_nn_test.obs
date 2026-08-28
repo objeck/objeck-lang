@@ -75,6 +75,7 @@ class MlNnTest {
 		}
 		else {
 			"FAIL: ML neural network tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

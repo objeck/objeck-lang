@@ -90,6 +90,7 @@ class CollectVectorOpsTest {
             "PASS: Vector operations"->PrintLine();
         } else {
             "FAIL: Vector operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

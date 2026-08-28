@@ -54,6 +54,7 @@ class CoreRecursionTest {
             "PASS: Core recursion"->PrintLine();
         } else {
             "FAIL: Core recursion"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

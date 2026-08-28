@@ -79,6 +79,7 @@ class CoreEachLoopTest {
             "PASS: Each loop patterns"->PrintLine();
         } else {
             "FAIL: Each loop patterns"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

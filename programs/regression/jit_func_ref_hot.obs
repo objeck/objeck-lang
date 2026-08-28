@@ -57,6 +57,7 @@ class JitFuncRefHot {
             "PASS: hot function-reference JIT paths"->PrintLine();
         } else {
             "FAIL: hot function-reference JIT paths"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

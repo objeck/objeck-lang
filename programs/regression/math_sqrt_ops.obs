@@ -77,6 +77,7 @@ class MathSqrtOpsTest {
             "PASS: Square root and Cbrt"->PrintLine();
         } else {
             "FAIL: Square root and Cbrt"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

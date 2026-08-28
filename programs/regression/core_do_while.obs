@@ -75,6 +75,7 @@ class CoreDoWhileTest {
             "PASS: Do-while loops"->PrintLine();
         } else {
             "FAIL: Do-while loops"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

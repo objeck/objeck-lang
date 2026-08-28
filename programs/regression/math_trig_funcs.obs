@@ -84,6 +84,7 @@ class MathTrigFuncsTest {
             "PASS: Trigonometric functions"->PrintLine();
         } else {
             "FAIL: Trigonometric functions"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

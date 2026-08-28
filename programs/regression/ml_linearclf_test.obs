@@ -130,6 +130,7 @@ class MlLinearClfTest {
 		}
 		else {
 			"FAIL: ML linear classifier tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

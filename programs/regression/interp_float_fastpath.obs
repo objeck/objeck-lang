@@ -58,6 +58,7 @@ class InterpFloatFastPath {
             "PASS: interpreter float fast-path"->PrintLine();
         } else {
             "FAIL: interpreter float fast-path"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

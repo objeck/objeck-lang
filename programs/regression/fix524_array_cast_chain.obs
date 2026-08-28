@@ -49,6 +49,7 @@ class Fix524Test {
       "PASS: Fix #524 array cast method chain"->PrintLine();
     } else {
       "FAIL: Fix #524 array cast method chain"->PrintLine();
+      Runtime->Exit(1);
     };
   }
 }

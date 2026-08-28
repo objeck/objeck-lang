@@ -99,6 +99,7 @@ class CoreStaticFieldsTest {
             "PASS: Static fields"->PrintLine();
         } else {
             "FAIL: Static fields"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

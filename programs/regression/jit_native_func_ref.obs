@@ -62,6 +62,7 @@ class JitNativeFuncRefTest {
             "PASS: JIT native function references"->PrintLine();
         } else {
             "FAIL: JIT native function references"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

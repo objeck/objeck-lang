@@ -83,6 +83,7 @@ class ApiGeminiTest {
 		}
 		else {
 			"FAIL: Gemini API tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }
