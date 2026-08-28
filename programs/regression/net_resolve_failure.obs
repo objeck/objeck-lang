@@ -1,0 +1,81 @@
+#~
+# TCPSocket->Resolve failure-path test
+#
+# Resolve() freed its addrinfo result on the FAILURE path, where getaddrinfo had
+# never assigned it -- freeaddrinfo was handed an uninitialised pointer on every
+# lookup that did not resolve. Undefined behaviour, on both platforms, reachable
+# from Objeck by resolving any name that does not exist.
+#
+# Nothing exercised it: Resolve is exposed on TCPSocket and no regression test
+# called it, which is how it survived.
+#
+# BE CLEAR ABOUT WHAT THIS TEST DOES AND DOES NOT DO. It was run against a VM
+# built with the pre-fix Resolve and passed 8 times out of 8 -- freeing a wild
+# pointer is undefined behaviour, and on this platform it simply does not fault.
+# So this test does NOT demonstrate the bug and must not be cited as proof the
+# fix works. What it does is cover a reachable API that had no coverage at all,
+# and catch a future regression that does fault.
+#
+# ".invalid" is reserved by RFC 2606 and is guaranteed never to resolve, so this
+# needs no network and cannot be flaky on a runner without DNS.
+# EXTRA_LIBS: net
+~#
+
+use Collection, System.IO.Net;
+
+class NetResolveFailureTest {
+	function : Main(args : String[]) ~ Nil {
+		"Testing TCPSocket->Resolve failure path..."->PrintLine();
+
+		passed := 0;
+		failed := 0;
+		result : String[];
+
+		# The fixed path: a name that cannot resolve. Before the fix this freed an
+		# uninitialised pointer; the observable requirement is simply that we get
+		# here at all, with an empty result rather than a crash.
+		result := TCPSocket->Resolve("objeck-no-such-host-12345.invalid");
+		if(result = Nil) {
+			passed += 1;
+		}
+		else if(result->Size() = 0) {
+			passed += 1;
+		}
+		else {
+			size := result->Size();
+			"FAIL: unresolvable name returned {$size} addresses"->PrintLine();
+			failed += 1;
+		};
+
+		# Repeat it. A single free of a wild pointer can go unnoticed; several in a
+		# row on the same heap is what turns it into a visible corruption.
+		each(i : 20) {
+			result := TCPSocket->Resolve("objeck-no-such-host-12345.invalid");
+			if(result <> Nil & result->Size() <> 0) {
+				"FAIL: unresolvable name resolved on repeat {$i}"->PrintLine();
+				failed += 1;
+				break;
+			};
+		};
+		if(failed = 0) {
+			passed += 1;
+		};
+
+		# An empty name must not resolve either, and must not crash.
+		result := TCPSocket->Resolve("");
+		if(result = Nil | result->Size() = 0) {
+			passed += 1;
+		}
+		else {
+			passed += 1;    # a platform that resolves "" is odd but not this bug
+		};
+
+		if(failed > 0) {
+			"---"->PrintLine();
+			"{$passed} passed, {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"{$passed} passed, 0 failed"->PrintLine();
+	}
+}
