@@ -121,6 +121,7 @@ class CoreRecordsTest {
         }
         else {
             "FAIL: Records"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

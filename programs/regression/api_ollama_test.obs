@@ -75,6 +75,7 @@ class ApiOllamaTest {
 		}
 		else {
 			"FAIL: Ollama API tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

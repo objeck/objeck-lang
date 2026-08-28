@@ -76,6 +76,7 @@ class CoreBoolOpsTest {
             "PASS: Boolean operations"->PrintLine();
         } else {
             "FAIL: Boolean operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

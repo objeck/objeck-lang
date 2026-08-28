@@ -89,6 +89,7 @@ class CollectQueueOpsTest {
             "PASS: Queue operations"->PrintLine();
         } else {
             "FAIL: Queue operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

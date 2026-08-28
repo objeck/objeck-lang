@@ -91,6 +91,7 @@ class CollectEachPatternsTest {
             "PASS: Each patterns with collections"->PrintLine();
         } else {
             "FAIL: Each patterns with collections"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

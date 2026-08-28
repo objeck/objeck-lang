@@ -76,6 +76,7 @@ class StringReplaceOpsTest {
             "PASS: String replace operations"->PrintLine();
         } else {
             "FAIL: String replace operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

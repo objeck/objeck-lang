@@ -85,6 +85,7 @@ class FixPolymorphicCallsTest {
             "PASS: Polymorphic method dispatch"->PrintLine();
         } else {
             "FAIL: Polymorphic method dispatch"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

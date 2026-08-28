@@ -104,6 +104,7 @@ class CoreStringMethodsTest {
             "PASS: String methods"->PrintLine();
         } else {
             "FAIL: String methods"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

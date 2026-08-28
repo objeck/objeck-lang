@@ -59,6 +59,7 @@ class JitConditionalNativeTest {
             "PASS: JIT conditional branches"->PrintLine();
         } else {
             "FAIL: JIT conditional branches"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

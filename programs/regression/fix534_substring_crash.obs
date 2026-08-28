@@ -62,6 +62,7 @@ class Fix534Test {
       "PASS: Fix #534 SubString negative/zero length"->PrintLine();
     } else {
       "FAIL: Fix #534 SubString negative/zero length"->PrintLine();
+      Runtime->Exit(1);
     };
   }
 }

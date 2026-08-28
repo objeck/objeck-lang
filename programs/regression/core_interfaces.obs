@@ -101,6 +101,7 @@ class CoreInterfacesTest {
             "PASS: Interfaces"->PrintLine();
         } else {
             "FAIL: Interfaces"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

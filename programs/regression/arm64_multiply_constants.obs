@@ -71,6 +71,7 @@ class ARM64MultiplyConstantsTest {
             "PASS: ARM64 multiply-by-constant optimization"->PrintLine();
         } else {
             "FAIL: ARM64 multiply-by-constant optimization"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

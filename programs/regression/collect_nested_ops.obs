@@ -87,6 +87,7 @@ class CollectNestedOpsTest {
             "PASS: Nested collection operations"->PrintLine();
         } else {
             "FAIL: Nested collection operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

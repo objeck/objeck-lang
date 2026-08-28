@@ -96,6 +96,7 @@ class XmlParseOpsTest {
             "PASS: XML parse operations"->PrintLine();
         } else {
             "FAIL: XML parse operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

@@ -61,6 +61,7 @@ class FixLargeArraysTest {
             "PASS: Large array allocation"->PrintLine();
         } else {
             "FAIL: Large array allocation"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

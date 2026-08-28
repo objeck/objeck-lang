@@ -62,6 +62,7 @@ class CoreFunctionRefsTest {
             "PASS: Function references"->PrintLine();
         } else {
             "FAIL: Function references"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

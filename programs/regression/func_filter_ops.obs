@@ -84,6 +84,7 @@ class FuncFilterOpsTest {
             "PASS: Functional filter operations"->PrintLine();
         } else {
             "FAIL: Functional filter operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 

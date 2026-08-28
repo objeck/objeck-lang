@@ -78,6 +78,7 @@ class JitStringOpsTest {
             "PASS: JIT string operations"->PrintLine();
         } else {
             "FAIL: JIT string operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

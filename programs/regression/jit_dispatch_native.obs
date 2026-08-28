@@ -81,6 +81,7 @@ class JitDispatchNativeTest {
             "PASS: JIT virtual dispatch"->PrintLine();
         } else {
             "FAIL: JIT virtual dispatch"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

@@ -87,6 +87,7 @@ class CoreStringFormatTest {
             "PASS: String interpolation and formatting"->PrintLine();
         } else {
             "FAIL: String interpolation and formatting"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

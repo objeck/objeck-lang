@@ -76,6 +76,7 @@ class FixNestedGenericsTest {
             "PASS: Nested generic types"->PrintLine();
         } else {
             "FAIL: Nested generic types"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

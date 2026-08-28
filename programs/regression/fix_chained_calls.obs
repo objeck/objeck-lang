@@ -59,6 +59,7 @@ class FixChainedCallsTest {
             "PASS: Chained method calls"->PrintLine();
         } else {
             "FAIL: Chained method calls"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

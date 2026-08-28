@@ -93,6 +93,7 @@ class FuncSortCustomTest {
             "PASS: Custom sort"->PrintLine();
         } else {
             "FAIL: Custom sort"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

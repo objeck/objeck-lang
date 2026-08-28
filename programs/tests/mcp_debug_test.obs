@@ -112,6 +112,45 @@ class McpDebugTest {
 		return client->Post(Url->New(url), payload->ToByteArray(), "application/json");
 	}
 
+	#
+	# Sends a POST, retrying a few times on a transient failure: no response, the
+	# wrong status code, or an empty or TRUNCATED body for a 200. On Windows the
+	# loopback teardown race (#669) drops a response outright, and under CI load a
+	# body can arrive cut off. Every 200 here is a JSON-RPC reply carrying a
+	# "result" member, so a 200 is only accepted once its body parses as JSON with
+	# "result". The per-test assertions below still strictly validate whatever this
+	# finally returns, so a genuinely wrong answer cannot hide behind the retries.
+	#
+	# This mirrors McpServerTest->Request. The two files are meant to differ only
+	# in the debug flag and the port; this helper was added to mcp_server_test and
+	# not here, which is the whole reason this test failed while that one passed.
+	#
+	function : Request(url : String, payload : String, session : String, expect : Int, retries : Int) ~ Web.HTTP.Response {
+		resp : Web.HTTP.Response;
+		for(i := 0; i < retries; i += 1;) {
+			if(session = Nil) {
+				resp := Post(url, payload);
+			}
+			else {
+				resp := PostWithSession(url, payload, session);
+			};
+			if(resp <> Nil & resp->GetCode() = expect) {
+				if(expect <> 200) {
+					return resp;
+				};
+				content := resp->GetContent();
+				if(content <> Nil & content->Size() > 0) {
+					root := JsonParser->TextToElement(content->ToString());
+					if(root <> Nil & root->Get("result") <> Nil) {
+						return resp;
+					};
+				};
+			};
+			System.Concurrency.Thread->Sleep(200);
+		};
+		return resp;
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		pass := true;
 		@port := 18800;  # changed from 18799 to avoid conflict with regression test
@@ -148,7 +187,7 @@ class McpDebugTest {
 		# ------------------------------------------------------------------
 		"--- Test 1: initialize ---"->PrintLine();
 		init_payload := "{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{}},\"id\":1}";
-		r1 := McpDebugTest->Post(base_url, init_payload);
+		r1 := McpDebugTest->Request(base_url, init_payload, Nil, 200, 5);
 
 		if(r1 = Nil | r1->GetCode() <> 200) {
 			code := -1; if(r1 <> Nil) { code := r1->GetCode(); };
@@ -189,7 +228,7 @@ class McpDebugTest {
 		# ------------------------------------------------------------------
 		"--- Test 2: ping ---"->PrintLine();
 		ping_payload := "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":2}";
-		r2 := McpDebugTest->Post(base_url, ping_payload);
+		r2 := McpDebugTest->Request(base_url, ping_payload, Nil, 200, 5);
 
 		if(r2 = Nil | r2->GetCode() <> 200) {
 			code := -1; if(r2 <> Nil) { code := r2->GetCode(); };
@@ -203,7 +242,7 @@ class McpDebugTest {
 		"--- Test 3: resources/templates/list ---"->PrintLine();
 		TrackingMcpHandler->ResetResourcesSideEffect();
 		templates_payload := "{\"jsonrpc\":\"2.0\",\"method\":\"resources/templates/list\",\"id\":3}";
-		r3 := McpDebugTest->Post(base_url, templates_payload);
+		r3 := McpDebugTest->Request(base_url, templates_payload, Nil, 200, 5);
 
 		if(r3 = Nil | r3->GetCode() <> 200) {
 			code := -1; if(r3 <> Nil) { code := r3->GetCode(); };
@@ -221,7 +260,7 @@ class McpDebugTest {
 		# ------------------------------------------------------------------
 		"--- Test 4: invalid session (expect 404) ---"->PrintLine();
 		tools_payload := "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":4}";
-		r4 := McpDebugTest->PostWithSession(base_url, tools_payload, "invalid-session-does-not-exist");
+		r4 := McpDebugTest->Request(base_url, tools_payload, "invalid-session-does-not-exist", 404, 5);
 
 		if(r4 = Nil | r4->GetCode() <> 404) {
 			code := -1; if(r4 <> Nil) { code := r4->GetCode(); };
@@ -233,7 +272,7 @@ class McpDebugTest {
 		# Test 5: tools/list without a session returns 200 and a tools array
 		# ------------------------------------------------------------------
 		"--- Test 5: tools/list ---"->PrintLine();
-		r5 := McpDebugTest->Post(base_url, tools_payload);
+		r5 := McpDebugTest->Request(base_url, tools_payload, Nil, 200, 5);
 
 		if(r5 = Nil | r5->GetCode() <> 200) {
 			code := -1; if(r5 <> Nil) { code := r5->GetCode(); };

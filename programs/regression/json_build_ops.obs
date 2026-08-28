@@ -88,6 +88,7 @@ class JsonBuildOpsTest {
             "PASS: JSON build operations"->PrintLine();
         } else {
             "FAIL: JSON build operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

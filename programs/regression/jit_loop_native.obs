@@ -61,6 +61,7 @@ class JitLoopNativeTest {
             "PASS: JIT loop-intensive"->PrintLine();
         } else {
             "FAIL: JIT loop-intensive"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

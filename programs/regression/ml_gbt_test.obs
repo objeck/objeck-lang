@@ -138,6 +138,7 @@ class MlGbtTest {
 		}
 		else {
 			"FAIL: ML gradient boosting tests"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }

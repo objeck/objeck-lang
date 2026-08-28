@@ -73,6 +73,7 @@ class MathRandomOpsTest {
             "PASS: Random number operations"->PrintLine();
         } else {
             "FAIL: Random number operations"->PrintLine();
+            Runtime->Exit(1);
         };
     }
 }

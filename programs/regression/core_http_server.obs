@@ -91,6 +91,50 @@ class MockServer from Thread {
 }
 
 class HttpClientTest {
+	#~
+	# Windows discards a response whose sender tears the connection down before
+	# the reading application has copied the bytes out of the kernel buffer --
+	# the RST flushes them, and the client sees code 0 with no content. It is
+	# loopback-only (a real interface is clean, 0/150), it is not fixable from
+	# the sending side, and it is tracked as #669. Everything here talks to
+	# 127.0.0.1, so it hits roughly one request in ten.
+	#
+	# These helpers retry the transport and nothing else. A response that
+	# ARRIVES and is wrong still fails the test -- only "no response at all"
+	# is retried, so a real regression cannot hide behind them.
+	~#
+	function : GetDelivered(url : String) ~ Response {
+		resp : Response;
+
+		attempt := 0;
+		while(attempt < 8) {
+			resp := HttpClient->QuickGet(Url->New(url));
+			if(resp <> Nil & resp->GetCode() <> 0) {
+				return resp;
+			};
+			attempt += 1;
+			Thread->Sleep(25);
+		};
+
+		return resp;
+	}
+
+	function : PostDelivered(url : String, data : Byte[]) ~ Response {
+		resp : Response;
+
+		attempt := 0;
+		while(attempt < 8) {
+			resp := HttpClient->QuickPost(Url->New(url), data);
+			if(resp <> Nil & resp->GetCode() <> 0) {
+				return resp;
+			};
+			attempt += 1;
+			Thread->Sleep(25);
+		};
+
+		return resp;
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		"Testing HTTP client..."->PrintLine();
 
@@ -103,7 +147,7 @@ class HttpClientTest {
 		Thread->Sleep(500);
 
 		# Test 1: GET /hello
-		r1 := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/hello"));
+		r1 := GetDelivered("http://127.0.0.1:{$port}/hello");
 		if(r1 = Nil | r1->GetCode() <> 200) {
 			"  FAIL: GET /hello"->PrintLine();
 			passed := false;
@@ -118,7 +162,7 @@ class HttpClientTest {
 
 		# Test 2: POST /echo with body
 		post_data := "test payload 12345"->ToByteArray();
-		r2 := HttpClient->QuickPost(Url->New("http://127.0.0.1:{$port}/echo"), post_data);
+		r2 := PostDelivered("http://127.0.0.1:{$port}/echo", post_data);
 		if(r2 = Nil | r2->GetCode() <> 200) {
 			"  FAIL: POST /echo"->PrintLine();
 			passed := false;
@@ -132,14 +176,14 @@ class HttpClientTest {
 		};
 
 		# Test 3: Response headers with colons in values
-		r3 := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/colon-header"));
+		r3 := GetDelivered("http://127.0.0.1:{$port}/colon-header");
 		if(r3 = Nil | r3->GetCode() <> 200) {
 			"  FAIL: GET /colon-header"->PrintLine();
 			passed := false;
 		};
 
 		# Test 4: Large response (16KB)
-		r4 := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/large"));
+		r4 := GetDelivered("http://127.0.0.1:{$port}/large");
 		if(r4 = Nil | r4->GetCode() <> 200) {
 			"  FAIL: GET /large"->PrintLine();
 			passed := false;
@@ -155,7 +199,7 @@ class HttpClientTest {
 		};
 
 		# Test 5: 404 response
-		r5 := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/nonexistent"));
+		r5 := GetDelivered("http://127.0.0.1:{$port}/nonexistent");
 		if(r5 = Nil | r5->GetCode() <> 404) {
 			"  FAIL: 404 response"->PrintLine();
 			passed := false;
@@ -172,6 +216,7 @@ PASS"->PrintLine();
 		else {
 			"...
 FAIL"->PrintLine();
+			Runtime->Exit(1);
 		};
 	}
 }
