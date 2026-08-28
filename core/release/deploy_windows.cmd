@@ -59,9 +59,9 @@ REM Probed rather than hard-coded: the ZIP_BIN this replaces pointed at a
 REM drive-relative path and was never referenced by anything, so nothing ever
 REM noticed it was unusable.
 set ZIP_EXE=
-if exist "%ProgramFiles%\7-Zip\7z.exe" set ZIP_EXE="%ProgramFiles%\7-Zip\7z.exe"
-if "%ZIP_EXE%"=="" if exist "%ProgramW6432%\7-Zip\7z.exe" set ZIP_EXE="%ProgramW6432%\7-Zip\7z.exe"
-if "%ZIP_EXE%"=="" where 7z >nul 2>&1 && set ZIP_EXE=7z
+if exist "%ProgramFiles%\7-Zip\7z.exe" set "ZIP_EXE=%ProgramFiles%\7-Zip\7z.exe"
+if not defined ZIP_EXE if exist "%ProgramW6432%\7-Zip\7z.exe" set "ZIP_EXE=%ProgramW6432%\7-Zip\7z.exe"
+if not defined ZIP_EXE where 7z >nul 2>&1 && set "ZIP_EXE=7z"
 
 if [%1] == [arm64] (
 	set TARGET=deploy-arm64
@@ -658,14 +658,14 @@ if [%1] == [arm64] (
 		REM behind. libobjk_onnx.dll imports it, so loading failed with error 126
 		REM on a deploy tree that otherwise looked complete.
 		if exist eq\qnn\win\onnx\arm64\bin\onnxruntime.7z (
-			if "%ZIP_EXE%"=="" (
+			if not defined ZIP_EXE (
 				echo.
 				echo ============================================================
 				echo  ERROR: 7-Zip not found, cannot unpack onnxruntime.7z - aborting deploy
 				echo ============================================================
 				exit /b 1
 			)
-			%ZIP_EXE% x -y -o..\..\release\%TARGET%\bin eq\qnn\win\onnx\arm64\bin\onnxruntime.7z
+			"%ZIP_EXE%" x -y -o..\..\release\%TARGET%\bin eq\qnn\win\onnx\arm64\bin\onnxruntime.7z
 			if errorlevel 1 (
 				echo.
 				echo ============================================================
