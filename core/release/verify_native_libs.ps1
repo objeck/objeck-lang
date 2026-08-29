@@ -1,76 +1,119 @@
-# Fail the deploy if any native library in the tree cannot actually load.
-#
-# Every previous check here asked whether a FILE existed. That is not the same
-# question, and the difference cost a long investigation: libobjk_opencv.dll was
-# present, correctly built for ARM64, correctly linked -- and could not load,
-# because opencv_core4.dll imports z.dll and opencv_imgcodecs4.dll imports
-# jpeg62/libpng16/tiff/libwebp*, none of which were ever shipped. Windows reports
-# that as error 126, "The specified module could not be found", naming the
-# library you asked for rather than the dependency that is actually absent.
-#
-# So this asks the real question, the same way the VM does: LoadLibraryW. If it
-# returns null the deploy is broken, and a broken deploy must not be publishable.
-#
-# Usage:  powershell -File verify_native_libs.ps1 -DeployDir deploy-arm64
+# Fail deployment if a native library cannot load, or if a cross-compiled
+# library has a non-system import that is absent from the deployed tree.
 param(
-  [Parameter(Mandatory = $true)][string]$DeployDir
+  [Parameter(Mandatory = $true)][string]$DeployDir,
+  [ValidateSet('x64', 'arm64')][string]$TargetArchitecture = 'x64'
 )
 
 $ErrorActionPreference = 'Stop'
 
-$nativeDir = Join-Path $DeployDir 'lib\native'
-$binDir    = Join-Path $DeployDir 'bin'
+$nativeDir = (Resolve-Path (Join-Path $DeployDir 'lib\native')).Path
+$binDir = (Resolve-Path (Join-Path $DeployDir 'bin')).Path
+$env:PATH = "$binDir;$env:PATH"
 
-if (-not (Test-Path $nativeDir)) {
-  Write-Output "No native library directory at $nativeDir - nothing to verify."
-  exit 0
+function Write-FailureSummary([object[]]$Failures) {
+  Write-Output ''
+  Write-Output '============================================================'
+  Write-Output (" ERROR: {0} native-library verification failure(s)" -f $Failures.Count)
+  Write-Output '============================================================'
+  foreach ($failure in $Failures) {
+    Write-Output ("   {0}" -f $failure)
+  }
+  exit 1
 }
 
-# The VM loads these with a plain LoadLibrary from a process whose executable
-# lives in bin, so bin is on the default search path at runtime. Reproduce that
-# here, or this check fails on libraries that would work perfectly well.
-$env:PATH = "$((Resolve-Path $binDir).Path);$env:PATH"
-
-Add-Type -Namespace Native -Name Loader -MemberDefinition @'
+$loaded = 0
+if ($TargetArchitecture -eq 'x64') {
+  Add-Type -Namespace Native -Name Loader -MemberDefinition @'
 [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
 public static extern System.IntPtr LoadLibraryW(string path);
 [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
 public static extern bool FreeLibrary(System.IntPtr handle);
 '@
 
-$failed = @()
-$loaded = 0
+  $failed = @()
+  foreach ($dll in Get-ChildItem -Path $nativeDir -Filter *.dll -File) {
+    $handle = [Native.Loader]::LoadLibraryW($dll.FullName)
+    if ($handle -eq [System.IntPtr]::Zero) {
+      $code = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+      $text = (New-Object System.ComponentModel.Win32Exception($code)).Message
+      $failed += ("{0} - error {1}: {2}" -f $dll.Name, $code, $text)
+      Write-Output ("  FAIL  {0}  (error {1}: {2})" -f $dll.Name, $code, $text)
+    }
+    else {
+      [void][Native.Loader]::FreeLibrary($handle)
+      $loaded++
+      Write-Output ("  ok    {0}" -f $dll.Name)
+    }
+  }
 
+  if ($failed.Count -gt 0) {
+    Write-FailureSummary $failed
+  }
+  Write-Output ("All {0} x64 native libraries load." -f $loaded)
+}
+
+# LoadLibrary cannot load ARM64 images in the x64 CI process (error 193), and an
+# x64 LoadLibrary can be accidentally satisfied by runtimes installed on the
+# build host. In both cases dumpbin supplies the self-contained-tree check. Walk
+# imports from every VM-loadable native library.
+# A dependency is satisfied only by this deploy or by Windows itself. VC runtime
+# DLLs are intentionally required locally even when an x64 copy happens to be
+# installed in System32 on the build host.
+$dumpbin = (Get-Command dumpbin.exe -ErrorAction Stop).Source
+$localDlls = @{}
+foreach ($dir in @($nativeDir, $binDir)) {
+  foreach ($dll in Get-ChildItem -Path $dir -Filter *.dll -File) {
+    $localDlls[$dll.Name] = $dll.FullName
+  }
+}
+
+$requiredLocalPattern = '^(msvcp|vcruntime|concrt)[0-9_]*\.dll$'
+$visited = @{}
+$queue = [System.Collections.Generic.Queue[string]]::new()
 foreach ($dll in Get-ChildItem -Path $nativeDir -Filter *.dll -File) {
-  $handle = [Native.Loader]::LoadLibraryW($dll.FullName)
-  if ($handle -eq [System.IntPtr]::Zero) {
-    $code = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
-    $text = (New-Object System.ComponentModel.Win32Exception($code)).Message
-    $failed += [PSCustomObject]@{ Name = $dll.Name; Code = $code; Text = $text }
-    Write-Output ("  FAIL  {0}  (error {1}: {2})" -f $dll.Name, $code, $text)
+  $queue.Enqueue($dll.FullName)
+}
+
+$failed = @()
+while ($queue.Count -gt 0) {
+  $path = $queue.Dequeue()
+  $name = [System.IO.Path]::GetFileName($path)
+  if ($visited.ContainsKey($name)) {
+    continue
   }
-  else {
-    [void][Native.Loader]::FreeLibrary($handle)
-    $loaded++
-    Write-Output ("  ok    {0}" -f $dll.Name)
+  $visited[$name] = $true
+
+  $output = & $dumpbin /nologo /dependents $path 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    $failed += ("dumpbin could not inspect {0}: {1}" -f $name, ($output -join ' '))
+    continue
+  }
+
+  foreach ($line in $output) {
+    if ($line -notmatch '^\s+([A-Za-z0-9_.+-]+\.dll)\s*$') {
+      continue
+    }
+    $dependency = $Matches[1]
+    if ($dependency -match '^(api-ms-win-|ext-ms-win-)') {
+      continue
+    }
+    if ($localDlls.ContainsKey($dependency)) {
+      $queue.Enqueue($localDlls[$dependency])
+      continue
+    }
+
+    $mustDeploy = $dependency -match $requiredLocalPattern
+    $providedByWindows = Test-Path (Join-Path $env:SystemRoot "System32\$dependency")
+    if ($mustDeploy -or -not $providedByWindows) {
+      $failed += ("{0} imports missing {1}" -f $name, $dependency)
+    }
   }
 }
 
-Write-Output ''
 if ($failed.Count -gt 0) {
-  Write-Output '============================================================'
-  Write-Output (" ERROR: {0} native librar{1} cannot load" -f $failed.Count, $(if ($failed.Count -eq 1) { 'y' } else { 'ies' }))
-  Write-Output '============================================================'
-  foreach ($f in $failed) {
-    Write-Output ("   {0} - error {1}: {2}" -f $f.Name, $f.Code, $f.Text)
-  }
-  Write-Output ''
-  Write-Output 'Error 126 means the library is present but something it imports is not.'
-  Write-Output 'Find the missing import with:'
-  Write-Output ("   dumpbin /dependents {0}\<name>.dll" -f $nativeDir)
-  Write-Output 'and check each named DLL against the contents of bin.'
-  exit 1
+  Write-FailureSummary $failed
 }
 
-Write-Output ("All {0} native libraries load." -f $loaded)
+Write-Output ("{0} dependency closure verified across {1} libraries." -f $TargetArchitecture.ToUpper(), $visited.Count)
 exit 0
