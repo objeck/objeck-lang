@@ -60,7 +60,26 @@ public static extern bool FreeLibrary(System.IntPtr handle);
 # A dependency is satisfied only by this deploy or by Windows itself. VC runtime
 # DLLs are intentionally required locally even when an x64 copy happens to be
 # installed in System32 on the build host.
-$dumpbin = (Get-Command dumpbin.exe -ErrorAction Stop).Source
+$dumpbinCommand = Get-Command dumpbin.exe -ErrorAction SilentlyContinue
+if ($dumpbinCommand) {
+  $dumpbin = $dumpbinCommand.Source
+}
+else {
+  # The ARM64 MSVC environment selected by CI does not always put the x64-host
+  # tools on PATH. dumpbin is target-neutral, so locate its x64-host copy via
+  # Visual Studio's supported discovery tool.
+  $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+  if (-not (Test-Path $vswhere)) {
+    throw 'dumpbin.exe is not on PATH and vswhere.exe is unavailable'
+  }
+  $dumpbin = & $vswhere -latest -products '*' `
+    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+    -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe' |
+    Select-Object -First 1
+  if (-not $dumpbin -or -not (Test-Path $dumpbin)) {
+    throw 'Visual Studio is installed, but its x64-host dumpbin.exe was not found'
+  }
+}
 $localDlls = @{}
 foreach ($dir in @($nativeDir, $binDir)) {
   foreach ($dll in Get-ChildItem -Path $dir -Filter *.dll -File) {
