@@ -88,27 +88,19 @@ bundle Web.HTTP.Server {
 				while(<>@stop) {
 					secure_client := @secure_server->Accept();
 					if(<>@stop & secure_client <> Nil & secure_client->IsOpen()) {
-						# A single Thread instance used to be created above this loop and
-						# re-executed for every connection. Execute() overwrites the thread's
-						# argument, so a connection accepted while the previous handler was
-						# still running repointed that handler at a different socket and left
-						# the earlier request answered by nobody -- the client saw its
-						# connection reset. Each accept gets its own thread.
+						# Accept owns the secure socket object. Move it once into a dedicated
+						# connection thread and run the handler there; launching the handler as
+						# another Thread would spend two threads per TLS connection.
 						thread := System.Concurrency.Thread->New() {
-							New() {
-								Parent()
-							}
+							New() { Parent(); }
 
 							method : public : Run(arg : System.Base) ~ Nil {
 								params := arg->As(Collection.Tuple.Quartet<Class, TCPSecureSocket, WebServerConfig, BoolRef>);
 								callback := params->GetFirst();
 								secure_client := params->GetSecond();
-								server_config := params->GetThird();
-								is_debug := params->GetFourth();
-
 								handler := callback->Instance(callback->GetName())->As(HttpsRequestHandler);
-								handler->SetConfig(server_config, is_debug->Get());
-								handler->Execute(secure_client);
+								handler->SetConfig(params->GetThird(), params->GetFourth()->Get());
+								handler->Run(secure_client);
 							}
 						};
 
@@ -160,7 +152,10 @@ bundle Web.HTTP.Server {
 			@is_debug := is_debug;
 
 			Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
-			if(@server->Listen(8)) {
+			# Keep the accept queue large enough for the bounded thread-per-connection
+			# model; a backlog of eight drops ordinary short connection bursts before
+			# handlers have an opportunity to run.
+			if(@server->Listen(128)) {
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -1980,6 +1975,10 @@ class RequestHandler from HttpsRequestHandler {
 			@client := param->As(TCPSecureSocket);
 
 			if(@client <> Nil & @client->IsOpen()) {
+				# Bound idle thread retention and avoid delayed-ACK stalls on the small
+				# request/response records common to persistent HTTP connections.
+				@client->SetRecvTimeout(30000);
+				@client->SetNoDelay(true);
 				# Mirrors HttpRequestHandler::Run -- see the note there. A connection
 				# carrying one request and then closing is what exposes #669, and the
 				# same two bounds apply: a request cap for a client that never closes,
@@ -1988,10 +1987,15 @@ class RequestHandler from HttpsRequestHandler {
 				alive := true;
 
 				while(alive & served < 100 & @client->IsOpen()) {
-					alive := ServeOne();
+					# The final permitted response must advertise close; otherwise the
+					# peer can reuse a socket Run() is about to close.
+					alive := ServeOne(served + 1 < 100);
 					served += 1;
 				};
 
+				# Connection: close makes this endpoint responsible for ending the TLS
+				# session after the framed response. Waiting for the peer here deadlocks
+				# clients that correctly use EOF as their final framing fallback.
 				@client->Close();
 			};
 		}
@@ -2000,7 +2004,7 @@ class RequestHandler from HttpsRequestHandler {
 		Serves a single request on the already-open connection
 		@return true if the connection should stay open for another request
 		~#
-		method : ServeOne() ~ Bool {
+		method : ServeOne(allow_persistence : Bool) ~ Bool {
 			# get request
 			request := @client->ReadLine();
 			if(request = Nil | request->Size() = 0) {
@@ -2025,10 +2029,52 @@ class RequestHandler from HttpsRequestHandler {
 
 			# get request headers
 			request_headers := GetHeaders();
+			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse("400 Bad Request");
+				return false;
+			};
+			if(request_path->IsEmpty()) {
+				@keep_alive := false;
+				WriteEmptyResponse("400 Bad Request");
+				return false;
+			};
 
 			# Decided before the response is written, because ProcessResponse
 			# emits the Connection header from it.
-			@keep_alive := IsPersistent(request_version, request_headers);
+			@keep_alive := allow_persistence & IsPersistent(request_version, request_headers);
+
+			# Parse request framing before method dispatch. A body on GET or an
+			# unsupported method still occupies the stream and must be consumed before
+			# this connection can be reused.
+			if(request_headers->Find("transfer-encoding") <> Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse("400 Bad Request");
+				return false;
+			};
+			content_length_str := request_headers->Find("content-length");
+			buffer : Byte[];
+			if(content_length_str <> Nil) {
+				if(content_length_str->IsNumeric() = false) {
+					@keep_alive := false;
+					WriteEmptyResponse("400 Bad Request");
+					return false;
+				};
+				content_length := content_length_str->ToInt();
+				if(content_length < 0 | content_length > 16*1048576) { # 16M body limit
+					@keep_alive := false;
+					WriteEmptyResponse("413 Content Too Large");
+					return false;
+				};
+				if(content_length > 0) {
+					buffer := WebCommon->ReadPost(content_length, @client);
+					if(buffer = Nil) {
+						@keep_alive := false;
+						WriteEmptyResponse("400 Bad Request");
+						return false;
+					};
+				};
+			};
 
 			# verify request
 			if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
@@ -2050,15 +2096,6 @@ class RequestHandler from HttpsRequestHandler {
 				}
 				# POST, PUT, PATCH, DELETE with body
 				else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
-					content_length_str := request_headers->Find("content-length");
-					buffer : Byte[];
-					if(content_length_str <> Nil) {
-						content_length := content_length_str->ToInt();
-						if(content_length > 0 & content_length <= 16*1048576) { # 16M body limit
-							buffer := WebCommon->ReadPost(content_length, @client);
-						};
-					};
-
 					# retrieve content
 					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
 						request_path := "/index.html";
@@ -2083,6 +2120,11 @@ class RequestHandler from HttpsRequestHandler {
 						ProcessDelete(http_request, http_response);
 					};
 					ProcessResponse(http_response);
+				}
+				else {
+					# A valid but unsupported HTTP/1.1 method must still receive a
+					# response; otherwise both persistent peers wait for each other.
+					WriteEmptyResponse("405 Method Not Allowed");
 				};
 			};
 
@@ -2104,38 +2146,43 @@ class RequestHandler from HttpsRequestHandler {
 						key_value := key_values->Get(i);
 						key := key_value->GetFirst();
 						value := key_value->GetSecond();
-						response_header += "{$key}: {$value}\r\n";
+						lowered_key := key->ToLower();
+						# Framing and persistence are owned by this handler. Allowing an
+						# application value here would emit contradictory duplicate fields.
+						if(<>lowered_key->Equals("connection") &
+							<>lowered_key->Equals("content-length") &
+							<>lowered_key->Equals("transfer-encoding")) {
+							response_header += "{$key}: {$value}\r\n";
+						};
 					};
 
 					content := response->GetContent();
+					content_size := 0;
 					if(content <> Nil) {
 						content_size := content->Size();
-						# Must agree with what Run() does next, or the peer waits for a request we
-						# will never read, or reuses a socket we are about to close.
-						connection_value := @keep_alive ? "keep-alive" : "close";
-						response_header += "content-length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
+					};
+					# Must agree with what Run() does next, or the peer waits for a request we
+					# will never read, or reuses a socket we are about to close.
+					connection_value := @keep_alive ? "keep-alive" : "close";
+					response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
 
-						cookies := response->GetCookies()<Cookie>;
-						each(i : cookies) {
-							cookie := cookies->Get(i);
-							response_header += "Set-Cookie: ";
-							response_header += cookie->ToString();
-							response_header += "\r\n";
-						};
+					cookies := response->GetCookies()<Cookie>;
+					each(i : cookies) {
+						cookie := cookies->Get(i);
+						response_header += "Set-Cookie: ";
+						response_header += cookie->ToString();
+						response_header += "\r\n";
+					};
 
-						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-						if(<>is_head) {
-							@client->WriteBuffer(content);
-						};
-					}
-					else {
-						@client->WriteString("HTTP/1.1 200\r\n\r\n");
+					@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+					if(content <> Nil & <>is_head) {
+						@client->WriteBuffer(content);
 					};
 				}
 				else {
 					select(response->GetCode()) {
 						label 202 {
-							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
+							WriteEmptyResponse("202 Accepted");
 						}
 
 						label 302 {
@@ -2144,47 +2191,54 @@ class RequestHandler from HttpsRequestHandler {
 								# This path writes a whole response by hand with no keep-alive framing,
 								# so the connection ends here.
 								@keep_alive := false;
-								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
+								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
 							}
 							else {
-								@client->WriteString("HTTP/1.1 400\r\n\r\n");
+								WriteEmptyResponse("400 Bad Request");
 							};
 						}
 
 						label 404 {
-							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
+							WriteEmptyResponse("404 Not Found");
 						}
 
 						label 405 {
-							@client->WriteString("HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+							WriteEmptyResponse("405 Method Not Allowed");
 						}
 
 						label 410 {
-							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
+							WriteEmptyResponse("410 Gone");
 						}
 
 						label 413 {
-							@client->WriteString("HTTP/1.1 413 Content Too Large\r\n\r\n");
+							WriteEmptyResponse("413 Content Too Large");
 						}
 
 						label 429 {
-							@client->WriteString("HTTP/1.1 429 Too Many Requests\r\n\r\n");
+							WriteEmptyResponse("429 Too Many Requests");
 						}
 
 						label 500 {
-							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+							WriteEmptyResponse("500 Internal Server Error");
 						}
 
 						label 503 {
-							@client->WriteString("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+							WriteEmptyResponse("503 Service Unavailable");
 						}
 
 						other {
-							@client->WriteString("HTTP/1.1 400\r\n\r\n");
+							WriteEmptyResponse("400 Bad Request");
 						}
 					};
 				};
 			};
+		}
+
+		# Writes a bodyless response whose framing and Connection field agree
+		# with the value ServeOne returns to Run.
+		method : WriteEmptyResponse(status : String) ~ Nil {
+			connection_value := @keep_alive ? "keep-alive" : "close";
+			@client->WriteString("HTTP/1.1 {$status}\r\nContent-Length: 0\r\nConnection: {$connection_value}\r\n\r\n");
 		}
 		
 		#~
@@ -2199,12 +2253,23 @@ class RequestHandler from HttpsRequestHandler {
 			if(headers <> Nil) {
 				connection := headers->Find("connection");
 				if(connection <> Nil) {
-					lowered := connection->ToLower();
-					if(lowered->Has("close")) {
+					lowered := connection->ToLower()->Trim();
+					if(lowered->Equals("close")) {
 						return false;
 					};
-					if(lowered->Has("keep-alive")) {
+					options := lowered->Split(',');
+					each(i : options) {
+						if(options[i]->Trim()->Equals("close")) {
+							return false;
+						};
+					};
+					if(lowered->Equals("keep-alive")) {
 						return true;
+					};
+					each(i : options) {
+						if(options[i]->Trim()->Equals("keep-alive")) {
+							return true;
+						};
 					};
 				};
 			};
@@ -2228,8 +2293,15 @@ class RequestHandler from HttpsRequestHandler {
 				colon := header->Find(':');
 				if(colon > 0) {
 					name := header->SubString(colon)->ToLower();
-					value := header->SubString(colon + 1, header->Size() - colon - 1)->Trim();
-					headers->Insert(name, value);
+					value := header->SubString(colon + 1, header->Size() - colon - 1);
+					if(value <> Nil) {
+						value := value->Trim();
+						existing := headers->Find(name);
+						if(existing <> Nil) {
+							value := "{$existing},{$value}";
+						};
+						headers->Insert(name, value);
+					};
 				};
 
 				header := @client->ReadLine();
@@ -2290,6 +2362,7 @@ class RequestHandler from HttpsRequestHandler {
 		@server_config : WebServerConfig;
 		@is_debug : Bool;
 		@keep_alive : Bool;
+		@wait_for_peer_close : Bool;
 
 		#~
 		Constructor
@@ -2316,6 +2389,10 @@ class RequestHandler from HttpsRequestHandler {
 			@client := param->As(TCPSocket);
 
 			if(@client <> Nil & @client->IsOpen()) {
+				# Bound idle thread retention and avoid delayed-ACK stalls on the small
+				# request/response records common to persistent HTTP connections.
+				@client->SetRecvTimeout(30000);
+				@client->SetNoDelay(true);
 				# A connection used to carry exactly one request and then close. That is
 				# precisely what exposes #669 on Windows: the SERVER tears the connection
 				# down, and on loopback a teardown before the peer application has read its
@@ -2331,10 +2408,21 @@ class RequestHandler from HttpsRequestHandler {
 				alive := true;
 
 				while(alive & served < 100 & @client->IsOpen()) {
-					alive := ServeOne();
+					# The final permitted response must advertise close; otherwise the
+					# peer can reuse a socket Run() is about to close.
+					alive := ServeOne(served + 1 < 100);
 					served += 1;
 				};
 
+				if(@wait_for_peer_close & @client->IsOpen()) {
+					# Once close has been advertised, let the peer consume the response
+					# and own the first teardown. Use a short grace period rather than
+					# the 30s idle keep-alive timeout: Connection: close still promises
+					# that this side will close promptly.
+					@client->SetRecvTimeout(1000);
+					drain := Byte->New[4096];
+					while(@client->ReadBuffer(0, drain->Size(), drain) > 0) {};
+				};
 				@client->Close();
 			};
 		}
@@ -2343,7 +2431,8 @@ class RequestHandler from HttpsRequestHandler {
 		Serves a single request on the already-open connection
 		@return true if the connection should stay open for another request
 		~#
-		method : ServeOne() ~ Bool {
+		method : ServeOne(allow_persistence : Bool) ~ Bool {
+			@wait_for_peer_close := false;
 			# get request
 			request := @client->ReadLine();
 			if(request = Nil | request->Size() = 0) {
@@ -2368,10 +2457,52 @@ class RequestHandler from HttpsRequestHandler {
 
 			# get request headers
 			request_headers := GetHeaders();
+			if(request_verb = Nil | request_path = Nil | request_version = Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse("400 Bad Request");
+				return false;
+			};
+			if(request_path->IsEmpty()) {
+				@keep_alive := false;
+				WriteEmptyResponse("400 Bad Request");
+				return false;
+			};
 
 			# Decided before the response is written, because ProcessResponse
 			# emits the Connection header from it.
-			@keep_alive := IsPersistent(request_version, request_headers);
+			@keep_alive := allow_persistence & IsPersistent(request_version, request_headers);
+
+			# Parse request framing before method dispatch. A body on GET or an
+			# unsupported method still occupies the stream and must be consumed before
+			# this connection can be reused.
+			if(request_headers->Find("transfer-encoding") <> Nil) {
+				@keep_alive := false;
+				WriteEmptyResponse("400 Bad Request");
+				return false;
+			};
+			content_length_str := request_headers->Find("content-length");
+			buffer : Byte[];
+			if(content_length_str <> Nil) {
+				if(content_length_str->IsNumeric() = false) {
+					@keep_alive := false;
+					WriteEmptyResponse("400 Bad Request");
+					return false;
+				};
+				content_length := content_length_str->ToInt();
+				if(content_length < 0 | content_length > 16*1048576) { # 16M body limit
+					@keep_alive := false;
+					WriteEmptyResponse("413 Content Too Large");
+					return false;
+				};
+				if(content_length > 0) {
+					buffer := WebCommon->ReadPost(content_length, @client);
+					if(buffer = Nil) {
+						@keep_alive := false;
+						WriteEmptyResponse("400 Bad Request");
+						return false;
+					};
+				};
+			};
 
 			# verify request
 			if(request_verb <> Nil & request_path <> Nil & <>request_path->IsEmpty()) {
@@ -2393,15 +2524,6 @@ class RequestHandler from HttpsRequestHandler {
 				}
 				# POST, PUT, PATCH, DELETE with body
 				else if(request_verb->Equals("POST") | request_verb->Equals("PUT") | request_verb->Equals("PATCH") | request_verb->Equals("DELETE")) {
-					content_length_str := request_headers->Find("content-length");
-					buffer : Byte[];
-					if(content_length_str <> Nil) {
-						content_length := content_length_str->ToInt();
-						if(content_length > 0 & content_length <= 16*1048576) { # 16M body limit
-							buffer := WebCommon->ReadPost(content_length, @client);
-						};
-					};
-
 					# retrieve content
 					if(request_path = Nil | request_path->Equals("/") | request_path->Has("..")) {
 						request_path := "/index.html";
@@ -2426,6 +2548,11 @@ class RequestHandler from HttpsRequestHandler {
 						ProcessDelete(http_request, http_response);
 					};
 					ProcessResponse(http_response);
+				}
+				else {
+					# A valid but unsupported HTTP/1.1 method must still receive a
+					# response; otherwise both persistent peers wait for each other.
+					WriteEmptyResponse("405 Method Not Allowed");
 				};
 			};
 
@@ -2447,38 +2574,44 @@ class RequestHandler from HttpsRequestHandler {
 						key_value := key_values->Get(i);
 						key := key_value->GetFirst();
 						value := key_value->GetSecond();
-						response_header += "{$key}: {$value}\r\n";
+						lowered_key := key->ToLower();
+						# Framing and persistence are owned by this handler. Allowing an
+						# application value here would emit contradictory duplicate fields.
+						if(<>lowered_key->Equals("connection") &
+							<>lowered_key->Equals("content-length") &
+							<>lowered_key->Equals("transfer-encoding")) {
+							response_header += "{$key}: {$value}\r\n";
+						};
 					};
 
 					content := response->GetContent();
+					content_size := 0;
 					if(content <> Nil) {
 						content_size := content->Size();
-						# Must agree with what Run() does next, or the peer waits for a request we
-						# will never read, or reuses a socket we are about to close.
-						connection_value := @keep_alive ? "keep-alive" : "close";
-						response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
+					};
+					# Must agree with what Run() does next, or the peer waits for a request we
+					# will never read, or reuses a socket we are about to close.
+					connection_value := @keep_alive ? "keep-alive" : "close";
+					response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
 
-						cookies := response->GetCookies()<Cookie>;
-						each(i : cookies) {
-							cookie := cookies->Get(i);
-							response_header += "Set-Cookie: ";
-							response_header += cookie->ToString();
-							response_header += "\r\n";
-						};
+					cookies := response->GetCookies()<Cookie>;
+					each(i : cookies) {
+						cookie := cookies->Get(i);
+						response_header += "Set-Cookie: ";
+						response_header += cookie->ToString();
+						response_header += "\r\n";
+					};
 
-						@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-						if(<>is_head) {
-							@client->WriteBuffer(content);
-						};
-					}
-					else {
-						@client->WriteString("HTTP/1.1 200\r\n\r\n");
+					@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
+					if(@keep_alive = false) { @wait_for_peer_close := true; };
+					if(content <> Nil & <>is_head) {
+						@client->WriteBuffer(content);
 					};
 				}
 				else {
 					select(response->GetCode()) {
 						label 202 {
-							@client->WriteString("HTTP/1.1 202 Accepted\r\n\r\n");
+							WriteEmptyResponse("202 Accepted");
 						}
 
 						label 302 {
@@ -2487,47 +2620,56 @@ class RequestHandler from HttpsRequestHandler {
 								# This path writes a whole response by hand with no keep-alive framing,
 								# so the connection ends here.
 								@keep_alive := false;
-								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nConnection: close\r\n\r\n");
+								@wait_for_peer_close := true;
+								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
 							}
 							else {
-								@client->WriteString("HTTP/1.1 400\r\n\r\n");
+								WriteEmptyResponse("400 Bad Request");
 							};
 						}
 
 						label 404 {
-							@client->WriteString("HTTP/1.1 404 Not Found\r\n\r\n");
+							WriteEmptyResponse("404 Not Found");
 						}
 
 						label 405 {
-							@client->WriteString("HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+							WriteEmptyResponse("405 Method Not Allowed");
 						}
 
 						label 410 {
-							@client->WriteString("HTTP/1.1 410 Gone\r\n\r\n");
+							WriteEmptyResponse("410 Gone");
 						}
 
 						label 413 {
-							@client->WriteString("HTTP/1.1 413 Content Too Large\r\n\r\n");
+							WriteEmptyResponse("413 Content Too Large");
 						}
 
 						label 429 {
-							@client->WriteString("HTTP/1.1 429 Too Many Requests\r\n\r\n");
+							WriteEmptyResponse("429 Too Many Requests");
 						}
 
 						label 500 {
-							@client->WriteString("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+							WriteEmptyResponse("500 Internal Server Error");
 						}
 
 						label 503 {
-							@client->WriteString("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+							WriteEmptyResponse("503 Service Unavailable");
 						}
 
 						other {
-							@client->WriteString("HTTP/1.1 400\r\n\r\n");
+							WriteEmptyResponse("400 Bad Request");
 						}
 					};
 				};
 			};
+		}
+
+		# Writes a bodyless response whose framing and Connection field agree
+		# with the value ServeOne returns to Run.
+		method : WriteEmptyResponse(status : String) ~ Nil {
+			connection_value := @keep_alive ? "keep-alive" : "close";
+			@client->WriteString("HTTP/1.1 {$status}\r\nContent-Length: 0\r\nConnection: {$connection_value}\r\n\r\n");
+			if(@keep_alive = false) { @wait_for_peer_close := true; };
 		}
 		
 		#~
@@ -2542,12 +2684,23 @@ class RequestHandler from HttpsRequestHandler {
 			if(headers <> Nil) {
 				connection := headers->Find("connection");
 				if(connection <> Nil) {
-					lowered := connection->ToLower();
-					if(lowered->Has("close")) {
+					lowered := connection->ToLower()->Trim();
+					if(lowered->Equals("close")) {
 						return false;
 					};
-					if(lowered->Has("keep-alive")) {
+					options := lowered->Split(',');
+					each(i : options) {
+						if(options[i]->Trim()->Equals("close")) {
+							return false;
+						};
+					};
+					if(lowered->Equals("keep-alive")) {
 						return true;
+					};
+					each(i : options) {
+						if(options[i]->Trim()->Equals("keep-alive")) {
+							return true;
+						};
 					};
 				};
 			};
@@ -2571,8 +2724,15 @@ class RequestHandler from HttpsRequestHandler {
 				colon := header->Find(':');
 				if(colon > 0) {
 					name := header->SubString(colon)->ToLower();
-					value := header->SubString(colon + 1, header->Size() - colon - 1)->Trim();
-					headers->Insert(name, value);
+					value := header->SubString(colon + 1, header->Size() - colon - 1);
+					if(value <> Nil) {
+						value := value->Trim();
+						existing := headers->Find(name);
+						if(existing <> Nil) {
+							value := "{$existing},{$value}";
+						};
+						headers->Insert(name, value);
+					};
 				};
 
 				header := @client->ReadLine();

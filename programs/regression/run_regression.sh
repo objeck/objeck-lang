@@ -46,15 +46,19 @@ record_fail() {
 
 # Per-test wall-clock cap so a hung/infinite-loop test fails fast instead of
 # pinning the CI job until GitHub's 6-hour limit. Use GNU coreutils 'timeout'
-# (Linux) or 'gtimeout' (macOS+brew); degrade gracefully if neither exists.
+# (Linux) or 'gtimeout' (macOS+brew). macOS ships Perl, so use a small
+# fork/alarm wrapper when coreutils is absent rather than silently dropping the
+# safety bound.
 TEST_TIMEOUT=${TEST_TIMEOUT:-60}
 if command -v timeout >/dev/null 2>&1; then
-    TIMEOUT="timeout ${TEST_TIMEOUT}"
+    TIMEOUT=(timeout "${TEST_TIMEOUT}")
 elif command -v gtimeout >/dev/null 2>&1; then
-    TIMEOUT="gtimeout ${TEST_TIMEOUT}"
+    TIMEOUT=(gtimeout "${TEST_TIMEOUT}")
+elif command -v perl >/dev/null 2>&1; then
+    TIMEOUT=(perl -e '$limit=shift; $pid=fork(); exit 127 unless defined $pid; if($pid==0){exec @ARGV; exit 127} $SIG{ALRM}=sub{kill 9,$pid; waitpid($pid,0); exit 124}; alarm $limit; waitpid($pid,0); alarm 0; exit(($? & 127) ? 128+($? & 127) : $? >> 8)' "${TEST_TIMEOUT}")
 else
-    TIMEOUT=""
-    echo "WARNING: no 'timeout'/'gtimeout' found — tests run without a per-test cap"
+    TIMEOUT=()
+    echo "WARNING: no timeout utility or Perl found — tests run without a per-test cap"
 fi
 
 echo "========================================"
@@ -134,9 +138,9 @@ for test in *.obs; do
     # arm64 JIT bug; the marker keeps JIT coverage on for everything else).
     SECONDS=0
     if grep -q '# JIT_DISABLE' "$test" 2>/dev/null; then
-        $TIMEOUT env OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+        "${TIMEOUT[@]}" env OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     else
-        $TIMEOUT "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+        "${TIMEOUT[@]}" "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     fi
     RUN_EXIT=$?
     ELAPSED=$SECONDS
