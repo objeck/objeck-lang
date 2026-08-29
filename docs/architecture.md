@@ -70,7 +70,7 @@ graph TB
 
     subgraph "CI/CD"
         GHA["GitHub Actions<br/>Multi-platform Matrix"]
-        Tests["Regression Tests<br/>(10 automated)"]
+        Tests["Regression Tests<br/>(201 automated)"]
         Artifacts["Build Artifacts"]
     end
 
@@ -124,7 +124,7 @@ graph TB
 - **JIT:** Platform-specific (ARM64 AArch64, AMD64 x86-64)
 - **Memory:** Generational GC with O(1) hash lookups
 - **Libraries:** 30+ including AI/ML, web servers, graphics
-- **CI/CD:** Automated testing across 4 platforms
+- **CI/CD:** Automated testing across 5 platform legs
 
 ---
 
@@ -588,7 +588,7 @@ class FaceDemo {
 Uses SCRFD 10G-KPS detector + ArcFace R50 recognizer from InsightFace buffalo_l. Runs on DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS).
 
 **Source Files:**
-- `core/compiler/lib_src/*.obs` - Library source code (30+ files)
+- `core/compiler/lib_src/*.obs` - Library source code (43 files)
 - `core/release/deploy/lib/*.obl` - Compiled libraries
 
 ---
@@ -791,11 +791,17 @@ graph TB
 
 ### Platform Matrix
 
-| Platform | OS | Architecture | Compiler | Tests |
-|----------|----|--------------| ---------|-------|
-| **Linux** | Ubuntu 22.04 | x64 | GCC 11+ | 17 + 10 regression |
-| **macOS** | macOS 15+ | ARM64 (M1/M2/M3/M4) | Clang 15+ | 17 + 10 regression |
-| **Windows** | Windows 2022 | x64 | MSVC 2022 | 4 core + 10 regression |
+| Platform | Runner | Architecture | Compiler | Tests |
+|----------|--------|--------------|----------|-------|
+| **Linux** | `ubuntu-latest` | x64 | GCC | 201 regression |
+| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 201 regression |
+| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 201 regression |
+| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 201 regression |
+| **Windows** | `windows-2025-vs2026` | ARM64 | MSVC (v145) | build only &mdash; see below |
+
+The Windows ARM64 leg is **cross-compiled on an x64 host, so it cannot execute what it
+builds** and its tests are skipped. That blind spot is how an ARM64-only miscompile
+reached six releases before anyone noticed.
 
 ### Caching Strategy
 
@@ -825,97 +831,43 @@ graph LR
 
 ### Regression Test Suite
 
+201 tests under `programs/regression/`, grouped by the prefix on each filename.
+Counts are the file count per prefix, not a sample.
+
 ```mermaid
 mindmap
     root((Regression Tests
-    10 Total))
-        ARM64 Specific
-            arm64_bitwise
-                Bitwise NOT with ORN
-            arm64_char_arrays
-                STRH/LDRH 16-bit ops
-            arm64_large_immediates
-                Immediates > 4095
-            arm64_multiply_constants
-                Constant multiplication
-        Core Features
-            core_arithmetic
-                Basic math operations
-            core_arrays_simple
-                Array operations
-            core_classes
-                OOP features
-            core_control_flow
-                If/while/for loops
-            core_recursion
-                Recursive functions
-            core_strings_simple
-                String operations
-```
-
-### Build Performance
-
-| Stage | Cold Cache | Warm Cache | Speedup |
-|-------|-----------|------------|---------|
-| **Dependencies** | 5-7 min | 30-45 sec | **8x faster** |
-| **Compilation** | 3-4 min | 1-1.5 min | **3x faster** |
-| **Tests** | 2-3 min | 2-3 min | Same |
-| **Total** | **10-14 min** | **4-6 min** | **~60% faster** |
-
-**Source Files:**
-- `.github/workflows/ci-build.yml` - CI/CD pipeline
-- `programs/regression/run_regression.sh` - Regression runner (Unix)
-- `programs/regression/run_regression.cmd` - Regression runner (Windows)
-- `programs/regression/*.obs` - 10 regression test files
-
----
-
-## 8. Memory Management
-
-Generational garbage collection with O(1) hash-based lookups.
-
-```mermaid
-graph TB
-    subgraph "Memory Regions"
-        A[Stack<br/>Local vars, Frames]
-        B[Young Gen Heap<br/>New objects]
-        C[Old Gen Heap<br/>Survived objects]
-        D[Large Object Heap<br/>Arrays, Strings > 85KB]
-        E[JIT Code Cache<br/>Native code]
-    end
-
-    subgraph "Object Allocation"
-        F[new Object] --> G{Size?}
-        G -->|< 85KB| H[Allocate in Young Gen]
-        G -->|>= 85KB| I[Allocate in LOH]
-
-        H --> J[Add to Hash Table]
-        I --> J
-    end
-
-    subgraph "Garbage Collection"
-        K[GC Triggered] --> L[Stop the World]
-        L --> M[Mark Phase]
-        M --> N[Sweep Phase]
-        N --> O[Compact/Promote]
-        O --> P[Resume Execution]
-
-        M --> Q[Traverse from Roots]
-        Q --> R[Mark Reachable Objects]
-
-        N --> S[Free Unmarked Objects]
-        S --> T[Update Hash Table]
-
-        O --> U{Survived Multiple GCs?}
-        U -->|Yes| V[Promote to Old Gen]
-        U -->|No| W[Keep in Young Gen]
-    end
-
-    J --> K
-
-    style J fill:#e1f5ff
-    style M fill:#fff4e1
-    style N fill:#ffe1e1
+    201 total))
+        Language core (42)
+            core_*
+                Arithmetic, arrays, classes, generics, strings
+        Rejected programs (25)
+            bad_*
+                Errors the compiler must refuse
+        JIT (21)
+            jit_*
+                Native compilation, float paths, GC interaction
+        Machine learning (13)
+            ml_*
+                System.ML models and inference
+        Fixed defects (11)
+            fix_*
+                Regressions pinned to the bug that caused them
+        Collections (10)
+            collect_*
+                Vector, Hash, Map, Set, Stack, Queue
+        Math and strings (16)
+            math_* string_* func_*
+                Numerics, formatting, higher-order functions
+        ARM64 specific (5)
+            arm64_*
+                Bitwise, char arrays, 64-bit immediates, multiply
+        Networking and web (10)
+            http_* mcp_* xml_* json_* api_*
+                Clients, servers, serialisation
+        Remainder (48)
+            closure_* ai_* dap_* regex_* trap_* native_* and others
+                Closures, AI bindings, debugger, GC barriers
 ```
 
 ### Multithreaded Collection (Cooperative Stop-the-World)
@@ -1396,10 +1348,10 @@ This architecture demonstrates a modern, multi-platform language implementation 
 ✅ **Multi-tiered Execution:** Interpreter → Profiling → JIT compilation
 ✅ **Platform-Specific JIT:** Optimized ARM64 and x64 code generation
 ✅ **Efficient Memory Management:** O(1) lookups, generational GC
-✅ **Rich Library Ecosystem:** 30+ libraries including AI/ML, web servers
+✅ **Rich Library Ecosystem:** 32 libraries including AI/ML, web servers
 ✅ **Modern Development Tools:** REPL, debugger, LSP support
 ✅ **Automated CI/CD:** Multi-platform testing with caching
-✅ **Cross-Platform:** Linux x64, macOS ARM64 (Apple Silicon), Windows x64/ARM64
+✅ **Cross-Platform:** Linux x64/ARM64, macOS ARM64 (Apple silicon), Windows x64/ARM64
 ✅ **Full Unicode:** Emoji and supplementary plane characters on all platforms including Windows console
 
 **For More Information:**

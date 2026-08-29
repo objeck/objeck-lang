@@ -151,12 +151,16 @@ if [%1] == [arm64] (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
 		copy "%%d\msvcp140.dll" %TARGET%\bin
+		REM concrt140.dll as well: opencv_core4 imports it for its parallel_for.
+		copy "%%d\concrt140.dll" %TARGET%\bin
 	)
 	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
 		for /d %%d in ("%%v\arm64\Microsoft.VC*.CRT") do (
 			copy "%%d\vcruntime140.dll" %TARGET%\bin
 			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
 			copy "%%d\msvcp140.dll" %TARGET%\bin
+			REM concrt140.dll as well: opencv_core4 imports it for its parallel_for.
+			copy "%%d\concrt140.dll" %TARGET%\bin
 		)
 	)
 )
@@ -593,6 +597,16 @@ if [%1] == [arm64] (
 	for %%f in (win\arm64\bin\opencv_*4.dll) do (
 		copy /y %%f ..\..\release\%TARGET%\bin
 	)
+
+		REM The modular OpenCV build externalises its codecs: opencv_core4 imports
+		REM z.dll and opencv_imgcodecs4 imports jpeg62, libpng16, tiff and libwebp*.
+		REM None were ever committed beside the opencv_*4.dll files, so the wrapper
+		REM loaded to error 126 -- present and correctly built, missing a dependency
+		REM two levels down. x64 never showed it: it ships opencv_world, which links
+		REM the codecs in. Sourced from vcpkg, same as nghttp2 above.
+		for %%c in (z.dll jpeg62.dll libpng16.dll tiff.dll libwebp.dll libwebpdecoder.dll libwebpdemux.dll libwebpmux.dll liblzma.dll libsharpyuv.dll zlib1.dll) do (
+			if exist "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\%%c" copy /y "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\%%c" ..\..\release\%TARGET%\bin
+		)
 )
 
 if [%1] == [x64] (
@@ -892,6 +906,21 @@ if [%1] == [x64] (
 		echo ============================================================
 		exit /b 1
 	)
+)
+
+REM Every check above asks whether a FILE exists. That is a different question
+REM from whether the tree WORKS, and the gap is what let a deploy ship whose
+REM OpenCV library could not load: present, correct architecture, correctly
+REM linked, and missing a dependency two levels down. Ask the real question the
+REM same way the VM does -- LoadLibrary on every native library -- and refuse to
+REM produce a broken tree.
+powershell.exe -executionpolicy remotesigned -file verify_native_libs.ps1 -DeployDir %TARGET%
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: a native library in %TARGET% cannot load - aborting deploy
+	echo ============================================================
+	exit /b 1
 )
 
 :installer
