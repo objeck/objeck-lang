@@ -1,0 +1,21 @@
+use Collection;
+class ClosureMin {
+  function : Main(args : String[]) ~ Nil {
+    funcs := Vector->New()<FuncRef<IntRef>>;
+    for(i := 0; i < 5; i += 1;) { funcs->AddBack(Mk(i * 7)); };
+    pass := true; idx := 0;
+    each(i : funcs) {
+      v := funcs->Get(i);
+      fn := v->Get();
+      r := fn();
+      got := r->Get();
+      if(got <> idx * 7) { pass := false; };
+      idx += 1;
+    };
+    if(pass) { "PASS"->PrintLine(); } else { "FAIL"->PrintLine(); Runtime->Exit(1); };
+  }
+  function : Mk(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+  }
+}

@@ -1,0 +1,51 @@
+# Exercises the Console buffer-I/O methods whose bodies are single *_ARY_LEN
+# traps (STD_OUT_BYTE_ARY_LEN, STD_OUT_CHAR_ARY_LEN, STD_ERR_BYTE_ARY,
+# STD_ERR_CHAR_ARY). Their TRAP operand over-counted the pushed values (5 vs
+# 4), which was harmless interpreted (trap handlers pop fixed counts) but
+# crashed the JIT compiler's working-stack marshalling (front() on an empty
+# deque) the moment the method got hot enough to auto-JIT. First seen in the
+# wild as the LSP server dying mid-session: its stdio framing hammers
+# ReadBuffer/WriteBuffer past the threshold. Each wrapper is driven >15 times
+# so it auto-JITs; pre-fix the VM dies with 0xC0000005 at compile time.
+class JitTrapAryLen {
+	function : Main(args : String[]) ~ Nil {
+		"Testing hot *_ARY_LEN trap JIT paths..."->PrintLine();
+		pass := true;
+
+		# STD_OUT_CHAR_ARY_LEN via WriteBuffer(Int, Int, Char[])
+		chars := "."->ToCharArray();
+		wrote := 0;
+		each(i : 20) {
+			wrote += System.IO.Console->WriteBuffer(0, chars->Size(), chars);
+		};
+		if(wrote < 20) {
+			pass := false;
+			"  FAIL: char WriteBuffer wrote={$wrote}"->PrintLine();
+		};
+
+		# STD_OUT_BYTE_ARY_LEN via WriteBuffer(Int, Int, Byte[])
+		bytes := Byte->New[1]; bytes[0] := '.';
+		each(i : 20) {
+			System.IO.Console->WriteBuffer(0, bytes->Size(), bytes);
+		};
+
+		# STD_ERR_CHAR_ARY / STD_ERR_BYTE_ARY via WriteErrorBuffer (stderr, not
+		# part of the compared stdout)
+		each(i : 20) {
+			System.IO.Console->WriteErrorBuffer(0, chars->Size(), chars);
+			System.IO.Console->WriteErrorBuffer(0, bytes->Size(), bytes);
+		};
+
+		# NOTE: the *_ARY_LEN keywords are _SYSTEM-gated (sys_obc only), so this
+		# test cannot emit the trap itself. With a lang.obl built before the
+		# operand fix it exercises the VM's ProcessReturn clamp; once lang.obl is
+		# rebuilt it exercises the corrected TRAP operand. Both must not crash.
+
+		""->PrintLine();
+		if(pass) {
+			"PASS: hot *_ARY_LEN trap JIT paths"->PrintLine();
+		} else {
+			"FAIL: hot *_ARY_LEN trap JIT paths"->PrintLine();
+		};
+	}
+}
