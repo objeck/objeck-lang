@@ -1,0 +1,230 @@
+# EXTRA_LIBS: net,net_server
+# JIT_DISABLE
+use Collection, System.IO.Net, Web.HTTP.Server;
+
+# Exercises the HTTP/1.x persistence contract with a raw client. Every response
+# is parsed on the same terms a peer uses: status, framing, and Connection.
+class PersistenceHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		path := request->GetPath();
+		# Virtual handler callbacks are JIT-compiled independently of the test's
+		# auto-JIT opt-out. Keep this callback to operations supported reliably by
+		# both JIT backends; ARM64 currently miscompiles String->Equals here.
+		if(path->Size() = 6) {
+			response->SetCode(200);
+		}
+		else if(path->Size() = 4) {
+			response->SetCode(404);
+		}
+		else {
+			# These transport-owned fields must not be emitted alongside the
+			# handler's effective values.
+			response->SetHeader("Connection", "close");
+			response->SetHeader("Content-Length", "999");
+			response->SetHeader("Transfer-Encoding", "chunked");
+			response->SetCodeContent(200, "ok");
+		};
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+}
+
+class HttpPersistenceTest {
+	@port : static : Int;
+	@passed : static : Bool;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	function : ReadResponse(socket : TCPSocket) ~ Pair<String, Map<String, String>> {
+		status := socket->ReadLine();
+		headers := Map->New()<String, String>;
+		if(status = Nil) {
+			return Pair->New("", headers)<String, Map<String, String>>;
+		};
+
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name := line->SubString(colon);
+				value := line->SubString(colon + 1, line->Size() - colon - 1);
+				if(name <> Nil & value <> Nil) {
+					name := name->ToLower();
+					value := value->Trim();
+					existing := headers->Find(name);
+					if(existing <> Nil) { value := "{$existing},{$value}"; };
+					headers->Insert(name, value);
+				}
+				else {
+					Fail("malformed response header '{$line}'");
+				};
+			};
+			line := socket->ReadLine();
+		};
+
+		length_text := headers->Find("content-length");
+		if(length_text <> Nil & length_text->IsNumeric()) {
+			remaining := length_text->ToInt();
+			temp := Byte->New[256];
+			while(remaining > 0) {
+				amount := remaining;
+				if(amount > temp->Size()) { amount := temp->Size(); };
+				read := socket->ReadBuffer(0, amount, temp);
+				if(read < 1) {
+					Fail("response body ended before Content-Length");
+					remaining := 0;
+				}
+				else {
+					remaining -= read;
+				};
+			};
+		};
+
+		return Pair->New(status, headers)<String, Map<String, String>>;
+	}
+
+	function : Request(socket : TCPSocket, text : String) ~ Pair<String, Map<String, String>> {
+		socket->WriteString(text);
+		return ReadResponse(socket);
+	}
+
+	function : Expect(response : Pair<String, Map<String, String>>, status : String,
+			connection : String, context : String) ~ Nil {
+		if(response->GetFirst()->Has(status) = false) {
+			Fail("{$context}: status was '{$response->GetFirst()}'");
+		};
+		headers := response->GetSecond();
+		if(headers->Find("content-length") = Nil) {
+			Fail("{$context}: missing Content-Length");
+		};
+		actual_connection := headers->Find("connection");
+		if(actual_connection = Nil) {
+			Fail("{$context}: missing Connection, expected '{$connection}'");
+		}
+		else if(actual_connection->Equals(connection) = false) {
+			Fail("{$context}: Connection was '{$actual_connection}', expected '{$connection}'");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		@port := 18807;
+
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(PersistenceHandler->New()->GetClass(), HttpPersistenceTest->Port(), false);
+			}
+		};
+		server_thread->Execute(Nil);
+		System.Concurrency.Thread->Sleep(400);
+
+		host := "127.0.0.1";
+		socket := TCPSocket->New(host, @port);
+		if(socket->IsOpen() = false) {
+			Fail("could not connect to test server");
+		}
+		else {
+			empty := Request(socket, "GET /empty HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(empty, "200", "keep-alive", "empty 200");
+			empty_headers := empty->GetSecond();
+			empty_length := empty_headers->Find("content-length");
+			if(empty_length = Nil) {
+				Fail("empty 200: missing Content-Length");
+			}
+			else if(empty_length->Equals("0") = false) {
+				Fail("empty 200: Content-Length was not zero");
+			};
+
+			error := Request(socket, "GET /err HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(error, "404", "keep-alive", "bodyless error");
+
+			unsupported := Request(socket, "OPTIONS /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(unsupported, "405", "keep-alive", "unsupported method");
+
+			overridden := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(overridden, "200", "keep-alive", "transport-owned headers");
+			overridden_headers := overridden->GetSecond();
+			overridden_length := overridden_headers->Find("content-length");
+			if(overridden_length = Nil) {
+				Fail("transport-owned headers: missing Content-Length");
+			}
+			else if(overridden_length->Equals("2") = false) {
+				Fail("transport-owned Content-Length was not normalized");
+			};
+			if(overridden_headers->Find("transfer-encoding") <> Nil) {
+				Fail("transport-owned headers were not normalized");
+			};
+
+			# Message framing is method-independent. The GET body must be consumed so
+			# the following request begins at its own request line.
+			get_body := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4\r\n\r\ndata");
+			Expect(get_body, "200", "keep-alive", "GET request body");
+			after_get_body := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(after_get_body, "200", "keep-alive", "request after GET body");
+
+			# Substrings are not Connection tokens; HTTP/1.1 therefore defaults to
+			# persistent and the same socket remains usable.
+			substring := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\nConnection: disclose\r\n\r\n");
+			Expect(substring, "200", "keep-alive", "connection token parsing");
+			closing := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+			Expect(closing, "200", "close", "explicit close");
+			socket->Close();
+		};
+
+		# Duplicate fields are one comma-separated field semantically; close wins.
+		duplicate := TCPSocket->New(host, @port);
+		duplicate_warmup := Request(duplicate, "GET /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+		Expect(duplicate_warmup, "200", "keep-alive", "duplicate Connection warmup");
+		dup_response := Request(duplicate, "GET /ok HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nConnection: keep-alive\r\n\r\n");
+		Expect(dup_response, "200", "close", "duplicate Connection fields");
+		duplicate->Close();
+
+		# Unsupported framing is rejected before reuse, leaving no body bytes to
+		# masquerade as a second request.
+		chunked := TCPSocket->New(host, @port);
+		chunked_warmup := Request(chunked, "GET /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+		Expect(chunked_warmup, "200", "keep-alive", "chunked request warmup");
+		chunked_response := Request(chunked, "POST /ok HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n");
+		Expect(chunked_response, "400", "close", "chunked request");
+		chunked->Close();
+
+		oversized := TCPSocket->New(host, @port);
+		over_response := Request(oversized, "POST /ok HTTP/1.1\r\nHost: localhost\r\nContent-Length: 16777217\r\n\r\n");
+		Expect(over_response, "413", "close", "oversized request");
+		oversized->Close();
+
+		invalid := TCPSocket->New(host, @port);
+		invalid_response := Request(invalid, "POST /ok HTTP/1.1\r\nHost: localhost\r\nContent-Length: nope\r\n\r\n");
+		Expect(invalid_response, "400", "close", "invalid Content-Length");
+		invalid->Close();
+
+		# The configured request cap is itself part of the persistence decision.
+		capped := TCPSocket->New(host, @port);
+		for(i := 0; i < 100; i += 1;) {
+			response := Request(capped, "GET /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			expected := i = 99 ? "close" : "keep-alive";
+			Expect(response, "200", expected, "request cap {$i + 1}");
+		};
+		capped->Close();
+
+		WebServer->Stop();
+		if(@passed) {
+			"PASS: HTTP persistence invariants"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

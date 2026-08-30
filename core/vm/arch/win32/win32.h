@@ -801,7 +801,7 @@ class IPSecureSocket {
     while(written < len) {
       int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)values + written, len - written);
       if(ret < 0) {
-        if(ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
+        if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
           continue;
         }
         sctx->last_error = ret;
@@ -814,7 +814,9 @@ class IPSecureSocket {
 
   static char ReadByte(SecureSocketCtx* sctx, int &status) {
     unsigned char value;
-    status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
+    do {
+      status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
+    } while(status == MBEDTLS_ERR_SSL_WANT_READ || status == MBEDTLS_ERR_SSL_WANT_WRITE);
     if(status <= 0) {
       if(status < 0) {
         sctx->last_error = status;
@@ -829,6 +831,9 @@ class IPSecureSocket {
     while(total < len) {
       int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + total, len - total);
       if(status < 0) {
+        if(status == MBEDTLS_ERR_SSL_WANT_READ || status == MBEDTLS_ERR_SSL_WANT_WRITE) {
+          continue;
+        }
         sctx->last_error = status;
         return total > 0 ? total : -1;
       }

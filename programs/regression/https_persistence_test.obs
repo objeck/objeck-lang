@@ -1,0 +1,200 @@
+# EXTRA_LIBS: net,net_server
+# JIT_DISABLE
+use Collection, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+class HttpsPersistenceHandler from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		if(request->GetPath()->Size() = 7) {
+			"TLS stage: HttpsClient request reached handler"->ErrorLine();
+		};
+		# This virtual callback is JIT-compiled even when test auto-JIT is disabled;
+		# ARM64 currently miscompiles String->Equals in this context.
+		if(request->GetPath()->Size() = 6) {
+			response->SetCode(200);
+		}
+		else {
+			response->SetCodeContent(200, "ok");
+		};
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+}
+
+class HttpsPersistenceTest {
+	@port : static : Int;
+	@passed : static : Bool;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	function : ReadResponse(socket : TCPSecureSocket) ~ Pair<String, Map<String, String>> {
+		status := socket->ReadLine();
+		headers := Map->New()<String, String>;
+		if(status = Nil) {
+			return Pair->New("", headers)<String, Map<String, String>>;
+		};
+
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name := line->SubString(colon);
+				value := line->SubString(colon + 1, line->Size() - colon - 1);
+				if(name <> Nil & value <> Nil) {
+					name := name->ToLower();
+					value := value->Trim();
+					headers->Insert(name, value);
+				}
+				else {
+					Fail("malformed TLS response header '{$line}'");
+				};
+			};
+			line := socket->ReadLine();
+		};
+
+		length_text := headers->Find("content-length");
+		if(length_text <> Nil & length_text->IsNumeric()) {
+			remaining := length_text->ToInt();
+			temp := Byte->New[256];
+			while(remaining > 0) {
+				amount := remaining;
+				if(amount > temp->Size()) { amount := temp->Size(); };
+				read := socket->ReadBuffer(0, amount, temp);
+				if(read < 1) {
+					Fail("response body ended before Content-Length");
+					remaining := 0;
+				}
+				else {
+					remaining -= read;
+				};
+			};
+		};
+		return Pair->New(status, headers)<String, Map<String, String>>;
+	}
+
+	function : Request(socket : TCPSecureSocket, text : String) ~ Pair<String, Map<String, String>> {
+		socket->WriteString(text);
+		return ReadResponse(socket);
+	}
+
+	function : Expect(response : Pair<String, Map<String, String>>, status : String,
+			connection : String, context : String) ~ Nil {
+		if(response->GetFirst()->Has(status) = false) {
+			Fail("{$context}: status was '{$response->GetFirst()}'");
+		};
+		headers := response->GetSecond();
+		length := headers->Find("content-length");
+		if(length = Nil) {
+			Fail("{$context}: missing Content-Length");
+		};
+		actual := headers->Find("connection");
+		if(actual = Nil) {
+			Fail("{$context}: missing Connection, expected '{$connection}'");
+		}
+		else if(actual->Equals(connection) = false) {
+			Fail("{$context}: Connection was '{$actual}', expected '{$connection}'");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		@port := 18808;
+		cert := "https-persistence-cert.pem";
+		key := "https-persistence-key.pem";
+		File->Delete(cert);
+		File->Delete(key);
+		# Some Windows OpenSSL distributions have a build-time config path that
+		# does not exist on the runner. This command needs no config sections.
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout {$key} -out {$cert}";
+		if(Runtime->Command(command) <> 0) {
+			Fail("openssl could not create the localhost TLS fixture");
+			Runtime->Exit(1);
+		};
+
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(HttpsPersistenceHandler->New()->GetClass(),
+					HttpsPersistenceTest->Port(), "https-persistence-cert.pem",
+					"https-persistence-key.pem", "", false);
+			}
+		};
+		server_thread->Execute(Nil);
+		System.Concurrency.Thread->Sleep(2000);
+		"TLS stage: server startup wait complete"->ErrorLine();
+
+		# Exercise multiple HTTP requests over one TLS session.
+		socket := TCPSecureSocket->New("localhost", @port, cert);
+		"TLS stage: first connection returned"->ErrorLine();
+		socket->SetNoDelay(true);
+		socket->SetRecvTimeout(5000);
+		socket->SetSendTimeout(5000);
+		if(socket->IsOpen() = false) {
+			Fail("could not establish trusted TLS connection");
+		}
+		else {
+			empty := Request(socket, "GET /empty HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(empty, "200", "keep-alive", "empty TLS response");
+			empty_headers := empty->GetSecond();
+			if(empty_headers->Find("content-length")->Equals("0") = false) {
+				Fail("empty TLS response was not framed as zero length");
+			};
+
+			body := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4\r\n\r\ndata");
+			Expect(body, "200", "keep-alive", "TLS GET with body");
+			next := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(next, "200", "keep-alive", "TLS request after body");
+			unsupported := Request(socket, "OPTIONS /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(unsupported, "405", "keep-alive", "TLS unsupported method");
+			closing := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+			Expect(closing, "200", "close", "TLS explicit close");
+			socket->Close();
+		};
+		"TLS stage: persistence sequence complete"->ErrorLine();
+
+		# Exercise HttpsClient itself with explicit trust in the test CA.
+		client_url := Web.HTTP.Url->New("https://localhost:{$@port}/client");
+		client := Web.HTTP.HttpsClient->New();
+		"TLS stage: HttpsClient request starting"->ErrorLine();
+		response := client->Get(client_url, "text/plain", cert);
+		"TLS stage: HttpsClient request returned"->ErrorLine();
+		if(response = Nil) {
+			Fail("HttpsClient GET returned Nil through ServeSecure");
+		}
+		else {
+			client_content := response->GetContent();
+			if(response->GetCode() <> 200) {
+				Fail("HttpsClient GET returned status {$response->GetCode()}");
+			}
+			else if(client_content = Nil) {
+				Fail("HttpsClient GET returned no body through ServeSecure");
+			}
+			else if(client_content->ToString()->Equals("ok") = false) {
+				Fail("HttpsClient GET body was '{$client_content->ToString()}'");
+			};
+		};
+
+		File->Delete(cert);
+		File->Delete(key);
+		if(@passed) {
+			"PASS: HTTPS persistence invariants"->PrintLine();
+			# ServeSecure is blocked in accept on POSIX, and closing that descriptor
+			# from this thread is not guaranteed to wake it. End the isolated test
+			# process after all assertions and fixture cleanup.
+			Runtime->Exit(0);
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}
