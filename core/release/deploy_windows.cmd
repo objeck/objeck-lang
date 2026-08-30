@@ -150,13 +150,15 @@ if [%1] == [arm64] (
 	for /d %%d in ("%VCToolsRedistDir%\arm64\Microsoft.VC*.CRT") do (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-		copy "%%d\msvcp140.dll" %TARGET%\bin
+		copy "%%d\msvcp140*.dll" %TARGET%\bin
+		copy "%%d\concrt140.dll" %TARGET%\bin
 	)
 	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
 		for /d %%d in ("%%v\arm64\Microsoft.VC*.CRT") do (
 			copy "%%d\vcruntime140.dll" %TARGET%\bin
 			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-			copy "%%d\msvcp140.dll" %TARGET%\bin
+			copy "%%d\msvcp140*.dll" %TARGET%\bin
+			copy "%%d\concrt140.dll" %TARGET%\bin
 		)
 	)
 )
@@ -188,13 +190,15 @@ if [%1] == [x64] (
 	for /d %%d in ("%VCToolsRedistDir%\x64\Microsoft.VC*.CRT") do (
 		copy "%%d\vcruntime140.dll" %TARGET%\bin
 		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-		copy "%%d\msvcp140.dll" %TARGET%\bin
+		copy "%%d\msvcp140*.dll" %TARGET%\bin
+		copy "%%d\concrt140.dll" %TARGET%\bin
 	)
 	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
 		for /d %%d in ("%%v\x64\Microsoft.VC*.CRT") do (
 			copy "%%d\vcruntime140.dll" %TARGET%\bin
 			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-			copy "%%d\msvcp140.dll" %TARGET%\bin
+			copy "%%d\msvcp140*.dll" %TARGET%\bin
+			copy "%%d\concrt140.dll" %TARGET%\bin
 		)
 	)
 )
@@ -593,6 +597,14 @@ if [%1] == [arm64] (
 	for %%f in (win\arm64\bin\opencv_*4.dll) do (
 		copy /y %%f ..\..\release\%TARGET%\bin
 	)
+
+	REM The modular OpenCV build externalises its codecs. Copy every known
+	REM release name produced by the installed vcpkg ports; the dependency-closure
+	REM verifier below is authoritative and fails if an exact imported name is
+	REM still absent, so a silently skipped optional spelling cannot ship.
+	for %%c in (z.dll jpeg62.dll libpng16.dll tiff.dll libwebp.dll libwebpdecoder.dll libwebpdemux.dll libwebpmux.dll liblzma.dll libsharpyuv.dll) do (
+		if exist "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\%%c" copy /y "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\%%c" ..\..\release\%TARGET%\bin
+	)
 )
 
 if [%1] == [x64] (
@@ -892,6 +904,18 @@ if [%1] == [x64] (
 		echo ============================================================
 		exit /b 1
 	)
+)
+
+REM Verify the native-library closure before producing an artifact. x64 can use
+REM LoadLibrary directly. ARM64 is cross-compiled on an x64 runner, so the script
+REM uses dumpbin to walk imports and require every non-system dependency locally.
+powershell.exe -executionpolicy remotesigned -file verify_native_libs.ps1 -DeployDir %TARGET% -TargetArchitecture %1
+if errorlevel 1 (
+	echo.
+	echo ============================================================
+	echo  ERROR: a native library in %TARGET% cannot load - aborting deploy
+	echo ============================================================
+	exit /b 1
 )
 
 :installer

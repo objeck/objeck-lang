@@ -294,6 +294,20 @@ jobs:
         Install-VcpkgPackage "mbedtls:${{ matrix.arch }}-windows"
         Install-VcpkgPackage "nghttp2:${{ matrix.arch }}-windows"
 
+        # The committed ARM64 OpenCV modules are a MODULAR build: opencv_core4
+        # imports z.dll, and opencv_imgcodecs4 imports jpeg62/libpng16/tiff/
+        # libwebp*. None of those codec DLLs were ever committed beside them, so
+        # libobjk_opencv.dll failed to load with error 126 -- present, correctly
+        # built, and missing a dependency two levels down. x64 never showed this
+        # because it downloads opencv_world, which links the codecs IN.
+        if("${{ matrix.arch }}" -eq "ARM64") {
+          Install-VcpkgPackage "zlib:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "libjpeg-turbo:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "libpng:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "tiff:${{ matrix.arch }}-windows"
+          Install-VcpkgPackage "libwebp:${{ matrix.arch }}-windows"
+        }
+
         # Set include/lib paths for Visual Studio
         $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
         echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
