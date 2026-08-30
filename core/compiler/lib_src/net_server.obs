@@ -15,6 +15,10 @@ bundle Web.HTTP.Server {
 		@server_config : static : WebServerConfig;
 		@is_debug : static : Bool;
 
+		# Port passed to Serve. WebServer is already entirely static, so this adds
+		# no limitation that was not already present: one server per process.
+		@bound_port : static : Int;
+
 		#~
 		Starts a HTTPS server that listens for requests
 		@param filename configuration file (an <a href='https://github.com/objeck/objeck-web-server/blob/master/config/weather_config.json' target='_blank'>example</a>)
@@ -32,6 +36,7 @@ bundle Web.HTTP.Server {
 			if(@server_config->Load()) {
 				callback := @server_config->GetClass();
 				port := @server_config->GetPort();
+				@bound_port := port;
 				cert := @server_config->GetCertPath();
 				cert_key := @server_config->GetCertKeyPath();
 				cert_key_passwd := @server_config->GetCertPassword();
@@ -142,6 +147,14 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
+		Gets the port this server was asked to bind to.
+		@return bound port, or 0 if no server has been started
+		~#
+		function : GetBoundPort() ~ Int {
+			return @bound_port;
+		}
+
+		#~
 		Starts a HTTP server that listens for requests
 		@param callback class inherited from 'HttpRequestHandler'
 		@param port server port
@@ -150,6 +163,8 @@ bundle Web.HTTP.Server {
 		function : Serve(callback : Class, port : Int, is_debug : Bool) ~ Nil {
 			@server := TCPSocketServer->New(port);
 			@is_debug := is_debug;
+
+			@bound_port := port;
 
 			Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			# Keep the accept queue large enough for the bounded thread-per-connection
@@ -879,6 +894,12 @@ bundle Web.HTTP.Server {
 		@cookies : Map<String, Cookie>;
 		@content : Byte[];
 
+		# Connection metadata. Set by the server after construction rather than
+		# through a constructor, so every existing caller is unaffected.
+		@request_verb : String;
+		@remote_address : String;
+		@local_port : Int;
+
 		#~
 		Constructor
 		@param request_line HTTP request line
@@ -910,6 +931,45 @@ bundle Web.HTTP.Server {
 			@request_line := request_line;
 			@request_headers := request_headers;
 			@content := content;
+		}
+
+		#~
+		Sets connection metadata. Called by the server immediately after the
+		request is constructed; handlers should treat these as read-only.
+		@param request_verb HTTP verb, e.g. GET or POST
+		@param remote_address address of the connected peer
+		@param local_port port this server is bound to
+		~#
+		method : public : SetConnectionInfo(request_verb : String, remote_address : String, local_port : Int) ~ Nil {
+			@request_verb := request_verb;
+			@remote_address := remote_address;
+			@local_port := local_port;
+		}
+
+		#~
+		Gets the HTTP verb. The verb is parsed by the server to choose a handler
+		method; this exposes it to handlers that need it directly.
+		@return HTTP verb, or Nil if the server did not supply one
+		~#
+		method : public : GetMethod() ~ String {
+			return @request_verb;
+		}
+
+		#~
+		Gets the address of the connected peer.
+		@return peer address, or Nil if the server did not supply one
+		~#
+		method : public : GetRemoteAddress() ~ String {
+			return @remote_address;
+		}
+
+		#~
+		Gets the port this server is bound to. This is the port passed to
+		Serve, not a socket-level lookup of the accepted connection.
+		@return local port, or 0 if the server did not supply one
+		~#
+		method : public : GetLocalPort() ~ Int {
+			return @local_port;
 		}
 
 		#~
@@ -2087,6 +2147,10 @@ class RequestHandler from HttpsRequestHandler {
 
 					# write response
 					http_request := Request->New(request_path, request_headers);
+					# The verb and peer address are known here and were previously discarded:
+					# the verb only chose a handler method, and the address was read solely
+					# under @is_debug. Handlers need both.
+					http_request->SetConnectionInfo(request_verb, @client->GetAddress(), WebServer->GetBoundPort());
 					http_response := Response->New(@server_config, http_request->GetPath());
 
 					if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
@@ -2103,6 +2167,10 @@ class RequestHandler from HttpsRequestHandler {
 
 					# write response
 					http_request := Request->New(request_path, request_headers, buffer);
+					# The verb and peer address are known here and were previously discarded:
+					# the verb only chose a handler method, and the address was read solely
+					# under @is_debug. Handlers need both.
+					http_request->SetConnectionInfo(request_verb, @client->GetAddress(), WebServer->GetBoundPort());
 					http_response := Response->New(@server_config, http_request->GetPath());
 
 					if(request_verb->Equals("POST")) {
@@ -2515,6 +2583,10 @@ class RequestHandler from HttpsRequestHandler {
 
 					# write response
 					http_request := Request->New(request_path, request_headers);
+					# The verb and peer address are known here and were previously discarded:
+					# the verb only chose a handler method, and the address was read solely
+					# under @is_debug. Handlers need both.
+					http_request->SetConnectionInfo(request_verb, @client->GetAddress(), WebServer->GetBoundPort());
 					http_response := Response->New(@server_config, http_request->GetPath());
 					
 					if(ProcessGet(http_request, http_response) & @server_config <> Nil & @server_config->IsHandlingFiles()) {
@@ -2531,6 +2603,10 @@ class RequestHandler from HttpsRequestHandler {
 
 					# write response
 					http_request := Request->New(request_path, request_headers, buffer);
+					# The verb and peer address are known here and were previously discarded:
+					# the verb only chose a handler method, and the address was read solely
+					# under @is_debug. Handlers need both.
+					http_request->SetConnectionInfo(request_verb, @client->GetAddress(), WebServer->GetBoundPort());
 					http_response := Response->New(@server_config, http_request->GetPath());
 
 					if(request_verb->Equals("POST")) {

@@ -1,0 +1,318 @@
+#~
+# Web.Server end-to-end coverage.
+#
+# Every method on Web.Server.Request and Response used to call a native library
+# that has never existed in this repository, so the whole API was executed by
+# nothing (issue #654). It is now implemented over Web.HTTP.Server, and this
+# drives it through real HTTP on the loopback interface.
+#
+# The handler echoes what it observed back to the client, so each assertion
+# checks a value rather than merely that a request completed.
+# EXTRA_LIBS: net,net_server,web_server,gen_collect
+~#
+
+use Collection, System.Concurrency, System.IO.Net, Web.Server;
+
+class EchoHandler from Web.Server.Handler {
+	New() { Parent(); }
+
+	method : public : Process(request : Request, response : Response) ~ Bool {
+		url := request->GetRequestUrl();
+		if(url = Nil) { url := ""; };
+
+		if(url->Equals("/method")) {
+			verb := request->GetMethod();
+			if(verb = Request->Method->GET) {
+				response->WriteBody("GET");
+			}
+			else if(verb = Request->Method->POST) {
+				response->WriteBody("POST");
+			}
+			else {
+				response->WriteBody("OTHER");
+			};
+		}
+		else if(url->Equals("/url")) {
+			response->WriteBody(url);
+		}
+		else if(url->Equals("/remote")) {
+			addr := request->GetRemoteAddress();
+			if(addr = Nil) { addr := "<Nil>"; };
+			response->WriteBody(addr);
+		}
+		else if(url->Equals("/local")) {
+			addr := request->GetLocalAddress();
+			if(addr = Nil) { addr := "<Nil>"; };
+			response->WriteBody(addr);
+		}
+		else if(url->Equals("/header")) {
+			value := request->GetHeader("X-Test");
+			if(value = Nil) { value := "<Nil>"; };
+			response->WriteBody(value);
+		}
+		else if(url->Equals("/echo")) {
+			body := request->ReadBody();
+			if(body = Nil) {
+				response->WriteBody("<Nil>");
+			}
+			else {
+				response->WriteBody(String->New(body));
+			};
+		}
+		else if(url->Equals("/append")) {
+			response->WriteBody("aa");
+			response->WriteBody("bb");
+		}
+		else if(url->Equals("/bytes")) {
+			data := Byte->New[3];
+			data[0] := 'x'; data[1] := 'y'; data[2] := 'z';
+			response->WriteBody(data);
+		}
+		else if(url->Equals("/clear")) {
+			response->WriteBody("draft");
+			response->ClearAll();
+			response->WriteBody("final");
+		}
+		else if(url->Equals("/type")) {
+			response->SetContentType("application/json");
+			response->WriteBody("{}");
+		}
+		else if(url->Equals("/setheader")) {
+			response->SetHeader("X-Keep", "kept");
+			response->SetHeader("X-Drop", "dropped");
+			response->RemoveHeader("X-Drop");
+			response->WriteBody("headers");
+		}
+		else if(url->Equals("/redirect")) {
+			response->Redirect("/moved");
+		}
+		else {
+			response->WriteBody("notfound");
+		};
+
+		return false;
+	}
+}
+
+class Reply {
+	@code : Int;
+	@headers : Map<String, String>;
+	@body : String;
+
+	New(code : Int, headers : Map<String, String>, body : String) {
+		@code := code; @headers := headers; @body := body;
+	}
+
+	method : public : GetCode() ~ Int { return @code; }
+	method : public : GetBody() ~ String { return @body; }
+
+	method : public : GetHeader(name : String) ~ String {
+		return @headers->Find(name->ToLower());
+	}
+}
+
+class WebServerTest {
+	@failures : Int;
+	@port : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := WebServerTest->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+		@port := 19881;
+	}
+
+	method : Check(what : String, got : String, expect : String) ~ Nil {
+		if(got = Nil) {
+			"FAIL: {$what}: got <Nil>, expected '{$expect}'"->PrintLine();
+			@failures += 1;
+		}
+		else if(<>got->Equals(expect)) {
+			"FAIL: {$what}: got '{$got}', expected '{$expect}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckTrue(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	#~
+	Raw HTTP/1.1 client. HttpClient cannot be used for most of these assertions:
+	its Response exposes only GetType, GetContent and GetCode, with no access to
+	arbitrary headers, so SetHeader, RemoveHeader and Redirect's Location would
+	be unverifiable through it.
+
+	The request deliberately does NOT send "Connection: close". The server keeps
+	the connection open, this side reads by Content-Length and then closes, so
+	the CLIENT owns the teardown -- see docs/windows_loopback_sockets.md.
+	~#
+	method : Send(verb : String, path : String, extra : String, body : String) ~ Reply {
+		port := @port;
+		sock := TCPSocket->New("127.0.0.1", port);
+		if(<>sock->IsOpen()) {
+			return Nil;
+		};
+
+		req := "{$verb} {$path} HTTP/1.1\r\nHost: 127.0.0.1:{$port}\r\n";
+		if(extra <> Nil) {
+			req += extra;
+		};
+		if(body <> Nil) {
+			len := body->Size();
+			req += "Content-Type: text/plain\r\nContent-Length: {$len}\r\n";
+		};
+		req += "\r\n";
+		if(body <> Nil) {
+			req += body;
+		};
+		sock->WriteString(req);
+
+		status := sock->ReadLine();
+		if(status = Nil | status->IsEmpty()) {
+			sock->Close();
+			return Nil;
+		};
+
+		code := 0;
+		status_parts := status->Split(" ");
+		if(status_parts->Size() > 1) {
+			code := status_parts[1]->Trim()->ToInt();
+		};
+
+		headers := Map->New()<String, String>;
+		line := sock->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name := line->SubString(colon)->ToLower()->Trim();
+				value := line->SubString(colon + 1, line->Size() - colon - 1)->Trim();
+				headers->Insert(name, value);
+			};
+			line := sock->ReadLine();
+		};
+
+		content := "";
+		length_text := headers->Find("content-length");
+		if(length_text <> Nil & length_text->IsNumeric()) {
+			remaining := length_text->ToInt();
+			buffer := Byte->New[512];
+			while(remaining > 0) {
+				amount := remaining;
+				if(amount > buffer->Size()) { amount := buffer->Size(); };
+				read := sock->ReadBuffer(0, amount, buffer);
+				if(read <= 0) {
+					remaining := 0;
+				}
+				else {
+					chunk := Byte->New[read];
+					Runtime->Copy(chunk, 0, buffer, 0, read);
+					content += String->New(chunk);
+					remaining -= read;
+				};
+			};
+		};
+
+		sock->Close();
+
+		return Reply->New(code, headers, content);
+	}
+
+	method : Get(path : String) ~ Reply {
+		return Send("GET", path, Nil, Nil);
+	}
+
+	method : BodyOf(reply : Reply) ~ String {
+		if(reply = Nil) { return Nil; };
+		return reply->GetBody();
+	}
+
+	method : Run() ~ Nil {
+		port := @port;
+		server := Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				Web.Server.Handler->Serve(EchoHandler->New()->GetClass(), 19881);
+			}
+		};
+		server->Execute(Nil);
+		Thread->Sleep(800);
+
+		# Request: verb, url, addresses
+		Check("GetMethod", BodyOf(Get("/method")), "GET");
+		Check("GetRequestUrl", BodyOf(Get("/url")), "/url");
+		Check("GetRemoteAddress", BodyOf(Get("/remote")), "127.0.0.1");
+		Check("GetLocalAddress", BodyOf(Get("/local")), "127.0.0.1:{$port}");
+
+		# Request: headers
+		Check("GetHeader", BodyOf(Send("GET", "/header", "X-Test: probe-value\r\n", Nil)), "probe-value");
+
+		# Request: body
+		Check("ReadBody", BodyOf(Send("POST", "/echo", Nil, "payload-42")), "payload-42");
+		Check("GetMethod POST", BodyOf(Send("POST", "/method", Nil, "x")), "POST");
+
+		# Response: append semantics
+		Check("WriteBody appends", BodyOf(Get("/append")), "aabb");
+		Check("WriteBody(Byte[])", BodyOf(Get("/bytes")), "xyz");
+		Check("ClearAll discards body", BodyOf(Get("/clear")), "final");
+
+		# Response: content type
+		type_reply := Get("/type");
+		Check("SetContentType body", BodyOf(type_reply), "{}");
+		if(type_reply <> Nil) {
+			ctype := type_reply->GetHeader("Content-Type");
+			CheckTrue("SetContentType header", ctype <> Nil & ctype->Has("application/json"));
+		}
+		else {
+			CheckTrue("SetContentType response", false);
+		};
+
+		# Response: headers
+		hdr_reply := Get("/setheader");
+		Check("SetHeader body", BodyOf(hdr_reply), "headers");
+		if(hdr_reply <> Nil) {
+			kept := hdr_reply->GetHeader("X-Keep");
+			dropped := hdr_reply->GetHeader("X-Drop");
+			CheckTrue("SetHeader kept", kept <> Nil & kept->Equals("kept"));
+			CheckTrue("RemoveHeader dropped", dropped = Nil);
+		}
+		else {
+			CheckTrue("SetHeader response", false);
+		};
+
+		# Response: redirect
+		redir := Get("/redirect");
+		if(redir <> Nil) {
+			code := redir->GetCode();
+			CheckTrue("Redirect code is 302 (got {$code})", code = 302);
+			loc := redir->GetHeader("Location");
+			CheckTrue("Redirect Location header", loc <> Nil & loc->Equals("/moved"));
+		}
+		else {
+			CheckTrue("Redirect response", false);
+		};
+
+		if(@failures > 0) {
+			"---"->PrintLine();
+			failures := @failures;
+			"{$failures} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: Web.Server request and response API verified over real HTTP"->PrintLine();
+
+		# Explicit exit. A program that starts WebServer->Serve and then returns from
+		# Main segfaults during teardown with the server thread parked in Accept.
+		# That is PRE-EXISTING on master -- reproduced with an unmodified
+		# net_server.obs and no Web.Server involved at all, 3 runs of 3 -- and is
+		# filed separately. Without this the suite would score a passing test as a
+		# crash, since it scores by exit code.
+		Runtime->Exit(0);
+	}
+}
