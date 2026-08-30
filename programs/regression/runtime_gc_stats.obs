@@ -1,0 +1,101 @@
+#~
+# The runtime.* GC statistics must stay inside their own stated ranges.
+#
+# runtime.gc.nursery.occupancy_permille computed used * 1000 / cap, which wraps
+# once used passes SIZE_MAX/1000, and said nothing about used > cap -- a state
+# that occurs transiently while a collection is in flight and used to report a
+# permille above 1000.
+#
+# NOTE: this is NOT the Coverity finding. CID 1677221 is runtime.memory.overhead
+# on the row above, and it is a false positive -- its r > a guard already prevents
+# the underflow Coverity claims. The overflow fixed here is a real one Coverity did
+# not flag, found while reading the neighbouring row.
+#
+# These properties are read through Runtime->GetProperty and are the only way a
+# program can see collector state, so a garbage value here is silently wrong
+# rather than loud.
+~#
+
+# Objects, not arrays. Arrays are born OLD (AllocateArray never uses the nursery),
+# so an array-allocating loop leaves nursery occupancy pinned at 0 and the range
+# assertions below never see a non-zero value to check.
+class Cell {
+	@a : Int; @b : Int; @c : Int;
+	New(v : Int) { @a := v; @b := v; @c := v; }
+	method : public : A() ~ Int { return @a; }
+}
+
+class RuntimeGcStats {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RuntimeGcStats->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Permille() ~ Int {
+		text := Runtime->GetProperty("runtime.gc.nursery.occupancy_permille");
+		if(text = Nil) {
+			return -1;
+		};
+		return text->ToInt();
+	}
+
+	method : Run() ~ Nil {
+		# Sampled while allocating, so the nursery is genuinely filling and being
+		# collected underneath -- including the used >= cap window.
+		lowest := 100000;
+		highest := -1;
+		samples := 0;
+
+		for(i := 0; i < 400000; i += 1;) {
+			cell := Cell->New(i);
+			if(cell->A() < 0) { "unreachable"->PrintLine(); };
+
+			if(i % 4000 = 0) {
+				permille := Permille();
+				Check("occupancy is readable (got {$permille})", permille >= 0);
+				Check("occupancy {$permille} is not above 1000", permille <= 1000);
+				if(permille >= 0) {
+					samples += 1;
+					if(permille < lowest) { lowest := permille; };
+					if(permille > highest) { highest := permille; };
+				};
+			};
+		};
+
+		Check("occupancy was sampled at all", samples > 0);
+
+		# The other counters are monotonic and must not read as absurd values.
+		minor := Runtime->GetProperty("runtime.gc.minor");
+		major := Runtime->GetProperty("runtime.gc.major");
+		Check("runtime.gc.minor is present", minor <> Nil);
+		Check("runtime.gc.major is present", major <> Nil);
+		if(minor <> Nil & major <> Nil) {
+			Check("minor count is not negative", minor->ToInt() >= 0);
+			Check("major count is not negative", major->ToInt() >= 0);
+		};
+
+		used := Runtime->GetProperty("runtime.gc.nursery.used");
+		Check("runtime.gc.nursery.used is present", used <> Nil);
+
+		if(@failures > 0) {
+			"---"->PrintLine();
+			"{$@failures} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: {$samples} occupancy samples in [{$lowest}, {$highest}] permille"->PrintLine();
+	}
+}
