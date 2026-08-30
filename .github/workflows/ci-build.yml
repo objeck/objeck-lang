@@ -36,8 +36,16 @@ jobs:
             deploy_script: deploy_windows.cmd x64
             shell: cmd
 
+          # windows-11-arm is a NATIVE ARM64 runner. This leg used to build on
+          # the x64 image and cross-compile, which meant it could not execute a
+          # single thing it produced -- the whole test suite, the debugger tests
+          # and the DAP tests were skipped, so an ARM64-only miscompile had
+          # nothing standing in its way. Native build + native execution closes
+          # that. It ships VS2022 (toolset v143) rather than VS2026's v145; the
+          # .vcxproj files select $(DefaultPlatformToolset), so they follow the
+          # image either way.
           - platform: windows-arm64
-            os: windows-2025-vs2026
+            os: windows-11-arm
             arch: ARM64
             deploy_script: deploy_windows.cmd arm64
             shell: cmd
@@ -408,6 +416,37 @@ jobs:
         CXX: ${{ runner.os == 'Linux' && 'ccache g++' || '' }}
       run: ${{ matrix.deploy_script }}
 
+    # TEMPORARY DIAGNOSTIC for #661. core_opencv and onnx_runtime_test fail on
+    # windows-arm64 with error 126 -- the wrapper loads, one of its IMPORTS does
+    # not. Three guesses have been wrong so far, all because the deploy log does
+    # not echo per-file copies. This asks the runner directly instead.
+    - name: Diagnose native library imports (windows-arm64)
+      if: matrix.platform == 'windows-arm64'
+      working-directory: ./core/release
+      shell: cmd
+      continue-on-error: true
+      run: |
+        echo ===== deploy-arm64\bin =====
+        dir /b deploy-arm64\bin\*.dll
+        echo ===== deploy-arm64\lib\native =====
+        dir /b deploy-arm64\lib\native\*.dll
+        echo ===== imports of libobjk_opencv.dll =====
+        dumpbin /dependents deploy-arm64\lib\native\libobjk_opencv.dll
+        echo ===== imports of libobjk_onnx.dll =====
+        dumpbin /dependents deploy-arm64\lib\native\libobjk_onnx.dll
+        echo ===== runtime presence =====
+        if exist deploy-arm64\bin\msvcp140.dll (echo msvcp140 PRESENT) else (echo msvcp140 MISSING)
+        if exist deploy-arm64\bin\vcruntime140.dll (echo vcruntime140 PRESENT) else (echo vcruntime140 MISSING)
+        if exist deploy-arm64\bin\opencv_core4.dll (echo opencv_core4 PRESENT) else (echo opencv_core4 MISSING)
+        if exist deploy-arm64\bin\onnxruntime.dll (echo onnxruntime PRESENT) else (echo onnxruntime MISSING)
+        echo ===== what the opencv DLLs themselves import =====
+        for %%d in (opencv_core4 opencv_imgproc4 opencv_imgcodecs4 opencv_highgui4 opencv_videoio4) do (
+          echo --- %%d ---
+          dumpbin /dependents deploy-arm64\bin\%%d.dll | findstr /i ".dll"
+        )
+        echo ===== onnx wrapper imports vs bin =====
+        dumpbin /dependents deploy-arm64\bin\onnxruntime.dll | findstr /i ".dll"
+
     # Prove the macOS distribution is self-contained.
     #
     # The deploy bundles SDL2 into lib/sdl and rewrites install names to @rpath,
@@ -486,7 +525,7 @@ jobs:
         ./update_version_arm.sh
 
     - name: Rebuild libraries (Windows)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os == 'Windows'
       working-directory: ./core/compiler
       shell: bash
       run: |
@@ -531,7 +570,7 @@ jobs:
         echo "Libraries rebuilt successfully"
 
     - name: Update deploy with rebuilt libraries
-      if: matrix.platform != 'linux-x64' && matrix.platform != 'windows-arm64'
+      if: matrix.platform != 'linux-x64'
       shell: bash
       working-directory: ./core/release
       run: |
@@ -572,20 +611,9 @@ jobs:
 
     # ============================================
     # Test Suite
-    # Note: Windows ARM64 is cross-compiled and cannot run tests on x64 runner
     # ============================================
 
-    - name: Skip tests (cross-compiled platform)
-      if: matrix.platform == 'windows-arm64'
-      shell: bash
-      run: |
-        echo "Tests skipped for Windows ARM64"
-        echo "This platform is cross-compiled on x64 runner"
-        echo "ARM64 binaries cannot execute on x64 hardware"
-        echo "Build verification only - no test execution"
-
     - name: Compile tests
-      if: matrix.platform != 'windows-arm64'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
@@ -649,7 +677,6 @@ jobs:
         fi
 
     - name: Run tests
-      if: matrix.platform != 'windows-arm64'
       working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
       shell: bash
       run: |
@@ -722,7 +749,7 @@ jobs:
         done
 
     - name: Run regression tests (POSIX)
-      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os != 'Windows'
       working-directory: ./programs/regression
       # Temporary: surface generic type-arg state to diagnose the intermittent
       # bad_generic_arg_mismatch miss (prints [generic-diag] lines during compile).
@@ -742,7 +769,7 @@ jobs:
         ./run_regression.sh $ARCH
 
     - name: Run regression tests (Windows)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
       # Temporary: surface generic type-arg state to diagnose the intermittent
@@ -752,7 +779,7 @@ jobs:
       run: run_regression.cmd ${{ matrix.arch }}
 
     - name: Run debugger tests (POSIX)
-      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os != 'Windows'
       working-directory: ./programs/regression
       run: |
         chmod +x run_debugger_tests.sh
@@ -761,13 +788,13 @@ jobs:
         ./run_debugger_tests.sh $ARCH
 
     - name: Run debugger tests (Windows)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
       run: run_debugger_tests.cmd ${{ matrix.arch }}
 
     - name: Run DAP tests (POSIX)
-      if: runner.os != 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os != 'Windows'
       working-directory: ./programs/regression
       run: |
         ARCH="${{ matrix.arch }}"
@@ -777,7 +804,7 @@ jobs:
         python3 run_dap_tests.py "$BIN"
 
     - name: Run DAP tests (Windows)
-      if: runner.os == 'Windows' && matrix.platform != 'windows-arm64'
+      if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
       run: |
@@ -993,7 +1020,7 @@ jobs:
         fi
 
     - name: Upload regression logs (on failure)
-      if: failure() && matrix.platform != 'windows-arm64'
+      if: failure()
       uses: actions/upload-artifact@v6
       with:
         name: regression-logs-${{ matrix.platform }}
