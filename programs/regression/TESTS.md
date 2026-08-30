@@ -13,7 +13,7 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 204** (plus 14 debugger tests, see below).
+**Total runtime tests: 205** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
@@ -21,7 +21,7 @@ python gen_manifest.py
 | Category | Count |
 |----------|-------|
 | Core Language | 38 |
-| Other | 28 |
+| Other | 29 |
 | AMD64/JIT | 21 |
 | Negative | 21 |
 | Bug Fix | 13 |
@@ -254,10 +254,11 @@ python gen_manifest.py
 | 198 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
 | 199 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
 | 200 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
-| 201 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 202 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 203 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 204 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 201 | `web_server_test.obs` | Other | Web.Server end-to-end coverage. Every method on Web.Server.Request and Response used to call a na... | ✅ |
+| 202 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 203 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 204 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 205 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 

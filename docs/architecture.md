@@ -70,7 +70,7 @@ graph TB
 
     subgraph "CI/CD"
         GHA["GitHub Actions<br/>Multi-platform Matrix"]
-        Tests["Regression Tests<br/>(204 automated)"]
+        Tests["Regression Tests<br/>(205 automated)"]
         Artifacts["Build Artifacts"]
     end
 
@@ -793,10 +793,10 @@ graph TB
 
 | Platform | Runner | Architecture | Compiler | Tests |
 |----------|--------|--------------|----------|-------|
-| **Linux** | `ubuntu-latest` | x64 | GCC | 204 regression |
-| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 204 regression |
-| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 204 regression |
-| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 204 regression |
+| **Linux** | `ubuntu-latest` | x64 | GCC | 205 regression |
+| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 205 regression |
+| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 205 regression |
+| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 205 regression |
 | **Windows** | `windows-2025-vs2026` | ARM64 | MSVC (v145) | build only &mdash; see below |
 
 The Windows ARM64 leg is **cross-compiled on an x64 host, so it cannot execute what it
@@ -831,13 +831,13 @@ graph LR
 
 ### Regression Test Suite
 
-204 tests under `programs/regression/`, grouped by the prefix on each filename.
+205 tests under `programs/regression/`, grouped by the prefix on each filename.
 Counts are the file count per prefix, not a sample.
 
 ```mermaid
 mindmap
     root((Regression Tests
-    204 total))
+    205 total))
         Language core (42)
             core_*
                 Arithmetic, arrays, classes, generics, strings
@@ -862,7 +862,7 @@ mindmap
         ARM64 specific (5)
             arm64_*
                 Bitwise, char arrays, 64-bit immediates, multiply
-        Networking and web (14)
+        Networking and web (15)
             http_* mcp_* xml_* json_* api_*
                 Clients, servers, serialisation
         Remainder (47)

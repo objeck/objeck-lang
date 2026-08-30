@@ -1,39 +1,18 @@
-use Collection;
+use Collection, Web.HTTP.Server;
 
 #~
 Lightweight embedded web server. Handles inbound HTTP requests with typed access to method, path, headers, and body; Response supports content-type, compression, redirects, and cookies. Compile with -lib net_server.
 ~#
 bundle Web.Server {
-	class : private: Proxy {
-		@lib_proxy : static : System.API.DllProxy;
-		
-		function : GetDllProxy() ~ System.API.DllProxy {
-			if(@lib_proxy = Nil) {
-				# shared library native implementation (for Nginix, IIS and Apache) fetched from configuration
-				@lib_proxy := System.API.DllProxy->New(Runtime->GetProperty("OBJECK_LIB_WEB_SERVER"));
-			};
-
-			return @lib_proxy;
-		}
-	}
-
 	#~
 	Web request
 	~#
 	class Request {
-		# Native entry-point names, held rather than written at each call
-		# site: a string literal is materialised into a fresh String every
-		# time it is evaluated, which on a hot path is an allocation and a
-		# copy per call. Static because these are class-wide constants and a
-		# static function cannot read an instance field.
-		@fn_web_request_get_header : static : String;
-		@fn_web_request_get_method : static : String;
-		@fn_web_request_local_address : static : String;
-		@fn_web_request_read_body : static : String;
-		@fn_web_request_remote_address : static : String;
-		@fn_web_request_request_url : static : String;
-		@request : Int;
-		@response : Int;
+		# Backed by Web.HTTP.Server.Request. This class used to call a native
+		# library named by the OBJECK_LIB_WEB_SERVER property. No such library was
+		# ever built or shipped, and nothing set that property, so none of these
+		# methods could run. See docs/web_server_design.md.
+		@http_request : Web.HTTP.Server.Request;
 
 		#~
 		Web request method
@@ -48,6 +27,14 @@ bundle Web.Server {
 			OPTIONS,
 			TRACE,
 			PATCH
+		}
+
+		#~
+		Constructor
+		@param http_request underlying server request
+		~#
+		New(http_request : Web.HTTP.Server.Request) {
+			@http_request := http_request;
 		}
 
 		#~
@@ -66,13 +53,12 @@ bundle Web.Server {
 		```
 		~#
 		method : public : GetMethod() ~ Request->Method {
-			array_args := Base->New[2];
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@request);
-
-			if(@fn_web_request_get_method = Nil) { @fn_web_request_get_method := "web_request_get_method"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_request_get_method, array_args);
-			req_method := array_args[0]->As(String);
+			req_method := @http_request->GetMethod();
+			if(req_method = Nil) {
+				# The server always supplies a verb. This guards a Request built by
+				# hand rather than handed over by the server.
+				return Request->Method->GET;
+			};
 
 			# TODO: faster way put into a hash, Nginx uses a integer value
 			if(req_method->Equals("GET")) {
@@ -115,14 +101,7 @@ bundle Web.Server {
 		```
 		~#
 		method : public : GetRequestUrl() ~ String {
-			array_args := Base->New[2];
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@request);
-
-			if(@fn_web_request_request_url = Nil) { @fn_web_request_request_url := "web_request_request_url"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_request_request_url, array_args);
-
-			return array_args[0]->As(String);
+			return @http_request->GetRequestLine();
 		}
 
 		#~
@@ -135,14 +114,7 @@ bundle Web.Server {
 		```
 		~#
 		method : public : GetRemoteAddress() ~ String {
-			array_args := Base->New[2];
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@request);
-
-			if(@fn_web_request_remote_address = Nil) { @fn_web_request_remote_address := "web_request_remote_address"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_request_remote_address, array_args);
-
-			return array_args[0]->As(String);
+			return @http_request->GetRemoteAddress();
 		}
 
 		#~
@@ -155,14 +127,23 @@ bundle Web.Server {
 		```
 		~#
 		method : public : GetLocalAddress() ~ String {
-			array_args := Base->New[2];
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@request);
+			# There is no socket-level local-address lookup: GetAddress on an accepted
+			# socket is the PEER (SockTcpAccept fills it from the client). So the port
+			# comes from Serve, and the host from the Host header the client dialled.
+			# See docs/web_server_design.md.
+			port := @http_request->GetLocalPort();
 
-			if(@fn_web_request_local_address = Nil) { @fn_web_request_local_address := "web_request_local_address"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_request_local_address, array_args);
+			host := @http_request->GetHeader("host");
+			if(host <> Nil & <>host->IsEmpty()) {
+				colon := host->Find(':');
+				if(colon > 0) {
+					host := host->SubString(colon);
+				};
 
-			return array_args[0]->As(String);
+				return "{$host}:{$port}";
+			};
+
+			return "0.0.0.0:{$port}";
 		}
 
 		#~
@@ -178,15 +159,13 @@ bundle Web.Server {
 		```
 		~#
 		method : public : GetHeader(name : String) ~ String {
-			array_args := Base->New[3];
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@request);
-			array_args[2] := name;
+			# The server stores request header names lower-cased, and its GetHeader
+			# does a raw lookup, so "Content-Type" would otherwise miss.
+			if(name = Nil) {
+				return Nil;
+			};
 
-			if(@fn_web_request_get_header = Nil) { @fn_web_request_get_header := "web_request_get_header"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_request_get_header, array_args);
-
-			return array_args[0]->As(String);
+			return @http_request->GetHeader(name->ToLower());
 		}
 
 		#~
@@ -202,20 +181,7 @@ bundle Web.Server {
 		```
 		~#
 		method : public : ReadBody() ~ Byte[] {
-			array_args := Base->New[3];
-			array_args[0] := Nil;
-			array_args[1] := IntRef->New(@request);
-			array_args[2] := IntRef->New(@response);
-
-			if(@fn_web_request_read_body = Nil) { @fn_web_request_read_body := "web_request_read_body"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_request_read_body, array_args);
-
-			value := array_args[0]->As(ByteArrayRef);
-			if(value <> Nil) {
-				return value->Get();
-			};
-			
-			return Nil;
+			return @http_request->GetContentBytes();
 		}
 
 		#~
@@ -440,19 +406,55 @@ bundle Web.Server {
 	Web Response 
 	~#
 	class Response {
-		# Native entry-point names, held rather than written at each call
-		# site: a string literal is materialised into a fresh String every
-		# time it is evaluated, which on a hot path is an allocation and a
-		# copy per call. Static because these are class-wide constants and a
-		# static function cannot read an instance field.
-		@fn_web_response_append_bytes : static : String;
-		@fn_web_response_append_string : static : String;
-		@fn_web_response_clear_all : static : String;
-		@fn_web_response_redirect : static : String;
-		@fn_web_response_remove_header : static : String;
-		@fn_web_response_set_content_type : static : String;
-		@fn_web_response_set_header : static : String;
-		@response : Int;
+		# Backed by Web.HTTP.Server.Response. See the note on Request and
+		# docs/web_server_design.md for why the native path was removed.
+		@http_response : Web.HTTP.Server.Response;
+
+		# WriteBody APPENDS, while the underlying SetContent REPLACES, so the
+		# accumulated body is kept here and pushed through on every write.
+		@body : Byte[];
+
+		#~
+		Constructor
+		@param http_response underlying server response
+		~#
+		New(http_response : Web.HTTP.Server.Response) {
+			@http_response := http_response;
+
+			# The underlying response defaults to 400, and the server only serialises
+			# headers and a body when the code is 200 -- anything else becomes a
+			# bodyless status line. A handler that writes a body and sets no code is
+			# expressing success, so start at 200 and let Redirect move it.
+			@http_response->SetCode(200);
+		}
+
+		#~
+		Appends to the accumulated body
+		@param data bytes to append
+		@return number of bytes appended
+		~#
+		method : Append(data : Byte[]) ~ Int {
+			if(data = Nil | data->Size() = 0) {
+				return 0;
+			};
+
+			if(@body = Nil) {
+				@body := Byte->New[data->Size()];
+				Runtime->Copy(@body, 0, data, 0, data->Size());
+			}
+			else {
+				merged := Byte->New[@body->Size() + data->Size()];
+				Runtime->Copy(merged, 0, @body, 0, @body->Size());
+				Runtime->Copy(merged, @body->Size(), data, 0, data->Size());
+				@body := merged;
+			};
+
+			# Pushed on every write: a handler may return at any point and the
+			# server serialises whatever the response holds at that moment.
+			@http_response->SetContent(@body);
+
+			return data->Size();
+		}
 		
 		#~
 		Set the content type
@@ -464,12 +466,7 @@ bundle Web.Server {
 		```
 		~#
 		method : public : SetContentType(type : String) ~ Nil {
-			array_args := Base->New[2];
-			array_args[0] := IntRef->New(@response);
-			array_args[1] := type;
-
-			if(@fn_web_response_set_content_type = Nil) { @fn_web_response_set_content_type := "web_response_set_content_type"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_response_set_content_type, array_args);
+			@http_response->SetHeader("Content-Type", type);
 		}
 
 		#~
@@ -484,16 +481,11 @@ bundle Web.Server {
 		```
 		~#
 		method : public : WriteBody(data : String) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@response);
-			array_args[2] := data;
+			if(data = Nil) {
+				return 0;
+			};
 
-			if(@fn_web_response_append_string = Nil) { @fn_web_response_append_string := "web_response_append_string"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_response_append_string, array_args);
-
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return Append(data->ToByteArray());
 		}
 
 		#~
@@ -508,16 +500,7 @@ bundle Web.Server {
 		```
 		~#
 		method : public : WriteBody(data : Byte[]) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@response);
-			array_args[2] := ByteArrayRef->New(data);
-
-			if(@fn_web_response_append_bytes = Nil) { @fn_web_response_append_bytes := "web_response_append_bytes"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_response_append_bytes, array_args);
-
-			value := array_args[0]->As(IntRef);
-			return value->Get();
+			return Append(data);
 		}
 
 		#~
@@ -531,16 +514,17 @@ bundle Web.Server {
 		```
 		~#
 		method : public : Redirect (url : String) ~ Bool {
-			array_args := Base->New[3];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@response);
-			array_args[2] := url;
+			if(url = Nil | url->IsEmpty()) {
+				return false;
+			};
 
-			if(@fn_web_response_redirect = Nil) { @fn_web_response_redirect := "web_response_redirect"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_response_redirect, array_args);
+			# The server takes the Location value from GetReason on a 302, not from a
+			# Location header: see ProcessResponse's 302 label in net_server.obs. A
+			# header here would be dropped, because the non-200 path emits none.
+			@http_response->SetCode(302);
+			@http_response->SetReason(url);
 
-			value := array_args[0]->As(IntRef);
-			return value->Get() = 0 ? false : true;
+			return true;
 		}
 
 		#~
@@ -556,17 +540,13 @@ bundle Web.Server {
 		```
 		~#
 		method : public : SetHeader(name : String, value : String) ~ Bool {
-			array_args := Base->New[4];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@response);
-			array_args[2] := name;
-			array_args[3] := value;
+			if(name = Nil) {
+				return false;
+			};
 
-			if(@fn_web_response_set_header = Nil) { @fn_web_response_set_header := "web_response_set_header"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_response_set_header, array_args);
+			@http_response->SetHeader(name, value);
 
-			result := array_args[0]->As(IntRef);
-			return result->Get() = 0 ? false : true;
+			return true;
 		}
 
 		#~
@@ -581,16 +561,13 @@ bundle Web.Server {
 		```
 		~#
 		method : public : RemoveHeader(name : String) ~ Bool {
-			array_args := Base->New[3];
-			array_args[0] := IntRef->New();
-			array_args[1] := IntRef->New(@response);
-			array_args[2] := name;
+			if(name = Nil) {
+				return false;
+			};
 
-			if(@fn_web_response_remove_header = Nil) { @fn_web_response_remove_header := "web_response_remove_header"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_response_remove_header, array_args);
+			@http_response->RemoveHeader(name);
 
-			result := array_args[0]->As(IntRef);
-			return result->Get() = 0 ? false : true;
+			return true;
 		}
 
 		#~
@@ -603,10 +580,75 @@ bundle Web.Server {
 		```
 		~#
 		method : public : ClearAll() ~ Nil {
-			array_args := Base->New[1];
-			array_args[0] := IntRef->New(@response);
-			if(@fn_web_response_clear_all = Nil) { @fn_web_response_clear_all := "web_response_clear_all"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_web_response_clear_all, array_args);
+			# Body-scoped, as the documented example above implies: discard a draft
+			# body and write a final one. Headers are left alone.
+			@body := Nil;
+			@http_response->SetContent(Byte->New[0]);
+		}
+	}
+
+	#~
+	Serves Web.Server handlers on the Web.HTTP.Server engine.
+
+	Subclass and override Process. The adapter wraps the server's request and
+	response so handler code sees the Web.Server API.
+
+	```
+	class MyHandler from Web.Server.Handler {
+	  New() { Parent(); }
+
+	  method : public : Process(request : Web.Server.Request, response : Web.Server.Response) ~ Bool {
+	    response->SetContentType("text/plain");
+	    response->WriteBody("hello");
+	    return false;
+	  }
+	}
+
+	Web.Server.Handler->Serve(MyHandler->New()->GetClass(), 8080);
+	```
+	~#
+	class Handler from Web.HTTP.Server.HttpRequestHandler {
+		New() {
+			Parent();
+		}
+
+		#~
+		Starts a server that dispatches to a Web.Server handler
+		@param handler handler class
+		@param port port to bind
+		~#
+		function : Serve(handler : Class, port : Int) ~ Nil {
+			Web.HTTP.Server.WebServer->Serve(handler, port, false);
+		}
+
+		#~
+		Starts a server that dispatches to a Web.Server handler
+		@param handler handler class
+		@param port port to bind
+		@param is_debug true for debug output
+		~#
+		function : Serve(handler : Class, port : Int, is_debug : Bool) ~ Nil {
+			Web.HTTP.Server.WebServer->Serve(handler, port, is_debug);
+		}
+
+		#~
+		Handles a request. Subclasses must implement this.
+
+		Declared virtual, which in Objeck is a declaration without a body: a
+		concrete method here would be bound statically from ProcessGet below, so a
+		subclass override would never run.
+		@param request request
+		@param response response
+		@return true to continue processing, false otherwise
+		~#
+		method : public : virtual : Process(request : Request, response : Response) ~ Bool;
+
+		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+			return Process(Request->New(request), Response->New(response));
+		}
+
+		method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+			return Process(Request->New(request), Response->New(response));
 		}
 	}
 }
