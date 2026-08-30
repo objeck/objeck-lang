@@ -13,7 +13,7 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 203** (plus 14 debugger tests, see below).
+**Total runtime tests: 204** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
@@ -21,7 +21,7 @@ python gen_manifest.py
 | Category | Count |
 |----------|-------|
 | Core Language | 38 |
-| Other | 27 |
+| Other | 28 |
 | AMD64/JIT | 21 |
 | Negative | 21 |
 | Bug Fix | 13 |
@@ -240,23 +240,24 @@ python gen_manifest.py
 | 184 | `regex_bench.obs` | Regex | regex bench | ✅ |
 | 185 | `regex_dfa_test.obs` | Regex | regex dfa test | ✅ |
 | 186 | `runtime_feature_test.obs` | Other | Regression tests for the "runtime.feature.*" properties, which report which optional protocol eng... | ✅ |
-| 187 | `select_dispatch_test.obs` | Control Flow | Single-case, linear (2-5 cases), jump-table (dense >=6), and binary-tree (sparse) paths | ✅ |
-| 188 | `string_find_ops.obs` | Strings | string find ops | ✅ |
-| 189 | `string_format_ops.obs` | Strings | Verifies String->Format() positional substitution. | ✅ |
-| 190 | `string_number_conv.obs` | Strings | string number conv | ✅ |
-| 191 | `string_replace_ops.obs` | Strings | string replace ops | ✅ |
-| 192 | `string_split_ops.obs` | Strings | string split ops | ✅ |
-| 193 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
-| 194 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
-| 195 | `trap_array_barrier_test.obs` | Other | A String[] returned by a VM trap must survive a collection. Every trap that returns an array of o... | ✅ |
-| 196 | `trap_array_mt_barrier_test.obs` | Other | A trap-returned array must survive ANOTHER THREAD's allocation. trap_array_barrier_test.obs cover... | ✅ |
-| 197 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
-| 198 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
-| 199 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
-| 200 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 201 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 202 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 203 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 187 | `runtime_gc_stats.obs` | Other | The runtime.* GC statistics must stay inside their own stated ranges. runtime.gc.nursery.occupanc... | ✅ |
+| 188 | `select_dispatch_test.obs` | Control Flow | Single-case, linear (2-5 cases), jump-table (dense >=6), and binary-tree (sparse) paths | ✅ |
+| 189 | `string_find_ops.obs` | Strings | string find ops | ✅ |
+| 190 | `string_format_ops.obs` | Strings | Verifies String->Format() positional substitution. | ✅ |
+| 191 | `string_number_conv.obs` | Strings | string number conv | ✅ |
+| 192 | `string_replace_ops.obs` | Strings | string replace ops | ✅ |
+| 193 | `string_split_ops.obs` | Strings | string split ops | ✅ |
+| 194 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
+| 195 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
+| 196 | `trap_array_barrier_test.obs` | Other | A String[] returned by a VM trap must survive a collection. Every trap that returns an array of o... | ✅ |
+| 197 | `trap_array_mt_barrier_test.obs` | Other | A trap-returned array must survive ANOTHER THREAD's allocation. trap_array_barrier_test.obs cover... | ✅ |
+| 198 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
+| 199 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
+| 200 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
+| 201 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 202 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 203 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 204 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 

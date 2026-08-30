@@ -7,86 +7,139 @@
 
 use System.Concurrency, System.IO.Net, Web.HTTP;
 
+#~
+# The mock server must not be the side that tears the connection down.
+#
+# Windows loopback discards buffered data when the SENDER closes while bytes are
+# still in flight (#669): the RST flushes the receiver's kernel buffer. A server
+# that writes a response and immediately closes therefore loses it. The 16KB
+# /large response failed this way in roughly one run in four -- the client saw
+# 200 OK with a zero-length body, because the headers had already been copied out
+# but the body had not.
+#
+# That is the exact shape PR #672 fixed in Web.HTTP.Server, and this mirrors it:
+# responses advertise keep-alive, and before closing we drain until the peer goes
+# away so the CLIENT owns the first teardown. The drain is the part that actually
+# matters; the header alone would not be enough.
+#
+# Note this bug is invisible to the GetDelivered retry below, which only retries
+# a response that never arrived (code 0). A 200 with a truncated body is a real
+# failure and still fails the test.
+~#
 class MockServer from Thread {
 	@port : Int;
+	@client : TCPSocket;
+	@stop : Bool;
 
 	New(port : Int) {
 		Parent("mock-server");
 		@port := port;
+		@stop := false;
 	}
 
 	method : public : Run(param : Base) ~ Nil {
 		server := TCPSocketServer->New(@port);
 		if(server->Listen(5)) {
-			done := false;
-			while(<>done) {
-				client := server->Accept();
-				if(client <> Nil & client->IsOpen()) {
-					# Read request line
-					request_line := client->ReadLine();
+			while(<>@stop) {
+				@client := server->Accept();
+				if(@client <> Nil & @client->IsOpen()) {
+					# Bounds a peer that goes idle without closing. The client here is
+					# one-shot, so in practice this never fires.
+					@client->SetRecvTimeout(2000);
 
-					# Read headers
-					content_length := 0;
-					do {
-						header := client->ReadLine();
-						if(header->Size() > 0) {
-							colon := header->Find(':');
-							if(colon > 0) {
-								name := header->SubString(colon)->ToLower();
-								value := header->SubString(colon + 1, header->Size() - colon - 1)->Trim();
-								if(name->Equals("content-length")) {
-									content_length := value->ToInt();
-								};
-							};
-						};
-					}
-					while(header->Size() > 0);
-
-					# Read body if present
-					body := "";
-					if(content_length > 0) {
-						buf := Byte->New[content_length];
-						client->ReadBuffer(0, content_length, buf);
-						body := String->New(buf);
+					served := 0;
+					alive := true;
+					while(alive & <>@stop & served < 100 & @client->IsOpen()) {
+						alive := ServeOne();
+						served += 1;
 					};
 
-					# Route responses
-					if(request_line->Has("/hello")) {
-						response := "Hello World";
-						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$response->Size()}\r\nConnection: close\r\n\r\n{$response}");
-					}
-					else if(request_line->Has("/echo")) {
-						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$body->Size()}\r\nConnection: close\r\n\r\n{$body}");
-					}
-					else if(request_line->Has("/colon-header")) {
-						# Echo back the Authorization header value
-						# (re-read not possible, just send a known response)
-						response := "colon-ok";
-						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$response->Size()}\r\nX-Custom: value:with:colons\r\nConnection: close\r\n\r\n{$response}");
-					}
-					else if(request_line->Has("/large")) {
-						# Send a 16KB response to test ReadLength with larger buffers
-						large := Byte->New[16384];
-						each(i : large) {
-							large[i] := 'A';
-						};
-						size := large->Size();
-						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$size}\r\nConnection: close\r\n\r\n");
-						client->WriteBuffer(large);
-					}
-					else if(request_line->Has("/stop")) {
-						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
-						done := true;
-					}
-					else {
-						client->WriteString("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-					};
-
-					client->Close();
+					# Let the peer consume the final response and close first.
+					@client->SetRecvTimeout(1000);
+					drain := Byte->New[4096];
+					while(@client->ReadBuffer(0, drain->Size(), drain) > 0) {};
+					@client->Close();
 				};
 			};
 			server->Close();
 		};
+	}
+
+	#~
+	Serves one request on the already-open connection.
+	@return true if the connection should stay open for another request
+	~#
+	method : ServeOne() ~ Bool {
+		request_line := @client->ReadLine();
+		if(request_line = Nil | request_line->Size() = 0) {
+			# Peer closed, or the receive timeout fired.
+			return false;
+		};
+
+		# Read headers
+		content_length := 0;
+		do {
+			header := @client->ReadLine();
+			if(header = Nil) {
+				return false;
+			};
+			if(header->Size() > 0) {
+				colon := header->Find(':');
+				if(colon > 0) {
+					name := header->SubString(colon)->ToLower();
+					value := header->SubString(colon + 1, header->Size() - colon - 1)->Trim();
+					if(name->Equals("content-length")) {
+						content_length := value->ToInt();
+					};
+				};
+			};
+		}
+		while(header->Size() > 0);
+
+		# Read body if present
+		body := "";
+		if(content_length > 0) {
+			buf := Byte->New[content_length];
+			@client->ReadBuffer(0, content_length, buf);
+			body := String->New(buf);
+		};
+
+		# Route responses
+		if(request_line->Has("/hello")) {
+			response := "Hello World";
+			@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$response->Size()}\r\nConnection: keep-alive\r\n\r\n{$response}");
+		}
+		else if(request_line->Has("/echo")) {
+			@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$body->Size()}\r\nConnection: keep-alive\r\n\r\n{$body}");
+		}
+		else if(request_line->Has("/colon-header")) {
+			# Echo back a known response carrying a colon-bearing header value
+			response := "colon-ok";
+			@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$response->Size()}\r\nX-Custom: value:with:colons\r\nConnection: keep-alive\r\n\r\n{$response}");
+		}
+		else if(request_line->Has("/large")) {
+			# 16KB response, to test ReadLength with larger buffers. This is the
+			# request that exposed #669 when the server closed straight after writing.
+			large := Byte->New[16384];
+			each(i : large) {
+				large[i] := 'A';
+			};
+			size := large->Size();
+			@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$size}\r\nConnection: keep-alive\r\n\r\n");
+			@client->WriteBuffer(large);
+		}
+		else if(request_line->Has("/stop")) {
+			# Shutting down, so close is honest here -- the drain in Run still lets
+			# the client read this response before the socket goes away.
+			@client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
+			@stop := true;
+			return false;
+		}
+		else {
+			@client->WriteString("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n");
+		};
+
+		return true;
 	}
 }
 

@@ -4185,7 +4185,22 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.gc.nursery.used",  []() -> size_t { return MemoryManager::GetNurseryUsed(); } },
     { L"runtime.gc.nursery.occupancy_permille", []() -> size_t {
                                                     const size_t cap = MemoryManager::GetNurseryCapacity();
-                                                    return cap ? (MemoryManager::GetNurseryUsed() * 1000 / cap) : 0; } },
+                                                    if(cap == 0) {
+                                                      return 0;
+                                                    }
+                                                    const size_t used = MemoryManager::GetNurseryUsed();
+                                                    // Saturate rather than report >100%: used can exceed cap
+                                                    // transiently while a collection is in flight.
+                                                    if(used >= cap) {
+                                                      return 1000;
+                                                    }
+                                                    // used * 1000 overflows once used passes SIZE_MAX/1000. That
+                                                    // needs an ~18PB nursery, so it cannot happen -- but nothing
+                                                    // here enforced it, and "cannot happen" is not the same as
+                                                    // "cannot overflow". Scale the divisor instead of the dividend
+                                                    // in that range so neither branch can wrap.
+                                                    return (cap > (SIZE_MAX / 1000)) ? (used / (cap / 1000))
+                                                                                     : ((used * 1000) / cap); } },
     { L"runtime.gc.remembered",    []() -> size_t { return MemoryManager::GetRememberedCount(); } },
     { L"runtime.gc.pause.last_us", []() -> size_t { return (size_t)MemoryManager::GetPauseLastUs(); } },
     { L"runtime.gc.pause.max_us",  []() -> size_t { return (size_t)MemoryManager::GetPauseMaxUs(); } },
