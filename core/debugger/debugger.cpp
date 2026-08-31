@@ -109,9 +109,16 @@ static int objeck_main(int argc, const char* argv[])
       std::cerr << "fatal: unhandled exception in DAP adapter: " << e.what() << std::endl;
       return 1;
     }
-#ifdef _WIN32
-    WSACleanup();
-#endif
+    // No WSACleanup() here. The process is exiting, so Windows reclaims every
+    // Winsock resource regardless -- but WSACleanup also unblocks threads still
+    // parked in accept()/recv(), and obd hosts the debuggee's VM in-process: a
+    // program debugged to completion can leave a server thread sitting in
+    // Accept() exactly as it does under obr. DapRun has already released that
+    // run's program image and heap by the time we get here, so waking such a
+    // thread sends it executing against freed memory. That is issue #681, one
+    // layer up: 8 access violations in 8 DAP sessions became 0 in 8 with this
+    // call removed. Same reasoning as win_main.cpp and the getaddrinfo failure
+    // path in arch/win32/win32.cpp.
     return 0;
   }
 
@@ -190,16 +197,16 @@ static int objeck_main(int argc, const char* argv[])
     // go debugger
     Runtime::Debugger debugger(file_name_param, base_path_param, args_param);
     debugger.Debug();
-#ifdef _WIN32
-    WSACleanup();
-#endif
-
+    // No WSACleanup() here either, for the reason given on the DAP path above.
+    // Debug() does not return today -- its command loop exits through the quit
+    // command's exit(0) -- so this was unreachable rather than harmless, and it
+    // would have been the same use-after-free the moment it stopped being.
     return 0;
   }
   else {
-#ifdef _WIN32
-    WSACleanup();
-#endif
+    // Nothing to clean up: this path never reached WSAStartup, so the
+    // WSACleanup that used to stand here was an unmatched call that could only
+    // return WSANOTINITIALISED.
     std::wcerr << usage << std::endl;
     return 1;
   }
@@ -600,6 +607,10 @@ void Runtime::Debugger::ProcessRun() {
     long start = clock();
 #endif
     interpreter = new Runtime::StackInterpreter(cur_program, this);
+    // Register it the way obr does (vm.cpp). ClearProgram's drain asks whether
+    // anything besides this interpreter is still registered, so leaving it out
+    // made one parked debuggee thread read as "nothing left running".
+    Runtime::StackInterpreter::AddThread(interpreter);
     interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), nullptr, false);
 #ifdef _TIMING
     std::wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << std::endl;
@@ -3004,12 +3015,39 @@ void Runtime::Debugger::ClearBreaks() {
 }
 
 void Runtime::Debugger::ClearProgram(bool clear_loader) {
+  // Quiesce the debuggee's threads before releasing anything they run against.
+  // This method frees the bytecode image and the StackProgram, and below it
+  // frees the entire GC heap -- while a debugged program can perfectly well
+  // leave threads live when Main returns. A server parked in Accept() is the
+  // ordinary case, not an edge one. Halt the others (not `interpreter`, the one
+  // running teardown) and wait briefly for them to unwind and deregister; same
+  // hazard and same handling as obr's, in vm.cpp.
+  bool drained = true;
+  if(interpreter) {
+    Runtime::StackInterpreter::HaltAllExcept(interpreter);
+    drained = Runtime::StackInterpreter::WaitForThreadsToDrain(interpreter, 2000);
+  }
+
+  // A thread that did not drain is parked in a blocking syscall where it cannot
+  // observe Halt, and it is still live. Relinquish the program image rather than
+  // free it out from under that thread: anything that later wakes it -- a client
+  // connecting to the socket it is sitting on, or the WSACleanup that used to run
+  // on the way out of main -- would send it executing against freed memory. The
+  // leak is deliberate and bounded by the debug session.
+  if(!drained && loader) {
+    loader->Abandon();
+  }
+
   if(clear_loader && loader) {
     delete loader;
     loader = nullptr;
   }
   
   if(interpreter) {
+    // Deregister before deleting. obr builds one interpreter and keeps it to
+    // process exit; obd builds a fresh one per run, so leaving the old pointer
+    // in the registry would hand the next HaltAllExcept a dangling interpreter.
+    Runtime::StackInterpreter::RemoveThread(interpreter);
     delete interpreter;
     interpreter = nullptr;
   }
@@ -3024,7 +3062,10 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
     stack_pos = nullptr;
   }
 
-  if(loader) {
+  // Clearing the heap is the other half of the same hazard: Clear() frees the
+  // young region and every old-generation object, and deletes the locks the VM
+  // takes on the way in. An undrained thread wakes into all three.
+  if(loader && drained) {
     MemoryManager::Clear();
   }
 
@@ -3089,6 +3130,7 @@ void Runtime::Debugger::DapRun() {
     (*stack_pos) = 0;
 
     interpreter = new Runtime::StackInterpreter(cur_program, this);
+    Runtime::StackInterpreter::AddThread(interpreter);
     interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), nullptr, false);
 
     ClearReload();
