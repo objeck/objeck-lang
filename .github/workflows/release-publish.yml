@@ -155,6 +155,49 @@ jobs:
           echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
           Write-Output "✅ Installed nghttp2 and mbedtls for x64"
 
+      # deploy_windows.cmd below builds the native libraries and then verifies that
+      # every one of them can actually load. libobjk_opencv.dll needs
+      # opencv_world4120.dll, and so does libobjk_onnx.dll -- the ONNX binding links
+      # OpenCV (see core/lib/onnx/eq/dml/vs/vs.vcxproj, LibraryPath includes
+      # ..\..\opencv\win\x64\lib). Neither DLL ships in the repo, and this job never
+      # fetched them, so deploy printed "opencv_world4120.dll not found" and both
+      # libraries then failed to load with error 126.
+      #
+      # That was a silent warning until this release added the load verification, at
+      # which point it became a hard abort and took the whole publish down -- after a
+      # fully green build. release-build.yml has downloaded these DLLs for the
+      # windows-x64 leg all along; this job simply never got the same treatment.
+      # Same source, same version, same cache key.
+      - name: Cache OpenCV DLLs (Windows x64)
+        id: opencv-cache-x64
+        uses: actions/cache@v5
+        with:
+          path: core/lib/opencv/win/x64/bin
+          key: opencv-4.12.0-win-x64-dlls
+
+      - name: Download OpenCV runtime DLLs (Windows x64)
+        if: steps.opencv-cache-x64.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $opencvVersion = "4.12.0"
+          $binDir = "core\lib\opencv\win\x64\bin"
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+          $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
+          Write-Output "Downloading OpenCV $opencvVersion from $url ..."
+          Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
+
+          7z x opencv-dl.exe -oopencv-extract -y | Out-Null
+
+          Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_world4120.dll" $binDir
+          Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_videoio_ffmpeg4120_64.dll" $binDir
+
+          Remove-Item opencv-dl.exe -Force
+          Remove-Item -Recurse opencv-extract -Force
+
+          Write-Output "OpenCV DLLs installed:"
+          Get-ChildItem $binDir
+
       - name: Build compiler
         working-directory: ./core/compiler
         shell: cmd
