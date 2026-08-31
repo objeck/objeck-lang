@@ -4416,6 +4416,9 @@
 				"GetModelMatrix": {
 					"descriptions": ["**The box's model matrix: translate then scale, cached after the first call.**\n\n```method : public : GetModelMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
+				"IsOpaque": {
+					"descriptions": ["****\n\n```method : public : IsOpaque() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"IsSolid": {
 					"descriptions": ["**Whether this box blocks movement. Floors and ceilings are usually set non-solid: they are drawn but should not stop a walking character.**\n\n```method : public : IsSolid() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
@@ -4431,6 +4434,9 @@
 				"SetMaterial": {
 					"descriptions": ["**Give this box a full material rather than a bare texture. Takes precedence over the texture it was constructed with -- a box with a material uses the material's texture, its tint and its shininess. Passing Nil goes back to the plain texture, which is what every existing scene uses and still works.**\n\n```method : public : SetMaterial(material:Material) ~ Nil```\n\n\n\nmaterial: Material\n\nreturn: Nil"]
 				},
+				"SetOpacity": {
+					"descriptions": ["**How opaque this box is. A transparent box is drawn after every solid one, furthest first -- which is what Scene->SetEye is for. Without that ordering a pane in front of another writes depth and hides it, and the result looks worse than no transparency at all.**\n\n```method : public : SetOpacity(opacity:Float) ~ Nil```\n\n\n\nopacity: Float\n\nreturn: Nil"]
+				},
 				"SetSolid": {
 					"descriptions": ["****\n\n```method : public : SetSolid(solid:Bool) ~ Nil```\n\n\n\nsolid: Bool\n\nreturn: Nil"]
 				}
@@ -4442,11 +4448,17 @@
 				"ForwardVector": {
 					"descriptions": ["**The direction the camera is looking, including pitch.**\n\n```method : public : ForwardVector() ~ Vector3```\n\n\n\nreturn: Vector3"]
 				},
+				"GetProjection": {
+					"descriptions": ["****\n\n```method : public : GetProjection() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
 				"GetViewMatrix": {
 					"descriptions": ["**The view matrix for this frame.**\n\n```method : public : GetViewMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
 				"GetViewMatrixInto": {
 					"descriptions": ["**The view matrix, into a buffer the caller owns. The allocating form makes four objects every call -- three Vector3 and the Float[16] -- and a draw loop calls it every frame. This makes none: the basis is computed straight into the destination.**\n\n```method : public : GetViewMatrixInto(out:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nreturn: Nil"]
+				},
+				"GetViewProjection": {
+					"descriptions": ["**Projection times view, rebuilt from the current eye. Returns the camera's own buffer rather than a fresh array, so a draw loop calling this every frame allocates nothing. Do not write to it, and do not hold it across another call.**\n\n```method : public : GetViewProjection() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
 				"GetViewProjectionInto": {
 					"descriptions": ["**Projection times view, ready to hand to Scene->Draw. The two-step version -- build a projection, then multiply it by the view -- is what both 3D examples did, and it is the last per-frame allocation in a draw loop that is otherwise clean.**\n\n```method : public : GetViewProjectionInto(out:Float[], projection:Float[], scratch:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nprojection: Float[]\n\nscratch: Float[]\n\nreturn: Nil"]
@@ -4456,6 +4468,9 @@
 				},
 				"GroundRight": {
 					"descriptions": ["**The camera's right-hand direction on the ground plane.**\n\n```method : public : GroundRight() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"HasProjection": {
+					"descriptions": ["****\n\n```method : public : HasProjection() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Look": {
 					"descriptions": ["**Look up or down. Clamped to just under +\/- 90 degrees, because at exactly vertical the view direction is parallel to 'up' and the camera basis collapses.**\n\n```method : public : Look(radians:Float) ~ Nil```\n\n\n\nradians: Float\n\nreturn: Nil"]
@@ -4475,11 +4490,34 @@
 				"PlaceLookingAt": {
 					"descriptions": ["**Place the eye and face a point in one call -- an orbiting or tracking shot.**\n\n```method : public : PlaceLookingAt(position:Vector3, target:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\ntarget: Vector3\n\nreturn: Nil"]
 				},
+				"ScreenRay": {
+					"descriptions": ["**The ray running through a point on the screen, in world space. Scene->Raycast could already answer \"what is in front of the camera\", but only along the camera's own forward vector -- the middle of the screen. A mouse pick, a click-to-select, a drag onto a tile: all of them start from a PIXEL, and there was no way to turn one into a direction. Pass mouse coordinates and the WINDOW size, not the drawable size. Both come from the same space -- GetMouseX against GetWidth -- and mixing points with high-DPI pixels doubles the offset on a Retina display in a way that looks like a calibration error rather than a unit mismatch.**\n\n```method : public : ScreenRay(x:Int, y:Int, width:Int, height:Int) ~ Vector3```\n\n\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nreturn: Vector3"]
+				},
+				"SetAspect": {
+					"descriptions": ["**Update the aspect ratio, rebuilding the projection only if it changed. Cheap enough to call unconditionally every frame, which is the point: a window can be resized at any moment and the alternative is tracking a generation counter in every program.**\n\n```method : public : SetAspect(aspect:Float) ~ Nil```\n\n\n\naspect: Float\n\nreturn: Nil"]
+				},
+				"SetPerspective": {
+					"descriptions": ["**Give the camera its own projection, so GetViewProjection can build the whole matrix without the caller keeping buffers.**\n\n```method : public : SetPerspective(fov:Float, aspect:Float, near:Float, far:Float) ~ Nil```\n\n\n\nfov: Float\n\naspect: Float\n\nnear: Float\n\nfar: Float\n\nreturn: Nil"]
+				},
+				"SetPerspectiveDegrees": {
+					"descriptions": ["**Same, in degrees, with the near and far planes most programs want.**\n\n```method : public : SetPerspectiveDegrees(degrees:Float, aspect:Float) ~ Nil```\n\n\n\ndegrees: Float\n\naspect: Float\n\nreturn: Nil"]
+				},
 				"SetPosition": {
 					"descriptions": ["**Place the eye directly.**\n\n```method : public : SetPosition(position:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\nreturn: Nil"]
 				},
 				"Turn": {
 					"descriptions": ["**Turn left or right.**\n\n```method : public : Turn(radians:Float) ~ Nil```\n\n\n\nradians: Float\n\nreturn: Nil"]
+				},
+				"Unproject": {
+					"descriptions": ["**Where a point on the near or far plane lands in world space. The perspective divide is the part that matters: the inverse of a projection is not an affine transform, so w comes back as something other than 1 and dividing by it is what turns clip space into a world position.**\n\n```method : private : Unproject() ~ Vector3```\n\n\n\ninverse: Float[]\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Vector3"]
+				}
+			}
+		},
+		"Game.OpenGL.Freeable": {
+			"description": "Something holding a GL object that has to be released. Exists so GLWindow->Own can hold a mixed list. Every class here already declared `method : public : Free()` with exactly this shape, so implementing it costs them nothing -- but note Objeck requires the access to match the interface exactly, and does not accept an INHERITED method as satisfying one.",
+			"functions": {
+				"Free": {
+					"descriptions": ["**Release whatever GL objects this holds. Must be idempotent -- everything in this bundle nulls its handle, so a second call does nothing.**\n\n```method : public : virutal : Free() ~ Nil```\n\n\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -4536,11 +4574,17 @@
 				"GetLastError": {
 					"descriptions": ["**Why the last call silently did nothing. GetError only reports what GL itself considers an error, and the most confusing failures in this library are not GL errors at all: the entry points were never loaded, a mat4 was the wrong length, a uniform name does not exist in the program. Each of those leaves the error queue clean and renders a black window, so DrainErrors finds nothing and this is the only thing that can tell you why. Reading clears it, so the answer belongs to the call you just made.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String\n\n```\nshader->SetMatrix4(\"mpv\", mvp);   # typo\nreason := GL->GetLastError();\nif(reason->Size() > 0) {\nreason->ErrorLine();          # 'no uniform named \"mpv\" ...'\n};\n```"]
 				},
+				"GetMaxAnisotropy": {
+					"descriptions": ["**The largest anisotropy level this driver offers. 0 when GL_EXT_texture_filter_anisotropic is absent, in which case asking for anisotropy is silently ignored rather than an error. Typically 16 where it is supported. This bundle has had HasExtension since the beginning, with this very extension as its documentation example, and nothing to set once the answer came back yes. This is the setter half.**\n\n```function : GetMaxAnisotropy() ~ Float```\n\n\n\nreturn: Float"]
+				},
 				"GetOptionalMissing": {
 					"descriptions": ["**Optional entry points that could not be resolved. Separate from LoadFunctions, which reports the ones that are REQUIRED: a missing required function disables the whole layer, because nothing here can work without it. A missing optional one disables only itself. Keeping the two apart is what stops one absent extension from taking the renderer down with it.**\n\n```function : GetOptionalMissing() ~ String```\n\n\n\nreturn: String"]
 				},
 				"HasExtension": {
 					"descriptions": ["**Whether this context reports an extension.**\n\n```function : HasExtension(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"IsEnabled": {
+					"descriptions": ["**Is a capability currently on? Asked rather than assumed by anything that turns a capability off and has to put it back -- Overlay->Begin\/End do exactly this with culling, and a program may legitimately have had it off already.**\n\n```function : IsEnabled(capability:Int) ~ Bool```\n\n\n\ncapability: Int\n\nreturn: Bool"]
 				},
 				"LoadFunctions": {
 					"descriptions": ["**Resolve the OpenGL 2.0+ entry points. Call once, after the context is current and before creating any Shader, Mesh or Texture2D. Everything above GL 1.1 has to be looked up at runtime; that happens in native code and is cached, so this is a one-off cost rather than per call.**\n\n```function : LoadFunctions() ~ String```\n\n\n\nreturn: String"]
@@ -4551,14 +4595,38 @@
 				"ReportErrors": {
 					"descriptions": ["**Drain the error queue and print whatever was in it. Exists because every program was writing the same four lines: drain, count, test the count, print. Errors are worth checking at least once per run -- they are queued, so one raised in frame 2 is still there at exit.**\n\n```function : ReportErrors(during:String) ~ Int```\n\n\n\nduring: String\n\nreturn: Int"]
 				},
+				"Scissor": {
+					"descriptions": ["**Restrict drawing to a rectangle. Only has an effect while Capability->GL_SCISSOR_TEST is enabled. That constant has been in this bundle since the beginning with nothing to bind it to, so enabling it clipped to whatever rectangle the driver happened to start with -- usually the whole window, which made it look like it worked. Pixels, not points, and measured from the BOTTOM-left like the viewport -- not the top-left like Overlay. A split-screen viewport or a UI panel that must not be drawn over is what this is for.**\n\n```function : Scissor(x:Int, y:Int, width:Int, height:Int) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nreturn: Nil"]
+				},
 				"SetBlend": {
 					"descriptions": ["**How a fragment's colour combines with what is already in the buffer. Enabling Capability->GL_BLEND is not enough on its own, and that is the trap: GL's default factors are ONE and ZERO, which means \"replace\", so blending appears to be on and nothing changes. This is the other half. The two worth knowing: * **Straight alpha** -- SRC_ALPHA, ONE_MINUS_SRC_ALPHA. Ordinary transparency: glass, foliage, a fade. Needs the transparent things drawn AFTER the opaque ones and back-to-front among themselves, because a fragment can only blend with what is already there. * **Additive** -- ONE, ONE. Light: sparks, glows, fire. Order-independent, since addition commutes, which is why particle systems reach for it. With straight alpha, also turn depth WRITING off for the transparent pass while leaving the test on -- see SetDepthWrite. A transparent surface that writes depth hides whatever transparent thing is behind it.**\n\n```function : SetBlend(source:Int, destination:Int) ~ Nil```\n\n\n\nsource: Int\n\ndestination: Int\n\nreturn: Nil"]
 				},
 				"SetCullMode": {
 					"descriptions": ["**Which side of a triangle GL_CULL_FACE discards. GL_BACK by default, which is what every mesh in this bundle is wound for.**\n\n```function : SetCullMode(mode:Int) ~ Nil```\n\n\n\nmode: Int\n\nreturn: Nil"]
 				},
+				"SetDepthFunc": {
+					"descriptions": ["**Which depth comparison counts as passing. GL_LESS is the default and is what a normal scene wants. GL_LEQUAL is what lets a skybox draw at the far plane and a decal draw exactly on the surface it decorates -- both need to pass at a depth that is already written.**\n\n```function : SetDepthFunc(func:Int) ~ Nil```\n\n\n\nfunc: Int\n\nreturn: Nil"]
+				},
 				"SetDepthWrite": {
 					"descriptions": ["**Whether drawing writes depth. The test is unaffected. Off for a transparent pass: those fragments should be hidden BY opaque geometry but should not hide each other, and the only way to have both is to test depth without writing it. **Clearing the depth buffer while this is off does nothing.** glClear of the depth buffer is subject to the same mask, so a frame that turns depth writing off and then clears keeps the previous frame's depth values -- and everything at the same distance as something drawn last time silently fails the test. Clear first, then turn writing off. This is not hypothetical: it is how the check for this in the regression suite first came out reading zero instead of a blend.**\n\n```function : SetDepthWrite(enabled:Bool) ~ Nil```\n\n\n\nenabled: Bool\n\nreturn: Nil"]
+				},
+				"SetLineWidth": {
+					"descriptions": ["**How thick GL_LINES draws, in pixels. Treat anything above 1.0 as a REQUEST, not a setting. A core profile is allowed to refuse it outright with GL_INVALID_VALUE, and the two renderers this bundle is tested on disagree: Mesa refuses 3.0, desktop NVIDIA accepts it silently. A program that needs thick lines reliably has to draw them as quads. A refusal is REPORTED through GL->GetLastError and the GL error is consumed here rather than left standing. That second part matters more than it looks: GL errors persist until something reads them, so without it a single wide-line request at startup would surface as a failure in the next unrelated GetError call, anywhere in the program. This exact thing turned one CI leg red while the check that failed was three blocks away from the call that caused it.**\n\n```function : SetLineWidth(width:Float) ~ Nil```\n\n\n\nwidth: Float\n\nreturn: Nil"]
+				},
+				"SetPointSize": {
+					"descriptions": ["**How large a GL_POINTS vertex draws, in pixels. Without this every point is one pixel, which is most of the reason DrawMode->GL_POINTS was not worth reaching even once it drew points at all.**\n\n```function : SetPointSize(size:Float) ~ Nil```\n\n\n\nsize: Float\n\nreturn: Nil"]
+				},
+				"SetPolygonOffset": {
+					"descriptions": ["**Shift filled polygons in depth, without moving them on screen. The fix for two surfaces at the same depth flickering against each other -- a decal on a wall, a shadow on a floor, a highlight over a tile. Both are at the same z, the winner is decided by floating-point noise, and it changes as the camera moves, which is what makes it read as flickering rather than as a mistake. Enable Capability->GL_POLYGON_OFFSET_FILL first; this call on its own does nothing. GL->Enable(Capability->GL_POLYGON_OFFSET_FILL); GL->SetPolygonOffset(-1.0, -1.0); ... draw the decal ... GL->Disable(Capability->GL_POLYGON_OFFSET_FILL); NEGATIVE values pull towards the viewer, which is what a decal wants. Positive values push away, which is the other use: offsetting shadow casters to trade one artefact for another. Both terms matter and they are not interchangeable. `units` is a constant nudge in depth-buffer steps; `factor` scales with how steeply the polygon is sloped, which is the term that fixes a surface seen at a grazing angle where a constant offset is not enough. -1.0, -1.0 is the usual starting point. Before this existed the only way to lift a decal off a surface was to move it geometrically along the normal -- which works, and then breaks at distance where the offset is smaller than a depth step, and looks like a floating sticker up close.**\n\n```function : SetPolygonOffset(factor:Float, units:Float) ~ Nil```\n\n\n\nfactor: Float\n\nunits: Float\n\nreturn: Nil"]
+				},
+				"SetStencilFunc": {
+					"descriptions": ["**Which stencil values pass the test. Only has an effect while Capability->GL_STENCIL_TEST is enabled. The window has requested 8 stencil bits since it learned to; this is the half that was missing, and without it the buffer could be cleared and nothing more -- no portal, mirror, outline or decal mask. The usual two-pass shape: write a mask, then draw only where it is. GL->Enable(Capability->GL_STENCIL_TEST); GL->SetStencilFunc(CompareFunc->GL_ALWAYS, 1, 0xFF); GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_REPLACE); ... draw the mask ... GL->SetStencilFunc(CompareFunc->GL_EQUAL, 1, 0xFF); GL->SetStencilOp(StencilOp->GL_KEEP, StencilOp->GL_KEEP, StencilOp->GL_KEEP); ... draw what the mask reveals ...**\n\n```function : SetStencilFunc(func:Int, reference:Int, mask:Int) ~ Nil```\n\n\n\nfunc: Int\n\nreference: Int\n\nmask: Int\n\nreturn: Nil"]
+				},
+				"SetStencilMask": {
+					"descriptions": ["**Which stencil bits are writable.**\n\n```function : SetStencilMask(mask:Int) ~ Nil```\n\n\n\nmask: Int\n\nreturn: Nil"]
+				},
+				"SetStencilOp": {
+					"descriptions": ["**What to write to the stencil buffer in each of the three outcomes.**\n\n```function : SetStencilOp(on_fail:Int, on_depth_fail:Int, on_pass:Int) ~ Nil```\n\n\n\non_fail: Int\n\non_depth_fail: Int\n\non_pass: Int\n\nreturn: Nil"]
 				},
 				"Viewport": {
 					"descriptions": ["**Set the drawable region, in pixels. Use Window->GLGetDrawableSize rather than the size passed to Window->New: on a high-DPI display the drawable is larger than the window, and using the window size renders to a corner.**\n\n```function : Viewport(x:Int, y:Int, width:Int, height:Int) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nreturn: Nil"]
@@ -4568,8 +4636,17 @@
 		"Game.OpenGL.GLWindow": {
 			"description": "A window with a GL 3.3 core context, ready to draw into. This exists because opening one by hand takes about thirty lines that are the same in every program: initialise SDL, set six context attributes in the right order and before the window, create the window with the GL flag, create the context, check you actually got 3.3 core, resolve the entry points, and set the viewport from the DRAWABLE size rather than the window size. Across the four programs in this repo that block was 105 lines, and the only things that varied were the title, the size, one flag and the wording of an error message.",
 			"functions": {
+				"ApplyDeadzone": {
+					"descriptions": ["**The dead-zone curve on its own, as a pure function. Split out from GetPadAxis so it can be TESTED. The rest of the controller path needs hardware to exercise and neither CI nor a build machine has any, so the one piece with actual logic in it is the one piece that must be reachable without a pad plugged in. It is public because a program reading a stick through some other route wants the same curve.**\n\n```function : ApplyDeadzone(raw:Float, deadzone:Float) ~ Float```\n\n\n\nraw: Float\n\ndeadzone: Float\n\nreturn: Float"]
+				},
 				"BeginFrame": {
 					"descriptions": ["**Start a frame: measure elapsed time, then clear colour and depth. Depth is cleared as well as colour because a depth buffer is always requested and depth testing is always on -- clearing only colour leaves last frame's depth values in place, and the second frame then renders with everything mysteriously behind everything else.**\n\n```method : public : BeginFrame() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"ButtonBit": {
+					"descriptions": ["**Buttons as a bit, so held state is one Int rather than an array.**\n\n```method : private : ButtonBit() ~ Int```\n\n\n\nbutton: Int\n\nreturn: Int"]
+				},
+				"ClosePad": {
+					"descriptions": ["**Let go of the controller and forget its state.**\n\n```method : private : ClosePad() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"EndFrame": {
 					"descriptions": ["**Present the frame. Read any pixels BEFORE calling this -- GL->ReadPixel reads the back buffer, and a swap is allowed to discard it. Sleeps only when vsync was refused. With vsync on, the swap already blocks until the display is ready and a second wait would halve the frame rate.**\n\n```method : public : EndFrame() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -4604,8 +4681,41 @@
 				"GetMouseDeltaY": {
 					"descriptions": ["****\n\n```method : public : GetMouseDeltaY() ~ Float```\n\n\n\nreturn: Float"]
 				},
+				"GetMouseX": {
+					"descriptions": ["**Where the mouse was, in window coordinates. POINTS, not pixels -- SDL reports event coordinates in the window's coordinate space, which on a high-DPI display is not the drawable size GetWidth returns. Multiply by GetScale if you need pixels.**\n\n```method : public : GetMouseX() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMouseY": {
+					"descriptions": ["****\n\n```method : public : GetMouseY() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOwnedCount": {
+					"descriptions": ["****\n\n```method : public : GetOwnedCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPad": {
+					"descriptions": ["**The controller itself, for everything this wrapper does not cover -- rumble, the LED, touchpads, the gyro. Do NOT close it; the window owns it and closes it on Free.**\n\n```method : public : GetPad() ~ GameController```\n\n\n\nreturn: GameController"]
+				},
+				"GetPadAxis": {
+					"descriptions": ["**A controller axis as -1..1, with the dead zone taken out. Raw SDL axes are -32768..32767 and a stick at rest does not read zero: it wanders by a few hundred, and a camera driven straight off the raw value drifts on its own. Every program that uses a stick has to solve this, so it is solved once here. The dead zone is RESCALED rather than clamped. Clamping gives a stick that does nothing and then jumps to 0.15; rescaling ramps from 0 at the edge of the dead zone to 1 at full deflection, so slow movement stays possible. That difference is the whole reason to do it here rather than leave callers an `if` to write. Triggers are axes too, and they rest at -1 rather than 0 -- so read a trigger with GetPadAxisRaw if a resting value of -1 matters to you.**\n\n```method : public : GetPadAxis(axis:GameControllerAxis) ~ Float```\n\n\n\naxis: GameControllerAxis\n\nreturn: Float"]
+				},
+				"GetPadAxisRaw": {
+					"descriptions": ["**A controller axis as -1..1 with NO dead zone applied.**\n\n```method : public : GetPadAxisRaw(axis:GameControllerAxis) ~ Float```\n\n\n\naxis: GameControllerAxis\n\nreturn: Float"]
+				},
+				"GetPadDeadzone": {
+					"descriptions": ["****\n\n```method : public : GetPadDeadzone() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetPadName": {
+					"descriptions": ["**The controller's name, e.g. \"Xbox Series Controller\".**\n\n```method : public : GetPadName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSamples": {
+					"descriptions": ["**A second GLWindow is not really supported, and this is why. Creating a context MAKES IT CURRENT, so opening a second window silently redirects every later GL call to it -- textures, draws and pixel readback alike, with no error anywhere. And Free calls Core->Quit, which takes SDL down for the whole process, so freeing either one kills both. If you must open a second window, put the first one's context back afterwards: first->GetWindow()->GLMakeCurrent(first->GetContext()); and free only at exit. Both facts were found by a test that opened a second window to compare pixel formats: it hung on the first Free, and once that was fixed, three unrelated checks elsewhere in the suite went red because they were sampling the wrong framebuffer. How many multisample samples this window actually got. Asked for is not granted: a driver that cannot honour the request makes the window fail to create, and rather than not opening at all this drops the request and retries without it. So a program that cares has to ask, not assume.**\n\n```method : public : GetSamples() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetVersion": {
 					"descriptions": ["**The driver's version string for this context, e.g. \"3.3.0 Core Profile Context 26.7.1\". Read while opening, so this costs nothing to ask for.**\n\n```method : public : GetVersion() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetWheelX": {
+					"descriptions": ["**Horizontal wheel movement accumulated by the last PollEvents.**\n\n```method : public : GetWheelX() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWheelY": {
+					"descriptions": ["**Wheel movement accumulated by the last PollEvents.**\n\n```method : public : GetWheelY() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetWidth": {
 					"descriptions": ["**The drawable width in PIXELS -- what GL->Viewport and GL->ReadPixel work in. On a high-DPI display this is LARGER than the width that was asked for, typically double, because the window is requested in points and GL works in pixels. That is not hypothetical: high-DPI is requested, so on a Retina Mac a 960-point window reports 1920 here.**\n\n```method : public : GetWidth() ~ Int```\n\n\n\nreturn: Int"]
@@ -4613,17 +4723,47 @@
 				"GetWindow": {
 					"descriptions": ["**The SDL window, for anything this class does not wrap.**\n\n```method : public : GetWindow() ~ Window```\n\n\n\nreturn: Window"]
 				},
+				"HasAudio": {
+					"descriptions": ["**Did the audio device open? False when audio was not asked for, and also when it was asked for and the machine has no working output -- which is common on a CI runner and is not a reason to refuse to run. Sound is the thing to make optional here, not the program.**\n\n```method : public : HasAudio() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"HasPad": {
+					"descriptions": ["**Is a controller attached? False when none is plugged in AND when the controller subsystem could not start at all -- a program should treat both the same way, since in either case there is nothing to read.**\n\n```method : public : HasPad() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"HasVsync": {
 					"descriptions": ["****\n\n```method : public : HasVsync() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"IsOk": {
 					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
-				"New": {
-					"descriptions": ["**Open a visible window and a GL 3.3 core context.**\n\n```New(title:String, width:Int, height:Int)```\n\n\n\ntitle: String\n\nwidth: Int\n\nheight: Int", "**Open a window that may be hidden. A hidden window still has a real context and still renders, so this is how a test or a headless tool draws and reads pixels back without a window being flashed at anyone.**\n\n```New(title:String, width:Int, height:Int, visible:Bool)```\n\n\n\ntitle: String\n\nwidth: Int\n\nheight: Int\n\nvisible: Bool"]
+				"KeyHeld": {
+					"descriptions": ["**Is this key held down right now? A STATE, not an edge -- true for as long as the key is down, which is what movement wants. WasPressed is the edge, true for one frame per press. The bounds check is the point. Reading Keyboard->GetState directly means writing this every time: if(keys <> Nil & scancode >= 0 & scancode < keys->Size()) { ... } and both examples in this repo that take keyboard input had written it, byte for byte identically, because held MOUSE was framework state and held keys were not. Reads a snapshot taken once per PollEvents, so asking about eight keys costs eight array reads rather than eight native calls.**\n\n```method : public : KeyHeld(scancode:Int) ~ Bool```\n\n\n\nscancode: Int\n\nreturn: Bool", "**Is either of these keys held? For the case that actually recurs: one action on two keys -- left shift or right shift, W or Up. An array would have read better, but an Objeck array literal takes literal expressions only, so `[Scancode->SDL_SCANCODE_W, ...]` does not compile and the caller would have to build and fill an Int[] to ask a one-line question.**\n\n```method : public : KeyHeld(first:Int, second:Int) ~ Bool```\n\n\n\nfirst: Int\n\nsecond: Int\n\nreturn: Bool"]
 				},
-				"PollEvents": {
-					"descriptions": ["**Drain the event queue. Handles what nearly every program handles the same way: the window close button and Escape both mean quit, a resize updates the viewport and the cached size, and relative mouse motion accumulates into this frame's delta. Held keys are not events -- keep using Keyboard->GetState for those, which this does not disturb.**\n\n```method : public : PollEvents() ~ Bool```\n\n\n\nreturn: Bool"]
+				"MouseHeld": {
+					"descriptions": ["**Is this mouse button down now? A state rather than an edge, tracked across frames from the button events -- so unlike the key case there is no separate query to reach for.**\n\n```method : public : MouseHeld(button:Int) ~ Bool```\n\n\n\nbutton: Int\n\nreturn: Bool"]
+				},
+				"MousePressed": {
+					"descriptions": ["**Did this mouse button go down during the last PollEvents?**\n\n```method : public : MousePressed(button:Int) ~ Bool```\n\n\n\nbutton: Int\n\nreturn: Bool"]
+				},
+				"MouseReleased": {
+					"descriptions": ["**Did this mouse button come up during the last PollEvents?**\n\n```method : public : MouseReleased(button:Int) ~ Bool```\n\n\n\nbutton: Int\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Open a visible window and a GL 3.3 core context.**\n\n```New(title:String, width:Int, height:Int)```\n\n\n\ntitle: String\n\nwidth: Int\n\nheight: Int", "**Open a window with multisampling. Antialiasing at the framebuffer, which costs nothing in the program: it is two pixel-format attributes, and every edge in the scene stops being a staircase. It has to be asked for BEFORE the window exists, which is why it is a constructor argument rather than a setter -- SDL attributes select a pixel format and setting one afterwards is silently ignored. Ask for 4. If the driver cannot provide it the window still opens, without it -- so check GetSamples if you care, rather than assuming.**\n\n```New(title:String, width:Int, height:Int, samples:Int)```\n\n\n\ntitle: String\n\nwidth: Int\n\nheight: Int\n\nsamples: Int", "**Open a window with sound. Game.OpenGL has no audio of its own and does not need any: Game.SDL2's Mixer, MixChunk and MixMusic need no SDL_Renderer, so a 3D program can use them directly. What was missing was the initialisation -- nothing opened the audio device, and nothing said so, which left a working mixer looking like an absent feature. This asks for the audio subsystem alongside video and opens the device. After it, Game.SDL2's mixer is usable as-is: window := GLWindow->New(\"game\", 1024, 640, 4, true); chime := MixChunk->New(\"pickup.wav\"); chime->PlayChannel(-1, 0); Free the chunks before the window: GLWindow->Free calls Core->Quit, which takes the audio device with it.**\n\n```New(title:String, width:Int, height:Int, samples:Int, audio:Bool)```\n\n\n\ntitle: String\n\nwidth: Int\n\nheight: Int\n\nsamples: Int\n\naudio: Bool", "**Open a window that may be hidden. A hidden window still has a real context and still renders, so this is how a test or a headless tool draws and reads pixels back without a window being flashed at anyone.**\n\n```New(title:String, width:Int, height:Int, visible:Bool)```\n\n\n\ntitle: String\n\nwidth: Int\n\nheight: Int\n\nvisible: Bool"]
+				},
+				"OpenPad": {
+					"descriptions": ["**Adopt the first attached controller, if there is one and we have none. Cheap when nothing is plugged in -- one call for the count and then nothing. Called at startup and again whenever SDL reports a device arriving, rather than every frame.**\n\n```method : private : OpenPad() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"PadHeld": {
+					"descriptions": ["**Is a controller button down right now?**\n\n```method : public : PadHeld(button:GameControllerButton) ~ Bool```\n\n\n\nbutton: GameControllerButton\n\nreturn: Bool"]
+				},
+				"PadPressed": {
+					"descriptions": ["**Did a controller button go down during the last PollEvents? The edge, not the level -- a menu that advances once per press wants this, and PadHeld would advance it every frame the button was down.**\n\n```method : public : PadPressed(button:GameControllerButton) ~ Bool```\n\n\n\nbutton: GameControllerButton\n\nreturn: Bool"]
+				},
+				"PadReleased": {
+					"descriptions": ["**Did a controller button come up during the last PollEvents?**\n\n```method : public : PadReleased(button:GameControllerButton) ~ Bool```\n\n\n\nbutton: GameControllerButton\n\nreturn: Bool"]
+				},
+				"PollPad": {
+					"descriptions": ["**Read the buttons and work out this frame's edges. Polled rather than event-driven, which is the same choice the keyboard makes: Event exposes GetJButton for raw joysticks but has no accessor for SDL's CONTROLLER button events, so the payload is unreachable from here. The event TYPE is reachable, which is enough to notice a device arriving or leaving -- so hot-plug is event-driven and state is polled. Costs nothing at all when no pad is attached, which is the common case.**\n\n```method : private : PollPad() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"RequestQuit": {
 					"descriptions": ["**Ask PollEvents to report a quit on the next call, e.g. from a menu.**\n\n```method : public : RequestQuit() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -4631,8 +4771,20 @@
 				"SetDepthTest": {
 					"descriptions": ["**Turn depth testing on or off. On by default. On is the right default for 3D -- without it, whatever was drawn last is in front, regardless of where it is -- and the depth buffer is always requested, so enabling it can never silently do nothing the way it can when the SDL_GL_DEPTH_SIZE attribute was forgotten. The cost of that default: a frame cleared with GL_COLOR_BUFFER_BIT alone leaves stale depth values, and geometry then fails the test for no visible reason. BeginFrame clears both. Turn this off for a purely 2D pass rather than clearing colour alone.**\n\n```method : public : SetDepthTest(enabled:Bool) ~ Nil```\n\n\n\nenabled: Bool\n\nreturn: Nil"]
 				},
+				"SetPadDeadzone": {
+					"descriptions": ["**How far a stick must move before it counts, as a fraction of full travel. 0.15 by default. Raise it for a worn pad that drifts; 0 turns it off and makes GetPadAxis the same as GetPadAxisRaw.**\n\n```method : public : SetPadDeadzone(fraction:Float) ~ Nil```\n\n\n\nfraction: Float\n\nreturn: Nil"]
+				},
+				"SetQuitOnEscape": {
+					"descriptions": ["**Whether Escape quits. On by default, which is what every example wants. Turn it off for a program where Escape should close a menu instead -- until now that meant abandoning PollEvents entirely and re-implementing quit, resize and mouse delta by hand, because Escape-quits was not optional.**\n\n```method : public : SetQuitOnEscape(on:Bool) ~ Nil```\n\n\n\non: Bool\n\nreturn: Nil"]
+				},
 				"SetTargetFps": {
 					"descriptions": ["**The frame rate EndFrame paces to when there is no vsync. Ignored while vsync is on, since the swap does the waiting.**\n\n```method : public : SetTargetFps(fps:Int) ~ Nil```\n\n\n\nfps: Int\n\nreturn: Nil"]
+				},
+				"WasPressed": {
+					"descriptions": ["**Did this key go down during the last PollEvents? An EDGE, not a state: true for exactly one frame per physical press, and auto-repeat does not count. For \"is it held right now\", read Keyboard->GetState, which this does not disturb.**\n\n```method : public : WasPressed(scancode:Int) ~ Bool```\n\n\n\nscancode: Int\n\nreturn: Bool"]
+				},
+				"WasReleased": {
+					"descriptions": ["**Did this key come up during the last PollEvents?**\n\n```method : public : WasReleased(scancode:Int) ~ Bool```\n\n\n\nscancode: Int\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -4716,11 +4868,14 @@
 				"GetMaxLights": {
 					"descriptions": ["**How many lights a shader built by this bundle can take.**\n\n```function : GetMaxLights() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetShininess": {
+					"descriptions": ["****\n\n```method : public : GetShininess() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetSpecular": {
+					"descriptions": ["****\n\n```method : public : GetSpecular() ~ Float```\n\n\n\nreturn: Float"]
+				},
 				"SetAmbient": {
 					"descriptions": ["**The light every surface gets regardless of which way it faces.**\n\n```method : public : SetAmbient(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
-				},
-				"SetSpecular": {
-					"descriptions": ["**How tight specular highlights are and how strong. Strength defaults to ZERO, so nothing is shiny until asked -- a diffuse surface is the right default and an unexpected highlight looks like a bug.**\n\n```method : public : SetSpecular(shininess:Float, strength:Float) ~ Nil```\n\n\n\nshininess: Float\n\nstrength: Float\n\nreturn: Nil"]
 				},
 				"SetViewPosition": {
 					"descriptions": ["**Where the viewer is, which specular highlights depend on. Set it each frame if the camera moves.**\n\n```method : public : SetViewPosition(position:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\nreturn: Nil"]
@@ -4730,14 +4885,23 @@
 		"Game.OpenGL.Material": {
 			"description": "How a surface looks: its texture, a colour multiplier, and how shiny it is. Shininess and specular strength live HERE rather than on the lights, which is where I first put them and was wrong: they describe the SURFACE. A polished ball and a matte floor lit by the same lamp need different values, and a property that cannot differ between objects in one scene is not a property of the object.",
 			"functions": {
-				"ApplyTo": {
-					"descriptions": ["**Write this material into a shader and bind its texture. Per object, unlike a LightRig -- which is why Scene only does it when the material actually changes between boxes.**\n\n```method : public : ApplyTo(shader:Shader, unit:Int) ~ Nil```\n\n\n\nshader: Shader\n\nunit: Int\n\nreturn: Nil"]
-				},
 				"Colored": {
 					"descriptions": ["**A material with a tint and no texture, for flat-coloured objects drawn through a textured shader.**\n\n```function : Colored(r:Float, g:Float, b:Float) ~ Material```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Material"]
 				},
+				"GetOpacity": {
+					"descriptions": ["****\n\n```method : public : GetOpacity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"HasTexture": {
+					"descriptions": ["**Whether this material carries a texture of its own. A material without one does NOT bind anything, so whatever a previous draw left on the unit is what gets sampled. Scene uses this to fall back to the box's own texture rather than let the result depend on draw order.**\n\n```method : public : HasTexture() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOpaque": {
+					"descriptions": ["****\n\n```method : public : IsOpaque() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
 					"descriptions": ["**An untinted, matte material.**\n\n```New(texture:Texture2D)```\n\n\n\ntexture: Texture2D"]
+				},
+				"SetOpacity": {
+					"descriptions": ["**How opaque this material is. 1.0 is solid and is the default. Anything less needs blending on and the object drawn after the solid ones -- Scene does both once it knows where the camera is; a program drawing by hand does it with GL->BeginTransparency and GL->EndTransparency. This MULTIPLIES the texture's own alpha rather than replacing it, so a cut-out texture stays cut out at 0.5 opacity instead of turning into a uniformly half-visible rectangle.**\n\n```method : public : SetOpacity(opacity:Float) ~ Nil```\n\n\n\nopacity: Float\n\nreturn: Nil"]
 				},
 				"SetSpecular": {
 					"descriptions": ["**How tight the highlight is and how strong. Strength defaults to zero, so a material is matte until asked -- a diffuse surface is the right default and an unexpected highlight reads as a bug.**\n\n```method : public : SetSpecular(shininess:Float, strength:Float) ~ Nil```\n\n\n\nshininess: Float\n\nstrength: Float\n\nreturn: Nil"]
@@ -4854,6 +5018,9 @@
 		"Game.OpenGL.Mesh": {
 			"description": "Geometry uploaded to the GPU once and drawn many times. Vertices are interleaved and described by a layout: [3, 2] means each vertex is three floats of position followed by two of texture coordinate, bound to shader locations 0 and 1 in that order. Indices select vertices, so shared corners are stored once. Upload cost is paid at construction; Draw() is a single native call regardless of how many triangles it draws. That is deliberate -- per-vertex calls across the native boundary would be orders of magnitude slower.",
 			"functions": {
+				"Build": {
+					"descriptions": ["**What both constructors do. Objeck constructors cannot delegate to one another, so the body lives here rather than being written twice.**\n\n```method : private : Build() ~ Nil```\n\n\n\nvertices: Float[]\n\nindices: Int[]\n\nlayout: Int[]\n\nreturn: Nil"]
+				},
 				"Corner": {
 					"descriptions": ["**Write one interleaved position\/normal\/texcoord vertex.**\n\n```function : Corner() ~ Nil```\n\n\n\ninto: Float[]\n\nindex: Int\n\nx: Float\n\ny: Float\n\nz: Float\n\nnx: Float\n\nny: Float\n\nnz: Float\n\nu: Float\n\nv: Float\n\nreturn: Nil"]
 				},
@@ -4884,6 +5051,9 @@
 				"GetCenter": {
 					"descriptions": ["**The middle of the bounding box. Rarely the origin for a loaded model -- a file's author had no reason to centre it -- so this is what to translate BY (negated) to bring a model to the origin before rotating it, or it will orbit rather than spin.**\n\n```method : public : GetCenter() ~ Vector3```\n\n\n\nreturn: Vector3"]
 				},
+				"GetInstanceGeneration": {
+					"descriptions": ["**How many times this mesh's instance data has been replaced. The instance buffer belongs to the mesh. Anything holding a copy of what it last uploaded can compare this against the value it saw then, and know its data is still there rather than assuming so -- which is what PropBatch does to make a static batch safe when two batches share one mesh.**\n\n```method : public : GetInstanceGeneration() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetMax": {
 					"descriptions": ["**The high corner of the bounding box.**\n\n```method : public : GetMax() ~ Vector3```\n\n\n\nreturn: Vector3"]
 				},
@@ -4903,7 +5073,7 @@
 					"descriptions": ["**Work out the bounding box from the vertex data. Assumes the FIRST attribute is the position, which is the convention every primitive here follows and what PositionNormalTexcoord documents. A layout that puts something else first gets bounds of that instead -- there is no way to tell from a list of component counts which one is the position.**\n\n```method : private : Measure() ~ Nil```\n\n\n\nvertices: Float[]\n\nlayout: Int[]\n\nreturn: Nil"]
 				},
 				"New": {
-					"descriptions": ["**Upload geometry.**\n\n```New(vertices:Float[], indices:Int[], layout:Int[])```\n\n\n\nvertices: Float[]\n\nindices: Int[]\n\nlayout: Int[]"]
+					"descriptions": ["**Upload geometry.**\n\n```New(vertices:Float[], indices:Int[], layout:Int[])```\n\n\n\nvertices: Float[]\n\nindices: Int[]\n\nlayout: Int[]", "**Upload geometry with NO index buffer. The vertices are drawn in the order they are given, which is what a point cloud, a particle buffer, a debug line list and most generated geometry actually want. Building 0, 1, 2, 3, ... by hand purely to satisfy glDrawElements costs a second buffer and a loop to express the default. Which draw call is used is decided by the MESH, not by the caller: one built with indices always draws through them and one built without never does, so there is no way to ask for the wrong one. The vertex order still has to suit the topology -- six vertices drawn as GL_TRIANGLES are two triangles, and drawn as GL_LINES are three separate segments.**\n\n```New(vertices:Float[], layout:Int[])```\n\n\n\nvertices: Float[]\n\nlayout: Int[]"]
 				},
 				"NoMesh": {
 					"descriptions": ["**A Mesh that reports IsOk() false, for a load that could not proceed. Empty arrays rather than Nil, because a bare Nil in Objeck infers as Nil rather than as the parameter's array type and will not compile.**\n\n```function : NoMesh() ~ Mesh```\n\n\n\nreturn: Mesh"]
@@ -4944,7 +5114,7 @@
 					"descriptions": ["**Finish drawing overlay content and restore the 3D state.**\n\n```method : public : End() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Free": {
-					"descriptions": ["**Release the overlay's own GL objects. Does NOT free the font -- that was passed in and belongs to the caller. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Release the overlay's own GL objects, and a font it loaded ITSELF through WithDefaultFont. A font handed in by SetFont is not freed -- that one belongs to the caller and may be shared with another overlay. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"GetError": {
 					"descriptions": ["****\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
@@ -4952,8 +5122,17 @@
 				"GetScale": {
 					"descriptions": ["**How much bigger the drawable is than the window, for sizing a HUD on a high-DPI display.**\n\n```method : public : GetScale() ~ Float```\n\n\n\nreturn: Float"]
 				},
+				"HasFont": {
+					"descriptions": ["****\n\n```method : public : HasFont() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Image": {
+					"descriptions": ["**Draw a texture as a rectangle, in pixels. The missing verb. This overlay could draw text, filled rectangles and lines, and the one thing an actual HUD is mostly made of -- an icon, a portrait, a minimap, a health bar with a texture rather than a colour -- had no route, even though the private DrawTextured that Text and Rect both call has been here since the overlay was written. The current tint MULTIPLIES the texture, exactly as it does for text, so SetTint(1.0, 1.0, 1.0, 1.0) draws it untouched and a lower alpha fades it.**\n\n```method : public : Image(texture:Texture2D, x:Int, y:Int, width:Int, height:Int) ~ Nil```\n\n\n\ntexture: Texture2D\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nreturn: Nil"]
+				},
 				"IsOk": {
 					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Line": {
+					"descriptions": ["**A straight line, one pixel of thickness per unit. Horizontal and vertical only -- it is a rectangle underneath. An arbitrary diagonal needs a rotation this class does not carry, and a HUD rule, a divider and a bar chart are all axis-aligned.**\n\n```method : public : Line(x1:Int, y1:Int, x2:Int, y2:Int, thickness:Int) ~ Nil```\n\n\n\nx1: Int\n\ny1: Int\n\nx2: Int\n\ny2: Int\n\nthickness: Int\n\nreturn: Nil"]
 				},
 				"MeasureWidth": {
 					"descriptions": ["**How wide and tall a string would be, without drawing it. For centring or right-aligning.**\n\n```method : public : MeasureWidth(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int"]
@@ -4961,11 +5140,14 @@
 				"New": {
 					"descriptions": ["**An overlay sized to a window's drawable.**\n\n```New(window:GLWindow)```\n\n\n\nwindow: GLWindow"]
 				},
+				"OwnFont": {
+					"descriptions": ["**Take ownership of a font, so Free closes it. SetFont deliberately does NOT own what it is given -- a program may share one font between overlays. WithDefaultFont loaded its own, so it says so.**\n\n```method : public : OwnFont(font:Font) ~ Nil```\n\n\n\nfont: Font\n\nreturn: Nil"]
+				},
 				"Rasterize": {
 					"descriptions": ["**The string's texture, rasterising it only if it is not already cached.**\n\n```method : private : Rasterize() ~ Texture2D```\n\n\n\ntext: String\n\nreturn: Texture2D"]
 				},
 				"Rect": {
-					"descriptions": ["**A filled rectangle -- a panel behind text, a health bar, a crosshair. Uses the overlay's own one-pixel white texture, tinted by the shader, so it costs no extra state change between this and a Text call.**\n\n```method : public : Rect(x:Int, y:Int, width:Int, height:Int) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nreturn: Nil"]
+					"descriptions": ["**A filled rectangle -- a panel behind text, a health bar, a crosshair. Uses the overlay's own one-pixel white texture, tinted by the shader, so it costs no extra state change between this and a Text call.**\n\n```method : public : Rect(x:Int, y:Int, width:Int, height:Int) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nreturn: Nil", "**A filled rectangle in the current tint.**\n\n```method : public : Rect(x:Int, y:Int, width:Int, height:Int, r:Int, g:Int, b:Int) ~ Nil```\n\n\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int\n\nr: Int\n\ng: Int\n\nb: Int\n\nreturn: Nil"]
 				},
 				"Resize": {
 					"descriptions": ["**Recompute the pixel projection. Call after the window's drawable changes size; Begin does it anyway, so this is rarely needed directly.**\n\n```method : public : Resize() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -4976,8 +5158,91 @@
 				"SetFont": {
 					"descriptions": ["**The font used by Text. Not owned -- the caller loads it and frees it.**\n\n```method : public : SetFont(font:Font) ~ Nil```\n\n\n\nfont: Font\n\nreturn: Nil"]
 				},
+				"SetTint": {
+					"descriptions": ["**Colour for the next Rect, Line and Text, as 0..1 components. This does NOT re-rasterise anything: it multiplies in the shader, so a program can change colour per call at no cost. SetColor is the other one and is not interchangeable -- that bakes a colour into the glyph textures and throws the cache away, so two SetColor calls a frame re-rasterise every string on screen twice a frame. Rule of thumb: SetColor once at startup for the text's base colour, SetTint freely for anything that changes.**\n\n```method : public : SetTint(r:Float, g:Float, b:Float, a:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\na: Float\n\nreturn: Nil"]
+				},
+				"SetTintRgb": {
+					"descriptions": ["**Opaque tint from 0-255 components, matching SetColor's units.**\n\n```method : public : SetTintRgb(r:Int, g:Int, b:Int) ~ Nil```\n\n\n\nr: Int\n\ng: Int\n\nb: Int\n\nreturn: Nil"]
+				},
 				"Text": {
 					"descriptions": ["**Draw a string with its top-left corner at (x, y) in pixels.**\n\n```method : public : Text(text:String, x:Int, y:Int) ~ Int```\n\n\n\ntext: String\n\nx: Int\n\ny: Int\n\nreturn: Int"]
+				},
+				"WithDefaultFont": {
+					"descriptions": ["**An overlay using the font that ships with Objeck. Three examples had ten identical lines of this -- Font->Init, a hardcoded \"..\/lib\/sdl\/fonts\/lazy.ttf\", an IsOk-and-not-null check, SetFont, SetColor, and a Nil on failure that every draw site then had to test for. That path is relative, and it only resolves when the program is started from the deploy tree's bin directory. Run the same program from the examples directory it ships in and the font is silently missing. This tries the places it actually lives, so a program works from either. The overlay is returned whether or not a font was found -- Text is a no-op without one, so a missing font costs the HUD rather than the program.**\n\n```function : WithDefaultFont(window:GLWindow, size:Int) ~ Overlay```\n\n\n\nwindow: GLWindow\n\nsize: Int\n\nreturn: Overlay"]
+				}
+			}
+		},
+		"Game.OpenGL.Particles": {
+			"description": "A pool of short-lived camera-facing sprites. Sparks, smoke, dust, embers, muzzle flashes, magic. Everything needed for these already existed -- billboards face the camera, a PropBatch draws thousands in one call, additive blending needs no sorting -- and every program still had to write the same three things by hand: a ring of slots, a life per slot, and somewhere to park the dead ones. The FPS demo that ships with Objeck wrote exactly that, which is what this replaces.",
+			"functions": {
+				"Burst": {
+					"descriptions": ["**Emit several at once, sprayed outwards. The usual shape for an impact: a handful of particles leaving one point in scattered directions.**\n\n```method : public : Burst(x:Float, y:Float, z:Float, count:Int, speed:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\ncount: Int\n\nspeed: Float\n\nreturn: Nil"]
+				},
+				"Clear": {
+					"descriptions": ["**Retire every particle at once.**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Draw": {
+					"descriptions": ["**Draw the system on its own, for one that is not part of a Scene. A system inside a Scene should NOT be drawn this way as well -- hand its batch to Scene->AddBatch and let the scene do it, so the additive state is set up around the draw.**\n\n```method : public : Draw(view_projection:Float[]) ~ Nil```\n\n\n\nview_projection: Float[]\n\nreturn: Nil"]
+				},
+				"Emit": {
+					"descriptions": ["**Emit one particle, motionless.**\n\n```method : public : Emit(x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil", "**Emit one particle with a velocity. Overwrites the oldest slot when the pool is full, rather than growing or refusing. A system emitting faster than its capacity allows shows shorter trails, which is a visible and recoverable symptom -- unlike an allocation in a draw loop.**\n\n```method : public : Emit(x:Float, y:Float, z:Float, vx:Float, vy:Float, vz:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nvx: Float\n\nvy: Float\n\nvz: Float\n\nreturn: Nil"]
+				},
+				"Free": {
+					"descriptions": ["**Release the batch, and the mesh and shader if this system built them. Idempotent. A mesh or shader handed in by the three-argument constructor belongs to the caller and is left alone.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetAlive": {
+					"descriptions": ["****\n\n```method : public : GetAlive() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetBatch": {
+					"descriptions": ["**The batch this system draws through. Hand it to Scene->AddBatch and the scene draws it in the right place, with the additive state handled. Or call Draw directly for a system that is not part of a scene.**\n\n```method : public : GetBatch() ~ PropBatch```\n\n\n\nreturn: PropBatch"]
+				},
+				"GetCapacity": {
+					"descriptions": ["****\n\n```method : public : GetCapacity() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**What went wrong, if anything.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOk": {
+					"descriptions": ["**Is the system usable -- a live mesh, shader and batch.**\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A system with its own quad and billboard shader, both owned.**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int", "**A system drawing geometry you supply. The shader must be an instanced one that reads a \"view\" uniform, which in practice means Shader->BillboardInstanced or something shaped like it. Neither the mesh nor the shader is owned, so Free leaves both alone.**\n\n```New(capacity:Int, mesh:Mesh, shader:Shader)```\n\n\n\ncapacity: Int\n\nmesh: Mesh\n\nshader: Shader"]
+				},
+				"NextSigned": {
+					"descriptions": ["**A signed random in -1..1, from a generator of this system's own.**\n\n```method : private : NextSigned() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"PARKED": {
+					"descriptions": ["**Where dead particles wait. Far enough below any plausible world that a camera would have to be looking for them.**\n\n```function : PARKED() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"SetAdditive": {
+					"descriptions": ["**Additive blending, on by default. Right for anything that emits light. Turn it off for smoke or dust, where the sprite should obscure what is behind it rather than brighten it -- and note that non-additive particles are NOT sorted against each other, so overlapping soft-alpha sprites will blend in instance order.**\n\n```method : public : SetAdditive(additive:Bool) ~ Nil```\n\n\n\nadditive: Bool\n\nreturn: Nil"]
+				},
+				"SetCamera": {
+					"descriptions": ["**The camera a billboard shader needs. Required -- without it the sprites collapse onto the origin's basis.**\n\n```method : public : SetCamera(camera:Camera) ~ Nil```\n\n\n\ncamera: Camera\n\nreturn: Nil"]
+				},
+				"SetDrag": {
+					"descriptions": ["**How quickly a particle loses speed, as a fraction per second. 0 keeps its velocity forever; 1.0 brings it to a near stop within a second. What makes a spray settle rather than fly off.**\n\n```method : public : SetDrag(drag:Float) ~ Nil```\n\n\n\ndrag: Float\n\nreturn: Nil"]
+				},
+				"SetGravity": {
+					"descriptions": ["**Downward acceleration, in world units per second squared. 0 by default, which suits sparks and magic. Around -9.8 for anything that should fall; a small positive value makes smoke rise.**\n\n```method : public : SetGravity(gravity:Float) ~ Nil```\n\n\n\ngravity: Float\n\nreturn: Nil"]
+				},
+				"SetLifetime": {
+					"descriptions": ["**How long a particle lives, in seconds.**\n\n```method : public : SetLifetime(seconds:Float) ~ Nil```\n\n\n\nseconds: Float\n\nreturn: Nil"]
+				},
+				"SetMaterial": {
+					"descriptions": ["**The material, for a tint or an opacity as well as a texture.**\n\n```method : public : SetMaterial(material:Material) ~ Nil```\n\n\n\nmaterial: Material\n\nreturn: Nil"]
+				},
+				"SetSeed": {
+					"descriptions": ["**Make the spray reproducible. Bursts use a generator of their own rather than the system's, so the same seed gives the same spray on every machine and every run -- which is worth more in a demo people compare than novelty is.**\n\n```method : public : SetSeed(seed:Int) ~ Nil```\n\n\n\nseed: Int\n\nreturn: Nil"]
+				},
+				"SetSize": {
+					"descriptions": ["**The size a particle starts and ends at, in world units. Shrinking to zero is how a particle disappears here, because the alpha is the same for every instance -- see the note on the class.**\n\n```method : public : SetSize(start:Float, finish:Float) ~ Nil```\n\n\n\nstart: Float\n\nfinish: Float\n\nreturn: Nil"]
+				},
+				"SetTexture": {
+					"descriptions": ["**The sprite texture, untinted.**\n\n```method : public : SetTexture(texture:Texture2D) ~ Nil```\n\n\n\ntexture: Texture2D\n\nreturn: Nil"]
+				},
+				"Update": {
+					"descriptions": ["**Move, age and retire every particle. Call once per frame with the frame time. Nothing is allocated: the pool, the velocities and the lives are all fixed arrays, and the batch repacks into a buffer it already owns.**\n\n```method : public : Update(delta:Float) ~ Nil```\n\n\n\ndelta: Float\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -5034,6 +5299,162 @@
 				}
 			}
 		},
+		"Game.OpenGL.Prop": {
+			"description": "A mesh, a material and a transform -- the thing Scene could not hold. Scene draws every Box with the ONE mesh it was given, which is what keeps a room of hundreds of boxes down to a single uploaded mesh. Anything that is a different mesh plus a transform therefore had no home, and every example that wanted one wrote the same five lines by hand: bind the texture, build the MVP, upload two matrices, draw. That sequence appears in gl_boing, 3d_gl_24, gl_model and gl_lantern. A Prop is that, as an object Scene can hold. ## Why this is not Box widened Box stays exactly what it was, and Scene keeps two lists. That is deliberate: - A Box is axis-aligned by construction, so it culls against a tight box test. A Prop has a rotation, so its mesh bounds are model-space and stop being axis-aligned the moment it turns -- it has to fall back to a bounding SPHERE, which is looser. Merging the two would have cost every wall and floor in every existing scene that accuracy. - Boxes share one mesh and one VAO. Props each bring their own, so a VAO rebind per prop is unavoidable -- but only for props. - Collision is a Box concept. OverlapsXZ is a plan-view test on a half-extent and means nothing for a rotated model, so Prop deliberately does not have it and Scene->Blocked still walks only the boxes. A prop that should block movement gets a Box beside it. ## Concrete, not abstract A class carrying a virtual method cannot be instantiated in Objeck, so an abstract Prop would need a subclass before anyone could use one. This is usable directly and can still be subclassed.",
+			"functions": {
+				"GetBoundsRadius": {
+					"descriptions": ["**Radius of a sphere that contains this prop wherever it is turned. Conservative on purpose: the mesh's own radius is measured from the mesh's CENTRE, which need not be the origin the transform rotates about, so the offset is added rather than assumed away. A bound that is slightly too large draws something that could have been culled; one that is too small makes geometry vanish at the edge of the screen.**\n\n```method : public : GetBoundsRadius() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetModelMatrix": {
+					"descriptions": ["****\n\n```method : public : GetModelMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetTransform": {
+					"descriptions": ["**The prop's transform, to move, turn or scale it. Returned rather than copied, so changes take effect immediately.**\n\n```method : public : GetTransform() ~ Transform```\n\n\n\nreturn: Transform"]
+				},
+				"IsOpaque": {
+					"descriptions": ["****\n\n```method : public : IsOpaque() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["****\n\n```New(mesh:Mesh, material:Material)```\n\n\n\nmesh: Mesh\n\nmaterial: Material", "**A prop at a position, with no material of its own.**\n\n```New(mesh:Mesh, x:Float, y:Float, z:Float)```\n\n\n\nmesh: Mesh\n\nx: Float\n\ny: Float\n\nz: Float"]
+				}
+			}
+		},
+		"Game.OpenGL.PropBatch": {
+			"description": "Many copies of one mesh in a single draw call. Instancing has worked at the Mesh level since it landed -- SetInstanceMatrices and DrawInstanced, with Shader->LitTexturedInstanced to read the per-instance matrices. What was missing was any route to it from the object layer: Scene and Prop both set an \"mvp\" uniform per object, and the instanced shader has no \"mvp\", so pointing a Scene at it drew nothing at all. This is that route. A batch is one mesh, one material, many placements:",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Place another instance.**\n\n```method : public : Add(transform:Transform) ~ Nil```\n\n\n\ntransform: Transform\n\nreturn: Nil", "**Place another instance at a point, unrotated and unscaled.**\n\n```method : public : Add(x:Float, y:Float, z:Float) ~ Transform```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Transform"]
+				},
+				"Clear": {
+					"descriptions": ["**Drop every instance. The mesh, shader and material are untouched.**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Draw": {
+					"descriptions": ["**Draw every instance, using the batch's own light.**\n\n```method : public : Draw(view_projection:Float[]) ~ Nil```\n\n\n\nview_projection: Float[]\n\nreturn: Nil", "**Draw every instance under a light supplied by the caller. This is what Scene calls, so a batch added to a lit scene does not have to be told about the light twice. A batch with its own light or rig keeps it: the arguments are what to use when the batch has none.**\n\n```method : public : Draw(view_projection:Float[], light:Light, rig:LightRig) ~ Nil```\n\n\n\nview_projection: Float[]\n\nlight: Light\n\nrig: LightRig\n\nreturn: Nil"]
+				},
+				"Free": {
+					"descriptions": ["**Release the shader, if this batch built it. The mesh is never freed here: it is the caller's, and is very often shared with a Prop or another batch. Idempotent.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Get": {
+					"descriptions": ["****\n\n```method : public : Get(index:Int) ~ Transform```\n\n\n\nindex: Int\n\nreturn: Transform"]
+				},
+				"GetBoundsRadius": {
+					"descriptions": ["**Radius of a sphere containing every instance. Covers the instance PLACEMENTS plus the mesh's own extent at the largest scale any instance uses, so it holds however the instances are turned.**\n\n```method : public : GetBoundsRadius() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetBoundsX": {
+					"descriptions": ["**Centre of a sphere containing every instance, on the x axis. Valid once the batch has packed, which happens on its first draw. Zero before then -- which is why Scene tests a batch's visibility only after it has drawn at least once.**\n\n```method : public : GetBoundsX() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetBoundsY": {
+					"descriptions": ["****\n\n```method : public : GetBoundsY() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetBoundsZ": {
+					"descriptions": ["****\n\n```method : public : GetBoundsZ() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetCamera": {
+					"descriptions": ["****\n\n```method : public : GetCamera() ~ Camera```\n\n\n\nreturn: Camera"]
+				},
+				"GetCount": {
+					"descriptions": ["****\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**What went wrong, if anything. Empty when nothing has.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLight": {
+					"descriptions": ["****\n\n```method : public : GetLight() ~ Light```\n\n\n\nreturn: Light"]
+				},
+				"GetLightRig": {
+					"descriptions": ["****\n\n```method : public : GetLightRig() ~ LightRig```\n\n\n\nreturn: LightRig"]
+				},
+				"GetMaterial": {
+					"descriptions": ["****\n\n```method : public : GetMaterial() ~ Material```\n\n\n\nreturn: Material"]
+				},
+				"GetMesh": {
+					"descriptions": ["****\n\n```method : public : GetMesh() ~ Mesh```\n\n\n\nreturn: Mesh"]
+				},
+				"GetShader": {
+					"descriptions": ["****\n\n```method : public : GetShader() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"IsAdditive": {
+					"descriptions": ["****\n\n```method : public : IsAdditive() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsDynamic": {
+					"descriptions": ["****\n\n```method : public : IsDynamic() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOk": {
+					"descriptions": ["**Is the batch usable -- a live mesh and a live shader.**\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsVisible": {
+					"descriptions": ["****\n\n```method : public : IsVisible() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"MarkMoved": {
+					"descriptions": ["**A transform changed and the batch is not dynamic; repack on the next draw. Harmless on a dynamic batch, which repacks regardless.**\n\n```method : public : MarkMoved() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"New": {
+					"descriptions": ["**A batch drawing the given mesh with a built-in instanced shader. The shader is created and OWNED here, so Free releases it. Use the two-argument constructor to supply your own, which is then the caller's to free.**\n\n```New(mesh:Mesh)```\n\n\n\nmesh: Mesh", "**A batch drawing the given mesh with a shader you supply. The shader must read the per-instance model matrix from attribute locations 3 to 6 and take the camera through a \"view_projection\" uniform. Shader->LitTexturedInstanced is the built-in one; anything with an \"mvp\" uniform is the ordinary per-object shape and will not work here.**\n\n```New(mesh:Mesh, shader:Shader)```\n\n\n\nmesh: Mesh\n\nshader: Shader"]
+				},
+				"Pack": {
+					"descriptions": ["**Repack the matrices, upload them, and recompute the bounding sphere. The bounds are computed here rather than in a method of their own because both walk the same transforms, and walking a thousand of them twice is the sort of thing this class exists to avoid.**\n\n```method : private : Pack() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetAdditive": {
+					"descriptions": ["**Draw this batch with ADDITIVE blending, and no depth writes. For anything that emits light rather than blocks it: sparks, fire, glows, muzzle flashes, magic. Colours accumulate, so bright places get brighter and black contributes nothing -- which is why a sprite sheet for additive work has a black background rather than a transparent one. The reason this is the blending mode offered here and ordinary transparency is not: addition COMMUTES, so additive geometry needs no back-to-front sort. Ordinary alpha blending does, and a batch is one draw call over an instance buffer with no per-instance ordering in it -- so offering it would mean offering something that renders wrongly whenever two sprites overlap.**\n\n```method : public : SetAdditive(additive:Bool) ~ Nil```\n\n\n\nadditive: Bool\n\nreturn: Nil"]
+				},
+				"SetCamera": {
+					"descriptions": ["**The camera whose basis a billboard shader needs. Only read by a shader that declares a \"view\" uniform -- Shader->BillboardInstanced does; nothing else here does. Harmless otherwise.**\n\n```method : public : SetCamera(camera:Camera) ~ Nil```\n\n\n\ncamera: Camera\n\nreturn: Nil"]
+				},
+				"SetDynamic": {
+					"descriptions": ["**Whether the matrices are repacked every frame. True by default, which is always correct. False packs once and is the right answer for anything that does not move -- scenery, a grid, a crowd that stands still -- but then a transform changed afterwards has no effect until MarkMoved is called.**\n\n```method : public : SetDynamic(dynamic:Bool) ~ Nil```\n\n\n\ndynamic: Bool\n\nreturn: Nil"]
+				},
+				"SetLight": {
+					"descriptions": ["**Light the batch. A batch drawn through a Scene inherits the scene's light when it has none of its own.**\n\n```method : public : SetLight(light:Light) ~ Nil```\n\n\n\nlight: Light\n\nreturn: Nil"]
+				},
+				"SetLightRig": {
+					"descriptions": ["**Light the batch with a rig, which wins over a single light.**\n\n```method : public : SetLightRig(rig:LightRig) ~ Nil```\n\n\n\nrig: LightRig\n\nreturn: Nil"]
+				},
+				"SetMaterial": {
+					"descriptions": ["**How every instance is drawn. One material for the whole batch -- see the note on the class.**\n\n```method : public : SetMaterial(material:Material) ~ Nil```\n\n\n\nmaterial: Material\n\nreturn: Nil"]
+				},
+				"SetVisible": {
+					"descriptions": ["**Draw or skip the whole batch.**\n\n```method : public : SetVisible(visible:Bool) ~ Nil```\n\n\n\nvisible: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.RayHit": {
+			"description": "What a ray ran into, and where. Returned by Scene->Raycast. Always an object, never Nil -- ask IsHit rather than checking for Nil, so a miss does not need a different code path from a hit. The normal is the surface the ray struck, which is what a decal, a ricochet or a spark effect needs to orient itself. For a box it is an axis direction; for a prop it points away from the prop's centre, because a prop is tested against its bounding SPHERE rather than its actual geometry.",
+			"functions": {
+				"GetBox": {
+					"descriptions": ["**Which box was struck.**\n\n```method : public : GetBox() ~ Box```\n\n\n\nreturn: Box"]
+				},
+				"GetDistance": {
+					"descriptions": ["**How far along the ray the hit was, in world units.**\n\n```method : public : GetDistance() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNormalX": {
+					"descriptions": ["****\n\n```method : public : GetNormalX() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNormalY": {
+					"descriptions": ["****\n\n```method : public : GetNormalY() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetNormalZ": {
+					"descriptions": ["****\n\n```method : public : GetNormalZ() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetProp": {
+					"descriptions": ["**Which prop was struck.**\n\n```method : public : GetProp() ~ Prop```\n\n\n\nreturn: Prop"]
+				},
+				"GetX": {
+					"descriptions": ["****\n\n```method : public : GetX() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetY": {
+					"descriptions": ["****\n\n```method : public : GetY() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetZ": {
+					"descriptions": ["****\n\n```method : public : GetZ() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"IsHit": {
+					"descriptions": ["**Did the ray hit anything?**\n\n```method : public : IsHit() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A miss.**\n\n```New()```\n\n", "**A hit. Built by Scene->Raycast; there is no reason to construct one yourself, and no way to change it afterwards -- a result that can be edited after the fact is a result nobody can trust.**\n\n```New(distance:Float, x:Float, y:Float, z:Float, nx:Float, ny:Float, nz:Float, box:Box, prop:Prop)```\n\n\n\ndistance: Float\n\nx: Float\n\ny: Float\n\nz: Float\n\nnx: Float\n\nny: Float\n\nnz: Float\n\nbox: Box\n\nprop: Prop"]
+				}
+			}
+		},
 		"Game.OpenGL.RenderTarget": {
 			"description": "A framebuffer you draw into instead of the window, and then sample. Render-to-texture, which is the door to most of what comes after simple forward rendering: a post-process pass, a shadow map, a reflection, a mirror, a minimap.",
 			"functions": {
@@ -5084,23 +5505,44 @@
 				"Add": {
 					"descriptions": ["**Add an existing box.**\n\n```method : public : Add(box:Box) ~ Box```\n\n\n\nbox: Box\n\nreturn: Box"]
 				},
+				"AddBatch": {
+					"descriptions": ["**Add an instanced batch, drawn in one call after the solid geometry. A batch brings its own shader, so it is not affected by SetShader and does not take part in the material runs the boxes and props share. It inherits the scene's light when it has none of its own. Note it counts as ONE toward GetDrawn, not one per instance -- what that number measures is submissions, and the whole point of a batch is that four hundred trees are a single submission. ## Batches do not cast shadows DrawInto walks the boxes and the props, not the batches. The depth pass runs one shader over everything, and DepthOnly is a per-object program -- an instanced depth shader would be a second one, and Scene would have to switch between them mid-pass. So a batch is lit but casts nothing, which is fine for grass and wrong for pillars. Use props for anything whose shadow matters.**\n\n```method : public : AddBatch(batch:PropBatch) ~ PropBatch```\n\n\n\nbatch: PropBatch\n\nreturn: PropBatch"]
+				},
 				"AddBox": {
 					"descriptions": ["**Build and add a box.**\n\n```method : public : AddBox(center:Vector3, half:Vector3, texture:Texture2D) ~ Box```\n\n\n\ncenter: Vector3\n\nhalf: Vector3\n\ntexture: Texture2D\n\nreturn: Box"]
+				},
+				"AddProp": {
+					"descriptions": ["**Add a prop -- a mesh, material and transform of its own. Returned so it can be kept and moved: lamp := scene->AddProp(Prop->New(lamp_mesh, brass)); lamp->GetTransform()->SetPosition(2.0, 0.0, -3.0); Props are drawn after the boxes in the solid pass, and join the boxes in the sorted pass if they are transparent. They do NOT block movement -- Scene->Blocked walks only the boxes, because a plan-view overlap test says nothing about a rotated model.**\n\n```method : public : AddProp(prop:Prop) ~ Prop```\n\n\n\nprop: Prop\n\nreturn: Prop"]
 				},
 				"Blocked": {
 					"descriptions": ["**Whether a circle in plan view hits any SOLID box.**\n\n```method : public : Blocked(x:Float, z:Float, radius:Float) ~ Bool```\n\n\n\nx: Float\n\nz: Float\n\nradius: Float\n\nreturn: Bool"]
 				},
 				"Clear": {
-					"descriptions": ["**Drop every box. Does NOT free the shared mesh, shader or textures -- those were passed in and belong to the caller.**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Drop every box and every prop. Does NOT free the shared mesh, shader or textures -- those were passed in and belong to the caller.**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Draw": {
 					"descriptions": ["**Draw every box. Binds the shader, then for each box sets the \"mvp\" uniform and draws the shared mesh. Rebinds a texture only when it changes from the previous box.**\n\n```method : public : Draw(view_projection:Float[]) ~ Nil```\n\n\n\nview_projection: Float[]\n\nreturn: Nil"]
 				},
+				"DrawBatches": {
+					"descriptions": ["**Draw the instanced batches, then put back what they disturbed. A batch binds its own shader -- it has to, since an instanced program takes the camera as \"view_projection\" and reads the model matrix from a vertex attribute, which is a different shape from the per-object \"mvp\" every other shader here uses. Rebinding the scene's shader here is DEFENSIVE, not load-bearing, and it is worth being exact about that. Every uniform setter binds its own program before writing -- that was the phase-3 fix for uniforms landing on the wrong shader -- so the transparent pass would bind the right program anyway on its first SetMatrix4. This is here so the bound program matches what the scene believes for any future draw path that does not happen to set a uniform first. Removing it breaks no current test, which is exactly why the comment should not claim otherwise. What DID leak was the texture unit, which is global rather than per-program: a batch binds its material's texture, and anything drawn afterwards whose material carries no texture of its own sampled it. That is fixed in DrawOne rather than here, because the real fault was a coloured box never binding its own texture at all.**\n\n```method : private : DrawBatches() ~ Nil```\n\n\n\nview_projection: Float[]\n\nreturn: Nil"]
+				},
 				"DrawInto": {
 					"descriptions": ["**Draw every box through a DIFFERENT shader, with a different matrix. For a pass that is not the normal one: a shadow map's depth pass wants this scene's geometry rendered from the light with a depth-only program, and nothing else about the scene changes. Deliberately minimal -- no light, no sampler, no per-object model matrix unless the shader asks for one -- because an auxiliary pass generally wants positions and nothing else, and setting uniforms a depth shader does not declare would file a diagnostic per box per frame.**\n\n```method : public : DrawInto(shader:Shader, view_projection:Float[]) ~ Nil```\n\n\n\nshader: Shader\n\nview_projection: Float[]\n\nreturn: Nil"]
 				},
+				"DrawOne": {
+					"descriptions": ["**Bind what one box needs and draw it. Split out because the two passes are the same work in a different order, and a second copy of it would be a second place for the material-run tracking to go wrong.**\n\n```method : private : DrawOne() ~ Nil```\n\n\n\nbox: Box\n\nview_projection: Float[]\n\nreturn: Nil"]
+				},
+				"EyeDistance": {
+					"descriptions": ["**Squared distance from the eye to a box's centre -- squared because only the ORDER matters, and a square root per box per frame buys nothing.**\n\n```method : private : EyeDistance() ~ Float```\n\n\n\nbox: Box\n\nreturn: Float"]
+				},
 				"Get": {
 					"descriptions": ["****\n\n```method : public : Get(index:Int) ~ Box```\n\n\n\nindex: Int\n\nreturn: Box"]
+				},
+				"GetBatch": {
+					"descriptions": ["****\n\n```method : public : GetBatch(index:Int) ~ PropBatch```\n\n\n\nindex: Int\n\nreturn: PropBatch"]
+				},
+				"GetBatchCount": {
+					"descriptions": ["****\n\n```method : public : GetBatchCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetCount": {
 					"descriptions": ["****\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
@@ -5109,7 +5551,7 @@
 					"descriptions": ["**How many boxes the last Draw skipped as off-screen.**\n\n```method : public : GetCulledCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetDrawnCount": {
-					"descriptions": ["**How many boxes the last Draw actually submitted.**\n\n```method : public : GetDrawnCount() ~ Int```\n\n\n\nreturn: Int"]
+					"descriptions": ["**How many boxes the last Draw actually submitted. The last Draw only. DrawInto -- which is what a shadow pass runs, six times over for a point light -- deliberately leaves these alone, so a HUD reading them reports what the camera drew rather than whatever the final shadow face happened to submit.**\n\n```method : public : GetDrawnCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetLight": {
 					"descriptions": ["****\n\n```method : public : GetLight() ~ Light```\n\n\n\nreturn: Light"]
@@ -5117,14 +5559,50 @@
 				"GetLightRig": {
 					"descriptions": ["****\n\n```method : public : GetLightRig() ~ LightRig```\n\n\n\nreturn: LightRig"]
 				},
+				"GetProp": {
+					"descriptions": ["****\n\n```method : public : GetProp(index:Int) ~ Prop```\n\n\n\nindex: Int\n\nreturn: Prop"]
+				},
+				"GetPropCount": {
+					"descriptions": ["****\n\n```method : public : GetPropCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"IsCulling": {
 					"descriptions": ["****\n\n```method : public : IsCulling() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["****\n\n```New(mesh:Mesh, shader:Shader)```\n\n\n\nmesh: Mesh\n\nshader: Shader"]
 				},
+				"PropEyeDistance": {
+					"descriptions": ["**Squared distance from the eye to a prop, for the transparent sort.**\n\n```method : private : PropEyeDistance() ~ Float```\n\n\n\nprop: Prop\n\nreturn: Float"]
+				},
+				"Raycast": {
+					"descriptions": ["**Fire a ray into the scene and report the nearest thing it hits. This is what a hitscan weapon, a \"what am I looking at\" prompt, a line-of-sight check or a mouse pick is built on -- none of which had any route before, since the only spatial query here was Blocked, which answers a plan-view movement question and nothing else. hit := scene->RaycastFrom(camera, 100.0); if(hit->IsHit()) { target := hit->GetProp(); ... }; ## What it tests against Boxes are tested against their actual axis-aligned extent, so the hit point and the normal are exact. Props are tested against their BOUNDING SPHERE, not their mesh. A prop is an arbitrary rotated model and this bundle never keeps its triangles after upload -- they live on the GPU -- so there is nothing here to intersect. The sphere is conservative, which means a shot can register slightly wide of a thin model. Put a Box where precision matters, the same way collision already works. Batches are NOT tested. A batch exists so that four hundred instances cost one draw call, and walking its transforms per shot would work but RayHit has nowhere to report WHICH instance was struck. Stating that rather than quietly returning a miss. Solidity is ignored on purpose: Box->IsSolid means \"blocks movement\", which is a different question from \"stops a bullet\". Filter on hit->GetBox()->IsSolid() if you want them to agree. Invisible props ARE skipped, since something you cannot see should not be shootable.**\n\n```method : public : Raycast(origin:Vector3, direction:Vector3, max_distance:Float) ~ RayHit```\n\n\n\norigin: Vector3\n\ndirection: Vector3\n\nmax_distance: Float\n\nreturn: RayHit"]
+				},
+				"RaycastFrom": {
+					"descriptions": ["**Fire a ray from where the camera is, along where it is looking. The overwhelmingly common case -- a crosshair in the middle of the screen is exactly this ray.**\n\n```method : public : RaycastFrom(camera:Camera, max_distance:Float) ~ RayHit```\n\n\n\ncamera: Camera\n\nmax_distance: Float\n\nreturn: RayHit"]
+				},
+				"RaycastScreen": {
+					"descriptions": ["**Fire a ray through a point on the screen -- a mouse pick. The camera supplies the direction through that pixel and the scene answers what is along it. Pass the window so the ray is built from the same size the mouse coordinates were measured in. hit := scene->RaycastScreen(camera, window, window->GetMouseX(), window->GetMouseY(), 100.0);**\n\n```method : public : RaycastScreen(camera:Camera, window:GLWindow, x:Int, y:Int, max_distance:Float) ~ RayHit```\n\n\n\ncamera: Camera\n\nwindow: GLWindow\n\nx: Int\n\ny: Int\n\nmax_distance: Float\n\nreturn: RayHit"]
+				},
+				"RemoveBatch": {
+					"descriptions": ["**Take one batch out of the scene. Here so that the three lists behave the same way. Clear drops all three; leaving two of them removable individually and the third not would be the sort of asymmetry nobody remembers.**\n\n```method : public : RemoveBatch(batch:PropBatch) ~ Bool```\n\n\n\nbatch: PropBatch\n\nreturn: Bool"]
+				},
+				"RemoveBox": {
+					"descriptions": ["**Take one box out of the scene. Note this changes the index of every box after it, so a loop holding indices across a removal is holding the wrong ones.**\n\n```method : public : RemoveBox(box:Box) ~ Bool```\n\n\n\nbox: Box\n\nreturn: Bool"]
+				},
+				"RemoveProp": {
+					"descriptions": ["**Take one prop out of the scene. Clear emptied everything and there was no way to remove a single thing, so anything that spawns and despawns -- an enemy, a pickup, a projectile -- had to rebuild the whole scene or hide the prop with SetVisible and leak it forever. Both are what this replaces.**\n\n```method : public : RemoveProp(prop:Prop) ~ Bool```\n\n\n\nprop: Prop\n\nreturn: Bool"]
+				},
+				"ReserveFar": {
+					"descriptions": ["**Make room for count transparent boxes, growing only when it is not enough.**\n\n```method : private : ReserveFar() ~ Nil```\n\n\n\ncount: Int\n\nreturn: Nil"]
+				},
+				"ResetMaterialState": {
+					"descriptions": ["**Undo whatever the last Material wrote, for geometry that has none. Only opacity was being reset, and Material->ApplyTo writes FOUR uniforms: tint, shininess, specular_strength and opacity. So one material'd object tinted every untextured object drawn after it -- in gl_lantern that meant the entire dungeon turned the relics' gold from the second frame onward, because the last material applied each frame was the glow shell. Specular goes back to the RIG's values rather than a hardcoded default, because that is what the scene asked for before any material overrode it.**\n\n```method : private : ResetMaterialState() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
 				"SetCulling": {
 					"descriptions": ["**Whether to skip boxes that fall outside the view. On by default. The test is a few dozen arithmetic operations per box against a draw call plus a matrix multiply plus two uniform uploads, so it pays for itself almost immediately and costs almost nothing when it does not. Turn it off to measure what it is saving, or if a custom vertex shader moves geometry away from where its box says it is -- the test uses the box, and a shader that displaces vertices makes that a lie.**\n\n```method : public : SetCulling(enabled:Bool) ~ Nil```\n\n\n\nenabled: Bool\n\nreturn: Nil"]
+				},
+				"SetEye": {
+					"descriptions": ["**Tell the scene where the camera is, so transparency can be ordered. Transparent surfaces must be drawn back to front: a nearer one drawn first writes depth and hides what is behind it. That needs a distance, and a distance needs an eye. Call it every frame: scene->SetEye(camera->GetPosition()); Without it transparent boxes still draw, in insertion order -- which is correct only by luck.**\n\n```method : public : SetEye(eye:Vector3) ~ Nil```\n\n\n\neye: Vector3\n\nreturn: Nil"]
 				},
 				"SetLight": {
 					"descriptions": ["**Light the scene. Pass Nil to go back to an unlit shader's own behaviour. The light's uniforms are written once per Draw, not per object, since a directional light is the same for everything in the frame.**\n\n```method : public : SetLight(light:Light) ~ Nil```\n\n\n\nlight: Light\n\nreturn: Nil"]
@@ -5136,7 +5614,10 @@
 					"descriptions": ["**Draw with a different program from here on. Resets what was learned about the old shader's uniforms -- a Scene that cached \"this shader has no model matrix\" and then had a lit shader substituted would silently stop transforming normals.**\n\n```method : public : SetShader(shader:Shader) ~ Nil```\n\n\n\nshader: Shader\n\nreturn: Nil"]
 				},
 				"SlideMove": {
-					"descriptions": ["**Move a camera through the scene, sliding along whatever it hits. The only program with collision could not use Camera->MoveForward or MoveRight, because collision has to test a candidate position BEFORE committing to it -- so it re-derived the ground basis, did the dot products by hand and called SetPosition, twenty lines that belong here. Each axis is applied separately, and that is the whole trick: testing the combined vector stops you dead against a wall you hit at an angle, while testing X and Z in turn lets the blocked component drop and the other one through, which is what sliding along a wall is.**\n\n```method : public : SlideMove(camera:Camera, forward:Float, strafe:Float, radius:Float) ~ Bool```\n\n\n\ncamera: Camera\n\nforward: Float\n\nstrafe: Float\n\nradius: Float\n\nreturn: Bool"]
+					"descriptions": ["**Move a camera through the scene, sliding along whatever it hits. The only program with collision could not use Camera->MoveForward or MoveRight, because collision has to test a candidate position BEFORE committing to it -- so it re-derived the ground basis, did the dot products by hand and called SetPosition, twenty lines that belong here. Each axis is applied separately, and that is the whole trick: testing the combined vector stops you dead against a wall you hit at an angle, while testing X and Z in turn lets the blocked component drop and the other one through, which is what sliding along a wall is. ## A step bigger than a wall goes through it This tests the DESTINATION, not the path swept to reach it. Ask it to move 2 units and the far side of a 1-unit wall is clear, so that is where you land -- no overlap is ever detected because the position that would have overlapped is never tested. Two things keep it from biting. GetDelta is clamped to 0.1, so the largest step a frame-rate hitch can produce is `speed * 0.1` rather than however long the machine stalled for. And the rule that follows: keep `speed * 0.1` comfortably under the thickness of your thinnest solid box. At a speed of 6 that is 0.6, so walls a unit thick are safe and paper-thin dividers are not. Also note what \"solid\" means. Blocked and this method both skip boxes marked SetSolid(false), and both ignore height entirely -- the test is a circle against a rectangle in plan view. A floor spans every (x,z) in the room, so a SOLID floor blocks every position in it and nothing can move at all. Mark floors and ceilings non-solid.**\n\n```method : public : SlideMove(camera:Camera, forward:Float, strafe:Float, radius:Float) ~ Bool```\n\n\n\ncamera: Camera\n\nforward: Float\n\nstrafe: Float\n\nradius: Float\n\nreturn: Bool"]
+				},
+				"SortFar": {
+					"descriptions": ["**Order the collected transparent boxes furthest-first. An insertion sort, which is the right choice rather than a lazy one: the count is small, and between frames the order barely changes, so a nearly sorted list costs close to one pass. Quicksort's advantage needs a size this will not reach, and a nearly sorted list is its worst case.**\n\n```method : private : SortFar() ~ Nil```\n\n\n\ncount: Int\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -5145,6 +5626,9 @@
 			"functions": {
 				"AddLitVaryings": {
 					"descriptions": ["**The outputs every lit vertex shader must write, declared in ONE place. Both lit vertex sources -- the ordinary one and the instanced one -- feed the same fragment shader, so they have to agree about this list exactly. They did not: world_position was added here for point lights and specular and the instanced source was not updated, which macOS's linker rejected outright while Windows and Linux linked it happily and left the value undefined. So point lights and specular on instanced geometry were reading garbage on two platforms out of three and only the strictest one said so. Declared once, and asserted by a test that reads a point light through the instanced shader rather than only checking that it compiles.**\n\n```function : AddLitVaryings(source:ShaderSource, shadowed:Bool) ~ Nil```\n\n\n\nsource: ShaderSource\n\nshadowed: Bool\n\nreturn: Nil"]
+				},
+				"BillboardInstanced": {
+					"descriptions": ["**Camera-facing quads, drawn many at a time. A billboard is a quad that always turns to face the viewer, and it is what a particle, a spark, a sprite enemy, a distant tree and a floating label all are. None of them had any route here: every shader in this bundle puts geometry where its model matrix says, and a billboard is defined by refusing to. Drive it with a PropBatch over Mesh->Quad, which is why this is the instanced form and there is no single-billboard variant -- one sprite is a batch of one, and a thousand are still one draw call. sparks := PropBatch->New(Mesh->Quad(0.5), Shader->BillboardInstanced()); sparks->SetCamera(camera); sparks->SetAdditive(true); sparks->SetMaterial(Material->New(spark_texture)); ## How it faces you The instance matrix supplies the CENTRE and the SIZE and its rotation is ignored: the quad's corners are rebuilt in world space from the camera's own right and up vectors, which are the first two ROWS of the view matrix's upper 3x3. So SetScale(w, h, 1.0) on an instance's transform sets the sprite's width and height, and turning it does nothing -- deliberately. This is why SetCamera exists on PropBatch. The batch is handed a view_projection by Scene and that alone cannot be decomposed back into the camera's basis, so the view matrix comes separately. Uniforms: \"view_projection\", \"view\", the sampler \"tex\", \"tint\" and \"opacity\" -- the last two being what Material writes, so a material works here exactly as it does on a lit prop. Fragments below 2% alpha are DISCARDED rather than blended, so a sprite sheet's transparent border does not write depth and punch holes in whatever is drawn after it.**\n\n```function : BillboardInstanced() ~ Shader```\n\n\n\nreturn: Shader"]
 				},
 				"DepthCube": {
 					"descriptions": ["**The depth pass for a point light: writes DISTANCE from the light, in world units, rather than the usual projected depth. This is the whole trick that makes cube shadows tractable. A cube map is sampled by direction, and the six faces do not share a projection -- so a comparison in projected depth would need to know which face a lookup landed on and undo that face's projection. Writing `length(world - light) \/ range` instead makes every face agree on what a stored value means, and the comparison becomes a distance against a distance. It also disposes of the bias problem that spot shadows have. Projected depth is non-linear, so a constant bias means different things at different distances; a world-unit distance is linear everywhere, so one bias in world units is correct across the whole range. Uniforms: \"mvp\", \"model\", \"light_position\" and \"light_range\".**\n\n```function : DepthCube() ~ Shader```\n\n\n\nreturn: Shader"]
@@ -5172,6 +5656,9 @@
 				},
 				"Lit": {
 					"descriptions": ["**Lit by one directional light, with a flat colour instead of a texture. Same uniforms as LitTextured, but \"color\" (a vec3) in place of \"tex\".**\n\n```function : Lit() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitShader": {
+					"descriptions": ["**Build a lit program and give its opacity a usable value. A GLSL uniform starts at ZERO, and `opacity` is declared and live in every lit fragment shader. So a program using one of these presets WITHOUT a Material or a Scene -- which is what three of the shipped examples do -- has alpha 0. It looks right only while blending is off; the moment anything calls GL->BeginTransparency the geometry vanishes, with no GL error to explain it.**\n\n```function : LitShader() ~ Shader```\n\n\n\nvertex: String\n\nfragment: String\n\nreturn: Shader"]
 				},
 				"LitShadowed": {
 					"descriptions": ["**Lit and shadowed, with a flat colour instead of a texture.**\n\n```function : LitShadowed() ~ Shader```\n\n\n\nreturn: Shader"]
@@ -5214,6 +5701,9 @@
 				},
 				"TexturedFog": {
 					"descriptions": ["**Textured, darkening with distance. Without lighting, a textured 3D scene reads flat -- every surface is the same brightness however far away it is, so the eye cannot tell depth. Fog is the cheapest fix and both 3D examples had hand-rolled their own version of it. Uniforms: \"mvp\", \"tex\", and \"fog_distance\" if the default of 40 units is wrong for your scene.**\n\n```function : TexturedFog() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"TexturedTinted": {
+					"descriptions": ["**Textured, multiplied by a flat colour. What a HUD needs: one white texture drawn as any colour, and glyphs -- whose shape lives in their alpha -- drawn as any colour without re-rasterising them. Uniforms: \"mvp\", \"tex\", \"overlay_tint\" (a vec4, default opaque white).**\n\n```function : TexturedTinted() ~ Shader```\n\n\n\nreturn: Shader"]
 				},
 				"Use": {
 					"descriptions": ["**Make this program current for subsequent draws.**\n\n```method : public : Use() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -5312,7 +5802,7 @@
 					"descriptions": ["**A checkerboard, generated rather than loaded, so a program needs no asset file to have something recognisable on a surface.**\n\n```function : Checker(size:Int, squares:Int, light:Int, dark:Int) ~ Texture2D```\n\n\n\nsize: Int\n\nsquares: Int\n\nlight: Int\n\ndark: Int\n\nreturn: Texture2D\n\n```\nfloor := Texture2D->Checker(64, 8, 0xFFE8E8F0, 0xFF465A82);\n```", "**A checkerboard with an explicit wrap mode -- pass TextureWrap->GL_REPEAT to tile it across a Mesh->Plane.**\n\n```function : Checker(size:Int, squares:Int, light:Int, dark:Int, wrap:Int) ~ Texture2D```\n\n\n\nsize: Int\n\nsquares: Int\n\nlight: Int\n\ndark: Int\n\nwrap: Int\n\nreturn: Texture2D"]
 				},
 				"Free": {
-					"descriptions": ["**Release the texture. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Release the texture. Call it while the GL context is still current -- see the shutdown order on the GL class. A texture obtained from RenderTarget->GetTexture or ShadowMap->GetTexture is a BORROWED view of that target's attachment, not a texture of its own, and this does nothing for one. Freeing it used to delete the attachment out from under the target that was still using it.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"FromFile": {
 					"descriptions": ["**Load an image file and upload it, freeing the intermediate surface. Decoding is SDL's job -- Game.SDL2's Image->Load already reads PNG and JPEG, so this adds no dependency. Rows are flipped on upload, so the texture is the same way up as the file.**\n\n```function : FromFile(file:String) ~ Texture2D```\n\n\n\nfile: String\n\nreturn: Texture2D", "**Load an image file with explicit sampling.**\n\n```function : FromFile(file:String, filter:Int, wrap:Int, mipmap:Bool) ~ Texture2D```\n\n\n\nfile: String\n\nfilter: Int\n\nwrap: Int\n\nmipmap: Bool\n\nreturn: Texture2D"]
@@ -5321,7 +5811,7 @@
 					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Upload a surface's pixels as a texture, smoothed and clamped. The surface is converted to 32-bit RGBA internally, so any format Image->Load produces works. The PIXELS ARE COPIED, so the surface can be freed immediately afterwards -- and should be. Every example in this repo used to hold its surfaces alive until shutdown for no reason.**\n\n```New(surface:Surface)```\n\n\n\nsurface: Surface", "**Upload with explicit sampling.**\n\n```New(surface:Surface, filter:Int, wrap:Int, mipmap:Bool)```\n\n\n\nsurface: Surface\n\nfilter: Int\n\nwrap: Int\n\nmipmap: Bool"]
+					"descriptions": ["**Upload a surface's pixels as a texture, smoothed and clamped. The surface is converted to 32-bit RGBA internally, so any format Image->Load produces works. The PIXELS ARE COPIED, so the surface can be freed immediately afterwards -- and should be. Every example in this repo used to hold its surfaces alive until shutdown for no reason.**\n\n```New(surface:Surface)```\n\n\n\nsurface: Surface", "**Upload with explicit sampling.**\n\n```New(surface:Surface, filter:Int, wrap:Int, mipmap:Bool)```\n\n\n\nsurface: Surface\n\nfilter: Int\n\nwrap: Int\n\nmipmap: Bool", "**Upload with anisotropic filtering. The fix for a tiled floor that turns to mush in the distance. Anisotropy chooses better mip SAMPLES for a surface seen at a steep angle, which is exactly the case ordinary mipmapping handles worst -- so it needs `mipmap` true to do anything at all, and does nothing visible on a HUD quad seen face-on. Extension-gated, and asked for rather than assumed: a driver without GL_EXT_texture_filter_anisotropic ignores it and a level above what the hardware offers is clamped to the maximum. Check GL->GetMaxAnisotropy() first if you care which happened. 4 or 8 is the usual choice; 16 is the common ceiling.**\n\n```New(surface:Surface, filter:Int, wrap:Int, mipmap:Bool, anisotropy:Float)```\n\n\n\nsurface: Surface\n\nfilter: Int\n\nwrap: Int\n\nmipmap: Bool\n\nanisotropy: Float"]
 				},
 				"NewSurface": {
 					"descriptions": ["**A blank 32-bit surface with the ARGB channel layout FillRect's packed Int assumes: 0xAARRGGBB. The four masks are the thing worth having in one place. They appeared verbatim in three separate files, each next to its own hand-written bit-shifting helper that had to agree with them.**\n\n```function : NewSurface(width:Int, height:Int) ~ Surface```\n\n\n\nwidth: Int\n\nheight: Int\n\nreturn: Surface"]
@@ -5337,20 +5827,88 @@
 				}
 			}
 		},
+		"Game.OpenGL.Track": {
+			"description": "How a value changes over time. The other half of animation. Transform->SetParent says how parts move TOGETHER; a Track says how anything moves at all -- a lid opening, a platform rising, a light dimming, a door swinging, a camera pushing in. It holds keys and reads a value back at any time between them:",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Add a key. Inserted in time order, so keys can be added in any order. Adding a second key at exactly the same time replaces the first rather than creating a step nothing can land between.**\n\n```method : public : Add(time:Float, value:Float) ~ Nil```\n\n\n\ntime: Float\n\nvalue: Float\n\nreturn: Nil"]
+				},
+				"GetCount": {
+					"descriptions": ["****\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDuration": {
+					"descriptions": ["**The time of the last key, which is how long the track runs for.**\n\n```method : public : GetDuration() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetEasing": {
+					"descriptions": ["****\n\n```method : public : GetEasing() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetKeyTime": {
+					"descriptions": ["****\n\n```method : public : GetKeyTime(index:Int) ~ Float```\n\n\n\nindex: Int\n\nreturn: Float"]
+				},
+				"GetKeyValue": {
+					"descriptions": ["****\n\n```method : public : GetKeyValue(index:Int) ~ Float```\n\n\n\nindex: Int\n\nreturn: Float"]
+				},
+				"IsLoop": {
+					"descriptions": ["****\n\n```method : public : IsLoop() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**An empty track. Sampling one with no keys returns 0.**\n\n```New()```\n\n", "**A track that runs from one value to another -- the common case, spelled directly.**\n\n```New(duration:Float, )```\n\n\n\nduration: Float\n\nfrom_value: Float\n\nto_value: Float"]
+				},
+				"Sample": {
+					"descriptions": ["**Read the value at a moment. Before the first key returns the first value and after the last returns the last, so a track is safe to sample at any time without the caller clamping -- unless it loops, in which case time wraps.**\n\n```method : public : Sample(time:Float) ~ Float```\n\n\n\ntime: Float\n\nreturn: Float"]
+				},
+				"SetEasing": {
+					"descriptions": ["**How the value moves BETWEEN keys. LINEAR by default. The eased modes are what stop machine-driven motion reading as machine-driven: almost nothing in the world starts and stops at full speed, and EASE_IN_OUT is the difference between a lid opening and a lid teleporting through its arc.**\n\n```method : public : SetEasing(easing:Int) ~ Nil```\n\n\n\neasing: Int\n\nreturn: Nil"]
+				},
+				"SetLoop": {
+					"descriptions": ["**Whether time wraps past the last key. Off by default, which HOLDS the last value -- right for a door that opens once. On wraps back to the start, for anything cyclic. Note a looping track jumps at the wrap unless its first and last values match.**\n\n```method : public : SetLoop(loop:Bool) ~ Nil```\n\n\n\nloop: Bool\n\nreturn: Nil"]
+				},
+				"Shape": {
+					"descriptions": ["**Bend 0..1 according to the easing mode.**\n\n```method : private : Shape() ~ Float```\n\n\n\nt: Float\n\nreturn: Float"]
+				}
+			}
+		},
 		"Game.OpenGL.Transform": {
 			"description": "Where something is, how it is turned, and how big it is -- with its matrix built on demand and cached. This is what an object that MOVES wants, as opposed to Box, which is a static prop and caches a translate-and-scale. A program animating something otherwise has to keep its own scratch buffers and remember the order the three parts compose in.",
 			"functions": {
 				"GetMatrix": {
 					"descriptions": ["**The model matrix, T * R * S. Rebuilt only when something changed, into a buffer this object owns -- so the returned array is NOT a copy. Do not hold on to it across a change, and do not write to it.**\n\n```method : public : GetMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
+				"GetMaxScale": {
+					"descriptions": ["**The largest of the three scale factors. What a bounding sphere needs: a sphere has one radius, so a non-uniform scale has to be bounded by its largest component or the bound is wrong in the direction that was scaled most.**\n\n```method : public : GetMaxScale() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetParent": {
+					"descriptions": ["****\n\n```method : public : GetParent() ~ Transform```\n\n\n\nreturn: Transform"]
+				},
 				"GetPosition": {
 					"descriptions": ["****\n\n```method : public : GetPosition() ~ Vector3```\n\n\n\nreturn: Vector3"]
+				},
+				"GetVersion": {
+					"descriptions": ["**How many times this transform's matrix has been rebuilt. A child reads its parent's number to decide whether its own composed matrix is still good. Exposed because the mechanism is worth being able to see; a program has no reason to call it.**\n\n```method : public : GetVersion() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWorldMatrix": {
+					"descriptions": ["**The matrix that places this transform in the WORLD. The same as GetMatrix for an unparented transform, and parent * local for a parented one, composed up the whole chain. Recomputed only when something actually changed -- this transform, or any ancestor. That check is a version comparison rather than a notification, so nothing has to register with anything and a parent does not need to know its children exist.**\n\n```method : public : GetWorldMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetWorldMaxScale": {
+					"descriptions": ["**The largest scale factor this transform is under, parents included. Taken from the world matrix's own columns rather than by multiplying the chain's scale values: a rotation between two scales makes those two things different, and the columns are what the geometry is actually built from. Absolute, so a mirrored transform reports a positive size. A negative radius culls an object that is dead centre in view.**\n\n```method : public : GetWorldMaxScale() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWorldX": {
+					"descriptions": ["**Where this transform actually is, after its parents are taken into account. GetX and its pair report the LOCAL position -- what SetPosition was given, relative to the parent. These report the world one, which is what a cull test, a distance sort or anything else asking \"where is it\" wants. The two are the same for an unparented transform, and that is exactly why the difference is easy to miss: everything worked until the first parented object, and then it worked everywhere except at the edge of the screen.**\n\n```method : public : GetWorldX() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWorldY": {
+					"descriptions": ["****\n\n```method : public : GetWorldY() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWorldZ": {
+					"descriptions": ["****\n\n```method : public : GetWorldZ() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"HasParent": {
+					"descriptions": ["****\n\n```method : public : HasParent() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Move": {
 					"descriptions": ["**Shift by an offset.**\n\n```method : public : Move(dx:Float, dy:Float, dz:Float) ~ Nil```\n\n\n\ndx: Float\n\ndy: Float\n\ndz: Float\n\nreturn: Nil"]
 				},
 				"MvpInto": {
-					"descriptions": ["**Model-view-projection, into a buffer the caller owns. The per-frame call.**\n\n```method : public : MvpInto(out:Float[], view_projection:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nview_projection: Float[]\n\nreturn: Nil"]
+					"descriptions": ["**Model-view-projection, into a buffer the caller owns. The per-frame call. Uses the WORLD matrix, so a parented transform draws where the hierarchy puts it rather than where its local values say.**\n\n```method : public : MvpInto(out:Float[], view_projection:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nview_projection: Float[]\n\nreturn: Nil"]
 				},
 				"New": {
 					"descriptions": ["**At the origin, unrotated, unscaled.**\n\n```New()```\n\n"]
@@ -5360,6 +5918,9 @@
 				},
 				"Rotate": {
 					"descriptions": ["**Turn by an offset -- the per-frame form, multiplied by a delta.**\n\n```method : public : Rotate(dyaw:Float, dpitch:Float, droll:Float) ~ Nil```\n\n\n\ndyaw: Float\n\ndpitch: Float\n\ndroll: Float\n\nreturn: Nil"]
+				},
+				"SetParent": {
+					"descriptions": ["**Hang this transform off another, so it moves when the parent does. This is what makes articulated motion possible at all: a turret on a hull, a hand on an arm, a moon around a planet. Without it every part has to have its world position recomputed by the program each frame, which is the same arithmetic written once per part rather than once. Position, rotation and scale become RELATIVE to the parent. A child at (0, 1, 0) under a parent at (5, 0, 0) is at (5, 1, 0) in the world, and turning the parent swings the child around it. A cycle is refused rather than accepted and then hung on: attaching a transform to its own descendant would make GetWorldMatrix recurse until the stack ran out, and the crash would name neither of the two transforms involved.**\n\n```method : public : SetParent(parent:Transform) ~ Bool```\n\n\n\nparent: Transform\n\nreturn: Bool"]
 				},
 				"SetPosition": {
 					"descriptions": ["****\n\n```method : public : SetPosition(x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil", "****\n\n```method : public : SetPosition(position:Vector3) ~ Nil```\n\n\n\nposition: Vector3\n\nreturn: Nil"]
@@ -5670,6 +6231,9 @@
 				"GetMButton": {
 					"descriptions": ["**Get mouse button event**\n\n```method : public : GetMButton() ~ MouseButtonEvent```\n\n\n\nreturn: MouseButtonEvent"]
 				},
+				"GetMouseButton": {
+					"descriptions": ["**Get mouse button event. MouseButtonEvent existed but nothing returned one, so a click could not be read anywhere in the tree.**\n\n```method : public : GetMouseButton() ~ MouseButtonEvent```\n\n\n\nreturn: MouseButtonEvent"]
+				},
 				"GetMouseMotion": {
 					"descriptions": ["**Get mouse motion event**\n\n```method : public : GetMouseMotion() ~ MouseMotionEvent```\n\n\n\nreturn: MouseMotionEvent"]
 				},
@@ -5731,6 +6295,9 @@
 		"Game.SDL2.Font": {
 			"description": "TrueType font rendering",
 			"functions": {
+				"Free": {
+					"descriptions": ["**Close the font and release it. TTF_CloseFont was never bound, so until now a loaded font could not be released at all -- which is why every example that draws text simply leaks one. Font->Quit() is NOT this. That is the static TTF_Quit, which shuts down the whole subsystem; calling it once per font, as some code does, is a different thing entirely. Safe to call twice -- the handle is cleared. Do not use the font afterwards, and close it before Quit.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
 				"Init": {
 					"descriptions": ["**Initialize the TrueType font APIs**\n\n```function : Init() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -6202,13 +6769,13 @@
 			"description": "Mouse button event",
 			"functions": {
 				"GetButton": {
-					"descriptions": ["**Button that changed**\n\n```method : public : GetButton() ~ MouseButtonValue```\n\n\n\nreturn: MouseButtonValue"]
+					"descriptions": ["**Button that changed**\n\n```method : public : GetButton() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetClicks": {
 					"descriptions": ["**Number of clicks**\n\n```method : public : GetClicks() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetState": {
-					"descriptions": ["**State of the button**\n\n```method : public : GetState() ~ KeyState```\n\n\n\nreturn: KeyState"]
+					"descriptions": ["**State of the button**\n\n```method : public : GetState() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetTimestamp": {
 					"descriptions": ["**Timestamp of the event**\n\n```method : public : GetTimestamp() ~ Int```\n\n\n\nreturn: Int"]
@@ -11723,6 +12290,9 @@
 				"GetHeaders": {
 					"descriptions": ["**Get HTTP headers**\n\n```method : public : GetHeaders() ~ Map&lt;String,String&gt;```\n\n\n\nreturn: Map&lt;String,String&gt;"]
 				},
+				"IsPersistent": {
+					"descriptions": ["**Decides whether the connection survives this request. An explicit Connection header wins; otherwise HTTP\/1.1 persists by default and HTTP\/1.0 does not, per RFC 7230.**\n\n```method : private : IsPersistent(version:String, headers:Map&lt;String,String&gt;) ~ Bool```\n\n\n\nversion: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Bool"]
+				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
 				},
@@ -11747,6 +12317,9 @@
 				"Run": {
 					"descriptions": ["**Executes the request handler thread**\n\n```method : public : Run(param:Base) ~ Nil```\n\n\n\nparam: Base\n\nreturn: Nil"]
 				},
+				"ServeOne": {
+					"descriptions": ["**Serves a single request on the already-open connection**\n\n```method : private : ServeOne() ~ Bool```\n\n\n\nallow_persistence: Bool\n\nreturn: Bool"]
+				},
 				"SetConfig": {
 					"descriptions": ["**Sets the server configuration**\n\n```method : public : SetConfig(server_config:WebServerConfig, is_debug:Bool) ~ Nil```\n\n\n\nserver_config: WebServerConfig\n\nis_debug: Bool\n\nreturn: Nil"]
 				}
@@ -11757,6 +12330,9 @@
 			"functions": {
 				"GetHeaders": {
 					"descriptions": ["**Get HTTP headers**\n\n```method : public : GetHeaders() ~ Map&lt;String,String&gt;```\n\n\n\nreturn: Map&lt;String,String&gt;"]
+				},
+				"IsPersistent": {
+					"descriptions": ["**Decides whether the connection survives this request. An explicit Connection header wins; otherwise HTTP\/1.1 persists by default and HTTP\/1.0 does not, per RFC 7230.**\n\n```method : private : IsPersistent(version:String, headers:Map&lt;String,String&gt;) ~ Bool```\n\n\n\nversion: String\n\nheaders: Map&lt;String,String&gt;\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
@@ -11781,6 +12357,9 @@
 				},
 				"Run": {
 					"descriptions": ["**Executes the request handler thread**\n\n```method : public : Run(param:Base) ~ Nil```\n\n\n\nparam: Base\n\nreturn: Nil"]
+				},
+				"ServeOne": {
+					"descriptions": ["**Serves a single request on the already-open connection**\n\n```method : private : ServeOne() ~ Bool```\n\n\n\nallow_persistence: Bool\n\nreturn: Bool"]
 				},
 				"SetConfig": {
 					"descriptions": ["**Sets the server configuration**\n\n```method : public : SetConfig(server_config:WebServerConfig, is_debug:Bool) ~ Nil```\n\n\n\nserver_config: WebServerConfig\n\nis_debug: Bool\n\nreturn: Nil"]
@@ -11856,6 +12435,12 @@
 				"GetHeader": {
 					"descriptions": ["**Gets a request header**\n\n```method : public : GetHeader(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
 				},
+				"GetLocalPort": {
+					"descriptions": ["**Gets the port this server is bound to. This is the port passed to Serve, not a socket-level lookup of the accepted connection.**\n\n```method : public : GetLocalPort() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetMethod": {
+					"descriptions": ["**Gets the HTTP verb. The verb is parsed by the server to choose a handler method; this exposes it to handlers that need it directly.**\n\n```method : public : GetMethod() ~ String```\n\n\n\nreturn: String"]
+				},
 				"GetParam": {
 					"descriptions": ["**Gets a parameter value**\n\n```method : public : GetParam(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String\n\n```\n# inside ProcessGet or ProcessPost:\r\nname := request->GetParam(\"username\");\r\nif(name <> Nil) {\r\n  \"Hello, {$name}!\"->PrintLine();\r\n};\n```"]
 				},
@@ -11867,6 +12452,9 @@
 				},
 				"GetQuery": {
 					"descriptions": ["**Gets the request query**\n\n```method : public : GetQuery() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRemoteAddress": {
+					"descriptions": ["**Gets the address of the connected peer.**\n\n```method : public : GetRemoteAddress() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetRequestLine": {
 					"descriptions": ["**Gets the request line**\n\n```method : public : GetRequestLine() ~ String```\n\n\n\nreturn: String"]
@@ -11891,6 +12479,9 @@
 				},
 				"ParseParams": {
 					"descriptions": ["**Parses request parameters from content**\n\n```method : private : ParseParams() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"SetConnectionInfo": {
+					"descriptions": ["**Sets connection metadata. Called by the server immediately after the request is constructed; handlers should treat these as read-only.**\n\n```method : public : SetConnectionInfo(request_verb:String, remote_address:String, local_port:Int) ~ Nil```\n\n\n\nrequest_verb: String\n\nremote_address: String\n\nlocal_port: Int\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -12003,6 +12594,9 @@
 		"Web.HTTP.Server.WebServer": {
 			"description": "HTTP and HTTP web server",
 			"functions": {
+				"GetBoundPort": {
+					"descriptions": ["**Gets the port this server was asked to bind to.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"Serve": {
 					"descriptions": ["**Starts a HTTP server that listens for requests**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\r\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
 				},
@@ -12377,6 +12971,17 @@
 				}
 			}
 		},
+		"Web.Server.Handler": {
+			"description": "Serves Web.Server handlers on the Web.HTTP.Server engine. Subclass and override Process. The adapter wraps the server's request and response so handler code sees the Web.Server API.",
+			"functions": {
+				"Process": {
+					"descriptions": ["**Handles a request. Subclasses must implement this. Declared virtual, which in Objeck is a declaration without a body: a concrete method here would be bound statically from ProcessGet below, so a subclass override would never run.**\n\n```method : public : virutal : Process(request:Request, response:Response) ~ Bool```\n\n\n\nrequest: Request\n\nresponse: Response\n\nreturn: Bool"]
+				},
+				"Serve": {
+					"descriptions": ["**Starts a server that dispatches to a Web.Server handler**\n\n```function : Serve(handler:Class, port:Int) ~ Nil```\n\n\n\nhandler: Class\n\nport: Int\n\nreturn: Nil", "**Starts a server that dispatches to a Web.Server handler**\n\n```function : Serve(handler:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\nhandler: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
 		"Web.Server.Request": {
 			"description": "Web request",
 			"functions": {
@@ -12395,6 +13000,9 @@
 				"GetRequestUrl": {
 					"descriptions": ["**Gets a the remote address**\n\n```method : public : GetRequestUrl() ~ String```\n\n\n\nreturn: String\n\n```\n# log the full request URL in a handler:\r\nurl := request->GetRequestUrl();\r\nurl->PrintLine();  # e.g. \/api\/users?page=2\n```"]
 				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(http_request:Web.HTTP.Server.Request)```\n\n\n\nhttp_request: Web.HTTP.Server.Request"]
+				},
 				"ParseMultipartEncoding": {
 					"descriptions": ["**Parses multipart encoding**\n\n```function : native : ParseMultipartEncoding(encoded:Byte[]) ~ Vector&lt;ContentType&gt;```\n\n\n\nencoded: Byte[]\n\nreturn: Vector&lt;ContentType&gt;"]
 				},
@@ -12409,8 +13017,14 @@
 		"Web.Server.Response": {
 			"description": "Web Response",
 			"functions": {
+				"Append": {
+					"descriptions": ["**Appends to the accumulated body**\n\n```method : private : Append(data:Byte[]) ~ Int```\n\n\n\ndata: Byte[]\n\nreturn: Int"]
+				},
 				"ClearAll": {
 					"descriptions": ["**Clears the entire body response**\n\n```method : public : ClearAll() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nresponse->WriteBody(\"draft content\");\r\nresponse->ClearAll();              # discard draft\r\nresponse->WriteBody(\"final content\");\n```"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(http_response:Web.HTTP.Server.Response)```\n\n\n\nhttp_response: Web.HTTP.Server.Response"]
 				},
 				"Redirect": {
 					"descriptions": ["**Redirects a quary URL**\n\n```method : public : Redirect(url:String) ~ Bool```\n\n\n\nurl: String\n\nreturn: Bool\n\n```\n# redirect to a new URL\r\nresponse->Redirect(\"https:\/\/example.com\/new-path\");\n```"]
@@ -13035,6 +13649,10 @@
 			"bundle": "Game.OpenGL"
 ,			"file": "sdl_gl.obl"
  		},
+		"Freeable": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
 		"Frustum": {
 			"bundle": "Game.OpenGL"
 ,			"file": "sdl_gl.obl"
@@ -13075,7 +13693,23 @@
 			"bundle": "Game.OpenGL"
 ,			"file": "sdl_gl.obl"
  		},
+		"Particles": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
 		"PointShadow": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Prop": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"PropBatch": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"RayHit": {
 			"bundle": "Game.OpenGL"
 ,			"file": "sdl_gl.obl"
  		},
@@ -13100,6 +13734,10 @@
 ,			"file": "sdl_gl.obl"
  		},
 		"Texture2D": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Track": {
 			"bundle": "Game.OpenGL"
 ,			"file": "sdl_gl.obl"
  		},
@@ -14028,6 +14666,10 @@
 ,			"file": "rss.obl"
  		},
 		"ContentType": {
+			"bundle": "Web.Server"
+,			"file": "web_server.obl"
+ 		},
+		"Handler": {
 			"bundle": "Web.Server"
 ,			"file": "web_server.obl"
  		},
