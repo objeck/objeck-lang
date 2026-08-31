@@ -958,6 +958,25 @@ jobs:
           VERSION="${{ needs.prepare.outputs.version }}"
           export OBJECK_LIB_PATH=$(pwd)/../lib
 
+          # code_doc writes every page to a HARDCODED '../html/' -- relative to
+          # obr's cwd, so core/release/deploy/html -- and it does NOT create that
+          # directory. doc_html.obs builds its paths as GetClassLink(.., "../html/")
+          # and opens them with FileWriter, which fails silently when the directory
+          # is absent: the run prints "Writing API files...", spins through every
+          # class, exits 0, and writes nothing.
+          #
+          # This step only ever created docs/api and then looked there, so on POSIX
+          # it generated zero pages on every release. Nothing noticed because the old
+          # packaging gate counted entries inside the tracked docs/api.zip, which the
+          # checkout always supplies -- that is the undiagnosed cause of v2026.8.0's
+          # docs shipping as the docs for v2026.8.1 and v2026.8.2. The current gate
+          # counts generated files instead, so it finally failed here rather than
+          # shipping stale docs a fourth time.
+          #
+          # code_doc64.cmd has always done this mkdir-then-copy; the POSIX path never
+          # did. Mirror it.
+          rm -rf ../html
+          mkdir -p ../html
           mkdir -p ../../../../docs/api
 
           ./obc -src ../../../lib/code_doc/doc_html.obs,../../../lib/code_doc/doc_parser.obs \
@@ -1009,6 +1028,15 @@ jobs:
             ../../../compiler/lib_src/onnx.obs \
             ../../../compiler/lib_src/nlp.obs \
             ../../../compiler/lib_src/lame.obs
+
+          # Move the generated tree to where the packaging step looks, and bring the
+          # stylesheet and logos across as code_doc64.cmd does -- without style/ every
+          # page renders unstyled.
+          cp -r ../html/. ../../../../docs/api/
+          mkdir -p ../../../../docs/api/style
+          cp ../../../lib/code_doc/templates/resources/* ../../../../docs/api/style/
+
+          echo "generated $(find ../../../../docs/api -name '*.html' | wc -l) HTML pages"
 
       - name: Package API documentation
         working-directory: ./docs
