@@ -175,7 +175,13 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     ctx.instr = instr;
 
 #ifdef _DEBUGGER
-    debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
+    // Threads the debuggee spawns have no debugger attached (they are built by
+    // the default constructor), so this is not merely a null check -- it is the
+    // ordinary case for every thread but the one obd started the program on.
+    // Breakpoints and stepping do not reach inside those threads; they run.
+    if(debugger) {
+      debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
+    }
     DispatchResult result = instr_dispatch[instr->GetType()](ctx);
     if(result == DispatchResult::RETURN_JIT) {
       return;

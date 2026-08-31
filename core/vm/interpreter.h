@@ -606,6 +606,10 @@ namespace Runtime {
 #endif
 
     StackInterpreter(StackFrame** c, long* cp) {
+#ifdef _DEBUGGER
+      debugger = nullptr;   // see the note in StackInterpreter()
+#endif
+
       // setup frame
       call_stack = c;
       call_stack_pos = cp;
@@ -619,6 +623,16 @@ namespace Runtime {
     }
 
     StackInterpreter() {
+#ifdef _DEBUGGER
+      // Only the Debugger constructor below attaches one; every other
+      // interpreter runs without. This has to be set rather than left
+      // indeterminate: spawned VM threads use this constructor, and Execute's
+      // per-instruction hook is a bare `debugger->` call in a _DEBUGGER build,
+      // so a garbage pointer took obd down on the first instruction of any
+      // thread a debugged program started.
+      debugger = nullptr;
+#endif
+
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
@@ -641,6 +655,10 @@ namespace Runtime {
 
     StackInterpreter(StackProgram* p, size_t m) {
       Initialize(p, m);
+
+#ifdef _DEBUGGER
+      debugger = nullptr;   // see the note in StackInterpreter()
+#endif
 
       // setup frame
       call_stack = new StackFrame*[CALL_STACK_SIZE];
