@@ -27,18 +27,24 @@ Shape 1 is the one with teeth for the drain/Abandon half of the fix: dropping
 obd's exit-time WSACleanup on its own leaves it crashing, because a client
 connect wakes the thread just as well.
 
-Two things this test deliberately does NOT do, both learned from a macOS CI
-timeout:
+Three things about how the CLI shape is driven, all of them learned the hard way
+from a macOS CI failure:
 
-  - It never asks obd to read a second command. The CLI shape writes `r`, and
-    from then on only observes. obd's command loop repeats the previous command
-    on an empty read, so a readline() that returns rather than blocks on a pipe
-    (libedit, which is what -lreadline resolves to on macOS) would re-run the
-    program forever instead of quitting. The assertion does not need the quit:
-    the crash was on the wake, so "still healthy after the wake" is the property.
-  - It never reads obd's stdout on the main thread. A reader thread drains the
-    pipe, so buffering differences cannot wedge the test -- they can only make it
-    report what it saw.
+  - On POSIX it uses a pty, not a pipe. macOS showed exactly what a pipe costs:
+    obd printed its banner and then sat there, never processing the `r`, because
+    readline() does not hand back a line from a non-tty there (-lreadline
+    resolves to libedit). run_debugger_tests.sh has always driven obd's CLI
+    through `expect`, which allocates a pty, so a pipe was never the supported
+    shape on POSIX -- this test was the outlier, not obd.
+  - It never asks obd to read a second command. It sends `r` and from then on
+    only observes, then kills the process. obd's command loop repeats the
+    previous command on an empty read, so any input handling that hands back
+    an empty line would re-run the program in a loop rather than quit. The
+    assertion needs no quit anyway: the crash was on the wake, so "still healthy
+    after the wake" is the property being tested.
+  - It never reads obd's output on the main thread. A reader thread drains it,
+    so buffering differences cannot wedge the test -- they can only change what
+    it reports.
 
 Every phase is bounded and says which one it was, so a CI failure names the
 stall instead of reporting a bare timeout. Summing every budget below gives a
@@ -95,7 +101,8 @@ CLI_ITERATIONS = 3
 DAP_ITERATIONS = 2
 GLOBAL_BUDGET = 150.0
 
-RUN_BUDGET = 25.0     # program start -> its PASS line
+READY_BUDGET = 15.0   # obd start -> the end of its banner
+RUN_BUDGET = 25.0     # `r` -> the program's PASS line
 SETTLE = 3.0          # after the wake, before judging obd healthy
 DAP_REQUEST_BUDGET = 15.0
 DAP_TERM_BUDGET = 30.0
@@ -171,26 +178,63 @@ def crashed(rc):
     return rc < 0
 
 
-class Reader(threading.Thread):
-    """Drains a pipe into a buffer so no read can ever block the test."""
+class CliDriver:
+    """Runs obd's interactive CLI and drains its output into a buffer.
 
-    def __init__(self, stream):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.stream = stream
+    On POSIX this has to be a pty, not a pipe. obd reads commands through
+    readline(), which does not hand a line back from a non-tty on macOS, where
+    -lreadline resolves to libedit -- obd printed its banner and then sat there,
+    never processing the `r`. A pipe was never the supported shape:
+    run_debugger_tests.sh has always driven obd's CLI through `expect`, which
+    allocates a pty, on every POSIX platform. Windows has no pty and reads via
+    std::getline, where a pipe is fine.
+
+    Reading happens on a thread so a blocked or buffered read can never wedge the
+    test -- it can only change what gets reported.
+    """
+
+    def __init__(self, argv, env):
         self.buf = b""
         self.lock = threading.Lock()
+        self.master = None
 
-    def run(self):
+        if os.name == "nt":
+            self.proc = subprocess.Popen(
+                argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, env=env, bufsize=0)
+        else:
+            import pty
+            self.master, slave = pty.openpty()
+            self.proc = subprocess.Popen(
+                argv, stdin=slave, stdout=slave, stderr=slave, env=env,
+                close_fds=True)
+            os.close(slave)
+
+        threading.Thread(target=self._read_loop, daemon=True).start()
+
+    def _read_loop(self):
         while True:
             try:
-                chunk = self.stream.read(1)
+                if self.master is None:
+                    chunk = self.proc.stdout.read(1)
+                else:
+                    chunk = os.read(self.master, 4096)
             except (OSError, ValueError):
-                return
+                return          # EIO on the master once the child is gone
             if not chunk:
                 return
             with self.lock:
                 self.buf += chunk
+
+    def send(self, data):
+        try:
+            if self.master is None:
+                self.proc.stdin.write(data)
+                self.proc.stdin.flush()
+            else:
+                os.write(self.master, data)
+        except OSError:
+            pass
 
     def text(self):
         with self.lock:
@@ -204,6 +248,40 @@ class Reader(threading.Thread):
                     return True
             time.sleep(0.05)
         return False
+
+    def close(self):
+        try:
+            self.proc.kill()
+            self.proc.wait(timeout=10)
+        except Exception:
+            pass
+        if self.master is not None:
+            try:
+                os.close(self.master)
+            except OSError:
+                pass
+
+
+def wait_port_free(timeout=20.0):
+    """Wait until nothing is listening on PORT.
+
+    The fixture binds one fixed port, and each iteration starts a fresh obd while
+    the previous one's listener may not be fully gone. If it is not, the
+    program's Listen() fails, it never reaches the parked-accept state, and the
+    iteration burns RUN_BUDGET before reporting a failure that is about the port
+    rather than about the defect -- which is exactly what one 65s run showed
+    against a *fixed* build. A false failure is worse than a missed detection, so
+    wait for the port instead of racing it.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            probe = socket.create_connection(("127.0.0.1", PORT), timeout=0.5)
+            probe.close()
+        except OSError:
+            return True         # refused: nothing is listening
+        time.sleep(0.3)
+    return False
 
 
 def wake_parked_thread():
@@ -241,26 +319,30 @@ for i in range(CLI_ITERATIONS):
               + " further CLI run(s): global budget spent")
         break
 
-    proc = subprocess.Popen(
-        [OBD, "-bin", PROG, "-src", SCRIPT_DIR],
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        env=child_env(), bufsize=0)
-    reader = Reader(proc.stdout)
-    reader.start()
+    if not wait_port_free():
+        skipped += 1
+        print("  [SKIP] " + label.rstrip(": ")
+              + ": port " + str(PORT) + " never freed by the previous run")
+        continue
 
-    try:
-        proc.stdin.write(b"r\n")
-        proc.stdin.flush()
-    except OSError:
-        pass
+    cli = CliDriver([OBD, "-bin", PROG, "-src", SCRIPT_DIR], child_env())
+
+    # Wait until obd has finished loading before sending, so the command cannot
+    # land before the command loop is reading. Deliberately NOT the "> " prompt:
+    # readline writes that to the terminal itself and it never reaches the pty
+    # master, so waiting on it only ever burns the full budget -- measured at
+    # ~13s of dead time per iteration. The last banner line does arrive.
+    cli.saw(b"source file path:", READY_BUDGET)
+    time.sleep(0.5)
+    cli.send(b"r\n")
 
     # The program's own PASS line is what proves the fixture really got a thread
     # parked in Accept() rather than dying on its first syscall -- without it a
     # clean result would be meaningless.
-    ran = reader.saw(b"PASS", RUN_BUDGET)
+    ran = cli.saw(b"PASS", RUN_BUDGET)
     check(label + "program reached the parked-accept state", ran,
           "no PASS within " + str(RUN_BUDGET) + "s; output so far: "
-          + repr(reader.text()[-300:]))
+          + repr(cli.text()[-300:]))
 
     # obd is now back at its prompt with the run's image and heap released.
     woke = wake_parked_thread() if ran else False
@@ -271,17 +353,13 @@ for i in range(CLI_ITERATIONS):
     # sitting at its prompt (None) or have exited cleanly -- never dead of a
     # signal or an access violation.
     time.sleep(SETTLE)
-    rc = proc.poll()
+    rc = cli.proc.poll()
     check(label + "obd survived the wake", not crashed(rc),
           "obd died abnormally: " + describe(rc) + "; output: "
-          + repr(reader.text()[-300:]))
+          + repr(cli.text()[-300:]))
 
-    # Deliberately kill rather than send `q`: see the module docstring.
-    try:
-        proc.kill()
-        proc.wait(timeout=10)
-    except Exception:
-        pass
+    # Deliberately killed rather than sent `q`: see the module docstring.
+    cli.close()
 
 
 # ============================================================
@@ -362,6 +440,12 @@ for i in range(DAP_ITERATIONS):
               + " further DAP run(s): global budget spent")
         break
 
+    if not wait_port_free():
+        skipped += 1
+        print("  [SKIP] " + label.rstrip(": ")
+              + ": port " + str(PORT) + " never freed by the previous run")
+        continue
+
     session = DapSession()
     session.request("launch", {"program": PROG, "sourceDir": SCRIPT_DIR},
                     timeout=DAP_REQUEST_BUDGET)
@@ -384,6 +468,11 @@ for i in range(DAP_ITERATIONS):
     check(label + "obd exited cleanly on disconnect", not crashed(rc),
           "obd died abnormally: " + describe(rc))
 
+
+# All-skipped would otherwise be 0 passed / 0 failed, i.e. a green no-op.
+if passed == 0 and failed == 0:
+    failed += 1
+    print("  [FAIL] no iteration of either shape actually ran")
 
 summary = "  obd_teardown_test: " + str(passed) + " passed, " + str(failed) + " failed"
 if skipped:
