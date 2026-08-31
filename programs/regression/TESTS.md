@@ -13,7 +13,7 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 205** (plus 14 debugger tests, see below).
+**Total runtime tests: 206** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
@@ -21,7 +21,7 @@ python gen_manifest.py
 | Category | Count |
 |----------|-------|
 | Core Language | 38 |
-| Other | 29 |
+| Other | 30 |
 | AMD64/JIT | 21 |
 | Negative | 21 |
 | Bug Fix | 13 |
@@ -249,16 +249,17 @@ python gen_manifest.py
 | 193 | `string_split_ops.obs` | Strings | string split ops | ✅ |
 | 194 | `task_scope.obs` | Other | Regression for a structured-concurrency nursery (TaskScope) built purely on the existing System.C... | ✅ |
 | 195 | `tco_receiver.obs` | Other | Tail-call optimization must respect the receiver. TCO used to fire on matching class-id and metho... | ✅ |
-| 196 | `trap_array_barrier_test.obs` | Other | A String[] returned by a VM trap must survive a collection. Every trap that returns an array of o... | ✅ |
-| 197 | `trap_array_mt_barrier_test.obs` | Other | A trap-returned array must survive ANOTHER THREAD's allocation. trap_array_barrier_test.obs cover... | ✅ |
-| 198 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
-| 199 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
-| 200 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
-| 201 | `web_server_test.obs` | Other | Web.Server end-to-end coverage. Every method on Web.Server.Request and Response used to call a na... | ✅ |
-| 202 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 203 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 204 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 205 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 196 | `thread_accept_exit_test.obs` | Other | A thread parked in accept() must not take the VM down when Main returns (#681). The shape: one th... | ✅ |
+| 197 | `trap_array_barrier_test.obs` | Other | A String[] returned by a VM trap must survive a collection. Every trap that returns an array of o... | ✅ |
+| 198 | `trap_array_mt_barrier_test.obs` | Other | A trap-returned array must survive ANOTHER THREAD's allocation. trap_array_barrier_test.obs cover... | ✅ |
+| 199 | `try_otherwise.obs` | Exceptions | Try/Otherwise Error Handling Test Tests the Try() and Otherwise() intrinsic methods for error han... | ✅ |
+| 200 | `unsigned_literals.obs` | Other | Unsigned integer literals: the 'u'/'U' suffix, and hex/binary read as bit patterns. The suffix ch... | ✅ |
+| 201 | `unsigned_ops.obs` | Other | The '>>>' operator and the unsigned helpers on Int. Objeck stores every integer in a signed 64-bi... | ✅ |
+| 202 | `web_server_test.obs` | Other | Web.Server end-to-end coverage. Every method on Web.Server.Request and Response used to call a na... | ✅ |
+| 203 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 204 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 205 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 206 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 

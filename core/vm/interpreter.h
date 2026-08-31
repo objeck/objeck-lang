@@ -557,8 +557,14 @@ namespace Runtime {
     // true if drained, false on timeout (a worker blocked in a syscall may not
     // observe Halt; the caller proceeds anyway). Pair with HaltAllExcept.
     static bool WaitForThreadsToDrain(StackInterpreter* self, long timeout_ms) {
-      long waited_ms = 0;
-      while(waited_ms < timeout_ms) {
+      // Measure real elapsed time. Counting iterations and assuming each
+      // sleep_for(1ms) costs 1ms overshoots badly on Windows, where the default
+      // timer granularity is ~15.6ms: a nominal 2000ms budget took 20-30s of
+      // wall clock, so every program with a live thread at exit hung for half a
+      // minute before terminating.
+      const std::chrono::steady_clock::time_point deadline =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+      while(std::chrono::steady_clock::now() < deadline) {
         size_t remaining;
 #ifdef _WIN32
         EnterCriticalSection(&intpr_threads_cs);
@@ -579,7 +585,6 @@ namespace Runtime {
           return true;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        waited_ms++;
       }
       return false;
     }
