@@ -229,11 +229,12 @@ public:
   // Relinquish ownership of the program image, its backing buffer and the cached
   // instructions, so that ~Loader frees nothing.
   //
-  // Used at process exit when the VM threads could not be drained. A thread parked
-  // in a blocking syscall (accept, recv) never observes Halt, so it is still live
-  // when Execute returns; freeing the program hands that thread a dangling
-  // StackProgram the moment anything wakes it. The leak is deliberate and bounded:
-  // the process is exiting and the OS reclaims the address space regardless.
+  // Used when the VM threads could not be drained. A thread parked in a blocking
+  // syscall (accept, recv) never observes Halt, so it is still live when Execute
+  // returns; freeing the program hands that thread a dangling StackProgram the
+  // moment anything wakes it. The leak is deliberate and bounded: obr calls this
+  // at process exit, where the OS reclaims the address space regardless, and obd
+  // calls it per run, where it is bounded by the debug session.
   void Abandon() {
     abandoned = true;
   }

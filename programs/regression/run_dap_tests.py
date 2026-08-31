@@ -285,7 +285,10 @@ def run_standalone_tests(bin_dir):
     obc = os.path.join(bin_dir, "obc" + exe)
     for src_name, libs in (("debugger_test.obs", None),
                            ("dap_drilldown_test.obs", "gen_collect"),
-                           ("dap_databreak_test.obs", None)):
+                           ("dap_databreak_test.obs", None),
+                           # obd_teardown_test.py debugs the VM-side #681
+                           # reproducer rather than a fixture of its own.
+                           ("thread_accept_exit_test.obs", None)):
         src = os.path.join(REG_DIR, src_name)
         if not os.path.exists(src):
             continue
@@ -298,7 +301,8 @@ def run_standalone_tests(bin_dir):
     # shell runner -- add it back once that is fixed.
     for name in ("dap_print_test.py", "dap_stepin_test.py",
                  "dap_stepout_types_test.py", "dap_drilldown_test.py",
-                 "dap_protocol_test.py", "dap_databreak_test.py"):
+                 "dap_protocol_test.py", "dap_databreak_test.py",
+                 "obd_teardown_test.py"):
         path = os.path.join(REG_DIR, name)
         if not os.path.exists(path):
             continue
@@ -353,7 +357,7 @@ def main():
     print("\nException breakpoints:")
     run_exception_breakpoint(obd, exc_obe, REG_DIR, bin_dir)
     print("")
-    print("Standalone suites (drill-down, protocol, data breakpoints):")
+    print("Standalone suites (drill-down, protocol, data breakpoints, teardown):")
     run_standalone_tests(bin_dir)
 
     for f in (core_obe, exc_obe):
