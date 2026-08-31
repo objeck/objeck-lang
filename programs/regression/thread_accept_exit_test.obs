@@ -66,8 +66,21 @@ class ThreadAcceptExitTest {
 	@failures : Int;
 
 	function : Main(args : String[]) ~ Nil {
+		# The port is a parameter so that a harness running several of these back
+		# to back can give each run its own. Sharing one port is not safe on
+		# Windows: SO_REUSEADDR there permits binding a port that already has a
+		# LIVE listener, unlike POSIX where it only relaxes TIME_WAIT, so a
+		# leftover server from a previous run and this one both bind, and the
+		# client can be handed the stale one -- it connects, and nothing echoes.
+		# Defaults to 19993 so the regression runner keeps invoking it with no
+		# arguments.
+		port := 19993;
+		if(args->Size() > 0) {
+			port := args[0]->ToInt();
+		};
+
 		test := ThreadAcceptExitTest->New();
-		test->Run();
+		test->Run(port);
 	}
 
 	New() {
@@ -84,9 +97,7 @@ class ThreadAcceptExitTest {
 		};
 	}
 
-	method : Run() ~ Nil {
-		port := 19993;
-
+	method : Run(port : Int) ~ Nil {
 		server := ParkedAcceptServer->New(port);
 		server->Execute(Nil);
 		Thread->Sleep(700);

@@ -89,7 +89,27 @@ LIB_PATH = os.path.join(DEPLOY_DIR, "lib")
 # The fixture is the VM-side #681 reproducer, reused rather than duplicated: the
 # defect and the program shape are the same, only the host differs.
 PROG = os.path.join(SCRIPT_DIR, "thread_accept_exit_test.obe")
-PORT = 19993          # the port ParkedAcceptServer listens on
+BASE_PORT = 19993     # the fixture's default; each iteration gets its own
+
+# Every iteration runs on its own port. Sharing one is not safe on Windows:
+# SO_REUSEADDR there permits binding a port that already has a LIVE listener --
+# unlike POSIX, where it only relaxes TIME_WAIT -- so an obd left over from an
+# earlier iteration and the new one both bind successfully, and the client can be
+# handed the stale listener. It connects, nothing echoes, and the iteration fails
+# for a reason that has nothing to do with the defect. Reproduced 4 times in 10
+# cycles while chasing exactly that, with the fixture printing "ok: client
+# connected" immediately followed by "FAIL: server echoed the request".
+#
+# Probing the port first cannot substitute for this. A connect probe only answers
+# "is anyone accepting"; a bind probe succeeds against a live listener for the
+# very reason above. Both were tried, and the bind probe made it worse.
+_next_port = [BASE_PORT]
+
+
+def take_port():
+    port = _next_port[0]
+    _next_port[0] += 1
+    return port
 
 # The crash races teardown, so a single iteration can miss it -- against a build
 # with the fix reverted these report between one and three failures, and not
@@ -262,34 +282,12 @@ class CliDriver:
                 pass
 
 
-def wait_port_free(timeout=20.0):
-    """Wait until nothing is listening on PORT.
-
-    The fixture binds one fixed port, and each iteration starts a fresh obd while
-    the previous one's listener may not be fully gone. If it is not, the
-    program's Listen() fails, it never reaches the parked-accept state, and the
-    iteration burns RUN_BUDGET before reporting a failure that is about the port
-    rather than about the defect -- which is exactly what one 65s run showed
-    against a *fixed* build. A false failure is worse than a missed detection, so
-    wait for the port instead of racing it.
-    """
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            probe = socket.create_connection(("127.0.0.1", PORT), timeout=0.5)
-            probe.close()
-        except OSError:
-            return True         # refused: nothing is listening
-        time.sleep(0.3)
-    return False
-
-
-def wake_parked_thread():
+def wake_parked_thread(port):
     """Connect to the port the debuggee's thread is parked on, unblocking its
     accept(). Returns True if the connection was made."""
     for _ in range(4):
         try:
-            sock = socket.create_connection(("127.0.0.1", PORT), timeout=2.0)
+            sock = socket.create_connection(("127.0.0.1", port), timeout=2.0)
             try:
                 sock.sendall(b"ping\r\n")
                 sock.settimeout(1.0)
@@ -319,13 +317,9 @@ for i in range(CLI_ITERATIONS):
               + " further CLI run(s): global budget spent")
         break
 
-    if not wait_port_free():
-        skipped += 1
-        print("  [SKIP] " + label.rstrip(": ")
-              + ": port " + str(PORT) + " never freed by the previous run")
-        continue
-
-    cli = CliDriver([OBD, "-bin", PROG, "-src", SCRIPT_DIR], child_env())
+    port = take_port()
+    cli = CliDriver([OBD, "-bin", PROG, "-src", SCRIPT_DIR,
+                     "-args", str(port)], child_env())
 
     # Wait until obd has finished loading before sending, so the command cannot
     # land before the command loop is reading. Deliberately NOT the "> " prompt:
@@ -345,9 +339,9 @@ for i in range(CLI_ITERATIONS):
           + repr(cli.text()[-300:]))
 
     # obd is now back at its prompt with the run's image and heap released.
-    woke = wake_parked_thread() if ran else False
+    woke = wake_parked_thread(port) if ran else False
     check(label + "client woke the parked thread", woke,
-          "nothing was listening on " + str(PORT))
+          "nothing was listening on " + str(port))
 
     # The crash was on the wake, so this is the assertion. obd should either be
     # sitting at its prompt (None) or have exited cleanly -- never dead of a
@@ -440,14 +434,10 @@ for i in range(DAP_ITERATIONS):
               + " further DAP run(s): global budget spent")
         break
 
-    if not wait_port_free():
-        skipped += 1
-        print("  [SKIP] " + label.rstrip(": ")
-              + ": port " + str(PORT) + " never freed by the previous run")
-        continue
-
+    port = take_port()
     session = DapSession()
-    session.request("launch", {"program": PROG, "sourceDir": SCRIPT_DIR},
+    session.request("launch", {"program": PROG, "sourceDir": SCRIPT_DIR,
+                              "args": str(port)},
                     timeout=DAP_REQUEST_BUDGET)
     session.request("configurationDone", timeout=DAP_REQUEST_BUDGET)
     session.wait_for(lambda m: m.get("event") == "terminated", timeout=DAP_TERM_BUDGET)
