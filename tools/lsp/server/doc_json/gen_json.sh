@@ -82,3 +82,9 @@ rm -f *.obe
 	$LIB_SRC/web_server.obs
 
 mv out.json ../objk_apis.json
+
+# Both copies must be written. The VS Code one is packaged into the .vsix, so it
+# is the index users actually get -- and it has silently shipped older than the
+# server's, because this script only ever wrote the server copy and syncing the
+# other was left to whoever remembered.
+cp ../objk_apis.json ../../clients/vscode/server/objk_apis.json

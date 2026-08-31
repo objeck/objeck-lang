@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.8.3-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.8.4-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.8.3/objeck-linux-x64_2026.8.3.tgz
-tar xzf objeck-linux-x64_2026.8.3.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.8.4/objeck-linux-x64_2026.8.4.tgz
+tar xzf objeck-linux-x64_2026.8.4.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -58,7 +58,21 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.8.3 ✅
+### v2026.8.4 ✅
+  * **`Game.OpenGL` — 3D graphics for Objeck** — OpenGL 3.3 core over SDL2 on Windows, Linux and macOS. 26 classes covering windowing and frame pacing, built-in shaders, meshes and OBJ loading, textures, cameras, materials, up to eight directional/point/spot lights with Blinn-Phong specular, shadow maps including omnidirectional cube shadows, render-to-texture, instancing through a one-call `PropBatch`, frustum culling, raycasting for hitscan and picking, gamepad input, a pixel-space text overlay, and a scene that answers collision. The examples got **shorter** as it grew — the minimal window demo went from 105 lines to 25, and per-frame allocations in both original draw loops went to zero. Verified by 453 checks that read pixels back rather than merely exiting cleanly, and two demos ship in the distribution
+  * **`Web.Server` could not be used by anyone** — it shipped in every release with 13 native entry points that existed in exactly one file: the binding itself. No `.cpp`, no build target, no library in any deploy tree, and `Request`/`Response` declared no constructor, so a program could not obtain an instance at all. Writing the missing native library was never an option — the design is a per-host bridge for Nginx, IIS and Apache, whose request structures differ entirely, so one generic library cannot exist. It is now implemented in pure Objeck over `Web.HTTP.Server`: same bundle, same class names, same signatures, no native library. Coverage went from 0 of 13 methods to 13 of 13
+  * **The JIT silently computed the wrong answer above 2³¹** — 64-bit immediates were truncated to 32 bits: on AMD64 for `and`, `or`, `xor`, `add` and `sub`, and on Windows ARM64 for every one of them, where `long` is 32 bits under LLP64. No crash and no diagnostic, just wrong arithmetic. A stored float compare also clobbered a callee-saved register on AMD64. Windows ARM64 had shipped untested since February, which is why its variant survived
+  * **A server that wrote and closed could lose the response** — on Windows loopback, roughly 47% of responses, because the sender tearing down first discards what the receiver has not read. HTTP now uses keep-alive, removing the exposure rather than hiding it. Alongside it: a short `send()` silently dropped the rest of the buffer on **both** platforms, a real HTTP 500 lost its body while a dead socket reported one, and one failed name lookup called `WSACleanup` and shut Winsock down for the **whole process** — every open socket on every thread
+  * **Three ways a live object could be collected** — an array returned by a VM trap held elements a minor collection could destroy (measured at 395 of 395 entries lost in one collection: arrays are born old, objects young, and the trap array was never dirtied through the write barrier); a value returned by a native library could be collected out of a reused argument buffer; and the JIT's `Int[]` copy dropped the write barrier entirely
+  * **Windows ARM64 installs shipped without their runtimes** — no C++ redistributable, because `VCToolsRedistDir` is empty on the ARM64 runner, and OpenCV without its image codecs. Nothing checked either, so both failed on the user's machine rather than in CI. Cross-architecture native dependencies are now verified during the build
+  * **A server that returns normally from `Main` no longer segfaults** — a thread blocked in a syscall never observes the halt request, so teardown freed the program image while that thread was still live, and `WSACleanup` on the way out then unblocked it into freed memory — losing all buffered output, so it looked as though the program had done nothing. Linux was always clean for one reason: it has no equivalent call
+  * **The debugger had the same defect, and there it was not Windows-only** — `obd` hosts the debuggee's VM in-process and freed the program image *and the whole GC heap* after every run, halting and waiting for nothing. Because `obd` goes back to its prompt rather than exiting, an ordinary client connecting to the port the parked thread sits on wakes it with no `WSACleanup` involved: 6 access violations in 6 runs on Windows, 2 in 2 on Linux
+  * **`obd` could not debug any multithreaded program** — compiled with `-debug`, it segfaulted on the first instruction a spawned thread executed. Those threads are built by a constructor that never initialized the debugger pointer, and the per-instruction hook called through it. Only `obd` compiles that hook in, so `obr` was never affected
+  * **Native calls got materially cheaper** — a string literal allocates on every evaluation, and the literal naming the native function turned out to be 92% of a call's cost: 1655ns down to 130ns. Resolved entry points are now cached too, on every platform, removing a `GetProcAddress`/`dlsym` lookup and a wide-to-narrow conversion from every single call. Both are guarded by CI so they cannot drift back
+  * **SDL2 loads on Windows without a hand-set `PATH`** — the DLLs shipped in `lib/sdl`, but Windows resolves a dynamically-loaded library's imports against the **executable's** directory, never the library's, so `libobjk_sdl.dll` failed to load for anyone who had not added it themselves. Every SDL program was affected, and the regression runner hid it by prepending the directory first
+  * **The API reference stopped omitting whole libraries** — five files hard-code the library list and had drifted apart, one short two libraries while still naming a deleted third, so the counts matched and nothing looked wrong. Underneath, the doc parser was reading prose as code: the word "bundle" in a comment re-filed every class after it
+
+### v2026.8.3
   * **A corrupt library could crash the compiler** — `TypeParser::ParseType` and `ParseParameters` switch on the first character of a type string and had no default case, so anything outside the known set — including an **empty** string, whose `operator[](0)` yields a null character — left the type null and was dereferenced immediately. The linker calls both on type strings read straight out of `.obl` files, so the input is not the compiler's own
   * **A `}` on the first line hung the REPL** — an unsigned indent counter decremented at `0` wrapped to `SIZE_MAX`, and the indent loop below then ran about 1.8×10¹⁹ times. Listing and saving both hit it
   * **One malformed request no longer ends a debug session** — only JSON parse errors were guarded, so a message that parsed but carried an unexpected type threw from inside the handler, unwound out of `Run()` to a `main()` with no handler, and terminated the process — losing every breakpoint and the running program over one bad request. Seven flags shared between the DAP and VM threads are atomics now: they were written under a mutex and read without one at **every instruction**, so nothing stopped an `-O3 -flto` build hoisting those loads out of the dispatch loop and a disconnect or step could go unseen indefinitely
@@ -97,14 +111,11 @@ obc hello && obr hello
   * **`runtime.feature.http2` / `runtime.feature.http3`** — report which protocol engines were actually compiled in, so a caller can tell *not supported* from *the network failed*. Because the traps compile unconditionally, "the API exists" proved nothing — which is how the Windows HTTP/3 gap went unnoticed. Relatedly, `obd` had shipped with HTTP/2 and HTTP/3 compiled out, and HTTP/3 was silently unavailable on Linux ARM64
   * **Editor tooling is tested in CI** — the formatter, language server and VS Code extension run on every push, and the six standalone DAP suites (~78 assertions) now run on POSIX rather than Windows only; their first Linux/macOS run immediately caught a debugger String-rendering bug. Two suites had never executed at all: the formatter's runner pointed outside the repository, and the tooling scripts appended the build tree to `PATH` so a system-wide install shadowed it
 
-### v2026.6.4
-  * **Multithreaded GC stability fix** — fixed an intermittent crash (`0xC0000005`) in the generational minor garbage collector during thread startup: a thread being spawned held its `self` and argument as untracked raw pointers, so a moving collection during the spawn handoff could relocate the object and leave the new thread a stale reference. These are now tracked and relocated across collection. Surfaced only under heavy multithreaded churn
-
 [📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](docs/performance.md#speedup-roadmap) • [📝 Editor & IDE setup](docs/editors.md)
 
 ## Downloads
 
-**Latest Release:** [v2026.8.3](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.8.4](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
