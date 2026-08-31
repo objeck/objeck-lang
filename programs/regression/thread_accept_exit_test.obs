@@ -1,0 +1,122 @@
+#~
+# A thread parked in accept() must not take the VM down when Main returns (#681).
+#
+# The shape: one thread is blocked in a socket accept() -- the normal state of any
+# server between requests -- and Main returns normally. On Windows that used to
+# segfault during teardown, 8 runs out of 8, losing all buffered output with it.
+#
+# The mechanism, and why it is worth a test of its own rather than living inside
+# web_server_test.obs. A thread blocked in a syscall never observes Halt, so the
+# drain in vm.cpp times out and teardown frees the program image anyway. Nothing
+# had woken that thread before, so the dangling StackProgram went unnoticed --
+# until WSACleanup on the way out of win_main unblocked every parked socket call
+# process-wide and sent this thread executing against freed memory. Linux was
+# always clean for exactly one reason: it has no equivalent call, so the thread
+# stayed blocked until exit().
+#
+# That makes this a VM teardown defect, not a web-server defect. It reproduces
+# with a raw TCPSocketServer and no HTTP anywhere, which is what this test uses --
+# web_server_test.obs covers the same teardown path incidentally, through the
+# library that first exposed it.
+#
+# The assertion is the exit code. The echo below is what proves the thread really
+# is parked in accept() at the end rather than having failed early: it accepted a
+# client, served it, and looped back into Accept() with nobody left to connect.
+# Without that check a server thread that died on its first syscall would produce
+# a clean exit and a green test.
+~#
+
+use System.Concurrency, System.IO.Net;
+
+#~
+Accepts one client, echoes its line back, then loops into Accept() and parks
+there for the rest of the process -- nothing ever connects a second time.
+~#
+class ParkedAcceptServer from Thread {
+	@port : Int;
+
+	New(port : Int) {
+		Parent("parked-accept");
+		@port := port;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		server := TCPSocketServer->New(@port);
+		if(server->Listen(8) = false) {
+			return;
+		};
+
+		while(true) {
+			client := server->Accept();
+			if(client = Nil) {
+				return;
+			};
+
+			line := client->ReadLine();
+			if(line <> Nil) {
+				client->WriteString("echo:{$line}\r\n");
+				client->Flush();
+			};
+			client->Close();
+		};
+	}
+}
+
+class ThreadAcceptExitTest {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := ThreadAcceptExitTest->New();
+		test->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckTrue(label_text : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"  ok: {$label_text}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$label_text}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		port := 19993;
+
+		server := ParkedAcceptServer->New(port);
+		server->Execute(Nil);
+		Thread->Sleep(700);
+
+		sock := TCPSocket->New("127.0.0.1", port);
+		CheckTrue("client connected to parked-accept server", sock->IsOpen());
+
+		if(sock->IsOpen()) {
+			sock->WriteString("ping\r\n");
+			sock->Flush();
+			reply := sock->ReadLine();
+			CheckTrue("server echoed the request (thread reached Accept)",
+				reply <> Nil & reply->Equals("echo:ping"));
+			sock->Close();
+		};
+
+		# Give the server thread time to loop back into Accept() and block there.
+		Thread->Sleep(300);
+
+		if(@failures > 0) {
+			failures := @failures;
+			"{$failures} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: VM tears down cleanly with a thread parked in accept()"->PrintLine();
+
+		# Deliberately no Runtime->Exit here. Returning normally from Main, with the
+		# server thread still blocked in Accept(), IS the assertion -- that return is
+		# what used to segfault. The suite scores by exit code, so a regression of
+		# #681 shows up as a failure of this test rather than as silence.
+	}
+}

@@ -55,6 +55,7 @@ class Loader {
   int start_method_id;
   std::map<const std::wstring, const int> params;
   bool from_mem;
+  bool abandoned;
   
   // Bounds guard for the raw deserialization cursor. Bytecode (.obe/.obl) is
   // untrusted input; a truncated or crafted file must never drive a read past the
@@ -181,6 +182,7 @@ class Loader {
 public:
   Loader(char* b, std::vector<std::wstring> &a) {
     from_mem = true;
+    abandoned = false;
     arguments = a;
     LoadOperInstrs();
 
@@ -195,6 +197,7 @@ public:
 
   Loader(const wchar_t* arg) {
     from_mem = false;
+    abandoned = false;
     filename = arg;
     if(!::EndsWith(filename, L".obe")) {
       filename += L".obe";
@@ -208,6 +211,7 @@ public:
 
   Loader(const int argc, wchar_t** argv) {
     from_mem = false;
+    abandoned = false;
     filename = argv[1];
     if(!::EndsWith(filename, L".obe")) {
       filename += L".obe";
@@ -222,7 +226,23 @@ public:
     program = new StackProgram;
   }
 
+  // Relinquish ownership of the program image, its backing buffer and the cached
+  // instructions, so that ~Loader frees nothing.
+  //
+  // Used at process exit when the VM threads could not be drained. A thread parked
+  // in a blocking syscall (accept, recv) never observes Halt, so it is still live
+  // when Execute returns; freeing the program hands that thread a dangling
+  // StackProgram the moment anything wakes it. The leak is deliberate and bounded:
+  // the process is exiting and the OS reclaims the address space regardless.
+  void Abandon() {
+    abandoned = true;
+  }
+
   ~Loader() {
+    if(abandoned) {
+      return;
+    }
+
     if(!from_mem && alloc_buffer) {
       free(alloc_buffer);
       alloc_buffer = nullptr;

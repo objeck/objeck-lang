@@ -179,8 +179,15 @@ static int objeck_main(const int argc, const char* argv[])
       }
     }
 
-    // release Winsock
-    WSACleanup();
+    // No WSACleanup() here. The process is exiting, so Windows reclaims every
+    // Winsock resource regardless -- but WSACleanup also unblocks threads still
+    // parked in accept()/recv(), which is precisely the wrong thing to do on the
+    // way out: such a thread wakes into VM code and runs against a program image
+    // that teardown has already released. That was the whole of issue #681 (a
+    // server started with WebServer->Serve, then a normal return from Main):
+    // 8 segfaults in 8 runs became 0 in 8 with this single call removed, and it
+    // is why the same program was always clean on Linux, which has no equivalent.
+    // Same reasoning as the getaddrinfo failure path in arch/win32/win32.cpp.
     return status;
   }
   else {

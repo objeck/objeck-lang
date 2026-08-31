@@ -104,7 +104,15 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
     // frees them -> use-after-free crash at exit. Halt the others (not `intpr`,
     // which is this thread) and wait briefly for them to unwind and deregister.
     Runtime::StackInterpreter::HaltAllExcept(intpr);
-    Runtime::StackInterpreter::WaitForThreadsToDrain(intpr, 2000);
+    if(!Runtime::StackInterpreter::WaitForThreadsToDrain(intpr, 2000)) {
+      // A thread did not drain -- it is parked in a blocking syscall (a server
+      // thread in accept(), a reader in recv()) where it cannot observe Halt, and
+      // it is still live. Do not free the program out from under it: anything that
+      // later wakes it -- on Windows the WSACleanup that used to run on the way
+      // out of win_main -- would send it executing against a freed StackProgram.
+      // Leak the image instead and let process teardown reclaim it.
+      loader.Abandon();
+    }
 
 #ifdef _DEBUG
     std::wcout << L"# final std::stack: pos=" << (*stack_pos) << L" #" << std::endl;

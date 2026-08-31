@@ -307,12 +307,11 @@ class WebServerTest {
 
 		"PASS: Web.Server request and response API verified over real HTTP"->PrintLine();
 
-		# Explicit exit. A program that starts WebServer->Serve and then returns from
-		# Main segfaults during teardown with the server thread parked in Accept.
-		# That is PRE-EXISTING on master -- reproduced with an unmodified
-		# net_server.obs and no Web.Server involved at all, 3 runs of 3 -- and is
-		# filed separately. Without this the suite would score a passing test as a
-		# crash, since it scores by exit code.
-		Runtime->Exit(0);
+		# Deliberately NO Runtime->Exit(0) here: this method returns to Main and Main
+		# returns normally, with the server thread still parked in Accept. That exact
+		# shape used to segfault during teardown (#681), so the suite -- which scores
+		# by exit code -- would have recorded this passing test as a crash. Returning
+		# normally is now the assertion: it keeps the teardown path covered, so any
+		# regression of #681 turns this test red instead of going unnoticed.
 	}
 }
