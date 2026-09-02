@@ -637,11 +637,51 @@ jobs:
         run: |
           rm -f ~/.ssh/obj_key
 
-      - name: Skip notice
+      # Fail, do not skip.
+      #
+      # This printed "Skipping deployment" and reported the job as SUCCESS, so
+      # "Deploy API Documentation  completed/success" meant "did nothing" -- and
+      # had meant that for as long as the secrets have been unset. The v2026.8.4
+      # release went out with objeck.org still serving v2026.8.3 docs, and the
+      # 39 Game.OpenGL pages of the release's headline feature returning 404,
+      # while the pipeline reported the deploy green.
+      #
+      # A missing secret is a configuration defect, not a valid state to pass
+      # over quietly: it makes an advertised part of the release silently not
+      # happen. Fail loudly and name what to set. The escape hatch already exists
+      # and is explicit -- the `skip_docs_deploy` workflow_dispatch input gates
+      # this whole job -- so "skip on purpose" is available without "skip by
+      # accident and report success" being the default.
+      - name: Missing objeck.org credentials
         if: env.OBJECK_ORG_SSH_KEY == ''
         run: |
-          echo "⚠️  objeck.org SSH key not configured. Skipping deployment."
-          echo "To enable: Add OBJECK_ORG_SSH_KEY and OBJECK_ORG_USER secrets"
+          echo "::error::objeck.org SSH credentials are not configured - API docs were NOT deployed"
+          echo ""
+          echo "Set both repository secrets:"
+          echo "  OBJECK_ORG_SSH_KEY  - private key authorized on objeck.org"
+          echo "  OBJECK_ORG_USER     - the ssh user"
+          echo ""
+          echo "The docs that should have shipped are in this run's api-docs artifact,"
+          echo "and on master at docs/api.zip. To deploy by hand:"
+          echo "  rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/v<VERSION>/"
+          echo "  ssh USER@objeck.org 'cd /var/www/objeck.org/api && ln -sfn v<VERSION> latest'"
+          exit 1
+
+      # Prove the deploy actually landed, rather than trusting rsync's exit code.
+      # Same reasoning as the playground engine check: the step that reports
+      # success is not the same thing as the site serving the new pages.
+      - name: Verify published docs
+        if: env.OBJECK_ORG_SSH_KEY != ''
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          sleep 5
+          STAMP=$(curl -fsS --max-time 30 "https://objeck.org/api/latest/index.html" \
+                  | grep -o 'class="version">v[0-9.]*' | head -1 | sed 's/.*>//')
+          if [ "$STAMP" != "v$VERSION" ]; then
+            echo "::error::objeck.org/api/latest reports '$STAMP', expected 'v$VERSION'"
+            exit 1
+          fi
+          echo "✅ objeck.org/api/latest serves $STAMP"
 
   # ============================================
   # Publish VS Code Extension
