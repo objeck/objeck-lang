@@ -111,10 +111,24 @@ echo
 echo "[4] SHA256SUMS describes the PUBLISHED bytes"
 # Signing rewrites the MSIs, so a manifest generated before signing makes every
 # user's verification FAIL -- worse than shipping no checksum.
-( cd "$WORK" && gh release download "$TAG" -R "$REPO" --pattern "SHA256SUMS" --clobber >/dev/null 2>&1
-  gh release download "$TAG" -R "$REPO" --pattern "*.msi" --clobber >/dev/null 2>&1
-  gh release download "$TAG" -R "$REPO" --pattern "*.pkg" --clobber >/dev/null 2>&1
-  gh release download "$TAG" -R "$REPO" --pattern "*.zip" --clobber >/dev/null 2>&1 )
+# Do NOT suppress these. The manifest download failed once here and the error went
+# to /dev/null, so the gate sailed on and died three lines later reading a file
+# that was never fetched:
+#
+#   post_release.sh: line 123: /tmp/tmp.XXXX/SHA256SUMS: No such file or directory
+#
+# which reads as a broken script rather than as "the download failed" -- the same
+# indistinguishable-failure problem this file's header warns about. Note also that
+# the four downloads were newline-separated after a single '&&', so a failure of
+# the first did not stop the rest; only the manifest is required, so check it.
+( cd "$WORK" || exit 1
+  gh release download "$TAG" -R "$REPO" --pattern "SHA256SUMS" --clobber 2>&1 | sed 's/^/    gh: /'
+  for pat in "*.msi" "*.pkg" "*.zip"; do
+    gh release download "$TAG" -R "$REPO" --pattern "$pat" --clobber >/dev/null 2>&1 || true
+  done )
+if [ ! -f "$WORK/SHA256SUMS" ]; then
+  bad "could not download SHA256SUMS -- cannot verify the manifest (see gh output above)"
+else
 STALE=0
 while read -r h n; do
   [ -f "$WORK/$n" ] || continue
@@ -142,13 +156,23 @@ if [ "$STALE" -eq 1 ]; then
   [ "$RC" -eq 0 ] && note "regenerated and re-verified against the published files" \
                   || bad "SHA256SUMS still does not match after regeneration"
 fi
+fi
 
 # ------------------------------------------------------------- 5. body
 echo
 echo "[5] release notes name only files that exist"
 if [ -n "$BODY_FILE" ]; then
-  gh release edit "$TAG" -R "$REPO" --notes-file "$BODY_FILE" >/dev/null 2>&1 \
-    || bad "could not set release body"
+  # Check the file first, and let gh's own error through. This reported
+  # "could not set release body" for a file that `gh release edit` accepted
+  # without complaint when run by hand a minute later -- with the reason sent to
+  # /dev/null there was nothing to act on, and the gate looked like the defect.
+  if [ ! -f "$BODY_FILE" ]; then
+    bad "body file not found: $BODY_FILE"
+  else
+    ERR=$(gh release edit "$TAG" -R "$REPO" --notes-file "$BODY_FILE" 2>&1 >/dev/null) \
+      && note "release body set from $BODY_FILE" \
+      || bad "could not set release body: $ERR"
+  fi
 fi
 gh release view "$TAG" -R "$REPO" --json body --jq .body > "$WORK/body.md" 2>/dev/null
 # Precise asset shape: 'objeck-lang' in a repo URL is NOT an advertised asset.
@@ -173,11 +197,29 @@ echo "[6] playground"
 if [ "$DO_PLAYGROUND" -eq 1 ]; then
   HOST="${PLAYGROUND_HOST:-playground.objeck.org}"
   ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 "root@$HOST" \
-      'bash /opt/playground/repo/programs/web-playground/deploy/update.sh' 2>&1 | tail -5 | sed 's/^/  /'
+      "bash /opt/playground/repo/programs/web-playground/deploy/update.sh $VERSION" 2>&1 \
+      | tail -8 | sed 's/^/  /'
 fi
 PV=$(curl -fsS --max-time 20 https://playground.objeck.org/api/health 2>/dev/null | sed 's/.*"version":"\([^"]*\)".*/\1/')
 if [ "$PV" = "$TAG" ]; then note "health ok, version=$PV"
 else echo "  playground reports '$PV', expected '$TAG'"; [ "$DO_PLAYGROUND" -eq 1 ] && FAIL=1; fi
+
+# The health version is a hand-maintained constant in backend/app/config.py -- a
+# LABEL. It read v2026.8.4 while the sandbox was still executing a 2026.6.1
+# toolchain built months earlier, because the image is assembled from
+# core/release/deploy, which is gitignored and which nothing refreshed. Every
+# check passed; none of them ran any code. So run some.
+EV=$(curl -fsS --max-time 60 -X POST https://playground.objeck.org/api/run \
+      -H 'Content-Type: application/json' \
+      -d '{"code":"class V { function : Main(args : String[]) ~ Nil { System.Runtime->GetVersion()->PrintLine(); } }"}' \
+      2>/dev/null)
+if echo "$EV" | grep -q "$VERSION"; then
+  note "engine executes $VERSION"
+else
+  echo "  playground ENGINE is not $VERSION (the header can be right while this is wrong)"
+  echo "  response: $(echo "$EV" | head -c 200)"
+  [ "$DO_PLAYGROUND" -eq 1 ] && FAIL=1
+fi
 
 echo
 echo "=============================================================="
