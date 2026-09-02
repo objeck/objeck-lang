@@ -474,11 +474,28 @@ jobs:
         run: |
           rm -f ~/.ssh/sf_key
 
-      - name: Skip notice
-        if: env.SOURCEFORGE_SSH_KEY == ''
+      # A missing secret must not silently stand in for a decision. The
+      # `skip_sourceforge` input only exists on workflow_dispatch, so on the normal
+      # workflow_run path there was no way to say "manual on purpose" -- and the
+      # absent secret said it instead, reporting success. v2026.8.4 recorded
+      # "Upload to Sourceforge  completed/success" having uploaded nothing.
+      #
+      # RELEASE_MANUAL_STEPS is a repository VARIABLE (not a secret), so it applies
+      # on every trigger. List the steps handled by hand, e.g. "sourceforge,vscode".
+      - name: Sourceforge is handled manually
+        if: env.SOURCEFORGE_SSH_KEY == '' && contains(vars.RELEASE_MANUAL_STEPS, 'sourceforge')
         run: |
-          echo "⚠️  Sourceforge SSH key not configured. Skipping upload."
-          echo "To enable: Add SOURCEFORGE_SSH_KEY and SOURCEFORGE_USERNAME secrets"
+          echo "ℹ️  Sourceforge upload is declared manual via RELEASE_MANUAL_STEPS - skipping."
+          echo "   Upload the release assets to Sourceforge by hand."
+
+      - name: Missing Sourceforge credentials
+        if: env.SOURCEFORGE_SSH_KEY == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'sourceforge')
+        run: |
+          echo "::error::Sourceforge credentials are not configured - nothing was uploaded"
+          echo ""
+          echo "Either add the secrets SOURCEFORGE_SSH_KEY and SOURCEFORGE_USERNAME,"
+          echo "or declare it manual:  gh variable set RELEASE_MANUAL_STEPS --body 'sourceforge'"
+          exit 1
 
   # ============================================
   # Deploy the web playground
@@ -565,13 +582,26 @@ jobs:
         run: |
           rm -f ~/.ssh/playground_key
 
-      - name: Skip notice
-        if: env.PLAYGROUND_SSH_KEY == '' || env.PLAYGROUND_HOST == ''
+      - name: Playground is handled manually
+        if: (env.PLAYGROUND_SSH_KEY == '' || env.PLAYGROUND_HOST == '') && contains(vars.RELEASE_MANUAL_STEPS, 'playground')
         run: |
-          echo "⚠️  Playground deploy not configured. Skipping."
-          echo "To enable: add PLAYGROUND_HOST and PLAYGROUND_SSH_KEY secrets."
+          echo "ℹ️  Playground deploy is declared manual via RELEASE_MANUAL_STEPS - skipping."
+          echo "   Run: ssh root@<host> 'bash /opt/playground/repo/programs/web-playground/deploy/update.sh <VERSION>'"
+
+      # This reported success while deploying nothing, so v2026.8.4 went out with the
+      # playground still serving a 2026.6.1 engine -- and the deploy had to be done by
+      # hand afterwards. A deploy that does not happen must not be green.
+      - name: Missing playground credentials
+        if: (env.PLAYGROUND_SSH_KEY == '' || env.PLAYGROUND_HOST == '') && !contains(vars.RELEASE_MANUAL_STEPS, 'playground')
+        run: |
+          echo "::error::Playground credentials are not configured - the playground was NOT deployed"
+          echo ""
+          echo "Add secrets PLAYGROUND_HOST and PLAYGROUND_SSH_KEY, or declare it manual:"
+          echo "  gh variable set RELEASE_MANUAL_STEPS --body 'playground'"
+          echo ""
           echo "The key should be a deploy key restricted on the VPS to:"
           echo "  command=\"bash /opt/playground/repo/programs/web-playground/deploy/update.sh\",no-pty,no-port-forwarding"
+          exit 1
 
   # ============================================
   # Deploy API Documentation
@@ -724,11 +754,23 @@ jobs:
           vsce publish --packagePath "$VSIX"
           echo "✅ VS Code extension published to marketplace"
 
-      - name: Skip notice
-        if: env.VSCE_PAT == ''
+      - name: VS Code publish is handled manually
+        if: env.VSCE_PAT == '' && contains(vars.RELEASE_MANUAL_STEPS, 'vscode')
         run: |
-          echo "⚠️  VSCE_PAT secret not configured — skipping VS Code Marketplace publish."
-          echo "To enable: add a VSCE_PAT secret (Personal Access Token for VS Code Marketplace)"
+          echo "ℹ️  VS Code Marketplace publish is declared manual via RELEASE_MANUAL_STEPS - skipping."
+          echo "   Publish the .vsix from this run's artifacts by hand."
+
+      # The release notes advertise the extension, so a skipped publish means the
+      # notes describe something that did not ship. v2026.8.4 reported
+      # "Publish VS Code Extension  completed/success" having published nothing.
+      - name: Missing VS Code Marketplace token
+        if: env.VSCE_PAT == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'vscode')
+        run: |
+          echo "::error::VSCE_PAT is not configured - the extension was NOT published"
+          echo ""
+          echo "Add a VSCE_PAT secret (Marketplace Personal Access Token), or declare it manual:"
+          echo "  gh variable set RELEASE_MANUAL_STEPS --body 'vscode'"
+          exit 1
 
   # ============================================
   # Release Summary

@@ -96,7 +96,28 @@ Release target:
 
 ### 1. Pre-flight gates (all must pass)
 
-Run the following and **abort** on the first failure:
+**First, the configuration gate — one command:**
+
+```bash
+tools/cicd/check_release_config.sh
+```
+
+Every other gate below checks the repository. This one checks whether the pipeline
+can actually *do* what it advertises, which nothing checked until v2026.8.4 shipped
+with four publish steps reporting `completed/success` having done nothing: no
+Sourceforge upload, no Marketplace publish, no playground deploy, no API-docs
+deploy. None of those secrets had ever been set. The playground was left on a
+three-month-old engine and objeck.org a release behind, both repaired by hand
+afterwards.
+
+Those jobs now fail rather than skip, but a failure *during* a release is still the
+expensive place to learn it. Exit 0 means every advertised step can run or is
+declared manual in the `RELEASE_MANUAL_STEPS` repository variable; exit 1 lists each
+gap with the command to fix or declare it. Steps declared manual are printed as a
+to-do list — declaring one is a reminder, not a free pass: **you still have to do
+it after publishing.**
+
+Then run the following and **abort** on the first failure:
 
 ```bash
 # Clean working tree
@@ -168,19 +189,29 @@ Note the cloud build *does* pass the release version to `code_doc` and commits t
 result back as `chore: update api.zip for v<VERSION> [skip ci]` -- so a wrong stamp in
 the committed file is not simply "CI never refreshes it".
 
-**Unresolved, with the evidence recorded so it is not rediscovered.** Three consecutive
-CI commits each committed a zip stamped **v2026.8.0**:
+**SOLVED (2026-09-02, commit `b2e137c529`).** This section previously recorded three
+consecutive CI commits each committing a zip stamped **v2026.8.0** as an open
+question. The cause was neither of the two theories here:
 
-```
-a757830453  "chore: update api.zip for v2026.8.2"  -> zip stamps v2026.8.0
-930dd19836  "chore: update api.zip for v2026.8.1"  -> zip stamps v2026.8.0
-7dba61d324  "chore: update api.zip for v2026.8.1"  -> zip stamps v2026.8.0
-```
+`doc_html.obs` addresses every output as a hardcoded **`../html/`** — relative to
+`obr`'s working directory, which the job sets to `core/release/deploy/bin`, so
+`core/release/deploy/html`. It opens those paths with `FileWriter`, and **FileWriter
+fails silently when the directory does not exist.** The job created `docs/api`
+instead and never created `../html`, so every page write was a no-op: `code_doc`
+printed "Writing API files...", spun through every class, exited 0, and wrote
+nothing. The old gate then counted entries inside the *tracked* `docs/api.zip`,
+which the checkout always supplies, so it counted the stale ones and passed.
 
-So either the version handed to `code_doc` was wrong on those runs, or the commit step
-(which stashes the built zip to `/tmp` and copies it back around a git operation)
-restored a stale file. Not diagnosed. Until it is, **verify the stamp every release**
-rather than assuming the cloud produced a correct one.
+`windows-x64` was the one platform whose shipped docs were correct because
+`code_doc64.cmd` is the only caller that does the `mkdir ..\html` + `xcopy` this
+needs — and it is the only platform that regenerates its own docs. The POSIX job now
+mirrors it. Evidence: CI's next committed `api.zip` went from 472 stale pages to
+**482** stamped v2026.8.4, including the `game.opengl-*` pages that had never
+appeared in any release.
+
+Keep verifying the stamp anyway — it is cheap, and it is what finally caught this.
+But note the stamp alone cannot distinguish the 472-page and 482-page archives:
+**both are stamped v2026.8.4.** Count pages when it matters.
 
 ### 1b. Derive the release summary
 
