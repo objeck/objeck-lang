@@ -41,14 +41,35 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$BUILD_ID" ]; then
-  for _ in 1 2 3 4 5 6; do
+  # Pin the run to the commit the tag CURRENTLY points at.
+  #
+  # Taking "newest run for this tag" is wrong after a re-tag, and re-tagging is
+  # the prescribed recovery from a failed build -- so the wrong case is the one
+  # that happens under pressure. Observed: the tag was deleted, master was fixed,
+  # the tag was re-cut, and this ran immediately. GitHub had not yet created the
+  # new run, so the lookup matched the PREVIOUS run -- cancelled, on the old SHA --
+  # and printed
+  #
+  #   RELEASE-BUILD FAILED: completed/cancelled
+  #   The tag is already pushed. Fix on master, delete the tag, re-tag.
+  #
+  # for a build that had just started healthily. Acting on that advice would have
+  # deleted a good tag and restarted a 70-minute build: precisely the panic
+  # response this script exists to prevent, produced by the script itself.
+  TAG_SHA=$(gh api "repos/$REPO/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null)
+  [ -n "$TAG_SHA" ] || TAG_SHA=$(git rev-parse "$TAG^{commit}" 2>/dev/null || true)
+  [ -n "$TAG_SHA" ] || { echo "cannot resolve $TAG to a commit"; exit 3; }
+
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
     BUILD_ID=$(gh run list --workflow=release-build.yml -R "$REPO" --branch="$TAG" \
-                 --limit=1 --json databaseId --jq '.[0].databaseId' 2>/dev/null)
-    [ -n "$BUILD_ID" ] && break
-    sleep 5
+                 --limit=20 --json databaseId,headSha \
+                 --jq "[.[] | select(.headSha == \"$TAG_SHA\")] | .[0].databaseId" 2>/dev/null)
+    [ -n "$BUILD_ID" ] && [ "$BUILD_ID" != "null" ] && break
+    BUILD_ID=""
+    sleep 10
   done
 fi
-[ -n "$BUILD_ID" ] || { echo "no release-build.yml run found for $TAG"; exit 3; }
+[ -n "$BUILD_ID" ] || { echo "no release-build.yml run found for $TAG at its current commit"; exit 3; }
 
 ST=""; TIMED_OUT=0
 wait_run() {
