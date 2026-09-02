@@ -714,71 +714,12 @@ jobs:
           echo "✅ objeck.org/api/latest serves $STAMP"
 
   # ============================================
-  # Publish VS Code Extension
-  # ============================================
-
-  publish-vscode:
-    name: Publish VS Code Extension
-    needs: [check-trigger, prepare]
-    runs-on: ubuntu-latest
-    if: needs.check-trigger.outputs.should_publish == 'true'
-    env:
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
-
-    steps:
-      - name: Download VS Code extension artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: vscode-extension
-          path: vscode-extension/
-          run-id: ${{ needs.check-trigger.outputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install vsce
-        run: npm install -g @vscode/vsce
-
-      - name: Publish to VS Code Marketplace
-        if: env.VSCE_PAT != ''
-        run: |
-          VSIX=$(find vscode-extension -name "*.vsix" | head -1)
-          if [ -z "$VSIX" ]; then
-            echo "❌ No .vsix file found in artifact"
-            exit 1
-          fi
-          echo "📦 Publishing: $VSIX"
-          vsce publish --packagePath "$VSIX"
-          echo "✅ VS Code extension published to marketplace"
-
-      - name: VS Code publish is handled manually
-        if: env.VSCE_PAT == '' && contains(vars.RELEASE_MANUAL_STEPS, 'vscode')
-        run: |
-          echo "ℹ️  VS Code Marketplace publish is declared manual via RELEASE_MANUAL_STEPS - skipping."
-          echo "   Publish the .vsix from this run's artifacts by hand."
-
-      # The release notes advertise the extension, so a skipped publish means the
-      # notes describe something that did not ship. v2026.8.4 reported
-      # "Publish VS Code Extension  completed/success" having published nothing.
-      - name: Missing VS Code Marketplace token
-        if: env.VSCE_PAT == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'vscode')
-        run: |
-          echo "::error::VSCE_PAT is not configured - the extension was NOT published"
-          echo ""
-          echo "Add a VSCE_PAT secret (Marketplace Personal Access Token), or declare it manual:"
-          echo "  gh variable set RELEASE_MANUAL_STEPS --body 'vscode'"
-          exit 1
-
-  # ============================================
   # Release Summary
   # ============================================
 
   summary:
     name: Release Summary
-    needs: [check-trigger, prepare, github-release, sourceforge-upload, deploy-docs, publish-vscode, deploy-playground]
+    needs: [check-trigger, prepare, github-release, sourceforge-upload, deploy-docs, deploy-playground]
     runs-on: ubuntu-latest
     if: always() && needs.check-trigger.outputs.should_publish == 'true'
 
@@ -793,7 +734,6 @@ jobs:
           echo "- GitHub Release: ${{ needs.github-release.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Sourceforge: ${{ needs.sourceforge-upload.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- API Docs: ${{ needs.deploy-docs.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- VS Code Marketplace: ${{ needs.publish-vscode.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Playground: ${{ needs.deploy-playground.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
