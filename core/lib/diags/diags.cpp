@@ -34,89 +34,178 @@
 #include "../../compiler/parser.h"
 #include "../../compiler/context.h"
 
+#include <map>
+#include <memory>
 #include <mutex>
 
 using namespace frontend;
 
-// Serializes ALL diagnostics work across the LSP server's per-connection worker
-// threads (server.obs spawns a LintService/LspWorker thread per connection).
-// Parsing and analysis run on process-global singletons (TreeFactory/TypeFactory
-// and the analyzer cache below); concurrent requests corrupt those and segfault.
-// The LSP is latency-tolerant and correctness-sensitive, so a single coarse lock
-// around every entry point is the right trade-off. Recursive so a future entry
-// that calls another cannot self-deadlock.
-static std::recursive_mutex s_diag_global_mutex;
+// Per-ParsedProgram analysis state.
+//
+// Every diagnostics request used to queue behind ONE process-wide recursive
+// mutex, because parsing and analysis ran on process-global TreeFactory and
+// TypeFactory singletons plus a single-slot analyzer cache: concurrent requests
+// corrupted those and segfaulted. The LSP server spawns a LintService/LspWorker
+// thread per connection (server.obs), so every one of them serialized against
+// every other, and the lock was a serialization rather than a fix -- any new
+// entry point that forgot to take it silently re-opened the hole (issue #659).
+//
+// The factories are now owned by the ParsedProgram and bound per thread
+// (ScopedProgramFactories in tree.h), so work on two different programs shares
+// nothing. What remains to be guarded is a single program against concurrent use
+// of itself: analysis is not idempotent, ScopeTable cursors are shared, and a
+// release must not free an AST another thread is walking. So the lock moved onto
+// the program, and two documents are now analyzed at the same time.
+//
+// The state is held by shared_ptr so that a thread which looked a program up and
+// is waiting on its lock cannot have the state deleted underneath it by a
+// concurrent release; it acquires the lock, sees `released`, and returns.
+struct ProgramState {
+  std::recursive_mutex mutex;
+
+  // Cached ContextAnalyzer for this program.
+  //
+  // Each diag_*_impl used to create a fresh `ContextAnalyzer analyzer_local(...)`
+  // and call `Analyze()` on it per request. Two problems:
+  //   1. Analyze is not idempotent on a shared ParsedProgram (e.g.
+  //      ScopeTable::child_pos cursors advance and never reset).
+  //   2. ~ContextAnalyzer() deletes the Linker, but the AST holds raw
+  //      LibraryClass*/LibraryMethod* pointers from that linker. Those
+  //      pointers dangle the moment the analyzer goes out of scope, making
+  //      the next request's results non-deterministic.
+  //
+  // Cached per (program, lib_path), and invalidated when the lib_path changes or
+  // the program is released. This was one global slot, so two open documents
+  // evicted each other on every request.
+  ContextAnalyzer* analyzer;
+  std::wstring lib_path;
+  bool released;
+
+  ProgramState() {
+    analyzer = nullptr;
+    released = false;
+  }
+
+  ~ProgramState() {
+    delete analyzer;
+    analyzer = nullptr;
+  }
+};
+
+// Program -> state. The only global left, and it is held just long enough to look
+// a program up, never across analysis.
+static std::mutex s_registry_mutex;
+static std::map<ParsedProgram*, std::shared_ptr<ProgramState> > s_program_states;
+
+static std::shared_ptr<ProgramState> GetProgramState(ParsedProgram* program)
+{
+  if(!program) {
+    return nullptr;
+  }
+
+  std::lock_guard<std::mutex> lock(s_registry_mutex);
+  std::map<ParsedProgram*, std::shared_ptr<ProgramState> >::iterator found = s_program_states.find(program);
+  if(found != s_program_states.end()) {
+    return found->second;
+  }
+
+  std::shared_ptr<ProgramState> fresh = std::make_shared<ProgramState>();
+  s_program_states[program] = fresh;
+
+  return fresh;
+}
+
+static std::shared_ptr<ProgramState> TakeProgramState(ParsedProgram* program)
+{
+  std::lock_guard<std::mutex> lock(s_registry_mutex);
+  std::map<ParsedProgram*, std::shared_ptr<ProgramState> >::iterator found = s_program_states.find(program);
+  if(found == s_program_states.end()) {
+    return nullptr;
+  }
+
+  std::shared_ptr<ProgramState> state = found->second;
+  s_program_states.erase(found);
+
+  return state;
+}
+
+// Reads the ParsedProgram out of the diagnostics object the Objeck side passes.
+// Its index differs per entry point, hence the argument.
+static ParsedProgram* ProgramArg(VMContext& context, int index)
+{
+  size_t* prgm_obj = APITools_GetObjectValue(context, index);
+  return prgm_obj ? (ParsedProgram*)prgm_obj[0] : nullptr;
+}
 
 // SEH guard: prevents access violations from crashing the LSP server process.
 // Kept in its own function because MSVC forbids __try in a function that also
-// needs C++ object unwinding (the lock_guard lives in the caller).
+// needs C++ object unwinding (the lock and the shared_ptr live in the caller).
 #ifdef _WIN32
 static void SafeCallDiagGuarded(void (*fn)(VMContext&), VMContext& ctx) {
   __try { fn(ctx); } __except(EXCEPTION_EXECUTE_HANDLER) { }
 }
-static void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) {
-  std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
-  SafeCallDiagGuarded(fn, ctx);
-}
 #else
-static inline void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx) {
-  std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
+static inline void SafeCallDiagGuarded(void (*fn)(VMContext&), VMContext& ctx) {
   fn(ctx);
 }
 #endif
 
-// Cached ContextAnalyzer per parsed program.
-//
-// Each diag_*_impl used to create a fresh `ContextAnalyzer analyzer_local(...)`
-// and call `Analyze()` on it per request. Two problems:
-//   1. Analyze is not idempotent on a shared ParsedProgram (e.g.
-//      ScopeTable::child_pos cursors advance and never reset).
-//   2. ~ContextAnalyzer() deletes the Linker, but the AST holds raw
-//      LibraryClass*/LibraryMethod* pointers from that linker. Those
-//      pointers dangle the moment the analyzer goes out of scope, making
-//      the next request's results non-deterministic.
-//
-// Cache one analyzer per (program, lib_path). The cache is invalidated
-// when the program is released or the lib_path changes.
-static std::mutex s_analyzer_mutex;
-static ContextAnalyzer* s_cached_analyzer = nullptr;
-static ParsedProgram* s_cached_program = nullptr;
-static std::wstring s_cached_lib_path;
+// Runs a query under the lock of the program it is about. Requests against two
+// different documents no longer wait for each other.
+static void SafeCallDiag(void (*fn)(VMContext&), VMContext& ctx, int prgm_index) {
+  ParsedProgram* program = ProgramArg(ctx, prgm_index);
+  std::shared_ptr<ProgramState> state = GetProgramState(program);
+  if(!state) {
+    // No program to guard -- the entry points that reach here allocate nothing
+    // shared, so running unguarded is correct rather than a fallback.
+    SafeCallDiagGuarded(fn, ctx);
+    return;
+  }
+
+  std::lock_guard<std::recursive_mutex> lock(state->mutex);
+  if(state->released) {
+    // Released while this request was waiting for the lock. The AST is gone;
+    // answering from it would be a use-after-free.
+    return;
+  }
+
+  // Queries allocate too -- resolving a generic, inferring a type, synthesizing a
+  // call -- and those nodes belong to the program being queried. Without this they
+  // would land in the per-thread fallback factory and never be freed.
+  ScopedProgramFactories scoped_factories(program);
+  SafeCallDiagGuarded(fn, ctx);
+}
 
 static inline size_t safe_pos(int p) { return p > 0 ? static_cast<size_t>(p - 1) : 0; }
 
+// Caller must hold the program's lock (SafeCallDiag does).
 static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstring& lib_path)
 {
-  std::lock_guard<std::mutex> lock(s_analyzer_mutex);
-  if(s_cached_analyzer && s_cached_program == program && s_cached_lib_path == lib_path) {
-    return s_cached_analyzer;
+  std::shared_ptr<ProgramState> state = GetProgramState(program);
+  if(!state) {
+    return nullptr;
   }
-  delete s_cached_analyzer;
-  s_cached_analyzer = nullptr;
-  s_cached_program = nullptr;
-  s_cached_lib_path.clear();
+
+  if(state->analyzer && state->lib_path == lib_path) {
+    return state->analyzer;
+  }
+
+  delete state->analyzer;
+  state->analyzer = nullptr;
+  state->lib_path.clear();
 
   ContextAnalyzer* fresh = new ContextAnalyzer(program, lib_path, false);
   if(!fresh->Analyze()) {
     delete fresh;
     return nullptr;
   }
-  s_cached_analyzer = fresh;
-  s_cached_program = program;
-  s_cached_lib_path = lib_path;
-  return s_cached_analyzer;
+
+  state->analyzer = fresh;
+  state->lib_path = lib_path;
+
+  return state->analyzer;
 }
 
-static void InvalidateAnalyzerCache(ParsedProgram* program)
-{
-  std::lock_guard<std::mutex> lock(s_analyzer_mutex);
-  if(s_cached_program == program) {
-    delete s_cached_analyzer;
-    s_cached_analyzer = nullptr;
-    s_cached_program = nullptr;
-    s_cached_lib_path.clear();
-  }
-}
 
 extern "C" {
 
@@ -151,10 +240,20 @@ extern "C" {
 #endif
   void diag_tree_release(VMContext& context)
   {
-    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     ParsedProgram* program = (ParsedProgram*)APITools_GetIntValue(context, 0);
     if(program) {
-      InvalidateAnalyzerCache(program);
+      // Unregister first, so no further request can find this program, then take
+      // its lock: any request already inside one is finished before the AST goes
+      // away, and any request blocked on the lock sees `released` and returns.
+      std::shared_ptr<ProgramState> state = TakeProgramState(program);
+      if(state) {
+        std::lock_guard<std::recursive_mutex> lock(state->mutex);
+        state->released = true;
+        delete state->analyzer;
+        state->analyzer = nullptr;
+        state->lib_path.clear();
+      }
+
       delete program;
       program = nullptr;
     }
@@ -168,7 +267,6 @@ extern "C" {
 #endif
   void diag_parse_file(VMContext& context)
   {
-    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     const std::wstring src_file(APITools_GetStringValue(context, 2));
 
     std::vector<std::pair<std::wstring, std::wstring> > programs;
@@ -191,7 +289,6 @@ extern "C" {
 #endif
   void diag_parse_text(VMContext& context)
   {
-    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     size_t* names_array = APITools_GetArrayAddress(APITools_GetObjectValue(context, 2));
     const size_t names_array_size = APITools_GetArraySize(names_array);
 
@@ -780,12 +877,8 @@ extern "C" {
   //
   // help signature
   //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void diag_signature_help(VMContext& context)
+  void diag_signature_help_impl(VMContext& context)
   {
-    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     size_t* prgm_obj = APITools_GetObjectValue(context, 1);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
@@ -884,12 +977,8 @@ extern "C" {
   //
   // code rename
   //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void diag_code_rename(VMContext& context)
+  void diag_code_rename_impl(VMContext& context)
   {
-    std::lock_guard<std::recursive_mutex> lock(s_diag_global_mutex);
     size_t* prgm_obj = APITools_GetObjectValue(context, 0);
     ParsedProgram* program = (ParsedProgram*)prgm_obj[0];
 
@@ -901,6 +990,20 @@ extern "C" {
 
     prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
   }
+
+  // These two took the old global lock directly rather than going through the
+  // wrapper, which is exactly the fragility issue #659 called out: an entry point
+  // that forgets the guard loses it silently. Routing them through SafeCallDiag
+  // gives them the program lock and the SEH guard the others already had.
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_signature_help(VMContext& context) { SafeCallDiag(diag_signature_help_impl, context, 1); }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void diag_code_rename(VMContext& context) { SafeCallDiag(diag_code_rename_impl, context, 0); }
 
   //
   // find references
@@ -1761,82 +1864,82 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_hover(VMContext& context) { SafeCallDiag(diag_hover_impl, context); }
+  void diag_hover(VMContext& context) { SafeCallDiag(diag_hover_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_code_action(VMContext& context) { SafeCallDiag(diag_code_action_impl, context); }
+  void diag_code_action(VMContext& context) { SafeCallDiag(diag_code_action_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_definition(VMContext& context) { SafeCallDiag(diag_find_definition_impl, context); }
+  void diag_find_definition(VMContext& context) { SafeCallDiag(diag_find_definition_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_declaration(VMContext& context) { SafeCallDiag(diag_find_declaration_impl, context); }
+  void diag_find_declaration(VMContext& context) { SafeCallDiag(diag_find_declaration_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_references(VMContext& context) { SafeCallDiag(diag_find_references_impl, context); }
+  void diag_find_references(VMContext& context) { SafeCallDiag(diag_find_references_impl, context, 0); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_completion_help(VMContext& context) { SafeCallDiag(diag_completion_help_impl, context); }
+  void diag_completion_help(VMContext& context) { SafeCallDiag(diag_completion_help_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_get_symbols(VMContext& context) { SafeCallDiag(diag_get_symbols_impl, context); }
+  void diag_get_symbols(VMContext& context) { SafeCallDiag(diag_get_symbols_impl, context, 0); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_get_diagnosis(VMContext& context) { SafeCallDiag(diag_get_diagnosis_impl, context); }
+  void diag_get_diagnosis(VMContext& context) { SafeCallDiag(diag_get_diagnosis_impl, context, 0); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_type_definition(VMContext& context) { SafeCallDiag(diag_find_type_definition_impl, context); }
+  void diag_find_type_definition(VMContext& context) { SafeCallDiag(diag_find_type_definition_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_find_implementation(VMContext& context) { SafeCallDiag(diag_find_implementation_impl, context); }
+  void diag_find_implementation(VMContext& context) { SafeCallDiag(diag_find_implementation_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_type_hierarchy_super(VMContext& context) { SafeCallDiag(diag_type_hierarchy_super_impl, context); }
+  void diag_type_hierarchy_super(VMContext& context) { SafeCallDiag(diag_type_hierarchy_super_impl, context, 0); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_prepare_call_hierarchy(VMContext& context) { SafeCallDiag(diag_prepare_call_hierarchy_impl, context); }
+  void diag_prepare_call_hierarchy(VMContext& context) { SafeCallDiag(diag_prepare_call_hierarchy_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_incoming_calls(VMContext& context) { SafeCallDiag(diag_incoming_calls_impl, context); }
+  void diag_incoming_calls(VMContext& context) { SafeCallDiag(diag_incoming_calls_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_outgoing_calls(VMContext& context) { SafeCallDiag(diag_outgoing_calls_impl, context); }
+  void diag_outgoing_calls(VMContext& context) { SafeCallDiag(diag_outgoing_calls_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_inlay_hints(VMContext& context) { SafeCallDiag(diag_inlay_hints_impl, context); }
+  void diag_inlay_hints(VMContext& context) { SafeCallDiag(diag_inlay_hints_impl, context, 1); }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void diag_semantic_tokens(VMContext& context) { SafeCallDiag(diag_semantic_tokens_impl, context); }
+  void diag_semantic_tokens(VMContext& context) { SafeCallDiag(diag_semantic_tokens_impl, context, 1); }
 
 }
 

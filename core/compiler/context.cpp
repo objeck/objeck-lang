@@ -299,6 +299,11 @@ bool ContextAnalyzer::Analyze(bool is_lib)
 #ifdef _DEBUG
   GetLogger() << L"\n--------- Contextual Analysis ---------" << std::endl;
 #endif
+
+  // Analysis allocates types and nodes (generic instantiations, inferred types,
+  // synthesized method calls) that belong to this program, not to whichever one
+  // another thread happens to be analyzing (issue #659).
+  ScopedProgramFactories scoped_factories(program);
   int class_id = 0;
 
   // The LSP diags layer re-runs Analyze on every request over the same

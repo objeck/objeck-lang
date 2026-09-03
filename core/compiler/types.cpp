@@ -36,11 +36,13 @@ using namespace frontend;
 /****************************
  * TypeFactory class
  ****************************/
-TypeFactory* TypeFactory::instance;
+
+thread_local TypeFactory* TypeFactory::instance = nullptr;
 
 TypeFactory* TypeFactory::Instance()
 {
   if(!instance) {
+    // Per-thread fallback for allocations outside any program; see tree.cpp.
     instance = new TypeFactory;
   }
 

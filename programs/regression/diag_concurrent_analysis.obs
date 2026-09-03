@@ -1,0 +1,161 @@
+#~
+# Concurrency guard for the diagnostics/LSP analysis path (#659).
+#
+# The LSP server spawns a worker thread per connection (server.obs), so System.Diagnostics
+# analysis genuinely runs concurrently. It used to run on process-global TreeFactory and
+# TypeFactory singletons plus a single-slot analyzer cache, and concurrent requests
+# corrupted them and segfaulted -- about 100% of the time before diags.cpp put every entry
+# point behind one coarse recursive mutex.
+#
+# That lock made concurrent analysis correct by making it sequential, and it did not close
+# the whole hole. Two things it could not fix, both of which this test exercises:
+#
+#   1. RELEASE. ~ParsedProgram called TreeFactory::Instance()->Clear(), which deleted the
+#      nodes of EVERY program in the process, not just its own -- and Clear() ended in
+#      `delete instance`, tearing down the factory the other threads were still allocating
+#      into. So one worker finishing its document freed the AST another worker was in the
+#      middle of walking. Serializing the calls does not help: the damage is done inside
+#      the call that holds the lock. That is why the loop below releases every analysis.
+#
+#   2. THROUGHPUT. Every worker queued behind one process-wide lock, so eight connections
+#      analyzed strictly one at a time.
+#
+# The factories are now owned by the ParsedProgram and bound per thread, and the lock moved
+# onto the program, so two documents are analyzed at once and releasing one cannot touch
+# another. A regression shows up here as a segfault, a hang, a null analysis, or a spurious
+# diagnostic on a source that is known to be clean.
+#
+# This was `programs/tests/diag_concurrent_analysis.obs` and deliberately non-gating,
+# because it was flaky for exactly the reasons above.
+#
+# EXTRA_LIBS: diags,gen_collect
+~#
+
+use System.Diagnostics;
+use System.Concurrency;
+use Collection;
+
+class AnalyzeWorker from Thread {
+  @id : Int;
+  @failure : String;
+
+  New(id : Int) {
+    Parent("aw");
+    @id := id;
+    @failure := Nil;
+  }
+
+  method : public : GetFailure() ~ String {
+    return @failure;
+  }
+
+  method : Fail(why : String) ~ Nil {
+    if(@failure = Nil) {
+      @failure := why;
+    };
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    # Each worker analyzes a class named after itself. If one worker's nodes were to be
+    # freed or overwritten by another's, the damage lands on a distinguishable document
+    # rather than on a shared one where it could look like a correct result.
+    id := @id;
+    name := "Counter{$id}";
+    uri := "file:///mt{$id}.obs";
+
+    src := "class {$name} {\r\n@count : Int;\r\nNew() { @count := 0; }\r\n";
+    src += "method : public : Increment() ~ Nil { @count += 1; }\r\n";
+    src += "method : public : GetCount() ~ Int { return @count; }\r\n}\r\n";
+
+    lib_path := "";
+
+    for(i := 0; i < 25; i += 1;) {
+      texts := String->New[1, 2];
+      texts[0, 0] := uri;
+      texts[0, 1] := src;
+
+      analysis := Analyzer->ParseText(texts);
+      if(analysis = Nil) {
+        Fail("worker {$id}: null analysis");
+        return;
+      };
+
+      if(<>analysis->IsParsed()) {
+        Fail("worker {$id}: source did not parse");
+        analysis->Release();
+        return;
+      };
+
+      symbols := analysis->GetSymbols(uri, lib_path);
+      if(symbols = Nil) {
+        Fail("worker {$id}: null symbols");
+        analysis->Release();
+        return;
+      };
+
+      # A value assertion rather than a liveness one: this worker asked for its OWN
+      # document, so the class it just handed in must come back. GetSymbols returns
+      # the document as the root Result, with the classes as its children. If another
+      # worker's release had freed these nodes, or another worker's parse had landed
+      # in this program's factory, the name would not survive the round trip.
+      #
+      # GetDiagnostics is deliberately NOT asserted on here. It reports a varying 1-2
+      # results for a class-only snippet with no entry point, on this build and on the
+      # one before this change, so it says nothing about concurrency.
+      children := symbols->GetResults();
+      found := false;
+      if(children <> Nil) {
+        each(c : children) {
+          child_name := children[c]->GetName();
+          if(child_name <> Nil & child_name->Has(name)) {
+            found := true;
+          };
+        };
+      };
+
+      if(<>found) {
+        root := symbols->GetName();
+        Fail("worker {$id}: {$name} missing from its own symbols (root '{$root}')");
+        analysis->Release();
+        return;
+      };
+
+      # The step the coarse lock could never make safe: this used to clear the factory
+      # every other worker was allocating into.
+      analysis->Release();
+    };
+  }
+}
+
+class DiagConcurrentAnalysis {
+  function : Main(args : String[]) ~ Nil {
+    workers := AnalyzeWorker->New[8];
+    for(t := 0; t < 8; t += 1;) {
+      workers[t] := AnalyzeWorker->New(t);
+    };
+
+    for(t := 0; t < 8; t += 1;) {
+      workers[t]->Execute(Nil);
+    };
+
+    for(t := 0; t < 8; t += 1;) {
+      workers[t]->Join();
+    };
+
+    failures := 0;
+    for(t := 0; t < 8; t += 1;) {
+      why := workers[t]->GetFailure();
+      if(why <> Nil) {
+        "  FAIL: {$why}"->PrintLine();
+        failures += 1;
+      };
+    };
+
+    if(failures > 0) {
+      "{$failures} failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: 8 workers x 25 parse/analyze/release cycles, concurrent and independent"->PrintLine();
+  }
+}
