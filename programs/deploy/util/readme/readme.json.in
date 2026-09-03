@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "3D graphics for Objeck with the new Game.OpenGL framework, SDL2 finally loading on Windows without hand-set PATH, and an API reference that stopped silently omitting whole libraries",
+	"title": "A release pipeline that reports what it actually did -- four publish steps that had been passing while uploading, publishing and deploying nothing, now caught before the tag is pushed rather than repaired by hand afterwards",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,15 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.9.0",
+			"items": [
+				"Release pipeline: four publish steps had been reporting completed/success while doing nothing. Upload to Sourceforge uploaded nothing, Publish VS Code Extension published nothing, Deploy playground deployed nothing, and Deploy API Documentation deployed nothing -- each skipped on an absent credential and passed. None of those secrets has ever been set, so those steps had likely never once run, and v2026.8.4 published with all four green: the playground was left serving a three-month-old engine and objeck.org a release-old set of API docs, including 404s on the 39 Game.OpenGL pages that were that release's headline feature. Both were repaired by hand after publishing. A missing credential is now a failure that names the secret, or a step declared manual in one place that also prints as a to-do; either way the release report matches what happened",
+				"Release pipeline: a pre-flight gate for whether the pipeline can perform the steps it advertises. Every existing gate checked the repository -- version consistency, tag state, docs, api.zip -- and none checked configuration, so the cheapest place to learn a step cannot run was during the release, after the tag was pushed. check_release_config.sh cross-references every secret the release workflows reference against what is actually set and against the declared-manual list, and fails before the tag with the command to fix or declare each gap",
+				"Release pipeline: the VS Code extension publish job has been removed rather than fixed. There is no publisher account and a gallery query for the extension id returns nothing, so it was scaffolding for a channel that was never set up -- v2026.8.4 recorded a successful publish that has never happened. The extension itself still builds and still ships as objeck-lsp_<VERSION>.zip attached to the release, installed with the scripts the client README already documents, so no advertised capability disappears",
+				"Release pipeline: the API-docs deploy now verifies the site rather than the copy. rsync exiting 0 is not objeck.org serving the new pages, so the job fetches the published reference and fails unless its version stamp matches the release -- the same correction already applied to the playground deploy, which runs code instead of reading its own health constant"
+			]
+		},
 		{
 			"version": "v2026.8.4",
 			"items": [
