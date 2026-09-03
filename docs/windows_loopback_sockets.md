@@ -75,15 +75,37 @@ If your peer closes first, there is no teardown to race. Concretely:
   times faster as a side effect, because connection setup stopped being
   per-request.
 
-- **In a raw-socket protocol, let the client close.** Have the server finish
-  writing and then read until it sees EOF, rather than closing immediately. The
-  client closes when it has what it asked for.
+- **In a raw-socket protocol, call `CloseGracefully()` instead of `Close()`.**
+  `TCPSocket` and `TCPSecureSocket` both have it. It reads and discards whatever
+  is still arriving until the peer hangs up, then closes — so the server finishes
+  writing and the *client* owns the teardown, which is the whole remedy:
+
+  ```objeck
+  socket->WriteString(response);
+  socket->CloseGracefully();     # not Close()
+  ```
+
+  It is bounded on both sides and cannot park a thread: it gives up after one
+  second of silence (tune with `CloseGracefully(ms)`) and after 16 reads of a peer
+  that keeps sending rather than closing. In the ordinary case it returns the
+  moment the peer hangs up and costs nothing.
+
+  Measured with `programs/regression/socket_graceful_close_test.obs`, 30 transfers
+  of a 16KB response per run, six runs on Windows loopback:
+
+  | server's last call | responses lost |
+  |---|---|
+  | `Close()` | **21 of 180** |
+  | `CloseGracefully()` | **0 of 180** |
+
+  `Close()` stays correct when the peer has already closed, or when this side is
+  the one being told to hang up.
 
 - **Or acknowledge at the application level.** The client sends a byte after it
   has read the response; the server closes once it sees it. This is the same
   idea, made explicit.
 
-- **If you cannot change the protocol, retry the transport.** A response that
+- **If you cannot control the closing side at all, retry the transport.** A response that
   never arrives is distinguishable from a wrong one: no bytes at all, or a status
   code of 0. Retry only that, and let a response that arrives and is wrong fail
   immediately. `programs/regression/core_net_buffer.obs` and

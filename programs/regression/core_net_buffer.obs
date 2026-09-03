@@ -40,7 +40,9 @@ class ServerThread from Thread {
 							buffer[i] := (i % 251)->As(Byte);
 						};
 						client->WriteBuffer(0, size, buffer);
-						client->Close();
+						# Writing and closing immediately is what #669 discards on
+						# Windows loopback; let the client read and hang up first.
+						client->CloseGracefully();
 					};
 				};
 			};

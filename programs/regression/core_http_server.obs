@@ -55,10 +55,7 @@ class MockServer from Thread {
 					};
 
 					# Let the peer consume the final response and close first.
-					@client->SetRecvTimeout(1000);
-					drain := Byte->New[4096];
-					while(@client->ReadBuffer(0, drain->Size(), drain) > 0) {};
-					@client->Close();
+					@client->CloseGracefully(1000);
 				};
 			};
 			server->Close();
