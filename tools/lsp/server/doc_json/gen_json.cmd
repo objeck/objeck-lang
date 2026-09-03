@@ -100,7 +100,7 @@ REM Both copies must be written. The VS Code one is packaged into the .vsix, so 
 REM is the index users actually get -- and it has silently shipped older than the
 REM server's, because this script only ever wrote the server copy and syncing the
 REM other was left to whoever remembered.
-copy /y ..\objk_apis.json ..\..\clientsscode\server\objk_apis.json >nul
+copy /y ..\objk_apis.json ..\..\clients\vscode\server\objk_apis.json >nul
 if %ERRORLEVEL% NEQ 0 (
 	echo Failed: could not sync objk_apis.json to the VS Code client
 	exit /b 1

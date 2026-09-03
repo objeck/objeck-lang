@@ -897,7 +897,7 @@ bundle Game.OpenGL {
 		thing that can tell you why.
 
 		Reading clears it, so the answer belongs to the call you just made.
-
+		@return the reason, or an empty string when nothing has silently failed
 		```
 		shader->SetMatrix4("mpv", mvp);   # typo
 		reason := GL->GetLastError();
@@ -905,7 +905,6 @@ bundle Game.OpenGL {
 			reason->ErrorLine();          # 'no uniform named "mpv" ...'
 		};
 		```
-		@return the reason, or an empty string when nothing has silently failed
 		~#
 		function : GetLastError() ~ String {
 			array_args := Base->New[1];
@@ -929,22 +928,6 @@ bundle Game.OpenGL {
 	programs in this repo that block was 105 lines, and the only things that varied
 	were the title, the size, one flag and the wording of an error message.
 
-	```
-	window := GLWindow->New("Cube", 720, 540);
-	if(<>window->IsOk()) {
-		window->GetError()->ErrorLine();
-		return;
-	};
-
-	while(<>window->PollEvents()) {
-		window->BeginFrame();
-		# ... draw ...
-		window->EndFrame();
-	};
-
-	window->Free();
-	```
-
 	## What it decides for you
 
 	A depth buffer is always requested and GL_DEPTH_TEST is enabled, because the
@@ -962,6 +945,21 @@ bundle Game.OpenGL {
 	Nothing is capped. GetEvent hands back the SDL Event if you would rather drive
 	the queue yourself, Keyboard->GetState is unaffected by any of this, and every
 	GL, Shader, Mesh and Texture2D call remains available exactly as before.
+	```
+	window := GLWindow->New("Cube", 720, 540);
+	if(<>window->IsOk()) {
+		window->GetError()->ErrorLine();
+		return;
+	};
+
+	while(<>window->PollEvents()) {
+		window->BeginFrame();
+		# ... draw ...
+		window->EndFrame();
+	};
+
+	window->Free();
+	```
 	~#
 	class GLWindow {
 		@window : Window;
@@ -3500,17 +3498,6 @@ bundle Game.OpenGL {
 		locations 3, 4, 5 and 6, because the primitives here use 0, 1 and 2 for
 		position, normal and texture coordinate.
 
-		```
-		grid := Float->New[count * 16];
-		for(i := 0; i < count; i += 1;) {
-			# write a matrix at i * 16
-			Matrix4->TranslationScaleInto(slot, x, y, z, s, s, s);
-		};
-		mesh->SetInstanceMatrices(grid);
-		# ... then, once per frame ...
-		mesh->DrawInstanced(count);
-		```
-
 		Draw it with Shader->LitTexturedInstanced or an equivalent that declares the
 		four mat4 slots. A shader expecting a "model" UNIFORM will not see these:
 		instance data is per-vertex-stage input, not a uniform, which is the whole
@@ -3528,6 +3515,16 @@ bundle Game.OpenGL {
 		lower here than in C, because of that per-call cost, but it is not zero.
 		@param matrices N * 16 floats, column-major
 		@return true when the upload succeeded; GL->GetLastError says why not
+		```
+		grid := Float->New[count * 16];
+		for(i := 0; i < count; i += 1;) {
+			# write a matrix at i * 16
+			Matrix4->TranslationScaleInto(slot, x, y, z, s, s, s);
+		};
+		mesh->SetInstanceMatrices(grid);
+		# ... then, once per frame ...
+		mesh->DrawInstanced(count);
+		```
 		~#
 		method : public : SetInstanceMatrices(matrices : Float[]) ~ Bool {
 			# A mat4 attribute is FOUR slots of four components, not one of sixteen.
@@ -3872,18 +3869,6 @@ bundle Game.OpenGL {
 		Produces the same [3, 3, 2] layout as the primitives, so it draws with the
 		same shaders and no special handling.
 
-		```
-		model := Mesh->FromObj("ship.obj");
-		if(<>model->IsOk()) {
-			GL->GetLastError()->ErrorLine();
-			return;
-		};
-
-		# fit it in the scene, whatever size the file happened to use
-		transform := Transform->New();
-		transform->SetScale(2.0 / model->GetRadius());
-		```
-
 		## What it reads, and what it ignores
 
 		Reads `v`, `vt`, `vn` and `f`. Faces may be triangles, quads or larger
@@ -3921,6 +3906,17 @@ bundle Game.OpenGL {
 		here -- GL->GetLastError only sees what the native side was handed, so a
 		missing file and an empty one look the same. Check the path yourself if
 		telling them apart matters.
+		```
+		model := Mesh->FromObj("ship.obj");
+		if(<>model->IsOk()) {
+			GL->GetLastError()->ErrorLine();
+			return;
+		};
+
+		# fit it in the scene, whatever size the file happened to use
+		transform := Transform->New();
+		transform->SetScale(2.0 / model->GetRadius());
+		```
 		~#
 		function : FromObj(file : String) ~ Mesh {
 			text := System.IO.Filesystem.FileReader->ReadFile(file);
@@ -4348,11 +4344,10 @@ bundle Game.OpenGL {
 		The number that makes a loaded model usable: a file has whatever scale its
 		author worked in, and a program that hardcodes a scale fits exactly one
 		model. Dividing a target size by this fits any of them.
-
+		@return the radius, or 0 for an empty mesh
 		```
 		transform->SetScale(2.0 / mesh->GetRadius());
 		```
-		@return the radius, or 0 for an empty mesh
 		~#
 		method : public : GetRadius() ~ Float {
 			size := GetSize();
@@ -4531,15 +4526,14 @@ bundle Game.OpenGL {
 		#~
 		A checkerboard, generated rather than loaded, so a program needs no asset
 		file to have something recognisable on a surface.
-
-		```
-		floor := Texture2D->Checker(64, 8, 0xFFE8E8F0, 0xFF465A82);
-		```
 		@param size the texture's width and height in pixels
 		@param squares squares per side
 		@param light packed 0xAARRGGBB for one colour
 		@param dark packed 0xAARRGGBB for the other
 		@return the texture; check IsOk()
+		```
+		floor := Texture2D->Checker(64, 8, 0xFFE8E8F0, 0xFF465A82);
+		```
 		~#
 		function : Checker(size : Int, squares : Int, light : Int, dark : Int) ~ Texture2D {
 			return Checker(size, squares, light, dark, TextureWrap->GL_CLAMP_TO_EDGE);
@@ -5908,20 +5902,6 @@ bundle Game.OpenGL {
 	forward rendering: a post-process pass, a shadow map, a reflection, a mirror,
 	a minimap.
 
-	```
-	target := RenderTarget->New(512, 512);
-
-	target->Bind();                      # draw into the texture
-	GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
-	scene->Draw(view_projection);
-
-	target->Unbind(window);              # back to the window
-	post->Use();
-	post->SetInt("tex", 0);
-	target->GetTexture()->Bind(0);
-	quad->Draw();
-	```
-
 	## The viewport goes with the target
 
 	Bind sets the viewport to the target's size and Unbind restores the window's,
@@ -5936,6 +5916,19 @@ bundle Game.OpenGL {
 	Depth goes to a renderbuffer, which is the cheaper option for a buffer that is
 	written and never read. A shadow map wants the reverse, and will need its own
 	constructor for that.
+	```
+	target := RenderTarget->New(512, 512);
+
+	target->Bind();                      # draw into the texture
+	GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+	scene->Draw(view_projection);
+
+	target->Unbind(window);              # back to the window
+	post->Use();
+	post->SetInt("tex", 0);
+	target->GetTexture()->Bind(0);
+	quad->Draw();
+	```
 	~#
 	class RenderTarget implements Freeable {
 		# Native entry-point names, held rather than written at each call
@@ -6235,17 +6228,6 @@ bundle Game.OpenGL {
 	none of it was reachable, in a 3D framework, from a language whose SDL2
 	bindings have had TrueType support all along.
 
-	```
-	overlay := Overlay->New(window);
-	font := Font->New("lazy.ttf", 18);
-	overlay->SetFont(font);
-
-	# per frame, after the scene
-	overlay->Begin();
-	overlay->Text("Hello", 12, 12);
-	overlay->End();
-	```
-
 	## Pixels, from the top-left
 
 	Positions are in DRAWABLE pixels with the origin at the TOP-LEFT, because that
@@ -6269,6 +6251,16 @@ bundle Game.OpenGL {
 	otherwise grow it without limit. When it fills, it is cleared rather than
 	evicted one entry at a time -- overlay text is a handful of strings in practice,
 	and a clear is one line rather than an LRU.
+	```
+	overlay := Overlay->New(window);
+	font := Font->New("lazy.ttf", 18);
+	overlay->SetFont(font);
+
+	# per frame, after the scene
+	overlay->Begin();
+	overlay->Text("Hello", 12, 12);
+	overlay->End();
+	```
 	~#
 	class Overlay implements Freeable {
 		@window : GLWindow;
@@ -6831,16 +6823,6 @@ bundle Game.OpenGL {
 	property that cannot differ between objects in one scene is not a property of
 	the object.
 
-	```
-	metal := Material->New(texture);
-	metal->SetSpecular(96.0, 0.9);
-
-	stone := Material->New(texture);
-	stone->SetTint(0.7, 0.68, 0.62);   # same texture, different colour
-
-	box->SetMaterial(metal);
-	```
-
 	## The tint
 
 	Multiplied into the final colour, so one texture can dress many objects. A tint
@@ -6854,6 +6836,15 @@ bundle Game.OpenGL {
 	A Material does not own its texture. Several materials sharing one texture is
 	the normal case, so freeing the material does not free the texture -- the same
 	rule Scene follows for the mesh and shader it is handed.
+	```
+	metal := Material->New(texture);
+	metal->SetSpecular(96.0, 0.9);
+
+	stone := Material->New(texture);
+	stone->SetTint(0.7, 0.68, 0.62);   # same texture, different colour
+
+	box->SetMaterial(metal);
+	```
 	~#
 	class Material {
 		@texture : Texture2D;
@@ -7008,14 +6999,6 @@ bundle Game.OpenGL {
 	Scene does this for you and has it on by default. Reach for Frustum directly
 	only for content Scene does not hold.
 
-	```
-	frustum := Frustum->New();
-	frustum->SetFromMatrix(view_projection);
-	if(frustum->ContainsBox(centre, half)) {
-		# ... draw it ...
-	};
-	```
-
 	## Where the planes come from
 
 	Straight out of the view-projection matrix. Clip space is the region where
@@ -7036,6 +7019,13 @@ bundle Game.OpenGL {
 	individually. It never DISCARDS one that is partly visible, which is the
 	direction that matters: a false keep costs a draw call, a false discard is a
 	hole in the picture.
+	```
+	frustum := Frustum->New();
+	frustum->SetFromMatrix(view_projection);
+	if(frustum->ContainsBox(centre, half)) {
+		# ... draw it ...
+	};
+	```
 	~#
 	class Frustum {
 		# six planes, four components each: a, b, c, d with a*x + b*y + c*z + d
@@ -7203,19 +7193,6 @@ bundle Game.OpenGL {
 	cube map -- and then sampled by direction rather than by a projected
 	coordinate.
 
-	```
-	shadows := PointShadow->New(512);
-	shadows->SetLight(lamp);
-
-	# once a frame
-	shadows->Capture(scene);
-
-	# then the visible pass
-	lit->Use();
-	rig->ApplyTo(lit);
-	shadows->ApplyTo(lit);
-	```
-
 	Use it with Shader->LitTexturedPointShadowed.
 
 	## What it costs
@@ -7240,6 +7217,18 @@ bundle Game.OpenGL {
 	It also disposes of the bias problem spot shadows have. Projected depth is
 	non-linear so a constant bias means different things at different distances; a
 	world-unit distance is linear, so one bias is right everywhere.
+	```
+	shadows := PointShadow->New(512);
+	shadows->SetLight(lamp);
+
+	# once a frame
+	shadows->Capture(scene);
+
+	# then the visible pass
+	lit->Use();
+	rig->ApplyTo(lit);
+	shadows->ApplyTo(lit);
+	```
 	~#
 	class PointShadow implements Freeable {
 		@target : RenderTarget;
@@ -7540,23 +7529,6 @@ bundle Game.OpenGL {
 	further from the light than whatever the light could see. If it is, something
 	is in the way.
 
-	```
-	shadows := ShadowMap->New(1024);
-	shadows->SetLight(light);
-	shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 14.0);
-
-	# per frame, before drawing anything else
-	shadows->Begin();
-	shadows->DrawCaster(floor_mesh, floor);
-	shadows->DrawCaster(ball_mesh, ball);
-	shadows->End(window);
-
-	# then the normal pass
-	shadowed->Use();
-	shadows->ApplyTo(shadowed);
-	# ... draw as usual ...
-	```
-
 	Use it with Shader->LitShadowed or LitTexturedShadowed, which declare the
 	uniforms ApplyTo writes.
 
@@ -7577,6 +7549,22 @@ bundle Game.OpenGL {
 	over everything -- "shadow acne". The bias is that margin. Too small brings the
 	acne back; too large and shadows detach from what casts them, which is why the
 	default is small and adjustable rather than generous.
+	```
+	shadows := ShadowMap->New(1024);
+	shadows->SetLight(light);
+	shadows->Cover(Vector3->New(0.0, 0.0, 0.0), 14.0);
+
+	# per frame, before drawing anything else
+	shadows->Begin();
+	shadows->DrawCaster(floor_mesh, floor);
+	shadows->DrawCaster(ball_mesh, ball);
+	shadows->End(window);
+
+	# then the normal pass
+	shadowed->Use();
+	shadows->ApplyTo(shadowed);
+	# ... draw as usual ...
+	```
 	~#
 	class ShadowMap implements Freeable {
 		@target : RenderTarget;
@@ -8030,12 +8018,6 @@ bundle Game.OpenGL {
 	different things and a single constructor taking all of them would ask for
 	values that do not apply:
 
-	```
-	sun := Light->Directional(Vector3->New(-0.3, 1.0, 0.4));
-	lamp := Light->Point(Vector3->New(0.0, 3.0, 0.0), 12.0);
-	torch := Light->Spot(position, aim, 15.0, 20.0, 30.0);
-	```
-
 	A single Light can be handed straight to a shader with ApplyTo, which is the
 	common case. For more than one, put them in a LightRig.
 
@@ -8048,6 +8030,11 @@ bundle Game.OpenGL {
 
 	A SPOT's aim is the opposite: the direction it shines, which is what you would
 	point a torch along.
+	```
+	sun := Light->Directional(Vector3->New(-0.3, 1.0, 0.4));
+	lamp := Light->Point(Vector3->New(0.0, 3.0, 0.0), 12.0);
+	torch := Light->Spot(position, aim, 15.0, 20.0, 30.0);
+	```
 	~#
 	class Light {
 		@kind : Int;
@@ -8302,17 +8289,6 @@ bundle Game.OpenGL {
 	a torch or a window needs more, and this is how a forward renderer carries
 	them -- as arrays with a count, written once per frame.
 
-	```
-	rig := LightRig->New();
-	rig->Add(Light->Directional(Vector3->New(-0.3, 1.0, 0.4)));
-	rig->Add(Light->Point(Vector3->New(2.0, 1.5, 0.0), 8.0));
-	rig->SetAmbient(0.18, 0.19, 0.24);
-
-	# once a frame, before drawing
-	rig->SetViewPosition(camera->GetPosition());
-	rig->ApplyTo(shader);
-	```
-
 	## The limit is fixed, and low on purpose
 
 	GLSL needs a compile-time array size, so the maximum is a constant rather than
@@ -8327,6 +8303,16 @@ bundle Game.OpenGL {
 	told each frame if the camera moves. Forget it and the highlights sit still
 	while the camera orbits, which looks like the material is wrong rather than
 	like a missing call.
+	```
+	rig := LightRig->New();
+	rig->Add(Light->Directional(Vector3->New(-0.3, 1.0, 0.4)));
+	rig->Add(Light->Point(Vector3->New(2.0, 1.5, 0.0), 8.0));
+	rig->SetAmbient(0.18, 0.19, 0.24);
+
+	# once a frame, before drawing
+	rig->SetViewPosition(camera->GetPosition());
+	rig->ApplyTo(shader);
+	```
 	~#
 	class LightRig {
 		@lights : Vector<Light>;
@@ -8492,18 +8478,6 @@ bundle Game.OpenGL {
 	has to keep its own scratch buffers and remember the order the three parts
 	compose in.
 
-	```
-	ball := Transform->New();
-	ball->SetScale(0.5);
-
-	# per frame
-	ball->SetPosition(x, height, z);
-	ball->Rotate(0.0, spin * delta, 0.0);
-	ball->MvpInto(mvp, view_projection);
-	shader->SetMatrix4("mvp", mvp);
-	mesh->Draw();
-	```
-
 	## No allocation after construction
 
 	The matrix is one buffer owned by the Transform, rebuilt only when something
@@ -8515,6 +8489,17 @@ bundle Game.OpenGL {
 	scaling does not drag the object away from its position, and rotation happens
 	about its own centre. Composing them in any other order is a common and
 	confusing bug, so the order is not a choice here.
+	```
+	ball := Transform->New();
+	ball->SetScale(0.5);
+
+	# per frame
+	ball->SetPosition(x, height, z);
+	ball->Rotate(0.0, spin * delta, 0.0);
+	ball->MvpInto(mvp, view_projection);
+	shader->SetMatrix4("mvp", mvp);
+	mesh->Draw();
+	```
 	~#
 	class Transform {
 		@x : Float; @y : Float; @z : Float;
@@ -8885,15 +8870,6 @@ bundle Game.OpenGL {
 
 	It holds keys and reads a value back at any time between them:
 
-	```
-	swing := Track->New();
-	swing->Add(0.0, 0.0);
-	swing->Add(1.5, 90.0);
-	swing->SetEasing(Easing->EASE_IN_OUT);
-	...
-	door->SetYaw(swing->Sample(elapsed)->ToRadians());
-	```
-
 	## Why a track rather than a tween
 
 	A from-to pair with a duration covers the easy case and then stops: an
@@ -8913,6 +8889,14 @@ bundle Game.OpenGL {
 	orientations -- interpolating yaw, pitch and roll separately is fine for a
 	hinge or a turntable and wrong for anything tumbling freely, which needs
 	quaternions this bundle does not have.
+	```
+	swing := Track->New();
+	swing->Add(0.0, 0.0);
+	swing->Add(1.5, 90.0);
+	swing->SetEasing(Easing->EASE_IN_OUT);
+	...
+	door->SetYaw(swing->Sample(elapsed)->ToRadians());
+	```
 	~#
 	class Track {
 		# Keys, kept sorted by time. Parallel arrays rather than a Vector of pairs:
@@ -9462,17 +9446,6 @@ bundle Game.OpenGL {
 
 	A batch is one mesh, one material, many placements:
 
-	```
-	trees := PropBatch->New(trunk_mesh);
-	trees->SetMaterial(bark);
-	for(i := 0; i < 400; i += 1;) {
-		trees->Add(x, 0.0, z);
-	};
-	trees->SetDynamic(false);
-	...
-	trees->Draw(camera->GetViewProjection());
-	```
-
 	400 trees, one draw call, one uniform upload.
 
 	## One mesh, one material -- not a limitation of this class
@@ -9503,6 +9476,16 @@ bundle Game.OpenGL {
 	buffer whenever visibility changed, which costs more than the draw calls it
 	saves. Batch things that are near each other; a batch spread across the whole
 	world is never off screen and so never culls.
+	```
+	trees := PropBatch->New(trunk_mesh);
+	trees->SetMaterial(bark);
+	for(i := 0; i < 400; i += 1;) {
+		trees->Add(x, 0.0, z);
+	};
+	trees->SetDynamic(false);
+	...
+	trees->Draw(camera->GetViewProjection());
+	```
 	~#
 	class PropBatch implements Freeable {
 		@mesh : Mesh;
@@ -10053,16 +10036,6 @@ bundle Game.OpenGL {
 	The FPS demo that ships with Objeck wrote exactly that, which is what this
 	replaces.
 
-	```
-	sparks := Particles->New(64);
-	sparks->SetCamera(camera);
-	sparks->SetTexture(glow);
-	scene->AddBatch(sparks->GetBatch());
-	...
-	sparks->Update(window->GetDelta());
-	sparks->Burst(x, y, z, 12, 2.5);
-	```
-
 	## Fixed capacity, on purpose
 
 	The pool never grows. Emitting into a full one overwrites the OLDEST
@@ -10085,6 +10058,15 @@ bundle Game.OpenGL {
 	Additive by default, which is right for anything that emits light and wrong
 	for smoke -- SetAdditive(false) for that, and then the sprite's own alpha does
 	the work.
+	```
+	sparks := Particles->New(64);
+	sparks->SetCamera(camera);
+	sparks->SetTexture(glow);
+	scene->AddBatch(sparks->GetBatch());
+	...
+	sparks->Update(window->GetDelta());
+	sparks->Burst(x, y, z, 12, 2.5);
+	```
 	~#
 	class Particles implements Freeable {
 		@batch : PropBatch;
@@ -10644,14 +10626,6 @@ bundle Game.OpenGL {
 	and index arithmetic. Add boxes, then call Draw once per frame and Blocked
 	whenever something wants to move.
 
-	```
-	scene := Scene->New(cube_mesh, shader);
-	scene->AddBox(Vector3->New(0.0, 1.0, -4.0), Vector3->New(1.0, 1.0, 1.0), crate);
-	...
-	scene->Draw(view_projection);
-	if(<>scene->Blocked(new_x, new_z, 0.35)) { ... };
-	```
-
 	## Two things it does that a naive loop would not
 
 	It only rebinds a texture when the next box uses a different one, so a scene
@@ -10662,6 +10636,13 @@ bundle Game.OpenGL {
 	returns a fresh Float[16] each time, which is hundreds of arrays a second and
 	enough to collect mid-frame. Objeck's SDL renderer already had to be rewritten
 	once for exactly this reason.
+	```
+	scene := Scene->New(cube_mesh, shader);
+	scene->AddBox(Vector3->New(0.0, 1.0, -4.0), Vector3->New(1.0, 1.0, 1.0), crate);
+	...
+	scene->Draw(view_projection);
+	if(<>scene->Blocked(new_x, new_z, 0.35)) { ... };
+	```
 	~#
 	class Scene {
 		@boxes : Vector<Box>;

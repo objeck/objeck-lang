@@ -1144,6 +1144,16 @@ jobs:
       - name: Library lists agree with lib_src
         run: python3 tools/cicd/check_doc_lists.py
 
+      # Same family, found the same way -- by noticing something documented was
+      # not in the reference. doc_parser.obs parses a doc comment's code fence
+      # last and then requires the comment to end, so anything written after the
+      # ``` block is discarded; for a method that drops the member from the API
+      # docs entirely, with the build still exiting 0. Twenty comments were in
+      # that state, and GL->GetLastError(), Mesh->GetRadius() and
+      # Texture->Checker() were missing from the shipped v2026.8.4 reference.
+      - name: Doc comments end with their code fence
+        run: python3 tools/cicd/check_doc_fences.py
+
       # Same class of guard, same cost: nothing built, fails in seconds. The
       # regression runners score a test on its exit code alone, so one that
       # prints "FAIL: ..." and then returns normally from Main is counted as a
