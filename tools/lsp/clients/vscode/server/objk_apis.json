@@ -4522,7 +4522,7 @@
 			}
 		},
 		"Game.OpenGL.Frustum": {
-			"description": "The six planes bounding what a camera can see, for skipping what it cannot. A Scene submits every box it holds, every frame, whether or not the box is on screen -- so a large world costs the same to draw as a small one, and all of it is spent on geometry the viewer will never see. Testing a box against six planes first is a few dozen arithmetic operations against a draw call plus a matrix multiply plus two uniform uploads. Scene does this for you and has it on by default. Reach for Frustum directly only for content Scene does not hold.",
+			"description": "The six planes bounding what a camera can see, for skipping what it cannot. A Scene submits every box it holds, every frame, whether or not the box is on screen -- so a large world costs the same to draw as a small one, and all of it is spent on geometry the viewer will never see. Testing a box against six planes first is a few dozen arithmetic operations against a draw call plus a matrix multiply plus two uniform uploads. Scene does this for you and has it on by default. Reach for Frustum directly only for content Scene does not hold. ## Where the planes come from Straight out of the view-projection matrix. Clip space is the region where every coordinate lies between -w and +w, and each of those six inequalities is a plane in world space once written in terms of the matrix's rows -- so no separate description of the camera is needed, and a frustum built this way automatically matches whatever projection is in use, perspective or orthographic. The planes are normalised, so a plane test yields an actual distance. That costs six square roots per rebuild and makes the box test exact rather than scaled by whatever magnitude the matrix happened to have. ## Conservative, on purpose The box test can keep a box that is fully outside -- a large box near a corner can be outside the view while remaining on the inner side of all six planes individually. It never DISCARDS one that is partly visible, which is the direction that matters: a false keep costs a draw call, a false discard is a hole in the picture.",
 			"functions": {
 				"ContainsBox": {
 					"descriptions": ["**Whether an axis-aligned box is at least partly inside. Projects the box's half-extents onto each plane's normal, which is the tightest test available without checking corners individually -- and unlike wrapping the box in a sphere it does not inflate a long thin box into something far larger than it is.**\n\n```method : public : ContainsBox(center:Vector3, half:Vector3) ~ Bool```\n\n\n\ncenter: Vector3\n\nhalf: Vector3\n\nreturn: Bool"]
@@ -4634,7 +4634,7 @@
 			}
 		},
 		"Game.OpenGL.GLWindow": {
-			"description": "A window with a GL 3.3 core context, ready to draw into. This exists because opening one by hand takes about thirty lines that are the same in every program: initialise SDL, set six context attributes in the right order and before the window, create the window with the GL flag, create the context, check you actually got 3.3 core, resolve the entry points, and set the viewport from the DRAWABLE size rather than the window size. Across the four programs in this repo that block was 105 lines, and the only things that varied were the title, the size, one flag and the wording of an error message.",
+			"description": "A window with a GL 3.3 core context, ready to draw into. This exists because opening one by hand takes about thirty lines that are the same in every program: initialise SDL, set six context attributes in the right order and before the window, create the window with the GL flag, create the context, check you actually got 3.3 core, resolve the entry points, and set the viewport from the DRAWABLE size rather than the window size. Across the four programs in this repo that block was 105 lines, and the only things that varied were the title, the size, one flag and the wording of an error message. ## What it decides for you A depth buffer is always requested and GL_DEPTH_TEST is enabled, because the two are separate calls sixty lines apart and forgetting the attribute makes the enable silently do nothing. BeginFrame clears colour and depth together for the same reason. Vsync is requested, and whether it was actually granted is remembered -- so EndFrame adds a delay only when it was not. Sleeping on top of a vsynced swap is a double wait, which is why frame pacing is worth owning rather than leaving to each program to hand-roll differently. ## What it does not take away Nothing is capped. GetEvent hands back the SDL Event if you would rather drive the queue yourself, Keyboard->GetState is unaffected by any of this, and every GL, Shader, Mesh and Texture2D call remains available exactly as before.",
 			"functions": {
 				"ApplyDeadzone": {
 					"descriptions": ["**The dead-zone curve on its own, as a pure function. Split out from GetPadAxis so it can be TESTED. The rest of the controller path needs hardware to exercise and neither CI nor a build machine has any, so the one piece with actual logic in it is the one piece that must be reachable without a pad plugged in. It is public because a program reading a stick through some other route wants the same curve.**\n\n```function : ApplyDeadzone(raw:Float, deadzone:Float) ~ Float```\n\n\n\nraw: Float\n\ndeadzone: Float\n\nreturn: Float"]
@@ -4795,7 +4795,7 @@
 			}
 		},
 		"Game.OpenGL.Light": {
-			"description": "One light. Directional, point or spot. Build one with the factory that matches what you want, since each kind needs different things and a single constructor taking all of them would ask for values that do not apply:",
+			"description": "One light. Directional, point or spot. Build one with the factory that matches what you want, since each kind needs different things and a single constructor taking all of them would ask for values that do not apply: A single Light can be handed straight to a shader with ApplyTo, which is the common case. For more than one, put them in a LightRig. ## Which way a direction points TOWARD the light, not the way the light travels. A directional light of (0, 1, 0) is overhead, so upward-facing surfaces are brightest. This is the convention that makes the shader's dot product read naturally and it is the one people get backwards -- a scene lit from underneath is the symptom. A SPOT's aim is the opposite: the direction it shines, which is what you would point a torch along.",
 			"functions": {
 				"ApplyAt": {
 					"descriptions": ["**Write this light into one slot of a shader's light arrays. Used by LightRig; call that rather than this unless you are writing your own rig.**\n\n```method : public : ApplyAt(shader:Shader, index:Int) ~ Nil```\n\n\n\nshader: Shader\n\nindex: Int\n\nreturn: Nil"]
@@ -4848,7 +4848,7 @@
 			}
 		},
 		"Game.OpenGL.LightRig": {
-			"description": "Several lights at once, plus the ambient they all sit on top of. One directional light is enough to see a scene; anything with a lamp, a fire, a torch or a window needs more, and this is how a forward renderer carries them -- as arrays with a count, written once per frame.",
+			"description": "Several lights at once, plus the ambient they all sit on top of. One directional light is enough to see a scene; anything with a lamp, a fire, a torch or a window needs more, and this is how a forward renderer carries them -- as arrays with a count, written once per frame. ## The limit is fixed, and low on purpose GLSL needs a compile-time array size, so the maximum is a constant rather than whatever you add. Eight, because a forward renderer evaluates EVERY light for EVERY fragment -- the cost is lights times pixels, and this is the point where a deferred renderer would be the answer instead. Lights past the limit are ignored rather than silently replacing others. ## The eye position Specular highlights depend on where the viewer is, so SetViewPosition has to be told each frame if the camera moves. Forget it and the highlights sit still while the camera orbits, which looks like the material is wrong rather than like a missing call.",
 			"functions": {
 				"Add": {
 					"descriptions": ["**Add a light. Beyond GetMaxLights it is ignored.**\n\n```method : public : Add(light:Light) ~ Bool```\n\n\n\nlight: Light\n\nreturn: Bool"]
@@ -4883,7 +4883,7 @@
 			}
 		},
 		"Game.OpenGL.Material": {
-			"description": "How a surface looks: its texture, a colour multiplier, and how shiny it is. Shininess and specular strength live HERE rather than on the lights, which is where I first put them and was wrong: they describe the SURFACE. A polished ball and a matte floor lit by the same lamp need different values, and a property that cannot differ between objects in one scene is not a property of the object.",
+			"description": "How a surface looks: its texture, a colour multiplier, and how shiny it is. Shininess and specular strength live HERE rather than on the lights, which is where I first put them and was wrong: they describe the SURFACE. A polished ball and a matte floor lit by the same lamp need different values, and a property that cannot differ between objects in one scene is not a property of the object. ## The tint Multiplied into the final colour, so one texture can dress many objects. A tint of exactly black counts as \"untinted\" rather than as black -- see the note in the shader: GL leaves an unset uniform at zero, and without that rule a forgotten tint turns everything black, while an object tinted to pure black is indistinguishable from one that is not drawn. ## Not owned A Material does not own its texture. Several materials sharing one texture is the normal case, so freeing the material does not free the texture -- the same rule Scene follows for the mesh and shader it is handed.",
 			"functions": {
 				"Colored": {
 					"descriptions": ["**A material with a tint and no texture, for flat-coloured objects drawn through a textured shader.**\n\n```function : Colored(r:Float, g:Float, b:Float) ~ Material```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Material"]
@@ -5048,6 +5048,9 @@
 				"Free": {
 					"descriptions": ["**Release the buffers. Call it while the GL context is still current -- see the shutdown order on the GL class.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
+				"FromObj": {
+					"descriptions": ["**Load geometry from a Wavefront OBJ file. The gap this fills: every mesh was either a built-in primitive or an array of numbers written by hand, so nothing beyond boxes and spheres had any route in at all. OBJ is the right format to accept first -- it is text, every modelling tool exports it, and it needs no library. Produces the same [3, 3, 2] layout as the primitives, so it draws with the same shaders and no special handling. ## What it reads, and what it ignores Reads `v`, `vt`, `vn` and `f`. Faces may be triangles, quads or larger n-gons -- anything with more than three corners is fanned into triangles, which is correct for the convex faces a modeller produces. Indices may be negative, meaning relative to the end, which some exporters emit. Ignores `mtllib`, `usemtl`, `o`, `g`, `s` and comments. Materials are not read: a Mesh is geometry, and the texture is something the caller binds. That means a multi-material model loads as one mesh with one texture rather than as several -- worth knowing before wondering why a model came out one colour. ## Normals If the file has none -- and plenty do not -- a flat normal is computed per face from its winding. That is why every corner gets its own vertex rather than shared ones being deduplicated: sharing them would average the normals of adjoining faces and turn a hard edge into a smooth one, so a cube would shade like a ball. The cost is three vertices per triangle with no reuse, which for a ten-thousand-triangle model is a couple of megabytes. Deliberate: correct shading on arbitrary input beats a smaller buffer, and a loader that gets this wrong is very hard to diagnose from the picture. ## Winding OBJ is counter-clockwise seen from outside, the same convention as every primitive here, so GL_CULL_FACE works without anything extra. A model that vanishes under culling was exported inside out.**\n\n```function : FromObj(file:String) ~ Mesh```\n\n\n\nfile: String\n\nreturn: Mesh\n\n```\nmodel := Mesh->FromObj(\"ship.obj\");\nif(<>model->IsOk()) {\nGL->GetLastError()->ErrorLine();\nreturn;\n};\n\n# fit it in the scene, whatever size the file happened to use\ntransform := Transform->New();\ntransform->SetScale(2.0 \/ model->GetRadius());\n```"]
+				},
 				"GetCenter": {
 					"descriptions": ["**The middle of the bounding box. Rarely the origin for a loaded model -- a file's author had no reason to centre it -- so this is what to translate BY (negated) to bring a model to the origin before rotating it, or it will orbit rather than spin.**\n\n```method : public : GetCenter() ~ Vector3```\n\n\n\nreturn: Vector3"]
 				},
@@ -5090,6 +5093,9 @@
 				"Resolve": {
 					"descriptions": ["**OBJ indices are 1-based, and may be NEGATIVE to mean \"counting back from the end\" -- which some exporters emit and a loader that assumes 1-based reads as a wild out-of-range index.**\n\n```function : Resolve() ~ Int```\n\n\n\nfield: String\n\ncount: Int\n\nreturn: Int"]
 				},
+				"SetInstanceMatrices": {
+					"descriptions": ["**Give this mesh a model matrix per instance, so many copies draw in one call. Each instance takes 16 floats, a column-major matrix, exactly as Matrix4 produces -- so an array of N*16 floats is N instances. Bound to attribute locations 3, 4, 5 and 6, because the primitives here use 0, 1 and 2 for position, normal and texture coordinate. Draw it with Shader->LitTexturedInstanced or an equivalent that declares the four mat4 slots. A shader expecting a \"model\" UNIFORM will not see these: instance data is per-vertex-stage input, not a uniform, which is the whole reason it does not cost a call per object. ## What this is for One draw call instead of one per object. A thousand boxes drawn the ordinary way is a thousand draw calls plus a thousand uniform uploads, and every native call here resolves its symbol by string -- so that cost lands twice. A grid, a particle system, a point cloud, a forest: anything where the same geometry appears many times with different placements. Below a few dozen objects it is not worth the bother. The break-even is lower here than in C, because of that per-call cost, but it is not zero.**\n\n```method : public : SetInstanceMatrices(matrices:Float[]) ~ Bool```\n\n\n\nmatrices: Float[]\n\nreturn: Bool\n\n```\ngrid := Float->New[count * 16];\nfor(i := 0; i < count; i += 1;) {\n# write a matrix at i * 16\nMatrix4->TranslationScaleInto(slot, x, y, z, s, s, s);\n};\nmesh->SetInstanceMatrices(grid);\n# ... then, once per frame ...\nmesh->DrawInstanced(count);\n```"]
+				},
 				"SetInstances": {
 					"descriptions": ["**Per-instance data with an explicit layout, for anything that is not a model matrix -- a colour per instance, a scalar, a texture index.**\n\n```method : public : SetInstances(data:Float[], layout:Int[], base_location:Int) ~ Bool```\n\n\n\ndata: Float[]\n\nlayout: Int[]\n\nbase_location: Int\n\nreturn: Bool"]
 				},
@@ -5102,7 +5108,7 @@
 			}
 		},
 		"Game.OpenGL.Overlay": {
-			"description": "Text and flat rectangles drawn on top of a 3D scene, positioned in pixels. The gap this fills is not subtle: there was no way to draw text at all. A frame-rate counter, a label on an object, a score, a \"press escape to quit\" -- none of it was reachable, in a 3D framework, from a language whose SDL2 bindings have had TrueType support all along.",
+			"description": "Text and flat rectangles drawn on top of a 3D scene, positioned in pixels. The gap this fills is not subtle: there was no way to draw text at all. A frame-rate counter, a label on an object, a score, a \"press escape to quit\" -- none of it was reachable, in a 3D framework, from a language whose SDL2 bindings have had TrueType support all along. ## Pixels, from the top-left Positions are in DRAWABLE pixels with the origin at the TOP-LEFT, because that is where everyone puts a HUD and it is how every 2D API in the world reads. GL has its origin at the bottom-left, so the flip happens here rather than in every caller's arithmetic. On a high-DPI display the drawable is bigger than the window, so a HUD placed at a fixed pixel offset sits closer to the corner than on a 1x screen. Use GetScale to size text and margins if that matters. ## Why the text cache exists Turning a string into a texture means rasterising glyphs with TTF, allocating a surface, and uploading it to the GPU. Doing that per frame for a counter that says \"60 fps\" is enough work to be visible in a profile, and the string only changes when the number does. So a texture is kept per string and reused; a frame that draws the same text as the last one uploads nothing. The cache is bounded, because a caller drawing a timestamp every frame would otherwise grow it without limit. When it fills, it is cleared rather than evicted one entry at a time -- overlay text is a handful of strings in practice, and a clear is one line rather than an LRU.",
 			"functions": {
 				"Begin": {
 					"descriptions": ["**Start drawing overlay content. Turns depth testing off and alpha blending on, because a HUD belongs on top of everything regardless of where it is in space, and glyph edges are antialiased into their alpha channel. End puts both back.**\n\n```method : public : Begin() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -5173,7 +5179,7 @@
 			}
 		},
 		"Game.OpenGL.Particles": {
-			"description": "A pool of short-lived camera-facing sprites. Sparks, smoke, dust, embers, muzzle flashes, magic. Everything needed for these already existed -- billboards face the camera, a PropBatch draws thousands in one call, additive blending needs no sorting -- and every program still had to write the same three things by hand: a ring of slots, a life per slot, and somewhere to park the dead ones. The FPS demo that ships with Objeck wrote exactly that, which is what this replaces.",
+			"description": "A pool of short-lived camera-facing sprites. Sparks, smoke, dust, embers, muzzle flashes, magic. Everything needed for these already existed -- billboards face the camera, a PropBatch draws thousands in one call, additive blending needs no sorting -- and every program still had to write the same three things by hand: a ring of slots, a life per slot, and somewhere to park the dead ones. The FPS demo that ships with Objeck wrote exactly that, which is what this replaces. ## Fixed capacity, on purpose The pool never grows. Emitting into a full one overwrites the OLDEST particle rather than allocating, so a frame costs no allocation however hard it is emitting -- which is the property that matters in a draw loop, and the reason a growable pool would be the wrong shape even though it would look more accommodating. Dead particles are parked far below the world rather than hidden, because a batch draws every instance in its buffer: there is no per-instance visibility to switch off, so \"invisible\" has to mean \"nowhere you are looking\". ## What varies per particle, and what does not Position, velocity, age and size are per particle. COLOUR is not: a batch has one material, so a system is one colour, set by SetTexture or SetMaterial. Two colours are two systems. Per-particle colour would mean a second instance attribute stream, which PropBatch does not carry. Additive by default, which is right for anything that emits light and wrong for smoke -- SetAdditive(false) for that, and then the sprite's own alpha does the work.",
 			"functions": {
 				"Burst": {
 					"descriptions": ["**Emit several at once, sprayed outwards. The usual shape for an impact: a handful of particles leaving one point in scattered directions.**\n\n```method : public : Burst(x:Float, y:Float, z:Float, count:Int, speed:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\ncount: Int\n\nspeed: Float\n\nreturn: Nil"]
@@ -5247,7 +5253,7 @@
 			}
 		},
 		"Game.OpenGL.PointShadow": {
-			"description": "Shadows from a point light, in every direction at once. A point light shines everywhere, so no single flat map can hold its shadows. The scene is rendered SIX times, once down each axis, into the six faces of a cube map -- and then sampled by direction rather than by a projected coordinate.",
+			"description": "Shadows from a point light, in every direction at once. A point light shines everywhere, so no single flat map can hold its shadows. The scene is rendered SIX times, once down each axis, into the six faces of a cube map -- and then sampled by direction rather than by a projected coordinate. Use it with Shader->LitTexturedPointShadowed. ## What it costs Six passes over the casters, against one for a directional or spot light. That is the price of omnidirectional shadows and there is no way around it at this level -- the cheaper techniques (rendering all six faces in one pass with a geometry shader, or dual-paraboloid maps) are a different design rather than an optimisation of this one. So: use a spot where a spot will do. A lamp in a room a viewer only sees one side of does not need six faces. ## Distance, not depth The faces store the DISTANCE from the light in world units, scaled by the light's range -- not the usual projected depth. That is the trick that makes this tractable: the six faces do not share a projection, so a comparison in projected depth would have to know which face a lookup landed on and undo that face's projection. A distance means the same thing on every face. It also disposes of the bias problem spot shadows have. Projected depth is non-linear so a constant bias means different things at different distances; a world-unit distance is linear, so one bias is right everywhere.",
 			"functions": {
 				"ApplyTo": {
 					"descriptions": ["**Bind the cube and tell a shader how to read it. Writes \"point_light_position\", \"point_light_range\", \"point_bias\" and \"shadow_cube\", skipping any the shader does not declare.**\n\n```method : public : ApplyTo(shader:Shader) ~ Nil```\n\n\n\nshader: Shader\n\nreturn: Nil"]
@@ -5320,7 +5326,7 @@
 			}
 		},
 		"Game.OpenGL.PropBatch": {
-			"description": "Many copies of one mesh in a single draw call. Instancing has worked at the Mesh level since it landed -- SetInstanceMatrices and DrawInstanced, with Shader->LitTexturedInstanced to read the per-instance matrices. What was missing was any route to it from the object layer: Scene and Prop both set an \"mvp\" uniform per object, and the instanced shader has no \"mvp\", so pointing a Scene at it drew nothing at all. This is that route. A batch is one mesh, one material, many placements:",
+			"description": "Many copies of one mesh in a single draw call. Instancing has worked at the Mesh level since it landed -- SetInstanceMatrices and DrawInstanced, with Shader->LitTexturedInstanced to read the per-instance matrices. What was missing was any route to it from the object layer: Scene and Prop both set an \"mvp\" uniform per object, and the instanced shader has no \"mvp\", so pointing a Scene at it drew nothing at all. This is that route. A batch is one mesh, one material, many placements: 400 trees, one draw call, one uniform upload. ## One mesh, one material -- not a limitation of this class That is what the hardware does. Every instance runs the same program over the same vertices and the only thing that varies is the per-instance matrix, so a batch cannot hold two different meshes or give one tree different bark. Two kinds of tree are two batches. Worth stating plainly, because the obvious expectation of a thing called a batch is a container that accepts anything. ## Static versus dynamic The transforms are objects the caller keeps and can move at any time, and nothing tells the batch when that happens. So by default the matrices are repacked and re-uploaded every frame, which is always correct and still costs exactly one draw call -- the saving that matters most. A batch that does not move should say so with SetDynamic(false): it then packs once and never again, and the caller calls MarkMoved() if that ever stops being true. Getting that wrong is visible immediately -- the batch renders at its old placements -- rather than subtly, which is why the fast path is the one you opt into rather than the default. ## Culling is all or nothing GetBoundsRadius covers every instance, so a batch is either wholly submitted or wholly skipped. Per-instance culling would mean repacking and re-uploading the buffer whenever visibility changed, which costs more than the draw calls it saves. Batch things that are near each other; a batch spread across the whole world is never off screen and so never culls.",
 			"functions": {
 				"Add": {
 					"descriptions": ["**Place another instance.**\n\n```method : public : Add(transform:Transform) ~ Nil```\n\n\n\ntransform: Transform\n\nreturn: Nil", "**Place another instance at a point, unrotated and unscaled.**\n\n```method : public : Add(x:Float, y:Float, z:Float) ~ Transform```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Transform"]
@@ -5456,7 +5462,7 @@
 			}
 		},
 		"Game.OpenGL.RenderTarget": {
-			"description": "A framebuffer you draw into instead of the window, and then sample. Render-to-texture, which is the door to most of what comes after simple forward rendering: a post-process pass, a shadow map, a reflection, a mirror, a minimap.",
+			"description": "A framebuffer you draw into instead of the window, and then sample. Render-to-texture, which is the door to most of what comes after simple forward rendering: a post-process pass, a shadow map, a reflection, a mirror, a minimap. ## The viewport goes with the target Bind sets the viewport to the target's size and Unbind restores the window's, because getting that wrong is the classic render-to-texture bug: a 512x512 target still rendering through a 1280x720 viewport draws a quarter of the scene into one corner, with no GL error anywhere. Unbind needs the window in order to know what to restore to -- which is why it takes one. ## Colour is a texture, depth is not Colour goes to a texture because sampling the result is the entire point. Depth goes to a renderbuffer, which is the cheaper option for a buffer that is written and never read. A shadow map wants the reverse, and will need its own constructor for that.",
 			"functions": {
 				"Bind": {
 					"descriptions": ["**Draw into this target from here on. Sets the viewport to match.**\n\n```method : public : Bind() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -5500,7 +5506,7 @@
 			}
 		},
 		"Game.OpenGL.Scene": {
-			"description": "A world of boxes that draws itself and answers collision queries. This is the layer that keeps a 3D program from hand-rolling parallel arrays and index arithmetic. Add boxes, then call Draw once per frame and Blocked whenever something wants to move.",
+			"description": "A world of boxes that draws itself and answers collision queries. This is the layer that keeps a 3D program from hand-rolling parallel arrays and index arithmetic. Add boxes, then call Draw once per frame and Blocked whenever something wants to move. ## Two things it does that a naive loop would not It only rebinds a texture when the next box uses a different one, so a scene grouped by texture costs a handful of binds rather than one per box. It draws through Matrix4->MultiplyInto with a scratch buffer it owns, so a frame allocates nothing. The obvious version -- Multiply per box per frame -- returns a fresh Float[16] each time, which is hundreds of arrays a second and enough to collect mid-frame. Objeck's SDL renderer already had to be rewritten once for exactly this reason.",
 			"functions": {
 				"Add": {
 					"descriptions": ["**Add an existing box.**\n\n```method : public : Add(box:Box) ~ Box```\n\n\n\nbox: Box\n\nreturn: Box"]
@@ -5725,7 +5731,7 @@
 			}
 		},
 		"Game.OpenGL.ShadowMap": {
-			"description": "Shadows, from one directional light. The technique is standard and the fiddly parts are all here rather than in each program: render the scene from the light's point of view into a depth texture, then when drawing normally, ask that texture whether each fragment is further from the light than whatever the light could see. If it is, something is in the way.",
+			"description": "Shadows, from one directional light. The technique is standard and the fiddly parts are all here rather than in each program: render the scene from the light's point of view into a depth texture, then when drawing normally, ask that texture whether each fragment is further from the light than whatever the light could see. If it is, something is in the way. Use it with Shader->LitShadowed or LitTexturedShadowed, which declare the uniforms ApplyTo writes. ## What Cover is for, and why it is not automatic A directional light has no position, so its view of the scene has no natural extent -- something has to say how much world the map covers. Too little and shadows stop at an invisible line; too much and the map's resolution is spread so thin that shadow edges turn to staircases. There is no good default, because the right answer is the size of the thing being lit, so it is a parameter rather than a guess. ## Bias, and why there is any A depth map is a grid of samples, so a surface's own recorded depth is almost never exactly its depth when looked up again. Without a margin, half of every lit surface reads as being behind itself and the result is a fine dark stipple over everything -- \"shadow acne\". The bias is that margin. Too small brings the acne back; too large and shadows detach from what casts them, which is why the default is small and adjustable rather than generous.",
 			"functions": {
 				"ApplyTo": {
 					"descriptions": ["**Bind the map and tell a shader how to read it. Writes \"light_space\", \"shadow_map\", \"shadow_bias\" and \"shadow_texel\" -- skipping any the shader does not declare, so this can be handed an unshadowed program without filing a diagnostic.**\n\n```method : public : ApplyTo(shader:Shader) ~ Nil```\n\n\n\nshader: Shader\n\nreturn: Nil"]
@@ -5828,7 +5834,7 @@
 			}
 		},
 		"Game.OpenGL.Track": {
-			"description": "How a value changes over time. The other half of animation. Transform->SetParent says how parts move TOGETHER; a Track says how anything moves at all -- a lid opening, a platform rising, a light dimming, a door swinging, a camera pushing in. It holds keys and reads a value back at any time between them:",
+			"description": "How a value changes over time. The other half of animation. Transform->SetParent says how parts move TOGETHER; a Track says how anything moves at all -- a lid opening, a platform rising, a light dimming, a door swinging, a camera pushing in. It holds keys and reads a value back at any time between them: ## Why a track rather than a tween A from-to pair with a duration covers the easy case and then stops: an animation that goes out, waits, and comes back is three of them plus the bookkeeping to sequence them. Keys are that for free, and reduce to the easy case when there are two of them. ## What it does not do One FLOAT. Not a vector, not a colour, not a quaternion -- three tracks make a position and four make a colour, and keeping it scalar is what lets it drive anything at all rather than the specific things somebody thought of. It has no clock of its own either: Sample takes a time, so the caller decides whether that is wall time, a paused time, or one running backwards. Rotation between two ANGLES here is not the same as rotating between two orientations -- interpolating yaw, pitch and roll separately is fine for a hinge or a turntable and wrong for anything tumbling freely, which needs quaternions this bundle does not have.",
 			"functions": {
 				"Add": {
 					"descriptions": ["**Add a key. Inserted in time order, so keys can be added in any order. Adding a second key at exactly the same time replaces the first rather than creating a step nothing can land between.**\n\n```method : public : Add(time:Float, value:Float) ~ Nil```\n\n\n\ntime: Float\n\nvalue: Float\n\nreturn: Nil"]
@@ -5869,7 +5875,7 @@
 			}
 		},
 		"Game.OpenGL.Transform": {
-			"description": "Where something is, how it is turned, and how big it is -- with its matrix built on demand and cached. This is what an object that MOVES wants, as opposed to Box, which is a static prop and caches a translate-and-scale. A program animating something otherwise has to keep its own scratch buffers and remember the order the three parts compose in.",
+			"description": "Where something is, how it is turned, and how big it is -- with its matrix built on demand and cached. This is what an object that MOVES wants, as opposed to Box, which is a static prop and caches a translate-and-scale. A program animating something otherwise has to keep its own scratch buffers and remember the order the three parts compose in. ## No allocation after construction The matrix is one buffer owned by the Transform, rebuilt only when something actually changed. Setting the same position twice costs nothing, and a static object costs nothing per frame at all. Translation, rotation and scale compose as T * R * S -- scale first, then rotate, then move -- which is the order that behaves the way people expect: scaling does not drag the object away from its position, and rotation happens about its own centre. Composing them in any other order is a common and confusing bug, so the order is not a choice here.",
 			"functions": {
 				"GetMatrix": {
 					"descriptions": ["**The model matrix, T * R * S. Rebuilt only when something changed, into a buffer this object owns -- so the returned array is NOT a copy. Do not hold on to it across a change, and do not write to it.**\n\n```method : public : GetMatrix() ~ Float[]```\n\n\n\nreturn: Float[]"]
@@ -8247,7 +8253,7 @@
 					"descriptions": ["**Compares two value**\n\n```function : Compare(l:Float, r:Float) ~ Int```\n\n\n\nl: Float\n\nr: Float\n\nreturn: Int"]
 				},
 				"Cos": {
-					"descriptions": ["**Calculates the cosine value**\n\n```function : Cos() ~ Float```\n\n\n\nreturn: Float\n\n```\nangle := Float->Pi() \/ 3.0;\r\nFloat->Cos(angle)->PrintLine();  # 0.5\n```"]
+					"descriptions": ["**Calculates the cosine value**\n\n```function : Cos() ~ Float```\n\n\n\nreturn: Float\n\n```\nangle := Float->Pi() \/ 3.0;\nFloat->Cos(angle)->PrintLine();  # 0.5\n```"]
 				},
 				"Cosh": {
 					"descriptions": ["**Calculates the hyperbolic cosine**\n\n```function : Cosh() ~ Float```\n\n\n\nreturn: Float"]
@@ -8307,7 +8313,7 @@
 					"descriptions": ["**Returns a negative infinity value**\n\n```function : NegInf() ~ Float```\n\n\n\nreturn: Float"]
 				},
 				"Pi": {
-					"descriptions": ["**Value of Pi**\n\n```function : Pi() ~ Float```\n\n\n\nreturn: Float\n\n```\narea := Float->Pi() * 5.0 * 5.0;\r\n\"Circle area: {$area}\"->PrintLine();\n```"]
+					"descriptions": ["**Value of Pi**\n\n```function : Pi() ~ Float```\n\n\n\nreturn: Float\n\n```\narea := Float->Pi() * 5.0 * 5.0;\n\"Circle area: {$area}\"->PrintLine();\n```"]
 				},
 				"Pow": {
 					"descriptions": ["**Calculates the power value**\n\n```function : Pow(b:Float, r:Int) ~ Float```\n\n\n\nb: Float\n\nr: Int\n\nreturn: Float", "**Calculates the power value**\n\n```function : Pow(b:Float, r:Float) ~ Float```\n\n\n\nb: Float\n\nr: Float\n\nreturn: Float\n\n```\nFloat->Pow(2.0, 8.0)->PrintLine();  # 256.0\n```"]
@@ -8319,7 +8325,7 @@
 					"descriptions": ["**Prints value with newline**\n\n```function : PrintLine() ~ Nil```\n\n\n\nreturn: Nil", "**Prints values**\n\n```function : native : PrintLine(v:Float[]) ~ Nil```\n\n\n\nv: Float[]\n\nreturn: Nil", "**Prints values**\n\n```function : native : PrintLine(v:Float[,]) ~ Nil```\n\n\n\nv: Float[,]\n\nreturn: Nil"]
 				},
 				"Random": {
-					"descriptions": ["**Returns a pseudo random value between 0.0 and 1.0, inclusive**\n\n```function : Random() ~ Float```\n\n\n\nreturn: Float\n\n```\nr := Float->Random();\r\n\"Random 0\u20131: {$r}\"->PrintLine();\n```", "**Returns a pseudo random value between 0.0 and max, inclusive**\n\n```function : Random(max:Float) ~ Float```\n\n\n\nmax: Float\n\nreturn: Float\n\n```\nr := Float->Random(100.0);\r\n\"Random 0\u2013100: {$r}\"->PrintLine();\n```", "**Returns a pseudo random value between 0.0 and 1.0, inclusive**\n\n```function : Random(range_start:Float, range_end:Float) ~ Float```\n\n\n\nrange_start: Float\n\nrange_end: Float\n\nreturn: Float"]
+					"descriptions": ["**Returns a pseudo random value between 0.0 and 1.0, inclusive**\n\n```function : Random() ~ Float```\n\n\n\nreturn: Float\n\n```\nr := Float->Random();\n\"Random 0\u20131: {$r}\"->PrintLine();\n```", "**Returns a pseudo random value between 0.0 and max, inclusive**\n\n```function : Random(max:Float) ~ Float```\n\n\n\nmax: Float\n\nreturn: Float\n\n```\nr := Float->Random(100.0);\n\"Random 0\u2013100: {$r}\"->PrintLine();\n```", "**Returns a pseudo random value between 0.0 and 1.0, inclusive**\n\n```function : Random(range_start:Float, range_end:Float) ~ Float```\n\n\n\nrange_start: Float\n\nrange_end: Float\n\nreturn: Float"]
 				},
 				"Round": {
 					"descriptions": ["**Rounds the value**\n\n```function : Round() ~ Float```\n\n\n\nreturn: Float\n\n```\nFloat->Round(3.7)->PrintLine();  # 4.0\n```"]
@@ -8328,7 +8334,7 @@
 					"descriptions": ["**Returns the sign of a number**\n\n```function : Sign() ~ Float```\n\n\n\nreturn: Float"]
 				},
 				"Sin": {
-					"descriptions": ["**Calculates the sine value**\n\n```function : Sin() ~ Float```\n\n\n\nreturn: Float\n\n```\nangle := Float->Pi() \/ 6.0;\r\nFloat->Sin(angle)->PrintLine();  # 0.5\n```"]
+					"descriptions": ["**Calculates the sine value**\n\n```function : Sin() ~ Float```\n\n\n\nreturn: Float\n\n```\nangle := Float->Pi() \/ 6.0;\nFloat->Sin(angle)->PrintLine();  # 0.5\n```"]
 				},
 				"Sinh": {
 					"descriptions": ["**Calculates the hyperbolic sine**\n\n```function : Sinh() ~ Float```\n\n\n\nreturn: Float"]
@@ -8337,7 +8343,7 @@
 					"descriptions": ["**Calculates the square root value**\n\n```function : Sqrt() ~ Float```\n\n\n\nreturn: Float\n\n```\nFloat->Sqrt(16.0)->PrintLine();  # 4.0\n```"]
 				},
 				"Tan": {
-					"descriptions": ["**Calculates the tangent value**\n\n```function : Tan() ~ Float```\n\n\n\nreturn: Float\n\n```\nangle := Float->Pi() \/ 4.0;\r\nFloat->Tan(angle)->PrintLine();  # ~1.0\n```"]
+					"descriptions": ["**Calculates the tangent value**\n\n```function : Tan() ~ Float```\n\n\n\nreturn: Float\n\n```\nangle := Float->Pi() \/ 4.0;\nFloat->Tan(angle)->PrintLine();  # ~1.0\n```"]
 				},
 				"Tanh": {
 					"descriptions": ["**Calculates the hyperbolic tangent**\n\n```function : Tanh() ~ Float```\n\n\n\nreturn: Float"]
@@ -8358,7 +8364,7 @@
 					"descriptions": ["**Converts the value into radians**\n\n```function : ToRadians() ~ Float```\n\n\n\nreturn: Float"]
 				},
 				"ToString": {
-					"descriptions": ["**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ns := Float->ToString(3.14);\r\ns->PrintLine();  # 3.14\n```", "**Returns a fixed-point string representation of the float with a given number of decimal places (rounded). Used by string-interpolation format specifiers, e.g. \"{$pi:.2}\".**\n\n```function : ToString(value:Float, precision:Int) ~ String```\n\n\n\nvalue: Float\n\nprecision: Int\n\nreturn: String\n\n```\nFloat->ToString(3.14159, 2)->PrintLine();  # 3.14\n```", "**Returns a string representation of the float array**\n\n```function : ToString(v:Float[,]) ~ String```\n\n\n\nv: Float[,]\n\nreturn: String"]
+					"descriptions": ["**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ns := Float->ToString(3.14);\ns->PrintLine();  # 3.14\n```", "**Returns a fixed-point string representation of the float with a given number of decimal places (rounded). Used by string-interpolation format specifiers, e.g. \"{$pi:.2}\".**\n\n```function : ToString(value:Float, precision:Int) ~ String```\n\n\n\nvalue: Float\n\nprecision: Int\n\nreturn: String\n\n```\nFloat->ToString(3.14159, 2)->PrintLine();  # 3.14\n```", "**Returns a string representation of the float array**\n\n```function : ToString(v:Float[,]) ~ String```\n\n\n\nv: Float[,]\n\nreturn: String"]
 				},
 				"Trunc": {
 					"descriptions": ["**Truncates the value**\n\n```function : Trunc() ~ Float```\n\n\n\nreturn: Float"]
@@ -8578,7 +8584,7 @@
 					"descriptions": ["**Prints value with newline**\n\n```function : PrintLine() ~ Nil```\n\n\n\nreturn: Nil", "**Prints values**\n\n```function : native : PrintLine(v:Int[]) ~ Nil```\n\n\n\nv: Int[]\n\nreturn: Nil", "**Prints values**\n\n```function : native : PrintLine(v:Int[,]) ~ Nil```\n\n\n\nv: Int[,]\n\nreturn: Nil"]
 				},
 				"Random": {
-					"descriptions": ["**Returns a pseudo random value between 0 and 1, inclusive**\n\n```function : Random(range_start:Int, range_end:Int) ~ Int```\n\n\n\nrange_start: Int\n\nrange_end: Int\n\nreturn: Int\n\n```\ntemp := Int->Random(-10, 40);\r\n\"Temp: {$temp}\u00b0C\"->PrintLine();\n```", "**Returns a random number between 0 and max value, inclusive**\n\n```function : Random(max:Int) ~ Int```\n\n\n\nmax: Int\n\nreturn: Int\n\n```\ndice := Int->Random(6) + 1;\r\n\"Rolled: {$dice}\"->PrintLine();\n```"]
+					"descriptions": ["**Returns a pseudo random value between 0 and 1, inclusive**\n\n```function : Random(range_start:Int, range_end:Int) ~ Int```\n\n\n\nrange_start: Int\n\nrange_end: Int\n\nreturn: Int\n\n```\ntemp := Int->Random(-10, 40);\n\"Temp: {$temp}\u00b0C\"->PrintLine();\n```", "**Returns a random number between 0 and max value, inclusive**\n\n```function : Random(max:Int) ~ Int```\n\n\n\nmax: Int\n\nreturn: Int\n\n```\ndice := Int->Random(6) + 1;\n\"Rolled: {$dice}\"->PrintLine();\n```"]
 				},
 				"ShiftRightUnsigned": {
 					"descriptions": ["**Shifts a value right, treating it as an unsigned 64-bit quantity. Unlike '>>', zeros are shifted into the high bits rather than copies of the sign bit. This is what the '>>>' operator compiles to.**\n\n```function : native : ShiftRightUnsigned(v:Int, count:Int) ~ Int```\n\n\n\nv: Int\n\ncount: Int\n\nreturn: Int"]
@@ -8608,7 +8614,7 @@
 					"descriptions": ["**Returns a hex string value**\n\n```function : native : ToHexString() ~ String```\n\n\n\nreturn: String"]
 				},
 				"ToString": {
-					"descriptions": ["**Returns the string value**\n\n```function : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ns := Int->ToString(255);\r\ns->PrintLine();  # 255\n```", "**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String", "**Returns a string representation of the int array**\n\n```function : ToString(v:Int[,]) ~ String```\n\n\n\nv: Int[,]\n\nreturn: String"]
+					"descriptions": ["**Returns the string value**\n\n```function : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ns := Int->ToString(255);\ns->PrintLine();  # 255\n```", "**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String", "**Returns a string representation of the int array**\n\n```function : ToString(v:Int[,]) ~ String```\n\n\n\nv: Int[,]\n\nreturn: String"]
 				},
 				"ToUnsignedString": {
 					"descriptions": ["**Returns the value formatted as an unsigned 64-bit decimal string. Negative values print as the large positive number their bits represent, so -1 becomes \"18446744073709551615\" rather than \"-1\".**\n\n```function : native : ToUnsignedString(v:Int) ~ String```\n\n\n\nv: Int\n\nreturn: String"]
@@ -8795,7 +8801,7 @@
 			"description": "Resizeable Unicode character string",
 			"functions": {
 				"Append": {
-					"descriptions": ["**Appends a boolean value**\n\n```method : public : Append(flag:Bool) ~ Nil```\n\n\n\nflag: Bool\n\nreturn: Nil", "**Appends a integer value**\n\n```method : public : Append(i:Int) ~ Nil```\n\n\n\ni: Int\n\nreturn: Nil", "**Appends a float value**\n\n```method : public : Append(f:Float) ~ Nil```\n\n\n\nf: Float\n\nreturn: Nil", "**Appends a string**\n\n```method : public : Append(str:String) ~ Nil```\n\n\n\nstr: String\n\nreturn: Nil\n\n```\ns := \"Hello\";\r\ns->Append(\", World\");\r\ns->PrintLine();  # Hello, World\n```", "**Appends a character array**\n\n```method : public : Append(array:Char[]) ~ Nil```\n\n\n\narray: Char[]\n\nreturn: Nil", "**Appends a portion of character array**\n\n```method : public : native : Append(array:Char[], offset:Int, length:Int) ~ Nil```\n\n\n\narray: Char[]\n\noffset: Int\n\nlength: Int\n\nreturn: Nil", "**Appends a character array**\n\n```method : public : native : Append(array:Byte[]) ~ Nil```\n\n\n\narray: Byte[]\n\nreturn: Nil", "**Appends a portion of byte array**\n\n```method : public : native : Append(array:Byte[], offset:Int, length:Int) ~ Nil```\n\n\n\narray: Byte[]\n\noffset: Int\n\nlength: Int\n\nreturn: Nil", "**Appends a character**\n\n```method : public : Append(c:Char) ~ Nil```\n\n\n\nc: Char\n\nreturn: Nil", "**Appends a byte**\n\n```method : public : Append(c:Byte) ~ Nil```\n\n\n\nc: Byte\n\nreturn: Nil"]
+					"descriptions": ["**Appends a boolean value**\n\n```method : public : Append(flag:Bool) ~ Nil```\n\n\n\nflag: Bool\n\nreturn: Nil", "**Appends a integer value**\n\n```method : public : Append(i:Int) ~ Nil```\n\n\n\ni: Int\n\nreturn: Nil", "**Appends a float value**\n\n```method : public : Append(f:Float) ~ Nil```\n\n\n\nf: Float\n\nreturn: Nil", "**Appends a string**\n\n```method : public : Append(str:String) ~ Nil```\n\n\n\nstr: String\n\nreturn: Nil\n\n```\ns := \"Hello\";\ns->Append(\", World\");\ns->PrintLine();  # Hello, World\n```", "**Appends a character array**\n\n```method : public : Append(array:Char[]) ~ Nil```\n\n\n\narray: Char[]\n\nreturn: Nil", "**Appends a portion of character array**\n\n```method : public : native : Append(array:Char[], offset:Int, length:Int) ~ Nil```\n\n\n\narray: Char[]\n\noffset: Int\n\nlength: Int\n\nreturn: Nil", "**Appends a character array**\n\n```method : public : native : Append(array:Byte[]) ~ Nil```\n\n\n\narray: Byte[]\n\nreturn: Nil", "**Appends a portion of byte array**\n\n```method : public : native : Append(array:Byte[], offset:Int, length:Int) ~ Nil```\n\n\n\narray: Byte[]\n\noffset: Int\n\nlength: Int\n\nreturn: Nil", "**Appends a character**\n\n```method : public : Append(c:Char) ~ Nil```\n\n\n\nc: Char\n\nreturn: Nil", "**Appends a byte**\n\n```method : public : Append(c:Byte) ~ Nil```\n\n\n\nc: Byte\n\nreturn: Nil"]
 				},
 				"Capacity": {
 					"descriptions": ["**Gets the current string's storage capacity. That is the number of characters the string will hold before it is resized for growth.**\n\n```method : public : Capacity() ~ Int```\n\n\n\nreturn: Int"]
@@ -8816,7 +8822,7 @@
 					"descriptions": ["**Compresses a string removing unused space.**\n\n```method : public : Compress() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Contains": {
-					"descriptions": ["**Checks if string contains a substring**\n\n```method : public : Contains(find:String) ~ Bool```\n\n\n\nfind: String\n\nreturn: Bool\n\n```\nif(\"Hello World\"->Contains(\"World\")) {\r\n  \"Found\"->PrintLine();\r\n};\n```"]
+					"descriptions": ["**Checks if string contains a substring**\n\n```method : public : Contains(find:String) ~ Bool```\n\n\n\nfind: String\n\nreturn: Bool\n\n```\nif(\"Hello World\"->Contains(\"World\")) {\n  \"Found\"->PrintLine();\n};\n```"]
 				},
 				"ContainsIgnoreCase": {
 					"descriptions": ["**Checks if string contains a substring, ignoring case**\n\n```method : public : ContainsIgnoreCase(find:String) ~ Bool```\n\n\n\nfind: String\n\nreturn: Bool"]
@@ -8831,13 +8837,13 @@
 					"descriptions": ["**Deletes the character at the given index**\n\n```method : public : Delete(offset:Int) ~ Bool```\n\n\n\noffset: Int\n\nreturn: Bool", "**Deletes the characters at the given range**\n\n```method : public : Delete(offset:Int, length:Int) ~ Bool```\n\n\n\noffset: Int\n\nlength: Int\n\nreturn: Bool"]
 				},
 				"EndsWith": {
-					"descriptions": ["**Checks if the string ends with the given character**\n\n```method : public : EndsWith(char:Char) ~ Bool```\n\n\n\nchar: Char\n\nreturn: Bool\n\n```\nif(\"report.pdf\"->EndsWith('f')) {\r\n  \"Ends with f\"->PrintLine();\r\n};\n```", "**Checks if the string ends with the given string**\n\n```method : public : native : EndsWith(string:String) ~ Bool```\n\n\n\nstring: String\n\nreturn: Bool\n\n```\nfile := \"report.pdf\";\r\nif(file->EndsWith(\".pdf\")) {\r\n  \"PDF file\"->PrintLine();\r\n};\n```"]
+					"descriptions": ["**Checks if the string ends with the given character**\n\n```method : public : EndsWith(char:Char) ~ Bool```\n\n\n\nchar: Char\n\nreturn: Bool\n\n```\nif(\"report.pdf\"->EndsWith('f')) {\n  \"Ends with f\"->PrintLine();\n};\n```", "**Checks if the string ends with the given string**\n\n```method : public : native : EndsWith(string:String) ~ Bool```\n\n\n\nstring: String\n\nreturn: Bool\n\n```\nfile := \"report.pdf\";\nif(file->EndsWith(\".pdf\")) {\n  \"PDF file\"->PrintLine();\n};\n```"]
 				},
 				"EndsWithIgnoreCase": {
 					"descriptions": ["**Checks if the string ends with the given string, ignoring case**\n\n```method : public : EndsWithIgnoreCase(string:String) ~ Bool```\n\n\n\nstring: String\n\nreturn: Bool"]
 				},
 				"Equals": {
-					"descriptions": ["**Compares two strings**\n\n```method : public : native : Equals(rhs:String) ~ Bool```\n\n\n\nrhs: String\n\nreturn: Bool\n\n```\nif(\"hello\"->Equals(\"hello\")) {\r\n  \"Match\"->PrintLine();\r\n};\n```", "**Compares a string to an array of values**\n\n```method : public : Equals(rhs:String[]) ~ Bool```\n\n\n\nrhs: String[]\n\nreturn: Bool"]
+					"descriptions": ["**Compares two strings**\n\n```method : public : native : Equals(rhs:String) ~ Bool```\n\n\n\nrhs: String\n\nreturn: Bool\n\n```\nif(\"hello\"->Equals(\"hello\")) {\n  \"Match\"->PrintLine();\n};\n```", "**Compares a string to an array of values**\n\n```method : public : Equals(rhs:String[]) ~ Bool```\n\n\n\nrhs: String[]\n\nreturn: Bool"]
 				},
 				"EqualsIgnoreCase": {
 					"descriptions": ["**Compares two strings, ignoring the case**\n\n```method : public : native : EqualsIgnoreCase(rhs:String) ~ Bool```\n\n\n\nrhs: String\n\nreturn: Bool", "**Compares a string to an array of values, ignoring case**\n\n```method : public : EqualsIgnoreCase(rhs:String[]) ~ Bool```\n\n\n\nrhs: String[]\n\nreturn: Bool"]
@@ -8849,7 +8855,7 @@
 					"descriptions": ["**Print an error string with a newline**\n\n```method : public : ErrorLine() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Find": {
-					"descriptions": ["**Searches for the first occurrence of a character**\n\n```method : public : Find(char:Char) ~ Int```\n\n\n\nchar: Char\n\nreturn: Int\n\n```\npos := \"Hello\"->Find('l');\r\npos->PrintLine();  # 2\n```", "**Searches for the first occurrence of a character**\n\n```method : public : native : Find(offset:Int, char:Char) ~ Int```\n\n\n\noffset: Int\n\nchar: Char\n\nreturn: Int", "**Searches for the first occurrence of a string**\n\n```method : public : Find(find:String) ~ Int```\n\n\n\nfind: String\n\nreturn: Int\n\n```\npos := \"Hello World\"->Find(\"World\");\r\n\"Found at: {$pos}\"->PrintLine();  # Found at: 6\n```", "**Searches for the first occurrence of a string**\n\n```method : public : native : Find(offset:Int, find:String) ~ Int```\n\n\n\noffset: Int\n\nfind: String\n\nreturn: Int"]
+					"descriptions": ["**Searches for the first occurrence of a character**\n\n```method : public : Find(char:Char) ~ Int```\n\n\n\nchar: Char\n\nreturn: Int\n\n```\npos := \"Hello\"->Find('l');\npos->PrintLine();  # 2\n```", "**Searches for the first occurrence of a character**\n\n```method : public : native : Find(offset:Int, char:Char) ~ Int```\n\n\n\noffset: Int\n\nchar: Char\n\nreturn: Int", "**Searches for the first occurrence of a string**\n\n```method : public : Find(find:String) ~ Int```\n\n\n\nfind: String\n\nreturn: Int\n\n```\npos := \"Hello World\"->Find(\"World\");\n\"Found at: {$pos}\"->PrintLine();  # Found at: 6\n```", "**Searches for the first occurrence of a string**\n\n```method : public : native : Find(offset:Int, find:String) ~ Int```\n\n\n\noffset: Int\n\nfind: String\n\nreturn: Int"]
 				},
 				"FindAll": {
 					"descriptions": ["**Searches for all occurrences of a string**\n\n```method : public : FindAll(find:String) ~ Int[]```\n\n\n\nfind: String\n\nreturn: Int[]"]
@@ -8864,7 +8870,7 @@
 					"descriptions": ["**Formats a string by substituting positional placeholders {0}, {1}, ... with the string value of the matching argument. Use {{ and }} for literal braces. Arguments are stringified via their 'ToString' (Stringify).**\n\n```function : Format(fmt:String, args:System.Base[]) ~ String```\n\n\n\nfmt: String\n\nargs: System.Base[]\n\nreturn: String\n\n```\nString->Format(\"{0} = {1}\", \"x\", 42)->PrintLine();  # x = 42\n```", "**Formats a string with a single positional argument. See Format(String, System.Base[]).**\n\n```function : Format() ~ String```\n\n\n\nfmt: String\n\narg0: System.Base\n\nreturn: String", "**Formats a string with two positional arguments. See Format(String, System.Base[]).**\n\n```function : Format() ~ String```\n\n\n\nfmt: String\n\narg0: System.Base\n\narg1: System.Base\n\nreturn: String", "**Formats a string with three positional arguments. See Format(String, System.Base[]).**\n\n```function : Format() ~ String```\n\n\n\nfmt: String\n\narg0: System.Base\n\narg1: System.Base\n\narg2: System.Base\n\nreturn: String", "**Formats a string with four positional arguments. See Format(String, System.Base[]).**\n\n```function : Format() ~ String```\n\n\n\nfmt: String\n\narg0: System.Base\n\narg1: System.Base\n\narg2: System.Base\n\narg3: System.Base\n\nreturn: String"]
 				},
 				"Get": {
-					"descriptions": ["**Returns character at the given index**\n\n```method : public : native : Get(index:Int) ~ Char```\n\n\n\nindex: Int\n\nreturn: Char\n\n```\nch := \"Hello\"->Get(1);\r\nch->PrintLine();  # e\n```"]
+					"descriptions": ["**Returns character at the given index**\n\n```method : public : native : Get(index:Int) ~ Char```\n\n\n\nindex: Int\n\nreturn: Char\n\n```\nch := \"Hello\"->Get(1);\nch->PrintLine();  # e\n```"]
 				},
 				"Has": {
 					"descriptions": ["**Searches for the first occurrence of a character**\n\n```method : public : Has(char:Char) ~ Bool```\n\n\n\nchar: Char\n\nreturn: Bool", "**Searches for the first occurrence of a character**\n\n```method : public : Has(offset:Int, char:Char) ~ Bool```\n\n\n\noffset: Int\n\nchar: Char\n\nreturn: Bool", "**Searches for the first occurrence of a character**\n\n```method : public : Has(str:String) ~ Bool```\n\n\n\nstr: String\n\nreturn: Bool", "**Searches for the first occurrence of a character**\n\n```method : public : Has(offset:Int, str:String) ~ Bool```\n\n\n\noffset: Int\n\nstr: String\n\nreturn: Bool"]
@@ -8885,7 +8891,7 @@
 					"descriptions": ["**Checks if the string is empty or contains only whitespace**\n\n```method : public : IsBlank() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"IsEmpty": {
-					"descriptions": ["**Returns rather the string is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nstr := \"\";\r\nif(str->IsEmpty()) {\r\n  \"Empty string\"->PrintLine();\r\n};\n```"]
+					"descriptions": ["**Returns rather the string is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nstr := \"\";\nif(str->IsEmpty()) {\n  \"Empty string\"->PrintLine();\n};\n```"]
 				},
 				"IsFloat": {
 					"descriptions": ["**Checks to see if the string can be represented as an float**\n\n```method : public : IsFloat() ~ Bool```\n\n\n\nreturn: Bool"]
@@ -8915,7 +8921,7 @@
 					"descriptions": ["**Pads a string with a character**\n\n```method : public : Pad(char:Char, num:Int, is_left:Bool) ~ String```\n\n\n\nchar: Char\n\nnum: Int\n\nis_left: Bool\n\nreturn: String"]
 				},
 				"PadTo": {
-					"descriptions": ["**Pads the string with a fill character to a minimum total width. If the string is already at least 'width' long it is returned unchanged. Used by string-interpolation format specifiers, e.g. \"{$n:05}\" or \"{$s:<10}\".**\n\n```method : public : PadTo(width:Int, ch:Char, is_left:Bool) ~ String```\n\n\n\nwidth: Int\n\nch: Char\n\nis_left: Bool\n\nreturn: String\n\n```\n\"42\"->PadTo(5, '0', true)->PrintLine();   # 00042\r\n\"hi\"->PadTo(6, ' ', false)->PrintLine();  # 'hi    '\n```"]
+					"descriptions": ["**Pads the string with a fill character to a minimum total width. If the string is already at least 'width' long it is returned unchanged. Used by string-interpolation format specifiers, e.g. \"{$n:05}\" or \"{$s:<10}\".**\n\n```method : public : PadTo(width:Int, ch:Char, is_left:Bool) ~ String```\n\n\n\nwidth: Int\n\nch: Char\n\nis_left: Bool\n\nreturn: String\n\n```\n\"42\"->PadTo(5, '0', true)->PrintLine();   # 00042\n\"hi\"->PadTo(6, ' ', false)->PrintLine();  # 'hi    '\n```"]
 				},
 				"Pop": {
 					"descriptions": ["**Pops the last character from the string reducing the size by 1**\n\n```method : public : native : Pop() ~ Char```\n\n\n\nreturn: Char"]
@@ -8936,10 +8942,10 @@
 					"descriptions": ["**Returns a string repeated n times**\n\n```method : public : Repeat(n:Int) ~ String```\n\n\n\nn: Int\n\nreturn: String"]
 				},
 				"Replace": {
-					"descriptions": ["**Replaces the first occurrence the search string**\n\n```method : public : Replace(find:String, replace:String) ~ String```\n\n\n\nfind: String\n\nreplace: String\n\nreturn: String\n\n```\nresult := \"aabbcc\"->Replace(\"bb\", \"XX\");\r\nresult->PrintLine();  # aaXXcc\n```"]
+					"descriptions": ["**Replaces the first occurrence the search string**\n\n```method : public : Replace(find:String, replace:String) ~ String```\n\n\n\nfind: String\n\nreplace: String\n\nreturn: String\n\n```\nresult := \"aabbcc\"->Replace(\"bb\", \"XX\");\nresult->PrintLine();  # aaXXcc\n```"]
 				},
 				"ReplaceAll": {
-					"descriptions": ["**Replaces all occurrences the search string**\n\n```method : public : ReplaceAll(find:String, replace:String) ~ String```\n\n\n\nfind: String\n\nreplace: String\n\nreturn: String\n\n```\nresult := \"cat and cat\"->ReplaceAll(\"cat\", \"dog\");\r\nresult->PrintLine();  # dog and dog\n```", "**Replaces all occurrences the search string**\n\n```method : public : native : ReplaceAll(find:Char, replace:Char) ~ String```\n\n\n\nfind: Char\n\nreplace: Char\n\nreturn: String"]
+					"descriptions": ["**Replaces all occurrences the search string**\n\n```method : public : ReplaceAll(find:String, replace:String) ~ String```\n\n\n\nfind: String\n\nreplace: String\n\nreturn: String\n\n```\nresult := \"cat and cat\"->ReplaceAll(\"cat\", \"dog\");\nresult->PrintLine();  # dog and dog\n```", "**Replaces all occurrences the search string**\n\n```method : public : native : ReplaceAll(find:Char, replace:Char) ~ String```\n\n\n\nfind: Char\n\nreplace: Char\n\nreturn: String"]
 				},
 				"Reverse": {
 					"descriptions": ["**Reverses a string**\n\n```method : public : native : Reverse() ~ String```\n\n\n\nreturn: String\n\n```\n\"Hello\"->Reverse()->PrintLine();  # olleH\n```"]
@@ -8960,16 +8966,16 @@
 					"descriptions": ["**Return the size of the string**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\n\"Hello\"->Size()->PrintLine();  # 5\n```"]
 				},
 				"Split": {
-					"descriptions": ["**Splits a string based upon delimiter**\n\n```method : public : Split(delim:String) ~ String[]```\n\n\n\ndelim: String\n\nreturn: String[]\n\n```\nparts := \"one,two,three\"->Split(\",\");\r\neach(part in parts) {\r\n  part->PrintLine();\r\n};\n```", "**Splits a string based upon delimiter**\n\n```method : public : Split(delim:Char) ~ String[]```\n\n\n\ndelim: Char\n\nreturn: String[]\n\n```\nparts := \"a:b:c\"->Split(':');\r\nparts->Size()->PrintLine();  # 3\n```"]
+					"descriptions": ["**Splits a string based upon delimiter**\n\n```method : public : Split(delim:String) ~ String[]```\n\n\n\ndelim: String\n\nreturn: String[]\n\n```\nparts := \"one,two,three\"->Split(\",\");\neach(part in parts) {\n  part->PrintLine();\n};\n```", "**Splits a string based upon delimiter**\n\n```method : public : Split(delim:Char) ~ String[]```\n\n\n\ndelim: Char\n\nreturn: String[]\n\n```\nparts := \"a:b:c\"->Split(':');\nparts->Size()->PrintLine();  # 3\n```"]
 				},
 				"StartsWith": {
-					"descriptions": ["**Checks if the string starts with the given character**\n\n```method : public : StartsWith(char:Char) ~ Bool```\n\n\n\nchar: Char\n\nreturn: Bool\n\n```\nif(\"https:\/\/example.com\"->StartsWith('h')) {\r\n  \"Starts with h\"->PrintLine();\r\n};\n```", "**Checks if the string starts with the given string**\n\n```method : public : StartsWith(string:String) ~ Bool```\n\n\n\nstring: String\n\nreturn: Bool\n\n```\nurl := \"https:\/\/example.com\";\r\nif(url->StartsWith(\"https:\/\/\")) {\r\n  \"Secure\"->PrintLine();\r\n};\n```"]
+					"descriptions": ["**Checks if the string starts with the given character**\n\n```method : public : StartsWith(char:Char) ~ Bool```\n\n\n\nchar: Char\n\nreturn: Bool\n\n```\nif(\"https:\/\/example.com\"->StartsWith('h')) {\n  \"Starts with h\"->PrintLine();\n};\n```", "**Checks if the string starts with the given string**\n\n```method : public : StartsWith(string:String) ~ Bool```\n\n\n\nstring: String\n\nreturn: Bool\n\n```\nurl := \"https:\/\/example.com\";\nif(url->StartsWith(\"https:\/\/\")) {\n  \"Secure\"->PrintLine();\n};\n```"]
 				},
 				"StartsWithIgnoreCase": {
 					"descriptions": ["**Checks if the string starts with the given string, ignoring case**\n\n```method : public : StartsWithIgnoreCase(string:String) ~ Bool```\n\n\n\nstring: String\n\nreturn: Bool"]
 				},
 				"SubString": {
-					"descriptions": ["**Creates a sub-string**\n\n```method : public : SubString(length:Int) ~ String```\n\n\n\nlength: Int\n\nreturn: String\n\n```\ntail := \"Hello World\"->SubString(5);\r\ntail->PrintLine();  # Hello\n```", "**Creates a sub-string**\n\n```method : public : SubString(offset:Int, length:Int) ~ String```\n\n\n\noffset: Int\n\nlength: Int\n\nreturn: String\n\n```\nsub := \"Hello World\"->SubString(6, 5);\r\nsub->PrintLine();  # World\n```"]
+					"descriptions": ["**Creates a sub-string**\n\n```method : public : SubString(length:Int) ~ String```\n\n\n\nlength: Int\n\nreturn: String\n\n```\ntail := \"Hello World\"->SubString(5);\ntail->PrintLine();  # Hello\n```", "**Creates a sub-string**\n\n```method : public : SubString(offset:Int, length:Int) ~ String```\n\n\n\noffset: Int\n\nlength: Int\n\nreturn: String\n\n```\nsub := \"Hello World\"->SubString(6, 5);\nsub->PrintLine();  # World\n```"]
 				},
 				"ToBool": {
 					"descriptions": ["**Parses the string into a boolean**\n\n```method : public : ToBool() ~ Bool```\n\n\n\nreturn: Bool"]
@@ -8981,10 +8987,10 @@
 					"descriptions": ["**Returns a character array representation of the String**\n\n```method : public : ToCharArray() ~ Char[]```\n\n\n\nreturn: Char[]"]
 				},
 				"ToFloat": {
-					"descriptions": ["**Parses the string into a float**\n\n```method : public : ToFloat() ~ Float```\n\n\n\nreturn: Float\n\n```\nf := \"3.14\"->ToFloat();\r\n(f * 2.0)->PrintLine();  # 6.28\n```"]
+					"descriptions": ["**Parses the string into a float**\n\n```method : public : ToFloat() ~ Float```\n\n\n\nreturn: Float\n\n```\nf := \"3.14\"->ToFloat();\n(f * 2.0)->PrintLine();  # 6.28\n```"]
 				},
 				"ToInt": {
-					"descriptions": ["**Parses the string into an integer**\n\n```method : public : ToInt() ~ Int```\n\n\n\nreturn: Int\n\n```\nn := \"42\"->ToInt();\r\n(n * 2)->PrintLine();  # 84\n```", "**Parses the string into an integer**\n\n```method : public : ToInt(base:Int) ~ Int```\n\n\n\nbase: Int\n\nreturn: Int"]
+					"descriptions": ["**Parses the string into an integer**\n\n```method : public : ToInt() ~ Int```\n\n\n\nreturn: Int\n\n```\nn := \"42\"->ToInt();\n(n * 2)->PrintLine();  # 84\n```", "**Parses the string into an integer**\n\n```method : public : ToInt(base:Int) ~ Int```\n\n\n\nbase: Int\n\nreturn: Int"]
 				},
 				"ToLower": {
 					"descriptions": ["**Transforms a to lower case**\n\n```method : public : native : ToLower() ~ String```\n\n\n\nreturn: String\n\n```\n\"WORLD\"->ToLower()->PrintLine();  # world\n```"]
@@ -8996,7 +9002,7 @@
 					"descriptions": ["**Transforms a to upper case**\n\n```method : public : native : ToUpper() ~ String```\n\n\n\nreturn: String\n\n```\n\"hello\"->ToUpper()->PrintLine();  # HELLO\n```"]
 				},
 				"Trim": {
-					"descriptions": ["**Removes all leading and trailing white space**\n\n```method : public : native : Trim() ~ String```\n\n\n\nreturn: String\n\n```\ncleaned := \"  hello world  \"->Trim();\r\ncleaned->PrintLine();  # hello world\n```"]
+					"descriptions": ["**Removes all leading and trailing white space**\n\n```method : public : native : Trim() ~ String```\n\n\n\nreturn: String\n\n```\ncleaned := \"  hello world  \"->Trim();\ncleaned->PrintLine();  # hello world\n```"]
 				},
 				"TrimBack": {
 					"descriptions": ["**Removes all trailing white space**\n\n```method : public : native : TrimBack() ~ String```\n\n\n\nreturn: String"]
@@ -9540,7 +9546,7 @@
 					"descriptions": ["**Reads bytes from STDIN**\n\n```function : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Read characters from STDIN**\n\n```function : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
 				},
 				"ReadLine": {
-					"descriptions": ["**Reads a string from STDIN**\n\n```function : ReadLine() ~ System.String```\n\n\n\nreturn: System.String\n\n```\n\"Enter your name: \"->Print();\r\nname := System.IO.Console->ReadLine();\r\n\"Hello, {$name}!\"->PrintLine();\n```"]
+					"descriptions": ["**Reads a string from STDIN**\n\n```function : ReadLine() ~ System.String```\n\n\n\nreturn: System.String\n\n```\n\"Enter your name: \"->Print();\nname := System.IO.Console->ReadLine();\n\"Hello, {$name}!\"->PrintLine();\n```"]
 				},
 				"SetFill": {
 					"descriptions": ["**Sets the output fill**\n\n```function : SetFill(fill:Char) ~ ConsoleIO```\n\n\n\nfill: Char\n\nreturn: ConsoleIO"]
@@ -9746,10 +9752,10 @@
 					"descriptions": ["**Returns the time in which the file was created**\n\n```function : CreateTime(n:System.String) ~ Date```\n\n\n\nn: System.String\n\nreturn: Date", "**Returns the time in which the file was created**\n\n```method : public : CreateTime() ~ Date```\n\n\n\nreturn: Date", "**Returns the time in which the file was created**\n\n```function : CreateTime(n:System.String, gmt:Bool) ~ Date```\n\n\n\nn: System.String\n\ngmt: Bool\n\nreturn: Date", "**Returns the time in which the file was created**\n\n```method : public : CreateTime(gmt:Bool) ~ Date```\n\n\n\ngmt: Bool\n\nreturn: Date"]
 				},
 				"Delete": {
-					"descriptions": ["**Deletes the file**\n\n```function : Delete(n:System.String) ~ Bool```\n\n\n\nn: System.String\n\nreturn: Bool\n\n```\nif(System.IO.File->Delete(\"temp.txt\")) {\r\n  \"Deleted\"->PrintLine();\r\n};\n```", "**Deletes a file**\n\n```method : public : Delete() ~ Bool```\n\n\n\nreturn: Bool"]
+					"descriptions": ["**Deletes the file**\n\n```function : Delete(n:System.String) ~ Bool```\n\n\n\nn: System.String\n\nreturn: Bool\n\n```\nif(System.IO.File->Delete(\"temp.txt\")) {\n  \"Deleted\"->PrintLine();\n};\n```", "**Deletes a file**\n\n```method : public : Delete() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Exists": {
-					"descriptions": ["**Checks if a file exists**\n\n```function : Exists(n:System.String) ~ Bool```\n\n\n\nn: System.String\n\nreturn: Bool\n\n```\nif(System.IO.File->Exists(\"config.json\")) {\r\n  \"File found\"->PrintLine();\r\n};\n```", "**Checks if a file exists**\n\n```method : public : Exists() ~ Bool```\n\n\n\nreturn: Bool"]
+					"descriptions": ["**Checks if a file exists**\n\n```function : Exists(n:System.String) ~ Bool```\n\n\n\nn: System.String\n\nreturn: Bool\n\n```\nif(System.IO.File->Exists(\"config.json\")) {\n  \"File found\"->PrintLine();\n};\n```", "**Checks if a file exists**\n\n```method : public : Exists() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"Flush": {
 					"descriptions": ["**Flushes the file buffer**\n\n```method : public : Flush() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -9800,7 +9806,7 @@
 					"descriptions": ["**Seeks to a point in the file**\n\n```method : public : Seek(p:Int) ~ Bool```\n\n\n\np: Int\n\nreturn: Bool"]
 				},
 				"Size": {
-					"descriptions": ["**Returns the size of the file**\n\n```function : Size(n:System.String) ~ Int```\n\n\n\nn: System.String\n\nreturn: Int\n\n```\nbytes := System.IO.File->Size(\"data.bin\");\r\n\"Size: {$bytes} bytes\"->PrintLine();\n```", "**Returns the size of the file**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+					"descriptions": ["**Returns the size of the file**\n\n```function : Size(n:System.String) ~ Int```\n\n\n\nn: System.String\n\nreturn: Int\n\n```\nbytes := System.IO.File->Size(\"data.bin\");\n\"Size: {$bytes} bytes\"->PrintLine();\n```", "**Returns the size of the file**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
 				}
 			}
 		},
@@ -9808,7 +9814,7 @@
 			"description": "Supports file read operations",
 			"functions": {
 				"Close": {
-					"descriptions": ["**Closes the file**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nreader := System.IO.FileReader->New(\"file.txt\");\r\n# ... read operations ...\r\nreader->Close();\n```"]
+					"descriptions": ["**Closes the file**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nreader := System.IO.FileReader->New(\"file.txt\");\n# ... read operations ...\nreader->Close();\n```"]
 				},
 				"New": {
 					"descriptions": ["**Default constructor.**\n\n```New(name:System.String)```\n\n\n\nname: System.String"]
@@ -9820,13 +9826,13 @@
 					"descriptions": ["**Reads bytes into a character buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int", "**Reads bytes into a byte buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int"]
 				},
 				"ReadByte": {
-					"descriptions": ["**Reads a byte**\n\n```method : public : ReadByte() ~ Byte```\n\n\n\nreturn: Byte\n\n```\nreader := System.IO.FileReader->New(\"data.bin\");\r\nb := reader->ReadByte();\r\nb->PrintLine();\r\nreader->Close();\n```"]
+					"descriptions": ["**Reads a byte**\n\n```method : public : ReadByte() ~ Byte```\n\n\n\nreturn: Byte\n\n```\nreader := System.IO.FileReader->New(\"data.bin\");\nb := reader->ReadByte();\nb->PrintLine();\nreader->Close();\n```"]
 				},
 				"ReadFile": {
-					"descriptions": ["**Reads a file's contents into a string**\n\n```function : ReadFile(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String\n\n```\ncontent := System.IO.FileReader->ReadFile(\"readme.txt\");\r\nif(content <> Nil) {\r\n  content->PrintLine();\r\n};\n```"]
+					"descriptions": ["**Reads a file's contents into a string**\n\n```function : ReadFile(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String\n\n```\ncontent := System.IO.FileReader->ReadFile(\"readme.txt\");\nif(content <> Nil) {\n  content->PrintLine();\n};\n```"]
 				},
 				"ReadLine": {
-					"descriptions": ["**Reads a string until a newline or character return is detected**\n\n```method : public : ReadLine() ~ System.String```\n\n\n\nreturn: System.String\n\n```\nreader := System.IO.FileReader->New(\"log.txt\");\r\nline := reader->ReadLine();\r\nwhile(line <> Nil) {\r\n  line->PrintLine();\r\n  line := reader->ReadLine();\r\n};\r\nreader->Close();\n```"]
+					"descriptions": ["**Reads a string until a newline or character return is detected**\n\n```method : public : ReadLine() ~ System.String```\n\n\n\nreturn: System.String\n\n```\nreader := System.IO.FileReader->New(\"log.txt\");\nline := reader->ReadLine();\nwhile(line <> Nil) {\n  line->PrintLine();\n  line := reader->ReadLine();\n};\nreader->Close();\n```"]
 				}
 			}
 		},
@@ -9875,7 +9881,7 @@
 			"description": "Supports file write operations",
 			"functions": {
 				"Close": {
-					"descriptions": ["**Closes a file**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nwriter := System.IO.FileWriter->New(\"file.txt\");\r\nwriter->WriteString(\"done\");\r\nwriter->Close();\n```"]
+					"descriptions": ["**Closes a file**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nwriter := System.IO.FileWriter->New(\"file.txt\");\nwriter->WriteString(\"done\");\nwriter->Close();\n```"]
 				},
 				"New": {
 					"descriptions": ["**Opens a new file.**\n\n```New(name:System.String)```\n\n\n\nname: System.String", "**Opens a new file or appends to an existing one.**\n\n```New(name:System.String, append:Bool)```\n\n\n\nname: System.String\n\nappend: Bool"]
@@ -9887,13 +9893,13 @@
 					"descriptions": ["**Writes bytes from a buffer**\n\n```method : public : WriteBuffer(buffer:Byte[]) ~ Int```\n\n\n\nbuffer: Byte[]\n\nreturn: Int", "**Writes bytes from a buffer**\n\n```method : public : WriteBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Writes characters from a buffer**\n\n```method : public : WriteBuffer(buffer:Char[]) ~ Int```\n\n\n\nbuffer: Char[]\n\nreturn: Int", "**Writes characters from a buffer**\n\n```method : public : WriteBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
 				},
 				"WriteByte": {
-					"descriptions": ["**Writes a byte**\n\n```method : public : WriteByte(b:Int) ~ Bool```\n\n\n\nb: Int\n\nreturn: Bool\n\n```\nwriter := System.IO.FileWriter->New(\"out.bin\");\r\nwriter->WriteByte(65);  # 'A'\r\nwriter->Close();\n```"]
+					"descriptions": ["**Writes a byte**\n\n```method : public : WriteByte(b:Int) ~ Bool```\n\n\n\nb: Int\n\nreturn: Bool\n\n```\nwriter := System.IO.FileWriter->New(\"out.bin\");\nwriter->WriteByte(65);  # 'A'\nwriter->Close();\n```"]
 				},
 				"WriteFile": {
-					"descriptions": ["**Write string to file**\n\n```function : WriteFile(name:String, content:String) ~ Bool```\n\n\n\nname: String\n\ncontent: String\n\nreturn: Bool\n\n```\nSystem.IO.FileWriter->WriteFile(\"output.txt\", \"Hello, World!\");\n```", "**Write bytes to file**\n\n```function : WriteFile(name:String, content:Byte[]) ~ Bool```\n\n\n\nname: String\n\ncontent: Byte[]\n\nreturn: Bool\n\n```\ndata := Byte[]{72, 101, 108, 108, 111};\r\nSystem.IO.FileWriter->WriteFile(\"bytes.bin\", data);\n```"]
+					"descriptions": ["**Write string to file**\n\n```function : WriteFile(name:String, content:String) ~ Bool```\n\n\n\nname: String\n\ncontent: String\n\nreturn: Bool\n\n```\nSystem.IO.FileWriter->WriteFile(\"output.txt\", \"Hello, World!\");\n```", "**Write bytes to file**\n\n```function : WriteFile(name:String, content:Byte[]) ~ Bool```\n\n\n\nname: String\n\ncontent: Byte[]\n\nreturn: Bool\n\n```\ndata := Byte[]{72, 101, 108, 108, 111};\nSystem.IO.FileWriter->WriteFile(\"bytes.bin\", data);\n```"]
 				},
 				"WriteString": {
-					"descriptions": ["**Writes a character string**\n\n```method : public : WriteString(str:System.String) ~ Nil```\n\n\n\nstr: System.String\n\nreturn: Nil\n\n```\nwriter := System.IO.FileWriter->New(\"log.txt\");\r\nwriter->WriteString(\"Event logged\\n\");\r\nwriter->Close();\n```"]
+					"descriptions": ["**Writes a character string**\n\n```method : public : WriteString(str:System.String) ~ Nil```\n\n\n\nstr: System.String\n\nreturn: Nil\n\n```\nwriter := System.IO.FileWriter->New(\"log.txt\");\nwriter->WriteString(\"Event logged\\n\");\nwriter->Close();\n```"]
 				}
 			}
 		},
@@ -10101,7 +10107,10 @@
 			"description": "Secure SSL TCP\/IP socket",
 			"functions": {
 				"Close": {
-					"descriptions": ["**Closes the socket**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Closes the socket. If this side has just written data and the peer has not read it yet, prefer `CloseGracefully()`. On Windows loopback, closing first can discard what was just written -- see that method and `docs\/windows_loopback_sockets.md`.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"CloseGracefully": {
+					"descriptions": ["**Closes the socket after letting the peer read what was written and hang up first. The TLS twin of `TCPSocket->CloseGracefully()`, and exposed to the same thing: the discard happens in the transport underneath TLS, so encrypting the payload does not change the race. On Windows over loopback, a peer that writes and then immediately closes can have that data discarded -- the reader gets a reset and zero bytes rather than a short read. The remedy is to not be the side that closes first (`docs\/windows_loopback_sockets.md`). Reads and discards anything still arriving until the peer closes, then closes. Bounded on both sides so it cannot park a thread: `timeout_ms` of silence, or 16 reads of a peer that keeps sending instead of hanging up.**\n\n```method : public : CloseGracefully(timeout_ms:Int) ~ Nil```\n\n\n\ntimeout_ms: Int\n\nreturn: Nil"]
 				},
 				"Flush": {
 					"descriptions": ["**Flushes the output buffer. This is a no-opt given this socket is not backed by an output buffer.**\n\n```method : public : Flush() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -10207,7 +10216,10 @@
 			"description": "TCP\/IP socket",
 			"functions": {
 				"Close": {
-					"descriptions": ["**Closes the socket**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Closes the socket. If this side has just written data and the peer has not read it yet, prefer `CloseGracefully()`. On Windows loopback, closing first can discard what was just written -- see that method and `docs\/windows_loopback_sockets.md`.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"CloseGracefully": {
+					"descriptions": ["**Closes the socket after letting the peer read what was written and hang up first. On Windows over loopback, a peer that writes and then immediately closes can have the data it just sent **discarded**: the reader gets a connection reset and zero bytes rather than a short read, even though every byte was accepted and had arrived. The race is between this side's teardown and the peer's read, so the remedy is to not be the side that closes first. It is a platform behaviour, not something a socket option can turn off -- seven candidate fixes were measured and none worked (`docs\/windows_loopback_sockets.md`). This reads and discards anything still arriving until the peer closes, which is the point of the call, and then closes. Use it wherever a server writes a response and is finished with the connection: Bounded on both sides, so it cannot park a thread: it gives up after `timeout_ms` of silence, and after 16 reads of a peer that keeps sending instead of closing. In the ordinary case -- the peer reads the response and hangs up -- it returns as soon as that happens, and costs nothing. `Close()` stays correct when the peer has already closed, or when this side is the one being told to hang up. Linux and real network interfaces are unaffected either way; this matters on Windows loopback.**\n\n```method : public : CloseGracefully(timeout_ms:Int) ~ Nil```\n\n\n\ntimeout_ms: Int\n\nreturn: Nil\n\n```\nsocket->WriteString(response);\nsocket->CloseGracefully();\n```"]
 				},
 				"Flush": {
 					"descriptions": ["**Flushes the output buffer. This is a no-opt given this socket is not backed by an output buffer.**\n\n```method : public : Flush() ~ Nil```\n\n\n\nreturn: Nil"]
@@ -10383,7 +10395,7 @@
 			"description": "OAuth client",
 			"functions": {
 				"GetToken": {
-					"descriptions": ["**Get an OAuth token**\n\n```method : public : GetToken() ~ OAuthToken```\n\n\n\nreturn: OAuthToken\n\n```\nscopes := [\"https:\/\/www.googleapis.com\/auth\/drive.readonly\"];\r\nclient := System.IO.Net.OAuth.OAuthClient->New(\"client_secret.json\", scopes);\r\ntoken := client->GetToken();\r\nif(token <> Nil) {\r\n  token->GetAccessToken()->PrintLine();\r\n  token->IsExpired()->PrintLine();  # false\r\n};\n```"]
+					"descriptions": ["**Get an OAuth token**\n\n```method : public : GetToken() ~ OAuthToken```\n\n\n\nreturn: OAuthToken\n\n```\nscopes := [\"https:\/\/www.googleapis.com\/auth\/drive.readonly\"];\nclient := System.IO.Net.OAuth.OAuthClient->New(\"client_secret.json\", scopes);\ntoken := client->GetToken();\nif(token <> Nil) {\n  token->GetAccessToken()->PrintLine();\n  token->IsExpired()->PrintLine();  # false\n};\n```"]
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(filename:String, scopes:String[])```\n\n\n\nfilename: String\n\nscopes: String[]"]
@@ -10421,7 +10433,7 @@
 					"descriptions": ["**Sets the token values**\n\n```method : public : Set(access_token:String, expires_in:Int, scope:String) ~ Nil```\n\n\n\naccess_token: String\n\nexpires_in: Int\n\nscope: String\n\nreturn: Nil"]
 				},
 				"ToString": {
-					"descriptions": ["**Get token as string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nscopes := [\"https:\/\/www.googleapis.com\/auth\/drive\"];\r\nclient := System.IO.Net.OAuth.OAuthClient->New(\"client_secret.json\", scopes);\r\ntoken := client->GetToken();\r\nif(token <> Nil) {\r\n  token->ToString()->PrintLine();\r\n};\n```"]
+					"descriptions": ["**Get token as string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nscopes := [\"https:\/\/www.googleapis.com\/auth\/drive\"];\nclient := System.IO.Net.OAuth.OAuthClient->New(\"client_secret.json\", scopes);\ntoken := client->GetToken();\nif(token <> Nil) {\n  token->ToString()->PrintLine();\n};\n```"]
 				}
 			}
 		},
@@ -11614,10 +11626,10 @@
 			"description": "Provides date and time functionality",
 			"functions": {
 				"AddDays": {
-					"descriptions": ["**Add days to the date**\n\n```method : public : AddDays(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil\n\n```\nd := System.Time.Date->New();\r\nd->AddDays(7);\r\nd->GetDateString()->PrintLine();  # one week from today\n```"]
+					"descriptions": ["**Add days to the date**\n\n```method : public : AddDays(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil\n\n```\nd := System.Time.Date->New();\nd->AddDays(7);\nd->GetDateString()->PrintLine();  # one week from today\n```"]
 				},
 				"AddHours": {
-					"descriptions": ["**Add hours to the date**\n\n```method : public : AddHours(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil\n\n```\nd := System.Time.Date->New();\r\nd->AddHours(24);\r\nd->GetDateString()->PrintLine();  # tomorrow\n```"]
+					"descriptions": ["**Add hours to the date**\n\n```method : public : AddHours(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil\n\n```\nd := System.Time.Date->New();\nd->AddHours(24);\nd->GetDateString()->PrintLine();  # tomorrow\n```"]
 				},
 				"AddMinutes": {
 					"descriptions": ["**Add minutes to the date**\n\n```method : public : AddMinutes(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil"]
@@ -11632,10 +11644,10 @@
 					"descriptions": ["**Compares two dates**\n\n```method : public : Compare(rhs:System.Compare) ~ Int```\n\n\n\nrhs: System.Compare\n\nreturn: Int"]
 				},
 				"GetDateString": {
-					"descriptions": ["**Gets the date string**\n\n```method : public : GetDateString() ~ String```\n\n\n\nreturn: String\n\n```\nd := System.Time.Date->New();\r\nd->GetDateString()->PrintLine();  # 2026-05-23\n```"]
+					"descriptions": ["**Gets the date string**\n\n```method : public : GetDateString() ~ String```\n\n\n\nreturn: String\n\n```\nd := System.Time.Date->New();\nd->GetDateString()->PrintLine();  # 2026-05-23\n```"]
 				},
 				"GetDay": {
-					"descriptions": ["**Returns the day**\n\n```method : public : GetDay() ~ Int```\n\n\n\nreturn: Int\n\n```\nd := System.Time.Date->New();\r\n\"Date: {$d->GetMonth()}\/{$d->GetDay()}\/{$d->GetYear()}\"->PrintLine();\n```"]
+					"descriptions": ["**Returns the day**\n\n```method : public : GetDay() ~ Int```\n\n\n\nreturn: Int\n\n```\nd := System.Time.Date->New();\n\"Date: {$d->GetMonth()}\/{$d->GetDay()}\/{$d->GetYear()}\"->PrintLine();\n```"]
 				},
 				"GetHours": {
 					"descriptions": ["**Returns the hours**\n\n```method : public : GetHours() ~ Int```\n\n\n\nreturn: Int\n\n```\nSystem.Time.Date->New()->GetHours()->PrintLine();\n```"]
@@ -11653,7 +11665,7 @@
 					"descriptions": ["**Returns the seconds**\n\n```method : public : GetSeconds() ~ Int```\n\n\n\nreturn: Int\n\n```\nSystem.Time.Date->New()->GetSeconds()->PrintLine();\n```"]
 				},
 				"GetTimeString": {
-					"descriptions": ["**Gets the time string**\n\n```method : public : GetTimeString(is_24hr:Bool) ~ String```\n\n\n\nis_24hr: Bool\n\nreturn: String\n\n```\nd := System.Time.Date->New();\r\nd->GetTimeString(false)->PrintLine();  # 3:45 PM\r\nd->GetTimeString(true)->PrintLine();   # 15:45\n```"]
+					"descriptions": ["**Gets the time string**\n\n```method : public : GetTimeString(is_24hr:Bool) ~ String```\n\n\n\nis_24hr: Bool\n\nreturn: String\n\n```\nd := System.Time.Date->New();\nd->GetTimeString(false)->PrintLine();  # 3:45 PM\nd->GetTimeString(true)->PrintLine();   # 15:45\n```"]
 				},
 				"GetUnixTime": {
 					"descriptions": ["**Get the Unix time, number of seconds elapsed since 00:00 hours, Jan 1, 1970 UTC**\n\n```method : public : GetUnixTime() ~ Int```\n\n\n\nreturn: Int"]
@@ -11708,13 +11720,13 @@
 					"descriptions": ["**Ends the timer**\n\n```method : public : End() ~ Nil```\n\n\n\nreturn: Nil\n\n```\ntimer->End();\n```"]
 				},
 				"GetElapsedTime": {
-					"descriptions": ["**Number of clock ticks per\/second**\n\n```method : public : GetElapsedTime() ~ Float```\n\n\n\nreturn: Float\n\n```\nsecs := timer->GetElapsedTime();\r\n\"Time: {$secs} seconds\"->PrintLine();\n```"]
+					"descriptions": ["**Number of clock ticks per\/second**\n\n```method : public : GetElapsedTime() ~ Float```\n\n\n\nreturn: Float\n\n```\nsecs := timer->GetElapsedTime();\n\"Time: {$secs} seconds\"->PrintLine();\n```"]
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(start:Bool)```\n\n\n\nstart: Bool"]
 				},
 				"Start": {
-					"descriptions": ["**Starts the timer**\n\n```method : public : Start() ~ Nil```\n\n\n\nreturn: Nil\n\n```\ntimer := System.Time.Timer->New();\r\ntimer->Start();\n```"]
+					"descriptions": ["**Starts the timer**\n\n```method : public : Start() ~ Nil```\n\n\n\nreturn: Nil\n\n```\ntimer := System.Time.Timer->New();\ntimer->Start();\n```"]
 				},
 				"ToString": {
 					"descriptions": ["**Formats the timer into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -12404,13 +12416,13 @@
 			"description": "Multipart encoder",
 			"functions": {
 				"Add": {
-					"descriptions": ["**Add a multipart encoding content part**\n\n```method : public : Add(part:MultipartContent) ~ Nil```\n\n\n\npart: MultipartContent\n\nreturn: Nil\n\n```\nencoder := Web.HTTP.Server.MultipartEncoder->New();\r\nheaders := Map->New()<String, String>;\r\nheaders->Insert(\"Content-Disposition\", \"form-data; name=\\\"field\\\"\");\r\npart := Web.HTTP.Server.MultipartContent->New(headers, \"value\"->ToByteArray());\r\nencoder->Add(part);\n```"]
+					"descriptions": ["**Add a multipart encoding content part**\n\n```method : public : Add(part:MultipartContent) ~ Nil```\n\n\n\npart: MultipartContent\n\nreturn: Nil\n\n```\nencoder := Web.HTTP.Server.MultipartEncoder->New();\nheaders := Map->New()<String, String>;\nheaders->Insert(\"Content-Disposition\", \"form-data; name=\\\"field\\\"\");\npart := Web.HTTP.Server.MultipartContent->New(headers, \"value\"->ToByteArray());\nencoder->Add(part);\n```"]
 				},
 				"GetBoundary": {
 					"descriptions": ["**Get boundary marker**\n\n```method : public : GetBoundary() ~ String```\n\n\n\nreturn: String"]
 				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New()```\n\n\n\n```\nencoder := Web.HTTP.Server.MultipartEncoder->New();\r\nheaders := Map->New()<String, String>;\r\nheaders->Insert(\"Content-Disposition\", \"form-data; name=\\\"file\\\"; filename=\\\"data.txt\\\"\");\r\npart := Web.HTTP.Server.MultipartContent->New(headers, \"hello world\"->ToByteArray());\r\nencoder->Add(part);\r\nboundary := \"multipart\/form-data; boundary={$encoder->GetBoundary()}\";\r\nbytes := encoder->ToByteArray();\n```"]
+					"descriptions": ["**Constructor**\n\n```New()```\n\n\n\n```\nencoder := Web.HTTP.Server.MultipartEncoder->New();\nheaders := Map->New()<String, String>;\nheaders->Insert(\"Content-Disposition\", \"form-data; name=\\\"file\\\"; filename=\\\"data.txt\\\"\");\npart := Web.HTTP.Server.MultipartContent->New(headers, \"hello world\"->ToByteArray());\nencoder->Add(part);\nboundary := \"multipart\/form-data; boundary={$encoder->GetBoundary()}\";\nbytes := encoder->ToByteArray();\n```"]
 				},
 				"ToByteArray": {
 					"descriptions": ["**Formats content into multi-parts bytes**\n\n```method : public : ToByteArray() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
@@ -12421,7 +12433,7 @@
 			"description": "Web server request",
 			"functions": {
 				"GetContent": {
-					"descriptions": ["**Gets the request body content**\n\n```method : public : GetContent() ~ String```\n\n\n\nreturn: String\n\n```\n# inside ProcessPost:\r\nif(request->HasContent()) {\r\n  body := request->GetContent();\r\n  body->PrintLine();  # raw POST body string\r\n};\n```"]
+					"descriptions": ["**Gets the request body content**\n\n```method : public : GetContent() ~ String```\n\n\n\nreturn: String\n\n```\n# inside ProcessPost:\nif(request->HasContent()) {\n  body := request->GetContent();\n  body->PrintLine();  # raw POST body string\n};\n```"]
 				},
 				"GetContentBytes": {
 					"descriptions": ["**Gets the request body content as bytes**\n\n```method : public : GetContentBytes() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
@@ -12442,13 +12454,13 @@
 					"descriptions": ["**Gets the HTTP verb. The verb is parsed by the server to choose a handler method; this exposes it to handlers that need it directly.**\n\n```method : public : GetMethod() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetParam": {
-					"descriptions": ["**Gets a parameter value**\n\n```method : public : GetParam(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String\n\n```\n# inside ProcessGet or ProcessPost:\r\nname := request->GetParam(\"username\");\r\nif(name <> Nil) {\r\n  \"Hello, {$name}!\"->PrintLine();\r\n};\n```"]
+					"descriptions": ["**Gets a parameter value**\n\n```method : public : GetParam(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String\n\n```\n# inside ProcessGet or ProcessPost:\nname := request->GetParam(\"username\");\nif(name <> Nil) {\n  \"Hello, {$name}!\"->PrintLine();\n};\n```"]
 				},
 				"GetParams": {
 					"descriptions": ["**Gets parameters**\n\n```method : public : GetParams() ~ Map&lt;String,String&gt;```\n\n\n\nreturn: Map&lt;String,String&gt;"]
 				},
 				"GetPath": {
-					"descriptions": ["**Gets the request path**\n\n```method : public : GetPath() ~ String```\n\n\n\nreturn: String\n\n```\n# inside ProcessGet:\r\npath := request->GetPath();\r\npath->PrintLine();  # e.g. \/api\/users\n```"]
+					"descriptions": ["**Gets the request path**\n\n```method : public : GetPath() ~ String```\n\n\n\nreturn: String\n\n```\n# inside ProcessGet:\npath := request->GetPath();\npath->PrintLine();  # e.g. \/api\/users\n```"]
 				},
 				"GetQuery": {
 					"descriptions": ["**Gets the request query**\n\n```method : public : GetQuery() ~ String```\n\n\n\nreturn: String"]
@@ -12500,7 +12512,7 @@
 			"description": "Web server response",
 			"functions": {
 				"AddCookie": {
-					"descriptions": ["**Adds a cookie**\n\n```method : public : AddCookie(cookie:Cookie) ~ Nil```\n\n\n\ncookie: Cookie\n\nreturn: Nil\n\n```\nsession := Web.HTTP.Cookie->New(\"session\", \"abc123\");\r\nsession->AddAttrib(\"Path\", \"\/\");\r\nsession->AddAttrib(\"HttpOnly\", Nil);\r\nresponse->AddCookie(session);\r\nresponse->SetCodeContent(200, \"OK\");\n```"]
+					"descriptions": ["**Adds a cookie**\n\n```method : public : AddCookie(cookie:Cookie) ~ Nil```\n\n\n\ncookie: Cookie\n\nreturn: Nil\n\n```\nsession := Web.HTTP.Cookie->New(\"session\", \"abc123\");\nsession->AddAttrib(\"Path\", \"\/\");\nsession->AddAttrib(\"HttpOnly\", Nil);\nresponse->AddCookie(session);\nresponse->SetCodeContent(200, \"OK\");\n```"]
 				},
 				"GetCode": {
 					"descriptions": ["**Get the response code**\n\n```method : public : GetCode() ~ Int```\n\n\n\nreturn: Int"]
@@ -12554,7 +12566,7 @@
 					"descriptions": ["**Set response code**\n\n```method : public : SetCode(code:Int) ~ Nil```\n\n\n\ncode: Int\n\nreturn: Nil"]
 				},
 				"SetCodeContent": {
-					"descriptions": ["**Set response code and content**\n\n```method : public : SetCodeContent(code:Int, content:Byte[]) ~ Nil```\n\n\n\ncode: Int\n\ncontent: Byte[]\n\nreturn: Nil\n\n```\n# inside ProcessGet \u2014 send a 200 response with HTML body:\r\nhtml := \"<html><body>Hello!<\/body><\/html>\";\r\nresponse->SetCodeContent(200, html);\n```", "**Set response code and content**\n\n```method : public : SetCodeContent(code:Int, content:String) ~ Nil```\n\n\n\ncode: Int\n\ncontent: String\n\nreturn: Nil"]
+					"descriptions": ["**Set response code and content**\n\n```method : public : SetCodeContent(code:Int, content:Byte[]) ~ Nil```\n\n\n\ncode: Int\n\ncontent: Byte[]\n\nreturn: Nil\n\n```\n# inside ProcessGet \u2014 send a 200 response with HTML body:\nhtml := \"<html><body>Hello!<\/body><\/html>\";\nresponse->SetCodeContent(200, html);\n```", "**Set response code and content**\n\n```method : public : SetCodeContent(code:Int, content:String) ~ Nil```\n\n\n\ncode: Int\n\ncontent: String\n\nreturn: Nil"]
 				},
 				"SetCodeContentCompression": {
 					"descriptions": ["**Set response code, content and compression type**\n\n```method : public : SetCodeContentCompression(code:Int, content:String, compression:Compression) ~ Nil```\n\n\n\ncode: Int\n\ncontent: String\n\ncompression: Compression\n\nreturn: Nil", "**Set response code, content and compression type**\n\n```method : public : SetCodeContentCompression(code:Int, content:Byte[], compression:Compression) ~ Nil```\n\n\n\ncode: Int\n\ncontent: Byte[]\n\ncompression: Compression\n\nreturn: Nil"]
@@ -12563,10 +12575,10 @@
 					"descriptions": ["**Set response code and type**\n\n```method : public : SetCodeType(code:Int, type:String) ~ Nil```\n\n\n\ncode: Int\n\ntype: String\n\nreturn: Nil"]
 				},
 				"SetCodeTypeContent": {
-					"descriptions": ["**Set response code, type and content**\n\n```method : public : SetCodeTypeContent(code:Int, type:String, content:Byte[]) ~ Nil```\n\n\n\ncode: Int\n\ntype: String\n\ncontent: Byte[]\n\nreturn: Nil\n\n```\n# inside ProcessGet \u2014 send a JSON response:\r\njson := \"{\\\"status\\\":\\\"ok\\\"}\"->ToByteArray();\r\nresponse->SetCodeTypeContent(200, \"application\/json\", json);\n```", "**Set response code and content**\n\n```method : public : SetCodeTypeContent(code:Int, type:String, content:String) ~ Nil```\n\n\n\ncode: Int\n\ntype: String\n\ncontent: String\n\nreturn: Nil"]
+					"descriptions": ["**Set response code, type and content**\n\n```method : public : SetCodeTypeContent(code:Int, type:String, content:Byte[]) ~ Nil```\n\n\n\ncode: Int\n\ntype: String\n\ncontent: Byte[]\n\nreturn: Nil\n\n```\n# inside ProcessGet \u2014 send a JSON response:\njson := \"{\\\"status\\\":\\\"ok\\\"}\"->ToByteArray();\nresponse->SetCodeTypeContent(200, \"application\/json\", json);\n```", "**Set response code and content**\n\n```method : public : SetCodeTypeContent(code:Int, type:String, content:String) ~ Nil```\n\n\n\ncode: Int\n\ntype: String\n\ncontent: String\n\nreturn: Nil"]
 				},
 				"SetCompression": {
-					"descriptions": ["**Set the response compression, should be called after the content is set**\n\n```method : public : SetCompression(compression:Compression) ~ Nil```\n\n\n\ncompression: Compression\n\nreturn: Nil\n\n```\nresponse->SetContent(\"<html>Hello<\/html>\");\r\nresponse->SetCompression(Web.HTTP.Server.Response->Compression->GZIP);\r\nresponse->SetCode(200);\n```"]
+					"descriptions": ["**Set the response compression, should be called after the content is set**\n\n```method : public : SetCompression(compression:Compression) ~ Nil```\n\n\n\ncompression: Compression\n\nreturn: Nil\n\n```\nresponse->SetContent(\"<html>Hello<\/html>\");\nresponse->SetCompression(Web.HTTP.Server.Response->Compression->GZIP);\nresponse->SetCode(200);\n```"]
 				},
 				"SetContent": {
 					"descriptions": ["**Set response content**\n\n```method : public : SetContent(content:Byte[]) ~ Nil```\n\n\n\ncontent: Byte[]\n\nreturn: Nil", "**Set response code**\n\n```method : public : SetContent(content:String) ~ Nil```\n\n\n\ncontent: String\n\nreturn: Nil"]
@@ -12584,7 +12596,7 @@
 					"descriptions": ["**Sets a response header**\n\n```method : public : SetHeader(name:String, value:String) ~ Nil```\n\n\n\nname: String\n\nvalue: String\n\nreturn: Nil"]
 				},
 				"SetReason": {
-					"descriptions": ["**Set response reason**\n\n```method : public : SetReason(reason:String) ~ Nil```\n\n\n\nreason: String\n\nreturn: Nil\n\n```\n# redirect with a reason URL\r\nresponse->SetCode(302);\r\nresponse->SetReason(\"https:\/\/example.com\/new-location\");\n```"]
+					"descriptions": ["**Set response reason**\n\n```method : public : SetReason(reason:String) ~ Nil```\n\n\n\nreason: String\n\nreturn: Nil\n\n```\n# redirect with a reason URL\nresponse->SetCode(302);\nresponse->SetReason(\"https:\/\/example.com\/new-location\");\n```"]
 				},
 				"ToString": {
 					"descriptions": ["**Get the reason string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -12598,13 +12610,13 @@
 					"descriptions": ["**Gets the port this server was asked to bind to.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"Serve": {
-					"descriptions": ["**Starts a HTTP server that listens for requests**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\r\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
+					"descriptions": ["**Starts a HTTP server that listens for requests**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]
 				},
 				"ServeSecure": {
-					"descriptions": ["**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil\n\n```\n# start an HTTPS server from a JSON config file\r\nWeb.HTTP.Server.WebServer->ServeSecure(\"config\/server_config.json\");\n```", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil"]
+					"descriptions": ["**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil\n\n```\n# start an HTTPS server from a JSON config file\nWeb.HTTP.Server.WebServer->ServeSecure(\"config\/server_config.json\");\n```", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nreturn: Nil", "**Starts a HTTPS server that listens for requests**\n\n```function : ServeSecure(callback:Class, port:Int, cert:String, cert_key:String, cert_key_passwd:String, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\ncert: String\n\ncert_key: String\n\ncert_key_passwd: String\n\nis_debug: Bool\n\nreturn: Nil"]
 				},
 				"Stop": {
-					"descriptions": ["**Stops the server**\n\n```function : Stop() ~ Nil```\n\n\n\nreturn: Nil\n\n```\n# stop a running HTTP or HTTPS server\r\nWeb.HTTP.Server.WebServer->Stop();\n```"]
+					"descriptions": ["**Stops the server**\n\n```function : Stop() ~ Nil```\n\n\n\nreturn: Nil\n\n```\n# stop a running HTTP or HTTPS server\nWeb.HTTP.Server.WebServer->Stop();\n```"]
 				}
 			}
 		},

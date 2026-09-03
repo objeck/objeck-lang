@@ -2482,16 +2482,16 @@ class RequestHandler from HttpsRequestHandler {
 					served += 1;
 				};
 
-				if(@wait_for_peer_close & @client->IsOpen()) {
+				if(@wait_for_peer_close) {
 					# Once close has been advertised, let the peer consume the response
-					# and own the first teardown. Use a short grace period rather than
-					# the 30s idle keep-alive timeout: Connection: close still promises
-					# that this side will close promptly.
-					@client->SetRecvTimeout(1000);
-					drain := Byte->New[4096];
-					while(@client->ReadBuffer(0, drain->Size(), drain) > 0) {};
+					# and own the first teardown. The one-second grace period is
+					# deliberate rather than the 30s idle keep-alive timeout:
+					# Connection: close still promises this side will close promptly.
+					@client->CloseGracefully(1000);
+				}
+				else {
+					@client->Close();
 				};
-				@client->Close();
 			};
 		}
 

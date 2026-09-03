@@ -376,17 +376,30 @@ namespace frontend {
    * TypeFactory class
    ****************************/
   class TypeFactory {
-    static TypeFactory* instance;
+    // Per-thread binding, for the same reason as TreeFactory: a ParsedProgram owns
+    // its types and binds this while being parsed or analyzed. See tree.h and
+    // issue #659.
+    static thread_local TypeFactory* instance;
     std::vector<Type*> types;
 
+  public:
     TypeFactory() {
     }
 
     ~TypeFactory() {
+      Clear();
     }
 
-  public:
+    // The factory bound to this thread, or a lazily created per-thread fallback.
     static TypeFactory* Instance();
+
+    // Binds `factory` for this thread and returns the previous binding.
+    // Prefer ScopedProgramFactories to calling this directly.
+    static TypeFactory* Bind(TypeFactory* factory) {
+      TypeFactory* previous = instance;
+      instance = factory;
+      return previous;
+    }
 
     void Clear() {
       while(!types.empty()) {
@@ -397,8 +410,7 @@ namespace frontend {
         tmp = nullptr;
       }
 
-      delete instance;
-      instance = nullptr;
+      // Does NOT delete `instance`; the owning ParsedProgram does that.
     }
 
     Type* MakeType(EntryType type, const std::wstring file_name, const int line_num, const int line_pos) {

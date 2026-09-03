@@ -256,6 +256,10 @@ bool Parser::Parse()
   GetLogger() << L"\n---------- Scanning/Parsing ---------" << std::endl;
 #endif
 
+  // Everything parsed below belongs to this program's factories rather than to a
+  // process-wide pair, which is what lets two threads parse at once (issue #659).
+  ScopedProgramFactories scoped_factories(program);
+
   // parses source path
   if(src_path.size() > 0) {
     size_t offset = 0;
@@ -8269,9 +8273,12 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
   delete expr_scanner;
   expr_parser.scanner = nullptr;
 
-  // Prevent the temporary parser's destructor from deleting its program,
-  // which would call TreeFactory::Clear() and destroy all AST nodes
-  // (including those from the main compilation). Small memory leak is acceptable.
+  // The expression above was allocated into whichever program is bound on this
+  // thread -- the OUTER one being parsed -- because the temporary parser never
+  // calls Parse() and so never binds its own. The nodes are therefore already
+  // owned by the right program, and only the temporary's empty program is
+  // dropped here. Before per-program factories this line stopped ~ParsedProgram
+  // from clearing the one shared factory and destroying the main AST.
   expr_parser.program = nullptr;
 
   return result;

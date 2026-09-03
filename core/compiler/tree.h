@@ -3310,7 +3310,14 @@ namespace frontend {
    * TreeFactory class
    ****************************/
   class TreeFactory {
-    static TreeFactory* instance;
+    // The factory this THREAD is currently allocating into. A ParsedProgram owns
+    // its own and binds it while being parsed or analyzed, so two threads can work
+    // on two programs at once. This used to be one process-wide pointer shared by
+    // every parse and analysis in the process, which is why concurrent diagnostics
+    // had to be serialized behind a global lock, and why destroying one program
+    // freed the AST of every other one (issue #659).
+    static thread_local TreeFactory* instance;
+
     std::vector<ParseNode*> nodes;
     std::vector<Statement*> statements;
     std::vector<Expression*> expressions;
@@ -3321,14 +3328,26 @@ namespace frontend {
     std::vector<SymbolEntry*> entries;
     std::vector<Declaration*> declarations;
 
+  public:
     TreeFactory() {
     }
 
     ~TreeFactory() {
+      Clear();
     }
 
-  public:
+    // The factory bound to this thread. Falls back to a lazily created per-thread
+    // one for the few allocations that happen outside any program; that fallback is
+    // what the whole compiler used to share.
     static TreeFactory* Instance();
+
+    // Binds `factory` for this thread and returns the previous binding so a caller
+    // can restore it. Prefer ScopedProgramFactories to calling this directly.
+    static TreeFactory* Bind(TreeFactory* factory) {
+      TreeFactory* previous = instance;
+      instance = factory;
+      return previous;
+    }
 
     void Clear() {
       while(!nodes.empty()) {
@@ -3396,8 +3415,10 @@ namespace frontend {
         tmp = nullptr;
       }
 
-      delete instance;
-      instance = nullptr;
+      // Deliberately does NOT touch `instance`. Clear() used to end in
+      // `delete instance`, i.e. delete this, so releasing one program tore down
+      // the factory the rest of the process was still allocating into.
+      // Ownership now belongs to the ParsedProgram, whose destructor deletes it.
     }
 
     Alias* MakeAlias(const std::wstring& file_name, const int line_num, const int line_pos, const std::wstring& name) {
@@ -3927,6 +3948,11 @@ namespace frontend {
     Class* start_class;
     Method* start_method;
     Linker* linker; // deleted elsewhere
+
+    // Owned. This program's AST nodes and types, replacing the process-wide
+    // TreeFactory/TypeFactory singletons (issue #659).
+    TreeFactory* tree_factory;
+    TypeFactory* type_factory;
 #ifdef _DIAG_LIB
     std::vector<std::wstring> error_strings;
     std::vector<std::wstring> warning_strings;
@@ -3937,6 +3963,11 @@ namespace frontend {
       linker = nullptr;
       start_class = nullptr;
       start_method = nullptr;
+      // This program's own AST and type storage. Previously both were process-wide
+      // singletons, so releasing one program destroyed every other program's nodes
+      // and no two threads could parse or analyze at the same time (issue #659).
+      tree_factory = new TreeFactory;
+      type_factory = new TypeFactory;
     }
 
     ~ParsedProgram() {
@@ -3948,10 +3979,25 @@ namespace frontend {
         delete tmp;
         tmp = nullptr;
       }
-      
-      // clear factories
-      TreeFactory::Instance()->Clear();
-      TypeFactory::Instance()->Clear();
+
+      // Release this program's nodes and types, and nobody else's. Order matters:
+      // the bundles above are torn down first, exactly as when this cleared the
+      // shared factories.
+      delete tree_factory;
+      tree_factory = nullptr;
+
+      delete type_factory;
+      type_factory = nullptr;
+    }
+
+    // This program's factories. Bind them with ScopedProgramFactories around any
+    // work that builds or extends its AST.
+    TreeFactory* GetTreeFactory() {
+      return tree_factory;
+    }
+
+    TypeFactory* GetTypeFactory() {
+      return type_factory;
     }
 
 #ifdef _DIAG_LIB
@@ -4315,5 +4361,41 @@ namespace frontend {
     Method* GetStartMethod() {
       return start_method;
     }
+  };
+
+  /****************************
+   * ScopedProgramFactories class
+   ****************************/
+
+  // Binds a program's TreeFactory and TypeFactory for the calling thread and
+  // restores the previous bindings on the way out, so that every node and type
+  // allocated in between belongs to that program.
+  //
+  // Wrap anything that builds or extends a program's AST -- parsing it, analyzing
+  // it, answering a diagnostics query against it. Without a binding, allocations
+  // land in a per-thread fallback factory that nothing ever frees.
+  //
+  // Restoring rather than clearing is what makes nesting safe: string
+  // interpolation parses an expression with a second Parser part-way through
+  // parsing the outer program, and that expression has to end up owned by the
+  // outer program, which is exactly what happens when the inner scope leaves the
+  // outer binding in place (issue #659).
+  class ScopedProgramFactories {
+    TreeFactory* previous_tree;
+    TypeFactory* previous_type;
+
+  public:
+    ScopedProgramFactories(ParsedProgram* program) {
+      previous_tree = TreeFactory::Bind(program ? program->GetTreeFactory() : nullptr);
+      previous_type = TypeFactory::Bind(program ? program->GetTypeFactory() : nullptr);
+    }
+
+    ~ScopedProgramFactories() {
+      TreeFactory::Bind(previous_tree);
+      TypeFactory::Bind(previous_type);
+    }
+
+    ScopedProgramFactories(const ScopedProgramFactories&) = delete;
+    ScopedProgramFactories& operator=(const ScopedProgramFactories&) = delete;
   };
 }

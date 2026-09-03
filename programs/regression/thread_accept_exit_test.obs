@@ -57,7 +57,11 @@ class ParkedAcceptServer from Thread {
 				client->WriteString("echo:{$line}\r\n");
 				client->Flush();
 			};
-			client->Close();
+			# Not Close(). This server writes and is immediately done with the
+			# connection, which is the shape #669 discards on Windows loopback --
+			# measured here at 2 failures in 10 runs, reported as "server echoed the
+			# request" even though the echo was written and had arrived.
+			client->CloseGracefully();
 		};
 	}
 }

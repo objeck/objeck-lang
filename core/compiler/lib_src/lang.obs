@@ -11025,10 +11025,62 @@ bundle System.IO.Net {
 		method : public : Flush() ~ Nil {}
 		
 		#~
-		Closes the socket
+		Closes the socket.
+
+		If this side has just written data and the peer has not read it yet, prefer
+		`CloseGracefully()`. On Windows loopback, closing first can discard what was
+		just written -- see that method and `docs/windows_loopback_sockets.md`.
 		~#
 		method : public : Close() ~ Nil {
 			SOCK_TCP_CLOSE;
+		}
+
+		#~
+		Closes the socket after letting the peer read what was written and hang up first.
+
+		On Windows over loopback, a peer that writes and then immediately closes can
+		have the data it just sent **discarded**: the reader gets a connection reset
+		and zero bytes rather than a short read, even though every byte was accepted
+		and had arrived. The race is between this side's teardown and the peer's read,
+		so the remedy is to not be the side that closes first. It is a platform
+		behaviour, not something a socket option can turn off -- seven candidate fixes
+		were measured and none worked (`docs/windows_loopback_sockets.md`).
+
+		This reads and discards anything still arriving until the peer closes, which is
+		the point of the call, and then closes. Use it wherever a server writes a
+		response and is finished with the connection:
+
+		Bounded on both sides, so it cannot park a thread: it gives up after
+		`timeout_ms` of silence, and after 16 reads of a peer that keeps sending
+		instead of closing. In the ordinary case -- the peer reads the response and
+		hangs up -- it returns as soon as that happens, and costs nothing.
+
+		`Close()` stays correct when the peer has already closed, or when this side is
+		the one being told to hang up. Linux and real network interfaces are unaffected
+		either way; this matters on Windows loopback.
+
+		@param timeout_ms how long to wait, in milliseconds, for the peer to close
+		```
+		socket->WriteString(response);
+		socket->CloseGracefully();
+		```
+		~#
+		method : public : CloseGracefully(timeout_ms : Int := 1000) ~ Nil {
+			if(IsOpen()) {
+				SetRecvTimeout(timeout_ms);
+
+				# ReadBuffer returns 0 once the peer closes and -1 when the receive
+				# timeout expires, so the loop ends on either. The read cap is the
+				# bound for a peer that keeps sending rather than hanging up: waiting
+				# on one of those is pointless, since it is not going to close.
+				drain := Byte->New[4096];
+				reads := 0;
+				while(reads < 16 & ReadBuffer(0, drain->Size(), drain) > 0) {
+					reads += 1;
+				};
+			};
+
+			Close();
 		}
 
 		#~
@@ -11384,10 +11436,44 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Closes the socket
+		Closes the socket.
+
+		If this side has just written data and the peer has not read it yet, prefer
+		`CloseGracefully()`. On Windows loopback, closing first can discard what was
+		just written -- see that method and `docs/windows_loopback_sockets.md`.
 		~#
 		method : public : Close() ~ Nil {
 			SOCK_TCP_SSL_CLOSE;
+		}
+
+		#~
+		Closes the socket after letting the peer read what was written and hang up first.
+
+		The TLS twin of `TCPSocket->CloseGracefully()`, and exposed to the same thing:
+		the discard happens in the transport underneath TLS, so encrypting the payload
+		does not change the race. On Windows over loopback, a peer that writes and then
+		immediately closes can have that data discarded -- the reader gets a reset and
+		zero bytes rather than a short read. The remedy is to not be the side that
+		closes first (`docs/windows_loopback_sockets.md`).
+
+		Reads and discards anything still arriving until the peer closes, then closes.
+		Bounded on both sides so it cannot park a thread: `timeout_ms` of silence, or
+		16 reads of a peer that keeps sending instead of hanging up.
+
+		@param timeout_ms how long to wait, in milliseconds, for the peer to close
+		~#
+		method : public : CloseGracefully(timeout_ms : Int := 1000) ~ Nil {
+			if(IsOpen()) {
+				SetRecvTimeout(timeout_ms);
+
+				drain := Byte->New[4096];
+				reads := 0;
+				while(reads < 16 & ReadBuffer(0, drain->Size(), drain) > 0) {
+					reads += 1;
+				};
+			};
+
+			Close();
 		}
 	}
 

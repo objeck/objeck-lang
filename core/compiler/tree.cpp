@@ -196,11 +196,15 @@ bool CharacterString::AddSegment(const std::wstring& orig)
 /****************************
  * TreeFactory class
  ****************************/
-TreeFactory* TreeFactory::instance;
+
+thread_local TreeFactory* TreeFactory::instance = nullptr;
 
 TreeFactory* TreeFactory::Instance()
 {
   if(!instance) {
+    // No program bound on this thread. Allocations land in a per-thread fallback
+    // that nothing frees -- correct but leaky, so every path that builds a
+    // program's AST should bind through ScopedProgramFactories instead.
     instance = new TreeFactory;
   }
 
