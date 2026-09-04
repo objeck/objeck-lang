@@ -1,9 +1,9 @@
 {
 	"version": {
-		"string": "2026.9.0",
+		"string": "2026.9.1",
 		"year": 2026
 	},
-	"title": "A socket close that stops losing the response on Windows loopback, a language server that no longer serializes every request behind one lock, and a release pipeline that reports what it actually did",
+	"title": "Release-process repairs found by running a release: a checksum manifest that no longer describes bytes nobody can download, a playground deploy that runs the fix it ships, and open issues that must be fixed or explained before a tag",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,14 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.9.1",
+			"items": [
+				"Release integrity: signing rewrites the Windows installers, so the SHA256SUMS published beside them described bytes that no longer existed and verification failed on both MSIs -- the two files whose integrity matters most. The signing script re-uploaded the signed installers and never touched the manifest; the repair lived in a separate script and in whoever remembered to run it. It is now part of signing, rebuilt from the published assets and verified by re-downloading it",
+				"Playground deploys: update.sh pulls the repository from inside itself, so a run that pulled a new update.sh kept executing the old one and exited 0. A deploy reported success, moved the version it displays, and left the engine on the previous release. It now re-execs when the pull changes it, and the health check polls instead of sleeping three seconds and asking once, which had it reporting failure after every healthy restart",
+				"Release gating: a step declared manual in one place was read nowhere else, so the pre-flight gate reported the configuration OK and the publish failed on it anyway. The gate now verifies something actually honours each declaration. Open issues are checked before a tag too -- each must be fixed or carry a written reason it waits, and a reason naming an older release does not carry forward"
+			]
+		},
 		{
 			"version": "v2026.9.0",
 			"items": [
