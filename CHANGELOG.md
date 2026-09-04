@@ -2,6 +2,20 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+Release-process fixes found by running the v2026.9.0 release. These landed after
+the v2026.9.0 tag, so they are **not** in that release's binaries.
+
+### Infrastructure
+- **A manual declaration nothing reads is not a declaration** ([#692](https://github.com/objeck/objeck-lang/pull/692)) — the `docs` token in `RELEASE_MANUAL_STEPS` was inert: `check_release_config.sh` reported the configuration OK, then the v2026.9.0 publish failed in "Deploy API Documentation" anyway, because that job had a hard-fail on the missing secret and no branch reading the variable beside it. Sourceforge and playground each had both halves; docs had only the second. The gate now greps the workflows for a branch reading each token and reports `INERT` when there is none
+- **Signing is not finished until the manifest matches** ([#693](https://github.com/objeck/objeck-lang/pull/693)) — signing rewrites the MSIs, so the `SHA256SUMS` published beside them describes bytes that no longer exist and `sha256sum -c` fails on both Windows installers. `sign_release.cmd` re-uploaded the signed MSIs and never touched the manifest; the repair lived in `post_release.sh`'s gate 4 and in whoever remembered. New `tools/cicd/update_sha256sums.ps1` rebuilds it from the published assets, writes LF, and re-downloads its own upload to verify
+- **The playground deploy that ships a fix now runs the fix** ([#694](https://github.com/objeck/objeck-lang/pull/694)) — `update.sh` pulls the repo from inside itself, so a run that pulls a new `update.sh` kept executing the old one and exited 0. The first v2026.9.0 deploy printed "Update complete", moved `/api/health` to the new version, and left the engine on 2026.8.4. It now re-execs when the pull changes it. The health check also polls for 20s instead of sleeping 3s and asking once, which had it reporting failure after every healthy restart
+- **An open issue must be fixed or explained before a tag** ([#695](https://github.com/objeck/objeck-lang/pull/695)) — releases were cut without consulting the issue list, so an issue could sit open across several releases having never been considered, indistinguishable from one deliberately deferred. `tools/cicd/check_open_issues.sh` requires each open issue to be fixed or carry a `Deferred from v<VERSION>:` note, which it prints; a note naming an older version does not carry forward
+
+### Documentation
+- Sourceforge mirrors the GitHub release through a webhook and is not a manual upload; objeck.org has no versioned `/api/v<VERSION>/` directories, so `latest` is the only served path. Both were documented the other way round, in the pre-flight gate's to-do text and in the publish workflow's failure message
+
 ## [v2026.9.0] - 2026-09-03
 
 A socket close that stops losing the response on Windows loopback, a language server that no longer serializes every request behind one lock, and a release pipeline that reports what it actually did.
