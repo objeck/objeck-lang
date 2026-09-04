@@ -78,7 +78,19 @@ for s in $REFERENCED; do
   if printf '%s\n' "$CONFIGURED" | grep -qx "$s"; then
     note "set        $s  ($desc)"
   elif [ -n "$token" ] && printf '%s' "$MANUAL" | grep -q "$token"; then
-    note "manual     $s  ($desc -- declared in RELEASE_MANUAL_STEPS)"
+    # Declaring a step manual only helps if a workflow actually READS the
+    # declaration. It did not for 'docs': this gate printed "manual ... declared
+    # in RELEASE_MANUAL_STEPS" and exited 0, and the v2026.9.0 publish then failed
+    # in Deploy API Documentation, because that job had a hard-fail on the missing
+    # secret and no contains(vars.RELEASE_MANUAL_STEPS, 'docs') branch beside it.
+    # A declaration nothing honours is worse than none: it reads as handled.
+    if grep -rq "contains(vars.RELEASE_MANUAL_STEPS, '$token')" "$WF_DIR"; then
+      note "manual     $s  ($desc -- declared in RELEASE_MANUAL_STEPS)"
+    else
+      bad "INERT  $s  ($desc -- '$token' is declared but NO workflow honours it)"
+      echo "         the step will still fail; add a guarded skip beside its"
+      echo "         hard-fail:  if: <secret> == '' && contains(vars.RELEASE_MANUAL_STEPS, '$token')"
+    fi
   else
     bad "UNSET  $s  ($desc)"
     if [ -n "$token" ]; then
@@ -102,7 +114,7 @@ if [ -n "$MANUAL" ]; then
       playground)  note "playground   -> ssh <host> 'bash /opt/playground/repo/programs/web-playground/deploy/update.sh <VERSION>'" ;;
       docs)        note "docs         -> rsync api/ to /var/www/objeck.org/api/v<VERSION>/ and repoint 'latest'" ;;
       "")          ;;
-      *)           note "$t (unrecognised token -- no workflow honours it)" ;;
+      *)           bad "$t (unrecognised token -- no workflow honours it)" ;;
     esac
   done
 fi
