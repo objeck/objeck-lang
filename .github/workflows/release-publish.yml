@@ -486,7 +486,8 @@ jobs:
         if: env.SOURCEFORGE_SSH_KEY == '' && contains(vars.RELEASE_MANUAL_STEPS, 'sourceforge')
         run: |
           echo "ℹ️  Sourceforge upload is declared manual via RELEASE_MANUAL_STEPS - skipping."
-          echo "   Upload the release assets to Sourceforge by hand."
+          echo "   Nothing to do: Sourceforge mirrors the GitHub release through a"
+          echo "   GitHub webhook and updates itself once the release is published."
 
       - name: Missing Sourceforge credentials
         if: env.SOURCEFORGE_SSH_KEY == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'sourceforge')
@@ -708,8 +709,8 @@ jobs:
           echo ""
           echo "The docs that should have shipped are in this run's api-docs artifact,"
           echo "and on master at docs/api.zip. To deploy by hand:"
-          echo "  rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/v<VERSION>/"
-          echo "  ssh USER@objeck.org 'cd /var/www/objeck.org/api && ln -sfn v<VERSION> latest'"
+          echo "  rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/latest/"
+          echo "  (there are no versioned /api/v<VERSION>/ directories - 'latest' is the only served path)"
           echo ""
           echo "Or declare it manual:  gh variable set RELEASE_MANUAL_STEPS --body '<existing>,docs'"
           exit 1
