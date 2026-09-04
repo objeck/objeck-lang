@@ -52,11 +52,13 @@ run-to-run variance. **None of them work.** Do not spend a day rediscovering it:
 |---|---|
 | `SO_LINGER` before `shutdown` | no effect |
 | `SO_LINGER` with no `shutdown` | blocks >1s per close — unusable |
-| drain to EOF, 100ms bound | no effect |
-| drain to EOF, 400ms bound | no effect |
+| drain to EOF, 100ms bound | no effect — see note below |
+| drain to EOF, 400ms bound | no effect — see note below |
 | asymmetric sender-only drain | no effect |
 | `closesocket` with no `shutdown` | worse |
 | `SIO_TCP_INFO` / `BytesInFlight` | no effect — reports 0 in flight, because the data *is* delivered; the RST is what loses it |
+
+**On the two drain rows.** These are not saying a drain cannot work — `CloseGracefully()` below is a drain, and it measures 0 losses in 180 transfers. They are saying these *bounds* are too short: at 100ms and 400ms the drain gives up while the peer is still reading, this side closes first, and you are back in the failing case. What matters is not draining as such but who closes last, so a bound only helps if it is long enough for the peer to finish and hang up. The 1000ms default was chosen on that basis.
 
 The only mechanical thing that works is elapsed time before teardown, and that
 is not a fix. A delay inside `IPSocket::Close` would tax every socket close, on
