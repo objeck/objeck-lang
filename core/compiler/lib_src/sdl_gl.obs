@@ -5366,6 +5366,438 @@ bundle Game.OpenGL {
 	}
 
 	#~
+	A rotation, as a quaternion: four floats, [x, y, z, w].
+
+	## Why this exists alongside RotationYXZ
+
+	Transform stores rotation as three Euler angles and builds a matrix with
+	Matrix4->RotationYXZ. That is fine to author with and fine to store, and it
+	is wrong for two jobs:
+
+	  interpolation  Blending between two orientations by lerping their Euler
+	                 angles does not travel the short way round, wobbles on the
+	                 way, and can stop dead when two axes line up. Track can
+	                 already sample a Float along an eased curve; it had no way
+	                 to sample an ORIENTATION. Slerp is that.
+
+	  accumulation   Applying one rotation after another by adding angles is
+	                 only correct while the axes stay independent. Multiplying
+	                 quaternions is correct always, which is what a turret that
+	                 turns relative to a hull that is already turning needs.
+
+	Follows Matrix4's convention rather than Vector3's: static functions over a
+	Float[4] the caller owns, each with an Into twin that writes rather than
+	allocates. A rotation per object per frame is the same allocation problem a
+	matrix per object per frame is, and for the same reason.
+
+	Conventions here: right-handed, the same as Matrix4; the scalar is LAST
+	(w at index 3), which is what OpenGL literature and GLM use; and every
+	function assumes unit length except Normalize, Length and FromAxisAngle.
+	~#
+	class Quaternion {
+		#~
+		@return a new identity rotation -- no rotation at all
+		~#
+		function : Identity() ~ Float[] {
+			out := Float->New[4];
+			IdentityInto(out);
+
+			return out;
+		}
+
+		#~
+		Identity, written into a buffer the caller owns.
+		@param out destination, at least 4 elements
+		~#
+		function : IdentityInto(out : Float[]) ~ Nil {
+			if(out = Nil | out->Size() < 4) {
+				return;
+			};
+
+			out[0] := 0.0; out[1] := 0.0; out[2] := 0.0; out[3] := 1.0;
+		}
+
+		#~
+		A rotation of 'angle' radians about an axis.
+
+		The axis is normalised here, so it does not have to arrive that way --
+		passing (0, 2, 0) and (0, 1, 0) give the same rotation. A zero-length
+		axis has no direction to turn about and yields identity rather than a
+		quaternion full of NaN.
+		@param x axis x
+		@param y axis y
+		@param z axis z
+		@param angle radians, counter-clockwise looking down the axis
+		@return a new rotation
+		~#
+		function : FromAxisAngle(x : Float, y : Float, z : Float, angle : Float) ~ Float[] {
+			out := Float->New[4];
+			FromAxisAngleInto(out, x, y, z, angle);
+
+			return out;
+		}
+
+		#~
+		Axis-angle, written into a buffer the caller owns.
+		@param out destination, at least 4 elements
+		@param x axis x
+		@param y axis y
+		@param z axis z
+		@param angle radians
+		~#
+		function : FromAxisAngleInto(out : Float[], x : Float, y : Float, z : Float,
+				angle : Float) ~ Nil {
+			if(out = Nil | out->Size() < 4) {
+				return;
+			};
+
+			length := (x * x + y * y + z * z)->Sqrt();
+			if(length = 0.0) {
+				IdentityInto(out);
+				return;
+			};
+
+			half := angle * 0.5;
+			scale := half->Sin() / length;
+			out[0] := x * scale;
+			out[1] := y * scale;
+			out[2] := z * scale;
+			out[3] := half->Cos();
+		}
+
+		#~
+		The rotation Transform already means by (pitch, yaw, roll).
+
+		Matches Matrix4->RotationYXZ exactly -- yaw, then pitch, then roll -- so
+		converting a Transform's angles here and building a matrix from the
+		result gives the same matrix Transform would have built itself. That
+		equivalence is what makes it safe to move between the two.
+		@param yaw radians about Y, applied first
+		@param pitch radians about X
+		@param roll radians about Z, applied last
+		@return a new rotation
+		~#
+		function : FromEuler(yaw : Float, pitch : Float, roll : Float) ~ Float[] {
+			out := Float->New[4];
+			FromEulerInto(out, yaw, pitch, roll);
+
+			return out;
+		}
+
+		#~
+		Euler angles, written into a buffer the caller owns.
+		@param out destination, at least 4 elements
+		@param yaw radians about Y, applied first
+		@param pitch radians about X
+		@param roll radians about Z, applied last
+		~#
+		function : FromEulerInto(out : Float[], yaw : Float, pitch : Float,
+				roll : Float) ~ Nil {
+			if(out = Nil | out->Size() < 4) {
+				return;
+			};
+
+			# Composed rather than expanded. An earlier version wrote the nine
+			# products out by hand and got a DIFFERENT rotation from
+			# Matrix4->RotationYXZ -- same angles, same names, different result,
+			# which is the failure this is least likely to be noticed by and
+			# most likely to be blamed on something else.
+			#
+			# Multiply applies its right argument first, so this reads in the
+			# same order the name does: Y, then X, then Z.
+			qy := Float->New[4];
+			qx := Float->New[4];
+			qz := Float->New[4];
+			FromAxisAngleInto(qy, 0.0, 1.0, 0.0, yaw);
+			FromAxisAngleInto(qx, 1.0, 0.0, 0.0, pitch);
+			FromAxisAngleInto(qz, 0.0, 0.0, 1.0, roll);
+
+			MultiplyInto(out, qy, qx);
+			MultiplyInto(out, out, qz);
+		}
+
+		#~
+		Rotation product: rhs first, then lhs.
+
+		The same argument order as Matrix4->Multiply, deliberately, so the two
+		read alike at a call site.
+		@param lhs applied second
+		@param rhs applied first
+		@return a new rotation
+		~#
+		function : Multiply(lhs : Float[], rhs : Float[]) ~ Float[] {
+			out := Float->New[4];
+			MultiplyInto(out, lhs, rhs);
+
+			return out;
+		}
+
+		#~
+		Rotation product, written into a buffer the caller owns.
+
+		Safe to alias: reads both inputs into locals before writing, so
+		MultiplyInto(q, q, r) does what it looks like it does.
+		@param out destination, at least 4 elements
+		@param lhs applied second
+		@param rhs applied first
+		~#
+		function : MultiplyInto(out : Float[], lhs : Float[], rhs : Float[]) ~ Nil {
+			if(out = Nil | out->Size() < 4 | lhs = Nil | lhs->Size() < 4 |
+					rhs = Nil | rhs->Size() < 4) {
+				return;
+			};
+
+			lx := lhs[0]; ly := lhs[1]; lz := lhs[2]; lw := lhs[3];
+			rx := rhs[0]; ry := rhs[1]; rz := rhs[2]; rw := rhs[3];
+
+			out[0] := lw * rx + lx * rw + ly * rz - lz * ry;
+			out[1] := lw * ry - lx * rz + ly * rw + lz * rx;
+			out[2] := lw * rz + lx * ry - ly * rx + lz * rw;
+			out[3] := lw * rw - lx * rx - ly * ry - lz * rz;
+		}
+
+		#~
+		@param q a rotation
+		@return its length. One, for any rotation that has not drifted.
+		~#
+		function : Length(q : Float[]) ~ Float {
+			if(q = Nil | q->Size() < 4) {
+				return 0.0;
+			};
+
+			return (q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3])->Sqrt();
+		}
+
+		#~
+		@param a first rotation
+		@param b second rotation
+		@return the dot product. Negative when they are more than half a turn
+		apart, which is what Slerp uses to decide which way round to go.
+		~#
+		function : Dot(a : Float[], b : Float[]) ~ Float {
+			if(a = Nil | a->Size() < 4 | b = Nil | b->Size() < 4) {
+				return 0.0;
+			};
+
+			return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+		}
+
+		#~
+		Unit length, written into a buffer the caller owns.
+
+		Repeatedly multiplying rotations accumulates floating-point drift, so
+		anything doing that should normalise every so often. A zero-length input
+		yields identity rather than NaN.
+		@param out destination, at least 4 elements
+		@param q the rotation to normalise
+		~#
+		function : NormalizeInto(out : Float[], q : Float[]) ~ Nil {
+			if(out = Nil | out->Size() < 4 | q = Nil | q->Size() < 4) {
+				return;
+			};
+
+			length := Length(q);
+			if(length = 0.0) {
+				IdentityInto(out);
+				return;
+			};
+
+			out[0] := q[0] / length;
+			out[1] := q[1] / length;
+			out[2] := q[2] / length;
+			out[3] := q[3] / length;
+		}
+
+		#~
+		@param q the rotation to normalise
+		@return a new unit-length rotation
+		~#
+		function : Normalized(q : Float[]) ~ Float[] {
+			out := Float->New[4];
+			NormalizeInto(out, q);
+
+			return out;
+		}
+
+		#~
+		The opposite rotation, written into a buffer the caller owns.
+
+		For a unit rotation this is also the inverse, which is why there is no
+		separate Inverse: negating the vector part is correct and cheap, and an
+		inverse that silently assumed unit length would be a trap.
+		@param out destination, at least 4 elements
+		@param q the rotation to reverse
+		~#
+		function : ConjugateInto(out : Float[], q : Float[]) ~ Nil {
+			if(out = Nil | out->Size() < 4 | q = Nil | q->Size() < 4) {
+				return;
+			};
+
+			out[0] := q[0] * -1.0;
+			out[1] := q[1] * -1.0;
+			out[2] := q[2] * -1.0;
+			out[3] := q[3];
+		}
+
+		#~
+		@param q the rotation to reverse
+		@return a new opposite rotation
+		~#
+		function : Conjugate(q : Float[]) ~ Float[] {
+			out := Float->New[4];
+			ConjugateInto(out, q);
+
+			return out;
+		}
+
+		#~
+		Spherical linear interpolation: the shortest turn from 'a' to 'b'.
+
+		This is the reason the class exists. It travels the short way round --
+		if the two are more than half a turn apart, 'b' is negated first, which
+		is the same rotation reached the other way -- and it moves at a constant
+		angular rate, so an object turning under it does not speed up in the
+		middle.
+
+		Falls back to a straight lerp when the two are very close, because the
+		sine of a tiny angle divides badly.
+		@param out destination, at least 4 elements
+		@param a rotation at t = 0
+		@param b rotation at t = 1
+		@param t 0..1, clamped
+		~#
+		function : SlerpInto(out : Float[], a : Float[], b : Float[], t : Float) ~ Nil {
+			if(out = Nil | out->Size() < 4 | a = Nil | a->Size() < 4 |
+					b = Nil | b->Size() < 4) {
+				return;
+			};
+
+			amount := t;
+			if(amount < 0.0) { amount := 0.0; };
+			if(amount > 1.0) { amount := 1.0; };
+
+			bx := b[0]; by := b[1]; bz := b[2]; bw := b[3];
+
+			cosine := Dot(a, b);
+			# Same rotation, opposite sign. Without this the turn goes the long
+			# way round whenever the two are more than 180 degrees apart.
+			if(cosine < 0.0) {
+				cosine := cosine * -1.0;
+				bx := bx * -1.0; by := by * -1.0; bz := bz * -1.0; bw := bw * -1.0;
+			};
+
+			scale_a := 1.0 - amount;
+			scale_b := amount;
+
+			if(cosine < 0.9995) {
+				angle := cosine->ArcCos();
+				sine := angle->Sin();
+				if(sine <> 0.0) {
+					scale_a := ((1.0 - amount) * angle)->Sin() / sine;
+					scale_b := (amount * angle)->Sin() / sine;
+				};
+			};
+
+			out[0] := a[0] * scale_a + bx * scale_b;
+			out[1] := a[1] * scale_a + by * scale_b;
+			out[2] := a[2] * scale_a + bz * scale_b;
+			out[3] := a[3] * scale_a + bw * scale_b;
+			NormalizeInto(out, out);
+		}
+
+		#~
+		@param a rotation at t = 0
+		@param b rotation at t = 1
+		@param t 0..1, clamped
+		@return a new rotation between the two
+		~#
+		function : Slerp(a : Float[], b : Float[], t : Float) ~ Float[] {
+			out := Float->New[4];
+			SlerpInto(out, a, b, t);
+
+			return out;
+		}
+
+		#~
+		The rotation as a 4x4 matrix, written into a buffer the caller owns.
+
+		Column-major and right-handed, the same as everything Matrix4 produces,
+		so the result can be multiplied straight into a model matrix.
+		@param out destination, at least 16 elements
+		@param q a unit rotation
+		~#
+		function : ToMatrixInto(out : Float[], q : Float[]) ~ Nil {
+			if(out = Nil | out->Size() < 16 | q = Nil | q->Size() < 4) {
+				return;
+			};
+
+			x := q[0]; y := q[1]; z := q[2]; w := q[3];
+
+			xx := x * x; yy := y * y; zz := z * z;
+			xy := x * y; xz := x * z; yz := y * z;
+			wx := w * x; wy := w * y; wz := w * z;
+
+			out[0] := 1.0 - 2.0 * (yy + zz);
+			out[1] := 2.0 * (xy + wz);
+			out[2] := 2.0 * (xz - wy);
+			out[3] := 0.0;
+
+			out[4] := 2.0 * (xy - wz);
+			out[5] := 1.0 - 2.0 * (xx + zz);
+			out[6] := 2.0 * (yz + wx);
+			out[7] := 0.0;
+
+			out[8] := 2.0 * (xz + wy);
+			out[9] := 2.0 * (yz - wx);
+			out[10] := 1.0 - 2.0 * (xx + yy);
+			out[11] := 0.0;
+
+			out[12] := 0.0; out[13] := 0.0; out[14] := 0.0; out[15] := 1.0;
+		}
+
+		#~
+		@param q a unit rotation
+		@return a new 4x4 rotation matrix
+		~#
+		function : ToMatrix(q : Float[]) ~ Float[] {
+			out := Float->New[16];
+			ToMatrixInto(out, q);
+
+			return out;
+		}
+
+		#~
+		Turn a vector by a rotation.
+
+		Uses the expanded form rather than q * v * conjugate(q), which would
+		need two quaternion products and a temporary.
+		@param q a unit rotation
+		@param v the vector to turn
+		@return a new turned vector
+		~#
+		function : Rotate(q : Float[], v : Vector3) ~ Vector3 {
+			if(q = Nil | q->Size() < 4 | v = Nil) {
+				return v;
+			};
+
+			x := q[0]; y := q[1]; z := q[2]; w := q[3];
+			vx := v->GetX(); vy := v->GetY(); vz := v->GetZ();
+
+			# t = 2 * cross(q.xyz, v)
+			tx := 2.0 * (y * vz - z * vy);
+			ty := 2.0 * (z * vx - x * vz);
+			tz := 2.0 * (x * vy - y * vx);
+
+			# v + w * t + cross(q.xyz, t)
+			return Vector3->New(
+				vx + w * tx + y * tz - z * ty,
+				vy + w * ty + z * tx - x * tz,
+				vz + w * tz + x * ty - y * tx);
+		}
+	}
+
+
+	#~
 	A 3D vector, for camera and scene math.
 
 	Mirrors Game.Framework's Vector2: mutating methods on an instance, plus
