@@ -117,6 +117,34 @@ gap with the command to fix or declare it. Steps declared manual are printed as 
 to-do list — declaring one is a reminder, not a free pass: **you still have to do
 it after publishing.**
 
+**Second, the open-issue gate:**
+
+```bash
+tools/cicd/check_open_issues.sh "$VERSION"
+```
+
+Releases were cut without ever looking at the issue list. Nothing forced the
+question, so an issue could sit open across several releases having never been
+considered -- and from the outside that is indistinguishable from one deliberately
+deferred. The difference is the whole point: "this can wait, because X" is a
+decision; "nobody looked" is not.
+
+This does **not** require issues to be fixed before a release. It requires each
+open one to be either fixed or explained, in a place that outlives the conversation
+where it was decided. To defer:
+
+```bash
+gh issue comment <N> --body "Deferred from v$VERSION: <why it waits>"
+```
+
+The note names the version, and a note from an **older** release does not carry
+forward -- every release re-asks the question, so one deferral cannot silence an
+issue permanently. Exit 1 lists each unexplained issue with the command to record it.
+
+Read what the gate prints, and pull anything that should ship into this release
+before tagging. Deferring the whole list to clear the gate is the failure this is
+meant to prevent.
+
 Then run the following and **abort** on the first failure:
 
 ```bash
