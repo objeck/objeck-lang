@@ -101,6 +101,7 @@ class GlContextTest {
 		CheckMatrixMath();
 		CheckPrimitives();
 		CheckShaderPresets();
+		CheckSkybox();
 		CheckLighting();
 		CheckLightRig();
 		CheckFrustumCulling();
@@ -317,6 +318,133 @@ class GlContextTest {
 	the second and draw. Correct: red. Old behaviour: the colour went into the
 	first shader, the second still has its default of zero, and the quad is black.
 	~#
+	#~
+	Skybox: the gradient, and the two properties that make it a SKY rather than
+	a painted box.
+
+	Read back as pixels, because every one of these is a rendering property and
+	an object that constructed without error proves none of them.
+
+	  gradient    Looking up must give the zenith colour and looking at the
+	              horizon must give the horizon colour. Two very different
+	              colours, so a shader that ignored the view direction entirely
+	              would show up as both reads being equal.
+	  no parallax The sky must not move when the camera does. This is the one
+	              the translation-strip in Draw exists for; leave the
+	              translation in and the sky slides like scenery on a near wall.
+	              Checked by moving the camera a long way and requiring the same
+	              pixel.
+	  clean state Draw turns depth writes off and flips the cull mode. If it
+	              fails to put either back, the NEXT thing drawn is wrong and
+	              the skybox looks innocent. Checked by drawing an ordinary quad
+	              afterwards and requiring it to appear.
+	~#
+	method : CheckSkybox() ~ Nil {
+		sky := Skybox->New();
+		if(<>Check("Skybox builds", sky->IsOk())) {
+			reason := sky->GetError();
+			"  error: {$reason}"->PrintLine();
+			return;
+		};
+
+		# Deliberately far apart, and neither near the clear colour, so a read
+		# cannot accidentally match.
+		sky->SetHorizon(1.0, 0.0, 0.0);
+		sky->SetZenith(0.0, 0.0, 1.0);
+		sky->ClearSun();
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 0.0));
+		camera->SetPerspective(Float->Pi() / 3.0, 1.0, 0.1, 100.0);
+
+		# --- straight up: zenith ---
+		camera->PlaceLookingAt(Vector3->New(0.0, 0.0, 0.0), Vector3->New(0.0, 1.0, 0.0));
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sky->Draw(camera);
+		up_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		"  sky up: 0x{$up_pixel}"->PrintLine();
+
+		# FIRST: did anything get drawn at all?
+		#
+		# Without this, a sky that renders nothing leaves the black clear colour
+		# in the buffer, and two of the checks below pass on it: "does not move
+		# with the camera" compares black to black, and "no sun behind the
+		# viewer" finds no green in black. Both reported ok while the sky was
+		# entirely absent -- which is exactly what happened the first time this
+		# ran, and the reason it is checked separately rather than inferred.
+		black := 0xFF000000;
+		Check("the sky draws something at all", up_pixel <> black);
+		up_blue := up_pixel and 0xFF;
+		up_red := (up_pixel and 0xFF0000) / 0x10000;
+		Check("looking up is the zenith colour", up_blue > 200 & up_red < 60);
+
+		# --- at the horizon ---
+		camera->PlaceLookingAt(Vector3->New(0.0, 0.0, 0.0), Vector3->New(0.0, 0.0, -1.0));
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sky->Draw(camera);
+		flat_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		"  sky horizon: 0x{$flat_pixel}"->PrintLine();
+		flat_red := (flat_pixel and 0xFF0000) / 0x10000;
+		flat_blue := flat_pixel and 0xFF;
+		Check("looking level is the horizon colour", flat_red > 200 & flat_blue < 60);
+
+		# --- the sky does not move with the camera ---
+		# Same direction, wildly different position. A skybox that kept its
+		# translation would show a different part of the gradient here.
+		camera->PlaceLookingAt(Vector3->New(40.0, 0.0, 25.0),
+			Vector3->New(40.0, 0.0, 24.0));
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sky->Draw(camera);
+		moved_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		"  sky moved: 0x{$moved_pixel}"->PrintLine();
+		Check("the sky does not move with the camera", moved_pixel = flat_pixel);
+
+		# --- the sun appears where it is pointed ---
+		sky->SetSun(0.0, 0.0, -1.0);
+		sky->SetSunColor(0.0, 1.0, 0.0);
+		sky->SetSunSize(0.9);
+		camera->PlaceLookingAt(Vector3->New(0.0, 0.0, 0.0), Vector3->New(0.0, 0.0, -1.0));
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sky->Draw(camera);
+		sun_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		"  sky sun: 0x{$sun_pixel}"->PrintLine();
+		sun_green := (sun_pixel and 0xFF00) / 0x100;
+		Check("the sun is drawn where it is pointed", sun_green > 200);
+
+		# And NOT behind the viewer: the same sun, looking the other way.
+		camera->PlaceLookingAt(Vector3->New(0.0, 0.0, 0.0), Vector3->New(0.0, 0.0, 1.0));
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		sky->Draw(camera);
+		away_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+		away_green := (away_pixel and 0xFF00) / 0x100;
+		Check("the sun is not drawn behind the viewer", away_green < 100);
+
+		# --- state restored ---
+		# An ordinary quad, drawn after the sky with the default program. If
+		# Draw left depth writes off or the cull mode flipped, this is where it
+		# shows -- and without this check it would show up later as some other
+		# feature being broken.
+		flat := Shader->Flat();
+		quad := Mesh->Quad(1.0);
+		if(Check("a quad for the state check uploads", flat->IsOk() & quad->IsOk())) {
+			GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+			sky->Draw(camera);
+			flat->Use();
+			flat->SetMatrix4("mvp", Matrix4->Identity());
+			flat->SetVec3("color", 0.0, 1.0, 0.0);
+			quad->Draw();
+			after_pixel := GL->ReadPixel(@pixel_w / 2, @pixel_h / 2);
+			"  after sky: 0x{$after_pixel}"->PrintLine();
+			after_green := (after_pixel and 0xFF00) / 0x100;
+			Check("geometry still draws over the sky afterwards", after_green > 200);
+
+			quad->Free();
+			flat->Free();
+		};
+
+		sky->Free();
+	}
+
 	method : CheckShaderPresets() ~ Nil {
 		red := 0xFFFF0000;
 
