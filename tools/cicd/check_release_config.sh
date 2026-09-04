@@ -109,10 +109,17 @@ if [ -n "$MANUAL" ]; then
   IFS=',' read -ra STEPS <<< "$MANUAL"
   for t in "${STEPS[@]}"; do
     case "$(echo "$t" | tr -d ' ')" in
-      sourceforge) note "sourceforge  -> upload the release assets to Sourceforge by hand" ;;
+      # Sourceforge mirrors the GitHub release via a GitHub WEBHOOK -- it updates
+      # itself when the release is published. The token stays declared so the job
+      # does not hard-fail on the unset secrets, but there is nothing to do by hand.
+      sourceforge) note "sourceforge  -> nothing to do: a GitHub webhook mirrors the release" ;;
       vscode)      note "vscode       -> publish the .vsix from the build run's artifacts" ;;
       playground)  note "playground   -> ssh <host> 'bash /opt/playground/repo/programs/web-playground/deploy/update.sh <VERSION>'" ;;
-      docs)        note "docs         -> rsync api/ to /var/www/objeck.org/api/v<VERSION>/ and repoint 'latest'" ;;
+      # objeck.org has NO versioned doc directories -- /api/v2026.8.4/, v2026.8.3,
+      # v2026.8.2 and v2026.6.1 all 404. `latest` is the only served path, so
+      # rsync straight into it; the symlink dance in the old hint described a
+      # layout that has never existed and would send you hunting for a 404.
+      docs)        note "docs         -> rsync api/ into /var/www/objeck.org/api/latest/ (no versioned dirs exist)" ;;
       "")          ;;
       *)           bad "$t (unrecognised token -- no workflow honours it)" ;;
     esac

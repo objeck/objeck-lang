@@ -60,12 +60,51 @@ ssh root@$PLAYGROUND_HOST 'cd /opt/playground/repo && \
 
 Then re-run step 1. If it still fails, report the SSH output verbatim and stop.
 
-### 3. Version sanity check
+### 3. Version sanity check -- BOTH of them
+
+`/api/health` is a **label**, not evidence. It reports a hand-maintained constant
+in `backend/app/config.py`, which `git pull` updates on its own -- so it flips to
+the new version whether or not a single binary changed. It read `v2026.8.4` over
+a June engine for months, and it read `v2026.9.0` over a `2026.8.4` engine within
+seconds of the v2026.9.0 deploy.
+
+Always run both, and treat only the second as the answer:
 
 ```bash
+# the label
 curl -fsS https://playground.objeck.org/api/health | jq -r '.version'
-# must equal v<VERSION>  (the health endpoint returns the 'v' prefix)
+
+# the engine -- what actually executes
+curl -fsS -X POST https://playground.objeck.org/api/run   -H 'Content-Type: application/json'   -d '{"code":"class M { function : Main(a:String[])~Nil { System.Runtime->GetVersion()->PrintLine(); } }"}'
 ```
+
+If they disagree, the deploy did not install a toolchain. Do not report success.
+
+### 3b. Two failure modes that look like success
+
+**`update.sh` updates itself.** It lives in the repo it pulls, so a run that
+pulls a *new* `update.sh` keeps executing the old one -- and exits 0. At
+v2026.9.0 the first deploy printed `=== Update complete ===`, moved the health
+label, and never touched the toolchain; the identical command run a second time
+downloaded and installed the tarball. Fixed by re-exec'ing after the pull, but if
+you are ever on a server whose script predates that fix, **run the deploy twice**
+and compare -- a second run that does real work means the first one did not.
+
+A tell: the current script ends `=== Update complete (Objeck <VERSION>) ===`.
+A bare `=== Update complete ===` means an older script ran.
+
+**Do not pipe the ssh deploy through `head`.** `head` closes the pipe and can
+SIGPIPE the ssh mid-`docker build`, leaving a half-built image behind an
+apparently normal exit. Redirect to a file and read that, or use `tail` on the
+saved output:
+
+```bash
+ssh root@$PLAYGROUND_HOST 'bash /opt/playground/.../update.sh <VERSION>' 2>&1 | tee /tmp/deploy.log
+```
+
+The old single-shot health check (`sleep 3` then one curl) also cried wolf on
+every deploy, because uvicorn's workers need longer than 3s to bind. It polls for
+20s now; a failure there is real.
 
 > **If the version is stale after a successful deploy**, the reported string comes
 > from `programs/web-playground/backend/app/config.py` (`objeck_version`), a
@@ -94,6 +133,14 @@ If `playground.objeck.org` is unreachable, try the host directly:
   chat — a private key in a transcript is a leaked root credential.
 - Prefer a **dedicated** deploy key with a forced `command=` over your personal
   key, so a compromise can only run the deploy.
+
+## Sourceforge is not part of this
+
+Sourceforge mirrors the GitHub release through a **GitHub webhook** and updates
+itself when a release is published. It is not an SSH deploy, it is not this
+skill's job, and it needs no manual upload -- earlier notes calling it a manual
+post-release step are stale. Nothing to run; confirm the files appeared if you
+want, but do not wait on it.
 
 ## Note
 

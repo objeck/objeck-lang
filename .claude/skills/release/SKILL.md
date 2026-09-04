@@ -518,7 +518,7 @@ Exit 0 only when all six gates pass. Read-only unless you pass the flags.
 | 3 signatures | real `Get-AuthenticodeSignature` on the **published** files | v2026.4.0-v2026.8.2 all shipped unsigned while the notes claimed otherwise |
 | 4 `SHA256SUMS` | manifest matches the published bytes; regenerates + re-proves if signing invalidated it | signing rewrites the MSIs, so v2026.8.3's manifest described pre-signing bytes and every user's verification would have FAILED |
 | 5 body | every advertised filename is a real asset; no `$VARS`, no `compare/v...`, no `[x]()` | the published body named `objeck-lsp-X.zip` (hyphen) when the asset is `objeck-lsp_X.zip`, and linked `compare/v...vX` |
-| 6 playground | `/api/health` reports the tag | the version is a tracked constant the deploy does not auto-bump |
+| 6 playground | `/api/health` reports the tag -- **and `/api/run` reports it too**; health is a label `git pull` moves on its own, so it flipped to v2026.9.0 over a 2026.8.4 engine | the version is a tracked constant the deploy does not auto-bump |
 
 `--sign` needs the SafeNet eToken plugged in and prompts for its password (once per MSI
 unless single-logon is on). Signing cannot happen in CI -- the key is non-exportable and a

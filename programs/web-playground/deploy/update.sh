@@ -12,6 +12,17 @@ DEPLOY_DIR="$REPO_DIR/core/release/deploy"
 STAMP_FILE="$DEPLOY_DIR/.installed-version"
 WANT_VERSION="${1:-}"
 
+# This script lives in the repo it pulls, so a run that updates the script keeps
+# executing the OLD logic -- and reports success. That is not hypothetical: the
+# v2026.9.0 deploy printed "Update complete", flipped /api/health to v2026.9.0,
+# and left the engine on 2026.8.4, because the tarball-install step did not exist
+# in the copy bash was running. Re-running the identical command installed it.
+# Nothing in the first run's output distinguished it from a real deploy.
+#
+# So: hash ourselves before the pull, and re-exec if the pull changed us.
+SELF="$(readlink -f "$0")"
+SELF_HASH_BEFORE="$(sha256sum "$SELF" | cut -d' ' -f1)"
+
 echo "=== Updating Objeck Playground ==="
 
 # ---------------------------------------------------------------- pull
@@ -42,6 +53,22 @@ if ! sudo -u playground git pull origin master; then
         sudo -u playground git checkout HEAD -- .
         sudo -u playground git stash drop || true
     }
+fi
+
+# ---------------------------------------------------------------- re-exec
+#
+# The pull may have replaced this script. Hand over to the new one before any
+# real work happens, so the deploy that ships a fix to update.sh is the deploy
+# that benefits from it, not the one after. UPDATE_SH_REEXEC stops a loop if the
+# hash somehow keeps changing.
+if [ -z "${UPDATE_SH_REEXEC:-}" ]; then
+    SELF_HASH_AFTER="$(sha256sum "$SELF" | cut -d' ' -f1)"
+    if [ "$SELF_HASH_BEFORE" != "$SELF_HASH_AFTER" ]; then
+        echo ""
+        echo "--- update.sh changed in this pull; re-executing the new version ---"
+        export UPDATE_SH_REEXEC=1
+        exec bash "$SELF" "$@"
+    fi
 fi
 
 # ------------------------------------------------------- objeck toolchain
@@ -134,12 +161,22 @@ docker container prune -f
 # a label, and it was correct while the engine underneath was three months old.
 # Only running code through the sandbox says what actually executes.
 echo ""
+# Poll rather than sleeping a fixed 3s and asking once. uvicorn with --workers 2
+# needs longer than that to bind, so the single-shot check printed
+# "ERROR: API health check failed!" moments after a restart that was fine --
+# a false alarm on every deploy trains you to ignore the true one.
 echo "--- Health check ---"
-sleep 3
-if curl -sf http://localhost:8000/api/health > /dev/null; then
-    echo "API is healthy"
-else
-    echo "ERROR: API health check failed!"
+HEALTHY=""
+for i in $(seq 1 20); do
+    if curl -sf --max-time 5 http://localhost:8000/api/health > /dev/null; then
+        HEALTHY=1
+        echo "API is healthy (after ${i}s)"
+        break
+    fi
+    sleep 1
+done
+if [ -z "$HEALTHY" ]; then
+    echo "ERROR: API did not become healthy within 20s"
     systemctl status playground --no-pager
     exit 1
 fi
