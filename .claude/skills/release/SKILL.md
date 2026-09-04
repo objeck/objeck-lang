@@ -444,6 +444,17 @@ Expected: build ~45-70 min (the arm64 leg dominates; vcpkg rebuilds
 `chore: update api.zip for v<VERSION> [skip ci]`, so any push you make during or after
 the build is rejected as non-fast-forward. Rebase onto it; the tag is unaffected.
 
+**Do not match the publish run by the tag's commit SHA.** That same api.zip commit is
+what `release-publish.yml` carries as its `headSha`, because it is triggered by
+`workflow_run` and not by the tag. A watcher looking for a publish run whose headSha
+equals the tag's commit finds nothing and reports "build green but publish never
+started" while the publish is running normally -- which is what happened at v2026.9.0.
+Match the publish run by **workflow + recency**, or follow it by run ID:
+
+```bash
+gh run list --workflow=release-publish.yml --limit=1 --json databaseId,status,conclusion
+```
+
 ### 9. Write the release body
 
 `release-publish.yml` sets a generic body with no changelog. Replace it. Combine the
@@ -463,6 +474,32 @@ verified" on the strength of the MSI existing is exactly how three consecutive r
 reports were wrong.
 
 ### 10-11b. Post-publish: ONE command
+
+**Signing is initiated by you, not requested by the user.** The moment
+`release-publish.yml` is green and the assets are on the release, send a
+`PushNotification` telling them to plug the eToken in, then RUN the signing.
+Do not report "ready to sign" and wait to be asked -- at v2026.9.0 the user had
+to say "you'll need to kick off the process of signing the binaries" after
+being told twice that it was ready. Reporting readiness is not the deliverable;
+a signed release is. The user's only part is typing the token password into
+SafeNet's own dialog, which appears on their desktop when `signtool` runs.
+
+The sequence, without pausing between:
+
+1. Publish goes green -> verify the assets exist (query the RELEASE, not the job
+   colours) and that both MSIs are present.
+2. `PushNotification`: token needed now.
+3. Run the signing (below). Warn in-band that the SafeNet dialog is about to
+   appear, once per MSI unless single-logon is on.
+4. Verify signatures on the **published** files and re-prove `SHA256SUMS`.
+
+**Use `post_release.sh --sign`, not `sign_release.cmd` directly.** The .cmd signs,
+verifies and re-uploads the MSIs, but it does NOT touch `SHA256SUMS` -- and signing
+rewrites the MSIs, so the published manifest is left describing pre-signing bytes and
+every user's `sha256sum -c` FAILS on exactly the two files whose integrity matters most.
+Gate 4 of `post_release.sh` regenerates and re-proves it; the bare .cmd leaves you to
+remember, which is how v2026.8.3 shipped a broken manifest. If the .cmd is run on its
+own, regenerating the manifest is not optional cleanup -- it is part of signing.
 
 Everything after `release-publish.yml` goes green is a single pipeline, and it runs as
 one script. It used to be four prose sections here, which meant the commands were
