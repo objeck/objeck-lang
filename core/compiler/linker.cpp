@@ -219,7 +219,20 @@ void Linker::ResolveExternalMethodCalls()
   }
 }
 
-std::unordered_map<std::wstring, LibraryAlias*> Linker::GetAllAliasesMap()
+// The three GetAll*Map getters return by REFERENCE. They used to return by
+// value, and the lazy cache below only avoids rebuilding the map -- not copying
+// it, which happened on every single call: every node, and every wstring key.
+//
+// Search{Alias,Class,Enum}Libraries then copied the whole map to perform ONE
+// lookup, and took `uses` by value on top of that. context.cpp calls them from
+// 75 sites, so a large share of name resolution was spent duplicating the
+// library class map. A sampling profile of a 4,087-line application put
+// hash<wstring, LibraryAlias*> at 20.4% of total compile time, with
+// RtlAllocateHeap/RtlFreeHeap/memcpy adding ~30% more.
+//
+// Returning a reference is safe because each map is built once, on first use,
+// and never mutated afterwards -- the only writes are the builders below.
+const std::unordered_map<std::wstring, LibraryAlias*>& Linker::GetAllAliasesMap()
 {
   if(all_aliases_map.empty()) {
     std::vector<LibraryAlias*> aliases = GetAllAliases();
@@ -270,7 +283,7 @@ std::vector<LibraryAlias*> Linker::GetAllAliases()
   return all_aliases;
 }
 
-std::unordered_map<std::wstring, LibraryClass*> Linker::GetAllClassesMap()
+const std::unordered_map<std::wstring, LibraryClass*>& Linker::GetAllClassesMap()
 {
   if(all_classes_map.empty()) {
     std::vector<LibraryClass*> klasses = GetAllClasses();
@@ -298,7 +311,7 @@ std::vector<LibraryClass*> Linker::GetAllClasses()
   return all_classes;
 }
 
-std::unordered_map<std::wstring, LibraryEnum*> Linker::GetAllEnumsMap()
+const std::unordered_map<std::wstring, LibraryEnum*>& Linker::GetAllEnumsMap()
 {
   if(all_enums_map.empty()) {
     std::vector<LibraryEnum*> enums = GetAllEnums();
@@ -326,16 +339,18 @@ std::vector<LibraryEnum*> Linker::GetAllEnums()
   return all_enums;
 }
 
-LibraryAlias* Linker::SearchAliasLibraries(const std::wstring& name, std::vector<std::wstring> uses)
+LibraryAlias* Linker::SearchAliasLibraries(const std::wstring& name, const std::vector<std::wstring>& uses)
 {
-  std::unordered_map<std::wstring, LibraryAlias*> alias_map = GetAllAliasesMap();
-  LibraryAlias* alias = alias_map[name];
+  const std::unordered_map<std::wstring, LibraryAlias*>& alias_map = GetAllAliasesMap();
+  std::unordered_map<std::wstring, LibraryAlias*>::const_iterator hit = alias_map.find(name);
+  LibraryAlias* alias = hit != alias_map.end() ? hit->second : nullptr;
   if(alias) {
     return alias;
   }
 
   for(size_t i = 0; i < uses.size(); ++i) {
-    alias = alias_map[uses[i] + L"." + name];
+    hit = alias_map.find(uses[i] + L"." + name);
+    alias = hit != alias_map.end() ? hit->second : nullptr;
     if(alias) {
       return alias;
     }
@@ -344,16 +359,18 @@ LibraryAlias* Linker::SearchAliasLibraries(const std::wstring& name, std::vector
   return nullptr;
 }
 
-LibraryClass* Linker::SearchClassLibraries(const std::wstring& name, std::vector<std::wstring> uses)
+LibraryClass* Linker::SearchClassLibraries(const std::wstring& name, const std::vector<std::wstring>& uses)
 {
-  std::unordered_map<std::wstring, LibraryClass*> klass_map = GetAllClassesMap();
-  LibraryClass* klass = klass_map[name];
+  const std::unordered_map<std::wstring, LibraryClass*>& klass_map = GetAllClassesMap();
+  std::unordered_map<std::wstring, LibraryClass*>::const_iterator hit = klass_map.find(name);
+  LibraryClass* klass = hit != klass_map.end() ? hit->second : nullptr;
   if(klass) {
     return klass;
   }
 
   for(size_t i = 0; i < uses.size(); ++i) {
-    klass = klass_map[uses[i] + L"." + name];
+    hit = klass_map.find(uses[i] + L"." + name);
+    klass = hit != klass_map.end() ? hit->second : nullptr;
     if(klass) {
       return klass;
     }
@@ -374,16 +391,18 @@ bool Linker::HasBundleName(const std::wstring& name)
   return false;
 }
 
-LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, std::vector<std::wstring> uses)
+LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, const std::vector<std::wstring>& uses)
 {
-  std::unordered_map<std::wstring, LibraryEnum*> enum_map = GetAllEnumsMap();
-  LibraryEnum* eenum = enum_map[name];
+  const std::unordered_map<std::wstring, LibraryEnum*>& enum_map = GetAllEnumsMap();
+  std::unordered_map<std::wstring, LibraryEnum*>::const_iterator hit = enum_map.find(name);
+  LibraryEnum* eenum = hit != enum_map.end() ? hit->second : nullptr;
   if(eenum) {
     return eenum;
   }
 
   for(size_t i = 0; i < uses.size(); ++i) {
-    eenum = enum_map[uses[i] + L"." + name];
+    hit = enum_map.find(uses[i] + L"." + name);
+    eenum = hit != enum_map.end() ? hit->second : nullptr;
     if(eenum) {
       return eenum;
     }

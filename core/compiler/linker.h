@@ -1113,19 +1113,19 @@ public:
   std::vector<Library*> GetAllUsedLibraries();
 
   // returns all aliases including duplicates
-  std::unordered_map<std::wstring, LibraryAlias*> GetAllAliasesMap();
+  const std::unordered_map<std::wstring, LibraryAlias*>& GetAllAliasesMap();
 
   // returns all aliases including duplicates
   std::vector<LibraryAlias*> GetAllAliases();
 
   // returns all classes including duplicates
-  std::unordered_map<std::wstring, LibraryClass*> GetAllClassesMap();
+  const std::unordered_map<std::wstring, LibraryClass*>& GetAllClassesMap();
 
   // returns all classes including duplicates
   std::vector<LibraryClass*> GetAllClasses();
 
   // returns all enums including duplicates
-  std::unordered_map<std::wstring, LibraryEnum*> GetAllEnumsMap();
+  const std::unordered_map<std::wstring, LibraryEnum*>& GetAllEnumsMap();
 
   // returns all enums including duplicates
   std::vector<LibraryEnum*> GetAllEnums();
@@ -1139,13 +1139,13 @@ public:
   bool HasBundleName(const std::wstring &name);
 
   // finds the first alias match; note multiple matches may exist
-  LibraryAlias* SearchAliasLibraries(const std::wstring& name, std::vector<std::wstring> uses);
+  LibraryAlias* SearchAliasLibraries(const std::wstring& name, const std::vector<std::wstring>& uses);
 
   // finds the first class match; note multiple matches may exist
-  LibraryClass* SearchClassLibraries(const std::wstring& name, std::vector<std::wstring> uses);
+  LibraryClass* SearchClassLibraries(const std::wstring& name, const std::vector<std::wstring>& uses);
 
   // finds the first enum match; note multiple matches may exist
-  LibraryEnum* SearchEnumLibraries(const std::wstring& name, std::vector<std::wstring> uses);
+  LibraryEnum* SearchEnumLibraries(const std::wstring& name, const std::vector<std::wstring>& uses);
 
   void Load(bool is_lib);
 };
