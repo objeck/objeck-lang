@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.8.4/objeck-linux-x64_2026.8.4.tgz
-tar xzf objeck-linux-x64_2026.8.4.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.0/objeck-linux-x64_2026.9.0.tgz
+tar xzf objeck-linux-x64_2026.9.0.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -58,7 +58,12 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.8.4 ✅
+### v2026.9.0 ✅
+  * **A server that wrote a response and closed could lose all of it** &mdash; on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. `TCPSocket` and `TCPSecureSocket` gain `CloseGracefully()`, which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: `Close()` lost 21, `CloseGracefully()` lost none
+  * **The language server serialized every request behind one lock** &mdash; concurrent analysis was correct only because of it, with `TreeFactory` and `TypeFactory` as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking
+  * **Four publish steps reported success while doing nothing** &mdash; Sourceforge, the Marketplace, the playground and the API docs each skipped on an absent credential and passed, so v2026.8.4 published with all four green while the playground served a three-month-old engine. A missing credential now fails and names the secret, or is declared manual in one place that also prints as a to-do, and a pre-flight gate checks the pipeline can do what it advertises before the tag is pushed
+
+### v2026.8.4
   * **`Game.OpenGL` — 3D graphics for Objeck** — OpenGL 3.3 core over SDL2 on Windows, Linux and macOS. 26 classes covering windowing and frame pacing, built-in shaders, meshes and OBJ loading, textures, cameras, materials, up to eight directional/point/spot lights with Blinn-Phong specular, shadow maps including omnidirectional cube shadows, render-to-texture, instancing through a one-call `PropBatch`, frustum culling, raycasting for hitscan and picking, gamepad input, a pixel-space text overlay, and a scene that answers collision. The examples got **shorter** as it grew — the minimal window demo went from 105 lines to 25, and per-frame allocations in both original draw loops went to zero. Verified by 453 checks that read pixels back rather than merely exiting cleanly, and two demos ship in the distribution
   * **`Web.Server` could not be used by anyone** — it shipped in every release with 13 native entry points that existed in exactly one file: the binding itself. No `.cpp`, no build target, no library in any deploy tree, and `Request`/`Response` declared no constructor, so a program could not obtain an instance at all. Writing the missing native library was never an option — the design is a per-host bridge for Nginx, IIS and Apache, whose request structures differ entirely, so one generic library cannot exist. It is now implemented in pure Objeck over `Web.HTTP.Server`: same bundle, same class names, same signatures, no native library. Coverage went from 0 of 13 methods to 13 of 13
   * **The JIT silently computed the wrong answer above 2³¹** — 64-bit immediates were truncated to 32 bits: on AMD64 for `and`, `or`, `xor`, `add` and `sub`, and on Windows ARM64 for every one of them, where `long` is 32 bits under LLP64. No crash and no diagnostic, just wrong arithmetic. A stored float compare also clobbered a callee-saved register on AMD64. Windows ARM64 had shipped untested since February, which is why its variant survived
@@ -115,7 +120,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.8.4](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.0](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

@@ -1,3 +1,12 @@
+v2026.9.0 (September 3, 2026)
+===
+A socket close that stops losing the response on Windows loopback, a language server that no longer serializes every request behind one lock, and a release pipeline that reports what it actually did.
+
+v2026.9.0
+- A server that wrote a response and closed could lose all of it -- on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. TCPSocket and TCPSecureSocket gain CloseGracefully(), which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: Close() lost 21, CloseGracefully() lost none
+- The language server serialized every request behind one lock -- concurrent analysis was correct only because of it, with TreeFactory and TypeFactory as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking
+- Four publish steps reported success while doing nothing -- Sourceforge, the Marketplace, the playground and the API docs each skipped on an absent credential and passed, so v2026.8.4 published with all four green while the playground served a three-month-old engine. A missing credential now fails and names the secret, or is declared manual in one place that also prints as a to-do, and a pre-flight gate checks the pipeline can do what it advertises before the tag is pushed
+
 v2026.8.4 (August 30, 2026)
 ===
 3D graphics for Objeck with the new Game.OpenGL framework, a Web.Server that could never be used until now, JIT arithmetic that was silently wrong above 2^31, and Windows ARM64 installs that shipped without their runtimes.
