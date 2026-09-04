@@ -682,8 +682,23 @@ jobs:
       # and is explicit -- the `skip_docs_deploy` workflow_dispatch input gates
       # this whole job -- so "skip on purpose" is available without "skip by
       # accident and report success" being the default.
+      # Declared-manual escape hatch, mirroring sourceforge and playground.
+      # Without this pair the `docs` token in RELEASE_MANUAL_STEPS was inert:
+      # check_release_config.sh reported "manual  OBJECK_ORG_* (declared in
+      # RELEASE_MANUAL_STEPS)" and passed pre-flight, then this job failed the
+      # v2026.9.0 publish anyway, because nothing here read the variable. The
+      # gate asserted a property the workflow did not implement.
+      - name: objeck.org docs are handled manually
+        if: env.OBJECK_ORG_SSH_KEY == '' && contains(vars.RELEASE_MANUAL_STEPS, 'docs')
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          echo "ℹ️  objeck.org API docs deploy is declared manual via RELEASE_MANUAL_STEPS - skipping."
+          echo "   Deploy by hand from this run's api-docs artifact (or master's docs/api.zip):"
+          echo "     rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/v${VERSION}/"
+          echo "     ssh USER@objeck.org 'cd /var/www/objeck.org/api && ln -sfn v${VERSION} latest'"
+
       - name: Missing objeck.org credentials
-        if: env.OBJECK_ORG_SSH_KEY == ''
+        if: env.OBJECK_ORG_SSH_KEY == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'docs')
         run: |
           echo "::error::objeck.org SSH credentials are not configured - API docs were NOT deployed"
           echo ""
@@ -695,6 +710,8 @@ jobs:
           echo "and on master at docs/api.zip. To deploy by hand:"
           echo "  rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/v<VERSION>/"
           echo "  ssh USER@objeck.org 'cd /var/www/objeck.org/api && ln -sfn v<VERSION> latest'"
+          echo ""
+          echo "Or declare it manual:  gh variable set RELEASE_MANUAL_STEPS --body '<existing>,docs'"
           exit 1
 
       # Prove the deploy actually landed, rather than trusting rsync's exit code.
