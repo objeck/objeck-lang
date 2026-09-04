@@ -1,0 +1,271 @@
+# EXTRA_LIBS: sdl2,sdl_gl
+
+#~
+Game.OpenGL Quaternion -- arithmetic only, so it needs no window.
+
+Every other GL test in this suite needs a context and therefore a display or a
+software rasteriser, which is why they only run in CI. This one is pure float
+arithmetic over Float[4], so it runs anywhere and gives the quaternion code the
+thing the rendering tests cannot have: a cheap check that runs on a developer's
+machine before the push, not after.
+
+What is actually asserted, rather than "it returned something":
+
+  - FromEuler agrees with Matrix4->RotationYXZ. This is the load-bearing one.
+	The two are separate implementations of the same rotation, and if they ever
+	disagree then converting a Transform's angles to a quaternion silently
+	changes the orientation. Compared as MATRICES, element by element, because
+	that is the form both are eventually used in.
+  - Slerp takes the short way round. Given two rotations more than half a turn
+	apart, the midpoint must be nearer to both ends than the long-way midpoint
+	is. A slerp that forgot to flip the sign still returns a unit quaternion and
+	still interpolates smoothly -- it just goes the wrong way -- so length and
+	smoothness prove nothing here.
+  - Multiply composes in the documented order: Multiply(a, b) applies b first.
+  - Conjugate undoes a rotation.
+  - Degenerate input yields identity rather than NaN.
+
+compile: obc -src gl_quaternion_test.obs -lib sdl2,sdl_gl -dest gl_quaternion_test.obe
+run:     obr gl_quaternion_test.obe
+~#
+
+use Game.OpenGL;
+
+class QuaternionTest {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := QuaternionTest->New();
+		test->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Run() ~ Nil {
+		TestIdentity();
+		TestLengthAndNormalize();
+		TestAxisAngle();
+		TestEulerMatchesMatrix4();
+		TestMultiplyOrder();
+		TestConjugate();
+		TestSlerpEndpoints();
+		TestSlerpShortWay();
+		TestRotateVector();
+		TestDegenerate();
+
+		if(@failures = 0) {
+			"PASS"->PrintLine();
+		}
+		else {
+			failures := @failures;
+			"FAIL: {$failures} check(s)"->PrintLine();
+			# Non-zero exit, so the runner scores this by exit code rather than
+			# by scraping stdout.
+			Runtime->Exit(1);
+		};
+	}
+
+	#~
+	Floats compared with a tolerance, because every one of these values came out
+	of a trig function.
+	~#
+	method : Close(actual : Float, expect : Float, note : String) ~ Nil {
+		if((actual - expect)->Abs() > 0.0001) {
+			"  {$note}: expected {$expect}, got {$actual}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Check(condition : Bool, note : String) ~ Nil {
+		if(<>condition) {
+			"  {$note}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : TestIdentity() ~ Nil {
+		q := Quaternion->Identity();
+		Close(q[0], 0.0, "identity x");
+		Close(q[1], 0.0, "identity y");
+		Close(q[2], 0.0, "identity z");
+		Close(q[3], 1.0, "identity w");
+		Close(Quaternion->Length(q), 1.0, "identity length");
+	}
+
+	method : TestLengthAndNormalize() ~ Nil {
+		q := Float->New[4];
+		q[0] := 0.0; q[1] := 3.0; q[2] := 0.0; q[3] := 4.0;
+		Close(Quaternion->Length(q), 5.0, "length of (0,3,0,4)");
+
+		unit := Quaternion->Normalized(q);
+		Close(Quaternion->Length(unit), 1.0, "normalized length");
+		Close(unit[1], 0.6, "normalized y");
+		Close(unit[3], 0.8, "normalized w");
+	}
+
+	#~
+	A quarter turn about Y, checked against the value it must have: sin(45) in
+	y and cos(45) in w.
+	~#
+	method : TestAxisAngle() ~ Nil {
+		quarter := Float->Pi() / 2.0;
+		q := Quaternion->FromAxisAngle(0.0, 1.0, 0.0, quarter);
+
+		Close(q[0], 0.0, "axis-angle x");
+		Close(q[1], 0.70710678, "axis-angle y");
+		Close(q[2], 0.0, "axis-angle z");
+		Close(q[3], 0.70710678, "axis-angle w");
+
+		# An unnormalised axis must give the same rotation as a normalised one.
+		fat := Quaternion->FromAxisAngle(0.0, 7.5, 0.0, quarter);
+		Close(fat[1], q[1], "unnormalised axis y");
+		Close(fat[3], q[3], "unnormalised axis w");
+	}
+
+	#~
+	The important one. FromEuler and Matrix4->RotationYXZ are two independent
+	implementations of the same rotation; if they drift apart, converting a
+	Transform's angles to a quaternion changes the orientation and nothing else
+	in the library would notice.
+	~#
+	method : TestEulerMatchesMatrix4() ~ Nil {
+		pitch := 0.37;
+		yaw := -1.22;
+		roll := 0.64;
+
+		from_euler := Quaternion->ToMatrix(Quaternion->FromEuler(yaw, pitch, roll));
+		from_matrix := Matrix4->RotationYXZ(yaw, pitch, roll);
+
+		each(i : from_euler) {
+			a := from_euler[i];
+			b := from_matrix[i];
+			Close(a, b, "euler vs RotationYXZ element {$i}");
+		};
+	}
+
+	#~
+	Multiply(a, b) applies b first. Checked with two rotations about different
+	axes, because two about the SAME axis commute and would pass either way --
+	which is exactly how a reversed argument order survives a weak test.
+	~#
+	method : TestMultiplyOrder() ~ Nil {
+		quarter := Float->Pi() / 2.0;
+		about_y := Quaternion->FromAxisAngle(0.0, 1.0, 0.0, quarter);
+		about_x := Quaternion->FromAxisAngle(1.0, 0.0, 0.0, quarter);
+
+		# Turn about X first, then about Y.
+		combined := Quaternion->Multiply(about_y, about_x);
+
+		# Same thing as matrices, in the same order: lhs applied second.
+		expect := Matrix4->Multiply(Quaternion->ToMatrix(about_y),
+			Quaternion->ToMatrix(about_x));
+		actual := Quaternion->ToMatrix(combined);
+
+		each(i : actual) {
+			Close(actual[i], expect[i], "multiply order element {$i}");
+		};
+
+		# And the two orders must NOT agree, or the test above proves nothing.
+		reversed := Quaternion->ToMatrix(Quaternion->Multiply(about_x, about_y));
+		differs := false;
+		each(i : reversed) {
+			if((reversed[i] - actual[i])->Abs() > 0.0001) {
+				differs := true;
+			};
+		};
+		Check(differs, "multiplying the reversed way round should differ");
+	}
+
+	method : TestConjugate() ~ Nil {
+		q := Quaternion->FromAxisAngle(0.3, 0.5, 0.81, 1.1);
+		undo := Quaternion->Conjugate(q);
+		back := Quaternion->Multiply(q, undo);
+
+		Close(back[0], 0.0, "conjugate cancels x");
+		Close(back[1], 0.0, "conjugate cancels y");
+		Close(back[2], 0.0, "conjugate cancels z");
+		Close(back[3], 1.0, "conjugate cancels w");
+	}
+
+	method : TestSlerpEndpoints() ~ Nil {
+		a := Quaternion->FromAxisAngle(0.0, 1.0, 0.0, 0.2);
+		b := Quaternion->FromAxisAngle(0.0, 1.0, 0.0, 1.9);
+
+		at_zero := Quaternion->Slerp(a, b, 0.0);
+		Close(at_zero[1], a[1], "slerp t=0 y");
+		Close(at_zero[3], a[3], "slerp t=0 w");
+
+		at_one := Quaternion->Slerp(a, b, 1.0);
+		Close(at_one[1], b[1], "slerp t=1 y");
+		Close(at_one[3], b[3], "slerp t=1 w");
+
+		# Clamped, not extrapolated.
+		past := Quaternion->Slerp(a, b, 1.8);
+		Close(past[1], b[1], "slerp clamps above 1");
+
+		middle := Quaternion->Slerp(a, b, 0.5);
+		Close(Quaternion->Length(middle), 1.0, "slerp midpoint is unit length");
+	}
+
+	#~
+	The short way round.
+
+	Two rotations more than half a turn apart. A slerp that failed to flip the
+	sign of the second one still returns unit quaternions and still moves
+	smoothly -- it just travels the long way. The way to catch that is the
+	DISTANCE: going the short way, the midpoint's dot product with each end is
+	larger than it would be going the long way.
+	~#
+	method : TestSlerpShortWay() ~ Nil {
+		a := Quaternion->FromAxisAngle(0.0, 1.0, 0.0, 0.1);
+		# 300 degrees away the long way, 60 the short way.
+		b := Quaternion->FromAxisAngle(0.0, 1.0, 0.0, 0.1 + 5.236);
+
+		middle := Quaternion->Slerp(a, b, 0.5);
+
+		dot_a := Quaternion->Dot(middle, a)->Abs();
+		dot_b := Quaternion->Dot(middle, b)->Abs();
+
+		# Half of 60 degrees is 30; cos(15 degrees of quaternion angle) = 0.966.
+		Check(dot_a > 0.95, "slerp midpoint should be near the start (short way)");
+		Check(dot_b > 0.95, "slerp midpoint should be near the end (short way)");
+	}
+
+	#~
+	A quarter turn about Y takes +Z to +X, in a right-handed system.
+	~#
+	method : TestRotateVector() ~ Nil {
+		quarter := Float->Pi() / 2.0;
+		q := Quaternion->FromAxisAngle(0.0, 1.0, 0.0, quarter);
+
+		turned := Quaternion->Rotate(q, Vector3->New(0.0, 0.0, 1.0));
+		Close(turned->GetX(), 1.0, "rotate +Z about Y gives +X");
+		Close(turned->GetY(), 0.0, "rotate keeps y");
+		Close(turned->GetZ(), 0.0, "rotate consumes z");
+
+		# Length is preserved: a rotation is not a scale.
+		long := Quaternion->Rotate(q, Vector3->New(0.0, 0.0, 3.0));
+		Close(long->Length(), 3.0, "rotation preserves length");
+	}
+
+	#~
+	Nothing here may produce NaN or crash. A zero axis has no direction, and a
+	zero quaternion has no length to divide by.
+	~#
+	method : TestDegenerate() ~ Nil {
+		zero_axis := Quaternion->FromAxisAngle(0.0, 0.0, 0.0, 1.4);
+		Close(zero_axis[3], 1.0, "zero axis gives identity");
+
+		zero := Float->New[4];
+		unit := Quaternion->Normalized(zero);
+		Close(unit[3], 1.0, "normalising zero gives identity");
+
+		# Undersized buffers must be refused rather than written past.
+		small := Float->New[2];
+		Quaternion->IdentityInto(small);
+		Quaternion->FromEulerInto(small, 1.0, 1.0, 1.0);
+		Check(true, "undersized buffers did not crash");
+	}
+}
