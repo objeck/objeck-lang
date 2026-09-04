@@ -575,7 +575,10 @@ static int DoCheck(bool is_quiet, const std::string& channel)
 }
 
 /* ===================================================================
- * Update engine (POSIX). Windows is deferred to phase 3.
+ * Update engine. Windows included: OBU_UPDATE_SUPPORTED is 1 for _WIN32 and
+ * RunArgv has a CreateProcess path, so `obu update` runs on all three platforms.
+ * This said "POSIX. Windows is deferred to phase 3" long after that stopped
+ * being true, which reads as a supported platform being unsupported.
  * =================================================================== */
 
 /****************************
