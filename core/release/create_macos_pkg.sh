@@ -69,6 +69,12 @@ echo "Staging files..."
 mkdir -p "$STAGING_DIR$INSTALL_PREFIX"
 cp -R "$DEPLOY_DIR"/* "$STAGING_DIR$INSTALL_PREFIX/"
 
+# Ship the uninstaller inside the install tree. The .pkg previously shipped none,
+# so removing Objeck meant deleting /usr/local/objeck-lang by hand and leaving the
+# PATH entry, the LaunchDaemon and an export line in /etc/zshenv behind.
+cp "$(dirname "$0")/macos_uninstall.sh" "$STAGING_DIR$INSTALL_PREFIX/uninstall.sh"
+chmod 755 "$STAGING_DIR$INSTALL_PREFIX/uninstall.sh"
+
 # ============================================
 # Create postinstall script (PATH setup)
 # ============================================
@@ -104,19 +110,47 @@ cat > /Library/LaunchDaemons/org.objeck.env.plist << PLIST
 </plist>
 PLIST
 
-# Also set for current session via shell profile
-PROFILE_LINE='export OBJECK_LIB_PATH=/usr/local/objeck-lang/lib'
-SHELLS=("/etc/zshenv" "/etc/profile")
-for SHELL_RC in "${SHELLS[@]}"; do
-  if [ -f "$SHELL_RC" ]; then
-    if ! grep -q "OBJECK_LIB_PATH" "$SHELL_RC" 2>/dev/null; then
-      echo "$PROFILE_LINE" >> "$SHELL_RC"
-    fi
+# OBJECK_LIB_PATH for terminal sessions.
+#
+# This edit is load-bearing, not belt-and-braces: /etc/paths.d sets PATH only,
+# and without OBJECK_LIB_PATH the toolchain falls back to "../lib/" relative to
+# the CURRENT WORKING DIRECTORY (see GetLibraryPath in core/shared/sys.h), so
+# obc would work only when run from the install's own bin/.
+#
+# It previously appended only to files that already existed:
+#     SHELLS=("/etc/zshenv" "/etc/profile")
+#     if [ -f "$SHELL_RC" ]; then ... fi
+# Stock macOS ships /etc/zshrc and /etc/zprofile but NOT /etc/zshenv, and zsh --
+# the default shell since Catalina -- never reads /etc/profile. So on a default
+# install the variable was written where zsh does not look and nowhere it does.
+# Create the zsh file rather than skipping it.
+#
+# The block is delimited so the uninstaller can remove exactly what was added.
+# The old single appended line had no marker and nothing ever removed it, which
+# left a dangling export pointing at a deleted directory in a SYSTEM file.
+OBJECK_BEGIN='# >>> objeck >>>'
+OBJECK_END='# <<< objeck <<<'
+
+write_env_block() {
+  rc="$1"
+  [ -e "$rc" ] || : > "$rc"
+  if grep -qF "$OBJECK_BEGIN" "$rc" 2>/dev/null; then
+    return 0                      # already managed; upgrade leaves it alone
   fi
-done
+  {
+    echo "$OBJECK_BEGIN"
+    echo "# Added by the Objeck installer. Removed by $INSTALL_DIR/uninstall.sh"
+    echo "export OBJECK_LIB_PATH=$INSTALL_DIR/lib"
+    echo "$OBJECK_END"
+  } >> "$rc"
+}
+
+write_env_block /etc/zshenv       # zsh: read by every zsh, login or not
+write_env_block /etc/profile      # sh/bash
 
 echo "Objeck installed to $INSTALL_DIR"
 echo "Open a new terminal for PATH changes to take effect."
+echo "To remove Objeck: sudo $INSTALL_DIR/uninstall.sh"
 exit 0
 POSTINSTALL
 chmod +x "$SCRIPTS_DIR/postinstall"
