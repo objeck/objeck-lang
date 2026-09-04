@@ -1,5 +1,5 @@
 #~
-Lantern -- find four relics in the dark and carry them to the exit.
+Lantern -- find four relics in the dark, and get out before the lamp does.
 
   compile: obc -src gl_lantern.obs -lib sdl2,sdl_gl
   run:     obr gl_lantern
@@ -7,8 +7,24 @@ Lantern -- find four relics in the dark and carry them to the exit.
   mouse        look around
   W A S D      walk
   shift        run
-  click / E    take a relic you are standing next to
+  E            take a relic you are standing next to
+  click/space  throw a flare
   escape       quit
+
+## The game
+
+Four relics, one exit, and a lamp that is burning down the whole time.
+
+Shades will not enter the lamp's light. They close on you until the light gets
+too strong, then hold at that edge -- so the lamp is cover, and the fuel bar is
+the timer on it. Above about a third of a tank they cannot reach you at all.
+Below it they can, and do.
+
+A flare is the only thing that kills one, and it costs fuel to throw. That is
+the whole decision the game is built on: every shade you clear makes the rest
+of the dungeon darker, and the dark is what lets the next one reach you.
+
+Relics give fuel back, so collecting is also survival.
 
 ## Why this program exists
 
@@ -28,6 +44,14 @@ or swim as you turn, and you see it immediately.
 So the parts under test are: PointShadow with a moving light, Scene collision in
 corridors rather than an open room, frustum culling with enough boxes to matter,
 and an Overlay HUD that has to be legible over a dark scene.
+
+The shades and the flare add three more, and they are the parts a still frame
+cannot check either. Scene->Raycast has to agree with the crosshair while both
+the camera and the target are moving. Props have to be identity-comparable, so
+the thing the ray reports back can be matched to the shade that owns it. And the
+particle burst has to appear where the ray actually struck, along the surface
+normal -- if the ray and the render disagree about where that is, the sparks go
+into the wall and you see it at once.
 
 ## What it could not use, and why that is the useful part
 
@@ -160,6 +184,138 @@ class Relic {
 	}
 }
 
+
+#~
+A shade: something in the dark that wants to be where you are.
+
+The rule that makes this a game rather than a chase is that shades will not
+enter the lamp's light. Each one closes on the player until the light on it
+passes a threshold, then holds at that edge and waits. So the lamp is cover,
+and the fuel bar is the timer on that cover -- the same bar that was already
+counting down, now with teeth.
+
+That also means the fight and the errand pull in opposite directions. Firing a
+flare spends the fuel that is keeping them off you.
+~#
+class Shade {
+	@at : Vector3;
+	@body : Prop;
+	@alive : Bool;
+	# Counts up while dying, so a kill fades rather than vanishing mid-frame.
+	@fade : Float;
+	@bob : Float;
+	# Where it started. A shade driven back by a flare returns here rather than
+	# to the player, which gives the room a rhythm instead of a constant press.
+	@home : Vector3;
+
+	New(x : Float, y : Float, z : Float) {
+		@at := Vector3->New(x, y, z);
+		@home := Vector3->New(x, y, z);
+		@alive := true;
+		@fade := 0.0;
+		@bob := x + z;
+	}
+
+	method : public : AddTo(scene : Scene, mesh : Mesh, material : Material) ~ Nil {
+		@body := scene->AddProp(Prop->New(mesh, material));
+		@body->GetTransform()->SetScale(0.42);
+		@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY(), @at->GetZ());
+	}
+
+	method : public : IsAlive() ~ Bool { return @alive; }
+	method : public : GetAt() ~ Vector3 { return @at; }
+	method : public : GetProp() ~ Prop { return @body; }
+
+	#~
+	Distance from a point on the floor, height ignored -- same reasoning as the
+	relics: looking up must not change how close anything is.
+	~#
+	method : public : GroundDistance(eye : Vector3) ~ Float {
+		dx := @at->GetX() - eye->GetX();
+		dz := @at->GetZ() - eye->GetZ();
+		return (dx * dx + dz * dz)->Sqrt();
+	}
+
+	#~
+	Killed by a flare. It does not disappear here: @alive goes false so it stops
+	hunting and stops counting as a threat, and the fade drives it out of sight
+	over the next second.
+	~#
+	method : public : Kill() ~ Nil {
+		@alive := false;
+		@fade := 1.0;
+	}
+
+	#~
+	Advance one frame.
+
+	@param delta seconds since the last frame
+	@param eye where the player is
+	@param lit how far the lamp currently reaches. Shrinks as fuel burns, which
+	is what lets the shades come closer late without changing their speed.
+	@return true if this shade is touching the player THIS frame
+	~#
+	method : public : Update(delta : Float, eye : Vector3, lit : Float) ~ Bool {
+		@bob += delta * 2.2;
+
+		if(<>@alive) {
+			if(@fade > 0.0) {
+				@fade -= delta * 1.6;
+				if(@fade <= 0.0) {
+					@fade := 0.0;
+					if(@body <> Nil) {
+						@body->SetVisible(false);
+					};
+				}
+				else {
+					if(@body <> Nil) {
+						# Sinking as it goes, so a kill reads as collapse.
+						@body->GetTransform()->SetScale(0.42 * @fade);
+						@body->GetTransform()->SetPosition(@at->GetX(),
+							@at->GetY() - (1.0 - @fade) * 0.5, @at->GetZ());
+					};
+				};
+			};
+			return false;
+		};
+
+		distance := GroundDistance(eye);
+
+		# The whole behaviour, in one comparison: approach while the light here
+		# is weak, retreat while it is strong. `lit` is the radius the lamp
+		# actually reaches, so a guttering lamp lets them stand where a full one
+		# would not.
+		target_x := @home->GetX();
+		target_z := @home->GetZ();
+		speed := 1.15;
+		if(distance > lit) {
+			target_x := eye->GetX();
+			target_z := eye->GetZ();
+			speed := 1.55;
+		};
+
+		dx := target_x - @at->GetX();
+		dz := target_z - @at->GetZ();
+		length := (dx * dx + dz * dz)->Sqrt();
+		if(length > 0.05) {
+			step := speed * delta;
+			@at->Set(@at->GetX() + dx / length * step, @at->GetY(),
+				@at->GetZ() + dz / length * step);
+		};
+
+		if(@body <> Nil) {
+			lift := 0.09 * @bob->Sin();
+			@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY() + lift, @at->GetZ());
+			@body->GetTransform()->SetRotation(@bob * 0.35, 0.0, 0.0);
+		};
+
+		# 1.5, not touching-distance: a shade that has closed to arm's length is
+		# already on you, and requiring overlap made the threat read as a
+		# collision bug rather than a threat.
+		return distance < 1.5;
+	}
+}
+
 class Lantern {
 	@window : GLWindow;
 	@shader : Shader;
@@ -181,6 +337,20 @@ class Lantern {
 	@shadows : PointShadow;
 
 	@relics : Relic[];
+	@shades : Shade[];
+	# The sphere the shades are drawn with, and the flare's impact sparks.
+	@shade_material : Material;
+	@sparks : Particles;
+
+	# Combat state. @health is the only way to lose that is not the clock.
+	@health : Float;
+	@lost : Bool;
+	@kills : Int;
+	# Counts down after a flare, so holding the button is not a beam.
+	@flare_cooldown : Float;
+	# Both drive a one-frame HUD flash and then decay.
+	@hurt_flash : Float;
+	@flare_flash : Float;
 	# Reused every frame rather than allocated: the lamp moves with the player.
 	@lamp_at : Vector3;
 	@carried : Int;
@@ -226,6 +396,33 @@ class Lantern {
 		@hud_timer := 0.0;
 		@hud_fps := "";
 		@exit_at := Vector3->New(0.0, 0.0, 10.5);
+
+		@health := 100.0;
+		@lost := false;
+		@kills := 0;
+		@flare_cooldown := 0.0;
+		@hurt_flash := 0.0;
+		@flare_flash := 0.0;
+	}
+
+	#~
+	How far the lamp meaningfully reaches right now.
+
+	Not the Light's range, which is fixed: this is the radius the shades treat
+	as safe, and it shrinks with the fuel. At full fuel they are held well back;
+	at a quarter they are close enough to matter; at zero the lamp is out and
+	nothing is holding them at all.
+	~#
+	method : LitRadius() ~ Float {
+		# Straight down to zero, with NO floor under it. An earlier version kept a
+		# 1.6 minimum, which quietly made the whole fight impossible: shades stop
+		# at this radius and reach you at 1.5, so a floor above 1.5 meant they
+		# could never touch you while a drop of fuel remained.
+		#
+		# 4.8 at full, so they are held at the edge of sight and visible there,
+		# and under 1.5 at about a third of a tank -- which is where the game
+		# turns from an errand into a problem.
+		return 4.8 * (@fuel / @fuel_max);
 	}
 
 	method : Run() ~ Nil {
@@ -271,9 +468,15 @@ class Lantern {
 	}
 
 	method : Update(delta : Float) ~ Nil {
-		if(@won) {
+		# Both endings freeze the world but keep drawing it, so the last frame
+		# stays on screen with the message over it.
+		if(@won | @lost) {
 			return;
 		};
+
+		if(@flare_cooldown > 0.0) { @flare_cooldown -= delta; };
+		if(@hurt_flash > 0.0) { @hurt_flash -= delta * 2.0; };
+		if(@flare_flash > 0.0) { @flare_flash -= delta * 4.0; };
 
 		speed := 3.1;
 		if(@window->KeyHeld(Scancode->SDL_SCANCODE_LSHIFT,
@@ -300,8 +503,15 @@ class Lantern {
 		# frame per press. Reading the key as held instead -- which is all this
 		# could do before -- fired TakeNearbyRelic sixty times a second for as
 		# long as the key was down, and only the already-taken check hid it.
-		if(@window->MousePressed(1) | @window->WasPressed(Scancode->SDL_SCANCODE_E)) {
+		if(@window->WasPressed(Scancode->SDL_SCANCODE_E)) {
 			TakeNearbyRelic();
+		};
+
+		# Left mouse, or space, throws a flare. Also an EDGE: the cooldown would
+		# rate-limit it anyway, but reading a held button here would drain the
+		# lamp in a second the first time somebody leaned on it.
+		if(@window->MousePressed(1) | @window->WasPressed(Scancode->SDL_SCANCODE_SPACE)) {
+			Flare();
 		};
 
 		# The lamp burns whether or not you are moving, which is what makes
@@ -315,7 +525,88 @@ class Lantern {
 			@relics[i]->Animate(delta);
 		};
 
+		# The shades move against the light the fuel is paying for, so this has
+		# to run after the fuel has been spent this frame, not before.
+		lit := LitRadius();
+		here := @camera->GetPosition();
+		touching := false;
+		each(i : @shades) {
+			if(@shades[i]->Update(delta, here, lit)) {
+				touching := true;
+			};
+		};
+
+		if(touching) {
+			# Per second, not per contact: several shades on you is worse than
+			# one, but a single one is a countdown rather than an instant loss.
+			@health -= delta * 26.0;
+			@hurt_flash := 1.0;
+			if(@health <= 0.0) {
+				@health := 0.0;
+				@lost := true;
+				"The dark closed over you."->PrintLine();
+			};
+		};
+
+		if(@sparks <> Nil) {
+			@sparks->Update(delta);
+		};
+
 		CheckExit();
+	}
+
+	#~
+	A flare: a burst of light down the line you are looking at, which costs the
+	lamp to throw.
+
+	It is the same hitscan the shooting-gallery example uses -- Scene->Raycast
+	reports the NEAREST thing, so a shade behind a pillar is safe from it, and
+	the walls stop the shot without this method knowing walls exist.
+
+	The cost is the design. Every flare is fuel not spent on keeping them back,
+	so clearing a room makes the next room darker.
+	~#
+	method : Flare() ~ Nil {
+		if(@flare_cooldown > 0.0 | @fuel <= 0.0) {
+			return;
+		};
+
+		@flare_cooldown := 0.45;
+		@flare_flash := 1.0;
+		@fuel -= 6.0;
+		if(@fuel < 0.0) {
+			@fuel := 0.0;
+		};
+
+		hit := @scene->RaycastFrom(@camera, 40.0);
+		if(<>hit->IsHit()) {
+			return;
+		};
+
+		if(@sparks <> Nil) {
+			# Pushed back along the surface normal so the burst sits in front of
+			# whatever stopped it rather than inside it.
+			@sparks->Burst(hit->GetX() + hit->GetNormalX() * 0.05,
+				hit->GetY() + hit->GetNormalY() * 0.05,
+				hit->GetZ() + hit->GetNormalZ() * 0.05, 10, 2.4);
+		};
+
+		prop := hit->GetProp();
+		if(prop = Nil) {
+			# Stone. The flare still lit it, which is the consolation.
+			return;
+		};
+
+		each(i : @shades) {
+			shade := @shades[i];
+			if(shade->IsAlive() & shade->GetProp() = prop) {
+				shade->Kill();
+				@kills += 1;
+				if(@chime <> Nil) {
+					@chime->PlayChannel(-1, 0);
+				};
+			};
+		};
 	}
 
 	method : TakeNearbyRelic() ~ Nil {
@@ -406,6 +697,13 @@ class Lantern {
 		# transparent geometry instead of being blended on at the end.
 		@scene->SetEye(eye);
 		@scene->Draw(@view_projection);
+
+		# After the scene, because the sparks are additive and must blend over
+		# what is already there rather than be depth-tested against it.
+		if(@sparks <> Nil) {
+			@sparks->Draw(@view_projection);
+		};
+
 		DrawHud();
 	}
 
@@ -449,9 +747,49 @@ class Lantern {
 			@overlay->Rect(16, 44, bar, 10, red, green, 70);
 		};
 
-		@overlay->Text("relics {$carried} / {$total}", 16, 16);
+		# Health under the fuel bar, and deliberately a different colour: the two
+		# bars mean different things and must not be read as one.
+		health_fraction := @health / 100.0;
+		health_bar := (200.0 * health_fraction)->As(Int);
+		@overlay->Rect(16, 60, 200, 10, 38, 30, 34);
+		if(health_bar > 0) {
+			@overlay->Rect(16, 60, health_bar, 10, 200, 70, 90);
+		};
 
-		if(@won) {
+		kills := @kills;
+		@overlay->Text("relics {$carried} / {$total}    shades {$kills}", 16, 16);
+
+		# The crosshair. Two short lines rather than a texture, and it brightens
+		# for the frames after a flare so a shot has an acknowledgement even when
+		# it hits nothing.
+		cx := @window->GetWidth() / 2;
+		cy := @window->GetHeight() / 2;
+		# Line takes a THICKNESS, not a colour -- the colour is overlay state, and
+		# SetTintRgb is the cheap way to set it. SetColor would work too but
+		# throws away the glyph cache, and the HUD text is drawn from the same
+		# overlay a few lines above.
+		if(@flare_flash > 0.0) {
+			@overlay->SetTintRgb(255, 230, 180);
+		}
+		else {
+			@overlay->SetTintRgb(150, 150, 150);
+		};
+		@overlay->Line(cx - 9, cy, cx - 3, cy, 2);
+		@overlay->Line(cx + 3, cy, cx + 9, cy, 2);
+		@overlay->Line(cx, cy - 9, cx, cy - 3, 2);
+		@overlay->Line(cx, cy + 3, cx, cy + 9, 2);
+		@overlay->SetTintRgb(255, 255, 255);
+
+		if(@hurt_flash > 0.0) {
+			# A red edge rather than a full-screen wash, so it reads as damage
+			# without hiding the thing that is doing it.
+			@overlay->Rect(0, 0, @window->GetWidth(), 6, 190, 40, 50);
+		};
+
+		if(@lost) {
+			@overlay->Text("The dark closed over you. Escape to quit.", 16, 84);
+		}
+		else if(@won) {
 			@overlay->Text("You are out. All four, and the lamp still lit.", 16, 68);
 		}
 		else if(@fuel <= 0.0) {
@@ -461,7 +799,7 @@ class Lantern {
 			@overlay->Text("The lamp is guttering.", 16, 68);
 		}
 		else if(@carried = total) {
-			@overlay->Text("All four. Back to the entrance.", 16, 68);
+			@overlay->Text("All four. Back to the entrance.", 16, 84);
 		};
 
 		# Dimmer than the rest, because a frame counter is not what you are
@@ -523,6 +861,8 @@ class Lantern {
 		BuildLight();
 		BuildDungeon();
 		BuildRelics();
+		BuildShades();
+		BuildSparks();
 		BuildOverlay();
 
 		return true;
@@ -709,6 +1049,49 @@ class Lantern {
 		each(i : @relics) {
 			@relics[i]->AddTo(@scene, @orb, @relic_material, @glow);
 		};
+	}
+
+	#~
+	The shades. Fixed positions rather than random ones, so the room plays the
+	same way twice and a change in behaviour is a change in the code rather than
+	the draw of the dice.
+
+	They start in the corners the lamp reaches last.
+	~#
+	method : BuildShades() ~ Nil {
+		@shade_material := Material->New(@relic_texture);
+		# Cold and dark: they have to be visible against black stone without
+		# looking like another relic to walk up to.
+		@shade_material->SetTint(0.30, 0.42, 0.65);
+
+		@shades := Shade->New[4];
+		@shades[0] := Shade->New(-9.5, 0.9, -9.5);
+		@shades[1] := Shade->New(9.5, 0.9, -9.5);
+		@shades[2] := Shade->New(-9.5, 0.9, 4.0);
+		@shades[3] := Shade->New(9.5, 0.9, 4.0);
+
+		each(i : @shades) {
+			@shades[i]->AddTo(@scene, @orb, @shade_material);
+		};
+	}
+
+	#~
+	The flare's impact sparks: one pooled, camera-facing, additively blended
+	batch, the same shape the shooting gallery uses. Warmer and shorter-lived
+	than its sparks, because this one is a flare rather than debris.
+	~#
+	method : BuildSparks() ~ Nil {
+		@sparks := @window->Own(Particles->New(64))->As(Particles);
+		@sparks->SetCamera(@camera);
+		@sparks->SetLifetime(0.5);
+		@sparks->SetSize(0.42, 0.0);
+		@sparks->SetGravity(-3.0);
+		@sparks->SetDrag(2.0);
+		@sparks->SetAdditive(true);
+
+		glow := Material->New(@relic_texture);
+		glow->SetTint(1.0, 0.80, 0.45);
+		@sparks->SetMaterial(glow);
 	}
 
 	method : BuildOverlay() ~ Nil {
