@@ -100,6 +100,23 @@ for %%f in (%STAGING%\*.msi) do (
     echo Uploaded: %%~nxf
 )
 
+REM Regenerate SHA256SUMS -- signing REWROTE the MSIs, so the manifest published
+REM alongside them now describes bytes that no longer exist. Without this, every
+REM user running `sha256sum -c SHA256SUMS` sees both Windows installers FAIL --
+REM which is what v2026.8.3 shipped, because this step lived only in a human's
+REM memory and in post_release.sh's gate 4. Signing is not finished until the
+REM manifest describes the signed bytes.
+echo.
+echo Regenerating SHA256SUMS for the signed installers...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0update_sha256sums.ps1" %VERSION%
+if errorlevel 1 (
+    echo.
+    echo ERROR: SHA256SUMS was NOT updated - the release now advertises hashes
+    echo        that do not match the signed MSIs. Fix before announcing:
+    echo          powershell -File tools\cicd\update_sha256sums.ps1 %VERSION%
+    exit /b 1
+)
+
 REM Cleanup
 rmdir /s /q %STAGING%
 
