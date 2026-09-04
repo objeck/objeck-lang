@@ -2949,6 +2949,66 @@ bundle Game.OpenGL {
 		Uniforms: "mvp", "model", "light_position" and "light_range".
 		@return the program; check IsOk()
 		~#
+		#~
+		The sky: a vertical gradient with a sun disc, evaluated per pixel from the
+		view direction.
+
+		Uniforms: "view_projection" (the camera's rotation only -- Skybox strips
+		the translation), "horizon", "zenith", "sun_color", "sun_direction",
+		"sun_size" and "has_sun".
+
+		gl_Position uses xyww rather than xyzw so the depth after the perspective
+		divide is exactly 1.0 -- the far plane. With GL_LEQUAL that would let the
+		sky draw where nothing else has; Skybox turns depth WRITES off instead,
+		which achieves the same thing without depending on the depth function the
+		caller happens to have set.
+		@return a new sky program
+		~#
+		function : Sky() ~ Shader {
+			vertex := ShaderSource->New();
+			vertex->Add("layout (location = 0) in vec3 in_position;");
+			vertex->Add("uniform mat4 view_projection;");
+			vertex->Add("out vec3 direction;");
+			vertex->Add("void main() {");
+			# The cube's own vertex position IS the view direction, which is the
+			# whole reason a cube is the geometry for this.
+			vertex->Add("  direction = in_position;");
+			vertex->Add("  vec4 clip = view_projection * vec4(in_position, 1.0);");
+			vertex->Add("  gl_Position = clip.xyww;");
+			vertex->Add("}");
+
+			fragment := ShaderSource->New();
+			fragment->Add("in vec3 direction;");
+			fragment->Add("uniform vec3 horizon;");
+			fragment->Add("uniform vec3 zenith;");
+			fragment->Add("uniform vec3 sun_color;");
+			fragment->Add("uniform vec3 sun_direction;");
+			fragment->Add("uniform float sun_size;");
+			fragment->Add("uniform int has_sun;");
+			fragment->Add("out vec4 out_color;");
+			fragment->Add("void main() {");
+			fragment->Add("  vec3 view = normalize(direction);");
+			# abs, so the ground half of the sky is the mirror of the upper half
+			# rather than a flat band of horizon colour. A scene with no floor
+			# looks wrong without it, and one with a floor never sees it.
+			fragment->Add("  float height = clamp(abs(view.y), 0.0, 1.0);");
+			# Square it: a linear blend puts the midpoint halfway up the sky,
+			# which reads as a stripe. This keeps the horizon band low.
+			fragment->Add("  vec3 sky = mix(horizon, zenith, height * height);");
+			fragment->Add("  if(has_sun != 0) {");
+			fragment->Add("    float aligned = dot(view, normalize(sun_direction));");
+			fragment->Add("    float disc = smoothstep(sun_size, 1.0, aligned);");
+			# A wide, weak halo under the disc, so the sun sits in the sky
+			# instead of being pasted onto it.
+			fragment->Add("    float halo = pow(max(aligned, 0.0), 48.0) * 0.35;");
+			fragment->Add("    sky = sky + sun_color * (disc + halo);");
+			fragment->Add("  }");
+			fragment->Add("  out_color = vec4(sky, 1.0);");
+			fragment->Add("}");
+
+			return Shader->New(vertex->Build(), fragment->Build());
+		}
+
 		function : DepthCube() ~ Shader {
 			vertex := ShaderSource->New();
 			vertex->Add("layout (location = 0) in vec3 in_position;");
@@ -5364,6 +5424,292 @@ bundle Game.OpenGL {
 			return m;
 		}
 	}
+
+	#~
+	The sky: a gradient with a sun in it, drawn behind everything else.
+
+	## Why this is not a textured cube map
+
+	The usual skybox is six images. That needs a colour cube map, which needs a
+	native upload path this library does not have, and it needs the caller to
+	find or make six matched images before they can see anything at all.
+
+	This one is computed in the fragment shader from the view direction, so it
+	needs no files, no native additions, and no assets in a release. An outdoor
+	scene gets a horizon, a zenith and a sun by saying what colour they are.
+	A photographic sky is a different feature and would want the cube map.
+
+	## How it draws
+
+	Three things have to be true or a skybox goes wrong in a way that looks like
+	something else broke:
+
+	  no translation  The view matrix's translation is stripped, so the sky does
+	                  not move when the camera walks. Leave it in and the sky
+	                  slides past like painted scenery on a nearby wall.
+	  inside the cube Mesh->CubeInterior winds its triangles inward. Using
+	                  Mesh->Cube instead leaves every face back-facing and the
+	                  sky vanishes the moment culling is on.
+	  behind          Drawn first with depth WRITES off, so everything after it
+	                  covers it without the sky having to be far away.
+
+	Draw takes the Camera rather than a matrix, because all three of those are
+	easy to get wrong and none of them are interesting.
+
+	  sky := Skybox->New();
+	  sky->SetHorizon(0.55, 0.62, 0.70);
+	  sky->SetZenith(0.12, 0.26, 0.55);
+	  sky->SetSun(0.3, 0.55, -0.75);
+	  ...
+	  window->BeginFrame();
+	  sky->Draw(camera);        # first, before the scene
+	  scene->Draw(view_projection);
+	~#
+	class Skybox implements Freeable {
+		@mesh : Mesh;
+		@shader : Shader;
+		@owns_mesh : Bool;
+		@error : String;
+
+		@horizon_r : Float; @horizon_g : Float; @horizon_b : Float;
+		@zenith_r : Float;  @zenith_g : Float;  @zenith_b : Float;
+		@sun_r : Float;     @sun_g : Float;     @sun_b : Float;
+		@sun_x : Float;     @sun_y : Float;     @sun_z : Float;
+		@sun_size : Float;
+		@has_sun : Bool;
+
+		# Scratch, reused every frame: a skybox that allocated two Float[16] per
+		# frame would be the same per-frame garbage Matrix4's Into forms exist to
+		# avoid.
+		@view : Float[];
+		@view_projection : Float[];
+
+		#~
+		A daylight sky, ready to draw.
+		~#
+		New() {
+			Init(Mesh->CubeInterior(1.0), true);
+		}
+
+		#~
+		A sky drawn with geometry the caller owns.
+		@param mesh an INWARD-facing cube. Mesh->CubeInterior makes one; Mesh->Cube
+		does not and will be invisible under back-face culling.
+		~#
+		New(mesh : Mesh) {
+			Init(mesh, false);
+		}
+
+		method : Init(mesh : Mesh, owns : Bool) ~ Nil {
+			@mesh := mesh;
+			@owns_mesh := owns;
+			@error := "";
+			@view := Float->New[16];
+			@view_projection := Float->New[16];
+
+			# A plain overcast afternoon, so a Skybox->New() with nothing set is
+			# already a believable sky rather than a debug colour.
+			@horizon_r := 0.62; @horizon_g := 0.68; @horizon_b := 0.74;
+			@zenith_r := 0.16;  @zenith_g := 0.32;  @zenith_b := 0.58;
+			@sun_r := 1.0;      @sun_g := 0.94;     @sun_b := 0.80;
+			@sun_x := 0.3;      @sun_y := 0.6;      @sun_z := -0.74;
+			@sun_size := 0.995;
+			@has_sun := true;
+
+			@shader := Shader->Sky();
+
+			# FIRST failure wins. Written the other way round, the mesh check
+			# overwrote a real shader compile log with a generic mesh message
+			# whenever both failed -- which is every time there is no GL context,
+			# and is exactly when the shader log is the thing worth reading.
+			if(@mesh = Nil | <>@mesh->IsOk()) {
+				@error := "the sky needs an inward-facing cube mesh";
+			};
+
+			if(@error->Size() = 0 & (@shader = Nil | <>@shader->IsOk())) {
+				@error := "the sky shader did not build";
+				if(@shader <> Nil & @shader->GetLog()->Size() > 0) {
+					@error := @shader->GetLog();
+				};
+			};
+		}
+
+		#~
+		@return true when the shader built and the geometry uploaded
+		~#
+		method : public : IsOk() ~ Bool {
+			return @error->Size() = 0;
+		}
+
+		#~
+		@return why this sky cannot draw, or an empty string
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		The colour at eye level.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		~#
+		method : public : SetHorizon(r : Float, g : Float, b : Float) ~ Nil {
+			@horizon_r := r; @horizon_g := g; @horizon_b := b;
+		}
+
+		#~
+		The colour straight up.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		~#
+		method : public : SetZenith(r : Float, g : Float, b : Float) ~ Nil {
+			@zenith_r := r; @zenith_g := g; @zenith_b := b;
+		}
+
+		#~
+		Where the sun is, as a DIRECTION from the viewer -- not a position. It is
+		normalised here, so any non-zero length will do.
+
+		Point this the same way as the scene's directional Light and the shadows
+		will agree with the sky. Nothing enforces that: they are two separate
+		settings, and a sun in one corner with shadows from the other is a
+		mistake this class cannot see.
+		@param x direction x
+		@param y direction y, positive is up
+		@param z direction z
+		~#
+		method : public : SetSun(x : Float, y : Float, z : Float) ~ Nil {
+			length := (x * x + y * y + z * z)->Sqrt();
+			if(length = 0.0) {
+				@has_sun := false;
+				return;
+			};
+
+			@has_sun := true;
+			@sun_x := x / length;
+			@sun_y := y / length;
+			@sun_z := z / length;
+		}
+
+		#~
+		The sun's colour.
+		@param r red, 0..1
+		@param g green, 0..1
+		@param b blue, 0..1
+		~#
+		method : public : SetSunColor(r : Float, g : Float, b : Float) ~ Nil {
+			@sun_r := r; @sun_g := g; @sun_b := b;
+		}
+
+		#~
+		How tight the sun's disc is.
+
+		This is the cosine of its angular radius, so LARGER is smaller: 0.9999 is
+		a pinpoint, 0.99 is a soft glow, and anything at or below 0.0 fills half
+		the sky. Clamped below 1.0, because exactly 1.0 is a sun of zero size
+		that flickers as it crosses a pixel centre.
+		@param cosine 0..1, nearer 1 for a smaller sun
+		~#
+		method : public : SetSunSize(cosine : Float) ~ Nil {
+			@sun_size := cosine;
+			if(@sun_size > 0.9999) {
+				@sun_size := 0.9999;
+			};
+		}
+
+		#~
+		Turn the sun off and leave only the gradient.
+		~#
+		method : public : ClearSun() ~ Nil {
+			@has_sun := false;
+		}
+
+		#~
+		Draw the sky.
+
+		Call FIRST, before the scene, and after BeginFrame has cleared. The depth
+		buffer is left untouched, so everything drawn afterwards covers this
+		regardless of distance.
+
+		Restores depth writing and the cull mode on the way out, because a pass
+		that quietly leaves state changed is the kind of bug that surfaces three
+		draw calls later in unrelated geometry.
+		@param camera the eye. Its rotation is used and its position is not.
+		~#
+		method : public : Draw(camera : Camera) ~ Nil {
+			if(<>IsOk() | camera = Nil) {
+				return;
+			};
+
+			camera->GetViewMatrixInto(@view);
+			# Strip the translation: column-major, so the last column is 12..14.
+			# This is what keeps the sky at infinity while the camera walks.
+			@view[12] := 0.0;
+			@view[13] := 0.0;
+			@view[14] := 0.0;
+
+			Matrix4->MultiplyInto(@view_projection, camera->GetProjection(), @view);
+
+			GL->SetDepthWrite(false);
+			# GL_LEQUAL, not the default GL_LESS.
+			#
+			# The vertex shader forces depth to exactly 1.0 (the far plane) via
+			# clip.xyww, and a cleared depth buffer is also 1.0 -- so under GL_LESS
+			# every sky fragment fails 1.0 < 1.0 and the result is a black screen
+			# that looks like a failed shader. CompareFunc's own comment says
+			# GL_LEQUAL is what a skybox wants; this is why.
+			#
+			# With writes off and LEQUAL the sky also works drawn LAST, filling only
+			# the pixels nothing else reached.
+			GL->SetDepthFunc(CompareFunc->GL_LEQUAL);
+			# NO cull flip. Mesh->CubeInterior is ALREADY wound inward -- that is
+			# the whole reason it exists next to Mesh->Cube -- so its faces are
+			# front-facing when seen from inside and the default GL_BACK cull
+			# keeps them. Flipping to GL_FRONT here culled exactly the faces the
+			# sky is made of, and the result was not an error or a warning: it
+			# was a black screen that looked like the shader had failed.
+
+			@shader->Use();
+			@shader->SetMatrix4("view_projection", @view_projection);
+			@shader->SetVec3("horizon", @horizon_r, @horizon_g, @horizon_b);
+			@shader->SetVec3("zenith", @zenith_r, @zenith_g, @zenith_b);
+			@shader->SetVec3("sun_color", @sun_r, @sun_g, @sun_b);
+			@shader->SetVec3("sun_direction", @sun_x, @sun_y, @sun_z);
+			@shader->SetFloat("sun_size", @sun_size);
+			if(@has_sun) {
+				@shader->SetInt("has_sun", 1);
+			}
+			else {
+				@shader->SetInt("has_sun", 0);
+			};
+
+			@mesh->Draw();
+
+			GL->SetDepthFunc(CompareFunc->GL_LESS);
+			GL->SetDepthWrite(true);
+		}
+
+		#~
+		Release the shader, and the mesh if this sky made it.
+		~#
+		method : public : Free() ~ Nil {
+			if(@shader <> Nil) {
+				@shader->Free();
+				@shader := Nil;
+			};
+
+			# Only if it was ours. A caller who passed their own mesh in is still
+			# using it.
+			if(@owns_mesh & @mesh <> Nil) {
+				@mesh->Free();
+			};
+			@mesh := Nil;
+		}
+	}
+
+
 
 	#~
 	A rotation, as a quaternion: four floats, [x, y, z, w].
