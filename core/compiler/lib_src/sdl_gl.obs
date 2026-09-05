@@ -2796,6 +2796,40 @@ bundle Game.OpenGL {
 		}
 
 		#~
+		Textured and lit, with a tangent-space normal map.
+
+		Adds "normal_map" (texture unit 3) and "has_normal_map". Material sets
+		both, so a material with no map drawn by this shader lights by its
+		geometric normal exactly as LitTextured would.
+
+		  wall := Material->New(stone);
+		  wall->SetNormalMap(stone_bumps);
+		@return a new program
+		~#
+		function : LitTexturedNormalMapped() ~ Shader {
+			return LitShader(LitVertexSource(), LitFragmentSource(true, false, false, true));
+		}
+
+		#~
+		Textured, lit, shadowed by a directional light, and normal mapped.
+		@return a new program
+		~#
+		function : LitTexturedNormalMappedShadowed() ~ Shader {
+			return LitShader(LitVertexSource(true), LitFragmentSource(true, true, false, true));
+		}
+
+		#~
+		Textured, lit, shadowed by a POINT light's cube map, and normal mapped.
+
+		The combination the lantern demo wants: a carried light, shadows in every
+		direction, and stone that is not flat.
+		@return a new program
+		~#
+		function : LitTexturedNormalMappedPointShadowed() ~ Shader {
+			return LitShader(LitVertexSource(false), LitFragmentSource(true, false, true, true));
+		}
+
+		#~
 		Lit and shadowed, with a flat colour instead of a texture.
 		@return the program; check IsOk()
 		~#
@@ -3141,6 +3175,34 @@ bundle Game.OpenGL {
 		}
 
 		function : private : LitFragmentSource(textured : Bool, shadowed : Bool, point_shadowed : Bool) ~ String {
+			return LitFragmentSource(textured, shadowed, point_shadowed, false);
+		}
+
+		#~
+		The lit fragment program, optionally sampling a tangent-space normal map.
+
+		## Why there is no tangent vertex attribute
+
+		Tangent-space normal mapping needs a tangent frame. The usual way is a
+		fourth vertex attribute, which would change the vertex layout, the native
+		upload path, and every mesh already built -- including OBJ files, which
+		mostly do not carry tangents anyway.
+
+		This derives the frame in the fragment shader from screen-space
+		derivatives of the position and the texture coordinate instead. It costs
+		a few instructions per pixel and it works with every mesh that already
+		exists, unchanged. The trade is real: the frame is per-triangle rather
+		than smoothly interpolated, so a very low-poly curved surface shows
+		faceting that a vertex tangent would not. For dressing walls, floors and
+		props -- what this library is for -- that is not visible.
+		@param textured sample an albedo texture rather than a flat colour
+		@param shadowed sample a directional shadow map
+		@param point_shadowed sample a point light's cube shadow
+		@param normal_mapped perturb the normal with a tangent-space map
+		@return the fragment source
+		~#
+		function : private : LitFragmentSource(textured : Bool, shadowed : Bool,
+				point_shadowed : Bool, normal_mapped : Bool) ~ String {
 			source := ShaderSource->New();
 			source->Add("in vec3 normal;");
 			source->Add("in vec2 texcoord;");
@@ -3164,6 +3226,13 @@ bundle Game.OpenGL {
 			else {
 				source->Add("uniform vec3 color;");
 			};
+			if(normal_mapped) {
+				source->Add("uniform sampler2D normal_map;");
+				# Set by Material->ApplyTo for materials WITHOUT a map too, so a
+				# mixed scene drawn by one shader does not read whatever texture
+				# was last bound to unit 3.
+				source->Add("uniform int has_normal_map;");
+			};
 			# A per-object multiplier, so one texture can dress many objects in
 			# different colours. Guarded against zero: GL leaves an unset uniform at
 			# zero, and an unguarded tint would multiply every surface to black the
@@ -3172,6 +3241,32 @@ bundle Game.OpenGL {
 			# from an invisible one, so nothing useful is given up.
 			source->Add("uniform vec3 tint;");
 			source->Add("uniform float opacity;");
+
+			if(normal_mapped) {
+				# Christian Schuler's cotangent frame: recover a tangent basis
+				# from how the position and the texture coordinate change across
+				# the triangle, so no tangent attribute is needed.
+				#
+				# dp2perp/dp1perp are the cross products taken ONCE and reused
+				# for both axes; writing it the obvious way costs four crosses
+				# per pixel instead of two.
+				source->Add("mat3 cotangent_frame(vec3 nrm, vec3 pos, vec2 uv) {");
+				source->Add("  vec3 dp1 = dFdx(pos);");
+				source->Add("  vec3 dp2 = dFdy(pos);");
+				source->Add("  vec2 duv1 = dFdx(uv);");
+				source->Add("  vec2 duv2 = dFdy(uv);");
+				source->Add("  vec3 dp2perp = cross(dp2, nrm);");
+				source->Add("  vec3 dp1perp = cross(nrm, dp1);");
+				source->Add("  vec3 t = dp2perp * duv1.x + dp1perp * duv2.x;");
+				source->Add("  vec3 b = dp2perp * duv1.y + dp1perp * duv2.y;");
+				# A degenerate UV -- a face with no texture coordinates, or a
+				# collapsed triangle -- makes both axes zero length. inversesqrt
+				# of zero is infinity, so clamp the denominator rather than
+				# letting the frame become NaN and the surface turn black.
+				source->Add("  float scale = inversesqrt(max(max(dot(t, t), dot(b, b)), 1e-12));");
+				source->Add("  return mat3(t * scale, b * scale, nrm);");
+				source->Add("}");
+			};
 
 			# Lights as ARRAYS with a count, which is how forward rendering carries
 			# more than one. The maximum is a compile-time constant because GLSL
@@ -3248,7 +3343,21 @@ bundle Game.OpenGL {
 			};
 
 			source->Add("void main() {");
-			source->Add("  vec3 n = normalize(normal);");
+			if(normal_mapped) {
+				source->Add("  vec3 geometric = normalize(normal);");
+				source->Add("  vec3 n = geometric;");
+				source->Add("  if(has_normal_map != 0) {");
+				# 2*x-1 to undo the 0..1 storage. The map is a DIRECTION, so it
+				# must not be sRGB-decoded on the way in -- this library does no
+				# sRGB conversion anywhere, which is why nothing extra is needed
+				# here and why that is worth stating rather than assuming.
+				source->Add("    vec3 sampled = texture(normal_map, texcoord).xyz * 2.0 - 1.0;");
+				source->Add("    n = normalize(cotangent_frame(geometric, world_position, texcoord) * sampled);");
+				source->Add("  }");
+			}
+			else {
+				source->Add("  vec3 n = normalize(normal);");
+			};
 			source->Add("  vec3 to_eye = normalize(view_position - world_position);");
 			source->Add("  vec3 lit = ambient;");
 			source->Add("  int count = min(light_count, MAX_LIGHTS);");
@@ -7626,6 +7735,9 @@ bundle Game.OpenGL {
 	~#
 	class Material {
 		@texture : Texture2D;
+		# Optional. Nil for every material that existed before normal mapping,
+		# which is why nothing about the old path changes.
+		@normal_map : Texture2D;
 		@tr : Float; @tg : Float; @tb : Float;
 		@shininess : Float;
 		@specular : Float;
@@ -7637,6 +7749,7 @@ bundle Game.OpenGL {
 		~#
 		New(texture : Texture2D) {
 			@texture := texture;
+			@normal_map := Nil;
 			@tr := 1.0; @tg := 1.0; @tb := 1.0;
 			@shininess := 32.0;
 			@specular := 0.0;
@@ -7673,6 +7786,39 @@ bundle Game.OpenGL {
 		@param g green, 0..1
 		@param b blue, 0..1
 		~#
+		#~
+		A tangent-space normal map: the bumps.
+
+		The texture holds directions, not colour, encoded so that flat is the
+		familiar lavender (128, 128, 255). It MUST be uploaded without sRGB
+		conversion and is best sampled unfiltered-to-linear; Texture2D->FromFile
+		does the right thing already, since this library does no sRGB conversion
+		anywhere.
+
+		Only the shaders that ask for it will use it -- ApplyTo checks
+		HasUniform, so setting a normal map on a material drawn by a shader that
+		does not sample one is harmless and silent. Shader->LitTexturedNormalMapped
+		is the one that does.
+		@param texture the map, or Nil to remove it
+		~#
+		method : public : SetNormalMap(texture : Texture2D) ~ Nil {
+			@normal_map := texture;
+		}
+
+		#~
+		@return the normal map, or Nil
+		~#
+		method : public : GetNormalMap() ~ Texture2D {
+			return @normal_map;
+		}
+
+		#~
+		@return true when ApplyTo will bind a normal map
+		~#
+		method : public : HasNormalMap() ~ Bool {
+			return @normal_map <> Nil & @normal_map->IsOk();
+		}
+
 		method : public : SetTint(r : Float, g : Float, b : Float) ~ Nil {
 			@tr := r; @tg := g; @tb := b;
 		}
@@ -7761,6 +7907,29 @@ bundle Game.OpenGL {
 
 			if(@texture <> Nil & @texture->IsOk()) {
 				@texture->Bind(unit);
+			};
+
+			# Unit 3. Unit 0 is the albedo, 1 is ShadowMap's default and 2 is
+			# PointShadow's, so this is the first one nothing else claims -- a
+			# collision here would not fail loudly, it would silently light the
+			# scene with a shadow map read as bumps.
+			#
+			# has_normal_map is set either way, so a shader that samples one gets
+			# the right answer for a material WITHOUT a map rather than reading
+			# whatever texture happened to be bound to unit 3 last.
+			if(shader->HasUniform("normal_map")) {
+				if(HasNormalMap()) {
+					shader->SetInt("normal_map", 3);
+					@normal_map->Bind(3);
+					if(shader->HasUniform("has_normal_map")) {
+						shader->SetInt("has_normal_map", 1);
+					};
+				}
+				else {
+					if(shader->HasUniform("has_normal_map")) {
+						shader->SetInt("has_normal_map", 0);
+					};
+				};
 			};
 		}
 	}

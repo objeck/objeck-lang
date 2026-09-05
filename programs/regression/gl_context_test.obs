@@ -106,6 +106,7 @@ class GlContextTest {
 		CheckLightRig();
 		CheckFrustumCulling();
 		CheckMaterials();
+		CheckNormalMaps();
 		CheckShadows();
 		CheckSpotShadows();
 		CheckPointShadows();
@@ -1677,6 +1678,101 @@ class GlContextTest {
 	forgotten tint turns the whole surface black -- which is the failure a caller
 	would report as "my model is invisible".
 	~#
+	#~
+	Does a normal map reach the lighting, and is a FLAT one neutral?
+
+	"The shader compiled" is worth almost nothing here. A normal map that is
+	sampled and then dropped compiles perfectly and renders exactly like no map,
+	and so does one whose 0..1 decode is missing -- the second looks lit, just
+	wrongly, which is harder to notice than black.
+
+	So three draws of the same cube, varying only the map:
+
+	  A  no map at all
+	  B  a FLAT map, (128,128,255), which decodes to "straight out of the
+	     surface" and must therefore light identically to A. If it does not, the
+	     2x-1 decode is wrong or an axis is flipped.
+	  C  a TILTED map, which must light DIFFERENTLY. If it does not, the map is
+	     not reaching the shading normal.
+
+	The light is deliberately off-axis. Head-on, a tilted normal and a flat one
+	receive nearly the same amount of light and C would pass while proving
+	nothing.
+	~#
+	method : CheckNormalMaps() ~ Nil {
+		shader := Shader->LitTexturedNormalMapped();
+		if(<>Check("Shader->LitTexturedNormalMapped compiles", shader->IsOk())) {
+			log := shader->GetLog();
+			"  log: {$log}"->PrintLine();
+			return;
+		};
+
+		# The CPU half and the GPU half have to agree on the names, or
+		# Material->ApplyTo is a silent no-op.
+		Check("the normal-mapped shader exposes normal_map", shader->HasUniform("normal_map"));
+		Check("the normal-mapped shader exposes has_normal_map", shader->HasUniform("has_normal_map"));
+		# And the plain lit shader must NOT have gained them: the two share a
+		# source builder, so a leak there would change every existing program.
+		plain := Shader->LitTextured();
+		Check("plain LitTextured has no normal_map", <>plain->HasUniform("normal_map"));
+
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		flat := Texture2D->Solid(Texture2D->Rgb(128, 128, 255));
+		tilted := Texture2D->Solid(Texture2D->Rgb(240, 128, 150));
+		if(<>Check("textures for the normal map checks", cube->IsOk() & white->IsOk() &
+				flat->IsOk() & tilted->IsOk())) {
+			shader->Free(); plain->Free();
+			return;
+		};
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 5.0));
+		projection := Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect());
+		view_projection := Matrix4->Multiply(projection, camera->GetViewMatrix());
+		identity := Matrix4->Identity();
+
+		light := Light->New();
+		light->SetAmbient(0.0, 0.0, 0.0);
+		light->SetColor(1.0, 1.0, 1.0);
+		light->SetDirection(0.6, 0.0, 0.8);
+
+		none := DrawNormalMapped(shader, cube, view_projection, identity, light, white, Nil);
+		neutral := DrawNormalMapped(shader, cube, view_projection, identity, light, white, flat);
+		bumped := DrawNormalMapped(shader, cube, view_projection, identity, light, white, tilted);
+
+		"  normal map: none={$none} flat={$neutral} tilted={$bumped}"->PrintLine();
+
+		Check("the surface is actually lit", none > 40);
+		Check("a flat normal map lights the same as no map", (none - neutral)->Abs() <= 3);
+		Check("a tilted normal map changes the lighting", (neutral - bumped)->Abs() >= 8);
+
+		shader->Free();
+		plain->Free();
+		cube->Free();
+	}
+
+	method : DrawNormalMapped(shader : Shader, mesh : Mesh, view_projection : Float[],
+			model : Float[], light : Light, albedo : Texture2D, normal_map : Texture2D) ~ Int {
+		material := Material->New(albedo);
+		material->SetSpecular(1.0, 0.0);
+		if(normal_map <> Nil) {
+			material->SetNormalMap(normal_map);
+		};
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		shader->Use();
+		shader->SetMatrix4("mvp", Matrix4->Multiply(view_projection, model));
+		shader->SetMatrix4("model", model);
+		shader->SetInt("tex", 0);
+		light->ApplyTo(shader);
+		material->ApplyTo(shader, 0);
+		mesh->Draw();
+
+		return (GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x0000FF00) / 0x100;
+	}
+
 	method : CheckMaterials() ~ Nil {
 		shader := Shader->LitTextured();
 		cube := Mesh->Cube();
