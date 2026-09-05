@@ -7201,10 +7201,24 @@ bundle Game.OpenGL {
 			# well, so a model matrix that scales and translates in pixels lands it
 			# exactly where asked. Mesh->Quad is centred on the origin, which would
 			# put half of every label outside its box, so this one is built corner-up.
-			vertices := [0.0, 0.0, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0,
-			             1.0, 0.0, 0.0,  0.0, 0.0, 1.0,  1.0, 0.0,
-			             1.0, 1.0, 0.0,  0.0, 0.0, 1.0,  1.0, 1.0,
-			             0.0, 1.0, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0];
+			#
+			# V IS INVERTED: position y = 0 is the TOP of the overlay's rectangle and
+			# takes v = 1, not v = 0.
+			#
+			# Texture2D flips rows on upload, because an SDL surface stores row 0 at
+			# the top while GL samples t = 0 at the bottom -- that flip is what makes
+			# a loaded image appear the right way up on a MESH, and it is correct
+			# there. The overlay draws in screen space where y grows DOWNWARD, so the
+			# same flip lands the image's bottom row along the rectangle's top edge
+			# and everything the overlay drew came out upside down: every label,
+			# every HUD bar, every crosshair, in every program that used one.
+			#
+			# Fixed here rather than in the upload, which would invert every 3D
+			# texture in the library to fix one screen-space case.
+			vertices := [0.0, 0.0, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0,
+			             1.0, 0.0, 0.0,  0.0, 0.0, 1.0,  1.0, 1.0,
+			             1.0, 1.0, 0.0,  0.0, 0.0, 1.0,  1.0, 0.0,
+			             0.0, 1.0, 0.0,  0.0, 0.0, 1.0,  0.0, 0.0];
 			@quad := Mesh->New(vertices, [0, 1, 2, 2, 3, 0], Mesh->PositionNormalTexcoord());
 
 			@shader := Shader->TexturedTinted();
