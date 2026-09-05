@@ -360,6 +360,11 @@ class Lantern {
 	@orb : Mesh;
 
 	@wall_texture : Texture2D;
+	@wall_bumps : Texture2D;
+	@floor_bumps : Texture2D;
+	# Shared, so Scene's material cache has something to hit.
+	@wall_material : Material;
+	@floor_material : Material;
 	@floor_texture : Texture2D;
 	@relic_texture : Texture2D;
 	# Two materials for the same mesh: the solid relic, and the barely-opaque
@@ -921,7 +926,10 @@ class Lantern {
 		GL->Enable(Capability->GL_CULL_FACE);
 		GL->ClearColor(0.015, 0.017, 0.025, 1.0);
 
-		@shader := @window->Own(Shader->LitTexturedPointShadowed())->As(Shader);
+		# Normal mapped, because a carried light is the one setup where relief is
+		# worth having: the lamp moves, so the highlights on the stone move with
+		# it. A fixed light would make bumps look painted on.
+		@shader := @window->Own(Shader->LitTexturedNormalMappedPointShadowed())->As(Shader);
 		if(<>@shader->IsOk()) {
 			@shader->GetLog()->ErrorLine();
 			return false;
@@ -938,6 +946,29 @@ class Lantern {
 			Texture2D->Rgb(66, 60, 54), TextureWrap->GL_REPEAT))->As(Texture2D);
 		@floor_texture := @window->Own(Texture2D->Checker(64, 3, Texture2D->Rgb(58, 54, 50),
 			Texture2D->Rgb(44, 41, 38), TextureWrap->GL_REPEAT))->As(Texture2D);
+		# The bumps. A checker of two TILTED normals rather than two colours: one
+		# square leans one way and its neighbour the other, so the wall reads as
+		# courses of blocks catching the lamp at different angles. (128,128,255)
+		# would be flat and do nothing.
+		#
+		# Deliberately offset from the albedo's own checker -- 8 against 4 -- so
+		# the relief does not line up with the colour and read as one flat
+		# pattern rather than as surface.
+		@wall_bumps := @window->Own(Texture2D->Checker(64, 8, Texture2D->Rgb(168, 128, 220),
+			Texture2D->Rgb(88, 128, 220), TextureWrap->GL_REPEAT))->As(Texture2D);
+		@floor_bumps := @window->Own(Texture2D->Checker(64, 6, Texture2D->Rgb(148, 148, 230),
+			Texture2D->Rgb(108, 108, 230), TextureWrap->GL_REPEAT))->As(Texture2D);
+
+		# ONE material each, shared by every slab that uses it. Box->New would
+		# build a separate Material per box, and Scene->DrawOne only skips the
+		# uniform writes when the material is the SAME OBJECT as the last one --
+		# so sharing here is what keeps the dungeon at two material switches a
+		# frame instead of one per wall.
+		@wall_material := Material->New(@wall_texture);
+		@wall_material->SetNormalMap(@wall_bumps);
+		@floor_material := Material->New(@floor_texture);
+		@floor_material->SetNormalMap(@floor_bumps);
+
 		@relic_texture := @window->Own(Texture2D->Solid(0xFFF2C879))->As(Texture2D);
 		@relic_material := Material->New(@relic_texture);
 		@glow := Material->New(@relic_texture);
@@ -1131,6 +1162,14 @@ class Lantern {
 	method : Slab(cx : Float, cy : Float, cz : Float, hx : Float, hy : Float,
 			hz : Float, texture : Texture2D, solid : Bool) ~ Nil {
 		box := Box->New(Vector3->New(cx, cy, cz), Vector3->New(hx, hy, hz), texture);
+		# The shared material carries the normal map; Box->New would otherwise
+		# have made a private one with no map on it.
+		if(texture = @wall_texture & @wall_material <> Nil) {
+			box->SetMaterial(@wall_material);
+		}
+		else if(texture = @floor_texture & @floor_material <> Nil) {
+			box->SetMaterial(@floor_material);
+		};
 		box->SetSolid(solid);
 		@scene->Add(box);
 	}
