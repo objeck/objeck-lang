@@ -9,6 +9,7 @@ Lantern -- find four relics in the dark, and get out before the lamp does.
   shift        run
   E            take a relic you are standing next to
   click/space  throw a flare
+  R            start again
   escape       quit
 
 ## The game
@@ -182,6 +183,17 @@ class Relic {
 		dz := @at->GetZ() - eye->GetZ();
 		return (dx * dx + dz * dz)->Sqrt();
 	}
+
+	#~
+	Back on its pedestal, for a restart.
+	~#
+	method : public : Restore() ~ Nil {
+		@taken := false;
+		if(@body <> Nil) {
+			@body->SetVisible(true);
+			@glow->SetVisible(true);
+		};
+	}
 }
 
 
@@ -222,7 +234,32 @@ class Shade {
 		@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY(), @at->GetZ());
 	}
 
+	#~
+	How close a shade has to get to be on you.
+
+	A function rather than a literal because the HUD needs it too: the fuel bar
+	has to change colour at the fuel level where LitRadius() falls below THIS,
+	and when the two were written as separate numbers they disagreed -- the bar
+	stayed green through the whole window where the shades could already reach.
+	~#
+	function : public : Reach() ~ Float { return 1.5; }
+
 	method : public : IsAlive() ~ Bool { return @alive; }
+
+	#~
+	Back to the start, for a restart. Position, life, fade and scale -- a shade
+	killed last round is mid-collapse and would otherwise return flattened.
+	~#
+	method : public : Restore() ~ Nil {
+		@alive := true;
+		@fade := 0.0;
+		@at->Set(@home->GetX(), @home->GetY(), @home->GetZ());
+		if(@body <> Nil) {
+			@body->SetVisible(true);
+			@body->GetTransform()->SetScale(0.42);
+			@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY(), @at->GetZ());
+		};
+	}
 	method : public : GetAt() ~ Vector3 { return @at; }
 	method : public : GetProp() ~ Prop { return @body; }
 
@@ -309,10 +346,10 @@ class Shade {
 			@body->GetTransform()->SetRotation(@bob * 0.35, 0.0, 0.0);
 		};
 
-		# 1.5, not touching-distance: a shade that has closed to arm's length is
-		# already on you, and requiring overlap made the threat read as a
-		# collision bug rather than a threat.
-		return distance < 1.5;
+		# Reach(), not a literal: see the note on that function. A shade that has
+		# closed to arm's length is already on you, and requiring overlap made
+		# the threat read as a collision bug rather than a threat.
+		return distance < Reach();
 	}
 }
 
@@ -413,6 +450,23 @@ class Lantern {
 	at a quarter they are close enough to matter; at zero the lamp is out and
 	nothing is holding them at all.
 	~#
+	#~
+	The lamp's reach at a full tank.
+	~#
+	function : LitFull() ~ Float { return 4.8; }
+
+	#~
+	The fuel fraction below which the shades can reach the player.
+
+	DERIVED, not written down. The HUD used a hardcoded 0.25 while the mechanic
+	crossed over at 0.3125, so the fuel bar stayed green and the "guttering"
+	warning stayed silent through the entire window where the game had already
+	turned lethal -- the one moment the player most needed telling.
+	~#
+	function : DangerFraction() ~ Float {
+		return Shade->Reach() / LitFull();
+	}
+
 	method : LitRadius() ~ Float {
 		# Straight down to zero, with NO floor under it. An earlier version kept a
 		# 1.6 minimum, which quietly made the whole fight impossible: shades stop
@@ -422,7 +476,7 @@ class Lantern {
 		# 4.8 at full, so they are held at the edge of sight and visible there,
 		# and under 1.5 at about a third of a tank -- which is where the game
 		# turns from an errand into a problem.
-		return 4.8 * (@fuel / @fuel_max);
+		return LitFull() * (@fuel / @fuel_max);
 	}
 
 	method : Run() ~ Nil {
@@ -467,7 +521,53 @@ class Lantern {
 		GL->ReportErrors("the lantern");
 	}
 
+	#~
+	Put everything back and play again.
+
+	Reachable from the ENDINGS as well as mid-run, which is the point: without
+	it a death meant quitting the program and launching it again, and the game
+	had a lose state before it had a way to try once more.
+
+	Restores the relics and the shades rather than rebuilding the scene. The
+	props are already in it -- making new ones would leak the old ones into a
+	Scene that has no way to drop them, and every restart would cost a little
+	more memory than the last.
+	~#
+	method : Restart() ~ Nil {
+		@carried := 0;
+		@won := false;
+		@lost := false;
+		@kills := 0;
+		@fuel := @fuel_max;
+		@health := 100.0;
+		@flare_cooldown := 0.0;
+		@hurt_flash := 0.0;
+		@flare_flash := 0.0;
+
+		each(i : @relics) {
+			@relics[i]->Restore();
+		};
+
+		each(i : @shades) {
+			@shades[i]->Restore();
+		};
+
+		# Position AND facing: PlaceLookingAt sets both, so a restart does not
+		# leave the player staring wherever they died.
+		@camera->PlaceLookingAt(Vector3->New(0.0, 1.6, 9.0),
+			Vector3->New(0.0, 1.6, 0.0));
+
+		"Again. Four relics, and the lamp is full."->PrintLine();
+	}
+
 	method : Update(delta : Float) ~ Nil {
+		# R restarts, and is read BEFORE the ending check -- otherwise the two
+		# states that most need it are the two that cannot reach it.
+		if(@window->WasPressed(Scancode->SDL_SCANCODE_R)) {
+			Restart();
+			return;
+		};
+
 		# Both endings freeze the world but keep drawing it, so the last frame
 		# stays on screen with the message over it.
 		if(@won | @lost) {
@@ -736,11 +836,14 @@ class Lantern {
 		# The trough, so an empty bar is still visibly a bar rather than nothing.
 		@overlay->Rect(16, 44, 200, 10, 38, 34, 30);
 		if(bar > 0) {
+			# The ramp pivots on the fuel level where the shades can reach you,
+			# so the bar turns red at the moment the danger actually starts
+			# rather than at a number that merely looked about right.
+			danger := DangerFraction();
 			red := 220;
 			green := 60;
-			if(fraction > 0.25) {
-				# 0.25..1.0 mapped onto amber..green
-				lift := (fraction - 0.25) / 0.75;
+			if(fraction > danger) {
+				lift := (fraction - danger) / (1.0 - danger);
 				red := 220 - (140.0 * lift)->As(Int);
 				green := 60 + (150.0 * lift)->As(Int);
 			};
@@ -787,16 +890,18 @@ class Lantern {
 		};
 
 		if(@lost) {
-			@overlay->Text("The dark closed over you. Escape to quit.", 16, 84);
+			@overlay->Text("The dark closed over you. R to try again, escape to quit.", 16, 84);
 		}
 		else if(@won) {
-			@overlay->Text("You are out. All four, and the lamp still lit.", 16, 68);
+			@overlay->Text("You are out. All four, and the lamp still lit. R to play again.", 16, 68);
 		}
 		else if(@fuel <= 0.0) {
 			@overlay->Text("The lamp is out. You can still feel your way.", 16, 68);
 		}
-		else if(fraction < 0.25) {
-			@overlay->Text("The lamp is guttering.", 16, 68);
+		else if(fraction < DangerFraction()) {
+			# Says what is true rather than what is merely atmospheric: below
+			# this the lamp no longer holds them off.
+			@overlay->Text("The lamp is guttering -- they can reach you now.", 16, 68);
 		}
 		else if(@carried = total) {
 			@overlay->Text("All four. Back to the entrance.", 16, 84);
