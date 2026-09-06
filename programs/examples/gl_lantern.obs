@@ -7,7 +7,7 @@ Lantern -- find four relics in the dark, and get out before the lamp does.
   mouse        look around
   W A S D      walk
   shift        run
-  E            take a relic you are standing next to
+  E            take a relic (or just walk into one)
   click/space  throw a flare
   R            start again
   escape       quit
@@ -338,7 +338,7 @@ class Shade {
 		if(distance > lit) {
 			target_x := eye->GetX();
 			target_z := eye->GetZ();
-			speed := 1.55;
+			speed := 1.35;
 		};
 
 		dx := target_x - @at->GetX();
@@ -397,6 +397,10 @@ class Monster {
 	@head : Prop;
 	@eye_left : Prop;
 	@eye_right : Prop;
+	@horn_left : Prop;
+	@horn_right : Prop;
+	@arm_left : Prop;
+	@arm_right : Prop;
 	@alive : Bool;
 	@health : Int;
 	@fade : Float;
@@ -420,28 +424,60 @@ class Monster {
 	@param hide the body and head material
 	@param eye the emissive eye material
 	~#
-	method : public : AddTo(scene : Scene, mesh : Mesh, hide : Material,
+	method : public : AddTo(scene : Scene, block : Mesh, orb : Mesh, hide : Material,
 			eye : Material) ~ Nil {
-		@body := scene->AddProp(Prop->New(mesh, hide));
-		@body->GetTransform()->SetScale(0.55, 0.42, 0.55);
+		# CUBES, not spheres. Three nested spheres read as a snowman from any
+		# distance -- the silhouette is what says "creature", and a sphere has
+		# the same silhouette from every angle, which is exactly the wrong
+		# property for something you are meant to recognise across a dark room.
+		@body := scene->AddProp(Prop->New(block, hide));
+		@body->GetTransform()->SetScale(0.46, 0.62, 0.34);
 		@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY(), @at->GetZ());
 
-		@head := scene->AddProp(Prop->New(mesh, hide));
-		@head->GetTransform()->SetScale(0.30);
-		# Parented, so everything below moves when the body does and nothing has
-		# to be positioned twice.
+		# Everything below is PARENTED to the body: one position update moves
+		# the whole creature, and the local offsets never have to be recomputed.
+		@head := scene->AddProp(Prop->New(block, hide));
+		@head->GetTransform()->SetScale(0.62, 0.45, 0.72);
 		@head->GetTransform()->SetParent(@body->GetTransform());
-		@head->GetTransform()->SetPosition(0.0, 1.15, 0.0);
+		@head->GetTransform()->SetPosition(0.0, 1.25, 0.0);
 
-		@eye_left := scene->AddProp(Prop->New(mesh, eye));
-		@eye_left->GetTransform()->SetScale(0.085);
+		# Horns, angled outward. Two thin boxes are enough to break the
+		# silhouette, which is all a shape at this distance needs to do.
+		@horn_left := scene->AddProp(Prop->New(block, hide));
+		@horn_left->GetTransform()->SetScale(0.16, 0.9, 0.16);
+		@horn_left->GetTransform()->SetParent(@head->GetTransform());
+		@horn_left->GetTransform()->SetPosition(-0.62, 0.95, 0.1);
+		@horn_left->GetTransform()->SetRotation(0.0, 0.0, -0.45);
+
+		@horn_right := scene->AddProp(Prop->New(block, hide));
+		@horn_right->GetTransform()->SetScale(0.16, 0.9, 0.16);
+		@horn_right->GetTransform()->SetParent(@head->GetTransform());
+		@horn_right->GetTransform()->SetPosition(0.62, 0.95, 0.1);
+		@horn_right->GetTransform()->SetRotation(0.0, 0.0, 0.45);
+
+		# Long arms, hanging. They swing in Update, which is what makes it read
+		# as walking rather than sliding.
+		@arm_left := scene->AddProp(Prop->New(block, hide));
+		@arm_left->GetTransform()->SetScale(0.28, 1.15, 0.28);
+		@arm_left->GetTransform()->SetParent(@body->GetTransform());
+		@arm_left->GetTransform()->SetPosition(-1.25, 0.05, 0.0);
+
+		@arm_right := scene->AddProp(Prop->New(block, hide));
+		@arm_right->GetTransform()->SetScale(0.28, 1.15, 0.28);
+		@arm_right->GetTransform()->SetParent(@body->GetTransform());
+		@arm_right->GetTransform()->SetPosition(1.25, 0.05, 0.0);
+
+		# Eyes stay round, and stay emissive: they are the part meant to be seen
+		# before anything else resolves.
+		@eye_left := scene->AddProp(Prop->New(orb, eye));
+		@eye_left->GetTransform()->SetScale(0.16, 0.22, 0.10);
 		@eye_left->GetTransform()->SetParent(@head->GetTransform());
-		@eye_left->GetTransform()->SetPosition(-0.42, 0.15, -0.85);
+		@eye_left->GetTransform()->SetPosition(-0.38, 0.18, -0.92);
 
-		@eye_right := scene->AddProp(Prop->New(mesh, eye));
-		@eye_right->GetTransform()->SetScale(0.085);
+		@eye_right := scene->AddProp(Prop->New(orb, eye));
+		@eye_right->GetTransform()->SetScale(0.16, 0.22, 0.10);
 		@eye_right->GetTransform()->SetParent(@head->GetTransform());
-		@eye_right->GetTransform()->SetPosition(0.42, 0.15, -0.85);
+		@eye_right->GetTransform()->SetPosition(0.38, 0.18, -0.92);
 	}
 
 	method : public : IsAlive() ~ Bool { return @alive; }
@@ -507,6 +543,10 @@ class Monster {
 		if(@head <> Nil) { @head->SetVisible(visible); };
 		if(@eye_left <> Nil) { @eye_left->SetVisible(visible); };
 		if(@eye_right <> Nil) { @eye_right->SetVisible(visible); };
+		if(@horn_left <> Nil) { @horn_left->SetVisible(visible); };
+		if(@horn_right <> Nil) { @horn_right->SetVisible(visible); };
+		if(@arm_left <> Nil) { @arm_left->SetVisible(visible); };
+		if(@arm_right <> Nil) { @arm_right->SetVisible(visible); };
 	}
 
 	#~
@@ -563,7 +603,17 @@ class Monster {
 			# Relative to the body, which is what parenting buys: this is a
 			# local offset and the body's own position and turn are already in
 			# the matrix by the time it is applied.
-			@head->GetTransform()->SetPosition(0.0, 1.15 + 0.10 * @bob->Sin(), 0.0);
+			@head->GetTransform()->SetPosition(0.0, 1.25 + 0.10 * @bob->Sin(), 0.0);
+		};
+
+		# Arms swing in opposition. Cheap, and it is the difference between a
+		# thing walking at you and a box sliding along the floor.
+		swing := 0.55 * @bob->Sin();
+		if(@arm_left <> Nil) {
+			@arm_left->GetTransform()->SetRotation(0.0, swing, 0.0);
+		};
+		if(@arm_right <> Nil) {
+			@arm_right->GetTransform()->SetRotation(0.0, swing * -1.0, 0.0);
 		};
 
 		return distance < 1.4;
@@ -733,8 +783,12 @@ class Lantern {
 			@window->BeginFrame();
 			delta := @window->GetDelta();
 
-			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity * -1.0);
-			@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
+			# No sign flip on either axis. Both carried a * -1.0, which meant
+			# moving the mouse right turned left and pushing it forward looked
+			# down -- inverted on both axes at once, which reads as the controls
+			# being broken rather than as a preference.
+			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity);
+			@camera->Look(@window->GetMouseDeltaY() * @sensitivity);
 
 			Update(delta);
 			Draw();
@@ -833,8 +887,15 @@ class Lantern {
 		# could do before -- fired TakeNearbyRelic sixty times a second for as
 		# long as the key was down, and only the already-taken check hid it.
 		if(@window->WasPressed(Scancode->SDL_SCANCODE_E)) {
+		# Walking into a relic takes it, and E still works for anyone who
+		# expects a key. Both, because across ten sessions not one relic was
+		# collected and there was no way to tell whether that was the key, the
+		# radius, or simply never getting close enough -- a proximity pickup
+		# removes one of those three from the question for good, and the player
+		# is already walking to the relic anyway.
 			TakeNearbyRelic();
 		};
+		TakeNearbyRelic();
 
 		# Left mouse, or space, throws a flare. Also an EDGE: the cooldown would
 		# rate-limit it anyway, but reading a held button here would drain the
@@ -874,7 +935,12 @@ class Lantern {
 		if(touching) {
 			# Per second, not per contact: several shades on you is worse than
 			# one, but a single one is a countdown rather than an instant loss.
-			@health -= delta * 26.0;
+			# 10, not 26. At 26 a single touch killed in under four seconds, and
+			# the probe showed the player dying 5.85 units from the nearest
+			# relic having never once been inside the 1.3 pickup radius across
+			# nine sessions. Being caught should cost you the run's pace, not
+			# the run: ten seconds is long enough to break away and keep going.
+			@health -= delta * 10.0;
 			@hurt_flash := 1.0;
 			if(@health <= 0.0) {
 				@health := 0.0;
@@ -1528,7 +1594,7 @@ class Lantern {
 		@monsters[1] := Monster->New(11.0, 0.55, -11.0);
 
 		each(i : @monsters) {
-			@monsters[i]->AddTo(@scene, @orb, @monster_material, @eye_material);
+			@monsters[i]->AddTo(@scene, @cube, @orb, @monster_material, @eye_material);
 		};
 	}
 
