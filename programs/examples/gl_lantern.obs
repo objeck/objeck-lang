@@ -783,8 +783,12 @@ class Lantern {
 			@window->BeginFrame();
 			delta := @window->GetDelta();
 
-			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity * -1.0);
-			@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
+			# No sign flip on either axis. Both carried a * -1.0, which meant
+			# moving the mouse right turned left and pushing it forward looked
+			# down -- inverted on both axes at once, which reads as the controls
+			# being broken rather than as a preference.
+			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity);
+			@camera->Look(@window->GetMouseDeltaY() * @sensitivity);
 
 			Update(delta);
 			Draw();
