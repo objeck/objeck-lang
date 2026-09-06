@@ -783,12 +783,16 @@ class Lantern {
 			@window->BeginFrame();
 			delta := @window->GetDelta();
 
-			# No sign flip on either axis. Both carried a * -1.0, which meant
-			# moving the mouse right turned left and pushing it forward looked
-			# down -- inverted on both axes at once, which reads as the controls
-			# being broken rather than as a preference.
+			# The two axes want OPPOSITE signs, which is why flipping both
+			# together was wrong in each direction it was tried. Turn takes the
+			# raw delta -- mouse right turns right. Look takes it negated, so
+			# pushing the mouse forward raises the view.
+			#
+			# Both carried a * -1.0 originally, which inverted the horizontal as
+			# well and made a dark maze genuinely hard to navigate; removing both
+			# then inverted the vertical the other way. One sign each.
 			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity);
-			@camera->Look(@window->GetMouseDeltaY() * @sensitivity);
+			@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
 
 			Update(delta);
 			Draw();
