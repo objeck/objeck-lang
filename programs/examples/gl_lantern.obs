@@ -942,10 +942,15 @@ class Lantern {
 			return false;
 		};
 
-		@wall_texture := @window->Own(Texture2D->Checker(64, 4, Texture2D->Rgb(96, 88, 78),
-			Texture2D->Rgb(66, 60, 54), TextureWrap->GL_REPEAT))->As(Texture2D);
-		@floor_texture := @window->Own(Texture2D->Checker(64, 3, Texture2D->Rgb(58, 54, 50),
-			Texture2D->Rgb(44, 41, 38), TextureWrap->GL_REPEAT))->As(Texture2D);
+		# Lightened. The old stone was 96 and 66 of 255 BEFORE any lighting, so
+		# multiplying by the ambient term left an unlit wall at about 9/255 --
+		# black on any real monitor. Three separate things were dark at once: the
+		# texture, the ambient, and a lamp that could not cross the room. Making
+		# only one of them brighter never fixed it.
+		@wall_texture := @window->Own(Texture2D->Checker(64, 4, Texture2D->Rgb(158, 146, 130),
+			Texture2D->Rgb(112, 102, 92), TextureWrap->GL_REPEAT))->As(Texture2D);
+		@floor_texture := @window->Own(Texture2D->Checker(64, 3, Texture2D->Rgb(104, 97, 90),
+			Texture2D->Rgb(80, 74, 68), TextureWrap->GL_REPEAT))->As(Texture2D);
 		# The bumps. A checker of two TILTED normals rather than two colours: one
 		# square leans one way and its neighbour the other, so the wall reads as
 		# courses of blocks catching the lamp at different angles. (128,128,255)
@@ -1101,13 +1106,26 @@ class Lantern {
 	method : BuildLight() ~ Nil {
 		# Range, not just colour: a point light with no falloff lights the whole
 		# dungeon evenly and there is nothing to carry a lantern for.
-		@lamp := Light->Point(Vector3->New(0.0, 1.4, 9.0), 13.0);
+		# Range 20, not 13. The dungeon is 26 wide, so a 13 reach could not cross
+		# it: standing at one end, the far wall sat past the falloff and rendered
+		# at the ambient value. The lamp still falls off well short of the whole
+		# room, which is the point of carrying it.
+		@lamp := Light->Point(Vector3->New(0.0, 1.4, 9.0), 20.0);
 		@lamp->SetColor(1.0, 0.86, 0.62);
 
 		@rig := LightRig->New();
 		# Barely above black. This is the number that decides whether the game is
 		# about the lantern or merely lit by one.
-		@rig->SetAmbient(0.035, 0.035, 0.045);
+		# 0.035 made the room UNNAVIGABLE, not atmospheric. The dungeon is 26x26
+		# and the lamp's range is 13, so anything across the room sits past the
+		# falloff and renders at the ambient value -- 9 of 255, which is black on
+		# any real monitor. Two of the four relics are 20+ units from the start
+		# and could never be seen at all.
+		#
+		# 0.10 shows wall silhouettes at a distance while leaving the lamp as the
+		# only thing that actually reveals detail, which is the effect the low
+		# number was reaching for.
+		@rig->SetAmbient(0.20, 0.20, 0.23);
 		# Low and broad: dungeon stone is not polished, and a tight lobe on a
 		# carried light turns every surface into a mirror pointed back at you.
 		@rig->SetSpecular(12.0, 0.08);
@@ -1204,9 +1222,15 @@ class Lantern {
 	~#
 	method : BuildShades() ~ Nil {
 		@shade_material := Material->New(@relic_texture);
-		# Cold and dark: they have to be visible against black stone without
-		# looking like another relic to walk up to.
-		@shade_material->SetTint(0.30, 0.42, 0.65);
+		# Cold, but NOT dark. The old tint left a shade at about 16 of 255 under
+		# ambient alone -- DARKER than the wall behind it -- so instead of a
+		# creature you saw a black hole punched in the room. Worse at the moment
+		# it matters most: the lamp is held out ahead of the player, so a shade
+		# at contact range can be level with or past the light and gets no
+		# direct lighting on the side facing you at all.
+		#
+		# Bright enough now to read against lit stone on its own.
+		@shade_material->SetTint(0.62, 0.80, 1.00);
 
 		@shades := Shade->New[4];
 		@shades[0] := Shade->New(-9.5, 0.9, -9.5);
