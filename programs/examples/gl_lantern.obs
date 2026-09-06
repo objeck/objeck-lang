@@ -16,10 +16,20 @@ Lantern -- find four relics in the dark, and get out before the lamp does.
 
 Four relics, one exit, and a lamp that is burning down the whole time.
 
-Shades will not enter the lamp's light. They close on you until the light gets
+Two things want to reach you, and they want it differently.
+
+SHADES will not enter the lamp's light. They close on you until the light gets
 too strong, then hold at that edge -- so the lamp is cover, and the fuel bar is
 the timer on it. Above about a third of a tank they cannot reach you at all.
 Below it they can, and do.
+
+MONSTERS do not care about the light at all. They walk straight in, and the only
+thing that stops one is a flare -- two of them, in fact. You will see the eyes
+before the body: they glow on their own, so a monster is a pair of lights in the
+dark well before the lamp reaches it.
+
+That is the whole shape of it. Against shades you manage the lamp; against
+monsters you have to spend it.
 
 A flare is the only thing that kills one, and it costs fuel to throw. That is
 the whole decision the game is built on: every shade you clear makes the rest
@@ -353,6 +363,213 @@ class Shade {
 	}
 }
 
+#~
+A monster: a thing in the dungeon that wants to reach you, and that the lamp
+does not frighten.
+
+## Why this is not another Shade
+
+Shades hold at the edge of the lamp's light, so the lamp is cover and the fuel
+bar is the timer on it. A monster ignores the light entirely and walks straight
+in. That single difference changes what the player does: against shades you
+manage the lamp, against monsters you have to shoot.
+
+It also takes TWO flares rather than one, so a monster is a decision -- twelve
+fuel -- rather than a reflex.
+
+## Built as a hierarchy, not a ball
+
+A body, a head parented to the body, and two eyes parented to the head. Moving
+the body moves all four, because Transform->SetParent composes the matrices; the
+head bobs relative to the body and the eyes stay in the head while it does.
+That is the part a single sphere cannot show, and it is why this exists in an
+example rather than being another sphere with a different colour.
+
+The eyes are EMISSIVE, which is the whole reason Material->SetEmissive was
+added. Two pinpricks of light that do not depend on the player's lamp reaching
+them: a monster is visible as a pair of eyes in the dark long before its body
+is, which is the thing worth seeing in a game about carrying a light.
+~#
+class Monster {
+	@at : Vector3;
+	@home : Vector3;
+	@body : Prop;
+	@head : Prop;
+	@eye_left : Prop;
+	@eye_right : Prop;
+	@alive : Bool;
+	@health : Int;
+	@fade : Float;
+	@bob : Float;
+	@hit_flash : Float;
+
+	New(x : Float, y : Float, z : Float) {
+		@at := Vector3->New(x, y, z);
+		@home := Vector3->New(x, y, z);
+		@alive := true;
+		@health := 2;
+		@fade := 0.0;
+		@bob := x * 0.7 + z;
+		@hit_flash := 0.0;
+	}
+
+	#~
+	Join the scene as four props in a hierarchy.
+	@param scene the scene to join
+	@param mesh the sphere every part shares -- none of them owns it
+	@param hide the body and head material
+	@param eye the emissive eye material
+	~#
+	method : public : AddTo(scene : Scene, mesh : Mesh, hide : Material,
+			eye : Material) ~ Nil {
+		@body := scene->AddProp(Prop->New(mesh, hide));
+		@body->GetTransform()->SetScale(0.55, 0.42, 0.55);
+		@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY(), @at->GetZ());
+
+		@head := scene->AddProp(Prop->New(mesh, hide));
+		@head->GetTransform()->SetScale(0.30);
+		# Parented, so everything below moves when the body does and nothing has
+		# to be positioned twice.
+		@head->GetTransform()->SetParent(@body->GetTransform());
+		@head->GetTransform()->SetPosition(0.0, 1.15, 0.0);
+
+		@eye_left := scene->AddProp(Prop->New(mesh, eye));
+		@eye_left->GetTransform()->SetScale(0.085);
+		@eye_left->GetTransform()->SetParent(@head->GetTransform());
+		@eye_left->GetTransform()->SetPosition(-0.42, 0.15, -0.85);
+
+		@eye_right := scene->AddProp(Prop->New(mesh, eye));
+		@eye_right->GetTransform()->SetScale(0.085);
+		@eye_right->GetTransform()->SetParent(@head->GetTransform());
+		@eye_right->GetTransform()->SetPosition(0.42, 0.15, -0.85);
+	}
+
+	method : public : IsAlive() ~ Bool { return @alive; }
+	method : public : GetAt() ~ Vector3 { return @at; }
+
+	#~
+	Every prop a flare could strike. The body and the head both count -- a shot
+	at a monster's face should kill it.
+	~#
+	method : public : Owns(prop : Prop) ~ Bool {
+		if(prop = Nil) {
+			return false;
+		};
+
+		return prop = @body | prop = @head;
+	}
+
+	#~
+	Take a flare.
+	@return true if that was the killing shot
+	~#
+	method : public : Hit() ~ Bool {
+		if(<>@alive) {
+			return false;
+		};
+
+		@health -= 1;
+		@hit_flash := 1.0;
+		if(@health > 0) {
+			return false;
+		};
+
+		@alive := false;
+		@fade := 1.0;
+
+		return true;
+	}
+
+	method : public : GroundDistance(eye : Vector3) ~ Float {
+		dx := @at->GetX() - eye->GetX();
+		dz := @at->GetZ() - eye->GetZ();
+
+		return (dx * dx + dz * dz)->Sqrt();
+	}
+
+	#~
+	Back to the start, for a restart.
+	~#
+	method : public : Restore() ~ Nil {
+		@alive := true;
+		@health := 2;
+		@fade := 0.0;
+		@hit_flash := 0.0;
+		@at->Set(@home->GetX(), @home->GetY(), @home->GetZ());
+		Show(true);
+		if(@body <> Nil) {
+			@body->GetTransform()->SetScale(0.55, 0.42, 0.55);
+		};
+	}
+
+	method : Show(visible : Bool) ~ Nil {
+		if(@body <> Nil) { @body->SetVisible(visible); };
+		if(@head <> Nil) { @head->SetVisible(visible); };
+		if(@eye_left <> Nil) { @eye_left->SetVisible(visible); };
+		if(@eye_right <> Nil) { @eye_right->SetVisible(visible); };
+	}
+
+	#~
+	Advance one frame.
+
+	@param delta seconds since the last frame
+	@param eye where the player is
+	@return true if this monster is on the player THIS frame
+	~#
+	method : public : Update(delta : Float, eye : Vector3) ~ Bool {
+		@bob += delta * 3.1;
+		if(@hit_flash > 0.0) { @hit_flash -= delta * 2.5; };
+
+		if(<>@alive) {
+			if(@fade > 0.0) {
+				@fade -= delta * 1.4;
+				if(@fade <= 0.0) {
+					@fade := 0.0;
+					Show(false);
+				}
+				else {
+					if(@body <> Nil) {
+						# Collapses rather than vanishing, and only the BODY is
+						# scaled -- the head and eyes are its children and come
+						# down with it.
+						@body->GetTransform()->SetScale(0.55 * @fade, 0.42 * @fade,
+							0.55 * @fade);
+					};
+				};
+			};
+
+			return false;
+		};
+
+		# Straight at the player. No light check anywhere: that is the whole
+		# difference from a Shade, and the reason the lamp is not a defence.
+		distance := GroundDistance(eye);
+		dx := eye->GetX() - @at->GetX();
+		dz := eye->GetZ() - @at->GetZ();
+		if(distance > 0.05) {
+			step := 1.35 * delta;
+			@at->Set(@at->GetX() + dx / distance * step, @at->GetY(),
+				@at->GetZ() + dz / distance * step);
+		};
+
+		if(@body <> Nil) {
+			@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY(), @at->GetZ());
+			# Faces the player, so the eyes are pointed at them rather than
+			# wherever it happened to spawn.
+			@body->GetTransform()->SetRotation(dx->ArcTan2(dz), 0.0, 0.0);
+		};
+
+		if(@head <> Nil) {
+			# Relative to the body, which is what parenting buys: this is a
+			# local offset and the body's own position and turn are already in
+			# the matrix by the time it is applied.
+			@head->GetTransform()->SetPosition(0.0, 1.15 + 0.10 * @bob->Sin(), 0.0);
+		};
+
+		return distance < 1.4;
+	}
+}
+
 class Lantern {
 	@window : GLWindow;
 	@shader : Shader;
@@ -380,6 +597,9 @@ class Lantern {
 
 	@relics : Relic[];
 	@shades : Shade[];
+	@monsters : Monster[];
+	@monster_material : Material;
+	@eye_material : Material;
 	# The sphere the shades are drawn with, and the flare's impact sparks.
 	@shade_material : Material;
 	@sparks : Particles;
@@ -557,6 +777,10 @@ class Lantern {
 			@shades[i]->Restore();
 		};
 
+		each(i : @monsters) {
+			@monsters[i]->Restore();
+		};
+
 		# Position AND facing: PlaceLookingAt sets both, so a restart does not
 		# leave the player staring wherever they died.
 		@camera->PlaceLookingAt(Vector3->New(0.0, 1.6, 9.0),
@@ -641,6 +865,12 @@ class Lantern {
 			};
 		};
 
+		each(i : @monsters) {
+			if(@monsters[i]->Update(delta, here)) {
+				touching := true;
+			};
+		};
+
 		if(touching) {
 			# Per second, not per contact: several shades on you is worse than
 			# one, but a single one is a countdown rather than an instant loss.
@@ -709,6 +939,20 @@ class Lantern {
 				@kills += 1;
 				if(@chime <> Nil) {
 					@chime->PlayChannel(-1, 0);
+				};
+			};
+		};
+
+		# Monsters take two. Owns() rather than a prop comparison because a
+		# monster is four props and a shot at its head should count.
+		each(i : @monsters) {
+			monster := @monsters[i];
+			if(monster->IsAlive() & monster->Owns(prop)) {
+				if(monster->Hit()) {
+					@kills += 1;
+					if(@chime <> Nil) {
+						@chime->PlayChannel(-1, 0);
+					};
 				};
 			};
 		};
@@ -978,6 +1222,16 @@ class Lantern {
 		@relic_material := Material->New(@relic_texture);
 		@glow := Material->New(@relic_texture);
 		@glow->SetTint(1.0, 0.86, 0.5);
+		# EMISSIVE, which is the whole reason that feature exists. A relic used
+		# to be lit only by the player's lamp, so it was invisible until you
+		# were already on top of it -- and two of the four sit further from the
+		# start than the lamp has ever reached. Across eight play sessions not
+		# one relic was ever collected.
+		#
+		# Now they glow on their own: visible across a dark room when you have
+		# line of sight, and still hidden behind walls, which is what
+		# BuildRelics intended by putting each one behind something.
+		@glow->SetEmissive(0.55, 0.42, 0.14);
 		# Set ONCE, here. It used to be set per frame in DrawRelics; converting the
 		# relics to Props deleted that method and took this line with it, leaving
 		# an opaque gold shell wrapped around each relic and the whole transparent
@@ -1003,6 +1257,7 @@ class Lantern {
 		BuildDungeon();
 		BuildRelics();
 		BuildShades();
+		BuildMonsters();
 		BuildSparks();
 		BuildOverlay();
 
@@ -1248,6 +1503,35 @@ class Lantern {
 	batch, the same shape the shooting gallery uses. Warmer and shorter-lived
 	than its sparks, because this one is a flare rather than debris.
 	~#
+	#~
+	The monsters, in the two corners the shades do not start in, so the room has
+	both kinds of threat rather than a crowd in one place.
+	~#
+	method : BuildMonsters() ~ Nil {
+		@monster_material := Material->New(@wall_texture);
+		# Dark and cold against lit stone. It does NOT need to be bright: the
+		# eyes carry the visibility, which is the point of them.
+		@monster_material->SetTint(0.34, 0.30, 0.38);
+
+		@eye_material := Material->New(@relic_texture);
+		# Emissive, so the eyes are visible where the lamp is not. A monster
+		# reads as two points of light in the dark long before its body does.
+		@eye_material->SetEmissive(0.95, 0.35, 0.20);
+
+		@monsters := Monster->New[2];
+		# The FAR corners, not mid-room. At 1.35 a monster starting nine units
+		# away arrives in under ten seconds, which ended a run before the player
+		# had crossed the first room. From the far side it is about seventeen
+		# seconds, and a walking player outpaces it -- being caught should mean
+		# you stopped, not that you started.
+		@monsters[0] := Monster->New(-11.0, 0.55, -11.0);
+		@monsters[1] := Monster->New(11.0, 0.55, -11.0);
+
+		each(i : @monsters) {
+			@monsters[i]->AddTo(@scene, @orb, @monster_material, @eye_material);
+		};
+	}
+
 	method : BuildSparks() ~ Nil {
 		@sparks := @window->Own(Particles->New(64))->As(Particles);
 		@sparks->SetCamera(@camera);
