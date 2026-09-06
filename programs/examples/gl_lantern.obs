@@ -302,7 +302,8 @@ class Shade {
 	is what lets the shades come closer late without changing their speed.
 	@return true if this shade is touching the player THIS frame
 	~#
-	method : public : Update(delta : Float, eye : Vector3, lit : Float) ~ Bool {
+	method : public : Update(delta : Float, eye : Vector3, lit : Float,
+			scene : Scene) ~ Bool {
 		@bob += delta * 2.2;
 
 		if(<>@alive) {
@@ -346,8 +347,9 @@ class Shade {
 		length := (dx * dx + dz * dz)->Sqrt();
 		if(length > 0.05) {
 			step := speed * delta;
-			@at->Set(@at->GetX() + dx / length * step, @at->GetY(),
-				@at->GetZ() + dz / length * step);
+			# Shades are smaller than monsters and squeeze through gaps a
+			# monster cannot, which is a difference worth having.
+			Hunt->Slide(scene, @at, dx / length * step, dz / length * step, 0.3);
 		};
 
 		if(@body <> Nil) {
@@ -390,6 +392,45 @@ added. Two pinpricks of light that do not depend on the player's lamp reaching
 them: a monster is visible as a pair of eyes in the dark long before its body
 is, which is the thing worth seeing in a game about carrying a light.
 ~#
+#~
+Movement shared by everything that hunts the player.
+~#
+class Hunt {
+	#~
+	Move a hunter one step, sliding along walls instead of through them.
+
+	Both hunters used to write their position directly, so a shade or a monster
+	crossed pillars and outer walls as if they were not there -- the player was
+	the only thing in the room ever asked about collision, because only the
+	player went through Scene->SlideMove.
+
+	Each axis is tried SEPARATELY, which is what makes it slide: a creature
+	pressed into a wall at an angle keeps the component of its movement parallel
+	to the wall and loses only the component into it. Testing both together and
+	giving up on failure would make them stick to corners instead.
+	@param scene the scene to test against
+	@param at the hunter's position, updated in place
+	@param dx step along x
+	@param dz step along z
+	@param radius how wide the hunter is in plan view
+	~#
+	function : Slide(scene : Scene, at : Vector3, dx : Float, dz : Float,
+			radius : Float) ~ Nil {
+		x := at->GetX();
+		z := at->GetZ();
+
+		if(<>scene->Blocked(x + dx, z, radius)) {
+			x += dx;
+		};
+
+		if(<>scene->Blocked(x, z + dz, radius)) {
+			z += dz;
+		};
+
+		at->Set(x, at->GetY(), z);
+	}
+}
+
 class Monster {
 	@at : Vector3;
 	@home : Vector3;
@@ -556,7 +597,7 @@ class Monster {
 	@param eye where the player is
 	@return true if this monster is on the player THIS frame
 	~#
-	method : public : Update(delta : Float, eye : Vector3) ~ Bool {
+	method : public : Update(delta : Float, eye : Vector3, scene : Scene) ~ Bool {
 		@bob += delta * 3.1;
 		if(@hit_flash > 0.0) { @hit_flash -= delta * 2.5; };
 
@@ -588,8 +629,9 @@ class Monster {
 		dz := eye->GetZ() - @at->GetZ();
 		if(distance > 0.05) {
 			step := 1.35 * delta;
-			@at->Set(@at->GetX() + dx / distance * step, @at->GetY(),
-				@at->GetZ() + dz / distance * step);
+			# Through the walls, not past them. 0.45 is roughly the body's own
+			# half-width, so it stops where its shoulders would.
+			Hunt->Slide(scene, @at, dx / distance * step, dz / distance * step, 0.45);
 		};
 
 		if(@body <> Nil) {
@@ -628,6 +670,7 @@ class Lantern {
 
 	@wall_texture : Texture2D;
 	@wall_bumps : Texture2D;
+	@monster_texture : Texture2D;
 	@floor_bumps : Texture2D;
 	# Shared, so Scene's material cache has something to hit.
 	@wall_material : Material;
@@ -758,7 +801,7 @@ class Lantern {
 		# 4x multisampling, and audio. Both are refused gracefully: the window
 		# opens without antialiasing rather than failing, and HasAudio reports
 		# whether the device actually opened.
-		@window := GLWindow->New("Lantern", 1024, 640, 4, true);
+		@window := GLWindow->New("Lantern", 1600, 1000, 4, true);
 		if(<>@window->IsOk()) {
 			@window->GetError()->ErrorLine();
 			return;
@@ -787,8 +830,12 @@ class Lantern {
 			# moving the mouse right turned left and pushing it forward looked
 			# down -- inverted on both axes at once, which reads as the controls
 			# being broken rather than as a preference.
+			# The two axes want OPPOSITE signs. Turn takes the raw delta, so the
+			# mouse right turns right; Look takes it negated, so pushing the
+			# mouse forward raises the view. Flipping both together was tried in
+			# each direction and neither can be right.
 			@camera->Turn(@window->GetMouseDeltaX() * @sensitivity);
-			@camera->Look(@window->GetMouseDeltaY() * @sensitivity);
+			@camera->Look(@window->GetMouseDeltaY() * @sensitivity * -1.0);
 
 			Update(delta);
 			Draw();
@@ -921,13 +968,13 @@ class Lantern {
 		here := @camera->GetPosition();
 		touching := false;
 		each(i : @shades) {
-			if(@shades[i]->Update(delta, here, lit)) {
+			if(@shades[i]->Update(delta, here, lit, @scene)) {
 				touching := true;
 			};
 		};
 
 		each(i : @monsters) {
-			if(@monsters[i]->Update(delta, here)) {
+			if(@monsters[i]->Update(delta, here, @scene)) {
 				touching := true;
 			};
 		};
@@ -1257,10 +1304,13 @@ class Lantern {
 		# black on any real monitor. Three separate things were dark at once: the
 		# texture, the ambient, and a lamp that could not cross the room. Making
 		# only one of them brighter never fixed it.
-		@wall_texture := @window->Own(Texture2D->Checker(64, 4, Texture2D->Rgb(158, 146, 130),
-			Texture2D->Rgb(112, 102, 92), TextureWrap->GL_REPEAT))->As(Texture2D);
-		@floor_texture := @window->Own(Texture2D->Checker(64, 3, Texture2D->Rgb(104, 97, 90),
-			Texture2D->Rgb(80, 74, 68), TextureWrap->GL_REPEAT))->As(Texture2D);
+		# 256, not 64, and coursed blocks rather than a two-colour grid. The
+		# checker read as a chessboard at arm's length; this reads as masonry,
+		# and it still ships as nothing but code.
+		@wall_texture := @window->Own(StoneTexture(256, 6, Texture2D->Rgb(104, 96, 86),
+			78, Texture2D->Rgb(52, 48, 44)))->As(Texture2D);
+		@floor_texture := @window->Own(StoneTexture(256, 4, Texture2D->Rgb(74, 70, 66),
+			54, Texture2D->Rgb(38, 36, 34)))->As(Texture2D);
 		# The bumps. A checker of two TILTED normals rather than two colours: one
 		# square leans one way and its neighbour the other, so the wall reads as
 		# courses of blocks catching the lamp at different angles. (128,128,255)
@@ -1269,10 +1319,11 @@ class Lantern {
 		# Deliberately offset from the albedo's own checker -- 8 against 4 -- so
 		# the relief does not line up with the colour and read as one flat
 		# pattern rather than as surface.
-		@wall_bumps := @window->Own(Texture2D->Checker(64, 8, Texture2D->Rgb(168, 128, 220),
-			Texture2D->Rgb(88, 128, 220), TextureWrap->GL_REPEAT))->As(Texture2D);
-		@floor_bumps := @window->Own(Texture2D->Checker(64, 6, Texture2D->Rgb(148, 148, 230),
-			Texture2D->Rgb(108, 108, 230), TextureWrap->GL_REPEAT))->As(Texture2D);
+		# Matching coursing, so the relief follows the joints instead of cutting
+		# across them. The offset checker before this was relief that disagreed
+		# with the colour underneath, which reads as noise rather than as stone.
+		@wall_bumps := @window->Own(StoneNormals(256, 6))->As(Texture2D);
+		@floor_bumps := @window->Own(StoneNormals(256, 4))->As(Texture2D);
 
 		# ONE material each, shared by every slab that uses it. Box->New would
 		# build a separate Material per box, and Scene->DrawOne only skips the
@@ -1284,6 +1335,7 @@ class Lantern {
 		@floor_material := Material->New(@floor_texture);
 		@floor_material->SetNormalMap(@floor_bumps);
 
+		@monster_texture := @window->Own(HideTexture(128))->As(Texture2D);
 		@relic_texture := @window->Own(Texture2D->Solid(0xFFF2C879))->As(Texture2D);
 		@relic_material := Material->New(@relic_texture);
 		@glow := Material->New(@relic_texture);
@@ -1574,7 +1626,7 @@ class Lantern {
 	both kinds of threat rather than a crowd in one place.
 	~#
 	method : BuildMonsters() ~ Nil {
-		@monster_material := Material->New(@wall_texture);
+		@monster_material := Material->New(@monster_texture);
 		# Dark and cold against lit stone. It does NOT need to be bright: the
 		# eyes carry the visibility, which is the point of them.
 		@monster_material->SetTint(0.34, 0.30, 0.38);
@@ -1610,6 +1662,268 @@ class Lantern {
 		glow := Material->New(@relic_texture);
 		glow->SetTint(1.0, 0.80, 0.45);
 		@sparks->SetMaterial(glow);
+	}
+
+	#~
+	A stone wall, generated rather than loaded.
+
+	## Why generated
+
+	This example has no asset files at all -- its textures and even its chime
+	are built at startup -- and that is worth keeping: it compiles and runs from
+	one source file with nothing beside it. The previous walls were
+	Texture2D->Checker at 64 pixels, which is two flat colours in a grid, and at
+	arm's length it reads as a chessboard rather than as stone.
+
+	Everything here is FillRect on a Surface, which is enough for coursed blocks:
+	a mortar ground, blocks laid in rows with alternate courses offset by half a
+	block, and each block given its own shade so no two neighbours match. The
+	variation is what stops it reading as a pattern -- a grid of identical
+	blocks is still a chessboard, just a smaller one.
+
+	Deterministic, from a cheap hash of the block coordinates. The room should
+	look the same every run, so a change in appearance means a change in the
+	code rather than in the dice.
+
+	@param size texture edge in pixels
+	@param courses how many rows of blocks
+	@param base the block colour at its darkest
+	@param spread how much lighter a block may be than the base
+	@param mortar the colour of the gaps
+	@return the texture; check IsOk()
+	~#
+	method : StoneTexture(size : Int, courses : Int, base : Int, spread : Int,
+			mortar : Int) ~ Texture2D {
+		surface := Texture2D->NewSurface(size, size);
+		if(surface = Nil) {
+			return Texture2D->New(Nil);
+		};
+
+		# Mortar first, as the ground everything else sits on. Every gap between
+		# blocks is simply this showing through.
+		surface->FillRect(Rect->New(0, 0, size, size), mortar);
+
+		course_height := size / courses;
+		gap := course_height / 8;
+		if(gap < 1) { gap := 1; };
+		block_width := course_height * 2;
+
+		row := 0;
+		while(row < courses) {
+			y := row * course_height;
+			# Alternate courses shift by half a block, which is what makes it
+			# masonry rather than a grid. Without the offset the vertical joints
+			# line up all the way down and the eye reads columns.
+			offset := 0;
+			if(row % 2 = 1) {
+				offset := block_width / -2;
+			};
+
+			x := offset;
+			column := 0;
+			while(x < size) {
+				# Deterministic per-block shade. Multiplying the coordinates by
+				# two primes and taking the low bits is enough scatter here, and
+				# it repeats identically every run.
+				noise := (row * 73 + column * 151) % 97;
+                shade := base + (noise * spread) / 97;
+
+				w := block_width - gap;
+				h := course_height - gap;
+				# Clipped at the edges rather than skipped, so a block running
+				# off the right side still shows its visible part -- otherwise
+				# the seam is a mortar-coloured stripe down one edge.
+				draw_x := x;
+				draw_w := w;
+				if(draw_x < 0) {
+					draw_w += draw_x;
+					draw_x := 0;
+				};
+				if(draw_x + draw_w > size) {
+					draw_w := size - draw_x;
+				};
+
+				if(draw_w > 0) {
+					surface->FillRect(Rect->New(draw_x, y, draw_w, h), shade);
+
+					# A lighter top edge and a darker bottom one. Two rectangles
+					# per block, and it is the difference between a flat tile and
+					# something with a top face catching the lamp.
+					if(h > 3 & draw_w > 3) {
+						surface->FillRect(Rect->New(draw_x, y, draw_w, 1),
+							Lighten(shade, 26));
+						surface->FillRect(Rect->New(draw_x, y + h - 1, draw_w, 1),
+							Lighten(shade, -22));
+					};
+				};
+
+				x += block_width;
+				column += 1;
+			};
+
+			row += 1;
+		};
+
+		# Mipmapped and repeating: a wall is seen at every distance from a metre
+		# to the far side of the room, and without a mip chain the far ones
+		# shimmer as the player walks.
+		return Texture2D->New(surface, TextureFilter->GL_LINEAR,
+			TextureWrap->GL_REPEAT, true);
+	}
+
+	#~
+	Shift a packed colour toward white, or away from it for a negative amount.
+	@param argb packed 0xAARRGGBB
+	@param amount how far to move each channel
+	@return the adjusted colour
+	~#
+	method : Lighten(argb : Int, amount : Int) ~ Int {
+		r := (argb / 0x10000) and 0xFF;
+		g := (argb / 0x100) and 0xFF;
+		b := argb and 0xFF;
+
+		r := Clamp8(r + amount);
+		g := Clamp8(g + amount);
+		b := Clamp8(b + amount);
+
+		return Texture2D->Rgb(r, g, b);
+	}
+
+	method : Clamp8(v : Int) ~ Int {
+		if(v < 0) { return 0; };
+		if(v > 255) { return 255; };
+
+		return v;
+	}
+
+	#~
+	The matching normal map: the same coursing, so the relief lines up with the
+	joints instead of cutting across them.
+
+	Flat lavender (128,128,255) is "no perturbation". The mortar stays flat and
+	each block gets a bevel -- lit along its top edge, shaded along the bottom --
+	which is what makes a wall read as blocks under a moving lamp rather than as
+	a picture of blocks.
+	@param size texture edge in pixels
+	@param courses how many rows of blocks, matching the albedo
+	@return the texture
+	~#
+	method : StoneNormals(size : Int, courses : Int) ~ Texture2D {
+		surface := Texture2D->NewSurface(size, size);
+		if(surface = Nil) {
+			return Texture2D->New(Nil);
+		};
+
+		flat := Texture2D->Rgb(128, 128, 255);
+		surface->FillRect(Rect->New(0, 0, size, size), flat);
+
+		course_height := size / courses;
+		gap := course_height / 8;
+		if(gap < 1) { gap := 1; };
+		block_width := course_height * 2;
+		bevel := course_height / 6;
+		if(bevel < 1) { bevel := 1; };
+
+		row := 0;
+		while(row < courses) {
+			y := row * course_height;
+			offset := 0;
+			if(row % 2 = 1) {
+				offset := block_width / -2;
+			};
+
+			x := offset;
+			while(x < size) {
+				w := block_width - gap;
+				h := course_height - gap;
+				draw_x := x;
+				draw_w := w;
+				if(draw_x < 0) {
+					draw_w += draw_x;
+					draw_x := 0;
+				};
+				if(draw_x + draw_w > size) {
+					draw_w := size - draw_x;
+				};
+
+				if(draw_w > 0 & h > bevel * 2) {
+					# Top bevel faces UP: +y in tangent space, so green above
+					# the midpoint.
+					surface->FillRect(Rect->New(draw_x, y, draw_w, bevel),
+						Texture2D->Rgb(128, 196, 210));
+					# Bottom bevel faces DOWN.
+					surface->FillRect(Rect->New(draw_x, y + h - bevel, draw_w, bevel),
+						Texture2D->Rgb(128, 60, 210));
+					# And the two sides, facing out along x.
+					surface->FillRect(Rect->New(draw_x, y + bevel, bevel, h - bevel * 2),
+						Texture2D->Rgb(196, 128, 210));
+					surface->FillRect(Rect->New(draw_x + draw_w - bevel, y + bevel, bevel,
+						h - bevel * 2), Texture2D->Rgb(60, 128, 210));
+				};
+
+				x += block_width;
+			};
+
+			row += 1;
+		};
+
+		return Texture2D->New(surface, TextureFilter->GL_LINEAR,
+			TextureWrap->GL_REPEAT, true);
+	}
+
+	#~
+	Hide: dark, mottled, and nothing like the walls.
+
+	The monsters were drawn with the WALL texture, so they read as animated
+	masonry -- a creature made of the same blocks as the room behind it has no
+	silhouette at all once it stops moving.
+
+	Irregular patches rather than courses, deliberately: the point is to look
+	like the one thing in the room that is not built out of rectangles.
+	@param size texture edge in pixels
+	@return the texture
+	~#
+	method : HideTexture(size : Int) ~ Texture2D {
+		surface := Texture2D->NewSurface(size, size);
+		if(surface = Nil) {
+			return Texture2D->New(Nil);
+		};
+
+		surface->FillRect(Rect->New(0, 0, size, size), Texture2D->Rgb(46, 40, 44));
+
+		# Patches at three sizes, so it has texture at more than one distance:
+		# the big ones carry across a room, the small ones only appear close.
+		step := size / 16;
+		if(step < 2) { step := 2; };
+		y := 0;
+		row := 0;
+		while(y < size) {
+			x := 0;
+			column := 0;
+			while(x < size) {
+				noise := (row * 131 + column * 79) % 101;
+				if(noise < 34) {
+					shade := Texture2D->Rgb(60 + noise / 3, 50 + noise / 4, 56 + noise / 3);
+					w := step + (noise % 3) * step;
+					surface->FillRect(Rect->New(x, y, w, step), shade);
+				}
+				else if(noise > 88) {
+					# The occasional near-black pit, which is what keeps it from
+					# reading as evenly speckled.
+					surface->FillRect(Rect->New(x, y, step, step),
+						Texture2D->Rgb(24, 20, 24));
+				};
+
+				x += step;
+				column += 1;
+			};
+
+			y += step;
+			row += 1;
+		};
+
+		return Texture2D->New(surface, TextureFilter->GL_LINEAR,
+			TextureWrap->GL_REPEAT, true);
 	}
 
 	method : BuildOverlay() ~ Nil {
