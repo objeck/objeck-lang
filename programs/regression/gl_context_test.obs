@@ -108,6 +108,7 @@ class GlContextTest {
 		CheckMaterials();
 		CheckNormalMaps();
 		CheckOverlayOrientation();
+		CheckEmissive();
 		CheckShadows();
 		CheckSpotShadows();
 		CheckPointShadows();
@@ -1713,6 +1714,75 @@ class GlContextTest {
 	corner, drawn large, then read back. No fonts, no letters to interpret, and
 	the answer is a corner rather than an opinion.
 	~#
+	#~
+	Does emissive light a surface that no light reaches?
+
+	That is the entire claim, and the control is what makes it a test: tint
+	MULTIPLIES what the lights deliver, so with zero lights and zero ambient a
+	tinted surface is black whatever value it is given. Asserting only that an
+	emissive surface is bright would pass for a second tint under another name.
+	So both are drawn under no lighting, and the tinted one must stay black.
+	~#
+	method : CheckEmissive() ~ Nil {
+		shader := Shader->LitTextured();
+		cube := Mesh->Cube();
+		white := Texture2D->Solid(0xFFFFFFFF);
+		if(<>Check("a shader, cube and texture for emissive", shader->IsOk() &
+				cube->IsOk() & white->IsOk())) {
+			return;
+		};
+
+		camera := Camera->New(Vector3->New(0.0, 0.0, 4.0));
+		vp := Matrix4->Multiply(Matrix4->PerspectiveDegrees(60.0, @gl->GetAspect()),
+			camera->GetViewMatrix());
+		identity := Matrix4->Identity();
+
+		dark := LightRig->New();
+		dark->SetAmbient(0.0, 0.0, 0.0);
+
+		plain := Material->New(white);
+		tinted := Material->New(white);
+		tinted->SetTint(1.0, 1.0, 1.0);
+		glowing := Material->New(white);
+		glowing->SetEmissive(0.75, 0.75, 0.75);
+
+		unlit := DrawEmissive(shader, cube, vp, identity, dark, plain);
+		control := DrawEmissive(shader, cube, vp, identity, dark, tinted);
+		emits := DrawEmissive(shader, cube, vp, identity, dark, glowing);
+
+		lit_rig := LightRig->New();
+		lit_rig->SetAmbient(0.25, 0.25, 0.25);
+		lit_plain := DrawEmissive(shader, cube, vp, identity, lit_rig, plain);
+		lit_glow := DrawEmissive(shader, cube, vp, identity, lit_rig, glowing);
+
+		"  emissive: unlit={$unlit} tint-control={$control} emissive={$emits} lit={$lit_plain} lit+emissive={$lit_glow}"->PrintLine();
+
+		Check("an unlit surface is black", unlit < 8);
+		Check("tint cannot brighten an unlit surface", control < 8);
+		Check("emissive lights a surface no light reaches", emits > 150);
+		Check("emissive ADDS to existing lighting", lit_glow > lit_plain);
+		Check("a material emits nothing by default", plain->HasEmissive() = false);
+		Check("HasEmissive reports a material that does", glowing->HasEmissive());
+
+		shader->Free();
+		cube->Free();
+	}
+
+	method : DrawEmissive(shader : Shader, mesh : Mesh, vp : Float[], model : Float[],
+			rig : LightRig, material : Material) ~ Int {
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+		shader->Use();
+		shader->SetMatrix4("mvp", Matrix4->Multiply(vp, model));
+		shader->SetMatrix4("model", model);
+		shader->SetInt("tex", 0);
+		rig->SetViewPosition(Vector3->New(0.0, 0.0, 4.0));
+		rig->ApplyTo(shader);
+		material->ApplyTo(shader, 0);
+		mesh->Draw();
+		return (GL->ReadPixel(@pixel_w / 2, @pixel_h / 2) and 0x0000FF00) / 0x100;
+	}
+
 	method : CheckOverlayOrientation() ~ Nil {
 		overlay := Overlay->New(@gl);
 		if(<>Check("an overlay for the orientation check", overlay->IsOk())) {

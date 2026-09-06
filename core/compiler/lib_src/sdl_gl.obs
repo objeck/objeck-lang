@@ -3241,6 +3241,11 @@ bundle Game.OpenGL {
 			# from an invisible one, so nothing useful is given up.
 			source->Add("uniform vec3 tint;");
 			source->Add("uniform float opacity;");
+			# Light the surface gives off itself. ADDED after the lighting rather
+			# than multiplied into it, so it is the one way to make a surface
+			# bright in a room with no light reaching it. An unset uniform is
+			# zero in GL, so every material that never touches it is unaffected.
+			source->Add("uniform vec3 emissive;");
 
 			if(normal_mapped) {
 				# Christian Schuler's cotangent frame: recover a tangent basis
@@ -3433,10 +3438,10 @@ bundle Game.OpenGL {
 			source->Add("  float alpha = opacity;");
 			if(textured) {
 				source->Add("  vec4 base = texture(tex, texcoord);");
-				source->Add("  frag_color = vec4(base.rgb * lit * shade, base.a * alpha);");
+				source->Add("  frag_color = vec4(base.rgb * lit * shade + emissive, base.a * alpha);");
 			}
 			else {
-				source->Add("  frag_color = vec4(color * lit * shade, alpha);");
+				source->Add("  frag_color = vec4(color * lit * shade + emissive, alpha);");
 			};
 			source->Add("}");
 
@@ -7752,6 +7757,9 @@ bundle Game.OpenGL {
 		# Optional. Nil for every material that existed before normal mapping,
 		# which is why nothing about the old path changes.
 		@normal_map : Texture2D;
+		# Light this surface EMITS, added after all lighting. Black by default,
+		# so every material that existed before behaves exactly as it did.
+		@er : Float; @eg : Float; @eb : Float;
 		@tr : Float; @tg : Float; @tb : Float;
 		@shininess : Float;
 		@specular : Float;
@@ -7764,6 +7772,7 @@ bundle Game.OpenGL {
 		New(texture : Texture2D) {
 			@texture := texture;
 			@normal_map := Nil;
+			@er := 0.0; @eg := 0.0; @eb := 0.0;
 			@tr := 1.0; @tg := 1.0; @tb := 1.0;
 			@shininess := 32.0;
 			@specular := 0.0;
@@ -7815,6 +7824,44 @@ bundle Game.OpenGL {
 		is the one that does.
 		@param texture the map, or Nil to remove it
 		~#
+		#~
+		Light this surface gives off on its own.
+
+		Added AFTER the lighting rather than multiplied into it, which is the
+		whole point: SetTint scales what the lights deliver, so a tinted surface
+		can never be brighter than the light falling on it. That is why a relic
+		in an unlit corner is invisible however you tint it, and why a creature
+		standing between the player and their own lamp came out darker than the
+		wall behind it.
+
+		Emissive is also the right tool when the base texture is the wrong hue.
+		Tinting a GOLD texture blue gives green, because tint multiplies; an
+		emissive term does not care what the texture underneath is.
+
+		This does not light anything else -- there is no bloom and no light
+		bleed. It makes the surface itself bright.
+		@param r red, 0..1 and beyond if you want it to bloom out
+		@param g green
+		@param b blue
+		~#
+		method : public : SetEmissive(r : Float, g : Float, b : Float) ~ Nil {
+			@er := r; @eg := g; @eb := b;
+		}
+
+		#~
+		@return true when this material emits any light of its own
+		~#
+		method : public : HasEmissive() ~ Bool {
+			return @er > 0.0 | @eg > 0.0 | @eb > 0.0;
+		}
+
+		#~
+		Stop emitting.
+		~#
+		method : public : ClearEmissive() ~ Nil {
+			@er := 0.0; @eg := 0.0; @eb := 0.0;
+		}
+
 		method : public : SetNormalMap(texture : Texture2D) ~ Nil {
 			@normal_map := texture;
 		}
@@ -7931,6 +7978,12 @@ bundle Game.OpenGL {
 			# has_normal_map is set either way, so a shader that samples one gets
 			# the right answer for a material WITHOUT a map rather than reading
 			# whatever texture happened to be bound to unit 3 last.
+			# Sent even when black, so a shader drawing a mixed scene does not
+			# carry the previous material's glow onto this one.
+			if(shader->HasUniform("emissive")) {
+				shader->SetVec3("emissive", @er, @eg, @eb);
+			};
+
 			if(shader->HasUniform("normal_map")) {
 				if(HasNormalMap()) {
 					shader->SetInt("normal_map", 3);
