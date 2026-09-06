@@ -107,6 +107,7 @@ class GlContextTest {
 		CheckFrustumCulling();
 		CheckMaterials();
 		CheckNormalMaps();
+		CheckOverlayOrientation();
 		CheckShadows();
 		CheckSpotShadows();
 		CheckPointShadows();
@@ -1699,6 +1700,71 @@ class GlContextTest {
 	receive nearly the same amount of light and C would pass while proving
 	nothing.
 	~#
+	#~
+	Which way up does the overlay draw?
+
+	Nothing checked this, and everything the overlay drew came out UPSIDE DOWN --
+	every label, every HUD bar, every crosshair, in every program that used one.
+	It survived because the checks that existed asked whether pixels CHANGED, and
+	a flipped label changes pixels exactly as well as a correct one. It took a
+	screenshot from a human to notice.
+
+	Asserted with a texture rather than a glyph: one white texel in a known
+	corner, drawn large, then read back. No fonts, no letters to interpret, and
+	the answer is a corner rather than an opinion.
+	~#
+	method : CheckOverlayOrientation() ~ Nil {
+		overlay := Overlay->New(@gl);
+		if(<>Check("an overlay for the orientation check", overlay->IsOk())) {
+			return;
+		};
+
+		surface := Texture2D->NewSurface(2, 2);
+		if(surface = Nil) {
+			Check("a 2x2 surface for the orientation check", false);
+			return;
+		};
+		surface->FillRect(Rect->New(0, 0, 2, 2), 0xFF000000);
+		surface->FillRect(Rect->New(0, 0, 1, 1), 0xFFFFFFFF);
+		mark := Texture2D->New(surface, TextureFilter->GL_NEAREST,
+			TextureWrap->GL_CLAMP_TO_EDGE, false);
+		if(<>Check("the orientation texture uploads", mark->IsOk())) {
+			overlay->Free();
+			return;
+		};
+
+		GL->ClearColor(0.0, 0.0, 0.0, 1.0);
+		GL->Clear(ClearBit->GL_COLOR_BUFFER_BIT or ClearBit->GL_DEPTH_BUFFER_BIT);
+
+		# Sized from the ACTUAL drawable, which is 64x64 here. A fixed 100x100
+		# rectangle at (50,50) fell almost entirely outside it and put the
+		# readback at a NEGATIVE y, so the first version of this check reported
+		# that nothing had drawn -- indistinguishable, from the outside, from an
+		# overlay that draws nothing.
+		side := @pixel_h / 2;
+		origin := @pixel_h / 8;
+		overlay->Begin();
+		overlay->Image(mark, origin, origin, side, side);
+		overlay->End();
+
+		# ReadPixel's origin is GL's -- (0,0) is the BOTTOM-left of the window --
+		# so the rectangle's on-screen TOP edge is at a HIGH read-y.
+		x := origin + side / 4;
+		screen_top := origin + side / 4;
+		screen_bottom := origin + (side * 3) / 4;
+		tl := (GL->ReadPixel(x, @pixel_h - screen_top) and 0x0000FF00) / 0x100;
+		bl := (GL->ReadPixel(x, @pixel_h - screen_bottom) and 0x0000FF00) / 0x100;
+
+		"  overlay orientation: top={$tl} bottom={$bl} (white texel was top-left)"->PrintLine();
+
+		Check("the overlay drew something at all", tl > 200 | bl > 200);
+		Check("the overlay draws a texture RIGHT WAY UP", tl > 200);
+		Check("the overlay is not flipped vertically", bl < 60);
+
+		overlay->Free();
+		mark->Free();
+	}
+
 	method : CheckNormalMaps() ~ Nil {
 		shader := Shader->LitTexturedNormalMapped();
 		if(<>Check("Shader->LitTexturedNormalMapped compiles", shader->IsOk())) {
