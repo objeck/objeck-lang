@@ -229,6 +229,10 @@ class Shade {
 	# Where it started. A shade driven back by a flare returns here rather than
 	# to the player, which gives the room a rhythm instead of a constant press.
 	@home : Vector3;
+	# Rises as relics are taken. The threat used to be identical in the last
+	# minute and the first, so the room had no arc: nothing about carrying three
+	# relics felt different from carrying none.
+	@urgency : Float;
 
 	New(x : Float, y : Float, z : Float) {
 		@at := Vector3->New(x, y, z);
@@ -236,6 +240,15 @@ class Shade {
 		@alive := true;
 		@fade := 0.0;
 		@bob := x + z;
+		@urgency := 1.0;
+	}
+
+	#~
+	How hard this shade is pressing, as a multiplier on its speed.
+	@param urgency 1.0 at the start of a run
+	~#
+	method : public : SetUrgency(urgency : Float) ~ Nil {
+		@urgency := urgency;
 	}
 
 	method : public : AddTo(scene : Scene, mesh : Mesh, material : Material) ~ Nil {
@@ -263,6 +276,7 @@ class Shade {
 	method : public : Restore() ~ Nil {
 		@alive := true;
 		@fade := 0.0;
+		@urgency := 1.0;
 		@at->Set(@home->GetX(), @home->GetY(), @home->GetZ());
 		if(@body <> Nil) {
 			@body->SetVisible(true);
@@ -335,11 +349,11 @@ class Shade {
 		# would not.
 		target_x := @home->GetX();
 		target_z := @home->GetZ();
-		speed := 1.15;
+		speed := 1.15 * @urgency;
 		if(distance > lit) {
 			target_x := eye->GetX();
 			target_z := eye->GetZ();
-			speed := 1.35;
+			speed := 1.35 * @urgency;
 		};
 
 		dx := target_x - @at->GetX();
@@ -442,6 +456,7 @@ class Monster {
 	@horn_right : Prop;
 	@arm_left : Prop;
 	@arm_right : Prop;
+	@hide : Material;
 	@alive : Bool;
 	@health : Int;
 	@fade : Float;
@@ -465,12 +480,30 @@ class Monster {
 	@param hide the body and head material
 	@param eye the emissive eye material
 	~#
+	#~
+	Brightness to add while this monster is reacting to a flare.
+
+	@hit_flash was computed and decayed from the day monsters were added and
+	never read by anything, so shooting one that survived the first flare gave
+	NO feedback at all -- it simply kept coming, and a hit was indistinguishable
+	from a miss. On a two-hit enemy that is the difference between a fight and a
+	guess.
+	~#
+	method : public : HitGlow() ~ Float {
+		if(@hit_flash < 0.0) {
+			return 0.0;
+		};
+
+		return @hit_flash;
+	}
+
 	method : public : AddTo(scene : Scene, block : Mesh, orb : Mesh, hide : Material,
 			eye : Material) ~ Nil {
 		# CUBES, not spheres. Three nested spheres read as a snowman from any
 		# distance -- the silhouette is what says "creature", and a sphere has
 		# the same silhouette from every angle, which is exactly the wrong
 		# property for something you are meant to recognise across a dark room.
+		@hide := hide;
 		@body := scene->AddProp(Prop->New(block, hide));
 		@body->GetTransform()->SetScale(0.46, 0.62, 0.34);
 		@body->GetTransform()->SetPosition(@at->GetX(), @at->GetY(), @at->GetZ());
@@ -523,6 +556,12 @@ class Monster {
 
 	method : public : IsAlive() ~ Bool { return @alive; }
 	method : public : GetAt() ~ Vector3 { return @at; }
+
+	#~
+	@return the material this monster's body and head wear -- its own, not
+	shared, so writing a hit flash to it lights only this one
+	~#
+	method : public : GetHide() ~ Material { return @hide; }
 
 	#~
 	Every prop a flare could strike. The body and the head both count -- a shot
@@ -717,6 +756,15 @@ class Lantern {
 	# files. Nil when the machine has no working audio output, which is normal on
 	# a CI runner and is not a reason to refuse to run.
 	@chime : MixChunk;
+	# One sound for everything was the whole audio design: the same chime played
+	# for taking a relic, killing a shade and killing a monster, and nothing at
+	# all marked damage, a flare, or something drawing near in the dark.
+	@crack : MixChunk;
+	@thud : MixChunk;
+	@breath : MixChunk;
+	# Paces the proximity cue: it repeats faster the closer the nearest hunter
+	# is, and not at all while none is near.
+	@breath_timer : Float;
 
 	@fuel : Float;
 	@fuel_max : Float;
@@ -749,6 +797,7 @@ class Lantern {
 		@radius := 0.35;
 		@sensitivity := 0.0022;
 		@hud_timer := 0.0;
+		@breath_timer := 0.0;
 		@hud_fps := "";
 		@exit_at := Vector3->New(0.0, 0.0, 10.5);
 
@@ -984,8 +1033,19 @@ class Lantern {
 		};
 
 		each(i : @monsters) {
-			if(@monsters[i]->Update(delta, here, @scene)) {
+			monster := @monsters[i];
+			if(monster->Update(delta, here, @scene)) {
 				touching := true;
+			};
+
+			# The flash, read at last. Emissive rather than tint because a hit
+			# has to be visible even when the monster is outside the lamp --
+			# which, being the thing walking at you out of the dark, it usually
+			# is.
+			glow := monster->HitGlow();
+			hide := monster->GetHide();
+			if(hide <> Nil) {
+				hide->SetEmissive(glow * 0.9, glow * 0.25, glow * 0.15);
 			};
 		};
 
@@ -998,6 +1058,11 @@ class Lantern {
 			# nine sessions. Being caught should cost you the run's pace, not
 			# the run: ten seconds is long enough to break away and keep going.
 			@health -= delta * 10.0;
+			# Once per contact, not per frame: @hurt_flash is already 1.0 while
+			# a hunter is on you, so this fires on the rising edge only.
+			if(@hurt_flash <= 0.0 & @thud <> Nil) {
+				@thud->PlayChannel(-1, 0);
+			};
 			@hurt_flash := 1.0;
 			if(@health <= 0.0) {
 				@health := 0.0;
@@ -1008,6 +1073,43 @@ class Lantern {
 
 		if(@sparks <> Nil) {
 			@sparks->Update(delta);
+		};
+
+		# 3. SOMETHING IN THE DARK. The nearest living hunter outside the lamp's
+		# reach gets a breath, repeating faster the closer it is. In a game whose
+		# subject is darkness this is the sense that should carry: a shade
+		# holding at the edge of the light is inaudible AND invisible otherwise,
+		# so there is nothing at all to tell you it is there.
+		#
+		# Deliberately silent once something is INSIDE the light -- at that point
+		# you can see it, and a cue you no longer need is just noise.
+		if(@breath <> Nil) {
+			closest := 999.0;
+			each(i : @shades) {
+				if(@shades[i]->IsAlive()) {
+					d := @shades[i]->GroundDistance(here);
+					if(d < closest) { closest := d; };
+				};
+			};
+			each(i : @monsters) {
+				if(@monsters[i]->IsAlive()) {
+					d := @monsters[i]->GroundDistance(here);
+					if(d < closest) { closest := d; };
+				};
+			};
+
+			if(closest > lit & closest < 12.0) {
+				@breath_timer -= delta;
+				if(@breath_timer <= 0.0) {
+					@breath->PlayChannel(-1, 0);
+					# 2.6s at the edge of hearing down to about 0.6s when it is
+					# nearly on you.
+					@breath_timer := 0.6 + (closest / 12.0) * 2.0;
+				};
+			}
+			else {
+				@breath_timer := 0.0;
+			};
 		};
 
 		CheckExit();
@@ -1031,6 +1133,9 @@ class Lantern {
 
 		@flare_cooldown := 0.45;
 		@flare_flash := 1.0;
+		if(@crack <> Nil) {
+			@crack->PlayChannel(-1, 0);
+		};
 		@fuel -= 6.0;
 		if(@fuel < 0.0) {
 			@fuel := 0.0;
@@ -1095,6 +1200,14 @@ class Lantern {
 				};
 				left := @relics->Size() - @carried;
 				"Relic taken -- {$left} still out there."->PrintLine();
+
+				# 4. ESCALATION. Every relic taken makes the shades bolder, so
+				# the walk back is not the walk out. Nothing about the room used
+				# to change between the first relic and the last.
+				urgency := 1.0 + @carried->As(Float) * 0.22;
+				each(j : @shades) {
+					@shades[j]->SetUrgency(urgency);
+				};
 				# A relic is worth a little fuel, so collecting is also survival.
 				@fuel += 12.0;
 				if(@fuel > @fuel_max) {
@@ -1406,18 +1519,69 @@ class Lantern {
 			return;
 		};
 
-		path := System.Runtime->GetTempDir() + "/objeck_lantern_chime.wav";
-		if(WriteChime(path)) {
-			@chime := MixChunk->New(path);
-			if(@chime <> Nil & @chime->IsNull()) {
-				@chime := Nil;
-			};
-		};
+		dir := System.Runtime->GetTempDir();
+		@chime := LoadTone(dir + "/objeck_lantern_chime.wav", 5200, 880.0, 1320.0,
+			0.62, 3.0, 0.0);
+		# A crack, not a note: mostly noise, over in a tenth of a second.
+		@crack := LoadTone(dir + "/objeck_lantern_crack.wav", 2400, 1600.0, 2400.0,
+			0.5, 5.0, 0.75);
+		# Low and blunt, so damage is felt rather than heard as music.
+		@thud := LoadTone(dir + "/objeck_lantern_thud.wav", 4200, 90.0, 135.0,
+			0.7, 2.0, 0.2);
+		# The proximity cue: almost subsonic, long, and just noisy enough to
+		# read as breathing rather than as a tone.
+		@breath := LoadTone(dir + "/objeck_lantern_breath.wav", 9000, 62.0, 93.0,
+			0.8, 1.0, 0.35);
 	}
 
+	#~
+	Synthesise one sound and load it, or Nil if either step fails.
+
+	Nil is a normal outcome rather than an error: a machine with no audio device
+	is expected, and the game is playable without any of this.
+	~#
+	method : LoadTone(path : String, count : Int, first : Float, second : Float,
+			blend : Float, decay : Float, noise : Float) ~ MixChunk {
+		if(<>WriteTone(path, count, first, second, blend, decay, noise)) {
+			return Nil;
+		};
+
+		chunk := MixChunk->New(path);
+		if(chunk <> Nil & chunk->IsNull()) {
+			return Nil;
+		};
+
+		return chunk;
+	}
+
+	#~
+	The pickup chime, and the shape every other sound is built from.
+	~#
 	method : WriteChime(file : String) ~ Bool {
+		return WriteTone(file, 5200, 880.0, 1320.0, 0.62, 3.0, 0.0);
+	}
+
+	#~
+	Write one synthesised sound as a 16-bit mono WAV.
+
+	The game ships no audio files -- the same reason it ships no textures -- so
+	every sound is two sine partials under an envelope, written by hand because
+	there is no WAV writer in the standard library.
+
+	Noise is mixed in for the sounds that are not musical: a flare is a crack
+	rather than a note, and pure sines cannot make one.
+	@param file where to write
+	@param count sample count, which is the length
+	@param first the fundamental in Hz
+	@param second a second partial in Hz
+	@param blend how much of the first partial, 0..1
+	@param decay envelope power -- larger is a shorter, sharper tail
+	@param noise how much white noise to mix in, 0..1
+	@return true when the file was written
+	~#
+	method : WriteTone(file : String, count : Int, first : Float, second : Float,
+			blend : Float, decay : Float, noise : Float) ~ Bool {
 		rate := 22050;
-		count := 5200;
 		data_size := count * 2;
 
 		writer := FileWriter->New(file);
@@ -1446,20 +1610,33 @@ class Lantern {
 		count_f := count->As(Float);
 		low := 0.0;
 		high := 0.0;
+		# Deterministic pseudo-noise: the same sound every run, so a change in
+		# what you hear is a change in the code.
+		seed := 12345;
 
 		for(i := 0; i < count; i += 1;) {
 			t := i->As(Float) / count_f;
-			low += two_pi * 880.0 / rate_f;
-			high += two_pi * 1320.0 / rate_f;
+			low += two_pi * first / rate_f;
+			high += two_pi * second / rate_f;
 
 			# Fast attack, long decay. Without the attack ramp the first sample
 			# jumps from silence and the speaker clicks.
-			envelope := (1.0 - t) * (1.0 - t) * (1.0 - t);
+			envelope := 1.0 - t;
+			d := 1.0;
+			while(d < decay) {
+				envelope := envelope * (1.0 - t);
+				d += 1.0;
+			};
 			if(t < 0.01) {
 				envelope := envelope * (t / 0.01);
 			};
 
-			value := envelope * (0.62 * low->Sin() + 0.38 * high->Sin());
+			value := envelope * (blend * low->Sin() + (1.0 - blend) * high->Sin());
+			if(noise > 0.0) {
+				seed := (seed * 1103515245 + 12345) and 0x7FFFFFFF;
+				grain := ((seed / 65536) % 2048)->As(Float) / 1024.0 - 1.0;
+				value := value * (1.0 - noise) + envelope * grain * noise;
+			};
 			sample := (value * 20000.0)->As(Int);
 			if(sample > 32767) { sample := 32767; };
 			if(sample < -32768) { sample := -32768; };
@@ -1636,6 +1813,8 @@ class Lantern {
 	both kinds of threat rather than a crowd in one place.
 	~#
 	method : BuildMonsters() ~ Nil {
+		# One material PER monster. They shared one, and a hit flash written to a
+		# shared material would light every monster in the room at once.
 		@monster_material := Material->New(@monster_texture);
 		# NO darkening tint. It was here to knock down the WALL texture the
 		# monsters used to be drawn with; now that they have a hide of their
@@ -1662,7 +1841,8 @@ class Lantern {
 		@monsters[1] := Monster->New(11.0, 0.55, -11.0);
 
 		each(i : @monsters) {
-			@monsters[i]->AddTo(@scene, @cube, @orb, @monster_material, @eye_material);
+			own := Material->New(@monster_texture);
+			@monsters[i]->AddTo(@scene, @cube, @orb, own, @eye_material);
 		};
 	}
 
