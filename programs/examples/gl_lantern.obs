@@ -801,7 +801,17 @@ class Lantern {
 		# 4x multisampling, and audio. Both are refused gracefully: the window
 		# opens without antialiasing rather than failing, and HasAudio reports
 		# whether the device actually opened.
-		@window := GLWindow->New("Lantern", 1600, 1000, 4, true);
+		# 1280x800, which fits inside a 1080p desktop once the title bar and
+		# taskbar are accounted for. 1600x1000 did not: the window ran off the
+		# bottom of the screen and took the HUD with it, so the fuel and health
+		# bars were simply not visible.
+		#
+		# Sizing from Display->GetDisplayBounds was tried and does not work
+		# here: it needs SDL's video subsystem, which GLWindow->New is what
+		# initialises, so a query before the window exists always fails and
+		# silently falls back. A fixed size that fits is better than a clever
+		# one that never runs.
+		@window := GLWindow->New("Lantern", 1280, 800, 4, true);
 		if(<>@window->IsOk()) {
 			@window->GetError()->ErrorLine();
 			return;
