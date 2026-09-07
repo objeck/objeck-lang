@@ -1637,9 +1637,15 @@ class Lantern {
 	~#
 	method : BuildMonsters() ~ Nil {
 		@monster_material := Material->New(@monster_texture);
-		# Dark and cold against lit stone. It does NOT need to be bright: the
-		# eyes carry the visibility, which is the point of them.
-		@monster_material->SetTint(0.34, 0.30, 0.38);
+		# NO darkening tint. It was here to knock down the WALL texture the
+		# monsters used to be drawn with; now that they have a hide of their
+		# own -- which is already dark -- the two multiplied to about 15 of 255
+		# before any light reached them, and the result was a black mass with
+		# glowing eyes rather than a creature.
+		#
+		# Third time this session that two dark factors were multiplied and the
+		# result read as a rendering fault: the walls, the shades, and now this.
+		@monster_material->SetTint(1.0, 1.0, 1.0);
 
 		@eye_material := Material->New(@relic_texture);
 		# Emissive, so the eyes are visible where the lamp is not. A monster
@@ -1899,7 +1905,10 @@ class Lantern {
 			return Texture2D->New(Nil);
 		};
 
-		surface->FillRect(Rect->New(0, 0, size, size), Texture2D->Rgb(46, 40, 44));
+		# Comparable to the wall stone (about 104) rather than a quarter of it.
+		# A hide that is darker than everything around it does not read as an
+		# animal, it reads as a hole.
+		surface->FillRect(Rect->New(0, 0, size, size), Texture2D->Rgb(96, 84, 92));
 
 		# Patches at three sizes, so it has texture at more than one distance:
 		# the big ones carry across a room, the small ones only appear close.
@@ -1913,7 +1922,7 @@ class Lantern {
 			while(x < size) {
 				noise := (row * 131 + column * 79) % 101;
 				if(noise < 34) {
-					shade := Texture2D->Rgb(60 + noise / 3, 50 + noise / 4, 56 + noise / 3);
+					shade := Texture2D->Rgb(118 + noise / 3, 104 + noise / 4, 112 + noise / 3);
 					w := step + (noise % 3) * step;
 					surface->FillRect(Rect->New(x, y, w, step), shade);
 				}
@@ -1921,7 +1930,7 @@ class Lantern {
 					# The occasional near-black pit, which is what keeps it from
 					# reading as evenly speckled.
 					surface->FillRect(Rect->New(x, y, step, step),
-						Texture2D->Rgb(24, 20, 24));
+						Texture2D->Rgb(62, 54, 60));
 				};
 
 				x += step;
