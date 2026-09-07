@@ -33,6 +33,7 @@ the same way.
 """
 import json
 import os
+import re
 import queue
 import socket
 import subprocess
@@ -41,6 +42,7 @@ import threading
 import time
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", ".."))
 WS_DIR = os.path.join(TESTS_DIR, "ws_lsp_features")
 PASS = 0
 FAIL = 0
@@ -344,6 +346,22 @@ def main():
                    bool(info.get("name")) and bool(info.get("version")),
                    f"got: {info}")
 
+        # ...and it must be the CURRENT version. A note in server.obs asked for
+        # a manual bump alongside version.h and was ignored through two
+        # releases, leaving the server introducing itself as 2026.8.0. A
+        # reminder nothing reads is not a reminder; this is what reads it.
+        expected = None
+        try:
+            with open(os.path.join(REPO_ROOT, "core", "shared", "version.h"),
+                      encoding="utf-8", errors="replace") as fh:
+                m = re.search(r'VERSION_STRING\s+L"([0-9.]+)"', fh.read())
+                expected = m.group(1) if m else None
+        except OSError:
+            pass
+        log_result("serverInfo version matches core/shared/version.h",
+                   expected is not None and info.get("version") == expected,
+                   f"server said {info.get('version')!r}, version.h says {expected!r}")
+
         # codeActionProvider must name its kinds, otherwise clients cannot
         # filter them or route "Organize Imports" to the server.
         kinds = caps.get("codeActionProvider")
@@ -422,11 +440,72 @@ def main():
             "textDocument/selectionRange",
             {"textDocument": {"uri": probe_uri},
              "positions": [circle_decl["position"]]})))
-        log_result("textDocument/inlayHint", non_empty(c.request(
+        hints_resp = c.request(
             "textDocument/inlayHint",
             {"textDocument": {"uri": probe_uri},
              "range": {"start": {"line": 0, "character": 0},
-                       "end": {"line": probe_text.count("\n"), "character": 0}}})))
+                       "end": {"line": probe_text.count("\n"), "character": 0}}})
+        log_result("textDocument/inlayHint", non_empty(hints_resp))
+
+        # SHAPE, not just presence. The server wrapped the coordinates in a
+        # "start" object -- InlayHint.position is a Position, not a Range -- so
+        # every client dropped every hint while a non-empty check still passed.
+        hints = result_of(hints_resp) or []
+        first = hints[0] if isinstance(hints, list) and hints else {}
+        pos = first.get("position") if isinstance(first, dict) else None
+        log_result("inlayHint position is a Position, not a Range",
+                   isinstance(pos, dict) and "line" in pos and "character" in pos
+                   and "start" not in pos,
+                   f"got: {pos}")
+
+        # --- codeAction without context.only ---------------------------------
+        # LSP makes context.only OPTIONAL, and VS Code omits it for an ordinary
+        # lightbulb. The handler used to REQUIRE it -- and require an array of
+        # exactly one -- so the common request returned null and quick fixes were
+        # unreachable from the editor while codeActionProvider was advertised.
+        ca_obs = os.path.join(TESTS_DIR, "lsp_codeaction.obs")
+        with open(ca_obs, encoding="utf-8") as fh:
+            ca_text = fh.read()
+        ca_uri = path_to_uri(ca_obs)
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": ca_uri, "languageId": "objeck", "version": 1, "text": ca_text}})
+        ca_diags = c.diagnostics_for(ca_uri, timeout=60) or []
+        undefined = next((d for d in ca_diags
+                          if str(d.get("message", "")).startswith("Undefined class")), None)
+        log_result("fixture reports an Undefined class diagnostic",
+                   undefined is not None, f"got: {[d.get('message') for d in ca_diags]}")
+        if undefined:
+            fixes = result_of(c.request("textDocument/codeAction", {
+                "textDocument": {"uri": ca_uri},
+                "range": undefined["range"],
+                "context": {"diagnostics": [undefined]},   # no "only": the VS Code shape
+            }))
+            # The assertion is that the handler RAN: it now returns an array
+            # (possibly empty) where it used to leave 'response' unassigned and
+            # answer JSON null. Whether a fix is offered additionally depends on
+            # the class-to-bundle index resolving the name, which this gate does
+            # not control -- asserting on a fix would test that instead.
+            log_result("codeAction runs when context.only is absent",
+                       isinstance(fixes, list),
+                       f"got: {fixes!r} (None means the null-answering path)")
+
+            # A restriction that includes quickfix must still work.
+            fixes_only = result_of(c.request("textDocument/codeAction", {
+                "textDocument": {"uri": ca_uri},
+                "range": undefined["range"],
+                "context": {"diagnostics": [undefined], "only": ["quickfix"]},
+            }))
+            log_result("codeAction still honours an explicit quickfix filter",
+                       isinstance(fixes_only, list), f"got: {fixes_only!r}")
+
+            # ...and a filter that excludes quickfix must NOT be served.
+            fixes_other = result_of(c.request("textDocument/codeAction", {
+                "textDocument": {"uri": ca_uri},
+                "range": undefined["range"],
+                "context": {"diagnostics": [undefined], "only": ["refactor.extract"]},
+            }))
+            log_result("codeAction declines a filter that excludes quickfix",
+                       fixes_other is None, f"got: {fixes_other!r}")
         log_result("textDocument/semanticTokens/full", non_empty(c.request(
             "textDocument/semanticTokens/full", {"textDocument": {"uri": probe_uri}})))
 
