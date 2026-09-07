@@ -710,6 +710,7 @@ class Lantern {
 	@wall_texture : Texture2D;
 	@wall_bumps : Texture2D;
 	@monster_texture : Texture2D;
+	@monster_bumps : Texture2D;
 	@floor_bumps : Texture2D;
 	# Shared, so Scene's material cache has something to hit.
 	@wall_material : Material;
@@ -1503,6 +1504,7 @@ class Lantern {
 		@floor_material->SetNormalMap(@floor_bumps);
 
 		@monster_texture := @window->Own(HideTexture(128))->As(Texture2D);
+		@monster_bumps := @window->Own(HideNormals(128))->As(Texture2D);
 		@relic_texture := @window->Own(Texture2D->Solid(0xFFF2C879))->As(Texture2D);
 		@relic_material := Material->New(@relic_texture);
 		@glow := Material->New(@relic_texture);
@@ -1860,6 +1862,7 @@ class Lantern {
 		# One material PER monster. They shared one, and a hit flash written to a
 		# shared material would light every monster in the room at once.
 		@monster_material := Material->New(@monster_texture);
+		@monster_material->SetNormalMap(@monster_bumps);
 		# NO darkening tint. It was here to knock down the WALL texture the
 		# monsters used to be drawn with; now that they have a hide of their
 		# own -- which is already dark -- the two multiplied to about 15 of 255
@@ -1886,6 +1889,7 @@ class Lantern {
 
 		each(i : @monsters) {
 			own := Material->New(@monster_texture);
+			own->SetNormalMap(@monster_bumps);
 			@monsters[i]->AddTo(@scene, @cube, @orb, own, @eye_material);
 		};
 	}
@@ -2167,6 +2171,107 @@ class Lantern {
 
 		return Texture2D->New(surface, TextureFilter->GL_LINEAR,
 			TextureWrap->GL_REPEAT, true);
+	}
+
+	#~
+	The hide's relief: the same patch walk, so the bumps sit on the patches
+	instead of crossing them.
+
+	The walls and the floor got normal maps and that is why they read as stone
+	under a moving lamp. The hide never did, so a monster was a smooth sphere
+	with a pattern painted on it -- which is most of why they still looked like
+	spheres after the albedo was written. Nothing about a flat map is visible
+	until a light moves across it, and in this room the light is always moving.
+
+	Every number here is copied from HideTexture rather than chosen again: the
+	same step, the same hash, the same two thresholds. That is the whole point.
+	A relief generated from its own noise would be a second, unrelated texture
+	multiplied over the first, and the result is mud.
+	@param size texture edge in pixels, matching the albedo
+	@return the texture
+	~#
+	method : HideNormals(size : Int) ~ Texture2D {
+		surface := Texture2D->NewSurface(size, size);
+		if(surface = Nil) {
+			return Texture2D->New(Nil);
+		};
+
+		# Flat lavender is "no perturbation"; the hide between the patches is
+		# smooth, and only the patches and the pits disturb it.
+		surface->FillRect(Rect->New(0, 0, size, size), Texture2D->Rgb(128, 128, 255));
+
+		step := size / 16;
+		if(step < 2) { step := 2; };
+		bevel := step / 4;
+		if(bevel < 1) { bevel := 1; };
+
+		y := 0;
+		row := 0;
+		while(y < size) {
+			x := 0;
+			column := 0;
+			while(x < size) {
+				noise := (row * 131 + column * 79) % 101;
+				if(noise < 34) {
+					# A patch stands slightly proud of the hide around it.
+					w := step + (noise % 3) * step;
+					PatchRelief(surface, x, y, w, step, bevel, true);
+				}
+				else if(noise > 88) {
+					# And a pit sinks. Not clipped at the right edge, because
+					# HideTexture does not clip either -- matching its seam is
+					# what keeps the relief on the patches.
+					PatchRelief(surface, x, y, step, step, bevel, false);
+				};
+
+				x += step;
+				column += 1;
+			};
+
+			y += step;
+			row += 1;
+		};
+
+		return Texture2D->New(surface, TextureFilter->GL_LINEAR,
+			TextureWrap->GL_REPEAT, true);
+	}
+
+	#~
+	Bevel one rectangle in a normal map: four edges facing out from a plateau,
+	or -- for a pit -- the same four facing in.
+	@param surface the map being drawn into
+	@param x left edge
+	@param y top edge
+	@param w width
+	@param h height
+	@param bevel how wide each sloped edge is
+	@param raised true for a plateau, false for a pit
+	~#
+	method : PatchRelief(surface : Surface, x : Int, y : Int, w : Int, h : Int,
+			bevel : Int, raised : Bool) ~ Nil {
+		# Too small to have both an edge and a middle: leave it flat rather than
+		# drawing two bevels over each other, which would be a normal pointing
+		# somewhere no surface points.
+		if(w < bevel * 2 | h < bevel * 2) {
+			return;
+		};
+
+		up := Texture2D->Rgb(128, 196, 210);
+		down := Texture2D->Rgb(128, 60, 210);
+		left := Texture2D->Rgb(196, 128, 210);
+		right := Texture2D->Rgb(60, 128, 210);
+		if(<>raised) {
+			# A pit is a plateau turned inside out, so every edge faces the
+			# other way. Same four colours, swapped in pairs.
+			swap := up; up := down; down := swap;
+			swap := left; left := right; right := swap;
+		};
+
+		surface->FillRect(Rect->New(x, y, w, bevel), up);
+		surface->FillRect(Rect->New(x, y + h - bevel, w, bevel), down);
+		surface->FillRect(Rect->New(x, y + bevel, bevel, h - bevel * 2), left);
+		surface->FillRect(Rect->New(x + w - bevel, y + bevel, bevel,
+			h - bevel * 2), right);
 	}
 
 	method : BuildOverlay() ~ Nil {
