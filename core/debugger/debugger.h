@@ -225,6 +225,9 @@ namespace Runtime {
     void ProcessBreak(FilePostion* break_command);
     void ProcessBreaks();
     void ProcessDelete(FilePostion* break_command);
+    void ProcessDeleteById(int id);
+    bool StringTextOf(Expression* expression, StackClass* klass, std::wstring &out);
+    void PrintObjectFields(size_t* instance, StackClass* klass);
     void ProcessPrint(Print* print);
     void ProcessFrame(Frame* frame);
     void ProcessFrameShift(int delta);

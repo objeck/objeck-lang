@@ -108,6 +108,11 @@ void Scanner::LoadKeywords()
   ident_map[L"class"] = TOKEN_CLASS_ID;
   ident_map[L"method"] = TOKEN_METHOD_ID;
   ident_map[L"if"] = TOKEN_IF_ID;
+  // Literals, not commands, so they carry no '?'. Objeck reserves all three,
+  // so no variable can be shadowed by adding them.
+  ident_map[L"true"] = TOKEN_TRUE_ID;
+  ident_map[L"false"] = TOKEN_FALSE_ID;
+  ident_map[L"Nil"] = TOKEN_NIL_ID;
   ident_map[L"?up"] = TOKEN_UP_ID;
   ident_map[L"?down"] = TOKEN_DOWN_ID;
   ident_map[L"?locals"] = TOKEN_LOCALS_ID;
@@ -170,6 +175,11 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_WATCH_ID:
     case TOKEN_WATCHES_ID:
     case TOKEN_UNWATCH_ID:
+    // Without these three the ident_map entries above are dead: CheckIdentifier
+    // is a whitelist, and anything not named here falls through to TOKEN_IDENT.
+    case TOKEN_TRUE_ID:
+    case TOKEN_FALSE_ID:
+    case TOKEN_NIL_ID:
       tokens[index]->SetType(ident_type);
       break;
     default:

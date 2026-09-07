@@ -89,6 +89,21 @@ cd "$REGRESSION_DIR"
 echo "  Compiled successfully."
 echo ""
 
+# Evaluator / breakpoint-bookkeeping fixture
+EVAL_SRC="debugger_eval_test.obs"
+EVAL_BIN="${REGRESSION_DIR}/debugger_eval_test.obe"
+
+echo "Compiling evaluator test program..."
+cd "${DEPLOY_DIR}/bin"
+"$ABS_COMPILER" -src "${REGRESSION_DIR}/${EVAL_SRC}" -dest "$EVAL_BIN" -debug > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "  [FAIL] Evaluator test compilation error"
+    exit 1
+fi
+cd "$REGRESSION_DIR"
+echo "  Compiled successfully."
+echo ""
+
 # Helper function to run an expect test
 run_test() {
     local TEST_NAME="$1"
@@ -98,13 +113,24 @@ run_test() {
 
     echo -n "Running: ${TEST_NAME}..."
 
-    # Run expect script and capture output
-    OUTPUT=$(expect -c "
-        log_user 1
-        set timeout 10
-        spawn $ABS_DEBUGGER -b $BIN -src $REGRESSION_DIR
-        $EXPECT_SCRIPT
-    " 2>&1)
+    # Write the expect script to a file rather than passing it with -c.
+    #
+    # With -c the script is interpolated into a double-quoted shell string, so
+    # everything in it is expanded a second time by the shell before expect ever
+    # sees it -- which makes an embedded double quote impossible to write. A
+    # test that needs to send  p "text"  cannot be expressed at all that way.
+    # printf passes the caller's script through verbatim; only the spawn line,
+    # which is built here, needs expansion.
+    local SCRIPT_FILE="${RESULTS_DIR}/expect_${TEST_NAME}.exp"
+    {
+        echo "log_user 1"
+        echo "set timeout 10"
+        echo "spawn $ABS_DEBUGGER -b $BIN -src $REGRESSION_DIR"
+        printf '%s
+' "$EXPECT_SCRIPT"
+    } > "$SCRIPT_FILE"
+
+    OUTPUT=$(expect -f "$SCRIPT_FILE" 2>&1)
 
     # Save output
     echo "$OUTPUT" > "${RESULTS_DIR}/debugger_${TEST_NAME}.log"
@@ -595,12 +621,241 @@ run_test "print_collections" '
     expect eof
 ' "type=Collection.Vector, size=5|type=Collection.Map, size=4|type=Collection.Hash, size=3|type=Collection.List, size=6" "$COLL_BIN"
 
+# ===========================================================================
+# Expression evaluator and breakpoint bookkeeping.
+#
+# Each of these fails on the previous build. Four of the behaviours pinned down
+# here used to report SUCCESS while doing the wrong thing, which is why none was
+# noticed -- an assertion that a command merely "ran" would still have passed.
+# ===========================================================================
+
+# Test 25: 'delete <id>' removes THAT breakpoint, not the one at the current line
+run_test "delete_by_id" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "b debugger_eval_test.obs:58\r"
+    expect ">"
+    send "delete 2\r"
+    expect ">"
+    send "breaks\r"
+    expect ">"
+    send "delete 99\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "removed breakpoint #2|break #1:|no breakpoint with id #99" "$EVAL_BIN"
+
+# Test 26: 'unwatch' with no id removes EVERY watchpoint (erase already advances)
+run_test "unwatch_all" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "watch zero\r"
+    expect ">"
+    send "watch five\r"
+    expect ">"
+    send "watch total\r"
+    expect ">"
+    send "unwatch\r"
+    expect ">"
+    send "watches\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "removed 3 watchpoint(s)|no watchpoints defined" "$EVAL_BIN"
+
+# Test 27: 'watches' names the expression it is watching
+run_test "watches_show_expression" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "watch five\r"
+    expect ">"
+    send "watches\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "watch #1: five" "$EVAL_BIN"
+
+# Test 28: an unknown watch id is reported rather than silently ignored
+run_test "unwatch_missing_id" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "watch five\r"
+    expect ">"
+    send "unwatch 42\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "no watchpoint #42" "$EVAL_BIN"
+
+# Test 29: a string literal prints -- it used to print nothing at all
+run_test "print_string_literal" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p \"widget\"\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "print: type=System.String, value=\"widget\"" "$EVAL_BIN"
+
+# Test 30: a String variable compares against a literal (conditional breakpoints)
+run_test "string_comparison" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p text = \"widget\"\r"
+    expect ">"
+    send "p text = \"other\"\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "print: type=Bool, value=true|print: type=Bool, value=false" "$EVAL_BIN"
+
+# Test 31: true/false are literals, not variable lookups
+run_test "boolean_literals" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p true\r"
+    expect ">"
+    send "p false\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "print: type=Bool, value=true|print: type=Bool, value=false" "$EVAL_BIN"
+
+# Test 32: Nil is a literal, so an object can be tested for it
+run_test "nil_literal" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p empty = Nil\r"
+    expect ">"
+    send "p holder = Nil\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "print: type=Bool, value=true|print: type=Bool, value=false" "$EVAL_BIN"
+
+# Test 33: printing an object lists its fields instead of a bare hex address
+run_test "print_object_fields" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p holder\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "print: type=Holder|@count = 7|@ratio = 1.5|@next = Nil" "$EVAL_BIN"
+
+# Test 34: 'set' refuses a value it cannot store instead of writing zero
+run_test "set_rejects_string" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "set five = \"oops\"\r"
+    expect ">"
+    send "p five\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "cannot set: only Int, Char and Float|value=5" "$EVAL_BIN"
+
+# Test 35: a zero numerator is valid modulus
+run_test "modulus_zero_numerator" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p zero % five\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "print: type=Int, value=0" "$EVAL_BIN"
+
+# Test 36: division/modulus by zero are reported, not executed
+run_test "divide_by_zero" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p five / zero\r"
+    expect ">"
+    send "p five % zero\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "division by zero|modulus by zero" "$EVAL_BIN"
+
+# Test 37: a class holding only statics shows them
+run_test "info_static_only_class" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "info class=Registry\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "class: type=Registry|@seen|@label_text" "$EVAL_BIN"
+
+# Test 38: a leading space no longer breaks every command
+run_test "leading_whitespace" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "   p five\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "value=5" "$EVAL_BIN"
+
 echo ""
 echo "========================================"
 echo "  Results: $PASS_COUNT passed, $FAIL_COUNT failed"
 echo "========================================"
 
 # Clean up
-rm -f "$TEST_BIN"
+rm -f "$TEST_BIN" "$EVAL_BIN"
 
 [ $FAIL_COUNT -eq 0 ] && exit 0 || exit 1

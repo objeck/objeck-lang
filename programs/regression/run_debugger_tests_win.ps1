@@ -2,6 +2,7 @@ param(
     [string]$Debugger,
     [string]$TestBin,
     [string]$CollBin,
+    [string]$EvalBin,
     [string]$SrcDir,
     [string]$ResultsDir
 )
@@ -301,6 +302,144 @@ Run-DebuggerTest "watchpoint" @(
     "watch n",
     "c"
 ) @("added watchpoint", "watch #1 changed")
+
+# ---------------------------------------------------------------------------
+# Regression tests for the expression evaluator and breakpoint bookkeeping.
+#
+# Each of these fails on the previous build. Four of the behaviours they pin
+# down used to report SUCCESS while doing the wrong thing, which is why none of
+# them was noticed: an assertion that something merely "ran" would still pass.
+# ---------------------------------------------------------------------------
+
+# Test 25: 'delete <id>' removes THAT breakpoint. It used to parse as a
+# location-less delete and silently remove the one at the current line instead.
+Run-DebuggerTest "delete_by_id" @(
+    "b debugger_eval_test.obs:56",
+    "b debugger_eval_test.obs:58",
+    "delete 2",
+    "breaks",
+    "delete 99"
+) @("break #1:", "removed breakpoint #2", "no breakpoint with id #99") $EvalBin
+
+# Test 26: 'unwatch' with no id removes EVERY watchpoint. erase() already
+# returns the next element, so the loop's ++iter skipped every second one and
+# left survivors behind while reporting removal.
+Run-DebuggerTest "unwatch_all" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "watch zero",
+    "watch five",
+    "watch total",
+    "unwatch",
+    "watches"
+) @("removed 3 watchpoint(s)", "no watchpoints defined") $EvalBin
+
+# Test 27: 'watches' names what it is watching. The CLI parser passed an empty
+# string for the expression text, so the listing -- and the DAP stop message
+# that shares the field -- could only print an id.
+Run-DebuggerTest "watches_show_expression" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "watch five",
+    "watches"
+) @("watch #1: five") $EvalBin
+
+# Test 28: an unknown watch id says so rather than staying silent.
+Run-DebuggerTest "unwatch_missing_id" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "watch five",
+    "unwatch 42",
+    "watches"
+) @("no watchpoint #42", "watch #1") $EvalBin
+
+# Test 29: a string literal prints. It used to evaluate to nothing at all --
+# 'p "text"' returned silently, printing no line whatsoever.
+Run-DebuggerTest "print_string_literal" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p ""widget"""
+) @('print: type=System.String, value="widget"') $EvalBin
+
+# Test 30: a String variable compares against a literal, which is what makes a
+# conditional breakpoint on a string possible.
+Run-DebuggerTest "string_comparison" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p text = ""widget""",
+    "p text = ""other""",
+    "p text <> ""other"""
+) @("print: type=Bool, value=true", "print: type=Bool, value=false") $EvalBin
+
+# Test 31: true/false are literals. MakeBooleanLiteral had no caller, so these
+# words were looked up as variables named "true" and "false".
+Run-DebuggerTest "boolean_literals" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p true",
+    "p false"
+) @("print: type=Bool, value=true", "print: type=Bool, value=false") $EvalBin
+
+# Test 32: Nil is a literal, so an object can be tested for it.
+Run-DebuggerTest "nil_literal" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p empty = Nil",
+    "p holder = Nil",
+    "p holder <> Nil"
+) @("print: type=Bool, value=true", "print: type=Bool, value=false") $EvalBin
+
+# Test 33: printing an object lists its fields instead of bottoming out at a
+# hex address that told the reader nothing.
+Run-DebuggerTest "print_object_fields" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p holder"
+) @("print: type=Holder", "@name = ""widget""", "@count = 7", "@ratio = 1.5", "@next = Nil") $EvalBin
+
+# Test 34: 'set' refuses a value it cannot store. It used to evaluate the string
+# to nothing, store the resulting zero, and report 'set: value=0(0x0)'.
+Run-DebuggerTest "set_rejects_string" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "set five = ""oops""",
+    "p five"
+) @("cannot set: only Int, Char and Float", "value=5") $EvalBin
+
+# Test 35: a zero numerator is valid modulus. The old guard tested the operands
+# for truthiness, so '0 % 5' was rejected as "requires integer values".
+Run-DebuggerTest "modulus_zero_numerator" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p zero % five"
+) @("print: type=Int, value=0") $EvalBin
+
+# Test 36: division and modulus by zero are reported, not executed. Integer
+# division by zero had no guard at all and faulted the debugger process.
+Run-DebuggerTest "divide_by_zero" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p five / zero",
+    "p five % zero",
+    "p five"
+) @("division by zero", "modulus by zero", "value=5") $EvalBin
+
+# Test 37: a class holding only statics shows them. The class-declaration print
+# was nested inside the instance-declaration test, so this printed nothing.
+Run-DebuggerTest "info_static_only_class" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "info class=Registry"
+) @("class: type=Registry", "@seen", "@label_text") $EvalBin
+
+# Test 38: a leading space no longer breaks every command. The '?' sentinel was
+# concatenated onto the raw line, so " p five" became "? p five" and a lone '?'
+# scans as an identifier rather than a keyword.
+Run-DebuggerTest "leading_whitespace" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "   p five"
+) @("value=5") $EvalBin
 
 Write-Host ""
 Write-Host "========================================"
