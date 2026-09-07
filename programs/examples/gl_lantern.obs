@@ -748,6 +748,10 @@ class Lantern {
 	# Reused every frame rather than allocated: the lamp moves with the player.
 	@lamp_at : Vector3;
 	@carried : Int;
+	# Drives the last relic's pulse. Free-running rather than started when
+	# the third relic is taken, so there is no state to reset and no moment
+	# where the glow jumps because the sine began mid-cycle.
+	@pulse : Float;
 	@exit_at : Vector3;
 	@won : Bool;
 
@@ -791,6 +795,7 @@ class Lantern {
 		@lamp_at := Vector3->New(0.0, 0.0, 0.0);
 
 		@carried := 0;
+		@pulse := 0.0;
 		@won := false;
 		@fuel_max := 95.0;
 		@fuel := @fuel_max;
@@ -1020,6 +1025,7 @@ class Lantern {
 		each(i : @relics) {
 			@relics[i]->Animate(delta);
 		};
+		PulseLastRelic(delta);
 
 		# The shades move against the light the fuel is paying for, so this has
 		# to run after the fuel has been spent this frame, not before.
@@ -1215,6 +1221,44 @@ class Lantern {
 				};
 			};
 		};
+	}
+
+	#~
+	The last relic calls to you.
+
+	Four relics in a room the lamp does not cross, and the fourth was the one
+	that ended sessions: three taken, the last somewhere behind a wall, and the
+	fuel running out while the player swept corners they had already swept.
+	This is the fix that fits the fiction -- when one is left, it brightens and
+	dims rather than sitting at the same steady glow as the other three did.
+
+	It drives the SHARED shell material, which is correct precisely because the
+	taken relics are invisible: whatever this sets only shows on relics still
+	standing, and when one is left that is exactly one relic. No per-relic
+	material and no bookkeeping about which one it is.
+
+	Emissive is the channel that carries, because the lamp never reaches the far
+	corners -- brightening the tint would change nothing at the distance where
+	being found actually matters. The opacity moves with it, since the shell is
+	blended at 0.22 and that scales the emissive down with everything else.
+	~#
+	method : PulseLastRelic(delta : Float) ~ Nil {
+		@pulse += delta * 2.6;
+
+		# Recomputed every frame rather than set once on the transition: a
+		# restart puts three relics back, and nothing else would turn the
+		# pulse off again.
+		beat := 0.0;
+		if(@relics->Size() - @carried = 1) {
+			# Sin is -1..1, and this maps it to 0..1 so the relic only ever
+			# rises above its resting glow. A relic that dimmed below normal
+			# would read as burning out rather than as calling.
+			beat := (@pulse->Sin() + 1.0) * 0.5;
+		};
+
+		lift := 1.0 + beat * 1.4;
+		@glow->SetEmissive(0.55 * lift, 0.42 * lift, 0.14 * lift);
+		@glow->SetOpacity(0.22 + beat * 0.10);
 	}
 
 	method : CheckExit() ~ Nil {
