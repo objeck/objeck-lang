@@ -397,6 +397,10 @@ namespace Runtime {
 
     // evaluate an expression and return result as string (for DAP evaluate)
     std::wstring EvaluateForDap(const std::wstring& expr_str);
+    std::wstring EvaluateForDapInFrame(const std::wstring& expr_str, StackFrame* frame);
+    bool EvaluateForDapRawInFrame(const std::wstring& expr_str, StackFrame* frame, ParamType& out_type, size_t& out_value);
+    std::wstring FormatNonReferenceForDap(Expression* expression);
+    bool SetIgnoreCountForDap(int line_num, const std::wstring& file_name, int count);
 
     // Same evaluation, but reports the raw value and its type so the DAP
     // adapter can hand back an expandable reference for watch/hover results.

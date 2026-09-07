@@ -2004,6 +2004,18 @@ bool Runtime::Debugger::DirectoryExists(const std::wstring& wdir_name)
 #endif
 }
 
+// Bridges DAP's hitCondition onto the ignore counts the engine already has.
+bool Runtime::Debugger::SetIgnoreCountForDap(int line_num, const std::wstring& file_name, int count)
+{
+  UserBreak* user_break = FindBreak(line_num, file_name);
+  if(!user_break) {
+    return false;
+  }
+
+  user_break->ignore_count = count;
+  return true;
+}
+
 bool Runtime::Debugger::DeleteBreak(int line_num, const std::wstring& file_name)
 {
   UserBreak* user_break = FindBreak(line_num, file_name);
@@ -3561,6 +3573,81 @@ bool Runtime::Debugger::EvaluateForDapRaw(const std::wstring& expr_str, ParamTyp
   return true;
 }
 
+// Renders a value that is not a variable reference: a literal, or the result of
+// a comparison or a calculation.
+std::wstring Runtime::Debugger::FormatNonReferenceForDap(Expression* expression)
+{
+  switch(expression->GetExpressionType()) {
+  case CHAR_STR_EXPR:
+    return L'"' + static_cast<CharacterString*>(expression)->GetString() + L'"';
+
+  case NIL_LIT_EXPR:
+    return L"Nil";
+
+  case BOOLEAN_LIT_EXPR:
+  case AND_EXPR:
+  case OR_EXPR:
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EQL_EXPR:
+    return expression->GetIntValue() ? L"true" : L"false";
+
+  case CHAR_LIT_EXPR: {
+    std::wstringstream wss;
+    wss << (wchar_t)expression->GetIntValue();
+    return wss.str();
+  }
+
+  default: {
+    std::wstringstream wss;
+    if(expression->GetFloatEval()) {
+      wss << expression->GetFloatValue();
+    }
+    else {
+      wss << (long)expression->GetIntValue();
+    }
+    return wss.str();
+  }
+  }
+}
+
+// Evaluate against a chosen stack frame. DAP's 'evaluate' carries a frameId and
+// used to ignore it, so hovering a variable while a CALLER frame was selected
+// silently read the top frame instead and reported someone else's value.
+std::wstring Runtime::Debugger::EvaluateForDapInFrame(const std::wstring& expr_str, StackFrame* frame)
+{
+  StackFrame* saved = eval_frame;
+  if(frame) {
+    eval_frame = frame;
+  }
+  const std::wstring result = EvaluateForDap(expr_str);
+  // A failed lookup leaves is_error set. SetVariableForDap clears it before
+  // restoring for the same reason: the flag is shared, and carrying it out of
+  // here makes the NEXT evaluation fail for a reason that has nothing to do
+  // with it -- which is what broke the '@' hover retry.
+  is_error = false;
+  eval_frame = saved;
+
+  return result;
+}
+
+bool Runtime::Debugger::EvaluateForDapRawInFrame(const std::wstring& expr_str, StackFrame* frame,
+                                                 ParamType& out_type, size_t& out_value)
+{
+  StackFrame* saved = eval_frame;
+  if(frame) {
+    eval_frame = frame;
+  }
+  const bool ok = EvaluateForDapRaw(expr_str, out_type, out_value);
+  is_error = false;
+  eval_frame = saved;
+
+  return ok;
+}
+
 std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
 {
   if(!cur_frame) {
@@ -3578,6 +3665,15 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
     EvaluateExpression(expression);
 
     if(!is_error) {
+      // Only a REF_EXPR carries a declaration. Every other shape -- a literal,
+      // or an arithmetic/comparison result -- was static_cast to Reference* and
+      // read through anyway, so 'p 1 + 2' in the debug console reinterpreted a
+      // CalculatedExpression as a Reference. Now that true/false/Nil and string
+      // literals parse, more shapes reach here, so this is answered directly.
+      if(expression->GetExpressionType() != REF_EXPR) {
+        return FormatNonReferenceForDap(expression);
+      }
+
       const StackDclr& dclr = static_cast<Reference*>(expression)->GetDeclaration();
       switch(dclr.type) {
         case CHAR_PARM: {
@@ -3626,12 +3722,16 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
     }
   }
 
-  // Fallback: search frame declarations directly (handles inferred locals)
-  if(cur_frame && cur_frame->method) {
-    StackDclr** dclrs = cur_frame->method->GetDeclarations();
-    int dclrs_num = cur_frame->method->GetNumberDeclarations();
+  // Fallback: search frame declarations directly (handles inferred locals).
+  // This must use the SELECTED frame, not cur_frame: reaching it after a caller
+  // frame was chosen would otherwise answer from the top of the stack again,
+  // undoing the frame selection for exactly the inferred locals that need it.
+  StackFrame* search_frame = eval_frame ? eval_frame : cur_frame;
+  if(search_frame && search_frame->method) {
+    StackDclr** dclrs = search_frame->method->GetDeclarations();
+    int dclrs_num = search_frame->method->GetNumberDeclarations();
     int offset = 1;
-    if(cur_frame->method->HasAndOr()) {
+    if(search_frame->method->HasAndOr()) {
       offset++;
     }
 
@@ -3645,7 +3745,7 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
       std::wstring name = (name_pos != std::wstring::npos) ? full_name.substr(name_pos + 1) : full_name;
 
       if(name == expr_str) {
-        size_t value = cur_frame->mem[mem_index + offset];
+        size_t value = search_frame->mem[mem_index + offset];
 
         switch(dclr->type) {
           case CHAR_PARM: {
@@ -3660,7 +3760,7 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
           }
           case FLOAT_PARM: {
             double dval;
-            memcpy(&dval, &cur_frame->mem[mem_index + offset], sizeof(double));
+            memcpy(&dval, &search_frame->mem[mem_index + offset], sizeof(double));
             std::wstringstream wss;
             wss << dval;
             return wss.str();
