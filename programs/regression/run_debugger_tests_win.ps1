@@ -361,15 +361,34 @@ Run-DebuggerTest "print_string_literal" @(
     "p ""widget"""
 ) @('print: type=System.String, value="widget"') $EvalBin
 
-# Test 30: a String variable compares against a literal, which is what makes a
-# conditional breakpoint on a string possible.
-Run-DebuggerTest "string_comparison" @(
+# Test 30: a String variable compares equal to its own text.
+#
+# Asserted as a SINGLE true, not a mixture of true and false. The pre-fix build
+# compared the string variable's pointer against the literal's zero, so any test
+# that accepted both answers passed on it for the wrong reason -- '<>' against a
+# non-null pointer is true there too.
+Run-DebuggerTest "string_comparison_equal" @(
     "b debugger_eval_test.obs:56",
     "r",
-    "p text = ""widget""",
-    "p text = ""other""",
-    "p text <> ""other"""
-) @("print: type=Bool, value=true", "print: type=Bool, value=false") $EvalBin
+    "p text = ""widget"""
+) @("print: type=Bool, value=true") $EvalBin
+
+# Test 30b: and unequal text compares false, which the pointer comparison also
+# could not produce -- it answered false for BOTH.
+Run-DebuggerTest "string_comparison_unequal" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p text <> ""widget"""
+) @("print: type=Bool, value=false") $EvalBin
+
+# Test 30c: the payoff -- a breakpoint conditional on a string. This was simply
+# not expressible before: the condition compared a pointer to zero, never
+# matched, and the program ran to completion without stopping.
+Run-DebuggerTest "string_conditional_break" @(
+    "b debugger_eval_test.obs:58 if text = ""widget""",
+    "r",
+    "p five"
+) @("break: file='debugger_eval_test.obs:58'", "value=5") $EvalBin
 
 # Test 31: true/false are literals. MakeBooleanLiteral had no caller, so these
 # words were looked up as variables named "true" and "false".

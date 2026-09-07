@@ -714,8 +714,12 @@ run_test "print_string_literal" '
     expect eof
 ' "print: type=System.String, value=\"widget\"" "$EVAL_BIN"
 
-# Test 30: a String variable compares against a literal (conditional breakpoints)
-run_test "string_comparison" '
+# Test 30: a String variable compares equal to its own text.
+#
+# Asserted as a SINGLE true, not a mixture of true and false. The pre-fix build
+# compared the string variable's pointer against the literal's zero, so a test
+# that accepted both answers passed on it for the wrong reason.
+run_test "string_comparison_equal" '
     expect ">"
     send "b debugger_eval_test.obs:56\r"
     expect ">"
@@ -724,11 +728,39 @@ run_test "string_comparison" '
     expect ">"
     send "p text = \"widget\"\r"
     expect ">"
-    send "p text = \"other\"\r"
+    send "q\r"
+    expect eof
+' "print: type=Bool, value=true" "$EVAL_BIN"
+
+# Test 30b: unequal text compares false -- the pointer comparison answered false
+# for BOTH, so this pins the other direction.
+run_test "string_comparison_unequal" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p text <> \"widget\"\r"
     expect ">"
     send "q\r"
     expect eof
-' "print: type=Bool, value=true|print: type=Bool, value=false" "$EVAL_BIN"
+' "print: type=Bool, value=false" "$EVAL_BIN"
+
+# Test 30c: the payoff -- a breakpoint conditional on a string, which was not
+# expressible before: the condition never matched and the program ran through.
+run_test "string_conditional_break" '
+    expect ">"
+    send "b debugger_eval_test.obs:58 if text = \"widget\"\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p five\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "break: file='"'"'debugger_eval_test.obs:58'"'"'|value=5" "$EVAL_BIN"
 
 # Test 31: true/false are literals, not variable lookups
 run_test "boolean_literals" '
