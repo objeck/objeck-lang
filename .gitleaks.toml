@@ -27,3 +27,55 @@ paths = [
   # protect core/release/cov_scan.sh.
   '''^core/release/cov_scan\.(in|sh)$''',
 ]
+
+# The seventeen historical commits behind the 326 findings a FULL-HISTORY scan
+# reports. Every one was reviewed; none is a live credential.
+#
+# Allowlisted by COMMIT, deliberately, and not by path. A path entry for
+# programs/examples/job-search would also hide a real key committed there
+# tomorrow -- and test-1.mhtml is still tracked at HEAD. A commit entry can only
+# ever suppress findings attributed to that exact SHA, so every one of these
+# paths stays watched for all future commits, on pushes, pull requests and the
+# weekly scan alike.
+#
+# Why this list exists at all: gitleaks-action scans only the new commit range
+# on push and pull_request, but a SCHEDULED run has no range and walks all
+# ~30,600 commits. So secret-scan.yml passed on every push and failed every
+# Monday on the same historical findings -- a job that is always red is a job
+# nobody reads, and finding 327 would have arrived unnoticed. This is the same
+# hazard the release-scripts-head job in secret-scan.yml was already scoped to
+# avoid.
+commits = [
+  # 286 findings: one saved LinkedIn page kept as a parser fixture, re-added
+  # across three commits, plus a saved results page. The linkedin-client-id and
+  # linkedin-client-secret rules are matching the captured page's own markup.
+  "829384f0ac8a56c246c0a8a4c0ce112753d14224",  # programs/examples/job-search/data/test-1.mhtml
+  "080e1d5872f2fa785438b5e61c3db400342b1d7d",  # same fixture, re-added
+  "7c95011b2d07feaa69e7fb0b5d53397c71da8015",  # same fixture, re-added
+  "da53467370350a39e377a85b301eb71393df7bd2",  # programs/examples/job-search/out-2.html
+
+  # 36 findings: a single saved web page, "Example  Scanning for HREFs.htm",
+  # which moved between three directories over the years. generic-api-key is
+  # firing on high-entropy strings in the captured HTML.
+  "fc86a3f6bd6755acf7084bd87ea4e1a0aaf30c32",  # src/compiler/test_src/web/
+  "71fd45cf5dee3cf306b36f265fb847da1b3c90ed",  # src/compiler/test_src/web/
+  "478d3af82d6bfefbb23d00a008ec7b95d53d2bb8",  # src/compiler/test_src/web/
+  "20a968f05bde73a4da0393ce9802b2b9dc2787ac",  # programs/web/
+  "27a772e1f8c9a393118faa5d308746d3c30293d7",  # programs/web/
+  "97c6f7fc37a63a65a819b2c7428da947f188cd5b",  # programs/web/
+  "b9658df6bcbeb755eb9eaeb2b9299207372859d5",  # programs/web/old/
+  "0a6d8da28ce802a2ead1b3d1ef19bbe0a8d27f58",  # programs/web/old/
+  "0bb3d3d3d1534c539eb05efbebd7ded4314492b9",  # programs/web/old/
+
+  # 3 findings: a self-signed demo keypair added as "ssl server support",
+  # alongside its cert.pem, for the example TLS server. Deleted later and NOT
+  # present at HEAD. A demo key published in 2014 protects nothing.
+  "8c335e52fde075b1a0baf81a929b499d8b07d888",  # programs/web/key.pem
+  "826ee589a7d97f38aacabda889ff1d885a603392",  # programs/web/key.pem
+  "20f8157681a38575533dac5cccf8c7a1944c5971",  # programs/web/key.pem
+
+  # 1 finding: an actions/cache step for the InsightFace SCRFD model whose YAML
+  # field is literally named 'key:', which generic-api-key matched. A cache key,
+  # not a credential.
+  "bdf9408e2818d201c6101a38744869564316eb29",  # .github/workflows/ci-build.yml
+]
