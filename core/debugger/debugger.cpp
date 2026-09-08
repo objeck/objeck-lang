@@ -757,6 +757,21 @@ void Runtime::Debugger::ProcessBreaks() {
   }
 }
 
+void Runtime::Debugger::ProcessDeleteById(int id) {
+  for(std::list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); ++iter) {
+    if((*iter)->id == id) {
+      UserBreak* user_break = *iter;
+      breaks.erase(iter);
+      std::wcout << L"removed breakpoint #" << id << L": file='" << user_break->file_name
+                 << L"', line=" << user_break->line_num << L"." << std::endl;
+      delete user_break;
+      return;
+    }
+  }
+
+  std::wcout << L"no breakpoint with id #" << id << L"." << std::endl;
+}
+
 void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
   int line_num = delete_command->GetLineNumber();
   if(line_num < 0) {
@@ -1013,7 +1028,13 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             }
           }
           else {
-            std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
+            // Every user-defined object used to bottom out here as a bare hex
+            // address, so inspecting one meant already knowing its field names
+            // and drilling in with '->' one at a time. DAP has expanded these
+            // since data breakpoints landed; the CLI had no equivalent.
+            std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base")
+                       << L", value=" << (void*)reference->GetIntValue() << std::endl;
+            PrintObjectFields((size_t*)reference->GetIntValue(), ref_klass);
           }
           break;
 
@@ -1132,7 +1153,53 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
       break;
 
     case CHAR_STR_EXPR:
+      std::wcout << L"print: type=System.String, value=\"" << static_cast<CharacterString*>(expression)->GetString()
+                 << L"\"" << std::endl;
       break;
+    }
+  }
+}
+
+// Mirrors DapAdapter::ExpandObjectFields for the console: one line per instance
+// field, using the same shared obj_layout formatter, so the CLI and the editor
+// describe an object the same way.
+void Runtime::Debugger::PrintObjectFields(size_t* instance, StackClass* klass)
+{
+  if(!instance || !klass || !klass->IsDebug()) {
+    return;
+  }
+
+  const long count = klass->GetNumberInstanceDeclarations();
+  if(count < 1) {
+    return;
+  }
+
+  StackDclr** dclrs = klass->GetInstanceDeclarations();
+  if(!dclrs) {
+    return;
+  }
+
+  int mem_index = 0;
+  for(long i = 0; i < count; ++i) {
+    StackDclr* dclr = dclrs[i];
+    if(!dclr) {
+      continue;
+    }
+
+    // Declarations carry the qualified 'Class:field' name; only the leaf is
+    // useful in a listing of one object's fields.
+    const std::wstring full_name = dclr->name;
+    const size_t sep = full_name.find_last_of(L':');
+    const std::wstring name = (sep == std::wstring::npos) ? full_name : full_name.substr(sep + 1);
+
+    std::wcout << L"  " << C(CLR_GREEN) << name << C(CLR_RESET) << L" = "
+               << BytesToUnicode(FormatVariableValue(*dclr, instance, mem_index)) << std::endl;
+
+    mem_index++;
+    // A function reference occupies two slots; miscounting here would shift
+    // every field after it.
+    if(dclr->type == FUNC_PARM) {
+      mem_index++;
     }
   }
 }
@@ -1163,7 +1230,10 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
     break;
 
   case BOOLEAN_LIT_EXPR:
-    expression->SetFloatValue(static_cast<FloatLiteral*>(expression)->GetValue());
+    // Was a FloatLiteral cast on a BooleanLiteral, writing a float. Unreachable
+    // while nothing produced the node; a live type confusion the moment the
+    // parser started making them.
+    expression->SetIntValue(static_cast<BooleanLiteral*>(expression)->GetValue() ? 1 : 0);
     break;
 
   case AND_EXPR:
@@ -1183,16 +1253,81 @@ void Runtime::Debugger::EvaluateExpression(Expression* expression) {
     break;
 
   case CHAR_STR_EXPR:
+    // Nothing numeric to compute -- the text is on the node. It is no longer a
+    // silent no-op: 'print' renders it and the comparisons below read it.
     break;
   }
 }
 
+// Returns the text an expression stands for, if it stands for one: a literal
+// directly, or a System.String instance read out of the heap. This is what lets
+// a breakpoint condition compare against a string, which was impossible while
+// CHAR_STR_EXPR evaluated to nothing.
+bool Runtime::Debugger::StringTextOf(Expression* expression, StackClass* klass, std::wstring &out)
+{
+  if(!expression) {
+    return false;
+  }
+
+  if(expression->GetExpressionType() == CHAR_STR_EXPR) {
+    out = static_cast<CharacterString*>(expression)->GetString();
+    return true;
+  }
+
+  if(expression->GetExpressionType() == REF_EXPR && klass && klass->GetName() == L"System.String") {
+    size_t* instance = (size_t*)expression->GetIntValue();
+    if(!instance) {
+      return false;
+    }
+
+    // Same layout rule DescribeObject documents: the Char[] is a capacity
+    // buffer, so the text length comes from the String's @pos, not the array.
+    size_t* char_array = (size_t*)instance[0];
+    if(!char_array) {
+      out.clear();
+      return true;
+    }
+
+    const size_t capacity = char_array[2];
+    size_t len = instance[2];
+    if(len > capacity) {
+      len = capacity;
+    }
+    out.assign((const wchar_t*)(char_array + 3), len);
+    return true;
+  }
+
+  return false;
+}
+
 void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
+  // ref_klass is overwritten by each evaluation, so the operand's class has to
+  // be captured as we go -- otherwise the left side's type is lost by the time
+  // the right side has been evaluated.
   EvaluateExpression(expression->GetLeft());
+  StackClass* left_klass = ref_klass;
   EvaluateExpression(expression->GetRight());
+  StackClass* right_klass = ref_klass;
 
   Expression* left = expression->GetLeft();
   Expression* right = expression->GetRight();
+
+  const ExpressionType op = expression->GetExpressionType();
+  if(op == EQL_EXPR || op == NEQL_EXPR) {
+    std::wstring left_text, right_text;
+    const bool left_is_str = StringTextOf(left, left_klass, left_text);
+    const bool right_is_str = StringTextOf(right, right_klass, right_text);
+    if(left_is_str || right_is_str) {
+      if(!left_is_str || !right_is_str) {
+        std::wcout << L"cannot compare a string with a non-string." << std::endl;
+        is_error = true;
+        return;
+      }
+      const bool equal = (left_text == right_text);
+      expression->SetIntValue((op == EQL_EXPR) == equal ? 1 : 0);
+      return;
+    }
+  }
 
   switch(expression->GetExpressionType()) {
   case AND_EXPR:
@@ -1361,7 +1496,14 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
     break;
 
   case DIV_EXPR:
-    if(left->GetFloatEval() && right->GetFloatEval()) {
+    // Integer division by zero used to fault the debugger process itself, which
+    // takes the debuggee down with it. Float division is left alone: IEEE gives
+    // it infinity, which is an answer rather than a crash.
+    if(!left->GetFloatEval() && !right->GetFloatEval() && !right->GetIntValue()) {
+      std::wcout << L"division by zero." << std::endl;
+      is_error = true;
+    }
+    else if(left->GetFloatEval() && right->GetFloatEval()) {
       expression->SetFloatValue(left->GetFloatValue() / right->GetFloatValue());
     }
     else if(left->GetFloatEval()) {
@@ -1376,12 +1518,20 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
     break;
 
   case MOD_EXPR:
-    if(left->GetIntValue() && right->GetIntValue()) {
-      expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
-    }
-    else {
+    // The old guard tested the operands' VALUES for truthiness, so '0 % n' was
+    // rejected as "requires integer values" -- a zero numerator is perfectly
+    // valid. What actually has to be excluded is a float operand and a zero
+    // divisor, and the latter used to reach the '%' below unguarded.
+    if(left->GetFloatEval() || right->GetFloatEval()) {
       std::wcout << L"modulus operation requires integer values." << std::endl;
       is_error = true;
+    }
+    else if(!right->GetIntValue()) {
+      std::wcout << L"modulus by zero." << std::endl;
+      is_error = true;
+    }
+    else {
+      expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
     }
     break;
 
@@ -1854,11 +2004,25 @@ bool Runtime::Debugger::DirectoryExists(const std::wstring& wdir_name)
 #endif
 }
 
+// Bridges DAP's hitCondition onto the ignore counts the engine already has.
+bool Runtime::Debugger::SetIgnoreCountForDap(int line_num, const std::wstring& file_name, int count)
+{
+  UserBreak* user_break = FindBreak(line_num, file_name);
+  if(!user_break) {
+    return false;
+  }
+
+  user_break->ignore_count = count;
+  return true;
+}
+
 bool Runtime::Debugger::DeleteBreak(int line_num, const std::wstring& file_name)
 {
   UserBreak* user_break = FindBreak(line_num, file_name);
   if(user_break) {
     breaks.remove(user_break);
+    // remove() unlinks; it does not free. Every 'delete' leaked one UserBreak.
+    delete user_break;
     return true;
   }
 
@@ -2243,6 +2407,12 @@ void Runtime::Debugger::ShowFrame() {
 
   StackFrame* frame = DbgFrameAt(eval_frame_pos, cur_frame, cur_call_stack, cur_call_stack_pos);
   StackMethod* method = frame->method;
+  // 'stack' guards this same access; 'frame N' did not, and a class-less frame
+  // took the debugger down with a null dereference.
+  if(!method || !method->GetClass()) {
+    std::wcout << L"frame #" << eval_frame_pos << L": <no debug information>" << std::endl;
+    return;
+  }
   std::wcout << L"frame #" << eval_frame_pos << L": class='" << C(CLR_GREEN) << method->GetClass()->GetName()
              << C(CLR_RESET) << L"', method='" << C(CLR_GREEN) << PrintMethod(method) << C(CLR_RESET) << L"'";
   const long ip = frame->ip;
@@ -2348,6 +2518,16 @@ void Runtime::Debugger::ProcessSet(Set* set) {
   ref_klass = nullptr;
   is_error = false;
   Expression* value = set->GetValue();
+  // A string or Nil evaluates to no number, and the old code went on to store
+  // GetIntValue()'s zero-initialised 0 and report 'set: value=0(0x0)'. Assigning
+  // one would mean allocating a heap object, which the debugger cannot do; the
+  // honest answer is to refuse.
+  const ExpressionType value_type = value->GetExpressionType();
+  if(value_type == CHAR_STR_EXPR || value_type == NIL_LIT_EXPR) {
+    std::wcout << L"cannot set: only Int, Char and Float values can be assigned." << std::endl;
+    return;
+  }
+
   EvaluateExpression(value);
   if(is_error) {
     std::wcout << L"cannot set: invalid value expression." << std::endl;
@@ -2437,6 +2617,14 @@ void Runtime::Debugger::ProcessWatch(Watch* watch) {
   wp->id = next_watch_id++;
   wp->expression = watch->GetExpression();
   wp->text = watch->GetText();
+  if(wp->text.empty()) {
+    // The CLI parser has no expression printer, so recover the text from the
+    // command line that produced it. Without this both 'watches' and the DAP
+    // stop message name the watchpoint with an empty string.
+    wp->text = Trim(last_cmd);
+    const size_t space = wp->text.find_first_of(L" 	");
+    wp->text = (space == std::wstring::npos) ? std::wstring() : Trim(wp->text.substr(space + 1));
+  }
   wp->has_value = false;
   wp->is_float = false;
   wp->last_int = 0;
@@ -2446,19 +2634,37 @@ void Runtime::Debugger::ProcessWatch(Watch* watch) {
 }
 
 void Runtime::Debugger::ProcessUnwatch(int id) {
-  for(std::list<WatchPoint*>::iterator iter = watches.begin(); iter != watches.end(); ++iter) {
+  // erase() already returns the next element, so the loop must NOT also advance
+  // after a removal -- doing both skipped every second watchpoint and left
+  // 'unwatch' reporting success for watches it had stepped over.
+  int removed = 0;
+  std::list<WatchPoint*>::iterator iter = watches.begin();
+  while(iter != watches.end()) {
     if(id < 0 || (*iter)->id == id) {
       WatchPoint* wp = *iter;
       iter = watches.erase(iter);
       delete wp;
-      std::wcout << L"removed watchpoint." << std::endl;
+      ++removed;
       if(id >= 0) {
+        std::wcout << L"removed watchpoint #" << id << L"." << std::endl;
         return;
       }
-      if(iter == watches.end()) {
-        break;
-      }
     }
+    else {
+      ++iter;
+    }
+  }
+
+  // Silence was the other half of the bug: an id that matched nothing used to
+  // report nothing at all, which reads exactly like success.
+  if(id >= 0) {
+    std::wcout << L"no watchpoint #" << id << L"." << std::endl;
+  }
+  else if(removed > 0) {
+    std::wcout << L"removed " << removed << L" watchpoint(s)." << std::endl;
+  }
+  else {
+    std::wcout << L"no watchpoints defined." << std::endl;
   }
 }
 
@@ -2470,7 +2676,11 @@ void Runtime::Debugger::ProcessWatches() {
 
   std::wcout << L"watches:" << std::endl;
   for(std::list<WatchPoint*>::iterator iter = watches.begin(); iter != watches.end(); ++iter) {
-    std::wcout << L"  watch #" << (*iter)->id << std::endl;
+    std::wcout << L"  watch #" << (*iter)->id;
+    if(!(*iter)->text.empty()) {
+      std::wcout << L": " << (*iter)->text;
+    }
+    std::wcout << std::endl;
   }
 }
 
@@ -2618,12 +2828,19 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
   std::wcout << L"input: |" << line << L"|" << std::endl;
 #endif
 
+  // A leading space used to break every command: the '?' sentinel below became
+  // "? break ...", and a lone '?' scans as an identifier rather than a keyword.
+  const std::wstring trimmed = Trim(line);
+  if(trimmed.empty()) {
+    return nullptr;
+  }
+
   // remember the command so an empty Enter can repeat it (gdb-style)
-  last_cmd = line;
+  last_cmd = trimmed;
 
   // parser input
   Parser parser;
-  Command* command = parser.Parse(L"?" + line);
+  Command* command = parser.Parse(L"?" + trimmed);
   if(command) {
     switch(command->GetCommandType()) {
     case EXE_COMMAND:
@@ -2729,6 +2946,10 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
 
     case DELETE_COMMAND:
       ProcessDelete(static_cast<FilePostion*>(command));
+      break;
+
+    case DELETE_ID_COMMAND:
+      ProcessDeleteById(static_cast<NumCommand*>(command)->GetId());
       break;
 
     case STEP_IN_COMMAND:
@@ -2969,8 +3190,12 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
         std::wcout << L"  class: type=" << klass->GetName() << std::endl;
         // print
         std::wcout << L"  parameters:" << std::endl;
+        // The class-declaration print used to be NESTED inside the instance
+        // test, so a class holding only statics reported no fields at all.
         if(klass->GetNumberInstanceDeclarations() > 0) {
           PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
+        }
+        if(klass->GetNumberClassDeclarations() > 0) {
           PrintDeclarations(klass->GetClassDeclarations(), klass->GetNumberClassDeclarations());
         }
       }
@@ -3348,6 +3573,81 @@ bool Runtime::Debugger::EvaluateForDapRaw(const std::wstring& expr_str, ParamTyp
   return true;
 }
 
+// Renders a value that is not a variable reference: a literal, or the result of
+// a comparison or a calculation.
+std::wstring Runtime::Debugger::FormatNonReferenceForDap(Expression* expression)
+{
+  switch(expression->GetExpressionType()) {
+  case CHAR_STR_EXPR:
+    return L'"' + static_cast<CharacterString*>(expression)->GetString() + L'"';
+
+  case NIL_LIT_EXPR:
+    return L"Nil";
+
+  case BOOLEAN_LIT_EXPR:
+  case AND_EXPR:
+  case OR_EXPR:
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EQL_EXPR:
+    return expression->GetIntValue() ? L"true" : L"false";
+
+  case CHAR_LIT_EXPR: {
+    std::wstringstream wss;
+    wss << (wchar_t)expression->GetIntValue();
+    return wss.str();
+  }
+
+  default: {
+    std::wstringstream wss;
+    if(expression->GetFloatEval()) {
+      wss << expression->GetFloatValue();
+    }
+    else {
+      wss << (long)expression->GetIntValue();
+    }
+    return wss.str();
+  }
+  }
+}
+
+// Evaluate against a chosen stack frame. DAP's 'evaluate' carries a frameId and
+// used to ignore it, so hovering a variable while a CALLER frame was selected
+// silently read the top frame instead and reported someone else's value.
+std::wstring Runtime::Debugger::EvaluateForDapInFrame(const std::wstring& expr_str, StackFrame* frame)
+{
+  StackFrame* saved = eval_frame;
+  if(frame) {
+    eval_frame = frame;
+  }
+  const std::wstring result = EvaluateForDap(expr_str);
+  // A failed lookup leaves is_error set. SetVariableForDap clears it before
+  // restoring for the same reason: the flag is shared, and carrying it out of
+  // here makes the NEXT evaluation fail for a reason that has nothing to do
+  // with it -- which is what broke the '@' hover retry.
+  is_error = false;
+  eval_frame = saved;
+
+  return result;
+}
+
+bool Runtime::Debugger::EvaluateForDapRawInFrame(const std::wstring& expr_str, StackFrame* frame,
+                                                 ParamType& out_type, size_t& out_value)
+{
+  StackFrame* saved = eval_frame;
+  if(frame) {
+    eval_frame = frame;
+  }
+  const bool ok = EvaluateForDapRaw(expr_str, out_type, out_value);
+  is_error = false;
+  eval_frame = saved;
+
+  return ok;
+}
+
 std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
 {
   if(!cur_frame) {
@@ -3365,6 +3665,15 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
     EvaluateExpression(expression);
 
     if(!is_error) {
+      // Only a REF_EXPR carries a declaration. Every other shape -- a literal,
+      // or an arithmetic/comparison result -- was static_cast to Reference* and
+      // read through anyway, so 'p 1 + 2' in the debug console reinterpreted a
+      // CalculatedExpression as a Reference. Now that true/false/Nil and string
+      // literals parse, more shapes reach here, so this is answered directly.
+      if(expression->GetExpressionType() != REF_EXPR) {
+        return FormatNonReferenceForDap(expression);
+      }
+
       const StackDclr& dclr = static_cast<Reference*>(expression)->GetDeclaration();
       switch(dclr.type) {
         case CHAR_PARM: {
@@ -3413,12 +3722,16 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
     }
   }
 
-  // Fallback: search frame declarations directly (handles inferred locals)
-  if(cur_frame && cur_frame->method) {
-    StackDclr** dclrs = cur_frame->method->GetDeclarations();
-    int dclrs_num = cur_frame->method->GetNumberDeclarations();
+  // Fallback: search frame declarations directly (handles inferred locals).
+  // This must use the SELECTED frame, not cur_frame: reaching it after a caller
+  // frame was chosen would otherwise answer from the top of the stack again,
+  // undoing the frame selection for exactly the inferred locals that need it.
+  StackFrame* search_frame = eval_frame ? eval_frame : cur_frame;
+  if(search_frame && search_frame->method) {
+    StackDclr** dclrs = search_frame->method->GetDeclarations();
+    int dclrs_num = search_frame->method->GetNumberDeclarations();
     int offset = 1;
-    if(cur_frame->method->HasAndOr()) {
+    if(search_frame->method->HasAndOr()) {
       offset++;
     }
 
@@ -3432,7 +3745,7 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
       std::wstring name = (name_pos != std::wstring::npos) ? full_name.substr(name_pos + 1) : full_name;
 
       if(name == expr_str) {
-        size_t value = cur_frame->mem[mem_index + offset];
+        size_t value = search_frame->mem[mem_index + offset];
 
         switch(dclr->type) {
           case CHAR_PARM: {
@@ -3447,7 +3760,7 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
           }
           case FLOAT_PARM: {
             double dval;
-            memcpy(&dval, &cur_frame->mem[mem_index + offset], sizeof(double));
+            memcpy(&dval, &search_frame->mem[mem_index + offset], sizeof(double));
             std::wstringstream wss;
             wss << dval;
             return wss.str();

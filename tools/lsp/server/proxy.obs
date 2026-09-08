@@ -1222,11 +1222,14 @@ bundle LSP {
 					builder->Insert("label", hint->GetName());
 					builder->Insert("kind", hint->GetKind()->As(Int));
 
-					builder->PushObject("position");
-					obj := builder->PushObject("start");
+					# A Position, not a Range. This copied the range idiom used elsewhere in
+					# this file and wrapped the coordinates in a "start" object, which is not
+					# what LSP's InlayHint declares: clients read position.line directly, found
+					# nothing, and dropped every hint silently. The test asserted only that the
+					# response was non-empty, so it passed throughout.
+					obj := builder->PushObject("position");
 					obj->Insert("line", hint->GetStartLine());
 					obj->Insert("character", hint->GetStartPosition());
-					builder->Pop();
 					builder->Pop();
 
 					array->Add(builder->Pop());

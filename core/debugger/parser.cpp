@@ -365,6 +365,16 @@ Command* Parser::ParseBreakDelete(CommandType cmd_type, int depth) {
   const bool is_break = (cmd_type != DELETE_COMMAND);
   NextToken();
 
+  // 'delete <id>' -- the ids that 'breaks' prints. Without this an integer fell
+  // through to the catch-all below, which produced a location-less delete that
+  // ProcessDelete then resolved to the CURRENT line: 'delete 2' silently
+  // removed a different breakpoint and reported success.
+  if(cmd_type == DELETE_COMMAND && Match(TOKEN_INT_LIT)) {
+    const int break_id = scanner->GetToken()->GetIntLit();
+    NextToken();
+    return TreeFactory::Instance()->MakeNumCommand(DELETE_ID_COMMAND, break_id, 0);
+  }
+
   // first identifier: either a file name (file:line) or a class name (Class->Method)
   std::wstring file_name;
   std::wstring mthd_name;
@@ -869,6 +879,22 @@ Expression* Parser::ParseSimpleExpression(int depth)
   else if(Match(TOKEN_SELF_ID)) {
     NextToken();
     expression = ParseReference(depth + 1);
+  }
+  // MakeBooleanLiteral and MakeNilLiteral existed with no caller: 'true',
+  // 'false' and 'Nil' scanned as ordinary identifiers and were then looked up
+  // as variables, so every 'p flag = true' resolved against a variable named
+  // "true" and failed.
+  else if(Match(TOKEN_TRUE_ID)) {
+    NextToken();
+    expression = TreeFactory::Instance()->MakeBooleanLiteral(true);
+  }
+  else if(Match(TOKEN_FALSE_ID)) {
+    NextToken();
+    expression = TreeFactory::Instance()->MakeBooleanLiteral(false);
+  }
+  else if(Match(TOKEN_NIL_ID)) {
+    NextToken();
+    expression = TreeFactory::Instance()->MakeNilLiteral(L"", -1);
   }
   else if(Match(TOKEN_SUB)) {
     NextToken();

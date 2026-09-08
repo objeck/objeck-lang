@@ -1,0 +1,9 @@
+# Fixture for the quick-fix path: Vector is a real class in gen_collect.obl but
+# is not in scope without a 'use', so analysis reports "Undefined class ..." --
+# the one diagnostic Document.CodeAction offers a fix for.
+class NeedsUse {
+	function : Main(args : String[]) ~ Nil {
+		v := Vector->New()<IntRef>;
+		v->Size()->PrintLine();
+	}
+}

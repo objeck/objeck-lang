@@ -409,6 +409,13 @@ void DapAdapter::Run()
       else if(command == "setDataBreakpoints") {
         HandleSetDataBreakpoints(request_seq, args);
       }
+      else if(command == "attach") {
+        // The catch-all below answered success, after which no Debugger was
+        // ever constructed and the session hung with no diagnosis. This adapter
+        // is launch-only; say that.
+        SendResponse(request_seq, command, json::object(), false,
+                     "Attach is not supported; use a launch configuration");
+      }
       else {
         // Unknown command — respond with success to avoid VS Code errors
         SendResponse(request_seq, command);
@@ -563,6 +570,10 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
     int line = bp.value("line", 0);
     std::string condition_str = bp.value("condition", "");
     std::string log_message_str = bp.value("logMessage", "");
+    // The engine has had ignore counts all along (UserBreak::ignore_count, set
+    // from the CLI's 'ignore'); nothing bridged them, so a hit-count breakpoint
+    // set in the editor quietly became an unconditional one.
+    std::string hit_condition_str = bp.value("hitCondition", "");
 
     bool added = false;
     if(debugger && line > 0) {
@@ -578,6 +589,20 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
           condition = debugger->ParseCondition(wcond);
         }
         added = debugger->AddBreak(line, wfile_name, condition);
+        if(added && !hit_condition_str.empty()) {
+          // DAP leaves the syntax open; VS Code's own UI produces a bare count
+          // meaning "stop on the Nth hit", which is our ignore_count + 1.
+          try {
+            const int hits = std::stoi(hit_condition_str);
+            if(hits > 1) {
+              debugger->SetIgnoreCountForDap(line, wfile_name, hits - 1);
+            }
+          }
+          catch(const std::exception&) {
+            // An expression form we do not implement: leave it unconditional
+            // rather than guessing at a count.
+          }
+        }
       }
     }
 
@@ -1411,8 +1436,17 @@ void DapAdapter::HandleStepOut(int request_seq, const json& args)
 
 void DapAdapter::HandlePause(int request_seq, const json& args)
 {
-  // Not fully supported — respond success but no action
-  SendResponse(request_seq, "pause");
+  // Asynchronous interruption of a running VM is not implemented. This used to
+  // answer success and do nothing, so the editor's pause button appeared to
+  // work and silently never stopped anything. An error at least reaches the
+  // user; the capability cannot be withheld because 'pause' has no gate.
+  if(is_stopped) {
+    SendResponse(request_seq, "pause", json::object(), false, "Already stopped");
+    return;
+  }
+
+  SendResponse(request_seq, "pause", json::object(), false,
+               "Pause is not supported; set a breakpoint instead");
 }
 
 void DapAdapter::HandleDisconnect(int request_seq, const json& args)
@@ -1441,16 +1475,30 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
     return;
   }
 
-  // Use the debugger's expression evaluator
+  // Honour frameId. HandleScopes, HandleCompletions and HandleSetExpression all
+  // read it; this one did not, so evaluating with a CALLER frame selected in the
+  // editor silently answered from the top frame instead -- a wrong value rather
+  // than an error, and 'supportsEvaluateForHovers' is advertised true.
+  //
+  // Only when the client actually sends one. Frame indices here run bottom-up
+  // (GetFrameByIndex(0) is the OUTERMOST frame, the top being
+  // stopped_call_stack_pos), so defaulting the absent case to 0 would redirect
+  // every frame-less evaluate to the wrong end of the stack. A null frame
+  // leaves the debugger's own default -- the top frame -- in place.
+  StackFrame* frame = nullptr;
+  if(args.contains("frameId") && args["frameId"].is_number_integer()) {
+    frame = GetFrameByIndex(args["frameId"].get<int>());
+  }
+
   std::wstring wexpr = BytesToUnicode(expression);
   std::wstring resolved = wexpr;
-  std::wstring result = debugger->EvaluateForDap(wexpr);
+  std::wstring result = debugger->EvaluateForDapInFrame(wexpr, frame);
 
   // For hover: if lookup failed and name doesn't start with '@',
   // retry as an instance variable (editors strip the '@' prefix)
   if(result == L"<error>" && !expression.empty() && expression[0] != '@') {
     std::wstring retry = L"@" + wexpr;
-    std::wstring retry_result = debugger->EvaluateForDap(retry);
+    std::wstring retry_result = debugger->EvaluateForDapInFrame(retry, frame);
     if(retry_result != L"<error>") {
       result = retry_result;
       resolved = retry;
@@ -1466,7 +1514,7 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
   if(result != L"<error>") {
     ParamType raw_type;
     size_t raw_value;
-    if(debugger->EvaluateForDapRaw(resolved, raw_type, raw_value)) {
+    if(debugger->EvaluateForDapRawInFrame(resolved, frame, raw_type, raw_value)) {
       child_ref = MakeChildRef(raw_type, raw_value, 0);
     }
   }

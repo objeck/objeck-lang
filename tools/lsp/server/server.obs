@@ -494,10 +494,31 @@ bundle LSP {
 				diagnostic_message := diagnostic_json->FindElements("message")->GetValue();
 
 				if(start_line = diagnostic_start_line & start_char = diagnostic_start_char) {
+					# 'context.only' is OPTIONAL in LSP: a client sends it to restrict the
+					# kinds it wants and omits it for an ordinary lightbulb at the cursor,
+					# which is what VS Code does. This used to REQUIRE it, and require an
+					# array of exactly one, so the common request fell through with
+					# 'response' never assigned and the server answered null. Quick fixes
+					# were unreachable from the editor UI while being advertised.
 					only_json := params->FindElements("context/only");
 					document := @workspace->GetDocument(uri);
-					if(document <> Nil & only_json <> Nil & only_json->GetType() = JsonElement->JsonType->ARRAY & only_json->Size() = 1) {
-						response := document->CodeAction(diagnostic_start_line, diagnostic_start_char, diagnostic_end_line, diagnostic_end_char, diagnostic_message, only_json->Get(0)->GetValue(), @build_json_file);
+					
+					# Honour a restriction when one is given: offer a fix only if
+					# 'quickfix' is among the kinds asked for. LSP kinds are
+					# hierarchical, so an empty string matches everything.
+					wants_quickfix := true;
+					if(only_json <> Nil & only_json->GetType() = JsonElement->JsonType->ARRAY & only_json->Size() > 0) {
+						wants_quickfix := false;
+						each(j : only_json) {
+							requested := only_json->Get(j)->GetValue();
+							if(requested = Nil | requested->Size() = 0 | requested->StartsWith("quickfix")) {
+								wants_quickfix := true;
+							};
+						};
+					};
+					
+					if(document <> Nil & wants_quickfix) {
+						response := document->CodeAction(diagnostic_start_line, diagnostic_start_char, diagnostic_end_line, diagnostic_end_char, diagnostic_message, "quickfix", @build_json_file);
 					};
 				};
 			};
@@ -563,8 +584,10 @@ bundle LSP {
 			# output channel); without it a stale server is invisible.
 			serverInfo := response->AddChild("serverInfo");
 			serverInfo->Insert("name", "Objeck Language Server");
-			# NOTE: bump alongside core/shared/version.h on a release.
-			serverInfo->Insert("version", "2026.8.0");
+			# Kept in step with core/shared/version.h by a gating test
+			# (run_lsp_tests.py), because the note that used to sit here asking
+			# for a manual bump was ignored through two releases.
+			serverInfo->Insert("version", "2026.9.1");
 
 			capabilities := response->AddChild("capabilities");
 			completionProvider := capabilities->AddChild("completionProvider");
@@ -796,7 +819,18 @@ bundle LSP {
 		}
 
 		method : NotifyCancel(params : JsonElement) ~ Nil {
-			id := params->Get("id")->GetValue();
+			id_obj := params->Get("id");
+			if(id_obj = Nil) {
+				return;
+			};
+			
+			# Record it. WriteRpcResponse has always had machinery to act on
+			# @cancel_id, but nothing ever assigned it -- the constructor set it to
+			# -1 and no other line touched it, so the guard could never fire and a
+			# long completion could not be cancelled at all.
+			@cancel_id := id_obj->GetInt();
+			
+			id := id_obj->GetValue();
 
 			if(IsDebug()) {
 				System.IO.Filesystem.Logger->Instance()->Info("NotifyCancel: id={$id}");
@@ -879,6 +913,13 @@ bundle LSP {
 				if(@is_debug) {
 					System.IO.Filesystem.Logger->Instance()->Info("--- Added workspace: '{$folder_uri}', '{$folder_name}' ---");
 				};
+				
+				# Actually configure it. This handler only LOGGED, while initialize
+				# calls ProcessConfiguration for exactly the same shape of folder --
+				# so a folder added mid-session got no build.json and no library set,
+				# and every file in it was analysed as if standalone. The capability
+				# workspaceFolders.changeNotifications was advertised as true anyway.
+				ProcessConfiguration(folder_name, folder_uri);
 			};
 
 			removed := params->FindElements("event/removed");
