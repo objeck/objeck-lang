@@ -2,13 +2,14 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [Unreleased]
+## [v2026.9.1] - 2026-09-08
 
-Release-process fixes found by running the v2026.9.0 release; the debugger made
-honest about threads and about what its commands do; `Game.OpenGL` gains a sky,
-rotations, normal maps and emissive materials; then a survey of every binary and
-library for the bugs a compiler, VM and debugger platform cannot carry. These
-landed after the v2026.9.0 tag, so they are **not** in that release's binaries.
+Every string hash was wrong; JIT arithmetic now matches the interpreter; the
+debugger sees threads and tells the truth about what its commands do;
+`Game.OpenGL` gains a sky, rotations, normal maps and emissive materials; and the
+release process reports what it actually did. Found by running the v2026.9.0
+release and then surveying every binary and library for the bugs a compiler, VM
+and debugger platform cannot carry.
 
 ### New Features
 - **Breakpoints fire inside threads, and threads are real** ([#719](https://github.com/objeck/objeck-lang/pull/719)) — a breakpoint in any thread's `Run` never fired: spawned interpreters were built with a null debugger pointer (the August fix for a crash on a thread's first instruction), so every spawned thread was invisible to `obd` and DAP answered every `threads` request with a fabricated single thread while claiming `allThreadsStopped`. Spawned interpreters now attach to the one debugger; the model is all-stop, which is what the stop state already assumed — a thread reaching the hook while another owns the stop waits its turn, and three threads on one breakpoint stop three times with their own frames. Each thread gets a stable small id and its last source position: `obd` gains a `threads` command, DAP reports the real list, and the stopped event names the thread that stopped. Conditional breakpoints evaluate against the stopping thread's frame (the fixture proves `step = 200` is satisfiable only in worker 2). Three CLI tests in both harnesses, six DAP checks in a new suite
@@ -45,7 +46,7 @@ landed after the v2026.9.0 tag, so they are **not** in that release's binaries.
 - **Linker copies** — `SearchClassLibraries(name)` copied the whole class map per call in the innermost resolution loop; `GetInstructions()`, `GetMethods()` and `GetClasses()` returned their containers by value. All by reference now
 
 ### Infrastructure
-- **Release shore-up** — the notes above now cover everything merged since the tag (they had omitted #716–#719 and the OpenGL work), and the README shipped inside the archive lists it; the LSP hover/completion index is regenerated from the current `lib_src` (it was five days and one library API behind); the VS Code extension manifest is stamped by `update_version.ps1` instead of sitting two releases stale; `verify-signing-credentials.yml` now checks the credentials the pipeline actually uses -- the two Apple identities, imported with the release's own commands -- and runs weekly, so a rotated password or an expiring certificate shows as a red schedule instead of an unsigned release (it had been checking the retired Windows `CODESIGN_*` secrets, whose stored certificate turned out to be the Sectigo intermediate CA with no private key; Windows signs locally with the eToken); the 31-line library-build list that `update_version.sh` and CI's Windows step each carried is one `build_libs.sh`; `code_doc64_debug.cmd` lists `sdl_gl`; `docs/third_party_dependencies.md` records where every platform's TLS/HTTP/media libraries come from, and `docs/release_integrity.md` designs the signed manifest that would let `obu` detect a substituted `SHA256SUMS`
+- **Release shore-up** — the notes above now cover everything merged since the tag (they had omitted #716–#719 and the OpenGL work), and the README shipped inside the archive lists it; the LSP hover/completion index is regenerated from the current `lib_src` (it was five days and one library API behind); the VS Code extension manifest is stamped by `update_version.ps1` instead of sitting two releases stale; `verify-signing-credentials.yml` now checks the credentials the pipeline actually uses -- the two Apple identities, imported with the release's own commands -- and runs weekly, so a rotated password or an expiring certificate shows as a red schedule instead of an unsigned release (it had been checking the retired Windows `CODESIGN_*` secrets, whose stored certificate turned out to be the Sectigo intermediate CA with no private key; Windows signs locally with the eToken); the 31-line library-build list that `update_version.sh` and CI's Windows step each carried is one `build_libs.sh`; `code_doc64_debug.cmd` lists `sdl_gl`; `code_doc64` resolves `obc`/`obr` from its own directory (under Git Bash, `NoDefaultCurrentDirectoryInExePath` made the bare names fail) and refuses to package an `api.zip` that holds no pages -- it had produced a three-file archive and reported success; `docs/third_party_dependencies.md` records where every platform's TLS/HTTP/media libraries come from, and `docs/release_integrity.md` designs the signed manifest that would let `obu` detect a substituted `SHA256SUMS`
 - **The weekly secret scan failed every Monday** ([#718](https://github.com/objeck/objeck-lang/pull/718)) — `gitleaks-action` scans the pushed range on push/PR but the whole history on a schedule, so the weekly run reported 326 findings from 2014-era test data and was never green; a job that is always red is a job nobody reads. Scheduled runs use the same baseline the push scan reasons about, verified by a positive control that omits an already-public 2014 commit from the baseline and fails
 - **POSIX deploys verify their native libraries** — `verify_native_libs.sh`, the counterpart of the Windows `verify_native_libs.ps1`, runs after the native copies in `deploy_posix.sh`, `deploy_macos_arm64.sh` and both MSYS2 deploys: a library whose build failed was dropped from the release with a green exit (the obu incident, again). The MSYS2 deploys also invoked `build_msys2-*.sh` scripts for lame and opencv that did not exist
 - **`update_version.sh [amd64|arm64]`** — `update_version_arm.sh` was a copy with four characters changed and is a shim now; both stop on the first failed compile (`set -e`) instead of shipping a stale `.obl` green
@@ -60,6 +61,10 @@ landed after the v2026.9.0 tag, so they are **not** in that release's binaries.
 
 ### Documentation
 - Sourceforge mirrors the GitHub release through a webhook and is not a manual upload; objeck.org has no versioned `/api/v<VERSION>/` directories, so `latest` is the only served path. Both were documented the other way round, in the pre-flight gate's to-do text and in the publish workflow's failure message
+
+### Known Issues
+- [#722](https://github.com/objeck/objeck-lang/issues/722) — the ARM64 JIT miscompiles `String->Equals` in a virtual request-handler callback; the two regression tests that would show it run with `JIT_DISABLE`, so shipped behaviour is unchanged from v2026.9.0. Scheduled with the `System.Terminal` release
+- [#723](https://github.com/objeck/objeck-lang/issues/723) — `SHA256SUMS` is unsigned, so `obu` verifies hashes but cannot detect a substituted manifest; design in `docs/release_integrity.md`, awaiting a maintainer-generated key
 
 ## [v2026.9.0] - 2026-09-03
 
