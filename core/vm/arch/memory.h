@@ -218,8 +218,32 @@ class MemoryManager {
     return p >= young_region && p < young_region + young_offset.load(std::memory_order_acquire);
   }
 
+  // Could this word BE a young object pointer? IsYoung is a bare ADDRESS RANGE
+  // test, and every IsAllocated caller is a CONSERVATIVE SCAN of untyped words --
+  // operand stacks, JIT temp windows, monitor stacks, a JIT frame's slot 0. A
+  // non-pointer that merely lands in the nursery's range therefore passed
+  // IsAllocated and was then dereferenced as an object header, which is an
+  // access violation inside CheckObject whenever the arithmetic goes somewhere
+  // unmapped. ForwardedAddr twenty lines below documents this exact hazard and
+  // already guards against it; this is the same predicate.
+  //
+  // Two requirements, both of which every genuine young object satisfies, so
+  // this can only ever reject non-pointers:
+  //   - 8-byte aligned. A real object's mem is young_region plus a whole number
+  //     of words, and the value that crashed here ended in 0xec.
+  //   - at least one word in, because IsOldGen and the header reads address
+  //     mem[MARKED_FLAG], which is mem[-1].
+  static inline bool IsYoungCandidate(size_t* mem) {
+    uint8_t* p = (uint8_t*)mem;
+    return ((uintptr_t)p & (sizeof(size_t) - 1)) == 0 &&
+           p >= young_region + sizeof(size_t) &&
+           p < young_region + young_offset.load(std::memory_order_acquire);
+  }
+
   static inline bool IsAllocated(size_t* mem) {
-    return IsYoung(mem) || old_generation.count(mem);
+    // The old-generation branch is an exact set lookup, so it cannot alias the
+    // way a range test can and needs no extra guard.
+    return IsYoungCandidate(mem) || old_generation.count(mem);
   }
 
   static inline bool IsOldGen(size_t* mem) {

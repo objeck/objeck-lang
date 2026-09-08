@@ -988,7 +988,13 @@ extern "C" {
     const int line_pos = (int)APITools_GetIntValue(context, 3);
     const std::wstring lib_path = APITools_GetStringValue(context, 4);
 
-    prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
+    // Slot 5, not 4. Analysis declares @references_results at 4 and
+    // @rename_results at 5, and Analysis::CodeRename() returns @rename_results
+    // -- which nothing ever wrote, so the method returned Nil on every call and
+    // the whole entry point was dead. It is a public System.Diagnostics API, and
+    // the LSP only escaped it by calling FindReferences instead.
+    constexpr size_t ANALYSIS_SLOT_RENAME_RESULTS = 5;   // Analysis::@rename_results
+    prgm_obj[ANALYSIS_SLOT_RENAME_RESULTS] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
   }
 
   // These two took the old global lock directly rather than going through the
@@ -1022,7 +1028,8 @@ extern "C" {
     const int line_pos = (int)APITools_GetIntValue(context, 3);
     const std::wstring lib_path = APITools_GetStringValue(context, 4);
 
-    prgm_obj[4] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
+    constexpr size_t ANALYSIS_SLOT_REFERENCES_RESULTS = 4;  // Analysis::@references_results
+    prgm_obj[ANALYSIS_SLOT_REFERENCES_RESULTS] = (size_t)GetExpressionsCalls(context, program, uri, line_num, line_pos, lib_path);
   }
 
   //
@@ -1949,7 +1956,12 @@ extern "C" {
 
 size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_strings, const std::vector<std::wstring>& warning_strings)
 {
-  const size_t throttle = 10;
+  // A bound against pathological output, not a display limit. At 10 a file with
+  // fifty errors reported ten of them with nothing saying so, so the author
+  // fixed those, saved, and got ten more -- an endless drip with no indication
+  // of how deep it went. Editors already cap what they render; the server has no
+  // reason to decide for them at a number this low.
+  const size_t throttle = 100;
   size_t max_results = error_strings.size() + warning_strings.size();
   if(max_results > throttle) {
     max_results = throttle;

@@ -427,8 +427,20 @@ bundle LSP {
 
 		# --- response ---
 		method : WriteRpcResponse(id : Int, result : JsonElement) ~ Nil {
-			if(id = @cancel_id) {
+			# A cancelled request still needs an answer. Dropping the response
+			# leaves the client holding a pending promise forever; LSP asks for an
+			# error with code -32800 (RequestCancelled), so send that.
+			if(id > -1 & id = @cancel_id) {
 				@cancel_id := -1;
+			
+				node := JsonElement->New(JsonElement->JsonType->OBJECT);
+				node->Insert("jsonrpc", "2.0");
+				node->Insert("id", id);
+				error := node->AddChild("error");
+				error->Insert("code", -32800);
+				error->Insert("message", "Request cancelled");
+			
+				WriteString(node->ToString());
 			}
 			else {
 				node := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -549,7 +561,12 @@ bundle LSP {
 			}
 			# non-workspace
 			else {
-				@libs_str := "gen_collect.obl,gen_collect.obl,net.obl,json.obl,cipher.obl,misc.obl";
+				# Libraries assumed for a file with no build.json. gen_collect.obl was
+				# listed TWICE here, and the list omitted regex, xml, csv, query and the
+				# json_rpc/json_stream pair -- so a standalone file using any of them was
+				# told its classes were undefined, with the diagnostic pointing at the
+				# user's code rather than at this list.
+				@libs_str := "gen_collect.obl,cipher.obl,csv.obl,json.obl,json_rpc.obl,json_stream.obl,misc.obl,net.obl,net_server.obl,query.obl,regex.obl,rss.obl,xml.obl";
 
 				key_values := @documents->GetKeyValues()<Pair<String, Document>>;
 				@texts := String->New[1, 2];

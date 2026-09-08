@@ -1,0 +1,64 @@
+# Fixture for the debugger's expression evaluator and breakpoint bookkeeping.
+#
+# Separate from debugger_test.obs on purpose: that file's tests set breakpoints
+# by line number, so inserting anything into it silently moves them.
+#
+# Every declaration here exists to be looked at from obd, and the line numbers
+# used by run_debugger_tests are anchored on the marked statements below.
+
+class Registry {
+  # Statics with NO instance fields alongside them -- 'info class=' used to nest
+  # the class-declaration print inside the instance test, so a class shaped like
+  # this reported no fields at all.
+  @seen : static : Int;
+  @label_text : static : String;
+
+  function : Record(n : Int) ~ Nil {
+    @seen += n;
+    @label_text := "registry";
+  }
+
+  function : Seen() ~ Int {
+    return @seen;
+  }
+}
+
+class Holder {
+  @name : String;
+  @count : Int;
+  @ratio : Float;
+  @flag : Bool;
+  @next : Holder;
+
+  New(name : String, count : Int) {
+    @name := name;
+    @count := count;
+    @ratio := 1.5;
+    @flag := true;
+    @next := Nil;
+  }
+
+  method : public : GetName() ~ String {
+    return @name;
+  }
+}
+
+class EvalMain {
+  function : Main(args : String[]) ~ Nil {
+    holder := Holder->New("widget", 7);
+    empty : Holder;
+    zero := 0;
+    five := 5;
+    text := "widget";
+    Registry->Record(3);
+
+    # BREAK HERE -- every evaluator test stops on this line.
+    total := five + zero;
+
+    "total={$total}, name={$holder->GetName()}, seen={Registry->Seen()}"->PrintLine();
+    if(empty = Nil) {
+      "empty is Nil"->PrintLine();
+    };
+    "{$text}"->PrintLine();
+  }
+}
