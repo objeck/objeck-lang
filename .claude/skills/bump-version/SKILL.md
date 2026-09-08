@@ -46,6 +46,7 @@ This generates from `.in` templates:
 - `core/shared/version.h` (from `version.in`)
 - `core/release/code_doc64.cmd` (from `code_doc64.in`)
 - `programs/deploy/util/readme/readme.json` (from `readme.json.in`)
+- `tools/lsp/clients/vscode/package.json` (`version` field; the committed copy, so the repo agrees with the `.vsix` the tag stamps)
 - Windows `.rc` resource files for compiler, VM, debugger, REPL, launcher
 
 > **Curate `readme.json.in` by hand.** Only `@VERSION@`/`@YEAR@` are templated —

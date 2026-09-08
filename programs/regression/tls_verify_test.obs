@@ -1,0 +1,134 @@
+# EXTRA_LIBS: net,net_server
+# JIT_DISABLE
+#~
+TLS certificate verification must REFUSE. https_persistence_test proves the
+happy path (a pinned self-signed certificate is accepted); nothing proved the
+two refusals that verify-by-default exists for:
+
+  1. a self-signed certificate with no trust anchor is refused
+  2. a certificate that does not name the host is refused even when its
+     issuer is trusted
+
+One loopback server, started by this program, presents a certificate for
+DNS:localhost and nothing else. Connecting as "localhost" with that certificate
+pinned is the control; connecting as "localhost" with no trust anchor is (1);
+connecting as "127.0.0.1" with the same certificate pinned is (2) -- same
+trusted issuer, a name the certificate does not carry. The only thing under
+test is the client's verification. If OBJECK_TLS_INSECURE_SKIP_VERIFY were set
+in the environment every refusal would pass; the runners do not set it.
+
+JIT_DISABLE for the same reason as its sibling: the handler is a virtual
+callback that is JIT-compiled regardless, and ARM64 miscompiles
+String->Equals in that context (#722).
+~#
+use Collection, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+
+class TlsVerifyHandler from HttpsRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+}
+
+class TlsVerifyTest {
+	@port : static : Int;
+	@passed : static : Bool;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+		}
+		else {
+			"  [FAIL] {$name}"->PrintLine();
+			@passed := false;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		@port := 18811;
+		cert := "tls-verify-cert.pem";
+		key := "tls-verify-key.pem";
+		File->Delete(cert);
+		File->Delete(key);
+
+		# A one-day self-signed certificate for DNS:localhost only -- no IP entry,
+		# so "127.0.0.1" is a name it does not carry. Some Windows OpenSSL
+		# distributions have a build-time config path that does not exist on the
+		# runner; this command needs no config sections.
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost\" -keyout {$key} -out {$cert}";
+		if(Runtime->Command(command) <> 0) {
+			"  [FAIL] openssl could not create the TLS fixture"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		server := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->ServeSecure(TlsVerifyHandler->New()->GetClass(),
+					TlsVerifyTest->Port(), "tls-verify-cert.pem", "tls-verify-key.pem", "", false);
+			}
+		};
+		server->Execute(Nil);
+		System.Concurrency.Thread->Sleep(2000);
+		"TLS stage: server started"->ErrorLine();
+
+		# control: the certificate names localhost and is pinned -> accepted
+		pinned := TCPSecureSocket->New("localhost", @port, cert);
+		Check("control: the localhost certificate is accepted when pinned", pinned->IsOpen());
+		if(pinned->IsOpen()) { pinned->Close(); };
+		"TLS stage: pinned control done"->ErrorLine();
+
+		# 1. no trust anchor: self-signed, must be refused
+		untrusted := TCPSecureSocket->New("localhost", @port);
+		Check("a self-signed certificate is refused without a trust anchor", untrusted->IsOpen() = false);
+		if(untrusted->IsOpen()) { untrusted->Close(); };
+		"TLS stage: untrusted refusal done"->ErrorLine();
+
+		# 2. trusted issuer, wrong name: the certificate says localhost, the
+		#    client asked for 127.0.0.1 -> must be refused
+		mismatched := TCPSecureSocket->New("127.0.0.1", @port, cert);
+		Check("a certificate that does not name the host is refused even when pinned", mismatched->IsOpen() = false);
+		if(mismatched->IsOpen()) { mismatched->Close(); };
+		"TLS stage: mismatch refusal done"->ErrorLine();
+
+		# the same three through HttpsClient, which is what programs use
+		client := Web.HTTP.HttpsClient->New();
+		by_name := Web.HTTP.Url->New("https://localhost:{$@port}/ok");
+		accepted := client->Get(by_name, "text/plain", cert);
+		Check("control: HttpsClient succeeds with the certificate pinned",
+			accepted <> Nil & accepted->GetCode() = 200);
+		"TLS stage: HttpsClient control done"->ErrorLine();
+		refused := client->Get(by_name, "text/plain");
+		Check("HttpsClient refuses the self-signed server without a trust anchor", refused = Nil);
+		"TLS stage: HttpsClient untrusted done"->ErrorLine();
+		by_address := Web.HTTP.Url->New("https://127.0.0.1:{$@port}/ok");
+		mismatch := client->Get(by_address, "text/plain", cert);
+		Check("HttpsClient refuses a certificate that does not name the host", mismatch = Nil);
+		"TLS stage: HttpsClient mismatch done"->ErrorLine();
+
+		File->Delete(cert);
+		File->Delete(key);
+
+		if(@passed) {
+			"PASS: TLS verification refuses what it should"->PrintLine();
+			# ServeSecure blocks in accept and closing its descriptor from here is
+			# not guaranteed to wake it; end the process after cleanup.
+			Runtime->Exit(0);
+		}
+		else {
+			"FAIL: TLS verification"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
