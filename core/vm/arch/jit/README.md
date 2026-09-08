@@ -43,9 +43,10 @@ flowchart LR
     NAT -.JIT-to-JIT.-> NAT
 ```
 
-**Tunables** (read once in `GetJitAutoThreshold()`):
-- `OBJECK_JIT_DISABLE=1` — turn auto-JIT off entirely (threshold → `LONG_MAX`).
-- `OBJECK_JIT_THRESHOLD=N` — custom positive call-count threshold. LSP/long-lived hosts set this very high to avoid compiling transient code.
+**Tunables** (`GetJitAutoThreshold()`; the environment is read once, and a command-line override set through `vm_options.h` takes precedence over it):
+- `--jit=off` / `OBJECK_JIT_DISABLE=1` — turn auto-JIT off entirely (threshold → `LONG_MAX`).
+- `--jit=<calls>` / `OBJECK_JIT_THRESHOLD=N` — custom positive call-count threshold. LSP/long-lived hosts set this very high to avoid compiling transient code.
+- The override slot lives in `vm_options.h` rather than here because `obd` is built with `_NO_JIT` and compiles `interpreter.cpp` without this header in scope.
 
 ### Key gains
 - **Local variable register cache** — values stored to a local are kept live in their register (`local_reg_cache` / `local_xreg_cache`); a later load of the same slot reuses the register instead of reloading from the stack. The cache is flushed at control flow and before any callback (`FlushLocalCache()`), since the callee may mutate memory.

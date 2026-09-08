@@ -33,7 +33,9 @@ graph TD
     %% ---- VM ----
     OBR --> V_FLAGS["<b>Flags</b> (consumed before program args)"]
     V_FLAGS --> V_gc["--gc-threshold=&lt;n&gt;(k|m|g)<br/>legacy: --GC_THRESHOLD="]
-    V_FLAGS --> V_stdio["--objeck-stdio=&lt;mode&gt;  (Windows only)<br/>legacy: --OBJECK_STDIO="]
+    V_FLAGS --> V_stdio["--objeck-stdio=binary|utf16|utf8<br/>acted on by Windows; accepted everywhere<br/>legacy: --OBJECK_STDIO="]
+    V_FLAGS --> V_jit["--jit=off | --jit=&lt;calls&gt;<br/>env: OBJECK_JIT_DISABLE / OBJECK_JIT_THRESHOLD"]
+    V_FLAGS --> V_lib["--lib-path=&lt;dir&gt;<br/>env: OBJECK_LIB_PATH"]
 
     OBR --> V_ENV["<b>Environment variables</b>"]
     V_ENV --> E_lib["OBJECK_LIB_PATH  (library search path)"]
@@ -64,8 +66,13 @@ See [optimization_pipeline.md](optimization_pipeline.md) for what each `-opt` le
 
 | Option | Legacy form | Description |
 |--------|-------------|-------------|
-| `--gc-threshold=<n>(k\|m\|g)` | `--GC_THRESHOLD=` | Initial garbage-collection threshold |
-| `--objeck-stdio=<mode>` | `--OBJECK_STDIO=` | STDIO output mode (binary if set) — **Windows only** |
+| `--gc-threshold=<n>(k\|m\|g)` | `--GC_THRESHOLD=` | Initial garbage-collection threshold, e.g. `512k`, `2m`, `1g` |
+| `--jit=off` / `--jit=<calls>` | env `OBJECK_JIT_DISABLE=1` / `OBJECK_JIT_THRESHOLD=N` | `off` runs the interpreter only; a positive number is how many calls a method makes before it is compiled (default `10`) |
+| `--lib-path=<dir>` | env `OBJECK_LIB_PATH` | Directory holding the `.obl` libraries |
+| `--objeck-stdio=binary\|utf16\|utf8` | `--OBJECK_STDIO=` | Console I/O mode. Acted on by **Windows**; accepted and ignored elsewhere so one script works on every platform |
+
+Any other value for any of these is an error that names what was expected — `--objeck-stdio=1`
+used to be accepted and silently do nothing.
 
 ### Environment variables
 
@@ -80,9 +87,13 @@ See [optimization_pipeline.md](optimization_pipeline.md) for what each `-opt` le
 
 - **VM flag parsing is positional** — `obr` consumes its own options before the
   program path, so VM options must come *before* the `.obe` and any program arguments.
-- **`--objeck-stdio` is Windows-only**; it is not accepted by the POSIX VM.
-- The auto-JIT tunables (`OBJECK_JIT_DISABLE`, `OBJECK_JIT_THRESHOLD`) are
-  environment-only — there are no equivalent CLI flags.
+- **`--objeck-stdio` only has an effect on Windows.** Every platform accepts and
+  consumes it, so a shared script does not have to know which one is running.
+- **`--jit=off` is the first thing to try on a crash or a wrong answer** — it asks
+  whether the bug lives in the JIT or in the interpreter. The environment variables
+  still work and the flag wins when both are set.
+- A `g` suffix on `--gc-threshold` is 2³⁰. Before v2026.9.1 it was 2⁴⁰, so `1g`
+  asked for a terabyte.
 - Combining `--library` with `--strict` drops the implicit `lang,gen_collect` defaults.
 
 ## Source

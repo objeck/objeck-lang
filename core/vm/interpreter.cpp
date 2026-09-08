@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "interpreter.h"
+#include "vm_options.h"
 #include "dispatch.h"
 #include "lib_api.h"
 
@@ -3317,4 +3318,11 @@ void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
     }
   }
   std::wcerr << L"  ..." << std::endl;
+}
+
+// --jit from the command line. Declared in vm_options.h so the platform mains
+// can call it without including the JIT headers.
+void Runtime::SetJitAutoThreshold(long threshold)
+{
+  JitAutoThresholdOverride() = threshold;
 }
