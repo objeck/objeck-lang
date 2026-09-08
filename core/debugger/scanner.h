@@ -32,6 +32,7 @@
 #pragma once
 
 #include "../vm/common.h"
+#include <unordered_map>
 #include "../shared/sys.h"
 
 // comment
@@ -134,7 +135,8 @@ class Token {
   enum TokenType token_type;
   std::wstring ident;
 
-  INT_VALUE int_lit;
+  // 64-bit: an Objeck Int is 64-bit, and INT_VALUE is int32_t
+  INT64_VALUE int_lit;
   FLOAT_VALUE double_lit;
   wchar_t char_lit;
   char byte_lit;
@@ -149,7 +151,7 @@ class Token {
     token_type = token->GetType();
   }
   
-  inline void  SetIntLit(INT_VALUE i) {
+  inline void  SetIntLit(INT64_VALUE i) {
     int_lit = i;
   }
 
@@ -169,7 +171,7 @@ class Token {
     ident = i;
   }
 
-  inline const INT_VALUE GetIntLit() {
+  inline INT64_VALUE GetIntLit() {
     return int_lit;
   }
 
@@ -217,7 +219,7 @@ class Scanner {
   // input characters
   wchar_t cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
-  std::map<const std::wstring, enum TokenType> ident_map;
+  std::unordered_map<std::wstring, enum TokenType> ident_map;
   // array of tokens for lookahead
   Token* tokens[LOOK_AHEAD];
 
@@ -245,7 +247,9 @@ class Scanner {
     // set token
     wchar_t* end;
     tokens[index]->SetType(TOKEN_INT_LIT);
-    tokens[index]->SetIntLit(wcstol(ident.c_str(), &end, base));
+    // wcstoll: 'long' is 32-bit on Windows, so 0x100000000 and any
+    // ten-digit literal came back clamped
+    tokens[index]->SetIntLit(wcstoll(ident.c_str(), &end, base));
   }
 
   // parse a double

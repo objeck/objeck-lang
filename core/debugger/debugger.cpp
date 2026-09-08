@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "debugger.h"
+#include "obj_layout.h"
 #include "dap.h"
 #include "../shared/sys.h"
 #include "../shared/version.h"
@@ -966,7 +967,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             std::wcout << L"cannot reference scalar variable" << std::endl;
           }
           else {
-            const long value = (long)reference->GetIntValue();
+            const INT64_VALUE value = (INT64_VALUE)reference->GetIntValue();
             std::ios_base::fmtflags flags(std::wcout.flags());
             std::wcout << L"print: " << C(CLR_BLUE) << L"type=Int/Byte/Bool" << C(CLR_RESET) << L", " << C(CLR_BOLD) << L"value=" << value << L"(0x" << std::hex << value << L')' << C(CLR_RESET) << std::endl;
             std::wcout.flags(flags);
@@ -1011,7 +1012,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case INT_ARY_PARM:
           if(reference->GetIndices()) {
-            const long value = (long)reference->GetIntValue();
+            const INT64_VALUE value = (INT64_VALUE)reference->GetIntValue();
             std::ios_base::fmtflags flags(std::wcout.flags());
             std::wcout << L"print: type=Int, value=" << value << L"(0x" << std::hex << value << L')' << std::endl;
             std::wcout.flags(flags);
@@ -1249,7 +1250,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
       break;
 
     case INT_LIT_EXPR:
-      std::wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << L"(0x" << (void*)expression->GetIntValue() << L")" << std::endl;
+      std::wcout << L"print: type=Int, value=" << (INT64_VALUE)expression->GetIntValue() << L"(0x" << (void*)expression->GetIntValue() << L")" << std::endl;
       break;
 
     case FLOAT_LIT_EXPR:
@@ -1280,7 +1281,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
         std::wcout << L"print: type=Float, value=" << expression->GetFloatValue() << std::endl;
       }
       else {
-        std::wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << L"(0x" << (void*)expression->GetIntValue() << L")" << std::endl;
+        std::wcout << L"print: type=Int, value=" << (INT64_VALUE)expression->GetIntValue() << L"(0x" << (void*)expression->GetIntValue() << L")" << std::endl;
       }
       break;
 
@@ -1907,7 +1908,7 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
     if(indices) {
       // calculate indices values
       std::vector<Expression*> expressions = indices->GetExpressions();
-      std::vector<long> values;
+      std::vector<INT64_VALUE> values;
       for(size_t i = 0; i < expressions.size(); i++) {
         EvaluateExpression(expressions[i]);
         if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
@@ -1922,9 +1923,9 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
         // calculate indices
         array += 2;
         long j = dim - 1;
-        long array_index = values[j--];
+        INT64_VALUE array_index = values[j--];
         for(long i = 1; i < dim; ++i) {
-          array_index *= (long)array[i];
+          array_index *= (INT64_VALUE)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -1966,7 +1967,7 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
     if(indices) {
       // calculate indices values
       std::vector<Expression*> expressions = indices->GetExpressions();
-      std::vector<int> values;
+      std::vector<INT64_VALUE> values;
       for(size_t i = 0; i < expressions.size(); i++) {
         EvaluateExpression(expressions[i]);
         if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
@@ -1981,9 +1982,9 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
         // calculate indices
         array += 2;
         int j = dim - 1;
-        long array_index = values[j--];
+        INT64_VALUE array_index = values[j--];
         for(long i = 1; i < dim; i++) {
-          array_index *= (long)array[i];
+          array_index *= (INT64_VALUE)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -2025,7 +2026,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
     if(indices) {
       // calculate indices values
       std::vector<Expression*> expressions = indices->GetExpressions();
-      std::vector<int> values;
+      std::vector<INT64_VALUE> values;
       for(size_t i = 0; i < expressions.size(); i++) {
         EvaluateExpression(expressions[i]);
         if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
@@ -2040,9 +2041,9 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
         // calculate indices
         array += 2;
         int j = dim - 1;
-        long array_index = values[j--];
+        INT64_VALUE array_index = values[j--];
         for(long i = 1; i < dim; i++) {
-          array_index *= (long)array[i];
+          array_index *= (INT64_VALUE)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -2212,10 +2213,129 @@ bool Runtime::Debugger::AddBreak(int line_num, const std::wstring& file_name, Ex
   return false;
 }
 
-std::wstring Runtime::Debugger::SetVariableForDap(int frame_index, const std::wstring& name, const std::wstring& value_str)
+bool Runtime::Debugger::ResolveAssignable(Expression* target, size_t*& slot, int& slot_type, std::wstring& error)
+{
+  slot = nullptr;
+  slot_type = -1;
+
+  ref_slot = nullptr;
+  ref_slot_type = -1;
+  ref_mem = nullptr;
+  ref_klass = nullptr;
+  is_error = false;
+  EvaluateExpression(target);
+  if(is_error || !ref_slot) {
+    is_error = false;
+    error = L"target must be an assignable Int, Char or Float variable";
+    return false;
+  }
+
+  // capture before the value is evaluated, which reuses ref_slot
+  slot = ref_slot;
+  slot_type = ref_slot_type;
+  return true;
+}
+
+bool Runtime::Debugger::StoreNumber(size_t* slot, int slot_type, bool is_float, FLOAT_VALUE float_value, INT64_VALUE int_value, std::wstring& shown)
+{
+  std::wostringstream out;
+  if(slot_type == FLOAT_PARM) {
+    const FLOAT_VALUE fv = is_float ? float_value : (FLOAT_VALUE)int_value;
+    memcpy(slot, &fv, sizeof(FLOAT_VALUE));
+    out << fv;
+  }
+  else {
+    const INT64_VALUE iv = is_float ? (INT64_VALUE)float_value : int_value;
+    *slot = (size_t)iv;
+    if(slot_type == CHAR_PARM) {
+      out << (wchar_t)iv;
+    }
+    else {
+      out << iv;
+    }
+  }
+  shown = out.str();
+  return true;
+}
+
+bool Runtime::Debugger::AssignSlot(size_t* slot, int slot_type, Expression* value, std::wstring& error, std::wstring& shown)
+{
+  if(!slot) {
+    error = L"target must be an assignable Int, Char or Float variable";
+    return false;
+  }
+  if(!value) {
+    error = L"invalid value expression";
+    return false;
+  }
+
+  // A string or Nil evaluates to no number; assigning one would mean
+  // allocating a heap object, which the debugger cannot do. Refuse rather
+  // than store the evaluator's zero-initialised 0.
+  const ExpressionType value_type = value->GetExpressionType();
+  if(value_type == CHAR_STR_EXPR || value_type == NIL_LIT_EXPR) {
+    error = L"only Int, Char and Float values can be assigned";
+    return false;
+  }
+
+  ref_mem = nullptr;
+  ref_klass = nullptr;
+  is_error = false;
+  EvaluateExpression(value);
+  if(is_error) {
+    is_error = false;
+    error = L"invalid value expression";
+    return false;
+  }
+
+  return StoreNumber(slot, slot_type, value->GetFloatEval(), value->GetFloatValue(), value->GetIntValue(), shown);
+}
+
+bool Runtime::Debugger::AssignSlot(size_t* slot, int slot_type, const std::wstring& value_str, std::wstring& error, std::wstring& shown)
+{
+  // The DAP value is text. It goes through the same expression parser the CLI
+  // and conditional breakpoints use, so 'count + 1', '0x10' and 'true' mean
+  // what they mean everywhere else in the debugger; a bare number the
+  // expression grammar does not take (a leading sign) is accepted as such.
+  Expression* value = ParseCondition(value_str);
+  if(value) {
+    return AssignSlot(slot, slot_type, value, error, shown);
+  }
+
+  if(!slot) {
+    error = L"target must be an assignable Int, Char or Float variable";
+    return false;
+  }
+
+  try {
+    const std::string narrow = UnicodeToBytes(value_str);
+    size_t consumed = 0;
+    const bool is_float = narrow.find_first_of(".eE") != std::string::npos && narrow.compare(0, 2, "0x") != 0;
+    if(is_float) {
+      const double fv = std::stod(narrow, &consumed);
+      if(consumed == narrow.size()) {
+        return StoreNumber(slot, slot_type, true, fv, 0, shown);
+      }
+    }
+    else {
+      const long long iv = std::stoll(narrow, &consumed, 0);
+      if(consumed == narrow.size()) {
+        return StoreNumber(slot, slot_type, false, 0.0, (INT64_VALUE)iv, shown);
+      }
+    }
+  }
+  catch(...) {
+  }
+
+  error = L"invalid value expression";
+  return false;
+}
+
+bool Runtime::Debugger::SetVariableForDap(int frame_index, const std::wstring& name, const std::wstring& value_str, std::wstring& shown, std::wstring& error)
 {
   if(!interpreter) {
-    return L"<error>";
+    error = L"program is not running";
+    return false;
   }
 
   // select the requested frame for evaluation
@@ -2224,41 +2344,81 @@ std::wstring Runtime::Debugger::SetVariableForDap(int frame_index, const std::ws
   eval_frame = DbgFrameAt(frame_index, cur_frame, cur_call_stack, cur_call_stack_pos);
   eval_frame_pos = frame_index;
 
-  // resolve the target slot
-  ref_slot = nullptr;
-  ref_slot_type = -1;
-  ref_mem = nullptr;
-  ref_klass = nullptr;
-  is_error = false;
-  Reference* reference = TreeFactory::Instance()->MakeReference(name);
-  EvaluateExpression(reference);
-
-  std::wstring result = L"<error>";
-  if(!is_error && ref_slot) {
-    size_t* slot = ref_slot;
-    const int slot_type = ref_slot_type;
-    try {
-      const std::string narrow = UnicodeToBytes(value_str);
-      if(slot_type == FLOAT_PARM) {
-        FLOAT_VALUE fv = std::stod(narrow);
-        memcpy(slot, &fv, sizeof(FLOAT_VALUE));
-      }
-      else {
-        const long iv = std::stol(narrow, nullptr, 0);
-        *slot = (size_t)iv;
-      }
-      result = value_str;
-    }
-    catch(...) {
-      result = L"<error>";
-    }
+  size_t* slot = nullptr;
+  int slot_type = -1;
+  bool ok = ResolveAssignable(TreeFactory::Instance()->MakeReference(name), slot, slot_type, error);
+  if(ok) {
+    ok = AssignSlot(slot, slot_type, value_str, error, shown);
   }
 
   // restore the inspection frame to the stopped top
   is_error = false;
   eval_frame = saved_eval;
   eval_frame_pos = saved_pos;
-  return result;
+  return ok;
+}
+
+bool Runtime::Debugger::SetFieldForDap(size_t* obj, StackClass* klass, const std::wstring& field_name, const std::wstring& value_str, std::wstring& shown, std::wstring& error)
+{
+  if(!interpreter) {
+    error = L"program is not running";
+    return false;
+  }
+  if(!obj || !klass) {
+    error = L"the object is no longer available";
+    return false;
+  }
+
+  int mem_index = 0;
+  StackDclr* dclr = FindInstanceDeclaration(klass, field_name, mem_index);
+  if(!dclr) {
+    error = L"no field named '" + field_name + L"' on " + klass->GetName();
+    return false;
+  }
+  if(dclr->type != INT_PARM && dclr->type != FLOAT_PARM && dclr->type != CHAR_PARM) {
+    error = L"only Int, Char and Float fields are assignable; '" + field_name + L"' is not one";
+    return false;
+  }
+
+  return AssignSlot(obj + mem_index, dclr->type, value_str, error, shown);
+}
+
+bool Runtime::Debugger::SetArrayElementForDap(size_t* array, int elem_type, long index, const std::wstring& value_str, std::wstring& shown, std::wstring& error)
+{
+  if(!interpreter) {
+    error = L"program is not running";
+    return false;
+  }
+
+  long size = 0;
+  size_t* data = nullptr;
+  if(!ArrayBody(array, size, data)) {
+    error = L"the array is no longer available";
+    return false;
+  }
+  if(index < 0 || index >= size) {
+    error = L"index " + std::to_wstring(index) + L" is outside the array (size " + std::to_wstring(size) + L")";
+    return false;
+  }
+
+  int slot_type;
+  switch((ParamType)elem_type) {
+  case INT_ARY_PARM:
+    slot_type = INT_PARM;
+    break;
+
+  case FLOAT_ARY_PARM:
+    slot_type = FLOAT_PARM;
+    break;
+
+  default:
+    // Byte[] and Char[] are packed, not one slot per element, and an Object[]
+    // element is a reference the debugger cannot create.
+    error = L"only Int[] and Float[] elements are assignable";
+    return false;
+  }
+
+  return AssignSlot(data + index, slot_type, value_str, error, shown);
 }
 
 bool Runtime::Debugger::AddMethodBreak(const std::wstring& spec, const std::wstring& condition_str)
@@ -2628,57 +2788,24 @@ void Runtime::Debugger::ProcessSet(Set* set) {
     return;
   }
 
-  // resolve the target slot
-  ref_slot = nullptr;
-  ref_slot_type = -1;
-  ref_mem = nullptr;
-  ref_klass = nullptr;
-  is_error = false;
-  EvaluateExpression(set->GetReference());
-  if(is_error || !ref_slot) {
-    std::wcout << L"cannot set: target must be an assignable Int/Char/Float variable." << std::endl;
-    is_error = false;
+  // The same resolve/evaluate/store path the DAP setVariable request uses.
+  size_t* slot = nullptr;
+  int slot_type = -1;
+  std::wstring error;
+  std::wstring shown;
+  if(!ResolveAssignable(set->GetReference(), slot, slot_type, error) ||
+     !AssignSlot(slot, slot_type, set->GetValue(), error, shown)) {
+    std::wcout << L"cannot set: " << error << L"." << std::endl;
     return;
   }
 
-  // capture slot before evaluating the value (which reuses ref_slot)
-  size_t* slot = ref_slot;
-  const int slot_type = ref_slot_type;
-
-  // evaluate the new value
-  ref_mem = nullptr;
-  ref_klass = nullptr;
-  is_error = false;
-  Expression* value = set->GetValue();
-  // A string or Nil evaluates to no number, and the old code went on to store
-  // GetIntValue()'s zero-initialised 0 and report 'set: value=0(0x0)'. Assigning
-  // one would mean allocating a heap object, which the debugger cannot do; the
-  // honest answer is to refuse.
-  const ExpressionType value_type = value->GetExpressionType();
-  if(value_type == CHAR_STR_EXPR || value_type == NIL_LIT_EXPR) {
-    std::wcout << L"cannot set: only Int, Char and Float values can be assigned." << std::endl;
-    return;
-  }
-
-  EvaluateExpression(value);
-  if(is_error) {
-    std::wcout << L"cannot set: invalid value expression." << std::endl;
-    is_error = false;
-    return;
-  }
-
-  if(slot_type == FLOAT_PARM) {
-    FLOAT_VALUE fv = value->GetFloatEval() ? value->GetFloatValue() : (FLOAT_VALUE)(long)value->GetIntValue();
-    memcpy(slot, &fv, sizeof(FLOAT_VALUE));
-    std::wcout << L"set: " << C(CLR_BOLD) << L"value=" << fv << C(CLR_RESET) << std::endl;
-  }
-  else {
-    const size_t iv = value->GetFloatEval() ? (size_t)(long)value->GetFloatValue() : (size_t)value->GetIntValue();
-    *slot = iv;
+  std::wcout << L"set: " << C(CLR_BOLD) << L"value=" << shown;
+  if(slot_type != FLOAT_PARM) {
     std::ios_base::fmtflags flags(std::wcout.flags());
-    std::wcout << L"set: " << C(CLR_BOLD) << L"value=" << (long)iv << L"(0x" << std::hex << (long)iv << L")" << C(CLR_RESET) << std::endl;
+    std::wcout << L"(0x" << std::hex << (long)*slot << L")";
     std::wcout.flags(flags);
   }
+  std::wcout << C(CLR_RESET) << std::endl;
 }
 
 void Runtime::Debugger::ProcessEnableDisable(int id, bool enable) {
@@ -3702,6 +3829,12 @@ bool Runtime::Debugger::EvaluateForDapRaw(const std::wstring& expr_str, ParamTyp
     return false;
   }
 
+  // Same guard as EvaluateForDap: only a REF_EXPR carries a declaration. This
+  // sibling was missed, and HandleEvaluate calls it for every non-error result,
+  // so evaluating '1 + 2' read a CalculatedExpression as a Reference.
+  if(expression->GetExpressionType() != REF_EXPR) {
+    return false;
+  }
   const StackDclr& dclr = static_cast<Reference*>(expression)->GetDeclaration();
   out_type = dclr.type;
   out_value = (size_t)expression->GetIntValue();
@@ -3743,7 +3876,7 @@ std::wstring Runtime::Debugger::FormatNonReferenceForDap(Expression* expression)
       wss << expression->GetFloatValue();
     }
     else {
-      wss << (long)expression->GetIntValue();
+      wss << (INT64_VALUE)expression->GetIntValue();
     }
     return wss.str();
   }
@@ -3819,7 +3952,7 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
         }
         case INT_PARM: {
           std::wstringstream wss;
-          wss << (long)expression->GetIntValue();
+          wss << (INT64_VALUE)expression->GetIntValue();
           return wss.str();
         }
         case FLOAT_PARM: {

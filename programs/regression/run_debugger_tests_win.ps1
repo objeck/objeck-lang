@@ -400,6 +400,17 @@ Run-DebuggerTest "boolean_literals" @(
     "p false"
 ) @("print: type=Bool, value=true", "print: type=Bool, value=false") $EvalBin
 
+# Test 31b: hex literals scan. The scanner's state machine cleared its
+# hex flag on the leading '0' itself, so no 0x literal ever reached the
+# base-16 parser and 'p 0x2a' answered 'unknown variable'.
+Run-DebuggerTest "hex_literal" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p 0x2a",
+    "p 0x10 + 1",
+    "p 0X7fffffffff"
+) @("value=42", "value=17", "value=549755813887") $EvalBin
+
 # Test 32: Nil is a literal, so an object can be tested for it.
 Run-DebuggerTest "nil_literal" @(
     "b debugger_eval_test.obs:56",

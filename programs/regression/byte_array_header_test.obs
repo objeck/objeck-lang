@@ -1,0 +1,87 @@
+# EXTRA_LIBS: cipher
+#~
+A Byte[] reports one size to Objeck and another to native code.
+
+Size() reads header word [2]; native libraries read [0] through
+APITools_GetArraySize. The interpreter's Byte->New writes [0] = count, but the
+JIT's NEW_BYTE_ARY and the trap producers (Char[]->ToBytes, the zlib/gzip/
+brotli traps, the HTTP/2 and HTTP/3 response bodies, the serializer's buffer)
+wrote [0] = count + 1 for the NUL pad -- so Hash->SHA256("abc"->ToByteArray())
+digested "abc" plus a zero byte, and no hash of a string ever matched another
+implementation. Every producer is exercised here through a native call.
+~#
+use Cipher;
+
+class ByteArrayHeaderTest {
+	function : Hex(d : Byte[]) ~ String {
+		out := "";
+		each(i : d) {
+			b := d[i]->As(Int);
+			if(b < 0) { b += 256; };
+			hi := b / 16;
+			lo := b % 16;
+			out += HexDigit(hi);
+			out += HexDigit(lo);
+		};
+		return out;
+	}
+
+	function : HexDigit(v : Int) ~ String {
+		digits := "0123456789abcdef";
+		return digits->SubString(v, 1);
+	}
+
+	function : Check(name : String, ok : Bool, detail : String) ~ Int {
+		if(ok) {
+			"  [PASS] {$name}"->PrintLine();
+			return 0;
+		};
+		"  [FAIL] {$name}: {$detail}"->PrintLine();
+		return 1;
+	}
+
+	# a Byte[] built inside JIT-compiled code takes the JIT's NEW_BYTE_ARY path
+	function : native : JitBuilt() ~ Byte[] {
+		out := Byte->New[3];
+		out[0] := 'a';
+		out[1] := 'b';
+		out[2] := 'c';
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		expected := "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
+		# interpreter-built array: the reference behaviour
+		abc := Byte->New[3];
+		abc[0] := 'a';
+		abc[1] := 'b';
+		abc[2] := 'c';
+		got := Hex(Hash->SHA256(abc));
+		failures += Check("interpreter-built Byte[] hashes as 3 bytes", got->Equals(expected), got);
+
+		# String->ToByteArray() goes through the Char[]->ToBytes trap
+		got := Hex(Hash->SHA256("abc"->ToByteArray()));
+		failures += Check("String->ToByteArray() hashes as 3 bytes", got->Equals(expected), got);
+
+		raw := "abc"->ToCharArray()->ToBytes();
+		failures += Check("Char[]->ToBytes() reports its size", raw->Size() = 3, raw->Size()->ToString());
+		got := Hex(Hash->SHA256(raw));
+		failures += Check("Char[]->ToBytes() hashes as 3 bytes", got->Equals(expected), got);
+
+		# a Byte[] created by JIT-compiled code
+		got := Hex(Hash->SHA256(JitBuilt()));
+		failures += Check("JIT-built Byte[] hashes as 3 bytes", got->Equals(expected), got);
+
+		# the same through MD5, a second native reader of the size
+		md5 := Hex(Hash->MD5("abc"->ToByteArray()));
+		failures += Check("MD5 of a String's bytes matches", md5->Equals("900150983cd24fb0d6963f7d28e17f72"), md5);
+
+		if(failures > 0) {
+			"FAIL: {$failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS"->PrintLine();
+	}
+}

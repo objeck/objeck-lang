@@ -1,0 +1,74 @@
+# EXTRA_LIBS: ollama,net,json,cipher,misc
+#~
+Completion->ParseGenerateResponse: the response handling behind every
+Completion->Generate overload, made a function of the body text so it can be
+tested without a server.
+
+The original inline code had its else-if bound to the OUTER if, so a body of
+{"error": "..."} -- the shape Ollama actually returns -- skipped the error
+branch and reported nothing, while a body that was not JSON at all ran it and
+dereferenced Nil.
+~#
+
+use API.Ollama;
+
+class OllamaParseTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    # a normal reply
+    good := "{";
+    good += '"';
+    good += "response";
+    good += '"';
+    good += ":";
+    good += '"';
+    good += "hello";
+    good += '"';
+    good += "}";
+    text := Completion->ParseGenerateResponse(good);
+    Check("a response body yields its text", text <> Nil & text->Equals("hello"));
+
+    # the error shape Ollama actually sends
+    EndPoint->SetLastError(Nil);
+    bad := "{";
+    bad += '"';
+    bad += "error";
+    bad += '"';
+    bad += ":";
+    bad += '"';
+    bad += "model not found";
+    bad += '"';
+    bad += "}";
+    text := Completion->ParseGenerateResponse(bad);
+    Check("an error body yields Nil", text = Nil);
+    err := EndPoint->GetLastError();
+    Check("an error body sets the last error", err <> Nil & err->Find("model not found") > -1);
+
+    # not JSON at all: must not dereference Nil
+    text := Completion->ParseGenerateResponse("this is not json");
+    Check("a non-JSON body yields Nil without crashing", text = Nil);
+
+    # Nil body
+    text := Completion->ParseGenerateResponse(Nil);
+    Check("a Nil body yields Nil", text = Nil);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

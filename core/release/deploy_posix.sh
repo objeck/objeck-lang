@@ -107,6 +107,11 @@ cd ../diags
 ./build_linux.sh diags
 cp diags.so ../../release/deploy/lib/native/libobjk_diags.so
 
+# Every native library this script builds must be present (and, on Linux,
+# resolvable) before the tree is packaged. Without this a failed build was
+# dropped from the release with a green exit -- the obu incident, again.
+sh ../../release/verify_native_libs.sh ../../release/deploy/lib/native so crypto diags lame ml odbc onnx opencv sdl
+
 cd ../../utils/launcher
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
 	make -f make/Makefile.obb.arm64 clean; make -f make/Makefile.obb.arm64 -j3

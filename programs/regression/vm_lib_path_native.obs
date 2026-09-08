@@ -1,0 +1,21 @@
+# EXTRA_LIBS: cipher
+# Fixture for run_vm_flag_tests.py: --lib-path must reach the VM's native-library
+# loader. SHA256 is implemented in libobjk_crypto, which obr loads from
+# <lib>/native/ -- the .obl is linked into the .obe at compile time, so a
+# program that uses no native library runs fine with the library path pointing
+# nowhere, and proved nothing about the flag.
+use Cipher;
+
+class LibPathNative {
+	function : Main(args : String[]) ~ Nil {
+		digest := Hash->SHA256("objeck"->ToByteArray());
+		if(digest = Nil | digest->Size() <> 32) {
+			"FAIL: no digest"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# the value of the digest is cipher's own test's business; a 32-byte
+		# digest back from the native call is what proves the library loaded
+		"native lib loaded"->PrintLine();
+	}
+}

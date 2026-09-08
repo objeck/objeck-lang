@@ -14,12 +14,22 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     expected. Every one of these used to be silently accepted.
  3. The usage text states valid values for every flag, and is the same on
     every platform (it is generated from one string now).
- 4. --lib-path actually reaches the loader: with OBJECK_LIB_PATH removed from
-    the environment, the program runs only when the flag supplies the directory.
+ 4. --lib-path actually reaches the VM's native-library loader. The fixture
+    calls Cipher.Hash->SHA256, which lives in libobjk_crypto under
+    <lib>/native/. A COPY of obr (with the runtime DLLs it needs on Windows)
+    runs from a scratch directory that has no lib beside it, with
+    OBJECK_LIB_PATH removed: it must FAIL with nothing pointing at the
+    libraries, and pass when the flag (or the variable) does. Two earlier
+    versions of this check proved nothing: one used a fixture that loaded no
+    native library, the next ran the deployed obr from another cwd -- but
+    Windows resolves the ..\lib\native fallback against obr.exe's OWN
+    directory first, so the deployed binary finds its libraries from anywhere.
 """
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 EXE = ".exe" if os.name == "nt" else ""
@@ -108,11 +118,41 @@ def main():
                    "--lib-path=<dir>", "--objeck-stdio=binary|utf16|utf8"):
         check(f"usage states valid values: {needle}", needle in usage, usage[:400])
 
-    # ---- 4. --lib-path reaches the loader ----------------------------------------
-    bare = {k: v for k, v in os.environ.items() if k != "OBJECK_LIB_PATH"}
-    rc, out, err = run([obr, "--lib-path=" + lib_dir, obe], env=bare, cwd=bin_dir)
-    check("--lib-path supplies the library directory without OBJECK_LIB_PATH",
-          rc == 0 and out == base, f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
+    # ---- 4. --lib-path reaches the native-library loader ----------------------------
+    native_src = os.path.join(SCRIPT_DIR, "vm_lib_path_native.obs")
+    native_obe = os.path.join(SCRIPT_DIR, "vm_lib_path_native.obe")
+    rc, out, err = run([obc, "-src", native_src, "-lib", "cipher", "-dest", native_obe], env=env, cwd=bin_dir)
+    check("native-library fixture compiles", rc == 0 and os.path.exists(native_obe), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        # A copy of obr in a directory with no lib beside it: the exe-relative
+        # fallback has nowhere to go, so only the flag or the variable can
+        # supply the library directory.
+        scratch = tempfile.mkdtemp(prefix="objeck-libpath-")
+        scratch_bin = os.path.join(scratch, "bin")
+        os.mkdir(scratch_bin)
+        shutil.copy2(obr, scratch_bin)
+        for entry in os.listdir(bin_dir):
+            if entry.lower().endswith(".dll"):
+                shutil.copy2(os.path.join(bin_dir, entry), scratch_bin)
+        scratch_obr = os.path.join(scratch_bin, os.path.basename(obr))
+        try:
+            bare = {k: v for k, v in os.environ.items() if k != "OBJECK_LIB_PATH"}
+            rc, out, err = run([scratch_obr, native_obe], env=bare, cwd=scratch_bin)
+            check("without --lib-path or OBJECK_LIB_PATH the native library cannot be loaded (control)",
+                  rc != 0 and b"native lib loaded" not in out,
+                  f"rc={rc} out={out[-120:]!r} -- the control passed, so the flag test below proves nothing")
+            rc, out, err = run([scratch_obr, "--lib-path=" + lib_dir, native_obe], env=bare, cwd=scratch_bin)
+            check("--lib-path=<lib root> lets obr load <lib>/native/libobjk_crypto",
+                  rc == 0 and b"native lib loaded" in out,
+                  f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+            with_env = dict(bare)
+            with_env["OBJECK_LIB_PATH"] = lib_dir
+            rc, out, err = run([scratch_obr, native_obe], env=with_env, cwd=scratch_bin)
+            check("OBJECK_LIB_PATH=<lib root> does the same (the flag and the variable agree)",
+                  rc == 0 and b"native lib loaded" in out,
+                  f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
 
     return finish()
 

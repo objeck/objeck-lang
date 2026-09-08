@@ -32,6 +32,7 @@
 #pragma once
 
 #include "common.h"
+#include <atomic>
 
 namespace Runtime {
   class StackInterpreter;
@@ -54,7 +55,7 @@ namespace Runtime {
     StackFrame** call_stack;
     long* call_stack_pos;
     StackInterpreter* interp;
-    bool* halt;
+    std::atomic<bool>* halt;
   };
 
   // Handler function pointer type

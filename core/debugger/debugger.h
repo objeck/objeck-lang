@@ -500,9 +500,21 @@ namespace Runtime {
     const std::wstring& GetLastWatchOld() const { return last_watch_old; }
     const std::wstring& GetLastWatchNew() const { return last_watch_new; }
 
-    // set a variable's value in a given frame (for DAP setVariable); returns the
-    // new value formatted, or L"<error>" on failure
-    std::wstring SetVariableForDap(int frame_index, const std::wstring& name, const std::wstring& value_str);
+    // Assignment. One path serves the CLI 'set' command and the DAP setVariable
+    // request: the target is an Int/Char/Float slot, the value is an expression
+    // evaluated in the inspection frame ('count + 1' and '0x10' mean the same
+    // from either surface), and a failure is one message both surfaces show.
+    // 'shown' is the stored value as the Variables view formats it.
+    bool ResolveAssignable(Expression* target, size_t*& slot, int& slot_type, std::wstring& error);
+    bool AssignSlot(size_t* slot, int slot_type, Expression* value, std::wstring& error, std::wstring& shown);
+    bool AssignSlot(size_t* slot, int slot_type, const std::wstring& value_str, std::wstring& error, std::wstring& shown);
+    bool StoreNumber(size_t* slot, int slot_type, bool is_float, FLOAT_VALUE float_value, INT64_VALUE int_value, std::wstring& shown);
+
+    // DAP setVariable targets: a variable named in a frame's scope, a field of
+    // an expanded object, an element of an expanded Int[] or Float[].
+    bool SetVariableForDap(int frame_index, const std::wstring& name, const std::wstring& value_str, std::wstring& shown, std::wstring& error);
+    bool SetFieldForDap(size_t* obj, StackClass* klass, const std::wstring& field_name, const std::wstring& value_str, std::wstring& shown, std::wstring& error);
+    bool SetArrayElementForDap(size_t* array, int elem_type, long index, const std::wstring& value_str, std::wstring& shown, std::wstring& error);
 
     // add a breakpoint at a method's entry (for DAP function breakpoints); spec
     // may be "Class->Method", "Class.Method", or a bare "Method"

@@ -1,0 +1,85 @@
+# EXTRA_LIBS: json
+#~
+JsonElement must escape on serialization.
+
+Format's STRING branch appended the raw value between two quote characters,
+so a string holding a quote, a backslash or a newline produced text that was
+not JSON -- and every AI client that built a request this way sent the user's
+prompt to the provider unescaped. Only the serializer knows it is producing
+JSON, so the serializer escapes. Callers must NOT pre-encode any more; the
+in-tree examples that did have been updated.
+
+Assertions: the escaped forms appear in the output, the output parses, and the
+value survives a round trip through the library's own decoder.
+~#
+
+use Data.JSON;
+
+class JsonEscapeTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    # newline, quote, tab, backslash -- built by append so no source-level
+    # escape has to be trusted for the assertion to mean something
+    raw := "line one";
+    raw += '\n';
+    raw += "say ";
+    raw += '"';
+    raw += "hi";
+    raw += '"';
+    raw += '\t';
+    raw += "end";
+
+    obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+    obj->Insert("text", raw);
+    obj->Insert("plain", "no escapes here");
+    out := obj->ToString();
+    out->PrintLine();
+
+    Check("newline is escaped", out->Find("\\n") > -1);
+    Check("quote is escaped", out->Find("\\\"") > -1);
+    Check("tab is escaped", out->Find("\\t") > -1);
+    Check("no raw newline in the output", out->Find('\n') < 0);
+
+    back := JsonParser->TextToElement(out);
+    Check("serialized output parses", back <> Nil);
+    if(back <> Nil) {
+      text := back->Get("text");
+      Check("text element present", text <> Nil);
+      if(text <> Nil) {
+        decoded := JsonElement->Decode(text->GetString());
+        Check("value round-trips through the decoder", decoded->Equals(raw));
+      };
+      plain := back->Get("plain");
+      Check("a plain value is unchanged", plain <> Nil & JsonElement->Decode(plain->GetString())->Equals("no escapes here"));
+    };
+
+    # a backslash on its own
+    bs := "a";
+    bs += "\\";
+    bs += "b";
+    obj2 := JsonElement->New(JsonElement->JsonType->OBJECT);
+    obj2->Insert("p", bs);
+    out2 := obj2->ToString();
+    Check("backslash is escaped", out2->Find("\\\\") > -1);
+    Check("backslash output parses", JsonParser->TextToElement(out2) <> Nil);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

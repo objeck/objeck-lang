@@ -32,6 +32,7 @@
 #pragma once
 
 #include "tree.h"
+#include <unordered_map>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -636,7 +637,10 @@ class Scanner {
   // input characters
   wchar_t cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
-  std::map<const std::wstring, ScannerTokenType> ident_map;
+  // Hashed, keyed by the word: the keyword table is consulted for every
+  // identifier in the source, and CheckIdentifier now treats it as the one
+  // source of truth.
+  std::unordered_map<std::wstring, ScannerTokenType> ident_map;
   // array of tokens for lookahead
   Token* tokens[LOOK_AHEAD];
   // line number

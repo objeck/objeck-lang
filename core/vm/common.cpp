@@ -1547,7 +1547,7 @@ size_t* TrapProcessor::CreateStringObject(const std::wstring &value_str, StackPr
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)), 
                                                     CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-  char_array[0] = char_array_size + 1;
+  char_array[0] = char_array_size;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
@@ -1888,7 +1888,7 @@ size_t* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, size_t* de
     const long byte_array_dim = 1;
     size_t* byte_array = (size_t*)MemoryManager::AllocateArray((size_t)(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t))),
                                                                BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-    byte_array[0] = byte_array_size + 1;
+    byte_array[0] = byte_array_size;
     byte_array[1] = byte_array_dim;
     byte_array[2] = byte_array_size;
 
@@ -2905,7 +2905,7 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)), 
                                                     CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-  char_array[0] = char_array_size + 1;
+  char_array[0] = char_array_size;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
 
@@ -2937,7 +2937,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)),
                                                     BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  byte_array[0] = byte_array_size + 1;
+  byte_array[0] = byte_array_size;
   byte_array[1] = byte_array_dim;                                                                                                                                                       
   byte_array[2] = byte_array_size;
 
@@ -5752,7 +5752,7 @@ bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  byte_array[0] = byte_array_size + 1;
+  byte_array[0] = byte_array_size;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
 
@@ -5789,7 +5789,7 @@ bool TrapProcessor::UncompressZlibBytes(StackProgram* program, size_t* inst, siz
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  byte_array[0] = byte_array_size + 1;
+  byte_array[0] = byte_array_size;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
 
@@ -5826,7 +5826,7 @@ bool TrapProcessor::CompressGzipBytes(StackProgram* program, size_t* inst, size_
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  byte_array[0] = byte_array_size + 1;
+  byte_array[0] = byte_array_size;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
 
@@ -5863,7 +5863,7 @@ bool TrapProcessor::UncompressGzipBytes(StackProgram* program, size_t* inst, siz
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  byte_array[0] = byte_array_size + 1;
+  byte_array[0] = byte_array_size;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
 
@@ -5900,7 +5900,7 @@ bool TrapProcessor::CompressBrBytes(StackProgram* program, size_t* inst, size_t*
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  byte_array[0] = byte_array_size + 1;
+  byte_array[0] = byte_array_size;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
 
@@ -5937,7 +5937,7 @@ bool TrapProcessor::UncompressBrBytes(StackProgram* program, size_t* inst, size_
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  byte_array[0] = byte_array_size + 1;
+  byte_array[0] = byte_array_size;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
 
@@ -7074,14 +7074,15 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
 
   instance[4] = (size_t)ctx->response_status;
 
-  // Allocate Byte[] for the response body. Standard layout:
-  //   [0] = allocated element count (size+1), [1] = dims, [2] = actual size, [3+] = data
+  // Allocate Byte[] for the response body. Layout:
+  //   [0] = element count, [1] = dims, [2] = size of dim 0, [3+] = data;
+  //   the allocation carries one extra NUL byte that is NOT counted in [0].
   const size_t body_size = ctx->response_body.size();
   const size_t body_dim  = 1;
   size_t* body_obj = MemoryManager::AllocateArray(
       body_size + 1 + ((body_dim + 2) * sizeof(size_t)),
       instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  body_obj[0] = body_size + 1;
+  body_obj[0] = body_size;
   body_obj[1] = body_dim;
   body_obj[2] = body_size;
   if(body_size > 0) {
@@ -7711,7 +7712,7 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
   size_t* body_obj = MemoryManager::AllocateArray(
       body_size + 1 + ((body_dim + 2) * sizeof(size_t)),
       instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  body_obj[0] = body_size + 1;
+  body_obj[0] = body_size;
   body_obj[1] = body_dim;
   body_obj[2] = body_size;
   if(body_size > 0)
@@ -7776,7 +7777,7 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
   size_t* body_obj = MemoryManager::AllocateArray(
       body_size + 1 + ((body_dim + 2) * sizeof(size_t)),
       instructions::BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-  body_obj[0] = body_size + 1;
+  body_obj[0] = body_size;
   body_obj[1] = body_dim;
   body_obj[2] = body_size;
   if(body_size > 0) {

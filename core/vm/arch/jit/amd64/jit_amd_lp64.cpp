@@ -3416,6 +3416,34 @@ RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
   // later loads reload from memory.
   FlushLocalCache();
 
+  // Preserve in-flight working-stack temps across the libc call. Under SysV
+  // every XMM register and RAX/RCX/RDX/R8-R11 are caller-saved, so a pending
+  // temp -- the 7 in "7 + x->Pow(5.0)->As(Int)" -- is destroyed by pow().
+  // ARM64 fixed the same bug (db4c37b662); AMD64 never got it. Win64 keeps
+  // XMM6-15 and RBX/RSI/RDI, which is why it never showed on Windows. Spill to
+  // the scratch slots ProcessStackCallback already uses; with more temps than
+  // slots, fall back to the interpreter for this method.
+  std::vector<std::pair<Register, long> > spilled_regs;
+  std::vector<std::pair<Register, long> > spilled_xregs;
+  long spill_off = TMP_REG_0;
+  long xspill_off = TMP_XMM_1;
+  for(RegInstr* pending : working_stack) {
+    if(pending->GetType() == REG_INT) {
+      if(spill_off < TMP_REG_5) { compile_success = false; break; }
+      const Register r = pending->GetRegister()->GetRegister();
+      move_reg_mem(r, spill_off, RBP);
+      spilled_regs.push_back(std::make_pair(r, spill_off));
+      spill_off -= sizeof(size_t);
+    }
+    else if(pending->GetType() == REG_FLOAT) {
+      if(xspill_off < TMP_XMM_2) { compile_success = false; break; }
+      const Register r = pending->GetRegister()->GetRegister();
+      move_xreg_mem(r, xspill_off, RBP);
+      spilled_xregs.push_back(std::make_pair(r, xspill_off));
+      xspill_off -= sizeof(double);
+    }
+  }
+
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
   if(left->GetType() == REG_FLOAT) {
     if(left->GetRegister()->GetRegister() != XMM0) {
@@ -3444,6 +3472,14 @@ RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
     move_mem_xreg(TMP_XMM_0, RBP, XMM0);
   }
 
+  // Restore the temps spilled above.
+  for(size_t si = 0; si < spilled_regs.size(); ++si) {
+    move_mem_reg(spilled_regs[si].second, RBP, spilled_regs[si].first);
+  }
+  for(size_t si = 0; si < spilled_xregs.size(); ++si) {
+    move_mem_xreg(spilled_xregs[si].second, RBP, spilled_xregs[si].first);
+  }
+
   return result_holder;
 }
 
@@ -3454,6 +3490,34 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
 
   // See call_xfunc: drop cached locals across the clobbering libc call.
   FlushLocalCache();
+
+  // Preserve in-flight working-stack temps across the libc call. Under SysV
+  // every XMM register and RAX/RCX/RDX/R8-R11 are caller-saved, so a pending
+  // temp -- the 7 in "7 + x->Pow(5.0)->As(Int)" -- is destroyed by pow().
+  // ARM64 fixed the same bug (db4c37b662); AMD64 never got it. Win64 keeps
+  // XMM6-15 and RBX/RSI/RDI, which is why it never showed on Windows. Spill to
+  // the scratch slots ProcessStackCallback already uses; with more temps than
+  // slots, fall back to the interpreter for this method.
+  std::vector<std::pair<Register, long> > spilled_regs;
+  std::vector<std::pair<Register, long> > spilled_xregs;
+  long spill_off = TMP_REG_0;
+  long xspill_off = TMP_XMM_2;
+  for(RegInstr* pending : working_stack) {
+    if(pending->GetType() == REG_INT) {
+      if(spill_off < TMP_REG_5) { compile_success = false; break; }
+      const Register r = pending->GetRegister()->GetRegister();
+      move_reg_mem(r, spill_off, RBP);
+      spilled_regs.push_back(std::make_pair(r, spill_off));
+      spill_off -= sizeof(size_t);
+    }
+    else if(pending->GetType() == REG_FLOAT) {
+      if(xspill_off < TMP_XMM_2) { compile_success = false; break; }
+      const Register r = pending->GetRegister()->GetRegister();
+      move_xreg_mem(r, xspill_off, RBP);
+      spilled_xregs.push_back(std::make_pair(r, xspill_off));
+      xspill_off -= sizeof(double);
+    }
+  }
 
 #ifdef _DEBUG_JIT
   assert(right->GetType() == MEM_FLOAT);
@@ -3501,6 +3565,14 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
 
   delete right;
   right = nullptr;
+
+  // Restore the temps spilled above.
+  for(size_t si = 0; si < spilled_regs.size(); ++si) {
+    move_mem_reg(spilled_regs[si].second, RBP, spilled_regs[si].first);
+  }
+  for(size_t si = 0; si < spilled_xregs.size(); ++si) {
+    move_mem_xreg(spilled_xregs[si].second, RBP, spilled_xregs[si].first);
+  }
 
   return result_holder;
 }
@@ -3599,7 +3671,7 @@ void JitAmd64::math_reg_reg(Register src, Register dest, InstructionType type) {
     break;
 
   case MUL_INT:
-    mul_reg_reg(dest, src);
+    mul_reg_reg(src, dest);
     break;
 
   case DIV_INT:
@@ -4378,6 +4450,18 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
 void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
   if(imm == 0) { move_imm_reg(0, reg); return; }
   if(imm == 1) { return; }
+  // IMUL r64, r/m64, imm32 sign-extends a 32-bit immediate; there is no
+  // 64-bit form. add_imm_reg and sub_imm_reg have had this guard since the
+  // 0x7FFFFFFFFFFFFFFF no-op was found; this one was missed, so
+  // n * 4294967311 multiplied by 15 instead. Materialise and use the
+  // register form, exactly as they do.
+  if(imm < INT32_MIN || imm > INT32_MAX) {
+    RegisterHolder* imm_holder = GetRegister();
+    move_imm_reg(imm, imm_holder->GetRegister());
+    mul_reg_reg(imm_holder->GetRegister(), reg);
+    ReleaseRegister(imm_holder);
+    return;
+  }
   if(imm == -1) {
     // NEG r64: REX.W + F7 /3
     AddMachineCode(B(reg));
@@ -4457,14 +4541,19 @@ void JitAmd64::mul_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [imuq %" << GetRegisterName(src) << L", %"<< GetRegisterName(dest) << L"]" << std::endl;
 #endif
-  // encode
-  AddMachineCode(ROB(src, dest));
+  // encode. IMUL r64, r/m64 (0F AF /r) writes the product to the REG field,
+  // the opposite of the ADD/SUB/AND family (01 /r etc.), whose r/m field is
+  // the destination. This used to encode reg=src, r/m=dest -- the ADD
+  // layout -- so the product landed in src, and its one caller compensated
+  // by passing the arguments the wrong way round. Every other reg_reg
+  // primitive here means "dest = dest OP src"; this one now does too.
+  AddMachineCode(ROB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0xaf);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
+  RegisterEncode3(code, 2, dest);
+  RegisterEncode3(code, 5, src);
   AddMachineCode(code);
 }
 

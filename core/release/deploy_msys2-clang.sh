@@ -80,6 +80,11 @@ cd ../diags
 ./build_msys2-clang.sh diags
 cp diags.dll ../../release/deploy-msys2-clang/lib/native/libobjk_diags.dll
 
+# Every native library this script builds must be present (and, on Linux,
+# resolvable) before the tree is packaged. Without this a failed build was
+# dropped from the release with a green exit -- the obu incident, again.
+sh ../../release/verify_native_libs.sh ../../release/deploy-msys2-clang/lib/native dll crypto diags lame ml odbc onnx opencv sdl
+
 cd ../onnx/eq
 # The vendored libonnxruntime here is a CPU-ONLY build -- it reports only
 # CPUExecutionProvider despite living under eq/cuda/lib. Building with

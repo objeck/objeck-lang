@@ -84,7 +84,7 @@ class RequestHandler from HttpRequestHandler {
 	method : ProcessPost(request : Request, response : Response) ~ Bool {
 		query := request->GetContent();
 		if(query <> Nil & query->Size() > 0) {
-			query_contents := contents := @convo->Send(Data.JSON.JsonElement->Encode(query), "user")->GetContents();
+			query_contents := contents := @convo->Send(query, "user")->GetContents();
 			if(query_contents <> Nil & query_contents->Size() > 0) {
 				query_content := query_contents->Get(0);
 				value := query_content->GetSecond()->As(String);

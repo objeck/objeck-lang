@@ -58,9 +58,9 @@ using namespace instructions;
  ****************************/
 void Linker::ResloveExternalClass(LibraryClass* klass)
 {
-  std::map<const std::wstring, LibraryMethod*> methods = klass->GetMethods();
+  const std::map<const std::wstring, LibraryMethod*>& methods = klass->GetMethods();
   for(auto& mthd_pair : methods) {
-    std::vector<LibraryInstr*> instrs = mthd_pair.second->GetInstructions();
+    const std::vector<LibraryInstr*>& instrs = mthd_pair.second->GetInstructions();
     for(size_t j = 0; j < instrs.size(); ++j) {
       LibraryInstr* instr = instrs[j];
       // check library call
@@ -97,7 +97,7 @@ void Linker::ResloveExternalClasses()
   // all libraries
   for(auto& lib_pair : libraries) {
     // all classes
-    std::vector<LibraryClass*> classes = lib_pair.second->GetClasses();
+    const std::vector<LibraryClass*>& classes = lib_pair.second->GetClasses();
     for(size_t i = 0; i < classes.size(); ++i) {
       // all methods
       if(classes[i]->GetCalled()) {
@@ -112,12 +112,12 @@ void Linker::ResolveExternalMethodCalls()
   // all libraries
   for(auto& lib_pair : libraries) {
     // all classes
-    std::vector<LibraryClass*> classes = lib_pair.second->GetClasses();
+    const std::vector<LibraryClass*>& classes = lib_pair.second->GetClasses();
     for(size_t i = 0; i < classes.size(); ++i) {
       // all methods
-      std::map<const std::wstring, LibraryMethod*> methods = classes[i]->GetMethods();
+      const std::map<const std::wstring, LibraryMethod*>& methods = classes[i]->GetMethods();
       for(auto& mthd_pair : methods) {
-        std::vector<LibraryInstr*> instrs = mthd_pair.second->GetInstructions();
+        const std::vector<LibraryInstr*>& instrs = mthd_pair.second->GetInstructions();
         for(size_t j = 0; j < instrs.size(); ++j) {
           LibraryInstr* instr = instrs[j];
 
@@ -252,7 +252,7 @@ std::vector<Library*> Linker::GetAllUsedLibraries()
 
   for(auto& pair : libraries) {
     Library* library = pair.second;
-    std::vector<LibraryClass*> classes = library->GetClasses();
+    const std::vector<LibraryClass*>& classes = library->GetClasses();
 
     bool add_library = false;
     for(size_t i = 0; !add_library && i < classes.size(); ++i) {
@@ -301,7 +301,7 @@ std::vector<LibraryClass*> Linker::GetAllClasses()
   if(all_classes.empty()) {
     std::map<const std::wstring, Library*>::iterator iter;
     for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-      std::vector<LibraryClass*> classes = iter->second->GetClasses();
+      const std::vector<LibraryClass*>& classes = iter->second->GetClasses();
       for(size_t i = 0; i < classes.size(); ++i) {
         all_classes.push_back(classes[i]);
       }
