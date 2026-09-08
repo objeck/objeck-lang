@@ -602,6 +602,30 @@
           initial garbage collection threshold (i.e.; 128m), default is 1/16 of host memory
          </td>
         </tr>
+        <tr>
+         <td>
+          --jit=off | --jit=[calls]
+         </td>
+         <td>
+          'off' runs the interpreter only; a number is how many calls a method makes before it is compiled (default 10). The first thing to try when a program crashes or answers wrongly
+         </td>
+        </tr>
+        <tr>
+         <td>
+          --lib-path=[dir]
+         </td>
+         <td>
+          directory holding the .obl libraries, instead of setting OBJECK_LIB_PATH
+         </td>
+        </tr>
+        <tr>
+         <td>
+          --objeck-stdio=binary|utf16|utf8
+         </td>
+         <td>
+          console I/O mode; acted on by Windows, accepted and ignored elsewhere
+         </td>
+        </tr>
        </table>
        <h2 id="basics">
         Basics

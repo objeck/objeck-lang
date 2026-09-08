@@ -90,7 +90,7 @@ The VM uses call-count-driven auto-JIT (no multi-tier recompilation):
 4. **Patching**: call sites are rewritten to dispatch straight to native code (`MTHD_CALL` → `MTHD_CALL_JIT`)
 5. **Reuse**: compiled native code is cached on the method
 
-Set `OBJECK_JIT_DISABLE=1` to stay fully interpreted. See [JIT internals](arch/jit/README.md) for the full lifecycle and the callback bridge.
+Run with `--jit=off` (or set `OBJECK_JIT_DISABLE=1`) to stay fully interpreted; `--jit=<calls>` or `OBJECK_JIT_THRESHOLD=N` changes the threshold, and the flag wins when both are given. See [JIT internals](arch/jit/README.md) for the full lifecycle and the callback bridge.
 
 ## Memory Management
 
