@@ -237,8 +237,120 @@ int main(int argc, const char* argv[])
  * Interactive command line
  * debugger
  ********************************/
+Runtime::Debugger* Runtime::Debugger::active_debugger = nullptr;
+
+Runtime::Debugger* Runtime::ActiveDebugger()
+{
+  return Runtime::Debugger::Active();
+}
+
+int Runtime::Debugger::NoteThreadSite(int line_num, const std::wstring& file_name, StackFrame* frame,
+                                      StackFrame** call_stack, long call_stack_pos)
+{
+  std::lock_guard<std::mutex> guard(sites_lock);
+  const size_t key = SelfKey();
+  auto id_iter = thread_ids.find(key);
+  if(id_iter == thread_ids.end()) {
+    id_iter = thread_ids.emplace(key, next_thread_id++).first;
+  }
+
+  ThreadSite& site = thread_sites[key];
+  // The first frame seen names the thread: Main's entry for the first thread,
+  // the Run method for a spawned one. The debuggee's own thread names are not
+  // visible from here, and a method name is what a reader can act on -- in the
+  // Class->Method form the rest of the debugger prints, not the internal
+  // 'Class:Method:o.System.Base,,' signature encoding.
+  if(site.name.empty() && frame && frame->method) {
+    const std::wstring& long_name = frame->method->GetName();
+    const size_t sig = long_name.find_last_of(L':');
+    const std::wstring cls_mthd = long_name.substr(0, sig);
+    const size_t mid = cls_mthd.find_last_of(L':');
+    site.name = (mid == std::wstring::npos) ? cls_mthd : cls_mthd.substr(0, mid) + L"->" + cls_mthd.substr(mid + 1);
+  }
+  // Only a real source position replaces the last one. Instructions with no
+  // line (the ones around a native call such as Join) would otherwise report a
+  // parked thread as being 'at :-1'.
+  if(line_num > -1) {
+    site.line_num = line_num;
+    site.file_name = file_name;
+  }
+  site.frame = frame;
+  site.call_stack = call_stack;
+  site.call_stack_pos = call_stack_pos;
+  site.parked = false;
+
+  return id_iter->second;
+}
+
+std::vector<Runtime::Debugger::ThreadInfo> Runtime::Debugger::ListThreads()
+{
+  std::lock_guard<std::mutex> guard(sites_lock);
+  std::vector<ThreadInfo> out;
+  const size_t self_key = std::hash<std::thread::id>{}(stopped_thread);
+  for(auto& pair : thread_sites) {
+    ThreadInfo info;
+    info.id = thread_ids[pair.first];
+    info.name = pair.second.name;
+    info.line_num = pair.second.line_num;
+    info.file_name = pair.second.file_name;
+    info.stopped = world_stopped && pair.first == self_key;
+    info.blocked = pair.second.parked;
+    out.push_back(info);
+  }
+  std::sort(out.begin(), out.end(), [](const ThreadInfo& a, const ThreadInfo& b) { return a.id < b.id; });
+  return out;
+}
+
+int Runtime::Debugger::StoppedThreadId()
+{
+  std::lock_guard<std::mutex> guard(sites_lock);
+  if(!world_stopped) {
+    return 0;
+  }
+  auto iter = thread_ids.find(std::hash<std::thread::id>{}(stopped_thread));
+  return iter == thread_ids.end() ? 0 : iter->second;
+}
+
+void Runtime::Debugger::ProcessThreads()
+{
+  std::vector<ThreadInfo> threads = ListThreads();
+  if(threads.empty()) {
+    std::wcout << L"no threads have run yet." << std::endl;
+    return;
+  }
+
+  std::wcout << L"threads:" << std::endl;
+  for(const ThreadInfo& t : threads) {
+    std::wcout << (t.stopped ? L"* " : L"  ") << L"thread #" << t.id << L": " << C(CLR_GREEN) << t.name
+               << C(CLR_RESET) << L", at " << C(CLR_CYAN) << t.file_name << L":" << t.line_num << C(CLR_RESET)
+               << (t.stopped ? L"  (stopped here)" : (t.blocked ? L"  (waiting for the stop to end)" : L"")) << std::endl;
+  }
+}
+
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
 {
+  // Every VM thread arrives here now, not just the one the program started on.
+  // Note where this thread is BEFORE taking the lock, so a thread blocked
+  // behind another's stop is still listed with a real position.
+  if(frame && frame->method && frame->method->GetClass()) {
+    NoteThreadSite(instr->GetLineNumber(), frame->method->GetClass()->GetFileName(), frame, call_stack, call_stack_pos);
+  }
+  // All-stop. The state below the lock describes ONE stopped thread; a second
+  // thread here at the same time would overwrite it mid-prompt. A thread that
+  // has to wait is marked so 'threads' can say it is blocked rather than
+  // listing it as if it were running.
+  {
+    std::lock_guard<std::mutex> guard(sites_lock);
+    if(world_stopped && stopped_thread != std::this_thread::get_id()) {
+      thread_sites[SelfKey()].parked = true;
+    }
+  }
+  std::lock_guard<std::recursive_mutex> hook_guard(hook_lock);
+  {
+    std::lock_guard<std::mutex> guard(sites_lock);
+    thread_sites[SelfKey()].parked = false;
+  }
+
   if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
     const std::wstring file_name = frame->method->GetClass()->GetFileName();
@@ -373,6 +485,12 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
         is_step_into = is_step_out = is_next_line = false;
 
+        {
+          std::lock_guard<std::mutex> guard(sites_lock);
+          world_stopped = true;
+          stopped_thread = std::this_thread::get_id();
+        }
+
         if(mode == DebugMode::DAP && dap_adapter) {
           // DAP mode: notify adapter and block until resume
           std::string reason = found_break ? "breakpoint" : (watch_hit ? "data breakpoint" : "step");
@@ -385,6 +503,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
             if(interpreter) {
               interpreter->RequestHalt();
             }
+            std::lock_guard<std::mutex> guard(sites_lock);
+            world_stopped = false;
             return;
           }
           if(dap_adapter->IsStepInto()) {
@@ -434,6 +554,17 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
                                command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != STEP_OUT_COMMAND &&
                                command->GetCommandType() != UNTIL_COMMAND));
         }
+
+        {
+          std::lock_guard<std::mutex> guard(sites_lock);
+          world_stopped = false;
+        }
+        // The resumed thread comes straight back for the lock on its very next
+        // instruction, and an unfair mutex lets it win every time -- three
+        // threads on one breakpoint would show the same thread stopping forty
+        // times before another got a turn. Yielding here is not a guarantee of
+        // fairness, but it is enough to let a waiting thread in.
+        std::this_thread::yield();
       }
     }
   }
@@ -441,6 +572,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
 void Runtime::Debugger::OnRuntimeError(StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
 {
+  std::lock_guard<std::recursive_mutex> hook_guard(hook_lock);
   // Only break for DAP clients that enabled the "uncaught" exception filter.
   if(mode != DebugMode::DAP || !dap_adapter || !dap_adapter->BreaksOnException()) {
     return;
@@ -2950,6 +3082,10 @@ Command* Runtime::Debugger::ProcessCommand(const std::wstring &line) {
 
     case DELETE_ID_COMMAND:
       ProcessDeleteById(static_cast<NumCommand*>(command)->GetId());
+      break;
+
+    case THREADS_COMMAND:
+      ProcessThreads();
       break;
 
     case STEP_IN_COMMAND:

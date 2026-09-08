@@ -125,6 +125,7 @@ void Scanner::LoadKeywords()
   ident_map[L"?watch"] = TOKEN_WATCH_ID;
   ident_map[L"?watches"] = TOKEN_WATCHES_ID;
   ident_map[L"?unwatch"] = TOKEN_UNWATCH_ID;
+  ident_map[L"?threads"] = TOKEN_THREADS_ID;
 }
 
 /****************************
@@ -180,6 +181,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_TRUE_ID:
     case TOKEN_FALSE_ID:
     case TOKEN_NIL_ID:
+    case TOKEN_THREADS_ID:
       tokens[index]->SetType(ident_type);
       break;
     default:

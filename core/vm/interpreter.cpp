@@ -175,10 +175,9 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     ctx.instr = instr;
 
 #ifdef _DEBUGGER
-    // Threads the debuggee spawns have no debugger attached (they are built by
-    // the default constructor), so this is not merely a null check -- it is the
-    // ordinary case for every thread but the one obd started the program on.
-    // Breakpoints and stepping do not reach inside those threads; they run.
+    // Null only when no debugger exists in the process (a plain obr build with
+    // _DEBUGGER defined but no Debugger constructed). Spawned threads attach to
+    // the active debugger now, so breakpoints inside a thread body fire.
     if(debugger) {
       debugger->ProcessInstruction(instr, ip, call_stack, (*call_stack_pos), (*stack_frame));
     }

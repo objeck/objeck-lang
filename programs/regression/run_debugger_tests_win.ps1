@@ -3,6 +3,7 @@ param(
     [string]$TestBin,
     [string]$CollBin,
     [string]$EvalBin,
+    [string]$ThreadBin,
     [string]$SrcDir,
     [string]$ResultsDir
 )
@@ -459,6 +460,39 @@ Run-DebuggerTest "leading_whitespace" @(
     "r",
     "   p five"
 ) @("value=5") $EvalBin
+
+# ---------------------------------------------------------------------------
+# Threads. A spawned VM thread used to run with no debugger attached, so a
+# breakpoint inside any thread body never fired: the program ran to
+# completion and every later command answered "program is not running".
+# Each of these fails on that build.
+# ---------------------------------------------------------------------------
+
+# Test 39: a breakpoint inside a thread's Run method fires at all.
+Run-DebuggerTest "thread_breakpoint_fires" @(
+    "b debugger_thread_test.obs:38",
+    "r",
+    "c"
+) @("break: file='debugger_thread_test.obs:38', method='Worker->Run(..)'") $ThreadBin
+
+# Test 40: the stop belongs to the RIGHT thread. Each worker's 'step' is
+# id*100, so a conditional on step = 200 can only be satisfied in worker 2,
+# and the frame the prompt evaluates against must be that worker's.
+Run-DebuggerTest "thread_conditional_stops_right_thread" @(
+    "b debugger_thread_test.obs:38 if step = 200",
+    "r",
+    "p step",
+    "c"
+) @("method='Worker->Run(..)'", "value=200") $ThreadBin
+
+# Test 41: 'threads' lists the real threads -- Main plus the workers -- and
+# marks the one that owns the stop. There was no such command before.
+Run-DebuggerTest "threads_lists_workers" @(
+    "b debugger_thread_test.obs:38",
+    "r",
+    "threads",
+    "c"
+) @("thread #1: ThreadDebugTest->Main", "Worker->Run", "(stopped here)") $ThreadBin
 
 Write-Host ""
 Write-Host "========================================"

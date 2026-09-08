@@ -41,6 +41,10 @@
 #include "color.h"
 #include <iomanip>
 #include <set>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <unordered_map>
 #ifdef _WIN32
 #include "windows.h"
 #include <fcntl.h>
@@ -135,6 +139,60 @@ namespace Runtime {
     std::wstring base_path_param;
     std::wstring args_param;
     bool quit;
+    // ---- threads -------------------------------------------------------
+    //
+    // A spawned VM thread used to run with a null debugger pointer, so the
+    // per-instruction hook was never called on it and a breakpoint inside any
+    // thread body simply never fired. Attaching the debugger to those threads
+    // is what makes them debuggable; this state is what makes it SAFE, because
+    // every field below 'break info' describes one stopped thread and several
+    // threads reaching the hook at once would write over each other.
+    //
+    // The model is all-stop, which is what the existing state already assumes
+    // and what an editor is told ('allThreadsStopped'). One thread owns the
+    // stop; every other thread that reaches the hook parks on hook_cv until it
+    // is released. Halt() cannot be used for this -- it sets the interpreter's
+    // halt flag, whose loop is 'while(!halt)', so it TERMINATES a thread rather
+    // than pausing it. The hook is the only place a thread can be paused and
+    // later resumed, which is why the pause lives here.
+    // A thread that reaches the hook while another owns the stop blocks here
+    // and takes its turn when that stop ends -- so three threads on one
+    // breakpoint stop three times, in order, each with its own frame.
+    std::recursive_mutex hook_lock;
+    // Set while a thread is stopped at a breakpoint and the user is typing.
+    bool world_stopped;
+    // The thread that owns the current stop; only it runs the prompt.
+    std::thread::id stopped_thread;
+    // Every thread that has entered the hook, with where it was last seen, so
+    // the set of live debuggable threads can be reported rather than invented.
+    struct ThreadSite {
+      std::wstring name;
+      int line_num;
+      std::wstring file_name;
+      StackFrame* frame;
+      StackFrame** call_stack;
+      long call_stack_pos;
+      bool parked;
+    };
+    std::mutex sites_lock;
+    std::unordered_map<size_t, ThreadSite> thread_sites;
+    // Stable small integers for threads, in first-seen order, because a
+    // std::thread::id is not something to show a user or put in a DAP id.
+    std::unordered_map<size_t, int> thread_ids;
+    int next_thread_id;
+
+    // Hash of this thread's id, used as the key in the two maps above.
+    static size_t SelfKey() {
+      return std::hash<std::thread::id>{}(std::this_thread::get_id());
+    }
+
+    // Records where this thread is and returns its stable id.
+    int NoteThreadSite(int line_num, const std::wstring& file_name, StackFrame* frame,
+                       StackFrame** call_stack, long call_stack_pos);
+    // The one debugger in the process, so a VM thread built by the default
+    // StackInterpreter constructor can attach to it instead of running blind.
+    static Debugger* active_debugger;
+
     // break info
     std::list<UserBreak*> breaks;
     int cur_line_num;
@@ -323,7 +381,28 @@ namespace Runtime {
     DapAdapter* dap_adapter;
 
   public:
+    static Debugger* Active() {
+      return active_debugger;
+    }
+
+    // One entry per thread the debugger has seen.
+    struct ThreadInfo {
+      int id;
+      std::wstring name;
+      int line_num;
+      std::wstring file_name;
+      bool stopped;
+      bool blocked;
+    };
+    std::vector<ThreadInfo> ListThreads();
+    // Stable id of the thread that owns the current stop (0 when not stopped).
+    int StoppedThreadId();
+    void ProcessThreads();
+
     Debugger(const std::wstring &fn, const std::wstring &bp, const std::wstring &ap) {
+      active_debugger = this;
+      world_stopped = false;
+      next_thread_id = 1;
       program_file_param = fn;
       base_path_param = bp;
       args_param = ap;

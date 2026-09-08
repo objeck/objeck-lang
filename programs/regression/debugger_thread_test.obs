@@ -1,0 +1,67 @@
+#~
+Fixture for debugging a program with several live threads.
+
+Each worker carries its own id and a local whose value derives from it, so a
+stack trace can be attributed to a specific thread rather than merely proving
+that some thread stopped. Three workers plus Main means an editor's thread list
+has something to be wrong about.
+
+The workers spin on arithmetic rather than blocking, because a thread parked in
+a syscall never observes Halt -- that is a different problem, covered by
+thread_accept_exit_test.obs, and it would mask what this fixture is for.
+~#
+
+use System.Concurrency;
+
+class Worker from Thread {
+	@id : Int;
+	@total : Int;
+
+	New(id : Int) {
+		Parent("worker-{$id}");
+		@id := id;
+		@total := 0;
+	}
+
+	method : public : GetTotal() ~ Int {
+		return @total;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		# Each thread's 'step' is distinct, so a frame that reports step=200
+		# can only be worker 2. This is what makes a per-thread stack trace
+		# checkable instead of merely non-empty.
+		step := @id * 100;
+		i := 0;
+		while(i < 40) {
+			# BREAKPOINT LINE -- every worker passes through it repeatedly.
+			@total += step;
+			i += 1;
+		};
+	}
+}
+
+class ThreadDebugTest {
+	function : Main(args : String[]) ~ Nil {
+		workers := Worker->New[3];
+		each(i : workers) {
+			workers[i] := Worker->New(i + 1);
+		};
+
+		each(i : workers) {
+			workers[i]->Execute(Nil);
+		};
+
+		each(i : workers) {
+			workers[i]->Join();
+		};
+
+		sum := 0;
+		each(i : workers) {
+			sum += workers[i]->GetTotal();
+		};
+
+		# 40 * (100 + 200 + 300) = 24000
+		"sum={$sum}"->PrintLine();
+	}
+}
