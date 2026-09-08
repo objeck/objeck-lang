@@ -1,0 +1,71 @@
+#~
+The interpreter and the JIT must agree.
+
+This program is run twice by run_vm_flag_tests.py -- once by default (methods
+JIT after 10 calls) and once with --jit=off -- and the two outputs must be
+byte-identical. It is the first automated check that the two execution paths
+produce the same answers, which matters because the JIT's own header notes
+latent miscompiles in chained float calls and string interpolation.
+
+Everything here is chosen to be deterministic and to cross the call-count
+threshold, so that by default most of it actually runs compiled.
+~#
+
+class Arith {
+  function : Fib(n : Int) ~ Int {
+    if(n < 2) {
+      return n;
+    };
+    return Fib(n - 1) + Fib(n - 2);
+  }
+
+  function : Mix(x : Float) ~ Float {
+    # chained transcendental calls: the shape the JIT header warns about
+    return (x->Sin() * x->Cos())->Abs()->Sqrt() + (x + 1.0)->Log();
+  }
+
+  function : Digest(values : Int[]) ~ Int {
+    total := 0;
+    each(i : values) {
+      total := (total * 31 + values[i]) % 1000003;
+    };
+    return total;
+  }
+}
+
+class VmJitEquiv {
+  function : Main(args : String[]) ~ Nil {
+    # recursion, called far more than ten times
+    fibs := Int->New[20];
+    for(i := 0; i < 20; i += 1;) {
+      fibs[i] := Arith->Fib(i);
+    };
+    "fib digest={$Arith->Digest(fibs)}"->PrintLine();
+
+    # float math through a method called in a loop
+    acc := 0.0;
+    for(i := 1; i < 200; i += 1;) {
+      acc += Arith->Mix(i->As(Float) * 0.37);
+    };
+    "float acc={$acc}"->PrintLine();
+
+    # string interpolation and concatenation inside a hot loop
+    text := "";
+    for(i := 0; i < 50; i += 1;) {
+      # an indexed expression is not allowed inside {$...}; bind it first
+      f := fibs[i % 20];
+      text += "[{$i}:{$f}]";
+    };
+    "text size={$text->Size()}"->PrintLine();
+    text->PrintLine();
+
+    # integer edge cases: negatives, division, modulus by non-trivial values
+    signed := 0;
+    for(i := -50; i < 50; i += 1;) {
+      signed += (i * 7919) / 13 - (i % 11);
+    };
+    "signed={$signed}"->PrintLine();
+
+    "done"->PrintLine();
+  }
+}

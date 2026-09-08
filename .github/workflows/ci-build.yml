@@ -812,6 +812,25 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_dap_tests.py "%BIN%"
 
+    # VM flags: interpreter/JIT equivalence, value validation, one usage text.
+    - name: Run VM flag tests (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 run_vm_flag_tests.py "$BIN"
+
+    - name: Run VM flag tests (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\coreelease\deploy-${{ matrix.arch }}in
+        if not exist "%BIN%" set BIN=..\..\coreelease\deployin
+        python run_vm_flag_tests.py "%BIN%"
+
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,
     # Windows included -- plus the update/rollback swap and the command-injection

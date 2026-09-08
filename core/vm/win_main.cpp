@@ -36,6 +36,7 @@
 #endif
 
 #include "vm.h"
+#include "vm_options.h"
 #include "windows.h"
 #include "../shared/version.h"
 #include <iostream>
@@ -62,95 +63,36 @@ static int objeck_main(const int argc, const char* argv[])
     //
     CommandLineParseResult cmd_result = ParseCommandLine(argc, argv);
 
-    bool set_stdio_param = false;
-    size_t gc_threshold = 0;
-    int vm_param_count = 0;
-
-    // Check for OBJECK_STDIO (Windows-only, support both new and legacy formats)
-    std::wstring stdio_value = GetCommandLineArgumentWithAliases(
-      cmd_result.arguments,
-      {L"objeck-stdio", L"OBJECK_STDIO", L"OBJECK-STDIO"},
-      L""
-    );
-
-    if(!stdio_value.empty()) {
-      ++vm_param_count;
-
-      // Convert wide string to narrow for SetStdIo
-      std::string value_str;
-      for(wchar_t wc : stdio_value) {
-        value_str += static_cast<char>(wc);
-      }
-
-      SetStdIo(value_str.c_str());
-      set_stdio_param = true;
+    // One parser for every platform (vm_options.h). A bad value is an error
+    // that names what was expected, not something silently ignored.
+    const Runtime::VmOptions opts = Runtime::ParseVmOptions(cmd_result);
+    if(!opts.error.empty()) {
+      std::wcerr << opts.error << L"\n\n" << Runtime::VmUsage() << std::endl;
+      return 1;
     }
-
-    // Check for GC threshold (support both new and legacy formats)
-    std::wstring gc_value = GetCommandLineArgumentWithAliases(
-      cmd_result.arguments,
-      {L"gc-threshold", L"GC_THRESHOLD", L"GC-THRESHOLD"},
-      L""
-    );
-
-    if(!gc_value.empty()) {
-      ++vm_param_count;
-
-      // Convert wide string to narrow for parsing
-      std::string value_str;
-      for(wchar_t wc : gc_value) {
-        value_str += static_cast<char>(wc);
-      }
-
-      // Parse numeric value and suffix
-      char* str_end;
-      gc_threshold = strtol(value_str.c_str(), &str_end, 10);
-      if(str_end) {
-        switch (*str_end) {
-        case 'k':
-        case 'K':
-          gc_threshold *= 1024UL;
-          break;
-
-        case 'm':
-        case 'M':
-          gc_threshold *= 1048576UL;
-          break;
-
-        case 'g':
-        case 'G':
-          gc_threshold *= 1099511627776UL;
-          break;
-        }
-      }
-    }
+    Runtime::ApplyVmOptions(opts);
 
     //
-    // environment variables
+    // console mode: the flag, else the environment, else the UTF-8 default
     //
-
-    // check for OBJECK_STDIO
+    // SetStdIo's result is what Execute is told. The old code called SetStdIo
+    // for the flag and discarded the result, so --objeck-stdio=binary switched
+    // the console and then told Execute it had not.
     bool is_stdio_binary = false;
-    size_t value_len;
-    char value[SMALL_BUFFER_MAX];
-    if(!set_stdio_param) {
+    if(!opts.stdio_mode.empty()) {
+      const std::string narrow = UnicodeToBytes(opts.stdio_mode);
+      is_stdio_binary = SetStdIo(narrow.c_str());
+    }
+    else {
+      size_t value_len;
+      char value[SMALL_BUFFER_MAX];
       if(!getenv_s(&value_len, value, SMALL_BUFFER_MAX, "OBJECK_STDIO") && strlen(value) > 0) {
         is_stdio_binary = SetStdIo(value);
       }
-      // set default as utf8
       else {
         SetEnv();
       }
     }
-    /* TODO: add if needed
-    // check for FOO_BAR
-    else if(!set_foo_bar_param) {
-      if(!getenv_s(&value_len, value, SMALL_BUFFER_MAX, "FOO_BAR") && strlen(value) > 0) {
-      }
-      else {
-      }
-    }
-    */
 
     // initialize Winsock
     WSADATA data;
@@ -162,7 +104,7 @@ static int objeck_main(const int argc, const char* argv[])
     else {
       // execute program
       try {
-        status = Execute(argc - vm_param_count, argv + vm_param_count, is_stdio_binary, gc_threshold);
+        status = Execute(argc - opts.consumed, argv + opts.consumed, is_stdio_binary, opts.gc_threshold);
       }
       catch(const std::bad_alloc&) {
         std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
@@ -191,46 +133,7 @@ static int objeck_main(const int argc, const char* argv[])
     return status;
   }
   else {
-    std::wstring usage;
-    usage += L"Usage: obr [options] <program>\n\n";
-
-    usage += L"Options:\n";
-    usage += L"  --objeck-stdio=<value>    STDIO output mode (binary mode if set)\n";
-    usage += L"                            Legacy: --OBJECK_STDIO=<value>\n";
-    usage += L"  --gc-threshold=<size>     Initial garbage collection threshold\n";
-    usage += L"                            Size format: <number>(k|m|g)\n";
-    usage += L"                            Legacy: --GC_THRESHOLD=<size>\n";
-    usage += L"\nExamples:\n";
-    usage += L"  obr hello.obe\n";
-    usage += L"  obr --gc-threshold=2m hello.obe\n";
-    usage += L"  obr --objeck-stdio=binary hello.obe\n";
-    usage += L"  obr --GC_THRESHOLD=2m hello.obe  (legacy)\n";
-    usage += L"\nVersion: ";
-
-    usage += VERSION_STRING;
-    
-#if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
-    usage += L" (arm64 Windows)";
-#elif defined(_WIN64) && defined(_WIN32)
-    usage += L" (x86_64 Windows)";
-#elif _WIN32
-    usage += L" (x86 Windows)";
-#elif _OSX
-#ifdef _ARM64
-    usage += L" (ARM64 macOS)";
-#else
-    usage += L" (x86_64 macOS)";
-#endif
-#elif _X64
-    usage += L" (x86_64 Linux)";
-#elif _ARM32
-    usage += L" (ARMv7 Linux)";
-#else
-    usage += L" (x86 Linux)";
-#endif
-    
-    usage += L"\nWeb: https://www.objeck.org";
-    std::wcerr << usage << std::endl;
+    std::wcerr << Runtime::VmUsage() << std::endl;
 
     return 1;
   }

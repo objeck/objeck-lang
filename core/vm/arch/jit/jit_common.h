@@ -41,6 +41,7 @@
 #include "../../common.h"
 #include "../../interpreter.h"
 #include <climits>
+#include "../../vm_options.h"
 
 // Auto-JIT: methods called more than threshold times are JIT compiled.
 // Pre-scan validation (CanJitInstruction) runs before resource allocation,
@@ -60,6 +61,11 @@
 #define JIT_AUTO_THRESHOLD_DISABLED LONG_MAX
 
 inline long GetJitAutoThreshold() {
+  const long forced = JitAutoThresholdOverride();
+  if(forced != 0) {
+    return forced < 0 ? JIT_AUTO_THRESHOLD_DISABLED : forced;
+  }
+
   static long threshold = -1;
   if(threshold < 0) {
     threshold = JIT_AUTO_THRESHOLD_DEFAULT;

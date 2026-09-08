@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "vm.h"
+#include "vm_options.h"
 #include "../shared/version.h"
 #include <iostream>
 #include <string>
@@ -50,47 +51,14 @@ static int objeck_main(const int argc, const char* argv[])
     //
     CommandLineParseResult cmd_result = ParseCommandLine(argc, argv);
 
-    size_t gc_threshold = 0;
-    int vm_param_count = 0;
-
-    // Check for GC threshold (support both new and legacy formats)
-    std::wstring gc_value = GetCommandLineArgumentWithAliases(
-      cmd_result.arguments,
-      {L"gc-threshold", L"GC_THRESHOLD", L"GC-THRESHOLD"},
-      L""
-    );
-
-    if(!gc_value.empty()) {
-      ++vm_param_count;
-
-      // Convert wide string to narrow for parsing
-      std::string value_str;
-      for(wchar_t wc : gc_value) {
-        value_str += static_cast<char>(wc);
-      }
-
-      // Parse numeric value and suffix
-      char* str_end;
-      gc_threshold = strtol(value_str.c_str(), &str_end, 10);
-      if(str_end) {
-        switch (*str_end) {
-        case 'k':
-        case 'K':
-          gc_threshold *= 1024UL;
-          break;
-
-        case 'm':
-        case 'M':
-          gc_threshold *= 1048576UL;
-          break;
-
-        case 'g':
-        case 'G':
-          gc_threshold *= 1099511627776UL;
-          break;
-        }
-      }
+    // One parser for every platform (vm_options.h). A bad value is an error
+    // that names what was expected, not something silently ignored.
+    const Runtime::VmOptions opts = Runtime::ParseVmOptions(cmd_result);
+    if(!opts.error.empty()) {
+      wcerr << opts.error << L"\n\n" << Runtime::VmUsage() << endl;
+      return 1;
     }
+    Runtime::ApplyVmOptions(opts);
 
     // enable UTF-8 environment
 #if defined(_X64) || defined(_ARM64)
@@ -123,9 +91,9 @@ static int objeck_main(const int argc, const char* argv[])
     // Note: OBJECK_STDIO not needed for POSIX-like environments, ignore for MSYS2
     //
 #ifdef _WIN32
-    return Execute(argc - vm_param_count, argv + vm_param_count, false, gc_threshold);
+    return Execute(argc - opts.consumed, argv + opts.consumed, false, opts.gc_threshold);
 #else    
-    Execute(argc - vm_param_count, argv + vm_param_count, gc_threshold);
+    Execute(argc - opts.consumed, argv + opts.consumed, opts.gc_threshold);
 #endif    
 
     // The POSIX branch above deliberately discards Execute's result, so this
@@ -138,42 +106,7 @@ static int objeck_main(const int argc, const char* argv[])
     return 0;
   }
   else {
-    wstring usage;
-    usage += L"Usage: obr [options] <program>\n\n";
-
-    usage += L"Options:\n";
-    usage += L"  --gc-threshold=<size>     Initial garbage collection threshold\n";
-    usage += L"                            Size format: <number>(k|m|g)\n";
-    usage += L"                            Legacy: --GC_THRESHOLD=<size>\n";
-    usage += L"\nExamples:\n";
-    usage += L"  obr hello.obe\n";
-    usage += L"  obr --gc-threshold=2m hello.obe\n";
-    usage += L"  obr --GC_THRESHOLD=2m hello.obe  (legacy)\n";
-    usage += L"\nVersion: ";
-    usage += VERSION_STRING;
-    
-#if defined(_WIN64) && defined(_WIN32)
-    usage += L" (Windows x86_64)";
-#elif _WIN32
-    usage += L" (Windows x86)";
-#elif _OSX
-#ifdef _ARM64
-    usage += L" (macOS ARM64)";
-#else
-    usage += L" (macOS x86_64)";
-#endif
-#elif _ARM64
-    usage += L" (Linux ARM64)";
-#elif _X64
-    usage += L" (Linux x86_64)";
-#elif _ARM32
-    usage += L" (Linux ARMv7)";
-#else
-    usage += L" (Linux x86)";
-#endif
-    
-    usage += L"\nWeb: https://www.objeck.org";
-    wcerr << usage << endl;
+    wcerr << Runtime::VmUsage() << endl;
 
     return 1;
   }
