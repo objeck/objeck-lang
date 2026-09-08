@@ -3,7 +3,7 @@
 		"string": "2026.9.1",
 		"year": 2026
 	},
-	"title": "Release-process repairs found by running a release: a checksum manifest that no longer describes bytes nobody can download, a playground deploy that runs the fix it ships, and open issues that must be fixed or explained before a tag",
+	"title": "Threads the debugger can see, every string hash corrected, JIT arithmetic that matches the interpreter, a sky and normal maps for Game.OpenGL, and release repairs: a checksum manifest that no longer describes bytes nobody can download, a playground deploy that runs the fix it ships, and open issues that must be fixed or explained before a tag",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -14,9 +14,20 @@
 		{
 			"version": "v2026.9.1",
 			"items": [
-				"Release integrity: signing rewrites the Windows installers, so the SHA256SUMS published beside them described bytes that no longer existed and verification failed on both MSIs -- the two files whose integrity matters most. The signing script re-uploaded the signed installers and never touched the manifest; the repair lived in a separate script and in whoever remembered to run it. It is now part of signing, rebuilt from the published assets and verified by re-downloading it",
-				"Playground deploys: update.sh pulls the repository from inside itself, so a run that pulled a new update.sh kept executing the old one and exited 0. A deploy reported success, moved the version it displays, and left the engine on the previous release. It now re-execs when the pull changes it, and the health check polls instead of sleeping three seconds and asking once, which had it reporting failure after every healthy restart",
-				"Release gating: a step declared manual in one place was read nowhere else, so the pre-flight gate reported the configuration OK and the publish failed on it anyway. The gate now verifies something actually honours each declaration. Open issues are checked before a tag too -- each must be fixed or carry a written reason it waits, and a reason naming an older release does not carry forward"
+				"Debugger: breakpoints fire inside threads. Spawned threads were invisible to obd and DAP faked a single thread; the model is all-stop with real thread ids, an obd 'threads' command, and conditional breakpoints that evaluate in the stopping thread's frame",
+				"Debugger: nine commands that reported success while doing the wrong thing (unwatch removed every second watchpoint, delete removed the current line's breakpoint, set stored 0 for a string, division by zero took the debugger down, string comparisons compared pointers); DAP evaluate honours frameId; hex literals scan; setVariable through an expanded object or Int[]/Float[] handle assigns the field or element it names",
+				"Language server: a garbage-collector range test accepted an unaligned pointer and crashed the server at startup",
+				"Runtime: every hash of a string was wrong -- a Byte[] carried its element count plus one in the word native libraries read, so SHA-256/MD5 of a string digested a trailing zero byte; [0] is the element count everywhere now",
+				"JIT: IMUL wrote its product to the wrong register, native-call temporaries clobbered live values, and relinking could retarget a select's default arm; the interpreter and the JIT now print byte-identical output on the equivalence fixture",
+				"Libraries: JSON escapes strings and keys on serialize; the Ollama client reports {\"error\": ...} replies instead of swallowing them",
+				"VM flags: --jit=off|<calls> and --lib-path=<dir> (the lib root: native libraries and cacert.pem for obr, .obl files for obc); every flag states its valid values and refuses others",
+				"Game.OpenGL: Skybox (procedural sky), Quaternion (slerp and composition), tangent-space normal maps with no vertex changes, Material->SetEmissive; the overlay no longer draws upside down",
+				"macOS: an uninstaller, and a removable shell edit -- the .pkg wrote to four system locations and shipped no way to undo them",
+				"Compiler: name resolution no longer copies the library maps per lookup and AddMethod's duplicate check is indexed -- a fifth of a large program's compile time",
+				"Release integrity: signing rewrites the Windows installers, so the SHA256SUMS published beside them described bytes nobody could download; the manifest is regenerated after signing",
+				"Playground deploys: update.sh pulls the repository from inside itself, so a run that pulled a new update.sh kept executing the old one; the deploy now re-executes the pulled script",
+				"Release gating: a step declared manual in one place was read nowhere else; the declaration is checked, printed as a to-do, and an open issue must be fixed or explained before a tag",
+				"POSIX deploys verify every native library they built, as the Windows deploy already did; the MSYS2 build scripts the deploys invoked now exist"
 			]
 		},
 		{

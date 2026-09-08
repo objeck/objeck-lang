@@ -17,6 +17,11 @@ $version_windows = $version.Replace(".", ",")
 
 
 (Get-Content ..\..\\programs\deploy\util\readme\readme.json.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@YEAR@", $year_end } | Set-Content ..\..\\programs\deploy\util\readme\readme.json
+# The VS Code extension manifest. release-build.yml stamps the packaged .vsix
+# from the tag, so the SHIPPED version was always right; the committed file
+# sat two releases behind because nothing here touched it.
+$package_json = "..\..\tools\lsp\clients\vscode\package.json"
+(Get-Content $package_json) | ForEach-Object { $_ -replace '("version":\s*")[0-9.]+(")', ('${1}' + $version + '${2}') } | Set-Content $package_json
 
 
 # update window resource files

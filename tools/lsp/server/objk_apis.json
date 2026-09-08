@@ -568,7 +568,10 @@
 			"description": "Ollama model interactions",
 			"functions": {
 				"Generate": {
-					"descriptions": ["**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nreturn: String\n\n```\nresponse := Completion->Generate(\"llama3\", \"What is the capital of France?\");\r\nresponse->PrintLine();\n```", "**Generates a response from the model given an input with options**\n\n```function : Generate(model:String, prompt:String, options:Options) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\noptions: Options\n\nreturn: String\n\n```\nopts := Options->New()->SetTemperature(0.3)->SetTopP(0.85);\r\nresponse := Completion->Generate(\"llama3\", \"Summarize quantum entanglement briefly.\", opts);\r\nresponse->PrintLine();\n```", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, format:String) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\nreturn: String", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, format:String, options:Options) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\noptions: Options\n\nreturn: String", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, image:File) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nimage: File\n\nreturn: String\n\n```\nimage := System.IO.Filesystem.File->New(\"photo.png\");\r\nresponse := Completion->Generate(\"llava\", \"Describe what you see in this image.\", image);\r\nresponse->PrintLine();\n```", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, images:File[]) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nimages: File[]\n\nreturn: String"]
+					"descriptions": ["**Generates a response from the model given an input with options**\n\n```function : Generate(model:String, prompt:String, options:Options) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\noptions: Options\n\nreturn: String\n\n```\nopts := Options->New()->SetTemperature(0.3)->SetTopP(0.85);\r\nresponse := Completion->Generate(\"llama3\", \"Summarize quantum entanglement briefly.\", opts);\r\nresponse->PrintLine();\n```", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, format:String) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\nreturn: String", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, format:String, options:Options) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\noptions: Options\n\nreturn: String", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, image:File) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nimage: File\n\nreturn: String\n\n```\nimage := System.IO.Filesystem.File->New(\"photo.png\");\r\nresponse := Completion->Generate(\"llava\", \"Describe what you see in this image.\", image);\r\nresponse->PrintLine();\n```", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, images:File[]) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nimages: File[]\n\nreturn: String"]
+				},
+				"ParseGenerateResponse": {
+					"descriptions": ["**The response handling behind every Generate overload, as a function of the body text so it can be tested without a server.**\n\n```function : ParseGenerateResponse(body:String) ~ String```\n\n\n\nbody: String\n\nreturn: String"]
 				}
 			}
 		},
@@ -580,6 +583,12 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ParseResponse": {
+					"descriptions": ["**Parse a response body. Nil, with the last error set, when the body is not JSON. Every request in this library used to inline this and the error check that follows; one of the ten copies had its else-if bound to the wrong if, so an {\"error\": ...} reply -- the shape Ollama actually sends -- was swallowed and a non-JSON body dereferenced Nil.**\n\n```function : ParseResponse(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
+				},
+				"ReportError": {
+					"descriptions": ["**Record the error a response carries, or that it carried nothing usable.**\n\n```function : ReportError(json:JsonElement) ~ Nil```\n\n\n\njson: JsonElement\n\nreturn: Nil"]
 				},
 				"SetHost": {
 					"descriptions": ["**Sets the Ollama server host URL (e.g. \"http:\/\/myserver:11434\")**\n\n```function : SetHost(host:String) ~ Nil```\n\n\n\nhost: String\n\nreturn: Nil"]
@@ -4885,11 +4894,23 @@
 		"Game.OpenGL.Material": {
 			"description": "How a surface looks: its texture, a colour multiplier, and how shiny it is. Shininess and specular strength live HERE rather than on the lights, which is where I first put them and was wrong: they describe the SURFACE. A polished ball and a matte floor lit by the same lamp need different values, and a property that cannot differ between objects in one scene is not a property of the object. ## The tint Multiplied into the final colour, so one texture can dress many objects. A tint of exactly black counts as \"untinted\" rather than as black -- see the note in the shader: GL leaves an unset uniform at zero, and without that rule a forgotten tint turns everything black, while an object tinted to pure black is indistinguishable from one that is not drawn. ## Not owned A Material does not own its texture. Several materials sharing one texture is the normal case, so freeing the material does not free the texture -- the same rule Scene follows for the mesh and shader it is handed.",
 			"functions": {
+				"ClearEmissive": {
+					"descriptions": ["**Stop emitting.**\n\n```method : public : ClearEmissive() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
 				"Colored": {
 					"descriptions": ["**A material with a tint and no texture, for flat-coloured objects drawn through a textured shader.**\n\n```function : Colored(r:Float, g:Float, b:Float) ~ Material```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Material"]
 				},
+				"GetNormalMap": {
+					"descriptions": ["****\n\n```method : public : GetNormalMap() ~ Texture2D```\n\n\n\nreturn: Texture2D"]
+				},
 				"GetOpacity": {
 					"descriptions": ["****\n\n```method : public : GetOpacity() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"HasEmissive": {
+					"descriptions": ["****\n\n```method : public : HasEmissive() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"HasNormalMap": {
+					"descriptions": ["****\n\n```method : public : HasNormalMap() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"HasTexture": {
 					"descriptions": ["**Whether this material carries a texture of its own. A material without one does NOT bind anything, so whatever a previous draw left on the unit is what gets sampled. Scene uses this to fall back to the box's own texture rather than let the result depend on draw order.**\n\n```method : public : HasTexture() ~ Bool```\n\n\n\nreturn: Bool"]
@@ -4900,6 +4921,9 @@
 				"New": {
 					"descriptions": ["**An untinted, matte material.**\n\n```New(texture:Texture2D)```\n\n\n\ntexture: Texture2D"]
 				},
+				"SetEmissive": {
+					"descriptions": ["**Light this surface gives off on its own. Added AFTER the lighting rather than multiplied into it, which is the whole point: SetTint scales what the lights deliver, so a tinted surface can never be brighter than the light falling on it. That is why a relic in an unlit corner is invisible however you tint it, and why a creature standing between the player and their own lamp came out darker than the wall behind it. Emissive is also the right tool when the base texture is the wrong hue. Tinting a GOLD texture blue gives green, because tint multiplies; an emissive term does not care what the texture underneath is. This does not light anything else -- there is no bloom and no light bleed. It makes the surface itself bright.**\n\n```method : public : SetEmissive(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
+				},
 				"SetOpacity": {
 					"descriptions": ["**How opaque this material is. 1.0 is solid and is the default. Anything less needs blending on and the object drawn after the solid ones -- Scene does both once it knows where the camera is; a program drawing by hand does it with GL->BeginTransparency and GL->EndTransparency. This MULTIPLIES the texture's own alpha rather than replacing it, so a cut-out texture stays cut out at 0.5 opacity instead of turning into a uniformly half-visible rectangle.**\n\n```method : public : SetOpacity(opacity:Float) ~ Nil```\n\n\n\nopacity: Float\n\nreturn: Nil"]
 				},
@@ -4908,9 +4932,6 @@
 				},
 				"SetTexture": {
 					"descriptions": ["****\n\n```method : public : SetTexture(texture:Texture2D) ~ Nil```\n\n\n\ntexture: Texture2D\n\nreturn: Nil"]
-				},
-				"SetTint": {
-					"descriptions": ["**A colour multiplied into the surface.**\n\n```method : public : SetTint(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -5423,6 +5444,68 @@
 				}
 			}
 		},
+		"Game.OpenGL.Quaternion": {
+			"description": "A rotation, as a quaternion: four floats, [x, y, z, w]. ## Why this exists alongside RotationYXZ Transform stores rotation as three Euler angles and builds a matrix with Matrix4->RotationYXZ. That is fine to author with and fine to store, and it is wrong for two jobs: interpolation Blending between two orientations by lerping their Euler angles does not travel the short way round, wobbles on the way, and can stop dead when two axes line up. Track can already sample a Float along an eased curve; it had no way to sample an ORIENTATION. Slerp is that. accumulation Applying one rotation after another by adding angles is only correct while the axes stay independent. Multiplying quaternions is correct always, which is what a turret that turns relative to a hull that is already turning needs. Follows Matrix4's convention rather than Vector3's: static functions over a Float[4] the caller owns, each with an Into twin that writes rather than allocates. A rotation per object per frame is the same allocation problem a matrix per object per frame is, and for the same reason. Conventions here: right-handed, the same as Matrix4; the scalar is LAST (w at index 3), which is what OpenGL literature and GLM use; and every function assumes unit length except Normalize, Length and FromAxisAngle.",
+			"functions": {
+				"Conjugate": {
+					"descriptions": ["****\n\n```function : Conjugate(q:Float[]) ~ Float[]```\n\n\n\nq: Float[]\n\nreturn: Float[]"]
+				},
+				"ConjugateInto": {
+					"descriptions": ["**The opposite rotation, written into a buffer the caller owns. For a unit rotation this is also the inverse, which is why there is no separate Inverse: negating the vector part is correct and cheap, and an inverse that silently assumed unit length would be a trap.**\n\n```function : ConjugateInto(out:Float[], q:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nq: Float[]\n\nreturn: Nil"]
+				},
+				"Dot": {
+					"descriptions": ["****\n\n```function : Dot(a:Float[], b:Float[]) ~ Float```\n\n\n\na: Float[]\n\nb: Float[]\n\nreturn: Float"]
+				},
+				"FromAxisAngle": {
+					"descriptions": ["**A rotation of 'angle' radians about an axis. The axis is normalised here, so it does not have to arrive that way -- passing (0, 2, 0) and (0, 1, 0) give the same rotation. A zero-length axis has no direction to turn about and yields identity rather than a quaternion full of NaN.**\n\n```function : FromAxisAngle(x:Float, y:Float, z:Float, angle:Float) ~ Float[]```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nangle: Float\n\nreturn: Float[]"]
+				},
+				"FromAxisAngleInto": {
+					"descriptions": ["**Axis-angle, written into a buffer the caller owns.**\n\n```function : FromAxisAngleInto(out:Float[], x:Float, y:Float, z:Float, angle:Float) ~ Nil```\n\n\n\nout: Float[]\n\nx: Float\n\ny: Float\n\nz: Float\n\nangle: Float\n\nreturn: Nil"]
+				},
+				"FromEuler": {
+					"descriptions": ["**The rotation Transform already means by (pitch, yaw, roll). Matches Matrix4->RotationYXZ exactly -- yaw, then pitch, then roll -- so converting a Transform's angles here and building a matrix from the result gives the same matrix Transform would have built itself. That equivalence is what makes it safe to move between the two.**\n\n```function : FromEuler(yaw:Float, pitch:Float, roll:Float) ~ Float[]```\n\n\n\nyaw: Float\n\npitch: Float\n\nroll: Float\n\nreturn: Float[]"]
+				},
+				"FromEulerInto": {
+					"descriptions": ["**Euler angles, written into a buffer the caller owns.**\n\n```function : FromEulerInto(out:Float[], yaw:Float, pitch:Float, roll:Float) ~ Nil```\n\n\n\nout: Float[]\n\nyaw: Float\n\npitch: Float\n\nroll: Float\n\nreturn: Nil"]
+				},
+				"Identity": {
+					"descriptions": ["****\n\n```function : Identity() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IdentityInto": {
+					"descriptions": ["**Identity, written into a buffer the caller owns.**\n\n```function : IdentityInto(out:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nreturn: Nil"]
+				},
+				"Length": {
+					"descriptions": ["****\n\n```function : Length(q:Float[]) ~ Float```\n\n\n\nq: Float[]\n\nreturn: Float"]
+				},
+				"Multiply": {
+					"descriptions": ["**Rotation product: rhs first, then lhs. The same argument order as Matrix4->Multiply, deliberately, so the two read alike at a call site.**\n\n```function : Multiply(lhs:Float[], rhs:Float[]) ~ Float[]```\n\n\n\nlhs: Float[]\n\nrhs: Float[]\n\nreturn: Float[]"]
+				},
+				"MultiplyInto": {
+					"descriptions": ["**Rotation product, written into a buffer the caller owns. Safe to alias: reads both inputs into locals before writing, so MultiplyInto(q, q, r) does what it looks like it does.**\n\n```function : MultiplyInto(out:Float[], lhs:Float[], rhs:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nlhs: Float[]\n\nrhs: Float[]\n\nreturn: Nil"]
+				},
+				"NormalizeInto": {
+					"descriptions": ["**Unit length, written into a buffer the caller owns. Repeatedly multiplying rotations accumulates floating-point drift, so anything doing that should normalise every so often. A zero-length input yields identity rather than NaN.**\n\n```function : NormalizeInto(out:Float[], q:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nq: Float[]\n\nreturn: Nil"]
+				},
+				"Normalized": {
+					"descriptions": ["****\n\n```function : Normalized(q:Float[]) ~ Float[]```\n\n\n\nq: Float[]\n\nreturn: Float[]"]
+				},
+				"Rotate": {
+					"descriptions": ["**Turn a vector by a rotation. Uses the expanded form rather than q * v * conjugate(q), which would need two quaternion products and a temporary.**\n\n```function : Rotate(q:Float[], v:Vector3) ~ Vector3```\n\n\n\nq: Float[]\n\nv: Vector3\n\nreturn: Vector3"]
+				},
+				"Slerp": {
+					"descriptions": ["****\n\n```function : Slerp(a:Float[], b:Float[], t:Float) ~ Float[]```\n\n\n\na: Float[]\n\nb: Float[]\n\nt: Float\n\nreturn: Float[]"]
+				},
+				"SlerpInto": {
+					"descriptions": ["**Spherical linear interpolation: the shortest turn from 'a' to 'b'. This is the reason the class exists. It travels the short way round -- if the two are more than half a turn apart, 'b' is negated first, which is the same rotation reached the other way -- and it moves at a constant angular rate, so an object turning under it does not speed up in the middle. Falls back to a straight lerp when the two are very close, because the sine of a tiny angle divides badly.**\n\n```function : SlerpInto(out:Float[], a:Float[], b:Float[], t:Float) ~ Nil```\n\n\n\nout: Float[]\n\na: Float[]\n\nb: Float[]\n\nt: Float\n\nreturn: Nil"]
+				},
+				"ToMatrix": {
+					"descriptions": ["****\n\n```function : ToMatrix(q:Float[]) ~ Float[]```\n\n\n\nq: Float[]\n\nreturn: Float[]"]
+				},
+				"ToMatrixInto": {
+					"descriptions": ["**The rotation as a 4x4 matrix, written into a buffer the caller owns. Column-major and right-handed, the same as everything Matrix4 produces, so the result can be multiplied straight into a model matrix.**\n\n```function : ToMatrixInto(out:Float[], q:Float[]) ~ Nil```\n\n\n\nout: Float[]\n\nq: Float[]\n\nreturn: Nil"]
+				}
+			}
+		},
 		"Game.OpenGL.RayHit": {
 			"description": "What a ray ran into, and where. Returned by Scene->Raycast. Always an object, never Nil -- ask IsHit rather than checking for Nil, so a miss does not need a different code path from a hit. The normal is the surface the ray struck, which is what a decal, a ricochet or a spark effect needs to orient itself. For a box it is an axis direction; for a prop it points away from the prop's centre, because a prop is tested against its bounding SPHERE rather than its actual geometry.",
 			"functions": {
@@ -5636,9 +5719,6 @@
 				"BillboardInstanced": {
 					"descriptions": ["**Camera-facing quads, drawn many at a time. A billboard is a quad that always turns to face the viewer, and it is what a particle, a spark, a sprite enemy, a distant tree and a floating label all are. None of them had any route here: every shader in this bundle puts geometry where its model matrix says, and a billboard is defined by refusing to. Drive it with a PropBatch over Mesh->Quad, which is why this is the instanced form and there is no single-billboard variant -- one sprite is a batch of one, and a thousand are still one draw call. sparks := PropBatch->New(Mesh->Quad(0.5), Shader->BillboardInstanced()); sparks->SetCamera(camera); sparks->SetAdditive(true); sparks->SetMaterial(Material->New(spark_texture)); ## How it faces you The instance matrix supplies the CENTRE and the SIZE and its rotation is ignored: the quad's corners are rebuilt in world space from the camera's own right and up vectors, which are the first two ROWS of the view matrix's upper 3x3. So SetScale(w, h, 1.0) on an instance's transform sets the sprite's width and height, and turning it does nothing -- deliberately. This is why SetCamera exists on PropBatch. The batch is handed a view_projection by Scene and that alone cannot be decomposed back into the camera's basis, so the view matrix comes separately. Uniforms: \"view_projection\", \"view\", the sampler \"tex\", \"tint\" and \"opacity\" -- the last two being what Material writes, so a material works here exactly as it does on a lit prop. Fragments below 2% alpha are DISCARDED rather than blended, so a sprite sheet's transparent border does not write depth and punch holes in whatever is drawn after it.**\n\n```function : BillboardInstanced() ~ Shader```\n\n\n\nreturn: Shader"]
 				},
-				"DepthCube": {
-					"descriptions": ["**The depth pass for a point light: writes DISTANCE from the light, in world units, rather than the usual projected depth. This is the whole trick that makes cube shadows tractable. A cube map is sampled by direction, and the six faces do not share a projection -- so a comparison in projected depth would need to know which face a lookup landed on and undo that face's projection. Writing `length(world - light) \/ range` instead makes every face agree on what a stored value means, and the comparison becomes a distance against a distance. It also disposes of the bias problem that spot shadows have. Projected depth is non-linear, so a constant bias means different things at different distances; a world-unit distance is linear everywhere, so one bias in world units is correct across the whole range. Uniforms: \"mvp\", \"model\", \"light_position\" and \"light_range\".**\n\n```function : DepthCube() ~ Shader```\n\n\n\nreturn: Shader"]
-				},
 				"DepthOnly": {
 					"descriptions": ["**Writes depth and nothing else: the shadow map's own pass. No colour output at all, because there is no colour buffer attached to a depth-only target to write one into. Its only uniform is \"mvp\", which for this pass is the LIGHT's projection times view times the model matrix -- ShadowMap->DrawCaster does that arithmetic.**\n\n```function : DepthOnly() ~ Shader```\n\n\n\nreturn: Shader"]
 				},
@@ -5663,6 +5743,9 @@
 				"Lit": {
 					"descriptions": ["**Lit by one directional light, with a flat colour instead of a texture. Same uniforms as LitTextured, but \"color\" (a vec3) in place of \"tex\".**\n\n```function : Lit() ~ Shader```\n\n\n\nreturn: Shader"]
 				},
+				"LitFragmentSource": {
+					"descriptions": ["**The lit fragment program, optionally sampling a tangent-space normal map. ## Why there is no tangent vertex attribute Tangent-space normal mapping needs a tangent frame. The usual way is a fourth vertex attribute, which would change the vertex layout, the native upload path, and every mesh already built -- including OBJ files, which mostly do not carry tangents anyway. This derives the frame in the fragment shader from screen-space derivatives of the position and the texture coordinate instead. It costs a few instructions per pixel and it works with every mesh that already exists, unchanged. The trade is real: the frame is per-triangle rather than smoothly interpolated, so a very low-poly curved surface shows faceting that a vertex tangent would not. For dressing walls, floors and props -- what this library is for -- that is not visible.**\n\n```function : LitFragmentSource(textured:Bool, shadowed:Bool, point_shadowed:Bool, normal_mapped:Bool) ~ String```\n\n\n\ntextured: Bool\n\nshadowed: Bool\n\npoint_shadowed: Bool\n\nnormal_mapped: Bool\n\nreturn: String"]
+				},
 				"LitShader": {
 					"descriptions": ["**Build a lit program and give its opacity a usable value. A GLSL uniform starts at ZERO, and `opacity` is declared and live in every lit fragment shader. So a program using one of these presets WITHOUT a Material or a Scene -- which is what three of the shipped examples do -- has alpha 0. It looks right only while blending is off; the moment anything calls GL->BeginTransparency the geometry vanishes, with no GL error to explain it.**\n\n```function : LitShader() ~ Shader```\n\n\n\nvertex: String\n\nfragment: String\n\nreturn: Shader"]
 				},
@@ -5674,6 +5757,15 @@
 				},
 				"LitTexturedInstanced": {
 					"descriptions": ["**Textured and lit, taking its model matrix per INSTANCE rather than from a uniform. Use with Mesh->SetInstanceMatrices and DrawInstanced. Reads the matrix from attribute locations 3 to 6, and has no \"model\" uniform at all -- so Scene, which sets one, cannot drive this. That is the trade instancing makes: the placement stops being something the CPU sends per object and becomes part of the vertex stream.**\n\n```function : LitTexturedInstanced() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitTexturedNormalMapped": {
+					"descriptions": ["**Textured and lit, with a tangent-space normal map. Adds \"normal_map\" (texture unit 3) and \"has_normal_map\". Material sets both, so a material with no map drawn by this shader lights by its geometric normal exactly as LitTextured would. wall := Material->New(stone); wall->SetNormalMap(stone_bumps);**\n\n```function : LitTexturedNormalMapped() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitTexturedNormalMappedPointShadowed": {
+					"descriptions": ["**Textured, lit, shadowed by a POINT light's cube map, and normal mapped. The combination the lantern demo wants: a carried light, shadows in every direction, and stone that is not flat.**\n\n```function : LitTexturedNormalMappedPointShadowed() ~ Shader```\n\n\n\nreturn: Shader"]
+				},
+				"LitTexturedNormalMappedShadowed": {
+					"descriptions": ["**Textured, lit, shadowed by a directional light, and normal mapped.**\n\n```function : LitTexturedNormalMappedShadowed() ~ Shader```\n\n\n\nreturn: Shader"]
 				},
 				"LitTexturedPointShadowed": {
 					"descriptions": ["**Textured and lit, with shadows from a POINT light's cube map. Adds \"shadow_cube\", \"point_light_position\", \"point_light_range\" and \"point_bias\" to LitTextured's uniforms, all written by PointShadow->ApplyTo. Note this is a separate program from LitTexturedShadowed rather than an option on it: a samplerCube and a sampler2D are different types, and a shader carrying both would pay for a cube map lookup in scenes that have no point light. Pick the one the scene needs.**\n\n```function : LitTexturedPointShadowed() ~ Shader```\n\n\n\nreturn: Shader"]
@@ -5701,6 +5793,9 @@
 				},
 				"SetVec4": {
 					"descriptions": ["**Set a vec4 uniform: four floats packed into one, which is how a light's kind and cone travel without spending three more uniform arrays. Makes this program current -- see SetMatrix4.**\n\n```method : public : SetVec4(name:String, x:Float, y:Float, z:Float, w:Float) ~ Nil```\n\n\n\nname: String\n\nx: Float\n\ny: Float\n\nz: Float\n\nw: Float\n\nreturn: Nil"]
+				},
+				"Sky": {
+					"descriptions": ["**The sky: a vertical gradient with a sun disc, evaluated per pixel from the view direction. Uniforms: \"view_projection\" (the camera's rotation only -- Skybox strips the translation), \"horizon\", \"zenith\", \"sun_color\", \"sun_direction\", \"sun_size\" and \"has_sun\". gl_Position uses xyww rather than xyzw so the depth after the perspective divide is exactly 1.0 -- the far plane. With GL_LEQUAL that would let the sky draw where nothing else has; Skybox turns depth WRITES off instead, which achieves the same thing without depending on the depth function the caller happens to have set.**\n\n```function : Sky() ~ Shader```\n\n\n\nreturn: Shader"]
 				},
 				"Textured": {
 					"descriptions": ["**A shader that samples a texture. Uniforms: \"mvp\" and the sampler \"tex\". Reads texture coordinates from LOCATION 2, matching every Mesh primitive -- location 1 is the normal. Bind a texture to unit 0 and call SetInt(\"tex\", 0).**\n\n```function : Textured() ~ Shader```\n\n\n\nreturn: Shader"]
@@ -5795,6 +5890,44 @@
 				},
 				"SetTextureUnit": {
 					"descriptions": ["**Which texture unit the map is bound to. Default 1, because unit 0 is where the ordinary texture goes.**\n\n```method : public : SetTextureUnit(unit:Int) ~ Nil```\n\n\n\nunit: Int\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Game.OpenGL.Skybox": {
+			"description": "The sky: a gradient with a sun in it, drawn behind everything else. ## Why this is not a textured cube map The usual skybox is six images. That needs a colour cube map, which needs a native upload path this library does not have, and it needs the caller to find or make six matched images before they can see anything at all. This one is computed in the fragment shader from the view direction, so it needs no files, no native additions, and no assets in a release. An outdoor scene gets a horizon, a zenith and a sun by saying what colour they are. A photographic sky is a different feature and would want the cube map. ## How it draws Three things have to be true or a skybox goes wrong in a way that looks like something else broke: no translation The view matrix's translation is stripped, so the sky does not move when the camera walks. Leave it in and the sky slides past like painted scenery on a nearby wall. inside the cube Mesh->CubeInterior winds its triangles inward. Using Mesh->Cube instead leaves every face back-facing and the sky vanishes the moment culling is on. behind Drawn first with depth WRITES off, so everything after it covers it without the sky having to be far away. Draw takes the Camera rather than a matrix, because all three of those are easy to get wrong and none of them are interesting. sky := Skybox->New(); sky->SetHorizon(0.55, 0.62, 0.70); sky->SetZenith(0.12, 0.26, 0.55); sky->SetSun(0.3, 0.55, -0.75); ... window->BeginFrame(); sky->Draw(camera); # first, before the scene scene->Draw(view_projection);",
+			"functions": {
+				"ClearSun": {
+					"descriptions": ["**Turn the sun off and leave only the gradient.**\n\n```method : public : ClearSun() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Draw": {
+					"descriptions": ["**Draw the sky. Call FIRST, before the scene, and after BeginFrame has cleared. The depth buffer is left untouched, so everything drawn afterwards covers this regardless of distance. Restores depth writing and the cull mode on the way out, because a pass that quietly leaves state changed is the kind of bug that surfaces three draw calls later in unrelated geometry.**\n\n```method : public : Draw(camera:Camera) ~ Nil```\n\n\n\ncamera: Camera\n\nreturn: Nil"]
+				},
+				"Free": {
+					"descriptions": ["**Release the shader, and the mesh if this sky made it.**\n\n```method : public : Free() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetError": {
+					"descriptions": ["****\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOk": {
+					"descriptions": ["****\n\n```method : public : IsOk() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A daylight sky, ready to draw.**\n\n```New()```\n\n", "**A sky drawn with geometry the caller owns.**\n\n```New(mesh:Mesh)```\n\n\n\nmesh: Mesh"]
+				},
+				"SetHorizon": {
+					"descriptions": ["**The colour at eye level.**\n\n```method : public : SetHorizon(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
+				},
+				"SetSun": {
+					"descriptions": ["**Where the sun is, as a DIRECTION from the viewer -- not a position. It is normalised here, so any non-zero length will do. Point this the same way as the scene's directional Light and the shadows will agree with the sky. Nothing enforces that: they are two separate settings, and a sun in one corner with shadows from the other is a mistake this class cannot see.**\n\n```method : public : SetSun(x:Float, y:Float, z:Float) ~ Nil```\n\n\n\nx: Float\n\ny: Float\n\nz: Float\n\nreturn: Nil"]
+				},
+				"SetSunColor": {
+					"descriptions": ["**The sun's colour.**\n\n```method : public : SetSunColor(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
+				},
+				"SetSunSize": {
+					"descriptions": ["**How tight the sun's disc is. This is the cosine of its angular radius, so LARGER is smaller: 0.9999 is a pinpoint, 0.99 is a soft glow, and anything at or below 0.0 fills half the sky. Clamped below 1.0, because exactly 1.0 is a sun of zero size that flickers as it crosses a pixel centre.**\n\n```method : public : SetSunSize(cosine:Float) ~ Nil```\n\n\n\ncosine: Float\n\nreturn: Nil"]
+				},
+				"SetZenith": {
+					"descriptions": ["**The colour straight up.**\n\n```method : public : SetZenith(r:Float, g:Float, b:Float) ~ Nil```\n\n\n\nr: Float\n\ng: Float\n\nb: Float\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -13721,6 +13854,10 @@
 			"bundle": "Game.OpenGL"
 ,			"file": "sdl_gl.obl"
  		},
+		"Quaternion": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
 		"RayHit": {
 			"bundle": "Game.OpenGL"
 ,			"file": "sdl_gl.obl"
@@ -13742,6 +13879,10 @@
 ,			"file": "sdl_gl.obl"
  		},
 		"ShadowMap": {
+			"bundle": "Game.OpenGL"
+,			"file": "sdl_gl.obl"
+ 		},
+		"Skybox": {
 			"bundle": "Game.OpenGL"
 ,			"file": "sdl_gl.obl"
  		},
