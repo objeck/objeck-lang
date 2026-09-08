@@ -418,7 +418,7 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     // instrs may have changed from method calls
     instrs = ctx.instrs;
   }
-  while(!halt);
+  while(!halt.load(std::memory_order_relaxed));
 #ifndef _DEBUGGER
 loop_exit: ;
 #endif

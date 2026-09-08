@@ -28,6 +28,40 @@ bundle API.Ollama {
 		}
 
 		#~
+		Parse a response body. Nil, with the last error set, when the body is not
+		JSON. Every request in this library used to inline this and the error
+		check that follows; one of the ten copies had its else-if bound to the
+		wrong if, so an {"error": ...} reply -- the shape Ollama actually sends --
+		was swallowed and a non-JSON body dereferenced Nil.
+		@param body response text
+		@return parsed element, or Nil
+		~#
+		function : ParseResponse(body : String) ~ JsonElement {
+			if(body = Nil) {
+				SetLastError("empty response");
+				return Nil;
+			};
+			json := JsonParser->TextToElement(body);
+			if(json = Nil) {
+				SetLastError("response was not JSON");
+			};
+			return json;
+		}
+
+		#~
+		Record the error a response carries, or that it carried nothing usable.
+		@param json parsed response that lacked the expected field
+		~#
+		function : ReportError(json : JsonElement) ~ Nil {
+			if(json <> Nil & json->Has("error")) {
+				SetLastError(json->Get("error")->ToString());
+			}
+			else {
+				SetLastError("response did not contain the expected field");
+			};
+		}
+
+		#~
 		Sets the Ollama server host URL (e.g. "http://myserver:11434")
 		@param host server URL without trailing slash
 		~#
@@ -193,10 +227,29 @@ response := Completion->Generate("llama3", "What is the capital of France?");
 response->PrintLine();
 ```
 		~#
+		#~
+		The response handling behind every Generate overload, as a function of the
+		body text so it can be tested without a server.
+		@param body response text from /api/generate
+		@return the generated text, or Nil with the last error set
+		~#
+		function : ParseGenerateResponse(body : String) ~ String {
+			json := ParseResponse(body);
+			if(json = Nil) {
+				return Nil;
+			};
+			response_json := json->Get("response");
+			if(response_json <> Nil) {
+				return JsonElement->Decode(response_json->GetString());
+			};
+			ReportError(json);
+			return Nil;
+		}
+
 		function : Generate(model : String, prompt : String) ~ String {
-			result := Generate(model, prompt, Nil);
-			if(result = Nil) { return Nil; };
-			return JsonElement->Decode(result);
+			# already decoded by ParseGenerateResponse; decoding twice mangled
+			# any reply that legitimately contained a backslash
+			return Generate(model, prompt, Nil);
 		}
 
 		#~
@@ -238,7 +291,7 @@ response->PrintLine();
 		function : Generate(model : String, prompt : String, format : String, options : Options) ~ String {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("model", model);
-			query_json->Insert("prompt", JsonElement->Encode(prompt));
+			query_json->Insert("prompt", prompt);
 			if(format <> Nil) {
 				query_json->Insert("format", format);
 			};
@@ -265,19 +318,10 @@ response->PrintLine();
 				# post_response_str->PrintLine();
 				# "---"->PrintLine();
 
-				post_response_json := JsonParser->TextToElement(post_response_str);
-				if(post_response_json <> Nil) {
-						response_json := post_response_json->Get("response")
-						if(response_json <> Nil) {
-							return JsonElement->Decode(response_json->GetString());
-						};
-					}
-					else if(post_response_json->Has("error")) {
-						SetLastError(post_response_json->Get("error")->ToString());
-					};
-				};
+				return ParseGenerateResponse(post_response_str);
+			};
 
-				return Nil;
+			return Nil;
 		}
 
 		#~
@@ -327,7 +371,7 @@ response->PrintLine();
 
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("model", model);
-			query_json->Insert("prompt", JsonElement->Encode(prompt));
+			query_json->Insert("prompt", prompt);
 			query_json->Insert("images", images_json);
 			query_json->Insert("stream", false);
 
@@ -346,14 +390,14 @@ response->PrintLine();
 				# post_response_str->PrintLine();
 				# "---"->PrintLine();
 
-				post_response_json := JsonParser->TextToElement(post_response_str);
+				post_response_json := ParseResponse(post_response_str);
 				if(post_response_json <> Nil) {
 					response_json := post_response_json->Get("response")
 					if(response_json <> Nil) {
 						return JsonElement->Decode(response_json->GetString());
 					}
-					else if(post_response_json->Has("error")) {
-						SetLastError(post_response_json->Get("error")->ToString());
+					else {
+						ReportError(post_response_json);
 					};
 				}
 			};
@@ -406,9 +450,15 @@ chat->Send("Goodbye?")->PrintLine();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
-				post_response_json := JsonParser->TextToElement(post_response_str);
+				post_response_json := ParseResponse(post_response_str);
 				if(post_response_json <> Nil) {
-					@model := post_response_json->Get("model")->GetString();
+					model_json := post_response_json->Get("model");
+					if(model_json <> Nil) {
+						@model := model_json->GetString();
+					}
+					else {
+						ReportError(post_response_json);
+					};
 				};
 			};
 		}
@@ -464,7 +514,7 @@ json_reply->PrintLine();
 
 			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			message_json->Insert("role", "user");
-			message_json->Insert("content", JsonElement->Encode(message));
+			message_json->Insert("content", message);
 			@messages_json->Add(message_json);
 
 			query_json->Insert("model", @model);
@@ -503,15 +553,15 @@ json_reply->PrintLine();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
-				post_response_json := JsonParser->TextToElement(post_response_str);
+				post_response_json := ParseResponse(post_response_str);
 				if(post_response_json <> Nil) {
 					message_json := post_response_json->Get("message");
 					if(message_json <> Nil) {
 						@messages_json->Add(message_json);
-						return JsonElement->Decode(JsonElement->Decode(message_json->Get("content")->GetString()));
+						return JsonElement->Decode(message_json->Get("content")->GetString());
 					}
-					else if(post_response_json->Has("error")) {
-						SetLastError(post_response_json->Get("error")->ToString());
+					else {
+						ReportError(post_response_json);
 					};
 				};
 			};
@@ -586,15 +636,15 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
-				post_response_json := JsonParser->TextToElement(post_response_str);
+				post_response_json := ParseResponse(post_response_str);
 				if(post_response_json <> Nil) {
 					message_json := post_response_json->Get("message")
 					if(message_json <> Nil) {
 						@messages_json->Add(message_json);
 						return JsonElement->Decode(message_json->Get("content")->GetString());
 					}
-					else if(post_response_json->Has("error")) {
-						SetLastError(post_response_json->Get("error")->ToString());
+					else {
+						ReportError(post_response_json);
 					};
 				};
 			};
@@ -919,7 +969,7 @@ if(models <> Nil) {
 				# "---"->PrintLine();
 				# get_response_str->PrintLine();
 	
-				get_response_json := JsonParser->TextToElement(get_response_str);
+				get_response_json := ParseResponse(get_response_str);
 				if(get_response_json <> Nil) {
 					response_json := get_response_json->Get("models")
 					if(response_json <> Nil) {
@@ -934,8 +984,8 @@ if(models <> Nil) {
 
 						return models;
 					}
-					else if(get_response_json->Has("error")) {
-						SetLastError(get_response_json->Get("error")->ToString());
+					else {
+						ReportError(get_response_json);
 					};
 				};
 
@@ -974,14 +1024,14 @@ if(Model->Pull("llama3")) {
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
-				post_response_json := JsonParser->TextToElement(post_response_str);
+				post_response_json := ParseResponse(post_response_str);
 				if(post_response_json <> Nil) {
 					status_json := post_response_json->Get("status")
 					if(status_json <> Nil) {
 						return status_json->GetString()->Equals("success");
 					}
-					else if(post_response_json->Has("error")) {
-						SetLastError(post_response_json->Get("error")->ToString());
+					else {
+						ReportError(post_response_json);
 					};
 				};
 
@@ -1022,10 +1072,10 @@ if(info <> Nil) {
 				# "---"->PrintLine();
 				# post_response_str->Size()->PrintLine();
 	
-				post_response_json := JsonParser->TextToElement(post_response_str);
+				post_response_json := ParseResponse(post_response_str);
 				if(post_response_json <> Nil) {
 					if(post_response_json->Has("error")) {
-						SetLastError(post_response_json->Get("error")->ToString());
+						ReportError(post_response_json);
 					}
 					else {
 						# "==="->PrintLine();
@@ -1116,7 +1166,7 @@ if(embeddings <> Nil) {
 		function : Embeddings(model : String, prompt  : String) ~ Float[] {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("model", model);
-			query_json->Insert("prompt", JsonElement->Encode(prompt));
+			query_json->Insert("prompt", prompt);
 
 			host := EndPoint->GetHost();
 			url := Url->New("{$host}/api/embeddings");
@@ -1132,7 +1182,7 @@ if(embeddings <> Nil) {
 				# "---"->PrintLine();
 				# post_response_str->Size()->PrintLine();
 	
-				post_response_json := JsonParser->TextToElement(post_response_str);
+				post_response_json := ParseResponse(post_response_str);
 				if(post_response_json <> Nil) {
 					embeddings_json := post_response_json->Get("embedding")
 					if(embeddings_json <> Nil) {
@@ -1145,8 +1195,8 @@ if(embeddings <> Nil) {
 
 						return embeddings;
 					}
-					else if(post_response_json->Has("error")) {
-						SetLastError(post_response_json->Get("error")->ToString());
+					else {
+						ReportError(post_response_json);
 					};
 				};
 
@@ -1171,7 +1221,7 @@ if(Model->Create("my-assistant", modelfile)) {
 		function : Create(name : String, modelfile  : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("name", name);
-			query_json->Insert("modelfile", JsonElement->Encode(modelfile));
+			query_json->Insert("modelfile", modelfile);
 			query_json->Insert("stream", false);
 
 			host := EndPoint->GetHost();
@@ -1188,14 +1238,14 @@ if(Model->Create("my-assistant", modelfile)) {
 				# "---"->PrintLine();
 				# post_response_str->PrintLine();
 
-				post_response_json := JsonParser->TextToElement(post_response_str);
+				post_response_json := ParseResponse(post_response_str);
 				if(post_response_json <> Nil) {
 					status_json := post_response_json->Get("status")
 					if(status_json <> Nil) {
 						return status_json->GetString()->Equals("success");
 					}
-					else if(post_response_json->Has("error")) {
-						SetLastError(post_response_json->Get("error")->ToString());
+					else {
+						ReportError(post_response_json);
 					};
 				};
 

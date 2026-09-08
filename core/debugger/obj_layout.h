@@ -35,6 +35,7 @@ namespace Runtime {
   // declared up front because several of these call one another
   inline bool FieldIndex(StackClass* klass, const std::wstring& short_name, int fallback_index, int& out_index);
   inline bool FindInstanceField(StackClass* klass, const std::wstring& short_name, int& out_index);
+  inline StackDclr* FindInstanceDeclaration(StackClass* klass, const std::wstring& short_name, int& out_index);
   inline std::wstring ClassLeafName(StackClass* klass);
   inline int CollectionKind(StackClass* klass);
   inline bool CollectionSize(StackClass* klass, size_t* obj, long& out_size);
@@ -73,16 +74,25 @@ namespace Runtime {
 
   inline bool FindInstanceField(StackClass* klass, const std::wstring& short_name, int& out_index)
   {
+    return FindInstanceDeclaration(klass, short_name, out_index) != nullptr;
+  }
+
+  // The declaration behind an instance field, by its short name, and the slot
+  // it occupies. The Variables view walks the declarations to SHOW a field and
+  // the assignment path walks them to WRITE one; this is the one walk, so the
+  // name shown is the name accepted and the slot is the same slot.
+  inline StackDclr* FindInstanceDeclaration(StackClass* klass, const std::wstring& short_name, int& out_index)
+  {
     out_index = 0;
 
     if(!klass || short_name.empty()) {
-      return false;
+      return nullptr;
     }
 
     StackDclr** dclrs = klass->GetInstanceDeclarations();
     const int dclrs_num = (int)klass->GetNumberInstanceDeclarations();
     if(!dclrs) {
-      return false;
+      return nullptr;
     }
 
     int mem_index = 0;
@@ -99,7 +109,7 @@ namespace Runtime {
 
       if(full_name.compare(leaf_pos, std::wstring::npos, short_name) == 0) {
         out_index = mem_index;
-        return true;
+        return dclr;
       }
 
       mem_index++;
@@ -108,7 +118,7 @@ namespace Runtime {
       }
     }
 
-    return false;
+    return nullptr;
   }
 
   // Strips the namespace and any generic arguments: "Collection.Vector<...>"

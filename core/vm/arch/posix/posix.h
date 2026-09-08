@@ -79,9 +79,13 @@ class File {
 
   static std::string TempName() {
     char buffer[] = "/tmp/objeck-XXXXXX";
-    if(mkstemp(buffer) < 0) {
+    const int fd = mkstemp(buffer);
+    if(fd < 0) {
       return "";
     }
+    // mkstemp returns an open descriptor; only the name is wanted here, and
+    // every CommandOutput() call leaked one fd.
+    close(fd);
     
     return buffer;
   }
@@ -156,13 +160,15 @@ class File {
       return L"";
     }
 
+    // No passwd/group entry (containers, NFS, a deleted user) returns NULL;
+    // dereferencing it segfaulted. Windows returns an empty owner; match it.
     if(is_account) {
       struct passwd* account = getpwuid(info.st_uid);
-      return BytesToUnicode(account->pw_name);
+      return account ? BytesToUnicode(account->pw_name) : L"";
     }
         
     struct group * group = getgrgid(info.st_gid);
-    return BytesToUnicode(group->gr_name);
+    return group ? BytesToUnicode(group->gr_name) : L"";
   }
   
   static bool MakeDir(const char* name) {
@@ -288,7 +294,10 @@ public:
   }
   
   static bool WriteByte(char value, int pipe) {
-    return send(pipe, &value, 1, 0);
+    // send() returns -1 on failure, which converted to bool is TRUE, so a
+    // failed write reported success straight onto the Objeck stack. Windows
+    // returns written == 1; match it.
+    return send(pipe, &value, 1, 0) == 1;
   }
   
   static std::string ReadString(int pipe) {
@@ -1223,8 +1232,10 @@ class System {
        std::string str_cmd(c);
        str_cmd += " > ";
        str_cmd += tmp_file_name;
+       // Windows appends 2>&1, so Runtime->Command() captured stderr there and
+       // silently dropped it on Linux/macOS.
+       str_cmd += " 2>&1";
 
-       // ignoring return value
        status = std::system(str_cmd.c_str());
        
        // read file output

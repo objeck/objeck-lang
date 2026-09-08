@@ -70,7 +70,10 @@ namespace Runtime {
     long jit_threshold = 0;
     // "" (unset), "binary", "utf16" or "utf8". Acted on by Windows only.
     std::wstring stdio_mode;
-    // "" means OBJECK_LIB_PATH or the install default.
+    // "" means OBJECK_LIB_PATH or the install default. This is the lib ROOT
+    // (the directory the .obl files live in), not lib/native: the VM appends
+    // native/ to it for libobjk_*, reads cacert.pem from it, and reports it
+    // as the lib_dir runtime property.
     std::wstring lib_path;
     // Leading argv entries the VM used for itself; the rest go to the program.
     int consumed = 0;
@@ -227,7 +230,9 @@ namespace Runtime {
     usage += L"                            a positive number is how many calls a method\n";
     usage += L"                            makes before it is compiled (default 10)\n";
     usage += L"                            Env: OBJECK_JIT_DISABLE=1, OBJECK_JIT_THRESHOLD=<calls>\n";
-    usage += L"  --lib-path=<dir>          Directory holding the .obl libraries\n";
+    usage += L"  --lib-path=<dir>          Objeck lib root: obr loads <dir>/native/libobjk_*\n";
+    usage += L"                            and <dir>/cacert.pem; obc reads <dir>/*.obl\n";
+    usage += L"                            (Windows: SDL2/onnx/opencv DLLs stay beside obr.exe)\n";
     usage += L"                            Env: OBJECK_LIB_PATH=<dir>\n";
     usage += L"  --objeck-stdio=binary|utf16|utf8\n";
     usage += L"                            Console I/O mode (Windows only; accepted and\n";

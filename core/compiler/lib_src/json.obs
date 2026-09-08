@@ -1684,8 +1684,14 @@ obj->ToString()->PrintLine();
 			select(@type) {
 				label JsonElement->JsonType->STRING: {
 					if(@value <> Nil) {
+						# Escape on the way OUT. This appended the raw value, so a string
+						# holding a quote, a backslash or a newline produced text that was
+						# not JSON, and callers had to know to pre-encode -- two of the three
+						# AI clients did not. The serializer is the only layer that knows it
+						# is producing JSON, so it is the one that escapes. Do NOT pre-encode
+						# values handed to Insert() any more; they would be escaped twice.
 						output->Append('"');
-						output->Append(@value);
+						output->Append(JsonElement->Encode(@value));
 						output->Append('"');
 					};
 				}
@@ -1752,7 +1758,7 @@ obj->ToString()->PrintLine();
 							value := @map_elems->Find(key);	
 
 							output->Append('"');
-							output->Append(key);
+							output->Append(JsonElement->Encode(key));
 							output->Append("\":");
 							if(pretty) {
 								output->Append(' ');

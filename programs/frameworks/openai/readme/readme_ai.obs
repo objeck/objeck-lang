@@ -138,7 +138,7 @@ class ReadmeBuilder {
 	}
 
 	method : Complete(message : String) ~ String {
-		query := Collection.Pair->New("user", Data.JSON.JsonElement->Encode(message))<String, String>;
+		query := Collection.Pair->New("user", message)<String, String>;
 		
 		completion := Completion->Complete(@model, query, @token);
 		if(completion = Nil) {
@@ -156,7 +156,7 @@ class ReadmeBuilder {
 	}
 
 	method : Send(message : String) ~ String {
-		contents := @convo->Send(Data.JSON.JsonElement->Encode(message), "user")->GetContents();
+		contents := @convo->Send(message, "user")->GetContents();
 		if(contents->Size() > 0) {
 			content := contents->Get(0)<String, String>;
 			return Data.JSON.JsonElement->Decode(content->GetSecond()<String>);

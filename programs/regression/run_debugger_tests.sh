@@ -793,6 +793,25 @@ run_test "boolean_literals" '
     expect eof
 ' "print: type=Bool, value=true|print: type=Bool, value=false" "$EVAL_BIN"
 
+# Test 31b: hex literals scan (the scanner cleared its hex flag on the
+# leading '0' itself, so 0x literals never reached the base-16 parser)
+run_test "hex_literal" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p 0x2a\r"
+    expect ">"
+    send "p 0x10 + 1\r"
+    expect ">"
+    send "p 0X7fffffffff\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "value=42|value=17|value=549755813887" "$EVAL_BIN"
+
 # Test 32: Nil is a literal, so an object can be tested for it
 run_test "nil_literal" '
     expect ">"

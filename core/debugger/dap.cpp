@@ -1844,15 +1844,15 @@ void DapAdapter::HandleSetExpression(int request_seq, const json& args)
 
   // setVariable works by name within a frame; an lvalue expression that is a
   // plain variable maps onto it directly.
-  const std::wstring result = debugger->SetVariableForDap(frame_id, BytesToUnicode(expression), BytesToUnicode(value));
-  if(result == L"<error>") {
-    SendResponse(request_seq, "setExpression", json::object(), false,
-                 "Cannot assign (only Int/Char/Float variables are assignable)");
+  std::wstring shown;
+  std::wstring error;
+  if(!debugger->SetVariableForDap(frame_id, BytesToUnicode(expression), BytesToUnicode(value), shown, error)) {
+    SendResponse(request_seq, "setExpression", json::object(), false, "Cannot assign: " + UnicodeToBytes(error));
     return;
   }
 
   json body;
-  body["value"] = UnicodeToBytes(result);
+  body["value"] = UnicodeToBytes(shown);
   body["variablesReference"] = 0;
   SendResponse(request_seq, "setExpression", body);
 }
@@ -1865,34 +1865,89 @@ void DapAdapter::HandleSetVariable(int request_seq, const json& args)
   }
 
   const int ref = args.value("variablesReference", 0);
-  const std::string name = args.value("name", "");
-  const std::string value = args.value("value", "");
-
-  // map the scope handle back to a frame index
-  int frame_index = -1;
-  if(ref >= SCOPE_HANDLE_BASE && ref < VAR_HANDLE_BASE) {
-    frame_index = ref - SCOPE_HANDLE_BASE;
-  }
-  else if(ref >= INST_SCOPE_HANDLE_BASE && ref < CLS_SCOPE_HANDLE_BASE) {
-    frame_index = ref - INST_SCOPE_HANDLE_BASE;
-  }
-  else if(ref >= CLS_SCOPE_HANDLE_BASE) {
-    frame_index = ref - CLS_SCOPE_HANDLE_BASE;
-  }
-
-  if(frame_index < 0 || name.empty()) {
+  const std::wstring name = BytesToUnicode(args.value("name", ""));
+  const std::wstring value = BytesToUnicode(args.value("value", ""));
+  if(name.empty()) {
     SendResponse(request_seq, "setVariable", json::object(), false, "Invalid variable reference");
     return;
   }
 
-  std::wstring result = debugger->SetVariableForDap(frame_index, BytesToUnicode(name), BytesToUnicode(value));
-  if(result == L"<error>") {
-    SendResponse(request_seq, "setVariable", json::object(), false, "Cannot set variable (only Int/Char/Float locals are assignable)");
+  std::wstring shown;
+  std::wstring error;
+  bool ok = false;
+
+  if(ref >= DYN_HANDLE_BASE) {
+    // A child of an expanded object or array. This used to fall into the
+    // class-scope arm below -- it had no upper bound -- and decode 100000+ as
+    // a frame index that DbgFrameAt then CLAMPED to the top frame, so editing
+    // obj.count silently overwrote a top-frame local named count and reported
+    // success. The handle knows the object and class (or array and element
+    // type) it was expanded from; assign through it.
+    const size_t handle_index = (size_t)(ref - DYN_HANDLE_BASE);
+    if(handle_index >= var_handles.size()) {
+      SendResponse(request_seq, "setVariable", json::object(), false, "Invalid variable reference");
+      return;
+    }
+
+    const VarHandle& handle = var_handles[handle_index];
+    switch(handle.kind) {
+    case VAR_ARRAY: {
+      // element names are "[7]", as ElementName() renders them
+      long index = -1;
+      if(name.size() > 2 && name.front() == L'[' && name.back() == L']') {
+        try {
+          index = std::stol(name.substr(1, name.size() - 2));
+        }
+        catch(...) {
+          index = -1;
+        }
+      }
+      if(index < 0) {
+        error = L"'" + name + L"' is not an array element";
+      }
+      else {
+        ok = debugger->SetArrayElementForDap(handle.ptr, handle.elem_type, index, value, shown, error);
+      }
+      break;
+    }
+
+    case VAR_VECTOR:
+    case VAR_MAP:
+    case VAR_HASH:
+      error = L"elements of a Vector, Map or Hash are not assignable through the debugger; expand the element and assign its fields";
+      break;
+
+    default:
+      ok = debugger->SetFieldForDap(handle.ptr, handle.klass, name, value, shown, error);
+      break;
+    }
+  }
+  else {
+    // a scope handle maps back to a frame index
+    int frame_index = -1;
+    if(ref >= SCOPE_HANDLE_BASE && ref < VAR_HANDLE_BASE) {
+      frame_index = ref - SCOPE_HANDLE_BASE;
+    }
+    else if(ref >= INST_SCOPE_HANDLE_BASE && ref < CLS_SCOPE_HANDLE_BASE) {
+      frame_index = ref - INST_SCOPE_HANDLE_BASE;
+    }
+    else if(ref >= CLS_SCOPE_HANDLE_BASE && ref < DYN_HANDLE_BASE) {
+      frame_index = ref - CLS_SCOPE_HANDLE_BASE;
+    }
+    if(frame_index < 0) {
+      SendResponse(request_seq, "setVariable", json::object(), false, "Invalid variable reference");
+      return;
+    }
+    ok = debugger->SetVariableForDap(frame_index, name, value, shown, error);
+  }
+
+  if(!ok) {
+    SendResponse(request_seq, "setVariable", json::object(), false, "Cannot set variable: " + UnicodeToBytes(error));
     return;
   }
 
   json body;
-  body["value"] = UnicodeToBytes(result);
+  body["value"] = UnicodeToBytes(shown);
   body["variablesReference"] = 0;
   SendResponse(request_seq, "setVariable", body);
 }

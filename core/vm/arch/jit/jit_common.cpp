@@ -129,7 +129,15 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
       for(int i = 0; i < instr_count; ++i) {
         StackInstr* instr = method->GetInstruction(i);
         const InstructionType type = instr->GetType();
-        if(instr->GetOperand() == target_cls_id &&
+        // Only CALL instructions carry (class id, method id) in operand/operand2.
+        // This used to test the operands alone, so any other opcode whose first
+        // two operands happened to match -- a JMP_TABLE (base, range), say -- had
+        // its operand3 overwritten. For JMP_TABLE operand3 is default_ip: the
+        // default arm of a select was retargeted to instruction 1.
+        const bool is_call = (type == MTHD_CALL || type == DYN_MTHD_CALL ||
+                              type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT);
+        if(is_call &&
+           instr->GetOperand() == target_cls_id &&
            instr->GetOperand2() == target_mthd_id) {
           if(patch_value > 0) {
             // JIT success: rewrite opcode for zero-branch dispatch
@@ -280,10 +288,15 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
       indices[dim++] = value;
     }
 
-    // null terminated string workaround
+    // One byte of NUL padding in the ALLOCATION only. [0] is the element
+    // count -- as the interpreter's ProcessNewByteArray, NEW_CHAR_ARY below and
+    // APITools_MakeByteArray all write it -- because native libraries read
+    // [0] as the size. This wrote count + 1, so a Byte[] built in a native
+    // method carried a phantom trailing zero into every native call:
+    // Hash->SHA256 of a 3-byte array digested 4 bytes.
     size++;
     size_t* mem = MemoryManager::AllocateArray((int64_t)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
-    mem[0] = size;
+    mem[0] = size - 1;
     mem[1] = dim;
     memcpy(mem + 2, indices, dim * sizeof(size_t));
     PushInt(op_stack, stack_pos, (size_t)mem);

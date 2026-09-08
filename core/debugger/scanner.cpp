@@ -137,57 +137,19 @@ void Scanner::CheckIdentifier(int index)
   // copy std::wstring
   const int length = end_pos - start_pos;
   std::wstring ident(buffer, start_pos, length);
-  // check std::wstring
-  enum TokenType ident_type = ident_map[ident];
-  switch(ident_type) {
-    case TOKEN_STACK_ID:
-    case TOKEN_SRC_ID:
-    case TOKEN_ARGS_ID:
-    case TOKEN_CLASS_ID:
-    case TOKEN_METHOD_ID:
-    case TOKEN_LIST_ID:
-    case TOKEN_SELF_ID:
-    case TOKEN_NEXT_ID:
-    case TOKEN_NEXT_LINE_ID:
-    case TOKEN_OUT_ID:
-    case TOKEN_CONT_ID:
-    case TOKEN_EXE_ID:
-    case TOKEN_QUIT_ID:
-    case TOKEN_BREAK_ID:
-    case TOKEN_BREAKS_ID:
-    case TOKEN_PRINT_ID:
-    case TOKEN_MEMORY_ID:
-    case TOKEN_INFO_ID:
-    case TOKEN_FRAME_ID:
-    case TOKEN_CLEAR_ID:
-    case TOKEN_DELETE_ID:
-    case TOKEN_HELP_ID:
-    case TOKEN_RUN_ID:
-    case TOKEN_IF_ID:
-    case TOKEN_UP_ID:
-    case TOKEN_DOWN_ID:
-    case TOKEN_LOCALS_ID:
-    case TOKEN_SET_ID:
-    case TOKEN_TBREAK_ID:
-    case TOKEN_ENABLE_ID:
-    case TOKEN_DISABLE_ID:
-    case TOKEN_IGNORE_ID:
-    case TOKEN_UNTIL_ID:
-    case TOKEN_WATCH_ID:
-    case TOKEN_WATCHES_ID:
-    case TOKEN_UNWATCH_ID:
-    // Without these three the ident_map entries above are dead: CheckIdentifier
-    // is a whitelist, and anything not named here falls through to TOKEN_IDENT.
-    case TOKEN_TRUE_ID:
-    case TOKEN_FALSE_ID:
-    case TOKEN_NIL_ID:
-    case TOKEN_THREADS_ID:
-      tokens[index]->SetType(ident_type);
-      break;
-    default:
-      tokens[index]->SetType(TOKEN_IDENT);
-      tokens[index]->SetIdentifier(ident);
-      break;
+
+  // The keyword map is authoritative -- the same fix as the compiler's scanner.
+  // The whitelist switch this replaces had to be kept in step by hand: the
+  // 'true', 'false', 'Nil' and 'threads' keywords were each dead on arrival
+  // until their case labels were added, because the map entry alone did
+  // nothing. operator[] also inserted every non-keyword word into the table.
+  const auto found = ident_map.find(ident);
+  if(found != ident_map.end()) {
+    tokens[index]->SetType(found->second);
+  }
+  else {
+    tokens[index]->SetType(TOKEN_IDENT);
+    tokens[index]->SetIdentifier(ident);
   }
 }
 
@@ -443,8 +405,13 @@ void Scanner::ParseToken(int index)
     }
   }
   // identifier
+  // A digit followed by a letter is an identifier here (a quirk the CLI has
+  // always had), which used to claim every hex literal: '0x2a' scanned as the
+  // identifier "0x2a" and printed 'unknown variable'. The hex prefix is a
+  // number.
   else if(isalpha(cur_char) || cur_char == L'@' || cur_char == L'_' || cur_char == L'?' ||
-          (iswdigit(cur_char) && (isalpha(nxt_char) || nxt_char == L'_'))) {
+          (iswdigit(cur_char) && (isalpha(nxt_char) || nxt_char == L'_') &&
+           !(cur_char == L'0' && (nxt_char == L'x' || nxt_char == L'X')))) {
     // mark
     start_pos = buffer_pos - 1;
 
@@ -461,16 +428,22 @@ void Scanner::ParseToken(int index)
   // number
   else if(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char))) {
     bool is_double = false;
-    int hex_state = 0;
     // mark
     start_pos = buffer_pos - 1;
 
-    // test hex state
-    if(cur_char == L'0') {
-      hex_state = 1;
+    // Hex is decided by the two-character prefix, as the compiler's scanner
+    // decides it. The state machine this replaces set hex_state on the leading
+    // '0' and then cleared it on the loop's first iteration -- for that same
+    // '0' -- so no hex literal ever reached wcstol with base 16: 'print 0x2a'
+    // answered 'unknown variable' and 'set x := 0x10' was 'invalid'.
+    const bool is_hex = cur_char == L'0' && (nxt_char == L'x' || nxt_char == L'X');
+    if(is_hex) {
+      NextChar();
+      NextChar();
     }
-    while(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char)) || cur_char == L'x' ||
-          (cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')) {
+
+    while(iswdigit(cur_char) || (!is_hex && cur_char == L'.' && iswdigit(nxt_char)) ||
+          (is_hex && ((cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')))) {
       // decimal double
       if(cur_char == L'.') {
         // error
@@ -481,18 +454,6 @@ void Scanner::ParseToken(int index)
         }
         is_double = true;
       }
-      // hex integer
-      if(cur_char == L'x') {
-        if(hex_state == 1) {
-          hex_state = 2;
-        }
-        else {
-          hex_state = 1;
-        }
-      }
-      else {
-        hex_state = 0;
-      }
       // next character
       NextChar();
     }
@@ -501,11 +462,14 @@ void Scanner::ParseToken(int index)
     if(is_double) {
       ParseDouble(index);
     }
-    else if(hex_state == 2) {
-      ParseInteger(index, 16);
-    }
-    else if(hex_state) {
-      tokens[index]->SetType(TOKEN_UNKNOWN);
+    else if(is_hex) {
+      // a bare '0x' has no digits
+      if(end_pos - start_pos <= 2) {
+        tokens[index]->SetType(TOKEN_UNKNOWN);
+      }
+      else {
+        ParseInteger(index, 16);
+      }
     }
     else {
       ParseInteger(index);

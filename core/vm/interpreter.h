@@ -32,6 +32,7 @@
 #pragma once
 
 #include "common.h"
+#include <atomic>
 #include <random>
 #include <string.h>
 #include <thread>
@@ -104,8 +105,12 @@ namespace Runtime {
     StackFrame** stack_frame;
     StackFrameMonitor* stack_frame_monitor;
 
-    // halt
-    bool halt;
+    // halt. Written by OTHER threads (HaltAllExcept, RequestHalt from the DAP
+    // reader) and spun on by this thread's dispatch loop. As a plain bool the
+    // -O3 -flto build was free to keep it in a register across iterations, so a
+    // halt could simply never land; the structurally identical safepoint flag
+    // (MemoryManager::stw_active) was already atomic.
+    std::atomic<bool> halt;
 
     // try/error handler stack
     static const int TRY_STACK_SIZE = 16;

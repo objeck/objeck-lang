@@ -1,0 +1,32 @@
+#~
+Fixture for DAP setVariable through a drill-down handle.
+
+A local named 'count' and an object whose field is ALSO named count: the old
+handle decoding turned a child handle into a clamped top-frame index, so a
+write meant for holder.count landed on the local instead and reported success.
+With both present, a cross-write is observable rather than merely plausible.
+~#
+
+class Holder {
+  @count : Int;
+
+  New(count : Int) {
+    @count := count;
+  }
+
+  method : public : GetCount() ~ Int {
+    return @count;
+  }
+}
+
+class SetVarTest {
+  function : Main(args : String[]) ~ Nil {
+    count := 1;
+    holder := Holder->New(5);
+    values := Int->New[3];
+    values[1] := 4;
+    # BREAKPOINT LINE -- every variable is populated
+    total := count + holder->GetCount() + values[1];
+    "total={$total}"->PrintLine();
+  }
+}

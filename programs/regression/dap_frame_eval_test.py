@@ -213,6 +213,13 @@ if s.run_to_breakpoint():
     check("evaluate computes an arithmetic expression",
           resp.get("body", {}).get("result") == "3" if resp else False,
           f"got: {resp.get('body') if resp else None}")
+    # And it must be a leaf. EvaluateForDapRaw used to static_cast the
+    # CalculatedExpression to Reference* and read a declaration out of memory
+    # past its end; a garbage OBJ_PARM type then minted an expandable handle
+    # over a garbage pointer. A scalar result has no children.
+    check("an arithmetic result is a leaf (variablesReference 0)",
+          resp is not None and resp.get("body", {}).get("variablesReference", -1) == 0,
+          f"got: {resp.get('body') if resp else None}")
 
     resp = s.request("evaluate", {"expression": 'label_text = "inner"', "context": "watch"})
     check("evaluate compares a string",

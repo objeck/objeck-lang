@@ -266,7 +266,7 @@ Please format the output as plain text, with no special characters.
 	}
 
 	method : Complete(message : String) ~ String {
-		query := Collection.Pair->New("user", Data.JSON.JsonElement->Encode(message))<String, String>;
+		query := Collection.Pair->New("user", message)<String, String>;
 		
 		model := "gpt-4o-mini";
 		token := GetApiKey();

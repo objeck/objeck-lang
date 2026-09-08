@@ -667,9 +667,11 @@ namespace frontend {
   ****************************/
   class IntegerLiteral : public Expression {
     friend class TreeFactory;
-    long value;
+    // 64-bit end to end: 'long' is 32-bit on Windows, so 0x7fffffffff and any
+    // ten-digit literal reached the evaluator as -1
+    INT64_VALUE value;
 
-    IntegerLiteral(long v) : Expression() {
+    IntegerLiteral(INT64_VALUE v) : Expression() {
       value = v;
     }
 
@@ -677,7 +679,7 @@ namespace frontend {
     }
 
   public:
-    long GetValue() {
+    INT64_VALUE GetValue() {
       return value;
     }
 
@@ -919,7 +921,7 @@ namespace frontend {
       return tmp;
     }
 
-    IntegerLiteral* MakeIntegerLiteral(long value) {
+    IntegerLiteral* MakeIntegerLiteral(INT64_VALUE value) {
       IntegerLiteral* tmp = new IntegerLiteral(value);
       expressions.push_back(tmp);
       return tmp;

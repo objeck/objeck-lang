@@ -338,7 +338,9 @@ class LibraryMethod {
     return rtrn_type;
   }
 
-  std::vector<LibraryInstr*> GetInstructions() {
+  // By reference: the linker's resolution loop asked for this vector for every
+  // method of every library class on every compile, and each call copied it.
+  const std::vector<LibraryInstr*>& GetInstructions() {
     return instrs;
   }
 };
@@ -685,7 +687,7 @@ class LibraryClass {
 
   std::vector<LibraryMethod*> GetUnqualifiedMethods(const std::wstring &n);
 
-  std::map<const std::wstring, LibraryMethod*> GetMethods() {
+  const std::map<const std::wstring, LibraryMethod*>& GetMethods() {
     return methods;
   }
 
@@ -1006,7 +1008,7 @@ class Library {
     return aliases_list;
   }
 
-  std::vector<LibraryClass*> GetClasses() {
+  const std::vector<LibraryClass*>& GetClasses() {
     return class_list;
   }
 
@@ -1131,8 +1133,12 @@ public:
   std::vector<LibraryEnum*> GetAllEnums();
 
   LibraryClass* SearchClassLibraries(const std::wstring &name) {
-    std::unordered_map<std::wstring, LibraryClass*> klass_map = GetAllClassesMap();
-    return klass_map[name];
+    // The by-value copy that bd5a4ce873 removed from the other overloads
+    // survived here, twelve lines below them -- and this is the overload the
+    // linker's innermost loop calls (every library x class x method x instr).
+    const std::unordered_map<std::wstring, LibraryClass*>& klass_map = GetAllClassesMap();
+    auto found = klass_map.find(name);
+    return found == klass_map.end() ? nullptr : found->second;
   }
 
   // check to see if bundle name exists

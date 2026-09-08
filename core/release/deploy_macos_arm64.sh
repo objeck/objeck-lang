@@ -199,6 +199,11 @@ cp macos/xcode/build/Release/libobjk_diags.dylib ../../release/deploy/lib/native
 cd ../onnx/eq
 ./build.sh coreml
 cp libobjk_onnx.dylib ../../../release/deploy/lib/native/libobjk_onnx.dylib
+
+# Every native library this script builds must be present (and, on Linux,
+# resolvable) before the tree is packaged. Without this a failed build was
+# dropped from the release with a green exit -- the obu incident, again.
+sh ../../../release/verify_native_libs.sh ../../../release/deploy/lib/native dylib crypto diags lame ml odbc onnx opencv sdl
 cd ..
 
 # build macOS app launcher (.app bundle)

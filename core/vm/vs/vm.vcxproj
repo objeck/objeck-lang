@@ -264,6 +264,8 @@
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
     <ClInclude Include="..\vm.h" />
+    <ClInclude Include="..\vm_options.h" />
+    <ClInclude Include="..\win_http3.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
