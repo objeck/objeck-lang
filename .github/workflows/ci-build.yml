@@ -827,7 +827,6 @@ jobs:
       working-directory: ./programs/regression
       shell: cmd
       run: |
-        set BIN=..\..\coreelease\deploy-${{ matrix.arch }}in
         set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_vm_flag_tests.py "%BIN%"
