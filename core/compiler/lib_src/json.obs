@@ -1522,9 +1522,13 @@ obj->ToString()->PrintLine();
 		}
 
 		#~
-		General encoding for JSON strings
+		Escapes a string for inclusion in JSON text (quotes, backslashes, control
+		characters, non-ASCII as u-escapes). Serialization does this for you: ToString()
+		and Format() escape every string value and object key on the way out, so a
+		value handed to Insert() must be RAW text -- encoding it first would escape
+		it twice. Call this only when building JSON text by hand.
 		@param str decoded string
-		@return encoding string
+		@return encoded string
 		~#
 		function : native : Encode(str : String) ~ String {
 			buffer := String->New();
@@ -1651,6 +1655,9 @@ obj->ToString()->PrintLine();
 		
 		#~
 		Stringify the JSON element
+		String values and object keys are escaped as they are written, so text that
+		holds quotes, backslashes or newlines produces valid JSON; do not pre-encode
+		values before inserting them.
 		@return JSON string
 
 		```

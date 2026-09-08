@@ -20,6 +20,7 @@
 | [AI.md](AI.md) | AI and ML developer guide |
 | [MODELS.md](MODELS.md) | Models the AI bindings expect |
 | [opengl.md](opengl.md) | `Game.OpenGL` |
+| [third_party_dependencies.md](third_party_dependencies.md) | Where each platform gets mbedTLS, nghttp2, SDL2, OpenCV, ONNX Runtime — and how to read the version a build used |
 
 ## Platform notes
 
@@ -37,11 +38,13 @@ Behaviour specific to one platform, usually discovered the hard way.
 | [CI_CD.md](CI_CD.md) | CI/CD architecture |
 | [CI_CD_QUICK_START.md](CI_CD_QUICK_START.md) | The short version |
 | [release_process.md](release_process.md) | Cutting a release |
+| [release_integrity.md](release_integrity.md) | What a release verifies today, and the signed manifest that would let `obu` detect a substituted `SHA256SUMS` |
 
 ## Designs and plans
 
 Written before the work, and kept afterwards as the record of why it looks the way it does.
 
+- [SYSTEM_TERMINAL_DESIGN.md](SYSTEM_TERMINAL_DESIGN.md) — `System.Terminal`: styled output, progress bars, interactive controls, and the five VM traps they need
 - [UPDATER_DESIGN.md](UPDATER_DESIGN.md) — auto-updater
 - [ONNX_CUDA_PLAN.md](ONNX_CUDA_PLAN.md) — CUDA execution provider for ONNX
 - [HTTP3_WINDOWS_PLAN.md](HTTP3_WINDOWS_PLAN.md) — enabling HTTP/3 on Windows
