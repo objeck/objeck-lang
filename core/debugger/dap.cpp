@@ -659,13 +659,28 @@ void DapAdapter::HandleConfigurationDone(int request_seq, const json& args)
 
 void DapAdapter::HandleThreads(int request_seq)
 {
-  // Objeck is single-threaded from the debugger's perspective
+  // This used to answer a fixed {id: 1, "Main Thread"} under a comment saying
+  // Objeck was single-threaded from the debugger's perspective. It was not --
+  // spawned threads simply ran with no debugger attached, so they were
+  // invisible rather than absent. Report what the debugger has actually seen.
   json body;
   json threads = json::array();
-  json thread;
-  thread["id"] = 1;
-  thread["name"] = "Main Thread";
-  threads.push_back(thread);
+  if(debugger) {
+    for(const Debugger::ThreadInfo& info : debugger->ListThreads()) {
+      json thread;
+      thread["id"] = info.id;
+      thread["name"] = UnicodeToBytes(info.name);
+      threads.push_back(thread);
+    }
+  }
+  if(threads.empty()) {
+    // Before the program runs nothing has reached the hook; DAP requires at
+    // least one thread, so report the thread the program will start on.
+    json thread;
+    thread["id"] = 1;
+    thread["name"] = "main";
+    threads.push_back(thread);
+  }
   body["threads"] = threads;
   SendResponse(request_seq, "threads", body);
 }
@@ -1997,7 +2012,10 @@ void DapAdapter::OnStopped(const std::string& reason, int line, const std::wstri
   // Send stopped event
   json body;
   body["reason"] = reason;
-  body["threadId"] = 1;
+  // The thread that actually hit the breakpoint. All-stop is now genuinely
+  // true: every other VM thread blocks in the hook until this one resumes.
+  const int stopped_id = debugger ? debugger->StoppedThreadId() : 0;
+  body["threadId"] = stopped_id > 0 ? stopped_id : 1;
   body["allThreadsStopped"] = true;
 
   // Name the watch that fired and what it changed from, otherwise the client

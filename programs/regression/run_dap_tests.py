@@ -287,6 +287,7 @@ def run_standalone_tests(bin_dir):
                            ("dap_drilldown_test.obs", "gen_collect"),
                            ("dap_databreak_test.obs", None),
                            ("dap_frame_eval_test.obs", None),
+                           ("debugger_thread_test.obs", None),
                            # obd_teardown_test.py debugs the VM-side #681
                            # reproducer rather than a fixture of its own.
                            ("thread_accept_exit_test.obs", None)):
@@ -303,7 +304,7 @@ def run_standalone_tests(bin_dir):
     for name in ("dap_print_test.py", "dap_stepin_test.py",
                  "dap_stepout_types_test.py", "dap_drilldown_test.py",
                  "dap_protocol_test.py", "dap_databreak_test.py",
-                 "dap_frame_eval_test.py",
+                 "dap_frame_eval_test.py", "dap_thread_test.py",
                  "obd_teardown_test.py"):
         path = os.path.join(REG_DIR, name)
         if not os.path.exists(path):

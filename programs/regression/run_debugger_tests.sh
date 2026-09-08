@@ -104,6 +104,21 @@ cd "$REGRESSION_DIR"
 echo "  Compiled successfully."
 echo ""
 
+# Multithreaded fixture
+THREAD_SRC="debugger_thread_test.obs"
+THREAD_BIN="${REGRESSION_DIR}/debugger_thread_test.obe"
+
+echo "Compiling thread test program..."
+cd "${DEPLOY_DIR}/bin"
+"$ABS_COMPILER" -src "${REGRESSION_DIR}/${THREAD_SRC}" -dest "$THREAD_BIN" -debug > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "  [FAIL] Thread test compilation error"
+    exit 1
+fi
+cd "$REGRESSION_DIR"
+echo "  Compiled successfully."
+echo ""
+
 # Helper function to run an expect test
 run_test() {
     local TEST_NAME="$1"
@@ -882,12 +897,64 @@ run_test "leading_whitespace" '
     expect eof
 ' "value=5" "$EVAL_BIN"
 
+# ===========================================================================
+# Threads. A spawned VM thread used to run with no debugger attached, so a
+# breakpoint inside any thread body never fired. Each of these fails on that
+# build.
+# ===========================================================================
+
+# Test 39: a breakpoint inside a thread's Run method fires at all
+run_test "thread_breakpoint_fires" '
+    expect ">"
+    send "b debugger_thread_test.obs:38\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "break: file='debugger_thread_test.obs:38', method='Worker->Run(..)'" "$THREAD_BIN"
+
+# Test 40: the stop belongs to the RIGHT thread (step = id*100)
+run_test "thread_conditional_stops_right_thread" '
+    expect ">"
+    send "b debugger_thread_test.obs:38 if step = 200\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p step\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "method='Worker->Run(..)'|value=200" "$THREAD_BIN"
+
+# Test 41: 'threads' lists Main plus the workers and marks the stopped one
+run_test "threads_lists_workers" '
+    expect ">"
+    send "b debugger_thread_test.obs:38\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "threads\r"
+    expect ">"
+    send "c\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "thread #1: ThreadDebugTest->Main|Worker->Run|(stopped here)" "$THREAD_BIN"
+
 echo ""
 echo "========================================"
 echo "  Results: $PASS_COUNT passed, $FAIL_COUNT failed"
 echo "========================================"
 
 # Clean up
-rm -f "$TEST_BIN" "$EVAL_BIN"
+rm -f "$TEST_BIN" "$EVAL_BIN" "$THREAD_BIN"
 
 [ $FAIL_COUNT -eq 0 ] && exit 0 || exit 1

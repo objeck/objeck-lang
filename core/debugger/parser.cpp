@@ -266,6 +266,11 @@ Command* Parser::ParseStatement(int depth)
       command = TreeFactory::Instance()->MakeBasicCommand(WATCHES_COMMAND);
       break;
 
+    case TOKEN_THREADS_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(THREADS_COMMAND);
+      break;
+
     case TOKEN_UNWATCH_ID:
       command = ParseUnwatch(depth + 1);
       break;

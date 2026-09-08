@@ -50,6 +50,11 @@
 #undef max
 
 namespace Runtime {
+  class Debugger;
+  // The one debugger in the process, or nullptr. A free function because this
+  // header only forward-declares Debugger (the two headers include each other),
+  // so a static member cannot be called from here.
+  Debugger* ActiveDebugger();
 #ifdef _DEBUGGER
   class Debugger;
 #endif
@@ -624,13 +629,13 @@ namespace Runtime {
 
     StackInterpreter() {
 #ifdef _DEBUGGER
-      // Only the Debugger constructor below attaches one; every other
-      // interpreter runs without. This has to be set rather than left
-      // indeterminate: spawned VM threads use this constructor, and Execute's
-      // per-instruction hook is a bare `debugger->` call in a _DEBUGGER build,
-      // so a garbage pointer took obd down on the first instruction of any
-      // thread a debugged program started.
-      debugger = nullptr;
+      // Spawned VM threads use this constructor. It used to leave debugger at
+      // nullptr -- which stopped the crash an indeterminate pointer caused, and
+      // also meant the per-instruction hook never ran on any spawned thread, so
+      // a breakpoint inside a thread body never fired at all. Attach the one
+      // debugger in the process instead; ProcessInstruction serializes itself,
+      // which is what makes a shared debugger safe to reach from many threads.
+      debugger = ActiveDebugger();
 #endif
 
       // setup frame
