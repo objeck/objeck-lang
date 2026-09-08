@@ -760,7 +760,7 @@ run_test "string_conditional_break" '
     expect ">"
     send "q\r"
     expect eof
-' "break: file='"'"'debugger_eval_test.obs:58'"'"'|value=5" "$EVAL_BIN"
+' "break: file='debugger_eval_test.obs:58'|value=5" "$EVAL_BIN"
 
 # Test 31: true/false are literals, not variable lookups
 run_test "boolean_literals" '
