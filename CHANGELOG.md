@@ -65,6 +65,7 @@ and debugger platform cannot carry.
 ### Known Issues
 - [#722](https://github.com/objeck/objeck-lang/issues/722) — the ARM64 JIT miscompiles `String->Equals` in a virtual request-handler callback; the two regression tests that would show it run with `JIT_DISABLE`, so shipped behaviour is unchanged from v2026.9.0. Scheduled with the `System.Terminal` release
 - [#723](https://github.com/objeck/objeck-lang/issues/723) — `SHA256SUMS` is unsigned, so `obu` verifies hashes but cannot detect a substituted manifest; design in `docs/release_integrity.md`, awaiting a maintainer-generated key
+- [#729](https://github.com/objeck/objeck-lang/issues/729) — the API-doc parser rejects two `GLWindow` members (`Own`, `GetDrawableGeneration`), so they are absent from `api.zip`, as they have been in every release since they landed
 
 ## [v2026.9.0] - 2026-09-03
 
