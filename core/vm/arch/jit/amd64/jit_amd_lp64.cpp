@@ -4574,12 +4574,15 @@ void JitAmd64::EmitMagicDivision(int64_t d, Register dest, bool is_mod) {
   if(n_in_slot) {
     move_reg_mem(dest, TMP_REG_3, RBP);
   }
-  // the magic constant goes through a slot so no register is taken from the pool
-  move_imm_reg(magic, RDX);
-  move_reg_mem(RDX, TMP_REG_2, RBP);
+  // n goes to RAX first: when dest is RDX, loading the magic constant into
+  // RDX before this copy multiplied magic by itself (the fixture's
+  // JoinAndFloats probe: `t := y->ToInt(); return t % 1000` after a loop)
   if(dest != RAX) {
     move_reg_reg(dest, RAX);
   }
+  // the magic constant goes through a slot so no register is taken from the pool
+  move_imm_reg(magic, RDX);
+  move_reg_mem(RDX, TMP_REG_2, RBP);
   imul_mem(TMP_REG_2, RBP);                       // RDX:RAX = n * magic
   if(d > 0 && magic < 0) {
     if(n_in_slot) { add_mem_reg(TMP_REG_3, RBP, RDX); } else { add_reg_reg(dest, RDX); }
