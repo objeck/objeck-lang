@@ -19,6 +19,7 @@
 				"Language server: a garbage-collector range test accepted an unaligned pointer and crashed the server at startup",
 				"Runtime: every hash of a string was wrong -- a Byte[] carried its element count plus one in the word native libraries read, so SHA-256/MD5 of a string digested a trailing zero byte; [0] is the element count everywhere now",
 				"JIT: IMUL wrote its product to the wrong register, native-call temporaries clobbered live values, and relinking could retarget a select's default arm; the interpreter and the JIT now print byte-identical output on the equivalence fixture",
+				"JIT: 2-8x faster on common loops -- a->Size() inlined, constant division by a multiply, one-instruction array addressing, eight allocatable registers on AMD64; >> was a logical shift on AMD64 and ?-> on a nil receiver exited the process, both fixed; OBJECK_JIT_REPORT=1 names the methods the JIT hands back",
 				"Libraries: JSON escapes strings and keys on serialize; the Ollama client reports {\"error\": ...} replies instead of swallowing them",
 				"VM flags: --jit=off|<calls> and --lib-path=<dir> (the lib root: native libraries and cacert.pem for obr, .obl files for obc); every flag states its valid values and refuses others",
 				"Game.OpenGL: Skybox (procedural sky), Quaternion (slerp and composition), tangent-space normal maps with no vertex changes, Material->SetEmissive; the overlay no longer draws upside down",
