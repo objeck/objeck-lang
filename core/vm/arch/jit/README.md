@@ -94,6 +94,9 @@ design; `OBJECK_JIT_REPORT=1` lists each pinned loop, `OBJECK_JIT_PIN_MAX=<n>` c
 (`0` turns pinning off) and `OBJECK_JIT_PIN_SKIP=<substring>` exempts matching methods -- the way
 to tell a pinning problem from anything else.
 
+`OBJECK_GC_TRACE=1` makes the collector name every JIT frame it scans and print each declared slot's
+type and value first, so a crash in the root scan says which frame and slot held the bad pointer.
+
 ## Not compiled, by design
 
 - A method containing a try region (`TRY_START`/`TRY_END` — what `?->` desugars to) runs in the interpreter on both backends: recovery needs the interpreter's handler stack, and native code has no way to resume at a handler. `OBJECK_JIT_REPORT=1` names such methods.

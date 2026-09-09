@@ -235,6 +235,21 @@ the regression suite normal and with every method JIT-compiled.
    JSON scanner's allocation and crashed it. The fixture's `Narrow` probe crashes on the old code.
    Any register added to a pool needs every encoder checked for a computed REX.
 
+4. *A method flagged `HasAndOr` lost its slot 0 under F6.* The compiler reserves local slot 0 in any
+   method with `&`/`|`, a ternary, a `select` or a lambda, and the ARM64 collector skips that slot when
+   it walks a JIT frame. Both JITs laid the frame out from the ids the bytecode references, so once
+   conditions branched directly, methods whose connectives are all in conditions had no slot 0 and the
+   ARM64 walk read every declared slot one off (`MarkMemory(0xb)` from `String:Append`'s `Char[]`
+   parameter; five tests on the Linux and macOS ARM64 legs, invisible on x64 whose walk runs from the
+   other end). The frame layout is a contract with the collector, not a function of which ids the
+   bytecode happens to use: both backends now reserve the slot whenever the flag is set. Found by
+   running CI with `OBJECK_GC_TRACE=1`, which names each scanned JIT frame and slot into the failure
+   artifact -- a validation gap worth remembering: the standard library must be *rebuilt* with a changed
+   compiler before a local run means anything, since CI's POSIX legs rebuild it and Windows does not.
+5. *ARM64 leaked one floating-point register per fused float compare* (the D register stayed on the
+   working stack as `REG_FLOAT`; only `REG_INT` was released after a fused jump), so a method with more
+   fused float compares than the pool holds fell back to the interpreter.
+
 Also observed and left open: a compiled method called from a *spawned thread* runs at interpreter
 speed (about 55x slower than the same native code on the main thread); the call-site patching and
 dispatch look thread-agnostic, so the cause is not yet known.
