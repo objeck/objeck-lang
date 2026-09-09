@@ -59,7 +59,11 @@ namespace Runtime {
 #define TMP_REG_3 -56
 #define TMP_REG_4 -64
 #define TMP_REG_5 -72
-#define RED_ZONE -80  
+#define TMP_REG_6 -80
+#define TMP_REG_7 -88
+#define TMP_REG_8 -96
+#define TMP_REG_9 -104
+#define RED_ZONE -112
 #else
   // offset for Posix 64-bit
 #define CLS_ID -8
@@ -84,7 +88,11 @@ namespace Runtime {
 #define TMP_REG_3 -112
 #define TMP_REG_4 -120
 #define TMP_REG_5 -128
-#define RED_ZONE -128 
+#define TMP_REG_6 -136
+#define TMP_REG_7 -144
+#define TMP_REG_8 -152
+#define TMP_REG_9 -160
+#define RED_ZONE -160
 #endif
 
 #define MAX_DBLS 256

@@ -217,22 +217,22 @@ void JitAmd64::RegisterRoot() {
   // note: the offset required to 
   // get to the first local variable
 #ifdef _WIN64
-  const long offset = org_local_space + RED_ZONE + TMP_REG_5 + 8;
+  const long offset = org_local_space + RED_ZONE + TMP_REG_9 + 8;
 #else
-  const long offset = org_local_space + RED_ZONE + TMP_REG_5;
+  const long offset = org_local_space + RED_ZONE + TMP_REG_9;
 #endif
   // get to stack locals
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
+  sub_imm_reg(-TMP_REG_9 + offset, holder->GetRegister());
 
   // set JIT memory to stack locals
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
-  // 6 slots to hold spilled registers 
-  const int index = ((offset - 8) >> 3) + 6;
+  // 10 slots to hold spilled registers (TMP_REG_0..9)
+  const int index = ((offset - 8) >> 3) + 10;
   if(index > 0) {
     move_imm_reg(index, RCX);
     long loop_target = code_index;
@@ -1788,13 +1788,15 @@ void JitAmd64::EmitWriteBarrier(Register holder) {
   // Save the JIT-allocatable caller-saved GP registers (even count keeps the stack
   // 16-byte aligned for the call) so cached locals / pending values survive.
 #ifdef _WIN64
-  push_reg(RAX); push_reg(RCX); push_reg(RDX); push_reg(R9);   // R9: alignment pad
+  push_reg(RAX); push_reg(RCX); push_reg(RDX); push_reg(R8);
+  push_reg(R9);  push_reg(R10); push_reg(R11); push_reg(R9);   // second R9: alignment pad
   move_reg_reg(holder, RCX);                                   // arg0 = holder (MS x64)
   sub_imm_reg(32, RSP);                                        // shadow space
   move_imm_reg((size_t)MemoryManager::JitWriteBarrier, R10);
   call_reg(R10);
   add_imm_reg(32, RSP);
-  pop_reg(R9); pop_reg(RDX); pop_reg(RCX); pop_reg(RAX);
+  pop_reg(R9); pop_reg(R11); pop_reg(R10); pop_reg(R9);
+  pop_reg(R8); pop_reg(RDX); pop_reg(RCX); pop_reg(RAX);
 #else
   push_reg(RAX); push_reg(RCX); push_reg(RDX);
   push_reg(R8);  push_reg(R10); push_reg(R11);
@@ -2155,11 +2157,11 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   }
 
 #ifdef _DEBUG_JIT
-  assert(reg_offset >= TMP_REG_5);
+  assert(reg_offset >= TMP_REG_9);
   assert(xmm_offset >= TMP_XMM_2);
 #endif
 
-  if(dirty_regs.size() > 6 || dirty_xmms.size() > 3) {
+  if(dirty_regs.size() > 10 || dirty_xmms.size() > 3) {
     compile_success = false;
   }
 
@@ -3478,7 +3480,7 @@ RegisterHolder* JitAmd64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
   long xspill_off = TMP_XMM_1;
   for(RegInstr* pending : working_stack) {
     if(pending->GetType() == REG_INT) {
-      if(spill_off < TMP_REG_5) { compile_success = false; break; }
+      if(spill_off < TMP_REG_9) { compile_success = false; break; }
       const Register r = pending->GetRegister()->GetRegister();
       move_reg_mem(r, spill_off, RBP);
       spilled_regs.push_back(std::make_pair(r, spill_off));
@@ -3553,7 +3555,7 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
   long xspill_off = TMP_XMM_2;
   for(RegInstr* pending : working_stack) {
     if(pending->GetType() == REG_INT) {
-      if(spill_off < TMP_REG_5) { compile_success = false; break; }
+      if(spill_off < TMP_REG_9) { compile_success = false; break; }
       const Register r = pending->GetRegister()->GetRegister();
       move_reg_mem(r, spill_off, RBP);
       spilled_regs.push_back(std::make_pair(r, spill_off));
@@ -6202,7 +6204,7 @@ void JitAmd64::ProcessIndices()
     }
 #endif
   }
-  org_local_space = local_space = -(index + TMP_REG_5);
+  org_local_space = local_space = -(index + TMP_REG_9);
 
 #ifdef _DEBUG_JIT
   std::wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << std::endl;
@@ -6661,7 +6663,15 @@ bool JitAmd64::Compile(StackMethod* cm)
 
     rax_reg = new RegisterHolder(RAX);
 #ifdef _WIN64
-    // general use registers
+    // general use registers. R8-R11 are caller-saved, need no prologue save,
+    // and every path that calls out (the interpreter callback, native calls,
+    // the write barrier) spills or pushes them like RCX/RDX. Four registers
+    // meant any expression with five live values spilled -- or the method
+    // fell back to the interpreter. POSIX gets the same registers via aux_regs.
+    aval_regs.push_back(new RegisterHolder(R11));
+    aval_regs.push_back(new RegisterHolder(R10));
+    aval_regs.push_back(new RegisterHolder(R9));
+    aval_regs.push_back(new RegisterHolder(R8));
     aval_regs.push_back(new RegisterHolder(RDX));
     aval_regs.push_back(new RegisterHolder(RCX));
     aval_regs.push_back(new RegisterHolder(RBX));
@@ -6723,7 +6733,7 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
     }
     // inline locals start after caller's locals (mirrors ProcessIndices index computation)
-    inline_local_offset = -(local_space + TMP_REG_5);
+    inline_local_offset = -(local_space + TMP_REG_9);
     local_space += extra_inline_space;
 
     // setup
