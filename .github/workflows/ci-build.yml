@@ -1172,6 +1172,15 @@ jobs:
       - name: JIT opt-outs are directives with a stated reason
         run: python3 tools/cicd/check_jit_optouts.py
 
+      # Same class of guard. The examples in programs/deploy are copied wholesale
+      # into a release, and welcome.obs is the only map a user gets. An unindexed
+      # example reaches users undocumented; an index naming a file that is gone
+      # is a lie. Both have happened here (2026-09-09): a scratch file and a JIT
+      # bug reproduction shipped as teaching material, and two examples shared
+      # one number.
+      - name: Shipped examples are all indexed
+        run: python3 tools/cicd/check_examples_index.py
+
       # Same reason, same cost: nothing built, fails in seconds. A native call
       # whose name is written as a literal at the call site allocates a String
       # on every call -- 1655ns against 130ns for the same call with the name
