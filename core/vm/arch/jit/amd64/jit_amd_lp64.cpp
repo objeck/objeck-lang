@@ -1082,10 +1082,14 @@ void JitAmd64::ProcessInstructions() {
       
     case TRY_START:
     case TRY_END:
-      // No-op in JIT: exception handling is not supported in native code.
-      // Safe because MTHD_CALL is not whitelisted, so no interpreter callbacks
-      // that could throw Objeck exceptions occur within try blocks.
-      // JIT error handling (nil checks, bounds checks) exits directly.
+      // Not reached: TRY_START/TRY_END are no longer in the whitelist, so a
+      // method with a try region (which is what `?->` desugars to) is left to
+      // the interpreter, whose handler stack makes recovery work. They used to
+      // be no-ops here "because MTHD_CALL is not whitelisted" -- it has been
+      // for some time, and a nil receiver under `?->` in a JIT-compiled caller
+      // then exited the process instead of yielding Nil (nil_safe_ops under
+      // OBJECK_JIT_THRESHOLD=1). ARM64 never listed them.
+      compile_success = false;
       break;
 
     case JMP:
@@ -6555,9 +6559,8 @@ static bool CanJitInstruction(InstructionType type) {
   case SWAP_INT:
   case POP_INT:
   case POP_FLOAT:
-    // try/catch (no-op in JIT — safe while MTHD_CALL is not whitelisted)
-  case TRY_START:
-  case TRY_END:
+    // (TRY_START/TRY_END are deliberately absent: a method with a try region
+    //  runs in the interpreter -- see the TRY_START case in ProcessInstructions)
     return true;
 
   default:

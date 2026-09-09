@@ -85,6 +85,10 @@ The reload of `INSTANCE_MEM` after the callback is essential: a callback can tri
 ### Implementation
 C++ using the STL. Back-end sources: `amd64/jit_amd_lp64.{h,cpp}`, `arm64/jit_arm_a64.{h,cpp}`; shared driver and tunables in `jit_common.{h,cpp}`. Canonical benchmark numbers live in [`docs/performance.md`](../../../../docs/performance.md).
 
+## Not compiled, by design
+
+- A method containing a try region (`TRY_START`/`TRY_END` — what `?->` desugars to) runs in the interpreter on both backends: recovery needs the interpreter's handler stack, and native code has no way to resume at a handler. `OBJECK_JIT_REPORT=1` names such methods.
+
 ## Diagnostics
 
 - `OBJECK_JIT_REPORT=1` — stderr line per method the JIT hands back to the interpreter (unsupported opcode, or the instruction where compilation failed). Both backends. Use it on a real program before deciding which fallback to fix next.
