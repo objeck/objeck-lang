@@ -108,8 +108,11 @@ for %%f in (*.obs) do (
             set /a FAIL_COUNT+=1
         ) else (
             REM Per-test opt-out for auto-JIT (mirrors the bash runner)
+            REM the marker is '# JIT_DISABLE' at column 0 (/B). findstr cannot anchor the end of
+            REM an LF-ended line, so this is begin-anchored only; the POSIX runner is exact. A
+            REM substring match disabled the JIT for tests whose comments merely mentioned it
             set OBJECK_JIT_DISABLE=
-            findstr /c:"# JIT_DISABLE" "%REGRESSION_DIR%\%%f" >nul 2>&1
+            findstr /B /C:"# JIT_DISABLE" "%REGRESSION_DIR%\%%f" >nul 2>&1
             if !errorlevel! equ 0 set OBJECK_JIT_DISABLE=1
 
             REM Run from regression directory

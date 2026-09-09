@@ -137,7 +137,11 @@ for test in *.obs; do
     # Per-test opt-out for auto-JIT (some analyzer tests hit a known
     # arm64 JIT bug; the marker keeps JIT coverage on for everything else).
     SECONDS=0
-    if grep -q '# JIT_DISABLE' "$test" 2>/dev/null; then
+    # The marker is a whole line, '# JIT_DISABLE' at column 0. A substring match
+    # here used to turn the JIT off for any test whose COMMENT mentioned the
+    # marker -- including five written to catch JIT bugs, whose "do NOT add a
+    # '# JIT_DISABLE' marker" sentence did exactly that (2026-09-09).
+    if grep -qE '^# JIT_DISABLE$' "$test" 2>/dev/null; then
         "${TIMEOUT[@]}" env OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     else
         "${TIMEOUT[@]}" "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
