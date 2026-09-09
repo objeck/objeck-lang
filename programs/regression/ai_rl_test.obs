@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ai,gen_collect
-# JIT_DISABLE
 #~
 Regression tests for System.AI reinforcement learning using a 6-state chain
 world (move right to reach the goal at state 5, +10 at the goal, -1 per

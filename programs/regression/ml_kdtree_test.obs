@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ml,gen_collect,csv
-# JIT_DISABLE
 #~
 Regression tests for System.ML KDTree (overhaul phase 3): for several queries
 and k values over a fixed 2-D dataset the k-nearest distance sequence must

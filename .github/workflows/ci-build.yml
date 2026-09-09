@@ -1164,6 +1164,14 @@ jobs:
       - name: Regression tests can report failure
         run: python3 tools/cicd/check_test_exit_codes.py
 
+      # Same class of guard. '# JIT_DISABLE' on its own line runs a test with the
+      # JIT off. The runners used to match it as a substring, which turned off the
+      # JIT for five tests whose comments merely mentioned it, and twenty real
+      # opt-outs never said why (2026-09-09). Every directive now needs a stated
+      # reason, and prose may not quote the marker.
+      - name: JIT opt-outs are directives with a stated reason
+        run: python3 tools/cicd/check_jit_optouts.py
+
       # Same reason, same cost: nothing built, fails in seconds. A native call
       # whose name is written as a literal at the call site allocates a String
       # on every call -- 1655ns against 130ns for the same call with the name

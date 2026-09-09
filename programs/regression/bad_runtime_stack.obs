@@ -1,5 +1,6 @@
 # EXPECT_RUNTIME_ERROR
 # JIT_DISABLE
+# reason: the interpreter's frame-count guard is what is under test (see NOTE 2 below)
 # VM must not crash (segfault) on call stack overflow — exit 1 with message.
 # NOTE 1: the recursion MUST stay non-tail (the "+ n" after the call) so the
 # TCO compiler pass cannot rewrite it into a loop — otherwise it would never

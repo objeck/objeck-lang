@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ml,gen_collect,csv
-# JIT_DISABLE
 #~
 Regression tests for System.ML AdaBoost (overhaul phase 3): boosting over
 boolean decision stumps learns the 3-feature majority function — which no

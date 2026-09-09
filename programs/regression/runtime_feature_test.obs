@@ -1,4 +1,3 @@
-# JIT_DISABLE
 #~
 Regression tests for the "runtime.feature.*" properties, which report which
 optional protocol engines are actually compiled into this VM.

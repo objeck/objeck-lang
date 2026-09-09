@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ml,gen_collect,csv
-# JIT_DISABLE
 #~
 Regression tests for the System.ML tree models: the real recursive DecisionTree
 (left/right children + leaf prediction) and the RandomForest voting ensemble.

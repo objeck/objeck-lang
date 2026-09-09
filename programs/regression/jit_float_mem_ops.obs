@@ -1,7 +1,7 @@
 #~
 # Float arithmetic and comparison against MEMORY operands, under the JIT.
 #
-# IMPORTANT: must run with JIT ENABLED. Do NOT add a '# JIT_DISABLE' marker --
+# IMPORTANT: must run with JIT ENABLED. Do NOT add a JIT opt-out marker --
 # this test only has value once the methods below are natively compiled.
 #
 # Guards the ARM64 JIT float divide-by-zero divisor clobber. Every JIT float

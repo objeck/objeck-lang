@@ -1,5 +1,4 @@
 # EXTRA_LIBS: net,net_server
-# JIT_DISABLE
 #~
 TLS certificate verification must REFUSE. https_persistence_test proves the
 happy path (a pinned self-signed certificate is accepted); nothing proved the
@@ -17,7 +16,7 @@ trusted issuer, a name the certificate does not carry. The only thing under
 test is the client's verification. If OBJECK_TLS_INSECURE_SKIP_VERIFY were set
 in the environment every refusal would pass; the runners do not set it.
 
-JIT_DISABLE for the same reason as its sibling: the handler is a virtual
+It used to opt out of the JIT for the same reason as its sibling (issue #722, fixed by batch 4; the opt-out was dropped on 2026-09-09): the handler is a virtual
 callback that is JIT-compiled regardless, and ARM64 miscompiles
 String->Equals in that context (#722).
 ~#
