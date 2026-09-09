@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ai,gen_collect
-# JIT_DISABLE
 #~
 Regression tests for System.AI adversarial search using tic-tac-toe:
 Minimax takes a win-in-1, blocks the opponent's win-in-1, and perfect

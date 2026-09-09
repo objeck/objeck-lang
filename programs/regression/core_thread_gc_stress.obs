@@ -24,7 +24,7 @@
 # the regression runner kills at its timeout and records as a hard FAIL.
 #
 # IMPORTANT: must run with JIT ENABLED — the join bug is JIT-only. Do NOT add a
-# '# JIT_DISABLE' marker to this test.
+# JIT opt-out marker to this test.
 ~#
 
 use System.Concurrency;

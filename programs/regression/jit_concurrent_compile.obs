@@ -9,7 +9,7 @@
 # GC-related, no floats). GetPage now serializes allocation. A regression surfaces
 # as a crash/hang or a wrong per-thread sum.
 #
-# IMPORTANT: must run with JIT ENABLED. Do NOT add a '# JIT_DISABLE' marker.
+# IMPORTANT: must run with JIT ENABLED. Do NOT add a JIT opt-out marker.
 # EXTRA_LIBS: gen_collect
 ~#
 

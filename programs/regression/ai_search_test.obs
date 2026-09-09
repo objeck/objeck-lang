@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ai,gen_collect
-# JIT_DISABLE
 #~
 Regression tests for System.AI graph search: Dijkstra finds the minimum-cost
 path even when a direct (expensive) edge exists, A* with an admissible

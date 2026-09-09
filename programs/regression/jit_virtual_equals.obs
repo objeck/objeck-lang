@@ -1,6 +1,6 @@
 # Issue #722: on ARM64 the JIT miscompiled String->Equals inside a virtual
 # request-handler callback (the compare of the returned Bool went wrong), which
-# two gating tests hid behind `# JIT_DISABLE` and a handler rewritten to avoid
+# two gating tests hid behind the JIT opt-out marker and a handler rewritten to avoid
 # Equals. This is the reduction the issue asks for: a base class with a virtual
 # method that compares a String parameter with Equals, overridden in a subclass,
 # called through the base reference from a native (always compiled) loop, with

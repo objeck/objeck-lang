@@ -1,5 +1,4 @@
 # EXTRA_LIBS: net,net_server
-# JIT_DISABLE
 #~
 TLS certificate verification must REFUSE. https_persistence_test proves the
 happy path (a pinned self-signed certificate is accepted); nothing proved the

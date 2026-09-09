@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ml,gen_collect,csv
-# JIT_DISABLE
 #~
 Regression tests for the System.ML estimator API consistency sweep (item 11):
 RandomForest Fit (renamed from Train), Score on DecisionTree/RandomForest, and

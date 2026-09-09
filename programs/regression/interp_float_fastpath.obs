@@ -1,4 +1,5 @@
 # JIT_DISABLE
+# reason: this test exercises the INTERPRETER's float fast path; compiled, it would test the JIT instead
 # Exercises the interpreter's inlined float fast-path (ADD/SUB/MUL_FLOAT and the
 # six float comparisons added in P2). JIT is disabled so every float op goes
 # through the interpreter dispatch loop, not native code. Values are accumulated

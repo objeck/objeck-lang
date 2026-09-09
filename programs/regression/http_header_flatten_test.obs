@@ -1,5 +1,4 @@
 # EXTRA_LIBS: net,cipher,gen_collect
-# JIT_DISABLE
 #~
 Request-header flattening (Web.HTTP.HeaderCheck->Flatten).
 

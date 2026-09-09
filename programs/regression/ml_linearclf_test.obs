@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ml,gen_collect,csv
-# JIT_DISABLE
 #~
 Regression tests for the System.ML linear classifiers (overhaul phase 2):
 Perceptron (mistake-driven, converges + early-stops on separable data) and

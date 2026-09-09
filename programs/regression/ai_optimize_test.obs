@@ -1,5 +1,4 @@
 # EXTRA_LIBS: ai,gen_collect
-# JIT_DISABLE
 #~
 Regression tests for System.AI optimization: GeneticAlgorithm solves OneMax
 (all-ones chromosome), SimulatedAnnealing and HillClimbing minimize a shifted

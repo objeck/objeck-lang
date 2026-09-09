@@ -7,7 +7,7 @@
 # release/acquire, with a safe interpret fallback. A regression surfaces as a
 # wrong per-thread sum (-> non-zero exit / FAIL) or a crash/hang.
 #
-# IMPORTANT: must run with JIT ENABLED. Do NOT add a '# JIT_DISABLE' marker.
+# IMPORTANT: must run with JIT ENABLED. Do NOT add a JIT opt-out marker.
 # EXTRA_LIBS: gen_collect
 ~#
 
