@@ -5,6 +5,61 @@
 # (`&` when the jump is taken on true, `|` when it is taken on false).
 # Written when the ARM64 JIT crashed in the collector's root scan on the
 # standard library rebuilt with the short-circuit emitter.
+
+# The same shapes on instance state: fields, a class variable, char and int
+# arrays, strings compared with Equals, Nil guards ahead of a call, and an
+# instance method called on `this` -- the library code the ARM64 legs run.
+class Scanner {
+  @buf : Char[];
+  @ints : Int[];
+  @pos : Int;
+  @limit : Int;
+  @done : Bool;
+  @name : String;
+  @count : static : Int;
+
+  New(text : String, limit : Int) {
+    @buf := text->ToCharArray();
+    @ints := Int->New[64];
+    each(i : 64) { @ints[i] := (i * 37) % 101; };
+    @pos := 0;
+    @limit := limit;
+    @done := false;
+    @name := "scanner";
+  }
+
+  method : public : IsSpace(c : Char) ~ Bool {
+    @count += 1;
+    return c = ' ' | c = '	';
+  }
+
+  method : public : native : Scan() ~ Int {
+    acc := 0;
+    frag : String := Nil;
+    while(@pos < @buf->Size() & <>@done) {
+      c := @buf[@pos];
+      # char range checks on a field-loaded element
+      if(c >= 'a' & c <= 'z') { acc += 1; };
+      if(c >= 'A' & c <= 'Z' | c = '_') { acc += 2; };
+      # instance method on this, with a field test
+      if(IsSpace(c) & @pos > 0) { acc += 3; };
+      # int array element and a field in one condition
+      if(@ints[@pos % 64] > 50 & @limit > @pos) { acc += 4; };
+      # Nil guard ahead of a call on the object, both branches
+      if(frag <> Nil & frag->Size() > 3) { acc += 100; };
+      if(frag = Nil | frag->Size() = 0) { acc += 5; };
+      # string equality on a field
+      if(@name->Equals("scanner") & @name->Size() = 7) { acc += 6; };
+      # not on a field, or with a class variable
+      if(<>@done & @count > 0 | @pos = 0) { acc += 7; };
+      if(@pos % 50 = 0) { frag := @name->SubString(0, 4); } else { frag := Nil; };
+      @pos += 1;
+      if(@pos >= @limit) { @done := true; };
+    };
+    return acc;
+  }
+}
+
 class BranchShapes {
   @calls : static : Int;
 
@@ -86,8 +141,12 @@ class BranchShapes {
     a := IntShapes(3000);
     b := FloatShapes(3000);
     c := WhileShapes(3000);
-    "  int={$a} float={$b} while={$c} calls={$@calls}"->PrintLine();
-    if(a = 232007 & b = 50696 & c = 6828999 & @calls = 13369) {
+    text := "";
+    for(i := 0; i < 40; i += 1;) { text += "The quick brown_fox	jumps over 13 lazy dogs "; };
+    s := Scanner->New(text, 1800);
+    d := s->Scan();
+    "  int={$a} float={$b} while={$c} calls={$@calls} scan={$d}"->PrintLine();
+    if(a = 232007 & b = 50696 & c = 6828999 & @calls = 13369 & d = 40908) {
       "PASS: JIT branch shapes"->PrintLine();
     }
     else {
