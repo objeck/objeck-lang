@@ -2163,12 +2163,18 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   // create temporary variable for concat of strings and variables
   if(segments.size() > 1) {
     Type* type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
-    const std::wstring scope_name = current_method->GetName() + L":#_var_concat_#";
-    SymbolEntry* entry = current_table->GetEntry(scope_name);
-    if(!entry) {
-      entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
-      current_table->AddEntry(entry, true);
+    // A fresh accumulator per interpolated string, for the reason spelled out at
+    // the '+' concatenation site below: one slot per method breaks as soon as two
+    // of these are live at once, e.g. "{$a}" + Id("{$b}") (#750).
+    std::wstring scope_name;
+    int concat_index = 0;
+    do {
+      scope_name = current_method->GetName() + L":#_var_concat_#" + std::to_wstring(concat_index++);
     }
+    while(current_table->GetEntry(scope_name));
+
+    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
+    current_table->AddEntry(entry, true);
     char_str->SetConcat(entry);
   }
 
@@ -8744,13 +8750,24 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
         // create temporary variable for concat of strings and variables
         StringConcat* str_concat = TreeFactory::Instance()->MakeStringConcat(concat_exprs, methods_to_string, lib_methods_to_string);
         Type * type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
-        const std::wstring scope_name = current_method->GetName() + L":#_add_concat_#";
-        
-        SymbolEntry* entry = current_table->GetEntry(scope_name);
-        if(!entry) {
-          entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
-          current_table->AddEntry(entry, true);
+        // Each concatenation needs its OWN accumulator. EmitStringConcat lowers a
+        // concatenation to "allocate a System.String, store it in this slot, then
+        // for each part evaluate the part, load the slot and Append". A single slot
+        // per method was therefore wrong the moment concatenations could nest: an
+        // inner one (a call argument that is itself a concatenation, say) allocates
+        // its own String, overwrites the slot the outer one is still accumulating
+        // into, and the outer then appends into the inner's object. That silently
+        // duplicated values and could drop an operand outright -- issue #746's
+        // sibling, #750. Probe for an unused name so every node gets a fresh slot.
+        std::wstring scope_name;
+        int concat_index = 0;
+        do {
+          scope_name = current_method->GetName() + L":#_add_concat_#" + std::to_wstring(concat_index++);
         }
+        while(current_table->GetEntry(scope_name));
+
+        SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, type, false, true);
+        current_table->AddEntry(entry, true);
         str_concat->SetConcat(entry);
         
         return str_concat;
