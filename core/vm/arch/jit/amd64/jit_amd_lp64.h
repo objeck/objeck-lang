@@ -783,6 +783,17 @@ namespace Runtime {
     }
 
     // Returns a register to the pool
+    // True when the register is in the free pool: not on the working stack,
+    // not caching a local, not held by any RegInstr. Anything else may be live.
+    bool IsRegisterFree(Register reg) {
+      for(size_t i = 0; i < aval_regs.size(); ++i) {
+        if(aval_regs[i]->GetRegister() == reg) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     void ReleaseRegister(RegisterHolder* h) {
 #ifdef _VERBOSE
       std::wcout << L"\t * releasing " << GetRegisterName(h->GetRegister())
@@ -991,7 +1002,7 @@ namespace Runtime {
     void div_xreg_xreg(Register src, Register dest);
     void div_mem_xreg(long offset, Register src, Register dest);
     void div_imm_reg(int64_t imm, Register reg, bool is_mod = false);
-    void div_reg_reg(Register src, Register dest, bool is_mod = false);
+    void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 
     // compare instructions
@@ -1018,6 +1029,8 @@ namespace Runtime {
     void shr_mem_reg(long offset, Register src, Register dest);
     void shr_imm_reg(int64_t value, Register dest);
     void sar_imm_reg(int64_t value, Register dest);
+    void sar_reg_reg(Register src, Register dest);
+    void sar_mem_reg(long offset, Register src, Register dest);
 
     // push/pop instructions
     void push_imm(long value);

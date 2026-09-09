@@ -744,7 +744,7 @@ namespace Runtime {
     // div instructions
     void div_freg_freg(Register src, Register dest);
     void div_imm_reg(int64_t imm, Register reg, bool is_mod = false);
-    void div_reg_reg(Register src, Register dest, bool is_mod = false);
+    void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
     
     // operations

@@ -2,6 +2,20 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+The first batch of the JIT code-generation work from `docs/JIT_CODEGEN_ASSESSMENT_2026_09.md`.
+
+### Bug Fixes
+- **AMD64 JIT: `>>` was a logical shift** — the interpreter shifts a signed `INT64` (arithmetic) and the ARM64 backend emits `asr`, so `-8 >> 1` was `-4` in three places and `9223372036854775804` in the fourth: every negative operand of `>>` in JIT'd x64 code has been wrong, in every release. All three emission sites (immediate, register and memory shift counts) use `SAR` now; the equivalence fixture's new shift probe diverges on the shipped `obr` and matches
+
+### Virtual Machine
+- **`a->Size()` is inlined by the JIT** (AMD64 and ARM64) — `LOAD_ARY_SIZE` went through the interpreter callback: push the array onto the VM operand stack, call C++, read the result back, ~35 instructions and a call per evaluation of `i < a->Size()`. It is a nil check and one load now. An array-summing loop went from 6.0 to 0.75 ns per element (8×); a float dot product 2.7×
+- **Constant divisors skip the divide-by-zero check**, and AMD64 saves `RAX`/`RDX` around `idiv` only when they hold something — they were saved and restored unconditionally. (The `idiv` itself is the next item: a magic-number multiply for constant divisors)
+- **Windows: JIT code saves `XMM10`–`XMM15`** — the allocator hands out those registers and the Windows x64 ABI makes them callee-saved; the JIT'd function is entered by a plain C++ call whose MSVC-compiled caller may keep values in them across the call, and nothing saved them. 96 bytes in the prologue, restored in the teardown; Linux and macOS have no callee-saved vector registers
+- **`OBJECK_JIT_REPORT=1`** names every method the JIT hands back to the interpreter and why (an unsupported opcode, or a compile that failed part-way, with the instruction index). One unsupported instruction returns the whole method to the interpreter and nothing said so — the equivalence fixture's own division probe turned out to be interpreted because a twelve-term expression exhausted the AMD64 allocator's four registers
+- The interpreter/JIT equivalence fixture gains probes for `Size()` in a loop condition and body, a multi-dimensional `Size()`, and constant divisors of every shape (small, negative, above 32 bits, composite)
+
 ## [v2026.9.1] - 2026-09-08
 
 Every string hash was wrong; JIT arithmetic now matches the interpreter; the
