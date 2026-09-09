@@ -1,0 +1,128 @@
+#~
+# The index of the example programs that ship with Objeck.
+#
+# This is the first thing to run in this folder. It needs no libraries and no
+# display, so it works over SSH and in a container, and it prints the exact
+# command for every other example here.
+#
+# compile: obc -src welcome.obs
+# run:     obr welcome.obe
+#
+# The table below is checked by tools/cicd/check_examples_index.py: every .obs
+# in this folder must appear here, every file named here must exist, and the
+# library list of each row must be the one that actually compiles it. Add a row
+# when you add an example, or CI fails.
+~#
+
+class Welcome {
+	function : Main(args : String[]) ~ Nil {
+		files := [
+			"hello_0.obs", "https_1.obs", "xml_2.obs", "json_3.obs",
+			"regex_4.obs", "functions_5.obs", "threads_6.obs", "encrypt_7.obs",
+			"http_xml_regex_8.obs", "http_regex_9.obs", "calc_life_10.obs",
+			"odbc_select_11.obs", "fs_query_12.obs", "2d_game_13.obs",
+			"serial_14.obs", "rss_https_xml_15.obs", "tic_tac_toe_16.obs",
+			"lambda_17.obs", "first_class_18.obs", "closure_19.obs",
+			"loops_19.obs", "visitor_20.obs", "neural_21.obs", "gemini_22.obs",
+			"json_stream_23.obs", "3d_gl_24.obs", "ai_search_25.obs",
+			"ml_regression_26.obs", "fps_gl.obs"];
+
+		libs := [
+			"", "gen_collect,net,json,cipher", "xml,gen_collect", "json,net,cipher",
+			"regex", "", "", "cipher",
+			"net,regex,gen_collect,json,cipher", "net,json,regex,cipher", "",
+			"odbc", "query,regex,misc,net,json,csv,cipher", "gen_collect,sdl2,sdl_game,json",
+			"gen_collect", "net,rss,gen_collect,xml,cipher", "",
+			"gen_collect", "gen_collect", "gen_collect",
+			"", "", "gen_collect,ml,csv", "gemini,net,json,misc,cipher,net_server",
+			"json_stream", "sdl2,sdl_gl", "ai",
+			"ml,csv", "sdl2,sdl_gl"];
+
+		about := [
+			"a class, Main, and one line of output",
+			"fetch a page over HTTPS",
+			"parse an XML document and walk it",
+			"fetch JSON over the network and parse it",
+			"match and extract with regular expressions",
+			"functions, parameters and return values",
+			"the Mandelbrot set, drawn by several threads",
+			"hashing and symmetric encryption",
+			"fetch, then parse with XML and a regex together",
+			"pull fields out of a fetched page",
+			"a genetic algorithm evolving toward a target",
+			"query a database through ODBC",
+			"structured queries over the filesystem",
+			"a side-scrolling platformer drawn with SDL2",
+			"write objects to a file and read them back",
+			"fetch and parse an RSS feed",
+			"tic-tac-toe in the terminal",
+			"lambdas",
+			"functions passed around as values",
+			"closures that capture their environment",
+			"every loop form the language has",
+			"the visitor pattern over an expression tree",
+			"a neural network trained from a CSV file",
+			"calling the Gemini API",
+			"reading large JSON as a stream",
+			"a lit, shadowed, spinning scene in OpenGL",
+			"shortest-path search across a small map",
+			"linear regression over a CSV dataset",
+			"a first-person shooting gallery in OpenGL"];
+
+		""->PrintLine();
+		"Objeck example programs"->PrintLine();
+		"======================="->PrintLine();
+		""->PrintLine();
+		"Every file listed below is in this folder. Compile one, then run it:"->PrintLine();
+		""->PrintLine();
+		"    obc -src hello_0.obs"->PrintLine();
+		"    obr hello_0.obe"->PrintLine();
+		""->PrintLine();
+		"When a program needs libraries, pass the list in its LIBRARIES column:"->PrintLine();
+		""->PrintLine();
+		"    obc -src json_3.obs -lib json,net,cipher"->PrintLine();
+		"    obr json_3.obe"->PrintLine();
+		""->PrintLine();
+
+		header := Pad("  FILE", 24) + Pad("LIBRARIES (-lib ...)", 40) + "WHAT IT SHOWS";
+		header->PrintLine();
+		rule := Pad("  ----", 24) + Pad("--------------------", 40) + "-------------";
+		rule->PrintLine();
+
+		each(i : files) {
+			file := files[i];
+			lib := libs[i];
+			desc := about[i];
+			if(lib->Size() = 0) {
+				lib := "(none)";
+			};
+			# The indent is concatenated into a local BEFORE it is passed. Passing
+			# "  " + file straight into Pad() inside this expression prints the
+			# file name twice -- issue #750, a compiler defect, not a style choice.
+			indented := "  " + file;
+			line := Pad(indented, 24) + Pad(lib, 40) + desc;
+			line->PrintLine();
+		};
+
+		""->PrintLine();
+		"Notes"->PrintLine();
+		"-----"->PrintLine();
+		"  Programs that open a window (2d_game_13, 3d_gl_24, fps_gl) need a display"->PrintLine();
+		"  and a GPU, so they will not run over SSH or in a container."->PrintLine();
+		"  odbc_select_11 needs a configured data source, and gemini_22 needs an API key."->PrintLine();
+		"  More OpenGL examples ship in the opengl folder beside this one."->PrintLine();
+		""->PrintLine();
+	}
+
+	function : Pad(text : String, width : Int) ~ String {
+		out := "";
+		out += text;
+		i := text->Size();
+		while(i < width) {
+			out += " ";
+			i += 1;
+		};
+
+		return out;
+	}
+}
