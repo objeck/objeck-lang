@@ -1,16 +1,16 @@
 # EXTRA_LIBS: net,net_server
-# JIT_DISABLE
 use Collection, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
 class HttpsPersistenceHandler from HttpsRequestHandler {
 	New() { Parent(); }
 
 	method : ProcessGet(request : Request, response : Response) ~ Bool {
-		if(request->GetPath()->Size() = 7) {
+		if(request->GetPath()->Equals("/client")) {
 			"TLS stage: HttpsClient request reached handler"->ErrorLine();
 		};
 		# This virtual callback is JIT-compiled even when test auto-JIT is disabled;
-		# ARM64 currently miscompiles String->Equals in this context.
-		if(request->GetPath()->Size() = 6) {
+		# routing by String->Equals is deliberate (issue #722 reported the ARM64 JIT
+		# miscompiling it here) and this is the check.
+		if(request->GetPath()->Equals("/empty")) {
 			response->SetCode(200);
 		}
 		else {

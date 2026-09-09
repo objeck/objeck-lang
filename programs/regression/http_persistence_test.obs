@@ -1,5 +1,4 @@
 # EXTRA_LIBS: net,net_server
-# JIT_DISABLE
 use Collection, System.IO.Net, Web.HTTP.Server;
 
 # Exercises the HTTP/1.x persistence contract with a raw client. Every response
@@ -10,12 +9,12 @@ class PersistenceHandler from HttpRequestHandler {
 	method : ProcessGet(request : Request, response : Response) ~ Bool {
 		path := request->GetPath();
 		# Virtual handler callbacks are JIT-compiled independently of the test's
-		# auto-JIT opt-out. Keep this callback to operations supported reliably by
-		# both JIT backends; ARM64 currently miscompiles String->Equals here.
-		if(path->Size() = 6) {
+		# auto-JIT opt-out. Routing by String->Equals is deliberate: issue #722
+		# reported the ARM64 JIT miscompiling it right here, and this is the check.
+		if(path->Equals("/empty")) {
 			response->SetCode(200);
 		}
-		else if(path->Size() = 4) {
+		else if(path->Equals("/err")) {
 			response->SetCode(404);
 		}
 		else {
