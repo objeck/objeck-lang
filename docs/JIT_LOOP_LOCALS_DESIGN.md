@@ -252,7 +252,7 @@ the regression suite normal and with every method JIT-compiled.
 
 6. *A `native` method could be inlined into a caller that never runs natively.* The `-opt s3`
    inliner pastes small calls into their caller, and the copy runs in whatever engine the caller
-   does. `Main` was exempt (its comment says why: it is never compiled), but a thread's `Run` was
+   does. `Main` was exempt (its comment said why: at the time it was never compiled), but a thread's `Run` was
    not, and `Run` is called once per thread so the auto-JIT never compiles it either: a worker's
    native loop was pasted into `Run` and interpreted, ~50x slower than the same code on the main
    thread. First seen as "a compiled method called from a spawned thread runs at interpreter

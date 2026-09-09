@@ -26,7 +26,7 @@ There are two independent back-ends sharing the common driver in `jit_common.{h,
 Both back-ends share the safety pre-scans: **frame-dependent-trap rejection** and **operand-kind compile guards** (below).
 
 ### Auto-JIT lifecycle
-Methods start interpreted. Every call increments a counter; once it crosses `JIT_AUTO_THRESHOLD` (default **10**, see `jit_common.h`) the method is compiled on its next entry. After a successful compile, every `MTHD_CALL` site that targets it is patched to `MTHD_CALL_JIT` (`PatchCallSites()`), so the interpreter's fast path — and other JIT'ed callers — dispatch straight to native code.
+Methods start interpreted. Every call increments a counter; once it crosses `JIT_AUTO_THRESHOLD` (default **10**, see `jit_common.h`) the method is compiled on its next entry. Two exceptions, both keyed on `HasLoop()` (a back-edge in the bytecode) and both active only while the threshold is at or below its default (`JitEagerLoops()`; the LSP server raises it to keep the JIT off): a method entered from the top -- a thread's `Run` -- is compiled on entry, and a callee with a loop is compiled on its *first* call, which is how `Main` gets compiled (the loader's classless `$Initialization$` routine calls it once). Design: `docs/JIT_ENTRY_COMPILE_DESIGN.md`. After a successful compile, every `MTHD_CALL` site that targets it is patched to `MTHD_CALL_JIT` (`PatchCallSites()`), so the interpreter's fast path — and other JIT'ed callers — dispatch straight to native code.
 
 ```mermaid
 flowchart LR
