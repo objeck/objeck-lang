@@ -73,6 +73,14 @@ class Arith {
     acc += n % 2147483649;
     acc += n / 6;
     acc += n % 6;
+    acc += n / 2;
+    acc += n % 2;
+    acc += n / (0 - 4);
+    acc -= n % (0 - 4);
+    acc += n / 1024;
+    acc += n % 1024;
+    acc += n / 4294967311;
+    acc += n % 4294967311;
     return acc;
   }
 
@@ -80,6 +88,13 @@ class Arith {
   # AMD64 JIT emitted a logical shift until 2026-09-09
   function : Shr(n : Int, k : Int) ~ Int {
     return (n >> k) + (n >> 3) + (n >> 63) + (n >> 1);
+  }
+
+  # more than four live temporaries: this expression used to exhaust the
+  # AMD64 pool and fall back to the interpreter (OBJECK_JIT_REPORT=1 showed
+  # the fixture's own ConstDiv doing that); with eight registers it compiles
+  function : Wide(a : Int, b : Int, c : Int, d : Int) ~ Int {
+    return (a * b + c * d) * (a - b + c - d) + (a * c - b * d) * (a + d) - (b + c) * (a * d + b * c) + a * b * c * d;
   }
 
   function : SizeLoop(a : Int[]) ~ Int {
@@ -167,6 +182,10 @@ class VmJitEquiv {
     for(i := -25; i < 25; i += 1;) {
       cd += Arith->ConstDiv(i * 104729 - 3);
     };
+    cd += Arith->ConstDiv(4611686018427387904);
+    cd += Arith->ConstDiv(0 - 4611686018427387904);
+    cd += Arith->ConstDiv(9223372036854775807);
+    cd += Arith->ConstDiv(0 - 9223372036854775807);
     "constdiv={$cd}"->PrintLine();
 
     sh := 0;
@@ -174,6 +193,12 @@ class VmJitEquiv {
       sh += Arith->Shr(i * 1000000007 - 5, i and 15);
     };
     "shr={$sh}"->PrintLine();
+
+    wd := 0;
+    for(i := 1; i < 30; i += 1;) {
+      wd += Arith->Wide(i, i * 3 - 7, 11 - i, i * i) % 1000003;
+    };
+    "wide={$wd}"->PrintLine();
 
     "done"->PrintLine();
   }

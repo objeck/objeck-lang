@@ -59,7 +59,11 @@ namespace Runtime {
 #define TMP_REG_3 -56
 #define TMP_REG_4 -64
 #define TMP_REG_5 -72
-#define RED_ZONE -80  
+#define TMP_REG_6 -80
+#define TMP_REG_7 -88
+#define TMP_REG_8 -96
+#define TMP_REG_9 -104
+#define RED_ZONE -112
 #else
   // offset for Posix 64-bit
 #define CLS_ID -8
@@ -84,7 +88,11 @@ namespace Runtime {
 #define TMP_REG_3 -112
 #define TMP_REG_4 -120
 #define TMP_REG_5 -128
-#define RED_ZONE -128 
+#define TMP_REG_6 -136
+#define TMP_REG_7 -144
+#define TMP_REG_8 -152
+#define TMP_REG_9 -160
+#define RED_ZONE -160
 #endif
 
 #define MAX_DBLS 256
@@ -1002,6 +1010,9 @@ namespace Runtime {
     void div_xreg_xreg(Register src, Register dest);
     void div_mem_xreg(long offset, Register src, Register dest);
     void div_imm_reg(int64_t imm, Register reg, bool is_mod = false);
+    void EmitMagicDivision(int64_t d, Register dest, bool is_mod);
+    void imul_mem(long offset, Register base);
+    void lea_base_index_reg(long disp, Register base, Register index, int scale, Register dest);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 

@@ -2971,7 +2971,100 @@ void JitArm64::mul_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
+// add dest, dest, src, lsl #shift
+void JitArm64::add_shifted_reg_reg(Register src, int shift, Register dest) {
+  uint32_t op_code = 0x8B000000;                 // ADD (shifted register), LSL
+  op_code |= ((uint32_t)src & 0x1F) << 16;
+  op_code |= ((uint32_t)shift & 0x3F) << 10;
+  op_code |= ((uint32_t)dest & 0x1F) << 5;
+  op_code |= (uint32_t)dest & 0x1F;
+  AddMachineCode(op_code);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(dest) << L", " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", lsl #" << shift << L"]" << std::endl;
+#endif
+}
+
+// add dest, dest, src, lsr #shift
+void JitArm64::add_lsr_reg_reg(Register src, int shift, Register dest) {
+  uint32_t op_code = 0x8B400000;                 // ADD (shifted register), LSR
+  op_code |= ((uint32_t)src & 0x1F) << 16;
+  op_code |= ((uint32_t)shift & 0x3F) << 10;
+  op_code |= ((uint32_t)dest & 0x1F) << 5;
+  op_code |= (uint32_t)dest & 0x1F;
+  AddMachineCode(op_code);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(dest) << L", " << GetRegisterName(dest)
+        << L", " << GetRegisterName(src) << L", lsr #" << shift << L"]" << std::endl;
+#endif
+}
+
+// dest = high 64 bits of (a * b)
+void JitArm64::smulh_reg_reg_reg(Register a, Register b, Register dest) {
+  uint32_t op_code = 0x9B407C00;                 // SMULH
+  op_code |= ((uint32_t)b & 0x1F) << 16;
+  op_code |= ((uint32_t)a & 0x1F) << 5;
+  op_code |= (uint32_t)dest & 0x1F;
+  AddMachineCode(op_code);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [smulh " << GetRegisterName(dest) << L", " << GetRegisterName(a)
+        << L", " << GetRegisterName(b) << L"]" << std::endl;
+#endif
+}
+
+// dest = minuend - a * b
+void JitArm64::msub_reg_reg_reg(Register a, Register b, Register minuend, Register dest) {
+  uint32_t op_code = 0x9B008000;                 // MSUB
+  op_code |= ((uint32_t)b & 0x1F) << 16;
+  op_code |= ((uint32_t)minuend & 0x1F) << 10;
+  op_code |= ((uint32_t)a & 0x1F) << 5;
+  op_code |= (uint32_t)dest & 0x1F;
+  AddMachineCode(op_code);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [msub " << GetRegisterName(dest) << L", " << GetRegisterName(a)
+        << L", " << GetRegisterName(b) << L", " << GetRegisterName(minuend) << L"]" << std::endl;
+#endif
+}
+
+// n / d or n % d for a constant d (|d| >= 2) without sdiv: see MagicSigned64.
+// smulh gives the high half directly, so unlike AMD64 nothing implicit is clobbered.
+void JitArm64::EmitMagicDivision(int64_t d, Register dest, bool is_mod) {
+  int64_t magic;
+  int shift;
+  MagicSigned64(d, magic, shift);
+
+  RegisterHolder* m = GetRegister();
+  move_imm_reg(magic, m->GetRegister());
+  RegisterHolder* q = GetRegister();
+  smulh_reg_reg_reg(dest, m->GetRegister(), q->GetRegister());   // q = high64(n * magic)
+  if(d > 0 && magic < 0) {
+    add_reg_reg(dest, q->GetRegister());                           // q += n
+  }
+  else if(d < 0 && magic > 0) {
+    sub_reg_reg(dest, q->GetRegister());                           // q -= n
+  }
+  if(shift > 0) {
+    shr_imm_reg(shift, q->GetRegister());                          // SBFM: arithmetic shift right
+  }
+  add_lsr_reg_reg(q->GetRegister(), 63, q->GetRegister());         // q += (q >>> 63)
+  if(is_mod) {
+    move_imm_reg(d, m->GetRegister());
+    msub_reg_reg_reg(q->GetRegister(), m->GetRegister(), dest, dest);   // dest = n - q * d
+  }
+  else {
+    move_reg_reg(q->GetRegister(), dest);
+  }
+  ReleaseRegister(q);
+  ReleaseRegister(m);
+}
+
 void JitArm64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
+  // 1 and -1 stay on sdiv (so INT64_MIN / -1 matches the interpreter); 0 so
+  // the runtime check fires; everything else is a multiply by a magic number
+  if(imm != 0 && imm != 1 && imm != -1) {
+    EmitMagicDivision(imm, reg, is_mod);
+    return;
+  }
   RegisterHolder* src_holder = GetRegister();
   move_imm_reg(imm, src_holder->GetRegister());
   div_reg_reg(src_holder->GetRegister(), reg, is_mod, imm != 0);
@@ -4785,40 +4878,34 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
     }
   }
 
-  // bounds check
+  // Bounds check on the UNSCALED index against the element count (header
+  // word 0): the two shifts before the compare changed nothing about it.
   RegisterHolder* bounds_holder = GetRegister();
   move_mem_reg(0, array_holder->GetRegister(), bounds_holder->GetRegister());
+  CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
+  ReleaseRegister(bounds_holder);
 
-  // adjust indices
+  int shift;
   switch(type) {
   case BYTE_ARY_TYPE:
+    shift = 0;
     break;
 
   case CHAR_ARY_TYPE:
 #ifdef _WIN64
-    shl_imm_reg(1, index_holder->GetRegister());
-    shl_imm_reg(1, bounds_holder->GetRegister());
+    shift = 1;
 #else
-    shl_imm_reg(2, index_holder->GetRegister());
-    shl_imm_reg(2, bounds_holder->GetRegister());
+    shift = 2;
 #endif
-    break;
-    
-  case INT_TYPE:
-  case FLOAT_TYPE:
-    shl_imm_reg(3, index_holder->GetRegister());
-    shl_imm_reg(3, bounds_holder->GetRegister());
     break;
 
   default:
+    shift = 3;   // INT_TYPE, FLOAT_TYPE
     break;
   }
-  CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
-  ReleaseRegister(bounds_holder);
-
-  // skip first 2 integers (size and dimension) and all dimension indices
-  add_imm_reg((instr->GetOperand() + 2) * sizeof(size_t), index_holder->GetRegister());
-  add_reg_reg(index_holder->GetRegister(), array_holder->GetRegister());
+  // array = array + (index << shift) + header, in two instructions
+  add_shifted_reg_reg(index_holder->GetRegister(), shift, array_holder->GetRegister());
+  add_imm_reg((instr->GetOperand() + 2) * sizeof(size_t), array_holder->GetRegister());
   ReleaseRegister(index_holder);
 
   delete holder;

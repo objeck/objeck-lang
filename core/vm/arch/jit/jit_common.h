@@ -60,6 +60,39 @@
 #define JIT_AUTO_THRESHOLD_DEFAULT 10
 #define JIT_AUTO_THRESHOLD_DISABLED LONG_MAX
 
+// Signed 64-bit "magic number" division (Granlund-Montgomery; Hacker's
+// Delight 10-1). For a constant divisor d with |d| >= 2 the quotient of any
+// int64 n is
+//   q = high64(n * M);  q += n if d > 0 && M < 0;  q -= n if d < 0 && M > 0;
+//   q >>= s (arithmetic);  q += (q >>> 63)
+// exact for every n including INT64_MIN, with a 3-cycle multiply in place of
+// a 10-20 cycle idiv/sdiv. Both backends emit that sequence; this computes
+// (M, s) at compile time.
+inline void MagicSigned64(int64_t d, int64_t& magic, int& shift) {
+  const uint64_t two63 = 0x8000000000000000ULL;
+  const uint64_t ad = d < 0 ? (uint64_t)0 - (uint64_t)d : (uint64_t)d;
+  const uint64_t t = two63 + ((uint64_t)d >> 63);
+  const uint64_t anc = t - 1 - t % ad;
+  int p = 63;
+  uint64_t q1 = two63 / anc, r1 = two63 - q1 * anc;
+  uint64_t q2 = two63 / ad, r2 = two63 - q2 * ad;
+  uint64_t delta;
+  do {
+    p++;
+    q1 = 2 * q1; r1 = 2 * r1;
+    if(r1 >= anc) { q1++; r1 -= anc; }
+    q2 = 2 * q2; r2 = 2 * r2;
+    if(r2 >= ad) { q2++; r2 -= ad; }
+    delta = ad - r2;
+  }
+  while(q1 < delta || (q1 == delta && r1 == 0));
+  magic = (int64_t)(q2 + 1);
+  if(d < 0) {
+    magic = (int64_t)((uint64_t)0 - (uint64_t)magic);
+  }
+  shift = p - 64;
+}
+
 inline long GetJitAutoThreshold() {
   const long forced = JitAutoThresholdOverride();
   if(forced != 0) {
