@@ -68,6 +68,33 @@
 // exact for every n including INT64_MIN, with a 3-cycle multiply in place of
 // a 10-20 cycle idiv/sdiv. Both backends emit that sequence; this computes
 // (M, s) at compile time.
+// Reads an environment variable the way the platform prefers (getenv is
+// deprecated under MSVC). True when the variable is set; its text in `value`
+// when the caller wants it.
+inline bool JitEnvFlag(const char* name, std::string* value = nullptr) {
+#ifdef _WIN32
+  char* buf = nullptr;
+  size_t len = 0;
+  if(_dupenv_s(&buf, &len, name) != 0 || !buf) {
+    return false;
+  }
+  if(value) {
+    *value = buf;
+  }
+  free(buf);
+  return true;
+#else
+  const char* env = std::getenv(name);
+  if(!env) {
+    return false;
+  }
+  if(value) {
+    *value = env;
+  }
+  return true;
+#endif
+}
+
 inline void MagicSigned64(int64_t d, int64_t& magic, int& shift) {
   const uint64_t two63 = 0x8000000000000000ULL;
   const uint64_t ad = d < 0 ? (uint64_t)0 - (uint64_t)d : (uint64_t)d;

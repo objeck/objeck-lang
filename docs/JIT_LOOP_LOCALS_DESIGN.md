@@ -135,8 +135,11 @@ JIT-to-JIT call whose callee pins and therefore saves/restores in its own prolog
 registers by ABI, so no call site needs auditing and no spill code is added. The price is `K` = 3 on
 AMD64 in this batch; the allocator's own pool is untouched.
 
-**Entry.** A region's header label gets two native offsets: `entry`, where the pinned locals are
-loaded from their slots, and `loop`, just after those loads and before the safepoint poll. The jump
+**Entry.** A region's header is the back-edge *target*: the instruction after the loop's label, because
+the compiler resolves a label to the index of the next instruction (nothing keyed on the `LBL`'s own
+index ever matches -- see section 6). That instruction gets two native offsets: `entry`, where the
+pinned locals are loaded from their slots, and `loop`, just after those loads and before the safepoint
+poll, so every iteration polls. The jump
 fixup pass (`Compile()`'s walk over `jump_table`) sends a jump to the header from *inside* the region
 to `loop` and one from outside (or the fall-through) to `entry`. That handles a `continue`, the
 back-edge, and an `if`/`else` join that the compiler folded onto the loop header.
@@ -201,4 +204,37 @@ locals in [header,end]`), and `_DEBUG_JIT` listings show the entry loads and exi
 
 ## 6. Outcome
 
-_To be filled in as each phase lands._
+**4a (F6)** landed as `a8ad2c0d27`: conditions branch directly, `Branchy` 0.035 s -> 0.026 s, and the
+evaluation-order test showed the order had always been right (section 2.1).
+
+**4b (F3, AMD64)**: up to three INT/CHAR locals per loop in `R13`-`R15`. Windows x64, `-opt s3`,
+`--jit=1`, median of three:
+
+| kernel | before 4b | after 4b |
+|---|---|---|
+| `Locals` (8 loop-carried scalars) | 0.027 s | 0.020 s |
+| `ArraySum` | 0.017 s | 0.014 s |
+| `IntLoop`, `FloatDot`, `Branchy`, `CallLoop` | -- | within noise |
+
+Three registers cover three of `Locals`' eight scalars; the rest is phase 4d's. Verified as
+section 4 lists: fixture byte-identical between interpreter and JIT with the new probes, flag tests,
+the regression suite normal and with every method JIT-compiled.
+
+**Found on the way, all on master before this batch:**
+
+1. *No JIT loop was ever polled for a GC safepoint*, on either backend. The poll was emitted in `case
+   LBL` and keyed on the label's index while jump targets are the instruction after the label. A
+   collection on another thread waited for the whole loop; `programs/regression/jit_gc_safepoint.obs`
+   fails on the old code and passes now. The fix (the poll at the target instruction) is why the
+   kernels above did not all get faster: they gained a compare-and-branch per iteration they should
+   always have had.
+2. *Magic division with the dividend in `RDX`* multiplied the constant by itself (batch 2). The
+   fixture's `JoinAndFloats` probe found it.
+3. *The 16-bit movers had no REX prefix*, so a char element addressed through `R8`-`R15` was read
+   from `RAX`-`RDI`. Dormant until batch 3 put `R8`-`R11` in the Windows pool; pinning changed the
+   JSON scanner's allocation and crashed it. The fixture's `Narrow` probe crashes on the old code.
+   Any register added to a pool needs every encoder checked for a computed REX.
+
+Also observed and left open: a compiled method called from a *spawned thread* runs at interpreter
+speed (about 55x slower than the same native code on the main thread); the call-site patching and
+dispatch look thread-agnostic, so the cause is not yet known.

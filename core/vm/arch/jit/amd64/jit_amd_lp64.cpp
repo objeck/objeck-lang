@@ -30,6 +30,10 @@
  ***************************************************************************/
 
 #include "jit_amd_lp64.h"
+#include <algorithm>
+
+// defined below, next to Compile(); PlanPinRegions reports pinned loops through it
+static bool JitReportEnabled();
 #include <string>
 #include <mutex>
 
@@ -108,6 +112,17 @@ void JitAmd64::Prolog() {
   // safepoint poll then becomes a 5-byte `cmp byte [r12],0` instead of a 10-byte
   // movabs + 3-byte cmp — the per-label win in label-dense integer loops.
   move_imm_reg((int64_t)MemoryManager::StwActiveAddr(), R12);
+#ifdef _WIN64
+  // F3: R13-R15 hold pinned loop locals. Callee-saved on Windows and not in the
+  // push list above; three pushes plus 8 bytes keep RSP 16-byte aligned. POSIX
+  // pushes R8-R15 unconditionally.
+  if(method_pins) {
+    push_reg(R13);
+    push_reg(R14);
+    push_reg(R15);
+    sub_imm_reg(8, RSP);
+  }
+#endif
 }
 
 void JitAmd64::Epilog() 
@@ -172,6 +187,16 @@ void JitAmd64::Epilog()
 
   jmp_offset = teardown_index - (jmp_div_pos + 4);
   memcpy(&code[(size_t)jmp_div_pos], &jmp_offset, 4);
+#ifdef _WIN64
+  // F3: undo the prologue's pinned-register save. This is teardown_index, so
+  // every exit path -- nominal or an error handler -- restores them.
+  if(method_pins) {
+    add_imm_reg(8, RSP);
+    pop_reg(R15);
+    pop_reg(R14);
+    pop_reg(R13);
+  }
+#endif
 
   unsigned char teardown_code[] = {
     // restore registers
@@ -434,6 +459,15 @@ void JitAmd64::ProcessInstructions() {
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
     if(!is_inlining) {
+      // F3: a pinned loop's header (the back-edge target, the instruction after
+      // the loop's label) loads its locals into R13-R15. The entry path and
+      // jumps from outside land on the instruction's offset, before the loads;
+      // jumps from inside the loop land on loop_offset, past them and on the
+      // safepoint poll, so every iteration polls.
+      const int pin_region = PinRegionStartingAt(instr_index - 1);
+      if(pin_region >= 0) {
+        EmitPinEntry(pin_region);
+      }
       // GC safepoint at loop headers only: a label's target is the head of a
       // loop iff some jump to it is backward, and every cyclic path contains a
       // back-edge, so polling these alone reaches every JITed loop (else the
@@ -1131,6 +1165,12 @@ void JitAmd64::ProcessInstructions() {
       compile_success = false;
       return;
     }
+    // F3: leaving a pinned loop by fall-through (a conditional back-edge not
+    // taken): the locals go back to their slots
+    if(!is_inlining && active_pin_region >= 0 && instr_index - 1 == pin_regions[active_pin_region].end) {
+      EmitPinWriteBack(active_pin_region);
+      active_pin_region = -1;
+    }
   }
 }
 
@@ -1182,6 +1222,15 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
     }
     else {
       long offset = instr->GetOperand3();
+      // F3: a pinned loop local is read out of its register. A copy, not the
+      // register itself: consumers write their REG_INT operands in place.
+      int pin_reg;
+      if(PinnedSlot(offset, pin_reg)) {
+        RegisterHolder* holder = GetRegister();
+        move_reg_reg(PinRegister(pin_reg), holder->GetRegister());
+        working_stack.push_front(new RegInstr(holder));
+        return;
+      }
       // check local register cache for int locals
       auto reg_it = local_reg_cache.find(offset);
       if(reg_it != local_reg_cache.end()) {
@@ -1347,6 +1396,223 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   return done_jmp_pos;
 }
 
+/**
+ * F3: choose, per loop, the integer locals that live in R13-R15 for the loop's
+ * extent (docs/JIT_LOOP_LOCALS_DESIGN.md, section 3). Runs after ProcessIndices,
+ * so the slots are known, and before Prolog, which saves the registers when
+ * anything pins.
+ */
+void JitAmd64::PlanPinRegions() {
+  pin_regions.clear();
+  method_pins = false;
+  active_pin_region = -1;
+  const long count = method->GetInstructionCount();
+  for(long i = 0; i < count; ++i) {
+    instr_index_of[method->GetInstruction(i)] = i;
+  }
+  if(detected_loops.empty()) {
+    return;
+  }
+  // diagnostics: OBJECK_JIT_PIN_MAX=<n> caps the pinned locals per loop (0 turns
+  // pinning off); OBJECK_JIT_PIN_SKIP=<substring> leaves matching methods alone
+  int pin_max = PIN_REG_COUNT;
+  std::string env_max;
+  if(JitEnvFlag("OBJECK_JIT_PIN_MAX", &env_max)) {
+    pin_max = atoi(env_max.c_str());
+    if(pin_max < 0) pin_max = 0;
+    if(pin_max > PIN_REG_COUNT) pin_max = PIN_REG_COUNT;
+  }
+  std::string skip;
+  if(JitEnvFlag("OBJECK_JIT_PIN_SKIP", &skip) && !skip.empty()) {
+    const std::wstring name = method->GetName();
+    if(name.find(std::wstring(skip.begin(), skip.end())) != std::wstring::npos) {
+      pin_max = 0;
+    }
+  }
+  if(pin_max == 0) {
+    return;
+  }
+  // maximal regions: sort the loops by header and merge overlapping and nested ones
+  std::vector<std::pair<long, long> > spans;
+  for(const LoopInfo& loop : detected_loops) {
+    spans.push_back(std::make_pair(loop.header_index, loop.backedge_index));
+  }
+  std::sort(spans.begin(), spans.end());
+  std::vector<std::pair<long, long> > regions;
+  for(const auto& span : spans) {
+    if(!regions.empty() && span.first <= regions.back().second) {
+      regions.back().second = std::max(regions.back().second, span.second);
+    }
+    else {
+      regions.push_back(span);
+    }
+  }
+  // slot id -> declared type. The and/or temp (slot 0 when HasAndOr) has no
+  // declaration and is left alone; FUNC_PARM takes two slots.
+  std::unordered_map<long, ParamType> id_types;
+  {
+    long id = method->HasAndOr() ? 1 : 0;
+    StackDclr** dclrs = method->GetDeclarations();
+    const long num_dclrs = method->GetNumberDeclarations();
+    for(long j = 0; j < num_dclrs; ++j) {
+      id_types[id] = dclrs[j]->type;
+      id += (dclrs[j]->type == FUNC_PARM) ? 2 : 1;
+    }
+  }
+  for(const auto& region : regions) {
+    const long header = region.first;
+    const long end = region.second;
+    // eligible only if no jump from outside lands inside (other than on the
+    // header) and no jump from inside leaves backwards past the header
+    bool eligible = true;
+    for(long i = 0; i < count && eligible; ++i) {
+      StackInstr* instr = method->GetInstruction(i);
+      if(instr->GetType() != JMP) {
+        continue;
+      }
+      const long target = instr->GetOperand();
+      const bool src_in = (i >= header && i <= end);
+      const bool dst_in = (target > header && target <= end);
+      if((!src_in && dst_in) || (src_in && target < header)) {
+        eligible = false;
+      }
+    }
+    if(!eligible) {
+      continue;
+    }
+    // accesses per candidate slot, an access in a nested loop weighted by depth
+    std::unordered_map<long, long> weights;
+    std::unordered_map<long, long> slot_ids;
+    for(long i = header; i <= end; ++i) {
+      StackInstr* instr = method->GetInstruction(i);
+      const InstructionType type = instr->GetType();
+      if((type != LOAD_LOCL_INT_VAR && type != STOR_LOCL_INT_VAR && type != COPY_LOCL_INT_VAR) || instr->GetOperand2() != LOCL) {
+        continue;
+      }
+      auto declared = id_types.find(instr->GetOperand());
+      if(declared == id_types.end() || (declared->second != INT_PARM && declared->second != CHAR_PARM)) {
+        continue;
+      }
+      long depth = 0;
+      for(const LoopInfo& loop : detected_loops) {
+        if(i >= loop.header_index && i <= loop.backedge_index) {
+          ++depth;
+        }
+      }
+      weights[instr->GetOperand3()] += (1L << std::min(depth * 2, 12L));
+      slot_ids[instr->GetOperand3()] = instr->GetOperand();
+    }
+    if(weights.empty()) {
+      continue;
+    }
+    std::vector<std::pair<long, long> > ranked;   // (-weight, slot): heaviest first, ties by slot
+    for(const auto& weight : weights) {
+      ranked.push_back(std::make_pair(-weight.second, weight.first));
+    }
+    std::sort(ranked.begin(), ranked.end());
+    PinRegion pin;
+    pin.header = header;
+    pin.end = end;
+    pin.loop_offset = -1;
+    for(size_t k = 0; k < ranked.size() && (int)pin.slots.size() < pin_max; ++k) {
+      pin.slots.push_back(ranked[k].second);
+    }
+    pin_regions.push_back(pin);
+    method_pins = true;
+    if(JitReportEnabled()) {
+      std::wcerr << L"[jit] " << method->GetName() << L": pinned " << pin.slots.size()
+                 << L" local(s) in loop [" << header << L"," << end << L"], slot id(s)";
+      for(size_t k = 0; k < pin.slots.size(); ++k) {
+        std::wcerr << L" " << slot_ids[pin.slots[k]];
+      }
+      std::wcerr << std::endl;
+    }
+  }
+}
+
+int JitAmd64::PinRegionStartingAt(long lbl_index) {
+  for(size_t r = 0; r < pin_regions.size(); ++r) {
+    if(pin_regions[r].header == lbl_index) {
+      return (int)r;
+    }
+  }
+  return -1;
+}
+
+int JitAmd64::PinRegionContaining(long instr_idx) {
+  for(size_t r = 0; r < pin_regions.size(); ++r) {
+    if(instr_idx >= pin_regions[r].header && instr_idx <= pin_regions[r].end) {
+      return (int)r;
+    }
+  }
+  return -1;
+}
+
+bool JitAmd64::PinnedSlot(long offset, int& reg_index) {
+  if(active_pin_region < 0) {
+    return false;
+  }
+  const std::vector<long>& slots = pin_regions[active_pin_region].slots;
+  for(size_t i = 0; i < slots.size(); ++i) {
+    if(slots[i] == offset) {
+      reg_index = (int)i;
+      return true;
+    }
+  }
+  return false;
+}
+
+// entry loads; interior jumps to the header land on loop_offset, past them
+void JitAmd64::EmitPinEntry(int region) {
+  PinRegion& pin = pin_regions[region];
+  for(size_t i = 0; i < pin.slots.size(); ++i) {
+    move_mem_reg(pin.slots[i], RBP, PinRegister((int)i));
+  }
+  pin.loop_offset = code_index;
+  active_pin_region = region;
+}
+
+void JitAmd64::EmitPinWriteBack(int region) {
+  const PinRegion& pin = pin_regions[region];
+  for(size_t i = 0; i < pin.slots.size(); ++i) {
+    move_reg_mem(PinRegister((int)i), pin.slots[i], RBP);
+  }
+}
+
+// one stub per jump that leaves a pinned loop: store the locals, then jump
+// to the real target. Emitted after the body; reached only by those jumps.
+void JitAmd64::EmitPinExitStubs() {
+  pin_exit_stub_offsets.clear();
+  if(pin_regions.empty()) {
+    return;
+  }
+  for(const auto& entry : jump_table) {
+    const long disp_offset = entry.first;
+    StackInstr* jump = entry.second;
+    auto src_index = instr_index_of.find(jump);
+    if(src_index == instr_index_of.end()) {
+      continue;
+    }
+    const int region = PinRegionContaining(src_index->second);
+    if(region < 0) {
+      continue;
+    }
+    const PinRegion& pin = pin_regions[region];
+    const long target = jump->GetOperand();
+    if(target >= pin.header && target <= pin.end) {
+      continue;
+    }
+    pin_exit_stub_offsets[disp_offset] = code_index;
+    EmitPinWriteBack(region);
+    AddMachineCode(0xe9);
+    const long pos = code_index;
+    AddImm(0);
+    const long dest_offset = method->GetInstruction(target)->GetOffset();
+    const int32_t rel = (int32_t)(dest_offset - (pos + 4));
+    memcpy(&code[(size_t)pos], &rel, sizeof(rel));
+  }
+}
+
 void JitAmd64::EmitJitSafePoint() {
   // Fast path: cmp byte [r12], 0 ; je skip
   // R12 caches &stw_active (loaded once in the prologue), so the common no-GC
@@ -1362,8 +1628,10 @@ void JitAmd64::EmitJitSafePoint() {
   call_reg(R10);
   add_imm_reg(32, RSP);
 #else
-  move_imm_reg((size_t)MemoryManager::SafePoint, R15);
-  call_reg(R15);
+  // R11: the working stack is empty at a label, so no pool register is live;
+  // R15 holds a pinned loop local (F3)
+  move_imm_reg((size_t)MemoryManager::SafePoint, R11);
+  call_reg(R11);
 #endif
   // Backpatch the je to land here, past the slow-path call.
   long skip_index = code_index;
@@ -1836,6 +2104,33 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
   // instance/method memory
   if(is_local) {
     dest = RBP;
+    // F3: a pinned loop local's register is the local; nothing reaches its
+    // frame slot until the loop is left (exit stubs and the fall-through
+    // write-back). A deferred MEM_INT here never names a pinned slot: loads of
+    // pinned slots always produce REG_INT.
+    int pin_reg;
+    if(!is_func_var && PinnedSlot(instr->GetOperand3(), pin_reg)) {
+      RegInstr* value = working_stack.front();
+      working_stack.pop_front();
+      const Register pin = PinRegister(pin_reg);
+      switch(value->GetType()) {
+      case IMM_INT:
+        move_imm_reg(value->GetOperand(), pin);
+        break;
+      case MEM_INT:
+        move_mem_reg((long)value->GetOperand(), RBP, pin);
+        break;
+      case REG_INT:
+        move_reg_reg(value->GetRegister()->GetRegister(), pin);
+        ReleaseRegister(value->GetRegister());
+        break;
+      default:
+        compile_success = false;
+        break;
+      }
+      delete value;
+      return;
+    }
     // invalidate cache for this offset (value is being overwritten)
     if(!is_func_var) {
       auto reg_it = local_reg_cache.find(instr->GetOperand3());
@@ -2020,6 +2315,28 @@ void JitAmd64::ProcessCopy(StackInstr* instr) {
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
     dest = RBP;
+    // F3: copy into a pinned loop local's register; the value stays on the
+    // working stack as it is
+    int pin_reg;
+    if(PinnedSlot(instr->GetOperand3(), pin_reg)) {
+      RegInstr* value = working_stack.front();
+      const Register pin = PinRegister(pin_reg);
+      switch(value->GetType()) {
+      case IMM_INT:
+        move_imm_reg(value->GetOperand(), pin);
+        break;
+      case MEM_INT:
+        move_mem_reg((long)value->GetOperand(), RBP, pin);
+        break;
+      case REG_INT:
+        move_reg_reg(value->GetRegister()->GetRegister(), pin);
+        break;
+      default:
+        compile_success = false;
+        break;
+      }
+      return;
+    }
     // invalidate cache for this offset (value is being modified)
     auto reg_it = local_reg_cache.find(instr->GetOperand3());
     if(reg_it != local_reg_cache.end()) {
@@ -5137,8 +5454,8 @@ void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
 void JitAmd64::sar_imm_reg(int64_t value, Register dest) {
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
-  unsigned char code = 0xf8;
-  RegisterEncode3(code, 7, dest);
+  unsigned char code = 0xf8;                  // /7 (SAR) in the reg field
+  RegisterEncode3(code, 5, dest);             // dest in the rm field
   AddMachineCode(code);
   AddMachineCode((unsigned char)value);
 #ifdef _DEBUG_JIT
@@ -6631,6 +6948,11 @@ bool JitAmd64::Compile(StackMethod* cm)
     // Pre-scan: reject methods with unsupported instructions, detect loops
     detected_loops.clear();
     safepoint_lbl_indices.clear();
+    pin_regions.clear();
+    instr_index_of.clear();
+    pin_exit_stub_offsets.clear();
+    active_pin_region = -1;
+    method_pins = false;
     is_inlining = false;
     inline_callee = nullptr;
     inline_local_offset = 0;
@@ -6737,9 +7059,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     // aux general use registers
     //        aux_regs.push(new RegisterHolder(RDI));
     //        aux_regs.push(new RegisterHolder(RSI));
-    aux_regs.push(new RegisterHolder(R15));
-    aux_regs.push(new RegisterHolder(R14));
-    aux_regs.push(new RegisterHolder(R13));
+    // R13-R15 hold pinned loop locals (F3) and are not allocatable
     // aux_regs.push(new RegisterHolder(R12));
     aux_regs.push(new RegisterHolder(R11));
     aux_regs.push(new RegisterHolder(R10));
@@ -6759,6 +7079,9 @@ bool JitAmd64::Compile(StackMethod* cm)
 
     // process offsets
     ProcessIndices();
+    // F3: pick the loop locals that live in registers -- needs the slots, and
+    // the prologue needs to know whether to save the registers
+    PlanPinRegions();
 
     // compute extra frame space for inline callees
     long extra_inline_space = 0;
@@ -6833,13 +7156,31 @@ bool JitAmd64::Compile(StackMethod* cm)
       return false;
     }
 
+    // F3: a jump that leaves a pinned loop goes through a stub that stores the
+    // pinned locals first; the stubs sit after the method body
+    EmitPinExitStubs();
     // show content
     std::unordered_map<long, StackInstr*>::iterator iter;
     for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
       StackInstr* instr = iter->second;
       const long src_offset = iter->first;
       const long dest_index = instr->GetOperand();
-      const long dest_offset = method->GetInstruction(dest_index)->GetOffset();
+      long dest_offset = method->GetInstruction(dest_index)->GetOffset();
+      // F3: an exit jump lands on its stub; a jump from inside a pinned loop to
+      // the loop's header skips the entry loads
+      auto stub = pin_exit_stub_offsets.find(src_offset);
+      if(stub != pin_exit_stub_offsets.end()) {
+        dest_offset = stub->second;
+      }
+      else if(!pin_regions.empty()) {
+        auto src_index = instr_index_of.find(instr);
+        if(src_index != instr_index_of.end()) {
+          const int region = PinRegionContaining(src_index->second);
+          if(region >= 0 && dest_index == pin_regions[region].header) {
+            dest_offset = pin_regions[region].loop_offset;
+          }
+        }
+      }
       const long offset = dest_offset - src_offset - 4; // 64-bit jump offset
       memcpy(&code[(size_t)src_offset], &offset, 4);
 #ifdef _DEBUG_JIT

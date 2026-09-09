@@ -85,6 +85,15 @@ The reload of `INSTANCE_MEM` after the callback is essential: a callback can tri
 ### Implementation
 C++ using the STL. Back-end sources: `amd64/jit_amd_lp64.{h,cpp}`, `arm64/jit_arm_a64.{h,cpp}`; shared driver and tunables in `jit_common.{h,cpp}`. Canonical benchmark numbers live in [`docs/performance.md`](../../../../docs/performance.md).
 
+## Loop locals in registers (AMD64)
+
+The hottest `Int`/`Char` locals of each loop (up to three) live in `R13`-`R15` for the loop's
+extent: loaded at the loop header (the back-edge target), read and written as registers inside,
+stored back on every exit. Object slots are never pinned. `docs/JIT_LOOP_LOCALS_DESIGN.md` has the
+design; `OBJECK_JIT_REPORT=1` lists each pinned loop, `OBJECK_JIT_PIN_MAX=<n>` caps the count
+(`0` turns pinning off) and `OBJECK_JIT_PIN_SKIP=<substring>` exempts matching methods -- the way
+to tell a pinning problem from anything else.
+
 ## Not compiled, by design
 
 - A method containing a try region (`TRY_START`/`TRY_END` — what `?->` desugars to) runs in the interpreter on both backends: recovery needs the interpreter's handler stack, and native code has no way to resume at a handler. `OBJECK_JIT_REPORT=1` names such methods.
