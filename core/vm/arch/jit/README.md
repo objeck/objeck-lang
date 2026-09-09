@@ -21,7 +21,7 @@ There are two independent back-ends sharing the common driver in `jit_common.{h,
 | Method inlining | **no** — `ProcessInlineMethod` exists but has no caller (`is_inlining` is never true); `CanInlineMethod` still runs and every compiled frame reserves stack for inlining that never happens | no (all `MTHD_CALL` go through the callback) |
 | Division strength reduction | yes | no |
 | Loop detection (backward-jump scan) | yes | yes (scans backward jumps in the pre-scan; keeps no `detected_loops` list) |
-| `JMP_TABLE` native codegen | **no** | **no** — `JMP_TABLE` is in neither whitelist, so a method containing a `select` is not compiled at all |
+| `JMP_TABLE` native codegen | **yes** | **yes** — a dense `select` is a bounds check and an indirect jump through an inline table of 32-bit offsets (2026-09-09, F8) |
 
 Both back-ends share the safety pre-scans: **frame-dependent-trap rejection** and **operand-kind compile guards** (below).
 
@@ -52,7 +52,7 @@ flowchart LR
 - **Local variable register cache** — values stored to a local are kept live in their register (`local_reg_cache` / `local_xreg_cache`); a later load of the same slot reuses the register instead of reloading from the stack. The cache is flushed at control flow and before any callback (`FlushLocalCache()`), since the callee may mutate memory.
 - **Direct JIT→JIT calling** — when a JIT'ed method calls another method that already has native code, it executes it directly via `JitRuntime::Execute()` instead of trampolining through the interpreter. The callee's `StackFrame` is still registered on the call stack so the GC can see it. Negative return status surfaces a diagnosable error (`-1` nil deref, `-2/-3` bounds, `-4` div-by-zero) instead of a silent crash.
 - **Method inlining (AMD64) — not active.** `ProcessInlineMethod()` is complete but never called (see the note at its `MTHD_CALL` site: constructor `INSTANCE_MEM` offsets need investigation). `CanInlineMethod()` / `ComputeInlineLocalSpace()` still run at compile time only to size `extra_inline_space`, so every compiled frame pays for a feature that is off. Either finish it or delete it; this README used to describe it as working.
-- **`JMP_TABLE` is not JIT-compiled.** Neither backend whitelists it, so any method containing a `select` runs in the interpreter. This README previously claimed native jump-table codegen on both; it does not exist.
+- **`JMP_TABLE` (a dense `select`) is compiled on both backends** since 2026-09-09: `sub`/`cmp`/`jae` (`b.hs`) to the default arm, then `lea`+`movsxd`+`jmp` (`adr`+`ldrsw`+`br`) through a table of 32-bit offsets placed inline after the jump. Until then neither backend whitelisted it and any method holding a `select` ran in the interpreter whole. Design: `docs/JIT_SELECT_TABLES_DESIGN.md`.
 
 ### Safety pre-scans (both architectures)
 - **Frame-dependent-trap rejection** (`HasFrameDependentTrap()` in `jit_common.h`) — the callback passes `nullptr` for the interpreter frame and keeps locals in native stack slots, so any trap that reads/writes `frame->mem` (e.g. `SERL_*`, `SYS_TIME`, `GMT_TIME`, `FILE_*_TIME`, `LOAD_CLS_BY_INST`) would dereference null. Methods containing such traps are rejected from compilation and stay interpreted.
