@@ -75,6 +75,18 @@ void JitAmd64::Prolog() {
     // SafePoint call (one push would otherwise leave it misaligned).
     0x49, 0x54,                  // push r12
     0x48, 0x83, 0xec, 0x08,      // sub  rsp, 8   (alignment filler)
+    // XMM6-XMM15 are callee-saved in the Windows x64 ABI and the allocator
+    // hands out XMM10-XMM15. This code is entered by a plain C++ call
+    // (jit_fun), whose MSVC-compiled caller may keep values in those
+    // registers across the call; nothing saved them. 96 bytes keeps RSP
+    // 16-byte aligned. Linux/macOS: every XMM is caller-saved, nothing to do.
+    0x48, 0x83, 0xec, 0x60,      // sub  rsp, 96
+    0xf3, 0x44, 0x0f, 0x7f, 0x54, 0x24, 0x00,   // movdqu [rsp+0],  xmm10
+    0xf3, 0x44, 0x0f, 0x7f, 0x5c, 0x24, 0x10,   // movdqu [rsp+16], xmm11
+    0xf3, 0x44, 0x0f, 0x7f, 0x64, 0x24, 0x20,   // movdqu [rsp+32], xmm12
+    0xf3, 0x44, 0x0f, 0x7f, 0x6c, 0x24, 0x30,   // movdqu [rsp+48], xmm13
+    0xf3, 0x44, 0x0f, 0x7f, 0x74, 0x24, 0x40,   // movdqu [rsp+64], xmm14
+    0xf3, 0x44, 0x0f, 0x7f, 0x7c, 0x24, 0x50,   // movdqu [rsp+80], xmm15
 #else
     0x49, 0x50,                  // push r8
     0x49, 0x51,                  // push r9
@@ -164,6 +176,13 @@ void JitAmd64::Epilog()
   unsigned char teardown_code[] = {
     // restore registers
 #ifdef _WIN64
+    0xf3, 0x44, 0x0f, 0x6f, 0x54, 0x24, 0x00,   // movdqu xmm10, [rsp+0]
+    0xf3, 0x44, 0x0f, 0x6f, 0x5c, 0x24, 0x10,   // movdqu xmm11, [rsp+16]
+    0xf3, 0x44, 0x0f, 0x6f, 0x64, 0x24, 0x20,   // movdqu xmm12, [rsp+32]
+    0xf3, 0x44, 0x0f, 0x6f, 0x6c, 0x24, 0x30,   // movdqu xmm13, [rsp+48]
+    0xf3, 0x44, 0x0f, 0x6f, 0x74, 0x24, 0x40,   // movdqu xmm14, [rsp+64]
+    0xf3, 0x44, 0x0f, 0x6f, 0x7c, 0x24, 0x50,   // movdqu xmm15, [rsp+80]
+    0x48, 0x83, 0xc4, 0x60,  // add  rsp, 96  (XMM save area)
     0x48, 0x83, 0xc4, 0x08,  // add  rsp, 8   (undo alignment filler)
     0x49, 0x5c,       // pop r12
 #else
@@ -988,8 +1007,38 @@ void JitAmd64::ProcessInstructions() {
 #ifdef _DEBUG_JIT
       std::wcout << L"LOAD_ARY_SIZE: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-      ProcessStackCallback(LOAD_ARY_SIZE, instr, instr_index, 1);
-      ProcessReturnParameters(INT_TYPE);
+      // Inline. The size is one word in the array header (index 2, the first
+      // dimension: what StackInterpreter::LoadArySize pushes). This used to go
+      // through ProcessStackCallback -- push the array onto the VM operand
+      // stack, call C++, read the result back: ~35 instructions and a call per
+      // evaluation of `i < a->Size()`, which made an array loop ten times
+      // slower than the same loop with the size hoisted.
+      RegInstr* left = working_stack.front();
+      working_stack.pop_front();
+      RegisterHolder* holder = nullptr;
+      switch(left->GetType()) {
+      case REG_INT:
+        holder = left->GetRegister();
+        break;
+
+      case MEM_INT:
+        holder = GetRegister();
+        move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
+        break;
+
+      default:
+        // an immediate is never an array reference
+        compile_success = false;
+        break;
+      }
+      delete left;
+      left = nullptr;
+      if(!holder) {
+        break;
+      }
+      CheckNilDereference(holder->GetRegister());
+      move_mem_reg(2 * sizeof(size_t), holder->GetRegister(), holder->GetRegister());
+      working_stack.push_front(new RegInstr(holder));
     }
       break;
       
@@ -3613,7 +3662,7 @@ void JitAmd64::math_imm_reg(int64_t imm, Register reg, InstructionType type)
     break;
     
   case SHR_INT:
-    shr_imm_reg(imm, reg);
+    sar_imm_reg(imm, reg);
     break;
 
   case BIT_AND_INT:
@@ -3652,7 +3701,7 @@ void JitAmd64::math_reg_reg(Register src, Register dest, InstructionType type) {
     break;
     
   case SHR_INT:
-    shr_reg_reg(src, dest);
+    sar_reg_reg(src, dest);
     break;
   case AND_INT:
     and_reg_reg(src, dest);
@@ -3718,7 +3767,7 @@ void JitAmd64::math_mem_reg(long offset, Register reg, InstructionType type) {
     break;
 
   case SHR_INT:
-    shr_mem_reg(offset, RBP, reg);
+    sar_mem_reg(offset, RBP, reg);
     break;
     
   case AND_INT:
@@ -4626,7 +4675,7 @@ void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
 
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
-  div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
+  div_reg_reg(imm_holder->GetRegister(), reg, is_mod, imm != 0);
   ReleaseRegister(imm_holder);
 }
 
@@ -4692,22 +4741,26 @@ void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod
   }
 }
 
-void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod) {
-  CheckDivideByZero(src);
-
-  if(is_mod) {
-    if(dest != RDX) {
-      move_reg_mem(RDX, TMP_REG_1, RBP);
-    }
-    move_reg_mem(RAX, TMP_REG_0, RBP);
+void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_nonzero) {
+  // A divisor the compiler already knows is non-zero (an immediate) needs no
+  // runtime check; every constant `/` and `%` used to pay a test+branch.
+  if(!src_nonzero) {
+    CheckDivideByZero(src);
   }
-  else {
-    if(dest != RAX) {
-      move_reg_mem(RAX, TMP_REG_0, RBP);
-    }
+
+  // idiv clobbers RAX and RDX. They were saved to the spill slots and restored
+  // unconditionally -- four memory operations per division whether or not
+  // either held anything. Save a register only if it is allocated (a value on
+  // the working stack, a cached local) or if it IS the divisor, which the
+  // memory-operand form below reads back from its slot.
+  const bool save_rax = (src == RAX) || (dest != RAX && !IsRegisterFree(RAX));
+  const bool save_rdx = (src == RDX) || (dest != RDX && !IsRegisterFree(RDX));
+  if(save_rdx) {
     move_reg_mem(RDX, TMP_REG_1, RBP);
   }
-  
+  if(save_rax) {
+    move_reg_mem(RAX, TMP_REG_0, RBP);
+  }
   // ============
   move_reg_reg(dest, RAX);
   AddMachineCode(0x48); // cdq
@@ -4758,26 +4811,21 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod) {
 #endif
   }
   // ============
-  
   if(is_mod) {
     if(dest != RDX) {
       move_reg_reg(RDX, dest);
-      move_mem_reg(TMP_REG_1, RBP, RDX);
-    }
-
-    if(dest != RAX) {
-      move_mem_reg(TMP_REG_0, RBP, RAX);
     }
   }
   else {
     if(dest != RAX) {
       move_reg_reg(RAX, dest);
-      move_mem_reg(TMP_REG_0, RBP, RAX);
     }
-     
-    if(dest != RDX) {
-      move_mem_reg(TMP_REG_1, RBP, RDX);
-    }
+  }
+  if(save_rax && dest != RAX) {
+    move_mem_reg(TMP_REG_0, RBP, RAX);
+  }
+  if(save_rdx && dest != RDX) {
+    move_mem_reg(TMP_REG_1, RBP, RDX);
   }
 }
 
@@ -4974,6 +5022,58 @@ void JitAmd64::shr_mem_reg(long offset, Register src, Register dest)
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
   shr_reg_reg(mem_holder->GetRegister(), dest);
+  ReleaseRegister(mem_holder);
+}
+
+// Arithmetic right shift -- what Objeck's `>>` means: the interpreter shifts a
+// signed INT64 and the ARM64 backend emits asr. This backend emitted the LOGICAL
+// shr for SHR_INT, so every negative operand of `>>` in JIT'd x64 code came out
+// as a huge positive number. The shr_* encoders stay: the power-of-two division
+// trick in div_imm_reg needs a logical shift of the sign mask.
+void JitAmd64::sar_reg_reg(Register src, Register dest)
+{
+  Register old_dest;
+  RegisterHolder* reg_holder = nullptr;
+  if(dest == RCX) {
+    reg_holder = GetRegister();
+    old_dest = dest;
+    dest = reg_holder->GetRegister();
+    move_reg_reg(old_dest, dest);
+  }
+  
+  if(src != RCX) {
+    move_reg_mem(RCX, TMP_REG_0, RBP);
+    move_reg_reg(src, RCX);
+  }
+    
+  // encode
+  AddMachineCode(B(dest));
+  AddMachineCode(0xd3);
+  unsigned char code = 0xc0;
+  // write value
+  RegisterEncode3(code, 2, RDI);   // /7: SAR, not /5 SHR
+  RegisterEncode3(code, 5, dest);
+  AddMachineCode(code);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [sarq %" << GetRegisterName(RCX) 
+        << L", %" << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+  
+  if(src != RCX) {
+    move_mem_reg(TMP_REG_0, RBP, RCX);
+  }
+  
+  if(reg_holder) {
+    move_reg_reg(dest, old_dest);
+    ReleaseRegister(reg_holder);
+  }
+}
+
+void JitAmd64::sar_mem_reg(long offset, Register src, Register dest) 
+{
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  sar_reg_reg(mem_holder->GetRegister(), dest);
   ReleaseRegister(mem_holder);
 }
 
@@ -6344,6 +6444,19 @@ static bool CanJitInstruction(InstructionType type) {
   }
 }
 
+
+// OBJECK_JIT_REPORT=1 names every method the JIT hands back to the interpreter,
+// and why. One unsupported opcode returns the WHOLE method to the interpreter
+// and nothing said so; the opcode number maps to `obc -asm`'s listing.
+static bool JitReportEnabled() {
+#ifdef _WIN32
+  static const bool enabled = []() { size_t len = 0; getenv_s(&len, nullptr, 0, "OBJECK_JIT_REPORT"); return len > 0; }();
+#else
+  static const bool enabled = getenv("OBJECK_JIT_REPORT") != nullptr;
+#endif
+  return enabled;
+}
+
 bool JitAmd64::Compile(StackMethod* cm)
 {
   compile_success = true;
@@ -6365,6 +6478,10 @@ bool JitAmd64::Compile(StackMethod* cm)
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       StackInstr* scan_instr = method->GetInstruction(i);
       if(!CanJitInstruction(scan_instr->GetType())) {
+        if(JitReportEnabled()) {
+          std::wcerr << L"[jit] " << method->GetName() << L": not compiled -- unsupported opcode "
+                     << scan_instr->GetType() << L" at instruction " << i << std::endl;
+        }
         return false;
       }
       // DYN_MTHD_CALL return marshalling (ProcessReturnParameters) is driven by
@@ -6516,6 +6633,9 @@ bool JitAmd64::Compile(StackMethod* cm)
     // translate program
     ProcessInstructions();
     if(!compile_success) {
+      if(JitReportEnabled()) {
+        std::wcerr << L"[jit] " << method->GetName() << L": compile failed at instruction " << instr_index << std::endl;
+      }
 #ifdef _WIN64
       VirtualFree(float_consts, 0, MEM_RELEASE);
 #else

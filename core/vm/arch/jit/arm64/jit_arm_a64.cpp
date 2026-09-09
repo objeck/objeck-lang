@@ -938,11 +938,37 @@ void JitArm64::ProcessInstructions() {
       break;
 
     case LOAD_ARY_SIZE: {
-#ifdef _DEBUG_JIT_JIT
-      std::wcout << L"LOAD_ARY_SIZE: regs=" << aval_regs.size() << endl;
+#ifdef _DEBUG_JIT
+      std::wcout << L"LOAD_ARY_SIZE: regs=" << aval_regs.size() << std::endl;
 #endif
-      ProcessStackCallback(LOAD_ARY_SIZE, instr, instr_index, 1);
-      ProcessReturnParameters(INT_TYPE);
+      // Inline: the size is header word 2 (the first dimension), which is what
+      // StackInterpreter::LoadArySize pushes. Mirror of the AMD64 change; this
+      // was an interpreter callback per evaluation of `i < a->Size()`.
+      RegInstr* left = working_stack.front();
+      working_stack.pop_front();
+      RegisterHolder* holder = nullptr;
+      switch(left->GetType()) {
+      case REG_INT:
+        holder = left->GetRegister();
+        break;
+
+      case MEM_INT:
+        holder = GetRegister();
+        move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
+        break;
+
+      default:
+        compile_success = false;
+        break;
+      }
+      delete left;
+      left = nullptr;
+      if(!holder) {
+        break;
+      }
+      CheckNilDereference(holder->GetRegister());
+      move_mem_reg(2 * sizeof(size_t), holder->GetRegister(), holder->GetRegister());
+      working_stack.push_front(new RegInstr(holder));
     }
       break;
       
@@ -2948,7 +2974,7 @@ void JitArm64::mul_reg_reg(Register src, Register dest) {
 void JitArm64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
   RegisterHolder* src_holder = GetRegister();
   move_imm_reg(imm, src_holder->GetRegister());
-  div_reg_reg(src_holder->GetRegister(), reg, is_mod);
+  div_reg_reg(src_holder->GetRegister(), reg, is_mod, imm != 0);
   ReleaseRegister(src_holder);
 }
 
@@ -2959,12 +2985,15 @@ void JitArm64::div_mem_reg(long offset, Register src, Register dest, bool is_mod
   ReleaseRegister(src_holder);
 }
 
-void JitArm64::div_reg_reg(Register src, Register dest, bool is_mod) {
+void JitArm64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_nonzero) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   
-  CheckIntDivideByZero(src);
+  // an immediate divisor is known non-zero at compile time; no runtime check
+  if(!src_nonzero) {
+    CheckIntDivideByZero(src);
+  }
   
   uint32_t op_code = 0x9AC00C00;
   
@@ -5032,6 +5061,19 @@ static bool CanJitInstruction(InstructionType type) {
 //
 // translate bytecode to machine code
 //
+
+// OBJECK_JIT_REPORT=1 names every method the JIT hands back to the interpreter,
+// and why. One unsupported opcode returns the WHOLE method to the interpreter
+// and nothing said so; the opcode number maps to `obc -asm`'s listing.
+static bool JitReportEnabled() {
+#ifdef _WIN32
+  static const bool enabled = []() { size_t len = 0; getenv_s(&len, nullptr, 0, "OBJECK_JIT_REPORT"); return len > 0; }();
+#else
+  static const bool enabled = getenv("OBJECK_JIT_REPORT") != nullptr;
+#endif
+  return enabled;
+}
+
 bool JitArm64::Compile(StackMethod* cm)
 {
   compile_success = true;
@@ -5056,6 +5098,10 @@ bool JitArm64::Compile(StackMethod* cm)
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       StackInstr* scan_instr = method->GetInstruction(i);
       if(!CanJitInstruction(scan_instr->GetType())) {
+        if(JitReportEnabled()) {
+          std::wcerr << L"[jit] " << method->GetName() << L": not compiled -- unsupported opcode "
+                     << scan_instr->GetType() << L" at instruction " << i << std::endl;
+        }
         return false;
       }
       // DYN_MTHD_CALL return marshalling is driven by operand2 (the func-ref's
@@ -5166,6 +5212,9 @@ bool JitArm64::Compile(StackMethod* cm)
     ProcessInstructions();
     
     if(!compile_success) {
+      if(JitReportEnabled()) {
+        std::wcerr << L"[jit] " << method->GetName() << L": compile failed at instruction " << instr_index << std::endl;
+      }
       free(code);
       code = nullptr;
 
