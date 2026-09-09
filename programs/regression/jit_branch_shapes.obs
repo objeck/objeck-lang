@@ -53,6 +53,11 @@ class Scanner {
       # not on a field, or with a class variable
       if(<>@done & @count > 0 | @pos = 0) { acc += 7; };
       if(@pos % 50 = 0) { frag := @name->SubString(0, 4); } else { frag := Nil; };
+      # enough garbage that the collector runs while this frame is live: its
+      # walk of the frame must find the object slots where the JIT put them
+      junk := Int->New[16384];
+      junk[0] := @pos;
+      acc += junk[0] % 2;
       @pos += 1;
       if(@pos >= @limit) { @done := true; };
     };
@@ -146,7 +151,7 @@ class BranchShapes {
     s := Scanner->New(text, 1800);
     d := s->Scan();
     "  int={$a} float={$b} while={$c} calls={$@calls} scan={$d}"->PrintLine();
-    if(a = 232007 & b = 50696 & c = 6828999 & @calls = 13369 & d = 40908) {
+    if(a = 232007 & b = 50696 & c = 6828999 & @calls = 13369 & d = 41788) {
       "PASS: JIT branch shapes"->PrintLine();
     }
     else {
