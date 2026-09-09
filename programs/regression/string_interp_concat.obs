@@ -1,0 +1,76 @@
+#~
+# An interpolated string as the LEFT operand of a concatenation.
+#
+# "{$a}" + "{$b}" printed AAB. The compiler's concatenation builder analyzed
+# its leftmost operand once to learn whether the '+' was a string concatenation
+# at all, then pushed it into the operand list and analyzed every element of
+# that list -- the leftmost a second time. Analysis of a string literal appends
+# its segments on every visit, and the interpolated-entry segments had no guard
+# against that, so the left interpolation's value was appended twice. Right
+# operands were visited once, which is why only the left operand was wrong.
+# Issue #752. The leftmost operand is now analyzed once, and a literal's
+# analysis is idempotent.
+#
+# Like #750, this was identical in the interpreter and under the JIT, so
+# vm_jit_equiv.obs could not see it. These are expected values.
+~#
+
+class StringInterpConcat {
+	@@failures : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@@failures := 0;
+
+		a := "A";
+		b := "B";
+		n := 7;
+
+		# the reported shapes
+		Check("interp + interp", "{$a}" + "{$b}", "AB");
+		Check("interp + Id(var)", "{$a}" + Id(b), "AB");
+		Check("interp + Id(interp)", "{$a}" + Id("{$b}"), "AB");
+		Check("multi-segment + Id(multi-segment)", "x{$a}y" + Id("p{$b}q"), "xAypBq");
+
+		# the shapes that were already right must stay right
+		Check("var + Id(interp)", a + Id("{$b}"), "AB");
+		Check("Id(interp) alone", Id("{$b}"), "B");
+		Check("interp alone", "{$a}", "A");
+
+		# more than one interpolation on the left, and a non-string entry
+		Check("two entries on the left", "{$a}{$b}" + "!", "AB!");
+		Check("int entry on the left", "n={$n}" + "!", "n=7!");
+
+		# three operands, interpolation first
+		Check("interp + var + interp", "{$a}" + b + "{$a}", "ABA");
+
+		# the left interpolation inside a loop must not accumulate
+		total := "";
+		for(i := 0; i < 3; i += 1;) {
+			total += "{$a}" + b;
+		};
+		Check("loop of interp + var", total, "ABABAB");
+
+		if(@@failures = 0) {
+			"PASS: interpolated string on the left of a concatenation"->PrintLine();
+		}
+		else {
+			f := @@failures;
+			msg := "FAIL: interpolated string on the left of a concatenation - {$f} wrong";
+			msg->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(name : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			return;
+		};
+		@@failures += 1;
+		line := "  " + name + ": got [" + got + "] want [" + want + "]";
+		line->PrintLine();
+	}
+
+	function : Id(s : String) ~ String {
+		return s;
+	}
+}

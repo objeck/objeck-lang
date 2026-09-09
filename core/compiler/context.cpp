@@ -2093,6 +2093,16 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   Debug(L"character std::string literal", char_str->GetLineNumber(), depth);
 #endif
 
+  // Analysis of a literal is not idempotent: every visit appends its segments,
+  // and an interpolated entry appended twice is emitted twice. The segments
+  // are a pure function of the literal's text, so a second visit has nothing
+  // to add; the ids and the concatenation temporary below were assigned on the
+  // first. Nothing should visit twice (see AnalyzeStringConcat), but if
+  // something does, the literal must still mean what it says (#752).
+  if(!char_str->GetSegments().empty()) {
+    return;
+  }
+
   int var_start = -1;
   int str_start = 0;
   const std::wstring &str = char_str->GetString();
@@ -8710,7 +8720,14 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
 
         for(std::list<Expression*>::iterator iter = concat_exprs.begin(); iter != concat_exprs.end(); ++iter) {
           Expression* concat_expr = *iter;
-          AnalyzeExpression(concat_expr, depth + 1);
+          // The leftmost operand was analyzed above, to learn whether this '+'
+          // is a concatenation at all. Analyzing it again is not free: analysis
+          // has side effects, and AnalyzeCharacterString appends interpolated
+          // segments on every visit, so "{$a}" + b emitted the {$a} append twice
+          // and printed AAB (#752). The right operands are visited once, here.
+          if(concat_expr != calc_left_expr) {
+            AnalyzeExpression(concat_expr, depth + 1);
+          }
 
           if(concat_expr->GetEvalType()) {
             if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
