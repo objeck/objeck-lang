@@ -69,7 +69,31 @@ Debugging a JIT crash on the Mac: `lldb -- core/release/deploy/bin/obr prog.obe`
 a crash in the collector's root scan wants `OBJECK_GC_TRACE=1` first; CI's macOS crash reports
 are in the failure artifact's `crash-reports/*.ips`, local ones in `~/Library/Logs/DiagnosticReports`.
 
-## 3. First thing on the Mac: the ARM64 baseline
+## 3. First things on the Mac
+
+### 3a. Issue #722 is fixed -- but 27 tests still opt out of the JIT
+
+`http_persistence_test.obs` and `https_persistence_test.obs` used to carry `# JIT_DISABLE`
+because on ARM64 the JIT miscompiled `String->Equals` inside a virtual request-handler callback
+(`ProcessGet` on an `HttpRequestHandler` subclass): the compare of the returned `Bool` went
+wrong only under the JIT, only on ARM64 -- the code path every Objeck web server runs, compiled
+by default. Batch 4 fixed it (one of the safepoint poll, the slot-0 contract, or the
+float-register leak). Verified by probe PR #741, now on master: both tests route by
+`String->Equals` again with their markers removed, the reduction fixture `jit_virtual_equals.obs`
+was added, and all three ARM64 legs are green. Issue #722 is closed.
+
+What that leaves is the pattern, not the bug: **27 regression tests still carry `# JIT_DISABLE`**
+(`grep -l '# JIT_DISABLE' programs/regression/*.obs`), each opting a test out of JIT coverage.
+Two of them turned out to mask a real, since-fixed miscompile. The rest have never been audited.
+The Mac can work through them the way #741 did -- drop the marker, run under
+`OBJECK_JIT_THRESHOLD=1`, and either the test passes (the marker was stale, remove it) or it
+exposes a live miscompile to chase under `lldb`. Each marker should end up with a stated reason
+or a compiled twin; a JIT'd path with no coverage is where the next #722 hides. `jit_arm_a64.cpp`
+is the place to look when one fails: the AMD64 `IMUL` operand-order bug of #721 and the stored
+float compare of #660 were the same shape -- a caller-saved register that one backend spills
+across a call and the other does not.
+
+### 3b. The ARM64 baseline
 
 Section 5 of the assessment still says the ARM64 kernel timings are unmeasured. Before touching
 the backend, time `programs/tests/jit_probe.obs` (the six kernels of section 1, plus the follow-ups)
