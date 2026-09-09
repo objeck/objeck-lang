@@ -356,6 +356,11 @@ namespace Runtime {
     vector<RegisterHolder*> aval_fregs;
     list<RegisterHolder*> used_fregs;
     unordered_map<long, StackInstr*> jump_table;
+    // F8: a select's jump table -- each 32-bit entry is patched with the
+    // target's byte offset relative to the table's own start (ProcessJumpTable)
+    struct TableEntry { long entry_offset; long table_offset; long target_index; };
+    std::vector<TableEntry> table_entries;
+    std::vector<StackInstr*> synthetic_jumps;   // the tables' default-arm jumps, owned here
     multimap<size_t, size_t> const_int_pool;
     vector<long> deref_offsets;          // -1
     vector<long> bounds_less_offsets;    // -2
@@ -424,6 +429,7 @@ namespace Runtime {
     void ProcessLoadFloatElement(StackInstr* instr);
     void ProcessStoreFloatElement(StackInstr* instr);
     void ProcessJump(StackInstr* instr);
+    void ProcessJumpTable(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
     
@@ -765,6 +771,9 @@ namespace Runtime {
 
     // CBZ/CBNZ: Compare and Branch if Zero/Non-Zero (optimized for zero comparisons)
     void cbz_reg(Register reg);   // Branch if reg == 0
+    void adr_reg(long byte_offset, Register dest);                          // adr Xd, pc+offset
+    void ldrsw_base_index_reg(Register base, Register index, Register dest); // ldrsw Xt, [Xn, Xm, lsl #2]
+    void br_reg(Register reg);                                               // br Xn
     void cbnz_reg(Register reg);  // Branch if reg != 0
 
     void cmp_freg_freg(Register src, Register dest);
@@ -826,6 +835,11 @@ namespace Runtime {
     }
 
     ~JitArm64() {
+      for(StackInstr* jump : synthetic_jumps) {
+        delete jump;
+      }
+      synthetic_jumps.clear();
+
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();

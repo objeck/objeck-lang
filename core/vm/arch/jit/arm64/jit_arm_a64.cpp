@@ -1019,6 +1019,14 @@ void JitArm64::ProcessInstructions() {
     case JMP:
       ProcessJump(instr);
       break;
+
+    case JMP_TABLE:
+      ProcessJumpTable(instr);
+      break;
+
+    case JMP_TABLE_SLOT:
+      // read by the table that precedes it; emits nothing of its own
+      break;
       
     case LBL:
 #ifdef _DEBUG_JIT_JIT
@@ -1153,6 +1161,107 @@ void JitArm64::ProcessLoad(StackInstr* instr) {
     delete left;
     left = nullptr;
   }
+}
+
+// F8: a dense select. The value is bounds-checked against [base, base+range)
+// and dispatched through a table of 32-bit byte offsets placed inline right
+// after the indirect branch, so its address is PC-relative:
+//   sub x_idx, x_idx, #base ; cmp x_idx, #range ; b.hs DEFAULT
+//   adr x_tbl, TABLE ; ldrsw x_tmp, [x_tbl, x_idx, lsl #2] ; add x_tbl, x_tbl, x_tmp ; br x_tbl
+//   TABLE: .word target0-TABLE, target1-TABLE, ...
+// The branch to the default goes through jump_table like any conditional
+// branch (with a synthetic JMP for the fixup); the entries are resolved in the
+// same pass. Every target lies after the table, as the case bodies follow the
+// slots, so the entries are non-negative.
+void JitArm64::ProcessJumpTable(StackInstr* instr) {
+  FlushLocalCache();
+  // the selector is an integer expression, never a pending fused compare
+  if(skip_jump || working_stack.empty()) {
+    compile_success = false;
+    skip_jump = false;
+    return;
+  }
+  const long base = instr->GetOperand();
+  const long range = instr->GetOperand2();
+  const long default_index = instr->GetOperand3();
+  // instr_index already points at the first slot
+  if(range <= 0 || instr_index + range > method->GetInstructionCount()) {
+    compile_success = false;
+    return;
+  }
+  for(long i = 0; i < range; ++i) {
+    if(method->GetInstruction(instr_index + i)->GetType() != JMP_TABLE_SLOT) {
+      compile_success = false;
+      return;
+    }
+  }
+
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+  RegisterHolder* idx_holder = nullptr;
+  switch(left->GetType()) {
+  case IMM_INT:
+    idx_holder = GetRegister();
+    move_imm_reg(left->GetOperand(), idx_holder->GetRegister());
+    break;
+
+  case REG_INT:
+    idx_holder = left->GetRegister();
+    break;
+
+  case MEM_INT:
+    idx_holder = GetRegister();
+    move_mem_reg((long)left->GetOperand(), SP, idx_holder->GetRegister());
+    break;
+
+  default:
+    delete left;
+    left = nullptr;
+    compile_success = false;
+    return;
+  }
+  delete left;
+  left = nullptr;
+
+  const Register idx = idx_holder->GetRegister();
+  if(base != 0) {
+    sub_imm_reg(base, idx);
+  }
+  cmp_imm_reg(range, idx);
+  // b.hs DEFAULT: unsigned, so a negative index falls out with the large ones
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [b.hs <default>]" << std::endl;
+#endif
+  AddMachineCode(0x54000002);
+  StackInstr* to_default = new StackInstr(instr->GetLineNumber(), JMP, default_index, -1L);
+  synthetic_jumps.push_back(to_default);
+  jump_table.insert(pair<long, StackInstr*>(code_index, to_default));
+
+  RegisterHolder* tbl_holder = GetRegister();
+  RegisterHolder* tmp_holder = GetRegister();
+  const Register tbl = tbl_holder->GetRegister();
+  const Register tmp = tmp_holder->GetRegister();
+  adr_reg(16, tbl);                   // the table starts four instructions ahead
+  ldrsw_base_index_reg(tbl, idx, tmp);
+  add_reg_reg(tmp, tbl);
+  br_reg(tbl);
+  ReleaseRegister(tmp_holder);
+  ReleaseRegister(tbl_holder);
+  ReleaseRegister(idx_holder);
+
+  const long table_offset = code_index;
+  for(long i = 0; i < range; ++i) {
+    StackInstr* slot = method->GetInstruction(instr_index + i);
+    TableEntry entry;
+    entry.entry_offset = code_index;
+    entry.table_offset = table_offset;
+    entry.target_index = slot->GetOperand();
+    table_entries.push_back(entry);
+    AddMachineCode(0);
+  }
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"JMP_TABLE: base=" << base << L", range=" << range << L", default=" << default_index << endl;
+#endif
 }
 
 void JitArm64::ProcessJump(StackInstr* instr) {
@@ -3408,6 +3517,40 @@ void JitArm64::cmp_mem_reg(long offset, Register src, Register dest) {
  * Encoding: 0xB4000000 | (imm19 << 5) | Rt
  * Branch offset will be patched during fixup phase
  */
+// adr Xd, <pc + byte_offset>: PC-relative address, +-1MB
+void JitArm64::adr_reg(long byte_offset, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [adr " << GetRegisterName(dest)
+             << L", pc+" << byte_offset << L"]" << std::endl;
+#endif
+  uint32_t op_code = 0x10000000;
+  op_code |= (uint32_t)(byte_offset & 0x3) << 29;               // immlo
+  op_code |= (uint32_t)((byte_offset >> 2) & 0x7FFFF) << 5;     // immhi
+  op_code |= (uint32_t)(dest & 0x1F);
+  AddMachineCode(op_code);
+}
+
+// ldrsw Xt, [Xn, Xm, lsl #2]: a sign-extended 32-bit table entry
+void JitArm64::ldrsw_base_index_reg(Register base, Register index, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [ldrsw " << GetRegisterName(dest)
+             << L", [" << GetRegisterName(base) << L", " << GetRegisterName(index) << L", lsl #2]]" << std::endl;
+#endif
+  uint32_t op_code = 0xB8A07800;                                 // size=10, opc=10, option=011 (LSL), S=1
+  op_code |= (uint32_t)(index & 0x1F) << 16;
+  op_code |= (uint32_t)(base & 0x1F) << 5;
+  op_code |= (uint32_t)(dest & 0x1F);
+  AddMachineCode(op_code);
+}
+
+// br Xn
+void JitArm64::br_reg(Register reg) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [br " << GetRegisterName(reg) << L"]" << std::endl;
+#endif
+  AddMachineCode(0xD61F0000 | ((uint32_t)(reg & 0x1F) << 5));
+}
+
 void JitArm64::cbz_reg(Register reg) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"  " << (++instr_count) << L": [cbz "
@@ -5115,6 +5258,8 @@ static bool CanJitInstruction(InstructionType type) {
   case DYN_MTHD_CALL:        // P2: function-reference / closure call JIT
   case DYN_MTHD_CALL_JIT:
   case JMP:
+  case JMP_TABLE:
+  case JMP_TABLE_SLOT:
   case LBL:
   case RTRN:
     // memory allocation
@@ -5379,6 +5524,13 @@ bool JitArm64::Compile(StackMethod* cm)
 #endif
     }
     
+    // F8: each table entry is the target's byte offset relative to its table
+    for(const TableEntry& entry : table_entries) {
+      const long dest_offset = method->GetInstruction(entry.target_index - 1)->GetOffset();
+      const int32_t rel = (int32_t)((dest_offset - entry.table_offset) * 4);
+      code[entry.entry_offset] = (uint32_t)rel;
+    }
+
     // update error return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const long index = deref_offsets[i];
