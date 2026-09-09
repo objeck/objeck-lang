@@ -5,7 +5,7 @@ use System.Time;
 class RegexBench {
     function : Main(args : String[]) ~ Nil {
         # Build ~10k char test strings. Kept modest so this stays a fast
-        # regression smoke test (runs interpreted via JIT_DISABLE on every
+        # regression smoke test (runs compiled like the rest of the suite -- its JIT opt-out was dropped on 2026-09-09 -- on every
         # commit) rather than a slow perf-tracking benchmark.
         base1 := "The quick brown fox jumps over the lazy dog";
         lit_input := "";
