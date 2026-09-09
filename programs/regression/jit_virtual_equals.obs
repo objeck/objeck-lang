@@ -1,0 +1,90 @@
+# Issue #722: on ARM64 the JIT miscompiled String->Equals inside a virtual
+# request-handler callback (the compare of the returned Bool went wrong), which
+# two gating tests hid behind `# JIT_DISABLE` and a handler rewritten to avoid
+# Equals. This is the reduction the issue asks for: a base class with a virtual
+# method that compares a String parameter with Equals, overridden in a subclass,
+# called through the base reference from a native (always compiled) loop, with
+# the receiver coming from a getter and the operand a literal -- the shape of
+# `request->GetPath()->Equals("/x")`. The counts are asserted against values
+# the interpreter computes.
+class Request {
+  @path : String;
+  New(path : String) { @path := path; }
+  method : public : GetPath() ~ String { return @path; }
+}
+
+class Handler {
+  New() {}
+
+  method : virtual : public : Route(request : Request) ~ Int;
+
+  method : public : Classify(request : Request) ~ Int {
+    # the same comparisons, not virtual, for the cross-check
+    path := request->GetPath();
+    if(path->Equals("/index")) { return 200; };
+    if(path->Equals("/404")) { return 404; };
+    if(path->Equals("/") = false & path->Size() > 3) { return 301; };
+    return 500;
+  }
+}
+
+class RouteHandler from Handler {
+  New() { Parent(); }
+
+  method : public : Route(request : Request) ~ Int {
+    path := request->GetPath();
+    if(path->Equals("/index")) {
+      return 200;
+    }
+    else if(path->Equals("/404")) {
+      return 404;
+    }
+    else if(path->Equals("/") = false & path->Size() > 3) {
+      return 301;
+    };
+    return 500;
+  }
+}
+
+class VirtualEquals {
+  function : native : Drive(handler : Handler, requests : Request[], rounds : Int) ~ Int {
+    sum := 0;
+    for(r := 0; r < rounds; r += 1;) {
+      each(i : requests) {
+        sum += handler->Route(requests[i]);
+      };
+    };
+    return sum;
+  }
+
+  function : native : Check(handler : Handler, requests : Request[], rounds : Int) ~ Int {
+    sum := 0;
+    for(r := 0; r < rounds; r += 1;) {
+      each(i : requests) {
+        sum += handler->Classify(requests[i]);
+      };
+    };
+    return sum;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    "Testing String->Equals in a virtual callback under the JIT..."->PrintLine();
+    requests := Request->New[5];
+    requests[0] := Request->New("/index");
+    requests[1] := Request->New("/404");
+    requests[2] := Request->New("/");
+    requests[3] := Request->New("/other");
+    requests[4] := Request->New("/index");
+    handler := RouteHandler->New();
+    # per round: 200 + 404 + 500 + 301 + 200 = 1605
+    expected := 1605 * 400;
+    virt := Drive(handler, requests, 400);
+    flat := Check(handler, requests, 400);
+    "  virtual={$virt} direct={$flat} expected={$expected}"->PrintLine();
+    if(virt <> expected | flat <> expected) {
+      "FAIL: String->Equals in a virtual callback"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: String->Equals in a virtual callback"->PrintLine();
+  }
+}
