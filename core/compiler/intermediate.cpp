@@ -5280,10 +5280,9 @@ void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, 
       EmitBranch(second, target_label, jump_if_true);
     }
     else {
-      const long skip_label = ++conditional_label;
-      EmitBranch(first, skip_label, !jump_if_true);
-      EmitBranch(second, target_label, jump_if_true);
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, skip_label));
+      // (experiment: the skip-label form is disabled; the value form is used)
+      EmitExpression(expression);
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, target_label, jump_if_true ? 1L : 0L));
     }
     return;
   }
