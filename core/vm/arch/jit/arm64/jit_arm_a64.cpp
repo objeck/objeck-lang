@@ -1228,9 +1228,15 @@ void JitArm64::ProcessJump(StackInstr* instr) {
     working_stack.pop_front();
     skip_jump = false;
 
-    // release register
+    // release register. A fused FLOAT compare (math_freg_freg + cond_jmp)
+    // leaves its D register on the working stack as REG_FLOAT; releasing only
+    // REG_INT leaked one FP register per fused float compare, and a method
+    // with more of them than the pool holds fell back to the interpreter.
     if(left->GetType() == REG_INT) {
       ReleaseRegister(left->GetRegister());
+    }
+    else if(left->GetType() == REG_FLOAT) {
+      ReleaseFpRegister(left->GetRegister());
     }
 
     // clean up
