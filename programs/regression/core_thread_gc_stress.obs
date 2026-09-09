@@ -16,21 +16,28 @@
 #      live solely via a PARKED thread's op-stack slot was freed, then fixup chased
 #      the dangling pointer. (Both 3 and 4 are root-registration gaps, not moving
 #      bugs; they surface as corrupted list values under multi-thread churn.)
+#   5. A compiled loop that parked at its loop-header safepoint kept using its
+#      frame's private copy of 'self' after another thread's collection had
+#      promoted (moved) that young object. The collector relocates the frame's
+#      mem[0]; the JIT's INSTANCE_MEM slot was refreshed only after callbacks,
+#      never after a safepoint park, so every field read and write in the loop
+#      went through the old nursery address until the next callback (#746).
+#      Surfaces as wrong field values and as writes that land in whatever object
+#      the recycled nursery now holds -- other threads' list nodes included.
 #
 # Many threads allocate heavily (forcing frequent cross-thread collections) while
 # main repeatedly spawns and joins them (exercising the JIT-compiled join path).
-# Premature collection of a still-live object surfaces as a corrupted linked-list
-# value (-> non-zero exit / FAIL); a handshake deadlock surfaces as a hang, which
-# the regression runner kills at its timeout and records as a hard FAIL.
+# The worker's Run loops read and write instance variables, which is what (5)
+# needs. Premature collection of a still-live object surfaces as a corrupted
+# linked-list value (-> non-zero exit / FAIL); a handshake deadlock surfaces as a
+# hang, which the regression runner kills at its timeout and records as a hard
+# FAIL.
 #
-# IMPORTANT: this test is only the guard it was written to be when it runs with the
-# JIT ENABLED — the join bug is JIT-only. It cannot yet: compiled, it reports 35-45
-# corruptions on every CI leg (issue #746, found 2026-09-09 when the runners
-# started honouring the opt-out marker only as a whole line). The opt-out below
-# is temporary; remove it in the PR that fixes #746.
+# IMPORTANT: must run with the JIT on -- (1) and (5) are JIT-only. Do not give
+# this test the JIT opt-out marker. (It carried a comment that quoted the marker,
+# and the runners matched the marker as a substring, so this test ran interpreted
+# in CI from June to September 2026 and (5) went unseen; see #745 and #746.)
 ~#
-# JIT_DISABLE
-# reason: JIT + multithreaded GC corrupts list values on every CI leg -- issue #746; interpreted until fixed
 
 use System.Concurrency;
 
