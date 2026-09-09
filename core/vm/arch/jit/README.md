@@ -79,6 +79,8 @@ sequenceDiagram
 
 The reload of `INSTANCE_MEM` after the callback is essential: a callback can trigger GC, which may relocate (promote) young-generation objects, so the cached `self` pointer must be re-read from the frame. The number of params a callback consumes from the working stack is per-opcode — getting it wrong corrupts the stack (e.g. `RAND_FLOAT` consumes 0).
 
+The loop-header safepoint poll's slow path (`EmitJitSafePoint`, both backends) performs the same reload after `SafePoint()` returns. A park there lets *another* thread's collection move `self` just as a callback does, and the first version of the poll did not refresh it: every instance-variable access for the rest of the loop went through the old nursery address ([#746](https://github.com/objeck/objeck-lang/issues/746)). The rule: any path on which compiled code can park must re-read `INSTANCE_MEM` from `frame->mem[0]` before the next instruction runs.
+
 ### Code Layout
 ![JIT Code Layout](../../../../docs/images/jit_design.svg "JIT Code Layout")
 
