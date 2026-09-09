@@ -1139,6 +1139,14 @@ void JitAmd64::ProcessInstructions() {
     case JMP:
       ProcessJump(instr);
       break;
+
+    case JMP_TABLE:
+      ProcessJumpTable(instr);
+      break;
+
+    case JMP_TABLE_SLOT:
+      // read by the table that precedes it; emits nothing of its own
+      break;
       
     case LBL:
 #ifdef _DEBUG_JIT
@@ -1467,14 +1475,30 @@ void JitAmd64::PlanPinRegions() {
     bool eligible = true;
     for(long i = 0; i < count && eligible; ++i) {
       StackInstr* instr = method->GetInstruction(i);
-      if(instr->GetType() != JMP) {
+      std::vector<long> targets;
+      if(instr->GetType() == JMP) {
+        targets.push_back(instr->GetOperand());
+      }
+      else if(instr->GetType() == JMP_TABLE) {
+        // F8: a select's table is a bundle of edges, the default plus one per
+        // slot. Only a JMP gets a write-back stub on the way out of a region,
+        // so none of a table's edges may cross the region's boundary.
+        targets.push_back(instr->GetOperand3());
+        for(long s = 1; s <= instr->GetOperand2() && i + s < count; ++s) {
+          targets.push_back(method->GetInstruction(i + s)->GetOperand());
+        }
+      }
+      else {
         continue;
       }
-      const long target = instr->GetOperand();
       const bool src_in = (i >= header && i <= end);
-      const bool dst_in = (target > header && target <= end);
-      if((!src_in && dst_in) || (src_in && target < header)) {
-        eligible = false;
+      for(const long target : targets) {
+        const bool dst_in = (target > header && target <= end);
+        if((!src_in && dst_in) || (src_in && target < header) ||
+           (src_in && !dst_in && instr->GetType() == JMP_TABLE)) {
+          eligible = false;
+          break;
+        }
       }
     }
     if(!eligible) {
@@ -1637,6 +1661,110 @@ void JitAmd64::EmitJitSafePoint() {
   long skip_index = code_index;
   long jmp_offset = skip_index - (je_pos + 4);
   memcpy(&code[(size_t)je_pos], &jmp_offset, 4);
+}
+
+// F8: a dense select. The value is bounds-checked against [base, base+range)
+// and dispatched through a table of 32-bit offsets placed inline right after
+// the indirect jump, so the table's address is RIP-relative and needs no data
+// section:
+//   sub idx, base ; cmp idx, range ; jae DEFAULT
+//   lea tbl, [rip+TABLE] ; movsxd tmp, [tbl+idx*4] ; add tbl, tmp ; jmp tbl
+//   TABLE: dd target0-TABLE, target1-TABLE, ...
+// The jump to the default is an ordinary conditional jump through jump_table
+// (with a synthetic JMP for the fixup); the entries are resolved in the same
+// pass from each target's recorded offset. Every target lies after the table
+// in code order, since the case bodies follow the slots.
+void JitAmd64::ProcessJumpTable(StackInstr* instr) {
+  FlushLocalCache();
+  // the selector is an integer expression, never a pending fused compare
+  if(skip_jump || working_stack.empty()) {
+    compile_success = false;
+    skip_jump = false;
+    return;
+  }
+  const long base = instr->GetOperand();
+  const long range = instr->GetOperand2();
+  const long default_index = instr->GetOperand3();
+  // instr_index already points at the first slot
+  if(range <= 0 || instr_index + range > method->GetInstructionCount()) {
+    compile_success = false;
+    return;
+  }
+  for(long i = 0; i < range; ++i) {
+    if(method->GetInstruction(instr_index + i)->GetType() != JMP_TABLE_SLOT) {
+      compile_success = false;
+      return;
+    }
+  }
+
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+  RegisterHolder* idx_holder = nullptr;
+  switch(left->GetType()) {
+  case IMM_INT:
+    idx_holder = GetRegister();
+    move_imm_reg(left->GetOperand(), idx_holder->GetRegister());
+    break;
+
+  case REG_INT:
+    idx_holder = left->GetRegister();
+    break;
+
+  case MEM_INT:
+    idx_holder = GetRegister();
+    move_mem_reg((long)left->GetOperand(), RBP, idx_holder->GetRegister());
+    break;
+
+  default:
+    delete left;
+    left = nullptr;
+    compile_success = false;
+    return;
+  }
+  delete left;
+  left = nullptr;
+
+  const Register idx = idx_holder->GetRegister();
+  if(base != 0) {
+    sub_imm_reg(base, idx);
+  }
+  cmp_imm_reg(range, idx);
+  // jae DEFAULT: unsigned, so a negative index falls out with the large ones
+  AddMachineCode(0x0f);
+  AddMachineCode(0x83);
+  StackInstr* to_default = new StackInstr(instr->GetLineNumber(), JMP, default_index, -1L);
+  synthetic_jumps.push_back(to_default);
+  jump_table.insert(std::pair<long, StackInstr*>(code_index, to_default));
+  AddImm(0);
+
+  RegisterHolder* tbl_holder = GetRegister();
+  RegisterHolder* tmp_holder = GetRegister();
+  const Register tbl = tbl_holder->GetRegister();
+  const Register tmp = tmp_holder->GetRegister();
+  const long lea_disp = lea_rip_reg(tbl);
+  movsxd_base_index_reg(tbl, idx, tmp);
+  add_reg_reg(tmp, tbl);
+  jmp_reg(tbl);
+  ReleaseRegister(tmp_holder);
+  ReleaseRegister(tbl_holder);
+  ReleaseRegister(idx_holder);
+
+  // the table follows the jump; the lea's displacement counts from its own end
+  const long table_offset = code_index;
+  const int32_t disp = (int32_t)(table_offset - (lea_disp + 4));
+  memcpy(&code[(size_t)lea_disp], &disp, sizeof(disp));
+  for(long i = 0; i < range; ++i) {
+    StackInstr* slot = method->GetInstruction(instr_index + i);
+    TableEntry entry;
+    entry.entry_offset = code_index;
+    entry.table_offset = table_offset;
+    entry.target_index = slot->GetOperand();
+    table_entries.push_back(entry);
+    AddImm(0);
+  }
+#ifdef _DEBUG_JIT
+  std::wcout << L"JMP_TABLE: base=" << base << L", range=" << range << L", default=" << default_index << std::endl;
+#endif
 }
 
 void JitAmd64::ProcessJump(StackInstr* instr) {
@@ -5618,6 +5746,69 @@ void JitAmd64::call_reg(Register reg) {
 #endif
 }
 
+// jmp reg (FF /4)
+void JitAmd64::jmp_reg(Register reg) {
+  AddMachineCode(B(reg));
+  AddMachineCode(0xff);
+  unsigned char code = 0xe0;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [jmp %" << GetRegisterName(reg)
+        << L"]" << std::endl;
+#endif
+}
+
+// lea dest, [rip + disp32] with a zero displacement; returns the offset of
+// the displacement so the caller can patch it once the target is known
+long JitAmd64::lea_rip_reg(Register dest) {
+  unsigned char rex = 0x48;
+  if(dest > RSP && dest < XMM0) {
+    rex |= 0x04;   // REX.R
+  }
+  AddMachineCode(rex);
+  AddMachineCode(0x8d);
+  unsigned char modrm = 0x05;   // mod=00, rm=101: RIP-relative
+  RegisterEncode3(modrm, 2, dest);
+  AddMachineCode(modrm);
+  const long pos = code_index;
+  AddImm(0);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [lea %" << GetRegisterName(dest)
+        << L", [rip+disp32]]" << std::endl;
+#endif
+  return pos;
+}
+
+// movsxd dest, dword [base + index*4] (REX.W 63 /r); mod=01 with a zero disp8
+// so a base of RBP/R13 encodes as a base rather than as "no base"
+void JitAmd64::movsxd_base_index_reg(Register base, Register index, Register dest) {
+  unsigned char rex = 0x48;
+  if(dest > RSP && dest < XMM0) {
+    rex |= 0x04;   // REX.R
+  }
+  if(index > RSP && index < XMM0) {
+    rex |= 0x02;   // REX.X
+  }
+  if(base > RSP && base < XMM0) {
+    rex |= 0x01;   // REX.B
+  }
+  AddMachineCode(rex);
+  AddMachineCode(0x63);
+  unsigned char modrm = 0x44;   // mod=01 (disp8), rm=100 (SIB follows)
+  RegisterEncode3(modrm, 2, dest);
+  AddMachineCode(modrm);
+  unsigned char sib = 0x80;     // scale=4
+  RegisterEncode3(sib, 2, index);
+  RegisterEncode3(sib, 5, base);
+  AddMachineCode(sib);
+  AddMachineCode(0x00);         // disp8
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [movsxd %" << GetRegisterName(dest)
+        << L", [%" << GetRegisterName(base) << L"+%" << GetRegisterName(index) << L"*4]]" << std::endl;
+#endif
+}
+
 void JitAmd64::cmp_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [ucomisd %" << GetRegisterName(src) 
@@ -6598,7 +6789,7 @@ bool JitAmd64::CanInlineMethod(StackMethod* callee) {
     InstructionType type = callee->GetInstruction(i)->GetType();
     // no calls, no control flow, no async
     if(type == MTHD_CALL || type == DYN_MTHD_CALL || type == ASYNC_MTHD_CALL) return false;
-    if(type == JMP || type == LBL) return false;
+    if(type == JMP || type == LBL || type == JMP_TABLE || type == JMP_TABLE_SLOT) return false;
     // all instructions must be JIT-compilable
     if(!CanJitInstruction(type) && type != RTRN) return false;
   }
@@ -6877,6 +7068,8 @@ static bool CanJitInstruction(InstructionType type) {
   case DYN_MTHD_CALL:        // P2: function-reference / closure call JIT
   case DYN_MTHD_CALL_JIT:
   case JMP:
+  case JMP_TABLE:
+  case JMP_TABLE_SLOT:
   case LBL:
   case RTRN:
     // memory allocation
@@ -7202,6 +7395,13 @@ bool JitAmd64::Compile(StackMethod* cm)
       std::wcout << L"jump update: src=" << src_offset
         << L"; dest=" << dest_offset << std::endl;
 #endif
+    }
+
+    // F8: each table entry is the target's offset relative to its table
+    for(const TableEntry& entry : table_entries) {
+      const long dest_offset = method->GetInstruction(entry.target_index)->GetOffset();
+      const int32_t rel = (int32_t)(dest_offset - entry.table_offset);
+      memcpy(&code[(size_t)entry.entry_offset], &rel, sizeof(rel));
     }
 
     for(size_t i = 0; i < nil_deref_offsets.size(); ++i) {

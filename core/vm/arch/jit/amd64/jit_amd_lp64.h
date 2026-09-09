@@ -381,6 +381,11 @@ namespace Runtime {
     bool method_pins;              // some region pins: the prologue saves the pinning registers
     std::unordered_map<StackInstr*, long> instr_index_of;   // instruction -> index, for the jump fixups
     std::unordered_map<long, long> pin_exit_stub_offsets;   // jump displacement offset -> exit stub offset
+    // F8: a select's jump table -- each 32-bit entry is patched with the
+    // target's offset relative to the table's own start (see ProcessJumpTable)
+    struct TableEntry { long entry_offset; long table_offset; long target_index; };
+    std::vector<TableEntry> table_entries;
+    std::vector<StackInstr*> synthetic_jumps;   // the tables' default-arm jumps, owned here
     static const int PIN_REG_COUNT = 3;
     static Register PinRegister(int i) {
       static const Register regs[PIN_REG_COUNT] = { R13, R14, R15 };
@@ -443,6 +448,7 @@ namespace Runtime {
     void ProcessLoadFloatElement(StackInstr* instr);
     void ProcessStoreFloatElement(StackInstr* instr);
     void ProcessJump(StackInstr* instr);
+    void ProcessJumpTable(StackInstr* instr);
     void EmitJitSafePoint();
     void EmitWriteBarrier(Register holder);
     long EmitNewObjectInline(StackClass* cls);
@@ -1112,6 +1118,9 @@ namespace Runtime {
 
     // function call instruction
     void call_reg(Register reg);
+    void jmp_reg(Register reg);
+    long lea_rip_reg(Register dest);
+    void movsxd_base_index_reg(Register base, Register index, Register dest);
     RegisterHolder* call_xfunc(double(*func_ptr)(double), RegInstr* left);
     RegisterHolder* call_xfunc2(double(*func_ptr)(double, double), RegInstr* left);
 
@@ -1133,6 +1142,11 @@ namespace Runtime {
     }
 
     ~JitAmd64() {
+      for(StackInstr* jump : synthetic_jumps) {
+        delete jump;
+      }
+      synthetic_jumps.clear();
+
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();
