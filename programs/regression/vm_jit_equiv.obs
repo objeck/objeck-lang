@@ -213,6 +213,13 @@ class VmJitEquiv {
     sx := Selects->Nested(300); "sel nested={$sx}"->PrintLine();
     sb := Selects->PinnedBreak(2000); "sel pinbreak={$sb}"->PrintLine();
     sm := Selects->CallValue(300); "sel callvalue={$sm}"->PrintLine();
+    # F3 phase 4d: float loop locals pinned in XMM6-XMM9 (Windows), every shape
+    fa := FloatPins->Accumulate(3000); "fpin acc={$fa}"->PrintLine();
+    fn := FloatPins->NestedFloats(120); "fpin nested={$fn}"->PrintLine();
+    fm := FloatPins->Mixed(2500); "fpin mixed={$fm}"->PrintLine();
+    fw := FloatPins->ManyFloats(2000); "fpin many={$fw}"->PrintLine();
+    fb := FloatPins->BreakOut(5000); "fpin break={$fb}"->PrintLine();
+    fc := FloatPins->CallsInside(400); "fpin calls={$fc}"->PrintLine();
     dw := Loops->DoWhile(37); "dowhile={$dw}"->PrintLine();
     ca := Loops->CallsAndAllocs(400); "calls={$ca}"->PrintLine();
     er := Loops->EarlyReturn(1000); "early={$er}"->PrintLine();
@@ -502,5 +509,104 @@ class Selects {
       };
     };
     return acc;
+  }
+}
+
+# F3 phase 4d: on Windows the hottest Float locals of a loop live in XMM6-XMM9
+# across the whole loop, written back on every exit. Each probe is a shape the
+# pinning must survive: several accumulators, a float carried through a nested
+# loop, ints and floats pinned together, more floats than registers, a break
+# out of the loop (an exit stub), and calls inside the loop (callee-saved is
+# the safety argument). Values are checked by equivalence with the interpreter.
+class FloatPins {
+  function : Accumulate(n : Int) ~ Float {
+    a := 0.0;
+    b := 1.0;
+    c := 0.5;
+    d := 2.0;
+    for(i := 0; i < n; i += 1;) {
+      x := i->As(Float) * 0.001;
+      a += x;
+      b := b * 1.0001 + 0.25;
+      c += x * x;
+      d := d - x * 0.5;
+    };
+    return a * 1000.0 + b + c - d;
+  }
+
+  function : NestedFloats(n : Int) ~ Float {
+    total := 0.0;
+    scale := 1.0;
+    for(i := 0; i < n; i += 1;) {
+      row := 0.0;
+      for(j := 0; j < 40; j += 1;) {
+        cell := i * 40 + j;
+        row += cell->As(Float) * scale;
+        scale := scale * 0.9999;
+      };
+      denom := i + 1;
+      total += row / denom->As(Float);
+    };
+    return total + scale;
+  }
+
+  function : Mixed(n : Int) ~ Float {
+    count := 0;
+    hits := 0;
+    sum := 0.0;
+    avg := 0.0;
+    for(i := 0; i < n; i += 1;) {
+      m := i % 97;
+      v := m->As(Float) * 0.75;
+      count += 1;
+      if(v > 30.0) { hits += 1; };
+      sum += v;
+      avg := sum / count->As(Float);
+    };
+    return avg * 100.0 + hits->As(Float) + count->As(Float) * 0.001;
+  }
+
+  function : ManyFloats(n : Int) ~ Float {
+    f0 := 0.0; f1 := 0.1; f2 := 0.2; f3 := 0.3; f4 := 0.4; f5 := 0.5; f6 := 0.6;
+    for(i := 0; i < n; i += 1;) {
+      k := i % 13;
+      x := k->As(Float);
+      f0 += x;
+      f1 += x * 0.5;
+      f2 := f2 * 1.001 + 0.001;
+      f3 += f0 * 0.0001;
+      f4 := f4 - x * 0.01;
+      f5 += f1 * 0.0001;
+      f6 := f6 * 0.999 + x;
+    };
+    return f0 + f1 + f2 + f3 + f4 + f5 + f6;
+  }
+
+  function : BreakOut(n : Int) ~ Float {
+    acc := 0.0;
+    step := 0.001;
+    i := 0;
+    while(i < n) {
+      acc += step * i->As(Float);
+      step := step * 1.0005;
+      if(acc > 1500.0) { break; };
+      i += 1;
+    };
+    return acc * 1000.0 + step + i->As(Float);
+  }
+
+  function : Weight(v : Float) ~ Float {
+    return v * 0.5 + 1.0;
+  }
+
+  function : CallsInside(n : Int) ~ Float {
+    acc := 0.0;
+    norm := 1.0;
+    for(i := 0; i < n; i += 1;) {
+      acc += Weight(i->As(Float));
+      norm := norm * 0.999 + Float->Sqrt(acc) * 0.001;
+      if(i % 50 = 0) { tmp := Float->New[8]; tmp[0] := acc; acc := tmp[0]; };
+    };
+    return acc + norm * 1000.0;
   }
 }

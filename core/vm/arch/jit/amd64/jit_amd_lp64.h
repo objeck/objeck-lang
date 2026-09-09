@@ -374,11 +374,13 @@ namespace Runtime {
       long header;                 // instruction index of the loop-header LBL
       long end;                    // instruction index of the last instruction (the back-edge JMP)
       std::vector<long> slots;     // frame offsets (operand3) of the pinned locals, one per register
+      std::vector<long> fslots;    // frame offsets of the pinned Float locals, one per XMM register (phase 4d)
       long loop_offset;            // native offset past the entry loads: interior jumps to the header land here
     };
     std::vector<PinRegion> pin_regions;
     int active_pin_region;         // region whose instructions are being emitted, -1 outside any
     bool method_pins;              // some region pins: the prologue saves the pinning registers
+    bool method_pins_float;        // some region pins floats: the prologue saves XMM6-XMM9 (Windows)
     std::unordered_map<StackInstr*, long> instr_index_of;   // instruction -> index, for the jump fixups
     std::unordered_map<long, long> pin_exit_stub_offsets;   // jump displacement offset -> exit stub offset
     // F8: a select's jump table -- each 32-bit entry is patched with the
@@ -391,10 +393,22 @@ namespace Runtime {
       static const Register regs[PIN_REG_COUNT] = { R13, R14, R15 };
       return regs[i];
     }
+    // phase 4d: XMM6-XMM9 are callee-saved on Windows and outside the pool
+    // (which hands out XMM10-XMM15), so a Float loop local can live there
+    static const int PIN_FREG_COUNT = 4;
+    static Register PinFloatRegister(int i) {
+      static const Register regs[PIN_FREG_COUNT] = { XMM6, XMM7, XMM8, XMM9 };
+      return regs[i];
+    }
+    static bool IsPinFloatRegister(Register r) {
+      return r == XMM6 || r == XMM7 || r == XMM8 || r == XMM9;
+    }
+    void EmitXmmSave(bool store, int disp, Register xmm);
     void PlanPinRegions();
     int PinRegionStartingAt(long lbl_index);
     int PinRegionContaining(long instr_idx);
     bool PinnedSlot(long offset, int& reg_index);
+    bool PinnedFloatSlot(long offset, int& reg_index);
     void EmitPinEntry(int region);
     void EmitPinWriteBack(int region);
     void EmitPinExitStubs();
@@ -913,6 +927,16 @@ namespace Runtime {
 
     // Returns a register to the pool
     void ReleaseXmmRegister(RegisterHolder* h) {
+      // a pinned float register is never in the pool (phase 4d); releasing it
+      // would hand a live loop local out as scratch
+      if(IsPinFloatRegister(h->GetRegister())) {
+        static const bool report_pin = JitEnvFlag("OBJECK_JIT_REPORT");
+        if(report_pin) {
+          std::wcerr << L"[jit] " << (method ? method->GetName() : L"?") << L": pinned float register "
+                     << GetRegisterName(h->GetRegister()) << L" released at instruction " << (instr_index - 1) << std::endl;
+        }
+        return;
+      }
       if(h->GetRegister() < XMM0) {
         static const bool report = JitEnvFlag("OBJECK_JIT_REPORT");
         if(report) {
