@@ -136,6 +136,8 @@ legs would turn this section from inspection into measurement.
 
 ## 6. What this means for v2026.9.1
 
+> **Superseded on 2026-09-09.** The maintainer chose to land the ranked items before the tag, with the verification this section asks for; see section 8 for what shipped and how it was checked. The paragraph below is left as written.
+
 Nothing here goes into 9.1. Every item changes emitted code and needs the
 interpreter/JIT equivalence fixture green on all five legs, which is a release
 cycle's worth of verification, not a pre-tag change. The JIT in 9.1 is
@@ -145,6 +147,8 @@ interpreter on these kernels. It is also leaving roughly 3–10× on the table o
 the most common loop shapes.
 
 ## 7. Suggested order for the next release's VM track
+
+Items 1-3 below are done (section 8); the open ones are 4-6.
 
 1. **F1 + F2a** — an afternoon; the array-loop 10× and free removal of dead checks.
 2. **F9** — the report mode, so the next items are chosen from real programs' fallbacks rather than from kernels.
@@ -158,3 +162,26 @@ before/after harness: run it under `--jit=1` and `--jit=off`, and check the
 emitted streams with a `_DEBUG_JIT` build (`CL=/D_DEBUG_JIT`, built to a
 scratch `OutDir`; it prints per call at runtime, so use a small iteration count
 for listings — the 20M-iteration run wrote a 3.6 GB file).
+
+## 8. Status, 2026-09-09
+
+Landed on `master` before the v2026.9.1 tag, in three PRs:
+
+| PR | Findings | Also |
+|---|---|---|
+| [#731](https://github.com/objeck/objeck-lang/pull/731) | F1 (`Size()` inlined, both backends), F2a (no zero check on constant divisors), F9 (`OBJECK_JIT_REPORT=1`) | Windows saves `XMM10`-`XMM15` in the prologue; AMD64 `>>` emitted `SHR` (logical) where the interpreter and ARM64 shift arithmetically -- wrong for every negative operand, in every release; fixed to `SAR` at all three sites |
+| [#732](https://github.com/objeck/objeck-lang/pull/732) | F2b (magic-number division, both backends; the recipe checked against exact division for 480,000 cases first), F5 (one-instruction array addressing, both backends) | |
+| [#733](https://github.com/objeck/objeck-lang/pull/733) | F4 (`R8`-`R11` join the AMD64 pool; ten spill slots) | AMD64 treated `TRY_START`/`TRY_END` (what `?->` desugars to) as no-ops on the assumption that calls were never compiled, so a nil receiver under `?->` in a JIT-compiled caller exited the process; such methods now run in the interpreter, as on ARM64 |
+
+Measured on the kernels of section 2 (Windows x64, `--jit=1`, the pre-batch `obr` against batch 2; batch 3 changes these little, its gain is the expressions that no longer spill or fall back):
+
+| kernel | before | after | |
+|---|---|---|---|
+| IntLoop (two constant divisions per iteration) | 0.063 s | 0.025 s | 2.5x |
+| ArraySum | 0.191 s | 0.023 s | 8x |
+| FloatDot | 0.219 s | 0.064 s | 3.4x |
+| Branchy (three `%` per iteration) | 0.073 s | 0.043 s | 1.7x |
+
+Verification, per batch: `vm_jit_equiv.obs` byte-identical between interpreter and JIT (with new probes for `Size()`, multi-dimensional `Size()`, constant divisors of every shape, `>>` on negatives, and an expression with more than four live values), the VM flag tests, the regression suite, and the regression suite with `OBJECK_JIT_THRESHOLD=1` (every method compiled on first call -- the run that exposed the try-region bug, which every earlier binary fails). All five CI legs were green on the combined tree; the macOS and Linux ARM64 legs were the first execution of the ARM64 halves of F2b and F5.
+
+Open, in the order of section 7: **F6** (boolean temporaries, front end), **F3** (loop-carried locals in registers), **F8** (`select` jump tables), **F7** (calling convention). The ARM64 kernel timings of section 5 are still unmeasured. Two things learned on the way: a stacked PR does not get the build legs (`ci-build.yml` runs only for PRs that target master), and `OBJECK_JIT_REPORT=1` should be run on the fixture itself -- its own division probe had been falling back to the interpreter.

@@ -61,6 +61,7 @@ obc hello && obr hello
 ### v2026.9.1 ✅
   * **Every hash of a string was wrong** &mdash; `Hash->SHA256("abc"->ToByteArray())` digested `"abc"` plus a zero byte — a `Byte[]` size-word convention the JIT and thirteen trap producers got wrong; fixed everywhere, with a test that hashes every producer against known digests
   * **JIT arithmetic matches the interpreter** &mdash; `IMUL` wrote to the wrong register, native-call temporaries were never spilled, 64-bit immediates were truncated; the equivalence fixture now runs on every platform
+  * **The JIT is 2-8x faster on common loops** &mdash; `a->Size()` inlined (an array-summing loop 8x), constant division by a multiply (2.5x), one-instruction array addressing, eight allocatable registers on AMD64. Two shipped bugs found on the way: `>>` was a logical shift on AMD64, and `?->` on a nil receiver in JIT'd code exited the process. `OBJECK_JIT_REPORT=1` names the methods the JIT hands back
   * **Breakpoints fire inside threads** &mdash; spawned threads were invisible to `obd` and DAP faked a single thread; all-stop with real thread ids, an `obd threads` command, and conditional breakpoints in the stopping thread's frame
   * **Debugger commands that lied** &mdash; nine CLI commands reported success while doing the wrong thing; DAP `evaluate` honours `frameId`; hex literals scan; `setVariable` assigns the field or element it names
   * **`Game.OpenGL`** &mdash; `Skybox`, `Quaternion`, tangent-space normal maps, `Material->SetEmissive`; the overlay is no longer upside down
