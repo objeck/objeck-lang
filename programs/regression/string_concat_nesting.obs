@@ -1,0 +1,104 @@
+#~
+# Nested string concatenation.
+#
+# The compiler lowers a concatenation to "allocate a System.String, store it in
+# a temporary, then for each part evaluate the part, load the temporary and
+# Append". That temporary used to be named after the enclosing METHOD, so every
+# concatenation in a method shared one slot. A concatenation nested inside
+# another -- a call argument that is itself a concatenation, say -- then
+# allocated its own String, overwrote the slot the outer one was still
+# accumulating into, and the outer appended into the inner's object.
+#
+# The result was silently wrong strings: values duplicated, and in one shape an
+# operand dropped outright ("Z" + Id(a + b) produced "AB", losing the "Z").
+# Issue #750. Every concatenation now gets its own slot.
+#
+# This reproduces in the interpreter and under the JIT alike -- both agreed, and
+# both were wrong -- so vm_jit_equiv.obs cannot catch this class of defect by
+# construction. It needs expected values, which is what this test is.
+#
+# NOT covered here: an interpolated string as the LEFT operand of a
+# concatenation ("{$a}" + b) duplicates its interpolated value. That is a
+# different mechanism (the new_char_str_count / SWAP_INT stack-swap heuristic in
+# EmitCharacterString), it pre-dates the #750 fix -- the same probe gives
+# byte-identical output on a compiler from before it -- and it is issue #752.
+~#
+
+class StringConcatNesting {
+	@@failures : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@@failures := 0;
+
+		a := "A";
+		b := "B";
+
+		# the shape from the issue: a call whose argument is a concatenation,
+		# used inside another concatenation
+		Check("Id(a+b)", Id(a + b), "AB");
+		Check("Id(a+b) + literal", Id(a + b) + "Z", "ABZ");
+		Check("literal + Id(a+b)", "Z" + Id(a + b), "ZAB");
+		Check("Id(a+b) + Id(b+a)", Id(a + b) + Id(b + a), "ABBA");
+		Check("Id(a+b) + Id(a)", Id(a + b) + Id(a), "ABA");
+
+		# a callee that concatenates internally, called twice in one expression
+		Check("Wrap(a+b) + Wrap(b)", Wrap(a + b) + Wrap(b), "[AB][B]");
+		Check("Wrap(a) + Wrap(b) + Wrap(a)", Wrap(a) + Wrap(b) + Wrap(a), "[A][B][A]");
+
+		# three deep
+		Check("Id(Id(a+b) + a)", Id(Id(a + b) + a), "ABA");
+
+		# concatenation as an argument, result not itself concatenated
+		Check("Wrap(a + b)", Wrap(a + b), "[AB]");
+
+		# a concatenation in a loop must not accumulate across iterations
+		total := "";
+		for(i := 0; i < 3; i += 1;) {
+			total += Wrap(a + b);
+		};
+		Check("loop of Wrap(a+b)", total, "[AB][AB][AB]");
+
+		# non-string results are unaffected, but must stay unaffected
+		n := Len(a + b) + 100;
+		if(n <> 102) {
+			@@failures += 1;
+			msg := "  Len(a+b)+100: got {$n} want 102";
+			msg->PrintLine();
+		};
+
+		if(@@failures = 0) {
+			"PASS: nested string concatenation"->PrintLine();
+		}
+		else {
+			f := @@failures;
+			msg := "FAIL: nested string concatenation - {$f} wrong";
+			msg->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(name : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			return;
+		};
+		@@failures += 1;
+		line := "  " + name + ": got [" + got + "] want [" + want + "]";
+		line->PrintLine();
+	}
+
+	function : Id(s : String) ~ String {
+		return s;
+	}
+
+	function : Wrap(s : String) ~ String {
+		out := "[";
+		out += s;
+		out += "]";
+
+		return out;
+	}
+
+	function : Len(s : String) ~ Int {
+		return s->Size();
+	}
+}
