@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.0/objeck-linux-x64_2026.9.0.tgz
-tar xzf objeck-linux-x64_2026.9.0.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.1/objeck-linux-x64_2026.9.1.tgz
+tar xzf objeck-linux-x64_2026.9.1.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -58,7 +58,17 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.0 ✅
+### v2026.9.1 ✅
+  * **Every hash of a string was wrong** &mdash; `Hash->SHA256("abc"->ToByteArray())` digested `"abc"` plus a zero byte — a `Byte[]` size-word convention the JIT and thirteen trap producers got wrong; fixed everywhere, with a test that hashes every producer against known digests
+  * **JIT arithmetic matches the interpreter** &mdash; `IMUL` wrote to the wrong register, native-call temporaries were never spilled, 64-bit immediates were truncated; the equivalence fixture now runs on every platform
+  * **Breakpoints fire inside threads** &mdash; spawned threads were invisible to `obd` and DAP faked a single thread; all-stop with real thread ids, an `obd threads` command, and conditional breakpoints in the stopping thread's frame
+  * **Debugger commands that lied** &mdash; nine CLI commands reported success while doing the wrong thing; DAP `evaluate` honours `frameId`; hex literals scan; `setVariable` assigns the field or element it names
+  * **`Game.OpenGL`** &mdash; `Skybox`, `Quaternion`, tangent-space normal maps, `Material->SetEmissive`; the overlay is no longer upside down
+  * **`--jit=off|<calls>` and `--lib-path=<dir>`** &mdash; every VM flag states its valid values and refuses others
+  * **The language server crashed at startup** &mdash; a GC range test accepted an unaligned pointer; fixed and proven over 200 runs
+  * **Release process** &mdash; checksums regenerated after signing, manual steps declared once, open issues triaged before a tag, POSIX deploys verify their native libraries, TLS refusals tested
+
+### v2026.9.0
   * **A server that wrote a response and closed could lose all of it** &mdash; on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. `TCPSocket` and `TCPSecureSocket` gain `CloseGracefully()`, which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: `Close()` lost 21, `CloseGracefully()` lost none
   * **The language server serialized every request behind one lock** &mdash; concurrent analysis was correct only because of it, with `TreeFactory` and `TypeFactory` as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking
   * **Four publish steps reported success while doing nothing** &mdash; Sourceforge, the Marketplace, the playground and the API docs each skipped on an absent credential and passed, so v2026.8.4 published with all four green while the playground served a three-month-old engine. A missing credential now fails and names the secret, or is declared manual in one place that also prints as a to-do, and a pre-flight gate checks the pipeline can do what it advertises before the tag is pushed
@@ -77,22 +87,9 @@ obc hello && obr hello
   * **SDL2 loads on Windows without a hand-set `PATH`** — the DLLs shipped in `lib/sdl`, but Windows resolves a dynamically-loaded library's imports against the **executable's** directory, never the library's, so `libobjk_sdl.dll` failed to load for anyone who had not added it themselves. Every SDL program was affected, and the regression runner hid it by prepending the directory first
   * **The API reference stopped omitting whole libraries** — five files hard-code the library list and had drifted apart, one short two libraries while still naming a deleted third, so the counts matched and nothing looked wrong. Underneath, the doc parser was reading prose as code: the word "bundle" in a comment re-filed every class after it
 
-### v2026.8.3
-  * **A corrupt library could crash the compiler** — `TypeParser::ParseType` and `ParseParameters` switch on the first character of a type string and had no default case, so anything outside the known set — including an **empty** string, whose `operator[](0)` yields a null character — left the type null and was dereferenced immediately. The linker calls both on type strings read straight out of `.obl` files, so the input is not the compiler's own
-  * **A `}` on the first line hung the REPL** — an unsigned indent counter decremented at `0` wrapped to `SIZE_MAX`, and the indent loop below then ran about 1.8×10¹⁹ times. Listing and saving both hit it
-  * **One malformed request no longer ends a debug session** — only JSON parse errors were guarded, so a message that parsed but carried an unexpected type threw from inside the handler, unwound out of `Run()` to a `main()` with no handler, and terminated the process — losing every breakpoint and the running program over one bad request. Seven flags shared between the DAP and VM threads are atomics now: they were written under a mutex and read without one at **every instruction**, so nothing stopped an `-O3 -flto` build hoisting those loads out of the dispatch loop and a disconnect or step could go unseen indefinitely
-  * **A connect that never completed could report success** — `getsockopt(SO_ERROR)` was unchecked on both the POSIX and Windows connect-with-timeout paths, and both could hand back a socket still in non-blocking mode, so a caller expecting a blocking read got a spurious `EAGAIN`/`WSAEWOULDBLOCK` instead of data. The unchecked `F_GETFL` behind the POSIX case also restored garbage flags onto the socket
-  * **One ONNX call reformatted every float for the rest of the run** — both generation reports applied `std::fixed` with `setprecision(1)` directly to `std::wcout` and never restored it, and nothing on the Objeck side can clear a leaked floatfield. `StdErrFloat` carried the mirror-image bug: it read the saved state from `std::wcout`, modified `std::wcerr` and restored onto narrow `std::cout` — three different objects
-  * **Two silent compiler mistakes** — a lambda whose signature collided with an existing method was dropped with **no diagnostic at all** while the code carried on encoding and associating it, and one of `MethodCall`'s five constructors left `func_ref_unwrap` indeterminate, so non-null garbage meant emitting a bogus call
-  * **Entry points survive what they throw** — `obc`, `obr`, `obd` and `obi` each had a long unprotected prologue (locale and codecvt construction, and the usage-string building that is a `bad_alloc` path) where anything thrown called `terminate()` with no message. Every entry point is now wrapped
-  * **Windows installers are signed — and the notes claim it only when true** — every Windows MSI from v2026.4.0 through v2026.8.2 shipped **unsigned** while the generated notes asserted otherwise: `signtool` was configured, ran, failed on every artifact, and the build warned and continued. The key is on a hardware token, so CI can never sign; signing is now an explicit local step, and a checker reports the real `Get-AuthenticodeSignature` status rather than inferring it from the file existing
-  * **Coverity Scan on Windows as well as Linux** — the first Windows scan turned up twenty real defects in cross-platform sources that MSVC compiles differently than GCC, so the Linux scan had never reached them. The scan token now lives outside the tree
-
-[📋 Full changelog](CHANGELOG.md) • [🗺️ Roadmap](docs/performance.md#speedup-roadmap) • [📝 Editor & IDE setup](docs/editors.md)
-
 ## Downloads
 
-**Latest Release:** [v2026.9.0](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.1](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

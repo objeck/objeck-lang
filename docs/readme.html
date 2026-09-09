@@ -59,9 +59,25 @@
   </header>
 
   <main style="text-align: left;">
-   <p>A socket close that stops losing the response on Windows loopback, a language server that no longer serializes every request behind one lock, and a release pipeline that reports what it actually did.</p>
+   <p>Every string hash was wrong and is now right, JIT arithmetic matches the interpreter, the debugger sees threads and tells the truth about its commands, Game.OpenGL gains a sky, rotations, normal maps and emissive materials, and the release pipeline reports what it actually did.</p>
 
-   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.0" style="color: inherit; text-decoration: none;">v2026.9.0</a></u></h3>
+   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.1" style="color: inherit; text-decoration: none;">v2026.9.1</a></u></h3>
+   <ul>
+    <li><strong>Every hash of a string was wrong</strong> &mdash; Hash->SHA256("abc"->ToByteArray()) digested "abc" plus a zero byte. A Byte[] carries its element count in the word native libraries read, and the JIT plus thirteen trap producers wrote count+1 for the NUL pad; the interpreter's Byte->New wrote the count. [0] is the element count everywhere now, and a test hashes arrays from every producer against known digests</li>
+    <li><strong>JIT arithmetic matches the interpreter</strong> &mdash; IMUL wrote its product to the wrong register (its one caller passed the arguments backwards to compensate), native-call temporaries were never spilled so 7 + x->Pow(5.0) + Bump(x) compiled differently than it interpreted, 64-bit multiply immediates were truncated, and relinking could retarget a select's default arm. The equivalence fixture now diverges on the old VM and matches on this one, on every platform</li>
+    <li><strong>Breakpoints fire inside threads, and threads are real</strong> &mdash; spawned threads were invisible to obd and DAP answered every threads request with a fabricated single thread. The model is all-stop with stable thread ids, an obd 'threads' command, DAP reporting the thread that actually stopped, and conditional breakpoints that evaluate in the stopping thread's frame</li>
+    <li><strong>Nine debugger commands reported success while doing the wrong thing</strong> &mdash; unwatch removed every second watchpoint, delete removed the current line's breakpoint, set stored 0 for a string, p n / 0 took the debugger down, string comparisons compared pointers; DAP evaluate ignored frameId. Hex literals scan (0x2a was an unknown variable); setVariable through an expanded object or Int[]/Float[] handle assigns the field or element it names instead of a top-frame local; the CLI set and DAP share one assignment path</li>
+    <li><strong>The language server crashed at startup</strong> &mdash; a garbage-collector range test accepted an unaligned pointer; root-caused with a hand-built debug loop, 0 crashes in 200 runs after</li>
+    <li><strong>Game.OpenGL</strong> &mdash; Skybox (a procedural sky, no assets), Quaternion (slerp and composition, caught wrong by a headless test), tangent-space normal maps with no vertex or native change, Material->SetEmissive so a surface can be visible where no light arrives; the overlay no longer draws every label and HUD bar upside down</li>
+    <li><strong>VM flags with checked values</strong> &mdash; --jit=off|<calls> and --lib-path=<dir> (the lib root: native libraries and cacert.pem for obr, .obl files for obc); every flag states its valid values and refuses others; a 'g' suffix on --gc-threshold means a gigabyte, not a terabyte</li>
+    <li><strong>Libraries</strong> &mdash; JSON escapes string values and keys on serialize, so a value holding a quote or newline produces valid JSON without callers pre-encoding; the Ollama client reports {"error": ...} replies instead of swallowing them; POSIX Pipe->WriteByte, Runtime->Command() stderr, File->Owner() and CommandOutput() now match Windows</li>
+    <li><strong>macOS ships an uninstaller</strong> &mdash; the .pkg wrote to four system locations and shipped no way to undo them; the shell edit carries a marker so removal cannot match a line the user wrote</li>
+    <li><strong>Compiler</strong> &mdash; name resolution stopped copying the library maps per lookup and AddMethod's duplicate check is indexed -- about a fifth of a large program's compile time; the scanner's keyword table is the one source of truth</li>
+    <li><strong>Release process</strong> &mdash; signing regenerates the checksum manifest it invalidates, a manual step is declared once and printed as a to-do, an open issue must be fixed or explained before a tag, POSIX deploys verify every native library they built, the weekly secret scan can be green, and the signing-credential check verifies the certificates the release actually uses</li>
+    <li><strong>Tests</strong> &mdash; TLS verification is tested for what it refuses (self-signed without a trust anchor, a trusted certificate that does not name the host), the interpreter and the JIT are compared byte for byte on every platform, and every fix above ships with a test that fails on the v2026.9.0 binaries</li>
+   </ul>
+
+   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.0" style="color: inherit; text-decoration: none;">v2026.9.0</a></h3>
     <ul>
         <li><strong>A server that wrote a response and closed could lose all of it</strong> &mdash; on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. <code>TCPSocket</code> and <code>TCPSecureSocket</code> gain <code>CloseGracefully()</code>, which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: <code>Close()</code> lost 21, <code>CloseGracefully()</code> lost none</li>
         <li><strong>The language server serialized every request behind one lock</strong> &mdash; concurrent analysis was correct only because of it, with <code>TreeFactory</code> and <code>TypeFactory</code> as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking</li>
@@ -173,7 +189,7 @@
         <li><strong>Performance</strong> &mdash; <code>bench_spectralnorm_native</code>: incremental FP denominator eliminates per-element <code>I2F</code> conversions from the inner loop</li>
     </ul>
 
-   <h3><u>v2026.5.2</u></h3>
+   <h3>v2026.5.2</h3>
     <ul>
         <li><strong>HTTP/2 client</strong> &mdash; <code>Http2Client</code> with persistent TLS connections, GET/POST/PUT/DELETE/PATCH, and <code>Quick*</code> one-liners via nghttp2 + ALPN</li>
         <li><strong>HTTP/3 / QUIC client</strong> &mdash; <code>Http3Client</code> over UDP with connection reuse and the same <code>Quick*</code> API (ngtcp2 + nghttp3 + GnuTLS)</li>
@@ -264,7 +280,7 @@
         <li>Bug fixes</li>
     </ul>
 
-   <h3><u>v2025.7.0</u></h3>
+   <h3>v2025.7.0</h3>
     <ul>
         <li>Added <code>Hash->Dict(..)</code>, <code>Map->Dict(..)</code> and <code>Vector->Zip(..)</code> to collections</li>
         <li>Updated style (docs, logos, etc.)</li>
