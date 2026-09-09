@@ -3010,6 +3010,19 @@ void JitAmd64::move_reg_mem8(Register src, long offset, Register dest) {
   AddImm(offset);
 }
 
+// REX for a 16-bit operation: only the R (reg field) and B (base) extension bits,
+// after the 0x66 operand-size prefix; nothing when neither register is R8-R15
+static unsigned char Rex16(Register reg_field, Register base) {
+  unsigned char rex = 0x40;
+  if(reg_field > RSP && reg_field < XMM0) {
+    rex |= 0x04;
+  }
+  if(base > RSP && base < XMM0) {
+    rex |= 0x01;
+  }
+  return rex == 0x40 ? 0 : rex;
+}
+
 void JitAmd64::move_reg_mem16(Register src, int32_t offset, Register dest) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [movw %" << GetRegisterName(src)
@@ -3018,6 +3031,9 @@ void JitAmd64::move_reg_mem16(Register src, int32_t offset, Register dest) {
 #endif
   // encode
   AddMachineCode(0x66);
+  if(const unsigned char rex = Rex16(src, dest)) {
+    AddMachineCode(rex);
+  }
   AddMachineCode(0x89);
   AddMachineCode(ModRM(dest, src));
   // write value
@@ -3074,6 +3090,9 @@ void JitAmd64::move_mem16_reg(int32_t offset, Register src, Register dest) {
     << L"]" << std::endl;
 #endif
   // encode
+  if(const unsigned char rex = Rex16(dest, src)) {
+    AddMachineCode(rex);
+  }
   AddMachineCode(0x0f);
   AddMachineCode(0xb7);
   AddMachineCode(ModRM(src, dest));
@@ -3153,6 +3172,9 @@ void JitAmd64::move_imm_mem16(int16_t imm, int32_t offset, Register dest) {
 #endif
   // encode
   AddMachineCode(0x66);
+  if(const unsigned char rex = Rex16(RAX, dest)) {   // /0: no register in the reg field
+    AddMachineCode(rex);
+  }
   AddMachineCode(0xc7);
   unsigned char code = 0x80;
   RegisterEncode3(code, 5, dest);
