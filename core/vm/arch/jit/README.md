@@ -89,6 +89,8 @@ C++ using the STL. Back-end sources: `amd64/jit_amd_lp64.{h,cpp}`, `arm64/jit_ar
 
 ## Loop locals in registers (AMD64)
 
+Since 2026-09-09 the same applies to `Float` locals on Windows: up to four per loop in `XMM6`-`XMM9` (callee-saved there, outside the pool), reported alongside the integers by `OBJECK_JIT_REPORT=1` as `N float(s)`. POSIX XMMs are caller-saved, so floats pin nowhere else yet; design section 5a of `docs/JIT_LOOP_LOCALS_DESIGN.md`.
+
 The hottest `Int`/`Char` locals of each loop (up to three) live in `R13`-`R15` for the loop's
 extent: loaded at the loop header (the back-edge target), read and written as registers inside,
 stored back on every exit. Object slots are never pinned. `docs/JIT_LOOP_LOCALS_DESIGN.md` has the
