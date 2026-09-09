@@ -1,0 +1,68 @@
+#~
+System.ML supervised learning: fit a linear model and read it back.
+
+Twelve samples are generated from a known rule, y = 3*x1 - 2*x2 + 5, and
+LinearRegression is asked to recover it. Fit is called with fit_intercept
+true, so the model has a constant term to find; because the data is exactly
+linear it recovers the intercept 5 and coefficients [3, -2], its R-squared is
+1.0, and it predicts unseen points exactly. That is a clean way to see what
+Fit / GetCoefficients / GetRSquared / GetRMSE / Predict each return before
+turning the same calls on real, noisier data -- where R-squared drops below 1
+and the fit is an approximation.
+
+GetCoefficients returns the intercept first, then one coefficient per feature.
+
+  compile: obc -src ml_regression_26.obs -lib csv,ml
+  run:     obr ml_regression_26.obe
+~#
+
+use System.ML;
+
+class LinearDemo {
+  function : Main(args : String[]) ~ Nil {
+    n := 12;
+
+    # feature matrix X (rows = samples, cols = features) and target column y,
+    # generated from the rule below so the model has something exact to recover
+    X := Float->New[n, 2];
+    y := Float->New[n, 1];
+    each(i : n) {
+      x1 := (i % 7)->As(Float);
+      x2 := (i % 5)->As(Float);
+      X[i, 0] := x1;
+      X[i, 1] := x2;
+      y[i, 0] := 3.0 * x1 - 2.0 * x2 + 5.0;
+    };
+
+    model := LinearRegression->New();
+    ok := model->Fit(X, y, true);   # true: fit an intercept term
+    if(<>ok) {
+      "Fit failed"->PrintLine();
+      return;
+    };
+
+    "Linear regression on y = 3*x1 - 2*x2 + 5"->PrintLine();
+    "========================================"->PrintLine();
+
+    # coefficients come back as [intercept, b1, b2]
+    coeffs := model->GetCoefficients();
+    intercept := coeffs[0];
+    b1 := coeffs[1];
+    b2 := coeffs[2];
+    "  recovered: y = {$b1}*x1 + {$b2}*x2 + {$intercept}"->PrintLine();
+
+    r2 := model->GetRSquared();
+    rmse := model->GetRMSE();
+    "  R-squared: {$r2}, RMSE: {$rmse}"->PrintLine();
+
+    # predict two unseen points and compare with the true rule
+    probe := Float->New[2, 2];
+    probe[0, 0] := 10.0; probe[0, 1] := 1.0;   # true y = 33
+    probe[1, 0] := 0.0;  probe[1, 1] := 0.0;   # true y = 5
+    preds := model->Predict(probe);
+    p0 := preds[0, 0];
+    p1 := preds[1, 0];
+    "  predict (10, 1) -> {$p0}   (true 33)"->PrintLine();
+    "  predict (0, 0)  -> {$p1}   (true 5)"->PrintLine();
+  }
+}

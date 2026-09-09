@@ -1,0 +1,104 @@
+#~
+System.AI search: shortest paths across a small weighted road map.
+
+The same directed, weighted graph is searched four ways. Dijkstra and A* both
+minimize total edge weight and find the same least-cost route; A* reaches it
+while expanding fewer nodes, because its heuristic steers the search toward the
+goal. Breadth-first and depth-first ignore the weights -- BFS finds the
+fewest-hops route and DFS the first route it stumbles onto -- so their reported
+"cost" is a hop count, not a distance, and their route need not be the
+weighted-optimal one.
+
+Edge weights and the A* heuristic are both computed from node coordinates, so
+the heuristic is admissible (never over-estimates the true remaining cost) by
+construction -- the condition A* needs to stay optimal.
+
+  compile: obc -src ai_search_25.obs -lib ai
+  run:     obr ai_search_25.obe
+~#
+
+use System.AI;
+
+class RoadMap {
+  # eight places, laid out on a grid; 0 = "Harbor" (start), 7 = "Summit" (goal)
+  @names : static : String[];
+  @xs : static : Float[];
+  @ys : static : Float[];
+
+  function : Main(args : String[]) ~ Nil {
+    @names := ["Harbor", "Market", "Mill", "Chapel", "Forge", "Bridge", "Orchard", "Summit"];
+    @xs := [0.0, 2.0, 4.0, 1.0, 3.0, 5.0, 2.0, 5.0];
+    @ys := [0.0, 1.0, 0.0, 3.0, 3.0, 2.0, 5.0, 5.0];
+
+    n := @names->Size();
+    graph := Graph->New(n);
+
+    # undirected roads, added both ways; weight = straight-line distance
+    Road(graph, 0, 1); Road(graph, 0, 3);
+    Road(graph, 1, 2); Road(graph, 1, 4);
+    Road(graph, 2, 5);
+    Road(graph, 3, 4); Road(graph, 3, 6);
+    Road(graph, 4, 5); Road(graph, 4, 6);
+    Road(graph, 5, 7);
+    Road(graph, 6, 7);
+
+    start := 0;
+    goal := 7;
+    goal_name := @names[goal];
+
+    "Road map: {$n} places, goal is {$goal_name}"->PrintLine();
+    "=========================================="->PrintLine();
+
+    dj := Dijkstra->FindPath(graph, start, goal);
+    Report("Dijkstra", dj);
+
+    # A* needs a lower-bound estimate from every node to the goal
+    heuristic := Float->New[n];
+    each(i : n) {
+      heuristic[i] := Distance(i, goal);
+    };
+    astar := AStar->FindPath(graph, start, goal, heuristic);
+    Report("A*", astar);
+
+    bfs := BreadthFirst->FindPath(graph, start, goal);
+    Report("Breadth-first", bfs);
+
+    dfs := DepthFirst->FindPath(graph, start, goal);
+    Report("Depth-first", dfs);
+  }
+
+  # add an undirected road: distance-weighted edges in both directions
+  function : Road(graph : Graph, a : Int, b : Int) ~ Nil {
+    w := Distance(a, b);
+    graph->AddEdge(a, b, w);
+    graph->AddEdge(b, a, w);
+  }
+
+  function : Distance(a : Int, b : Int) ~ Float {
+    dx := @xs[a] - @xs[b];
+    dy := @ys[a] - @ys[b];
+    sum := dx * dx + dy * dy;
+    return sum->Sqrt();
+  }
+
+  function : Report(title : String, result : SearchResult) ~ Nil {
+    "{$title}:"->PrintLine();
+    if(result->Found()) {
+      path := result->GetPath();
+      line := "  path: ";
+      each(i : path) {
+        line += @names[path[i]];
+        if(i < path->Size() - 1) {
+          line += " -> ";
+        };
+      };
+      line->PrintLine();
+      cost := result->GetCost();
+      expanded := result->GetExpanded();
+      "  cost: {$cost}, nodes expanded: {$expanded}"->PrintLine();
+    }
+    else {
+      "  no path"->PrintLine();
+    };
+  }
+}
