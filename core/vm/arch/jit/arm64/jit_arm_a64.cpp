@@ -2114,6 +2114,23 @@ void JitArm64::EmitJitSafePoint() {
   // Slow path: a collection is active — park.
   move_imm_reg((size_t)MemoryManager::SafePoint, X10);
   call_reg(X10);
+  // While this thread was parked, another thread's collection may have promoted
+  // (moved) the young 'self' this frame runs on. The collector relocates
+  // frame->mem[0], but it cannot see this frame's [SP+INSTANCE_MEM] copy, which
+  // every instance-variable access in the loop reads. The callback path refreshes
+  // the slot after its call for the same reason (ProcessStackCallback); a
+  // loop-header park needs the same refresh (#746). Only the slow path parks, so
+  // only it pays. X10 carried the call target: clobbered by the call, dead at a
+  // label. Same derivation as the callback path: ARM64 is not passed frame->mem,
+  // so walk from the &frame->jit_mem pointer in the JIT_MEM slot.
+  {
+    const long mem_delta = (long)(offsetof(StackFrame, jit_mem) - offsetof(StackFrame, mem));
+    move_mem_reg(JIT_MEM, SP, X10);           // X10 = &frame->jit_mem
+    sub_imm_reg(mem_delta, X10);              // X10 = &frame->mem
+    move_mem_reg(0, X10, X10);                // X10 = frame->mem
+    move_mem_reg(0, X10, X10);                // X10 = frame->mem[0], relocated self
+    move_reg_mem(X10, INSTANCE_MEM, SP);      // refresh the frame's self
+  }
   // Backpatch the cbz imm19 (bits 23:5, offset in instructions) to land past the call.
   const long skip_index = code_index;
   const int32_t imm19 = (int32_t)(skip_index - cbz_index);

@@ -1657,6 +1657,25 @@ void JitAmd64::EmitJitSafePoint() {
   move_imm_reg((size_t)MemoryManager::SafePoint, R11);
   call_reg(R11);
 #endif
+  // While this thread was parked, another thread's collection may have promoted
+  // (moved) the young 'self' this frame runs on. The collector relocates
+  // frame->mem[0], but it cannot see this frame's [RBP+INSTANCE_MEM] copy, and
+  // every instance-variable access in the loop reads self from that slot. The
+  // callback path refreshes the slot after its call for the same reason
+  // (ProcessStackCallback); a loop-header park needs the same refresh, or the
+  // loop keeps addressing fields through the old nursery address until the next
+  // callback -- a JIT-only, multi-thread-only corruption (#746). Only the slow
+  // path parks, so only it pays. The scratch register is the one that carried
+  // the call target: clobbered by the call and dead at a label.
+#ifdef _WIN64
+  move_mem_reg(FRAME_MEM, RBP, R10);          // R10 = frame->mem
+  move_mem_reg(0, R10, R10);                  // R10 = frame->mem[0], relocated self
+  move_reg_mem(R10, INSTANCE_MEM, RBP);       // refresh the frame's self
+#else
+  move_mem_reg(FRAME_MEM, RBP, R11);
+  move_mem_reg(0, R11, R11);
+  move_reg_mem(R11, INSTANCE_MEM, RBP);
+#endif
   // Backpatch the je to land here, past the slow-path call.
   long skip_index = code_index;
   long jmp_offset = skip_index - (je_pos + 4);
