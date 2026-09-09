@@ -365,6 +365,35 @@ namespace Runtime {
     // labels need a GC safepoint poll — if/else merge labels are skipped.
     std::unordered_set<long> safepoint_lbl_indices;
 
+    // F3 (docs/JIT_LOOP_LOCALS_DESIGN.md): the hottest integer locals of each
+    // loop live in callee-saved registers for the loop's extent. R13-R15 are
+    // never handed out by the allocator, every path that leaves JIT code
+    // preserves them by ABI, and only INT/CHAR slots qualify (the collector
+    // skips those, so a stale copy in the frame slot is invisible to it).
+    struct PinRegion {
+      long header;                 // instruction index of the loop-header LBL
+      long end;                    // instruction index of the last instruction (the back-edge JMP)
+      std::vector<long> slots;     // frame offsets (operand3) of the pinned locals, one per register
+      long loop_offset;            // native offset past the entry loads: interior jumps to the header land here
+    };
+    std::vector<PinRegion> pin_regions;
+    int active_pin_region;         // region whose instructions are being emitted, -1 outside any
+    bool method_pins;              // some region pins: the prologue saves the pinning registers
+    std::unordered_map<StackInstr*, long> instr_index_of;   // instruction -> index, for the jump fixups
+    std::unordered_map<long, long> pin_exit_stub_offsets;   // jump displacement offset -> exit stub offset
+    static const int PIN_REG_COUNT = 3;
+    static Register PinRegister(int i) {
+      static const Register regs[PIN_REG_COUNT] = { R13, R14, R15 };
+      return regs[i];
+    }
+    void PlanPinRegions();
+    int PinRegionStartingAt(long lbl_index);
+    int PinRegionContaining(long instr_idx);
+    bool PinnedSlot(long offset, int& reg_index);
+    void EmitPinEntry(int region);
+    void EmitPinWriteBack(int region);
+    void EmitPinExitStubs();
+
     // local variable register cache: keeps registers live after store
     // to avoid redundant reloads. Evicted on demand when pool is empty.
     std::unordered_map<long, RegisterHolder*> local_reg_cache;
@@ -803,6 +832,20 @@ namespace Runtime {
     }
 
     void ReleaseRegister(RegisterHolder* h) {
+      // A float holder released here enters the integer pool and is later
+      // handed out as the GPR with the same number (XMM14 -> R14). That was
+      // harmless while R13-R15 were never live; it corrupts a pinned loop
+      // local now. Route it to the right pool and, in report mode, say where.
+      if(h->GetRegister() >= XMM0) {
+        static const bool report = JitEnvFlag("OBJECK_JIT_REPORT");
+        if(report) {
+          std::wcerr << L"[jit] " << (method ? method->GetName() : L"?") << L": float register "
+                     << GetRegisterName(h->GetRegister()) << L" released into the integer pool at instruction "
+                     << (instr_index - 1) << std::endl;
+        }
+        ReleaseXmmRegister(h);
+        return;
+      }
 #ifdef _VERBOSE
       std::wcout << L"\t * releasing " << GetRegisterName(h->GetRegister())
         << L" *" << std::endl;
@@ -864,6 +907,16 @@ namespace Runtime {
 
     // Returns a register to the pool
     void ReleaseXmmRegister(RegisterHolder* h) {
+      if(h->GetRegister() < XMM0) {
+        static const bool report = JitEnvFlag("OBJECK_JIT_REPORT");
+        if(report) {
+          std::wcerr << L"[jit] " << (method ? method->GetName() : L"?") << L": integer register "
+                     << GetRegisterName(h->GetRegister()) << L" released into the float pool at instruction "
+                     << (instr_index - 1) << std::endl;
+        }
+        ReleaseRegister(h);
+        return;
+      }
 #ifdef _DEBUG_JIT
       assert(h->GetRegister() >= XMM0);
       for(size_t i = 0; i < aval_xregs.size(); ++i) {
