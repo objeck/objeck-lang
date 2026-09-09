@@ -1345,14 +1345,8 @@ bundle Game.OpenGL {
 		`if(x <> Nil) { x->Free(); }` in a fixed order, up to fifteen objects long,
 		ending with the window. It is mechanical, it is easy to get one line wrong,
 		and the one rule that matters -- everything GL before the context goes --
-		is invisible in it.
-
-		Own returns what it was given, so it wraps a constructor:
-
-		  @shader := window->Own(Shader->LitTextured())->As(Shader);
-		  @cube   := window->Own(Mesh->Cube())->As(Mesh);
-
-		and Close() disappears.
+		is invisible in it. Own returns what it was given, so it wraps a constructor
+		(see the example) and Close() disappears.
 
 		There is no ordering to get right WITHIN the owned set: glDelete* is
 		order-independent and nothing here references another object, so one list
@@ -1369,6 +1363,10 @@ bundle Game.OpenGL {
 		hazard, but it says nothing true about ownership.
 		@param thing anything with a Free
 		@return the same thing, so this can wrap a constructor
+		```
+		@shader := window->Own(Shader->LitTextured())->As(Shader);
+		@cube   := window->Own(Mesh->Cube())->As(Mesh);
+		```
 		~#
 		method : public : Own(thing : Freeable) ~ Freeable {
 			if(thing <> Nil) {
@@ -1390,17 +1388,19 @@ bundle Game.OpenGL {
 
 		PollEvents keeps the viewport right on its own, but a projection matrix is
 		the program's, and a stale one stretches the scene while a HUD drawn in
-		pixels stays correct. Compare this against the last value you saw:
-
-		  if(window->GetDrawableGeneration() <> @seen) {
-		    @seen := window->GetDrawableGeneration();
-		    target->Free(); target := RenderTarget->New(window->GetWidth(), ...);
-		  };
+		pixels stays correct. Compare this against the last value you saw and
+		rebuild what depends on the size when it moves (see the example).
 
 		For the projection specifically there is nothing to compare -- call
 		Camera->SetAspect(window->GetAspect()) every frame and it does nothing
 		unless the value actually changed.
 		@return a counter, not a size; only equality is meaningful
+		```
+		if(window->GetDrawableGeneration() <> @seen) {
+		  @seen := window->GetDrawableGeneration();
+		  target->Free(); target := RenderTarget->New(window->GetWidth(), ...);
+		};
+		```
 		~#
 		method : public : GetDrawableGeneration() ~ Int {
 			return @drawable_generation;
