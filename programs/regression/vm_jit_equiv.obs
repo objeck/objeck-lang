@@ -73,6 +73,14 @@ class Arith {
     acc += n % 2147483649;
     acc += n / 6;
     acc += n % 6;
+    acc += n / 2;
+    acc += n % 2;
+    acc += n / (0 - 4);
+    acc -= n % (0 - 4);
+    acc += n / 1024;
+    acc += n % 1024;
+    acc += n / 4294967311;
+    acc += n % 4294967311;
     return acc;
   }
 
@@ -167,6 +175,10 @@ class VmJitEquiv {
     for(i := -25; i < 25; i += 1;) {
       cd += Arith->ConstDiv(i * 104729 - 3);
     };
+    cd += Arith->ConstDiv(4611686018427387904);
+    cd += Arith->ConstDiv(0 - 4611686018427387904);
+    cd += Arith->ConstDiv(9223372036854775807);
+    cd += Arith->ConstDiv(0 - 9223372036854775807);
     "constdiv={$cd}"->PrintLine();
 
     sh := 0;

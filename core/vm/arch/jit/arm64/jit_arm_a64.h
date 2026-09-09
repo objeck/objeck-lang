@@ -744,6 +744,11 @@ namespace Runtime {
     // div instructions
     void div_freg_freg(Register src, Register dest);
     void div_imm_reg(int64_t imm, Register reg, bool is_mod = false);
+    void EmitMagicDivision(int64_t d, Register dest, bool is_mod);
+    void add_shifted_reg_reg(Register src, int shift, Register dest);
+    void add_lsr_reg_reg(Register src, int shift, Register dest);
+    void smulh_reg_reg_reg(Register a, Register b, Register dest);
+    void msub_reg_reg_reg(Register a, Register b, Register minuend, Register dest);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
     

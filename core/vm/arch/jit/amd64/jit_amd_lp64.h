@@ -1002,6 +1002,9 @@ namespace Runtime {
     void div_xreg_xreg(Register src, Register dest);
     void div_mem_xreg(long offset, Register src, Register dest);
     void div_imm_reg(int64_t imm, Register reg, bool is_mod = false);
+    void EmitMagicDivision(int64_t d, Register dest, bool is_mod);
+    void imul_mem(long offset, Register base);
+    void lea_base_index_reg(long disp, Register base, Register index, int scale, Register dest);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 

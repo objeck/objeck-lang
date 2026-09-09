@@ -4496,6 +4496,124 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
 }
 
 // TODO: 64-bit literal operation for Windows
+// lea dest, [base + index * scale + disp]
+void JitAmd64::lea_base_index_reg(long disp, Register base, Register index, int scale, Register dest) {
+  unsigned char rex = 0x48;
+  if(dest > RSP && dest < XMM0) {
+    rex |= 0x04;   // REX.R
+  }
+  if(index > RSP && index < XMM0) {
+    rex |= 0x02;   // REX.X
+  }
+  if(base > RSP && base < XMM0) {
+    rex |= 0x01;   // REX.B
+  }
+  AddMachineCode(rex);
+  AddMachineCode(0x8d);
+  const bool disp8 = (disp >= -128 && disp <= 127);
+  unsigned char modrm = disp8 ? 0x44 : 0x84;   // mod=01|10, rm=100 (SIB follows)
+  RegisterEncode3(modrm, 2, dest);
+  AddMachineCode(modrm);
+  unsigned char sib;
+  switch(scale) {
+  case 1: sib = 0x00; break;
+  case 2: sib = 0x40; break;
+  case 4: sib = 0x80; break;
+  default: sib = 0xc0; break;
+  }
+  RegisterEncode3(sib, 2, index);
+  RegisterEncode3(sib, 5, base);
+  AddMachineCode(sib);
+  if(disp8) {
+    AddMachineCode((unsigned char)(int8_t)disp);
+  }
+  else {
+    AddImm((int32_t)disp);
+  }
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [leaq " << disp << L"(%" << GetRegisterName(base) << L", %"
+        << GetRegisterName(index) << L", " << scale << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+}
+
+// RDX:RAX = RAX * qword [base + offset]   (F7 /5; the same shape as the idiv memory form)
+void JitAmd64::imul_mem(long offset, Register base) {
+  AddMachineCode(XB(base));
+  AddMachineCode(0xf7);
+  AddMachineCode(ModRM(base, RBP));   // /5 in the reg field
+  AddImm(offset);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [imulq " << offset << L"(%" << GetRegisterName(base) << L")]" << std::endl;
+#endif
+}
+
+// n / d or n % d for a constant d (|d| >= 2, not a power of two) without idiv:
+// see MagicSigned64. RAX and RDX are imul's implicit operands and are saved
+// exactly as div_reg_reg saves them -- only when something lives in them.
+void JitAmd64::EmitMagicDivision(int64_t d, Register dest, bool is_mod) {
+  int64_t magic;
+  int shift;
+  MagicSigned64(d, magic, shift);
+
+  const bool save_rax = (dest != RAX && !IsRegisterFree(RAX));
+  const bool save_rdx = (dest != RDX && !IsRegisterFree(RDX));
+  if(save_rdx) {
+    move_reg_mem(RDX, TMP_REG_1, RBP);
+  }
+  if(save_rax) {
+    move_reg_mem(RAX, TMP_REG_0, RBP);
+  }
+  // n is needed after the multiply; keep it in a slot when dest is a register the multiply clobbers
+  const bool n_in_slot = (dest == RAX || dest == RDX);
+  if(n_in_slot) {
+    move_reg_mem(dest, TMP_REG_3, RBP);
+  }
+  // the magic constant goes through a slot so no register is taken from the pool
+  move_imm_reg(magic, RDX);
+  move_reg_mem(RDX, TMP_REG_2, RBP);
+  if(dest != RAX) {
+    move_reg_reg(dest, RAX);
+  }
+  imul_mem(TMP_REG_2, RBP);                       // RDX:RAX = n * magic
+  if(d > 0 && magic < 0) {
+    if(n_in_slot) { add_mem_reg(TMP_REG_3, RBP, RDX); } else { add_reg_reg(dest, RDX); }
+  }
+  else if(d < 0 && magic > 0) {
+    if(n_in_slot) { sub_mem_reg(TMP_REG_3, RBP, RDX); } else { sub_reg_reg(dest, RDX); }
+  }
+  if(shift > 0) {
+    sar_imm_reg(shift, RDX);
+  }
+  // q += (q >>> 63); the low product in RAX is dead, so RAX is scratch from here
+  move_reg_reg(RDX, RAX);
+  shr_imm_reg(63, RAX);
+  add_reg_reg(RAX, RDX);                          // RDX = quotient
+  if(is_mod) {
+    // r = n - q * d
+    move_imm_reg(d, RAX);
+    mul_reg_reg(RAX, RDX);                        // RDX = q * d
+    if(n_in_slot) {
+      move_mem_reg(TMP_REG_3, RBP, RAX);
+      sub_reg_reg(RDX, RAX);                      // RAX = n - q * d
+      if(dest != RAX) {
+        move_reg_reg(RAX, dest);
+      }
+    }
+    else {
+      sub_reg_reg(RDX, dest);                     // dest = n - q * d
+    }
+  }
+  else if(dest != RDX) {
+    move_reg_reg(RDX, dest);
+  }
+  if(save_rax && dest != RAX) {
+    move_mem_reg(TMP_REG_0, RBP, RAX);
+  }
+  if(save_rdx && dest != RDX) {
+    move_mem_reg(TMP_REG_1, RBP, RDX);
+  }
+}
+
 void JitAmd64::mul_imm_reg(int64_t imm, Register reg) {
   if(imm == 0) { move_imm_reg(0, reg); return; }
   if(imm == 1) { return; }
@@ -4673,6 +4791,15 @@ void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
     return;
   }
 
+  // Every other non-zero constant: multiply by its magic number instead of
+  // idiv (10-20 cycles of latency against 3). The two constant divisions in
+  // the assessment's integer loop were 85% of its time. -1 and 0 keep the
+  // idiv path: -1 so INT64_MIN / -1 behaves exactly as the interpreter's
+  // C++ division does, 0 so the runtime check fires.
+  if(imm != 0 && imm != -1) {
+    EmitMagicDivision(imm, reg, is_mod);
+    return;
+  }
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
   div_reg_reg(imm_holder->GetRegister(), reg, is_mod, imm != 0);
@@ -5960,44 +6087,36 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
     }
   }
 
-  // bounds check
+  // Bounds check on the UNSCALED index against the element count (header
+  // word 0). Index and count used to be shifted by the element size before
+  // the compare -- two shifts that changed nothing about the comparison --
+  // and the address was then built with two adds. One lea does it.
   RegisterHolder* bounds_holder = GetRegister();
-#ifdef _WIN64    
-  move_mem_reg32(0, array_holder->GetRegister(), bounds_holder->GetRegister());
-#else
   move_mem_reg(0, array_holder->GetRegister(), bounds_holder->GetRegister());
-#endif    
-
-  // ajust indices
-  switch(type) {
-  case BYTE_ARY_TYPE:
-    break;
-
-  case CHAR_ARY_TYPE:
-#ifdef _WIN64    
-    shl_imm_reg(1, index_holder->GetRegister());
-    shl_imm_reg(1, bounds_holder->GetRegister());
-#else
-    shl_imm_reg(2, index_holder->GetRegister());
-    shl_imm_reg(2, bounds_holder->GetRegister());
-#endif      
-    break;
-
-  case INT_TYPE:
-  case FLOAT_TYPE:
-    shl_imm_reg(3, index_holder->GetRegister());
-    shl_imm_reg(3, bounds_holder->GetRegister());
-    break;
-
-  default:
-    break;
-  }
   CheckArrayBounds(index_holder->GetRegister(), bounds_holder->GetRegister());
   ReleaseRegister(bounds_holder);
 
-  // skip first 2 integers (size and dimension) and all dimension indices
-  add_imm_reg((instr->GetOperand() + 2) * sizeof(size_t), index_holder->GetRegister());
-  add_reg_reg(index_holder->GetRegister(), array_holder->GetRegister());
+  int scale;
+  switch(type) {
+  case BYTE_ARY_TYPE:
+    scale = 1;
+    break;
+
+  case CHAR_ARY_TYPE:
+#ifdef _WIN64
+    scale = 2;
+#else
+    scale = 4;
+#endif
+    break;
+
+  default:
+    scale = 8;   // INT_TYPE, FLOAT_TYPE
+    break;
+  }
+  // array = array + index * scale + (size, dimension, dimension sizes) header
+  lea_base_index_reg((instr->GetOperand() + 2) * sizeof(size_t), array_holder->GetRegister(),
+                     index_holder->GetRegister(), scale, array_holder->GetRegister());
   ReleaseRegister(index_holder);
 
   delete holder;
