@@ -135,6 +135,57 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   std::wcout << L"creating frame=" << (*stack_frame) << std::endl;
 #endif
   (*stack_frame)->jit_called = jit_called;
+
+#if !defined(_DEBUGGER) && !defined(_NO_JIT)
+  // An entry method -- Main, a thread's Run -- is called once, so the auto-JIT's
+  // call count never reaches it, and a hot loop written there ran interpreted for
+  // the life of the program (~50x slower than the same loop in a helper). Compile
+  // it on entry when it holds a loop and the JIT is on. A method the JIT rejects
+  // (try regions, frame-dependent traps) stays interpreted exactly as before, and
+  // the compiled path ends the way ProcessReturn ends the entry frame.
+  if(!jit_called && i == 0 && JitEagerLoops() && JitCompiler::HasLoop(method)) {
+    JitCompiler::TryAutoJitCompile(method);
+    if(method->GetNativeCode()) {
+      static const bool report = JitEnvFlag("OBJECK_JIT_REPORT");
+      if(report) {
+        std::wcerr << L"[jit] " << method->GetName() << L": compiled on entry (has a loop)" << std::endl;
+      }
+      JitRuntime jit_executor;
+      const long status = jit_executor.Execute(method, instance, op_stack, stack_pos, call_stack, call_stack_pos, *stack_frame);
+      if(status < 0) {
+        switch(status) {
+        case -1:
+          std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance in native JIT code <<<" << std::endl;
+          break;
+
+        case -2:
+          std::wcerr << L">>> Index under bounds in native JIT code <<<" << std::endl;
+          break;
+
+        case -3:
+          std::wcerr << L">>> Index over bounds in native JIT code <<<" << std::endl;
+          break;
+
+        case -4:
+          std::wcerr << L">>> Divide by zero in native JIT code <<<" << std::endl;
+          break;
+        }
+        StackErrorUnwind(method);
+#ifdef _NO_HALT
+        halt = true;
+        return;
+#else
+        exit(1);
+#endif
+      }
+      ReleaseStackFrame(*stack_frame);
+      (*stack_frame) = nullptr;
+      halt = true;
+      return;
+    }
+  }
+#endif
+
   StackInstr* instrs = (*stack_frame)->method->GetInstructions();
   long ip = i;
 
@@ -2182,6 +2233,20 @@ void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* calle
     return;
   }
 
+  // A callee with a loop is compiled on its first call, not its tenth. Main is
+  // the case that matters: the program's real entry is the loader's
+  // $Initialization$ routine, which calls Main exactly once, so a hot loop
+  // written in Main never crossed the call-count threshold and ran interpreted
+  // for the life of the program. The same holds for any once-called driver.
+  // Straight-line methods keep the counted threshold; a raised threshold turns
+  // this off (JitEagerLoops), and a callee the JIT rejects is marked as before.
+  if(called->GetJitCallCount() == 0 && JitEagerLoops() && JitCompiler::HasLoop(called)) {
+    if(!JitCompiler::TryAutoJitCompile(called)) {
+      instr->SetOperand3(-1);
+    }
+    return;
+  }
+
   // Once the threshold is reached we stop bumping the counter (no unbounded
   // growth / overflow) and just consult the shared compile state.
   if(called->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
@@ -2332,8 +2397,13 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
   else if(instr->GetOperand3() == 0) {
     // auto-JIT counting (first 10 calls only, noinline)
     CheckAutoJit(concrete_call, instr);
-    // if opcode was rewritten to MTHD_CALL_JIT, take JIT path
-    if(instr->GetType() == MTHD_CALL_JIT) {
+    // Take the JIT path when the callee has native code, not only when this
+    // site was rewritten to MTHD_CALL_JIT: PatchCallSites walks the program's
+    // classes, and the loader's $Initialization$ routine -- the one caller of
+    // Main -- belongs to none, so its call site is never rewritten. Dispatching
+    // on the opcode alone sent a freshly compiled Main to the interpreter for
+    // its one and only call.
+    if(instr->GetType() == MTHD_CALL_JIT || concrete_call->GetNativeCode()) {
       ProcessJitMethodCall(concrete_call, instance, instrs, ip, op_stack, stack_pos);
     }
     else {

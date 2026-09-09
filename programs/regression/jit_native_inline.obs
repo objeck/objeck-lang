@@ -3,9 +3,11 @@ use System.Concurrency;
 
 # A method marked 'native' must run as native code wherever it is called from.
 # At -opt s3 (the default) the compiler inlines small calls, and an inlined
-# copy runs in whatever engine its caller does. Main is never compiled, and a
-# thread's Run is called once per thread, so the auto-JIT never compiles it
-# either. Main was already exempt from inlining; Run was not, so a worker
+# copy runs in whatever engine its caller does. When this was found, Main was
+# never compiled and a thread's Run, called once per thread, never crossed the
+# auto-JIT's call count (both compile on entry now when they hold a loop; a
+# loop-free caller, or one the JIT rejects, is still interpreted, so the rule
+# below still matters). Main was already exempt from inlining; Run was not, so a worker
 # thread's native loop was pasted into Run and interpreted -- every thread
 # workload ran ~50x slower than the same code on the main thread (found
 # 2026-09-09 while measuring loop-local pinning). The compiler now refuses to

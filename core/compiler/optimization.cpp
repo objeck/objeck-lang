@@ -599,7 +599,9 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
     return false;
   }
 
-  // don't inline into "main" since it's not JIT compiled
+  // don't inline into "main": it is compiled on entry only when it holds a loop
+  // (docs/JIT_ENTRY_COMPILE_DESIGN.md), a loop-free Main is still interpreted, and
+  // inlining into an interpreted caller only hides a callee's `native` request
   const std::wstring curr_mthd_name = current_method->GetName();
   if(curr_mthd_name.find(L":Main:o.System.String*,") != std::wstring::npos) {
     return false;
