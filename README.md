@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.1-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.0-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.1/objeck-linux-x64_2026.9.1.tgz
-tar xzf objeck-linux-x64_2026.9.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.0/objeck-linux-x64_2026.9.0.tgz
+tar xzf objeck-linux-x64_2026.9.0.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -58,7 +58,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.1 ✅
+### v2026.9.1 
   * **Every hash of a string was wrong** &mdash; `Hash->SHA256("abc"->ToByteArray())` digested `"abc"` plus a zero byte — a `Byte[]` size-word convention the JIT and thirteen trap producers got wrong; fixed everywhere, with a test that hashes every producer against known digests
   * **JIT arithmetic matches the interpreter** &mdash; `IMUL` wrote to the wrong register, native-call temporaries were never spilled, 64-bit immediates were truncated; the equivalence fixture now runs on every platform
   * **Breakpoints fire inside threads** &mdash; spawned threads were invisible to `obd` and DAP faked a single thread; all-stop with real thread ids, an `obd threads` command, and conditional breakpoints in the stopping thread's frame
@@ -68,7 +68,7 @@ obc hello && obr hello
   * **The language server crashed at startup** &mdash; a GC range test accepted an unaligned pointer; fixed and proven over 200 runs
   * **Release process** &mdash; checksums regenerated after signing, manual steps declared once, open issues triaged before a tag, POSIX deploys verify their native libraries, TLS refusals tested
 
-### v2026.9.0
+### v2026.9.0 ✅
   * **A server that wrote a response and closed could lose all of it** &mdash; on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. `TCPSocket` and `TCPSecureSocket` gain `CloseGracefully()`, which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: `Close()` lost 21, `CloseGracefully()` lost none
   * **The language server serialized every request behind one lock** &mdash; concurrent analysis was correct only because of it, with `TreeFactory` and `TypeFactory` as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking
   * **Four publish steps reported success while doing nothing** &mdash; Sourceforge, the Marketplace, the playground and the API docs each skipped on an absent credential and passed, so v2026.8.4 published with all four green while the playground served a three-month-old engine. A missing credential now fails and names the secret, or is declared manual in one place that also prints as a to-do, and a pre-flight gate checks the pipeline can do what it advertises before the tag is pushed
