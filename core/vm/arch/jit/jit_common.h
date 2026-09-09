@@ -171,6 +171,14 @@ inline long GetJitAutoThreshold() {
 }
 
 #define JIT_AUTO_THRESHOLD GetJitAutoThreshold()
+// True when the JIT is at least as eager as its default: a method holding a
+// loop is then compiled on its first entry or call instead of its tenth. A
+// raised threshold means someone is steering the JIT away deliberately -- the
+// LSP server runs with OBJECK_JIT_THRESHOLD=999999999 to keep it off entirely,
+// which is not the DISABLED sentinel -- and the loop rules step aside for it.
+inline bool JitEagerLoops() {
+  return JIT_AUTO_THRESHOLD <= JIT_AUTO_THRESHOLD_DEFAULT;
+}
 
 class JitCompiler {
 protected:
@@ -196,6 +204,21 @@ public:
   // slots and the JIT trap callback passes a null frame, so methods with
   // these traps must remain interpreted (both AMD64 and ARM64 reject them
   // in their pre-scans).
+  // A method with a loop is worth compiling on its first entry. The auto-JIT
+  // counts calls, and a Main (called once) or a thread's Run (once per thread)
+  // holding a hot loop never crossed the threshold, so the loop ran interpreted
+  // for the life of the program. A back-edge is a JMP whose target index is not
+  // beyond its own (the compiler resolves labels to instruction indices).
+  static bool HasLoop(StackMethod* mthd) {
+    for(long i = 0; i < mthd->GetInstructionCount(); ++i) {
+      StackInstr* instr = mthd->GetInstruction(i);
+      if(instr->GetType() == JMP && instr->GetOperand() <= i) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static bool HasFrameDependentTrap(StackMethod* mthd) {
     for(long i = 0; i < mthd->GetInstructionCount(); ++i) {
       const InstructionType type = mthd->GetInstruction(i)->GetType();

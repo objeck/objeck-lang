@@ -1,0 +1,81 @@
+use System.Time;
+use System.Concurrency;
+
+# The entry method of a program -- Main, and a thread's Run -- was never
+# compiled: the auto-JIT counts calls, Main is called once, and Run once per
+# thread. A hot loop written at top level therefore ran in the interpreter for
+# the life of the program, ~50x slower than the same loop in any helper, and
+# the only way out was to mark a helper `native`. The VM now compiles an entry
+# method on entry when it contains a loop (and the JIT is on).
+#
+# The probe: the same loop three ways -- in a native helper (always compiled,
+# the reference), directly in Main, and directly in a thread's Run. Each must
+# finish within a small factor of the reference; interpreted, it takes ~50x.
+class Worker from Thread {
+  @secs : static : Float;
+  @result : static : Int;
+
+  New() { Parent("worker"); }
+
+  method : public : Run(param : Base) ~ Nil {
+    t := Timer->New(true);
+    x := 1;
+    for(i := 0; i < 200000000; i += 1;) { x := x * 3 + 1; };
+    t->End();
+    @secs := t->GetElapsedTime();
+    @result := x;
+  }
+
+  function : Seconds() ~ Float { return @secs; }
+  function : Result() ~ Int { return @result; }
+}
+
+class EntryCompiled {
+  function : native : Spin(n : Int) ~ Int {
+    x := 1;
+    for(i := 0; i < n; i += 1;) { x := x * 3 + 1; };
+    return x;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    "Testing entry-method compilation..."->PrintLine();
+
+    # the reference: a native helper, compiled on first call
+    t := Timer->New(true);
+    ref_x := Spin(200000000);
+    t->End();
+    ref_secs := t->GetElapsedTime();
+
+    # the same loop written directly in Main
+    t := Timer->New(true);
+    main_x := 1;
+    for(i := 0; i < 200000000; i += 1;) { main_x := main_x * 3 + 1; };
+    t->End();
+    main_secs := t->GetElapsedTime();
+
+    # and directly in a thread's Run
+    w := Worker->New();
+    w->Execute(Nil);
+    w->Join();
+    run_secs := Worker->Seconds();
+    run_x := Worker->Result();
+
+    "  native helper: {$ref_secs}s, Main loop: {$main_secs}s, Run loop: {$run_secs}s"->PrintLine();
+    if(main_x <> ref_x | run_x <> ref_x) {
+      "FAIL: results differ ({$ref_x}, {$main_x}, {$run_x})"->PrintLine();
+      Runtime->Exit(1);
+    };
+    # a factor of 10 with half a second of slack: compiled-vs-compiled is ~1x,
+    # interpreted-vs-compiled ~50x, so the bound is robust to a noisy machine
+    bound := ref_secs * 10.0 + 0.5;
+    if(main_secs > bound) {
+      "FAIL: the loop in Main ran at interpreter speed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    if(run_secs > bound) {
+      "FAIL: the loop in the thread's Run ran at interpreter speed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: entry methods are compiled"->PrintLine();
+  }
+}
