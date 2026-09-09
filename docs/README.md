@@ -55,6 +55,7 @@ Written before the work, and kept afterwards as the record of why it looks the w
 
 Closed bugs whose reasoning is worth keeping.
 
+- [JIT_CODEGEN_ASSESSMENT_2026_09.md](JIT_CODEGEN_ASSESSMENT_2026_09.md) — how efficient the emitted AMD64/ARM64 code is, measured, with the ranked fixes
 - [jit-malloc-corruption-investigation.md](jit-malloc-corruption-investigation.md) — JIT heap corruption (closed)
 - [VERIFY_ARM64_JIT_FLOAT_FIX.md](VERIFY_ARM64_JIT_FLOAT_FIX.md) — ARM64 JIT float register bug
 - [VERIFY_ARM64_JIT_IMM_FIX.md](VERIFY_ARM64_JIT_IMM_FIX.md) — Windows ARM64 unsigned ops
