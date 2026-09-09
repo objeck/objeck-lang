@@ -122,6 +122,15 @@ void JitAmd64::Prolog() {
     push_reg(R15);
     sub_imm_reg(8, RSP);
   }
+  // phase 4d: XMM6-XMM9 hold pinned Float loop locals. Callee-saved on Windows
+  // and outside the pool; 64 bytes keeps RSP 16-byte aligned. Saved below the
+  // integer pushes, restored above them in the epilogue.
+  if(method_pins_float) {
+    sub_imm_reg(64, RSP);
+    for(int i = 0; i < PIN_FREG_COUNT; ++i) {
+      EmitXmmSave(true, i * 16, PinFloatRegister(i));
+    }
+  }
 #endif
 }
 
@@ -190,6 +199,12 @@ void JitAmd64::Epilog()
 #ifdef _WIN64
   // F3: undo the prologue's pinned-register save. This is teardown_index, so
   // every exit path -- nominal or an error handler -- restores them.
+  if(method_pins_float) {
+    for(int i = 0; i < PIN_FREG_COUNT; ++i) {
+      EmitXmmSave(false, i * 16, PinFloatRegister(i));
+    }
+    add_imm_reg(64, RSP);
+  }
   if(method_pins) {
     add_imm_reg(8, RSP);
     pop_reg(R15);
@@ -1230,6 +1245,14 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
     }
     else {
       long offset = instr->GetOperand3();
+      // phase 4d: a pinned Float local, likewise a copy out of its XMM register
+      int pin_freg;
+      if(instr->GetType() == LOAD_FLOAT_VAR && PinnedFloatSlot(offset, pin_freg)) {
+        RegisterHolder* fholder = GetXmmRegister();
+        move_xreg_xreg(PinFloatRegister(pin_freg), fholder->GetRegister());
+        working_stack.push_front(new RegInstr(fholder));
+        return;
+      }
       // F3: a pinned loop local is read out of its register. A copy, not the
       // register itself: consumers write their REG_INT operands in place.
       int pin_reg;
@@ -1413,6 +1436,7 @@ long JitAmd64::EmitNewObjectInline(StackClass* cls) {
 void JitAmd64::PlanPinRegions() {
   pin_regions.clear();
   method_pins = false;
+  method_pins_float = false;
   active_pin_region = -1;
   const long count = method->GetInstructionCount();
   for(long i = 0; i < count; ++i) {
@@ -1440,6 +1464,17 @@ void JitAmd64::PlanPinRegions() {
   if(pin_max == 0) {
     return;
   }
+#ifdef _WIN64
+  // phase 4d: Float locals pin in XMM6-XMM9, callee-saved on Windows. The full
+  // register set by default; OBJECK_JIT_PIN_MAX caps floats too when it is set.
+  int pin_fmax = PIN_FREG_COUNT;
+  if(!env_max.empty()) {
+    pin_fmax = std::min(pin_fmax, pin_max);
+  }
+#else
+  // every XMM is caller-saved on POSIX: a call inside the loop would clobber a pin
+  const int pin_fmax = 0;
+#endif
   // maximal regions: sort the loops by header and merge overlapping and nested ones
   std::vector<std::pair<long, long> > spans;
   for(const LoopInfo& loop : detected_loops) {
@@ -1506,15 +1541,24 @@ void JitAmd64::PlanPinRegions() {
     }
     // accesses per candidate slot, an access in a nested loop weighted by depth
     std::unordered_map<long, long> weights;
+    std::unordered_map<long, long> fweights;   // phase 4d: Float candidates
     std::unordered_map<long, long> slot_ids;
     for(long i = header; i <= end; ++i) {
       StackInstr* instr = method->GetInstruction(i);
       const InstructionType type = instr->GetType();
-      if((type != LOAD_LOCL_INT_VAR && type != STOR_LOCL_INT_VAR && type != COPY_LOCL_INT_VAR) || instr->GetOperand2() != LOCL) {
+      const bool int_access = (type == LOAD_LOCL_INT_VAR || type == STOR_LOCL_INT_VAR || type == COPY_LOCL_INT_VAR);
+      const bool float_access = (type == LOAD_FLOAT_VAR || type == STOR_FLOAT_VAR || type == COPY_FLOAT_VAR);
+      if((!int_access && !float_access) || instr->GetOperand2() != LOCL) {
         continue;
       }
       auto declared = id_types.find(instr->GetOperand());
-      if(declared == id_types.end() || (declared->second != INT_PARM && declared->second != CHAR_PARM)) {
+      if(declared == id_types.end()) {
+        continue;
+      }
+      if(int_access && declared->second != INT_PARM && declared->second != CHAR_PARM) {
+        continue;
+      }
+      if(float_access && (pin_fmax == 0 || declared->second != FLOAT_PARM)) {
         continue;
       }
       long depth = 0;
@@ -1523,10 +1567,10 @@ void JitAmd64::PlanPinRegions() {
           ++depth;
         }
       }
-      weights[instr->GetOperand3()] += (1L << std::min(depth * 2, 12L));
+      (float_access ? fweights : weights)[instr->GetOperand3()] += (1L << std::min(depth * 2, 12L));
       slot_ids[instr->GetOperand3()] = instr->GetOperand();
     }
-    if(weights.empty()) {
+    if(weights.empty() && fweights.empty()) {
       continue;
     }
     std::vector<std::pair<long, long> > ranked;   // (-weight, slot): heaviest first, ties by slot
@@ -1534,6 +1578,11 @@ void JitAmd64::PlanPinRegions() {
       ranked.push_back(std::make_pair(-weight.second, weight.first));
     }
     std::sort(ranked.begin(), ranked.end());
+    std::vector<std::pair<long, long> > franked;
+    for(const auto& weight : fweights) {
+      franked.push_back(std::make_pair(-weight.second, weight.first));
+    }
+    std::sort(franked.begin(), franked.end());
     PinRegion pin;
     pin.header = header;
     pin.end = end;
@@ -1541,13 +1590,27 @@ void JitAmd64::PlanPinRegions() {
     for(size_t k = 0; k < ranked.size() && (int)pin.slots.size() < pin_max; ++k) {
       pin.slots.push_back(ranked[k].second);
     }
+    for(size_t k = 0; k < franked.size() && (int)pin.fslots.size() < pin_fmax; ++k) {
+      pin.fslots.push_back(franked[k].second);
+    }
     pin_regions.push_back(pin);
-    method_pins = true;
+    if(!pin.slots.empty()) {
+      method_pins = true;
+    }
+    if(!pin.fslots.empty()) {
+      method_pins_float = true;
+    }
     if(JitReportEnabled()) {
       std::wcerr << L"[jit] " << method->GetName() << L": pinned " << pin.slots.size()
                  << L" local(s) in loop [" << header << L"," << end << L"], slot id(s)";
       for(size_t k = 0; k < pin.slots.size(); ++k) {
         std::wcerr << L" " << slot_ids[pin.slots[k]];
+      }
+      if(!pin.fslots.empty()) {
+        std::wcerr << L"; " << pin.fslots.size() << L" float(s), slot id(s)";
+        for(size_t k = 0; k < pin.fslots.size(); ++k) {
+          std::wcerr << L" " << slot_ids[pin.fslots[k]];
+        }
       }
       std::wcerr << std::endl;
     }
@@ -1586,11 +1649,45 @@ bool JitAmd64::PinnedSlot(long offset, int& reg_index) {
   return false;
 }
 
+bool JitAmd64::PinnedFloatSlot(long offset, int& reg_index) {
+  if(active_pin_region < 0) {
+    return false;
+  }
+  const std::vector<long>& fslots = pin_regions[active_pin_region].fslots;
+  for(size_t i = 0; i < fslots.size(); ++i) {
+    if(fslots[i] == offset) {
+      reg_index = (int)i;
+      return true;
+    }
+  }
+  return false;
+}
+
+// movdqu [rsp+disp], xmm  /  movdqu xmm, [rsp+disp]: the prologue/epilogue save
+// of the pinned float registers (phase 4d), raw-encoded like the fixed XMM10-15
+// block in the prologue bytes
+void JitAmd64::EmitXmmSave(bool store, int disp, Register xmm) {
+  AddMachineCode(0xf3);
+  if(xmm > XMM7) {
+    AddMachineCode(0x44);   // REX.R
+  }
+  AddMachineCode(0x0f);
+  AddMachineCode(store ? 0x7f : 0x6f);
+  unsigned char modrm = 0x44;   // mod=01 (disp8), rm=100 (SIB follows)
+  RegisterEncode3(modrm, 2, xmm);
+  AddMachineCode(modrm);
+  AddMachineCode(0x24);         // SIB: base RSP, no index
+  AddMachineCode((unsigned char)disp);
+}
+
 // entry loads; interior jumps to the header land on loop_offset, past them
 void JitAmd64::EmitPinEntry(int region) {
   PinRegion& pin = pin_regions[region];
   for(size_t i = 0; i < pin.slots.size(); ++i) {
     move_mem_reg(pin.slots[i], RBP, PinRegister((int)i));
+  }
+  for(size_t i = 0; i < pin.fslots.size(); ++i) {
+    move_mem_xreg(pin.fslots[i], RBP, PinFloatRegister((int)i));
   }
   pin.loop_offset = code_index;
   active_pin_region = region;
@@ -1600,6 +1697,9 @@ void JitAmd64::EmitPinWriteBack(int region) {
   const PinRegion& pin = pin_regions[region];
   for(size_t i = 0; i < pin.slots.size(); ++i) {
     move_reg_mem(PinRegister((int)i), pin.slots[i], RBP);
+  }
+  for(size_t i = 0; i < pin.fslots.size(); ++i) {
+    move_xreg_mem(PinFloatRegister((int)i), pin.fslots[i], RBP);
   }
 }
 
@@ -2255,6 +2355,30 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
     // frame slot until the loop is left (exit stubs and the fall-through
     // write-back). A deferred MEM_INT here never names a pinned slot: loads of
     // pinned slots always produce REG_INT.
+    // phase 4d: a pinned Float local's register is the local
+    int pin_freg;
+    if(instr->GetType() == STOR_FLOAT_VAR && PinnedFloatSlot(instr->GetOperand3(), pin_freg)) {
+      RegInstr* value = working_stack.front();
+      working_stack.pop_front();
+      const Register fpin = PinFloatRegister(pin_freg);
+      switch(value->GetType()) {
+      case IMM_FLOAT:
+        move_imm_xreg(value, fpin);
+        break;
+      case MEM_FLOAT:
+        move_mem_xreg((long)value->GetOperand(), RBP, fpin);
+        break;
+      case REG_FLOAT:
+        move_xreg_xreg(value->GetRegister()->GetRegister(), fpin);
+        ReleaseXmmRegister(value->GetRegister());
+        break;
+      default:
+        compile_success = false;
+        break;
+      }
+      delete value;
+      return;
+    }
     int pin_reg;
     if(!is_func_var && PinnedSlot(instr->GetOperand3(), pin_reg)) {
       RegInstr* value = working_stack.front();
@@ -2462,6 +2586,27 @@ void JitAmd64::ProcessCopy(StackInstr* instr) {
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
     dest = RBP;
+    // phase 4d: copy into a pinned Float local's register; the value stays
+    int pin_freg;
+    if(instr->GetType() == COPY_FLOAT_VAR && PinnedFloatSlot(instr->GetOperand3(), pin_freg)) {
+      RegInstr* value = working_stack.front();
+      const Register fpin = PinFloatRegister(pin_freg);
+      switch(value->GetType()) {
+      case IMM_FLOAT:
+        move_imm_xreg(value, fpin);
+        break;
+      case MEM_FLOAT:
+        move_mem_xreg((long)value->GetOperand(), RBP, fpin);
+        break;
+      case REG_FLOAT:
+        move_xreg_xreg(value->GetRegister()->GetRegister(), fpin);
+        break;
+      default:
+        compile_success = false;
+        break;
+      }
+      return;
+    }
     // F3: copy into a pinned loop local's register; the value stays on the
     // working stack as it is
     int pin_reg;
@@ -7180,6 +7325,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     pin_exit_stub_offsets.clear();
     active_pin_region = -1;
     method_pins = false;
+    method_pins_float = false;
     is_inlining = false;
     inline_callee = nullptr;
     inline_local_offset = 0;

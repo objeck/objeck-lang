@@ -202,6 +202,39 @@ locals in [header,end]`), and `_DEBUG_JIT` listings show the entry loads and exi
 | 4c | F3 on ARM64, same design with `X20`-`X27` | ARM64 |
 | 4d | floats where the registers are callee-saved; `RSI`/`RDI` on Windows; `HasAndOr` only for value-context connectives | both |
 
+## 5a. Phase 4d: Float locals in `XMM6`-`XMM9` (Windows), 2026-09-09
+
+The same planner, entry, write-back and exit-stub machinery as the integer pins, with a second
+slot list per region and its own register set. What differs, and why:
+
+- **Registers and platform.** Windows x64 makes `XMM6`-`XMM15` callee-saved; the pool hands out
+  `XMM10`-`XMM15`, so `XMM6`-`XMM9` were free and survive every call out of JIT code by ABI --
+  the same safety argument as `R13`-`R15`. On Linux and macOS every XMM is caller-saved: a call
+  inside the loop would clobber the pin, so the float budget is zero there and nothing changes.
+  ARM64's `D8`-`D15` are callee-saved and remain the open follow-up.
+- **Candidates.** `LOAD/STOR/COPY_FLOAT_VAR` with `LOCL` context whose declared type is
+  `FLOAT_PARM`, weighted by nesting depth like the integers, top four per region (the
+  `OBJECK_JIT_PIN_MAX` knob caps floats too when it is set). A region may pin floats and no
+  integers; the prologue saves each register set only when something pins in it.
+- **Working-stack discipline.** A load of a pinned float slot copies the register into a fresh
+  pool `XMM` (`REG_FLOAT`), never handing the pin itself out; a store moves `IMM_FLOAT`,
+  `MEM_FLOAT` or `REG_FLOAT` into the pin and releases the source; a copy does the same and keeps
+  the value. Because loads of pinned slots never produce `MEM_FLOAT`, the deferred-load
+  materialization in `ProcessStore` cannot name a pinned slot, and the write-through float cache
+  never holds one. `ReleaseXmmRegister` refuses a pinned register, so a bug cannot recycle a live
+  loop local as scratch.
+- **Frame.** Four `movdqu` saves in a 64-byte area below the integer pushes, restored above them
+  in the epilogue; 64 keeps the 16-byte alignment. Raw-encoded like the fixed `XMM10`-`XMM15`
+  block, since the RSP-based SIB form is not one the general movers emit.
+- **Collector.** Float slots are not pointers; the collector skips them, so a stale value in the
+  frame slot during the loop is invisible to it, exactly as for integers.
+
+Measured on the assessment's `FloatDot` kernel: 0.048 s to 0.021 s (2.3x); `Locals`, integer
+only, unchanged. Verified by six fixture probes (`FloatPins`: accumulators, a float carried
+through a nested loop, ints and floats pinned together, seven floats for four registers, a
+`break` out of the loop, calls and an allocation inside the loop) byte-identical between the
+interpreter and the JIT, and the regression suite in both modes.
+
 ## 6. Outcome
 
 **4a (F6)** landed as `a8ad2c0d27`: conditions branch directly, `Branchy` 0.035 s -> 0.026 s, and the
