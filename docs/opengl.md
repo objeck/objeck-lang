@@ -165,22 +165,26 @@ it, or point `run_gl.sh --tree` at a current one.
 **A `dlopen` failure that never mentions SDL2 (Linux)** — the system SDL2 or
 libGL is missing. `tools/install_deps.sh --check` will name it.
 
-**The tools die instantly with no message at all (macOS, legacy `.tgz`)** —
-take the `.pkg` or the `.zip`; both are notarized and run as downloaded. The
-`.tgz` that ships for one more release cannot be notarized, because Apple's
-notary service only accepts `.zip`, `.pkg` and `.dmg`. macOS stamps
-`com.apple.quarantine` on everything unpacked from it and Gatekeeper kills the
-toolchain outright: `obr` exits 137 (SIGKILL) with nothing on stdout or stderr.
-A quarantined library is marginally louder (`library load disallowed by system
-policy`), but neither symptom says the word "quarantine". Clear it once on the
+**The tools die instantly with no message at all (macOS)** — this is
+quarantine plus an *unnotarized* build, and since v2026.9.0 it should not happen
+to a downloaded release. Apple's notary service registers each binary's cdhash,
+so the published `.pkg`, `.zip` and `.tgz` all run straight from a download with
+no user action; verified by extracting a published archive, stamping
+`com.apple.quarantine` on all 23 Mach-O files, and running the toolchain.
+
+It still applies to a **locally built** tree, which is signed ad-hoc or not at
+all: `obr` is killed outright, exit 137, with nothing on stdout or stderr. A
+quarantined library is marginally louder (`library load disallowed by system
+policy`), but neither symptom says the word "quarantine". Clear it on the
 unpacked directory:
 
 ```bash
 xattr -dr com.apple.quarantine objeck-lang
 ```
 
-`./install_deps.sh` detects this and offers to clear it. Neither the `.pkg` nor
-the notarized `.zip` needs any of this.
+`./install_deps.sh --check` reports which case you are in — it tests the
+binaries against the `notarized` code requirement rather than assuming, so a
+notarized tree is reported as fine instead of raising a false alarm.
 
 **No GL context on a headless machine** — the self-test skips when there is no
 display. Set `OBJECK_GL_REQUIRED=1` to make that a failure instead, which is

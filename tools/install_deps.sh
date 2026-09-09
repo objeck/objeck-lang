@@ -115,6 +115,26 @@ find_quarantined() {
 	done
 }
 
+# Quarantine only MATTERS when the binaries are not notarized. Apple's notary
+# service records each binary's cdhash, so a notarized executable runs from a
+# quarantined download with no user action -- Gatekeeper simply checks it. That
+# is the entire point of notarizing, and since v2026.9.0 it is what releases do.
+#
+# Checking this rather than assuming it matters both ways. Telling someone their
+# notarized install is about to be "killed outright" is a false alarm that
+# invites a pointless xattr sweep; staying silent about an unsigned local build
+# hides the silent SIGKILL this check exists to explain.
+is_notarized() {
+	local probe
+	# any one Mach-O answers for the tree: they are signed and notarized together
+	for probe in "$1/bin/obr" "$1/bin/obc"; do
+		[ -f "$probe" ] || continue
+		codesign --test-requirement="=notarized" --verify "$probe" >/dev/null 2>&1
+		return $?
+	done
+	return 1
+}
+
 check_quarantine() {
 	local tree="$1"
 	local quarantined count
@@ -122,10 +142,19 @@ check_quarantine() {
 	[ -z "$quarantined" ] && return 0
 
 	count=$(printf '%s\n' "$quarantined" | wc -l | tr -d ' ')
+
+	if is_notarized "$tree"; then
+		say ""
+		say "  quarantine   $count file(s) carry com.apple.quarantine, which is normal for"
+		say "               a download and harmless here: these binaries are notarized, so"
+		say "               macOS runs them as they are. Nothing to do."
+		return 0
+	fi
+
 	say ""
-	say "  QUARANTINED  $count file(s) carry com.apple.quarantine."
-	say "               macOS will refuse to run them -- a quarantined executable is"
-	say "               killed outright, with no error message at all."
+	say "  QUARANTINED  $count file(s) carry com.apple.quarantine, and these binaries"
+	say "               are not notarized. macOS will refuse to run them -- a quarantined"
+	say "               executable is killed outright, with no error message at all."
 	printf '%s\n' "$quarantined" | sed 's|^|                 |' | head -5
 	[ "$count" -gt 5 ] && say "                 ... and $((count - 5)) more"
 	say ""

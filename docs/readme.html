@@ -509,15 +509,17 @@
     run as downloaded.
    </p>
    <p>
-    A <pre class="cmd">.tgz</pre> is still published for one release so that older copies of
-    <pre class="cmd">obu</pre> can self-update. It cannot be notarized, because Apple's notary
-    service only accepts .zip, .pkg and .dmg, so macOS quarantines it and refuses to run it
-    &mdash; silently: the tools are killed with no error message at all. If you use it, clear
-    the flag on the directory you unpacked:
+    A <pre class="cmd">.tgz</pre> is still published so that older copies of
+    <pre class="cmd">obu</pre> can self-update. The archive itself cannot be notarized &mdash;
+    Apple's notary service only accepts .zip, .pkg and .dmg &mdash; but the binaries inside it
+    are the same notarized binaries, and notarization is recorded per binary, so it runs from a
+    download as well. If you ever meet a build that macOS kills silently, it is an unsigned
+    local build rather than a release; clear the flag on the directory you unpacked:
     <pre class="cmd">xattr -dr com.apple.quarantine objeck-lang</pre>
     Or run
-    <pre class="cmd">./install_deps.sh</pre>
-    from the distribution root, which detects this and offers to clear it for you.
+    <pre class="cmd">./install_deps.sh --check</pre>
+    from the distribution root, which reports whether the binaries are notarized rather than
+    guessing.
    </p>
    <h3>
     Secure Web Server Support
