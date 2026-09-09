@@ -199,7 +199,135 @@ class VmJitEquiv {
       wd += Arith->Wide(i, i * 3 - 7, 11 - i, i * i) % 1000003;
     };
     "wide={$wd}"->PrintLine();
+    nr := Narrow->Mix(500); "narrow={$nr}"->PrintLine();
+
+    e8 := Loops->Eight(2000); "eight={$e8}"->PrintLine();
+    bc := Loops->BreakContinue(500); "brk={$bc}"->PrintLine();
+    ns := Loops->Nested(300); "nested={$ns}"->PrintLine();
+    dw := Loops->DoWhile(37); "dowhile={$dw}"->PrintLine();
+    ca := Loops->CallsAndAllocs(400); "calls={$ca}"->PrintLine();
+    er := Loops->EarlyReturn(1000); "early={$er}"->PrintLine();
+    jf := Loops->JoinAndFloats(250, true) + Loops->JoinAndFloats(250, false); "join={$jf}"->PrintLine();
+    gd := Loops->Gcd(1071, 462) + Loops->Gcd(9999991, 12345); "gcd={$gd}"->PrintLine();
 
     "done"->PrintLine();
+  }
+}
+
+# Loop shapes for the pinned-register allocator (F3): loop-carried scalars,
+# break/continue, nested loops sharing locals, do/while, calls and allocations
+# inside the loop, an early return, a loop after an if/else join with floats
+# beside the integers, and a self-recursive tail call.
+class Loops {
+  function : Eight(n : Int) ~ Int {
+    a := 1; b := 2; c := 3; d := 4; e := 5; f := 6; g := 7; h := 8;
+    for(i := 0; i < n; i += 1;) {
+      a += b; b += c; c += d; d += e; e += f; f += g; g += h; h += a;
+      a := a % 1000003; h := h % 999983;
+    };
+    return a + b * 3 + c * 5 + d * 7 + e * 11 + f * 13 + g * 17 + h * 19;
+  }
+
+  function : BreakContinue(n : Int) ~ Int {
+    s := 0; k := 0;
+    for(i := 0; i < n; i += 1;) {
+      if(i % 7 = 3) { continue; };
+      k += 1;
+      if(k > 40) { break; };
+      s += i * k;
+    };
+    return s * 100 + k;
+  }
+
+  function : Nested(n : Int) ~ Int {
+    t := 0; u := 1;
+    for(i := 0; i < n; i += 1;) {
+      for(j := 0; j < 5; j += 1;) {
+        t += i * j + u;
+        u := (u * 3 + j) % 101;
+      };
+      t := t % 1000003;
+    };
+    return t * 1000 + u;
+  }
+
+  function : DoWhile(n : Int) ~ Int {
+    i := 0; s := 0;
+    do {
+      s += i * 2 + 1;
+      i += 1;
+    } while(i < n);
+    return s * 10 + i;
+  }
+
+  function : CallsAndAllocs(n : Int) ~ Int {
+    s := 0; last : Int[] := Nil;
+    for(i := 0; i < n; i += 1;) {
+      s += Helper(i, s);
+      if(i % 16 = 0) { last := Int->New[8]; last[0] := i; };
+      s := s % 1000003;
+    };
+    return s * 100 + last[0] % 100;
+  }
+
+  function : Helper(i : Int, s : Int) ~ Int {
+    return (i * 7 + s) % 13;
+  }
+
+  function : EarlyReturn(n : Int) ~ Int {
+    acc := 0;
+    for(i := 0; i < n; i += 1;) {
+      acc += i * 3;
+      if(acc > 5000) { return acc * 10 + i; };
+    };
+    return acc;
+  }
+
+  function : JoinAndFloats(n : Int, flag : Bool) ~ Int {
+    x := 0; y := 1.5;
+    if(flag) { x := 3; } else { x := 4; };
+    for(i := 0; i < n; i += 1;) {
+      x := (x * 5 + i) % 10007;
+      y := y * 1.0001 + i;
+    };
+    return x * 1000 + (y->ToInt() % 1000);
+  }
+
+  function : Gcd(a : Int, b : Int) ~ Int {
+    if(b = 0) { return a; };
+    return Gcd(b, a % b);
+  }
+}
+
+# Char and byte elements read and written with six live temporaries, so the
+# element address and the value get handed R8-R11 on Windows (in the pool since
+# batch 3). The 16-bit encoders emitted no REX prefix for those registers, so a
+# char loaded through R8 was read from RAX: found when F3 pinning changed the
+# allocation in the JSON scanner.
+class Narrow {
+  function : Mix(n : Int) ~ Int {
+    cs := Char->New[16];
+    bs := Byte->New[16];
+    for(i := 0; i < 16; i += 1;) {
+      cs[i] := (65 + i)->As(Char);
+      bs[i] := (i * 7)->As(Byte);
+    };
+    a1 := 1; a2 := 2; a3 := 3; a4 := 4; a5 := 5; a6 := 6; acc := 0;
+    for(i := 0; i < n; i += 1;) {
+      k := (i * a1 + a2) % 16;
+      c := cs[(k + a3) % 16];
+      b := bs[(k + a4) % 16];
+      cs[k] := (65 + ((c->As(Int) + a5) % 26))->As(Char);
+      bs[k] := ((b->As(Int) + a6) % 100)->As(Byte);
+      acc := (acc * 31 + c->As(Int) * a1 + b->As(Int) * a2 + a3 + a4 + a5 + a6 + k) % 1000003;
+      # deep nesting keeps six values live, so the element address lands in R8+
+      v := a1 * (a2 + a3 * (a4 + a5 * (a6 + cs[(k + 5) % 16]->As(Int))));
+      cs[(k + 9) % 16] := (65 + (a1 * (a2 + a3 * (a4 + a5 * (a6 + i)))) % 26)->As(Char);
+      w := a1 * (a2 + a3 * (a4 + a5 * (a6 + bs[(k + 7) % 16]->As(Int))));
+      bs[(k + 11) % 16] := ((a1 * (a2 + a3 * (a4 + a5 * (a6 + i)))) % 100)->As(Byte);
+      acc := (acc + v % 1009 + w % 1013) % 1000003;
+      a1 += 1; a2 += 2; a3 += 3; a4 += 1; a5 += 2; a6 += 3;
+    };
+    return acc;
   }
 }

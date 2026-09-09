@@ -1,0 +1,99 @@
+# Evaluation order and skipping of `&` and `|`: left operand first, right only
+# when the left did not decide -- in conditions (if, while, for, ?:), negated,
+# nested, and in value context. Every operand logs its id into @trace, so a
+# wrong order or a skipped/executed operand changes the number. No earlier test
+# observed which operands ran (core_bool_ops asserts values only, on a
+# pass-by-value counter); this one pins the order so the branch emitter
+# (EmitBranch, which turns conditions into jumps) and EmitAndOr cannot drift.
+class ShortCircuitTest {
+  @trace : static : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    "Testing short-circuit evaluation..."->PrintLine();
+    pass := true;
+    @trace := 0;
+
+    # and: both true -> body
+    if(Log(1, true) & Log(2, true)) { Mark(9); };
+    if(<>Check("and true & true", 129)) { pass := false; };
+
+    # and: left false -> right skipped, body skipped
+    if(Log(1, false) & Log(2, true)) { Mark(9); };
+    if(<>Check("and false & true", 1)) { pass := false; };
+
+    # or: left true -> right skipped, body runs
+    if(Log(1, true) | Log(2, true)) { Mark(9); };
+    if(<>Check("or true | true", 19)) { pass := false; };
+
+    # or: both false -> else
+    if(Log(1, false) | Log(2, false)) { Mark(9); } else { Mark(8); };
+    if(<>Check("or false | false", 128)) { pass := false; };
+
+    # negated connective
+    if(<>(Log(1, true) & Log(2, false))) { Mark(9); };
+    if(<>Check("not (true & false)", 129)) { pass := false; };
+
+    # nested: (1 | 2) & 3 | 4 -> 1 decides the inner or, 3 is false, 4 rescues
+    if(((Log(1, true) | Log(2, true)) & Log(3, false)) | Log(4, true)) { Mark(9); };
+    if(<>Check("nested", 1349)) { pass := false; };
+
+    # while: the condition is re-evaluated left to right on every test
+    i := 0;
+    while(Log(1, i < 2) & Log(2, true)) { i += 1; };
+    if(<>Check("while", 12121)) { pass := false; };
+
+    # for
+    for(j := 0; Log(1, j < 1) | Log(2, false); j += 1;) { Mark(9); };
+    if(<>Check("for", 1912)) { pass := false; };
+
+    # ternary
+    v := (Log(1, false) & Log(2, true)) ? 5 : 6;
+    if(v <> 6) { pass := false; "  FAIL: ternary value"->PrintLine(); };
+    if(<>Check("ternary", 1)) { pass := false; };
+
+    # value context keeps the same order and skipping
+    b := Log(1, true) & Log(2, false);
+    if(b) { pass := false; "  FAIL: value and"->PrintLine(); };
+    if(<>Check("value and", 12)) { pass := false; };
+
+    c := Log(1, true) | Log(2, true);
+    if(<>c) { pass := false; "  FAIL: value or"->PrintLine(); };
+    if(<>Check("value or", 1)) { pass := false; };
+
+    d := Log(1, false) | Log(2, true);
+    if(<>d) { pass := false; "  FAIL: value or 2"->PrintLine(); };
+    if(<>Check("value or 2", 12)) { pass := false; };
+
+    # the idiom the order exists for: a guard on the left protects the right
+    s : String := Nil;
+    if(s <> Nil & s->Size() > 0) { Mark(9); };
+    if(<>Check("nil guard", 0)) { pass := false; };
+
+    if(pass) {
+      "PASS: Short-circuit evaluation"->PrintLine();
+    }
+    else {
+      "FAIL: Short-circuit evaluation"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Log(id : Int, v : Bool) ~ Bool {
+    @trace := @trace * 10 + id;
+    return v;
+  }
+
+  function : Mark(id : Int) ~ Nil {
+    @trace := @trace * 10 + id;
+  }
+
+  function : Check(name : String, expected : Int) ~ Bool {
+    got := @trace;
+    @trace := 0;
+    if(got <> expected) {
+      "  FAIL: {$name}: expected {$expected}, got {$got}"->PrintLine();
+      return false;
+    };
+    return true;
+  }
+}

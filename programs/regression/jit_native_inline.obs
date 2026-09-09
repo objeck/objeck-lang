@@ -1,0 +1,68 @@
+use System.Time;
+use System.Concurrency;
+
+# A method marked 'native' must run as native code wherever it is called from.
+# At -opt s3 (the default) the compiler inlines small calls, and an inlined
+# copy runs in whatever engine its caller does. Main is never compiled, and a
+# thread's Run is called once per thread, so the auto-JIT never compiles it
+# either. Main was already exempt from inlining; Run was not, so a worker
+# thread's native loop was pasted into Run and interpreted -- every thread
+# workload ran ~50x slower than the same code on the main thread (found
+# 2026-09-09 while measuring loop-local pinning). The compiler now refuses to
+# inline a native method into a caller that is not native itself.
+#
+# The probe: one native loop, called from Main (a real call, always compiled)
+# and from a worker's Run. The two must finish within a small factor of each
+# other; inlined and interpreted, the worker's copy takes ~50x longer.
+class Worker from Thread {
+  @secs : static : Float;
+  @result : static : Int;
+
+  New() { Parent("worker"); }
+
+  method : public : Run(param : Base) ~ Nil {
+    t := Timer->New(true);
+    x := Spin(200000000);
+    t->End();
+    @secs := t->GetElapsedTime();
+    @result := x;
+  }
+
+  function : native : Spin(n : Int) ~ Int {
+    x := 1;
+    for(i := 0; i < n; i += 1;) { x := x * 3 + 1; };
+    return x;
+  }
+
+  function : Seconds() ~ Float { return @secs; }
+  function : Result() ~ Int { return @result; }
+}
+
+class NativeInlineTest {
+  function : Main(args : String[]) ~ Nil {
+    "Testing native methods called from a thread..."->PrintLine();
+    t := Timer->New(true);
+    main_x := Worker->Spin(200000000);
+    t->End();
+    main_secs := t->GetElapsedTime();
+
+    w := Worker->New();
+    w->Execute(Nil);
+    w->Join();
+    thread_secs := Worker->Seconds();
+    thread_x := Worker->Result();
+
+    "  main: {$main_secs}s, thread: {$thread_secs}s"->PrintLine();
+    if(thread_x <> main_x) {
+      "FAIL: thread result {$thread_x} <> main result {$main_x}"->PrintLine();
+      Runtime->Exit(1);
+    };
+    # a factor of 10 with half a second of slack: native-vs-native is ~1x on an
+    # idle machine, native-vs-interpreted ~50x, so the bound is robust to noise
+    if(thread_secs > main_secs * 10.0 + 0.5) {
+      "FAIL: the thread's copy of the native loop ran at interpreter speed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: native methods stay native when called from a thread"->PrintLine();
+  }
+}

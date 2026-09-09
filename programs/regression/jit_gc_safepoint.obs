@@ -1,0 +1,66 @@
+use System.Concurrency;
+
+# A JIT-compiled, allocation-free loop must reach a GC safepoint: the
+# stop-the-world collector waits for every thread to park, so a JIT loop that
+# never polls stalls every other thread's collection until the loop ends.
+#
+# The main thread spins in a native (always JIT-compiled) loop that watches a
+# class variable; a worker allocates enough to force collections and then sets
+# the flag. With a poll at the loop header the worker finishes quickly and the
+# spin stops early; without one the worker's first collection waits for the
+# whole spin, so the spin runs to its limit. Found 2026-09-09: the poll was
+# keyed on the label's index while jumps target the instruction after the
+# label, so no JIT loop was ever polled.
+class Allocator from Thread {
+  New() { Parent("allocator"); }
+
+  method : public : Run(param : Base) ~ Nil {
+    total := 0;
+    for(k := 0; k < 300000; k += 1;) {
+      a := Int->New[32];
+      a[0] := k;
+      total += a[0] % 7;
+    };
+    SafepointTest->Finish(total);
+  }
+}
+
+class SafepointTest {
+  @done : static : Bool;
+  @total : static : Int;
+
+  function : Finish(total : Int) ~ Nil {
+    @total := total;
+    @done := true;
+  }
+
+  function : native : Spin(limit : Int) ~ Int {
+    x := 1;
+    i := 0;
+    while(i < limit & <>@done) {
+      x := x * 3 + 1;
+      i += 1;
+    };
+    return i;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    "Testing JIT loop safepoints..."->PrintLine();
+    @done := false;
+    limit := 4000000000;
+    a := Allocator->New();
+    a->Execute(Nil);
+    count := Spin(limit);
+    a->Join();
+    "  spin iterations: {$count} of {$limit}, allocator total={$@total}"->PrintLine();
+    if(@total <> 899997) {
+      "FAIL: allocator total"->PrintLine();
+      Runtime->Exit(1);
+    };
+    if(count >= limit) {
+      "FAIL: the JIT loop ran to its limit -- the collector could not stop it"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: JIT loop safepoints"->PrintLine();
+  }
+}

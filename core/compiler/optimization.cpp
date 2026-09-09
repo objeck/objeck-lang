@@ -605,6 +605,16 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
     return false;
   }
 
+  // don't inline a 'native' method into a method that isn't one. The inlined copy
+  // runs in whatever engine its caller does, and a caller the auto-JIT never
+  // compiles -- a thread's Run is called once per thread, a driver a handful of
+  // times -- interprets it: the loop the user marked for the JIT ran ~50x slower
+  // on every worker thread (found 2026-09-09; see jit_native_inline.obs). A
+  // native caller is compiled whole, so inlining into it changes nothing.
+  if(mthd_called->IsNative() && !current_method->IsNative()) {
+    return false;
+  }
+
   // check instructions
   std::vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
   if(mthd_called_blocks.empty()) {

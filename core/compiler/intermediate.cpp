@@ -3527,14 +3527,17 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, LBL, unconditional_continue));
   
   // conditional
-  EmitExpression(do_while_stmt->GetExpression());
-
-  if(!post_statements.empty()) {
+  // A post statement runs between the test and the jump, so the value has to
+  // wait on the stack; without one the condition branches directly.
+  if(post_statements.empty()) {
+    EmitBranch(do_while_stmt->GetExpression(), conditional, true);
+  }
+  else {
+    EmitExpression(do_while_stmt->GetExpression());
     EmitAssignment(post_statements.front());
     post_statements.pop();
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
   }
-
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
   
   std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
@@ -3551,11 +3554,10 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   // conditional expression
   const long unconditional = ++unconditional_label;
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, LBL, unconditional));
-  EmitExpression(while_stmt->GetExpression());
   
   const int break_label = ++conditional_label;
   break_labels.push(std::pair<int, int>(break_label, unconditional));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, JMP, break_label, false));
+  EmitBranch(while_stmt->GetExpression(), break_label, false);
   
 
   // statements
@@ -3724,13 +3726,12 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     // conditional expression
     long unconditional = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, unconditional));
-    EmitExpression(for_stmt->GetExpression());
 
     // break and continue
     const long break_label = ++conditional_label;
     const long unconditional_continue = ++unconditional_label;
     break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
+    EmitBranch(for_stmt->GetExpression(), break_label, false);
 
     // statements
     std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
@@ -3772,15 +3773,13 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
   if(if_stmt) {
     // expression
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(if_stmt, cur_line_num, LBL, (long)next_label));
-    EmitExpression(if_stmt->GetExpression());
-
-    // if-else
+    // the condition branches to the next arm (or the end) when false
     long conditional = ++conditional_label;
     if(if_stmt->GetNext() || if_stmt->GetElseStatements()) {      
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(if_stmt, cur_line_num, JMP, conditional, false));
+      EmitBranch(if_stmt->GetExpression(), conditional, false);
     }
     else {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(if_stmt, cur_line_num, JMP, end_label, false));
+      EmitBranch(if_stmt->GetExpression(), end_label, false);
     }
     
     // statements
@@ -4608,10 +4607,9 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   
   // conditional
   long end_label = ++unconditional_label;
-  EmitExpression(conditional->GetCondExpression());
   // if-expression
   long cond = ++conditional_label;
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, JMP, cond, false));
+  EmitBranch(conditional->GetCondExpression(), cond, false);
   EmitExpression(conditional->GetExpression());
   EmitCast(conditional);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, STOR_INT_VAR, 0, LOCL));
@@ -5254,6 +5252,60 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
 }
 
 /****************************
+ * Emits a jump to 'target_label' taken when 'expression' is 'jump_if_true'.
+ * `&`, `|` and `<>` (which the parser spells as `x <> true`) become
+ * short-circuit jumps: the source-left operand is evaluated first and the
+ * source-right one only when the left did not decide -- the same order as
+ * EmitAndOr -- but no value is produced, so nothing has to cross a label
+ * through the slot-0 temporary that value-context connectives still need.
+ * Every comparison lands right before the JMP that consumes it, the shape
+ * both JIT backends fuse into a compare-and-branch.
+ ****************************/
+void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, bool jump_if_true)
+{
+  const ExpressionType type = expression->GetExpressionType();
+  if(type == AND_EXPR || type == OR_EXPR) {
+    CalculatedExpression* calc = static_cast<CalculatedExpression*>(expression);
+    cur_line_num = calc->GetLineNumber();
+    // ParseLogic stores the source-left operand in 'right' and the source-right
+    // operand in 'left'
+    Expression* first = calc->GetRight();
+    Expression* second = calc->GetLeft();
+    // AND is false as soon as one side is false; OR is true as soon as one side
+    // is true. When the jump's sense matches that, both sides jump straight to
+    // the target; otherwise the first side skips past the second side's test.
+    const bool is_and = (type == AND_EXPR);
+    if(is_and != jump_if_true) {
+      EmitBranch(first, target_label, jump_if_true);
+      EmitBranch(second, target_label, jump_if_true);
+    }
+    else {
+      const long skip_label = ++conditional_label;
+      EmitBranch(first, skip_label, !jump_if_true);
+      EmitBranch(second, target_label, jump_if_true);
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, skip_label));
+    }
+    return;
+  }
+  // logical not: `<> x` parses as `x <> true` (operand in 'left', literal in
+  // 'right') -- invert the jump instead of comparing against the literal
+  if(type == NEQL_EXPR) {
+    CalculatedExpression* calc = static_cast<CalculatedExpression*>(expression);
+    Expression* left = calc->GetLeft();
+    Expression* right = calc->GetRight();
+    if(left && right && right->GetExpressionType() == BOOLEAN_LIT_EXPR &&
+       static_cast<BooleanLiteral*>(right)->GetValue() &&
+       left->GetEvalType() && left->GetEvalType()->GetType() == BOOLEAN_TYPE) {
+      EmitBranch(left, target_label, !jump_if_true);
+      return;
+    }
+  }
+  // anything else: evaluate, then jump on the value
+  EmitExpression(expression);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, target_label, jump_if_true ? 1L : 0L));
+}
+
+/****************************
  * Translates a calculation
  ****************************/
 void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
@@ -5262,7 +5314,11 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
 
   switch(expression->GetExpressionType()) {
   case AND_EXPR: {
-    // emit right
+    // The parser stores the source-LEFT operand in 'right' (ParseLogic swaps
+    // them), so this evaluates left to right and short-circuits: the source-
+    // right operand runs only when the left was true. The value must reach
+    // the join through slot 0 (the JIT needs an empty working stack at a
+    // label); in a condition EmitBranch avoids the temporary altogether.
     EmitExpression(expression->GetRight());
     long label = ++conditional_label;
     // AND jump

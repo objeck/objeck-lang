@@ -85,9 +85,30 @@ The reload of `INSTANCE_MEM` after the callback is essential: a callback can tri
 ### Implementation
 C++ using the STL. Back-end sources: `amd64/jit_amd_lp64.{h,cpp}`, `arm64/jit_arm_a64.{h,cpp}`; shared driver and tunables in `jit_common.{h,cpp}`. Canonical benchmark numbers live in [`docs/performance.md`](../../../../docs/performance.md).
 
+## Loop locals in registers (AMD64)
+
+The hottest `Int`/`Char` locals of each loop (up to three) live in `R13`-`R15` for the loop's
+extent: loaded at the loop header (the back-edge target), read and written as registers inside,
+stored back on every exit. Object slots are never pinned. `docs/JIT_LOOP_LOCALS_DESIGN.md` has the
+design; `OBJECK_JIT_REPORT=1` lists each pinned loop, `OBJECK_JIT_PIN_MAX=<n>` caps the count
+(`0` turns pinning off) and `OBJECK_JIT_PIN_SKIP=<substring>` exempts matching methods -- the way
+to tell a pinning problem from anything else.
+
+`OBJECK_GC_TRACE=1` makes the collector name every JIT frame it scans and print each declared slot's
+type and value first, so a crash in the root scan says which frame and slot held the bad pointer.
+
 ## Not compiled, by design
 
 - A method containing a try region (`TRY_START`/`TRY_END` — what `?->` desugars to) runs in the interpreter on both backends: recovery needs the interpreter's handler stack, and native code has no way to resume at a handler. `OBJECK_JIT_REPORT=1` names such methods.
+
+## `native` and the inliner
+
+`native` asks for a method to be compiled on its first call, threshold or not. The compiler's
+`-opt s3` inliner used to be able to paste such a method into a non-native caller, where the copy
+ran in the caller's engine -- and a caller the auto-JIT never compiles (`Main`, a thread's `Run`,
+anything called fewer than ten times) interprets it. That is how every worker thread's native loop
+ran ~50x slower than the same code on the main thread. A `native` method is now never inlined into
+a caller that is not native itself; `jit_native_inline.obs` measures the two against each other.
 
 ## Diagnostics
 
