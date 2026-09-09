@@ -727,6 +727,7 @@ jobs:
       # bad_generic_arg_mismatch miss (prints [generic-diag] lines during compile).
       env:
         OBJECK_DIAG_GENERICS: "1"
+        OBJECK_GC_TRACE: "1"
         # Turns gl_context_test.obs from "skip when no GL" into "fail when
         # no GL". These three legs do reach a 3.3 core context -- Linux via
         # Mesa offscreen/EGL, macOS via cocoa -- so losing it is a
