@@ -33,6 +33,18 @@
 #include <iomanip>
 #include <chrono>
 
+// OBJECK_GC_TRACE=1: name every JIT frame the collector scans and print each
+// declared slot's type and value first, so a crash in the root scan says which
+// frame and slot held the bad pointer.
+static bool GcTraceEnabled() {
+#ifdef _WIN32
+  static const bool enabled = []() { size_t len = 0; getenv_s(&len, nullptr, 0, "OBJECK_GC_TRACE"); return len > 0; }();
+#else
+  static const bool enabled = std::getenv("OBJECK_GC_TRACE") != nullptr;
+#endif
+  return enabled;
+}
+
 StackProgram* MemoryManager::prgm;
 
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
@@ -1358,6 +1370,11 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
     size_t* mem = frame->jit_mem;
     size_t* self = (size_t*)frame->mem[0];
     const long dclrs_num = method->GetNumberDeclarations();
+    const bool gc_trace = GcTraceEnabled();
+    if(gc_trace) {
+      std::wcerr << L"[gc] jit frame '" << method->GetName() << L"' mem=" << (void*)mem << L" self=" << (void*)self
+                 << L" dclrs=" << dclrs_num << std::endl;
+    }
 
 #ifdef _DEBUG_GC
     std::wcout << L"\t===== JIT method: name=" << method->GetName() << L", id=" << method->GetClass()->GetId()
@@ -1387,6 +1404,9 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
       // front to back...
       for(long j = dclrs_num - 1; j >= 0; --j) {
 #endif
+        if(gc_trace) {
+          std::wcerr << L"[gc]   slot " << j << L" type=" << dclrs[j]->type << L" value=" << (void*)(*mem) << std::endl;
+        }
         // update address based upon type
         switch(dclrs[j]->type) {
         case FUNC_PARM: {
