@@ -594,6 +594,10 @@ namespace backend {
       return is_virtual;
     }
 
+    bool IsNative() {
+      return is_native;
+    }
+
     bool IsLibrary() {
       return is_lib;
     }
