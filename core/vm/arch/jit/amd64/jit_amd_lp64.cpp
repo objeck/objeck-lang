@@ -433,6 +433,16 @@ void JitAmd64::ProcessInstructions() {
   while(instr_index < method->GetInstructionCount() && compile_success) {
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
+    if(!is_inlining) {
+      // GC safepoint at loop headers only: a label's target is the head of a
+      // loop iff some jump to it is backward, and every cyclic path contains a
+      // back-edge, so polling these alone reaches every JITed loop (else the
+      // stop-the-world collector waits forever on an allocation-free loop).
+      // The working stack is empty here, right after a label.
+      if(safepoint_lbl_indices.find(instr_index - 1) != safepoint_lbl_indices.end()) {
+        EmitJitSafePoint();
+      }
+    }
     
     switch(instr->GetType()) {
       // load literal
@@ -1101,6 +1111,10 @@ void JitAmd64::ProcessInstructions() {
       std::wcout << L"______ LBL: id=" << instr->GetOperand() << L" ______" << std::endl;
 #endif
       FlushLocalCache();
+      // The safepoint poll and the F3 entry loads are emitted at the jump
+      // TARGET, the instruction after this label (see the top of the loop):
+      // the compiler resolves a label to the index of the next instruction, so
+      // keying on the LBL's own index never matched and no loop was polled.
       // GC safepoint only at loop-header labels (back-edge targets). A label is
       // the target of a backward jump iff it heads a loop, and every cyclic path
       // in the bytecode contains such a back-edge, so polling these labels alone
@@ -1111,9 +1125,6 @@ void JitAmd64::ProcessInstructions() {
       // empty at a label, so the poll loses no live JIT value. Inlined callees
       // contain no labels (CanInlineMethod rejects control flow), so all loops
       // live in this instruction stream and are covered by safepoint_lbl_indices.
-      if(safepoint_lbl_indices.find(instr_index - 1) != safepoint_lbl_indices.end()) {
-        EmitJitSafePoint();
-      }
       break;
       
     default:

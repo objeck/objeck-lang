@@ -406,6 +406,15 @@ void JitArm64::ProcessInstructions() {
   while(instr_index < method->GetInstructionCount() && compile_success) {
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
+    // GC safepoint at loop headers only: a label's target is the head of a loop
+    // iff some jump to it is backward, and every cyclic path contains a
+    // back-edge, so polling these alone reaches every JITed loop (else the
+    // stop-the-world collector waits forever on an allocation-free loop).
+    // The working stack is empty here, right after a label. ARM64 has no method
+    // inlining, so all loops live in this instruction stream.
+    if(safepoint_lbl_indices.find(instr_index - 1) != safepoint_lbl_indices.end()) {
+      EmitJitSafePoint();
+    }
     
     switch(instr->GetType()) {
       // load literal
@@ -1016,14 +1025,10 @@ void JitArm64::ProcessInstructions() {
       std::wcout << L"LBL: id=" << instr->GetOperand() << endl;
 #endif
       FlushLocalCache();
-      // GC safepoint only at loop-header labels (back-edge targets). Every cyclic
-      // path contains a back-edge, so polling these labels alone guarantees each
-      // JITed loop reaches a safepoint (else the stop-the-world collector
-      // deadlocks); forward-only labels (if/else merges) are skipped. ARM64 has no
-      // method inlining, so all loops live in this instruction stream.
-      if(safepoint_lbl_indices.find(instr_index - 1) != safepoint_lbl_indices.end()) {
-        EmitJitSafePoint();   // poll for stop-the-world GC at this loop header
-      }
+      // The safepoint poll is emitted at the jump TARGET, the instruction after
+      // this label (see the top of ProcessInstructions): the compiler resolves
+      // a label to the index of the next instruction, so keying on the LBL's
+      // own index never matched and no loop was polled.
       break;
       
     default: {
