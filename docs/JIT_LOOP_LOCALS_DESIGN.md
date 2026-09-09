@@ -250,6 +250,14 @@ the regression suite normal and with every method JIT-compiled.
    working stack as `REG_FLOAT`; only `REG_INT` was released after a fused jump), so a method with more
    fused float compares than the pool holds fell back to the interpreter.
 
-Also observed and left open: a compiled method called from a *spawned thread* runs at interpreter
-speed (about 55x slower than the same native code on the main thread); the call-site patching and
-dispatch look thread-agnostic, so the cause is not yet known.
+6. *A `native` method could be inlined into a caller that never runs natively.* The `-opt s3`
+   inliner pastes small calls into their caller, and the copy runs in whatever engine the caller
+   does. `Main` was exempt (its comment says why: it is never compiled), but a thread's `Run` was
+   not, and `Run` is called once per thread so the auto-JIT never compiles it either: a worker's
+   native loop was pasted into `Run` and interpreted, ~50x slower than the same code on the main
+   thread. First seen as "a compiled method called from a spawned thread runs at interpreter
+   speed", and chased as a thread problem until the bytecode listing showed no call at all -- the
+   proof was an out-of-bounds index inside the loop, which the worker reported with the
+   interpreter's message and the main thread with the JIT's. The compiler now refuses to inline a
+   `native` method into a non-native caller; a native caller is compiled whole, so inlining into
+   it changes nothing (`jit_native_inline.obs`).

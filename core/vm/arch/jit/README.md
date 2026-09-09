@@ -101,6 +101,15 @@ type and value first, so a crash in the root scan says which frame and slot held
 
 - A method containing a try region (`TRY_START`/`TRY_END` — what `?->` desugars to) runs in the interpreter on both backends: recovery needs the interpreter's handler stack, and native code has no way to resume at a handler. `OBJECK_JIT_REPORT=1` names such methods.
 
+## `native` and the inliner
+
+`native` asks for a method to be compiled on its first call, threshold or not. The compiler's
+`-opt s3` inliner used to be able to paste such a method into a non-native caller, where the copy
+ran in the caller's engine -- and a caller the auto-JIT never compiles (`Main`, a thread's `Run`,
+anything called fewer than ten times) interprets it. That is how every worker thread's native loop
+ran ~50x slower than the same code on the main thread. A `native` method is now never inlined into
+a caller that is not native itself; `jit_native_inline.obs` measures the two against each other.
+
 ## Diagnostics
 
 - `OBJECK_JIT_REPORT=1` — stderr line per method the JIT hands back to the interpreter (unsupported opcode, or the instruction where compilation failed). Both backends. Use it on a real program before deciding which fallback to fix next.
