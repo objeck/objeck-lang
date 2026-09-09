@@ -82,16 +82,21 @@ float-register leak). Verified by probe PR #741, now on master: both tests route
 `String->Equals` again with their markers removed, the reduction fixture `jit_virtual_equals.obs`
 was added, and all three ARM64 legs are green. Issue #722 is closed.
 
-What that leaves is the pattern, not the bug: **27 regression tests still carry `# JIT_DISABLE`**
-(`grep -l '# JIT_DISABLE' programs/regression/*.obs`), each opting a test out of JIT coverage.
-Two of them turned out to mask a real, since-fixed miscompile. The rest have never been audited.
-The Mac can work through them the way #741 did -- drop the marker, run under
-`OBJECK_JIT_THRESHOLD=1`, and either the test passes (the marker was stale, remove it) or it
-exposes a live miscompile to chase under `lldb`. Each marker should end up with a stated reason
-or a compiled twin; a JIT'd path with no coverage is where the next #722 hides. `jit_arm_a64.cpp`
-is the place to look when one fails: the AMD64 `IMUL` operand-order bug of #721 and the stored
-float compare of #660 were the same shape -- a caller-saved register that one backend spills
-across a call and the other does not.
+What that leaves is the pattern, not the bug -- and the pattern turned out to be worse than a
+few stale opt-outs. Both regression runners matched `# JIT_DISABLE` as a *substring*, so five
+tests written to catch JIT bugs (`jit_autojit_race`, `jit_concurrent_compile`,
+`jit_float_mem_ops`, `core_thread_gc_stress`, `jit_virtual_equals`), whose comments said "do NOT
+add a `# JIT_DISABLE` marker", ran with the JIT **off** on every leg for as long as that sentence
+had existed. PR #745 fixes the runners (whole-line on POSIX, begin-anchored on Windows, where
+`findstr` cannot end-anchor an LF-ended line), drops the twenty opt-outs that never said why --
+every one of the twenty-two real directives passes compiled on AMD64 -- keeps the two with a
+reason (`interp_float_fastpath`, `bad_runtime_stack`) and states it, and adds
+`tools/cicd/check_jit_optouts.py` to CI so a directive without a `# reason:` line, or prose that
+quotes the marker, fails the build. Its ARM64 legs are the other half of the audit: twenty-five
+tests run compiled there for the first time, and a failure is a #722-class finding to chase on
+the Mac (`jit_arm_a64.cpp`; the `IMUL` operand-order bug of #721 and the stored float compare of
+#660 were the same shape -- a caller-saved register one backend spills across a call and the
+other does not).
 
 ### 3b. The ARM64 baseline
 
