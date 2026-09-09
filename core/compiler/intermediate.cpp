@@ -5287,19 +5287,8 @@ void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, 
     }
     return;
   }
-  // logical not: `<> x` parses as `x <> true` (operand in 'left', literal in
-  // 'right') -- invert the jump instead of comparing against the literal
-  if(type == NEQL_EXPR) {
-    CalculatedExpression* calc = static_cast<CalculatedExpression*>(expression);
-    Expression* left = calc->GetLeft();
-    Expression* right = calc->GetRight();
-    if(left && right && right->GetExpressionType() == BOOLEAN_LIT_EXPR &&
-       static_cast<BooleanLiteral*>(right)->GetValue() &&
-       left->GetEvalType() && left->GetEvalType()->GetType() == BOOLEAN_TYPE) {
-      EmitBranch(left, target_label, !jump_if_true);
-      return;
-    }
-  }
+  // (experiment: the `<>` shortcut is disabled -- it produces a JMP-if-true
+  // straight after a plain value, the one new shape the ARM64 legs reject)
   // anything else: evaluate, then jump on the value
   EmitExpression(expression);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, target_label, jump_if_true ? 1L : 0L));
