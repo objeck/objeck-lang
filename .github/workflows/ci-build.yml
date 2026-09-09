@@ -1031,6 +1031,7 @@ jobs:
         ./obc -src ../../../lib/code_doc/doc_html.obs,../../../lib/code_doc/doc_parser.obs \
           -lib cipher,json,xml,misc,net -dest code_doc.obe
 
+        set -o pipefail
         ./obr code_doc.obe \
           ../../../lib/code_doc/templates \
           ${{ github.ref_type == 'tag' && github.ref_name || '0.0.0' }} \
@@ -1076,7 +1077,15 @@ jobs:
           ../../../compiler/lib_src/onnx.obs \
           ../../../compiler/lib_src/nlp.obs \
           ../../../compiler/lib_src/lame.obs \
-          ../../../compiler/lib_src/web_server.obs
+          ../../../compiler/lib_src/web_server.obs 2>&1 | tee code_doc.log
+        # A doc comment the parser rejects drops its member from the API reference with
+        # only an ERROR line to show for it: two GLWindow members shipped undocumented
+        # for weeks that way (issue #729). Refuse to package such a build.
+        if grep -q '^ERROR:' code_doc.log; then
+          echo "code_doc rejected doc comment(s); their members would be missing from api.zip:"
+          grep '^ERROR:' code_doc.log | head -20
+          exit 1
+        fi
 
     - name: Package API documentation
       if: matrix.platform == 'linux-x64'
