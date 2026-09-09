@@ -4955,6 +4955,21 @@ void JitArm64::ProcessIndices()
   
   long index = RED_ZONE;
   long last_id = -1;
+  // A method flagged HasAndOr reserves local slot 0 for the compiler's scratch
+  // temp (and/or values, ternaries, select), and the collector's ARM64 walk
+  // skips that slot. Since conditions branch directly, a method whose
+  // connectives all sit in conditions never references the slot, and a frame
+  // laid out from referenced ids alone lost it: the walk then read every
+  // declared slot one off and followed integers as pointers. Reserve it.
+  bool slot0_referenced = false;
+  for(auto range = values.equal_range(0); range.first != range.second; ++range.first) {
+    if(range.first->second->GetOperand2() == LOCL) {
+      slot0_referenced = true;
+    }
+  }
+  if(method->HasAndOr() && !slot0_referenced) {
+    index += sizeof(size_t);
+  }
   multimap<long, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
     long id = value->first;
