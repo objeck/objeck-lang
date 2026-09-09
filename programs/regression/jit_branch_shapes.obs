@@ -1,0 +1,98 @@
+# Every branch shape the compiler emits for `&`, `|` and `<>` in conditions,
+# in loops that are JIT-compiled (native) and allocate enough to run the
+# collector while the loop's frame is live: plain booleans, method calls,
+# integer and float compares, nested connectives, and the skip-label forms
+# (`&` when the jump is taken on true, `|` when it is taken on false).
+# Written when the ARM64 JIT crashed in the collector's root scan on the
+# standard library rebuilt with the short-circuit emitter.
+class BranchShapes {
+  @calls : static : Int;
+
+  function : True(x : Int) ~ Bool {
+    @calls += 1;
+    return x >= 0;
+  }
+
+  function : IsOdd(x : Int) ~ Bool {
+    @calls += 1;
+    return x % 2 = 1;
+  }
+
+  function : native : IntShapes(n : Int) ~ Int {
+    acc := 0;
+    flag := true;
+    for(i := 0; i < n; i += 1;) {
+      # and, both compares
+      if(i % 3 = 0 & i % 5 = 0) { acc += 1; };
+      # or, both compares
+      if(i % 7 = 1 | i % 11 = 2) { acc += 2; };
+      # plain boolean local first, then a compare
+      if(flag & i % 4 = 0) { acc += 3; };
+      # call, then compare
+      if(IsOdd(i) & i > 10) { acc += 4; };
+      # compare, then call
+      if(i < 5 | True(i)) { acc += 5; };
+      # not on a local, not on a call
+      if(<>flag) { acc += 100; };
+      if(<>IsOdd(i)) { acc += 6; };
+      # skip-label forms: and under not, or under not
+      if(<>(i % 2 = 0 & i % 3 = 0)) { acc += 7; };
+      if(<>(i % 5 = 0 | i % 9 = 0)) { acc += 8; };
+      # nested three deep
+      if((i % 2 = 0 | i % 3 = 0) & (i % 5 <> 0 | flag) & IsOdd(i + 1)) { acc += 9; };
+      # an allocation on the way, so a collection can happen with this frame live
+      if(i % 16 = 0) { tmp := Int->New[32]; tmp[0] := i; acc += tmp[0] % 3; };
+      flag := <>flag;
+    };
+    return acc;
+  }
+
+  function : native : FloatShapes(n : Int) ~ Int {
+    acc := 0;
+    x := 0.5;
+    for(i := 0; i < n; i += 1;) {
+      x := x * 1.0001 + 0.25;
+      if(x > 1.0 & x < 1000000.0) { acc += 1; };
+      if(x < 1.0 | x > 3.0) { acc += 2; };
+      if(<>(x > 2.0 & x < 4.0)) { acc += 3; };
+      if(<>(x < 2.0 | x > 5.0)) { acc += 4; };
+      if((x > 1.5 | x < 0.1) & (x <> 2.0 | x = 2.0) & x >= 0.0) { acc += 5; };
+      if(x > 1.0 & x > 2.0 & x > 3.0 & x > 4.0 & x > 5.0 & x > 6.0 & x > 7.0 & x > 8.0 & x > 9.0 & x > 10.0 & x > 11.0 & x > 12.0 & x > 13.0 & x > 14.0 & x > 15.0 & x > 16.0 & x > 17.0) { acc += 6; };
+      if(i % 32 = 0) { tmp := Float->New[8]; tmp[0] := x; if(tmp[0] > 0.0) { acc += 1; }; };
+    };
+    return acc;
+  }
+
+  function : native : WhileShapes(n : Int) ~ Int {
+    acc := 0;
+    i := 0;
+    done := false;
+    while(i < n & <>done) {
+      i += 1;
+      if(i % 97 = 0 | (i > 500 & IsOdd(i))) { acc += i % 10; };
+      if(i >= n - 1 & acc > 0) { done := true; };
+    };
+    j := 0;
+    do {
+      j += 1;
+      if(j % 2 = 0 & j % 3 = 0) { acc += 1; };
+    } while(j < n | <>done);
+    return acc * 1000 + i + j;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    "Testing JIT branch shapes..."->PrintLine();
+    @calls := 0;
+    a := IntShapes(3000);
+    b := FloatShapes(3000);
+    c := WhileShapes(3000);
+    "  int={$a} float={$b} while={$c} calls={$@calls}"->PrintLine();
+    if(a = 232007 & b = 50696 & c = 6828999 & @calls = 13369) {
+      "PASS: JIT branch shapes"->PrintLine();
+    }
+    else {
+      "FAIL: JIT branch shapes"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
