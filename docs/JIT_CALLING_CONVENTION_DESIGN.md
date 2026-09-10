@@ -1,0 +1,221 @@
+# JIT: what a compiled call costs, and the convention that removes it (F7)
+
+**Status:** design, 2026-09-10. Nothing implemented. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
+("every method entry/exit rebuilds the VM operand-stack view, and JIT-to-JIT calls still marshal
+arguments through the VM stack"), measured here for the first time, on Windows x64 at master
+`26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
+
+## 1. The measurement
+
+Five kernels, 20M iterations (`VirtualCall` 2M, `Fib(32)` is about 7M calls), medians of three,
+`--jit=off` against the default JIT. Every kernel is a once-called method with a loop, so the
+default threshold compiles it on entry; the callees compile after ten calls.
+
+| kernel | what the loop does | interpreter | JIT | JIT vs interpreter |
+|---|---|---|---|---|
+| `InlinedCall` | `Small(acc, i)`, which `obc` inlines: no call | 0.769 s | 0.015 s | 51x |
+| `RealCall` | `a->Add(i)`, a field-touching callee the inliner refuses | 1.495 s | 0.531 s | **2.8x** |
+| `NoCall` | the body of `Add` written inline | 0.478 s | 0.011 s | 43x |
+| `VirtualCall` | `s->Area(i)` through a `virtual` declaration | 0.133 s | 0.252 s | **0.5x** |
+| `Fib(32)` | recursion, which is never inlined | 0.384 s | 0.207 s | 1.9x |
+
+`RealCall` minus `NoCall` is the call:
+
+| | per call |
+|---|---|
+| interpreted caller, interpreted callee | 51 ns |
+| compiled caller, compiled callee | 26 ns |
+| compiled caller, `virtual` callee | 126 ns (the interpreter does it in 66 ns) |
+
+So the JIT halves a call, and everything else it does to a loop is worth forty times more. A
+call-bound method -- a recursive function, a loop over an accessor, a visitor, anything
+object-oriented -- gets 2-3x from the JIT where a loop of arithmetic gets 30-80x. And a
+compiled caller of a `virtual` method is slower than the interpreter, on every call.
+
+The assessment's `CallLoop` kernel showed none of this because `obc` inlined its callee; that is
+what `InlinedCall` reproduces above, and why the fixture's other callees are shapes the inliner
+refuses (`CanInlineMethod`: a field access, recursion, a `virtual` target).
+
+## 2. Where the 26 ns go
+
+From the `_DEBUG_JIT` listing of `r := a->Add(i)` (AMD64, Windows). The callee's own work is
+fourteen instructions. Around them:
+
+**The call site, about 40 emitted instructions.** `FlushLocalCache`, spill of any live
+non-pinned temporaries to the `TMP_REG` slots; the operand-stack top computed from the frame's
+`OP_STACK` and `STACK_POS` slots (five instructions), then each argument pushed with a reload of
+`STACK_POS`, a store, an `inc [stack_pos]` and an `add` (five per argument); four argument
+registers loaded with the opcode, the `StackInstr*`, `CLS_ID` and `MTHD_ID`; six frame slots
+pushed as stack arguments, the shadow space, a `movabs` and an indirect `call`; afterwards the
+`INSTANCE_MEM` reload from `frame->mem[0]` (three) and the return value popped from the operand
+stack (seven: the same top-of-stack computation again).
+
+**The bridge, `JitStackCallback`, C++.** A `switch` on the opcode; `GetClass()->GetMethod()`;
+the `native_code` acquire load; the auto-JIT count check; the instance popped; the
+`CALL_STACK_SIZE` check; `GetStackFrame`: a critical section, a pop from the shared frame cache,
+six field writes, leave; the call-stack store, a release fence, the increment;
+`JitRuntime::Execute`: an eleven-argument call, five of them through the stack; then the
+decrement and `ReleaseStackFrame`: the critical section again, a 768-byte `memset` of the frame's
+`mem` (`LOCAL_SIZE`, which a compiled callee used one word of), the push, leave; the status
+check.
+
+**The callee's entry and exit, about 90 executed instructions.** The prologue: frame setup, five
+pushes, `R12` and its alignment filler, then 96 bytes of `XMM10`-`XMM15` saved with six `movdqu`
+-- for a method that never touches a float; `R12` re-materialized; the four register arguments
+spilled to their slots; `RegisterRoot`: the native local area's address stored through the
+`jit_mem` pointer, `jit_offset` stored, and a `loop`-instruction zeroing loop over eleven words
+(the declared locals plus the ten spill slots); `ProcessParameters`: eight instructions per
+parameter to pop it from the operand stack into its slot (the top-of-stack computation once
+more); at `RTRN` nine instructions to push the result onto the operand stack; the epilogue: the
+six `movdqu` restores, the pops, `ret`.
+
+About 300 instructions and two lock acquisitions per call, for fourteen of work. ARM64 is the
+same shape: `ProcessStackCallback` marshals through `X0`-`X7` plus two stack slots, the prologue
+stores eleven incoming arguments and eight `D` registers, `RegisterRoot` runs the same zeroing
+loop.
+
+**The 126 ns of a `virtual` call.** The bridge looks the callee up by the call site's operands,
+which name the `virtual` declaration (`Shape:Area`), not the override. That method has no
+native code and never will -- the auto-JIT counts only concrete targets, in `CheckAutoJit` --
+so the bridge takes its other path: it constructs a `StackInterpreter` on the caller's call
+stack (a heap allocation and `AddPdaMethodRoot` under the global `pda_frame_lock`), and
+`Execute`s the caller's `MTHD_CALL` instruction in the interpreter, which acquires a frame for
+the *caller*, resolves the override through `ResolveVirtualMethod`, and finds it compiled, so it
+acquires a second frame and enters native code through `ProcessJitMethodCall`; on return the
+interpreter object's destructor takes the lock again to unregister, and frees. Two frames, a
+root registration and a heap round trip per call. It is also the only thing keeping the direct
+path from ever calling a `virtual` declaration's empty body: nothing checks `IsVirtual()` there.
+
+## 3. The design, in three phases
+
+Each phase is a PR against `master`, measured on the fixture before and after, and useful on
+its own. The first two are days; the third is the convention itself.
+
+### Phase 1: the bridge (C++ only, both backends, about two days)
+
+1a. **Resolve `virtual` callees in the bridge and take the direct path.** When
+`callee->IsVirtual()`, resolve through the receiver's class (`MemoryManager::GetClass(inst)`,
+then the per-class virtual-method cache `ResolveVirtualMethod` already fills; factor that lookup
+out of the interpreter so both share it), and continue with the concrete method. The `virtual`
+case also becomes an explicit check rather than an accident of counting. Expected: 126 ns to
+about 26 ns per virtual call, and no case where compiled code is slower than interpreted.
+
+1b. **A frame pool without the lock or the memset.** A thread-local free list (frames are
+acquired and released on the same thread; a global list backs the first fill), and zeroing on
+acquire sized to the user: an interpreted callee needs its declared slots
+(`GetNumberDeclarations()` words plus the instance word), a compiled callee needs `mem[0]` only,
+its locals being native-stack slots that `RegisterRoot` zeroes. The interpreter's contract --
+which slots it reads before writing -- is checked before the size is trusted. Expected: 5-8 ns.
+
+1c. **A direct-call bridge entry for statically resolved sites.** For `MTHD_CALL` whose callee
+is non-virtual, the emitter passes the `StackMethod*` as an immediate to a
+`JitDirectCall(callee, inst, stacks...)` entry: no opcode `switch`, no class/method lookup. The
+auto-JIT count stays in the trampoline path, which uncompiled callees still take. Expected: 2 ns.
+
+### Phase 2: the callee's entry and exit (codegen; AMD64 here, ARM64 on the Mac; about three days)
+
+2a. **Save `XMM10`-`XMM15` only in methods that use the float pool.** The pre-scan knows; a
+flag on the compile selects the prologue and epilogue variant. Twelve `movdqu` and 192 bytes of
+traffic gone from every integer method. Windows only by construction; the ARM64 `D8`-`D15`
+stores and loads are the analogue.
+
+2b. **`RegisterRoot`'s zeroing.** The `loop` instruction is microcoded; eleven iterations cost
+more than the whole body. Straight `mov qword [reg+k], 0` for up to sixteen words, `rep stosq`
+above that (ARM64: `stp xzr, xzr` pairs).
+
+2c. **Keep the operand-stack pointers in registers across `ProcessParameters` and
+`ProcessReturn`.** The top-of-stack address is recomputed from the frame per parameter; computed
+once, each parameter is a load and a store, and the return push is four instructions instead of
+nine.
+
+Expected: the callee's overhead from about 90 instructions to about 45.
+
+### Phase 3: the convention (AMD64 two to three weeks; ARM64 after)
+
+**The call site.** For a `MTHD_CALL` whose callee is non-virtual:
+
+```
+mov  rax, [&callee->native_code]     ; the atomic field's address is an immediate;
+test rax, rax                        ; a plain load is an acquire on x86, ldar on ARM64
+jz   bridge                          ; not compiled (yet): today's path, which counts
+cmp  dword [rbp+CALL_STACK_POS], CALL_STACK_SIZE
+jge  bridge                          ; the depth check the bridge does today
+<args>                               ; self in RCX/RDI/X0, then the ABI's integer and
+                                     ; float registers, overflow on the stack
+lea  r10, [rbp]                      ; the caller's frame as context
+call [rax + NativeCode::code]        ; or the code pointer cached on StackMethod: one load fewer
+mov  rdx, [rbp+MEM]; mov rdx,[rdx]; mov [rbp+INSTANCE_MEM], rdx    ; the reload rule, unchanged
+```
+
+The caller's live temporaries spill to the `TMP_REG` slots around the call exactly as around a
+callback; they lie inside `jit_offset`, so the collector scans them. The pinned loop locals
+(`R13`-`R15`, `XMM6`-`XMM9`; ARM64 `X19`+ and `D8`-`D15` when the ARM64 pins land) are
+callee-saved and the callee's prologue preserves them, so a pinned loop calls without spilling.
+
+**The callee's second entry.** Each compiled method gets two prologues over one body: the
+existing *bridge entry* (operand-stack arguments, status in `RAX`, result pushed to the operand
+stack; how the interpreter and the bridge enter it) and a *native entry* that builds the same
+frame layout but takes `OP_STACK`, `STACK_POS`, `CALL_STACK` and `CALL_STACK_POS` from the
+caller's context pointer (they are per-thread constants), stores the register arguments straight
+into the zeroed local slots, and records `ENTRY_KIND = native` in a new frame slot. It pushes
+the method's `StackFrame` itself: a per-thread array `frames[CALL_STACK_SIZE]` indexed by
+`call_stack_pos`, so the push is inline stores (`method`, `mem[0] = self`, `jit_mem`,
+`jit_offset`, `call_stack[pos] = frame`, then `pos++` -- the slot store before the increment, as
+`PushFrame` orders them, with `stlr` on ARM64). Code size grows by the second prologue, about
+fifty instructions per method.
+
+**Return.** `RTRN` tests `ENTRY_KIND`: native returns the value in `RAX`/`XMM0`, decrements
+`call_stack_pos`, and skips the operand-stack push and the status; bridge does what it does
+today. The caller's `ProcessReturnParameters` takes the register instead of popping.
+
+**Errors.** The nil, bounds and division stubs check `ENTRY_KIND`; for a native entry they call
+`JitCompiler::JitDirectCallError(status, method)`, which reports the way the bridge's
+JIT-to-JIT path reports today and exits. Today's path also exits without recovery on that
+route, and methods with try regions are not compiled, so nothing observable changes.
+
+**What the collector sees.** The callee's frame is on the call stack, with `jit_mem` and
+`jit_offset` set, before any instruction that can park; the arguments go from registers into
+zeroed slots inside that area; the caller's temporaries are in its own scanned slots; `self` for
+both is in `frame->mem[0]`. Every rule from #746 holds: the call is not a park point, the
+callee's loops poll as before, and both sides reload `INSTANCE_MEM` after anything that can
+park -- the caller after the call (the callee may have promoted the caller's `self`), the
+callee after its callbacks and safepoints. `CheckJitRoots` and `OBJECK_GC_TRACE` need no change:
+the frame they read is the same struct with the same fields.
+
+**Auto-JIT.** A native site that finds no code falls to the bridge, whose trampoline counts and
+compiles; the next call finds the pointer. No `PatchCallSites` involvement for compiled callers,
+no opcode rewrite: the site patches itself by reading the field.
+
+**Not direct, still through the bridge:** `DYN_MTHD_CALL` (the target is a runtime word; a
+table from the packed ids to `StackMethod*` would make it direct later), `virtual` callees (1a
+makes them a bridge call; an inline cache keyed on the receiver's class is the follow-up), and
+callees the JIT rejects.
+
+Expected: a call at 4-6 ns; `Fib(32)` from 0.21 s to about 0.04 s; `RealCall` from 0.53 s to
+about 0.10 s.
+
+## 4. Verification, per phase
+
+- The fixture, both modes, before and after, in the PR body.
+- `vm_jit_equiv.obs` probes, byte-identical across `--jit=off`, the default and
+  `OBJECK_JIT_THRESHOLD=1`: live temporaries across a call (spill and restore); float arguments
+  and returns; more than four integer arguments, and mixed; a call from a pinned loop (integer
+  and float pins survive); a young receiver promoted during the callee (`--gc-threshold` small,
+  the callee allocates); recursion to depth 300 (the overflow message, unchanged); a callee that
+  divides by zero (the message, unchanged); `virtual` and non-virtual targets mixed on one
+  receiver; a func-ref call; a `Nil` receiver.
+- `OBJECK_JIT_REPORT=1` on the fixture: every kernel and callee compiled, no fallback.
+- Both regression passes on an untouched tree.
+- `core_thread_gc_stress` compiled and pinned to four cores (the #746 recipe), since frame
+  registration order against the collector is the risk in phase 3.
+- The `_DEBUG_JIT` listing of `Add`, read once per phase, and the instruction count recorded.
+
+## 5. Seen on the way, not F7
+
+- An `Int` field store pays the write barrier's fast-path test (four instructions: load the
+  header, mask, compare, branch). `STOR_CLS_INST_INT_VAR` cannot tell an integer from a
+  reference, but the class's declarations can (`INT_PARM` against `OBJ_PARM`), and the emitter
+  has the class. Separate, small.
+- `StackFrame::jit_inst_mem` is declared and never used.
+- The direct path's protection against calling a `virtual` declaration's empty body is that
+  abstract methods are never counted. 1a makes it a check.
