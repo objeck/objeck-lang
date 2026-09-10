@@ -1,6 +1,6 @@
 # JIT: what a compiled call costs, and the convention that removes it (F7)
 
-**Status:** phases 1 and 2 implemented, 2026-09-10 (sections 6 and 7); phase 3's first two steps, the direct native call and the inline cache for `virtual` calls, implemented on AMD64 the same day (sections 8 and 9); the register-argument entry open. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
+**Status:** phases 1 and 2 implemented, 2026-09-10 (sections 6 and 7); phase 3 implemented on AMD64 the same day as the direct native call and inline caches for `virtual` and func-ref calls (sections 8 to 10); the register-argument entry of section 3 is not done, and section 11 says why. ARM64 keeps the bridge until the same is done on the Mac. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
 ("every method entry/exit rebuilds the VM operand-stack view, and JIT-to-JIT calls still marshal
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
@@ -421,4 +421,53 @@ Alternated with the step-1 binary, medians of three:
 A `virtual` call now costs what a bound one does. `vm_jit_equiv.obs` gains a site that sees
 six classes in rotation beside a monomorphic one (records filled, reused as the class
 alternates, then exhausted), byte-identical across the three modes.
+
+## 10. Phase 3, third step: the same cache for func-ref calls (AMD64, 2026-09-10)
+
+A func-ref call (`f(x)` where `f` is a function reference or a closure) names its target
+at run time by the packed word on the operand stack (class id and method id). The site
+keeps the same inline cache as a `virtual` site, keyed by that word instead of the
+receiver's class: the word is read from the top of the operand stack, compared with the
+current record's key, and on a hit the record's entry runs through section 8's body with
+one difference, the pop takes two words (the func-ref word and the instance below it, which
+may be Nil for a plain function and is passed through as the callee's `self`). A miss calls
+`JitResolveFuncRefSite`, which looks the target up by the word's ids and fills a record
+through the shared `FillSiteRecord`. The patched opcode `DYN_MTHD_CALL_JIT`, which the
+interpreter writes at a site when a callee with matching operands compiles, is the same
+call; the emitter had no case for it and a method holding one failed to compile.
+
+Measured on a kernel of five million iterations, each a bound call to a helper that makes
+one func-ref call (the helper kept out of the inliner, see below), medians of three:
+
+| kernel | step 2 | step 3 |
+|---|---|---|
+| one reference throughout | 0.181 s | **0.108 s** |
+| two references alternating | 0.181 s | **0.133 s** |
+
+About 15 ns per func-ref call, the bridge's share, are gone; the alternating site pays a
+short resolver call each time its key changes, and never grows.
+
+Found on the way: a method that calls a func-ref **parameter** goes wrong once the compiler
+inlines it into a caller other than `Main` -- the interpreter loops forever, the JIT returns
+garbage, on master too (#763). The suite never saw it because the one test with that shape
+keeps its loop in `Main`, which the inliner leaves alone. The fixture's probe keeps its
+helper non-inlinable with a second `return`.
+
+## 11. The register-argument entry, and why it stops here
+
+Section 3's last item was a second, native entry per method taking its arguments in
+registers, with the operand stack synced only at callbacks. With sections 8 to 10 in, what
+is left of a compiled call is, per call: about 12 instructions of operand-stack traffic for
+one argument and its receiver (the caller's stores and count bump, the callee's loads and
+count drop), about 25 for the frame record and the stack arguments, and the callee's own
+entry and exit (section 7), some 45. A register entry would remove the first group and
+part of the second -- perhaps 15 instructions, one to two nanoseconds of the seven -- at
+the cost of two prologues per method (the XMM patch, the pins and `RegisterRoot` done
+twice), a frame slot saying which entry was taken, two `RTRN` paths, a return value that
+cannot travel in a register the epilogue restores, and caller-side marshalling for floats
+and for more than three integer arguments. The measurement says the bridge, not the operand
+stack, was the cost; the design's target of 4-6 ns per call is met within a couple of
+nanoseconds. It is not worth its risk now. The next real gains are elsewhere: the callee's
+prologue (the pushes and the zeroing of ten spill slots a leaf method never uses), and the
+same work on ARM64.
 
