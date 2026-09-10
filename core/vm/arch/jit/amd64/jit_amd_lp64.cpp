@@ -314,7 +314,14 @@ void JitAmd64::RegisterRoot() {
   // method cost more than that method's body. Large frames keep the loop.
   static const int ZERO_UNROLL_MAX = 24;
   if(index > 0 && index <= ZERO_UNROLL_MAX) {
-    for(int i = 0; i < index; ++i) {
+    // two slots per 16-byte store of a zeroed XMM0 (outside the pool, and
+    // nothing is live at entry); an odd last slot takes a word store
+    pxor_xreg_xreg(XMM0, XMM0);
+    int i = 0;
+    for(; i + 1 < index; i += 2) {
+      move_xreg_mem128(XMM0, i * (long)sizeof(size_t), holder->GetRegister());
+    }
+    if(i < index) {
       move_imm_mem(0, i * (long)sizeof(size_t), holder->GetRegister());
     }
   }
@@ -3734,9 +3741,7 @@ void JitAmd64::move_reg_mem8(Register src, long offset, Register dest) {
   // encode
   AddMachineCode(RXB(src, dest));
   AddMachineCode(0x88);
-  AddMachineCode(ModRM(dest, src));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(dest, src), offset);
 }
 
 // REX for a 16-bit operation: only the R (reg field) and B (base) extension bits,
@@ -3764,9 +3769,7 @@ void JitAmd64::move_reg_mem16(Register src, int32_t offset, Register dest) {
     AddMachineCode(rex);
   }
   AddMachineCode(0x89);
-  AddMachineCode(ModRM(dest, src));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(dest, src), offset);
 }
 
 void JitAmd64::move_reg_mem32(Register src, long offset, Register dest) { 
@@ -3778,9 +3781,7 @@ void JitAmd64::move_reg_mem32(Register src, long offset, Register dest) {
   // encode
   AddMachineCode(RXB32(src, dest));
   AddMachineCode(0x89);
-  AddMachineCode(ModRM(dest, src));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(dest, src), offset);
 }
     
 void JitAmd64::move_reg_mem(Register src, long offset, Register dest) { 
@@ -3792,9 +3793,7 @@ void JitAmd64::move_reg_mem(Register src, long offset, Register dest) {
   // encode
   AddMachineCode(RXB(src, dest));
   AddMachineCode(0x89);
-  AddMachineCode(ModRM(dest, src));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(dest, src), offset);
 }
 
 void JitAmd64::move_mem8_reg(long offset, Register src, Register dest) {
@@ -3807,9 +3806,7 @@ void JitAmd64::move_mem8_reg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0xb6);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::move_mem16_reg(int32_t offset, Register src, Register dest) {
@@ -3824,9 +3821,7 @@ void JitAmd64::move_mem16_reg(int32_t offset, Register src, Register dest) {
   }
   AddMachineCode(0x0f);
   AddMachineCode(0xb7);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::move_mem32_reg(long offset, Register src, Register dest) {
@@ -3838,9 +3833,7 @@ void JitAmd64::move_mem32_reg(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB32(dest, src));
   AddMachineCode(0x8b);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::move_mem_reg(long offset, Register src, Register dest) {
@@ -3852,9 +3845,7 @@ void JitAmd64::move_mem_reg(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x8b);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::move_mem_reg32(long offset, Register src, Register dest) {
@@ -3866,9 +3857,7 @@ void JitAmd64::move_mem_reg32(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB32(dest, src));
   AddMachineCode(0x8b);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
  
 void JitAmd64::move_imm_memx(RegInstr* instr, long offset, Register dest) {
@@ -3888,9 +3877,7 @@ void JitAmd64::move_imm_mem8(int8_t imm, long offset, Register dest) {
   AddMachineCode(0xc6);
   unsigned char code = 0x80;
   RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(code, offset);
   AddMachineCode((unsigned char)imm);
 }
 
@@ -3907,9 +3894,7 @@ void JitAmd64::move_imm_mem16(int16_t imm, int32_t offset, Register dest) {
   AddMachineCode(0xc7);
   unsigned char code = 0x80;
   RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(code, offset);
   AddImm16(imm);
 }
 
@@ -3934,9 +3919,7 @@ void JitAmd64::move_imm_mem(int64_t imm, long offset, Register dest) {
     AddMachineCode(0xc7);
     unsigned char code = 0x80;
     RegisterEncode3(code, 5, dest);
-    AddMachineCode(code);
-    // write value
-    AddImm(offset);
+    EmitModRMDisp(code, offset);
     AddImm((long)imm);
   }
 }
@@ -3999,9 +3982,7 @@ void JitAmd64::move_mem_xreg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x10);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
     
 void JitAmd64::move_xreg_mem(Register src, long offset, Register dest) {
@@ -4015,9 +3996,7 @@ void JitAmd64::move_xreg_mem(Register src, long offset, Register dest) {
   AddMachineCode(RXB(src, dest));
   AddMachineCode(0x0f);
   AddMachineCode(0x11);
-  AddMachineCode(ModRM(dest, src));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(dest, src), offset);
 }
     
 void JitAmd64::move_xreg_xreg(Register src, Register dest) {
@@ -4069,6 +4048,40 @@ void JitAmd64::move_xreg_reg(Register src, Register dest) {
   RegisterEncode3(code, 2, src);
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
+}
+
+void JitAmd64::pxor_xreg_xreg(Register src, Register dest) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [pxor %" << GetRegisterName(src)
+        << L", %" << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+  // encode: 66 [REX] 0F EF /r
+  AddMachineCode(0x66);
+  if(src > XMM7 || dest > XMM7) {
+    AddMachineCode((unsigned char)(0x40 | (dest > XMM7 ? 0x4 : 0) | (src > XMM7 ? 0x1 : 0)));
+  }
+  AddMachineCode(0x0f);
+  AddMachineCode(0xef);
+  unsigned char code = 0xc0;
+  RegisterEncode3(code, 2, dest);
+  RegisterEncode3(code, 5, src);
+  AddMachineCode(code);
+}
+
+void JitAmd64::move_xreg_mem128(Register src, long offset, Register base) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [movups %" << GetRegisterName(src) << L", "
+        << offset << L"(%" << GetRegisterName(base) << L")]" << std::endl;
+#endif
+  // encode: [REX] 0F 11 /r
+  const bool rex_r = src > XMM7;
+  const bool rex_b = (base > RSP && base < XMM0);
+  if(rex_r || rex_b) {
+    AddMachineCode((unsigned char)(0x40 | (rex_r ? 0x4 : 0) | (rex_b ? 0x1 : 0)));
+  }
+  AddMachineCode(0x0f);
+  AddMachineCode(0x11);
+  EmitModRMDisp(ModRM(base, src), offset);
 }
 
 bool JitAmd64::cond_jmp(InstructionType type) {
@@ -4751,9 +4764,7 @@ void JitAmd64::cmp_mem_reg(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x3b);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -4828,82 +4839,58 @@ void JitAmd64::cmp_imm_mem(long offset, Register src, int64_t imm) {
 #endif
     // encode
     AddMachineCode(XB(src));
-    AddMachineCode(0x81);
-    AddMachineCode(ModRM(src, RDI));
-    // write value
-    AddImm(offset);
-    AddImm((long)imm);
+    if(imm >= -128 && imm <= 127) {
+      AddMachineCode(0x83);
+      EmitModRMDisp(ModRM(src, RDI), offset);
+      AddMachineCode((unsigned char)(int8_t)imm);
+    }
+    else {
+      AddMachineCode(0x81);
+      EmitModRMDisp(ModRM(src, RDI), offset);
+      AddImm((long)imm);
+    }
   }
 }
 
 void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
-  // set register to 0; if eflag than set to 1
-  move_imm_reg(0, reg);
-  RegisterHolder* true_holder = GetRegister();
-  move_imm_reg(1, true_holder->GetRegister());
-#ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [cmovq %" 
-        << GetRegisterName(reg) << L", %" 
-        << GetRegisterName(true_holder->GetRegister()) << L" ]" << std::endl;
-#endif
-  // encode
-  AddMachineCode(ROB(reg, true_holder->GetRegister()));
-  AddMachineCode(0x0f);
-  switch(oper) {    
-  case GTR_INT:
-    AddMachineCode(0x4f);
-    break;
-
-  case LES_INT:
-    AddMachineCode(0x4c);
-    break;
-    
-  case EQL_INT:
-  case EQL_FLOAT:
-    AddMachineCode(0x44);
-    break;
-
-  case NEQL_INT:
-  case NEQL_FLOAT:
-    AddMachineCode(0x45);
-    break;
-    
-  case LES_FLOAT:
-    AddMachineCode(0x47);
-    break;
-    
-  case GTR_FLOAT:
-    AddMachineCode(0x47);
-    break;
-
-  case LES_EQL_INT:
-    AddMachineCode(0x4e);
-    break;
-
-  case GTR_EQL_INT:
-    AddMachineCode(0x4d);
-    break;
-    
-  case LES_EQL_FLOAT:
-    AddMachineCode(0x43);
-    break;
-
-  case GTR_EQL_FLOAT:
-    AddMachineCode(0x43);
-    break;
-
+  // The flags are set; setcc writes the low byte and movzx clears the rest:
+  // two instructions and no second register. This used to be mov 0, mov 1
+  // into a fresh register, and cmov.
+  unsigned char cc;
+  switch(oper) {
+  case GTR_INT:                          cc = 0x9f; break;   // setg
+  case LES_INT:                          cc = 0x9c; break;   // setl
+  case EQL_INT:  case EQL_FLOAT:         cc = 0x94; break;   // sete
+  case NEQL_INT: case NEQL_FLOAT:        cc = 0x95; break;   // setne
+  case LES_FLOAT: case GTR_FLOAT:        cc = 0x97; break;   // seta (the operands are ordered for it)
+  case LES_EQL_INT:                      cc = 0x9e; break;   // setle
+  case GTR_EQL_INT:                      cc = 0x9d; break;   // setge
+  case LES_EQL_FLOAT: case GTR_EQL_FLOAT: cc = 0x93; break;  // setae
   default:
     std::wcerr << L">>> Unknown compare! <<<" << std::endl;
     exit(1);
     break;
   }
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [setcc %" << GetRegisterName(reg) << L"]" << std::endl;
+  std::wcout << L"  " << (++instr_count) << L": [movzx %" << GetRegisterName(reg) << L"]" << std::endl;
+#endif
+  // setcc r/m8: a REX prefix so that RSP-RDI mean the low byte, not AH-BH
+  const bool ext = (reg > RSP && reg < XMM0);
+  AddMachineCode((unsigned char)(ext ? 0x41 : 0x40));
+  AddMachineCode(0x0f);
+  AddMachineCode(cc);
   unsigned char code = 0xc0;
-  
-  // write value
-  RegisterEncode3(code, 2, reg);
-  RegisterEncode3(code, 5, true_holder->GetRegister());
+  RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
-  ReleaseRegister(true_holder);
+  // movzx r32, r/m8 (zero-extends into the full register)
+  AddMachineCode((unsigned char)(ext ? 0x45 : 0x40));
+  AddMachineCode(0x0f);
+  AddMachineCode(0xb6);
+  code = 0xc0;
+  RegisterEncode3(code, 2, reg);
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -4914,11 +4901,16 @@ void JitAmd64::add_imm_mem(int64_t imm, long offset, Register dest) {
 #endif
   // encode
   AddMachineCode(XB(dest));
-  AddMachineCode(0x81);
-  AddMachineCode(ModRM(dest, RAX));
-  // write value
-  AddImm(offset);
-  AddImm((long)imm); // TODO: load imm to reg, perform operation 
+  if(imm >= -128 && imm <= 127) {
+    AddMachineCode(0x83);
+    EmitModRMDisp(ModRM(dest, RAX), offset);
+    AddMachineCode((unsigned char)(int8_t)imm);
+  }
+  else {
+    AddMachineCode(0x81);
+    EmitModRMDisp(ModRM(dest, RAX), offset);
+    AddImm((long)imm);
+  }
 }
     
 // TODO: 64-bit literal operation for Windows
@@ -5156,9 +5148,7 @@ void JitAmd64::add_mem_reg(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x03);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::add_mem_xreg(long offset, Register src, Register dest) {
@@ -5172,9 +5162,7 @@ void JitAmd64::add_mem_xreg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x58);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);  
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::sub_mem_xreg(long offset, Register src, Register dest) {
@@ -5196,8 +5184,7 @@ void JitAmd64::mul_mem_xreg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x59);
-  AddMachineCode(ModRM(src, dest));
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::div_mem_xreg(long offset, Register src, Register dest) {
@@ -5259,11 +5246,16 @@ void JitAmd64::sub_imm_mem(int64_t imm, long offset, Register dest) {
 #endif
   // encode
   AddMachineCode(XB(dest));
-  AddMachineCode(0x81);
-  AddMachineCode(ModRM(dest, RBP));
-  // write value
-  AddImm(offset);
-  AddImm((long)imm); // TODO: load imm to reg, perform operation 
+  if(imm >= -128 && imm <= 127) {
+    AddMachineCode(0x83);
+    EmitModRMDisp(ModRM(dest, RBP), offset);
+    AddMachineCode((unsigned char)(int8_t)imm);
+  }
+  else {
+    AddMachineCode(0x81);
+    EmitModRMDisp(ModRM(dest, RBP), offset);
+    AddImm((long)imm);
+  }
 }
 
 void JitAmd64::sub_reg_reg(Register src, Register dest) {
@@ -5291,9 +5283,7 @@ void JitAmd64::sub_mem_reg(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x2b);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -5469,8 +5459,7 @@ void JitAmd64::lea_mem_reg(long offset, Register src, Register dest) {
 #endif
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x8d);
-  AddMachineCode(ModRM(src, dest));
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::inc_mem32(long offset, Register dest) {
@@ -5480,8 +5469,7 @@ void JitAmd64::inc_mem32(long offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0x80;
   RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddImm(offset);
+  EmitModRMDisp(code, offset);
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [incl " << offset << L"(%"
         << GetRegisterName(dest) << L")" << L"]" << std::endl;
@@ -5495,8 +5483,7 @@ void JitAmd64::dec_mem32(long offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0x88;   // /1
   RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddImm(offset);
+  EmitModRMDisp(code, offset);
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [decl " << offset << L"(%"
         << GetRegisterName(dest) << L")" << L"]" << std::endl;
@@ -5987,8 +5974,7 @@ void JitAmd64::EmitNativeCall(long self_offset, std::vector<long>& slow_patches,
 void JitAmd64::imul_mem(long offset, Register base) {
   AddMachineCode(XB(base));
   AddMachineCode(0xf7);
-  AddMachineCode(ModRM(base, RBP));   // /5 in the reg field
-  AddImm(offset);
+  EmitModRMDisp(ModRM(base, RBP), offset);
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [imulq " << offset << L"(%" << GetRegisterName(base) << L")]" << std::endl;
 #endif
@@ -6184,9 +6170,7 @@ void JitAmd64::mul_mem_reg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0xaf);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
@@ -6280,9 +6264,7 @@ void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod
   // encode
   AddMachineCode(XB(src));
   AddMachineCode(0xf7);
-  AddMachineCode(ModRM(src, RDI));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, RDI), offset);
   
 #ifdef _DEBUG_JIT
   if(is_mod) {
@@ -6367,14 +6349,7 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_no
     // encode
     AddMachineCode(XB(RBP));
     AddMachineCode(0xf7);
-    AddMachineCode(ModRM(RBP, RDI));
-    // write value
-    if(src == RAX) {
-      AddImm(TMP_REG_0);
-    }
-    else {
-      AddImm(TMP_REG_1);
-    }
+    EmitModRMDisp(ModRM(RBP, RDI), (src == RAX) ? TMP_REG_0 : TMP_REG_1);
     
 #ifdef _DEBUG_JIT
     if(is_mod) {
@@ -6435,8 +6410,7 @@ void JitAmd64::dec_mem(long offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0x88;
   RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddImm(offset);
+  EmitModRMDisp(code, offset);
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [decq " << offset << L"(%" 
         << GetRegisterName(dest) << L")" << L"]" << std::endl;
@@ -6448,8 +6422,7 @@ void JitAmd64::inc_mem(long offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0x80;
   RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddImm(offset);
+  EmitModRMDisp(code, offset);
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [incq " << offset << L"(%" 
         << GetRegisterName(dest) << L")" << L"]" << std::endl;
@@ -6659,8 +6632,7 @@ void JitAmd64::push_mem(long offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0xb0;
   RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
-  AddImm(offset);
+  EmitModRMDisp(code, offset);
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [pushq " << offset << L"(%" 
         << GetRegisterName(dest) << L")" << L"]" << std::endl;
@@ -6800,9 +6772,7 @@ void JitAmd64::cmp_mem_xreg(long offset, Register src, Register dest) {
    AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x2e);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::cmp_imm_xreg(size_t addr, Register reg) {
@@ -6852,9 +6822,7 @@ void JitAmd64::cvt_mem_reg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x2c);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 void JitAmd64::cvt_reg_xreg(Register src, Register dest) {
@@ -6891,9 +6859,7 @@ void JitAmd64::cvt_mem_xreg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0x2a);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -6961,9 +6927,7 @@ void JitAmd64::and_mem_reg(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB(src, dest));
   AddMachineCode(0x23);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -7042,9 +7006,7 @@ void JitAmd64::or_mem_reg(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB(src, dest));
   AddMachineCode(0x0b);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -7112,9 +7074,7 @@ void JitAmd64::xor_mem_reg(long offset, Register src, Register dest) {
   // encode
   AddMachineCode(RXB(src, dest));
   AddMachineCode(0x33);
-  AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, dest), offset);
 }
 
 // --- x87 ---
@@ -7126,9 +7086,7 @@ void JitAmd64::fld_mem(int32_t offset, Register src) {
 #endif
   // encode
   AddMachineCode(0xdd);
-  AddMachineCode(ModRM(src, RAX));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, RAX), offset);
 }
 
 void JitAmd64::fstp_mem(int32_t offset, Register src) {
@@ -7138,9 +7096,7 @@ void JitAmd64::fstp_mem(int32_t offset, Register src) {
 #endif
   // encode
   AddMachineCode(0xdd);
-  AddMachineCode(ModRM(src, RBX));
-  // write value
-  AddImm(offset);
+  EmitModRMDisp(ModRM(src, RBX), offset);
 }
 
 void JitAmd64::fsin() {

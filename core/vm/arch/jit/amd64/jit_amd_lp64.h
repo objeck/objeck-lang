@@ -743,6 +743,25 @@ namespace Runtime {
     unsigned char ModRM(Register eff_adr, Register mod_rm);
 
     /**
+     * A ModRM byte (built with mod=10 by ModRM or by hand) and its
+     * displacement: mod=01 with one byte when the displacement fits, else
+     * mod=10 with four. Every memory encoder emitted four unconditionally,
+     * seven bytes for a frame slot where four do. A base of RSP or R12 would
+     * need a SIB byte, which no encoder here supports; RBP and R13 need the
+     * displacement even at zero, which mod=01 supplies.
+     */
+    inline void EmitModRMDisp(unsigned char modrm, long offset) {
+      if(offset >= -128 && offset <= 127) {
+        AddMachineCode((unsigned char)((modrm & 0x3f) | 0x40));
+        AddMachineCode((unsigned char)(int8_t)offset);
+      }
+      else {
+        AddMachineCode(modrm);
+        AddImm((int)offset);
+      }
+    }
+
+    /**
      * Returns the name of a register
      */
     std::wstring GetRegisterName(Register reg);
@@ -1097,6 +1116,9 @@ namespace Runtime {
     // movq between a general register and an XMM register (the bits, no conversion)
     void move_reg_xreg(Register src, Register dest);
     void move_xreg_reg(Register src, Register dest);
+    // pxor dest, src; movups [base + offset], src (16 bytes, no alignment)
+    void pxor_xreg_xreg(Register src, Register dest);
+    void move_xreg_mem128(Register src, long offset, Register base);
 
     // math instructions
     void math_imm_reg(int64_t imm, Register reg, InstructionType type);

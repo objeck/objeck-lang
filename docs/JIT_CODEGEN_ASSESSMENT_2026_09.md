@@ -288,4 +288,7 @@ the wrong types (#761), and CI now runs the suite with every method compiled on 
 registers reached the Linux x64 backend (it had four pool registers and three auxiliary
 ones, so `OBJECK_JIT_REPORT=1` on the fixture named two of its own probes as interpreted
 there), and the compiler's inliner was pasting a func-ref parameter's slots unshifted
-(#763), found while timing the func-ref cache.
+(#763), found while timing the func-ref cache. And the AMD64 encoders stopped spending four
+bytes on every displacement and immediate: with byte forms where they fit, `setcc` for
+booleans and sixteen-byte zeroing, the fixture's compiled code shrank by a quarter
+(292,958 to 222,755 bytes over 84 methods) with identical output.

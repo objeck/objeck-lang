@@ -14,7 +14,7 @@ since and where to start. `docs/HANDOFF_2026_09_10.md` has the day's full record
 
 | item | now |
 |---|---|
-| `master` | `6340a4cc6d` after [#765](https://github.com/objeck/objeck-lang/pull/765); [#766](https://github.com/objeck/objeck-lang/pull/766) (the compiler fix for #763, the Linux x64 register pool, and section 4d below) merges on top when its legs are green |
+| `master` | `b036381633` after [#765](https://github.com/objeck/objeck-lang/pull/765) and [#766](https://github.com/objeck/objeck-lang/pull/766) (the compiler fix for #763, the Linux x64 register pool, section 4d below); [#767](https://github.com/objeck/objeck-lang/pull/767) follows with the AMD64 encoders' byte displacements and immediates, `setcc` booleans and 16-byte zeroing -- a quarter less code, no ARM64 change, but the same list for ARM64 is `stp`/`ldp` and the frame-size immediate in 4d |
 | F7 on AMD64 | complete: the design's sections 6 to 11 (`JIT_CALLING_CONVENTION_DESIGN.md`). A bound compiled call 26.5 ns to 5.5 ns, a virtual one 125 ns to 6.0 ns, `Fib(32)` 0.208 s to 0.043 s. ARM64 has phase 1 only |
 | ARM64 backend | untouched since #761 (frame laid out by declaration, both backends). Its pool is fifteen general and fifteen float registers, so the Linux x64 pool change has no ARM64 counterpart |
 | compiler | #763 fixed: a method with a func-ref parameter can be inlined again, so fixtures no longer need a second `return` to keep such helpers out of the inliner |
