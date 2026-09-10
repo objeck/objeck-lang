@@ -2099,25 +2099,20 @@ void JitAmd64::ProcessStoreCharElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-    if(elem_holder->GetRegister() > RSP) {    
-      // movw can only use al, bl, cl and dl registers
-      RegisterHolder* holder = GetRegister(false);
-      move_reg_reg(elem_holder->GetRegister(), holder->GetRegister());
-      ReleaseRegister(elem_holder);
-#ifdef _WIN64     
-      move_imm_mem16((int16_t)left->GetOperand(), 0, elem_holder->GetRegister());
+    // Both encoders take an R8-R15 base (Rex16 / XB), so the element
+    // register is stored through directly. The R8-R15 case used to copy it
+    // to a second register, release the element holder there, store through
+    // the released register and then release the holder again at the end of
+    // this function: two entries in the free pool for one register, two
+    // later allocations of the same register, and a miscompiled method. It
+    // was reachable only when the element address landed in R8-R15 with a
+    // constant character, which the phase-2 result pop's allocation order
+    // made common (core_arrays_simple, arm64_char_arrays).
+#ifdef _WIN64
+    move_imm_mem16((int16_t)left->GetOperand(), 0, elem_holder->GetRegister());
 #else
-      move_imm_mem32(left->GetOperand(), 0, holder->GetRegister());
-#endif    
-      ReleaseRegister(holder);
-    }
-    else {
-#ifdef _WIN64  
-      move_imm_mem16((int16_t)left->GetOperand(), 0, elem_holder->GetRegister());
-#else    
-      move_imm_mem32(left->GetOperand(), 0, elem_holder->GetRegister());
+    move_imm_mem32(left->GetOperand(), 0, elem_holder->GetRegister());
 #endif
-    }
     break;
 
   case MEM_INT: {    
