@@ -226,6 +226,13 @@ class VmJitEquiv {
     jf := Loops->JoinAndFloats(250, true) + Loops->JoinAndFloats(250, false); "join={$jf}"->PrintLine();
     gd := Loops->Gcd(1071, 462) + Loops->Gcd(9999991, 12345); "gcd={$gd}"->PrintLine();
 
+    # F7 phase 1: a compiled caller reaches a virtual override through the
+    # bridge's own resolution, a bound callee takes the direct entry, and a frame
+    # the per-thread pool hands out is zeroed for the locals its method declares
+    cv := Calls->VirtualMix(300); "calls virtual={$cv}"->PrintLine();
+    cf := Calls->FreshLocals(300); "calls fresh={$cf}"->PrintLine();
+    cdp := Calls->Deep(200); "calls deep={$cdp}"->PrintLine();
+
     "done"->PrintLine();
   }
 }
@@ -608,5 +615,87 @@ class FloatPins {
       if(i % 50 = 0) { tmp := Float->New[8]; tmp[0] := acc; acc := tmp[0]; };
     };
     return acc + norm * 1000.0;
+  }
+}
+
+# F7 phase 1: calls between compiled methods. A `virtual` declaration reached
+# from a compiled caller is resolved in the callback bridge (it used to re-enter
+# the interpreter on every call); a callee bound at compile time takes the
+# direct bridge entry; a frame from the per-thread pool is zeroed for exactly
+# the locals its method declares, which is what a local that is declared but
+# never assigned relies on to read as 0 or Nil.
+class Shape {
+  New() {}
+  method : virtual : public : Area(x : Int) ~ Int;
+  # bound, and it makes a virtual call on self: both paths in one callee
+  method : public : Twice(x : Int) ~ Int { return Area(x) * 2; }
+}
+
+class Sq from Shape {
+  @s : Int;
+  New(s : Int) { Parent(); @s := s; }
+  method : public : Area(x : Int) ~ Int { return @s * @s + x; }
+}
+
+class Rect from Shape {
+  @w : Int; @h : Int;
+  New(w : Int, h : Int) { Parent(); @w := w; @h := h; }
+  method : public : Area(x : Int) ~ Int { return @w * @h - x; }
+}
+
+# an override inherited rather than defined on the receiver's class: the
+# resolution walks one level up, and the cache entry lands on Tall
+class Tall from Rect {
+  New(w : Int, h : Int) { Parent(w, h); }
+}
+
+class Calls {
+  function : VirtualMix(n : Int) ~ Int {
+    shapes := Shape->New[3];
+    shapes[0] := Sq->New(3);
+    shapes[1] := Rect->New(2, 5);
+    shapes[2] := Tall->New(4, 7);
+    t := 0;
+    for(i := 0; i < n; i += 1;) {
+      s := shapes[i % 3];
+      t += s->Area(i) + s->Twice(i % 7);
+    };
+    return t;
+  }
+
+  # twelve locals of mixed types, every one written: the frame this leaves dirty
+  function : Dirty(i : Int) ~ Int {
+    a := i; b := i + 1; c := i + 2; d := i + 3; e := i + 4; f := i + 5;
+    x := i->As(Float); y := x * 2.0; z := y + 1.0;
+    s := "dirty"; t := "frame"; ary := Int->New[3];
+    ary[0] := a; ary[1] := b; ary[2] := c;
+    return a + b + c + d + e + f + x->As(Int) + y->As(Int) + z->As(Int) + s->Size() + t->Size() + ary[2];
+  }
+
+  # declared, never assigned: each must read as 0 or Nil in a frame the pool
+  # handed to Dirty a moment ago
+  function : Fresh() ~ Int {
+    a : Int; x : Float; s : String; ary : Int[];
+    ok := 0;
+    if(a = 0) { ok += 1; };
+    if(x = 0.0) { ok += 10; };
+    if(s = Nil) { ok += 100; };
+    if(ary = Nil) { ok += 1000; };
+    return ok;
+  }
+
+  function : FreshLocals(n : Int) ~ Int {
+    t := 0;
+    for(i := 0; i < n; i += 1;) {
+      t += Dirty(i) % 7;
+      t += Fresh();
+    };
+    return t;
+  }
+
+  # recursion past the pool's refill size, from a compiled caller
+  function : Deep(n : Int) ~ Int {
+    if(n = 0) { return 0; };
+    return Deep(n - 1) + (n % 3);
   }
 }
