@@ -30,6 +30,7 @@
  */
 
 #include "jit_arm_a64.h"
+#include <unordered_map>
 #include <mutex>
 
 #include <bitset>
@@ -5123,23 +5124,36 @@ void JitArm64::ProcessIndices()
     }
   }
   
+  // Lay the frame out from the declarations, not from the references: one
+  // slot per declaration in id order (two for a func-ref), after the and/or
+  // temp at id 0 when the method has one. The collector walks a JIT frame by
+  // declaration, one word each (CheckJitRoots), so a declared local that no
+  // instruction references still needs its slot. It used to get none, and
+  // every slot below it was then read under the next declaration's type: an
+  // object where an object array was declared had its first field taken for
+  // a length, which is how a compiled HttpRequestHandler:ServeOne brought the
+  // collector down on Linux with every method compiled. Any id beyond the
+  // declarations (none is expected) is allocated below them as before.
+  // jit_frame_unreferenced_local.obs fails on the old layout.
+  std::unordered_map<long, long> slot_offsets;
   long index = RED_ZONE;
-  long last_id = -1;
-  // A method flagged HasAndOr reserves local slot 0 for the compiler's scratch
-  // temp (and/or values, ternaries, select), and the collector's ARM64 walk
-  // skips that slot. Since conditions branch directly, a method whose
-  // connectives all sit in conditions never references the slot, and a frame
-  // laid out from referenced ids alone lost it: the walk then read every
-  // declared slot one off and followed integers as pointers. Reserve it.
-  bool slot0_referenced = false;
-  for(auto range = values.equal_range(0); range.first != range.second; ++range.first) {
-    if(range.first->second->GetOperand2() == LOCL) {
-      slot0_referenced = true;
+  {
+    long id = 0;
+    if(method->HasAndOr()) {
+      index += sizeof(size_t);
+      slot_offsets[0] = index;
+      id = 1;
+    }
+    StackDclr** dclrs = method->GetDeclarations();
+    const long num_dclrs = method->GetNumberDeclarations();
+    for(long j = 0; j < num_dclrs; ++j) {
+      const long words = (dclrs[j]->type == FUNC_PARM) ? 2 : 1;
+      index += words * (long)sizeof(size_t);
+      slot_offsets[id] = index;
+      id += words;
     }
   }
-  if(method->HasAndOr() && !slot0_referenced) {
-    index += sizeof(size_t);
-  }
+  long last_id = -1;
   multimap<long, StackInstr*>::iterator value;
   for(value = values.begin(); value != values.end(); ++value) {
     long id = value->first;
@@ -5150,25 +5164,31 @@ void JitArm64::ProcessIndices()
     }
     // local reference
     else {
-      if(last_id != id) {
-        if(instr->GetType() == LOAD_LOCL_INT_VAR ||
-           instr->GetType() == LOAD_CLS_INST_INT_VAR ||
-           instr->GetType() == STOR_LOCL_INT_VAR ||
-           instr->GetType() == STOR_CLS_INST_INT_VAR ||
-           instr->GetType() == COPY_LOCL_INT_VAR ||
-           instr->GetType() == COPY_CLS_INST_INT_VAR) {
-          index += sizeof(size_t);
-        }
-        else if(instr->GetType() == LOAD_FUNC_VAR ||
-                instr->GetType() == STOR_FUNC_VAR) {
-          index += sizeof(size_t) * 2;
-        }
-        else {
-          index += sizeof(double);
-        }
+      const auto slot = slot_offsets.find(id);
+      if(slot != slot_offsets.end()) {
+        instr->SetOperand3(slot->second);
       }
-      instr->SetOperand3(index);
-      last_id = id;
+      else {
+        if(last_id != id) {
+          if(instr->GetType() == LOAD_LOCL_INT_VAR ||
+             instr->GetType() == LOAD_CLS_INST_INT_VAR ||
+             instr->GetType() == STOR_LOCL_INT_VAR ||
+             instr->GetType() == STOR_CLS_INST_INT_VAR ||
+             instr->GetType() == COPY_LOCL_INT_VAR ||
+             instr->GetType() == COPY_CLS_INST_INT_VAR) {
+            index += sizeof(size_t);
+          }
+          else if(instr->GetType() == LOAD_FUNC_VAR ||
+                  instr->GetType() == STOR_FUNC_VAR) {
+            index += sizeof(size_t) * 2;
+          }
+          else {
+            index += sizeof(double);
+          }
+        }
+        instr->SetOperand3(index);
+        last_id = id;
+      }
     }
 #ifdef _DEBUG_JIT_JIT
     if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
@@ -5181,7 +5201,7 @@ void JitArm64::ProcessIndices()
     }
 #endif
   }
-  
+
   // calculate local space (adjust for alignment)
   local_space += index;
   realign_stack = false;
