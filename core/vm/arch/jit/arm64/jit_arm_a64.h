@@ -379,6 +379,10 @@ namespace Runtime {
     long instr_index;
     long code_buf_max;
     bool compile_success;
+    // set around ProcessStackCallback for a MTHD_CALL whose callee is bound at
+    // compile time: the callback goes to JitCompiler::JitDirectCall with this
+    // StackMethod* in place of the opcode
+    StackMethod* direct_callee;
     bool skip_jump;
     // instruction indices of loop-header labels (back-edge targets); only these
     // labels need a GC safepoint poll — if/else merge labels are skipped.

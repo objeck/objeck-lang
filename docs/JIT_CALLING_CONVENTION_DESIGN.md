@@ -1,6 +1,6 @@
 # JIT: what a compiled call costs, and the convention that removes it (F7)
 
-**Status:** design, 2026-09-10. Nothing implemented. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
+**Status:** phase 1 implemented, 2026-09-10 (section 6); phases 2 and 3 open. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
 ("every method entry/exit rebuilds the VM operand-stack view, and JIT-to-JIT calls still marshal
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
@@ -91,7 +91,7 @@ path from ever calling a `virtual` declaration's empty body: nothing checks `IsV
 Each phase is a PR against `master`, measured on the fixture before and after, and useful on
 its own. The first two are days; the third is the convention itself.
 
-### Phase 1: the bridge (C++ only, both backends, about two days)
+### Phase 1: the bridge (C++ only, both backends, about two days) -- done, section 6
 
 1a. **Resolve `virtual` callees in the bridge and take the direct path.** When
 `callee->IsVirtual()`, resolve through the receiver's class (`MemoryManager::GetClass(inst)`,
@@ -219,3 +219,61 @@ about 0.10 s.
 - `StackFrame::jit_inst_mem` is declared and never used.
 - The direct path's protection against calling a `virtual` declaration's empty body is that
   abstract methods are never counted. 1a makes it a check.
+- `ResolveVirtualMethod` cached an inherited override on the class the name walk ended at,
+  not on the receiver's class that `GetVirtualMethod` is asked about, so a receiver whose
+  override lives on a parent missed the cache on every call. Fixed with 1a, since the walk
+  moved into a shared function. The cache itself (`AddVirutalMethod`, an `unordered_map`
+  insert) is not thread-safe, on the interpreter's path as much as the bridge's; a miss is
+  once per (class, site), so the window is small, and it is not addressed here.
+
+## 6. Phase 1, implemented (2026-09-10)
+
+What landed, in `core/vm/interpreter.{h,cpp}` and `core/vm/arch/jit/`:
+
+- **1a.** `JitStackCallback` resolves a `virtual` callee through the receiver's class
+  (`StackInterpreter::ResolveVirtualTarget`, factored out of the interpreter's cold path)
+  before deciding how to call it, and `CallCompiled` refuses a `virtual` declaration
+  outright. A Nil receiver still falls through to the interpreter, which reports it.
+- **1b.** The frame pool is a `thread_local` free list; no critical section. A frame is
+  zeroed on acquire to `mem_size + 2` words (the instance word, the and/or slot and the
+  method's declared local space -- what `StackMethod::NewMemory` allocates and what
+  `LOAD_LOCL_*` can address) instead of the whole `LOCAL_SIZE` buffer on release.
+  `Clear()` and the `FRAME_CACHE_SIZE` prefill are gone; a thread fills 64 frames at a
+  time on demand and frees them when it ends.
+- **1c.** `JitCompiler::JitDirectCall`: the emitters pass the `StackMethod*` in place of the
+  opcode for a `MTHD_CALL` bound at compile time, on both backends, so the bridge neither
+  switches nor looks up. The register layout is `JitStackCallback`'s, so the emitted call
+  sequence is unchanged apart from two immediates.
+
+Measured against master `2cf5500722` built with the same MSBuild invocation, run
+alternately on the same box, medians of three (`programs/tests/jit_call_probe.obs`):
+
+| kernel | master, JIT | phase 1, JIT | master, interpreter | phase 1, interpreter |
+|---|---|---|---|---|
+| `InlinedCall` (no call) | 0.015 s | 0.015 s | 0.735 s | 0.619 s |
+| `RealCall` | 0.533 s | **0.340 s** | 1.621 s | **1.144 s** |
+| `NoCall` | 0.011 s | 0.011 s | 0.467 s | 0.382 s |
+| `VirtualCall` (2M) | 0.250 s | **0.040 s** | 0.139 s | **0.096 s** |
+| `Fib(32)` | 0.221 s | **0.126 s** | 0.387 s | **0.249 s** |
+
+Per call, each binary's `RealCall` minus its own `NoCall`:
+
+| | master | phase 1 |
+|---|---|---|
+| compiled caller, compiled callee | 26 ns | **16.5 ns** |
+| compiled caller, `virtual` callee | 125 ns | **20 ns** |
+| interpreted caller, interpreted callee | 58 ns | **38 ns** |
+
+The interpreter gains too, because its calls cross the same pool. (The no-call interpreted
+kernels also moved by about 15% between the two builds; that is code layout, not this
+change, and it is why the per-call figures are differences within one binary.)
+
+Verified: the flag tests 22/22, with `vm_jit_equiv.obs` byte-identical across `--jit=off`,
+the default and `OBJECK_JIT_THRESHOLD=1` including three new probes (a mixed
+virtual/non-virtual receiver set with an inherited override; a method that declares locals
+without assigning them, called right after one that dirtied twelve; recursion past the
+pool's refill size); the regression suite in both modes, 224 passed, 3 skipped, 0 failed
+each. ARM64 is the same C++ plus a two-immediate change in its emitter; its runtime check
+is CI's three ARM64 legs.
+
+Phase 2 next: the callee's prologue and epilogue (section 3), on this box for AMD64.

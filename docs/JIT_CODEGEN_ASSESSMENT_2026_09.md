@@ -267,3 +267,13 @@ Found later the same day, by the first compiled run of `core_thread_gc_stress` i
 (2b), and the probe fixture is no longer `native` (5b). What the two tables agree on: the JIT
 is 25-48x the interpreter on every kernel but `Locals` (82x on AMD64), results identical in
 every mode. Open on ARM64: F3, `D8`-`D15`, and the section 5 findings by inspection.
+
+Later the same day, F7 was measured for the first time (`JIT_CALLING_CONVENTION_DESIGN.md`,
+fixture `programs/tests/jit_call_probe.obs`): a compiled-to-compiled call cost 26 ns against
+51 ns interpreted, so a call-bound loop gained 2.8x from the JIT where the same loop without
+the call gained 43x, and a compiled caller of a `virtual` method was *slower* than the
+interpreter (125 ns against 70) because the bridge re-entered a fresh interpreter per call.
+Phase 1 of that design -- the C++ bridge: virtual callees resolved there, a per-thread frame
+pool zeroed on acquire, a bound callee passed by pointer -- brought a compiled call to 16.5 ns
+and a virtual one to 20 ns. Open: phases 2 (callee prologue/epilogue) and 3 (register
+arguments, a second native entry per method).

@@ -184,6 +184,13 @@ class JitCompiler {
 protected:
   static StackProgram* program;
 
+  // The compiled-to-compiled path shared by the opcode bridge and the direct
+  // entry. False when the callee has no native code (or is a `virtual`
+  // declaration): the caller then takes the interpreter trampoline, which
+  // counts the call toward the auto-JIT threshold and compiles the callee.
+  static bool CallCompiled(StackMethod* callee, const bool is_dynamic, const long cls_id, const long mthd_id,
+                           size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos);
+
 public:
   static void Initialize(StackProgram* p);
 
@@ -194,6 +201,14 @@ public:
   static void JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
                                const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                StackFrame** call_stack, long* call_stack_pos, const long ip);
+
+  // The direct bridge entry: a MTHD_CALL whose callee is bound at compile
+  // time (anything but a `virtual` declaration) passes the StackMethod* in
+  // place of the opcode, so a call is neither switched on nor looked up.
+  // Same register layout as JitStackCallback; instr is kept for symmetry.
+  static void JitDirectCall(StackMethod* callee, StackInstr* instr, const long cls_id,
+                            const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
+                            StackFrame** call_stack, long* call_stack_pos, const long ip);
 
   static bool TryAutoJitCompile(StackMethod* callee);
   static void PatchCallSites(StackMethod* callee, long patch_value);

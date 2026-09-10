@@ -629,8 +629,12 @@ void JitArm64::ProcessInstructions() {
               << L"," << instr->GetOperand2() << L", params=" << (called_method->GetParamCount() + 1)
               << L": regs=" << aval_regs.size() << endl;
 #endif
-        // passing instance variable
+        // passing instance variable. A callee bound here -- anything but a
+        // `virtual` declaration, which the bridge resolves per receiver --
+        // takes the direct bridge entry with its StackMethod* as X0.
+        direct_callee = called_method->IsVirtual() ? nullptr : called_method;
         ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
+        direct_callee = nullptr;
         ProcessReturnParameters(called_method->GetReturn());
       }
     }
@@ -2051,9 +2055,15 @@ void JitArm64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   move_mem_reg(MTHD_ID, SP, X3);
   move_mem_reg(CLS_ID, SP, X2);
   move_imm_reg((size_t)instr, X1);
-  move_imm_reg(instr_id, X0);
-  
-  move_imm_reg((size_t)JitArm64::JitStackCallback, X10);
+  // the direct entry takes the callee in place of the opcode
+  if(direct_callee) {
+    move_imm_reg((size_t)direct_callee, X0);
+  }
+  else {
+    move_imm_reg(instr_id, X0);
+  }
+
+  move_imm_reg(direct_callee ? (size_t)JitArm64::JitDirectCall : (size_t)JitArm64::JitStackCallback, X10);
   call_reg(X10);
   
   // restore register values
@@ -5355,6 +5365,7 @@ bool JitArm64::Compile(StackMethod* cm)
 
   if(!cm->GetNativeCode()) {
     skip_jump = false;
+    direct_callee = nullptr;
     method = cm;
     // Initialize CBZ/CBNZ optimization tracking
     last_cmp_was_zero = false;

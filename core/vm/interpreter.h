@@ -60,7 +60,6 @@ namespace Runtime {
   class Debugger;
 #endif
 
-#define FRAME_CACHE_SIZE 1024
 #define CALL_STACK_SIZE 256
 #define OP_STACK_SIZE 768
 
@@ -84,17 +83,14 @@ namespace Runtime {
     // program
     static StackProgram* program;
     static std::set<StackInterpreter*> intpr_threads;
-    static std::stack<StackFrame*> cached_frames;
 
 #ifdef _WIN32
     static bool is_stdio_binary;
 #endif
 
 #ifdef _WIN32
-    static CRITICAL_SECTION cached_frames_cs;
     static CRITICAL_SECTION intpr_threads_cs;
 #else
-    static pthread_mutex_t cached_frames_mutex;
     static pthread_mutex_t intpr_threads_mutex;
 #endif
 
@@ -197,6 +193,11 @@ namespace Runtime {
     // JIT callback support: frame allocation/deallocation
     static StackFrame* GetStackFrame(StackMethod* method, size_t* instance);
     static void ReleaseStackFrame(StackFrame* frame);
+
+    // The override a `virtual` declaration reaches for a receiver of
+    // concrete_class, from the class's cache or by the name walk that fills it.
+    // Shared by the interpreter's cold path and the JIT's callback bridge.
+    static StackMethod* ResolveVirtualTarget(StackClass* concrete_class, StackMethod* concrete_call, const long virtual_cls_id, const long virtual_mthd_id);
 
     //
     // pop the current try handler
@@ -597,16 +598,6 @@ namespace Runtime {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
       return false;
-    }
-
-    // free static resources
-    static void Clear() {
-      while(!cached_frames.empty()) {
-        StackFrame* frame = cached_frames.top();
-        cached_frames.pop();
-        free(frame->mem);
-        delete frame;
-      }
     }
 
 #ifdef _WIN32

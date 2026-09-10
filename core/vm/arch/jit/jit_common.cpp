@@ -156,6 +156,109 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
 }
 #endif
 
+#ifndef _NO_JIT
+/**
+ * The compiled-to-compiled path (see the header). The direct path used to be
+ * inline in JitStackCallback; it is the same code with the callee handed in.
+ */
+bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const long cls_id, const long mthd_id,
+                               size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos)
+{
+  // a `virtual` declaration has no body to run; the bridge resolves it for
+  // every receiver but Nil, and Nil is the interpreter's to report
+  if(callee->IsVirtual()) {
+    return false;
+  }
+
+  // Auto-JIT: compile hot callees from JIT code (no counting overhead)
+  if(!callee->GetNativeCode() && callee->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
+    TryAutoJitCompile(callee);
+  }
+
+  // Direct JIT-to-JIT calling: if callee has native code, call it directly
+  // without going through the interpreter as a trampoline. This eliminates
+  // frame creation + instruction dispatch + MTHD_CALL handler overhead.
+  if(!callee->GetNativeCode()) {
+    return false;
+  }
+
+  if(is_dynamic) { --(*stack_pos); }   // discard func-ref word; instance below
+  // Pop instance from op_stack (same as ProcessMethodCall)
+  size_t* callee_inst = (size_t*)op_stack[--(*stack_pos)];
+
+  // Bounds-check the call stack before writing the slot. This direct path
+  // bypasses PushFrame, which is the only place the interpreter enforces the
+  // CALL_STACK_SIZE limit -- without this, recursion deeper than 256 frames
+  // through JIT-compiled methods overruns the fixed call_stack[] buffer.
+  if((*call_stack_pos) >= CALL_STACK_SIZE) {
+    std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+    exit(1);
+  }
+
+  // Get a stack frame for the callee and register it on the call stack
+  // so the GC can find and fixup pointers during young-gen promotion.
+  // Uses same convention as PushFrame: store at pos, fence, then increment.
+  StackFrame* frame = Runtime::StackInterpreter::GetStackFrame(callee, callee_inst);
+  call_stack[(*call_stack_pos)] = frame;
+  std::atomic_thread_fence(std::memory_order_release);
+  (*call_stack_pos)++;
+
+  // Execute native code directly
+  Runtime::JitRuntime jit_executor;
+  const long status = jit_executor.Execute(callee, callee_inst, op_stack, stack_pos,
+                                            call_stack, call_stack_pos, frame);
+
+  // Unregister and release frame
+  (*call_stack_pos)--;
+  Runtime::StackInterpreter::ReleaseStackFrame(frame);
+
+  if(status < 0) {
+    // mirror the interpreter's runtime error reporting so the one-line
+    // failure is actionable (status codes set by the JIT guard stubs)
+    const wchar_t* reason;
+    switch(status) {
+    case -1:
+      reason = L"Attempting to dereference a 'Nil' memory instance";
+      break;
+    case -2:
+    case -3:
+      reason = L"Index out of bounds";
+      break;
+    case -4:
+      reason = L"Divide by zero";
+      break;
+    default:
+      reason = L"Unknown runtime error";
+      break;
+    }
+    std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
+               << L"', status=" << status << L", self=" << callee_inst
+               << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
+               << L"' <<<" << std::endl;
+    exit(1);
+  }
+  return true;
+}
+#endif
+
+/**
+ * The direct bridge entry (see the header). The trampoline is the one
+ * JitStackCallback takes: the caller's MTHD_CALL re-executes in the
+ * interpreter, which is where the auto-JIT counts the callee's calls.
+ */
+void JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackInstr* instr, const long cls_id,
+                                const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
+                                StackFrame** call_stack, long* call_stack_pos, const long ip)
+{
+#ifndef _NO_JIT
+  if(CallCompiled(callee, false, cls_id, mthd_id, op_stack, stack_pos, call_stack, call_stack_pos)) {
+    return;
+  }
+#endif
+  Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
+  intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+}
+
 /**
  * JIT machine code callback
  */
@@ -182,73 +285,26 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
     }
     else {
       callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+      // A `virtual` declaration is never the method that runs. Resolve it
+      // through the receiver's class (the top operand-stack word), as the
+      // interpreter does, so the compiled path can take the override. The
+      // lookup used to stop at the declaration, which has no native code and
+      // never gets any -- the auto-JIT counts concrete targets only -- so
+      // every virtual call from compiled code went through the interpreter
+      // trampoline below: 126 ns against the interpreter's own 66 ns. That
+      // missing count was also all that kept the compiled path from running
+      // the declaration's empty body; CallCompiled now refuses one. A Nil
+      // receiver falls through to the interpreter, which reports it.
+      if(callee->IsVirtual()) {
+        StackClass* receiver_cls = MemoryManager::GetClass((size_t*)op_stack[(*stack_pos) - 1]);
+        if(receiver_cls) {
+          callee = Runtime::StackInterpreter::ResolveVirtualTarget(receiver_cls, callee, instr->GetOperand(), instr->GetOperand2());
+        }
+      }
     }
 
 #ifndef _NO_JIT
-    // Auto-JIT: compile hot callees from JIT code (no counting overhead)
-    if(!callee->GetNativeCode() && callee->GetJitCallCount() >= JIT_AUTO_THRESHOLD) {
-      TryAutoJitCompile(callee);
-    }
-
-    // Direct JIT-to-JIT calling: if callee has native code, call it directly
-    // without going through the interpreter as a trampoline. This eliminates
-    // frame creation + instruction dispatch + MTHD_CALL handler overhead.
-    if(callee->GetNativeCode()) {
-      if(instr_id == DYN_MTHD_CALL) { --(*stack_pos); }   // discard func-ref word; instance below
-      // Pop instance from op_stack (same as ProcessMethodCall)
-      size_t* callee_inst = (size_t*)op_stack[--(*stack_pos)];
-
-      // Bounds-check the call stack before writing the slot. This direct path
-      // bypasses PushFrame, which is the only place the interpreter enforces the
-      // CALL_STACK_SIZE limit -- without this, recursion deeper than 256 frames
-      // through JIT-compiled methods overruns the fixed call_stack[] buffer.
-      if((*call_stack_pos) >= CALL_STACK_SIZE) {
-        std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
-        exit(1);
-      }
-
-      // Get a stack frame for the callee and register it on the call stack
-      // so the GC can find and fixup pointers during young-gen promotion.
-      // Uses same convention as PushFrame: store at pos, fence, then increment.
-      StackFrame* frame = Runtime::StackInterpreter::GetStackFrame(callee, callee_inst);
-      call_stack[(*call_stack_pos)] = frame;
-      std::atomic_thread_fence(std::memory_order_release);
-      (*call_stack_pos)++;
-
-      // Execute native code directly
-      Runtime::JitRuntime jit_executor;
-      const long status = jit_executor.Execute(callee, callee_inst, op_stack, stack_pos,
-                                                call_stack, call_stack_pos, frame);
-
-      // Unregister and release frame
-      (*call_stack_pos)--;
-      Runtime::StackInterpreter::ReleaseStackFrame(frame);
-
-      if(status < 0) {
-        // mirror the interpreter's runtime error reporting so the one-line
-        // failure is actionable (status codes set by the JIT guard stubs)
-        const wchar_t* reason;
-        switch(status) {
-        case -1:
-          reason = L"Attempting to dereference a 'Nil' memory instance";
-          break;
-        case -2:
-        case -3:
-          reason = L"Index out of bounds";
-          break;
-        case -4:
-          reason = L"Divide by zero";
-          break;
-        default:
-          reason = L"Unknown runtime error";
-          break;
-        }
-        std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
-                   << L"', status=" << status << L", self=" << callee_inst
-                   << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
-                   << L"' <<<" << std::endl;
-        exit(1);
-      }
+    if(CallCompiled(callee, instr_id == DYN_MTHD_CALL, cls_id, mthd_id, op_stack, stack_pos, call_stack, call_stack_pos)) {
       break;
     }
 #endif
