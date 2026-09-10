@@ -439,6 +439,11 @@ namespace Runtime {
     // compile time: the callback goes to JitCompiler::JitDirectCall with this
     // StackMethod* in place of the opcode
     StackMethod* direct_callee;
+    // set around ProcessStackCallback for a MTHD_CALL to a `virtual`
+    // declaration or a DYN_MTHD_CALL: the site's inline cache (phase 3),
+    // owned by the method's NativeCode once the compile succeeds
+    JitVirtualSite* virtual_site;
+    std::vector<JitVirtualSite*> virtual_sites;
     static const int MAX_INLINE_SIZE = 20;
     bool CanInlineMethod(StackMethod* callee);
     void ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, long& caller_instr_index);
@@ -1118,6 +1123,33 @@ namespace Runtime {
     // the operand-stack code used to shift, add and then load
     void move_base_index_reg(long disp, Register base, Register index, int scale, Register dest);
     void move_base_index_xreg(long disp, Register base, Register index, int scale, Register dest);
+    // mov [base + index*scale + disp], src
+    void move_reg_base_index(Register src, long disp, Register base, Register index, int scale);
+    // lea dest, [src + offset]
+    void lea_mem_reg(long offset, Register src, Register dest);
+    // 32-bit inc/dec of a memory word (a `long` on Windows)
+    void inc_mem32(long offset, Register dest);
+    void dec_mem32(long offset, Register dest);
+    // a forward jump's rel32 placeholder, patched to land here
+    void PatchForwardJump(long patch_index);
+    // Phase 3 of the calling convention: a call from compiled code straight
+    // into a compiled callee's entry, with the callee's frame record built on
+    // the caller's stack. Emits the fast path; the two jumps to the slow path
+    // (no native code yet, or a full call stack) and the jump past it are
+    // returned for patching around the bridge sequence that follows.
+    void EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, long& slow_patch_b, long& done_patch);
+    // The same call for a `virtual` site: the receiver's class is compared
+    // with the site's current record and a hit calls the record's entry; a
+    // miss asks JitResolveVirtualSite for a record and retries, or takes the
+    // bridge. Every jump to the slow path is returned in slow_patches.
+    void EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& slow_patches, long& done_patch);
+    // What both share once RAX holds the entry: the depth check (its jump to
+    // the slow path is returned), the receiver pop, the area, the call, the
+    // status check, the pop, the jump past the slow path and the error block.
+    // The callee's constants come from `callee`, or from the record in RBX
+    // when callee is null.
+    // pop_words: the receiver alone (1), or the func-ref word above it too (2)
+    void EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch, const long pop_words = 1);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 

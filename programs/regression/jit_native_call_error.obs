@@ -1,0 +1,29 @@
+# A compiled callee, called straight from compiled code (the calling
+# convention's phase 3), dereferences Nil: its guard stub returns the status
+# to the caller, which must report it and exit rather than carry on. Both
+# methods hold a loop, so both are compiled on their first call and the
+# failing call is a native one. The runner expects the runtime error.
+# EXPECT_RUNTIME_ERROR
+class Acc {
+  @v : Int;
+  New() { @v := 0; }
+  method : public : Get() ~ Int { return @v; }
+}
+
+class NativeCallError {
+  function : Poke(a : Acc, n : Int) ~ Int {
+    t := 0;
+    for(i := 0; i < 3; i += 1;) { t += i; };
+    return t + a->Get() + n;   # a is Nil on the failing call
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    a := Acc->New();
+    total := 0;
+    for(i := 0; i < 1000; i += 1;) {
+      if(i = 500) { a := Nil; };
+      total += Poke(a, i);
+    };
+    "unreachable {$total}"->PrintLine();
+  }
+}

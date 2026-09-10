@@ -226,13 +226,18 @@ class VmJitEquiv {
     jf := Loops->JoinAndFloats(250, true) + Loops->JoinAndFloats(250, false); "join={$jf}"->PrintLine();
     gd := Loops->Gcd(1071, 462) + Loops->Gcd(9999991, 12345); "gcd={$gd}"->PrintLine();
 
+    # Main is at LOCAL_SIZE: a probe prints its result through the interpolation
+    # rather than a local, or the fixture stops compiling ("Local space has been
+    # exceeded"), which the flag tests report as a failed compile.
     # F7 phase 1: a compiled caller reaches a virtual override through the
     # bridge's own resolution, a bound callee takes the direct entry, and a frame
     # the per-thread pool hands out is zeroed for the locals its method declares
-    cv := Calls->VirtualMix(300); "calls virtual={$cv}"->PrintLine();
-    cf := Calls->FreshLocals(300); "calls fresh={$cf}"->PrintLine();
-    cdp := Calls->Deep(200); "calls deep={$cdp}"->PrintLine();
-    ce := Calls->ElementsAfterCalls(120); "calls elems={$ce}"->PrintLine();
+    "calls virtual={$Calls->VirtualMix(300)}"->PrintLine();
+    "calls fresh={$Calls->FreshLocals(300)}"->PrintLine();
+    "calls deep={$Calls->Deep(200)}"->PrintLine();
+    "calls elems={$Calls->ElementsAfterCalls(120)}"->PrintLine();
+    "calls poly={$Calls->Polymorphic(600)}"->PrintLine();
+    "calls funcrefs={$Calls->FuncRefs(400)}"->PrintLine();
 
     "done"->PrintLine();
   }
@@ -727,4 +732,58 @@ class Calls {
     };
     return acc;
   }
+  # one virtual site seeing six receiver classes in rotation: the site's
+  # inline cache fills its records, reuses them as the class alternates, and
+  # once more classes have passed than it holds, hands every call to the
+  # bridge; a second site stays monomorphic. Every path must agree with the
+  # interpreter.
+  function : Polymorphic(n : Int) ~ Int {
+    shapes := Shape->New[6];
+    shapes[0] := Sq->New(2);
+    shapes[1] := Rect->New(3, 4);
+    shapes[2] := Tall->New(2, 9);
+    shapes[3] := Sq->New(5);
+    shapes[4] := Tri->New(6);
+    shapes[5] := Disc->New(7);
+    mono := Sq->New(11);
+    t := 0;
+    for(i := 0; i < n; i += 1;) {
+      s := shapes[i % 6];
+      t += s->Area(i) + mono->Area(i % 13);
+      if(i % 97 = 0) { t += s->Twice(i); };
+    };
+    return t;
+  }
+  # func-ref call sites: the site inside ApplyRef sees two function references
+  # alternating (two records, reused as they alternate) and the second call
+  # keeps one reference throughout; every path must agree with the interpreter
+  function : Twice(x : Int) ~ Int { return x * 2; }
+  function : Thrice(x : Int) ~ Int { return x * 3 + 1; }
+  # two returns keep ApplyRef out of the inliner: inlined into a caller other
+  # than Main, a func-ref parameter call goes wrong (the interpreter loops,
+  # the JIT returns garbage), on master too -- a compiler bug filed separately
+  function : ApplyRef(x : Int, f : (Int) ~ Int) ~ Int { if(x < 0) { return 0; }; return f(x); }
+
+  function : FuncRefs(n : Int) ~ Int {
+    t := 0;
+    for(i := 0; i < n; i += 1;) {
+      if(i % 2 = 0) { t += ApplyRef(i, Twice(Int) ~ Int); }
+      else { t += ApplyRef(i, Thrice(Int) ~ Int); };
+      t += ApplyRef(i % 5, Twice(Int) ~ Int);
+    };
+    return t;
+  }
+}
+
+
+class Tri from Shape {
+  @b : Int;
+  New(b : Int) { Parent(); @b := b; }
+  method : public : Area(x : Int) ~ Int { return @b * @b / 2 + x; }
+}
+
+class Disc from Shape {
+  @r : Int;
+  New(r : Int) { Parent(); @r := r; }
+  method : public : Area(x : Int) ~ Int { return 3 * @r * @r - x; }
 }

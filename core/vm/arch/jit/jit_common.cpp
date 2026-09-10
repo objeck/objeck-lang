@@ -213,33 +213,109 @@ bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const
   Runtime::StackInterpreter::ReleaseStackFrame(frame);
 
   if(status < 0) {
-    // mirror the interpreter's runtime error reporting so the one-line
-    // failure is actionable (status codes set by the JIT guard stubs)
-    const wchar_t* reason;
-    switch(status) {
-    case -1:
-      reason = L"Attempting to dereference a 'Nil' memory instance";
-      break;
-    case -2:
-    case -3:
-      reason = L"Index out of bounds";
-      break;
-    case -4:
-      reason = L"Divide by zero";
-      break;
-    default:
-      reason = L"Unknown runtime error";
-      break;
-    }
-    std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
-               << L"', status=" << status << L", self=" << callee_inst
-               << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
-               << L"' <<<" << std::endl;
-    exit(1);
+    JitNativeCallError(status, callee, cls_id, mthd_id);
   }
   return true;
 }
 #endif
+
+/**
+ * A compiled callee's error status, reported the way the interpreter reports
+ * a runtime error so the one-line failure is actionable (the codes are set by
+ * the JIT guard stubs). Reached from the bridge and, from phase 3 on, straight
+ * from compiled code after a direct native call. Does not return.
+ */
+void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, const long cls_id, const long mthd_id)
+{
+  const wchar_t* reason;
+  switch(status) {
+  case -1:
+    reason = L"Attempting to dereference a 'Nil' memory instance";
+    break;
+  case -2:
+  case -3:
+    reason = L"Index out of bounds";
+    break;
+  case -4:
+    reason = L"Divide by zero";
+    break;
+  default:
+    reason = L"Unknown runtime error";
+    break;
+  }
+  std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
+             << L"', status=" << status
+             << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
+             << L"' <<<" << std::endl;
+  exit(1);
+}
+
+/**
+ * A call site's inline-cache miss (see the header). Misses are rare -- the
+ * first call at a site for each key -- so a spin on the site's flag
+ * serializes the fill; hits never take it. FillSiteRecord reuses the key's
+ * record when it exists (target unused), else fills a free one.
+ */
+JitVirtualRecord* JitCompiler::FillSiteRecord(JitVirtualSite* site, size_t key, StackMethod* target)
+{
+  while(site->filling.exchange(true, std::memory_order_acquire)) {
+    ;
+  }
+  JitVirtualRecord* found = nullptr;
+  for(int i = 0; i < site->used; ++i) {
+    if(site->records[i].key == key) {
+      found = &site->records[i];
+      break;
+    }
+  }
+  if(!found && site->used < JitVirtualSite::RECORDS) {
+    void* entry = (!target || target->IsVirtual()) ? nullptr : target->GetNativeEntry();
+    if(entry) {
+      JitVirtualRecord& record = site->records[site->used];
+      record.key = key;
+      record.entry = entry;
+      record.target = target;
+      record.cls_mem = target->GetClass()->GetClassMemory();
+      record.cls_id = target->GetClass()->GetId();
+      record.mthd_id = target->GetId();
+      site->used++;
+      found = &record;
+    }
+  }
+  if(found) {
+    site->current.store(found, std::memory_order_release);
+  }
+  site->filling.store(false, std::memory_order_release);
+  return found;
+}
+
+JitVirtualRecord* JitCompiler::JitResolveVirtualSite(JitVirtualSite* site, size_t* receiver)
+{
+  StackClass* cls = MemoryManager::GetClass(receiver);
+  if(!cls) {
+    return nullptr;
+  }
+  // the record can answer without resolving again; resolve only for a new class
+  for(int i = 0; i < site->used; ++i) {
+    if(site->records[i].key == (size_t)cls) {
+      return FillSiteRecord(site, (size_t)cls, nullptr);
+    }
+  }
+  StackMethod* target = Runtime::StackInterpreter::ResolveVirtualTarget(cls, site->declaration, site->decl_cls_id, site->decl_mthd_id);
+  return FillSiteRecord(site, (size_t)cls, target);
+}
+
+/**
+ * A func-ref call site's miss: the packed word names the target directly.
+ */
+JitVirtualRecord* JitCompiler::JitResolveFuncRefSite(JitVirtualSite* site, size_t packed)
+{
+  const long cls_id = (long)((packed >> 16) & 0xFFFF);
+  const long mthd_id = (long)(packed & 0xFFFF);
+  StackClass* cls = program->GetClass(cls_id);
+  StackMethod* target = cls ? cls->GetMethod(mthd_id) : nullptr;
+  return FillSiteRecord(site, packed, target);
+}
 
 /**
  * The direct bridge entry (see the header). The trampoline is the one

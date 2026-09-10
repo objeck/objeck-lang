@@ -490,6 +490,48 @@ class StackInstr
   }
 };
 
+class StackClass;
+class StackMethod;
+
+/********************************
+ * A compiled call site's inline cache for a callee that is bound at run
+ * time (the calling convention's phase 3): a `virtual` declaration, keyed
+ * by the receiver's class, or a func-ref call, keyed by the func-ref's
+ * packed word. The site's `current` word -- the first member, which
+ * compiled code reads as [site] -- points at the record for the key last
+ * seen there, or is null. A record is written once, under the site's lock,
+ * and published by that word, so a hit reads one consistent record; the
+ * fill resolver reuses a key's record on a repeat and stops filling once
+ * the records are used up, after which the site takes the bridge for good.
+ * Owned by the caller's NativeCode.
+ ********************************/
+struct JitVirtualRecord {
+  size_t key;             // the receiver class, or the func-ref word, this record answers for
+  void* entry;            // the target's native entry
+  StackMethod* target;
+  size_t* cls_mem;        // the target's class memory
+  long cls_id;
+  long mthd_id;
+};
+
+struct JitVirtualSite {
+  static const int RECORDS = 4;
+  std::atomic<JitVirtualRecord*> current;   // read first by compiled code: keep first
+  std::atomic<bool> filling;
+  int used;
+  JitVirtualRecord records[RECORDS];
+  StackMethod* declaration;                 // the `virtual` declaration the site names (null for a func-ref site)
+  long decl_cls_id;
+  long decl_mthd_id;
+  bool funcref;                             // keyed by the func-ref word rather than the receiver's class
+
+  JitVirtualSite(StackMethod* d, long c, long m) : current(nullptr), filling(false), used(0), declaration(d), decl_cls_id(c), decl_mthd_id(m), funcref(d == nullptr) {
+    for(int i = 0; i < RECORDS; ++i) {
+      records[i] = JitVirtualRecord();
+    }
+  }
+};
+
 /********************************
  * JIT compile code
  ********************************/
@@ -503,7 +545,7 @@ class NativeCode {
 
   long size;
   FLOAT_VALUE* floats;
-  
+  std::vector<JitVirtualSite*> virtual_sites;   // the method's inline caches (AMD64)
  public:
 #if defined(_ARM64) || defined(_M_ARM64)
    NativeCode(uint32_t* c, long s, int64_t* i, FLOAT_VALUE* f) {
@@ -521,6 +563,10 @@ class NativeCode {
 #endif
 
   ~NativeCode() {
+    for(JitVirtualSite* site : virtual_sites) {
+      delete site;
+    }
+    virtual_sites.clear();
 #if defined(_ARM64) || defined(_M_ARM64)
     // ARM64 allocates both constant pools with new[] (JitArm64::Compile), so they
     // must be released with delete[]. The old code used free() on ints and, on
@@ -561,6 +607,10 @@ class NativeCode {
   inline FLOAT_VALUE* GetFloats() const {
     return floats;
   }
+
+  void SetVirtualSites(std::vector<JitVirtualSite*>& sites) {
+    virtual_sites.swap(sites);
+  }
 };
 
 /********************************
@@ -582,6 +632,11 @@ class StackMethod {
   // jit_state elects exactly one compiler thread (0=none,1=compiling,2=done,3=failed)
   // so a method is never compiled twice or patched concurrently by two threads.
   std::atomic<NativeCode*> native_code;
+  // The entry address of native_code, published with it. A compiled caller
+  // loads this one word to call a compiled callee directly (the calling
+  // convention's phase 3); null means "not compiled", and the caller takes
+  // the bridge, which counts the call and compiles the callee in time.
+  std::atomic<void*> native_entry;
   std::atomic<long> jit_call_count;
   std::atomic<int> jit_state;
   MemoryType rtrn_type;
@@ -599,6 +654,7 @@ class StackMethod {
     has_and_or = h;
     is_lambda = l;
     native_code.store(nullptr, std::memory_order_relaxed);
+    native_entry.store(nullptr, std::memory_order_relaxed);
     jit_call_count.store(0, std::memory_order_relaxed);
     jit_state.store(JIT_NONE, std::memory_order_relaxed);
     dclrs = d;
@@ -697,8 +753,21 @@ class StackMethod {
 
   void SetNativeCode(NativeCode* c) {
     // release: publish the fully constructed NativeCode before the pointer is
-    // observable, pairing with the acquire load in GetNativeCode.
+    // observable, pairing with the acquire load in GetNativeCode. The entry
+    // word goes out the same way; compiled callers read it with a plain
+    // aligned load, which is an acquire on the targets this runs on.
+    native_entry.store((void*)c->GetCode(), std::memory_order_release);
     native_code.store(c, std::memory_order_release);
+  }
+
+  inline void* GetNativeEntry() const {
+    return native_entry.load(std::memory_order_acquire);
+  }
+
+  // where a compiled caller reads the entry address from
+  inline const void* NativeEntryAddress() const {
+    static_assert(sizeof(std::atomic<void*>) == sizeof(void*), "the JIT loads native_entry as one word");
+    return &native_entry;
   }
 
   inline NativeCode* GetNativeCode() const {
