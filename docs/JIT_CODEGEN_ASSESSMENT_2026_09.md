@@ -275,5 +275,10 @@ the call gained 43x, and a compiled caller of a `virtual` method was *slower* th
 interpreter (125 ns against 70) because the bridge re-entered a fresh interpreter per call.
 Phase 1 of that design -- the C++ bridge: virtual callees resolved there, a per-thread frame
 pool zeroed on acquire, a bound callee passed by pointer -- brought a compiled call to 16.5 ns
-and a virtual one to 20 ns; phase 2 (the callee's prologue and epilogue, AMD64) to 14.4 ns.
-Open: phase 3 (register arguments, a second native entry per method), and phase 2 on ARM64.
+and a virtual one to 20 ns; phase 2 (the callee's prologue and epilogue, AMD64) to 14.4 ns;
+phase 3 (the direct native call, then inline caches for `virtual` and func-ref calls, AMD64)
+to 7.0 ns for a bound call and 7.5 ns for a virtual one, with func-ref calls losing the
+bridge's 15 ns too. The register-argument entry was measured as not worth its risk (the
+design's section 11). Also fixed on the way: a compiled frame with a declared-but-unreferenced
+local was scanned under the wrong types (#761), and CI now runs the suite with every method
+compiled on the x64 legs (#762). Open on ARM64: phases 2 and 3, on the Mac.
