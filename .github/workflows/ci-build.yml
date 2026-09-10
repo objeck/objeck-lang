@@ -750,6 +750,30 @@ jobs:
         OBJECK_DIAG_GENERICS: "1"
       run: run_regression.cmd ${{ matrix.arch }}
 
+    # A second pass with every method compiled on its first call. The default
+    # threshold compiles a method on its tenth call (or on entry when it has a
+    # loop), so most of the suite runs interpreted and a JIT bug in a method
+    # called a few times never runs compiled here. The frame-layout bug of
+    # #761 (a declared-but-unreferenced local shifted every lower slot under
+    # the collector) crashed mcp_debug_test only in this mode, and only this
+    # mode had never run in CI. One x64 leg per OS: the bug class is
+    # platform-independent, and the pass doubles a leg's regression time.
+    - name: Run regression tests with every method compiled (Linux x64)
+      if: runner.os == 'Linux' && matrix.arch == 'x64'
+      working-directory: ./programs/regression
+      env:
+        OBJECK_JIT_THRESHOLD: "1"
+        OBJECK_GL_REQUIRED: "1"
+      run: ./run_regression.sh x64
+
+    - name: Run regression tests with every method compiled (Windows x64)
+      if: runner.os == 'Windows' && matrix.arch == 'x64'
+      working-directory: ./programs/regression
+      shell: cmd
+      env:
+        OBJECK_JIT_THRESHOLD: "1"
+      run: run_regression.cmd x64
+
     - name: Run debugger tests (POSIX)
       if: runner.os != 'Windows'
       working-directory: ./programs/regression
