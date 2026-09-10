@@ -79,10 +79,10 @@ void JitAmd64::Prolog() {
     0x49, 0x54,                  // push r12
     0x48, 0x83, 0xec, 0x08,      // sub  rsp, 8   (alignment filler)
 #else
-    0x49, 0x50,                  // push r8
-    0x49, 0x51,                  // push r9
-    0x49, 0x52,                  // push r10
-    0x49, 0x53,                  // push r11
+    // R8-R11 are caller-saved in the System V ABI and, since they joined
+    // the pool, every path that calls out spills or pushes them; four
+    // pushes keep RSP 16-byte aligned. R12 caches &stw_active, R13-R15
+    // hold pinned loop locals.
     0x49, 0x54,                  // push r12
     0x49, 0x55,                  // push r13
     0x49, 0x56,                  // push r14
@@ -270,10 +270,6 @@ void JitAmd64::Epilog()
     0x49, 0x5e,       // pop r14
     0x49, 0x5d,       // pop r13
     0x49, 0x5c,       // pop r12
-    0x49, 0x5b,       // pop r11
-    0x49, 0x5a,       // pop r10
-    0x49, 0x59,       // pop r9
-    0x49, 0x58,       // pop r8
 #endif
     0x48, 0x5e,       // pop $rsi
     0x48, 0x5f,       // pop $rdi
@@ -2405,13 +2401,13 @@ void JitAmd64::EmitWriteBarrier(Register holder) {
   pop_reg(R9); pop_reg(R11); pop_reg(R10); pop_reg(R9);
   pop_reg(R8); pop_reg(RDX); pop_reg(RCX); pop_reg(RAX);
 #else
-  push_reg(RAX); push_reg(RCX); push_reg(RDX);
-  push_reg(R8);  push_reg(R10); push_reg(R11);
+  push_reg(RAX); push_reg(RCX); push_reg(RDX); push_reg(R8);
+  push_reg(R9);  push_reg(R10); push_reg(R11); push_reg(R9);   // second R9: alignment pad
   move_reg_reg(holder, RDI);                                   // arg0 = holder (System V)
   move_imm_reg((size_t)MemoryManager::JitWriteBarrier, R11);
   call_reg(R11);
-  pop_reg(R11); pop_reg(R10); pop_reg(R8);
-  pop_reg(RDX); pop_reg(RCX); pop_reg(RAX);
+  pop_reg(R9); pop_reg(R11); pop_reg(R10); pop_reg(R9);
+  pop_reg(R8); pop_reg(RDX); pop_reg(RCX); pop_reg(RAX);
 #endif
 
   // skip:
@@ -8257,20 +8253,23 @@ bool JitAmd64::Compile(StackMethod* cm)
     std::wcout << L"Compiling code for Windows AMD64 architecture..." << std::endl;
 #endif
 #else
-    // general use registers
+    // general use registers: the same eight as Windows. R8-R11 are
+    // caller-saved, the prologue no longer pushes them, and every path that
+    // calls out spills or pushes them (the callback, a native call, the
+    // write barrier, call_xfunc). Four pool registers and three aux ones
+    // left an expression with five live values, or a method with a dozen
+    // locals, to the interpreter on Linux while Windows compiled it.
+    aval_regs.push_back(new RegisterHolder(R11));
+    aval_regs.push_back(new RegisterHolder(R10));
+    aval_regs.push_back(new RegisterHolder(R9));
+    aval_regs.push_back(new RegisterHolder(R8));
     aval_regs.push_back(new RegisterHolder(RDX));
     aval_regs.push_back(new RegisterHolder(RCX));
     aval_regs.push_back(new RegisterHolder(RBX));
     aval_regs.push_back(rax_reg);
-    // aux general use registers
-    //        aux_regs.push(new RegisterHolder(RDI));
-    //        aux_regs.push(new RegisterHolder(RSI));
-    // R13-R15 hold pinned loop locals (F3) and are not allocatable
-    // aux_regs.push(new RegisterHolder(R12));
-    aux_regs.push(new RegisterHolder(R11));
-    aux_regs.push(new RegisterHolder(R10));
-    // aux_regs.push(new RegisterHolder(R9));
-    aux_regs.push(new RegisterHolder(R8));
+    // no aux registers: RDI and RSI are set as arguments by every call-out
+    // sequence without a spill, and R12-R15 are the safepoint pointer and
+    // the pinned loop locals (F3)
     // floating point registers
     aval_xregs.push_back(new RegisterHolder(XMM15));
     aval_xregs.push_back(new RegisterHolder(XMM14));

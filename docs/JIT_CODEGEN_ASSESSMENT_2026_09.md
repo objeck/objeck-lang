@@ -284,4 +284,8 @@ record in the callee's frame) to 5.5 ns bound and 6.0 ns virtual, with `Fib(32)`
 against 0.208 s on master and func-ref calls at less than half their section 10 cost. Also
 fixed on the way: a compiled frame with a declared-but-unreferenced local was scanned under
 the wrong types (#761), and CI now runs the suite with every method compiled on the x64 legs
-(#762). Open on ARM64: phases 2 and 3 and the entry, on the Mac.
+(#762). Open on ARM64: phases 2 and 3 and the entry, on the Mac. Later still: F4's eight
+registers reached the Linux x64 backend (it had four pool registers and three auxiliary
+ones, so `OBJECK_JIT_REPORT=1` on the fixture named two of its own probes as interpreted
+there), and the compiler's inliner was pasting a func-ref parameter's slots unshifted
+(#763), found while timing the func-ref cache.

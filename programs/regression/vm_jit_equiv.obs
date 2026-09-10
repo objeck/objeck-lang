@@ -762,10 +762,26 @@ class Calls {
   # keeps one reference throughout; every path must agree with the interpreter
   function : Twice(x : Int) ~ Int { return x * 2; }
   function : Thrice(x : Int) ~ Int { return x * 3 + 1; }
-  # two returns keep ApplyRef out of the inliner: inlined into a caller other
-  # than Main, a func-ref parameter call goes wrong (the interpreter loops,
-  # the JIT returns garbage), on master too -- a compiler bug filed separately
+  # two returns keep ApplyRef out of the inliner, as a control for
+  # InlinedRefs below: inlined, a func-ref parameter call used to go wrong
+  # (the interpreter looped, the JIT returned garbage) because the inliner
+  # pasted the callee's func-ref slots unshifted (#763, fixed)
   function : ApplyRef(x : Int, f : (Int) ~ Int) ~ Int { if(x < 0) { return 0; }; return f(x); }
+  # one return: the inliner pastes ApplyInline into InlinedRefs, and the
+  # func-ref parameter's two words must land in the caller's frame past its
+  # own locals; the compiled loop then makes the call through a cached site
+  function : ApplyInline(x : Int, f : (Int) ~ Int) ~ Int { return f(x); }
+
+  function : InlinedRefs(n : Int) ~ Int {
+    t := 0;
+    u := 1;
+    for(i := 0; i < n; i += 1;) {
+      if(i % 3 = 0) { t += ApplyInline(i, Twice(Int) ~ Int); }
+      else { t += ApplyInline(i, Thrice(Int) ~ Int); };
+      u += t % 7;
+    };
+    return t * 10 + u % 10;
+  }
 
   function : FuncRefs(n : Int) ~ Int {
     t := 0;
@@ -872,6 +888,7 @@ class Calls {
     "calls slots={$SlotsOnly(3000)}"->PrintLine();
     "calls funcresults={$FuncResults(300)}"->PrintLine();
     "calls copies={$CopyResults(300)}"->PrintLine();
+    "calls inlinedrefs={$InlinedRefs(300)}"->PrintLine();
   }
 }
 

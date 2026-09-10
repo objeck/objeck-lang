@@ -640,6 +640,9 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
     case instructions::LOAD_FLOAT_VAR:
     case instructions::STOR_FLOAT_VAR:
     case instructions::COPY_FLOAT_VAR:
+    case instructions::LOAD_FUNC_VAR:
+    case instructions::STOR_FUNC_VAR:
+    case instructions::COPY_FUNC_VAR:
       // if the method/function is in another class it must only have local references
       if(mthd_called_instr->GetOperand2() != LOCL) {
         return false;
@@ -1057,6 +1060,13 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
           case LOAD_FLOAT_VAR:
           case STOR_FLOAT_VAR:
           case COPY_FLOAT_VAR:
+          // A func-ref local is two words at the callee's id and the next; the
+          // id shifts with the others. These were pasted unshifted, so an
+          // inlined method that took a func-ref parameter stored it over the
+          // caller's own locals and called through whatever was there (#763).
+          case LOAD_FUNC_VAR:
+          case STOR_FUNC_VAR:
+          case COPY_FUNC_VAR:
 #ifdef _DEBUG
             assert(mthd_called_instr->GetOperand2() == LOCL);
 #endif
