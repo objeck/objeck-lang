@@ -1,6 +1,6 @@
 # JIT: what a compiled call costs, and the convention that removes it (F7)
 
-**Status:** phases 1 and 2 implemented, 2026-09-10 (sections 6 and 7); phase 3 open. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
+**Status:** phases 1 and 2 implemented, 2026-09-10 (sections 6 and 7); phase 3's first step, the direct native call, implemented on AMD64 the same day (section 8); the rest of phase 3 open. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
 ("every method entry/exit rebuilds the VM operand-stack view, and JIT-to-JIT calls still marshal
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
@@ -276,7 +276,7 @@ pool's refill size); the regression suite in both modes, 224 passed, 3 skipped, 
 each. ARM64 is the same C++ plus a two-immediate change in its emitter; its runtime check
 is CI's three ARM64 legs.
 
-Phase 2 followed the same day (section 7).
+Phase 2 followed the same day (section 7), and the first step of phase 3 after it (section 8).
 
 ## 7. Phase 2, implemented on AMD64 (2026-09-10)
 
@@ -324,3 +324,62 @@ address landed in an extended register and made common by the new result pop's a
 order (fixed alongside, with a probe that stores constant characters and bytes right after
 call results). ARM64 is untouched: its `D8`-`D15` saves, zeroing loop and
 operand-stack sequences are the same shape and the same change, on the Mac.
+
+## 8. Phase 3, first step: the direct native call (AMD64, 2026-09-10)
+
+Section 3's phase 3 has two parts: removing the C++ bridge from a compiled-to-compiled call,
+and passing arguments in registers. The first is done, and it is where the time was; the
+second is measured below as what remains.
+
+**What a bound call emits now** (`EmitNativeCallFastPath`, in `ProcessStackCallback`). The
+arguments and the receiver go onto the operand stack as before and live temporaries spill to
+their `TMP` slots as for a callback. Then:
+
+- `rax = callee->native_entry` (a new word on `StackMethod`, published with `native_code`);
+  null means "not compiled yet" and the code falls to the bridge sequence, which counts the
+  call and compiles the callee in time. No call-site patching: the next call reads the word.
+- The call stack's depth is checked inline; a full stack falls to the bridge, which reports it.
+- The receiver is popped. An area is reserved below the stack pointer holding the callee's
+  `StackFrame` record and its two-word `mem` (`self`, 0), the seven stack arguments the
+  bridge entry expects (Windows; five on POSIX), and the shadow space. The record is filled
+  as `GetStackFrame` fills a pool frame (`method`, `mem`, `ip = -1`, `jit_called`, the JIT
+  fields zero) and pushed on the call stack, slot before count as `PushFrame` orders them.
+- The register arguments are what the bridge passes: the callee's class and method ids and
+  its class memory are constants of the callee, the receiver is in its register. `call rax`.
+- A negative status goes to `JitNativeCallError`, which reports as the bridge did and exits.
+  Otherwise the record is popped, the area freed, and the code joins the bridge path's tail:
+  the spilled registers come back, `INSTANCE_MEM` is reloaded from `frame->mem[0]`, the result
+  is popped.
+
+The callee is unchanged: the same prologue, the same `RegisterRoot` writing `jit_mem` and
+`jit_offset` through the pointers it was given (now into the record on the caller's stack),
+the same `RTRN`. The collector scans the record like any bridge frame; the record lives
+exactly as long as the call. Nothing between the push and the callee's `RegisterRoot` can
+park, so the record is never scanned half-built -- the bridge had the same window.
+`virtual` callees and func-ref calls still take the bridge (an inline cache is the follow-up).
+
+Two regression tests cover the two exits: `jit_native_call_error.obs` (a directly called
+callee dereferences Nil; the message names callee and caller) and
+`jit_native_call_depth.obs` (recursion past the call stack's limit, refused by the bridge).
+
+Alternated with the same master, phase 1 and phase 2 binaries, medians of three:
+
+| kernel | master | phase 1 | phase 2 | phase 3, step 1 |
+|---|---|---|---|---|
+| `RealCall` (20M calls) | 0.542 s | 0.345 s | 0.315 s | **0.151 s** |
+| `Fib(32)` | 0.208 s | 0.125 s | 0.115 s | **0.071 s** |
+| `VirtualCall` (2M, still the bridge) | 0.257 s | 0.040 s | 0.037 s | 0.036 s |
+| compiled call, per call | 26.5 ns | 16.6 ns | 15.2 ns | **7.0 ns** |
+
+The call-bound loop that the JIT sped up 2.8x on master is now sped up 7.5x (interpreter
+1.14 s against 0.151 s); the same loop without the call is 43x. What is left per call is the
+operand-stack traffic (four stores and two loads for one argument and its receiver, the
+result's store and load) and the callee's own entry and exit (section 7), about 50
+instructions on each side: the register-argument entry of section 3 is the next step, and
+`virtual` calls through an inline cache the one after.
+
+Verified: the flag tests 22/22, `vm_jit_equiv.obs` byte-identical across the three modes;
+the two new tests; the regression suite in both modes (see the PR). The POSIX variant of the
+sequence (System V registers, five stack arguments, no shadow space) is built and run in
+WSL. ARM64 keeps the bridge until the same is done there.
+
