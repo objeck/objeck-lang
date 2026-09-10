@@ -79,18 +79,6 @@ void JitAmd64::Prolog() {
     // SafePoint call (one push would otherwise leave it misaligned).
     0x49, 0x54,                  // push r12
     0x48, 0x83, 0xec, 0x08,      // sub  rsp, 8   (alignment filler)
-    // XMM6-XMM15 are callee-saved in the Windows x64 ABI and the allocator
-    // hands out XMM10-XMM15. This code is entered by a plain C++ call
-    // (jit_fun), whose MSVC-compiled caller may keep values in those
-    // registers across the call; nothing saved them. 96 bytes keeps RSP
-    // 16-byte aligned. Linux/macOS: every XMM is caller-saved, nothing to do.
-    0x48, 0x83, 0xec, 0x60,      // sub  rsp, 96
-    0xf3, 0x44, 0x0f, 0x7f, 0x54, 0x24, 0x00,   // movdqu [rsp+0],  xmm10
-    0xf3, 0x44, 0x0f, 0x7f, 0x5c, 0x24, 0x10,   // movdqu [rsp+16], xmm11
-    0xf3, 0x44, 0x0f, 0x7f, 0x64, 0x24, 0x20,   // movdqu [rsp+32], xmm12
-    0xf3, 0x44, 0x0f, 0x7f, 0x6c, 0x24, 0x30,   // movdqu [rsp+48], xmm13
-    0xf3, 0x44, 0x0f, 0x7f, 0x74, 0x24, 0x40,   // movdqu [rsp+64], xmm14
-    0xf3, 0x44, 0x0f, 0x7f, 0x7c, 0x24, 0x50,   // movdqu [rsp+80], xmm15
 #else
     0x49, 0x50,                  // push r8
     0x49, 0x51,                  // push r9
@@ -107,6 +95,32 @@ void JitAmd64::Prolog() {
   for(long i = 0; i < setup_size; ++i) {
     AddMachineCode(setup_code[i]);
   }
+
+#ifdef _WIN64
+  // XMM6-XMM15 are callee-saved in the Windows x64 ABI and the allocator
+  // hands out XMM10-XMM15. This code is entered by a plain C++ call
+  // (jit_fun), whose MSVC-compiled caller may keep values in those
+  // registers across the call; nothing saved them. 96 bytes keeps RSP
+  // 16-byte aligned. A method that never takes a pool register leaves them
+  // untouched, so Compile() turns this block and the epilogue's restore into
+  // a jump over themselves once the body is emitted (xmm_pool_used); the
+  // index and size are recorded for that. Linux/macOS: every XMM is
+  // caller-saved, nothing to do.
+  const unsigned char xmm_save_code[] = {
+    0x48, 0x83, 0xec, 0x60,      // sub  rsp, 96
+    0xf3, 0x44, 0x0f, 0x7f, 0x54, 0x24, 0x00,   // movdqu [rsp+0],  xmm10
+    0xf3, 0x44, 0x0f, 0x7f, 0x5c, 0x24, 0x10,   // movdqu [rsp+16], xmm11
+    0xf3, 0x44, 0x0f, 0x7f, 0x64, 0x24, 0x20,   // movdqu [rsp+32], xmm12
+    0xf3, 0x44, 0x0f, 0x7f, 0x6c, 0x24, 0x30,   // movdqu [rsp+48], xmm13
+    0xf3, 0x44, 0x0f, 0x7f, 0x74, 0x24, 0x40,   // movdqu [rsp+64], xmm14
+    0xf3, 0x44, 0x0f, 0x7f, 0x7c, 0x24, 0x50,   // movdqu [rsp+80], xmm15
+  };
+  xmm_save_index = code_index;
+  xmm_save_size = (long)sizeof(xmm_save_code);
+  for(size_t i = 0; i < sizeof(xmm_save_code); ++i) {
+    AddMachineCode(xmm_save_code[i]);
+  }
+#endif
 
   // Cache &stw_active in R12 (callee-saved) once per method. Each LBL's GC
   // safepoint poll then becomes a 5-byte `cmp byte [r12],0` instead of a 10-byte
@@ -213,9 +227,11 @@ void JitAmd64::Epilog()
   }
 #endif
 
-  unsigned char teardown_code[] = {
-    // restore registers
 #ifdef _WIN64
+  // the XMM10-XMM15 restore; patched together with the prologue's save when
+  // the method never used the pool (see Prolog). Every exit path runs it:
+  // the error stubs land on the teardown above, before this.
+  const unsigned char xmm_restore_code[] = {
     0xf3, 0x44, 0x0f, 0x6f, 0x54, 0x24, 0x00,   // movdqu xmm10, [rsp+0]
     0xf3, 0x44, 0x0f, 0x6f, 0x5c, 0x24, 0x10,   // movdqu xmm11, [rsp+16]
     0xf3, 0x44, 0x0f, 0x6f, 0x64, 0x24, 0x20,   // movdqu xmm12, [rsp+32]
@@ -223,6 +239,17 @@ void JitAmd64::Epilog()
     0xf3, 0x44, 0x0f, 0x6f, 0x74, 0x24, 0x40,   // movdqu xmm14, [rsp+64]
     0xf3, 0x44, 0x0f, 0x6f, 0x7c, 0x24, 0x50,   // movdqu xmm15, [rsp+80]
     0x48, 0x83, 0xc4, 0x60,  // add  rsp, 96  (XMM save area)
+  };
+  xmm_restore_indices.push_back(code_index);
+  xmm_restore_size = (long)sizeof(xmm_restore_code);
+  for(size_t i = 0; i < sizeof(xmm_restore_code); ++i) {
+    AddMachineCode(xmm_restore_code[i]);
+  }
+#endif
+
+  unsigned char teardown_code[] = {
+    // restore registers
+#ifdef _WIN64
     0x48, 0x83, 0xc4, 0x08,  // add  rsp, 8   (undo alignment filler)
     0x49, 0x5c,       // pop r12
 #else
@@ -273,7 +300,16 @@ void JitAmd64::RegisterRoot() {
 
   // 10 slots to hold spilled registers (TMP_REG_0..9)
   const int index = ((offset - 8) >> 3) + 10;
-  if(index > 0) {
+  // Zero them with straight stores for the common frame sizes: the LOOP
+  // instruction is microcoded, and its eleven iterations for a one-local
+  // method cost more than that method's body. Large frames keep the loop.
+  static const int ZERO_UNROLL_MAX = 24;
+  if(index > 0 && index <= ZERO_UNROLL_MAX) {
+    for(int i = 0; i < index; ++i) {
+      move_imm_mem(0, i * (long)sizeof(size_t), holder->GetRegister());
+    }
+  }
+  else if(index > 0) {
     move_imm_reg(index, RCX);
     long loop_target = code_index;
     move_imm_mem(0, 0, holder->GetRegister());
@@ -295,17 +331,32 @@ void JitAmd64::ProcessParameters(long params) {
 #ifdef _DEBUG_JIT
   std::wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-  
+  if(params < 1) {
+    return;
+  }
+
+  // The arguments sit on the operand stack below its top. Compute the top
+  // once (&op_stack[count]) and read each argument at a fixed displacement
+  // below it, then drop them all with one subtraction from the count; each
+  // used to reload both pointers, decrement, scale and add.
+  RegisterHolder* op_stack_holder = GetRegister();
+  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
+  RegisterHolder* stack_pos_holder = GetRegister();
+  move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
+  RegisterHolder* top_holder = GetRegister();
+#ifdef _WIN64
+  move_mem_reg32(0, stack_pos_holder->GetRegister(), top_holder->GetRegister());
+#else
+  move_mem_reg(0, stack_pos_holder->GetRegister(), top_holder->GetRegister());
+#endif
+  lea_base_index_reg(0, op_stack_holder->GetRegister(), top_holder->GetRegister(), sizeof(size_t), top_holder->GetRegister());
+  ReleaseRegister(op_stack_holder);
+
+  long words = 0;
   for(long i = 0; i < params; ++i) {
-    RegisterHolder* op_stack_holder = GetRegister();
-    move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-
     StackInstr* instr = method->GetInstruction(instr_index++);
-    instr->SetOffset(code_index);  
+    instr->SetOffset(code_index);
 
-    RegisterHolder* stack_pos_holder = GetRegister();
-    move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-    
     // A parameter may arrive as STOR_* (pop into slot) or, when the optimizer
     // keeps the incoming arg on the stack to reuse it directly (e.g. forwarding
     // a param straight into a call: `f(x)` with x a param), as COPY_* (store to
@@ -315,16 +366,9 @@ void JitAmd64::ProcessParameters(long params) {
     // to the float else-branch (which would read it into an XMM reg and crash).
     if(instr->GetType() == STOR_LOCL_INT_VAR || instr->GetType() == STOR_CLS_INST_INT_VAR ||
        instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
-      dec_mem(0, stack_pos_holder->GetRegister());
-#ifdef _WIN64
-      move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#else
-      move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#endif
-      shl_imm_reg(3, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
+      words++;
       RegisterHolder* dest_holder = GetRegister();
-      move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
+      move_mem_reg(-words * (long)sizeof(size_t), top_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
       // store int (COPY keeps the value on the working stack for later use)
       if(instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
@@ -335,22 +379,12 @@ void JitAmd64::ProcessParameters(long params) {
       }
     }
     else if(instr->GetType() == STOR_FUNC_VAR) {
-      dec_mem(0, stack_pos_holder->GetRegister());  
-#ifdef _WIN64    
-      move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#else
-      move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#endif    
-      shl_imm_reg(3, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
+      // two words; the one nearer the top ends up on top of the working stack
       RegisterHolder* dest_holder = GetRegister();
-      move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
-      
+      move_mem_reg(-(words + 1) * (long)sizeof(size_t), top_holder->GetRegister(), dest_holder->GetRegister());
       RegisterHolder* dest_holder2 = GetRegister();
-      move_mem_reg(/*-sizeof(size_t)*/-8, op_stack_holder->GetRegister(), dest_holder2->GetRegister());
-      
-      move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-      dec_mem(0, stack_pos_holder->GetRegister());      
+      move_mem_reg(-(words + 2) * (long)sizeof(size_t), top_holder->GetRegister(), dest_holder2->GetRegister());
+      words += 2;
 
       working_stack.push_front(new RegInstr(dest_holder2));
       working_stack.push_front(new RegInstr(dest_holder));
@@ -360,16 +394,9 @@ void JitAmd64::ProcessParameters(long params) {
       i++;
     }
     else {
+      words++;
       RegisterHolder* dest_holder = GetXmmRegister();
-      dec_mem(0, stack_pos_holder->GetRegister());
-#ifdef _WIN64    
-      move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#else
-      move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#endif    
-      shl_imm_reg(3, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
-      move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
+      move_mem_xreg(-words * (long)sizeof(size_t), top_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
 
       // store float (COPY keeps the value on the working stack for later use)
@@ -380,33 +407,32 @@ void JitAmd64::ProcessParameters(long params) {
         ProcessStore(instr);
       }
     }
-    ReleaseRegister(op_stack_holder);
-    ReleaseRegister(stack_pos_holder);
   }
+
+  // pop them all
+  sub_imm_mem(words, 0, stack_pos_holder->GetRegister());
+  ReleaseRegister(top_holder);
+  ReleaseRegister(stack_pos_holder);
 }
 
 void JitAmd64::ProcessIntCallParameter() {
 #ifdef _DEBUG_JIT
   std::wcout << L"INT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-  
-  RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-  
+  // the value the callee left: count -= 1, then op_stack[count] in one load
   RegisterHolder* stack_pos_holder = GetRegister();
   move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-  
-  dec_mem(0, stack_pos_holder->GetRegister()); 
-#ifdef _WIN64   
+  dec_mem(0, stack_pos_holder->GetRegister());
+#ifdef _WIN64
   move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
 #else
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#endif  
-  shl_imm_reg(3, stack_pos_holder->GetRegister());
-  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
-  move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
+#endif
+  RegisterHolder* op_stack_holder = GetRegister();
+  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
+  move_base_index_reg(0, op_stack_holder->GetRegister(), stack_pos_holder->GetRegister(), sizeof(size_t), op_stack_holder->GetRegister());
   working_stack.push_front(new RegInstr(op_stack_holder));
-  
+
   ReleaseRegister(stack_pos_holder);
 }
 
@@ -414,31 +440,26 @@ void JitAmd64::ProcessFunctionCallParameter() {
 #ifdef _DEBUG_JIT
   std::wcout << L"FUNC_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-  
-  RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-  
+  // two words: count -= 2, then op_stack[count] and op_stack[count + 1]
   RegisterHolder* stack_pos_holder = GetRegister();
   move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-  
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
 #ifdef _WIN64
   move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
 #else
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#endif  
-  shl_imm_reg(3, stack_pos_holder->GetRegister());
-  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
-  
+#endif
+  RegisterHolder* op_stack_holder = GetRegister();
+  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
   RegisterHolder* holder = GetRegister();
-  move_reg_reg(op_stack_holder->GetRegister(), holder->GetRegister());
-  
-  move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
+  lea_base_index_reg(0, op_stack_holder->GetRegister(), stack_pos_holder->GetRegister(), sizeof(size_t), holder->GetRegister());
+
+  move_mem_reg(0, holder->GetRegister(), op_stack_holder->GetRegister());
   working_stack.push_front(new RegInstr(op_stack_holder));
-  
+
   move_mem_reg(8, holder->GetRegister(), holder->GetRegister());
   working_stack.push_front(new RegInstr(holder));
-  
+
   ReleaseRegister(stack_pos_holder);
 }
 
@@ -446,25 +467,20 @@ void JitAmd64::ProcessFloatCallParameter() {
 #ifdef _DEBUG_JIT
   std::wcout << L"FLOAT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
-  
-  RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-  
   RegisterHolder* stack_pos_holder = GetRegister();
   move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-  
-  RegisterHolder* dest_holder = GetXmmRegister();
-  dec_mem(0, stack_pos_holder->GetRegister()); 
-#ifdef _WIN64   
+  dec_mem(0, stack_pos_holder->GetRegister());
+#ifdef _WIN64
   move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
 #else
   move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#endif  
-  shl_imm_reg(3, stack_pos_holder->GetRegister());
-  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister()); 
-  move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
+#endif
+  RegisterHolder* op_stack_holder = GetRegister();
+  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
+  RegisterHolder* dest_holder = GetXmmRegister();
+  move_base_index_xreg(0, op_stack_holder->GetRegister(), stack_pos_holder->GetRegister(), sizeof(size_t), dest_holder->GetRegister());
   working_stack.push_front(new RegInstr(dest_holder));
-  
+
   ReleaseRegister(op_stack_holder);
   ReleaseRegister(stack_pos_holder);
 }
@@ -2083,25 +2099,20 @@ void JitAmd64::ProcessStoreCharElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-    if(elem_holder->GetRegister() > RSP) {    
-      // movw can only use al, bl, cl and dl registers
-      RegisterHolder* holder = GetRegister(false);
-      move_reg_reg(elem_holder->GetRegister(), holder->GetRegister());
-      ReleaseRegister(elem_holder);
-#ifdef _WIN64     
-      move_imm_mem16((int16_t)left->GetOperand(), 0, elem_holder->GetRegister());
+    // Both encoders take an R8-R15 base (Rex16 / XB), so the element
+    // register is stored through directly. The R8-R15 case used to copy it
+    // to a second register, release the element holder there, store through
+    // the released register and then release the holder again at the end of
+    // this function: two entries in the free pool for one register, two
+    // later allocations of the same register, and a miscompiled method. It
+    // was reachable only when the element address landed in R8-R15 with a
+    // constant character, which the phase-2 result pop's allocation order
+    // made common (core_arrays_simple, arm64_char_arrays).
+#ifdef _WIN64
+    move_imm_mem16((int16_t)left->GetOperand(), 0, elem_holder->GetRegister());
 #else
-      move_imm_mem32(left->GetOperand(), 0, holder->GetRegister());
-#endif    
-      ReleaseRegister(holder);
-    }
-    else {
-#ifdef _WIN64  
-      move_imm_mem16((int16_t)left->GetOperand(), 0, elem_holder->GetRegister());
-#else    
-      move_imm_mem32(left->GetOperand(), 0, elem_holder->GetRegister());
+    move_imm_mem32(left->GetOperand(), 0, elem_holder->GetRegister());
 #endif
-    }
     break;
 
   case MEM_INT: {    
@@ -2895,18 +2906,22 @@ void JitAmd64::ProcessReturn(long params) {
     params = (long)working_stack.size();
   }
   if(!working_stack.empty()) {
+    // top = &op_stack[count]; every value goes at a growing displacement from
+    // it and the count is bumped once at the end. Each value used to reload
+    // the count pointer, store, increment the count and advance the base.
     RegisterHolder* op_stack_holder = GetRegister();
     move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-    
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-#ifdef _WIN64      
-    move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+    RegisterHolder* top_holder = GetRegister();
+#ifdef _WIN64
+    move_mem_reg32(0, stack_pos_holder->GetRegister(), top_holder->GetRegister());
 #else
-    move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-#endif  
-    shl_imm_reg(3, stack_pos_holder->GetRegister());
-    add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
+    move_mem_reg(0, stack_pos_holder->GetRegister(), top_holder->GetRegister());
+#endif
+    lea_base_index_reg(0, op_stack_holder->GetRegister(), top_holder->GetRegister(), sizeof(size_t), top_holder->GetRegister());
+    ReleaseRegister(op_stack_holder);
+    const Register top = top_holder->GetRegister();
 
     long non_params;
     if(params < 0) {
@@ -2918,8 +2933,9 @@ void JitAmd64::ProcessReturn(long params) {
 #ifdef _DEBUG_JIT
     std::wcout << L"Return: params=" << params << L", non-params=" << non_params << std::endl;
 #endif
-    
-    long i = 0;     
+
+    long i = 0;
+    long disp = 0;
     for(std::deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
       // skip non-params... processed above
       RegInstr* left = (*iter);
@@ -2927,58 +2943,54 @@ void JitAmd64::ProcessReturn(long params) {
         i++;
       }
       else {
-        move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
         switch(left->GetType()) {
           case IMM_INT:
-            move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
-            inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
+            move_imm_mem(left->GetOperand(), disp, top);
+            disp += sizeof(size_t);
             break;
 
           case MEM_INT:
           {
             RegisterHolder* temp_holder = GetRegister();
             move_mem_reg((long)left->GetOperand(), RBP, temp_holder->GetRegister());
-            move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
-            inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
+            move_reg_mem(temp_holder->GetRegister(), disp, top);
+            disp += sizeof(size_t);
             ReleaseRegister(temp_holder);
           }
           break;
 
           case REG_INT:
-            move_reg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
-            inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
+            move_reg_mem(left->GetRegister()->GetRegister(), disp, top);
+            disp += sizeof(size_t);
             break;
 
           case IMM_FLOAT:
-            move_imm_memx(left, 0, op_stack_holder->GetRegister());
-            inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+            move_imm_memx(left, disp, top);
+            disp += sizeof(double);
             break;
 
           case MEM_FLOAT: {
             RegisterHolder* temp_holder = GetXmmRegister();
             move_mem_xreg((long)left->GetOperand(), RBP, temp_holder->GetRegister());
-            move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
-            inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+            move_xreg_mem(temp_holder->GetRegister(), disp, top);
+            disp += sizeof(double);
             ReleaseXmmRegister(temp_holder);
           }
           break;
 
           case REG_FLOAT:
-            move_xreg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
-            inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+            move_xreg_mem(left->GetRegister()->GetRegister(), disp, top);
+            disp += sizeof(double);
             break;
         }
       }
     }
-    ReleaseRegister(op_stack_holder);
+    if(disp > 0) {
+      add_imm_mem(disp / (long)sizeof(size_t), 0, stack_pos_holder->GetRegister());
+    }
+    ReleaseRegister(top_holder);
     ReleaseRegister(stack_pos_holder);
-    
+
     // clean up working stack
     if(params < 0) {
       params = (long)working_stack.size();
@@ -3450,7 +3462,10 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
 
   InstructionType type = instruction->GetType();
 #ifdef _DEBUG_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  // a Float local read through the register cache arrives as REG_FLOAT, which
+  // call_xfunc takes; the assert predates the cache and stopped every tracing
+  // run of a method that calls Sin/Cos/Sqrt on a cached local
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
 
   RegisterHolder* holder = nullptr;
@@ -4232,7 +4247,8 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
   }
 
 #ifdef _DEBUG_JIT
-  assert(right->GetType() == MEM_FLOAT);
+  // as in ProcessFloatOperation: a cached Float local is REG_FLOAT
+  assert(right->GetType() == MEM_FLOAT || right->GetType() == REG_FLOAT);
 #endif
 
   move_xreg_mem(XMM1, TMP_XMM_1, RBP);
@@ -5200,6 +5216,89 @@ void JitAmd64::lea_base_index_reg(long disp, Register base, Register index, int 
 }
 
 // RDX:RAX = RAX * qword [base + offset]   (F7 /5; the same shape as the idiv memory form)
+void JitAmd64::move_base_index_reg(long disp, Register base, Register index, int scale, Register dest) {
+  // mov dest, [base + index*scale + disp]: lea_base_index_reg's addressing with
+  // opcode 8B
+  unsigned char rex = 0x48;
+  if(dest > RSP && dest < XMM0) {
+    rex |= 0x04;   // REX.R
+  }
+  if(index > RSP && index < XMM0) {
+    rex |= 0x02;   // REX.X
+  }
+  if(base > RSP && base < XMM0) {
+    rex |= 0x01;   // REX.B
+  }
+  AddMachineCode(rex);
+  AddMachineCode(0x8b);
+  const bool disp8 = (disp >= -128 && disp <= 127);
+  unsigned char modrm = disp8 ? 0x44 : 0x84;   // mod=01|10, rm=100 (SIB follows)
+  RegisterEncode3(modrm, 2, dest);
+  AddMachineCode(modrm);
+  unsigned char sib;
+  switch(scale) {
+  case 1: sib = 0x00; break;
+  case 2: sib = 0x40; break;
+  case 4: sib = 0x80; break;
+  default: sib = 0xc0; break;
+  }
+  RegisterEncode3(sib, 2, index);
+  RegisterEncode3(sib, 5, base);
+  AddMachineCode(sib);
+  if(disp8) {
+    AddMachineCode((unsigned char)(int8_t)disp);
+  }
+  else {
+    AddImm((int32_t)disp);
+  }
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [movq " << disp << L"(%" << GetRegisterName(base) << L", %"
+        << GetRegisterName(index) << L", " << scale << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+}
+
+void JitAmd64::move_base_index_xreg(long disp, Register base, Register index, int scale, Register dest) {
+  // movsd dest, [base + index*scale + disp]
+  AddMachineCode(0xf2);
+  unsigned char rex = 0x40;
+  if(dest > XMM7) {
+    rex |= 0x04;   // REX.R
+  }
+  if(index > RSP && index < XMM0) {
+    rex |= 0x02;   // REX.X
+  }
+  if(base > RSP && base < XMM0) {
+    rex |= 0x01;   // REX.B
+  }
+  AddMachineCode(rex);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x10);
+  const bool disp8 = (disp >= -128 && disp <= 127);
+  unsigned char modrm = disp8 ? 0x44 : 0x84;   // mod=01|10, rm=100 (SIB follows)
+  RegisterEncode3(modrm, 2, dest);
+  AddMachineCode(modrm);
+  unsigned char sib;
+  switch(scale) {
+  case 1: sib = 0x00; break;
+  case 2: sib = 0x40; break;
+  case 4: sib = 0x80; break;
+  default: sib = 0xc0; break;
+  }
+  RegisterEncode3(sib, 2, index);
+  RegisterEncode3(sib, 5, base);
+  AddMachineCode(sib);
+  if(disp8) {
+    AddMachineCode((unsigned char)(int8_t)disp);
+  }
+  else {
+    AddImm((int32_t)disp);
+  }
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [movsd " << disp << L"(%" << GetRegisterName(base) << L", %"
+        << GetRegisterName(index) << L", " << scale << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+}
+
 void JitAmd64::imul_mem(long offset, Register base) {
   AddMachineCode(XB(base));
   AddMachineCode(0xf7);
@@ -7345,6 +7444,10 @@ bool JitAmd64::Compile(StackMethod* cm)
     inline_callee = nullptr;
     direct_callee = nullptr;
     inline_local_offset = 0;
+    xmm_pool_used = false;
+    xmm_save_index = -1;
+    xmm_restore_indices.clear();
+    xmm_save_size = xmm_restore_size = 0;
 
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       StackInstr* scan_instr = method->GetInstruction(i);
@@ -7611,6 +7714,23 @@ bool JitAmd64::Compile(StackMethod* cm)
 #ifdef _DEBUG_JIT
     std::wcout << L"Caching JIT code: actual=" << code_index
       << L", buffer=" << code_buf_max << L" byte(s)" << std::endl;
+#endif
+#ifdef _WIN64
+    // phase 2: a method that never took an XMM pool register leaves
+    // XMM10-XMM15 untouched, so it need not save and restore them. Both
+    // blocks become a two-byte jump over themselves (each is 46 bytes: the
+    // rsp adjustment and six movdqu); the stack stays 16-byte aligned since
+    // the adjustment is 96 both ways, and nothing jumps into either block.
+    // A method with several returns has several epilogues (RTRN emits one
+    // each), so every restore block is patched with the one save block.
+    if(!xmm_pool_used && xmm_save_index >= 0 && !xmm_restore_indices.empty()) {
+      code[(size_t)xmm_save_index] = 0xeb;
+      code[(size_t)xmm_save_index + 1] = (unsigned char)(xmm_save_size - 2);
+      for(const long restore_index : xmm_restore_indices) {
+        code[(size_t)restore_index] = 0xeb;
+        code[(size_t)restore_index + 1] = (unsigned char)(xmm_restore_size - 2);
+      }
+    }
 #endif
     // store compiled code
     method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts));

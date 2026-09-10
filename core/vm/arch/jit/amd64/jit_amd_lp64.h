@@ -381,6 +381,19 @@ namespace Runtime {
     int active_pin_region;         // region whose instructions are being emitted, -1 outside any
     bool method_pins;              // some region pins: the prologue saves the pinning registers
     bool method_pins_float;        // some region pins floats: the prologue saves XMM6-XMM9 (Windows)
+    // Calling-convention phase 2 (docs/JIT_CALLING_CONVENTION_DESIGN.md): the
+    // prologue saves XMM10-XMM15 and the epilogue restores them, 96 bytes and
+    // twelve movdqu per call, for the pool GetXmmRegister hands out. A method
+    // that never took one leaves them untouched, so once the body is emitted
+    // Compile() turns both blocks into a jump over themselves (Windows only;
+    // POSIX XMMs are caller-saved and there is no block).
+    // Every RTRN emits its own epilogue, so a method has one save block and as
+    // many restore blocks as it has returns; all of them are patched together.
+    bool xmm_pool_used;
+    long xmm_save_index;
+    long xmm_save_size;
+    std::vector<long> xmm_restore_indices;
+    long xmm_restore_size;
     std::unordered_map<StackInstr*, long> instr_index_of;   // instruction -> index, for the jump fixups
     std::unordered_map<long, long> pin_exit_stub_offsets;   // jump displacement offset -> exit stub offset
     // F8: a select's jump table -- each 32-bit entry is patched with the
@@ -894,6 +907,7 @@ namespace Runtime {
     // Gets an available register from the pool of registers
     RegisterHolder* GetXmmRegister() {
       RegisterHolder* holder;
+      xmm_pool_used = true;
       if(aval_xregs.empty()) {
         // evict a cached local float register before failing
         if(!local_xreg_cache.empty()) {
@@ -1100,6 +1114,10 @@ namespace Runtime {
     void EmitMagicDivision(int64_t d, Register dest, bool is_mod);
     void imul_mem(long offset, Register base);
     void lea_base_index_reg(long disp, Register base, Register index, int scale, Register dest);
+    // mov dest, [base + index*scale + disp] and its movsd twin: one load where
+    // the operand-stack code used to shift, add and then load
+    void move_base_index_reg(long disp, Register base, Register index, int scale, Register dest);
+    void move_base_index_xreg(long disp, Register base, Register index, int scale, Register dest);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 
