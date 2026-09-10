@@ -19,8 +19,8 @@
 #   Overlay          the crosshair, the score and the hit marker are drawn in
 #                    pixels over the 3D.
 #
-# compiler: obc -src fps_gl.obs -lib sdl2,sdl_gl
-# run: obr fps_gl.obe
+# compiler: obc -src gl_fps.obs -lib sdl2,sdl_gl
+# run: obr gl_fps.obe
 #
 # move: W A S D, or the left stick
 # look: mouse, or the right stick

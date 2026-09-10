@@ -23,9 +23,9 @@ class Welcome {
 			"odbc_select_11.obs", "fs_query_12.obs", "2d_game_13.obs",
 			"serial_14.obs", "rss_https_xml_15.obs", "tic_tac_toe_16.obs",
 			"lambda_17.obs", "first_class_18.obs", "closure_19.obs",
-			"loops_19.obs", "visitor_20.obs", "neural_21.obs", "gemini_22.obs",
+			"loops_27.obs", "visitor_20.obs", "neural_21.obs", "gemini_22.obs",
 			"json_stream_23.obs", "3d_gl_24.obs", "ai_search_25.obs",
-			"ml_regression_26.obs", "fps_gl.obs"];
+			"ml_regression_26.obs"];
 
 		libs := [
 			"", "gen_collect,net,json,cipher", "xml,gen_collect", "json,net,cipher",
@@ -36,7 +36,7 @@ class Welcome {
 			"gen_collect", "gen_collect", "gen_collect",
 			"", "", "gen_collect,ml,csv", "gemini,net,json,misc,cipher,net_server",
 			"json_stream", "sdl2,sdl_gl", "ai",
-			"ml,csv", "sdl2,sdl_gl"];
+			"ml,csv"];
 
 		about := [
 			"a class, Main, and one line of output",
@@ -66,8 +66,7 @@ class Welcome {
 			"reading large JSON as a stream",
 			"a lit, shadowed, spinning scene in OpenGL",
 			"shortest-path search across a small map",
-			"linear regression over a CSV dataset",
-			"a first-person shooting gallery in OpenGL"];
+			"linear regression over a CSV dataset"];
 
 		""->PrintLine();
 		"Objeck example programs"->PrintLine();
@@ -107,10 +106,10 @@ class Welcome {
 		""->PrintLine();
 		"Notes"->PrintLine();
 		"-----"->PrintLine();
-		"  Programs that open a window (2d_game_13, 3d_gl_24, fps_gl) need a display"->PrintLine();
+		"  Programs that open a window (2d_game_13, 3d_gl_24) need a display"->PrintLine();
 		"  and a GPU, so they will not run over SSH or in a container."->PrintLine();
 		"  odbc_select_11 needs a configured data source, and gemini_22 needs an API key."->PrintLine();
-		"  More OpenGL examples ship in the opengl folder beside this one."->PrintLine();
+		"  The OpenGL examples, gl_fps among them, ship in the opengl folder beside this one."->PrintLine();
 		""->PrintLine();
 	}
 
