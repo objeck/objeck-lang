@@ -222,8 +222,8 @@ bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const
 /**
  * A compiled callee's error status, reported the way the interpreter reports
  * a runtime error so the one-line failure is actionable (the codes are set by
- * the JIT guard stubs). Reached from the bridge and, from phase 3 on, straight
- * from compiled code after a direct native call. Does not return.
+ * the JIT guard stubs). Reached from the bridge and straight from compiled
+ * code after a native call (JitAmd64::EmitNativeCallSite). Does not return.
  */
 void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, const long cls_id, const long mthd_id)
 {
@@ -275,9 +275,6 @@ JitVirtualRecord* JitCompiler::FillSiteRecord(JitVirtualSite* site, size_t key, 
       record.key = key;
       record.entry = entry;
       record.target = target;
-      record.cls_mem = target->GetClass()->GetClassMemory();
-      record.cls_id = target->GetClass()->GetId();
-      record.mthd_id = target->GetId();
       site->used++;
       found = &record;
     }
@@ -318,7 +315,9 @@ JitVirtualRecord* JitCompiler::JitResolveFuncRefSite(JitVirtualSite* site, size_
 }
 
 /**
- * The direct bridge entry (see the header). The trampoline is the one
+ * The direct bridge entry (see the header): a native call site's slow path
+ * for a callee not compiled yet, and the whole path for a callee whose
+ * func-ref result needs two words. The trampoline is the one
  * JitStackCallback takes: the caller's MTHD_CALL re-executes in the
  * interpreter, which is where the auto-JIT counts the callee's calls.
  */

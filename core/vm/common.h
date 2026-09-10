@@ -507,11 +507,8 @@ class StackMethod;
  ********************************/
 struct JitVirtualRecord {
   size_t key;             // the receiver class, or the func-ref word, this record answers for
-  void* entry;            // the target's native entry
-  StackMethod* target;
-  size_t* cls_mem;        // the target's class memory
-  long cls_id;
-  long mthd_id;
+  void* entry;            // the target's native entry (StackMethod::GetNativeEntry)
+  StackMethod* target;    // for the error report
 };
 
 struct JitVirtualSite {
@@ -546,6 +543,11 @@ class NativeCode {
   long size;
   FLOAT_VALUE* floats;
   std::vector<JitVirtualSite*> virtual_sites;   // the method's inline caches (AMD64)
+  // The register-argument entry a compiled caller calls (AMD64, see
+  // JitAmd64::EmitNativePrologue); `code` is the bridge entry the
+  // interpreter calls through JitRuntime::Execute. Null when the method has
+  // the bridge entry only (a func-ref result, or the ARM64 backend).
+  void* native_entry;
  public:
 #if defined(_ARM64) || defined(_M_ARM64)
    NativeCode(uint32_t* c, long s, int64_t* i, FLOAT_VALUE* f) {
@@ -553,12 +555,14 @@ class NativeCode {
     size = s;
     ints = i;
     floats = f;
+    native_entry = nullptr;
   }
 #else
-  NativeCode(unsigned char* c, long s, FLOAT_VALUE* f) {
+  NativeCode(unsigned char* c, long s, FLOAT_VALUE* f, long native_entry_offset = -1) {
     code = c;
     size = s;
     floats = f;
+    native_entry = (native_entry_offset > 0) ? (void*)(c + native_entry_offset) : nullptr;
   }
 #endif
 
@@ -606,6 +610,10 @@ class NativeCode {
 
   inline FLOAT_VALUE* GetFloats() const {
     return floats;
+  }
+
+  inline void* GetNativeEntry() const {
+    return native_entry;
   }
 
   void SetVirtualSites(std::vector<JitVirtualSite*>& sites) {
@@ -754,12 +762,14 @@ class StackMethod {
   void SetNativeCode(NativeCode* c) {
     // release: publish the fully constructed NativeCode before the pointer is
     // observable, pairing with the acquire load in GetNativeCode. The entry
-    // word goes out the same way; compiled callers read it with a plain
-    // aligned load, which is an acquire on the targets this runs on.
-    native_entry.store((void*)c->GetCode(), std::memory_order_release);
+    // word -- the register-argument entry, null when the method has none --
+    // goes out the same way; compiled callers read it with a plain aligned
+    // load, which is an acquire on the targets this runs on.
+    native_entry.store(c->GetNativeEntry(), std::memory_order_release);
     native_code.store(c, std::memory_order_release);
   }
 
+  // the register-argument entry, or null (see NativeCode::native_entry)
   inline void* GetNativeEntry() const {
     return native_entry.load(std::memory_order_acquire);
   }

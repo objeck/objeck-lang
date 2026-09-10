@@ -95,6 +95,26 @@ namespace Runtime {
 #define RED_ZONE -160
 #endif
 
+  // The register-argument entry (EmitNativePrologue). A native caller's
+  // arguments start at NATIVE_ARGS from the callee's frame pointer: past the
+  // return address and the saved frame pointer, the register homes and stack
+  // slots the bridge entry receives there (CLS_ID .. FRAME_MEM on Windows,
+  // CALL_STACK .. FRAME_MEM on POSIX), which the native prologue fills for
+  // itself. The caller writes them at OUT_ARGS from its stack pointer, in
+  // the outgoing area its prologue reserves (out_area).
+#ifdef _WIN64
+#define NATIVE_ARGS 104
+#else
+#define NATIVE_ARGS 56
+#endif
+#define OUT_ARGS (NATIVE_ARGS - 16)
+  // the frame record block below a method's locals (rec_base): its
+  // StackFrame, the two mem words (self, 0) the record points at, and the
+  // entry-kind word RTRN tests (0 bridge, 1 native)
+#define REC_MEM 56
+#define REC_KIND 72
+#define REC_SIZE 80
+
 #define MAX_DBLS 256
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
@@ -387,13 +407,26 @@ namespace Runtime {
     // that never took one leaves them untouched, so once the body is emitted
     // Compile() turns both blocks into a jump over themselves (Windows only;
     // POSIX XMMs are caller-saved and there is no block).
-    // Every RTRN emits its own epilogue, so a method has one save block and as
-    // many restore blocks as it has returns; all of them are patched together.
+    // Every RTRN emits its own epilogue, so a method has as many restore
+    // blocks as it has returns, and two save blocks, one per entry; all of
+    // them are patched together.
     bool xmm_pool_used;
-    long xmm_save_index;
+    std::vector<long> xmm_save_indices;
     long xmm_save_size;
     std::vector<long> xmm_restore_indices;
     long xmm_restore_size;
+    // The register-argument entry (docs/JIT_CALLING_CONVENTION_DESIGN.md,
+    // section 11; EmitNativePrologue): the frame record block's offset from
+    // RBP, the outgoing area's size below the prologue's stack pointer (0
+    // when the method makes no native call), and the entry's code offset
+    // (-1 while the method has the bridge entry only).
+    long rec_base;
+    long out_area;
+    long native_entry_offset;
+    // the callee's result type at the call site being emitted, and whether
+    // ProcessStackCallback took the result itself (a native site)
+    MemoryType call_return_type;
+    bool native_result_taken;
     std::unordered_map<StackInstr*, long> instr_index_of;   // instruction -> index, for the jump fixups
     std::unordered_map<long, long> pin_exit_stub_offsets;   // jump displacement offset -> exit stub offset
     // F8: a select's jump table -- each 32-bit entry is patched with the
@@ -452,9 +485,20 @@ namespace Runtime {
     // setup and tear down
     void Prolog();
     void Epilog();
+    // The two entries. The bridge prologue stores the eleven values
+    // JitRuntime::Execute passes, sets `top` to the operand stack's top and
+    // drops the arguments from the count, then jumps to the join. The native
+    // prologue fills the same slots from its own constants, self and the
+    // caller's frame, builds and pushes the frame record, and sets `top` to
+    // the end of the caller's outgoing area. RegisterRoot and
+    // ProcessParameters follow once.
+    void EmitBridgePrologue(long params, Register top, long& join_patch);
+    void EmitNativePrologue(long params, Register top);
+    // RTRN's value into XMM0 for a native caller
+    void EmitReturnValue();
 
-    // stack conversion operations
-    void ProcessParameters(long count);
+    // stack conversion operations: the arguments sit below `top`
+    void ProcessParameters(long count, Register top);
     void RegisterRoot();
     void ProcessInstructions();
     void ProcessNot(StackInstr* instr);
@@ -1050,6 +1094,9 @@ namespace Runtime {
     void move_mem_xreg(long offset, Register src, Register dest);
     void move_xreg_mem(Register src, long offset, Register dest);
     void move_xreg_xreg(Register src, Register dest);
+    // movq between a general register and an XMM register (the bits, no conversion)
+    void move_reg_xreg(Register src, Register dest);
+    void move_xreg_reg(Register src, Register dest);
 
     // math instructions
     void math_imm_reg(int64_t imm, Register reg, InstructionType type);
@@ -1132,24 +1179,24 @@ namespace Runtime {
     void dec_mem32(long offset, Register dest);
     // a forward jump's rel32 placeholder, patched to land here
     void PatchForwardJump(long patch_index);
-    // Phase 3 of the calling convention: a call from compiled code straight
-    // into a compiled callee's entry, with the callee's frame record built on
-    // the caller's stack. Emits the fast path; the two jumps to the slow path
-    // (no native code yet, or a full call stack) and the jump past it are
-    // returned for patching around the bridge sequence that follows.
-    void EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, long& slow_patch_b, long& done_patch);
-    // The same call for a `virtual` site: the receiver's class is compared
-    // with the site's current record and a hit calls the record's entry; a
-    // miss asks JitResolveVirtualSite for a record and retries, or takes the
-    // bridge. Every jump to the slow path is returned in slow_patches.
-    void EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& slow_patches, long& done_patch);
-    // What both share once RAX holds the entry: the depth check (its jump to
-    // the slow path is returned), the receiver pop, the area, the call, the
-    // status check, the pop, the jump past the slow path and the error block.
-    // The callee's constants come from `callee`, or from the record in RBX
-    // when callee is null.
-    // pop_words: the receiver alone (1), or the func-ref word above it too (2)
-    void EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch, const long pop_words = 1);
+    // A native call site (the calling convention's register-argument entry):
+    // the call's values into this frame's outgoing area, then a bound
+    // callee's entry, or a cached site's record (the receiver's class or the
+    // func-ref word against the site's current record; JitResolveVirtualSite
+    // or JitResolveFuncRefSite on a miss), called with self and this frame's
+    // pointer in registers. The bridge, with the values copied onto the
+    // operand stack, is the slow path: no native code yet, a full call stack,
+    // a Nil receiver, a miss the resolver cannot fill. Both paths leave an
+    // Int or Float result in XMM0.
+    void MarshalOutArgs(long params);
+    void EmitNativeCallSite(long instr_id, StackInstr* instr, long instr_index, long params);
+    // with RAX holding the entry: the depth check, the argument registers,
+    // the call, the status check; the jumps to the slow path, the error
+    // block and past the slow path are returned for patching
+    void EmitNativeCall(long self_offset, std::vector<long>& slow_patches, long& error_patch, long& done_patch);
+    // the bridge sequence: JitDirectCall for a bound callee, else
+    // JitStackCallback with the opcode
+    void EmitBridgeCall(long instr_id, StackInstr* instr, long instr_index);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 
