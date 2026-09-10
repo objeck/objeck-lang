@@ -422,6 +422,10 @@ namespace Runtime {
     bool is_inlining;
     long inline_local_offset;
     StackMethod* inline_callee;
+    // set around ProcessStackCallback for a MTHD_CALL whose callee is bound at
+    // compile time: the callback goes to JitCompiler::JitDirectCall with this
+    // StackMethod* in place of the opcode
+    StackMethod* direct_callee;
     static const int MAX_INLINE_SIZE = 20;
     bool CanInlineMethod(StackMethod* callee);
     void ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, long& caller_instr_index);

@@ -60,7 +60,6 @@
 using namespace Runtime;
 
 StackProgram* StackInterpreter::program;
-std::stack<StackFrame*> StackInterpreter::cached_frames;
 std::set<StackInterpreter*> StackInterpreter::intpr_threads;
 
 #ifdef _WIN32
@@ -68,12 +67,33 @@ bool StackInterpreter::is_stdio_binary;
 #endif
 
 #ifdef _WIN32
-CRITICAL_SECTION StackInterpreter::cached_frames_cs;
 CRITICAL_SECTION StackInterpreter::intpr_threads_cs;
 #else
-pthread_mutex_t StackInterpreter::cached_frames_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t StackInterpreter::intpr_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
+
+/********************************
+ * Frame pool: one free list per thread. A frame is acquired and released on
+ * the thread whose call stack it sits on, so the list needs no lock; the
+ * global stack it replaces cost a critical-section round trip on each side
+ * of every call. A thread's list is filled on demand and freed when the
+ * thread ends (the frames a thread holds at any moment are on its call
+ * stack, never in the list).
+ ********************************/
+namespace {
+  struct FramePool {
+    std::vector<StackFrame*> free_frames;
+
+    ~FramePool() {
+      for(StackFrame* frame : free_frames) {
+        free(frame->mem);
+        delete frame;
+      }
+    }
+  };
+  thread_local FramePool tl_frame_pool;
+  const size_t FRAME_POOL_FILL = 64;
+}
 
 /********************************
  * VM initialization
@@ -83,17 +103,7 @@ void StackInterpreter::Initialize(StackProgram* p, size_t m)
   program = p;
     
 #ifdef _WIN32
-  InitializeCriticalSection(&cached_frames_cs);
   InitializeCriticalSection(&intpr_threads_cs);
-#endif
-
-#ifndef _SANITIZE
-  // allocate frames
-  for(size_t i = 0; i < FRAME_CACHE_SIZE; ++i) {
-    StackFrame* frame = new StackFrame();
-    frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(char));
-    cached_frames.push(frame);
-  }
 #endif
 
 #ifndef _NO_JIT
@@ -2349,19 +2359,33 @@ StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMet
 #endif
   }
 
-  StackMethod* virtual_call = concrete_class->GetVirtualMethod(instr->GetOperand(), instr->GetOperand2());
+  return ResolveVirtualTarget(concrete_class, concrete_call, instr->GetOperand(), instr->GetOperand2());
+}
+
+/********************************
+ * The override a virtual declaration reaches for a receiver of
+ * concrete_class. The class caches the answer by (virtual class id, virtual
+ * method id); a miss walks the receiver's class and its parents by the
+ * method's name. The entry goes on the receiver's class -- the class
+ * GetVirtualMethod is asked about next time -- where it used to go on the
+ * class the walk ended at, so an inherited override missed on every call.
+ ********************************/
+StackMethod* StackInterpreter::ResolveVirtualTarget(StackClass* concrete_class, StackMethod* concrete_call, const long virtual_cls_id, const long virtual_mthd_id)
+{
+  StackMethod* virtual_call = concrete_class->GetVirtualMethod(virtual_cls_id, virtual_mthd_id);
   if(!virtual_call) {
     const std::wstring qualified_method_name = concrete_call->GetName();
     const std::wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
 
-    std::wstring method_name = concrete_class->GetName() + method_ending;
-    virtual_call = concrete_class->GetMethod(method_name);
+    StackClass* klass = concrete_class;
+    std::wstring method_name = klass->GetName() + method_ending;
+    virtual_call = klass->GetMethod(method_name);
     while(!virtual_call) {
-      concrete_class = concrete_class->GetParent();
-      method_name = concrete_class->GetName() + method_ending;
-      virtual_call = concrete_class->GetMethod(method_name);
+      klass = klass->GetParent();
+      method_name = klass->GetName() + method_ending;
+      virtual_call = klass->GetMethod(method_name);
     }
-    concrete_class->AddVirutalMethod(instr->GetOperand(), instr->GetOperand2(), virtual_call);
+    concrete_class->AddVirutalMethod(virtual_cls_id, virtual_mthd_id, virtual_call);
   }
 #ifdef _DEBUG
   assert(virtual_call);
@@ -3211,21 +3235,29 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
 
 StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t* instance)
 {
-#ifdef _WIN32
-  EnterCriticalSection(&cached_frames_cs);
-#else
-  pthread_mutex_lock(&cached_frames_mutex);
-#endif
-  if(cached_frames.empty()) {
-    // load cache
-    for(int i = 0; i < CALL_STACK_SIZE; ++i) {
+  FramePool& pool = tl_frame_pool;
+  if(pool.free_frames.empty()) {
+    pool.free_frames.reserve(CALL_STACK_SIZE);
+    for(size_t i = 0; i < FRAME_POOL_FILL; ++i) {
       StackFrame* frame = new StackFrame();
       frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(char));
-      cached_frames.push(frame);
+      pool.free_frames.push_back(frame);
     }
   }
-  StackFrame* frame = cached_frames.top();
-  cached_frames.pop();
+  StackFrame* frame = pool.free_frames.back();
+  pool.free_frames.pop_back();
+
+  // Zero what this method can address: its local space in bytes (mem_size, a
+  // multiple of the word size) after the instance word and the and/or slot --
+  // the layout StackMethod::NewMemory allocates. An uninitialized local reads
+  // as 0/Nil because of this. The whole LOCAL_SIZE buffer used to be cleared
+  // on release, for a compiled callee that addresses one word of it; the
+  // compiler refuses a method that needs more than LOCAL_SIZE.
+  size_t bytes = (size_t)method->GetMemorySize() + 2 * sizeof(size_t);
+  if(bytes > LOCAL_SIZE) {
+    bytes = LOCAL_SIZE;
+  }
+  memset(frame->mem, 0, bytes);
 
   frame->method = method;
   frame->mem[0] = (size_t)instance;
@@ -3237,34 +3269,15 @@ StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t
   std::wcout << L"fetching frame=" << frame << std::endl;
 #endif
 
-#ifdef _WIN32
-  LeaveCriticalSection(&cached_frames_cs);
-#else
-  pthread_mutex_unlock(&cached_frames_mutex);
-#endif
   return frame;
 }
 
 void Runtime::StackInterpreter::ReleaseStackFrame(StackFrame* frame)
 {
-#ifdef _WIN32
-  EnterCriticalSection(&cached_frames_cs);
-#else
-  pthread_mutex_lock(&cached_frames_mutex);
-#endif      
-
-  // load cache
   frame->jit_mem = nullptr;
-  memset(frame->mem, 0, LOCAL_SIZE * sizeof(char));
-  cached_frames.push(frame);
+  tl_frame_pool.free_frames.push_back(frame);
 #ifdef _DEBUG
   std::wcout << L"caching frame=" << frame << std::endl;
-#endif    
-
-#ifdef _WIN32
-  LeaveCriticalSection(&cached_frames_cs);
-#else
-  pthread_mutex_unlock(&cached_frames_mutex);
 #endif
 }
 

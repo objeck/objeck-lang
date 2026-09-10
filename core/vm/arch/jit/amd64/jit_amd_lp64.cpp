@@ -728,8 +728,13 @@ void JitAmd64::ProcessInstructions() {
               << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
         // MTHD_CALL uses callback (ProcessInlineMethod has INSTANCE_MEM
-        // offset issues with constructors that need further investigation)
+        // offset issues with constructors that need further investigation).
+        // A callee bound here -- anything but a `virtual` declaration, which
+        // the bridge resolves per receiver -- takes the direct bridge entry
+        // with its StackMethod* as the first argument.
+        direct_callee = called_method->IsVirtual() ? nullptr : called_method;
         ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
+        direct_callee = nullptr;
         ProcessReturnParameters(called_method->GetReturn());
       }
     }
@@ -2793,8 +2798,13 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   ProcessReturn(params);
   
 #ifdef _WIN64
-  // set parameters
-  move_imm_reg(instr_id, RCX);
+  // set parameters: the direct entry takes the callee in place of the opcode
+  if(direct_callee) {
+    move_imm_reg((size_t)direct_callee, RCX);
+  }
+  else {
+    move_imm_reg(instr_id, RCX);
+  }
   move_imm_reg((size_t)instr, RDX);
   move_mem_reg(CLS_ID, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, R9);
@@ -2807,7 +2817,7 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
 
   // call function
   sub_imm_reg(32, RSP);
-  move_imm_reg((size_t)JitCompiler::JitStackCallback, R10);
+  move_imm_reg(direct_callee ? (size_t)JitCompiler::JitDirectCall : (size_t)JitCompiler::JitStackCallback, R10);
   call_reg(R10);
   add_imm_reg(80, RSP);
 #else
@@ -2823,14 +2833,19 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   move_mem_reg(MTHD_ID, RBP, RCX);
   move_mem_reg(CLS_ID, RBP, RDX);
   move_imm_reg((size_t)instr, RSI);
-  move_imm_reg(instr_id, RDI);  
+  if(direct_callee) {
+    move_imm_reg((size_t)direct_callee, RDI);
+  }
+  else {
+    move_imm_reg(instr_id, RDI);
+  }
   push_imm(instr_index - 1);
   push_mem(CALL_STACK_POS, RBP);
   push_mem(CALL_STACK, RBP);
   push_mem(STACK_POS, RBP);
   
   // call function
-  move_imm_reg((size_t)JitCompiler::JitStackCallback, R15);
+  move_imm_reg(direct_callee ? (size_t)JitCompiler::JitDirectCall : (size_t)JitCompiler::JitStackCallback, R15);
   call_reg(R15);
   add_imm_reg(32, RSP);
   
@@ -7328,6 +7343,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     method_pins_float = false;
     is_inlining = false;
     inline_callee = nullptr;
+    direct_callee = nullptr;
     inline_local_offset = 0;
 
     for(long i = 0; i < method->GetInstructionCount(); ++i) {

@@ -138,7 +138,6 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
     Runtime::StackInterpreter::RemoveThread(intpr);
     Runtime::StackInterpreter::HaltAll();
 
-    Runtime::StackInterpreter::Clear();
     MemoryManager::Clear();
 
     delete intpr;
