@@ -1,0 +1,69 @@
+#~
+# A method that takes a func-ref parameter and is small enough for the
+# compiler to inline: the inliner pasted the callee's LOAD_FUNC_VAR and
+# STOR_FUNC_VAR with the callee's own slot ids, unshifted, so the reference
+# was stored over the caller's locals and the call went through whatever was
+# there -- the interpreter looped forever, the JIT returned 0 (#763). Every
+# other local kind was shifted. The helpers here have one return each, so the
+# inliner takes them; the loops live outside Main, which it never inlines
+# into. Exits 1 on a wrong sum; fails on the old compiler in every VM mode.
+~#
+class InlineFuncRefParam {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+    r := Mono(30);
+    if(r <> 870) { "FAIL: mono={$r}"->PrintLine(); bad += 1; };
+    p := Poly(30);
+    e := Expected(30);
+    if(p <> e) { "FAIL: poly={$p} expected={$e}"->PrintLine(); bad += 1; };
+    q := First(30);
+    if(q <> e) { "FAIL: first={$q} expected={$e}"->PrintLine(); bad += 1; };
+    if(bad > 0) { Runtime->Exit(1); };
+    "PASS"->PrintLine();
+  }
+
+  # the reference is the last parameter
+  function : Mono(n : Int) ~ Int {
+    total := 0;
+    for(i := 0; i < n; i += 1;) {
+      total += Apply(i, Double(Int) ~ Int);
+    };
+    return total;
+  }
+
+  # two references alternate, and the caller keeps more locals live
+  function : Poly(n : Int) ~ Int {
+    total := 0;
+    evens := 0;
+    odds := 0;
+    for(i := 0; i < n; i += 1;) {
+      if(i % 2 = 0) { total += Apply(i, Double(Int) ~ Int); evens += 1; }
+      else { total += Apply(i, Triple(Int) ~ Int); odds += 1; };
+    };
+    if(evens + odds <> n) { return -1; };
+    return total;
+  }
+
+  # the reference is the first parameter
+  function : First(n : Int) ~ Int {
+    total := 0;
+    for(i := 0; i < n; i += 1;) {
+      if(i % 2 = 0) { total += ApplyFirst(Double(Int) ~ Int, i); }
+      else { total += ApplyFirst(Triple(Int) ~ Int, i); };
+    };
+    return total;
+  }
+
+  function : Expected(n : Int) ~ Int {
+    total := 0;
+    for(i := 0; i < n; i += 1;) {
+      if(i % 2 = 0) { total += i * 2; } else { total += i * 3; };
+    };
+    return total;
+  }
+
+  function : Apply(x : Int, f : (Int) ~ Int) ~ Int { return f(x); }
+  function : ApplyFirst(f : (Int) ~ Int, x : Int) ~ Int { return f(x); }
+  function : Double(v : Int) ~ Int { return v * 2; }
+  function : Triple(v : Int) ~ Int { return v * 3; }
+}
