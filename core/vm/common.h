@@ -582,6 +582,11 @@ class StackMethod {
   // jit_state elects exactly one compiler thread (0=none,1=compiling,2=done,3=failed)
   // so a method is never compiled twice or patched concurrently by two threads.
   std::atomic<NativeCode*> native_code;
+  // The entry address of native_code, published with it. A compiled caller
+  // loads this one word to call a compiled callee directly (the calling
+  // convention's phase 3); null means "not compiled", and the caller takes
+  // the bridge, which counts the call and compiles the callee in time.
+  std::atomic<void*> native_entry;
   std::atomic<long> jit_call_count;
   std::atomic<int> jit_state;
   MemoryType rtrn_type;
@@ -599,6 +604,7 @@ class StackMethod {
     has_and_or = h;
     is_lambda = l;
     native_code.store(nullptr, std::memory_order_relaxed);
+    native_entry.store(nullptr, std::memory_order_relaxed);
     jit_call_count.store(0, std::memory_order_relaxed);
     jit_state.store(JIT_NONE, std::memory_order_relaxed);
     dclrs = d;
@@ -697,8 +703,17 @@ class StackMethod {
 
   void SetNativeCode(NativeCode* c) {
     // release: publish the fully constructed NativeCode before the pointer is
-    // observable, pairing with the acquire load in GetNativeCode.
+    // observable, pairing with the acquire load in GetNativeCode. The entry
+    // word goes out the same way; compiled callers read it with a plain
+    // aligned load, which is an acquire on the targets this runs on.
+    native_entry.store((void*)c->GetCode(), std::memory_order_release);
     native_code.store(c, std::memory_order_release);
+  }
+
+  // where a compiled caller reads the entry address from
+  inline const void* NativeEntryAddress() const {
+    static_assert(sizeof(std::atomic<void*>) == sizeof(void*), "the JIT loads native_entry as one word");
+    return &native_entry;
   }
 
   inline NativeCode* GetNativeCode() const {

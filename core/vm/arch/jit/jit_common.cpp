@@ -213,33 +213,42 @@ bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const
   Runtime::StackInterpreter::ReleaseStackFrame(frame);
 
   if(status < 0) {
-    // mirror the interpreter's runtime error reporting so the one-line
-    // failure is actionable (status codes set by the JIT guard stubs)
-    const wchar_t* reason;
-    switch(status) {
-    case -1:
-      reason = L"Attempting to dereference a 'Nil' memory instance";
-      break;
-    case -2:
-    case -3:
-      reason = L"Index out of bounds";
-      break;
-    case -4:
-      reason = L"Divide by zero";
-      break;
-    default:
-      reason = L"Unknown runtime error";
-      break;
-    }
-    std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
-               << L"', status=" << status << L", self=" << callee_inst
-               << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
-               << L"' <<<" << std::endl;
-    exit(1);
+    JitNativeCallError(status, callee, cls_id, mthd_id);
   }
   return true;
 }
 #endif
+
+/**
+ * A compiled callee's error status, reported the way the interpreter reports
+ * a runtime error so the one-line failure is actionable (the codes are set by
+ * the JIT guard stubs). Reached from the bridge and, from phase 3 on, straight
+ * from compiled code after a direct native call. Does not return.
+ */
+void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, const long cls_id, const long mthd_id)
+{
+  const wchar_t* reason;
+  switch(status) {
+  case -1:
+    reason = L"Attempting to dereference a 'Nil' memory instance";
+    break;
+  case -2:
+  case -3:
+    reason = L"Index out of bounds";
+    break;
+  case -4:
+    reason = L"Divide by zero";
+    break;
+  default:
+    reason = L"Unknown runtime error";
+    break;
+  }
+  std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
+             << L"', status=" << status
+             << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
+             << L"' <<<" << std::endl;
+  exit(1);
+}
 
 /**
  * The direct bridge entry (see the header). The trampoline is the one

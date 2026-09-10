@@ -1118,6 +1118,21 @@ namespace Runtime {
     // the operand-stack code used to shift, add and then load
     void move_base_index_reg(long disp, Register base, Register index, int scale, Register dest);
     void move_base_index_xreg(long disp, Register base, Register index, int scale, Register dest);
+    // mov [base + index*scale + disp], src
+    void move_reg_base_index(Register src, long disp, Register base, Register index, int scale);
+    // lea dest, [src + offset]
+    void lea_mem_reg(long offset, Register src, Register dest);
+    // 32-bit inc/dec of a memory word (a `long` on Windows)
+    void inc_mem32(long offset, Register dest);
+    void dec_mem32(long offset, Register dest);
+    // a forward jump's rel32 placeholder, patched to land here
+    void PatchForwardJump(long patch_index);
+    // Phase 3 of the calling convention: a call from compiled code straight
+    // into a compiled callee's entry, with the callee's frame record built on
+    // the caller's stack. Emits the fast path; the two jumps to the slow path
+    // (no native code yet, or a full call stack) and the jump past it are
+    // returned for patching around the bridge sequence that follows.
+    void EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, long& slow_patch_b, long& done_patch);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 
