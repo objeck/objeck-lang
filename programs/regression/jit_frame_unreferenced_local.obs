@@ -23,6 +23,6 @@ class UnreferencedLocal {
   function : Main(args : String[]) ~ Nil {
     t := Scan(60000);
     if(t > 0) { "PASS: unreferenced local"->PrintLine(); }
-    else { "FAIL: {$t}"->PrintLine(); };
+    else { "FAIL: {$t}"->PrintLine(); Runtime->Exit(1); };
   }
 }
