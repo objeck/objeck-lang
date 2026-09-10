@@ -16,7 +16,9 @@ instruction stream of each method could be read. Two follow-up kernels isolate
 single costs (`Size()` inside a loop condition; division by a constant). The
 `native` keyword was deliberately not used: it forces compilation even under
 `--jit=off`, which made the first attempt at this comparison measure the JIT
-against itself.
+against itself. The committed fixture nevertheless declared every kernel `native` until
+2026-09-10, and section 5b records what that did on ARM64; it no longer does, and its
+header says why.
 
 ## 2. Headline numbers
 
@@ -35,6 +37,37 @@ Two numbers carry the assessment: the array loop is **10× faster when
 `Size()` leaves the loop condition**, and the integer loop is **6.4× faster
 without its two constant divisions**. Neither is a change a user should have to
 make; both are the JIT's to fix.
+
+### 2b. AMD64 re-measured at `26784fe1ab` (2026-09-10)
+
+The same box as section 2 (Ryzen 9 7950X3D, Windows x64), the same fixture as section 5a
+(no `native`), medians of three runs each. Three columns because the older VM was rebuilt
+and run on the same probe: the interpreter as it is today, the JIT as it was at section 2's
+commit `8e18e45ee4` (compile on first call), and the JIT after batches 1-6.
+
+| kernel | interpreter | JIT at `8e18e45ee4` | JIT now | batches 1-6 | JIT now vs interpreter |
+|---|---|---|---|---|---|
+| `IntLoop` | 0.805 s | 0.053 s | 0.025 s | 2.1x | **32x** |
+| `ArraySum` | 0.773 s | 0.105 s | 0.019 s | 5.5x | **41x** |
+| `FloatDot` | 1.055 s | 0.111 s | 0.022 s | 5.0x | **48x** |
+| `CallLoop` | 0.698 s | 0.018 s | 0.015 s | 1.2x | **47x** |
+| `Branchy` | 1.133 s | 0.055 s | 0.034 s | 1.6x | **33x** |
+| `Locals` | 2.220 s | 0.036 s | 0.027 s | 1.3x | **82x** |
+
+Every kernel returned an identical result in all three configurations, so, like 5a, this
+doubles as an equivalence check across two VM vintages and the interpreter.
+
+Two things this table corrects in section 2. Its interpreter column is not reproducible:
+the VM at `8e18e45ee4`, rebuilt today, interprets `IntLoop` in 0.66 s, not 0.49 s, and today's
+VM in 0.81 s, so the interpreter has not regressed by the amount a naive comparison of the
+two sections suggests -- the spread is build-to-build, and this table is the AMD64 reference
+from here on. And at `8e18e45ee4` the *default* threshold never compiled these kernels at all:
+each is called once, so the interpreter ran them, 0.68 s for `IntLoop` under "JIT default".
+That is the case batch 6a fixed (`JIT_ENTRY_COMPILE_DESIGN.md`); today the default and
+compile-on-first-call columns are the same numbers.
+
+Read this beside 5a with the usual caveat: different hardware, so the two tables are each a
+baseline against itself, at the same commit.
 
 ## 3. What the emitted code looks like
 
@@ -166,10 +199,11 @@ compiled, and reports it as an interpreter number:
 | `IntLoop`, `native` removed | 0.5595 s | 0.0183 s | 30.6× |
 
 The 1.2× is not a slow JIT, it is two JIT runs. The table in 5a was produced
-from a copy with `function : native :` rewritten to `function :`; anyone
-re-measuring must do the same, or add a non-`native` variant to the fixture.
-Since section 5 asks for a baseline that "every later number needs", getting
-this wrong silently invalidates everything downstream.
+from a copy with `function : native :` rewritten to `function :`. Since 2026-09-10
+the committed fixture is that copy: no kernel is `native`, and a header on the file
+says what `native` does to a timing so nobody puts it back. Section 2b was measured
+from it as committed. Since section 5 asks for a baseline that "every later number
+needs", getting this wrong silently invalidates everything downstream.
 
 Adding `jit_probe.obs` to the perf gate (currently linux-x64 only) would keep
 this measured rather than sampled — with the same caveat baked into whatever
@@ -228,3 +262,8 @@ Verification, per batch: `vm_jit_equiv.obs` byte-identical between interpreter a
 Done since, as batches 4 and 5 (2026-09-09): **F6** (boolean temporaries, front end), **F3** on AMD64 (loop-carried locals in `R13`-`R15`; ARM64 still open), **F8** (`select` jump tables, both backends; `docs/JIT_SELECT_TABLES_DESIGN.md`). Since then: floats pin in `XMM6`-`XMM9` on Windows (batch 6). Open: **F3** on ARM64 (with `D8`-`D15` for floats), **F7** (calling convention). The ARM64 kernel timings of section 5 are still unmeasured. Two things learned on the way: a stacked PR does not get the build legs (`ci-build.yml` runs only for PRs that target master), and `OBJECK_JIT_REPORT=1` should be run on the fixture itself -- its own division probe had been falling back to the interpreter.
 
 Found later the same day, by the first compiled run of `core_thread_gc_stress` in CI (#745 made the runners match the opt-out marker as a whole line; the test's own comment had matched as a substring since June): the loop-header poll's one omission. A park there did not refresh the frame's `self` the way a callback's return does, so a young `self` that another thread's collection promoted went stale for the rest of the loop -- 35-45 corrupted values on every CI leg, none on a 32-thread box until pinned to four cores. Fixed on both backends ([#746](https://github.com/objeck/objeck-lang/issues/746)); the test runs compiled again.
+
+2026-09-10: the ARM64 baseline is in (5a), the AMD64 side is re-measured at the same commit
+(2b), and the probe fixture is no longer `native` (5b). What the two tables agree on: the JIT
+is 25-48x the interpreter on every kernel but `Locals` (82x on AMD64), results identical in
+every mode. Open on ARM64: F3, `D8`-`D15`, and the section 5 findings by inspection.
