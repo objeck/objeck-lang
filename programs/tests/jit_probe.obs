@@ -1,7 +1,25 @@
+#~
+# JIT code-generation probe: six kernels, each one hot loop, timed once with
+# the JIT off and once with it on. The numbers live in
+# docs/JIT_CODEGEN_ASSESSMENT_2026_09.md.
+#
+# Do NOT declare these kernels `native`. `native` forces compilation through a
+# path that neither `--jit=off` nor OBJECK_JIT_DISABLE=1 reaches (those switch
+# off AUTO-JIT only), so a `native` kernel timed "interpreted" is a second JIT
+# run. That is how this file, as first committed, reported IntLoop at 1.2x on
+# ARM64: 0.0209s against 0.0177s, both compiled. With plain functions the same
+# kernel measures 0.5595s against 0.0183s, 30.6x (assessment section 5b).
+#
+#   obc -src jit_probe.obs -dest jit_probe.obe
+#   obr --jit=off jit_probe.obe      # the interpreter
+#   obr jit_probe.obe                # the JIT: a once-called method with a loop
+#                                    # is compiled on its first call
+~#
+
 use System.Time;
 
 class Probe {
-  function : native : IntLoop(n : Int) ~ Int {
+  function : IntLoop(n : Int) ~ Int {
     sum := 0;
     for(i := 0; i < n; i += 1;) {
       sum := sum + (i * 7) % 13 - (i / 3);
@@ -9,7 +27,7 @@ class Probe {
     return sum;
   }
 
-  function : native : ArraySum(a : Int[], reps : Int) ~ Int {
+  function : ArraySum(a : Int[], reps : Int) ~ Int {
     total := 0;
     for(r := 0; r < reps; r += 1;) {
       for(i := 0; i < a->Size(); i += 1;) {
@@ -19,7 +37,7 @@ class Probe {
     return total;
   }
 
-  function : native : FloatDot(a : Float[], b : Float[], reps : Int) ~ Float {
+  function : FloatDot(a : Float[], b : Float[], reps : Int) ~ Float {
     acc := 0.0;
     for(r := 0; r < reps; r += 1;) {
       for(i := 0; i < a->Size(); i += 1;) {
@@ -29,11 +47,11 @@ class Probe {
     return acc;
   }
 
-  function : native : Small(x : Int, y : Int) ~ Int {
+  function : Small(x : Int, y : Int) ~ Int {
     return x * 3 + y;
   }
 
-  function : native : CallLoop(n : Int) ~ Int {
+  function : CallLoop(n : Int) ~ Int {
     acc := 0;
     for(i := 0; i < n; i += 1;) {
       acc := Small(acc, i) and 0xFFFFF;
@@ -41,7 +59,7 @@ class Probe {
     return acc;
   }
 
-  function : native : Branchy(n : Int) ~ Int {
+  function : Branchy(n : Int) ~ Int {
     hits := 0;
     for(i := 0; i < n; i += 1;) {
       if(i % 3 = 0 & i % 5 <> 0) { hits += 2; }
@@ -51,7 +69,7 @@ class Probe {
     return hits;
   }
 
-  function : native : Locals(n : Int) ~ Int {
+  function : Locals(n : Int) ~ Int {
     a := 1; b := 2; c := 3; d := 4; e := 5; f := 6; g := 7; h := 8;
     for(i := 0; i < n; i += 1;) {
       a := b + c; b := c + d; c := d + e; d := e + f; e := f + g; f := g + h; g := h + a; h := (a + i) and 0xFFFF;
