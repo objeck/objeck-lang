@@ -1,6 +1,6 @@
 # JIT: what a compiled call costs, and the convention that removes it (F7)
 
-**Status:** phase 1 implemented, 2026-09-10 (section 6); phases 2 and 3 open. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
+**Status:** phases 1 and 2 implemented, 2026-09-10 (sections 6 and 7); phase 3 open. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
 ("every method entry/exit rebuilds the VM operand-stack view, and JIT-to-JIT calls still marshal
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
@@ -112,7 +112,7 @@ is non-virtual, the emitter passes the `StackMethod*` as an immediate to a
 `JitDirectCall(callee, inst, stacks...)` entry: no opcode `switch`, no class/method lookup. The
 auto-JIT count stays in the trampoline path, which uncompiled callees still take. Expected: 2 ns.
 
-### Phase 2: the callee's entry and exit (codegen; AMD64 here, ARM64 on the Mac; about three days)
+### Phase 2: the callee's entry and exit (codegen; AMD64 here, ARM64 on the Mac; about three days) -- done on AMD64, section 7
 
 2a. **Save `XMM10`-`XMM15` only in methods that use the float pool.** The pre-scan knows; a
 flag on the compile selects the prologue and epilogue variant. Twelve `movdqu` and 192 bytes of
@@ -276,4 +276,47 @@ pool's refill size); the regression suite in both modes, 224 passed, 3 skipped, 
 each. ARM64 is the same C++ plus a two-immediate change in its emitter; its runtime check
 is CI's three ARM64 legs.
 
-Phase 2 next: the callee's prologue and epilogue (section 3), on this box for AMD64.
+Phase 2 followed the same day (section 7).
+
+## 7. Phase 2, implemented on AMD64 (2026-09-10)
+
+What landed, in `core/vm/arch/jit/amd64/jit_amd_lp64.{h,cpp}`:
+
+- **2a.** The prologue's `XMM10`-`XMM15` save and the epilogue's restore are emitted as
+  before, and `Compile()` patches both into a two-byte jump over themselves when the method
+  never took a register from the XMM pool (`xmm_pool_used`, set in `GetXmmRegister`, the only
+  source of those registers). Each `RTRN` emits its own epilogue, so a method with several
+  returns has several restore blocks; all of them are recorded and patched with the one save
+  -- the first build patched only the last one and an early return then ran a restore for a
+  save that never happened, with the stack pointer 96 bytes off. Windows only; POSIX has no
+  block.
+- **2b.** `RegisterRoot` zeroes the frame with straight `mov qword [reg+k], 0` stores for up to
+  24 words; the microcoded `LOOP` stays for larger frames.
+- **2c.** The operand-stack pointer arithmetic is hoisted: `ProcessParameters` computes the
+  top once and reads each argument at a displacement below it, dropping them all with one
+  subtraction (eight instructions per parameter to three, plus four of setup);
+  `ProcessReturn` stores at a running displacement and bumps the count once (it reloaded the
+  count pointer, incremented and advanced the base per value); the result pops load through
+  a new scaled-index encoder (`move_base_index_reg`, `move_base_index_xreg`) instead of
+  shift-and-add, seven instructions to five.
+
+From the tracing listing of `r := a->Add(i)`: the callee executes about 60 instructions
+outside its 13-instruction body where it executed about 95, and the call site 30 where it
+executed 39. Alternated with the same master and phase 1 binaries as section 6, medians of
+three:
+
+| kernel | master | phase 1 | phase 2 |
+|---|---|---|---|
+| `RealCall` | 0.546 s | 0.337 s | **0.299 s** |
+| `VirtualCall` (2M) | 0.251 s | 0.039 s | **0.036 s** |
+| `Fib(32)` | 0.208 s | 0.124 s | **0.115 s** |
+| compiled call, per call | 26.7 ns | 16.3 ns | **14.4 ns** |
+
+Two nanoseconds for a third fewer instructions: what is left of a call is the C++ bridge --
+the frame from the pool, the eleven-argument entry, the release -- and the operand-stack
+traffic itself, which is phase 3's business. The interpreter is untouched by this phase.
+
+Verified: the flag tests 22/22, `vm_jit_equiv.obs` byte-identical across the three modes; the
+regression suite in both modes (see the PR); a one-method probe with an early return, which
+the first build crashed on. ARM64 is untouched: its `D8`-`D15` saves, zeroing loop and
+operand-stack sequences are the same shape and the same change, on the Mac.

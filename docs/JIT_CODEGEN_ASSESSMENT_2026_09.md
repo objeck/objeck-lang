@@ -275,5 +275,5 @@ the call gained 43x, and a compiled caller of a `virtual` method was *slower* th
 interpreter (125 ns against 70) because the bridge re-entered a fresh interpreter per call.
 Phase 1 of that design -- the C++ bridge: virtual callees resolved there, a per-thread frame
 pool zeroed on acquire, a bound callee passed by pointer -- brought a compiled call to 16.5 ns
-and a virtual one to 20 ns. Open: phases 2 (callee prologue/epilogue) and 3 (register
-arguments, a second native entry per method).
+and a virtual one to 20 ns; phase 2 (the callee's prologue and epilogue, AMD64) to 14.4 ns.
+Open: phase 3 (register arguments, a second native entry per method), and phase 2 on ARM64.
