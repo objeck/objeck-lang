@@ -224,6 +224,15 @@ commit with its probe timings:
   and crashed every early return), and once the body is emitted turn each block into a
   branch over itself when the FP pool was never used (`xmm_pool_used` on AMD64).
 
+**Before step 2: the prologue's frame-size immediate.** `Prolog` and `Epilog` build their
+`sub sp, sp, #imm` and `add sp, sp, #imm` by ORing `final_local_space << 10` onto a template
+whose immediate field already holds 96 (`0xd10183ff`, `0x910183ff`): a frame whose size has
+bits 5 or 6 clear is over-allocated by 32 to 96 bytes. Harmless so far, since the epilogue
+mirrors it and the three stack arguments are read before the `sub`, but anything that computes
+an `SP`-relative offset from `final_local_space` -- the outgoing area below -- lands in the
+wrong place on such a frame. Compute the immediate exactly (clear the field, then OR), keep the
+12-bit range check, and add a register form (`sub sp, sp, xN`) for frames past 4 KB.
+
 **Step 2, the native entry and the call site (sections 8 to 11 in one go).** Section 8's
 first shape -- the callee's record built on the caller's stack, the bridge entry's eleven
 values passed by hand -- was superseded by section 11 and is gone from AMD64; build section
