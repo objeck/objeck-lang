@@ -440,8 +440,8 @@ namespace Runtime {
     // StackMethod* in place of the opcode
     StackMethod* direct_callee;
     // set around ProcessStackCallback for a MTHD_CALL to a `virtual`
-    // declaration: the site's inline cache (phase 3, step 2), owned by the
-    // method's NativeCode once the compile succeeds
+    // declaration or a DYN_MTHD_CALL: the site's inline cache (phase 3),
+    // owned by the method's NativeCode once the compile succeeds
     JitVirtualSite* virtual_site;
     std::vector<JitVirtualSite*> virtual_sites;
     static const int MAX_INLINE_SIZE = 20;
@@ -1148,7 +1148,8 @@ namespace Runtime {
     // status check, the pop, the jump past the slow path and the error block.
     // The callee's constants come from `callee`, or from the record in RBX
     // when callee is null.
-    void EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch);
+    // pop_words: the receiver alone (1), or the func-ref word above it too (2)
+    void EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch, const long pop_words = 1);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 

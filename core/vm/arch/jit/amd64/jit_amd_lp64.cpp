@@ -762,11 +762,19 @@ void JitAmd64::ProcessInstructions() {
     }
       break;
 
-    case DYN_MTHD_CALL: {
+    case DYN_MTHD_CALL:
+    case DYN_MTHD_CALL_JIT: {
       // Working stack at the call = [args..., func-ref word2 (instance), func-ref
       // word1 (packed cls<<16|mthd)] = operand + 2 entries. (Was +3, over-counting
       // by one -> ProcessStackCallback marshalled past the stack -> crash.)
+      // The patched opcode is the same call: the interpreter rewrites a site
+      // when a callee with matching operands compiles, and a method holding one
+      // failed to compile for want of this case. The site keeps an inline cache
+      // keyed by the func-ref word (phase 3).
+      virtual_site = new JitVirtualSite(nullptr, 0, 0);
+      virtual_sites.push_back(virtual_site);
       ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 2);
+      virtual_site = nullptr;
       ProcessReturnParameters((MemoryType)instr->GetOperand2());
     }
       break;
@@ -5458,10 +5466,15 @@ void JitAmd64::EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& 
   // spilled like any live value, and the callee's prologue preserves it);
   // on a miss JitResolveVirtualSite fills a record and the check repeats,
   // or the bridge takes the call.
-  static const long RECORD_CLS = (long)offsetof(JitVirtualRecord, cls);
+  static const long RECORD_KEY = (long)offsetof(JitVirtualRecord, key);
   static const long RECORD_ENTRY = (long)offsetof(JitVirtualRecord, entry);
 #ifdef _DEBUG_JIT
-  std::wcout << L"VIRTUAL_CALL: name='" << site->declaration->GetName() << L"'" << std::endl;
+  if(site->funcref) {
+    std::wcout << L"FUNCREF_CALL" << std::endl;
+  }
+  else {
+    std::wcout << L"VIRTUAL_CALL: name='" << site->declaration->GetName() << L"'" << std::endl;
+  }
 #endif
   // r9 = op_stack[count - 1]
   move_mem_reg(STACK_POS, RBP, R8);
@@ -5472,17 +5485,24 @@ void JitAmd64::EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& 
 #endif
   move_mem_reg(OP_STACK, RBP, RDX);
   move_base_index_reg(-(long)sizeof(size_t), RDX, R10, sizeof(size_t), R9);
-  cmp_imm_reg(0, R9);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x84);          // je slow: Nil receiver
-  slow_patches.push_back(code_index);
-  AddImm(0);
-  cmp_imm_mem(TYPE * (long)sizeof(size_t), R9, instructions::NIL_TYPE);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x85);          // jne slow: not an object instance
-  slow_patches.push_back(code_index);
-  AddImm(0);
-  move_mem_reg(SIZE_OR_CLS * (long)sizeof(size_t), R9, RCX);   // the receiver's class
+  if(site->funcref) {
+    // the func-ref word is the key; the instance below it may be Nil (a
+    // function) and is passed through as the callee's self
+    move_reg_reg(R9, RCX);
+  }
+  else {
+    cmp_imm_reg(0, R9);
+    AddMachineCode(0x0f);
+    AddMachineCode(0x84);          // je slow: Nil receiver
+    slow_patches.push_back(code_index);
+    AddImm(0);
+    cmp_imm_mem(TYPE * (long)sizeof(size_t), R9, instructions::NIL_TYPE);
+    AddMachineCode(0x0f);
+    AddMachineCode(0x85);          // jne slow: not an object instance
+    slow_patches.push_back(code_index);
+    AddImm(0);
+    move_mem_reg(SIZE_OR_CLS * (long)sizeof(size_t), R9, RCX);   // the receiver's class
+  }
   move_imm_reg((int64_t)site, RBX);
   move_mem_reg(0, RBX, RBX);     // the site's current record
   cmp_imm_reg(0, RBX);
@@ -5490,7 +5510,7 @@ void JitAmd64::EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& 
   AddMachineCode(0x84);          // je miss
   const long miss_patch_a = code_index;
   AddImm(0);
-  cmp_mem_reg(RECORD_CLS, RBX, RCX);
+  cmp_mem_reg(RECORD_KEY, RBX, RCX);
   AddMachineCode(0x0f);
   AddMachineCode(0x85);          // jne miss
   const long miss_patch_b = code_index;
@@ -5499,23 +5519,25 @@ void JitAmd64::EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& 
   const long hit_index = code_index;
   move_mem_reg(RECORD_ENTRY, RBX, RAX);
   long depth_patch = -1;
-  EmitNativeCallBody(nullptr, depth_patch, done_patch);
+  EmitNativeCallBody(nullptr, depth_patch, done_patch, site->funcref ? 2 : 1);
   slow_patches.push_back(depth_patch);
 
   // miss: a record from the resolver, or the bridge
   PatchForwardJump(miss_patch_a);
   PatchForwardJump(miss_patch_b);
+  const int64_t resolver = site->funcref ? (int64_t)(size_t)JitCompiler::JitResolveFuncRefSite
+                                        : (int64_t)(size_t)JitCompiler::JitResolveVirtualSite;
 #ifdef _WIN64
   move_imm_reg((int64_t)site, RCX);
   move_reg_reg(R9, RDX);
   sub_imm_reg(32, RSP);
-  move_imm_reg((int64_t)(size_t)JitCompiler::JitResolveVirtualSite, RAX);
+  move_imm_reg(resolver, RAX);
   call_reg(RAX);
   add_imm_reg(32, RSP);
 #else
   move_imm_reg((int64_t)site, RDI);
   move_reg_reg(R9, RSI);
-  move_imm_reg((int64_t)(size_t)JitCompiler::JitResolveVirtualSite, RAX);
+  move_imm_reg(resolver, RAX);
   call_reg(RAX);
 #endif
   cmp_imm_reg(0, RAX);
@@ -5529,7 +5551,7 @@ void JitAmd64::EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& 
   AddImm(back);
 }
 
-void JitAmd64::EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch) {
+void JitAmd64::EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch, const long pop_words) {
   static const long RECORD_TARGET = (long)offsetof(JitVirtualRecord, target);
   static const long RECORD_CLS_MEM = (long)offsetof(JitVirtualRecord, cls_mem);
   static const long RECORD_CLS_ID = (long)offsetof(JitVirtualRecord, cls_id);
@@ -5576,7 +5598,12 @@ void JitAmd64::EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& d
   const Register self_reg = RCX;
 #endif
   move_mem_reg(STACK_POS, RBP, R8);
-  dec_mem(0, R8);
+  if(pop_words == 1) {
+    dec_mem(0, R8);
+  }
+  else {
+    sub_imm_mem(pop_words, 0, R8);   // the func-ref word above the receiver goes too
+  }
 #ifdef _WIN64
   move_mem_reg32(0, R8, R10);
 #else

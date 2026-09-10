@@ -251,32 +251,28 @@ void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, con
 }
 
 /**
- * A virtual call site's miss (see the header). Misses are rare -- the first
- * call at a site for each receiver class -- so a spin on the site's flag
- * serializes the fill; hits never take it.
+ * A call site's inline-cache miss (see the header). Misses are rare -- the
+ * first call at a site for each key -- so a spin on the site's flag
+ * serializes the fill; hits never take it. FillSiteRecord reuses the key's
+ * record when it exists (target unused), else fills a free one.
  */
-JitVirtualRecord* JitCompiler::JitResolveVirtualSite(JitVirtualSite* site, size_t* receiver)
+JitVirtualRecord* JitCompiler::FillSiteRecord(JitVirtualSite* site, size_t key, StackMethod* target)
 {
-  StackClass* cls = MemoryManager::GetClass(receiver);
-  if(!cls) {
-    return nullptr;
-  }
   while(site->filling.exchange(true, std::memory_order_acquire)) {
     ;
   }
   JitVirtualRecord* found = nullptr;
   for(int i = 0; i < site->used; ++i) {
-    if(site->records[i].cls == cls) {
+    if(site->records[i].key == key) {
       found = &site->records[i];
       break;
     }
   }
   if(!found && site->used < JitVirtualSite::RECORDS) {
-    StackMethod* target = Runtime::StackInterpreter::ResolveVirtualTarget(cls, site->declaration, site->decl_cls_id, site->decl_mthd_id);
-    void* entry = target->IsVirtual() ? nullptr : target->GetNativeEntry();
+    void* entry = (!target || target->IsVirtual()) ? nullptr : target->GetNativeEntry();
     if(entry) {
       JitVirtualRecord& record = site->records[site->used];
-      record.cls = cls;
+      record.key = key;
       record.entry = entry;
       record.target = target;
       record.cls_mem = target->GetClass()->GetClassMemory();
@@ -291,6 +287,34 @@ JitVirtualRecord* JitCompiler::JitResolveVirtualSite(JitVirtualSite* site, size_
   }
   site->filling.store(false, std::memory_order_release);
   return found;
+}
+
+JitVirtualRecord* JitCompiler::JitResolveVirtualSite(JitVirtualSite* site, size_t* receiver)
+{
+  StackClass* cls = MemoryManager::GetClass(receiver);
+  if(!cls) {
+    return nullptr;
+  }
+  // the record can answer without resolving again; resolve only for a new class
+  for(int i = 0; i < site->used; ++i) {
+    if(site->records[i].key == (size_t)cls) {
+      return FillSiteRecord(site, (size_t)cls, nullptr);
+    }
+  }
+  StackMethod* target = Runtime::StackInterpreter::ResolveVirtualTarget(cls, site->declaration, site->decl_cls_id, site->decl_mthd_id);
+  return FillSiteRecord(site, (size_t)cls, target);
+}
+
+/**
+ * A func-ref call site's miss: the packed word names the target directly.
+ */
+JitVirtualRecord* JitCompiler::JitResolveFuncRefSite(JitVirtualSite* site, size_t packed)
+{
+  const long cls_id = (long)((packed >> 16) & 0xFFFF);
+  const long mthd_id = (long)(packed & 0xFFFF);
+  StackClass* cls = program->GetClass(cls_id);
+  StackMethod* target = cls ? cls->GetMethod(mthd_id) : nullptr;
+  return FillSiteRecord(site, packed, target);
 }
 
 /**

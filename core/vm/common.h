@@ -494,17 +494,19 @@ class StackClass;
 class StackMethod;
 
 /********************************
- * A compiled call site's inline cache for a `virtual` callee (the calling
- * convention's phase 3, step 2). The site's `current` word -- the first
- * member, which compiled code reads as [site] -- points at the record for
- * the class last seen there, or is null. A record is written once, under
- * the site's lock, and published by that word, so a hit reads one
- * consistent record; the fill resolver reuses a class's record on a repeat
- * and stops filling once the records are used up, after which the site
- * takes the bridge for good. Owned by the caller's NativeCode.
+ * A compiled call site's inline cache for a callee that is bound at run
+ * time (the calling convention's phase 3): a `virtual` declaration, keyed
+ * by the receiver's class, or a func-ref call, keyed by the func-ref's
+ * packed word. The site's `current` word -- the first member, which
+ * compiled code reads as [site] -- points at the record for the key last
+ * seen there, or is null. A record is written once, under the site's lock,
+ * and published by that word, so a hit reads one consistent record; the
+ * fill resolver reuses a key's record on a repeat and stops filling once
+ * the records are used up, after which the site takes the bridge for good.
+ * Owned by the caller's NativeCode.
  ********************************/
 struct JitVirtualRecord {
-  StackClass* cls;        // the receiver class this record answers for
+  size_t key;             // the receiver class, or the func-ref word, this record answers for
   void* entry;            // the target's native entry
   StackMethod* target;
   size_t* cls_mem;        // the target's class memory
@@ -518,11 +520,12 @@ struct JitVirtualSite {
   std::atomic<bool> filling;
   int used;
   JitVirtualRecord records[RECORDS];
-  StackMethod* declaration;                 // the `virtual` declaration the site names
+  StackMethod* declaration;                 // the `virtual` declaration the site names (null for a func-ref site)
   long decl_cls_id;
   long decl_mthd_id;
+  bool funcref;                             // keyed by the func-ref word rather than the receiver's class
 
-  JitVirtualSite(StackMethod* d, long c, long m) : current(nullptr), filling(false), used(0), declaration(d), decl_cls_id(c), decl_mthd_id(m) {
+  JitVirtualSite(StackMethod* d, long c, long m) : current(nullptr), filling(false), used(0), declaration(d), decl_cls_id(c), decl_mthd_id(m), funcref(d == nullptr) {
     for(int i = 0; i < RECORDS; ++i) {
       records[i] = JitVirtualRecord();
     }

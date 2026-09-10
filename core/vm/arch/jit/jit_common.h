@@ -222,6 +222,15 @@ public:
   // not an object, or the site has used all its records -- the caller then
   // takes the bridge, which resolves and counts as before.
   static JitVirtualRecord* JitResolveVirtualSite(JitVirtualSite* site, size_t* receiver);
+  // The same for a func-ref call site, keyed by the func-ref's packed word
+  // (class id << 16 | method id).
+  static JitVirtualRecord* JitResolveFuncRefSite(JitVirtualSite* site, size_t packed);
+
+protected:
+  // the shared fill: a record for `key` answering with `target`, reused on a
+  // repeat, or null when the target has no native code yet or the site is full
+  static JitVirtualRecord* FillSiteRecord(JitVirtualSite* site, size_t key, StackMethod* target);
+public:
 
   static bool TryAutoJitCompile(StackMethod* callee);
   static void PatchCallSites(StackMethod* callee, long patch_value);
