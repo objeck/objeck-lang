@@ -1,0 +1,28 @@
+# A compiled method declares a local that no instruction references, ahead of
+# an object-array local. The JIT laid out native slots only for referenced
+# ids while the collector walks one slot per declaration, so every slot below
+# the unreferenced one was read under the wrong type: here the collector took
+# a String held in the slot before the array's for an object array, read a
+# character pointer as its length and walked off the heap. The loop allocates
+# enough to force collections while the frame is live, and the method holds a
+# loop so it is compiled on its first call. Prints PASS when the collector
+# survives.
+class UnreferencedLocal {
+  function : Scan(n : Int) ~ Int {
+    name := "a string held in the slot below the unreferenced array";
+    ghost : String[];
+    total := 0;
+    for(i := 0; i < n; i += 1;) {
+      junk := Byte->New[4096];
+      junk[0] := i and 255;
+      total += junk[0] + name->Size();
+    };
+    return total;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    t := Scan(60000);
+    if(t > 0) { "PASS: unreferenced local"->PrintLine(); }
+    else { "FAIL: {$t}"->PrintLine(); };
+  }
+}
