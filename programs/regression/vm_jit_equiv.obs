@@ -238,6 +238,9 @@ class VmJitEquiv {
     "calls elems={$Calls->ElementsAfterCalls(120)}"->PrintLine();
     "calls poly={$Calls->Polymorphic(600)}"->PrintLine();
     "calls funcrefs={$Calls->FuncRefs(400)}"->PrintLine();
+    # F7 section 11: the register-argument entry, every value shape and both
+    # entries (each interpolation costs Main a slot it no longer has)
+    Calls->PrintNative();
 
     "done"->PrintLine();
   }
@@ -772,6 +775,103 @@ class Calls {
       t += ApplyRef(i % 5, Twice(Int) ~ Int);
     };
     return t;
+  }
+  # The register-argument entry (F7, section 11): a native call carries its
+  # values in the caller's outgoing area and its result in XMM0, so every
+  # value shape crosses it here -- Float arguments and results as literals,
+  # locals and registers, a call with no arguments, more arguments than any
+  # register convention holds, a Nil result, objects that live only in the
+  # callee's slots while it allocates, and a func-ref result, which keeps the
+  # bridge. Scale is also called from Main, so one method takes both entries
+  # in one run. Halves and integers keep every Float exact.
+  function : Scale(x : Float, k : Float, n : Int) ~ Float { return x * k + n; }
+  function : Half() ~ Float { return 0.5; }
+
+  function : FloatArgs(n : Int) ~ Float {
+    acc := 0.0;
+    for(i := 0; i < n; i += 1;) {
+      f := i->As(Float);
+      acc += Scale(f, 0.5, i) + Scale(2.0, f, 3) + Scale(acc * 0.25, 0.5, i % 7) + Half();
+    };
+    return acc;
+  }
+
+  function : ManyArgs(a : Int, b : Int, c : Int, d : Int, e : Int, f : Int, g : Float, h : Int) ~ Int {
+    t := a + b * 2;
+    t += c * 3 + d * 4;
+    t += e * 5 + f * 6;
+    t += g->As(Int) * 7 + h * 8;
+    return t;
+  }
+
+  # the arguments come from locals: eight live expressions would exhaust the
+  # POSIX allocator's registers and the method would quietly run interpreted
+  function : WideCalls(n : Int) ~ Int {
+    t := 0;
+    for(i := 0; i < n; i += 1;) {
+      a := i; b := i + 1; c := i + 2; d := i + 3; e := i + 4; f := i + 5; g := i->As(Float); h := i + 7;
+      t += ManyArgs(a, b, c, d, e, f, g, h);
+    };
+    return t;
+  }
+
+  function : Tally(counter : Int[], k : Int) ~ Nil { counter[0] += k; }
+
+  function : NilCalls(n : Int) ~ Int {
+    c := Int->New[1];
+    for(i := 0; i < n; i += 1;) { Tally(c, i % 3); Tally(c, 1); };
+    return c[0];
+  }
+
+  function : Both(a : Shape, b : Shape, k : Int) ~ Int {
+    junk := Int->New[512];
+    junk[0] := k;
+    return a->Area(k) + b->Area(k) + junk[0];
+  }
+
+  function : SlotsOnly(n : Int) ~ Int {
+    t := 0;
+    for(i := 0; i < n; i += 1;) {
+      t += Both(Sq->New(i % 9), Rect->New(i % 5, 2), i) % 1000;
+    };
+    return t;
+  }
+
+  # a callee whose result a callback leaves on the operand stack rather than
+  # the JIT's working stack (Runtime->Copy is CPY_CHAR_ARY and a return, and
+  # SubString returns what it builds through it): the native exit pops it
+  function : CopyResults(n : Int) ~ Int {
+    src := "0123456789abcdef"->ToCharArray();
+    t := 0;
+    for(i := 0; i < n; i += 1;) {
+      dst := Char->New[2];
+      if(Runtime->Copy(dst, 0, src, i % 15, 2)) { t += dst[0] + dst[1]; };
+      s := "0123456789abcdef"->SubString(i % 16, 1);
+      if(s <> Nil) { t += s->Size(); };
+    };
+    return t;
+  }
+
+  function : Pick(i : Int) ~ (Int) ~ Int { if(i % 2 = 0) { return Twice(Int) ~ Int; }; return Thrice(Int) ~ Int; }
+
+  function : FuncResults(n : Int) ~ Int {
+    t := 0;
+    for(i := 0; i < n; i += 1;) { f := Pick(i); t += f(i); };
+    return t;
+  }
+
+  # Scale and Half are reached from here and from FloatArgs before they are
+  # compiled (the bridge, then the interpreter) and through the native entry
+  # once they are; Main enters every probe through the bridge entry and Deep
+  # re-enters itself through the native one
+  function : PrintNative() ~ Nil {
+    "calls floats={$FloatArgs(300)}"->PrintLine();
+    "calls scale={$Scale(1.5, 2.0, 3)} {$Half()}"->PrintLine();
+    "calls wide={$WideCalls(300)}"->PrintLine();
+    "calls nil={$NilCalls(300)}"->PrintLine();
+    "calls slots={$SlotsOnly(3000)}"->PrintLine();
+    "calls funcresults={$FuncResults(300)}"->PrintLine();
+    "calls copies={$CopyResults(300)}"->PrintLine();
   }
 }
 

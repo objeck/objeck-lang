@@ -210,10 +210,10 @@ public:
                             const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                             StackFrame** call_stack, long* call_stack_pos, const long ip);
 
-  // Called from compiled code when a callee it called directly (phase 3 of
-  // the calling convention: no bridge between them) returned one of the
-  // guard stubs' statuses. Reports the way the bridge does and exits; the
-  // last two are the caller's ids, for the message.
+  // Called from compiled code when a callee it called directly (a native
+  // call: no bridge between them) returned one of the guard stubs'
+  // statuses. Reports the way the bridge does and exits; the last two are
+  // the caller's ids, for the message.
   static void JitNativeCallError(const long status, StackMethod* callee, const long cls_id, const long mthd_id);
 
   // A virtual call site's miss: resolve the override for the receiver's class,

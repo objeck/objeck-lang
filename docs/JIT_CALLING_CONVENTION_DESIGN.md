@@ -130,7 +130,7 @@ nine.
 
 Expected: the callee's overhead from about 90 instructions to about 45.
 
-### Phase 3: the convention (AMD64 two to three weeks; ARM64 after)
+### Phase 3: the convention (AMD64 two to three weeks; ARM64 after) -- done on AMD64, sections 8 to 11
 
 **The call site.** For a `MTHD_CALL` whose callee is non-virtual:
 
@@ -453,21 +453,103 @@ garbage, on master too (#763). The suite never saw it because the one test with 
 keeps its loop in `Main`, which the inliner leaves alone. The fixture's probe keeps its
 helper non-inlinable with a second `return`.
 
-## 11. The register-argument entry, and why it stops here
+## 11. The register-argument entry (AMD64, 2026-09-10)
 
-Section 3's last item was a second, native entry per method taking its arguments in
-registers, with the operand stack synced only at callbacks. With sections 8 to 10 in, what
-is left of a compiled call is, per call: about 12 instructions of operand-stack traffic for
-one argument and its receiver (the caller's stores and count bump, the callee's loads and
-count drop), about 25 for the frame record and the stack arguments, and the callee's own
-entry and exit (section 7), some 45. A register entry would remove the first group and
-part of the second -- perhaps 15 instructions, one to two nanoseconds of the seven -- at
-the cost of two prologues per method (the XMM patch, the pins and `RegisterRoot` done
-twice), a frame slot saying which entry was taken, two `RTRN` paths, a return value that
-cannot travel in a register the epilogue restores, and caller-side marshalling for floats
-and for more than three integer arguments. The measurement says the bridge, not the operand
-stack, was the cost; the design's target of 4-6 ns per call is met within a couple of
-nanoseconds. It is not worth its risk now. The next real gains are elsewhere: the callee's
-prologue (the pushes and the zeroing of ten spill slots a leaf method never uses), and the
-same work on ARM64.
+Section 3's last item, built after sections 8 to 10 had taken the bridge out of the call.
+The first version of this section argued it was not worth its risk -- the estimate was one
+to two nanoseconds of the seven -- and that estimate was right for a bound call and wrong
+for the two cases that matter most, recursion and func-ref calls (the table at the end).
 
+**Two entries over one body.** A compiled method now begins with two prologues
+(`EmitBridgePrologue`, `EmitNativePrologue`) that meet at `RegisterRoot`. The *bridge entry*
+at offset 0 is unchanged as an interface: `JitRuntime::Execute` calls it with the eleven
+values of `jit_fun_ptr`, the arguments on the operand stack and a frame record the
+interpreter made. The *native entry* is what a compiled caller calls: `self` and the
+caller's frame pointer in the first two argument registers (`RCX`/`RDX`; `RDI`/`RSI`), the
+arguments in the caller's outgoing area, and nothing else -- the method's ids and class
+memory are its own constants, the operand stack and call stack pointers are copied from
+the caller's frame (they are per-thread constants), and the frame record is built in the
+callee's own frame. `StackMethod::native_entry`, which section 8 introduced as the address a
+compiled caller reads, is this entry now (null for a method that has none, so every native
+site falls to the bridge for it); `NativeCode::code` stays the bridge entry.
+
+**Where the arguments go, and why not registers.** Section 3 sketched the ABI's integer and
+float registers with overflow on the stack. What was built puts every argument in memory:
+the caller's outgoing area, reserved once per method below its prologue's stack pointer
+(`out_area`, sized for the widest site), holds a callee's register homes and stack slots
+where the bridge entry has them and then the arguments, the receiver and (a func-ref call)
+the func-ref word, in operand-stack order. From the callee, that is a fixed offset
+(`NATIVE_ARGS` from its frame pointer plus its parameter words), so `ProcessParameters` is one
+sequence for both entries: each prologue sets a `top` register -- the operand stack's top,
+or the end of the area -- and the loads below it are the same code. The callee stores every
+parameter into a frame slot anyway; a store the callee's load picks up by forwarding costs
+about what a register move does, and one parameter path serves both entries with no
+per-type register assignment, no overflow rules and no second `ProcessParameters` over the
+same instructions (which would have had to reproduce the first one's register state). The
+bridge prologue drops the arguments from the operand stack's count before `RegisterRoot`,
+which is safe because nothing between the drop and the stores can park.
+
+**The frame record.** A block below the method's locals (`rec_base`: the `StackFrame`, its
+two `mem` words `(self, 0)`, and one word saying which entry was taken) rather than the
+per-thread array section 3 proposed. The native prologue fills it as section 8's caller did
+on its own stack, points `JIT_MEM`, `JIT_OFFSET` and `FRAME_MEM` into it, and pushes it on the
+call stack (the slot store before the increment, as `PushFrame` orders them). The collector
+sees what it saw in section 8: a record with `jit_mem` set by `RegisterRoot` before any
+instruction that can park, `self` in `mem[0]`, the locals walked by declaration. The copies
+in the outgoing area are dead once the callee has stored its slots, and no safepoint lies
+between the caller's stores and the callee's; the slow path copies them onto the operand
+stack, where they are roots as before.
+
+**Return.** `RTRN` puts the value in `XMM0` -- the `Int`'s bits or the `Float` -- while the
+working stack still holds it, then tests the entry kind: the native exit pops the record and
+returns; the bridge exit pushes the value on the operand stack as before. A value the
+working stack never held is one a callback left on the operand stack -- `Runtime->Copy` is
+`CPY_CHAR_ARY` and a return, so its result sits where the bridge exit wants it -- and the
+native exit pops that into `XMM0` instead (the first build did not, and every `SubString`
+came back `Nil` once its callers were compiled: the fixture's `CopyResults` probe). `RAX`
+keeps the status on both exits, so the guard stubs are unchanged and a native caller tests
+it after the call, going to `JitNativeCallError` for a negative one. The caller `movq`s the
+result into a pool register. A method whose result is a func-ref, two words, has the bridge
+entry only, and a site whose callee returns one takes the bridge.
+
+**The call site** (`EmitNativeCallSite`). The values go into the outgoing area
+(`MarshalOutArgs`) and off the working stack; then the entry -- from the method's word for a
+bound callee, from the site's inline cache for a `virtual` or func-ref one, with the
+receiver's class word or the func-ref word now read from the area rather than the operand
+stack -- the depth check, `self` and the frame pointer into registers, the call, the status
+test. The slow path copies the area onto the operand stack, runs the bridge sequence and
+pops the result into `XMM0`, so both paths join with the value in the same place. The
+sections 8 to 10 machinery that built the callee's record on the caller's stack and passed
+the bridge entry's eleven values is gone; an inline-cache record keeps its key, entry and
+target only.
+
+Alternated with the section 10 binary, medians of three, Windows x64:
+
+| kernel | section 10 | section 11 |
+|---|---|---|
+| `RealCall` (20M bound calls) | 0.150 s | **0.121 s** |
+| `VirtualCall` (2M calls, monomorphic) | 0.016 s | **0.012 s** |
+| `Fib(32)` (7M recursive calls) | 0.072 s | **0.043 s** |
+| func-ref, one reference (5M) | 0.156 s | **0.066 s** |
+| func-ref, two alternating (5M) | 0.153 s | **0.079 s** |
+| bound call, per call (less the body) | 7.0 ns | **5.5 ns** |
+| virtual call, per call | 8.0 ns | **6.0 ns** |
+
+A bound call in a loop gains the estimated nanosecond and a half. Recursion and func-ref
+calls gain far more because a call's cost there is latency, not instruction count: the
+arguments and the result no longer make a round trip through the operand stack (a store, a
+count update and a dependent load each way), and the callee's entry is a run of stores
+into its own frame with nothing to wait for. `Fib(32)` stands at 0.043 s against 0.208 s
+on master before this design.
+
+Verification: `vm_jit_equiv.obs` gains probes for every value shape across a native call
+(`Float` arguments and results as literals, locals and registers; a call with no arguments;
+eight arguments; a `Nil` result; receivers that live only in the callee's slots while it
+allocates; a func-ref result, which keeps the bridge), byte-identical across the three
+modes and on the section 10 binary; `OBJECK_JIT_REPORT=1` on the fixture shows no fallback;
+the two exits' tests from section 8 pass; both regression passes on Windows and Linux.
+
+What is left of F7 is on ARM64: sections 7 to 11 on the Mac (the backend has the bridge
+entry only, and publishes no native entry). On AMD64 the next gain is the callee's own
+prologue -- the pushes, the two frame slots' worth of stores and the ten spill slots'
+zeroing that a leaf method never uses -- and the caller's spills around a call.

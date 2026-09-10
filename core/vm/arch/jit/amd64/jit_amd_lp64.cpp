@@ -53,12 +53,9 @@ void JitAmd64::Prolog() {
   std::wcout << L"  " << (++instr_count) << L": [<prolog>]" << std::endl;
 #endif
 
-  local_space += 16;
-  while(local_space % 16 != 0) {
-    local_space += 8;
-  }
-  local_space += 8;
-
+  // local_space was sized and aligned by Compile(): the frame is set up
+  // twice, once per entry (EmitBridgePrologue, EmitNativePrologue), and both
+  // must reserve the same amount
   unsigned char buffer[4];
   ByteEncode32(buffer, local_space);
 
@@ -117,7 +114,7 @@ void JitAmd64::Prolog() {
     0xf3, 0x44, 0x0f, 0x7f, 0x74, 0x24, 0x40,   // movdqu [rsp+64], xmm14
     0xf3, 0x44, 0x0f, 0x7f, 0x7c, 0x24, 0x50,   // movdqu [rsp+80], xmm15
   };
-  xmm_save_index = code_index;
+  xmm_save_indices.push_back(code_index);
   xmm_save_size = (long)sizeof(xmm_save_code);
   for(size_t i = 0; i < sizeof(xmm_save_code); ++i) {
     AddMachineCode(xmm_save_code[i]);
@@ -148,6 +145,14 @@ void JitAmd64::Prolog() {
     }
   }
 #endif
+
+  // The outgoing area for the method's native calls (EmitNativeCallSite),
+  // below everything the epilogue pops: a callee's register homes and stack
+  // slots, then its arguments, at this frame's stack pointer for the whole
+  // body. A multiple of 16 keeps the alignment.
+  if(out_area > 0) {
+    sub_imm_reg(out_area, RSP);
+  }
 }
 
 void JitAmd64::Epilog() 
@@ -212,6 +217,12 @@ void JitAmd64::Epilog()
 
   jmp_offset = teardown_index - (jmp_div_pos + 4);
   memcpy(&code[(size_t)jmp_div_pos], &jmp_offset, 4);
+
+  // the outgoing area (see Prolog); this is teardown_index, so the error
+  // handlers release it too
+  if(out_area > 0) {
+    add_imm_reg(out_area, RSP);
+  }
 #ifdef _WIN64
   // F3: undo the prologue's pinned-register save. This is teardown_index, so
   // every exit path -- nominal or an error handler -- restores them.
@@ -329,7 +340,7 @@ void JitAmd64::RegisterRoot() {
   ReleaseRegister(holder);
 }
 
-void JitAmd64::ProcessParameters(long params) {
+void JitAmd64::ProcessParameters(long params, Register top) {
 #ifdef _DEBUG_JIT
   std::wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
@@ -337,23 +348,11 @@ void JitAmd64::ProcessParameters(long params) {
     return;
   }
 
-  // The arguments sit on the operand stack below its top. Compute the top
-  // once (&op_stack[count]) and read each argument at a fixed displacement
-  // below it, then drop them all with one subtraction from the count; each
-  // used to reload both pointers, decrement, scale and add.
-  RegisterHolder* op_stack_holder = GetRegister();
-  move_mem_reg(OP_STACK, RBP, op_stack_holder->GetRegister());
-  RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
-  RegisterHolder* top_holder = GetRegister();
-#ifdef _WIN64
-  move_mem_reg32(0, stack_pos_holder->GetRegister(), top_holder->GetRegister());
-#else
-  move_mem_reg(0, stack_pos_holder->GetRegister(), top_holder->GetRegister());
-#endif
-  lea_base_index_reg(0, op_stack_holder->GetRegister(), top_holder->GetRegister(), sizeof(size_t), top_holder->GetRegister());
-  ReleaseRegister(op_stack_holder);
-
+  // The arguments sit below `top`, the last one nearest it: the operand
+  // stack's top when the bridge entry set it (its prologue dropped them
+  // from the count already), or the end of the caller's outgoing area when
+  // the native entry did (EmitNativePrologue). Each is read at a fixed
+  // displacement below it; the operand stack is not touched here.
   long words = 0;
   for(long i = 0; i < params; ++i) {
     StackInstr* instr = method->GetInstruction(instr_index++);
@@ -370,7 +369,7 @@ void JitAmd64::ProcessParameters(long params) {
        instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
       words++;
       RegisterHolder* dest_holder = GetRegister();
-      move_mem_reg(-words * (long)sizeof(size_t), top_holder->GetRegister(), dest_holder->GetRegister());
+      move_mem_reg(-words * (long)sizeof(size_t), top, dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
       // store int (COPY keeps the value on the working stack for later use)
       if(instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
@@ -383,9 +382,9 @@ void JitAmd64::ProcessParameters(long params) {
     else if(instr->GetType() == STOR_FUNC_VAR) {
       // two words; the one nearer the top ends up on top of the working stack
       RegisterHolder* dest_holder = GetRegister();
-      move_mem_reg(-(words + 1) * (long)sizeof(size_t), top_holder->GetRegister(), dest_holder->GetRegister());
+      move_mem_reg(-(words + 1) * (long)sizeof(size_t), top, dest_holder->GetRegister());
       RegisterHolder* dest_holder2 = GetRegister();
-      move_mem_reg(-(words + 2) * (long)sizeof(size_t), top_holder->GetRegister(), dest_holder2->GetRegister());
+      move_mem_reg(-(words + 2) * (long)sizeof(size_t), top, dest_holder2->GetRegister());
       words += 2;
 
       working_stack.push_front(new RegInstr(dest_holder2));
@@ -398,7 +397,7 @@ void JitAmd64::ProcessParameters(long params) {
     else {
       words++;
       RegisterHolder* dest_holder = GetXmmRegister();
-      move_mem_xreg(-words * (long)sizeof(size_t), top_holder->GetRegister(), dest_holder->GetRegister());
+      move_mem_xreg(-words * (long)sizeof(size_t), top, dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
 
       // store float (COPY keeps the value on the working stack for later use)
@@ -411,10 +410,6 @@ void JitAmd64::ProcessParameters(long params) {
     }
   }
 
-  // pop them all
-  sub_imm_mem(words, 0, stack_pos_holder->GetRegister());
-  ReleaseRegister(top_holder);
-  ReleaseRegister(stack_pos_holder);
 }
 
 void JitAmd64::ProcessIntCallParameter() {
@@ -728,6 +723,48 @@ void JitAmd64::ProcessInstructions() {
         // inlined method: leave return value on working_stack, stop processing
         instr_index = method->GetInstructionCount(); // exit ProcessInstructions loop
       }
+      else if(native_entry_offset >= 0) {
+        // Two exits for the two entries (EmitNativePrologue). The value goes
+        // to XMM0 first, while the working stack still holds it: a native
+        // caller takes it from there, and the method's own frame record
+        // comes off the call stack. A bridge caller takes it from the
+        // operand stack, as before; the entry kind says which. A value the
+        // working stack does not hold -- a callback left it on the operand
+        // stack, as CPY_CHAR_ARY does for Runtime->Copy -- is already where
+        // the bridge exit wants it; the native exit pops it into XMM0.
+        const MemoryType rtrn = method->GetReturn();
+        const bool value_on_op_stack = (rtrn == INT_TYPE || rtrn == FLOAT_TYPE) && working_stack.empty();
+        EmitReturnValue();
+        cmp_imm_mem(rec_base + REC_KIND, RBP, 0);
+        AddMachineCode(0x0f);
+        AddMachineCode(0x85);          // jne native_ret
+        const long native_patch = code_index;
+        AddImm(0);
+        ProcessReturn();
+        AddMachineCode(0xe9);          // jmp epilog
+        const long epilog_patch = code_index;
+        AddImm(0);
+        PatchForwardJump(native_patch);
+        if(value_on_op_stack) {
+          move_mem_reg(STACK_POS, RBP, RCX);
+          dec_mem(0, RCX);
+#ifdef _WIN64
+          move_mem_reg32(0, RCX, RDX);
+#else
+          move_mem_reg(0, RCX, RDX);
+#endif
+          move_mem_reg(OP_STACK, RBP, RAX);
+          move_base_index_xreg(0, RAX, RDX, sizeof(size_t), XMM0);
+        }
+        move_mem_reg(CALL_STACK_POS, RBP, RAX);
+#ifdef _WIN64
+        dec_mem32(0, RAX);
+#else
+        dec_mem(0, RAX);
+#endif
+        PatchForwardJump(epilog_patch);
+        Epilog();
+      }
       else {
         ProcessReturn();
         // teardown
@@ -755,10 +792,15 @@ void JitAmd64::ProcessInstructions() {
           virtual_site = new JitVirtualSite(called_method, instr->GetOperand(), instr->GetOperand2());
           virtual_sites.push_back(virtual_site);
         }
+        call_return_type = called_method->GetReturn();
         ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
         direct_callee = nullptr;
         virtual_site = nullptr;
-        ProcessReturnParameters(called_method->GetReturn());
+        // a native site put the result on the working stack itself
+        if(!native_result_taken) {
+          ProcessReturnParameters(called_method->GetReturn());
+        }
+        native_result_taken = false;
       }
     }
       break;
@@ -774,9 +816,13 @@ void JitAmd64::ProcessInstructions() {
       // keyed by the func-ref word (phase 3).
       virtual_site = new JitVirtualSite(nullptr, 0, 0);
       virtual_sites.push_back(virtual_site);
+      call_return_type = (MemoryType)instr->GetOperand2();
       ProcessStackCallback(DYN_MTHD_CALL, instr, instr_index, instr->GetOperand() + 2);
       virtual_site = nullptr;
-      ProcessReturnParameters((MemoryType)instr->GetOperand2());
+      if(!native_result_taken) {
+        ProcessReturnParameters((MemoryType)instr->GetOperand2());
+      }
+      native_result_taken = false;
     }
       break;
       
@@ -2820,26 +2866,69 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     compile_success = false;
   }
 
-  // copy values to execution stack
-  ProcessReturn(params);
-
-  // Phase 3: a bound callee that already has native code is called straight
-  // into its entry, with its frame record on this frame's stack; the bridge
-  // sequence below is the slow path, taken until the callee is compiled.
-  long slow_patch_a = -1, slow_patch_b = -1, done_patch = -1;
-  if(direct_callee) {
-    EmitNativeCallFastPath(direct_callee, slow_patch_a, slow_patch_b, done_patch);
-    PatchForwardJump(slow_patch_a);
-    PatchForwardJump(slow_patch_b);
+  // A bound or cached callee is called straight into its native entry with
+  // the values in this frame's outgoing area (EmitNativeCallSite); the
+  // bridge is its slow path. Everything else -- an opcode's callback, or a
+  // callee whose func-ref result needs two words -- takes the bridge with
+  // the values on the operand stack.
+  const bool native_site = (direct_callee || virtual_site) && call_return_type != FUNC_TYPE;
+  if(native_site) {
+    EmitNativeCallSite(instr_id, instr, instr_index, params);
   }
-  else if(virtual_site) {
-    std::vector<long> slow_patches;
-    EmitVirtualCallFastPath(virtual_site, slow_patches, done_patch);
-    for(const long patch : slow_patches) {
-      PatchForwardJump(patch);
+  else {
+    // copy values to execution stack
+    ProcessReturn(params);
+    EmitBridgeCall(instr_id, instr, instr_index);
+  }
+
+  // restore register values
+  while(!dirty_regs.empty()) {
+    RegInstr* left = regs.top();
+    move_mem_reg(dirty_regs.top(), RBP, left->GetRegister()->GetRegister());
+    // update
+    regs.pop();
+    dirty_regs.pop();
+  }
+
+  while(!dirty_xmms.empty()) {
+    RegInstr* left = xmms.top();
+    move_mem_xreg(dirty_xmms.top(), RBP, left->GetRegister()->GetRegister());
+    // update
+    xmms.pop();
+    dirty_xmms.pop();
+  }
+
+  // Reload INSTANCE_MEM from frame->mem[0] in case GC moved the young object
+  // during the callback. GC updates frame->mem[0] but not [RBP+INSTANCE_MEM].
+  {
+    RegisterHolder* tmp = GetRegister();
+    move_mem_reg(FRAME_MEM, RBP, tmp->GetRegister());           // tmp = frame->mem
+    move_mem_reg(0, tmp->GetRegister(), tmp->GetRegister());     // tmp = frame->mem[0]
+    move_reg_mem(tmp->GetRegister(), INSTANCE_MEM, RBP);         // INSTANCE_MEM = tmp
+    ReleaseRegister(tmp);
+  }
+
+  // a native site's result is in XMM0, whichever path ran
+  if(native_site) {
+    if(call_return_type == FLOAT_TYPE) {
+      RegisterHolder* holder = GetXmmRegister();
+      move_xreg_xreg(XMM0, holder->GetRegister());
+      working_stack.push_front(new RegInstr(holder));
     }
+    else if(call_return_type == INT_TYPE) {
+      RegisterHolder* holder = GetRegister();
+      move_xreg_reg(XMM0, holder->GetRegister());
+      working_stack.push_front(new RegInstr(holder));
+    }
+    native_result_taken = true;
   }
+}
 
+/**
+ * The bridge sequence: JitDirectCall for a bound callee, JitStackCallback
+ * with the opcode for anything else. The values are on the operand stack.
+ */
+void JitAmd64::EmitBridgeCall(long instr_id, StackInstr* instr, long instr_index) {
 #ifdef _WIN64
   // set parameters: the direct entry takes the callee in place of the opcode
   if(direct_callee) {
@@ -2898,36 +2987,6 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
   pop_reg(R14);
   pop_reg(R15);
 #endif
-  if(done_patch >= 0) {
-    PatchForwardJump(done_patch);
-  }
-
-  // restore register values
-  while(!dirty_regs.empty()) {
-    RegInstr* left = regs.top();
-    move_mem_reg(dirty_regs.top(), RBP, left->GetRegister()->GetRegister());
-    // update
-    regs.pop();
-    dirty_regs.pop();
-  }
-
-  while(!dirty_xmms.empty()) {
-    RegInstr* left = xmms.top();
-    move_mem_xreg(dirty_xmms.top(), RBP, left->GetRegister()->GetRegister());
-    // update
-    xmms.pop();
-    dirty_xmms.pop();
-  }
-
-  // Reload INSTANCE_MEM from frame->mem[0] in case GC moved the young object
-  // during the callback. GC updates frame->mem[0] but not [RBP+INSTANCE_MEM].
-  {
-    RegisterHolder* tmp = GetRegister();
-    move_mem_reg(FRAME_MEM, RBP, tmp->GetRegister());           // tmp = frame->mem
-    move_mem_reg(0, tmp->GetRegister(), tmp->GetRegister());     // tmp = frame->mem[0]
-    move_reg_mem(tmp->GetRegister(), INSTANCE_MEM, RBP);         // INSTANCE_MEM = tmp
-    ReleaseRegister(tmp);
-  }
 }
 
 void JitAmd64::ProcessReturn(long params) {
@@ -3982,6 +4041,38 @@ void JitAmd64::move_xreg_xreg(Register src, Register dest) {
     RegisterEncode3(code, 5, dest);
     AddMachineCode(code);
   }
+}
+
+void JitAmd64::move_reg_xreg(Register src, Register dest) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [movq %" << GetRegisterName(src)
+        << L", %" << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+  // encode: 66 REX.W 0F 6E /r, the XMM register in the reg field
+  AddMachineCode(0x66);
+  AddMachineCode(ROB(dest, src));
+  AddMachineCode(0x0f);
+  AddMachineCode(0x6e);
+  unsigned char code = 0xc0;
+  RegisterEncode3(code, 2, dest);
+  RegisterEncode3(code, 5, src);
+  AddMachineCode(code);
+}
+
+void JitAmd64::move_xreg_reg(Register src, Register dest) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [movq %" << GetRegisterName(src)
+        << L", %" << GetRegisterName(dest) << L"]" << std::endl;
+#endif
+  // encode: 66 REX.W 0F 7E /r, the XMM register in the reg field
+  AddMachineCode(0x66);
+  AddMachineCode(ROB(src, dest));
+  AddMachineCode(0x0f);
+  AddMachineCode(0x7e);
+  unsigned char code = 0xc0;
+  RegisterEncode3(code, 2, src);
+  RegisterEncode3(code, 5, dest);
+  AddMachineCode(code);
 }
 
 bool JitAmd64::cond_jmp(InstructionType type) {
@@ -5421,142 +5512,61 @@ void JitAmd64::PatchForwardJump(long patch_index) {
   memcpy(&code[(size_t)patch_index], &rel, sizeof(rel));
 }
 
-void JitAmd64::EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, long& slow_patch_b, long& done_patch) {
-  // The arguments and the receiver are on the operand stack (ProcessReturn
-  // put them there) and every live register is spilled to its TMP slot, as
-  // for a callback. What the bridge did in C++ happens here in place:
-  //
-  //   rax = callee->native_entry; if null -> slow (the bridge counts the call
-  //   and compiles the callee); if the call stack is full -> slow (it reports)
-  //   pop the receiver; reserve an area below RSP holding the callee's
-  //   StackFrame record and its two-word mem (self, 0), the stack arguments
-  //   the bridge entry expects, and (Windows) the shadow space; push the
-  //   record on the call stack; register arguments as the bridge passes them
-  //   (the callee's own ids and class memory are constants); call; a
-  //   negative status goes to JitNativeCallError; pop the record; free the
-  //   area.
-  //
-  // The record lives on the caller's stack for exactly the call: the callee's
-  // RegisterRoot fills jit_mem/jit_offset through the pointers passed, the
-  // collector scans it like any bridge frame, and the callee's INSTANCE_MEM
-  // reload reads mem[0], which a promotion updates. Nothing here can park
-  // before the callee's RegisterRoot runs, so the record is never scanned
-  // half-built (the bridge had the same window). R11 addresses the area: the
-  // stack pointer's distance from RBP is not known until the XMM block is
-  // patched, and RSP as a base needs a SIB byte the encoders do not emit.
-
+/**
+ * The register-argument entry (docs/JIT_CALLING_CONVENTION_DESIGN.md,
+ * section 11). A compiled method has two entries. The bridge entry, at
+ * offset 0, is what JitRuntime::Execute calls: the eleven values of
+ * jit_fun_ptr, the arguments on the operand stack, a frame record the
+ * interpreter made. The native entry is what a compiled caller calls
+ * (EmitNativeCallSite): self and the caller's frame pointer in the first
+ * two argument registers, the arguments in the caller's outgoing area at
+ * NATIVE_ARGS from this frame's pointer, and nothing else -- the method's
+ * ids and class memory are its own constants, the operand stack and call
+ * stack pointers are copied from the caller's frame, and the frame record
+ * is built here in the frame and pushed on the call stack (RTRN pops it).
+ * Each prologue sets `top` to the arguments and the two meet at
+ * RegisterRoot; the body is emitted once.
+ */
+void JitAmd64::EmitBridgePrologue(long params, Register top, long& join_patch) {
 #ifdef _DEBUG_JIT
-  std::wcout << L"NATIVE_CALL: name='" << callee->GetName() << L"'" << std::endl;
+  std::wcout << L"BRIDGE_ENTRY" << std::endl;
 #endif
-  // rax = callee->native_entry, or slow
-  move_imm_reg((int64_t)callee->NativeEntryAddress(), RAX);
-  move_mem_reg(0, RAX, RAX);
-  cmp_imm_reg(0, RAX);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x84);          // je slow
-  slow_patch_a = code_index;
+  Prolog();
+  // method information
+#ifdef _WIN64
+  move_reg_mem(RCX, CLS_ID, RBP);
+  move_reg_mem(RDX, MTHD_ID, RBP);
+  move_reg_mem(R8, CLASS_MEM, RBP);
+  move_reg_mem(R9, INSTANCE_MEM, RBP);
+#else
+  move_reg_mem(RDI, CLS_ID, RBP);
+  move_reg_mem(RSI, MTHD_ID, RBP);
+  move_reg_mem(RDX, CLASS_MEM, RBP);
+  move_reg_mem(RCX, INSTANCE_MEM, RBP);
+  move_reg_mem(R8, OP_STACK, RBP);
+  move_reg_mem(R9, STACK_POS, RBP);
+#endif
+  move_imm_mem(0, rec_base + REC_KIND, RBP);
+  if(params > 0) {
+    // top = &op_stack[count], then the arguments come off the count; they
+    // stay in place for ProcessParameters, and nothing between here and its
+    // stores can park (the collector reads the stack up to the count)
+    move_mem_reg(OP_STACK, RBP, R8);
+    move_mem_reg(STACK_POS, RBP, R9);
+#ifdef _WIN64
+    move_mem_reg32(0, R9, R10);
+#else
+    move_mem_reg(0, R9, R10);
+#endif
+    lea_base_index_reg(0, R8, R10, sizeof(size_t), top);
+    sub_imm_mem(params, 0, R9);
+  }
+  AddMachineCode(0xe9);          // jmp join
+  join_patch = code_index;
   AddImm(0);
-  EmitNativeCallBody(callee, slow_patch_b, done_patch);
 }
 
-void JitAmd64::EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& slow_patches, long& done_patch) {
-  // The receiver sits on top of the operand stack. A Nil receiver or a
-  // non-object goes to the bridge, which reports it. Its class word is
-  // compared with the site's current record; on a hit the record's entry
-  // is called through the shared body with the record in RBX (callee-saved,
-  // spilled like any live value, and the callee's prologue preserves it);
-  // on a miss JitResolveVirtualSite fills a record and the check repeats,
-  // or the bridge takes the call.
-  static const long RECORD_KEY = (long)offsetof(JitVirtualRecord, key);
-  static const long RECORD_ENTRY = (long)offsetof(JitVirtualRecord, entry);
-#ifdef _DEBUG_JIT
-  if(site->funcref) {
-    std::wcout << L"FUNCREF_CALL" << std::endl;
-  }
-  else {
-    std::wcout << L"VIRTUAL_CALL: name='" << site->declaration->GetName() << L"'" << std::endl;
-  }
-#endif
-  // r9 = op_stack[count - 1]
-  move_mem_reg(STACK_POS, RBP, R8);
-#ifdef _WIN64
-  move_mem_reg32(0, R8, R10);
-#else
-  move_mem_reg(0, R8, R10);
-#endif
-  move_mem_reg(OP_STACK, RBP, RDX);
-  move_base_index_reg(-(long)sizeof(size_t), RDX, R10, sizeof(size_t), R9);
-  if(site->funcref) {
-    // the func-ref word is the key; the instance below it may be Nil (a
-    // function) and is passed through as the callee's self
-    move_reg_reg(R9, RCX);
-  }
-  else {
-    cmp_imm_reg(0, R9);
-    AddMachineCode(0x0f);
-    AddMachineCode(0x84);          // je slow: Nil receiver
-    slow_patches.push_back(code_index);
-    AddImm(0);
-    cmp_imm_mem(TYPE * (long)sizeof(size_t), R9, instructions::NIL_TYPE);
-    AddMachineCode(0x0f);
-    AddMachineCode(0x85);          // jne slow: not an object instance
-    slow_patches.push_back(code_index);
-    AddImm(0);
-    move_mem_reg(SIZE_OR_CLS * (long)sizeof(size_t), R9, RCX);   // the receiver's class
-  }
-  move_imm_reg((int64_t)site, RBX);
-  move_mem_reg(0, RBX, RBX);     // the site's current record
-  cmp_imm_reg(0, RBX);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x84);          // je miss
-  const long miss_patch_a = code_index;
-  AddImm(0);
-  cmp_mem_reg(RECORD_KEY, RBX, RCX);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x85);          // jne miss
-  const long miss_patch_b = code_index;
-  AddImm(0);
-  // hit: rax = record->entry
-  const long hit_index = code_index;
-  move_mem_reg(RECORD_ENTRY, RBX, RAX);
-  long depth_patch = -1;
-  EmitNativeCallBody(nullptr, depth_patch, done_patch, site->funcref ? 2 : 1);
-  slow_patches.push_back(depth_patch);
-
-  // miss: a record from the resolver, or the bridge
-  PatchForwardJump(miss_patch_a);
-  PatchForwardJump(miss_patch_b);
-  const int64_t resolver = site->funcref ? (int64_t)(size_t)JitCompiler::JitResolveFuncRefSite
-                                        : (int64_t)(size_t)JitCompiler::JitResolveVirtualSite;
-#ifdef _WIN64
-  move_imm_reg((int64_t)site, RCX);
-  move_reg_reg(R9, RDX);
-  sub_imm_reg(32, RSP);
-  move_imm_reg(resolver, RAX);
-  call_reg(RAX);
-  add_imm_reg(32, RSP);
-#else
-  move_imm_reg((int64_t)site, RDI);
-  move_reg_reg(R9, RSI);
-  move_imm_reg(resolver, RAX);
-  call_reg(RAX);
-#endif
-  cmp_imm_reg(0, RAX);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x84);          // je slow: no record
-  slow_patches.push_back(code_index);
-  AddImm(0);
-  move_reg_reg(RAX, RBX);
-  AddMachineCode(0xe9);          // jmp hit
-  const int32_t back = (int32_t)(hit_index - (code_index + 4));
-  AddImm(back);
-}
-
-void JitAmd64::EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch, const long pop_words) {
-  static const long RECORD_TARGET = (long)offsetof(JitVirtualRecord, target);
-  static const long RECORD_CLS_MEM = (long)offsetof(JitVirtualRecord, cls_mem);
-  static const long RECORD_CLS_ID = (long)offsetof(JitVirtualRecord, cls_id);
-  static const long RECORD_MTHD_ID = (long)offsetof(JitVirtualRecord, mthd_id);
+void JitAmd64::EmitNativePrologue(long params, Register top) {
   static const long FR_METHOD = (long)offsetof(StackFrame, method);
   static const long FR_MEM = (long)offsetof(StackFrame, mem);
   static const long FR_IP = (long)offsetof(StackFrame, ip);
@@ -5564,22 +5574,388 @@ void JitAmd64::EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& d
   static const long FR_JIT_MEM = (long)offsetof(StackFrame, jit_mem);
   static const long FR_JIT_OFFSET = (long)offsetof(StackFrame, jit_offset);
   static const long FR_JIT_INST_MEM = (long)offsetof(StackFrame, jit_inst_mem);
-  static_assert(sizeof(StackFrame) <= 56, "the outgoing area reserves 56 bytes for the frame record");
+  static_assert(sizeof(StackFrame) <= REC_MEM, "the frame record block holds a StackFrame before its mem words");
 #ifdef _WIN64
-  static const long AREA = 176;      // shadow 32, seven stack args 56, pad 8, record 56, mem 16, pad 8
-  static const long ARGS = 32;
-  static const long FR = 96;
-  static const long MEM = 152;
+  const Register self_reg = RCX;
+  const Register ctx_reg = RDX;
 #else
-  static const long AREA = 128;      // five stack args 40, pad 8, record 56, mem 16, pad 8
-  static const long ARGS = 0;
-  static const long FR = 48;
-  static const long MEM = 104;
+  const Register self_reg = RDI;
+  const Register ctx_reg = RSI;
 #endif
-  const long cls_id = callee ? callee->GetClass()->GetId() : 0;
-  const long mthd_id = callee ? callee->GetId() : 0;
-  size_t* cls_mem = callee ? callee->GetClass()->GetClassMemory() : nullptr;
-  // a full call stack goes to the bridge, which reports it
+#ifdef _DEBUG_JIT
+  std::wcout << L"NATIVE_ENTRY" << std::endl;
+#endif
+  native_entry_offset = code_index;
+  Prolog();
+
+  // the method's own constants, self, and the caller's stacks
+  move_imm_mem(method->GetClass()->GetId(), CLS_ID, RBP);
+  move_imm_mem(method->GetId(), MTHD_ID, RBP);
+  move_imm_reg((int64_t)method->GetClass()->GetClassMemory(), R8);
+  move_reg_mem(R8, CLASS_MEM, RBP);
+  move_reg_mem(self_reg, INSTANCE_MEM, RBP);
+  move_mem_reg(OP_STACK, ctx_reg, R8);
+  move_reg_mem(R8, OP_STACK, RBP);
+  move_mem_reg(STACK_POS, ctx_reg, R8);
+  move_reg_mem(R8, STACK_POS, RBP);
+  move_mem_reg(CALL_STACK, ctx_reg, R8);
+  move_reg_mem(R8, CALL_STACK, RBP);
+  move_mem_reg(CALL_STACK_POS, ctx_reg, R8);
+  move_reg_mem(R8, CALL_STACK_POS, RBP);
+
+  // the frame record: method, mem = &mem[0], ip = -1, jit_called = 0,
+  // jit_mem = 0 (RegisterRoot sets it), jit_offset = 0, jit_inst_mem = 0;
+  // mem = (self, 0); the entry kind RTRN tests
+  move_imm_reg((int64_t)method, R8);
+  move_reg_mem(R8, rec_base + FR_METHOD, RBP);
+  lea_mem_reg(rec_base + REC_MEM, RBP, R8);
+  move_reg_mem(R8, rec_base + FR_MEM, RBP);
+  if(sizeof(long) == 4) {
+    move_imm_mem32(-1, rec_base + FR_IP, RBP);
+    move_imm_mem32(0, rec_base + FR_JIT_OFFSET, RBP);
+  }
+  else {
+    move_imm_mem(-1, rec_base + FR_IP, RBP);
+    move_imm_mem(0, rec_base + FR_JIT_OFFSET, RBP);
+  }
+  move_imm_mem8(0, rec_base + FR_JIT_CALLED, RBP);
+  move_imm_mem(0, rec_base + FR_JIT_MEM, RBP);
+  move_imm_mem(0, rec_base + FR_JIT_INST_MEM, RBP);
+  move_reg_mem(self_reg, rec_base + REC_MEM, RBP);
+  move_imm_mem(0, rec_base + REC_MEM + (long)sizeof(size_t), RBP);
+  move_imm_mem(1, rec_base + REC_KIND, RBP);
+
+  // push it: call_stack[pos] = &record; pos++ (the slot first, as PushFrame
+  // orders them). The record is scanned only once this thread parks, which
+  // it cannot do before RegisterRoot fills jit_mem.
+  move_mem_reg(CALL_STACK, RBP, R8);
+  move_mem_reg(CALL_STACK_POS, RBP, R9);
+#ifdef _WIN64
+  move_mem_reg32(0, R9, R10);
+#else
+  move_mem_reg(0, R9, R10);
+#endif
+  lea_mem_reg(rec_base, RBP, R11);
+  move_reg_base_index(R11, 0, R8, R10, sizeof(size_t));
+#ifdef _WIN64
+  inc_mem32(0, R9);
+#else
+  inc_mem(0, R9);
+#endif
+
+  // where RegisterRoot and the callback's self reload look
+  lea_mem_reg(rec_base + FR_JIT_MEM, RBP, R8);
+  move_reg_mem(R8, JIT_MEM, RBP);
+  lea_mem_reg(rec_base + FR_JIT_OFFSET, RBP, R8);
+  move_reg_mem(R8, JIT_OFFSET, RBP);
+  lea_mem_reg(rec_base + REC_MEM, RBP, R8);
+  move_reg_mem(R8, FRAME_MEM, RBP);
+
+  // the arguments end at NATIVE_ARGS + the parameter words
+  if(params > 0) {
+    lea_mem_reg(NATIVE_ARGS + params * (long)sizeof(size_t), RBP, top);
+  }
+}
+
+/**
+ * RTRN with a native entry: the method's value, the working stack's top,
+ * into XMM0 -- Int bits or a Float -- ahead of the exit the entry kind
+ * selects. Nothing for a method that returns Nil.
+ */
+void JitAmd64::EmitReturnValue() {
+  const MemoryType rtrn = method->GetReturn();
+  if((rtrn != INT_TYPE && rtrn != FLOAT_TYPE) || working_stack.empty()) {
+    return;
+  }
+  RegInstr* left = working_stack.front();
+  switch(left->GetType()) {
+  case IMM_INT: {
+    RegisterHolder* holder = GetRegister();
+    move_imm_reg(left->GetOperand(), holder->GetRegister());
+    move_reg_xreg(holder->GetRegister(), XMM0);
+    ReleaseRegister(holder);
+  }
+    break;
+
+  case MEM_INT:
+  case MEM_FLOAT:
+    move_mem_xreg((long)left->GetOperand(), RBP, XMM0);
+    break;
+
+  case REG_INT:
+    move_reg_xreg(left->GetRegister()->GetRegister(), XMM0);
+    break;
+
+  case IMM_FLOAT:
+    move_imm_xreg(left, XMM0);
+    break;
+
+  case REG_FLOAT:
+    move_xreg_xreg(left->GetRegister()->GetRegister(), XMM0);
+    break;
+  }
+}
+
+/**
+ * The call's values -- the arguments, the receiver and, for a func-ref
+ * call, its packed word -- into this frame's outgoing area in operand-stack
+ * order (the receiver above the arguments), and off the working stack. The
+ * callee reads its arguments below NATIVE_ARGS plus its parameter words;
+ * the slow path copies them all onto the operand stack.
+ */
+void JitAmd64::MarshalOutArgs(long params) {
+  if(params < 1 || params > (long)working_stack.size()) {
+    compile_success = false;
+    return;
+  }
+  RegisterHolder* base_holder = GetRegister();
+  const Register base = base_holder->GetRegister();
+  move_reg_reg(RSP, base);
+
+  const long non_params = (long)working_stack.size() - params;
+  long i = 0;
+  long disp = OUT_ARGS;
+  for(std::deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
+    RegInstr* left = (*iter);
+    if(i < non_params) {
+      i++;
+      continue;
+    }
+    switch(left->GetType()) {
+    case IMM_INT:
+      move_imm_mem(left->GetOperand(), disp, base);
+      break;
+
+    case MEM_INT: {
+      RegisterHolder* temp_holder = GetRegister();
+      move_mem_reg((long)left->GetOperand(), RBP, temp_holder->GetRegister());
+      move_reg_mem(temp_holder->GetRegister(), disp, base);
+      ReleaseRegister(temp_holder);
+    }
+      break;
+
+    case REG_INT:
+      move_reg_mem(left->GetRegister()->GetRegister(), disp, base);
+      break;
+
+    case IMM_FLOAT:
+      move_imm_memx(left, disp, base);
+      break;
+
+    case MEM_FLOAT: {
+      RegisterHolder* temp_holder = GetXmmRegister();
+      move_mem_xreg((long)left->GetOperand(), RBP, temp_holder->GetRegister());
+      move_xreg_mem(temp_holder->GetRegister(), disp, base);
+      ReleaseXmmRegister(temp_holder);
+    }
+      break;
+
+    case REG_FLOAT:
+      move_xreg_mem(left->GetRegister()->GetRegister(), disp, base);
+      break;
+    }
+    disp += (long)sizeof(size_t);
+  }
+  ReleaseRegister(base_holder);
+
+  // clean up working stack
+  for(long j = 0; j < params; ++j) {
+    RegInstr* left = working_stack.front();
+    working_stack.pop_front();
+    switch(left->GetType()) {
+    case REG_INT:
+      ReleaseRegister(left->GetRegister());
+      break;
+
+    case REG_FLOAT:
+      ReleaseXmmRegister(left->GetRegister());
+      break;
+
+    default:
+      break;
+    }
+    delete left;
+    left = nullptr;
+  }
+}
+
+/**
+ * A native call site (see the header). R11 addresses the outgoing area: the
+ * stack pointer's distance from RBP is not known until the XMM block is
+ * patched, and RSP as a base needs a SIB byte the encoders do not emit.
+ * Every live register is spilled to its TMP slot, as for a callback.
+ */
+void JitAmd64::EmitNativeCallSite(long instr_id, StackInstr* instr, long instr_index, long params) {
+  static const long RECORD_KEY = (long)offsetof(JitVirtualRecord, key);
+  static const long RECORD_ENTRY = (long)offsetof(JitVirtualRecord, entry);
+  static const long RECORD_TARGET = (long)offsetof(JitVirtualRecord, target);
+  const bool funcref = virtual_site && virtual_site->funcref;
+  const long callee_params = params - (funcref ? 2 : 1);
+  const long SELF = OUT_ARGS + callee_params * (long)sizeof(size_t);
+  const long KEY = SELF + (long)sizeof(size_t);
+#ifdef _DEBUG_JIT
+  if(direct_callee) {
+    std::wcout << L"NATIVE_CALL: name='" << direct_callee->GetName() << L"'" << std::endl;
+  }
+  else if(funcref) {
+    std::wcout << L"FUNCREF_CALL" << std::endl;
+  }
+  else {
+    std::wcout << L"VIRTUAL_CALL: name='" << virtual_site->declaration->GetName() << L"'" << std::endl;
+  }
+#endif
+  MarshalOutArgs(params);
+
+  std::vector<long> slow_patches;
+  long error_patch = -1;
+  long done_patch = -1;
+  move_reg_reg(RSP, R11);
+  if(direct_callee) {
+    // rax = callee->native_entry, or slow
+    move_imm_reg((int64_t)direct_callee->NativeEntryAddress(), RAX);
+    move_mem_reg(0, RAX, RAX);
+    cmp_imm_reg(0, RAX);
+    AddMachineCode(0x0f);
+    AddMachineCode(0x84);          // je slow
+    slow_patches.push_back(code_index);
+    AddImm(0);
+    EmitNativeCall(SELF, slow_patches, error_patch, done_patch);
+  }
+  else {
+    // the key: the receiver's class word, or the func-ref word. A Nil
+    // receiver or a non-object goes to the bridge, which reports it.
+    move_mem_reg(funcref ? KEY : SELF, R11, R9);
+    if(funcref) {
+      move_reg_reg(R9, RCX);
+    }
+    else {
+      cmp_imm_reg(0, R9);
+      AddMachineCode(0x0f);
+      AddMachineCode(0x84);          // je slow: Nil receiver
+      slow_patches.push_back(code_index);
+      AddImm(0);
+      cmp_imm_mem(TYPE * (long)sizeof(size_t), R9, instructions::NIL_TYPE);
+      AddMachineCode(0x0f);
+      AddMachineCode(0x85);          // jne slow: not an object instance
+      slow_patches.push_back(code_index);
+      AddImm(0);
+      move_mem_reg(SIZE_OR_CLS * (long)sizeof(size_t), R9, RCX);   // the receiver's class
+    }
+    move_imm_reg((int64_t)virtual_site, RBX);
+    move_mem_reg(0, RBX, RBX);     // the site's current record
+    cmp_imm_reg(0, RBX);
+    AddMachineCode(0x0f);
+    AddMachineCode(0x84);          // je miss
+    const long miss_patch_a = code_index;
+    AddImm(0);
+    cmp_mem_reg(RECORD_KEY, RBX, RCX);
+    AddMachineCode(0x0f);
+    AddMachineCode(0x85);          // jne miss
+    const long miss_patch_b = code_index;
+    AddImm(0);
+    // hit: rax = record->entry; the record stays in RBX (callee-saved) for
+    // the error report
+    const long hit_index = code_index;
+    move_mem_reg(RECORD_ENTRY, RBX, RAX);
+    EmitNativeCall(SELF, slow_patches, error_patch, done_patch);
+
+    // miss: a record from the resolver, or the bridge
+    PatchForwardJump(miss_patch_a);
+    PatchForwardJump(miss_patch_b);
+    const int64_t resolver = funcref ? (int64_t)(size_t)JitCompiler::JitResolveFuncRefSite
+                                     : (int64_t)(size_t)JitCompiler::JitResolveVirtualSite;
+#ifdef _WIN64
+    move_imm_reg((int64_t)virtual_site, RCX);
+    move_reg_reg(R9, RDX);
+    sub_imm_reg(32, RSP);
+    move_imm_reg(resolver, RAX);
+    call_reg(RAX);
+    add_imm_reg(32, RSP);
+#else
+    move_imm_reg((int64_t)virtual_site, RDI);
+    move_reg_reg(R9, RSI);
+    move_imm_reg(resolver, RAX);
+    call_reg(RAX);
+#endif
+    cmp_imm_reg(0, RAX);
+    AddMachineCode(0x0f);
+    AddMachineCode(0x84);          // je slow: no record
+    slow_patches.push_back(code_index);
+    AddImm(0);
+    move_reg_reg(RAX, RBX);
+    AddMachineCode(0xe9);          // jmp hit
+    const int32_t back = (int32_t)(hit_index - (code_index + 4));
+    AddImm(back);
+  }
+
+  // error: JitNativeCallError(status, callee, caller cls_id, caller mthd_id)
+  PatchForwardJump(error_patch);
+#ifdef _WIN64
+  move_reg_reg(RAX, RCX);
+  if(direct_callee) {
+    move_imm_reg((int64_t)direct_callee, RDX);
+  }
+  else {
+    move_mem_reg(RECORD_TARGET, RBX, RDX);
+  }
+  move_mem_reg(CLS_ID, RBP, R8);
+  move_mem_reg(MTHD_ID, RBP, R9);
+  sub_imm_reg(32, RSP);
+#else
+  move_reg_reg(RAX, RDI);
+  if(direct_callee) {
+    move_imm_reg((int64_t)direct_callee, RSI);
+  }
+  else {
+    move_mem_reg(RECORD_TARGET, RBX, RSI);
+  }
+  move_mem_reg(CLS_ID, RBP, RDX);
+  move_mem_reg(MTHD_ID, RBP, RCX);
+#endif
+  move_imm_reg((int64_t)(size_t)JitCompiler::JitNativeCallError, RAX);
+  call_reg(RAX);                 // does not return
+
+  // slow: the values onto the operand stack, in order, then the bridge
+  for(const long patch : slow_patches) {
+    PatchForwardJump(patch);
+  }
+  move_reg_reg(RSP, R11);
+  move_mem_reg(OP_STACK, RBP, RAX);
+  move_mem_reg(STACK_POS, RBP, RCX);
+#ifdef _WIN64
+  move_mem_reg32(0, RCX, RDX);
+#else
+  move_mem_reg(0, RCX, RDX);
+#endif
+  lea_base_index_reg(0, RAX, RDX, sizeof(size_t), RAX);
+  for(long i = 0; i < params; ++i) {
+    move_mem_reg(OUT_ARGS + i * (long)sizeof(size_t), R11, RDX);
+    move_reg_mem(RDX, i * (long)sizeof(size_t), RAX);
+  }
+  add_imm_mem(params, 0, RCX);
+  EmitBridgeCall(instr_id, instr, instr_index);
+  // the result from the operand stack into XMM0, where the native path leaves it
+  if(call_return_type == INT_TYPE || call_return_type == FLOAT_TYPE) {
+    move_mem_reg(STACK_POS, RBP, RCX);
+    dec_mem(0, RCX);
+#ifdef _WIN64
+    move_mem_reg32(0, RCX, RDX);
+#else
+    move_mem_reg(0, RCX, RDX);
+#endif
+    move_mem_reg(OP_STACK, RBP, RAX);
+    move_base_index_xreg(0, RAX, RDX, sizeof(size_t), XMM0);
+  }
+  PatchForwardJump(done_patch);
+}
+
+/**
+ * With RAX holding the entry: a full call stack goes to the bridge, which
+ * reports it; self and this frame's pointer go into the argument registers;
+ * the call; a negative status goes to the error block. RBX survives the
+ * call (the callee saves it).
+ */
+void JitAmd64::EmitNativeCall(long self_offset, std::vector<long>& slow_patches, long& error_patch, long& done_patch) {
   move_mem_reg(CALL_STACK_POS, RBP, RCX);
 #ifdef _WIN64
   move_mem_reg32(0, RCX, RDX);
@@ -5589,181 +5965,27 @@ void JitAmd64::EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& d
   cmp_imm_reg(CALL_STACK_SIZE, RDX);
   AddMachineCode(0x0f);
   AddMachineCode(0x8d);          // jge slow
-  slow_patch = code_index;
+  slow_patches.push_back(code_index);
   AddImm(0);
-
-  // pop the receiver into R9 (Windows) / RCX (POSIX): count -= 1, op_stack[count]
-#ifdef _WIN64
-  const Register self_reg = R9;
-#else
-  const Register self_reg = RCX;
-#endif
-  move_mem_reg(STACK_POS, RBP, R8);
-  if(pop_words == 1) {
-    dec_mem(0, R8);
-  }
-  else {
-    sub_imm_mem(pop_words, 0, R8);   // the func-ref word above the receiver goes too
-  }
-#ifdef _WIN64
-  move_mem_reg32(0, R8, R10);
-#else
-  move_mem_reg(0, R8, R10);
-#endif
-  move_mem_reg(OP_STACK, RBP, RDX);
-  move_base_index_reg(0, RDX, R10, sizeof(size_t), self_reg);
-
-  // the outgoing area, addressed through R11
-  sub_imm_reg(AREA, RSP);
+  // R11 again: the resolver may have run on the way here
   move_reg_reg(RSP, R11);
-
-  // the callee's frame record: method, mem = &mem[0], ip = -1, jit_called = 0,
-  // jit_mem = 0 (RegisterRoot sets it), jit_offset = 0, jit_inst_mem = 0
-  if(callee) {
-    move_imm_reg((int64_t)callee, RDX);
-  }
-  else {
-    move_mem_reg(RECORD_TARGET, RBX, RDX);
-  }
-  move_reg_mem(RDX, FR + FR_METHOD, R11);
-  lea_mem_reg(MEM, R11, RDX);
-  move_reg_mem(RDX, FR + FR_MEM, R11);
-  if(sizeof(long) == 4) {
-    move_imm_mem32(-1, FR + FR_IP, R11);
-    move_imm_mem32(0, FR + FR_JIT_OFFSET, R11);
-  }
-  else {
-    move_imm_mem(-1, FR + FR_IP, R11);
-    move_imm_mem(0, FR + FR_JIT_OFFSET, R11);
-  }
-  move_imm_mem8(0, FR + FR_JIT_CALLED, R11);
-  move_imm_mem(0, FR + FR_JIT_MEM, R11);
-  move_imm_mem(0, FR + FR_JIT_INST_MEM, R11);
-  move_reg_mem(self_reg, MEM, R11);
-  move_imm_mem(0, MEM + sizeof(size_t), R11);
-
-  // push the record: call_stack[pos] = &record; pos++ (the slot before the
-  // count, as PushFrame orders them)
-  move_mem_reg(CALL_STACK, RBP, RDX);
-  move_mem_reg(CALL_STACK_POS, RBP, R8);
 #ifdef _WIN64
-  move_mem_reg32(0, R8, R10);
+  move_mem_reg(self_offset, R11, RCX);
+  move_reg_reg(RBP, RDX);
 #else
-  move_mem_reg(0, R8, R10);
-#endif
-  // RDX holds call_stack, R10 the count: the record's address goes through
-  // the receiver register's neighbour that is free here
-#ifdef _WIN64
-  lea_mem_reg(FR, R11, RCX);
-  move_reg_base_index(RCX, 0, RDX, R10, sizeof(size_t));
-  inc_mem32(0, R8);
-#else
-  lea_mem_reg(FR, R11, RSI);
-  move_reg_base_index(RSI, 0, RDX, R10, sizeof(size_t));
-  inc_mem(0, R8);
-#endif
-
-  // the stack arguments the bridge entry expects
-#ifdef _WIN64
-  // [rsp+32..88): op_stack, stack_pos, call_stack, call_stack_pos, &jit_mem, &jit_offset, mem
-  move_mem_reg(OP_STACK, RBP, RDX);
-  move_reg_mem(RDX, ARGS + 0, R11);
-  move_mem_reg(STACK_POS, RBP, RDX);
-  move_reg_mem(RDX, ARGS + 8, R11);
-  move_mem_reg(CALL_STACK, RBP, RDX);
-  move_reg_mem(RDX, ARGS + 16, R11);
-  move_mem_reg(CALL_STACK_POS, RBP, RDX);
-  move_reg_mem(RDX, ARGS + 24, R11);
-  lea_mem_reg(FR + FR_JIT_MEM, R11, RDX);
-  move_reg_mem(RDX, ARGS + 32, R11);
-  lea_mem_reg(FR + FR_JIT_OFFSET, R11, RDX);
-  move_reg_mem(RDX, ARGS + 40, R11);
-  lea_mem_reg(MEM, R11, RDX);
-  move_reg_mem(RDX, ARGS + 48, R11);
-  // register arguments: cls_id, mthd_id, cls_mem, self (already in R9)
-  if(callee) {
-    move_imm_reg(cls_id, RCX);
-    move_imm_reg(mthd_id, RDX);
-    move_imm_reg((int64_t)cls_mem, R8);
-  }
-  else {
-    move_mem_reg(RECORD_CLS_ID, RBX, RCX);
-    move_mem_reg(RECORD_MTHD_ID, RBX, RDX);
-    move_mem_reg(RECORD_CLS_MEM, RBX, R8);
-  }
-#else
-  // [rsp+0..40): call_stack, call_stack_pos, &jit_mem, &jit_offset, mem
-  move_mem_reg(CALL_STACK, RBP, RDX);
-  move_reg_mem(RDX, ARGS + 0, R11);
-  move_mem_reg(CALL_STACK_POS, RBP, RDX);
-  move_reg_mem(RDX, ARGS + 8, R11);
-  lea_mem_reg(FR + FR_JIT_MEM, R11, RDX);
-  move_reg_mem(RDX, ARGS + 16, R11);
-  lea_mem_reg(FR + FR_JIT_OFFSET, R11, RDX);
-  move_reg_mem(RDX, ARGS + 24, R11);
-  lea_mem_reg(MEM, R11, RDX);
-  move_reg_mem(RDX, ARGS + 32, R11);
-  // register arguments: cls_id, mthd_id, cls_mem, self (already in RCX), op_stack, stack_pos
-  if(callee) {
-    move_imm_reg(cls_id, RDI);
-    move_imm_reg(mthd_id, RSI);
-    move_imm_reg((int64_t)cls_mem, RDX);
-  }
-  else {
-    move_mem_reg(RECORD_CLS_ID, RBX, RDI);
-    move_mem_reg(RECORD_MTHD_ID, RBX, RSI);
-    move_mem_reg(RECORD_CLS_MEM, RBX, RDX);
-  }
-  move_mem_reg(OP_STACK, RBP, R8);
-  move_mem_reg(STACK_POS, RBP, R9);
+  move_mem_reg(self_offset, R11, RDI);
+  move_reg_reg(RBP, RSI);
 #endif
   call_reg(RAX);
-
   // status < 0: report and exit
   cmp_imm_reg(0, RAX);
   AddMachineCode(0x0f);
   AddMachineCode(0x8c);          // jl error
-  const long error_patch = code_index;
+  error_patch = code_index;
   AddImm(0);
-  // pop the record, free the area, join the bridge path
-  move_mem_reg(CALL_STACK_POS, RBP, RCX);
-#ifdef _WIN64
-  dec_mem32(0, RCX);
-#else
-  dec_mem(0, RCX);
-#endif
-  add_imm_reg(AREA, RSP);
   AddMachineCode(0xe9);          // jmp done
   done_patch = code_index;
   AddImm(0);
-
-  // error: JitNativeCallError(status, callee, caller cls_id, caller mthd_id);
-  // the area is still reserved, so the stack is aligned and (Windows) the
-  // shadow space is there
-  PatchForwardJump(error_patch);
-#ifdef _WIN64
-  move_reg_reg(RAX, RCX);
-  if(callee) {
-    move_imm_reg((int64_t)callee, RDX);
-  }
-  else {
-    move_mem_reg(RECORD_TARGET, RBX, RDX);
-  }
-  move_mem_reg(CLS_ID, RBP, R8);
-  move_mem_reg(MTHD_ID, RBP, R9);
-#else
-  move_reg_reg(RAX, RDI);
-  if(callee) {
-    move_imm_reg((int64_t)callee, RSI);
-  }
-  else {
-    move_mem_reg(RECORD_TARGET, RBX, RSI);
-  }
-  move_mem_reg(CLS_ID, RBP, RDX);
-  move_mem_reg(MTHD_ID, RBP, RCX);
-#endif
-  move_imm_reg((int64_t)(size_t)JitCompiler::JitNativeCallError, RAX);
-  call_reg(RAX);
 }
 
 void JitAmd64::imul_mem(long offset, Register base) {
@@ -7933,9 +8155,13 @@ bool JitAmd64::Compile(StackMethod* cm)
     virtual_sites.clear();
     inline_local_offset = 0;
     xmm_pool_used = false;
-    xmm_save_index = -1;
+    xmm_save_indices.clear();
     xmm_restore_indices.clear();
     xmm_save_size = xmm_restore_size = 0;
+    rec_base = out_area = 0;
+    native_entry_offset = -1;
+    call_return_type = NIL_TYPE;
+    native_result_taken = false;
 
     for(long i = 0; i < method->GetInstructionCount(); ++i) {
       StackInstr* scan_instr = method->GetInstruction(i);
@@ -8078,29 +8304,70 @@ bool JitAmd64::Compile(StackMethod* cm)
     inline_local_offset = -(local_space + TMP_REG_9);
     local_space += extra_inline_space;
 
-    // setup
-    Prolog();
+    // The frame record block for the native entry (EmitNativePrologue) goes
+    // below the locals and the inline space: the StackFrame, its two mem
+    // words and the entry kind. Outside the region the collector walks
+    // (org_local_space), like the inline space.
+    rec_base = -(local_space + TMP_REG_9) - REC_SIZE;
+    local_space += REC_SIZE;
 
-    // method information
-#ifdef _WIN64    
-    move_reg_mem(RCX, CLS_ID, RBP);
-    move_reg_mem(RDX, MTHD_ID, RBP);
-    move_reg_mem(R8, CLASS_MEM, RBP);
-    move_reg_mem(R9, INSTANCE_MEM, RBP);
-#else
-    move_reg_mem(RDI, CLS_ID, RBP);
-    move_reg_mem(RSI, MTHD_ID, RBP);
-    move_reg_mem(RDX, CLASS_MEM, RBP);
-    move_reg_mem(RCX, INSTANCE_MEM, RBP);
-    move_reg_mem(R8, OP_STACK, RBP);
-    move_reg_mem(R9, STACK_POS, RBP);
+    // the outgoing area for the method's native call sites, sized for the
+    // widest: a callee's register homes and stack slots, then its arguments,
+    // the receiver and (a func-ref call) the func-ref word
+    long out_words = 0;
+    for(long i = 0; i < method->GetInstructionCount(); ++i) {
+      StackInstr* si = method->GetInstruction(i);
+      long words = 0;
+      if(si->GetType() == MTHD_CALL || si->GetType() == MTHD_CALL_JIT) {
+        StackMethod* callee = program->GetClass(si->GetOperand())->GetMethod(si->GetOperand2());
+        if(callee) {
+          words = callee->GetParamCount() + 1;
+        }
+      }
+      else if(si->GetType() == DYN_MTHD_CALL || si->GetType() == DYN_MTHD_CALL_JIT) {
+        words = si->GetOperand() + 2;
+      }
+      if(words > out_words) {
+        out_words = words;
+      }
+    }
+    if(out_words > 0) {
+      out_area = OUT_ARGS + out_words * (long)sizeof(size_t);
+      while(out_area % 16 != 0) {
+        out_area += 8;
+      }
+    }
+
+    // the frame's size, aligned, once: both prologues reserve it
+    local_space += 16;
+    while(local_space % 16 != 0) {
+      local_space += 8;
+    }
+    local_space += 8;
+
+    // The two entries (see EmitNativePrologue): the bridge entry at offset
+    // 0, then the native entry, meeting at RegisterRoot. `top` addresses
+    // the arguments for ProcessParameters and is held across both. A method
+    // whose result is a func-ref, two words, has the bridge entry only.
+    RegisterHolder* top_holder = GetRegister();
+    const Register top = top_holder->GetRegister();
+#ifdef _DEBUG_JIT
+    // the prologues use R8-R11 and the argument registers as scratch
+    assert(top == RAX || top == RBX);
 #endif
+    long join_patch = -1;
+    EmitBridgePrologue(method->GetParamCount(), top, join_patch);
+    if(method->GetReturn() != FUNC_TYPE) {
+      EmitNativePrologue(method->GetParamCount(), top);
+    }
+    PatchForwardJump(join_patch);
 
     // register root
     RegisterRoot();
 
     // translate parameters
-    ProcessParameters(method->GetParamCount());
+    ProcessParameters(method->GetParamCount(), top);
+    ReleaseRegister(top_holder);
     // translate program
     ProcessInstructions();
     if(!compile_success) {
@@ -8215,10 +8482,12 @@ bool JitAmd64::Compile(StackMethod* cm)
     // rsp adjustment and six movdqu); the stack stays 16-byte aligned since
     // the adjustment is 96 both ways, and nothing jumps into either block.
     // A method with several returns has several epilogues (RTRN emits one
-    // each), so every restore block is patched with the one save block.
-    if(!xmm_pool_used && xmm_save_index >= 0 && !xmm_restore_indices.empty()) {
-      code[(size_t)xmm_save_index] = 0xeb;
-      code[(size_t)xmm_save_index + 1] = (unsigned char)(xmm_save_size - 2);
+    // each) and two entries have two prologues, so every block is patched.
+    if(!xmm_pool_used && !xmm_save_indices.empty() && !xmm_restore_indices.empty()) {
+      for(const long save_index : xmm_save_indices) {
+        code[(size_t)save_index] = 0xeb;
+        code[(size_t)save_index + 1] = (unsigned char)(xmm_save_size - 2);
+      }
       for(const long restore_index : xmm_restore_indices) {
         code[(size_t)restore_index] = 0xeb;
         code[(size_t)restore_index + 1] = (unsigned char)(xmm_restore_size - 2);
@@ -8226,7 +8495,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     }
 #endif
     // store compiled code
-    NativeCode* native_code = new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts);
+    NativeCode* native_code = new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts, native_entry_offset);
     native_code->SetVirtualSites(virtual_sites);
     method->SetNativeCode(native_code);
 
