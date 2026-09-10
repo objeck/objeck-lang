@@ -3462,7 +3462,10 @@ void JitAmd64::ProcessFloatOperation(StackInstr* instruction) {
 
   InstructionType type = instruction->GetType();
 #ifdef _DEBUG_JIT
-  assert(left->GetType() == MEM_FLOAT);
+  // a Float local read through the register cache arrives as REG_FLOAT, which
+  // call_xfunc takes; the assert predates the cache and stopped every tracing
+  // run of a method that calls Sin/Cos/Sqrt on a cached local
+  assert(left->GetType() == MEM_FLOAT || left->GetType() == REG_FLOAT);
 #endif
 
   RegisterHolder* holder = nullptr;
@@ -4244,7 +4247,8 @@ RegisterHolder* JitAmd64::call_xfunc2(double(*func_ptr)(double, double), RegInst
   }
 
 #ifdef _DEBUG_JIT
-  assert(right->GetType() == MEM_FLOAT);
+  // as in ProcessFloatOperation: a cached Float local is REG_FLOAT
+  assert(right->GetType() == MEM_FLOAT || right->GetType() == REG_FLOAT);
 #endif
 
   move_xreg_mem(XMM1, TMP_XMM_1, RBP);
