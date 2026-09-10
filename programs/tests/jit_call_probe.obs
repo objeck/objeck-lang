@@ -1,0 +1,91 @@
+#~
+# JIT call-overhead probe: what a method call costs once both sides are
+# compiled. Companion to jit_probe.obs; the numbers and the design they
+# motivate live in docs/JIT_CALLING_CONVENTION_DESIGN.md (F7).
+#
+# Do NOT declare these kernels `native` (see jit_probe.obs for why).
+#
+#   obc -src jit_call_probe.obs -dest jit_call_probe.obe
+#   obr --jit=off jit_call_probe.obe      # the interpreter
+#   obr jit_call_probe.obe                # the JIT
+#
+# InlinedCall  obc inlines Small, so the loop contains no call at all
+# RealCall     Add touches an instance field, which the inliner refuses,
+#              so every iteration is a compiled-to-compiled MTHD_CALL
+# NoCall       the body of Add written inline: RealCall minus the call
+# VirtualCall  Area is virtual: a compiled caller reaches an override
+#              through the interpreter trampoline on every call
+# Fib(32)      recursion is never inlined; ~7M calls, no fields
+~#
+
+use System.Time;
+
+class Acc {
+  @v : Int;
+  New() { @v := 0; }
+  method : public : Add(x : Int) ~ Int { @v := (@v + x) and 0xFFFFF; return @v; }
+}
+
+class Shape {
+  New() {}
+  method : virtual : public : Area(x : Int) ~ Int;
+}
+
+class Sq from Shape {
+  New() { Parent(); }
+  method : public : Area(x : Int) ~ Int { return (x * 3) and 0xFFFFF; }
+}
+
+class Probe {
+  function : Small(x : Int, y : Int) ~ Int {
+    return x * 3 + y;
+  }
+
+  function : InlinedCall(n : Int) ~ Int {
+    acc := 0;
+    for(i := 0; i < n; i += 1;) {
+      acc := Small(acc, i) and 0xFFFFF;
+    };
+    return acc;
+  }
+
+  function : RealCall(n : Int, a : Acc) ~ Int {
+    r := 0;
+    for(i := 0; i < n; i += 1;) {
+      r := a->Add(i);
+    };
+    return r;
+  }
+
+  function : NoCall(n : Int, a : Acc) ~ Int {
+    r := 0;
+    for(i := 0; i < n; i += 1;) {
+      r := (r + i) and 0xFFFFF;
+    };
+    return r;
+  }
+
+  function : VirtualCall(n : Int, s : Shape) ~ Int {
+    r := 0;
+    for(i := 0; i < n; i += 1;) {
+      r := s->Area(i);
+    };
+    return r;
+  }
+
+  function : Fib(n : Int) ~ Int {
+    if(n < 2) { return n; };
+    return Fib(n - 1) + Fib(n - 2);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    n := 20000000;
+    a := Acc->New();
+    s := Sq->New();
+    t := Timer->New(true); r1 := InlinedCall(n); t->End(); "InlinedCall {$r1}  {$t->GetElapsedTime()}s"->PrintLine();
+    t := Timer->New(true); r2 := RealCall(n, a); t->End(); "RealCall    {$r2}  {$t->GetElapsedTime()}s"->PrintLine();
+    t := Timer->New(true); r3 := NoCall(n, a); t->End(); "NoCall      {$r3}  {$t->GetElapsedTime()}s"->PrintLine();
+    t := Timer->New(true); r4 := VirtualCall(n / 10, s); t->End(); "VirtualCall {$r4}  {$t->GetElapsedTime()}s  (n/10)"->PrintLine();
+    t := Timer->New(true); r5 := Fib(32); t->End(); "Fib(32)     {$r5}  {$t->GetElapsedTime()}s"->PrintLine();
+  }
+}
