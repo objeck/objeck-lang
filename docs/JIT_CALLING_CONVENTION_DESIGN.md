@@ -1,6 +1,6 @@
 # JIT: what a compiled call costs, and the convention that removes it (F7)
 
-**Status:** phases 1 and 2 implemented, 2026-09-10 (sections 6 and 7); phase 3's first step, the direct native call, implemented on AMD64 the same day (section 8); the rest of phase 3 open. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
+**Status:** phases 1 and 2 implemented, 2026-09-10 (sections 6 and 7); phase 3's first two steps, the direct native call and the inline cache for `virtual` calls, implemented on AMD64 the same day (sections 8 and 9); the register-argument entry open. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
 ("every method entry/exit rebuilds the VM operand-stack view, and JIT-to-JIT calls still marshal
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
@@ -382,4 +382,43 @@ Verified: the flag tests 22/22, `vm_jit_equiv.obs` byte-identical across the thr
 the two new tests; the regression suite in both modes (see the PR). The POSIX variant of the
 sequence (System V registers, five stack arguments, no shadow space) is built and run in
 WSL. ARM64 keeps the bridge until the same is done there.
+
+## 9. Phase 3, second step: an inline cache for `virtual` calls (AMD64, 2026-09-10)
+
+A `virtual` call site cannot bind its callee at compile time: the target depends on the
+receiver's class. Section 8 left those calls on the bridge at 18 ns. Each such site now owns a
+small record set (`JitVirtualSite`, on the caller's `NativeCode`): up to four records of
+receiver class, resolved target, its entry address, class memory and ids, plus the word
+`current` that points at the record for the class seen last.
+
+**What the site emits.** The receiver is read from the top of the operand stack; a Nil
+receiver or a non-object (the header's type word is not `NIL_TYPE`) goes to the bridge, which
+reports it. Its class word (`SIZE_OR_CLS`) is compared with `current->cls`: a hit loads the
+entry from the record and runs section 8's body with the record in `RBX` (callee-saved, so
+the body and the callee both leave it alone) supplying the target, its ids and class memory
+where the bound call used immediates. A miss calls `JitResolveVirtualSite`, which resolves the
+override through the receiver's class as the interpreter does, fills a record for it if the
+target has native code and the site has a record free, publishes it as `current` and returns
+it, so the check repeats and hits; a null return -- no native code yet, a non-object, or a
+site that has seen more classes than it holds -- takes the bridge, which resolves and counts
+as before.
+
+**Consistency.** A record is written once, under the site's spin flag, and published only by
+the `current` word (a release store; the load in compiled code is an aligned word read,
+acquire on x86), so a hit reads one consistent record. A class that returns after another has
+displaced it gets its existing record republished rather than a new one, so an alternating
+site never grows; a site that exhausts its four records is megamorphic and stays on the
+bridge. The resolver runs on the calling thread without allocating or parking.
+
+Alternated with the step-1 binary, medians of three:
+
+| kernel | step 1 | step 2 |
+|---|---|---|
+| `VirtualCall` (2M calls, monomorphic) | 0.036 s | **0.015 s** |
+| `RealCall`, `Fib(32)` | 0.151 s, 0.072 s | unchanged |
+| virtual call, per call | 18 ns | **7.5 ns** |
+
+A `virtual` call now costs what a bound one does. `vm_jit_equiv.obs` gains a site that sees
+six classes in rotation beside a monomorphic one (records filled, reused as the class
+alternates, then exhausted), byte-identical across the three modes.
 
