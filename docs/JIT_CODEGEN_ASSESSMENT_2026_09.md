@@ -278,7 +278,10 @@ pool zeroed on acquire, a bound callee passed by pointer -- brought a compiled c
 and a virtual one to 20 ns; phase 2 (the callee's prologue and epilogue, AMD64) to 14.4 ns;
 phase 3 (the direct native call, then inline caches for `virtual` and func-ref calls, AMD64)
 to 7.0 ns for a bound call and 7.5 ns for a virtual one, with func-ref calls losing the
-bridge's 15 ns too. The register-argument entry was measured as not worth its risk (the
-design's section 11). Also fixed on the way: a compiled frame with a declared-but-unreferenced
-local was scanned under the wrong types (#761), and CI now runs the suite with every method
-compiled on the x64 legs (#762). Open on ARM64: phases 2 and 3, on the Mac.
+bridge's 15 ns too; and the register-argument entry (the design's section 11: two prologues
+over one body, the arguments in the caller's outgoing area, the result in `XMM0`, the frame
+record in the callee's frame) to 5.5 ns bound and 6.0 ns virtual, with `Fib(32)` at 0.043 s
+against 0.208 s on master and func-ref calls at less than half their section 10 cost. Also
+fixed on the way: a compiled frame with a declared-but-unreferenced local was scanned under
+the wrong types (#761), and CI now runs the suite with every method compiled on the x64 legs
+(#762). Open on ARM64: phases 2 and 3 and the entry, on the Mac.
