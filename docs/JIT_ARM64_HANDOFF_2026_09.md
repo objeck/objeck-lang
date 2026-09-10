@@ -7,6 +7,41 @@ legs, thirty minutes a round trip with a failure artifact as the only debugger. 
 still open on the assessment's list is ARM64-heavy, and on the Mac the backend builds, runs and
 sits under `lldb` in minutes.
 
+## Check in here first (written 2026-09-10 evening, on the Windows box)
+
+Sections 1 and 3 below describe the tree as it was on 2026-09-09; this block is what changed
+since and where to start. `docs/HANDOFF_2026_09_10.md` has the day's full record.
+
+| item | now |
+|---|---|
+| `master` | `6340a4cc6d` after [#765](https://github.com/objeck/objeck-lang/pull/765); [#766](https://github.com/objeck/objeck-lang/pull/766) (the compiler fix for #763, the Linux x64 register pool, and section 4d below) merges on top when its legs are green |
+| F7 on AMD64 | complete: the design's sections 6 to 11 (`JIT_CALLING_CONVENTION_DESIGN.md`). A bound compiled call 26.5 ns to 5.5 ns, a virtual one 125 ns to 6.0 ns, `Fib(32)` 0.208 s to 0.043 s. ARM64 has phase 1 only |
+| ARM64 backend | untouched since #761 (frame laid out by declaration, both backends). Its pool is fifteen general and fifteen float registers, so the Linux x64 pool change has no ARM64 counterpart |
+| compiler | #763 fixed: a method with a func-ref parameter can be inlined again, so fixtures no longer need a second `return` to keep such helpers out of the inliner |
+| deploy trees | the Windows box holds #766's binaries; the Mac builds its own (section 2) |
+
+**First hour on the Mac, in this order.**
+
+1. The macOS loop of section 2 on `master`: deploy, both regression passes, the flag tests.
+   Everything since 2026-09-09 was verified on Windows x64 and Linux x64 only; CI's
+   macos-arm64 leg is the sole ARM64 check so far.
+2. Time `programs/tests/jit_call_probe.obs` (bound, virtual and recursive calls, section 4d's
+   "measure first") and `programs/tests/jit_probe.obs` (section 3b) on the deploy `obr`, and put
+   the numbers in the two design documents' tables beside the AMD64 columns.
+3. Do 4d's step 1 (the callee's entry and exit, three small commits) before anything else: it is
+   a day's work with the AMD64 file as the template, and each piece is measured by the probe.
+4. Then choose by the numbers between 4a (loop locals in `X19`+ registers) and 4d's step 2 (the
+   native entry). On AMD64 the call work was worth more than the loop work
+   (`Fib(32)` 4.8x against 2-8x on loop kernels), but ARM64's wider pool may change the balance.
+
+**Rules that bit on the way here, all in `HANDOFF_2026_09_10.md` too.** Run the regression
+suite only in `programs/regression` itself (a copy of the directory misreports the nineteen
+`bad_*` tests). Rebuild the deploy tree with the deploy script before a suite run: a compiler
+from a plain `make` in `core/compiler` produced an `obc` whose error paths printed nothing.
+`OBJECK_JIT_REPORT=1` on the fixture after every backend change. A value a callback leaves
+on the operand stack (`Runtime->Copy`) is the return value when the working stack is empty
+at `RTRN`; the AMD64 native exit learned that the hard way (fixture probe `CopyResults`).
+
 ## 1. Where the tree is
 
 | item | state |
