@@ -318,5 +318,9 @@ traffic itself, which is phase 3's business. The interpreter is untouched by thi
 
 Verified: the flag tests 22/22, `vm_jit_equiv.obs` byte-identical across the three modes; the
 regression suite in both modes (see the PR); a one-method probe with an early return, which
-the first build crashed on. ARM64 is untouched: its `D8`-`D15` saves, zeroing loop and
+the first build crashed on. The suite also caught a bug that predates this work: the char
+store's `R8`-`R15` path released its element register twice, reachable whenever the element
+address landed in an extended register and made common by the new result pop's allocation
+order (fixed alongside, with a probe that stores constant characters and bytes right after
+call results). ARM64 is untouched: its `D8`-`D15` saves, zeroing loop and
 operand-stack sequences are the same shape and the same change, on the Mac.
