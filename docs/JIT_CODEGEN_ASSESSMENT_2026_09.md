@@ -130,9 +130,50 @@ F3, F5, F6, F8 and F9 apply as written. Two differences matter:
   so F2b is smaller there but the ~15-cycle latency still argues for magic
   numbers.
 
-The probe has not been run on ARM64. Adding `jit_probe.obs` to the perf gate
-(currently linux-x64 only) or timing it once on the linux-arm64 and macos-arm64
-legs would turn this section from inspection into measurement.
+### 5a. The ARM64 baseline, measured (2026-09-09)
+
+Measured on macOS ARM64 at `f9d777fc41` (batches 1-5 merged): Apple M4 Max,
+10P+4E, macOS 26.6.2, `obc`/`obr` 2026.9.1 from `deploy_macos_arm64.sh`.
+
+| kernel | interpreter | JIT | speedup |
+|---|---|---|---|
+| `IntLoop` — `sum += (i*7) % 13 - i/3` | 0.560 s | 0.018 s | **30.6×** |
+| `ArraySum` — `for i < a->Size(): total += a[i]` | 0.569 s | 0.019 s | **30.0×** |
+| `FloatDot` | 0.798 s | 0.026 s | **31.1×** |
+| `CallLoop` — `acc := Small(acc, i)` | 0.626 s | 0.020 s | **31.9×** |
+| `Branchy` — three `%` tests per iteration | 0.850 s | 0.024 s | **35.0×** |
+| `Locals` — 8 loop-carried scalars, 8 adds | 1.150 s | 0.046 s | **24.9×** |
+
+Every kernel returned an identical result in both modes, so this doubles as an
+equivalence check.
+
+**Do not read these against section 2's AMD64 column.** That table was taken on
+a different machine, and before batches 1-5 landed; the two differ in hardware
+and in commit, so a ratio between them measures neither. This table is a
+baseline for ARM64 against itself — the thing later ARM64 work is compared to.
+
+### 5b. `jit_probe.obs` cannot be timed interpreted as written
+
+Its kernels are declared `function : native :`, and **`native` bypasses every
+JIT-disable switch**: `--jit=off` and `OBJECK_JIT_DISABLE=1` turn off *auto*-JIT
+(`jit_common.h`), while a `native` method is compiled through a path neither
+reaches. Timing the fixture as committed therefore compares compiled against
+compiled, and reports it as an interpreter number:
+
+| | `--jit=off` | default | apparent "speedup" |
+|---|---|---|---|
+| `IntLoop`, as committed (`native`) | 0.0209 s | 0.0177 s | 1.2× |
+| `IntLoop`, `native` removed | 0.5595 s | 0.0183 s | 30.6× |
+
+The 1.2× is not a slow JIT, it is two JIT runs. The table in 5a was produced
+from a copy with `function : native :` rewritten to `function :`; anyone
+re-measuring must do the same, or add a non-`native` variant to the fixture.
+Since section 5 asks for a baseline that "every later number needs", getting
+this wrong silently invalidates everything downstream.
+
+Adding `jit_probe.obs` to the perf gate (currently linux-x64 only) would keep
+this measured rather than sampled — with the same caveat baked into whatever
+runs it.
 
 ## 6. What this means for v2026.9.1
 
