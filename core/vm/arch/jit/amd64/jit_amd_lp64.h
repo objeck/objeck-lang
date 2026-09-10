@@ -439,6 +439,11 @@ namespace Runtime {
     // compile time: the callback goes to JitCompiler::JitDirectCall with this
     // StackMethod* in place of the opcode
     StackMethod* direct_callee;
+    // set around ProcessStackCallback for a MTHD_CALL to a `virtual`
+    // declaration: the site's inline cache (phase 3, step 2), owned by the
+    // method's NativeCode once the compile succeeds
+    JitVirtualSite* virtual_site;
+    std::vector<JitVirtualSite*> virtual_sites;
     static const int MAX_INLINE_SIZE = 20;
     bool CanInlineMethod(StackMethod* callee);
     void ProcessInlineMethod(StackMethod* callee, StackInstr* call_instr, long& caller_instr_index);
@@ -1133,6 +1138,17 @@ namespace Runtime {
     // (no native code yet, or a full call stack) and the jump past it are
     // returned for patching around the bridge sequence that follows.
     void EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, long& slow_patch_b, long& done_patch);
+    // The same call for a `virtual` site: the receiver's class is compared
+    // with the site's current record and a hit calls the record's entry; a
+    // miss asks JitResolveVirtualSite for a record and retries, or takes the
+    // bridge. Every jump to the slow path is returned in slow_patches.
+    void EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& slow_patches, long& done_patch);
+    // What both share once RAX holds the entry: the depth check (its jump to
+    // the slow path is returned), the receiver pop, the area, the call, the
+    // status check, the pop, the jump past the slow path and the error block.
+    // The callee's constants come from `callee`, or from the record in RBX
+    // when callee is null.
+    void EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch);
     void div_reg_reg(Register src, Register dest, bool is_mod = false, bool src_nonzero = false);
     void div_mem_reg(long offset, Register src, Register dest, bool is_mod = false);
 

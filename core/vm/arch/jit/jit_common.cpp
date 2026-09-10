@@ -251,6 +251,49 @@ void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, con
 }
 
 /**
+ * A virtual call site's miss (see the header). Misses are rare -- the first
+ * call at a site for each receiver class -- so a spin on the site's flag
+ * serializes the fill; hits never take it.
+ */
+JitVirtualRecord* JitCompiler::JitResolveVirtualSite(JitVirtualSite* site, size_t* receiver)
+{
+  StackClass* cls = MemoryManager::GetClass(receiver);
+  if(!cls) {
+    return nullptr;
+  }
+  while(site->filling.exchange(true, std::memory_order_acquire)) {
+    ;
+  }
+  JitVirtualRecord* found = nullptr;
+  for(int i = 0; i < site->used; ++i) {
+    if(site->records[i].cls == cls) {
+      found = &site->records[i];
+      break;
+    }
+  }
+  if(!found && site->used < JitVirtualSite::RECORDS) {
+    StackMethod* target = Runtime::StackInterpreter::ResolveVirtualTarget(cls, site->declaration, site->decl_cls_id, site->decl_mthd_id);
+    void* entry = target->IsVirtual() ? nullptr : target->GetNativeEntry();
+    if(entry) {
+      JitVirtualRecord& record = site->records[site->used];
+      record.cls = cls;
+      record.entry = entry;
+      record.target = target;
+      record.cls_mem = target->GetClass()->GetClassMemory();
+      record.cls_id = target->GetClass()->GetId();
+      record.mthd_id = target->GetId();
+      site->used++;
+      found = &record;
+    }
+  }
+  if(found) {
+    site->current.store(found, std::memory_order_release);
+  }
+  site->filling.store(false, std::memory_order_release);
+  return found;
+}
+
+/**
  * The direct bridge entry (see the header). The trampoline is the one
  * JitStackCallback takes: the caller's MTHD_CALL re-executes in the
  * interpreter, which is where the auto-JIT counts the callee's calls.

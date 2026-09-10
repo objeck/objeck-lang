@@ -750,8 +750,13 @@ void JitAmd64::ProcessInstructions() {
         // the bridge resolves per receiver -- takes the direct bridge entry
         // with its StackMethod* as the first argument.
         direct_callee = called_method->IsVirtual() ? nullptr : called_method;
+        if(called_method->IsVirtual()) {
+          virtual_site = new JitVirtualSite(called_method, instr->GetOperand(), instr->GetOperand2());
+          virtual_sites.push_back(virtual_site);
+        }
         ProcessStackCallback(MTHD_CALL, instr, instr_index, called_method->GetParamCount() + 1);
         direct_callee = nullptr;
+        virtual_site = nullptr;
         ProcessReturnParameters(called_method->GetReturn());
       }
     }
@@ -2817,6 +2822,13 @@ void JitAmd64::ProcessStackCallback(long instr_id, StackInstr* instr, long &inst
     EmitNativeCallFastPath(direct_callee, slow_patch_a, slow_patch_b, done_patch);
     PatchForwardJump(slow_patch_a);
     PatchForwardJump(slow_patch_b);
+  }
+  else if(virtual_site) {
+    std::vector<long> slow_patches;
+    EmitVirtualCallFastPath(virtual_site, slow_patches, done_patch);
+    for(const long patch : slow_patches) {
+      PatchForwardJump(patch);
+    }
   }
 
 #ifdef _WIN64
@@ -5423,9 +5435,105 @@ void JitAmd64::EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, l
   // half-built (the bridge had the same window). R11 addresses the area: the
   // stack pointer's distance from RBP is not known until the XMM block is
   // patched, and RSP as a base needs a SIB byte the encoders do not emit.
-  const long cls_id = callee->GetClass()->GetId();
-  const long mthd_id = callee->GetId();
-  size_t* cls_mem = callee->GetClass()->GetClassMemory();
+
+#ifdef _DEBUG_JIT
+  std::wcout << L"NATIVE_CALL: name='" << callee->GetName() << L"'" << std::endl;
+#endif
+  // rax = callee->native_entry, or slow
+  move_imm_reg((int64_t)callee->NativeEntryAddress(), RAX);
+  move_mem_reg(0, RAX, RAX);
+  cmp_imm_reg(0, RAX);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x84);          // je slow
+  slow_patch_a = code_index;
+  AddImm(0);
+  EmitNativeCallBody(callee, slow_patch_b, done_patch);
+}
+
+void JitAmd64::EmitVirtualCallFastPath(JitVirtualSite* site, std::vector<long>& slow_patches, long& done_patch) {
+  // The receiver sits on top of the operand stack. A Nil receiver or a
+  // non-object goes to the bridge, which reports it. Its class word is
+  // compared with the site's current record; on a hit the record's entry
+  // is called through the shared body with the record in RBX (callee-saved,
+  // spilled like any live value, and the callee's prologue preserves it);
+  // on a miss JitResolveVirtualSite fills a record and the check repeats,
+  // or the bridge takes the call.
+  static const long RECORD_CLS = (long)offsetof(JitVirtualRecord, cls);
+  static const long RECORD_ENTRY = (long)offsetof(JitVirtualRecord, entry);
+#ifdef _DEBUG_JIT
+  std::wcout << L"VIRTUAL_CALL: name='" << site->declaration->GetName() << L"'" << std::endl;
+#endif
+  // r9 = op_stack[count - 1]
+  move_mem_reg(STACK_POS, RBP, R8);
+#ifdef _WIN64
+  move_mem_reg32(0, R8, R10);
+#else
+  move_mem_reg(0, R8, R10);
+#endif
+  move_mem_reg(OP_STACK, RBP, RDX);
+  move_base_index_reg(-(long)sizeof(size_t), RDX, R10, sizeof(size_t), R9);
+  cmp_imm_reg(0, R9);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x84);          // je slow: Nil receiver
+  slow_patches.push_back(code_index);
+  AddImm(0);
+  cmp_imm_mem(TYPE * (long)sizeof(size_t), R9, instructions::NIL_TYPE);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x85);          // jne slow: not an object instance
+  slow_patches.push_back(code_index);
+  AddImm(0);
+  move_mem_reg(SIZE_OR_CLS * (long)sizeof(size_t), R9, RCX);   // the receiver's class
+  move_imm_reg((int64_t)site, RBX);
+  move_mem_reg(0, RBX, RBX);     // the site's current record
+  cmp_imm_reg(0, RBX);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x84);          // je miss
+  const long miss_patch_a = code_index;
+  AddImm(0);
+  cmp_mem_reg(RECORD_CLS, RBX, RCX);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x85);          // jne miss
+  const long miss_patch_b = code_index;
+  AddImm(0);
+  // hit: rax = record->entry
+  const long hit_index = code_index;
+  move_mem_reg(RECORD_ENTRY, RBX, RAX);
+  long depth_patch = -1;
+  EmitNativeCallBody(nullptr, depth_patch, done_patch);
+  slow_patches.push_back(depth_patch);
+
+  // miss: a record from the resolver, or the bridge
+  PatchForwardJump(miss_patch_a);
+  PatchForwardJump(miss_patch_b);
+#ifdef _WIN64
+  move_imm_reg((int64_t)site, RCX);
+  move_reg_reg(R9, RDX);
+  sub_imm_reg(32, RSP);
+  move_imm_reg((int64_t)(size_t)JitCompiler::JitResolveVirtualSite, RAX);
+  call_reg(RAX);
+  add_imm_reg(32, RSP);
+#else
+  move_imm_reg((int64_t)site, RDI);
+  move_reg_reg(R9, RSI);
+  move_imm_reg((int64_t)(size_t)JitCompiler::JitResolveVirtualSite, RAX);
+  call_reg(RAX);
+#endif
+  cmp_imm_reg(0, RAX);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x84);          // je slow: no record
+  slow_patches.push_back(code_index);
+  AddImm(0);
+  move_reg_reg(RAX, RBX);
+  AddMachineCode(0xe9);          // jmp hit
+  const int32_t back = (int32_t)(hit_index - (code_index + 4));
+  AddImm(back);
+}
+
+void JitAmd64::EmitNativeCallBody(StackMethod* callee, long& slow_patch, long& done_patch) {
+  static const long RECORD_TARGET = (long)offsetof(JitVirtualRecord, target);
+  static const long RECORD_CLS_MEM = (long)offsetof(JitVirtualRecord, cls_mem);
+  static const long RECORD_CLS_ID = (long)offsetof(JitVirtualRecord, cls_id);
+  static const long RECORD_MTHD_ID = (long)offsetof(JitVirtualRecord, mthd_id);
   static const long FR_METHOD = (long)offsetof(StackFrame, method);
   static const long FR_MEM = (long)offsetof(StackFrame, mem);
   static const long FR_IP = (long)offsetof(StackFrame, ip);
@@ -5445,18 +5553,9 @@ void JitAmd64::EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, l
   static const long FR = 48;
   static const long MEM = 104;
 #endif
-
-#ifdef _DEBUG_JIT
-  std::wcout << L"NATIVE_CALL: name='" << callee->GetName() << L"'" << std::endl;
-#endif
-  // rax = callee->native_entry, or slow
-  move_imm_reg((int64_t)callee->NativeEntryAddress(), RAX);
-  move_mem_reg(0, RAX, RAX);
-  cmp_imm_reg(0, RAX);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x84);          // je slow
-  slow_patch_a = code_index;
-  AddImm(0);
+  const long cls_id = callee ? callee->GetClass()->GetId() : 0;
+  const long mthd_id = callee ? callee->GetId() : 0;
+  size_t* cls_mem = callee ? callee->GetClass()->GetClassMemory() : nullptr;
   // a full call stack goes to the bridge, which reports it
   move_mem_reg(CALL_STACK_POS, RBP, RCX);
 #ifdef _WIN64
@@ -5467,7 +5566,7 @@ void JitAmd64::EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, l
   cmp_imm_reg(CALL_STACK_SIZE, RDX);
   AddMachineCode(0x0f);
   AddMachineCode(0x8d);          // jge slow
-  slow_patch_b = code_index;
+  slow_patch = code_index;
   AddImm(0);
 
   // pop the receiver into R9 (Windows) / RCX (POSIX): count -= 1, op_stack[count]
@@ -5492,7 +5591,12 @@ void JitAmd64::EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, l
 
   // the callee's frame record: method, mem = &mem[0], ip = -1, jit_called = 0,
   // jit_mem = 0 (RegisterRoot sets it), jit_offset = 0, jit_inst_mem = 0
-  move_imm_reg((int64_t)callee, RDX);
+  if(callee) {
+    move_imm_reg((int64_t)callee, RDX);
+  }
+  else {
+    move_mem_reg(RECORD_TARGET, RBX, RDX);
+  }
   move_reg_mem(RDX, FR + FR_METHOD, R11);
   lea_mem_reg(MEM, R11, RDX);
   move_reg_mem(RDX, FR + FR_MEM, R11);
@@ -5549,9 +5653,16 @@ void JitAmd64::EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, l
   lea_mem_reg(MEM, R11, RDX);
   move_reg_mem(RDX, ARGS + 48, R11);
   // register arguments: cls_id, mthd_id, cls_mem, self (already in R9)
-  move_imm_reg(cls_id, RCX);
-  move_imm_reg(mthd_id, RDX);
-  move_imm_reg((int64_t)cls_mem, R8);
+  if(callee) {
+    move_imm_reg(cls_id, RCX);
+    move_imm_reg(mthd_id, RDX);
+    move_imm_reg((int64_t)cls_mem, R8);
+  }
+  else {
+    move_mem_reg(RECORD_CLS_ID, RBX, RCX);
+    move_mem_reg(RECORD_MTHD_ID, RBX, RDX);
+    move_mem_reg(RECORD_CLS_MEM, RBX, R8);
+  }
 #else
   // [rsp+0..40): call_stack, call_stack_pos, &jit_mem, &jit_offset, mem
   move_mem_reg(CALL_STACK, RBP, RDX);
@@ -5565,9 +5676,16 @@ void JitAmd64::EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, l
   lea_mem_reg(MEM, R11, RDX);
   move_reg_mem(RDX, ARGS + 32, R11);
   // register arguments: cls_id, mthd_id, cls_mem, self (already in RCX), op_stack, stack_pos
-  move_imm_reg(cls_id, RDI);
-  move_imm_reg(mthd_id, RSI);
-  move_imm_reg((int64_t)cls_mem, RDX);
+  if(callee) {
+    move_imm_reg(cls_id, RDI);
+    move_imm_reg(mthd_id, RSI);
+    move_imm_reg((int64_t)cls_mem, RDX);
+  }
+  else {
+    move_mem_reg(RECORD_CLS_ID, RBX, RDI);
+    move_mem_reg(RECORD_MTHD_ID, RBX, RSI);
+    move_mem_reg(RECORD_CLS_MEM, RBX, RDX);
+  }
   move_mem_reg(OP_STACK, RBP, R8);
   move_mem_reg(STACK_POS, RBP, R9);
 #endif
@@ -5597,12 +5715,22 @@ void JitAmd64::EmitNativeCallFastPath(StackMethod* callee, long& slow_patch_a, l
   PatchForwardJump(error_patch);
 #ifdef _WIN64
   move_reg_reg(RAX, RCX);
-  move_imm_reg((int64_t)callee, RDX);
+  if(callee) {
+    move_imm_reg((int64_t)callee, RDX);
+  }
+  else {
+    move_mem_reg(RECORD_TARGET, RBX, RDX);
+  }
   move_mem_reg(CLS_ID, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, R9);
 #else
   move_reg_reg(RAX, RDI);
-  move_imm_reg((int64_t)callee, RSI);
+  if(callee) {
+    move_imm_reg((int64_t)callee, RSI);
+  }
+  else {
+    move_mem_reg(RECORD_TARGET, RBX, RSI);
+  }
   move_mem_reg(CLS_ID, RBP, RDX);
   move_mem_reg(MTHD_ID, RBP, RCX);
 #endif
@@ -7754,6 +7882,8 @@ bool JitAmd64::Compile(StackMethod* cm)
     is_inlining = false;
     inline_callee = nullptr;
     direct_callee = nullptr;
+    virtual_site = nullptr;
+    virtual_sites.clear();
     inline_local_offset = 0;
     xmm_pool_used = false;
     xmm_save_index = -1;
@@ -7940,6 +8070,11 @@ bool JitAmd64::Compile(StackMethod* cm)
       free(code);
       code = nullptr;
 
+      for(JitVirtualSite* site : virtual_sites) {
+        delete site;
+      }
+      virtual_sites.clear();
+
       // On mid-compilation failure, register holders may be shared across
       // multiple lists (aval_regs, used_regs, aux_regs, working_stack).
       // Deleting from one list risks double-free when the destructor
@@ -8044,7 +8179,9 @@ bool JitAmd64::Compile(StackMethod* cm)
     }
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts));
+    NativeCode* native_code = new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts);
+    native_code->SetVirtualSites(virtual_sites);
+    method->SetNativeCode(native_code);
 
     free(code);
     code = nullptr;

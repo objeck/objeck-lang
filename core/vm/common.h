@@ -490,6 +490,45 @@ class StackInstr
   }
 };
 
+class StackClass;
+class StackMethod;
+
+/********************************
+ * A compiled call site's inline cache for a `virtual` callee (the calling
+ * convention's phase 3, step 2). The site's `current` word -- the first
+ * member, which compiled code reads as [site] -- points at the record for
+ * the class last seen there, or is null. A record is written once, under
+ * the site's lock, and published by that word, so a hit reads one
+ * consistent record; the fill resolver reuses a class's record on a repeat
+ * and stops filling once the records are used up, after which the site
+ * takes the bridge for good. Owned by the caller's NativeCode.
+ ********************************/
+struct JitVirtualRecord {
+  StackClass* cls;        // the receiver class this record answers for
+  void* entry;            // the target's native entry
+  StackMethod* target;
+  size_t* cls_mem;        // the target's class memory
+  long cls_id;
+  long mthd_id;
+};
+
+struct JitVirtualSite {
+  static const int RECORDS = 4;
+  std::atomic<JitVirtualRecord*> current;   // read first by compiled code: keep first
+  std::atomic<bool> filling;
+  int used;
+  JitVirtualRecord records[RECORDS];
+  StackMethod* declaration;                 // the `virtual` declaration the site names
+  long decl_cls_id;
+  long decl_mthd_id;
+
+  JitVirtualSite(StackMethod* d, long c, long m) : current(nullptr), filling(false), used(0), declaration(d), decl_cls_id(c), decl_mthd_id(m) {
+    for(int i = 0; i < RECORDS; ++i) {
+      records[i] = JitVirtualRecord();
+    }
+  }
+};
+
 /********************************
  * JIT compile code
  ********************************/
@@ -503,7 +542,7 @@ class NativeCode {
 
   long size;
   FLOAT_VALUE* floats;
-  
+  std::vector<JitVirtualSite*> virtual_sites;   // the method's inline caches (AMD64)
  public:
 #if defined(_ARM64) || defined(_M_ARM64)
    NativeCode(uint32_t* c, long s, int64_t* i, FLOAT_VALUE* f) {
@@ -521,6 +560,10 @@ class NativeCode {
 #endif
 
   ~NativeCode() {
+    for(JitVirtualSite* site : virtual_sites) {
+      delete site;
+    }
+    virtual_sites.clear();
 #if defined(_ARM64) || defined(_M_ARM64)
     // ARM64 allocates both constant pools with new[] (JitArm64::Compile), so they
     // must be released with delete[]. The old code used free() on ints and, on
@@ -560,6 +603,10 @@ class NativeCode {
 
   inline FLOAT_VALUE* GetFloats() const {
     return floats;
+  }
+
+  void SetVirtualSites(std::vector<JitVirtualSite*>& sites) {
+    virtual_sites.swap(sites);
   }
 };
 
@@ -708,6 +755,10 @@ class StackMethod {
     // aligned load, which is an acquire on the targets this runs on.
     native_entry.store((void*)c->GetCode(), std::memory_order_release);
     native_code.store(c, std::memory_order_release);
+  }
+
+  inline void* GetNativeEntry() const {
+    return native_entry.load(std::memory_order_acquire);
   }
 
   // where a compiled caller reads the entry address from

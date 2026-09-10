@@ -216,6 +216,13 @@ public:
   // last two are the caller's ids, for the message.
   static void JitNativeCallError(const long status, StackMethod* callee, const long cls_id, const long mthd_id);
 
+  // A virtual call site's miss: resolve the override for the receiver's class,
+  // fill (or reuse) the site's record for it and publish it. Returns the
+  // record, or null when the target has no native code yet, the receiver is
+  // not an object, or the site has used all its records -- the caller then
+  // takes the bridge, which resolves and counts as before.
+  static JitVirtualRecord* JitResolveVirtualSite(JitVirtualSite* site, size_t* receiver);
+
   static bool TryAutoJitCompile(StackMethod* callee);
   static void PatchCallSites(StackMethod* callee, long patch_value);
 
