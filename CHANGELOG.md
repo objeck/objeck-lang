@@ -88,6 +88,7 @@ The measured findings of [`docs/JIT_CODEGEN_ASSESSMENT_2026_09.md`](docs/JIT_COD
 
 ### Documentation
 - Sourceforge mirrors the GitHub release through a webhook and is not a manual upload; objeck.org has no versioned `/api/v<VERSION>/` directories, so `latest` is the only served path. Both were documented the other way round, in the pre-flight gate's to-do text and in the publish workflow's failure message
+- **The shipped examples folder is curated and indexed** ([#751](https://github.com/objeck/objeck-lang/pull/751) and the follow-up) — `welcome.obs` is an executable index that needs no libraries or display and prints, for every example, what it shows and the exact `-lib` list that compiles it (all verified by compiling them); a scratch hello-world, a JIT bug reproduction and a 4,092-line duplicate of the 2D game no longer ship; `tools/cicd/check_examples_index.py` fails CI if an example ships unindexed or the index names a missing file. Two leftovers fixed after: the OpenGL shooting gallery moves to the `opengl` folder with the other OpenGL examples as `gl_fps.obs`, and the second file numbered 19 is now `loops_27.obs`
 
 ### Known Issues
 - [#722](https://github.com/objeck/objeck-lang/issues/722) — the ARM64 JIT miscompiles `String->Equals` in a virtual request-handler callback; the two regression tests that would show it run with `JIT_DISABLE`, so shipped behaviour is unchanged from v2026.9.0. Scheduled with the `System.Terminal` release
