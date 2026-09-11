@@ -52,14 +52,13 @@ void JitArm64::Prolog() {
 #endif
 
   const long final_local_space = local_space + RED_ZONE;
-  uint32_t sub_offset = 0xd10183ff;
-  sub_offset |= final_local_space << 10;
+  // the bridge entry's three stack values, read before sp moves
+  AddMachineCode(0xF94003E8); // ldr x8, [sp, #0]
+  AddMachineCode(0xF94007E9); // ldr x9, [sp, #8]
+  AddMachineCode(0xF9400BEA); // ldr x10, [sp, #16]
+  EmitFrameAdjust(final_local_space, true);   // sub sp, sp, #final_local_space
   
   uint32_t setup_code[] = {
-    0xF94003E8, // ldr x8, [sp, #0]
-    0xF94007E9, // ldr x9, [sp, #8]
-    0xF9400BEA, // ldr x10, [sp, #16]
-    sub_offset, // sub sp, sp, #final_local_space
     0xf9002fe0, // str x0, [sp, #88]
     0xf9002be1, // str x1, [sp, #80]
     0xf90027e2, // str x2, [sp, #72]
@@ -70,8 +69,22 @@ void JitArm64::Prolog() {
     0xf90013e7, // str x7, [sp, #32]
     0xf9000fe8, // str x8, [sp, #24]
     0xf9000be9, // str x9, [sp, #16]
-    0xF90033Ea, // str x10, [sp, #96]
-    // Save callee-saved FP registers D8-D15 (non-overlapping with temp slots)
+    0xF90033Ea  // str x10, [sp, #96]
+  };
+  
+  // copy setup
+  const int setup_size = sizeof(setup_code) / sizeof(uint32_t);
+  for(int i = 0; i < setup_size; ++i) {
+    AddMachineCode(setup_code[i]);
+  }
+
+  // Callee-saved D8-D15, which the pool hands out after D0-D7 (GetFpRegister).
+  // A method that never takes one leaves them untouched, so Compile() turns
+  // this block and every epilogue's restore into a branch over themselves
+  // once the body is emitted (fp_callee_saved_used); the index is recorded
+  // for that. The slots are above the spill slots and outside the zeroing.
+  fp_save_index = code_index;
+  static const uint32_t fp_save_code[] = {
     0xFD0063E8, // str d8, [sp, #192]
     0xFD0067E9, // str d9, [sp, #200]
     0xFD006BEA, // str d10, [sp, #208]
@@ -81,11 +94,8 @@ void JitArm64::Prolog() {
     0xFD007BEE, // str d14, [sp, #240]
     0xFD007FEF  // str d15, [sp, #248]
   };
-  
-  // copy setup
-  const int setup_size = sizeof(setup_code) / sizeof(uint32_t);
-  for(int i = 0; i < setup_size; ++i) {
-    AddMachineCode(setup_code[i]);
+  for(size_t i = 0; i < sizeof(fp_save_code) / sizeof(uint32_t); ++i) {
+    AddMachineCode(fp_save_code[i]);
   }
 
   // Save callee-saved X19 and cache &stw_active in it once per method (restored in
@@ -141,8 +151,6 @@ void JitArm64::Epilog() {
   AddMachineCode(op_code);
   
   const long final_local_space = local_space + RED_ZONE;
-  uint32_t add_offset = 0x910183ff;
-  add_offset |= final_local_space << 10;
   
   move_imm_reg(0, X0);
   // Restore callee-saved X19 (cached &stw_active) from the top-of-frame slot the
@@ -151,8 +159,12 @@ void JitArm64::Epilog() {
   // first teardown instruction). Done before `add sp` so the offset is still valid.
   const long stw_save_off = final_local_space - (long)sizeof(size_t);
   move_mem_reg(stw_save_off, SP, X19);                             // ldr x19, [sp, #stw_save_off]
-  // Restore callee-saved FP registers D8-D15 (non-overlapping with temp slots)
-  uint32_t teardown_code[] = {
+  // Restore callee-saved D8-D15. Every RTRN emits its own epilogue, so every
+  // restore block is recorded; Compile() patches each one, with the
+  // prologue's save, into a branch over itself when the method never took
+  // one of these registers.
+  fp_restore_indices.push_back(code_index);
+  static const uint32_t fp_restore_code[] = {
     0xFD4063E8, // ldr d8, [sp, #192]
     0xFD4067E9, // ldr d9, [sp, #200]
     0xFD406BEA, // ldr d10, [sp, #208]
@@ -160,15 +172,34 @@ void JitArm64::Epilog() {
     0xFD4073EC, // ldr d12, [sp, #224]
     0xFD4077ED, // ldr d13, [sp, #232]
     0xFD407BEE, // ldr d14, [sp, #240]
-    0xFD407FEF, // ldr d15, [sp, #248]
-    add_offset, // add sp, sp, #final_local_space
-    0xd65f03c0  // ret
+    0xFD407FEF  // ldr d15, [sp, #248]
   };
-  
-  // copy tear down
-  const int teardown_size = sizeof(teardown_code) / sizeof(uint32_t);
-  for(int i = 0; i < teardown_size; ++i) {
-    AddMachineCode(teardown_code[i]);
+  for(size_t i = 0; i < sizeof(fp_restore_code) / sizeof(uint32_t); ++i) {
+    AddMachineCode(fp_restore_code[i]);
+  }
+  EmitFrameAdjust(final_local_space, false);  // add sp, sp, #final_local_space
+  AddMachineCode(0xd65f03c0);                 // ret
+}
+
+// sub sp, sp, #size (is_sub) or add sp, sp, #size, the immediate computed
+// exactly. The old template held 96 in its immediate field and the frame size
+// was ORed onto it, so a frame whose size had bits 5 or 6 clear was
+// over-allocated by up to 96 bytes -- harmless while nothing below the locals
+// was addressed from the size, which the native entry's outgoing area will
+// be -- and a frame past 4 KB overflowed into the shift bit. Past 4095 bytes
+// the size goes through X11, scratch and dead at both ends of a method.
+void JitArm64::EmitFrameAdjust(long size, bool is_sub) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [" << (is_sub ? L"sub" : L"add") << L" sp, sp, #" << size << L"]" << std::endl;
+#endif
+  if(size >= 0 && size <= 4095) {
+    uint32_t op_code = is_sub ? 0xD10003FF : 0x910003FF;
+    op_code |= (uint32_t)size << 10;
+    AddMachineCode(op_code);
+  }
+  else {
+    move_imm_reg(size, X11);
+    AddMachineCode((is_sub ? 0xCB2063FF : 0x8B2063FF) | ((uint32_t)X11 << 16));   // sub/add sp, sp, x11 (extended, uxtx)
   }
 }
 
@@ -201,61 +232,86 @@ void JitArm64::RegisterRoot() {
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
     
-  // zero out memory
-  RegisterHolder* start_reg = GetRegister();
-  RegisterHolder* end_reg = GetRegister();
-  RegisterHolder* cur_reg = GetRegister();
-  
-  // set start
-  move_sp_reg(start_reg->GetRegister());
-  add_imm_reg(TMP_X0, start_reg->GetRegister());
-  
-  // set end
-  move_sp_reg(end_reg->GetRegister());
-  add_imm_reg((long)(TMP_X0 + offset), end_reg->GetRegister());
-  
-  // compare
-  cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
+  // Zero the frame: the six integer spill slots, then the word below the
+  // first local through the end of the locals (TMP_X0 + offset inclusive,
+  // the bound the loop had). The loop used to start at TMP_X0 and run
+  // straight through the D8-D15 save slots the prologue had just filled, so
+  // every compiled method returned zeros in its caller's callee-saved float
+  // registers; the save slots sit between the two ranges now. Straight
+  // stores, two words each, for the common frame sizes; a loop for the rest.
+  EmitZeroWords(TMP_X0, (TMP_X5 - TMP_X0) / (long)sizeof(size_t) + 1, SP);
+  const long zero_end = TMP_X0 + (long)offset;
+  const long local_words = (zero_end - RED_ZONE) / (long)sizeof(size_t) + 1;
+  static const long ZERO_UNROLL_MAX = 32;   // stp's displacement reaches 504 from SP
+  if(local_words <= ZERO_UNROLL_MAX) {
+    EmitZeroWords(RED_ZONE, local_words, SP);
+  }
+  else {
+    RegisterHolder* start_reg = GetRegister();
+    RegisterHolder* end_reg = GetRegister();
+    move_sp_reg(start_reg->GetRegister());
+    add_imm_reg(RED_ZONE, start_reg->GetRegister());
+    move_sp_reg(end_reg->GetRegister());
+    add_imm_reg(zero_end, end_reg->GetRegister());
+    // while(start <= end) { *start = 0; start += 8; }
+    cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [b.lt +4]" << std::endl;
 #endif
-  AddMachineCode(0x540000CB);
-  
-  // zero out address and advance
-  move_reg_reg(start_reg->GetRegister(), cur_reg->GetRegister());
-  move_imm_mem(0, 0, cur_reg->GetRegister());
-  add_imm_reg(8, start_reg->GetRegister());
-  
+    AddMachineCode(0x5400008B);                      // b.lt past the three below
+    str_xzr_mem(0, start_reg->GetRegister());
+    add_imm_reg(sizeof(size_t), start_reg->GetRegister());
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [b <imm>]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [b -4]" << std::endl;
 #endif
-  
-  uint32_t op_code = 0x17000000;
-  op_code |= -6 & 0x00ffffff;
-  AddMachineCode(op_code);
-  
-  sub_imm_reg(2, X3);
-  
-  ReleaseRegister(cur_reg);
-  ReleaseRegister(end_reg);
-  ReleaseRegister(start_reg);
+    AddMachineCode(0x17000000 | (-4 & 0x00ffffff));  // back to the cmp
+    ReleaseRegister(end_reg);
+    ReleaseRegister(start_reg);
+  }
 }
 
 void JitArm64::ProcessParameters(long params) {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << endl;
 #endif
-  
-  for(long i = 0; i < params; ++i) {
-    RegisterHolder* op_stack_holder = GetRegister();
-    move_mem_reg(OP_STACK, SP, op_stack_holder->GetRegister());
+  if(params < 1) {
+    return;
+  }
 
+  // top = &op_stack[count], then the arguments come off the count. They stay
+  // in place below top for the reads here, the last one nearest it, and
+  // nothing between the drop and the stores can park (the collector reads
+  // the operand stack up to the count). The operand stack's pointer and
+  // count are loaded once per method; each argument is then one load at a
+  // displacement below top, where it was two loads and a dec/lsl/add each.
+  RegisterHolder* top_holder = GetRegister();
+  RegisterHolder* pos_holder = GetRegister();
+  RegisterHolder* count_holder = GetRegister();
+  const Register top = top_holder->GetRegister();
+  move_mem_reg(OP_STACK, SP, top);
+  move_mem_reg(OP_STACK_POS, SP, pos_holder->GetRegister());
+  move_mem_reg(0, pos_holder->GetRegister(), count_holder->GetRegister());
+  add_shifted_reg_reg(count_holder->GetRegister(), 3, top);
+  sub_imm_reg(params, count_holder->GetRegister());
+  move_reg_mem(count_holder->GetRegister(), 0, pos_holder->GetRegister());
+  ReleaseRegister(count_holder);
+  ReleaseRegister(pos_holder);
+
+  // ldur's displacement is nine bits, so past 32 words top steps down
+  long words = 0;
+  long base_words = 0;
+  auto arg_offset = [&](long word) -> long {
+    while((word - base_words) * (long)sizeof(size_t) > 256) {
+      sub_imm_reg(256, top);
+      base_words += 32;
+    }
+    return -(word - base_words) * (long)sizeof(size_t);
+  };
+
+  for(long i = 0; i < params; ++i) {
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
 
-    RegisterHolder* stack_pos_holder = GetRegister();
-    move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
-      
     // A parameter may arrive as STOR_* (pop into slot) or, when the optimizer
     // keeps the incoming arg on the stack to reuse it directly (e.g. forwarding
     // a param into a call: `f(x)` with x a param), as COPY_* (store to slot AND
@@ -265,12 +321,9 @@ void JitArm64::ProcessParameters(long params) {
     // into an FP reg and crash). Mirrors the AMD64 fix.
     if(instr->GetType() == STOR_LOCL_INT_VAR || instr->GetType() == STOR_CLS_INST_INT_VAR ||
        instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
+      words++;
       RegisterHolder* dest_holder = GetRegister();
-      dec_mem(0, stack_pos_holder->GetRegister());
-      move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-      shl_imm_reg(3, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
-      move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
+      move_mem_reg(arg_offset(words), top, dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
       // store int (COPY keeps the value on the working stack for later use)
       if(instr->GetType() == COPY_LOCL_INT_VAR || instr->GetType() == COPY_CLS_INST_INT_VAR) {
@@ -281,36 +334,24 @@ void JitArm64::ProcessParameters(long params) {
       }
     }
     else if(instr->GetType() == STOR_FUNC_VAR) {
+      // two words; the one nearer top ends up on top of the working stack
       RegisterHolder* dest_holder = GetRegister();
-      dec_mem(0, stack_pos_holder->GetRegister());
-      move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-      shl_imm_reg(3, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
-      move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
-      
+      move_mem_reg(arg_offset(words + 1), top, dest_holder->GetRegister());
       RegisterHolder* dest_holder2 = GetRegister();
-      // The func value's second word sits one slot BELOW op_stack[pos]; move_mem_reg
-      // now emits a signed LDUR for the negative displacement (it previously abs()'d
-      // it and read the wrong word above the base).
-      move_mem_reg(-(long)(sizeof(size_t)), op_stack_holder->GetRegister(), dest_holder2->GetRegister());
+      move_mem_reg(arg_offset(words + 2), top, dest_holder2->GetRegister());
+      words += 2;
 
-      move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
-      dec_mem(0, stack_pos_holder->GetRegister());
-      
       working_stack.push_front(new RegInstr(dest_holder2));
       working_stack.push_front(new RegInstr(dest_holder));
-      
+
       // store int
       ProcessStore(instr);
       i++;
     }
     else {
+      words++;
       RegisterHolder* dest_holder = GetFpRegister();
-      dec_mem(0, stack_pos_holder->GetRegister());
-      move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-      shl_imm_reg(3, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
-      move_mem_freg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
+      move_mem_freg(arg_offset(words), top, dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
       // store float (COPY keeps the value on the working stack for later use)
       if(instr->GetType() == COPY_FLOAT_VAR) {
@@ -320,87 +361,73 @@ void JitArm64::ProcessParameters(long params) {
         ProcessStore(instr);
       }
     }
-    ReleaseRegister(op_stack_holder);
-    ReleaseRegister(stack_pos_holder);
   }
+  ReleaseRegister(top_holder);
 }
 
 void JitArm64::ProcessIntCallParameter() {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"INT_CALL: regs=" << aval_regs.size() << endl;
 #endif
-  
+  // the value the callee left: count -= 1, then op_stack[count] in one load
   RegisterHolder* op_stack_holder = GetRegister();
+  RegisterHolder* count_holder = GetRegister();
+  move_mem_reg(OP_STACK_POS, SP, op_stack_holder->GetRegister());
+  move_mem_reg(0, op_stack_holder->GetRegister(), count_holder->GetRegister());
+  sub_imm_reg(1, count_holder->GetRegister());
+  move_reg_mem(count_holder->GetRegister(), 0, op_stack_holder->GetRegister());
   move_mem_reg(OP_STACK, SP, op_stack_holder->GetRegister());
-  
-  RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
-  
-  dec_mem(0, stack_pos_holder->GetRegister());
-  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_imm_reg(3, stack_pos_holder->GetRegister());
-  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
-  move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
+  ldr_base_index_reg(op_stack_holder->GetRegister(), count_holder->GetRegister(), op_stack_holder->GetRegister());
   working_stack.push_front(new RegInstr(op_stack_holder));
-  
-  ReleaseRegister(stack_pos_holder);
+
+  ReleaseRegister(count_holder);
 }
 
 void JitArm64::ProcessFunctionCallParameter() {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"FUNC_CALL: regs=" << aval_regs.size() << endl;
 #endif
-  
+  // two words: count -= 2, then op_stack[count] and op_stack[count + 1]
   RegisterHolder* op_stack_holder = GetRegister();
+  RegisterHolder* count_holder = GetRegister();
+  move_mem_reg(OP_STACK_POS, SP, op_stack_holder->GetRegister());
+  move_mem_reg(0, op_stack_holder->GetRegister(), count_holder->GetRegister());
+  sub_imm_reg(2, count_holder->GetRegister());
+  move_reg_mem(count_holder->GetRegister(), 0, op_stack_holder->GetRegister());
   move_mem_reg(OP_STACK, SP, op_stack_holder->GetRegister());
-  
-  RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
-  
-  sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
+  add_shifted_reg_reg(count_holder->GetRegister(), 3, op_stack_holder->GetRegister());
+  ReleaseRegister(count_holder);
 
-  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_imm_reg(3, stack_pos_holder->GetRegister());
-  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
-  
+  // The func value is two words {block_ptr, mthd_cls_id}; the second sits at
+  // [base, #8] and ends up on top of the working stack. move_mem_reg scales
+  // the byte offset by sizeof(size_t) to build the LDR imm12, so the literal
+  // offset is the word size, not 4 (which collapsed to imm12=0 and re-read
+  // word 0, landing the method id in the closure-block slot and crashing on
+  // invoke).
   RegisterHolder* holder = GetRegister();
-  move_reg_reg(op_stack_holder->GetRegister(), holder->GetRegister());
-  
+  move_mem_reg(sizeof(size_t), op_stack_holder->GetRegister(), holder->GetRegister());
   move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
   working_stack.push_front(new RegInstr(op_stack_holder));
-
-  // Second word of the returned 2-word func value {block_ptr, mthd_cls_id}.
-  // move_mem_reg scales the byte offset by /sizeof(size_t) to build the LDR imm12,
-  // so a literal 4 collapses to imm12=0 and re-reads word 0 -- duplicating block_ptr
-  // and dropping mthd_cls_id, which later lands the method-id in the closure-block
-  // slot and SIGSEGVs on invoke. sizeof(size_t) encodes imm12=1 -> [base,#8].
-  move_mem_reg(sizeof(size_t), holder->GetRegister(), holder->GetRegister());
   working_stack.push_front(new RegInstr(holder));
-  
-  ReleaseRegister(stack_pos_holder);
 }
 
 void JitArm64::ProcessFloatCallParameter() {
 #ifdef _DEBUG_JIT_JIT
   std::wcout << L"FLOAT_CALL: regs=" << aval_regs.size() << endl;
 #endif
-  
   RegisterHolder* op_stack_holder = GetRegister();
+  RegisterHolder* count_holder = GetRegister();
+  move_mem_reg(OP_STACK_POS, SP, op_stack_holder->GetRegister());
+  move_mem_reg(0, op_stack_holder->GetRegister(), count_holder->GetRegister());
+  sub_imm_reg(1, count_holder->GetRegister());
+  move_reg_mem(count_holder->GetRegister(), 0, op_stack_holder->GetRegister());
   move_mem_reg(OP_STACK, SP, op_stack_holder->GetRegister());
-  
-  RegisterHolder* stack_pos_holder = GetRegister();
-  move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
-  
   RegisterHolder* dest_holder = GetFpRegister();
-  dec_mem(0, stack_pos_holder->GetRegister());
-  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-  shl_imm_reg(3, stack_pos_holder->GetRegister());
-  add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
-  move_mem_freg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
+  ldr_base_index_freg(op_stack_holder->GetRegister(), count_holder->GetRegister(), dest_holder->GetRegister());
   working_stack.push_front(new RegInstr(dest_holder));
-  
+
   ReleaseRegister(op_stack_holder);
-  ReleaseRegister(stack_pos_holder);
+  ReleaseRegister(count_holder);
 }
 
 void JitArm64::ProcessInstructions() {
@@ -2159,14 +2186,21 @@ void JitArm64::ProcessReturn(long params) {
     params = (long)working_stack.size();
   }
   if(!working_stack.empty()) {
-    RegisterHolder* op_stack_holder = GetRegister();
-    move_mem_reg(OP_STACK, SP, op_stack_holder->GetRegister());
-    
+    // top = &op_stack[count]; every value goes at a growing displacement from
+    // it and the count is bumped once at the end. Each value used to reload
+    // the count pointer, store, read-modify-write the count and advance the
+    // base.
+    RegisterHolder* top_holder = GetRegister();
     RegisterHolder* stack_pos_holder = GetRegister();
+    const Register top = top_holder->GetRegister();
+    move_mem_reg(OP_STACK, SP, top);
     move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
-    move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
-    shl_imm_reg(3, stack_pos_holder->GetRegister());
-    add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
+    {
+      RegisterHolder* count_holder = GetRegister();
+      move_mem_reg(0, stack_pos_holder->GetRegister(), count_holder->GetRegister());
+      add_shifted_reg_reg(count_holder->GetRegister(), 3, top);
+      ReleaseRegister(count_holder);
+    }
 
     int32_t non_params;
     if(params < 0) {
@@ -2180,6 +2214,7 @@ void JitArm64::ProcessReturn(long params) {
 #endif
     
     int32_t i = 0;
+    long disp = 0;
     for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
       // skip non-params... processed above
       RegInstr* left = (*iter);
@@ -2187,56 +2222,53 @@ void JitArm64::ProcessReturn(long params) {
         i++;
       }
       else {
-        move_mem_reg(OP_STACK_POS, SP, stack_pos_holder->GetRegister());
         switch(left->GetType()) {
         case IMM_INT:
-          move_imm_mem((int64_t)left->GetOperand(), 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
+          move_imm_mem((int64_t)left->GetOperand(), disp, top);
+          disp += sizeof(size_t);
           break;
   
         case MEM_INT: {
             RegisterHolder* temp_holder = GetRegister();
             move_mem_reg((long)left->GetOperand(), SP, temp_holder->GetRegister());
-            move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
-            inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
+            move_reg_mem(temp_holder->GetRegister(), disp, top);
+            disp += sizeof(size_t);
             ReleaseRegister(temp_holder);
           }
           break;
   
         case REG_INT:
-          move_reg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
+          move_reg_mem(left->GetRegister()->GetRegister(), disp, top);
+          disp += sizeof(size_t);
           break;
   
         case IMM_FLOAT:
-          move_imm_memf(left, 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+          move_imm_memf(left, disp, top);
+          disp += sizeof(double);
           break;
   
         case MEM_FLOAT: {
             RegisterHolder* temp_holder = GetFpRegister();
             move_mem_freg((long)left->GetOperand(), SP, temp_holder->GetRegister());
-            move_freg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
-            inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+            move_freg_mem(temp_holder->GetRegister(), disp, top);
+            disp += sizeof(double);
             ReleaseFpRegister(temp_holder);
           }
           break;
   
         case REG_FLOAT:
-          move_freg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+          move_freg_mem(left->GetRegister()->GetRegister(), disp, top);
+          disp += sizeof(double);
           break;
         }
       }
     }
-    ReleaseRegister(op_stack_holder);
+    // the count, once
+    if(disp > 0) {
+      add_imm_mem(disp / (long)sizeof(size_t), 0, stack_pos_holder->GetRegister());
+    }
     ReleaseRegister(stack_pos_holder);
+    ReleaseRegister(top_holder);
     
     // clean up working stack
     if(params < 0) {
@@ -3565,6 +3597,62 @@ void JitArm64::ldrsw_base_index_reg(Register base, Register index, Register dest
              << L", [" << GetRegisterName(base) << L", " << GetRegisterName(index) << L", lsl #2]]" << std::endl;
 #endif
   uint32_t op_code = 0xB8A07800;                                 // size=10, opc=10, option=011 (LSL), S=1
+  op_code |= (uint32_t)(index & 0x1F) << 16;
+  op_code |= (uint32_t)(base & 0x1F) << 5;
+  op_code |= (uint32_t)(dest & 0x1F);
+  AddMachineCode(op_code);
+}
+
+// stp xzr, xzr, [Xn, #offset]: two words zeroed, offset a multiple of 8 in [-512, 504]
+void JitArm64::stp_xzr_mem(long offset, Register base) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [stp xzr, xzr, (" << GetRegisterName(base) << L", #" << offset << L")]" << std::endl;
+#endif
+  assert(offset % 8 == 0 && offset >= -512 && offset <= 504);
+  uint32_t op_code = 0xA9007C1F;                                 // opc=10, L=0, Rt2=Rt=xzr
+  op_code |= ((uint32_t)(offset / 8) & 0x7F) << 15;
+  op_code |= (uint32_t)(base & 0x1F) << 5;
+  AddMachineCode(op_code);
+}
+
+// str xzr, [Xn, #offset]: one word zeroed
+void JitArm64::str_xzr_mem(long offset, Register base) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [str xzr, (" << GetRegisterName(base) << L", #" << offset << L")]" << std::endl;
+#endif
+  emit_ldst_imm(0xF9000000, sizeof(size_t), offset, base, SP);   // Rt=31 is xzr for a store
+}
+
+// zero `words` consecutive words at [base, #offset), pairs first
+void JitArm64::EmitZeroWords(long offset, long words, Register base) {
+  for(; words >= 2; words -= 2, offset += 2 * (long)sizeof(size_t)) {
+    stp_xzr_mem(offset, base);
+  }
+  if(words == 1) {
+    str_xzr_mem(offset, base);
+  }
+}
+
+// ldr Xt, [Xn, Xm, lsl #3]: a word of the operand stack by its index
+void JitArm64::ldr_base_index_reg(Register base, Register index, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest)
+             << L", [" << GetRegisterName(base) << L", " << GetRegisterName(index) << L", lsl #3]]" << std::endl;
+#endif
+  uint32_t op_code = 0xF8607800;                                 // size=11, opc=01, option=011 (LSL), S=1
+  op_code |= (uint32_t)(index & 0x1F) << 16;
+  op_code |= (uint32_t)(base & 0x1F) << 5;
+  op_code |= (uint32_t)(dest & 0x1F);
+  AddMachineCode(op_code);
+}
+
+// ldr Dt, [Xn, Xm, lsl #3]
+void JitArm64::ldr_base_index_freg(Register base, Register index, Register dest) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [f.ldr " << GetRegisterName(dest)
+             << L", [" << GetRegisterName(base) << L", " << GetRegisterName(index) << L", lsl #3]]" << std::endl;
+#endif
+  uint32_t op_code = 0xFC607800;                                 // size=11, V=1, opc=01, option=011 (LSL), S=1
   op_code |= (uint32_t)(index & 0x1F) << 16;
   op_code |= (uint32_t)(base & 0x1F) << 5;
   op_code |= (uint32_t)(dest & 0x1F);
@@ -5149,7 +5237,13 @@ void JitArm64::ProcessIndices()
     for(long j = 0; j < num_dclrs; ++j) {
       const long words = (dclrs[j]->type == FUNC_PARM) ? 2 : 1;
       index += words * (long)sizeof(size_t);
-      slot_offsets[id] = index;
+      // A slot's offset is its lowest word: a func-ref's two words are
+      // written and read at [offset] and [offset + 8] (ProcessStore,
+      // ProcessLoad), and the collector walks the pair the same way. The
+      // offset used to be the pair's upper word, so the second word landed
+      // in the next declaration's slot and the collector read the pair one
+      // word low; jit_entry_shapes.obs (Applied, Cross) fails on that layout.
+      slot_offsets[id] = index - (words - 1) * (long)sizeof(size_t);
       id += words;
     }
   }
@@ -5186,7 +5280,13 @@ void JitArm64::ProcessIndices()
             index += sizeof(double);
           }
         }
-        instr->SetOperand3(index);
+        // the pair's lowest word, as above
+        if(instr->GetType() == LOAD_FUNC_VAR || instr->GetType() == STOR_FUNC_VAR) {
+          instr->SetOperand3(index - (long)sizeof(size_t));
+        }
+        else {
+          instr->SetOperand3(index);
+        }
         last_id = id;
       }
     }
@@ -5386,6 +5486,9 @@ bool JitArm64::Compile(StackMethod* cm)
   if(!cm->GetNativeCode()) {
     skip_jump = false;
     direct_callee = nullptr;
+    fp_callee_saved_used = false;
+    fp_save_index = -1;
+    fp_restore_indices.clear();
     method = cm;
     // Initialize CBZ/CBNZ optimization tracking
     last_cmp_was_zero = false;
@@ -5534,6 +5637,19 @@ bool JitArm64::Compile(StackMethod* cm)
       local_freg_cache.clear();
 
       return false;
+    }
+
+    // phase 2: a method that never took D8-D15 need not save and restore
+    // them. The save block and every restore block (one per RTRN) become a
+    // branch over their own eight words; nothing jumps into either.
+    if(!fp_callee_saved_used && fp_save_index >= 0) {
+#ifdef _DEBUG_JIT_JIT
+      std::wcout << L"  [D8-D15 save and restore skipped: the pool never reached them]" << std::endl;
+#endif
+      code[(size_t)fp_save_index] = 0x14000008;               // b +8
+      for(const long restore_index : fp_restore_indices) {
+        code[(size_t)restore_index] = 0x14000008;
+      }
     }
     
     // update jump addresses

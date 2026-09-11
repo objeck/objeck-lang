@@ -384,6 +384,13 @@ namespace Runtime {
     // StackMethod* in place of the opcode
     StackMethod* direct_callee;
     bool skip_jump;
+    // phase 2: the prologue's D8-D15 save and each epilogue's restore are
+    // patched into a branch over themselves when no callee-saved float
+    // register was ever taken from the pool (set in GetFpRegister). Every
+    // RTRN emits its own epilogue, so every restore block is recorded.
+    bool fp_callee_saved_used;
+    long fp_save_index;
+    std::vector<long> fp_restore_indices;
     // instruction indices of loop-header labels (back-edge targets); only these
     // labels need a GC safepoint poll — if/else merge labels are skipped.
     unordered_set<long> safepoint_lbl_indices;
@@ -399,6 +406,7 @@ namespace Runtime {
     // setup and teardown
     void Prolog();
     void Epilog();
+    void EmitFrameAdjust(long size, bool is_sub);
 
     // stack conversion operations
     void ProcessParameters(long count);
@@ -601,6 +609,9 @@ namespace Runtime {
 #ifdef _VERBOSE
           wcout << L"\t * evicting cached " << GetRegisterName(holder->GetRegister()) << L" *" << endl;
 #endif
+          if(holder->GetRegister() >= D8) {
+            fp_callee_saved_used = true;
+          }
           return holder;
         }
         compile_success = false;
@@ -622,6 +633,9 @@ namespace Runtime {
             << L" *" << endl;
 #endif
 
+      if(holder->GetRegister() >= D8) {
+        fp_callee_saved_used = true;
+      }
       return holder;
     }
 
@@ -777,6 +791,11 @@ namespace Runtime {
     void cbz_reg(Register reg);   // Branch if reg == 0
     void adr_reg(long byte_offset, Register dest);                          // adr Xd, pc+offset
     void ldrsw_base_index_reg(Register base, Register index, Register dest); // ldrsw Xt, [Xn, Xm, lsl #2]
+    void ldr_base_index_reg(Register base, Register index, Register dest);   // ldr Xt, [Xn, Xm, lsl #3]
+    void stp_xzr_mem(long offset, Register base);                            // stp xzr, xzr, [Xn, #offset]
+    void str_xzr_mem(long offset, Register base);                            // str xzr, [Xn, #offset]
+    void EmitZeroWords(long offset, long words, Register base);
+    void ldr_base_index_freg(Register base, Register index, Register dest);  // ldr Dt, [Xn, Xm, lsl #3]
     void br_reg(Register reg);                                               // br Xn
     void cbnz_reg(Register reg);  // Branch if reg != 0
 
