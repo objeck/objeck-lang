@@ -3897,7 +3897,20 @@ void JitAmd64::move_imm_mem16(int16_t imm, int32_t offset, Register dest) {
 }
 
 void JitAmd64::move_imm_mem32(int32_t imm, long offset, Register dest) {
-  move_imm_mem(imm, offset, dest);
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [movl $" << imm << L", " << offset
+    << L"(%" << GetRegisterName(dest) << L")" << L"]" << std::endl;
+#endif
+  // C7 /0 with a four-byte immediate and no REX.W: four bytes. This was
+  // move_imm_mem, a movq, so a constant character stored into a Char[]
+  // (four bytes outside Windows) overwrote the element after it, and the
+  // Windows native entry's four-byte ip and jit_offset ran over what follows
+  AddMachineCode(RXB32(RAX, dest));
+  AddMachineCode(0xc7);
+  unsigned char code = 0x80;
+  RegisterEncode3(code, 5, dest);
+  EmitModRMDisp(code, offset);
+  AddImm(imm);
 }
 
 void JitAmd64::move_imm_mem(int64_t imm, long offset, Register dest) {
