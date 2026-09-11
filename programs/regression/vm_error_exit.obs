@@ -1,6 +1,4 @@
 # EXPECT_RUNTIME_ERROR
-# JIT_DISABLE
-# reason: with every method compiled, the exception this test throws inside the interpreter callback cannot unwind through the JIT'd frame and obr aborts with SIGABRT before Execute's catch, its message and its return value (a separate follow-up); this test is about the entry point's exit status after that catch
 #~
 A program that dies inside the VM must leave obr with a non-zero exit status.
 
@@ -11,10 +9,10 @@ POSIX entry point (core/vm/posix_main.cpp) discarded that result and returned
 a shell, a Makefile, a CI step -- and only a reader of stderr knew. Windows
 returned the -1.
 
-The way in is "1e999"->ToFloat(): std::stod throws out_of_range, and the
-interpreter's Str2Float catches invalid_argument only, so the exception
-escapes to Execute on every platform and in every VM mode (the JIT hands S2F
-back to the interpreter).
+The way in is "1e999"->ToFloat(): std::stod throws out_of_range, which the
+interpreter's Str2Float and the JIT bridge's S2F both let through (they catch
+invalid_argument only), so the exception reaches Execute's catch, or under
+compiled code the bridge's, on every platform and in every VM mode.
 
 THE TRIGGER IS ITSELF A KNOWN BUG. ToFloat on an out-of-range literal should
 yield a value, not kill the program; its fix is tracked as a task of its own.
@@ -31,16 +29,14 @@ survive, so it is not used here.
 The regression runner passes this file only on a non-zero exit WITH output,
 which is exactly the fix: the old obr printed the line and exited 0.
 
-The JIT opt-out marker above: with every method compiled on its first call
-(OBJECK_JIT_THRESHOLD=1, --jit=1) the exception is thrown inside the
-interpreter callback that the compiled Main made, and it cannot unwind
-through the JIT'd frame: libc++ terminates the process (SIGABRT, "terminating
-due to uncaught exception") before Execute's catch, its message and its return
-value are reached. That is a defect of its own, in the JIT rather than the
-entry point, and it would let the runner's second pass count an abort as this
-test's expected error; the marker keeps both passes on the path this file is
-about. Observed on ARM64 (2026-09-10); the AMD64 backend registers no unwind
-information for its code either.
+With every method compiled (OBJECK_JIT_THRESHOLD=1, --jit=1) the exception is
+thrown inside the interpreter callback that the compiled Main made. Until #778
+it could not unwind through the JIT'd frame: libc++ terminated the process
+before Execute's catch, and this file carried the JIT opt-out marker so the
+runner's second pass would not count an abort as its expected error. The
+bridge now catches the exception and reports it as Execute does -- the line,
+the stack, exit status 1 -- so both passes run this file in their own mode,
+and run_vm_flag_tests.py (section 7) checks the status under --jit=1 as well.
 ~#
 
 class VmErrorExit {
