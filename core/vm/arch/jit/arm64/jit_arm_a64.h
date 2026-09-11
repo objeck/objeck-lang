@@ -384,6 +384,13 @@ namespace Runtime {
     // StackMethod* in place of the opcode
     StackMethod* direct_callee;
     bool skip_jump;
+    // phase 2: the prologue's D8-D15 save and each epilogue's restore are
+    // patched into a branch over themselves when no callee-saved float
+    // register was ever taken from the pool (set in GetFpRegister). Every
+    // RTRN emits its own epilogue, so every restore block is recorded.
+    bool fp_callee_saved_used;
+    long fp_save_index;
+    std::vector<long> fp_restore_indices;
     // instruction indices of loop-header labels (back-edge targets); only these
     // labels need a GC safepoint poll — if/else merge labels are skipped.
     unordered_set<long> safepoint_lbl_indices;
@@ -601,7 +608,10 @@ namespace Runtime {
 #ifdef _VERBOSE
           wcout << L"\t * evicting cached " << GetRegisterName(holder->GetRegister()) << L" *" << endl;
 #endif
-          return holder;
+          if(holder->GetRegister() >= D8) {
+        fp_callee_saved_used = true;
+      }
+      return holder;
         }
         compile_success = false;
 #ifdef _DEBUG_JIT_JIT
@@ -622,6 +632,9 @@ namespace Runtime {
             << L" *" << endl;
 #endif
 
+      if(holder->GetRegister() >= D8) {
+        fp_callee_saved_used = true;
+      }
       return holder;
     }
 

@@ -70,8 +70,22 @@ void JitArm64::Prolog() {
     0xf90013e7, // str x7, [sp, #32]
     0xf9000fe8, // str x8, [sp, #24]
     0xf9000be9, // str x9, [sp, #16]
-    0xF90033Ea, // str x10, [sp, #96]
-    // Save callee-saved FP registers D8-D15 (non-overlapping with temp slots)
+    0xF90033Ea  // str x10, [sp, #96]
+  };
+  
+  // copy setup
+  const int setup_size = sizeof(setup_code) / sizeof(uint32_t);
+  for(int i = 0; i < setup_size; ++i) {
+    AddMachineCode(setup_code[i]);
+  }
+
+  // Callee-saved D8-D15, which the pool hands out after D0-D7 (GetFpRegister).
+  // A method that never takes one leaves them untouched, so Compile() turns
+  // this block and every epilogue's restore into a branch over themselves
+  // once the body is emitted (fp_callee_saved_used); the index is recorded
+  // for that. The slots are above the spill slots and outside the zeroing.
+  fp_save_index = code_index;
+  static const uint32_t fp_save_code[] = {
     0xFD0063E8, // str d8, [sp, #192]
     0xFD0067E9, // str d9, [sp, #200]
     0xFD006BEA, // str d10, [sp, #208]
@@ -81,11 +95,8 @@ void JitArm64::Prolog() {
     0xFD007BEE, // str d14, [sp, #240]
     0xFD007FEF  // str d15, [sp, #248]
   };
-  
-  // copy setup
-  const int setup_size = sizeof(setup_code) / sizeof(uint32_t);
-  for(int i = 0; i < setup_size; ++i) {
-    AddMachineCode(setup_code[i]);
+  for(size_t i = 0; i < sizeof(fp_save_code) / sizeof(uint32_t); ++i) {
+    AddMachineCode(fp_save_code[i]);
   }
 
   // Save callee-saved X19 and cache &stw_active in it once per method (restored in
@@ -151,8 +162,12 @@ void JitArm64::Epilog() {
   // first teardown instruction). Done before `add sp` so the offset is still valid.
   const long stw_save_off = final_local_space - (long)sizeof(size_t);
   move_mem_reg(stw_save_off, SP, X19);                             // ldr x19, [sp, #stw_save_off]
-  // Restore callee-saved FP registers D8-D15 (non-overlapping with temp slots)
-  uint32_t teardown_code[] = {
+  // Restore callee-saved D8-D15. Every RTRN emits its own epilogue, so every
+  // restore block is recorded; Compile() patches each one, with the
+  // prologue's save, into a branch over itself when the method never took
+  // one of these registers.
+  fp_restore_indices.push_back(code_index);
+  static const uint32_t fp_restore_code[] = {
     0xFD4063E8, // ldr d8, [sp, #192]
     0xFD4067E9, // ldr d9, [sp, #200]
     0xFD406BEA, // ldr d10, [sp, #208]
@@ -160,16 +175,13 @@ void JitArm64::Epilog() {
     0xFD4073EC, // ldr d12, [sp, #224]
     0xFD4077ED, // ldr d13, [sp, #232]
     0xFD407BEE, // ldr d14, [sp, #240]
-    0xFD407FEF, // ldr d15, [sp, #248]
-    add_offset, // add sp, sp, #final_local_space
-    0xd65f03c0  // ret
+    0xFD407FEF  // ldr d15, [sp, #248]
   };
-  
-  // copy tear down
-  const int teardown_size = sizeof(teardown_code) / sizeof(uint32_t);
-  for(int i = 0; i < teardown_size; ++i) {
-    AddMachineCode(teardown_code[i]);
+  for(size_t i = 0; i < sizeof(fp_restore_code) / sizeof(uint32_t); ++i) {
+    AddMachineCode(fp_restore_code[i]);
   }
+  AddMachineCode(add_offset); // add sp, sp, #final_local_space
+  AddMachineCode(0xd65f03c0); // ret
 }
 
 // register with memory manager
@@ -5443,6 +5455,9 @@ bool JitArm64::Compile(StackMethod* cm)
   if(!cm->GetNativeCode()) {
     skip_jump = false;
     direct_callee = nullptr;
+    fp_callee_saved_used = false;
+    fp_save_index = -1;
+    fp_restore_indices.clear();
     method = cm;
     // Initialize CBZ/CBNZ optimization tracking
     last_cmp_was_zero = false;
@@ -5591,6 +5606,19 @@ bool JitArm64::Compile(StackMethod* cm)
       local_freg_cache.clear();
 
       return false;
+    }
+
+    // phase 2: a method that never took D8-D15 need not save and restore
+    // them. The save block and every restore block (one per RTRN) become a
+    // branch over their own eight words; nothing jumps into either.
+    if(!fp_callee_saved_used && fp_save_index >= 0) {
+#ifdef _DEBUG_JIT_JIT
+      std::wcout << L"  [D8-D15 save and restore skipped: the pool never reached them]" << std::endl;
+#endif
+      code[(size_t)fp_save_index] = 0x14000008;               // b +8
+      for(const long restore_index : fp_restore_indices) {
+        code[(size_t)restore_index] = 0x14000008;
+      }
     }
     
     // update jump addresses
