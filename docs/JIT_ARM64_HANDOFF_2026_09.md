@@ -21,26 +21,44 @@ full record.
 | 4d step 1 | done: a compiled call 17.1 ns to 13.4 ns, `RealCall` 0.363 s to 0.279 s, `Fib(32)` 0.135 s to 0.103 s; the frame-size immediate (the "before step 2" item below) fixed with it |
 | two ARM64 bugs the new test found | fixed on the same branch: the entry zeroing wiped the `D8`-`D15` save slots (every compiled method returned zeros in its caller's callee-saved floats), and a func-ref local's pair was written above a slot reserved below it (the next local clobbered, the collector one word low) |
 | `obc` | a nested expression took exponential time in `AnalyzeCalculation` (24 terms over a minute, 30 never); fixed in [#769](https://github.com/objeck/objeck-lang/pull/769), merged |
-| the deploy tree on the Mac | holds #768's `obr` with the pre-#769 `obc`; `deploy_macos_arm64.sh` from master (`883f4369b4`) before trusting anything else |
+| F4 on ARM64 | done, [#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, handed out after `X0`-`X7`; the entry-shapes test's sums are eleven-term statements (a ten-term version exposed a Windows x64 miscompile, [#773](https://github.com/objeck/objeck-lang/issues/773), the PC's to fix) |
+| the fixture's fallback | gone, [#771](https://github.com/objeck/objeck-lang/pull/771): the libc helpers park a pending caller-saved float in `D8`-`D15` across the call; `OBJECK_JIT_REPORT=1` on `vm_jit_equiv.obs` is silent on ARM64 |
+| 4d step 2 | done, [#776](https://github.com/objeck/objeck-lang/pull/776): the native entry and call site (design section 13); a compiled call 13.8 ns to 7.4 ns, `Fib(32)` 0.107 s to 0.050 s; `DYN_MTHD_CALL_JIT` has a case (compiling a method with a patched func-ref site exited) |
+| the deploy tree on the Mac | holds [#776](https://github.com/objeck/objeck-lang/pull/776)'s `obr` on a `3366d92c4a` tree; `deploy_macos_arm64.sh` from master before trusting anything else |
 | `obr` under a locale libc++ rejects | [#772](https://github.com/objeck/objeck-lang/pull/772), open: the flag tests ran only with `LC_ALL=en_US.UTF-8` because macOS libc++ refused the composite name Python's locale coercion produces; the VM falls back to a locale it can construct, and the flag tests run from any shell (27/27 on the Mac, both regression passes 231/3/0) |
 
-**Corrections to what is written below.** The pool is eight general registers, `X0`-`X7`, not
-fifteen: `X9`-`X15` are commented out in `Compile()`, and `X9`-`X11` are scratch. The float
+**Corrections to what is written below.** The pool was eight general registers, `X0`-`X7`, not
+fifteen (`X9`-`X15` were commented out in `Compile()`); it is twelve now, `X0`-`X7` and
+`X12`-`X15`, and `X9`-`X11` are scratch. The float
 pool hands out `D0` first, not `D15`, so `D8`-`D15` are touched only with nine floats live. The
 backend does not spill: an expression with more than eight live temporaries falls back to the
 interpreter whole, and the bytecode pushes every term of a chain before the first add, so a
-ten-term sum is such an expression.
+thirteen-term sum is such an expression.
 
 **Next on the Mac, in this order.**
 
-1. **F4 on ARM64**: `X12`-`X15` into the pool (four lines in `Compile()`). They are
-   caller-saved, so every path that calls out must spill them: `ProcessStackCallback` spills
-   whatever pool register the working stack holds, but `EmitWriteBarrier`'s spill list knows
-   `TMP_X1`-`TMP_X5` only, and the safepoint poll assumes nothing live. A morning's work; the
-   entry-shapes test's sums can go back to ten terms as its probe.
-2. **4d step 2**, the native entry and call site, per section 4d below; `EmitFrameAdjust` is
-   the exact frame size it needs.
-3. Then 4a (loop locals in `X20`+) and 4b (`D8`-`D15` pins), by the numbers.
+1. 4a (loop locals in `X20`+) and 4b (`D8`-`D15` pins), by the numbers; 4d is done ([#776](https://github.com/objeck/objeck-lang/pull/776)).
+2. The callee's native prologue, about fifty instructions and mostly stores (design section
+   13), is where the next nanosecond of a call is.
+
+**Windows ARM64, as of tonight.** Three things for whoever next touches that leg.
+
+- *A `core_thread_gc_stress` failure, once.* The windows-arm64 leg of #768's CI reported "203
+  corruption(s)" at `68946d87ec`, a docs-only commit whose code the next push ran green. It was
+  the first failure of that test on any ARM64 leg in the forty-two samples before it. On the Mac
+  it did not reproduce in 144 stress runs (with every method compiled, a 1 MB GC threshold, four
+  instances at a time, on the VMs from before #768, from master and from #771), nor on the
+  native-entry VM (48 runs with 0 corruptions). If it recurs, reproduce it on Windows ARM64 or on a
+  four-core Linux ARM64 box before suspecting anything specific; #746 needed four pinned cores
+  to show at all.
+- *What the native entry does for it.* A `long` is four bytes there, so a `StackFrame`'s `ip`
+  and `jit_offset` and the call-stack position are loaded and stored by their size
+  (`load_long`, `store_long`); `X18`, the platform register, is never touched; `x16`/`x17` are
+  written just before their use.
+- *Stack probing.* A frame is allocated with one `sub sp` and never probed. Windows expects a
+  frame larger than a page to touch each page in order, and this was true before tonight; the
+  frame grew by 112 bytes plus the outgoing area, so a method needs about 450 locals to
+  cross a page.
 
 **Traps the Mac added to the list.** From an agent shell with no `LANG`, Python coerces the
 locale and passes `LC_CTYPE=C.UTF-8` to every child; macOS's C library reports that as the

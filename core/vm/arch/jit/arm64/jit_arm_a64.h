@@ -73,6 +73,15 @@ namespace Runtime {
 #define SAVE_D15 248
 #define RED_ZONE 256
 
+// The frame record block a native entry builds in its own frame (see
+// JitArm64::EmitNativePrologue): the StackFrame, the two mem words
+// (self, 0) the record points at, and the entry-kind word RTRN tests
+// (0 bridge, 1 native). It sits above the locals, outside the region the
+// entry zeroing and the collector's walk cover, as the outgoing area does.
+#define REC_MEM 56
+#define REC_KIND 72
+#define REC_SIZE 80
+
   // buffer sizes
 #define MAX_INTS 128
 #define MAX_DBLS 256
@@ -383,13 +392,29 @@ namespace Runtime {
     // compile time: the callback goes to JitCompiler::JitDirectCall with this
     // StackMethod* in place of the opcode
     StackMethod* direct_callee;
+    // a `virtual` or func-ref call site's inline cache, set around
+    // ProcessStackCallback like direct_callee; the method's NativeCode owns
+    // every site once it is compiled
+    JitVirtualSite* virtual_site;
+    std::vector<JitVirtualSite*> virtual_sites;
+    // the call's result type, and whether a native site already put the
+    // result on the working stack (ProcessReturnParameters skips it then)
+    MemoryType call_return_type;
+    bool native_result_taken;
+    // SP-relative: the frame's size (sub sp at entry, add sp at exit), the
+    // frame record block and the outgoing area; the native entry's
+    // instruction offset, or -1 when the method has the bridge entry only
+    long frame_size;
+    long rec_base;
+    long out_base;
+    long native_entry_offset;
     bool skip_jump;
     // phase 2: the prologue's D8-D15 save and each epilogue's restore are
     // patched into a branch over themselves when no callee-saved float
     // register was ever taken from the pool (set in GetFpRegister). Every
     // RTRN emits its own epilogue, so every restore block is recorded.
     bool fp_callee_saved_used;
-    long fp_save_index;
+    std::vector<long> fp_save_indices;   // one per prologue
     std::vector<long> fp_restore_indices;
     // instruction indices of loop-header labels (back-edge targets); only these
     // labels need a GC safepoint poll — if/else merge labels are skipped.
@@ -404,12 +429,22 @@ namespace Runtime {
     unordered_map<long, RegisterHolder*> local_freg_cache;
 
     // setup and teardown
-    void Prolog();
+    void EmitFrameEntry(bool bridge);
+    void EmitFpSaveBlock();
+    void EmitBridgePrologue(long params, Register top, long& join_patch);
+    void EmitNativePrologue(long params, Register top);
     void Epilog();
+    void EmitReturnValue();
+    void MarshalOutArgs(long params);
+    void EmitNativeCallSite(long instr_id, StackInstr* instr, long instr_index, long params);
+    void EmitNativeCall(long self_offset, Register entry, std::vector<long>& slow_patches, long& error_patch, long& done_patch);
+    void EmitBridgeCall(long instr_id, StackInstr* instr, long instr_index);
+    void PatchBranch(long from, long to);
+    void ReleaseVirtualSites();
     void EmitFrameAdjust(long size, bool is_sub);
 
     // stack conversion operations
-    void ProcessParameters(long count);
+    void ProcessParameters(long count, Register top);
     void RegisterRoot();
     void ProcessInstructions();
     void ProcessNot(StackInstr* instr);
@@ -639,6 +674,22 @@ namespace Runtime {
       return holder;
     }
 
+    // A free callee-saved float register (D8-D15) for a value that must
+    // survive a call, or nullptr when none is free. The prologue's save of
+    // those registers then stays for the method (fp_callee_saved_used).
+    inline RegisterHolder* GetCalleeSavedFpRegister() {
+      for(auto it = aval_fregs.begin(); it != aval_fregs.end(); ++it) {
+        if((*it)->GetRegister() >= D8) {
+          RegisterHolder* holder = *it;
+          aval_fregs.erase(it);
+          used_fregs.push_back(holder);
+          fp_callee_saved_used = true;
+          return holder;
+        }
+      }
+      return nullptr;
+    }
+
     // Returns a register to the pool
     inline void ReleaseFpRegister(RegisterHolder* h) {
 #ifdef _DEBUG_JIT_JIT
@@ -725,6 +776,7 @@ namespace Runtime {
     void move_mem_freg(long offset, Register src, Register dest);
     void move_freg_mem(Register src, long offset, Register dest);
     void move_freg_freg(Register src, Register dest);
+    void fmov_freg_freg(Register src, Register dest);   // fmov Dd, Dn, the register itself (move_freg_freg bridges through a GP register)
 
     // math instructions
     void math_imm_reg(int64_t imm, Register reg, InstructionType type);
@@ -793,6 +845,16 @@ namespace Runtime {
     void ldrsw_base_index_reg(Register base, Register index, Register dest); // ldrsw Xt, [Xn, Xm, lsl #2]
     void ldr_base_index_reg(Register base, Register index, Register dest);   // ldr Xt, [Xn, Xm, lsl #3]
     void stp_xzr_mem(long offset, Register base);                            // stp xzr, xzr, [Xn, #offset]
+    void ldar_reg_mem(Register base, Register dest);                         // ldar Xt, [Xn]
+    void stlr_reg_mem(Register src, Register base, bool is32);               // stlr Xt/Wt, [Xn]
+    void str_base_index_reg(Register src, Register base, Register index);    // str Xt, [Xn, Xm, lsl #3]
+    void fmov_reg_freg(Register src, Register dest);                        // fmov Dd, Xn
+    void fmov_freg_reg(Register src, Register dest);                         // fmov Xd, Dn
+    void move_imm64_reg(int64_t imm, Register reg);                          // movz/movk, never the constant pool
+    void add_sp_imm_reg(long imm, Register dest);                            // add Xd, sp, #imm
+    void load_long(long offset, Register base, Register dest);               // a VM `long`: 4 bytes on Windows
+    void store_long(Register src, long offset, Register base);
+    void store_long_zero(long offset, Register base);
     void str_xzr_mem(long offset, Register base);                            // str xzr, [Xn, #offset]
     void EmitZeroWords(long offset, long words, Register base);
     void ldr_base_index_freg(Register base, Register index, Register dest);  // ldr Dt, [Xn, Xm, lsl #3]
