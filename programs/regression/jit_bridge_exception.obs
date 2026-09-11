@@ -1,0 +1,42 @@
+# EXPECT_RUNTIME_ERROR
+#~
+A C++ exception thrown inside a call the JIT's bridge made ends the program
+with the VM's internal-error line and exit status 1, not with a process abort.
+
+Neither backend registers unwind information for the code it emits, so an
+exception thrown in a bridge call -- by the interpreter the bridge nests for a
+callee with no native code, by a trap, or by the bridge's own switch -- could
+not pass through the compiled frame below it: libc++ terminated the process
+(SIGABRT, exit 134, "terminating due to uncaught exception") before Execute's
+catch in vm.cpp printed anything, and libstdc++ and Windows end the same way.
+The bridge's two entries catch the exception now and report it as Execute
+would have: the same ">>> virtual machine: internal error: ... <<<" line, the
+stack, exit(1).
+
+The regression runner passes an expected runtime error on any non-zero exit
+with output, so it cannot tell the abort from the error; run_vm_flag_tests.py
+(section 6) names the status and the message, and this file keeps the shape
+in both regression passes. Parse is native, so it is compiled in the plain
+pass too, and String->ToFloat runs under the bridge either way: in the plain
+pass inside the interpreter the bridge nests (a library method called once
+stays interpreted), and with every method compiled in the bridge's own S2F
+case. Both routes end in the same catch.
+
+The way in is "1e999"->ToFloat(): std::stod throws std::out_of_range, which
+neither the interpreter's Str2Float nor the bridge's S2F catches, on every
+platform. Nothing in the VM throws on purpose, so a fixture for this catch
+rides on an unguarded throw; guard that one and this file needs another way
+in, which the runner reports as "should have failed at runtime".
+~#
+
+class JitBridgeException {
+	function : Main(args : String[]) ~ Nil {
+		"before"->PrintLine();
+		Parse("1e999")->PrintLine();
+		"after"->PrintLine();
+	}
+
+	function : native : Parse(s : String) ~ Float {
+		return s->ToFloat();
+	}
+}
