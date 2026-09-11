@@ -1,6 +1,6 @@
 # JIT: what a compiled call costs, and the convention that removes it (F7)
 
-**Status:** phases 1 and 2 implemented, 2026-09-10 (sections 6 and 7); phase 3 implemented on AMD64 the same day as the direct native call and inline caches for `virtual` and func-ref calls (sections 8 to 10); the register-argument entry of section 3 is not done, and section 11 says why. ARM64 keeps the bridge until the same is done on the Mac. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
+**Status:** complete on AMD64 (sections 6 to 11: the bridge, the callee's entry and exit, the direct native call, inline caches for `virtual` and func-ref calls, the register-argument entry). ARM64: phase 1 (the bridge) and phase 2 (the callee's entry and exit, section 12) done on 2026-09-10; phase 3 and the native entry are open, and section 12 says where to start. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
 ("every method entry/exit rebuilds the VM operand-stack view, and JIT-to-JIT calls still marshal
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
@@ -553,3 +553,98 @@ What is left of F7 is on ARM64: sections 7 to 11 on the Mac (the backend has the
 entry only, and publishes no native entry). On AMD64 the next gain is the callee's own
 prologue -- the pushes, the two frame slots' worth of stores and the ten spill slots'
 zeroing that a leaf method never uses -- and the caller's spills around a call.
+
+## 12. Phase 2 on ARM64 (2026-09-10)
+
+The Mac's first day on this design. Measured first, as section 4d of
+`JIT_ARM64_HANDOFF_2026_09.md` asked: `jit_call_probe.obs` on an Apple M4 Max at
+`94fed85ae5` (master with #767), `obc`/`obr` from `deploy_macos_arm64.sh`, medians of three.
+
+| kernel | interpreter | JIT | JIT vs interpreter |
+|---|---|---|---|
+| `InlinedCall` (no call) | 0.617 s | 0.019 s | 32x |
+| `RealCall` (20M bound calls) | 0.984 s | 0.365 s | **2.7x** |
+| `NoCall` | 0.403 s | 0.011 s | 37x |
+| `VirtualCall` (2M) | 0.077 s | 0.042 s | 1.8x |
+| `Fib(32)` | 0.223 s | 0.135 s | 1.7x |
+
+A compiled-to-compiled call cost 17.7 ns (`RealCall` less `NoCall`, over 20M), an interpreted
+one 29 ns, a `virtual` one from compiled code about 20 ns: section 1's shape with section 6's
+bridge in place, on a faster core. As on AMD64, the call-bound loop gains a fraction of what
+the same loop gains without the call.
+
+What landed, in `core/vm/arch/jit/arm64/jit_arm_a64.{h,cpp}`: section 7's three changes in
+the same order, each alternated with master, medians of three. Master's own medians drifted
+between 0.353 s and 0.365 s on `RealCall` across the session, so each step is read against its
+own alternation; the column below is the last one.
+
+| kernel | master | top pointer and pops | straight-store zeroing | `D8`-`D15` on demand |
+|---|---|---|---|---|
+| `RealCall` (20M) | 0.363 s | 0.340 s | 0.310 s | **0.279 s** |
+| `Fib(32)` | 0.135 s | 0.126 s | 0.114 s | **0.103 s** |
+| `VirtualCall` (2M, the bridge) | 0.042 s | 0.040 s | 0.036 s | **0.033 s** |
+| compiled call, per call | 17.1 ns | 16.5 ns | 15.0 ns | **13.4 ns** |
+
+- **The operand-stack arithmetic, once per sequence.** `ProcessParameters` loads the stack
+  pointer and count once, computes `top = op_stack + count * 8`, drops the count, and reads
+  each argument at a displacement below `top` (`ldur`, whose nine-bit displacement runs out at
+  32 words; `top` steps down by 256 past that, and `jit_entry_shapes.obs` has a 37-word list
+  with a func-ref whose two words straddle the step). It was two loads and
+  `dec`/`ldr`/`lsl`/`add`/`ldr` per parameter. `ProcessReturn` stores at a running displacement
+  from `top` and bumps the count once. The result pops are `count -= 1` then
+  `ldr Xd, [op_stack, Xcount, lsl #3]` (`ldr_base_index_reg`, `ldr_base_index_freg`), six
+  instructions where there were nine.
+- **The zeroing.** `RegisterRoot` zeroed the frame with a five-instruction loop, one word per
+  trip: for the probe's `Acc:Add`, nineteen trips and about 135 instructions, two thirds of
+  everything the callee executed outside its body. It is `stp xzr, xzr` pairs from `SP` now
+  for up to 32 words of locals (`EmitZeroWords`), a three-instruction loop above that (the
+  entry-shapes test's 36-local method). The loop's range had also run through the `D8`-`D15`
+  save slots the prologue had just filled, so every compiled method handed zeros back in its
+  caller's callee-saved float registers -- unnoticed because no C++ caller keeps a value there
+  across the call. The two ranges zeroed now, the six spill slots and the locals, leave the save
+  slots between them alone.
+- **`D8`-`D15` on demand.** The pool hands out `D0`-`D7` first (not `D15` first, as the
+  handoff said) and reaches the callee-saved eight only with nine floats live; `GetFpRegister`
+  notes when it does, and `Compile()` turns the prologue's save block and every epilogue's
+  restore block into `b +8` over themselves when it never did (`fp_callee_saved_used`,
+  `fp_save_index`, `fp_restore_indices`; every `RTRN` emits its own epilogue, so every block is
+  recorded, the lesson of section 7's first version). The entry-shapes test's ten-float product
+  keeps the save.
+- **The frame-size immediate, exactly.** `Prolog` and `Epilog` ORed `final_local_space << 10`
+  onto templates whose immediate field already held 96, so a frame whose size had bits 5 or 6
+  clear was over-allocated by up to 96 bytes and one past 4 KB overflowed into the shift bit.
+  `EmitFrameAdjust` computes the field and takes a size past 4095 through `X11` (the
+  extended-register `sub`/`add` on `sp`). Harmless until now; the native entry's outgoing area,
+  an `SP`-relative offset computed from the size, would not have been.
+
+From the tracing listing of `Acc:Add`, the probe's callee: about 200 instructions outside its
+body on master, about 55 now. What is left of a call on ARM64 is the C++ bridge and the
+operand-stack traffic itself -- phase 3's business, as on AMD64 after section 7.
+
+**Found on the way, fixed in the same PR.** A func-ref local's slot. `ProcessIndices` reserves
+two words for a func-ref declaration but gave the slot the offset of the pair's *upper* word,
+while `ProcessStore` and `ProcessLoad` write and read `[offset]` and `[offset + 8]` and the
+collector walks the pair from the offset it was given: the reference's second word landed in the
+next declaration's slot, and the collector read the pair one word low. A func-ref parameter
+followed by any other local had that local replaced by the reference's closure word (0 for a
+plain function reference), and a collection during the method read a zero as the reference's
+method id. Hidden because the fixtures' func-ref parameters were last in their lists or inlined
+away. The offset is the pair's lowest word now, as on AMD64; `jit_entry_shapes.obs` (`Applied`,
+`Cross`) fails on the old layout with every method compiled and passes interpreted.
+
+**Verification.** The flag tests 22/22 (`vm_jit_equiv.obs` byte-identical across the three
+modes; from an agent shell they need `LC_ALL=en_US.UTF-8`, see the handoff);
+`OBJECK_JIT_REPORT=1` on the fixture names only `Arith:Mix`, which falls back on master too;
+`jit_entry_shapes.obs` byte-identical across the modes with no fallback; `jit_native_call_error`,
+`jit_native_call_depth`, `jit_frame_unreferenced_local`, `inline_funcref_param`,
+`jit_virtual_equals`, `jit_gc_safepoint`, `jit_float_mem_ops` and `core_thread_gc_stress`
+compiled; both regression passes, 229 passed, 3 skipped, 0 failed each.
+
+**Two things the day showed about the ARM64 backend, for what comes next.** Its pool is eight
+general registers, `X0`-`X7` (`X9`-`X15` are commented out in `Compile()`; the handoff's
+"fifteen" counted them), and it has no spilling: the bytecode pushes every term of a left-nested
+chain before the first add, so an expression with more than eight live temporaries falls back
+to the interpreter whole -- the entry-shapes test's sums are four-term statements for that
+reason, and `Arith:Mix` (chained calls) is the fixture's standing fallback. `X12`-`X15` into the
+pool (F4 on ARM64) is a small change with the shape of #733 and the Linux x64 pool. Then phase
+3: the native entry and call site, section 4d step 2 of the handoff.

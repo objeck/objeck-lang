@@ -7,40 +7,53 @@ legs, thirty minutes a round trip with a failure artifact as the only debugger. 
 still open on the assessment's list is ARM64-heavy, and on the Mac the backend builds, runs and
 sits under `lldb` in minutes.
 
-## Check in here first (written 2026-09-10 evening, on the Windows box)
+## Check in here first (written 2026-09-10 night, on the Mac)
 
-Sections 1 and 3 below describe the tree as it was on 2026-09-09; this block is what changed
-since and where to start. `docs/HANDOFF_2026_09_10.md` has the day's full record.
+Sections 1 and 3 below describe the tree as it was on 2026-09-09; section 4d's step 1 is done,
+and this block says what changed and where to start. `docs/HANDOFF_2026_09_10.md` has the day's
+full record.
 
 | item | now |
 |---|---|
-| `master` | `b036381633` after [#765](https://github.com/objeck/objeck-lang/pull/765) and [#766](https://github.com/objeck/objeck-lang/pull/766) (the compiler fix for #763, the Linux x64 register pool, section 4d below); [#767](https://github.com/objeck/objeck-lang/pull/767) follows with the AMD64 encoders' byte displacements and immediates, `setcc` booleans and 16-byte zeroing -- a quarter less code, no ARM64 change, but the same list for ARM64 is `stp`/`ldp` and the frame-size immediate in 4d |
-| F7 on AMD64 | complete: the design's sections 6 to 11 (`JIT_CALLING_CONVENTION_DESIGN.md`). A bound compiled call 26.5 ns to 5.5 ns, a virtual one 125 ns to 6.0 ns, `Fib(32)` 0.208 s to 0.043 s. ARM64 has phase 1 only |
-| ARM64 backend | untouched since #761 (frame laid out by declaration, both backends). Its pool is fifteen general and fifteen float registers, so the Linux x64 pool change has no ARM64 counterpart |
-| compiler | #763 fixed: a method with a func-ref parameter can be inlined again, so fixtures no longer need a second `return` to keep such helpers out of the inliner |
-| deploy trees | the Windows box holds #766's binaries; the Mac builds its own (section 2) |
+| `master` | `94fed85ae5` (#767) when the Mac started; branch `perf/arm64-callee-entry` on top of it carries phase 2 on ARM64 (design section 12), the func-ref slot fix, the frame-immediate fix and `jit_entry_shapes.obs` -- merge on the maintainer's word |
+| the Mac loop on master | run: deploy from `94fed85ae5`, both passes 228/3/0, flag tests 22/22 |
+| the ARM64 call baseline | measured (design section 12): a compiled call 17.7 ns, an interpreted one 29 ns; `Fib(32)` 0.135 s compiled, 0.223 s interpreted |
+| 4d step 1 | done: a compiled call 17.1 ns to 13.4 ns, `RealCall` 0.363 s to 0.279 s, `Fib(32)` 0.135 s to 0.103 s; the frame-size immediate (the "before step 2" item below) fixed with it |
+| two ARM64 bugs the new test found | fixed on the same branch: the entry zeroing wiped the `D8`-`D15` save slots (every compiled method returned zeros in its caller's callee-saved floats), and a func-ref local's pair was written above a slot reserved below it (the next local clobbered, the collector one word low) |
+| `obc` | a nested expression took exponential time in `AnalyzeCalculation` (24 terms over a minute, 30 never); fixed on `fix/compiler-add-chain`, its own PR |
+| the deploy tree on the Mac | holds the branch's `obr` with master's `obc`; `deploy_macos_arm64.sh` from master before trusting anything else |
 
-**First hour on the Mac, in this order.**
+**Corrections to what is written below.** The pool is eight general registers, `X0`-`X7`, not
+fifteen: `X9`-`X15` are commented out in `Compile()`, and `X9`-`X11` are scratch. The float
+pool hands out `D0` first, not `D15`, so `D8`-`D15` are touched only with nine floats live. The
+backend does not spill: an expression with more than eight live temporaries falls back to the
+interpreter whole, and the bytecode pushes every term of a chain before the first add, so a
+ten-term sum is such an expression.
 
-1. The macOS loop of section 2 on `master`: deploy, both regression passes, the flag tests.
-   Everything since 2026-09-09 was verified on Windows x64 and Linux x64 only; CI's
-   macos-arm64 leg is the sole ARM64 check so far.
-2. Time `programs/tests/jit_call_probe.obs` (bound, virtual and recursive calls, section 4d's
-   "measure first") and `programs/tests/jit_probe.obs` (section 3b) on the deploy `obr`, and put
-   the numbers in the two design documents' tables beside the AMD64 columns.
-3. Do 4d's step 1 (the callee's entry and exit, three small commits) before anything else: it is
-   a day's work with the AMD64 file as the template, and each piece is measured by the probe.
-4. Then choose by the numbers between 4a (loop locals in `X19`+ registers) and 4d's step 2 (the
-   native entry). On AMD64 the call work was worth more than the loop work
-   (`Fib(32)` 4.8x against 2-8x on loop kernels), but ARM64's wider pool may change the balance.
+**Next on the Mac, in this order.**
 
-**Rules that bit on the way here, all in `HANDOFF_2026_09_10.md` too.** Run the regression
-suite only in `programs/regression` itself (a copy of the directory misreports the nineteen
-`bad_*` tests). Rebuild the deploy tree with the deploy script before a suite run: a compiler
-from a plain `make` in `core/compiler` produced an `obc` whose error paths printed nothing.
-`OBJECK_JIT_REPORT=1` on the fixture after every backend change. A value a callback leaves
-on the operand stack (`Runtime->Copy`) is the return value when the working stack is empty
-at `RTRN`; the AMD64 native exit learned that the hard way (fixture probe `CopyResults`).
+1. **F4 on ARM64**: `X12`-`X15` into the pool (four lines in `Compile()`). They are
+   caller-saved, so every path that calls out must spill them: `ProcessStackCallback` spills
+   whatever pool register the working stack holds, but `EmitWriteBarrier`'s spill list knows
+   `TMP_X1`-`TMP_X5` only, and the safepoint poll assumes nothing live. A morning's work; the
+   entry-shapes test's sums can go back to ten terms as its probe.
+2. **4d step 2**, the native entry and call site, per section 4d below; `EmitFrameAdjust` is
+   the exact frame size it needs.
+3. Then 4a (loop locals in `X20`+) and 4b (`D8`-`D15` pins), by the numbers.
+
+**Traps the Mac added to the list.** From an agent shell with no `LANG`, Python coerces the
+locale and passes `LC_CTYPE=C.UTF-8` to every child; macOS libc++ then fails to construct
+`std::locale` in `vm.cpp`, and `obr` exits at startup with a `collate_byname` message, so
+`run_vm_flag_tests.py` reports seven failures that are not the VM's. Run it with
+`LC_ALL=en_US.UTF-8` (whether `obr` should survive an unsupported locale is a separate
+question). `obc` needs `OBJECK_LIB_PATH` at the deploy `lib` when run from outside the tree. A
+tracing VM: in `core/vm`, `xcodebuild -project xcode/VM.xcodeproj build
+GCC_PREPROCESSOR_DEFINITIONS='$(inherited) _DEBUG_JIT_JIT' SYMROOT=<dir> OBJROOT=<dir>`, which
+leaves the deploy tree alone; its listing omits emitters that print under `_DEBUG_JIT` only
+(`add_shifted_reg_reg`) and prints per call at run time, so trace a small program. A master VM
+for alternated timings comes from a `git worktree` of master built the same way. `zsh` treats a
+bare `====` as a command; separate output with `printf`. `deploy_macos_arm64.sh` fails to copy
+`programs/examples/gl_crystal.obj`, which is not in the tree, and carries on.
 
 ## 1. Where the tree is
 

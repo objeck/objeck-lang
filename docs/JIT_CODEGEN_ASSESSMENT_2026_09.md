@@ -292,3 +292,16 @@ there), and the compiler's inliner was pasting a func-ref parameter's slots unsh
 bytes on every displacement and immediate: with byte forms where they fit, `setcc` for
 booleans and sixteen-byte zeroing, the fixture's compiled code shrank by a quarter
 (292,958 to 222,755 bytes over 84 methods) with identical output.
+
+2026-09-10, night, on the Mac: phase 2 of the calling-convention design landed on ARM64 (its
+section 12): a compiled call 17.1 ns to 13.4 ns, `Fib(32)` 0.135 s to 0.103 s, `RealCall`
+0.363 s to 0.279 s, most of it the entry's zeroing loop (nineteen trips for a one-local
+method). Two ARM64 bugs came out with it: the zeroing ran through the `D8`-`D15` save slots, so
+every compiled method returned zeros in its caller's callee-saved float registers, and a
+func-ref local's two words were written upward from a slot reserved below them, so a func-ref
+parameter followed by any other local clobbered it and the collector read the pair one word
+low (`jit_entry_shapes.obs`). Also learned: the ARM64 pool is eight registers (`X0`-`X7`) and
+the backend has no spilling, so an expression with more than eight live temporaries falls back
+whole -- F4 on ARM64 is the next small win; and `obc` took time exponential in the depth of a
+nested expression (`AnalyzeCalculation` analyzed every operand twice), fixed on its own branch.
+Open on ARM64: phase 3 and the entry (the handoff's 4d step 2), F3 and the `D8`-`D15` pins.
