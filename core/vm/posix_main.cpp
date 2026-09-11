@@ -80,7 +80,12 @@ static int objeck_main(const int argc, const char* argv[])
         if(utf8) { locale = utf8; }
       }
     }
-    std::locale lollocale(locale);
+    // Built by ConsoleLocale (vm.cpp), which never throws: libc++ on macOS
+    // refuses the per-category composite the C library returns when only
+    // LC_CTYPE is set ("C/C.UTF-8/C/C/C/C", what Python 3 hands every child
+    // when LANG is unset), and std::locale's constructor threw out of here
+    // with obr exiting before the program ran.
+    std::locale lollocale = ConsoleLocale(locale);
     setlocale(LC_ALL, locale);
     wcout.imbue(lollocale);
 #else

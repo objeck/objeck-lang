@@ -242,6 +242,57 @@ void CleanUpCommandLine(const int argc, wchar_t** wide_args)
   wide_args = nullptr;
 }
 
+#ifndef _WIN32
+// std::locale's constructor throws for a name the C++ library cannot build,
+// and both POSIX entry points called it unguarded on whatever setlocale
+// returned, so obr exited before the program ran. Two names get there: on
+// macOS, the per-category composite the C library reports when only LC_CTYPE
+// is set ("C/C.UTF-8/C/C/C/C" -- what Python 3 puts in every child's
+// environment when LANG is unset, PEP 538), which libc++ cannot parse even
+// though the C library set every category from it; and NULL, when the
+// environment names a locale the system lacks (LANG=xx_YY.bogus) and no UTF-8
+// locale could be substituted. Each candidate is tried in turn: the name
+// itself; the LC_CTYPE category alone, which is the one that decides how wide
+// characters are written and the one the composite was hiding; the UTF-8
+// locales; and last the classic locale with a UTF-8 converter, which needs no
+// locale data at all and so cannot fail. glibc names its composites
+// "LC_CTYPE=C.UTF-8;LC_NUMERIC=C;..." and libstdc++ constructs from that form,
+// so Linux takes the first candidate, as before.
+std::locale ConsoleLocale(const char* name)
+{
+  std::string candidates[4];
+  size_t count = 0;
+  if(name) {
+    candidates[count++] = name;
+    // the C library accepted the environment, so its LC_CTYPE is what was asked for
+    const char* ctype = setlocale(LC_CTYPE, nullptr);
+    if(ctype) {
+      candidates[count++] = ctype;
+    }
+  }
+  candidates[count++] = "C.UTF-8";
+  candidates[count++] = "en_US.UTF-8";
+
+  for(size_t i = 0; i < count; ++i) {
+    try {
+      return std::locale(candidates[i].c_str());
+    }
+    catch(const std::runtime_error&) {
+      // not one this C++ library can build; the next is coarser
+    }
+  }
+
+  // std::codecvt_utf8 is deprecated since C++17 with nothing standard in its
+  // place for this use; the MSYS2 build above imbues its sibling already
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+  return std::locale(std::locale::classic(), new std::codecvt_utf8<wchar_t>);
+#pragma GCC diagnostic pop
+}
+#endif
+
+// Only win_main.cpp calls SetEnv; posix_main.cpp does its own setup and
+// shares ConsoleLocale with the branches below.
 void SetEnv() {
 #ifdef _WIN32
 #ifdef _MSYS2_CLANG
@@ -266,12 +317,12 @@ void SetEnv() {
 #else
 #if defined(_X64)
   char* locale = setlocale(LC_ALL, "");
-  std::locale lollocale(locale);
+  std::locale lollocale = ConsoleLocale(locale);
   std::setlocale(LC_ALL, locale);
   std::wcout.imbue(lollocale);
 #elif defined(_ARM64)
   char* locale = setlocale(LC_ALL, "");
-  std::locale lollocale(locale);
+  std::locale lollocale = ConsoleLocale(locale);
   std::setlocale(LC_ALL, locale);
   std::wcout.imbue(lollocale);
   std::setlocale(LC_ALL, "en_US.utf8");

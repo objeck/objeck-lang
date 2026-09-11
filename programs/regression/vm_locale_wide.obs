@@ -1,0 +1,11 @@
+# Fixture for run_vm_flag_tests.py: obr must run, and write wide characters as
+# UTF-8, under a locale the C++ library cannot construct. Python 3 hands every
+# child LC_CTYPE=C.UTF-8 when LANG is unset (PEP 538); macOS's C library reports
+# that as the composite "C/C.UTF-8/C/C/C/C", which libc++ refused, and obr
+# exited before Main ran. The regression runner runs this file too; there it
+# has nothing to prove beyond exiting 0.
+class LocaleWide {
+	function : Main(args : String[]) ~ Nil {
+		"wide: héllo wörld 世界"->PrintLine();
+	}
+}

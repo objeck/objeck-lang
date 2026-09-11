@@ -25,6 +25,7 @@ full record.
 | the fixture's fallback | gone, [#771](https://github.com/objeck/objeck-lang/pull/771): the libc helpers park a pending caller-saved float in `D8`-`D15` across the call; `OBJECK_JIT_REPORT=1` on `vm_jit_equiv.obs` is silent on ARM64 |
 | 4d step 2 | done, [#776](https://github.com/objeck/objeck-lang/pull/776): the native entry and call site (design section 13); a compiled call 13.8 ns to 7.4 ns, `Fib(32)` 0.107 s to 0.050 s; `DYN_MTHD_CALL_JIT` has a case (compiling a method with a patched func-ref site exited) |
 | the deploy tree on the Mac | holds [#776](https://github.com/objeck/objeck-lang/pull/776)'s `obr` on a `3366d92c4a` tree; `deploy_macos_arm64.sh` from master before trusting anything else |
+| `obr` under a locale libc++ rejects | [#772](https://github.com/objeck/objeck-lang/pull/772), open: the flag tests ran only with `LC_ALL=en_US.UTF-8` because macOS libc++ refused the composite name Python's locale coercion produces; the VM falls back to a locale it can construct, and the flag tests run from any shell (27/27 on the Mac, both regression passes 231/3/0) |
 
 **Corrections to what is written below.** The pool was eight general registers, `X0`-`X7`, not
 fifteen (`X9`-`X15` were commented out in `Compile()`); it is twelve now, `X0`-`X7` and
@@ -60,11 +61,14 @@ thirteen-term sum is such an expression.
   cross a page.
 
 **Traps the Mac added to the list.** From an agent shell with no `LANG`, Python coerces the
-locale and passes `LC_CTYPE=C.UTF-8` to every child; macOS libc++ then fails to construct
-`std::locale` in `vm.cpp`, and `obr` exits at startup with a `collate_byname` message, so
-`run_vm_flag_tests.py` reports seven failures that are not the VM's. Run it with
-`LC_ALL=en_US.UTF-8` (whether `obr` should survive an unsupported locale is a separate
-question). `obc` needs `OBJECK_LIB_PATH` at the deploy `lib` when run from outside the tree. A
+locale and passes `LC_CTYPE=C.UTF-8` to every child; macOS's C library reports that as the
+composite `C/C.UTF-8/C/C/C/C`, which libc++ cannot construct a `std::locale` from, and `obr`
+exited at startup with a `collate_byname` message, so `run_vm_flag_tests.py` reported seven
+failures that were not the VM's; the workaround was `LC_ALL=en_US.UTF-8`. Fixed in [#772](https://github.com/objeck/objeck-lang/pull/772):
+`posix_main.cpp` (the entry Xcode builds; `SetEnv` in `vm.cpp` is Windows-only) builds the
+console locale through a helper that falls back to one libc++ can construct, and the flag
+tests cover it, so no variable is needed from any shell. `obc` needs `OBJECK_LIB_PATH` at the
+deploy `lib` when run from outside the tree. A
 tracing VM: in `core/vm`, `xcodebuild -project xcode/VM.xcodeproj build
 GCC_PREPROCESSOR_DEFINITIONS='$(inherited) _DEBUG_JIT_JIT' SYMROOT=<dir> OBJROOT=<dir>`, which
 leaves the deploy tree alone; its listing omits emitters that print under `_DEBUG_JIT` only
