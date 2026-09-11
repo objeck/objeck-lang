@@ -3395,10 +3395,10 @@ void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
   long pos = (*call_stack_pos);
   std::wcerr << L"Unwinding local stack (" << this << L"):" << std::endl;
   std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(method->GetName()) << L"'" << std::endl;
-  while(--pos) {
-    if(pos > -1) {
-      std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << std::endl;
-    }
+  // stops at zero: with an empty call stack (a thread's entry method compiled
+  // on entry) the old test never reached it and the walk ran below the array
+  while(--pos > 0) {
+    std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << std::endl;
   }
   std::wcerr << L"  ..." << std::endl;
 }

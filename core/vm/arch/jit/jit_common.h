@@ -191,6 +191,26 @@ protected:
   static bool CallCompiled(StackMethod* callee, const bool is_dynamic, const long cls_id, const long mthd_id,
                            size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos);
 
+  // The bridge's opcode switch, unguarded. JitStackCallback is the entry
+  // compiled code calls; it runs this under the catch below.
+  static void StackCallbackBody(const long instr_id, StackInstr* instr, const long cls_id,
+                                const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
+                                StackFrame** call_stack, long* call_stack_pos, const long ip);
+
+  // A C++ exception the bridge caught on its way out to compiled code. Neither
+  // backend registers unwind information for the code it emits, so an
+  // exception thrown in a bridge call -- by the interpreter it nested, a trap,
+  // or the bridge's own switch -- cannot pass through the compiled frame:
+  // libc++ and libstdc++ terminate the process (SIGABRT) before Execute's
+  // catch in vm.cpp prints anything, and Windows unwinds into a frame with no
+  // tables. The two bridge entries catch it instead and report it the way
+  // Execute would have: the same ">>> virtual machine: ... <<<" line, the
+  // stack, and exit(1), which is how the bridge ends every fatal error.
+  // `what` is the exception's message, null for one that is not a
+  // std::exception; a std::bad_alloc is reported as out of memory.
+  [[noreturn]] static void BridgeExceptionExit(const char* what, const bool out_of_memory, const long cls_id,
+                                               const long mthd_id, StackFrame** call_stack, long* call_stack_pos);
+
 public:
   static void Initialize(StackProgram* p);
 

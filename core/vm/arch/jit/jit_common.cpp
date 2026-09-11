@@ -325,21 +325,81 @@ void JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackInstr
                                 const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                 StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
+  try {
 #ifndef _NO_JIT
-  if(CallCompiled(callee, false, cls_id, mthd_id, op_stack, stack_pos, call_stack, call_stack_pos)) {
-    return;
-  }
+    if(CallCompiled(callee, false, cls_id, mthd_id, op_stack, stack_pos, call_stack, call_stack_pos)) {
+      return;
+    }
 #endif
-  Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
-  intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+    Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
+    intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+  }
+  catch(const std::bad_alloc&) {
+    BridgeExceptionExit(nullptr, true, cls_id, mthd_id, call_stack, call_stack_pos);
+  }
+  catch(const std::exception& e) {
+    BridgeExceptionExit(e.what(), false, cls_id, mthd_id, call_stack, call_stack_pos);
+  }
+  catch(...) {
+    BridgeExceptionExit(nullptr, false, cls_id, mthd_id, call_stack, call_stack_pos);
+  }
 }
 
 /**
- * JIT machine code callback
+ * JIT machine code callback: the entry compiled code calls for an opcode it
+ * hands to the runtime. The switch is StackCallbackBody; this runs it under
+ * the catch the header describes, so an exception never reaches the compiled
+ * frame below. A nested bridge (compiled code called from here) catches its own.
  */
 void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
                                    const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                    StackFrame** call_stack, long* call_stack_pos, const long ip)
+{
+  try {
+    StackCallbackBody(instr_id, instr, cls_id, mthd_id, inst, op_stack, stack_pos, call_stack, call_stack_pos, ip);
+  }
+  catch(const std::bad_alloc&) {
+    BridgeExceptionExit(nullptr, true, cls_id, mthd_id, call_stack, call_stack_pos);
+  }
+  catch(const std::exception& e) {
+    BridgeExceptionExit(e.what(), false, cls_id, mthd_id, call_stack, call_stack_pos);
+  }
+  catch(...) {
+    BridgeExceptionExit(nullptr, false, cls_id, mthd_id, call_stack, call_stack_pos);
+  }
+}
+
+/**
+ * The same three lines Execute (vm.cpp) prints for an exception that escapes
+ * the interpreter, then the stack from the compiled method down, then exit(1).
+ */
+void JitCompiler::BridgeExceptionExit(const char* what, const bool out_of_memory, const long cls_id,
+                                      const long mthd_id, StackFrame** call_stack, long* call_stack_pos)
+{
+  if(out_of_memory) {
+    std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
+  }
+  else if(what) {
+    const std::string msg(what);
+    std::wcerr << L">>> virtual machine: internal error: " << std::wstring(msg.begin(), msg.end()) << L" <<<" << std::endl;
+  }
+  else {
+    std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
+  }
+
+  // the compiled method's frame is not on the call stack; name it as the top,
+  // as the interpreter's own JIT call path does for a guard-stub status
+  Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
+  intpr.StackErrorUnwind(program->GetClass(cls_id)->GetMethod(mthd_id));
+  exit(1);
+}
+
+/**
+ * The bridge's opcode switch (see JitStackCallback)
+ */
+void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, const long cls_id,
+                                    const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
+                                    StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
 #ifdef _DEBUG_JIT
   std::wcout << L"Stack Call: instr=" << instr_id

@@ -157,11 +157,6 @@ namespace Runtime {
     }
     
     //
-    // generates a stack dump if an error occurs
-    //
-    void StackErrorUnwind(StackMethod* method);
-    
-    //
     // is call stack empty?
     //
     inline bool StackEmpty() {
@@ -465,6 +460,10 @@ namespace Runtime {
     static StackProgram* GetProgram() { return program; }
     // (ReleaseStackFrame declared in public section)
     void StackErrorUnwind();
+    // The same dump with the top frame named by the caller: the method whose
+    // frame is not on the call stack, a compiled one (the interpreter's JIT call
+    // path and the JIT's bridge, which reports an exception it caught this way).
+    void StackErrorUnwind(StackMethod* method);
     bool ProcessTrap(size_t* &op_stack, size_t* &stack_pos);
 
     // initialize the runtime system
