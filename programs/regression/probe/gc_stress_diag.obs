@@ -1,0 +1,136 @@
+#~
+# Probe copy of core_thread_gc_stress.obs, not a regression test. The same
+# workload (12 threads x 25000 iterations x 10 rounds) with a detailed report
+# when a worker counts errors: which round and worker, which checks failed and
+# where, how many nodes the long-lived list had when walked, and the first bad
+# value it held. Twice on windows-arm64 the original reported exactly "203
+# corruption(s)"; each worker's list has 201 nodes, so 203 reads as one
+# worker's whole list plus one churn iteration's two checks.
+#
+# No '&' or '|' anywhere in Run: those set HasAndOr, which reserves a frame
+# slot on ARM64 and would change the very frame layout under suspicion. The
+# walk's locals are declared before the loop (a local declared in a nested
+# block can miscompile).
+~#
+
+use System.Concurrency;
+
+class GcBox {
+  @v : Int;
+  @next : GcBox;
+
+  New(v : Int) { @v := v; @next := Nil; }
+  method : public : V() ~ Int { return @v; }
+  method : public : SetV(v : Int) ~ Nil { @v := v; }
+  method : public : Next() ~ GcBox { return @next; }
+  method : public : SetNext(b : GcBox) ~ Nil { @next := b; }
+}
+
+class GcWorker from Thread {
+  @id : Int;
+  @iters : Int;
+  @errors : Int;
+  @churn_errors : Int;
+  @first_churn_iter : Int;
+  @first_churn_sum : Int;
+  @first_churn_v : Int;
+  @walk_nodes : Int;
+  @walk_bad : Int;
+  @first_walk_bad : Int;
+  @first_walk_pos : Int;
+
+  New(id : Int, iters : Int) {
+    Parent("gc-worker");
+    @id := id; @iters := iters; @errors := 0;
+    @churn_errors := 0; @first_churn_iter := -1; @first_churn_sum := 0; @first_churn_v := 0;
+    @walk_nodes := 0; @walk_bad := 0; @first_walk_bad := 0; @first_walk_pos := -1;
+  }
+
+  method : public : Errors() ~ Int { return @errors; }
+
+  method : public : Report(round : Int) ~ Nil {
+    id := @id; e := @errors; ce := @churn_errors; ci := @first_churn_iter;
+    cs := @first_churn_sum; cv := @first_churn_v; wn := @walk_nodes; wb := @walk_bad;
+    fb := @first_walk_bad; fp := @first_walk_pos;
+    "  round={$round} worker={$id} errors={$e} churn_errors={$ce} first_churn_iter={$ci} sum={$cs} b.v={$cv} walk_nodes={$wn} walk_bad={$wb} first_walk_bad={$fb} at={$fp}"->PrintLine();
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    # a long-lived list that must survive untouched across many collections
+    head := GcBox->New(@id);
+    for(k := 0; k < 200; k += 1;) {
+      n := GcBox->New(@id);
+      n->SetNext(head);
+      head := n;
+    };
+
+    # churn, as in the original
+    for(i := 0; i < @iters; i += 1;) {
+      b := GcBox->New(@id);
+      expected := @id;
+      sum := 0;
+      for(j := 0; j < 8; j += 1;) {
+        sum += b->V();
+        b->SetV(@id);
+        junk := GcBox->New(i + j);
+        junk->SetNext(GcBox->New(j));
+      };
+      if(sum <> @id * 8) {
+        @errors += 1;
+        if(@churn_errors = 0) { @first_churn_iter := i; @first_churn_sum := sum; @first_churn_v := b->V(); };
+        @churn_errors += 1;
+      };
+      if(b->V() <> expected) {
+        @errors += 1;
+        if(@churn_errors = 0) { @first_churn_iter := i; @first_churn_sum := sum; @first_churn_v := b->V(); };
+        @churn_errors += 1;
+      };
+    };
+
+    # walk the long-lived list, bounded in case a stale pointer made it a cycle
+    cur := head;
+    pos := 0;
+    v := 0;
+    while(cur <> Nil) {
+      v := cur->V();
+      if(v <> @id) {
+        @errors += 1;
+        if(@walk_bad = 0) { @first_walk_bad := v; @first_walk_pos := pos; };
+        @walk_bad += 1;
+      };
+      pos += 1;
+      if(pos > 100000) { cur := Nil; } else { cur := cur->Next(); };
+    };
+    @walk_nodes := pos;
+  }
+}
+
+class ThreadGcStressDiag {
+  function : Main(args : String[]) ~ Nil {
+    nthreads := 12;
+    iters := 25000;
+    rounds := 10;
+    total_errors := 0;
+    e := 0;
+
+    "Running multithreaded GC stop-the-world stress (diagnostic)..."->PrintLine();
+    for(r := 0; r < rounds; r += 1;) {
+      workers := GcWorker->New[nthreads];
+      each(i : workers) { workers[i] := GcWorker->New(i + 1, iters); };
+      each(i : workers) { workers[i]->Execute(Nil); };
+      each(i : workers) { workers[i]->Join(); };
+      each(i : workers) {
+        e := workers[i]->Errors();
+        if(e > 0) { workers[i]->Report(r); };
+        total_errors += e;
+      };
+    };
+
+    if(total_errors = 0) {
+      "PASS: multithreaded GC stop-the-world stress"->PrintLine();
+    } else {
+      "FAIL: multithreaded GC stress - {$total_errors} corruption(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}

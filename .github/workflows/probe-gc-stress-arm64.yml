@@ -1,0 +1,90 @@
+name: Probe GC stress (windows-arm64)
+
+# A probe, not a gate: it runs only for pushes to probe/** branches and never
+# on master. It builds the Windows ARM64 toolchain the way ci-build does, then
+# runs core_thread_gc_stress and a diagnostic copy of it in a loop under
+# several VM configurations, to measure how often the "203 corruption(s)"
+# failure seen twice on this leg reproduces on the hosted four-core runner.
+on:
+  push:
+    branches: [ 'probe/**' ]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  stress:
+    name: GC stress windows-arm64
+    runs-on: windows-11-arm
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Setup Visual Studio
+      uses: microsoft/setup-msbuild@v3
+
+    - name: Setup MSVC Environment
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ARM64
+
+    - name: Install Windows dependencies
+      shell: pwsh
+      run: |
+        function Install-VcpkgPackage([string]$pkg) {
+          $max = 3
+          for($i = 1; $i -le $max; $i++) {
+            vcpkg install $pkg
+            if($LASTEXITCODE -eq 0) {
+              return
+            }
+            if($i -lt $max) {
+              Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in 20s..."
+              Start-Sleep -Seconds 20
+            }
+          }
+          throw "vcpkg install $pkg failed after $max attempts"
+        }
+        Install-VcpkgPackage "mbedtls:ARM64-windows"
+        Install-VcpkgPackage "nghttp2:ARM64-windows"
+        Install-VcpkgPackage "zlib:ARM64-windows"
+        Install-VcpkgPackage "libjpeg-turbo:ARM64-windows"
+        Install-VcpkgPackage "libpng:ARM64-windows"
+        Install-VcpkgPackage "tiff:ARM64-windows"
+        Install-VcpkgPackage "libwebp:ARM64-windows"
+        $vcpkgRoot = "C:\vcpkg\installed\ARM64-windows"
+        echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
+        echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
+        echo "$vcpkgRoot\bin" >> $env:GITHUB_PATH
+
+    - name: Build toolchain
+      working-directory: ./core/release
+      run: deploy_windows.cmd arm64
+
+    - name: Rebuild libraries
+      working-directory: ./core/compiler
+      shell: bash
+      run: sh ./build_libs.sh "../release/deploy-arm64/bin/obc.exe"
+
+    - name: Update deploy with rebuilt libraries
+      working-directory: ./core/release
+      shell: bash
+      run: cp ../lib/*.obl deploy-arm64/lib/
+
+    - name: Stress loop
+      working-directory: ./programs/regression/probe
+      shell: pwsh
+      run: ./gc_stress_loop.ps1 -Bin ..\..\..\core\release\deploy-arm64\bin -Runs 40
+
+    - name: Upload results
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: gc-stress-windows-arm64
+        path: programs/regression/probe/results
+        if-no-files-found: warn
