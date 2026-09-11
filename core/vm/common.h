@@ -542,20 +542,21 @@ class NativeCode {
 
   long size;
   FLOAT_VALUE* floats;
-  std::vector<JitVirtualSite*> virtual_sites;   // the method's inline caches (AMD64)
-  // The register-argument entry a compiled caller calls (AMD64, see
-  // JitAmd64::EmitNativePrologue); `code` is the bridge entry the
-  // interpreter calls through JitRuntime::Execute. Null when the method has
-  // the bridge entry only (a func-ref result, or the ARM64 backend).
+  std::vector<JitVirtualSite*> virtual_sites;   // the method's inline caches
+  // The register-argument entry a compiled caller calls (see
+  // JitAmd64::EmitNativePrologue and JitArm64::EmitNativePrologue); `code`
+  // is the bridge entry the interpreter calls through JitRuntime::Execute.
+  // Null when the method has the bridge entry only (a func-ref result).
   void* native_entry;
  public:
 #if defined(_ARM64) || defined(_M_ARM64)
-   NativeCode(uint32_t* c, long s, int64_t* i, FLOAT_VALUE* f) {
+   NativeCode(uint32_t* c, long s, int64_t* i, FLOAT_VALUE* f, long native_entry_offset = -1) {
     code = c;
     size = s;
     ints = i;
     floats = f;
-    native_entry = nullptr;
+    // the offset counts 32-bit instructions, as `code` does
+    native_entry = (native_entry_offset > 0) ? (void*)(c + native_entry_offset) : nullptr;
   }
 #else
   NativeCode(unsigned char* c, long s, FLOAT_VALUE* f, long native_entry_offset = -1) {
