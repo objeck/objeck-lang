@@ -21,25 +21,24 @@ full record.
 | 4d step 1 | done: a compiled call 17.1 ns to 13.4 ns, `RealCall` 0.363 s to 0.279 s, `Fib(32)` 0.135 s to 0.103 s; the frame-size immediate (the "before step 2" item below) fixed with it |
 | two ARM64 bugs the new test found | fixed on the same branch: the entry zeroing wiped the `D8`-`D15` save slots (every compiled method returned zeros in its caller's callee-saved floats), and a func-ref local's pair was written above a slot reserved below it (the next local clobbered, the collector one word low) |
 | `obc` | a nested expression took exponential time in `AnalyzeCalculation` (24 terms over a minute, 30 never); fixed in [#769](https://github.com/objeck/objeck-lang/pull/769), merged |
-| the deploy tree on the Mac | holds #768's `obr` with the pre-#769 `obc`; `deploy_macos_arm64.sh` from master (`883f4369b4`) before trusting anything else |
+| F4 on ARM64 | done, [#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, handed out after `X0`-`X7`; the entry-shapes test's sums are ten-term statements again |
+| the deploy tree on the Mac | holds [#770](https://github.com/objeck/objeck-lang/pull/770)'s `obr` on a `3366d92c4a` tree; `deploy_macos_arm64.sh` from master before trusting anything else |
 
-**Corrections to what is written below.** The pool is eight general registers, `X0`-`X7`, not
-fifteen: `X9`-`X15` are commented out in `Compile()`, and `X9`-`X11` are scratch. The float
+**Corrections to what is written below.** The pool was eight general registers, `X0`-`X7`, not
+fifteen (`X9`-`X15` were commented out in `Compile()`); it is twelve now, `X0`-`X7` and
+`X12`-`X15`, and `X9`-`X11` are scratch. The float
 pool hands out `D0` first, not `D15`, so `D8`-`D15` are touched only with nine floats live. The
 backend does not spill: an expression with more than eight live temporaries falls back to the
 interpreter whole, and the bytecode pushes every term of a chain before the first add, so a
-ten-term sum is such an expression.
+thirteen-term sum is such an expression.
 
 **Next on the Mac, in this order.**
 
-1. **F4 on ARM64**: `X12`-`X15` into the pool (four lines in `Compile()`). They are
-   caller-saved, so every path that calls out must spill them: `ProcessStackCallback` spills
-   whatever pool register the working stack holds, but `EmitWriteBarrier`'s spill list knows
-   `TMP_X1`-`TMP_X5` only, and the safepoint poll assumes nothing live. A morning's work; the
-   entry-shapes test's sums can go back to ten terms as its probe.
-2. **4d step 2**, the native entry and call site, per section 4d below; `EmitFrameAdjust` is
-   the exact frame size it needs.
-3. Then 4a (loop locals in `X20`+) and 4b (`D8`-`D15` pins), by the numbers.
+1. **4d step 2**, the native entry and call site, per section 4d below; `EmitFrameAdjust` is
+   the exact frame size it needs, and the pool has twelve registers for the call site's
+   values (F4 on ARM64 landed in [#770](https://github.com/objeck/objeck-lang/pull/770); the spill lists of `EmitWriteBarrier` and the libc
+   helper are five slots, `TMP_X1`-`TMP_X5`, whatever the pool's size).
+2. Then 4a (loop locals in `X20`+) and 4b (`D8`-`D15` pins), by the numbers.
 
 **Traps the Mac added to the list.** From an agent shell with no `LANG`, Python coerces the
 locale and passes `LC_CTYPE=C.UTF-8` to every child; macOS libc++ then fails to construct
