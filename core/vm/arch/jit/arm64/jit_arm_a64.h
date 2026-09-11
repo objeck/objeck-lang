@@ -406,6 +406,7 @@ namespace Runtime {
     // setup and teardown
     void Prolog();
     void Epilog();
+    void EmitFrameAdjust(long size, bool is_sub);
 
     // stack conversion operations
     void ProcessParameters(long count);

@@ -52,14 +52,13 @@ void JitArm64::Prolog() {
 #endif
 
   const long final_local_space = local_space + RED_ZONE;
-  uint32_t sub_offset = 0xd10183ff;
-  sub_offset |= final_local_space << 10;
+  // the bridge entry's three stack values, read before sp moves
+  AddMachineCode(0xF94003E8); // ldr x8, [sp, #0]
+  AddMachineCode(0xF94007E9); // ldr x9, [sp, #8]
+  AddMachineCode(0xF9400BEA); // ldr x10, [sp, #16]
+  EmitFrameAdjust(final_local_space, true);   // sub sp, sp, #final_local_space
   
   uint32_t setup_code[] = {
-    0xF94003E8, // ldr x8, [sp, #0]
-    0xF94007E9, // ldr x9, [sp, #8]
-    0xF9400BEA, // ldr x10, [sp, #16]
-    sub_offset, // sub sp, sp, #final_local_space
     0xf9002fe0, // str x0, [sp, #88]
     0xf9002be1, // str x1, [sp, #80]
     0xf90027e2, // str x2, [sp, #72]
@@ -152,8 +151,6 @@ void JitArm64::Epilog() {
   AddMachineCode(op_code);
   
   const long final_local_space = local_space + RED_ZONE;
-  uint32_t add_offset = 0x910183ff;
-  add_offset |= final_local_space << 10;
   
   move_imm_reg(0, X0);
   // Restore callee-saved X19 (cached &stw_active) from the top-of-frame slot the
@@ -180,8 +177,30 @@ void JitArm64::Epilog() {
   for(size_t i = 0; i < sizeof(fp_restore_code) / sizeof(uint32_t); ++i) {
     AddMachineCode(fp_restore_code[i]);
   }
-  AddMachineCode(add_offset); // add sp, sp, #final_local_space
-  AddMachineCode(0xd65f03c0); // ret
+  EmitFrameAdjust(final_local_space, false);  // add sp, sp, #final_local_space
+  AddMachineCode(0xd65f03c0);                 // ret
+}
+
+// sub sp, sp, #size (is_sub) or add sp, sp, #size, the immediate computed
+// exactly. The old template held 96 in its immediate field and the frame size
+// was ORed onto it, so a frame whose size had bits 5 or 6 clear was
+// over-allocated by up to 96 bytes -- harmless while nothing below the locals
+// was addressed from the size, which the native entry's outgoing area will
+// be -- and a frame past 4 KB overflowed into the shift bit. Past 4095 bytes
+// the size goes through X11, scratch and dead at both ends of a method.
+void JitArm64::EmitFrameAdjust(long size, bool is_sub) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [" << (is_sub ? L"sub" : L"add") << L" sp, sp, #" << size << L"]" << std::endl;
+#endif
+  if(size >= 0 && size <= 4095) {
+    uint32_t op_code = is_sub ? 0xD10003FF : 0x910003FF;
+    op_code |= (uint32_t)size << 10;
+    AddMachineCode(op_code);
+  }
+  else {
+    move_imm_reg(size, X11);
+    AddMachineCode((is_sub ? 0xCB2063FF : 0x8B2063FF) | ((uint32_t)X11 << 16));   // sub/add sp, sp, x11 (extended, uxtx)
+  }
 }
 
 // register with memory manager
