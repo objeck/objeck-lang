@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.0-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.1-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.0/objeck-linux-x64_2026.9.0.tgz
-tar xzf objeck-linux-x64_2026.9.0.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.1/objeck-linux-x64_2026.9.1.tgz
+tar xzf objeck-linux-x64_2026.9.1.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -59,6 +59,7 @@ obc hello && obr hello
 ## What's New
 
 ### v2026.9.1 
+  * **Compiled code now calls compiled code directly** &mdash; a call between JIT'd methods used to cross a C++ bridge: an eleven-argument entry, a pooled frame, a release. The caller now builds the callee's frame on its own stack and enters its native entry, with inline caches for `virtual` and func-ref sites. A bound call went from 26.5 ns to 5.5 ns, a `virtual` call from 125 ns to 6.0 ns, and `Fib(32)` from 0.208 s to 0.043 s on AMD64; on an M4 Max a call went from 17.1 ns to 7.4 ns and `Fib(32)` from 0.135 s to 0.050 s. A dense `select` compiles to a jump table on both backends
   * **Every hash of a string was wrong** &mdash; `Hash->SHA256("abc"->ToByteArray())` digested `"abc"` plus a zero byte — a `Byte[]` size-word convention the JIT and thirteen trap producers got wrong; fixed everywhere, with a test that hashes every producer against known digests
   * **JIT arithmetic matches the interpreter** &mdash; `IMUL` wrote to the wrong register, native-call temporaries were never spilled, 64-bit immediates were truncated; the equivalence fixture now runs on every platform
   * **The JIT is 2-8x faster on common loops** &mdash; `a->Size()` inlined (an array-summing loop 8x), constant division by a multiply (2.5x), one-instruction array addressing, eight allocatable registers on AMD64. Two shipped bugs found on the way: `>>` was a logical shift on AMD64, and `?->` on a nil receiver in JIT'd code exited the process. `OBJECK_JIT_REPORT=1` names the methods the JIT hands back
@@ -68,6 +69,9 @@ obc hello && obr hello
   * **`--jit=off|<calls>` and `--lib-path=<dir>`** &mdash; every VM flag states its valid values and refuses others
   * **The language server crashed at startup** &mdash; a GC range test accepted an unaligned pointer; fixed and proven over 200 runs
   * **Release process** &mdash; checksums regenerated after signing, manual steps declared once, open issues triaged before a tag, POSIX deploys verify their native libraries, TLS refusals tested
+  * **Three ways compiled code could corrupt memory** &mdash; a frame holding a declared-but-unreferenced local was laid out from its references but scanned by declaration, so the collector read every lower slot under the wrong type; a loop that parked at a GC safepoint kept a stale `self` after another thread's collection moved it ([#746](https://github.com/objeck/objeck-lang/issues/746)); and a constant character stored into a `Char[]` wrote eight bytes on ARM64 and Linux x64, overwriting its neighbours and running past the end of the array ([#781](https://github.com/objeck/objeck-lang/pull/781))
+  * **The compiler mis-built two common shapes** &mdash; every string concatenation in a method shared one accumulator, so `F(a+b) + c` produced the wrong string or crashed ([#750](https://github.com/objeck/objeck-lang/issues/750), [#752](https://github.com/objeck/objeck-lang/issues/752)); and the `-opt s3` inliner shifted only `Int` and `Float` slots, so a method taking a func-ref parameter stored the reference over its caller's locals once inlined ([#763](https://github.com/objeck/objeck-lang/issues/763))
+  * **Runtime properties, locales and exit codes** &mdash; `Runtime->SetProperty` dropped every set after a property's first, and on Linux and macOS a first set kept the runtime's own directories from ever loading; `SetLocale` refuses a name the system cannot supply; and `obr` on POSIX exits non-zero after a VM-reported error, as it always did on Windows
 
 ### v2026.9.0 ✅
   * **A server that wrote a response and closed could lose all of it** &mdash; on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. `TCPSocket` and `TCPSecureSocket` gain `CloseGracefully()`, which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: `Close()` lost 21, `CloseGracefully()` lost none

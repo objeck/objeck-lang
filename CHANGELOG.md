@@ -2,15 +2,17 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.9.1] - 2026-09-09
+## [v2026.9.1] - 2026-09-11
 
-Every string hash was wrong; JIT arithmetic now matches the interpreter, and the
-JIT is 2-8x faster on the loops programs actually write; the debugger sees
-threads and tells the truth about what its commands do;
-`Game.OpenGL` gains a sky, rotations, normal maps and emissive materials; and the
-release process reports what it actually did. Found by running the v2026.9.0
-release and then surveying every binary and library for the bugs a compiler, VM
-and debugger platform cannot carry.
+Compiled code now calls compiled code directly -- a bound call 26.5 ns to 5.5 ns,
+a `virtual` call 125 ns to 6.0 ns, `Fib(32)` 0.208 s to 0.043 s -- and three ways
+compiled code could corrupt memory are closed. Every string hash was wrong; JIT
+arithmetic now matches the interpreter, and the JIT is 2-8x faster on the loops
+programs actually write; the debugger sees threads and tells the truth about what
+its commands do; `Game.OpenGL` gains a sky, rotations, normal maps and emissive
+materials; and the release process reports what it actually did. Found by running
+the v2026.9.0 release and then surveying every binary and library for the bugs a
+compiler, VM and debugger platform cannot carry.
 
 ### New Features
 - **Breakpoints fire inside threads, and threads are real** ([#719](https://github.com/objeck/objeck-lang/pull/719)) — a breakpoint in any thread's `Run` never fired: spawned interpreters were built with a null debugger pointer (the August fix for a crash on a thread's first instruction), so every spawned thread was invisible to `obd` and DAP answered every `threads` request with a fabricated single thread while claiming `allThreadsStopped`. Spawned interpreters now attach to the one debugger; the model is all-stop, which is what the stop state already assumed — a thread reaching the hook while another owns the stop waits its turn, and three threads on one breakpoint stop three times with their own frames. Each thread gets a stable small id and its last source position: `obd` gains a `threads` command, DAP reports the real list, and the stopped event names the thread that stopped. Conditional breakpoints evaluate against the stopping thread's frame (the fixture proves `step = 200` is satisfiable only in worker 2). Three CLI tests in both harnesses, six DAP checks in a new suite

@@ -4672,6 +4672,9 @@
 				"GetDelta": {
 					"descriptions": ["**Seconds since the previous BeginFrame, clamped to 0.1. Multiply movement by this and the program behaves the same at 30 and at 240 frames a second. The first frame reports 0.0, so nothing jumps on startup.**\n\n```method : public : GetDelta() ~ Float```\n\n\n\nreturn: Float"]
 				},
+				"GetDrawableGeneration": {
+					"descriptions": ["**A number that changes whenever the drawable changes size. PollEvents keeps the viewport right on its own, but a projection matrix is the program's, and a stale one stretches the scene while a HUD drawn in pixels stays correct. Compare this against the last value you saw and rebuild what depends on the size when it moves (see the example). For the projection specifically there is nothing to compare -- call Camera->SetAspect(window->GetAspect()) every frame and it does nothing unless the value actually changed.**\n\n```method : public : GetDrawableGeneration() ~ Int```\n\n\n\nreturn: Int\n\n```\nif(window->GetDrawableGeneration() <> @seen) {\n  @seen := window->GetDrawableGeneration();\n  target->Free(); target := RenderTarget->New(window->GetWidth(), ...);\n};\n```"]
+				},
 				"GetError": {
 					"descriptions": ["**Why opening failed.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -4761,6 +4764,9 @@
 				},
 				"OpenPad": {
 					"descriptions": ["**Adopt the first attached controller, if there is one and we have none. Cheap when nothing is plugged in -- one call for the count and then nothing. Called at startup and again whenever SDL reports a device arriving, rather than every frame.**\n\n```method : private : OpenPad() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Own": {
+					"descriptions": ["**Hand something to the window to release on the way out. Every example in this repo hand-writes the same teardown: a chain of `if(x <> Nil) { x->Free(); }` in a fixed order, up to fifteen objects long, ending with the window. It is mechanical, it is easy to get one line wrong, and the one rule that matters -- everything GL before the context goes -- is invisible in it. Own returns what it was given, so it wraps a constructor (see the example) and Close() disappears. There is no ordering to get right WITHIN the owned set: glDelete* is order-independent and nothing here references another object, so one list is enough. What matters is that all of it happens before the context is destroyed, which is what this guarantees. Owning something does NOT stop you freeing it yourself -- every Free in this bundle nulls its handle and is safe to call twice, so Own can be adopted a line at a time. Do not Own a borrowed texture from RenderTarget->GetTexture or ShadowMap->GetTexture: those are views of an attachment their target still owns. Freeing one is already a no-op, so this is a waste rather than a hazard, but it says nothing true about ownership.**\n\n```method : public : Own(thing:Freeable) ~ Freeable```\n\n\n\nthing: Freeable\n\nreturn: Freeable\n\n```\n@shader := window->Own(Shader->LitTextured())->As(Shader);\n@cube   := window->Own(Mesh->Cube())->As(Mesh);\n```"]
 				},
 				"PadHeld": {
 					"descriptions": ["**Is a controller button down right now?**\n\n```method : public : PadHeld(button:GameControllerButton) ~ Bool```\n\n\n\nbutton: GameControllerButton\n\nreturn: Bool"]
