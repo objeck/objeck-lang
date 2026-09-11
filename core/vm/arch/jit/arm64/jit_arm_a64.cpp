@@ -5560,7 +5560,21 @@ bool JitArm64::Compile(StackMethod* cm)
     local_space = floats_index = instr_index = code_index = instr_count = 0;
     float_consts[floats_index++] = 0.0;
     
-    // general use registers
+    // General-purpose pool, handed out from the back: X0-X7 first, then
+    // X12-X15 (F4 on ARM64). All twelve are caller-saved, and every path that
+    // calls out spills whatever pool register the working stack holds
+    // (ProcessStackCallback, EmitWriteBarrier, the libc calls) or runs with
+    // nothing live (the safepoint poll, at a label), so the four new ones
+    // need no save. X9-X11 stay scratch (the constant pool, callbacks, the
+    // poll) and X19 holds &stw_active. The backend does not spill, so the
+    // pool's size is the number of temporaries an expression may hold before
+    // the method falls back to the interpreter: the bytecode pushes every
+    // term of a chain before its first operation, so this raises the chain
+    // an expression may carry from eight terms to twelve.
+    aval_regs.push_back(new RegisterHolder(X15, false));
+    aval_regs.push_back(new RegisterHolder(X14, false));
+    aval_regs.push_back(new RegisterHolder(X13, false));
+    aval_regs.push_back(new RegisterHolder(X12, false));
     aval_regs.push_back(new RegisterHolder(X7, false));
     aval_regs.push_back(new RegisterHolder(X6, false));
     aval_regs.push_back(new RegisterHolder(X5, false));
@@ -5569,17 +5583,6 @@ bool JitArm64::Compile(StackMethod* cm)
     aval_regs.push_back(new RegisterHolder(X2, false));
     aval_regs.push_back(new RegisterHolder(X1, false));
     aval_regs.push_back(new RegisterHolder(X0, false));
-    
-    // aux general use registers
-/*  other registers
-   aval_regs.push_back(new RegisterHolder(X15, false));
-   aval_regs.push_back(new RegisterHolder(X14, false));
-   aval_regs.push_back(new RegisterHolder(X13, false));
-   aval_regs.push_back(new RegisterHolder(X12, false));
-   aval_regs.push_back(new RegisterHolder(X11, false));
-   aval_regs.push_back(new RegisterHolder(X10, false)); // used
-   aval_regs.push_back(new RegisterHolder(X9, false)); // used
-*/
     
     
     // floating point registers
