@@ -304,4 +304,5 @@ low (`jit_entry_shapes.obs`). Also learned: the ARM64 pool is eight registers (`
 the backend has no spilling, so an expression with more than eight live temporaries falls back
 whole -- F4 on ARM64 followed the same night ([#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, twelve registers), and the libc helpers stopped refusing a pending float ([#771](https://github.com/objeck/objeck-lang/pull/771): parked in `D8`-`D15` for the call), so the fixture reports no fallback on ARM64; and `obc` took time exponential in the depth of a
 nested expression (`AnalyzeCalculation` analyzed every operand twice), fixed on its own branch.
-Open on ARM64: phase 3 and the entry (the handoff's 4d step 2), F3 and the `D8`-`D15` pins.
+Then phase 3 and the native entry on ARM64 ([#776](https://github.com/objeck/objeck-lang/pull/776), the design's section 13): a compiled
+call 13.8 ns to 7.4 ns, `Fib(32)` 0.107 s to 0.050 s. Open on ARM64: F3 and the `D8`-`D15` pins.

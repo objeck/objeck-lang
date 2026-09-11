@@ -23,7 +23,8 @@ full record.
 | `obc` | a nested expression took exponential time in `AnalyzeCalculation` (24 terms over a minute, 30 never); fixed in [#769](https://github.com/objeck/objeck-lang/pull/769), merged |
 | F4 on ARM64 | done, [#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, handed out after `X0`-`X7`; the entry-shapes test's sums are eleven-term statements (a ten-term version exposed a Windows x64 miscompile, [#773](https://github.com/objeck/objeck-lang/issues/773), the PC's to fix) |
 | the fixture's fallback | gone, [#771](https://github.com/objeck/objeck-lang/pull/771): the libc helpers park a pending caller-saved float in `D8`-`D15` across the call; `OBJECK_JIT_REPORT=1` on `vm_jit_equiv.obs` is silent on ARM64 |
-| the deploy tree on the Mac | holds [#771](https://github.com/objeck/objeck-lang/pull/771)'s `obr` on a `3366d92c4a` tree; `deploy_macos_arm64.sh` from master before trusting anything else |
+| 4d step 2 | done, [#776](https://github.com/objeck/objeck-lang/pull/776): the native entry and call site (design section 13); a compiled call 13.8 ns to 7.4 ns, `Fib(32)` 0.107 s to 0.050 s; `DYN_MTHD_CALL_JIT` has a case (compiling a method with a patched func-ref site exited) |
+| the deploy tree on the Mac | holds [#776](https://github.com/objeck/objeck-lang/pull/776)'s `obr` on a `3366d92c4a` tree; `deploy_macos_arm64.sh` from master before trusting anything else |
 
 **Corrections to what is written below.** The pool was eight general registers, `X0`-`X7`, not
 fifteen (`X9`-`X15` were commented out in `Compile()`); it is twelve now, `X0`-`X7` and
@@ -35,11 +36,28 @@ thirteen-term sum is such an expression.
 
 **Next on the Mac, in this order.**
 
-1. **4d step 2**, the native entry and call site, per section 4d below; `EmitFrameAdjust` is
-   the exact frame size it needs, and the pool has twelve registers for the call site's
-   values (F4 on ARM64 landed in [#770](https://github.com/objeck/objeck-lang/pull/770); the spill lists of `EmitWriteBarrier` and the libc
-   helper are five slots, `TMP_X1`-`TMP_X5`, whatever the pool's size).
-2. Then 4a (loop locals in `X20`+) and 4b (`D8`-`D15` pins), by the numbers.
+1. 4a (loop locals in `X20`+) and 4b (`D8`-`D15` pins), by the numbers; 4d is done ([#776](https://github.com/objeck/objeck-lang/pull/776)).
+2. The callee's native prologue, about 45 instructions of stores (design section 13), is
+   where the next nanosecond of a call is.
+
+**Windows ARM64, as of tonight.** Three things for whoever next touches that leg.
+
+- *A `core_thread_gc_stress` failure, once.* The windows-arm64 leg of #768's CI reported "203
+  corruption(s)" at `68946d87ec`, a docs-only commit whose code the next push ran green. It was
+  the first failure of that test on any ARM64 leg in the forty-two samples before it. On the Mac
+  it did not reproduce in 144 stress runs (with every method compiled, a 1 MB GC threshold, four
+  instances at a time, on the VMs from before #768, from master and from #771), nor on the
+  native-entry VM ({STRESS}). If it recurs, reproduce it on Windows ARM64 or on a
+  four-core Linux ARM64 box before suspecting anything specific; #746 needed four pinned cores
+  to show at all.
+- *What the native entry does for it.* A `long` is four bytes there, so a `StackFrame`'s `ip`
+  and `jit_offset` and the call-stack position are loaded and stored by their size
+  (`load_long`, `store_long`); `X18`, the platform register, is never touched; `x16`/`x17` are
+  written just before their use.
+- *Stack probing.* A frame is allocated with one `sub sp` and never probed. Windows expects a
+  frame larger than a page to touch each page in order, and this was true before tonight; the
+  frame grew by 112 bytes plus the outgoing area, so a method needs about 450 locals to
+  cross a page.
 
 **Traps the Mac added to the list.** From an agent shell with no `LANG`, Python coerces the
 locale and passes `LC_CTYPE=C.UTF-8` to every child; macOS libc++ then fails to construct
