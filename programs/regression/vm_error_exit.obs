@@ -1,5 +1,6 @@
 # EXPECT_RUNTIME_ERROR
 # JIT_DISABLE
+# reason: with every method compiled, the exception this test throws inside the interpreter callback cannot unwind through the JIT'd frame and obr aborts with SIGABRT before Execute's catch, its message and its return value (a separate follow-up); this test is about the entry point's exit status after that catch
 #~
 A program that dies inside the VM must leave obr with a non-zero exit status.
 
@@ -30,7 +31,7 @@ survive, so it is not used here.
 The regression runner passes this file only on a non-zero exit WITH output,
 which is exactly the fix: the old obr printed the line and exited 0.
 
-The JIT_DISABLE marker above: with every method compiled on its first call
+The JIT opt-out marker above: with every method compiled on its first call
 (OBJECK_JIT_THRESHOLD=1, --jit=1) the exception is thrown inside the
 interpreter callback that the compiled Main made, and it cannot unwind
 through the JIT'd frame: libc++ terminates the process (SIGABRT, "terminating
