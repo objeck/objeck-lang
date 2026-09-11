@@ -816,7 +816,11 @@ void JitArm64::ProcessInstructions() {
     }
       break;
       
-    case DYN_MTHD_CALL: {
+    // DYN_MTHD_CALL_JIT is the same call: PatchCallSites rewrites a site whose
+    // operands match a method that compiles. The pre-scan accepted it and this
+    // switch had no case, so compiling a method holding one ended the process.
+    case DYN_MTHD_CALL:
+    case DYN_MTHD_CALL_JIT: {
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"DYN_MTHD_CALL: regs=" << aval_regs.size() << endl;
 #endif
