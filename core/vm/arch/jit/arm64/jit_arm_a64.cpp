@@ -1643,8 +1643,20 @@ void JitArm64::ProcessStoreCharElement(StackInstr* instr) {
   working_stack.pop_front();
   
   switch(left->GetType()) {
-  case IMM_INT:
-    move_imm_mem32(int32_t(left->GetOperand()), 0, elem_holder->GetRegister());
+  case IMM_INT: {
+    // A character is 16 bits on Windows and 32 elsewhere, as in the two cases
+    // below. This stored the whole register (move_imm_mem32 went through
+    // move_reg_mem), overwriting the next one or three elements and, at the
+    // last one, whatever followed the array.
+    RegisterHolder* holder = GetRegister();
+    move_imm_reg32(int32_t(left->GetOperand()), holder->GetRegister());
+#ifdef _M_ARM64
+    move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
+#else
+    move_reg_mem32(holder->GetRegister(), 0, elem_holder->GetRegister());
+#endif
+    ReleaseRegister(holder);
+  }
     break;
 
   case MEM_INT: {
@@ -4576,7 +4588,9 @@ void JitArm64::move_imm_mem(int64_t imm, long offset, Register dest) {
 void JitArm64::move_imm_mem32(int32_t imm, long offset, Register dest) {
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg32(imm, imm_holder->GetRegister());
-  move_reg_mem(imm_holder->GetRegister(), offset, dest);
+  // 32 bits, as the name says. It stored the whole register, and the Char[]
+  // constant store that used to call it overwrote the elements after it.
+  move_reg_mem32(imm_holder->GetRegister(), offset, dest);
   ReleaseRegister(imm_holder);
 }
 

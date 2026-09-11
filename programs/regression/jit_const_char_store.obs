@@ -1,0 +1,49 @@
+#~
+# ARM64 JIT: a constant character stored into a Char[] element was written
+# with a full 8-byte store (ProcessStoreCharElement's IMM_INT case called
+# move_imm_mem32, which stores the whole register), so it overwrote the next
+# element on macOS and Linux (4-byte characters) and the next three on
+# Windows (2-byte characters), and ran past the end of the array at the last
+# element. The register and memory cases already stored 32 or 16 bits.
+# Stores here run from the last element down, so every constant store lands
+# on neighbours that were already written; then every element is checked.
+# Fill has a loop, so it compiles on its first call in both regression
+# passes. Exits 1 on a mismatch.
+~#
+class ConstCharStore {
+  function : Fill(n : Int) ~ Char[] {
+    a := Char->New[n];
+    for(i := n - 1; i >= 0; i -= 1;) {
+      a[i] := 'x';
+    };
+    return a;
+  }
+
+  # the same through a variable, the path that already stored its width
+  function : FillVar(n : Int, c : Char) ~ Char[] {
+    a := Char->New[n];
+    for(i := n - 1; i >= 0; i -= 1;) {
+      a[i] := c;
+    };
+    return a;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+    for(round := 0; round < 12; round += 1;) {
+      a := Fill(9);
+      for(i := 0; i < a->Size(); i += 1;) {
+        if(a[i] <> 'x') { bad += 1; };
+      };
+      b := FillVar(9, 'y');
+      for(j := 0; j < b->Size(); j += 1;) {
+        if(b[j] <> 'y') { bad += 1; };
+      };
+    };
+    if(bad > 0) {
+      "FAIL: {$bad} character(s) overwritten by a constant store"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: constant character stores"->PrintLine();
+  }
+}
