@@ -37,8 +37,8 @@ thirteen-term sum is such an expression.
 **Next on the Mac, in this order.**
 
 1. 4a (loop locals in `X20`+) and 4b (`D8`-`D15` pins), by the numbers; 4d is done ([#776](https://github.com/objeck/objeck-lang/pull/776)).
-2. The callee's native prologue, about 45 instructions of stores (design section 13), is
-   where the next nanosecond of a call is.
+2. The callee's native prologue, about fifty instructions and mostly stores (design section
+   13), is where the next nanosecond of a call is.
 
 **Windows ARM64, as of tonight.** Three things for whoever next touches that leg.
 
@@ -47,7 +47,7 @@ thirteen-term sum is such an expression.
   the first failure of that test on any ARM64 leg in the forty-two samples before it. On the Mac
   it did not reproduce in 144 stress runs (with every method compiled, a 1 MB GC threshold, four
   instances at a time, on the VMs from before #768, from master and from #771), nor on the
-  native-entry VM ({STRESS}). If it recurs, reproduce it on Windows ARM64 or on a
+  native-entry VM (48 runs with 0 corruptions). If it recurs, reproduce it on Windows ARM64 or on a
   four-core Linux ARM64 box before suspecting anything specific; #746 needed four pinned cores
   to show at all.
 - *What the native entry does for it.* A `long` is four bytes there, so a `StackFrame`'s `ip`

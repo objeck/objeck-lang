@@ -721,9 +721,9 @@ process ("Unknown instruction"). It has the same case as `DYN_MTHD_CALL` now, as
 | compiled call, per call | 13.8 ns | **7.4 ns** |
 
 A compiled call on ARM64 cost 17.7 ns when the Mac first measured it (section 12) and 7.4 ns now;
-AMD64's is 5.5 ns. What is left is the callee's native prologue -- about 45 instructions, most
-of them stores into its own frame (the record's fields, the stack pointers copied from the
-caller) -- and the call site's 17.
+AMD64's is 5.5 ns. What is left is the callee's native prologue -- about fifty instructions,
+most of them stores into its own frame (the record's fields, the stack pointers copied from
+the caller) -- and about twenty at the call site.
 
 **Verification.** The flag tests 22/22 with `vm_jit_equiv.obs` byte-identical across the three
 modes (its `Calls` probes cover bound, virtual, func-ref, deep, allocating, `Float`, wide, `Nil`,
