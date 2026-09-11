@@ -21,7 +21,7 @@ full record.
 | 4d step 1 | done: a compiled call 17.1 ns to 13.4 ns, `RealCall` 0.363 s to 0.279 s, `Fib(32)` 0.135 s to 0.103 s; the frame-size immediate (the "before step 2" item below) fixed with it |
 | two ARM64 bugs the new test found | fixed on the same branch: the entry zeroing wiped the `D8`-`D15` save slots (every compiled method returned zeros in its caller's callee-saved floats), and a func-ref local's pair was written above a slot reserved below it (the next local clobbered, the collector one word low) |
 | `obc` | a nested expression took exponential time in `AnalyzeCalculation` (24 terms over a minute, 30 never); fixed in [#769](https://github.com/objeck/objeck-lang/pull/769), merged |
-| F4 on ARM64 | done, [#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, handed out after `X0`-`X7`; the entry-shapes test's sums are ten-term statements again |
+| F4 on ARM64 | done, [#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, handed out after `X0`-`X7`; the entry-shapes test's sums are eleven-term statements (a ten-term version exposed a Windows x64 miscompile, [#773](https://github.com/objeck/objeck-lang/issues/773), the PC's to fix) |
 | the deploy tree on the Mac | holds [#770](https://github.com/objeck/objeck-lang/pull/770)'s `obr` on a `3366d92c4a` tree; `deploy_macos_arm64.sh` from master before trusting anything else |
 
 **Corrections to what is written below.** The pool was eight general registers, `X0`-`X7`, not
