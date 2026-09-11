@@ -347,12 +347,15 @@ namespace Runtime {
   class JitAmd64 : public JitCompiler {
     static PageManager* page_manager;
     std::deque<RegInstr*> working_stack;
+    // Every register holder this compiler made (NewRegisterHolder), deleted
+    // once by the destructor. The pools, the working stack and the local
+    // caches only borrow them. Deleting from the lists instead freed RSI
+    // and RDI twice once they had been through the local cache (#773).
+    std::vector<RegisterHolder*> all_regs;
     std::vector<RegisterHolder*> aval_regs;
-    std::list<RegisterHolder*> used_regs;
     std::stack<RegisterHolder*> aux_regs;
     RegisterHolder* rax_reg;
     std::vector<RegisterHolder*> aval_xregs;
-    std::list<RegisterHolder*> used_xregs;
     std::unordered_map<long, StackInstr*> jump_table; // jump addresses
     std::vector<long> nil_deref_offsets;      // code -1
     std::vector<long> bounds_less_offsets;    // code -2
@@ -881,6 +884,13 @@ namespace Runtime {
       // jump to exit
     }
 
+    // A register holder owned by this compiler; all_regs deletes it
+    RegisterHolder* NewRegisterHolder(Register reg) {
+      RegisterHolder* holder = new RegisterHolder(reg);
+      all_regs.push_back(holder);
+      return holder;
+    }
+
     // Gets an available register from the pool of registers
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
@@ -890,7 +900,6 @@ namespace Runtime {
           auto it = local_reg_cache.begin();
           holder = it->second;
           local_reg_cache.erase(it);
-          used_regs.push_back(holder);
 #ifdef _VERBOSE
           std::wcout << L"\t * evicting cached " << GetRegisterName(holder->GetRegister())
             << L" *" << std::endl;
@@ -914,7 +923,6 @@ namespace Runtime {
       else {
         holder = aval_regs.back();
         aval_regs.pop_back();
-        used_regs.push_back(holder);
       }
 #ifdef _VERBOSE
       std::wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
@@ -968,7 +976,6 @@ namespace Runtime {
       }
       else {
         aval_regs.push_back(h);
-        used_regs.remove(h);
       }
     }
 
@@ -982,7 +989,6 @@ namespace Runtime {
           auto it = local_xreg_cache.begin();
           holder = it->second;
           local_xreg_cache.erase(it);
-          used_xregs.push_back(holder);
 #ifdef _VERBOSE
           std::wcout << L"\t * evicting cached " << GetRegisterName(holder->GetRegister())
             << L" *" << std::endl;
@@ -993,15 +999,11 @@ namespace Runtime {
 #ifdef _DEBUG_JIT
         std::wcout << L">>> No XMM registers avaiable! <<<" << std::endl;
 #endif
-        aval_xregs.push_back(new RegisterHolder(XMM0));
-        holder = aval_xregs.back();
-        aval_xregs.pop_back();
-        used_xregs.push_back(holder);
+        holder = NewRegisterHolder(XMM0);
       }
       else {
         holder = aval_xregs.back();
         aval_xregs.pop_back();
-        used_xregs.push_back(holder);
       }
 #ifdef _VERBOSE
       std::wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
@@ -1044,18 +1046,16 @@ namespace Runtime {
       std::wcout << L"\t * releasing: " << GetRegisterName(h->GetRegister()) << L" * " << std::endl;
 #endif
       aval_xregs.push_back(h);
-      used_xregs.remove(h);
     }
 
     // Caches a register holding a local variable value (by frame offset).
-    // The register is removed from used_regs and held in the cache.
+    // It stays in the cache until a load takes it or a flush releases it.
     void CacheLocalRegister(long offset, RegisterHolder* h) {
       auto it = local_reg_cache.find(offset);
       if(it != local_reg_cache.end()) {
         ReleaseRegister(it->second);
         local_reg_cache.erase(it);
       }
-      used_regs.remove(h);
       local_reg_cache[offset] = h;
     }
 
@@ -1065,7 +1065,6 @@ namespace Runtime {
         ReleaseXmmRegister(it->second);
         local_xreg_cache.erase(it);
       }
-      used_xregs.remove(h);
       local_xreg_cache[offset] = h;
     }
 
@@ -1303,54 +1302,11 @@ namespace Runtime {
         }
       }
 
-      while(!aval_regs.empty()) {
-        RegisterHolder* holder = aval_regs.back();
-        aval_regs.pop_back();
-        if(holder) {
-          delete holder;
-          holder = nullptr;
-        }
+      // each holder once, whichever list last borrowed it (all_regs)
+      for(RegisterHolder* holder : all_regs) {
+        delete holder;
       }
-
-      while(!aval_xregs.empty()) {
-        RegisterHolder* holder = aval_xregs.back();
-        aval_xregs.pop_back();
-        if(holder) {
-          delete holder;
-          holder = nullptr;
-        }
-      }
-
-      while(!used_regs.empty()) {
-        RegisterHolder* holder = used_regs.front();
-        if(holder) {
-          delete holder;
-          holder = nullptr;
-        }
-        // next
-        used_regs.pop_front();
-      }
-      used_regs.clear();
-
-      while(!used_xregs.empty()) {
-        RegisterHolder* holder = used_xregs.front();
-        if(holder) {
-          delete holder;
-          holder = nullptr;
-        }
-        // next
-        used_xregs.pop_front();
-      }
-      used_xregs.clear();
-
-      while(!aux_regs.empty()) {
-        RegisterHolder* holder = aux_regs.top();
-        if(holder) {
-          delete holder;
-          holder = nullptr;
-        }
-        aux_regs.pop();
-      }
+      all_regs.clear();
     }
 
     /**
