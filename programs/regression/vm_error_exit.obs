@@ -13,14 +13,19 @@ returned the -1.
 The way in is "1e999"->ToFloat(): std::stod throws out_of_range, and the
 interpreter's Str2Float catches invalid_argument only, so the exception
 escapes to Execute on every platform and in every VM mode (the JIT hands S2F
-back to the interpreter). Nothing in the VM raises an exception on purpose, so
-any fixture for this catch rides on an unguarded one; if Str2Float is ever
-guarded, give this file another way to reach the catch -- the regression
-runner will say "should have failed at runtime" and run_vm_flag_tests.py
-(section 6) will name the missing message. The case first seen, on macOS, was
-Runtime->SetProperty("locale", "xx_YY.bogus") dying with "locale constructed
-with null"; that call is being made to survive separately, so it is not used
-here.
+back to the interpreter).
+
+THE TRIGGER IS ITSELF A KNOWN BUG. ToFloat on an out-of-range literal should
+yield a value, not kill the program; its fix is tracked as a task of its own.
+Nothing in the VM raises an exception on purpose, so any fixture for this
+catch rides on an unguarded one. Whoever fixes ToFloat must give this file
+another trigger that escapes Execute as a std::exception (anything that lands
+in the catch printing "internal error"); otherwise this file exits 0 and fails
+as # EXPECT_RUNTIME_ERROR -- the regression runner will say "should have
+failed at runtime" and run_vm_flag_tests.py (section 7) will name the missing
+message. The case first seen, on macOS, was Runtime->SetProperty("locale",
+"xx_YY.bogus") dying with "locale constructed with null"; #774 makes that call
+survive, so it is not used here.
 
 The regression runner passes this file only on a non-zero exit WITH output,
 which is exactly the fix: the old obr printed the line and exited 0.

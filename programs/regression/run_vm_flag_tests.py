@@ -24,7 +24,7 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     native library, the next ran the deployed obr from another cwd -- but
     Windows resolves the ..\lib\native fallback against obr.exe's OWN
     directory first, so the deployed binary finds its libraries from anywhere.
- 6. A program that dies inside the VM exits non-zero. Execute prints
+ 7. A program that dies inside the VM exits non-zero. Execute prints
     ">>> virtual machine: internal error: ... <<<" and returns -1 when an
     exception escapes the interpreter, and the POSIX entry point returned 0
     regardless, so on Linux and macOS such a program reported success to
@@ -163,7 +163,7 @@ def main():
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
 
-    # ---- 6. a program that dies inside the VM exits non-zero ------------------------
+    # ---- 7. a program that dies inside the VM exits non-zero ------------------------
     # Execute's catch prints the line and returns -1; the POSIX entry point used
     # to return 0 regardless. The regression runner proves the same thing more
     # coarsely (the fixture is # EXPECT_RUNTIME_ERROR); this names the message
