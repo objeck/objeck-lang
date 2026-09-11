@@ -52,7 +52,7 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     command line that is all flags ("obr --jit=off") names no program: that
     is the usage and a non-zero exit, not a silent one (it was a silent exit
     0 on POSIX).
- 6. An exception in a call the JIT's bridge made ends the program, not the
+ 8. An exception in a call the JIT's bridge made ends the program, not the
     process. Neither backend registers unwind information for the code it
     emits, so a C++ exception thrown under compiled code used to terminate
     obr (SIGABRT) before Execute's catch printed anything; the bridge catches
@@ -250,7 +250,7 @@ def main():
           rc != 0 and b"Usage: obr" in (out + err),
           f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
 
-    # ---- 6. an exception in a bridge call ends the program, not the process ----
+    # ---- 8. an exception in a bridge call ends the program, not the process ----
     # The fixture's Parse is native, so both runs reach the bridge: by default
     # String->ToFloat, a library method called once, runs in the interpreter the
     # bridge nests; under --jit=1 it is compiled and the bridge's own S2F case

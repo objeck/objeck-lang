@@ -15,7 +15,7 @@ stack, exit(1).
 
 The regression runner passes an expected runtime error on any non-zero exit
 with output, so it cannot tell the abort from the error; run_vm_flag_tests.py
-(section 6) names the status and the message, and this file keeps the shape
+(section 8) names the status and the message, and this file keeps the shape
 in both regression passes. Parse is native, so it is compiled in the plain
 pass too, and String->ToFloat runs under the bridge either way: in the plain
 pass inside the interpreter the bridge nests (a library method called once
