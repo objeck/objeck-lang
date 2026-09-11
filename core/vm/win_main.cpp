@@ -70,6 +70,13 @@ static int objeck_main(const int argc, const char* argv[])
       std::wcerr << opts.error << L"\n\n" << Runtime::VmUsage() << std::endl;
       return 1;
     }
+    // Every argument was a flag, so there is no program to run. Execute
+    // returns USAGE_ERROR for that without printing a word; say what a bare
+    // "obr" says instead, and exit the way it does.
+    if(argc - opts.consumed < 2) {
+      std::wcerr << Runtime::VmUsage() << std::endl;
+      return 1;
+    }
     Runtime::ApplyVmOptions(opts);
 
     //
