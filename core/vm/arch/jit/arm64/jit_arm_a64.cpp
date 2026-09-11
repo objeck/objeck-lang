@@ -5237,7 +5237,13 @@ void JitArm64::ProcessIndices()
     for(long j = 0; j < num_dclrs; ++j) {
       const long words = (dclrs[j]->type == FUNC_PARM) ? 2 : 1;
       index += words * (long)sizeof(size_t);
-      slot_offsets[id] = index;
+      // A slot's offset is its lowest word: a func-ref's two words are
+      // written and read at [offset] and [offset + 8] (ProcessStore,
+      // ProcessLoad), and the collector walks the pair the same way. The
+      // offset used to be the pair's upper word, so the second word landed
+      // in the next declaration's slot and the collector read the pair one
+      // word low; jit_entry_shapes.obs (Applied, Cross) fails on that layout.
+      slot_offsets[id] = index - (words - 1) * (long)sizeof(size_t);
       id += words;
     }
   }
@@ -5274,7 +5280,13 @@ void JitArm64::ProcessIndices()
             index += sizeof(double);
           }
         }
-        instr->SetOperand3(index);
+        // the pair's lowest word, as above
+        if(instr->GetType() == LOAD_FUNC_VAR || instr->GetType() == STOR_FUNC_VAR) {
+          instr->SetOperand3(index - (long)sizeof(size_t));
+        }
+        else {
+          instr->SetOperand3(index);
+        }
         last_id = id;
       }
     }
