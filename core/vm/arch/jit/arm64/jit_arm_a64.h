@@ -778,6 +778,9 @@ namespace Runtime {
     void adr_reg(long byte_offset, Register dest);                          // adr Xd, pc+offset
     void ldrsw_base_index_reg(Register base, Register index, Register dest); // ldrsw Xt, [Xn, Xm, lsl #2]
     void ldr_base_index_reg(Register base, Register index, Register dest);   // ldr Xt, [Xn, Xm, lsl #3]
+    void stp_xzr_mem(long offset, Register base);                            // stp xzr, xzr, [Xn, #offset]
+    void str_xzr_mem(long offset, Register base);                            // str xzr, [Xn, #offset]
+    void EmitZeroWords(long offset, long words, Register base);
     void ldr_base_index_freg(Register base, Register index, Register dest);  // ldr Dt, [Xn, Xm, lsl #3]
     void br_reg(Register reg);                                               // br Xn
     void cbnz_reg(Register reg);  // Branch if reg != 0

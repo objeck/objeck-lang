@@ -201,44 +201,42 @@ void JitArm64::RegisterRoot() {
   ReleaseRegister(mem_holder);
   ReleaseRegister(holder);
     
-  // zero out memory
-  RegisterHolder* start_reg = GetRegister();
-  RegisterHolder* end_reg = GetRegister();
-  RegisterHolder* cur_reg = GetRegister();
-  
-  // set start
-  move_sp_reg(start_reg->GetRegister());
-  add_imm_reg(TMP_X0, start_reg->GetRegister());
-  
-  // set end
-  move_sp_reg(end_reg->GetRegister());
-  add_imm_reg((long)(TMP_X0 + offset), end_reg->GetRegister());
-  
-  // compare
-  cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
+  // Zero the frame: the six integer spill slots, then the word below the
+  // first local through the end of the locals (TMP_X0 + offset inclusive,
+  // the bound the loop had). The loop used to start at TMP_X0 and run
+  // straight through the D8-D15 save slots the prologue had just filled, so
+  // every compiled method returned zeros in its caller's callee-saved float
+  // registers; the save slots sit between the two ranges now. Straight
+  // stores, two words each, for the common frame sizes; a loop for the rest.
+  EmitZeroWords(TMP_X0, (TMP_X5 - TMP_X0) / (long)sizeof(size_t) + 1, SP);
+  const long zero_end = TMP_X0 + (long)offset;
+  const long local_words = (zero_end - RED_ZONE) / (long)sizeof(size_t) + 1;
+  static const long ZERO_UNROLL_MAX = 32;   // stp's displacement reaches 504 from SP
+  if(local_words <= ZERO_UNROLL_MAX) {
+    EmitZeroWords(RED_ZONE, local_words, SP);
+  }
+  else {
+    RegisterHolder* start_reg = GetRegister();
+    RegisterHolder* end_reg = GetRegister();
+    move_sp_reg(start_reg->GetRegister());
+    add_imm_reg(RED_ZONE, start_reg->GetRegister());
+    move_sp_reg(end_reg->GetRegister());
+    add_imm_reg(zero_end, end_reg->GetRegister());
+    // while(start <= end) { *start = 0; start += 8; }
+    cmp_reg_reg(start_reg->GetRegister(), end_reg->GetRegister());
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [b.lt +4]" << std::endl;
 #endif
-  AddMachineCode(0x540000CB);
-  
-  // zero out address and advance
-  move_reg_reg(start_reg->GetRegister(), cur_reg->GetRegister());
-  move_imm_mem(0, 0, cur_reg->GetRegister());
-  add_imm_reg(8, start_reg->GetRegister());
-  
+    AddMachineCode(0x5400008B);                      // b.lt past the three below
+    str_xzr_mem(0, start_reg->GetRegister());
+    add_imm_reg(sizeof(size_t), start_reg->GetRegister());
 #ifdef _DEBUG_JIT_JIT
-  std::wcout << L"  " << (++instr_count) << L": [b <imm>]" << std::endl;
+    std::wcout << L"  " << (++instr_count) << L": [b -4]" << std::endl;
 #endif
-  
-  uint32_t op_code = 0x17000000;
-  op_code |= -6 & 0x00ffffff;
-  AddMachineCode(op_code);
-  
-  sub_imm_reg(2, X3);
-  
-  ReleaseRegister(cur_reg);
-  ReleaseRegister(end_reg);
-  ReleaseRegister(start_reg);
+    AddMachineCode(0x17000000 | (-4 & 0x00ffffff));  // back to the cmp
+    ReleaseRegister(end_reg);
+    ReleaseRegister(start_reg);
+  }
 }
 
 void JitArm64::ProcessParameters(long params) {
@@ -3572,6 +3570,36 @@ void JitArm64::ldrsw_base_index_reg(Register base, Register index, Register dest
   op_code |= (uint32_t)(base & 0x1F) << 5;
   op_code |= (uint32_t)(dest & 0x1F);
   AddMachineCode(op_code);
+}
+
+// stp xzr, xzr, [Xn, #offset]: two words zeroed, offset a multiple of 8 in [-512, 504]
+void JitArm64::stp_xzr_mem(long offset, Register base) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [stp xzr, xzr, (" << GetRegisterName(base) << L", #" << offset << L")]" << std::endl;
+#endif
+  assert(offset % 8 == 0 && offset >= -512 && offset <= 504);
+  uint32_t op_code = 0xA9007C1F;                                 // opc=10, L=0, Rt2=Rt=xzr
+  op_code |= ((uint32_t)(offset / 8) & 0x7F) << 15;
+  op_code |= (uint32_t)(base & 0x1F) << 5;
+  AddMachineCode(op_code);
+}
+
+// str xzr, [Xn, #offset]: one word zeroed
+void JitArm64::str_xzr_mem(long offset, Register base) {
+#ifdef _DEBUG_JIT_JIT
+  std::wcout << L"  " << (++instr_count) << L": [str xzr, (" << GetRegisterName(base) << L", #" << offset << L")]" << std::endl;
+#endif
+  emit_ldst_imm(0xF9000000, sizeof(size_t), offset, base, SP);   // Rt=31 is xzr for a store
+}
+
+// zero `words` consecutive words at [base, #offset), pairs first
+void JitArm64::EmitZeroWords(long offset, long words, Register base) {
+  for(; words >= 2; words -= 2, offset += 2 * (long)sizeof(size_t)) {
+    stp_xzr_mem(offset, base);
+  }
+  if(words == 1) {
+    str_xzr_mem(offset, base);
+  }
 }
 
 // ldr Xt, [Xn, Xm, lsl #3]: a word of the operand stack by its index
