@@ -655,5 +655,6 @@ sends the method to the interpreter. The entry-shapes test's sums are eleven-ter
 which compile here and exceed AMD64's eight (ten on Windows); master's VM reports `Wide`
 falling back on them. Ten terms fit Windows x64's ten exactly and crashed there with every
 method compiled, the reproducer of [#773](https://github.com/objeck/objeck-lang/issues/773). The call probe is
-unchanged; the six loop kernels of `jit_probe.obs` and the call probe are unchanged within noise. `Arith:Mix` still falls back: its cause is a float
-live across a libc call, which the libc helper refuses, not the integer pool.
+unchanged; the six loop kernels of `jit_probe.obs` and the call probe are unchanged within noise. `Arith:Mix`, the fixture's one standing fallback, was a float
+live across a libc call, which the libc helper refused; [#771](https://github.com/objeck/objeck-lang/pull/771) parks such a float in a free
+callee-saved `D8`-`D15` register for the call, and the fixture reports no fallback on ARM64 at all.

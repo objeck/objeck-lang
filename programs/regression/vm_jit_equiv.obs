@@ -24,6 +24,23 @@ class Arith {
     return (x->Sin() * x->Cos())->Abs()->Sqrt() + (x + 1.0)->Log();
   }
 
+  # four float results pending across the fifth libc call. The ARM64 libc
+  # helper used to leave any method with a caller-saved float pending across
+  # such a call to the interpreter (Mix above was the fixture's one standing
+  # fallback there); it parks each in a callee-saved register now
+  function : Chain(x : Float) ~ Float {
+    return x->Sin() * (x->Cos() * (x->Tan() * (x->Exp() * x->Log())));
+  }
+
+  function : ChainSum() ~ Float {
+    chain := 0.0;
+    for(i := 1; i < 200; i += 1;) {
+      k := i % 20;
+      chain += Chain(k->As(Float) * 0.11 + 0.5);
+    };
+    return chain;
+  }
+
   # A select with a default arm. JMP_TABLE keeps its default_ip in operand3,
   # the same slot PatchCallSites used to overwrite on any instruction whose
   # first two operands matched a compiled method's ids. The default arm must
@@ -129,6 +146,7 @@ class VmJitEquiv {
       acc += Arith->Mix(i->As(Float) * 0.37);
     };
     "float acc={$acc}"->PrintLine();
+    "float chain={$Arith->ChainSum()}"->PrintLine();
 
     # string interpolation and concatenation inside a hot loop
     text := "";
