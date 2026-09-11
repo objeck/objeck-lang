@@ -699,8 +699,17 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {
       wchar_t* str = (wchar_t*)(str_ptr + 3);
-      const FLOAT_VALUE value = std::stod(str);
-      PushFloat(value, op_stack, stack_pos);
+      // as the interpreter's Str2Float: text that is not a number is 0.0. This
+      // ran std::stod bare, so once String->ToFloat was compiled (its tenth
+      // call, by default) the first such string threw std::invalid_argument
+      // into compiled code and ended the process.
+      try {
+        const FLOAT_VALUE value = std::stod(str);
+        PushFloat(value, op_stack, stack_pos);
+      }
+      catch(const std::invalid_argument&) {
+        PushFloat(0.0, op_stack, stack_pos);
+      }
     }
     else {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -743,10 +752,9 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
         }
         PushInt(op_stack, stack_pos, std::stoll(str, nullptr, static_cast<int>(base)));
       }
-      catch(std::invalid_argument& e) {
-#ifdef _WIN32
-        UNREFERENCED_PARAMETER(e);
-#endif
+      catch(const std::exception&) {
+        // as the interpreter's Str2Int: 0 for text that is not a number and
+        // for one that does not fit (std::out_of_range, which this let through)
         PushInt(op_stack, stack_pos, 0);
       }
     }
